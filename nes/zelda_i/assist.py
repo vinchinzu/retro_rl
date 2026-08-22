@@ -1,7 +1,8 @@
 """Contract-guarded survival assist for Zelda I first-pass routing.
 
-See ``docs/ASSIST_CONTRACT.md``. Default runners stay Clean; enable only via
-``--infinite-life`` / explicit ``UnlimitedHealthAssist(enabled=True)``.
+See ``docs/ASSIST_CONTRACT.md``. Zelda I segment scripts default to Survival
+(``--infinite-life``). Opt out with ``--no-infinite-life``. Clean M5 stays
+``run_level1_complete`` without the flag.
 
 **Strategy:** infinite life unblocks pathfinding and puzzle geometry first.
 Damage is observed and aggregated so Clean combat harden can target hot
@@ -18,9 +19,13 @@ from zelda_i.ram import (
     ADDR_HEALTH,
     PLAY_MODE,
     ZeldaSnapshot,
-    full_health_byte,
+    health_byte_for_containers,
     read_snapshot,
 )
+
+# RoomItemId for a dungeon/boss heart container (see dungeon_ids.ROOM_ITEM_NAMES).
+HEART_CONTAINER_ITEM = 0x1A
+UNDERWORLD_PASSAGE_MODE = 9
 
 # Cap stored event samples (reports stay small; totals remain unbounded).
 _MAX_DAMAGE_SAMPLES = 64
@@ -78,6 +83,9 @@ class AssistTelemetry:
     deaths: int = 0
     progression_writes: int = 0
     capacity_writes: int = 0
+    # Corrective clamps when RAM showed more containers than earned.
+    container_clamps: int = 0
+    accepted_containers: int | None = None
 
     def to_dict(self) -> dict[str, object]:
         # Top locations by total damage (hottest rooms first).
@@ -98,6 +106,8 @@ class AssistTelemetry:
             "deaths": self.deaths,
             "progression_writes": self.progression_writes,
             "capacity_writes": self.capacity_writes,
+            "container_clamps": self.container_clamps,
+            "accepted_containers": self.accepted_containers,
         }
 
 
@@ -111,7 +121,7 @@ def assist_phase_name(snap: ZeldaSnapshot) -> str:
         return "menu_or_boot"
     if snap.transitioning:
         return "transition"
-    if snap.mode == PLAY_MODE or snap.in_cave:
+    if snap.mode in (PLAY_MODE, UNDERWORLD_PASSAGE_MODE) or snap.in_cave:
         return "ordinary_gameplay"
     return f"mode_{snap.mode}"
 
@@ -134,6 +144,7 @@ class UnlimitedHealthAssist:
         self.telemetry = AssistTelemetry()
         self._prev_filled: int | None = None
         self._prev_phase: str | None = None
+        self._accepted_containers: int | None = None
 
     def report(self) -> dict[str, object]:
         return {
@@ -178,8 +189,9 @@ class UnlimitedHealthAssist:
         if not self.enabled:
             return None
 
+        prev_phase = self._prev_phase
         phase = assist_phase_name(snap)
-        if phase == "death" and self._prev_phase != "death":
+        if phase == "death" and prev_phase != "death":
             self.telemetry.deaths += 1
         self._prev_phase = phase
 
@@ -188,21 +200,51 @@ class UnlimitedHealthAssist:
             self._prev_filled = None
             return None
 
+        observed = int(snap.heart_containers)
+        if self._accepted_containers is None:
+            self._accepted_containers = max(1, observed)
+        accepted = self._accepted_containers
+        left_fanfare = prev_phase == "triforce_fanfare"
+        legal_plus_one = observed == accepted + 1 and (
+            left_fanfare or int(snap.room_item_id) == HEART_CONTAINER_ITEM
+        )
+        if legal_plus_one:
+            accepted = observed
+            self._accepted_containers = accepted
+        elif left_fanfare and observed > accepted:
+            # Triforce grants one container. A glitched high nibble after
+            # fanfare (tape: 5 → 7) is not a second container.
+            accepted += 1
+            self._accepted_containers = accepted
+        elif observed > accepted:
+            self.telemetry.container_clamps += 1
+
+        self.telemetry.accepted_containers = accepted
+
         filled = snap.filled_hearts
-        if self._prev_filled is not None:
+        if (
+            self._prev_filled is not None
+            and observed == accepted
+            and observed == ((int(snap.health) >> 4) & 0x0F) + 1
+        ):
             damage = max(0, self._prev_filled - filled)
             self._record_damage(snap, damage, frame=frame)
 
-        target = full_health_byte(snap.health)
-        if snap.health == target or snap.heart_containers <= 0:
-            self._prev_filled = filled
+        target = health_byte_for_containers(accepted)
+        partial = int(getattr(snap, "heart_partial", 0xFF)) & 0xFF
+        if accepted <= 0:
+            self._prev_filled = target & 0x0F
+            return None
+        if snap.health == target and partial == 0xFF:
+            self._prev_filled = target & 0x0F
             return None
 
         counter = self.telemetry.health
         if counter.first_active_frame is None:
             counter.first_active_frame = frame
-        restored = max(0, (target & 0x0F) - (snap.health & 0x0F))
+        restored = max(0, (target & 0x0F) - (int(snap.health) & 0x0F))
         data.set_value("health", target)
+        data.set_value("heart_partial", 0xFF)
         counter.restored += restored
         counter.writes += 1
         self._prev_filled = target & 0x0F
@@ -224,6 +266,7 @@ def write_health_u8(env: Any, value: int) -> None:
 __all__ = [
     "AssistTelemetry",
     "DamageEvent",
+    "HEART_CONTAINER_ITEM",
     "ResourceCounter",
     "UnlimitedHealthAssist",
     "assist_phase_name",

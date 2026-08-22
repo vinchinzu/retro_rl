@@ -7,9 +7,7 @@ parent bead and still poke-16 on the isolated suffix.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
-
+from zelda_i.chain import PredicateStopController
 from zelda_i.door_graph import (
     L3_DARKNUTS,
     L3_ENTRY,
@@ -34,13 +32,32 @@ from zelda_i.level3_overworld import (
     PostL2TriforceSettleController,
 )
 from zelda_i.level3_path import Level3NorthChainController, Level3WestKeyController
-from zelda_i.level3_raft_path import LEFT_5B_MAX_FRAMES, Level3RaftPathController
+from zelda_i.level3_raft_path import (
+    CLEAR_59_MAX_FRAMES,
+    CLEAR_69_MAX_FRAMES,
+    DOWN_69_MAX_FRAMES,
+    LEFT_5B_MAX_FRAMES,
+    SPAWN_SETTLE_FRAMES,
+    STAIRS_69_MAX_FRAMES,
+    PASSAGE_RAFT_MAX_FRAMES,
+    Level3RaftPathController,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WEST_KEY_SPINE_MAX_FRAMES = 8000
 NORTH_CHAIN_SPINE_MAX_FRAMES = 16000
 COMPASS_SPINE_MAX_FRAMES = LEFT_5B_MAX_FRAMES + 100
 WEST_DARKNUTS_SPINE_MAX_FRAMES = 3000
+SOUTH_DARKNUTS_SPINE_MAX_FRAMES = (
+    CLEAR_59_MAX_FRAMES + DOWN_69_MAX_FRAMES + SPAWN_SETTLE_FRAMES + 500
+)
+RAFT_SPINE_MAX_FRAMES = (
+    CLEAR_69_MAX_FRAMES
+    + STAIRS_69_MAX_FRAMES
+    + PASSAGE_RAFT_MAX_FRAMES
+    + SPAWN_SETTLE_FRAMES
+    + 500
+)
 _DEST_6B_ROOMS = (L3_ENTRY, L3_WEST_KEY, L3_NORTH_ZOLS, L3_DARKNUTS)
 
 
@@ -134,32 +151,18 @@ def level3_dest_6b_success_ram(ram) -> bool:
     return level3_reached_5b(ram)
 
 
-@dataclass
-class Level3CompassSpineController:
-    """Stop the proven Raft path exactly on playable room 0x5a."""
-
-    path: Level3RaftPathController = field(default_factory=Level3RaftPathController)
-    success: bool = False
-    failed: bool = False
-
-    def step(self, snap: ZeldaSnapshot):
-        action = self.path.step(snap)
-        self.success = level3_compass_success(snap)
-        self.failed = self.path.failed and not self.success
-        return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "path": self.path.report(),
-        }
-
-
 def level3_compass_stages():
     """Live 0x5b predecessor → west door → Compass room 0x5a."""
     return (
-        ("compass_0x5a", Level3CompassSpineController(), COMPASS_SPINE_MAX_FRAMES),
+        (
+            "compass_0x5a",
+            PredicateStopController(
+                Level3RaftPathController(),
+                level3_compass_success,
+                "level3_compass_0x5a",
+            ),
+            COMPASS_SPINE_MAX_FRAMES,
+        ),
     )
 
 
@@ -173,30 +176,16 @@ def level3_compass_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
-@dataclass
-class Level3WestDarknutsSpineController:
-    """Stop the proven Raft path exactly after the 0x5a key door."""
-
-    path: Level3RaftPathController = field(default_factory=Level3RaftPathController)
-    success: bool = False
-    failed: bool = False
-
-    def step(self, snap: ZeldaSnapshot):
-        action = self.path.step(snap)
-        self.success = level3_west_darknuts_success(snap)
-        self.failed = self.path.failed and not self.success
-        return action
-
-    def report(self) -> dict[str, Any]:
-        return {"success": self.success, "failed": self.failed, "path": self.path.report()}
-
-
 def level3_west_darknuts_stages():
     """Live 0x5a predecessor → long KEY-LEFT → playable 0x59."""
     return (
         (
             "west_darknuts_0x59",
-            Level3WestDarknutsSpineController(),
+            PredicateStopController(
+                Level3RaftPathController(),
+                level3_west_darknuts_success,
+                "level3_west_darknuts_0x59",
+            ),
             WEST_DARKNUTS_SPINE_MAX_FRAMES,
         ),
     )
@@ -209,3 +198,46 @@ def level3_west_darknuts_success(snap: ZeldaSnapshot) -> bool:
         and snap.mode == PLAY_MODE
         and not snap.transitioning
     )
+
+
+def level3_south_darknuts_stages():
+    """Live 0x59 predecessor → clear → DOWN → playable 0x69."""
+    return (
+        (
+            "south_darknuts_0x69",
+            PredicateStopController(
+                Level3RaftPathController(),
+                level3_south_darknuts_success,
+                "level3_south_darknuts_0x69",
+            ),
+            SOUTH_DARKNUTS_SPINE_MAX_FRAMES,
+        ),
+    )
+
+
+def level3_south_darknuts_success(snap: ZeldaSnapshot) -> bool:
+    return (
+        snap.level == LEVEL3
+        and snap.screen == 0x69
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+    )
+
+
+def level3_raft_stages():
+    """Live 0x69 predecessor → clear → stairs passage → natural Raft."""
+    return (
+        (
+            "raft_0x0f",
+            PredicateStopController(
+                Level3RaftPathController(),
+                level3_raft_success,
+                "level3_raft",
+            ),
+            RAFT_SPINE_MAX_FRAMES,
+        ),
+    )
+
+
+def level3_raft_success(snap: ZeldaSnapshot) -> bool:
+    return snap.level == LEVEL3 and snap.screen == 0x0F and bool(snap.raft)

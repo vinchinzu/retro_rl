@@ -33,6 +33,44 @@ if TYPE_CHECKING:
 
 # Post-step hook: (env, obs, action, global_frame) -> None
 FrameCallback = Callable[[Any, Any, Any, int], None]
+SnapshotPredicate = Callable[[Any], bool]
+
+
+@dataclass
+class PredicateStopController:
+    """Run a controller until an exact snapshot predicate becomes true.
+
+    This keeps route experiments at named RAM boundaries without teaching the
+    reusable path controller about every spine checkpoint.
+    """
+
+    controller: Any
+    predicate: SnapshotPredicate
+    stop: str
+    success: bool = False
+    failed: bool = False
+    frames: int = 0
+
+    def step(self, snap: Any) -> Any:
+        self.frames += 1
+        action = self.controller.step(snap)
+        self.success = bool(self.predicate(snap))
+        self.failed = bool(getattr(self.controller, "failed", False)) and not self.success
+        return action
+
+    def report(self) -> dict[str, Any]:
+        nested = (
+            self.controller.report()
+            if callable(getattr(self.controller, "report", None))
+            else {"type": type(self.controller).__name__}
+        )
+        return {
+            "stop": self.stop,
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "controller": nested,
+        }
 
 
 def _observe_room_timer(

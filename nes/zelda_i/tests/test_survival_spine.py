@@ -34,6 +34,8 @@ from zelda_i.ram import (
 from zelda_i.level3_spine import (
     level3_compass_stages,
     level3_west_darknuts_stages,
+    level3_south_darknuts_stages,
+    level3_raft_stages,
     level3_dest_6b_stages,
     level3_entry_stages,
     level3_west_key_stages,
@@ -55,8 +57,8 @@ def test_spine_through_is_continuous_only() -> None:
     assert SPINE_THROUGH == ("level1", "level2", "level3")
 
 
-def test_through_level3_stops_at_west_darknuts_0x59() -> None:
-    """Power-on → L3 this pass is 0x59 (rr-4d53.3.3.2)."""
+def test_through_level3_stops_at_raft() -> None:
+    """Power-on → L3 this pass is natural Raft (rr-4d53.3.3.4)."""
     names = [name for name, _, _ in level3_entry_stages()]
     assert names == ["settle_l2_tf", "enter_level3"]
     west = [name for name, _, _ in level3_west_key_stages()]
@@ -66,8 +68,10 @@ def test_through_level3_stops_at_west_darknuts_0x59() -> None:
     assert "north_chain" not in names
     assert [name for name, _, _ in level3_compass_stages()] == ["compass_0x5a"]
     assert [name for name, _, _ in level3_west_darknuts_stages()] == ["west_darknuts_0x59"]
+    assert [name for name, _, _ in level3_south_darknuts_stages()] == ["south_darknuts_0x69"]
+    assert [name for name, _, _ in level3_raft_stages()] == ["raft_0x0f"]
     run = SpineRun(through="level3", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level3_west_darknuts_0x59"
+    assert run.report()["stop"] == "level3_raft"
     assert "l3_entry" in run.report()
 
 

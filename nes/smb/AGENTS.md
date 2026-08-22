@@ -101,6 +101,7 @@ uv run python -m smb.scripts.parse_human_recording \
 `./play smb` (`scripts/play.py`, 32-exit tape) · `ram.py` / `obs.py` /
 `policy.py` · `reactive_12|late|route.py` · `scripts/run_warp_finish.py` ·
 `rle_windows.py` ·
+`predict.py` (approx claims; live halt at first miss) ·
 `tas/` (adapt: `stages` StageSpec table, `slice` probe/export, `chain` reach/verify,
 `replay` to_action9/idle_until, `fm2` import; residual `pipeline` 1-1 hill-climb) ·
 `scripts/import_fm2.py` · `scripts/tas_1_1.py` · `scripts/polish_1_2_ug.py` ·
@@ -113,7 +114,11 @@ Best Clean power-on: **21,559f** 3/3
 (`smb_1_1_to_ending_natural_82.json`). Published continuous MP4:
 `recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4`.
 
-**Prefer TAS adapt over hill-climb** (`docs/TAS_ADAPT.md`): HappyLee through
+Search jumps in `smb.approx` first; live halt is `grade_trajectory` +
+`halt_plan` / `first_miss_index` on per-frame claims. Residual R(τ)
+remains the search-model keep/reject (`can_keep_as_search_model`).
+**Prefer TAS adapt over hill-climb**
+(`docs/TAS_ADAPT.md`): HappyLee through
 8-2 verified + exported; **hybrid v2 ending** (HL→8-2 + natural 8-3 bridge +
 **flamexx 8-4@15210**) **18,031f / 5:00.02** Level1_1→axe (**−3,528** vs n82;
 **+1** vs 18,030 sub-5 budget). Seeds: `smb_*_happylee_slice.json` (1-1…8-2) +

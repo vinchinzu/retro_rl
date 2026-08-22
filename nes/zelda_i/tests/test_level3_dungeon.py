@@ -69,6 +69,7 @@ from zelda_i.ram import (
     ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
+    ADDR_RAFT,
     ADDR_SCREEN,
     PLAY_MODE,
     read_snapshot,
@@ -369,6 +370,32 @@ def test_raft_path_controller_phases_and_raft_success() -> None:
     assert ctrl2.phase == "done"
     assert action.reason == "done"
     assert "raft_acquired" in ctrl2.notes
+
+    # Fresh exact-stop stage resumes naturally from the live 0x69 boundary.
+    ctrl3 = Level3RaftPathController()
+    handoff = ctrl3.step(
+        read_snapshot(_ram(room=ROOM_L3_SOUTH_DARKNUTS, x=120, y=77))
+    )
+    assert ctrl3.phase == "spawn_69"
+    assert handoff.reason == "phase_handoff"
+
+    raft_ram = _ram(room=ROOM_L3_RAFT_PASSAGE, x=136, y=141)
+    raft_ram[ADDR_RAFT] = 1
+    ctrl4 = Level3RaftPathController()
+    assert ctrl4.step(read_snapshot(raft_ram)).reason == "done"
+    assert ctrl4.success
+
+
+def test_down_69_routes_below_east_diamond_before_aligning() -> None:
+    ctrl = Level3RaftPathController(phase="down_to_69")
+    trapped = ctrl.step(
+        read_snapshot(_ram(room=ROOM_L3_WEST_DARKNUTS, x=192, y=157))
+    )
+    assert trapped.reason == "down_69_escape_diamond"
+    lower = ctrl.step(
+        read_snapshot(_ram(room=ROOM_L3_WEST_DARKNUTS, x=192, y=173))
+    )
+    assert lower.reason == "down_69_align_x"
 
 
 def test_boss_room_constants_and_predicates() -> None:

@@ -133,6 +133,7 @@ RAM_SYMBOLS: dict[int, str] = {
     ram.ADDR_RUPEES: "rupees",
     ram.ADDR_KEYS: "keys",
     ram.ADDR_HEALTH: "health",
+    ram.ADDR_HEART_PARTIAL: "heart_partial",
     ram.ADDR_TRIFORCE: "triforce",
     ram.ADDR_BOOMERANG: "boomerang",
     ram.ADDR_MAGIC_BOOMERANG: "magical_boomerang",

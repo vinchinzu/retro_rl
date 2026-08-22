@@ -8,7 +8,7 @@ Examples:
 
     HEADLESS=1 uv run python -m harvest.scripts.outdoor_spa_probe
     HEADLESS=1 uv run python -m harvest.scripts.outdoor_spa_probe \\
-      --state latest_backup_sunday_go_to_mountain_20260427_152011
+      --state Y1_D2_Night_Farm
 """
 
 from __future__ import annotations
@@ -28,13 +28,13 @@ ensure_monorepo_on_path()
 from retro_harness import TaskStatus, WorldState
 
 from harvest.core.ram_catalog import read_ram_value
-from harvest.maps.map_config import ROUTES
+from harvest.maps.map_config import ROUTES, farm_to_spa_waypoints, slice_route_from_position
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.nav import make_action
 from harvest.tasks.hot_spring import MOUNTAIN_TILEMAP, read_player_action, read_stamina
 
-DEFAULT_STATE = "latest_backup_sunday_go_to_mountain_20260427_152011"
+DEFAULT_STATE = "Y1_D2_Night_Farm"
 OUT_DIR = PROJECT_DIR / "recordings" / "spa_outdoor_true"
 
 
@@ -129,10 +129,13 @@ def main() -> int:
         )
         waypoints = [w for w in waypoints if int(getattr(w, "tilemap", 0x10)) == 0x10]
     else:
-        # Farm / path / house: full multi-map route.
-        waypoints = list(ROUTES.get("farm_to_spa") or [])
-        # Exit house/shed first is owned by HotSpringStaminaTask; this probe
-        # expects an outdoor farm start when not already on mountain.
+        # Farm / path / house: start-aware farm→spa (south field dirt row).
+        px = int(read_ram_value(ram, "player_x"))
+        py = int(read_ram_value(ram, "player_y"))
+        waypoints = farm_to_spa_waypoints(px, py, tilemap0)
+        waypoints = slice_route_from_position(
+            waypoints, px, py, tilemap=tilemap0
+        )
     print(f"[SPA] route hops={len(waypoints)} from map=0x{tilemap0:02X}")
 
     if not waypoints:

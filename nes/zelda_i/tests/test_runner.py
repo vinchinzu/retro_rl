@@ -52,7 +52,9 @@ def test_add_common_args_and_write_report(tmp_path, monkeypatch) -> None:
     args = parser.parse_args([])
     assert args.from_state == "Level2Compass"
     assert args.tag == "isolated"
-    assert args.infinite_life is False
+    assert args.infinite_life is True
+    clean = parser.parse_args(["--no-infinite-life"])
+    assert clean.infinite_life is False
 
     path = write_report("level2_bomb_north", {"ok": True}, tag="isolated")
     assert path == tmp_path / "level2_bomb_north_isolated.json"

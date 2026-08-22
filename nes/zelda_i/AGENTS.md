@@ -34,7 +34,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
 | `ow_path.py` | Shared `OverworldPathController` (L2–L8 hop engine) |
 | `walk_physics.py`, `predict.py` | OccupancyWalker + RAM claims (`retro_harness.predict`) |
-| `level3_spine.py` | `--through level3` dest 0x5b (west key `0x7b` closed) |
+| `level3_spine.py` | Exact predicate stops for the continuous L3 spine |
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
@@ -95,11 +95,11 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. Dest `0x5b`, Compass `0x5a`,
-and the long KEY-LEFT door to `0x59` are closed on the live power-on spine.
-Latest: `l3_west_darknuts_0x59_v1`, room `0x59`, keys=4, bombs=8, TF=0x03,
-zero deaths/progression/capacity writes. Next leaf `rr-4d53.3.3.3`: clear
-`0x59`, wait for DOWN raw bit, then enter `0x69`.
+(`run_survival_spine.py`); no seamed compose. The live power-on spine now
+reaches natural Raft in `0x0f`: `l3_raft_spine_v2`, keys=4, bombs=8,
+TF=0x03, zero deaths/progression/capacity writes. Passage mode 9 is a
+documented controllable Survival refill phase. Next is the carried-bomb
+Raft→boss suffix; do not add isolated `--poke-bombs 16`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

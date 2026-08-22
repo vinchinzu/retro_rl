@@ -137,13 +137,7 @@ class OverworldToLevel1Controller:
     ) -> FrameAction:
         # Level-1 path uses a reverse/side unstick (not the generic card-cycle).
         if self.stuck > STUCK_THRESHOLD:
-            rev = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}[
-                direction
-            ]
-            side = "LEFT" if direction in ("UP", "DOWN") else "UP"
-            wiggle = [rev, side, direction][self.stuck % 3]
-            self.stuck = 0
-            return FrameAction(nes_action(wiggle, "A"), f"{reason}_unstick")
+            return FrameAction(nes_idle_action(), f"{reason}_wait")
 
         if (
             align_x is not None
@@ -173,9 +167,7 @@ class OverworldToLevel1Controller:
         if abs(dx) <= 3 and abs(dy) <= 3:
             return FrameAction(nes_idle_action(), f"{reason}_at")
         if self.stuck > STUCK_THRESHOLD:
-            btn = ["LEFT", "RIGHT", "UP", "DOWN"][self.stuck % 4]
-            self.stuck = 0
-            return FrameAction(nes_action(btn, "A"), f"{reason}_unstick")
+            return FrameAction(nes_idle_action(), f"{reason}_wait")
         if abs(dx) >= abs(dy) and abs(dx) > 3:
             btn = "LEFT" if dx > 0 else "RIGHT"
         else:
@@ -202,10 +194,7 @@ class OverworldToLevel1Controller:
             dx = snap.link_x - tx
             dy = snap.link_y - ty
         if self.stuck > STUCK_THRESHOLD:
-            opts = ("UP", "DOWN", "LEFT", "RIGHT")
-            btn = opts[self.phase_frames % 4]
-            self.stuck = 0
-            return FrameAction(nes_action(btn, "A"), f"{reason}_unstick")
+            return FrameAction(nes_idle_action(), f"{reason}_wait")
         # On entry column, finish vertical first so rightward corridors open
         if snap.link_x < 70 and abs(dy) > 4:
             btn = "UP" if dy > 0 else "DOWN"

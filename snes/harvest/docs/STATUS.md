@@ -298,11 +298,19 @@ Test crop fixtures (for growth / ship work):
    (`current`/`maximum`/`tool_hits`). Soak default is **full restore**
    (current==max). Evening leftover clear inserts spa when stamina cannot
    finish an 8-swing 2×2. Do not spa on D2 morning.
+   **2026-08-21 D2 night farm→spa→farm GREEN (`rr-pzw`):** grape dirt
+   corridor (carpenter gap → west climb → east mid y~360 → lip), not the
+   east Gotz/fish-pond/camp boulder. Pin `Y1_D2_Night_Farm` (D2 18:13 farm
+   with can). Same-pin bench:
+   - outbound soak-start **2310f / 38.50s → 1956f / 32.60s** (Δ **−354f**)
+   - soak 69→100/100 in 220f
+   - return fish-pond **FAIL** (camp boulder 38,28) → grape reverse **SUCCESS**
+     farm 0x00 @ 3813f / 63.55s, stam 100/100
    ```bash
    HEADLESS=1 uv run python -m harvest.scripts.mountain_spa_validate
    HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
-     --state latest_backup_sunday_go_to_mountain_20260427_152011 \
-     --min-stamina full --target-stamina 30 --return-to-farm
+     --state Y1_D2_Night_Farm \
+     --min-stamina full --target-stamina 70 --return-to-farm
    ```
 
 ```bash
@@ -332,7 +340,7 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 - `CLEAR_FIELD` morning budget ~3500f is intentional so seed shop is not starved
 - ROM SHA1 must match `rom.sha`
 - Stamina: tool use drains for real (`INFINITE_STAMINA` off by default). **Noon lunch** is a fixed +20 at 12:00 (decomp `HaveLunch`). Mid-route “+20 on mountain” is that pulse, not spa.
-- Hot spring = **upper outdoor pond on mountain `0x10`** (not camp tent pond, not cave `0x29`). Mountain tilemap stays **0x10 all seasons** (palette only). Path: west mid y~470 → full west climb to y=361 → east mid → ridge x≈433 → lip **tile(38,12)** ~(619,201); water **0xF7** at **(39,12)**. Soak = **B+A+direction** into F7 (`player_action=3`); A-alone with watering can does not enter. Post-soak re-cross west before return. Spa corridor **debris-free** (83 off-path stumps/rocks ignored). Routes: `farm_to_spa` / `fish_spot_to_outdoor_spa` / reverse `mountain_to_farm` with nearest-waypoint slice. Mid-route +20 is **noon lunch**.
+- Hot spring = **upper outdoor pond on mountain `0x10`** (not camp tent pond, not cave `0x29`). Mountain tilemap stays **0x10 all seasons** (palette only). Path: grape dirt corridor (carpenter gap → west climb → east mid y~360) → ridge x≈433 → lip **tile(38,12)** ~(619,201); water **0xF7** at **(39,12)**. Never the east Gotz/fish-pond stump pocket or camp boulder (38,28). Soak = **B+A+direction** into F7 (`player_action=3`); A-alone with watering can does not enter. Return reverses the same dirt (not the x=20 grape cliff — spawn still sits there). Spa corridor **debris-free** (83 off-path stumps/rocks ignored). Routes: `farm_to_spa` / `fish_spot_to_outdoor_spa` / reverse `mountain_to_farm`. Mid-route +20 is **noon lunch**. Pin: `Y1_D2_Night_Farm` (not the Sunday mountain backup).
 
 ## Success metrics (track on each soak)
 
@@ -361,6 +369,7 @@ income close-loop land.
 | State | Role |
 |-------|------|
 | `Y1_Inside_House` | Spring D2 morning house — spring soak start |
+| `Y1_D2_Night_Farm` | Spring D2 ~18:13 farm outdoor with watering can — spa corridor pin |
 | power-on (no state) | Verified Spring D1 07:00 town gate bootstrap; natural D1→D2 still open |
 | `Y1_Summer_D1_Morning` | Written end of spring calendar soak (verify before reuse) |
 | `Y1_After_Buy_Potato` | Post seed purchase (stock=1, carry often empty) |

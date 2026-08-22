@@ -11,10 +11,9 @@ Examples:
 
     HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe
     HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \\
-      --state Y1_Inside_House --min-stamina 40 --target-stamina 25
+      --state Y1_D2_Night_Farm --min-stamina full --target-stamina 70
     HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \\
-      --state latest_backup_sunday_go_to_mountain_20260427_152011 \\
-      --min-stamina 40 --target-stamina 35
+      --state Y1_Inside_House --min-stamina 40 --target-stamina 25
 """
 
 from __future__ import annotations
@@ -53,7 +52,7 @@ from harvest.tasks.hot_spring import (
 )
 
 # Farm outdoor with tools (natural multi-map entry). House states exit first.
-DEFAULT_STATE = "latest_backup_sunday_go_to_mountain_20260427_152011"
+DEFAULT_STATE = "Y1_D2_Night_Farm"
 
 
 def _configure_headless() -> None:
@@ -64,12 +63,19 @@ def _configure_headless() -> None:
     os.environ.pop("INFINITE_STAMINA", None)
 
 
+def _configure_watch() -> None:
+    os.environ.pop("HEADLESS", None)
+    os.environ.pop("SDL_VIDEODRIVER", None)
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    os.environ.pop("INFINITE_STAMINA", None)
+
+
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--state",
         default=DEFAULT_STATE,
-        help="Named save state (default: sunday farm outdoor with watering can)",
+        help="Named save state (default: Y1_D2_Night_Farm)",
     )
     p.add_argument(
         "--min-stamina",
@@ -111,6 +117,17 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=PROJECT_DIR / "recordings" / "hot_spring_probe.json",
     )
+    p.add_argument(
+        "--no-drain",
+        action="store_true",
+        help="Skip tool drain (only when stamina is already below min-stamina)",
+    )
+    p.add_argument(
+        "--watch",
+        action="store_true",
+        help="Open a pygame window and blit each frame (no HEADLESS)",
+    )
+    p.add_argument("--watch-scale", type=int, default=3, help="Watch window integer scale")
     return p.parse_args()
 
 
@@ -145,6 +162,43 @@ def _step(env, action) -> object:
     step = env.step(action)
     # gymnasium: obs, reward, terminated, truncated, info
     return step[0]
+
+
+def _watch_begin(scale: int):
+    os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+
+    pygame.init()
+    pygame.display.set_caption("Harvest spa corridor  [Esc to close]")
+    screen = pygame.display.set_mode((256 * scale, 224 * scale))
+    clock = pygame.time.Clock()
+    return pygame, screen, clock, scale
+
+
+def _watch_frame(pygame, screen, clock, scale, obs) -> bool:
+    """Blit obs. Return False when the viewer closed the window."""
+    import numpy as np
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            return False
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            return False
+    if obs is None:
+        return True
+    arr = np.asarray(obs)
+    if arr.ndim == 3 and arr.shape[-1] >= 3:
+        frame = arr[..., :3]
+        h, w = frame.shape[0], frame.shape[1]
+        surf = pygame.surfarray.make_surface(np.transpose(frame, (1, 0, 2)))
+        surf = pygame.transform.scale(surf, (w * scale, h * scale))
+        if screen.get_size() != (w * scale, h * scale):
+            pygame.display.set_mode((w * scale, h * scale))
+            screen = pygame.display.get_surface()
+        screen.blit(surf, (0, 0))
+        pygame.display.flip()
+        clock.tick(60)
+    return True
 
 
 def _ensure_outdoor(env, log: list, max_frames: int = 4000) -> dict:
@@ -197,7 +251,7 @@ def _ensure_outdoor(env, log: list, max_frames: int = 4000) -> dict:
     return out
 
 
-def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
+def _drain_stamina(env, *, target: int, max_frames: int, log: list, watch=None) -> dict:
     """Use tools for real stamina cost. Never pokes RAM."""
     ram = env.get_ram()
     start = Stamina.from_ram(ram)
@@ -233,8 +287,18 @@ def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
                 queue.extend(use_tool(frames=10, cooldown=14))
 
         action = queue.pop(0)
-        _step(env, action)
+        obs = _step(env, action)
         frame += 1
+        if watch is not None:
+            pygame, screen, clock, scale = watch
+            if not _watch_frame(pygame, screen, clock, scale, obs):
+                return {
+                    "ok": False,
+                    "frames": frame,
+                    "stamina": read_stamina(env.get_ram()),
+                    "start": int(start),
+                    "reason": "watch window closed",
+                }
 
         if frame % 100 == 0:
             ram = env.get_ram()
@@ -273,7 +337,13 @@ def _drain_stamina(env, *, target: int, max_frames: int, log: list) -> dict:
     }
 
 
-def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
+def _run_task(
+    env,
+    task: HotSpringStaminaTask,
+    log: list,
+    *,
+    watch=None,
+) -> dict:
     obs = None
     ram = env.get_ram()
     world = WorldState(frame=0, ram=ram, info={}, obs=obs)
@@ -315,6 +385,13 @@ def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
             action = make_action()
         obs = _step(env, action)
         frame += 1
+        if watch is not None:
+            pygame, screen, clock, scale = watch
+            if not _watch_frame(pygame, screen, clock, scale, obs):
+                print("[SPA] watch window closed")
+                status = TaskStatus.FAILURE
+                reason = "watch window closed"
+                break
 
         ram = env.get_ram()
         tilemap = int(read_ram_value(ram, "tilemap"))
@@ -418,7 +495,10 @@ def _run_task(env, task: HotSpringStaminaTask, log: list) -> dict:
 
 def main() -> int:
     args = _parse_args()
-    _configure_headless()
+    if args.watch:
+        _configure_watch()
+    else:
+        _configure_headless()
     min_stamina = _parse_min_stamina(args.min_stamina)
 
     if min_stamina is not None and args.target_stamina >= min_stamina:
@@ -443,6 +523,18 @@ def main() -> int:
         )
         log.append({"event": "boot", "state": args.state, **boot})
 
+        watch = _watch_begin(args.watch_scale) if args.watch else None
+        if watch is not None:
+            ram0 = env.get_ram()
+            # First blit of the loaded pin.
+            try:
+                obs0 = env.get_screen() if hasattr(env, "get_screen") else None
+            except Exception:
+                obs0 = None
+            if obs0 is not None:
+                pygame, screen, clock, scale = watch
+                _watch_frame(pygame, screen, clock, scale, obs0)
+
         outdoor = _ensure_outdoor(env, log)
         if not outdoor.get("ok"):
             report = {
@@ -460,12 +552,27 @@ def main() -> int:
             print(f"report={args.out}")
             return 1
 
-        drain = _drain_stamina(
-            env,
-            target=args.target_stamina,
-            max_frames=args.drain_frames,
-            log=log,
-        )
+        skip_drain = bool(args.no_drain)
+        if skip_drain:
+            ram = env.get_ram()
+            stam = Stamina.from_ram(ram)
+            drain = {
+                "ok": True,
+                "skipped": True,
+                "frames": 0,
+                "stamina": stam.current,
+                "start": stam.current,
+            }
+            log.append({"event": "drain_skipped", **_snap(ram, 0)})
+            print(f"[DRAIN] skipped {stam}")
+        else:
+            drain = _drain_stamina(
+                env,
+                target=args.target_stamina,
+                max_frames=args.drain_frames,
+                log=log,
+                watch=watch,
+            )
         if not drain.get("ok"):
             report = {
                 "ok": False,
@@ -489,7 +596,9 @@ def main() -> int:
             soak_plateau_frames=180,
             max_jump_cycles=args.max_jump_cycles,
         )
-        summary = _run_task(env, task, log)
+        summary = _run_task(env, task, log, watch=watch)
+        if watch is not None:
+            watch[0].quit()
         final_stam = Stamina.from_mapping(summary["final"]["stamina"])
         restored = (
             final_stam.is_full

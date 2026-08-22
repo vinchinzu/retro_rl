@@ -884,7 +884,7 @@ def test_run_level9_stairs_cli_flags() -> None:
     args = parser.parse_args([])
     assert args.tag == TAG
     assert args.trials == 1
-    assert args.infinite_life is False
+    assert args.infinite_life is True
     assert args.save_state is False
     assert callable(main)
 

@@ -4,8 +4,9 @@ Zelda I uses a **disclosed Survival assist** for first-pass dungeon/overworld
 mapping. The goal is reliable navigation, room transitions, keys, bosses, and
 route graph evidence—not heart conservation.
 
-**Default runners stay Clean** (no RAM writes). Enable only via
-`--infinite-life` / `UnlimitedHealthAssist(enabled=True)`.
+Zelda I **segment scripts default to Survival** (`--infinite-life`).
+Pass `--no-infinite-life` for Clean. STATUS M5 stays
+`run_level1_complete` without the flag (`UnlimitedHealthAssist` off).
 
 Any published assisted result must record this contract path and the assist
 telemetry block in the run report.
@@ -14,11 +15,23 @@ telemetry block in the run report.
 
 ### Unlimited health (hearts)
 
-- During ordinary controllable gameplay (mode 5 overworld/dungeon play, or
-  cave mode 11), restore **filled hearts** to the natural full sentinel
-  while **preserving the high nibble** (heart containers − 1).
-- Implementation: `health = (health & 0xF0) | 0x0F` via `data.set_value("health", …)`.
-- Do **not** increase heart containers.
+- During ordinary controllable gameplay (mode 5 overworld/dungeon play,
+  underworld passage mode 9, or cave mode 11), restore **filled hearts** for the **accepted** container
+  count.
+- `$066F` (`HeartValues`): high nibble = containers−1, **low nibble =
+  whole hearts**. Full is `lo == hi` (`0x22` = 3/3), plus `$0670`
+  (`HeartPartial`) = `$FF`. Official fill (`World_FillHearts`) does
+  `INC HeartValues` until `CompareHeartsToContainers` (lo==hi). Writing
+  `0xF` in the low nibble makes that fill grant extra containers — that
+  is how the L1/L2 tape jumped to 7 then 11 hearts.
+- Track accepted containers from the first play frame (start = 3). Allow
+  **+1 only** when the game just granted a heart container (`room_item_id`
+  `0x1A`) or when leaving Triforce fanfare (mode 18). A fanfare return
+  never grants more than one.
+- Implementation writes `health_byte_for_containers(accepted)` and
+  `heart_partial=$FF`. Do **not** write `(health & 0xF0) | 0x0F`.
+- Do **not** increase heart containers except the legal +1 cases above.
+  A high-nibble spike is clamped back (telemetry `container_clamps`).
 - Observe natural damage before restoring; count writes / restored units.
 - Do not revive a completed death transition (mode 17): suspend writes.
 - Suspend during boot/menu modes, scroll transitions (6/7/16), and Triforce
@@ -29,9 +42,11 @@ The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 
 ### Owned inventory counts (bombs / keys) — temporary Survival shortcut
 
-Opened 2026-08-15 so the continuous spine can attach Boom → Dodongo → TF
-without a farm pass. **Not Clean.** Strip later; do not treat a poke tape as
-natural inventory.
+Opened 2026-08-15 so the continuous spine can open L2 bomb walls (power-on
+entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass.
+The spine applies this at L2 entry and again before `SPINE_BOMB_RETOPUP`
+stages. **Not Clean.** Strip later; do not treat a poke tape as natural
+inventory.
 
 Allowed fields only:
 
@@ -66,7 +81,7 @@ If a new write is needed, update this contract before using it.
 
 | Phase | Mode cues | Assist |
 |-------|-----------|--------|
-| ordinary_gameplay | mode 5 or cave 11, not dead | refill |
+| ordinary_gameplay | mode 5, passage 9, or cave 11, not dead | refill |
 | transition | 6 / 7 / 16 | suspend |
 | triforce_fanfare | 18 | suspend |
 | death | 17 | suspend; count death entry |
@@ -87,6 +102,9 @@ Assisted reports include:
 - death entries
 - suspended phase frame counts
 - `progression_writes` / `capacity_writes` (must stay 0)
+- `accepted_containers` / `container_clamps` (high-nibble spikes must
+  clamp; after L1 TF accepted=5, after L2 TF accepted=7 on a first-quest
+  start)
 
 Use `damage_by_location` later for **Clean combat harden** priority. First-pass
 work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
@@ -103,8 +121,8 @@ work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
 
 | Track | Stem / flag | Claims |
 |-------|-------------|--------|
-| Clean | default CLI | may promote STATUS Clean / M5+ |
-| Survival-assisted | `--infinite-life`, `*_assisted` artifacts | first-pass geometry + route graph only |
+| Survival-assisted | segment default; `--infinite-life`; `*_assisted` artifacts | first-pass geometry + route graph only |
+| Clean | `--no-infinite-life`, or `run_level1_complete` without the flag | may promote STATUS Clean / M5+ |
 
 Do not mix assisted greens into Clean STATUS rows. Prefer SM-style dual-track
 stems when both exist.

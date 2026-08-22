@@ -15,7 +15,12 @@ from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
 )
 from harvest.core.tile_catalog import MOUNTAIN_WALKABLE
-from harvest.maps.map_config import ROUTES, slice_route_from_position
+from harvest.maps.map_config import (
+    ROUTES,
+    farm_to_spa_waypoints,
+    farm_to_west_gate_waypoints,
+    slice_route_from_position,
+)
 from harvest.tasks.hot_spring import (
     HotSpringStaminaTask,
     SPA_TILEMAP,
@@ -218,13 +223,36 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(task.phase_text, "soak")
 
     def test_slice_route_from_fish_skips_entry(self) -> None:
-        full = ROUTES["mountain_entry_to_outdoor_spa"]
+        full = ROUTES["fish_spot_to_outdoor_spa"]
         # Fish / camp stand ~(686, 411)
         sliced = slice_route_from_position(full, 686, 411, tilemap=0x10)
-        self.assertLess(len(sliced), len(full))
+        self.assertLessEqual(len(sliced), len(full))
         self.assertEqual(sliced[-1].target_px, (619, 201))
         # First hop should be near fish corridor, not south entry y~718
         self.assertLess(sliced[0].target_px[1], 600)
+
+    def test_spa_corridor_stays_off_fish_pond(self) -> None:
+        """Farm→spa uses grape dirt; y>280 hops stay west of camp/Gotz."""
+        spa = ROUTES["mountain_entry_to_outdoor_spa"]
+        ret = ROUTES["mountain_to_farm"]
+        self.assertEqual(spa[0].target_px, (328, 728))
+        self.assertIn((72, 368), [wp.target_px for wp in spa])
+        self.assertNotIn((686, 430), [wp.target_px for wp in spa])
+        self.assertNotIn((620, 488), [wp.target_px for wp in ret])
+        for wp in spa:
+            if wp.tilemap == 0x10 and wp.target_px[1] > 280:
+                self.assertLess(
+                    wp.target_px[0],
+                    560,
+                    f"spa hop {wp.target_px} is in the fish/camp pocket",
+                )
+        for wp in ret:
+            if wp.tilemap == 0x10 and wp.target_px[1] > 280:
+                self.assertLess(
+                    wp.target_px[0],
+                    560,
+                    f"return hop {wp.target_px} is in the fish/camp pocket",
+                )
 
     def test_mountain_walkable_includes_path_edge(self) -> None:
         """0xA7 is a common mountain path-edge stand tile (sunday + chop)."""
@@ -242,6 +270,40 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(farm[-1].target_px, (619, 201))
         self.assertGreaterEqual(len(ret), 10)
         self.assertTrue(ret[-1].tilemap in (0x00, 0x0C) or ret[-2].is_exit)
+        # Return walks path plaza then farm gate, not a single mountain-south hop.
+        path_hops = [wp for wp in ret if wp.tilemap == 0x0C]
+        self.assertGreaterEqual(len(path_hops), 2)
+
+    def test_south_field_farm_to_spa_uses_dirt_row_not_house(self) -> None:
+        """Sunday pin ~(78,598) must not first-hop house (137,375) through crops."""
+        route = farm_to_spa_waypoints(78, 598, tilemap=0x00)
+        sliced = slice_route_from_position(route, 78, 598, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        self.assertEqual(sliced[0].target_px, (136, 600))
+        self.assertNotEqual(sliced[0].target_px, (137, 375))
+        farm_hops = [wp for wp in sliced if wp.tilemap == 0x00]
+        self.assertTrue(any(wp.is_exit and wp.exit_direction == "left" for wp in farm_hops))
+        # Dirt-row run stays on y=37; x=13 column hops are tight so arrival
+        # cannot sit on the neighboring 0x5E crop tile.
+        self.assertEqual(farm_hops[0].run_direction, "right")
+        self.assertEqual(farm_hops[1].target_px, (216, 600))
+        self.assertLessEqual(farm_hops[1].radius, 6)
+        self.assertIsNone(farm_hops[2].run_direction)
+
+    def test_house_farm_to_spa_keeps_house_south_then_gate(self) -> None:
+        house = farm_to_west_gate_waypoints(136, 375, tilemap=0x00)
+        self.assertEqual(house[0].target_px, (137, 375))
+        self.assertEqual(house[1].target_px, (136, 424))
+        spa = farm_to_spa_waypoints(136, 375, tilemap=0x00)
+        self.assertEqual(spa[-1].target_px, (619, 201))
+        self.assertEqual(spa[0].target_px, (137, 375))
+
+    def test_d2_night_farm_to_spa_uses_house_path(self) -> None:
+        """Y1_D2_Night_Farm ~(199,486) is north of south-field y=520."""
+        route = farm_to_spa_waypoints(199, 486, tilemap=0x00)
+        self.assertEqual(route[0].target_px, (137, 375))
+        self.assertNotEqual(route[0].target_px, (136, 600))
+        self.assertEqual(route[-1].target_px, (619, 201))
 
 
 if __name__ == "__main__":

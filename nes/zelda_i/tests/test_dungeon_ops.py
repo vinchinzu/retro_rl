@@ -11,6 +11,7 @@ from zelda_i.dungeon_ops import (
     B_ITEM_BOMBS,
     B_ITEM_CANDLE,
     OWNED_INVENTORY_FIELDS,
+    apply_owned_inventory,
     ensure_bomb,
     poke_bombs,
     poke_keys,
@@ -81,3 +82,61 @@ def test_poke_bombs_and_keys_use_data_set_value() -> None:
     assert poke_bombs(env, 16) == "bombs=16"
     assert poke_keys(env, 2) == "keys=2"
     assert values == {"bombs": 16, "keys": 2}
+
+
+def test_apply_owned_inventory_tops_up_counts_and_selects_b() -> None:
+    import numpy as np
+
+    from zelda_i.ram import ADDR_BOMBS, ADDR_KEYS, ADDR_SELECTED_ITEM as RAM_B
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_BOMBS] = 0
+    ram[ADDR_KEYS] = 1
+    ram[RAM_B] = 0
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    report = apply_owned_inventory(env, bombs=16, keys=2, select_bomb=True)
+    assert report["poke_bombs"] == 16
+    assert report["poke_keys"] == 2
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+    assert values["bombs"] == 16
+    assert values["keys"] == 2
+    assert values["selected_item"] == B_ITEM_BOMB
+    fields = {w["field"] for w in report["writes"]}
+    assert fields == {"bombs", "keys", "selected_item"}
+
+
+def test_apply_owned_inventory_skips_counts_already_at_target() -> None:
+    import numpy as np
+
+    from zelda_i.ram import ADDR_BOMBS, ADDR_KEYS
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_BOMBS] = 16
+    ram[ADDR_KEYS] = 4
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    report = apply_owned_inventory(env, bombs=16, keys=2, select_bomb=False)
+    assert report["writes"] == []
+    assert values == {}
