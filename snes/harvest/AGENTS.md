@@ -58,14 +58,21 @@ HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
 # West-pocket weeds/stones (inside y=31 fence; lift only, no plant tape)
 HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
   --state Y1_Inside_House --out recordings/pocket_clear_probe.json
+# Post-shop hoe+seed collect + one-cell plant (rr-jq9q)
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --out recordings/d2_plant_probe.json
 
 # Stamina object from a pin (`player.stamina` is current/max/tool_hits)
 uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact
 # Drain + outdoor spa until current == max, then return (rr-pzw)
 HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
-  --state latest_backup_sunday_go_to_mountain_20260427_152011 \
-  --min-stamina full --target-stamina 30 --return-to-farm \
+  --state Y1_D2_Night_Farm \
+  --min-stamina full --target-stamina 70 --return-to-farm \
   --out recordings/hot_spring_full.json
+# Windowed watch (drain a bit so noon lunch does not fill and abort the walk)
+uv run python -m harvest.scripts.hot_spring_probe \
+  --state Y1_D2_Night_Farm \
+  --min-stamina full --target-stamina 70 --return-to-farm --watch
 
 # Harvest + ship + post-5pm wallet credit (rr-53g)
 HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \

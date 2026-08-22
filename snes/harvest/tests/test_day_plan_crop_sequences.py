@@ -277,16 +277,23 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         names = [phase.phase for phase in plan._schedule.active]
         self.assertEqual(
-            names[:4],
-            ["BUY_SEEDS", "CLEAR_PLOT", "ENSURE_CROP_SEEDS", "NAV_CROP"],
+            names[:5],
+            [
+                "BUY_SEEDS",
+                "ENSURE_CROP_SEEDS",
+                "CLEAR_PLOT",
+                "NAV_CROP",
+                "CROP_ESTABLISH",
+            ],
         )
-        self.assertIn("CROP_ESTABLISH", names)
         self.assertIn("CROP_WATER", names)
         self.assertNotIn("CLEAR_FIELD", names)
+        self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CLEAR_PLOT"))
         self.assertLess(names.index("CLEAR_PLOT"), names.index("CROP_ESTABLISH"))
         self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
-        self.assertEqual(plan.phase_text, "CLEAR_PLOT")
-        self.assertEqual(plan._schedule.active[1].params.get("farm_bounds"), (3, 14, 28, 30))
+        self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
+        clear = next(p for p in plan._schedule.active if p.phase == "CLEAR_PLOT")
+        self.assertEqual(clear.params.get("farm_bounds"), (3, 14, 28, 30))
         self.assertTrue(
             all(phase.failure_policy == "optional" for phase in plan._schedule.active[1:])
         )
@@ -398,6 +405,7 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(task._phase, "ensure_hoe")
         self.assertIsInstance(task._task, EnsureCarryToolTask)
         self.assertEqual(task._task.tool_id, int(Tool.HOE))
+        self.assertFalse(task._task.exit_when_done)
 
     def test_ensure_crop_seeds_swaps_hoe_off_selected_before_seed_fetch(self) -> None:
         """Shelf A replaces selected; hoe must be backpack before seed grab (rr-6byj)."""
@@ -428,6 +436,22 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._phase, "swap_preserve_seed")
         self.assertIsInstance(task._task, SwapCarrySlotsTask)
+
+    def test_ensure_crop_seeds_fetches_seed_inside_when_already_in_shed(self) -> None:
+        """Hoe already in carry inside the shed → seed shelf without exiting."""
+        world = make_world(0x26)
+        world.ram[0x0921] = int(Tool.HOE)
+        world.ram[0x0923] = 0x00
+        world.ram[0x092A] = 10
+        task = EnsureCropSeedsTask(seed_type="potato")
+
+        task.reset(world)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "fetch_seed")
+        self.assertIsInstance(task._task, ShedFetchItemTask)
+        self.assertEqual(task._task._phase, "inside")
 
     def test_ensure_crop_seeds_fetch_when_hoe_in_backpack(self) -> None:
         """Hoe already in backpack → selected is disposable → go straight to seed route."""

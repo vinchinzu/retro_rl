@@ -1,7 +1,7 @@
 # D2 farm-clear issues
 
 Facts for Spring D2 section work (`rr-20w.2`). Product path is
-**grape → shop → pocket `CLEAR_PLOT` → hoe/plant/water → evening leftover**,
+**grape → shop → shed hoe+seeds → pocket `CLEAR_PLOT` → hoe/plant/water → evening leftover**,
 not a morning whole-farm wipe. Do not STATUS-promote Gate B from this list.
 
 Walk invariant (must stay true through nav refactors): **BFS never routes
@@ -16,6 +16,15 @@ it either (`rr-20w.2.2`).
 is an 8-swing budget (16); shipping dismiss no longer A-pulses `lock==0`
 after 17:00. Live pocket
 probe is still `rr-20w.2.3`. Do not restore a morning whole-farm wipe.
+
+**2026-08-21 landed (`rr-jq9q`, live `Y1_After_Buy_Potato`):** hoe+seed is
+one shed visit (`exit_when_done=False` on hoe); splice is
+`ENSURE_CROP_SEEDS` then `CLEAR_PLOT` then plant (clear-then-shed sealed
+the return). NavTask leaves shed door `(26,30)` west, never UP/A into
+the shed. Hoe face is a 1f tap (holding UP walked onto the target).
+Probe `d2_plant_probe`: collect 1140f, notch clear, `CROP_ESTABLISH`
+sequence complete, `(13,28)=0x54`. One-cell does not spend the bag.
+Do not STATUS-promote Gate B.
 
 ## Invariants
 
@@ -118,7 +127,7 @@ helper first.
 | Item | Bead | Note |
 |------|------|------|
 | Whole-farm 800-target wipe | — | Starves hoe; catalog 3500f is keep-alive only |
-| Hot spring | `rr-pzw` | Evening leftover insert is wired; lip soak **105→130/130** live 2026-08-21. Farm corridor still pixel-stuck (`rr-20w.2.4`). |
+| Hot spring | `rr-pzw` | Evening leftover insert is wired. D2 night pin `Y1_D2_Night_Farm`: grape-corridor farm→spa→farm GREEN (outbound 1956f, return SUCCESS 3813f). Do not route the east fish pond. |
 | Farm-bush `SHIP_BERRY` | `rr-r3he` | Not D2 grape |
 | Gate B soak | `rr-5in` | Do not close on one D2 pin |
 

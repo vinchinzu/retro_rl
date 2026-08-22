@@ -168,6 +168,7 @@ class NavTask(Task):
     _navigator: Navigator = field(init=False)
     _step_count: int = field(default=0, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
+    _door_leave_steps: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -175,6 +176,7 @@ class NavTask(Task):
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
+        self._door_leave_steps = 0
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -254,6 +256,10 @@ class NavTask(Task):
             direction = opposites[primary]
         else:
             direction = opposites[secondary]
+        # Shed outdoor stand (26,30): UP re-enters the tool shed. When BFS is
+        # sealed, fallback must not pick that door.
+        if current_tile == (26, 30) and direction == "up":
+            direction = "left" if primary != "left" else "right"
         nxt = facing_tile(current_tile, direction)
         if self._navigator.note_push_facing(ram, nxt):
             return make_action()
@@ -262,6 +268,29 @@ class NavTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._step_count += 1
+
+        # Shed outdoor door: A-dismiss / BFS-up re-enters. Leave west first
+        # even while input_lock is settling after ExitToFarm.
+        cur_tile = self._navigator.current_tile
+        final_tile = (self.target_px.x // TILE_SIZE, self.target_px.y // TILE_SIZE)
+        if (
+            cur_tile == (26, 30)
+            and final_tile != (26, 30)
+            and self._door_leave_steps < 90
+        ):
+            self._door_leave_steps += 1
+            pos = self._navigator.current_pos
+            if pos.y < 30 * TILE_SIZE + 8:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(down=True)),
+                    reason="leave shed door west",
+                )
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(left=True)),
+                reason="leave shed door west",
+            )
 
         # Dialog / menu dismissal (tool menus and shop prompts block BFS).
         dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
