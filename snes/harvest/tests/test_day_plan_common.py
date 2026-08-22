@@ -37,6 +37,7 @@ from harvest.planner.day_plan import (
     EnsureCarryToolTask,
     ExitToFarmTask,
     ShedFetchItemTask,
+    ShedShelfToolTask,
     EveTalkLoopTask,
     EVE_TALK_LOOP_PHASES,
     MultiMapNavTask,
@@ -726,6 +727,24 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._phase, "exit_after_ready")
         self.assertIsInstance(task._task, ExitToFarmTask)
+
+    def test_shed_shelf_fails_after_take_attempts(self) -> None:
+        world = make_world(0x26)
+        world.ram[0x0921] = 0x00
+        world.ram[0x0923] = 0x00
+        task = ShedShelfToolTask(
+            tool_id=int(Tool.HOE),
+            settle_frames=0,
+            take_attempts=2,
+        )
+        task.reset(world)
+        task._phase = "take"
+        task._take_tries = 2
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("missing after shelf", result.reason or "")
 
 
 class BuildDayPhasesCommonTests(DayPlanPhaseHelpers):

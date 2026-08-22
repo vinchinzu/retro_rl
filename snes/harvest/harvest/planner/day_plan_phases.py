@@ -297,14 +297,18 @@ def pocket_clear_phase() -> PhaseSpec:
 
 
 def pocket_plant_phases() -> List[PhaseSpec]:
-    """Pocket clear → hoe/plant → can/water. No plant recordings.
+    """Shed hoe+seeds first, then pocket clear → hoe/plant → can/water.
 
-    Whole-farm CLEAR is 800+ targets and starves hoe. The west pocket is
-    the D2 plant yard; crop FSM already tool-switches hoe → seeds → can.
+    Clearing the notch then walking to the shed seals the return path
+    (travel BFS will not enter leftover weeds). Fetch the 2-slot pair
+    first; FarmClearTask then approaches the pocket and plant starts
+    from the notch instead of the shed door.
     """
     return [
+        ENSURE_CROP_SEEDS_PHASE,
         pocket_clear_phase(),
-        *crop_establish_phases(),
+        NAV_CROP_PHASE,
+        CROP_ESTABLISH_PHASE,
         *crop_water_phases(include_nav=False),
     ]
 
