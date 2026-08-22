@@ -5,9 +5,10 @@ door-path breakpoint (STATUS 2026-07-29): Clean dies on ``0x5C`` from
 heart starvation, not a missing screen transition. Not a planner rewrite
 and not a Clean re-route.
 
-RAM ``ADDR_HEALTH``: high nibble = containers − 1, low nibble = filled
-hearts (``0xF`` = full sentinel). Bombs / keys travel with the resource
-state but have no measured L2-door cost.
+RAM ``ADDR_HEALTH`` (``HeartValues``): high nibble = containers − 1,
+low nibble = whole hearts (full when low == high; **not** ``0xF``).
+Bombs / keys travel with the resource state but have no measured
+L2-door cost.
 
 ``walk_level2_door_path`` already carries
 ``constraints=("planned_not_clean", "requires_heart_management")`` in
@@ -106,28 +107,26 @@ L2_DOOR_PATH_HOP_COSTS: tuple[HopCost, ...] = (
 
 
 def encode_health(containers: int, filled: int) -> int:
-    """Pack RAM health: high nibble = containers − 1, low = filled or ``0xF``."""
+    """Pack ``HeartValues``: high = containers−1, low = whole hearts (0-based)."""
     if containers < 1:
         raise ValueError("containers must be >= 1")
+    n = (int(containers) - 1) & 0x0F
     filled = max(0, int(filled))
-    if filled >= containers:
-        return ((int(containers) - 1) << 4) | 0x0F
-    return ((int(containers) - 1) << 4) | (filled & 0x0F)
+    lo = n if filled >= containers else max(0, filled - 1) & 0x0F
+    return (n << 4) | lo
 
 
 def decode_health(health: int) -> tuple[int, int]:
-    """Return ``(containers, filled)``. Full sentinel ``0xF`` means all filled."""
+    """Return ``(containers, filled_count)``. Full when low nibble == high."""
     containers = ((int(health) >> 4) & 0x0F) + 1
     raw = int(health) & 0x0F
-    filled = containers if raw >= 0x0F else raw
+    filled = containers if raw >= (containers - 1) else raw + 1
     return containers, filled
 
 
 def resources_from_snapshot(snap: object) -> ResourceState:
     """Build a resource state from a ``ZeldaSnapshot`` (or duck-typed snap)."""
-    raw = int(getattr(snap, "filled_hearts"))
-    containers = int(getattr(snap, "heart_containers"))
-    filled = containers if raw >= 0x0F else raw
+    containers, filled = decode_health(int(getattr(snap, "health")))
     return ResourceState(
         containers=containers,
         filled=filled,

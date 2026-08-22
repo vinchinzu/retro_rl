@@ -29,8 +29,11 @@ ADDR_SWORD          = 0x0657  # 0=none, 1=wooden, 2=white, 3=magical
 ADDR_BOMBS          = 0x0658
 ADDR_RUPEES         = 0x066D
 ADDR_KEYS           = 0x066E
-ADDR_HEALTH         = 0x066F  # hi nibble = containers-1, lo = filled hearts
-                              # full refill (assist): (health & 0xF0) | 0x0F
+ADDR_HEALTH         = 0x066F  # HeartValues: hi = containers−1, lo = whole hearts
+                              # full when lo == hi (0x22 = 3/3, 0x44 = 5/5).
+                              # NOT 0xF — World_FillHearts INC's the byte until
+                              # nibbles match (aldonunez CompareHeartsToContainers).
+ADDR_HEART_PARTIAL  = 0x0670  # HeartPartial; $FF = current heart full
 ADDR_TRIFORCE       = 0x0671
 ADDR_BOOMERANG      = 0x0674  # wooden; 0=false, 1=true
 ADDR_MAGIC_BOOMERANG= 0x0675  # magical; overrides wooden when set

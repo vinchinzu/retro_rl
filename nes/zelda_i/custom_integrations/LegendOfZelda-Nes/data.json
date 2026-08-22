@@ -12,6 +12,10 @@
       "address": 1647,
       "type": "|u1"
     },
+    "heart_partial": {
+      "address": 1648,
+      "type": "|u1"
+    },
     "screen": {
       "address": 235,
       "type": "|u1"

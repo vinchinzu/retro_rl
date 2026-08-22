@@ -31,6 +31,8 @@
 | Power-on → L3 dest `0x5b` (`rr-4d53.3.1.2` closed) | **1/1 Survival**; 57256f; room `0x5b` mode 5; keys=5; bombs=8; `tf=0x03`; deaths 0; progression/capacity writes 0; **documented bombs/keys count top-up** | `l3_dest_0x5b_v12.json` / `_final.png` |
 | Power-on → L3 Compass room `0x5a` (`rr-4d53.3.3.1` closed) | **1/1 Survival**; 57648f; room `0x5a` mode 5; keys=5; bombs=8; `tf=0x03`; deaths 0; progression/capacity writes 0; exact 392f west-door chunk | `l3_compass_0x5a_v1.json` / `_final.png` |
 | Power-on → L3 west Darknuts `0x59` (`rr-4d53.3.3.2` closed) | **1/1 Survival**; room `0x59` mode 5; keys naturally 5→4; bombs=8; `tf=0x03`; deaths 0; progression/capacity writes 0 | `l3_west_darknuts_0x59_v1.json` / `_final.png` |
+| Power-on → L3 south Darknuts `0x69` (`rr-4d53.3.3.3` closed) | **1/1 Survival**; room `0x69` mode 5; 5 Darknuts cleared in `0x59`; keys=4; bombs=8; deaths/progression/capacity writes 0 | `l3_south_darknuts_0x69_v2.json` / `_final.png` |
+| Power-on → natural L3 Raft (`rr-4d53.3.3.4` closed) | **1/1 Survival**; room `0x0f` mode 9; Raft bit set; keys=4; bombs=8; `tf=0x03`; 8 Darknuts cleared in `0x69`; deaths/progression/capacity writes 0 | `l3_raft_spine_v2.json` / `_final.png` |
 | L3 Raft → Manhandla → TF `0x04` | **1/1 Survival suffix** from `Level3Raft`; 14751 gameplay frames; deaths 0; progression/capacity writes 0; **`--poke-bombs 16`** (`Level3Raft` starts bombs=0). L2-exit compose fails at `0x6b` north | `level3_to_boss_assisted_report.json` / `.mp4` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
@@ -41,7 +43,8 @@ These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
 power-on STATUS promotions. Power-on → L3 west key `0x7b` is on the
 continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes —
-not Clean. Next is clear `0x59` and enter `0x69` (`rr-4d53.3.3.3`).
+not Clean. Next is the carried-bomb Raft→boss suffix; isolated poke-16 remains
+recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
 pin to the proven `0x04`→TF suffix and composing power-on → L5 TF are still
@@ -304,9 +307,9 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level3` now stops at closed room `0x59`
-   (`rr-4d53.3.3.2`). Next is clear `0x59` and enter `0x69`
-   (`rr-4d53.3.3.3`). Raft / TF are later children — isolated
+1. **Active Survival tip:** `--through level3` now reaches the natural Raft
+   (`rr-4d53.3.3.4`). Next is the carried-bomb Raft→Manhandla→TF suffix.
+   Isolated
    `Level3*` pins do not close them. L2 TF `0x02` (`rr-4d53.2.3`) is closed.
    No seamed compose. Bomb/key count pokes are documented Survival shortcuts,
    not Clean.

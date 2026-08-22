@@ -558,7 +558,7 @@ class OverworldPostL2ToLevel3Controller(OverworldToLevel3Controller):
         if snap.link_y < 170:
             if self.stuck > 25:
                 return self._swing(("LEFT", "RIGHT", "DOWN")[self.stuck % 3], "63_gap")
-            if snap.link_x > 200:
+            if snap.link_x >= 200:
                 return self._swing("LEFT", "63_inland")
             if snap.link_x < 40:
                 return self._swing("RIGHT", "63_inland")

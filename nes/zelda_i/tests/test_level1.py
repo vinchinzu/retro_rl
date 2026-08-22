@@ -21,7 +21,9 @@ from zelda_i.level1 import (
     level1_north_room_success,
     level1_room_63_cleared,
     level1_room_53_cleared,
+    return_west_waypoints,
 )
+from retro_harness.nes import nes_action
 from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_KEYS,
@@ -130,6 +132,20 @@ def test_unlock_controller_returns_west() -> None:
     )
     assert controller.phase is Level1NorthPhase.RETURN_WEST
     assert action.reason.startswith("return_west")
+
+
+def test_return_west_from_diamond_y_goes_up_first() -> None:
+    """Live stall: first-key DONE at (184, 109) then DOWN into the east diamond."""
+    north = return_west_waypoints(184, 109)
+    south = return_west_waypoints(184, 173)
+    assert north[0] == (184, 101)
+    assert south[0] == (184, 181)
+    controller = Level1UnlockNorthController()
+    action = controller.step(
+        read_snapshot(_ram(room=ROOM_FIRST_KEY, keys=1, x=184, y=109))
+    )
+    assert action.reason.startswith("return_west")
+    assert list(action.action) == list(nes_action("UP"))
 
 
 def test_unlock_controller_routes_north_from_entrance() -> None:

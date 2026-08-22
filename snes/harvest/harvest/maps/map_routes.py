@@ -91,6 +91,30 @@ def slice_route_from_position(
     return list(waypoints[start:])
 
 
+def farm_to_west_gate_waypoints(
+    px: int,
+    py: int,
+    tilemap: Optional[int] = None,
+) -> List[Waypoint]:
+    """Farm → path crossroads. South crop field uses the dirt-row corridor."""
+    if tilemap in FARM_TILEMAP_IDS and py >= SOUTH_FIELD_MIN_Y_PX:
+        return list(_FARM_SOUTH_FIELD_TO_WEST_GATE)
+    return list(_FARM_TO_PATH)
+
+
+def farm_to_spa_waypoints(
+    px: int,
+    py: int,
+    tilemap: Optional[int] = None,
+) -> List[Waypoint]:
+    """Farm/path/mountain hops to the outdoor spa lip, start-aware on farm."""
+    return (
+        farm_to_west_gate_waypoints(px, py, tilemap)
+        + list(_PATH_TO_MOUNTAIN)
+        + list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA)
+    )
+
+
 def densify_waypoints(
     waypoints: Sequence[Waypoint],
     *,
@@ -149,30 +173,25 @@ def densify_waypoints(
     return result
 
 
-# Outdoor spa path on mountain 0x10 (hot_spring_bath + entry approach).
-# Viewport-limited BFS needs hops ≤ ~15 tiles. Path tiles: 0xA0/0xA8 (clear
-# of stumps/rocks along this corridor — validated on spring mountain RAM).
-# Do NOT route via camp tent pond ~(697,406) or west cave door.
-_MOUNTAIN_ENTRY_APPROACH: List[Waypoint] = [
-    Waypoint(tilemap=0x10, target_px=(328, 718), radius=16),
-    Waypoint(tilemap=0x10, target_px=(420, 713), radius=16),
-    Waypoint(tilemap=0x10, target_px=(496, 708), radius=16),
-    Waypoint(tilemap=0x10, target_px=(580, 680), radius=14),
-    Waypoint(tilemap=0x10, target_px=(640, 620), radius=14),
-    Waypoint(tilemap=0x10, target_px=(680, 520), radius=14),
-    Waypoint(tilemap=0x10, target_px=(686, 430), radius=14),
-]
-
-# West mid corridor y~470 → west climb → east mid y~361 → NE lip ~(619,201).
+# Fish/camp stand only. Farm→spa uses the grape dirt corridor (defined
+# after `_MOUNTAIN_ENTRY_TO_FIRST_BERRY`) — never the east Gotz/fish-pond
+# stump pocket or camp boulder (38,28).
+# West mid y~470 → west climb → east mid y~361 → NE lip ~(619,201).
 # Climb hops use tight radius: a loose radius on (70,377) "arrives" at y~390
 # still below the ridge and then BFS cannot cut NE into solid tiles.
 _FISH_TO_OUTDOOR_SPA: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(640, 428), radius=14),
-    Waypoint(tilemap=0x10, target_px=(560, 454), radius=14),
-    Waypoint(tilemap=0x10, target_px=(480, 468), radius=14),
-    Waypoint(tilemap=0x10, target_px=(380, 470), radius=14),
-    Waypoint(tilemap=0x10, target_px=(280, 470), radius=14),
-    Waypoint(tilemap=0x10, target_px=(185, 456), radius=14),
+    # Camp dirt south of the tent. No run_direction: a down-run from
+    # (640,428) pins on the boulder/log at ~(654,441). BFS goes around.
+    Waypoint(tilemap=0x10, target_px=(650, 454), radius=10),
+    Waypoint(tilemap=0x10, target_px=(650, 478), radius=10),
+    # West on the dirt (y~478), not the grass ledge at y=454 whose west
+    # face is the tile-(27,28) cliff.
+    Waypoint(tilemap=0x10, target_px=(560, 478), radius=10),
+    Waypoint(tilemap=0x10, target_px=(480, 478), radius=10),
+    Waypoint(tilemap=0x10, target_px=(380, 470), radius=10),
+    Waypoint(tilemap=0x10, target_px=(280, 470), radius=10),
+    Waypoint(tilemap=0x10, target_px=(185, 456), radius=12),
     Waypoint(tilemap=0x10, target_px=(103, 442), radius=12),
     # Full west climb (human: y 442 → 407 → 361 at x~70–78).
     Waypoint(tilemap=0x10, target_px=(70, 413), radius=10),
@@ -197,83 +216,20 @@ _FISH_TO_OUTDOOR_SPA: List[Waypoint] = [
         run_direction="right",
     ),
     Waypoint(tilemap=0x10, target_px=(430, 345), radius=12),
-    # North then east to lip. Avoid D0 building at tile(36,13): approach west
-    # at x=569 → y=201, then run east along the A0 lip (human bath).
+    # North then east to lip. Avoid D0 building at tile(36,13): stand on
+    # y=201 (tile 12) west of the hut, then run east on the A0 lip.
+    # Radius 8 on (569,201) arrived at y=208 (tile 13) and the east-run
+    # charged the hut.
     Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
     Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
-    Waypoint(tilemap=0x10, target_px=(569, 214), radius=10),
-    Waypoint(tilemap=0x10, target_px=(569, 201), radius=8),
+    Waypoint(tilemap=0x10, target_px=(560, 214), radius=8),
+    # Tile 12 is y=192–207. Radius 6 stays on that row (y=208 is hut row 13).
+    Waypoint(tilemap=0x10, target_px=(560, 201), radius=6),
     Waypoint(
         tilemap=0x10,
         target_px=(619, 201),
-        radius=10,
-        run_direction="right",
-    ),
-]
-
-_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA: List[Waypoint] = (
-    list(_MOUNTAIN_ENTRY_APPROACH) + list(_FISH_TO_OUTDOOR_SPA)
-)
-
-# Spa lip → reverse bath path → south exit (for return_to_farm).
-# Drop run_direction on reverse (east runs become west walks via BFS/hops).
-# Start west of lip so post-bath water stand does not block the first hop.
-_OUTDOOR_SPA_TO_MOUNTAIN_EXIT: List[Waypoint] = [
-    Waypoint(
-        tilemap=0x10,
-        target_px=(569, 201),
-        radius=14,
-        run_direction="left",
-    ),
-    Waypoint(tilemap=0x10, target_px=(569, 214), radius=12),
-    Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
-    # South on the x≈433 ridge (human climb column), then SW into mid corridor.
-    Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
-    Waypoint(tilemap=0x10, target_px=(433, 300), radius=12),
-    Waypoint(tilemap=0x10, target_px=(433, 345), radius=12),
-    Waypoint(tilemap=0x10, target_px=(416, 345), radius=12),
-    Waypoint(tilemap=0x10, target_px=(372, 347), radius=12),
-    Waypoint(tilemap=0x10, target_px=(348, 361), radius=12),
-    Waypoint(
-        tilemap=0x10,
-        target_px=(280, 361),
-        radius=12,
-        run_direction="left",
-    ),
-    Waypoint(
-        tilemap=0x10,
-        target_px=(248, 361),
-        radius=12,
-        run_direction="left",
-    ),
-    Waypoint(
-        tilemap=0x10,
-        target_px=(148, 361),
-        radius=12,
-        run_direction="left",
-    ),
-    Waypoint(tilemap=0x10, target_px=(70, 361), radius=10),
-    Waypoint(tilemap=0x10, target_px=(70, 413), radius=10),
-    Waypoint(tilemap=0x10, target_px=(103, 442), radius=12),
-    Waypoint(tilemap=0x10, target_px=(185, 456), radius=12),
-    Waypoint(tilemap=0x10, target_px=(280, 470), radius=12),
-    Waypoint(tilemap=0x10, target_px=(380, 470), radius=12),
-    Waypoint(tilemap=0x10, target_px=(480, 468), radius=12),
-    Waypoint(tilemap=0x10, target_px=(560, 454), radius=12),
-    Waypoint(tilemap=0x10, target_px=(640, 428), radius=12),
-    Waypoint(tilemap=0x10, target_px=(686, 430), radius=12),
-    Waypoint(tilemap=0x10, target_px=(680, 520), radius=12),
-    Waypoint(tilemap=0x10, target_px=(640, 620), radius=12),
-    Waypoint(tilemap=0x10, target_px=(580, 680), radius=12),
-    Waypoint(tilemap=0x10, target_px=(496, 708), radius=12),
-    Waypoint(tilemap=0x10, target_px=(420, 713), radius=12),
-    Waypoint(tilemap=0x10, target_px=(328, 718), radius=12),
-    Waypoint(
-        tilemap=0x10,
-        target_px=(312, 744),
         radius=16,
-        is_exit=True,
-        exit_direction="down",
+        run_direction="right",
     ),
 ]
 
@@ -310,6 +266,44 @@ _FARM_TO_PATH: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(136, 424), radius=12),
     _FARM_WEST_EXIT,
     _PATH_FARM_GATE,
+    _PATH_CROSSROADS,
+]
+
+# Sunday south crop field ~(78,598) tile (4,37) → west gate. Viewport BFS
+# from that stand to (136,424) cuts 0x5E crop beds and the F2 shipping
+# ditch no-go at (9/11,26–28). Stay on the untilled dirt row, the x=13
+# column through the cleared y=31 fence, then north of the ditch onto
+# the A8 gate road. House/pocket starts keep _FARM_TO_PATH.
+# py ≥ this is south of the gate road (y=424) / y=31 fence row.
+SOUTH_FIELD_MIN_Y_PX = 520
+_FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x00,
+        target_px=(136, 600),
+        radius=8,
+        run_direction="right",
+    ),  # (8,37) dirt row between crop beds
+    # Radius 6 keeps arrival on tile 13. Radius 12 arrived on tile 12
+    # and the up-run charged the 0x5E crop at (12,36).
+    Waypoint(
+        tilemap=0x00,
+        target_px=(216, 600),
+        radius=6,
+        run_direction="right",
+    ),  # (13,37)
+    Waypoint(tilemap=0x00, target_px=(216, 536), radius=6),  # (13,33) untilled column
+    Waypoint(tilemap=0x00, target_px=(216, 440), radius=6),  # (13,27) west-pocket column
+    Waypoint(tilemap=0x00, target_px=(200, 408), radius=8),  # (12,25) north of ditch
+    Waypoint(
+        tilemap=0x00,
+        target_px=(136, 392),
+        radius=8,
+        run_direction="left",
+    ),  # (8,24) A0 above ditch
+    Waypoint(tilemap=0x00, target_px=(120, 424), radius=8),  # (7,26) A8 gate road
+    _FARM_WEST_EXIT,
+    # Crossroads next — not PATH_FARM_GATE (232,128), which is east
+    # toward the farm and pins leaked (10,422) landings.
     _PATH_CROSSROADS,
 ]
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
@@ -471,6 +465,79 @@ _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
         exit_direction="down",
     ),
 ]
+
+# West-mid y=360 → spa lip. Join after grape inbound's (312, 360); do not
+# walk south onto the grape stand on the way to the pond.
+_WEST_MID_TO_OUTDOOR_SPA: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x10,
+        target_px=(348, 361),
+        radius=12,
+        run_direction="right",
+    ),
+    Waypoint(tilemap=0x10, target_px=(430, 345), radius=12),
+    # North then east to lip. Avoid D0 building at tile(36,13): stand on
+    # y=201 (tile 12) west of the hut, then run east on the A0 lip.
+    Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
+    Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
+    Waypoint(tilemap=0x10, target_px=(560, 214), radius=8),
+    # Tile 12 is y=192–207. Radius 6 stays on that row (y=208 is hut row 13).
+    Waypoint(tilemap=0x10, target_px=(560, 201), radius=6),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(619, 201),
+        radius=16,
+        run_direction="right",
+    ),
+]
+
+# Farm/path land → carpenter-gap dirt → west climb → east mid → lip.
+# Same hops as first grape until (312, 360). Never the east fish pond.
+_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA: List[Waypoint] = (
+    list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:-1]) + list(_WEST_MID_TO_OUTDOOR_SPA)
+)
+
+# Spa lip → reverse ridge to west-mid → reverse grape dirt (west climb)
+# → mid terrace ~(328, 568) → south exit. Stay on the same corridor as
+# inbound. Do not jump the x=20 grape cliff (spawn still sits there) and
+# do not reverse through camp/fish (620, 488 pins on boulder 38,28).
+_OUTDOOR_SPA_TO_MOUNTAIN_EXIT: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x10,
+        target_px=(569, 201),
+        radius=14,
+        run_direction="left",
+    ),
+    Waypoint(tilemap=0x10, target_px=(569, 214), radius=12),
+    Waypoint(tilemap=0x10, target_px=(529, 246), radius=12),
+    Waypoint(tilemap=0x10, target_px=(433, 255), radius=12),
+    Waypoint(tilemap=0x10, target_px=(433, 300), radius=12),
+    Waypoint(tilemap=0x10, target_px=(433, 345), radius=12),
+    Waypoint(tilemap=0x10, target_px=(416, 345), radius=12),
+    Waypoint(tilemap=0x10, target_px=(372, 347), radius=12),
+    Waypoint(tilemap=0x10, target_px=(348, 361), radius=12),
+    Waypoint(tilemap=0x10, target_px=(312, 360), radius=12),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(168, 360),
+        radius=12,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(tilemap=0x10, target_px=(72, 368), radius=10),
+    Waypoint(tilemap=0x10, target_px=(80, 432), radius=10),
+    Waypoint(tilemap=0x10, target_px=(144, 448), radius=10),
+    Waypoint(tilemap=0x10, target_px=(192, 464), radius=10),
+    Waypoint(tilemap=0x10, target_px=(240, 488), radius=10),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(328, 488),
+        radius=8,
+        run_direction="right",
+        force_run=True,
+    ),
+    Waypoint(tilemap=0x10, target_px=(328, 568), radius=16),
+] + list(_FIRST_BERRY_TO_MOUNTAIN_EXIT[2:])
 
 # The bin is the F2 pocket at x=8–9/y=29–30.  From the west-gate entry the
 # north stand (8,28), facing down, is reachable without clearing cargo.  The
@@ -906,8 +973,8 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "path_to_farm": [_PATH_CROSSROADS, _PATH_FARM_EXIT],
     "farm_to_mountain": list(_FARM_TO_MOUNTAIN_GATE),
     # Mountain entry (south) → upper outdoor hot spring (0xF7 pond).
-    # Path: SE bottom → fish area → west mid y~470 → west climb → east mid
-    # y~361 → lip ~(619,201) tile(38,12). Short hops for viewport BFS.
+    # Path: grape dirt corridor (carpenter gap → west climb → east mid
+    # y~360) → lip ~(619,201) tile(38,12). Never the east fish-pond pocket.
     "mountain_entry_to_outdoor_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
     # Alias — same upper pond (not west cave door).
     "mountain_entry_to_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
@@ -937,29 +1004,11 @@ ROUTES: Dict[str, List[Waypoint]] = {
     ],
     # Spa lip / mid-mountain → reverse corridor → south exit → farm.
     "outdoor_spa_to_farm": list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
-    + [
-        Waypoint(
-            tilemap=0x0C,
-            target_px=(244, 128),
-            radius=16,
-            is_exit=True,
-            exit_direction="right",
-        ),
-        Waypoint(tilemap=0x00, target_px=(40, 424), radius=24),
-    ],
+    + list(SEGMENTS["path_to_farm"])
+    + [Waypoint(tilemap=0x00, target_px=(40, 424), radius=24)],
     "mountain_to_farm": list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
-    + [
-        # Path→farm: accept arrival on path stand or farm just past the door
-        # (exit walk often lands already on 0x00).
-        Waypoint(
-            tilemap=0x0C,
-            target_px=(244, 128),
-            radius=16,
-            is_exit=True,
-            exit_direction="right",
-        ),
-        Waypoint(tilemap=0x00, target_px=(40, 424), radius=24),
-    ],
+    + list(SEGMENTS["path_to_farm"])
+    + [Waypoint(tilemap=0x00, target_px=(40, 424), radius=24)],
     "church_sunday_talk_loop": [
         Waypoint(tilemap=0x1B, target_px=(128, 456), radius=16),
         Waypoint(tilemap=0x1B, target_px=(203, 409), radius=8, action_on_arrive="press_a", action_face="right"),

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.chain import controller_stage_done, run_controller_stage
+from zelda_i.chain import PredicateStopController, controller_stage_done, run_controller_stage
 from zelda_i.ram import PLAY_MODE
 from zelda_i.room_timer import RoomTimer, bottleneck_visits
 
@@ -159,6 +159,32 @@ def test_controller_stage_done_accepts_string_phase() -> None:
     assert controller_stage_done(enum_failed)
     flagged = SimpleNamespace(success=False, failed=True, phase="door")
     assert controller_stage_done(flagged)
+
+
+def test_predicate_stop_controller_reports_exact_boundary() -> None:
+    class _Delegate:
+        failed = False
+
+        def step(self, snap):
+            return SimpleNamespace(action=snap.action)
+
+        def report(self):
+            return {"kind": "delegate"}
+
+    ctrl = PredicateStopController(_Delegate(), lambda snap: snap.room == 0x69, "room_69")
+    first = SimpleNamespace(room=0x59, action="DOWN")
+    assert ctrl.step(first).action == "DOWN"
+    assert not ctrl.success
+    hit = SimpleNamespace(room=0x69, action="IDLE")
+    assert ctrl.step(hit).action == "IDLE"
+    assert ctrl.success
+    assert ctrl.report() == {
+        "stop": "room_69",
+        "success": True,
+        "failed": False,
+        "frames": 2,
+        "controller": {"kind": "delegate"},
+    }
 
 
 def test_run_controller_stage_string_phase_does_not_crash() -> None:

@@ -46,6 +46,7 @@ LEFT_5B_MAX_FRAMES = 1500
 KEY_5A_MAX_FRAMES = 2500
 CLEAR_59_MAX_FRAMES = 18000
 DOWN_69_MAX_FRAMES = 2000
+DOWN_69_LOWER_AISLE_Y = 173
 CLEAR_69_MAX_FRAMES = 28000
 STAIRS_69_MAX_FRAMES = 2500
 PASSAGE_RAFT_MAX_FRAMES = 6000
@@ -218,8 +219,8 @@ class Level3RaftPathController:
         self._set_phase("failed", note)
         return FrameAction(nes_idle_action(), "failed")
 
-    def step(self, snap: ZeldaSnapshot, *, has_raft: bool = False) -> FrameAction:
-        """One control frame. Pass ``has_raft=level3_has_raft(ram)`` when available."""
+    def step(self, snap: ZeldaSnapshot, *, has_raft: bool | None = None) -> FrameAction:
+        """One control frame; Raft ownership defaults to the RAM snapshot."""
         self.frames += 1
         self.phase_frames += 1
         if self.success:
@@ -232,6 +233,8 @@ class Level3RaftPathController:
             return self._fail("link_death")
 
         # Global success: Raft inventory bit (may set mid-passage).
+        if has_raft is None:
+            has_raft = bool(snap.raft)
         if has_raft:
             self.success = True
             self._set_phase("done", "raft_acquired")
@@ -252,6 +255,13 @@ class Level3RaftPathController:
                 and not snap.transitioning
             ):
                 self._set_phase("spawn_59", "already_0x59")
+                return FrameAction(nes_idle_action(), "phase_handoff")
+            if (
+                snap.screen == ROOM_L3_SOUTH_DARKNUTS
+                and snap.mode == PLAY_MODE
+                and not snap.transitioning
+            ):
+                self._set_phase("spawn_69", "already_0x69")
                 return FrameAction(nes_idle_action(), "phase_handoff")
             if snap.mode == RAFT_PASSAGE_MODE or snap.screen == ROOM_L3_RAFT_PASSAGE:
                 self._set_phase("passage_raft", "already_passage")
@@ -396,6 +406,11 @@ class Level3RaftPathController:
                 return FrameAction(
                     nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
                 )
+            # Live spine v1: combat ended east of the right diamond at
+            # (192,157); LEFT cannot cross it. Descend to the lower aisle
+            # before aligning toward the south door column.
+            if snap.link_x >= 176 and snap.link_y < DOWN_69_LOWER_AISLE_Y:
+                return FrameAction(nes_action("DOWN"), "down_69_escape_diamond")
             # Align x≈120 then hold DOWN. Do not chase y=205 — past the door
             # plane Link thrash-oscillates align_y/push and never scrolls.
             if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:

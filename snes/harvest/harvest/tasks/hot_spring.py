@@ -5,9 +5,10 @@ ROM facts from human recording ``tasks/hot_spring_bath.json`` (2026-07-31):
   **True spa = upper outdoor pond on mountain 0x10**, not camp tent pond,
   not MapMountainCave 0x29.
 
-  Path (from mountain_fish_power_berry_end ~(686,411)):
-    west along mid-south corridor y~428–470 → west climb → east mid y~361
-    → north/east to upper lip y=201.
+  Farm→spa path (grape dirt corridor, not the east fish pond):
+    south land → carpenter gap → west climb → east mid y~360
+    → north/east to upper lip y=201. Fish/camp starts still use
+    fish_spot_to_outdoor_spa.
 
   Soak (A button — not B-alone at camp F0):
     Stand A0 at tile(38,12) / px~(619,201), hold **Right+A** into water tile
@@ -34,7 +35,11 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.ram_catalog import field_spec
 from harvest.core.stamina import Stamina
 from harvest.core.scene import classify_scene_from_ram
-from harvest.maps.map_config import ROUTES, slice_route_from_position
+from harvest.maps.map_config import (
+    ROUTES,
+    farm_to_spa_waypoints,
+    slice_route_from_position,
+)
 from harvest.planner.day_plan_status import TASKS_DIR, is_farm_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask
@@ -352,10 +357,13 @@ class HotSpringStaminaTask(Task):
                 world,
                 fallback="mountain_entry_to_spa",
             )
-            # Mid-mountain (fish/camp): prefer fish→spa slice if nearer.
-            if waypoints and len(waypoints) > 8:
+            # East camp/fish/Gotz pocket. Manhattan-slice onto the grape
+            # corridor would pick the spa ridge, which is cliff-blocked from
+            # here — walk the fish→spa dirt instead.
+            px, py = read_player_xy(ram)
+            if px >= 600 and py >= 350:
                 fish = self._sliced_route("fish_spot_to_outdoor_spa", world)
-                if fish and len(fish) < len(waypoints):
+                if fish:
                     waypoints = fish
             if waypoints:
                 return self._activate(
@@ -373,7 +381,18 @@ class HotSpringStaminaTask(Task):
         if is_farm_tilemap(tilemap) or tilemap == PATH_TILEMAP:
             if self._stamina_ok(ram) and is_farm_tilemap(tilemap):
                 return self._finish_success(world, "stamina already sufficient")
-            route = self._sliced_route("farm_to_spa", world)
+            px, py = read_player_xy(ram)
+            route = list(farm_to_spa_waypoints(px, py, tilemap))
+            if route:
+                sliced = slice_route_from_position(route, px, py, tilemap=tilemap)
+                if len(sliced) < len(route):
+                    print(
+                        f"[SPA] Route farm_to_spa: sliced {len(route)} → {len(sliced)} "
+                        f"hops from pos=({px},{py}) map=0x{tilemap:02X}"
+                    )
+                route = sliced
+            if not route:
+                route = self._sliced_route("farm_to_spa", world)
             if not route:
                 route = (
                     list(ROUTES.get("farm_to_mountain", []))
