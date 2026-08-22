@@ -68,10 +68,13 @@ from harvest.maps.map_routes import (
     SEGMENTS,
     compose_routes,
     densify_waypoints,
+    farm_to_spa_waypoints,
+    farm_to_west_gate_waypoints,
     path_coords_leaked,
     farm_coords_look_like_path,
     segment_waypoints,
     slice_route_from_position,
+    SOUTH_FIELD_MIN_Y_PX,
 )
 
 # ── Map Registry ──
@@ -531,4 +534,7 @@ __all__ = [
     "path_coords_leaked",
     "farm_coords_look_like_path",
     "densify_waypoints",
+    "farm_to_spa_waypoints",
+    "farm_to_west_gate_waypoints",
+    "SOUTH_FIELD_MIN_Y_PX",
 ]

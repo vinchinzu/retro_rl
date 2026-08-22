@@ -189,9 +189,7 @@ class Level2ToSouthCenterController:
             self.phase = SouthCenterPhase.DONE
             return FrameAction(nes_idle_action(), "done")
         if self._stuck > 14:
-            wiggle = ("DOWN", "RIGHT", "DOWN", "LEFT", "UP")[self._stuck % 5]
-            self._last_dir = wiggle
-            return FrameAction(nes_action(wiggle), "south_unstick")
+            return FrameAction(nes_idle_action(), "south_wait")
         # 0x1e west column DOWN from the north band is solid (v6 (48,93),
         # v7 (72,93)). Isolated used the east aisle; do that from anywhere
         # north or mid-diamond.
@@ -277,9 +275,7 @@ class Level2SouthBandUpController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         x, y = snap.link_x, snap.link_y
         if self._stuck > 14:
-            wiggle = ("DOWN", "RIGHT", "DOWN", "LEFT", "UP")[self._stuck % 5]
-            self._last_dir = wiggle
-            return FrameAction(nes_action(wiggle), "south_unstick")
+            return FrameAction(nes_idle_action(), "south_wait")
         # Diamond rooms (0x3e / 0x2e): v1 (120,185); v2 (154,141); v3 (175,109)
         # was still inside the old free box and held RIGHT. Side aisle north,
         # then door-column UP. North band y<=117 is not "diamond".

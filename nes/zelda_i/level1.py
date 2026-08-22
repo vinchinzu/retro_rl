@@ -66,11 +66,28 @@ _FIRST_KEY_PATROL: tuple[tuple[int, int], ...] = (
     (48, 141),
 )
 
+# South-band exit (y≳125): drop to the south corridor then west door.
 _RETURN_WEST_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (184, 181),
     (48, 181),
     (48, 141),
 )
+# North of the mid corridor (diamond y≈109): UP to y=101 first. Direct
+# DOWN from (184, 109) eats the east diamond and stalls (live 6215f).
+_RETURN_WEST_NORTH_Y = 125
+_RETURN_WEST_FROM_NORTH: tuple[tuple[int, int], ...] = (
+    (208, 101),
+    (208, 181),
+    (48, 181),
+    (48, 141),
+)
+
+
+def return_west_waypoints(x: int, y: int) -> tuple[tuple[int, int], ...]:
+    """Open-lane walk from a 0x74 pose to the west door (y≈141)."""
+    if y <= _RETURN_WEST_NORTH_Y:
+        return ((x, 101), *_RETURN_WEST_FROM_NORTH)
+    return _RETURN_WEST_WAYPOINTS
 
 _ENTRY_NORTH_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (208, 141),
@@ -399,6 +416,7 @@ class Level1UnlockNorthController:
     success: bool = False
     last_health: int = 0
     north_ready_frames: int = 0
+    west_waypoints: tuple[tuple[int, int], ...] | None = None
 
     def reset(self) -> None:
         self.phase = Level1NorthPhase.RETURN_WEST
@@ -410,6 +428,7 @@ class Level1UnlockNorthController:
         self.success = False
         self.last_health = 0
         self.north_ready_frames = 0
+        self.west_waypoints = None
 
     def _set_phase(self, phase: Level1NorthPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -492,9 +511,11 @@ class Level1UnlockNorthController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
 
         if self.phase is Level1NorthPhase.RETURN_WEST:
+            if self.west_waypoints is None:
+                self.west_waypoints = return_west_waypoints(snap.link_x, snap.link_y)
             action = self._follow_waypoints(
                 snap,
-                _RETURN_WEST_WAYPOINTS,
+                self.west_waypoints,
                 "return_west",
             )
             if action.reason == "return_west_done":

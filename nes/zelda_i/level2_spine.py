@@ -517,8 +517,9 @@ class Level2Enter6fKeyController:
 def level2_to_boom_stages():
     """Controller table: live 0x7d through Magical Boomerang 0x4f.
 
-    Bomb stages fail with ``no_bombs`` when inventory is 0; sibling
-    ``rr-4d53.2.2`` owns the farm. Do not poke bombs, keys, or doors.
+    Bomb stages fail with ``no_bombs`` when inventory is 0. The Survival
+    spine tops up owned bomb/key counts before these stages (ASSIST_CONTRACT
+    shortcut until a farm pass). This table itself does not poke.
     """
     bomb_6f = make_bomb_north_controller()
     # Isolated Level2_5F is (120, 189). Gel-clear patrol parks mid-diamond

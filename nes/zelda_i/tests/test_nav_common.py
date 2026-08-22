@@ -3,10 +3,12 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.combat import in_sword_hitbox, overworld_threat_objects, should_swing_at
+from retro_harness.nes import nes_idle_action
 from zelda_i.nav_common import (
     on_arrival_edge,
     swing_action,
     track_stuck,
+    unstick_wiggle,
     walk_or_swing,
 )
 from zelda_i.overworld import ScreenHop, path_screens_from_hops
@@ -113,3 +115,13 @@ def test_arrival_edge_and_stuck_tracking() -> None:
         _snap(x=121, y=140), last_x=120, last_y=140, last_screen=0x37, stuck=3
     )
     assert stuck == 0
+
+
+def test_unstick_wiggle_stands_after_one_cycle() -> None:
+    first, stuck = unstick_wiggle(4, reason="unstick")
+    assert first.reason == "unstick"
+    assert stuck == 4
+    wait, stuck = unstick_wiggle(20, reason="unstick")
+    assert wait.reason == "unstick_wait"
+    assert np.array_equal(wait.action, nes_idle_action())
+    assert stuck == 20

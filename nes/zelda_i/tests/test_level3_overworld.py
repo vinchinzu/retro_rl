@@ -24,6 +24,7 @@ from zelda_i.level3_overworld import (
 )
 from zelda_i.overworld import neighbor_screens
 from zelda_i.ram import (
+    ADDR_COLLIDING_TILE,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -32,6 +33,7 @@ from zelda_i.ram import (
     ADDR_SWORD,
     ADDR_TRIFORCE,
     PLAY_MODE,
+    read_snapshot,
 )
 
 
@@ -43,6 +45,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_LINK_X] = fields.get("x", 128)
     ram[ADDR_LINK_Y] = fields.get("y", 140)
     ram[ADDR_SWORD] = fields.get("sword", 1)
+    ram[ADDR_COLLIDING_TILE] = fields.get("colliding_tile", 0)
     return ram
 
 
@@ -175,3 +178,16 @@ def test_post_l2_leave_64_inland_when_wrong_y() -> None:
     act = nav._extra_hop_action(snap, hop)
     assert act is not None
     assert "64" in act.reason or "inland" in act.reason
+
+
+def test_post_l2_63_east_obstruction_boundary_moves_inland() -> None:
+    nav = OverworldPostL2ToLevel3Controller()
+    snap = read_snapshot(
+        _ram(screen=0x63, x=200, y=125, colliding_tile=0xC6)
+    )
+
+    action = nav._leave_63_south(snap)
+
+    assert snap.mode == PLAY_MODE
+    assert snap.colliding_tile == 0xC6
+    assert action.reason.startswith("63_inland")

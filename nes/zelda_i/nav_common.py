@@ -123,16 +123,28 @@ def recover_off_edge(
     return None
 
 
+# One 4-direction cycle, then stand. Never reset stuck (that restarts the spam).
+IN_PLACE_WIGGLE_FRAMES = 16
+
+
 def unstick_wiggle(
     stuck: int,
     *,
     reason: str = "unstick",
     reset_after: int = 140,
+    wiggle_frames: int = IN_PLACE_WIGGLE_FRAMES,
 ) -> tuple[FrameAction, int]:
-    """Cycle cardinal directions with A when stuck. Returns (action, new_stuck)."""
+    """Brief cardinal nudge, then stand still. Returns (action, new_stuck).
+
+    ``reset_after`` is accepted for call-site compat and ignored: resetting
+    stuck caused thousands of LEFT/RIGHT/DOWN frames in place. If the walk
+    is blocked, wait; do not loop a wiggle.
+    """
+    del reset_after
+    if stuck > wiggle_frames:
+        return FrameAction(nes_idle_action(), f"{reason}_wait"), stuck
     wiggle = ("UP", "DOWN", "LEFT", "RIGHT")[stuck % 4]
-    new_stuck = 0 if stuck > reset_after else stuck
-    return FrameAction(nes_action(wiggle, "A"), reason), new_stuck
+    return FrameAction(nes_action(wiggle, "A"), reason), stuck
 
 
 def align_and_push(
@@ -156,7 +168,7 @@ def align_and_push(
 
     Default movement uses :func:`walk_or_swing` (threat-gated). Callers that
     pass ``swing=`` own the slash policy (controllers usually close over snap).
-    Stuck recovery always keeps A via :func:`unstick_wiggle`.
+    Stuck recovery tries one short :func:`unstick_wiggle` cycle, then idles.
     """
 
     def _swing(dir_: str, why: str) -> FrameAction:

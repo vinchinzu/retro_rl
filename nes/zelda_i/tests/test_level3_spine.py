@@ -17,10 +17,12 @@ from zelda_i.level3_path import (
     Level3WestKeyController,
 )
 from zelda_i.level3_spine import (
-    Level3CompassSpineController,
-    Level3WestDarknutsSpineController,
     level3_compass_stages,
     level3_compass_success,
+    level3_south_darknuts_stages,
+    level3_south_darknuts_success,
+    level3_raft_stages,
+    level3_raft_success,
     level3_west_darknuts_stages,
     level3_west_darknuts_success,
     dest_6b_room_plan,
@@ -37,15 +39,17 @@ from zelda_i.ram import (
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
+    ADDR_RAFT,
     ADDR_SCREEN,
     PLAY_MODE,
     read_snapshot,
 )
 from zelda_i.survival_spine import SPINE_THROUGH
+from zelda_i.chain import PredicateStopController
 from zelda_i.walk_physics import WALK_DELTA
 
 
-def _ram(*, room: int, x: int, y: int, keys: int = 0) -> np.ndarray:
+def _ram(*, room: int, x: int, y: int, keys: int = 0, raft: int = 0) -> np.ndarray:
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = PLAY_MODE
     ram[ADDR_LEVEL] = 3
@@ -53,6 +57,7 @@ def _ram(*, room: int, x: int, y: int, keys: int = 0) -> np.ndarray:
     ram[ADDR_LINK_X] = x
     ram[ADDR_LINK_Y] = y
     ram[ADDR_KEYS] = keys
+    ram[ADDR_RAFT] = raft
     return ram
 
 
@@ -83,9 +88,13 @@ def test_level3_stage_names_and_controllers() -> None:
         ("north_chain", Level3NorthChainController),
     ]
     compass = [(name, type(ctrl)) for name, ctrl, _ in level3_compass_stages()]
-    assert compass == [("compass_0x5a", Level3CompassSpineController)]
+    assert compass == [("compass_0x5a", PredicateStopController)]
     west_darknuts = [(name, type(ctrl)) for name, ctrl, _ in level3_west_darknuts_stages()]
-    assert west_darknuts == [("west_darknuts_0x59", Level3WestDarknutsSpineController)]
+    assert west_darknuts == [("west_darknuts_0x59", PredicateStopController)]
+    south = [(name, type(ctrl)) for name, ctrl, _ in level3_south_darknuts_stages()]
+    assert south == [("south_darknuts_0x69", PredicateStopController)]
+    raft = [(name, type(ctrl)) for name, ctrl, _ in level3_raft_stages()]
+    assert raft == [("raft_0x0f", PredicateStopController)]
 
 
 def test_dest_stages_fail_closed_without_graph_path(monkeypatch) -> None:
@@ -109,6 +118,16 @@ def test_compass_success_is_play_5a() -> None:
 def test_west_darknuts_success_is_play_59() -> None:
     assert level3_west_darknuts_success(read_snapshot(_ram(room=0x59, x=224, y=141)))
     assert not level3_west_darknuts_success(read_snapshot(_ram(room=0x5A, x=224, y=141)))
+
+
+def test_south_darknuts_success_is_play_69() -> None:
+    assert level3_south_darknuts_success(read_snapshot(_ram(room=0x69, x=120, y=77)))
+    assert not level3_south_darknuts_success(read_snapshot(_ram(room=0x59, x=120, y=205)))
+
+
+def test_raft_success_requires_inventory_bit_in_passage() -> None:
+    assert not level3_raft_success(read_snapshot(_ram(room=0x0F, x=136, y=141)))
+    assert level3_raft_success(read_snapshot(_ram(room=0x0F, x=136, y=141, raft=1)))
 
 
 def test_entry_success_is_play_7c() -> None:

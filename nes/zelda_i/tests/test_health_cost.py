@@ -51,16 +51,17 @@ def _snap(*, health: int, bombs: int = 0, keys: int = 0) -> ZeldaSnapshot:
 
 
 def test_health_byte_matches_ram_nibbles() -> None:
-    assert encode_health(4, 3) == 0x33
-    assert encode_health(4, 4) == 0x3F
-    assert encode_health(3, 3) == 0x2F
-    assert decode_health(0x33) == (4, 3)
+    # HeartValues: low nibble is whole hearts (0-based), not a 0xF flag.
+    assert encode_health(4, 3) == 0x32
+    assert encode_health(4, 4) == 0x33
+    assert encode_health(3, 3) == 0x22
+    assert decode_health(0x33) == (4, 4)
+    assert decode_health(0x32) == (4, 3)
     assert decode_health(0x3F) == (4, 4)
-    assert decode_health(0x30) == (4, 0)
-    state = ResourceState.from_health_byte(0x33, bombs=2, keys=1)
+    state = ResourceState.from_health_byte(0x32, bombs=2, keys=1)
     assert state.filled == 3
     assert state.containers == 4
-    assert state.health_byte == 0x33
+    assert state.health_byte == 0x32
 
 
 def test_resources_from_snapshot_treats_full_sentinel() -> None:
@@ -68,7 +69,7 @@ def test_resources_from_snapshot_treats_full_sentinel() -> None:
     assert full.filled == 4
     assert full.bombs == 4
     assert full.keys == 2
-    damaged = resources_from_snapshot(_snap(health=0x31))
+    damaged = resources_from_snapshot(_snap(health=0x30))
     assert damaged.filled == 1
 
 
@@ -95,7 +96,7 @@ def test_simulate_from_three_hearts_dies_on_0x5c() -> None:
 
 
 def test_simulate_from_health_byte_3_of_4() -> None:
-    start = ResourceState.from_health_byte(0x33)
+    start = ResourceState.from_health_byte(0x32)
     survives, death, remaining = simulate_corridor(start)
     assert (survives, death, remaining.filled) == (False, 0x5C, 0)
 

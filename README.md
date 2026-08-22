@@ -31,7 +31,7 @@ Program docs:
 
 Requirements:
 
-- Python 3.12 or newer
+- Python **3.12** (`.python-version`; `stable-retro` 0.9.8 has no 3.13/3.14 wheels)
 - [`uv`](https://docs.astral.sh/uv/)
 - system support required by `stable-retro`, SDL, and Qt for the workflows you
   intend to run

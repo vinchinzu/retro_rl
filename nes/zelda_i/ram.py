@@ -55,7 +55,8 @@ ADDR_COMPASS = 0x0667
 ADDR_MAP = 0x0668
 ADDR_RUPEES = 0x066D
 ADDR_KEYS = 0x066E
-ADDR_HEALTH = 0x066F  # high nibble = containers-1, low = filled hearts
+ADDR_HEALTH = 0x066F  # HeartValues: hi = containers−1, lo = whole hearts
+ADDR_HEART_PARTIAL = 0x0670  # HeartPartial: $FF = current heart full
 ADDR_TRIFORCE = 0x0671
 # Boomerangs sit after triforce in the file-slot inventory block (Data Crystal).
 # Magical (0x0675) overrides wooden (0x0674) when both would apply.
@@ -121,6 +122,8 @@ class ZeldaSnapshot:
     magical_boomerang: int = 0
     submode: int = 0
     is_updating_mode: int = 0
+    heart_partial: int = 0xFF
+    raft: int = 0
 
     @property
     def overworld(self) -> bool:
@@ -156,19 +159,31 @@ class ZeldaSnapshot:
 
     @property
     def health_is_full(self) -> bool:
-        """True when the low nibble is the full-health sentinel ``0xF``."""
-        return (int(self.health) & 0x0F) >= 0x0F
+        """True when whole hearts match containers (low nibble == high nibble)."""
+        hv = int(self.health)
+        return (hv & 0x0F) >= ((hv >> 4) & 0x0F)
 
     def object_in_slot(self, slot: int) -> ZeldaObject | None:
         return next((obj for obj in self.objects if obj.slot == slot), None)
 
 
 def full_health_byte(health: int) -> int:
-    """Preserve heart containers (high nibble); set filled hearts to full (``0xF``).
+    """Full ``HeartValues`` for this container count: low nibble == high nibble.
 
-    Does **not** grant containers. Used by the survival assist only.
+    Zelda 1 (aldonunez ``CompareHeartsToContainers`` / ``World_FillHearts``):
+    low nibble is whole hearts, **not** a ``0xF`` full flag. Writing ``0xF``
+    makes the triforce/potion fill ``INC HeartValues`` until the nibbles
+    match, which grants extra containers.
     """
-    return (int(health) & 0xF0) | 0x0F
+    n = (int(health) >> 4) & 0x0F
+    return (n << 4) | n
+
+
+def health_byte_for_containers(containers: int, *, filled: int | None = None) -> int:
+    """Encode ``HeartValues`` from a known container count (never from a glitch)."""
+    n = (max(1, int(containers)) - 1) & 0x0F
+    lo = n if filled is None else max(0, int(filled) - 1) & 0x0F
+    return (n << 4) | lo
 
 
 def read_u8(ram: np.ndarray, addr: int) -> int:
@@ -202,6 +217,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         rupees=read_u8(ram, ADDR_RUPEES),
         keys=read_u8(ram, ADDR_KEYS),
         health=read_u8(ram, ADDR_HEALTH),
+        heart_partial=read_u8(ram, ADDR_HEART_PARTIAL),
         triforce=read_u8(ram, ADDR_TRIFORCE),
         compass=read_u8(ram, ADDR_COMPASS),
         dialog_timer=read_u8(ram, ADDR_DIALOG_TIMER),
@@ -216,6 +232,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         magical_boomerang=read_u8(ram, ADDR_MAGIC_BOOMERANG),
         submode=read_u8(ram, ADDR_SUBMODE),
         is_updating_mode=read_u8(ram, ADDR_IS_UPDATING_MODE),
+        raft=read_u8(ram, ADDR_RAFT),
     )
 
 

@@ -21,8 +21,25 @@ and the existing earned-capacity health refill.
    checkpoints may not.
 4. Use `--infinite-life` for first-pass route and puzzle work. Require the
    assist report to show `progression_writes=0` and `capacity_writes=0`.
-   Survival ≠ poke: `--infinite-life` is the only assisted write. Door, key, or
-   inventory pokes are recon and cannot write route checkpoints.
+   Heart refill is always on. Bomb/key **count** top-up is a documented
+   Survival shortcut (`docs/ASSIST_CONTRACT.md`) until a farm pass exists —
+   never write `max_bombs` or grant undiscovered items. Door pokes are recon
+   and cannot write route checkpoints.
+
+## Predict, then act
+
+Every live step needs a falsifiable RAM claim (`zelda_i.predict` /
+`retro_harness.predict`). A miss names the wrong belief; it is not a reason
+to extend a timeout.
+
+Offline first (no emulator):
+
+1. Room sequence: `door_graph.bfs_path` under inventory caps.
+2. In-room walk: `walk_physics.OccupancyWalker` grades `move DX,DY`
+   (`retro_harness.predict.grade_claims`). A stuck miss blocks the cell
+   ahead and replans. No path → stand. Halt at the first unrecoverable
+   miss; do not hunt or probe.
+3. Door clips (LEFT+UP residual) stay one-frame policies in `level*_path.py`.
 
 ## Run a screenshot-first loop
 
@@ -37,8 +54,9 @@ and the existing earned-capacity health refill.
 4. On failure, inspect the final screenshot and the last coordinate/reason
    samples before editing. Change one thing, then rerun.
 5. Never add random jitter, silently extend timeouts, or repeat an unchanged
-   policy. Never poke keys, doors, bombs, inventory, or progression for a route
-   claim. If a poke is explicitly needed for recon, label and isolate it.
+   policy. Never poke doors, undiscovered items, or progression for a route
+   claim. Bomb/key count top-up is the documented Survival shortcut until
+   farming; label any other inventory poke as recon.
 
 ## Promote a segment
 

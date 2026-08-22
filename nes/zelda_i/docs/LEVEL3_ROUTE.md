@@ -172,8 +172,8 @@ the room leaf.
 | `rr-4d53.3.1` | parent: live dest 0x5b | same as `.1.2` | both dest stages | north-chain Clean 2/2 |
 | `rr-4d53.3.3.1` | **closed** 0x5b LEFT → Compass | `level3_compass_0x5a` | raft `left_to_5a` | `Level3Raft` pin |
 | `rr-4d53.3.3.2` | **closed** 0x5a KEY-LEFT y=141 | `level3_west_darknuts_0x59` | raft `key_to_59` | key-waste recon |
-| `rr-4d53.3.3.3` | **tip** 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
-| `rr-4d53.3.3.4` | 0x69 stairs → Raft | `level3_raft` (`ADDR_RAFT≠0`) | raft `stairs_to_0f`/`passage_raft` | `run_level3_raft.py` |
+| `rr-4d53.3.3.3` | **closed** 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
+| `rr-4d53.3.3.4` | **closed** 0x69 stairs → Raft | `level3_raft` (`ADDR_RAFT≠0`) | raft `stairs_to_0f`/`passage_raft` | `run_level3_raft.py` |
 | `rr-4d53.3.3` | parent: 0x5b → Raft | same as `.3.3.4` | `Level3RaftPathController` | Raft 2/2 assisted |
 | `rr-4d53.3.2` | bombs for bomb-R + Manhandla | report `bombs_in` / no poke-16 | carry or 0x5b drop | isolated `--poke-bombs 16` |
 | `rr-4d53.3.4.1` | Raft backtrack bomb-R → 0x5b | `level3_backtrack_0x5b` | boss `exit_passage`/`bomb_59` | walk-RIGHT sealed trap |
@@ -183,9 +183,9 @@ the room leaf.
 | `rr-4d53.3.4` | parent: Raft → TF | same as `.4.4` | `Level3BossPathController` poke default off | Raft poke-16 suffix |
 | `rr-4d53.3` | parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | any seamed L3 tape |
 
-Claim only the ready tip. West key `0x7b`, dest `0x5b`, Compass `0x5a`, and
-the key door into `0x59` are live on the spine; clear `0x59` → `0x69` is the
-claimed tip. Do not start Raft or TF until that leaf is live. Compass /
+West key `0x7b`, dest `0x5b`, Compass `0x5a`, `0x59`, `0x69`, and natural
+Raft are live on the spine. The next claim is the carried-bomb boss suffix;
+isolated poke-16 cannot close it. Compass /
 map rooms that are off the Raft route stay optional and do not block TF.
 
 West-key close (2026-08-21): `l3_west_key_spine.json` 1/1 Survival 54589f,

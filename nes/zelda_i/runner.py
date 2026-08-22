@@ -44,8 +44,12 @@ def add_common_args(
     parser.add_argument("--trials", type=int, default=default_trials)
     parser.add_argument(
         "--infinite-life",
-        action="store_true",
-        help="Survival assist (not Clean STATUS)",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Survival health refill (default on). "
+            "--no-infinite-life is Clean (STATUS-eligible)."
+        ),
     )
     parser.add_argument(
         "--save-state",
@@ -105,7 +109,7 @@ def run_controller(
     controller: Any,
     *,
     from_state: str | None,
-    infinite_life: bool = False,
+    infinite_life: bool = True,
     max_frames: int | None = None,
     seed: int = 0,
     on_frame: Callable[[Any, Any, int], None] | None = None,
