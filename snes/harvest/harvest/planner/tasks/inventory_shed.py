@@ -230,17 +230,20 @@ class ShedShelfToolTask(Task):
     settle_frames: int = 70
     timeout: int = 900
     radius: int = 2
+    take_attempts: int = 3
 
     _phase: str = field(default="settle", init=False)
     _step_count: int = field(default=0, init=False)
     _task: Optional[Task] = field(default=None, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
+    _take_tries: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "settle"
         self._step_count = 0
         self._task = None
         self._action_queue.clear()
+        self._take_tries = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -281,7 +284,9 @@ class ShedShelfToolTask(Task):
             return TaskResult(status=TaskStatus.FAILURE, reason=f"not in shed tilemap=0x{tilemap:02X}")
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
+        # During shelf A, lock=0 is the pickup animation — keep draining the
+        # take queue. Dialogue dismiss is for settle/nav only.
+        if input_lock != 1 and self._phase != "take":
             return dismiss_dialogue_result(self._step_count, pulse_every=1)
 
         if self._phase == "settle":
@@ -299,15 +304,28 @@ class ShedShelfToolTask(Task):
                 return TaskResult(status=TaskStatus.FAILURE, reason=f"shed shelf nav failed: {result.reason}")
             self._phase = "take"
             self._task = None
-            self._queue_take_tool()
 
         if self._phase == "take":
+            if tool_in_carry_pair(world.ram, self.tool_id):
+                return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
             queued = drain_action_queue(self._action_queue)
             if queued is not None:
                 return queued
             if tool_in_carry_pair(world.ram, self.tool_id):
                 return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
-            return TaskResult(status=TaskStatus.FAILURE, reason=f"tool 0x{self.tool_id:02X} missing after shelf")
+            if self._take_tries >= self.take_attempts:
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"tool 0x{self.tool_id:02X} missing after shelf",
+                )
+            if input_lock != 1:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            self._queue_take_tool()
+            self._take_tries += 1
+            queued = drain_action_queue(self._action_queue)
+            if queued is not None:
+                return queued
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
         return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown shed shelf phase {self._phase}")
 
@@ -691,8 +709,9 @@ class EnsureCropSeedsTask(Task):
 
     Shelf A replaces the **selected** slot. Grabbing seeds while the hoe is
     selected (or hoe while seeds are selected) thrash-loops shed multi_nav
-    forever (rr-6byj). Before each shelf trip we X-swap so the keep-tool is in
-    the backpack and a disposable tool is selected.
+    forever (rr-6byj). Before each shelf grab we X-swap so the keep-tool is in
+    the backpack and a disposable tool is selected. Hoe fetch stays inside
+    the shed so potato-bag A is the same visit; exit after the pair is ready.
     """
 
     name: str = "ensure_crop_seeds"
@@ -791,7 +810,8 @@ class EnsureCropSeedsTask(Task):
             )
 
         # Hoe first so the 2-slot pair ends as seeds+hoe after the seed grab.
-        # Nested ensure exits the shed itself.
+        # Stay in the shed (exit_when_done=False) so the seed shelf is the
+        # same visit; two outdoor trips were the rr-6byj / settle-timeout path.
         if self.ensure_hoe and not tool_in_carry_pair(world.ram, hoe_id):
             # If seeds are already selected, swap so the seed bag stays when
             # the hoe shelf replaces the disposable selected slot.
@@ -812,7 +832,7 @@ class EnsureCropSeedsTask(Task):
                     tasks_dir=self.tasks_dir,
                     nav_timeout=self.nav_timeout,
                     enter_timeout=self.enter_timeout,
-                    exit_when_done=True,
+                    exit_when_done=False,
                 ),
                 world,
             )

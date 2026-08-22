@@ -268,6 +268,9 @@ class FarmClearTask(Task):
 
         ram = world.ram
         tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        if tilemap == 0x26:
+            # Shed door walk-in during pocket approach — leave, then retry farm nav.
+            return ExitToFarmTask(tasks_dir=self.tasks_dir)
         if is_farm_tilemap(tilemap):
             stand = self._pocket_stand_px()
             return NavTask(

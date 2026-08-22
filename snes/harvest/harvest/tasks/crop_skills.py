@@ -12,9 +12,10 @@ from typing import FrozenSet, Optional, Tuple
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
-from harvest.core.carry import backpack_tool, seed_item_id, selected_tool
+from harvest.core.carry import SEED_ITEM, backpack_tool, seed_item_id, selected_tool
 from harvest.core.task_progress import ProgressSnapshot
 from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
     LARGE_ROCK_TILES,
     STONE,
     STUMP_TILES,
@@ -23,6 +24,15 @@ from harvest.core.tile_catalog import (
 )
 from harvest.tasks.crop_geometry import FRESH_TILLED
 from harvest.tasks.nav import TILE_SIZE, get_pos_from_ram, get_tile_at, make_action
+
+_SEED_IDS = frozenset(SEED_ITEM.values())
+
+
+def _input_unlocked(ram) -> bool:
+    """True when the farmer can accept X/Y. ``input_lock==1`` is free-move."""
+    if ADDR_INPUT_LOCK >= len(ram):
+        return True
+    return int(ram[ADDR_INPUT_LOCK]) == 1
 
 # Hoe Y on a bush/stone is a no-op (live D2: timeout tid=0x01 beside 0x03).
 HOE_BLOCKED_TILES: FrozenSet[int] = (
@@ -78,6 +88,14 @@ class SelectCarrySkill(Task):
             )
         if self._steps > self.timeout:
             return TaskResult(status=TaskStatus.FAILURE, reason="select carry timeout")
+        # Brief wait so a door/tool animation is not still eating X, then tap
+        # anyway — lock can stick at 0 on the shed outdoor stand.
+        if not _input_unlocked(world.ram) and self._steps <= 20:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason="wait input unlock",
+            )
         tap = self._steps % 6 == 1
         return TaskResult(
             status=TaskStatus.RUNNING,
@@ -104,9 +122,11 @@ class UseToolUntilTileSkill(Task):
     timeout: int = 240
 
     _steps: int = field(default=0, init=False)
+    _saw_tool: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._steps = 0
+        self._saw_tool = False
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -125,10 +145,28 @@ class UseToolUntilTileSkill(Task):
         player_tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
         tile = self.target_tile or player_tile
         tid = int(get_tile_at(world.ram, tile[0], tile[1]))
+        sel = int(selected_tool(world.ram))
+        back = int(backpack_tool(world.ram))
+        wanted = int(self.tool_id)
+        if sel == wanted or back == wanted:
+            self._saw_tool = True
         if tid in self.done_ids:
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=f"{self.name} tile=0x{tid:02X} at {tile}",
+            )
+        # Seed bags leave the carry pair when spent, often a few frames before
+        # the metatile updates. Treat that as planted — do not fail-closed
+        # with "tool not selected".
+        if (
+            self._saw_tool
+            and wanted in _SEED_IDS
+            and sel != wanted
+            and back != wanted
+        ):
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"{self.name} bag spent tid=0x{tid:02X} at {tile}",
             )
         if tid in self.blocked_ids:
             return TaskResult(
@@ -140,9 +178,14 @@ class UseToolUntilTileSkill(Task):
                 status=TaskStatus.FAILURE,
                 reason=f"{self.name} timeout tid=0x{tid:02X} at {tile}",
             )
-        sel = int(selected_tool(world.ram))
-        if sel != int(self.tool_id):
-            if int(backpack_tool(world.ram)) == int(self.tool_id):
+        if not _input_unlocked(world.ram):
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason="wait input unlock",
+            )
+        if sel != wanted:
+            if back == wanted:
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(make_action(x=True)),
@@ -150,10 +193,12 @@ class UseToolUntilTileSkill(Task):
                 )
             return TaskResult(
                 status=TaskStatus.FAILURE,
-                reason=f"tool 0x{self.tool_id:02X} not selected",
+                reason=f"tool 0x{wanted:02X} not selected",
             )
         phase = self._steps % 48
-        if self.face is not None and phase < 4:
+        # One-frame face tap — 4f of d-pad walks onto the hoe target and
+        # tills the next tile (live D2: stand y=472 → 463, tid 0x02 stuck).
+        if self.face is not None and phase < 2:
             action = make_action(**{self.face: True})
         elif 8 <= phase < 28:
             action = make_action(y=True)
@@ -193,6 +238,7 @@ def plant_until_crop_skill(
         name="plant_until_crop",
         tool_id=seed_item_id(seed_type),
         done_ids=PLANTED_OR_WET,
+        blocked_ids=HOE_BLOCKED_TILES,
         target_tile=target_tile,
         timeout=timeout,
     )

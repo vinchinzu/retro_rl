@@ -13,8 +13,10 @@ from day_plan_test_helpers import make_navigation_ram, set_player_pos
 import unittest
 
 from harvest.core.ram_catalog import field_spec
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK
 from harvest.maps.map_config import Waypoint
 from harvest.planner.day_plan import MultiMapNavTask, NavTask
+from retro_harness.actions import action_names
 from harvest.tasks.farm_clearer import TileScanner
 from harvest.tasks.nav import Navigator, Pathfinder, Point, TILE_SIZE
 from harvest.tasks.travel_walk import (
@@ -141,6 +143,25 @@ class TravelWalkPushFacingTests(unittest.TestCase):
         action = task._fallback_action(ram)
         self.assertEqual(int(action[7]), 0)  # no right
         self.assertEqual(int(action[0]), 0)  # no B
+
+    def test_navtask_leaves_shed_door_west_when_target_is_not_door(self) -> None:
+        ram = make_navigation_ram(current_tile=(26, 30), blocked_tile=(63, 63))
+        ram[ADDR_INPUT_LOCK] = 1
+        world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
+        task = NavTask(target_px=Point(13 * 16 + 8, 29 * 16 + 8), radius=16)
+        task.reset(world)
+        names = set(action_names(task.step(world).action.action))
+        self.assertTrue("LEFT" in names or "DOWN" in names)
+        self.assertNotIn("UP", names)
+
+    def test_navtask_fallback_does_not_enter_shed_door(self) -> None:
+        ram = make_navigation_ram(current_tile=(26, 30), blocked_tile=(63, 63))
+        world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
+        task = NavTask(target_px=Point(13 * 16 + 8, 29 * 16 + 8))
+        task.reset(world)
+        task._navigator.stasis = 45  # secondary would be UP into the shed
+        names = set(action_names(task._fallback_action(ram)))
+        self.assertNotIn("UP", names)
 
     def test_direction_reader(self) -> None:
         ram = make_navigation_ram()

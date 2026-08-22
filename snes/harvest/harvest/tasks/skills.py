@@ -23,6 +23,7 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
+from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.tasks.navigation import NavTask
 from harvest.tasks.nav import Point
 from harvest.tasks.primitives import (
@@ -56,6 +57,8 @@ class NavSkill(Task):
     target_px: Tuple[int, int] = (0, 0)
     radius: int = 12
     timeout: int = 1800
+    soft_radius: Optional[int] = None
+    require_tilemap: Optional[int] = None
 
     _nav: NavTask = field(init=False)
 
@@ -64,6 +67,7 @@ class NavSkill(Task):
             name=self.name,
             target_px=Point(self.target_px[0], self.target_px[1]),
             radius=self.radius,
+            soft_radius=self.soft_radius,
             timeout=self.timeout,
         )
 
@@ -87,6 +91,18 @@ class NavSkill(Task):
         )
 
     def step(self, world: WorldState) -> TaskResult:
+        if self.require_tilemap is not None:
+            tilemap = (
+                int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else -1
+            )
+            if tilemap != int(self.require_tilemap):
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=(
+                        f"{self.name} left map "
+                        f"0x{int(self.require_tilemap):02X} → 0x{tilemap:02X}"
+                    ),
+                )
         return self._nav.step(world)
 
 
@@ -385,7 +401,7 @@ def farm_select_carry_skill(tool_id: int, *, timeout: int = 90):
     )
 
 
-def farm_nav_pocket_plant_skill(*, timeout: int = 1800) -> NavSkill:
+def farm_nav_pocket_plant_skill(*, timeout: int = 4000) -> NavSkill:
     """Stand on the tape plant notch (13, 28)."""
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.nav import TILE_SIZE
@@ -396,11 +412,17 @@ def farm_nav_pocket_plant_skill(*, timeout: int = 1800) -> NavSkill:
         target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
         radius=8,
         timeout=timeout,
+        require_tilemap=0x00,
     )
 
 
-def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 1800) -> NavSkill:
-    """Stand one tile south and face up to hoe the plant notch."""
+def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 9000) -> NavSkill:
+    """Stand one tile south and face up to hoe the plant notch.
+
+    Same timeout/radius class as NAV_CROP: this hop often starts at the shed
+    outdoor door after ENSURE_CROP_SEEDS. Tight radius + short timeout walked
+    UP into the shed when BFS was sealed.
+    """
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.nav import TILE_SIZE
 
@@ -409,7 +431,9 @@ def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 1800) -> NavSkill:
         name="nav_pocket_hoe_stand",
         target_px=(tx * TILE_SIZE + 8, (ty + 1) * TILE_SIZE + 8),
         radius=6,
+        soft_radius=6,
         timeout=timeout,
+        require_tilemap=0x00,
     )
 
 
@@ -457,8 +481,10 @@ def farm_pocket_plant_skill(
 
     skills: list = [
         farm_fence_jump_toss_skill(),
-        farm_select_carry_skill(int(Tool.HOE)),
+        # Walk to the hoe stand before X-swap. Doing the swap at the shed
+        # door (post-ENSURE) times out while input_lock is still settling.
         farm_nav_pocket_hoe_stand_skill(),
+        farm_select_carry_skill(int(Tool.HOE)),
         farm_hoe_tile_skill(),
         farm_nav_pocket_plant_skill(),
         farm_select_carry_skill(seed_item_id(seed_type)),
