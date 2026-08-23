@@ -6,6 +6,8 @@ from pathlib import Path
 
 from mortal_kombat.roster import (
     KIND_RAM_V3,
+    KIND_SCRIPT,
+    SCRIPT_NAME,
     STAGES,
     PIXEL_FALLBACK,
     backup_on_round_loss,
@@ -72,6 +74,40 @@ def test_fighters_common_alias_installs() -> None:
     install_fighters_common_alias()
     assert "fighters_common" in sys.modules
     assert "fighters_common.fighting_env" in sys.modules
+
+
+def test_resolve_script_without_zip(tmp_path: Path, monkeypatch) -> None:
+    roster = tmp_path / "roster.json"
+    record_stage(
+        "Fight",
+        model=SCRIPT_NAME,
+        kind=KIND_SCRIPT,
+        win_rate=None,
+        attempts=0,
+        path=roster,
+    )
+    monkeypatch.setattr("mortal_kombat.roster.ROSTER_PATH", roster)
+    path, kind = resolve_model("Fight", tmp_path)
+    assert kind == KIND_SCRIPT
+    assert path == tmp_path / SCRIPT_NAME
+    assert not path.exists()
+
+
+def test_build_slots_includes_scripted_without_zip(tmp_path: Path, monkeypatch) -> None:
+    roster = tmp_path / "roster.json"
+    record_stage(
+        "Fight",
+        model=SCRIPT_NAME,
+        kind=KIND_SCRIPT,
+        win_rate=None,
+        attempts=0,
+        path=roster,
+    )
+    monkeypatch.setattr("mortal_kombat.roster.ROSTER_PATH", roster)
+    slots = build_slots(tmp_path)
+    fight = next(slot for slot in slots if slot.prefix == "Fight")
+    assert fight.model == SCRIPT_NAME
+    assert fight.kind == KIND_SCRIPT
 
 
 def test_record_stage_roundtrip(tmp_path: Path) -> None:

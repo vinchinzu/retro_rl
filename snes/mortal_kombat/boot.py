@@ -42,6 +42,7 @@ class BootController:
 
     character: int = LIU_KANG_ID
     start_after: int = _START_AFTER
+    allow_continue: bool = True
 
     def decide(self, snap: FightSnapshot, frame: int) -> tuple[Phase, tuple[str, ...]]:
         if snap.screen is Screen.FIGHT or is_fight_ready(snap, character=self.character):
@@ -49,7 +50,9 @@ class BootController:
         if snap.screen is Screen.CREDITS:
             return Phase.FIGHT, ()
         if snap.screen is Screen.CONTINUE:
-            return Phase.CONTINUE, _pulse(frame, "START")
+            if self.allow_continue:
+                return Phase.CONTINUE, _pulse(frame, "START")
+            return Phase.CONTINUE, ()
         # Intra-match KO / "FIGHT!" intro auto-advances. START here pauses.
         if snap.screen is Screen.BETWEEN_ROUNDS:
             return Phase.FIGHT, ()
