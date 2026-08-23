@@ -29,6 +29,10 @@ uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --scripted
 uv run python snes/mortal_kombat/scripts/replay_natural_fight1.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight2.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight2.py --repeat 5
+uv run python snes/mortal_kombat/scripts/replay_natural_fight3.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight3.py --repeat 5
+uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py --repeat 5
 ```
 
 ## Traps
@@ -56,3 +60,10 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight2.py --repeat 5
   Match 2 is Sonya (id 6). The Scorpion byte at the Fight 1 pin is leftover
   HUD, not the live opponent. Cold-boot each replay (`make_env`); `env.reset()`
   after a long `NONE` run is not a power-on pin.
+- `replay_natural_fight3.py` concatenates through Match 3 (18,077 frames:
+  12,918 + 5,159) to the Match 4 transition. Live Match 3 is Sub-Zero (id 5).
+  The Sonya byte at the Fight 2 pin is leftover HUD.
+- `replay_natural_fight4.py` concatenates through Match 4 (25,164 frames:
+  18,077 + 7,087) to the Match 5 transition. Live Match 4 is Raiden (id 2)
+  2–1. The Sub-Zero byte at the Fight 3 pin is leftover HUD. RAM oracles
+  lost this match; the offline capture used the pixel ladder-ft zip.
