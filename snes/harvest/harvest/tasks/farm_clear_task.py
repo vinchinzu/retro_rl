@@ -62,7 +62,12 @@ class FarmClearTask(Task):
     Unbounded (no farm_bounds) SUCCESS only when remaining clearable debris
     is empty on the farm map. Incomplete stamina/budget/lift-only leftover
     is FAILURE so the optional day-plan policy can skip/defer. Pocket
-    ``CLEAR_PLOT`` (farm_bounds set) still SUCCESS on the plant notch.
+    ``CLEAR_PLOT`` (farm_bounds set) still SUCCESS on the 3x3 plot + hoe
+    stands, not a single notch cell.
+    Leftover smash (``handoff="quota"``) SUCCESS when RAM counts drop by
+    the requested quota, even if other debris remains. Unmet quota
+    (including ``stamina_exhausted``) is FAILURE — not a plot_ring or
+    empty-farm lie.
     Always tries to drop a held weed/rock before finishing so return-home
     is not blocked.
     """
@@ -75,6 +80,9 @@ class FarmClearTask(Task):
     prefer_lift_for_weeds: bool = True
     prefer_lift_for_stones: bool = False
     farm_bounds: Optional[Tuple[int, int, int, int]] = None
+    # "plot_ring" (pocket plant) | "quota" (leftover smash) | "" (empty farm).
+    handoff: str = ""
+    quota: Optional[dict] = None
 
     _clearer: FarmClearer = field(init=False, repr=False)
     _step_count: int = field(default=0, init=False)
@@ -108,13 +116,26 @@ class FarmClearTask(Task):
         if self.fetch_tools:
             self._register_default_tool_startup()
         else:
-            # No shed/tool recordings — cannot smash ROCK/STUMP this pass.
+            # Skip shed recordings. Carry scan in reset() drops only
+            # types whose tool is actually missing (rr-20w.2.12).
             self._clearer.startup_done = True
             self._clearer._tool_scan_done = True
+
+    def _apply_carry_tools(self, ram) -> None:
+        """Keep ROCK/STUMP when hammer/axe is already in the pair."""
+        if self.fetch_tools:
+            return
+        self._clearer.tool_manager.update(ram)
+        missing = []
+        if not self._clearer.tool_manager.has(int(Tool.HAMMER)):
+            missing.append(int(Tool.HAMMER))
+        if not self._clearer.tool_manager.has(int(Tool.AXE)):
+            missing.append(int(Tool.AXE))
+        if missing:
             self._clearer.tools_missing = True
-            self._clearer._enable_lift_only_mode(
-                [int(Tool.HAMMER), int(Tool.AXE)]
-            )
+            self._clearer._enable_lift_only_mode(missing)
+        else:
+            self._clearer.tools_missing = False
 
     def _register_default_tool_startup(self) -> None:
         # Position-locked get_hammer/get_axe recordings only work from their
@@ -186,6 +207,7 @@ class FarmClearTask(Task):
         priority = list(self.priority) if self.priority else None
         self._clearer = FarmClearer(priority=priority)
         self._configure_clearer()
+        self._apply_carry_tools(world.ram)
         self._step_count = 0
         self._started = True
         self._drop_queue.clear()
@@ -197,9 +219,17 @@ class FarmClearTask(Task):
         self._toss_skill = None
         self._approach = None
         self._exit_nav = None
+        if self.handoff == "quota":
+            from harvest.tasks.farm_clear_quota import count_debris
+
+            self._clearer.quota_start_counts = count_debris(
+                world.ram, self.farm_bounds
+            )
         self._pocket_arrived = False
 
     def _scan_bounds(self) -> Optional[Tuple[int, int, int, int]]:
+        if self.farm_bounds is not None and self._pocket_arrived:
+            return self._plot_scan_bounds()
         return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
 
     def _remaining_debris(self, ram) -> list:
@@ -242,17 +272,42 @@ class FarmClearTask(Task):
             and self._pocket_tiles_ready(ram)
         )
 
+    def _plot_cells_to_clear(self) -> set:
+        """3x3 ring + notch + HOE_PLAN stands (2 tiles out)."""
+        from harvest.tasks.crop_geometry import hoe_plan, plot_tiles
+
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        cells = set(plot_tiles((cx, cy), include_center=True))
+        cells.add((cx, cy))
+        for target, stand, _face in hoe_plan((cx, cy)):
+            cells.add(target)
+            cells.add(stand)
+        return cells
+
+    def _plot_scan_bounds(self) -> Tuple[int, int, int, int]:
+        cells = self._plot_cells_to_clear()
+        xs = [c[0] for c in cells]
+        ys = [c[1] for c in cells]
+        return (min(xs), min(ys), max(xs), max(ys))
+
+    def _lock_clearer_to_plot(self) -> None:
+        """Stop roaming the full pocket after arrival — only the 3x3 + stands."""
+        bounds = self._plot_scan_bounds()
+        self._clearer.farm_bounds = bounds
+        self._clearer._locked_bounds = bounds
+        print(f"[CLEAR] Plot scan bounds {bounds}")
+
     def _plant_notch_is_clear(self, ram) -> bool:
-        """The one-cell D2 establish skill only needs its stand cleared."""
+        """True when the 8-tile plot and hoe stands are free of debris."""
         if self.farm_bounds is None or not self._pocket_arrived:
             return False
-        cx, cy = WEST_POCKET_PLANT_CENTER
-        tile_id = int(get_tile_at(ram, cx, cy))
-        return (
-            tile_id not in STALE_TILE_IDS
-            and tile_id not in TILE_TO_DEBRIS
-            and hands_are_clear(ram)
-        )
+        if not hands_are_clear(ram):
+            return False
+        for tx, ty in self._plot_cells_to_clear():
+            tile_id = int(get_tile_at(ram, tx, ty))
+            if tile_id in STALE_TILE_IDS or tile_id in TILE_TO_DEBRIS:
+                return False
+        return True
 
     def _pocket_stand_px(self) -> Point:
         # (13,28) is the weed notch after shop. Stand on the untilled west
@@ -311,6 +366,7 @@ class FarmClearTask(Task):
                     f"tile={self._player_tile(world.ram)}"
                 )
             self._pocket_arrived = True
+            self._lock_clearer_to_plot()
             self._approach = None
             return None
         if self._approach is None:
@@ -334,6 +390,7 @@ class FarmClearTask(Task):
         self._approach = None
         if self._pocket_is_ready(world):
             self._pocket_arrived = True
+            self._lock_clearer_to_plot()
             return None
         # Hop finished (farm gate) but the notch is still off-screen — next
         # frame starts the in-pocket NavTask.
@@ -393,10 +450,27 @@ class FarmClearTask(Task):
         tilemap = int(ram[ADDR_TILEMAP])
         return is_farm_tilemap(tilemap) or tilemap == FARM_TILEMAP
 
+    def _quota_met(self, ram) -> bool:
+        if self.handoff != "quota" or not self.quota:
+            return False
+        from harvest.tasks.farm_clear_quota import quota_satisfied
+
+        return quota_satisfied(
+            ram, self.quota, clearer=self._clearer, bounds=self.farm_bounds
+        )
+
     def _complete_status(self, world: WorldState, remaining) -> TaskStatus:
         """Unbounded whole-farm SUCCESS only with empty debris on farm."""
+        if self.handoff == "quota":
+            return (
+                TaskStatus.SUCCESS
+                if self._quota_met(world.ram)
+                else TaskStatus.FAILURE
+            )
         if self.farm_bounds is not None:
-            return TaskStatus.SUCCESS
+            if self._plant_notch_is_clear(world.ram):
+                return TaskStatus.SUCCESS
+            return TaskStatus.FAILURE
         if remaining or not self._on_farm(world):
             return TaskStatus.FAILURE
         return TaskStatus.SUCCESS
@@ -542,15 +616,23 @@ class FarmClearTask(Task):
         if approached is not None:
             return approached
 
-        # CLEAR_PLOT feeds a composed one-cell hoe/plant skill at (13,28).
-        # Hand off as soon as that stand and our hands are clear instead of
-        # roaming the full (3,14)-(28,30) viewport for thousands of frames.
-        if self._plant_notch_is_clear(world.ram):
+        # CLEAR_PLOT feeds the 3x3 hoe/plant skill at (13,28). Hand off when
+        # the ring + hoe stands are clear instead of roaming the full pocket.
+        # Quota leftover (CLEAR_BUSHES / ROCKS / STUMPS) must not use this.
+        if self.handoff != "quota" and self._plant_notch_is_clear(world.ram):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=(
-                    f"field_clear plant_notch_clear "
+                    f"field_clear plot_ring_clear "
                     f"cleared={self._clearer.cleared_count}"
+                ),
+            )
+        if self._quota_met(world.ram):
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=(
+                    f"field_clear quota_met "
+                    f"cleared={self._clearer.cleared_count} quota={self.quota}"
                 ),
             )
 

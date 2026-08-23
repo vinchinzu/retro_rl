@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | **M3** (calendar multi-day); Gate A economy closed; Gate B continuous open |
-| Best verified result | Gate A Day09 **$1260→$3180** Clean; ship probe re-verified same delta; power-on continuous **21 ovn / money $400** (terminal return_home D23 pre-fix); empty-can 3/3 fixture GREEN |
+| Best verified result | Gate A Day09 **$1260→$3180** Clean; power-on D2 spine GREEN (grape+potato+5pm, Clean); power-on continuous **21 ovn / money $400** (terminal return_home D23 pre-fix); empty-can 3/3 fixture GREEN |
 | Last verification | 2026-08-10 (Gate B soak v6: **21 ovn** past prior D23 0x08 hang; sleep outdoor-evening wait; tip **CROP_WATER refill + NAV_CROP freeze**) |
 | Runtime class | Bronze |
 | Intervention class | Clean |
@@ -18,12 +18,33 @@
 | ROM | `roms/Harvest Moon.sfc` via `retro_setup` (SHA1 gate) |
 | Start contract | Clean power-on → new diary → Spring D1 07:00 town gate; multi-day via `--power-on` auto D1 handoff |
 | Completion contract | Campaign (multi-year farm / marriage / ending) — TBD |
-| Evidence | `recordings/rr_9xyy_ship_money_day09.json`; `recordings/power_on_spring_to_summer.json`; `recordings/run_spring_gate_a_day09.json`; `recordings/empty_can_refill_probe.json` |
+| Evidence | `recordings/power_on_d2_spine_clear_final.json`; `recordings/rr_9xyy_ship_money_day09.json`; `recordings/power_on_spring_to_summer.json`; `recordings/run_spring_gate_a_day09.json`; `recordings/empty_can_refill_probe.json` |
 
 ## Done
 
 - M1/M2 instrumentation + day planner + multi-day shell
 - Sleep always finds house; morning settle after final overnight
+- **2026-08-23 power-on D2 spine GREEN** (`rr-oqri` closed; `rr-5in` evidence, Gate B still open):
+  ```bash
+  HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on \
+    --stop-after-d2-shipping --save-end-state Y1_D2_PostShipper_WorkStart \
+    --out recordings/power_on_d2_spine_clear_final.json
+  ```
+  - Clean: `initial_state_loads=0`, `mid_run_state_loads=0`, `ram_writes=0`
+  - D1 handoff → D2 farm with watering can + grass; mountain grape phase success;
+    potato BUY_SEEDS + CROP_ESTABLISH; farm 5pm ShippingScene dismissed
+  - End Spring **D2 17:00** farm, money **$300→$100** (seed spend; grape wallet
+    credit posts overnight), **2 dry potato `0x54`** at (13,28)/(13,30)
+    (one-cell residual). **8-tile 3x3** around (13,28) is `rr-m7mk` /
+    `harvest.planner.d2_work`: well stand remapped off `(15,27)`, pocket
+    water is 8-ring (`rr-bvam`), leftover quotas 10 bushes / 10 small
+    rocks / 4 boulders / 2 stumps (`rr-w14t`) with RAM `ENSURE_HAMMER`
+    `(176,168)` / `ENSURE_AXE` `(192,168)` (`rr-5aaw` live shed pickup
+    GREEN). Live `Y1_After_Buy_Potato` 8-plant+water still the pin. Do
+    not redo power-on until the probe plants 8. Gate B stays open.
+  - Checkpoint `Y1_D2_PostShipper_WorkStart`. Do not start this gate from
+    `Y1_D2_Morning_After_D1` — grape return-to-bin seals at the house fence.
+  - Grape shipped is **MOUNTAIN_BERRY phase success**, not `shipping_money` RAM.
 - **2026-08-01 clean power-on bootstrap** (headless):
   ```bash
   HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \

@@ -417,19 +417,24 @@ def farm_nav_pocket_plant_skill(*, timeout: int = 4000) -> NavSkill:
 
 
 def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 9000) -> NavSkill:
-    """Stand one tile south and face up to hoe the plant notch.
+    """Stand west of (13,29) (fence-lip (13,30) is not a hoe stand).
 
     Same timeout/radius class as NAV_CROP: this hop often starts at the shed
     outdoor door after ENSURE_CROP_SEEDS. Tight radius + short timeout walked
     UP into the shed when BFS was sealed.
     """
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
-    from harvest.tasks.nav import TILE_SIZE
+    from harvest.tasks.crop_skills import hoe_stand_px
 
-    tx, ty = WEST_POCKET_PLANT_CENTER
+    # Approach from the west so the last walk is RIGHT and RAM facing is
+    # already 2 when the first hoe (13,29) starts. Fence-lip (13,30) is not
+    # a stand.
+    cx, cy = WEST_POCKET_PLANT_CENTER
+    stand = (cx - 2, cy + 1)
+    px, py = hoe_stand_px(stand, "right")
     return NavSkill(
         name="nav_pocket_hoe_stand",
-        target_px=(tx * TILE_SIZE + 8, (ty + 1) * TILE_SIZE + 8),
+        target_px=(px, py),
         radius=6,
         soft_radius=6,
         timeout=timeout,
@@ -469,35 +474,62 @@ def farm_pocket_plant_skill(
     *,
     seed_type: str = "potato",
     include_water: bool = False,
+    include_plant: bool = True,
     timeout: int = 4000,
 ):
-    """Reactive hoe → plant (optional water 1 cell). No tape replay.
+    """Reactive 3x3 hoe ring → plant from the untilled notch. No tape replay.
 
     Carry must already hold hoe+seeds (establish pass). Water is a later
     can-pass unless ``include_water`` and the can is in the pair.
+    ``include_plant=False`` is the hoe-until-5pm tune: till the ring only.
     """
     from harvest.core.carry import seed_item_id
     from harvest.core.tile_catalog import Tool
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_skills import (
+        plant_until_plot_skill,
+        pocket_hoe_ring_skills,
+    )
 
     skills: list = [
         farm_fence_jump_toss_skill(),
-        # Walk to the hoe stand before X-swap. Doing the swap at the shed
+        # Walk into the pocket before X-swap. Doing the swap at the shed
         # door (post-ENSURE) times out while input_lock is still settling.
+        # NavTask leaves (26,30) south then west — do not hoe the notch.
         farm_nav_pocket_hoe_stand_skill(),
         farm_select_carry_skill(int(Tool.HOE)),
-        farm_hoe_tile_skill(),
-        farm_nav_pocket_plant_skill(),
-        farm_select_carry_skill(seed_item_id(seed_type)),
-        farm_plant_tile_skill(seed_type=seed_type),
+        *pocket_hoe_ring_skills(WEST_POCKET_PLANT_CENTER),
     ]
-    if include_water:
+    if include_plant:
         skills.extend(
             [
-                farm_select_carry_skill(int(Tool.WATERING_CAN)),
-                farm_water_one_skill(),
+                farm_nav_pocket_plant_skill(),
+                farm_select_carry_skill(seed_item_id(seed_type)),
+                plant_until_plot_skill(seed_type=seed_type),
             ]
         )
-    return sequence_skills("pocket_plant_cell", *skills, idle_between=True)
+    if include_water:
+        skills.append(farm_pocket_water_skill())
+    return sequence_skills("pocket_plant_plot", *skills, idle_between=True)
+
+
+def farm_pocket_water_skill(*, timeout: int = 4000):
+    """Reactive 8-ring water from the untilled notch. No tape replay.
+
+    Can pass: select the watering can, stand on (13,28) for the cardinals,
+    corners from right-middle / left-middle. Does not water the notch.
+    """
+    from harvest.core.tile_catalog import Tool
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_skills import pocket_water_ring_skills
+
+    skills: list = [
+        farm_fence_jump_toss_skill(),
+        farm_nav_pocket_plant_skill(),
+        farm_select_carry_skill(int(Tool.WATERING_CAN)),
+        *pocket_water_ring_skills(WEST_POCKET_PLANT_CENTER),
+    ]
+    return sequence_skills("pocket_water_ring", *skills, idle_between=True)
 
 
 __all__ = [
@@ -521,6 +553,7 @@ __all__ = [
     "farm_nav_to_shipping_bin_skill",
     "farm_plant_tile_skill",
     "farm_pocket_plant_skill",
+    "farm_pocket_water_skill",
     "farm_pond_refill_face",
     "farm_press_ship_skill",
     "farm_select_carry_skill",

@@ -31,6 +31,17 @@ HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
 # Power-on continuous (rr-5in): D1 handoff auto + multi-day
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2 \
   --out recordings/power_on_d1_handoff_d2.json
+# Composed D1 handoff from the power-on town gate (six talks → truck → shed → D2)
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_Town_Gate \
+  --save-end-state Y1_D2_Morning_After_D1 \
+  --out recordings/town_day1_town_gate_composed.json
+# Continuous D2 work-entry checkpoint: grape ship + potato buy + 5pm dialogue.
+# Natural entry is power-on. Do not start this gate from Y1_D2_Morning_After_D1
+# — grape return-to-bin seals at the house fence (rr-oqri).
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on \
+  --stop-after-d2-shipping --save-end-state Y1_D2_PostShipper_WorkStart \
+  --out recordings/power_on_d2_spine_clear_final.json
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spring \
   --out recordings/power_on_spring_to_summer.json
 # --no-d1-handoff disables auto town talks+shed after power-on
@@ -58,9 +69,15 @@ HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
 # West-pocket weeds/stones (inside y=31 fence; lift only, no plant tape)
 HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
   --state Y1_Inside_House --out recordings/pocket_clear_probe.json
-# Post-shop hoe+seed collect + one-cell plant (rr-jq9q)
+# Post-shop hoe+seed collect + 3x3 plant (8 around (13,28); rr-m7mk)
 HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
   --state Y1_After_Buy_Potato --out recordings/d2_plant_probe.json
+# Hoe-only tune (till the ring, do not plant)
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --hoe-only --out recordings/d2_hoe_ring.json
+# 8-ring plant then water (rr-m7mk / rr-bvam)
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
 
 # Stamina object from a pin (`player.stamina` is current/max/tool_hits)
 uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact

@@ -130,12 +130,19 @@ def _tool_shelf(
 
 
 SHED_TOOL_SPECS: Dict[int, ShedShelfSpec] = {
-    # Tool layout from HM-Decomp DATA16_81BE0F; stands one tile below sprites.
+    # DATA16_81BE0F (tool_id*8: sprite x,y). Stand y = sprite_y+24, same
+    # transform as verified milker/brush/can. Bottom shelf is not packed
+    # 16px between can(96) and hoe — sickle/hammer/axe are 144/176/192.
     int(Tool.MILKER): _tool_shelf(Tool.MILKER, (64, 168)),
     int(Tool.BRUSH): _tool_shelf(Tool.BRUSH, (80, 168)),
     int(Tool.WATERING_CAN): _tool_shelf(Tool.WATERING_CAN, (96, 168)),
-    # Hoe stand verified via water_planted_tile replay.
+    int(Tool.SICKLE): _tool_shelf(Tool.SICKLE, (144, 168)),
+    # Hoe stand verified via water_planted_tile replay (ROM sprite is 160,144).
     int(Tool.HOE): _tool_shelf(Tool.HOE, (168, 166)),
+    # Live: empty-hands Y1_After_Buy_Potato pickup ended (178,166).
+    int(Tool.HAMMER): _tool_shelf(Tool.HAMMER, (176, 168)),
+    # Live: get_hammer_end door→shelf, axe selected + hammer backpack, (194,166).
+    int(Tool.AXE): _tool_shelf(Tool.AXE, (192, 168)),
 }
 
 SHED_SEED_SPECS: Dict[str, ShedShelfSpec] = {
