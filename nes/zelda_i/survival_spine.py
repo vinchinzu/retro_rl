@@ -61,6 +61,7 @@ from zelda_i.level4_dungeon import (
     ROOM_51_SPEC,
     ROOM_40_SPEC,
     ROOM_50_SPEC,
+    ROOM_31_SPEC,
     ROOM_L4_EAST_31,
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_NORTH_30,
@@ -68,6 +69,7 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_ZOLS_40,
 )
 from zelda_i.level4_maze_path import (
+    make_maze_31_inland_controller,
     make_north_40_controller,
     make_room_40_key_controller,
 )
@@ -75,6 +77,7 @@ from zelda_i.level4_path import (
     make_bomb_61_north_controller,
     make_entry_up_controller,
     make_left_50_controller,
+    make_room_31_clear_controller,
     make_room_50_clear_controller,
     make_room_51_key_controller,
 )
@@ -99,6 +102,7 @@ Through = Literal[
     "level4-room40-key",
     "level4-room30",
     "level4-room31",
+    "level4-clear31",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -111,6 +115,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-room40-key",
     "level4-room30",
     "level4-room31",
+    "level4-clear31",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -257,6 +262,27 @@ def level4_key_right_31_success(snap: ZeldaSnapshot, *, keys_before: int) -> boo
     )
 
 
+def level4_clear_31_stages():
+    """West-door leftover (16,141) → alcove clip → maze Vire clear."""
+    clear_31 = make_room_31_clear_controller()
+    clear_31.phase = DungeonPhase.FIGHT
+    return (
+        ("level4_inland_0x31", make_maze_31_inland_controller(), 4000),
+        ("level4_clear_0x31", clear_31, ROOM_31_SPEC.max_frames),
+    )
+
+
+def level4_clear_31_success(snap: ZeldaSnapshot) -> bool:
+    """Exact 0x31 maze-clear stop; do not require the free-RIGHT into 0x32."""
+    return (
+        snap.level == 4
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L4_EAST_31
+        and not snap.transitioning
+        and not ROOM_31_SPEC.live_enemies(snap)
+    )
+
+
 def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
     """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
     return {
@@ -323,6 +349,7 @@ class SpineRun:
                 "level4-room40-key": "level4_natural_key_0x40",
                 "level4-room30": "level4_enter_0x30",
                 "level4-room31": "level4_enter_0x31",
+                "level4-clear31": "level4_clear_0x31",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -823,4 +850,21 @@ def run_survival_spine(
     run.success = level4_key_right_31_success(snap, keys_before=keys_before_31)
     if not run.success:
         run.failed_stage = "level4_enter_0x31"
+        return run
+    if through == "level4-room31":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_clear_31_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_clear_31_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_clear_0x31"
     return run

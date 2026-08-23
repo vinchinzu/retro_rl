@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous entry `0x71` verified; interior next |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous `0x31` maze clear; free-RIGHT `0x32` next |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -156,15 +156,24 @@ keys 6→5, bombs=15, TF=`0x07`, hop 667f (clear 325f + KEY-RIGHT 342f),
 deaths/state loads/progression/capacity writes all 0. `--through level4-room31`
 stops at enter-`0x31` (maze Vires still live). Do not close `.6` until TF `0x08`.
 
-Next boundary is the `0x31` maze Vire clear from west-door `(16,141)`, then
-free RIGHT into `0x32`. Attach the existing clear / east controllers.
+The `0x31` maze Vire clear is now on the continuous tape from that west-door
+leftover `(16,141)`: `l4_clear31_continuous_v7.json`, 1/1, 109,514f, room
+`0x31` `(112,141)`, keys=5, bombs=15, TF=`0x07`, hop 4,990f (inland 172f +
+clear 4,818f), deaths/state loads/progression/capacity writes all 0.
+`--through level4-clear31` stops after the Vire clear (east door is open;
+do not require `0x32`). West alcove cardinals stick at `(32,141)`; the
+verified inland is RIGHT+UP then waypoints `(48,109)→(80,109)→(80,173)→(128,133)`.
+Do not close `.6` until TF `0x08`.
+
+Next boundary is free RIGHT `0x31→0x32` from leftover `(112,141)`. Do not
+use checkpoint-mediated/emulator-state BFS.
 Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-room31 --no-video --trials 1 \
-  --tag l4_room31_continuous_v1
+  --through level4-clear31 --no-video --trials 1 \
+  --tag l4_clear31_continuous_v7
 ```
 Isolated 0x6b check:
 

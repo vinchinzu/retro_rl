@@ -462,6 +462,56 @@ def test_key_right_31_aligns_y141_from_clear_leftover() -> None:
     assert entered.success
 
 
+def test_room_31_west_alcove_clip_is_right_up() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level4_maze_path import make_maze_31_inland_controller
+
+    def snap(x: int, y: int, *, screen: int = ROOM_L4_EAST_31):
+        return SimpleNamespace(
+            mode=5, level=4, screen=screen, transitioning=False,
+            link_x=x, link_y=y, objects=(),
+        )
+
+    alcove = make_maze_31_inland_controller()
+    action = alcove.step(snap(32, 141))
+    assert action.reason == "maze31_alcove_clip"
+    assert list(action.action) == list(nes_action("RIGHT", "UP"))
+
+    corridor = make_maze_31_inland_controller()
+    first = corridor.step(snap(48, 133))
+    assert first.reason == "maze31_thread_UP"
+    assert not corridor.success
+    north = make_maze_31_inland_controller()
+    assert north.step(snap(48, 109)).reason == "maze31_thread_RIGHT"
+    corner = make_maze_31_inland_controller()
+    assert corner.step(snap(80, 109)).reason == "maze31_thread_DOWN"
+    drop = make_maze_31_inland_controller()
+    assert drop.step(snap(80, 141)).reason == "maze31_thread_DOWN"
+
+    inland = make_maze_31_inland_controller()
+    done = inland.step(snap(128, 133))
+    assert done.reason == "done"
+    assert inland.success
+    assert list(done.action) == list(nes_idle_action())
+
+
+def test_room_31_west_door_occupancy_includes_alcove() -> None:
+    """Continuous leftover (16,141)/(33,141) is west of default xmin=40."""
+    from zelda_i.walk_physics import OccupancyWalker
+
+    assert ROOM_31_SPEC.combat.occupancy_patrol is True
+    assert ROOM_31_SPEC.combat.occupancy_bounds is not None
+    assert ROOM_31_SPEC.combat.occupancy_bounds[0] <= 16
+    default = OccupancyWalker()
+    assert not default.grid.in_bounds(16, 141)
+    assert not default.grid.in_bounds(33, 141)
+    ctl = make_room_31_clear_controller()
+    assert ctl.walker.grid.in_bounds(16, 141)
+    assert ctl.walker.grid.in_bounds(33, 141)
+    direction = ctl.walker.next_dir((33, 141), (64, 109))
+    assert direction in ("UP", "RIGHT", "DOWN")
+
+
 def test_room_30_live_enemies_ignore_invuln_0x2b() -> None:
     invuln = SimpleNamespace(slot=1, type_id=INVULN_MOVER_TYPE, x=80, y=133, hp=64)
     vire = SimpleNamespace(slot=3, type_id=VIRE_OBJECT_TYPE, x=160, y=100, hp=64)
