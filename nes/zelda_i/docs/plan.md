@@ -130,13 +130,30 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   --through level4-entry --no-video --trials 1 --tag l4_entry_continuous_v1
 ```
 
-Next implementation boundary: attach a one-env, deterministic L4
-`0x71→0x61→bomb north→0x51 key` controller sequence. The live predecessor has
-bombs=0, so apply the already documented owned-bomb count top-up before the
-`0x61` wall; preserve keys=4 and do not use the checkpoint-mediated
-`run_level4_entrance_tf.py` compose or its emulator-state BFS. Expected first
-transitions: `0x71 UP→0x61`, clear three Vires, bomb north→`0x51`, clear eight
-Keese and collect the natural key.
+The continuous spine now passes that boundary and clears `0x50`:
+`l4_clear50_continuous_v1.json`, 1/1, TF=`0x07`, keys=5, bombs=15, deaths 0,
+state loads 0, progression/capacity writes 0. At the verified `0x61` bomb gate,
+the operator-authorized Survival exception tops bombs 0→16; the wall consumes
+one. Keys remain 4 until the natural `0x51` key raises them to 5.
+
+Next boundary is `0x50` north→`0x40` from the continuous clear pose. Two fixed
+paths failed closed without deaths or forbidden writes:
+
+- `l4_room40_key_continuous_v1`: old 28-token path boxed at `(112,117)`.
+- `l4_room40_key_continuous_v2`: isolated shortest path missed from this pose
+  and ended `(160,149)`.
+
+Do not rerun either unchanged and do not use emulator-state BFS. Add compact
+coordinate/reason samples to the one-frame `Level4North40Controller`, predict
+the next occupancy move, and replan from the first stuck cell. Exact verified
+predecessor command:
+
+```bash
+UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
+  uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-clear50 --no-video --trials 1 \
+  --tag l4_clear50_continuous_v1
+```
 Isolated 0x6b check:
 
 ```bash
