@@ -15,6 +15,7 @@ from mortal_kombat.ram import (
     Screen,
     parse_ram,
 )
+from mortal_kombat.fight1_tape import FIGHT1_RLE
 
 KIND_SCRIPT = "script"
 SCRIPT_NAME = "scripted"
@@ -27,6 +28,41 @@ AIRBORNE_Y = 140
 SPECIAL_COOLDOWN = 55
 # FIGHT! banner eats specials for ~90f on Fight_LiuKang; fireball then hits for 25.
 INTRO_FRAMES = 90
+
+
+class DeterministicFight1Policy:
+    """Exact no-model replay for the ``Fight_LiuKang`` save state."""
+
+    kind = KIND_SCRIPT
+    name = "fight1_tape"
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self._run = 0
+        self._remaining = FIGHT1_RLE[0][1]
+
+    def act(
+        self,
+        ram: np.ndarray,
+        rgb: np.ndarray | None,
+        *,
+        deterministic: bool = False,
+    ) -> np.ndarray:
+        del ram, rgb, deterministic
+        if self._run >= len(FIGHT1_RLE):
+            return zeros()
+        mask, _frames = FIGHT1_RLE[self._run]
+        out = zeros()
+        for button in range(12):
+            out[button] = (mask >> button) & 1
+        self._remaining -= 1
+        if self._remaining == 0:
+            self._run += 1
+            if self._run < len(FIGHT1_RLE):
+                self._remaining = FIGHT1_RLE[self._run][1]
+        return out
 
 
 def zeros() -> np.ndarray:

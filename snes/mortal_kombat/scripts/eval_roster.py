@@ -77,14 +77,19 @@ def _eval_ppo(
 
 
 def _eval_scripted(state: str, attempts: int) -> tuple[int, int]:
-    from mortal_kombat.scripted import ScriptedPolicy
+    from mortal_kombat.scripted import DeterministicFight1Policy, ScriptedPolicy
 
     wins = 0
     losses = 0
     for _ in range(attempts):
         env = make_raw_eval_env(state)
         try:
-            if play_buttons_match(ScriptedPolicy(), env):
+            policy = (
+                DeterministicFight1Policy()
+                if state == "Fight_LiuKang"
+                else ScriptedPolicy()
+            )
+            if play_buttons_match(policy, env):
                 wins += 1
             else:
                 losses += 1

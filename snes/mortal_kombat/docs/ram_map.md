@@ -36,6 +36,9 @@ v3 observation is 20 floats (`snapshot_features`). Incompatible with v1
 Round / match notes:
 
 - Match 1 keeps `match_counter=0`. Timer-down after round 1 is **not** char select.
+- For scripted replay scoring, count health transitions `>0 → 0` for each
+  fighter. These settle before the delayed HUD round bytes and avoid the noisy
+  P2 byte producing a false loss at the final KO.
 - Intra-match KO / "FIGHT!" intro auto-advance; START pauses.
 - After a match win: ~900 frames of no START (KO → FINISH HIM → pose → VS), then
   pulse START. `match_counter` increments on the VS / load into the next fight.

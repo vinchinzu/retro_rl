@@ -92,10 +92,26 @@ def play_buttons_match(
     if callable(reset):
         reset()
     reset_obs(env)
+    p1_kos = 0
+    p2_kos = 0
+    prev_p1_health = None
+    prev_p2_health = None
     for _ in range(max_steps):
         ram = env.unwrapped.get_ram()
         snap = parse_ram(ram)
         if snap.screen is Screen.CONTINUE:
+            return False
+        # Health zero-crossings settle immediately and avoid the delayed/noisy
+        # HUD round bytes. The bytes remain a fallback for states loaded at KO.
+        if prev_p2_health is not None and prev_p2_health > 0 and snap.p2_health == 0:
+            p1_kos += 1
+        if prev_p1_health is not None and prev_p1_health > 0 and snap.p1_health == 0:
+            p2_kos += 1
+        prev_p1_health = snap.p1_health
+        prev_p2_health = snap.p2_health
+        if p1_kos >= 2 and p1_kos > p2_kos:
+            return True
+        if p2_kos >= 2 and p2_kos > p1_kos:
             return False
         # p2_rounds HUD flickers 0→2 during FIGHT; only score settled KO/timeout.
         if rounds_settled(snap):
