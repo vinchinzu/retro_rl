@@ -92,6 +92,23 @@ Verified this session (do not re-discover):
   RAM and pixel oracles lost 0–2; offline capture used stochastic
   `mk1_v3_Match5_ppo_final.zip`. Runtime still loads no models. Not a
   reactive policy or a first-seven clear.
+- Natural-entry continuation now reaches the Match 7 transition at frame
+  36,752 (29,783 + 6,969), 5/5 identical HUD/pose signatures on cold boots.
+  Match 6 vs Johnny Cage again (id 0) 2–1. RAM: `match_counter`
+  0→1→2→3→4→5→6 and Liu Kang id 3. The Kano byte at the Fight 5 pin is
+  leftover HUD. First fight-ready can be a black fade with p2=0; identify
+  on a visible frame. Match6 v3 lost 0–2; offline capture used
+  deterministic `mk1_v3_Match5_ppo_final.zip`. Runtime still loads no
+  models. Not a reactive policy or a first-seven clear.
+- Natural-entry continuation now reaches the Endurance 1 transition at
+  frame 41,503 (36,752 + 4,751), 5/5 identical HUD/pose signatures on
+  cold boots. Match 7 vs the Liu Kang mirror (id 3) 2–0. RAM:
+  `match_counter` 0→1→2→3→4→5→6→7 and Liu Kang id 3. The Cage byte at
+  the Fight 6 pin is leftover HUD. Deterministic RAM and pixel oracles
+  lost 0–2 / 1–2; offline capture used stochastic
+  `mk1_v3_Match5_ppo_final.zip` (attempt 1). Runtime still loads no
+  models. This is the first seven matches as one state-exact tape, not a
+  reactive policy or a credits claim.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -130,3 +147,5 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/replay_natural_fight3.py` | Model-free exact power-on tape through the Match 4 transition |
 | `scripts/replay_natural_fight4.py` | Model-free exact power-on tape through the Match 5 transition |
 | `scripts/replay_natural_fight5.py` | Model-free exact power-on tape through the Match 6 transition |
+| `scripts/replay_natural_fight6.py` | Model-free exact power-on tape through the Match 7 transition |
+| `scripts/replay_natural_fight7.py` | Model-free exact power-on tape through the Endurance 1 transition |
