@@ -33,6 +33,8 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight3.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight3.py --repeat 5
 uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py --repeat 5
+uv run python snes/mortal_kombat/scripts/replay_natural_fight5.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight5.py --repeat 5
 ```
 
 ## Traps
@@ -67,3 +69,8 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py --repeat 5
   18,077 + 7,087) to the Match 5 transition. Live Match 4 is Raiden (id 2)
   2–1. The Sub-Zero byte at the Fight 3 pin is leftover HUD. RAM oracles
   lost this match; the offline capture used the pixel ladder-ft zip.
+- `replay_natural_fight5.py` concatenates through Match 5 (29,783 frames:
+  25,164 + 4,619) to the Match 6 transition. Live Match 5 is Kano (id 1)
+  2–0. The Raiden byte at the Fight 4 pin is leftover HUD. Deterministic
+  RAM and pixel oracles lost 0–2; offline capture used stochastic
+  Match5 v3. Runtime still loads no models.
