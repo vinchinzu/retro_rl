@@ -98,7 +98,7 @@ class DayPhaseRegistryTests(unittest.TestCase):
             PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
             world,
         )
-        self.assertEqual(establish.name, "pocket_plant_cell")
+        self.assertEqual(establish.name, "pocket_plant_plot")
         self.assertIsInstance(water, CropWaterTask)
         self.assertEqual(water.work_mode, "water")
 
@@ -111,13 +111,33 @@ class DayPhaseRegistryTests(unittest.TestCase):
         establish = DayTaskFactory().make_task(CROP_ESTABLISH_PHASE, world)
         water = DayTaskFactory().make_task(CROP_WATER_PHASE, world)
 
-        self.assertEqual(establish.name, "pocket_plant_cell")
+        self.assertEqual(establish.name, "pocket_plant_plot")
         self.assertIsInstance(water, CropWaterTask)
         self.assertEqual(water.work_mode, "water")
         # North stream (y~16-22) + south pond; south-only left early west plants dry.
         self.assertEqual(water.refill_bounds, (3, 10, 62, 60))
         self.assertEqual(CROP_WATER_PHASE.params.get("refill_bounds"), (3, 10, 62, 60))
         self.assertEqual(CROP_WATER_PHASE.params.get("work_mode"), "water")
+
+    def test_crop_builder_pocket_water_returns_water_skill(self) -> None:
+        from harvest.planner.d2_work import pocket_water_phase
+        from harvest.tasks.crop_planter import CropWaterTask
+        from harvest.tasks.crop_skills import PLOT_RING_SIZE
+
+        world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
+        pocket = DayTaskFactory().make_task(pocket_water_phase(), world)
+        catalog = DayTaskFactory().make_task(
+            PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
+            world,
+        )
+        self.assertEqual(pocket.name, "pocket_water_ring")
+        self.assertNotIsInstance(pocket, CropWaterTask)
+        self.assertEqual(
+            sum(1 for t in pocket.tasks if t.name == "water_until_wet"),
+            PLOT_RING_SIZE,
+        )
+        self.assertIsInstance(catalog, CropWaterTask)
+        self.assertEqual(catalog.work_mode, "water")
 
     def test_hot_spring_builder(self) -> None:
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)

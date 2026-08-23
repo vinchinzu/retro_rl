@@ -24,7 +24,28 @@ the return). NavTask leaves shed door `(26,30)` west, never UP/A into
 the shed. Hoe face is a 1f tap (holding UP walked onto the target).
 Probe `d2_plant_probe`: collect 1140f, notch clear, `CROP_ESTABLISH`
 sequence complete, `(13,28)=0x54`. One-cell does not spend the bag.
-Do not STATUS-promote Gate B.
+**Next (`rr-m7mk` / `rr-bvam` / `rr-w14t` / `rr-5aaw`):** D2 work catalog
+is `harvest.planner.d2_work`. Shop splice concatenates plant+water+leftover
+so a 06:08 plan still gets evening smash (not `hour>=17` at plan time).
+Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer `0x06`),
+**4** large 2×2, **2** stumps (axe). Hammer then axe (2-slot carry). Spa
+inserts when stamina cannot finish an 8-swing 2×2. Hoe ring must not stand
+on the well `(15,27)`. Tune from `Y1_After_Buy_Potato`; redo power-on after
+the 3x3 probe plants 8. Do not STATUS-promote Gate B.
+
+**2026-08-23 (`rr-m7mk` lift residual):** pocket stone at **(11,29)** (not
+the stand to its north) was a false-success. Lift emptied the cell, then
+`toss_pulse` held UP for 24f and walked the rock onto **(11,28)**; CLEAR
+counted it cleared and `failed_tiles` skipped the re-drop. Farmer then
+stood at (11,29) boxed by pond `0xA6` / stone / tilled ring / fence.
+Fix: claim a lift only after hands are empty and the origin stays
+non-debris; toss A is d-pad-free; hoe stands + origin are not landings;
+boxed west-lip carry runs east instead of throwing north. Live
+`Y1_After_Buy_Potato`: CLEAR `plot_ring_clear` with `(11,28)=0x01`,
+`(11,29)=0x02`, first hoe tills `(13,29)=0x07`. Hoe well stand is remapped
+in `remap_pocket_hoe_stand`: `(14,27)` from `(14,28)` face-up, not
+`nav_hoe_ring_1_left` onto `(15,27)`. Live 8-plant/`--water` from
+`Y1_After_Buy_Potato` is still the pin. Shots: `recordings/d2_stone_probe/`.
 
 ## Invariants
 
@@ -88,14 +109,15 @@ SUCCESS in one tick.
 
 ### P1 — hammer never fetched; missing axe drops ROCK (`rr-20w.2.12`)
 
-`FETCH_CLEAR_TOOL_RECORDINGS` is off. `_enable_lift_only_mode` replaces
-priority with `[WEED, STONE]` if **hammer or axe** is missing. D2 carry is
-can+seeds. `SHED_TOOL_SPECS` has no hammer/axe. Finalize ignores
-`ToolManager.has()` / backpack.
+`FETCH_CLEAR_TOOL_RECORDINGS` stays off. Leftover uses RAM shelf
+`ENSURE_HAMMER` / `ENSURE_AXE` (`ensure_tool` → `EnsureCarryToolTask`),
+not recorded `GET_HAMMER` / `GET_AXE`. `SHED_TOOL_SPECS` bottom-shelf
+stands from DATA16_81BE0F (stand y = sprite_y+24, same as can): hammer
+`(176,168)`, axe `(192,168)`, sickle `(144,168)`. Two carry slots:
+ENSURE_HAMMER → CLEAR_ROCKS → ENSURE_AXE → CLEAR_STUMPS (never both).
 
 **Fix:** drop only the debris types whose tool is actually missing. If
-hammer is in the pair, still smash rocks. Evening leftover (`rr-20w.2.8`)
-needs a real `ENSURE_HAMMER` (shelf coords from recording/ROM, not guessed).
+hammer is in the pair, still smash rocks.
 
 ### P1 — stamina gate cannot finish a large rock (`rr-20w.2.14`; spa is `rr-pzw`)
 
@@ -106,8 +128,12 @@ tiles collapse to the 2×2 TL. Lifts continue at stamina 1–3. Do not spa
 on D2 morning.
 
 **Fix:** `Stamina.from_ram` + `can_finish_multi_hit()`. Evening leftover
-clear (`rr-20w.2.8`) inserts `HOT_SPRING_STAMINA` (fill to max) when
-stamina cannot finish the 8-swing budget (`rr-pzw`).
+clear (`rr-20w.2.8`) inserts `HOT_SPRING_STAMINA` (fill to max,
+`return_to_farm`) when stamina cannot finish the 8-swing budget (`rr-pzw`
+wiring). Splice-time spa uses **live stamina after water**; it does not
+spa on D2 morning. Mid-phase spa+retry if `CLEAR_ROCKS`/`CLEAR_STUMPS`
+fail `stamina_low` is a follow-up (orchestrator-owned, not a
+`farm_clearer` thrash `if`).
 
 ### P2 — 5pm A-pulse steals tool frames (`rr-20w.2.13`)
 

@@ -422,6 +422,8 @@ def _build_clear_field(
         prefer_lift_for_stones=spec.params.get("prefer_lift_for_stones", False),
         farm_bounds=bounds,
         priority=priority,
+        handoff=str(spec.params.get("handoff") or ""),
+        quota=spec.params.get("quota"),
     )
 
 
@@ -477,11 +479,15 @@ def _build_eve_talk_loop(
 def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     refill_bounds = spec.params.get("refill_bounds")
     work_mode = spec.params.get("work_mode", "full")
-    # First plant: reactive hoe/plant 1 cell. No tape replay.
+    # First plant: reactive 8-ring hoe+plant. D2 water is work_mode=pocket.
     if spec.phase == "CROP_ESTABLISH" or str(work_mode) == "establish":
         from harvest.tasks.skills import farm_pocket_plant_skill
 
         return farm_pocket_plant_skill(seed_type=ctx.seed_type, include_water=False)
+    if str(work_mode) == "pocket":
+        from harvest.tasks.skills import farm_pocket_water_skill
+
+        return farm_pocket_water_skill()
     skip_water_tiles = set(live_harvestable_crop_tiles(world.ram, ctx.state_name))
     return CropWaterTask(
         seed_type=ctx.seed_type,
