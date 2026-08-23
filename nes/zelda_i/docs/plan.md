@@ -17,9 +17,10 @@ recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 
 Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
 Entrance `0x7c` is **`rr-4d53.3.0` closed**. West key `0x7b` is
-The continuous spine now reaches the natural Raft in `0x0f`; all `.3.3.*`
-leaves are verified. Next is the carried-bomb Raft→boss suffix (`.3.4.*`)
-plus its bomb-budget gate `.3.2`.
+The continuous spine now clears L3 and returns to OW `0x74` with TF `0x07`.
+The `.3.4.*` suffix is verified on `l3_tf_continuous_video_v1`; its documented
+bomb-count top-up at natural Raft remains Survival-only until the farm pass.
+Next is the live L3-exit → L4 suffix.
 
 Full spine (do not claim ahead of the tip):
 
@@ -36,9 +37,9 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.3.2` | `0x5a` KEY-LEFT → `0x59` | **closed** — 1/1 Survival, keys 5→4 |
 | `rr-4d53.3.3.3` | clear `0x59`, DOWN → `0x69` | **closed** — 1/1 Survival |
 | `rr-4d53.3.3.4` / `.3.3` | clear `0x69`, passage → Raft | **closed** — 1/1 Survival, bombs=8 |
-| `rr-4d53.3.2` | L3 bombs (no poke-16) | blocked on `.3.1` |
-| `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | blocked on `.3.3` + `.3.2` |
-| `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | in_progress; closes with `.3.4.4` |
+| `rr-4d53.3.2` | L3 bomb budget | **verified Survival** — documented count top-up 8→16; farm deferred |
+| `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
+| `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
@@ -57,7 +58,8 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trial
 Expected: `recordings/survival_spine.json` + `.mp4`; `continuous_emulator_session=true`;
 `boot_frames` near 200–565; `boot_policy.file_slot=1`; `progression_writes=0`;
 `capacity_writes=0`; **`--through level2`**: `triforce & 0x02` in room `0x0d`;
-**`--through level3`**: natural Raft in passage `0x0f` (`stop=level3_raft`).
+**`--through level3`**: post-L3 OW `0x74`, TF includes `0x04`
+(`stop=level3_triforce_0x04`).
 `inventory_assist` lists bomb/key count pokes (power-on L2 entry is bombs=0).
 Default Clean paths stay untouched. `--no-video` skips the encode.
 `--through level1` stops after shard 1.
@@ -113,9 +115,9 @@ Live ladder that closed the boundary (do not regress):
 - v11: DOWN oscillates at x=112, y=125–127 for 6000f.
 - v12: RIGHT exits the diagonal pocket; room `0x5b` reached in 945 exit frames.
 
-Natural Raft (`rr-4d53.3.3.4`) is closed. Next is the carried-bomb boss
-suffix (`.3.4.*`); the spine has bombs=8 at Raft and must not inherit the
-isolated suffix's poke-16.
+Natural Raft and the boss suffix are verified. The spine tops bombs 8→16 at
+Raft under the documented Survival count shortcut; the isolated suffix remains
+recon. Next is L3 exit → L4.
 Isolated 0x6b check:
 
 ```bash
@@ -218,7 +220,7 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 1. **Survival spine** — `rr-4d53.2.3` Boom→TF closed (documented bomb/key
    top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
    (`.3.1.1`). The full entrance→Raft corridor (`.3.3`) is closed; next is
-   the carried-bomb Raft→TF `0x04` suffix, then `.6` L4 and `.7`
+   the verified Raft→TF `0x04` suffix, then `.6` L4 and `.7`
    L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
@@ -228,8 +230,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
 
 ## Bottleneck
 
-**L2 exit → natural L3 Raft** (`rr-4d53.3.3.4`) is verified. The carried-bomb
-Raft→Manhandla→TF suffix is the watchable tip.
+**Power-on → L3 TF `0x04`** is verified on the continuous Survival spine.
+The L3-exit → L4 suffix is the watchable tip.
 West key `0x7b` (`.3.1.1`) and entrance `0x7c` (`.3.0`) are closed. Then
 Raft (`.3.3.*`), bombs (`.3.2`), TF (`.3.4.*`). L9 dest walk is parked.
 

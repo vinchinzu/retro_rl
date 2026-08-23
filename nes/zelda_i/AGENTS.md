@@ -96,10 +96,10 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine now
-reaches natural Raft in `0x0f`: `l3_raft_spine_v2`, keys=4, bombs=8,
-TF=0x03, zero deaths/progression/capacity writes. Passage mode 9 is a
-documented controllable Survival refill phase. Next is the carried-bomb
-Raft→boss suffix; do not add isolated `--poke-bombs 16`.
+clears L3: `l3_tf_continuous_video_v1`, post-fanfare OW `0x74`, TF=0x07, Raft=1,
+keys=4, zero deaths/progression/capacity writes and zero state restores. L3
+uses a documented bomb-count top-up 8→16 at natural Raft until the farm pass.
+Next is the live L3-exit → L4 suffix.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

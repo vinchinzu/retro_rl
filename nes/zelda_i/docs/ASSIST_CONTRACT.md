@@ -44,9 +44,9 @@ The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 
 Opened 2026-08-15 so the continuous spine can open L2 bomb walls (power-on
 entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass.
-The spine applies this at L2 entry and again before `SPINE_BOMB_RETOPUP`
-stages. **Not Clean.** Strip later; do not treat a poke tape as natural
-inventory.
+The spine applies this at L2 entry, again before `SPINE_BOMB_RETOPUP`
+stages, and at the natural L3 Raft boundary before the bomb-heavy boss suffix.
+**Not Clean.** Strip later; do not treat a poke tape as natural inventory.
 
 Allowed fields only:
 
