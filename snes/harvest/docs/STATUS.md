@@ -35,13 +35,17 @@
     potato BUY_SEEDS + CROP_ESTABLISH; farm 5pm ShippingScene dismissed
   - End Spring **D2 17:00** farm, money **$300→$100** (seed spend; grape wallet
     credit posts overnight), **2 dry potato `0x54`** at (13,28)/(13,30)
-    (one-cell residual). **8-tile 3x3** around (13,28) is `rr-m7mk` /
-    `harvest.planner.d2_work`: well stand remapped off `(15,27)`, pocket
-    water is 8-ring (`rr-bvam`), leftover quotas 10 bushes / 10 small
-    rocks / 4 boulders / 2 stumps (`rr-w14t`) with RAM `ENSURE_HAMMER`
-    `(176,168)` / `ENSURE_AXE` `(192,168)` (`rr-5aaw` live shed pickup
-    GREEN). Live `Y1_After_Buy_Potato` 8-plant+water still the pin. Do
-    not redo power-on until the probe plants 8. Gate B stays open.
+    (one-cell residual on that compose). **8-tile 3x3** around (13,28) is
+    GREEN from `Y1_After_Buy_Potato` (`rr-m7mk` / `rr-bvam`):
+    ```bash
+    HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+      --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
+    ```
+    6292f, 8×`0x55` ring, notch `0x02`, bag spent, can 20→12. Leftover
+    quotas 10 bushes / 10 small rocks / 4 boulders / 2 stumps (`rr-w14t`)
+    with RAM `ENSURE_HAMMER` `(176,168)` / `ENSURE_AXE` `(192,168)`
+    (`rr-5aaw` live shed pickup GREEN). Redo power-on after leftover smash
+    so the compose plants 8 not 2. Gate B stays open.
   - Checkpoint `Y1_D2_PostShipper_WorkStart`. Do not start this gate from
     `Y1_D2_Morning_After_D1` — grape return-to-bin seals at the house fence.
   - Grape shipped is **MOUNTAIN_BERRY phase success**, not `shipping_money` RAM.

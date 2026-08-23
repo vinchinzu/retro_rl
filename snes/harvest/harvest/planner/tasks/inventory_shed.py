@@ -28,7 +28,7 @@ from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
 )
-from harvest.maps.map_config import ROUTES
+from harvest.maps.map_config import ROUTES, WEST_POCKET_PLANT_CENTER
 from harvest.tasks.primitives import (
     dismiss_dialogue_result,
     drain_action_queue,
@@ -173,6 +173,9 @@ def shed_farm_route_name(ram: np.ndarray, default_route: Optional[str]) -> Optio
         return "upper_farm_to_shed"
     if tile[0] >= 23 and tile[1] >= 29:
         return "near_shed_to_shed"
+    cx, cy = WEST_POCKET_PLANT_CENTER
+    if abs(tile[0] - cx) <= 3 and abs(tile[1] - cy) <= 3:
+        return "pocket_to_shed"
     # y=29–30 is still the plant pocket (north of the y=31 fence). field_to_shed
     # first hop (344,504) walks into that wall and left/right-thrashes.
     if tile[1] >= 32:
