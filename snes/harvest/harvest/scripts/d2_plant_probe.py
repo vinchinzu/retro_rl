@@ -30,12 +30,12 @@ from retro_harness import TaskStatus, WorldState
 
 from harvest.core.carry import backpack_tool, selected_tool
 from harvest.core.ram_catalog import read_ram_value
-from harvest.core.tile_catalog import ADDR_TILEMAP, CLEARABLE_DEBRIS_TYPES, DebrisType
+from harvest.core.tile_catalog import ADDR_TILEMAP, CLEARABLE_DEBRIS_TYPES, DebrisType, Tool
 from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
 from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap, ram_seed_count
 from harvest.planner.day_plan_tasks import ExitToFarmTask
-from harvest.planner.tasks.inventory_shed import EnsureCropSeedsTask
+from harvest.planner.tasks.inventory_shed import EnsureCarryToolTask, EnsureCropSeedsTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.runtime.watch_display import (
     WatchDisplay,
@@ -52,7 +52,7 @@ from harvest.tasks.crop_skills import (
 from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.nav import get_pos_from_ram, get_tile_at, make_action
-from harvest.tasks.skills import farm_pocket_plant_skill
+from harvest.tasks.skills import farm_pocket_plant_skill, farm_pocket_water_skill
 
 
 def _parse_args() -> argparse.Namespace:
@@ -128,6 +128,7 @@ def _carry(ram) -> dict:
         "selected": int(selected_tool(ram)),
         "backpack": int(backpack_tool(ram)),
         "potato_stock": int(ram_seed_count(ram, "potato")),
+        "can_level": int(read_ram_value(ram, "watering_can") or 0),
     }
 
 
@@ -279,9 +280,12 @@ def main() -> int:
                 return 1
 
         world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+        # Day plan: CROP_ESTABLISH (hoe+seeds) then ENSURE_WATERING_CAN then
+        # CROP_WATER. Do not ask include_water to select a can that is not
+        # in the pair — bag spend frees the seed slot for the fetch.
         plant = farm_pocket_plant_skill(
             seed_type="potato",
-            include_water=bool(args.water) and not args.hoe_only,
+            include_water=False,
             include_plant=not args.hoe_only,
         )
         plant.reset(world)
@@ -299,6 +303,11 @@ def main() -> int:
         plant_reason = "watch window closed" if closed else (
             result.reason if result is not None else ""
         )
+        plant_ok = (
+            result is not None
+            and result.status == TaskStatus.SUCCESS
+            and not closed
+        )
         journal.append(
             {
                 "phase": "hoe_only" if args.hoe_only else "pocket_plant",
@@ -315,29 +324,82 @@ def main() -> int:
             }
         )
         bag_spent = _carry(ram)["selected"] != 0x07 and _carry(ram)["backpack"] != 0x07
+        if plant_ok and args.water and not args.hoe_only:
+            world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+            ensure_can = EnsureCarryToolTask(tool_id=int(Tool.WATERING_CAN))
+            ensure_can.reset(world)
+            frame, result, ram, closed = _phase(
+                ensure_can, timeout=8_000, start_frame=frame
+            )
+            journal.append(
+                {
+                    "phase": "ensure_watering_can",
+                    "status": result.status.value if result is not None else "none",
+                    "reason": "watch window closed" if closed else (
+                        result.reason if result is not None else ""
+                    ),
+                    "frames": frame,
+                    "carry": _carry(ram),
+                }
+            )
+            can_ok = (
+                result is not None
+                and result.status == TaskStatus.SUCCESS
+                and not closed
+            )
+            if can_ok:
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                water = farm_pocket_water_skill()
+                water.reset(world)
+                remaining = max(200, args.timeout - frame)
+                frame, result, ram, closed = _phase(
+                    water, timeout=remaining, start_frame=frame
+                )
+                pos = get_pos_from_ram(ram)
+                pocket = _pocket_tiles(ram)
+                planted_n = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER)
+                tilled_n = count_ring_tilled(ram, WEST_POCKET_PLANT_CENTER)
+                wet_n = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER)
+                hour = int(read_ram_value(ram, "hour") or 0)
+                minute = int(read_ram_value(ram, "minute") or 0)
+                journal.append(
+                    {
+                        "phase": "pocket_water",
+                        "status": result.status.value if result is not None else "none",
+                        "reason": "watch window closed" if closed else (
+                            result.reason if result is not None else ""
+                        ),
+                        "frames": frame,
+                        "carry": _carry(ram),
+                        "pocket": pocket,
+                        "planted_ring": planted_n,
+                        "tilled_ring": tilled_n,
+                        "wet_ring": wet_n,
+                        "hour": hour,
+                        "minute": minute,
+                    }
+                )
+                plant_ok = (
+                    plant_ok
+                    and result is not None
+                    and result.status == TaskStatus.SUCCESS
+                    and not closed
+                )
+            else:
+                plant_ok = False
         if closed:
             ok = False
         elif args.hoe_only:
-            ok = (
-                result is not None
-                and result.status == TaskStatus.SUCCESS
-                and tilled_n >= PLOT_RING_SIZE
-            )
+            ok = plant_ok and tilled_n >= PLOT_RING_SIZE
         elif args.water:
             ok = (
-                result is not None
-                and result.status == TaskStatus.SUCCESS
+                plant_ok
                 and planted_n >= PLOT_RING_SIZE
                 and wet_n >= PLOT_RING_SIZE
                 and bag_spent
             )
         else:
-            ok = (
-                result is not None
-                and result.status == TaskStatus.SUCCESS
-                and planted_n >= PLOT_RING_SIZE
-                and bag_spent
-            )
+            ok = plant_ok and planted_n >= PLOT_RING_SIZE and bag_spent
         payload = {
             "start": start,
             "journal": journal,

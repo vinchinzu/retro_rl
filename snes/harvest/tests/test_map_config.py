@@ -51,6 +51,11 @@ class FarmWalkableTests(unittest.TestCase):
         for tid in {STONE, FENCE, ROCK} | STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES:
             self.assertNotIn(tid, FARM_WALKABLE)
 
+    def test_farm_walkable_includes_young_potato(self) -> None:
+        """D2 8-ring 0x54 boxes the notch; WATER_PLAN_CENTER stands on the crop."""
+        self.assertIn(0x54, FARM_WALKABLE)
+        self.assertIn(0x55, FARM_WALKABLE)
+
     def test_seasonal_farm_tilemaps_share_farm_metadata(self) -> None:
         for tilemap in (0x00, 0x01, 0x02, 0x03):
             with self.subTest(tilemap=tilemap):

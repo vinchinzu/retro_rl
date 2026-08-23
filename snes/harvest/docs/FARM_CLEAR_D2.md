@@ -30,8 +30,12 @@ so a 06:08 plan still gets evening smash (not `hour>=17` at plan time).
 Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer `0x06`),
 **4** large 2×2, **2** stumps (axe). Hammer then axe (2-slot carry). Spa
 inserts when stamina cannot finish an 8-swing 2×2. Hoe ring must not stand
-on the well `(15,27)`. Tune from `Y1_After_Buy_Potato`; redo power-on after
-the 3x3 probe plants 8. Do not STATUS-promote Gate B.
+on the well `(15,27)`. Tune from `Y1_After_Buy_Potato`. **2026-08-23 live pin GREEN**
+(`rr-m7mk` / `rr-bvam`): `d2_plant_probe --water` from
+`Y1_After_Buy_Potato` tills 8, spends the bag, fills the empty shelf
+can (y=31 corridor + F0 stand `(32,34)`), wets 8 (`0x55`), can 20→12,
+6292f (`recordings/d2_plant_water.json`). Redo power-on after leftover
+smash. Do not STATUS-promote Gate B.
 
 **2026-08-23 (`rr-m7mk` lift residual):** pocket stone at **(11,29)** (not
 the stand to its north) was a false-success. Lift emptied the cell, then
@@ -44,8 +48,16 @@ boxed west-lip carry runs east instead of throwing north. Live
 `Y1_After_Buy_Potato`: CLEAR `plot_ring_clear` with `(11,28)=0x01`,
 `(11,29)=0x02`, first hoe tills `(13,29)=0x07`. Hoe well stand is remapped
 in `remap_pocket_hoe_stand`: `(14,27)` from `(14,28)` face-up, not
-`nav_hoe_ring_1_left` onto `(15,27)`. Live 8-plant/`--water` from
-`Y1_After_Buy_Potato` is still the pin. Shots: `recordings/d2_stone_probe/`.
+`nav_hoe_ring_1_left` onto `(15,27)`. East-bottom `(14,29)` is not
+`(15,29)` face-left — leftover stone `(16,29)` seals the rightward
+nudge (`nav_hoe_ring_3_left` timeout); stand `(13,29)` face-right
+instead. Left-middle `(12,28)` is not `(12,29)` face-up — leftover
+stone `(12,30)` seals the southward nudge (`nav_hoe_ring_6_up`);
+stand on the untilled notch `(13,28)` face-left. Young potato `0x54`/`0x55`
+is farm-walkable so the can-fetch can leave the boxed notch.
+`pocket_to_shed` skips `farm_to_shed`'s west hop `(137,375)` (shipping
+ditch). Live 8-plant/`--water` from `Y1_After_Buy_Potato` is still the
+pin. Shots: `recordings/d2_stone_probe/`.
 
 ## Invariants
 

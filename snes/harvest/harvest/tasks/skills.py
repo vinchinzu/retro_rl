@@ -410,7 +410,9 @@ def farm_nav_pocket_plant_skill(*, timeout: int = 4000) -> NavSkill:
     return NavSkill(
         name="nav_pocket_plant",
         target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
-        radius=8,
+        # Radius 8 accepted (13,29) as the notch (live water miss, can=20).
+        radius=5,
+        soft_radius=5,
         timeout=timeout,
         require_tilemap=0x00,
     )
@@ -516,17 +518,19 @@ def farm_pocket_plant_skill(
 def farm_pocket_water_skill(*, timeout: int = 4000):
     """Reactive 8-ring water from the untilled notch. No tape replay.
 
-    Can pass: select the watering can, stand on (13,28) for the cardinals,
-    corners from right-middle / left-middle. Does not water the notch.
+    Can pass: select the watering can, fill if empty (y=31 corridor + F0),
+    stand on (13,28) for the cardinals, corners from right-middle /
+    left-middle. Does not water the notch.
     """
     from harvest.core.tile_catalog import Tool
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
-    from harvest.tasks.crop_skills import pocket_water_ring_skills
+    from harvest.tasks.crop_skills import EnsureCanFilledTask, pocket_water_ring_skills
 
     skills: list = [
         farm_fence_jump_toss_skill(),
-        farm_nav_pocket_plant_skill(),
         farm_select_carry_skill(int(Tool.WATERING_CAN)),
+        EnsureCanFilledTask(),
+        farm_nav_pocket_plant_skill(),
         *pocket_water_ring_skills(WEST_POCKET_PLANT_CENTER),
     ]
     return sequence_skills("pocket_water_ring", *skills, idle_between=True)

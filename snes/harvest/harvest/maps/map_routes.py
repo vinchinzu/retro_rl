@@ -327,9 +327,27 @@ _TOWN_TO_SHOP_DOOR: List[Waypoint] = [
     # just inside the gate (not 46,26 / 47,26 hugs), north at x=684, west
     # on y=288, then the shop column to shop_door (37,13).
     Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
-    Waypoint(tilemap=0x04, target_px=(692, 424), radius=14, run_direction="left"),
-    Waypoint(tilemap=0x04, target_px=(684, 400), radius=14, run_direction="up"),
-    Waypoint(tilemap=0x04, target_px=(684, 340), radius=14, run_direction="up"),
+    Waypoint(
+        tilemap=0x04,
+        target_px=(692, 424),
+        radius=14,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x04,
+        target_px=(684, 400),
+        radius=14,
+        run_direction="up",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x04,
+        target_px=(684, 340),
+        radius=14,
+        run_direction="up",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x04, target_px=(684, 288), radius=10),
     Waypoint(tilemap=0x04, target_px=(640, 288), radius=12),
     Waypoint(tilemap=0x04, target_px=(608, 288), radius=10),
@@ -719,8 +737,15 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x1D, target_px=(104, 184), radius=14),
         Waypoint(tilemap=0x1D, target_px=(104, 210), radius=12, is_exit=True, exit_direction="down"),
         Waypoint(tilemap=0x1C, target_px=(144, 456), radius=18),
-        Waypoint(tilemap=0x1C, target_px=(144, 480), radius=12, is_exit=True, exit_direction="down"),
-        Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
+        Waypoint(
+            tilemap=0x1C,
+            target_px=(144, 480),
+            radius=12,
+            is_exit=True,
+            exit_direction="down",
+        ),
+        # Town-space door remap is a hold-Down in the talk sequence; a
+        # (600,280) nav waypoint re-enters the shop from leaked interior coords.
     ],
     # Enter only — stop at church door lip; scripted up enters 0x1B.
     # Corridor: stay on y≈280 until x≈376, then north — a direct (500,280)→
@@ -750,18 +775,15 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x04, target_px=(688, 700), radius=18, run_direction="down"),
         Waypoint(tilemap=0x04, target_px=(688, 924), radius=16, run_direction="down"),
         Waypoint(tilemap=0x04, target_px=(500, 924), radius=16),
-        # Live-verified stand: face left at ~(388–392,914–924) sets bit 0x01.
-        # Talk is done by PressAUntilBit after nav (not action_on_arrive) so
-        # facing/mash can retry without multi_nav consuming the only A press.
-        Waypoint(tilemap=0x04, target_px=(392, 914), radius=6),
+        # Ann wanders this neighborhood; TrackNpcUntilBit talks after nav.
+        Waypoint(tilemap=0x04, target_px=(392, 914), radius=18),
     ],
     "d1_town_to_eve": [
-        # From Ann stand ~(388,914): drop south, run west, stand below Eve.
-        # Live Eve sprite ~ (152,872); stand below facing up.
+        # From Ann's neighborhood: drop south and run west into Eve's area.
         Waypoint(tilemap=0x04, target_px=(388, 950), radius=14, run_direction="down"),
         Waypoint(tilemap=0x04, target_px=(300, 950), radius=14),
         Waypoint(tilemap=0x04, target_px=(152, 950), radius=12),
-        Waypoint(tilemap=0x04, target_px=(152, 896), radius=6),
+        Waypoint(tilemap=0x04, target_px=(152, 896), radius=18),
     ],
     # Enter only — stop near dealer; scripted push to D1 event stand follows.
     "d1_town_to_livestock": [
@@ -774,17 +796,35 @@ ROUTES: Dict[str, List[Waypoint]] = {
             is_exit=True,
             exit_direction="up",
         ),
-        Waypoint(tilemap=0x24, target_px=(128, 200), radius=14, run_direction="up"),
-        # BFS-reachable approach. D1 bit needs ~(230,139) face down — scripted
-        # after nav (counter blocks a pure BFS to that pixel).
-        Waypoint(tilemap=0x24, target_px=(201, 154), radius=6),
+        # Stop after the map transition.  The handoff starts a fresh interior
+        # navigator because cross-map completion may still expose door coords.
+    ],
+    # D1 gift stand is north-east of the buy-cow counter, face down + A.
+    # (201,157) face-right is the later buy-cow menu and does NOT set 0x10.
+    # town_day1_rest f2630–2976: lobby → west counter row → around north →
+    # (230,139).  run_direction skips BFS; the counter blocks a pure path.
+    "d1_livestock_to_event_stand": [
+        Waypoint(tilemap=0x24, target_px=(128, 200), radius=14, run_direction="up", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(128, 158), radius=8, run_direction="up", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(201, 158), radius=6, run_direction="right", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(201, 121), radius=8, run_direction="up", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(230, 121), radius=6, run_direction="right", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(230, 139), radius=4, run_direction="down", force_run=True),
     ],
     "d1_livestock_to_town": [
-        Waypoint(tilemap=0x24, target_px=(137, 200), radius=12),
-        Waypoint(tilemap=0x24, target_px=(137, 212), radius=10, is_exit=True, exit_direction="down"),
-        # Clear the animal-shop door lip (door ~y888). Wider radius — south
-        # road BFS often stalls past y~950.
-        Waypoint(tilemap=0x04, target_px=(601, 940), radius=20, run_direction="down"),
+        # Back north of the counter, then west, then south to the door.
+        # Direct left/down from (230,139) y-aligns into the counter and idles.
+        Waypoint(tilemap=0x24, target_px=(230, 121), radius=8, run_direction="up", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(128, 121), radius=8, run_direction="left", force_run=True),
+        Waypoint(tilemap=0x24, target_px=(128, 200), radius=12, run_direction="down", force_run=True),
+        Waypoint(
+            tilemap=0x24,
+            target_px=(137, 212),
+            radius=10,
+            is_exit=True,
+            exit_direction="down",
+            force_run=True,
+        ),
     ],
     # Align with town_day1_rest truck slice start (f≈9200 @ ~(688,357)).
     # Slice then walks to stand (715,421), leave dialog, east path 0x0C → house.
@@ -918,6 +958,16 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(354, 377), radius=12),
         Waypoint(tilemap=0x00, target_px=(354, 489), radius=12),
         # Stop below the shed threshold; the ensure task owns the transition.
+        Waypoint(tilemap=0x00, target_px=(424, 489), radius=12),
+    ],
+    "pocket_to_shed": [
+        # West plant pocket after 8-ring plant. farm_to_shed's first hop
+        # (137,375) is west through the shipping-ditch no-go and sealed the
+        # live can-fetch (pos (209,458) / (203,426)). Skip it; join the
+        # house corridor north of the well, then the shed frontage.
+        Waypoint(tilemap=0x00, target_px=(244, 375), radius=12),
+        Waypoint(tilemap=0x00, target_px=(354, 377), radius=12),
+        Waypoint(tilemap=0x00, target_px=(354, 489), radius=12),
         Waypoint(tilemap=0x00, target_px=(424, 489), radius=12),
     ],
     "upper_farm_to_shed": [
