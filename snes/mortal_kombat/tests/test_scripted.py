@@ -15,6 +15,7 @@ from mortal_kombat.scripted import (
     X,
     Y,
     ScriptedPolicy,
+    DeterministicFight1Policy,
     fireball_sequence,
     flying_kick_sequence,
 )
@@ -30,6 +31,16 @@ def test_kind_script_constant() -> None:
     assert KIND_SCRIPT == "script"
     assert ScriptedPolicy.kind == "script"
     assert ScriptedPolicy.name == "scripted"
+    assert DeterministicFight1Policy.kind == "script"
+    assert DeterministicFight1Policy.name == "fight1_tape"
+
+
+def test_fight1_tape_reset_replays_identically() -> None:
+    policy = DeterministicFight1Policy()
+    first = [policy.act(make_test_ram(), RGB) for _ in range(12)]
+    policy.reset()
+    replay = [policy.act(make_test_ram(), RGB) for _ in range(12)]
+    assert all(np.array_equal(a, b) for a, b in zip(first, replay, strict=True))
 
 
 def test_fireball_facing_and_hp() -> None:

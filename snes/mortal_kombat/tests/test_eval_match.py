@@ -139,6 +139,7 @@ def test_play_buttons_match_loss() -> None:
     assert play_buttons_match(policy, env) is False
     assert policy.calls == []
     assert env.buttons == []
+    assert env.buttons == []
 
 
 def test_play_buttons_match_continue_screen() -> None:
@@ -148,7 +149,15 @@ def test_play_buttons_match_continue_screen() -> None:
     policy = DummyPolicy()
     assert play_buttons_match(policy, env) is False
     assert policy.calls == []
-    assert env.buttons == []
+
+
+def test_play_buttons_match_counts_health_ko_edges_before_hud_settles() -> None:
+    live = make_test_ram(p1_health=100, p2_health=10, timer=80)
+    p2_ko = make_test_ram(p1_health=100, p2_health=0, timer=80)
+    refill = make_test_ram(p1_health=161, p2_health=161, timer=153)
+    env = FakeEnv([live, p2_ko, refill, live, p2_ko])
+    assert play_buttons_match(DummyPolicy(), env) is True
+    assert len(env.buttons) == 4
 
 
 def test_play_buttons_match_calls_act_and_step() -> None:
