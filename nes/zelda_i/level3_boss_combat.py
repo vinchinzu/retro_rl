@@ -363,10 +363,9 @@ class Level3BossCombatMixin:
             ((120, 125),),
             ((120, 157),),
         )
-        paths = side_paths[:1] if self.continuous_mode else side_paths
-        for path in paths:
+        for path in side_paths:
             if not self.continuous_mode:
-                env.em.set_state(st_base)
+                self._restore_state(env, st_base)
                 idle(env, assist, total, 2)
             if assist is not None:
                 assist.apply_env(env, frame=total[0])
@@ -405,7 +404,7 @@ class Level3BossCombatMixin:
                 return report
 
         for ax, ay in (() if self.continuous_mode else UP_APPROACHES):
-            env.em.set_state(st_base)
+            self._restore_state(env, st_base)
             idle(env, assist, total, 2)
             pr = exit_door(
                 env,
@@ -442,7 +441,7 @@ class Level3BossCombatMixin:
             poke_bombs(env, self.poke_bombs)
             ensure_bomb(env)
         for bx, by in (() if self.continuous_mode else BOMB_NORTH_STANDS[:3]):
-            env.em.set_state(st_base)
+            self._restore_state(env, st_base)
             idle(env, assist, total, 2)
             br = bomb_stand(env, assist, total, "UP", bx, by)
             report["attempts"].append(
@@ -687,7 +686,7 @@ class Level3BossCombatMixin:
                 elif not pr["changed_room"] and not self.continuous_mode:
                     st_post = env.em.get_state()
                     for direction in ("RIGHT", "LEFT", "DOWN"):
-                        env.em.set_state(st_post)
+                        self._restore_state(env, st_post)
                         idle(env, assist, total, 2)
                         pr2 = exit_door(
                             env,

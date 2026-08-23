@@ -49,6 +49,7 @@ from zelda_i.survival_spine import (
     merge_inventory_assist,
     spine_final_fields,
     topup_owned_inventory,
+    topup_owned_bombs,
     validate_l5_endpoint,
     _run_level3_boss_suffix,
 )
@@ -252,6 +253,30 @@ def test_topup_owned_inventory_records_poke_on_run() -> None:
     report = run.report()
     assert report["poke_bombs"] == 16
     assert report["poke_keys"] == 2
+
+
+def test_l3_boss_topup_preserves_carried_keys() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_BOMBS] = 8
+    ram[ADDR_KEYS] = 4
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    run = SpineRun(through="level3", success=True, boot_frames=199)
+    topup_owned_bombs(env, run)
+    assert values["bombs"] == 16
+    assert "keys" not in values
+    assert run.inventory_assist["poke_bombs"] == 16
+    assert run.inventory_assist["poke_keys"] is None
 
 
 def test_spine_report_includes_l2_entry_bomb_plan() -> None:

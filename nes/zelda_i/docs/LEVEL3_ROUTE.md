@@ -175,17 +175,17 @@ the room leaf.
 | `rr-4d53.3.3.3` | **closed** 0x59 kill DOWN | `level3_south_darknuts_0x69` | raft `clear_59`/`down_to_69` | spawn-lag recon |
 | `rr-4d53.3.3.4` | **closed** 0x69 stairs → Raft | `level3_raft` (`ADDR_RAFT≠0`) | raft `stairs_to_0f`/`passage_raft` | `run_level3_raft.py` |
 | `rr-4d53.3.3` | parent: 0x5b → Raft | same as `.3.3.4` | `Level3RaftPathController` | Raft 2/2 assisted |
-| `rr-4d53.3.2` | bombs for bomb-R + Manhandla | report `bombs_in` / no poke-16 | carry or 0x5b drop | isolated `--poke-bombs 16` |
-| `rr-4d53.3.4.1` | Raft backtrack bomb-R → 0x5b | `level3_backtrack_0x5b` | boss `exit_passage`/`bomb_59` | walk-RIGHT sealed trap |
-| `rr-4d53.3.4.2` | 0x5b bomb-R → 0x5c doors raw=3 | `level3_shortcut_0x5c` | boss `bomb_5b`/`clear_5c` | map explore recon |
-| `rr-4d53.3.4.3` | 0x5c → 0x5d doors raw=10 | `level3_prep_0x5d` | boss `right_5d`/`clear_prep` | ignore type `0x2b` |
-| `rr-4d53.3.4.4` | Manhandla → TF `0x04` | `level3_triforce_0x04` | boss `manhandla`/`collect_tf` | `run_level3_to_boss.py` |
-| `rr-4d53.3.4` | parent: Raft → TF | same as `.4.4` | `Level3BossPathController` poke default off | Raft poke-16 suffix |
-| `rr-4d53.3` | parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | any seamed L3 tape |
+| `rr-4d53.3.2` | **verified Survival** bomb budget | documented Raft top-up 8→16 | farm deferred | isolated poke is recon |
+| `rr-4d53.3.4.1` | **verified** Raft backtrack bomb-R → 0x5b | `level3_backtrack_0x5b` | continuous boss path | walk-RIGHT sealed trap |
+| `rr-4d53.3.4.2` | **verified** 0x5b clear + bomb-R → 0x5c raw=3 | `level3_shortcut_0x5c` | continuous boss path | HP=0 Darknuts type-live |
+| `rr-4d53.3.4.3` | **verified** 0x5c edge thread → 0x5d raw=10 | `level3_prep_0x5d` | continuous boss path | ignore type `0x2b` |
+| `rr-4d53.3.4.4` | **verified** Manhandla → TF `0x04` | `level3_triforce_0x04` | continuous boss path | side path from `(80,141)` |
+| `rr-4d53.3.4` | **verified** parent: Raft → TF | same as `.4.4` | `continuous_mode`, restores forbidden | isolated suffix recon |
+| `rr-4d53.3` | **verified** parent: L2 exit → L3 TF | `level3_triforce_0x04` | full `--through level3` | `l3_tf_continuous_video_v1` |
 
 West key `0x7b`, dest `0x5b`, Compass `0x5a`, `0x59`, `0x69`, and natural
-Raft are live on the spine. The next claim is the carried-bomb boss suffix;
-isolated poke-16 cannot close it. Compass /
+Raft and the boss suffix are live on the spine. The next claim is L3 exit →
+L4. Isolated poke-16 cannot close a spine leaf. Compass /
 map rooms that are off the Raft route stay optional and do not block TF.
 
 West-key close (2026-08-21): `l3_west_key_spine.json` 1/1 Survival 54589f,
@@ -204,9 +204,9 @@ Library `zelda_i.level3_bomb_budget` counts Raft→boss spend: verified bomb-R
 0x59 and bomb-R 0x5b (stands `(192,141)`), plus an **assumed** Manhandla-heads
 estimate (type `0x3c`, 5 heads live; bombs preferred — not TAS-perfect).
 Isolated `Level3Raft` stops at bombs=0 so `run_level3_to_boss --poke-bombs 16`
-is recon only and does **not** close `rr-4d53.3.2`. Spine must carry `.3.0`
-0x7c bombs=8 (keys=4) or farm 0x5b Darknut drops; do not add poke-16 to
-Survival / `SPINE_BOMB_RETOPUP`.
+is recon only. The verified Survival spine reaches Raft with bombs=8, then
+records a count top-up 8→16 before the boss suffix; the natural farm remains
+deferred. No bomb-capacity or undiscovered-item write is allowed.
 
 ### Post-Raft → Manhandla → TF (assisted LIVE **2/2**, 2026-08-07)
 
