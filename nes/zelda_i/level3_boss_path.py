@@ -111,6 +111,7 @@ class Level3BossPathController(Level3BossCombatMixin):
     max_frames: int = BOSS_PATH_MAX_FRAMES
     poke_bombs: int | None = None  # RECON opt-in; durable default off
     tag: str = "l3_to_boss"
+    continuous_mode: bool = False  # one-way policy: never restore emulator state
     # Outcome flags
     reached_5d: bool = False
     reached_4d: bool = False
@@ -187,14 +188,7 @@ class Level3BossPathController(Level3BossCombatMixin):
         if snap.screen == ROOM_L3_SOUTH_DARKNUTS:
             live_dn = live_killables(snap, (DARKNUT_OBJECT_TYPE,))
             if live_dn:
-                st = env.em.get_state()
-                pr = exit_door(env, assist, total, "UP")
-                if not (
-                    pr["changed_room"]
-                    and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS
-                ):
-                    env.em.set_state(st)
-                    idle(env, assist, total, 2)
+                if self.continuous_mode:
                     clr = fight_clear(
                         env,
                         assist,
@@ -210,6 +204,21 @@ class Level3BossPathController(Level3BossCombatMixin):
                         }
                     )
                     pr = exit_door(env, assist, total, "UP")
+                else:
+                    st = env.em.get_state()
+                    pr = exit_door(env, assist, total, "UP")
+                    if not (
+                        pr["changed_room"]
+                        and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS
+                    ):
+                        env.em.set_state(st)
+                        idle(env, assist, total, 2)
+                        clr = fight_clear(
+                            env, assist, total,
+                            enemy_types=(DARKNUT_OBJECT_TYPE,), max_frames=6000,
+                        )
+                        path_log.append({"step": "clear_69", "ok": clr.get("ok"), "frames": clr.get("frames")})
+                        pr = exit_door(env, assist, total, "UP")
             else:
                 pr = exit_door(env, assist, total, "UP")
             path_log.append(
@@ -241,13 +250,14 @@ class Level3BossPathController(Level3BossCombatMixin):
         if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
             poke_bombs(env, self.poke_bombs)
         bx, by = BOMB_STAND_59_RIGHT
-        st = env.em.get_state()
-        walk = exit_door(env, assist, total, "RIGHT", y_force=141)
+        walk = ({"changed_room": False} if self.continuous_mode else
+                exit_door(env, assist, total, "RIGHT", y_force=141))
         if walk["changed_room"] and walk["after"]["screen"] == ROOM_L3_COMPASS:
             path_log.append({"step": "59_right_walk", "ok": True, "to": "0x5a"})
         else:
-            env.em.set_state(st)
-            idle(env, assist, total, 2)
+            if not self.continuous_mode:
+                env.em.set_state(st)
+                idle(env, assist, total, 2)
             if not walk["changed_room"]:
                 traps.append("0x59 walk-RIGHT sealed post-Raft (expected)")
             br = bomb_stand(env, assist, total, "RIGHT", bx, by)
@@ -303,19 +313,43 @@ class Level3BossPathController(Level3BossCombatMixin):
         # --- 0x5b BOMB_RIGHT → 0x5c ---
         self._set_phase("bomb_5b")
         idle(env, assist, total, 30)
+        if self.continuous_mode:
+            snap = read_snapshot(env.get_ram())
+            live_dn = live_killables(snap, (DARKNUT_OBJECT_TYPE,))
+            path_log.append({
+                "step": "inspect_5b_return",
+                "live_darknuts": len(live_dn),
+                "fields": room_fields(snap, env.get_ram()),
+            })
+            # Return-visit sprites can precede reliable HP bytes. The exact
+            # clear is safe to call unconditionally and returns if truly clear.
+            clr = fight_clear(
+                env, assist, total,
+                enemy_types=(DARKNUT_OBJECT_TYPE,), max_frames=6000,
+            )
+            path_log.append({
+                "step": "clear_5b_return", "ok": clr.get("ok"),
+                "frames": clr.get("frames"), "final": clr.get("final"),
+            })
+            if not clr.get("ok"):
+                out = self._fail("failed_clear_5b_return")
+                out.update({"path_log": path_log, "final": clr.get("final")})
+                self.path_log.extend(path_log)
+                return out
         if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
             poke_bombs(env, self.poke_bombs)
         bx, by = BOMB_STAND_5B_RIGHT
-        st = env.em.get_state()
-        walk = exit_door(env, assist, total, "RIGHT", y_force=141)
+        walk = ({"changed_room": False} if self.continuous_mode else
+                exit_door(env, assist, total, "RIGHT", y_force=141))
         if (
             walk["changed_room"]
             and walk["after"]["screen"] == ROOM_L3_BOMB_SHORTCUT
         ):
             path_log.append({"step": "5b_right_walk", "ok": True, "to": "0x5c"})
         else:
-            env.em.set_state(st)
-            idle(env, assist, total, 2)
+            if not self.continuous_mode:
+                env.em.set_state(st)
+                idle(env, assist, total, 2)
             br = bomb_stand(env, assist, total, "RIGHT", bx, by)
             path_log.append(
                 {
@@ -338,6 +372,7 @@ class Level3BossPathController(Level3BossCombatMixin):
                         "notes": notes,
                     }
                 )
+                self.path_log.extend(path_log)
                 return out
 
         # --- 0x5c clear Darknuts → RIGHT @ y≈141 → 0x5d ---
@@ -451,11 +486,14 @@ class Level3BossPathController(Level3BossCombatMixin):
                 )
 
             self._set_phase("right_5d")
-            st_5c = env.em.get_state()
             pr = None
-            for ytry in (DOOR_5C_RIGHT_Y, 141):
-                env.em.set_state(st_5c)
-                idle(env, assist, total, 2)
+            ytries = (DOOR_5C_RIGHT_Y,) if self.continuous_mode else (DOOR_5C_RIGHT_Y, 141)
+            if not self.continuous_mode:
+                st_5c = env.em.get_state()
+            for ytry in ytries:
+                if not self.continuous_mode:
+                    env.em.set_state(st_5c)
+                    idle(env, assist, total, 2)
                 pr = exit_door(
                     env,
                     assist,
@@ -479,7 +517,7 @@ class Level3BossPathController(Level3BossCombatMixin):
                 )
                 if pr["changed_room"] and pr["after"]["screen"] == ROOM_L3_BOSS_PREP:
                     break
-            if not (
+            if not self.continuous_mode and not (
                 pr
                 and pr["changed_room"]
                 and pr["after"]["screen"] == ROOM_L3_BOSS_PREP
@@ -591,6 +629,7 @@ class Level3BossPathController(Level3BossCombatMixin):
             "last_error": self.last_error,
             "phases": list(BOSS_PATH_PHASES),
             "poke_bombs": self.poke_bombs,
+            "continuous_mode": self.continuous_mode,
             "path": (
                 "0x0f exit→0x69 UP→0x59 BOMB_R→0x5a R→0x5b BOMB_R→0x5c "
                 "clear R@y141→0x5d clear→UP→0x4d bombs→TF 0x04"

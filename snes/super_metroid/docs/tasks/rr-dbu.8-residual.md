@@ -1,11 +1,10 @@
 ## Residual — rr-dbu.8 K5 Alpha PB pure stack
 
 ### Result
-PARTIAL — eleven pure one-hop dual GREENs on Ice return + Business→Warehouse +
-Warehouse→East + East→Glass + Glass→West + West→Below + Below→Bat + Bat→Red
-(Ice→Snake, Snake→Tutorial, Tutorial→Gate, Gate→Business, Business→Warehouse,
-Warehouse→East, East→Glass, Glass→West, West→Below, Below→Bat, Bat→Red). Full
-K5 stack to Alpha PB PLM still open. Not continuous. No STATUS change.
+PARTIAL — twelve one-hop dual GREENs on Ice return + K5 reverse through
+Hellway (Ice→Snake … Bat→Red + Red→Hellway **6199f** ×2). Full K5 stack to
+Alpha PB PLM still open (Hellway→Caterpillar natural-entry RED). Not
+continuous. No STATUS change.
 
 ### One-hop map (tape Phase B return + Phase C)
 | Order | Hop | Rooms | Pure dual | Controller / note |
@@ -21,8 +20,8 @@ K5 stack to Alpha PB PLM still open. Not continuous. No STATUS change.
 | 8 | West → Below | `0xCF54` → `0xA408` | **272f** ×2 ✅ | `play_west_to_below` (reverse below floor→west) |
 | 9 | Below → Bat | `0xA408` → `0xA3DD` | **485f** ×2 ✅ | `play_below_to_bat` (reverse bat_to_below_spazer) |
 | 11 | Bat → Red Tower | `0xA3DD` → `0xA253` | **718f** ×2 ✅ | `play_bat_to_red` (reverse red_tower_to_bat) |
-| 12 | Red → Hellway | `0xA253` → `0xA2F7` | ⬜ PARTIAL | thin-seat dual ~(91,587); ice ladder residual (rr-av5s) |
-| 13 | Hellway → Caterpillar | `0xA2F7` → `0xA322` | ⬜ | |
+| 12 | Red → Hellway | `0xA253` → `0xA2F7` | **6199f** ×2 ✅ | `play_red_to_hellway` (warehouse_to_red hop 6 body) |
+| 13 | Hellway → Caterpillar | `0xA2F7` → `0xA322` | ⬜ | leave pin ~(42,153) p29; hop-7 body RED from this pin |
 | 14 | Caterpillar → Alpha PB PLM | `0xA322` → `0xA3AE` | ⬜ | first PB capacity |
 
 Tape: `tasks/speed_to_wave_ice_moat_human.json` (rr-dbu.12). Packages:
@@ -52,6 +51,7 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-to-red \
 - [x] Ninth hop dual green (West→Below return)
 - [x] Tenth hop dual green (Below→Bat return)
 - [x] Eleventh hop dual green (Bat→Red return)
+- [x] Twelfth hop dual green (Red→Hellway; warehouse hop 6 body)
 - [x] Package layout: return in `ice/`; K5 map under `k5/`
 - [ ] Full pure stack through Alpha PB PLM
 - [ ] Continuous tip / STATUS (planner only after dual continuous)
@@ -60,13 +60,13 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-to-red \
 1. Snake climb multi-attempt (L3 pin-sensitive) — OK dual but not single-pass.
 2. Business→Warehouse **10255f** — multi-attempt after Super fall; optimizable.
 3. Red Tower human stretch ~7k frames — prefer clean climb, not thrash RLE.
-4. Red pin bottom ~(216,2443) p10 — next reverse hop climb to Hellway.
+4. Hellway leave ~(42,153) p29 — hop-7 body from live tape pin does not compose.
 5. Tunnel reverses may reuse geometry of outbound red_stack but need natural-entry pure pins.
 
 ### Next action (required)
-- **Next card:** **rr-av5s** Pure Red Tower → Hellway return (K5 hop 12) — PARTIAL
-- **One change:** from dual thin seat ~(91,587) ice ladder → top door y180 → Hellway dual green
-- **Source state:** `post_ice_bat_to_red_pure` (live mid+human850+period WJ)
+- **Next card:** Hellway → Caterpillar (K5 hop 13) from `post_ice_red_to_hellway_pure`
+- **One change:** dual green `0xA2F7` ~(42,153) p29 → Caterpillar `0xA322`
+- **Source state:** `post_ice_red_to_hellway_pure`
 
 ### Non-claims
 - Did not STATUS-promote continuous past Ice
@@ -85,3 +85,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-to-red \
 - Dual GREEN hop8: room=0xA408 pose=82 x=472 y=393 frames=272 ×2
 - Dual GREEN hop9: room=0xA3DD pose=12 x=472 y=139 frames=485 ×2
 - Dual GREEN hop11: room=0xA253 pose=10 x=216 y=2443 frames=718 ×2
+- Dual GREEN hop12: room=0xA2F7 pose=29 x=42 y=153 frames=6199 ×2

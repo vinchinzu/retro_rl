@@ -127,7 +127,11 @@ def test_south_darknuts_success_is_play_69() -> None:
 
 def test_raft_success_requires_inventory_bit_in_passage() -> None:
     assert not level3_raft_success(read_snapshot(_ram(room=0x0F, x=136, y=141)))
-    assert level3_raft_success(read_snapshot(_ram(room=0x0F, x=136, y=141, raft=1)))
+    ram = _ram(room=0x0F, x=136, y=141, raft=1)
+    ram[ADDR_MODE] = 9
+    assert level3_raft_success(read_snapshot(ram))
+    ram[ADDR_MODE] = PLAY_MODE
+    assert not level3_raft_success(read_snapshot(ram))
 
 
 def test_entry_success_is_play_7c() -> None:

@@ -36,12 +36,12 @@ DOOR_WJ_PERIOD = 10
 DOOR_WJ_INTO = 3  # LEFT+A
 DOOR_WJ_BOUNCE = 2  # RIGHT+A
 DOOR_X_CAP = 480  # pull left if past outer wall
-# Outer-wall fail mode ~(470,350): pull left into climbable band first.
-DOOR_OUTER_X = 450
-# Continuous Spazer Phase E (rr-cwu): after Phase D pin, baseline crouch=8
-# desyncs SEEK vs pure (Geruta/physics phase). crouch=18 aligns both pure
-# and continuous-like post_rising_tide_to_bubble_continuous_spazer.
-DOOR_CROUCH_FRAMES = 18
+# Right-shelf fail mode (continuous Ceres successor can fall to ~(446,383)):
+# jump LEFT off the shelf before re-approaching the climbable structure.
+DOOR_OUTER_X = 400
+# The door controller is reactive now; an entry crouch only lets the new
+# continuous Ceres successor fall off the top structure before seeking.
+DOOR_CROUCH_FRAMES = 0
 MID_Y = 400
 TOP_Y = 200
 TOP_X = 300

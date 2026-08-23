@@ -7,7 +7,7 @@ room-specific seating / hit-abort / retry wrappers around :func:`play_script`.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from super_metroid.ram import SuperMetroidState
@@ -112,9 +112,36 @@ def play_script(
     return state
 
 
+def play_snes12_frames(
+    session: ControllerSession,
+    frames: Sequence[Sequence[int]],
+    *,
+    reason: str,
+    stop_when: StopWhen | None = None,
+) -> SuperMetroidState:
+    """Play a SNES-12 hop body (skill-bank / materialize export)."""
+    from retro_harness.controls import SNES_BUTTON_NAMES
+
+    state = session.state
+    n_names = len(SNES_BUTTON_NAMES)
+    for frame in frames:
+        if stop_when is not None and stop_when(session.state):
+            return session.state
+        names = tuple(
+            SNES_BUTTON_NAMES[i]
+            for i, value in enumerate(frame[:n_names])
+            if value
+        )
+        state = hold(session, 1, *names, reason=reason)
+        if stop_when is not None and stop_when(session.state):
+            return session.state
+    return state
+
+
 __all__ = [
     "RleScript",
     "StopWhen",
     "load_rle_json",
     "play_script",
+    "play_snes12_frames",
 ]
