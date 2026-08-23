@@ -113,7 +113,7 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 0x51 --DOWN @ x≈120--> 0x61
 0x61 --KEY-RIGHT @ y≈141 (keys 1→0)--> 0x62
 0x62: 5× Vire + RoomItemId **0x16** Compass (dark maze)
-0x50 --scripted N (MAZE_50_TO_NORTH hold6 + long UP)--> **0x40**
+0x50 --coordinate-gated N via observed bands + long UP--> **0x40**
 0x40: 5× Zol **0x13** → gel **0x14** + key **0x19** (east-corridor path)
 0x40 --free UP @x≈120--> **0x30**: 3× Vire + 2× invuln **0x2b**
 0x30 --clear (ignore 0x2b; north-band y≥128)--> KEY-RIGHT @y141 --> **0x31**
@@ -126,7 +126,7 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x71** | **live pure 2/2** | none | Empty mouth; free UP only | `rr-zchy` |
 | **0x61** | **live pure 2/2** | 3× `0x12` → split `0x1c` | Clear ~295f; bomb N → 0x51; KEY-RIGHT → 0x62 | `rr-yr77` / `rr-h278` |
 | **0x51** | **live pure 2/2** | 8× `0x1b` Keese | Key `0x19` pickup ~ (136,149) | `rr-wqdu` |
-| **0x50** | **live pure 2/2** | 5× `0x12` Vire | North via scripted path → 0x40 (not dead-end) | `rr-2ysf` / `rr-xc3x` |
+| **0x50** | **live pure 2/2; continuous 1/1** | 5× `0x12` Vire | North via coordinate gates → 0x40 (not dead-end) | `rr-2ysf` / `rr-xc3x` |
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 | **0x40** | **live pure clear+key 2/2** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
 | **0x30** | **live pure clear+KEY-R 2/2** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear north-band UP; KEY-RIGHT → 0x31 | `rr-q8eq` / `rr-n1wn` |
@@ -150,7 +150,7 @@ Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 nort
 | 0x51 | **UP** | **sealed** | not a key door (keys poke does not consume) |
 | 0x51 | **RIGHT** | **sealed** | same |
 | 0x50 | RIGHT | 0x51 | free |
-| 0x50 | **UP scripted** | **0x40** | `MAZE_50_TO_NORTH` hold6 + long UP; interior blocks block center+UP |
+| 0x50 | **UP scripted** | **0x40** | coordinate gates `(160,181)→(112,181)→(112,120)→(128,100)`; UP to y≈93, LEFT to x≈120, then long UP |
 | 0x62 | LEFT | 0x61 | only durable exit; bomb stands no open |
 | 0x40 | DOWN | 0x50 | free return |
 | 0x40 | **UP free** | **0x30** | after clear; x≈120 (rr-q8eq) |
@@ -360,8 +360,9 @@ Map → Gleeok compose: `scripts/run_level4_continuous_tf.py` / `run_level4_glee
 **Traps (live):**
 
 - Source “entry LEFT Keese key” is **wrong** on this seed/path — entry is empty; first key is bomb-N of Vires.
-- **0x50 is NOT a dead-end** — north exit to **0x40** needs scripted path
-  (`MAZE_50_TO_NORTH`); naive center+UP fails on interior blocks (rr-xc3x).
+- **0x50 is NOT a dead-end** — north exit to **0x40** uses the live coordinate
+  gates through `(128,101)`, then UP to y≈93, LEFT to x≈120, and long UP;
+  naive center+UP fails on interior blocks (rr-xc3x).
   Compass remains KEY-RIGHT 0x61→0x62.
 - Vire split is type **`0x1c`**, not standard Keese `0x1b`; HP stays 0 (type-only) and lands in slots **10–12**.
 - Free doorways often show `cur_opened_doors=0` / `open_doorway_mask=0` — do not require door bits for UP 0x71→0x61 or LEFT 0x51→0x50.

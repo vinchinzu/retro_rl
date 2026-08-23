@@ -399,10 +399,10 @@ class North40Phase(Enum):
 
 @dataclass
 class Level4North40Controller:
-    """From cleared 0x50: token path then long UP into 0x40.
+    """From cleared 0x50: coordinate-gated walk then UP into 0x40.
 
-    Live (rr-xc3x): ``MAZE_50_TO_NORTH`` hold6 is reliable from the common
-    clear_50 end pose ≈(160,149). Interior blocks block center+UP.
+    Continuous v7: coordinate gates are reliable from the live clear_50 pose.
+    The final corner is UP at x≈128 to y≈93, LEFT to x≈120, then long UP.
     """
 
     max_frames: int = 10000
@@ -415,6 +415,21 @@ class Level4North40Controller:
     notes: list[str] = field(default_factory=list)
     _last_xy: tuple[int, int] | None = None
     _stall: int = 0
+    samples: list[dict[str, Any]] = field(default_factory=list)
+
+    def _sample(self, snap: ZeldaSnapshot, reason: str) -> None:
+        """Keep transition/final and sparse stuck evidence in the report."""
+        sample = {
+            "frame": self.frames,
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "phase": self.phase.name,
+            "path_index": self.path_index,
+            "reason": reason,
+            "stall": self._stall,
+        }
+        if not self.samples or self.samples[-1] != sample:
+            self.samples.append(sample)
 
     def _set_phase(self, phase: North40Phase, note: str = "") -> None:
         if phase is not self.phase:
@@ -458,6 +473,7 @@ class Level4North40Controller:
             return self._fail("timeout")
 
         if self._entered_40(snap):
+            self._sample(snap, "entered_0x40")
             self.success = True
             self._set_phase(North40Phase.DONE, "entered_0x40")
             return FrameAction(nes_idle_action(), "done")
@@ -487,28 +503,40 @@ class Level4North40Controller:
             return FrameAction(nes_action("UP"), "push_up_north")
 
         if self.phase is North40Phase.WAYPOINTS:
-            if self.path_index >= len(MAZE_50_TO_NORTH):
-                self._set_phase(North40Phase.PUSH_UP, "path_done")
+            # The last documented waypoint is above ordinary room movement.
+            # Reach the playable north band, then use the door residual.
+            goals = MAZE_50_WAYPOINTS[:-1]
+            if self.path_index >= len(goals):
+                self._set_phase(North40Phase.PUSH_UP, "north_band_reached")
                 return FrameAction(nes_action("UP"), "push_up_north")
-            direction = MAZE_50_TO_NORTH[self.path_index]
-            # If stalled on a wall, advance token early and try next.
-            if self._stall >= 18:
-                self.notes.append(f"stall_skip_{self.path_index}_{direction}")
+            gx, gy = goals[self.path_index]
+            if abs(xy[0] - gx) <= 4 and abs(xy[1] - gy) <= 4:
+                self._sample(snap, f"waypoint_{self.path_index}")
                 self.path_index += 1
-                self.hold_left = 0
-                self._stall = 0
-                if self.path_index >= len(MAZE_50_TO_NORTH):
-                    self._set_phase(North40Phase.PUSH_UP, "path_done_stall")
+                if self.path_index >= len(goals):
+                    self._set_phase(North40Phase.PUSH_UP, "north_band_reached")
                     return FrameAction(nes_action("UP"), "push_up_north")
-                direction = MAZE_50_TO_NORTH[self.path_index]
-            self.hold_left += 1
-            if self.hold_left >= MAZE_50_HOLD:
-                self.path_index += 1
-                self.hold_left = 0
-            return FrameAction(nes_action(direction), f"maze50_{direction}")
+                gx, gy = goals[self.path_index]
+            # Each leg changes one axis. This makes the live prediction
+            # falsifiable and turns at the first verified band instead of
+            # skipping a blocked open-loop token.
+            vertical_first = self.path_index == 4 and xy[1] > 96
+            if vertical_first:
+                direction = "UP" if xy[1] > gy else "DOWN"
+            elif abs(xy[0] - gx) > 4:
+                direction = "LEFT" if xy[0] > gx else "RIGHT"
+            else:
+                direction = "UP" if xy[1] > gy else "DOWN"
+            if self._stall >= 18:
+                self._sample(snap, f"stuck_{direction}_to_{gx}_{gy}")
+                return self._fail(f"waypoint_{self.path_index}_stuck_{direction}")
+            return FrameAction(nes_action(direction), f"maze50_seek_{self.path_index}_{direction}")
 
         if self.phase_frames >= MAZE_50_LONG_UP + 120:
+            self._sample(snap, "push_up_timeout")
             return self._fail("push_up_timeout")
+        if self._stall and self._stall % 250 == 0:
+            self._sample(snap, "push_up_stuck")
         return FrameAction(nes_action("UP"), "push_up_north")
 
     def report(self) -> dict[str, Any]:
@@ -523,6 +551,7 @@ class Level4North40Controller:
             "maze_path": list(MAZE_50_TO_NORTH),
             "hold": MAZE_50_HOLD,
             "long_up": MAZE_50_LONG_UP,
+            "samples": list(self.samples),
         }
 
 
@@ -707,4 +736,3 @@ class Level4Key40Controller:
 def make_room_40_key_controller() -> Level4Key40Controller:
     """Clear 0x40 Zols+gels + collect key via scripted east-corridor path."""
     return Level4Key40Controller()
-
