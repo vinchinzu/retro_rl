@@ -63,12 +63,14 @@ from zelda_i.level4_dungeon import (
     ROOM_50_SPEC,
     ROOM_31_SPEC,
     ROOM_L4_EAST_31,
+    ROOM_L4_EAST_32,
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_NORTH_30,
     ROOM_L4_VIRES_50,
     ROOM_L4_ZOLS_40,
 )
 from zelda_i.level4_maze_path import (
+    make_maze_31_east_controller,
     make_maze_31_inland_controller,
     make_north_40_controller,
     make_room_40_key_controller,
@@ -103,6 +105,7 @@ Through = Literal[
     "level4-room30",
     "level4-room31",
     "level4-clear31",
+    "level4-room32",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -116,6 +119,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-room30",
     "level4-room31",
     "level4-clear31",
+    "level4-room32",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -283,6 +287,23 @@ def level4_clear_31_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level4_east_32_stages():
+    """Cleared-0x31 leftover (112,141) → maze thread → free RIGHT into 0x32."""
+    return (
+        ("level4_east_0x32", make_maze_31_east_controller(), 4000),
+    )
+
+
+def level4_east_32_success(snap: ZeldaSnapshot) -> bool:
+    """Exact enter-0x32 stop; Zol/LikeLike stay live."""
+    return (
+        snap.level == 4
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L4_EAST_32
+        and not snap.transitioning
+    )
+
+
 def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
     """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
     return {
@@ -350,6 +371,7 @@ class SpineRun:
                 "level4-room30": "level4_enter_0x30",
                 "level4-room31": "level4_enter_0x31",
                 "level4-clear31": "level4_clear_0x31",
+                "level4-room32": "level4_enter_0x32",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -867,4 +889,21 @@ def run_survival_spine(
     run.success = level4_clear_31_success(snap)
     if not run.success:
         run.failed_stage = "level4_clear_0x31"
+        return run
+    if through == "level4-clear31":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_east_32_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_east_32_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_enter_0x32"
     return run

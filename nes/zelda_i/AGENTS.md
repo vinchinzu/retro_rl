@@ -106,7 +106,10 @@ coordinate gates, clears the Zols, and naturally raises keys 5→6. Continuous
 invuln `0x2b`) then KEY-RIGHT @y141 into `0x31` at `(16,141)` in 667f.
 Continuous `l4_clear31_continuous_v7` RIGHT+UP-clips the west alcove,
 waypoints the maze, and clears 5× Vire in 4,818f; leftover `(112,141)`.
-Next is free RIGHT into `0x32`; do not use checkpoint-mediated/emulator-state BFS.
+Continuous `l4_room32_continuous_v11` UP-to-y113, RIGHT+DOWN-clips the east
+column, then south-U waypoints into `0x32` at `(16,141)` in 376f.
+Next is the `0x32` Zol+LikeLike clear (ignore `0x2b`/`0x68`); do not use
+checkpoint-mediated/emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
