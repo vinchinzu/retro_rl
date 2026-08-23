@@ -35,6 +35,10 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight4.py --repeat 5
 uv run python snes/mortal_kombat/scripts/replay_natural_fight5.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight5.py --repeat 5
+uv run python snes/mortal_kombat/scripts/replay_natural_fight6.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight6.py --repeat 5
+uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py --repeat 5
 ```
 
 ## Traps
@@ -74,3 +78,16 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight5.py --repeat 5
   2–0. The Raiden byte at the Fight 4 pin is leftover HUD. Deterministic
   RAM and pixel oracles lost 0–2; offline capture used stochastic
   Match5 v3. Runtime still loads no models.
+- `replay_natural_fight6.py` concatenates through Match 6 (36,752 frames:
+  29,783 + 6,969) to the Match 7 transition. Live Match 6 is Johnny Cage
+  again (id 0) 2–1, not Scorpion. The Kano byte at the Fight 5 pin is
+  leftover HUD. First fight-ready can be a black fade with p2=0; wait
+  for a visible frame. Offline oracle was deterministic Match5 v3 after
+  Match6 v3 lost 0–2. Runtime still loads no models.
+- `replay_natural_fight7.py` concatenates through Match 7 (41,503 frames:
+  36,752 + 4,751) to the Endurance 1 transition. Live Match 7 is the Liu
+  Kang mirror (id 3) 2–0. The Cage byte at the Fight 6 pin is leftover
+  HUD. Deterministic RAM and pixel oracles lost 0–2 / 1–2; offline
+  capture used stochastic Match5 v3 (attempt 1). Runtime still loads no
+  models. First seven matches as one exact tape is not a reactive policy
+  or a credits claim.

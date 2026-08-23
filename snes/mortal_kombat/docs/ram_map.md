@@ -36,11 +36,16 @@ v3 observation is 20 floats (`snapshot_features`). Incompatible with v1
 Round / match notes:
 
 - Match 1 keeps `match_counter=0`. Timer-down after round 1 is **not** char select.
-- Natural Liu Kang arcade: Match 1 Johnny Cage, Match 2 Sonya (id 6),
-  Match 3 Sub-Zero (id 5), Match 4 Raiden (id 2), Match 5 Kano (id 1).
-  `Fight_LiuKang` timeout-KO (vs Sub-Zero) still loads Scorpion. Pin HUD is
-  leftover from the previous win (Scorpion at Fight 1, Sonya at Fight 2,
-  Sub-Zero at Fight 3, Raiden at Fight 4), not the fighter you actually play.
+- Natural Liu Kang arcade (this power-on tape): Match 1 Johnny Cage,
+  Match 2 Sonya (id 6), Match 3 Sub-Zero (id 5), Match 4 Raiden (id 2),
+  Match 5 Kano (id 1), Match 6 Johnny Cage again (id 0), Match 7 Liu Kang
+  mirror (id 3). M1–M6 are not a unique remaining-roster; Scorpion never
+  appeared. `Fight_LiuKang` timeout-KO (vs Sub-Zero) still loads Scorpion.
+  Pin HUD is leftover from the previous win (Scorpion at Fight 1, Sonya
+  at Fight 2, Sub-Zero at Fight 3, Raiden at Fight 4, Kano at Fight 5,
+  Cage at Fight 6), not the fighter you actually play. First fight-ready
+  after VS can be a black fade with `p2_character=0`; identify on a
+  visible frame.
 - For scripted replay scoring, count health transitions `>0 → 0` for each
   fighter. These settle before the delayed HUD round bytes and avoid the noisy
   P2 byte producing a false loss at the final KO.
