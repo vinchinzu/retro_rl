@@ -36,6 +36,8 @@ MID_RIPPER_Y = 2280
 MID_RIPPER_LAND_Y = 2255
 LOW_RIPPER_3_Y = 2184
 LOW_RIPPER_3_LAND_Y = 2159
+LOW_RIPPER_4_Y = 2048
+LOW_RIPPER_4_LAND_Y = 2023
 
 POLICY_ID = "red_tower_ice_bottom_to_ripper1"
 VARIANT_ID = "ice_hi_jump"
@@ -102,6 +104,13 @@ LOWER_RIPPER_3 = RedIceCheckpoint(
     (55, 205),
     (2142, 2174),
     support_enemy_y=LOW_RIPPER_3_Y,
+    min_freeze_timer=30,
+)
+LOWER_RIPPER_4 = RedIceCheckpoint(
+    "lower_ripper_4",
+    (55, 205),
+    (2006, 2038),
+    support_enemy_y=LOW_RIPPER_4_Y,
     min_freeze_timer=30,
 )
 
@@ -176,6 +185,11 @@ def can_attach_ripper1_edge(state: SuperMetroidState) -> bool:
 def can_attach_ripper2_edge(state: SuperMetroidState) -> bool:
     """Gate for the r2 → r3 hop. Support freeze is checked live by the runner."""
     return LOWER_RIPPER_2.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_ripper3_edge(state: SuperMetroidState) -> bool:
+    """Gate for the r3 → r4 hop. Support freeze is checked live by the runner."""
+    return LOWER_RIPPER_3.matches(state) and _has_ice_hi_jump(state)
 
 
 def _action(*names: str) -> np.ndarray:
@@ -436,8 +450,11 @@ __all__ = [
     "LOWER_RIPPER_1",
     "LOWER_RIPPER_2",
     "LOWER_RIPPER_3",
+    "LOWER_RIPPER_4",
     "LOW_RIPPER_3_LAND_Y",
     "LOW_RIPPER_3_Y",
+    "LOW_RIPPER_4_LAND_Y",
+    "LOW_RIPPER_4_Y",
     "MID_RIPPER_LAND_Y",
     "MID_RIPPER_Y",
     "POLICY_ID",
@@ -449,6 +466,7 @@ __all__ = [
     "can_attach_bottom_edge",
     "can_attach_ripper1_edge",
     "can_attach_ripper2_edge",
+    "can_attach_ripper3_edge",
     "checkpoint_supported",
     "play_bottom_to_ripper1",
     "read_rippers",

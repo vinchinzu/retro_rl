@@ -85,6 +85,8 @@ bottom_floor ~(216,2443)
   → lower_ripper_2 y=2255, grounded, freeze timer ≥30
   → freeze r3 on the facing (right) side, standing Hi-Jump, drift from above
   → lower_ripper_3 y=2159, grounded, freeze timer ≥30
+  → freeze r4 on the facing (right) side, crouch-jump (136px), drift from above
+  → lower_ripper_4 y=2023, grounded, freeze timer ≥30
 ```
 
 Edge 1 waits for horizontal clearance before its first rising wall arc, is
@@ -92,11 +94,13 @@ dual-exact from the natural Bat→Red predecessor, and passed 31 patrol phases
 total (offsets `0..240`, step 8) in **233–380 policy frames**. Edge 2 is
 dual-exact **156f** ×2 from the Ice-pin r1 pin. Edge 3 is dual-exact
 **108f** ×2 from the Ice-pin r2 pin (wait for r3 to pass, then freeze
-right-side). p165 chain bottom→r3 is **635f**. Hellway is not claimed.
+right-side). Edge 4 is dual-exact **141f** ×2 from the Ice-pin r3 pin
+(standing hop is ~3px short; crouch-jump clears). p165 chain bottom→r4
+is **809f**. Hellway is not claimed.
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge 3 \
-  --source snes/super_metroid/scratch/red_ice_p165_ripper2.state
+uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge 4 \
+  --source snes/super_metroid/scratch/red_ice_p165_ripper3.state
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge chain \
   --source snes/super_metroid/scratch/bat_zero_settle_eq216_leave.state \
   --phase-offsets 0

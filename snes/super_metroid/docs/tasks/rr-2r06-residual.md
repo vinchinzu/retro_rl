@@ -41,6 +41,8 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \
 - [x] Ice-pin chain bottom → r2 GREEN **501f** `(115,2255)` p1
 - [x] Ice-pin r2 pin: checkpoint `lower_ripper_2 → lower_ripper_3` dual GREEN **108f** ×2 `(140,2159)` p1
 - [x] Ice-pin chain bottom → r3 GREEN **635f** `(130,2159)` p1
+- [x] Ice-pin r3 pin: checkpoint `lower_ripper_3 → lower_ripper_4` dual GREEN **141f** ×2 `(155,2023)` p1
+- [x] Ice-pin chain bottom → r4 GREEN **809f** `(146,2023)` p1
 - [ ] Ice-pin compose GREEN (West Ocean `0x93FE`) — RED at `red_to_hellway` (product RLE)
 - [ ] Ice-pin compose dual exact
 - [ ] Power-on `--to moat` dual continuous (planner STATUS)
@@ -83,14 +85,14 @@ From `post_ice_ceres_successor` (`kpdr.py compose ice-to-moat`):
 | west_to_below | `(472,393)` p82 | 9389 | matches |
 | below_to_bat | `(472,139)` p12 | 9874 | sill pin; matches dual |
 | **bat_to_red** | `(216,2443)` p165 | 10642 | GREEN 768f; was water timeout |
-| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through lower_ripper_3 (see below). 718f successor still greens 6199f from p10 mom=1. |
+| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through lower_ripper_4 (see below). 718f successor still greens 6199f from p10 mom=1. |
 
 ### Ice checkpoints from Ice-pin Red leave `(216,2443)` p165
 
 Public policy: Hi-Jump + Ice. Double WJ up the right wall onto frozen
-Ripper 1, then standing hop onto Rippers 2 and 3. Freeze only on the
-facing (right) side. Do not walk on the ice while shooting (falls off).
-Do not RIGHT+A from aim-up (pose 81 falls through).
+Ripper 1, standing hop onto Rippers 2 and 3, crouch-jump onto Ripper 4.
+Freeze only on the facing (right) side. Do not walk on the ice while
+shooting (falls off). Do not RIGHT+A from aim-up (pose 81 falls through).
 https://wiki.supermetroid.run/Red_Tower
 
 | | frames | seconds | clock |
@@ -100,31 +102,32 @@ https://wiki.supermetroid.run/Red_Tower
 | after edge 1 `bottom → r1` (clearance-gated double WJ) | 335 | 5.574 | 00:05.58 |
 | after edge 2 `r1 → r2` dual exact | 156 | 2.596 | 00:02.60 |
 | after edge 3 `r2 → r3` dual exact | 108 | 1.797 | 00:01.80 |
-| chain p165 → r2 | 501 | 8.336 | 00:08.35 |
+| after edge 4 `r3 → r4` dual exact | 141 | 2.346 | 00:02.35 |
 | chain p165 → r3 | 635 | 10.566 | 00:10.58 |
+| chain p165 → r4 | 809 | 13.461 | 00:13.48 |
 
-Dual exact **156f** ×2 on r1→r2, leave `(125, 2255)` p1. Dual exact
-**108f** ×2 on r2→r3, leave `(140, 2159)` p1. Chain **635f** leaves
-`(130, 2159)` p1 from `scratch/bat_zero_settle_eq216_leave.state`.
-r3 starts left of the r2 seat; wait until it is 8–36px to the **right**
-before UP+X (Wave+Ice vertical misses the left approach and freezes
-overhead — standing hop then bonks). Not wired into `play_red_to_hellway`
-(still the 6199f tape body).
+Dual exact **141f** ×2 on r3→r4, leave `(155, 2023)` p1. Standing hop
+apex is ~3px above r4 and falls through; crouch-jump apex **2008**
+clears. Chain **809f** leaves `(146, 2023)` p1 from
+`scratch/bat_zero_settle_eq216_leave.state`. Not wired into
+`play_red_to_hellway` (still the 6199f tape body).
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
   --source snes/super_metroid/scratch/bat_zero_settle_eq216_leave.state \
   --edge chain --phase-offsets 0
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
-  --source snes/super_metroid/scratch/red_ice_p165_ripper2.state \
-  --edge 3
+  --source snes/super_metroid/scratch/red_ice_p165_ripper3.state \
+  --edge 4
 ```
 
 ### Next action (required)
-- **One change:** checkpoint `lower_ripper_3 → lower_ripper_4` (y=2048,
-  136px gap — standing Hi-Jump is not enough; likely WJ)
-- **Source:** `scratch/red_ice_p165_ripper3.state` / chain leave
-  `(130,2159)` p1
+- **One change:** checkpoint `lower_ripper_4 → tunnel_floor` (solid left
+  alcove ~x104 y1883). Crouch-jump from r4 clears height (apex ~1847)
+  but x≈155 is open shaft; need leftward travel onto the seat. Do not
+  walk off r4 ice.
+- **Source:** `scratch/red_ice_p165_ripper4.state` / chain leave
+  `(146,2023)` p1
 - Do not mash more `bat_to_red` subpixel
 - Keep `post_ice_bat_to_red_pure` (718f p10) until a Hellway leave greens
   the successor. Do not replace product `play_red_to_hellway` until the
