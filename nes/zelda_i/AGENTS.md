@@ -96,10 +96,12 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine now
-clears L3: `l3_tf_continuous_video_v1`, post-fanfare OW `0x74`, TF=0x07, Raft=1,
-keys=4, zero deaths/progression/capacity writes and zero state restores. L3
-uses a documented bomb-count top-up 8→16 at natural Raft until the farm pass.
-Next is the live L3-exit → L4 suffix.
+reaches L4 entry `0x71`: `l4_entry_continuous_v1`, 95,281f, TF=0x07, Raft=1,
+keys=4, bombs=0, zero deaths/progression/capacity writes and zero state
+restores. L3 uses a documented bomb-count top-up 8→16 at natural Raft until
+the farm pass. Next is a one-env L4 entrance→first-key sequence; top up the
+owned bomb count before the 0x61 north wall. Do not attach the old
+checkpoint-mediated L4 compose or emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
