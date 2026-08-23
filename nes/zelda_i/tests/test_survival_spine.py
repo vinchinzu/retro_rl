@@ -45,6 +45,7 @@ from zelda_i.survival_spine import (
     SPINE_BOMB_RETOPUP,
     SPINE_THROUGH,
     SpineRun,
+    level4_entry_stages,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -56,7 +57,16 @@ from zelda_i.survival_spine import (
 
 
 def test_spine_through_is_continuous_only() -> None:
-    assert SPINE_THROUGH == ("level1", "level2", "level3")
+    assert SPINE_THROUGH == ("level1", "level2", "level3", "level4-entry")
+
+
+def test_level4_entry_attaches_after_level3_tf() -> None:
+    assert [name for name, _, _ in level4_entry_stages()] == [
+        "settle_l3_tf",
+        "enter_level4",
+    ]
+    run = SpineRun(through="level4-entry", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_entry_0x71"
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:

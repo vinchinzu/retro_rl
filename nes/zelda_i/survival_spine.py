@@ -49,6 +49,13 @@ from zelda_i.level3_spine import (
 from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
+from zelda_i.level4_overworld import (
+    POST_L3_PATH_MAX_FRAMES,
+    POST_L3_SETTLE_MAX_FRAMES,
+    OverworldToLevel4Controller,
+    PostL3TriforceSettleController,
+    level4_entry_stop,
+)
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
@@ -59,9 +66,14 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
-Through = Literal["level1", "level2", "level3"]
+Through = Literal["level1", "level2", "level3", "level4-entry"]
 
-SPINE_THROUGH: tuple[Through, ...] = ("level1", "level2", "level3")
+SPINE_THROUGH: tuple[Through, ...] = (
+    "level1",
+    "level2",
+    "level3",
+    "level4-entry",
+)
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -85,6 +97,22 @@ def level2_entry_stages():
             "enter_level2",
             OverworldToLevel2Controller(door_path=True, require_dungeon=True),
             L2_NAV_MAX_FRAMES,
+        ),
+    )
+
+
+def level4_entry_stages():
+    """After L3 TF: settle on OW 0x74, cross the Raft dock, and enter L4."""
+    return (
+        (
+            "settle_l3_tf",
+            PostL3TriforceSettleController(),
+            POST_L3_SETTLE_MAX_FRAMES,
+        ),
+        (
+            "enter_level4",
+            OverworldToLevel4Controller(require_dungeon=True),
+            POST_L3_PATH_MAX_FRAMES,
         ),
     )
 
@@ -147,6 +175,7 @@ class SpineRun:
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
+                "level4-entry": "level4_entry_0x71",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -531,4 +560,22 @@ def run_survival_spine(
     run.success = bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
     if not run.success:
         run.failed_stage = "level3_triforce_0x04"
+        return run
+    if through == "level3":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_entry_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_entry_stop(snap)
+    if not run.success:
+        run.failed_stage = "level4_entry_0x71"
     return run
