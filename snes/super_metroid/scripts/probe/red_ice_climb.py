@@ -23,10 +23,21 @@ from super_metroid.paths import INTEGRATION_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     LOWER_RIPPER_1,
+    LOWER_RIPPER_2,
+    LOWER_RIPPER_3,
+    LOW_RIPPER_3_Y,
     POLICY_ID,
     checkpoint_supported,
     play_bottom_to_ripper1,
     ripper_at_height,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r1_to_r2 import (  # noqa: E402
+    POLICY_ID as R12_POLICY,
+    play_ripper1_to_ripper2,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r2_to_r3 import (  # noqa: E402
+    POLICY_ID as R23_POLICY,
+    play_ripper2_to_ripper3,
 )
 
 DEFAULT_SOURCE = INTEGRATION_DIR / "scratch" / "post_ice_bat_to_red_pure.state"
@@ -92,9 +103,125 @@ def _offsets(value: str) -> list[int]:
     return [int(part.strip(), 0) for part in value.split(",") if part.strip()]
 
 
+def run_r12(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        started_at = time.perf_counter()
+        error = None
+        try:
+            play_ripper1_to_ripper2(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        enemy = ripper_at_height(env, 2280)
+        policy_frames = int(session.frame - start)
+        elapsed = max(time.perf_counter() - started_at, 1e-9)
+        green = error is None and checkpoint_supported(env, session.state, LOWER_RIPPER_2)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": R12_POLICY,
+            "policyFrames": policy_frames,
+            "fps": round(policy_frames / elapsed, 1),
+            "totalFrames": int(session.frame),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "freezeTimer": int(enemy.freeze_timer) if enemy is not None else 0,
+            "enemyX": int(enemy.x) if enemy is not None else None,
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
+def run_r23(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        started_at = time.perf_counter()
+        error = None
+        try:
+            play_ripper2_to_ripper3(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        enemy = ripper_at_height(env, LOW_RIPPER_3_Y)
+        policy_frames = int(session.frame - start)
+        elapsed = max(time.perf_counter() - started_at, 1e-9)
+        green = error is None and checkpoint_supported(env, session.state, LOWER_RIPPER_3)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": R23_POLICY,
+            "policyFrames": policy_frames,
+            "fps": round(policy_frames / elapsed, 1),
+            "totalFrames": int(session.frame),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "freezeTimer": int(enemy.freeze_timer) if enemy is not None else 0,
+            "enemyX": int(enemy.x) if enemy is not None else None,
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
+def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        started_at = time.perf_counter()
+        error = None
+        try:
+            play_bottom_to_ripper1(session)
+            play_ripper1_to_ripper2(session)
+            play_ripper2_to_ripper3(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        enemy = ripper_at_height(env, LOW_RIPPER_3_Y)
+        policy_frames = int(session.frame - start)
+        elapsed = max(time.perf_counter() - started_at, 1e-9)
+        green = error is None and checkpoint_supported(env, session.state, LOWER_RIPPER_3)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": f"{POLICY_ID}+{R12_POLICY}+{R23_POLICY}",
+            "policyFrames": policy_frames,
+            "fps": round(policy_frames / elapsed, 1),
+            "totalFrames": int(session.frame),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "freezeTimer": int(enemy.freeze_timer) if enemy is not None else 0,
+            "enemyX": int(enemy.x) if enemy is not None else None,
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
+    parser.add_argument(
+        "--edge",
+        choices=("1", "2", "3", "chain"),
+        default="1",
+        help="1=bottom→r1 (default sweep), 2=r1→r2 dual, 3=r2→r3 dual, chain=bottom→r3",
+    )
     parser.add_argument(
         "--phase-offsets",
         default="full",
@@ -109,6 +236,59 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+
+    if args.edge == "2":
+        runs = [run_r12(args.source, save=args.save), run_r12(args.source)]
+        green = all(row["green"] for row in runs)
+        dual_exact = runs[0]["policyFrames"] == runs[1]["policyFrames"] and runs[0]["xy"] == runs[1]["xy"]
+        report = {
+            "policy": R12_POLICY,
+            "scope": "lower_ripper_1->lower_ripper_2",
+            "green": green,
+            "dualExact": dual_exact,
+            "runs": runs,
+            "nonClaim": "Hellway exit is not implemented by this checkpoint edge",
+        }
+        mark = "GREEN" if green else "RED"
+        print(
+            f"{mark} {R12_POLICY} dual={dual_exact} "
+            f"frames={runs[0]['policyFrames']} xy={runs[0]['xy']} p={runs[0]['pose']}"
+        )
+        if args.json:
+            print(json.dumps(report, indent=2))
+        return 0 if green else 1
+    if args.edge == "3":
+        runs = [run_r23(args.source, save=args.save), run_r23(args.source)]
+        green = all(row["green"] for row in runs)
+        dual_exact = runs[0]["policyFrames"] == runs[1]["policyFrames"] and runs[0]["xy"] == runs[1]["xy"]
+        report = {
+            "policy": R23_POLICY,
+            "scope": "lower_ripper_2->lower_ripper_3",
+            "green": green,
+            "dualExact": dual_exact,
+            "runs": runs,
+            "nonClaim": "Hellway exit is not implemented by this checkpoint edge",
+        }
+        mark = "GREEN" if green else "RED"
+        print(
+            f"{mark} {R23_POLICY} dual={dual_exact} "
+            f"frames={runs[0]['policyFrames']} xy={runs[0]['xy']} p={runs[0]['pose']}"
+            f" err={runs[0]['error']}"
+        )
+        if args.json:
+            print(json.dumps(report, indent=2))
+        return 0 if green else 1
+    if args.edge == "chain":
+        row = run_chain(args.source, save=args.save)
+        mark = "GREEN" if row["green"] else "RED"
+        print(
+            f"{mark} chain frames={row['policyFrames']} xy={row['xy']} "
+            f"p={row['pose']} err={row['error']}"
+        )
+        if args.json:
+            print(json.dumps(row, indent=2))
+        print("  partial only: lower_ripper_3; Hellway remains RED")
+        return 0 if row["green"] else 1
 
     offsets = _offsets(args.phase_offsets)
     # Two independent offset-zero boots are the exact dual check.  The sweep

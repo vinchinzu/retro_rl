@@ -21,11 +21,16 @@ Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
 **Verified tip:** continuous power-on → Ice Beam (default `ice`).
 STATUS dual **148,167f** ×2 (2026-08-10). Ceres-successor reverify dual
 **146,937f** ×2 (2026-08-22, scratch `ice_ceres_successor.json` + `_dual.json`;
-STATUS promote `rr-ucl9`). **Next K5:** Hellway → Caterpillar from
-`post_ice_red_to_hellway_pure` (Red→Hellway dual **6199f** ×2). Residual:
-[`docs/tasks/rr-dbu.8-residual.md`](docs/tasks/rr-dbu.8-residual.md).
-Tip history lives in STATUS — do not STATUS-promote or rewrite the route
-from this file.
+STATUS promote `rr-ucl9`). `--to alpha_pb` / `--to moat` are wired (K5+K6
+spine) but **not** STATUS-promoted. Ice-pin compose (`rr-2r06`) is dual-green
+through Skree Boost Room → Red Tower (`bat_to_red` zero-settle **768f** ×2);
+first live-chain RED is still product `red_to_hellway` (RLE walked back to
+Bat). Ice checkpoints from that leave are green through lower Ripper 3
+(clearance-gated double WJ **335f** + standing hops **156f**/**108f** ×2,
+chain **635f**); Hellway
+is not claimed. Tip
+history lives in STATUS — do not STATUS-promote or rewrite the route from
+this file.
 
 ## Commands
 
