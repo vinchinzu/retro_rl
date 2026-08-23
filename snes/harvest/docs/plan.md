@@ -17,12 +17,12 @@ splice concatenates plant+water+leftover so a 06:08 plan still gets smash).
 Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer),
 **4** large 2×2, **2** stumps (axe). Spa when stamina cannot finish an
 8-swing 2×2. Do **not** restore a morning whole-farm wipe. Grape+shop+
-one-cell plant stay GREEN (`rr-zmss` / `rr-20w.1`). Power-on compose of that
-spine is GREEN with **2** potatoes. Next live pin: `d2_plant_probe` from
-`Y1_After_Buy_Potato` plants 8 + waters 8 (`rr-m7mk` / `rr-bvam`); leftover
-quota smash is `rr-w14t` / `rr-20w.2.8`. Hammer/axe RAM shelf is GREEN
-(`rr-5aaw`). Do not redo power-on until the 3x3 probe is green. Gate B
-residual remains `rr-3ae8` / `rr-yuel` / `rr-rzpd`.
+8-ring plant+water from `Y1_After_Buy_Potato` is GREEN (`rr-m7mk` /
+`rr-bvam`, `recordings/d2_plant_water.json`: 8×`0x55`, bag spent, can
+20→12). Next live pin: leftover quota smash (`rr-w14t` / `rr-20w.2.8`).
+Hammer/axe RAM shelf is GREEN (`rr-5aaw`). Redo power-on after leftover
+is green so the compose plants 8 not 2. Gate B residual remains
+`rr-3ae8` / `rr-yuel` / `rr-rzpd`. Do not STATUS-promote Gate B.
 
 **Already closed (do not re-open as bottleneck):**
 

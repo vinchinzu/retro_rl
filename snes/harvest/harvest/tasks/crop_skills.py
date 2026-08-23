@@ -344,6 +344,34 @@ _HOE_ALT_STANDS: Tuple[Tuple[Tuple[int, int], str], ...] = (
     ((1, 0), "left"),
     ((0, -1), "down"),
 )
+# y=31 is the solid 0x05 wall; y=30 is the lip that never settles a face-up.
+_FENCE_LIP_Y = 30
+# Tight: radius 6 accepted (11,29) as the (12,29) hoe stand (live miss).
+_RING_NAV_RADIUS = 3
+
+
+def _pocket_hoe_stand_blocked(
+    center: Tuple[int, int],
+    target: Tuple[int, int],
+    stand: Tuple[int, int],
+    face: str,
+) -> bool:
+    """True when a pocket hoe stand cannot settle (no-go / fence / leftover stone)."""
+    from harvest.maps.farm_pond import FARM_NO_GO_TILES
+
+    if stand == target or stand in FARM_NO_GO_TILES:
+        return True
+    if stand[1] >= _FENCE_LIP_Y:
+        return True
+    # Face-up on y=29 nudges into y=30 leftover stones (live (12,30) sealed
+    # nav_hoe_ring_6_up). Face-right on (12,29) is still the first hoe stand.
+    if face == "up" and stand[1] >= 29:
+        return True
+    # East of the 3x3 on the fence-adjacent row. Live leftover stone at
+    # (16,29) seals hoe_stand_px's rightward face-left nudge on (15,29).
+    if stand == (center[0] + 2, center[1] + 1):
+        return True
+    return False
 
 
 def remap_pocket_hoe_stand(
@@ -355,19 +383,17 @@ def remap_pocket_hoe_stand(
     """Pocket-only hoe stand remaps. Does not rewrite HOE_PLAN.
 
     Fence-lip (cx, cy+2) face-up becomes west of the bottom ring, face-right.
-    Well-body / other ``FARM_NO_GO_TILES`` stands pick an adjacent-to-target
-    alternate (prefer south, face up).
+    Well-body / fence-lip / leftover-stone stands pick an adjacent-to-target
+    alternate (prefer south, face up; skip y>=30).
     """
     if target == (center[0], center[1] + 1) and face == "up":
         stand = (center[0] - 1, center[1] + 1)
         face = "right"
-    from harvest.maps.farm_pond import FARM_NO_GO_TILES
-
-    if stand not in FARM_NO_GO_TILES:
+    if not _pocket_hoe_stand_blocked(center, target, stand, face):
         return stand, face
     for (dx, dy), alt_face in _HOE_ALT_STANDS:
         alt = (target[0] + dx, target[1] + dy)
-        if alt in FARM_NO_GO_TILES or alt == target:
+        if _pocket_hoe_stand_blocked(center, target, alt, alt_face):
             continue
         return alt, alt_face
     return stand, face
@@ -390,8 +416,8 @@ def _ring_nav_tool_skills(
             NavSkill(
                 name=f"{nav_prefix}_{index}_{face}",
                 target_px=(px, py),
-                radius=3,
-                soft_radius=3,
+                radius=_RING_NAV_RADIUS,
+                soft_radius=_RING_NAV_RADIUS,
                 timeout=nav_timeout,
                 require_tilemap=0x00,
             )
@@ -410,7 +436,8 @@ def pocket_hoe_ring_skills(
 
     Does not hoe the notch. Starts west of (13,29) so the first swing is
     already facing right. Shed-door leave is owned by
-    ``farm_nav_pocket_hoe_stand_skill``. Well-body stands are remapped.
+    ``farm_nav_pocket_hoe_stand_skill``. Well-body, fence-lip, and the
+    leftover-stone east stand (15,29) are remapped.
     """
     from harvest.tasks.crop_geometry import hoe_plan
 
@@ -565,3 +592,156 @@ def plant_until_plot_skill(
         min_planted=min_planted,
         timeout=timeout,
     )
+
+
+def _can_level(ram) -> int:
+    try:
+        return int(read_ram_value(ram, "watering_can") or 0)
+    except Exception:
+        return 0
+
+
+@dataclass
+class EnsureCanFilledTask(Task):
+    """No-op when the can already holds ``min_level``. Else open the y=31
+    pond gap (corridor_only) and Y at the F0 stand until the can fills.
+
+    D2 shelf pickup leaves watering_can=0. Pocket water with an empty can
+    is a 0x54 timeout (live Y1_After_Buy_Potato).
+    """
+
+    name: str = "ensure_can_filled"
+    min_level: int = 8
+    timeout: int = 12_000
+
+    _steps: int = field(default=0, init=False)
+    _phase: str = field(default="check", init=False)
+    _sub: Optional[Task] = field(default=None, init=False)
+    _face_ok_step: int = field(default=0, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._steps = 0
+        self._phase = "check"
+        self._sub = None
+        self._face_ok_step = 0
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text=self._phase,
+            step_count=self._steps,
+            details=(("min_level", self.min_level),),
+        )
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._steps += 1
+        level = _can_level(world.ram)
+        if level >= int(self.min_level):
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"{self.name} can={level}",
+            )
+        if self._steps > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"{self.name} timeout can={level} phase={self._phase}",
+            )
+        if self._phase == "check":
+            from harvest.tasks.fence_flow import FenceClearLoopTask
+
+            self._phase = "fence"
+            self._sub = FenceClearLoopTask(
+                max_fences=2,
+                max_steps_per_fence=1600,
+                corridor_only=True,
+            )
+            self._sub.reset(world)
+        if self._phase == "fence" and self._sub is not None:
+            result = self._sub.step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            from harvest.tasks.skills import farm_nav_to_pond_refill_skill
+
+            self._phase = "nav"
+            self._sub = farm_nav_to_pond_refill_skill()
+            self._sub.reset(world)
+        if self._phase == "nav" and self._sub is not None:
+            result = self._sub.step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            self._phase = "fill"
+            self._sub = None
+            self._face_ok_step = 0
+        if self._phase == "fill":
+            if not _input_unlocked(world.ram):
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="wait input unlock",
+                )
+            sel = int(selected_tool(world.ram))
+            if sel != int(Tool.WATERING_CAN):
+                back = int(backpack_tool(world.ram))
+                if back == int(Tool.WATERING_CAN):
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(x=True)),
+                        reason="x-swap can before fill",
+                    )
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason="watering can not in carry pair",
+                )
+            from harvest.maps.map_config import farm_pond_refill_primary_stand
+            from harvest.tasks.skills import farm_pond_refill_face
+
+            stand, face = farm_pond_refill_primary_stand()
+            face = farm_pond_refill_face() or face
+            pos = get_pos_from_ram(world.ram)
+            player_tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
+            if player_tile != stand:
+                dx = stand[0] - player_tile[0]
+                dy = stand[1] - player_tile[1]
+                step = (
+                    {"up": True}
+                    if dy < 0 and abs(dy) >= abs(dx)
+                    else {"down": True}
+                    if dy > 0 and abs(dy) >= abs(dx)
+                    else {"left": True}
+                    if dx < 0
+                    else {"right": True}
+                )
+                self._face_ok_step = 0
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**step)),
+                    reason=f"walk onto pond stand {stand} from {player_tile}",
+                )
+            facing = int(read_ram_value(world.ram, "player_direction") or 0)
+            wanted_face = _FACE_CODE.get(face)
+            if (
+                wanted_face is not None
+                and self._face_ok_step == 0
+                and facing != wanted_face
+            ):
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**{face: True})),
+                    reason=f"face {face} (ram={facing})",
+                )
+            if self._face_ok_step == 0:
+                self._face_ok_step = self._steps
+            wait = self._steps - self._face_ok_step
+            action = make_action(y=True) if 6 <= wait < 26 else make_action()
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(action),
+                reason=f"Y fill can={level}",
+            )
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            reason=f"{self.name} unknown phase {self._phase}",
+        )

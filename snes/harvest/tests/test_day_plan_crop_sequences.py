@@ -498,7 +498,9 @@ class DayPlanSequenceCropTests(unittest.TestCase):
     def test_shed_farm_route_skips_field_path_north_of_fence(self) -> None:
         world = make_world(0x00)
         set_player_pos(world.ram, 11 * 16 + 8, 30 * 16 + 8)
-        self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "farm_to_shed")
+        self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "pocket_to_shed")
+        set_player_pos(world.ram, 13 * 16 + 8, 28 * 16 + 8)
+        self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "pocket_to_shed")
         set_player_pos(world.ram, 11 * 16 + 8, 33 * 16 + 8)
         self.assertEqual(shed_farm_route_name(world.ram, "farm_to_shed"), "field_to_shed")
 
@@ -537,7 +539,10 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertIsInstance(task._task, ShedFetchItemTask)
         self.assertEqual(task._task._phase, "route")
         self.assertIsInstance(task._task._task, MultiMapNavTask)
-        self.assertEqual(task._task._task.waypoints, ROUTES["farm_to_shed"])
+        self.assertEqual(task._task._task.waypoints, ROUTES["pocket_to_shed"])
+        self.assertNotEqual(
+            task._task._task.waypoints[0].target_px, (137, 375)
+        )
 
     def test_ensure_crop_seeds_uses_upper_route_from_coop_frontage(self) -> None:
         world = make_world(0x00)

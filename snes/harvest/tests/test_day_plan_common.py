@@ -664,8 +664,11 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
 
     def test_shed_routes_stop_below_doorway_for_transition(self) -> None:
         self.assertEqual(ROUTES["farm_to_shed"][-1].target_px, (424, 489))
+        self.assertEqual(ROUTES["pocket_to_shed"][-1].target_px, (424, 489))
         self.assertEqual(ROUTES["upper_farm_to_shed"][-1].target_px, (424, 489))
         self.assertEqual(ROUTES["field_to_shed"][-1].target_px, (424, 489))
+        self.assertEqual(ROUTES["pocket_to_shed"][0].target_px, (244, 375))
+        self.assertNotIn((137, 375), [waypoint.target_px for waypoint in ROUTES["pocket_to_shed"]])
         self.assertNotIn((422, 478), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])
         self.assertIn((354, 489), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])
         self.assertNotIn((456, 424), [waypoint.target_px for waypoint in ROUTES["farm_to_shed"]])

@@ -25,6 +25,7 @@ from harvest.tasks.crop_skills import (
     PLANTED_DRY,
     PLANTED_WET,
     PLOT_RING_SIZE,
+    EnsureCanFilledTask,
     PlantPlotSkill,
     SelectCarrySkill,
     count_ring_planted,
@@ -250,6 +251,7 @@ class PocketPlantComposeTests(unittest.TestCase):
         self.assertEqual(len(skills), PLOT_RING_SIZE * 2)
         self.assertTrue(all(s.name.startswith("nav_hoe_ring_") for s in skills[0::2]))
         self.assertEqual(skills[0].name, "nav_hoe_ring_0_right")
+        self.assertEqual(skills[0].radius, 3)
         self.assertEqual([s.name for s in skills[1::2]], ["hoe_until_tilled"] * PLOT_RING_SIZE)
 
     def test_hoe_stand_nav_leaves_shed_door_south_then_west(self) -> None:
@@ -324,6 +326,38 @@ class PocketPlantComposeTests(unittest.TestCase):
             (cx, cy), (cx, cy + 1), (cx, cy + 2), "up"
         )
         self.assertEqual((fence_stand, fence_face), ((cx - 1, cy + 1), "right"))
+        east_bottom = (cx + 1, cy + 1)
+        east_hoe = next(h for h in hoes if h.target_tile == east_bottom)
+        self.assertEqual(east_hoe.face, "right")
+        east_nav = skills[list(skills).index(east_hoe) - 1]
+        self.assertEqual(
+            (east_nav.target_px[0] // TILE_SIZE, east_nav.target_px[1] // TILE_SIZE),
+            (cx, cy + 1),
+        )
+        self.assertNotIn((cx + 2, cy + 1), stands)
+        self.assertTrue(all(stand[1] < 30 for stand in stands))
+        east_stand, east_face = remap_pocket_hoe_stand(
+            (cx, cy), east_bottom, (cx + 2, cy + 1), "left"
+        )
+        self.assertEqual((east_stand, east_face), ((cx, cy + 1), "right"))
+        left_mid = (cx - 1, cy)
+        left_hoe = next(h for h in hoes if h.target_tile == left_mid)
+        self.assertEqual(left_hoe.face, "left")
+        left_nav = skills[list(skills).index(left_hoe) - 1]
+        self.assertEqual(
+            (left_nav.target_px[0] // TILE_SIZE, left_nav.target_px[1] // TILE_SIZE),
+            (cx, cy),
+        )
+        up_stand_ys = [
+            nav.target_px[1] // TILE_SIZE
+            for nav in navs
+            if nav.name.endswith("_up")
+        ]
+        self.assertTrue(all(y < 29 for y in up_stand_ys))
+        left_stand, left_face = remap_pocket_hoe_stand(
+            (cx, cy), left_mid, (cx - 2, cy), "right"
+        )
+        self.assertEqual((left_stand, left_face), ((cx, cy), "left"))
 
     def test_pocket_water_ring_waters_eight_skips_center(self) -> None:
         cx, cy = WEST_POCKET_PLANT_CENTER
@@ -345,6 +379,23 @@ class PocketPlantComposeTests(unittest.TestCase):
         self.assertEqual(sum(1 for n in names if n == "water_until_wet"), PLOT_RING_SIZE)
         self.assertIn("nav_pocket_plant", names)
         self.assertIn(f"select_carry_0x{int(Tool.WATERING_CAN):02X}", names)
+        self.assertLess(
+            names.index("ensure_can_filled"), names.index("nav_pocket_plant")
+        )
+        self.assertLess(
+            names.index(f"select_carry_0x{int(Tool.WATERING_CAN):02X}"),
+            names.index("ensure_can_filled"),
+        )
+
+    def test_ensure_can_filled_skips_when_already_full(self) -> None:
+        ram = _ram(selected=int(Tool.WATERING_CAN))
+        ram[0x0926] = 20
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = EnsureCanFilledTask()
+        skill.reset(world)
+        result = skill.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("can=20", result.reason or "")
 
     def test_water_until_wet_on_target_succeeds(self) -> None:
         ram = _ram(tile=(13, 28), tid=0x01, selected=int(Tool.WATERING_CAN))
