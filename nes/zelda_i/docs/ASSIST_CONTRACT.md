@@ -40,24 +40,32 @@ telemetry block in the run report.
 The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 `chain.run_controller_stage` / probe loops—not scattered policy writes.
 
-### Owned inventory counts (bombs / keys) — temporary Survival shortcut
+### Owned inventory counts (bombs / keys) — Survival route-development shortcut
 
 Opened 2026-08-15 so the continuous spine can open L2 bomb walls (power-on
-entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass.
+entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass. Expanded
+by operator direction on 2026-08-23: bomb-count top-ups may be used at verified
+bomb gates through the assisted full-game clear while route experience and
+reusable skills are still being built and refactored.
 The spine applies this at L2 entry, again before `SPINE_BOMB_RETOPUP`
 stages, and at the natural L3 Raft boundary before the bomb-heavy boss suffix.
-**Not Clean.** Strip later; do not treat a poke tape as natural inventory.
+**Not Clean.** Strip or replace with farms during the later resource pass; do
+not treat a top-up tape as natural inventory.
 
 Allowed fields only:
 
 | Field | Address / data key | Rule |
 |-------|--------------------|------|
-| bombs | `$0658` / `bombs` | Count top-up. Never write `max_bombs` (`$067C`). |
+| bombs | `$0658` / `bombs` | Count top-up at a verified route bomb gate, through the assisted full-game clear. Never write `max_bombs` (`$067C`). |
 | keys | `$066E` / `keys` | Count top-up of the already-used key item. |
 | selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
 
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
 / `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
+
+This exception does not authorize speculative top-ups on every frame. Apply it
+immediately before a known bomb-consuming stage, preserve all other inventory,
+and record the before/after count and semantic stage name.
 
 Do **not** grant an item Link has not found on this session: sword upgrade,
 boomerang / magical boomerang, bow, arrows, candle, whistle, raft,

@@ -1,7 +1,8 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** OW entry **live (assisted)**. Interior still planning. Do not
-claim Clean STATUS — Survival assist only for this segment.
+**Status:** continuous power-on Survival is live through natural key `0x51`
+and cleared `0x50`. The next natural boundary is the scripted north exit to
+`0x40`. Do not claim Clean STATUS — Survival assist only for this segment.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -173,6 +174,9 @@ Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 ### Runner
 
 ```bash
+# Continuous power-on verified through 0x50 clear
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-clear50 --no-video --trials 1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state

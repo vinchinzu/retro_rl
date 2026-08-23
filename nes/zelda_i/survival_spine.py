@@ -24,6 +24,7 @@ from zelda_i.level2_overworld import (
     PostTriforceSettleController,
 )
 from zelda_i.dungeon_ops import apply_owned_inventory
+from zelda_i.dungeon import DungeonPhase
 from zelda_i.level2_bombs import spine_bomb_report
 from zelda_i.level2_spine import level2_boom_success, level2_to_boom_stages
 from zelda_i.level2_tf_spine import (
@@ -56,6 +57,25 @@ from zelda_i.level4_overworld import (
     PostL3TriforceSettleController,
     level4_entry_stop,
 )
+from zelda_i.level4_dungeon import (
+    ROOM_51_SPEC,
+    ROOM_40_SPEC,
+    ROOM_50_SPEC,
+    ROOM_L4_KEESE_KEY_51,
+    ROOM_L4_VIRES_50,
+    ROOM_L4_ZOLS_40,
+)
+from zelda_i.level4_maze_path import (
+    make_north_40_controller,
+    make_room_40_key_controller,
+)
+from zelda_i.level4_path import (
+    make_bomb_61_north_controller,
+    make_entry_up_controller,
+    make_left_50_controller,
+    make_room_50_clear_controller,
+    make_room_51_key_controller,
+)
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
@@ -66,13 +86,20 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
-Through = Literal["level1", "level2", "level3", "level4-entry"]
+Through = Literal[
+    "level1", "level2", "level3", "level4-entry", "level4-key",
+    "level4-clear50",
+    "level4-room40-key",
+]
 
 SPINE_THROUGH: tuple[Through, ...] = (
     "level1",
     "level2",
     "level3",
     "level4-entry",
+    "level4-key",
+    "level4-clear50",
+    "level4-room40-key",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -117,6 +144,68 @@ def level4_entry_stages():
     )
 
 
+def level4_first_key_stages():
+    """L4 entry 0x71 → clear 0x61 → bomb north → natural key on 0x51."""
+    key = make_room_51_key_controller()
+    key.phase = DungeonPhase.FIGHT
+    return (
+        ("level4_entry_up_0x61", make_entry_up_controller(), 4000),
+        (
+            "level4_bomb_north_0x61",
+            make_bomb_61_north_controller(clear_vires=True),
+            20000,
+        ),
+        ("level4_key_0x51", key, ROOM_51_SPEC.max_frames),
+    )
+
+
+def level4_first_key_success(snap: ZeldaSnapshot, *, keys_before: int) -> bool:
+    """Exact natural-key stop; RoomAllDead may reset before reward pickup."""
+    return (
+        snap.level == 4
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L4_KEESE_KEY_51
+        and snap.keys > keys_before
+        and not ROOM_51_SPEC.live_enemies(snap)
+    )
+
+
+def level4_room40_key_stages():
+    """Natural 0x51 key → west 0x50 → scripted north 0x40 → natural key."""
+    return (
+        ("level4_north_0x40", make_north_40_controller(), 10000),
+        ("level4_key_0x40", make_room_40_key_controller(), 25000),
+    )
+
+
+def level4_room50_stages():
+    clear_50 = make_room_50_clear_controller()
+    clear_50.phase = DungeonPhase.FIGHT
+    return (
+        ("level4_left_0x50", make_left_50_controller(), 2500),
+        ("level4_clear_0x50", clear_50, ROOM_50_SPEC.max_frames),
+    )
+
+
+def level4_room50_success(snap: ZeldaSnapshot) -> bool:
+    return (
+        snap.level == 4
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L4_VIRES_50
+        and not ROOM_50_SPEC.live_enemies(snap)
+    )
+
+
+def level4_room40_key_success(snap: ZeldaSnapshot, *, keys_before: int) -> bool:
+    return (
+        snap.level == 4
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L4_ZOLS_40
+        and snap.keys > keys_before
+        and not ROOM_40_SPEC.live_enemies(snap)
+    )
+
+
 def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
     """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
     return {
@@ -146,6 +235,7 @@ class SpineRun:
     obs: Any = None
     l2_entry: dict[str, Any] | None = None
     l3_entry: dict[str, Any] | None = None
+    l4_entry: dict[str, Any] | None = None
     bombs: dict[str, Any] | None = None
     inventory_assist: dict[str, Any] | None = None
 
@@ -165,6 +255,7 @@ class SpineRun:
             "prefix": self.prefix.report() if self.prefix is not None else None,
             "l2_entry": self.l2_entry,
             "l3_entry": self.l3_entry,
+            "l4_entry": self.l4_entry,
             "bombs": self.bombs,
             "inventory_assist": self.inventory_assist,
             "poke_bombs": (
@@ -176,6 +267,9 @@ class SpineRun:
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 "level4-entry": "level4_entry_0x71",
+                "level4-key": "level4_natural_key_0x51",
+                "level4-clear50": "level4_clear_0x50",
+                "level4-room40-key": "level4_natural_key_0x40",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -578,4 +672,67 @@ def run_survival_spine(
     run.success = level4_entry_stop(snap)
     if not run.success:
         run.failed_stage = "level4_entry_0x71"
+        return run
+    run.l4_entry = spine_final_fields(snap)
+    if through == "level4-entry":
+        return run
+
+    entry_up, bomb_wall, natural_key = level4_first_key_stages()
+    if not _run_stages(
+        env, run, (entry_up,), room_timer=room_timer, assist=assist, on_frame=on_frame
+    ):
+        return run
+    # Operator-authorized Survival exception: known 0x61 bomb wall, while the
+    # continuous predecessor arrives at L4 with bombs=0. Preserve keys/items.
+    topup_owned_bombs(env, run)
+    if not _run_stages(
+        env,
+        run,
+        (bomb_wall, natural_key),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_first_key_success(
+        snap, keys_before=int(run.l4_entry["keys"])
+    )
+    if not run.success:
+        run.failed_stage = "level4_natural_key_0x51"
+        return run
+    if through == "level4-key":
+        return run
+
+    keys_before_40 = snap.keys
+    if not _run_stages(
+        env,
+        run,
+        level4_room50_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_room50_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_clear_0x50"
+        return run
+    if through == "level4-clear50":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_room40_key_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_room40_key_success(snap, keys_before=keys_before_40)
+    if not run.success:
+        run.failed_stage = "level4_natural_key_0x40"
     return run
