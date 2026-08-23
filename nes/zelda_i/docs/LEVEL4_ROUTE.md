@@ -1,9 +1,9 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through the `0x31` maze
-Vire clear, leftover `(112,141)`. The next natural boundary is free RIGHT
-into `0x32`. Do not claim Clean STATUS — Survival assist only for this
-segment.
+**Status:** continuous power-on Survival is live through free RIGHT into
+`0x32`, leftover `(16,141)`. The next natural boundary is the Zol+LikeLike
+clear (ignore `0x2b`/`0x68`). Do not claim Clean STATUS — Survival assist
+only for this segment.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -131,8 +131,8 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
 | **0x40** | **live pure clear+key 2/2; continuous 1/1** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
 | **0x30** | **live pure clear+KEY-R 2/2; continuous clear+KEY-R 1/1** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear from (120,205); KEY-RIGHT @y141 → 0x31 | `rr-q8eq` / `rr-n1wn` |
-| **0x31** | **live pure clear+RIGHT 2/2; continuous clear 1/1** | 5× `0x12` Vire | Maze; leftover (112,141); clear opens R; free RIGHT → 0x32 | `rr-n1wn` / `rr-resv` |
-| **0x32** | **live pure clear 2/2** | 2× `0x13` + 2× `0x17` | Ignore 0x2b/0x68; push left → stairs | `rr-tib8` |
+| **0x31** | **live pure clear+RIGHT 2/2; continuous clear+RIGHT 1/1** | 5× `0x12` Vire | Maze; leftover (112,141); clear opens R; free RIGHT → 0x32 at (16,141) | `rr-n1wn` / `rr-resv` |
+| **0x32** | **live pure clear 2/2; continuous enter 1/1** | 2× `0x13` + 2× `0x17` | Ignore 0x2b/0x68; leftover (16,141); push left → stairs | `rr-tib8` |
 | **0x60** | **live pure ladder 2/2** | 4× `0x1b` Keese | mode-9 basement; RoomItemId `0x0d` → `ADDR_LADDER` | `rr-tib8` |
 
 ### Post-compass expand (rr-o0nn / rr-xc3x live 2026-08-10)
@@ -160,7 +160,7 @@ Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 nort
 | 0x30 | **KEY-RIGHT @y141** | **0x31** | keys 1→0; 5× Vire (rr-n1wn) |
 | 0x30 | UP / LEFT / free RIGHT | **sealed** | live probe |
 | 0x31 | LEFT | 0x30 | free return after key door |
-| 0x31 | **RIGHT after clear** | **0x32** | doors 2→3; hold4 BFS east (rr-resv) |
+| 0x31 | **RIGHT after clear** | **0x32** | doors 2→3; continuous: UP y=113, RIGHT+DOWN clip, south-U waypoints (not state-BFS) |
 | 0x32 | LEFT | 0x31 | free return |
 | 0x32 | **push left block** | **0x60** stairs | mode-9 basement (rr-tib8) |
 | 0x32 | N/E/W free | **sealed** | live probe |
@@ -175,9 +175,9 @@ Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 ### Runner
 
 ```bash
-# Continuous power-on verified through 0x31 maze clear
+# Continuous power-on verified through enter 0x32
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-clear31 --no-video --trials 1
+  --through level4-room32 --no-video --trials 1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
