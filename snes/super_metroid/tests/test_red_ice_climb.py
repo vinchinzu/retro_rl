@@ -12,12 +12,18 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     LOWER_RIPPER_2,
     LOWER_RIPPER_3,
     LOWER_RIPPER_4,
+    MID_FLOOR,
     RIPPER_ID,
+    TUNNEL_FLOOR,
+    THIN_SEAT,
     RedIceBottomEdgeRunner,
     can_attach_bottom_edge,
     can_attach_ripper1_edge,
     can_attach_ripper2_edge,
     can_attach_ripper3_edge,
+    can_attach_ripper4_edge,
+    can_attach_tunnel_edge,
+    can_attach_mid_floor_edge,
     checkpoint_supported,
     read_rippers,
 )
@@ -32,6 +38,10 @@ from super_metroid.routes.kpdr.k5.red_ice_r2_to_r3 import (
 from super_metroid.routes.kpdr.k5.red_ice_r3_to_r4 import (
     POLICY_ID as R34_POLICY,
     RedIceRipper34EdgeRunner,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (
+    POLICY_ID as R4TUN_POLICY,
+    RedIceRipper4TunnelEdgeRunner,
 )
 
 
@@ -71,6 +81,13 @@ def test_checkpoint_requires_grounded_state() -> None:
     assert not LOWER_RIPPER_3.matches(_state(samus_x=110, samus_y=2255))
     assert LOWER_RIPPER_4.matches(_state(samus_x=156, samus_y=2023))
     assert not LOWER_RIPPER_4.matches(_state(samus_x=156, samus_y=2159))
+    assert TUNNEL_FLOOR.matches(_state(samus_x=104, samus_y=1883))
+    assert not TUNNEL_FLOOR.matches(_state(samus_x=155, samus_y=1883))
+    assert not TUNNEL_FLOOR.matches(_state(samus_x=104, samus_y=2023))
+    assert MID_FLOOR.matches(_state(samus_x=142, samus_y=1625))
+    assert not MID_FLOOR.matches(_state(samus_x=142, samus_y=1591))
+    assert THIN_SEAT.matches(_state(samus_x=89, samus_y=587))
+    assert not THIN_SEAT.matches(_state(samus_x=166, samus_y=587))
 
 
 def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
@@ -109,6 +126,31 @@ def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
     assert can_attach_ripper3_edge(r3)
     assert not can_attach_ripper3_edge(r2)
     assert not can_attach_ripper3_edge(ready)
+    r4 = _state(
+        samus_x=155,
+        samus_y=2023,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_ripper4_edge(r4)
+    assert not can_attach_ripper4_edge(r3)
+    assert not can_attach_ripper4_edge(ready)
+    tunnel = _state(
+        samus_x=107,
+        samus_y=1883,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_tunnel_edge(tunnel)
+    assert not can_attach_tunnel_edge(r4)
+    mid = _state(
+        samus_x=142,
+        samus_y=1625,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_mid_floor_edge(mid)
+    assert not can_attach_mid_floor_edge(tunnel)
 
 
 def test_frozen_support_is_part_of_checkpoint_truth() -> None:
@@ -146,7 +188,9 @@ def test_checkpoint_plan_has_one_verified_edge_and_planned_recovery_tree() -> No
     assert edges["lower_ripper_1_to_2"]["status"] == "verified_dual_from_p165_r1"
     assert edges["lower_ripper_2_to_3"]["status"] == "verified_dual_from_p165_r2"
     assert edges["lower_ripper_3_to_4"]["status"] == "verified_dual_from_p165_r3"
-    assert edges["lower_ripper_4_to_tunnel"]["status"] == "planned"
+    assert edges["lower_ripper_4_to_tunnel"]["status"] == "verified_dual_from_p165_r4"
+    assert edges["tunnel_to_mid_floor"]["status"] == "verified_dual_from_p165_tunnel"
+    assert edges["mid_floor_to_thin_seat"]["status"] == "verified_dual_from_p165_mid"
     assert data["recovery"]
 
 
@@ -241,6 +285,46 @@ def test_r34_acquire_shot_has_no_walk_and_crouch_is_down() -> None:
         _state(room_id=0xA253, samus_x=140, samus_y=2159, pose=1)
     )
     assert list(crouch) == list(buttons("DOWN"))
+
+
+def test_r4tun_grounded_jump_has_no_walk_then_left_in_air() -> None:
+    """LEFT on frozen r4 walks off. Crouch-jump A-only until airborne, then LEFT+A."""
+    from retro_harness.actions import buttons
+
+    runner = RedIceRipper4TunnelEdgeRunner(_Env(np.zeros(0x20000, dtype=np.uint8)))
+    runner.phase = "crouch"
+    crouch = runner.action(
+        _state(room_id=0xA253, samus_x=155, samus_y=2023, pose=1)
+    )
+    assert list(crouch) == list(buttons("DOWN"))
+    assert runner.policy_id == R4TUN_POLICY
+    assert runner.from_checkpoint == "lower_ripper_4"
+    assert runner.to_checkpoint == "tunnel_floor"
+
+    runner.phase = "jump"
+    grounded = runner.action(
+        _state(
+            room_id=0xA253,
+            samus_x=155,
+            samus_y=2028,
+            pose=39,
+            velocity_y=0,
+            vertical_direction=0,
+        )
+    )
+    assert list(grounded) == list(buttons("A"))
+
+    air = runner.action(
+        _state(
+            room_id=0xA253,
+            samus_x=155,
+            samus_y=1980,
+            pose=77,
+            velocity_y=5,
+            vertical_direction=1,
+        )
+    )
+    assert list(air) == list(buttons("LEFT", "A"))
 
 
 def test_first_wall_arc_waits_until_clear_of_lower_ripper() -> None:

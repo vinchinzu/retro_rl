@@ -21,6 +21,7 @@ from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.dev.common import boot_from_state, make_dev_env  # noqa: E402
 from super_metroid.paths import INTEGRATION_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
+from super_metroid.room_timer import format_segment_time  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     LOWER_RIPPER_1,
     LOWER_RIPPER_2,
@@ -28,7 +29,10 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     LOWER_RIPPER_4,
     LOW_RIPPER_3_Y,
     LOW_RIPPER_4_Y,
+    MID_FLOOR,
     POLICY_ID,
+    TUNNEL_FLOOR,
+    THIN_SEAT,
     checkpoint_supported,
     play_bottom_to_ripper1,
     ripper_at_height,
@@ -44,6 +48,18 @@ from super_metroid.routes.kpdr.k5.red_ice_r2_to_r3 import (  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_r3_to_r4 import (  # noqa: E402
     POLICY_ID as R34_POLICY,
     play_ripper3_to_ripper4,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (  # noqa: E402
+    POLICY_ID as R4TUN_POLICY,
+    play_ripper4_to_tunnel,
+)
+from super_metroid.routes.kpdr.k5.red_ice_tunnel_to_mid import (  # noqa: E402
+    POLICY_ID as TUNMID_POLICY,
+    play_tunnel_to_mid_floor,
+)
+from super_metroid.routes.kpdr.k5.red_ice_mid_to_thin import (  # noqa: E402
+    POLICY_ID as MIDTHIN_POLICY,
+    play_mid_floor_to_thin_seat,
 )
 
 DEFAULT_SOURCE = INTEGRATION_DIR / "scratch" / "post_ice_bat_to_red_pure.state"
@@ -217,6 +233,101 @@ def run_r34(source: Path, *, save: Path | None = None) -> dict[str, Any]:
         env.close()
 
 
+def run_r4tun(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        started_at = time.perf_counter()
+        error = None
+        try:
+            play_ripper4_to_tunnel(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        policy_frames = int(session.frame - start)
+        elapsed = max(time.perf_counter() - started_at, 1e-9)
+        timed = format_segment_time(policy_frames)
+        green = error is None and TUNNEL_FLOOR.matches(session.state)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": R4TUN_POLICY,
+            "policyFrames": policy_frames,
+            "time": timed,
+            "fps": round(policy_frames / elapsed, 1),
+            "totalFrames": int(session.frame),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
+def run_tunmid(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        error = None
+        try:
+            play_tunnel_to_mid_floor(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        policy_frames = int(session.frame - start)
+        green = error is None and MID_FLOOR.matches(session.state)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": TUNMID_POLICY,
+            "policyFrames": policy_frames,
+            "time": format_segment_time(policy_frames),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
+def run_midthin(source: Path, *, save: Path | None = None) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        error = None
+        try:
+            play_mid_floor_to_thin_seat(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        policy_frames = int(session.frame - start)
+        green = error is None and THIN_SEAT.matches(session.state)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": MIDTHIN_POLICY,
+            "policyFrames": policy_frames,
+            "time": format_segment_time(policy_frames),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
 def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
     env = make_dev_env()
     try:
@@ -230,26 +341,31 @@ def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
             play_ripper1_to_ripper2(session)
             play_ripper2_to_ripper3(session)
             play_ripper3_to_ripper4(session)
+            play_ripper4_to_tunnel(session)
+            play_tunnel_to_mid_floor(session)
+            play_mid_floor_to_thin_seat(session)
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
-        enemy = ripper_at_height(env, LOW_RIPPER_4_Y)
         policy_frames = int(session.frame - start)
         elapsed = max(time.perf_counter() - started_at, 1e-9)
-        green = error is None and checkpoint_supported(env, session.state, LOWER_RIPPER_4)
+        timed = format_segment_time(policy_frames)
+        green = error is None and THIN_SEAT.matches(session.state)
         if green and save is not None:
             save.parent.mkdir(parents=True, exist_ok=True)
             write_state_bytes(save, env.em.get_state())
         return {
             "green": green,
-            "policy": f"{POLICY_ID}+{R12_POLICY}+{R23_POLICY}+{R34_POLICY}",
+            "policy": (
+                f"{POLICY_ID}+{R12_POLICY}+{R23_POLICY}+{R34_POLICY}+"
+                f"{R4TUN_POLICY}+{TUNMID_POLICY}+{MIDTHIN_POLICY}"
+            ),
             "policyFrames": policy_frames,
+            "time": timed,
             "fps": round(policy_frames / elapsed, 1),
             "totalFrames": int(session.frame),
             "room": f"0x{int(session.state.room_id):04X}",
             "xy": [int(session.state.samus_x), int(session.state.samus_y)],
             "pose": int(session.state.pose),
-            "freezeTimer": int(enemy.freeze_timer) if enemy is not None else 0,
-            "enemyX": int(enemy.x) if enemy is not None else None,
             "error": error,
         }
     finally:
@@ -261,9 +377,9 @@ def main() -> int:
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument(
         "--edge",
-        choices=("1", "2", "3", "4", "chain"),
+        choices=("1", "2", "3", "4", "5", "6", "7", "chain"),
         default="1",
-        help="1=bottom→r1, 2=r1→r2, 3=r2→r3, 4=r3→r4 dual, chain=bottom→r4",
+        help="1=bottom→r1, 2=r1→r2, 3=r2→r3, 4=r3→r4, 5=r4→tunnel, 6=tunnel→mid, 7=mid→thin, chain=bottom→thin",
     )
     parser.add_argument(
         "--phase-offsets",
@@ -342,16 +458,80 @@ def main() -> int:
         if args.json:
             print(json.dumps(report, indent=2))
         return 0 if green else 1
+    if args.edge == "5":
+        runs = [run_r4tun(args.source, save=args.save), run_r4tun(args.source)]
+        green = all(row["green"] for row in runs)
+        dual_exact = (
+            runs[0]["policyFrames"] == runs[1]["policyFrames"]
+            and runs[0]["xy"] == runs[1]["xy"]
+        )
+        report = {
+            "policy": R4TUN_POLICY,
+            "scope": "lower_ripper_4->tunnel_floor",
+            "green": green,
+            "dualExact": dual_exact,
+            "runs": runs,
+            "nonClaim": "Hellway exit is not implemented by this checkpoint edge",
+        }
+        mark = "GREEN" if green else "RED"
+        timed = runs[0].get("time") or format_segment_time(runs[0]["policyFrames"])
+        print(
+            f"{mark} {R4TUN_POLICY} dual={dual_exact} "
+            f"frames={timed['frames']} seconds={timed['seconds']} "
+            f"clock={timed['clock']} xy={runs[0]['xy']} p={runs[0]['pose']}"
+            f" err={runs[0]['error']}"
+        )
+        if args.json:
+            print(json.dumps(report, indent=2))
+        return 0 if green else 1
+    if args.edge == "6":
+        runs = [run_tunmid(args.source, save=args.save), run_tunmid(args.source)]
+        green = all(row["green"] for row in runs)
+        dual_exact = (
+            runs[0]["policyFrames"] == runs[1]["policyFrames"]
+            and runs[0]["xy"] == runs[1]["xy"]
+            and runs[0]["pose"] == runs[1]["pose"]
+        )
+        timed = runs[0]["time"]
+        print(
+            f"{'GREEN' if green else 'RED'} {TUNMID_POLICY} dual={dual_exact} "
+            f"frames={timed['frames']} seconds={timed['seconds']} "
+            f"clock={timed['clock']} xy={runs[0]['xy']} p={runs[0]['pose']} "
+            f"err={runs[0]['error']}"
+        )
+        if args.json:
+            print(json.dumps({"green": green, "dualExact": dual_exact, "runs": runs}, indent=2))
+        return 0 if green else 1
+    if args.edge == "7":
+        runs = [run_midthin(args.source, save=args.save), run_midthin(args.source)]
+        green = all(row["green"] for row in runs)
+        dual_exact = (
+            runs[0]["policyFrames"] == runs[1]["policyFrames"]
+            and runs[0]["xy"] == runs[1]["xy"]
+            and runs[0]["pose"] == runs[1]["pose"]
+        )
+        timed = runs[0]["time"]
+        print(
+            f"{'GREEN' if green else 'RED'} {MIDTHIN_POLICY} dual={dual_exact} "
+            f"frames={timed['frames']} seconds={timed['seconds']} "
+            f"clock={timed['clock']} xy={runs[0]['xy']} p={runs[0]['pose']} "
+            f"err={runs[0]['error']}"
+        )
+        if args.json:
+            print(json.dumps({"green": green, "dualExact": dual_exact, "runs": runs}, indent=2))
+        return 0 if green else 1
     if args.edge == "chain":
         row = run_chain(args.source, save=args.save)
         mark = "GREEN" if row["green"] else "RED"
+        timed = row.get("time") or format_segment_time(row["policyFrames"])
         print(
-            f"{mark} chain frames={row['policyFrames']} xy={row['xy']} "
+            f"{mark} chain frames={timed['frames']} seconds={timed['seconds']} "
+            f"clock={timed['clock']} xy={row['xy']} "
             f"p={row['pose']} err={row['error']}"
         )
         if args.json:
             print(json.dumps(row, indent=2))
-        print("  partial only: lower_ripper_4; Hellway remains RED")
+        print("  partial only: thin_seat; Hellway remains RED")
         return 0 if row["green"] else 1
 
     offsets = _offsets(args.phase_offsets)
