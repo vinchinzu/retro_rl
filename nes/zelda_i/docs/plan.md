@@ -143,15 +143,21 @@ path uses coordinate gates through `(160,177)`, `(116,181)`, `(112,124)`,
 `(128,103)`, then UP to y≈93, LEFT to x≈120, and long UP. This replaces the
 two failed fixed paths and does not use emulator-state BFS.
 
-Next boundary is natural-key pose `(136,125)` in `0x40` → north `0x30`.
-Attach the existing one-frame north controller and add an exact stop before
-the `0x30` clear/key-right work. Exact verified predecessor command:
+The existing `0x40→0x30` north controller is now on the continuous tape from
+that leftover `(136,125)`: `l4_room30_continuous_v1.json`, 1/1, 103,857f,
+room `0x30` `(120,205)`, keys=6, bombs=15, TF=`0x07`, hop 227f, deaths/state
+loads/progression/capacity writes all 0. `--through level4-room30` stops at
+enter-`0x30` (Vires still live). Do not close `.6` until TF `0x08`.
+
+Next boundary is the `0x30` Vire clear from south-mouth `(120,205)` (walkable
+band y∈[128,208], ignore invuln `0x2b`), then KEY-RIGHT @y141 into `0x31`.
+Attach the existing clear / key-right controllers. Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-room40-key --no-video --trials 1 \
-  --tag l4_room40_key_continuous_v7
+  --through level4-room30 --no-video --trials 1 \
+  --tag l4_room30_continuous_v1
 ```
 Isolated 0x6b check:
 
