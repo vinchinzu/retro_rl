@@ -399,6 +399,30 @@ def test_maze_40_key_path() -> None:
     assert KEY_40_PICKUP_XY == (120, 117)
 
 
+def test_north_30_from_room40_key_pose_aligns_then_pushes_up() -> None:
+    """Continuous v7 leftover is (136,125); isolated north_30 used that pose."""
+
+    def snap(x: int, y: int, *, screen: int = ROOM_L4_ZOLS_40) -> SimpleNamespace:
+        return SimpleNamespace(
+            level=4, screen=screen, mode=5,
+            transitioning=False, link_x=x, link_y=y,
+        )
+
+    from_key = make_north_30_controller()
+    assert from_key.step(snap(136, 125)).reason == "align_x"
+
+    door_column = make_north_30_controller()
+    assert door_column.step(snap(120, 125)).reason == "push_up_north"
+
+    north_band = make_north_30_controller()
+    assert north_band.step(snap(120, 68)).reason == "push_up_north"
+
+    entered = make_north_30_controller()
+    action = entered.step(snap(120, 205, screen=ROOM_L4_NORTH_30))
+    assert action.reason == "done"
+    assert entered.success
+
+
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"

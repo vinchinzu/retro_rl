@@ -1,8 +1,9 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through natural key `0x51`
-and cleared `0x50`. The next natural boundary is the scripted north exit to
-`0x40`. Do not claim Clean STATUS — Survival assist only for this segment.
+**Status:** continuous power-on Survival is live through natural key `0x40`
+and free-UP into `0x30` `(120,205)`. The next natural boundary is the `0x30`
+Vire clear, then KEY-RIGHT into `0x31`. Do not claim Clean STATUS — Survival
+assist only for this segment.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -128,8 +129,8 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x51** | **live pure 2/2** | 8× `0x1b` Keese | Key `0x19` pickup ~ (136,149) | `rr-wqdu` |
 | **0x50** | **live pure 2/2; continuous 1/1** | 5× `0x12` Vire | North via coordinate gates → 0x40 (not dead-end) | `rr-2ysf` / `rr-xc3x` |
 | **0x62** | **live pure enter+clear+compass 2/2** | 5× `0x12` Vire | Compass `0x16` dark maze; pickup ~(136,132); return LEFT→0x61 | `rr-2ysf` / `rr-9so0` |
-| **0x40** | **live pure clear+key 2/2** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
-| **0x30** | **live pure clear+KEY-R 2/2** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear north-band UP; KEY-RIGHT → 0x31 | `rr-q8eq` / `rr-n1wn` |
+| **0x40** | **live pure clear+key 2/2; continuous 1/1** | 5× `0x13` → `0x14` | Key path hold6 east corridor; free UP → 0x30 | `rr-xc3x` / `rr-q8eq` |
+| **0x30** | **live pure clear+KEY-R 2/2; continuous enter 1/1** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; enter leftover (120,205); clear north-band UP; KEY-RIGHT → 0x31 | `rr-q8eq` / `rr-n1wn` |
 | **0x31** | **live pure clear+RIGHT 2/2** | 5× `0x12` Vire | Maze; clear opens R; free RIGHT → 0x32 | `rr-n1wn` / `rr-resv` |
 | **0x32** | **live pure clear 2/2** | 2× `0x13` + 2× `0x17` | Ignore 0x2b/0x68; push left → stairs | `rr-tib8` |
 | **0x60** | **live pure ladder 2/2** | 4× `0x1b` Keese | mode-9 basement; RoomItemId `0x0d` → `ADDR_LADDER` | `rr-tib8` |
@@ -174,9 +175,9 @@ Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 ### Runner
 
 ```bash
-# Continuous power-on verified through 0x50 clear
+# Continuous power-on verified through 0x30 enter
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-clear50 --no-video --trials 1
+  --through level4-room30 --no-video --trials 1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state

@@ -49,6 +49,8 @@ from zelda_i.survival_spine import (
     level4_first_key_stages,
     level4_first_key_success,
     level4_room40_key_stages,
+    level4_north_30_stages,
+    level4_north_30_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -64,6 +66,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level1", "level2", "level3", "level4-entry", "level4-key",
         "level4-clear50",
         "level4-room40-key",
+        "level4-room30",
     )
 
 
@@ -104,6 +107,27 @@ def test_level4_room40_key_sequence_skips_compass_and_preserves_keys() -> None:
         "level4_north_0x40",
         "level4_key_0x40",
     ]
+
+
+def test_level4_north_30_attaches_existing_controller_from_room40() -> None:
+    stages = level4_north_30_stages()
+    assert [name for name, _, _ in stages] == ["level4_north_0x30"]
+    assert stages[0][1].phase.name == "ALIGN"
+    run = SpineRun(through="level4-room30", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_enter_0x30"
+
+
+def test_level4_north_30_stop_is_enter_room_not_clear() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x30
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 205
+    snap = read_snapshot(ram)
+    assert level4_north_30_success(snap)
+    ram[ADDR_SCREEN] = 0x40
+    assert not level4_north_30_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
