@@ -32,6 +32,10 @@ RIPPER_ID = 0xD47F
 BOTTOM_RIPPER_Y = 2376
 BOTTOM_FLOOR_Y = 2443
 BOTTOM_RIPPER_LAND_Y = 2351
+MID_RIPPER_Y = 2280
+MID_RIPPER_LAND_Y = 2255
+LOW_RIPPER_3_Y = 2184
+LOW_RIPPER_3_LAND_Y = 2159
 
 POLICY_ID = "red_tower_ice_bottom_to_ripper1"
 VARIANT_ID = "ice_hi_jump"
@@ -86,6 +90,20 @@ LOWER_RIPPER_1 = RedIceCheckpoint(
     support_enemy_y=BOTTOM_RIPPER_Y,
     min_freeze_timer=30,
 )
+LOWER_RIPPER_2 = RedIceCheckpoint(
+    "lower_ripper_2",
+    (55, 205),
+    (2238, 2270),
+    support_enemy_y=MID_RIPPER_Y,
+    min_freeze_timer=30,
+)
+LOWER_RIPPER_3 = RedIceCheckpoint(
+    "lower_ripper_3",
+    (55, 205),
+    (2142, 2174),
+    support_enemy_y=LOW_RIPPER_3_Y,
+    min_freeze_timer=30,
+)
 
 
 def read_rippers(env: Any) -> tuple[RipperObservation, ...]:
@@ -138,13 +156,26 @@ def checkpoint_supported(
     return abs(int(state.samus_x) - enemy.x) <= 24
 
 
-def can_attach_bottom_edge(state: SuperMetroidState) -> bool:
-    """Equipment and geometry gate for the built-in interactive runner."""
+def _has_ice_hi_jump(state: SuperMetroidState) -> bool:
     return (
-        BOTTOM_FLOOR.matches(state)
-        and int(state.equipped_beams) & ICE_BEAM_MASK == ICE_BEAM_MASK
+        int(state.equipped_beams) & ICE_BEAM_MASK == ICE_BEAM_MASK
         and int(state.equipped_items) & HI_JUMP_MASK == HI_JUMP_MASK
     )
+
+
+def can_attach_bottom_edge(state: SuperMetroidState) -> bool:
+    """Equipment and geometry gate for the built-in interactive runner."""
+    return BOTTOM_FLOOR.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_ripper1_edge(state: SuperMetroidState) -> bool:
+    """Gate for the r1 → r2 hop. Support freeze is checked live by the runner."""
+    return LOWER_RIPPER_1.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_ripper2_edge(state: SuperMetroidState) -> bool:
+    """Gate for the r2 → r3 hop. Support freeze is checked live by the runner."""
+    return LOWER_RIPPER_2.matches(state) and _has_ice_hi_jump(state)
 
 
 def _action(*names: str) -> np.ndarray:
@@ -270,8 +301,20 @@ class RedIceBottomEdgeRunner:
                 return self._emit(_action(direction), "red_ice_track_phase")
 
             if self.phase == "runup":
-                if self._phase_frames >= 16:
+                enemy = ripper_at_height(self.env, BOTTOM_RIPPER_Y)
+                if enemy is None:
+                    self._fail("lower Ripper missing during runup")
+                    break
+                # Start the first wall arc only after Samus has cleared the
+                # frozen Ripper horizontally.  A fixed 16f runup could put
+                # the rising spin within its collision box before the actual
+                # double wall jump began.
+                clear_of_ripper = int(state.samus_x) >= int(enemy.x) + 36
+                if self._phase_frames >= 16 and clear_of_ripper:
                     self._set_phase("spin", "right-wall approach")
+                    continue
+                if self._phase_frames >= 60:
+                    self._retry_or_fail(state, "could not clear Ripper for launch")
                     continue
                 return self._emit(_action("RIGHT", "B"), "red_ice_runup")
 
@@ -391,6 +434,12 @@ __all__ = [
     "BOTTOM_RIPPER_LAND_Y",
     "BOTTOM_RIPPER_Y",
     "LOWER_RIPPER_1",
+    "LOWER_RIPPER_2",
+    "LOWER_RIPPER_3",
+    "LOW_RIPPER_3_LAND_Y",
+    "LOW_RIPPER_3_Y",
+    "MID_RIPPER_LAND_Y",
+    "MID_RIPPER_Y",
     "POLICY_ID",
     "RIPPER_ID",
     "RedIceBottomEdgeRunner",
@@ -398,6 +447,8 @@ __all__ = [
     "RipperObservation",
     "VARIANT_ID",
     "can_attach_bottom_edge",
+    "can_attach_ripper1_edge",
+    "can_attach_ripper2_edge",
     "checkpoint_supported",
     "play_bottom_to_ripper1",
     "read_rippers",
