@@ -42,6 +42,7 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py --repeat 5
 uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --identify-only
 uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --oracles match5-v3
 uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --stochastic --repeats 20 --oracles match5-v3
+uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --stochastic --repeats 20 --oracles match5-v3 --round2-kano --win-at 8
 ```
 
 ## Traps
@@ -101,4 +102,9 @@ uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.p
   `Endurance1B_LiuKang` is Kano on the warrior shrine. Match5 v3 is 5/5
   det on throne-room Kano (`Match5_LiuKang`) and has not closed
   courtyard Kano. `ladder_model` only rewrites M1–M7; capture must force
-  the oracle onto E1/E1B. Scorpion still has not appeared.
+  the oracle onto E1/E1B. Scorpion still has not appeared. E1 vs Kano is
+  still best-of-3 with health refill; the second fighter has not
+  appeared. `--round2-kano` must ignore leftover pin HUD (`hp=59/0`
+  `rounds=2-0`) and stick on keepaway after the first live KO — leftover
+  Mix 7 HUD and mid-round 161/161 flicker both falsely swap. Keepaway
+  still loses round 2; same-strategy oracles have not closed 2–0.
