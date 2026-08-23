@@ -57,6 +57,11 @@ Verified this session (do not re-discover):
 
 - Live pose (Fight_LiuKang): P1 X/Y `0x1966`/`0x1968` start 68/144; P2 X `0x030F` starts 180 and walks in. `0x00DA`/`0x0174` are animation noise. Overnight v3 zips were trained on the noise; retargeting obs dropped Fight zip from ~60% to 0/5. Restored. Scripted policy reads the live pose bytes only.
 - Liu Kang F,F,HP fireball: after ~90 intro frames, 25 dmg on Sub-Zero (three repeats). F-holds walk into range; scripted Fight save-state 0/3. Pixel Match7 9.5M zip 0/5.
+- Deterministic no-model replay now clears the exact `Fight_LiuKang` save state
+  3/3 (two enemy health zero-crossings versus one player zero-crossing). The
+  4,062-frame input is RLE-compressed in `fight1_tape.py`; the v3 Fight model
+  was used only once as an offline trace oracle. This is not a natural-entry
+  Match 1 or first-seven-matches claim.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
