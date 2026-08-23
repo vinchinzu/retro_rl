@@ -121,10 +121,12 @@ Use the PNGs as the review surface and the JSON as coordinate truth:
 | `docs/tasks/refs/red_tower_ice_checkpoint_plan.png` | Full ten-screen checkpoint/recovery tree |
 | `routes/kpdr/data/red_tower_ice_checkpoint_plan.json` | Exact checkpoint bands, edge status, equipment contract |
 
-Next edge is `lower_ripper_1 → lower_ripper_2`. Its main constraint is the
-remaining freeze timer on the support Ripper: refresh support or acquire/freeze
-the next Ripper quickly enough that the launch platform cannot thaw underneath
-Samus.
+Next edge is `lower_ripper_3 → lower_ripper_4` (enemy y=2048, 136px gap).
+`r1 → r2` is dual-green **156f** ×2; `r2 → r3` is dual-green **108f** ×2
+from the Ice-pin r2 pin (`red_ice_r2_to_r3.py`): wait until the Ripper is
+on the facing (right) side, freeze at offset with UP+X (no d-pad), standing
+Hi-Jump, drift from above. Shooting the left-side approach freezes overhead
+and the hop bonks. Do not RIGHT+A from pose 3 (falls through as pose 81).
 
 ## Rank + pick best
 

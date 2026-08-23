@@ -81,11 +81,26 @@ bottom_floor ~(216,2443)
   → right-wall spin + consecutive WJ (20/4/8, 14/2/6)
   → steer back to frozen support
   → lower_ripper_1 y=2351, grounded, freeze timer ≥30
+  → freeze r2 at offset (UP+X, no walk), standing Hi-Jump, drift from above
+  → lower_ripper_2 y=2255, grounded, freeze timer ≥30
+  → freeze r3 on the facing (right) side, standing Hi-Jump, drift from above
+  → lower_ripper_3 y=2159, grounded, freeze timer ≥30
 ```
 
-It is dual-exact from the natural Bat→Red predecessor and passed 31 patrol
-phases total (offsets `0..240`, step 8) in **230–414 policy frames**. The normal
-full sweep measured **408–636 FPS**.
+Edge 1 waits for horizontal clearance before its first rising wall arc, is
+dual-exact from the natural Bat→Red predecessor, and passed 31 patrol phases
+total (offsets `0..240`, step 8) in **233–380 policy frames**. Edge 2 is
+dual-exact **156f** ×2 from the Ice-pin r1 pin. Edge 3 is dual-exact
+**108f** ×2 from the Ice-pin r2 pin (wait for r3 to pass, then freeze
+right-side). p165 chain bottom→r3 is **635f**. Hellway is not claimed.
+
+```bash
+uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge 3 \
+  --source snes/super_metroid/scratch/red_ice_p165_ripper2.state
+uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge chain \
+  --source snes/super_metroid/scratch/bat_zero_settle_eq216_leave.state \
+  --phase-offsets 0
+```
 
 **Human-only for product autopilot.** Red Tower Ice/WJ is not wired into
 `RoomAutopilot` — no route-specific checkpoint hardcode. Climb with
