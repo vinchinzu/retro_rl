@@ -18,11 +18,14 @@ Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
 
 ## Immediate goal
 
-**Verified tip:** continuous power-on → Ice Beam (default `ice`,
-**148,167f** ×2). **Next:** K5 Alpha PB pure (`rr-dbu.8`). Residual:
-[`docs/tasks/rr-dbu.8-residual.md`](docs/tasks/rr-dbu.8-residual.md)
-(Hellway hop: `rr-av5s`). Tip history lives in STATUS — do not
-STATUS-promote or rewrite the route from this file.
+**Verified tip:** continuous power-on → Ice Beam (default `ice`).
+STATUS dual **148,167f** ×2 (2026-08-10). Ceres-successor reverify dual
+**146,937f** ×2 (2026-08-22, scratch `ice_ceres_successor.json` + `_dual.json`;
+STATUS promote `rr-ucl9`). **Next K5:** Hellway → Caterpillar from
+`post_ice_red_to_hellway_pure` (Red→Hellway dual **6199f** ×2). Residual:
+[`docs/tasks/rr-dbu.8-residual.md`](docs/tasks/rr-dbu.8-residual.md).
+Tip history lives in STATUS — do not STATUS-promote or rewrite the route
+from this file.
 
 ## Commands
 

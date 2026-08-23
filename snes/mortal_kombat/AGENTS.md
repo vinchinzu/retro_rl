@@ -1,42 +1,31 @@
 # Agent Instructions — Mortal Kombat (SNES)
 
-North star: **~90% full tournament clear** on normal, LiuKang ladder
-(12 fights). Multimodel chaining > single PPO. Docs:
-`docs/autoresearch_meta.md`, `docs/experiments.md`, `docs/ram_policy_plan.md`,
-`SPEEDRUN_PLAN.md`.
+North star: **Bronze/Clean Liu Kang** power-on → Goro → Shang Tsung → credits.
+Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ram_map.md`.
+Tracker: `bd ready -l mortal_kombat`.
 
 ## Commands
 
 ```bash
-cd mortal_kombat   # or: snes/mortal_kombat from monorepo root
+bd ready -l mortal_kombat
 
-# Next experiment: open docs/experiments.md → highest-priority `open` (P0)
-./experiments/run_experiment.sh baseline
-uv run python train_speedrun.py --curriculum ladder --steps 8000000 --fresh
+uv run python snes/mortal_kombat/scripts/setup_rom.py
+uv run python snes/mortal_kombat/scripts/boot_probe.py
+uv run python snes/mortal_kombat/scripts/ram_probe.py
 
-# Eval (keep only if full_clear_rate improves)
-uv run python speedrun_multimodel.py \
-  --general <candidate>.zip --attempts 20 --tournament 100
-./experiments/run_experiment.sh eval models/<candidate>.zip E00N
+# Overnight: retrain all 12 fights (RAM+hitbox v3, all cores)
+uv run python snes/mortal_kombat/scripts/train_overnight.py --dry-run
+uv run --extra ml python snes/mortal_kombat/scripts/train_overnight.py --steps 4000000 --jobs 12 --n-envs 2
 
-uv run python speedrun_test.py --model models/X.zip --char LiuKang --attempts 20
-uv run python model_registry.py list
+uv run --extra ml python snes/mortal_kombat/scripts/eval_roster.py --attempts 5
+uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py
 ```
 
-Loop: `propose → train → measure N=100 tournament → keep/discard`. Do **not**
-clone karpathy/autoresearch into this repo.
+## Traps
 
-## Do-not-repeat
-
-- Single model + default `full` curriculum expecting mid-ladder learning
-- Trust training WR without `speedrun_test` / `--tournament 100`
-- Fine-tune general from narrow boss specialist (forgetting)
-- One-off training scripts — use `train_speedrun.py` flags only
-- Deprecated `mk1_ppo_*` naming
-
-## Traps / structure
-
+- v3 obs is 20-dim RAM+hitbox. **Do not** `--load` pixel CNN or v1/v2 MLP zips.
+- Pixel models may stay as roster fallbacks until the v3 zip exists.
+- Win = `rounds_won >= 2 AND rounds_won > rounds_lost`. Health max **161**.
+- Liu Kang id **3**. D-pad vs shoulders: `LEFT`/`RIGHT` walk; `X` is block.
 - Tournament: `M1–M6 → M7 → E1 → E1B → E2 → Goro → Shang` (12 fights).
-- `STAGE_MODELS` in `speedrun_multimodel.py` holds per-stage specialists.
-- Max health 161. Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
-- Known baselines / RAM table: `docs/STATUS.md` (do not re-discover in AGENTS).
+- Dual-track save-state eval is not a continuous credits claim.

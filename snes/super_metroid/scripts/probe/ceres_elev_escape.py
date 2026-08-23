@@ -20,7 +20,7 @@ import argparse
 from pathlib import Path
 
 from retro_harness.actions import buttons, idle_action
-from retro_harness.env import make_env
+from retro_harness.env import make_env, read_state_bytes
 from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.combat.probe import open_state_env, write_json_report
 from super_metroid.combat.ceres_ridley import (
@@ -356,6 +356,81 @@ def _sweep_hop(
     return trials
 
 
+def _materialize_trial(env, source: bytes, trial: dict[str, object], target_y: int):
+    """Replay one sweep winner and return its first planted target state."""
+    env.em.set_state(source)
+    session = _session(env)
+    side = str(trial["side"])
+    for _ in range(16):
+        pose = int(session.state.pose)
+        if pose in _STAND:
+            break
+        if pose in _CROUCH:
+            session.step(buttons("UP"), "pin_win_uncrouch")
+        else:
+            session.step(buttons("LEFT"), "pin_win_stand")
+    for _ in range(int(trial["runup"])):
+        session.step(buttons(side, "B"), "pin_win_runup")
+    for _ in range(int(trial["hold"])):
+        session.step(buttons(side, "B", "A"), "pin_win_jump")
+    for _ in range(70):
+        st = session.state
+        if _is_planted(st) and abs(int(st.samus_y) - target_y) <= 18:
+            return {"bytes": env.em.get_state(), "snap": _snapshot(session)}
+        session.step(buttons(side), "pin_win_fall")
+    return None
+
+
+def _sweep_ship(env, source: bytes) -> list[dict[str, object]]:
+    """Top y171 landing → right-wall contact → ship-pad recipe sweep."""
+    trials: list[dict[str, object]] = []
+    for stand_left in (4, 8, 12):
+        for idle in (0, 3, 6):
+            for land_side in ("LEFT", "RIGHT", "IDLE"):
+                for boost in (38,):
+                    env.em.set_state(source)
+                    session = _session(env)
+                    best_y = int(session.state.samus_y)
+                    for _ in range(stand_left):
+                        session.step(buttons("LEFT"), "ship_sweep_stand")
+                    seek_right = 0
+                    for _ in range(40):
+                        if is_knockback(session.state):
+                            break
+                        session.step(buttons("RIGHT"), "ship_sweep_wall")
+                        seek_right += 1
+                    for _ in range(idle):
+                        session.step(idle_action(), "ship_sweep_idle")
+                    pre = _snapshot(session, {"knockback": is_knockback(session.state)})
+                    for _ in range(boost):
+                        session.step(buttons("LEFT", "A"), "ship_sweep_boost")
+                        best_y = min(best_y, int(session.state.samus_y))
+                    for _ in range(80):
+                        if _ceres_elev_leaving(session.state):
+                            break
+                        names = () if land_side == "IDLE" else (land_side,)
+                        session.step(
+                            buttons(*names) if names else idle_action(),
+                            "ship_sweep_pad",
+                        )
+                        best_y = min(best_y, int(session.state.samus_y))
+                    trials.append(
+                        {
+                            "stand_left": stand_left,
+                            "seek_right": seek_right,
+                            "idle": idle,
+                            "boost": boost,
+                            "land_side": land_side,
+                            "pre": pre,
+                            "best_y": best_y,
+                            "left": _ceres_elev_leaving(session.state),
+                            "final": _snapshot(session),
+                        }
+                    )
+    trials.sort(key=lambda t: (not bool(t["left"]), int(t["best_y"])))
+    return trials
+
+
 def cmd_pin(args: argparse.Namespace) -> int:
     """Seat the 571 ledge, then sweep hops to 475 and the platform above it."""
     state_path = Path(args.state) if args.state != "enter" else DEFAULT_ENTRY
@@ -412,26 +487,39 @@ def cmd_pin(args: argparse.Namespace) -> int:
             )
             winner = next((t for t in trials_475 if t.get("land")), None)
             if winner is not None:
-                env.em.set_state(ledge["bytes"])
-                session = _session(env)
-                side = str(winner["side"])
-                for _ in range(int(winner["runup"])):
-                    session.step(buttons(side, "B"), "pin_win_runup")
-                for _ in range(int(winner["hold"])):
-                    session.step(buttons(side, "B", "A"), "pin_win_jump")
-                for _ in range(55):
-                    st = session.state
-                    if _is_planted(st) and abs(int(st.samus_y) - _CENTER_Y) <= 16:
-                        next_from = {
-                            "bytes": env.em.get_state(),
-                            "snap": _snapshot(session),
-                        }
-                        break
-                    session.step(buttons(side), "pin_win_fall")
+                next_from = _materialize_trial(
+                    env, ledge["bytes"], winner, _CENTER_Y  # type: ignore[arg-type]
+                )
+        upper_from = None
         if next_from is not None:
             trials_next = _sweep_hop(
                 env, next_from["bytes"], target_y=360, sides=("RIGHT", "LEFT")
             )
+            winner = next((t for t in trials_next if t.get("land")), None)
+            if winner is not None:
+                upper_from = _materialize_trial(
+                    env, next_from["bytes"], winner, 363
+                )
+        trials_upper: list[dict[str, object]] = []
+        top_from = None
+        if upper_from is not None:
+            trials_upper = _sweep_hop(
+                env, upper_from["bytes"], target_y=267, sides=("LEFT", "RIGHT")
+            )
+            winner = next((t for t in trials_upper if t.get("land")), None)
+            if winner is not None:
+                top_from = _materialize_trial(env, upper_from["bytes"], winner, 267)
+        trials_top: list[dict[str, object]] = []
+        ship_trials: list[dict[str, object]] = []
+        if top_from is not None:
+            trials_top = _sweep_hop(
+                env, top_from["bytes"], target_y=171, sides=("RIGHT", "LEFT")
+            )
+            winner = next((t for t in trials_top if t.get("land")), None)
+            if winner is not None:
+                ship_from = _materialize_trial(env, top_from["bytes"], winner, 171)
+                if ship_from is not None:
+                    ship_trials = _sweep_ship(env, ship_from["bytes"])
         landed_475 = [t for t in trials_475 if t.get("land")]
         landed_next = [t for t in trials_next if t.get("land")]
         report = {
@@ -443,8 +531,13 @@ def cmd_pin(args: argparse.Namespace) -> int:
             "landings": landings,
             "ledge": ledge.get("snap"),
             "center": None if next_from is None else next_from.get("snap"),
+            "upper": None if upper_from is None else upper_from.get("snap"),
+            "top_approach": None if top_from is None else top_from.get("snap"),
             "best_to_475": trials_475[:8],
             "best_above_475": trials_next[:8],
+            "best_above_363": trials_upper[:8],
+            "best_to_top": trials_top[:8],
+            "best_to_ship": ship_trials[:8],
             "n_landed_475": len(landed_475),
             "n_landed_next": len(landed_next),
             "notes": (

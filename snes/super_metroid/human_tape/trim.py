@@ -550,6 +550,7 @@ def trim_task_hop(
     from super_metroid.human_tape.hops import load_room_hops  # local import
 
     frames = list(task.get("frames") or [])
+    trace = list(task.get("trace") or [])
     if hops is None:
         hop_list = load_room_hops(task_data=task, settle=True)
     else:

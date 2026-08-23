@@ -409,6 +409,23 @@ uv run --extra ml python speedrun_test.py \
 
 ---
 
+### E019 — Overnight RAM v3 specialists (all 12 fights)
+
+| Field | Value |
+|-------|-------|
+| **Hypothesis** | Fresh 20-dim hitbox RAM MLP per LiuKang stage, trained in parallel, yields >0% on every fight including Goro/Shang |
+| **Priority** | P0 |
+| **Status** | open |
+| **Command** | |
+```bash
+uv run python snes/mortal_kombat/scripts/train_overnight.py --steps 4000000 --jobs 12 --n-envs 2
+uv run python snes/mortal_kombat/scripts/eval_roster.py --attempts 5
+```
+| **Success** | All 12 stages >0% stochastic; roster.json points at `mk1_v3_*_ppo_final.zip` |
+| **Discard if** | M1 still <20% after 4M — fix object/hitbox bytes before more steps |
+
+---
+
 ## Experiment Index
 
 | ID | Priority | Status | One-line |
@@ -431,6 +448,7 @@ uv run --extra ml python speedrun_test.py \
 | E016 | P2 | open | Combo macros |
 | E017 | P0 | **discard** | RAM v1 M1 36% stoch / 0% det at 1M — no distance |
 | E018 | P0 | **running** | RAM v2 spacing 13-dim, mk1_ram_v2_ppo 1M |
+| E019 | P0 | **open** | Overnight v3 RAM+hitbox, 12 specialists, all cores |
 
 ---
 

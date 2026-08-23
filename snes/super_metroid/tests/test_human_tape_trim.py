@@ -12,6 +12,7 @@ from super_metroid.human_tape.trim import (
     is_idle_frame,
     progress_along_leave,
     trim_hop,
+    trim_task_hop,
 )
 
 
@@ -246,6 +247,33 @@ def test_export_trimmed_seed(tmp_path: Path) -> None:
     assert data["frame_count"] == 3
     assert data["frames"][0][7] == 1
     assert data["meta"]["hop_index"] == 1
+
+
+def test_trim_task_hop_uses_task_trace() -> None:
+    frames = [_idle()] * 3 + [_right()] * 5
+    trace = [_trace_row(i, i * 2, 100) for i in range(len(frames))]
+    task = {"frames": frames, "trace": trace}
+    hops = [
+        {
+            "index": 0,
+            "start_index": 0,
+            "end_index": len(frames) - 1,
+            "room_id": 0xDE4D,
+            "xy": [0, 100],
+            "end_xy": [14, 100],
+        }
+    ]
+
+    trimmed, report, hop = trim_task_hop(
+        task,
+        0,
+        hops=hops,
+        mode="safe",
+    )
+
+    assert report.leading_idle_cut == 3
+    assert len(trimmed) == 5
+    assert hop["room_id"] == 0xDE4D
 
 
 def test_keep_leading_idle_param() -> None:

@@ -369,9 +369,10 @@ def test_bubble_r19_super_door_params() -> None:
     assert P.DOOR_WJ_INTO == 3
     assert P.DOOR_WJ_BOUNCE == 2
     assert P.DOOR_X_CAP >= 470
+    assert P.DOOR_OUTER_X <= 400  # recover continuous fall at ~(446,383)
     assert P.DOOR_FRAMES >= 700
-    # Continuous Spazer Phase E (rr-cwu): crouch settle > pure baseline 8.
-    assert P.DOOR_CROUCH_FRAMES >= 16
+    # Reactive Phase E must start immediately from the earned top band.
+    assert P.DOOR_CROUCH_FRAMES == 0
     human_lo, human_hi = P.SAVE_HUMAN_SEAT_X
     assert human_lo <= 27 <= human_hi
     assert human_hi <= 30  # continuous fire rejects x=32 seat

@@ -1,0 +1,2913 @@
+{
+  "kind": "super_metroid_hop_compose",
+  "schemaVersion": 1,
+  "task": "warehouse_to_red_human",
+  "hops_planned": 10,
+  "hops_run": 10,
+  "hops_green": 10,
+  "green": true,
+  "results": [
+    {
+      "hop_index": 0,
+      "green": true,
+      "room": "0xA6A1",
+      "leave_room": "0xCF80",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+      "steps": 142,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 53120,
+              "got_room_hex": "0xCF80",
+              "got_xy": [
+                17,
+                139
+              ],
+              "expected_leave_room": 53120,
+              "expected_end_xy": [
+                17,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 142,
+                "start_i": 1,
+                "end_i": 142,
+                "start": {
+                  "room_id": 42657,
+                  "xy": [
+                    128,
+                    134
+                  ],
+                  "pose": 155,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 53120,
+                "room": "0xCF80",
+                "xy": [
+                  17,
+                  139
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 40
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+                "replay_start": 1,
+                "replay_end": 142
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 53120,
+              "got_room_hex": "0xCF80",
+              "got_xy": [
+                17,
+                139
+              ],
+              "expected_leave_room": 53120,
+              "expected_end_xy": [
+                17,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 142,
+                "start_i": 1,
+                "end_i": 142,
+                "start": {
+                  "room_id": 42657,
+                  "xy": [
+                    128,
+                    134
+                  ],
+                  "pose": 155,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 53120,
+                "room": "0xCF80",
+                "xy": [
+                  17,
+                  139
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 40
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+                "replay_start": 1,
+                "replay_end": 142
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 1,
+        "replay_end": 142,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 0,
+          "end_index": 142,
+          "replay_start": 1,
+          "start_room": 42657,
+          "leave_room": 53120,
+          "start_xy": [
+            128,
+            134
+          ],
+          "end_xy": [
+            17,
+            139
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+          "anchor_frame": 0,
+          "hop_index": 0,
+          "hop": {
+            "index": 0,
+            "start_index": 0,
+            "frame": 0,
+            "room": "0xA6A1",
+            "room_id": 42657,
+            "name": "Warehouse Entrance",
+            "xy": [
+              128,
+              134
+            ],
+            "pose": 155,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 141,
+            "end_frame": 141,
+            "end_xy": [
+              17,
+              139
+            ],
+            "end_pose": 12,
+            "dwell": 142,
+            "end_items": "0x3105",
+            "raw_start_index": 0,
+            "settled_entry": true,
+            "transition_frames": 0
+          },
+          "anchor": {
+            "kind": "boot",
+            "frame": 0,
+            "room": "0xA6A1",
+            "room_id": 42657,
+            "xy": [
+              128,
+              134
+            ],
+            "pose": 155,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000000_boot_0xA6A1.state"
+          },
+          "n_hops": 10,
+          "steps": 142,
+          "start_room_hex": "0xA6A1",
+          "leave_room_hex": "0xCF80",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 1,
+      "green": true,
+      "room": "0xCF80",
+      "leave_room": "0xCEFB",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+      "steps": 90,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 52987,
+              "got_room_hex": "0xCEFB",
+              "got_xy": [
+                19,
+                395
+              ],
+              "expected_leave_room": 52987,
+              "expected_end_xy": [
+                19,
+                395
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 90,
+                "start_i": 270,
+                "end_i": 359,
+                "start": {
+                  "room_id": 53120,
+                  "xy": [
+                    216,
+                    395
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 52987,
+                "room": "0xCEFB",
+                "xy": [
+                  19,
+                  395
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+                "replay_start": 270,
+                "replay_end": 359
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 52987,
+              "got_room_hex": "0xCEFB",
+              "got_xy": [
+                19,
+                395
+              ],
+              "expected_leave_room": 52987,
+              "expected_end_xy": [
+                19,
+                395
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 90,
+                "start_i": 270,
+                "end_i": 359,
+                "start": {
+                  "room_id": 53120,
+                  "xy": [
+                    216,
+                    395
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 52987,
+                "room": "0xCEFB",
+                "xy": [
+                  19,
+                  395
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+                "replay_start": 270,
+                "replay_end": 359
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 270,
+        "replay_end": 359,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 269,
+          "end_index": 359,
+          "replay_start": 270,
+          "start_room": 53120,
+          "leave_room": 52987,
+          "start_xy": [
+            216,
+            395
+          ],
+          "end_xy": [
+            19,
+            395
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+          "anchor_frame": 269,
+          "hop_index": 1,
+          "hop": {
+            "index": 1,
+            "start_index": 269,
+            "frame": 269,
+            "room": "0xCF80",
+            "room_id": 53120,
+            "name": "Boyon Gate Hall",
+            "xy": [
+              216,
+              395
+            ],
+            "pose": 12,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 358,
+            "end_frame": 358,
+            "end_xy": [
+              19,
+              395
+            ],
+            "end_pose": 12,
+            "dwell": 90,
+            "end_items": "0x3105",
+            "raw_start_index": 142,
+            "settled_entry": true,
+            "transition_frames": 127
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 269,
+            "room": "0xCF80",
+            "room_id": 53120,
+            "xy": [
+              216,
+              395
+            ],
+            "pose": 12,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000269_enter_0xCF80_0xCF80.state"
+          },
+          "n_hops": 10,
+          "steps": 90,
+          "start_room_hex": "0xCF80",
+          "leave_room_hex": "0xCEFB",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 2,
+      "green": true,
+      "room": "0xCEFB",
+      "leave_room": "0xCF54",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+      "steps": 78,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 53076,
+              "got_room_hex": "0xCF54",
+              "got_xy": [
+                13,
+                395
+              ],
+              "expected_leave_room": 53076,
+              "expected_end_xy": [
+                13,
+                395
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 78,
+                "start_i": 483,
+                "end_i": 560,
+                "start": {
+                  "room_id": 52987,
+                  "xy": [
+                    216,
+                    395
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 53076,
+                "room": "0xCF54",
+                "xy": [
+                  13,
+                  395
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 47
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+                "replay_start": 483,
+                "replay_end": 560
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 53076,
+              "got_room_hex": "0xCF54",
+              "got_xy": [
+                13,
+                395
+              ],
+              "expected_leave_room": 53076,
+              "expected_end_xy": [
+                13,
+                395
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 78,
+                "start_i": 483,
+                "end_i": 560,
+                "start": {
+                  "room_id": 52987,
+                  "xy": [
+                    216,
+                    395
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 53076,
+                "room": "0xCF54",
+                "xy": [
+                  13,
+                  395
+                ],
+                "pose": 12,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 47
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+                "replay_start": 483,
+                "replay_end": 560
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 483,
+        "replay_end": 560,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 482,
+          "end_index": 560,
+          "replay_start": 483,
+          "start_room": 52987,
+          "leave_room": 53076,
+          "start_xy": [
+            216,
+            395
+          ],
+          "end_xy": [
+            13,
+            395
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+          "anchor_frame": 482,
+          "hop_index": 2,
+          "hop": {
+            "index": 2,
+            "start_index": 482,
+            "frame": 482,
+            "room": "0xCEFB",
+            "room_id": 52987,
+            "name": "Maridia Tube",
+            "xy": [
+              216,
+              395
+            ],
+            "pose": 12,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 559,
+            "end_frame": 559,
+            "end_xy": [
+              13,
+              395
+            ],
+            "end_pose": 12,
+            "dwell": 78,
+            "end_items": "0x3105",
+            "raw_start_index": 359,
+            "settled_entry": true,
+            "transition_frames": 123
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 482,
+            "room": "0xCEFB",
+            "room_id": 52987,
+            "xy": [
+              216,
+              395
+            ],
+            "pose": 12,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000482_enter_0xCEFB_0xCEFB.state"
+          },
+          "n_hops": 10,
+          "steps": 78,
+          "start_room_hex": "0xCEFB",
+          "leave_room_hex": "0xCF54",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 3,
+      "green": true,
+      "room": "0xCF54",
+      "leave_room": "0xA408",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+      "steps": 82,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41992,
+              "got_room_hex": "0xA408",
+              "got_xy": [
+                18,
+                139
+              ],
+              "expected_leave_room": 41992,
+              "expected_end_xy": [
+                18,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 82,
+                "start_i": 682,
+                "end_i": 763,
+                "start": {
+                  "room_id": 53076,
+                  "xy": [
+                    208,
+                    139
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41992,
+                "room": "0xA408",
+                "xy": [
+                  18,
+                  139
+                ],
+                "pose": 10,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 40
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+                "replay_start": 682,
+                "replay_end": 763
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41992,
+              "got_room_hex": "0xA408",
+              "got_xy": [
+                18,
+                139
+              ],
+              "expected_leave_room": 41992,
+              "expected_end_xy": [
+                18,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 82,
+                "start_i": 682,
+                "end_i": 763,
+                "start": {
+                  "room_id": 53076,
+                  "xy": [
+                    208,
+                    139
+                  ],
+                  "pose": 12,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41992,
+                "room": "0xA408",
+                "xy": [
+                  18,
+                  139
+                ],
+                "pose": 10,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 40
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+                "replay_start": 682,
+                "replay_end": 763
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 682,
+        "replay_end": 763,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 681,
+          "end_index": 763,
+          "replay_start": 682,
+          "start_room": 53076,
+          "leave_room": 41992,
+          "start_xy": [
+            208,
+            139
+          ],
+          "end_xy": [
+            18,
+            139
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+          "anchor_frame": 681,
+          "hop_index": 3,
+          "hop": {
+            "index": 3,
+            "start_index": 681,
+            "frame": 681,
+            "room": "0xCF54",
+            "room_id": 53076,
+            "name": "West Maridia Tube Tunnel",
+            "xy": [
+              208,
+              139
+            ],
+            "pose": 12,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 762,
+            "end_frame": 762,
+            "end_xy": [
+              18,
+              139
+            ],
+            "end_pose": 10,
+            "dwell": 82,
+            "end_items": "0x3105",
+            "raw_start_index": 560,
+            "settled_entry": true,
+            "transition_frames": 121
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 681,
+            "room": "0xCF54",
+            "room_id": 53076,
+            "xy": [
+              208,
+              139
+            ],
+            "pose": 12,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000681_enter_0xCF54_0xCF54.state"
+          },
+          "n_hops": 10,
+          "steps": 82,
+          "start_room_hex": "0xCF54",
+          "leave_room_hex": "0xA408",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 4,
+      "green": true,
+      "room": "0xA408",
+      "leave_room": "0xA3DD",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+      "steps": 307,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41949,
+              "got_room_hex": "0xA3DD",
+              "got_xy": [
+                19,
+                391
+              ],
+              "expected_leave_room": 41949,
+              "expected_end_xy": [
+                19,
+                391
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 307,
+                "start_i": 884,
+                "end_i": 1190,
+                "start": {
+                  "room_id": 41992,
+                  "xy": [
+                    472,
+                    395
+                  ],
+                  "pose": 10,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41949,
+                "room": "0xA3DD",
+                "xy": [
+                  19,
+                  391
+                ],
+                "pose": 26,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+                "replay_start": 884,
+                "replay_end": 1190
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41949,
+              "got_room_hex": "0xA3DD",
+              "got_xy": [
+                19,
+                391
+              ],
+              "expected_leave_room": 41949,
+              "expected_end_xy": [
+                19,
+                391
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 307,
+                "start_i": 884,
+                "end_i": 1190,
+                "start": {
+                  "room_id": 41992,
+                  "xy": [
+                    472,
+                    395
+                  ],
+                  "pose": 10,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41949,
+                "room": "0xA3DD",
+                "xy": [
+                  19,
+                  391
+                ],
+                "pose": 26,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+                "replay_start": 884,
+                "replay_end": 1190
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 884,
+        "replay_end": 1190,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 883,
+          "end_index": 1190,
+          "replay_start": 884,
+          "start_room": 41992,
+          "leave_room": 41949,
+          "start_xy": [
+            472,
+            395
+          ],
+          "end_xy": [
+            19,
+            391
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+          "anchor_frame": 883,
+          "hop_index": 4,
+          "hop": {
+            "index": 4,
+            "start_index": 883,
+            "frame": 883,
+            "room": "0xA408",
+            "room_id": 41992,
+            "name": "Below Spazer",
+            "xy": [
+              472,
+              395
+            ],
+            "pose": 10,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 1189,
+            "end_frame": 1189,
+            "end_xy": [
+              19,
+              391
+            ],
+            "end_pose": 26,
+            "dwell": 307,
+            "end_items": "0x3105",
+            "raw_start_index": 763,
+            "settled_entry": true,
+            "transition_frames": 120
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 883,
+            "room": "0xA408",
+            "room_id": 41992,
+            "xy": [
+              472,
+              395
+            ],
+            "pose": 10,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f000883_enter_0xA408_0xA408.state"
+          },
+          "n_hops": 10,
+          "steps": 307,
+          "start_room_hex": "0xA408",
+          "leave_room_hex": "0xA3DD",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 5,
+      "green": true,
+      "room": "0xA3DD",
+      "leave_room": "0xA253",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+      "steps": 577,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41555,
+              "got_room_hex": "0xA253",
+              "got_xy": [
+                19,
+                139
+              ],
+              "expected_leave_room": 41555,
+              "expected_end_xy": [
+                19,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 577,
+                "start_i": 1310,
+                "end_i": 1886,
+                "start": {
+                  "room_id": 41949,
+                  "xy": [
+                    472,
+                    135
+                  ],
+                  "pose": 26,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41555,
+                "room": "0xA253",
+                "xy": [
+                  19,
+                  139
+                ],
+                "pose": 167,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 13,
+                    "writes": 2,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 61
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 8,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+                "replay_start": 1310,
+                "replay_end": 1886
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41555,
+              "got_room_hex": "0xA253",
+              "got_xy": [
+                19,
+                139
+              ],
+              "expected_leave_room": 41555,
+              "expected_end_xy": [
+                19,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 577,
+                "start_i": 1310,
+                "end_i": 1886,
+                "start": {
+                  "room_id": 41949,
+                  "xy": [
+                    472,
+                    135
+                  ],
+                  "pose": 26,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41555,
+                "room": "0xA253",
+                "xy": [
+                  19,
+                  139
+                ],
+                "pose": 167,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 13,
+                    "writes": 2,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 61
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 8,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+                "replay_start": 1310,
+                "replay_end": 1886
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 1310,
+        "replay_end": 1886,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 1309,
+          "end_index": 1886,
+          "replay_start": 1310,
+          "start_room": 41949,
+          "leave_room": 41555,
+          "start_xy": [
+            472,
+            135
+          ],
+          "end_xy": [
+            19,
+            139
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+          "anchor_frame": 1309,
+          "hop_index": 5,
+          "hop": {
+            "index": 5,
+            "start_index": 1309,
+            "frame": 1309,
+            "room": "0xA3DD",
+            "room_id": 41949,
+            "name": "Skree Boost Room",
+            "xy": [
+              472,
+              135
+            ],
+            "pose": 26,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 1885,
+            "end_frame": 1885,
+            "end_xy": [
+              19,
+              139
+            ],
+            "end_pose": 167,
+            "dwell": 577,
+            "end_items": "0x3105",
+            "raw_start_index": 1190,
+            "settled_entry": true,
+            "transition_frames": 119
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 1309,
+            "room": "0xA3DD",
+            "room_id": 41949,
+            "xy": [
+              472,
+              135
+            ],
+            "pose": 26,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f001309_enter_0xA3DD_0xA3DD.state"
+          },
+          "n_hops": 10,
+          "steps": 577,
+          "start_room_hex": "0xA3DD",
+          "leave_room_hex": "0xA253",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 6,
+      "green": true,
+      "room": "0xA253",
+      "leave_room": "0xA2F7",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+      "steps": 5998,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41719,
+              "got_room_hex": "0xA2F7",
+              "got_xy": [
+                237,
+                139
+              ],
+              "expected_leave_room": 41719,
+              "expected_end_xy": [
+                237,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 5998,
+                "start_i": 2013,
+                "end_i": 8010,
+                "start": {
+                  "room_id": 41555,
+                  "xy": [
+                    216,
+                    2443
+                  ],
+                  "pose": 167,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41719,
+                "room": "0xA2F7",
+                "xy": [
+                  237,
+                  139
+                ],
+                "pose": 9,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 17,
+                    "writes": 7,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 5,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+                "replay_start": 2013,
+                "replay_end": 8010
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41719,
+              "got_room_hex": "0xA2F7",
+              "got_xy": [
+                237,
+                139
+              ],
+              "expected_leave_room": 41719,
+              "expected_end_xy": [
+                237,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 5998,
+                "start_i": 2013,
+                "end_i": 8010,
+                "start": {
+                  "room_id": 41555,
+                  "xy": [
+                    216,
+                    2443
+                  ],
+                  "pose": 167,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41719,
+                "room": "0xA2F7",
+                "xy": [
+                  237,
+                  139
+                ],
+                "pose": 9,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 17,
+                    "writes": 7,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 5,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+                "replay_start": 2013,
+                "replay_end": 8010
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 2013,
+        "replay_end": 8010,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 2012,
+          "end_index": 8010,
+          "replay_start": 2013,
+          "start_room": 41555,
+          "leave_room": 41719,
+          "start_xy": [
+            216,
+            2443
+          ],
+          "end_xy": [
+            237,
+            139
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+          "anchor_frame": 2012,
+          "hop_index": 6,
+          "hop": {
+            "index": 6,
+            "start_index": 2012,
+            "frame": 2012,
+            "room": "0xA253",
+            "room_id": 41555,
+            "name": "Red Tower",
+            "xy": [
+              216,
+              2443
+            ],
+            "pose": 167,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 8009,
+            "end_frame": 8009,
+            "end_xy": [
+              237,
+              139
+            ],
+            "end_pose": 9,
+            "dwell": 5998,
+            "end_items": "0x3105",
+            "raw_start_index": 1886,
+            "settled_entry": true,
+            "transition_frames": 126
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 2012,
+            "room": "0xA253",
+            "room_id": 41555,
+            "xy": [
+              216,
+              2443
+            ],
+            "pose": 167,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f002012_enter_0xA253_0xA253.state"
+          },
+          "n_hops": 10,
+          "steps": 5998,
+          "start_room_hex": "0xA253",
+          "leave_room_hex": "0xA2F7",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 7,
+      "green": true,
+      "room": "0xA2F7",
+      "leave_room": "0xA322",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+      "steps": 1092,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41762,
+              "got_room_hex": "0xA322",
+              "got_xy": [
+                748,
+                139
+              ],
+              "expected_leave_room": 41762,
+              "expected_end_xy": [
+                748,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 1092,
+                "start_i": 8165,
+                "end_i": 9256,
+                "start": {
+                  "room_id": 41719,
+                  "xy": [
+                    39,
+                    139
+                  ],
+                  "pose": 9,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41762,
+                "room": "0xA322",
+                "xy": [
+                  748,
+                  139
+                ],
+                "pose": 11,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 33,
+                    "writes": 4,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 10,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+                "replay_start": 8165,
+                "replay_end": 9256
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41762,
+              "got_room_hex": "0xA322",
+              "got_xy": [
+                748,
+                139
+              ],
+              "expected_leave_room": 41762,
+              "expected_end_xy": [
+                748,
+                139
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 1092,
+                "start_i": 8165,
+                "end_i": 9256,
+                "start": {
+                  "room_id": 41719,
+                  "xy": [
+                    39,
+                    139
+                  ],
+                  "pose": 9,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41762,
+                "room": "0xA322",
+                "xy": [
+                  748,
+                  139
+                ],
+                "pose": 11,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 33,
+                    "writes": 4,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 10,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+                "replay_start": 8165,
+                "replay_end": 9256
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 8165,
+        "replay_end": 9256,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 8164,
+          "end_index": 9256,
+          "replay_start": 8165,
+          "start_room": 41719,
+          "leave_room": 41762,
+          "start_xy": [
+            39,
+            139
+          ],
+          "end_xy": [
+            748,
+            139
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+          "anchor_frame": 8164,
+          "hop_index": 7,
+          "hop": {
+            "index": 7,
+            "start_index": 8164,
+            "frame": 8164,
+            "room": "0xA2F7",
+            "room_id": 41719,
+            "name": "Hellway",
+            "xy": [
+              39,
+              139
+            ],
+            "pose": 9,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 9255,
+            "end_frame": 9255,
+            "end_xy": [
+              748,
+              139
+            ],
+            "end_pose": 11,
+            "dwell": 1092,
+            "end_items": "0x3105",
+            "raw_start_index": 8010,
+            "settled_entry": true,
+            "transition_frames": 154
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 8164,
+            "room": "0xA2F7",
+            "room_id": 41719,
+            "xy": [
+              39,
+              139
+            ],
+            "pose": 9,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f008164_enter_0xA2F7_0xA2F7.state"
+          },
+          "n_hops": 10,
+          "steps": 1092,
+          "start_room_hex": "0xA2F7",
+          "leave_room_hex": "0xA322",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 8,
+      "green": true,
+      "room": "0xA322",
+      "leave_room": "0xA3AE",
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+      "steps": 515,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41902,
+              "got_room_hex": "0xA3AE",
+              "got_xy": [
+                18,
+                1931
+              ],
+              "expected_leave_room": 41902,
+              "expected_end_xy": [
+                18,
+                1931
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 515,
+                "start_i": 9395,
+                "end_i": 9909,
+                "start": {
+                  "room_id": 41762,
+                  "xy": [
+                    39,
+                    1419
+                  ],
+                  "pose": 11,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41902,
+                "room": "0xA3AE",
+                "xy": [
+                  18,
+                  1931
+                ],
+                "pose": 10,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 20,
+                    "writes": 1,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 1,
+                      "writes": 1,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 20,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+                "replay_start": 9395,
+                "replay_end": 9909
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41902,
+              "got_room_hex": "0xA3AE",
+              "got_xy": [
+                18,
+                1931
+              ],
+              "expected_leave_room": 41902,
+              "expected_end_xy": [
+                18,
+                1931
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 515,
+                "start_i": 9395,
+                "end_i": 9909,
+                "start": {
+                  "room_id": 41762,
+                  "xy": [
+                    39,
+                    1419
+                  ],
+                  "pose": 11,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41902,
+                "room": "0xA3AE",
+                "xy": [
+                  18,
+                  1931
+                ],
+                "pose": 10,
+                "phase": "ROOM_TRANSITION",
+                "game_state": 11,
+                "door_transition": 1,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 20,
+                    "writes": 1,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 1,
+                      "writes": 1,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": null
+                    }
+                  },
+                  "suspended_phase_frames": {
+                    "room_transition": 44
+                  },
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 20,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+                "replay_start": 9395,
+                "replay_end": 9909
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 9395,
+        "replay_end": 9909,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 9394,
+          "end_index": 9909,
+          "replay_start": 9395,
+          "start_room": 41762,
+          "leave_room": 41902,
+          "start_xy": [
+            39,
+            1419
+          ],
+          "end_xy": [
+            18,
+            1931
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+          "anchor_frame": 9394,
+          "hop_index": 8,
+          "hop": {
+            "index": 8,
+            "start_index": 9394,
+            "frame": 9394,
+            "room": "0xA322",
+            "room_id": 41762,
+            "name": "Caterpillar Room",
+            "xy": [
+              39,
+              1419
+            ],
+            "pose": 11,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 9908,
+            "end_frame": 9908,
+            "end_xy": [
+              18,
+              1931
+            ],
+            "end_pose": 10,
+            "dwell": 515,
+            "end_items": "0x3105",
+            "raw_start_index": 9256,
+            "settled_entry": true,
+            "transition_frames": 138
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 9394,
+            "room": "0xA322",
+            "room_id": 41762,
+            "xy": [
+              39,
+              1419
+            ],
+            "pose": 11,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f009394_enter_0xA322_0xA322.state"
+          },
+          "n_hops": 10,
+          "steps": 515,
+          "start_room_hex": "0xA322",
+          "leave_room_hex": "0xA3AE",
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    },
+    {
+      "hop_index": 9,
+      "green": true,
+      "room": "0xA3AE",
+      "leave_room": null,
+      "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+      "steps": 1444,
+      "reason": null,
+      "report": {
+        "green": true,
+        "ok": true,
+        "dual": true,
+        "check": {
+          "ok": true,
+          "dual": true,
+          "runs": [
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41902,
+              "got_room_hex": "0xA3AE",
+              "got_xy": [
+                341,
+                171
+              ],
+              "expected_leave_room": null,
+              "expected_end_xy": [
+                341,
+                171
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 1444,
+                "start_i": 10057,
+                "end_i": 11500,
+                "start": {
+                  "room_id": 41902,
+                  "xy": [
+                    728,
+                    139
+                  ],
+                  "pose": 10,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41902,
+                "room": "0xA3AE",
+                "xy": [
+                  341,
+                  171
+                ],
+                "pose": 138,
+                "phase": "ORDINARY_GAMEPLAY",
+                "game_state": 8,
+                "door_transition": 0,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 1,
+                      "writes": 1,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    }
+                  },
+                  "suspended_phase_frames": {},
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+                "replay_start": 10057,
+                "replay_end": 11500
+              }
+            },
+            {
+              "ok": true,
+              "dual": false,
+              "room_ok": true,
+              "xy_ok": true,
+              "left_start": true,
+              "got_room": 41902,
+              "got_room_hex": "0xA3AE",
+              "got_xy": [
+                341,
+                171
+              ],
+              "expected_leave_room": null,
+              "expected_end_xy": [
+                341,
+                171
+              ],
+              "xy_tol": 24,
+              "xy_delta": [
+                0,
+                0
+              ],
+              "reason": null,
+              "result": {
+                "ok_steps": 1444,
+                "start_i": 10057,
+                "end_i": 11500,
+                "start": {
+                  "room_id": 41902,
+                  "xy": [
+                    728,
+                    139
+                  ],
+                  "pose": 10,
+                  "game_state": 8,
+                  "phase": "ORDINARY_GAMEPLAY"
+                },
+                "room_id": 41902,
+                "room": "0xA3AE",
+                "xy": [
+                  341,
+                  171
+                ],
+                "pose": 138,
+                "phase": "ORDINARY_GAMEPLAY",
+                "game_state": 8,
+                "door_transition": 0,
+                "health": 299,
+                "energy": 299,
+                "assist": true,
+                "assist_report": {
+                  "enabled": true,
+                  "unlimited_energy_enabled": true,
+                  "unlimited_ammo_enabled": true,
+                  "refill_when": "always",
+                  "energy": {
+                    "restored": 0,
+                    "writes": 0,
+                    "top_ups": 0,
+                    "first_unlocked_frame": 0
+                  },
+                  "ammo": {
+                    "missiles": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "super_missiles": {
+                      "restored": 1,
+                      "writes": 1,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    },
+                    "power_bombs": {
+                      "restored": 0,
+                      "writes": 0,
+                      "top_ups": 0,
+                      "first_unlocked_frame": 0
+                    }
+                  },
+                  "suspended_phase_frames": {},
+                  "progression_writes": 0,
+                  "capacity_writes": 0,
+                  "maximum_single_frame_damage": 0,
+                  "deaths": 0,
+                  "top_ups_total": 0
+                },
+                "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+                "replay_start": 10057,
+                "replay_end": 11500
+              }
+            }
+          ],
+          "reason": null
+        },
+        "replay_start": 10057,
+        "replay_end": 11500,
+        "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+        "assist": true,
+        "slice": {
+          "task": "snes/super_metroid/tasks/warehouse_to_red_human.json",
+          "name": "warehouse_to_red_human",
+          "frame_count": 11501,
+          "start_index": 10056,
+          "end_index": 11500,
+          "replay_start": 10057,
+          "start_room": 41902,
+          "leave_room": null,
+          "start_xy": [
+            728,
+            139
+          ],
+          "end_xy": [
+            341,
+            171
+          ],
+          "anchor_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+          "anchor_frame": 10056,
+          "hop_index": 9,
+          "hop": {
+            "index": 9,
+            "start_index": 10056,
+            "frame": 10056,
+            "room": "0xA3AE",
+            "room_id": 41902,
+            "name": "Alpha Power Bomb Room",
+            "xy": [
+              728,
+              139
+            ],
+            "pose": 10,
+            "energy": 299,
+            "missiles": 15,
+            "items": "0x3105",
+            "end_index": 11500,
+            "end_frame": 11500,
+            "end_xy": [
+              341,
+              171
+            ],
+            "end_pose": 138,
+            "dwell": 1445,
+            "end_items": "0x3105",
+            "raw_start_index": 9909,
+            "settled_entry": true,
+            "transition_frames": 147
+          },
+          "anchor": {
+            "kind": "room_enter",
+            "frame": 10056,
+            "room": "0xA3AE",
+            "room_id": 41902,
+            "xy": [
+              728,
+              139
+            ],
+            "pose": 10,
+            "items": "0x3105",
+            "grapple": false,
+            "gravity": false,
+            "beams": "0x1007",
+            "energy": 299,
+            "path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state",
+            "resolved_path": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/tasks/warehouse_to_red_human_anchors/f010056_enter_0xA3AE_0xA3AE.state"
+          },
+          "n_hops": 10,
+          "steps": 1444,
+          "start_room_hex": "0xA3AE",
+          "leave_room_hex": null,
+          "anchor_warning": null,
+          "anchor_mismatch_risk": false,
+          "anchor_room_mismatch": false
+        },
+        "reason": null
+      }
+    }
+  ],
+  "notes": [
+    "compose unit = hop from live entry_anchor (anti-desync)",
+    "settled hop bounds (match materialize bodies)",
+    "not multi-minute full-tape open-loop; not seam frame-append",
+    "each hop re-boots its pre-recorded pin (dual-verify, not natural-entry leave seed)"
+  ]
+}

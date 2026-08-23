@@ -143,9 +143,9 @@ def top_super_door(
     if session.state.selected_item != 2:
         select_weapon(session, 2)
 
-    # Land + crouch settle on top structure before sticky WJ.
-    # DOOR_CROUCH_FRAMES (policy): continuous Spazer Phase E needs longer
-    # crouch than pure baseline 8f so SEEK phase matches Geruta-clear window.
+    # Land on the top structure before sticky WJ.  Crouch is policy-controlled;
+    # the current reactive Bubble policy uses zero so it cannot walk off the
+    # earned top band while waiting for an enemy-phase alignment.
     for _ in range(24):
         st = session.state
         if st.room_id != room_id:
@@ -196,7 +196,20 @@ def top_super_door(
 
         # Fell below usable top band: re-approach right structure.
         if y > pol.DOOR_FALL_Y:
-            if x >= pol.DOOR_OUTER_X:
+            if x >= pol.DOOR_OUTER_X and int(state.pose) in pol.TRUE_GROUND:
+                # The continuous spine can land on the Single Chamber shelf
+                # at ~(446,383).  Walking/pulsing WJ there never leaves the
+                # floor.  Spin left off it, then the x<360 branch below bends
+                # the same jump back into the climbable right structure.
+                hold(
+                    session,
+                    1,
+                    "LEFT",
+                    "B",
+                    "A",
+                    reason=f"{label}_door_shelf_escape",
+                )
+            elif x >= pol.DOOR_OUTER_X:
                 hold(session, 1, "LEFT", "B", reason=f"{label}_door_outer_pull")
             elif x < 360:
                 hold(

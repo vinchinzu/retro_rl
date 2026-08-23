@@ -10,6 +10,7 @@ from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_st
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
 from super_metroid.routes.kpdr.ceres.elev_escape import (
     CeresShaftClimb,
+    _ceres_at_checkpoint,
     _ceres_elev_leaving,
     _ceres_elev_ship_band,
     _ceres_elev_top_seat,
@@ -184,3 +185,10 @@ def test_top_seat_is_s10_not_raw_y() -> None:
         pose=137,
     )
     assert _ceres_elev_top_seat(seat)
+
+
+def test_checkpoint_requires_ground_or_knockback_pose() -> None:
+    airborne_apex = _state(samus_y=475, pose=25, velocity_y=0)
+    assert not _ceres_at_checkpoint(airborne_apex, 475)
+    debris_knockback = _state(samus_y=475, pose=137, velocity_y=0)
+    assert _ceres_at_checkpoint(debris_knockback, 475)

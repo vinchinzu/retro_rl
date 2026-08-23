@@ -110,6 +110,7 @@ def run_once(
     video_path=None,
     video_config=None,
     intro_frames: int = 0,
+    continuous_mode: bool = False,
 ) -> dict:
     """One assisted trial from Level3Raft toward boss / TF."""
     configure_headless()
@@ -118,7 +119,9 @@ def run_once(
     total = [0]
     track = "assisted" if infinite_life else "clean"
     intervention = "survival" if infinite_life else "clean"
-    controller = Level3BossPathController(poke_bombs=poke_bombs, tag=tag)
+    controller = Level3BossPathController(
+        poke_bombs=poke_bombs, tag=tag, continuous_mode=continuous_mode
+    )
     report: dict = {
         "ok": False,
         "track": track,
@@ -341,6 +344,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--kill", action="store_true", help="Fight Manhandla after 0x4d")
     p.add_argument(
+        "--continuous-mode", action="store_true",
+        help="One-way spine policy: disable every emulator state rollback",
+    )
+    p.add_argument(
         "--phase",
         choices=("all", "to5d", "gate5d", "boss", "kill"),
         default="all",
@@ -388,6 +395,7 @@ def main(argv: list[str] | None = None) -> int:
             video_path=video_path,
             video_config=video_config,
             intro_frames=intro_frames,
+            continuous_mode=args.continuous_mode,
         )
         trials.append(rep)
         print(
