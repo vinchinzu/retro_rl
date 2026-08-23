@@ -149,15 +149,22 @@ room `0x30` `(120,205)`, keys=6, bombs=15, TF=`0x07`, hop 227f, deaths/state
 loads/progression/capacity writes all 0. `--through level4-room30` stops at
 enter-`0x30` (Vires still live). Do not close `.6` until TF `0x08`.
 
-Next boundary is the `0x30` Vire clear from south-mouth `(120,205)` (walkable
-band y∈[128,208], ignore invuln `0x2b`), then KEY-RIGHT @y141 into `0x31`.
-Attach the existing clear / key-right controllers. Exact verified predecessor:
+The existing `0x30` Vire clear (ignore invuln `0x2b`) plus KEY-RIGHT @y141 is
+now on the continuous tape from that south-mouth leftover `(120,205)`:
+`l4_room31_continuous_v1.json`, 1/1, 104,524f, room `0x31` `(16,141)`,
+keys 6→5, bombs=15, TF=`0x07`, hop 667f (clear 325f + KEY-RIGHT 342f),
+deaths/state loads/progression/capacity writes all 0. `--through level4-room31`
+stops at enter-`0x31` (maze Vires still live). Do not close `.6` until TF `0x08`.
+
+Next boundary is the `0x31` maze Vire clear from west-door `(16,141)`, then
+free RIGHT into `0x32`. Attach the existing clear / east controllers.
+Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-room30 --no-video --trials 1 \
-  --tag l4_room30_continuous_v1
+  --through level4-room31 --no-video --trials 1 \
+  --tag l4_room31_continuous_v1
 ```
 Isolated 0x6b check:
 

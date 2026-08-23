@@ -423,6 +423,54 @@ def test_north_30_from_room40_key_pose_aligns_then_pushes_up() -> None:
     assert entered.success
 
 
+def test_clear_30_from_south_mouth_walks_north_band() -> None:
+    """Continuous leftover is (120,205); isolated clear_30 used that pose."""
+
+    def snap(x: int, y: int):
+        return SimpleNamespace(
+            level=4, screen=ROOM_L4_NORTH_30, mode=5,
+            transitioning=False, link_x=x, link_y=y, objects=(),
+        )
+
+    south = make_room_30_clear_controller()
+    assert south.step(snap(120, 205)).reason == "walk_north_band"
+
+    on_band = make_room_30_clear_controller()
+    action = on_band.step(snap(120, 140))
+    assert on_band.phase.name == "FIGHT"
+    assert action.reason == "wait_spawn"
+
+
+def test_key_right_31_aligns_y141_from_clear_leftover() -> None:
+    """Isolated clear leftover is (80,133); KEY-RIGHT is y=141 then RIGHT."""
+
+    def snap(x: int, y: int, *, screen: int = ROOM_L4_NORTH_30, keys: int = 6):
+        return SimpleNamespace(
+            level=4, screen=screen, mode=5,
+            transitioning=False, link_x=x, link_y=y, keys=keys, objects=(),
+        )
+
+    from_band = make_key_right_31_controller(clear_vires=False)
+    assert from_band.step(snap(80, 133)).reason == "align_y"
+
+    at_door = make_key_right_31_controller(clear_vires=False)
+    assert at_door.step(snap(80, 141)).reason == "push_key_right"
+
+    entered = make_key_right_31_controller(clear_vires=False)
+    action = entered.step(snap(16, 141, screen=ROOM_L4_EAST_31, keys=5))
+    assert action.reason == "done"
+    assert entered.success
+
+
+def test_room_30_live_enemies_ignore_invuln_0x2b() -> None:
+    invuln = SimpleNamespace(slot=1, type_id=INVULN_MOVER_TYPE, x=80, y=133, hp=64)
+    vire = SimpleNamespace(slot=3, type_id=VIRE_OBJECT_TYPE, x=160, y=100, hp=64)
+    assert ROOM_30_SPEC.live_enemies(SimpleNamespace(objects=(invuln,))) == ()
+    live = ROOM_30_SPEC.live_enemies(SimpleNamespace(objects=(invuln, vire)))
+    assert len(live) == 1
+    assert live[0].type_id == VIRE_OBJECT_TYPE
+
+
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"
