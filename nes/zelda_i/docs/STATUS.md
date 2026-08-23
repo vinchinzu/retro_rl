@@ -39,6 +39,7 @@
 | Power-on → L4 natural key `0x40` | **1/1 continuous Survival**; coordinate-gated `0x50→0x40`, Zols clear, natural key raises keys 5→6; 103,630f; TF=`0x07`, bombs=15; deaths 0; progression/capacity writes 0; no state load | `l4_room40_key_continuous_v7.json` / `_final.png` |
 | Power-on → L4 enter `0x30` | **1/1 continuous Survival**; existing north controller from `(136,125)` free-UP into `0x30` in 227f; 103,857f; TF=`0x07`, keys=6, bombs=15; leftover `(120,205)`; deaths 0; progression/capacity writes 0; no state load | `l4_room30_continuous_v1.json` / `_final.png` |
 | Power-on → L4 enter `0x31` | **1/1 continuous Survival**; `0x30` Vire clear from `(120,205)` (ignore `0x2b`) then KEY-RIGHT @y141; 104,524f; hop 667f; TF=`0x07`, keys 6→5, bombs=15; leftover `(16,141)`; deaths 0; progression/capacity writes 0; no state load | `l4_room31_continuous_v1.json` / `_final.png` |
+| Power-on → L4 clear `0x31` | **1/1 continuous Survival**; west-alcove RIGHT+UP clip then coordinate waypoints to mid-maze, Vire clear 4,818f; 109,514f; TF=`0x07`, keys=5, bombs=15; leftover `(112,141)`; deaths 0; progression/capacity writes 0; no state load | `l4_clear31_continuous_v7.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -49,7 +50,7 @@ and zero capacity writes. They are development checkpoints, not Clean or
 power-on STATUS promotions. Power-on → L3 west key `0x7b` is on the
 continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes —
 not Clean. The continuous spine now holds the natural `0x40` key and has
-entered `0x31`; next is the live `0x31` maze Vire clear / free-RIGHT boundary.
+cleared `0x31`; next is the live free-RIGHT `0x31→0x32` boundary.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
@@ -313,12 +314,10 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level3` now clears Manhandla, collects
-   TF `0x04`, and returns to OW `0x74`. Next is L3 exit → L4.
-   Isolated
-   `Level3*` pins do not close them. L2 TF `0x02` (`rr-4d53.2.3`) is closed.
-   No seamed compose. Bomb/key count pokes are documented Survival shortcuts,
-   not Clean.
+1. **Active Survival tip:** `--through level4-clear31` clears the `0x31`
+   maze Vires. Next is free RIGHT into `0x32`. Isolated `Level3*` pins do
+   not close spine beads. No seamed compose. Bomb/key count pokes are
+   documented Survival shortcuts, not Clean. Do not close `.6` until TF `0x08`.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

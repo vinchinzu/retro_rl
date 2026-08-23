@@ -17,6 +17,7 @@ from zelda_i.level2_spine import (
     level2_to_boom_stages,
 )
 from zelda_i.level2_tf_spine import level2_tf_stages
+from zelda_i.dungeon_ids import VIRE_OBJECT_TYPE
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_HEALTH,
@@ -26,6 +27,8 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MAGIC_BOOMERANG,
     ADDR_MODE,
+    ADDR_OBJ_HP,
+    ADDR_OBJ_TYPE,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
     PLAY_MODE,
@@ -53,6 +56,8 @@ from zelda_i.survival_spine import (
     level4_north_30_success,
     level4_key_right_31_stages,
     level4_key_right_31_success,
+    level4_clear_31_stages,
+    level4_clear_31_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -70,6 +75,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-room40-key",
         "level4-room30",
         "level4-room31",
+        "level4-clear31",
     )
 
 
@@ -160,6 +166,38 @@ def test_level4_key_right_31_stop_is_enter_room_after_key() -> None:
     ram[ADDR_SCREEN] = 0x30
     ram[ADDR_KEYS] = 6
     assert not level4_key_right_31_success(read_snapshot(ram), keys_before=6)
+
+
+def test_level4_clear_31_attaches_existing_maze_vire_controller() -> None:
+    stages = level4_clear_31_stages()
+    assert [name for name, _, _ in stages] == [
+        "level4_inland_0x31",
+        "level4_clear_0x31",
+    ]
+    assert stages[0][1].phase.name == "CLIP"
+    assert stages[0][2] == 4000
+    assert stages[1][1].phase.name == "FIGHT"
+    assert stages[1][1].spec.room_id == 0x31
+    run = SpineRun(through="level4-clear31", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_clear_0x31"
+
+
+def test_level4_clear_31_stop_is_empty_maze_not_east_door() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x31
+    ram[ADDR_LINK_X] = 128
+    ram[ADDR_LINK_Y] = 133
+    snap = read_snapshot(ram)
+    assert level4_clear_31_success(snap)
+    ram[ADDR_OBJ_TYPE + 1] = VIRE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level4_clear_31_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_SCREEN] = 0x32
+    assert not level4_clear_31_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:

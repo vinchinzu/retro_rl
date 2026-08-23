@@ -20,6 +20,7 @@ from zelda_i.level4_dungeon import (
     LEVEL4_COMPASS_BIT,
     ROOM_40_SPEC,
     ROOM_L4_COMPASS_62,
+    ROOM_L4_EAST_31,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
     ROOM_L4_ZOLS_40,
@@ -736,3 +737,193 @@ class Level4Key40Controller:
 def make_room_40_key_controller() -> Level4Key40Controller:
     """Clear 0x40 Zols+gels + collect key via scripted east-corridor path."""
     return Level4Key40Controller()
+
+
+# 0x31 west-door leftover. Cardinals stick at ~(32,141) on the maze wall
+# (continuous v1/v2). RIGHT+UP clips into the vertical corridor ~(48,133);
+# coordinate waypoints then thread to mid-maze ~(128,133).
+MAZE_31_INLAND_X = 48
+MAZE_31_ALCOVE_Y = 141
+MAZE_31_ALCOVE_Y_TOL = 8
+MAZE_31_MID = (128, 133)
+MAZE_31_MID_TOL = 8
+MAZE_31_NORTH_Y = 109
+# v5 (80,109) RIGHT no-op → DOWN. v6 (80,141) RIGHT no-op → keep DOWN
+# to the south channel, then RIGHT/UP to mid-maze.
+MAZE_31_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (48, 109),
+    (80, 109),
+    (80, 173),
+    MAZE_31_MID,
+)
+
+
+class Maze31InlandPhase(Enum):
+    CLIP = auto()
+    THREAD = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Maze31InlandController:
+    """West-door leftover → RIGHT+UP clip → coordinate waypoints to mid-maze."""
+
+    max_frames: int = 4000
+    phase: Maze31InlandPhase = Maze31InlandPhase.CLIP
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    path_index: int = 0
+    _last_xy: tuple[int, int] | None = None
+    _stall: int = 0
+    samples: list[dict[str, Any]] = field(default_factory=list)
+
+    def _sample(self, snap: ZeldaSnapshot, reason: str) -> None:
+        sample = {
+            "frame": self.frames,
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "phase": self.phase.name,
+            "reason": reason,
+            "stall": self._stall,
+        }
+        if (
+            not self.samples
+            or self.samples[-1]["reason"] != reason
+            or self.frames - self.samples[-1]["frame"] >= 250
+        ):
+            self.samples.append(sample)
+
+    def _set_phase(self, phase: Maze31InlandPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self._stall = 0
+            if phase is Maze31InlandPhase.THREAD:
+                self.path_index = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Maze31InlandPhase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _left_alcove(self, snap: ZeldaSnapshot) -> bool:
+        x, y = int(snap.link_x), int(snap.link_y)
+        if x >= MAZE_31_INLAND_X:
+            return True
+        return x >= 40 and abs(y - MAZE_31_ALCOVE_Y) > MAZE_31_ALCOVE_Y_TOL
+
+    def _at_mid(self, snap: ZeldaSnapshot) -> bool:
+        gx, gy = MAZE_31_MID
+        return (
+            abs(int(snap.link_x) - gx) <= MAZE_31_MID_TOL
+            and abs(int(snap.link_y) - gy) <= 12
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._last_xy == xy:
+            self._stall += 1
+        else:
+            self._stall = 0
+            self._last_xy = xy
+
+        if self.phase is Maze31InlandPhase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is Maze31InlandPhase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            self._sample(snap, "timeout")
+            return self._fail("timeout")
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("RIGHT"), "scroll_right")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != ROOM_L4_EAST_31:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        if self._at_mid(snap):
+            self._sample(snap, "mid_maze")
+            self.success = True
+            self._set_phase(Maze31InlandPhase.DONE, "mid_maze")
+            return FrameAction(nes_idle_action(), "done")
+
+        if self.phase is Maze31InlandPhase.CLIP:
+            if self._left_alcove(snap):
+                self._sample(snap, "left_alcove")
+                self._set_phase(Maze31InlandPhase.THREAD, "left_alcove")
+                self._snap_waypoint(xy)
+            elif self._stall >= 24:
+                self._sample(snap, "alcove_clip_stuck")
+                return self._fail(f"alcove_clip_stuck_{xy[0]}_{xy[1]}")
+            else:
+                if abs(xy[1] - MAZE_31_ALCOVE_Y) <= MAZE_31_ALCOVE_Y_TOL:
+                    return FrameAction(
+                        nes_action("RIGHT", "UP"), "maze31_alcove_clip"
+                    )
+                return FrameAction(nes_action("RIGHT"), "maze31_alcove_right")
+
+        return self._thread_step(xy, snap)
+
+    def _snap_waypoint(self, xy: tuple[int, int]) -> None:
+        self.path_index = min(
+            range(len(MAZE_31_WAYPOINTS)),
+            key=lambda i: (
+                abs(MAZE_31_WAYPOINTS[i][0] - xy[0])
+                + abs(MAZE_31_WAYPOINTS[i][1] - xy[1]),
+                -i,
+            ),
+        )
+
+    def _thread_step(
+        self, xy: tuple[int, int], snap: ZeldaSnapshot
+    ) -> FrameAction:
+        if self._stall >= 24:
+            self._sample(snap, "thread_stuck")
+            return self._fail(f"thread_stuck_{xy[0]}_{xy[1]}")
+        if self.path_index >= len(MAZE_31_WAYPOINTS):
+            self._sample(snap, "mid_maze")
+            self.success = True
+            self._set_phase(Maze31InlandPhase.DONE, "mid_maze")
+            return FrameAction(nes_idle_action(), "done")
+        gx, gy = MAZE_31_WAYPOINTS[self.path_index]
+        if abs(xy[0] - gx) <= 4 and abs(xy[1] - gy) <= 4:
+            self._sample(snap, f"waypoint_{self.path_index}")
+            self.path_index += 1
+            self._stall = 0
+            if self.path_index >= len(MAZE_31_WAYPOINTS):
+                self.success = True
+                self._set_phase(Maze31InlandPhase.DONE, "mid_maze")
+                return FrameAction(nes_idle_action(), "done")
+            gx, gy = MAZE_31_WAYPOINTS[self.path_index]
+        if abs(xy[0] - gx) > 4:
+            direction = "RIGHT" if xy[0] < gx else "LEFT"
+        else:
+            direction = "DOWN" if xy[1] < gy else "UP"
+        return FrameAction(nes_action(direction), f"maze31_thread_{direction}")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "segment": "level4_inland_0x31",
+            "mid": list(MAZE_31_MID),
+            "path_index": self.path_index,
+            "waypoints": [list(w) for w in MAZE_31_WAYPOINTS],
+            "samples": list(self.samples),
+        }
+
+
+def make_maze_31_inland_controller() -> Level4Maze31InlandController:
+    return Level4Maze31InlandController()
