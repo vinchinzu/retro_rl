@@ -43,9 +43,10 @@ Round / match notes:
   appeared. `Fight_LiuKang` timeout-KO (vs Sub-Zero) still loads Scorpion.
   Pin HUD is leftover from the previous win (Scorpion at Fight 1, Sonya
   at Fight 2, Sub-Zero at Fight 3, Raiden at Fight 4, Kano at Fight 5,
-  Cage at Fight 6), not the fighter you actually play. First fight-ready
-  after VS can be a black fade with `p2_character=0`; identify on a
-  visible frame.
+  Cage at Fight 6, Liu Kang at Fight 7), not the fighter you actually
+  play. Natural Endurance 1 is Kano (id 1) on the courtyard; isolated
+  `Endurance1_LiuKang` is Sub-Zero. First fight-ready after VS can be a
+  black fade; identify on a visible frame.
 - For scripted replay scoring, count health transitions `>0 → 0` for each
   fighter. These settle before the delayed HUD round bytes and avoid the noisy
   P2 byte producing a false loss at the final KO.
