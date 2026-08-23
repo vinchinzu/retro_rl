@@ -100,9 +100,10 @@ clears L4 `0x50`: `l4_clear50_continuous_v1`, TF=0x07, keys=5, bombs=15,
 zero deaths/progression/capacity writes and zero state restores. Survival bomb
 count top-ups are operator-approved through the assisted full-game clear;
 record every verified gate and never write capacity. L4 entry bombs=0, so the
-0x61 wall gets 0→16 and consumes one. Next is the `0x50` north geometry from
-the continuous clear pose. Fixed paths ended `(112,117)` and `(160,149)`; do
-not repeat them unchanged or attach checkpoint-mediated/emulator-state BFS.
+0x61 wall gets 0→16 and consumes one. Continuous v7 reaches `0x40` through
+coordinate gates, clears the Zols, and naturally raises keys 5→6. Next is
+`0x40→0x30` from `(136,125)`; attach the existing north controller to the
+spine without checkpoint-mediated/emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

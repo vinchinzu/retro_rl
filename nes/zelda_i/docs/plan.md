@@ -136,23 +136,22 @@ state loads 0, progression/capacity writes 0. At the verified `0x61` bomb gate,
 the operator-authorized Survival exception tops bombs 0→16; the wall consumes
 one. Keys remain 4 until the natural `0x51` key raises them to 5.
 
-Next boundary is `0x50` north→`0x40` from the continuous clear pose. Two fixed
-paths failed closed without deaths or forbidden writes:
+The continuous spine now reaches `0x40`, clears it, and collects its natural
+key: `l4_room40_key_continuous_v7.json`, 1/1, 103,630f, TF=`0x07`, keys=6,
+bombs=15, deaths/state loads/progression/capacity writes all 0. The verified
+path uses coordinate gates through `(160,177)`, `(116,181)`, `(112,124)`,
+`(128,103)`, then UP to y≈93, LEFT to x≈120, and long UP. This replaces the
+two failed fixed paths and does not use emulator-state BFS.
 
-- `l4_room40_key_continuous_v1`: old 28-token path boxed at `(112,117)`.
-- `l4_room40_key_continuous_v2`: isolated shortest path missed from this pose
-  and ended `(160,149)`.
-
-Do not rerun either unchanged and do not use emulator-state BFS. Add compact
-coordinate/reason samples to the one-frame `Level4North40Controller`, predict
-the next occupancy move, and replan from the first stuck cell. Exact verified
-predecessor command:
+Next boundary is natural-key pose `(136,125)` in `0x40` → north `0x30`.
+Attach the existing one-frame north controller and add an exact stop before
+the `0x30` clear/key-right work. Exact verified predecessor command:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-clear50 --no-video --trials 1 \
-  --tag l4_clear50_continuous_v1
+  --through level4-room40-key --no-video --trials 1 \
+  --tag l4_room40_key_continuous_v7
 ```
 Isolated 0x6b check:
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from zelda_i.dungeon import ROOM_SPECS, ensure_default_specs
 from zelda_i.dungeon_ids import VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE, object_name
 from zelda_i.level4_dungeon import (
@@ -366,6 +368,26 @@ def test_maze_50_north_path() -> None:
     assert MAZE_50_WAYPOINTS[-1][1] <= 72  # north band
     assert make_north_40_controller().phase.name == "WAYPOINTS"
     assert COMPASS_PICKUP_XY == (136, 132)
+
+
+def test_maze_50_live_corner_turns_at_observed_coordinates() -> None:
+    def snap(x: int, y: int) -> SimpleNamespace:
+        return SimpleNamespace(
+            level=4, screen=ROOM_L4_VIRES_50, mode=5,
+            transitioning=False, link_x=x, link_y=y,
+        )
+
+    below_corner = make_north_40_controller()
+    below_corner.path_index = 4
+    assert below_corner.step(snap(128, 101)).reason == "maze50_seek_4_UP"
+
+    at_corner = make_north_40_controller()
+    at_corner.path_index = 4
+    assert at_corner.step(snap(128, 93)).reason == "maze50_seek_4_LEFT"
+
+    door_column = make_north_40_controller()
+    door_column.path_index = 4
+    assert door_column.step(snap(120, 93)).reason == "maze50_seek_4_UP"
 
 
 def test_maze_40_key_path() -> None:
