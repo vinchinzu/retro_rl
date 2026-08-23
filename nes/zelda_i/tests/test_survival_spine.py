@@ -46,6 +46,9 @@ from zelda_i.survival_spine import (
     SPINE_THROUGH,
     SpineRun,
     level4_entry_stages,
+    level4_first_key_stages,
+    level4_first_key_success,
+    level4_room40_key_stages,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -57,7 +60,11 @@ from zelda_i.survival_spine import (
 
 
 def test_spine_through_is_continuous_only() -> None:
-    assert SPINE_THROUGH == ("level1", "level2", "level3", "level4-entry")
+    assert SPINE_THROUGH == (
+        "level1", "level2", "level3", "level4-entry", "level4-key",
+        "level4-clear50",
+        "level4-room40-key",
+    )
 
 
 def test_level4_entry_attaches_after_level3_tf() -> None:
@@ -67,6 +74,36 @@ def test_level4_entry_attaches_after_level3_tf() -> None:
     ]
     run = SpineRun(through="level4-entry", success=True, boot_frames=199)
     assert run.report()["stop"] == "level4_entry_0x71"
+
+
+def test_level4_first_key_is_a_deterministic_one_env_sequence() -> None:
+    stages = level4_first_key_stages()
+    assert [name for name, _, _ in stages] == [
+        "level4_entry_up_0x61",
+        "level4_bomb_north_0x61",
+        "level4_key_0x51",
+    ]
+    assert stages[-1][1].phase.name == "FIGHT"
+    run = SpineRun(through="level4-key", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_natural_key_0x51"
+
+
+def test_level4_first_key_stop_uses_inventory_delta_not_room_timer() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x51
+    ram[ADDR_KEYS] = 5
+    snap = read_snapshot(ram)
+    assert level4_first_key_success(snap, keys_before=4)
+    assert not level4_first_key_success(snap, keys_before=5)
+
+
+def test_level4_room40_key_sequence_skips_compass_and_preserves_keys() -> None:
+    assert [name for name, _, _ in level4_room40_key_stages()] == [
+        "level4_north_0x40",
+        "level4_key_0x40",
+    ]
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
