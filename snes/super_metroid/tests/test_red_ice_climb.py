@@ -16,6 +16,7 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     RIPPER_ID,
     TUNNEL_FLOOR,
     THIN_SEAT,
+    UPPER_RIPPER_1,
     RedIceBottomEdgeRunner,
     can_attach_bottom_edge,
     can_attach_ripper1_edge,
@@ -24,6 +25,7 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     can_attach_ripper4_edge,
     can_attach_tunnel_edge,
     can_attach_mid_floor_edge,
+    can_attach_thin_seat_edge,
     checkpoint_supported,
     read_rippers,
 )
@@ -42,6 +44,10 @@ from super_metroid.routes.kpdr.k5.red_ice_r3_to_r4 import (
 from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (
     POLICY_ID as R4TUN_POLICY,
     RedIceRipper4TunnelEdgeRunner,
+)
+from super_metroid.routes.kpdr.k5.red_ice_thin_to_ur1 import (
+    POLICY_ID as THINUR1_POLICY,
+    RedIceThinToUr1EdgeRunner,
 )
 
 
@@ -88,6 +94,8 @@ def test_checkpoint_requires_grounded_state() -> None:
     assert not MID_FLOOR.matches(_state(samus_x=142, samus_y=1591))
     assert THIN_SEAT.matches(_state(samus_x=89, samus_y=587))
     assert not THIN_SEAT.matches(_state(samus_x=166, samus_y=587))
+    assert UPPER_RIPPER_1.matches(_state(samus_x=104, samus_y=495))
+    assert not UPPER_RIPPER_1.matches(_state(samus_x=104, samus_y=587))
 
 
 def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
@@ -151,6 +159,14 @@ def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
     )
     assert can_attach_mid_floor_edge(mid)
     assert not can_attach_mid_floor_edge(tunnel)
+    thin = _state(
+        samus_x=86,
+        samus_y=587,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_thin_seat_edge(thin)
+    assert not can_attach_thin_seat_edge(mid)
 
 
 def test_frozen_support_is_part_of_checkpoint_truth() -> None:
@@ -191,6 +207,7 @@ def test_checkpoint_plan_has_one_verified_edge_and_planned_recovery_tree() -> No
     assert edges["lower_ripper_4_to_tunnel"]["status"] == "verified_dual_from_p165_r4"
     assert edges["tunnel_to_mid_floor"]["status"] == "verified_dual_from_p165_tunnel"
     assert edges["mid_floor_to_thin_seat"]["status"] == "verified_dual_from_p165_mid"
+    assert edges["thin_seat_to_upper_ripper_1"]["status"] == "verified_dual_from_p165_thin"
     assert data["recovery"]
 
 
@@ -325,6 +342,33 @@ def test_r4tun_grounded_jump_has_no_walk_then_left_in_air() -> None:
         )
     )
     assert list(air) == list(buttons("LEFT", "A"))
+
+
+def test_thin_ur1_face_then_freeze_has_no_walk() -> None:
+    """Seat is solid so a short RIGHT turn is legal; freeze is still UP+X."""
+    from retro_harness.actions import buttons
+
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    base = 0x0F78 + 0 * 0x40
+    _write_u16(ram, base, RIPPER_ID)
+    _write_u16(ram, base + 0x02, 107)
+    _write_u16(ram, base + 0x06, 520)
+    runner = RedIceThinToUr1EdgeRunner(_Env(ram))
+    runner.phase = "face"
+    face = runner.action(
+        _state(room_id=0xA253, samus_x=86, samus_y=587, pose=2, facing=4)
+    )
+    assert list(face) == list(buttons("RIGHT"))
+    assert runner.policy_id == THINUR1_POLICY
+    assert runner.from_checkpoint == "thin_seat"
+    assert runner.to_checkpoint == "upper_ripper_1"
+
+    runner.phase = "acquire"
+    shot = runner.action(
+        _state(room_id=0xA253, samus_x=90, samus_y=587, pose=1, facing=8)
+    )
+    assert list(shot) == list(buttons("UP", "X"))
+    assert list(shot) != list(buttons("RIGHT", "UP", "X"))
 
 
 def test_first_wall_arc_waits_until_clear_of_lower_ripper() -> None:
