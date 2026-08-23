@@ -7,7 +7,7 @@ policies. Pixel CNN specialists remain valid fallbacks until RAM models exist.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +23,10 @@ from mortal_kombat.ram import (
     rounds_settled,
 )
 from mortal_kombat.roster import (
+    KIND_RAM_V3,
+    KIND_SCRIPT,
+    SCRIPT_NAME,
+    STAGES,
     StageSlot,
     backup_on_round_loss,
     build_slots,
@@ -30,6 +34,23 @@ from mortal_kombat.roster import (
 )
 
 PolicyLoader = Callable[[Path, str], object]
+
+
+def _force_scripted_slots(slots: list[StageSlot]) -> list[StageSlot]:
+    """Use the zip-less scripted policy for every fight, even with no models."""
+    if slots:
+        return [replace(slot, model=SCRIPT_NAME, kind=KIND_SCRIPT) for slot in slots]
+    return [
+        StageSlot(
+            prefix=prefix,
+            display=display,
+            match_id=match_id,
+            model=SCRIPT_NAME,
+            kind=KIND_SCRIPT,
+        )
+        for prefix, display, match_id in STAGES
+    ]
+
 
 # Post-match: KO → FINISH HIM → victory pose → VS. START too early drops
 # out of tournament mode (see cheat_extractor.wait_for_health_reset).
@@ -76,6 +97,8 @@ class TournamentRunner:
         policy_loader: PolicyLoader | None = None,
         on_frame: Callable | None = None,
         menu_quiet_frames: int = _MENU_QUIET_FRAMES,
+        force_scripted: bool = False,
+        ladder_model: str | None = None,
     ):
         self.model_dir = model_dir or MODEL_DIR
         self.deterministic = deterministic
@@ -83,6 +106,15 @@ class TournamentRunner:
         self.on_frame = on_frame
         self.menu_quiet_frames = menu_quiet_frames
         self.slots = build_slots(self.model_dir)
+        if force_scripted:
+            self.slots = _force_scripted_slots(self.slots)
+        elif ladder_model:
+            self.slots = [
+                replace(slot, model=ladder_model, kind=KIND_RAM_V3)
+                if slot.match_id <= 6
+                else slot
+                for slot in self.slots
+            ]
         self._policies: dict[str, object] = {}
         self._active: object | None = None
         self._active_slot: StageSlot | None = None
@@ -113,6 +145,7 @@ class TournamentRunner:
     def _swap(self, slot: StageSlot, reason: str) -> str:
         policy = self._policy_for(slot)
         if policy is self._active:
+            self._active_slot = slot
             return ""
         policy.reset()
         self._active = policy
@@ -121,17 +154,20 @@ class TournamentRunner:
         self.swaps.append(label)
         return label
 
-    def _maybe_swap_fight(self, snap: FightSnapshot) -> str:
-        if snap.p2_character > 8:
-            return ""
-        key = (snap.match_counter, snap.p2_character)
-        if key == self._fight_key or not self.slots:
-            return ""
-        self._fight_key = key
-        slot = slot_for_match(snap.match_counter, snap.p2_character, self.slots)
+    def _slot_for(self, snap: FightSnapshot) -> StageSlot | None:
+        if snap.p2_character > 8 or not self.slots:
+            return None
+        return slot_for_match(snap.match_counter, snap.p2_character, self.slots)
+
+    def _maybe_swap_fight(self, snap: FightSnapshot) -> tuple[str, StageSlot | None]:
+        slot = self._slot_for(snap)
         if slot is None:
-            return ""
-        return self._swap(slot, "fight")
+            return "", None
+        key = (snap.match_counter, snap.p2_character)
+        if key == self._fight_key:
+            return "", slot
+        self._fight_key = key
+        return self._swap(slot, "fight"), slot
 
     def _maybe_swap_round(self, prev: FightSnapshot, snap: FightSnapshot) -> str:
         if self._active_slot is None:
@@ -147,7 +183,7 @@ class TournamentRunner:
             display=self._active_slot.display,
             match_id=self._active_slot.match_id,
             model=backup,
-            kind="pixel",
+            kind=KIND_SCRIPT if backup == SCRIPT_NAME else "pixel",
             backups=[],
         )
         return self._swap(alt, "round_loss")
@@ -194,12 +230,60 @@ class TournamentRunner:
         """Drive an already-reset env (tests, round probe, save-state starts)."""
         return self._loop(env, max_frames=max_frames)
 
+    def _attempt_result(
+        self,
+        *,
+        cleared: bool,
+        furthest: str,
+        wins: int,
+        losses: int,
+        frames: int,
+        credits: bool,
+    ) -> TournamentResult:
+        return TournamentResult(
+            cleared, furthest, wins, losses, frames, credits, self.swaps, self.events
+        )
+
+    def _terminal(
+        self,
+        snap: FightSnapshot,
+        *,
+        frame: int,
+        furthest: str,
+        wins: int,
+        losses: int,
+    ) -> TournamentResult | None:
+        if snap.screen is Screen.CREDITS:
+            return self._attempt_result(
+                cleared=True,
+                furthest="credits",
+                wins=wins,
+                losses=losses,
+                frames=frame,
+                credits=True,
+            )
+        if snap.screen is Screen.CONTINUE:
+            # Clean attempt ends at Continue. HUD can jump 0→2 without a +1 tick.
+            already_lost = self._seen_p2 >= 2 and self._seen_p2 > self._seen_p1
+            if not already_lost:
+                losses += 1
+            return self._attempt_result(
+                cleared=False,
+                furthest=furthest,
+                wins=wins,
+                losses=losses,
+                frames=frame,
+                credits=False,
+            )
+        return None
+
     def _loop(self, env, *, max_frames: int) -> TournamentResult:
-        boot = BootController()
+        boot = BootController(allow_continue=False)
         prev = parse_ram(env.unwrapped.get_ram())
         wins = 0
         losses = 0
         furthest = "boot"
+        furthest_match = -1
         credits = False
         self.swaps = []
         self.events = []
@@ -215,16 +299,18 @@ class TournamentRunner:
             snap = parse_ram(ram)
             phase, menu_buttons = boot.decide(snap, frame)
 
-            if snap.screen is Screen.CREDITS:
-                credits = True
+            ended = self._terminal(
+                snap, frame=frame, furthest=furthest, wins=wins, losses=losses
+            )
+            if ended is not None:
                 self._record(frame, snap, prev, last_swap)
-                return TournamentResult(
-                    True, "credits", wins, losses, frame, True, self.swaps, self.events
-                )
+                return ended
 
-            fight_swap = self._maybe_swap_fight(snap)
-            if fight_swap and self._active_slot is not None:
-                furthest = self._active_slot.display
+            fight_swap, slot = self._maybe_swap_fight(snap)
+            # Furthest is the roster slot's match_id, not whether the policy object changed.
+            if slot is not None and slot.match_id > furthest_match:
+                furthest_match = slot.match_id
+                furthest = slot.display
 
             if snap.match_counter != self._score_match:
                 self._score_match = snap.match_counter
@@ -260,15 +346,13 @@ class TournamentRunner:
             if self.on_frame is not None:
                 stop = self.on_frame(env, frame, snap, prev) is True
             if stop:
-                return TournamentResult(
-                    False,
-                    furthest,
-                    wins,
-                    losses,
-                    frame,
-                    credits,
-                    self.swaps,
-                    self.events,
+                return self._attempt_result(
+                    cleared=False,
+                    furthest=furthest,
+                    wins=wins,
+                    losses=losses,
+                    frames=frame,
+                    credits=credits,
                 )
 
             if phase is Phase.FIGHT and self._active is not None:
@@ -290,6 +374,11 @@ class TournamentRunner:
             env.step(buttons)
             prev = snap
 
-        return TournamentResult(
-            False, furthest, wins, losses, max_frames, credits, self.swaps, self.events
+        return self._attempt_result(
+            cleared=False,
+            furthest=furthest,
+            wins=wins,
+            losses=losses,
+            frames=max_frames,
+            credits=credits,
         )

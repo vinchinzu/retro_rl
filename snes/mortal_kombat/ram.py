@@ -3,9 +3,10 @@
 Addresses are stable-retro ``get_ram()`` offsets (WRAM ``$7E:xxxx``).
 Confirmed via ``data.json`` and GameHacking.org USA (CRC32 DEF42945).
 
-Fighter objects: P1 X at ``0x00DA``, P2 X at ``0x0174``, stride ``0x9A``.
-High-WRAM sprite tables (``0x7688`` / ``0x7788``) are optional — only used
-when ``get_ram()`` is long enough.
+v3 obs still uses object-stride ``0x00DA``/``0x0174`` (animation noise the
+overnight zips were trained on). Live screen pose is ``0x1966``/``0x1968``
+and ``0x030F``/``0x032F`` — scripted policy only. Sprite tables at
+``0x7688`` / ``0x7788`` were empty on Fight_LiuKang.
 """
 
 from __future__ import annotations
@@ -19,12 +20,17 @@ MAX_HEALTH = 161
 MAX_TIMER = 154
 LIU_KANG_ID = 3
 FIGHTER_STRIDE = 0x9A
+# Old object-stride guess. Still used for anim/state pokes in tests.
 P1_OBJ = 0x00DA
 P2_OBJ = 0x0174
 OFF_X = 0x00
 OFF_Y = 0x01
-# GameHacking: 7E0112 / 7E01AE — same object field at +0x38.
 OFF_STATE = 0x38
+# Screen pose (not P1_OBJ). 16-bit LE low bytes; high byte stays 0x01 on-screen.
+ADDR_P1_X = 0x1966
+ADDR_P1_Y = 0x1968
+ADDR_P2_X = 0x030F
+ADDR_P2_Y = 0x032F
 
 ADDR_GAME_MODE = 0x0022
 ADDR_MATCH_COUNTER = 0x000A
@@ -188,16 +194,14 @@ def _attack_box(x: int, y: int, facing: int, state: int, crouching: bool) -> Box
 
 
 def _read_fighter(
-    ram: np.ndarray,
-    base: int,
+    x: int,
+    y: int,
+    state: int,
     health: int,
     rounds: int,
     char_id: int,
     facing: int,
 ) -> Fighter:
-    x = _u8(ram, base + OFF_X)
-    y = _u8(ram, base + OFF_Y)
-    state = _u8(ram, base + OFF_STATE)
     crouching = y > 160
     hurt = _hurt_box(x, y, crouching)
     attack = _attack_box(x, y, facing, state, crouching)
@@ -302,8 +306,12 @@ def is_fight_ready(snap: FightSnapshot, *, character: int = LIU_KANG_ID) -> bool
 
 def parse_ram(ram: np.ndarray) -> FightSnapshot:
     """Parse a ``get_ram()`` buffer into a fight snapshot."""
+    # v3 MLP was trained on these object-stride bytes (noisy). Scripted pose
+    # reads ADDR_P1_X / ADDR_P2_X instead.
     p1_x = _u8(ram, P1_OBJ + OFF_X)
+    p1_y = _u8(ram, P1_OBJ + OFF_Y)
     p2_x = _u8(ram, P2_OBJ + OFF_X)
+    p2_y = _u8(ram, P2_OBJ + OFF_Y)
     p1_health = _u8(ram, ADDR_P1_HEALTH)
     p2_health = _u8(ram, ADDR_P2_HEALTH)
     p1_char = _u8(ram, ADDR_P1_CHARACTER)
@@ -324,8 +332,10 @@ def parse_ram(ram: np.ndarray) -> FightSnapshot:
         p2_rounds = 0
     p1_facing = _facing(p1_x, p2_x, True)
     p2_facing = _facing(p1_x, p2_x, False)
-    p1 = _read_fighter(ram, P1_OBJ, p1_health, p1_rounds, p1_char, p1_facing)
-    p2 = _read_fighter(ram, P2_OBJ, p2_health, p2_rounds, p2_char, p2_facing)
+    p1_state = _u8(ram, P1_OBJ + OFF_STATE)
+    p2_state = _u8(ram, P2_OBJ + OFF_STATE)
+    p1 = _read_fighter(p1_x, p1_y, p1_state, p1_health, p1_rounds, p1_char, p1_facing)
+    p2 = _read_fighter(p2_x, p2_y, p2_state, p2_health, p2_rounds, p2_char, p2_facing)
     screen = classify_screen(
         p1_health=p1_health,
         p2_health=p2_health,
@@ -434,4 +444,8 @@ def make_test_ram(**fields: int) -> np.ndarray:
     ram[P2_OBJ + OFF_X] = defaults["p2_x"]
     ram[P2_OBJ + OFF_Y] = defaults["p2_y"]
     ram[P2_OBJ + OFF_STATE] = defaults["p2_state"]
+    ram[ADDR_P1_X] = defaults["p1_x"]
+    ram[ADDR_P1_Y] = defaults["p1_y"]
+    ram[ADDR_P2_X] = defaults["p2_x"]
+    ram[ADDR_P2_Y] = defaults["p2_y"]
     return ram

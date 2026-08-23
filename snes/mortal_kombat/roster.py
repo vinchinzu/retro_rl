@@ -47,6 +47,8 @@ PIXEL_FALLBACK: dict[str, str] = {
 
 KIND_RAM_V3 = "ram_v3"
 KIND_PIXEL = "pixel"
+KIND_SCRIPT = "script"
+SCRIPT_NAME = "scripted"
 
 
 @dataclass
@@ -113,13 +115,21 @@ def record_stage(
 
 
 def resolve_model(prefix: str, model_dir: Path | None = None) -> tuple[Path, str]:
-    """Prefer a v3 RAM specialist; else pixel fallback; else any listed backup."""
+    """Prefer a v3 RAM specialist; else pixel fallback; else any listed backup.
+
+    A roster entry with kind ``script`` (or model ``scripted``) is a zip-less
+    RAM policy and is returned without the path existing.
+    """
     directory = model_dir or MODEL_DIR
     roster = load_roster()
     entry = roster.get("stages", {}).get(prefix, {})
+    entry_model = entry.get("model")
+    entry_kind = entry.get("kind") or KIND_RAM_V3
+    if entry_model and (entry_kind == KIND_SCRIPT or entry_model == SCRIPT_NAME):
+        return directory / SCRIPT_NAME, KIND_SCRIPT
     candidates: list[tuple[str, str]] = []
-    if entry.get("model"):
-        candidates.append((entry["model"], entry.get("kind") or KIND_RAM_V3))
+    if entry_model:
+        candidates.append((entry_model, entry_kind))
     candidates.append((v3_filename(prefix), KIND_RAM_V3))
     fallback = PIXEL_FALLBACK.get(prefix)
     if fallback:
@@ -140,6 +150,8 @@ def build_slots(model_dir: Path | None = None) -> list[StageSlot]:
         try:
             path, kind = resolve_model(prefix, directory)
         except FileNotFoundError:
+            continue
+        if kind != KIND_SCRIPT and not path.exists():
             continue
         entry = roster.get("stages", {}).get(prefix, {})
         backups = []
@@ -185,6 +197,10 @@ def backup_on_round_loss(slot: StageSlot, model_dir: Path | None = None) -> str 
     """Next model to try after a lost round (round-level swap)."""
     directory = model_dir or MODEL_DIR
     for name in slot.backups:
+        if name == SCRIPT_NAME:
+            continue
         if (directory / name).exists():
             return name
+    if SCRIPT_NAME in slot.backups:
+        return SCRIPT_NAME
     return None

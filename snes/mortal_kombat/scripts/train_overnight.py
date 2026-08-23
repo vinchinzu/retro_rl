@@ -29,9 +29,9 @@ from mortal_kombat.paths import GAME_DIR, MODEL_DIR  # noqa: E402
 from mortal_kombat.roster import STAGES, record_stage, v3_filename  # noqa: E402
 
 
-def _job_cmd(prefix: str, steps: int, n_envs: int) -> list[str]:
+def _job_cmd(prefix: str, steps: int, n_envs: int, max_hours: float) -> list[str]:
     script = Path(__file__).resolve().parent / "train_stage.py"
-    return [
+    cmd = [
         "uv",
         "run",
         "--extra",
@@ -45,6 +45,9 @@ def _job_cmd(prefix: str, steps: int, n_envs: int) -> list[str]:
         "--n-envs",
         str(n_envs),
     ]
+    if max_hours and max_hours > 0:
+        cmd.extend(["--max-hours", str(max_hours)])
+    return cmd
 
 
 def main() -> int:
@@ -53,6 +56,16 @@ def main() -> int:
     parser.add_argument("--n-envs", type=int, default=2)
     parser.add_argument("--jobs", type=int, default=12, help="Parallel stage jobs")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--max-hours",
+        type=float,
+        default=10,
+        help=(
+            "Per-job wall cutoff writes *_ppo_{timesteps}_steps.zip, exits "
+            "non-zero, and is not recorded as the incumbent. _final.zip is "
+            "only for a finished step budget. 0 = no wall cap"
+        ),
+    )
     parser.add_argument(
         "--stages",
         default="",
@@ -65,11 +78,14 @@ def main() -> int:
     log_dir = GAME_DIR / "logs" / "overnight_v3"
     log_dir.mkdir(parents=True, exist_ok=True)
     print(f"stages={prefixes}")
-    print(f"jobs={args.jobs} n_envs={args.n_envs} steps={args.steps}")
+    print(
+        f"jobs={args.jobs} n_envs={args.n_envs} steps={args.steps} "
+        f"max_hours={args.max_hours}"
+    )
     print(f"logs={log_dir}")
     if args.dry_run:
         for prefix in prefixes:
-            print(" ", " ".join(_job_cmd(prefix, args.steps, args.n_envs)))
+            print(" ", " ".join(_job_cmd(prefix, args.steps, args.n_envs, args.max_hours)))
         return 0
 
     env = os.environ.copy()
@@ -77,6 +93,7 @@ def main() -> int:
     env.setdefault("SDL_AUDIODRIVER", "dummy")
     env["OMP_NUM_THREADS"] = "1"
     env["MKL_NUM_THREADS"] = "1"
+    env["TORCH_NUM_THREADS"] = "1"
     queue = list(prefixes)
     running: dict[str, subprocess.Popen] = {}
     logs: dict[str, object] = {}
@@ -87,7 +104,7 @@ def main() -> int:
         handle = log_path.open("w")
         logs[prefix] = handle
         proc = subprocess.Popen(
-            _job_cmd(prefix, args.steps, args.n_envs),
+            _job_cmd(prefix, args.steps, args.n_envs, args.max_hours),
             cwd=str(GAME_DIR.parents[1]),
             env=env,
             stdout=handle,
