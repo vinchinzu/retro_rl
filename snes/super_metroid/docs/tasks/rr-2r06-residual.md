@@ -43,6 +43,11 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \
 - [x] Ice-pin chain bottom → r3 GREEN **635f** `(130,2159)` p1
 - [x] Ice-pin r3 pin: checkpoint `lower_ripper_3 → lower_ripper_4` dual GREEN **141f** ×2 `(155,2023)` p1
 - [x] Ice-pin chain bottom → r4 GREEN **809f** `(146,2023)` p1
+- [x] Ice-pin r4 pin: checkpoint `lower_ripper_4 → tunnel_floor` dual GREEN **69f** ×2 `(107,1883)` p2
+- [x] Ice-pin chain bottom → tunnel GREEN **878f** `(107,1883)` p2
+- [x] Ice-pin tunnel → mid floor dual GREEN **1210f** ×2 `(142,1625)` p65
+- [x] Ice-pin mid floor → thin seat dual GREEN **2974f** ×2 `(86,587)` p2
+- [x] Ice-pin chain bottom → thin seat GREEN **5062f** `(86,587)` p2
 - [ ] Ice-pin compose GREEN (West Ocean `0x93FE`) — RED at `red_to_hellway` (product RLE)
 - [ ] Ice-pin compose dual exact
 - [ ] Power-on `--to moat` dual continuous (planner STATUS)
@@ -85,14 +90,15 @@ From `post_ice_ceres_successor` (`kpdr.py compose ice-to-moat`):
 | west_to_below | `(472,393)` p82 | 9389 | matches |
 | below_to_bat | `(472,139)` p12 | 9874 | sill pin; matches dual |
 | **bat_to_red** | `(216,2443)` p165 | 10642 | GREEN 768f; was water timeout |
-| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through lower_ripper_4 (see below). 718f successor still greens 6199f from p10 mom=1. |
+| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through tunnel_floor (see below). 718f successor still greens 6199f from p10 mom=1. |
 
 ### Ice checkpoints from Ice-pin Red leave `(216,2443)` p165
 
 Public policy: Hi-Jump + Ice. Double WJ up the right wall onto frozen
-Ripper 1, standing hop onto Rippers 2 and 3, crouch-jump onto Ripper 4.
-Freeze only on the facing (right) side. Do not walk on the ice while
-shooting (falls off). Do not RIGHT+A from aim-up (pose 81 falls through).
+Ripper 1, standing hop onto Rippers 2 and 3, crouch-jump onto Ripper 4,
+then crouch-jump left onto the tunnel alcove. Freeze only on the facing
+(right) side. Do not walk on the ice while shooting (falls off). Do not
+RIGHT+A from aim-up (pose 81 falls through).
 https://wiki.supermetroid.run/Red_Tower
 
 | | frames | seconds | clock |
@@ -103,31 +109,37 @@ https://wiki.supermetroid.run/Red_Tower
 | after edge 2 `r1 → r2` dual exact | 156 | 2.596 | 00:02.60 |
 | after edge 3 `r2 → r3` dual exact | 108 | 1.797 | 00:01.80 |
 | after edge 4 `r3 → r4` dual exact | 141 | 2.346 | 00:02.35 |
+| after edge 5 `r4 → tunnel` dual exact | 69 | 1.148 | 00:01.15 |
 | chain p165 → r3 | 635 | 10.566 | 00:10.58 |
 | chain p165 → r4 | 809 | 13.461 | 00:13.48 |
+| chain p165 → tunnel | 878 | 14.609 | 00:14.63 |
+| tunnel → mid floor dual exact | 1210 | 20.134 | 00:20.17 |
+| chain p165 → mid floor | 2088 | 34.743 | 00:34.80 |
+| mid floor → thin seat dual exact | 2974 | 49.485 | 00:49.57 |
+| chain p165 → thin seat | 5062 | 84.228 | 01:24.37 |
 
-Dual exact **141f** ×2 on r3→r4, leave `(155, 2023)` p1. Standing hop
-apex is ~3px above r4 and falls through; crouch-jump apex **2008**
-clears. Chain **809f** leaves `(146, 2023)` p1 from
+Dual exact **69f** ×2 on r4→tunnel, leave `(107, 1883)` p2. A-only until
+airborne (LEFT on ice walks off), then LEFT+A onto the left alcove.
+Waiting until apex at x≈155 falls through the open shaft. Chain **878f**
+leaves `(107, 1883)` p2 from
 `scratch/bat_zero_settle_eq216_leave.state`. Not wired into
 `play_red_to_hellway` (still the 6199f tape body).
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
   --source snes/super_metroid/scratch/bat_zero_settle_eq216_leave.state \
-  --edge chain --phase-offsets 0
+  --edge chain
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
-  --source snes/super_metroid/scratch/red_ice_p165_ripper3.state \
-  --edge 4
+  --source snes/super_metroid/scratch/red_ice_p165_ripper4.state \
+  --edge 5
 ```
 
 ### Next action (required)
-- **One change:** checkpoint `lower_ripper_4 → tunnel_floor` (solid left
-  alcove ~x104 y1883). Crouch-jump from r4 clears height (apex ~1847)
-  but x≈155 is open shaft; need leftward travel onto the seat. Do not
-  walk off r4 ice.
-- **Source:** `scratch/red_ice_p165_ripper4.state` / chain leave
-  `(146,2023)` p1
+- **One change:** checkpoint `thin_seat → upper_ripper_1`. Freeze the y≈520
+  Ripper from the grounded thin seat and require a supported landing; do not
+  claim the existing isolated upper controller as natural-predecessor proof.
+- **Source:** `scratch/red_ice_p165_thin_seat.state` / chain leave `(86,587)`
+  p2. Mid → thin is dual exact **2974f** ×2; p165 bottom → thin is **5062f**.
 - Do not mash more `bat_to_red` subpixel
 - Keep `post_ice_bat_to_red_pure` (718f p10) until a Hellway leave greens
   the successor. Do not replace product `play_red_to_hellway` until the
