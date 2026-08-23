@@ -35,6 +35,12 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     THIN_SEAT,
     UPPER_RIPPER_1,
     UPPER_RIPPER_1_Y,
+    UPPER_RIPPER_2,
+    UPPER_RIPPER_2_Y,
+    UPPER_RIPPER_3,
+    UPPER_RIPPER_3_Y,
+    UPPER_RIPPER_4,
+    UPPER_RIPPER_4_Y,
     checkpoint_supported,
     play_bottom_to_ripper1,
     ripper_at_height,
@@ -66,6 +72,14 @@ from super_metroid.routes.kpdr.k5.red_ice_mid_to_thin import (  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_thin_to_ur1 import (  # noqa: E402
     POLICY_ID as THINUR1_POLICY,
     play_thin_seat_to_upper_ripper1,
+)
+from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (  # noqa: E402
+    POLICY_ID_UR12 as UR12_POLICY,
+    POLICY_ID_UR23 as UR23_POLICY,
+    POLICY_ID_UR34 as UR34_POLICY,
+    play_upper_ripper1_to_2,
+    play_upper_ripper2_to_3,
+    play_upper_ripper3_to_4,
 )
 
 DEFAULT_SOURCE = INTEGRATION_DIR / "scratch" / "post_ice_bat_to_red_pure.state"
@@ -304,6 +318,64 @@ def run_tunmid(source: Path, *, save: Path | None = None) -> dict[str, Any]:
         env.close()
 
 
+def run_supported(
+    source: Path,
+    play_fn,
+    checkpoint,
+    policy: str,
+    *,
+    save: Path | None = None,
+    enemy_y: int | None = None,
+) -> dict[str, Any]:
+    env = make_dev_env()
+    try:
+        boot_from_state(env, source, settle_frames=0)
+        session = ProbeSession(env)
+        start = session.frame
+        error = None
+        try:
+            play_fn(session)
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+        enemy = ripper_at_height(env, enemy_y) if enemy_y is not None else None
+        policy_frames = int(session.frame - start)
+        green = error is None and checkpoint_supported(env, session.state, checkpoint)
+        if green and save is not None:
+            save.parent.mkdir(parents=True, exist_ok=True)
+            write_state_bytes(save, env.em.get_state())
+        return {
+            "green": green,
+            "policy": policy,
+            "policyFrames": policy_frames,
+            "time": format_segment_time(policy_frames),
+            "room": f"0x{int(session.state.room_id):04X}",
+            "xy": [int(session.state.samus_x), int(session.state.samus_y)],
+            "pose": int(session.state.pose),
+            "freezeTimer": int(enemy.freeze_timer) if enemy is not None else 0,
+            "enemyX": int(enemy.x) if enemy is not None else None,
+            "error": error,
+        }
+    finally:
+        env.close()
+
+
+def _print_dual(runs: list[dict[str, Any]], policy: str) -> int:
+    green = all(row["green"] for row in runs)
+    dual_exact = (
+        runs[0]["policyFrames"] == runs[1]["policyFrames"]
+        and runs[0]["xy"] == runs[1]["xy"]
+        and runs[0]["pose"] == runs[1]["pose"]
+    )
+    timed = runs[0]["time"]
+    print(
+        f"{'GREEN' if green else 'RED'} {policy} dual={dual_exact} "
+        f"frames={timed['frames']} seconds={timed['seconds']} "
+        f"clock={timed['clock']} xy={runs[0]['xy']} p={runs[0]['pose']} "
+        f"err={runs[0]['error']}"
+    )
+    return 0 if green else 1
+
+
 def run_thinur1(source: Path, *, save: Path | None = None) -> dict[str, Any]:
     env = make_dev_env()
     try:
@@ -384,12 +456,15 @@ def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
             play_tunnel_to_mid_floor(session)
             play_mid_floor_to_thin_seat(session)
             play_thin_seat_to_upper_ripper1(session)
+            play_upper_ripper1_to_2(session)
+            play_upper_ripper2_to_3(session)
+            play_upper_ripper3_to_4(session)
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
         policy_frames = int(session.frame - start)
         elapsed = max(time.perf_counter() - started_at, 1e-9)
         timed = format_segment_time(policy_frames)
-        green = error is None and checkpoint_supported(env, session.state, UPPER_RIPPER_1)
+        green = error is None and checkpoint_supported(env, session.state, UPPER_RIPPER_4)
         if green and save is not None:
             save.parent.mkdir(parents=True, exist_ok=True)
             write_state_bytes(save, env.em.get_state())
@@ -397,7 +472,8 @@ def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
             "green": green,
             "policy": (
                 f"{POLICY_ID}+{R12_POLICY}+{R23_POLICY}+{R34_POLICY}+"
-                f"{R4TUN_POLICY}+{TUNMID_POLICY}+{MIDTHIN_POLICY}+{THINUR1_POLICY}"
+                f"{R4TUN_POLICY}+{TUNMID_POLICY}+{MIDTHIN_POLICY}+{THINUR1_POLICY}+"
+                f"{UR12_POLICY}+{UR23_POLICY}+{UR34_POLICY}"
             ),
             "policyFrames": policy_frames,
             "time": timed,
@@ -417,9 +493,9 @@ def main() -> int:
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument(
         "--edge",
-        choices=("1", "2", "3", "4", "5", "6", "7", "8", "chain"),
+        choices=("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "chain"),
         default="1",
-        help="1=bottom→r1, 2=r1→r2, 3=r2→r3, 4=r3→r4, 5=r4→tunnel, 6=tunnel→mid, 7=mid→thin, 8=thin→ur1, chain=bottom→ur1",
+        help="1=bottom→r1 … 8=thin→ur1, 9=ur1→ur2, 10=ur2→ur3, 11=ur3→ur4, chain=bottom→ur4",
     )
     parser.add_argument(
         "--phase-offsets",
@@ -562,22 +638,76 @@ def main() -> int:
         return 0 if green else 1
     if args.edge == "8":
         runs = [run_thinur1(args.source, save=args.save), run_thinur1(args.source)]
-        green = all(row["green"] for row in runs)
-        dual_exact = (
-            runs[0]["policyFrames"] == runs[1]["policyFrames"]
-            and runs[0]["xy"] == runs[1]["xy"]
-            and runs[0]["pose"] == runs[1]["pose"]
-        )
-        timed = runs[0]["time"]
-        print(
-            f"{'GREEN' if green else 'RED'} {THINUR1_POLICY} dual={dual_exact} "
-            f"frames={timed['frames']} seconds={timed['seconds']} "
-            f"clock={timed['clock']} xy={runs[0]['xy']} p={runs[0]['pose']} "
-            f"err={runs[0]['error']}"
-        )
+        code = _print_dual(runs, THINUR1_POLICY)
         if args.json:
-            print(json.dumps({"green": green, "dualExact": dual_exact, "runs": runs}, indent=2))
-        return 0 if green else 1
+            print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
+        return code
+    if args.edge == "9":
+        runs = [
+            run_supported(
+                args.source,
+                play_upper_ripper1_to_2,
+                UPPER_RIPPER_2,
+                UR12_POLICY,
+                save=args.save,
+                enemy_y=UPPER_RIPPER_2_Y,
+            ),
+            run_supported(
+                args.source,
+                play_upper_ripper1_to_2,
+                UPPER_RIPPER_2,
+                UR12_POLICY,
+                enemy_y=UPPER_RIPPER_2_Y,
+            ),
+        ]
+        code = _print_dual(runs, UR12_POLICY)
+        if args.json:
+            print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
+        return code
+    if args.edge == "10":
+        runs = [
+            run_supported(
+                args.source,
+                play_upper_ripper2_to_3,
+                UPPER_RIPPER_3,
+                UR23_POLICY,
+                save=args.save,
+                enemy_y=UPPER_RIPPER_3_Y,
+            ),
+            run_supported(
+                args.source,
+                play_upper_ripper2_to_3,
+                UPPER_RIPPER_3,
+                UR23_POLICY,
+                enemy_y=UPPER_RIPPER_3_Y,
+            ),
+        ]
+        code = _print_dual(runs, UR23_POLICY)
+        if args.json:
+            print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
+        return code
+    if args.edge == "11":
+        runs = [
+            run_supported(
+                args.source,
+                play_upper_ripper3_to_4,
+                UPPER_RIPPER_4,
+                UR34_POLICY,
+                save=args.save,
+                enemy_y=UPPER_RIPPER_4_Y,
+            ),
+            run_supported(
+                args.source,
+                play_upper_ripper3_to_4,
+                UPPER_RIPPER_4,
+                UR34_POLICY,
+                enemy_y=UPPER_RIPPER_4_Y,
+            ),
+        ]
+        code = _print_dual(runs, UR34_POLICY)
+        if args.json:
+            print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
+        return code
     if args.edge == "chain":
         row = run_chain(args.source, save=args.save)
         mark = "GREEN" if row["green"] else "RED"
@@ -589,7 +719,7 @@ def main() -> int:
         )
         if args.json:
             print(json.dumps(row, indent=2))
-        print("  partial only: upper_ripper_1; Hellway remains RED")
+        print("  partial only: upper_ripper_4; Hellway remains RED")
         return 0 if row["green"] else 1
 
     offsets = _offsets(args.phase_offsets)
