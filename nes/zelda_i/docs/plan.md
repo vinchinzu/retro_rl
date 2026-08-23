@@ -17,7 +17,8 @@ recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
 
 Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
 Entrance `0x7c` is **`rr-4d53.3.0` closed**. West key `0x7b` is
-The continuous spine now clears L3 and returns to OW `0x74` with TF `0x07`.
+The continuous spine now clears L3 and continues through the Raft dock to L4
+entry `0x71` with TF `0x07`.
 The `.3.4.*` suffix is verified on `l3_tf_continuous_video_v1`; its documented
 bomb-count top-up at natural Raft remains Survival-only until the farm pass.
 Next is the live L3-exit → L4 suffix.
@@ -41,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | blocked on `.3` |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous entry `0x71` verified; interior next |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -117,7 +118,25 @@ Live ladder that closed the boundary (do not regress):
 
 Natural Raft and the boss suffix are verified. The spine tops bombs 8→16 at
 Raft under the documented Survival count shortcut; the isolated suffix remains
-recon. Next is L3 exit → L4.
+recon. The same power-on session now reaches L4 entry `0x71` in 95,281f:
+`l4_entry_continuous_v1.json`, TF=`0x07`, keys=4, bombs=0, Raft=1, deaths 0,
+state restores 0, progression/capacity writes 0. Do not close `.6` yet.
+
+Exact continuation work:
+
+```bash
+UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
+  uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-entry --no-video --trials 1 --tag l4_entry_continuous_v1
+```
+
+Next implementation boundary: attach a one-env, deterministic L4
+`0x71→0x61→bomb north→0x51 key` controller sequence. The live predecessor has
+bombs=0, so apply the already documented owned-bomb count top-up before the
+`0x61` wall; preserve keys=4 and do not use the checkpoint-mediated
+`run_level4_entrance_tf.py` compose or its emulator-state BFS. Expected first
+transitions: `0x71 UP→0x61`, clear three Vires, bomb north→`0x51`, clear eight
+Keese and collect the natural key.
 Isolated 0x6b check:
 
 ```bash
