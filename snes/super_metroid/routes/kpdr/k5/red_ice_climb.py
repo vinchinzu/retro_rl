@@ -40,6 +40,8 @@ LOW_RIPPER_4_LAND_Y = 2023
 TUNNEL_FLOOR_Y = 1883
 MID_FLOOR_Y = 1625
 THIN_SEAT_Y = 587
+UPPER_RIPPER_1_Y = 520
+UPPER_RIPPER_1_LAND_Y = 495
 
 POLICY_ID = "red_tower_ice_bottom_to_ripper1"
 VARIANT_ID = "ice_hi_jump"
@@ -129,6 +131,13 @@ THIN_SEAT = RedIceCheckpoint(
     "thin_seat",
     (70, 110),
     (575, 600),
+)
+UPPER_RIPPER_1 = RedIceCheckpoint(
+    "upper_ripper_1",
+    (70, 180),
+    (478, 512),
+    support_enemy_y=UPPER_RIPPER_1_Y,
+    min_freeze_timer=30,
 )
 
 
@@ -222,6 +231,11 @@ def can_attach_tunnel_edge(state: SuperMetroidState) -> bool:
 def can_attach_mid_floor_edge(state: SuperMetroidState) -> bool:
     """Gate for the temporary mid floor → thin upper seat climb."""
     return MID_FLOOR.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_thin_seat_edge(state: SuperMetroidState) -> bool:
+    """Gate for the thin seat → frozen upper_ripper_1 hop."""
+    return THIN_SEAT.matches(state) and _has_ice_hi_jump(state)
 
 
 def _action(*names: str) -> np.ndarray:
@@ -493,6 +507,9 @@ __all__ = [
     "TUNNEL_FLOOR_Y",
     "THIN_SEAT",
     "THIN_SEAT_Y",
+    "UPPER_RIPPER_1",
+    "UPPER_RIPPER_1_LAND_Y",
+    "UPPER_RIPPER_1_Y",
     "MID_RIPPER_LAND_Y",
     "MID_RIPPER_Y",
     "POLICY_ID",
@@ -508,6 +525,7 @@ __all__ = [
     "can_attach_ripper4_edge",
     "can_attach_tunnel_edge",
     "can_attach_mid_floor_edge",
+    "can_attach_thin_seat_edge",
     "checkpoint_supported",
     "play_bottom_to_ripper1",
     "read_rippers",
