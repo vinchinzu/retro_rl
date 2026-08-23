@@ -47,6 +47,22 @@
     "p2_x": {
       "address": 372,
       "type": "|u1"
+    },
+    "p2_y": {
+      "address": 373,
+      "type": "|u1"
+    },
+    "p1_state": {
+      "address": 274,
+      "type": "|u1"
+    },
+    "p2_state": {
+      "address": 430,
+      "type": "|u1"
+    },
+    "game_mode": {
+      "address": 34,
+      "type": "|u1"
     }
   }
 }

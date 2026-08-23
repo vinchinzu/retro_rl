@@ -8,9 +8,12 @@ right-wall KB → LEFT+A → pad walk through x≈145 until gs 32.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from retro_harness.actions import buttons, idle_action
+from retro_harness.env import write_state_bytes
 from super_metroid.ram import GS_CERES_LEAVE, GS_DEAD, GS_ORDINARY
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
 from super_metroid.routes.kpdr.ceres.geometry import (
@@ -223,6 +226,45 @@ def _ceres_on_elev_ledge(state) -> bool:
     )
 
 
+def _ceres_seat_ledge(session: RouteSession) -> None:
+    """Bottom floor → mid-shaft ledge. Do not start the shaft unseated.
+
+    Product pin lands ``LEFT+A`` 70 from x≈202 y=651 onto y=571. Continuous
+    Falling entries that miss still sat in the shaft at y≈597 (ice reverify
+    2026-08-22). Keep recovering until the ledge, ship, or leave. Left-pit
+    x<90 is a RIGHT hop (spin LEFT dumps the well).
+    """
+    if (
+        int(session.state.game_state) == GS_ORDINARY
+        and int(session.state.samus_y) >= _CERES_ELEV_BOTTOM_Y - 30
+    ):
+        for _ in range(4):
+            session.step(idle_action(), "ceres_elev_bottom_plant")
+        session.span(ActionSpan(("LEFT", "A"), 70, "ceres_elev_ledge_jump"))
+
+    for _ in range(400):
+        st = session.state
+        if _ceres_elev_leaving(st) or _ceres_on_elev_ledge(st):
+            return
+        if int(st.samus_y) <= _CERES_ELEV_SHIP_Y:
+            return
+        if st.game_state != GS_ORDINARY:
+            session.step(idle_action(), "ceres_elev_ledge_wait_gs")
+            continue
+        if is_knockback(st):
+            session.step(idle_action(), "ceres_elev_ledge_kb")
+            continue
+        x = int(st.samus_x)
+        y = int(st.samus_y)
+        if x < 90 and y >= _CERES_ELEV_BOTTOM_Y - 20:
+            session.step(buttons("RIGHT", "A"), "ceres_elev_pit")
+            continue
+        if y > _CERES_ELEV_LEDGE_Y + 16:
+            session.step(buttons("LEFT", "A"), "ceres_elev_ledge_recover")
+            continue
+        session.step(idle_action(), "ceres_elev_ledge_settle")
+
+
 def _ceres_reactive_elev_climb(session: RouteSession) -> None:
     """Elev after Falling → ship leave. WRAM-reactive bottom→ledge→shaft.
 
@@ -246,27 +288,19 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
             break
         session.step(buttons("LEFT"), "ceres_elev_entry")
 
-    if (
-        int(session.state.game_state) == 8
-        and int(session.state.samus_y) >= _CERES_ELEV_BOTTOM_Y - 30
+    _ceres_seat_ledge(session)
+    if _ceres_elev_leaving(session.state) or _ceres_elev_ship_band(session.state):
+        return
+    if not (
+        _ceres_on_elev_ledge(session.state)
+        or int(session.state.samus_y) <= _CERES_ELEV_LEDGE_Y + 16
     ):
-        for _ in range(4):
-            session.step(idle_action(), "ceres_elev_bottom_plant")
-        session.span(ActionSpan(("LEFT", "A"), 70, "ceres_elev_ledge_jump"))
-
-    for _ in range(50):
-        st = session.state
-        if _ceres_elev_leaving(st) or _ceres_on_elev_ledge(st):
-            break
-        if int(st.samus_y) <= _CERES_ELEV_SHIP_Y:
-            break
-        if int(st.samus_y) > _CERES_ELEV_LEDGE_Y + 20:
-            session.step(buttons("LEFT", "A"), "ceres_elev_ledge_recover")
-        else:
-            session.step(idle_action(), "ceres_elev_ledge_settle")
+        raise TimeoutError(
+            f"ceres elev missed ledge before shaft: {session.state}"
+        )
 
     # Walk to the left seat, then idle KB so the shaft can runup + spin-jump.
-    for _ in range(70):
+    for _ in range(220):
         st = session.state
         if _ceres_elev_leaving(st):
             return
@@ -282,9 +316,139 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         session.step(buttons("LEFT"), "ceres_elev_ledge_walk")
 
     _trace_point(session, "left_seat")
-    _ceres_reactive_shaft(session)
+    if not _ceres_checkpoint_shaft(session):
+        raise TimeoutError(f"ceres elev checkpoint chain lost seat: {session.state}")
+    _ceres_elev_top_to_ship(session)
+    if _ceres_elev_leaving(session.state):
+        return
     if session.state.room_id == ROOM_CERES_ELEVATOR:
         _ceres_elev_top_to_ship(session)
+
+
+def _ceres_planted_at(state, target_y: int, *, slack: int = 18) -> bool:
+    return (
+        int(state.game_state) == GS_ORDINARY
+        and abs(int(state.samus_y) - target_y) <= slack
+        and abs(int(state.velocity_y)) <= 1
+        and (
+            int(state.pose) in STAND_LOCOMOTION_POSES
+            or int(state.pose) in LAND_POSES
+        )
+    )
+
+
+def _ceres_at_checkpoint(state, target_y: int, *, slack: int = 18) -> bool:
+    """A grounded checkpoint, including debris knockback pose 137/138."""
+    return (
+        int(state.game_state) == GS_ORDINARY
+        and abs(int(state.samus_y) - target_y) <= slack
+        and abs(int(state.velocity_y)) <= 1
+        and (
+            int(state.pose) in STAND_LOCOMOTION_POSES
+            or int(state.pose) in LAND_POSES
+            or int(state.pose) in POSE_KNOCKBACK
+        )
+    )
+
+
+def _ceres_checkpoint_hop(
+    session: RouteSession,
+    *,
+    side: str,
+    runup: int,
+    target_y: int,
+    start_x: int | None = None,
+) -> bool:
+    """Replay one emulator-swept platform hop and require its natural land."""
+    for _ in range(16):
+        pose = int(session.state.pose)
+        if pose in STAND_LOCOMOTION_POSES:
+            break
+        if pose in CROUCH_POSES:
+            session.step(buttons("UP"), "ceres_elev_checkpoint_uncrouch")
+        else:
+            session.step(buttons("LEFT"), "ceres_elev_checkpoint_stand")
+    if start_x is not None:
+        for _ in range(40):
+            names = walk_toward_x(int(session.state.samus_x), start_x, slack=4)
+            if not names:
+                break
+            session.step(buttons(*names), "ceres_elev_checkpoint_position")
+    for _ in range(runup):
+        session.step(buttons(side, "B"), "ceres_elev_checkpoint_runup")
+    for _ in range(40):
+        session.step(buttons(side, "B", "A"), "ceres_elev_checkpoint_jump")
+    for _ in range(220):
+        st = session.state
+        if _ceres_elev_leaving(st) or _ceres_elev_ship_band(st):
+            return True
+        if _ceres_planted_at(st, target_y):
+            return True
+        if any(
+            _ceres_at_checkpoint(st, y)
+            for y in (571, 475, 363, 267, 171)
+        ):
+            capture = os.environ.get("SM_CERES_CAPTURE_363")
+            if capture and _ceres_at_checkpoint(st, 363) and not Path(capture).exists():
+                write_state_bytes(Path(capture), session.env.em.get_state())
+            return target_y == min(
+                (y for y in (571, 475, 363, 267, 171) if _ceres_at_checkpoint(st, y)),
+                key=lambda y: abs(int(st.samus_y) - y),
+            )
+        session.step(buttons(side), "ceres_elev_checkpoint_land")
+    return _ceres_planted_at(session.state, target_y)
+
+
+def _ceres_checkpoint_shaft(session: RouteSession) -> bool:
+    """Natural checkpoint chain with debris-safe restart from lower seats."""
+    recipes = {
+        571: ("RIGHT", 0, 475, None),
+        475: ("RIGHT", 4, 363, None),
+        363: ("LEFT", 0, 267, None),
+        267: ("RIGHT", 0, 171, 131),
+    }
+    history: list[str] = []
+    for _ in range(16):
+        if _ceres_at_checkpoint(session.state, _CERES_ELEV_TOP_Y):
+            return True
+        seat_y = next(
+            (y for y in recipes if _ceres_at_checkpoint(session.state, y)),
+            None,
+        )
+        if seat_y is None:
+            if int(session.state.samus_y) >= _CERES_ELEV_BOTTOM_Y - 20:
+                history.append(f"floor:{int(session.state.samus_y)}")
+                _ceres_seat_ledge(session)
+                continue
+            raise TimeoutError(
+                f"ceres elev lost checkpoint history={history}: {session.state}"
+            )
+        side, runup, target_y, start_x = recipes[seat_y]
+        if seat_y == 363:
+            capture = os.environ.get("SM_CERES_CAPTURE_363")
+            if capture and not Path(capture).exists():
+                write_state_bytes(Path(capture), session.env.em.get_state())
+            phase_idle = 12 if int(session.state.samus_x) < 175 else 0
+            for _ in range(phase_idle):
+                session.step(idle_action(), "ceres_elev_debris_phase")
+        landed = _ceres_checkpoint_hop(
+            session,
+            side=side,
+            runup=runup,
+            target_y=target_y,
+            start_x=start_x,
+        )
+        history.append(
+            f"{seat_y}->{target_y}:{int(landed)}@"
+            f"{int(session.state.samus_x)},{int(session.state.samus_y)},p{int(session.state.pose)}"
+        )
+        if not landed:
+            _trace_point(session, f"checkpoint_miss_{target_y}")
+        else:
+            _trace_point(session, f"checkpoint_{target_y}")
+    raise TimeoutError(
+        f"ceres elev checkpoint retries exhausted history={history}: {session.state}"
+    )
 
 
 def _trace_point(session: RouteSession, label: str) -> None:
@@ -375,6 +539,18 @@ def _ceres_elev_top_to_ship(session: RouteSession) -> None:
                 break
             session.step(buttons("UP"), "ceres_elev_uncrouch")
 
+    # The natural checkpoint hop lands x≈203 in pose 166.  A fixed 12f LEFT
+    # plants ordinary locomotion without sliding off; shorter normalization
+    # reaches the wall but produces a weak boost that falls back to y267.
+    if int(session.state.pose) in LAND_POSES:
+        for _ in range(12):
+            session.step(buttons("LEFT"), "ceres_elev_top_stand")
+
+    for _ in range(4):
+        if int(session.state.pose) in STAND_LOCOMOTION_POSES:
+            break
+        session.step(buttons("LEFT"), "ceres_elev_top_stand")
+
     if not _ceres_elev_ship_band(session.state) and int(session.state.samus_y) < 280:
         for _ in range(40):
             st = session.state
@@ -384,7 +560,7 @@ def _ceres_elev_top_to_ship(session: RouteSession) -> None:
                 break
             session.step(buttons("RIGHT"), "ceres_elev_top_seek_kb")
 
-        for _ in range(4):
+        for _ in range(3):
             st = session.state
             if st.room_id != ROOM_CERES_ELEVATOR or _ceres_elev_leaving(st):
                 return
@@ -403,7 +579,7 @@ def _ceres_elev_top_to_ship(session: RouteSession) -> None:
                     return
                 session.step(buttons("LEFT", "A"), "ceres_elev_top_boost")
 
-            for _ in range(25):
+            for _ in range(80):
                 st = session.state
                 if st.room_id != ROOM_CERES_ELEVATOR or _ceres_elev_leaving(st):
                     return
@@ -434,6 +610,7 @@ __all__ = [
     "_ceres_elev_leaving",
     "_ceres_elev_top_seat",
     "_ceres_on_elev_ledge",
+    "_ceres_seat_ledge",
     "_ceres_reactive_elev_climb",
     "_ceres_elev_top_to_ship",
 ]

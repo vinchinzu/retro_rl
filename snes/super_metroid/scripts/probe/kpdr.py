@@ -96,6 +96,7 @@ from super_metroid.routes.kpdr.k5 import (  # noqa: E402
     play_below_to_bat,
     play_east_to_glass,
     play_glass_to_west,
+    play_hellway_to_caterpillar,
     play_red_to_hellway,
     play_warehouse_to_east,
     play_west_to_below,
@@ -296,8 +297,11 @@ def _run_pure(
     if expected is None and catalog is not None:
         expected = catalog.room_id
     try:
-        boot_from_state(env, source)
-        for _ in range(5):
+        # Open-loop hop bodies desync if we idle after a live pin
+        # (human-tape default boot-settle is 0). RAM controllers tolerate 5.
+        boot_settle = 0 if segment == "red-to-hellway" else 5
+        boot_from_state(env, source, settle_frames=boot_settle)
+        for _ in range(boot_settle):
             env.step(idle_action())
             assist.apply(env.data, parse_env_state(env, mode="nav"))
         if place_x is not None:
@@ -558,6 +562,7 @@ def main() -> None:
             "below-to-bat",
             "bat-to-red",
             "red-to-hellway",
+            "hellway-to-caterpillar",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -781,6 +786,7 @@ def main() -> None:
             "below-to-bat": play_below_to_bat,
             "bat-to-red": play_bat_to_red,
             "red-to-hellway": play_red_to_hellway,
+            "hellway-to-caterpillar": play_hellway_to_caterpillar,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,

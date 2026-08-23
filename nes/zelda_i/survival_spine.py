@@ -46,6 +46,9 @@ from zelda_i.level3_spine import (
     level3_entry_stages,
     level3_entry_success,
 )
+from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
+from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
+from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
@@ -143,7 +146,7 @@ class SpineRun:
             "stop": {
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
-                "level3": "level3_raft",
+                "level3": "level3_triforce_0x04",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -247,6 +250,51 @@ def _run_stages(
                 _record_bombs_out(env, run)
             return False
     return True
+
+
+def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
+    """Run Raft → Manhandla → TF in the same session, without inventory writes."""
+    entry = read_snapshot(env.get_ram())
+    controller = Level3BossPathController(
+        poke_bombs=None, tag="survival_spine_l3", continuous_mode=True
+    )
+    stage = ControllerStageResult(
+        name="level3_boss_tf",
+        controller=controller,
+        max_frames=BOSS_PATH_MAX_FRAMES,
+        frame_base=run.end_frame,
+        end_frame=run.end_frame,
+    )
+    run.stages.append(stage)
+    if entry.bombs < L3_BOMB_WALL_SPEND:
+        controller._fail(
+            f"bomb_budget_gate:{entry.bombs}<{L3_BOMB_WALL_SPEND}_verified_walls"
+        )
+        run.success = False
+        run.failed_stage = stage.name
+        return False
+
+    total = [run.end_frame]
+    path = controller.path_to_5d(env, assist, total)
+    ok = bool(path.get("ok"))
+    if ok:
+        gate = controller.open_5d_up(env, assist, total)
+        ok = bool(gate.get("ok"))
+    if ok:
+        fight = controller.fight_manhandla(env, assist, total, max_frames=16000)
+        ok = bool(fight.get("tf04"))
+
+    stage.frames = total[0] - stage.frame_base
+    stage.end_frame = total[0]
+    stage.success = ok
+    run.end_frame = total[0]
+    # Hybrid boss helpers step the env directly; refresh the observation used by
+    # the runner's final screenshot without mutating route state.
+    run.obs = getattr(env, "last_observation", run.obs)
+    if not ok:
+        run.success = False
+        run.failed_stage = stage.name
+    return ok
 
 
 def run_survival_spine(
@@ -464,4 +512,12 @@ def run_survival_spine(
     run.success = level3_raft_success(snap)
     if not run.success:
         run.failed_stage = "raft_0x0f"
+        return run
+
+    if not _run_level3_boss_suffix(env, run, assist=assist):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
+    if not run.success:
+        run.failed_stage = "level3_triforce_0x04"
     return run

@@ -1,8 +1,7 @@
-"""Survival-spine L3: post-L2 OW → Manji Compass room 0x5a.
+"""Survival-spine L3 stage factories through the natural Raft boundary.
 
-``--through level3`` stops at Compass room 0x5a after the verified west-key and
-occupancy-dest chunks (rr-4d53.3.3.1). Raft → Manhandla → TF 0x04 stays the
-parent bead and still poke-16 on the isolated suffix.
+The continuous runner composes these frame controllers, then attaches the
+carried-bomb boss suffix without the isolated suffix's recon poke.
 """
 
 from __future__ import annotations
@@ -240,4 +239,10 @@ def level3_raft_stages():
 
 
 def level3_raft_success(snap: ZeldaSnapshot) -> bool:
-    return snap.level == LEVEL3 and snap.screen == 0x0F and bool(snap.raft)
+    return (
+        snap.level == LEVEL3
+        and snap.screen == 0x0F
+        and snap.mode == 9
+        and not snap.transitioning
+        and bool(snap.raft)
+    )

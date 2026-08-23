@@ -69,6 +69,7 @@ def test_controller_defaults_and_phases() -> None:
     assert ctl.success is False
     assert ctl.failed is False
     assert ctl.poke_bombs is None  # durable default: no recon poke
+    assert ctl.continuous_mode is False
     assert ctl.reached_5d is False
     assert ctl.reached_4d is False
     assert "exit_passage" in BOSS_PATH_PHASES
@@ -77,6 +78,7 @@ def test_controller_defaults_and_phases() -> None:
     rep = ctl.report()
     assert rep["phase"] == "exit_passage"
     assert rep["poke_bombs"] is None
+    assert rep["continuous_mode"] is False
     assert rep["intervention_class"] == "survival"
     assert list(BOMB_STAND_59_RIGHT) == rep["geometry"]["bomb_stand_59"]
     assert list(BOMB_STAND_5B_RIGHT) == rep["geometry"]["bomb_stand_5b"]

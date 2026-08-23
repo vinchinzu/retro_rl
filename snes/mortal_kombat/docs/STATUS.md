@@ -4,40 +4,41 @@
 
 | Field | Value |
 |-------|-------|
-| Goal | ~90% full tournament clear (normal, LiuKang ladder) |
-| Approach | Multimodel stage specialists + ladder PPO |
-| Runtime class | Bronze (research) |
+| Goal | Bronze/Clean Liu Kang arcade: power-on → Goro → Shang Tsung → credits |
+| Approach | RAM-gated boot + per-fight v3 RAM/hitbox specialists (pixel CNN fallback) |
+| Runtime class | Bronze (read-only RAM) |
+| Maturity | **M3** isolated match wins from fight-ready states; boot + overnight retrain in flight |
+| Bead | `rr-qpug` |
 
 ## Known results (do not re-discover)
+
+Pixel CNN (save-state eval, historical):
 
 | Run | Eval | Notes |
 |-----|------|-------|
 | 8M `train_speedrun.py --fresh` | ~8% overall | M1 30%, M4 10%, M7 50%; M2–M6/E/G/S 0% |
-| Training log WR | ~15% | Inflated vs eval — always benchmark |
-| Default tier mix | 38% boss+endurance | Starved M2–M6 |
-| `mk1_shangtsung_ppo_final` | ~60% Shang | Boss specialist works |
-| `mk1_goro_ppo_final` | weak | Needs more steps |
-| `mk1_fresh_ppo_final` | ~40% M1 | Good ladder base for fine-tune |
+| `mk1_shangtsung_ppo_final` | ~30–60% Shang | Boss specialist; keep as pixel fallback |
+| `mk1_goro_ppo_final` | weak | Retrain with v3 |
+| `mk1_fresh_ppo_final` | ~40% M1 | Ladder base, not a full-clear model |
+| `mk1_ladder_ft_ppo_final` | 0/100 clears | M1 85%, M3 0%, E1/Goro 0% |
+| RAM v1 9-dim | M1 det 0%, stoch 36% | No spacing |
+| RAM v2 13-dim | 0/240 det | Spacing still not enough |
+
+v3 (20-dim hitbox RAM) is a **fresh** train per fight. Pixel zips are not
+loaded into v3 (wrong obs). They remain tournament fallbacks until
+`mk1_v3_<stage>_ppo_final.zip` exists.
 
 ## RAM (get_ram)
 
-| Variable | Address | Hex |
-|----------|---------|-----|
-| health (P1) | 1209 | 0x04B9 |
-| enemy_health (P2) | 1211 | 0x04BB |
-| timer | 290 | 0x0122 |
-| continue_timer | 999 | 0x03E7 |
-| p1_character | 6514 | 0x1972 |
-| p1_x / p1_y | 218 / 219 | 0x00DA / 0x00DB |
-| p2_x | 372 | 0x0174 |
-
-Max health: **161**.
+See [`ram_map.md`](ram_map.md). Max health **161**. Liu Kang id **3**.
+Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 
 ## Scripts
 
 | Script | Role |
 |--------|------|
-| `train_speedrun.py` | Training only |
-| `speedrun_test.py` / `speedrun_multimodel.py` | Per-stage / tournament eval |
-| `cheat_extractor.py`, `match_manager.py`, `validate_states.py` | States |
-| `watch.py` | Visual debug |
+| `scripts/boot_probe.py` | Power-on → Liu Kang fight-ready |
+| `scripts/ram_probe.py` | Fighter-object / punch diffs |
+| `scripts/eval_roster.py` | Per-fight eval → `models/roster.json` |
+| `scripts/train_overnight.py` | 12 parallel v3 specialists |
+| `scripts/run_tournament.py` | Continuous attempt, swap on fight/round |

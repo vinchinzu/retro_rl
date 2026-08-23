@@ -353,7 +353,7 @@ class Level3BossCombatMixin:
             idle(env, assist, total, 30)
 
         self._set_phase("open_up")
-        st_base = env.em.get_state()
+        st_base = None if self.continuous_mode else env.em.get_state()
 
         side_paths: tuple[tuple[tuple[int, int], ...], ...] = (
             ((160, 141), (160, 109), (120, 109), (120, 93)),
@@ -363,9 +363,11 @@ class Level3BossCombatMixin:
             ((120, 125),),
             ((120, 157),),
         )
-        for path in side_paths:
-            env.em.set_state(st_base)
-            idle(env, assist, total, 2)
+        paths = side_paths[:1] if self.continuous_mode else side_paths
+        for path in paths:
+            if not self.continuous_mode:
+                env.em.set_state(st_base)
+                idle(env, assist, total, 2)
             if assist is not None:
                 assist.apply_env(env, frame=total[0])
             ok_path = True
@@ -402,7 +404,7 @@ class Level3BossCombatMixin:
                 self.frames = total[0]
                 return report
 
-        for ax, ay in UP_APPROACHES:
+        for ax, ay in (() if self.continuous_mode else UP_APPROACHES):
             env.em.set_state(st_base)
             idle(env, assist, total, 2)
             pr = exit_door(
@@ -439,7 +441,7 @@ class Level3BossCombatMixin:
         if self.poke_bombs is not None:
             poke_bombs(env, self.poke_bombs)
             ensure_bomb(env)
-        for bx, by in BOMB_NORTH_STANDS[:3]:
+        for bx, by in (() if self.continuous_mode else BOMB_NORTH_STANDS[:3]):
             env.em.set_state(st_base)
             idle(env, assist, total, 2)
             br = bomb_stand(env, assist, total, "UP", bx, by)
@@ -682,7 +684,7 @@ class Level3BossCombatMixin:
                         total[0] += 1
                         if assist is not None:
                             assist.apply_env(env, frame=total[0])
-                elif not pr["changed_room"]:
+                elif not pr["changed_room"] and not self.continuous_mode:
                     st_post = env.em.get_state()
                     for direction in ("RIGHT", "LEFT", "DOWN"):
                         env.em.set_state(st_post)

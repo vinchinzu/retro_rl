@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from super_metroid.routes.kpdr.spazer import helpers as spazer_helpers
-from super_metroid.routes.rle import load_rle_json, play_script
+from super_metroid.routes.rle import load_rle_json, play_script, play_snes12_frames
 
 _KPDR_DATA = Path(__file__).resolve().parents[1] / "routes" / "kpdr" / "data"
 _GATE_OPEN_JSON = _KPDR_DATA / "double_chamber_gate_open_rle.json"
@@ -112,3 +112,14 @@ def test_k4_wave_loads_gate_open_from_data() -> None:
     from super_metroid.routes.kpdr.wave import double_gate
 
     assert not hasattr(double_gate, "_HUMAN_GATE_OPEN_RLE")
+
+
+def test_play_snes12_frames_exported() -> None:
+    assert callable(play_snes12_frames)
+
+
+def test_red_to_hellway_hop_body_exists() -> None:
+    body = _KPDR_DATA / "red_to_hellway_human_hop.json"
+    assert body.is_file()
+    script = load_rle_json(body)
+    assert sum(n for n, _ in script) > 1000

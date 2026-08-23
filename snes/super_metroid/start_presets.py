@@ -133,6 +133,10 @@ _CANONICAL: dict[str, tuple[str, str]] = {
         "scratch/post_ice_bat_to_red_pure.state",
         "Red Tower 0xA253 bottom ~(216,2443) items 0x3105 — pure Bat→Red dual pin",
     ),
+    "hellway": (
+        "scratch/post_ice_red_to_hellway_pure.state",
+        "Hellway 0xA2F7 left ~(42,153) p29 items 0x3105 — Red→Hellway dual pin",
+    ),
     "double-chamber": (
         "scratch/post_single_to_double_chamber_continuous_like.state",
         "Double Chamber leave ~(39,139) Spazer cont-like beams 0x1004 — missile free+Wave",

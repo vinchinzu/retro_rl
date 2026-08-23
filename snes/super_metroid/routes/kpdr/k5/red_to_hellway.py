@@ -1186,9 +1186,34 @@ def _climb_upper(session: ControllerSession, label: str) -> SuperMetroidState:
 
 
 def play_red_to_hellway(session: ControllerSession) -> SuperMetroidState:
-    """Red Tower bottom → ordinary Hellway left (K5 hop 12)."""
+    """Red Tower bottom → ordinary Hellway left (K5 hop 12).
+
+    Product body: ``warehouse_to_red_human`` hop 6, dual-green from
+    ``post_ice_bat_to_red_pure`` ~(216,2443) as well as its live enter pin.
+    Ice-ladder RAM rewrite stays in this module as residual research.
+    """
     label = "red_to_hellway"
     require_room(session, ROOM_RED_TOWER, label)
+    from super_metroid.routes.rle import load_rle_json, play_script
+
+    body_path = _DATA / "red_to_hellway_human_hop.json"
+    play_script(
+        session,
+        load_rle_json(body_path),
+        reason=label,
+        room_id=ROOM_RED_TOWER,
+        stop_when=lambda s: int(s.room_id) != ROOM_RED_TOWER,
+    )
+    if _in_hellway(session.state):
+        return wait_ordinary_room(
+            session, ROOM_HELLWAY, settle_frames=RED_TO_HELLWAY_EXIT_SETTLE, label=label
+        )
+    if int(session.state.room_id) != ROOM_RED_TOWER:
+        st = session.state
+        raise TimeoutError(
+            f"{label}: hop body left Red to 0x{int(st.room_id):04X} "
+            f"xy=({st.samus_x},{st.samus_y}) p={st.pose}"
+        )
     unmorph(session)
     select_weapon(session, 0)
     hold(session, 6, reason=f"{label}_entry_glide")
