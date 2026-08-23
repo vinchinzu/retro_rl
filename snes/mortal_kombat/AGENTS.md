@@ -39,6 +39,9 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight6.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight6.py --repeat 5
 uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py
 uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py --repeat 5
+uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --identify-only
+uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --oracles match5-v3
+uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.py --stochastic --repeats 20 --oracles match5-v3
 ```
 
 ## Traps
@@ -91,3 +94,11 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight7.py --repeat 5
   capture used stochastic Match5 v3 (attempt 1). Runtime still loads no
   models. First seven matches as one exact tape is not a reactive policy
   or a credits claim.
+- Natural Endurance 1 from the Fight 7 pin is Kano (id 1) on the
+  courtyard, not leftover Liu Kang (id 3). Identify on a visible frame
+  (first-ready 906f is a black fade; visible 957f). Isolated
+  `Endurance1_LiuKang` is Sub-Zero on the same courtyard;
+  `Endurance1B_LiuKang` is Kano on the warrior shrine. Match5 v3 is 5/5
+  det on throne-room Kano (`Match5_LiuKang`) and has not closed
+  courtyard Kano. `ladder_model` only rewrites M1–M7; capture must force
+  the oracle onto E1/E1B. Scorpion still has not appeared.
