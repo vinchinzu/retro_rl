@@ -101,9 +101,11 @@ zero deaths/progression/capacity writes and zero state restores. Survival bomb
 count top-ups are operator-approved through the assisted full-game clear;
 record every verified gate and never write capacity. L4 entry bombs=0, so the
 0x61 wall gets 0→16 and consumes one. Continuous v7 reaches `0x40` through
-coordinate gates, clears the Zols, and naturally raises keys 5→6. Next is
-`0x40→0x30` from `(136,125)`; attach the existing north controller to the
-spine without checkpoint-mediated/emulator-state BFS.
+coordinate gates, clears the Zols, and naturally raises keys 5→6. Continuous
+`l4_room30_continuous_v1` attaches the existing north controller from
+`(136,125)` and enters `0x30` at `(120,205)` in 227f. Next is the `0x30`
+Vire clear from that south-mouth leftover (ignore invuln `0x2b`), then
+KEY-RIGHT; do not use checkpoint-mediated/emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
