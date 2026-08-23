@@ -62,6 +62,11 @@ Verified this session (do not re-discover):
   4,062-frame input is RLE-compressed in `fight1_tape.py`; the v3 Fight model
   was used only once as an offline trace oracle. This is not a natural-entry
   Match 1 or first-seven-matches claim.
+- Natural-entry power-on replay now reaches the Match 2 transition at frame
+  7,863, 5/5 with identical RAM trajectories. Runtime uses only an RLE SNES
+  input tape; the offline oracle used deterministic Match5 v3 plus the existing
+  pixel round-loss fallback. This proves one state-exact natural Match 1, not a
+  reactive policy or a first-seven clear.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -95,3 +100,4 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/eval_roster.py` | Per-fight eval → `models/roster.json`; `--checkpoints` ranks v3 zips (`--promote` only at N>=20); `--kind script` / `--compare` print-only |
 | `scripts/train_overnight.py` | 12 parallel v3 specialists; wall cutoff is not `_final` / not recorded |
 | `scripts/run_tournament.py` | Continuous attempt; stops at Continue; furthest is slot `match_id`; `--ladder-model` / `--scripted` |
+| `scripts/replay_natural_fight1.py` | Model-free exact power-on tape through the Match 2 transition |

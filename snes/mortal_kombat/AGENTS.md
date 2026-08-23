@@ -26,6 +26,7 @@ uv run --extra ml python snes/mortal_kombat/scripts/eval_roster.py --compare --s
 uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py
 uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --ladder-model mk1_v3_Match5_ppo_final.zip
 uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --scripted
+uv run python snes/mortal_kombat/scripts/replay_natural_fight1.py
 ```
 
 ## Traps
@@ -46,3 +47,5 @@ uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --scripted
 - v3 x/y obs is still `0x00DA`/`0x0174` (noise). Live pose is `0x1966`/`0x030F`. Do not retarget v3 obs without retraining — Fight zip went 0/5 when pose leaked into the vector.
 - Scripted fireball is F,F,HP after ~90f intro (~25 dmg). `play_buttons_match` must use `rounds_settled`, not raw HUD.
 - Current ladder candidate: `mk1_v3_Match5_ppo_final.zip` for M1–M7 (`--ladder-model`). Do not `--promote` it at N<20.
+- `replay_natural_fight1.py` is an exact 7,863-frame power-on tape through the
+  Match 2 transition. It loads no model, but it is state-exact, not reactive.
