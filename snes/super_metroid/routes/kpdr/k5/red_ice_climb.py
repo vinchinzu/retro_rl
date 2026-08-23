@@ -1,14 +1,13 @@
 """Enemy-aware checkpoint policy for the Red Tower Ice climb.
 
 Red Tower is too tall and phase-sensitive for one blind room tape.  This
-module owns the first small edge in a checkpoint graph:
+module owns checkpoint geometry and the first small edge:
 
 ``bottom_floor -> lower_ripper_1``
 
-The edge observes the live Ripper patrol, freezes it only in a repeatable
-launch band, then uses the shared consecutive-wall-jump timing family and
-steers back onto the frozen enemy.  Later edges belong beside this one, not in
-the already-large :mod:`red_to_hellway` product controller.
+Later ice-ladder edges (`red_ice_r1_to_r2` … `red_ice_r4_to_tunnel`) live
+beside this file, not in the already-large :mod:`red_to_hellway` product
+controller.
 """
 
 from __future__ import annotations
@@ -38,6 +37,9 @@ LOW_RIPPER_3_Y = 2184
 LOW_RIPPER_3_LAND_Y = 2159
 LOW_RIPPER_4_Y = 2048
 LOW_RIPPER_4_LAND_Y = 2023
+TUNNEL_FLOOR_Y = 1883
+MID_FLOOR_Y = 1625
+THIN_SEAT_Y = 587
 
 POLICY_ID = "red_tower_ice_bottom_to_ripper1"
 VARIANT_ID = "ice_hi_jump"
@@ -112,6 +114,21 @@ LOWER_RIPPER_4 = RedIceCheckpoint(
     (2006, 2038),
     support_enemy_y=LOW_RIPPER_4_Y,
     min_freeze_timer=30,
+)
+TUNNEL_FLOOR = RedIceCheckpoint(
+    "tunnel_floor",
+    (80, 125),
+    (1870, 1895),
+)
+MID_FLOOR = RedIceCheckpoint(
+    "mid_floor",
+    (130, 195),
+    (1618, 1632),
+)
+THIN_SEAT = RedIceCheckpoint(
+    "thin_seat",
+    (70, 110),
+    (575, 600),
 )
 
 
@@ -190,6 +207,21 @@ def can_attach_ripper2_edge(state: SuperMetroidState) -> bool:
 def can_attach_ripper3_edge(state: SuperMetroidState) -> bool:
     """Gate for the r3 → r4 hop. Support freeze is checked live by the runner."""
     return LOWER_RIPPER_3.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_ripper4_edge(state: SuperMetroidState) -> bool:
+    """Gate for the r4 → tunnel alcove hop."""
+    return LOWER_RIPPER_4.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_tunnel_edge(state: SuperMetroidState) -> bool:
+    """Gate for the tunnel alcove → temporary mid-floor climb."""
+    return TUNNEL_FLOOR.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_mid_floor_edge(state: SuperMetroidState) -> bool:
+    """Gate for the temporary mid floor → thin upper seat climb."""
+    return MID_FLOOR.matches(state) and _has_ice_hi_jump(state)
 
 
 def _action(*names: str) -> np.ndarray:
@@ -455,6 +487,12 @@ __all__ = [
     "LOW_RIPPER_3_Y",
     "LOW_RIPPER_4_LAND_Y",
     "LOW_RIPPER_4_Y",
+    "MID_FLOOR",
+    "MID_FLOOR_Y",
+    "TUNNEL_FLOOR",
+    "TUNNEL_FLOOR_Y",
+    "THIN_SEAT",
+    "THIN_SEAT_Y",
     "MID_RIPPER_LAND_Y",
     "MID_RIPPER_Y",
     "POLICY_ID",
@@ -467,6 +505,9 @@ __all__ = [
     "can_attach_ripper1_edge",
     "can_attach_ripper2_edge",
     "can_attach_ripper3_edge",
+    "can_attach_ripper4_edge",
+    "can_attach_tunnel_edge",
+    "can_attach_mid_floor_edge",
     "checkpoint_supported",
     "play_bottom_to_ripper1",
     "read_rippers",

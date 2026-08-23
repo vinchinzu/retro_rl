@@ -25,9 +25,10 @@ STATUS promote `rr-ucl9`). `--to alpha_pb` / `--to moat` are wired (K5+K6
 spine) but **not** STATUS-promoted. Ice-pin compose (`rr-2r06`) is dual-green
 through Skree Boost Room → Red Tower (`bat_to_red` zero-settle **768f** ×2);
 first live-chain RED is still product `red_to_hellway` (RLE walked back to
-Bat). Ice checkpoints from that leave are green through lower Ripper 4
+Bat). Ice checkpoints from that leave are green through thin_seat
 (clearance-gated double WJ **335f** + standing hops **156f**/**108f** +
-crouch-jump **141f** ×2, chain **809f**); Hellway
+crouch-jumps **141f**/**69f** ×2, tunnel→mid **1210f** ×2, mid→thin
+**2974f** ×2, chain **5062f**); Hellway
 is not claimed. Tip
 history lives in STATUS — do not STATUS-promote or rewrite the route from
 this file.
