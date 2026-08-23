@@ -27,6 +27,8 @@ uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py
 uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --ladder-model mk1_v3_Match5_ppo_final.zip
 uv run --extra ml python snes/mortal_kombat/scripts/run_tournament.py --scripted
 uv run python snes/mortal_kombat/scripts/replay_natural_fight1.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight2.py
+uv run python snes/mortal_kombat/scripts/replay_natural_fight2.py --repeat 5
 ```
 
 ## Traps
@@ -49,3 +51,8 @@ uv run python snes/mortal_kombat/scripts/replay_natural_fight1.py
 - Current ladder candidate: `mk1_v3_Match5_ppo_final.zip` for M1–M7 (`--ladder-model`). Do not `--promote` it at N<20.
 - `replay_natural_fight1.py` is an exact 7,863-frame power-on tape through the
   Match 2 transition. It loads no model, but it is state-exact, not reactive.
+- `replay_natural_fight2.py` concatenates that tape with a 5,055-frame Match 2
+  continuation (12,918 frames total) through the Match 3 transition. Natural
+  Match 2 is Sonya (id 6). The Scorpion byte at the Fight 1 pin is leftover
+  HUD, not the live opponent. Cold-boot each replay (`make_env`); `env.reset()`
+  after a long `NONE` run is not a power-on pin.
