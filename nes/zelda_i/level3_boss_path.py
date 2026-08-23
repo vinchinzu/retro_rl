@@ -32,9 +32,11 @@ from zelda_i.dungeon_ops import (
     ensure_bomb,
     exit_door,
     fight_clear,
+    goto,
     idle,
     live_killables,
     poke_bombs,
+    push_dir,
     room_fields,
 )
 from zelda_i.level3_boss_combat import (
@@ -120,6 +122,7 @@ class Level3BossPathController(Level3BossCombatMixin):
     manhandla_confirmed: bool = False
     dmg_events: int = 0
     last_error: str | None = None
+    state_restores: int = 0
     # Sub-reports
     path_to_5d_report: dict | None = None
     gate_5d_report: dict | None = None
@@ -144,6 +147,13 @@ class Level3BossPathController(Level3BossCombatMixin):
         if note:
             self.notes.append(f"RECON poke {msg}")
         ensure_bomb(env)
+
+    def _restore_state(self, env: Any, state: Any) -> None:
+        """Recon retry primitive; forbidden by construction on the spine."""
+        if self.continuous_mode:
+            raise RuntimeError("continuous_mode forbids emulator state restore")
+        env.em.set_state(state)
+        self.state_restores += 1
 
     def path_to_5d(
         self,
@@ -211,7 +221,7 @@ class Level3BossPathController(Level3BossCombatMixin):
                         pr["changed_room"]
                         and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS
                     ):
-                        env.em.set_state(st)
+                        self._restore_state(env, st)
                         idle(env, assist, total, 2)
                         clr = fight_clear(
                             env, assist, total,
@@ -256,7 +266,7 @@ class Level3BossPathController(Level3BossCombatMixin):
             path_log.append({"step": "59_right_walk", "ok": True, "to": "0x5a"})
         else:
             if not self.continuous_mode:
-                env.em.set_state(st)
+                self._restore_state(env, st)
                 idle(env, assist, total, 2)
             if not walk["changed_room"]:
                 traps.append("0x59 walk-RIGHT sealed post-Raft (expected)")
@@ -348,7 +358,7 @@ class Level3BossPathController(Level3BossCombatMixin):
             path_log.append({"step": "5b_right_walk", "ok": True, "to": "0x5c"})
         else:
             if not self.continuous_mode:
-                env.em.set_state(st)
+                self._restore_state(env, st)
                 idle(env, assist, total, 2)
             br = bomb_stand(env, assist, total, "RIGHT", bx, by)
             path_log.append(
@@ -487,12 +497,36 @@ class Level3BossPathController(Level3BossCombatMixin):
 
             self._set_phase("right_5d")
             pr = None
-            ytries = (DOOR_5C_RIGHT_Y,) if self.continuous_mode else (DOOR_5C_RIGHT_Y, 141)
-            if not self.continuous_mode:
+            if self.continuous_mode:
+                waypoint_ok = goto(
+                    env, assist, total, 208, 181, tol=3, max_f=700
+                )
+                for _ in range(40):
+                    s = read_snapshot(env.get_ram())
+                    if s.link_y <= 141:
+                        break
+                    env.step(nes_action("UP"))
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                push_dir(env, assist, total, "RIGHT", frames=PUSH_FRAMES + 100)
+                after = room_fields(read_snapshot(env.get_ram()), env.get_ram())
+                path_log.append({
+                    "step": "5c_edge_thread_right_continuous",
+                    "waypoint_ok": waypoint_ok,
+                    "ok": after["screen"] == ROOM_L3_BOSS_PREP,
+                    "to": after["sc"] if after["screen"] == ROOM_L3_BOSS_PREP else None,
+                    "after": after,
+                })
+                if after["screen"] == ROOM_L3_BOSS_PREP:
+                    pr = {"changed_room": True, "after": after}
+                ytries = ()
+            else:
+                ytries = (DOOR_5C_RIGHT_Y, 141)
                 st_5c = env.em.get_state()
             for ytry in ytries:
                 if not self.continuous_mode:
-                    env.em.set_state(st_5c)
+                    self._restore_state(env, st_5c)
                     idle(env, assist, total, 2)
                 pr = exit_door(
                     env,
@@ -522,7 +556,7 @@ class Level3BossPathController(Level3BossCombatMixin):
                 and pr["changed_room"]
                 and pr["after"]["screen"] == ROOM_L3_BOSS_PREP
             ):
-                env.em.set_state(st_5c)
+                self._restore_state(env, st_5c)
                 idle(env, assist, total, 2)
                 if self.poke_bombs is not None:
                     poke_bombs(env, self.poke_bombs)
@@ -543,6 +577,9 @@ class Level3BossPathController(Level3BossCombatMixin):
                 and pr["changed_room"]
                 and pr["after"]["screen"] == ROOM_L3_BOSS_PREP
             ):
+                obs, *_ = env.step(nes_idle_action())
+                total[0] += 1
+                save_rgb_png(obs, RECORDINGS_DIR / f"{self.tag}_failed_0x5c.png")
                 traps.append(
                     "0x5c walk-RIGHT y≈141 failed after raw=3 clear "
                     "(bomb-RIGHT fallback also failed)"
@@ -630,6 +667,7 @@ class Level3BossPathController(Level3BossCombatMixin):
             "phases": list(BOSS_PATH_PHASES),
             "poke_bombs": self.poke_bombs,
             "continuous_mode": self.continuous_mode,
+            "state_restores": self.state_restores,
             "path": (
                 "0x0f exit→0x69 UP→0x59 BOMB_R→0x5a R→0x5b BOMB_R→0x5c "
                 "clear R@y141→0x5d clear→UP→0x4d bombs→TF 0x04"

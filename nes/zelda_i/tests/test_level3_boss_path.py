@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
+from types import SimpleNamespace
 
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon_ops import (
@@ -157,3 +159,11 @@ def test_controller_fail_sets_phase() -> None:
     assert ctl.failed is True
     assert ctl.phase == "failed"
     assert "unit_test_fail" in ctl.notes
+
+
+def test_continuous_controller_forbids_state_restore() -> None:
+    ctl = Level3BossPathController(continuous_mode=True)
+    em = SimpleNamespace(set_state=lambda state: (_ for _ in ()).throw(AssertionError))
+    with pytest.raises(RuntimeError, match="forbids"):
+        ctl._restore_state(SimpleNamespace(em=em), object())
+    assert ctl.state_restores == 0

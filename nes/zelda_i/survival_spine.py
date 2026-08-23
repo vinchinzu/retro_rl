@@ -205,6 +205,14 @@ def topup_owned_inventory(env, run: SpineRun) -> None:
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
 
+def topup_owned_bombs(env, run: SpineRun) -> None:
+    """Documented Survival count refill at the L3 boss suffix; preserves keys."""
+    extra = apply_owned_inventory(
+        env, bombs=SPINE_TF_BOMB_POKE, select_bomb=True
+    )
+    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
+
+
 def _record_bombs_out(env, run: SpineRun) -> None:
     end = read_snapshot(env.get_ram())
     run.bombs = spine_bomb_report(
@@ -514,6 +522,9 @@ def run_survival_spine(
         run.failed_stage = "raft_0x0f"
         return run
 
+    # Temporary Survival shortcut until rr-doua supplies the natural farm.
+    # The live 0x5c Darknut clear can consume the carried eight bombs.
+    topup_owned_bombs(env, run)
     if not _run_level3_boss_suffix(env, run, assist=assist):
         return run
     snap = read_snapshot(env.get_ram())
