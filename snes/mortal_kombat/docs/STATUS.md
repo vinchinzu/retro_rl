@@ -67,6 +67,12 @@ Verified this session (do not re-discover):
   input tape; the offline oracle used deterministic Match5 v3 plus the existing
   pixel round-loss fallback. This proves one state-exact natural Match 1, not a
   reactive policy or a first-seven clear.
+- Natural-entry continuation now reaches the Match 3 transition at frame
+  12,918 (7,863 + 5,055), 5/5 identical HUD/pose signatures on cold boots.
+  Match 1 vs Cage 2–0, Match 2 vs Sonya 2–0. RAM: `match_counter` 0→1→2 and
+  Liu Kang id 3. Runtime still loads no models. The Scorpion id at the Fight 1
+  pin is leftover HUD; the live Match 2 opponent is Sonya. Not a reactive
+  policy or a first-seven clear.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -101,3 +107,4 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/train_overnight.py` | 12 parallel v3 specialists; wall cutoff is not `_final` / not recorded |
 | `scripts/run_tournament.py` | Continuous attempt; stops at Continue; furthest is slot `match_id`; `--ladder-model` / `--scripted` |
 | `scripts/replay_natural_fight1.py` | Model-free exact power-on tape through the Match 2 transition |
+| `scripts/replay_natural_fight2.py` | Model-free exact power-on tape through the Match 3 transition |

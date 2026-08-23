@@ -34,6 +34,8 @@ Continuations: `--load` plus a distinct `--output-prefix`. Wall cutoff writes
 
 ## Next
 
+- Natural Match 3 continuation from the Fight 2 pin (same deterministic tape
+  method; runtime stays model-free)
 - N>=20 eval of `mk1_v3_Match5_ppo_final.zip` on Fight, Match2, Match7; `--promote` only if it beats the per-stage zip
 - More Clean `--ladder-model mk1_v3_Match5_ppo_final.zip` attempts (furthest Match 4 so far)
 - Do not retarget v3 x/y off `0x00DA` without a fresh train
