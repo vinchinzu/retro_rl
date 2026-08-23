@@ -1,4 +1,4 @@
-"""Load pixel CNN or RAM v3 MLP specialists and emit SNES buttons."""
+"""Load pixel CNN, RAM v3 MLP, or zip-less scripted specialists and emit SNES buttons."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from stable_baselines3 import PPO
 from retro_harness.fighters.fighting_env import MK_FIGHTING_ACTIONS
 from mortal_kombat.compat import install_fighters_common_alias
 from mortal_kombat.ram import snapshot_features, parse_ram
-from mortal_kombat.roster import KIND_PIXEL, KIND_RAM_V3
+from mortal_kombat.roster import KIND_PIXEL, KIND_RAM_V3, KIND_SCRIPT
 
 install_fighters_common_alias()
 
@@ -88,6 +88,10 @@ class RamV3Policy:
 
 def load_policy(path: Path, kind: str):
     install_fighters_common_alias()
+    if kind == KIND_SCRIPT:
+        from mortal_kombat.scripted import ScriptedPolicy
+
+        return ScriptedPolicy()
     if kind == KIND_RAM_V3:
         return RamV3Policy(path)
     return PixelPolicy(path)

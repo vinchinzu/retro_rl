@@ -196,3 +196,80 @@ def test_quiet_start_after_match_win(tmp_path: Path) -> None:
     # First MENU frames after the 2-0 KO should be no-op, not START.
     pressed = [int(b[3]) for b in env.buttons]  # START is button 3
     assert 0 in pressed
+
+
+def test_continue_ends_attempt_without_restart(tmp_path: Path) -> None:
+    _models(tmp_path, "Fight")
+    rams = [
+        _fight(match=0, p2=0),
+        make_test_ram(
+            match_counter=0,
+            p1_health=0,
+            p2_health=40,
+            timer=0,
+            p2_rounds=2,
+        ),
+        make_test_ram(continue_timer=9, p1_health=0, p2_health=0, timer=0),
+        _fight(match=0, p2=0),
+    ]
+    env = FakeEnv(rams)
+    result = TournamentRunner(tmp_path, policy_loader=_loader).run_on(
+        env, max_frames=len(rams)
+    )
+    assert result.cleared is False
+    assert result.losses == 1
+    assert result.furthest == "Match 1"
+    assert result.frames == 2
+    assert len(env.buttons) == 2
+
+
+def test_furthest_stage_never_regresses(tmp_path: Path) -> None:
+    _models(tmp_path, "Fight", "Match2", "Match4")
+    rams = (
+        [_fight(match=0, p2=0)] * 2
+        + [_fight(match=1, p2=1)] * 2
+        + [_fight(match=3, p2=3)] * 2
+        + [_fight(match=0, p2=0)] * 2
+    )
+    result = TournamentRunner(tmp_path, policy_loader=_loader).run_on(
+        FakeEnv(rams), max_frames=len(rams)
+    )
+    assert result.furthest == "Match 4"
+
+
+def test_ladder_model_overrides_m1_m7(tmp_path: Path) -> None:
+    _models(tmp_path, "Fight", "Match2")
+    rams = [_fight(match=0, p2=0)] * 4 + [_fight(match=1, p2=1)] * 4
+    runner = TournamentRunner(
+        tmp_path,
+        policy_loader=_loader,
+        ladder_model="mk1_v3_Match5_ppo_final.zip",
+    )
+    result = runner.run_on(FakeEnv(rams), max_frames=len(rams))
+    assert runner.slots[0].model == "mk1_v3_Match5_ppo_final.zip"
+    assert runner.slots[1].model == "mk1_v3_Match5_ppo_final.zip"
+    fights = [item for item in result.swaps if item.startswith("fight:")]
+    assert fights[0] == "fight:Fight:mk1_v3_Match5_ppo_final.zip"
+    assert result.furthest == "Match 2"
+
+
+def test_force_scripted_without_zips(tmp_path: Path) -> None:
+    rams = [_fight(match=0, p2=0)] * 5
+    runner = TournamentRunner(
+        tmp_path, policy_loader=_loader, force_scripted=True
+    )
+    result = runner.run_on(FakeEnv(rams), max_frames=len(rams))
+    assert "fight:Fight:scripted" in result.swaps
+
+
+def test_furthest_advances_when_stages_share_a_zip(tmp_path: Path) -> None:
+    _models(tmp_path, "Fight", "Match2", "Match3")
+    rams = (
+        [_fight(match=0, p2=0)] * 2
+        + [_fight(match=1, p2=1)] * 2
+        + [_fight(match=2, p2=2)] * 2
+    )
+    result = TournamentRunner(tmp_path, policy_loader=_loader).run_on(
+        FakeEnv(rams), max_frames=len(rams)
+    )
+    assert result.furthest == "Match 3"

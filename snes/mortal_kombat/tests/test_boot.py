@@ -66,3 +66,23 @@ def test_vs_menu_pulses_start() -> None:
     phase, buttons = ctrl.decide(vs, frame=20)
     assert phase is Phase.VS
     assert "START" in buttons
+
+
+def test_continue_pulses_start_by_default() -> None:
+    ctrl = BootController()
+    snap = parse_ram(
+        make_test_ram(continue_timer=9, p1_health=0, p2_health=0, timer=0)
+    )
+    phase, buttons = ctrl.decide(snap, frame=20)
+    assert phase is Phase.CONTINUE
+    assert "START" in buttons
+
+
+def test_continue_is_idle_when_disallowed() -> None:
+    ctrl = BootController(allow_continue=False)
+    snap = parse_ram(
+        make_test_ram(continue_timer=9, p1_health=0, p2_health=0, timer=0)
+    )
+    phase, buttons = ctrl.decide(snap, frame=20)
+    assert phase is Phase.CONTINUE
+    assert buttons == ()
