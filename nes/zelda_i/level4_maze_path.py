@@ -18,9 +18,13 @@ from zelda_i.level4_dungeon import (
     KEY_61_EAST_Y,
     LEVEL4,
     LEVEL4_COMPASS_BIT,
+    MAZE_31_EAST_X_MIN,
+    MAZE_31_EAST_Y,
+    MAZE_31_EAST_Y_TOL,
     ROOM_40_SPEC,
     ROOM_L4_COMPASS_62,
     ROOM_L4_EAST_31,
+    ROOM_L4_EAST_32,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
     ROOM_L4_ZOLS_40,
@@ -927,3 +931,198 @@ class Level4Maze31InlandController:
 
 def make_maze_31_inland_controller() -> Level4Maze31InlandController:
     return Level4Maze31InlandController()
+
+
+# 0x31 leftover (112,141). v8 clip lands in the east column ~(160,125).
+# v9: DOWN to (160,141) works; RIGHT at door y is water. v10: RIGHT+UP
+# walks to the north dead-end. Isolated reached the door from below
+# (SE snake). Continue DOWN the east column to the south U, then RIGHT.
+MAZE_31_NORTH_STRIP_Y = 113
+MAZE_31_SE_X = 132
+MAZE_31_SE_Y = 125
+MAZE_31_EAST_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (160, 173),
+    (192, 173),
+    (192, 141),
+    (200, 141),
+)
+MAZE_31_EAST_PUSH = 280
+
+
+class Maze31EastPhase(Enum):
+    JOIN = auto()
+    CLIP = auto()
+    THREAD = auto()
+    PUSH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Maze31EastController:
+    """Cleared 0x31 leftover → coordinate waypoints → free RIGHT into 0x32."""
+
+    max_frames: int = 4000
+    phase: Maze31EastPhase = Maze31EastPhase.JOIN
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    path_index: int = 0
+    _last_xy: tuple[int, int] | None = None
+    _stall: int = 0
+    samples: list[dict[str, Any]] = field(default_factory=list)
+
+    def _sample(self, snap: ZeldaSnapshot, reason: str) -> None:
+        sample = {
+            "frame": self.frames,
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "phase": self.phase.name,
+            "path_index": self.path_index,
+            "reason": reason,
+            "stall": self._stall,
+        }
+        if (
+            not self.samples
+            or self.samples[-1]["reason"] != reason
+            or self.frames - self.samples[-1]["frame"] >= 250
+        ):
+            self.samples.append(sample)
+
+    def _set_phase(self, phase: Maze31EastPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            self._stall = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, note: str) -> FrameAction:
+        self._set_phase(Maze31EastPhase.FAILED, note)
+        return FrameAction(nes_idle_action(), note)
+
+    def _at_east_band(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            int(snap.link_x) >= MAZE_31_EAST_X_MIN
+            and abs(int(snap.link_y) - MAZE_31_EAST_Y) <= MAZE_31_EAST_Y_TOL
+        )
+
+    def _entered_32(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL4
+            and snap.screen == ROOM_L4_EAST_32
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._last_xy == xy:
+            self._stall += 1
+        else:
+            self._stall = 0
+            self._last_xy = xy
+
+        if self.phase is Maze31EastPhase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.phase is Maze31EastPhase.FAILED:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            self._sample(snap, "timeout")
+            return self._fail("timeout")
+        if self._entered_32(snap):
+            self._sample(snap, "entered_0x32")
+            self.success = True
+            self._set_phase(Maze31EastPhase.DONE, "entered_0x32")
+            return FrameAction(nes_idle_action(), "done")
+        if snap.level != LEVEL4:
+            return FrameAction(nes_idle_action(), "wait_level4")
+        if snap.transitioning or snap.mode in (4, 6, 7):
+            return FrameAction(nes_action("RIGHT"), "scroll_right")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != ROOM_L4_EAST_31:
+            return self._fail(f"wrong_room_0x{snap.screen:02x}")
+
+        if self._at_east_band(snap) or self.phase is Maze31EastPhase.PUSH:
+            if self.phase is not Maze31EastPhase.PUSH:
+                self._sample(snap, "east_band")
+                self._set_phase(Maze31EastPhase.PUSH, "east_band")
+            if self.phase_frames >= MAZE_31_EAST_PUSH:
+                self._sample(snap, "push_right_timeout")
+                return self._fail("push_right_timeout")
+            if abs(xy[1] - KEY_61_EAST_Y) > MAZE_31_EAST_Y_TOL:
+                direction = "DOWN" if xy[1] < KEY_61_EAST_Y else "UP"
+                return FrameAction(nes_action(direction), "maze31_east_align_y")
+            return FrameAction(nes_action("RIGHT"), "maze31_east_push")
+
+        if self.phase is Maze31EastPhase.JOIN:
+            if xy[1] <= MAZE_31_NORTH_STRIP_Y:
+                self._sample(snap, "north_strip")
+                self._set_phase(Maze31EastPhase.CLIP, "north_strip")
+            elif self._stall >= 24:
+                self._sample(snap, "join_stuck")
+                return self._fail(f"join_stuck_{xy[0]}_{xy[1]}")
+            else:
+                return FrameAction(nes_action("UP"), "maze31_east_join_UP")
+
+        if self.phase is Maze31EastPhase.CLIP:
+            if xy[0] >= MAZE_31_SE_X and xy[1] >= MAZE_31_SE_Y:
+                self._sample(snap, "se_corridor")
+                self._set_phase(Maze31EastPhase.THREAD, "se_corridor")
+                self.path_index = 0
+            elif self._stall >= 24:
+                self._sample(snap, "se_clip_stuck")
+                return self._fail(f"se_clip_stuck_{xy[0]}_{xy[1]}")
+            else:
+                return FrameAction(
+                    nes_action("RIGHT", "DOWN"), "maze31_east_se_clip"
+                )
+
+        return self._thread_step(xy, snap)
+
+    def _thread_step(
+        self, xy: tuple[int, int], snap: ZeldaSnapshot
+    ) -> FrameAction:
+        if self._stall >= 24:
+            self._sample(snap, "thread_stuck")
+            return self._fail(f"thread_stuck_{xy[0]}_{xy[1]}")
+        if self.path_index >= len(MAZE_31_EAST_WAYPOINTS):
+            self._sample(snap, "east_band")
+            self._set_phase(Maze31EastPhase.PUSH, "waypoints_done")
+            return FrameAction(nes_action("RIGHT"), "maze31_east_push")
+        gx, gy = MAZE_31_EAST_WAYPOINTS[self.path_index]
+        if abs(xy[0] - gx) <= 4 and abs(xy[1] - gy) <= 4:
+            self._sample(snap, f"waypoint_{self.path_index}")
+            self.path_index += 1
+            self._stall = 0
+            if self.path_index >= len(MAZE_31_EAST_WAYPOINTS):
+                self._set_phase(Maze31EastPhase.PUSH, "waypoints_done")
+                return FrameAction(nes_action("RIGHT"), "maze31_east_push")
+            gx, gy = MAZE_31_EAST_WAYPOINTS[self.path_index]
+        if abs(xy[0] - gx) > 4:
+            direction = "RIGHT" if xy[0] < gx else "LEFT"
+        else:
+            direction = "DOWN" if xy[1] < gy else "UP"
+        return FrameAction(nes_action(direction), f"maze31_east_{direction}")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "segment": "level4_east_0x32",
+            "path_index": self.path_index,
+            "waypoints": [list(w) for w in MAZE_31_EAST_WAYPOINTS],
+            "samples": list(self.samples),
+        }
+
+
+def make_maze_31_east_controller() -> Level4Maze31EastController:
+    return Level4Maze31EastController()

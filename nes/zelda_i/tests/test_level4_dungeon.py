@@ -495,6 +495,37 @@ def test_room_31_west_alcove_clip_is_right_up() -> None:
     assert list(done.action) == list(nes_idle_action())
 
 
+def test_room_31_east_leftover_goes_up_not_through_water() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level4_maze_path import make_maze_31_east_controller
+
+    def snap(x: int, y: int, *, screen: int = ROOM_L4_EAST_31):
+        return SimpleNamespace(
+            mode=5, level=4, screen=screen, transitioning=False,
+            link_x=x, link_y=y, objects=(),
+        )
+
+    leftover = make_maze_31_east_controller()
+    action = leftover.step(snap(112, 141))
+    assert action.reason == "maze31_east_join_UP"
+    assert list(action.action) == list(nes_action("UP"))
+
+    clip = make_maze_31_east_controller()
+    clipped = clip.step(snap(112, 113))
+    assert clipped.reason == "maze31_east_se_clip"
+    assert list(clipped.action) == list(nes_action("RIGHT", "DOWN"))
+
+    band = make_maze_31_east_controller()
+    assert band.step(snap(200, 136)).reason == "maze31_east_push"
+    assert list(band.step(snap(200, 136)).action) == list(nes_action("RIGHT"))
+
+    entered = make_maze_31_east_controller()
+    done = entered.step(snap(16, 141, screen=ROOM_L4_EAST_32))
+    assert done.reason == "done"
+    assert entered.success
+    assert list(done.action) == list(nes_idle_action())
+
+
 def test_room_31_west_door_occupancy_includes_alcove() -> None:
     """Continuous leftover (16,141)/(33,141) is west of default xmin=40."""
     from zelda_i.walk_physics import OccupancyWalker
