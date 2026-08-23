@@ -6,9 +6,12 @@ identifies the live E1 opponent (leftover HUD is ignored), then drives both
 endurance bouts with RAM specialists first. Pixel speedrun / ladder-ft are
 fallbacks after RAM oracles miss. Runtime artifacts are RLE only.
 
-Endurance 1 is two opponents back-to-back; damage carries over. Tournament
-``ladder_model`` only covers M1–M7, so this capture forces the oracle onto
-E1 and E1B slots as well.
+Natural E1 from the Fight 7 pin is courtyard Kano, still best-of-3 with
+health refill between rounds. The second fighter has not appeared on this
+path. Tournament ``ladder_model`` only covers M1–M7, so this capture
+forces the oracle onto E1 and E1B slots as well. Match5 v3 can take
+round 1 and then lose 1-2; ``--round2-kano`` switches to a no-jump
+keepaway after that first KO.
 
 Liu Kang CPU walkthrough (IceMaster / LWang): fireball F,F,HP and flying
 kick F,F,HK. Jump-kick into flying kick; fireball on wakeup. Do not jump
@@ -47,8 +50,10 @@ from mortal_kombat.ram import (  # noqa: E402
     parse_ram,
 )
 from mortal_kombat.scripted import (  # noqa: E402
+    DOWN,
     FIREBALL_RANGE,
     ScriptedPolicy,
+    X,
     back,
     fireball_sequence,
     zeros,
@@ -208,9 +213,16 @@ def identify_live_endurance1(env, pin, *, max_frames: int, screenshot: Path | No
 
 
 class NoJumpFireballPolicy(ScriptedPolicy):
-    """Courtyard Kano: fireball / walk back / block. Do not jump into knife."""
+    """Courtyard Kano: fireball from far / duck knives / never jump.
+
+    F,F,HP walks forward ~8f. Fire only when distance still leaves space
+    after that walk so the knife does not eat the startup.
+    """
 
     name = "scripted-kano"
+    fire_min = FIREBALL_RANGE + 24  # 96
+    zone = FIREBALL_RANGE + 28  # 100
+    duck_range = FIREBALL_RANGE
 
     def _choose(self, snap, ram):
         if snap.screen is not Screen.FIGHT:
@@ -233,18 +245,68 @@ class NoJumpFireballPolicy(ScriptedPolicy):
         facing = 1 if p1_x <= p2_x else -1
         if self._hurt > 0:
             self._hurt -= 1
-            block = zeros()
-            block[9] = 1  # X
-            return block if dist <= PUNCH_RANGE + 16 else back(facing)
-        if snap.p2.state != 0 and dist <= 72:
-            block = zeros()
-            block[9] = 1
-            return block
-        if dist > FIREBALL_RANGE - 16 and self._cooldown == 0:
+            protect = zeros()
+            protect[DOWN] = 1
+            protect[X] = 1
+            return protect if dist <= self.duck_range else back(facing)
+        if snap.p2.state != 0:
+            protect = zeros()
+            if dist > PUNCH_RANGE:
+                protect[DOWN] = 1  # duck knife
+            else:
+                protect[X] = 1
+            return protect
+        if dist >= self.fire_min and self._cooldown == 0:
             return self._enqueue(fireball_sequence(facing))
-        if dist <= PUNCH_RANGE:
+        if dist < self.zone:
             return back(facing)
-        return back(facing) if dist < FIREBALL_RANGE else zeros()
+        return zeros()
+
+
+class RoundMixPolicy:
+    """Use ``first`` until Kano is KO'd once, then ``rest`` on the refill.
+
+    Match5 v3 can take courtyard Kano round 1 and then lose 1-2. The live
+    game is unchanged; recorded buttons stay a Clean RLE tape.
+    """
+
+    def __init__(self, first, rest):
+        self.first = first
+        self.rest = rest
+        self.kind = getattr(first, "kind", KIND_RAM_V3)
+        self.name = f"{getattr(first, 'name', 'first')}+{getattr(rest, 'name', 'rest')}"
+        self._koed = False
+        self._armed = False
+        self._active = first
+
+    def reset(self) -> None:
+        # TournamentRunner resets on every entered_fight. Courtyard HUD
+        # p1_rounds lags, so clearing _koed would drop round 2 back onto
+        # the round-1 oracle. A new mix object is built per capture attempt.
+        self.first.reset()
+        self.rest.reset()
+        self._active = self.rest if self._koed else self.first
+
+    def act(self, ram, rgb, *, deterministic: bool = False):
+        snap = parse_ram(ram)
+        # Pin leftover is Match 7's hp=59/0. Do not treat that as a Kano KO.
+        if snap.timer > 50 and snap.p1_health > 0 and snap.p2_health > 0:
+            self._armed = True
+        if self._armed and snap.p2_health == 0 and snap.p1_health > 0:
+            self._koed = True
+        # Stay on rest after the first live KO. Leftover Match 7 HUD is
+        # rounds=2-0 / hp=59/0 and must not count; _armed is the gate.
+        policy = self.rest if self._koed else self.first
+        if policy is not self._active:
+            print(
+                f"  mix switch -> {getattr(policy, 'name', '?')} "
+                f"koed={self._koed} rounds={snap.p1_rounds}-{snap.p2_rounds} "
+                f"hp={snap.p1_health}/{snap.p2_health}",
+                flush=True,
+            )
+            policy.reset()
+            self._active = policy
+        return policy.act(ram, rgb, deterministic=deterministic)
 
 
 class RelabelMatchPolicy:
@@ -270,7 +332,12 @@ class RelabelMatchPolicy:
         return self.inner.act(poked, rgb, deterministic=deterministic)
 
 
-def make_policy_loader(relabel_match: int | None, *, kano_script: bool = False):
+def make_policy_loader(
+    relabel_match: int | None,
+    *,
+    kano_script: bool = False,
+    round2_kano: bool = False,
+):
     def loader(path, kind):
         from mortal_kombat.compat import install_fighters_common_alias
         from mortal_kombat.policy import load_policy
@@ -279,9 +346,12 @@ def make_policy_loader(relabel_match: int | None, *, kano_script: bool = False):
         if kind == KIND_SCRIPT and kano_script:
             return NoJumpFireballPolicy()
         policy = load_policy(path, kind)
-        if relabel_match is None or kind != KIND_RAM_V3:
-            return policy
-        return RelabelMatchPolicy(policy, relabel_match)
+        if relabel_match is not None and kind == KIND_RAM_V3:
+            policy = RelabelMatchPolicy(policy, relabel_match)
+        if round2_kano and not kano_script:
+            # Round-2 keepaway must not stand still for the round-1 intro.
+            return RoundMixPolicy(policy, NoJumpFireballPolicy(intro_frames=0))
+        return policy
 
     return loader
 
@@ -317,6 +387,7 @@ def capture_from_pin(
     win_at: int = ENDURANCE2,
     relabel_match: int | None = None,
     kano_script: bool = False,
+    round2_kano: bool = False,
 ) -> tuple[bool, list[int], object]:
     set_emulator_state(env.unwrapped, pin)
     recorder = RecordingEnv(env)
@@ -374,7 +445,9 @@ def capture_from_pin(
         force_scripted=force_scripted,
         ladder_model=ladder_model,
         on_frame=on_frame,
-        policy_loader=make_policy_loader(relabel_match, kano_script=kano_script),
+        policy_loader=make_policy_loader(
+            relabel_match, kano_script=kano_script, round2_kano=round2_kano
+        ),
     )
     apply_oracle(runner, ladder_model=ladder_model, pixel_model=pixel_model)
     result = runner.run_on(recorder, max_frames=max_frames)
@@ -423,6 +496,11 @@ def main() -> int:
         type=int,
         default=None,
         help="Poke match_counter in the oracle's RAM copy only (game is unchanged).",
+    )
+    parser.add_argument(
+        "--round2-kano",
+        action="store_true",
+        help="After the first Kano KO, switch to scripted keepaway (no jump).",
     )
     parser.add_argument(
         "--out",
@@ -507,7 +585,7 @@ def main() -> int:
                 tag = label if args.repeats == 1 else f"{label}#{attempt + 1}"
                 print(
                     f"oracle {tag} det={not args.stochastic} win_at={args.win_at} "
-                    f"relabel={args.relabel_match}",
+                    f"relabel={args.relabel_match} round2_kano={args.round2_kano}",
                     flush=True,
                 )
                 won, masks, snap = capture_from_pin(
@@ -521,6 +599,7 @@ def main() -> int:
                     win_at=args.win_at,
                     relabel_match=args.relabel_match,
                     kano_script=label == "scripted-kano",
+                    round2_kano=args.round2_kano,
                 )
                 if not won:
                     continue

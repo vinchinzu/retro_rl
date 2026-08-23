@@ -116,8 +116,13 @@ Verified this session (do not re-discover):
   is Kano on the warrior shrine; `Match5_LiuKang` is Kano on the throne
   room. Match5 v3 is 5/5 det on the throne-room save-state and 0/5 on
   E1B. From the Fight 7 pin, det RAM/pixel/scripted oracles lost 0-2 or
-  1-2; stochastic Match5 v3 (~90 attempts) sometimes took round 1 then
-  lost 1-2. Not an Endurance 1 tape. Scorpion still has not appeared.
+  1-2; stochastic Match5 v3 (20 this session, ~90 earlier) takes round 1
+  ~30–40% then loses 1-2, never 2-0. `--round2-kano` (Match5 v3 then
+  no-jump keepaway) now ignores leftover `hp=59/0 rounds=2-0` and sticks
+  after the live KO; keepaway still dies round 2 with Kano near full.
+  Det scripted-kano / Endurance1B v3 / Fight v3 / ladder-ft pixel: all
+  0-2. Not an Endurance 1 tape. Scorpion still has not appeared. M1–M7
+  tape still closes 2-0/2-0/2-0/2-1/2-0/2-1/2-0 at frame 41,503.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.

@@ -39,9 +39,12 @@ Continuations: `--load` plus a distinct `--output-prefix`. Wall cutoff writes
   is Kano (id 1) on the courtyard — leftover pin HUD is the Liu Kang
   mirror. Isolated `Endurance1_LiuKang` is Sub-Zero, not this path.
   Match5 v3 closes throne-room Kano 5/5 and has not closed courtyard
-  Kano (det 1-2; stoch ~10% one round then 1-2). Force oracles onto
-  E1/E1B (`ladder_model` stops at M7). First fight-ready can be a black
-  fade; wait for a visible frame.
+  Kano (stoch ~30–40% one round then 1-2; never 2-0). `--round2-kano`
+  keepaway after that first KO also loses round 2. Next: a courtyard-
+  Kano specialist from this pin, or a round-2 script that does not
+  stand still into the knife. Force oracles onto E1/E1B (`ladder_model`
+  stops at M7). First fight-ready can be a black fade; wait for a
+  visible frame.
 - N>=20 eval of `mk1_v3_Match5_ppo_final.zip` on Fight, Match2, Match7; `--promote` only if it beats the per-stage zip
 - More Clean `--ladder-model mk1_v3_Match5_ppo_final.zip` attempts (furthest Match 4 so far)
 - Do not retarget v3 x/y off `0x00DA` without a fresh train
