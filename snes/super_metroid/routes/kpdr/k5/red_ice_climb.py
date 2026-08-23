@@ -42,6 +42,12 @@ MID_FLOOR_Y = 1625
 THIN_SEAT_Y = 587
 UPPER_RIPPER_1_Y = 520
 UPPER_RIPPER_1_LAND_Y = 495
+UPPER_RIPPER_2_Y = 416
+UPPER_RIPPER_2_LAND_Y = 391
+UPPER_RIPPER_3_Y = 320
+UPPER_RIPPER_3_LAND_Y = 295
+UPPER_RIPPER_4_Y = 232
+UPPER_RIPPER_4_LAND_Y = 207
 
 POLICY_ID = "red_tower_ice_bottom_to_ripper1"
 VARIANT_ID = "ice_hi_jump"
@@ -137,6 +143,27 @@ UPPER_RIPPER_1 = RedIceCheckpoint(
     (70, 180),
     (478, 512),
     support_enemy_y=UPPER_RIPPER_1_Y,
+    min_freeze_timer=30,
+)
+UPPER_RIPPER_2 = RedIceCheckpoint(
+    "upper_ripper_2",
+    (65, 180),
+    (374, 408),
+    support_enemy_y=UPPER_RIPPER_2_Y,
+    min_freeze_timer=30,
+)
+UPPER_RIPPER_3 = RedIceCheckpoint(
+    "upper_ripper_3",
+    (65, 180),
+    (278, 312),
+    support_enemy_y=UPPER_RIPPER_3_Y,
+    min_freeze_timer=30,
+)
+UPPER_RIPPER_4 = RedIceCheckpoint(
+    "upper_ripper_4",
+    (65, 180),
+    (190, 224),
+    support_enemy_y=UPPER_RIPPER_4_Y,
     min_freeze_timer=30,
 )
 
@@ -236,6 +263,21 @@ def can_attach_mid_floor_edge(state: SuperMetroidState) -> bool:
 def can_attach_thin_seat_edge(state: SuperMetroidState) -> bool:
     """Gate for the thin seat → frozen upper_ripper_1 hop."""
     return THIN_SEAT.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_upper_ripper1_edge(state: SuperMetroidState) -> bool:
+    """Gate for the frozen ur1 → ur2 hop."""
+    return UPPER_RIPPER_1.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_upper_ripper2_edge(state: SuperMetroidState) -> bool:
+    """Gate for the frozen ur2 → ur3 hop."""
+    return UPPER_RIPPER_2.matches(state) and _has_ice_hi_jump(state)
+
+
+def can_attach_upper_ripper3_edge(state: SuperMetroidState) -> bool:
+    """Gate for the frozen ur3 → ur4 hop."""
+    return UPPER_RIPPER_3.matches(state) and _has_ice_hi_jump(state)
 
 
 def _action(*names: str) -> np.ndarray:
@@ -510,6 +552,15 @@ __all__ = [
     "UPPER_RIPPER_1",
     "UPPER_RIPPER_1_LAND_Y",
     "UPPER_RIPPER_1_Y",
+    "UPPER_RIPPER_2",
+    "UPPER_RIPPER_2_LAND_Y",
+    "UPPER_RIPPER_2_Y",
+    "UPPER_RIPPER_3",
+    "UPPER_RIPPER_3_LAND_Y",
+    "UPPER_RIPPER_3_Y",
+    "UPPER_RIPPER_4",
+    "UPPER_RIPPER_4_LAND_Y",
+    "UPPER_RIPPER_4_Y",
     "MID_RIPPER_LAND_Y",
     "MID_RIPPER_Y",
     "POLICY_ID",
@@ -526,6 +577,9 @@ __all__ = [
     "can_attach_tunnel_edge",
     "can_attach_mid_floor_edge",
     "can_attach_thin_seat_edge",
+    "can_attach_upper_ripper1_edge",
+    "can_attach_upper_ripper2_edge",
+    "can_attach_upper_ripper3_edge",
     "checkpoint_supported",
     "play_bottom_to_ripper1",
     "read_rippers",

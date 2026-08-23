@@ -17,6 +17,9 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     TUNNEL_FLOOR,
     THIN_SEAT,
     UPPER_RIPPER_1,
+    UPPER_RIPPER_2,
+    UPPER_RIPPER_3,
+    UPPER_RIPPER_4,
     RedIceBottomEdgeRunner,
     can_attach_bottom_edge,
     can_attach_ripper1_edge,
@@ -26,6 +29,9 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     can_attach_tunnel_edge,
     can_attach_mid_floor_edge,
     can_attach_thin_seat_edge,
+    can_attach_upper_ripper1_edge,
+    can_attach_upper_ripper2_edge,
+    can_attach_upper_ripper3_edge,
     checkpoint_supported,
     read_rippers,
 )
@@ -48,6 +54,13 @@ from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (
 from super_metroid.routes.kpdr.k5.red_ice_thin_to_ur1 import (
     POLICY_ID as THINUR1_POLICY,
     RedIceThinToUr1EdgeRunner,
+)
+from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (
+    POLICY_ID_UR12 as UR12_POLICY,
+    POLICY_ID_UR34 as UR34_POLICY,
+    RedIceUpperRipperHopRunner,
+    UR12,
+    UR34,
 )
 
 
@@ -96,6 +109,12 @@ def test_checkpoint_requires_grounded_state() -> None:
     assert not THIN_SEAT.matches(_state(samus_x=166, samus_y=587))
     assert UPPER_RIPPER_1.matches(_state(samus_x=104, samus_y=495))
     assert not UPPER_RIPPER_1.matches(_state(samus_x=104, samus_y=587))
+    assert UPPER_RIPPER_2.matches(_state(samus_x=119, samus_y=391))
+    assert not UPPER_RIPPER_2.matches(_state(samus_x=119, samus_y=495))
+    assert UPPER_RIPPER_3.matches(_state(samus_x=110, samus_y=295))
+    assert not UPPER_RIPPER_3.matches(_state(samus_x=110, samus_y=391))
+    assert UPPER_RIPPER_4.matches(_state(samus_x=110, samus_y=207))
+    assert not UPPER_RIPPER_4.matches(_state(samus_x=110, samus_y=295))
 
 
 def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
@@ -167,6 +186,30 @@ def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
     )
     assert can_attach_thin_seat_edge(thin)
     assert not can_attach_thin_seat_edge(mid)
+    ur1 = _state(
+        samus_x=102,
+        samus_y=495,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_upper_ripper1_edge(ur1)
+    assert not can_attach_upper_ripper1_edge(thin)
+    ur2 = _state(
+        samus_x=119,
+        samus_y=391,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_upper_ripper2_edge(ur2)
+    assert not can_attach_upper_ripper2_edge(ur1)
+    ur3 = _state(
+        samus_x=110,
+        samus_y=295,
+        equipped_beams=0x1007,
+        equipped_items=0x3105,
+    )
+    assert can_attach_upper_ripper3_edge(ur3)
+    assert not can_attach_upper_ripper3_edge(ur2)
 
 
 def test_frozen_support_is_part_of_checkpoint_truth() -> None:
@@ -208,6 +251,9 @@ def test_checkpoint_plan_has_one_verified_edge_and_planned_recovery_tree() -> No
     assert edges["tunnel_to_mid_floor"]["status"] == "verified_dual_from_p165_tunnel"
     assert edges["mid_floor_to_thin_seat"]["status"] == "verified_dual_from_p165_mid"
     assert edges["thin_seat_to_upper_ripper_1"]["status"] == "verified_dual_from_p165_thin"
+    assert edges["upper_ripper_1_to_2"]["status"] == "verified_dual_from_p165_ur1"
+    assert edges["upper_ripper_2_to_3"]["status"] == "verified_dual_from_p165_ur2"
+    assert edges["upper_ripper_3_to_4"]["status"] == "verified_dual_from_p165_ur3"
     assert data["recovery"]
 
 
@@ -369,6 +415,64 @@ def test_thin_ur1_face_then_freeze_has_no_walk() -> None:
     )
     assert list(shot) == list(buttons("UP", "X"))
     assert list(shot) != list(buttons("RIGHT", "UP", "X"))
+
+
+def test_ur12_acquire_shot_has_no_walk() -> None:
+    """LEFT/RIGHT on frozen ur1 walks off. Offset freeze is UP+X only."""
+    from retro_harness.actions import buttons
+
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    base1 = 0x0F78 + 0 * 0x40
+    _write_u16(ram, base1, RIPPER_ID)
+    _write_u16(ram, base1 + 0x02, 102)
+    _write_u16(ram, base1 + 0x06, 520)
+    _write_u16(ram, base1 + 0x26, 180)
+    base2 = 0x0F78 + 3 * 0x40
+    _write_u16(ram, base2, RIPPER_ID)
+    _write_u16(ram, base2 + 0x02, 122)
+    _write_u16(ram, base2 + 0x06, 416)
+    runner = RedIceUpperRipperHopRunner(_Env(ram), UR12)
+    runner.phase = "acquire"
+    action = runner.action(
+        _state(room_id=0xA253, samus_x=102, samus_y=495, pose=1)
+    )
+    assert list(action) == list(buttons("UP", "X"))
+    assert list(action) != list(buttons("RIGHT", "UP", "X"))
+    assert runner.policy_id == UR12_POLICY
+    assert runner.from_checkpoint == "upper_ripper_1"
+    assert runner.to_checkpoint == "upper_ripper_2"
+
+
+def test_ur34_aims_then_freezes_in_tighter_band() -> None:
+    """ur4 is higher; pose-1 UP+X at 29px misses. Aim first, 10-28px only."""
+    from retro_harness.actions import buttons
+
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    base3 = 0x0F78 + 2 * 0x40
+    _write_u16(ram, base3, RIPPER_ID)
+    _write_u16(ram, base3 + 0x02, 137)
+    _write_u16(ram, base3 + 0x06, 320)
+    _write_u16(ram, base3 + 0x26, 180)
+    base4 = 0x0F78 + 1 * 0x40
+    _write_u16(ram, base4, RIPPER_ID)
+    _write_u16(ram, base4 + 0x02, 151)
+    _write_u16(ram, base4 + 0x06, 232)
+    runner = RedIceUpperRipperHopRunner(_Env(ram), UR34)
+    runner.phase = "acquire"
+    aim = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=1)
+    )
+    assert list(aim) == list(buttons("UP"))
+    shot = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=3)
+    )
+    assert list(shot) == list(buttons("UP", "X"))
+    _write_u16(ram, base4 + 0x02, 163)
+    wait = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=3)
+    )
+    assert list(wait) == list(buttons("UP"))
+    assert runner.policy_id == UR34_POLICY
 
 
 def test_first_wall_arc_waits_until_clear_of_lower_ripper() -> None:

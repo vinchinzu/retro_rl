@@ -50,6 +50,10 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \
 - [x] Ice-pin chain bottom → thin seat GREEN **5062f** `(86,587)` p2
 - [x] Ice-pin thin seat → upper_ripper_1 dual GREEN **94f** ×2 `(102,495)` p1
 - [x] Ice-pin chain bottom → upper_ripper_1 GREEN **5156f** `(102,495)` p1
+- [x] Ice-pin ur1 → ur2 dual GREEN **130f** ×2 `(119,391)` p1
+- [x] Ice-pin ur2 → ur3 dual GREEN **158f** ×2 `(134,295)` p1
+- [x] Ice-pin ur3 → ur4 dual GREEN **59f** ×2 `(144,207)` p1
+- [x] Ice-pin chain bottom → upper_ripper_4 GREEN **5503f** `(144,207)` p1
 - [ ] Ice-pin compose GREEN (West Ocean `0x93FE`) — RED at `red_to_hellway` (product RLE)
 - [ ] Ice-pin compose dual exact
 - [ ] Power-on `--to moat` dual continuous (planner STATUS)
@@ -92,16 +96,16 @@ From `post_ice_ceres_successor` (`kpdr.py compose ice-to-moat`):
 | west_to_below | `(472,393)` p82 | 9389 | matches |
 | below_to_bat | `(472,139)` p12 | 9874 | sill pin; matches dual |
 | **bat_to_red** | `(216,2443)` p165 | 10642 | GREEN 768f; was water timeout |
-| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through upper_ripper_1 (see below). 718f successor still greens 6199f from p10 mom=1. |
+| **red_to_hellway** | RED | 16824 | Product RLE+IBJ still walks back to Bat. Ice checkpoints from this leave are green through upper_ripper_4 (see below). 718f successor still greens 6199f from p10 mom=1. |
 
 ### Ice checkpoints from Ice-pin Red leave `(216,2443)` p165
 
 Public policy: Hi-Jump + Ice. Double WJ up the right wall onto frozen
 Ripper 1, standing hop onto Rippers 2 and 3, crouch-jump onto Ripper 4,
 then crouch-jump left onto the tunnel alcove, WJ to the thin seat, freeze
-the y≈520 Ripper from that solid seat and standing-hop onto it. Freeze
-only on the facing (right) side. Do not walk on ice while shooting. Do
-not RIGHT+A from aim-up (pose 81 falls through).
+the y≈520 Ripper from that solid seat and standing-hop the upper ice
+ladder to y=207. Freeze only on the facing (right) side. Do not walk on
+ice while shooting. Do not RIGHT+A from aim-up (pose 81 falls through).
 https://wiki.supermetroid.run/Red_Tower
 
 | | frames | seconds | clock |
@@ -122,13 +126,17 @@ https://wiki.supermetroid.run/Red_Tower
 | chain p165 → thin seat | 5062 | 84.228 | 01:24.37 |
 | thin seat → upper_ripper_1 dual exact | 94 | 1.564 | 00:01.57 |
 | chain p165 → upper_ripper_1 | 5156 | 85.792 | 01:25.93 |
+| ur1 → ur2 dual exact | 130 | 2.163 | 00:02.17 |
+| ur2 → ur3 dual exact | 158 | 2.629 | 00:02.63 |
+| ur3 → ur4 dual exact | 59 | 0.982 | 00:00.98 |
+| chain p165 → upper_ripper_4 | 5503 | 91.566 | 01:31.72 |
 
-Dual exact **94f** ×2 on thin→ur1, leave `(102, 495)` p1. Thin seat is
-solid so a short RIGHT turn is legal; freeze is still UP+X with no d-pad.
-Standing Hi-Jump then drift from above; 8f settle on still-frozen support.
-Did not reuse `_ice_ripper_ladder` as natural-predecessor proof. Chain
-**5156f** leaves `(102, 495)` p1 from
-`scratch/bat_zero_settle_eq216_leave.state`. Not wired into
+Upper ice ladder is dual-exact through ur4, leave `(144, 207)` p1. No
+ice-walk; freeze on the facing (right) side; standing hop + 8f frozen
+support. ur3→ur4 aims first and uses a 10–28px band (29px pose-1 UP+X
+misses). Chain **5503f** = 5156+130+158+59 from
+`scratch/bat_zero_settle_eq216_leave.state`. Standing hop from ur4 bonks
+a y=195 overhang under the Hellway door floor. Not wired into
 `play_red_to_hellway` (still the 6199f tape body).
 
 ```bash
@@ -136,18 +144,17 @@ uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
   --source snes/super_metroid/scratch/bat_zero_settle_eq216_leave.state \
   --edge chain
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py \
-  --source snes/super_metroid/scratch/red_ice_p165_thin_seat.state \
-  --edge 8
+  --source snes/super_metroid/scratch/red_ice_p165_upper_ripper3.state \
+  --edge 11
 ```
 
 ### Next action (required)
-- **One change:** checkpoint `upper_ripper_1 → upper_ripper_2`. Freeze the
-  y≈416 Ripper from the frozen ur1 seat (no ice-walk) and require a
-  supported landing. Standing hop already greened **122f** in a research
-  probe at `(119,391)` p164.
-- **Source:** `scratch/red_ice_p165_upper_ripper1.state` / chain leave
-  `(102,495)` p1. Thin → ur1 is dual exact **94f** ×2; p165 bottom → ur1
-  is **5156f**.
+- **One change:** checkpoint `upper_ripper_4 → hellway_sill`. The door
+  floor underside is at y≈195; standing/crouch hops from `(144,207)`
+  bonk. Need a wall-jump around that overhang into `0xA2F7`.
+- **Source:** `scratch/red_ice_p165_upper_ripper4.state` / chain leave
+  `(144,207)` p1. ur3 → ur4 is dual exact **59f** ×2; p165 bottom → ur4
+  is **5503f**.
 - Do not mash more `bat_to_red` subpixel
 - Keep `post_ice_bat_to_red_pure` (718f p10) until a Hellway leave greens
   the successor. Do not replace product `play_red_to_hellway` until the
