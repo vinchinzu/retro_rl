@@ -563,6 +563,9 @@ ROOM_31_SPEC = DungeonRoomSpec(
         engage_attack_period=6,
         engage_attack_hold=3,
         # No contact_backstep: 0x31 maze starves kills (rr-gjey tried).
+        occupancy_patrol=True,
+        # West-door leftover ~(16,141) sits outside default xmin=40.
+        occupancy_bounds=(16, 216, 77, 205),
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=ROOM_ITEM_NONE,

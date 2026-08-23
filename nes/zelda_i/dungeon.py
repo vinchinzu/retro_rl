@@ -20,7 +20,7 @@ from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
 from zelda_i import dungeon_ids as _ids
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
-from zelda_i.walk_physics import OccupancyWalker
+from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
@@ -102,6 +102,9 @@ class CombatTuning:
     # Predicted 1px walks; a miss blocks the cell ahead and BFS replans
     # around water (0x23 plus). No path → stand / next patrol vertex.
     occupancy_patrol: bool = False
+    # Optional OccupancyGrid bounds (xmin, xmax, ymin, ymax). Default playfield
+    # starts at x=40 and drops west-door leftovers (L4 0x31 x≈16).
+    occupancy_bounds: tuple[int, int, int, int] | None = None
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -351,9 +354,21 @@ class GenericDungeonRoomController:
             self._stuck_xy = None
             self._collect_skips = 0
             if phase is DungeonPhase.FIGHT:
-                self.walker = OccupancyWalker()
+                self.walker = self._make_walker()
             if note:
                 self.notes.append(note)
+
+    def _make_walker(self) -> OccupancyWalker:
+        bounds = self.spec.combat.occupancy_bounds
+        if bounds is None:
+            return OccupancyWalker()
+        xmin, xmax, ymin, ymax = bounds
+        return OccupancyWalker(
+            grid=OccupancyGrid(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        )
+
+    def __post_init__(self) -> None:
+        self.walker = self._make_walker()
 
     def _snap_patrol_nearest(self, snap: ZeldaSnapshot) -> None:
         patrol = self.spec.combat.patrol
