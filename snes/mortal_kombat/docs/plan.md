@@ -35,10 +35,12 @@ Continuations: `--load` plus a distinct `--output-prefix`. Wall cutoff writes
 ## Next
 
 - Natural Endurance 1 continuation from the Fight 7 pin (same
-  deterministic tape method; runtime stays model-free). Live Match 6 is
-  Johnny Cage again (id 0) 2–1, not Scorpion. Live Match 7 is the Liu
-  Kang mirror (id 3) 2–0. Identify the live E1 opponent before fighting
-  (pin HUD will still show Liu Kang). First fight-ready can be a black
+  deterministic tape method; runtime stays model-free). Live E1 opponent
+  is Kano (id 1) on the courtyard — leftover pin HUD is the Liu Kang
+  mirror. Isolated `Endurance1_LiuKang` is Sub-Zero, not this path.
+  Match5 v3 closes throne-room Kano 5/5 and has not closed courtyard
+  Kano (det 1-2; stoch ~10% one round then 1-2). Force oracles onto
+  E1/E1B (`ladder_model` stops at M7). First fight-ready can be a black
   fade; wait for a visible frame.
 - N>=20 eval of `mk1_v3_Match5_ppo_final.zip` on Fight, Match2, Match7; `--promote` only if it beats the per-stage zip
 - More Clean `--ladder-model mk1_v3_Match5_ppo_final.zip` attempts (furthest Match 4 so far)

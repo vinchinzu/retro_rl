@@ -109,6 +109,15 @@ Verified this session (do not re-discover):
   `mk1_v3_Match5_ppo_final.zip` (attempt 1). Runtime still loads no
   models. This is the first seven matches as one state-exact tape, not a
   reactive policy or a credits claim.
+- Natural Endurance 1 from that pin is **Kano (id 1) on the courtyard**,
+  not leftover Liu Kang. Identify: first-ready 906f black fade already
+  shows Kano 161/161 timer 153; visible 957f mean=40. Isolated
+  `Endurance1_LiuKang` is Sub-Zero on the courtyard; `Endurance1B_LiuKang`
+  is Kano on the warrior shrine; `Match5_LiuKang` is Kano on the throne
+  room. Match5 v3 is 5/5 det on the throne-room save-state and 0/5 on
+  E1B. From the Fight 7 pin, det RAM/pixel/scripted oracles lost 0-2 or
+  1-2; stochastic Match5 v3 (~90 attempts) sometimes took round 1 then
+  lost 1-2. Not an Endurance 1 tape. Scorpion still has not appeared.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -149,3 +158,4 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/replay_natural_fight5.py` | Model-free exact power-on tape through the Match 6 transition |
 | `scripts/replay_natural_fight6.py` | Model-free exact power-on tape through the Match 7 transition |
 | `scripts/replay_natural_fight7.py` | Model-free exact power-on tape through the Endurance 1 transition |
+| `scripts/capture_natural_endurance1.py` | Identify live E1 then record RLE from the Fight 7 pin (no tape yet) |
