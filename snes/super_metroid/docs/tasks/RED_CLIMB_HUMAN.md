@@ -121,12 +121,15 @@ Use the PNGs as the review surface and the JSON as coordinate truth:
 | `docs/tasks/refs/red_tower_ice_checkpoint_plan.png` | Full ten-screen checkpoint/recovery tree |
 | `routes/kpdr/data/red_tower_ice_checkpoint_plan.json` | Exact checkpoint bands, edge status, equipment contract |
 
-Next edge is `lower_ripper_3 → lower_ripper_4` (enemy y=2048, 136px gap).
-`r1 → r2` is dual-green **156f** ×2; `r2 → r3` is dual-green **108f** ×2
-from the Ice-pin r2 pin (`red_ice_r2_to_r3.py`): wait until the Ripper is
-on the facing (right) side, freeze at offset with UP+X (no d-pad), standing
-Hi-Jump, drift from above. Shooting the left-side approach freezes overhead
-and the hop bonks. Do not RIGHT+A from pose 3 (falls through as pose 81).
+Next edge is `lower_ripper_4 → tunnel_floor` (solid left alcove ~x104
+y1883). Crouch-jump from r4 clears the height (apex ~1847) but the shaft
+at x≈155 is open; need leftward travel onto the seat without walking off
+r4 ice.
+
+Lower ice ladder is dual-green: r1→r2 **156f**, r2→r3 **108f**, r3→r4
+**141f** ×2 (`red_ice_r3_to_r4.py`) — freeze r4 on the facing (right)
+side, crouch, Hi-Jump crouch-jump, drift from above. Standing hop apex is
+only ~3px above r4 and falls through. Do not RIGHT+A from pose 3.
 
 ## Rank + pick best
 
