@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import numpy as np
 
+from unittest.mock import patch
+
 from mortal_kombat.ram import ADDR_MATCH_COUNTER, make_test_ram
 from mortal_kombat.roster import KIND_RAM_V3, StageSlot
+from mortal_kombat.scripted import DOWN, LEFT, RIGHT, X, Y
 from mortal_kombat.scripts.capture_natural_endurance1 import (
+    NoJumpFireballPolicy,
     RelabelMatchPolicy,
+    RoundMixPolicy,
     apply_oracle,
     format_rle,
+    make_policy_loader,
     mask_from_buttons,
     rle_encode,
 )
@@ -64,3 +70,104 @@ def test_apply_oracle_forces_every_slot_and_drops_backups() -> None:
     assert {slot.model for slot in runner.slots} == {"mk1_v3_Match5_ppo_final.zip"}
     assert all(slot.kind == KIND_RAM_V3 and slot.backups == [] for slot in runner.slots)
     assert {slot.match_id for slot in runner.slots} == {7, 8}
+
+
+def _kano(intro: int = 0) -> NoJumpFireballPolicy:
+    return NoJumpFireballPolicy(intro_frames=intro)
+
+
+def test_kano_keepaway_ducks_knives_at_range() -> None:
+    policy = _kano()
+    frame = policy.act(make_test_ram(p1_x=40, p2_x=140, p2_state=1), None)
+    assert frame[DOWN] == 1
+    assert frame[X] == 0
+    assert frame[Y] == 0
+
+
+def test_kano_keepaway_blocks_close() -> None:
+    policy = _kano()
+    frame = policy.act(make_test_ram(p1_x=100, p2_x=130, p2_state=1), None)
+    assert frame[X] == 1
+    assert frame[DOWN] == 0
+
+
+def test_kano_keepaway_fireball_only_from_far() -> None:
+    policy = _kano()
+    start = policy.act(make_test_ram(p1_x=40, p2_x=200), None)
+    assert start[RIGHT] == 1
+    assert start[Y] == 0
+    policy.reset()
+    close = policy.act(make_test_ram(p1_x=80, p2_x=140), None)
+    assert close[LEFT] == 1
+    assert close[Y] == 0
+    assert close[RIGHT] == 0
+
+
+def test_round_mix_switches_after_ko_refill() -> None:
+    class Inner:
+        kind = KIND_RAM_V3
+
+        def __init__(self, label: str):
+            self.name = label
+            self.acts = 0
+            self.resets = 0
+
+        def reset(self) -> None:
+            self.resets += 1
+
+        def act(self, ram, rgb, *, deterministic: bool = False):
+            del ram, rgb, deterministic
+            self.acts += 1
+            out = np.zeros(12, dtype=np.int8)
+            out[0] = 1 if self.name == "first" else 0
+            out[1] = 1 if self.name == "rest" else 0
+            return out
+
+    first = Inner("first")
+    rest = Inner("rest")
+    mix = RoundMixPolicy(first, rest)
+    leftover = mix.act(
+        make_test_ram(
+            p1_health=59,
+            p2_health=0,
+            p2_character=3,
+            match_counter=7,
+            timer=102,
+            p1_rounds=2,
+        ),
+        None,
+    )
+    assert leftover[0] == 1 and leftover[1] == 0
+    opening = mix.act(make_test_ram(p1_health=161, p2_health=80), None)
+    assert opening[0] == 1 and opening[1] == 0
+    mix.act(make_test_ram(p1_health=80, p2_health=0), None)
+    refill = mix.act(make_test_ram(p1_health=161, p2_health=161), None)
+    assert refill[0] == 0 and refill[1] == 1
+    assert rest.resets == 1
+    mix.reset()
+    after_fight_reset = mix.act(make_test_ram(p1_health=161, p2_health=161), None)
+    assert after_fight_reset[1] == 1
+    damaged = mix.act(make_test_ram(p1_health=120, p2_health=160), None)
+    assert damaged[1] == 1
+
+
+def test_round2_kano_loader_wraps_ram_oracle() -> None:
+    class Dummy:
+        kind = KIND_RAM_V3
+        name = "dummy"
+
+        def reset(self) -> None:
+            return None
+
+        def act(self, ram, rgb, *, deterministic: bool = False):
+            del ram, rgb, deterministic
+            return np.zeros(12, dtype=np.int8)
+
+    loader = make_policy_loader(None, round2_kano=True)
+    with patch("mortal_kombat.policy.load_policy", return_value=Dummy()):
+        wrapped = loader("mk1_v3_Match5_ppo_final.zip", KIND_RAM_V3)
+    assert isinstance(wrapped, RoundMixPolicy)
+    assert isinstance(wrapped.rest, NoJumpFireballPolicy)
+    assert wrapped.rest.intro_frames == 0
+    assert wrapped.kind == KIND_RAM_V3
+    assert wrapped.first.name == "dummy"

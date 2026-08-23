@@ -46,7 +46,8 @@ Round / match notes:
   Cage at Fight 6, Liu Kang at Fight 7), not the fighter you actually
   play. Natural Endurance 1 is Kano (id 1) on the courtyard; isolated
   `Endurance1_LiuKang` is Sub-Zero. First fight-ready after VS can be a
-  black fade; identify on a visible frame.
+  black fade; identify on a visible frame. Fight 7 pin leftover is
+  `hp=59/0 rounds=2-0` — mix oracles must not treat that as a Kano KO.
 - For scripted replay scoring, count health transitions `>0 → 0` for each
   fighter. These settle before the delayed HUD round bytes and avoid the noisy
   P2 byte producing a false loss at the final KO.
