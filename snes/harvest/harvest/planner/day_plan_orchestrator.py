@@ -267,7 +267,7 @@ class DayPlanTask(Task):
 
     def _splice_plant_after_shop(self, world: WorldState) -> None:
         """rr-20w.1: outdoor plan expands at 06:08 before the bag exists."""
-        from harvest.planner.day_plan_phases import pocket_plant_phases
+        from harvest.planner.d2_work import d2_post_shop_work_phases
         from harvest.planner.world_probe import WorldProbe
 
         remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
@@ -289,9 +289,12 @@ class DayPlanTask(Task):
                 failure_policy="optional",
                 contract=phase.contract,
             )
-            for phase in pocket_plant_phases()
+            for phase in d2_post_shop_work_phases(
+                stamina=probe.stamina(),
+                policy=self.policy,
+            )
         ]
-        # Replace the leftover whole-farm CLEAR — pocket clear is the plant path.
+        # Replace the leftover whole-farm CLEAR — pocket + quota smash is the path.
         tail = [
             phase
             for phase in self._schedule.active[self._phase_index + 1 :]
@@ -301,7 +304,7 @@ class DayPlanTask(Task):
             self._schedule.active[: self._phase_index + 1] + planted + tail
         )
         names = ", ".join(phase.phase for phase in planted)
-        print(f"[DAY_PLAN] Spliced post-shop pocket plant: {names}")
+        print(f"[DAY_PLAN] Spliced post-shop D2 work: {names}")
 
     def _advance(self, world: WorldState, reason: str) -> None:
         """Move to next phase after real work success."""

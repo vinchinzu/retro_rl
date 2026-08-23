@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""Post-shop D2 collect + hoe + plant probe (no grape, no water).
+"""Post-shop D2 collect + 3x3 hoe + plant probe (no grape).
 
 Default pin is ``Y1_After_Buy_Potato`` (stock=1, carry often empty).
+Hoe the 8-tile ring around (13,28), then plant from the untilled notch.
+``--hoe-only`` tills until 5pm-tuning without spending the bag.
+``--water`` waters the 8-ring after plant (0x54 → 0x55).
 
     HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe
     HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \\
       --state Y1_After_Buy_Potato --out recordings/d2_plant_probe.json
+    HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \\
+      --state Y1_After_Buy_Potato --hoe-only --out recordings/d2_hoe_ring.json
+    HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \\
+      --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
+    uv run python -m harvest.scripts.d2_plant_probe --watch
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
@@ -30,45 +37,90 @@ from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap, r
 from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.planner.tasks.inventory_shed import EnsureCropSeedsTask
 from harvest.runtime.retro_setup import make_harvest_env
+from harvest.runtime.watch_display import (
+    WatchDisplay,
+    configure_headed,
+    configure_headless,
+    fast_env_step,
+)
+from harvest.tasks.crop_skills import (
+    PLOT_RING_SIZE,
+    count_ring_planted,
+    count_ring_tilled,
+    count_ring_wet,
+)
 from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.nav import get_pos_from_ram, get_tile_at, make_action
 from harvest.tasks.skills import farm_pocket_plant_skill
 
 
-def _configure_headless() -> None:
-    os.environ.setdefault("HEADLESS", "1")
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    os.environ.pop("INFINITE_STAMINA", None)
-
-
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_After_Buy_Potato")
-    p.add_argument("--timeout", type=int, default=28_000)
+    p.add_argument("--timeout", type=int, default=36_000)
     p.add_argument(
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "d2_plant_probe.json",
     )
     p.add_argument("--skip-clear", action="store_true")
+    p.add_argument(
+        "--hoe-only",
+        action="store_true",
+        help="Till the 8-tile ring only; do not plant. Tune hoe until 5pm.",
+    )
+    p.add_argument(
+        "--water",
+        action="store_true",
+        help="Water the 8-ring after plant (notch stays untilled).",
+    )
+    p.add_argument(
+        "--watch",
+        action="store_true",
+        help="Open a pygame window ([ ] speed, TAB turbo). No HEADLESS.",
+    )
+    p.add_argument("--watch-scale", type=int, default=3, help="Watch window integer scale")
     return p.parse_args()
 
 
-def _run_task(env, task, *, timeout: int, start_frame: int):
+def _run_task(env, task, *, timeout: int, start_frame: int, watch: WatchDisplay | None = None):
     obs = None
     result = None
     frame = start_frame
-    for frame in range(start_frame, start_frame + timeout + 1):
-        ram = env.get_ram()
-        world = WorldState(frame=frame, ram=ram, info={}, obs=obs)
-        result = task.step(world)
-        if result.status != TaskStatus.RUNNING:
+    closed = False
+    while frame <= start_frame + timeout:
+        if watch is not None:
+            if not watch.pump():
+                closed = True
+                break
+            budget = watch.emu_repeat()
+        else:
+            budget = 1
+        stopped = False
+        for _ in range(budget):
+            ram = env.get_ram()
+            world = WorldState(frame=frame, ram=ram, info={}, obs=obs)
+            result = task.step(world)
+            if result.status != TaskStatus.RUNNING:
+                stopped = True
+                break
+            action = result.action.action if result.action is not None else make_action()
+            if watch is not None:
+                last = _ == budget - 1
+                obs = fast_env_step(env, action, update_obs=last)
+            else:
+                obs, _reward, _term, _trunc, _info = env.step(action)
+            frame += 1
+            if frame > start_frame + timeout:
+                stopped = True
+                break
+        if watch is not None and not watch.present(obs, emu_frame=frame):
+            closed = True
             break
-        action = result.action.action if result.action is not None else make_action()
-        obs, _reward, _term, _trunc, _info = env.step(action)
-    return frame, result, env.get_ram()
+        if stopped:
+            break
+    return frame, result, env.get_ram(), closed
 
 
 def _carry(ram) -> dict:
@@ -103,13 +155,33 @@ def _debris(ram):
     ]
 
 
+def _write_payload(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n")
+    print(json.dumps(payload, indent=2))
+
+
 def main() -> int:
-    _configure_headless()
     args = _parse_args()
+    if args.watch:
+        configure_headed()
+    else:
+        configure_headless()
     env = make_harvest_env(state=args.state)
     journal = []
+    watch = None
     try:
-        env.reset()
+        boot = env.reset()
+        obs = boot[0] if isinstance(boot, tuple) else boot
+        if args.watch:
+            watch = WatchDisplay(
+                scale=args.watch_scale,
+                title="Harvest D2 plant probe",
+            )
+            if not watch.start(obs):
+                payload = {"ok": False, "reason": "watch window failed"}
+                _write_payload(args.out, payload)
+                return 1
         ram = env.get_ram()
         world = WorldState(frame=0, ram=ram, info={}, obs=None)
         frame = 0
@@ -120,48 +192,53 @@ def main() -> int:
             "pocket": _pocket_tiles(ram),
         }
 
+        def _phase(task, *, timeout: int, start_frame: int):
+            return _run_task(
+                env, task, timeout=timeout, start_frame=start_frame, watch=watch
+            )
+
         if is_house_tilemap(tilemap) or not is_farm_tilemap(tilemap):
             exit_task = ExitToFarmTask()
             exit_task.reset(world)
-            frame, result, ram = _run_task(env, exit_task, timeout=2_000, start_frame=0)
+            frame, result, ram, closed = _phase(exit_task, timeout=2_000, start_frame=0)
             journal.append(
                 {
                     "phase": "exit_to_farm",
                     "status": result.status.value if result is not None else "none",
-                    "reason": result.reason if result is not None else "",
+                    "reason": "watch window closed" if closed else (
+                        result.reason if result is not None else ""
+                    ),
                     "frames": frame,
                 }
             )
-            if result is None or result.status != TaskStatus.SUCCESS:
+            if closed or result is None or result.status != TaskStatus.SUCCESS:
                 payload = {"start": start, "journal": journal, "ok": False}
-                args.out.parent.mkdir(parents=True, exist_ok=True)
-                args.out.write_text(json.dumps(payload, indent=2) + "\n")
-                print(json.dumps(payload, indent=2))
+                _write_payload(args.out, payload)
                 return 1
 
         world = WorldState(frame=frame, ram=ram, info={}, obs=None)
         ensure = EnsureCropSeedsTask(seed_type="potato")
         ensure.reset(world)
-        frame, result, ram = _run_task(env, ensure, timeout=8_000, start_frame=frame)
+        frame, result, ram, closed = _phase(ensure, timeout=8_000, start_frame=frame)
         journal.append(
             {
                 "phase": "ensure_crop_seeds",
                 "status": result.status.value if result is not None else "none",
-                "reason": result.reason if result is not None else "",
+                "reason": "watch window closed" if closed else (
+                    result.reason if result is not None else ""
+                ),
                 "frames": frame,
                 "carry": _carry(ram),
             }
         )
-        if result is None or result.status != TaskStatus.SUCCESS:
+        if closed or result is None or result.status != TaskStatus.SUCCESS:
             payload = {
                 "start": start,
                 "journal": journal,
                 "end": {"carry": _carry(ram), "pocket": _pocket_tiles(ram)},
                 "ok": False,
             }
-            args.out.parent.mkdir(parents=True, exist_ok=True)
-            args.out.write_text(json.dumps(payload, indent=2) + "\n")
-            print(json.dumps(payload, indent=2))
+            _write_payload(args.out, payload)
             return 1
 
         if not args.skip_clear:
@@ -176,48 +253,91 @@ def main() -> int:
             )
             clear.reset(world)
             before = _debris(ram)
-            frame, result, ram = _run_task(
-                env, clear, timeout=7_000, start_frame=frame
+            frame, result, ram, closed = _phase(
+                clear, timeout=7_000, start_frame=frame
             )
             journal.append(
                 {
                     "phase": "clear_plot",
                     "status": result.status.value if result is not None else "none",
-                    "reason": result.reason if result is not None else "",
+                    "reason": "watch window closed" if closed else (
+                        result.reason if result is not None else ""
+                    ),
                     "frames": frame,
                     "cleared": max(0, len(before) - len(_debris(ram))),
                     "remaining": len(_debris(ram)),
                 }
             )
+            if closed or result is None or result.status != TaskStatus.SUCCESS:
+                payload = {
+                    "start": start,
+                    "journal": journal,
+                    "end": {"carry": _carry(ram), "pocket": _pocket_tiles(ram)},
+                    "ok": False,
+                }
+                _write_payload(args.out, payload)
+                return 1
 
         world = WorldState(frame=frame, ram=ram, info={}, obs=None)
-        plant = farm_pocket_plant_skill(seed_type="potato", include_water=False)
+        plant = farm_pocket_plant_skill(
+            seed_type="potato",
+            include_water=bool(args.water) and not args.hoe_only,
+            include_plant=not args.hoe_only,
+        )
         plant.reset(world)
         remaining = max(200, args.timeout - frame)
-        frame, result, ram = _run_task(env, plant, timeout=remaining, start_frame=frame)
+        frame, result, ram, closed = _phase(
+            plant, timeout=remaining, start_frame=frame
+        )
         pos = get_pos_from_ram(ram)
         pocket = _pocket_tiles(ram)
+        planted_n = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER)
+        tilled_n = count_ring_tilled(ram, WEST_POCKET_PLANT_CENTER)
+        wet_n = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER)
+        hour = int(read_ram_value(ram, "hour") or 0)
+        minute = int(read_ram_value(ram, "minute") or 0)
+        plant_reason = "watch window closed" if closed else (
+            result.reason if result is not None else ""
+        )
         journal.append(
             {
-                "phase": "pocket_plant",
+                "phase": "hoe_only" if args.hoe_only else "pocket_plant",
                 "status": result.status.value if result is not None else "none",
-                "reason": result.reason if result is not None else "",
+                "reason": plant_reason,
                 "frames": frame,
                 "carry": _carry(ram),
                 "pocket": pocket,
+                "planted_ring": planted_n,
+                "tilled_ring": tilled_n,
+                "wet_ring": wet_n,
+                "hour": hour,
+                "minute": minute,
             }
         )
-        planted = pocket["center_tid"] in {0x54, 0x55} or any(
-            tid in {0x54, 0x55} for row in pocket["grid"] for tid in row
-        )
         bag_spent = _carry(ram)["selected"] != 0x07 and _carry(ram)["backpack"] != 0x07
-        # One-cell D2 leaves the bag equipped when neighbors are untilled;
-        # 3x3 tape spends it. Planted dry 0x54 is the close.
-        ok = (
-            result is not None
-            and result.status == TaskStatus.SUCCESS
-            and planted
-        )
+        if closed:
+            ok = False
+        elif args.hoe_only:
+            ok = (
+                result is not None
+                and result.status == TaskStatus.SUCCESS
+                and tilled_n >= PLOT_RING_SIZE
+            )
+        elif args.water:
+            ok = (
+                result is not None
+                and result.status == TaskStatus.SUCCESS
+                and planted_n >= PLOT_RING_SIZE
+                and wet_n >= PLOT_RING_SIZE
+                and bag_spent
+            )
+        else:
+            ok = (
+                result is not None
+                and result.status == TaskStatus.SUCCESS
+                and planted_n >= PLOT_RING_SIZE
+                and bag_spent
+            )
         payload = {
             "start": start,
             "journal": journal,
@@ -226,16 +346,20 @@ def main() -> int:
                 "pos": [pos.x, pos.y],
                 "carry": _carry(ram),
                 "pocket": pocket,
-                "planted": planted,
+                "planted_ring": planted_n,
+                "tilled_ring": tilled_n,
+                "wet_ring": wet_n,
                 "bag_spent": bag_spent,
+                "hour": hour,
+                "minute": minute,
             },
             "ok": ok,
         }
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(payload, indent=2) + "\n")
-        print(json.dumps(payload, indent=2))
+        _write_payload(args.out, payload)
         return 0 if ok else 1
     finally:
+        if watch is not None:
+            watch.close()
         env.close()
 
 

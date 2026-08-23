@@ -302,15 +302,13 @@ def pocket_plant_phases() -> List[PhaseSpec]:
     Clearing the notch then walking to the shed seals the return path
     (travel BFS will not enter leftover weeds). Fetch the 2-slot pair
     first; FarmClearTask then approaches the pocket and plant starts
-    from the notch instead of the shed door.
+    from the notch instead of the shed door. Leftover smash (bushes /
+    hammer rocks / axe stumps + spa) is part of the D2 work catalog
+    (``d2_post_shop_work_phases``) so a 06:08 plan still gets it.
     """
-    return [
-        ENSURE_CROP_SEEDS_PHASE,
-        pocket_clear_phase(),
-        NAV_CROP_PHASE,
-        CROP_ESTABLISH_PHASE,
-        *crop_water_phases(include_nav=False),
-    ]
+    from harvest.planner.d2_work import d2_post_shop_work_phases
+
+    return d2_post_shop_work_phases()
 
 
 def crop_water_phases(*, include_nav: bool = True) -> List[PhaseSpec]:

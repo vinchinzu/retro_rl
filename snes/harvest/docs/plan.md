@@ -12,15 +12,17 @@ Ready work stays in beads — do not recreate a gate board.
 
 ## Bottleneck
 
-**Tip (2026-08-21):** D2 spring is **section work**, not a 3–4h soak
-(`rr-20w.2`). Issue list: [FARM_CLEAR_D2.md](FARM_CLEAR_D2.md). Nav is the
-bust: travel BFS still walks onto WEED `0x03`; stumps/rocks must stay
-non-walkable through the push-facing refactor. Ready first:
-`rr-20w.2.2` bushes travel-non-walkable + rock/stump walk lock, then
-bush-first `CLEAR_PLOT` (`rr-20w.2.3`). Do **not** restore a morning
-whole-farm wipe (shop splice → pocket plant is the D2 path). Grape+shop+
-one-cell plant stay GREEN (`rr-zmss` / `rr-20w.1`). Gate B residual remains
-`rr-3ae8` / `rr-yuel` / `rr-rzpd`.
+**Tip (2026-08-23):** D2 work catalog is `harvest.planner.d2_work` (shop
+splice concatenates plant+water+leftover so a 06:08 plan still gets smash).
+Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer),
+**4** large 2×2, **2** stumps (axe). Spa when stamina cannot finish an
+8-swing 2×2. Do **not** restore a morning whole-farm wipe. Grape+shop+
+one-cell plant stay GREEN (`rr-zmss` / `rr-20w.1`). Power-on compose of that
+spine is GREEN with **2** potatoes. Next live pin: `d2_plant_probe` from
+`Y1_After_Buy_Potato` plants 8 + waters 8 (`rr-m7mk` / `rr-bvam`); leftover
+quota smash is `rr-w14t` / `rr-20w.2.8`. Hammer/axe RAM shelf is GREEN
+(`rr-5aaw`). Do not redo power-on until the 3x3 probe is green. Gate B
+residual remains `rr-3ae8` / `rr-yuel` / `rr-rzpd`.
 
 **Already closed (do not re-open as bottleneck):**
 
