@@ -144,11 +144,10 @@ deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
 `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4.
 Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
 `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
-`--through level6-stairs09` red v1–v8. v8 leftover `(192,97)` tile 119
-(0x77) **on** the NE hole, mode 5 (hold-UP 1px short of 96). NE graphic
-is decorative (0x77 / 0x73). Next `l6_stairs09_continuous_v9` idle east
-door `(208,141)`. Map stays skipped. Gohma / TF `0x20` residual. Do not
-grant Map/Rod.
+`--through level6-stairs09` red v1–v11. v9 vacated `(96,145)` tile 119
+yo-yo; v10 no live pair 0x68; v11 idle NW `(48,109)` tile 118 mode 5.
+NE hole decorative. Next `l6_stairs09_continuous_v12` idle SW `(48,173)`.
+Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
