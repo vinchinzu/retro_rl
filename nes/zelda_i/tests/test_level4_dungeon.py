@@ -351,7 +351,7 @@ def test_factories() -> None:
 
 
 def test_stepladder_settle_walks_west_aisle_to_spawn() -> None:
-    """Continuous 0x60 leftover (48,133) must PATH south to the notch, not hunt."""
+    """Continuous 0x60 leftover (48,133) must PATH north to strip, not hunt."""
     import numpy as np
 
     from zelda_i.level4_stepladder import MAZE_60_SETTLE, StepladderPhase
@@ -380,7 +380,7 @@ def test_stepladder_settle_walks_west_aisle_to_spawn() -> None:
     assert act.reason == "join_clip_y"
     ram[ADDR_LINK_Y] = 69
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_clip_y"
+    assert act.reason == "clip_leftup68"
     ne = make_stepladder_controller(clear_first=False)
     ne.phase = StepladderPhase.SETTLE_STAIRS
     ne.phase_frames = MAZE_60_SETTLE
@@ -392,7 +392,7 @@ def test_stepladder_settle_walks_west_aisle_to_spawn() -> None:
 
 
 def test_stepladder_notch_stall_fails_without_bfs() -> None:
-    """SW-notch miss fail-closes; do not fall through to emulator BFS."""
+    """North-strip LEFT+UP miss fail-closes; do not fall through to BFS."""
     import numpy as np
 
     from zelda_i.level4_occupancy import ROOM_60_CLIP_BUDGET
@@ -408,17 +408,17 @@ def test_stepladder_notch_stall_fails_without_bfs() -> None:
 
     ctl = make_stepladder_controller(clear_first=False)
     ctl.phase = StepladderPhase.PATH
-    ctl._last_xy = (80, 189)
+    ctl._last_xy = (48, 68)
     ctl._stall = ROOM_60_CLIP_BUDGET
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = 9
     ram[ADDR_LEVEL] = 4
     ram[ADDR_SCREEN] = 0x60
-    ram[ADDR_LINK_X] = 80
-    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 68
     act = ctl.step(read_snapshot(ram))
     assert ctl.phase is StepladderPhase.FAILED
-    assert act.reason.startswith("corner80_solid_80_189")
+    assert act.reason.startswith("leftup68_solid_48_68")
 
 
 def test_maze_62_paths() -> None:

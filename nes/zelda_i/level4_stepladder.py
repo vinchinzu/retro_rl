@@ -573,7 +573,7 @@ class Level4StepladderController:
     """0x32 clear → push left block → stairs 0x60 → ADDR_LADDER (rr-tib8).
 
     Live dual-green: stand ~(120,141) hold LEFT; approach ~(208,96) hold UP into
-    mode-9 0x60; v19 RIGHT+UP at south-corridor SW water corner (80,189). No BFS.
+    mode-9 0x60; v26 LEFT+UP at north-strip (48,68). No BFS.
     """
 
     clear_first: bool = True
@@ -809,11 +809,11 @@ class Level4StepladderController:
                 self._stall >= ROOM_60_CLIP_BUDGET
                 or self.hold_left >= ROOM_60_CLIP_BUDGET
             ):
-                self._sample(snap, "corner80_solid")
-                return self._fail(f"corner80_solid_{xy[0]}_{xy[1]}")
+                self._sample(snap, "leftup68_solid")
+                return self._fail(f"leftup68_solid_{xy[0]}_{xy[1]}")
             self.hold_left += 1
             a, b = ROOM_60_CLIP_BUTTONS
-            return FrameAction(nes_action(a, b), "clip_corner80")
+            return FrameAction(nes_action(a, b), "clip_leftup68")
 
         if self.phase is StepladderPhase.HUNT:
             if snap.mode in (4, 6, 7) or snap.transitioning:

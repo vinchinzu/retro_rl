@@ -1,4 +1,4 @@
-"""0x60 occupancy seed (no emulator). SW-notch clip, not live BFS."""
+"""0x60 occupancy seed (no emulator). North-strip LEFT+UP, not live BFS."""
 
 from __future__ import annotations
 
@@ -40,6 +40,8 @@ def test_room_60_grid_blocks_live_solids() -> None:
     assert grid.passable(*ROOM_60_ISLAND_XY)
     assert grid.passable(168, 189)
     assert grid.passable(*ROOM_60_CLIP_STAND)
+    assert not grid.passable(84, 190)
+    assert not grid.passable(88, 190)
 
 
 def test_room_60_no_cardinal_path_after_v16() -> None:
@@ -49,12 +51,18 @@ def test_room_60_no_cardinal_path_after_v16() -> None:
         (48, 133),
         ROOM_60_SPAWN_XY,
         (48, 68),
+        (48, 65),
+        (48, 71),
+        (48, 130),
         (48, 157),
+        (48, 161),
+        (48, 165),
         ROOM_60_CLIP_STAND,
         (48, 159),
         (48, 189),
         (80, 189),
         (84, 189),
+        (88, 189),
         (136, 189),
         (160, 189),
         (168, 189),
@@ -62,11 +70,11 @@ def test_room_60_no_cardinal_path_after_v16() -> None:
         assert grid.shortest_path(start, goal) is None, start
 
 
-def test_room_60_waypoints_are_sw_notch() -> None:
+def test_room_60_waypoints_are_north_leftup() -> None:
     assert ROOM_60_WAYPOINTS[0] == ROOM_60_CLIP_STAND
-    assert ROOM_60_CLIP_STAND == (80, 189)
+    assert ROOM_60_CLIP_STAND == (48, 68)
     assert ROOM_60_WAYPOINTS[-1] == LADDER_60_PICKUP_XY
-    assert ROOM_60_CLIP_BUTTONS == ("RIGHT", "UP")
+    assert ROOM_60_CLIP_BUTTONS == ("LEFT", "UP")
 
 
 def test_room_60_walker_from_spawn_stands() -> None:
@@ -75,7 +83,7 @@ def test_room_60_walker_from_spawn_stands() -> None:
     assert walker.next_dir(ROOM_60_CLIP_STAND) is None
 
 
-def test_stepladder_path_joins_notch_and_clips() -> None:
+def test_stepladder_path_clips_north_leftup() -> None:
     from zelda_i.level4_stepladder import StepladderPhase
 
     ctl = make_stepladder_controller(clear_first=False)
@@ -87,20 +95,17 @@ def test_stepladder_path_joins_notch_and_clips() -> None:
     ram[ADDR_LINK_X] = 48
     ram[ADDR_LINK_Y] = 69
     act = ctl.step(read_snapshot(ram))
+    assert act.reason == "clip_leftup68"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    ram[ADDR_LINK_Y] = 133
+    act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_clip_y"
-    ram[ADDR_LINK_Y] = 189
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_clip_x"
-    ram[ADDR_LINK_X] = 80
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "clip_corner80"
-    assert list(act.action) == list(nes_action("RIGHT", "UP"))
     ctl2 = make_stepladder_controller(clear_first=False)
     ctl2.phase = StepladderPhase.PATH
-    ctl2._last_xy = (80, 189)
+    ctl2._last_xy = (48, 68)
     ctl2._stall = 96
-    ram[ADDR_LINK_X] = 80
-    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 68
     act = ctl2.step(read_snapshot(ram))
     assert ctl2.phase is StepladderPhase.FAILED
-    assert act.reason.startswith("corner80_solid_80_189")
+    assert act.reason.startswith("leftup68_solid_48_68")
