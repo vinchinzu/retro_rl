@@ -111,11 +111,12 @@ column, then south-U waypoints into `0x32` at `(16,141)` in 376f.
 Continuous `l4_clear32_continuous_v1` clears 2× Zol + 2× LikeLike from
 leftover `(16,141)` in 3,812f (ignore `0x2b`/`0x68`); leftover `(80,109)`.
 `--through level4-stepladder` is wired (`clear_first=False`) but live-blocked
-v1–v11: push enters `0x60` mode-9 leftover `(48,133)`; west-aisle RIGHT
-solid, south-corridor UP solid, RIGHT+UP/DOWN clips miss, token
-`MAZE_60_TO_LADDER` hits the `0x32` exit. Isolated BFS from `(48,69)` is
-banned. Next is a coordinate causeway onto the island / `ADDR_LADDER`;
-do not use checkpoint-mediated/emulator-state BFS.
+v1–v16: push enters `0x60` mode-9. v11 leftover `(48,133)` mid-aisle clips.
+v12 leftover `(48,68)` north-wall RIGHT solid. v13–v15 south-corridor UP
+solid at x=152/160/168 leftover `(168,189)`. v16 y=158 gap RIGHT solid
+leftover `(48,157)`. Isolated BFS from `(48,69)` is banned. Next is a
+non-cardinal causeway onto the island / `ADDR_LADDER`; do not use
+checkpoint-mediated/emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

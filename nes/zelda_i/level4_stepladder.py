@@ -12,6 +12,12 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon import DungeonPhase, GenericDungeonRoomController
+from zelda_i.level4_north30 import (
+    Level4North30Controller,
+    North30Phase,
+    make_north_30_controller,
+)
+from zelda_i.level4_occupancy import ROOM_60_WAYPOINTS
 from zelda_i.level4_dungeon import (
     KEY_30_EAST_Y,
     KEY_30_EAST_Y_TOL,
@@ -25,7 +31,6 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_EAST_32,
     ROOM_L4_NORTH_30,
     ROOM_L4_STEPLADDER,
-    ROOM_L4_ZOLS_40,
     STAIRS_32_APPROACH,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -42,15 +47,17 @@ STAIRS_32_PUSH_FRAMES = 120
 MAZE_60_HOLD = 4
 MAZE_60_SPAWN_XY = (48, 69)
 MAZE_60_SETTLE = 30
-# 0x31-style clips. Cardinals miss (v6–v8); v9 RIGHT+UP at y=133 oscillates.
-CLIP_60: tuple[tuple[int, str], ...] = (
-    (133, "UP"),
-    (133, "DOWN"),
-    (125, "UP"),
-    (141, "DOWN"),
-    (117, "UP"),
+# v13: UP at x=152 y=189 is solid; UP+LEFT slides west. Clip on the stairs
+# column (x=160) with UP, then LEFT+UP once y drops (do not LEFT on y=189).
+CLIP_60: tuple[tuple[int, str, str], ...] = (
+    (189, "UP", "RIGHT"),
+    (173, "UP", "LEFT"),
+    (157, "LEFT", "UP"),
+    (173, "LEFT", "UP"),
+    (157, "UP", "LEFT"),
 )
 CLIP_60_BUDGET = 48
+CLIP_60_OPEN_X = 54
 CLIP_60_EXIT_X = 176
 MAZE_60_TO_LADDER: tuple[str, ...] = (
     "UP",
@@ -571,7 +578,7 @@ class Level4StepladderController:
     """0x32 clear → push left block → stairs 0x60 → ADDR_LADDER (rr-tib8).
 
     Live dual-green: stand ~(120,141) hold LEFT; approach ~(208,96) hold UP into
-    mode-9 0x60; follow ``MAZE_60_TO_LADDER`` hold4 to pedestal ~(136,141).
+    mode-9 0x60; occupancy waypoints along stairs-column x=160 UP to pedestal.
     """
 
     clear_first: bool = True
@@ -793,40 +800,45 @@ class Level4StepladderController:
         if self.phase is StepladderPhase.PATH:
             if snap.mode in (4, 6, 7) or snap.transitioning:
                 return FrameAction(nes_idle_action(), "path_settle")
-            # Stay in basement; if we fell back to 0x32, fail (need re-enter).
             if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
                 self._sample(snap, "path_exited_to_0x32")
                 return self._fail("path_exited_to_0x32")
             if snap.screen != ROOM_L4_STEPLADDER and snap.mode != 9:
                 return self._fail(f"path_wrong_room_0x{snap.screen:02x}")
-            if xy[0] > 72 and xy[0] < CLIP_60_EXIT_X:
-                self._sample(snap, f"clip_open_{xy[0]}_{xy[1]}")
-                self._set_phase(StepladderPhase.HUNT, "clip_open")
-                return FrameAction(nes_idle_action(), "clip_open")
-            if self.probe_i >= len(CLIP_60):
-                self._sample(snap, "clips_done")
-                return self._fail(f"clips_exhausted_{xy[0]}_{xy[1]}")
-            gy, second = CLIP_60[self.probe_i]
             if xy[0] >= CLIP_60_EXIT_X:
                 self._sample(snap, f"clip_exit_{xy[0]}_{xy[1]}")
                 return self._fail(f"clip_exit_{xy[0]}_{xy[1]}")
-            if abs(xy[0] - MAZE_60_SPAWN_XY[0]) > 6:
-                d = "RIGHT" if xy[0] < MAZE_60_SPAWN_XY[0] else "LEFT"
-                return FrameAction(nes_action(d), "clip_aisle_x")
-            if abs(xy[1] - gy) > 8:
-                d = "DOWN" if xy[1] < gy else "UP"
-                return FrameAction(nes_action(d), "clip_aisle_y")
-            self.hold_left += 1
-            if self.hold_left >= CLIP_60_BUDGET:
-                self._sample(snap, f"clip_miss_{self.probe_i}_{xy[0]}_{xy[1]}")
-                self.probe_i += 1
-                self.hold_left = 0
-                return FrameAction(nes_idle_action(), "clip_next")
-            if abs(xy[1] - gy) > 4:
-                d = "DOWN" if xy[1] < gy else "UP"
-                return FrameAction(nes_action(d), "clip_aisle_y")
-            self._sample(snap, f"clip_{second}")
-            return FrameAction(nes_action("RIGHT", second), "clip_right_diag")
+            tx, ty = LADDER_60_PICKUP_XY
+            if abs(xy[0] - tx) <= 6 and abs(xy[1] - ty) <= 6:
+                self._set_phase(StepladderPhase.HUNT, "at_pedestal")
+                return FrameAction(nes_idle_action(), "at_pedestal")
+            if 150 <= xy[1] <= 164 and xy[0] > CLIP_60_OPEN_X:
+                self.path_index = max(self.path_index, 1)
+            if abs(xy[1] - 158) <= 4 and xy[0] <= CLIP_60_OPEN_X and self._stall >= CLIP_60_BUDGET:
+                self._sample(snap, "gap158_solid")
+                return self._fail(f"gap158_solid_{xy[0]}_{xy[1]}")
+            if xy[1] >= 165 and xy[0] >= 164 and self._stall >= CLIP_60_BUDGET:
+                self._sample(snap, "stairs_up_solid")
+                return self._fail(f"stairs_up_solid_{xy[0]}_{xy[1]}")
+            if self.probe_i >= len(CLIP_60):
+                self._sample(snap, "clips_done")
+                return self._fail(f"clips_exhausted_{xy[0]}_{xy[1]}")
+            if self._stall >= CLIP_60_BUDGET:
+                gy, a, b = CLIP_60[self.probe_i]
+                if abs(xy[1] - gy) > 4:
+                    d = "DOWN" if xy[1] < gy else "UP"
+                    return FrameAction(nes_action(d), "clip_aisle_y")
+                self._sample(snap, f"clip_{a}_{b}")
+                self.hold_left += 1
+                if self.hold_left >= CLIP_60_BUDGET:
+                    self._sample(snap, f"clip_miss_{self.probe_i}_{xy[0]}_{xy[1]}")
+                    self.probe_i += 1
+                    self.hold_left = 0
+                    return FrameAction(nes_idle_action(), "clip_next")
+                return FrameAction(nes_action(a, b), "clip_se_diag")
+            if xy[0] > CLIP_60_OPEN_X:
+                self._sample(snap, "strip_open")
+            return self._follow_60_waypoints(xy)
 
         if self.phase is StepladderPhase.HUNT:
             if snap.mode in (4, 6, 7) or snap.transitioning:
@@ -842,15 +854,20 @@ class Level4StepladderController:
                     self._set_phase(StepladderPhase.DONE, "ladder_pedestal")
                     return FrameAction(nes_idle_action(), "done")
                 return FrameAction(nes_idle_action(), "hunt_idle")
-            # South corridor: UP is water, RIGHT is 0x32 exit. Return west+north.
             if snap.link_y >= 165:
                 if snap.link_x > 54:
                     return FrameAction(nes_action("LEFT"), "hunt_south_back_west")
                 return FrameAction(nes_action("UP"), "hunt_south_back_north")
             if snap.link_x >= 168 and snap.link_y >= 150:
                 return FrameAction(nes_action("LEFT"), "hunt_avoid_exit")
-            # East of the west aisle: stay on the stub, x-first to the pedestal.
-            if snap.link_x > 72:
+            # SE corridor: stay west of the exit; UP toward the island.
+            if snap.link_y >= 165 and snap.link_x < CLIP_60_EXIT_X:
+                if snap.link_x < 168:
+                    return FrameAction(nes_action("RIGHT"), "hunt_se_east")
+                if snap.link_x >= 174:
+                    return FrameAction(nes_action("LEFT"), "hunt_se_off_exit")
+                return FrameAction(nes_action("UP"), "hunt_se_up")
+            if snap.link_x > CLIP_60_OPEN_X:
                 if abs(dx) > 6:
                     return FrameAction(
                         nes_action("RIGHT" if dx > 0 else "LEFT"), "hunt_x"
@@ -859,11 +876,8 @@ class Level4StepladderController:
                     return FrameAction(
                         nes_action("DOWN" if dy > 0 else "UP"), "hunt_y"
                     )
-            if snap.link_y < 120 and snap.link_x > 72:
-                return FrameAction(nes_action("LEFT"), "hunt_north_to_west")
-            if snap.link_x <= 72 and snap.link_y < 125:
-                return FrameAction(nes_action("DOWN"), "hunt_west_to_south")
-            # Layered basement: drop off the north ledge before east-west.
+            if snap.link_x <= CLIP_60_OPEN_X:
+                return FrameAction(nes_action("DOWN"), "hunt_aisle_south")
             if abs(dy) > 8:
                 return FrameAction(
                     nes_action("DOWN" if dy > 0 else "UP"), "hunt_y_first"
@@ -892,108 +906,27 @@ class Level4StepladderController:
             "samples": list(self.samples),
         }
 
+    def _follow_60_waypoints(self, xy: tuple[int, int]) -> FrameAction:
+        """y=158 gap: between west-brick and south-water, then UP to pedestal."""
+        if self.path_index >= len(ROOM_60_WAYPOINTS):
+            self._set_phase(StepladderPhase.HUNT, "waypoints_done")
+            return FrameAction(nes_idle_action(), "waypoints_done")
+        if xy[0] <= CLIP_60_OPEN_X:
+            if xy[1] < 155:
+                return FrameAction(nes_action("DOWN"), "join_gap158_y")
+            if xy[1] > 161:
+                return FrameAction(nes_action("UP"), "join_gap158_y")
+        wx, wy = ROOM_60_WAYPOINTS[self.path_index]
+        if abs(xy[0] - wx) <= 4 and abs(xy[1] - wy) <= 4:
+            self.path_index += 1
+            return FrameAction(nes_idle_action(), "wp_next")
+        if abs(xy[1] - wy) > 4:
+            d = "DOWN" if xy[1] < wy else "UP"
+            return FrameAction(nes_action(d), "wp_y")
+        d = "RIGHT" if xy[0] < wx else "LEFT"
+        return FrameAction(nes_action(d), "wp_x")
+
 
 def make_stepladder_controller(*, clear_first: bool = True) -> Level4StepladderController:
     """0x32 → push left block → 0x60 → ADDR_LADDER (rr-tib8)."""
     return Level4StepladderController(clear_first=clear_first)
-
-
-# --- 0x40 cleared+key → free UP → 0x30 (rr-q8eq) ---
-
-
-class North30Phase(Enum):
-    ALIGN = auto()
-    PUSH = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class Level4North30Controller:
-    """From cleared 0x40: center x≈120, push UP into 0x30 play-ready.
-
-    Live (rr-q8eq dense BFS): free north from north-band y≤68 @ x≈120.
-    0x30 has 3× Vire ``0x12`` + 2× invuln residual ``0x2b``.
-    """
-
-    max_frames: int = 4000
-    phase: North30Phase = North30Phase.ALIGN
-    frames: int = 0
-    phase_frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-
-    def _set_phase(self, phase: North30Phase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            if note:
-                self.notes.append(note)
-
-    def _fail(self, note: str) -> FrameAction:
-        self._set_phase(North30Phase.FAILED, note)
-        return FrameAction(nes_idle_action(), note)
-
-    def _entered_30(self, snap: ZeldaSnapshot) -> bool:
-        return (
-            snap.level == LEVEL4
-            and snap.screen == ROOM_L4_NORTH_30
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-        )
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-
-        if self.phase is North30Phase.DONE:
-            return FrameAction(nes_idle_action(), "done")
-        if self.phase is North30Phase.FAILED:
-            return FrameAction(nes_idle_action(), "failed")
-        if snap.mode == 17:
-            return self._fail("link_death")
-        if self.frames >= self.max_frames:
-            return self._fail("timeout")
-
-        if self._entered_30(snap):
-            self.success = True
-            self._set_phase(North30Phase.DONE, "entered_0x30")
-            return FrameAction(nes_idle_action(), "done")
-
-        if snap.level != LEVEL4:
-            return FrameAction(nes_idle_action(), "wait_level4")
-        if snap.transitioning or snap.mode in (4, 6, 7):
-            return FrameAction(nes_action("UP"), "scroll_up")
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-
-        if snap.screen == ROOM_L4_NORTH_30:
-            self.success = True
-            self._set_phase(North30Phase.DONE, "on_0x30")
-            return FrameAction(nes_idle_action(), "done")
-
-        if snap.screen != ROOM_L4_ZOLS_40:
-            return self._fail(f"wrong_room_0x{snap.screen:02x}")
-
-        if abs(snap.link_x - 120) > 6:
-            self._set_phase(North30Phase.ALIGN, "align_x")
-            return FrameAction(
-                nes_action("RIGHT" if snap.link_x < 120 else "LEFT"),
-                "align_x",
-            )
-        self._set_phase(North30Phase.PUSH, "push_up")
-        return FrameAction(nes_action("UP"), "push_up_north")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "segment": "level4_north_0x30",
-            "target_room": f"0x{ROOM_L4_NORTH_30:02x}",
-        }
-
-
-def make_north_30_controller() -> Level4North30Controller:
-    return Level4North30Controller()
