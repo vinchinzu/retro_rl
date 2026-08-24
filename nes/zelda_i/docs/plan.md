@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — enter `0x21` v22; map pickup **blocked** (west vestibule east-sealed v1–v12) |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — map pickup v15 2/2 (`ADDR_MAP|0x08` at `(208,181)`); next bomb-UP `0x11` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -244,13 +244,15 @@ y=109 (16px spine). v21 RIGHT+DOWN from `(200,96)` clips into x=208.
 
 PNGs: `recordings/l4_room21_continuous_v{1..22}_final.png`.
 
-`--through level4-map` is **blocked** from leftover `(16,141)` play `0x21`
-(dark; no candle). West door is a N-S vestibule x=16–48, y=93–189, east
-wall at x=49 on every band tried. Isolated `MAP_21_SAMPLE_PATH` is
-state-BFS after gel thrash (knockback / `set_state`) — same class as
-banned 0x60 ladder BFS. Pickup `(208,181)` / bomb-stand `(120,105)` are
-not 4-connected from this vestibule. Do not call `level4_room_nav`.
-Do not close `.6` until TF `0x08`.
+`--through level4-map` is **2/2** on `l4_map_continuous_v15` (and `v15b`):
+dark leftover `(16,141)` → spawn RIGHT+UP to `(48,93)` → RIGHT+DOWN clip
+into the maze → `ADDR_MAP|0x08` at `(208,181)` in 297f; map=`0x0A`;
+122,072f; deaths/progression/capacity 0; no state load. Isolated
+`MAP_21_SAMPLE_PATH` is still state-BFS after gel thrash — not this tape.
+Cardinal RIGHT at y=109 is still the vestibule wall; the exit is the
+two-button clip from the north strip, not occupancy 4-connected. PNG
+interior stays black (no candle). Do not call `level4_room_nav`. Do not
+close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -266,11 +268,14 @@ Do not close `.6` until TF `0x08`.
 | pick v10 | `0x21` `(48,173)` map_solid | DOWN at x=32 then RIGHT at y=173 |
 | pick v11 | `0x21` `(48,189)` map_solid | south band y=189 then RIGHT |
 | pick v12 | `0x21` `(32,189)` map_solid | RIGHT+DOWN clip at SE corner |
+| pick v13 | `0x21` `(48,125)` map_solid | 0x31 x≥40 off-band exit, then cardinal RIGHT |
+| pick v14 | `0x21` `(48,109)` map_solid | spawn RIGHT+UP lands `(48,93)`; DOWN then cardinal RIGHT |
+| pick v15 | `0x21` `(208,181)` **map bit** | RIGHT+DOWN from `(48,93)` clips east; hop 297f 2/2 |
 
-PNGs: `recordings/l4_map_continuous_v{1..12}_final.png`. Wired
+PNGs: `recordings/l4_map_continuous_v{1..15}_final.png`. Wired
 `--through level4-map` stop is `ADDR_MAP & 0x08` on play `0x21` (not
-gel-clear). Next: a pose that is actually in the maze, not gel-knockback
-HUNT. Do not close `.6` until TF `0x08`.
+gel-clear). Next: bomb-UP `0x11` stand `(120,105)` from this leftover.
+Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -349,8 +354,8 @@ keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
 `0x32→0x31` leftover `(208,141)`. Live v1 KEY-UP `0x30→0x20` leftover
 `(120,205)` keys 5→4. Live 0x20 Vire clear 1249f. Live v22
-`0x20→0x21` leftover `(16,141)` play `0x21`. Map pickup from that west
-vestibule is blocked (v12 leftover `(32,189)`). Do **not** call
+`0x20→0x21` leftover `(16,141)` play `0x21`. Map pickup is on the tape
+(v15 2/2 leftover `(208,181)`, `ADDR_MAP|0x08`). Do **not** call
 `_bfs_60_to_ladder` or `level4_room_nav` / map_21 state-BFS. Do not
 close `.6` until TF `0x08`.
 
@@ -363,13 +368,13 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   --tag l4_room21_continuous_v22
 ```
 
-Map-pickup stop (currently fail-closed from the vestibule):
+Map-pickup stop (verified v15 2/2):
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-map --no-video --trials 1 \
-  --tag l4_map_continuous_v12
+  --tag l4_map_continuous_v15
 ```
 Isolated 0x6b check:
 

@@ -47,6 +47,7 @@
 | Power-on → L4 west `0x32→0x31` | **1/1 continuous Survival**; south-U around pushed 0x68; 119,211f hop 405f; leftover `(208,141)` play `0x31`; TF=`0x07`, keys=5, bombs=15, ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_west31_continuous_v1.json` / `_final.png` |
 | Power-on → L4 KEY-UP `0x20` | **1/1 continuous Survival**; reverse 0x31 maze east-U + clip + inland west, KEY-UP @x120; 120,079f hop 868f; leftover `(120,205)` play `0x20`; keys 5→4; TF=`0x07`, bombs=15, ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_keyup20_continuous_v1.json` / `_final.png` |
 | Power-on → L4 enter `0x21` | **1/1 continuous Survival**; 0x20 Vire clear then north-around + RIGHT+DOWN clip + y=141 RIGHT; 121,775f hop 447f; leftover `(16,141)` play `0x21`; keys=4 bombs=15 TF=`0x07` ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_room21_continuous_v22.json` / `_final.png` |
+| Power-on → L4 map `0x21` | **2/2 continuous Survival**; spawn RIGHT+UP to `(48,93)` then RIGHT+DOWN clip; `ADDR_MAP|0x08` at `(208,181)` in 297f; 122,072f; map=`0x0A`; keys=4 bombs=15 TF=`0x07` ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_map_continuous_v15.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -60,7 +61,9 @@ not Clean. The continuous spine now holds the natural `0x40` key and has
 cleared `0x32`, collected `ADDR_LADDER` on `0x60`, exited to play `0x32`,
 and walked west into `0x31` then KEY-UP `0x20` `(120,205)` keys 5→4. 0x20
 Vire clear and `0x20→0x21` are on the continuous tape (`l4_room21_continuous_v22`,
-leftover `(16,141)` play `0x21`). Do not close `.6` until TF `0x08`.
+leftover `(16,141)` play `0x21`). Map pickup is on the tape
+(`l4_map_continuous_v15` 2/2, `(208,181)`, map=`0x0A`). Do not close `.6`
+until TF `0x08`.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
@@ -324,13 +327,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level4-room21` is the last green
-   gate (`0x21` `(16,141)`, v22). Map pickup on dark `0x21` is **blocked**
-   (west vestibule east-sealed, leftover `(32,189)` v12). Isolated BFS
-   is still not a spine path. See `docs/plan.md`. Isolated `Level3*` pins
-   do not close spine beads. No seamed compose. Bomb/key count pokes are
-   documented Survival shortcuts, not Clean. Do not close `.6` until TF
-   `0x08`.
+1. **Active Survival tip:** `--through level4-map` is the last green gate
+   (`0x21` `(208,181)`, `ADDR_MAP|0x08`, v15 2/2). Next is bomb-UP `0x11`
+   stand `(120,105)`. Isolated BFS is still not a spine path. See
+   `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
+   seamed compose. Bomb/key count pokes are documented Survival shortcuts,
+   not Clean. Do not close `.6` until TF `0x08`.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
