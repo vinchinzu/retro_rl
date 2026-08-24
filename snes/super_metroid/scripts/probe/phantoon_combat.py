@@ -503,26 +503,8 @@ def cmd_window(args: argparse.Namespace) -> int:
                 _wait_window_closed(session)
             if int(session.state.health) <= 20:
                 break
-            # Farm after W1 and after W2 (health 164) so W3 does not eat to 44.
-            if index in (1, 2) or (
-                index > 2 and int(session.state.health) <= 100
-            ):
-                farm = _farm_flames(
-                    session, strategy, frames=2000, stop_health=250
-                )
-                if windows:
-                    windows[-1]["farm_between"] = farm
-                if int(session.state.health) == 0:
-                    break
             result = _one_window(session, wait=args.wait, strategy=strategy)
             windows.append(result)
-            if (
-                index == 1
-                and result["success"]
-                and int(session.state.health) < 100
-            ):
-                result["note"] = "W2 health<100 — halt"
-                break
             if not result["success"]:
                 from retro_harness.actions import idle_action
 
@@ -561,6 +543,8 @@ def cmd_window(args: argparse.Namespace) -> int:
                 "pre_hp": w["pre_fire"]["enemy0_hp"],  # type: ignore[index]
                 "post_hp": w["post_fire"]["enemy0_hp"],  # type: ignore[index]
                 "shots": w["shots_counted"],
+                "health": w["health"],
+                "health_in": w["pre_fire"]["health"],  # type: ignore[index]
                 "seated": w["returned_seated"],
                 "spends": [
                     {
