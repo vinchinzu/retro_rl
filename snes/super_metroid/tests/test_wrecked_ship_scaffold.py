@@ -1,4 +1,4 @@
-"""Unit locks for Wrecked Ship: Entrance→Main product + remaining scaffolds."""
+"""Unit locks for Wrecked Ship: Entrance→Main, Main→basement, Basement→Phantoon room."""
 
 from __future__ import annotations
 
@@ -43,7 +43,9 @@ def test_ws_entrance_to_main_is_not_scaffold() -> None:
     assert "_scaffold_exit" not in basement
     assert "play_script" in basement
     assert sum(n for n, _b in wrecked_ship._WS_MAIN_RLE) == 1091
-    assert "_scaffold_exit" in phant
+    assert "_scaffold_exit" not in phant
+    assert "wait_ordinary_room" in phant
+    assert "Do not fight" in phant or "do not fight" in phant.lower()
 
 
 def test_moat_to_ws_compose_and_phantoon_recording_wire() -> None:
@@ -75,6 +77,10 @@ def test_moat_to_ws_compose_and_phantoon_recording_wire() -> None:
     basement_leave = get_source("post_ws_main_to_basement")
     assert basement_leave.room_id == 0xCC6F
     assert basement_leave.relative_path.endswith("post_ws_main_to_basement.state")
+
+    phant_leave = get_source("post_ws_basement_to_phantoon")
+    assert phant_leave.room_id == 0xCD13
+    assert phant_leave.relative_path.endswith("post_ws_basement_to_phantoon.state")
 
 
 class _FakeSession:
@@ -197,7 +203,8 @@ def test_ws_main_action_supers_green_floor_door() -> None:
     )
     shot = wrecked_ship.ws_main_to_basement_action(supers)
     assert "X" in shot
-    assert "DOWN" in shot
+    assert "L" in shot
+    assert "DOWN" not in shot  # DOWN+X morphs; L is shoulder aim-down
     assert "SELECT" not in shot
     # Floor door — not a horizontal Super.
     assert shot != ("RIGHT", "X")
@@ -328,3 +335,157 @@ def test_play_ws_entrance_to_main_selects_beam_then_blue_exit(
     assert seen["exit"]["to_room"] == 0xCAF6
     assert seen["exit"]["direction"] == "RIGHT"
     assert wrecked_ship.ws_entrance_main_settled(out)
+
+
+def test_ws_basement_phantoon_settled_requires_gs8() -> None:
+    trans = _state(
+        room_id=0xCD13, game_state=11, door_transition=1, samus_x=40, samus_y=139
+    )
+    assert not wrecked_ship.ws_basement_phantoon_settled(trans)
+    gs11 = replace(trans, game_state=11, door_transition=0)
+    assert not wrecked_ship.ws_basement_phantoon_settled(gs11)
+    ordinary = replace(trans, game_state=8, door_transition=0)
+    assert wrecked_ship.ws_basement_phantoon_settled(ordinary)
+    still_basement = _state(room_id=0xCC6F, game_state=8, door_transition=0)
+    assert not wrecked_ship.ws_basement_phantoon_settled(still_basement)
+
+
+def test_ws_basement_bomb_and_eye_seats() -> None:
+    pin = _state(room_id=0xCC6F, samus_x=657, samus_y=92, pose=24, game_state=8)
+    assert not wrecked_ship.at_ws_basement_bomb_blocks(pin)
+    assert not wrecked_ship.at_ws_basement_eye_seat(pin)
+    bomb = _state(
+        room_id=0xCC6F,
+        samus_x=1051,
+        samus_y=201,
+        pose=30,
+        game_state=8,
+    )
+    assert wrecked_ship.at_ws_basement_bomb_blocks(bomb)
+    eye = _state(
+        room_id=0xCC6F,
+        samus_x=1180,
+        samus_y=201,
+        pose=30,
+        game_state=8,
+    )
+    assert wrecked_ship.at_ws_basement_eye_seat(eye)
+    wrong = _state(room_id=0xCD13, samus_x=1180, samus_y=201)
+    assert not wrecked_ship.at_ws_basement_eye_seat(wrong)
+
+
+def test_ws_basement_product_morph_bombs_are_x_not_a() -> None:
+    from super_metroid.routes.kpdr.k6 import ws_basement as k6ws
+
+    assert "ensure_morph" in inspect.getsource(k6ws)
+    bomb_src = inspect.getsource(k6ws._bomb_tunnel)
+    assert "hold(session, 3, \"X\"" in bomb_src
+    assert 'reason=f"{label}_bomb"' in bomb_src
+    # Morph bombs are X. A is jump — must not be the bomb button.
+    assert "hold(session, 3, \"A\"" not in bomb_src
+
+
+def test_ws_basement_product_never_uses_l_as_left() -> None:
+    from super_metroid.routes.kpdr.k6 import ws_basement as k6ws
+
+    src = inspect.getsource(k6ws)
+    assert 'hold(session, 1, "L"' not in src
+    assert 'hold(session, 12, "L"' not in src
+    assert '"LEFT"' not in inspect.getsource(k6ws._run_to_morph_seat)
+    assert "Map station LEFT is dead" in k6ws.play_ws_basement_to_phantoon.__doc__
+
+
+def test_play_ws_basement_to_phantoon_already_settled() -> None:
+    session = _FakeSession(
+        _state(
+            room_id=0xCD13,
+            samus_x=39,
+            samus_y=139,
+            pose=1,
+            game_state=8,
+            door_transition=0,
+        )
+    )
+    out = wrecked_ship.play_ws_basement_to_phantoon(session)
+    assert wrecked_ship.ws_basement_phantoon_settled(out)
+    assert session.frame == 0
+
+
+def test_play_ws_basement_to_phantoon_lands_morphs_supers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.k6 import ws_basement as k6ws
+
+    session = _FakeSession(
+        _state(
+            room_id=0xCC6F,
+            samus_x=657,
+            samus_y=92,
+            pose=24,
+            game_state=8,
+            door_transition=0,
+            selected_item=2,
+            velocity_y=0,
+        )
+    )
+    seen: dict[str, Any] = {}
+
+    def _require(sess: Any, room: int, label: str) -> None:
+        seen["require"] = (room, label)
+        assert room == 0xCC6F
+
+    def _land(sess: Any, label: str) -> None:
+        seen["land"] = label
+        sess.state = replace(sess.state, pose=2, samus_y=91, velocity_y=0)
+
+    def _run(sess: Any, label: str) -> None:
+        seen["run"] = label
+        sess.state = replace(sess.state, samus_x=938, samus_y=187, pose=9)
+
+    def _bomb(sess: Any, label: str) -> None:
+        seen["bomb"] = label
+        sess.state = replace(sess.state, samus_x=1160, samus_y=201, pose=30)
+
+    def _eye(sess: Any, label: str) -> None:
+        seen["eye"] = label
+        sess.state = replace(
+            sess.state,
+            room_id=0xCD13,
+            game_state=11,
+            door_transition=1,
+            samus_x=40,
+            samus_y=118,
+        )
+
+    def _settle(sess: Any, room: int, **kwargs: Any) -> Any:
+        seen["settle"] = (room, kwargs.get("label"))
+        sess.state = replace(
+            sess.state, room_id=room, game_state=8, door_transition=0
+        )
+        return sess.state
+
+    monkeypatch.setattr(k6ws, "require_room", _require)
+    monkeypatch.setattr(k6ws, "_land", _land)
+    monkeypatch.setattr(k6ws, "_run_to_morph_seat", _run)
+    monkeypatch.setattr(k6ws, "_bomb_tunnel", _bomb)
+    monkeypatch.setattr(k6ws, "_super_eye_door", _eye)
+    monkeypatch.setattr(k6ws, "wait_ordinary_room", _settle)
+
+    out = k6ws.play_ws_basement_to_phantoon(session)
+    assert seen["require"][0] == 0xCC6F
+    assert seen["land"] == "ws_basement_to_phantoon"
+    assert seen["run"] == "ws_basement_to_phantoon"
+    assert seen["bomb"] == "ws_basement_to_phantoon"
+    assert seen["eye"] == "ws_basement_to_phantoon"
+    assert seen["settle"] == (0xCD13, "ws_basement_to_phantoon")
+    assert wrecked_ship.ws_basement_phantoon_settled(out)
+
+
+def test_ws_basement_does_not_fight_phantoon() -> None:
+    from super_metroid.routes.kpdr.k6 import ws_basement as k6ws
+
+    src = inspect.getsource(k6ws)
+    assert "phantoon_hp" not in src.lower()
+    assert "play_phantoon" not in src
+    assert "farm" not in src.lower()
+    assert "Do not fight" in k6ws.play_ws_basement_to_phantoon.__doc__

@@ -56,10 +56,9 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: WS Basement → Phantoon (`0xCC6F` → `0xCD13`, `rr-cjpp`) from the
-Main Shaft→basement leave (scratch dual **1208f** ×2 `0xCC6F` `(657,92)` p24
-gs=8, not STATUS).
-Residual: [`tasks/rr-4btp-residual.md`](tasks/rr-4btp-residual.md).
+★ Next: Phantoon fight (`0xCD13`, `rr-tlaq`) from the Basement→room leave
+(scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8, rr-cjpp, not STATUS).
+Residual: [`tasks/rr-cjpp-residual.md`](tasks/rr-cjpp-residual.md).
 Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
