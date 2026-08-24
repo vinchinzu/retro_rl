@@ -41,6 +41,10 @@ from zelda_i.level4_key01 import (
     level4_key01_stages,
     level4_key01_success,
 )
+from zelda_i.level4_clear12 import (
+    level4_clear12_stages,
+    level4_clear12_success,
+)
 from zelda_i.level4_mappick import (
     level4_mappick_stages,
     level4_mappick_success,
@@ -100,6 +104,8 @@ __all__ = [
     "level4_bomb11_success",
     "level4_key01_stages",
     "level4_key01_success",
+    "level4_clear12_stages",
+    "level4_clear12_success",
     "level4_mappick_stages",
     "level4_mappick_success",
     "level4_north_30_stages",
