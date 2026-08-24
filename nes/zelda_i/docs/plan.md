@@ -437,9 +437,11 @@ south-face UP onto `0x71` warps. `--through level6-rod` **1/1**
 211,529f. `--through level6-exit75` **1/1** `l6_exit75_continuous_v3`
 play `0x09` `(192,141)` rod=1 hop 1,525f, 213,054f. `--through
 level6-south09` **1/1** `l6_south09_continuous_v1` play `0x19`
-`(120,77)` hop 251f, 213,305f. Occupancy DOWN from leftover; 10
-misses at x=192 then south-band LEFT. 0x19 already cleared. Bow=0
-arrows=0. Do not grant Map/Rod/arrows. Do not poke.
+`(120,77)` hop 251f, 213,305f. `--through level6-south19` **1/1**
+`l6_south19_continuous_v1` play `0x29` dark `(120,77)` hop 663f,
+213,968f keys 4→3. 0x19 south PNG mouth is KEY. West of 0x19 is
+Gleeok `0x18`, not south. Bow=0 arrows=0. Do not grant Map/Rod/arrows.
+Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -529,6 +531,7 @@ arrows=0. Do not grant Map/Rod/arrows. Do not poke.
 | exit75 v2 | `0x75` `(208,141)` 4000f tile 243 | cardinal UP @ x=208 reaches entry 0x71 (208,93) |
 | exit75 v3 | `0x09` `(192,141)` **play rod=1** hop 1525f | LEFT+DOWN from east column drops; west spit idle+UP |
 | south09 v1 | `0x19` `(120,77)` **play rod=1** hop 251f | occupancy DOWN from leftover `(192,141)` is free (10 misses at x=192; remaining block / east column) |
+| south19 v1 | `0x29` `(120,77)` **play rod=1** hop 663f keys 4→3 | 0x19 south PNG mouth is free (it is KEY); west of 0x19 is Gleeok 0x18 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -556,25 +559,24 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`,
 `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14,15}_final.png`,
 `recordings/l6_exit75_continuous_v{1,2,3}_final.png`,
-`recordings/l6_south09_continuous_v1_final.png`.
+`recordings/l6_south09_continuous_v1_final.png`,
+`recordings/l6_south19_continuous_v1_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
-Cellar return **on the tape**: play `0x09` `(192,141)` rod=1 hop 1,525f
-(`l6_exit75_continuous_v3`). South `0x09` **on the tape**: play `0x19`
-`(120,77)` hop 251f (`l6_south09_continuous_v1`). 0x19 already cleared
-(no combat hop). Bow=0 arrows=0. Next door from leftover PNG (east and
-south mouths visible). Gohma / TF `0x20` — Gohma needs an arrow; do not
-poke `ADDR_ARROWS`. Do not invent Gohma room id. Do not close `rr-tne2`.
+South `0x19` **on the tape**: play `0x29` dark `(120,77)` hop 663f
+(`l6_south19_continuous_v1`) keys 4→3. 0x29 Vire clear residual. Bow=0
+arrows=0. Gohma / TF `0x20` — Gohma needs an arrow; do not poke
+`ADDR_ARROWS`. Do not invent Gohma room id. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-south09 --no-video --trials 1 --tag l6_south09_continuous_v1
+  --through level6-south19 --no-video --trials 1 --tag l6_south19_continuous_v1
 ```
 
-Leftover is play `0x19` `(120,77)` rod=1 keys=4 bombs=8 TF=`0x1F`
-map=`0x0A` bow=0 arrows=0. 0x19 already cleared. Occupancy from 0x09
-`(192,141)` DOWN-missed 10× at x=192 then south-band LEFT; dest RAM
-`0x19`. Next live door from leftover PNG; do not invent Gohma.
+Leftover is play `0x29` dark `(120,77)` rod=1 keys=3 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. Occupancy KEY-DOWN from 0x19 `(120,77)`
+(PNG mouth spent a key). Dest RAM `0x29`. Vire clear residual; do not
+invent Gohma.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
