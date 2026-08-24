@@ -443,7 +443,9 @@ level6-south09` **1/1** `l6_south09_continuous_v1` play `0x19`
 `l6_clear29_continuous_v2` play `0x29` `(55,133)` hop 1,406f, 215,534f
 keys 3→4. Census 3× `0x23` + 2× `0x24` (v1 Vire spec timed out).
 `--through level6-east29` **red** (v1 boxed tile 244; v2 east sealed).
-Bow=0 arrows=0. Do not grant Map/Rod/arrows. Do not poke.
+`--through level6-south29` **1/1** `l6_south29_continuous_v4` play
+`0x39` `(120,93)` hop 288f, 215,822f. v1–v3 pocket `(64,181)`. Bow=0
+arrows=0. Do not grant Map/Rod/arrows. Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -538,6 +540,10 @@ Bow=0 arrows=0. Do not grant Map/Rod/arrows. Do not poke.
 | clear29 v2 | `0x29` `(55,133)` **cleared** hop 1406f keys 3→4 | occupancy-patrol 5 wizzrobes; floor key natural |
 | east29 v1 | `0x29` `(56,133)` 4000f tile 244 | leftover DOWN to y=141 is free (4-cardinal boxed) |
 | east29 v2 | `0x29` `(208,141)` 4000f tile 223 | PNG east mouth + kill-clear opens RIGHT (mask 12 = U+D; sealed) |
+| south29 v1 | `0x29` `(64,181)` 4000f tile 116 | occupancy DOWN @ x=64 is a south lane (pocket) |
+| south29 v2 | `0x29` `(64,181)` 4000f | RIGHT+DOWN @ y=181 clips toward x=120 (no-op) |
+| south29 v3 | `0x29` `(64,181)` 4000f | RIGHT+UP @ y=181 clips the diamond face (no-op) |
+| south29 v4 | `0x39` `(120,93)` **play** hop 288f | occupancy DOWN @ x=64 after clip (x-align @ y=141 first) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -568,24 +574,23 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_south09_continuous_v1_final.png`,
 `recordings/l6_south19_continuous_v1_final.png`,
 `recordings/l6_clear29_continuous_v{1,2}_final.png`,
-`recordings/l6_east29_continuous_v{1,2}_final.png`.
+`recordings/l6_east29_continuous_v{1,2}_final.png`,
+`recordings/l6_south29_continuous_v{1,2,3,4}_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
-0x29 clear **on the tape**: play `0x29` `(55,133)` hop 1,406f
-(`l6_clear29_continuous_v2`) keys 3→4 census 3×`0x23`+2×`0x24`. East
-PNG mouth **sealed**. Bow=0 arrows=0. Gohma / TF `0x20` — Gohma needs
-an arrow; do not poke `ADDR_ARROWS`. Do not invent Gohma room id. Do
-not close `rr-tne2`.
+South `0x29` **on the tape**: play `0x39` `(120,93)` hop 288f
+(`l6_south29_continuous_v4`). East of 0x29 sealed. Bow=0 arrows=0.
+Gohma / TF `0x20` — Gohma needs an arrow; do not poke `ADDR_ARROWS`.
+Do not invent Gohma room id. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear29 --no-video --trials 1 --tag l6_clear29_continuous_v2
+  --through level6-south29 --no-video --trials 1 --tag l6_south29_continuous_v4
 ```
 
-Leftover is play `0x29` `(55,133)` rod=1 keys=4 bombs=8 TF=`0x1F`
-map=`0x0A` bow=0 arrows=0. Census wizzrobes not Vires. East mask 12 =
-U+D (RIGHT sealed). South bit is on; leftover tile 244 boxed 4-cardinal.
-Do not invent Gohma.
+Leftover is play `0x39` `(120,93)` rod=1 keys=4 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. Occupancy x=120 @ y=141 then DOWN. v1–v3
+pocket `(64,181)` tile 116. 0x39 combat residual. Do not invent Gohma.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
