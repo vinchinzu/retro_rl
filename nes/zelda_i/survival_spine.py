@@ -50,7 +50,12 @@ from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
 from zelda_i.level4_overworld import level4_entry_stop
-from zelda_i.level5_spine import continue_level5_spine, validate_l5_endpoint
+from zelda_i.level5_spine import (
+    L5_STOPS,
+    L5_THROUGH,
+    continue_level5_spine,
+    validate_l5_endpoint,
+)
 from zelda_i.level4_spine import (
     level4_bomb11_stages,
     level4_bomb11_success,
@@ -125,6 +130,8 @@ Through = Literal[
     "level5-clear66",
     "level5-east77",
     "level5-whistle",
+    "level5-exit04",
+    "level5",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -151,11 +158,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-clear12",
     "level4-gleeok13",
     "level4",
-    "level5-entry",
-    "level5-clear66",
-    "level5-east77",
-    "level5-whistle",
-)
+) + L5_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -245,10 +248,7 @@ class SpineRun:
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 "level4": "level4_triforce_0x08",
-                "level5-entry": "level5_entry_0x76",
-                "level5-clear66": "level5_clear_0x66",
-                "level5-east77": "level5_east_key_0x77",
-                "level5-whistle": "level5_whistle_0x04",
+                **L5_STOPS,
                 "level4-entry": "level4_entry_0x71",
                 "level4-key": "level4_natural_key_0x51",
                 "level4-clear50": "level4_clear_0x50",

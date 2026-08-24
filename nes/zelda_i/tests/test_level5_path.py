@@ -299,3 +299,30 @@ def test_level5_path_reexports_split_modules() -> None:
     assert facade.take_block_stairs_06 is cellar.take_block_stairs_06
     assert facade.walk_north_from_57 is tf.walk_north_from_57
     assert facade.BLUE_DARKNUT_TYPE is whistle.BLUE_DARKNUT_TYPE
+
+
+def test_whistle_tf_path_lives_in_library_not_script() -> None:
+    """scripts/run_level5_whistle_tf is a thin CLI over level5_boss_path."""
+    from pathlib import Path
+
+    from zelda_i.level5_boss_path import (
+        WHISTLE_STAND,
+        fight_digdogger,
+        path_exit_whistle_04,
+        run_level5_tf_suffix,
+    )
+
+    assert WHISTLE_STAND == (120, 141)
+    assert "0x04" in (path_exit_whistle_04.__doc__ or "")
+    assert "135,141" in (path_exit_whistle_04.__doc__ or "")
+    assert "0x38" in (fight_digdogger.__doc__ or "")
+    assert "bfs" not in (run_level5_tf_suffix.__doc__ or "").lower()
+    from zelda_i.level5_boss_path import take_stairs_06
+    assert "128,141" in (take_stairs_06.__doc__ or "")
+    assert "120,141" in (take_stairs_06.__doc__ or "")
+    src = (
+        Path(__file__).resolve().parents[1] / "scripts" / "run_level5_whistle_tf.py"
+    ).read_text()
+    assert "from zelda_i.level5_boss_path import" in src
+    assert "def fight_ctl" not in src
+    assert "def _digdogger_here" not in src

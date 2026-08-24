@@ -1,7 +1,9 @@
-"""Survival-spine L5 stage factories from L4 TF settle through Recorder 0x04.
+"""Survival-spine L5 stage factories from L4 TF settle through TF 0x10.
 
 The continuous runner composes these frame controllers. Old At4A
 ``Level5Entrance`` lacks Raft/Stepladder/bombs/TF — use the post-L4 hops.
+Recorder cellar leftover is 0x04 mode 9 (135,141); TF suffix is a library
+call, not more spine LOC.
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ from dataclasses import dataclass, field, replace
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
-from zelda_i.anchors import LEVEL5_ENTRY_ROOM, TF_BIT_L4, TF_BIT_L5
+from zelda_i.anchors import LEVEL5_ENTRY_ROOM, LEVEL5_TF_ROOM, TF_BIT_L4, TF_BIT_L5
 from zelda_i.dungeon import GenericDungeonRoomController
 from zelda_i.level5_dungeon import (
     ROOM_66_SPEC,
@@ -52,14 +54,36 @@ __all__ = [
     "continue_level5_spine",
     "level5_clear66_stages",
     "level5_clear66_success",
+    "L5_STOPS",
+    "L5_THROUGH",
+    "attach_level5_tf_suffix",
     "attach_level5_whistle_suffix",
     "level5_east77_stages",
     "level5_east77_success",
     "level5_entry_stages",
     "level5_entry_success",
+    "level5_exit04_success",
+    "level5_tf_success",
     "level5_whistle_success",
     "validate_l5_endpoint",
 ]
+
+L5_THROUGH: tuple[str, ...] = (
+    "level5-entry",
+    "level5-clear66",
+    "level5-east77",
+    "level5-whistle",
+    "level5-exit04",
+    "level5",
+)
+L5_STOPS: dict[str, str] = {
+    "level5-entry": "level5_entry_0x76",
+    "level5-clear66": "level5_clear_0x66",
+    "level5-east77": "level5_east_key_0x77",
+    "level5-whistle": "level5_whistle_0x04",
+    "level5-exit04": "level5_exit_0x04",
+    "level5": "level5_triforce_0x10",
+}
 
 
 def level5_entry_stages():
@@ -220,6 +244,28 @@ def level5_whistle_success(snap: ZeldaSnapshot, *, whistle: int) -> bool:
         and bool(snap.triforce & TF_BIT_L4)
         and snap.ladder > 0
         and snap.screen in (ROOM_L5_WHISTLE_ITEM, ROOM_L5_WHISTLE_05)
+    )
+
+
+def level5_exit04_success(snap: ZeldaSnapshot, *, whistle: int) -> bool:
+    """Play-ready 0x05 after the Recorder cellar ladder. Do not require 0x24."""
+    return (
+        whistle >= 1
+        and snap.level == LEVEL5_LEVEL_ID
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_L5_WHISTLE_05
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L4)
+        and snap.ladder > 0
+    )
+
+
+def level5_tf_success(snap: ZeldaSnapshot) -> bool:
+    """L5 shard in the Triforce room. ``validate_l5_endpoint`` is the report gate."""
+    return (
+        snap.level == LEVEL5_LEVEL_ID
+        and snap.screen == LEVEL5_TF_ROOM
+        and bool(snap.triforce & TF_BIT_L5)
     )
 
 
@@ -431,6 +477,56 @@ def continue_level5_spine(
     if not run.success or through == "level5-whistle":
         return
 
+    attach_level5_tf_suffix(env, run, assist=assist, through=through)
+
+
+def attach_level5_tf_suffix(env, run, *, assist, through: str) -> bool:
+    """Append 0x04 exit then Digdogger/TF. Library path; no pokes."""
+    from zelda_i.chain import ControllerStageResult
+    from zelda_i.level5_boss_path import STOP_EXIT04, STOP_TRIFORCE, run_level5_tf_suffix
+    from zelda_i.ram import ADDR_WHISTLE, read_u8
+
+    stop_at = STOP_EXIT04 if through == "level5-exit04" else STOP_TRIFORCE
+    stage_name = L5_STOPS["level5-exit04"] if stop_at == STOP_EXIT04 else L5_STOPS["level5"]
+    ok, end_frame, detail = run_level5_tf_suffix(
+        env, assist=assist, frame_base=run.end_frame, stop_at=stop_at
+    )
+
+    class _Report:
+        success = ok
+
+        def report(self) -> dict:
+            return detail
+
+    run.stages.append(
+        ControllerStageResult(
+            name=stage_name,
+            controller=_Report(),
+            max_frames=40000,
+            frames=end_frame - run.end_frame,
+            success=ok,
+            frame_base=run.end_frame,
+            end_frame=end_frame,
+        )
+    )
+    run.end_frame = end_frame
+    obs, *_ = env.step(nes_idle_action())
+    run.end_frame += 1
+    if assist is not None:
+        assist.apply_env(env, frame=run.end_frame)
+    run.obs = obs
+    snap = read_snapshot(env.get_ram())
+    whistle = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+    if stop_at == STOP_EXIT04:
+        run.success = ok and level5_exit04_success(snap, whistle=whistle)
+    else:
+        run.success = ok and level5_tf_success(snap)
+    if not run.success:
+        run.failed_stage = stage_name
+        if isinstance(detail, dict) and detail.get("failed"):
+            run.failed_stage = f"{stage_name}_{detail['failed']}"
+    return run.success
+
 
 def validate_l5_endpoint(report: dict[str, object]) -> None:
     """Accept only a continuous L5 TF stop (no stitch manifest)."""
@@ -443,7 +539,8 @@ def validate_l5_endpoint(report: dict[str, object]) -> None:
         raise ValueError("Level 5 report has no final snapshot")
     if not report.get("ok"):
         raise ValueError("Level 5 report is not successful")
-    if int(final.get("level", -1)) != 5 or int(final.get("screen", -1)) != 0x14:
+    room = int(final.get("screen", final.get("room", -1)))
+    if int(final.get("level", -1)) != 5 or room != LEVEL5_TF_ROOM:
         raise ValueError("Level 5 report does not end in the Triforce room (0x14)")
     if int(final.get("triforce", 0)) & TF_BIT_L5 == 0:
         raise ValueError("Level 5 report does not have Triforce bit 0x10")

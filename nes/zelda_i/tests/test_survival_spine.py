@@ -119,6 +119,8 @@ def test_spine_through_is_continuous_only() -> None:
         "level5-clear66",
         "level5-east77",
         "level5-whistle",
+        "level5-exit04",
+        "level5",
     )
 
 
@@ -1002,6 +1004,15 @@ def test_validate_l5_endpoint_requires_continuous_session() -> None:
                 "assist": {"progression_writes": 1, "capacity_writes": 0},
             }
         )
+    validate_l5_endpoint(
+        {
+            "ok": True,
+            "continuous_emulator_session": True,
+            "seamed": False,
+            "final": {"level": 5, "room": 0x14, "triforce": 0x1C},
+            "assist": {"progression_writes": 0, "capacity_writes": 0},
+        }
+    )
 
 def test_seamed_compose_module_is_gone() -> None:
     with pytest.raises(ModuleNotFoundError):
