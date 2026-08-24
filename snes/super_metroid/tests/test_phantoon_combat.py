@@ -149,18 +149,21 @@ def test_charge_window_ok_skips_rain_and_right_fig8() -> None:
     assert not charge_window_ok(0xD767, 128)
     assert not charge_window_ok(0xD82A, 203)
     assert not charge_window_ok(0xD788, 88)
-    assert charge_window_ok(0xD767, 48)
+    assert charge_window_ok(0xD767, 48, 96)
+    assert not charge_window_ok(0xD767, 56, 113)
     assert not charge_window_ok(0xD788, 168)
-    assert not charge_window_ok(0xD4A8, 53)
-    assert not charge_window_ok(0xD60D, 53)
+    assert not charge_window_ok(0xD4A8, 53, 82)
+    assert not charge_window_ok(0xD60D, 53, 82)
 
 
-def test_rain_charge_ok_is_48_not_88_or_128() -> None:
-    assert rain_charge_ok(48)
-    assert not rain_charge_ok(88)
-    assert not rain_charge_ok(128)
-    assert not rain_charge_ok(168)
-    assert not rain_charge_ok(200)
+def test_rain_charge_ok_is_48_96_not_56_113() -> None:
+    assert rain_charge_ok(48, 96)
+    assert rain_charge_ok(56, 96)
+    assert not rain_charge_ok(56, 113)
+    assert not rain_charge_ok(48, 113)
+    assert not rain_charge_ok(88, 96)
+    assert not rain_charge_ok(128, 96)
+    assert not rain_charge_ok(53, 82)
 
 
 def test_rain_phase_is_cycle_not_fig8() -> None:
