@@ -505,6 +505,13 @@ def cmd_window(args: argparse.Namespace) -> int:
                 break
             result = _one_window(session, wait=args.wait, strategy=strategy)
             windows.append(result)
+            if (
+                index == 1
+                and result["success"]
+                and int(result["pre_fire"]["health"]) < 100  # type: ignore[arg-type]
+            ):
+                result["note"] = "W2 start <100 — snipe wait vs sit-charge"
+                break
             if not result["success"]:
                 from retro_harness.actions import idle_action
 
