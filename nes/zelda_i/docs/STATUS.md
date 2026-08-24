@@ -53,6 +53,10 @@
 | Power-on → L4 clear `0x12` | **2/2 continuous Survival**; DOWN 0x01→0x11 then bomb-RIGHT `(192,141)`; Vire clear ignore `0x68`; 124,993f hop 1290f; leftover `(128,117)` play `0x12`; keys=5 bombs 14→13 TF=`0x07`; deaths 0; progression/capacity writes 0; no state load | `l4_clear12_continuous_v1.json` / `_final.png` |
 | Power-on → L4 enter Gleeok `0x13` | **2/2 continuous Survival**; x-first to push stand `(112,144)` (v1 y-first leftover `(128,141)` DOWN solid); hold4 `PATH_12_TO_GLEEOK`; 125,407f hop 414f; leftover `(32,141)` play `0x13`; keys=5 bombs=13 TF=`0x07`; deaths 0; progression/capacity writes 0; no state load | `l4_gleeok13_continuous_v2.json` / `_final.png` |
 | Power-on → L4 TF `0x08` | **2/2 continuous Survival**; south-stand Gleeok 3564f; TF `0x07→0x0F`; mode 18 room `0x03` `(120,149)`; 128,971f; keys=5 bombs=13; HC not mid-room; deaths 0; progression/capacity writes 0; no state load | `l4_tf_continuous_v1.json` / `_final.png` |
+| Power-on → L5 entry `0x76` | **1/1 continuous Survival**; L4 fanfare settle 284f onto island `0x45`, `POST_L4_TO_LEVEL5_HOPS` (not old At4A); 134,393f hop 5,138f; leftover `(120,205)`; TF=`0x0F` keys=5 bombs=13; deaths 0; progression/capacity writes 0; no state load | `l5_entry_continuous_v1.json` / `_final.png` |
+| Power-on → L5 clear `0x66` | **1/1 continuous Survival**; occupancy miss-block (v1 cardinal timeout `(119,173)` 2/3); 138,634f hop 4,241f; leftover `(32,101)` keys 5→6; deaths 0; progression/capacity writes 0; no state load | `l5_clear66_continuous_v2.json` / `_final.png` |
+| Power-on → L5 east key `0x77` | **1/1 continuous Survival**; north-bank to ladder x=56 then DOWN; Pols Voice clear leftover `(136,165)` keys 7; 142,958f; deaths 0; progression/capacity writes 0; no state load | `l5_east77_continuous_v1.json` / `_final.png` |
+| Power-on → L5 Recorder `0x04` | **1/1 continuous Survival**; East Key → 0x66 bomb-west → 0x04; 160,648f hop 17,690f; mode 9 `(135,141)`; keys 7→6 bombs 13→8; whistle earned; deaths 0; progression/capacity writes 0; no state load | `l5_whistle_continuous_v1.json` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -73,7 +77,9 @@ is on the tape (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`).
 `(120,133)`, keys 4→5). 0x12 Vire clear is on the tape
 (`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`). Gleeok enter and
 L4 TF `0x08` are on the tape (`l4_tf_continuous_v1` 2/2, TF=`0x0F`).
-`.6` closed. HC was not mid-room.
+`.6` closed. HC was not mid-room. Power-on spine now holds L5 Recorder
+in cellar `0x04` (`l5_whistle_continuous_v1` 1/1). Digdogger / TF `0x10`
+is not on the tape (`.7` still open).
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that

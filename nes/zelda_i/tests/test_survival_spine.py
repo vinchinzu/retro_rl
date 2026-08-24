@@ -115,6 +115,10 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-clear12",
         "level4-gleeok13",
         "level4",
+        "level5-entry",
+        "level5-clear66",
+        "level5-east77",
+        "level5-whistle",
     )
 
 

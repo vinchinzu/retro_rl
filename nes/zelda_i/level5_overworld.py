@@ -36,8 +36,10 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 # --- Geometry (live recon 2026-08-06); screens from anchors ---
 from zelda_i.anchors import (
     LEVEL5_ENTRY_ROOM,
+    SCREEN_LEVEL4_ENTRANCE,
     SCREEN_LEVEL5_DOOR,
     SCREEN_LOST_HILLS,
+    TF_BIT_L4 as LEVEL4_TRIFORCE_BIT,
     TF_BIT_L5 as LEVEL5_TRIFORCE_BIT,
 )
 
@@ -73,6 +75,9 @@ POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
 )
 
 SEGMENT_MAX_FRAMES = 30000
+POST_L4_SETTLE_MAX_FRAMES = 2500
+POST_L4_PATH_MAX_FRAMES = 40000
+SCREEN_POST_L4_RETURN = SCREEN_LEVEL4_ENTRANCE
 LOST_HILLS_MAX_FRAMES = 12000
 SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
@@ -90,6 +95,81 @@ class Level5NavPhase(Enum):
     DUNGEON_SETTLE = auto()
     DONE = auto()
     FAILED = auto()
+
+
+class PostL4SettlePhase(Enum):
+    WAIT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class PostL4TriforceSettleController:
+    """Idle through L4 triforce fanfare until OW island 0x45 play.
+
+    Start: leftover L4 TF room 0x03 mode 18. Do not reload a checkpoint
+    mid-fanfare (same class as L1/L2/L3 TF settle).
+    """
+
+    phase: PostL4SettlePhase = PostL4SettlePhase.WAIT
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    max_frames: int = POST_L4_SETTLE_MAX_FRAMES
+    require_screen: int = SCREEN_POST_L4_RETURN
+
+    def reset(self) -> None:
+        self.phase = PostL4SettlePhase.WAIT
+        self.frames = 0
+        self.phase_frames = 0
+        self.success = False
+        self.notes.clear()
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        if self.frames > self.max_frames:
+            self.phase = PostL4SettlePhase.FAILED
+            self.notes.append("settle_timeout")
+            return FrameAction(nes_idle_action(), "settle_timeout")
+
+        if (
+            snap.level == 0
+            and snap.mode == PLAY_MODE
+            and snap.screen == self.require_screen
+            and bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
+            and snap.raft > 0
+            and not snap.transitioning
+        ):
+            self.success = True
+            if self.phase is not PostL4SettlePhase.DONE:
+                self.phase = PostL4SettlePhase.DONE
+                self.notes.append("post_l4_ow_ready")
+            return FrameAction(nes_idle_action(), "settle_done")
+
+        return FrameAction(nes_idle_action(), "settle_wait")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "require_screen": f"0x{self.require_screen:02x}",
+        }
+
+
+def post_l4_overworld_ready(snap: ZeldaSnapshot) -> bool:
+    """OW play on Snake island 0x45 with L4 triforce bit and raft."""
+    return (
+        snap.level == 0
+        and snap.mode == PLAY_MODE
+        and snap.screen == SCREEN_POST_L4_RETURN
+        and bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
+        and snap.raft > 0
+        and not snap.transitioning
+    )
 
 
 @dataclass
@@ -305,6 +385,15 @@ class OverworldToLevel5Controller(OverworldPathController):
         }
 
 
+def make_post_l4_level5_controller() -> OverworldToLevel5Controller:
+    """Proven L4 island → Lost Hills → L5 0x76. Not the old At4A fixture."""
+    return OverworldToLevel5Controller(
+        hops=POST_L4_TO_LEVEL5_HOPS,
+        require_dungeon=True,
+        max_frames=POST_L4_PATH_MAX_FRAMES,
+    )
+
+
 def level5_entrance_success(ram: np.ndarray) -> bool:
     """Room-ready inside Lizard entry: level 5, play mode, room 0x76."""
     snap = read_snapshot(ram)
@@ -324,6 +413,11 @@ def level5_door_screen_reached(ram: np.ndarray) -> bool:
 
 def level5_hops_from(screen: int) -> tuple[ScreenHop, ...]:
     """Remaining path hops after ``screen`` (prefix of LEVEL5_PATH_HOPS)."""
+    if screen == SCREEN_POST_L4_RETURN:
+        return POST_L4_TO_LEVEL5_HOPS
+    post_targets = [h.target for h in POST_L4_TO_LEVEL5_HOPS]
+    if screen in post_targets:
+        return POST_L4_TO_LEVEL5_HOPS[post_targets.index(screen) + 1 :]
     targets = [h.target for h in LEVEL5_PATH_HOPS]
     if screen in targets:
         return LEVEL5_PATH_HOPS[targets.index(screen) + 1 :]
@@ -345,11 +439,18 @@ __all__ = [
     "LEVEL5_LEVEL_ID",
     "LEVEL5_PATH_HOPS",
     "POST_L4_TO_LEVEL5_HOPS",
+    "POST_L4_SETTLE_MAX_FRAMES",
+    "POST_L4_PATH_MAX_FRAMES",
+    "SCREEN_POST_L4_RETURN",
     "SEGMENT_MAX_FRAMES",
     "LOST_HILLS_UPS_REQUIRED",
     "Level5NavPhase",
+    "PostL4SettlePhase",
+    "PostL4TriforceSettleController",
     "OverworldToLevel5Controller",
     "level5_entrance_success",
     "level5_door_screen_reached",
     "level5_hops_from",
+    "make_post_l4_level5_controller",
+    "post_l4_overworld_ready",
 ]
