@@ -195,12 +195,17 @@ def cmd_dump(args: argparse.Namespace) -> int:
         env.close()
 
 
+def _left_side_open(session: ProbeSession) -> bool:
+    st = session.state
+    return eye_open(st, session.env) and int(st.enemy0_x) < PhantoonStrategy().skip_enemy_x
+
+
 def _wait_open_window(session: ProbeSession, *, timeout: int) -> bool:
     from retro_harness.actions import buttons, idle_action
 
     for _ in range(timeout):
         st = session.state
-        if eye_open(st, session.env):
+        if _left_side_open(session):
             return True
         if int(st.health) == 0:
             return False
@@ -208,13 +213,13 @@ def _wait_open_window(session: ProbeSession, *, timeout: int) -> bool:
             session.step(buttons("X"), "phan_wait_eye")
         else:
             session.step(idle_action(), "phan_wait_eye")
-    return eye_open(session.state, session.env)
+    return _left_side_open(session)
 
 
 def _wait_window_closed(session: ProbeSession, *, timeout: int = 400) -> None:
     for _ in range(timeout):
         st = session.state
-        if (not eye_open(st, session.env)) or int(st.health) == 0:
+        if (not _left_side_open(session)) or int(st.health) == 0:
             return
         session.step([0] * 12, "phan_wait_close")
 
