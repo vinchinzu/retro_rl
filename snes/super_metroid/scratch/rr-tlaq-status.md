@@ -7,20 +7,17 @@
 | W | Park | Spend | HP | Health | Result |
 |---|------|-------|----|-------:|--------|
 | 1 | (120, 108) fig-8 | (104, 149) p43 | 2500→2200 | 239 | GREEN **300** |
-| 2 | (203, 83) RIGHT | (219, 126) p44 after p84 @138 | 2200 | 219 | **miss** (body) |
+| 2 | skip right (203, 83); morph rain | — | 2200 | 0 | **died** `$D788` vs (168, 64) |
 
-## This bump
+## Morph rain (30f dump)
 
-W1 dy band on W2: target y=111–139 (eye 83+28..56). Floor seat (219, 187)
-charge 120. Longer A: **p84 at (219, 138)** dy=55, then fire (219, 126)
-p44 dy=43 `|dx|=16`. Charge dumps, HP 2200.
+Left morph `(53, 201)` p29/65 from `D72D`. Health 239→0 ~f4100.
+Swap-when-body-on-left rolls through the wave (−20/pass). No left fig-8.
+Do not fire x=219. Do not retry x≥230.
 
-x≥230 retry: room wall is x=219 p137. Skipped the open, rain death.
-
-`in_release_band` is dy 28–56 only (no y≈149 special case). No 16k. No Super.
+`charge_window_ok` skips rain + `enemy_x≥155` (park x). No 16k. No Super.
 
 ## Next
 
-Skip the right open and morph a full rain, or a W2 angle that is not the
-x=219 column. Halt at first miss. Dual-green kill still needs HP 0 + boss
-bit ×2 → `scratch/post_phantoon_poweron.state`.
+Morph rain without crossing the room. Halt at first miss. Dual-green kill
+still needs HP 0 + boss bit ×2 → `scratch/post_phantoon_poweron.state`.
