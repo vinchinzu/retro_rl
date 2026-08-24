@@ -1,11 +1,10 @@
 """Level 6 0x09 left-block stairs toward Magical Rod.
 
 Clear leftover (112,173); live left 0x68 (96,144). Reuse 0x38 south-face UP
-until that object's y drops ≥8px. CheckWarp needs still; do not hold-UP.
-NE hole is decorative (v8 on-graphic tile 0x77). v9 vacated (96,144) yo-yos
-143/145. v10: no live pair 0x68 (visual right block is a tile; rx=-1).
-v11 idle NW (48,109) tile 118 still mode 5. Next SW (48,173). Halt y>=181.
-Do not occupancy. Do not grant ADDR_ROD.
+until that object's y drops ≥8px. CheckWarp needs still; at dest idle (no
+hold-UP). v12 true idle (192,97) tile 0x77 / 3830f stairs_idle still mode 5
+— NE hole decorative (v8 hold-UP was not still). Next SW (48,173). Halt
+y>=181. Do not occupancy. Do not grant ADDR_ROD.
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
+from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level6_gleeok18 import PASSAGE_MODE
@@ -38,11 +38,13 @@ __all__ = [
 ]
 
 STAIRS_09_MAX_FRAMES = 4000
-STAIRS_09_SAMPLE_PERIOD = 12
-# Exact idle; CheckWarp misses ALIGN_TOL. Halt south mouth (don't spend key).
+STAIRS_09_SAMPLE_PERIOD = 8
+# Exact x; y slack 1 so 1px short of dest is idle, not hold-UP (v8/v12).
 STAIR_ALIGN_TOL = 0
+STAIRS_09_Y_SLACK = 1
 STAIRS_09_SOUTH_HALT_Y = 181
-# v11 idle (48,109) tile 118 not warp. Next SW after left y-move.
+STAIRS_09_IDLE_MIN = 240
+# v12 leftover (192,97) tile 119 true idle 3830f still mode 5. Next SW.
 STAIRS_09_HOLE = (48, 173)
 
 
@@ -69,7 +71,7 @@ class Level6Stairs09Controller:
     phase: Stairs09Phase = Stairs09Phase.TO_PUSH
     notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
-    leftover: dict[str, int] = field(default_factory=dict)
+    leftover: dict[str, Any] = field(default_factory=dict)
     walker: OccupancyWalker = field(default_factory=OccupancyWalker)
     block_slot: int | None = None
     block_x0: int | None = None
@@ -123,35 +125,57 @@ class Level6Stairs09Controller:
             and snap.screen != self.room
         )
 
+    def _blocks_68(self, snap: ZeldaSnapshot) -> list[dict[str, int]]:
+        return [
+            {"slot": int(obj.slot), "x": int(obj.x), "y": int(obj.y)}
+            for obj in snap.objects
+            if int(obj.type_id) == BLOCK_OBJECT_TYPE
+        ]
+
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         block = self._block(snap)
+        blocks = self._blocks_68(snap)
         self.leftover = {
             "x": int(snap.link_x),
             "y": int(snap.link_y),
             "mode": int(snap.mode),
+            "submode": int(snap.submode),
             "screen": int(snap.screen),
             "tile": int(snap.colliding_tile),
+            "rod": int(getattr(snap, "rod", 0)),
             "bx": -1 if block is None else int(block.x),
             "by": -1 if block is None else int(block.y),
+            "blocks": blocks,
             "keys": int(snap.keys),
             "map": int(snap.map),
             "triforce": int(snap.triforce),
+            "idle_frames": int(self.idle_frames),
         }
         if force or self.frames <= 2 or self.frames % STAIRS_09_SAMPLE_PERIOD == 0:
+            buttons = [
+                name
+                for name, idx in NES_BUTTON_NAME_TO_INDEX.items()
+                if idx is not None and int(action.action[idx])
+            ]
             self.samples.append(
                 {
                     "frame": self.frames,
                     "x": int(snap.link_x),
                     "y": int(snap.link_y),
                     "mode": int(snap.mode),
+                    "submode": int(snap.submode),
                     "screen": int(snap.screen),
                     "phase": self.phase.name,
                     "reason": action.reason,
+                    "action": "none" if not buttons else "+".join(buttons),
                     "tile": int(snap.colliding_tile),
+                    "rod": int(getattr(snap, "rod", 0)),
                     "bx": None if block is None else int(block.x),
                     "by": None if block is None else int(block.y),
+                    "blocks": blocks,
+                    "idle_frames": int(self.idle_frames),
                     "misses": self.walker.misses,
                 }
             )
@@ -278,14 +302,17 @@ class Level6Stairs09Controller:
             if abs(xy[0] - gx) > STAIR_ALIGN_TOL:
                 btn = "LEFT" if xy[0] > gx else "RIGHT"
                 return self._emit(snap, FrameAction(nes_action(btn), "hole_x"))
-            if abs(xy[1] - gy) > STAIR_ALIGN_TOL:
+            if abs(xy[1] - gy) > STAIRS_09_Y_SLACK:
                 btn = "UP" if xy[1] > gy else "DOWN"
                 if btn == "DOWN" and xy[1] >= STAIRS_09_SOUTH_HALT_Y - 1:
                     return self._emit(
                         snap, FrameAction(nes_idle_action(), "south_halt")
                     )
                 return self._emit(snap, FrameAction(nes_action(btn), "hole_y"))
-            return self._emit(snap, FrameAction(nes_idle_action(), "hole_idle"))
+            self.idle_frames += 1
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "stairs_idle")
+            )
 
         return self._emit(snap, FrameAction(nes_idle_action(), "failed"), force=True)
 
@@ -300,6 +327,8 @@ class Level6Stairs09Controller:
             "policy": (
                 "axis south-face UP until y-move, idle SW (48,173)"
             ),
+            "idle_frames": int(self.idle_frames),
+            "idle_min": STAIRS_09_IDLE_MIN,
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
             "block_slot": self.block_slot,

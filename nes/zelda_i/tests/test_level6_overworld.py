@@ -1069,10 +1069,12 @@ def test_level6_clear09_idles_then_occupancy_patrol() -> None:
 def test_level6_stairs09_south_face_push_then_idle() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
     from zelda_i.level6_path import south_face_stand
-    from zelda_i.level6_stairs09 import make_stairs_09_controller
+    from zelda_i.level6_stairs09 import STAIRS_09_HOLE, make_stairs_09_controller
+    from zelda_i.ram import ADDR_ROD, ADDR_SUBMODE
 
     stages = level6_stairs09_stages()
     assert [name for name, _, _ in stages] == ["level6_stairs_0x09"]
+    assert STAIRS_09_HOLE == (48, 173)
     leftover = _ram(level=6, screen=0x09, x=112, y=173)
     _plant_block(leftover, 11, 96, 144)
     _plant_block(leftover, 12, 144, 144)
@@ -1096,14 +1098,38 @@ def test_level6_stairs09_south_face_push_then_idle() -> None:
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_x"
     assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("RIGHT"))
     assert any(n.startswith("pushed_96_144_to_96_128") for n in at_stand.notes)
     ram_stand[ADDR_LINK_X] = 48
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_y"
     assert list(act.action) == list(nes_action("DOWN"))
     ram_stand[ADDR_LINK_Y] = 173
+    ram_stand[ADDR_SUBMODE] = 0
+    ram_stand[ADDR_ROD] = 0
     act = at_stand.step(read_snapshot(ram_stand))
-    assert act.reason == "hole_idle"
+    assert act.reason == "stairs_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert at_stand.idle_frames >= 1
+    assert at_stand.leftover["y"] == 173
+    assert at_stand.leftover["rod"] == 0
+    assert at_stand.leftover["submode"] == 0
+    assert at_stand.leftover["blocks"]
+    for _ in range(8):
+        act = at_stand.step(read_snapshot(ram_stand))
+        assert act.reason == "stairs_idle"
+        assert list(act.action) == list(nes_idle_action())
+    sample = at_stand.samples[-1]
+    assert sample["reason"] == "stairs_idle"
+    assert sample["action"] == "none"
+    assert sample["submode"] == 0
+    assert sample["rod"] == 0
+    assert sample["y"] == 173
+    assert sample["tile"] == int(read_snapshot(ram_stand).colliding_tile)
+    ram_stand[ADDR_LINK_Y] = 174
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "stairs_idle"
     assert list(act.action) == list(nes_idle_action())
     ram_stand[ADDR_LINK_Y] = 181
     act = at_stand.step(read_snapshot(ram_stand))
