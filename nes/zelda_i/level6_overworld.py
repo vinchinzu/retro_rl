@@ -49,6 +49,7 @@ LEVEL6_COMPASS_ROOM = 0x68  # UP of cleared 0x78; 5× Zol + compass 0x16
 LEVEL6_KEESE_ROOM = 0x58  # UP of 0x68; 8× Keese 0x1b + key drop
 LEVEL6_TRAPS_ROOM = 0x48  # UP of 0x58; blade traps; north is free after Keese clear
 LEVEL6_WIZZROBE_38_ROOM = 0x38  # UP of 0x48; hard wizzrobe / Like-Like / Bubble
+LEVEL6_WIZZROBE_28_ROOM = 0x28  # UP of 0x38; wizzrobes; optional bomb-east shortcut
 LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22
@@ -737,6 +738,7 @@ __all__ = [
     "LEVEL6_KEESE_ROOM",
     "LEVEL6_TRAPS_ROOM",
     "LEVEL6_WIZZROBE_38_ROOM",
+    "LEVEL6_WIZZROBE_28_ROOM",
     "LEVEL6_OLD_MAN_ROOM",
     "LEVEL6_DOOR_X",
     "LEVEL6_DOOR_X_LO",

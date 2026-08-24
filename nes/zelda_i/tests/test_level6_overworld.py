@@ -23,16 +23,22 @@ from zelda_i.level6_overworld import (
     post_l5_overworld_ready,
 )
 from zelda_i.level6_path import (
+    BLOCK_OBJECT_TYPE,
     Level6North68Controller,
+    left_block_0x68,
+    make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
+    south_face_stand,
 )
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
     level6_clear38_stages,
     level6_clear38_success,
+    level6_room28_stages,
+    level6_room28_success,
     level6_clear58_stages,
     level6_clear58_success,
     level6_clear68_stages,
@@ -448,6 +454,98 @@ def test_level6_clear38_attaches_occupancy() -> None:
     run = SpineRun(through="level6-clear38", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_clear_0x38"
     assert "level6-clear38" in L6_THROUGH
+
+
+def _plant_block(ram: np.ndarray, slot: int, x: int, y: int) -> None:
+    ram[ADDR_OBJ_TYPE + slot] = BLOCK_OBJECT_TYPE
+    ram[ADDR_LINK_X + slot] = x
+    ram[ADDR_LINK_Y + slot] = y
+
+
+def test_level6_room28_push_then_north_from_0x38_west() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level6_path import Level6Push38Controller
+
+    stages = level6_room28_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x28"]
+    ctl = make_north_28_controller()
+    assert isinstance(ctl, Level6Push38Controller)
+    assert ctl.source_room == 0x38
+    assert ctl.dest_room == 0x28
+    assert ctl.walker.grid.xmin == 16
+
+    west = _ram(level=6, screen=0x38, x=32, y=149)
+    _plant_block(west, 11, 112, 117)
+    _plant_block(west, 12, 144, 117)
+    snap = read_snapshot(west)
+    left = left_block_0x68(snap)
+    assert left is not None
+    assert (left.x, left.y) == (112, 117)
+    stand = south_face_stand(left)
+    assert stand == (112, 133)
+
+    act = ctl.step(snap)
+    assert act.reason == "west_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+
+    south_of_face = make_north_28_controller()
+    inland = _ram(level=6, screen=0x38, x=48, y=149)
+    _plant_block(inland, 11, 112, 117)
+    _plant_block(inland, 12, 144, 117)
+    act = south_of_face.step(read_snapshot(inland))
+    assert act.reason == "stand_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+    north_of_face = make_north_28_controller()
+    high = _ram(level=6, screen=0x38, x=48, y=125)
+    _plant_block(high, 11, 112, 117)
+    _plant_block(high, 12, 144, 117)
+    act = north_of_face.step(read_snapshot(high))
+    assert act.reason == "stand_y"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+    at_stand = make_north_28_controller()
+    ram_stand = _ram(level=6, screen=0x38, x=stand[0], y=stand[1])
+    _plant_block(ram_stand, 11, 112, 117)
+    _plant_block(ram_stand, 12, 144, 117)
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "push_left_block"
+    assert list(act.action) == list(nes_action("UP"))
+    assert at_stand.phase.name == "PUSH"
+    assert any(n.startswith("at_push_") for n in at_stand.notes)
+    assert any(n.startswith("left_block_") for n in at_stand.notes)
+
+    ram_stand[ADDR_LINK_Y + 11] = 101
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "north_west"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert at_stand.phase.name == "NORTH"
+    assert any(n.startswith("pushed_112_117_to_112_101") for n in at_stand.notes)
+
+    ram_stand[ADDR_LINK_X] = 64
+    ram_stand[ADDR_LINK_Y] = 165
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "north_aisle"
+    assert list(act.action) == list(nes_action("UP"))
+    ram_stand[ADDR_LINK_Y] = 100
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "north_align"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram_stand[ADDR_LINK_X] = 120
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "north_push"
+    assert list(act.action) == list(nes_action("UP"))
+
+    ram = _ram(level=6, screen=0x28, x=120, y=205)
+    arrive = make_north_28_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_28"
+    assert level6_room28_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x38
+    assert not level6_room28_success(read_snapshot(ram))
+    run = SpineRun(through="level6-room28", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x28"
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
