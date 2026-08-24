@@ -854,6 +854,11 @@ _STEPLADDER_EXPORTS = frozenset({
     "make_stepladder_controller",
 })
 
+_EXIT60_EXPORTS = frozenset({
+    "Exit60Phase", "Level4Exit60Controller", "level4_exit60_stages",
+    "level4_exit60_success", "make_exit60_controller",
+})
+
 _IMPORT_NAMES = frozenset({
     "AliveRule", "CombatTuning", "DoorRoute", "DungeonRoomSpec",
     "KEESE_OBJECT_TYPE", "LEVEL4_ENTRY_ROOM", "PLAY_MODE", "RewardKind",
@@ -872,6 +877,9 @@ def __getattr__(name: str):
     if name in _STEPLADDER_EXPORTS:
         from zelda_i import level4_stepladder as _step
         return getattr(_step, name)
+    if name in _EXIT60_EXPORTS:
+        from zelda_i import level4_exit60 as _exit60
+        return getattr(_exit60, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -881,6 +889,7 @@ def __dir__():
         | set(_PATH_EXPORTS)
         | set(_MAZE_EXPORTS)
         | set(_STEPLADDER_EXPORTS)
+        | set(_EXIT60_EXPORTS)
     )
 
 
@@ -893,4 +902,5 @@ __all__ = sorted(
     | _PATH_EXPORTS
     | _MAZE_EXPORTS
     | _STEPLADDER_EXPORTS
+    | _EXIT60_EXPORTS
 )

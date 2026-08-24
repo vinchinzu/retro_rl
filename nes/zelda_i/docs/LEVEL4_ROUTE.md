@@ -1,10 +1,10 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through `ADDR_LADDER` on
-mode-9 `0x60` (`l4_stepladder_continuous_v34`, leftover `(136,141)`). East
-grey dock: south corridor to x=175, UP, y-first to y=141, LEFT to the
-pedestal. Isolated BFS is still not this tape. Next: exit `0x60→0x32`
-waypoints. Do not claim Clean STATUS — Survival assist only for this
+**Status:** continuous power-on Survival is live through play `0x32` with
+`ADDR_LADDER` (`l4_exit60_continuous_v2`, leftover `(192,189)`). Reverse
+east dock after 150f item freeze; DOWN at x=175/176 (v1 LEFT at `(176,173)`
+was solid). Isolated BFS is still not this tape. Next: west `0x32→0x31→0x30`
+KEY-UP. Do not claim Clean STATUS — Survival assist only for this
 segment. Do not close `.6` until TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
@@ -122,6 +122,7 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 0x30 --clear (ignore 0x2b; north-band y≥128)--> KEY-RIGHT @y141 --> **0x31**
 0x31 --clear maze Vires --> free RIGHT --> **0x32**
 0x32 --clear Zol+LikeLike --> push left block --> stairs **0x60** --> **ADDR_LADDER**
+0x60 --reverse dock waypoints --> **0x32** play (ladder set)
 ```
 
 | Room | Live? | Enemies | Item / notes | Segment bead |
@@ -135,7 +136,7 @@ ADDR_COMPASS|0x08 + return 0x61). Not Clean STATUS promote.
 | **0x30** | **live pure clear+KEY-R 2/2; continuous clear+KEY-R 1/1** | 3× `0x12` + 2× `0x2b` | Walkable y≥128; clear from (120,205); KEY-RIGHT @y141 → 0x31 | `rr-q8eq` / `rr-n1wn` |
 | **0x31** | **live pure clear+RIGHT 2/2; continuous clear+RIGHT 1/1** | 5× `0x12` Vire | Maze; leftover (112,141); clear opens R; free RIGHT → 0x32 at (16,141) | `rr-n1wn` / `rr-resv` |
 | **0x32** | **live pure clear 2/2; continuous enter 1/1** | 2× `0x13` + 2× `0x17` | Ignore 0x2b/0x68; leftover (16,141); push left → stairs | `rr-tib8` |
-| **0x60** | **live pure 2/2; continuous 1/1** | 4× `0x1b` Keese | mode-9 basement; east-dock waypoints → `ADDR_LADDER` at (136,141) | `rr-tib8` |
+| **0x60** | **live pure 2/2; continuous 1/1** | 4× `0x1b` Keese | mode-9 basement; east-dock waypoints → `ADDR_LADDER` at (136,141); reverse dock → 0x32 play (192,189) | `rr-tib8` |
 
 ### Post-compass expand (rr-o0nn / rr-xc3x live 2026-08-10)
 
@@ -165,6 +166,7 @@ Early component was closed at `{0x71, 0x61, 0x51, 0x50, 0x62}` until **0x50 nort
 | 0x31 | **RIGHT after clear** | **0x32** | doors 2→3; continuous: UP y=113, RIGHT+DOWN clip, south-U waypoints (not state-BFS) |
 | 0x32 | LEFT | 0x31 | free return |
 | 0x32 | **push left block** | **0x60** stairs | mode-9 basement (rr-tib8) |
+| 0x60 | **reverse dock waypoints** | **0x32** play | continuous v2 leftover (192,189); ladder set |
 | 0x32 | N/E/W free | **sealed** | live probe |
 
 Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
@@ -184,6 +186,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-stepladder --no-video --trials 1 \
   --tag l4_stepladder_continuous_v34
+# Exit 0x60 → 0x32 play verified v2 (ladder leftover (192,189))
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-exit60 --no-video --trials 1 \
+  --tag l4_exit60_continuous_v2
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state

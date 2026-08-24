@@ -43,6 +43,7 @@
 | Power-on → L4 enter `0x32` | **1/1 continuous Survival**; UP to y=113, RIGHT+DOWN clip into the east column `(160,125)`, south-U waypoints into `0x32`; 109,890f; hop 376f; TF=`0x07`, keys=5, bombs=15; leftover `(16,141)`; deaths 0; progression/capacity writes 0; no state load | `l4_room32_continuous_v11.json` / `_final.png` |
 | Power-on → L4 clear `0x32` | **1/1 continuous Survival**; Zol+LikeLike clear from `(16,141)` (ignore `0x2b`/`0x68`); 113,702f; hop 3,812f; leftover `(80,109)`; TF=`0x07`, keys=5, bombs=15; deaths 0; progression/capacity writes 0; no state load | `l4_clear32_continuous_v1.json` / `_final.png` |
 | Power-on → L4 stepladder `0x60` | **1/1 continuous Survival**; east-dock waypoints, `ADDR_LADDER` at `(136,141)`; 118,292f; TF=`0x07`, keys=5, bombs=15; leftover `(136,141)` mode-9 `0x60`; deaths 0; progression/capacity writes 0; no state load | `l4_stepladder_continuous_v34.json` / `_final.png` |
+| Power-on → L4 exit `0x60→0x32` | **1/1 continuous Survival**; reverse-dock waypoints after 150f item freeze, DOWN x=175/176 (v1 LEFT mid-dock solid); 118,806f hop 514f; TF=`0x07`, keys=5, bombs=15, ladder set; leftover `(192,189)` play `0x32`; deaths 0; progression/capacity writes 0; no state load | `l4_exit60_continuous_v2.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -53,7 +54,8 @@ and zero capacity writes. They are development checkpoints, not Clean or
 power-on STATUS promotions. Power-on → L3 west key `0x7b` is on the
 continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes —
 not Clean. The continuous spine now holds the natural `0x40` key and has
-cleared `0x32` and collected `ADDR_LADDER` on `0x60`; next is exit `0x60→0x32` waypoints (no BFS). Do not close `.6` until TF `0x08`.
+cleared `0x32`, collected `ADDR_LADDER` on `0x60`, and exited to play `0x32`
+`(192,189)`; next is west `0x32→0x31→0x30` then KEY-UP `0x20`. Do not close `.6` until TF `0x08`.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
