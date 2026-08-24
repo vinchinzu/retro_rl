@@ -310,9 +310,10 @@ def rain_phase(func: int) -> bool:
 def charge_window_ok(
     func: int, enemy_x: int, *, skip_x: int = 155
 ) -> bool:
-    """Fig-8 open (left or right) — skip rain only. Right park is a new window."""
-    del enemy_x, skip_x
-    return not rain_phase(func)
+    """Left fig-8 open only. Skip rain and the right wall (x=219 is the body)."""
+    if rain_phase(func):
+        return False
+    return int(enemy_x) < skip_x
 
 
 def right_park(enemy_x: int, *, skip_x: int = 155) -> bool:
@@ -797,22 +798,13 @@ def play_phantoon_fight(
         if func_now != last_func:
             park_x = int(state.enemy0_x)
             last_func = func_now
-        if rain_phase(func_now):
+        if rain_phase(func_now) or right_park(park_x, skip_x=strategy.skip_enemy_x):
             _rain_corner_wait(session, strategy)
             continue
-        if right_park(park_x, skip_x=strategy.skip_enemy_x):
-            if int(state.samus_x) < strategy.right_seat_x_min:
-                hold(
-                    session,
-                    1,
-                    *_right_seat_names(state, strategy),
-                    reason="phan_right_seat",
-                )
-                continue
         ready = (
             _session_eye_open(session)
             and state.samus_y >= strategy.floor_y_min
-            and charge_window_ok(func_now, state.enemy0_x)
+            and charge_window_ok(func_now, park_x)
         )
         if strategy.weapon == WEAPON_MISSILES and state.missiles < strategy.min_shots_to_fire:
             try:
@@ -837,12 +829,6 @@ def play_phantoon_fight(
                 hold(session, 1, reason="phan_wait_eye")
             continue
 
-        if right_park(park_x, skip_x=strategy.skip_enemy_x):
-            if strategy.weapon == WEAPON_BEAM:
-                _hold_charge(session, 1)
-            else:
-                hold(session, 1, reason="phan_wait_eye")
-            continue
         if not seated(state, strategy):
             _keep_seat(session, strategy)
         elif strategy.weapon == WEAPON_BEAM:

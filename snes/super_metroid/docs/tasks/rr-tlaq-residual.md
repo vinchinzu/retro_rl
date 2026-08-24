@@ -1,14 +1,14 @@
 ## Residual — rr-tlaq Phantoon fight pure (0xCD13)
 
-**Status:** window 1 charge 300 GREEN. Window 2 right fig-8 **miss** (higher
-jump, W1 dy band, body contact on the way up). Full fight RED.
+**Status:** window 1 charge 300 GREEN. Skip-right + morph rain: **died** in
+`$D788` before a left fig-8. Full fight RED.
 **Pin:** `scratch/post_ws_basement_to_phantoon.state`
-**Probe:** `window --windows 2 --weapon beam --wait 4000`
-**Report:** `scratch/phantoon_window_beam_w2_high.json` (x≥230 retry:
-`scratch/phantoon_window_beam_w2_x230.json`)
+**Probe:** `window --windows 2 --weapon beam --wait 6000`
+**Report:** `scratch/phantoon_window_beam_w2_morphrain.json`
 
 Do **not** STATUS-promote. Default CLI stays `ice`. Super-spray is not a hit.
-Do **not** start another 16k until a measured W2 chip.
+Do **not** start another 16k until a measured W2 chip. Do not fire the
+right fig-8 at x=219 (the body).
 
 ### Public policy (wiki)
 
@@ -27,40 +27,35 @@ Eye is **slot 1** (not enemy0 spritemap). Live flags:
 ### What works (verified this pass)
 
 - **Seat** from the enter pin: idle fall to `(39, 187)` p1.
-- **Weapon:** pin selected=2 (supers). Cycle to beam (0) during `_go_to_seat`.
-- **Window 1 park** always `(120, 108)` this seed.
-
-  | Probe | Park | Spend | Shots | HP | Health |
-  |-------|------|-------|------:|----|-------:|
-  | beam v2 | (120, 108) | (104, 149) p43 UP | 1 charge | 2500→2200 | 239 |
-  | beam w2_high w1 | (120, 108) | (104, 149) p43 | 1 charge | 2500→2200 | 239 |
-  | beam w2_high w2 | (203, 83) RIGHT | (219, 126) p44 after p84 @138 | 1 charge | 2200 miss | 219 |
-
-- **Hit rule (W1):** dash RIGHT+B to `|dx|≤16`, jump, release only in
-  `in_release_band` (dy 28–56 below the eye; W1 was 41). Keep `$0CD0` ≥60
-  through the dash. **A on the approach spin-dumps charge (p77).** Chip
-  **300**. Jump only once close.
-- **Park x at func change**, not live `enemy_x`.
+- **Window 1 park** always `(120, 108)` this seed. Charge **300** at
+  `(104, 149)` p43 vs `(120, 108)` dy=41.
+- `charge_window_ok` skips rain **and** `enemy_x≥155` (park x at func
+  change, so a left fig-8 that crosses 155 still counts).
 - Assist off: `energy_writes 0`, `missile_writes 0`.
 
 ### What fails
 
-1. **W2 higher jump (W1 dy band) — halt.** Eye at y=83 → target y=111–139
-   (not 148). Floor seat `(219, 187)` charge 120. Face LEFT, longer A:
-   p84 **hurt at (219, 138)** dy=55 (239→219), charge still 120, then
-   fire `(219, 126)` p44 dy=43 `|dx|=16` — charge dumps, **HP 2200**.
-   min_y 123. Same air column as the y=148 miss; higher is still the body.
-2. **x≥230 is the right wall.** Samus sticks at x=219 p137. Wait-for-230
-   skipped the open, then rain death. Do not require x≥230.
-3. **Standing rain wait dies** (239→0). Morph left `(51, 201)` p29 was
-   alive at 179 through `$D767`/`$D788` in a 30f dump (not a full cycle).
-4. **Super still unused** (correct). Do not spray.
+1. **Morph rain dies — halt.** Skip right open `(203, 83)` ~f2473. Morph
+   left `(53, 201)` p29/65 from `D72D`. Health 239→0 by ~f4100 in `$D788`
+   vs (168, 64), pose 65 `(52, 201)`. No left fig-8. Rolling to the other
+   corner when the body parks on the left (`enemy_x≤80`) walks through the
+   wave (−20 each pass: 239→219→199→179→159→139→119→99→79→59→39→19→0).
+2. **Right fig-8 at x=219 is the body.** Do not retry x≥230 (wall, p137).
+   Higher jump p84 at (219, 138).
+3. **Standing rain wait dies** 239→0. Super unused (correct).
+
+### Rain dump (every ~30f)
+
+`D72D` place (208, 96) → `D5E7` fig-8 (skip) → `D4A8`/`D60D` open (203, 83)
+skipped in morph → `D82A` then `D73F`/`D767`/`D788`/`D7D5`/`D7F7` parks
+(200,114)→(128,96)→(88,64)→(48,96)→(168,64). Death sitting morph-left
+during (168, 64) rain.
 
 ### Next actions (do not start another 16k first)
 
-1. Skip the right open and **morph a full rain cycle** (80f health + `$0FB2`
-   + xy), **or** a different W2 angle that is not the x=219 column.
-   Halt at first miss.
+1. Morph rain that **does not roll across the room** when the body parks
+   on the left seat (stay left, or swap without crossing the wave). Halt
+   at first miss. Do not fire x=219.
 2. Dual-green `scratch/post_phantoon_poweron.state` only after a kill
    (do **not** clobber `post_phantoon_defeated.state`).
 
