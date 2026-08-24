@@ -45,6 +45,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | **closed** — `l4_tf_continuous_v1` 2/2 TF `0x0F` mode 18 room `0x03`; HC not mid-room |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | **closed** — `l5_tf_continuous_v1` 1/1 TF `0x1F` mode 18 room `0x14` |
 | `rr-4d53.4` | one session power-on → L5 TF | **closed** — same tape; `validate_l5_endpoint` passes |
+| `rr-g3c1` | L5 fanfare settle → L6 entry | **blocked at 0x1B** — settle 1/1 isolated `Level5Complete` onto `0x0B` `(112,125)`; hop DOWN `0x1B` `(112,61)`. Wrong belief: `↓ ←×7` is free. 0x0B W/E sealed; 0x1B inland rock bowl; RIGHT wraps; north-edge LEFT solid. PNG `l5_to_l6_v25_final.png`. |
 
 Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
 Isolated `Level3*` checkpoints cannot close these beads.

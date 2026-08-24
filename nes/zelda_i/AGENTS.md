@@ -41,6 +41,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
+| `level6_spine.py` | L5 TF settle → L6 entry (0x1B west exit **blocked**) |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -105,11 +106,16 @@ Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds L5 TF `0x10`
 (`l5_tf_continuous_v1` 1/1, 173,961f, mode 18 room `0x14` `(120,149)`,
 TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity 0, no state load).
-Recorder leftover `(135,141)` mode 9; `exit_whistle_04` then 0x06
-block-stairs RIGHT onto `(128,141)` (center idle never warps); 0x65
-north shutter sealed so bomb-east 0x66; skip-fight to Digdogger; whistle
-shrink 0x38→0x18. Isolated BFS banned. `.7` and `.4` closed.
-Next: L5 fanfare settle → L6 entry (do not grant Whistle).
+`--through level6-entry` is wired (`settle_l5_tf` then
+`POST_L5_TO_LEVEL6_HOPS`) but **not live**: Isolated `Level5Complete`
+settle is 1/1 onto OW `0x0B` `(112,125)` (1115f, TF bit `0x10`, whistle
+earned). Hop 0 DOWN lands Lost Hills `0x1B` `(112,61)`. **Wrong belief:**
+walkthrough `0x0B ↓ ←×7` is not a free walk. 0x0B west/east are sealed;
+0x1B inland is a rock bowl (leftovers `(96,141)`, `(40,93)` NW alcove,
+`(32,165)` west notch — none reach x≤16); 0x1B RIGHT wraps; north-edge
+LEFT at `(112,61)` is solid (`l5_to_l6_v25`). Isolated BFS banned.
+Next: 0x1B west door channel (clip) or other 0x0B exit — do not grant
+Whistle. Do not poke Rod/doors/keys.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

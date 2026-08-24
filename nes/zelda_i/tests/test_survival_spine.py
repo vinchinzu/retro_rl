@@ -121,6 +121,9 @@ def test_spine_through_is_continuous_only() -> None:
         "level5-whistle",
         "level5-exit04",
         "level5",
+        "level6-entry",
+        "level6-east-key",
+        "level6-west",
     )
 
 
