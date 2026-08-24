@@ -1,11 +1,10 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through play `0x31` with
-`ADDR_LADDER` (`l4_west31_continuous_v1`, leftover `(208,141)`). South-U
-around the pushed 0x68 from 0x32 SE stairs. Isolated BFS is still not this
-tape. Next: reverse 0x31 maze → `0x30` KEY-UP `0x20`. Do not claim Clean
-STATUS — Survival assist only for this segment. Do not close `.6` until
-TF `0x08`.
+**Status:** continuous power-on Survival is live through play `0x20` with
+`ADDR_LADDER` (`l4_keyup20_continuous_v1`, leftover `(120,205)`, keys 5→4).
+Reverse 0x31 maze then KEY-UP @x120. Isolated BFS is still not this tape.
+Next: `0x20→0x21` map waypoints. Do not claim Clean STATUS — Survival
+assist only for this segment. Do not close `.6` until TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -194,6 +193,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-west31 --no-video --trials 1 \
   --tag l4_west31_continuous_v1
+# KEY-UP 0x30 → 0x20 verified v1 (leftover (120,205), keys 5→4)
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-keyup20 --no-video --trials 1 \
+  --tag l4_keyup20_continuous_v1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
