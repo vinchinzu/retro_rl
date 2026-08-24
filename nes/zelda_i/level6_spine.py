@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through 0x28 wizzrobe clear.
+"""Survival-spine L6 from L5 TF settle through 0x18 Gleeok enter.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / Bubble. Rod / Gohma / TF 0x20 remain residual.
+Ignore object types 0x2b / Bubble. Gleeok fight / Rod / Gohma / TF 0x20 residual.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
+    LEVEL6_GLEEOK_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
@@ -44,6 +45,7 @@ from zelda_i.level6_overworld import (
 from zelda_i.level6_path import (
     NORTH_68_MAX_FRAMES,
     Level6North68Controller,
+    make_north_18_controller,
     make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
@@ -71,6 +73,8 @@ __all__ = [
     "level6_clear38_success",
     "level6_clear28_stages",
     "level6_clear28_success",
+    "level6_room18_stages",
+    "level6_room18_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -102,6 +106,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear38",
     "level6-room28",
     "level6-clear28",
+    "level6-room18",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -116,6 +121,7 @@ L6_STOPS: dict[str, str] = {
     "level6-clear38": "level6_clear_0x38",
     "level6-room28": "level6_room_0x28",
     "level6-clear28": "level6_clear_0x28",
+    "level6-room18": "level6_room_0x18",
 }
 
 
@@ -421,6 +427,25 @@ def level6_clear28_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_room18_stages():
+    """0x28 leftover → LEFT+UP at y=181, hold UP, RIGHT+UP at y=109 into 0x18."""
+    north = make_north_18_controller()
+    return (
+        ("level6_north_0x18", north, north.max_frames),
+    )
+
+
+def level6_room18_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x18. Gleeok fight residual."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_GLEEOK_ROOM
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -634,3 +659,20 @@ def continue_level6_spine(
     run.success = level6_clear28_success(snap)
     if not run.success:
         run.failed_stage = "level6_clear_0x28"
+        return
+    if through == "level6-clear28":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_room18_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_room18_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_room_0x18"

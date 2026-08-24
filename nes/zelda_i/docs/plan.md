@@ -403,10 +403,12 @@ hop 5,487f, 194,755f, max_live=7. `--through level6-room28` **1/1**
 `l6_room28_continuous_v6` play `0x28` `(120,189)` hop 3,207f, 197,962f.
 Left 0x68 slot11 `(96,144)→(96,136)` then west-aisle north.
 `--through level6-clear28` **1/1** `l6_clear28_continuous_v1` play `0x28`
-`(120,181)` hop 2,587f, 200,549f, max_live=2 orange `0x24`. Diamond floor
-is walkable (0 occupancy misses). Isolated BFS banned. Gleeok / Rod /
-Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke
-Rod/doors/keys.
+`(120,181)` hop 2,587f, 200,549f, max_live=2 orange `0x24`. Combat
+occupancy-patrol 0 misses. Isolated BFS banned.
+`--through level6-room18` **1/1** `l6_room18_continuous_v7` play `0x18`
+`(120,189)` hop 280f, 200,829f. LEFT+UP at y=181, hold UP, RIGHT+UP at
+y=109. Keys=5 (no spend). Gleeok live (enter-stop). Do not fight Gleeok.
+Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -438,6 +440,13 @@ Rod/doors/keys.
 | room28 v5 | `0x38` `(120,164)` 8000f | UP @ x=120 from south band is a clear lane |
 | room28 v6 | `0x28` `(120,189)` **play** | live 0x68 y-move then west aisle x=64; hop 3,207f 1/1 |
 | clear28 v1 | `0x28` `(120,181)` **cleared** | occupancy-patrol 2× orange `0x24`; hop 2,587f 1/1 |
+| room18 v1 | `0x28` `(120,181)` stand 6000f | occupancy UP from leftover can path (freeze-miss boxed 4 cardinals) |
+| room18 v2 | `0x28` `(120,181)` 6000f | hold UP at leftover walks north (y never moved) |
+| room18 v3 | `0x28` `(80,181)` 6000f | LEFT to x=80 then UP; LEFT works, UP at y=181 still solid |
+| room18 v4 | `0x28` `(80,181)` 6000f | peel DOWN to y=189 then aisle UP crosses y=181 (walks to 181, then solid) |
+| room18 v5 | `0x28` `(96,173)` 6000f | LEFT+UP clips the y=181 face then cardinal RIGHT to x=120 (RIGHT solid at clip cell) |
+| room18 v6 | `0x28` `(96,109)` 6000f | hold UP from clip cell reaches north band; then cardinal RIGHT to x=120 (RIGHT solid at y=109) |
+| room18 v7 | `0x18` `(120,189)` **play** | RIGHT+UP clip at y=109; hop 280f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -451,8 +460,11 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_room38_continuous_v1_final.png`,
 `recordings/l6_clear38_continuous_v1_final.png`,
 `recordings/l6_room28_continuous_v{4,5,6}_final.png`,
-`recordings/l6_clear28_continuous_v1_final.png`. Next: Gleeok / Rod /
-Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
+`recordings/l6_clear28_continuous_v1_final.png`,
+`recordings/l6_room18_continuous_v{1,2,3,4,5,6,7}_final.png`. Dest `0x18` is
+**on the tape** (`l6_room18_continuous_v7` 1/1, Gleeok live). Next: Gleeok
+fight / Map / Rod / Gohma / TF `0x20`. Do not close `rr-tne2` / a TF-`0x20`
+bead.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
@@ -681,8 +693,9 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
    top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
    (`.3.1.1`). The full entrance→Raft corridor (`.3.3`) is closed; next is
    the verified Raft→TF `0x04` suffix, then `.6` L4 and `.7`
-   L5, then `.4` one-session L5 TF. L6 entry through 0x28 clear are on the
-   continuous tape; TF `0x20` / Rod / Gohma residual. L7–L9 stay out.
+   L5, then `.4` one-session L5 TF. L6 entry through Gleeok enter `0x18` are
+   on the continuous tape; Gleeok fight / TF `0x20` / Rod / Gohma residual.
+   L7–L9 stay out.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
 3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;
