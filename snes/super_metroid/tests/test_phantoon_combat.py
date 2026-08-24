@@ -20,8 +20,10 @@ from super_metroid.combat.phantoon import (
     eye_ilist_open,
     eye_open,
     fight_phantoon_action,
+    floor_release_ok,
     func_vulnerable,
     in_release_band,
+    rain_vulnerable,
     phantoon_phase,
     play_phantoon_fight,
     seated,
@@ -125,6 +127,22 @@ def test_seated_open_eye_missiles_fires() -> None:
         state, 0, PhantoonStrategy(weapon=WEAPON_MISSILES)
     )
     assert "X" in action
+
+
+def test_rain_vulnerable_is_d767_d788_not_figure8() -> None:
+    assert rain_vulnerable(0xD788)
+    assert rain_vulnerable(0xD767)
+    assert not rain_vulnerable(0xD60D)
+    assert not rain_vulnerable(0xD5E7)
+
+
+def test_floor_release_ok_is_stand_crouch_not_jump() -> None:
+    assert floor_release_ok(_state(pose=1, samus_y=187))
+    assert floor_release_ok(_state(pose=3, samus_y=187))
+    assert floor_release_ok(_state(pose=11, samus_y=187))
+    assert not floor_release_ok(_state(pose=21, samus_y=174))
+    assert not floor_release_ok(_state(pose=25, samus_y=187))
+    assert not floor_release_ok(_state(pose=81, samus_y=174))
 
 
 def test_release_band_is_window1_height_not_floor_hop() -> None:
