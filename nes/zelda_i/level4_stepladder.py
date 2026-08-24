@@ -38,11 +38,25 @@ MAZE_31_CELL_Q = 4
 PUSH_32_HOLD = 200
 STAIRS_32_PUSH = "UP"
 STAIRS_32_PUSH_FRAMES = 120
-# mode-9 0x60 spawn ~(48,77) → stepladder pedestal ~(136,141) hold4 BFS (rr-tib8).
+# Isolated leftover ~(48,69). Token replay of that BFS is not a spine path.
 MAZE_60_HOLD = 4
-MAZE_60_SPAWN_XY = (48, 77)
+MAZE_60_SPAWN_XY = (48, 69)
 MAZE_60_SETTLE = 30
+# 0x31-style clips. Cardinals miss (v6–v8); v9 RIGHT+UP at y=133 oscillates.
+CLIP_60: tuple[tuple[int, str], ...] = (
+    (133, "UP"),
+    (133, "DOWN"),
+    (125, "UP"),
+    (141, "DOWN"),
+    (117, "UP"),
+)
+CLIP_60_BUDGET = 48
+CLIP_60_EXIT_X = 176
 MAZE_60_TO_LADDER: tuple[str, ...] = (
+    "UP",
+    "UP",
+    "UP",
+    "UP",
     "DOWN",
     "DOWN",
     "DOWN",
@@ -567,10 +581,14 @@ class Level4StepladderController:
     phase_frames: int = 0
     path_index: int = 0
     hold_left: int = 0
+    probe_i: int = 0
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
     _clear: GenericDungeonRoomController | None = field(default=None, repr=False)
     _hunt_i: int = 0
+    _last_xy: tuple[int, int] | None = None
+    _stall: int = 0
 
     def __post_init__(self) -> None:
         if self.clear_first:
@@ -590,11 +608,34 @@ class Level4StepladderController:
         self._set_phase(StepladderPhase.FAILED, note)
         return FrameAction(nes_idle_action(), note)
 
+    def _sample(self, snap: ZeldaSnapshot, reason: str) -> None:
+        sample = {
+            "frame": self.frames,
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "phase": self.phase.name,
+            "probe_i": self.probe_i,
+            "reason": reason,
+            "stall": self._stall,
+        }
+        if (
+            not self.samples
+            or self.samples[-1]["reason"] != reason
+            or self.frames - self.samples[-1]["frame"] >= 250
+        ):
+            self.samples.append(sample)
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         # Controllers only get snap (no ADDR_LADDER field). Runner confirms
         # ``level4_stepladder_success``; we mark success near pedestal after path.
         self.frames += 1
         self.phase_frames += 1
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._last_xy == xy:
+            self._stall += 1
+        else:
+            self._stall = 0
+            self._last_xy = xy
 
         if self.phase is StepladderPhase.DONE:
             return FrameAction(nes_idle_action(), "done")
@@ -603,7 +644,8 @@ class Level4StepladderController:
         if snap.mode == 17:
             return self._fail("link_death")
         if self.frames >= self.max_frames:
-            return self._fail("timeout")
+            self._sample(snap, "timeout")
+            return self._fail(f"timeout_{snap.link_x}_{snap.link_y}")
 
         if snap.transitioning or snap.mode in (4, 6, 7):
             return FrameAction(nes_action("UP"), "scroll")
@@ -720,14 +762,32 @@ class Level4StepladderController:
             if self.phase_frames < MAZE_60_SETTLE:
                 return FrameAction(nes_idle_action(), "stairs_idle_settle")
             sx, sy = MAZE_60_SPAWN_XY
-            if abs(snap.link_x - sx) <= 24 and abs(snap.link_y - sy) <= 32:
+            # NE (~208,93) may resettle NW; west-aisle leftover walks to spawn.
+            if abs(snap.link_x - sx) <= 24:
+                if self.phase_frames > MAZE_60_SETTLE + 240:
+                    self._set_phase(StepladderPhase.HUNT, "spawn_join_timeout")
+                    return FrameAction(nes_idle_action(), "spawn_join_timeout")
+                if abs(snap.link_x - sx) > 6:
+                    return FrameAction(
+                        nes_action("RIGHT" if snap.link_x < sx else "LEFT"),
+                        "join_spawn_x",
+                    )
+                if abs(snap.link_y - sy) > 4:
+                    return FrameAction(
+                        nes_action("DOWN" if snap.link_y < sy else "UP"),
+                        "join_spawn_y",
+                    )
                 self._set_phase(StepladderPhase.PATH, "path_from_spawn")
                 self.path_index = 0
                 self.hold_left = 0
+                self.probe_i = 0
                 return FrameAction(nes_idle_action(), "path_from_spawn")
-            # Landed elsewhere in 0x60 — hunt pedestal directly (BFS path is
-            # spawn-relative).
-            self._set_phase(StepladderPhase.HUNT, "hunt_from_nonspawn")
+            if self.phase_frames < MAZE_60_SETTLE + 180:
+                return FrameAction(nes_idle_action(), "wait_nw_resettle")
+            self._set_phase(
+                StepladderPhase.HUNT,
+                f"hunt_from_nonspawn_{snap.link_x}_{snap.link_y}",
+            )
             return FrameAction(nes_idle_action(), "hunt_from_nonspawn")
 
         if self.phase is StepladderPhase.PATH:
@@ -735,22 +795,38 @@ class Level4StepladderController:
                 return FrameAction(nes_idle_action(), "path_settle")
             # Stay in basement; if we fell back to 0x32, fail (need re-enter).
             if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
+                self._sample(snap, "path_exited_to_0x32")
                 return self._fail("path_exited_to_0x32")
             if snap.screen != ROOM_L4_STEPLADDER and snap.mode != 9:
                 return self._fail(f"path_wrong_room_0x{snap.screen:02x}")
-            if self.hold_left > 0:
-                self.hold_left -= 1
-                d = MAZE_60_TO_LADDER[
-                    min(self.path_index, len(MAZE_60_TO_LADDER) - 1)
-                ]
-                return FrameAction(nes_action(d), "path_hold")
-            if self.path_index >= len(MAZE_60_TO_LADDER):
-                self._set_phase(StepladderPhase.HUNT, "path_done")
-                return FrameAction(nes_idle_action(), "path_done")
-            d = MAZE_60_TO_LADDER[self.path_index]
-            self.path_index += 1
-            self.hold_left = MAZE_60_HOLD - 1
-            return FrameAction(nes_action(d), "path_step")
+            if xy[0] > 72 and xy[0] < CLIP_60_EXIT_X:
+                self._sample(snap, f"clip_open_{xy[0]}_{xy[1]}")
+                self._set_phase(StepladderPhase.HUNT, "clip_open")
+                return FrameAction(nes_idle_action(), "clip_open")
+            if self.probe_i >= len(CLIP_60):
+                self._sample(snap, "clips_done")
+                return self._fail(f"clips_exhausted_{xy[0]}_{xy[1]}")
+            gy, second = CLIP_60[self.probe_i]
+            if xy[0] >= CLIP_60_EXIT_X:
+                self._sample(snap, f"clip_exit_{xy[0]}_{xy[1]}")
+                return self._fail(f"clip_exit_{xy[0]}_{xy[1]}")
+            if abs(xy[0] - MAZE_60_SPAWN_XY[0]) > 6:
+                d = "RIGHT" if xy[0] < MAZE_60_SPAWN_XY[0] else "LEFT"
+                return FrameAction(nes_action(d), "clip_aisle_x")
+            if abs(xy[1] - gy) > 8:
+                d = "DOWN" if xy[1] < gy else "UP"
+                return FrameAction(nes_action(d), "clip_aisle_y")
+            self.hold_left += 1
+            if self.hold_left >= CLIP_60_BUDGET:
+                self._sample(snap, f"clip_miss_{self.probe_i}_{xy[0]}_{xy[1]}")
+                self.probe_i += 1
+                self.hold_left = 0
+                return FrameAction(nes_idle_action(), "clip_next")
+            if abs(xy[1] - gy) > 4:
+                d = "DOWN" if xy[1] < gy else "UP"
+                return FrameAction(nes_action(d), "clip_aisle_y")
+            self._sample(snap, f"clip_{second}")
+            return FrameAction(nes_action("RIGHT", second), "clip_right_diag")
 
         if self.phase is StepladderPhase.HUNT:
             if snap.mode in (4, 6, 7) or snap.transitioning:
@@ -766,8 +842,28 @@ class Level4StepladderController:
                     self._set_phase(StepladderPhase.DONE, "ladder_pedestal")
                     return FrameAction(nes_idle_action(), "done")
                 return FrameAction(nes_idle_action(), "hunt_idle")
-            # Mode-9 basement is layered: north ledge → channel → pedestal.
-            # Prefer vertical first so we drop off the ledge before east-west.
+            # South corridor: UP is water, RIGHT is 0x32 exit. Return west+north.
+            if snap.link_y >= 165:
+                if snap.link_x > 54:
+                    return FrameAction(nes_action("LEFT"), "hunt_south_back_west")
+                return FrameAction(nes_action("UP"), "hunt_south_back_north")
+            if snap.link_x >= 168 and snap.link_y >= 150:
+                return FrameAction(nes_action("LEFT"), "hunt_avoid_exit")
+            # East of the west aisle: stay on the stub, x-first to the pedestal.
+            if snap.link_x > 72:
+                if abs(dx) > 6:
+                    return FrameAction(
+                        nes_action("RIGHT" if dx > 0 else "LEFT"), "hunt_x"
+                    )
+                if abs(dy) > 6:
+                    return FrameAction(
+                        nes_action("DOWN" if dy > 0 else "UP"), "hunt_y"
+                    )
+            if snap.link_y < 120 and snap.link_x > 72:
+                return FrameAction(nes_action("LEFT"), "hunt_north_to_west")
+            if snap.link_x <= 72 and snap.link_y < 125:
+                return FrameAction(nes_action("DOWN"), "hunt_west_to_south")
+            # Layered basement: drop off the north ledge before east-west.
             if abs(dy) > 8:
                 return FrameAction(
                     nes_action("DOWN" if dy > 0 else "UP"), "hunt_y_first"
@@ -786,12 +882,14 @@ class Level4StepladderController:
             "phase": self.phase.name,
             "frames": self.frames,
             "path_index": self.path_index,
+            "probe_i": self.probe_i,
             "notes": list(self.notes),
             "segment": "level4_stepladder",
             "push_stand": list(PUSH_32_STAND),
             "stairs_approach": list(STAIRS_32_APPROACH),
             "ladder_xy": list(LADDER_60_PICKUP_XY),
             "path_len": len(MAZE_60_TO_LADDER),
+            "samples": list(self.samples),
         }
 
 

@@ -182,9 +182,27 @@ empty-room stop (do not require push-block or stairs `0x60`). Existing
 `ROOM_32_SPEC` controller; no inland/occupancy change. Invuln `0x2b` and
 block `0x68` residual OK. Do not close `.6` until TF `0x08`.
 
-Next boundary is push left block → stairs `0x60` Stepladder (existing
-`make_stepladder_controller`). Do not use checkpoint-mediated/emulator-state
-BFS.
+`--through level4-stepladder` is wired (`make_stepladder_controller(clear_first=False)`,
+stop `ADDR_LADDER` / `level4_stepladder_success`) but **live blocked** after
+v1–v11. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
+from the continuous leftover without emulator-state BFS. Do not close `.6`.
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| v1 | `0x60` `(48,133)` HUNT timeout | spawn band y±32; HUNT RIGHT into water |
+| v3 | `0x32` `(192,189)` mode 10 | `MAZE_60_TO_LADDER` 18 DOWN from `(48,77)` hits **exit stairs** |
+| v4 | `0x60` `(136,189)` | isolated token path from `(48,69)` dumps south corridor; UP is water |
+| v5 | `0x32` `(192,189)` | cap DOWN at y=109 still RIGHT+UP to exit |
+| v6/v7 | `0x60` `(48,133)` | west-aisle cardinal RIGHT solid at y=69..157 |
+| v8 | `0x60` `(48,133)` | south corridor UP solid at x=80..144; x≥176 is exit |
+| v9/v10 | `0x60` `(48,133)` | RIGHT+UP at y=133 oscillates, no east |
+| v11 | `0x60` `(48,133)` clips_done | RIGHT+UP/DOWN at y=133/125/141/117 all miss x=48 |
+
+PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11}_final.png` (v3/v5 exit
+`0x32`). Isolated `l4_tib8_stepladder` 2/2 used **live BFS** from `(48,69)` —
+banned on the spine. Next worker: find a coordinate causeway onto the island
+(not token-replay, not `level4_room_nav` BFS). Push from `(80,109)` is OK.
+
 Exact verified predecessor:
 
 ```bash
@@ -192,6 +210,10 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-clear32 --no-video --trials 1 \
   --tag l4_clear32_continuous_v1
+# blocked hop (do not expect ok=true):
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-stepladder --no-video --trials 1 \
+  --tag l4_stepladder_continuous_v11
 ```
 Isolated 0x6b check:
 

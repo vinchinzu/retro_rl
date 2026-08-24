@@ -66,6 +66,7 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_EAST_31,
     ROOM_L4_EAST_32,
     ROOM_L4_KEESE_KEY_51,
+    ROOM_L4_STEPLADDER,
     ROOM_L4_NORTH_30,
     ROOM_L4_VIRES_50,
     ROOM_L4_ZOLS_40,
@@ -89,6 +90,7 @@ from zelda_i.level4_stepladder import (
     make_key_right_31_controller,
     make_north_30_controller,
     make_room_30_clear_controller,
+    make_stepladder_controller,
 )
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
@@ -109,6 +111,7 @@ Through = Literal[
     "level4-clear31",
     "level4-room32",
     "level4-clear32",
+    "level4-stepladder",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -124,6 +127,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-clear31",
     "level4-room32",
     "level4-clear32",
+    "level4-stepladder",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -328,6 +332,23 @@ def level4_clear_32_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level4_stepladder_stages():
+    """Cleared-0x32 leftover (80,109) → push left → 0x60 ADDR_LADDER."""
+    ctl = make_stepladder_controller(clear_first=False)
+    return (
+        ("level4_stepladder", ctl, ctl.max_frames),
+    )
+
+
+def level4_stepladder_success(snap: ZeldaSnapshot) -> bool:
+    """Exact ADDR_LADDER stop; do not require 0x32 exit or Keese clear."""
+    return (
+        snap.level == 4
+        and snap.ladder > 0
+        and (snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9)
+    )
+
+
 def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
     """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
     return {
@@ -397,6 +418,7 @@ class SpineRun:
                 "level4-clear31": "level4_clear_0x31",
                 "level4-room32": "level4_enter_0x32",
                 "level4-clear32": "level4_clear_0x32",
+                "level4-stepladder": "level4_stepladder_0x60",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -948,4 +970,21 @@ def run_survival_spine(
     run.success = level4_clear_32_success(snap)
     if not run.success:
         run.failed_stage = "level4_clear_0x32"
+        return run
+    if through == "level4-clear32":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_stepladder_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_stepladder_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_stepladder_0x60"
     return run
