@@ -1,4 +1,4 @@
-"""Survival-spine L6 from L5 TF settle through 0x19 KEY-DOWN after Rod.
+"""Survival-spine L6 from L5 TF settle through 0x29 wizzrobe clear.
 
 Do not poke Rod / doors / keys / bow / arrows. Do not grant Whistle.
 Isolated BFS banned. Ignore object types 0x2b / Bubble. Map skipped.
@@ -18,6 +18,7 @@ from zelda_i.level6_dungeon import (
     LEVEL6_MAP_BIT,
     ROOM_09_SPEC,
     ROOM_19_SPEC,
+    ROOM_29_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
@@ -26,6 +27,7 @@ from zelda_i.level6_dungeon import (
     ROOM_7A_SPEC,
     make_clear_09_controller,
     make_clear_19_controller,
+    make_clear_29_controller,
     make_clear_28_controller,
     make_compass_68_controller,
     make_east_key_controller,
@@ -69,6 +71,7 @@ from zelda_i.level6_room19 import (
     make_room19_controller,
     make_settle_09_controller,
     make_settle_19_controller,
+    make_settle_29_controller,
 )
 from zelda_i.level6_exit75 import (
     level6_exit75_stages,
@@ -81,6 +84,10 @@ from zelda_i.level6_south09 import (
 from zelda_i.level6_south19 import (
     level6_south19_stages,
     level6_south19_success,
+)
+from zelda_i.level6_east29 import (
+    level6_east29_stages,
+    level6_east29_success,
 )
 from zelda_i.level6_rod import (
     ROD_75_MAX_FRAMES,
@@ -157,6 +164,10 @@ __all__ = [
     "level6_south09_success",
     "level6_south19_stages",
     "level6_south19_success",
+    "level6_clear29_stages",
+    "level6_clear29_success",
+    "level6_east29_stages",
+    "level6_east29_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -203,6 +214,8 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-exit75",
     "level6-south09",
     "level6-south19",
+    "level6-clear29",
+    "level6-east29",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -232,6 +245,8 @@ L6_STOPS: dict[str, str] = {
     "level6-exit75": "level6_exit_0x75",
     "level6-south09": "level6_south_0x09",
     "level6-south19": "level6_south_0x19",
+    "level6-clear29": "level6_clear_0x29",
+    "level6-east29": "level6_east_0x29",
 }
 
 
@@ -743,6 +758,29 @@ def level6_clear09_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_clear29_stages():
+    """0x29 leftover → idle census then occupancy-patrol. No candle/Gohma."""
+    settle = make_settle_29_controller()
+    fight = make_clear_29_controller()
+    return (
+        ("level6_settle_0x29", settle, SETTLE_19_MAX_FRAMES),
+        ("level6_clear_0x29", fight, ROOM_29_SPEC.max_frames),
+    )
+
+
+def level6_clear29_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready empty 0x29. Ignore 0x2b/0x40. Do not require stairs/Gohma."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_29_SPEC.room_id
+        and not snap.transitioning
+        and not ROOM_29_SPEC.live_enemies(snap)
+        and snap.triforce == 0x1F
+        and int(getattr(snap, "rod", 0)) != 0
+    )
+
+
 def level6_stairs09_stages():
     """0x09 leftover → left 0x68 then NE 0x68 south-face. Do not grant Rod."""
     stairs = make_stairs_09_controller()
@@ -1246,3 +1284,37 @@ def continue_level6_spine(
     run.success = level6_south19_success(snap)
     if not run.success:
         run.failed_stage = "level6_south_0x19"
+        return
+    if through == "level6-south19":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_clear29_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_clear29_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_clear_0x29"
+        return
+    if through == "level6-clear29":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_east29_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_east29_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_east_0x29"
