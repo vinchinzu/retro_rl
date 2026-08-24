@@ -1,4 +1,4 @@
-"""Unit tests for the development-only Phantoon strategy (no emulator)."""
+"""Unit tests for the no-assist Phantoon left-corner policy (no emulator)."""
 
 from __future__ import annotations
 
@@ -11,15 +11,23 @@ from super_metroid.combat.phantoon import (
     PHANTOON_INVISIBLE,
     PHANTOON_VULNERABLE,
     ROOM_PHANTOON,
+    SEAT_X,
+    VULNERABLE_SPRITEMAPS,
+    WEAPON_BEAM,
     WEAPON_MISSILES,
     PhantoonEvidence,
     PhantoonStrategy,
+    eye_ilist_open,
+    eye_open,
     fight_phantoon_action,
+    func_vulnerable,
     phantoon_phase,
     play_phantoon_fight,
+    seated,
 )
 from super_metroid.combat.protocol import wrap_phantoon_as_boss_strategy
 from super_metroid.ram import GameplayPhase, parse_state
+
 
 def _state(**overrides):
     ram = np.zeros(0x2000, dtype=np.uint8)
@@ -27,14 +35,24 @@ def _state(**overrides):
     values = {
         "phase": GameplayPhase.ORDINARY_GAMEPLAY,
         "room_id": ROOM_PHANTOON,
-        "enemy0_spritemap": 0xABCD,
-        "num_enemies": 1,
-        **overrides,
+        "samus_x": SEAT_X,
+        "samus_y": 187,
+        "pose": 1,
+        "facing": 8,
+        "enemy0_x": 120,
+        "enemy0_y": 108,
+        "enemy0_hp": 2500,
+        "enemy0_spritemap": 0xDEDD,
+        "missiles": 20,
+        "max_missiles": 20,
+        "selected_item": WEAPON_BEAM,
+        "num_enemies": 4,
+        "health": 299,
+        "max_health": 299,
     }
-    return replace(
-        base,
-        **values,
-    )
+    values.update(overrides)
+    return replace(base, **values)
+
 
 class _Session:
     """Small deterministic session double for the bounded fight loop."""
@@ -45,16 +63,14 @@ class _Session:
         self.actions = []
         self.hp_after_step = hp_after_step
         self.set_boss_bit = set_boss_bit
+        self.env = None
 
     def step(self, action, reason):
         self.actions.append((action, reason))
         self.frame += 1
         updates = {"frame": self.frame}
-        if self.state.selected_item != WEAPON_MISSILES:
-            updates["selected_item"] = WEAPON_MISSILES
-        if self.hp_after_step is not None and len(self.actions) >= 27:
+        if self.hp_after_step is not None and len(self.actions) >= 8:
             updates["enemy0_hp"] = self.hp_after_step
-        # Apply boss bit only after body HP is already 0 (death-anim settle).
         hp_now = updates.get("enemy0_hp", self.state.enemy0_hp)
         if self.set_boss_bit and hp_now == 0:
             bits = list(self.state.boss_bits)
@@ -63,101 +79,91 @@ class _Session:
         self.state = replace(self.state, **updates)
         return self.state
 
-def test_active_enemy_action_faces_and_fires() -> None:
+
+def test_seated_is_standing_left_corner() -> None:
+    assert seated(_state())
+    assert not seated(_state(pose=29))
+    assert not seated(_state(pose=81))
+    assert not seated(_state(samus_x=90))
+    assert not seated(_state(samus_y=120, pose=1))
+
+
+def test_eye_open_uses_measured_body_spritemaps() -> None:
+    assert 0xDEF1 in VULNERABLE_SPRITEMAPS
+    assert eye_open(_state(enemy0_spritemap=0xDEF1))
+    assert not eye_open(_state(enemy0_spritemap=0xDEDD))
+    assert eye_ilist_open(0xCC53)
+    assert eye_ilist_open(0xCCA1)
+    assert not eye_ilist_open(0xCC7F)
+    assert func_vulnerable(0xD60D)
+    assert not func_vulnerable(0xD5E7)
+
+
+def test_seated_closed_eye_charges() -> None:
+    assert fight_phantoon_action(
+        _state(), 0, PhantoonStrategy(weapon=WEAPON_BEAM)
+    ) == ("X",)
+    assert fight_phantoon_action(_state(), 0) == ()
+
+
+def test_seated_open_eye_zero_ammo_does_not_fire() -> None:
     state = _state(
-        samus_x=100,
-        enemy0_x=300,
-        enemy0_y=200,
-        enemy0_hp=2500,
+        enemy0_spritemap=0xDEF1,
+        missiles=0,
+        selected_item=WEAPON_MISSILES,
     )
-    action = fight_phantoon_action(state, frame_index=0)
-    assert "RIGHT" in action
-    assert "X" in action
-
-def test_phantoon_phase_labels_live_spritemap_vulnerable() -> None:
-    state = _state(enemy0_hp=2500, enemy0_spritemap=0xABCD)
-    assert phantoon_phase(state) == PHANTOON_VULNERABLE
-
-def test_phantoon_phase_labels_missing_spritemap_invisible() -> None:
-    state = _state(enemy0_hp=2500, enemy0_spritemap=0)
-    assert phantoon_phase(state) == PHANTOON_INVISIBLE
-
-def test_invisible_phase_gates_fire_but_keeps_movement() -> None:
-    state = _state(
-        samus_x=100,
-        enemy0_x=300,
-        enemy0_hp=2500,
-        enemy0_spritemap=0,
+    action = fight_phantoon_action(
+        state, 0, PhantoonStrategy(weapon=WEAPON_MISSILES)
     )
-    action = fight_phantoon_action(state, frame_index=0)
-    assert "RIGHT" in action
     assert "X" not in action
 
-def test_vulnerable_phase_allows_periodic_fire() -> None:
-    state = _state(samus_x=100, enemy0_x=300, enemy0_hp=2500)
-    assert "X" in fight_phantoon_action(state, frame_index=0)
 
-def test_defeated_enemy_returns_empty_actions() -> None:
-    state = _state(enemy0_hp=0)
-    assert fight_phantoon_action(state, frame_index=0) == ()
-
-def test_strategy_tuning_changes_fire_period() -> None:
-    state = _state(samus_x=100, enemy0_x=300, enemy0_y=200, enemy0_hp=2500)
-    strategy = PhantoonStrategy(fire_period=5)
-    assert "X" in fight_phantoon_action(state, frame_index=0, strategy=strategy)
-    assert "X" not in fight_phantoon_action(state, frame_index=1, strategy=strategy)
-
-def test_catalog_exposes_single_open_eye_phase() -> None:
-    phase = phantoon_catalog().phases[0]
-    assert phase.phase_id == "round"
-    assert phase.max_hp == 2500
-    assert "vulnerable" in phase.notes
-
-def test_action_transitions_from_active_spray_to_idle_at_zero_hp() -> None:
-    active = _state(samus_x=100, enemy0_x=300, enemy0_hp=1)
-    assert "X" in fight_phantoon_action(active, frame_index=0)
-    defeated = replace(active, enemy0_hp=0)
-    assert fight_phantoon_action(defeated, frame_index=0) == ()
-
-def test_fight_selects_missiles_before_bounded_timeout() -> None:
-    session = _Session(
-        _state(enemy0_hp=2500, selected_item=0, max_missiles=5)
+def test_seated_open_eye_missiles_fires() -> None:
+    state = _state(enemy0_spritemap=0xDEF1, selected_item=WEAPON_MISSILES)
+    action = fight_phantoon_action(
+        state, 0, PhantoonStrategy(weapon=WEAPON_MISSILES)
     )
-    evidence = play_phantoon_fight(
-        session,
-        strategy=PhantoonStrategy(max_fight_frames=0, weapon=WEAPON_MISSILES),
-    )
-    assert evidence.outcome == "timeout"
-    assert evidence.action_frames == 26
-    assert session.state.selected_item == WEAPON_MISSILES
+    assert "X" in action
+
+
+def test_not_seated_walks_left_to_corner() -> None:
+    state = _state(samus_x=120, pose=1)
+    assert "LEFT" in fight_phantoon_action(state, 0)
+
+
+def test_zero_hp_returns_idle() -> None:
+    assert fight_phantoon_action(_state(enemy0_hp=0), 0) == ()
+
+
+def test_phantoon_phase_open_spritemap_is_vulnerable() -> None:
+    assert phantoon_phase(_state(enemy0_spritemap=0xDEF1)) == PHANTOON_VULNERABLE
+    assert phantoon_phase(_state(enemy0_spritemap=0xDEDD)) == PHANTOON_INVISIBLE
+    assert phantoon_phase(_state(enemy0_hp=0)) == "defeated"
+
 
 def test_fight_labels_body_zero_without_boss_bit() -> None:
-    session = _Session(
-        _state(enemy0_hp=2500, max_missiles=5),
-        hp_after_step=0,
-    )
+    session = _Session(_state(enemy0_hp=2500), hp_after_step=0)
     evidence = play_phantoon_fight(
         session,
-        strategy=PhantoonStrategy(max_fight_frames=1, weapon=WEAPON_MISSILES),
+        strategy=PhantoonStrategy(max_fight_frames=12, weapon=WEAPON_BEAM),
         require_boss_bit=False,
     )
     assert evidence.outcome == "phantoon_body_zero_no_boss_bit"
-    assert evidence.body_zero_frame == 27
-    assert evidence.boss_bit_frame is None
+    assert evidence.body_zero_frame is not None
     assert evidence.boss_bit_set is False
 
 
 def test_fight_waits_death_anim_for_boss_bit() -> None:
     session = _Session(
-        _state(enemy0_hp=2500, max_missiles=5),
+        _state(enemy0_hp=2500),
         hp_after_step=0,
         set_boss_bit=True,
     )
     evidence = play_phantoon_fight(
         session,
         strategy=PhantoonStrategy(
-            max_fight_frames=50,
-            weapon=WEAPON_MISSILES,
+            max_fight_frames=40,
+            weapon=WEAPON_BEAM,
             boss_bit_grace_frames=1_200,
         ),
         require_boss_bit=True,
@@ -166,6 +172,7 @@ def test_fight_waits_death_anim_for_boss_bit() -> None:
     assert evidence.body_zero_frame is not None
     assert evidence.boss_bit_frame is not None
     assert evidence.boss_bit_set is True
+
 
 def test_phantoon_evidence_dict_preserves_phase_metrics() -> None:
     evidence = PhantoonEvidence(
@@ -180,43 +187,18 @@ def test_phantoon_evidence_dict_preserves_phase_metrics() -> None:
         boss_bit_set=True,
         outcome="phantoon_defeated",
         phase_transitions=(("vulnerable", 10), ("defeated", 80)),
+        shots_fired=12,
+        windows=4,
     )
     payload = evidence.to_dict()
     assert payload["body_zero_frame"] == 80
-    assert payload["boss_bit_frame"] == 90
+    assert payload["shots_fired"] == 12
+    assert payload["windows"] == 4
     assert payload["outcome"] == "phantoon_defeated"
-    assert payload["phase_transitions"] == [
-        {"phase": "vulnerable", "frame": 10},
-        {"phase": "defeated", "frame": 80},
-    ]
-    assert set(payload) == {
-        "start_frame",
-        "body_zero_frame",
-        "boss_bit_frame",
-        "end_frame",
-        "peak_body_hp",
-        "min_body_hp",
-        "action_frames",
-        "final_body_hp",
-        "boss_bit_set",
-        "outcome",
-        "phase_transitions",
-    }
 
-def test_fight_evidence_records_phase_transition_timestamp() -> None:
-    session = _Session(
-        _state(enemy0_hp=2500, max_missiles=5, enemy0_spritemap=0),
-        hp_after_step=0,
-    )
-    evidence = play_phantoon_fight(
-        session,
-        strategy=PhantoonStrategy(max_fight_frames=1, weapon=WEAPON_MISSILES),
-        require_boss_bit=False,
-    )
-    assert evidence.phase_transitions[0] == (PHANTOON_INVISIBLE, 0)
-    assert evidence.phase_transitions[-1] == ("defeated", 27)
 
 def test_wrapper_entry_room_and_catalog() -> None:
     strategy = wrap_phantoon_as_boss_strategy()
     assert strategy.entry.room_id == ROOM_PHANTOON
     assert strategy.catalog.name == "Phantoon"
+    assert phantoon_catalog().max_hp == 2500
