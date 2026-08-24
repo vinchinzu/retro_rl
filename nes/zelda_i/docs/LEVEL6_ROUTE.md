@@ -456,28 +456,20 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room09 
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1
 ```
 
-### Left-block stairs 0x09 — **red**
+### Left-block stairs 0x09 — **1/1**
 
 | Field | Live |
 |-------|------|
 | Start | Survival leftover `0x09` `(112,173)` |
 | Push | south-face UP **does** move left 0x68 `(96,144)→(96,136)` then gone |
-| v1 | occupancy leftover boxed `(112,173)` 4-cardinal |
-| v2 | idle vacated `(96,148)` tile 119; not mode 9 |
-| v3 | UP @ x=96 solid `(96,133)` tile 179; never reached NE |
-| v4 | idle `(96,137)` tile 118; not mode 9 |
-| v5 | idle `(192,113)` tile 119 (0x77 decorative); remaining 0x68 at (208,96) |
-| v6 | hold-UP `(208,97)` tile 115 (0x73); y=96 solid |
-| v7 | idle `(208,97)` tile 0x73 still mode 5; PNG hole is west of Link |
-| v8 | `(192,97)` tile 119 (0x77) **on** the NE hole; hold-UP 1px short of 96 |
-| v9 | vacated `(96,145)` tile 119; yo-yo 143/145 around original slot |
-| v10 | no live pair 0x68 (`no_right_0x68_96_149`); visual right block is a tile |
-| v11 | idle NW `(48,109)` tile 118 still mode 5 |
-| v12 | true idle `(192,97)` tile 119 (0x77) 3830f `stairs_idle` action none; still mode 5, rod=0 |
-| v13 | true idle `(48,172)` tile 119 3887f; SW floor not a hole; 0x68 slot11 `(208,96)` |
+| NE 0x68 | slot11 jumps to `(208,96)`; does **not** y-move |
+| Warp | south-face `(208,114)` UP onto tile `0x71` at `(208,93)` → mode 9 room `0x75` |
+| v12 | true idle `(192,97)` tile 0x77 — decorative hole |
+| v13 | true idle `(48,172)` tile 119 — SW floor not a hole |
+| v14 | **1/1** hop 203f, 210,902f; rod=0 |
 | Stop | `--through level6-stairs09` mode 9 |
-| Track | **assisted Survival** (miss) |
-| Notes | NE hole decorative. SW not a hole. Next south-face remaining 0x68 `(208,96)`. Halt y>=181. Do not grant Rod. |
+| Track | **assisted Survival** |
+| Notes | Next Magical Rod in cellar `0x75`. Do not grant Rod. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
@@ -514,7 +506,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - statue/Keese rooms — **0x58 live**
 - multi-Wizzrobe + Bubble + Like-Like — **0x38 live clear** (Bubble residual)
 - Mid-dungeon **Gleeok (3 heads)** then Map — **0x18 type `0x44` live kill**; **0x19 clear live** (Zol+Like-Like); Map pickup skipped (optional)
-- Staircase → **Magical Rod** (`ADDR_ROD=0x065F`) — residual (0x18 north hole decorative; later-room stairs residual)
+- Staircase → **Magical Rod** (`ADDR_ROD=0x065F`) — stairs **live** mode 9 `0x75`; rod pickup residual
 - Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
 
@@ -566,9 +558,10 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png` — Map sprite not `ADDR_MAP|0x20`
 - `recordings/l6_room09_continuous_v{1,2}_final.png` — skip-Map KEY-UP v2 1/1
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
-- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13}_final.png` — left 0x68 pushes; NE/SW/vacated/NW not mode 9
+- `recordings/l6_stairs09_continuous_v14.json` — 0x09 NE 0x68 south-face UP → mode 9 `0x75` 1/1 203f leftover `(208,93)` tile `0x71` rod=0
+- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -585,8 +578,8 @@ Not claimed live as pure segments:
 5. **0x28** enter + orange-wizzrobe clear — **live**
 6. **Gleeok (3 heads)** `0x18` type **`0x44`** settle+kill+census — **live**
 7. **0x19 clear** 2× Zol + 2× Like-Like — **live**; Map skipped (`ADDR_MAP` still `0x0A`)
-8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; left 0x68 **pushes** then gone
-9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (v11 NW idle tile 118 not mode 9; next SW)
+8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; stairs **live** mode 9 `0x75`
+9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (cellar `0x75` leftover `(208,93)` rod=0)
 10. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
 
 ## Not claimed
