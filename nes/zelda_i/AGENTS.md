@@ -109,11 +109,12 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 0x58 Keese clear (`l6_clear58_continuous_v1` 1/1, 188,666f hop 882f, play
-`0x58` `(112,167)`, compass bit `0x20`, TF=`0x1F`, keys=5 bombs=8,
-deaths/progression/capacity 0, no state load). North door still sealed after
-clear (not a free UP). 0x48 / Rod / Gohma / TF `0x20` residual. Do not grant
-Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
+L6 blade-trap room 0x48 (`l6_room48_continuous_v1` 1/1, 189,007f hop 341f,
+play `0x48` `(120,205)`, keys=5, compass bit `0x20`, TF=`0x1F`, bombs=8,
+deaths/progression/capacity 0, no state load). 0x58 north leftover looked
+sealed but occupancy long-UP is **free** (keys unchanged). 0x38 / Rod /
+Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys.
+Ignore 0x2b/0x68.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

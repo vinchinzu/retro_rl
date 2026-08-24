@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through 0x58 Keese clear (not Clean STATUS)
+Status: **assisted pure** through blade-trap room 0x48 enter (not Clean STATUS)
 
 Planning sources:
 
@@ -73,7 +73,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x78** | West of entry | **5× type `0x24`** | `0x03` | key-LEFT from 0x79; clear → UP |
 | **0x68** | N of 0x78 | **5× type `0x13`** (Zol) | **`0x16` compass** | spine enter + `ADDR_COMPASS\|0x20` 1/1 |
 | **0x58** | N of 0x68 | **8× Keese `0x1b`** | rupee drop live | spine clear 1/1; **north still sealed** |
-| **0x48** | N of 0x58 | blade traps `0x49` | — | run UP (no clear) |
+| **0x48** | N of 0x58 | blade traps `0x49` | — | spine enter 1/1; run UP residual |
 | **0x38** | N of 0x48 | multi wizzrobe + Like-Like + Bubble | — | hard; residual clear |
 | **0x28** | N of 0x38 | wizzrobes | `0x0f`? | block-push residual |
 
@@ -219,11 +219,25 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-keese -
 | Ignore | invuln `0x2b` / block `0x68` / corner fires |
 | Track | **assisted Survival** |
 
-Wrong belief: recon "0x58 UP free / after clear". Live leftover still shows
-the north shutter closed. Next hop must not assume a free UP.
-
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear58 --no-video --trials 1
+```
+
+### Blade-trap enter (0x58 leftover → 0x48) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x58` `(112,167)` after Keese clear |
+| Path | OccupancyWalker long-UP; boxed `(112,167)` then north door |
+| Stop | `--through level6-room48` play-ready `0x48` |
+| Leftover | `(120,205)` south mouth; 4× blade trap `0x49`; north open |
+| Keys | 5→5 (**free**, not a key door) |
+| Track | **assisted Survival** |
+
+Clear58 leftover PNG shutter is walkable. Do not treat that as sealed.
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room48 --no-video --trials 1
 ```
 
 ### Post-east-key graph (live recon)
@@ -242,7 +256,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 | 0x78 → UP → 0x68 | kill-door after clear | 0 | **yes** |
 | 0x78 → RIGHT → 0x79 | free | 0 | yes |
 | 0x68 → UP → 0x58 | free/after clear | 0 | recon |
-| 0x58 → UP → 0x48 | **sealed after Keese clear** | 0 | spine leftover |
+| 0x58 → UP → 0x48 | **free** (PNG shutter is walkable) | 0 | spine 1/1 |
 | 0x48 → UP → 0x38 | free (run traps) | 0 | recon |
 | 0x38 → UP → 0x28 | free/after partial | 0 | recon |
 
@@ -289,9 +303,10 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_compass_continuous_v1.json` — 0x68 enter 1/1 occupancy UP 221f
 - `recordings/l6_clear68_continuous_v1.json` — 0x68 compass 1/1 occupancy-patrol 4,939f
 - `recordings/l6_keese_continuous_v1.json` — 0x58 enter 1/1 occupancy UP 209f
-- `recordings/l6_clear58_continuous_v1.json` — 0x58 Keese clear 1/1 882f; north sealed
+- `recordings/l6_clear58_continuous_v1.json` — 0x58 Keese clear 1/1 882f
+- `recordings/l6_room48_continuous_v1.json` — 0x48 enter 1/1 occupancy UP 341f; keys 5
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear58 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room48 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -302,8 +317,8 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 Not claimed live as pure segments:
 
 1. **0x68 compass** pickup (`ADDR_COMPASS|0x20`) after Zol clear — **live**
-2. **0x58** Keese clear — **live**; key inventory no; **north still sealed**
-3. **0x48** blade-trap run (no clear)
+2. **0x58** Keese clear — **live**; key inventory no
+3. **0x48** enter — **live**; blade-trap run-UP residual
 4. **0x38** full clear (hard) + **left block push**
 5. **0x28** + optional bomb shortcut
 6. **Gleeok (3 heads)** + Map
