@@ -1,14 +1,14 @@
 ## Residual — rr-tlaq Phantoon fight pure (0xCD13)
 
-**Status:** window 1 charge 300 GREEN. Skip-right + morph rain: **died** in
-`$D788` before a left fig-8. Full fight RED.
+**Status:** window 1 charge 300 GREEN. Stay-left morph rain: **died** in
+`$D788` vs (48, 96). Full fight RED.
 **Pin:** `scratch/post_ws_basement_to_phantoon.state`
 **Probe:** `window --windows 2 --weapon beam --wait 6000`
-**Report:** `scratch/phantoon_window_beam_w2_morphrain.json`
+**Report:** `scratch/phantoon_window_beam_w2_stayleft.json`
 
 Do **not** STATUS-promote. Default CLI stays `ice`. Super-spray is not a hit.
 Do **not** start another 16k until a measured W2 chip. Do not fire the
-right fig-8 at x=219 (the body).
+right fig-8 at x=219 (the body). Do not retry x≥230.
 
 ### Public policy (wiki)
 
@@ -27,35 +27,33 @@ Eye is **slot 1** (not enemy0 spritemap). Live flags:
 ### What works (verified this pass)
 
 - **Seat** from the enter pin: idle fall to `(39, 187)` p1.
-- **Window 1 park** always `(120, 108)` this seed. Charge **300** at
-  `(104, 149)` p43 vs `(120, 108)` dy=41.
-- `charge_window_ok` skips rain **and** `enemy_x≥155` (park x at func
-  change, so a left fig-8 that crosses 155 still counts).
+- **Window 1** charge **300** at `(104, 149)` p43 vs `(120, 108)` dy=41.
+- Skip-right: `charge_window_ok` is left fig-8 only (park x at func change).
+- Stay-left morph: x stayed **52–57** the whole skip/rain (no room-cross).
 - Assist off: `energy_writes 0`, `missile_writes 0`.
 
 ### What fails
 
-1. **Morph rain dies — halt.** Skip right open `(203, 83)` ~f2473. Morph
-   left `(53, 201)` p29/65 from `D72D`. Health 239→0 by ~f4100 in `$D788`
-   vs (168, 64), pose 65 `(52, 201)`. No left fig-8. Rolling to the other
-   corner when the body parks on the left (`enemy_x≤80`) walks through the
-   wave (−20 each pass: 239→219→199→179→159→139→119→99→79→59→39→19→0).
+1. **Left morph cannot tank rain — halt.** Skip right open `(203, 83)`.
+   Hold morph `x≤56` `(53–56, 201)` p29/65. Health 239→0 ~f4238.
+   Death: pose **65** `(56, 201)`, `$D788`, body **(48, 96)**. Also −20
+   on `$D788` vs (168, 64) 39→19. No left fig-8. Flames still hit the
+   left corner (~−20 every few hundred frames through `D5E7`/`D82A`/`D788`).
 2. **Right fig-8 at x=219 is the body.** Do not retry x≥230 (wall, p137).
-   Higher jump p84 at (219, 138).
-3. **Standing rain wait dies** 239→0. Super unused (correct).
+3. **Swap-across-room** previously died faster (rolled through the wave).
+   Super unused (correct).
 
-### Rain dump (every ~30f)
+### Rain dump (every ~30f, x=52–57)
 
-`D72D` place (208, 96) → `D5E7` fig-8 (skip) → `D4A8`/`D60D` open (203, 83)
-skipped in morph → `D82A` then `D73F`/`D767`/`D788`/`D7D5`/`D7F7` parks
-(200,114)→(128,96)→(88,64)→(48,96)→(168,64). Death sitting morph-left
-during (168, 64) rain.
+239 until ~f2114 → 219 → 199 → 179 (right open skipped) → `D82A` 159…99 →
+`D788` (200,114) 79 → (128,96) 59 → (88,64) 39 → (168,64) 19 → (48,96) **0**.
 
 ### Next actions (do not start another 16k first)
 
-1. Morph rain that **does not roll across the room** when the body parks
-   on the left seat (stay left, or swap without crossing the wave). Halt
-   at first miss. Do not fire x=219.
+1. Left morph cannot tank this seed's rain at 239 HP. Next is **snipe /
+   farm** so W2 starts closer to 299, or a **flame-snipe** from the left
+   corner that is not a jump under (128, 96). Halt at first miss. Do not
+   fire x=219.
 2. Dual-green `scratch/post_phantoon_poweron.state` only after a kill
    (do **not** clobber `post_phantoon_defeated.state`).
 
