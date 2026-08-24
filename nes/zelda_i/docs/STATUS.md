@@ -375,11 +375,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
    (v1 occupancy boxed leftover; v2 vacated idle tile 119; v3 x=96 UP
    solid y=133 tile 179; v4 idle `(96,137)` tile 118; v5 idle
    `(192,113)` tile 119/0x77; v6 hold-UP `(208,97)` tile 0x73; v7 idle
-   `(208,97)` tile 0x73; v8 `(192,97)` tile 0x77 **on** the NE hole;
-   v9 vacated `(96,145)` yo-yo; v10 no live pair 0x68; v11 idle NW
-   `(48,109)` tile 118). Next idle SW `(48,173)`
-   (`l6_stairs09_continuous_v12`). Do not grant Map/Rod. `rr-tne2` in
-   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
+   `(208,97)` tile 0x73; v8 `(192,97)` tile 0x77 **on** the NE hole
+   hold-UP; v9 vacated `(96,145)` yo-yo; v10 no live pair 0x68; v11 idle
+   NW `(48,109)` tile 118; v12 true idle `(192,97)` tile 119 / 3830f
+   `stairs_idle` action none still mode 5, rod=0). NE hole decorative.
+   Next idle SW `(48,173)` (`l6_stairs09_continuous_v13`). Do not grant
+   Map/Rod. `rr-tne2` in progress. Isolated BFS is still not a spine
+   path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
    Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
