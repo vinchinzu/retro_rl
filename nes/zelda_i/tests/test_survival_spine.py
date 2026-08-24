@@ -533,18 +533,20 @@ def test_level4_mappick_attaches_after_room21() -> None:
     ram[ADDR_LINK_Y] = 141
     ram[ADDR_LADDER] = 1
     act = ctl.step(read_snapshot(ram))
-    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
     ram[ADDR_LINK_X] = 32
     act = ctl.step(read_snapshot(ram))
-    assert list(act.action) == list(nes_action("DOWN"))
-    ram[ADDR_LINK_Y] = 189
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 93
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
-    ram[ADDR_LINK_X] = 64
-    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LINK_X] = 80
+    ram[ADDR_LINK_Y] = 125
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("RIGHT"))
     ram[ADDR_LINK_X] = 208
+    ram[ADDR_LINK_Y] = 189
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("UP"))
     ram[ADDR_LINK_Y] = 181

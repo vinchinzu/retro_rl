@@ -38,11 +38,17 @@ __all__ = [
     "ROOM_20_SOUTH_Y_MAX",
     "ROOM_20_SPAWN_XY",
     "ROOM_20_WAYPOINTS",
+    "ROOM_21_ALCOVE_Y",
+    "ROOM_21_ALCOVE_Y_TOL",
     "ROOM_21_BOUNDS",
     "ROOM_21_CLIP_BUDGET",
+    "ROOM_21_CLIP_X",
     "ROOM_21_CORRIDOR_XY",
     "ROOM_21_EAST_XY",
     "ROOM_21_INLAND_XY",
+    "ROOM_21_NORTH_STRIP_Y",
+    "ROOM_21_SE_X",
+    "ROOM_21_SE_Y",
     "ROOM_21_SOUTH_XY",
     "ROOM_21_PICKUP_XY",
     "ROOM_21_SPAWN_XY",
@@ -247,7 +253,9 @@ def room_20_grid() -> OccupancyGrid:
 
 
 # Dark 0x21 leftover (16,141). PNG is black (no candle). Seed playfield +
-# west-door leftover. Interior unknown=free until a live miss.
+# west-door leftover. Interior unknown=free until a live miss. Isolated
+# leftover PNGs are also dark — maze gold vs floor is not visible east of
+# the west door, so do not paint x=49 as the whole room.
 # Pickup ~(208,181) from isolated ADDR_MAP. Isolated MAP_21_SAMPLE_PATH
 # is state-BFS, not this tape.
 # v1 leftover (48,141): inland RIGHT works; UP is maze.
@@ -262,16 +270,29 @@ def room_20_grid() -> OccupancyGrid:
 # v9 leftover (32,100): RIGHT+UP yo-yos (timeout stall=0). East sealed.
 # v10 leftover (48,173): DOWN at x=32 works; RIGHT at y=173 still x=49 wall.
 # v11 leftover (48,189): RIGHT at south band still x=49 wall.
+# v12 leftover (32,189): RIGHT+DOWN clip at SE corner.
+# v13 leftover (48,125): spawn RIGHT+UP reaches (40,125) then 0x31 x>=40
+# off-band exit cardinal-RIGHTs into the wall. y=125 is new; still x=49.
+# v14 leftover (48,109): hold RIGHT+UP to x=48 lands (48,93) north strip;
+# PATH DOWN to (48,109) then cardinal RIGHT is still x=49.
+# v15 2/2: RIGHT+DOWN from (48,93) clips east; ADDR_MAP|0x08 at (208,181)
+# in 297f (v15b same). Cardinal RIGHT at y=109 is still the wall; the clip
+# is two-button, not 4-connected occupancy. Mid-wall seed stays.
 ROOM_21_SPAWN_XY = (16, 141)
-ROOM_21_INLAND_XY = (32, 141)
+ROOM_21_ALCOVE_Y = 141
+ROOM_21_ALCOVE_Y_TOL = 8
+ROOM_21_CLIP_X = 48
+ROOM_21_NORTH_STRIP_Y = 113
+ROOM_21_SE_X = 64
+ROOM_21_SE_Y = 125
+# v14 PATH target; still the vestibule east face, not maze inland.
+ROOM_21_INLAND_XY = (48, 109)
 ROOM_21_CORRIDOR_XY = (32, 189)
 ROOM_21_EAST_XY = (208, 189)
 ROOM_21_SOUTH_XY = (48, 181)
 ROOM_21_PICKUP_XY = MAP_21_PICKUP_XY
 ROOM_21_CLIP_BUDGET = 96
 ROOM_21_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    ROOM_21_INLAND_XY,
-    ROOM_21_CORRIDOR_XY,
     ROOM_21_EAST_XY,
     ROOM_21_PICKUP_XY,
 )
