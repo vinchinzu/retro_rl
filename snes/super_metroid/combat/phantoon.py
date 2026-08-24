@@ -114,10 +114,6 @@ RAIN_PHASE_FUNCS = RAIN_VULN_FUNCS | frozenset(
 )
 # Standing / crouch / turn — W2 rain floor release. Not jump (21/25) or hurt.
 FLOOR_RELEASE_POSES = frozenset({1, 2, 3, 4, 5, 11})
-# Right fig-8 eye is higher (83 vs 108); same W1 jump lands y≈149.
-RIGHT_RELEASE_Y_MIN = 144
-RIGHT_RELEASE_Y_MAX = 152
-RIGHT_RELEASE_Y = 152
 
 # Knockback / hit-stun only. Pose 81 is ordinary falling — keep jump held.
 HURT_POSES = frozenset({83, 84, 109, 143, 158, 159, 160})
@@ -142,6 +138,8 @@ class PhantoonStrategy:
     skip_enemy_x: int = 155
     right_seat_x_min: int = 180
     right_seat_x: int = 220
+    # Room wall is x≈219 — x≥230 is not reachable. Jump from the wall.
+    right_jump_x: int = 216
     jump_hold_frames: int = 36
     charge_hold_frames: int = 70
     fire_release_frames: int = 2
@@ -542,18 +540,13 @@ def _aim_names(
     # under the body while crossing from the left. Keep charge (X).
     # Once there, face LEFT then jump in place — LEFT+A drifts under the body.
     if right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x):
-        if int(state.samus_x) < strategy.right_seat_x_min:
+        if int(state.samus_x) < strategy.right_jump_x:
             return _right_seat_names(state, strategy)
         if int(state.facing) != 4:
             return ["LEFT"]
-        if (not close) and int(state.samus_x) > int(state.enemy0_x) + 10:
-            names.append("LEFT")
-            if int(state.samus_y) >= strategy.floor_y_min - 4:
-                names.append("B")
-            return names
-        if close and int(state.samus_x) >= 22 and _need_height(state, strategy):
+        if int(state.samus_x) >= 22 and _need_height(state, strategy):
             names.append("A")
-        if close and int(state.samus_y) > int(state.enemy0_y) + 10:
+        if int(state.samus_y) > int(state.enemy0_y) + 10:
             names.append("UP")
         return names
     if (
@@ -585,8 +578,6 @@ def _aim_names(
 
 def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
     """True when Samus is below the charge-release band (needs more jump)."""
-    if right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x):
-        return int(state.samus_y) > RIGHT_RELEASE_Y
     dy = int(state.samus_y) - int(state.enemy0_y)
     return dy > strategy.release_dy_max
 
@@ -597,16 +588,11 @@ def in_release_band(
     """True when Samus is the measured W1 charge-release height below the eye.
 
     W1 chip: samus (104, 149) vs eye (120, 108) → dy=41.
-    W2 miss: samus (120, 174) vs eye (128, 96) → dy=78 (floor hop).
-    Right fig-8 eye (203, 83): same jump lands y≈149 (dy=66).
+    W2 miss at y=148 vs eye 83 → dy=65 (outside 28–56). Target y=111–139.
     """
     strat = strategy or PhantoonStrategy()
     dy = int(state.samus_y) - int(state.enemy0_y)
-    if strat.release_dy_min <= dy <= strat.release_dy_max:
-        return True
-    if right_park(state.enemy0_x, skip_x=strat.skip_enemy_x):
-        return RIGHT_RELEASE_Y_MIN <= int(state.samus_y) <= RIGHT_RELEASE_Y_MAX
-    return False
+    return strat.release_dy_min <= dy <= strat.release_dy_max
 
 
 def _height_ok(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
@@ -632,7 +618,7 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     if rain_phase(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
         return 0
     if right_park(session.state.enemy0_x, skip_x=strategy.skip_enemy_x):
-        if int(session.state.samus_x) < strategy.right_seat_x_min:
+        if int(session.state.samus_x) < strategy.right_jump_x:
             _go_to_right_seat(session, strategy)
     for _ in range(strategy.window_timeout):
         st = session.state
@@ -689,6 +675,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             continue
 
         close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
+        if parked_right:
+            close = int(st.samus_x) >= strategy.right_jump_x
         if parked_right and still_left:
             break
         if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:

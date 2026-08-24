@@ -180,15 +180,16 @@ def test_floor_release_ok_is_stand_crouch_not_jump() -> None:
 
 
 def test_release_band_is_window1_height_not_floor_hop() -> None:
-    """W1 charge chip dy=41; W2 miss dy=78 is still the floor."""
+    """W1 charge chip dy=41; W2 miss y=148 vs 83 is dy=65, outside 28–56."""
     assert in_release_band(_state(samus_y=149, enemy0_y=108))
     assert in_release_band(_state(samus_y=149, enemy0_y=96))
     assert not in_release_band(_state(samus_y=174, enemy0_y=96))
     assert not in_release_band(_state(samus_y=187, enemy0_y=108))
     assert not in_release_band(_state(samus_y=100, enemy0_y=108))
-    # Right fig-8 (203, 83): same jump y≈149 (dy=66). y=159 was a miss.
-    assert in_release_band(_state(samus_y=149, enemy0_y=83, enemy0_x=203))
-    assert not in_release_band(_state(samus_y=159, enemy0_y=83, enemy0_x=203))
+    # Right fig-8 (203, 83): W1 dy band is y=111–139, not y≈149.
+    assert in_release_band(_state(samus_y=124, enemy0_y=83, enemy0_x=203))
+    assert in_release_band(_state(samus_y=139, enemy0_y=83, enemy0_x=203))
+    assert not in_release_band(_state(samus_y=148, enemy0_y=83, enemy0_x=203))
     assert not in_release_band(_state(samus_y=187, enemy0_y=83, enemy0_x=203))
 
 
