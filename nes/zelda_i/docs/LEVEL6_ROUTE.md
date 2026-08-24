@@ -558,6 +558,23 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south19
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear29 --no-video --trials 1
 ```
 
+### South 0x29 → play 0x39 — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover play `0x29` `(55,133)` rod=1 keys=4 |
+| Path | RIGHT+DOWN clip to y=141, occupancy x=120, DOWN |
+| Stop | `--through level6-south29` play-ready dest (RAM `0x39`) rod=1 |
+| Leftover | `(120,93)` north mouth of dark `0x39`; keys=4 bombs=8 TF=`0x1F` |
+| v1–v3 | pocket `(64,181)` tile 116 (occupancy DOWN @ x=64) |
+| v4 | **1/1** hop 288f, 215,822f |
+| Track | **assisted Survival** |
+| Notes | East of 0x29 sealed. Do not poke `ADDR_ARROWS`. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -584,6 +601,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 | 0x09 south | **free** (PNG mouth open) | 0 | **spine 1/1** occupancy → play `0x19` `(120,77)` |
 | 0x19 south | **key** (PNG mouth looks open) | −1 | **spine 1/1** occupancy KEY-DOWN keys 4→3 → play `0x29` |
 | 0x29 east | **sealed** after wizzrobe clear | — | spine red; mask 12 = U+D; v2 RIGHT @ (208,141) 3750f |
+| 0x29 south | **free** (mask DOWN) | 0 | **spine 1/1** v4 occupancy x=120 @ y=141 → play `0x39` |
 
 ### Walkthrough (not all live)
 
@@ -598,6 +616,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - South `0x19` KEY-DOWN → play `0x29` — **live** `--through level6-south19` v1 leftover dark `(120,77)` keys 4→3
 - Clear `0x29` — **live** `--through level6-clear29` v2 leftover `(55,133)` keys 3→4; census 3×`0x23`+2×`0x24` (not Vire)
 - East `0x29` — **red** PNG mouth sealed (mask 12)
+- South `0x29` → play `0x39` — **live** `--through level6-south29` v4 leftover `(120,93)`
 - Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
 
@@ -658,10 +677,12 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_clear29_continuous_v2.json` — occupancy-patrol 3×0x23+2×0x24 1/1 hop 1,406f leftover `(55,133)` keys 3→4
 - `recordings/l6_clear29_continuous_v1_final.png` — v1 Vire spec timeout
 - `recordings/l6_east29_continuous_v{1,2}_final.png` — v1 boxed; v2 east sealed
+- `recordings/l6_south29_continuous_v4.json` — occupancy south `0x29`→`0x39` 1/1 hop 288f leftover `(120,93)`
+- `recordings/l6_south29_continuous_v{1,2,3}_final.png` — pocket `(64,181)`
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear29 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -684,7 +705,8 @@ Not claimed live as pure segments:
 11. South `0x09` → play `0x19` — **live** v1 leftover `(120,77)` rod=1; 0x19 already cleared
 12. South `0x19` KEY-DOWN → play `0x29` — **live** v1 leftover dark `(120,77)` keys 4→3
 13. Clear `0x29` — **live** v2 leftover `(55,133)` keys 3→4; 3×`0x23`+2×`0x24` (not Vire)
-14. East `0x29` / stairs → Gohma arrow → Heart → TF `0x20` — east sealed; Gohma needs an arrow; do not poke
+14. South `0x29` → play `0x39` — **live** v4 leftover `(120,93)`
+15. 0x39 combat / stairs → Gohma arrow → Heart → TF `0x20` — Gohma needs an arrow; do not poke
 
 ## Not claimed
 

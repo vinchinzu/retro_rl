@@ -42,7 +42,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok → 0x19 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level6_rod.py`, `level6_exit75.py`, `level6_south09.py`, `level6_south19.py`, `level6_east29.py`, `level*_boss_*` | Path controllers + timing knobs |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level6_rod.py`, `level6_exit75.py`, `level6_south09.py`, `level6_south19.py`, `level6_east29.py`, `level6_south29.py`, `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -128,7 +128,9 @@ from damage heatmaps. Do not block tip progress on combat polish.
   (not Vire `0x12`). Floor key `0x19` natural 3→4. East PNG mouth after
   clear is **sealed** (mask 12 = U+D; v2 RIGHT @ (208,141) 3750f).
   Leftover `(55,133)` tile 244 4-cardinal boxed; RIGHT+DOWN clip reaches
-  y=141. Do not invent Gohma. Do not poke arrows.
+  y=141. Occupancy DOWN @ x=64 walks into `(64,181)` tile 116 pocket
+  (v1–v3 RIGHT/RIGHT+DOWN/RIGHT+UP no-op). v4 x-align @ y=141 then DOWN
+  enters play `0x39` `(120,93)`. Do not invent Gohma. Do not poke arrows.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -173,6 +175,8 @@ tape 213,054f. `--through level6-south09` **1/1**
 215,534f rod=1 keys 3→4 bombs=8 TF=`0x1F` map=`0x0A` bow=0 arrows=0.
 Census 3× `0x23` + 2× `0x24` (v1 Vire spec timed out max_live=0).
 `--through level6-east29` **red** (v1 boxed tile 244; v2 door sealed).
+`--through level6-south29` **1/1** `l6_south29_continuous_v4` play `0x39`
+`(120,93)` hop 288f tape 215,822f rod=1 keys=4. v1–v3 pocket `(64,181)`.
 Bow=0 arrows=0 (L1 bow skipped). Gohma needs an arrow — do not poke.
 Do not invent Gohma room id. Map stays skipped. Gohma / TF `0x20`
 residual. Do not grant Map. Do not poke doors/keys. Ignore 0x2b.
