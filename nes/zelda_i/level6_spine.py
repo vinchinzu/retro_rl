@@ -1,4 +1,4 @@
-"""Survival-spine L6 from L5 TF settle through 0x29 wizzrobe clear.
+"""Survival-spine L6 from L5 TF settle through 0x29 south after Rod.
 
 Do not poke Rod / doors / keys / bow / arrows. Do not grant Whistle.
 Isolated BFS banned. Ignore object types 0x2b / Bubble. Map skipped.
@@ -89,6 +89,10 @@ from zelda_i.level6_east29 import (
     level6_east29_stages,
     level6_east29_success,
 )
+from zelda_i.level6_south29 import (
+    level6_south29_stages,
+    level6_south29_success,
+)
 from zelda_i.level6_rod import (
     ROD_75_MAX_FRAMES,
     make_rod_75_controller,
@@ -168,6 +172,8 @@ __all__ = [
     "level6_clear29_success",
     "level6_east29_stages",
     "level6_east29_success",
+    "level6_south29_stages",
+    "level6_south29_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -216,6 +222,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-south19",
     "level6-clear29",
     "level6-east29",
+    "level6-south29",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -247,6 +254,7 @@ L6_STOPS: dict[str, str] = {
     "level6-south19": "level6_south_0x19",
     "level6-clear29": "level6_clear_0x29",
     "level6-east29": "level6_east_0x29",
+    "level6-south29": "level6_south_0x29",
 }
 
 
@@ -1305,16 +1313,33 @@ def continue_level6_spine(
     if through == "level6-clear29":
         return
 
+    # East of 0x29 is sealed (mask 12 = U+D). Dedicated red, like stairs18.
+    if through == "level6-east29":
+        if not run_stages(
+            env,
+            run,
+            level6_east29_stages(),
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+        ):
+            return
+        snap = read_snapshot(env.get_ram())
+        run.success = level6_east29_success(snap)
+        if not run.success:
+            run.failed_stage = "level6_east_0x29"
+        return
+
     if not run_stages(
         env,
         run,
-        level6_east29_stages(),
+        level6_south29_stages(),
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
     ):
         return
     snap = read_snapshot(env.get_ram())
-    run.success = level6_east29_success(snap)
+    run.success = level6_south29_success(snap)
     if not run.success:
-        run.failed_stage = "level6_east_0x29"
+        run.failed_stage = "level6_south_0x29"

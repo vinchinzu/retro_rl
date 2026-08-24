@@ -76,6 +76,8 @@ from zelda_i.level6_spine import (
     level6_clear29_success,
     level6_east29_stages,
     level6_east29_success,
+    level6_south29_stages,
+    level6_south29_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1553,6 +1555,69 @@ def test_level6_east29_y_align_then_right() -> None:
     run = SpineRun(through="level6-east29", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_east_0x29"
     assert "level6-east29" in L6_THROUGH
+
+
+def test_level6_south29_clips_then_down() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_south29 import (
+        SOUTH_DOOR_X,
+        SOUTH_DOOR_Y,
+        make_south29_controller,
+    )
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_south29_stages()
+    assert [name for name, _, _ in stages] == ["level6_south_0x29"]
+    leftover = _ram(level=6, screen=0x29, x=55, y=133)
+    leftover[ADDR_ROD] = 1
+    ctl = make_south29_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "south_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    mid = _ram(level=6, screen=0x29, x=80, y=141)
+    mid[ADDR_ROD] = 1
+    path = make_south29_controller()
+    act = path.step(read_snapshot(mid))
+    assert act.reason == "south_path"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    band = _ram(level=6, screen=0x29, x=64, y=181)
+    band[ADDR_ROD] = 1
+    face = make_south29_controller()
+    act = face.step(read_snapshot(band))
+    assert act.reason == "south_face"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("RIGHT", "DOWN"))
+    door = _ram(level=6, screen=0x29, x=SOUTH_DOOR_X, y=SOUTH_DOOR_Y)
+    door[ADDR_ROD] = 1
+    push = make_south29_controller()
+    act = push.step(read_snapshot(door))
+    assert act.reason == "south_push"
+    assert list(act.action) == list(nes_action("DOWN"))
+    dest = _ram(level=6, screen=0x39, x=120, y=77)
+    dest[ADDR_ROD] = 1
+    arrive = make_south29_controller()
+    act = arrive.step(read_snapshot(dest))
+    assert arrive.success
+    assert act.reason == "arrived_39"
+    assert level6_south29_success(read_snapshot(dest))
+    still = _ram(level=6, screen=0x29, x=55, y=133)
+    still[ADDR_ROD] = 1
+    assert not level6_south29_success(read_snapshot(still))
+    snap = read_snapshot(dest)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    dest[ADDR_BOW] = 1
+    dest[ADDR_ARROWS] = 1
+    armed = read_snapshot(dest)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-south29", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_south_0x29"
+    assert "level6-south29" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
