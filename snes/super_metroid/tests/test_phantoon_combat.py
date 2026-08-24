@@ -21,6 +21,7 @@ from super_metroid.combat.phantoon import (
     eye_open,
     fight_phantoon_action,
     func_vulnerable,
+    in_release_band,
     phantoon_phase,
     play_phantoon_fight,
     seated,
@@ -124,6 +125,15 @@ def test_seated_open_eye_missiles_fires() -> None:
         state, 0, PhantoonStrategy(weapon=WEAPON_MISSILES)
     )
     assert "X" in action
+
+
+def test_release_band_is_window1_height_not_floor_hop() -> None:
+    """W1 charge chip dy=41; W2 miss dy=78 is still the floor."""
+    assert in_release_band(_state(samus_y=149, enemy0_y=108))
+    assert in_release_band(_state(samus_y=149, enemy0_y=96))
+    assert not in_release_band(_state(samus_y=174, enemy0_y=96))
+    assert not in_release_band(_state(samus_y=187, enemy0_y=108))
+    assert not in_release_band(_state(samus_y=100, enemy0_y=108))
 
 
 def test_seated_right_side_open_does_not_chase() -> None:
