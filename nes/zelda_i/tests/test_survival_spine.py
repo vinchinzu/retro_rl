@@ -124,6 +124,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-entry",
         "level6-east-key",
         "level6-west",
+        "level6-compass",
     )
 
 
