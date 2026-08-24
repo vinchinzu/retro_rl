@@ -2,9 +2,10 @@
 
 Clear leftover (112,173); live left 0x68 (96,144). Reuse 0x38 south-face UP
 until that object's y drops ≥8px. CheckWarp needs still; do not hold-UP.
-NE hole is decorative: v5/v8 tile 0x77, v7 tile 0x73, PNG on-hole not mode 9.
-After y-move: south-around to the east door (208,141), idle. Do not occupancy
-from leftover or the push plane. Do not grant ADDR_ROD.
+NE hole is decorative (v8 on-graphic tile 0x77). v9 vacated (96,144) yo-yos
+143/145. v10: no live pair 0x68 (visual right block is a tile; rx=-1).
+v11 idle NW (48,109) tile 118 still mode 5. Next SW (48,173). Halt y>=181.
+Do not occupancy. Do not grant ADDR_ROD.
 """
 
 from __future__ import annotations
@@ -38,18 +39,16 @@ __all__ = [
 
 STAIRS_09_MAX_FRAMES = 4000
 STAIRS_09_SAMPLE_PERIOD = 12
-# Exact idle; CheckWarp misses ALIGN_TOL (v5 109±4 idled 113; v8 96 held 97).
+# Exact idle; CheckWarp misses ALIGN_TOL. Halt south mouth (don't spend key).
 STAIR_ALIGN_TOL = 0
-STAIRS_09_SOUTH_Y = 173
-# v8 leftover (192,97) tile 119 (0x77) ON the NE hole, still mode 5. Tiles
-# 0x70–0x73 / 0x77 do not warp. Next: east door, not another NE y-nudge.
-STAIRS_09_HOLE = (208, 141)
+STAIRS_09_SOUTH_HALT_Y = 181
+# v11 idle (48,109) tile 118 not warp. Next SW after left y-move.
+STAIRS_09_HOLE = (48, 173)
 
 
 class Stairs09Phase(Enum):
     TO_PUSH = auto()
     PUSH = auto()
-    IDLE = auto()
     TO_HOLE = auto()
     DONE = auto()
     FAILED = auto()
@@ -57,7 +56,7 @@ class Stairs09Phase(Enum):
 
 @dataclass
 class Level6Stairs09Controller:
-    """South-face left 0x68 UP until y-move, then idle east door. Success is mode 9."""
+    """Left 0x68 y-move, then idle SW (48,173). Success is mode 9."""
 
     spec_id: str = "level6_stairs_0x09"
     room: int = LEVEL6_ROD_WIZZ_ROOM
@@ -201,6 +200,11 @@ class Level6Stairs09Controller:
             )
 
         xy = (int(snap.link_x), int(snap.link_y))
+        if xy[1] >= STAIRS_09_SOUTH_HALT_Y:
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "south_halt")
+            )
 
         if self.phase is Stairs09Phase.TO_PUSH:
             block = self._block(snap)
@@ -268,32 +272,18 @@ class Level6Stairs09Controller:
                     snap, FrameAction(nes_action("UP"), "push_left_block")
                 )
 
-        if self.phase is Stairs09Phase.IDLE:
-            self.idle_frames += 1
-            self.walker.last_dir = None
-            if self.idle_frames >= STAIRS_09_IDLE_FRAMES:
-                self._set_phase(
-                    Stairs09Phase.TO_HOLE,
-                    f"idle_miss_{xy[0]}_{xy[1]}_tile={snap.colliding_tile}",
-                )
-            else:
-                return self._emit(snap, FrameAction(nes_idle_action(), "stair_idle"))
-
         if self.phase is Stairs09Phase.TO_HOLE:
             gx, gy = STAIRS_09_HOLE
             self.walker.last_dir = None
-            if (
-                xy[1] < STAIRS_09_SOUTH_Y - STAIR_ALIGN_TOL
-                and xy[0] < gx - STAIR_ALIGN_TOL
-            ):
-                return self._emit(
-                    snap, FrameAction(nes_action("DOWN"), "hole_south")
-                )
             if abs(xy[0] - gx) > STAIR_ALIGN_TOL:
                 btn = "LEFT" if xy[0] > gx else "RIGHT"
                 return self._emit(snap, FrameAction(nes_action(btn), "hole_x"))
             if abs(xy[1] - gy) > STAIR_ALIGN_TOL:
                 btn = "UP" if xy[1] > gy else "DOWN"
+                if btn == "DOWN" and xy[1] >= STAIRS_09_SOUTH_HALT_Y - 1:
+                    return self._emit(
+                        snap, FrameAction(nes_idle_action(), "south_halt")
+                    )
                 return self._emit(snap, FrameAction(nes_action(btn), "hole_y"))
             return self._emit(snap, FrameAction(nes_idle_action(), "hole_idle"))
 
@@ -308,7 +298,7 @@ class Level6Stairs09Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "axis south-face UP until y-move, DOWN y=173 RIGHT x=208 idle (208,141)"
+                "axis south-face UP until y-move, idle SW (48,173)"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
@@ -324,5 +314,5 @@ class Level6Stairs09Controller:
 
 
 def make_stairs_09_controller() -> Level6Stairs09Controller:
-    """Push left 0x68 in 0x09 then idle east door (208,141). Do not grant ADDR_ROD."""
+    """Push left 0x68 in 0x09 then idle SW (48,173). Do not grant ADDR_ROD."""
     return Level6Stairs09Controller()

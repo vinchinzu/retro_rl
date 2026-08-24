@@ -1094,28 +1094,21 @@ def test_level6_stairs09_south_face_push_then_idle() -> None:
     assert list(act.action) == list(nes_action("UP"))
     ram_stand[ADDR_LINK_Y + 11] = 128
     act = at_stand.step(read_snapshot(ram_stand))
-    assert act.reason == "hole_south"
-    assert list(act.action) == list(nes_action("DOWN"))
-    assert any(n.startswith("pushed_96_144_to_96_128") for n in at_stand.notes)
-    ram_stand[ADDR_LINK_Y] = 173
-    ram_stand[ADDR_LINK_X] = 96
-    act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_x"
-    assert list(act.action) == list(nes_action("RIGHT"))
-    ram_stand[ADDR_LINK_X] = 208
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert any(n.startswith("pushed_96_144_to_96_128") for n in at_stand.notes)
+    ram_stand[ADDR_LINK_X] = 48
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_y"
-    assert list(act.action) == list(nes_action("UP"))
-    ram_stand[ADDR_LINK_Y] = 141
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram_stand[ADDR_LINK_Y] = 173
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_idle"
     assert list(act.action) == list(nes_idle_action())
-    # v8 leftover (192,97) tile 0x77 is ON the NE hole; peel south then east door.
-    ram_stand[ADDR_LINK_X] = 192
-    ram_stand[ADDR_LINK_Y] = 97
+    ram_stand[ADDR_LINK_Y] = 181
     act = at_stand.step(read_snapshot(ram_stand))
-    assert act.reason == "hole_south"
-    assert list(act.action) == list(nes_action("DOWN"))
+    assert act.reason == "south_halt"
+    assert list(act.action) == list(nes_idle_action())
     ram = _ram(level=6, screen=0x09, x=96, y=144, mode=9)
     arrive = make_stairs_09_controller()
     act = arrive.step(read_snapshot(ram))

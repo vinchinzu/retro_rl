@@ -470,9 +470,12 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09
 | v6 | hold-UP `(208,97)` tile 115 (0x73); y=96 solid |
 | v7 | idle `(208,97)` tile 0x73 still mode 5; PNG hole is west of Link |
 | v8 | `(192,97)` tile 119 (0x77) **on** the NE hole; hold-UP 1px short of 96 |
+| v9 | vacated `(96,145)` tile 119; yo-yo 143/145 around original slot |
+| v10 | no live pair 0x68 (`no_right_0x68_96_149`); visual right block is a tile |
+| v11 | idle NW `(48,109)` tile 118 still mode 5 |
 | Stop | `--through level6-stairs09` mode 9 |
 | Track | **assisted Survival** (miss) |
-| Notes | NE graphic decorative. Next idle east door `(208,141)`. Do not y-nudge. Do not grant Rod. |
+| Notes | Next idle SW `(48,173)`. Halt y>=181. Do not grant Rod. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
@@ -561,7 +564,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png` — Map sprite not `ADDR_MAP|0x20`
 - `recordings/l6_room09_continuous_v{1,2}_final.png` — skip-Map KEY-UP v2 1/1
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
-- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8}_final.png` — left 0x68 pushes; NE hole decorative (0x77/0x73)
+- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11}_final.png` — left 0x68 pushes; NE/vacated/NW not mode 9
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
@@ -581,7 +584,7 @@ Not claimed live as pure segments:
 6. **Gleeok (3 heads)** `0x18` type **`0x44`** settle+kill+census — **live**
 7. **0x19 clear** 2× Zol + 2× Like-Like — **live**; Map skipped (`ADDR_MAP` still `0x0A`)
 8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; left 0x68 **pushes** then gone
-9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (v8 ON NE hole tile 0x77 not mode 9; next east door)
+9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (v11 NW idle tile 118 not mode 9; next SW)
 10. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
 
 ## Not claimed
