@@ -1151,13 +1151,22 @@ def test_level6_stairs09_south_face_push_then_idle() -> None:
     assert "level6-stairs09" in L6_THROUGH
 
 
-def test_level6_rod_waits_warp_then_axis_left() -> None:
+def test_level6_rod_waits_warp_then_floor_then_east() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
-    from zelda_i.level6_rod import ROD_75_GOAL, ROD_75_STABLE, make_rod_75_controller
+    from zelda_i.level6_rod import (
+        ROD_75_EAST_X,
+        ROD_75_FLOOR_Y,
+        ROD_75_GOAL,
+        ROD_75_STABLE,
+        make_rod_75_controller,
+    )
 
     stages = level6_rod_stages()
     assert [name for name, _, _ in stages] == ["level6_rod_0x75"]
-    assert ROD_75_GOAL == (32, 73)
+    assert ROD_75_GOAL == (136, 73)
+    assert ROD_75_GOAL != (32, 73)
+    assert ROD_75_FLOOR_Y == 189
+    assert ROD_75_EAST_X == 176
     warp = make_rod_75_controller()
     act = warp.step(read_snapshot(_ram(level=6, screen=0x09, x=208, y=93)))
     assert act.reason == "wait_warp"
@@ -1177,12 +1186,38 @@ def test_level6_rod_waits_warp_then_axis_left() -> None:
     for _ in range(ROD_75_STABLE - 1):
         act = ctl.step(read_snapshot(settled))
     assert act.reason == "rod_y"
-    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
     idle = make_rod_75_controller()
     idle.step(read_snapshot(_ram(level=6, screen=0x75, x=208, y=93, mode=9)))
     for _ in range(ROD_75_STABLE):
         idle.step(read_snapshot(settled))
-    act = idle.step(read_snapshot(_ram(level=6, screen=0x75, x=32, y=73, mode=9)))
+    statue = _ram(level=6, screen=0x75, x=32, y=73, mode=9)
+    act = idle.step(read_snapshot(statue))
+    assert act.reason == "rod_y"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_idle_action())
+    floor = _ram(level=6, screen=0x75, x=48, y=189, mode=9)
+    act = idle.step(read_snapshot(floor))
+    assert act.reason == "rod_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    clip = _ram(level=6, screen=0x75, x=176, y=189, mode=9)
+    act = idle.step(read_snapshot(clip))
+    assert act.reason == "rod_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    inland = _ram(level=6, screen=0x75, x=176, y=173, mode=9)
+    act = idle.step(read_snapshot(inland))
+    assert act.reason == "rod_y"
+    assert list(act.action) == list(nes_action("UP"))
+    mid_east = _ram(level=6, screen=0x75, x=176, y=157, mode=9)
+    act = idle.step(read_snapshot(mid_east))
+    assert act.reason == "rod_clip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    rod_x = _ram(level=6, screen=0x75, x=136, y=157, mode=9)
+    act = idle.step(read_snapshot(rod_x))
+    assert act.reason == "rod_y"
+    assert list(act.action) == list(nes_action("UP"))
+    act = idle.step(read_snapshot(_ram(level=6, screen=0x75, x=136, y=73, mode=9)))
     assert act.reason == "rod_idle"
     assert list(act.action) == list(nes_idle_action())
     ram = _ram(level=6, screen=0x75, x=120, y=141, mode=9)

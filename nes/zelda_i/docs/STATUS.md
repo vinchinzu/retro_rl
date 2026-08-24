@@ -369,11 +369,10 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-stairs09` is green
-   (mode 9 `0x75` `(208,93)` tile `0x71` hop 203f). `--through level6-rod`
-   red v1–v6: stairs spit west `(48,74)→(48,93)`; v5 idle statue
-   `(48,73)` rod=0; v6 LEFT `(48,69)` tile 36 solid rod=0. PNG shows
-   Rod on the west statue. Do not grant `ADDR_ROD`. `rr-tne2` in
+1. **Active Survival tip:** `--through level6-rod` is green
+   (`l6_rod_continuous_v15` 1/1, mode 9 `0x75` `(136,141)` rod=1 hop
+   627f, tape 211,529f). West statue is not the Rod. Cellar return then
+   Gohma / TF `0x20` residual. Do not grant items. `rr-tne2` in
    progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
    Bomb/key count pokes are documented Survival shortcuts, not Clean.

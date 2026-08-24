@@ -113,6 +113,11 @@ from damage heatmaps. Do not block tip progress on combat polish.
   `(112,173)` freeze-miss boxes. Vacated idle `(96,148)` tile 119 and
   `(96,137)` tile 118 are **not** mode 9. x=96 UP solid at y=133 tile 179.
   PNG NE dark hole; remaining right 0x68. Next DOWN y=173 RIGHT x=192 UP.
+  L6 rod cellar: west statue `(48,73)`/`(32,73)` is not `ADDR_ROD`. RIGHT
+  off the west column at y=149/157 is tile 250. South y=189 RIGHT is free.
+  Cardinal UP @ east stairs `(176,187)` yo-yo 2px; RIGHT+UP clips. LEFT
+  @ `(176,149)` is the pit; LEFT+UP from the east column onto `(136,141)`
+  is the pedestal.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -145,10 +150,11 @@ deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
 Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
 `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
 `--through level6-stairs09` **1/1** mode 9 `0x75` `(208,93)`.
-`--through level6-rod` red v1–v6 leftover `(48,69)` tile 36 LEFT solid,
-rod=0. Cellar spit west; statue idle is not `ADDR_ROD`. Next v7. Do not
-grant Rod.
-Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map/Rod.
+`--through level6-rod` **1/1** `l6_rod_continuous_v15` mode 9 `0x75`
+`(136,141)` rod=1 hop 627f. West statue is not the Rod. South y=189
+RIGHT, east stairs RIGHT+UP clip, LEFT+UP onto the pedestal. Next
+cellar return then Gohma. Do not grant Rod.
+Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads

@@ -1,8 +1,9 @@
 """Level 6 Magical Rod pickup in cellar 0x75.
 
 Stairs leftover: mode 9 room 0x75 (208,93) tile 0x71 rod=0. Stairs spit
-west to (48,74) (v2 idle watched it). Rod is the west-column statue.
-Wait spawn until xy moves, then UP the west aisle. Do not grant ADDR_ROD.
+west (48,74)→(48,93). West statue is not ADDR_ROD. Live: DOWN to y=189,
+RIGHT to x=176, RIGHT+UP clip the east stairs, LEFT+UP onto the pedestal
+(136,141). Do not grant ADDR_ROD.
 """
 
 from __future__ import annotations
@@ -19,14 +20,23 @@ from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
 __all__ = [
     "ROD_75_MAX_FRAMES",
     "ROD_75_GOAL",
+    "ROD_75_FLOOR_Y",
+    "ROD_75_EAST_X",
     "ROD_75_ROOM",
     "Level6RodController",
     "make_rod_75_controller",
 ]
 
 ROD_75_ROOM = 0x75
-# v5 leftover (48,73) rod_idle on the west statue; Rod still on the pedestal.
-ROD_75_GOAL = (32, 73)
+# v5/v6 west statue is not ADDR_ROD. v7/v11 RIGHT off the west column is
+# tile 250. v8 south y=189 RIGHT is free. v9 cardinal UP @ (176,187) yo-yo
+# 2px (south face). RIGHT+UP clip onto east stairs, then LEFT/UP to rod
+# ~(136,145). Do not grant ADDR_ROD.
+ROD_75_GOAL = (136, 73)
+ROD_75_FLOOR_Y = 189
+ROD_75_EAST_X = 176
+ROD_75_MID_Y = 157
+ROD_75_CLIP_Y = 181
 ROD_75_ALIGN_TOL = 4
 ROD_75_WEST_X = 80
 ROD_75_SETTLE_Y = 88
@@ -40,7 +50,7 @@ WAIT_MODES = (2, 3, 4, 6, 7, 10, 16)
 
 @dataclass
 class Level6RodController:
-    """Wait stairs spit, then UP west aisle to the Rod statue."""
+    """Wait stairs spit, then DOWN west column, RIGHT floor, UP pedestal."""
 
     spec_id: str = "level6_rod_0x75"
     room: int = ROD_75_ROOM
@@ -62,6 +72,7 @@ class Level6RodController:
     settled: bool = False
     settle_xy: tuple[int, int] | None = None
     stable_frames: int = 0
+    climbed: bool = False
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
         return int(getattr(snap, "rod", 0))
@@ -176,8 +187,40 @@ class Level6RodController:
                 )
             self.settled = True
         gx, gy = self.goal
-        if abs(xy[1] - gy) > ROD_75_ALIGN_TOL:
-            dest = (xy[0], gy)
+        if (
+            xy[0] >= ROD_75_EAST_X - 8
+            and xy[1] <= ROD_75_MID_Y + ROD_75_ALIGN_TOL
+        ):
+            self.climbed = True
+        # v12 reached (176,157) then fell; south y>=181 is not climbed.
+        if self.climbed and xy[1] >= ROD_75_CLIP_Y:
+            self.climbed = False
+        # v9 cardinal UP @ (176,187) yo-yo 2px; RIGHT+UP clips the south face.
+        if (
+            not self.climbed
+            and xy[1] >= ROD_75_CLIP_Y
+            and abs(xy[0] - ROD_75_EAST_X) <= 8
+        ):
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_action("RIGHT", "UP"), "rod_clip")
+            )
+        if not self.climbed:
+            if xy[1] < ROD_75_FLOOR_Y and xy[0] < ROD_75_EAST_X - 8:
+                dest = (xy[0], ROD_75_FLOOR_Y)
+            elif abs(xy[0] - ROD_75_EAST_X) > ROD_75_ALIGN_TOL:
+                dest = (ROD_75_EAST_X, xy[1])
+            else:
+                dest = (xy[0], ROD_75_MID_Y)
+        elif abs(xy[0] - gx) > ROD_75_ALIGN_TOL:
+            # v12 cardinal LEFT @ (176,157) tile 250 / v14 LEFT+UP @ y=149
+            # no-ops. Clip off the east column onto the mid-floor.
+            if abs(xy[0] - ROD_75_EAST_X) <= 8:
+                self.walker.last_dir = None
+                return self._emit(
+                    snap, FrameAction(nes_action("LEFT", "UP"), "rod_clip")
+                )
+            dest = (gx, xy[1])
         else:
             dest = self.goal
         at_dest = (
@@ -188,33 +231,27 @@ class Level6RodController:
             self.walker.last_dir = None
             return self._emit(snap, FrameAction(nes_idle_action(), "rod_idle"))
 
-        if not self.mobile:
-            # Axis without occupancy until a pixel moves (spawn lock).
+        dx, dy = dest[0] - xy[0], dest[1] - xy[1]
+        if dest[0] == xy[0] or (dy != 0 and abs(dy) >= abs(dx)):
+            btn = "DOWN" if dy > 0 else "UP"
+            reason = "rod_y"
+        else:
+            btn = "LEFT" if dx < 0 else "RIGHT"
+            reason = "rod_x"
+        if xy[1] >= ROD_75_FLOOR_Y:
+            prev_dir = self.walker.last_dir
+            misses_before = self.walker.misses
+            self.walker.observe(xy)
+            if self.walker.misses > misses_before and (
+                self.walker.misses <= 8 or self.frames % 60 == 0
+            ):
+                self.notes.append(
+                    f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}"
+                )
+            self.walker.last_dir = btn
+        else:
             self.walker.last_dir = None
-            if abs(xy[1] - gy) > ROD_75_ALIGN_TOL:
-                btn = "DOWN" if xy[1] < gy else "UP"
-                return self._emit(snap, FrameAction(nes_action(btn), "rod_y"))
-            btn = "LEFT" if xy[0] > gx else "RIGHT"
-            return self._emit(snap, FrameAction(nes_action(btn), "rod_x"))
-
-        prev_dir = self.walker.last_dir
-        misses_before = self.walker.misses
-        self.walker.observe(xy)
-        if self.walker.misses > misses_before and (
-            self.walker.misses <= 8 or self.frames % 60 == 0
-        ):
-            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
-        if dest != self.walker.goal:
-            self.walker.path = None
-            self.walker.goal = dest
-        direction = self.walker.next_dir(xy, dest)
-        if direction is None:
-            if self.walker.misses > 0:
-                return self._fail(snap, f"no_path_{xy[0]}_{xy[1]}")
-            self.walker.last_dir = None
-            return self._emit(snap, FrameAction(nes_idle_action(), "rod_stand"))
-        reason = "rod_y" if dest[0] == xy[0] else "rod_x"
-        return self._emit(snap, FrameAction(nes_action(direction), reason))
+        return self._emit(snap, FrameAction(nes_action(btn), reason))
 
     def report(self) -> dict[str, Any]:
         return {
@@ -223,7 +260,7 @@ class Level6RodController:
             "frames": self.frames,
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "wait spit settle, UP west aisle then LEFT (32,73) ADDR_ROD",
+            "policy": "DOWN y=189, RIGHT x=176, RIGHT+UP clip, LEFT/UP (136,73) ADDR_ROD",
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
             "spec_id": self.spec_id,
