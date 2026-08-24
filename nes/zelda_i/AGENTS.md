@@ -42,7 +42,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok → 0x19 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py` (0x19 east/Map/skip-north), `level*_boss_*` | Path controllers + timing knobs |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -109,7 +109,10 @@ from damage heatmaps. Do not block tip progress on combat polish.
   Skip Map. x=120 UP from y=157 freeze-misses (v1 KEY-UP spent south).
   v2 axis LEFT to x=136 then occupancy KEY-UP enters play `0x09` keys 5→4.
   0x09 settle is 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)`
-  unpushed. Do not push this hop.
+  **does** push (v2 `96,144→96,136` then gone). Occupancy from leftover
+  `(112,173)` freeze-miss boxes. Vacated idle `(96,148)` tile 119 and
+  `(96,137)` tile 118 are **not** mode 9. x=96 UP solid at y=133 tile 179.
+  PNG NE dark hole; remaining right 0x68. Next DOWN y=173 RIGHT x=192 UP.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -139,9 +142,11 @@ L6 cleared `0x09` (`l6_clear09_continuous_v1` 1/1, 210,699f hop 1,419f
 leftover `(112,173)`, keys=4, bombs=8, TF=`0x1F`, map=`0x0A`,
 deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
 `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4.
-Census 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)` unpushed.
-Next left-block stairs toward Magical Rod. Map stays skipped. North hole
-decorative. Gohma / TF `0x20` residual. Do not grant Map/Rod.
+Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
+`(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
+`--through level6-stairs09` red v1–v4. Next `l6_stairs09_continuous_v5`:
+DOWN y=173, RIGHT x=192, UP idle NE hole. Map stays skipped. Gohma /
+TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads

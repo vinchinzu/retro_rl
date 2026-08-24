@@ -69,6 +69,10 @@ from zelda_i.level6_room19 import (
     make_settle_09_controller,
     make_settle_19_controller,
 )
+from zelda_i.level6_stairs09 import (
+    STAIRS_09_MAX_FRAMES,
+    make_stairs_09_controller,
+)
 from zelda_i.level6_stairs18 import (
     STAIRS_18_MAX_FRAMES,
     make_stairs_18_controller,
@@ -126,6 +130,8 @@ __all__ = [
     "level6_room09_success",
     "level6_clear09_stages",
     "level6_clear09_success",
+    "level6_stairs09_stages",
+    "level6_stairs09_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -167,6 +173,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-map19",
     "level6-room09",
     "level6-clear09",
+    "level6-stairs09",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -191,6 +198,7 @@ L6_STOPS: dict[str, str] = {
     "level6-map19": "level6_map_0x19",
     "level6-room09": "level6_room_0x09",
     "level6-clear09": "level6_clear_0x09",
+    "level6-stairs09": "level6_stairs_0x09",
 }
 
 
@@ -702,6 +710,27 @@ def level6_clear09_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_stairs09_stages():
+    """0x09 leftover → left 0x68 UP then idle hole. Do not grant Rod."""
+    stairs = make_stairs_09_controller()
+    return (
+        ("level6_stairs_0x09", stairs, STAIRS_09_MAX_FRAMES),
+    )
+
+
+def level6_stairs09_success(snap: ZeldaSnapshot) -> bool:
+    """Mode 9 cellar or a new L6 play room. Do not require ADDR_ROD."""
+    if snap.level != LEVEL6 or snap.triforce != 0x1F:
+        return False
+    if snap.mode == PASSAGE_MODE:
+        return True
+    return (
+        snap.mode == PLAY_MODE
+        and not snap.transitioning
+        and snap.screen != ROOM_09_SPEC.room_id
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -1083,3 +1112,20 @@ def continue_level6_spine(
     run.success = level6_clear09_success(snap)
     if not run.success:
         run.failed_stage = "level6_clear_0x09"
+        return
+    if through == "level6-clear09":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_stairs09_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_stairs09_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_stairs_0x09"
