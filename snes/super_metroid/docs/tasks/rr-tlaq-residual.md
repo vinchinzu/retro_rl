@@ -1,11 +1,11 @@
 ## Residual — rr-tlaq Phantoon fight pure (0xCD13)
 
-**Status:** window 1 charge 300 GREEN; window 2 rain **MISS** (floor UP
-from under the body, then corner UP+R). Full fight RED.
+**Status:** window 1 charge 300 GREEN. Skip-rain wait: **no second fig-8
+left open in ~4k** — next fig-8 is RIGHT (203, 83), then rain until death.
+Full fight RED.
 **Pin:** `scratch/post_ws_basement_to_phantoon.state`
-**Probe:** `window --windows 2 --weapon beam`
-**Reports:** `scratch/phantoon_window_beam_w2_rain.json` (floor UP miss),
-`scratch/phantoon_window_beam_w2_corner.json` (corner UP+R, 2 charges, 0 HP).
+**Probe:** `window --windows 2 --weapon beam --wait 4000`
+**Report:** `scratch/phantoon_window_beam_w2_skiprain.json`
 
 Do **not** STATUS-promote. Default CLI stays `ice`. Super-spray is not a hit.
 Do **not** start another 16k until the seat survives flames.
@@ -56,13 +56,12 @@ Eye is **slot 1** (not enemy0 spritemap). Live flags:
 2. **One connecting missile per left-side window** in the fight loop
    (window v8's second hit was a swoop chase). 20 missiles × 100 = 2000
    even if every shot hits — still 500 short of 2500 without charge/farm.
-3. **Window 2 rain miss (halt).** After 300 he hides (`0xD6D4`). Next
-   left-ish open is rain `$0FB2=0xD767`/`0xD788` at **(128, 96)**.
-   - Jump under body: charge dump + contact (previous bump).
-   - Floor UP at (116, 187) p3: charge 120→0, **HP 2200**.
-   - Corner floor UP+R at (55, 187) p3: **two** charges, **HP 2200**,
-     health stayed 99. 30f in `phantoon_window_beam_w2_corner.json`.
-   Do not chase `enemy_x≥155`. Do not jump under the rain body.
+3. **No second fig-8 left open (halt).** After W1 hide `$D6D4`, `$0FB2`:
+   `D6E2` → `D72D` place **(208, 96)** → `D5E7` fig-8 right → `D4A8`/`D60D`
+   open **(203, 83)** (skipped, `enemy_x≥155`) → rain `D82A` then
+   `D73F`/`D767`/`D788`/`D7D5`/`D7F7` cycling parks (128,96), (88,64),
+   (48,96), (168,64) until Samus dies (239→0) sitting left. `charge_window_ok`
+   skips rain + right. Never a second `(120,108)`-style left charge.
 4. **Seat flames.** Figure-8 tear ~f980 costs 20 even on beam/morph/crouch.
    Opening spiral costs 20–40 unless the dash leaves the SW corner before
    ~f1552. Horizontal charge from the seat can eat some flames (drop
@@ -71,13 +70,12 @@ Eye is **slot 1** (not enemy0 spritemap). Live flags:
 
 ### Next actions (do not start another 16k first)
 
-1. Rain (128, 96): floor Wave from x=55 and x=116 both miss the eye.
-   Next: wait until he leaves rain / figure-8s again, **or** a missile
-   from the W1 airborne pose if a fig-8 left open returns. Halt if miss.
+1. Survive sitting through rain (morph / flame snipe) so a later fig-8
+   left open is reachable — this seed's **next** fig-8 after W1 is RIGHT
+   (203, 83). Do not chase it.
 2. Snipe the ~f980 figure-8 tear so W1 starts at 299 not 279.
-3. Four left-side **fig-8** charge windows only after rain is solved.
-   Dual-green `scratch/post_phantoon_poweron.state` (do **not** clobber
-   `post_phantoon_defeated.state`).
+3. Dual-green `scratch/post_phantoon_poweron.state` only after a kill
+   (do **not** clobber `post_phantoon_defeated.state`).
 
 ```bash
 # From repo root. Window 1 should still chip 100:

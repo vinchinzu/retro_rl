@@ -290,6 +290,17 @@ def rain_vulnerable(func: int) -> bool:
     return int(func) in RAIN_VULN_FUNCS
 
 
+def charge_window_ok(
+    func: int, enemy_x: int, *, skip_x: int = 155
+) -> bool:
+    """Fig-8 left open — skip rain and right-side parks (W2 rain does not chip)."""
+    if rain_vulnerable(func):
+        return False
+    if int(enemy_x) >= skip_x:
+        return False
+    return True
+
+
 def floor_release_ok(
     state: SuperMetroidState, strategy: PhantoonStrategy | None = None
 ) -> bool:
@@ -507,6 +518,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     shots = 0
     last_spend = -99
     seen_open = False
+    if rain_vulnerable(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
+        return 0
     for _ in range(strategy.window_timeout):
         st = session.state
         if _dead(session) or st.enemy0_hp == 0:
@@ -686,7 +699,11 @@ def play_phantoon_fight(
         ready = (
             _session_eye_open(session)
             and (seated(state, strategy) or state.samus_y >= strategy.floor_y_min)
-            and int(state.enemy0_x) < strategy.skip_enemy_x
+            and charge_window_ok(
+                _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC),
+                state.enemy0_x,
+                skip_x=strategy.skip_enemy_x,
+            )
         )
         if strategy.weapon == WEAPON_MISSILES and state.missiles < strategy.min_shots_to_fire:
             try:
@@ -766,6 +783,7 @@ __all__ = [
     "PhantoonEvidence",
     "PhantoonStrategy",
     "beam_charge",
+    "charge_window_ok",
     "enemy_extra",
     "eye_open",
     "fight_phantoon_action",
