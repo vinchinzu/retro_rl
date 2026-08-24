@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through 0x18 Gleeok enter.
+"""Survival-spine L6 from L5 TF settle through 0x18 Gleeok 0x44 body-gone.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / Bubble. Gleeok fight / Rod / Gohma / TF 0x20 residual.
+Ignore object types 0x2b / Bubble. Map / Rod / Gohma / TF 0x20 residual.
 """
 
 from __future__ import annotations
@@ -42,14 +42,21 @@ from zelda_i.level6_overworld import (
     PostL5TriforceSettleController,
     make_post_l5_level6_controller,
 )
+from zelda_i.level6_gleeok18 import (
+    GLEEOK_18_MAX_FRAMES,
+    gleeok_3head_live,
+    make_gleeok_18_controller,
+)
 from zelda_i.level6_path import (
     NORTH_68_MAX_FRAMES,
+    SETTLE_18_MAX_FRAMES,
     Level6North68Controller,
     make_north_18_controller,
     make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
+    make_settle_18_controller,
 )
 from zelda_i.ram import (
     ADDR_WHISTLE,
@@ -75,6 +82,10 @@ __all__ = [
     "level6_clear28_success",
     "level6_room18_stages",
     "level6_room18_success",
+    "level6_settle18_stages",
+    "level6_settle18_success",
+    "level6_gleeok18_stages",
+    "level6_gleeok18_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -107,6 +118,8 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-room28",
     "level6-clear28",
     "level6-room18",
+    "level6-settle18",
+    "level6-gleeok18",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -122,6 +135,8 @@ L6_STOPS: dict[str, str] = {
     "level6-room28": "level6_room_0x28",
     "level6-clear28": "level6_clear_0x28",
     "level6-room18": "level6_room_0x18",
+    "level6-settle18": "level6_settle_0x18",
+    "level6-gleeok18": "level6_gleeok_0x18",
 }
 
 
@@ -436,13 +451,52 @@ def level6_room18_stages():
 
 
 def level6_room18_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready 0x18. Gleeok fight residual."""
+    """Play-ready 0x18. Spawn identity residual."""
     return (
         snap.level == LEVEL6
         and snap.mode == PLAY_MODE
         and snap.screen == LEVEL6_GLEEOK_ROOM
         and not snap.transitioning
         and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
+def level6_settle18_stages():
+    """0x18 leftover → idle census. Do not walk. Do not require type 0x43."""
+    settle = make_settle_18_controller()
+    return (
+        ("level6_settle_0x18", settle, SETTLE_18_MAX_FRAMES),
+    )
+
+
+def level6_settle18_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x18 after idle. TF still 0x1F. Type 0x43 is not required."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_GLEEOK_ROOM
+        and not snap.transitioning
+        and snap.triforce == 0x1F
+    )
+
+
+def level6_gleeok18_stages():
+    """0x18 leftover → diamond clip + south-stand until 0x44 is gone."""
+    fight = make_gleeok_18_controller()
+    return (
+        ("level6_gleeok_0x18", fight, GLEEOK_18_MAX_FRAMES),
+    )
+
+
+def level6_gleeok18_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x18 with body 0x44 gone. Head/fireball residual OK. No Map."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_GLEEOK_ROOM
+        and not snap.transitioning
+        and snap.triforce == 0x1F
+        and not gleeok_3head_live(snap)
     )
 
 
@@ -676,3 +730,37 @@ def continue_level6_spine(
     run.success = level6_room18_success(snap)
     if not run.success:
         run.failed_stage = "level6_room_0x18"
+        return
+    if through == "level6-room18":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_settle18_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_settle18_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_settle_0x18"
+        return
+    if through == "level6-settle18":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_gleeok18_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_gleeok18_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_gleeok_0x18"

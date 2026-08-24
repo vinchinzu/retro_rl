@@ -71,6 +71,8 @@
 | Power-on → L6 enter `0x28` | **1/1 continuous Survival**; live left 0x68 UP (slot11 `96,144→136`) then west-aisle north; 197,962f hop 3,207f; leftover `(120,189)` play `0x28`; keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_room28_continuous_v6.json` / `_final.png` |
 | Power-on → L6 clear `0x28` | **1/1 continuous Survival**; occupancy-patrol 2× orange wizzrobe `0x24`; 200,549f hop 2,587f; leftover `(120,181)` play `0x28`; keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_clear28_continuous_v1.json` / `_final.png` |
 | Power-on → L6 enter `0x18` | **1/1 continuous Survival**; LEFT+UP at y=181, hold UP, RIGHT+UP at y=109; 200,829f hop 280f; leftover `(120,189)` play `0x18`; diamond floor, north stairs, east shutter; Gleeok not on leftover PNG (spawn/RAM residual); keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_room18_continuous_v7.json` / `_final.png` |
+| Power-on → L6 settle `0x18` | **1/1 continuous Survival**; IDLE 512f; leftover `(120,189)` play `0x18`; spawn type **`0x44`** (never `0x43`/`0x46`) + fireball `0x56`; room_item_id `0x03`; doors 0/0; TF=`0x1F` keys=5 bombs=8; deaths 0; progression/capacity writes 0; no state load | `l6_settle18_continuous_v1.json` / `_final.png` |
+| Power-on → L6 Gleeok `0x18` | **1/1 continuous Survival**; LEFT+UP y=189 then L4 south-stand on `0x44`; 204,189f hop 2,848f; leftover `(121,133)` body-gone; `0x46` mid-fight; east shutter still closed; north stairs live; map=`0x0A` (no L6 map); keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_gleeok18_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -362,13 +364,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-room18` is green (`0x18`
-   `(120,189)`, TF `0x1F`, v7 1/1). Leftover PNG is north stairs + east
-   shutter; Gleeok not on that still. `rr-tne2` in progress. Next is
-   stairs / east shutter / Gleeok spawn confirm, then Map / Rod / Gohma /
-   TF `0x20`. Isolated BFS
-   is still not a spine path. See `docs/plan.md`. Isolated `Level3*`
-   pins do not close spine beads. No seamed compose. Bomb/key count
-   pokes are documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** `--through level6-gleeok18` is green (`0x18`
+   `(121,133)`, TF `0x1F`, v1 1/1). Body type **`0x44`** (not `0x43`)
+   south-stand; east shutter still closed; north stairs live. `rr-tne2`
+   in progress. Next is Map east / Rod stairs / Gohma / TF `0x20`.
+   Isolated BFS is still not a spine path. See `docs/plan.md`. Isolated
+   `Level3*` pins do not close spine beads. No seamed compose. Bomb/key
+   count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

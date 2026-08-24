@@ -41,8 +41,8 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
-| `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x68 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68), `level*_boss_*` | Path controllers + timing knobs |
+| `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -92,8 +92,10 @@ from damage heatmaps. Do not block tip progress on combat polish.
   hits the pair). After y-move, west aisle x=64 then north door.
   0x28 leftover `(120,181)` UP is solid; LEFT+UP clips y=181, hold-UP to
   `(96,109)`, RIGHT+UP at y=109 enters play `0x18`. Cardinal RIGHT at
-  y=173 and y=109 is solid. Leftover PNG is north stairs + east shutter;
-  Gleeok is not on that still (confirm with RAM/spawn).
+  y=173 and y=109 is solid. 0x18 enter leftover has no Gleeok; idle
+  census is type **`0x44`** (not L4 `0x43`) at `(124,111)` HP160 +
+  fireball `0x56`. y=189 UP is solid; LEFT+UP slides west then inland.
+  South-stand kills `0x44`; east shutter still closed after body-gone.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -119,12 +121,12 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 enter `0x18` (`l6_room18_continuous_v7` 1/1, 200,829f hop 280f,
-`(120,189)`, keys=5, bombs=8, TF=`0x1F`, deaths/progression/
-capacity 0, no state load). Path: LEFT+UP at y=181, hold UP, RIGHT+UP at
-y=109. Leftover PNG: north stairs + east shutter (Gleeok not on still).
-Stairs / east shutter / Gleeok spawn / Map / Rod / Gohma / TF `0x20`
-residual. Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b.
+L6 Gleeok body-gone `0x18` (`l6_gleeok18_continuous_v1` 1/1, 204,189f
+hop 2,848f, `(121,133)`, keys=5, bombs=8, TF=`0x1F`, deaths/progression/
+capacity 0, no state load). Spawn type **`0x44`** (not `0x43`); south-stand
+after diamond clip. East shutter still closed; north stairs live. Map /
+Rod / Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke
+Rod/doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

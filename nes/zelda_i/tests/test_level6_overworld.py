@@ -24,6 +24,7 @@ from zelda_i.level6_overworld import (
 )
 from zelda_i.level6_path import (
     BLOCK_OBJECT_TYPE,
+    SETTLE_18_IDLE_FRAMES,
     Level6North68Controller,
     left_block_0x68,
     make_north_18_controller,
@@ -31,6 +32,7 @@ from zelda_i.level6_path import (
     make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
+    make_settle_18_controller,
     south_face_stand,
 )
 from zelda_i.level6_spine import (
@@ -42,6 +44,10 @@ from zelda_i.level6_spine import (
     level6_clear38_success,
     level6_room18_stages,
     level6_room18_success,
+    level6_settle18_stages,
+    level6_settle18_success,
+    level6_gleeok18_stages,
+    level6_gleeok18_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -66,12 +72,15 @@ from zelda_i.level6_spine import (
 from zelda_i.overworld import neighbor_screens
 from zelda_i.ram import (
     ADDR_COMPASS,
+    ADDR_CUR_OPENED_DOORS,
     ADDR_LADDER,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
+    ADDR_OPEN_DOORWAY_MASK,
     ADDR_RAFT,
+    ADDR_ROOM_ITEM_ID,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
     ADDR_WHISTLE,
@@ -616,6 +625,102 @@ def test_level6_room18_occupancy_up_from_0x28() -> None:
     run = SpineRun(through="level6-room18", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_room_0x18"
     assert "level6-room18" in L6_THROUGH
+
+
+def test_level6_settle18_idles_and_censuses_spawn() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+
+    stages = level6_settle18_stages()
+    assert [name for name, _, _ in stages] == ["level6_settle_0x18"]
+    ctl = make_settle_18_controller()
+    assert ctl.idle_frames == SETTLE_18_IDLE_FRAMES
+    ram = _ram(level=6, screen=0x18, x=120, y=189)
+    ram[ADDR_ROOM_ITEM_ID] = 0x03
+    ram[ADDR_CUR_OPENED_DOORS] = 0x04
+    ram[ADDR_OPEN_DOORWAY_MASK] = 0x04
+    ram[ADDR_OBJ_TYPE + 1] = 0x43
+    ram[ADDR_OBJ_HP + 1] = 160
+    ram[ADDR_LINK_X + 1] = 120
+    ram[ADDR_LINK_Y + 1] = 93
+    ram[ADDR_OBJ_TYPE + 2] = 0x2B
+    ram[ADDR_OBJ_HP + 2] = 240
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+    assert ctl.saw_0x43
+    assert not ctl.saw_0x46
+    assert ctl.type_histogram.get("0x43") == 1
+    assert "0x2b" not in ctl.type_histogram
+    assert ctl.samples
+    assert ctl.samples[0]["objects"][0]["type"] == 0x43
+    for _ in range(SETTLE_18_IDLE_FRAMES - 1):
+        act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert level6_settle18_success(read_snapshot(ram))
+    ram[ADDR_TRIFORCE] = 0x3F
+    assert not level6_settle18_success(read_snapshot(ram))
+    ram[ADDR_TRIFORCE] = 0x1F
+    ram[ADDR_SCREEN] = 0x28
+    assert not level6_settle18_success(read_snapshot(ram))
+    empty = make_settle_18_controller()
+    empty.idle_frames = 2
+    empty.max_frames = 8
+    bare = _ram(level=6, screen=0x18, x=120, y=189)
+    empty.step(read_snapshot(bare))
+    empty.step(read_snapshot(bare))
+    assert empty.success
+    assert not empty.saw_0x43
+    assert empty.type_histogram == {}
+    report = ctl.report()
+    assert report["saw_0x43"] is True
+    assert report["leftover"]["x"] == 120
+    assert report["leftover"]["y"] == 189
+    assert report["cur_opened_doors"] == 0x04
+    run = SpineRun(through="level6-settle18", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_settle_0x18"
+    assert "level6-settle18" in L6_THROUGH
+
+
+def test_level6_gleeok18_clips_then_south_stands_0x44() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_gleeok18 import make_gleeok_18_controller
+
+    stages = level6_gleeok18_stages()
+    assert [name for name, _, _ in stages] == ["level6_gleeok_0x18"]
+    ctl = make_gleeok_18_controller()
+    ram = _ram(level=6, screen=0x18, x=120, y=189)
+    ram[ADDR_OBJ_TYPE + 1] = 0x44
+    ram[ADDR_OBJ_HP + 1] = 160
+    ram[ADDR_LINK_X + 1] = 124
+    ram[ADDR_LINK_Y + 1] = 111
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "diamond_clip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    inland = make_gleeok_18_controller()
+    ram[ADDR_LINK_Y] = 133
+    ram[ADDR_LINK_X] = 124
+    act = inland.step(read_snapshot(ram))
+    assert act.reason == "south_stand"
+    assert list(act.action) == list(nes_action("UP", "A"))
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+    gone = make_gleeok_18_controller()
+    gone.saw_0x44 = True
+    act = gone.step(read_snapshot(ram))
+    assert gone.success
+    assert act.reason == "body_gone"
+    assert list(act.action) == list(nes_idle_action())
+    assert level6_gleeok18_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0x44
+    ram[ADDR_OBJ_HP + 1] = 160
+    assert not level6_gleeok18_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0x43
+    assert level6_gleeok18_success(read_snapshot(ram))
+    run = SpineRun(through="level6-gleeok18", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_gleeok_0x18"
+    assert "level6-gleeok18" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

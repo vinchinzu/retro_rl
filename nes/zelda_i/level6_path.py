@@ -24,6 +24,11 @@ from zelda_i.level6_overworld import (
     LEVEL6_WIZZROBE_28_ROOM,
     LEVEL6_WIZZROBE_38_ROOM,
 )
+from zelda_i.dungeon_ids import (
+    GLEEOK_HEAD_OBJECT_TYPE,
+    GLEEOK_OBJECT_TYPE,
+    INVULN_MOVER_OBJECT_TYPE,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
@@ -32,14 +37,18 @@ __all__ = [
     "NORTH_68_MAX_FRAMES",
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
+    "SETTLE_18_IDLE_FRAMES",
+    "SETTLE_18_MAX_FRAMES",
     "Level6North68Controller",
     "Level6Push38Controller",
+    "Level6Settle18Controller",
     "left_block_0x68",
     "make_north_18_controller",
     "make_north_28_controller",
     "make_north_38_controller",
     "make_north_48_controller",
     "make_north_58_controller",
+    "make_settle_18_controller",
     "south_face_stand",
 ]
 
@@ -507,3 +516,160 @@ def make_north_18_controller() -> Level6North68Controller:
         use_occupancy=False,
         clip_left_up=True,
     )
+
+
+SETTLE_18_IDLE_FRAMES = 512
+SETTLE_18_SAMPLE_PERIOD = 12
+SETTLE_18_MAX_FRAMES = 800
+_CENSUS_SKIP_TYPES = frozenset({0, INVULN_MOVER_OBJECT_TYPE})
+
+
+def _live_spawn_objects(snap: ZeldaSnapshot) -> list[dict[str, int]]:
+    """Non-Link slots with a type. Census still lists 0x2b; histogram drops it."""
+    rows: list[dict[str, int]] = []
+    for obj in snap.objects:
+        type_id = int(obj.type_id)
+        if obj.slot == 0 or type_id == 0:
+            continue
+        rows.append(
+            {
+                "slot": int(obj.slot),
+                "type": type_id,
+                "x": int(obj.x),
+                "y": int(obj.y),
+                "hp": int(obj.hp),
+            }
+        )
+    return rows
+
+
+@dataclass
+class Level6Settle18Controller:
+    """Idle in play 0x18 and census spawn. Do not walk. Identity is the question."""
+
+    spec_id: str = "level6_settle_0x18"
+    room: int = LEVEL6_GLEEOK_ROOM
+    idle_frames: int = SETTLE_18_IDLE_FRAMES
+    sample_period: int = SETTLE_18_SAMPLE_PERIOD
+    max_frames: int = SETTLE_18_MAX_FRAMES
+    frames: int = 0
+    idle_in_room: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
+    type_histogram: dict[str, int] = field(default_factory=dict)
+    saw_0x43: bool = False
+    saw_0x46: bool = False
+    last_doors: dict[str, int] = field(default_factory=dict)
+    leftover: dict[str, int] = field(default_factory=dict)
+
+    def _record_census(self, snap: ZeldaSnapshot, *, force: bool = False) -> None:
+        self.last_doors = {
+            "cur_opened_doors": int(snap.cur_opened_doors),
+            "open_doorway_mask": int(snap.open_doorway_mask),
+        }
+        self.leftover = {
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "mode": int(snap.mode),
+            "screen": int(snap.screen),
+            "room_item_id": int(snap.room_item_id),
+            "triforce": int(snap.triforce),
+        }
+        live = _live_spawn_objects(snap)
+        counts: dict[int, int] = {}
+        for row in live:
+            type_id = int(row["type"])
+            if type_id == GLEEOK_OBJECT_TYPE:
+                self.saw_0x43 = True
+            if type_id == GLEEOK_HEAD_OBJECT_TYPE:
+                self.saw_0x46 = True
+            if type_id in _CENSUS_SKIP_TYPES:
+                continue
+            counts[type_id] = counts.get(type_id, 0) + 1
+        for type_id, n in counts.items():
+            key = f"0x{type_id:02x}"
+            prev = self.type_histogram.get(key, 0)
+            if n > prev:
+                self.type_histogram[key] = n
+        if force or self.frames <= 2 or self.frames % self.sample_period == 0:
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "mode": int(snap.mode),
+                    "objects": live,
+                    "cur_opened_doors": int(snap.cur_opened_doors),
+                    "open_doorway_mask": int(snap.open_doorway_mask),
+                    "room_item_id": int(snap.room_item_id),
+                }
+            )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed or self.frames >= self.max_frames:
+            self.failed = True
+            if "timeout" not in self.notes:
+                self.notes.append(
+                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+                )
+            self._record_census(snap, force=True)
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.mode == 17:
+            self.failed = True
+            self.notes.append("link_death")
+            self._record_census(snap, force=True)
+            return FrameAction(nes_idle_action(), "link_death")
+        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
+            return FrameAction(nes_idle_action(), "wait_scroll")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.level != LEVEL6:
+            self.failed = True
+            self.notes.append(f"left_level_{snap.level}")
+            self._record_census(snap, force=True)
+            return FrameAction(nes_idle_action(), "left_level")
+        if snap.screen != self.room:
+            self.failed = True
+            self.notes.append(f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
+            self._record_census(snap, force=True)
+            return FrameAction(nes_idle_action(), f"left_0x{self.room:02x}")
+
+        self.idle_in_room += 1
+        self._record_census(snap, force=self.idle_in_room >= self.idle_frames)
+        if self.idle_in_room >= self.idle_frames:
+            self.success = True
+            self.notes.append(
+                f"settled_{self.room:02x}_{snap.link_x}_{snap.link_y}"
+                f"_0x43={int(self.saw_0x43)}_0x46={int(self.saw_0x46)}"
+            )
+            return FrameAction(nes_idle_action(), "settled")
+        return FrameAction(nes_idle_action(), "spawn_idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "idle_in_room": self.idle_in_room,
+            "notes": list(self.notes),
+            "samples": list(self.samples),
+            "policy": "IDLE in play 0x18; census spawn; do not walk",
+            "saw_0x43": self.saw_0x43,
+            "saw_0x46": self.saw_0x46,
+            "type_histogram": dict(self.type_histogram),
+            "cur_opened_doors": self.last_doors.get("cur_opened_doors"),
+            "open_doorway_mask": self.last_doors.get("open_doorway_mask"),
+            "leftover": dict(self.leftover),
+            "spec_id": self.spec_id,
+            "room": self.room,
+        }
+
+
+def make_settle_18_controller() -> Level6Settle18Controller:
+    """Idle ~512f in play 0x18 and census objects. Do not require type 0x43."""
+    return Level6Settle18Controller()

@@ -30,6 +30,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x2A: "stalfos",
     0x40: "bubble",
     0x43: "gleeok",  # L4 boss room 0x13 live rr-rvae (2-head)
+    0x44: "gleeok_3head",  # L6 0x18 live settle (not 0x43)
     0x46: "gleeok_head",  # L4 0x13 detached head mid-fight (rr-rvae dual)
     0x47: "patra",  # L9 final Patra room 0x52 live (rr-sz8.2)
     0x49: "blade_trap",  # L4 room 0x02 live rr-rvae
@@ -67,6 +68,7 @@ AQUAMENTUS_OBJECT_TYPE = 0x3D
 BUBBLE_OBJECT_TYPE = 0x40  # L5 0x67 live; sword-immune residual
 MOLDORM_OBJECT_TYPE = 0x41
 GLEEOK_OBJECT_TYPE = 0x43  # L4 0x13 live rr-rvae
+GLEEOK_3HEAD_OBJECT_TYPE = 0x44  # L6 0x18 live settle census
 GLEEOK_HEAD_OBJECT_TYPE = 0x46  # L4 0x13 detached head (rr-rvae dual)
 PATRA_OBJECT_TYPE = 0x47  # L9 room 0x52 final Patra
 BLADE_TRAP_OBJECT_TYPE = 0x49  # L4 0x02 live rr-rvae

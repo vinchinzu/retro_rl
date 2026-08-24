@@ -407,8 +407,12 @@ Left 0x68 slot11 `(96,144)→(96,136)` then west-aisle north.
 occupancy-patrol 0 misses. Isolated BFS banned.
 `--through level6-room18` **1/1** `l6_room18_continuous_v7` play `0x18`
 `(120,189)` hop 280f, 200,829f. LEFT+UP at y=181, hold UP, RIGHT+UP at
-y=109. Keys=5 (no spend). Gleeok live (enter-stop). Do not fight Gleeok.
-Do not grant Whistle. Do not poke Rod/doors/keys.
+y=109. Keys=5 (no spend). `--through level6-settle18` **1/1**
+`l6_settle18_continuous_v1` IDLE 512f, type **`0x44`** (never `0x43`/`0x46`
+during idle) + `0x56`, leftover `(120,189)`, 201,341f. `--through
+level6-gleeok18` **1/1** `l6_gleeok18_continuous_v1` south-stand body-gone
+hop 2,848f, 204,189f leftover `(121,133)`. `0x46` mid-fight. East shutter
+still closed. Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -447,6 +451,8 @@ Do not grant Whistle. Do not poke Rod/doors/keys.
 | room18 v5 | `0x28` `(96,173)` 6000f | LEFT+UP clips the y=181 face then cardinal RIGHT to x=120 (RIGHT solid at clip cell) |
 | room18 v6 | `0x28` `(96,109)` 6000f | hold UP from clip cell reaches north band; then cardinal RIGHT to x=120 (RIGHT solid at y=109) |
 | room18 v7 | `0x18` `(120,189)` **play** | RIGHT+UP clip at y=109; hop 280f 1/1 |
+| settle18 v1 | `0x18` `(120,189)` **play** | IDLE census; type **`0x44`** not `0x43`; hop 512f 1/1 |
+| gleeok18 v1 | `0x18` `(121,133)` **body-gone** | LEFT+UP y=189 then south-stand `0x44`; hop 2,848f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -461,10 +467,18 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_clear38_continuous_v1_final.png`,
 `recordings/l6_room28_continuous_v{4,5,6}_final.png`,
 `recordings/l6_clear28_continuous_v1_final.png`,
-`recordings/l6_room18_continuous_v{1,2,3,4,5,6,7}_final.png`. Dest `0x18` is
-**on the tape** (`l6_room18_continuous_v7` 1/1, Gleeok live). Next: Gleeok
-fight / Map / Rod / Gohma / TF `0x20`. Do not close `rr-tne2` / a TF-`0x20`
-bead.
+`recordings/l6_room18_continuous_v{1,2,3,4,5,6,7}_final.png`,
+`recordings/l6_settle18_continuous_v1_final.png`,
+`recordings/l6_gleeok18_continuous_v1_final.png`. Dest `0x18` body-gone is
+**on the tape** (`l6_gleeok18_continuous_v1` 1/1, type `0x44`). Next: east
+Map / north stairs Rod / Gohma / TF `0x20`. Do not close `rr-tne2` / a
+TF-`0x20` bead. East shutter is still closed on leftover PNG; occupancy
+or y≈141 RIGHT after residual, else north stairs around `(120, ~109)`.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-gleeok18 --no-video --trials 1 --tag l6_gleeok18_continuous_v1
+```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
