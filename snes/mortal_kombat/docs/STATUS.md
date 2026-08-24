@@ -119,10 +119,20 @@ Verified this session (do not re-discover):
   1-2; stochastic Match5 v3 (20 this session, ~90 earlier) takes round 1
   ~30–40% then loses 1-2, never 2-0. `--round2-kano` (Match5 v3 then
   no-jump keepaway) now ignores leftover `hp=59/0 rounds=2-0` and sticks
-  after the live KO; keepaway still dies round 2 with Kano near full.
-  Det scripted-kano / Endurance1B v3 / Fight v3 / ladder-ft pixel: all
-  0-2. Not an Endurance 1 tape. Scorpion still has not appeared. M1–M7
-  tape still closes 2-0/2-0/2-0/2-1/2-0/2-1/2-0 at frame 41,503.
+  after the live KO. Knife sprite is `0x1B36` (idle 180→139→74 into P1
+  at f=273 from the *visible* pin; from leftover first-ready the hit
+  is clock ~324). `p2.state` stays 0. Stale `0x1B36=180` while Kano
+  walks is not a knife. Keepaway still has not closed a round.
+  Courtyard specialist jumps before the split: first-ready 906f is
+  black with pose already 68/144; visible 957f. Clock 296 from
+  first-ready is visible+240. Tap UP+forward 10f, then idle — y drops
+  ~20-30f later (land-hk clock 346, 40 dmg) and any walk/special
+  during that startup cancels the jump. Kano walks under so we land
+  crossed (~174/67). `scripted-courtyard` 0-2 (Kano 121 after the
+  opener HK, then flying kicks fail). Second fighter still has not
+  appeared — that wait is `win_at=8` after two round wins, not after
+  one KO. Not an Endurance 1 tape. Scorpion still has not appeared.
+  M1–M7 tape still closes 2-0/2-0/2-0/2-1/2-0/2-1/2-0 at frame 41,503.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -163,4 +173,4 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/replay_natural_fight5.py` | Model-free exact power-on tape through the Match 6 transition |
 | `scripts/replay_natural_fight6.py` | Model-free exact power-on tape through the Match 7 transition |
 | `scripts/replay_natural_fight7.py` | Model-free exact power-on tape through the Endurance 1 transition |
-| `scripts/capture_natural_endurance1.py` | Identify live E1 then record RLE from the Fight 7 pin (no tape yet) |
+| `scripts/capture_natural_endurance1.py` | Identify live E1 then record RLE from the Fight 7 pin (no tape yet). `--oracles scripted-courtyard` jumps the knife opener (40 dmg HK); still 0-2 |
