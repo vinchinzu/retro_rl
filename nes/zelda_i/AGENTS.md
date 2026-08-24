@@ -42,7 +42,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok → 0x19 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level*_boss_*` | Path controllers + timing knobs |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level6_rod.py`, `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -144,10 +144,10 @@ deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
 `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4.
 Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
 `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
-`--through level6-stairs09` **1/1** `l6_stairs09_continuous_v14` mode 9
-room `0x75` `(208,93)` tile `0x71` hop 203f, 210,902f. NE 0x68 `(208,96)`
-does not y-move; south-face UP onto `0x71` warps. rod=0. Next Magical Rod
-in cellar (do not grant).
+`--through level6-stairs09` **1/1** mode 9 `0x75` `(208,93)`.
+`--through level6-rod` red v1–v6 leftover `(48,69)` tile 36 LEFT solid,
+rod=0. Cellar spit west; statue idle is not `ADDR_ROD`. Next v7. Do not
+grant Rod.
 Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm

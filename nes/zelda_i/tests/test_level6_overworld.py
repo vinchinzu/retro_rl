@@ -64,6 +64,8 @@ from zelda_i.level6_spine import (
     level6_clear09_success,
     level6_stairs09_stages,
     level6_stairs09_success,
+    level6_rod_stages,
+    level6_rod_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -104,6 +106,8 @@ from zelda_i.ram import (
     ADDR_KEYS,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
+    ADDR_ROD,
+    ADDR_SUBMODE,
     PLAY_MODE,
     read_snapshot,
 )
@@ -1145,6 +1149,54 @@ def test_level6_stairs09_south_face_push_then_idle() -> None:
     run = SpineRun(through="level6-stairs09", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_stairs_0x09"
     assert "level6-stairs09" in L6_THROUGH
+
+
+def test_level6_rod_waits_warp_then_axis_left() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_rod import ROD_75_GOAL, ROD_75_STABLE, make_rod_75_controller
+
+    stages = level6_rod_stages()
+    assert [name for name, _, _ in stages] == ["level6_rod_0x75"]
+    assert ROD_75_GOAL == (32, 73)
+    warp = make_rod_75_controller()
+    act = warp.step(read_snapshot(_ram(level=6, screen=0x09, x=208, y=93)))
+    assert act.reason == "wait_warp"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+    leftover = _ram(level=6, screen=0x75, x=208, y=93, mode=9)
+    ctl = make_rod_75_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "wait_spawn"
+    assert list(act.action) == list(nes_idle_action())
+    spit = _ram(level=6, screen=0x75, x=48, y=74, mode=9)
+    act = ctl.step(read_snapshot(spit))
+    assert act.reason == "wait_spawn"
+    settled = _ram(level=6, screen=0x75, x=48, y=93, mode=9)
+    act = ctl.step(read_snapshot(settled))
+    assert act.reason == "wait_spawn"
+    for _ in range(ROD_75_STABLE - 1):
+        act = ctl.step(read_snapshot(settled))
+    assert act.reason == "rod_y"
+    assert list(act.action) == list(nes_action("UP"))
+    idle = make_rod_75_controller()
+    idle.step(read_snapshot(_ram(level=6, screen=0x75, x=208, y=93, mode=9)))
+    for _ in range(ROD_75_STABLE):
+        idle.step(read_snapshot(settled))
+    act = idle.step(read_snapshot(_ram(level=6, screen=0x75, x=32, y=73, mode=9)))
+    assert act.reason == "rod_idle"
+    assert list(act.action) == list(nes_idle_action())
+    ram = _ram(level=6, screen=0x75, x=120, y=141, mode=9)
+    ram[ADDR_ROD] = 1
+    got = make_rod_75_controller()
+    act = got.step(read_snapshot(ram))
+    assert got.success
+    assert act.reason == "rod_got"
+    assert level6_rod_success(read_snapshot(ram))
+    ram[ADDR_ROD] = 0
+    assert not level6_rod_success(read_snapshot(ram))
+    run = SpineRun(through="level6-rod", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_rod_0x75"
+    assert "level6-rod" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
