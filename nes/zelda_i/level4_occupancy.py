@@ -8,6 +8,12 @@ Seed only solids from continuous leftover samples:
 - exit stairs x>=176 (v3/v5)
 
 Island cardinals from the west aisle and south corridor are live-blocked.
+
+Isolated ``l4_tib8_stepladder`` is not a spine path. Live BFS used hold=4 /
+q=4 with Keese, then ``em.set_state(goal_state)``. Token replay (v3/v4)
+dumps south. Occupancy 1px 4-connected has no spawn→island path. v17 is a
+one-frame RIGHT+UP at the SW notch (48,161) — south of west-brick y<=157,
+west of south-water x>=80 — not v16 cardinal RIGHT at leftover y=157.
 """
 
 from __future__ import annotations
@@ -17,6 +23,10 @@ from zelda_i.walk_physics import OccupancyGrid
 
 __all__ = [
     "ROOM_60_BOUNDS",
+    "ROOM_60_CLIP_BUDGET",
+    "ROOM_60_CLIP_BUTTONS",
+    "ROOM_60_CLIP_OPEN_X",
+    "ROOM_60_CLIP_STAND",
     "ROOM_60_EXIT_X",
     "ROOM_60_ISLAND_XY",
     "ROOM_60_NORTH_STRIP_Y",
@@ -33,11 +43,14 @@ ROOM_60_NORTH_STRIP_Y = 68
 ROOM_60_ISLAND_XY = LADDER_60_PICKUP_XY
 ROOM_60_EXIT_X = 176
 ROOM_60_SE_X = 168
-# v15: south-corridor UP solid at x=168,189. Try the 7px band y=158 between
-# live west-brick y<=157 and south-water y>=165.
+# v16 leftover (48,157) never entered the notch (4px waypoint tol). Stand
+# strictly south of west-brick and hold RIGHT+UP (not cardinal RIGHT).
+ROOM_60_CLIP_STAND = (48, 161)
+ROOM_60_CLIP_BUTTONS: tuple[str, str] = ("RIGHT", "UP")
+ROOM_60_CLIP_OPEN_X = 90  # east of west-brick → occupancy-free interior
+ROOM_60_CLIP_BUDGET = 64
 ROOM_60_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    (48, 158),
-    (136, 158),
+    ROOM_60_CLIP_STAND,
     ROOM_60_ISLAND_XY,
 )
 # Include the north strip (y=53..68) that default dungeon bounds drop.
