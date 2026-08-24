@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through Keese room 0x58 enter (not Clean STATUS)
+Status: **assisted pure** through 0x58 Keese clear (not Clean STATUS)
 
 Planning sources:
 
@@ -72,7 +72,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x6a** | N of 0x7a | Old Man `0x4d` + fires `0x40` | `0x03` | **key waste** — tip only |
 | **0x78** | West of entry | **5× type `0x24`** | `0x03` | key-LEFT from 0x79; clear → UP |
 | **0x68** | N of 0x78 | **5× type `0x13`** (Zol) | **`0x16` compass** | spine enter + `ADDR_COMPASS\|0x20` 1/1 |
-| **0x58** | N of 0x68 | **8× Keese `0x1b`** | key drop live | spine enter 1/1; north sealed |
+| **0x58** | N of 0x68 | **8× Keese `0x1b`** | rupee drop live | spine clear 1/1; **north still sealed** |
 | **0x48** | N of 0x58 | blade traps `0x49` | — | run UP (no clear) |
 | **0x38** | N of 0x48 | multi wizzrobe + Like-Like + Bubble | — | hard; residual clear |
 | **0x28** | N of 0x38 | wizzrobes | `0x0f`? | block-push residual |
@@ -208,6 +208,24 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear68
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-keese --no-video --trials 1
 ```
 
+### Keese clear (0x58) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x58` `(120,205)` |
+| Combat | occupancy-patrol, TYPE-only 8× Keese `0x1b` |
+| Stop | `--through level6-clear58` no live Keese |
+| Leftover | `(112,167)`; keys=5 (no key); green rupee SW; **north sealed** |
+| Ignore | invuln `0x2b` / block `0x68` / corner fires |
+| Track | **assisted Survival** |
+
+Wrong belief: recon "0x58 UP free / after clear". Live leftover still shows
+the north shutter closed. Next hop must not assume a free UP.
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear58 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -224,7 +242,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 | 0x78 → UP → 0x68 | kill-door after clear | 0 | **yes** |
 | 0x78 → RIGHT → 0x79 | free | 0 | yes |
 | 0x68 → UP → 0x58 | free/after clear | 0 | recon |
-| 0x58 → UP → 0x48 | free | 0 | recon |
+| 0x58 → UP → 0x48 | **sealed after Keese clear** | 0 | spine leftover |
 | 0x48 → UP → 0x38 | free (run traps) | 0 | recon |
 | 0x38 → UP → 0x28 | free/after partial | 0 | recon |
 
@@ -271,8 +289,9 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_compass_continuous_v1.json` — 0x68 enter 1/1 occupancy UP 221f
 - `recordings/l6_clear68_continuous_v1.json` — 0x68 compass 1/1 occupancy-patrol 4,939f
 - `recordings/l6_keese_continuous_v1.json` — 0x58 enter 1/1 occupancy UP 209f
+- `recordings/l6_clear58_continuous_v1.json` — 0x58 Keese clear 1/1 882f; north sealed
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-keese --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear58 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -283,7 +302,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 Not claimed live as pure segments:
 
 1. **0x68 compass** pickup (`ADDR_COMPASS|0x20`) after Zol clear — **live**
-2. **0x58** Keese clear + key inventory — room enter live; clear residual
+2. **0x58** Keese clear — **live**; key inventory no; **north still sealed**
 3. **0x48** blade-trap run (no clear)
 4. **0x38** full clear (hard) + **left block push**
 5. **0x28** + optional bomb shortcut
