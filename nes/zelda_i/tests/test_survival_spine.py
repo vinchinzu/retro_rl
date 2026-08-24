@@ -456,10 +456,14 @@ def test_level4_map21_attaches_after_keyup20() -> None:
     from zelda_i.level4_map21 import make_map21_controller
 
     stages = level4_map21_stages()
-    assert [name for name, _, _ in stages] == ["level4_map_0x21"]
-    report = stages[0][1].report()
+    assert [name for name, _, _ in stages] == [
+        "level4_clear_0x20",
+        "level4_map_0x21",
+    ]
+    report = stages[1][1].report()
     assert report["segment"] == "level4_map_0x21"
     assert "bfs" not in report
+    assert stages[0][1].report()["segment"] == "level4_clear_0x20"
     run = SpineRun(through="level4-room21", success=True, boot_frames=199)
     assert run.report()["stop"] == "level4_enter_0x21"
     ctl = make_map21_controller()
@@ -471,8 +475,11 @@ def test_level4_map21_attaches_after_keyup20() -> None:
     ram[ADDR_LINK_Y] = 205
     ram[ADDR_LADDER] = 1
     act = ctl.step(read_snapshot(ram))
-    assert list(act.action) == list(nes_action("RIGHT"))
-    ram[ADDR_LINK_X] = 192
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 192
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    ram[ADDR_LINK_X] = 208
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("UP"))
     ram[ADDR_LINK_Y] = 141
