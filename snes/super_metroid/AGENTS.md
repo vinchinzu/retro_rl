@@ -26,8 +26,10 @@ STATUS promote `rr-ucl9`). `--to moat` power-on dual is scratch-green
 **146937f**; post-Ice **28589f**). `--to ws` is wired (rr-p2bw): power-on
 scratch dual **176141f** ×2 `0xCA08` `(57,139)` p1 gs=8 items `0x3105`
 beams `0x1007` max PB 5 (spark hop **615f** ×2 from the Moat leave). Do
-**not** STATUS-promote — default CLI stays `ice`. Ice-pin compose through
-WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
+**not** STATUS-promote — default CLI stays `ice`. Entrance→Main is scratch
+dual **403f** ×2 `0xCAF6` `(1063,907)` p9 gs=8 (rr-ahjo); next is Main Shaft
+→ basement (`rr-4btp`; `play_ws_main_to_basement` still scaffold). Ice-pin
+compose through WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
 checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
 (keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot
 fire). Successor `hellway_to_caterpillar` **2110f** ×2;

@@ -56,9 +56,9 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: WS Entrance → Main Shaft (`0xCA08` → `0xCAF6`, `rr-ahjo`) from the
-power-on leave (scratch `--to ws` dual **176141f** ×2 `0xCA08` `(57,139)` p1,
-not STATUS). Residual: [`tasks/rr-p2bw-residual.md`](tasks/rr-p2bw-residual.md).
+★ Next: WS Main Shaft → basement (`0xCAF6` → `0xCC6F`, `rr-4btp`) from the
+Entrance→Main leave (scratch dual **403f** ×2 `0xCAF6` `(1063,907)` p9 gs=8,
+not STATUS). Residual: [`tasks/rr-ahjo-residual.md`](tasks/rr-ahjo-residual.md).
 Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)

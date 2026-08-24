@@ -502,6 +502,17 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1}),
     ),
     SourceFingerprint(
+        "post_ws_entrance_to_main",
+        "scratch/post_ws_entrance_to_main.state",
+        0xCAF6,
+        use_for="pure dual GREEN Entrance→Main (rr-ahjo, 403f ×2); Main Shaft → basement",
+        x_min=1020,
+        x_max=1100,
+        y_min=870,
+        y_max=940,
+        poses=frozenset({9, 81}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,

@@ -51,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | WS Entrance → Main Shaft pure (`0xCA08` → `0xCAF6`) | `rr-ahjo` · residual `tasks/rr-p2bw-residual.md` |
+| **★ Product next** | WS Main Shaft → basement pure (`0xCAF6` → `0xCC6F`) | `rr-4btp` · residual `tasks/rr-ahjo-residual.md` |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -65,8 +65,9 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 (`rr-kxge` closed). Power-on `--to moat` is scratch dual-green
 (**175526f** ×2 `0x93FE` `(49,1163)` p1, rr-2r06). Power-on `--to ws`
 is scratch dual-green (**176141f** ×2 `0xCA08` `(57,139)` p1, rr-p2bw).
-Next: Entrance → Main Shaft `0xCAF6` (`rr-ahjo`;
-`play_ws_entrance_to_main` is still a scaffold). Planner STATUS for
+Entrance → Main Shaft is scratch dual-green (**403f** ×2 `0xCAF6`
+`(1063,907)` p9, rr-ahjo). Next: Main Shaft → basement `0xCC6F` (`rr-4btp`;
+`play_ws_main_to_basement` is still a scaffold). Planner STATUS for
 `moat` / `ws` is a follow-on — default CLI stays `ice`.
 **Do not STATUS-promote past Ice without a planner STATUS pass.**
 
