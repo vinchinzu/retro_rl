@@ -711,7 +711,7 @@ def level6_clear09_success(snap: ZeldaSnapshot) -> bool:
 
 
 def level6_stairs09_stages():
-    """0x09 leftover → left 0x68 UP then idle (192,96). Do not grant Rod."""
+    """0x09 leftover → left 0x68 UP then idle east door. Do not grant Rod."""
     stairs = make_stairs_09_controller()
     return (
         ("level6_stairs_0x09", stairs, STAIRS_09_MAX_FRAMES),
