@@ -40,7 +40,9 @@ def test_ws_entrance_to_main_is_not_scaffold() -> None:
     assert "super_door=False" in src
     basement = inspect.getsource(wrecked_ship.play_ws_main_to_basement)
     phant = inspect.getsource(wrecked_ship.play_ws_basement_to_phantoon)
-    assert "_scaffold_exit" in basement
+    assert "_scaffold_exit" not in basement
+    assert "play_script" in basement
+    assert sum(n for n, _b in wrecked_ship._WS_MAIN_RLE) == 1091
     assert "_scaffold_exit" in phant
 
 
@@ -69,6 +71,10 @@ def test_moat_to_ws_compose_and_phantoon_recording_wire() -> None:
     main_leave = get_source("post_ws_entrance_to_main")
     assert main_leave.room_id == 0xCAF6
     assert main_leave.relative_path.endswith("post_ws_entrance_to_main.state")
+
+    basement_leave = get_source("post_ws_main_to_basement")
+    assert basement_leave.room_id == 0xCC6F
+    assert basement_leave.relative_path.endswith("post_ws_main_to_basement.state")
 
 
 class _FakeSession:
@@ -145,6 +151,122 @@ def test_ws_entrance_main_settled_requires_gs8() -> None:
     assert wrecked_ship.ws_entrance_main_settled(ordinary)
     still_entrance = _state(room_id=0xCA08, game_state=8, door_transition=0)
     assert not wrecked_ship.ws_entrance_main_settled(still_entrance)
+
+
+def test_ws_main_green_floor_seat() -> None:
+    pin = _state(room_id=0xCAF6, samus_x=1063, samus_y=907, pose=9, game_state=8)
+    assert not wrecked_ship.at_ws_main_green_floor(pin)
+    hatch = _state(
+        room_id=0xCAF6,
+        samus_x=1143,
+        samus_y=wrecked_ship.WS_MAIN_BOTTOM_Y,
+        pose=1,
+        game_state=8,
+    )
+    assert wrecked_ship.at_ws_main_green_floor(hatch)
+    wrong_room = _state(room_id=0xCC6F, samus_x=1143, samus_y=1700)
+    assert not wrecked_ship.at_ws_main_green_floor(wrong_room)
+
+
+def test_ws_main_action_never_goes_up() -> None:
+    pin = _state(room_id=0xCAF6, samus_x=1077, samus_y=907, pose=9, game_state=8)
+    act = wrecked_ship.ws_main_to_basement_action(pin)
+    assert "UP" not in act
+    attic_y = _state(room_id=0xCAF6, samus_x=1150, samus_y=800, pose=1)
+    assert wrecked_ship.ws_main_to_basement_action(attic_y) == ("DOWN",)
+    assert "UP" not in wrecked_ship.ws_main_to_basement_action(attic_y)
+
+
+def test_ws_main_action_supers_green_floor_door() -> None:
+    beam = _state(
+        room_id=0xCAF6,
+        samus_x=1143,
+        samus_y=wrecked_ship.WS_MAIN_BOTTOM_Y + 20,
+        selected_item=0,
+        game_state=8,
+    )
+    assert wrecked_ship.ws_main_to_basement_action(beam) == ("SELECT",)
+    assert "X" not in wrecked_ship.ws_main_to_basement_action(beam)
+
+    supers = _state(
+        room_id=0xCAF6,
+        samus_x=1143,
+        samus_y=wrecked_ship.WS_MAIN_BOTTOM_Y + 20,
+        selected_item=wrecked_ship.WEAPON_SUPER,
+        game_state=8,
+    )
+    shot = wrecked_ship.ws_main_to_basement_action(supers)
+    assert "X" in shot
+    assert "DOWN" in shot
+    assert "SELECT" not in shot
+    # Floor door — not a horizontal Super.
+    assert shot != ("RIGHT", "X")
+    assert shot != ("RIGHT", "B", "X")
+
+
+def test_ws_main_basement_settled_requires_gs8() -> None:
+    trans = _state(
+        room_id=0xCC6F, game_state=11, door_transition=1, samus_x=40, samus_y=139
+    )
+    assert not wrecked_ship.ws_main_basement_settled(trans)
+    gs11 = replace(trans, game_state=11, door_transition=0)
+    assert not wrecked_ship.ws_main_basement_settled(gs11)
+    ordinary = replace(trans, game_state=8, door_transition=0)
+    assert wrecked_ship.ws_main_basement_settled(ordinary)
+    still_main = _state(room_id=0xCAF6, game_state=8, door_transition=0)
+    assert not wrecked_ship.ws_main_basement_settled(still_main)
+
+
+def test_play_ws_main_to_basement_plays_human_rle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _FakeSession(
+        _state(
+            room_id=0xCAF6,
+            samus_x=1077,
+            samus_y=907,
+            pose=9,
+            game_state=8,
+            door_transition=0,
+            selected_item=0,
+        )
+    )
+    seen: dict[str, Any] = {}
+
+    def _require(sess: Any, room: int, label: str) -> None:
+        seen["require"] = (room, label)
+        assert room == 0xCAF6
+
+    def _script(sess: Any, runs: Any, **kwargs: Any) -> Any:
+        seen["rle"] = kwargs.get("reason")
+        seen["rle_n"] = sum(n for n, _btns in runs)
+        sess.state = replace(
+            sess.state,
+            room_id=0xCC6F,
+            game_state=11,
+            door_transition=1,
+            samus_x=657,
+            samus_y=92,
+        )
+        return sess.state
+
+    def _settle(sess: Any, room: int, **kwargs: Any) -> Any:
+        seen["settle"] = (room, kwargs.get("label"))
+        sess.state = replace(
+            sess.state, room_id=room, game_state=8, door_transition=0
+        )
+        return sess.state
+
+    monkeypatch.setattr(wrecked_ship, "require_room", _require)
+    monkeypatch.setattr(wrecked_ship, "play_script", _script)
+    monkeypatch.setattr(wrecked_ship, "wait_ordinary_room", _settle)
+
+    out = wrecked_ship.play_ws_main_to_basement(session)
+    assert seen["require"][0] == 0xCAF6
+    assert seen["rle"] == "ws_main_to_basement_body"
+    assert seen["rle_n"] == 1091
+    assert seen["settle"] == (0xCC6F, "ws_main_to_basement")
+    assert wrecked_ship.ws_main_basement_settled(out)
 
 
 def test_play_ws_entrance_to_main_selects_beam_then_blue_exit(
