@@ -269,6 +269,8 @@ def _wait_open_window(
             last = key
         if int(st.health) == 0:
             return False
+        if _fig8_left_open(session, park_x):
+            return True
         skip = rain_phase(func) or right_park(park_x)
         if skip:
             if rain_dump is not None and (

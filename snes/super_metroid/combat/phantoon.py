@@ -307,13 +307,24 @@ def rain_phase(func: int) -> bool:
     return int(func) in RAIN_PHASE_FUNCS
 
 
+# Only (48, 96) from the living seat. (88, 64) crossed the body (p83 at 101,127).
+RAIN_FIRE_X_MAX = 64
+
+
+def rain_charge_ok(enemy_x: int, *, max_x: int = RAIN_FIRE_X_MAX) -> bool:
+    """True for left-ish rain parks. Skip (128, 96) and anything right."""
+    return 0 < int(enemy_x) <= max_x
+
+
 def charge_window_ok(
     func: int, enemy_x: int, *, skip_x: int = 155
 ) -> bool:
-    """Left fig-8 open only. Skip rain and the right wall (x=219 is the body)."""
-    if rain_phase(func):
+    """Left fig-8, or left-ish rain vuln. Skip right wall and (128, 96)."""
+    if right_park(enemy_x, skip_x=skip_x):
         return False
-    return int(enemy_x) < skip_x
+    if rain_phase(func):
+        return rain_vulnerable(func) and rain_charge_ok(enemy_x)
+    return True
 
 
 def right_park(enemy_x: int, *, skip_x: int = 155) -> bool:
@@ -418,7 +429,7 @@ def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) ->
 
 
 def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Unmorph, stay left, tap beam at flames. Do not morph-tank or chase the body."""
+    """Stand the living left seat and hold charge. Do not morph-tank or chase."""
     st = session.state
     if is_morph(int(st.pose)):
         try:
@@ -438,23 +449,10 @@ def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
     if int(st.pose) in HURT_POSES:
         hold(session, 1, reason="phan_hurt")
         return
-    drops = [d for d in list_pickups(_env_of(session)) if 0 < int(d.x) < strategy.kite_x_max]
-    if drops:
-        target = min(drops, key=lambda d: abs(int(d.x) - int(st.samus_x)))
-        dx = int(target.x) - int(st.samus_x)
-        if dx > 8 and int(st.samus_x) < strategy.kite_x_max:
-            hold(session, 1, "RIGHT", reason="phan_farm_pick")
-            return
-        if dx < -8:
-            hold(session, 1, "LEFT", reason="phan_farm_pick")
-            return
     if int(st.samus_x) > strategy.seat_x_max:
-        hold(session, 1, "LEFT", reason="phan_farm_left")
+        hold(session, 1, "LEFT", "X", reason="phan_farm_left")
         return
-    names = ["RIGHT"] if int(st.facing) != 8 else ["UP"]
-    if session.frame % 8 < 2:
-        names.append("X")
-    hold(session, 1, *names, reason="phan_farm_snipe")
+    hold(session, 1, "X", reason="phan_farm_charge")
 
 
 def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
@@ -576,6 +574,13 @@ def _aim_names(
         if int(state.samus_y) > int(state.enemy0_y) + 10:
             names.append("UP")
         return names
+    # (48, 96) sits on the living seat — jump in place, do not walk into it.
+    if rain_charge_ok(state.enemy0_x) and int(state.enemy0_x) <= strategy.seat_x_max + 16:
+        if close and _need_height(state, strategy):
+            names.append("A")
+        if close and int(state.samus_y) > int(state.enemy0_y) + 10:
+            names.append("UP")
+        return names
     if (
         (not right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x))
         and int(state.samus_x) >= strategy.kite_x_max
@@ -642,7 +647,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     shots = 0
     last_spend = -99
     seen_open = False
-    if rain_phase(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
+    func0 = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
+    if rain_phase(func0) and not rain_charge_ok(session.state.enemy0_x):
         return 0
     if right_park(session.state.enemy0_x, skip_x=strategy.skip_enemy_x):
         if int(session.state.samus_x) < strategy.right_jump_x:
@@ -661,7 +667,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
         if shots >= strategy.shots_per_window:
             break
 
-        if rain_phase(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
+        func_now = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
+        if rain_phase(func_now) and not rain_charge_ok(st.enemy0_x):
             break
         names = _aim_names(st, strategy, rain=False)
         if st.pose in HURT_POSES:
@@ -824,7 +831,9 @@ def play_phantoon_fight(
         if func_now != last_func:
             park_x = int(state.enemy0_x)
             last_func = func_now
-        if rain_phase(func_now) or right_park(park_x, skip_x=strategy.skip_enemy_x):
+        if not charge_window_ok(func_now, park_x) and (
+            rain_phase(func_now) or right_park(park_x, skip_x=strategy.skip_enemy_x)
+        ):
             _rain_corner_wait(session, strategy)
             continue
         ready = (
@@ -919,6 +928,7 @@ __all__ = [
     "list_pickups",
     "phantoon_phase",
     "play_phantoon_fight",
+    "rain_charge_ok",
     "rain_corner_morph",
     "rain_phase",
     "rain_vulnerable",

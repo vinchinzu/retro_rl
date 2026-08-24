@@ -24,6 +24,7 @@ from super_metroid.combat.phantoon import (
     func_vulnerable,
     in_release_band,
     charge_window_ok,
+    rain_charge_ok,
     rain_corner_morph,
     rain_phase,
     rain_vulnerable,
@@ -147,6 +148,17 @@ def test_charge_window_ok_skips_rain_and_right_fig8() -> None:
     assert not charge_window_ok(0xD788, 128)
     assert not charge_window_ok(0xD767, 128)
     assert not charge_window_ok(0xD82A, 203)
+    assert not charge_window_ok(0xD788, 88)
+    assert charge_window_ok(0xD767, 48)
+    assert not charge_window_ok(0xD788, 168)
+
+
+def test_rain_charge_ok_is_48_not_88_or_128() -> None:
+    assert rain_charge_ok(48)
+    assert not rain_charge_ok(88)
+    assert not rain_charge_ok(128)
+    assert not rain_charge_ok(168)
+    assert not rain_charge_ok(200)
 
 
 def test_rain_phase_is_cycle_not_fig8() -> None:
