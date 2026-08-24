@@ -604,8 +604,8 @@ def _aim_names(
         if int(state.samus_y) > int(state.enemy0_y) + 10:
             names.append("UP")
         return names
-    # (48, 96) sits on the living seat — jump in place, do not walk into it.
-    if rain_charge_ok(state.enemy0_x) and int(state.enemy0_x) <= strategy.seat_x_max + 16:
+    # Left park on the living seat (rain 48,96 or fig-8 53,82): jump in place.
+    if int(state.enemy0_x) <= strategy.seat_x_max + 16:
         if close and _need_height(state, strategy):
             names.append("A")
         if close and int(state.samus_y) > int(state.enemy0_y) + 10:
