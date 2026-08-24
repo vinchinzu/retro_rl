@@ -27,6 +27,7 @@ from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_HEALTH,
     ADDR_KEYS,
+    ADDR_LADDER,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -67,6 +68,8 @@ from zelda_i.survival_spine import (
     level4_east_32_success,
     level4_clear_32_stages,
     level4_clear_32_success,
+    level4_stepladder_stages,
+    level4_stepladder_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -87,6 +90,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-clear31",
         "level4-room32",
         "level4-clear32",
+        "level4-stepladder",
     )
 
 
@@ -269,6 +273,48 @@ def test_level4_clear_32_stop_is_empty_room_not_stairs() -> None:
     ram[ADDR_OBJ_HP + 1] = 0
     ram[ADDR_SCREEN] = 0x60
     assert not level4_clear_32_success(read_snapshot(ram))
+
+
+def test_level4_stepladder_attaches_existing_push_controller() -> None:
+    stages = level4_stepladder_stages()
+    assert [name for name, _, _ in stages] == ["level4_stepladder"]
+    controller = stages[0][1]
+    assert controller.clear_first is False
+    assert controller.phase.name == "ALIGN_PUSH"
+    assert stages[0][2] == controller.max_frames
+    report = controller.report()
+    assert report["segment"] == "level4_stepladder"
+    assert report["path_len"] >= 40
+    assert report["push_stand"] == [120, 141]
+    assert "bfs" not in report
+    run = SpineRun(through="level4-stepladder", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_stepladder_0x60"
+
+
+def test_level4_stepladder_stop_is_addr_ladder_not_exit() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = 9
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x60
+    ram[ADDR_LINK_X] = 136
+    ram[ADDR_LINK_Y] = 141
+    ram[ADDR_LADDER] = 1
+    snap = read_snapshot(ram)
+    assert level4_stepladder_success(snap)
+    ram[ADDR_LADDER] = 0
+    assert not level4_stepladder_success(read_snapshot(ram))
+    ram[ADDR_LADDER] = 1
+    ram[ADDR_OBJ_TYPE + 1] = INVULN_MOVER_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    ram[ADDR_OBJ_TYPE + 2] = 0x68
+    assert level4_stepladder_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x32
+    ram[ADDR_MODE] = PLAY_MODE
+    assert not level4_stepladder_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x60
+    ram[ADDR_MODE] = 9
+    ram[ADDR_LEVEL] = 3
+    assert not level4_stepladder_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:

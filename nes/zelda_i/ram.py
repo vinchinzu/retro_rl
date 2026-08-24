@@ -124,6 +124,7 @@ class ZeldaSnapshot:
     is_updating_mode: int = 0
     heart_partial: int = 0xFF
     raft: int = 0
+    ladder: int = 0
 
     @property
     def overworld(self) -> bool:
@@ -233,6 +234,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         submode=read_u8(ram, ADDR_SUBMODE),
         is_updating_mode=read_u8(ram, ADDR_IS_UPDATING_MODE),
         raft=read_u8(ram, ADDR_RAFT),
+        ladder=read_u8(ram, ADDR_LADDER),
     )
 
 
