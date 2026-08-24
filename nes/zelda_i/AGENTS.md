@@ -110,17 +110,11 @@ Continuous `l4_room32_continuous_v11` UP-to-y113, RIGHT+DOWN-clips the east
 column, then south-U waypoints into `0x32` at `(16,141)` in 376f.
 Continuous `l4_clear32_continuous_v1` clears 2× Zol + 2× LikeLike from
 leftover `(16,141)` in 3,812f (ignore `0x2b`/`0x68`); leftover `(80,109)`.
-`--through level4-stepladder` is wired (`clear_first=False`) but live-blocked
-v1–v26: push enters `0x60` mode-9. Isolated BFS from `(48,69)` is goal-state
-restore + Keese hold-4, not a cardinal walk — banned. Occupancy has no
-path. v20 leftover `(88,189)` RIGHT+DOWN slides east, DOWN is south brick.
-v21 leftover `(84,189)` LEFT+UP slides west, UP is water. v22 leftover
-`(48,165)` RIGHT+DOWN is DOWN-priority. v23 leftover `(48,157)` LEFT+UP
-is UP-priority. v24 leftover `(48,130)` LEFT+UP same. v25 leftover
-`(48,71)` RIGHT+DOWN north-strip. v26 leftover `(48,65)` LEFT+UP into
-north brick. Listed two-button residuals are exhausted. Next is a
-Keese-timed knock only as RNG last resort, not a route claim; do not
-call `_bfs_60_to_ladder`.
+Continuous `l4_stepladder_continuous_v34` 1/1: east grey dock UP at x=175
+y=189, y-first to y=141, LEFT onto `(136,141)`; `ADDR_LADDER` set; 118,292f;
+leftover `(136,141)` mode-9 `0x60`. Occupancy v26 over-blocked that dock as
+south-water/exit. Isolated BFS is still banned. Next is exit `0x60→0x32`
+waypoints (no BFS); do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
