@@ -428,6 +428,36 @@ def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) ->
         hold(session, 1, *_right_seat_names(st, strategy), reason="phan_right_seat")
 
 
+def _flame_snipe_tap(session: ControllerSession, strategy: PhantoonStrategy) -> None:
+    """Uncharged UP taps from the living seat (the policy that lived at 99)."""
+    st = session.state
+    if is_morph(int(st.pose)):
+        try:
+            unmorph(session)
+        except Exception:
+            hold(session, 1, reason="phan_farm_idle")
+        return
+    if int(st.selected_item) != WEAPON_BEAM:
+        try:
+            ensure_weapon(session, WEAPON_BEAM)
+        except RuntimeError:
+            hold(session, 1, reason="phan_farm_idle")
+        return
+    if int(st.samus_y) < strategy.floor_y_min:
+        hold(session, 1, reason="phan_fall_in")
+        return
+    if int(st.pose) in HURT_POSES:
+        hold(session, 1, reason="phan_hurt")
+        return
+    if int(st.samus_x) > strategy.seat_x_max:
+        hold(session, 1, "LEFT", reason="phan_farm_left")
+        return
+    names = ["RIGHT"] if int(st.facing) != 8 else ["UP"]
+    if session.frame % 8 < 2:
+        names.append("X")
+    hold(session, 1, *names, reason="phan_farm_snipe")
+
+
 def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
     """Stand the living left seat and hold charge. Do not morph-tank or chase."""
     st = session.state
