@@ -58,7 +58,7 @@ continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes �
 not Clean. The continuous spine now holds the natural `0x40` key and has
 cleared `0x32`, collected `ADDR_LADDER` on `0x60`, exited to play `0x32`,
 and walked west into `0x31` then KEY-UP `0x20` `(120,205)` keys 5→4; next is
-`0x20→0x21` map. Do not close `.6` until TF `0x08`.
+`0x20→0x21` map (v1–v3 RIGHT solid; occupancy next). Do not close `.6` until TF `0x08`.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that

@@ -3,8 +3,9 @@
 **Status:** continuous power-on Survival is live through play `0x20` with
 `ADDR_LADDER` (`l4_keyup20_continuous_v1`, leftover `(120,205)`, keys 5→4).
 Reverse 0x31 maze then KEY-UP @x120. Isolated BFS is still not this tape.
-Next: `0x20→0x21` map waypoints. Do not claim Clean STATUS — Survival
-assist only for this segment. Do not close `.6` until TF `0x08`.
+Next: `0x20→0x21` map occupancy (v1–v3 RIGHT at y=141/133/205 solid). Do
+not claim Clean STATUS — Survival assist only for this segment. Do not
+close `.6` until TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.

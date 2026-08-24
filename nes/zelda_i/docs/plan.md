@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous KEY-UP `0x20` v1; next map `0x21` |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — KEY-UP `0x20` v1; `0x20→0x21` blocked v1–v3 |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -206,9 +206,22 @@ then KEY-UP `0x20`. Do not close `.6` until TF `0x08`.
 `--through level4-keyup20` is **1/1** on `l4_keyup20_continuous_v1` (0x20 play
 `(120,205)`, ladder set, keys 5→4, 120,079f, maze-west 514f + KEY-UP 354f).
 Reverse of the verified 0x31 east U then LEFT+UP clip onto the north strip
-and inland west. Isolated maze BFS is not this tape. Next: `0x20→0x21` map
-waypoints (no emulator-state BFS), then bomb-UP `0x11`. Do not close `.6`
+and inland west. Isolated maze BFS is not this tape. Do not close `.6`
 until TF `0x08`.
+
+`--through level4-room21` is **blocked** after v1–v3 (no BFS). Leftover stays
+play `0x20` keys=4 ladder set. Isolated `0x20→0x21` used Vire-clear then
+**state-saving BFS** (banned).
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| map v1 | `0x20` `(120,141)` map_solid | RIGHT along door y from the N-S gold |
+| map v2 | `0x20` `(120,133)` map_solid | H-bar is 8px north of y=141 |
+| map v3 | `0x20` `(120,205)` map_solid | south band RIGHT around the H |
+
+PNGs: `recordings/l4_room21_continuous_v{1,2,3}_final.png`. Next: occupancy
+seed from those stills. Do not call `level4_room_nav` / map_21 state-BFS.
+Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -286,17 +299,18 @@ keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
 Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
 `0x32→0x31` leftover `(208,141)`. Live v1 KEY-UP `0x30→0x20` leftover
-`(120,205)` keys 5→4. Next worker: `0x20→0x21` map waypoints. Do **not**
-call `_bfs_60_to_ladder` or `level4_room_nav` live BFS. Then bomb-UP, Gleeok.
-Do not close `.6` until TF `0x08`.
+`(120,205)` keys 5→4. Next worker: `0x20→0x21` map occupancy from leftover
+PNGs v1–v3 (RIGHT at 141/133/205 is solid). Do **not** call
+`_bfs_60_to_ladder` or `level4_room_nav` / map_21 state-BFS. Then bomb-UP,
+Gleeok. Do not close `.6` until TF `0x08`.
 
 Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-stepladder --no-video --trials 1 \
-  --tag l4_stepladder_continuous_v34
+  --through level4-keyup20 --no-video --trials 1 \
+  --tag l4_keyup20_continuous_v1
 ```
 Isolated 0x6b check:
 
