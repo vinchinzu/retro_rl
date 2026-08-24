@@ -1,4 +1,4 @@
-"""Survival-spine L6 from L5 TF settle through 0x09 south after Rod.
+"""Survival-spine L6 from L5 TF settle through 0x19 KEY-DOWN after Rod.
 
 Do not poke Rod / doors / keys / bow / arrows. Do not grant Whistle.
 Isolated BFS banned. Ignore object types 0x2b / Bubble. Map skipped.
@@ -78,6 +78,10 @@ from zelda_i.level6_south09 import (
     level6_south09_stages,
     level6_south09_success,
 )
+from zelda_i.level6_south19 import (
+    level6_south19_stages,
+    level6_south19_success,
+)
 from zelda_i.level6_rod import (
     ROD_75_MAX_FRAMES,
     make_rod_75_controller,
@@ -151,6 +155,8 @@ __all__ = [
     "level6_exit75_success",
     "level6_south09_stages",
     "level6_south09_success",
+    "level6_south19_stages",
+    "level6_south19_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -196,6 +202,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-rod",
     "level6-exit75",
     "level6-south09",
+    "level6-south19",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -224,6 +231,7 @@ L6_STOPS: dict[str, str] = {
     "level6-rod": "level6_rod_0x75",
     "level6-exit75": "level6_exit_0x75",
     "level6-south09": "level6_south_0x09",
+    "level6-south19": "level6_south_0x19",
 }
 
 
@@ -1221,3 +1229,20 @@ def continue_level6_spine(
     run.success = level6_south09_success(snap)
     if not run.success:
         run.failed_stage = "level6_south_0x09"
+        return
+    if through == "level6-south09":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_south19_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_south19_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_south_0x19"
