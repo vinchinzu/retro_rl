@@ -1,46 +1,46 @@
 ## Residual — rr-tlaq Phantoon fight pure (0xCD13)
 
-**Status:** W1+W2 charge 300 GREEN each. W3 died waiting for the next
-**(48, 96)** / left fig-8 (health 39→0). Full fight RED.
+**Status:** W1+W2+W3 charge 300 GREEN each (2500→1600). Full fight RED.
 **Pin:** `scratch/post_ws_basement_to_phantoon.state`
 **Probe:** `window --windows 3 --weapon beam --wait 4000`
-**Report:** `scratch/phantoon_window_beam_w3.json`
+**Report:** `scratch/phantoon_window_beam_w2_cheap.json`
 
 Do **not** STATUS-promote. Default CLI stays `ice`. Super-spray is not a hit.
-Do **not** start a 16k. Do not fire x=219. Do not jump under (128, 96).
-Do not charge (88, 64) from the left seat.
+Do **not** start a 16k. Do not fire x=219 / (128, 96) / (88, 64).
 
-### What works (verified this pass)
+### W2 −200 dump (old close)
 
-  | Probe | Park | Spend | Shots | HP | Health |
-  |-------|------|-------|------:|----|-------:|
-  | w1 | (120, 108) fig-8 | (104, 149) p43 | 1 charge | 2500→2200 | 239 |
-  | w2 rain48 | (48, 96) `$D767` | (37, 132) p44 | 1 charge | 2200→1900 | 59→39 |
+Wait sitting-charge 239→59 through rain (D82A 179→119, then (200,114)/(128,96)/(88,64)).
+Jump p84 at (37, 138) dy=42 vs (48, 96) −20 more → **39**. Chip still landed.
 
-- **Hit rule:** dy 28–56, `$0CD0` ≥60, airborne UP. W2 jump-in-place `|dx|=11`.
-- Assist off.
+### What works (this pass)
+
+  | W | Park | Spend | HP | Health |
+  |---|------|-------|----|-------:|
+  | 1 | (120, 108) fig-8 | (104, 149) p43 | 2500→2200 | 239 |
+  | farm W1→W2 | tap-snipe 2000f | — | — | 239→184 (`health_up=5`) |
+  | 2 | (48, 96) `$D767` | (37, **148**) p21 | 2200→1900 | **164** |
+  | 3 | (48, 96) `$D767` | (37, 148) p21 | 1900→1600 | 44 |
+
+- Rain jump fires **dy 48–56** (y=144–152) before the p84 at y=138. No dash.
+- W2 health **164 ≥ 100**. Assist off.
 
 ### What fails
 
-1. **W3 halt — died at 39 HP before the next legal park.** After W2, tap-snipe
-   farm 589f: `health_up=20` (39→59 then back; pickup table empty), farm
-   end 39. W3 wait: `$D82A`→`$D788` **(207, 101)** skipped (right), health
-   39→19→**0** at f4617 pose 1 `(37, 187)`. Never a (48, 96) or left fig-8.
-   One contact at ≤39 kills.
-2. Skip forever: x=219, (128, 96), (88, 64) from the left seat.
-3. Full fight RED. Two chips leave **1900**. Dual-green still needs HP 0
-   + boss bit ×2.
+1. **Full fight RED.** Three chips leave **1600**. Health **44** after W3
+   (same one-contact problem as old W3). Dual-green still needs HP 0 +
+   boss bit ×2.
+2. Skip forever: x=219, (128, 96), (88, 64) from the left seat, morph-tank.
 
 ### Next actions (do not start a 16k first)
 
-1. Survive at 39 until the next **(48, 96)** without eating the (207, 101)
-   rain — or farm a real energy drop **before** leaving i-frames. Halt at
-   first miss / death. Do not chase right parks.
+1. `--windows 4` same (48, 96) / left fig-8. Farm after W3 if health≤40.
+   Halt at miss or health≤20.
 2. Dual-green `scratch/post_phantoon_poweron.state` only after a kill
    (do **not** clobber `post_phantoon_defeated.state`).
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/phantoon_combat.py window --windows 2 \
+uv run python snes/super_metroid/scripts/probe/phantoon_combat.py window --windows 3 \
   --weapon beam --wait 4000 --report snes/super_metroid/scratch/phantoon_window.json
 ```
 
