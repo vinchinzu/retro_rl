@@ -38,7 +38,7 @@ from super_metroid.combat.features import (
 from super_metroid.combat.primitives import ensure_weapon, settle_standing
 from super_metroid.combat.spore_spawn import Pickup, list_pickups
 from super_metroid.ram import GameplayPhase, SuperMetroidState
-from super_metroid.routes.controller_common import is_morph, unmorph
+from super_metroid.routes.controller_common import ensure_morph, is_morph, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
 
 ROOM_PHANTOON = 0xCD13
@@ -104,8 +104,20 @@ VULNERABLE_FUNCS = frozenset(
     }
 )
 RAIN_VULN_FUNCS = frozenset({FUNC_RAIN_MAKE_VULN, FUNC_RAIN_VULN})
+# Flame-rain cycle after a fig-8 (skip-rain dump). Standing through D82A died.
+FUNC_RAIN_START = 0xD82A
+FUNC_RAIN_MOVE = 0xD73F
+FUNC_RAIN_HIDE = 0xD7D5
+FUNC_RAIN_NEXT = 0xD7F7
+RAIN_PHASE_FUNCS = RAIN_VULN_FUNCS | frozenset(
+    {FUNC_RAIN_START, FUNC_RAIN_MOVE, FUNC_RAIN_HIDE, FUNC_RAIN_NEXT}
+)
 # Standing / crouch / turn — W2 rain floor release. Not jump (21/25) or hurt.
 FLOOR_RELEASE_POSES = frozenset({1, 2, 3, 4, 5, 11})
+# Right fig-8 eye is higher (83 vs 108); same W1 jump lands y≈149.
+RIGHT_RELEASE_Y_MIN = 144
+RIGHT_RELEASE_Y_MAX = 152
+RIGHT_RELEASE_Y = 152
 
 # Knockback / hit-stun only. Pose 81 is ordinary falling — keep jump held.
 HURT_POSES = frozenset({83, 84, 109, 143, 158, 159, 160})
@@ -128,6 +140,8 @@ class PhantoonStrategy:
     fire_close_x: int = 16
     kite_x_max: int = 130
     skip_enemy_x: int = 155
+    right_seat_x_min: int = 180
+    right_seat_x: int = 220
     jump_hold_frames: int = 36
     charge_hold_frames: int = 70
     fire_release_frames: int = 2
@@ -290,15 +304,35 @@ def rain_vulnerable(func: int) -> bool:
     return int(func) in RAIN_VULN_FUNCS
 
 
+def rain_phase(func: int) -> bool:
+    """True on the flame-rain cycle (D82A…). Morph in a corner; do not stand."""
+    return int(func) in RAIN_PHASE_FUNCS
+
+
 def charge_window_ok(
     func: int, enemy_x: int, *, skip_x: int = 155
 ) -> bool:
-    """Fig-8 left open — skip rain and right-side parks (W2 rain does not chip)."""
-    if rain_vulnerable(func):
+    """Fig-8 open (left or right) — skip rain only. Right park is a new window."""
+    del enemy_x, skip_x
+    return not rain_phase(func)
+
+
+def right_park(enemy_x: int, *, skip_x: int = 155) -> bool:
+    """True when the eye is on the right half (measured W2 fig-8 (203, 83))."""
+    return int(enemy_x) >= skip_x
+
+
+def rain_corner_morph(
+    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
+) -> bool:
+    """Morph in a bottom corner — rain seat, not standing, not under the body."""
+    strat = strategy or PhantoonStrategy()
+    if not is_morph(int(state.pose)):
         return False
-    if int(enemy_x) >= skip_x:
+    if not (strat.floor_y_min <= int(state.samus_y) <= strat.floor_y_max):
         return False
-    return True
+    x = int(state.samus_x)
+    return x <= strat.seat_x_max or x >= strat.right_seat_x_min
 
 
 def floor_release_ok(
@@ -349,6 +383,58 @@ def _face_right(session: ControllerSession) -> None:
     if session.state.facing == 8:
         return
     hold(session, 1, "RIGHT", reason="phan_face")
+
+
+def _right_seat_names(state: SuperMetroidState, strategy: PhantoonStrategy) -> list[str]:
+    """Floor RIGHT+B, keep charge. Do not jump under the body."""
+    names: list[str] = ["RIGHT"]
+    if int(state.samus_y) >= strategy.floor_y_min - 4:
+        names.append("B")
+    if strategy.weapon == WEAPON_BEAM:
+        names.append("X")
+    return names
+
+
+def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
+    """Floor dash to the right seat (x≥180). No jump under the body."""
+    if is_morph(session.state.pose):
+        try:
+            unmorph(session)
+        except Exception:
+            return
+    for _ in range(180):
+        st = session.state
+        if _dead(session) or st.enemy0_hp == 0:
+            return
+        if (
+            int(st.samus_x) >= strategy.right_seat_x
+            and int(st.samus_y) >= strategy.floor_y_min - 4
+            and st.pose not in (81, 82, 164)
+        ):
+            return
+        if int(st.samus_y) < strategy.floor_y_min:
+            hold(session, 1, reason="phan_fall_in")
+            continue
+        hold(session, 1, *_right_seat_names(st, strategy), reason="phan_right_seat")
+
+
+def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
+    """Morph in a bottom corner through rain. Swap if the body sits on the seat."""
+    st = session.state
+    use_right = int(st.enemy0_x) <= strategy.seat_x_max + 24
+    if not is_morph(int(st.pose)):
+        try:
+            ensure_morph(session)
+        except Exception:
+            hold(session, 1, reason="phan_rain_idle")
+        return
+    if use_right and int(st.samus_x) < strategy.right_seat_x_min:
+        hold(session, 1, "RIGHT", reason="phan_rain_roll")
+        return
+    if (not use_right) and int(st.samus_x) > strategy.seat_x_max:
+        hold(session, 1, "LEFT", reason="phan_rain_roll")
+        return
+    hold(session, 1, reason="phan_rain_morph")
 
 
 def _go_to_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
@@ -441,8 +527,6 @@ def _aim_names(
     names: list[str] = []
     dx = int(state.enemy0_x) - int(state.samus_x)
     close = abs(dx) <= strategy.fire_close_x
-    if int(state.enemy0_x) >= strategy.skip_enemy_x and int(state.samus_x) < 90:
-        return names
     if rain:
         # Stay left of the body. Dash-to-|dx|≤16 walks under (128,96) and
         # a floor UP from (116,187) dumped charge with no HP chip.
@@ -454,7 +538,28 @@ def _aim_names(
             return names
         names.append("UP")
         return names
-    if int(state.samus_x) >= strategy.kite_x_max:
+    # Right fig-8: stay on the floor until the right seat (x≥180). No jump
+    # under the body while crossing from the left. Keep charge (X).
+    # Once there, face LEFT then jump in place — LEFT+A drifts under the body.
+    if right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x):
+        if int(state.samus_x) < strategy.right_seat_x_min:
+            return _right_seat_names(state, strategy)
+        if int(state.facing) != 4:
+            return ["LEFT"]
+        if (not close) and int(state.samus_x) > int(state.enemy0_x) + 10:
+            names.append("LEFT")
+            if int(state.samus_y) >= strategy.floor_y_min - 4:
+                names.append("B")
+            return names
+        if close and int(state.samus_x) >= 22 and _need_height(state, strategy):
+            names.append("A")
+        if close and int(state.samus_y) > int(state.enemy0_y) + 10:
+            names.append("UP")
+        return names
+    if (
+        (not right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x))
+        and int(state.samus_x) >= strategy.kite_x_max
+    ):
         names.append("LEFT")
     elif state.samus_x < 22:
         names.append("RIGHT")
@@ -465,8 +570,7 @@ def _aim_names(
     on_floor = int(state.samus_y) >= strategy.floor_y_min - 4
     if (not close) and on_floor and names:
         names.append("B")
-    # Rain: never A (jump under the body dumps charge + contact).
-    # Fig-8: jump only once close — A on the approach spin-dumps (p77).
+    # Rain: never A. Fig-8: jump only once close — A on the approach dumps p77.
     if (
         (not rain)
         and close
@@ -481,6 +585,8 @@ def _aim_names(
 
 def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
     """True when Samus is below the charge-release band (needs more jump)."""
+    if right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x):
+        return int(state.samus_y) > RIGHT_RELEASE_Y
     dy = int(state.samus_y) - int(state.enemy0_y)
     return dy > strategy.release_dy_max
 
@@ -492,10 +598,15 @@ def in_release_band(
 
     W1 chip: samus (104, 149) vs eye (120, 108) → dy=41.
     W2 miss: samus (120, 174) vs eye (128, 96) → dy=78 (floor hop).
+    Right fig-8 eye (203, 83): same jump lands y≈149 (dy=66).
     """
     strat = strategy or PhantoonStrategy()
     dy = int(state.samus_y) - int(state.enemy0_y)
-    return strat.release_dy_min <= dy <= strat.release_dy_max
+    if strat.release_dy_min <= dy <= strat.release_dy_max:
+        return True
+    if right_park(state.enemy0_x, skip_x=strat.skip_enemy_x):
+        return RIGHT_RELEASE_Y_MIN <= int(state.samus_y) <= RIGHT_RELEASE_Y_MAX
+    return False
 
 
 def _height_ok(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
@@ -518,8 +629,11 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     shots = 0
     last_spend = -99
     seen_open = False
-    if rain_vulnerable(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
+    if rain_phase(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
         return 0
+    if right_park(session.state.enemy0_x, skip_x=strategy.skip_enemy_x):
+        if int(session.state.samus_x) < strategy.right_seat_x_min:
+            _go_to_right_seat(session, strategy)
     for _ in range(strategy.window_timeout):
         st = session.state
         if _dead(session) or st.enemy0_hp == 0:
@@ -534,16 +648,19 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
         if shots >= strategy.shots_per_window:
             break
 
-        rain = rain_vulnerable(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC))
-        names = _aim_names(st, strategy, rain=rain)
+        if rain_phase(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)):
+            break
+        names = _aim_names(st, strategy, rain=False)
         if st.pose in HURT_POSES:
             hold(session, 1, reason="phan_hurt")
             continue
 
+        parked_right = right_park(st.enemy0_x, skip_x=strategy.skip_enemy_x)
+        still_left = int(st.samus_x) < strategy.right_seat_x_min
         if strategy.weapon == WEAPON_MISSILES:
             close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
             on_floor = int(st.samus_y) >= strategy.floor_y_min - 6
-            if int(st.enemy0_x) >= strategy.skip_enemy_x and not close:
+            if parked_right and still_left:
                 break
             if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
                 break
@@ -572,7 +689,7 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             continue
 
         close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
-        if int(st.enemy0_x) >= strategy.skip_enemy_x and not close:
+        if parked_right and still_left:
             break
         if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
             break
@@ -580,32 +697,22 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
-        if rain:
-            # Corner floor charge — do not walk under the rain body.
-            fire = (
-                hittable
-                and int(st.samus_x) <= strategy.seat_x_max
-                and int(st.facing) == 8
-                and floor_release_ok(st, strategy)
-                and shots < strategy.shots_per_window
-            )
-        else:
-            fire = (
-                hittable
-                and close
-                and in_release_band(st, strategy)
-                and st.pose not in HURT_POSES
-                and shots < strategy.shots_per_window
-            )
+        face_ok = (not parked_right) or int(st.facing) == 4
+        fire = (
+            hittable
+            and close
+            and face_ok
+            and in_release_band(st, strategy)
+            and (not _need_height(st, strategy))
+            and st.pose not in HURT_POSES
+            and shots < strategy.shots_per_window
+        )
         if not fire:
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
-        # Rain: corner floor, UP+R (diagonal, no d-pad walk). Fig-8: airborne UP.
         fire_names: list[str] = []
-        if rain:
-            fire_names.extend(("UP", "R"))
-        elif int(st.samus_y) > int(st.enemy0_y) + 10:
+        if int(st.samus_y) > int(st.enemy0_y) + 10:
             fire_names.append("UP")
         ch_before = beam_charge(_env_of(session))
         hold(
@@ -663,6 +770,8 @@ def play_phantoon_fight(
     shots_fired = 0
     windows = 0
     seen: set[int] = set()
+    park_x = int(session.state.enemy0_x)
+    last_func: int | None = None
 
     for _ in range(strategy.max_fight_frames):
         state = session.state
@@ -696,14 +805,26 @@ def play_phantoon_fight(
             hold(session, 1, reason="phantoon_death_anim")
             continue
 
+        func_now = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
+        if func_now != last_func:
+            park_x = int(state.enemy0_x)
+            last_func = func_now
+        if rain_phase(func_now):
+            _rain_corner_wait(session, strategy)
+            continue
+        if right_park(park_x, skip_x=strategy.skip_enemy_x):
+            if int(state.samus_x) < strategy.right_seat_x_min:
+                hold(
+                    session,
+                    1,
+                    *_right_seat_names(state, strategy),
+                    reason="phan_right_seat",
+                )
+                continue
         ready = (
             _session_eye_open(session)
-            and (seated(state, strategy) or state.samus_y >= strategy.floor_y_min)
-            and charge_window_ok(
-                _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC),
-                state.enemy0_x,
-                skip_x=strategy.skip_enemy_x,
-            )
+            and state.samus_y >= strategy.floor_y_min
+            and charge_window_ok(func_now, state.enemy0_x)
         )
         if strategy.weapon == WEAPON_MISSILES and state.missiles < strategy.min_shots_to_fire:
             try:
@@ -728,6 +849,12 @@ def play_phantoon_fight(
                 hold(session, 1, reason="phan_wait_eye")
             continue
 
+        if right_park(park_x, skip_x=strategy.skip_enemy_x):
+            if strategy.weapon == WEAPON_BEAM:
+                _hold_charge(session, 1)
+            else:
+                hold(session, 1, reason="phan_wait_eye")
+            continue
         if not seated(state, strategy):
             _keep_seat(session, strategy)
         elif strategy.weapon == WEAPON_BEAM:
@@ -790,8 +917,11 @@ __all__ = [
     "floor_release_ok",
     "in_release_band",
     "list_pickups",
-    "rain_vulnerable",
     "phantoon_phase",
     "play_phantoon_fight",
+    "rain_corner_morph",
+    "rain_phase",
+    "rain_vulnerable",
+    "right_park",
     "seated",
 ]
