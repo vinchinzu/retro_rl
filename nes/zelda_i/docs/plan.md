@@ -392,8 +392,9 @@ RAM is cellar 0x04),
 `--through level6-compass` **1/1** `l6_compass_continuous_v1` play `0x68`
 `(120,205)` 182,636f hop 221f. `--through level6-clear68` **1/1**
 `l6_clear68_continuous_v1` play `0x68` `(120,149)` compass bit `0x20`,
-187,575f hop 4,939f. Isolated BFS banned. Rod / Gohma / TF `0x20` residual.
-Do not grant Whistle. Do not poke Rod/doors/keys.
+187,575f hop 4,939f. `--through level6-keese` **1/1** `l6_keese_continuous_v1`
+play `0x58` `(120,205)` hop 209f. Isolated BFS banned. Keese clear / Rod /
+Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -413,14 +414,16 @@ Do not grant Whistle. Do not poke Rod/doors/keys.
 | west v1 | `0x78` `(144,141)` **cleared** | key-LEFT; hop 1,216f 1/1 |
 | compass v1 | `0x68` `(120,205)` **play** | occupancy UP; 8 miss-blocks x=144; hop 221f 1/1 |
 | clear68 v1 | `0x68` `(120,149)` **compass** | occupancy-patrol Zols; hop 4,939f 1/1 |
+| keese v1 | `0x58` `(120,205)` **play** | occupancy UP from 0x68; hop 209f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
 `recordings/l6_east_key_continuous_v1_final.png`,
 `recordings/l6_west_continuous_v1_final.png`,
 `recordings/l6_compass_continuous_v1_final.png`,
-`recordings/l6_clear68_continuous_v1_final.png`. Next: 0x68 UP → 0x58 Keese
-(ignore 0x2b/0x68). Do not close a TF-`0x20` bead.
+`recordings/l6_clear68_continuous_v1_final.png`,
+`recordings/l6_keese_continuous_v1_final.png`. Next: 0x58 Keese clear (north
+door sealed until clear). Do not close a TF-`0x20` bead.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
