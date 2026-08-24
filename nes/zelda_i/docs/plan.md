@@ -399,8 +399,11 @@ level6-room48` **1/1** `l6_room48_continuous_v1` play `0x48` `(120,205)` hop
 341f, keys=5 (free UP). `--through level6-room38` **1/1**
 `l6_room38_continuous_v1` play `0x38` `(120,189)` hop 261f. `--through
 level6-clear38` **1/1** `l6_clear38_continuous_v1` play `0x38` `(32,149)`
-hop 5,487f, 194,755f, max_live=7. Isolated BFS banned. Left-block / Rod /
-Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys.
+hop 5,487f, 194,755f, max_live=7. `--through level6-room28` **1/1**
+`l6_room28_continuous_v6` play `0x28` `(120,189)` hop 3,207f, 197,962f.
+Left 0x68 slot11 `(96,144)→(96,136)` then west-aisle north. Isolated BFS
+banned. 0x28 wizzrobes / Rod / Gohma / TF `0x20` residual. Do not grant
+Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -425,6 +428,12 @@ Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys.
 | room48 v1 | `0x48` `(120,205)` **play** | occupancy long-UP is free; hop 341f 1/1 |
 | room38 v1 | `0x38` `(120,189)` **play** | occupancy run-UP through traps; hop 261f 1/1 |
 | clear38 v1 | `0x38` `(32,149)` **cleared** | occupancy-patrol 7 live; Bubble residual; hop 5,487f 1/1 |
+| room28 v1 | `0x38` `(32,149)` stand 6000f | cardinal occupancy from west door can north |
+| room28 v2 | `0x38` `(120,93)` 6000f | occupancy UP at north shutter; looks open, is sealed |
+| room28 v3 | `0x38` `(96,133)` 8000f | hardcoded `(96,157)` + 200f UP is a push |
+| room28 v4 | `0x38` `(96,133)` 8000f | occupancy from the push plane can path around |
+| room28 v5 | `0x38` `(120,164)` 8000f | UP @ x=120 from south band is a clear lane |
+| room28 v6 | `0x28` `(120,189)` **play** | live 0x68 y-move then west aisle x=64; hop 3,207f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -436,8 +445,9 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_clear58_continuous_v1_final.png`,
 `recordings/l6_room48_continuous_v1_final.png`,
 `recordings/l6_room38_continuous_v1_final.png`,
-`recordings/l6_clear38_continuous_v1_final.png`. Next: left-block push
-toward 0x28 then Rod / Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
+`recordings/l6_clear38_continuous_v1_final.png`,
+`recordings/l6_room28_continuous_v{4,5,6}_final.png`. Next: 0x28
+wizzrobes then Rod / Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
