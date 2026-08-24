@@ -126,6 +126,21 @@ def test_seated_open_eye_missiles_fires() -> None:
     assert "X" in action
 
 
+def test_seated_right_side_open_does_not_chase() -> None:
+    state = _state(
+        enemy0_spritemap=0xDEF1,
+        enemy0_x=200,
+        selected_item=WEAPON_MISSILES,
+    )
+    action = fight_phantoon_action(
+        state, 0, PhantoonStrategy(weapon=WEAPON_MISSILES)
+    )
+    assert action == ()
+    assert "X" not in fight_phantoon_action(
+        state, 0, PhantoonStrategy(weapon=WEAPON_BEAM)
+    )
+
+
 def test_not_seated_walks_left_to_corner() -> None:
     state = _state(samus_x=120, pose=1)
     assert "LEFT" in fight_phantoon_action(state, 0)
