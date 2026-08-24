@@ -1,11 +1,12 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through map pickup on
-play `0x21` (`l4_map_continuous_v15` 2/2, leftover `(208,181)`,
-`ADDR_MAP|0x08`, map=`0x0A`, hop 297f). Path: spawn RIGHT+UP to `(48,93)`
-then RIGHT+DOWN clip (0x31→0x32 analog). Isolated BFS is still not this
-tape. Do not claim Clean STATUS — Survival assist only for this segment.
-Next: bomb-UP `0x11` @(120,105). Do not close `.6` until TF `0x08`.
+**Status:** continuous power-on Survival is live through bomb-UP into
+play `0x11` (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`, hop
+435f). Path: map leftover `(208,181)` UP the east column to y=93, LEFT
+to stand `(120,105)` (v1 LEFT at y=109 is a 16px pillar), bomb-UP.
+Isolated BFS is still not this tape. Do not claim Clean STATUS — Survival
+assist only for this segment. Next: 0x01 natural key. Do not close `.6`
+until TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -198,6 +199,14 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-keyup20 --no-video --trials 1 \
   --tag l4_keyup20_continuous_v1
+# Map pickup 0x21 verified v15 2/2 (leftover (208,181), ADDR_MAP|0x08)
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-map --no-video --trials 1 \
+  --tag l4_map_continuous_v15
+# Bomb-UP 0x21 → 0x11 verified v2 2/2 (leftover (120,189))
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-bomb11 --no-video --trials 1 \
+  --tag l4_bomb11_continuous_v2
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
@@ -273,7 +282,7 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 
 | Room | Live? | Notes |
 |------|-------|-------|
-| **0x11** | **live** | BOMB_UP from map; type `0x35`; checkpoint `Level4Room11` |
+| **0x11** | **live; continuous 2/2** | BOMB_UP from map via y=93 corridor (not y=109); leftover (120,189); type `0x35`; checkpoint `Level4Room11` |
 | **0x01** | **live** | Keese + key `0x19` (keys 0→1 after clear) |
 | **0x12** | **live dual** | 5× Vire; push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |

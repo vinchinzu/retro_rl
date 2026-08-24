@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — map pickup v15 2/2 (`ADDR_MAP|0x08` at `(208,181)`); next bomb-UP `0x11` |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — bomb-UP `0x11` v2 2/2 leftover `(120,189)`; next 0x01 natural key |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -274,8 +274,22 @@ close `.6` until TF `0x08`.
 
 PNGs: `recordings/l4_map_continuous_v{1..15}_final.png`. Wired
 `--through level4-map` stop is `ADDR_MAP & 0x08` on play `0x21` (not
-gel-clear). Next: bomb-UP `0x11` stand `(120,105)` from this leftover.
-Do not close `.6` until TF `0x08`.
+gel-clear).
+
+`--through level4-bomb11` is **2/2** on `l4_bomb11_continuous_v2` (and
+`v2b`): leftover `(208,181)` → UP the east column to y=93 → LEFT to
+bomb stand `(120,105)` → bomb-UP into play `0x11` `(120,189)` in 435f;
+122,507f; bombs 16→15 (documented count top-up at this gate); map=`0x0A`;
+keys=4; TF=`0x07`; deaths/progression/capacity 0; no state load. Isolated
+BFS is still not a spine path. PNG interior stays black (no candle).
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| bomb v1 | `0x21` `(192,109)` timeout | cardinal LEFT at y=109 after UP the east column |
+| bomb v2 | `0x11` `(120,189)` **play** | north-around y=93 then LEFT; hop 435f 2/2 |
+
+PNGs: `recordings/l4_bomb11_continuous_v{1,2,2b}_final.png`. Next: 0x01
+natural key from this leftover. Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -355,7 +369,8 @@ Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
 `0x32→0x31` leftover `(208,141)`. Live v1 KEY-UP `0x30→0x20` leftover
 `(120,205)` keys 5→4. Live 0x20 Vire clear 1249f. Live v22
 `0x20→0x21` leftover `(16,141)` play `0x21`. Map pickup is on the tape
-(v15 2/2 leftover `(208,181)`, `ADDR_MAP|0x08`). Do **not** call
+(v15 2/2 leftover `(208,181)`, `ADDR_MAP|0x08`). Bomb-UP `0x11` is on
+the tape (v2 2/2 leftover `(120,189)`). Do **not** call
 `_bfs_60_to_ladder` or `level4_room_nav` / map_21 state-BFS. Do not
 close `.6` until TF `0x08`.
 
@@ -375,6 +390,15 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-map --no-video --trials 1 \
   --tag l4_map_continuous_v15
+```
+
+Bomb-UP 0x11 stop (verified v2 2/2):
+
+```bash
+UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
+  uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-bomb11 --no-video --trials 1 \
+  --tag l4_bomb11_continuous_v2
 ```
 Isolated 0x6b check:
 

@@ -76,6 +76,8 @@ from zelda_i.survival_spine import (
     level4_west31_success,
     level4_keyup20_stages,
     level4_keyup20_success,
+    level4_bomb11_stages,
+    level4_bomb11_success,
     level4_map21_stages,
     level4_map21_success,
     level4_mappick_stages,
@@ -106,6 +108,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-keyup20",
         "level4-room21",
         "level4-map",
+        "level4-bomb11",
     )
 
 
@@ -557,6 +560,58 @@ def test_level4_mappick_attaches_after_room21() -> None:
     assert level4_mappick_success(read_snapshot(ram))
     ram[ADDR_MAP] = 0
     assert not level4_mappick_success(read_snapshot(ram))
+
+
+def test_level4_bomb11_attaches_after_map() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.bomb_wall_path import BombWallController
+    from zelda_i.level4_bomb11 import make_bomb_21_north_controller
+    from zelda_i.level4_dungeon import BOMB_21_NORTH_STAND
+    from zelda_i.level4_occupancy import ROOM_21_BOMB_WAYPOINTS
+
+    stages = level4_bomb11_stages()
+    assert [name for name, _, _ in stages] == ["level4_bomb_north_0x21"]
+    ctl = stages[0][1]
+    assert isinstance(ctl, BombWallController)
+    assert ctl.wall.opens_to == 0x11
+    assert ctl.stand == BOMB_21_NORTH_STAND
+    assert ctl.approach_waypoints == ROOM_21_BOMB_WAYPOINTS
+    assert ctl.south_band_first is False
+    assert "bfs" not in ctl.report()
+    run = SpineRun(through="level4-bomb11", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_enter_0x11"
+    ctl = make_bomb_21_north_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x21
+    ram[ADDR_LINK_X] = 208
+    ram[ADDR_LINK_Y] = 181
+    ram[ADDR_LADDER] = 1
+    ram[ADDR_BOMBS] = 15
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 93
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "approach_next"
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("LEFT"))
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 105
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason in ("approach_next", "stand_ready")
+    for _ in range(10):
+        act = ctl.step(read_snapshot(ram))
+        if act.reason == "place_bomb":
+            break
+    assert act.reason == "place_bomb"
+    ram[ADDR_SCREEN] = 0x11
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert act.reason == "done"
+    assert level4_bomb11_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x21
+    assert not level4_bomb11_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:

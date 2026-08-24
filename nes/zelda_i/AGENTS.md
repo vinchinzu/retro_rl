@@ -38,7 +38,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
-| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
+| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -125,8 +125,11 @@ keys 5→4; hop 868f. 0x20 Vire clear is on the tape (v7–v22, 1249f, ignore
 `(16,141)` play `0x21`; 121,775f hop 447f. Continuous
 `l4_map_continuous_v15` 2/2: spawn RIGHT+UP to `(48,93)`, then
 RIGHT+DOWN clips east of the vestibule; `ADDR_MAP|0x08` at `(208,181)`
-in 297f (map=0x0A). Isolated BFS is still banned. Next: bomb-UP 0x11
-@(120,105). Do not close `.6` until TF `0x08`.
+in 297f (map=0x0A). Continuous `l4_bomb11_continuous_v2` 2/2: UP the
+east column to y=93, LEFT to the north bomb stand `(120,105)` (v1 LEFT
+at y=109 is a 16px pillar); bomb-UP → play `0x11` `(120,189)` in 435f.
+Isolated BFS is still banned. Next: 0x01 natural key from this leftover.
+Do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
