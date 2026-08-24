@@ -345,6 +345,79 @@ def test_factories() -> None:
     ladder = make_stepladder_controller(clear_first=True)
     assert ladder.max_frames > 0
     assert ladder.phase.name == "CLEAR"
+    preclear = make_stepladder_controller(clear_first=False)
+    assert preclear.phase.name == "ALIGN_PUSH"
+    assert preclear.clear_first is False
+
+
+def test_stepladder_settle_walks_west_aisle_to_spawn() -> None:
+    """Continuous 0x60 leftover (48,133) must join spawn, not hunt into water."""
+    import numpy as np
+
+    from zelda_i.level4_stepladder import MAZE_60_SETTLE, StepladderPhase
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        read_snapshot,
+    )
+
+    ctl = make_stepladder_controller(clear_first=False)
+    ctl.phase = StepladderPhase.SETTLE_STAIRS
+    ctl.phase_frames = MAZE_60_SETTLE
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = 9
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x60
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 133
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_spawn_y"
+    assert ctl.phase is StepladderPhase.SETTLE_STAIRS
+    ram[ADDR_LINK_Y] = 69
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "path_from_spawn"
+    assert ctl.phase is StepladderPhase.PATH
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "clip_aisle_y"
+    ne = make_stepladder_controller(clear_first=False)
+    ne.phase = StepladderPhase.SETTLE_STAIRS
+    ne.phase_frames = MAZE_60_SETTLE
+    ram[ADDR_LINK_X] = 208
+    ram[ADDR_LINK_Y] = 93
+    act = ne.step(read_snapshot(ram))
+    assert act.reason == "wait_nw_resettle"
+    assert ne.phase is StepladderPhase.SETTLE_STAIRS
+
+
+def test_stepladder_clips_exhausted_fails_without_bfs() -> None:
+    """West-aisle clips miss (v11); do not fall through to emulator BFS."""
+    import numpy as np
+
+    from zelda_i.level4_stepladder import CLIP_60, StepladderPhase
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        read_snapshot,
+    )
+
+    ctl = make_stepladder_controller(clear_first=False)
+    ctl.phase = StepladderPhase.PATH
+    ctl.probe_i = len(CLIP_60)
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = 9
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x60
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 114
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.phase is StepladderPhase.FAILED
+    assert act.reason.startswith("clips_exhausted_48_114")
 
 
 def test_maze_62_paths() -> None:
@@ -627,5 +700,6 @@ def test_planning_interior_report() -> None:
     assert r["stepladder"]["stairs_room"] == "0x60"
     assert r["stepladder"]["path_hold"] == MAZE_60_HOLD == 4
     assert r["stepladder"]["path_len"] == len(MAZE_60_TO_LADDER)
-    assert MAZE_60_TO_LADDER[0] == "DOWN"
+    assert MAZE_60_TO_LADDER[0] == "UP"
+    assert MAZE_60_TO_LADDER.count("DOWN") >= 10
     assert MAZE_60_TO_LADDER.count("RIGHT") >= 10

@@ -110,7 +110,11 @@ Continuous `l4_room32_continuous_v11` UP-to-y113, RIGHT+DOWN-clips the east
 column, then south-U waypoints into `0x32` at `(16,141)` in 376f.
 Continuous `l4_clear32_continuous_v1` clears 2× Zol + 2× LikeLike from
 leftover `(16,141)` in 3,812f (ignore `0x2b`/`0x68`); leftover `(80,109)`.
-Next is push left block → `0x60` Stepladder (`make_stepladder_controller`);
+`--through level4-stepladder` is wired (`clear_first=False`) but live-blocked
+v1–v11: push enters `0x60` mode-9 leftover `(48,133)`; west-aisle RIGHT
+solid, south-corridor UP solid, RIGHT+UP/DOWN clips miss, token
+`MAZE_60_TO_LADDER` hits the `0x32` exit. Isolated BFS from `(48,69)` is
+banned. Next is a coordinate causeway onto the island / `ADDR_LADDER`;
 do not use checkpoint-mediated/emulator-state BFS.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads

@@ -315,12 +315,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level4-clear32` clears `0x32`
-   Zol+LikeLike from leftover `(16,141)` (ignore `0x2b`/`0x68`); leftover
-   `(80,109)`. Next is push left block → `0x60` Stepladder. Isolated
-   `Level3*` pins do not close spine beads. No seamed compose. Bomb/key
-   count pokes are documented Survival shortcuts, not Clean. Do not close
-   `.6` until TF `0x08`.
+1. **Active Survival tip:** `--through level4-clear32` is the last green
+   gate (leftover `0x32` `(80,109)`). `--through level4-stepladder` is
+   wired but live-blocked: push enters `0x60`, island/ADDR_LADDER not
+   reached without banned BFS (v11 leftover `0x60` `(48,133)`). See
+   `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
+   seamed compose. Bomb/key count pokes are documented Survival shortcuts,
+   not Clean. Do not close `.6` until TF `0x08`.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
