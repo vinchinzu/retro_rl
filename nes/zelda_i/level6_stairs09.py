@@ -1,11 +1,11 @@
 """Level 6 0x09 left-block stairs toward Magical Rod.
 
-Clear leftover (112,173); live left 0x68 (96,144). Reuse 0x38 south-face UP
-until that object's y drops ≥8px. v13 SW (48,172) tile 119 idle 3887f is
-floor, not a hole. Remaining 0x68 slot11 (208,96) — v10 no_right_0x68 was
-early. Next: south-face that NE 0x68 until y-move, then still-stand.
-CheckWarp needs still; do not hold-UP. Do not occupancy. Do not grant
-ADDR_ROD. Halt y>=181.
+Clear leftover (112,173); live left 0x68 (96,144). South-face UP until
+that object's y drops ≥8px. Then wait for NE 0x68 (x>=184) — slot11 jumps
+96,131→208,96. South-face that object and UP. v14 1/1: NE 0x68 does **not**
+y-move; UP from (208,114) onto tile 0x71 at (208,93) is mode 9 room 0x75.
+Decorative NE hole (192,97) / SW floor (48,172) are not this warp. Do not
+occupancy. Do not grant ADDR_ROD. Halt y>=181.
 """
 
 from __future__ import annotations
@@ -370,7 +370,7 @@ class Level6Stairs09Controller:
             "samples": list(self.samples),
             "policy": (
                 "axis south-face left 0x68 until y-move, then NE 0x68 "
-                "(208,96) south-face UP, idle"
+                "(208,96) south-face UP (object may not y-move; tile 0x71 warps)"
             ),
             "idle_frames": int(self.idle_frames),
             "idle_min": STAIRS_09_IDLE_MIN,
