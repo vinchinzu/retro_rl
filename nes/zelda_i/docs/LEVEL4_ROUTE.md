@@ -1,12 +1,12 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through 0x01 natural
-key (`l4_key01_continuous_v3` 2/2, leftover `(120,133)`, hop 1196f,
-keys 4→5). Path: 0x11 leftover `(120,189)` bomb-UP stand `(120,105)`
-(v1 hold-UP leftover `(120,93)` is the north wall), then pickup
-`(120,141)`. Isolated BFS is still not this tape. Do not claim Clean
-STATUS — Survival assist only for this segment. Next: 0x12 Vire clear
-(ignore block `0x68`). Do not close `.6` until TF `0x08`.
+**Status:** continuous power-on Survival is live through 0x12 Vire
+clear (`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`, hop
+1290f). Path: 0x01 leftover `(120,133)` DOWN the bomb hole, bomb-RIGHT
+`(192,141)`, Vire clear (ignore `0x68`). Isolated BFS is still not this
+tape. Do not claim Clean STATUS — Survival assist only for this
+segment. Next: 0x12 push + Gleeok approach. Do not close `.6` until TF
+`0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -211,6 +211,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-key01 --no-video --trials 1 \
   --tag l4_key01_continuous_v3
+# 0x12 Vire clear verified v1 2/2 (leftover (128,117))
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-clear12 --no-video --trials 1 \
+  --tag l4_clear12_continuous_v1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
@@ -288,7 +292,7 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 |------|-------|-------|
 | **0x11** | **live; continuous 2/2** | BOMB_UP from map via y=93 corridor (not y=109); leftover (120,189); type `0x35`; north is **BOMB_UP** not free; checkpoint `Level4Room11` |
 | **0x01** | **live; continuous 2/2** | Keese + key `0x19` (keys 4→5); leftover (120,133); pickup ~(120,141) |
-| **0x12** | **live dual** | 5× Vire; push block LEFT opens R; `Level4Room12Cleared` |
+| **0x12** | **live dual; continuous 2/2** | 5× Vire; leftover (128,117); push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |
 | **0x13** | **live dual enter + kill** | Gleeok `0x43` HP≈160 + head `0x46` + HC; UP → 0x03 TF |
 | **0x10** | **live** | Manhandla side path; UP→0x00 dead-end |
