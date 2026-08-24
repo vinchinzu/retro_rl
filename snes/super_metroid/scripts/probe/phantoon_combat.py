@@ -223,16 +223,28 @@ def _wait_open_window(
     timeout: int,
     func_log: list | None = None,
     rain_dump: list | None = None,
+    farm: dict | None = None,
 ) -> bool:
     from retro_harness.actions import buttons, idle_action
 
     last = None
     strat = PhantoonStrategy()
     last_dump = -999
+    farm = farm if farm is not None else {}
+    farm.setdefault("health_up", 0)
+    farm.setdefault("missile_up", 0)
+    prev_h = int(session.state.health)
+    prev_m = int(session.state.missiles)
     # Park x at func change — live x crosses 155 mid fig-8 then opens left.
     park_x = int(session.state.enemy0_x)
     for _ in range(timeout):
         st = session.state
+        if int(st.health) > prev_h:
+            farm["health_up"] += int(st.health) - prev_h
+        if int(st.missiles) > prev_m:
+            farm["missile_up"] += int(st.missiles) - prev_m
+        prev_h = int(st.health)
+        prev_m = int(st.missiles)
         func = _body_func(session)
         extra = enemy_extra(session.env)
         key = extra.get("func")
@@ -249,6 +261,7 @@ def _wait_open_window(
                         "samus_xy": [st.samus_x, st.samus_y],
                         "pose": st.pose,
                         "health": st.health,
+                        "missiles": st.missiles,
                         "charge": beam_charge(session.env),
                         "fig8_open": _fig8_left_open(session, park_x),
                     }
@@ -266,9 +279,11 @@ def _wait_open_window(
                         "frame": session.frame,
                         "func": key,
                         "health": st.health,
+                        "missiles": st.missiles,
                         "samus_xy": [st.samus_x, st.samus_y],
                         "pose": st.pose,
                         "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                        "pickups": [p.__dict__ for p in list_pickups(session.env)],
                         "charge": beam_charge(session.env),
                     }
                 )
@@ -365,12 +380,14 @@ def _one_window(
     opened = False
     wait_funcs: list[dict[str, object]] = []
     rain_dump: list[dict[str, object]] = []
+    farm: dict[str, int] = {"health_up": 0, "missile_up": 0}
     if int(session.state.health) > 0:
         opened = _wait_open_window(
             session,
             timeout=wait,
             func_log=wait_funcs,
             rain_dump=rain_dump,
+            farm=farm,
         )
     pre = _snapshot(session)
     if opened:
@@ -407,6 +424,7 @@ def _one_window(
         "events": fire["events"],
         "wait_funcs": wait_funcs,
         "rain_dump": rain_dump,
+        "farm": farm,
     }
 
 

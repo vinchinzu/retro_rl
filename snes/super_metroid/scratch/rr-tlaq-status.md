@@ -7,18 +7,18 @@
 | W | Park | Spend | HP | Health | Result |
 |---|------|-------|----|-------:|--------|
 | 1 | (120, 108) fig-8 | (104, 149) p43 | 2500→2200 | 239 | GREEN **300** |
-| 2 | skip right (203, 83); stay-left morph rain | — | 2200 | 0 | **died** `$D788` vs (48, 96) |
+| 2 | skip right; left beam-snipe rain | — | 2200 | 99 | **no drops**, rain still on, no left open |
 
-## Stay-left morph
+## Farm
 
-x **52–57** the whole rain (no swap). Health 239→0 ~f4238. Death p65
-`(56, 201)`, `$D788`, body **(48, 96)**. Also −20 vs (168, 64) 39→19.
-Left morph cannot tank. No left fig-8. Do not fire x=219.
+`health_up=0` `missile_up=0`. Pickup table empty. Alive at 99 pose 3
+`(37, 187)` after 6000f wait (morph-tank died at 0). Rain still
+`$D788`/`$D7F7` at f7613. No left fig-8.
 
-No 16k. No Super.
+Do not fire x=219. No 16k. No Super.
 
 ## Next
 
-Farm / flame-snipe so rain starts nearer 299, or accept rain is not
-tankable at 239. Dual-green kill still needs HP 0 + boss bit ×2 →
+Different farm seat/shot, or accept no-assist cannot farm this rain.
+Dual-green kill still needs HP 0 + boss bit ×2 →
 `scratch/post_phantoon_poweron.state`.

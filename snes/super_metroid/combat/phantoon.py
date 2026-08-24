@@ -38,7 +38,7 @@ from super_metroid.combat.features import (
 from super_metroid.combat.primitives import ensure_weapon, settle_standing
 from super_metroid.combat.spore_spawn import Pickup, list_pickups
 from super_metroid.ram import GameplayPhase, SuperMetroidState
-from super_metroid.routes.controller_common import ensure_morph, is_morph, unmorph
+from super_metroid.routes.controller_common import is_morph, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
 
 ROOM_PHANTOON = 0xCD13
@@ -417,19 +417,49 @@ def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) ->
         hold(session, 1, *_right_seat_names(st, strategy), reason="phan_right_seat")
 
 
-def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Morph in the left corner through rain. Do not roll across the wave."""
+def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
+    """Unmorph, stay left, tap beam at flames. Do not morph-tank or chase the body."""
     st = session.state
-    if not is_morph(int(st.pose)):
+    if is_morph(int(st.pose)):
         try:
-            ensure_morph(session)
+            unmorph(session)
         except Exception:
-            hold(session, 1, reason="phan_rain_idle")
+            hold(session, 1, reason="phan_farm_idle")
         return
+    if int(st.selected_item) != WEAPON_BEAM:
+        try:
+            ensure_weapon(session, WEAPON_BEAM)
+        except RuntimeError:
+            hold(session, 1, reason="phan_farm_idle")
+        return
+    if int(st.samus_y) < strategy.floor_y_min:
+        hold(session, 1, reason="phan_fall_in")
+        return
+    if int(st.pose) in HURT_POSES:
+        hold(session, 1, reason="phan_hurt")
+        return
+    drops = [d for d in list_pickups(_env_of(session)) if 0 < int(d.x) < strategy.kite_x_max]
+    if drops:
+        target = min(drops, key=lambda d: abs(int(d.x) - int(st.samus_x)))
+        dx = int(target.x) - int(st.samus_x)
+        if dx > 8 and int(st.samus_x) < strategy.kite_x_max:
+            hold(session, 1, "RIGHT", reason="phan_farm_pick")
+            return
+        if dx < -8:
+            hold(session, 1, "LEFT", reason="phan_farm_pick")
+            return
     if int(st.samus_x) > strategy.seat_x_max:
-        hold(session, 1, "LEFT", reason="phan_rain_left")
+        hold(session, 1, "LEFT", reason="phan_farm_left")
         return
-    hold(session, 1, reason="phan_rain_morph")
+    names = ["RIGHT"] if int(st.facing) != 8 else ["UP"]
+    if session.frame % 8 < 2:
+        names.append("X")
+    hold(session, 1, *names, reason="phan_farm_snipe")
+
+
+def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
+    """Skip-right / rain: beam-snipe flames from the left. Do not morph-tank."""
+    _rain_snipe(session, strategy)
 
 
 def _go_to_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
