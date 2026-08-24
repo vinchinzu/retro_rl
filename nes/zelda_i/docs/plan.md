@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous `ADDR_LADDER` v34; next exit `0x60→0x32` |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous exit `0x60→0x32` v2; next west `0x30` KEY-UP |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -189,6 +189,14 @@ state load). Occupancy v26 over-blocked the east grey dock as south-water
 x=175 → UP the dock → y-first to y=141 → LEFT onto the pedestal. Isolated
 BFS is still banned. Do not close `.6` until TF `0x08`.
 
+`--through level4-exit60` is **1/1** on `l4_exit60_continuous_v2` (0x32 play
+`(192,189)`, ladder set, 118,806f, hop 514f, deaths/progression/capacity 0,
+no state load). Reverse inbound dock after 150f item freeze: RIGHT y=141 to
+x=175, DOWN the dock, LEFT y=189, UP west-aisle stairs. v1 leftover
+`(176,173)` LEFT mid-dock solid; keep DOWN until y=189. Isolated BFS still
+banned. Next: west `0x32→0x31→0x30` then KEY-UP `0x20` (waypoints, no
+emulator-state BFS). Do not close `.6` until TF `0x08`.
+
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
 | v1 | `0x60` `(48,133)` HUNT timeout | spawn band y±32; HUNT RIGHT into water |
@@ -222,9 +230,11 @@ BFS is still banned. Do not close `.6` until TF `0x08`.
 | v32 | `0x60` `(141,141)` controller done, RAM ladder=0 | y-first to 141 then LEFT reached island; abs<=6 idled 5px east of pickup |
 | v33 | `0x60` `(138,141)` same | abs<=2 idled 2px east |
 | v34 | `0x60` `(136,141)` **ADDR_LADDER** | exact pickup cell |
+| exit v1 | `0x60` `(176,173)` exit_solid | LEFT from x=176 back to x=175 mid-dock |
+| exit v2 | `0x32` `(192,189)` **play + ladder** | DOWN the dock column until y=189 |
 
 PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34}_final.png`
-(v3/v5 exit `0x32`).
+(v3/v5 exit `0x32`); `l4_exit60_continuous_v{1,2}_final.png`.
 
 ### Why isolated BFS found a path occupancy says does not exist
 
@@ -261,10 +271,10 @@ seeded grid.
 Live v34 collected `ADDR_LADDER` on the continuous tape. Inventory: TF=`0x07`
 keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
-Next worker: exit mode-9 `0x60→0x32` with **waypoints, no BFS** (item freeze
-~150f then around Keese). Do **not** call `_bfs_60_to_ladder` or
-`level4_room_nav` exit BFS. Then west `0x30`, KEY-UP `0x20`, map, Gleeok.
-Do not close `.6` until TF `0x08`.
+Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Next worker: west
+`0x32→0x31→0x30` then KEY-UP `0x20`. Do **not** call `_bfs_60_to_ladder` or
+`level4_room_nav` live BFS. Then map, Gleeok. Do not close `.6` until TF
+`0x08`.
 
 Exact verified predecessor:
 

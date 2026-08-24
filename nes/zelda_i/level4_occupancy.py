@@ -12,6 +12,9 @@ checkpoint geom: grey east dock is the walkway. South-water x1=175 over-blocked
 that column (v15 UP at x=168 is stairs; x=175 UP reaches y=151). Causeway
 west from dock north ~(176,151) to island (136,141) was never seeded. Isolated
 BFS is still not a spine path.
+
+Exit reverse (v34 leftover (136,141)): RIGHT at y=141 to x=175, DOWN the dock,
+LEFT along y=189 (never x>=176), UP the west aisle to spawn stairs.
 """
 
 from __future__ import annotations
@@ -21,10 +24,12 @@ from zelda_i.walk_physics import OccupancyGrid
 
 __all__ = [
     "ROOM_60_BOUNDS",
+    "ROOM_60_CAUSWAY_XY",
     "ROOM_60_CLIP_BUDGET",
     "ROOM_60_DOCK_MOUTH_X_MIN",
     "ROOM_60_DOCK_MOUTH_XY",
     "ROOM_60_DOCK_NORTH_XY",
+    "ROOM_60_EXIT_WAYPOINTS",
     "ROOM_60_EXIT_X",
     "ROOM_60_ISLAND_XY",
     "ROOM_60_NORTH_STRIP_Y",
@@ -52,6 +57,14 @@ ROOM_60_WAYPOINTS: tuple[tuple[int, int], ...] = (
     ROOM_60_DOCK_MOUTH_XY,
     ROOM_60_DOCK_NORTH_XY,
     ROOM_60_ISLAND_XY,
+)
+# Reverse inbound dock. Stay on island y=141; DOWN at x=175 not x>=176.
+ROOM_60_CAUSWAY_XY = (ROOM_60_DOCK_MOUTH_X_MIN, ROOM_60_ISLAND_XY[1])
+ROOM_60_EXIT_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    ROOM_60_CAUSWAY_XY,
+    ROOM_60_DOCK_MOUTH_XY,
+    ROOM_60_SOUTH_XY,
+    ROOM_60_SPAWN_XY,
 )
 # Include the north strip (y=53..68) that default dungeon bounds drop.
 ROOM_60_BOUNDS: tuple[int, int, int, int] = (32, 216, 53, 205)
