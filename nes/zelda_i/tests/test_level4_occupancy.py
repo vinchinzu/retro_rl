@@ -6,6 +6,7 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level4_dungeon import (
+    BOMB_21_NORTH_STAND,
     LADDER_60_PICKUP_XY,
     MAP_21_PICKUP_XY,
     RIGHT_20_STAND,
@@ -23,6 +24,9 @@ from zelda_i.level4_occupancy import (
     ROOM_20_SOUTH_Y_MAX,
     ROOM_20_SPAWN_XY,
     ROOM_20_WAYPOINTS,
+    ROOM_21_BOMB_EAST_XY,
+    ROOM_21_BOMB_STAND_XY,
+    ROOM_21_BOMB_WAYPOINTS,
     ROOM_21_BOUNDS,
     ROOM_21_CORRIDOR_XY,
     ROOM_21_EAST_XY,
@@ -474,3 +478,18 @@ def test_mappick_path_walks_corridor_waypoints() -> None:
     act = ctl2.step(read_snapshot(ram))
     assert ctl2.phase is MapPickPhase.FAILED
     assert act.reason.startswith("map_solid_16_141")
+
+
+def test_room_21_bomb_waypoints_reverse_inbound_corridor() -> None:
+    grid = room_21_grid()
+    assert ROOM_21_BOMB_STAND_XY == BOMB_21_NORTH_STAND == (120, 105)
+    assert ROOM_21_BOMB_EAST_XY == (208, 93)
+    assert ROOM_21_BOMB_WAYPOINTS == ((208, 93), (120, 105))
+    assert grid.passable(*ROOM_21_PICKUP_XY)
+    assert grid.passable(*ROOM_21_BOMB_EAST_XY)
+    assert grid.passable(*ROOM_21_BOMB_STAND_XY)
+    assert not grid.passable(191, 109)
+    path = grid.shortest_path(ROOM_21_PICKUP_XY, ROOM_21_BOMB_STAND_XY)
+    assert path is not None
+    assert path[0] == ROOM_21_PICKUP_XY
+    assert path[-1] == ROOM_21_BOMB_STAND_XY

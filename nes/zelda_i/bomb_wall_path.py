@@ -256,10 +256,13 @@ class BombWallController:
                 self._set_phase(
                     BombWallPhase.CLEAR, f"need_clear_0x{self.from_room:02x}"
                 )
-            elif self.south_band_first:
+            elif self.approach_waypoints or self.south_band_first:
                 if snap.bombs <= 0:
                     return self._fail("no_bombs")
-                self._set_phase(BombWallPhase.SOUTH_BAND, "south_band_first")
+                note = (
+                    "south_band_first" if self.south_band_first else "approach"
+                )
+                self._set_phase(BombWallPhase.SOUTH_BAND, note)
             else:
                 if snap.bombs <= 0:
                     return self._fail("no_bombs")

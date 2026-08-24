@@ -1,4 +1,4 @@
-"""Survival-spine L4 stage factories through the map-pickup boundary.
+"""Survival-spine L4 stage factories through the 0x21 bomb-UP 0x11 boundary.
 
 The continuous runner composes these frame controllers. Isolated map_21
 state-BFS is not a spine path.
@@ -32,6 +32,10 @@ from zelda_i.level4_keyup20 import (
 from zelda_i.level4_map21 import (
     level4_map21_stages,
     level4_map21_success,
+)
+from zelda_i.level4_bomb11 import (
+    level4_bomb11_stages,
+    level4_bomb11_success,
 )
 from zelda_i.level4_mappick import (
     level4_mappick_stages,
@@ -88,6 +92,8 @@ __all__ = [
     "level4_keyup20_success",
     "level4_map21_stages",
     "level4_map21_success",
+    "level4_bomb11_stages",
+    "level4_bomb11_success",
     "level4_mappick_stages",
     "level4_mappick_success",
     "level4_north_30_stages",
