@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous exit `0x60→0x32` v2; next west `0x30` KEY-UP |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous west `0x31` v1; next maze west KEY-UP `0x20` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -197,6 +197,12 @@ x=175, DOWN the dock, LEFT y=189, UP west-aisle stairs. v1 leftover
 banned. Next: west `0x32→0x31→0x30` then KEY-UP `0x20` (waypoints, no
 emulator-state BFS). Do not close `.6` until TF `0x08`.
 
+`--through level4-west31` is **1/1** on `l4_west31_continuous_v1` (0x31 play
+`(208,141)`, ladder set, 119,211f, hop 405f). South corridor LEFT around
+the pushed 0x68, west-aisle UP, LEFT into 0x31. Isolated WEST_31_SAMPLE_PATH
+is not this tape. Next: reverse 0x31 maze east/inland waypoints to 0x30,
+then KEY-UP `0x20`. Do not close `.6` until TF `0x08`.
+
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
 | v1 | `0x60` `(48,133)` HUNT timeout | spawn band y±32; HUNT RIGHT into water |
@@ -271,10 +277,10 @@ seeded grid.
 Live v34 collected `ADDR_LADDER` on the continuous tape. Inventory: TF=`0x07`
 keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
-Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Next worker: west
-`0x32→0x31→0x30` then KEY-UP `0x20`. Do **not** call `_bfs_60_to_ladder` or
-`level4_room_nav` live BFS. Then map, Gleeok. Do not close `.6` until TF
-`0x08`.
+Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
+`0x32→0x31` leftover `(208,141)`. Next worker: reverse 0x31 maze to `0x30`
+then KEY-UP `0x20`. Do **not** call `_bfs_60_to_ladder` or `level4_room_nav`
+live BFS. Then map, Gleeok. Do not close `.6` until TF `0x08`.
 
 Exact verified predecessor:
 

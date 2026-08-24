@@ -859,6 +859,11 @@ _EXIT60_EXPORTS = frozenset({
     "level4_exit60_success", "make_exit60_controller",
 })
 
+_WEST31_EXPORTS = frozenset({
+    "Level4West31Controller", "WEST_32_WAYPOINTS", "West31Phase",
+    "level4_west31_stages", "level4_west31_success", "make_west31_controller",
+})
+
 _IMPORT_NAMES = frozenset({
     "AliveRule", "CombatTuning", "DoorRoute", "DungeonRoomSpec",
     "KEESE_OBJECT_TYPE", "LEVEL4_ENTRY_ROOM", "PLAY_MODE", "RewardKind",
@@ -880,6 +885,9 @@ def __getattr__(name: str):
     if name in _EXIT60_EXPORTS:
         from zelda_i import level4_exit60 as _exit60
         return getattr(_exit60, name)
+    if name in _WEST31_EXPORTS:
+        from zelda_i import level4_west31 as _west31
+        return getattr(_west31, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -890,6 +898,7 @@ def __dir__():
         | set(_MAZE_EXPORTS)
         | set(_STEPLADDER_EXPORTS)
         | set(_EXIT60_EXPORTS)
+        | set(_WEST31_EXPORTS)
     )
 
 
@@ -903,4 +912,5 @@ __all__ = sorted(
     | _MAZE_EXPORTS
     | _STEPLADDER_EXPORTS
     | _EXIT60_EXPORTS
+    | _WEST31_EXPORTS
 )
