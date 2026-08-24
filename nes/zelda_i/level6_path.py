@@ -24,7 +24,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_WIZZROBE_38_ROOM,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
-from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
+from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
     "BLOCK_OBJECT_TYPE",
@@ -46,19 +46,17 @@ NORTH_DOOR_Y = 93
 NORTH_BAND_Y = 109
 NORTH_DOOR_X_TOL = 4
 NORTH_68_MAX_FRAMES = 4000
-# West-door leftover (32,149) boxes cardinal occupancy (v1). Clip inland first.
+# West mouth x=32 boxes cardinals; clip inland before the push stand.
 WEST_CLIP_X = 48
 BLOCK_OBJECT_TYPE = 0x68
-# v3 hardcoded (96,157)+200f UP never moved the 0x68. Stand on the live
-# south face and hold UP until that object's y changes.
+# Hold UP from one tile south of live 0x68 until that object's y drops 8px.
 PUSH_SOUTH_OFFSET = 16
 PUSH_ALIGN_TOL = 2
 PUSH_MOVED_PX = 8
 PUSH_38_MAX_HOLD = 600
 WAIT_BLOCK_MAX = 120
 PUSH_38_MAX_FRAMES = 8000
-# v5 UP @ x=120 from y=164 hits the two-block south face. West aisle is
-# inland of the west mouth (v1 boxed at x=32) and west of left 0x68 x=96.
+# x=120 UP from the south band hits the block pair; aisle is west of 0x68.
 NORTH_WEST_X = 64
 
 
@@ -244,20 +242,9 @@ class Push38Phase(Enum):
     FAILED = auto()
 
 
-def _push38_walker() -> OccupancyWalker:
-    return OccupancyWalker(
-        grid=OccupancyGrid(xmin=16, xmax=216, ymin=77, ymax=205)
-    )
-
-
 @dataclass
 class Level6Push38Controller:
-    """0x38 west leftover → clip inland → live left 0x68 UP → north 0x28.
-
-    v1 cardinal occupancy boxed at (32,149). v2 clip reached north (120,93);
-    UP never left (shutter looks open, is sealed until the left 0x68 moves).
-    v3 stand (96,157)+200f UP did not change 0x68 y. Do not poke the block.
-    """
+    """0x38 west leftover → clip inland → live left 0x68 UP → west-aisle 0x28."""
 
     spec_id: str = "level6_north_0x28"
     source_room: int = LEVEL6_WIZZROBE_38_ROOM
@@ -270,7 +257,6 @@ class Level6Push38Controller:
     phase: Push38Phase = Push38Phase.CLIP
     notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
-    walker: OccupancyWalker = field(default_factory=_push38_walker)
     block_slot: int | None = None
     block_x0: int | None = None
     block_y0: int | None = None
@@ -279,8 +265,6 @@ class Level6Push38Controller:
         if phase is not self.phase:
             self.phase = phase
             self.phase_frames = 0
-            # v3 leftover (96,133): TO_PUSH blocked cells starved NORTH BFS.
-            self.walker = _push38_walker()
             if note:
                 self.notes.append(note)
 
@@ -341,7 +325,6 @@ class Level6Push38Controller:
             self._set_phase(Push38Phase.DONE, f"arrived_{self.dest_room:02x}")
             return FrameAction(nes_idle_action(), f"arrived_{self.dest_room:02x}")
         if snap.transitioning or snap.mode in (2, 3, 4, 6, 7, 9, 10):
-            self.walker.last_dir = None
             return FrameAction(nes_action("UP"), "north_scroll")
         if snap.mode != PLAY_MODE:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
@@ -378,8 +361,7 @@ class Level6Push38Controller:
                     f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
                 )
             elif xy[1] < ty - PUSH_ALIGN_TOL:
-                # North of the south face: drop south in the west aisle first
-                # so RIGHT cannot hit the 0x68 west face (v3 leftover (96,133)).
+                # North of the south face: DOWN first so RIGHT misses the 0x68 west face.
                 return self._emit(snap, FrameAction(nes_action("DOWN"), "stand_y"))
             elif abs(xy[0] - tx) > PUSH_ALIGN_TOL:
                 direction = "LEFT" if xy[0] > tx else "RIGHT"
@@ -424,28 +406,6 @@ class Level6Push38Controller:
 
         return FrameAction(nes_idle_action(), "failed")
 
-    def _occupancy_to(
-        self,
-        snap: ZeldaSnapshot,
-        xy: tuple[int, int],
-        goal: tuple[int, int],
-        reason: str,
-    ) -> FrameAction:
-        prev_dir = self.walker.last_dir
-        misses_before = self.walker.misses
-        self.walker.observe(xy)
-        if self.walker.misses > misses_before and (
-            self.walker.misses <= 8 or self.frames % 60 == 0
-        ):
-            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
-        direction = self.walker.next_dir(xy, goal)
-        if direction is None:
-            if self.frames <= 8 or self.frames % 60 == 0:
-                self.notes.append(f"stand_f{self.frames}_{xy[0]}_{xy[1]}")
-            self.walker.last_dir = None
-            return self._emit(snap, FrameAction(nes_idle_action(), "push_stand"))
-        return self._emit(snap, FrameAction(nes_action(direction), reason))
-
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
@@ -471,8 +431,6 @@ class Level6Push38Controller:
             "failed": self.failed,
             "frames": self.frames,
             "phase": self.phase.name,
-            "misses": self.walker.misses,
-            "blocked": len(self.walker.grid.blocked),
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": "west clip + live 0x68 south-face UP until y moves + west-aisle north",
@@ -489,5 +447,5 @@ class Level6Push38Controller:
 
 
 def make_north_28_controller() -> Level6Push38Controller:
-    """0x38 leftover → clip, live left 0x68 UP until y moves, occupancy 0x28."""
+    """0x38 leftover → clip, live left 0x68 UP until y moves, west-aisle 0x28."""
     return Level6Push38Controller()

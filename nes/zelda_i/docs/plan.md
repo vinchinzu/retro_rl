@@ -401,9 +401,12 @@ level6-room48` **1/1** `l6_room48_continuous_v1` play `0x48` `(120,205)` hop
 level6-clear38` **1/1** `l6_clear38_continuous_v1` play `0x38` `(32,149)`
 hop 5,487f, 194,755f, max_live=7. `--through level6-room28` **1/1**
 `l6_room28_continuous_v6` play `0x28` `(120,189)` hop 3,207f, 197,962f.
-Left 0x68 slot11 `(96,144)→(96,136)` then west-aisle north. Isolated BFS
-banned. 0x28 wizzrobes / Rod / Gohma / TF `0x20` residual. Do not grant
-Whistle. Do not poke Rod/doors/keys.
+Left 0x68 slot11 `(96,144)→(96,136)` then west-aisle north.
+`--through level6-clear28` **1/1** `l6_clear28_continuous_v1` play `0x28`
+`(120,181)` hop 2,587f, 200,549f, max_live=2 orange `0x24`. Diamond floor
+is walkable (0 occupancy misses). Isolated BFS banned. Gleeok / Rod /
+Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke
+Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -434,6 +437,7 @@ Whistle. Do not poke Rod/doors/keys.
 | room28 v4 | `0x38` `(96,133)` 8000f | occupancy from the push plane can path around |
 | room28 v5 | `0x38` `(120,164)` 8000f | UP @ x=120 from south band is a clear lane |
 | room28 v6 | `0x28` `(120,189)` **play** | live 0x68 y-move then west aisle x=64; hop 3,207f 1/1 |
+| clear28 v1 | `0x28` `(120,181)` **cleared** | occupancy-patrol 2× orange `0x24`; hop 2,587f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -446,8 +450,9 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_room48_continuous_v1_final.png`,
 `recordings/l6_room38_continuous_v1_final.png`,
 `recordings/l6_clear38_continuous_v1_final.png`,
-`recordings/l6_room28_continuous_v{4,5,6}_final.png`. Next: 0x28
-wizzrobes then Rod / Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
+`recordings/l6_room28_continuous_v{4,5,6}_final.png`,
+`recordings/l6_clear28_continuous_v1_final.png`. Next: Gleeok / Rod /
+Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
@@ -676,7 +681,7 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
    top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
    (`.3.1.1`). The full entrance→Raft corridor (`.3.3`) is closed; next is
    the verified Raft→TF `0x04` suffix, then `.6` L4 and `.7`
-   L5, then `.4` one-session L5 TF. L6 entry + west 0x78 are on the
+   L5, then `.4` one-session L5 TF. L6 entry through 0x28 clear are on the
    continuous tape; TF `0x20` / Rod / Gohma residual. L7–L9 stay out.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.

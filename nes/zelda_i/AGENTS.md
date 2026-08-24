@@ -90,6 +90,7 @@ from damage heatmaps. Do not block tip progress on combat polish.
   invuln `0x2b`. Left 0x68 at `(96,144)` must actually move UP (v2 shutter
   looks open, is sealed; v3 200f UP is not a push; v5 center-UP @ x=120
   hits the pair). After y-move, west aisle x=64 then north door.
+  0x28 is 2× orange `0x24`; diamond tiles are floor (0 occupancy misses).
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -115,11 +116,11 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 play `0x28` (`l6_room28_continuous_v6` 1/1, 197,962f hop 3,207f,
-`(120,189)`, keys=5, compass bit `0x20`, TF=`0x1F`, bombs=8,
-deaths/progression/capacity 0, no state load). Left 0x68 slot11
-`(96,144)→(96,136)` then west-aisle north. 0x28 wizzrobes / Rod / Gohma /
-TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b.
+L6 clear `0x28` (`l6_clear28_continuous_v1` 1/1, 200,549f hop 2,587f,
+`(120,181)`, keys=5, compass bit `0x20`, TF=`0x1F`, bombs=8, max_live=2
+orange `0x24`, deaths/progression/capacity 0, no state load). Gleeok /
+Rod / Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke
+Rod/doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
