@@ -8,8 +8,9 @@ Live recon (assisted, 2026-08-06)::
     RIGHT from entry needs wall-first y≈157 then y≈138 (fire solids at
     center y≈141 stick x≈128).
 
-Full Clean walk hops from start / post-L1 are **planned** — see
-``docs/LEVEL6_ROUTE.md``. Bracelet warp on OW 0x79 is optional residual.
+Post-L5 walk (source, OVERWORLD_DOORS): from L5 door ``0x0B``
+``↓ ←×7 ↓ ← ↓ ← ↑`` onto door ``0x22``. Lost Hills ``0x1B`` only LEFT
+exits (UP/RIGHT/DOWN wrap). Bracelet warp on OW 0x79 is optional residual.
 """
 
 from __future__ import annotations
@@ -23,14 +24,18 @@ import numpy as np
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.nav_common import track_stuck
-from zelda_i.overworld import ScreenHop
+from zelda_i.overworld import ScreenHop, path_screens_from_hops
 from zelda_i.ow_path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 # --- Live-verified geometry; entrance from anchors ---
 from zelda_i.anchors import (
     LEVEL6_ENTRY_ROOM,
+    SCREEN_BRACELET_ARMOS,
+    SCREEN_LEVEL5_ENTRANCE,
     SCREEN_LEVEL6_ENTRANCE,
+    SCREEN_LOST_HILLS,
+    TF_BIT_L5,
     TF_BIT_L6 as LEVEL6_TRIFORCE_BIT,
 )
 
@@ -64,7 +69,7 @@ SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
 STUCK_THRESHOLD = 50
 
-# Planned walk hops — not Clean-verified end-to-end. Door hunt is live.
+# Planned walk hops from start — not Clean-verified. Door hunt is live.
 # Bracelet shortcut (source): 0x77 E E → 0x79 stairs → down/left/up → 0x22.
 # Scaffold stops at door screen when hops empty and require_level6_screen.
 LEVEL6_DOOR_HOPS: tuple[ScreenHop, ...] = (
@@ -73,6 +78,35 @@ LEVEL6_DOOR_HOPS: tuple[ScreenHop, ...] = (
 
 LEVEL6_PATH_SCREENS: tuple[int, ...] = (SCREEN_LEVEL6_ENTRANCE,)
 
+# Natural predecessor after L5 Triforce fanfare. L5 returns Link to door
+# screen 0x0B (west/east sealed). Lost Hills 0x1B inland is a rock bowl;
+# v3 leftover (112,61) is the north arrival — LEFT along that edge, do
+# not unwedge inland. Then source west/south chain onto 0x22.
+SCREEN_POST_L5_RETURN = SCREEN_LEVEL5_ENTRANCE
+POST_L5_SETTLE_MAX_FRAMES = 2500
+POST_L5_PATH_MAX_FRAMES = 40000
+POST_L5_TO_LEVEL6_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(SCREEN_LOST_HILLS, "DOWN", align_x=112),
+    ScreenHop(0x1A, "LEFT", align_y=61),
+    ScreenHop(0x19, "LEFT", align_y=61),
+    ScreenHop(0x18, "LEFT", align_y=61),
+    ScreenHop(0x17, "LEFT", align_y=61),
+    ScreenHop(0x16, "LEFT", align_y=61),
+    ScreenHop(0x15, "LEFT", align_y=61),
+    ScreenHop(0x14, "LEFT", align_y=61),
+    ScreenHop(SCREEN_BRACELET_ARMOS, "DOWN", align_x=112),
+    ScreenHop(0x23, "LEFT", align_y=141),
+    ScreenHop(0x33, "DOWN", align_x=112),
+    ScreenHop(0x32, "LEFT", align_y=141),
+    ScreenHop(SCREEN_LEVEL6_ENTRANCE, "UP", align_x=112),
+)
+LEVEL6_POST_L5_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    SCREEN_POST_L5_RETURN, POST_L5_TO_LEVEL6_HOPS
+)
+assert LEVEL6_POST_L5_SCREENS[0] == SCREEN_POST_L5_RETURN
+assert LEVEL6_POST_L5_SCREENS[-1] == SCREEN_LEVEL6_ENTRANCE
+assert SCREEN_LOST_HILLS in LEVEL6_POST_L5_SCREENS
+
 
 class Level6NavPhase(Enum):
     HOP = auto()
@@ -80,6 +114,79 @@ class Level6NavPhase(Enum):
     DUNGEON_SETTLE = auto()
     DONE = auto()
     FAILED = auto()
+
+
+class PostL5SettlePhase(Enum):
+    WAIT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class PostL5TriforceSettleController:
+    """Idle through L5 triforce fanfare until OW door 0x0B play.
+
+    Start: leftover L5 TF room 0x14 mode 18. Do not reload a checkpoint
+    mid-fanfare (same class as L1–L4 TF settle). Do not grant Whistle.
+    """
+
+    phase: PostL5SettlePhase = PostL5SettlePhase.WAIT
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    max_frames: int = POST_L5_SETTLE_MAX_FRAMES
+    require_screen: int = SCREEN_POST_L5_RETURN
+
+    def reset(self) -> None:
+        self.phase = PostL5SettlePhase.WAIT
+        self.frames = 0
+        self.phase_frames = 0
+        self.success = False
+        self.notes.clear()
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        if self.frames > self.max_frames:
+            self.phase = PostL5SettlePhase.FAILED
+            self.notes.append("settle_timeout")
+            return FrameAction(nes_idle_action(), "settle_timeout")
+
+        if (
+            snap.level == 0
+            and snap.mode == PLAY_MODE
+            and snap.screen == self.require_screen
+            and bool(snap.triforce & TF_BIT_L5)
+            and not snap.transitioning
+        ):
+            self.success = True
+            if self.phase is not PostL5SettlePhase.DONE:
+                self.phase = PostL5SettlePhase.DONE
+                self.notes.append("post_l5_ow_ready")
+            return FrameAction(nes_idle_action(), "settle_done")
+
+        return FrameAction(nes_idle_action(), "settle_wait")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "require_screen": f"0x{self.require_screen:02x}",
+        }
+
+
+def post_l5_overworld_ready(snap: ZeldaSnapshot) -> bool:
+    """OW play on Lizard door 0x0B with L5 triforce bit."""
+    return (
+        snap.level == 0
+        and snap.mode == PLAY_MODE
+        and snap.screen == SCREEN_POST_L5_RETURN
+        and bool(snap.triforce & TF_BIT_L5)
+        and not snap.transitioning
+    )
 
 
 @dataclass
@@ -104,7 +211,7 @@ class OverworldToLevel6Controller(OverworldPathController):
     swing_hold: int = SWORD_SWING_FRAMES
     stuck_threshold: int = STUCK_THRESHOLD
     allowed_modes: frozenset[int] = field(
-        default_factory=lambda: frozenset({PLAY_MODE, 8, 11, 16})
+        default_factory=lambda: frozenset({PLAY_MODE, 8, 11, 16, 6, 7, 2, 3, 4})
     )
 
     def _wants_post_hop(self) -> bool:
@@ -186,6 +293,15 @@ class OverworldToLevel6Controller(OverworldPathController):
         if self.require_dungeon or snap.level == LEVEL6:
             return FrameAction(nes_idle_action(), "scroll_idle")
         return self._swing("UP", "scroll_door")
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        # Lost Hills: do not unwedge inland (rock bowl). LEFT the north
+        # arrival edge (v3 leftover 112,61). recover_off_edge DOWN is the trap.
+        if hop.target != 0x1A or snap.screen != SCREEN_LOST_HILLS:
+            return None
+        return self._swing("LEFT", "hills_north_left")
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.require_level6_screen or self.require_dungeon or not self.hops:
@@ -327,6 +443,25 @@ class Level6EntryRightController:
             "notes": list(self.notes),
             "stuck": self.stuck,
         }
+
+
+def make_post_l5_level6_controller() -> OverworldToLevel6Controller:
+    """Proven L5 door 0x0B → Lost Hills LEFT → Dragon 0x79. Not bracelet warp."""
+    return OverworldToLevel6Controller(
+        hops=POST_L5_TO_LEVEL6_HOPS,
+        require_dungeon=True,
+        max_frames=POST_L5_PATH_MAX_FRAMES,
+    )
+
+
+def level6_hops_from(screen: int) -> tuple[ScreenHop, ...]:
+    """Remaining post-L5 hops after ``screen``."""
+    if screen == SCREEN_POST_L5_RETURN:
+        return POST_L5_TO_LEVEL6_HOPS
+    targets = [h.target for h in POST_L5_TO_LEVEL6_HOPS]
+    if screen in targets:
+        return POST_L5_TO_LEVEL6_HOPS[targets.index(screen) + 1 :]
+    return POST_L5_TO_LEVEL6_HOPS
 
 
 def level6_screen_reached(ram: np.ndarray) -> bool:
@@ -502,6 +637,7 @@ class Level6WestKeyDoorController:
 
 __all__ = [
     "SCREEN_LEVEL6_ENTRANCE",
+    "SCREEN_POST_L5_RETURN",
     "LEVEL6_ENTRY_ROOM",
     "LEVEL6_EAST_KEY_ROOM",
     "LEVEL6_WEST_WIZZROBE_ROOM",
@@ -515,11 +651,20 @@ __all__ = [
     "ENTRY_LEFT_WALL_Y",
     "ENTRY_LEFT_DOOR_Y",
     "LEVEL6_DOOR_HOPS",
+    "POST_L5_TO_LEVEL6_HOPS",
+    "POST_L5_SETTLE_MAX_FRAMES",
+    "POST_L5_PATH_MAX_FRAMES",
+    "LEVEL6_POST_L5_SCREENS",
     "OverworldToLevel6Controller",
+    "PostL5SettlePhase",
+    "PostL5TriforceSettleController",
     "Level6EntryRightController",
     "Level6WestKeyDoorController",
     "level6_screen_reached",
     "level6_entrance_success",
     "level6_east_key_room",
     "level6_west_wizzrobe_room",
+    "level6_hops_from",
+    "make_post_l5_level6_controller",
+    "post_l5_overworld_ready",
 ]

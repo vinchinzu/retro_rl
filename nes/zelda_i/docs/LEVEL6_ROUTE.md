@@ -15,6 +15,7 @@ Planning sources:
 | Enter UP into dungeon | live | UP; south path ~**x112**, mouth band **x≈24–120** |
 | Bracelet warp shortcut | walkthrough | optional residual (0x79 rock stairs) |
 | Walking path from start | walkthrough | residual (Lost Woods / Death Mountain) |
+| Walking path from L5 `0x0B` | walkthrough `↓ ←×7 ↓ ← ↓ ← ↑` | **blocked** — settle onto `0x0B` `(112,125)` is live; 0x0B west/east sealed; Lost Hills `0x1B` north arrival `(112,61)` LEFT is solid; inland is a rock bowl (NW alcove `(40,93)`, west notch `(32,165)` never reach x≤16); 0x1B RIGHT wraps. See `rr-g3c1`. |
 
 ### Door (live, assisted)
 
@@ -32,7 +33,7 @@ From start `0x77`: right two screens → `0x79`, Power Bracelet push left rock, 
 
 ### Controller / hops
 
-Scaffold: `level6_overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). Full hop table from start is **planned** until a live walk path is recorded.
+Scaffold: `level6_overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). `POST_L5_TO_LEVEL6_HOPS` is wired on `--through level6-entry` after `settle_l5_tf` (live onto `0x0B`) but **not route-ready** until 0x1B west exit is live. Full hop table from start is **planned**.
 
 ## Interior (live recon + assisted pure)
 
