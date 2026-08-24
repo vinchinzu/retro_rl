@@ -275,7 +275,7 @@ def _wait_open_window(
         skip = (
             rain_phase(func)
             or right_park(park_x)
-            or (0 < int(park_x) <= 56)
+            or (0 < int(park_x) < 100)
         )
         if skip:
             if rain_dump is not None and (
@@ -540,7 +540,7 @@ def cmd_window(args: argparse.Namespace) -> int:
                     if (
                         rain_phase(_body_func(session))
                         or right_park(st.enemy0_x)
-                        or (0 < int(st.enemy0_x) <= 56)
+                        or (0 < int(st.enemy0_x) < 100)
                     ):
                         _rain_corner_wait(session, strat)
                     else:

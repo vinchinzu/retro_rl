@@ -338,10 +338,8 @@ def charge_window_ok(
         return False
     if rain_phase(func):
         return rain_vulnerable(func) and rain_charge_ok(enemy_x, enemy_y)
-    # Fig-8 on the living seat (53, 82): p83 at y=160 — do not jump.
-    if int(enemy_x) <= RAIN_FIRE_X_MAX:
-        return False
-    return True
+    # W1 fig-8 only (~120). Skip (53, 82) and (83, 64) from the left seat.
+    return 100 <= int(enemy_x) < skip_x
 
 
 def right_park(enemy_x: int, *, skip_x: int = 155) -> bool:
@@ -465,6 +463,10 @@ def _flame_snipe_tap(session: ControllerSession, strategy: PhantoonStrategy) -> 
         return
     if int(st.pose) in HURT_POSES:
         hold(session, 1, reason="phan_hurt")
+        return
+    # Never A on skip — leftover jump poses idle until they land.
+    if int(st.pose) in (21, 22, 25, 43, 44, 81, 82):
+        hold(session, 1, reason="phan_farm_land")
         return
     if int(st.samus_x) > strategy.seat_x_max:
         hold(session, 1, "LEFT", reason="phan_farm_left")
@@ -621,12 +623,13 @@ def _aim_names(
         if int(state.samus_y) > int(state.enemy0_y) + 10:
             names.append("UP")
         return names
-    # Left park on the living seat (rain 48,96 or fig-8 53,82): jump in place.
-    if int(state.enemy0_x) <= strategy.seat_x_max + 16:
-        if close and _need_height(state, strategy):
-            names.append("A")
-        if close and int(state.samus_y) > int(state.enemy0_y) + 10:
-            names.append("UP")
+    # Jump in place only for rain (48, 96). Never A on fig-8 (53, 82).
+    if int(state.enemy0_x) <= RAIN_FIRE_X_MAX:
+        if rain_charge_ok(state.enemy0_x, state.enemy0_y):
+            if close and _need_height(state, strategy):
+                names.append("A")
+            if close and int(state.samus_y) > int(state.enemy0_y) + 10:
+                names.append("UP")
         return names
     if (
         (not right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x))
@@ -699,6 +702,10 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     seen_open = False
     func0 = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
     if int(session.state.health) <= 20:
+        return 0
+    if int(session.state.enemy0_x) <= RAIN_FIRE_X_MAX and not rain_charge_ok(
+        session.state.enemy0_x, session.state.enemy0_y
+    ):
         return 0
     if rain_phase(func0) and not rain_charge_ok(
         session.state.enemy0_x, session.state.enemy0_y
@@ -890,7 +897,7 @@ def play_phantoon_fight(
         if not charge_window_ok(func_now, park_x, state.enemy0_y) and (
             rain_phase(func_now)
             or right_park(park_x, skip_x=strategy.skip_enemy_x)
-            or int(park_x) <= RAIN_FIRE_X_MAX
+            or int(park_x) < 100
         ):
             _rain_corner_wait(session, strategy)
             continue
