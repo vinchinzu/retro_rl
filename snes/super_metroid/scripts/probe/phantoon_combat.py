@@ -269,7 +269,7 @@ def _wait_open_window(
                     }
                 )
             last = key
-        if int(st.health) == 0:
+        if int(st.health) <= 20:
             return False
         if _fig8_left_open(session, park_x):
             return True

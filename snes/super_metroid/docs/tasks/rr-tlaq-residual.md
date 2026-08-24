@@ -1,37 +1,39 @@
 ## Residual — rr-tlaq Phantoon fight pure (0xCD13)
 
-**Status:** W1–W6 charge 300 GREEN each (2500→**700**). Full fight RED.
+**Status:** W1–W6 charge 300 GREEN (2500→**700**). W7 **died** at 19 HP
+jumping rain park **(56, 113)** (not (48, 96)). Full fight RED.
 **Pin:** `scratch/post_ws_basement_to_phantoon.state`
-**Probe:** `window --windows 6 --weapon beam --wait 4000`
-**Report:** `scratch/phantoon_window_beam_w6.json`
+**Probe:** `window --windows 7 --weapon beam --wait 4000`
+**Report:** `scratch/phantoon_window_beam_w7.json`
 
 Do **not** STATUS-promote. Default CLI stays `ice`. Super-spray is not a hit.
 Do **not** start a 16k. Do not fire x=219 / (128, 96) / (88, 64) / **(53, 82)**.
 Do not sit-charge rain. Do not 2k farm.
 
-### Health in/out (snipe-wait, skip (53, 82))
+### Health in/out
 
   | W | Park | Spend | HP | Health in→out |
   |---|------|-------|----|-------:|
-  | 1 | (120, 108) fig-8 | (104, 149) p43 | 2500→2200 | 279→239 |
-  | 2 | (48, 96) rain | (37, 148) p21 | 2200→1900 | 199→179 |
-  | 3 | (48, 96) rain | (37, 148) p21 | 1900→1600 | 164→144 |
-  | 4 | (48, 96) rain | (37, 148) p21 | 1600→1300 | 104→109 |
-  | 5 | (48, 96) rain | (37, 148) p21 | 1300→1000 | 109→89 |
-  | 6 | (48, 96) rain | (37, 148) p21 | 1000→**700** | 74→**54** |
+  | 1 | (120, 108) | (104, 149) p43 | 2500→2200 | 279→239 |
+  | 2–6 | (48, 96) rain | (37, 148) p21 | 2200→**700** | 199→**54** |
+  | 7 wait | skip (53, 82) `$D4A8`/`$D60D` | p83 −20 | 700 | 54→34 |
+  | 7 wait | `$D82A` | — | 700 | 34→19 |
+  | 7 | rain **(56, 113)** `$D767` | p83 (37, 187) | 700 | 19→**0** died f12861 `$D788` |
 
-Assist off. Health **54 > 20**. Need ~3 more 300s (700 HP). One −20 close
-fits; two contacts kill.
+`rain_charge_ok` is x≤64 only — **(56, 113)** matched and we jumped. That
+park is not (48, 96). Probe now aborts wait at health≤20.
 
 ### What fails
 
-1. **Full fight RED.** Six chips leave **700**. Dual-green still needs
-   HP 0 + boss bit ×2.
-2. Skip forever: x=219, (128, 96), (88, 64), (53, 82) from the left seat.
+1. **W7 halt.** Need rain park **y≈96**, not any x≤64. (56, 113) is skip.
+2. Skip (53, 82) still ate −20 sitting (p83 at D4A8). 54 HP cannot eat
+   skip-tear + D82A + a bad jump.
+3. Full fight RED (700 HP). Dual-green still needs HP 0 + boss bit ×2.
 
 ### Next actions (do not start a 16k first)
 
-1. `--windows 7` same skip set + snipe-wait. Halt at miss or health≤20.
+1. Rain close only if **x≤64 and y≈96** (not (56, 113)). Abort at
+   health≤20. Halt at miss.
 2. Dual-green `scratch/post_phantoon_poweron.state` only after a kill
    (do **not** clobber `post_phantoon_defeated.state`).
 
