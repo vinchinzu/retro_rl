@@ -51,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | WS Basement → Phantoon pure (`0xCC6F` → `0xCD13`) | `rr-cjpp` · residual `tasks/rr-4btp-residual.md` |
+| **★ Product next** | Phantoon fight (`0xCD13`) | `rr-tlaq` · residual `tasks/rr-cjpp-residual.md` |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -67,8 +67,9 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 is scratch dual-green (**176141f** ×2 `0xCA08` `(57,139)` p1, rr-p2bw).
 Entrance → Main Shaft is scratch dual-green (**403f** ×2 `0xCAF6`
 `(1063,907)` p9, rr-ahjo). Main Shaft → basement is scratch dual-green
-(**1208f** ×2 `0xCC6F` `(657,92)` p24, rr-4btp). Next: Basement → Phantoon
-`0xCD13` (`rr-cjpp`; `play_ws_basement_to_phantoon` is still a scaffold). Planner STATUS for
+(**1208f** ×2 `0xCC6F` `(657,92)` p24, rr-4btp). Basement → Phantoon *room*
+is scratch dual-green (**718f** ×2 `0xCD13` `(39,124)` p81, rr-cjpp). Next:
+Phantoon fight (`rr-tlaq`) from that leave. Planner STATUS for
 `moat` / `ws` is a follow-on — default CLI stays `ice`.
 **Do not STATUS-promote past Ice without a planner STATUS pass.**
 
@@ -268,6 +269,9 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 - [x] Scratch dual WS Main Shaft → basement **1208f** ×2 `0xCC6F` (rr-4btp;
   `play_ws_main_to_basement`; pin `scratch/post_ws_main_to_basement.state`;
   **not** STATUS; `--to ws` still ends `0xCA08`)
+- [x] Scratch dual WS Basement → Phantoon *room* **718f** ×2 `0xCD13` (rr-cjpp;
+  `play_ws_basement_to_phantoon`; pin `scratch/post_ws_basement_to_phantoon.state`;
+  **not** STATUS; `--to ws` still ends `0xCA08`; fight not started)
 - [x] Human Gravity path + tail pin Caterpillar `0xA322` items `0x3125`
   (`scratch/post_gravity_caterpillar.state`; `--from post-gravity`)
 - [ ] Natural climb onto West Ocean dry spit (only if reusing edge-bowling path)
