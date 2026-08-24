@@ -3,7 +3,9 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.ram import (
+    ADDR_ARROWS,
     ADDR_BOOMERANG,
+    ADDR_BOW,
     ADDR_HEALTH,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -51,6 +53,15 @@ def test_snapshot_and_capabilities() -> None:
     assert snap.screen_row == 7
     assert snap.boomerang == 0
     assert snap.magical_boomerang == 0
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    snap_bow = read_snapshot(ram)
+    assert snap_bow.bow == 1
+    assert snap_bow.arrows == 1
+    ram[ADDR_BOW] = 0
+    ram[ADDR_ARROWS] = 0
     caps = capabilities_from_ram(ram)
     assert "wooden_sword" in caps
     assert "boomerang" not in caps

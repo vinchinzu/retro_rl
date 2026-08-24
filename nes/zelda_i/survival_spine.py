@@ -158,6 +158,7 @@ Through = Literal[
     "level6-clear09",
     "level6-stairs09",
     "level6-rod",
+    "level6-exit75",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -225,6 +226,9 @@ def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
         "health": snap.health,
         "triforce": snap.triforce,
         "map": snap.map,
+        "rod": int(getattr(snap, "rod", 0)),
+        "bow": int(getattr(snap, "bow", 0)),
+        "arrows": int(getattr(snap, "arrows", 0)),
     }
 
 

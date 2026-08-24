@@ -475,6 +475,39 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
 ```
 
+### Magical Rod cellar 0x75 — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover mode 9 `0x75` `(208,93)` tile `0x71` rod=0 |
+| Path | spit west `(48,93)`, DOWN y=189, RIGHT x=176, RIGHT+UP east stairs, LEFT+UP pedestal `(136,141)` |
+| Stop | `--through level6-rod` `ADDR_ROD=1` |
+| Leftover | `(136,141)` empty pedestal; keys=4 bombs=8 TF=`0x1F` |
+| Track | **assisted Survival** |
+| Notes | West statue is not the Rod. Cardinal UP `(176,187)` yo-yo; cardinal LEFT `(176,149)` is the pit. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-rod --no-video --trials 1
+```
+
+### Cellar return 0x75 → play 0x09 — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover mode 9 `0x75` `(136,141)` rod=1 |
+| Path | cardinal RIGHT y=141 to x=176, LEFT+DOWN drop to y=189, LEFT x=48, UP west spit, idle then UP |
+| Stop | `--through level6-exit75` play-ready `0x09` rod=1 |
+| Leftover | `(192,141)` NE stairs spawn; keys=4 bombs=8 TF=`0x1F` bow=0 arrows=0 |
+| v1 | RIGHT+DOWN then cardinal DOWN @ (168,141) tile 250, y never moved |
+| v2 | cardinal UP @ (208,141) tile 243, y never moved |
+| v3 | **1/1** hop 1,525f, 213,054f |
+| Track | **assisted Survival** |
+| Notes | Enter-stop; 0x09 already cleared; left 0x68 gone. Gohma needs an arrow — do not poke `ADDR_ARROWS`. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-exit75 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -507,6 +540,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - multi-Wizzrobe + Bubble + Like-Like — **0x38 live clear** (Bubble residual)
 - Mid-dungeon **Gleeok (3 heads)** then Map — **0x18 type `0x44` live kill**; **0x19 clear live** (Zol+Like-Like); Map pickup skipped (optional)
 - Staircase → **Magical Rod** (`ADDR_ROD=0x065F`) — **live** mode 9 `0x75` `(136,141)` rod=1
+- Cellar return → play `0x09` — **live** `--through level6-exit75` v3 leftover `(192,141)` rod=1 bow=0 arrows=0
 - Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
 
@@ -560,10 +594,12 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
 - `recordings/l6_stairs09_continuous_v14.json` — 0x09 NE 0x68 south-face UP → mode 9 `0x75` 1/1 203f leftover `(208,93)` tile `0x71` rod=0
 - `recordings/l6_rod_continuous_v15.json` — Magical Rod 1/1 hop 627f leftover `(136,141)` rod=1
+- `recordings/l6_exit75_continuous_v3.json` — cellar return play `0x09` 1/1 hop 1,525f leftover `(192,141)` rod=1 bow=0 arrows=0
+- `recordings/l6_exit75_continuous_v{1,2}_final.png` — v1 DOWN solid; v2 UP solid
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-rod --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-exit75 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -582,7 +618,8 @@ Not claimed live as pure segments:
 7. **0x19 clear** 2× Zol + 2× Like-Like — **live**; Map skipped (`ADDR_MAP` still `0x0A`)
 8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; stairs **live** mode 9 `0x75`
 9. Staircase → **Magical Rod** (`ADDR_ROD`) — **live** v15 leftover `(136,141)` rod=1
-10. Cellar return → Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
+10. Cellar return → play `0x09` — **live** v3 leftover `(192,141)` rod=1 bow=0 arrows=0
+11. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20` — Gohma needs an arrow; do not poke
 
 ## Not claimed
 
@@ -590,4 +627,4 @@ Not claimed live as pure segments:
 - Clean east/west wizzrobe combat (beams kill without assist)
 - Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
-- Rod / Gohma / triforce bit live
+- Gohma / triforce bit live (Rod is live; cellar return is live; no arrows)

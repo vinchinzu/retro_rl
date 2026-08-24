@@ -434,9 +434,9 @@ room `0x75` `(208,93)` tile 113/`0x71` hop 203f, 210,902f. Left 0x68
 `(96,144)→(96,136)` then slot11 `(208,96)`. NE 0x68 does **not** y-move;
 south-face UP onto `0x71` warps. `--through level6-rod` **1/1**
 `l6_rod_continuous_v15` mode 9 `0x75` `(136,141)` rod=1 hop 627f,
-211,529f. West statue is not the Rod. South y=189 RIGHT, east stairs
-RIGHT+UP clip, LEFT+UP onto the pedestal. Next cellar return then Gohma.
-Do not grant Map/Rod. Do not poke.
+211,529f. `--through level6-exit75` **1/1** `l6_exit75_continuous_v3`
+play `0x09` `(192,141)` rod=1 hop 1,525f, 213,054f. Bow=0 arrows=0.
+Do not grant Map/Rod/arrows. Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -522,6 +522,9 @@ Do not grant Map/Rod. Do not poke.
 | rod v13 | `0x75` `(176,149)` 4000f tile 250 | cardinal LEFT @ east column rod-height is the pit |
 | rod v14 | `0x75` `(176,149)` 4000f tile 36 | LEFT+UP @ y=149 only; x stays 176 |
 | rod v15 | `0x75` `(136,141)` **rod=1** hop 627f | LEFT+UP from the east column at mid-floor onto the pedestal |
+| exit75 v1 | `0x75` `(208,141)` 4000f tile 250 | RIGHT+DOWN drops; cardinal DOWN @ (168,141) is floor |
+| exit75 v2 | `0x75` `(208,141)` 4000f tile 243 | cardinal UP @ x=208 reaches entry 0x71 (208,93) |
+| exit75 v3 | `0x09` `(192,141)` **play rod=1** hop 1525f | LEFT+DOWN from east column drops; west spit idle+UP |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -547,21 +550,24 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
 `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`,
-`recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14,15}_final.png`.
+`recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14,15}_final.png`,
+`recordings/l6_exit75_continuous_v{1,2,3}_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
-West statue is not the pickup. South y=189 RIGHT, east x=176 RIGHT+UP
-clip, LEFT+UP onto the pedestal. Next: cellar return to play `0x09`,
-then Gohma / TF `0x20`. Do not grant items. Do not close `rr-tne2`.
+Cellar return **on the tape**: play `0x09` `(192,141)` rod=1 hop 1,525f
+(`l6_exit75_continuous_v3`). Bow=0 arrows=0. Next Gohma / TF `0x20` —
+Gohma needs an arrow; do not poke `ADDR_ARROWS`. Do not invent Gohma
+room id. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-rod --no-video --trials 1 --tag l6_rod_continuous_v15
+  --through level6-exit75 --no-video --trials 1 --tag l6_exit75_continuous_v3
 ```
 
-Cellar return is not wired yet. Leftover is mode 9 `0x75` `(136,141)`
-rod=1 on the pedestal. West mouth spawn was `(48,93)`; east stairs
-`(176,189)` RIGHT+UP climbed. Next hop: leave `0x75` to play `0x09`.
+Leftover is play `0x09` `(192,141)` rod=1 keys=4 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. Wizzrobes already cleared; left 0x68 gone.
+v1 DOWN @ (168,141) tile 250. v2 UP @ (208,141) tile 243. Live: RIGHT
+y=141, LEFT+DOWN drop, LEFT y=189, UP west spit, idle then UP.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
