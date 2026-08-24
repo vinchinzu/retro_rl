@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.dungeon_ids import ZOL_OBJECT_TYPE
+from zelda_i.dungeon_ids import KEESE_OBJECT_TYPE, ZOL_OBJECT_TYPE
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_79_SPEC,
@@ -14,12 +15,15 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_COMPASS,
     ROOM_L6_EAST_KEY,
     ROOM_L6_ENTRY,
+    ROOM_L6_KEESE,
     ROOM_L6_WEST_WIZZROBE,
+    level6_room_58_clear_success,
     level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
     make_compass_68_controller,
     make_east_key_controller,
+    make_keese_58_controller,
     make_west_wizzrobe_controller,
 )
 from zelda_i.level6_overworld import (
@@ -77,6 +81,7 @@ def test_room_ids_and_specs() -> None:
     assert LEVEL6_WEST_WIZZROBE_ROOM == 0x78
     assert LEVEL6_COMPASS_ROOM == 0x68
     assert ROOM_L6_COMPASS == 0x68
+    assert ROOM_L6_KEESE == 0x58
     assert LEVEL6_COMPASS_BIT == 0x20
     assert LEVEL6_OLD_MAN_ROOM == 0x6A
     assert ROOM_79_SPEC.room_id == 0x79
@@ -87,6 +92,10 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_68_SPEC.combat.occupancy_patrol
     assert 0x2B not in ROOM_68_SPEC.enemy_types
     assert 0x68 not in ROOM_68_SPEC.enemy_types
+    assert ROOM_58_SPEC.room_id == 0x58
+    assert ROOM_58_SPEC.enemy_types == (KEESE_OBJECT_TYPE,)
+    assert ROOM_58_SPEC.expected_enemy_count == 8
+    assert ROOM_58_SPEC.combat.occupancy_patrol
     assert ROOM_7A_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_78_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_7A_SPEC.expected_enemy_count == 5
@@ -148,6 +157,17 @@ def test_factories_bind_specs() -> None:
     assert west.spec.room_id == 0x78
     assert compass.spec.room_id == 0x68
     assert compass.spec.combat.occupancy_patrol
+    keese = make_keese_58_controller()
+    assert keese.spec.room_id == 0x58
+    assert keese.spec.combat.occupancy_patrol
+
+
+def test_58_clear_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_KEESE)
+    assert level6_room_58_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 1] = KEESE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 0
+    assert not level6_room_58_clear_success(ram)
 
 
 def test_west_key_door_constants() -> None:
