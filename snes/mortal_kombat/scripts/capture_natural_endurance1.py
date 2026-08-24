@@ -7,11 +7,16 @@ endurance bouts with RAM specialists first. Pixel speedrun / ladder-ft are
 fallbacks after RAM oracles miss. Runtime artifacts are RLE only.
 
 Natural E1 from the Fight 7 pin is courtyard Kano, still best-of-3 with
-health refill between rounds. The second fighter has not appeared on this
-path. Tournament ``ladder_model`` only covers M1–M7, so this capture
-forces the oracle onto E1 and E1B slots as well. Match5 v3 can take
-round 1 and then lose 1-2; ``--round2-kano`` switches to a no-jump
-keepaway after that first KO.
+health refill between rounds. The second fighter appears only after Kano
+is beaten two rounds (match_counter 7→8); leftover Match 7 HUD is not
+that swap. Tournament ``ladder_model`` only covers M1–M7, so this
+capture forces the oracle onto E1 and E1B slots as well. Match5 v3 can
+take round 1 and then lose 1-2; ``--round2-kano`` switches to a no-jump
+keepaway after that first KO. Keepaway ducks when knife sprite 0x1B36
+leaves Kano — ``p2.state`` stays 0 for the whole throw. Courtyard
+specialist (``scripted-courtyard``) idles so Kano commits the knife,
+jump-forwards at 240f after a *visible* fight (296f from first-ready
+black fade), then land HK. Ducking or jumping early makes Kano rush.
 
 Liu Kang CPU walkthrough (IceMaster / LWang): fireball F,F,HP and flying
 kick F,F,HK. Jump-kick into flying kick; fireball on wakeup. Do not jump
@@ -41,6 +46,7 @@ from mortal_kombat.paths import GAME_DIR, GAME_ID  # noqa: E402
 from mortal_kombat.ram import (  # noqa: E402
     ADDR_MATCH_COUNTER,
     ADDR_P1_X,
+    ADDR_P1_Y,
     ADDR_P2_X,
     LIU_KANG_ID,
     PUNCH_RANGE,
@@ -50,12 +56,16 @@ from mortal_kombat.ram import (  # noqa: E402
     parse_ram,
 )
 from mortal_kombat.scripted import (  # noqa: E402
+    B,
     DOWN,
     FIREBALL_RANGE,
     ScriptedPolicy,
+    UP,
     X,
     back,
     fireball_sequence,
+    flying_kick_sequence,
+    forward,
     zeros,
 )
 from mortal_kombat.roster import KIND_RAM_V3, KIND_SCRIPT  # noqa: E402
@@ -212,17 +222,72 @@ def identify_live_endurance1(env, pin, *, max_frames: int, screenshot: Path | No
     return max_frames, last
 
 
+# Sprite X that sticks to Kano until the knife leaves. Probed idle from the
+# visible Fight 7 pin: 180 (== p2_x) through f=250, then 139/98/74 into P1.
+ADDR_KNIFE_X = 0x1B36
+KNIFE_SPLIT = 12
+
+
+def knife_incoming(ram, p1_x: int, p2_x: int) -> bool:
+    """True when 0x1B36 has left Kano and is still between the bodies.
+
+    No slack past the bodies: when Kano walks off 180 the sprite can sit
+    stale at 180, which is *behind* him, not a knife.
+    """
+    if ADDR_KNIFE_X >= len(ram):
+        return False
+    knife_x = int(ram[ADDR_KNIFE_X]) & 0xFF
+    if abs(knife_x - p2_x) < KNIFE_SPLIT:
+        return False
+    lo, hi = (p1_x, p2_x) if p1_x <= p2_x else (p2_x, p1_x)
+    return lo < knife_x < hi
+
+
 class NoJumpFireballPolicy(ScriptedPolicy):
     """Courtyard Kano: fireball from far / duck knives / never jump.
 
     F,F,HP walks forward ~8f. Fire only when distance still leaves space
-    after that walk so the knife does not eat the startup.
+    after that walk so the knife does not eat the startup. ``p2.state``
+    stays 0 for the whole knife; duck when 0x1B36 leaves Kano, cancel a
+    started fireball, and walk back on cooldown instead of standing still.
     """
 
     name = "scripted-kano"
     fire_min = FIREBALL_RANGE + 24  # 96
     zone = FIREBALL_RANGE + 28  # 100
     duck_range = FIREBALL_RANGE
+    knife_hold = 8
+    corner_x = 32
+
+    def __init__(self, intro_frames: int = 0) -> None:
+        super().__init__(intro_frames=intro_frames)
+        self._knife = 0
+
+    def reset(self) -> None:
+        super().reset()
+        self._knife = 0
+
+    def _pose(self, ram):
+        p1_x = int(ram[ADDR_P1_X]) & 0xFF if ADDR_P1_X < len(ram) else 0
+        p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
+        return p1_x, p2_x, abs(p2_x - p1_x)
+
+    def act(self, ram, rgb, *, deterministic: bool = False):
+        snap = parse_ram(ram)
+        p1_x, p2_x, _dist = self._pose(ram)
+        if snap.screen is Screen.FIGHT and (
+            snap.p2.state != 0 or knife_incoming(ram, p1_x, p2_x)
+        ):
+            self._knife = self.knife_hold
+            self._queue.clear()
+        return super().act(ram, rgb, deterministic=deterministic)
+
+    def _duck(self, dist: int) -> np.ndarray:
+        protect = zeros()
+        protect[DOWN] = 1
+        if dist <= PUNCH_RANGE:
+            protect[X] = 1
+        return protect
 
     def _choose(self, snap, ram):
         if snap.screen is not Screen.FIGHT:
@@ -239,28 +304,161 @@ class NoJumpFireballPolicy(ScriptedPolicy):
             return zeros()
         if snap.p1.state != 0:
             return zeros()
+        p1_x, p2_x, dist = self._pose(ram)
+        facing = 1 if p1_x <= p2_x else -1
+        if snap.p2.state != 0 or knife_incoming(ram, p1_x, p2_x):
+            self._knife = self.knife_hold
+        if self._knife > 0:
+            self._knife -= 1
+            return self._duck(dist)
+        if self._hurt > 0:
+            self._hurt -= 1
+            return self._duck(dist) if dist <= self.duck_range else back(facing)
+        cornered = p1_x < self.corner_x or p1_x > 255 - self.corner_x
+        if dist < self.zone and not cornered:
+            return back(facing)
+        if self._cooldown > 0:
+            return back(facing) if not cornered else self._duck(dist)
+        if dist >= self.fire_min or cornered:
+            return self._enqueue(fireball_sequence(facing))
+        return back(facing)
+
+
+class CourtyardKanoPolicy(ScriptedPolicy):
+    """Jump the committed courtyard knife, land HK, then flying-kick.
+
+    Intro eats jumps until ~240f after a *visible* fight. First-ready is
+    a 51f black fade with pose already 68/144, so round 1 waits 296f
+    from 161/161. Duck or jump before that and Kano cancels the knife
+    and rushes. Jump on the in-flight sprite is too late.
+    """
+
+    name = "scripted-courtyard"
+    round1_jump_at = 296
+    later_jump_at = 240
+    jump_hold = 10
+    jump_startup = 40
+    hk_hold = 8
+    kick_range = FIREBALL_RANGE + 28  # 100
+
+    def __init__(
+        self,
+        round1_jump_at: int = 296,
+        later_jump_at: int = 240,
+    ) -> None:
+        super().__init__(intro_frames=0)
+        self.round1_jump_at = round1_jump_at
+        self.later_jump_at = later_jump_at
+        self._fights = 0
+        self._clock = 0
+        self._airborne = False
+        self._hk_left = 0
+        self._opener_done = False
+
+    def reset(self) -> None:
+        super().reset()
+        self._clock = 0
+        self._airborne = False
+        self._hk_left = 0
+        self._opener_done = False
+
+    @property
+    def jump_at(self) -> int:
+        return self.round1_jump_at if self._fights <= 1 else self.later_jump_at
+
+    def act(self, ram, rgb, *, deterministic: bool = False):
+        snap = parse_ram(ram)
+        live = (
+            snap.screen is Screen.FIGHT
+            and snap.p1_health > 0
+            and snap.p2_health > 0
+            and snap.timer > 50
+        )
         p1_x = int(ram[ADDR_P1_X]) & 0xFF if ADDR_P1_X < len(ram) else 0
+        p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
+        # Leftover Match 7 KO is screen=FIGHT hp=59/0; do not duck that.
+        if live and knife_incoming(ram, p1_x, p2_x):
+            self._queue.clear()
+            protect = zeros()
+            protect[DOWN] = 1
+            if abs(p2_x - p1_x) <= PUNCH_RANGE:
+                protect[X] = 1
+            return protect
+        if not live:
+            self._queue.clear()
+            return zeros()
+        if self._queue:
+            return self._queue.popleft()
+        if self._cooldown > 0:
+            self._cooldown -= 1
+        return self._choose(snap, ram)
+
+    def _choose(self, snap, ram):
+        if snap.screen is not Screen.FIGHT:
+            return zeros()
+        full = snap.p1_health == snap.p2_health == 161
+        if full and not self._was_full:
+            self._clock = 0
+            self._airborne = False
+            self._hk_left = 0
+            self._opener_done = False
+            self._fights += 1
+            print(
+                f"  courtyard fight#{self._fights} jump_at={self.jump_at}",
+                flush=True,
+            )
+        self._was_full = full
+        if snap.p1_health > 0 and snap.p2_health > 0 and snap.timer > 50:
+            self._clock += 1
+        p1_x = int(ram[ADDR_P1_X]) & 0xFF if ADDR_P1_X < len(ram) else 0
+        p1_y = int(ram[ADDR_P1_Y]) & 0xFF if ADDR_P1_Y < len(ram) else 0
         p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
         dist = abs(p2_x - p1_x)
         facing = 1 if p1_x <= p2_x else -1
-        if self._hurt > 0:
-            self._hurt -= 1
-            protect = zeros()
-            protect[DOWN] = 1
-            protect[X] = 1
-            return protect if dist <= self.duck_range else back(facing)
-        if snap.p2.state != 0:
-            protect = zeros()
-            if dist > PUNCH_RANGE:
-                protect[DOWN] = 1  # duck knife
-            else:
-                protect[X] = 1
-            return protect
-        if dist >= self.fire_min and self._cooldown == 0:
+        if 40 < p1_y < 140:
+            self._airborne = True
+            return zeros()
+        if self._airborne and not self._opener_done:
+            self._opener_done = True
+            self._hk_left = self.hk_hold
+            print(
+                f"  courtyard land-hk clock={self._clock} x={p1_x}/{p2_x} "
+                f"y={p1_y} dist={dist}",
+                flush=True,
+            )
+        if not self._opener_done:
+            if self.jump_at <= self._clock < self.jump_at + self.jump_hold:
+                if self._clock == self.jump_at:
+                    print(
+                        f"  courtyard jump clock={self._clock} x={p1_x}/{p2_x} y={p1_y}",
+                        flush=True,
+                    )
+                out = forward(facing)
+                out[UP] = 1
+                return out
+            if self._clock < self.jump_at:
+                return zeros()
+            # 10f tap commits the jump; y drops ~20-30f later. Do not
+            # flying-kick or walk during startup — that cancels it.
+            if self._clock < self.jump_at + self.jump_startup:
+                return zeros()
+            print(
+                f"  courtyard jump missed clock={self._clock} y={p1_y}",
+                flush=True,
+            )
+            self._opener_done = True
+        if self._hk_left > 0:
+            self._hk_left -= 1
+            out = zeros()
+            out[B] = 1
+            return out
+        if snap.p1.state != 0:
+            return zeros()
+        if self._cooldown == 0 and dist <= self.kick_range:
+            return self._enqueue(flying_kick_sequence(facing))
+        if self._cooldown == 0 and dist > self.kick_range:
             return self._enqueue(fireball_sequence(facing))
-        if dist < self.zone:
-            return back(facing)
-        return zeros()
+        return forward(facing)
 
 
 class RoundMixPolicy:
@@ -336,6 +534,7 @@ def make_policy_loader(
     relabel_match: int | None,
     *,
     kano_script: bool = False,
+    courtyard: bool = False,
     round2_kano: bool = False,
 ):
     def loader(path, kind):
@@ -343,12 +542,14 @@ def make_policy_loader(
         from mortal_kombat.policy import load_policy
 
         install_fighters_common_alias()
+        if kind == KIND_SCRIPT and courtyard:
+            return CourtyardKanoPolicy()
         if kind == KIND_SCRIPT and kano_script:
             return NoJumpFireballPolicy()
         policy = load_policy(path, kind)
         if relabel_match is not None and kind == KIND_RAM_V3:
             policy = RelabelMatchPolicy(policy, relabel_match)
-        if round2_kano and not kano_script:
+        if round2_kano and not kano_script and not courtyard:
             # Round-2 keepaway must not stand still for the round-1 intro.
             return RoundMixPolicy(policy, NoJumpFireballPolicy(intro_frames=0))
         return policy
@@ -387,6 +588,7 @@ def capture_from_pin(
     win_at: int = ENDURANCE2,
     relabel_match: int | None = None,
     kano_script: bool = False,
+    courtyard: bool = False,
     round2_kano: bool = False,
 ) -> tuple[bool, list[int], object]:
     set_emulator_state(env.unwrapped, pin)
@@ -446,7 +648,10 @@ def capture_from_pin(
         ladder_model=ladder_model,
         on_frame=on_frame,
         policy_loader=make_policy_loader(
-            relabel_match, kano_script=kano_script, round2_kano=round2_kano
+            relabel_match,
+            kano_script=kano_script,
+            courtyard=courtyard,
+            round2_kano=round2_kano,
         ),
     )
     apply_oracle(runner, ladder_model=ladder_model, pixel_model=pixel_model)
@@ -558,6 +763,7 @@ def main() -> int:
         # Match5 v3 closed M6 det and M7 stoch. Per-stage E1 was 0/34 on
         # save-state; E1B 1/5. Force those zips onto both endurance slots.
         attempts = (
+            ("scripted-courtyard", None, True, None),
             ("match5-v3", "mk1_v3_Match5_ppo_final.zip", False, None),
             ("endurance1-v3", "mk1_v3_Endurance1_ppo_final.zip", False, None),
             ("endurance1b-v3", "mk1_v3_Endurance1B_ppo_final.zip", False, None),
@@ -599,6 +805,7 @@ def main() -> int:
                     win_at=args.win_at,
                     relabel_match=args.relabel_match,
                     kano_script=label == "scripted-kano",
+                    courtyard=label == "scripted-courtyard",
                     round2_kano=args.round2_kano,
                 )
                 if not won:

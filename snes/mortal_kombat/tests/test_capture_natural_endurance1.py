@@ -7,14 +7,17 @@ import numpy as np
 from unittest.mock import patch
 
 from mortal_kombat.ram import ADDR_MATCH_COUNTER, make_test_ram
-from mortal_kombat.roster import KIND_RAM_V3, StageSlot
-from mortal_kombat.scripted import DOWN, LEFT, RIGHT, X, Y
+from mortal_kombat.roster import KIND_RAM_V3, KIND_SCRIPT, StageSlot
+from mortal_kombat.scripted import B, DOWN, LEFT, RIGHT, UP, X, Y
 from mortal_kombat.scripts.capture_natural_endurance1 import (
+    ADDR_KNIFE_X,
+    CourtyardKanoPolicy,
     NoJumpFireballPolicy,
     RelabelMatchPolicy,
     RoundMixPolicy,
     apply_oracle,
     format_rle,
+    knife_incoming,
     make_policy_loader,
     mask_from_buttons,
     rle_encode,
@@ -76,9 +79,27 @@ def _kano(intro: int = 0) -> NoJumpFireballPolicy:
     return NoJumpFireballPolicy(intro_frames=intro)
 
 
+def _knife_ram(*, p1_x: int, p2_x: int, knife_x: int, **fields):
+    ram = make_test_ram(p1_x=p1_x, p2_x=p2_x, **fields)
+    ram[ADDR_KNIFE_X] = knife_x
+    return ram
+
+
+def test_knife_incoming_when_sprite_leaves_kano() -> None:
+    ram = _knife_ram(p1_x=68, p2_x=180, knife_x=139)
+    assert knife_incoming(ram, 68, 180)
+    attached = _knife_ram(p1_x=68, p2_x=180, knife_x=180)
+    assert not knife_incoming(attached, 68, 180)
+
+
+def test_knife_incoming_ignores_stale_sprite_when_kano_walks() -> None:
+    ram = _knife_ram(p1_x=68, p2_x=167, knife_x=180)
+    assert not knife_incoming(ram, 68, 167)
+
+
 def test_kano_keepaway_ducks_knives_at_range() -> None:
     policy = _kano()
-    frame = policy.act(make_test_ram(p1_x=40, p2_x=140, p2_state=1), None)
+    frame = policy.act(_knife_ram(p1_x=40, p2_x=140, knife_x=90), None)
     assert frame[DOWN] == 1
     assert frame[X] == 0
     assert frame[Y] == 0
@@ -88,7 +109,8 @@ def test_kano_keepaway_blocks_close() -> None:
     policy = _kano()
     frame = policy.act(make_test_ram(p1_x=100, p2_x=130, p2_state=1), None)
     assert frame[X] == 1
-    assert frame[DOWN] == 0
+    assert frame[DOWN] == 1
+    assert frame[Y] == 0
 
 
 def test_kano_keepaway_fireball_only_from_far() -> None:
@@ -101,6 +123,36 @@ def test_kano_keepaway_fireball_only_from_far() -> None:
     assert close[LEFT] == 1
     assert close[Y] == 0
     assert close[RIGHT] == 0
+
+
+def test_kano_keepaway_holds_duck_after_knife_sprite_reattaches() -> None:
+    policy = _kano()
+    first = policy.act(_knife_ram(p1_x=40, p2_x=140, knife_x=90), None)
+    assert first[DOWN] == 1
+    held = policy.act(_knife_ram(p1_x=40, p2_x=140, knife_x=140), None)
+    assert held[DOWN] == 1
+    assert held[Y] == 0
+    assert held[RIGHT] == 0
+
+
+def test_kano_keepaway_walks_back_on_cooldown_not_idle() -> None:
+    policy = _kano()
+    far = make_test_ram(p1_x=40, p2_x=200)
+    for _ in range(15):
+        policy.act(far, None)
+    cooldown = policy.act(far, None)
+    assert cooldown[LEFT] == 1
+    assert int(cooldown.sum()) == 1
+
+
+def test_kano_keepaway_cancels_fireball_into_duck() -> None:
+    policy = _kano()
+    start = policy.act(make_test_ram(p1_x=40, p2_x=200), None)
+    assert start[RIGHT] == 1
+    ducked = policy.act(_knife_ram(p1_x=40, p2_x=200, knife_x=120), None)
+    assert ducked[DOWN] == 1
+    assert ducked[RIGHT] == 0
+    assert ducked[Y] == 0
 
 
 def test_round_mix_switches_after_ko_refill() -> None:
@@ -171,3 +223,73 @@ def test_round2_kano_loader_wraps_ram_oracle() -> None:
     assert wrapped.rest.intro_frames == 0
     assert wrapped.kind == KIND_RAM_V3
     assert wrapped.first.name == "dummy"
+
+
+def test_courtyard_loader_returns_jump_specialist() -> None:
+    loader = make_policy_loader(None, courtyard=True)
+    policy = loader("ignored.zip", KIND_SCRIPT)
+    assert isinstance(policy, CourtyardKanoPolicy)
+    assert policy.name == "scripted-courtyard"
+    assert policy.jump_at == 296
+
+
+def test_courtyard_idles_until_jump_then_land_hk() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=5, later_jump_at=5)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    for _ in range(4):
+        frame = policy.act(idle, None)
+        assert int(frame.sum()) == 0
+        assert frame[UP] == 0
+    jump = policy.act(idle, None)
+    assert jump[UP] == 1
+    assert jump[RIGHT] == 1
+    for _ in range(9):
+        held = policy.act(idle, None)
+        assert held[UP] == 1
+    # Still grounded: startup wait, not a miss.
+    wait = policy.act(idle, None)
+    assert wait[UP] == 0
+    assert wait[B] == 0
+    air = make_test_ram(p1_x=90, p2_x=180, p1_y=70)
+    for _ in range(6):
+        policy.act(air, None)
+    land = policy.act(make_test_ram(p1_x=153, p2_x=185, p1_y=144), None)
+    assert land[B] == 1
+    assert land[UP] == 0
+
+
+def test_courtyard_later_round_uses_shorter_jump_clock() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=8, later_jump_at=3)
+    ram = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(ram, None)
+    assert policy.jump_at == 8
+    policy.reset()
+    policy.act(ram, None)
+    policy.act(ram, None)
+    jump = policy.act(ram, None)
+    assert policy.jump_at == 3
+    assert jump[UP] == 1
+
+
+def test_courtyard_idles_on_leftover_ko_hud() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=5)
+    leftover = _knife_ram(
+        p1_x=68,
+        p2_x=180,
+        knife_x=90,
+        p1_health=59,
+        p2_health=0,
+        p1_rounds=2,
+        p1_y=144,
+    )
+    frame = policy.act(leftover, None)
+    assert int(frame.sum()) == 0
+
+
+def test_courtyard_ducks_real_knife_not_kano_walk() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=99)
+    duck = policy.act(_knife_ram(p1_x=68, p2_x=180, knife_x=90, p1_y=144), None)
+    assert duck[DOWN] == 1
+    walk = policy.act(_knife_ram(p1_x=68, p2_x=167, knife_x=180, p1_y=144), None)
+    assert walk[DOWN] == 0
+    assert walk[UP] == 0

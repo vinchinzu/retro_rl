@@ -38,13 +38,19 @@ Continuations: `--load` plus a distinct `--output-prefix`. Wall cutoff writes
   deterministic tape method; runtime stays model-free). Live E1 opponent
   is Kano (id 1) on the courtyard — leftover pin HUD is the Liu Kang
   mirror. Isolated `Endurance1_LiuKang` is Sub-Zero, not this path.
-  Match5 v3 closes throne-room Kano 5/5 and has not closed courtyard
+  Second fighter waits on two round wins (`match_counter` 7→8), not one
+  KO. Match5 v3 closes throne-room Kano 5/5 and has not closed courtyard
   Kano (stoch ~30–40% one round then 1-2; never 2-0). `--round2-kano`
-  keepaway after that first KO also loses round 2. Next: a courtyard-
-  Kano specialist from this pin, or a round-2 script that does not
-  stand still into the knife. Force oracles onto E1/E1B (`ladder_model`
-  stops at M7). First fight-ready can be a black fade; wait for a
-  visible frame.
+  keepaway now ducks knife sprite `0x1B36` and walks back on cooldown;
+  it still has not closed a round (Kano rushes if you hold duck). Do
+  not roll Match5 v3 for 2–0. Courtyard specialist (`scripted-courtyard`)
+  jumps the committed knife: idle until 296f from first-ready (51f
+  black fade + 240f), tap UP+forward, wait ~30f for y to drop, land
+  HK (40 dmg). Jump on the in-flight sprite is too late; inputs during
+  jump startup cancel it. After the hop Kano is often on the other
+  side (land ~174/67) and flying kicks have not closed a round (0-2).
+  Next: a land punish that does not cross, or an air HK before Kano
+  walks under. Force oracles onto E1/E1B (`ladder_model` stops at M7).
 - N>=20 eval of `mk1_v3_Match5_ppo_final.zip` on Fight, Match2, Match7; `--promote` only if it beats the per-stage zip
 - More Clean `--ladder-model mk1_v3_Match5_ppo_final.zip` attempts (furthest Match 4 so far)
 - Do not retarget v3 x/y off `0x00DA` without a fresh train
