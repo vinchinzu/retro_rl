@@ -397,9 +397,10 @@ play `0x58` `(120,205)` hop 209f. `--through level6-clear58` **1/1**
 `l6_clear58_continuous_v1` play `0x58` `(112,167)` hop 882f. `--through
 level6-room48` **1/1** `l6_room48_continuous_v1` play `0x48` `(120,205)` hop
 341f, keys=5 (free UP). `--through level6-room38` **1/1**
-`l6_room38_continuous_v1` play `0x38` `(120,189)` hop 261f. Isolated BFS
-banned. 0x38 clear / Rod / Gohma / TF `0x20` residual. Do not grant
-Whistle. Do not poke Rod/doors/keys.
+`l6_room38_continuous_v1` play `0x38` `(120,189)` hop 261f. `--through
+level6-clear38` **1/1** `l6_clear38_continuous_v1` play `0x38` `(32,149)`
+hop 5,487f, 194,755f, max_live=7. Isolated BFS banned. Left-block / Rod /
+Gohma / TF `0x20` residual. Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -423,6 +424,7 @@ Whistle. Do not poke Rod/doors/keys.
 | clear58 v1 | `0x58` `(112,167)` **cleared** | occupancy-patrol 8× Keese; hop 882f 1/1 |
 | room48 v1 | `0x48` `(120,205)` **play** | occupancy long-UP is free; hop 341f 1/1 |
 | room38 v1 | `0x38` `(120,189)` **play** | occupancy run-UP through traps; hop 261f 1/1 |
+| clear38 v1 | `0x38` `(32,149)` **cleared** | occupancy-patrol 7 live; Bubble residual; hop 5,487f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -433,9 +435,9 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_keese_continuous_v1_final.png`,
 `recordings/l6_clear58_continuous_v1_final.png`,
 `recordings/l6_room48_continuous_v1_final.png`,
-`recordings/l6_room38_continuous_v1_final.png`. Next: 0x38 full clear (hard
-wizzrobe / Like-Like / Bubble) then left-block push. Do not close a
-TF-`0x20` bead.
+`recordings/l6_room38_continuous_v1_final.png`,
+`recordings/l6_clear38_continuous_v1_final.png`. Next: left-block push
+toward 0x28 then Rod / Gohma / TF `0x20`. Do not close a TF-`0x20` bead.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.

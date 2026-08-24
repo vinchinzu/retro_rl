@@ -31,6 +31,8 @@ from zelda_i.level6_path import (
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
+    level6_clear38_stages,
+    level6_clear38_success,
     level6_clear58_stages,
     level6_clear58_success,
     level6_clear68_stages,
@@ -428,6 +430,24 @@ def test_level6_room38_occupancy_up_from_0x48() -> None:
     assert not level6_room38_success(read_snapshot(ram))
     run = SpineRun(through="level6-room38", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_room_0x38"
+
+
+def test_level6_clear38_attaches_occupancy() -> None:
+    from zelda_i.dungeon_ids import LIKE_LIKE_OBJECT_TYPE
+
+    stages = level6_clear38_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x38"]
+    fight = stages[0][1]
+    assert fight.spec.room_id == 0x38
+    assert fight.spec.combat.occupancy_patrol
+    ram = _ram(level=6, screen=0x38, x=120, y=189)
+    assert level6_clear38_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = LIKE_LIKE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear38_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear38", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x38"
+    assert "level6-clear38" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
