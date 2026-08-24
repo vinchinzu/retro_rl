@@ -1106,10 +1106,16 @@ def test_level6_stairs09_south_face_push_then_idle() -> None:
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_y"
     assert list(act.action) == list(nes_action("UP"))
-    ram_stand[ADDR_LINK_Y] = 109
+    ram_stand[ADDR_LINK_Y] = 96
     act = at_stand.step(read_snapshot(ram_stand))
     assert act.reason == "hole_idle"
     assert list(act.action) == list(nes_idle_action())
+    # v7 leftover (208,97) tile 0x73 is east of the PNG hole; LEFT to x=192.
+    ram_stand[ADDR_LINK_X] = 208
+    ram_stand[ADDR_LINK_Y] = 97
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "hole_x"
+    assert list(act.action) == list(nes_action("LEFT"))
     ram = _ram(level=6, screen=0x09, x=96, y=144, mode=9)
     arrive = make_stairs_09_controller()
     act = arrive.step(read_snapshot(ram))
