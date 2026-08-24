@@ -503,13 +503,12 @@ def cmd_window(args: argparse.Namespace) -> int:
                 _wait_window_closed(session)
             if int(session.state.health) <= 20:
                 break
-            # Farm after W1 (2k) and before later windows when health is low.
-            if index == 1 or (
-                index > 1 and int(session.state.health) <= 100
+            # Farm after W1 and after W2 (health 164) so W3 does not eat to 44.
+            if index in (1, 2) or (
+                index > 2 and int(session.state.health) <= 100
             ):
-                stop = 100 if int(session.state.health) <= 100 else 250
                 farm = _farm_flames(
-                    session, strategy, frames=2000, stop_health=stop
+                    session, strategy, frames=2000, stop_health=250
                 )
                 if windows:
                     windows[-1]["farm_between"] = farm
