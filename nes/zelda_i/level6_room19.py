@@ -43,6 +43,7 @@ __all__ = [
     "make_map19_controller",
     "make_room09_controller",
     "make_room19_controller",
+    "make_settle_09_controller",
     "make_settle_19_controller",
 ]
 
@@ -237,7 +238,7 @@ def _live_census_objects(snap: ZeldaSnapshot) -> list[dict[str, int]]:
 
 @dataclass
 class Level6Settle19Controller:
-    """Idle at west-mouth leftover. Do not walk into the red beam."""
+    """Idle at leftover. Do not walk into beams / wizzrobes."""
 
     spec_id: str = "level6_settle_0x19"
     room: int = LEVEL6_MAP_ROOM
@@ -252,6 +253,7 @@ class Level6Settle19Controller:
     samples: list[dict[str, Any]] = field(default_factory=list)
     type_histogram: dict[str, int] = field(default_factory=dict)
     leftover: dict[str, int] = field(default_factory=dict)
+    policy: str = "IDLE at 0x19 west mouth; census spawn; do not walk"
 
     def _record(self, snap: ZeldaSnapshot, *, force: bool = False) -> None:
         self.leftover = {
@@ -343,7 +345,7 @@ class Level6Settle19Controller:
             "idle_in_room": self.idle_in_room,
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "IDLE at 0x19 west mouth; census spawn; do not walk",
+            "policy": self.policy,
             "type_histogram": dict(self.type_histogram),
             "leftover": dict(self.leftover),
             "spec_id": self.spec_id,
@@ -354,6 +356,15 @@ class Level6Settle19Controller:
 def make_settle_19_controller() -> Level6Settle19Controller:
     """Idle ~160f in play 0x19 and census objects. Do not walk into the beam."""
     return Level6Settle19Controller()
+
+
+def make_settle_09_controller() -> Level6Settle19Controller:
+    """Idle ~160f in play 0x09 south mouth. Do not walk into wizzrobes."""
+    return Level6Settle19Controller(
+        spec_id="level6_settle_0x09",
+        room=LEVEL6_ROD_WIZZ_ROOM,
+        policy="IDLE at 0x09 south mouth; census spawn; do not walk",
+    )
 
 
 # v1 leftover (176,158): occupancy boxed 4-cardinal then (176,93).

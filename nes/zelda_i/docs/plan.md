@@ -425,8 +425,11 @@ v2 on sprite `(120,181)`; v3 idle `(120,141)` compass analog; v4
 occupancy y-first boxed leftover `(176,93)`; v5 occupancy x-first
 wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
 `(136,137)` 214,845f, no item slot, bit still `0x0A`). Map skipped.
-`--through level6-room09` **red** v1 leftover `(32,189)` keys 5→4 on
-the south door; north lock remains. Do not grant Map/Rod. Do not poke
+`--through level6-room09` **1/1** `l6_room09_continuous_v2` play `0x09`
+`(120,205)` hop 275f, 209,120f, keys 5→4 (v1 spent south). `--through
+level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
+`(112,173)` hop 1,419f, 210,699f. Census 3× blue `0x23` + 2× orange
+`0x24`; left 0x68 `(96,144)` unpushed. Do not grant Map/Rod. Do not poke
 doors/keys.
 
 | tag | leftover | wrong belief |
@@ -484,6 +487,8 @@ doors/keys.
 | map19 v5 | `0x19` `(112,189)` 6000f | occupancy x-first LEFT then idle (136,141) |
 | map19 v6 | `0x19` `(136,137)` 6000f | axis idle (136,141) is `ADDR_MAP|0x20` |
 | room09 v1 | `0x19` `(32,189)` 4000f keys 5→4 | occupancy UP from x=120 y=141 is a north lane |
+| room09 v2 | `0x09` `(120,205)` **play** keys 5→4 | axis LEFT x=136 then occupancy KEY-UP; hop 275f 1/1 |
+| clear09 v1 | `0x09` `(112,173)` **cleared** | occupancy-patrol 3×0x23+2×0x24; hop 1,419f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -506,19 +511,19 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_room19_continuous_v1_final.png`,
 `recordings/l6_clear19_continuous_v1_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
-`recordings/l6_room09_continuous_v1_final.png`. Dest `0x19` clear is
-**on the tape** (`l6_clear19_continuous_v1` 1/1). Map sprite on floor;
-`ADDR_MAP` still `0x0A`. v6 axis idle `(136,137)` 425 idle samples, no
-persistent non-enemy object slot (0x2b + dead 0x14 only). Map skipped.
-room09 v1: axis LEFT to x=120 then occupancy UP freeze-missed
-y=157→138 (112 misses), wandered south, spent the key at `(120,189)`
-(`cur_opened_doors` DOWN=4, mask 7). North lock remains. Next: axis LEFT
-to x=136 (v6-free) then occupancy north; halt y>=181. Do not grant
-Map/Rod. Do not close `rr-tne2`.
+`recordings/l6_room09_continuous_v{1,2}_final.png`,
+`recordings/l6_clear09_continuous_v1_final.png`. Dest `0x09` clear is
+**on the tape** (`l6_clear09_continuous_v1` 1/1). Map skipped. v2 KEY-UP
+from leftover `(176,158)` via x=136 occupancy north, keys 5→4, play
+`0x09` `(120,205)`. Left 0x68 `(96,144)` unpushed (Rod stairs residual).
+Do not grant Map/Rod. Do not close `rr-tne2`.
+
+Next: left-block 0x68 `(96,144)` UP then stairs toward Magical Rod. Do not
+grant Rod. Do not poke the block.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-room09 --no-video --trials 1 --tag l6_room09_continuous_v2
+  --through level6-clear09 --no-video --trials 1 --tag l6_clear09_continuous_v1
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
