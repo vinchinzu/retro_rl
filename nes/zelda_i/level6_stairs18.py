@@ -28,6 +28,7 @@ __all__ = [
 # v3 leftover (120,109) tile 0x76 diamond, south of hole.
 # v4 leftover (120,101) tile 0x77 still south of hole.
 # v2 leftover (120,93) visually on hole; hold-UP no mode 9.
+# v5 leftover (120,95) tile 0x77, still south; hole is decorative.
 STAIRS_18_GOAL = (120, 96)
 STAIRS_18_X_TOL = 4
 STAIRS_18_MAX_FRAMES = 4000
