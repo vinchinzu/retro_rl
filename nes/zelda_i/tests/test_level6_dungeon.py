@@ -12,6 +12,7 @@ from zelda_i.dungeon_ids import (
 )
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_19_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
@@ -25,13 +26,16 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_HARD_38,
     ROOM_L6_KEESE,
     ROOM_L6_WEST_WIZZROBE,
+    ROOM_L6_MAP,
     ROOM_L6_WIZZROBE_28,
+    level6_room_19_clear_success,
     level6_room_28_clear_success,
     level6_room_38_clear_success,
     level6_room_58_clear_success,
     level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
+    make_clear_19_controller,
     make_clear_28_controller,
     make_compass_68_controller,
     make_east_key_controller,
@@ -198,6 +202,26 @@ def test_factories_bind_specs() -> None:
     clear28 = make_clear_28_controller()
     assert clear28.spec.room_id == 0x28
     assert clear28.spec.combat.occupancy_patrol
+
+
+def test_19_clear_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_MAP, x=16, y=141)
+    assert level6_room_19_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 32
+    assert not level6_room_19_clear_success(ram)
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_room_19_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 3] = 0x2B
+    ram[ADDR_OBJ_HP + 3] = 64
+    assert level6_room_19_clear_success(ram)
+    ctl = make_clear_19_controller()
+    assert ctl.spec is ROOM_19_SPEC
+    assert ROOM_19_SPEC.room_id == 0x19
+    assert ROOM_19_SPEC.combat.occupancy_patrol
+    assert ROOM_19_SPEC.combat.inland_dash == 24
 
 
 def test_58_clear_success_predicate() -> None:

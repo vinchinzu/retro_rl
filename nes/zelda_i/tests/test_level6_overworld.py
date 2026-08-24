@@ -54,6 +54,10 @@ from zelda_i.level6_spine import (
     level6_stairs18_success,
     level6_room19_stages,
     level6_room19_success,
+    level6_clear19_stages,
+    level6_clear19_success,
+    level6_map19_stages,
+    level6_map19_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -81,6 +85,7 @@ from zelda_i.ram import (
     ADDR_CUR_OPENED_DOORS,
     ADDR_LADDER,
     ADDR_LEVEL,
+    ADDR_MAP,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
@@ -883,6 +888,79 @@ def test_level6_room19_y_aligns_then_east() -> None:
     assert run.report()["stop"] == "level6_room_0x19"
     assert "level6-room19" in L6_THROUGH
     assert list(nes_idle_action()) != list(nes_action("RIGHT"))
+
+
+def test_level6_clear19_idles_then_occupancy_patrol() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_dungeon import ROOM_19_SPEC
+    from zelda_i.level6_room19 import SETTLE_19_IDLE_FRAMES, make_settle_19_controller
+
+    stages = level6_clear19_stages()
+    assert [name for name, _, _ in stages] == [
+        "level6_settle_0x19",
+        "level6_clear_0x19",
+    ]
+    assert stages[-1][1].spec is ROOM_19_SPEC
+    assert ROOM_19_SPEC.combat.occupancy_patrol
+    leftover = _ram(level=6, screen=0x19, x=16, y=141)
+    ctl = make_settle_19_controller()
+    ctl.idle_frames = 2
+    ctl.max_frames = 8
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("RIGHT"))
+    act = ctl.step(read_snapshot(leftover))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert SETTLE_19_IDLE_FRAMES == 160
+    ram = _ram(level=6, screen=0x19, x=16, y=141)
+    assert level6_clear19_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0x13
+    ram[ADDR_OBJ_HP + 1] = 32
+    assert not level6_clear19_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_clear19_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear19", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x19"
+    assert "level6-clear19" in L6_THROUGH
+
+
+def test_level6_map19_occupancy_then_idle() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_room19 import MAP_19_GOAL, make_map19_controller
+
+    stages = level6_map19_stages()
+    assert [name for name, _, _ in stages] == ["level6_map_0x19"]
+    assert MAP_19_GOAL == (120, 141)
+    leftover = make_map19_controller()
+    act = leftover.step(read_snapshot(_ram(level=6, screen=0x19, x=176, y=158)))
+    assert act.reason == "map_column"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    col = make_map19_controller()
+    act = col.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=158)))
+    assert act.reason == "map_row"
+    assert list(act.action) == list(nes_action("UP"))
+    idle = make_map19_controller()
+    act = idle.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=141)))
+    assert act.reason == "map_idle"
+    assert list(act.action) == list(nes_idle_action())
+    got = make_map19_controller()
+    ram = _ram(level=6, screen=0x19, x=120, y=173)
+    ram[ADDR_MAP] = 0x2A
+    act = got.step(read_snapshot(ram))
+    assert got.success
+    assert act.reason == "map_got"
+    assert level6_map19_success(read_snapshot(ram))
+    ram[ADDR_MAP] = 0x0A
+    assert not level6_map19_success(read_snapshot(ram))
+    run = SpineRun(through="level6-map19", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_map_0x19"
+    assert "level6-map19" in L6_THROUGH
+    assert list(nes_idle_action()) != list(nes_action("UP"))
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

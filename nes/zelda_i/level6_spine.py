@@ -1,4 +1,4 @@
-"""Survival-spine L6 from L5 TF settle through 0x19 enter after Gleeok.
+"""Survival-spine L6 from L5 TF settle through 0x19 Zol/Like-Like clear.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
 Ignore object types 0x2b / Bubble. Map / Rod / Gohma / TF 0x20 residual.
@@ -14,12 +14,15 @@ from zelda_i.anchors import LEVEL6_ENTRY_ROOM, TF_BIT_L5
 from zelda_i.level4_boss_combat import gleeok_heads_live
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    LEVEL6_MAP_BIT,
+    ROOM_19_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
+    make_clear_19_controller,
     make_clear_28_controller,
     make_compass_68_controller,
     make_east_key_controller,
@@ -54,8 +57,12 @@ from zelda_i.level6_gleeok18 import (
     make_postgleeok_18_controller,
 )
 from zelda_i.level6_room19 import (
+    MAP_19_MAX_FRAMES,
     ROOM19_MAX_FRAMES,
+    SETTLE_19_MAX_FRAMES,
+    make_map19_controller,
     make_room19_controller,
+    make_settle_19_controller,
 )
 from zelda_i.level6_stairs18 import (
     STAIRS_18_MAX_FRAMES,
@@ -106,6 +113,10 @@ __all__ = [
     "level6_stairs18_success",
     "level6_room19_stages",
     "level6_room19_success",
+    "level6_clear19_stages",
+    "level6_clear19_success",
+    "level6_map19_stages",
+    "level6_map19_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -143,6 +154,8 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-postgleeok18",
     "level6-stairs18",
     "level6-room19",
+    "level6-clear19",
+    "level6-map19",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -163,6 +176,8 @@ L6_STOPS: dict[str, str] = {
     "level6-postgleeok18": "level6_postgleeok_0x18",
     "level6-stairs18": "level6_stairs_0x18",
     "level6-room19": "level6_room_0x19",
+    "level6-clear19": "level6_clear_0x19",
+    "level6-map19": "level6_map_0x19",
 }
 
 
@@ -591,6 +606,48 @@ def level6_room19_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_clear19_stages():
+    """0x19 leftover → idle census then occupancy-patrol. Do not require Map."""
+    settle = make_settle_19_controller()
+    fight = make_clear_19_controller()
+    return (
+        ("level6_settle_0x19", settle, SETTLE_19_MAX_FRAMES),
+        ("level6_clear_0x19", fight, ROOM_19_SPEC.max_frames),
+    )
+
+
+def level6_clear19_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready empty 0x19. Ignore 0x2b/0x40. Do not require Map."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_MAP_ROOM
+        and not snap.transitioning
+        and not ROOM_19_SPEC.live_enemies(snap)
+        and snap.triforce == 0x1F
+    )
+
+
+def level6_map19_stages():
+    """0x19 leftover → occupancy onto Map drop. Do not poke ADDR_MAP."""
+    hunt = make_map19_controller()
+    return (
+        ("level6_map_0x19", hunt, MAP_19_MAX_FRAMES),
+    )
+
+
+def level6_map19_success(snap: ZeldaSnapshot) -> bool:
+    """Play 0x19 with L6 map bit. Do not grant ADDR_MAP."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_MAP_ROOM
+        and not snap.transitioning
+        and (snap.map & LEVEL6_MAP_BIT) != 0
+        and snap.triforce == 0x1F
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -905,3 +962,37 @@ def continue_level6_spine(
     run.success = level6_room19_success(snap)
     if not run.success:
         run.failed_stage = "level6_room_0x19"
+        return
+    if through == "level6-room19":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_clear19_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_clear19_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_clear_0x19"
+        return
+    if through == "level6-clear19":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_map19_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_map19_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_map_0x19"

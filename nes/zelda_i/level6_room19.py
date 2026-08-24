@@ -12,7 +12,9 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM
+from zelda_i.dungeon_ids import INVULN_MOVER_OBJECT_TYPE
+from zelda_i.level6_dungeon import LEVEL6_MAP_BIT
+from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM, LEVEL6_MAP_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
@@ -21,8 +23,17 @@ __all__ = [
     "EAST_DOOR_Y",
     "EAST_DOOR_Y_TOL",
     "ROOM19_MAX_FRAMES",
+    "MAP_19_GOAL",
+    "MAP_19_MAX_FRAMES",
+    "MAP_19_STANDS",
+    "SETTLE_19_IDLE_FRAMES",
+    "SETTLE_19_MAX_FRAMES",
+    "Level6Map19Controller",
     "Level6Room19Controller",
+    "Level6Settle19Controller",
+    "make_map19_controller",
     "make_room19_controller",
+    "make_settle_19_controller",
 ]
 
 EAST_DOOR_X = 208
@@ -188,3 +199,307 @@ class Level6Room19Controller:
 def make_room19_controller() -> Level6Room19Controller:
     """Occupancy east of 0x18. Map pickup residual. Do not grant Rod."""
     return Level6Room19Controller()
+
+
+SETTLE_19_IDLE_FRAMES = 160
+SETTLE_19_SAMPLE_PERIOD = 12
+SETTLE_19_MAX_FRAMES = 400
+_CENSUS_SKIP_TYPES = frozenset({0, INVULN_MOVER_OBJECT_TYPE})
+
+
+def _live_census_objects(snap: ZeldaSnapshot) -> list[dict[str, int]]:
+    rows: list[dict[str, int]] = []
+    for obj in snap.objects:
+        type_id = int(obj.type_id)
+        if obj.slot == 0 or type_id == 0:
+            continue
+        rows.append(
+            {
+                "slot": int(obj.slot),
+                "type": type_id,
+                "x": int(obj.x),
+                "y": int(obj.y),
+                "hp": int(obj.hp),
+            }
+        )
+    return rows
+
+
+@dataclass
+class Level6Settle19Controller:
+    """Idle at west-mouth leftover. Do not walk into the red beam."""
+
+    spec_id: str = "level6_settle_0x19"
+    room: int = LEVEL6_MAP_ROOM
+    idle_frames: int = SETTLE_19_IDLE_FRAMES
+    sample_period: int = SETTLE_19_SAMPLE_PERIOD
+    max_frames: int = SETTLE_19_MAX_FRAMES
+    frames: int = 0
+    idle_in_room: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
+    type_histogram: dict[str, int] = field(default_factory=dict)
+    leftover: dict[str, int] = field(default_factory=dict)
+
+    def _record(self, snap: ZeldaSnapshot, *, force: bool = False) -> None:
+        self.leftover = {
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "mode": int(snap.mode),
+            "screen": int(snap.screen),
+            "room_item_id": int(snap.room_item_id),
+            "cur_opened_doors": int(snap.cur_opened_doors),
+            "open_doorway_mask": int(snap.open_doorway_mask),
+            "map": int(snap.map),
+            "triforce": int(snap.triforce),
+        }
+        live = _live_census_objects(snap)
+        counts: dict[int, int] = {}
+        for row in live:
+            type_id = int(row["type"])
+            if type_id in _CENSUS_SKIP_TYPES:
+                continue
+            counts[type_id] = counts.get(type_id, 0) + 1
+        for type_id, n in counts.items():
+            key = f"0x{type_id:02x}"
+            prev = self.type_histogram.get(key, 0)
+            if n > prev:
+                self.type_histogram[key] = n
+        if force or self.frames <= 2 or self.frames % self.sample_period == 0:
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "mode": int(snap.mode),
+                    "objects": live,
+                    "cur_opened_doors": int(snap.cur_opened_doors),
+                    "open_doorway_mask": int(snap.open_doorway_mask),
+                    "room_item_id": int(snap.room_item_id),
+                    "map": int(snap.map),
+                }
+            )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed or self.frames >= self.max_frames:
+            self.failed = True
+            if "timeout" not in self.notes:
+                self.notes.append(
+                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+                )
+            self._record(snap, force=True)
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.mode == 17:
+            self.failed = True
+            self.notes.append("link_death")
+            self._record(snap, force=True)
+            return FrameAction(nes_idle_action(), "link_death")
+        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
+            return FrameAction(nes_idle_action(), "wait_scroll")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.level != LEVEL6:
+            self.failed = True
+            self.notes.append(f"left_level_{snap.level}")
+            return FrameAction(nes_idle_action(), "left_level")
+        if snap.screen != self.room:
+            self.failed = True
+            self.notes.append(f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
+            return FrameAction(nes_idle_action(), f"left_0x{self.room:02x}")
+
+        self.idle_in_room += 1
+        self._record(snap, force=self.idle_in_room >= self.idle_frames)
+        if self.idle_in_room >= self.idle_frames:
+            self.success = True
+            hist = ",".join(
+                f"{k}x{n}" for k, n in sorted(self.type_histogram.items())
+            )
+            self.notes.append(
+                f"settled_{self.room:02x}_{snap.link_x}_{snap.link_y}_{hist}"
+            )
+            return FrameAction(nes_idle_action(), "settled")
+        return FrameAction(nes_idle_action(), "spawn_idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "idle_in_room": self.idle_in_room,
+            "notes": list(self.notes),
+            "samples": list(self.samples),
+            "policy": "IDLE at 0x19 west mouth; census spawn; do not walk",
+            "type_histogram": dict(self.type_histogram),
+            "leftover": dict(self.leftover),
+            "spec_id": self.spec_id,
+            "room": self.room,
+        }
+
+
+def make_settle_19_controller() -> Level6Settle19Controller:
+    """Idle ~160f in play 0x19 and census objects. Do not walk into the beam."""
+    return Level6Settle19Controller()
+
+
+# v1 leftover (176,158): occupancy boxed 4-cardinal then (176,93).
+# v2 column x=120 south-band: leftover (120,181) ON the sprite, map still 0x0A.
+# Next: compass analog (120,141).
+MAP_19_GOAL = (120, 141)
+MAP_19_STANDS: tuple[tuple[int, int], ...] = (
+    MAP_19_GOAL,
+    (120, 173),
+    (120, 189),
+    (96, 181),
+    (144, 181),
+)
+MAP_19_COL_X = 120
+MAP_19_BAND_Y = (165, 189)
+MAP_19_STAND_TOL = 4
+MAP_19_HOLD = 120
+MAP_19_MAX_FRAMES = 6000
+
+
+@dataclass
+class Level6Map19Controller:
+    """Occupancy onto the 0x19 Map drop. Success is ADDR_MAP bit 0x20."""
+
+    spec_id: str = "level6_map_0x19"
+    room: int = LEVEL6_MAP_ROOM
+    stands: tuple[tuple[int, int], ...] = MAP_19_STANDS
+    max_frames: int = MAP_19_MAX_FRAMES
+    frames: int = 0
+    stand_index: int = 0
+    hold_frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
+    leftover: dict[str, int] = field(default_factory=dict)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+
+    def _emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        self.leftover = {
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "mode": int(snap.mode),
+            "screen": int(snap.screen),
+            "map": int(snap.map),
+            "room_item_id": int(snap.room_item_id),
+        }
+        if force or self.frames <= 2 or self.frames % 250 == 0:
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "reason": action.reason,
+                    "map": int(snap.map),
+                    "room_item_id": int(snap.room_item_id),
+                    "stand": self.stands[self.stand_index % len(self.stands)],
+                    "misses": self.walker.misses,
+                }
+            )
+        return action
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed or self.frames >= self.max_frames:
+            self.failed = True
+            if "timeout" not in self.notes:
+                self.notes.append(
+                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+                    f"_map={snap.map:02x}"
+                )
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "timeout"), force=True
+            )
+        if snap.mode == 17:
+            self.failed = True
+            self.notes.append("link_death")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "link_death"), force=True
+            )
+        if (int(snap.map) & LEVEL6_MAP_BIT) != 0:
+            self.success = True
+            self.notes.append(f"map_{snap.link_x}_{snap.link_y}")
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "map_got"), force=True
+            )
+        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "wait_scroll")
+        if snap.mode != PLAY_MODE:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.level != LEVEL6:
+            self.failed = True
+            self.notes.append(f"left_level_{snap.level}")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "left_level"), force=True
+            )
+        if snap.screen != self.room:
+            self.failed = True
+            self.notes.append(f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), f"left_0x{self.room:02x}"),
+                force=True,
+            )
+
+        xy = (int(snap.link_x), int(snap.link_y))
+        prev_dir = self.walker.last_dir
+        misses_before = self.walker.misses
+        self.walker.observe(xy)
+        if self.walker.misses > misses_before and (
+            self.walker.misses <= 8 or self.frames % 60 == 0
+        ):
+            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
+
+        gx = MAP_19_COL_X
+        dest = self.stands[self.stand_index % len(self.stands)]
+        if abs(xy[0] - gx) > MAP_19_STAND_TOL:
+            self.walker.last_dir = None
+            btn = "LEFT" if xy[0] > gx else "RIGHT"
+            return self._emit(snap, FrameAction(nes_action(btn), "map_column"))
+        if abs(xy[0] - dest[0]) <= MAP_19_STAND_TOL and abs(xy[1] - dest[1]) <= MAP_19_STAND_TOL:
+            self.walker.last_dir = None
+            self.hold_frames += 1
+            if self.hold_frames >= MAP_19_HOLD:
+                self.notes.append(f"next_stand_{dest[0]}_{dest[1]}")
+                self.stand_index += 1
+                self.hold_frames = 0
+            return self._emit(snap, FrameAction(nes_idle_action(), "map_idle"))
+
+        self.hold_frames = 0
+        self.walker.last_dir = None
+        btn = "DOWN" if xy[1] < dest[1] else "UP"
+        return self._emit(snap, FrameAction(nes_action(btn), "map_row"))
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "samples": list(self.samples),
+            "policy": "column x=120 first then south-band idle; ADDR_MAP|0x20",
+            "leftover": dict(self.leftover),
+            "misses": self.walker.misses,
+            "stand_index": self.stand_index,
+            "spec_id": self.spec_id,
+            "room": self.room,
+        }
+
+
+def make_map19_controller() -> Level6Map19Controller:
+    """Occupancy onto the 0x19 Map. Do not grant ADDR_MAP."""
+    return Level6Map19Controller()
