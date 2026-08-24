@@ -466,7 +466,7 @@ def _farm_flames(
                 }
             )
             last_dump = session.frame
-        if health_up > 0:
+        if int(st.health) >= 250:
             break
         _flame_snipe_tap(session, strategy)
     return {
@@ -499,7 +499,8 @@ def cmd_window(args: argparse.Namespace) -> int:
                 _wait_window_closed(session)
             if int(session.state.health) <= 20:
                 break
-            if index > 0 and int(session.state.health) <= 40:
+            # W2 wait ate 239→59 sitting. Farm after W1 so rain starts >100.
+            if index == 1 and int(session.state.health) <= 240:
                 farm = _farm_flames(session, strategy, frames=2000)
                 if windows:
                     windows[-1]["farm_between"] = farm
@@ -507,6 +508,13 @@ def cmd_window(args: argparse.Namespace) -> int:
                     break
             result = _one_window(session, wait=args.wait, strategy=strategy)
             windows.append(result)
+            if (
+                index == 1
+                and result["success"]
+                and int(session.state.health) < 100
+            ):
+                result["note"] = "W2 health<100 — halt"
+                break
             if not result["success"]:
                 from retro_harness.actions import idle_action
 

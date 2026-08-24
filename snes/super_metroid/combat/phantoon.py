@@ -641,6 +641,9 @@ def _aim_names(
 def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
     """True when Samus is below the charge-release band (needs more jump)."""
     dy = int(state.samus_y) - int(state.enemy0_y)
+    if rain_charge_ok(state.enemy0_x):
+        # W2 p84 at y=138 vs (48, 96) dy=42. Stop A at dy=56 (y=152).
+        return dy > strategy.release_dy_max
     return dy > strategy.release_dy_max
 
 
@@ -650,10 +653,12 @@ def in_release_band(
     """True when Samus is the measured W1 charge-release height below the eye.
 
     W1 chip: samus (104, 149) vs eye (120, 108) → dy=41.
-    W2 miss at y=148 vs eye 83 → dy=65 (outside 28–56). Target y=111–139.
+    Rain (48, 96): fire dy 48–56 (y=144–152) before the p84 at y=138.
     """
     strat = strategy or PhantoonStrategy()
     dy = int(state.samus_y) - int(state.enemy0_y)
+    if rain_charge_ok(state.enemy0_x):
+        return 48 <= dy <= strat.release_dy_max
     return strat.release_dy_min <= dy <= strat.release_dy_max
 
 
