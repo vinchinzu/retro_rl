@@ -103,6 +103,9 @@ VULNERABLE_FUNCS = frozenset(
         FUNC_RAIN_VULN,
     }
 )
+RAIN_VULN_FUNCS = frozenset({FUNC_RAIN_MAKE_VULN, FUNC_RAIN_VULN})
+# Standing / crouch / turn — W2 rain floor release. Not jump (21/25) or hurt.
+FLOOR_RELEASE_POSES = frozenset({1, 2, 3, 4, 5, 11})
 
 # Knockback / hit-stun only. Pose 81 is ordinary falling — keep jump held.
 HURT_POSES = frozenset({83, 84, 109, 143, 158, 159, 160})
@@ -282,6 +285,22 @@ def func_vulnerable(func: int) -> bool:
     return int(func) in VULNERABLE_FUNCS
 
 
+def rain_vulnerable(func: int) -> bool:
+    """True on flame-rain vuln ($D767 / $D788). Do not jump under the body."""
+    return int(func) in RAIN_VULN_FUNCS
+
+
+def floor_release_ok(
+    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
+) -> bool:
+    """Standing/crouch on the floor — rain charge release, no jump."""
+    strat = strategy or PhantoonStrategy()
+    return (
+        int(state.pose) in FLOOR_RELEASE_POSES
+        and int(state.samus_y) >= strat.floor_y_min - 6
+    )
+
+
 def fight_phantoon_action(
     state: SuperMetroidState,
     frame_index: int,
@@ -402,11 +421,27 @@ def _hittable(session: ControllerSession) -> bool:
     return bool(extra.get("func_vuln") or extra.get("eye_il_open") or extra.get("body_eye_hit"))
 
 
-def _aim_names(state: SuperMetroidState, strategy: PhantoonStrategy) -> list[str]:
+def _aim_names(
+    state: SuperMetroidState,
+    strategy: PhantoonStrategy,
+    *,
+    rain: bool = False,
+) -> list[str]:
     names: list[str] = []
     dx = int(state.enemy0_x) - int(state.samus_x)
     close = abs(dx) <= strategy.fire_close_x
     if int(state.enemy0_x) >= strategy.skip_enemy_x and int(state.samus_x) < 90:
+        return names
+    if rain:
+        # Stay left of the body. Dash-to-|dx|≤16 walks under (128,96) and
+        # a floor UP from (116,187) dumped charge with no HP chip.
+        if int(state.samus_x) > strategy.seat_x_max:
+            names.append("LEFT")
+            return names
+        if int(state.facing) != 8:
+            names.append("RIGHT")
+            return names
+        names.append("UP")
         return names
     if int(state.samus_x) >= strategy.kite_x_max:
         names.append("LEFT")
@@ -419,9 +454,14 @@ def _aim_names(state: SuperMetroidState, strategy: PhantoonStrategy) -> list[str
     on_floor = int(state.samus_y) >= strategy.floor_y_min - 4
     if (not close) and on_floor and names:
         names.append("B")
-    # Jump only once close — A on the approach spin-dumps charge (p77).
-    # Hold A until the W1 release band (y≈149), not a floor hop.
-    if close and int(state.samus_x) >= 22 and _need_height(state, strategy):
+    # Rain: never A (jump under the body dumps charge + contact).
+    # Fig-8: jump only once close — A on the approach spin-dumps (p77).
+    if (
+        (not rain)
+        and close
+        and int(state.samus_x) >= 22
+        and _need_height(state, strategy)
+    ):
         names.append("A")
     if close and int(state.samus_y) > int(state.enemy0_y) + 10:
         names.append("UP")
@@ -481,7 +521,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
         if shots >= strategy.shots_per_window:
             break
 
-        names = _aim_names(st, strategy)
+        rain = rain_vulnerable(_u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC))
+        names = _aim_names(st, strategy, rain=rain)
         if st.pose in HURT_POSES:
             hold(session, 1, reason="phan_hurt")
             continue
@@ -526,20 +567,32 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
-        fire = (
-            hittable
-            and close
-            and in_release_band(st, strategy)
-            and st.pose not in HURT_POSES
-            and shots < strategy.shots_per_window
-        )
+        if rain:
+            # Corner floor charge — do not walk under the rain body.
+            fire = (
+                hittable
+                and int(st.samus_x) <= strategy.seat_x_max
+                and int(st.facing) == 8
+                and floor_release_ok(st, strategy)
+                and shots < strategy.shots_per_window
+            )
+        else:
+            fire = (
+                hittable
+                and close
+                and in_release_band(st, strategy)
+                and st.pose not in HURT_POSES
+                and shots < strategy.shots_per_window
+            )
         if not fire:
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
-        # Release at the measured airborne pose. No LEFT/RIGHT on the spend.
+        # Rain: corner floor, UP+R (diagonal, no d-pad walk). Fig-8: airborne UP.
         fire_names: list[str] = []
-        if int(st.samus_y) > int(st.enemy0_y) + 10:
+        if rain:
+            fire_names.extend(("UP", "R"))
+        elif int(st.samus_y) > int(st.enemy0_y) + 10:
             fire_names.append("UP")
         ch_before = beam_charge(_env_of(session))
         hold(
@@ -716,8 +769,10 @@ __all__ = [
     "enemy_extra",
     "eye_open",
     "fight_phantoon_action",
+    "floor_release_ok",
     "in_release_band",
     "list_pickups",
+    "rain_vulnerable",
     "phantoon_phase",
     "play_phantoon_fight",
     "seated",
