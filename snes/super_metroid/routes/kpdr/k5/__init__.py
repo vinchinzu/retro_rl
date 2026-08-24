@@ -20,10 +20,10 @@ K5 reverse tunnels + Red climb (this package — implement when predecessor pure
             → West Tunnel 0xCF54  ✅ pure dual (glass_to_west; reverse west_to_glass)
               → Below Spazer 0xA408 ✅ pure dual (west_to_below; reverse below floor→west)
                 → Bat 0xA3DD      ✅ pure dual (below_to_bat; reverse bat_to_below_spazer)
-                  → Red Tower 0xA253 ✅ pure dual (bat_to_red; reverse red_tower_to_bat)
-                    → Hellway 0xA2F7 ✅ dual 6199f ×2 (warehouse_to_red hop 6 body)
-                      → Caterpillar 0xA322 ✅ pure dual 2218f ×2
-                        → Alpha PB 0xA3AE PLM ⬜  (scaffold ``alpha_pb.py``)
+                  → Red Tower 0xA253 ✅ pure dual (bat_to_red; dry pipes + water CJ)
+                    → Hellway 0xA2F7 ✅ Ice-pin climb dual 5846f ×2 ordinary left-door
+                      → Caterpillar 0xA322 ✅ dual 2110f ×2 from Ice leave
+                        → Alpha PB 0xA3AE PLM ✅ dual 1372f ×2 from Ice Caterpillar pin
 
 Public controllers land here only after pure-green dual from a real
 tape-backed handoff. Continuous / STATUS promote is planner-only after the
@@ -34,6 +34,9 @@ from __future__ import annotations
 
 from super_metroid.routes.kpdr.k5.bat_to_red import play_bat_to_red
 from super_metroid.routes.kpdr.k5.below_to_bat import play_below_to_bat
+from super_metroid.routes.kpdr.k5.caterpillar_to_alpha_pb import (
+    play_caterpillar_to_alpha_pb,
+)
 from super_metroid.routes.kpdr.k5.east_to_glass import play_east_to_glass
 from super_metroid.routes.kpdr.k5.glass_to_west import play_glass_to_west
 from super_metroid.routes.kpdr.k5.hellway_to_caterpillar import (
@@ -46,6 +49,7 @@ from super_metroid.routes.kpdr.k5.west_to_below import play_west_to_below
 __all__ = [
     "play_bat_to_red",
     "play_below_to_bat",
+    "play_caterpillar_to_alpha_pb",
     "play_east_to_glass",
     "play_glass_to_west",
     "play_hellway_to_caterpillar",

@@ -339,6 +339,86 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         aliases=("ice_beam", "k4_11", "k4.11"),
         supports_checkpoint=True,
     ),
+    TipSegment(
+        tip_id="alpha_pb",
+        parent_tip_id="ice",
+        graph_id="speed",
+        kind="alpha_pb",
+        success_outcome="alpha_pb_collected",
+        route_label="alpha_pb",
+        source_policy=(
+            "accepted Ice continuous + pure-green Ice return + K5 reverse "
+            "tunnels + Red climb + Caterpillar descent + first Alpha PB "
+            "(rr-dbu.8; routes/kpdr/ice/ + routes/kpdr/k5/)"
+        ),
+        timing_source="alpha_pb",
+        entry_condition_key="natural_alpha_pb_entry",
+        ordinary_condition_key="post_alpha_pb_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Alpha Power Bombs (KPDR K5)",
+        description=(
+            "Ice tip through Ice return, Business→Warehouse, reverse "
+            "tunnels, Red Tower climb, Hellway, Caterpillar descent, and "
+            "natural first Alpha PB collect (max 5). Compose after "
+            "rr-dbu.8; not STATUS-promoted without dual continuous green."
+        ),
+        aliases=("alpha_power_bombs", "k5", "k5_0"),
+        supports_checkpoint=True,
+    ),
+    TipSegment(
+        tip_id="moat",
+        parent_tip_id="alpha_pb",
+        graph_id="speed",
+        kind="moat",
+        success_outcome="moat_cleared",
+        route_label="moat",
+        source_policy=(
+            "accepted Ice continuous + K5 Alpha PB pure stack (rr-dbu.8) + "
+            "K6 Alpha PB escape / Caterpillar climb / elevator / Kihunter "
+            "RLE + Moat spark (rr-dbu.9; routes/kpdr/k6/ + moat.py)"
+        ),
+        timing_source="moat",
+        entry_condition_key="natural_west_ocean_entry",
+        ordinary_condition_key="post_moat_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Moat spark / West Ocean (KPDR K6)",
+        description=(
+            "Alpha PB tip through the Power Bomb escape, Caterpillar "
+            "elevator, Crateria Kihunter, Moat, and Speed spark into West "
+            "Ocean. Compose after rr-dbu.9; not STATUS-promoted without "
+            "dual continuous green."
+        ),
+        aliases=("west_ocean", "k6", "k6_moat"),
+        supports_checkpoint=True,
+    ),
+    TipSegment(
+        tip_id="ws",
+        parent_tip_id="moat",
+        graph_id="speed",
+        kind="ws",
+        success_outcome="ws_entrance_reached",
+        route_label="ws",
+        source_policy=(
+            "accepted Ice continuous + K5 Alpha PB + K6 Moat spark "
+            "(rr-2r06 scratch) + West Ocean over-ocean spark into WS "
+            "Entrance (rr-p2bw; routes/kpdr/west_ocean.py)"
+        ),
+        timing_source="ws",
+        entry_condition_key="natural_ws_entrance_entry",
+        ordinary_condition_key="post_ws_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Wrecked Ship Entrance (KPDR K6)",
+        description=(
+            "Moat/West Ocean over-ocean spark + green Super into "
+            "Wrecked Ship Entrance 0xCA08. Compose after rr-p2bw; "
+            "not STATUS-promoted without dual continuous green."
+        ),
+        aliases=("wrecked_ship", "ws_entrance", "k6_ws"),
+        supports_checkpoint=True,
+    ),
 )
 
 POST_SUPERS_TIP_ORDER: tuple[str, ...] = tuple(

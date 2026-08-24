@@ -1,6 +1,6 @@
 """Red Tower Ice edge: frozen lower_ripper_1 → lower_ripper_2.
 
-Starts on the first frozen Ripper (double-WJ land). Freezes the next
+Starts on the first frozen Ripper (floor freeze + standing hop). Freezes the next
 Ripper with a vertical Ice shot (no d-pad — walking falls off the ice),
 drops aim-up, Hi-Jump standing, drifts onto the ice top from above.
 

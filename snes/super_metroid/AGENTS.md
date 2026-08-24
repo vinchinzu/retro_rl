@@ -23,10 +23,11 @@ STATUS dual **148,167f** ×2 (2026-08-10). Ceres-successor reverify dual
 **146,937f** ×2 (2026-08-22, scratch `ice_ceres_successor.json` + `_dual.json`;
 STATUS promote `rr-ucl9`). `--to moat` power-on dual is scratch-green
 **175526f** ×2 `0x93FE` `(49,1163)` p1 max PB 5 (rr-2r06; Ice prefix
-**146937f**; post-Ice **28589f**). Do **not** STATUS-promote — default CLI
-stays `ice`. Ice-pin compose through West Ocean **28597f** ×2. Over-ocean
-spark from the power-on leave is dual **627f** ×2 `0xCA08` `(57,139)` p1
-(not a continuous tip yet). Product `play_red_to_hellway` is the Ice-pin
+**146937f**; post-Ice **28589f**). `--to ws` is wired (rr-p2bw): power-on
+scratch dual **176141f** ×2 `0xCA08` `(57,139)` p1 gs=8 items `0x3105`
+beams `0x1007` max PB 5 (spark hop **615f** ×2 from the Moat leave). Do
+**not** STATUS-promote — default CLI stays `ice`. Ice-pin compose through
+WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
 checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
 (keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot
 fire). Successor `hellway_to_caterpillar` **2110f** ×2;

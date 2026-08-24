@@ -66,6 +66,9 @@ __all__ = [
     "SPEED_ONLY_HOPS",
     "WAVE_ONLY_HOPS",
     "ICE_ONLY_HOPS",
+    "ALPHA_PB_ONLY_HOPS",
+    "MOAT_ONLY_HOPS",
+    "WS_ONLY_HOPS",
 ]
 
 
@@ -92,6 +95,9 @@ BAT_CAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("bat_cave")
 SPEED_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("speed")
 WAVE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("wave")
 ICE_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("ice")
+ALPHA_PB_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("alpha_pb")
+MOAT_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("moat")
+WS_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("ws")
 
 _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "red_tower": RED_TOWER_HOPS,
@@ -107,6 +113,9 @@ _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "speed": SPEED_ONLY_HOPS,
     "wave": WAVE_ONLY_HOPS,
     "ice": ICE_ONLY_HOPS,
+    "alpha_pb": ALPHA_PB_ONLY_HOPS,
+    "moat": MOAT_ONLY_HOPS,
+    "ws": WS_ONLY_HOPS,
 }
 
 

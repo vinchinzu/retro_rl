@@ -601,13 +601,14 @@ def test_super_plus_continuous_door_edges_come_from_spine() -> None:
 
     spine_edges = continuous_edges_from_spine()
     assert len(spine_edges) >= 30
-    # In-room milestones + Warehouse→Business return reuse do not emit edges.
+    # In-room milestones + hop replays / multi-room reverses do not emit edges.
     non_emitting = {h.hop_id for h in POST_SUPERS_SPINE if not h.emits_door_edge}
     assert non_emitting == {
         "big_pink_main",
         "hijump_collected",
         "warehouse_to_business_return",
         "speed_return_to_bubble",  # multi-room reverse; not a single door
+        "ice_business_to_warehouse",  # replays kraid-tip business_to_warehouse
     }
 
     by_id = {edge.edge_id: edge for edge in SPEED_GRAPH.edges}
