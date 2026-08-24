@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.dungeon_ids import KEESE_OBJECT_TYPE, ZOL_OBJECT_TYPE
+from zelda_i.dungeon_ids import (
+    KEESE_OBJECT_TYPE,
+    LIKE_LIKE_OBJECT_TYPE,
+    WIZZROBE_BLUE_OBJECT_TYPE,
+    ZOL_OBJECT_TYPE,
+)
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
@@ -15,14 +21,17 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_COMPASS,
     ROOM_L6_EAST_KEY,
     ROOM_L6_ENTRY,
+    ROOM_L6_HARD_38,
     ROOM_L6_KEESE,
     ROOM_L6_WEST_WIZZROBE,
+    level6_room_38_clear_success,
     level6_room_58_clear_success,
     level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
     make_compass_68_controller,
     make_east_key_controller,
+    make_hard_38_controller,
     make_keese_58_controller,
     make_west_wizzrobe_controller,
 )
@@ -96,6 +105,15 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_58_SPEC.enemy_types == (KEESE_OBJECT_TYPE,)
     assert ROOM_58_SPEC.expected_enemy_count == 8
     assert ROOM_58_SPEC.combat.occupancy_patrol
+    assert ROOM_L6_HARD_38 == 0x38
+    assert ROOM_38_SPEC.room_id == 0x38
+    assert WIZZROBE_ORANGE_TYPE in ROOM_38_SPEC.enemy_types
+    assert WIZZROBE_BLUE_OBJECT_TYPE in ROOM_38_SPEC.enemy_types
+    assert LIKE_LIKE_OBJECT_TYPE in ROOM_38_SPEC.enemy_types
+    assert ROOM_38_SPEC.combat.occupancy_patrol
+    assert 0x2B not in ROOM_38_SPEC.enemy_types
+    assert 0x68 not in ROOM_38_SPEC.enemy_types
+    assert 0x40 not in ROOM_38_SPEC.enemy_types
     assert ROOM_7A_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_78_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_7A_SPEC.expected_enemy_count == 5
@@ -160,6 +178,9 @@ def test_factories_bind_specs() -> None:
     keese = make_keese_58_controller()
     assert keese.spec.room_id == 0x58
     assert keese.spec.combat.occupancy_patrol
+    hard = make_hard_38_controller()
+    assert hard.spec.room_id == 0x38
+    assert hard.spec.combat.occupancy_patrol
 
 
 def test_58_clear_success_predicate() -> None:
@@ -168,6 +189,22 @@ def test_58_clear_success_predicate() -> None:
     ram[ADDR_OBJ_TYPE + 1] = KEESE_OBJECT_TYPE
     ram[ADDR_OBJ_HP + 1] = 0
     assert not level6_room_58_clear_success(ram)
+
+
+def test_38_clear_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_HARD_38)
+    assert level6_room_38_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 1] = LIKE_LIKE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_room_38_clear_success(ram)
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = WIZZROBE_BLUE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert not level6_room_38_clear_success(ram)
+    ram[ADDR_OBJ_HP + 2] = 0
+    ram[ADDR_OBJ_TYPE + 3] = 0x40
+    ram[ADDR_OBJ_HP + 3] = 64
+    assert level6_room_38_clear_success(ram)
 
 
 def test_west_key_door_constants() -> None:

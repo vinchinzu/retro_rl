@@ -1,8 +1,8 @@
-"""Survival-spine L6 from L5 TF settle through hard room 0x38 enter.
+"""Survival-spine L6 from L5 TF settle through hard room 0x38 clear.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / 0x68. 0x38 clear / Rod / Gohma / TF 0x20 remain
-residual.
+Ignore object types 0x2b / 0x68 / Bubble. Left-block / Rod / Gohma / TF 0x20
+remain residual.
 """
 
 from __future__ import annotations
@@ -14,12 +14,14 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import LEVEL6_ENTRY_ROOM, TF_BIT_L5
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
     make_compass_68_controller,
     make_east_key_controller,
+    make_hard_38_controller,
     make_keese_58_controller,
     make_west_wizzrobe_controller,
 )
@@ -62,6 +64,8 @@ __all__ = [
     "level6_clear68_success",
     "level6_compass_stages",
     "level6_compass_success",
+    "level6_clear38_stages",
+    "level6_clear38_success",
     "level6_clear58_stages",
     "level6_clear58_success",
     "level6_keese_stages",
@@ -88,6 +92,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear58",
     "level6-room48",
     "level6-room38",
+    "level6-clear38",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -99,6 +104,7 @@ L6_STOPS: dict[str, str] = {
     "level6-clear58": "level6_clear_0x58",
     "level6-room48": "level6_room_0x48",
     "level6-room38": "level6_room_0x38",
+    "level6-clear38": "level6_clear_0x38",
 }
 
 
@@ -345,6 +351,26 @@ def level6_room38_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_clear38_stages():
+    """0x38 leftover → occupancy-patrol wizzrobe/Like-Like clear. No pokes."""
+    fight = make_hard_38_controller()
+    return (
+        ("level6_clear_0x38", fight, ROOM_38_SPEC.max_frames),
+    )
+
+
+def level6_clear38_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready empty 0x38. Ignore Bubble/0x2b/0x68. Do not require push."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_WIZZROBE_38_ROOM
+        and not snap.transitioning
+        and not ROOM_38_SPEC.live_enemies(snap)
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -507,3 +533,20 @@ def continue_level6_spine(
     run.success = level6_room38_success(snap)
     if not run.success:
         run.failed_stage = "level6_room_0x38"
+        return
+    if through == "level6-room38":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_clear38_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_clear38_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_clear_0x38"

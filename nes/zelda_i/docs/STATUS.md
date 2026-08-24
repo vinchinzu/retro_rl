@@ -67,6 +67,7 @@
 | Power-on → L6 clear `0x58` | **1/1 continuous Survival**; occupancy-patrol 8× Keese TYPE-only; 188,666f hop 882f; leftover `(112,167)`; keys=5 (no key pickup); north still sealed; deaths 0; progression/capacity writes 0; no state load | `l6_clear58_continuous_v1.json` / `_final.png` |
 | Power-on → L6 enter `0x48` | **1/1 continuous Survival**; occupancy long-UP from `(112,167)` is **free** (keys=5); 189,007f hop 341f; leftover `(120,205)` play `0x48`; 4 blade traps live; deaths 0; progression/capacity writes 0; no state load | `l6_room48_continuous_v1.json` / `_final.png` |
 | Power-on → L6 enter `0x38` | **1/1 continuous Survival**; occupancy run-UP through 0x48 traps (no clear); 189,268f hop 261f; leftover `(120,189)` play `0x38`; Like-Like + wizzrobe live; deaths 0; progression/capacity writes 0; no state load | `l6_room38_continuous_v1.json` / `_final.png` |
+| Power-on → L6 clear `0x38` | **1/1 continuous Survival**; occupancy-patrol 7× wizzrobe/Like-Like; 194,755f hop 5,487f; leftover `(32,149)` play `0x38`; Bubble residual; blocks unpushed; keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_clear38_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -89,7 +90,8 @@ is on the tape (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`).
 L4 TF `0x08` are on the tape (`l4_tf_continuous_v1` 2/2, TF=`0x0F`).
 `.6` closed. HC was not mid-room. Power-on spine now holds L6 west 0x78
 (`l6_west_continuous_v1` 1/1, room `0x78` `(144,141)`). `.7` / `.4` / `rr-g3c1`
-closed. Compass 0x68 / Rod / Gohma / TF `0x20` residual.
+closed. 0x38 clear is on the tape (`l6_clear38_continuous_v1` 1/1,
+leftover `(32,149)`). Left-block / Rod / Gohma / TF `0x20` residual.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam (`rr-4d53.5`) is attached on the continuous tape through
@@ -352,11 +354,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level5` is green (`0x14` mode 18,
-   TF `0x1F`, v1 1/1). `rr-4d53.7` and `rr-4d53.4` closed. Next is L5
-   fanfare settle → L6. Isolated BFS is still not a spine path. See
-   `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
-   seamed compose. Bomb/key count pokes are documented Survival shortcuts,
-   not Clean.
+1. **Active Survival tip:** `--through level6-clear38` is green (`0x38`
+   `(32,149)`, TF `0x1F`, v1 1/1). `rr-tne2` in progress. Next is left-block
+   push toward 0x28 / Rod / Gohma / TF `0x20`. Isolated BFS is still not a
+   spine path. See `docs/plan.md`. Isolated `Level3*` pins do not close
+   spine beads. No seamed compose. Bomb/key count pokes are documented
+   Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

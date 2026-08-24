@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through hard room 0x38 enter (not Clean STATUS)
+Status: **assisted pure** through hard room 0x38 clear (not Clean STATUS)
 
 Planning sources:
 
@@ -74,7 +74,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x68** | N of 0x78 | **5× type `0x13`** (Zol) | **`0x16` compass** | spine enter + `ADDR_COMPASS\|0x20` 1/1 |
 | **0x58** | N of 0x68 | **8× Keese `0x1b`** | rupee drop live | spine clear 1/1; **north still sealed** |
 | **0x48** | N of 0x58 | blade traps `0x49` | — | spine enter 1/1; run UP residual |
-| **0x38** | N of 0x48 | multi wizzrobe + Like-Like + Bubble | — | spine enter 1/1; hard clear residual |
+| **0x38** | N of 0x48 | **7×** wizzrobe `0x23`/`0x24` + Like-Like `0x17` + Bubble `0x40` | — | spine clear 1/1; Bubble residual; left-block residual |
 | **0x28** | N of 0x38 | wizzrobes | `0x0f`? | block-push residual |
 
 ### Entry RIGHT policy (required)
@@ -254,6 +254,21 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room48 
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room38 --no-video --trials 1
 ```
 
+### Hard-room clear (0x38) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x38` `(120,189)` |
+| Combat | occupancy-patrol GenericDungeonRoomController; 7 live (2 orange `0x24` + 2 blue `0x23` + 3 Like-Like `0x17`) |
+| Stop | `--through level6-clear38` no live wizzrobe/Like-Like |
+| Leftover | `(32,149)` west; Bubble `0x40` residual; two center blocks unpushed; north open |
+| Ignore | invuln `0x2b` / block `0x68` / Bubble (sword-immune) |
+| Track | **assisted Survival** |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear38 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -279,7 +294,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - RIGHT wizzrobes + key; LEFT locked (do not waste key on Old Man first) — **RIGHT/LEFT/Old Man match live**
 - Compass from Zols — **0x68 live** (RoomItemId `0x16`; inventory pickup residual)
 - statue/Keese rooms — **0x58 live**
-- multi-Wizzrobe + Bubble + Like-Like — **0x38 residual clear**
+- multi-Wizzrobe + Bubble + Like-Like — **0x38 live clear** (Bubble residual)
 - Mid-dungeon **Gleeok (3 heads)** then Map — residual
 - Staircase → **Magical Rod** (`ADDR_ROD=0x065F`) — residual
 - Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
@@ -320,8 +335,9 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_clear58_continuous_v1.json` — 0x58 Keese clear 1/1 882f
 - `recordings/l6_room48_continuous_v1.json` — 0x48 enter 1/1 occupancy UP 341f; keys 5
 - `recordings/l6_room38_continuous_v1.json` — 0x38 enter 1/1 occupancy run-UP 261f
+- `recordings/l6_clear38_continuous_v1.json` — 0x38 occupancy-patrol clear 1/1 5,487f
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room38 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear38 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -334,7 +350,7 @@ Not claimed live as pure segments:
 1. **0x68 compass** pickup (`ADDR_COMPASS|0x20`) after Zol clear — **live**
 2. **0x58** Keese clear — **live**; key inventory no
 3. **0x48** enter + run-UP — **live**
-4. **0x38** enter — **live**; full clear (hard) + **left block push** residual
+4. **0x38** clear — **live**; **left block push** residual
 5. **0x28** + optional bomb shortcut
 6. **Gleeok (3 heads)** + Map
 7. Staircase → **Magical Rod** (`ADDR_ROD`)
