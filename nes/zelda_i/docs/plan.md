@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — 0x01 natural key v3 2/2 leftover `(120,133)` keys 4→5; next 0x12 Vire clear |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — 0x12 Vire clear v1 2/2 leftover `(128,117)`; next push + Gleeok approach |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -303,8 +303,21 @@ stays black (no candle).
 | key v2 | `0x01` `(96,135)` timeout | floor-key hunt at `(96,125)` (key is east) |
 | key v3 | `0x01` `(120,133)` **keys 4→5** | bomb-UP then pickup `(120,141)`; hop 1196f 2/2 |
 
-PNGs: `recordings/l4_key01_continuous_v{1,2,3,3b}_final.png`. Next: 0x12
-Vire clear (ignore block `0x68`). Do not close `.6` until TF `0x08`.
+PNGs: `recordings/l4_key01_continuous_v{1,2,3,3b}_final.png`.
+
+`--through level4-clear12` is **2/2** on `l4_clear12_continuous_v1` (and
+`v1b`): DOWN 0x01→0x11 244f, bomb-RIGHT `(192,141)` 392f, Vire clear
+654f (ignore `0x68`); leftover play `0x12` `(128,117)`; bombs 14→13;
+keys=5; 124,993f; map=`0x0A`; TF=`0x07`; deaths/progression/capacity 0;
+no state load.
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| clear12 v1 | `0x12` `(128,117)` **cleared** | DOWN + bomb-RIGHT + Vire clear; hop 1290f 2/2 |
+
+PNGs: `recordings/l4_clear12_continuous_v{1,1b}_final.png`. Next: 0x12
+push `0x68` LEFT then `PATH_12_TO_GLEEOK`. Do not close `.6` until TF
+`0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -417,6 +430,9 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-key01 --no-video --trials 1 \
   --tag l4_key01_continuous_v3
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-clear12 --no-video --trials 1 \
+  --tag l4_clear12_continuous_v1
 ```
 Isolated 0x6b check:
 

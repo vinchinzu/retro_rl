@@ -112,6 +112,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-map",
         "level4-bomb11",
         "level4-key01",
+        "level4-clear12",
     )
 
 

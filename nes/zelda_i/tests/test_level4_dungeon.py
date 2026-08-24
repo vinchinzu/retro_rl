@@ -733,3 +733,54 @@ def test_planning_interior_report() -> None:
     assert MAZE_60_TO_LADDER[0] == "UP"
     assert MAZE_60_TO_LADDER.count("DOWN") >= 10
     assert MAZE_60_TO_LADDER.count("RIGHT") >= 10
+
+
+def test_level4_clear12_attaches_after_key01() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.bomb_wall_path import BombWallController
+    from zelda_i.dungeon import DungeonPhase
+    from zelda_i.level4_clear12 import (
+        BOMB_11_EAST_STAND,
+        level4_clear12_stages,
+        level4_clear12_success,
+        make_south_11_controller,
+    )
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        PLAY_MODE,
+        read_snapshot,
+    )
+    from zelda_i.survival_spine import SpineRun
+    import numpy as np
+
+    stages = level4_clear12_stages()
+    assert [name for name, _, _ in stages] == [
+        "level4_south_0x11",
+        "level4_bomb_east_0x12",
+        "level4_clear_0x12",
+    ]
+    assert isinstance(stages[1][1], BombWallController)
+    assert stages[1][1].stand == BOMB_11_EAST_STAND == (192, 141)
+    assert stages[1][1].wall.opens_to == 0x12
+    assert stages[-1][1].phase is DungeonPhase.FIGHT
+    run = SpineRun(through="level4-clear12", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_clear_0x12"
+    ctl = make_south_11_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x01
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 133
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_SCREEN] = 0x11
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert not level4_clear12_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x12
+    assert level4_clear12_success(read_snapshot(ram))
