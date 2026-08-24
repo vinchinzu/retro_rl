@@ -38,7 +38,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
-| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
+| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -83,8 +83,9 @@ from damage heatmaps. Do not block tip progress on combat polish.
   Live: **0x04 bomb-west lands 0x03**. Play **0x30** block-stairs @(208,96) →
   cellar **0x67** right lands **0x04**. Play **0x21** south shutter stays sealed
   after Patra. 0x40 stays dirty (`route_eligible=false`).
-- L4: skip compass to keep spare key for KEY-UP; 0x11→0x12 is **BOMB_RIGHT**
-  @(192,141); Gleeok Clean = south-stand not head kite.
+- L4: skip compass to keep spare key for KEY-UP; 0x11 north is **BOMB_UP**
+  @(120,105) not free UP; 0x11→0x12 is **BOMB_RIGHT** @(192,141);
+  Gleeok Clean = south-stand not head kite.
 - L3: 0x5a key door long y=141 push; 0x69 stairs **only y≈141**; 0x5c need
   **raw=3**; type **0x2b** invuln ≠ boss; TF is **0x3d UP of boss**.
 
@@ -128,7 +129,10 @@ RIGHT+DOWN clips east of the vestibule; `ADDR_MAP|0x08` at `(208,181)`
 in 297f (map=0x0A). Continuous `l4_bomb11_continuous_v2` 2/2: UP the
 east column to y=93, LEFT to the north bomb stand `(120,105)` (v1 LEFT
 at y=109 is a 16px pillar); bomb-UP → play `0x11` `(120,189)` in 435f.
-Isolated BFS is still banned. Next: 0x01 natural key from this leftover.
+Continuous `l4_key01_continuous_v3` 2/2: v1 hold-UP leftover `(120,93)`
+is the north wall; bomb-UP `(120,105)` 377f then pickup `(120,141)`
+819f; leftover play `0x01` `(120,133)` keys 4→5 bombs 15→14. Isolated
+BFS is still banned. Next: 0x12 Vire clear (ignore block `0x68`).
 Do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
