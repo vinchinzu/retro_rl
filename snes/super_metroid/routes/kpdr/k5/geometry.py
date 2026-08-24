@@ -56,23 +56,31 @@ WEST_TO_BELOW_SETTLE = 260
 BELOW_BAT_DOOR_X = 40
 BELOW_TO_BAT_FRAMES = 2000
 BELOW_TO_BAT_SETTLE = 260
+# Dual-green leave pin post_ice_below_to_bat_pure ~(472, 139) p12.
+# Compose from Ice can enter Bat morph/mid-platform; pin this sill before
+# handing to bat_to_red. Stay left of the right door (~x=510) so we do not
+# fall back into Below Spazer.
+BAT_SILL_X_MIN = 400
+BAT_SILL_X_MAX = 500
+BAT_SILL_Y_MIN = 100
+BAT_SILL_Y_MAX = 165
+BAT_SILL_PIN_FRAMES = 240
 
 # Bat Room 0xA3DD left blue door into Red Tower 0xA253 bottom
-# (outbound ``play_red_tower_to_bat`` runs RIGHT from Red bottom into Bat left;
-#  outbound ``play_bat_to_below_spazer`` runs RIGHT across platforms).
-# LEFT platform chain reverse of bat→below timings; pure pin right high sill
-# ~(472,139) p12 after below_to_bat.
-# Jump timings mirror bat_to_below high path in reverse order:
-#   outbound: run35+j60, run8+j20, j48  →  reverse: run+j48, run8+j20, run35+j60
-BAT_TO_RED_RUNUP1 = 12
-BAT_TO_RED_JUMP1 = 48
-BAT_TO_RED_LAND1 = 60
-BAT_TO_RED_RUNUP2 = 8
-BAT_TO_RED_JUMP2 = 20
-BAT_TO_RED_LAND2 = 80
-BAT_TO_RED_RUNUP3 = 20
-BAT_TO_RED_JUMP3 = 60
-BAT_TO_RED_LAND3 = 40
+# (outbound ``play_red_tower_to_bat`` runs RIGHT from Red bottom into Bat left).
+# High path is the three dry pipe platforms (reverse of bat→below). Water
+# under the pipes is a different climb (HJ + no Gravity: crouch-jump +
+# down-grab). Named pin right high sill ~(472,139) p12 (crouch).
+BAT_TO_RED_DOOR_SEAT_X = 80
+BAT_TO_RED_HIGH_Y = 165
+BAT_TO_RED_TRAVERSE_BUDGET = 2200
+BAT_TO_RED_PROGRESS_WINDOW = 42
+BAT_TO_RED_JUMP_PERIOD = 36
+BAT_TO_RED_JUMP_HOLD = 24
+BAT_TO_RED_RUNUP = 20
+BAT_TO_RED_WATER_CJ_CROUCH = 4
+BAT_TO_RED_WATER_CJ_JUMP = 16
+BAT_TO_RED_WATER_GRAB = 24
 BAT_TO_RED_EXIT_RUN = 20
 BAT_TO_RED_EXIT_SHOOT = 4
 BAT_TO_RED_EXIT_SPIN = 30
@@ -100,20 +108,21 @@ RED_TO_HELLWAY_EXIT_HOLD = 320
 RED_TO_HELLWAY_EXIT_SETTLE = 360
 
 __all__ = [
+    "BAT_TO_RED_DOOR_SEAT_X",
     "BAT_TO_RED_EXIT_HOLD",
     "BAT_TO_RED_EXIT_RUN",
     "BAT_TO_RED_EXIT_SETTLE",
     "BAT_TO_RED_EXIT_SHOOT",
     "BAT_TO_RED_EXIT_SPIN",
-    "BAT_TO_RED_JUMP1",
-    "BAT_TO_RED_JUMP2",
-    "BAT_TO_RED_JUMP3",
-    "BAT_TO_RED_LAND1",
-    "BAT_TO_RED_LAND2",
-    "BAT_TO_RED_LAND3",
-    "BAT_TO_RED_RUNUP1",
-    "BAT_TO_RED_RUNUP2",
-    "BAT_TO_RED_RUNUP3",
+    "BAT_TO_RED_HIGH_Y",
+    "BAT_TO_RED_JUMP_HOLD",
+    "BAT_TO_RED_JUMP_PERIOD",
+    "BAT_TO_RED_PROGRESS_WINDOW",
+    "BAT_TO_RED_RUNUP",
+    "BAT_TO_RED_TRAVERSE_BUDGET",
+    "BAT_TO_RED_WATER_CJ_CROUCH",
+    "BAT_TO_RED_WATER_CJ_JUMP",
+    "BAT_TO_RED_WATER_GRAB",
     "BELOW_BAT_DOOR_X",
     "RED_BOTTOM_Y",
     "RED_CLIMB_FRAMES",

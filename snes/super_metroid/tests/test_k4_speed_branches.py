@@ -141,6 +141,19 @@ def test_ice_to_moat_path_uses_k5_k6_spine() -> None:
     assert summary["blocking"] is None
 
 
+def test_west_ocean_to_ws_path_is_spine_hop() -> None:
+    """West Ocean → WS Entrance is the ws-tip over-ocean spark hop."""
+    caps_speed = CAPS | frozenset({"speed_booster"})
+    path = SPEED_GRAPH.shortest_path(0x93FE, 0xCA08, caps_speed)
+    assert path is not None
+    assert [edge.edge_id for edge in path] == ["west_ocean_to_ws"]
+    assert all(edge.verification == "continuous" for edge in path)
+    summary = SPEED_GRAPH.path_verification(0x93FE, 0xCA08, caps_speed)
+    assert summary["reachable"] is True
+    assert summary["all_continuous"] is True
+    assert summary["blocking"] is None
+
+
 def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
     path = SPEED_GRAPH.shortest_path(0xACB3, 0xAD1B, CAPS)
 

@@ -16,6 +16,18 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py varia-to-hijump
 uv run python snes/super_metroid/scripts/probe/kpdr.py hop hj-room \\
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_kpdr_hj_shaft.state
 
+# Chain Ice return + K5 + K6 from the Ice leave pin (not continuous evidence)
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \\
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ice_ceres_successor.state
+
+# Remaining K6 hops from the Ice-pin Alpha PB leave
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose alpha-pb-to-moat \\
+  --source snes/super_metroid/scratch/post_ice_to_alpha_pb_compose.state
+
+# Over-ocean spark from the power-on Moat leave (West Ocean → 0xCA08)
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose moat-to-ws \\
+  --source snes/super_metroid/scratch/post_moat_poweron.state
+
 # List hop ids
 uv run python snes/super_metroid/scripts/probe/kpdr.py list
 
@@ -94,6 +106,7 @@ from super_metroid.routes.kpdr.ice import (  # noqa: E402
 from super_metroid.routes.kpdr.k5 import (  # noqa: E402
     play_bat_to_red,
     play_below_to_bat,
+    play_caterpillar_to_alpha_pb,
     play_east_to_glass,
     play_glass_to_west,
     play_hellway_to_caterpillar,
@@ -101,6 +114,13 @@ from super_metroid.routes.kpdr.k5 import (  # noqa: E402
     play_warehouse_to_east,
     play_west_to_below,
 )
+from super_metroid.routes.kpdr.k6 import (  # noqa: E402
+    play_alpha_pb_to_caterpillar,
+    play_caterpillar_to_elevator,
+    play_elevator_to_kihunter,
+    play_kihunter_to_moat,
+)
+from super_metroid.routes.kpdr.moat import play_moat_cross  # noqa: E402
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_bat_cave_to_speed_hall,
     play_business_to_cathedral_entrance,
@@ -274,6 +294,46 @@ def _capture_pure_red(
     return report
 
 
+def _play_named_chain(chain: str):
+    """Play spine hops for a named post-Ice compose chain."""
+    from super_metroid.routes.kpdr.spine import hops_for_tip
+
+    if chain == "ice-to-alpha-pb":
+        hops = hops_for_tip("alpha_pb")
+    elif chain == "ice-to-moat":
+        hops = hops_for_tip("alpha_pb") + hops_for_tip("moat")
+    elif chain == "alpha-pb-to-moat":
+        hops = hops_for_tip("moat")
+    elif chain == "ice-to-ws":
+        hops = hops_for_tip("alpha_pb") + hops_for_tip("moat") + hops_for_tip("ws")
+    elif chain == "moat-to-ws":
+        hops = hops_for_tip("ws")
+    else:
+        raise KeyError(chain)
+
+    def play(session):
+        for hop in hops:
+            hop.play(session)
+            if hop.after is not None:
+                hop.after(session, [], None)
+            st = session.state
+            if st.room_id != hop.to_room:
+                raise RuntimeError(
+                    f"{hop.hop_id}: expected room 0x{hop.to_room:04X}, "
+                    f"got 0x{st.room_id:04X} {st}"
+                )
+            print(
+                f"[compose] {hop.hop_id} -> 0x{st.room_id:04X} "
+                f"({st.samus_x},{st.samus_y}) p{st.pose} f={session.frame}",
+                flush=True,
+            )
+        return session.state
+
+    play.__name__ = f"play_{chain.replace('-', '_')}"
+    play.__qualname__ = play.__name__
+    return play
+
+
 def _run_pure(
     *,
     source: Path,
@@ -299,7 +359,15 @@ def _run_pure(
     try:
         # Open-loop hop bodies desync if we idle after a live pin
         # (human-tape default boot-settle is 0). RAM controllers tolerate 5.
-        boot_settle = 0 if segment == "red-to-hellway" else 5
+        zero_settle_segments = {
+            "bat-to-red",
+            "red-to-hellway",
+            "hellway-to-caterpillar",
+            "caterpillar-to-elevator",
+            "elevator-to-kihunter",
+            "kihunter-to-moat",
+        }
+        boot_settle = 0 if segment in zero_settle_segments else 5
         boot_from_state(env, source, settle_frames=boot_settle)
         for _ in range(boot_settle):
             env.step(idle_action())
@@ -563,6 +631,12 @@ def main() -> None:
             "bat-to-red",
             "red-to-hellway",
             "hellway-to-caterpillar",
+            "caterpillar-to-alpha-pb",
+            "alpha-pb-to-caterpillar",
+            "caterpillar-to-elevator",
+            "elevator-to-kihunter",
+            "kihunter-to-moat",
+            "moat-cross",
             "cathedral-entrance-to-cathedral",
             "cathedral-to-rising-tide",
             "rising-tide-to-bubble",
@@ -658,6 +732,35 @@ def main() -> None:
         help="Optional segment hint (e.g. varia-to-kraid)",
     )
 
+    compose = sub.add_parser(
+        "compose",
+        help="Chain post-Ice spine hops from a pin (not continuous evidence)",
+    )
+    compose.add_argument(
+        "chain",
+        choices=(
+            "ice-to-alpha-pb",
+            "ice-to-moat",
+            "alpha-pb-to-moat",
+            "ice-to-ws",
+            "moat-to-ws",
+        ),
+        help=(
+            "Named hop chain (alpha_pb, alpha_pb+moat, moat from Alpha PB leave, "
+            "Ice→WS, or West Ocean spark from Moat leave)"
+        ),
+    )
+    compose.add_argument("--source", type=Path, required=True)
+    compose.add_argument("--output", type=Path, default=None)
+    compose.add_argument(
+        "--expect-room",
+        type=lambda s: int(s, 0),
+        default=None,
+        help="Override source fingerprint room (hex 0x… or int)",
+    )
+    compose.add_argument("--pin-json", type=Path, default=None)
+    compose.add_argument("--no-red-diag", action="store_true")
+
     args = parser.parse_args()
 
     if args.command == "list":
@@ -737,6 +840,19 @@ def main() -> None:
         print(json.dumps(payload, indent=2))
         sys.exit(0 if ranked else 1)
 
+    if args.command == "compose":
+        report = _run_pure(
+            source=args.source,
+            play=_play_named_chain(args.chain),
+            output=args.output,
+            expect_room=args.expect_room,
+            segment=args.chain,
+            pin_json=args.pin_json,
+            red_diag=not args.no_red_diag,
+        )
+        print(json.dumps(report, indent=2))
+        sys.exit(0 if report.get("success") else 1)
+
     if args.command == "pure":
         play_fn = {
             "big-pink-to-ghz": play_big_pink_to_ghz,
@@ -787,6 +903,12 @@ def main() -> None:
             "bat-to-red": play_bat_to_red,
             "red-to-hellway": play_red_to_hellway,
             "hellway-to-caterpillar": play_hellway_to_caterpillar,
+            "caterpillar-to-alpha-pb": play_caterpillar_to_alpha_pb,
+            "alpha-pb-to-caterpillar": play_alpha_pb_to_caterpillar,
+            "caterpillar-to-elevator": play_caterpillar_to_elevator,
+            "elevator-to-kihunter": play_elevator_to_kihunter,
+            "kihunter-to-moat": play_kihunter_to_moat,
+            "moat-cross": play_moat_cross,
             "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
             "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
             "rising-tide-to-bubble": play_rising_tide_to_bubble,
