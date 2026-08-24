@@ -394,7 +394,7 @@ def test_map21_path_walks_east_column() -> None:
 def test_room_21_grid_includes_west_door_leftover() -> None:
     grid = room_21_grid()
     assert ROOM_21_SPAWN_XY == (16, 141)
-    assert ROOM_21_INLAND_XY == (32, 141)
+    assert ROOM_21_INLAND_XY == (48, 109)
     assert ROOM_21_PICKUP_XY == MAP_21_PICKUP_XY == (208, 181)
     assert ROOM_21_BOUNDS[0] <= 16
     assert grid.passable(*ROOM_21_SPAWN_XY)
@@ -410,8 +410,10 @@ def test_room_21_grid_includes_west_door_leftover() -> None:
     assert path is not None
     assert path[0] == ROOM_21_SPAWN_XY
     assert path[-1] == ROOM_21_PICKUP_XY
+    inland = grid.shortest_path(ROOM_21_SPAWN_XY, ROOM_21_INLAND_XY)
+    assert inland is not None
     walker = OccupancyWalker(grid=room_21_grid(), goal=ROOM_21_INLAND_XY)
-    assert walker.next_dir(ROOM_21_SPAWN_XY) == "RIGHT"
+    assert walker.next_dir(ROOM_21_SPAWN_XY) in ("UP", "RIGHT")
 
 
 def test_mappick_path_walks_corridor_waypoints() -> None:
@@ -427,22 +429,31 @@ def test_mappick_path_walks_corridor_waypoints() -> None:
     ram[ADDR_LINK_Y] = 141
     ram[ADDR_LADDER] = 1
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_map_x"
-    assert list(act.action) == list(nes_action("RIGHT"))
+    assert act.reason == "map_alcove_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
     ram[ADDR_LINK_X] = 32
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_map_y"
-    assert list(act.action) == list(nes_action("DOWN"))
-    ram[ADDR_LINK_Y] = 189
+    assert act.reason == "map_alcove_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    ram[ADDR_LINK_X] = 40
+    ram[ADDR_LINK_Y] = 125
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_map_clip"
+    assert ctl.phase is MapPickPhase.CLIP
+    assert act.reason == "map_alcove_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 93
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.phase is MapPickPhase.PATH
+    assert act.reason == "map_se_clip"
     assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
-    ram[ADDR_LINK_X] = 64
-    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LINK_X] = 80
+    ram[ADDR_LINK_Y] = 125
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_map_x"
     assert list(act.action) == list(nes_action("RIGHT"))
     ram[ADDR_LINK_X] = 208
+    ram[ADDR_LINK_Y] = 189
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_map_y"
     assert list(act.action) == list(nes_action("UP"))
@@ -455,7 +466,6 @@ def test_mappick_path_walks_corridor_waypoints() -> None:
     assert "bfs" not in report
     assert report["waypoints"] == [list(p) for p in ROOM_21_WAYPOINTS]
     ctl2 = make_mappick_controller()
-    ctl2.phase = MapPickPhase.PATH
     ctl2._last_xy = (16, 141)
     ctl2._stall = 96
     ram[ADDR_MAP] = 0

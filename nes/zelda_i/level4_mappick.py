@@ -2,6 +2,9 @@
 
 Leftover play 0x21 (16,141). RoomItemId 0x17, 5× Gel. Dark: do not grant
 candle. Isolated MAP_21_SAMPLE_PATH is state-BFS — not this tape.
+
+Continuous v15 2/2: spawn RIGHT+UP to (48,93), then RIGHT+DOWN (0x31→0x32
+clip analog) into the maze; ADDR_MAP|0x08 at (208,181) in 297f.
 """
 
 from __future__ import annotations
@@ -21,7 +24,10 @@ from zelda_i.level4_dungeon import (
 )
 from zelda_i.level4_occupancy import (
     ROOM_21_CLIP_BUDGET,
+    ROOM_21_CLIP_X,
     ROOM_21_PICKUP_XY,
+    ROOM_21_SE_X,
+    ROOM_21_SE_Y,
     ROOM_21_WAYPOINTS,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -39,6 +45,7 @@ MAP_PICK_HOLD = 240
 
 
 class MapPickPhase(Enum):
+    CLIP = auto()
     PATH = auto()
     HOLD = auto()
     DONE = auto()
@@ -47,10 +54,10 @@ class MapPickPhase(Enum):
 
 @dataclass
 class Level4MapPickController:
-    """West leftover → corridor waypoints → ADDR_MAP bit 0x08."""
+    """West leftover → 0x31-style spawn clip → waypoints → ADDR_MAP bit 0x08."""
 
     max_frames: int = 12000
-    phase: MapPickPhase = MapPickPhase.PATH
+    phase: MapPickPhase = MapPickPhase.CLIP
     frames: int = 0
     phase_frames: int = 0
     path_index: int = 0
@@ -96,6 +103,12 @@ class Level4MapPickController:
 
     def _live(self, snap: ZeldaSnapshot) -> tuple:
         return ROOM_21_SPEC.live_enemies(snap)
+
+    def _left_alcove(self, xy: tuple[int, int]) -> bool:
+        # v13 left at (40,125) because 0x31 treats x>=40 off-band as inland.
+        # Live RIGHT at that pose is still the vestibule wall. Hold the
+        # diagonal until x>=48.
+        return xy[0] >= ROOM_21_CLIP_X
 
     def _step_dir(
         self,
@@ -154,6 +167,19 @@ class Level4MapPickController:
             self._set_phase(MapPickPhase.DONE, "map_bit")
             return FrameAction(nes_idle_action(), "done")
 
+        if self.phase is MapPickPhase.CLIP:
+            if self._left_alcove(xy):
+                self._sample(snap, "left_alcove")
+                self._set_phase(MapPickPhase.PATH, "left_alcove")
+                self.path_index = 0
+            elif self._stall >= CLIP_BUDGET:
+                self._sample(snap, "map_solid")
+                return self._fail(f"map_solid_{xy[0]}_{xy[1]}")
+            else:
+                return self._step_dir(
+                    snap, "RIGHT", "UP", reason="map_alcove_clip"
+                )
+
         if self.phase is MapPickPhase.PATH:
             if self._stall >= CLIP_BUDGET:
                 self._sample(snap, "map_solid")
@@ -168,23 +194,20 @@ class Level4MapPickController:
                     self.path_index = i
                     self._sample(snap, f"waypoint_{i}")
                     continue
-                # Clip east of the west column: skip leftover x=32 waypoints.
-                if wx <= 32 and xy[0] > 48:
-                    i += 1
-                    self.path_index = i
-                    self._sample(snap, f"skip_west_{i}")
-                    continue
                 break
             if i >= len(wps):
                 self._set_phase(MapPickPhase.HOLD, "at_pickup")
             else:
                 gx, gy = wps[i]
                 dx, dy = gx - xy[0], gy - xy[1]
-                # v11 leftover (48,189): RIGHT still x=49 wall. Clip
-                # RIGHT+DOWN off the SE corner of the west column.
-                if xy[0] <= 48 and xy[1] >= 185 and gx > xy[0]:
+                # v15: 0x31→0x32 RIGHT+DOWN from v14 north landing (48,93).
+                if (
+                    xy[0] < ROOM_21_SE_X
+                    and xy[1] <= ROOM_21_SE_Y
+                    and gx > xy[0]
+                ):
                     return self._step_dir(
-                        snap, "RIGHT", "DOWN", reason="join_map_clip"
+                        snap, "RIGHT", "DOWN", reason="map_se_clip"
                     )
                 if abs(dx) > 4:
                     return self._step_dir(

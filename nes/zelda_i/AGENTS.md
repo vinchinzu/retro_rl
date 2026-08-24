@@ -122,9 +122,11 @@ clip + inland west, then KEY-UP @x120; leftover `(120,205)` play `0x20`;
 keys 5→4; hop 868f. 0x20 Vire clear is on the tape (v7–v22, 1249f, ignore
 `0x2b`). Continuous `l4_room21_continuous_v22` 1/1: north-around to
 `(200,96)`, RIGHT+DOWN clip into x=208, y=141 then RIGHT; leftover
-`(16,141)` play `0x21`; 121,775f hop 447f. Map pickup from that west
-vestibule is blocked (east wall x=49 y=93–189; v12 leftover `(32,189)`).
-Isolated BFS is still banned. Do not close `.6` until TF `0x08`.
+`(16,141)` play `0x21`; 121,775f hop 447f. Continuous
+`l4_map_continuous_v15` 2/2: spawn RIGHT+UP to `(48,93)`, then
+RIGHT+DOWN clips east of the vestibule; `ADDR_MAP|0x08` at `(208,181)`
+in 297f (map=0x0A). Isolated BFS is still banned. Next: bomb-UP 0x11
+@(120,105). Do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
