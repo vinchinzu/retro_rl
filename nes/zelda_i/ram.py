@@ -127,6 +127,8 @@ class ZeldaSnapshot:
     ladder: int = 0
     map: int = 0  # ADDR_MAP bitfield: one bit per dungeon level
     rod: int = 0  # ADDR_ROD; default 0 so older constructors still work
+    bow: int = 0  # ADDR_BOW
+    arrows: int = 0  # ADDR_ARROWS; wooden=1 silver=2
 
     @property
     def overworld(self) -> bool:
@@ -239,6 +241,8 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         raft=read_u8(ram, ADDR_RAFT),
         ladder=read_u8(ram, ADDR_LADDER),
         rod=read_u8(ram, ADDR_ROD),
+        bow=read_u8(ram, ADDR_BOW),
+        arrows=read_u8(ram, ADDR_ARROWS),
     )
 
 
