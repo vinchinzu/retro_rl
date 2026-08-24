@@ -12,6 +12,7 @@ from zelda_i.dungeon_ids import (
 )
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_09_SPEC,
     ROOM_19_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
@@ -27,7 +28,9 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_KEESE,
     ROOM_L6_WEST_WIZZROBE,
     ROOM_L6_MAP,
+    ROOM_L6_ROD_WIZZ,
     ROOM_L6_WIZZROBE_28,
+    level6_room_09_clear_success,
     level6_room_19_clear_success,
     level6_room_28_clear_success,
     level6_room_38_clear_success,
@@ -35,6 +38,7 @@ from zelda_i.level6_dungeon import (
     level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
+    make_clear_09_controller,
     make_clear_19_controller,
     make_clear_28_controller,
     make_compass_68_controller,
@@ -138,6 +142,13 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_78_SPEC.expected_enemy_count == 5
     assert ROOM_7A_SPEC.room_item_id == 0x19
     assert ROOM_78_SPEC.level == 6
+    assert ROOM_L6_MAP == 0x19
+    assert ROOM_L6_ROD_WIZZ == 0x09
+    assert ROOM_09_SPEC.room_id == 0x09
+    assert ROOM_09_SPEC.combat.occupancy_patrol
+    assert WIZZROBE_ORANGE_TYPE in ROOM_09_SPEC.enemy_types
+    assert 0x2B not in ROOM_09_SPEC.enemy_types
+    assert 0x68 not in ROOM_09_SPEC.enemy_types
 
 
 def test_live_wizzrobes_type_and_hp() -> None:
@@ -222,6 +233,30 @@ def test_19_clear_success_predicate() -> None:
     assert ROOM_19_SPEC.room_id == 0x19
     assert ROOM_19_SPEC.combat.occupancy_patrol
     assert ROOM_19_SPEC.combat.inland_dash == 24
+
+
+def test_09_clear_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_ROD_WIZZ, x=120, y=205)
+    assert level6_room_09_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_room_09_clear_success(ram)
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = WIZZROBE_BLUE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert not level6_room_09_clear_success(ram)
+    ram[ADDR_OBJ_HP + 2] = 0
+    ram[ADDR_OBJ_TYPE + 3] = 0x40
+    ram[ADDR_OBJ_HP + 3] = 64
+    assert level6_room_09_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 4] = 0x68
+    ram[ADDR_OBJ_HP + 4] = 64
+    assert level6_room_09_clear_success(ram)
+    ctl = make_clear_09_controller()
+    assert ctl.spec is ROOM_09_SPEC
+    assert ROOM_09_SPEC.combat.occupancy_patrol
+    assert 0x2B not in ROOM_09_SPEC.enemy_types
+    assert 0x68 not in ROOM_09_SPEC.enemy_types
 
 
 def test_58_clear_success_predicate() -> None:

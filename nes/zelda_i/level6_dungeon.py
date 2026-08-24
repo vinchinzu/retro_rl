@@ -53,6 +53,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_WEST_WIZZROBE_ROOM,
     LEVEL6_GLEEOK_ROOM,
     LEVEL6_MAP_ROOM,
+    LEVEL6_ROD_WIZZ_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
     LEVEL6_WIZZROBE_38_ROOM,
     WIZZROBE_ORANGE_TYPE,
@@ -68,6 +69,7 @@ ROOM_L6_KEESE = LEVEL6_KEESE_ROOM  # 0x58
 ROOM_L6_HARD_38 = LEVEL6_WIZZROBE_38_ROOM  # 0x38
 ROOM_L6_WIZZROBE_28 = LEVEL6_WIZZROBE_28_ROOM  # 0x28
 ROOM_L6_MAP = LEVEL6_MAP_ROOM  # 0x19 east of Gleeok
+ROOM_L6_ROD_WIZZ = LEVEL6_ROD_WIZZ_ROOM  # 0x09 north of Map; skip-Map KEY-UP
 # After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
 ROOM_78_UP_DOOR_BIT = 0x08
 # ADDR_COMPASS / ADDR_MAP bitfield: one bit per dungeon (L6 → bit5 → 0x20).
@@ -466,6 +468,58 @@ ROOM_19_SPEC = DungeonRoomSpec(
 
 register_room_spec(ROOM_19_SPEC)
 
+# North of 0x19: skip-Map KEY-UP leftover (120,205). Live settle census
+# 3× blue 0x23 + 2× orange 0x24 + left 0x68 (96,144). Ignore 0x2b / 0x40 /
+# 0x59 shot / block 0x68. Do not push the left block or require Rod.
+_ROOM_09_PATROL: tuple[tuple[int, int], ...] = (
+    (120, 189),
+    (80, 189),
+    (80, 173),
+    (64, 141),
+    (80, 109),
+    (120, 109),
+    (160, 109),
+    (176, 141),
+    (160, 173),
+    (160, 189),
+    (48, 157),
+    (192, 157),
+    (120, 141),
+)
+
+ROOM_09_SPEC = DungeonRoomSpec(
+    spec_id="level6_room09_wizzrobes",
+    source_room=LEVEL6_MAP_ROOM,
+    room_id=LEVEL6_ROD_WIZZ_ROOM,
+    entry=DoorRoute("UP", ((120, 141), (120, 93))),
+    enemy_types=(WIZZROBE_ORANGE_TYPE, WIZZROBE_BLUE_OBJECT_TYPE),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_09_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+        inland_dash=24,
+        avoid_walls=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+        DoorRoute("UP", ((120, 141), (120, 93))),
+    ),
+    max_frames=15000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_09_SPEC)
+
 
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x7a with keys≥1 and no live type-0x24 enemies.
@@ -665,6 +719,22 @@ def make_clear_19_controller() -> GenericDungeonRoomController:
     return GenericDungeonRoomController(spec=ROOM_19_SPEC)
 
 
+def level6_room_09_clear_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x09 no live wizzrobes. Ignore 0x2b/0x40/0x68. No Rod."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_ROD_WIZZ_ROOM
+        and snap.mode == PLAY_MODE
+        and not ROOM_09_SPEC.live_enemies(snap)
+    )
+
+
+def make_clear_09_controller() -> GenericDungeonRoomController:
+    """Occupancy-patrol 0x09 wizzrobe clear. Ignore 0x2b/0x68. Do not push."""
+    return GenericDungeonRoomController(spec=ROOM_09_SPEC)
+
+
 __all__ = [
     "ROOM_L6_ENTRY",
     "ROOM_L6_EAST_KEY",
@@ -674,6 +744,7 @@ __all__ = [
     "ROOM_L6_HARD_38",
     "ROOM_L6_WIZZROBE_28",
     "ROOM_L6_MAP",
+    "ROOM_L6_ROD_WIZZ",
     "ROOM_79_SPEC",
     "ROOM_7A_SPEC",
     "ROOM_78_SPEC",
@@ -682,6 +753,7 @@ __all__ = [
     "ROOM_38_SPEC",
     "ROOM_28_SPEC",
     "ROOM_19_SPEC",
+    "ROOM_09_SPEC",
     "ROOM_78_UP_DOOR_BIT",
     "LEVEL6_COMPASS_BIT",
     "LEVEL6_MAP_BIT",
@@ -694,6 +766,7 @@ __all__ = [
     "make_hard_38_controller",
     "make_clear_28_controller",
     "make_clear_19_controller",
+    "make_clear_09_controller",
     "level6_room_7a_key_success",
     "level6_room_78_clear_success",
     "level6_room_68_compass_success",
@@ -701,4 +774,5 @@ __all__ = [
     "level6_room_38_clear_success",
     "level6_room_28_clear_success",
     "level6_room_19_clear_success",
+    "level6_room_09_clear_success",
 ]

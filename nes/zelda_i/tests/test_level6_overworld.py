@@ -60,6 +60,8 @@ from zelda_i.level6_spine import (
     level6_map19_success,
     level6_room09_stages,
     level6_room09_success,
+    level6_clear09_stages,
+    level6_clear09_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1017,6 +1019,49 @@ def test_level6_room09_axis_left_then_keyup() -> None:
     assert run.report()["stop"] == "level6_room_0x09"
     assert "level6-room09" in L6_THROUGH
     assert list(nes_idle_action()) != list(nes_action("UP"))
+
+
+def test_level6_clear09_idles_then_occupancy_patrol() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_dungeon import ROOM_09_SPEC
+    from zelda_i.level6_overworld import LEVEL6_ROD_WIZZ_ROOM
+    from zelda_i.level6_room19 import SETTLE_19_IDLE_FRAMES, make_settle_09_controller
+
+    stages = level6_clear09_stages()
+    assert [name for name, _, _ in stages] == [
+        "level6_settle_0x09",
+        "level6_clear_0x09",
+    ]
+    assert stages[-1][1].spec is ROOM_09_SPEC
+    assert ROOM_09_SPEC.combat.occupancy_patrol
+    assert ROOM_09_SPEC.room_id == LEVEL6_ROD_WIZZ_ROOM
+    leftover = _ram(level=6, screen=0x09, x=120, y=205)
+    ctl = make_settle_09_controller()
+    ctl.idle_frames = 2
+    ctl.max_frames = 8
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+    act = ctl.step(read_snapshot(leftover))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert SETTLE_19_IDLE_FRAMES == 160
+    ram = _ram(level=6, screen=0x09, x=120, y=205)
+    assert level6_clear09_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0x24
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear09_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x68
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_clear09_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 3] = 0x2B
+    ram[ADDR_OBJ_HP + 3] = 240
+    assert level6_clear09_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear09", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x09"
+    assert "level6-clear09" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

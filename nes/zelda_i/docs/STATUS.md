@@ -76,6 +76,8 @@
 | Power-on → L6 post-Gleeok census `0x18` | **1/1 continuous Survival**; IDLE 192f; leftover `(156,133)`; no `0x44`/`0x46`; `0x56` then gone; `cur_opened_doors` 0→5 `mask` 0; 204,381f hop 192f; keys=5 bombs=8 TF=`0x1F` map=`0x0A`; deaths 0; progression/capacity writes 0; no state load | `l6_postgleeok18_continuous_v2.json` / `_final.png` |
 | Power-on → L6 enter `0x19` | **1/1 continuous Survival**; occupancy y=141 RIGHT from 0x18 (PNG-black shutter + mask 0 walkable); 204,632f hop 251f; leftover `(16,141)` play `0x19`; keys=5 bombs=8 TF=`0x1F` map=`0x0A`; deaths 0; progression/capacity writes 0; no state load | `l6_room19_continuous_v1.json` / `_final.png` |
 | Power-on → L6 clear `0x19` | **1/1 continuous Survival**; idle census 160f then occupancy-patrol 2× Zol `0x13` + 2× Like-Like `0x17`; 208,845f hop 4,213f; leftover `(176,158)`; RoomItemId `0x17` Map on floor; map still `0x0A`; keys=5 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_clear19_continuous_v1.json` / `_final.png` |
+| Power-on → L6 enter `0x09` | **1/1 continuous Survival**; skip-Map KEY-UP axis LEFT x=136 then occupancy north; 209,120f hop 275f; leftover `(120,205)` play `0x09`; keys 5→4 bombs=8 TF=`0x1F` map=`0x0A`; deaths 0; progression/capacity writes 0; no state load | `l6_room09_continuous_v2.json` / `_final.png` |
+| Power-on → L6 clear `0x09` | **1/1 continuous Survival**; idle census 160f then occupancy-patrol 3× blue `0x23` + 2× orange `0x24`; 210,699f hop 1,419f; leftover `(112,173)`; left 0x68 `(96,144)` unpushed; keys=4 bombs=8 TF=`0x1F` map=`0x0A`; deaths 0; progression/capacity writes 0; no state load | `l6_clear09_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -367,14 +369,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-clear19` is green (`0x19`
-   `(176,158)`, TF `0x1F`, v1 1/1). Enter `0x19` is also green
-   (`l6_room19_continuous_v1`). Live 2× Zol + 2× Like-Like; RoomItemId
-   `0x17` Map on floor; `ADDR_MAP` still `0x0A`. `--through level6-map19`
-   red through v6 (axis idle `(136,137)`, no item object slot). Map is
-   optional; `--through level6-room09` v1 leftover `(32,189)` keys 5→4
-   on the south door (x=120 UP freeze-miss). Next axis LEFT to x=136
-   then occupancy north (`l6_room09_continuous_v2`). `--through
+1. **Active Survival tip:** `--through level6-clear09` is green (`0x09`
+   `(112,173)`, TF `0x1F`, keys=4, v1 1/1). Skip-Map KEY-UP
+   `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4
+   (v1 spent the south door). Map pickup stays red through v6. Live
+   0x09: 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)`
+   unpushed. Next left-block stairs toward Rod. `--through
    level6-stairs18` stays red. `rr-tne2` in progress. Do not grant
    Map/Rod. Isolated BFS is still not a spine path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
