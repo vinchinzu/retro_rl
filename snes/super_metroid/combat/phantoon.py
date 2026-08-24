@@ -418,20 +418,16 @@ def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) ->
 
 
 def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Morph in a bottom corner through rain. Swap if the body sits on the seat."""
+    """Morph in the left corner through rain. Do not roll across the wave."""
     st = session.state
-    use_right = int(st.enemy0_x) <= strategy.seat_x_max + 24
     if not is_morph(int(st.pose)):
         try:
             ensure_morph(session)
         except Exception:
             hold(session, 1, reason="phan_rain_idle")
         return
-    if use_right and int(st.samus_x) < strategy.right_seat_x_min:
-        hold(session, 1, "RIGHT", reason="phan_rain_roll")
-        return
-    if (not use_right) and int(st.samus_x) > strategy.seat_x_max:
-        hold(session, 1, "LEFT", reason="phan_rain_roll")
+    if int(st.samus_x) > strategy.seat_x_max:
+        hold(session, 1, "LEFT", reason="phan_rain_left")
         return
     hold(session, 1, reason="phan_rain_morph")
 
