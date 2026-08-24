@@ -78,6 +78,8 @@ from zelda_i.survival_spine import (
     level4_keyup20_success,
     level4_bomb11_stages,
     level4_bomb11_success,
+    level4_key01_stages,
+    level4_key01_success,
     level4_map21_stages,
     level4_map21_success,
     level4_mappick_stages,
@@ -109,6 +111,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-room21",
         "level4-map",
         "level4-bomb11",
+        "level4-key01",
     )
 
 
@@ -614,6 +617,49 @@ def test_level4_bomb11_attaches_after_map() -> None:
     assert not level4_bomb11_success(read_snapshot(ram))
 
 
+def test_level4_key01_attaches_after_bomb11() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.bomb_wall_path import BombWallController
+    from zelda_i.dungeon import DungeonPhase
+    from zelda_i.level4_key01 import BOMB_11_NORTH_STAND, make_bomb_11_north_controller
+
+    stages = level4_key01_stages()
+    assert [name for name, _, _ in stages] == [
+        "level4_bomb_north_0x11",
+        "level4_key_0x01",
+    ]
+    ctl = stages[0][1]
+    assert isinstance(ctl, BombWallController)
+    assert ctl.wall.opens_to == 0x01
+    assert ctl.stand == BOMB_11_NORTH_STAND == (120, 105)
+    assert "bfs" not in ctl.report()
+    assert stages[-1][1].phase is DungeonPhase.FIGHT
+    run = SpineRun(through="level4-key01", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_natural_key_0x01"
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x11
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_KEYS] = 4
+    ram[ADDR_BOMBS] = 15
+    ctl = make_bomb_11_north_controller()
+    assert list(ctl.step(read_snapshot(ram)).action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 105
+    reasons = [ctl.step(read_snapshot(ram)).reason for _ in range(10)]
+    assert "place_bomb" in reasons
+    ram[ADDR_SCREEN] = 0x01
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert not level4_key01_success(read_snapshot(ram), keys_before=4)
+    ram[ADDR_KEYS] = 5
+    assert level4_key01_success(read_snapshot(ram), keys_before=4)
+    ram[ADDR_SCREEN] = 0x11
+    assert not level4_key01_success(read_snapshot(ram), keys_before=4)
+
+
+
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
     names = [name for name, _, _ in level3_entry_stages()]
     assert names == ["settle_l2_tf", "enter_level3"]
@@ -940,9 +986,6 @@ def test_validate_l5_endpoint_requires_continuous_session() -> None:
             "assist": {"progression_writes": 0, "capacity_writes": 0},
         }
     )
-
-
-def test_validate_l5_endpoint_fails_closed_on_progression_write() -> None:
     with pytest.raises(ValueError, match="progression writes"):
         validate_l5_endpoint(
             {
@@ -953,7 +996,7 @@ def test_validate_l5_endpoint_fails_closed_on_progression_write() -> None:
             }
         )
 
-
 def test_seamed_compose_module_is_gone() -> None:
     with pytest.raises(ModuleNotFoundError):
         __import__("zelda_i.scripts.compose_honest_route_recording")
+

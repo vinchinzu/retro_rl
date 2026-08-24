@@ -643,12 +643,12 @@ def planning_interior_report() -> dict:
             hex(ROOM_L4_MID_11): {
                 "enemies": {"0x35": "multi"},
                 "DOWN": hex(ROOM_L4_MAP_21),
-                "UP": hex(ROOM_L4_KEY_01),
+                "BOMB_UP": hex(ROOM_L4_KEY_01),
                 "RIGHT": hex(ROOM_L4_VIRES_12),
                 "LEFT": hex(ROOM_L4_MANHANDLA_10),
                 "note": (
-                    "rr-rvae: type 0x35 cluster; clear then free/bomb exits to "
-                    "0x01 key / 0x12 Vires / 0x10 Manhandla"
+                    "type 0x35 cluster stays live; north is BOMB_UP@(120,105) "
+                    "not free (v1 leftover (120,93)); RIGHT 0x12 / LEFT 0x10"
                 ),
             },
             hex(ROOM_L4_KEY_01): {
