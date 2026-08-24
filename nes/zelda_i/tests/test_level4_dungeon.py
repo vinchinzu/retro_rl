@@ -784,3 +784,50 @@ def test_level4_clear12_attaches_after_key01() -> None:
     assert not level4_clear12_success(read_snapshot(ram))
     ram[ADDR_SCREEN] = 0x12
     assert level4_clear12_success(read_snapshot(ram))
+
+
+def test_level4_gleeok13_attaches_after_clear12() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level4_dungeon import PUSH_12_STAND
+    from zelda_i.level4_gleeok13 import (
+        level4_gleeok13_stages,
+        level4_gleeok13_success,
+        make_gleeok13_controller,
+    )
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        PLAY_MODE,
+        read_snapshot,
+    )
+    from zelda_i.survival_spine import SpineRun
+    import numpy as np
+
+    stages = level4_gleeok13_stages()
+    assert [name for name, _, _ in stages] == ["level4_gleeok_enter_0x13"]
+    assert "bfs" not in stages[0][1].report()
+    run = SpineRun(through="level4-gleeok13", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_enter_0x13"
+    ctl = make_gleeok13_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x12
+    ram[ADDR_LINK_X] = 128
+    ram[ADDR_LINK_Y] = 117
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("LEFT"))
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = PUSH_12_STAND
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "push_block"
+    ram[ADDR_SCREEN] = 0x13
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert level4_gleeok13_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x12
+    assert not level4_gleeok13_success(read_snapshot(ram))
+    tf = SpineRun(through="level4", success=True, boot_frames=199)
+    assert tf.report()["stop"] == "level4_triforce_0x08"
