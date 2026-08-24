@@ -76,7 +76,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x48** | N of 0x58 | blade traps `0x49` | — | spine enter 1/1; run UP residual |
 | **0x38** | N of 0x48 | **7×** wizzrobe `0x23`/`0x24` + Like-Like `0x17` + Bubble `0x40` | — | spine clear 1/1; Bubble residual; left 0x68 `(96,144)` UP live |
 | **0x28** | N of 0x38 | **2× orange `0x24`** | — | spine clear 1/1 leftover `(120,181)`; diamond floor not solid |
-| **0x18** | N of 0x28 | **Gleeok 3-head** (live PNG) | — | spine enter 1/1 leftover `(120,189)`; fight residual |
+| **0x18** | N of 0x28 | hypothesized Gleeok (walkthrough); leftover PNG has north stairs + east shutter, no 0x43 on screen | — | spine enter 1/1 leftover `(120,189)`; confirm Gleeok with RAM/spawn settle |
 
 ### Entry RIGHT policy (required)
 
@@ -307,7 +307,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear28
 | Start | Survival leftover `0x28` `(120,181)` after orange clear |
 | Path | LEFT+UP at y=181 (cardinal UP solid); hold UP from `(96,173)`; RIGHT+UP at y=109 (cardinal RIGHT solid) |
 | Stop | `--through level6-room18` play-ready `0x18` |
-| Leftover | `(120,189)` south mouth; Gleeok 3-head live |
+| Leftover | `(120,189)` south mouth; north stairs + east shutter; Gleeok not on PNG |
 | Keys | 5 (no spend) |
 | Track | **assisted Survival** |
 | Notes | v1 occupancy boxed leftover. v2 hold-UP y stays 181. v3 LEFT to x=80 works; UP at y=181 solid. v4 peel y=189 then aisle UP walks to 181 then solid. v5 LEFT+UP clips to `(96,173)`; RIGHT solid. v6 hold-UP to `(96,109)`; RIGHT solid. v7 RIGHT+UP at y=109 enters. Do not fight Gleeok this hop. |
