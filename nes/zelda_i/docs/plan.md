@@ -45,7 +45,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | **closed** — `l4_tf_continuous_v1` 2/2 TF `0x0F` mode 18 room `0x03`; HC not mid-room |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | **closed** — `l5_tf_continuous_v1` 1/1 TF `0x1F` mode 18 room `0x14` |
 | `rr-4d53.4` | one session power-on → L5 TF | **closed** — same tape; `validate_l5_endpoint` passes |
-| `rr-g3c1` | L5 fanfare settle → L6 entry | **blocked at 0x1B** — settle 1/1 isolated `Level5Complete` onto `0x0B` `(112,125)`; hop DOWN `0x1B` `(112,61)`. Wrong belief: `↓ ←×7` is free. 0x0B W/E sealed; 0x1B inland rock bowl; RIGHT wraps; north-edge LEFT solid. PNG `l5_to_l6_v25_final.png`. |
+| `rr-g3c1` | L5 fanfare settle → L6 entry | **closed** — `l6_entry_continuous_v2` 1/1 play `0x79` `(120,205)` 179,355f TF=`0x1F`; east key + west 0x78 also on tape (`l6_west_continuous_v1` 182,415f). 0x1B west is y=141 LEFT after south-around x≈72, not `↓ ←×7` free / north-edge LEFT. |
 
 Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
 Isolated `Level3*` checkpoints cannot close these beads.
@@ -383,7 +383,38 @@ PNGs: `recordings/l5_entry_continuous_v1_final.png`,
 `recordings/l5_east77_continuous_v1_final.png`,
 `recordings/l5_whistle_continuous_v1.json` (v1 PNG was a stale 0x77 obs;
 RAM is cellar 0x04),
-`recordings/l5_tf_continuous_v1_final.png`. Next: L5 fanfare settle → L6.
+`recordings/l5_tf_continuous_v1_final.png`.
+
+`--through level6-entry` is **1/1** on `l6_entry_continuous_v2` (play `0x79`
+`(120,205)`, 179,355f hop 4,884f). `--through level6-east-key` **1/1**
+`l6_east_key_continuous_v1` keys 5→6. `--through level6-west` **1/1**
+`l6_west_continuous_v1` play `0x78` `(144,141)` keys 6→5, 182,415f.
+0x1B west is y=141 LEFT after south-around the x≈72 rock. Isolated BFS
+banned. Compass 0x68 / Rod / Gohma / TF `0x20` residual. Do not grant
+Whistle. Do not poke Rod/doors/keys.
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| v25 | `0x1B` `(112,61)` LEFT solid | walkthrough `↓ ←×7` is a free north-edge LEFT |
+| v26 | `0x1B` `(96,165)` LEFT solid | y=165 is south of the x≈72 rock (it is the bottom row) |
+| v27 | `0x1B` `(71,189)` timeout | UP under the south face of that rock |
+| v28 | `0x1B` `(48,189)` LEFT solid | south sand reaches the west edge |
+| v31 | `0x1B` `(24,149)` LEFT solid | screenshot tan x<32 y=136–151 is a free walk (mountain dither) |
+| v32 | `0x1B` `(32,140)` timeout | LEFT+UP clips west (UP-priority yo-yo) |
+| v35 | `0x1A` `(224,133)` **play** | y=141 LEFT after south-around; hop_1_1a |
+| v37 | `0x15` `(104,141)` timeout | door-Y LEFT through Lynels |
+| v1 | `0x15` `(232,109)` timeout | continuous east-edge leftover; inland then south band |
+| v38 | `0x14` `(112,189)` timeout | 0x14 south mouth is center x=112 |
+| v40 | `0x23` `(160,141)` timeout | 0x23 DOWN is center x=112 (mountain splitter) |
+| entry v2 | `0x79` `(120,205)` **play** | SE blue 0x14 x=160 / 0x23 x=208; hop 4,884f 1/1 |
+| east v1 | `0x7a` `(120,141)` **keys 5→6** | wall-first RIGHT; hop 1,844f 1/1 |
+| west v1 | `0x78` `(144,141)` **cleared** | key-LEFT; hop 1,216f 1/1 |
+
+PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
+`recordings/l6_entry_continuous_v{1,2}_final.png`,
+`recordings/l6_east_key_continuous_v1_final.png`,
+`recordings/l6_west_continuous_v1_final.png`. Next: 0x78 UP → 0x68 compass
+is residual (ignore 0x68 this pass). Do not close a TF-`0x20` bead.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -609,7 +640,8 @@ route under Survival assist → Clean combat/heart harden using damage heatmaps.
    top-up). L3 entrance `0x7c` closed (`.3.0`). West key `0x7b` closed
    (`.3.1.1`). The full entrance→Raft corridor (`.3.3`) is closed; next is
    the verified Raft→TF `0x04` suffix, then `.6` L4 and `.7`
-   L5, then `.4` one-session L5 TF. L6–L9 stay out of this pass.
+   L5, then `.4` one-session L5 TF. L6 entry + west 0x78 are on the
+   continuous tape; TF `0x20` / Rod / Gohma residual. L7–L9 stay out.
 2. **L9 backward** — parked P4 (`rr-yxy6` / `rr-sz8`). Fixture suffix stays
    `route_eligible=false`.
 3. **M6 route graph** — L3–L5 NamedRoute / door_graph / composer now exist;

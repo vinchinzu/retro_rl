@@ -15,7 +15,7 @@ Planning sources:
 | Enter UP into dungeon | live | UP; south path ~**x112**, mouth band **x≈24–120** |
 | Bracelet warp shortcut | walkthrough | optional residual (0x79 rock stairs) |
 | Walking path from start | walkthrough | residual (Lost Woods / Death Mountain) |
-| Walking path from L5 `0x0B` | walkthrough `↓ ←×7 ↓ ← ↓ ← ↑` | **blocked** — settle onto `0x0B` `(112,125)` is live; 0x0B west/east sealed; Lost Hills `0x1B` north arrival `(112,61)` LEFT is solid; inland is a rock bowl (NW alcove `(40,93)`, west notch `(32,165)` never reach x≤16); 0x1B RIGHT wraps. See `rr-g3c1`. |
+| Walking path from L5 `0x0B` | walkthrough `↓ ←×7 ↓ ← ↓ ← ↑` | **live** on `--through level6-entry` — 0x0B W/E sealed; 0x1B west is **y=141 LEFT** after south-around the x≈72 rock (not north-edge LEFT / not screenshot-tan x<32); then LEFT×6 at y=141, 0x15 south band, 0x14/0x23 SE blue paths, door UP `0x22`. See `rr-g3c1`. |
 
 ### Door (live, assisted)
 
@@ -33,7 +33,7 @@ From start `0x77`: right two screens → `0x79`, Power Bracelet push left rock, 
 
 ### Controller / hops
 
-Scaffold: `level6_overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). `POST_L5_TO_LEVEL6_HOPS` is wired on `--through level6-entry` after `settle_l5_tf` (live onto `0x0B`) but **not route-ready** until 0x1B west exit is live. Full hop table from start is **planned**.
+Scaffold: `level6_overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). `POST_L5_TO_LEVEL6_HOPS` is **live** on `--through level6-entry` (`l6_entry_continuous_v2` 1/1). Full hop table from start is **planned**.
 
 ## Interior (live recon + assisted pure)
 
@@ -219,7 +219,11 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/level6_east_key_assisted_isolated.json` — 2/2 from `Level6Entrance`
 - `recordings/level6_west_wizzrobes_assisted_isolated.json` — 2/2 from `Level6EastKey`
 - `recordings/l6_post_key_graph.json` — door map + north chain recon
+- `recordings/l6_entry_continuous_v2.json` — power-on → L6 `0x79` 1/1
+- `recordings/l6_east_key_continuous_v1.json` — 0x7a keys 5→6 1/1
+- `recordings/l6_west_continuous_v1.json` — 0x78 clear 1/1
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -242,7 +246,7 @@ Not claimed live as pure segments:
 
 - Clean STATUS / natural-entry from real predecessor TF bits
 - Clean east/west wizzrobe combat (beams kill without assist)
-- Full walk hop table from `0x77` / post-L1
+- Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
 - Compass inventory bit live (room item id only)
 - Gleeok / Rod / Gohma / triforce bit live

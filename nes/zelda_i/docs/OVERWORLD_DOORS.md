@@ -34,7 +34,7 @@ Recon table below is the live door map; dungeon geometry lives in
 | 4 | **live** post-L3 `74→73→63 E@y149→64→65→dock 55` raft↑ island; east heart dock `3F` separate | dock **`0x55`**, island/door **`0x45`**, entry **`0x71`** |
 | 4 (alt) | Long ZD path via raft heart island then lake | confirm vs short hyp **live** |
 | 5 | Bracelet warp NE → ←×2 Lost Hills → ↑×4 | maze **`0x1B`**, door **`0x0B`** (soft; confirm live) |
-| 6 | From L5 `0x0B`: ↓ ←×7 ↓ ← ↓ ← ↑ | **`0x22`** |
+| 6 | From L5 `0x0B`: ↓, 0x1B y=141 LEFT after south-around x≈72, ←×6 @y141, 0x15 south band, 0x14/0x23 SE blue ↓, ← ↓ ← ↑ | **`0x22`** **live** (`l6_entry_continuous_v2`) |
 | 7 | Bait Armos: ↑ ←×3 ↑×3 → shop `34`; pond: ↓×2 ←×2 ↑ + whistle | shop **`0x34`**, pond **`0x42`** |
 | 8 | →×4 ↑×2 → ↓ → + candle bush | **`0x6D`** |
 | 9 | → ↑×5 ← ↑×2 ←×2 + bomb left rock | **`0x05`** |

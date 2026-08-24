@@ -10,7 +10,11 @@ Live recon (assisted, 2026-08-06)::
 
 Post-L5 walk (source, OVERWORLD_DOORS): from L5 door ``0x0B``
 ``↓ ←×7 ↓ ← ↓ ← ↑`` onto door ``0x22``. Lost Hills ``0x1B`` only LEFT
-exits (UP/RIGHT/DOWN wrap). Bracelet warp on OW 0x79 is optional residual.
+exits (UP/RIGHT/DOWN wrap). 0x0B west/east sealed. 0x1B north-edge LEFT
+at leftover ``(112,61)`` is solid (v25); inland LEFT at ``(96,141)`` hits
+the x≈72 rock (v1). Screenshot occupancy (v1/v17/v25): sand west channel
+y=136–151, x<72. SW notch ``(32,165)`` is live but LEFT at y=165 is
+mountain. Bracelet warp on OW 0x79 is optional residual.
 """
 
 from __future__ import annotations
@@ -79,24 +83,44 @@ LEVEL6_DOOR_HOPS: tuple[ScreenHop, ...] = (
 LEVEL6_PATH_SCREENS: tuple[int, ...] = (SCREEN_LEVEL6_ENTRANCE,)
 
 # Natural predecessor after L5 Triforce fanfare. L5 returns Link to door
-# screen 0x0B (west/east sealed). Lost Hills 0x1B inland is a rock bowl;
-# v3 leftover (112,61) is the north arrival — LEFT along that edge, do
-# not unwedge inland. Then source west/south chain onto 0x22.
+# screen 0x0B (west/east sealed). Lost Hills 0x1B north arrival (112,61)
+# LEFT is solid (v25). West channel is screenshot sand y=136–151, x<72;
+# DOWN around the x≈72 rock (v1 leftover 96,141) then UP from SW/south
+# leftovers (v17 32,165 / v12 64,149) and LEFT at door Y. Isolated BFS
+# banned. Then source west/south chain onto 0x22.
 SCREEN_POST_L5_RETURN = SCREEN_LEVEL5_ENTRANCE
 POST_L5_SETTLE_MAX_FRAMES = 2500
 POST_L5_PATH_MAX_FRAMES = 40000
+# 0x1B west rock at x≈72, y≈141 (v1). South sand y≈185. Notch x≤48 (v28
+# leftover 48,189 UPs; v30 leftover 40,181 LEFT is west mountain). Aisle
+# x≤32 at y≈165 (v17) UPs to the y=136–151 channel then LEFT.
+HILLS_ROCK_X = 72
+HILLS_AISLE_X = 32
+HILLS_NOTCH_X = 48
+HILLS_NOTCH_Y = 168
+HILLS_SOUTH_Y = 185
+HILLS_CHANNEL_Y_LO = 136
+HILLS_CHANNEL_Y_HI = 152
+HILLS_NORTH_WALL_Y = 87
+HILLS_STALL_FAIL = 180
+HILLS_PUSH_STALL = 360
 POST_L5_TO_LEVEL6_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_LOST_HILLS, "DOWN", align_x=112),
-    ScreenHop(0x1A, "LEFT", align_y=61),
-    ScreenHop(0x19, "LEFT", align_y=61),
-    ScreenHop(0x18, "LEFT", align_y=61),
-    ScreenHop(0x17, "LEFT", align_y=61),
-    ScreenHop(0x16, "LEFT", align_y=61),
-    ScreenHop(0x15, "LEFT", align_y=61),
-    ScreenHop(0x14, "LEFT", align_y=61),
-    ScreenHop(SCREEN_BRACELET_ARMOS, "DOWN", align_x=112),
+    ScreenHop(0x1A, "LEFT", align_y=141),
+    ScreenHop(0x19, "LEFT", align_y=141),
+    ScreenHop(0x18, "LEFT", align_y=141),
+    ScreenHop(0x17, "LEFT", align_y=141),
+    ScreenHop(0x16, "LEFT", align_y=141),
+    ScreenHop(0x15, "LEFT", align_y=141),
+    # v37 leftover 0x15 (104,141): Lynels on door Y; south sand around.
+    ScreenHop(0x14, "LEFT", y_band_lo=165, y_band_hi=189),
+    # v38 leftover 0x14 (112,189): south mouth is the SE blue path x≈154–165,
+    # not center x=112. v39 (152,189) is 2px west of the blue; stand on it.
+    ScreenHop(SCREEN_BRACELET_ARMOS, "DOWN", align_x=160),
     ScreenHop(0x23, "LEFT", align_y=141),
-    ScreenHop(0x33, "DOWN", align_x=112),
+    # v40 leftover 0x23 (160,141): east pocket. South mouth is the SE blue
+    # path x≈202–213, not center x=112 (mountain splitter).
+    ScreenHop(0x33, "DOWN", align_x=208),
     ScreenHop(0x32, "LEFT", align_y=141),
     ScreenHop(SCREEN_LEVEL6_ENTRANCE, "UP", align_x=112),
 )
@@ -106,6 +130,38 @@ LEVEL6_POST_L5_SCREENS: tuple[int, ...] = path_screens_from_hops(
 assert LEVEL6_POST_L5_SCREENS[0] == SCREEN_POST_L5_RETURN
 assert LEVEL6_POST_L5_SCREENS[-1] == SCREEN_LEVEL6_ENTRANCE
 assert SCREEN_LOST_HILLS in LEVEL6_POST_L5_SCREENS
+
+
+def lost_hills_west_dir(x: int, y: int) -> str:
+    """Cardinal toward the 0x1B west sand channel. Screenshot occupancy.
+
+    v25 ``(112,61)`` LEFT solid; v1 ``(96,141)`` LEFT hits the x≈72 rock;
+    v26 ``(96,165)`` LEFT is the bottom rock row; v27 ``(71,189)`` UP is
+    that rock's south face; v28 ``(48,189)`` LEFT is SW mountain; v29
+    ``(48,165)`` UP is the bottom-left rock; v17 ``(32,165)`` LEFT is
+    mountain. Channel is y=136–151. South sand y≈185, notch x≤48 then
+    aisle x≤32 UP and LEFT.
+    """
+    if y <= HILLS_NORTH_WALL_Y:
+        return "DOWN"
+    if y >= HILLS_SOUTH_Y:
+        return "LEFT" if x > HILLS_NOTCH_X else "UP"
+    if (
+        x < HILLS_ROCK_X
+        and HILLS_CHANNEL_Y_LO <= y <= HILLS_CHANNEL_Y_HI
+    ):
+        return "LEFT"
+    if x > HILLS_NOTCH_X:
+        return "DOWN"
+    if y > HILLS_NOTCH_Y:
+        return "UP"
+    if x > HILLS_AISLE_X and y > HILLS_CHANNEL_Y_HI:
+        return "LEFT"
+    if y > HILLS_CHANNEL_Y_HI:
+        return "UP"
+    if y < HILLS_CHANNEL_Y_LO:
+        return "DOWN"
+    return "LEFT"
 
 
 class Level6NavPhase(Enum):
@@ -297,11 +353,43 @@ class OverworldToLevel6Controller(OverworldPathController):
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
-        # Lost Hills: do not unwedge inland (rock bowl). LEFT the north
-        # arrival edge (v3 leftover 112,61). recover_off_edge DOWN is the trap.
+        # 0x15 Lynels (continuous leftover 232,109 east edge). Inland then
+        # south sand (isolated v38) then LEFT to 0x14. No occupancy BFS.
+        if hop.target == 0x14 and snap.screen == 0x15:
+            x, y = int(snap.link_x), int(snap.link_y)
+            if self.stuck > HILLS_STALL_FAIL:
+                self.notes.append(f"ow15_solid_({x},{y})")
+                return self._fail(f"ow15_solid_{x}_{y}")
+            if x >= 200:
+                return self._swing("LEFT", "ow15_inland")
+            if y < 165:
+                return self._swing("DOWN", "ow15_south")
+            if y > 189:
+                return self._swing("UP", "ow15_south")
+            return self._swing("LEFT", "ow15_west")
+        # Lost Hills west door. Cardinals around the x≈72 rock onto the
+        # y=136–151 sand channel (screenshot v1/v17/v25). No occupancy BFS.
         if hop.target != 0x1A or snap.screen != SCREEN_LOST_HILLS:
             return None
-        return self._swing("LEFT", "hills_north_left")
+        x, y = int(snap.link_x), int(snap.link_y)
+        in_channel = (
+            x < HILLS_ROCK_X
+            and HILLS_CHANNEL_Y_LO <= y <= HILLS_CHANNEL_Y_HI
+        )
+        stall_lim = HILLS_PUSH_STALL if in_channel else HILLS_STALL_FAIL
+        if self.stuck > stall_lim:
+            self.notes.append(f"hills_solid_({x},{y})")
+            return self._fail(f"hills_solid_{x}_{y}")
+        direction = lost_hills_west_dir(x, y)
+        if in_channel:
+            # v31 leftover (24,149) LEFT off door Y; v32 LEFT+UP yo-yo;
+            # v33 LEFT+DOWN yo-yo at y=151. Hold exact door Y then LEFT.
+            if y < 141:
+                return FrameAction(nes_action("DOWN"), "hills_west_ay")
+            if y > 141:
+                return FrameAction(nes_action("UP"), "hills_west_ay")
+            return FrameAction(nes_action("LEFT"), "hills_west_left")
+        return self._swing(direction, f"hills_{direction.lower()}")
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.require_level6_screen or self.require_dungeon or not self.hops:
@@ -446,7 +534,7 @@ class Level6EntryRightController:
 
 
 def make_post_l5_level6_controller() -> OverworldToLevel6Controller:
-    """Proven L5 door 0x0B → Lost Hills LEFT → Dragon 0x79. Not bracelet warp."""
+    """L5 door 0x0B → 0x1B y=141 LEFT → Dragon 0x79. Not bracelet warp."""
     return OverworldToLevel6Controller(
         hops=POST_L5_TO_LEVEL6_HOPS,
         require_dungeon=True,
@@ -655,6 +743,14 @@ __all__ = [
     "POST_L5_SETTLE_MAX_FRAMES",
     "POST_L5_PATH_MAX_FRAMES",
     "LEVEL6_POST_L5_SCREENS",
+    "HILLS_ROCK_X",
+    "HILLS_AISLE_X",
+    "HILLS_NOTCH_X",
+    "HILLS_NOTCH_Y",
+    "HILLS_SOUTH_Y",
+    "HILLS_CHANNEL_Y_LO",
+    "HILLS_CHANNEL_Y_HI",
+    "lost_hills_west_dir",
     "OverworldToLevel6Controller",
     "PostL5SettlePhase",
     "PostL5TriforceSettleController",

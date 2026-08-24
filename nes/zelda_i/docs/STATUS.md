@@ -58,7 +58,9 @@
 | Power-on → L5 east key `0x77` | **1/1 continuous Survival**; north-bank to ladder x=56 then DOWN; Pols Voice clear leftover `(136,165)` keys 7; 142,958f; deaths 0; progression/capacity writes 0; no state load | `l5_east77_continuous_v1.json` / `_final.png` |
 | Power-on → L5 Recorder `0x04` | **1/1 continuous Survival**; East Key → 0x66 bomb-west → 0x04; 160,648f hop 17,690f; mode 9 `(135,141)`; keys 7→6 bombs 13→8; whistle earned; deaths 0; progression/capacity writes 0; no state load | `l5_whistle_continuous_v1.json` |
 | Power-on → L5 TF `0x10` | **1/1 continuous Survival**; cellar `0x04` → Digdogger `0x24` → room `0x14` mode 18 `(120,149)`; 173,961f hop 13,311f; TF=`0x0F→0x1F`; keys 6→5 bombs=8; deaths 0; progression/capacity writes 0; no state load | `l5_tf_continuous_v1.json` / `_final.png` |
-| L5 TF settle → L6 entry (`rr-g3c1`) | **blocked** — isolated settle 1/1 onto OW `0x0B` `(112,125)`; Lost Hills `0x1B` `(112,61)` LEFT solid; inland rock bowl; 0x0B W/E sealed. Not a spine claim | `l5_to_l6_v25.json` / `_final.png` |
+| Power-on → L6 entry `0x79` (`rr-g3c1`) | **1/1 continuous Survival**; L5 fanfare settle 510f onto `0x0B`, 0x1B y=141 LEFT after south-around x≈72, west chain y=141, 0x14/0x23 SE blue paths; 179,355f hop 4,884f; leftover `(120,205)`; TF=`0x1F` keys=5 bombs=8; whistle earned; deaths 0; progression/capacity writes 0; no state load | `l6_entry_continuous_v2.json` / `_final.png` |
+| Power-on → L6 east key `0x7a` | **1/1 continuous Survival**; wall-first RIGHT then 0x7a clear; 181,199f hop 1,844f; leftover `(120,141)`; keys 5→6; deaths 0; progression/capacity writes 0; no state load | `l6_east_key_continuous_v1.json` / `_final.png` |
+| Power-on → L6 west `0x78` | **1/1 continuous Survival**; free LEFT 0x79, key-LEFT 0x78, wizzrobe clear; 182,415f hop 1,216f; leftover `(144,141)`; keys 6→5; deaths 0; progression/capacity writes 0; no state load | `l6_west_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -79,8 +81,9 @@ is on the tape (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`).
 `(120,133)`, keys 4→5). 0x12 Vire clear is on the tape
 (`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`). Gleeok enter and
 L4 TF `0x08` are on the tape (`l4_tf_continuous_v1` 2/2, TF=`0x0F`).
-`.6` closed. HC was not mid-room. Power-on spine now holds L5 TF `0x10`
-(`l5_tf_continuous_v1` 1/1, room `0x14` mode 18). `.7` and `.4` closed.
+`.6` closed. HC was not mid-room. Power-on spine now holds L6 west 0x78
+(`l6_west_continuous_v1` 1/1, room `0x78` `(144,141)`). `.7` / `.4` / `rr-g3c1`
+closed. Compass 0x68 / Rod / Gohma / TF `0x20` residual.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam (`rr-4d53.5`) is attached on the continuous tape through
