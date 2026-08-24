@@ -435,8 +435,11 @@ room `0x75` `(208,93)` tile 113/`0x71` hop 203f, 210,902f. Left 0x68
 south-face UP onto `0x71` warps. `--through level6-rod` **1/1**
 `l6_rod_continuous_v15` mode 9 `0x75` `(136,141)` rod=1 hop 627f,
 211,529f. `--through level6-exit75` **1/1** `l6_exit75_continuous_v3`
-play `0x09` `(192,141)` rod=1 hop 1,525f, 213,054f. Bow=0 arrows=0.
-Do not grant Map/Rod/arrows. Do not poke.
+play `0x09` `(192,141)` rod=1 hop 1,525f, 213,054f. `--through
+level6-south09` **1/1** `l6_south09_continuous_v1` play `0x19`
+`(120,77)` hop 251f, 213,305f. Occupancy DOWN from leftover; 10
+misses at x=192 then south-band LEFT. 0x19 already cleared. Bow=0
+arrows=0. Do not grant Map/Rod/arrows. Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -525,6 +528,7 @@ Do not grant Map/Rod/arrows. Do not poke.
 | exit75 v1 | `0x75` `(208,141)` 4000f tile 250 | RIGHT+DOWN drops; cardinal DOWN @ (168,141) is floor |
 | exit75 v2 | `0x75` `(208,141)` 4000f tile 243 | cardinal UP @ x=208 reaches entry 0x71 (208,93) |
 | exit75 v3 | `0x09` `(192,141)` **play rod=1** hop 1525f | LEFT+DOWN from east column drops; west spit idle+UP |
+| south09 v1 | `0x19` `(120,77)` **play rod=1** hop 251f | occupancy DOWN from leftover `(192,141)` is free (10 misses at x=192; remaining block / east column) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -551,23 +555,26 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
 `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`,
 `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14,15}_final.png`,
-`recordings/l6_exit75_continuous_v{1,2,3}_final.png`.
+`recordings/l6_exit75_continuous_v{1,2,3}_final.png`,
+`recordings/l6_south09_continuous_v1_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
 Cellar return **on the tape**: play `0x09` `(192,141)` rod=1 hop 1,525f
-(`l6_exit75_continuous_v3`). Bow=0 arrows=0. Next Gohma / TF `0x20` —
-Gohma needs an arrow; do not poke `ADDR_ARROWS`. Do not invent Gohma
-room id. Do not close `rr-tne2`.
+(`l6_exit75_continuous_v3`). South `0x09` **on the tape**: play `0x19`
+`(120,77)` hop 251f (`l6_south09_continuous_v1`). 0x19 already cleared
+(no combat hop). Bow=0 arrows=0. Next door from leftover PNG (east and
+south mouths visible). Gohma / TF `0x20` — Gohma needs an arrow; do not
+poke `ADDR_ARROWS`. Do not invent Gohma room id. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-exit75 --no-video --trials 1 --tag l6_exit75_continuous_v3
+  --through level6-south09 --no-video --trials 1 --tag l6_south09_continuous_v1
 ```
 
-Leftover is play `0x09` `(192,141)` rod=1 keys=4 bombs=8 TF=`0x1F`
-map=`0x0A` bow=0 arrows=0. Wizzrobes already cleared; left 0x68 gone.
-v1 DOWN @ (168,141) tile 250. v2 UP @ (208,141) tile 243. Live: RIGHT
-y=141, LEFT+DOWN drop, LEFT y=189, UP west spit, idle then UP.
+Leftover is play `0x19` `(120,77)` rod=1 keys=4 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. 0x19 already cleared. Occupancy from 0x09
+`(192,141)` DOWN-missed 10× at x=192 then south-band LEFT; dest RAM
+`0x19`. Next live door from leftover PNG; do not invent Gohma.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
