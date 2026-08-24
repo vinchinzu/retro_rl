@@ -66,6 +66,8 @@ from zelda_i.level6_spine import (
     level6_stairs09_success,
     level6_rod_stages,
     level6_rod_success,
+    level6_exit75_stages,
+    level6_exit75_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1232,6 +1234,91 @@ def test_level6_rod_waits_warp_then_floor_then_east() -> None:
     run = SpineRun(through="level6-rod", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_rod_0x75"
     assert "level6-rod" in L6_THROUGH
+
+
+def test_level6_exit75_walks_east_then_leftdown_clip() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_exit75 import (
+        EXIT_75_SETTLE,
+        EXIT_75_WEST_X,
+        EXIT_75_WARP_IDLE,
+        make_exit75_controller,
+    )
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_exit75_stages()
+    assert [name for name, _, _ in stages] == ["level6_exit_0x75"]
+    leftover = _ram(level=6, screen=0x75, x=136, y=141, mode=9)
+    leftover[ADDR_ROD] = 1
+    ctl = make_exit75_controller()
+    for _ in range(EXIT_75_SETTLE):
+        act = ctl.step(read_snapshot(leftover))
+        assert act.reason == "item_settle"
+        assert list(act.action) == list(nes_idle_action())
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "to_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    mid = _ram(level=6, screen=0x75, x=168, y=141, mode=9)
+    mid[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(mid))
+    assert act.reason == "to_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    col = _ram(level=6, screen=0x75, x=176, y=141, mode=9)
+    col[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(col))
+    assert act.reason == "drop_clip"
+    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    wall = _ram(level=6, screen=0x75, x=208, y=141, mode=9)
+    wall[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(wall))
+    assert act.reason == "drop_clip"
+    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
+    floor = _ram(level=6, screen=0x75, x=176, y=189, mode=9)
+    floor[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(floor))
+    assert ctl.on_floor
+    assert act.reason == "cross_x"
+    assert list(act.action) == list(nes_action("LEFT"))
+    west = _ram(level=6, screen=0x75, x=EXIT_75_WEST_X, y=189, mode=9)
+    west[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(west))
+    assert act.reason == "climb_y"
+    assert list(act.action) == list(nes_action("UP"))
+    mouth = _ram(level=6, screen=0x75, x=EXIT_75_WEST_X, y=93, mode=9)
+    mouth[ADDR_ROD] = 1
+    act = ctl.step(read_snapshot(mouth))
+    assert act.reason == "mouth_idle"
+    assert list(act.action) == list(nes_idle_action())
+    for _ in range(EXIT_75_WARP_IDLE - 1):
+        act = ctl.step(read_snapshot(mouth))
+    assert act.reason == "mouth_up"
+    assert list(act.action) == list(nes_action("UP"))
+    play = _ram(level=6, screen=0x09, x=120, y=205)
+    play[ADDR_ROD] = 1
+    done = make_exit75_controller()
+    act = done.step(read_snapshot(play))
+    assert done.success
+    assert act.reason == "exited"
+    assert level6_exit75_success(read_snapshot(play))
+    play[ADDR_ROD] = 0
+    assert not level6_exit75_success(read_snapshot(play))
+    cellar = _ram(level=6, screen=0x75, x=136, y=141, mode=9)
+    cellar[ADDR_ROD] = 1
+    assert not level6_exit75_success(read_snapshot(cellar))
+    snap = read_snapshot(play)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    play[ADDR_BOW] = 1
+    play[ADDR_ARROWS] = 1
+    play[ADDR_ROD] = 1
+    armed = read_snapshot(play)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-exit75", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_exit_0x75"
+    assert "level6-exit75" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

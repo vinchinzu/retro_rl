@@ -145,6 +145,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-clear09",
         "level6-stairs09",
         "level6-rod",
+        "level6-exit75",
     )
 
 
@@ -943,6 +944,9 @@ def test_spine_final_fields_record_bombs_and_keys() -> None:
     assert fields["room"] == 0x4F
     assert fields["level"] == 2
     assert fields["triforce"] == 0x01
+    assert fields["rod"] == 0
+    assert fields["bow"] == 0
+    assert fields["arrows"] == 0
 
 
 def test_level2_entry_stages_settle_then_moon_door() -> None:

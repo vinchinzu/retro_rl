@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through 0x09 stairs / Rod cellar.
+"""Survival-spine L6 from L5 TF settle through 0x09 stairs / Rod cellar return.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / Bubble. Map skipped. Rod pickup / Gohma / TF 0x20 residual.
+Ignore object types 0x2b / Bubble. Map skipped. Gohma / TF 0x20 residual.
 """
 
 from __future__ import annotations
@@ -68,6 +68,10 @@ from zelda_i.level6_room19 import (
     make_room19_controller,
     make_settle_09_controller,
     make_settle_19_controller,
+)
+from zelda_i.level6_exit75 import (
+    level6_exit75_stages,
+    level6_exit75_success,
 )
 from zelda_i.level6_rod import (
     ROD_75_MAX_FRAMES,
@@ -138,6 +142,8 @@ __all__ = [
     "level6_stairs09_success",
     "level6_rod_stages",
     "level6_rod_success",
+    "level6_exit75_stages",
+    "level6_exit75_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -181,6 +187,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear09",
     "level6-stairs09",
     "level6-rod",
+    "level6-exit75",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -207,6 +214,7 @@ L6_STOPS: dict[str, str] = {
     "level6-clear09": "level6_clear_0x09",
     "level6-stairs09": "level6_stairs_0x09",
     "level6-rod": "level6_rod_0x75",
+    "level6-exit75": "level6_exit_0x75",
 }
 
 
@@ -1170,3 +1178,20 @@ def continue_level6_spine(
     run.success = level6_rod_success(snap)
     if not run.success:
         run.failed_stage = "level6_rod_0x75"
+        return
+    if through == "level6-rod":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_exit75_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_exit75_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_exit_0x75"
