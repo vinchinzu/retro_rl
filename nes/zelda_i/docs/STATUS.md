@@ -51,6 +51,8 @@
 | Power-on → L4 bomb-UP `0x11` | **2/2 continuous Survival**; east-column UP to y=93 then LEFT (v1 y=109 LEFT is a 16px pillar); bomb-UP stand `(120,105)`; 122,507f hop 435f; leftover `(120,189)` play `0x11`; map=`0x0A`; keys=4 bombs 16→15 TF=`0x07` ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_bomb11_continuous_v2.json` / `_final.png` |
 | Power-on → L4 0x01 natural key | **2/2 continuous Survival**; v1 hold-UP leftover `(120,93)` is north wall; bomb-UP `(120,105)` 377f then pickup `(120,141)` 819f; 123,703f hop 1196f; leftover `(120,133)` play `0x01`; keys 4→5 bombs 15→14 map=`0x0A` TF=`0x07` ladder set; deaths 0; progression/capacity writes 0; no state load | `l4_key01_continuous_v3.json` / `_final.png` |
 | Power-on → L4 clear `0x12` | **2/2 continuous Survival**; DOWN 0x01→0x11 then bomb-RIGHT `(192,141)`; Vire clear ignore `0x68`; 124,993f hop 1290f; leftover `(128,117)` play `0x12`; keys=5 bombs 14→13 TF=`0x07`; deaths 0; progression/capacity writes 0; no state load | `l4_clear12_continuous_v1.json` / `_final.png` |
+| Power-on → L4 enter Gleeok `0x13` | **2/2 continuous Survival**; x-first to push stand `(112,144)` (v1 y-first leftover `(128,141)` DOWN solid); hold4 `PATH_12_TO_GLEEOK`; 125,407f hop 414f; leftover `(32,141)` play `0x13`; keys=5 bombs=13 TF=`0x07`; deaths 0; progression/capacity writes 0; no state load | `l4_gleeok13_continuous_v2.json` / `_final.png` |
+| Power-on → L4 TF `0x08` | **2/2 continuous Survival**; south-stand Gleeok 3564f; TF `0x07→0x0F`; mode 18 room `0x03` `(120,149)`; 128,971f; keys=5 bombs=13; HC not mid-room; deaths 0; progression/capacity writes 0; no state load | `l4_tf_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -69,8 +71,9 @@ leftover `(16,141)` play `0x21`). Map pickup is on the tape
 is on the tape (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`).
 0x01 natural key is on the tape (`l4_key01_continuous_v3` 2/2, leftover
 `(120,133)`, keys 4→5). 0x12 Vire clear is on the tape
-(`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`). Do not close
-`.6` until TF `0x08`.
+(`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`). Gleeok enter and
+L4 TF `0x08` are on the tape (`l4_tf_continuous_v1` 2/2, TF=`0x0F`).
+`.6` closed. HC was not mid-room.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
@@ -334,12 +337,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level4-clear12` is the last green
-   gate (`0x12` `(128,117)`, v1 2/2). Next is 0x12 push `0x68` LEFT then
-   Gleeok approach. Isolated BFS is still not a spine path. See
+1. **Active Survival tip:** `--through level4` is green (`0x03` mode 18,
+   TF `0x0F`, v1 2/2). `rr-4d53.6` closed. Next is L4 exit → L5 TF
+   (`rr-4d53.7`). Isolated BFS is still not a spine path. See
    `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
    seamed compose. Bomb/key count pokes are documented Survival shortcuts,
-   not Clean. Do not close `.6` until TF `0x08`.
+   not Clean. HC in 0x13 was not mid-room on this tape.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
