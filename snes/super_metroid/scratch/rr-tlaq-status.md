@@ -6,13 +6,13 @@
 
 | W | Park | Spend | HP | Health | Result |
 |---|------|-------|----|-------:|--------|
-| 1–6 | (48, 96) / W1 fig-8 | (37, 148) p21 | 2500→**700** | 54 | GREEN **300** ×6 |
-| 7 | skip (53, 82) then `$D82A` | — | 700 | 54→34→**14** | **halt** (no jump) |
+| 1–4 | (48, 96) / W1 fig-8 | (37, 148) p21 | 2500→1300 | 59 | GREEN **300** ×4 |
+| 5 wait | `$D5E7` then `$D82A` pose 3 | — | 1300 | 59→39→**19** | **halt** (no jump) |
 
-Rain close: x≤56 **and y 88–104**. (56, 113) skipped. Abort at health≤20.
-No Super. No 16k.
+Jump only rain (48, 96). Skip (53, 82)/(83, 64) with no A. `$D82A` still
+drops 39→19. No Super. No 16k.
 
 ## Next
 
-54 HP cannot reach the next (48, 96) through (53, 82) + `$D82A`. Dual-green
-kill still needs HP 0 + boss bit ×2 → `scratch/post_phantoon_poweron.state`.
+59 HP cannot tank `$D82A` to the next (48, 96). Dual-green kill still needs
+HP 0 + boss bit ×2 → `scratch/post_phantoon_poweron.state`.
