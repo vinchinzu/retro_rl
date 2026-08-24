@@ -14,7 +14,12 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon_ids import INVULN_MOVER_OBJECT_TYPE
 from zelda_i.level6_dungeon import LEVEL6_MAP_BIT
-from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM, LEVEL6_MAP_ROOM
+from zelda_i.level6_overworld import (
+    LEVEL6,
+    LEVEL6_GLEEOK_ROOM,
+    LEVEL6_MAP_ROOM,
+    LEVEL6_ROD_WIZZ_ROOM,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
@@ -26,12 +31,17 @@ __all__ = [
     "MAP_19_GOAL",
     "MAP_19_MAX_FRAMES",
     "MAP_19_STANDS",
+    "NORTH_09_COLUMN_X",
+    "NORTH_09_DOOR_X",
+    "ROOM09_MAX_FRAMES",
     "SETTLE_19_IDLE_FRAMES",
     "SETTLE_19_MAX_FRAMES",
     "Level6Map19Controller",
+    "Level6Room09Controller",
     "Level6Room19Controller",
     "Level6Settle19Controller",
     "make_map19_controller",
+    "make_room09_controller",
     "make_room19_controller",
     "make_settle_19_controller",
 ]
@@ -351,7 +361,8 @@ def make_settle_19_controller() -> Level6Settle19Controller:
 # v3 idle (120,141) 120f then column through the sprite; leftover (120,179) 0x0A.
 # v4 occupancy y-first to (136,141) freeze-miss boxed leftover then (176,93).
 # v5 occupancy x-first wandered 244 misses; never idled (136,141); leftover (112,189).
-# Next: axis LEFT to x=136 (v2 leftover LEFT is free) then idle (136,141).
+# v6 axis LEFT to x=136 then idle (136,141): leftover (136,137) map still 0x0A.
+# No persistent non-enemy object slot (0x2b + dead 0x14 only). Skip Map.
 MAP_19_GOAL = (136, 141)
 MAP_19_STANDS: tuple[tuple[int, int], ...] = (MAP_19_GOAL,)
 MAP_19_STAND_TOL = 4
@@ -380,6 +391,7 @@ class Level6Map19Controller:
     ) -> FrameAction:
         item_id = int(snap.room_item_id)
         map_bits = int(snap.map)
+        objects = _live_census_objects(snap)
         self.leftover = {
             "x": int(snap.link_x),
             "y": int(snap.link_y),
@@ -388,6 +400,9 @@ class Level6Map19Controller:
             "map": map_bits,
             "room_item_id": item_id,
             "tile": int(snap.colliding_tile),
+            "keys": int(snap.keys),
+            "bombs": int(snap.bombs),
+            "triforce": int(snap.triforce),
         }
         changed = bool(self.samples) and (
             self.samples[-1]["map"] != map_bits
@@ -410,6 +425,7 @@ class Level6Map19Controller:
                     "tile": int(snap.colliding_tile),
                     "goal": self.goal,
                     "misses": self.walker.misses,
+                    "objects": objects,
                 }
             )
         return action
@@ -502,3 +518,202 @@ class Level6Map19Controller:
 def make_map19_controller() -> Level6Map19Controller:
     """Axis onto the 0x19 Map cell. Do not grant ADDR_MAP."""
     return Level6Map19Controller()
+
+
+# Map is optional. PNG north door is locked; walkthrough KEY-UP then wizzrobes.
+# Occupancy from leftover (176,158) boxed (v1/v4); axis LEFT is free (v6).
+# v1 KEY-UP: LEFT to x=120 then occupancy UP freeze-missed y=157→138, wandered
+# south, spent the key at (120,189) (cur_opened_doors DOWN=4). North still locked.
+# v2: axis LEFT to v6-free x=136, occupancy to the north door, stand at y>=181.
+NORTH_09_COLUMN_X = 136
+NORTH_09_DOOR_X = 120
+NORTH_09_DOOR_Y = 93
+NORTH_09_BAND_Y = 109
+NORTH_09_SOUTH_Y = 181
+NORTH_09_X_TOL = 4
+ROOM09_MAX_FRAMES = 4000
+ROOM09_SAMPLE_PERIOD = 12
+
+
+@dataclass
+class Level6Room09Controller:
+    """Axis LEFT out of the east pocket, occupancy KEY-UP. Skip Map."""
+
+    spec_id: str = "level6_room_0x09"
+    room: int = LEVEL6_MAP_ROOM
+    dest: int = LEVEL6_ROD_WIZZ_ROOM
+    goal: tuple[int, int] = (NORTH_09_DOOR_X, NORTH_09_DOOR_Y)
+    max_frames: int = ROOM09_MAX_FRAMES
+    frames: int = 0
+    success: bool = False
+    failed: bool = False
+    keys_at_start: int | None = None
+    notes: list[str] = field(default_factory=list)
+    samples: list[dict[str, Any]] = field(default_factory=list)
+    leftover: dict[str, int] = field(default_factory=dict)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+
+    def _emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        objects = _live_census_objects(snap)
+        self.leftover = {
+            "x": int(snap.link_x),
+            "y": int(snap.link_y),
+            "mode": int(snap.mode),
+            "screen": int(snap.screen),
+            "keys": int(snap.keys),
+            "bombs": int(snap.bombs),
+            "map": int(snap.map),
+            "triforce": int(snap.triforce),
+            "cur_opened_doors": int(snap.cur_opened_doors),
+            "open_doorway_mask": int(snap.open_doorway_mask),
+            "tile": int(snap.colliding_tile),
+        }
+        if force or self.frames <= 2 or self.frames % ROOM09_SAMPLE_PERIOD == 0:
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "reason": action.reason,
+                    "screen": int(snap.screen),
+                    "keys": int(snap.keys),
+                    "map": int(snap.map),
+                    "tile": int(snap.colliding_tile),
+                    "misses": self.walker.misses,
+                    "objects": objects,
+                }
+            )
+        return action
+
+    def _mark_success(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
+        self.success = True
+        self.notes.append(note)
+        self.walker.last_dir = None
+        return self._emit(
+            snap, FrameAction(nes_idle_action(), f"arrived_{snap.screen:02x}"),
+            force=True,
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.keys_at_start is None:
+            self.keys_at_start = int(snap.keys)
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed or self.frames >= self.max_frames:
+            self.failed = True
+            if "timeout" not in self.notes:
+                self.notes.append(
+                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+                    f"_keys={snap.keys}"
+                )
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "timeout"), force=True
+            )
+        if snap.mode == 17:
+            self.failed = True
+            self.notes.append("link_death")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "link_death"), force=True
+            )
+        if (
+            snap.level == LEVEL6
+            and snap.screen != self.room
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            return self._mark_success(
+                snap,
+                f"arrived_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+                f"_keys={self.keys_at_start}->{snap.keys}",
+            )
+        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
+            self.walker.last_dir = None
+            return FrameAction(nes_action("UP"), "north_scroll")
+        if snap.mode != PLAY_MODE:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.level != LEVEL6:
+            self.failed = True
+            self.notes.append(f"left_level_{snap.level}")
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "left_level"), force=True
+            )
+        if snap.screen != self.room:
+            self.walker.last_dir = None
+            return FrameAction(nes_action("UP"), "north_settle")
+
+        xy = (int(snap.link_x), int(snap.link_y))
+        prev_dir = self.walker.last_dir
+        misses_before = self.walker.misses
+        self.walker.observe(xy)
+        if self.walker.misses > misses_before and (
+            self.walker.misses <= 8 or self.frames % 60 == 0
+        ):
+            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
+
+        # East pocket occupancy is unrecoverable. Axis LEFT to v6-free x=136.
+        # v1 LEFT to x=120 then UP freeze-missed and occupancy spent the south key.
+        if xy[0] > NORTH_09_COLUMN_X + NORTH_09_X_TOL:
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_action("LEFT"), "north_column")
+            )
+        if xy[1] >= NORTH_09_SOUTH_Y:
+            if self.frames <= 8 or self.frames % 60 == 0:
+                self.notes.append(f"south_f{self.frames}_{xy[0]}_{xy[1]}")
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "north_south_halt")
+            )
+        if snap.link_y <= NORTH_09_BAND_Y:
+            self.walker.last_dir = None
+            if abs(snap.link_x - NORTH_09_DOOR_X) > NORTH_09_X_TOL:
+                btn = "LEFT" if snap.link_x > NORTH_09_DOOR_X else "RIGHT"
+                return self._emit(
+                    snap, FrameAction(nes_action(btn), "north_align")
+                )
+            return self._emit(snap, FrameAction(nes_action("UP"), "north_push"))
+
+        dest = self.goal
+        if dest != self.walker.goal:
+            self.walker.path = None
+            self.walker.goal = dest
+        direction = self.walker.next_dir(xy, dest)
+        if direction is None:
+            if self.frames <= 8 or self.frames % 60 == 0:
+                self.notes.append(f"stand_f{self.frames}_{xy[0]}_{xy[1]}")
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), "north_stand")
+            )
+        return self._emit(
+            snap, FrameAction(nes_action(direction), "north_path")
+        )
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "samples": list(self.samples),
+            "policy": (
+                "axis LEFT to x=136, occupancy KEY-UP y<=109; halt y>=181"
+            ),
+            "leftover": dict(self.leftover),
+            "misses": self.walker.misses,
+            "blocked": len(self.walker.grid.blocked),
+            "keys_at_start": self.keys_at_start,
+            "spec_id": self.spec_id,
+            "room": self.room,
+            "dest": self.dest,
+            "goal": self.goal,
+        }
+
+
+def make_room09_controller() -> Level6Room09Controller:
+    """Occupancy KEY-UP out of 0x19. Skip Map. Do not poke the door."""
+    return Level6Room09Controller()
