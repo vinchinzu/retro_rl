@@ -17,25 +17,32 @@ from super_metroid.progression.stages.kraid import (
 from super_metroid.progression.types import DoorEdge, ProgressCondition, ProgressionMilestone, RoomNode
 from super_metroid.ram import BOMBS_MASK, HI_JUMP_MASK, MORPH_BALL_MASK, VARIA_MASK
 from super_metroid.routes.kpdr.room_ids import (
+    ROOM_ALPHA_PB,
     ROOM_BAT_CAVE,
     ROOM_BUBBLE,
     ROOM_BUSINESS,
     ROOM_CATHEDRAL,
     ROOM_CATHEDRAL_ENTRANCE,
+    ROOM_CATERPILLAR,
+    ROOM_CRATERIA_KIHUNTER,
     ROOM_DOUBLE_CHAMBER,
     ROOM_FROG_SAVE,
     ROOM_FROG_SPEEDWAY,
+    ROOM_HELLWAY,
     ROOM_ICE,
     ROOM_ICE_ACID,
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
     ROOM_ICE_TUTORIAL,
+    ROOM_MOAT,
+    ROOM_RED_BRINSTAR_ELEVATOR,
     ROOM_RISING_TIDE,
     ROOM_SINGLE_CHAMBER,
     ROOM_SPEED,
     ROOM_SPEED_HALL,
     ROOM_UPPER_NORFAIR_FARM,
     ROOM_WAVE,
+    ROOM_WEST_OCEAN,
 )
 from super_metroid.routes.kpdr.spine import continuous_edges_for_tips
 
@@ -70,6 +77,15 @@ ROOMS = _VARIA_ROOMS + (
     RoomNode(ROOM_ICE_TUTORIAL, "Ice Beam Tutorial Room", "Norfair"),
     RoomNode(ROOM_ICE_SNAKE, "Ice Beam Snake Room", "Norfair"),
     RoomNode(ROOM_ICE, "Ice Beam Room", "Norfair"),
+    RoomNode(ROOM_HELLWAY, "Hellway", "Brinstar"),
+    RoomNode(ROOM_CATERPILLAR, "Caterpillar Room", "Brinstar"),
+    RoomNode(ROOM_ALPHA_PB, "Alpha Power Bomb Room", "Brinstar"),
+    RoomNode(
+        ROOM_RED_BRINSTAR_ELEVATOR, "Red Brinstar Elevator Room", "Brinstar"
+    ),
+    RoomNode(ROOM_CRATERIA_KIHUNTER, "Crateria Kihunter Room", "Crateria"),
+    RoomNode(ROOM_MOAT, "The Moat", "Crateria"),
+    RoomNode(ROOM_WEST_OCEAN, "West Ocean", "Crateria"),
 )
 
 # Spine continuous Super+ product edges (business return, frog, bat_cave).
@@ -170,12 +186,32 @@ _BRANCH_EDGES = (
         "kpdr_k4_ice",
         "unverified",
     ),
+    # play_moat_cross from a Moat standing handoff leaves back to Kihunter
+    # for the spark runway (play_leave_moat_to_kihunter). Not a spine hop —
+    # same integrity pattern as Speed-return reverse doors.
+    DoorEdge(
+        "moat_to_kihunter",
+        ROOM_MOAT,
+        ROOM_CRATERIA_KIHUNTER,
+        "left",
+        "left",
+        _K4_SPEED_CAPS,
+        "kpdr_k6_moat",
+        "controller_dev",
+    ),
 )
 
 EDGES = (
     _VARIA_EDGES
     + continuous_edges_for_tips(
-        "business", "frog", "bat_cave", "speed", "wave", "ice"
+        "business",
+        "frog",
+        "bat_cave",
+        "speed",
+        "wave",
+        "ice",
+        "alpha_pb",
+        "moat",
     )
     + _BRANCH_EDGES
 )

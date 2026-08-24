@@ -99,6 +99,48 @@ def test_k4_branch_path_verification_blocks_first_unverified_edge() -> None:
     assert speed["all_continuous"] is True
 
 
+def test_ice_to_moat_path_uses_k5_k6_spine() -> None:
+    """Post-Ice Alpha PB + Moat hops are spine-emitted (compose wiring)."""
+    caps_speed = CAPS | frozenset({"speed_booster"})
+    to_pb = SPEED_GRAPH.shortest_path(0xA890, 0xA3AE, caps_speed)
+    assert to_pb is not None
+    assert [edge.edge_id for edge in to_pb] == [
+        "ice_to_snake",
+        "ice_snake_to_tutorial",
+        "ice_tutorial_to_gate",
+        "ice_gate_to_business",
+        "business_to_warehouse",
+        "warehouse_to_east",
+        "east_to_glass",
+        "glass_to_west",
+        "west_to_below",
+        "below_to_bat",
+        "bat_to_red",
+        "red_to_hellway",
+        "hellway_to_caterpillar",
+        "caterpillar_to_alpha_pb",
+    ]
+    assert all(edge.verification == "continuous" for edge in to_pb)
+    to_ocean = SPEED_GRAPH.shortest_path(0xA3AE, 0x93FE, caps_speed)
+    assert to_ocean is not None
+    assert [edge.edge_id for edge in to_ocean] == [
+        "alpha_pb_to_caterpillar",
+        "caterpillar_to_elevator",
+        "elevator_to_kihunter",
+        "kihunter_to_moat",
+        "moat_cross",
+    ]
+    assert all(edge.verification == "continuous" for edge in to_ocean)
+    # Reverse door used by play_moat_cross Moat standing setup (not a hop split).
+    reverse = SPEED_GRAPH.edge_for(0x95FF, 0x948C)
+    assert reverse is not None
+    assert reverse.edge_id == "moat_to_kihunter"
+    summary = SPEED_GRAPH.path_verification(0xA890, 0x93FE, caps_speed)
+    assert summary["reachable"] is True
+    assert summary["all_continuous"] is True
+    assert summary["blocking"] is None
+
+
 def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
     path = SPEED_GRAPH.shortest_path(0xACB3, 0xAD1B, CAPS)
 

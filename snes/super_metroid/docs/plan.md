@@ -51,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | K5 Alpha PB pure (Ice return + Hellway) | `rr-dbu.8` · residual `tasks/rr-dbu.8-residual.md` |
+| **★ Product next** | Wire `--to ws` over-ocean spark from the power-on Moat leave | `rr-p2bw` · residual `tasks/rr-2r06-residual.md` |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -62,9 +62,11 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 | Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
 
 **Critical path to credits:** Ice dual continuous is **GREEN**
-(`rr-kxge` closed). Next: K5 Alpha PB (`rr-dbu.8` / `rr-av5s`) → Moat
-natural entry → Wrecked Ship → … → ending.
-**Do not STATUS-promote past Ice without dual continuous green.**
+(`rr-kxge` closed). Power-on `--to moat` is scratch dual-green
+(**175526f** ×2 `0x93FE` `(49,1163)` p1, rr-2r06). Next: wire `--to ws`
+(over-ocean spark **627f** ×2 from that leave into `0xCA08`). Planner
+STATUS for `moat` is a follow-on — default CLI stays `ice`.
+**Do not STATUS-promote past Ice without a planner STATUS pass.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
 spore clean; Pass B.3 deep consolidate.
@@ -234,9 +236,9 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 
 ### K5 — Alpha PB
 
-- [ ] Natural Alpha PB `0xA3AE` collect after Ice (not Pink PB)
-- [ ] Continuous tip + integrity dual-run
-- [ ] Graph verification promotion
+- [x] Natural Alpha PB `0xA3AE` collect after Ice (not Pink PB)
+- [x] Scratch dual `--to moat` **175526f** ×2 (rr-2r06; default CLI still `ice`)
+- [ ] Planner STATUS promote `--to moat` / `--to alpha_pb`
 
 ### K6 — Ship / Phantoon / Gravity
 
@@ -252,8 +254,9 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   (practice only; free-place spit bootstrap)
 - [x] West Ocean over-ocean spark → green Super WS `0xCA08` pure
   — `west_ocean_spark.py pure-ws` / `play_west_ocean_over_ocean_spark`
-  (natural Moat handoff ~(49,1163); stutter dual-green; pin
-  `scratch/post_west_ocean_ws_spark.state`; **not** continuous STATUS)
+  (natural Moat handoff ~(49,1163); stutter dual-green from the power-on
+  `--to moat` leave **627f** ×2; pin `scratch/post_moat_poweron_wo_to_ws.state`;
+  **not** continuous STATUS / not `--to ws` yet)
 - [x] Product WS pin + human record setup (`--from ws-entrance` /
   `practice_takes --segment ws-entrance`) for ship free-record
 - [x] Human Gravity path + tail pin Caterpillar `0xA322` items `0x3125`
