@@ -41,8 +41,8 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
-| `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
+| `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x68 |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -109,13 +109,13 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 west 0x78 (`l6_west_continuous_v1` 1/1, 182,415f, play `0x78` `(144,141)`,
-TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity 0, no state load).
-`--through level6-entry` 1/1 `l6_entry_continuous_v2` 179,355f room `0x79`
-`(120,205)`. `--through level6-east-key` 1/1 keys 5→6. `--through level6-west`
-1/1 keys 6→5. 0x1B west is y=141 LEFT after south-around the x≈72 rock
-(not north-edge LEFT). Compass 0x68 / Rod / Gohma / TF `0x20` residual.
-Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
+L6 compass room 0x68 (`l6_compass_continuous_v1` 1/1, 182,636f hop 221f,
+play `0x68` `(120,205)`, TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity
+0, no state load). `--through level6-west` 1/1 `l6_west_continuous_v1` 182,415f
+play `0x78` `(144,141)` keys 6→5. 0x1B west is y=141 LEFT after south-around
+the x≈72 rock (not north-edge LEFT). Occupancy UP 0x78→0x68 (8 miss-blocks at
+x=144). Compass pickup / Rod / Gohma / TF `0x20` residual. Do not grant
+Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

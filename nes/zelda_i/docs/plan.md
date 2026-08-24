@@ -45,7 +45,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | **closed** — `l4_tf_continuous_v1` 2/2 TF `0x0F` mode 18 room `0x03`; HC not mid-room |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | **closed** — `l5_tf_continuous_v1` 1/1 TF `0x1F` mode 18 room `0x14` |
 | `rr-4d53.4` | one session power-on → L5 TF | **closed** — same tape; `validate_l5_endpoint` passes |
-| `rr-g3c1` | L5 fanfare settle → L6 entry | **closed** — `l6_entry_continuous_v2` 1/1 play `0x79` `(120,205)` 179,355f TF=`0x1F`; east key + west 0x78 also on tape (`l6_west_continuous_v1` 182,415f). 0x1B west is y=141 LEFT after south-around x≈72, not `↓ ←×7` free / north-edge LEFT. |
+| `rr-g3c1` | L5 fanfare settle → L6 entry | **closed** — `l6_entry_continuous_v2` 1/1 play `0x79` `(120,205)` 179,355f TF=`0x1F`; east key + west 0x78 + compass enter 0x68 on tape (`l6_compass_continuous_v1` 182,636f). 0x1B west is y=141 LEFT after south-around x≈72, not `↓ ←×7` free / north-edge LEFT. |
 
 Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
 Isolated `Level3*` checkpoints cannot close these beads.
@@ -389,9 +389,10 @@ RAM is cellar 0x04),
 `(120,205)`, 179,355f hop 4,884f). `--through level6-east-key` **1/1**
 `l6_east_key_continuous_v1` keys 5→6. `--through level6-west` **1/1**
 `l6_west_continuous_v1` play `0x78` `(144,141)` keys 6→5, 182,415f.
-0x1B west is y=141 LEFT after south-around the x≈72 rock. Isolated BFS
-banned. Compass 0x68 / Rod / Gohma / TF `0x20` residual. Do not grant
-Whistle. Do not poke Rod/doors/keys.
+`--through level6-compass` **1/1** `l6_compass_continuous_v1` play `0x68`
+`(120,205)` 182,636f hop 221f. 0x1B west is y=141 LEFT after south-around
+the x≈72 rock. Isolated BFS banned. Compass pickup / Rod / Gohma / TF `0x20`
+residual. Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -409,12 +410,14 @@ Whistle. Do not poke Rod/doors/keys.
 | entry v2 | `0x79` `(120,205)` **play** | SE blue 0x14 x=160 / 0x23 x=208; hop 4,884f 1/1 |
 | east v1 | `0x7a` `(120,141)` **keys 5→6** | wall-first RIGHT; hop 1,844f 1/1 |
 | west v1 | `0x78` `(144,141)` **cleared** | key-LEFT; hop 1,216f 1/1 |
+| compass v1 | `0x68` `(120,205)` **play** | occupancy UP; 8 miss-blocks x=144; hop 221f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
 `recordings/l6_east_key_continuous_v1_final.png`,
-`recordings/l6_west_continuous_v1_final.png`. Next: 0x78 UP → 0x68 compass
-is residual (ignore 0x68 this pass). Do not close a TF-`0x20` bead.
+`recordings/l6_west_continuous_v1_final.png`,
+`recordings/l6_compass_continuous_v1_final.png`. Next: 0x68 Zol clear +
+compass pickup residual (ignore 0x2b/0x68). Do not close a TF-`0x20` bead.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|

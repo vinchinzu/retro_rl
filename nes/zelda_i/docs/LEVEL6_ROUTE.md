@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through west wizzrobes 0x78 (not Clean STATUS)
+Status: **assisted pure** through compass room 0x68 enter (not Clean STATUS)
 
 Planning sources:
 
@@ -58,6 +58,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
                     RIGHT free → 0x79
 
 0x68 (5× 0x13 Zols, RoomItemId 0x16 compass) ──UP──► 0x58
+                    leftover spine `(120,205)` south mouth; north door open
 0x58 (8× Keese 0x1b; key drop live) ──UP──► 0x48
 0x48 (blade traps 0x49 — run through) ──UP──► 0x38
 0x38 (hard multi-wizzrobe / Like-Like / Bubble) ──UP──► 0x28
@@ -70,7 +71,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x7a** | East of entry | **5× type `0x24`** | **`0x19` key** | assisted pure: keys 0→1 |
 | **0x6a** | N of 0x7a | Old Man `0x4d` + fires `0x40` | `0x03` | **key waste** — tip only |
 | **0x78** | West of entry | **5× type `0x24`** | `0x03` | key-LEFT from 0x79; clear → UP |
-| **0x68** | N of 0x78 | **5× type `0x13`** (Zol) | **`0x16` compass** | live recon |
+| **0x68** | N of 0x78 | **5× type `0x13`** (Zol) | **`0x16` compass** | spine enter 1/1; pickup residual |
 | **0x58** | N of 0x68 | **8× Keese `0x1b`** | key drop live | live recon |
 | **0x48** | N of 0x58 | blade traps `0x49` | — | run UP (no clear) |
 | **0x38** | N of 0x48 | multi wizzrobe + Like-Like + Bubble | — | hard; residual clear |
@@ -162,6 +163,22 @@ uv run python nes/zelda_i/scripts/run_level6_east_key.py --from-state L6Room_7a 
 uv run python nes/zelda_i/scripts/run_level6_west_wizzrobes.py --infinite-life --trials 2 --save-state
 ```
 
+### Compass room enter (0x78 leftover → 0x68) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x78` `(144,141)` after west clear |
+| Path | OccupancyWalker to north door `(120,93)`; UP on band y≤109 |
+| Stop | `--through level6-compass` play-ready `0x68` |
+| Leftover | `(120,205)` south mouth; 5× Zol `0x13` live; north door open |
+| Controller | `level6_path.Level6North68Controller` |
+| Track | **assisted Survival** |
+| Notes | 8 miss-blocks UP at x=144 (statue column); no door poke |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-compass --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -222,8 +239,9 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_entry_continuous_v2.json` — power-on → L6 `0x79` 1/1
 - `recordings/l6_east_key_continuous_v1.json` — 0x7a keys 5→6 1/1
 - `recordings/l6_west_continuous_v1.json` — 0x78 clear 1/1
+- `recordings/l6_compass_continuous_v1.json` — 0x68 enter 1/1 occupancy UP 221f
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-compass --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -233,7 +251,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 
 Not claimed live as pure segments:
 
-1. **0x68 compass** pickup (`ADDR_COMPASS`) after Zol clear
+1. **0x68 compass** pickup (`ADDR_COMPASS`) after Zol clear — room enter live; inventory residual
 2. **0x58** Keese clear + key inventory
 3. **0x48** blade-trap run (no clear)
 4. **0x38** full clear (hard) + **left block push**

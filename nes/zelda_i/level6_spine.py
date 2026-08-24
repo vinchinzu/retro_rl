@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through west wizzrobes 0x78.
+"""Survival-spine L6 from L5 TF settle through compass room 0x68.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / 0x68. Compass 0x68 and Rod/Gohma remain residual.
+Ignore object types 0x2b / 0x68. Compass pickup / Rod / Gohma remain residual.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from zelda_i.level6_dungeon import (
 )
 from zelda_i.level6_overworld import (
     LEVEL6,
+    LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
@@ -26,6 +27,10 @@ from zelda_i.level6_overworld import (
     Level6WestKeyDoorController,
     PostL5TriforceSettleController,
     make_post_l5_level6_controller,
+)
+from zelda_i.level6_path import (
+    NORTH_68_MAX_FRAMES,
+    Level6North68Controller,
 )
 from zelda_i.ram import (
     ADDR_WHISTLE,
@@ -38,8 +43,11 @@ from zelda_i.ram import (
 __all__ = [
     "L6_STOPS",
     "L6_THROUGH",
+    "Level6North68Controller",
     "Level6Return79Controller",
     "continue_level6_spine",
+    "level6_compass_stages",
+    "level6_compass_success",
     "level6_east_key_stages",
     "level6_east_key_success",
     "level6_entry_stages",
@@ -52,11 +60,13 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-entry",
     "level6-east-key",
     "level6-west",
+    "level6-compass",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
     "level6-east-key": "level6_east_key_0x7a",
     "level6-west": "level6_west_0x78",
+    "level6-compass": "level6_compass_0x68",
 }
 
 
@@ -186,6 +196,25 @@ def level6_west_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_compass_stages():
+    """0x78 leftover → occupancy UP into compass room 0x68. No fight."""
+    north = Level6North68Controller()
+    return (
+        ("level6_north_0x68", north, NORTH_68_MAX_FRAMES),
+    )
+
+
+def level6_compass_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x68. Compass pickup / Zol clear residual."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_COMPASS_ROOM
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -246,3 +275,20 @@ def continue_level6_spine(
     run.success = level6_west_success(snap)
     if not run.success:
         run.failed_stage = "level6_west_0x78"
+        return
+    if through == "level6-west":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_compass_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_compass_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_compass_0x68"

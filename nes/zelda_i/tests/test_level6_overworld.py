@@ -22,9 +22,12 @@ from zelda_i.level6_overworld import (
     make_post_l5_level6_controller,
     post_l5_overworld_ready,
 )
+from zelda_i.level6_path import Level6North68Controller
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
+    level6_compass_stages,
+    level6_compass_success,
     level6_east_key_stages,
     level6_east_key_success,
     level6_entry_stages,
@@ -257,6 +260,48 @@ def test_level6_west_attaches_return_then_key_then_clear() -> None:
     assert run.report()["stop"] == "level6_west_0x78"
     assert "level6-west" in L6_THROUGH
     assert not hasattr(OverworldToLevel6Controller(), "bfs")
+
+
+def test_level6_compass_occupancy_up_from_0x78() -> None:
+    from retro_harness.nes import nes_action
+
+    stages = level6_compass_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x68"]
+    assert isinstance(stages[0][1], Level6North68Controller)
+    assert not hasattr(stages[0][1], "bfs")
+
+    ctl = Level6North68Controller()
+    leftover = read_snapshot(_ram(level=6, screen=0x78, x=144, y=141))
+    act = ctl.step(leftover)
+    assert act.reason == "north78_path"
+    assert list(act.action) in (
+        list(nes_action("LEFT")),
+        list(nes_action("UP")),
+    )
+
+    push = Level6North68Controller()
+    act = push.step(read_snapshot(_ram(level=6, screen=0x78, x=120, y=101)))
+    assert act.reason == "north78_push"
+    assert list(act.action) == list(nes_action("UP"))
+
+    arrive = Level6North68Controller()
+    ram = _ram(level=6, screen=0x68, x=120, y=205)
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_68"
+    assert level6_compass_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x78
+    assert not level6_compass_success(read_snapshot(ram))
+    run = SpineRun(through="level6-compass", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_compass_0x68"
+    assert "level6-compass" in L6_THROUGH
+
+
+def test_level6_compass_fails_closed_on_east_return() -> None:
+    ctl = Level6North68Controller()
+    act = ctl.step(read_snapshot(_ram(level=6, screen=0x79, x=32, y=141)))
+    assert ctl.failed
+    assert act.reason == "left_0x78"
 
 
 def test_level6_east_key_live_enemies_block_stop() -> None:

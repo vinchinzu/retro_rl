@@ -19,6 +19,7 @@ from zelda_i.level6_dungeon import (
 from zelda_i.level6_overworld import (
     ENTRY_LEFT_DOOR_Y,
     ENTRY_LEFT_WALL_Y,
+    LEVEL6_COMPASS_ROOM,
     LEVEL6_OLD_MAN_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
     Level6WestKeyDoorController,
@@ -67,6 +68,7 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_L6_EAST_KEY == 0x7A
     assert ROOM_L6_WEST_WIZZROBE == 0x78
     assert LEVEL6_WEST_WIZZROBE_ROOM == 0x78
+    assert LEVEL6_COMPASS_ROOM == 0x68
     assert LEVEL6_OLD_MAN_ROOM == 0x6A
     assert ROOM_79_SPEC.room_id == 0x79
     assert ROOM_7A_SPEC.room_id == 0x7A
