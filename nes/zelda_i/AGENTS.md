@@ -42,7 +42,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok → 0x19 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level*_boss_*` | Path controllers + timing knobs |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py` (0x19 east/Map/skip-north), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -104,7 +104,12 @@ from damage heatmaps. Do not block tip progress on combat polish.
   Like-Like, not a wizzrobe). Map sprite at south-center `(120,181)` idle
   is **not** `ADDR_MAP|0x20`. Compass analog idle `(120,141)` is not
   either. Occupancy from leftover `(176,158)` freeze-miss boxes (v1/v4)
-  or wanders (v5 244 misses); leftover LEFT is free.
+  or wanders (v5 244 misses); leftover LEFT is free. Axis idle `(136,137)`
+  (v6) is not the bit; no persistent item object slot (0x2b + dead 0x14).
+  Skip Map. x=120 UP from y=157 freeze-misses (v1 KEY-UP); occupancy then
+  spent the key on the **south** door `(120,189)` (`cur_opened_doors` 4).
+  North lock remains. Next axis LEFT to x=136 (v6-free) then occupancy
+  north; halt y>=181.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -132,10 +137,11 @@ Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
 L6 cleared `0x19` (`l6_clear19_continuous_v1` 1/1, 208,845f hop 4,213f
 leftover `(176,158)`, keys=5, bombs=8, TF=`0x1F`, map=`0x0A`,
-deaths/progression/capacity 0, no state load). Census 2× Zol `0x13` +
-2× Like-Like `0x17`; RoomItemId `0x17` Map on floor not collected
-(map19 v2 on sprite `(120,181)`; v3 idle `(120,141)`; occupancy v4/v5
-boxed/wandered). Next axis LEFT x=136 then idle `(136,141)`. North hole
+deaths/progression/capacity 0, no state load). Map pickup stays red
+(v6 idle `(136,137)` 214,845f, no item slot). Skip-Map KEY-UP
+`--through level6-room09` v1 leftover `(32,189)` keys 5→4 on the
+**south** door; north still locked. Next `l6_room09_continuous_v2`:
+axis LEFT x=136 then occupancy north, halt y>=181. North hole
 decorative. Rod / Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm

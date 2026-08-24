@@ -423,8 +423,11 @@ No `0x46`; `0x56` then gone; `cur_opened_doors` 0→5; `open_doorway_mask`
 `0x17`; RoomItemId `0x17`. `--through level6-map19` **red** (v1 boxed;
 v2 on sprite `(120,181)`; v3 idle `(120,141)` compass analog; v4
 occupancy y-first boxed leftover `(176,93)`; v5 occupancy x-first
-wandered `(112,189)` 244 misses, never idled `(136,141)`; bit still
-`0x0A`). Do not grant Map/Rod. Do not poke doors/keys.
+wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
+`(136,137)` 214,845f, no item slot, bit still `0x0A`). Map skipped.
+`--through level6-room09` **red** v1 leftover `(32,189)` keys 5→4 on
+the south door; north lock remains. Do not grant Map/Rod. Do not poke
+doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -479,6 +482,8 @@ wandered `(112,189)` 244 misses, never idled `(136,141)`; bit still
 | map19 v3 | `0x19` `(120,179)` 6000f | idle `(120,141)` compass analog is `ADDR_MAP|0x20` |
 | map19 v4 | `0x19` `(176,93)` 6000f | occupancy y-first to (136,141) from leftover |
 | map19 v5 | `0x19` `(112,189)` 6000f | occupancy x-first LEFT then idle (136,141) |
+| map19 v6 | `0x19` `(136,137)` 6000f | axis idle (136,141) is `ADDR_MAP|0x20` |
+| room09 v1 | `0x19` `(32,189)` 4000f keys 5→4 | occupancy UP from x=120 y=141 is a north lane |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -500,16 +505,20 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_stairs18_continuous_v{1,2,3,4,5}_final.png`,
 `recordings/l6_room19_continuous_v1_final.png`,
 `recordings/l6_clear19_continuous_v1_final.png`,
-`recordings/l6_map19_continuous_v{1,2,3,4,5}_final.png`. Dest `0x19` clear is
+`recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
+`recordings/l6_room09_continuous_v1_final.png`. Dest `0x19` clear is
 **on the tape** (`l6_clear19_continuous_v1` 1/1). Map sprite on floor;
-`ADDR_MAP` still `0x0A`. v2 idle on `(120,181)` and v3 idle `(120,141)`
-did not set bit 0x20. Occupancy from leftover boxed (v1/v4) or wandered
-(v5). Next: axis LEFT to x=136 then idle `(136,141)`. Do not grant
+`ADDR_MAP` still `0x0A`. v6 axis idle `(136,137)` 425 idle samples, no
+persistent non-enemy object slot (0x2b + dead 0x14 only). Map skipped.
+room09 v1: axis LEFT to x=120 then occupancy UP freeze-missed
+y=157→138 (112 misses), wandered south, spent the key at `(120,189)`
+(`cur_opened_doors` DOWN=4, mask 7). North lock remains. Next: axis LEFT
+to x=136 (v6-free) then occupancy north; halt y>=181. Do not grant
 Map/Rod. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-map19 --no-video --trials 1 --tag l6_map19_continuous_v6
+  --through level6-room09 --no-video --trials 1 --tag l6_room09_continuous_v2
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live

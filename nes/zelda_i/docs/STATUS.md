@@ -371,14 +371,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
    `(176,158)`, TF `0x1F`, v1 1/1). Enter `0x19` is also green
    (`l6_room19_continuous_v1`). Live 2× Zol + 2× Like-Like; RoomItemId
    `0x17` Map on floor; `ADDR_MAP` still `0x0A`. `--through level6-map19`
-   red (v1 occupancy boxed; v2 on sprite `(120,181)`; v3 idle
-   `(120,141)` compass analog; v4 occupancy y-first boxed leftover;
-   v5 occupancy x-first wandered, never idled `(136,141)`). Next is
-   axis LEFT to x=136 then idle `(136,141)` (`l6_map19_continuous_v6`).
-   `--through level6-stairs18` stays red. `rr-tne2` in progress. Do not
-   grant Map/Rod. Isolated BFS is still not a spine path. See
-   `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
-   seamed compose. Bomb/key count pokes are documented Survival
-   shortcuts, not Clean.
+   red through v6 (axis idle `(136,137)`, no item object slot). Map is
+   optional; `--through level6-room09` v1 leftover `(32,189)` keys 5→4
+   on the south door (x=120 UP freeze-miss). Next axis LEFT to x=136
+   then occupancy north (`l6_room09_continuous_v2`). `--through
+   level6-stairs18` stays red. `rr-tne2` in progress. Do not grant
+   Map/Rod. Isolated BFS is still not a spine path. See `docs/plan.md`.
+   Isolated `Level3*` pins do not close spine beads. No seamed compose.
+   Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

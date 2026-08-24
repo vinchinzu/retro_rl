@@ -58,9 +58,11 @@ from zelda_i.level6_gleeok18 import (
 )
 from zelda_i.level6_room19 import (
     MAP_19_MAX_FRAMES,
+    ROOM09_MAX_FRAMES,
     ROOM19_MAX_FRAMES,
     SETTLE_19_MAX_FRAMES,
     make_map19_controller,
+    make_room09_controller,
     make_room19_controller,
     make_settle_19_controller,
 )
@@ -117,6 +119,8 @@ __all__ = [
     "level6_clear19_success",
     "level6_map19_stages",
     "level6_map19_success",
+    "level6_room09_stages",
+    "level6_room09_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -156,6 +160,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-room19",
     "level6-clear19",
     "level6-map19",
+    "level6-room09",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -178,6 +183,7 @@ L6_STOPS: dict[str, str] = {
     "level6-room19": "level6_room_0x19",
     "level6-clear19": "level6_clear_0x19",
     "level6-map19": "level6_map_0x19",
+    "level6-room09": "level6_room_0x09",
 }
 
 
@@ -648,6 +654,25 @@ def level6_map19_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_room09_stages():
+    """0x19 leftover → skip Map, occupancy KEY-UP. Do not poke the door."""
+    north = make_room09_controller()
+    return (
+        ("level6_room_0x09", north, ROOM09_MAX_FRAMES),
+    )
+
+
+def level6_room09_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready dest north of 0x19. Map optional. Do not require 0x09."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+        and snap.screen != LEVEL6_MAP_ROOM
+        and snap.triforce == 0x1F
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -983,16 +1008,32 @@ def continue_level6_spine(
     if through == "level6-clear19":
         return
 
+    if through == "level6-map19":
+        if not run_stages(
+            env,
+            run,
+            level6_map19_stages(),
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+        ):
+            return
+        snap = read_snapshot(env.get_ram())
+        run.success = level6_map19_success(snap)
+        if not run.success:
+            run.failed_stage = "level6_map_0x19"
+        return
+
     if not run_stages(
         env,
         run,
-        level6_map19_stages(),
+        level6_room09_stages(),
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
     ):
         return
     snap = read_snapshot(env.get_ram())
-    run.success = level6_map19_success(snap)
+    run.success = level6_room09_success(snap)
     if not run.success:
-        run.failed_stage = "level6_map_0x19"
+        run.failed_stage = "level6_room_0x09"
