@@ -86,6 +86,8 @@ from damage heatmaps. Do not block tip progress on combat polish.
   short LEFT/DOWN bursts before the four consecutive UP wraps.
 - L6 0x58 north leftover PNG shutter is **walkable** (clear58 v1 wrong belief;
   occupancy long-UP is free, keys unchanged). 0x48 blade traps: run UP, no clear.
+  0x38 Bubble `0x40` is sword-immune residual (not a clear blocker); ignore
+  invuln `0x2b` / block `0x68`. Left-block push after clear is residual.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -111,11 +113,11 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 hard room 0x38 enter (`l6_room38_continuous_v1` 1/1, 189,268f hop 261f,
-play `0x38` `(120,189)`, keys=5, compass bit `0x20`, TF=`0x1F`, bombs=8,
-deaths/progression/capacity 0, no state load). Occupancy run-UP through 0x48
-traps (no clear). 0x38 full clear / Rod / Gohma / TF `0x20` residual. Do not
-grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
+L6 hard room 0x38 clear (`l6_clear38_continuous_v1` 1/1, 194,755f hop 5,487f,
+play `0x38` `(32,149)`, keys=5, compass bit `0x20`, TF=`0x1F`, bombs=8,
+deaths/progression/capacity 0, no state load). Occupancy-patrol 7 live
+(wizzrobe/Like-Like); Bubble residual. Left-block / Rod / Gohma / TF `0x20`
+residual. Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
