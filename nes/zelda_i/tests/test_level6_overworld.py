@@ -72,6 +72,10 @@ from zelda_i.level6_spine import (
     level6_south09_success,
     level6_south19_stages,
     level6_south19_success,
+    level6_clear29_stages,
+    level6_clear29_success,
+    level6_east29_stages,
+    level6_east29_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1444,6 +1448,111 @@ def test_level6_south19_occupancy_then_down() -> None:
     run = SpineRun(through="level6-south19", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_south_0x19"
     assert "level6-south19" in L6_THROUGH
+
+
+def test_level6_clear29_idles_then_occupancy_patrol() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.dungeon_ids import WIZZROBE_BLUE_OBJECT_TYPE
+    from zelda_i.level6_dungeon import ROOM_29_SPEC
+    from zelda_i.level6_overworld import WIZZROBE_ORANGE_TYPE
+    from zelda_i.level6_room19 import SETTLE_19_IDLE_FRAMES, make_settle_29_controller
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_clear29_stages()
+    assert [name for name, _, _ in stages] == [
+        "level6_settle_0x29",
+        "level6_clear_0x29",
+    ]
+    assert stages[-1][1].spec is ROOM_29_SPEC
+    assert ROOM_29_SPEC.combat.occupancy_patrol
+    assert WIZZROBE_ORANGE_TYPE in ROOM_29_SPEC.enemy_types
+    assert WIZZROBE_BLUE_OBJECT_TYPE in ROOM_29_SPEC.enemy_types
+    assert 0x2B not in ROOM_29_SPEC.enemy_types
+    assert 0x40 not in ROOM_29_SPEC.enemy_types
+    leftover = _ram(level=6, screen=0x29, x=120, y=77)
+    leftover[ADDR_ROD] = 1
+    ctl = make_settle_29_controller()
+    ctl.idle_frames = 2
+    ctl.max_frames = 8
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("DOWN"))
+    act = ctl.step(read_snapshot(leftover))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert SETTLE_19_IDLE_FRAMES == 160
+    ram = _ram(level=6, screen=0x29, x=120, y=77)
+    ram[ADDR_ROD] = 1
+    assert level6_clear29_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_BLUE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear29_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_clear29_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 3] = 0x2B
+    ram[ADDR_OBJ_HP + 3] = 240
+    assert level6_clear29_success(read_snapshot(ram))
+    snap = read_snapshot(ram)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    armed = read_snapshot(ram)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-clear29", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x29"
+    assert "level6-clear29" in L6_THROUGH
+
+
+def test_level6_east29_y_align_then_right() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_east29 import (
+        EAST_DOOR_X,
+        EAST_DOOR_Y,
+        make_east29_controller,
+    )
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_east29_stages()
+    assert [name for name, _, _ in stages] == ["level6_east_0x29"]
+    leftover = _ram(level=6, screen=0x29, x=55, y=133)
+    leftover[ADDR_ROD] = 1
+    ctl = make_east29_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "east_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    door = _ram(level=6, screen=0x29, x=EAST_DOOR_X, y=EAST_DOOR_Y)
+    door[ADDR_ROD] = 1
+    push = make_east29_controller()
+    act = push.step(read_snapshot(door))
+    assert act.reason == "east_push"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    dest = _ram(level=6, screen=0x2A, x=16, y=141)
+    dest[ADDR_ROD] = 1
+    arrive = make_east29_controller()
+    act = arrive.step(read_snapshot(dest))
+    assert arrive.success
+    assert act.reason == "arrived_2a"
+    assert level6_east29_success(read_snapshot(dest))
+    still = _ram(level=6, screen=0x29, x=55, y=133)
+    still[ADDR_ROD] = 1
+    assert not level6_east29_success(read_snapshot(still))
+    snap = read_snapshot(dest)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    dest[ADDR_BOW] = 1
+    dest[ADDR_ARROWS] = 1
+    armed = read_snapshot(dest)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-east29", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_east_0x29"
+    assert "level6-east29" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

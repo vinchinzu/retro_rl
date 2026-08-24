@@ -439,9 +439,11 @@ play `0x09` `(192,141)` rod=1 hop 1,525f, 213,054f. `--through
 level6-south09` **1/1** `l6_south09_continuous_v1` play `0x19`
 `(120,77)` hop 251f, 213,305f. `--through level6-south19` **1/1**
 `l6_south19_continuous_v1` play `0x29` dark `(120,77)` hop 663f,
-213,968f keys 4→3. 0x19 south PNG mouth is KEY. West of 0x19 is
-Gleeok `0x18`, not south. Bow=0 arrows=0. Do not grant Map/Rod/arrows.
-Do not poke.
+213,968f keys 4→3. `--through level6-clear29` **1/1**
+`l6_clear29_continuous_v2` play `0x29` `(55,133)` hop 1,406f, 215,534f
+keys 3→4. Census 3× `0x23` + 2× `0x24` (v1 Vire spec timed out).
+`--through level6-east29` **red** (v1 boxed tile 244; v2 east sealed).
+Bow=0 arrows=0. Do not grant Map/Rod/arrows. Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -532,6 +534,10 @@ Do not poke.
 | exit75 v3 | `0x09` `(192,141)` **play rod=1** hop 1525f | LEFT+DOWN from east column drops; west spit idle+UP |
 | south09 v1 | `0x19` `(120,77)` **play rod=1** hop 251f | occupancy DOWN from leftover `(192,141)` is free (10 misses at x=192; remaining block / east column) |
 | south19 v1 | `0x29` `(120,77)` **play rod=1** hop 663f keys 4→3 | 0x19 south PNG mouth is free (it is KEY); west of 0x19 is Gleeok 0x18 |
+| clear29 v1 | `0x29` `(120,77)` 15000f max_live=0 | walkthrough Vires are type 0x12 (live 3×0x23+2×0x24) |
+| clear29 v2 | `0x29` `(55,133)` **cleared** hop 1406f keys 3→4 | occupancy-patrol 5 wizzrobes; floor key natural |
+| east29 v1 | `0x29` `(56,133)` 4000f tile 244 | leftover DOWN to y=141 is free (4-cardinal boxed) |
+| east29 v2 | `0x29` `(208,141)` 4000f tile 223 | PNG east mouth + kill-clear opens RIGHT (mask 12 = U+D; sealed) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -560,23 +566,26 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14,15}_final.png`,
 `recordings/l6_exit75_continuous_v{1,2,3}_final.png`,
 `recordings/l6_south09_continuous_v1_final.png`,
-`recordings/l6_south19_continuous_v1_final.png`.
+`recordings/l6_south19_continuous_v1_final.png`,
+`recordings/l6_clear29_continuous_v{1,2}_final.png`,
+`recordings/l6_east29_continuous_v{1,2}_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
-South `0x19` **on the tape**: play `0x29` dark `(120,77)` hop 663f
-(`l6_south19_continuous_v1`) keys 4→3. 0x29 Vire clear residual. Bow=0
-arrows=0. Gohma / TF `0x20` — Gohma needs an arrow; do not poke
-`ADDR_ARROWS`. Do not invent Gohma room id. Do not close `rr-tne2`.
+0x29 clear **on the tape**: play `0x29` `(55,133)` hop 1,406f
+(`l6_clear29_continuous_v2`) keys 3→4 census 3×`0x23`+2×`0x24`. East
+PNG mouth **sealed**. Bow=0 arrows=0. Gohma / TF `0x20` — Gohma needs
+an arrow; do not poke `ADDR_ARROWS`. Do not invent Gohma room id. Do
+not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-south19 --no-video --trials 1 --tag l6_south19_continuous_v1
+  --through level6-clear29 --no-video --trials 1 --tag l6_clear29_continuous_v2
 ```
 
-Leftover is play `0x29` dark `(120,77)` rod=1 keys=3 bombs=8 TF=`0x1F`
-map=`0x0A` bow=0 arrows=0. Occupancy KEY-DOWN from 0x19 `(120,77)`
-(PNG mouth spent a key). Dest RAM `0x29`. Vire clear residual; do not
-invent Gohma.
+Leftover is play `0x29` `(55,133)` rod=1 keys=4 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. Census wizzrobes not Vires. East mask 12 =
+U+D (RIGHT sealed). South bit is on; leftover tile 244 boxed 4-cardinal.
+Do not invent Gohma.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.
