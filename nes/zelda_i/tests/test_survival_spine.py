@@ -74,6 +74,8 @@ from zelda_i.survival_spine import (
     level4_exit60_success,
     level4_west31_stages,
     level4_west31_success,
+    level4_keyup20_stages,
+    level4_keyup20_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -97,6 +99,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-stepladder",
         "level4-exit60",
         "level4-west31",
+        "level4-keyup20",
     )
 
 
@@ -404,6 +407,45 @@ def test_level4_west31_attaches_after_exit60() -> None:
     assert level4_west31_success(read_snapshot(ram))
     ram[ADDR_LADDER] = 0
     assert not level4_west31_success(read_snapshot(ram))
+
+
+def test_level4_keyup20_attaches_maze_west_then_key_up() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level4_keyup20 import make_maze_31_west_controller
+
+    stages = level4_keyup20_stages()
+    assert [name for name, _, _ in stages] == [
+        "level4_maze_west_0x30",
+        "level4_key_up_0x20",
+    ]
+    report = stages[0][1].report()
+    assert report["segment"] == "level4_maze_west_0x30"
+    assert "bfs" not in report
+    assert report["waypoints"][0] == [192, 141]
+    run = SpineRun(through="level4-keyup20", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_key_up_0x20"
+
+    ctl = make_maze_31_west_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x31
+    ram[ADDR_LINK_X] = 208
+    ram[ADDR_LINK_Y] = 141
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("LEFT"))
+    ram[ADDR_LINK_X] = 192
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_SCREEN] = 0x30
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    ram[ADDR_SCREEN] = 0x20
+    ram[ADDR_LADDER] = 1
+    assert level4_keyup20_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x30
+    assert not level4_keyup20_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
