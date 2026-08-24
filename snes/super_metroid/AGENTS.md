@@ -21,17 +21,19 @@ Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
 **Verified tip:** continuous power-on → Ice Beam (default `ice`).
 STATUS dual **148,167f** ×2 (2026-08-10). Ceres-successor reverify dual
 **146,937f** ×2 (2026-08-22, scratch `ice_ceres_successor.json` + `_dual.json`;
-STATUS promote `rr-ucl9`). `--to alpha_pb` / `--to moat` are wired (K5+K6
-spine) but **not** STATUS-promoted. Ice-pin compose (`rr-2r06`) is dual-green
-through Skree Boost Room → Red Tower (`bat_to_red` zero-settle **768f** ×2);
-first live-chain RED is still product `red_to_hellway` (RLE walked back to
-Bat). Ice checkpoints from that leave are green through upper_ripper_4
-(clearance-gated double WJ **335f** + standing hops **156f**/**108f** +
-crouch-jumps **141f**/**69f** ×2, tunnel→mid **1210f** ×2, mid→thin
-**2974f** ×2, thin→ur1 **94f** ×2, ur1→ur4 **130f**/**158f**/**59f** ×2,
-chain **5503f**); Hellway is not claimed. Tip
-history lives in STATUS — do not STATUS-promote or rewrite the route from
-this file.
+STATUS promote `rr-ucl9`). `--to moat` power-on dual is scratch-green
+**175526f** ×2 `0x93FE` `(49,1163)` p1 max PB 5 (rr-2r06; Ice prefix
+**146937f**; post-Ice **28589f**). Do **not** STATUS-promote — default CLI
+stays `ice`. Ice-pin compose through West Ocean **28597f** ×2. Over-ocean
+spark from the power-on leave is dual **627f** ×2 `0xCA08` `(57,139)` p1
+(not a continuous tip yet). Product `play_red_to_hellway` is the Ice-pin
+checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
+(keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot
+fire). Successor `hellway_to_caterpillar` **2110f** ×2;
+`caterpillar_to_alpha_pb` **1372f** ×2 (compose hop **1418f**). Mid→thin is
+still the 2974f period WJ. Tape body 6199f remains fallback when the Ice+HJ
+floor seat is absent. Tip history lives in STATUS — do not STATUS-promote
+or rewrite the route from this file.
 
 ## Commands
 
