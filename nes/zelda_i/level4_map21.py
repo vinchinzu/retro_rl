@@ -1,11 +1,13 @@
 """Level 4 0x20 → 0x21 east (waypoints, no live BFS).
 
 v1 KEY-UP leftover (120,205) south mouth. Occupancy from leftover PNGs:
-H-bar y=144–159, right spine x=192–207, water ends y=191. v1 RIGHT at
-(120,141) is the H-bar; v2 (120,133) still on it; v3 RIGHT at (120,205)
-is the door frame (x=192 is the spine, not the east gold). v4 RIGHT at y=192 drifted to (200,189) bottom-arm water. v5 exact y=192
-yo-yo at (120,193) stall=0. v6/v7 RIGHT at (120,199) is the south-door corridor (clear 1/1 v7).
-UP to y=192 in x≈120 before east. Window y=192–200 once off the mouth.
+H-bar y=144–159, water spine x=192–199, gold x>=200, water ends y=191.
+v13 north-around reached (200,96); RIGHT there is the east wall (door is
+y=141). v18 cardinal RIGHT at x=120 repeated v10 (north-door leftover
+(120,95)). v19 clip stopped at v11 leftover (136,94) (DOWN/RIGHT yo-yo).
+v20 restored v13 leftover (200,96); cardinal DOWN solid at (200,109).
+v21 RIGHT+DOWN clip reached (208,133); PUSH y-slop 8 RIGHT into the wall.
+v22: door is only y=141 — align y before RIGHT.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from zelda_i.level4_dungeon import (
 )
 from zelda_i.level4_occupancy import (
     ROOM_20_CLIP_BUDGET,
+    ROOM_20_NORTH_XY,
     ROOM_20_SOUTH_XY,
     ROOM_20_SOUTH_Y_MAX,
     ROOM_20_WAYPOINTS,
@@ -188,7 +191,7 @@ class Map21Phase(Enum):
 
 @dataclass
 class Level4Map21Controller:
-    """0x20 south leftover → UP to y=96 → x=208 → RIGHT 0x21. No BFS."""
+    """0x20 south leftover → y=96 north-around → DOWN x=200 → RIGHT 0x21."""
 
     max_frames: int = 6000
     phase: Map21Phase = Map21Phase.PATH
@@ -278,34 +281,49 @@ class Level4Map21Controller:
                 return self._fail(f"map_solid_{xy[0]}_{xy[1]}")
             if (
                 abs(xy[0] - RIGHT_20_STAND[0]) <= 4
-                and abs(xy[1] - RIGHT_20_STAND[1]) <= 8
+                and abs(xy[1] - RIGHT_20_STAND[1]) <= 4
             ):
                 self._set_phase(Map21Phase.PUSH, "at_east_door")
             wps = MAP_21_WAYPOINTS
             i = self.path_index
             while self.phase is Map21Phase.PATH and i < len(wps):
                 wx, wy = wps[i]
-                if abs(xy[0] - wx) <= 4 and abs(xy[1] - wy) <= 4:
+                y_tol = 1 if wy in (ROOM_20_NORTH_XY[1], RIGHT_20_STAND[1]) else 4
+                if abs(xy[0] - wx) <= 4 and abs(xy[1] - wy) <= y_tol:
                     i += 1
                     self.path_index = i
+                    self._sample(snap, f"waypoint_{i}")
                     continue
                 break
             if self.phase is Map21Phase.PATH and i >= len(wps):
                 self._set_phase(Map21Phase.PUSH, "at_east_door")
             elif self.phase is Map21Phase.PATH:
                 gx, gy = wps[i]
-                # v13 north-around: east wall at (200,96). South gold + clip
-                # out of the door column (v4 reached x=200 with knockback).
-                if i == 0 and xy[1] > ROOM_20_SOUTH_Y_MAX:
-                    return FrameAction(nes_action("UP"), "join_map_y")
-                if i == 0 and xy[0] < 136:
-                    return FrameAction(
-                        nes_action("RIGHT", "UP"), "join_map_clip"
-                    )
-                if i == 0 and xy[1] < ROOM_20_SOUTH_XY[1]:
-                    return FrameAction(nes_action("DOWN"), "join_map_y")
                 dx, dy = gx - xy[0], gy - xy[1]
-                if abs(dy) > 1 and (abs(dx) <= 8 or abs(dy) >= abs(dx)):
+                north_y = ROOM_20_NORTH_XY[1]
+                # North strip eastbound: keep an east component. v19 DOWN
+                # at (136,94) yo-yoed (v11). v10/v18 cardinal RIGHT at
+                # x=120 sucked into the north door.
+                if gy == north_y and xy[0] < gx:
+                    if xy[1] < north_y or xy[0] < 136:
+                        return FrameAction(
+                            nes_action("RIGHT", "DOWN"), "join_map_clip"
+                        )
+                    if xy[1] > north_y:
+                        return FrameAction(
+                            nes_action("RIGHT", "UP"), "join_map_clip"
+                        )
+                    return FrameAction(nes_action("RIGHT"), "join_map_x")
+                # v20 DOWN at (200,96) solid at y=109. Clip the wall/water
+                # corner into the x=208 corridor (y≈128–175).
+                if i >= 2 and xy[0] < 208 and xy[1] < 128:
+                    return FrameAction(
+                        nes_action("RIGHT", "DOWN"), "join_map_clip"
+                    )
+                hold_north = gy == north_y and dy != 0
+                if hold_north or (
+                    abs(dy) > 1 and (abs(dx) <= 8 or abs(dy) >= abs(dx))
+                ):
                     return FrameAction(
                         nes_action("DOWN" if dy > 0 else "UP"), "join_map_y"
                     )

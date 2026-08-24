@@ -119,9 +119,10 @@ Continuous `l4_west31_continuous_v1` 1/1: south-U around pushed 0x68
 `(48,189)→(48,141)→(16,141)`; leftover `(208,141)` play `0x31`; hop 405f.
 Continuous `l4_keyup20_continuous_v1` 1/1: reverse 0x31 east-U + LEFT+UP
 clip + inland west, then KEY-UP @x120; leftover `(120,205)` play `0x20`;
-keys 5→4; hop 868f. 0x20 Vire clear is on the tape (v7–v17, 1249f, ignore
-`0x2b`). `0x20→0x21` still blocked after occupancy + south/north waypoints
-+ door clips (v1–v17); leftover play `0x20`. Isolated BFS is still banned.
+keys 5→4; hop 868f. 0x20 Vire clear is on the tape (v7–v22, 1249f, ignore
+`0x2b`). Continuous `l4_room21_continuous_v22` 1/1: north-around to
+`(200,96)`, RIGHT+DOWN clip into x=208, y=141 then RIGHT; leftover
+`(16,141)` play `0x21`; 121,775f hop 447f. Isolated BFS is still banned.
 Do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
