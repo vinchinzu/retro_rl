@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — KEY-UP `0x20` v1; `0x20→0x21` blocked v1–v3 |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — KEY-UP `0x20` v1; 0x20 Vire clear on tape; `0x21` blocked v1–v17 |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -209,19 +209,37 @@ Reverse of the verified 0x31 east U then LEFT+UP clip onto the north strip
 and inland west. Isolated maze BFS is not this tape. Do not close `.6`
 until TF `0x08`.
 
-`--through level4-room21` is **blocked** after v1–v3 (no BFS). Leftover stays
-play `0x20` keys=4 ladder set. Isolated `0x20→0x21` used Vire-clear then
-**state-saving BFS** (banned).
+`--through level4-room21` is **blocked** after v1–v17 (no BFS). 0x20 Vire
+clear is **1/1** on v7–v17 (1249f, max_live=7, ignore 0x2b). Path to 0x21
+is not. Leftover stays play `0x20` keys=4 ladder set. Isolated `map_21`
+used Vire-clear then **state-saving BFS** (banned). PNG H-water: H-bar
+y=144–159, spines x=48–63 / 192–207, arms y=112–127 and 176–191, water
+ends y=191, east door only at y=141 x=208. Gold walls classify as gold
+in stills — live collision wins.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
 | map v1 | `0x20` `(120,141)` map_solid | RIGHT along door y from the N-S gold |
 | map v2 | `0x20` `(120,133)` map_solid | H-bar is 8px north of y=141 |
 | map v3 | `0x20` `(120,205)` map_solid | south band RIGHT around the H |
+| map v4 | `0x20` `(200,189)` map_solid | y=192 RIGHT stays on south gold |
+| map v5 | `0x20` `(120,193)` timeout stall=0 | exact y=192 hold |
+| map v6 | `0x20` `(120,199)` map_solid | window y=192–200 can RIGHT at x=120 |
+| map v7 | `0x20` `(120,199)` after clear | same, without Vires |
+| map v8/v9 | `0x20` `(120,193)` timeout stall=0 | door-column UP to y=192 then RIGHT |
+| map v10 | `0x20` `(120,93)` timeout stall=0 | UP to y=96 then cardinal RIGHT (north door) |
+| map v11 | `0x20` `(136,93)` timeout stall=0 | RIGHT+DOWN clip then y=94–98 |
+| map v12 | `0x20` `(160,101)` map_solid | y=90–108 clears the top arm |
+| map v13 | `0x20` `(200,96)` timeout stall=0 | y=96 north-around reaches x=208 (east **wall**, door is y=141) |
+| map v14 | `0x20` `(160,93)` map_solid | y=88 at x=160 is walkable |
+| map v15 | `0x20` `(192,93)` map_solid | RIGHT+UP clip from x=192 |
+| map v16 | `0x20` `(200,93)` map_solid | RIGHT+UP clip at v13 leftover |
+| map v17 | `0x20` `(136,189)` map_solid | south-door RIGHT+UP clip then DOWN to y=192 |
 
-PNGs: `recordings/l4_room21_continuous_v{1,2,3}_final.png`. Next: occupancy
-seed from those stills. Do not call `level4_room_nav` / map_21 state-BFS.
-Do not close `.6` until TF `0x08`.
+PNGs: `recordings/l4_room21_continuous_v{1..17}_final.png`. Next: east
+corridor is x=208 y≈128–175 only. South door column L/R needs a clip
+that lands on y≥192 (v17 DOWN at `(136,189)` solid). Do not call
+`level4_room_nav` / map_21 state-BFS. Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -299,10 +317,11 @@ keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
 Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
 `0x32→0x31` leftover `(208,141)`. Live v1 KEY-UP `0x30→0x20` leftover
-`(120,205)` keys 5→4. Next worker: `0x20→0x21` map occupancy from leftover
-PNGs v1–v3 (RIGHT at 141/133/205 is solid). Do **not** call
-`_bfs_60_to_ladder` or `level4_room_nav` / map_21 state-BFS. Then bomb-UP,
-Gleeok. Do not close `.6` until TF `0x08`.
+`(120,205)` keys 5→4. Live 0x20 Vire clear 1249f (v7–v17). `0x20→0x21`
+blocked v1–v17: south door column L/R solid; north-around hits east wall
+at `(200,96)` (door is y=141). Do **not** call `_bfs_60_to_ladder` or
+`level4_room_nav` / map_21 state-BFS. Then bomb-UP, Gleeok. Do not close
+`.6` until TF `0x08`.
 
 Exact verified predecessor:
 

@@ -1,12 +1,26 @@
-"""0x60 occupancy seed (no emulator). East-dock waypoints, not live BFS."""
+"""L4 occupancy seeds (no emulator). East-dock + 0x20 H-water, not live BFS."""
 
 from __future__ import annotations
 
 import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level4_dungeon import LADDER_60_PICKUP_XY, ROOM_L4_STEPLADDER
+from zelda_i.level4_dungeon import (
+    LADDER_60_PICKUP_XY,
+    RIGHT_20_STAND,
+    ROOM_L4_STEPLADDER,
+    ROOM_L4_WATER_NORTH_20,
+)
 from zelda_i.level4_occupancy import (
+    ROOM_20_DOOR_Y_MAX,
+    ROOM_20_EAST_XY,
+    ROOM_20_NORTH_EAST_XY,
+    ROOM_20_NORTH_XY,
+    ROOM_20_SOUTH_EAST_XY,
+    ROOM_20_SOUTH_XY,
+    ROOM_20_SOUTH_Y_MAX,
+    ROOM_20_SPAWN_XY,
+    ROOM_20_WAYPOINTS,
     ROOM_60_CAUSWAY_XY,
     ROOM_60_DOCK_MOUTH_XY,
     ROOM_60_DOCK_NORTH_XY,
@@ -18,6 +32,7 @@ from zelda_i.level4_occupancy import (
     ROOM_60_SPAWN_XY,
     ROOM_60_WAYPOINTS,
     ROOM_60_WEST_AISLE_X,
+    room_20_grid,
     room_60_grid,
 )
 from zelda_i.level4_exit60 import make_exit60_controller
@@ -231,3 +246,111 @@ def test_exit60_path_walks_reverse_dock() -> None:
     act = ctl2.step(read_snapshot(ram))
     assert ctl2.phase is Exit60Phase.FAILED
     assert act.reason.startswith("exit_solid_136_141")
+
+
+def test_room_20_grid_blocks_h_water_and_door() -> None:
+    grid = room_20_grid()
+    # v1/v2 H-bar + v3 door frame + right spine (PNG 16px tiles).
+    assert grid.passable(120, 150)
+    assert not grid.passable(160, 150)
+    assert not grid.passable(192, 141)
+    assert not grid.passable(200, 141)
+    assert not grid.passable(192, 189)
+    assert not grid.passable(80, 189)
+    assert not grid.passable(121, 205)
+    assert not grid.passable(192, 205)
+    assert not grid.passable(*ROOM_20_SPAWN_XY)
+    assert grid.passable(120, 204)
+    assert grid.passable(*ROOM_20_SOUTH_XY)
+    assert grid.passable(*ROOM_20_SOUTH_EAST_XY)
+    assert grid.passable(*ROOM_20_EAST_XY)
+    assert grid.passable(*ROOM_20_NORTH_XY)
+    assert grid.passable(*ROOM_20_NORTH_EAST_XY)
+    assert ROOM_20_EAST_XY == RIGHT_20_STAND
+
+
+def test_room_20_waypoints_are_south_around() -> None:
+    assert ROOM_20_WAYPOINTS == (
+        ROOM_20_SOUTH_EAST_XY,
+        ROOM_20_EAST_XY,
+    )
+    assert ROOM_20_SOUTH_EAST_XY == (208, 192)
+    assert ROOM_20_EAST_XY == (208, 141)
+    grid = room_20_grid()
+    for start, goal in zip(ROOM_20_WAYPOINTS, ROOM_20_WAYPOINTS[1:]):
+        path = grid.shortest_path(start, goal)
+        assert path is not None
+        assert (192, 141) not in path
+        assert (120, 141) not in path
+    north = grid.shortest_path(ROOM_20_NORTH_XY, ROOM_20_NORTH_EAST_XY)
+    assert north is not None
+    assert max(x for x, _ in north) >= 208
+    assert min(y for _, y in north) <= 96
+
+
+def test_room_20_walker_from_south_door_goes_north() -> None:
+    walker = OccupancyWalker(grid=room_20_grid(), goal=ROOM_20_NORTH_XY)
+    assert walker.next_dir(ROOM_20_SPAWN_XY) == "UP"
+    walker2 = OccupancyWalker(grid=room_20_grid(), goal=ROOM_20_NORTH_EAST_XY)
+    assert walker2.next_dir(ROOM_20_NORTH_XY) == "RIGHT"
+
+
+def test_room_20_clear_walks_to_south_band() -> None:
+    from zelda_i.level4_map21 import make_room_20_clear_controller
+
+    ctl = make_room_20_clear_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = ROOM_L4_WATER_NORTH_20
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 205
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_south_band"
+    assert list(act.action) == list(nes_action("UP"))
+    report = ctl.report()
+    assert report["segment"] == "level4_clear_0x20"
+    assert "bfs" not in report
+
+
+def test_map21_path_walks_south_around() -> None:
+    from zelda_i.level4_map21 import Map21Phase, make_map21_controller
+
+    ctl = make_map21_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = ROOM_L4_WATER_NORTH_20
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 205
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_y"
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 192
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    ram[ADDR_LINK_X] = 208
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_y"
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 141
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "map_push_right"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    report = ctl.report()
+    assert "bfs" not in report
+    assert report["waypoints"][0] == [208, 192]
+    assert ROOM_20_DOOR_Y_MAX == 196
+    assert ROOM_20_SOUTH_Y_MAX == 200
+    ctl2 = make_map21_controller()
+    ctl2.phase = Map21Phase.PATH
+    ctl2._last_xy = (120, 205)
+    ctl2._stall = 96
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 205
+    act = ctl2.step(read_snapshot(ram))
+    assert ctl2.phase is Map21Phase.FAILED
+    assert act.reason.startswith("map_solid_120_205")
