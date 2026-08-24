@@ -51,6 +51,8 @@ from zelda_i.level6_overworld import (
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
+    LEVEL6_GLEEOK_ROOM,
+    LEVEL6_MAP_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
     LEVEL6_WIZZROBE_38_ROOM,
     WIZZROBE_ORANGE_TYPE,
@@ -65,10 +67,12 @@ ROOM_L6_COMPASS = LEVEL6_COMPASS_ROOM  # 0x68
 ROOM_L6_KEESE = LEVEL6_KEESE_ROOM  # 0x58
 ROOM_L6_HARD_38 = LEVEL6_WIZZROBE_38_ROOM  # 0x38
 ROOM_L6_WIZZROBE_28 = LEVEL6_WIZZROBE_28_ROOM  # 0x28
+ROOM_L6_MAP = LEVEL6_MAP_ROOM  # 0x19 east of Gleeok
 # After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
 ROOM_78_UP_DOOR_BIT = 0x08
-# ADDR_COMPASS bitfield: one bit per dungeon (L6 → bit5 → 0x20).
+# ADDR_COMPASS / ADDR_MAP bitfield: one bit per dungeon (L6 → bit5 → 0x20).
 LEVEL6_COMPASS_BIT = 1 << (LEVEL6 - 1)
+LEVEL6_MAP_BIT = 1 << (LEVEL6 - 1)
 
 # Open-floor patrol; wizzrobes teleport — cover mid lanes.
 _ROOM_7A_PATROL: tuple[tuple[int, int], ...] = (
@@ -407,6 +411,61 @@ ROOM_28_SPEC = DungeonRoomSpec(
 
 register_room_spec(ROOM_28_SPEC)
 
+# East of 0x18: live census 2× Zol 0x13 + 2× Like-Like 0x17 + 2× invuln 0x2b.
+# Enter PNG beam is a Like-Like. Ignore 0x2b / Bubble 0x40. RoomItemId 0x17 Map.
+_ROOM_19_PATROL: tuple[tuple[int, int], ...] = (
+    (48, 141),
+    (80, 141),
+    (120, 141),
+    (176, 141),
+    (176, 109),
+    (120, 109),
+    (64, 109),
+    (64, 173),
+    (120, 173),
+    (176, 173),
+    (120, 93),
+    (120, 189),
+)
+
+ROOM_19_SPEC = DungeonRoomSpec(
+    spec_id="level6_room19_clear",
+    source_room=LEVEL6_GLEEOK_ROOM,
+    room_id=LEVEL6_MAP_ROOM,
+    entry=DoorRoute("RIGHT", ((208, 141),)),
+    enemy_types=(
+        ZOL_OBJECT_TYPE,
+        LIKE_LIKE_OBJECT_TYPE,
+    ),
+    expected_enemy_count=4,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_19_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+        inland_dash=24,
+        avoid_walls=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x17,
+    exit_routes=(
+        DoorRoute("LEFT", ((32, 141),)),
+        DoorRoute("RIGHT", ((208, 141),)),
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+    ),
+    max_frames=15000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_19_SPEC)
+
 
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x7a with keys≥1 and no live type-0x24 enemies.
@@ -590,6 +649,22 @@ def make_clear_28_controller() -> GenericDungeonRoomController:
     return GenericDungeonRoomController(spec=ROOM_28_SPEC)
 
 
+def level6_room_19_clear_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x19 no live spec enemies. Ignore 0x2b/0x40. No Map."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_MAP_ROOM
+        and snap.mode == PLAY_MODE
+        and not ROOM_19_SPEC.live_enemies(snap)
+    )
+
+
+def make_clear_19_controller() -> GenericDungeonRoomController:
+    """Occupancy-patrol 0x19 clear. Ignore 0x2b/0x40. Do not require Map."""
+    return GenericDungeonRoomController(spec=ROOM_19_SPEC)
+
+
 __all__ = [
     "ROOM_L6_ENTRY",
     "ROOM_L6_EAST_KEY",
@@ -598,6 +673,7 @@ __all__ = [
     "ROOM_L6_KEESE",
     "ROOM_L6_HARD_38",
     "ROOM_L6_WIZZROBE_28",
+    "ROOM_L6_MAP",
     "ROOM_79_SPEC",
     "ROOM_7A_SPEC",
     "ROOM_78_SPEC",
@@ -605,8 +681,10 @@ __all__ = [
     "ROOM_58_SPEC",
     "ROOM_38_SPEC",
     "ROOM_28_SPEC",
+    "ROOM_19_SPEC",
     "ROOM_78_UP_DOOR_BIT",
     "LEVEL6_COMPASS_BIT",
+    "LEVEL6_MAP_BIT",
     "Level6EastKeyController",
     "Level6WestWizzrobeController",
     "make_east_key_controller",
@@ -615,10 +693,12 @@ __all__ = [
     "make_keese_58_controller",
     "make_hard_38_controller",
     "make_clear_28_controller",
+    "make_clear_19_controller",
     "level6_room_7a_key_success",
     "level6_room_78_clear_success",
     "level6_room_68_compass_success",
     "level6_room_58_clear_success",
     "level6_room_38_clear_success",
     "level6_room_28_clear_success",
+    "level6_room_19_clear_success",
 ]

@@ -418,7 +418,11 @@ No `0x46`; `0x56` then gone; `cur_opened_doors` 0→5; `open_doorway_mask`
 0. `--through level6-stairs18` **red** (v1–v5; north hole decorative).
 `--through level6-room19` **1/1** `l6_room19_continuous_v1` play `0x19`
 `(16,141)` hop 251f, 204,632f. Occupancy y=141 RIGHT; map still `0x0A`.
-Do not grant Whistle. Do not poke Rod/doors/keys.
+`--through level6-clear19` **1/1** `l6_clear19_continuous_v1` play `0x19`
+`(176,158)` hop 4,213f, 208,845f. Census 2× Zol `0x13` + 2× Like-Like
+`0x17`; RoomItemId `0x17`. `--through level6-map19` **red** (v1 boxed;
+v2 on sprite `(120,181)` bit still `0x0A`). Do not grant Map/Rod. Do not
+poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -467,6 +471,9 @@ Do not grant Whistle. Do not poke Rod/doors/keys.
 | stairs18 v4 | `0x18` `(120,101)` 4000f | idle at y=101 (tile `0x77`, still south of hole) |
 | stairs18 v5 | `0x18` `(120,95)` 4000f | idle at y=96 (tile `0x77`, still south of hole; hole decorative) |
 | room19 v1 | `0x19` `(16,141)` **play** | occupancy y=141 RIGHT despite mask 0 / PNG black; hop 251f 1/1 |
+| clear19 v1 | `0x19` `(176,158)` **cleared** | 2× Zol + 2× Like-Like; hop 4,213f 1/1; Map on floor |
+| map19 v1 | `0x19` `(176,93)` 6000f | occupancy to (120,173) from leftover (176,158) |
+| map19 v2 | `0x19` `(120,181)` 6000f | idle on the Map sprite is `ADDR_MAP|0x20` |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -486,14 +493,17 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_gleeok18_continuous_v1_final.png`,
 `recordings/l6_postgleeok18_continuous_v{1,2}_final.png`,
 `recordings/l6_stairs18_continuous_v{1,2,3,4,5}_final.png`,
-`recordings/l6_room19_continuous_v1_final.png`. Dest `0x19` enter is
-**on the tape** (`l6_room19_continuous_v1` 1/1). Map still `0x0A`. North
-hole decorative (`level6-stairs18` red). Next: Map pickup from leftover
-`(16,141)` (combat live). Do not grant Map/Rod. Do not close `rr-tne2`.
+`recordings/l6_room19_continuous_v1_final.png`,
+`recordings/l6_clear19_continuous_v1_final.png`,
+`recordings/l6_map19_continuous_v{1,2}_final.png`. Dest `0x19` clear is
+**on the tape** (`l6_clear19_continuous_v1` 1/1). Map sprite on floor;
+`ADDR_MAP` still `0x0A`. v2 idle on `(120,181)` did not set bit 0x20.
+Next: column x=120 then idle `(120,141)` (compass analog). Do not grant
+Map/Rod. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-room19 --no-video --trials 1 --tag l6_room19_continuous_v1
+  --through level6-map19 --no-video --trials 1 --tag l6_map19_continuous_v3
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
