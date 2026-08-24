@@ -418,7 +418,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear19
 |-------|------|
 | v1 | occupancy to `(120,173)` boxed leftover `(176,158)` then `(176,93)` |
 | v2 | column x=120 then south-band; leftover `(120,181)` **on the Map sprite**; `ADDR_MAP` still `0x0A` |
-| Notes | Standing on the south-center graphic is not `ADDR_MAP\|0x20`. Next idle `(120,141)`. Do not grant Map. |
+| v3 | idle `(120,141)` compass analog 120f then column through sprite; leftover `(120,179)` `0x0A` |
+| v4 | occupancy y-first to `(136,141)` freeze-miss boxed leftover then `(176,93)` |
+| v5 | occupancy x-first wandered 244 misses; never idled `(136,141)`; leftover `(112,189)` |
+| Notes | Graphic idle and center idle are not `ADDR_MAP\|0x20`. Occupancy from leftover is unrecoverable. Next axis LEFT x=136 then idle `(136,141)`. Do not grant Map. |
 
 ### Post-east-key graph (live recon)
 
@@ -499,7 +502,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_stairs18_continuous_v{1,2,3,4,5}_final.png` — north hole not mode 9
 - `recordings/l6_room19_continuous_v1.json` — 0x18 y=141 RIGHT → 0x19 1/1 251f leftover `(16,141)`
 - `recordings/l6_clear19_continuous_v1.json` — 0x19 occupancy-patrol 2× Zol + 2× Like-Like 1/1 4,053f leftover `(176,158)`
-- `recordings/l6_map19_continuous_v{1,2}_final.png` — Map sprite not `ADDR_MAP|0x20`
+- `recordings/l6_map19_continuous_v{1,2,3,4,5}_final.png` — Map sprite not `ADDR_MAP|0x20`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear19 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`

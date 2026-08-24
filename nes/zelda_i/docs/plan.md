@@ -421,8 +421,10 @@ No `0x46`; `0x56` then gone; `cur_opened_doors` 0→5; `open_doorway_mask`
 `--through level6-clear19` **1/1** `l6_clear19_continuous_v1` play `0x19`
 `(176,158)` hop 4,213f, 208,845f. Census 2× Zol `0x13` + 2× Like-Like
 `0x17`; RoomItemId `0x17`. `--through level6-map19` **red** (v1 boxed;
-v2 on sprite `(120,181)` bit still `0x0A`). Do not grant Map/Rod. Do not
-poke doors/keys.
+v2 on sprite `(120,181)`; v3 idle `(120,141)` compass analog; v4
+occupancy y-first boxed leftover `(176,93)`; v5 occupancy x-first
+wandered `(112,189)` 244 misses, never idled `(136,141)`; bit still
+`0x0A`). Do not grant Map/Rod. Do not poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -474,6 +476,9 @@ poke doors/keys.
 | clear19 v1 | `0x19` `(176,158)` **cleared** | 2× Zol + 2× Like-Like; hop 4,213f 1/1; Map on floor |
 | map19 v1 | `0x19` `(176,93)` 6000f | occupancy to (120,173) from leftover (176,158) |
 | map19 v2 | `0x19` `(120,181)` 6000f | idle on the Map sprite is `ADDR_MAP|0x20` |
+| map19 v3 | `0x19` `(120,179)` 6000f | idle `(120,141)` compass analog is `ADDR_MAP|0x20` |
+| map19 v4 | `0x19` `(176,93)` 6000f | occupancy y-first to (136,141) from leftover |
+| map19 v5 | `0x19` `(112,189)` 6000f | occupancy x-first LEFT then idle (136,141) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -495,15 +500,16 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_stairs18_continuous_v{1,2,3,4,5}_final.png`,
 `recordings/l6_room19_continuous_v1_final.png`,
 `recordings/l6_clear19_continuous_v1_final.png`,
-`recordings/l6_map19_continuous_v{1,2}_final.png`. Dest `0x19` clear is
+`recordings/l6_map19_continuous_v{1,2,3,4,5}_final.png`. Dest `0x19` clear is
 **on the tape** (`l6_clear19_continuous_v1` 1/1). Map sprite on floor;
-`ADDR_MAP` still `0x0A`. v2 idle on `(120,181)` did not set bit 0x20.
-Next: column x=120 then idle `(120,141)` (compass analog). Do not grant
+`ADDR_MAP` still `0x0A`. v2 idle on `(120,181)` and v3 idle `(120,141)`
+did not set bit 0x20. Occupancy from leftover boxed (v1/v4) or wandered
+(v5). Next: axis LEFT to x=136 then idle `(136,141)`. Do not grant
 Map/Rod. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-map19 --no-video --trials 1 --tag l6_map19_continuous_v3
+  --through level6-map19 --no-video --trials 1 --tag l6_map19_continuous_v6
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
