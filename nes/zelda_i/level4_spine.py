@@ -87,7 +87,32 @@ from zelda_i.level4_west31 import (
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
+L4_STOPS: dict[str, str] = {
+    "level4": "level4_triforce_0x08",
+    "level4-entry": "level4_entry_0x71",
+    "level4-key": "level4_natural_key_0x51",
+    "level4-clear50": "level4_clear_0x50",
+    "level4-room40-key": "level4_natural_key_0x40",
+    "level4-room30": "level4_enter_0x30",
+    "level4-room31": "level4_enter_0x31",
+    "level4-clear31": "level4_clear_0x31",
+    "level4-room32": "level4_enter_0x32",
+    "level4-clear32": "level4_clear_0x32",
+    "level4-stepladder": "level4_stepladder_0x60",
+    "level4-exit60": "level4_exit_0x60",
+    "level4-west31": "level4_west_0x31",
+    "level4-keyup20": "level4_key_up_0x20",
+    "level4-room21": "level4_enter_0x21",
+    "level4-map": "level4_map_pickup_0x21",
+    "level4-bomb11": "level4_enter_0x11",
+    "level4-key01": "level4_natural_key_0x01",
+    "level4-clear12": "level4_clear_0x12",
+    "level4-gleeok13": "level4_enter_0x13",
+}
+
+
 __all__ = [
+    "L4_STOPS",
     "level4_clear_31_stages",
     "level4_clear_31_success",
     "level4_clear_32_stages",

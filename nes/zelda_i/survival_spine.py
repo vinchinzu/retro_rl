@@ -56,7 +56,9 @@ from zelda_i.level5_spine import (
     continue_level5_spine,
     validate_l5_endpoint,
 )
+from zelda_i.level6_spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level4_spine import (
+    L4_STOPS,
     level4_bomb11_stages,
     level4_bomb11_success,
     level4_key01_stages,
@@ -132,6 +134,9 @@ Through = Literal[
     "level5-whistle",
     "level5-exit04",
     "level5",
+    "level6-entry",
+    "level6-east-key",
+    "level6-west",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -158,7 +163,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-clear12",
     "level4-gleeok13",
     "level4",
-) + L5_THROUGH
+) + L5_THROUGH + L6_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -247,27 +252,9 @@ class SpineRun:
                 "level1": "level1_triforce",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
-                "level4": "level4_triforce_0x08",
+                **L4_STOPS,
                 **L5_STOPS,
-                "level4-entry": "level4_entry_0x71",
-                "level4-key": "level4_natural_key_0x51",
-                "level4-clear50": "level4_clear_0x50",
-                "level4-room40-key": "level4_natural_key_0x40",
-                "level4-room30": "level4_enter_0x30",
-                "level4-room31": "level4_enter_0x31",
-                "level4-clear31": "level4_clear_0x31",
-                "level4-room32": "level4_enter_0x32",
-                "level4-clear32": "level4_clear_0x32",
-                "level4-stepladder": "level4_stepladder_0x60",
-                "level4-exit60": "level4_exit_0x60",
-                "level4-west31": "level4_west_0x31",
-                "level4-keyup20": "level4_key_up_0x20",
-                "level4-room21": "level4_enter_0x21",
-                "level4-map": "level4_map_pickup_0x21",
-                "level4-bomb11": "level4_enter_0x11",
-                "level4-key01": "level4_natural_key_0x01",
-                "level4-clear12": "level4_clear_0x12",
-                "level4-gleeok13": "level4_enter_0x13",
+                **L6_STOPS,
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -977,6 +964,17 @@ def run_survival_spine(
     if not run.success or through == "level4":
         return run
     continue_level5_spine(
+        env,
+        run,
+        through=through,
+        run_stages=_run_stages,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    )
+    if not run.success or through in L5_THROUGH:
+        return run
+    continue_level6_spine(
         env,
         run,
         through=through,
