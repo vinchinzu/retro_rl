@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — 0x12 Vire clear v1 2/2 leftover `(128,117)`; next push + Gleeok approach |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **closed** — `l4_tf_continuous_v1` 2/2 TF `0x0F` mode 18 room `0x03`; HC not mid-room |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -315,9 +315,27 @@ no state load.
 |-----|----------|----------------|
 | clear12 v1 | `0x12` `(128,117)` **cleared** | DOWN + bomb-RIGHT + Vire clear; hop 1290f 2/2 |
 
-PNGs: `recordings/l4_clear12_continuous_v{1,1b}_final.png`. Next: 0x12
-push `0x68` LEFT then `PATH_12_TO_GLEEOK`. Do not close `.6` until TF
-`0x08`.
+PNGs: `recordings/l4_clear12_continuous_v{1,1b}_final.png`.
+
+`--through level4-gleeok13` is **2/2** on `l4_gleeok13_continuous_v2`
+(and `v2b`): v1 y-first leftover `(128,141)` DOWN solid on the door row;
+x-first to `PUSH_12_STAND` `(112,144)`, hold LEFT, hold4
+`PATH_12_TO_GLEEOK`; leftover play `0x13` `(32,141)` in 414f.
+
+`--through level4` is **2/2** on `l4_tf_continuous_v1` (and `v1b`):
+south-stand Gleeok 3564f, TF `0x07→0x0F`, mode 18 room `0x03` `(120,149)`,
+128,971f; deaths/progression/capacity 0; no state load. HC was not
+mid-room (`hc_collected=false`). Isolated BFS still not this tape.
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| gleeok v1 | `0x12` `(128,141)` timeout | y-first DOWN to push stand (door-row solid) |
+| gleeok v2 | `0x13` `(32,141)` **play** | x-first then token; hop 414f 2/2 |
+| tf v1 | `0x03` `(120,149)` **TF 0x08** | south-stand 3564f 2/2; HC not mid-room |
+
+PNGs: `recordings/l4_gleeok13_continuous_v{1,2,2b}_final.png`,
+`recordings/l4_tf_continuous_v{1,1b}_final.png`. `.6` closed. Next:
+`rr-4d53.7` L4 exit → L5 TF `0x10`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -433,6 +451,12 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-clear12 --no-video --trials 1 \
   --tag l4_clear12_continuous_v1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-gleeok13 --no-video --trials 1 \
+  --tag l4_gleeok13_continuous_v2
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4 --no-video --trials 1 \
+  --tag l4_tf_continuous_v1
 ```
 Isolated 0x6b check:
 

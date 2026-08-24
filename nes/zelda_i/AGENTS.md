@@ -38,7 +38,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
-| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
+| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -134,8 +134,13 @@ is the north wall; bomb-UP `(120,105)` 377f then pickup `(120,141)`
 819f; leftover play `0x01` `(120,133)` keys 4→5 bombs 15→14.
 Continuous `l4_clear12_continuous_v1` 2/2: DOWN 0x01→0x11 244f, bomb-RIGHT
 `(192,141)` 392f, Vire clear 654f (ignore `0x68`); leftover play `0x12`
-`(128,117)` bombs 14→13. Isolated BFS is still banned. Next: 0x12 push
-+ Gleeok approach (`PATH_12_TO_GLEEOK`). Do not close `.6` until TF `0x08`.
+`(128,117)` bombs 14→13. Continuous `l4_gleeok13_continuous_v2` 2/2: v1
+y-first leftover `(128,141)` DOWN solid; x-first to push stand then
+hold4 `PATH_12_TO_GLEEOK` 414f leftover play `0x13` `(32,141)`.
+Continuous `l4_tf_continuous_v1` 2/2: south-stand Gleeok 3564f, TF
+`0x07→0x0F` (`& 0x08`), mode 18 room `0x03` `(120,149)`; HC not mid-room
+(flag false). Isolated BFS is still banned. `.6` closes on TF `0x08`.
+Next: L4 exit → L5 (`rr-4d53.7`).
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

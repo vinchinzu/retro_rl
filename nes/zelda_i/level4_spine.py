@@ -45,6 +45,11 @@ from zelda_i.level4_clear12 import (
     level4_clear12_stages,
     level4_clear12_success,
 )
+from zelda_i.level4_gleeok13 import (
+    attach_level4_tf_suffix,
+    level4_gleeok13_stages,
+    level4_gleeok13_success,
+)
 from zelda_i.level4_mappick import (
     level4_mappick_stages,
     level4_mappick_success,
@@ -106,6 +111,9 @@ __all__ = [
     "level4_key01_success",
     "level4_clear12_stages",
     "level4_clear12_success",
+    "level4_gleeok13_stages",
+    "attach_level4_tf_suffix",
+    "level4_gleeok13_success",
     "level4_mappick_stages",
     "level4_mappick_success",
     "level4_north_30_stages",

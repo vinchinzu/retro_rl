@@ -1,12 +1,12 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through 0x12 Vire
-clear (`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`, hop
-1290f). Path: 0x01 leftover `(120,133)` DOWN the bomb hole, bomb-RIGHT
-`(192,141)`, Vire clear (ignore `0x68`). Isolated BFS is still not this
-tape. Do not claim Clean STATUS — Survival assist only for this
-segment. Next: 0x12 push + Gleeok approach. Do not close `.6` until TF
-`0x08`.
+**Status:** continuous power-on Survival holds L4 TF `0x08`
+(`l4_tf_continuous_v1` 2/2, mode 18 room `0x03` `(120,149)`, TF
+`0x0F`, 128,971f). Path: 0x12 leftover `(128,117)` x-first to push
+`(112,144)` then hold4 `PATH_12_TO_GLEEOK` into `0x13` `(32,141)`,
+south-stand Gleeok. Isolated BFS is still not this tape. Do not claim
+Clean STATUS — Survival assist only. HC was not mid-room. `.6` closed.
+Next: L4 exit → L5 (`rr-4d53.7`).
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -215,6 +215,14 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-clear12 --no-video --trials 1 \
   --tag l4_clear12_continuous_v1
+# Gleeok enter verified v2 2/2 (leftover (32,141))
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-gleeok13 --no-video --trials 1 \
+  --tag l4_gleeok13_continuous_v2
+# L4 TF 0x08 verified v1 2/2 (mode 18 room 0x03)
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4 --no-video --trials 1 \
+  --tag l4_tf_continuous_v1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
@@ -294,7 +302,7 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 | **0x01** | **live; continuous 2/2** | Keese + key `0x19` (keys 4→5); leftover (120,133); pickup ~(120,141) |
 | **0x12** | **live dual; continuous 2/2** | 5× Vire; leftover (128,117); push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |
-| **0x13** | **live dual enter + kill** | Gleeok `0x43` HP≈160 + head `0x46` + HC; UP → 0x03 TF |
+| **0x13** | **live dual enter + kill; continuous 2/2** | Gleeok `0x43` + head `0x46`; leftover enter `(32,141)`; south-stand TF `0x08`; HC not mid-room on spine tape |
 | **0x10** | **live** | Manhandla side path; UP→0x00 dead-end |
 | **0x00** | **live** | bubbles; only DOWN |
 
