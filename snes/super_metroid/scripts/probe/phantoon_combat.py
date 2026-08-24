@@ -36,7 +36,6 @@ from super_metroid.combat.phantoon import (
     eye_open,
     list_pickups,
     play_phantoon_fight,
-    rain_charge_ok,
     rain_phase,
     right_park,
     seated,
@@ -215,7 +214,7 @@ def _fig8_left_open(session: ProbeSession, park_x: int | None = None) -> bool:
     st = session.state
     x = int(st.enemy0_x) if park_x is None else int(park_x)
     return eye_open(st, session.env) and charge_window_ok(
-        _body_func(session), x
+        _body_func(session), x, st.enemy0_y
     )
 
 
@@ -276,7 +275,7 @@ def _wait_open_window(
         skip = (
             rain_phase(func)
             or right_park(park_x)
-            or rain_charge_ok(park_x)
+            or (0 < int(park_x) <= 56)
         )
         if skip:
             if rain_dump is not None and (
@@ -541,7 +540,7 @@ def cmd_window(args: argparse.Namespace) -> int:
                     if (
                         rain_phase(_body_func(session))
                         or right_park(st.enemy0_x)
-                        or rain_charge_ok(st.enemy0_x)
+                        or (0 < int(st.enemy0_x) <= 56)
                     ):
                         _rain_corner_wait(session, strat)
                     else:

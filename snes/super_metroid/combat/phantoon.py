@@ -307,23 +307,37 @@ def rain_phase(func: int) -> bool:
     return int(func) in RAIN_PHASE_FUNCS
 
 
-# Only (48, 96) from the living seat. (88, 64) crossed the body (p83 at 101,127).
-RAIN_FIRE_X_MAX = 64
+# Only rain (48, 96). (56, 113) jumped p83; (88, 64) crossed the body.
+RAIN_FIRE_X_MAX = 56
+RAIN_FIRE_Y_MIN = 88
+RAIN_FIRE_Y_MAX = 104
 
 
-def rain_charge_ok(enemy_x: int, *, max_x: int = RAIN_FIRE_X_MAX) -> bool:
-    """True for left-ish rain parks. Skip (128, 96) and anything right."""
-    return 0 < int(enemy_x) <= max_x
+def rain_charge_ok(
+    enemy_x: int,
+    enemy_y: int = 96,
+    *,
+    max_x: int = RAIN_FIRE_X_MAX,
+) -> bool:
+    """True only for rain park ≈(48, 96). Skip (56, 113) and (53, 82)."""
+    return (
+        0 < int(enemy_x) <= max_x
+        and RAIN_FIRE_Y_MIN <= int(enemy_y) <= RAIN_FIRE_Y_MAX
+    )
 
 
 def charge_window_ok(
-    func: int, enemy_x: int, *, skip_x: int = 155
+    func: int,
+    enemy_x: int,
+    enemy_y: int = 96,
+    *,
+    skip_x: int = 155,
 ) -> bool:
     """W1 left fig-8 (~120) or rain (48, 96). Skip (53, 82) and x=219."""
     if right_park(enemy_x, skip_x=skip_x):
         return False
     if rain_phase(func):
-        return rain_vulnerable(func) and rain_charge_ok(enemy_x)
+        return rain_vulnerable(func) and rain_charge_ok(enemy_x, enemy_y)
     # Fig-8 on the living seat (53, 82): p83 at y=160 — do not jump.
     if int(enemy_x) <= RAIN_FIRE_X_MAX:
         return False
@@ -644,9 +658,6 @@ def _aim_names(
 def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
     """True when Samus is below the charge-release band (needs more jump)."""
     dy = int(state.samus_y) - int(state.enemy0_y)
-    if rain_charge_ok(state.enemy0_x):
-        # W2 p84 at y=138 vs (48, 96) dy=42. Stop A at dy=56 (y=152).
-        return dy > strategy.release_dy_max
     return dy > strategy.release_dy_max
 
 
@@ -661,7 +672,7 @@ def in_release_band(
     strat = strategy or PhantoonStrategy()
     dy = int(state.samus_y) - int(state.enemy0_y)
     # Tight rain band only for (48, 96)-class parks, not a fig-8 at y≈82.
-    if rain_charge_ok(state.enemy0_x) and int(state.enemy0_y) >= 90:
+    if rain_charge_ok(state.enemy0_x, state.enemy0_y):
         return 48 <= dy <= strat.release_dy_max
     return strat.release_dy_min <= dy <= strat.release_dy_max
 
@@ -687,7 +698,11 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
     last_spend = -99
     seen_open = False
     func0 = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
-    if rain_phase(func0) and not rain_charge_ok(session.state.enemy0_x):
+    if int(session.state.health) <= 20:
+        return 0
+    if rain_phase(func0) and not rain_charge_ok(
+        session.state.enemy0_x, session.state.enemy0_y
+    ):
         return 0
     if right_park(session.state.enemy0_x, skip_x=strategy.skip_enemy_x):
         if int(session.state.samus_x) < strategy.right_jump_x:
@@ -707,7 +722,9 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             break
 
         func_now = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
-        if rain_phase(func_now) and not rain_charge_ok(st.enemy0_x):
+        if int(st.health) <= 20:
+            break
+        if rain_phase(func_now) and not rain_charge_ok(st.enemy0_x, st.enemy0_y):
             break
         names = _aim_names(st, strategy, rain=False)
         if st.pose in HURT_POSES:
@@ -870,17 +887,17 @@ def play_phantoon_fight(
         if func_now != last_func:
             park_x = int(state.enemy0_x)
             last_func = func_now
-        if not charge_window_ok(func_now, park_x) and (
+        if not charge_window_ok(func_now, park_x, state.enemy0_y) and (
             rain_phase(func_now)
             or right_park(park_x, skip_x=strategy.skip_enemy_x)
-            or rain_charge_ok(park_x)
+            or int(park_x) <= RAIN_FIRE_X_MAX
         ):
             _rain_corner_wait(session, strategy)
             continue
         ready = (
             _session_eye_open(session)
             and state.samus_y >= strategy.floor_y_min
-            and charge_window_ok(func_now, park_x)
+            and charge_window_ok(func_now, park_x, state.enemy0_y)
         )
         if strategy.weapon == WEAPON_MISSILES and state.missiles < strategy.min_shots_to_fire:
             try:
