@@ -48,6 +48,7 @@ from zelda_i.level4_dungeon import (
     MAZE_60_TO_LADDER,
     PUSH_32_DIR,
     PUSH_32_STAND,
+    ROOM_20_SPEC,
     ROOM_30_SPEC,
     ROOM_31_SPEC,
     ROOM_32_SPEC,
@@ -120,6 +121,9 @@ def test_live_room_ids() -> None:
     assert MAP_21_PICKUP_XY == (208, 181)
     assert len(MAP_21_SAMPLE_PATH) >= 20
     assert RIGHT_20_STAND == (208, 141)
+    assert ROOM_20_SPEC.room_id == ROOM_L4_WATER_NORTH_20
+    assert ROOM_20_SPEC.expected_enemy_count == 5
+    assert all(y >= 192 for _, y in ROOM_20_SPEC.combat.patrol)
     # Gleeok approach anchors (rr-rvae dual-green enter)
     from zelda_i.level4_dungeon import (
         BOMB_21_NORTH_STAND,
@@ -297,6 +301,7 @@ def test_specs_register() -> None:
     assert ROOM_SPECS[0x30] is ROOM_30_SPEC
     assert ROOM_SPECS[0x31] is ROOM_31_SPEC
     assert ROOM_SPECS[0x32] is ROOM_32_SPEC
+    assert ROOM_SPECS[0x20] is ROOM_20_SPEC
 
 
 def test_factories() -> None:

@@ -658,6 +658,43 @@ ROOM_12_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# 0x20: 5× Vire on H-water (PNG leftover). Walkable south gold y=192–204;
+# ignore invuln 0x2b. Clear from south band then east x=208 (no state-BFS).
+_PATROL_20: tuple[tuple[int, int], ...] = (
+    (48, 197),
+    (88, 197),
+    (120, 197),
+    (160, 197),
+    (200, 197),
+)
+
+ROOM_20_SPEC = DungeonRoomSpec(
+    spec_id="level4_room20_vires",
+    source_room=ROOM_L4_NORTH_30,
+    room_id=ROOM_L4_WATER_NORTH_20,
+    entry=DoorRoute("UP", ((120, 205), (120, 192))),
+    enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_20,
+        engage_distance=64,
+        engage_dominant_axis=True,
+        attack_phase=0,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_NONE,
+    exit_routes=(
+        DoorRoute("RIGHT", ((208, 141), (224, 141))),
+    ),
+    max_frames=20000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
@@ -667,6 +704,7 @@ register_room_spec(ROOM_40_SPEC)
 register_room_spec(ROOM_30_SPEC)
 register_room_spec(ROOM_31_SPEC)
 register_room_spec(ROOM_32_SPEC)
+register_room_spec(ROOM_20_SPEC)
 register_room_spec(ROOM_12_SPEC)
 
 

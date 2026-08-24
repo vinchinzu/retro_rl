@@ -57,8 +57,9 @@ power-on STATUS promotions. Power-on → L3 west key `0x7b` is on the
 continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes —
 not Clean. The continuous spine now holds the natural `0x40` key and has
 cleared `0x32`, collected `ADDR_LADDER` on `0x60`, exited to play `0x32`,
-and walked west into `0x31` then KEY-UP `0x20` `(120,205)` keys 5→4; next is
-`0x20→0x21` map (v1–v3 RIGHT solid; occupancy next). Do not close `.6` until TF `0x08`.
+and walked west into `0x31` then KEY-UP `0x20` `(120,205)` keys 5→4. 0x20
+Vire clear is on the continuous tape; `0x20→0x21` is still blocked (v1–v17,
+no BFS). Do not close `.6` until TF `0x08`.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
@@ -322,12 +323,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level4-stepladder` is the last green
-   gate (`ADDR_LADDER` at `0x60` `(136,141)`, v34). Next is exit `0x60→0x32`
-   waypoints (no BFS), then west `0x30` KEY-UP `0x20`. Isolated BFS is still
-   not a spine path. See `docs/plan.md`. Isolated `Level3*` pins do not close
-   spine beads. No seamed compose. Bomb/key count pokes are documented
-   Survival shortcuts, not Clean. Do not close `.6` until TF `0x08`.
+1. **Active Survival tip:** `--through level4-keyup20` is the last green
+   gate (`0x20` `(120,205)`, keys 5→4, v1). 0x20 Vire clear is on the tape;
+   `0x20→0x21` is blocked v1–v17 (south door L/R; north-around east wall at
+   `(200,96)`). Isolated BFS is still not a spine path. See `docs/plan.md`.
+   Isolated `Level3*` pins do not close spine beads. No seamed compose.
+   Bomb/key count pokes are documented Survival shortcuts, not Clean. Do
+   not close `.6` until TF `0x08`.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
