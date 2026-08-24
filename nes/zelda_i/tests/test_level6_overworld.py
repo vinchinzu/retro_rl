@@ -934,22 +934,22 @@ def test_level6_map19_occupancy_then_idle() -> None:
 
     stages = level6_map19_stages()
     assert [name for name, _, _ in stages] == ["level6_map_0x19"]
-    assert MAP_19_GOAL == (120, 141)
+    assert MAP_19_GOAL == (136, 141)
     leftover = make_map19_controller()
     act = leftover.step(read_snapshot(_ram(level=6, screen=0x19, x=176, y=158)))
     assert act.reason == "map_column"
     assert list(act.action) == list(nes_action("LEFT"))
     assert list(act.action) != list(nes_action("RIGHT"))
     col = make_map19_controller()
-    act = col.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=158)))
+    act = col.step(read_snapshot(_ram(level=6, screen=0x19, x=136, y=158)))
     assert act.reason == "map_row"
     assert list(act.action) == list(nes_action("UP"))
     idle = make_map19_controller()
-    act = idle.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=141)))
+    act = idle.step(read_snapshot(_ram(level=6, screen=0x19, x=136, y=141)))
     assert act.reason == "map_idle"
     assert list(act.action) == list(nes_idle_action())
     got = make_map19_controller()
-    ram = _ram(level=6, screen=0x19, x=120, y=173)
+    ram = _ram(level=6, screen=0x19, x=136, y=141)
     ram[ADDR_MAP] = 0x2A
     act = got.step(read_snapshot(ram))
     assert got.success

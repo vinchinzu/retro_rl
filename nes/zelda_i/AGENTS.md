@@ -102,7 +102,9 @@ from damage heatmaps. Do not block tip progress on combat polish.
   hold-UP `(120,93)` not mode 9 (`--through level6-stairs18` stays red).
   0x19 live is 2× Zol `0x13` + 2× Like-Like `0x17` (enter PNG beam is the
   Like-Like, not a wizzrobe). Map sprite at south-center `(120,181)` idle
-  is **not** `ADDR_MAP|0x20`.
+  is **not** `ADDR_MAP|0x20`. Compass analog idle `(120,141)` is not
+  either. Occupancy from leftover `(176,158)` freeze-miss boxes (v1/v4)
+  or wanders (v5 244 misses); leftover LEFT is free.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -132,7 +134,8 @@ L6 cleared `0x19` (`l6_clear19_continuous_v1` 1/1, 208,845f hop 4,213f
 leftover `(176,158)`, keys=5, bombs=8, TF=`0x1F`, map=`0x0A`,
 deaths/progression/capacity 0, no state load). Census 2× Zol `0x13` +
 2× Like-Like `0x17`; RoomItemId `0x17` Map on floor not collected
-(map19 v2 stood on `(120,181)` sprite, bit still off). North hole
+(map19 v2 on sprite `(120,181)`; v3 idle `(120,141)`; occupancy v4/v5
+boxed/wandered). Next axis LEFT x=136 then idle `(136,141)`. North hole
 decorative. Rod / Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
