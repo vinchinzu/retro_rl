@@ -18,6 +18,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
+    LEVEL6_WIZZROBE_38_ROOM,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
@@ -27,6 +28,7 @@ __all__ = [
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
     "Level6North68Controller",
+    "make_north_38_controller",
     "make_north_48_controller",
     "make_north_58_controller",
 ]
@@ -184,5 +186,15 @@ def make_north_48_controller() -> Level6North68Controller:
         source_room=LEVEL6_KEESE_ROOM,
         dest_room=LEVEL6_TRAPS_ROOM,
         spec_id="level6_north_0x48",
+        max_frames=6000,
+    )
+
+
+def make_north_38_controller() -> Level6North68Controller:
+    """0x48 leftover → occupancy run-UP into 0x38. Do not fight traps."""
+    return Level6North68Controller(
+        source_room=LEVEL6_TRAPS_ROOM,
+        dest_room=LEVEL6_WIZZROBE_38_ROOM,
+        spec_id="level6_north_0x38",
         max_frames=6000,
     )

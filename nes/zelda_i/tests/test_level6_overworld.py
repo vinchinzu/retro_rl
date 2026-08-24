@@ -24,6 +24,7 @@ from zelda_i.level6_overworld import (
 )
 from zelda_i.level6_path import (
     Level6North68Controller,
+    make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
 )
@@ -38,6 +39,8 @@ from zelda_i.level6_spine import (
     level6_compass_success,
     level6_keese_stages,
     level6_keese_success,
+    level6_room38_stages,
+    level6_room38_success,
     level6_room48_stages,
     level6_room48_success,
     level6_east_key_stages,
@@ -402,6 +405,29 @@ def test_level6_room48_occupancy_up_from_0x58() -> None:
     assert not level6_room48_success(read_snapshot(ram))
     run = SpineRun(through="level6-room48", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_room_0x48"
+
+
+def test_level6_room38_occupancy_up_from_0x48() -> None:
+    from retro_harness.nes import nes_action
+
+    stages = level6_room38_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x38"]
+    ctl = make_north_38_controller()
+    assert ctl.source_room == 0x48
+    assert ctl.dest_room == 0x38
+    act = ctl.step(read_snapshot(_ram(level=6, screen=0x48, x=120, y=205)))
+    assert act.reason == "north_path"
+    assert list(act.action) == list(nes_action("UP"))
+    ram = _ram(level=6, screen=0x38, x=120, y=205)
+    arrive = make_north_38_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_38"
+    assert level6_room38_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x48
+    assert not level6_room38_success(read_snapshot(ram))
+    run = SpineRun(through="level6-room38", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x38"
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
