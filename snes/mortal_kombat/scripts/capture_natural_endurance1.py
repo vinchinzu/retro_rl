@@ -16,7 +16,9 @@ keepaway after that first KO. Keepaway ducks when knife sprite 0x1B36
 leaves Kano — ``p2.state`` stays 0 for the whole throw. Courtyard
 specialist (``scripted-courtyard``) idles so Kano commits the knife,
 jump-forwards at 240f after a *visible* fight (296f from first-ready
-black fade), then land HK. Ducking or jumping early makes Kano rush.
+black fade), then air HK before Kano walks under. Ducking or jumping
+early makes Kano rush. Land HK crosses (~174/67); air HK stays
+same-side (~151/183, 25 dmg) and standing-HK punishes the walk-in.
 
 Liu Kang CPU walkthrough (IceMaster / LWang): fireball F,F,HP and flying
 kick F,F,HK. Jump-kick into flying kick; fireball on wakeup. Do not jump
@@ -64,7 +66,6 @@ from mortal_kombat.scripted import (  # noqa: E402
     X,
     back,
     fireball_sequence,
-    flying_kick_sequence,
     forward,
     zeros,
 )
@@ -325,12 +326,14 @@ class NoJumpFireballPolicy(ScriptedPolicy):
 
 
 class CourtyardKanoPolicy(ScriptedPolicy):
-    """Jump the committed courtyard knife, land HK, then flying-kick.
+    """Jump the committed courtyard knife and air-HK before Kano walks under.
 
     Intro eats jumps until ~240f after a *visible* fight. First-ready is
     a 51f black fade with pose already 68/144, so round 1 waits 296f
     from 161/161. Duck or jump before that and Kano cancels the knife
-    and rushes. Jump on the in-flight sprite is too late.
+    and rushes. Jump on the in-flight sprite is too late. Land HK lets
+    him walk under (cross ~174/67); air HK at y-drop hits 25 and stays
+    same-side (~151/183). Then walk in and standing-HK the roll.
     """
 
     name = "scripted-courtyard"
@@ -338,8 +341,10 @@ class CourtyardKanoPolicy(ScriptedPolicy):
     later_jump_at = 240
     jump_hold = 10
     jump_startup = 40
-    hk_hold = 8
-    kick_range = FIREBALL_RANGE + 28  # 100
+    hk_hold = 4
+    close_range = 40
+    chase_range = 80
+    hk_cooldown = 32
 
     def __init__(
         self,
@@ -351,6 +356,9 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         self.later_jump_at = later_jump_at
         self._fights = 0
         self._clock = 0
+        self._idle = 0
+        self._jump_left = 0
+        self._wait_air = 0
         self._airborne = False
         self._hk_left = 0
         self._opener_done = False
@@ -358,6 +366,9 @@ class CourtyardKanoPolicy(ScriptedPolicy):
     def reset(self) -> None:
         super().reset()
         self._clock = 0
+        self._idle = 0
+        self._jump_left = 0
+        self._wait_air = 0
         self._airborne = False
         self._hk_left = 0
         self._opener_done = False
@@ -377,7 +388,8 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         p1_x = int(ram[ADDR_P1_X]) & 0xFF if ADDR_P1_X < len(ram) else 0
         p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
         # Leftover Match 7 KO is screen=FIGHT hp=59/0; do not duck that.
-        if live and knife_incoming(ram, p1_x, p2_x):
+        # Ducking during the opener jump cancels the air HK.
+        if live and self._opener_done and knife_incoming(ram, p1_x, p2_x):
             self._queue.clear()
             protect = zeros()
             protect[DOWN] = 1
@@ -399,6 +411,9 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         full = snap.p1_health == snap.p2_health == 161
         if full and not self._was_full:
             self._clock = 0
+            self._idle = 0
+            self._jump_left = 0
+            self._wait_air = 0
             self._airborne = False
             self._hk_left = 0
             self._opener_done = False
@@ -415,38 +430,65 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
         dist = abs(p2_x - p1_x)
         facing = 1 if p1_x <= p2_x else -1
-        if 40 < p1_y < 140:
+        # Standing pose is 144. 140 left a 4px hole: y=143 looked like a
+        # land and we walked/fireballed while still hopping, which is how
+        # capture crossed (~174/74) when the pin probe did not.
+        airborne = 40 < p1_y < 144
+        if airborne:
             self._airborne = True
-            return zeros()
-        if self._airborne and not self._opener_done:
+        elif self._airborne and not self._opener_done:
             self._opener_done = True
-            self._hk_left = self.hk_hold
             print(
-                f"  courtyard land-hk clock={self._clock} x={p1_x}/{p2_x} "
-                f"y={p1_y} dist={dist}",
+                f"  courtyard air-hk done clock={self._clock} idle={self._idle} "
+                f"x={p1_x}/{p2_x} y={p1_y} dist={dist}",
                 flush=True,
             )
         if not self._opener_done:
-            if self.jump_at <= self._clock < self.jump_at + self.jump_hold:
-                if self._clock == self.jump_at:
-                    print(
-                        f"  courtyard jump clock={self._clock} x={p1_x}/{p2_x} y={p1_y}",
-                        flush=True,
-                    )
+            if self._jump_left > 0:
+                self._jump_left -= 1
+                if self._wait_air > 0:
+                    self._wait_air -= 1
                 out = forward(facing)
                 out[UP] = 1
                 return out
-            if self._clock < self.jump_at:
+            # Count start-pose idle only. TournamentRunner leftover/VS
+            # frames must not pull the jump early (Kano then rushes).
+            idle_pose = p1_y >= 144 and 60 <= p1_x <= 76 and 172 <= p2_x <= 188
+            if idle_pose:
+                self._idle += 1
+            if self._idle == self.jump_at and idle_pose:
+                print(
+                    f"  courtyard jump clock={self._clock} idle={self._idle} "
+                    f"x={p1_x}/{p2_x} y={p1_y}",
+                    flush=True,
+                )
+                self._jump_left = self.jump_hold - 1
+                self._wait_air = self.jump_startup
+                out = forward(facing)
+                out[UP] = 1
+                return out
+            if self._idle < self.jump_at:
                 return zeros()
-            # 10f tap commits the jump; y drops ~20-30f later. Do not
-            # flying-kick or walk during startup — that cancels it.
-            if self._clock < self.jump_at + self.jump_startup:
+            # y drops ~20-30f after the 10f tap. Walk/special during
+            # startup cancels the jump. Air HK once airborne, before
+            # Kano walks under.
+            if airborne:
+                out = zeros()
+                out[B] = 1
+                return out
+            if self._wait_air > 0:
+                self._wait_air -= 1
                 return zeros()
             print(
-                f"  courtyard jump missed clock={self._clock} y={p1_y}",
+                f"  courtyard jump missed clock={self._clock} idle={self._idle} "
+                f"y={p1_y}",
                 flush=True,
             )
             self._opener_done = True
+        if airborne:
+            out = zeros()
+            out[B] = 1
+            return out
         if self._hk_left > 0:
             self._hk_left -= 1
             out = zeros()
@@ -454,11 +496,26 @@ class CourtyardKanoPolicy(ScriptedPolicy):
             return out
         if snap.p1.state != 0:
             return zeros()
-        if self._cooldown == 0 and dist <= self.kick_range:
-            return self._enqueue(flying_kick_sequence(facing))
-        if self._cooldown == 0 and dist > self.kick_range:
+        if dist <= 24:
+            return back(facing)
+        # Chase the retreat through ~214 (standing HK at 182/214). Stop
+        # before a rim HK: 192/231 wraps Kano to x≈11 and we land crossed.
+        kano_at_edge = (facing > 0 and p1_x > 190 and p2_x > 220) or (
+            facing < 0 and p1_x < 60 and p2_x < 40
+        )
+        if kano_at_edge:
+            return back(facing)
+        if dist <= self.close_range and self._cooldown == 0:
+            self._hk_left = self.hk_hold - 1
+            self._cooldown = self.hk_cooldown
+            out = zeros()
+            out[B] = 1
+            return out
+        if dist <= self.chase_range:
+            return forward(facing)
+        if self._cooldown == 0 and dist > FIREBALL_RANGE:
             return self._enqueue(fireball_sequence(facing))
-        return forward(facing)
+        return back(facing)
 
 
 class RoundMixPolicy:

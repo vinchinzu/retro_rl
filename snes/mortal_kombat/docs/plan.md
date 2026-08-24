@@ -44,13 +44,16 @@ Continuations: `--load` plus a distinct `--output-prefix`. Wall cutoff writes
   keepaway now ducks knife sprite `0x1B36` and walks back on cooldown;
   it still has not closed a round (Kano rushes if you hold duck). Do
   not roll Match5 v3 for 2–0. Courtyard specialist (`scripted-courtyard`)
-  jumps the committed knife: idle until 296f from first-ready (51f
-  black fade + 240f), tap UP+forward, wait ~30f for y to drop, land
-  HK (40 dmg). Jump on the in-flight sprite is too late; inputs during
-  jump startup cancel it. After the hop Kano is often on the other
-  side (land ~174/67) and flying kicks have not closed a round (0-2).
-  Next: a land punish that does not cross, or an air HK before Kano
-  walks under. Force oracles onto E1/E1B (`ladder_model` stops at M7).
+  jumps the committed knife: idle 296 start-pose frames from
+  first-ready (51f black fade + 240f), tap UP+forward, wait ~30f for
+  y to drop, air HK (25 dmg, same-side ~151/183 on a leftover-pin
+  probe) then standing HK at ~182/214. Jump on the in-flight sprite
+  is too late; inputs during jump startup cancel it. Land HK crosses
+  (~174/67). `--oracles scripted-courtyard --win-at 8` still 0-2
+  because TournamentRunner lands crossed (~177/54). Next: make the
+  capture runner keep the pin-probe air HK (no walk during y=143),
+  then close the round without chasing Kano off the right rim.
+  Force oracles onto E1/E1B (`ladder_model` stops at M7).
 - N>=20 eval of `mk1_v3_Match5_ppo_final.zip` on Fight, Match2, Match7; `--promote` only if it beats the per-stage zip
 - More Clean `--ladder-model mk1_v3_Match5_ppo_final.zip` attempts (furthest Match 4 so far)
 - Do not retarget v3 x/y off `0x00DA` without a fresh train
