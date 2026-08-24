@@ -26,6 +26,8 @@ from zelda_i.level6_path import Level6North68Controller, make_north_58_controlle
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
+    level6_clear58_stages,
+    level6_clear58_success,
     level6_clear68_stages,
     level6_clear68_success,
     level6_compass_stages,
@@ -349,6 +351,25 @@ def test_level6_keese_occupancy_up_from_0x68() -> None:
     run = SpineRun(through="level6-keese", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_keese_0x58"
     assert "level6-keese" in L6_THROUGH
+
+
+def test_level6_clear58_attaches_occupancy_keese() -> None:
+    from zelda_i.dungeon_ids import KEESE_OBJECT_TYPE
+
+    stages = level6_clear58_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x58"]
+    fight = stages[0][1]
+    assert fight.spec.room_id == 0x58
+    assert fight.spec.combat.occupancy_patrol
+    assert fight.spec.alive_rule.name == "TYPE"
+    ram = _ram(level=6, screen=0x58, x=120, y=205)
+    assert level6_clear58_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = KEESE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 0
+    assert not level6_clear58_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear58", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x58"
+    assert "level6-clear58" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
