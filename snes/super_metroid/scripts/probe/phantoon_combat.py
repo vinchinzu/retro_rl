@@ -431,8 +431,6 @@ def cmd_window(args: argparse.Namespace) -> int:
                 _wait_window_closed(session)
             result = _one_window(session, wait=args.wait, strategy=strategy)
             windows.append(result)
-            if int(session.state.health) == 0:
-                break
             if not result["success"]:
                 from retro_harness.actions import idle_action
 
