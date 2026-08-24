@@ -319,11 +319,14 @@ def rain_charge_ok(enemy_x: int, *, max_x: int = RAIN_FIRE_X_MAX) -> bool:
 def charge_window_ok(
     func: int, enemy_x: int, *, skip_x: int = 155
 ) -> bool:
-    """Left fig-8, or left-ish rain vuln. Skip right wall and (128, 96)."""
+    """W1 left fig-8 (~120) or rain (48, 96). Skip (53, 82) and x=219."""
     if right_park(enemy_x, skip_x=skip_x):
         return False
     if rain_phase(func):
         return rain_vulnerable(func) and rain_charge_ok(enemy_x)
+    # Fig-8 on the living seat (53, 82): p83 at y=160 — do not jump.
+    if int(enemy_x) <= RAIN_FIRE_X_MAX:
+        return False
     return True
 
 
@@ -868,7 +871,9 @@ def play_phantoon_fight(
             park_x = int(state.enemy0_x)
             last_func = func_now
         if not charge_window_ok(func_now, park_x) and (
-            rain_phase(func_now) or right_park(park_x, skip_x=strategy.skip_enemy_x)
+            rain_phase(func_now)
+            or right_park(park_x, skip_x=strategy.skip_enemy_x)
+            or rain_charge_ok(park_x)
         ):
             _rain_corner_wait(session, strategy)
             continue
