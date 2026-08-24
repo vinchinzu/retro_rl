@@ -408,17 +408,17 @@ def test_stepladder_notch_stall_fails_without_bfs() -> None:
 
     ctl = make_stepladder_controller(clear_first=False)
     ctl.phase = StepladderPhase.PATH
-    ctl._last_xy = (48, 161)
+    ctl._last_xy = (80, 189)
     ctl._stall = ROOM_60_CLIP_BUDGET
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = 9
     ram[ADDR_LEVEL] = 4
     ram[ADDR_SCREEN] = 0x60
-    ram[ADDR_LINK_X] = 48
-    ram[ADDR_LINK_Y] = 161
+    ram[ADDR_LINK_X] = 80
+    ram[ADDR_LINK_Y] = 189
     act = ctl.step(read_snapshot(ram))
     assert ctl.phase is StepladderPhase.FAILED
-    assert act.reason.startswith("notch161_solid_48_161")
+    assert act.reason.startswith("corner80_solid_80_189")
 
 
 def test_maze_62_paths() -> None:
