@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous clear `0x32`; `0x60` island causeway blocked v19 |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous clear `0x32`; `0x60` island causeway blocked v26 |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -184,7 +184,7 @@ block `0x68` residual OK. Do not close `.6` until TF `0x08`.
 
 `--through level4-stepladder` is wired (`make_stepladder_controller(clear_first=False)`,
 stop `ADDR_LADDER` / `level4_stepladder_success`) but **live blocked** after
-v1–v19. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
+v1–v26. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
 from the continuous leftover without emulator-state BFS. Do not close `.6`.
 
 | tag | leftover | wrong belief |
@@ -205,8 +205,15 @@ from the continuous leftover without emulator-state BFS. Do not close `.6`.
 | v17 | `0x60` `(48,161)` notch161_solid stall=0 | simultaneous RIGHT+UP at the occupancy gap; live is UP-priority, x stays 48 |
 | v18 | `0x60` `(48,159)` notch161_solid stall=0 | 1-frame RIGHT/UP tap-hold walks the y=158 gap; live RIGHT at y=159 is solid (no gap) |
 | v19 | `0x60` `(84,189)` corner80_solid stall=0 | south-corridor SW corner RIGHT+UP clips onto the island; live slides east along y=189, UP is water |
+| v20 | `0x60` `(88,189)` rightdown84_solid stall=0 | RIGHT+DOWN at leftover `(84,189)` clips onto the island; live DOWN is south brick, RIGHT slides 4px east (same y=189 band) |
+| v21 | `0x60` `(84,189)` leftup88_solid stall=0 | LEFT+UP at `(88,189)` clips NW through the water SW corner; live UP is water, LEFT slides 4px west |
+| v22 | `0x60` `(48,165)` rightdown161_solid stall=0 | RIGHT+DOWN at SW notch `(48,161)` clips east onto the island; live RIGHT is west-brick, DOWN-priority slides 4px south |
+| v23 | `0x60` `(48,157)` leftup161_solid stall=0 | LEFT+UP at `(48,161)` clips NW onto the island; live LEFT is west wall, UP-priority slides 4px north |
+| v24 | `0x60` `(48,130)` leftup133_solid stall=0 | LEFT+UP at west-aisle `(48,133)` (v11 burned RIGHT+DOWN here); live same UP-priority, LEFT wall |
+| v25 | `0x60` `(48,71)` rightdown68_solid stall=0 | RIGHT+DOWN at north-strip `(48,68)` clips east; live RIGHT is north-brick, DOWN 3px |
+| v26 | `0x60` `(48,65)` leftup68_solid stall=0 | LEFT+UP two-wall corner at `(48,68)` clips onto the island; live LEFT wall, UP 3px into north brick |
 
-PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16,17,18,19}_final.png`
+PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26}_final.png`
 (v3/v5 exit `0x32`).
 
 ### Why isolated BFS found a path occupancy says does not exist
@@ -242,14 +249,22 @@ seeded grid.
 6. **Not a two-button clip.** Isolated dirs are `UP/DOWN/LEFT/RIGHT` one at
    a time. `RIGHT,UP,RIGHT,UP` tokens are sequential holds, not `nes_action("RIGHT","UP")`.
 
-Live v17–v19 (one new geometry each) did not cross the moat. `ADDR_LADDER`
+Live v17–v26 (one new geometry each) did not cross the moat. `ADDR_LADDER`
 stays 0. Inventory on miss: TF=`0x07` keys=5 bombs=15 ladder=0;
 deaths/state/progression/capacity 0.
 
+Listed two-button residuals from the v19 leftover are exhausted. Two-button
+holds are vertical-priority: the vertical axis slides 3–4px, the horizontal
+axis does not enter the island. Occupancy 1px 4-connected still has **no**
+spawn→island path (v20 seeded south brick at leftover x=84–88, y≥190).
+The occupancy-free pocket `x=49–79,y≥162` is west of south-water `x=80` —
+not an island path. v11 already burned RIGHT+DOWN at west-aisle y=117..141.
+
 Next worker: do **not** call `_bfs_60_to_ladder` on the spine. Remaining
-one-frame policies that are none of v1–v19: RIGHT+DOWN or LEFT+UP at
-`(84,189)`; a Keese-timed knock from the west aisle (RNG, not a geometry
-clip). Push from `(80,109)` is still OK.
+last resort is a **Keese-timed knock from the west aisle**. Isolated BFS
+Keese is checkpoint RNG after ~settle, not this 118k-frame leftover; do
+not attach unless it is 2/2 deterministic on the continuous tape. Push
+from `(80,109)` is still OK.
 
 Exact verified predecessor:
 
@@ -261,7 +276,7 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
 # blocked hop (do not expect ok=true):
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-stepladder --no-video --trials 1 \
-  --tag l4_stepladder_continuous_v19
+  --tag l4_stepladder_continuous_v26
 ```
 Isolated 0x6b check:
 

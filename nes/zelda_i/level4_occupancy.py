@@ -12,9 +12,20 @@ Island cardinals from the west aisle and south corridor are live-blocked.
 Isolated ``l4_tib8_stepladder`` is not a spine path. Live BFS used hold=4 /
 q=4 with Keese, then ``em.set_state(goal_state)``. Token replay (v3/v4)
 dumps south. Occupancy 1px 4-connected has no spawn→island path. v17/v18
-at (48,161) leftover x=48 — the y=158 gap is not an east walk. v19 is
-RIGHT+UP at the south-corridor SW water corner (80,189), not v8 cardinal
-UP at x=80-144 and not v13-v15 stairs-column UP.
+at (48,161) leftover x=48 — the y=158 gap is not an east walk. v19 RIGHT+UP
+at (80,189) leftover (84,189) slides east; UP is water. v20 RIGHT+DOWN at
+(84,189) leftover (88,189): DOWN is south brick, RIGHT slides 4px (same
+y=189 band, not a new corridor). v21 LEFT+UP at (88,189) leftover (84,189):
+UP is water, LEFT slides 4px west. v22 is RIGHT+DOWN at the west-aisle SW
+notch (48,161), not v17 RIGHT+UP and not v11 west-aisle RIGHT+DOWN at
+y=117..141. v22 leftover (48,165): RIGHT x stays 48, DOWN slides 4px
+(DOWN-priority). v23 LEFT+UP leftover (48,157): LEFT wall, UP 4px
+(same UP-priority as v17). v24 LEFT+UP at (48,133) leftover (48,130):
+LEFT wall, UP 3px. v11 already burned RIGHT+DOWN at y=133. v25
+RIGHT+DOWN at (48,68) leftover (48,71): RIGHT north-brick, DOWN 3px.
+v26 LEFT+UP leftover (48,65): LEFT wall, UP 3px into the north brick.
+Listed two-button residuals are live-blocked. OccupancyWalker still has
+no spawn→island path. Keese knock is RNG last-resort, not attached.
 """
 
 from __future__ import annotations
@@ -44,11 +55,13 @@ ROOM_60_NORTH_STRIP_Y = 68
 ROOM_60_ISLAND_XY = LADDER_60_PICKUP_XY
 ROOM_60_EXIT_X = 176
 ROOM_60_SE_X = 168
-# v18 leftover (48,159): RIGHT at the notch is solid. Approach from the
-# south corridor (v13 walked y=189) and clip the water SW corner.
-ROOM_60_CLIP_STAND = (80, 189)
-ROOM_60_CLIP_BUTTONS: tuple[str, str] = ("RIGHT", "UP")
-ROOM_60_CLIP_OPEN_X = 90  # east of west-brick → occupancy-free interior
+# v25 leftover (48,71): RIGHT+DOWN is DOWN-priority, x stays 48.
+# OccupancyWalker still has no spawn→island path. v26 holds LEFT+UP at
+# north-strip (48,68) — two-wall corner (v12 UP/RIGHT north wall).
+ROOM_60_CLIP_STAND = (48, 68)
+ROOM_60_CLIP_BUTTONS: tuple[str, str] = ("LEFT", "UP")
+# East of west aisle and north of south-water: keep a north/east clip.
+ROOM_60_CLIP_OPEN_X = ROOM_60_WEST_AISLE_X
 ROOM_60_CLIP_BUDGET = 96
 ROOM_60_WAYPOINTS: tuple[tuple[int, int], ...] = (
     ROOM_60_CLIP_STAND,
@@ -64,6 +77,9 @@ _WEST_BRICK_Y0, _WEST_BRICK_Y1 = 53, 161
 # x=169..175 is the same stairs tile west of exit 176.
 _SOUTH_WATER_X0, _SOUTH_WATER_X1 = 80, 175
 _SOUTH_WATER_Y0, _SOUTH_WATER_Y1 = 158, 180
+# Live v20: DOWN from (84,189) y unchanged. Seed the south brick at leftover x.
+_SOUTH_WALL_X0, _SOUTH_WALL_X1 = 84, 88
+_SOUTH_WALL_Y0 = 190
 
 
 def room_60_grid() -> OccupancyGrid:
@@ -75,6 +91,9 @@ def room_60_grid() -> OccupancyGrid:
             blocked.add((x, y))
     for y in range(_SOUTH_WATER_Y0, _SOUTH_WATER_Y1 + 1):
         for x in range(_SOUTH_WATER_X0, _SOUTH_WATER_X1 + 1):
+            blocked.add((x, y))
+    for y in range(_SOUTH_WALL_Y0, ymax + 1):
+        for x in range(_SOUTH_WALL_X0, _SOUTH_WALL_X1 + 1):
             blocked.add((x, y))
     for y in range(ymin, ymax + 1):
         for x in range(ROOM_60_EXIT_X, xmax + 1):
