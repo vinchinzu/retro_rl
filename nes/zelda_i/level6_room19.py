@@ -1,8 +1,8 @@
-"""Level 6 0x18 north-stairs hop after Gleeok residual.
+"""Level 6 0x18 east hop after Gleeok residual.
 
-Heads gone; east shutter still closed (mask 0, PNG black). Occupancy to the
-north-center hole then UP. Do not grant Rod. Do not walk RIGHT into the
-closed east shutter.
+North hole idle is not mode 9 (stairs v1–v5; tile 0x77 at y=95–101).
+Occupancy to the east door (208,141) then RIGHT. Do not walk RIGHT at
+y=133 into the shutter face. Dest hypothesized 0x19 Map; enter-stop.
 """
 
 from __future__ import annotations
@@ -12,36 +12,34 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
-    "STAIRS_18_GOAL",
-    "STAIRS_18_MAX_FRAMES",
-    "STAIRS_18_X_TOL",
-    "Level6Stairs18Controller",
-    "make_stairs_18_controller",
+    "EAST_DOOR_X",
+    "EAST_DOOR_Y",
+    "EAST_DOOR_Y_TOL",
+    "ROOM19_MAX_FRAMES",
+    "Level6Room19Controller",
+    "make_room19_controller",
 ]
 
-# v3 leftover (120,109) tile 0x76 diamond, south of hole.
-# v4 leftover (120,101) tile 0x77 still south of hole.
-# v2 leftover (120,93) visually on hole; hold-UP no mode 9.
-# v5 leftover (120,95) tile 0x77, still south; hole is decorative.
-STAIRS_18_GOAL = (120, 96)
-STAIRS_18_X_TOL = 4
-STAIRS_18_MAX_FRAMES = 4000
+EAST_DOOR_X = 208
+EAST_DOOR_Y = 141
+EAST_DOOR_Y_TOL = 4
+EAST_DOOR_X_TOL = 4
+ROOM19_MAX_FRAMES = 4000
 
 
 @dataclass
-class Level6Stairs18Controller:
-    """Occupancy to (120,96) then idle on the 0x18 stairs hole."""
+class Level6Room19Controller:
+    """Y-align 141, occupancy to (208,141), RIGHT. No stairs walk."""
 
-    spec_id: str = "level6_stairs_0x18"
+    spec_id: str = "level6_room_0x19"
     room: int = LEVEL6_GLEEOK_ROOM
-    goal: tuple[int, int] = STAIRS_18_GOAL
-    max_frames: int = STAIRS_18_MAX_FRAMES
+    goal: tuple[int, int] = (EAST_DOOR_X, EAST_DOOR_Y)
+    max_frames: int = ROOM19_MAX_FRAMES
     frames: int = 0
     success: bool = False
     failed: bool = False
@@ -106,15 +104,20 @@ class Level6Stairs18Controller:
             return self._emit(
                 snap, FrameAction(nes_idle_action(), "link_death"), force=True
             )
-        if snap.mode == PASSAGE_MODE:
+        if (
+            snap.level == LEVEL6
+            and snap.screen != self.room
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
             return self._mark_success(
                 snap,
-                "stairs",
-                f"stairs_{snap.screen:02x}_{snap.link_x}_{snap.link_y}",
+                f"arrived_{snap.screen:02x}",
+                f"arrived_{snap.screen:02x}_{snap.link_x}_{snap.link_y}",
             )
-        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7, 10):
+        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
             self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), "wait_scroll")
+            return FrameAction(nes_action("RIGHT"), "east_scroll")
         if snap.mode != PLAY_MODE:
             self.walker.last_dir = None
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
@@ -125,11 +128,8 @@ class Level6Stairs18Controller:
                 snap, FrameAction(nes_idle_action(), "left_level"), force=True
             )
         if snap.screen != self.room:
-            return self._mark_success(
-                snap,
-                f"arrived_{snap.screen:02x}",
-                f"arrived_{snap.screen:02x}_{snap.link_x}_{snap.link_y}",
-            )
+            self.walker.last_dir = None
+            return FrameAction(nes_action("RIGHT"), "east_settle")
 
         xy = (int(snap.link_x), int(snap.link_y))
         prev_dir = self.walker.last_dir
@@ -141,18 +141,16 @@ class Level6Stairs18Controller:
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
 
         gx, gy = self.goal
-        # v2 leftover (120,93): hold-UP walked through the hole to the north
-        # wall and never entered mode 9. Idle on the hole band instead.
-        if abs(snap.link_x - gx) <= STAIRS_18_X_TOL and snap.link_y <= gy:
+        if (
+            snap.link_x >= gx - EAST_DOOR_X_TOL
+            and abs(snap.link_y - gy) <= EAST_DOOR_Y_TOL
+        ):
             self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), "stairs_idle")
-            )
+            return self._emit(snap, FrameAction(nes_action("RIGHT"), "east_push"))
 
-        # v1 leftover (160,117): occupancy to (120,109) is length-tied;
-        # BFS UP-first slid into the east diamond pocket. Column-first.
-        if abs(snap.link_x - gx) > STAIRS_18_X_TOL:
-            dest = (gx, int(snap.link_y))
+        # Do not RIGHT at leftover y=133 into the shutter face.
+        if abs(snap.link_y - gy) > EAST_DOOR_Y_TOL:
+            dest = (int(snap.link_x), gy)
         else:
             dest = self.goal
         if dest != self.walker.goal:
@@ -164,10 +162,10 @@ class Level6Stairs18Controller:
                 self.notes.append(f"stand_f{self.frames}_{xy[0]}_{xy[1]}")
             self.walker.last_dir = None
             return self._emit(
-                snap, FrameAction(nes_idle_action(), "stairs_stand")
+                snap, FrameAction(nes_idle_action(), "east_stand")
             )
         return self._emit(
-            snap, FrameAction(nes_action(direction), "stairs_path")
+            snap, FrameAction(nes_action(direction), "east_path")
         )
 
     def report(self) -> dict[str, Any]:
@@ -177,7 +175,7 @@ class Level6Stairs18Controller:
             "frames": self.frames,
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "column x=120 first, occupancy to (120,96), idle on hole",
+            "policy": "y=141 first, occupancy to (208,141), RIGHT; no y=133 RIGHT",
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
             "blocked": len(self.walker.grid.blocked),
@@ -187,6 +185,6 @@ class Level6Stairs18Controller:
         }
 
 
-def make_stairs_18_controller() -> Level6Stairs18Controller:
-    """Occupancy onto 0x18 north stairs. Do not grant Rod."""
-    return Level6Stairs18Controller()
+def make_room19_controller() -> Level6Room19Controller:
+    """Occupancy east of 0x18. Map pickup residual. Do not grant Rod."""
+    return Level6Room19Controller()

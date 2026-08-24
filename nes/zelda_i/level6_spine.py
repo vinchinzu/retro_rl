@@ -1,4 +1,4 @@
-"""Survival-spine L6 from L5 TF settle through 0x18 Gleeok residual census.
+"""Survival-spine L6 from L5 TF settle through 0x19 enter after Gleeok.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
 Ignore object types 0x2b / Bubble. Map / Rod / Gohma / TF 0x20 residual.
@@ -32,6 +32,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_GLEEOK_ROOM,
+    LEVEL6_MAP_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
@@ -51,6 +52,10 @@ from zelda_i.level6_gleeok18 import (
     gleeok_3head_live,
     make_gleeok_18_controller,
     make_postgleeok_18_controller,
+)
+from zelda_i.level6_room19 import (
+    ROOM19_MAX_FRAMES,
+    make_room19_controller,
 )
 from zelda_i.level6_stairs18 import (
     STAIRS_18_MAX_FRAMES,
@@ -99,6 +104,8 @@ __all__ = [
     "level6_postgleeok18_success",
     "level6_stairs18_stages",
     "level6_stairs18_success",
+    "level6_room19_stages",
+    "level6_room19_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -135,6 +142,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-gleeok18",
     "level6-postgleeok18",
     "level6-stairs18",
+    "level6-room19",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -154,6 +162,7 @@ L6_STOPS: dict[str, str] = {
     "level6-gleeok18": "level6_gleeok_0x18",
     "level6-postgleeok18": "level6_postgleeok_0x18",
     "level6-stairs18": "level6_stairs_0x18",
+    "level6-room19": "level6_room_0x19",
 }
 
 
@@ -563,6 +572,25 @@ def level6_stairs18_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_room19_stages():
+    """0x18 leftover → occupancy east (208,141). Stairs stay a dedicated stop."""
+    east = make_room19_controller()
+    return (
+        ("level6_room_0x19", east, ROOM19_MAX_FRAMES),
+    )
+
+
+def level6_room19_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x19. Map pickup residual. Do not require ADDR_MAP bit."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+        and snap.screen == LEVEL6_MAP_ROOM
+        and snap.triforce == 0x1F
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -848,16 +876,32 @@ def continue_level6_spine(
     if through == "level6-postgleeok18":
         return
 
+    if through == "level6-stairs18":
+        if not run_stages(
+            env,
+            run,
+            level6_stairs18_stages(),
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+        ):
+            return
+        snap = read_snapshot(env.get_ram())
+        run.success = level6_stairs18_success(snap)
+        if not run.success:
+            run.failed_stage = "level6_stairs_0x18"
+        return
+
     if not run_stages(
         env,
         run,
-        level6_stairs18_stages(),
+        level6_room19_stages(),
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
     ):
         return
     snap = read_snapshot(env.get_ram())
-    run.success = level6_stairs18_success(snap)
+    run.success = level6_room19_success(snap)
     if not run.success:
-        run.failed_stage = "level6_stairs_0x18"
+        run.failed_stage = "level6_room_0x19"
