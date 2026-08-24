@@ -48,6 +48,10 @@ from zelda_i.level6_spine import (
     level6_settle18_success,
     level6_gleeok18_stages,
     level6_gleeok18_success,
+    level6_postgleeok18_stages,
+    level6_postgleeok18_success,
+    level6_stairs18_stages,
+    level6_stairs18_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -721,6 +725,128 @@ def test_level6_gleeok18_clips_then_south_stands_0x44() -> None:
     run = SpineRun(through="level6-gleeok18", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_gleeok_0x18"
     assert "level6-gleeok18" in L6_THROUGH
+
+
+def test_level6_postgleeok18_censuses_residual_and_doors() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_gleeok18 import (
+        POSTGLEEOK_STAND_X,
+        POSTGLEEOK_STAND_Y,
+        STAIRS_KEEP_Y,
+        make_postgleeok_18_controller,
+    )
+
+    stages = level6_postgleeok18_stages()
+    assert [name for name, _, _ in stages] == ["level6_postgleeok_0x18"]
+    assert POSTGLEEOK_STAND_X == 120
+    assert POSTGLEEOK_STAND_Y == 133
+    assert STAIRS_KEEP_Y == 125
+    leftover = _ram(level=6, screen=0x18, x=121, y=133)
+    idle = make_postgleeok_18_controller()
+    idle.census_frames = 3
+    idle.after_heads = 2
+    act = idle.step(read_snapshot(leftover))
+    assert act.reason == "residual_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+    idle.step(read_snapshot(leftover))
+    act = idle.step(read_snapshot(leftover))
+    assert idle.success
+    assert act.reason == "heads_gone"
+    assert level6_postgleeok18_success(read_snapshot(leftover))
+
+    heads = make_postgleeok_18_controller()
+    ram = _ram(level=6, screen=0x18, x=121, y=133)
+    ram[ADDR_OBJ_TYPE + 1] = 0x46
+    ram[ADDR_OBJ_HP + 1] = 80
+    ram[ADDR_LINK_X + 1] = 64
+    ram[ADDR_LINK_Y + 1] = 100
+    act = heads.step(read_snapshot(ram))
+    assert act.reason == "south_stand"
+    assert list(act.action) == list(nes_action("UP", "A"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert not heads.success
+    assert not level6_postgleeok18_success(read_snapshot(ram))
+
+    fb = make_postgleeok_18_controller()
+    ball = _ram(level=6, screen=0x18, x=121, y=133)
+    ball[ADDR_OBJ_TYPE + 1] = 0x56
+    ball[ADDR_OBJ_HP + 1] = 16
+    ball[ADDR_LINK_X + 1] = 130
+    ball[ADDR_LINK_Y + 1] = 133
+    act = fb.step(read_snapshot(ball))
+    assert act.reason == "fb_dodge"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+
+    east = make_postgleeok_18_controller()
+    ram_e = _ram(level=6, screen=0x18, x=121, y=133)
+    ram_e[ADDR_CUR_OPENED_DOORS] = 0x05
+    act = east.step(read_snapshot(ram_e))
+    assert act.reason == "residual_idle"
+    assert not east.success
+    ram_e[ADDR_OPEN_DOORWAY_MASK] = 0x01
+    opened = make_postgleeok_18_controller()
+    act = opened.step(read_snapshot(ram_e))
+    assert opened.success
+    assert act.reason == "east_open"
+    assert level6_postgleeok18_success(read_snapshot(ram_e))
+
+    stairs = make_postgleeok_18_controller()
+    ram_s = _ram(level=6, screen=0x18, x=120, y=109, mode=9)
+    act = stairs.step(read_snapshot(ram_s))
+    assert stairs.success
+    assert act.reason == "stairs"
+    assert level6_postgleeok18_success(read_snapshot(ram_s))
+
+    ram[ADDR_OBJ_TYPE + 1] = 0x44
+    ram[ADDR_OBJ_HP + 1] = 160
+    assert not level6_postgleeok18_success(read_snapshot(ram))
+    run = SpineRun(through="level6-postgleeok18", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_postgleeok_0x18"
+    assert "level6-postgleeok18" in L6_THROUGH
+
+
+def test_level6_stairs18_occupancy_then_up() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_stairs18 import STAIRS_18_GOAL, make_stairs_18_controller
+
+    stages = level6_stairs18_stages()
+    assert [name for name, _, _ in stages] == ["level6_stairs_0x18"]
+    assert STAIRS_18_GOAL == (120, 96)
+    leftover = make_stairs_18_controller()
+    act = leftover.step(read_snapshot(_ram(level=6, screen=0x18, x=156, y=133)))
+    assert act.reason == "stairs_path"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("UP"))
+    aligned = make_stairs_18_controller()
+    act = aligned.step(read_snapshot(_ram(level=6, screen=0x18, x=120, y=133)))
+    assert act.reason == "stairs_path"
+    assert list(act.action) == list(nes_action("UP"))
+    south = make_stairs_18_controller()
+    act = south.step(read_snapshot(_ram(level=6, screen=0x18, x=120, y=109)))
+    assert act.reason == "stairs_path"
+    assert list(act.action) == list(nes_action("UP"))
+    hole = make_stairs_18_controller()
+    act = hole.step(read_snapshot(_ram(level=6, screen=0x18, x=120, y=96)))
+    assert act.reason == "stairs_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+    cellar = make_stairs_18_controller()
+    ram_c = _ram(level=6, screen=0x18, x=120, y=109, mode=9)
+    act = cellar.step(read_snapshot(ram_c))
+    assert cellar.success
+    assert act.reason == "stairs"
+    assert level6_stairs18_success(read_snapshot(ram_c))
+    other = _ram(level=6, screen=0x07, x=128, y=141)
+    assert level6_stairs18_success(read_snapshot(other))
+    still = _ram(level=6, screen=0x18, x=120, y=109)
+    assert not level6_stairs18_success(read_snapshot(still))
+    run = SpineRun(through="level6-stairs18", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_stairs_0x18"
+    assert "level6-stairs18" in L6_THROUGH
+    assert list(nes_idle_action()) != list(nes_action("UP"))
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
