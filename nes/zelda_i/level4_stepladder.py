@@ -573,7 +573,7 @@ class Level4StepladderController:
     """0x32 clear → push left block → stairs 0x60 → ADDR_LADDER (rr-tib8).
 
     Live dual-green: stand ~(120,141) hold LEFT; approach ~(208,96) hold UP into
-    mode-9 0x60; v17 RIGHT+UP at SW notch (48,161). No emulator-state BFS.
+    mode-9 0x60; v19 RIGHT+UP at south-corridor SW water corner (80,189). No BFS.
     """
 
     clear_first: bool = True
@@ -796,25 +796,24 @@ class Level4StepladderController:
                 self._set_phase(StepladderPhase.HUNT, f"clip_open_{xy[0]}_{xy[1]}")
                 return FrameAction(nes_idle_action(), "clip_open")
             sx, sy = ROOM_60_CLIP_STAND
-            # In the notch y-band do not pull x back west (that undoes a slide).
-            if abs(xy[1] - sy) <= 2 and xy[0] >= sx - 4:
-                if (
-                    self._stall >= ROOM_60_CLIP_BUDGET
-                    or self.hold_left >= ROOM_60_CLIP_BUDGET
-                ):
-                    self._sample(snap, "notch161_solid")
-                    return self._fail(f"notch161_solid_{xy[0]}_{xy[1]}")
-                self.hold_left += 1
-                a, b = ROOM_60_CLIP_BUTTONS
-                return FrameAction(nes_action(a, b), "clip_notch161")
+            # West-brick blocks x>48 until the south corridor; y first.
+            if abs(xy[1] - sy) > 4:
+                return FrameAction(
+                    nes_action("DOWN" if xy[1] < sy else "UP"), "join_clip_y"
+                )
             if abs(xy[0] - sx) > 4:
                 return FrameAction(
                     nes_action("RIGHT" if xy[0] < sx else "LEFT"), "join_clip_x"
                 )
-            # Tight y band so leftover y=157 is not treated as the notch.
-            return FrameAction(
-                nes_action("DOWN" if xy[1] < sy else "UP"), "join_clip_y"
-            )
+            if (
+                self._stall >= ROOM_60_CLIP_BUDGET
+                or self.hold_left >= ROOM_60_CLIP_BUDGET
+            ):
+                self._sample(snap, "corner80_solid")
+                return self._fail(f"corner80_solid_{xy[0]}_{xy[1]}")
+            self.hold_left += 1
+            a, b = ROOM_60_CLIP_BUTTONS
+            return FrameAction(nes_action(a, b), "clip_corner80")
 
         if self.phase is StepladderPhase.HUNT:
             if snap.mode in (4, 6, 7) or snap.transitioning:

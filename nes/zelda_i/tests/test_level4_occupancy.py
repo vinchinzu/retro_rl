@@ -33,11 +33,13 @@ def test_room_60_grid_blocks_live_solids() -> None:
     assert not grid.passable(49, 133)
     assert not grid.passable(49, 69)
     assert not grid.passable(49, ROOM_60_NORTH_STRIP_Y)
+    assert not grid.passable(49, 159)
     assert grid.passable(136, 189)
     assert not grid.passable(176, 141)
     assert grid.passable(*ROOM_60_SPAWN_XY)
     assert grid.passable(*ROOM_60_ISLAND_XY)
     assert grid.passable(168, 189)
+    assert grid.passable(*ROOM_60_CLIP_STAND)
 
 
 def test_room_60_no_cardinal_path_after_v16() -> None:
@@ -49,7 +51,10 @@ def test_room_60_no_cardinal_path_after_v16() -> None:
         (48, 68),
         (48, 157),
         ROOM_60_CLIP_STAND,
+        (48, 159),
         (48, 189),
+        (80, 189),
+        (84, 189),
         (136, 189),
         (160, 189),
         (168, 189),
@@ -59,7 +64,7 @@ def test_room_60_no_cardinal_path_after_v16() -> None:
 
 def test_room_60_waypoints_are_sw_notch() -> None:
     assert ROOM_60_WAYPOINTS[0] == ROOM_60_CLIP_STAND
-    assert ROOM_60_CLIP_STAND == (ROOM_60_WEST_AISLE_X, 161)
+    assert ROOM_60_CLIP_STAND == (80, 189)
     assert ROOM_60_WAYPOINTS[-1] == LADDER_60_PICKUP_XY
     assert ROOM_60_CLIP_BUTTONS == ("RIGHT", "UP")
 
@@ -83,20 +88,19 @@ def test_stepladder_path_joins_notch_and_clips() -> None:
     ram[ADDR_LINK_Y] = 69
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_clip_y"
-    ram[ADDR_LINK_Y] = 161
+    ram[ADDR_LINK_Y] = 189
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "clip_notch161"
+    assert act.reason == "join_clip_x"
+    ram[ADDR_LINK_X] = 80
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "clip_corner80"
     assert list(act.action) == list(nes_action("RIGHT", "UP"))
-    # y=157 is west-brick, not the notch (v16 leftover).
-    ram[ADDR_LINK_Y] = 157
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "join_clip_y"
     ctl2 = make_stepladder_controller(clear_first=False)
     ctl2.phase = StepladderPhase.PATH
-    ctl2._last_xy = (48, 161)
-    ctl2._stall = 64
-    ram[ADDR_LINK_X] = 48
-    ram[ADDR_LINK_Y] = 161
+    ctl2._last_xy = (80, 189)
+    ctl2._stall = 96
+    ram[ADDR_LINK_X] = 80
+    ram[ADDR_LINK_Y] = 189
     act = ctl2.step(read_snapshot(ram))
     assert ctl2.phase is StepladderPhase.FAILED
-    assert act.reason.startswith("notch161_solid_48_161")
+    assert act.reason.startswith("corner80_solid_80_189")
