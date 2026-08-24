@@ -197,26 +197,29 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
 - Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`
   (facade; `level5_west_path`, `level5_whistle_path`, `level5_cellar_path`,
-  `level5_tf_path`),
+  `level5_tf_path`, `level5_boss_path`),
   `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
   `scripts/run_level5_east_key.py`, `scripts/run_level5_east_to_whistle.py`,
-  `scripts/probe_level5_entry.py`
+  `scripts/run_level5_whistle_tf.py`, `scripts/probe_level5_entry.py`
 
-## Spine attach (rr-4d53.7)
+## Spine attach (rr-4d53.7 closed)
 
-Power-on Survival `--through level5-whistle` is **1/1**
-(`l5_whistle_continuous_v1`, 160,648f). L4 TF settle uses
-`PostL4TriforceSettleController` (do not reload mid-fanfare). OW path is
-`POST_L4_TO_LEVEL5_HOPS` / `Level5EntranceFromL4` class, not old At4A.
-0x66 uses occupancy (v1 cardinal timeout north of the river). East key
-from north-bank leftover `(32,101)` aligns ladder x=56 before DOWN.
-Recorder is earned in cellar `0x04` mode 9 `(135,141)`.
+Power-on Survival `--through level5` is **1/1**
+(`l5_tf_continuous_v1`, 173,961f, TF=`0x1F`, room `0x14` mode 18
+`(120,149)`). L4 TF settle uses `PostL4TriforceSettleController` (do not
+reload mid-fanfare). OW path is `POST_L4_TO_LEVEL5_HOPS` /
+`Level5EntranceFromL4` class, not old At4A. 0x66 uses occupancy (v1
+cardinal timeout north of the river). East key from north-bank leftover
+`(32,101)` aligns ladder x=56 before DOWN. Recorder is earned in cellar
+`0x04` mode 9 `(135,141)`. TF suffix: `exit_whistle_04`, 0x06
+block-stairs RIGHT onto `(128,141)` (center idle never warps), 0x65
+north shutter sealed so bomb-east `0x66`, skip-fight to Digdogger,
+whistle shrink `0x38→0x18`. Library: `level5_boss_path.run_level5_tf_suffix`.
+`validate_l5_endpoint` passes. Still `route_eligible=false` (Survival).
 
 ## Next
 
-- Attach proven Whistle basement `0x04` → Digdogger `0x24` → L5 TF `0x14`
-  suffix onto the continuous leftover (extract `run_level5_whistle_tf`;
-  `exit_whistle_04` first). Still `route_eligible=false` until TF `0x10`
+- L5 fanfare settle → L6 entry (do not grant Whistle)
 - Isolated `Level5WhistleFrom77` remains the pin, not a spine close
 - Natural 0x66 north shutter / 0x56 Dodongos remain an alternate, not required
   for Recorder

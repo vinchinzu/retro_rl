@@ -6,7 +6,7 @@ Survival / infinite-life. No key/door pokes. Not a Clean STATUS claim.
 """
 from __future__ import annotations
 
-import importlib.util
+from dataclasses import replace
 from pathlib import Path
 
 from retro_harness.env import make_env, reset_obs
@@ -16,6 +16,15 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon import DoorRoute, RewardKind, RewardSpec
 from zelda_i.dungeon_ops import idle
 from zelda_i.level3_dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
+from zelda_i.level5_boss_path import (
+    door,
+    fight_ctl,
+    fight_digdogger,
+    grab_item,
+    live_types,
+    north_pinch,
+    wait_play,
+)
 from zelda_i.level5_dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
@@ -37,10 +46,73 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_TRIFORCE, ADDR_WHISTLE, PLAY_MODE, read_snapshot, read_u8
 
 HERE = Path(__file__).resolve()
-_spec = importlib.util.spec_from_file_location("l5_whistle_tf", HERE.parent / "run_level5_whistle_tf.py")
-tf = importlib.util.module_from_spec(_spec)
-assert _spec.loader is not None
-_spec.loader.exec_module(tf)
+
+
+class _TF:
+    """Adapter so the recon hops below keep calling tf.* helpers."""
+
+    replace = staticmethod(replace)
+    door = staticmethod(door)
+    fight_ctl = staticmethod(fight_ctl)
+    grab_item = staticmethod(grab_item)
+    live_types = staticmethod(live_types)
+    north_pinch = staticmethod(north_pinch)
+    wait_play = staticmethod(wait_play)
+    _digdogger_here = staticmethod(fight_digdogger)
+
+    @staticmethod
+    def inv(env) -> dict:
+        ram = env.get_ram()
+        s = read_snapshot(ram)
+        return {
+            "room": f"0x{s.screen:02x}",
+            "mode": s.mode,
+            "xy": [s.link_x, s.link_y],
+            "whistle": int(read_u8(ram, ADDR_WHISTLE)),
+            "tf": int(read_u8(ram, ADDR_TRIFORCE)),
+            "keys": int(s.keys),
+            "bombs": int(s.bombs),
+        }
+
+    @staticmethod
+    def objs(snap) -> list[dict]:
+        return [
+            {"slot": o.slot, "type": o.type_id, "hp": o.hp, "x": o.x, "y": o.y}
+            for o in snap.objects
+            if 1 <= o.slot <= 12 and o.type_id not in (0, 0xFF)
+        ]
+
+    @staticmethod
+    def save_ckpt(env, name: str, source: str, via: str, extra: dict) -> str:
+        print("CKPT", name, extra, flush=True)
+        return name
+
+    @staticmethod
+    def _finish(env, tag, hops, checkpoints, start, boss, failed, reason, source):
+        snap = read_snapshot(env.get_ram())
+        png = RECORDINGS_DIR / f"{tag}_final.png"
+        obs, *_ = env.step(nes_idle_action())
+        save_rgb_png(obs, png)
+        tf_val = int(read_u8(env.get_ram(), ADDR_TRIFORCE))
+        body = {
+            "ok": bool(boss and boss.get("tf_l5")),
+            "start_state": source,
+            "start": start,
+            "hops": hops,
+            "checkpoints": checkpoints,
+            "failed_room": failed,
+            "reason": reason,
+            "digdogger": boss,
+            "tf_0x0671": tf_val,
+            "screenshot": str(png.resolve()),
+            "final_room": snap.screen,
+        }
+        write_json_report(RECORDINGS_DIR / f"{tag}.json", body)
+        print("OK", body["ok"], "FAILED", failed, reason, flush=True)
+        return body
+
+
+tf = _TF()
 
 START = "Level5Whistle65"
 DODONGO_L5 = 0x31
