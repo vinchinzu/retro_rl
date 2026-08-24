@@ -473,9 +473,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09
 | v9 | vacated `(96,145)` tile 119; yo-yo 143/145 around original slot |
 | v10 | no live pair 0x68 (`no_right_0x68_96_149`); visual right block is a tile |
 | v11 | idle NW `(48,109)` tile 118 still mode 5 |
+| v12 | true idle `(192,97)` tile 119 (0x77) 3830f `stairs_idle` action none; still mode 5, rod=0 |
 | Stop | `--through level6-stairs09` mode 9 |
 | Track | **assisted Survival** (miss) |
-| Notes | Next idle SW `(48,173)`. Halt y>=181. Do not grant Rod. |
+| Notes | NE hole decorative (v8 hold-UP was not still). Next idle SW `(48,173)`. Halt y>=181. Do not grant Rod. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
@@ -564,7 +565,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png` — Map sprite not `ADDR_MAP|0x20`
 - `recordings/l6_room09_continuous_v{1,2}_final.png` — skip-Map KEY-UP v2 1/1
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
-- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11}_final.png` — left 0x68 pushes; NE/vacated/NW not mode 9
+- `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12}_final.png` — left 0x68 pushes; NE still-stand/vacated/NW not mode 9
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
