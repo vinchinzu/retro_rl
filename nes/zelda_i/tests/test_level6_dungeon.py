@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import numpy as np
 
+from zelda_i.dungeon_ids import ZOL_OBJECT_TYPE
 from zelda_i.level6_dungeon import (
+    LEVEL6_COMPASS_BIT,
+    ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_79_SPEC,
     ROOM_7A_SPEC,
+    ROOM_L6_COMPASS,
     ROOM_L6_EAST_KEY,
     ROOM_L6_ENTRY,
     ROOM_L6_WEST_WIZZROBE,
+    level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
+    make_compass_68_controller,
     make_east_key_controller,
     make_west_wizzrobe_controller,
 )
@@ -26,6 +32,7 @@ from zelda_i.level6_overworld import (
     WIZZROBE_ORANGE_TYPE,
 )
 from zelda_i.ram import (
+    ADDR_COMPASS,
     ADDR_KEYS,
     ADDR_LEVEL,
     ADDR_LINK_X,
@@ -69,10 +76,17 @@ def test_room_ids_and_specs() -> None:
     assert ROOM_L6_WEST_WIZZROBE == 0x78
     assert LEVEL6_WEST_WIZZROBE_ROOM == 0x78
     assert LEVEL6_COMPASS_ROOM == 0x68
+    assert ROOM_L6_COMPASS == 0x68
+    assert LEVEL6_COMPASS_BIT == 0x20
     assert LEVEL6_OLD_MAN_ROOM == 0x6A
     assert ROOM_79_SPEC.room_id == 0x79
     assert ROOM_7A_SPEC.room_id == 0x7A
     assert ROOM_78_SPEC.room_id == 0x78
+    assert ROOM_68_SPEC.room_id == 0x68
+    assert ROOM_68_SPEC.enemy_types[0] == ZOL_OBJECT_TYPE
+    assert ROOM_68_SPEC.combat.occupancy_patrol
+    assert 0x2B not in ROOM_68_SPEC.enemy_types
+    assert 0x68 not in ROOM_68_SPEC.enemy_types
     assert ROOM_7A_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_78_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_7A_SPEC.expected_enemy_count == 5
@@ -114,11 +128,26 @@ def test_78_clear_success_predicate() -> None:
     )
 
 
+def test_68_compass_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_COMPASS)
+    ram[ADDR_COMPASS] = LEVEL6_COMPASS_BIT
+    assert level6_room_68_compass_success(ram)
+    ram[ADDR_COMPASS] = 0x1F
+    assert not level6_room_68_compass_success(ram)
+    ram[ADDR_COMPASS] = LEVEL6_COMPASS_BIT
+    ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_room_68_compass_success(ram)
+
+
 def test_factories_bind_specs() -> None:
     east = make_east_key_controller()
     west = make_west_wizzrobe_controller()
+    compass = make_compass_68_controller()
     assert east.spec.room_id == 0x7A
     assert west.spec.room_id == 0x78
+    assert compass.spec.room_id == 0x68
+    assert compass.spec.combat.occupancy_patrol
 
 
 def test_west_key_door_constants() -> None:

@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through compass room 0x68.
+"""Survival-spine L6 from L5 TF settle through 0x68 compass inventory.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / 0x68. Compass pickup / Rod / Gohma remain residual.
+Ignore object types 0x2b / 0x68. Rod / Gohma / TF 0x20 remain residual.
 """
 
 from __future__ import annotations
@@ -12,8 +12,11 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import LEVEL6_ENTRY_ROOM, TF_BIT_L5
 from zelda_i.level6_dungeon import (
+    LEVEL6_COMPASS_BIT,
+    ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
+    make_compass_68_controller,
     make_east_key_controller,
     make_west_wizzrobe_controller,
 )
@@ -46,6 +49,8 @@ __all__ = [
     "Level6North68Controller",
     "Level6Return79Controller",
     "continue_level6_spine",
+    "level6_clear68_stages",
+    "level6_clear68_success",
     "level6_compass_stages",
     "level6_compass_success",
     "level6_east_key_stages",
@@ -61,12 +66,14 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-east-key",
     "level6-west",
     "level6-compass",
+    "level6-clear68",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
     "level6-east-key": "level6_east_key_0x7a",
     "level6-west": "level6_west_0x78",
     "level6-compass": "level6_compass_0x68",
+    "level6-clear68": "level6_clear_0x68",
 }
 
 
@@ -215,6 +222,27 @@ def level6_compass_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_clear68_stages():
+    """0x68 leftover → occupancy Zol clear + compass bit. Ignore 0x2b/0x68."""
+    fight = make_compass_68_controller()
+    return (
+        ("level6_clear_0x68", fight, ROOM_68_SPEC.max_frames),
+    )
+
+
+def level6_clear68_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready empty 0x68 with L6 compass bit. Do not poke ADDR_COMPASS."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_COMPASS_ROOM
+        and not snap.transitioning
+        and (snap.compass & LEVEL6_COMPASS_BIT) != 0
+        and not ROOM_68_SPEC.live_enemies(snap)
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -292,3 +320,20 @@ def continue_level6_spine(
     run.success = level6_compass_success(snap)
     if not run.success:
         run.failed_stage = "level6_compass_0x68"
+        return
+    if through == "level6-compass":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_clear68_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_clear68_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_clear_0x68"

@@ -109,12 +109,11 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 compass room 0x68 (`l6_compass_continuous_v1` 1/1, 182,636f hop 221f,
-play `0x68` `(120,205)`, TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity
-0, no state load). `--through level6-west` 1/1 `l6_west_continuous_v1` 182,415f
-play `0x78` `(144,141)` keys 6→5. 0x1B west is y=141 LEFT after south-around
-the x≈72 rock (not north-edge LEFT). Occupancy UP 0x78→0x68 (8 miss-blocks at
-x=144). Compass pickup / Rod / Gohma / TF `0x20` residual. Do not grant
+L6 0x68 Zol clear + compass (`l6_clear68_continuous_v1` 1/1, 187,575f hop
+4,939f, play `0x68` `(120,149)`, `ADDR_COMPASS|0x20`, TF=`0x1F`, keys=5
+bombs=8, deaths/progression/capacity 0, no state load). Occupancy UP 0x78→0x68
+then occupancy-patrol Zols (ignore 0x2b/0x68). 0x1B west is y=141 LEFT after
+south-around the x≈72 rock. Rod / Gohma / TF `0x20` residual. Do not grant
 Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads

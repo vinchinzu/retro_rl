@@ -390,9 +390,10 @@ RAM is cellar 0x04),
 `l6_east_key_continuous_v1` keys 5→6. `--through level6-west` **1/1**
 `l6_west_continuous_v1` play `0x78` `(144,141)` keys 6→5, 182,415f.
 `--through level6-compass` **1/1** `l6_compass_continuous_v1` play `0x68`
-`(120,205)` 182,636f hop 221f. 0x1B west is y=141 LEFT after south-around
-the x≈72 rock. Isolated BFS banned. Compass pickup / Rod / Gohma / TF `0x20`
-residual. Do not grant Whistle. Do not poke Rod/doors/keys.
+`(120,205)` 182,636f hop 221f. `--through level6-clear68` **1/1**
+`l6_clear68_continuous_v1` play `0x68` `(120,149)` compass bit `0x20`,
+187,575f hop 4,939f. Isolated BFS banned. Rod / Gohma / TF `0x20` residual.
+Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -411,13 +412,15 @@ residual. Do not grant Whistle. Do not poke Rod/doors/keys.
 | east v1 | `0x7a` `(120,141)` **keys 5→6** | wall-first RIGHT; hop 1,844f 1/1 |
 | west v1 | `0x78` `(144,141)` **cleared** | key-LEFT; hop 1,216f 1/1 |
 | compass v1 | `0x68` `(120,205)` **play** | occupancy UP; 8 miss-blocks x=144; hop 221f 1/1 |
+| clear68 v1 | `0x68` `(120,149)` **compass** | occupancy-patrol Zols; hop 4,939f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
 `recordings/l6_east_key_continuous_v1_final.png`,
 `recordings/l6_west_continuous_v1_final.png`,
-`recordings/l6_compass_continuous_v1_final.png`. Next: 0x68 Zol clear +
-compass pickup residual (ignore 0x2b/0x68). Do not close a TF-`0x20` bead.
+`recordings/l6_compass_continuous_v1_final.png`,
+`recordings/l6_clear68_continuous_v1_final.png`. Next: 0x68 UP → 0x58 Keese
+(ignore 0x2b/0x68). Do not close a TF-`0x20` bead.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
