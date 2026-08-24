@@ -23,6 +23,7 @@ from super_metroid.combat.phantoon import (
     floor_release_ok,
     func_vulnerable,
     in_release_band,
+    charge_window_ok,
     rain_vulnerable,
     phantoon_phase,
     play_phantoon_fight,
@@ -134,6 +135,14 @@ def test_rain_vulnerable_is_d767_d788_not_figure8() -> None:
     assert rain_vulnerable(0xD767)
     assert not rain_vulnerable(0xD60D)
     assert not rain_vulnerable(0xD5E7)
+
+
+def test_charge_window_ok_skips_rain_and_right_side() -> None:
+    assert charge_window_ok(0xD60D, 120)
+    assert charge_window_ok(0xD4A8, 120)
+    assert not charge_window_ok(0xD788, 128)
+    assert not charge_window_ok(0xD767, 128)
+    assert not charge_window_ok(0xD60D, 200)
 
 
 def test_floor_release_ok_is_stand_crouch_not_jump() -> None:
