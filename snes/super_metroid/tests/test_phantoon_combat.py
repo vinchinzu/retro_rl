@@ -151,6 +151,8 @@ def test_charge_window_ok_skips_rain_and_right_fig8() -> None:
     assert not charge_window_ok(0xD788, 88)
     assert charge_window_ok(0xD767, 48)
     assert not charge_window_ok(0xD788, 168)
+    assert not charge_window_ok(0xD4A8, 53)
+    assert not charge_window_ok(0xD60D, 53)
 
 
 def test_rain_charge_ok_is_48_not_88_or_128() -> None:

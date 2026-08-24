@@ -36,6 +36,7 @@ from super_metroid.combat.phantoon import (
     eye_open,
     list_pickups,
     play_phantoon_fight,
+    rain_charge_ok,
     rain_phase,
     right_park,
     seated,
@@ -272,7 +273,11 @@ def _wait_open_window(
             return False
         if _fig8_left_open(session, park_x):
             return True
-        skip = rain_phase(func) or right_park(park_x)
+        skip = (
+            rain_phase(func)
+            or right_park(park_x)
+            or rain_charge_ok(park_x)
+        )
         if skip:
             if rain_dump is not None and (
                 session.frame - last_dump >= 30 or last_dump < 0
@@ -533,7 +538,11 @@ def cmd_window(args: argparse.Namespace) -> int:
                     )
                     if int(st.health) == 0:
                         break
-                    if rain_phase(_body_func(session)) or right_park(st.enemy0_x):
+                    if (
+                        rain_phase(_body_func(session))
+                        or right_park(st.enemy0_x)
+                        or rain_charge_ok(st.enemy0_x)
+                    ):
                         _rain_corner_wait(session, strat)
                     else:
                         session.step(idle_action(), "phan_miss_dump")
