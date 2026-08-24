@@ -22,7 +22,7 @@ from zelda_i.level6_overworld import (
     make_post_l5_level6_controller,
     post_l5_overworld_ready,
 )
-from zelda_i.level6_path import Level6North68Controller
+from zelda_i.level6_path import Level6North68Controller, make_north_58_controller
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
@@ -30,6 +30,8 @@ from zelda_i.level6_spine import (
     level6_clear68_success,
     level6_compass_stages,
     level6_compass_success,
+    level6_keese_stages,
+    level6_keese_success,
     level6_east_key_stages,
     level6_east_key_success,
     level6_entry_stages,
@@ -276,7 +278,7 @@ def test_level6_compass_occupancy_up_from_0x78() -> None:
     ctl = Level6North68Controller()
     leftover = read_snapshot(_ram(level=6, screen=0x78, x=144, y=141))
     act = ctl.step(leftover)
-    assert act.reason == "north78_path"
+    assert act.reason == "north_path"
     assert list(act.action) in (
         list(nes_action("LEFT")),
         list(nes_action("UP")),
@@ -284,7 +286,7 @@ def test_level6_compass_occupancy_up_from_0x78() -> None:
 
     push = Level6North68Controller()
     act = push.step(read_snapshot(_ram(level=6, screen=0x78, x=120, y=101)))
-    assert act.reason == "north78_push"
+    assert act.reason == "north_push"
     assert list(act.action) == list(nes_action("UP"))
 
     arrive = Level6North68Controller()
@@ -323,6 +325,30 @@ def test_level6_clear68_attaches_occupancy_fight() -> None:
     run = SpineRun(through="level6-clear68", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_clear_0x68"
     assert "level6-clear68" in L6_THROUGH
+
+
+def test_level6_keese_occupancy_up_from_0x68() -> None:
+    from retro_harness.nes import nes_action
+
+    stages = level6_keese_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x58"]
+    ctl = make_north_58_controller()
+    assert ctl.source_room == 0x68
+    assert ctl.dest_room == 0x58
+    act = ctl.step(read_snapshot(_ram(level=6, screen=0x68, x=120, y=149)))
+    assert act.reason == "north_path"
+    assert list(act.action) == list(nes_action("UP"))
+    arrive = make_north_58_controller()
+    ram = _ram(level=6, screen=0x58, x=120, y=205)
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_58"
+    assert level6_keese_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x68
+    assert not level6_keese_success(read_snapshot(ram))
+    run = SpineRun(through="level6-keese", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_keese_0x58"
+    assert "level6-keese" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
