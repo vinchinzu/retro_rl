@@ -159,6 +159,7 @@ Through = Literal[
     "level6-stairs09",
     "level6-rod",
     "level6-exit75",
+    "level6-south09",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
