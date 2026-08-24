@@ -22,7 +22,11 @@ from zelda_i.level6_overworld import (
     make_post_l5_level6_controller,
     post_l5_overworld_ready,
 )
-from zelda_i.level6_path import Level6North68Controller, make_north_58_controller
+from zelda_i.level6_path import (
+    Level6North68Controller,
+    make_north_48_controller,
+    make_north_58_controller,
+)
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
@@ -34,6 +38,8 @@ from zelda_i.level6_spine import (
     level6_compass_success,
     level6_keese_stages,
     level6_keese_success,
+    level6_room48_stages,
+    level6_room48_success,
     level6_east_key_stages,
     level6_east_key_success,
     level6_entry_stages,
@@ -370,6 +376,32 @@ def test_level6_clear58_attaches_occupancy_keese() -> None:
     run = SpineRun(through="level6-clear58", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_clear_0x58"
     assert "level6-clear58" in L6_THROUGH
+
+
+def test_level6_room48_occupancy_up_from_0x58() -> None:
+    from retro_harness.nes import nes_action
+
+    stages = level6_room48_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x48"]
+    ctl = make_north_48_controller()
+    assert ctl.source_room == 0x58
+    assert ctl.dest_room == 0x48
+    act = ctl.step(read_snapshot(_ram(level=6, screen=0x58, x=112, y=167)))
+    assert act.reason == "north_path"
+    push = make_north_48_controller()
+    act = push.step(read_snapshot(_ram(level=6, screen=0x58, x=120, y=101)))
+    assert act.reason == "north_push"
+    assert list(act.action) == list(nes_action("UP"))
+    ram = _ram(level=6, screen=0x48, x=120, y=205)
+    arrive = make_north_48_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_48"
+    assert level6_room48_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x58
+    assert not level6_room48_success(read_snapshot(ram))
+    run = SpineRun(through="level6-room48", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x48"
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

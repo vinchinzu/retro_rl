@@ -1,8 +1,8 @@
-"""Survival-spine L6 from L5 TF settle through 0x58 Keese clear.
+"""Survival-spine L6 from L5 TF settle through blade-trap room 0x48.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / 0x68. 0x58 north is sealed after clear. Rod /
-Gohma / TF 0x20 remain residual.
+Ignore object types 0x2b / 0x68. 0x58 north is free UP after Keese clear.
+0x38 / Rod / Gohma / TF 0x20 remain residual.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_KEESE_ROOM,
+    LEVEL6_TRAPS_ROOM,
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
     Level6EntryRightController,
@@ -38,6 +39,7 @@ from zelda_i.level6_overworld import (
 from zelda_i.level6_path import (
     NORTH_68_MAX_FRAMES,
     Level6North68Controller,
+    make_north_48_controller,
     make_north_58_controller,
 )
 from zelda_i.ram import (
@@ -62,6 +64,8 @@ __all__ = [
     "level6_clear58_success",
     "level6_keese_stages",
     "level6_keese_success",
+    "level6_room48_stages",
+    "level6_room48_success",
     "level6_east_key_stages",
     "level6_east_key_success",
     "level6_entry_stages",
@@ -78,6 +82,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear68",
     "level6-keese",
     "level6-clear58",
+    "level6-room48",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -87,6 +92,7 @@ L6_STOPS: dict[str, str] = {
     "level6-clear68": "level6_clear_0x68",
     "level6-keese": "level6_keese_0x58",
     "level6-clear58": "level6_clear_0x58",
+    "level6-room48": "level6_room_0x48",
 }
 
 
@@ -295,6 +301,25 @@ def level6_clear58_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_room48_stages():
+    """0x58 leftover → occupancy long-UP into 0x48. No door poke."""
+    north = make_north_48_controller()
+    return (
+        ("level6_north_0x48", north, north.max_frames),
+    )
+
+
+def level6_room48_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x48. Blade-trap run residual."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_TRAPS_ROOM
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -423,3 +448,20 @@ def continue_level6_spine(
     run.success = level6_clear58_success(snap)
     if not run.success:
         run.failed_stage = "level6_clear_0x58"
+        return
+    if through == "level6-clear58":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_room48_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_room48_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_room_0x48"
