@@ -12,6 +12,7 @@ from zelda_i.dungeon_ids import (
 )
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
+    ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
@@ -24,11 +25,14 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_HARD_38,
     ROOM_L6_KEESE,
     ROOM_L6_WEST_WIZZROBE,
+    ROOM_L6_WIZZROBE_28,
+    level6_room_28_clear_success,
     level6_room_38_clear_success,
     level6_room_58_clear_success,
     level6_room_68_compass_success,
     level6_room_78_clear_success,
     level6_room_7a_key_success,
+    make_clear_28_controller,
     make_compass_68_controller,
     make_east_key_controller,
     make_hard_38_controller,
@@ -114,6 +118,16 @@ def test_room_ids_and_specs() -> None:
     assert 0x2B not in ROOM_38_SPEC.enemy_types
     assert 0x68 not in ROOM_38_SPEC.enemy_types
     assert 0x40 not in ROOM_38_SPEC.enemy_types
+    assert ROOM_L6_WIZZROBE_28 == 0x28
+    assert ROOM_28_SPEC.room_id == 0x28
+    assert ROOM_28_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
+    assert ROOM_28_SPEC.expected_enemy_count == 2
+    assert ROOM_28_SPEC.combat.occupancy_patrol
+    assert 0x2B not in ROOM_28_SPEC.enemy_types
+    assert 0x68 not in ROOM_28_SPEC.enemy_types
+    assert 0x40 not in ROOM_28_SPEC.enemy_types
+    assert LIKE_LIKE_OBJECT_TYPE not in ROOM_28_SPEC.enemy_types
+    assert WIZZROBE_BLUE_OBJECT_TYPE not in ROOM_28_SPEC.enemy_types
     assert ROOM_7A_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_78_SPEC.enemy_types == (WIZZROBE_ORANGE_TYPE,)
     assert ROOM_7A_SPEC.expected_enemy_count == 5
@@ -181,6 +195,9 @@ def test_factories_bind_specs() -> None:
     hard = make_hard_38_controller()
     assert hard.spec.room_id == 0x38
     assert hard.spec.combat.occupancy_patrol
+    clear28 = make_clear_28_controller()
+    assert clear28.spec.room_id == 0x28
+    assert clear28.spec.combat.occupancy_patrol
 
 
 def test_58_clear_success_predicate() -> None:
@@ -205,6 +222,24 @@ def test_38_clear_success_predicate() -> None:
     ram[ADDR_OBJ_TYPE + 3] = 0x40
     ram[ADDR_OBJ_HP + 3] = 64
     assert level6_room_38_clear_success(ram)
+
+
+def test_28_clear_success_predicate() -> None:
+    ram = _ram(room=ROOM_L6_WIZZROBE_28)
+    assert level6_room_28_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_room_28_clear_success(ram)
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_room_28_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 3] = 0x2B
+    ram[ADDR_OBJ_HP + 3] = 64
+    assert level6_room_28_clear_success(ram)
+    ram[ADDR_OBJ_TYPE + 4] = 0x68
+    ram[ADDR_OBJ_HP + 4] = 64
+    assert level6_room_28_clear_success(ram)
 
 
 def test_west_key_door_constants() -> None:

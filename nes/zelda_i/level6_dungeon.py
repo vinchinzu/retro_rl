@@ -51,6 +51,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
+    LEVEL6_WIZZROBE_28_ROOM,
     LEVEL6_WIZZROBE_38_ROOM,
     WIZZROBE_ORANGE_TYPE,
 )
@@ -63,6 +64,7 @@ ROOM_L6_WEST_WIZZROBE = LEVEL6_WEST_WIZZROBE_ROOM  # 0x78
 ROOM_L6_COMPASS = LEVEL6_COMPASS_ROOM  # 0x68
 ROOM_L6_KEESE = LEVEL6_KEESE_ROOM  # 0x58
 ROOM_L6_HARD_38 = LEVEL6_WIZZROBE_38_ROOM  # 0x38
+ROOM_L6_WIZZROBE_28 = LEVEL6_WIZZROBE_28_ROOM  # 0x28
 # After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
 ROOM_78_UP_DOOR_BIT = 0x08
 # ADDR_COMPASS bitfield: one bit per dungeon (L6 → bit5 → 0x20).
@@ -297,7 +299,7 @@ register_room_spec(ROOM_58_SPEC)
 # North of 0x48: walkthrough 2× orange 0x24 + 2× blue 0x23 + 3× Like-Like
 # 0x17 + Bubble 0x40. Spine leftover is south mouth (120,189); two center
 # blocks. Ignore invuln 0x2b / block 0x68 / Bubble (sword-immune residual).
-# Clear is occupancy-patrol; left-block push toward 0x28 is residual.
+# Clear is occupancy-patrol. Left-block UP then west-aisle north is on the spine.
 _ROOM_38_PATROL: tuple[tuple[int, int], ...] = (
     (120, 189),
     (80, 189),
@@ -351,6 +353,61 @@ ROOM_38_SPEC = DungeonRoomSpec(
 )
 
 register_room_spec(ROOM_38_SPEC)
+
+# North of 0x38: leftover PNG l6_room28_continuous_v6_final is a diamond
+# room with orange wizzrobes live (two on-screen at leftover (120,189)).
+# Do not copy 0x38's 7× mix. Ignore invuln 0x2b / Bubble 0x40 / block 0x68.
+# Occupancy-patrol from the south mouth; diamond tiles miss-block.
+_ROOM_28_PATROL: tuple[tuple[int, int], ...] = (
+    (120, 189),
+    (80, 189),
+    (80, 173),
+    (64, 141),
+    (80, 109),
+    (120, 109),
+    (160, 109),
+    (176, 141),
+    (160, 173),
+    (160, 189),
+    (120, 141),
+    (48, 157),
+    (192, 157),
+    (120, 93),
+)
+
+ROOM_28_SPEC = DungeonRoomSpec(
+    spec_id="level6_room28_wizzrobes",
+    source_room=LEVEL6_WIZZROBE_38_ROOM,
+    room_id=LEVEL6_WIZZROBE_28_ROOM,
+    entry=DoorRoute("UP", ((120, 141), (120, 93))),
+    enemy_types=(WIZZROBE_ORANGE_TYPE,),
+    expected_enemy_count=2,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_28_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+        inland_dash=24,
+        avoid_walls=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+        DoorRoute("RIGHT", ((120, 141), (208, 141))),
+    ),
+    max_frames=12000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_28_SPEC)
 
 
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
@@ -519,6 +576,22 @@ def make_hard_38_controller() -> GenericDungeonRoomController:
     return GenericDungeonRoomController(spec=ROOM_38_SPEC)
 
 
+def level6_room_28_clear_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x28 no live orange wizzrobes. Ignore 0x2b/0x40/0x68."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_WIZZROBE_28_ROOM
+        and snap.mode == PLAY_MODE
+        and not ROOM_28_SPEC.live_enemies(snap)
+    )
+
+
+def make_clear_28_controller() -> GenericDungeonRoomController:
+    """Occupancy-patrol 0x28 orange-wizzrobe clear. Ignore 0x2b/0x40/0x68."""
+    return GenericDungeonRoomController(spec=ROOM_28_SPEC)
+
+
 __all__ = [
     "ROOM_L6_ENTRY",
     "ROOM_L6_EAST_KEY",
@@ -526,12 +599,14 @@ __all__ = [
     "ROOM_L6_COMPASS",
     "ROOM_L6_KEESE",
     "ROOM_L6_HARD_38",
+    "ROOM_L6_WIZZROBE_28",
     "ROOM_79_SPEC",
     "ROOM_7A_SPEC",
     "ROOM_78_SPEC",
     "ROOM_68_SPEC",
     "ROOM_58_SPEC",
     "ROOM_38_SPEC",
+    "ROOM_28_SPEC",
     "ROOM_78_UP_DOOR_BIT",
     "LEVEL6_COMPASS_BIT",
     "Level6EastKeyController",
@@ -541,9 +616,11 @@ __all__ = [
     "make_compass_68_controller",
     "make_keese_58_controller",
     "make_hard_38_controller",
+    "make_clear_28_controller",
     "level6_room_7a_key_success",
     "level6_room_78_clear_success",
     "level6_room_68_compass_success",
     "level6_room_58_clear_success",
     "level6_room_38_clear_success",
+    "level6_room_28_clear_success",
 ]

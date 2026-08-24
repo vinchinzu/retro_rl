@@ -35,6 +35,8 @@ from zelda_i.level6_path import (
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
+    level6_clear28_stages,
+    level6_clear28_success,
     level6_clear38_stages,
     level6_clear38_success,
     level6_room28_stages,
@@ -472,7 +474,7 @@ def test_level6_room28_push_then_north_from_0x38_west() -> None:
     assert isinstance(ctl, Level6Push38Controller)
     assert ctl.source_room == 0x38
     assert ctl.dest_room == 0x28
-    assert ctl.walker.grid.xmin == 16
+    assert not hasattr(ctl, "walker")
 
     west = _ram(level=6, screen=0x38, x=32, y=149)
     _plant_block(west, 11, 112, 117)
@@ -546,6 +548,29 @@ def test_level6_room28_push_then_north_from_0x38_west() -> None:
     assert not level6_room28_success(read_snapshot(ram))
     run = SpineRun(through="level6-room28", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_room_0x28"
+
+
+def test_level6_clear28_attaches_occupancy() -> None:
+    from zelda_i.level6_overworld import WIZZROBE_ORANGE_TYPE
+
+    stages = level6_clear28_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x28"]
+    fight = stages[0][1]
+    assert fight.spec.room_id == 0x28
+    assert fight.spec.combat.occupancy_patrol
+    assert fight.spec.enemy_types == (WIZZROBE_ORANGE_TYPE,)
+    ram = _ram(level=6, screen=0x28, x=120, y=189)
+    assert level6_clear28_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear28_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_clear28_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear28", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x28"
+    assert "level6-clear28" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
