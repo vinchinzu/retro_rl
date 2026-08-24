@@ -415,8 +415,10 @@ hop 2,848f, 204,189f leftover `(121,133)`. `0x46` mid-fight. East shutter
 still closed. `--through level6-postgleeok18` **1/1**
 `l6_postgleeok18_continuous_v2` hop 192f, 204,381f leftover `(156,133)`.
 No `0x46`; `0x56` then gone; `cur_opened_doors` 0→5; `open_doorway_mask`
-0. `--through level6-stairs18` **not on tape** (v1–v4). Do not grant
-Whistle. Do not poke Rod/doors/keys.
+0. `--through level6-stairs18` **red** (v1–v5; north hole decorative).
+`--through level6-room19` **1/1** `l6_room19_continuous_v1` play `0x19`
+`(16,141)` hop 251f, 204,632f. Occupancy y=141 RIGHT; map still `0x0A`.
+Do not grant Whistle. Do not poke Rod/doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -463,6 +465,8 @@ Whistle. Do not poke Rod/doors/keys.
 | stairs18 v2 | `0x18` `(120,93)` 4000f | hold-UP on the hole is mode 9 |
 | stairs18 v3 | `0x18` `(120,109)` 4000f | idle at y=109 (tile `0x76` diamond, south of hole) |
 | stairs18 v4 | `0x18` `(120,101)` 4000f | idle at y=101 (tile `0x77`, still south of hole) |
+| stairs18 v5 | `0x18` `(120,95)` 4000f | idle at y=96 (tile `0x77`, still south of hole; hole decorative) |
+| room19 v1 | `0x19` `(16,141)` **play** | occupancy y=141 RIGHT despite mask 0 / PNG black; hop 251f 1/1 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -481,16 +485,15 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_settle18_continuous_v1_final.png`,
 `recordings/l6_gleeok18_continuous_v1_final.png`,
 `recordings/l6_postgleeok18_continuous_v{1,2}_final.png`,
-`recordings/l6_stairs18_continuous_v{1,2,3,4}_final.png`. Dest `0x18`
-residual census is **on the tape** (`l6_postgleeok18_continuous_v2` 1/1).
-East shutter still closed (`mask` 0). North hole: y=109/`0x76` and
-y=101/`0x77` are south of the pit; hold-UP at `(120,93)` is not mode 9.
-Next: idle `(120,96)` then UP if still play. Do not close `rr-tne2` / a
-TF-`0x20` bead. Do not walk RIGHT into the closed east shutter.
+`recordings/l6_stairs18_continuous_v{1,2,3,4,5}_final.png`,
+`recordings/l6_room19_continuous_v1_final.png`. Dest `0x19` enter is
+**on the tape** (`l6_room19_continuous_v1` 1/1). Map still `0x0A`. North
+hole decorative (`level6-stairs18` red). Next: Map pickup from leftover
+`(16,141)` (combat live). Do not grant Map/Rod. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs18 --no-video --trials 1 --tag l6_stairs18_continuous_v5
+  --through level6-room19 --no-video --trials 1 --tag l6_room19_continuous_v1
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live

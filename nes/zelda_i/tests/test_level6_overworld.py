@@ -52,6 +52,8 @@ from zelda_i.level6_spine import (
     level6_postgleeok18_success,
     level6_stairs18_stages,
     level6_stairs18_success,
+    level6_room19_stages,
+    level6_room19_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -847,6 +849,40 @@ def test_level6_stairs18_occupancy_then_up() -> None:
     assert run.report()["stop"] == "level6_stairs_0x18"
     assert "level6-stairs18" in L6_THROUGH
     assert list(nes_idle_action()) != list(nes_action("UP"))
+
+
+def test_level6_room19_y_aligns_then_east() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_room19 import EAST_DOOR_X, EAST_DOOR_Y, make_room19_controller
+
+    stages = level6_room19_stages()
+    assert [name for name, _, _ in stages] == ["level6_room_0x19"]
+    assert (EAST_DOOR_X, EAST_DOOR_Y) == (208, 141)
+    leftover = make_room19_controller()
+    act = leftover.step(read_snapshot(_ram(level=6, screen=0x18, x=156, y=133)))
+    assert act.reason == "east_path"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    channel = make_room19_controller()
+    act = channel.step(read_snapshot(_ram(level=6, screen=0x18, x=156, y=141)))
+    assert act.reason == "east_path"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    door = make_room19_controller()
+    act = door.step(read_snapshot(_ram(level=6, screen=0x18, x=208, y=141)))
+    assert act.reason == "east_push"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram = _ram(level=6, screen=0x19, x=32, y=141)
+    arrive = make_room19_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_19"
+    assert level6_room19_success(read_snapshot(ram))
+    still = _ram(level=6, screen=0x18, x=208, y=141)
+    assert not level6_room19_success(read_snapshot(still))
+    run = SpineRun(through="level6-room19", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x19"
+    assert "level6-room19" in L6_THROUGH
+    assert list(nes_idle_action()) != list(nes_action("RIGHT"))
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
