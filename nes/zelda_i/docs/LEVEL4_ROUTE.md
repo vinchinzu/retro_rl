@@ -1,9 +1,9 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through free RIGHT into
-`0x32`, leftover `(16,141)`. The next natural boundary is the Zol+LikeLike
-clear (ignore `0x2b`/`0x68`). Do not claim Clean STATUS — Survival assist
-only for this segment.
+**Status:** continuous power-on Survival is live through the `0x32`
+Zol+LikeLike clear, leftover `(80,109)`. The next natural boundary is push
+left block → stairs `0x60` Stepladder. Do not claim Clean STATUS — Survival
+assist only for this segment.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -175,9 +175,9 @@ Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 ### Runner
 
 ```bash
-# Continuous power-on verified through enter 0x32
+# Continuous power-on verified through 0x32 Zol+LikeLike clear
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-room32 --no-video --trials 1
+  --through level4-clear32 --no-video --trials 1
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
