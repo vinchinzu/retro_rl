@@ -370,12 +370,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 ## Next
 
 1. **Active Survival tip:** `--through level6-stairs09` is green
-   (`l6_stairs09_continuous_v14` 1/1, 210,902f hop 203f). Mode 9 room
-   `0x75` `(208,93)` tile `0x71`, TF `0x1F`, keys=4, rod=0. Left 0x68
-   `(96,144)→(96,136)` then slot11 `(208,96)` (no y-move; south-face UP
-   onto `0x71` warps). Decorative NE hole / SW floor are not the warp.
-   Next Magical Rod in cellar `0x75` (do not grant `ADDR_ROD`). `rr-tne2`
-   in progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
+   (mode 9 `0x75` `(208,93)` tile `0x71` hop 203f). `--through level6-rod`
+   red v1–v6: stairs spit west `(48,74)→(48,93)`; v5 idle statue
+   `(48,73)` rod=0; v6 LEFT `(48,69)` tile 36 solid rod=0. PNG shows
+   Rod on the west statue. Do not grant `ADDR_ROD`. `rr-tne2` in
+   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
    Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
