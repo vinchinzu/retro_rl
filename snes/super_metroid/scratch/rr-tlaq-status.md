@@ -1,18 +1,27 @@
 # rr-tlaq Phantoon fight — status
 
-**Bead:** rr-tlaq IN PROGRESS (full kill RED). Do not STATUS-promote.
+**Bead:** rr-tlaq CLOSED. Assist dual-green kill **20537f** ×2. Do not
+STATUS-promote. Do not append to `--to ws`.
 
-## Window table
+## Assist kill
 
-| W | Park | Spend | HP | Health | Result |
-|---|------|-------|----|-------:|--------|
-| 1–4 | (48, 96) / W1 fig-8 | (37, 148) p21 | 2500→1300 | 59 | GREEN **300** ×4 |
-| 5 wait | `$D5E7` then `$D82A` pose 3 | — | 1300 | 59→39→**19** | **halt** (no jump) |
+| run | frames | windows | HP | `$D82B` | gs | health |
+|-----|-------:|--------:|---:|--------:|---:|-------:|
+| 1 | 20537 | 9×300 | 0 | bit 0 | 8 | 299 |
+| 2 | 20537 | 9×300 | 0 | bit 0 | 8 | 299 |
 
-Jump only rain (48, 96). Skip (53, 82)/(83, 64) with no A. `$D82A` still
-drops 39→19. No Super. No 16k.
+`strategy --assist --weapon beam` from `scratch/post_ws_basement_to_phantoon.state`.
+Same skip/jump policy. Super unused. Pin `scratch/post_phantoon_poweron.state`
+(did not clobber `post_phantoon_defeated.state`). Reports
+`scratch/phantoon_assist_kill.json` + `_dual.json`.
+
+## No-assist ceiling (do not re-prove)
+
+W1 fig-8 (104, 149) vs (120, 108); rain (48, 96) (37, 148) p21. Skip x=219,
+(128, 96), (88, 64), (53, 82), (56, 113), (83, 64). Jump only legal (48, 96).
+Best W1–W6 2500→700 then `$D82A` halt. 54–59 HP cannot tank `$D82A`.
 
 ## Next
 
-59 HP cannot tank `$D82A` to the next (48, 96). Dual-green kill still needs
-HP 0 + boss bit ×2 → `scratch/post_phantoon_poweron.state`.
+Leave Phantoon's Room / WS power-on from the new pin. Residual
+`docs/tasks/rr-tlaq-residual.md`. Default CLI stays `ice`.

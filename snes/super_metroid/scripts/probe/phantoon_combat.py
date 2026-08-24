@@ -97,6 +97,7 @@ def _snapshot(session: ProbeSession) -> dict[str, object]:
         "pose": st.pose,
         "facing": st.facing,
         "health": st.health,
+        "game_state": st.game_state,
         "missiles": st.missiles,
         "super_missiles": st.super_missiles,
         "max_missiles": st.max_missiles,
@@ -489,7 +490,10 @@ def _farm_flames(
 def cmd_window(args: argparse.Namespace) -> int:
     state_path = _resolve_state(args.state)
     env, loaded = _open_env(state_path)
-    assist = UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)
+    assist = UnlimitedResourcesAssist(
+        unlimited_energy=bool(args.assist),
+        unlimited_ammo=bool(args.assist),
+    )
     try:
         session = ProbeSession(env, assist)
         entry = _snapshot(session)
@@ -633,7 +637,12 @@ def cmd_strategy(args: argparse.Namespace) -> int:
             return 1
 
         entry = _snapshot(session)
-        strategy = PhantoonStrategy(max_fight_frames=args.max_frames)
+        weapon = WEAPON_MISSILES if args.weapon == "missiles" else WEAPON_BEAM
+        strategy = PhantoonStrategy(
+            weapon=weapon,
+            shots_per_window=1 if weapon == WEAPON_BEAM else 2,
+            max_fight_frames=args.max_frames,
+        )
         evidence = play_phantoon_fight(
             session,
             strategy=strategy,
@@ -674,10 +683,14 @@ def cmd_strategy(args: argparse.Namespace) -> int:
             "catalog": {"name": catalog.name, "max_hp": catalog.max_hp},
             "boss_bits_wrecked_ship": wrecked_ship_boss_bits(env),
             "phantoon_defeated": phantoon_defeated(env),
-            "method": "left_corner_charge_missiles",
+            "method": (
+                "left_corner_charge_beam"
+                if weapon == WEAPON_BEAM
+                else "left_corner_charge_missiles"
+            ),
             "notes": (
-                "KPDR beginner: seat left, charge when the eye opens, two more, "
-                "repeat. No Super spray. No resource writes unless --assist."
+                "Same seat-window policy as window --weapon beam. Assist keeps "
+                "energy through $D82A. No Super spray."
             ),
         }
         write_json_report(report, args.report)
@@ -699,9 +712,15 @@ def main() -> int:
         default="natural",
         help="natural|human|entry|path (default: natural Basement→room pin)",
     )
-    p.add_argument("--max-frames", type=int, default=20_000)
+    p.add_argument("--max-frames", type=int, default=40_000)
     p.add_argument("--assist", action="store_true", help="Enable energy+ammo refill")
     p.add_argument("--body-only", action="store_true", help="Stop at HP 0 (skip boss bit)")
+    p.add_argument(
+        "--weapon",
+        choices=("beam", "missiles"),
+        default="beam",
+        help="beam = proven charge chips; missiles unused in this fight",
+    )
     p.add_argument("--save-state", nargs="?", const=True, default=False)
     p.add_argument("--report", type=Path, default=None)
     p.set_defaults(func=cmd_strategy)
@@ -723,6 +742,7 @@ def main() -> int:
         default="missiles",
         help="missiles = counted ammo chips; beam = charge shots",
     )
+    w.add_argument("--assist", action="store_true", help="Enable energy+ammo refill")
     w.add_argument("--report", type=Path, default=None)
     w.set_defaults(func=cmd_window)
 

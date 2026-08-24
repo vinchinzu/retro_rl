@@ -8,6 +8,8 @@ import numpy as np
 
 from super_metroid.combat.features import phantoon_catalog
 from super_metroid.combat.phantoon import (
+    ADDR_WS_BOSS_BITS,
+    PHANTOON_BOSS_BIT,
     PHANTOON_INVISIBLE,
     PHANTOON_VULNERABLE,
     ROOM_PHANTOON,
@@ -304,6 +306,12 @@ def test_phantoon_evidence_dict_preserves_phase_metrics() -> None:
     assert payload["shots_fired"] == 12
     assert payload["windows"] == 4
     assert payload["outcome"] == "phantoon_defeated"
+
+
+def test_phantoon_boss_bit_is_wrecked_ship_d82b() -> None:
+    """Low WRAM parse never contains $D82B; fight peeks bank 7E like Kraid."""
+    assert ADDR_WS_BOSS_BITS == 0xD82B
+    assert PHANTOON_BOSS_BIT == 0x01
 
 
 def test_wrapper_entry_room_and_catalog() -> None:

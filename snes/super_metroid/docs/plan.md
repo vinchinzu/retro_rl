@@ -51,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Phantoon fight (`0xCD13`) | `rr-tlaq` · residual `tasks/rr-tlaq-residual.md` (window-1 chip GREEN, full kill RED) |
+| **★ Product next** | Phantoon leave / WS power-on | `rr-tlaq` assist kill dual-green **20537f** ×2; do not append `--to ws`; do not STATUS-promote |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -68,10 +68,11 @@ is scratch dual-green (**176141f** ×2 `0xCA08` `(57,139)` p1, rr-p2bw).
 Entrance → Main Shaft is scratch dual-green (**403f** ×2 `0xCAF6`
 `(1063,907)` p9, rr-ahjo). Main Shaft → basement is scratch dual-green
 (**1208f** ×2 `0xCC6F` `(657,92)` p24, rr-4btp). Basement → Phantoon *room*
-is scratch dual-green (**718f** ×2 `0xCD13` `(39,124)` p81, rr-cjpp). Next:
-Phantoon fight (`rr-tlaq`) — window-1 missile chip GREEN from that leave;
-full kill RED (residual `tasks/rr-tlaq-residual.md`). Planner STATUS for
-`moat` / `ws` is a follow-on — default CLI stays `ice`.
+is scratch dual-green (**718f** ×2 `0xCD13` `(39,124)` p81, rr-cjpp).
+Phantoon fight (`rr-tlaq`) assist dual-green **20537f** ×2 HP 0 + `$D82B`
+bit 0 from that leave (residual `tasks/rr-tlaq-residual.md`; pin
+`scratch/post_phantoon_poweron.state`). Do **not** append to `--to ws`.
+Planner STATUS for `moat` / `ws` is a follow-on — default CLI stays `ice`.
 **Do not STATUS-promote past Ice without a planner STATUS pass.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
