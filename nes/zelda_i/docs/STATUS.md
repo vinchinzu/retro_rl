@@ -325,11 +325,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 ## Next
 
 1. **Active Survival tip:** `--through level4-room21` is the last green
-   gate (`0x21` `(16,141)`, v22). Next: map pickup on dark `0x21`, then
-   bomb-UP `0x11`. Isolated BFS is still not a spine path. See
-   `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
-   seamed compose. Bomb/key count pokes are documented Survival shortcuts,
-   not Clean. Do not close `.6` until TF `0x08`.
+   gate (`0x21` `(16,141)`, v22). Map pickup on dark `0x21` is **blocked**
+   (west vestibule east-sealed, leftover `(32,189)` v12). Isolated BFS
+   is still not a spine path. See `docs/plan.md`. Isolated `Level3*` pins
+   do not close spine beads. No seamed compose. Bomb/key count pokes are
+   documented Survival shortcuts, not Clean. Do not close `.6` until TF
+   `0x08`.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
    spine through L5 exists.
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

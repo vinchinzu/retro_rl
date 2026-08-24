@@ -1,4 +1,4 @@
-"""Level 4 occupancy seeds (no emulator). 0x60 east-dock + 0x20 H-water.
+"""Level 4 occupancy seeds (no emulator). 0x60 east-dock + 0x20 H-water + dark 0x21.
 
 Unknown cells stay free until a live miss blocks them (OccupancyWalker).
 Solids from leftover samples plus screenshot floor:
@@ -19,7 +19,11 @@ LEFT along y=189 (never x>=176), UP the west aisle to spawn stairs.
 
 from __future__ import annotations
 
-from zelda_i.level4_dungeon import LADDER_60_PICKUP_XY, RIGHT_20_STAND
+from zelda_i.level4_dungeon import (
+    LADDER_60_PICKUP_XY,
+    MAP_21_PICKUP_XY,
+    RIGHT_20_STAND,
+)
 from zelda_i.walk_physics import OccupancyGrid
 
 __all__ = [
@@ -34,6 +38,15 @@ __all__ = [
     "ROOM_20_SOUTH_Y_MAX",
     "ROOM_20_SPAWN_XY",
     "ROOM_20_WAYPOINTS",
+    "ROOM_21_BOUNDS",
+    "ROOM_21_CLIP_BUDGET",
+    "ROOM_21_CORRIDOR_XY",
+    "ROOM_21_EAST_XY",
+    "ROOM_21_INLAND_XY",
+    "ROOM_21_SOUTH_XY",
+    "ROOM_21_PICKUP_XY",
+    "ROOM_21_SPAWN_XY",
+    "ROOM_21_WAYPOINTS",
     "ROOM_60_BOUNDS",
     "ROOM_60_CAUSWAY_XY",
     "ROOM_60_CLIP_BUDGET",
@@ -49,6 +62,7 @@ __all__ = [
     "ROOM_60_WAYPOINTS",
     "ROOM_60_WEST_AISLE_X",
     "room_20_grid",
+    "room_21_grid",
     "room_60_grid",
 ]
 
@@ -227,6 +241,75 @@ def room_20_grid() -> OccupancyGrid:
     # v3 leftover: RIGHT at y=205 is the south lip (door column included).
     for x in range(xmin, xmax + 1):
         blocked.add((x, ymax))
+    return OccupancyGrid(
+        blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+    )
+
+
+# Dark 0x21 leftover (16,141). PNG is black (no candle). Seed playfield +
+# west-door leftover. Interior unknown=free until a live miss.
+# Pickup ~(208,181) from isolated ADDR_MAP. Isolated MAP_21_SAMPLE_PATH
+# is state-BFS, not this tape.
+# v1 leftover (48,141): inland RIGHT works; UP is maze.
+# v2 leftover (48,141): cardinal RIGHT also solid.
+# v3 leftover (48,141): RIGHT+UP clip no-ops (two-wall NE corner).
+# v4 leftover (48,141): DOWN also solid. N/E/S boxed; only west returns.
+# v5 leftover (48,141): RIGHT+DOWN clip no-ops. (48,141) is a west-door
+# pocket — turn UP at x=32 before overshooting.
+# v6 leftover (48,117): UP at x=32 works; RIGHT along y=117 is maze.
+# v7 leftover (48,101): RIGHT at y=96-101 still the x=49 wall.
+# v8 leftover (32,93): UP is north wall of the west column.
+# v9 leftover (32,100): RIGHT+UP yo-yos (timeout stall=0). East sealed.
+# v10 leftover (48,173): DOWN at x=32 works; RIGHT at y=173 still x=49 wall.
+# v11 leftover (48,189): RIGHT at south band still x=49 wall.
+ROOM_21_SPAWN_XY = (16, 141)
+ROOM_21_INLAND_XY = (32, 141)
+ROOM_21_CORRIDOR_XY = (32, 189)
+ROOM_21_EAST_XY = (208, 189)
+ROOM_21_SOUTH_XY = (48, 181)
+ROOM_21_PICKUP_XY = MAP_21_PICKUP_XY
+ROOM_21_CLIP_BUDGET = 96
+ROOM_21_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    ROOM_21_INLAND_XY,
+    ROOM_21_CORRIDOR_XY,
+    ROOM_21_EAST_XY,
+    ROOM_21_PICKUP_XY,
+)
+ROOM_21_BOUNDS: tuple[int, int, int, int] = (16, 216, 77, 205)
+# v1: UP at (48,141). 16px tile north of the west door-row.
+_H21_WEST_WALL_X0, _H21_WEST_WALL_X1 = 40, 55
+_H21_WEST_WALL_Y0, _H21_WEST_WALL_Y1 = 125, 140
+# v2: RIGHT at (48,141) is the east face of that pocket.
+_H21_WEST_WALL_EAST_X = 49
+# v4: DOWN at (48,141).
+_H21_WEST_WALL_SOUTH_Y = 142
+# v6: RIGHT at (48,117) is maze. 16px tile east of the x=32 north column.
+_H21_MID_WALL_X0, _H21_MID_WALL_X1 = 49, 63
+_H21_MID_WALL_Y0, _H21_MID_WALL_Y1 = 96, 173
+
+
+def room_21_grid() -> OccupancyGrid:
+    """Fresh 0x21 seed. Dark leftover + v1 UP miss."""
+    xmin, xmax, ymin, ymax = ROOM_21_BOUNDS
+    blocked: set[tuple[int, int]] = set()
+    _block_rect(
+        blocked,
+        _H21_WEST_WALL_X0,
+        _H21_WEST_WALL_X1,
+        _H21_WEST_WALL_Y0,
+        _H21_WEST_WALL_Y1,
+    )
+    for y in range(_H21_WEST_WALL_Y0, 142):
+        blocked.add((_H21_WEST_WALL_EAST_X, y))
+    for x in range(_H21_WEST_WALL_X0, _H21_WEST_WALL_X1 + 1):
+        blocked.add((x, _H21_WEST_WALL_SOUTH_Y))
+    _block_rect(
+        blocked,
+        _H21_MID_WALL_X0,
+        _H21_MID_WALL_X1,
+        _H21_MID_WALL_Y0,
+        _H21_MID_WALL_Y1,
+    )
     return OccupancyGrid(
         blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
     )

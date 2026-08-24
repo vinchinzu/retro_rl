@@ -695,6 +695,42 @@ ROOM_20_SPEC = DungeonRoomSpec(
     level=LEVEL4,
 )
 
+# 0x21: 5× Gel 0x15 + RoomItemId 0x17 map. West leftover (16,141). Dark;
+# do not grant candle. Ignore invuln 0x2b + block 0x68. Isolated BFS banned.
+_PATROL_21: tuple[tuple[int, int], ...] = (
+    (48, 141),
+    (120, 141),
+    (208, 141),
+    (208, 181),
+    (120, 181),
+    (48, 181),
+)
+
+ROOM_21_SPEC = DungeonRoomSpec(
+    spec_id="level4_room21_gels_map",
+    source_room=ROOM_L4_WATER_NORTH_20,
+    room_id=ROOM_L4_MAP_21,
+    entry=DoorRoute("RIGHT", ((16, 141), (48, 141))),
+    enemy_types=(GEL_OBJECT_TYPE,),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE,
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_PATROL_21,
+        engage_distance=48,
+        attack_phase=4,
+        engage_attack_period=4,
+        engage_attack_hold=2,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=ROOM_ITEM_MAP,
+    exit_routes=(DoorRoute("LEFT", ((48, 141), (16, 141))),),
+    max_frames=20000,
+    level=LEVEL4,
+)
+
 register_room_spec(ROOM_71_SPEC)
 register_room_spec(ROOM_61_SPEC)
 register_room_spec(ROOM_51_SPEC)
@@ -705,6 +741,7 @@ register_room_spec(ROOM_30_SPEC)
 register_room_spec(ROOM_31_SPEC)
 register_room_spec(ROOM_32_SPEC)
 register_room_spec(ROOM_20_SPEC)
+register_room_spec(ROOM_21_SPEC)
 register_room_spec(ROOM_12_SPEC)
 
 

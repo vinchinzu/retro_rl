@@ -78,6 +78,8 @@ from zelda_i.survival_spine import (
     level4_keyup20_success,
     level4_map21_stages,
     level4_map21_success,
+    level4_mappick_stages,
+    level4_mappick_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -103,6 +105,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-west31",
         "level4-keyup20",
         "level4-room21",
+        "level4-map",
     )
 
 
@@ -505,6 +508,53 @@ def test_level4_map21_attaches_after_keyup20() -> None:
     assert level4_map21_success(read_snapshot(ram))
     ram[ADDR_SCREEN] = 0x20
     assert not level4_map21_success(read_snapshot(ram))
+
+
+def test_level4_mappick_attaches_after_room21() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level4_dungeon import LEVEL4_MAP_BIT, MAP_21_PICKUP_XY
+    from zelda_i.level4_mappick import make_mappick_controller
+    from zelda_i.ram import ADDR_MAP
+
+    stages = level4_mappick_stages()
+    assert [name for name, _, _ in stages] == ["level4_map_pickup_0x21"]
+    report = stages[0][1].report()
+    assert report["segment"] == "level4_map_pickup_0x21"
+    assert "bfs" not in report
+    assert report["pickup_xy"] == list(MAP_21_PICKUP_XY)
+    run = SpineRun(through="level4-map", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_map_pickup_0x21"
+    ctl = make_mappick_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x21
+    ram[ADDR_LINK_X] = 16
+    ram[ADDR_LINK_Y] = 141
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 32
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_Y] = 189
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_X] = 64
+    ram[ADDR_LINK_Y] = 189
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 208
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 181
+    ram[ADDR_MAP] = LEVEL4_MAP_BIT
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert act.reason == "done"
+    assert level4_mappick_success(read_snapshot(ram))
+    ram[ADDR_MAP] = 0
+    assert not level4_mappick_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
