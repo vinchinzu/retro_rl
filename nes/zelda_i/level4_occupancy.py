@@ -20,6 +20,7 @@ LEFT along y=189 (never x>=176), UP the west aisle to spawn stairs.
 from __future__ import annotations
 
 from zelda_i.level4_dungeon import (
+    BOMB_21_NORTH_STAND,
     LADDER_60_PICKUP_XY,
     MAP_21_PICKUP_XY,
     RIGHT_20_STAND,
@@ -40,6 +41,10 @@ __all__ = [
     "ROOM_20_WAYPOINTS",
     "ROOM_21_ALCOVE_Y",
     "ROOM_21_ALCOVE_Y_TOL",
+    "ROOM_21_BOMB_CORRIDOR_Y",
+    "ROOM_21_BOMB_EAST_XY",
+    "ROOM_21_BOMB_STAND_XY",
+    "ROOM_21_BOMB_WAYPOINTS",
     "ROOM_21_BOUNDS",
     "ROOM_21_CLIP_BUDGET",
     "ROOM_21_CLIP_X",
@@ -296,6 +301,15 @@ ROOM_21_WAYPOINTS: tuple[tuple[int, int], ...] = (
     ROOM_21_EAST_XY,
     ROOM_21_PICKUP_XY,
 )
+# Reverse of v15 inbound: spawn RIGHT+UP lands y=93; bomb v1 LEFT at
+# (192,109) is a 16px pillar. North-around y=93 then LEFT, not y=109.
+ROOM_21_BOMB_CORRIDOR_Y = 93
+ROOM_21_BOMB_EAST_XY = (ROOM_21_PICKUP_XY[0], ROOM_21_BOMB_CORRIDOR_Y)
+ROOM_21_BOMB_STAND_XY = BOMB_21_NORTH_STAND
+ROOM_21_BOMB_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    ROOM_21_BOMB_EAST_XY,
+    ROOM_21_BOMB_STAND_XY,
+)
 ROOM_21_BOUNDS: tuple[int, int, int, int] = (16, 216, 77, 205)
 # v1: UP at (48,141). 16px tile north of the west door-row.
 _H21_WEST_WALL_X0, _H21_WEST_WALL_X1 = 40, 55
@@ -307,6 +321,9 @@ _H21_WEST_WALL_SOUTH_Y = 142
 # v6: RIGHT at (48,117) is maze. 16px tile east of the x=32 north column.
 _H21_MID_WALL_X0, _H21_MID_WALL_X1 = 49, 63
 _H21_MID_WALL_Y0, _H21_MID_WALL_Y1 = 96, 173
+# bomb v1: LEFT at (192,109) solid. 16px pillar on the y=109 band.
+_H21_PILLAR_X0, _H21_PILLAR_X1 = 176, 191
+_H21_PILLAR_Y0, _H21_PILLAR_Y1 = 96, 111
 
 
 def room_21_grid() -> OccupancyGrid:
@@ -330,6 +347,13 @@ def room_21_grid() -> OccupancyGrid:
         _H21_MID_WALL_X1,
         _H21_MID_WALL_Y0,
         _H21_MID_WALL_Y1,
+    )
+    _block_rect(
+        blocked,
+        _H21_PILLAR_X0,
+        _H21_PILLAR_X1,
+        _H21_PILLAR_Y0,
+        _H21_PILLAR_Y1,
     )
     return OccupancyGrid(
         blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax

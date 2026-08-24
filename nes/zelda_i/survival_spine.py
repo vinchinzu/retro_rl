@@ -51,6 +51,8 @@ from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathControl
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
 from zelda_i.level4_overworld import level4_entry_stop
 from zelda_i.level4_spine import (
+    level4_bomb11_stages,
+    level4_bomb11_success,
     level4_clear_31_stages,
     level4_clear_31_success,
     level4_clear_32_stages,
@@ -106,6 +108,7 @@ Through = Literal[
     "level4-keyup20",
     "level4-room21",
     "level4-map",
+    "level4-bomb11",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -127,6 +130,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-keyup20",
     "level4-room21",
     "level4-map",
+    "level4-bomb11",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -231,6 +235,7 @@ class SpineRun:
                 "level4-keyup20": "level4_key_up_0x20",
                 "level4-room21": "level4_enter_0x21",
                 "level4-map": "level4_map_pickup_0x21",
+                "level4-bomb11": "level4_enter_0x11",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -884,4 +889,24 @@ def run_survival_spine(
     run.success = level4_mappick_success(snap)
     if not run.success:
         run.failed_stage = "level4_map_pickup_0x21"
+        return run
+    if through == "level4-map":
+        return run
+
+    # Operator-authorized Survival exception at this verified bomb gate:
+    # count top-up + B-slot bombs. Never write capacity / max_bombs.
+    topup_owned_bombs(env, run)
+    if not _run_stages(
+        env,
+        run,
+        level4_bomb11_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_bomb11_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_enter_0x11"
     return run
