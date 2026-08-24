@@ -29,6 +29,7 @@ from super_metroid.combat.phantoon import (
     _fire_window,
     _go_to_seat,
     beam_charge,
+    charge_window_ok,
     enemy_extra,
     eye_open,
     list_pickups,
@@ -195,31 +196,67 @@ def cmd_dump(args: argparse.Namespace) -> int:
         env.close()
 
 
-def _left_side_open(session: ProbeSession) -> bool:
+def _body_func(session: ProbeSession) -> int:
+    extra = enemy_extra(session.env)
+    try:
+        return int(str(extra.get("func") or "0"), 16)
+    except ValueError:
+        return 0
+
+
+def _fig8_left_open(session: ProbeSession) -> bool:
+    """W1-style open: eye IL / fig-8 vuln, not rain, not right-side."""
     st = session.state
-    return eye_open(st, session.env) and int(st.enemy0_x) < PhantoonStrategy().skip_enemy_x
+    return eye_open(st, session.env) and charge_window_ok(
+        _body_func(session), st.enemy0_x
+    )
 
 
-def _wait_open_window(session: ProbeSession, *, timeout: int) -> bool:
+def _wait_open_window(
+    session: ProbeSession, *, timeout: int, func_log: list | None = None
+) -> bool:
     from retro_harness.actions import buttons, idle_action
 
+    last = None
     for _ in range(timeout):
         st = session.state
-        if _left_side_open(session):
+        func = _body_func(session)
+        extra = enemy_extra(session.env)
+        key = extra.get("func")
+        if func_log is not None and key != last:
+            func_log.append(
+                {
+                    "frame": session.frame,
+                    "func": key,
+                    "eye_ilist": extra.get("eye_ilist"),
+                    "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                    "health": st.health,
+                    "charge": beam_charge(session.env),
+                    "fig8_left": _fig8_left_open(session),
+                }
+            )
+            last = key
+        if _fig8_left_open(session):
             return True
         if int(st.health) == 0:
             return False
-        if st.selected_item == WEAPON_BEAM:
+        if int(st.samus_x) > PhantoonStrategy().seat_x_max:
+            hold_dir = "LEFT"
+            if st.selected_item == WEAPON_BEAM:
+                session.step(buttons(hold_dir, "X"), "phan_wait_eye")
+            else:
+                session.step(buttons(hold_dir), "phan_wait_eye")
+        elif st.selected_item == WEAPON_BEAM:
             session.step(buttons("X"), "phan_wait_eye")
         else:
             session.step(idle_action(), "phan_wait_eye")
-    return _left_side_open(session)
+    return _fig8_left_open(session)
 
 
 def _wait_window_closed(session: ProbeSession, *, timeout: int = 400) -> None:
     for _ in range(timeout):
         st = session.state
-        if (not _left_side_open(session)) or int(st.health) == 0:
+        if (not _fig8_left_open(session)) or int(st.health) == 0:
             return
         session.step([0] * 12, "phan_wait_close")
 
@@ -284,8 +321,11 @@ def _one_window(
             _go_to_seat(session, strategy)
     seated_snap = _snapshot(session)
     opened = False
+    wait_funcs: list[dict[str, object]] = []
     if seated(session.state) and int(session.state.health) > 0:
-        opened = _wait_open_window(session, timeout=wait)
+        opened = _wait_open_window(
+            session, timeout=wait, func_log=wait_funcs
+        )
     pre = _snapshot(session)
     if opened:
         fire = _fire_trace(session, strategy)
@@ -319,6 +359,7 @@ def _one_window(
         "post_fire": post,
         "spends": fire["spends"],
         "events": fire["events"],
+        "wait_funcs": wait_funcs,
     }
 
 
