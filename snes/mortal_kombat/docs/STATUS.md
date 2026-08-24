@@ -126,13 +126,16 @@ Verified this session (do not re-discover):
   Courtyard specialist jumps before the split: first-ready 906f is
   black with pose already 68/144; visible 957f. Clock 296 from
   first-ready is visible+240. Tap UP+forward 10f, then idle — y drops
-  ~20-30f later (land-hk clock 346, 40 dmg) and any walk/special
-  during that startup cancels the jump. Kano walks under so we land
-  crossed (~174/67). `scripted-courtyard` 0-2 (Kano 121 after the
-  opener HK, then flying kicks fail). Second fighter still has not
-  appeared — that wait is `win_at=8` after two round wins, not after
-  one KO. Not an Endurance 1 tape. Scorpion still has not appeared.
-  M1–M7 tape still closes 2-0/2-0/2-0/2-1/2-0/2-1/2-0 at frame 41,503.
+  ~20-30f later and any walk/special during that startup cancels the
+  jump. Land HK is 40 dmg but Kano walks under (~174/67). Air HK on
+  y-drop (standing y=144; do not treat 143 as a land) hits 25 and
+  stays same-side from the leftover-pin probe (~151/183, then
+  standing HK 10 at 182/214). `--oracles scripted-courtyard --win-at 8`
+  is still 0-2: TournamentRunner lands crossed (~177/54, Kano 136
+  after the air HK). Second fighter still has not appeared — that
+  wait is `win_at=8` after two round wins, not after one KO. Not an
+  Endurance 1 tape. Scorpion still has not appeared. M1–M7 tape still
+  closes 2-0/2-0/2-0/2-1/2-0/2-1/2-0 at frame 41,503.
 - Match5 v3 zip, restored obs, save-state N=5: own 3/5; Fight 4/5; Match2 4/5; Match7 2/5 (first v3 Match7 wins this session).
 - Clean tournament N=5 with per-stage v3: 4/5 died Match 1; 1/5 furthest Match 3. Same N=5 with `--ladder-model mk1_v3_Match5_ppo_final.zip`: furthest Match 3 (2) / Match 4 (3). Win counter stayed 0 (missed +1 ticks / HUD). Not a 7-match claim.
 - `KIND_SCRIPT` / `--scripted` / `--ladder-model` / `--kind script` / `--compare` are wired. `--promote` still N>=20 v3 checkpoints only.
@@ -173,4 +176,4 @@ Win = `rounds_won >= 2 AND rounds_won > rounds_lost`.
 | `scripts/replay_natural_fight5.py` | Model-free exact power-on tape through the Match 6 transition |
 | `scripts/replay_natural_fight6.py` | Model-free exact power-on tape through the Match 7 transition |
 | `scripts/replay_natural_fight7.py` | Model-free exact power-on tape through the Endurance 1 transition |
-| `scripts/capture_natural_endurance1.py` | Identify live E1 then record RLE from the Fight 7 pin (no tape yet). `--oracles scripted-courtyard` jumps the knife opener (40 dmg HK); still 0-2 |
+| `scripts/capture_natural_endurance1.py` | Identify live E1 then record RLE from the Fight 7 pin (no tape yet). `--oracles scripted-courtyard` air-HK opener (25 dmg same-side on the pin probe); TournamentRunner still 0-2 crossed |
