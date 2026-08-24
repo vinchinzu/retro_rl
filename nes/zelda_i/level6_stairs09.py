@@ -1,10 +1,11 @@
 """Level 6 0x09 left-block stairs toward Magical Rod.
 
 Clear leftover (112,173); live left 0x68 (96,144). Reuse 0x38 south-face UP
-until that object's y drops ≥8px. CheckWarp needs still; at dest idle (no
-hold-UP). v12 true idle (192,97) tile 0x77 / 3830f stairs_idle still mode 5
-— NE hole decorative (v8 hold-UP was not still). Next SW (48,173). Halt
-y>=181. Do not occupancy. Do not grant ADDR_ROD.
+until that object's y drops ≥8px. v13 SW (48,172) tile 119 idle 3887f is
+floor, not a hole. Remaining 0x68 slot11 (208,96) — v10 no_right_0x68 was
+early. Next: south-face that NE 0x68 until y-move, then still-stand.
+CheckWarp needs still; do not hold-UP. Do not occupancy. Do not grant
+ADDR_ROD. Halt y>=181.
 """
 
 from __future__ import annotations
@@ -35,30 +36,42 @@ __all__ = [
     "Stairs09Phase",
     "Level6Stairs09Controller",
     "make_stairs_09_controller",
+    "ne_block_0x68",
 ]
 
 STAIRS_09_MAX_FRAMES = 4000
 STAIRS_09_SAMPLE_PERIOD = 8
-# Exact x; y slack 1 so 1px short of dest is idle, not hold-UP (v8/v12).
-STAIR_ALIGN_TOL = 0
-STAIRS_09_Y_SLACK = 1
 STAIRS_09_SOUTH_HALT_Y = 181
 STAIRS_09_IDLE_MIN = 240
-# v12 leftover (192,97) tile 119 true idle 3830f still mode 5. Next SW.
-STAIRS_09_HOLE = (48, 173)
+# v13: left 0x68 y-moves then slot11 jumps 96,131 → 208,96 (~16f later).
+NE_BLOCK_X_MIN = 184
+
+
+def ne_block_0x68(snap: ZeldaSnapshot) -> ZeldaObject | None:
+    """NE 0x68 (x>=184). Do not pick the still-despawning left block."""
+    blocks = [
+        obj
+        for obj in snap.objects
+        if int(obj.type_id) == BLOCK_OBJECT_TYPE and int(obj.x) >= NE_BLOCK_X_MIN
+    ]
+    if not blocks:
+        return None
+    return max(blocks, key=lambda obj: (int(obj.x), int(obj.y)))
 
 
 class Stairs09Phase(Enum):
     TO_PUSH = auto()
     PUSH = auto()
-    TO_HOLE = auto()
+    TO_NE = auto()
+    PUSH_NE = auto()
+    IDLE = auto()
     DONE = auto()
     FAILED = auto()
 
 
 @dataclass
 class Level6Stairs09Controller:
-    """Left 0x68 y-move, then idle SW (48,173). Success is mode 9."""
+    """Left 0x68 y-move, then south-face NE 0x68. Success is mode 9."""
 
     spec_id: str = "level6_stairs_0x09"
     room: int = LEVEL6_ROD_WIZZ_ROOM
@@ -84,6 +97,19 @@ class Level6Stairs09Controller:
             if note:
                 self.notes.append(note)
 
+    def _unlock(self) -> None:
+        self.block_slot = None
+        self.block_x0 = None
+        self.block_y0 = None
+
+    def _lock(self, block: ZeldaObject, tag: str) -> None:
+        if self.block_slot is not None:
+            return
+        self.block_slot = int(block.slot)
+        self.block_x0 = int(block.x)
+        self.block_y0 = int(block.y)
+        self.notes.append(f"{tag}_{block.slot}_{block.x}_{block.y}")
+
     def _fail(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
         self.failed = True
         self._set_phase(Stairs09Phase.FAILED, note)
@@ -91,7 +117,7 @@ class Level6Stairs09Controller:
             snap, FrameAction(nes_idle_action(), note), force=True
         )
 
-    def _block(self, snap: ZeldaSnapshot) -> ZeldaObject | None:
+    def _find_block(self, snap: ZeldaSnapshot, *, ne: bool) -> ZeldaObject | None:
         if self.block_slot is not None:
             found = next(
                 (
@@ -104,15 +130,7 @@ class Level6Stairs09Controller:
             )
             if found is not None:
                 return found
-        block = left_block_0x68(snap)
-        if block is None:
-            return None
-        if self.block_slot is None:
-            self.block_slot = int(block.slot)
-            self.block_x0 = int(block.x)
-            self.block_y0 = int(block.y)
-            self.notes.append(f"left_block_{block.slot}_{block.x}_{block.y}")
-        return block
+        return ne_block_0x68(snap) if ne else left_block_0x68(snap)
 
     def _warped(self, snap: ZeldaSnapshot) -> bool:
         if snap.level != LEVEL6:
@@ -135,7 +153,12 @@ class Level6Stairs09Controller:
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
-        block = self._block(snap)
+        ne = self.phase in (
+            Stairs09Phase.TO_NE,
+            Stairs09Phase.PUSH_NE,
+            Stairs09Phase.IDLE,
+        )
+        block = self._find_block(snap, ne=ne)
         blocks = self._blocks_68(snap)
         self.leftover = {
             "x": int(snap.link_x),
@@ -180,6 +203,52 @@ class Level6Stairs09Controller:
                 }
             )
         return action
+
+    def _axis_to_south_face(
+        self, snap: ZeldaSnapshot, xy: tuple[int, int], block: ZeldaObject, tag: str
+    ) -> FrameAction | None:
+        tx, ty = south_face_stand(block)
+        if abs(xy[0] - tx) <= PUSH_ALIGN_TOL and abs(xy[1] - ty) <= PUSH_ALIGN_TOL:
+            return None
+        self.walker.last_dir = None
+        if xy[1] < ty - PUSH_ALIGN_TOL:
+            return self._emit(snap, FrameAction(nes_action("DOWN"), f"{tag}_y"))
+        if abs(xy[0] - tx) > PUSH_ALIGN_TOL:
+            btn = "LEFT" if xy[0] > tx else "RIGHT"
+            return self._emit(snap, FrameAction(nes_action(btn), f"{tag}_x"))
+        btn = "UP" if xy[1] > ty else "DOWN"
+        return self._emit(snap, FrameAction(nes_action(btn), f"{tag}_y"))
+
+    def _hold_push(
+        self, snap: ZeldaSnapshot, xy: tuple[int, int], *, ne: bool, reason: str
+    ) -> FrameAction | None:
+        block = self._find_block(snap, ne=ne)
+        if block is None:
+            return self._fail(snap, f"lost_block_{xy[0]}_{xy[1]}")
+        if self.block_y0 is None:
+            self.block_x0 = int(block.x)
+            self.block_y0 = int(block.y)
+        if int(block.y) <= int(self.block_y0) - PUSH_MOVED_PX:
+            self.walker.last_dir = None
+            self.walker.path = None
+            note = (
+                f"pushed_{self.block_x0}_{self.block_y0}"
+                f"_to_{int(block.x)}_{int(block.y)}"
+            )
+            if ne:
+                self._set_phase(Stairs09Phase.IDLE, note)
+            else:
+                self._unlock()
+                self._set_phase(Stairs09Phase.TO_NE, note)
+            return None
+        if self.phase_frames >= PUSH_38_MAX_HOLD:
+            return self._fail(
+                snap,
+                f"push_no_move_{xy[0]}_{xy[1]}"
+                f"_block_{int(block.x)}_{int(block.y)}",
+            )
+        self.walker.last_dir = None
+        return self._emit(snap, FrameAction(nes_action("UP"), reason))
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -231,35 +300,21 @@ class Level6Stairs09Controller:
             )
 
         if self.phase is Stairs09Phase.TO_PUSH:
-            block = self._block(snap)
+            block = self._find_block(snap, ne=False)
             if block is None:
                 if self.phase_frames >= WAIT_BLOCK_MAX:
                     return self._fail(snap, f"no_block_0x68_{xy[0]}_{xy[1]}")
                 return self._emit(
                     snap, FrameAction(nes_idle_action(), "wait_block")
                 )
-            tx, ty = south_face_stand(block)
-            if abs(xy[0] - tx) <= PUSH_ALIGN_TOL and abs(xy[1] - ty) <= PUSH_ALIGN_TOL:
-                self._set_phase(
-                    Stairs09Phase.PUSH,
-                    f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
-                )
-            else:
-                # v1 occupancy leftover (112,173) freeze-miss boxed 4-cardinal.
-                self.walker.last_dir = None
-                if xy[1] < ty - PUSH_ALIGN_TOL:
-                    return self._emit(
-                        snap, FrameAction(nes_action("DOWN"), "stand_y")
-                    )
-                if abs(xy[0] - tx) > PUSH_ALIGN_TOL:
-                    btn = "LEFT" if xy[0] > tx else "RIGHT"
-                    return self._emit(
-                        snap, FrameAction(nes_action(btn), "stand_x")
-                    )
-                btn = "UP" if xy[1] > ty else "DOWN"
-                return self._emit(
-                    snap, FrameAction(nes_action(btn), "stand_y")
-                )
+            self._lock(block, "left_block")
+            walked = self._axis_to_south_face(snap, xy, block, "stand")
+            if walked is not None:
+                return walked
+            self._set_phase(
+                Stairs09Phase.PUSH,
+                f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
+            )
 
         prev_dir = self.walker.last_dir
         misses_before = self.walker.misses
@@ -270,46 +325,35 @@ class Level6Stairs09Controller:
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
 
         if self.phase is Stairs09Phase.PUSH:
-            block = self._block(snap)
-            if block is None:
-                return self._fail(snap, f"lost_block_{xy[0]}_{xy[1]}")
-            if self.block_y0 is None:
-                self.block_x0 = int(block.x)
-                self.block_y0 = int(block.y)
-            if int(block.y) <= int(self.block_y0) - PUSH_MOVED_PX:
-                self.walker.last_dir = None
-                self.walker.path = None
-                self._set_phase(
-                    Stairs09Phase.TO_HOLE,
-                    f"pushed_{self.block_x0}_{self.block_y0}"
-                    f"_to_{int(block.x)}_{int(block.y)}",
-                )
-            elif self.phase_frames >= PUSH_38_MAX_HOLD:
-                return self._fail(
-                    snap,
-                    f"push_no_move_{xy[0]}_{xy[1]}"
-                    f"_block_{int(block.x)}_{int(block.y)}",
-                )
-            else:
-                self.walker.last_dir = None
-                return self._emit(
-                    snap, FrameAction(nes_action("UP"), "push_left_block")
-                )
+            held = self._hold_push(snap, xy, ne=False, reason="push_left_block")
+            if held is not None:
+                return held
 
-        if self.phase is Stairs09Phase.TO_HOLE:
-            gx, gy = STAIRS_09_HOLE
-            self.walker.last_dir = None
-            if abs(xy[0] - gx) > STAIR_ALIGN_TOL:
-                btn = "LEFT" if xy[0] > gx else "RIGHT"
-                return self._emit(snap, FrameAction(nes_action(btn), "hole_x"))
-            if abs(xy[1] - gy) > STAIRS_09_Y_SLACK:
-                btn = "UP" if xy[1] > gy else "DOWN"
-                if btn == "DOWN" and xy[1] >= STAIRS_09_SOUTH_HALT_Y - 1:
-                    return self._emit(
-                        snap, FrameAction(nes_idle_action(), "south_halt")
-                    )
-                return self._emit(snap, FrameAction(nes_action(btn), "hole_y"))
+        if self.phase is Stairs09Phase.TO_NE:
+            block = self._find_block(snap, ne=True)
+            if block is None:
+                if self.phase_frames >= WAIT_BLOCK_MAX:
+                    return self._fail(snap, f"no_ne_0x68_{xy[0]}_{xy[1]}")
+                return self._emit(
+                    snap, FrameAction(nes_idle_action(), "wait_ne_block")
+                )
+            self._lock(block, "ne_block")
+            walked = self._axis_to_south_face(snap, xy, block, "ne")
+            if walked is not None:
+                return walked
+            self._set_phase(
+                Stairs09Phase.PUSH_NE,
+                f"at_ne_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
+            )
+
+        if self.phase is Stairs09Phase.PUSH_NE:
+            held = self._hold_push(snap, xy, ne=True, reason="push_ne_block")
+            if held is not None:
+                return held
+
+        if self.phase is Stairs09Phase.IDLE:
             self.idle_frames += 1
+            self.walker.last_dir = None
             return self._emit(
                 snap, FrameAction(nes_idle_action(), "stairs_idle")
             )
@@ -325,7 +369,8 @@ class Level6Stairs09Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "axis south-face UP until y-move, idle SW (48,173)"
+                "axis south-face left 0x68 until y-move, then NE 0x68 "
+                "(208,96) south-face UP, idle"
             ),
             "idle_frames": int(self.idle_frames),
             "idle_min": STAIRS_09_IDLE_MIN,
@@ -343,5 +388,5 @@ class Level6Stairs09Controller:
 
 
 def make_stairs_09_controller() -> Level6Stairs09Controller:
-    """Push left 0x68 in 0x09 then idle SW (48,173). Do not grant ADDR_ROD."""
+    """Push left 0x68 then NE (208,96) 0x68 in 0x09. Do not grant ADDR_ROD."""
     return Level6Stairs09Controller()
