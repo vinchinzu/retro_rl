@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous clear `0x32`; `0x60` island causeway blocked v26 |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous `ADDR_LADDER` v34; next exit `0x60→0x32` |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -182,10 +182,12 @@ empty-room stop (do not require push-block or stairs `0x60`). Existing
 `ROOM_32_SPEC` controller; no inland/occupancy change. Invuln `0x2b` and
 block `0x68` residual OK. Do not close `.6` until TF `0x08`.
 
-`--through level4-stepladder` is wired (`make_stepladder_controller(clear_first=False)`,
-stop `ADDR_LADDER` / `level4_stepladder_success`) but **live blocked** after
-v1–v26. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
-from the continuous leftover without emulator-state BFS. Do not close `.6`.
+`--through level4-stepladder` is **1/1** on `l4_stepladder_continuous_v34`
+(`ADDR_LADDER` at `(136,141)`, 118,292f, deaths/progression/capacity 0, no
+state load). Occupancy v26 over-blocked the east grey dock as south-water
+`x=80–175` plus exit `x>=176`. Walkway: west aisle south → y=189 RIGHT to
+x=175 → UP the dock → y-first to y=141 → LEFT onto the pedestal. Isolated
+BFS is still banned. Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -212,8 +214,16 @@ from the continuous leftover without emulator-state BFS. Do not close `.6`.
 | v24 | `0x60` `(48,130)` leftup133_solid stall=0 | LEFT+UP at west-aisle `(48,133)` (v11 burned RIGHT+DOWN here); live same UP-priority, LEFT wall |
 | v25 | `0x60` `(48,71)` rightdown68_solid stall=0 | RIGHT+DOWN at north-strip `(48,68)` clips east; live RIGHT is north-brick, DOWN 3px |
 | v26 | `0x60` `(48,65)` leftup68_solid stall=0 | LEFT+UP two-wall corner at `(48,68)` clips onto the island; live LEFT wall, UP 3px into north brick |
+| v27 | `0x60` `(171,189)` dock_solid | east-dock UP is x=175; abs(dx)>4 idled 4px short |
+| v28 | `0x60` `(176,157)` dock_solid | reached dock; island x-first LEFT into water south of y=151 |
+| v29 | `0x60` `(176,149)` dock_solid | UP past 151 then LEFT; 2px north of causeway |
+| v30 | `0x60` `(176,151)` timeout stall=0 | LEFT at y=151 slides y; DOWN yo-yo never west |
+| v31 | `0x60` `(176,149)` timeout stall=0 | y=150–152 LEFT still yo-yos north |
+| v32 | `0x60` `(141,141)` controller done, RAM ladder=0 | y-first to 141 then LEFT reached island; abs<=6 idled 5px east of pickup |
+| v33 | `0x60` `(138,141)` same | abs<=2 idled 2px east |
+| v34 | `0x60` `(136,141)` **ADDR_LADDER** | exact pickup cell |
 
-PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26}_final.png`
+PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34}_final.png`
 (v3/v5 exit `0x32`).
 
 ### Why isolated BFS found a path occupancy says does not exist
@@ -240,43 +250,29 @@ seeded grid.
    after ~118k frames are not the isolated checkpoint.
 4. **Spawn is the same.** Isolated start is `(48,69)`; continuous west-aisle
    leftover is the same column. Not a mode-9 spawn mismatch.
-5. **Center water is unseeded (unknown=free).** Island `(136,141)` is
-   passable. Occupancy still has **no** cardinal path because west-brick
-   `x=49–90,y=53–161` (v18 extended past the fake y=158 gap) and south-water
-   `x=80–175,y=158–180` enclose the island from both aisles. Isolated BFS
-   does not 1px-walk those free interior cells; it jumps, then restores
-   goal state.
+5. **Center water is unseeded (unknown=free).** v26 occupancy enclosed the
+   island because south-water `x=80–175,y=158–180` and exit `x>=176` (all y)
+   painted over the east grey dock. v34 carves that dock (`x>=175`, y<189)
+   and the stairs lip (`x=80–174,y=158–188`). OccupancyWalker spawn→island
+   is DOWN, RIGHT, UP, LEFT. Isolated BFS still jumps/restores goal state.
 6. **Not a two-button clip.** Isolated dirs are `UP/DOWN/LEFT/RIGHT` one at
    a time. `RIGHT,UP,RIGHT,UP` tokens are sequential holds, not `nes_action("RIGHT","UP")`.
 
-Live v17–v26 (one new geometry each) did not cross the moat. `ADDR_LADDER`
-stays 0. Inventory on miss: TF=`0x07` keys=5 bombs=15 ladder=0;
-deaths/state/progression/capacity 0.
+Live v34 collected `ADDR_LADDER` on the continuous tape. Inventory: TF=`0x07`
+keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
-Listed two-button residuals from the v19 leftover are exhausted. Two-button
-holds are vertical-priority: the vertical axis slides 3–4px, the horizontal
-axis does not enter the island. Occupancy 1px 4-connected still has **no**
-spawn→island path (v20 seeded south brick at leftover x=84–88, y≥190).
-The occupancy-free pocket `x=49–79,y≥162` is west of south-water `x=80` —
-not an island path. v11 already burned RIGHT+DOWN at west-aisle y=117..141.
-
-Next worker: do **not** call `_bfs_60_to_ladder` on the spine. Remaining
-last resort is a **Keese-timed knock from the west aisle**. Isolated BFS
-Keese is checkpoint RNG after ~settle, not this 118k-frame leftover; do
-not attach unless it is 2/2 deterministic on the continuous tape. Push
-from `(80,109)` is still OK.
+Next worker: exit mode-9 `0x60→0x32` with **waypoints, no BFS** (item freeze
+~150f then around Keese). Do **not** call `_bfs_60_to_ladder` or
+`level4_room_nav` exit BFS. Then west `0x30`, KEY-UP `0x20`, map, Gleeok.
+Do not close `.6` until TF `0x08`.
 
 Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-clear32 --no-video --trials 1 \
-  --tag l4_clear32_continuous_v1
-# blocked hop (do not expect ok=true):
-uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-stepladder --no-video --trials 1 \
-  --tag l4_stepladder_continuous_v26
+  --tag l4_stepladder_continuous_v34
 ```
 Isolated 0x6b check:
 
