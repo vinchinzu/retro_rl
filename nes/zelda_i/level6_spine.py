@@ -24,6 +24,7 @@ from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
+    LEVEL6_KEESE_ROOM,
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
     Level6EntryRightController,
@@ -34,6 +35,7 @@ from zelda_i.level6_overworld import (
 from zelda_i.level6_path import (
     NORTH_68_MAX_FRAMES,
     Level6North68Controller,
+    make_north_58_controller,
 )
 from zelda_i.ram import (
     ADDR_WHISTLE,
@@ -53,6 +55,8 @@ __all__ = [
     "level6_clear68_success",
     "level6_compass_stages",
     "level6_compass_success",
+    "level6_keese_stages",
+    "level6_keese_success",
     "level6_east_key_stages",
     "level6_east_key_success",
     "level6_entry_stages",
@@ -67,6 +71,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-west",
     "level6-compass",
     "level6-clear68",
+    "level6-keese",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -74,6 +79,7 @@ L6_STOPS: dict[str, str] = {
     "level6-west": "level6_west_0x78",
     "level6-compass": "level6_compass_0x68",
     "level6-clear68": "level6_clear_0x68",
+    "level6-keese": "level6_keese_0x58",
 }
 
 
@@ -243,6 +249,25 @@ def level6_clear68_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_keese_stages():
+    """0x68 leftover → occupancy UP into Keese 0x58. No fight."""
+    north = make_north_58_controller()
+    return (
+        ("level6_north_0x58", north, NORTH_68_MAX_FRAMES),
+    )
+
+
+def level6_keese_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x58. Keese clear / key drop residual."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_KEESE_ROOM
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -337,3 +362,20 @@ def continue_level6_spine(
     run.success = level6_clear68_success(snap)
     if not run.success:
         run.failed_stage = "level6_clear_0x68"
+        return
+    if through == "level6-clear68":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_keese_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_keese_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_keese_0x58"

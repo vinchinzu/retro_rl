@@ -15,6 +15,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
+    LEVEL6_KEESE_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -25,6 +26,7 @@ __all__ = [
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
     "Level6North68Controller",
+    "make_north_58_controller",
 ]
 
 NORTH_DOOR_X = 120
@@ -36,12 +38,15 @@ NORTH_68_MAX_FRAMES = 4000
 
 @dataclass
 class Level6North68Controller:
-    """0x78 leftover → occupancy BFS to the north door → UP into 0x68.
+    """Occupancy BFS to a north door, then UP. Defaults are 0x78 → 0x68.
 
-    Goal is play-ready compass room 0x68. No combat. No path → stand.
+    Goal is play-ready dest. No combat. No path → stand.
     Door push on the north band is not occupancy-graded.
     """
 
+    source_room: int = LEVEL6_WEST_WIZZROBE_ROOM
+    dest_room: int = LEVEL6_COMPASS_ROOM
+    spec_id: str = "level6_north_0x68"
     max_frames: int = NORTH_68_MAX_FRAMES
     frames: int = 0
     success: bool = False
@@ -73,29 +78,32 @@ class Level6North68Controller:
 
         if (
             snap.level == LEVEL6
-            and snap.screen == LEVEL6_COMPASS_ROOM
+            and snap.screen == self.dest_room
             and snap.mode == PLAY_MODE
             and not snap.transitioning
         ):
             self.success = True
-            self.notes.append("arrived_68")
-            return FrameAction(nes_idle_action(), "arrived_68")
+            note = f"arrived_{self.dest_room:02x}"
+            self.notes.append(note)
+            return FrameAction(nes_idle_action(), note)
 
         if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
             self.walker.last_dir = None
-            return FrameAction(nes_action("UP"), "north78_scroll")
+            return FrameAction(nes_action("UP"), "north_scroll")
         if snap.mode != PLAY_MODE:
             self.walker.last_dir = None
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.level != LEVEL6:
             return FrameAction(nes_idle_action(), f"wait_level_{snap.level}")
-        if snap.screen == LEVEL6_COMPASS_ROOM:
+        if snap.screen == self.dest_room:
             self.walker.last_dir = None
-            return FrameAction(nes_action("UP"), "north78_settle")
-        if snap.screen != LEVEL6_WEST_WIZZROBE_ROOM:
+            return FrameAction(nes_action("UP"), "north_settle")
+        if snap.screen != self.source_room:
             self.failed = True
-            self.notes.append(f"left_0x78_to_0x{snap.screen:02x}")
-            return FrameAction(nes_idle_action(), "left_0x78")
+            self.notes.append(f"left_0x{self.source_room:02x}_to_0x{snap.screen:02x}")
+            return FrameAction(
+                nes_idle_action(), f"left_0x{self.source_room:02x}"
+            )
 
         xy = (int(snap.link_x), int(snap.link_y))
         prev_dir = self.walker.last_dir
@@ -110,22 +118,22 @@ class Level6North68Controller:
             self.walker.last_dir = None
             if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
                 direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
-                return FrameAction(nes_action(direction), "north78_align")
-            return FrameAction(nes_action("UP"), "north78_push")
+                return FrameAction(nes_action(direction), "north_align")
+            return FrameAction(nes_action("UP"), "north_push")
 
         direction = self.walker.next_dir(xy, self._goal())
         if direction is None:
             if abs(snap.link_x - NORTH_DOOR_X) <= 8 and snap.link_y <= 117:
                 self.walker.last_dir = None
-                return FrameAction(nes_action("UP"), "north78_door_residual")
+                return FrameAction(nes_action("UP"), "north_door_residual")
             if self.frames <= 8 or self.frames % 60 == 0:
                 self.notes.append(f"stand_f{self.frames}_{xy[0]}_{xy[1]}")
             self.walker.last_dir = None
             return self._emit(
-                snap, FrameAction(nes_idle_action(), "north78_stand")
+                snap, FrameAction(nes_idle_action(), "north_stand")
             )
         return self._emit(
-            snap, FrameAction(nes_action(direction), "north78_path")
+            snap, FrameAction(nes_action(direction), "north_path")
         )
 
     def _emit(
@@ -153,5 +161,16 @@ class Level6North68Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": "occupancy BFS + UP @ x≈120 on north band",
-            "spec_id": "level6_north_0x68",
+            "spec_id": self.spec_id,
+            "source_room": self.source_room,
+            "dest_room": self.dest_room,
         }
+
+
+def make_north_58_controller() -> Level6North68Controller:
+    """0x68 leftover → occupancy UP into Keese room 0x58. No fight."""
+    return Level6North68Controller(
+        source_room=LEVEL6_COMPASS_ROOM,
+        dest_room=LEVEL6_KEESE_ROOM,
+        spec_id="level6_north_0x58",
+    )
