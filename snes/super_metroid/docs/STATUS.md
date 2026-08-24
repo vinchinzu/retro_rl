@@ -56,9 +56,9 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: K5 Alpha PB pure stack (`rr-dbu.8`) / post-Ice KPDR; optional ice demo
-video. Open residual: [`tasks/rr-dbu.8-residual.md`](tasks/rr-dbu.8-residual.md)
-(Hellway: `rr-av5s`). Ice dual continuous is closed. Work:
+★ Next: wire `--to ws` over-ocean spark from the power-on Moat leave
+(scratch `--to moat` dual **175526f** ×2, not STATUS). Residual:
+[`tasks/rr-2r06-residual.md`](tasks/rr-2r06-residual.md). Work:
 `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)

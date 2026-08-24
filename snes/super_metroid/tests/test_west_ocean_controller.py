@@ -51,6 +51,12 @@ def test_ws_recording_routes_and_source_catalog() -> None:
     assert ws_pin.room_id == 0xCA08
     assert ws_pin.relative_path.endswith("post_west_ocean_ws_spark.state")
 
+    poweron = get_source("post_moat_poweron")
+    assert poweron.room_id == 0x93FE
+    assert poweron.relative_path.endswith("post_moat_poweron.state")
+    ws_cont = get_source("post_moat_poweron_wo_to_ws")
+    assert ws_cont.room_id == 0xCA08
+
     assert callable(ws.play_moat_to_ws)
     assert callable(ws.play_moat_to_west_ocean)
 
