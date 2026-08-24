@@ -432,7 +432,11 @@ def _one_window(
 
 
 def _farm_flames(
-    session: ProbeSession, strategy: PhantoonStrategy, *, frames: int = 2000
+    session: ProbeSession,
+    strategy: PhantoonStrategy,
+    *,
+    frames: int = 2000,
+    stop_health: int = 250,
 ) -> dict[str, object]:
     """Tap-snipe flames from the living seat until health rises or timeout."""
     start = session.frame
@@ -466,7 +470,7 @@ def _farm_flames(
                 }
             )
             last_dump = session.frame
-        if int(st.health) >= 250:
+        if int(st.health) >= stop_health:
             break
         _flame_snipe_tap(session, strategy)
     return {
@@ -499,9 +503,14 @@ def cmd_window(args: argparse.Namespace) -> int:
                 _wait_window_closed(session)
             if int(session.state.health) <= 20:
                 break
-            # W2 wait ate 239→59 sitting. Farm after W1 so rain starts >100.
-            if index == 1 and int(session.state.health) <= 240:
-                farm = _farm_flames(session, strategy, frames=2000)
+            # Farm after W1 (2k) and before later windows when health is low.
+            if index == 1 or (
+                index > 1 and int(session.state.health) <= 100
+            ):
+                stop = 100 if int(session.state.health) <= 100 else 250
+                farm = _farm_flames(
+                    session, strategy, frames=2000, stop_health=stop
+                )
                 if windows:
                     windows[-1]["farm_between"] = farm
                 if int(session.state.health) == 0:
