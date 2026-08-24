@@ -364,12 +364,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-gleeok18` is green (`0x18`
-   `(121,133)`, TF `0x1F`, v1 1/1). Body type **`0x44`** (not `0x43`)
-   south-stand; east shutter still closed; north stairs live. `rr-tne2`
-   in progress. Next is Map east / Rod stairs / Gohma / TF `0x20`.
-   Isolated BFS is still not a spine path. See `docs/plan.md`. Isolated
-   `Level3*` pins do not close spine beads. No seamed compose. Bomb/key
-   count pokes are documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** `--through level6-postgleeok18` is green
+   (`0x18` `(156,133)`, TF `0x1F`, v2 1/1). Heads gone; east shutter
+   still closed (`open_doorway_mask` 0; `cur_opened_doors` 5 is not
+   walkable). `--through level6-stairs18` not on tape (v1–v4). `rr-tne2`
+   in progress. Next is north-hole idle y=96 / Map east / Rod / Gohma /
+   TF `0x20`. Isolated BFS is still not a spine path. See `docs/plan.md`.
+   Isolated `Level3*` pins do not close spine beads. No seamed compose.
+   Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
