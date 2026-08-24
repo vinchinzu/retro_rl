@@ -290,6 +290,8 @@ def fight_phantoon_action(
     if seated(state, strategy):
         if not eye_open(state):
             return ("X",) if strategy.weapon == WEAPON_BEAM else ()
+        if int(state.enemy0_x) >= strategy.skip_enemy_x:
+            return ()
         if strategy.weapon == WEAPON_MISSILES and state.missiles <= 0:
             return ()
         if strategy.weapon == WEAPON_MISSILES:
@@ -489,19 +491,36 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
                 last_spend = session.frame
             continue
 
+        close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
+        on_floor = int(st.samus_y) >= strategy.floor_y_min - 6
+        if int(st.enemy0_x) >= strategy.skip_enemy_x and not close:
+            break
+        if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
+            break
         if not _charged(session, strategy):
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
-        if not hittable:
+        fire = (
+            hittable
+            and close
+            and (not on_floor)
+            and st.pose not in HURT_POSES
+            and shots < strategy.shots_per_window
+        )
+        if not fire:
             names.append("X")
             hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
             continue
+        # Release at the measured airborne pose. No LEFT/RIGHT on the spend.
+        fire_names: list[str] = []
+        if int(st.samus_y) > int(st.enemy0_y) + 10:
+            fire_names.append("UP")
         ch_before = beam_charge(_env_of(session))
         hold(
             session,
             strategy.fire_release_frames,
-            *tuple(dict.fromkeys(names)),
+            *tuple(fire_names),
             reason="phan_fire",
         )
         ch_after = beam_charge(_env_of(session))
