@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through clear 0x28 (not Clean STATUS)
+Status: **assisted pure** through Gleeok enter 0x18 (not Clean STATUS)
 
 Planning sources:
 
@@ -62,7 +62,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 0x58 (8× Keese 0x1b; key drop live) ──UP──► 0x48
 0x48 (blade traps 0x49 — run through) ──UP──► 0x38
 0x38 (hard multi-wizzrobe / Like-Like / Bubble) ──left 0x68 UP then west-aisle──► 0x28
-0x28 (2× orange 0x24; diamond floor) ──clear──► Gleeok / Map / Rod path residual
+0x28 (2× orange 0x24; diamond floor) ──LEFT+UP then RIGHT+UP──► 0x18 Gleeok live
 ```
 
 | Room | Role | Enemies (live) | RoomItemId | Notes |
@@ -76,6 +76,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x48** | N of 0x58 | blade traps `0x49` | — | spine enter 1/1; run UP residual |
 | **0x38** | N of 0x48 | **7×** wizzrobe `0x23`/`0x24` + Like-Like `0x17` + Bubble `0x40` | — | spine clear 1/1; Bubble residual; left 0x68 `(96,144)` UP live |
 | **0x28** | N of 0x38 | **2× orange `0x24`** | — | spine clear 1/1 leftover `(120,181)`; diamond floor not solid |
+| **0x18** | N of 0x28 | **Gleeok 3-head** (live PNG) | — | spine enter 1/1 leftover `(120,189)`; fight residual |
 
 ### Entry RIGHT policy (required)
 
@@ -299,6 +300,22 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room28 
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear28 --no-video --trials 1
 ```
 
+### Gleeok enter (0x28 leftover → 0x18) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x28` `(120,181)` after orange clear |
+| Path | LEFT+UP at y=181 (cardinal UP solid); hold UP from `(96,173)`; RIGHT+UP at y=109 (cardinal RIGHT solid) |
+| Stop | `--through level6-room18` play-ready `0x18` |
+| Leftover | `(120,189)` south mouth; Gleeok 3-head live |
+| Keys | 5 (no spend) |
+| Track | **assisted Survival** |
+| Notes | v1 occupancy boxed leftover. v2 hold-UP y stays 181. v3 LEFT to x=80 works; UP at y=181 solid. v4 peel y=189 then aisle UP walks to 181 then solid. v5 LEFT+UP clips to `(96,173)`; RIGHT solid. v6 hold-UP to `(96,109)`; RIGHT solid. v7 RIGHT+UP at y=109 enters. Do not fight Gleeok this hop. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room18 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -318,6 +335,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 | 0x58 → UP → 0x48 | **free** (PNG shutter is walkable) | 0 | spine 1/1 |
 | 0x48 → UP → 0x38 | **free** (run traps, no clear) | 0 | spine 1/1 |
 | 0x38 → UP → 0x28 | **left 0x68 UP** then west-aisle (shutter sealed until y moves) | 0 | spine 1/1 |
+| 0x28 → UP → 0x18 | LEFT+UP y=181, hold UP, RIGHT+UP y=109 | 0 | spine 1/1 |
 
 ### Walkthrough (not all live)
 
@@ -325,7 +343,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - Compass from Zols — **0x68 live** (RoomItemId `0x16`; inventory pickup residual)
 - statue/Keese rooms — **0x58 live**
 - multi-Wizzrobe + Bubble + Like-Like — **0x38 live clear** (Bubble residual)
-- Mid-dungeon **Gleeok (3 heads)** then Map — residual
+- Mid-dungeon **Gleeok (3 heads)** then Map — **0x18 enter live**; fight residual
 - Staircase → **Magical Rod** (`ADDR_ROD=0x065F`) — residual
 - Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
@@ -368,8 +386,9 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_clear38_continuous_v1.json` — 0x38 occupancy-patrol clear 1/1 5,487f
 - `recordings/l6_room28_continuous_v6.json` — 0x28 enter 1/1 left-0x68 UP + west-aisle 3,207f
 - `recordings/l6_clear28_continuous_v1.json` — 0x28 occupancy-patrol 2× orange 0x24 1/1 2,587f
+- `recordings/l6_room18_continuous_v7.json` — 0x18 Gleeok enter 1/1 280f leftover `(120,189)`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear28 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room18 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -383,8 +402,8 @@ Not claimed live as pure segments:
 2. **0x58** Keese clear — **live**; key inventory no
 3. **0x48** enter + run-UP — **live**
 4. **0x38** clear — **live**
-5. **0x28** enter + orange-wizzrobe clear — **live**; optional bomb-east residual
-6. **Gleeok (3 heads)** + Map
+5. **0x28** enter + orange-wizzrobe clear — **live**
+6. **Gleeok (3 heads)** enter `0x18` — **live**; fight + Map residual
 7. Staircase → **Magical Rod** (`ADDR_ROD`)
 8. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
 
@@ -394,4 +413,4 @@ Not claimed live as pure segments:
 - Clean east/west wizzrobe combat (beams kill without assist)
 - Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
-- Gleeok / Rod / Gohma / triforce bit live
+- Gleeok fight / Rod / Gohma / triforce bit live

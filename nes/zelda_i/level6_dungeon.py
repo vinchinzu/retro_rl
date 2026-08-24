@@ -354,10 +354,8 @@ ROOM_38_SPEC = DungeonRoomSpec(
 
 register_room_spec(ROOM_38_SPEC)
 
-# North of 0x38: leftover PNG l6_room28_continuous_v6_final is a diamond
-# room with orange wizzrobes live (two on-screen at leftover (120,189)).
-# Do not copy 0x38's 7× mix. Ignore invuln 0x2b / Bubble 0x40 / block 0x68.
-# Occupancy-patrol from the south mouth; diamond tiles miss-block.
+# North of 0x38: leftover RAM max_live=2 orange 0x24. Do not copy 0x38's 7× mix.
+# Ignore invuln 0x2b / Bubble 0x40 / block 0x68. Diamond floor is walkable.
 _ROOM_28_PATROL: tuple[tuple[int, int], ...] = (
     (120, 189),
     (80, 189),

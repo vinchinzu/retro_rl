@@ -17,6 +17,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
+    LEVEL6_GLEEOK_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
@@ -34,6 +35,7 @@ __all__ = [
     "Level6North68Controller",
     "Level6Push38Controller",
     "left_block_0x68",
+    "make_north_18_controller",
     "make_north_28_controller",
     "make_north_38_controller",
     "make_north_48_controller",
@@ -58,6 +60,12 @@ WAIT_BLOCK_MAX = 120
 PUSH_38_MAX_FRAMES = 8000
 # x=120 UP from the south band hits the block pair; aisle is west of 0x68.
 NORTH_WEST_X = 64
+# 0x28 leftover (120,181) UP is solid (v2); LEFT to x=80 then UP still solid
+# (v3 leftover 80,181). Peel y=189 then x=80 UP walks to 181 then solid (v4).
+# v5: LEFT+UP along the y=181 south face (cardinals cannot thread).
+SOUTH_MOUTH_Y = 189
+DIAMOND_FACE_Y = 181
+CLIP_CLEAR_Y = 173
 
 
 def left_block_0x68(snap: ZeldaSnapshot) -> ZeldaObject | None:
@@ -91,6 +99,13 @@ class Level6North68Controller:
     notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
     walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+    # False after a live leftover box (0x28 v1 freeze-missed the first UP).
+    use_occupancy: bool = True
+    # When set, LEFT/RIGHT onto this column then UP (0x28 diamond south face).
+    aisle_x: int | None = None
+    peeled: bool = False
+    # LEFT+UP while y > CLIP_CLEAR_Y (0x28 v5; cardinal UP at y=181 is solid).
+    clip_left_up: bool = False
 
     def _goal(self) -> tuple[int, int]:
         return (NORTH_DOOR_X, NORTH_DOOR_Y)
@@ -154,9 +169,30 @@ class Level6North68Controller:
         if snap.link_y <= NORTH_BAND_Y:
             self.walker.last_dir = None
             if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
+                # v6 leftover (96,109): cardinal RIGHT is solid. Clip toward door.
+                if self.clip_left_up and snap.link_x < NORTH_DOOR_X:
+                    return self._emit(
+                        snap,
+                        FrameAction(nes_action("RIGHT", "UP"), "door_clip"),
+                    )
                 direction = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
-                return FrameAction(nes_action(direction), "north_align")
-            return FrameAction(nes_action("UP"), "north_push")
+                return self._emit(
+                    snap, FrameAction(nes_action(direction), "north_align")
+                )
+            return self._emit(snap, FrameAction(nes_action("UP"), "north_push"))
+
+        if not self.use_occupancy:
+            if self.clip_left_up and snap.link_y > CLIP_CLEAR_Y:
+                if self.frames <= 8 or self.frames % 60 == 0:
+                    self.notes.append(f"clip_f{self.frames}_{xy[0]}_{xy[1]}")
+                return self._emit(
+                    snap,
+                    FrameAction(nes_action("LEFT", "UP"), "diamond_clip"),
+                )
+            # v5 leftover (96,173): RIGHT to x=120 is a diamond. Hold UP.
+            return self._emit(
+                snap, FrameAction(nes_action("UP"), "north_hold")
+            )
 
         direction = self.walker.next_dir(xy, self._goal())
         if direction is None:
@@ -197,7 +233,17 @@ class Level6North68Controller:
             "blocked": len(self.walker.grid.blocked),
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "occupancy BFS + UP @ x≈120 on north band",
+            "policy": (
+                "LEFT+UP at y=181, hold UP, RIGHT+UP at y=109"
+                if self.clip_left_up
+                else f"DOWN to y={SOUTH_MOUTH_Y} then aisle x={self.aisle_x} UP"
+                if not self.use_occupancy and self.aisle_x is not None
+                else "hold UP @ x≈120"
+                if not self.use_occupancy
+                else "occupancy BFS + UP @ x≈120 on north band"
+            ),
+            "aisle_x": self.aisle_x,
+            "clip_left_up": self.clip_left_up,
             "spec_id": self.spec_id,
             "source_room": self.source_room,
             "dest_room": self.dest_room,
@@ -449,3 +495,15 @@ class Level6Push38Controller:
 def make_north_28_controller() -> Level6Push38Controller:
     """0x38 leftover → clip, live left 0x68 UP until y moves, west-aisle 0x28."""
     return Level6Push38Controller()
+
+
+def make_north_18_controller() -> Level6North68Controller:
+    """0x28 leftover → LEFT+UP at y=181, hold UP, RIGHT+UP at y=109. No cardinal RIGHT."""
+    return Level6North68Controller(
+        source_room=LEVEL6_WIZZROBE_28_ROOM,
+        dest_room=LEVEL6_GLEEOK_ROOM,
+        spec_id="level6_north_0x18",
+        max_frames=6000,
+        use_occupancy=False,
+        clip_left_up=True,
+    )
