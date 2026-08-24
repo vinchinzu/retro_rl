@@ -16,6 +16,7 @@ from zelda_i.level6_overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
     LEVEL6_KEESE_ROOM,
+    LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -26,6 +27,7 @@ __all__ = [
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
     "Level6North68Controller",
+    "make_north_48_controller",
     "make_north_58_controller",
 ]
 
@@ -173,4 +175,14 @@ def make_north_58_controller() -> Level6North68Controller:
         source_room=LEVEL6_COMPASS_ROOM,
         dest_room=LEVEL6_KEESE_ROOM,
         spec_id="level6_north_0x58",
+    )
+
+
+def make_north_48_controller() -> Level6North68Controller:
+    """0x58 leftover → occupancy UP into 0x48. Long push; do not poke doors."""
+    return Level6North68Controller(
+        source_room=LEVEL6_KEESE_ROOM,
+        dest_room=LEVEL6_TRAPS_ROOM,
+        spec_id="level6_north_0x48",
+        max_frames=6000,
     )
