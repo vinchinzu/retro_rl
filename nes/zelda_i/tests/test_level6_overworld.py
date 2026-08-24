@@ -26,6 +26,8 @@ from zelda_i.level6_path import Level6North68Controller
 from zelda_i.level6_spine import (
     L6_THROUGH,
     Level6Return79Controller,
+    level6_clear68_stages,
+    level6_clear68_success,
     level6_compass_stages,
     level6_compass_success,
     level6_east_key_stages,
@@ -37,6 +39,7 @@ from zelda_i.level6_spine import (
 )
 from zelda_i.overworld import neighbor_screens
 from zelda_i.ram import (
+    ADDR_COMPASS,
     ADDR_LADDER,
     ADDR_LEVEL,
     ADDR_LINK_X,
@@ -295,6 +298,31 @@ def test_level6_compass_occupancy_up_from_0x78() -> None:
     run = SpineRun(through="level6-compass", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_compass_0x68"
     assert "level6-compass" in L6_THROUGH
+
+
+def test_level6_clear68_attaches_occupancy_fight() -> None:
+    from zelda_i.dungeon_ids import ZOL_OBJECT_TYPE
+    from zelda_i.level6_dungeon import LEVEL6_COMPASS_BIT, make_compass_68_controller
+
+    stages = level6_clear68_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x68"]
+    fight = stages[0][1]
+    assert fight.spec.room_id == 0x68
+    assert fight.spec.combat.occupancy_patrol
+    assert fight is not make_compass_68_controller()
+    ram = _ram(level=6, screen=0x68, x=120, y=205)
+    ram[ADDR_COMPASS] = 0x1F | LEVEL6_COMPASS_BIT
+    snap = read_snapshot(ram)
+    assert level6_clear68_success(snap)
+    ram[ADDR_COMPASS] = 0x1F
+    assert not level6_clear68_success(read_snapshot(ram))
+    ram[ADDR_COMPASS] = 0x1F | LEVEL6_COMPASS_BIT
+    ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear68_success(read_snapshot(ram))
+    run = SpineRun(through="level6-clear68", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x68"
+    assert "level6-clear68" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
