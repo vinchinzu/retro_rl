@@ -110,10 +110,14 @@ uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.p
   `rounds=2-0`) and stick on keepaway after the first live KO. `p2.state`
   stays 0 for the knife; duck when sprite `0x1B36` leaves Kano. Stale
   `0x1B36=180` while Kano walks is not a knife. Constant duck makes
-  Kano rush. Jumping the opener: idle until clock 296 from first-ready
+  Kano rush. Jumping the opener: idle until 296 start-pose frames
   (visible+240; fade is 51f with pose already 68/144), tap UP+forward
   10f, then *wait* — y drops ~20-30f later and walking/flying-kick
   during that startup cancels the jump. Land HK is 40 dmg but Kano
-  walks under the jump so we land crossed. `scripted-courtyard` still
-  0-2. Keepaway still has not closed a round; rolling Match5 v3 for
-  2–0 is the wrong next step.
+  walks under so we land crossed. Air HK on y-drop hits 25 and stays
+  same-side from a leftover-pin probe (~151/183); standing HK then
+  10 at ~182/214. `--oracles scripted-courtyard --win-at 8` still
+  0-2: the TournamentRunner path lands crossed (~177/54, Kano 136).
+  Do not treat y=143 as a land (standing is 144) or we walk during
+  the hop. Keepaway still has not closed a round; rolling Match5 v3
+  for 2–0 is the wrong next step.

@@ -22,7 +22,7 @@ Read-only WRAM via `get_ram()`. HUD bytes: `data.json` + GameHacking.org USA
 | p2_x / p2_y (pose) | 783 / 815 | `0x030F` / `0x032F` | P2 X starts ~180 then walks in. Y standing ~144 |
 | p1_state | 274 | `0x0112` | Object +`0x38`; often 0 |
 | p2_state | 430 | `0x01AE` | Same field on P2; stays 0 for courtyard Kano knives |
-| knife_x | 6966 | `0x1B36` | Sprite X. Equals P2 pose X until Kano's knife leaves; then walks toward P1 (visible pin idle: 180 through f=250, split 259, 139/98/74 into Liu Kang at f=273). Duck only when the sprite is *between* the bodies — stale 180 while Kano walks in is not a knife. Jump the opener *before* this split (clock 296 from leftover first-ready); y drops 20-30f after the tap |
+| knife_x | 6966 | `0x1B36` | Sprite X. Equals P2 pose X until Kano's knife leaves; then walks toward P1 (visible pin idle: 180 through f=250, split 259, 139/98/74 into Liu Kang at f=273). Duck only when the sprite is *between* the bodies — stale 180 while Kano walks in is not a knife. Jump the opener *before* this split (296 start-pose frames from leftover first-ready); y drops 20-30f after the tap. Standing y is 144 — y=143 is still air; walking then crosses. Air HK on y-drop is 25 dmg same-side (~151/183) from the pin probe |
 
 High WRAM sprite tables `0x7688` / `0x7788` (Hacc) are optional if `get_ram()`
 is long enough — not required for v3 obs.

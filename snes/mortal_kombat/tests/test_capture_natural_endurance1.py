@@ -233,7 +233,7 @@ def test_courtyard_loader_returns_jump_specialist() -> None:
     assert policy.jump_at == 296
 
 
-def test_courtyard_idles_until_jump_then_land_hk() -> None:
+def test_courtyard_idles_until_jump_then_air_hk() -> None:
     policy = CourtyardKanoPolicy(round1_jump_at=5, later_jump_at=5)
     idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
     for _ in range(4):
@@ -246,16 +246,72 @@ def test_courtyard_idles_until_jump_then_land_hk() -> None:
     for _ in range(9):
         held = policy.act(idle, None)
         assert held[UP] == 1
-    # Still grounded: startup wait, not a miss.
+    # Still grounded: startup wait, not a miss. Do not HK yet.
     wait = policy.act(idle, None)
     assert wait[UP] == 0
     assert wait[B] == 0
     air = make_test_ram(p1_x=90, p2_x=180, p1_y=70)
-    for _ in range(6):
-        policy.act(air, None)
-    land = policy.act(make_test_ram(p1_x=153, p2_x=185, p1_y=144), None)
-    assert land[B] == 1
+    kick = policy.act(air, None)
+    assert kick[B] == 1
+    assert kick[UP] == 0
+    assert kick[DOWN] == 0
+    for _ in range(5):
+        held = policy.act(air, None)
+        assert held[B] == 1
+    almost = policy.act(make_test_ram(p1_x=150, p2_x=180, p1_y=143), None)
+    assert almost[B] == 1
+    assert almost[RIGHT] == 0
+    # Land far: opener done, do not land-HK (that crosses).
+    land = policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    assert land[B] == 0
     assert land[UP] == 0
+
+
+def test_courtyard_air_hk_ignores_knife_sprite() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=2, later_jump_at=2)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    air = _knife_ram(p1_x=90, p2_x=180, knife_x=139, p1_y=70)
+    kick = policy.act(air, None)
+    assert kick[B] == 1
+    assert kick[DOWN] == 0
+
+
+def test_courtyard_standing_hk_when_kano_walks_in() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=1, later_jump_at=1)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    close = policy.act(make_test_ram(p1_x=182, p2_x=214, p1_y=144), None)
+    assert close[B] == 1
+    assert close[UP] == 0
+
+
+def test_courtyard_does_not_chase_kano_off_right_edge() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=1, later_jump_at=1)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    close = make_test_ram(p1_x=182, p2_x=214, p1_y=144)
+    policy.act(close, None)
+    for _ in range(4):
+        policy.act(close, None)
+    chase = policy.act(make_test_ram(p1_x=170, p2_x=214, p1_y=144), None)
+    assert chase[RIGHT] == 1
+    assert chase[B] == 0
+    rim = policy.act(make_test_ram(p1_x=192, p2_x=231, p1_y=144), None)
+    assert rim[LEFT] == 1
+    assert rim[RIGHT] == 0
+    assert rim[B] == 0
 
 
 def test_courtyard_later_round_uses_shorter_jump_clock() -> None:
@@ -286,10 +342,16 @@ def test_courtyard_idles_on_leftover_ko_hud() -> None:
     assert int(frame.sum()) == 0
 
 
-def test_courtyard_ducks_real_knife_not_kano_walk() -> None:
-    policy = CourtyardKanoPolicy(round1_jump_at=99)
-    duck = policy.act(_knife_ram(p1_x=68, p2_x=180, knife_x=90, p1_y=144), None)
+def test_courtyard_ducks_real_knife_after_opener() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=1, later_jump_at=1)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    duck = policy.act(_knife_ram(p1_x=151, p2_x=202, knife_x=170, p1_y=144), None)
     assert duck[DOWN] == 1
-    walk = policy.act(_knife_ram(p1_x=68, p2_x=167, knife_x=180, p1_y=144), None)
+    walk = policy.act(_knife_ram(p1_x=151, p2_x=167, knife_x=180, p1_y=144), None)
     assert walk[DOWN] == 0
     assert walk[UP] == 0
