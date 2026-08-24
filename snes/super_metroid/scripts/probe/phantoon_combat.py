@@ -27,6 +27,7 @@ from super_metroid.combat.phantoon import (
     WEAPON_MISSILES,
     PhantoonStrategy,
     _fire_window,
+    _flame_snipe_tap,
     _go_to_seat,
     _rain_corner_wait,
     beam_charge,
@@ -430,6 +431,53 @@ def _one_window(
     }
 
 
+def _farm_flames(
+    session: ProbeSession, strategy: PhantoonStrategy, *, frames: int = 2000
+) -> dict[str, object]:
+    """Tap-snipe flames from the living seat until health rises or timeout."""
+    start = session.frame
+    prev_h = int(session.state.health)
+    prev_m = int(session.state.missiles)
+    health_up = 0
+    missile_up = 0
+    dump: list[dict[str, object]] = []
+    last_dump = -999
+    while session.frame - start < frames:
+        st = session.state
+        if int(st.health) == 0:
+            break
+        if int(st.health) > prev_h:
+            health_up += int(st.health) - prev_h
+        if int(st.missiles) > prev_m:
+            missile_up += int(st.missiles) - prev_m
+        prev_h = int(st.health)
+        prev_m = int(st.missiles)
+        if session.frame - last_dump >= 30 or last_dump < 0:
+            dump.append(
+                {
+                    "frame": session.frame,
+                    "func": enemy_extra(session.env).get("func"),
+                    "health": st.health,
+                    "missiles": st.missiles,
+                    "samus_xy": [st.samus_x, st.samus_y],
+                    "pose": st.pose,
+                    "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                    "pickups": [p.__dict__ for p in list_pickups(session.env)],
+                }
+            )
+            last_dump = session.frame
+        if health_up > 0:
+            break
+        _flame_snipe_tap(session, strategy)
+    return {
+        "frames": session.frame - start,
+        "health_up": health_up,
+        "missile_up": missile_up,
+        "health": session.state.health,
+        "dump": dump,
+    }
+
+
 def cmd_window(args: argparse.Namespace) -> int:
     state_path = _resolve_state(args.state)
     env, loaded = _open_env(state_path)
@@ -449,6 +497,14 @@ def cmd_window(args: argparse.Namespace) -> int:
         for index in range(count):
             if index > 0:
                 _wait_window_closed(session)
+            if int(session.state.health) <= 20:
+                break
+            if index > 0 and int(session.state.health) <= 40:
+                farm = _farm_flames(session, strategy, frames=2000)
+                if windows:
+                    windows[-1]["farm_between"] = farm
+                if int(session.state.health) == 0:
+                    break
             result = _one_window(session, wait=args.wait, strategy=strategy)
             windows.append(result)
             if not result["success"]:
