@@ -476,12 +476,26 @@ def test_level4_map21_attaches_after_keyup20() -> None:
     ram[ADDR_LADDER] = 1
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("UP"))
-    ram[ADDR_LINK_Y] = 192
+    ram[ADDR_LINK_Y] = 96
     act = ctl.step(read_snapshot(ram))
-    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_X] = 136
+    ram[ADDR_LINK_Y] = 94
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_Y] = 96
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 200
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_Y] = 128
     ram[ADDR_LINK_X] = 208
     act = ctl.step(read_snapshot(ram))
-    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_Y] = 133
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("DOWN"))
     ram[ADDR_LINK_Y] = 141
     act = ctl.step(read_snapshot(ram))
     assert list(act.action) == list(nes_action("RIGHT"))

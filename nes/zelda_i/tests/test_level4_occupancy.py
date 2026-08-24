@@ -254,7 +254,9 @@ def test_room_20_grid_blocks_h_water_and_door() -> None:
     assert grid.passable(120, 150)
     assert not grid.passable(160, 150)
     assert not grid.passable(192, 141)
+    assert not grid.passable(199, 141)
     assert not grid.passable(200, 141)
+    assert not grid.passable(200, 110)
     assert not grid.passable(192, 189)
     assert not grid.passable(80, 189)
     assert not grid.passable(121, 205)
@@ -266,26 +268,29 @@ def test_room_20_grid_blocks_h_water_and_door() -> None:
     assert grid.passable(*ROOM_20_EAST_XY)
     assert grid.passable(*ROOM_20_NORTH_XY)
     assert grid.passable(*ROOM_20_NORTH_EAST_XY)
+    assert not grid.passable(208, 96)
     assert ROOM_20_EAST_XY == RIGHT_20_STAND
 
 
-def test_room_20_waypoints_are_south_around() -> None:
+def test_room_20_waypoints_are_east_column() -> None:
     assert ROOM_20_WAYPOINTS == (
-        ROOM_20_SOUTH_EAST_XY,
+        ROOM_20_NORTH_XY,
+        ROOM_20_NORTH_EAST_XY,
         ROOM_20_EAST_XY,
     )
-    assert ROOM_20_SOUTH_EAST_XY == (208, 192)
+    assert ROOM_20_NORTH_EAST_XY == (200, 96)
     assert ROOM_20_EAST_XY == (208, 141)
     grid = room_20_grid()
-    for start, goal in zip(ROOM_20_WAYPOINTS, ROOM_20_WAYPOINTS[1:]):
-        path = grid.shortest_path(start, goal)
-        assert path is not None
-        assert (192, 141) not in path
-        assert (120, 141) not in path
     north = grid.shortest_path(ROOM_20_NORTH_XY, ROOM_20_NORTH_EAST_XY)
     assert north is not None
-    assert max(x for x, _ in north) >= 208
+    assert max(x for x, _ in north) == 200
     assert min(y for _, y in north) <= 96
+    assert (192, 141) not in north
+    # v20: east column DOWN is solid. Occupancy wrap-south is not this hop.
+    east = grid.shortest_path(ROOM_20_NORTH_EAST_XY, ROOM_20_EAST_XY)
+    assert east is not None
+    assert (200, 110) not in east
+    assert (200, 141) not in east
 
 
 def test_room_20_walker_from_south_door_goes_north() -> None:
@@ -314,7 +319,7 @@ def test_room_20_clear_walks_to_south_band() -> None:
     assert "bfs" not in report
 
 
-def test_map21_path_walks_south_around() -> None:
+def test_map21_path_walks_east_column() -> None:
     from zelda_i.level4_map21 import Map21Phase, make_map21_controller
 
     ctl = make_map21_controller()
@@ -328,21 +333,39 @@ def test_map21_path_walks_south_around() -> None:
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_map_y"
     assert list(act.action) == list(nes_action("UP"))
-    ram[ADDR_LINK_Y] = 192
+    ram[ADDR_LINK_Y] = 96
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_map_clip"
-    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_X] = 136
+    ram[ADDR_LINK_Y] = 94
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_Y] = 96
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 200
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_Y] = 128
     ram[ADDR_LINK_X] = 208
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "join_map_y"
-    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_Y] = 133
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_y"
+    assert list(act.action) == list(nes_action("DOWN"))
     ram[ADDR_LINK_Y] = 141
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "map_push_right"
     assert list(act.action) == list(nes_action("RIGHT"))
     report = ctl.report()
     assert "bfs" not in report
-    assert report["waypoints"][0] == [208, 192]
+    assert report["waypoints"] == [[120, 96], [200, 96], [208, 141]]
     assert ROOM_20_DOOR_Y_MAX == 196
     assert ROOM_20_SOUTH_Y_MAX == 200
     ctl2 = make_map21_controller()

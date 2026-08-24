@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — KEY-UP `0x20` v1; 0x20 Vire clear on tape; `0x21` blocked v1–v17 |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — enter `0x21` v22; map pickup / bomb-UP / Gleeok next |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -209,13 +209,14 @@ Reverse of the verified 0x31 east U then LEFT+UP clip onto the north strip
 and inland west. Isolated maze BFS is not this tape. Do not close `.6`
 until TF `0x08`.
 
-`--through level4-room21` is **blocked** after v1–v17 (no BFS). 0x20 Vire
-clear is **1/1** on v7–v17 (1249f, max_live=7, ignore 0x2b). Path to 0x21
-is not. Leftover stays play `0x20` keys=4 ladder set. Isolated `map_21`
-used Vire-clear then **state-saving BFS** (banned). PNG H-water: H-bar
-y=144–159, spines x=48–63 / 192–207, arms y=112–127 and 176–191, water
-ends y=191, east door only at y=141 x=208. Gold walls classify as gold
-in stills — live collision wins.
+`--through level4-room21` is **1/1** on `l4_room21_continuous_v22` (0x21
+play `(16,141)`, ladder set, keys=4 bombs=15, 121,775f, clear 1249f +
+path 447f). 0x20 Vire clear stays 1/1 (max_live=7, ignore 0x2b). Isolated
+`map_21` used Vire-clear then **state-saving BFS** (banned). PNG H-water:
+H-bar y=144–159, spines x=48–63 / 192–207, arms y=112–127 and 176–191,
+water ends y=191, east door only at y=141 x=208. Gold walls classify as
+gold in stills — live collision wins. v20 DOWN at x=200 is solid at
+y=109 (16px spine). v21 RIGHT+DOWN from `(200,96)` clips into x=208.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -235,11 +236,17 @@ in stills — live collision wins.
 | map v15 | `0x20` `(192,93)` map_solid | RIGHT+UP clip from x=192 |
 | map v16 | `0x20` `(200,93)` map_solid | RIGHT+UP clip at v13 leftover |
 | map v17 | `0x20` `(136,189)` map_solid | south-door RIGHT+UP clip then DOWN to y=192 |
+| map v18 | `0x20` `(120,95)` timeout stall=0 | cardinal RIGHT at y=96 from the north door (v10) |
+| map v19 | `0x20` `(136,94)` timeout stall=0 | clip stops at x=136; DOWN/RIGHT yo-yo (v11) |
+| map v20 | `0x20` `(200,109)` map_solid | DOWN the east column from v13 leftover |
+| map v21 | `0x20` `(208,133)` push_solid | RIGHT+DOWN clip into x=208; PUSH y-slop 8 RIGHT into wall |
+| map v22 | `0x21` `(16,141)` **play** | y=141 then RIGHT; hop 447f |
 
-PNGs: `recordings/l4_room21_continuous_v{1..17}_final.png`. Next: east
-corridor is x=208 y≈128–175 only. South door column L/R needs a clip
-that lands on y≥192 (v17 DOWN at `(136,189)` solid). Do not call
-`level4_room_nav` / map_21 state-BFS. Do not close `.6` until TF `0x08`.
+PNGs: `recordings/l4_room21_continuous_v{1..22}_final.png`. Next: map
+pickup on dark `0x21` (RoomItemId `0x17`, 5× Gel). Isolated
+`MAP_21_SAMPLE_PATH` is still state-BFS, not this tape. Then bomb-UP
+`0x11`, `0x01` key, `0x12` push + Gleeok. Do not call `level4_room_nav`
+/ map_21 state-BFS. Do not close `.6` until TF `0x08`.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -317,19 +324,18 @@ keys=5 bombs=15 ladder=1; deaths/state/progression/capacity 0.
 
 Live v2 exited mode-9 `0x60→0x32` on waypoints (no BFS). Live v1 west
 `0x32→0x31` leftover `(208,141)`. Live v1 KEY-UP `0x30→0x20` leftover
-`(120,205)` keys 5→4. Live 0x20 Vire clear 1249f (v7–v17). `0x20→0x21`
-blocked v1–v17: south door column L/R solid; north-around hits east wall
-at `(200,96)` (door is y=141). Do **not** call `_bfs_60_to_ladder` or
-`level4_room_nav` / map_21 state-BFS. Then bomb-UP, Gleeok. Do not close
-`.6` until TF `0x08`.
+`(120,205)` keys 5→4. Live 0x20 Vire clear 1249f. Live v22
+`0x20→0x21` leftover `(16,141)` play `0x21`. Do **not** call
+`_bfs_60_to_ladder` or `level4_room_nav` / map_21 state-BFS. Then map
+pickup, bomb-UP, Gleeok. Do not close `.6` until TF `0x08`.
 
 Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-keyup20 --no-video --trials 1 \
-  --tag l4_keyup20_continuous_v1
+  --through level4-room21 --no-video --trials 1 \
+  --tag l4_room21_continuous_v22
 ```
 Isolated 0x6b check:
 

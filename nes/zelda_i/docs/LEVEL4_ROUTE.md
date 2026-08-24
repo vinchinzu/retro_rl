@@ -1,11 +1,12 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through play `0x20` with
-`ADDR_LADDER` (`l4_keyup20_continuous_v1`, leftover `(120,205)`, keys 5→4).
-0x20 Vire clear is on the tape (v7–v17, 1249f). `0x20→0x21` is **not**
-route-ready (v1–v17; south door L/R and north-around east wall). Isolated
-BFS is still not this tape. Do not claim Clean STATUS — Survival assist
-only for this segment. Do not close `.6` until TF `0x08`.
+**Status:** continuous power-on Survival is live through play `0x21` with
+`ADDR_LADDER` (`l4_room21_continuous_v22`, leftover `(16,141)`, keys=4).
+0x20 Vire clear is on the tape (1249f). `0x20→0x21` is the north-around
+RIGHT+DOWN clip then y=141 RIGHT (hop 447f). Isolated BFS is still not
+this tape. Map pickup / bomb-UP / Gleeok are next. Do not claim Clean
+STATUS — Survival assist only for this segment. Do not close `.6` until
+TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
