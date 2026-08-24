@@ -42,7 +42,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3.4.*` | Raft → Manhandla → TF `0x04` | **verified** — one-way controller, `state_restores=0` |
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
-| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous enter `0x32`; clear Zol+LikeLike next |
+| `rr-4d53.6` | L3 exit → L4 TF `0x08` | **in progress** — continuous clear `0x32`; `0x60` island causeway blocked v16 |
 | `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
@@ -184,7 +184,7 @@ block `0x68` residual OK. Do not close `.6` until TF `0x08`.
 
 `--through level4-stepladder` is wired (`make_stepladder_controller(clear_first=False)`,
 stop `ADDR_LADDER` / `level4_stepladder_success`) but **live blocked** after
-v1–v11. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
+v1–v16. Push+stairs enter `0x60` mode-9; the island/pedestal is not reachable
 from the continuous leftover without emulator-state BFS. Do not close `.6`.
 
 | tag | leftover | wrong belief |
@@ -197,11 +197,18 @@ from the continuous leftover without emulator-state BFS. Do not close `.6`.
 | v8 | `0x60` `(48,133)` | south corridor UP solid at x=80..144; x≥176 is exit |
 | v9/v10 | `0x60` `(48,133)` | RIGHT+UP at y=133 oscillates, no east |
 | v11 | `0x60` `(48,133)` clips_done | RIGHT+UP/DOWN at y=133/125/141/117 all miss x=48 |
+| v12 | `0x60` `(48,68)` timeout | occupancy north-strip y=68 RIGHT is a causeway; live is north wall |
+| v13 | `0x60` `(48,185)` timeout | x=152 UP from south corridor; UP+LEFT only slides west |
+| v14 | `0x60` `(160,189)` stairs_up_solid | stairs-column x=160 UP (west of grey stairs) |
+| v15 | `0x60` `(168,189)` stairs_up_solid | stand on grey stairs x=168 then UP |
+| v16 | `0x60` `(48,157)` gap158_solid | 7px band y=158 RIGHT between west-brick and south-water |
 
-PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11}_final.png` (v3/v5 exit
-`0x32`). Isolated `l4_tib8_stepladder` 2/2 used **live BFS** from `(48,69)` —
-banned on the spine. Next worker: find a coordinate causeway onto the island
-(not token-replay, not `level4_room_nav` BFS). Push from `(80,109)` is OK.
+PNGs: `recordings/l4_stepladder_continuous_v{1,2,4,8,11,12,13,14,15,16}_final.png`
+(v3/v5 exit `0x32`). Isolated `l4_tib8_stepladder` 2/2 used **live BFS** from
+`(48,69)` — banned on the spine. Offline occupancy (seeded live solids) has
+**no cardinal path** onto the island. Next worker: a non-cardinal clip that
+is not mid-aisle RIGHT+UP/DOWN, not north-strip y=68, not south UP x=80..168,
+not y=158 RIGHT. Push from `(80,109)` is OK.
 
 Exact verified predecessor:
 
@@ -213,7 +220,7 @@ UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
 # blocked hop (do not expect ok=true):
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-stepladder --no-video --trials 1 \
-  --tag l4_stepladder_continuous_v11
+  --tag l4_stepladder_continuous_v16
 ```
 Isolated 0x6b check:
 

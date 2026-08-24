@@ -2,7 +2,7 @@
 
 **Status:** continuous power-on Survival is live through the `0x32`
 Zol+LikeLike clear, leftover `(80,109)`. `--through level4-stepladder` is
-wired but **live-blocked** (v11): push enters `0x60`; island/`ADDR_LADDER`
+wired but **live-blocked** (v16): push enters `0x60`; island/`ADDR_LADDER`
 not reached without banned BFS. Do not claim Clean STATUS — Survival
 assist only for this segment.
 
@@ -179,10 +179,10 @@ Also live-negative: Vire re-clear key farm (8 cycles) **no drops**.
 # Continuous power-on verified through 0x32 Zol+LikeLike clear
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-clear32 --no-video --trials 1
-# Stepladder through-stop is wired; live v11 blocked (island not reached)
+# Stepladder through-stop is wired; live v16 blocked (island not reached)
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-stepladder --no-video --trials 1 \
-  --tag l4_stepladder_continuous_v11
+  --tag l4_stepladder_continuous_v16
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state

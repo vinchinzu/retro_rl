@@ -381,7 +381,7 @@ def test_stepladder_settle_walks_west_aisle_to_spawn() -> None:
     assert act.reason == "path_from_spawn"
     assert ctl.phase is StepladderPhase.PATH
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "clip_aisle_y"
+    assert act.reason == "join_gap158_y"
     ne = make_stepladder_controller(clear_first=False)
     ne.phase = StepladderPhase.SETTLE_STAIRS
     ne.phase_frames = MAZE_60_SETTLE
