@@ -370,14 +370,14 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 ## Next
 
 1. **Active Survival tip:** `--through level6-clear09` is green (`0x09`
-   `(112,173)`, TF `0x1F`, keys=4, v1 1/1). Skip-Map KEY-UP
-   `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4
-   (v1 spent the south door). Map pickup stays red through v6. Live
-   0x09: 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)`
-   unpushed. Next left-block stairs toward Rod. `--through
-   level6-stairs18` stays red. `rr-tne2` in progress. Do not grant
-   Map/Rod. Isolated BFS is still not a spine path. See `docs/plan.md`.
-   Isolated `Level3*` pins do not close spine beads. No seamed compose.
-   Bomb/key count pokes are documented Survival shortcuts, not Clean.
+   `(112,173)`, TF `0x1F`, keys=4, v1 1/1). Left 0x68 **pushes**
+   `(96,144)→(96,136)` then gone. `--through level6-stairs09` red
+   (v1 occupancy boxed leftover; v2 vacated idle tile 119; v3 x=96 UP
+   solid y=133 tile 179; v4 idle `(96,137)` tile 118). Next south-around
+   remaining block then NE hole idle (`l6_stairs09_continuous_v5`).
+   Do not grant Map/Rod. `rr-tne2` in progress. Isolated BFS is still
+   not a spine path. See `docs/plan.md`. Isolated `Level3*` pins do
+   not close spine beads. No seamed compose. Bomb/key count pokes are
+   documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

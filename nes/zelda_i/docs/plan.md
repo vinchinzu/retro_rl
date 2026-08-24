@@ -429,8 +429,9 @@ wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
 `(120,205)` hop 275f, 209,120f, keys 5→4 (v1 spent south). `--through
 level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
 `(112,173)` hop 1,419f, 210,699f. Census 3× blue `0x23` + 2× orange
-`0x24`; left 0x68 `(96,144)` unpushed. Do not grant Map/Rod. Do not poke
-doors/keys.
+`0x24`. `--through level6-stairs09` **red** v1–v4: left 0x68 **does**
+push `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
+Do not grant Map/Rod. Do not poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -489,6 +490,10 @@ doors/keys.
 | room09 v1 | `0x19` `(32,189)` 4000f keys 5→4 | occupancy UP from x=120 y=141 is a north lane |
 | room09 v2 | `0x09` `(120,205)` **play** keys 5→4 | axis LEFT x=136 then occupancy KEY-UP; hop 275f 1/1 |
 | clear09 v1 | `0x09` `(112,173)` **cleared** | occupancy-patrol 3×0x23+2×0x24; hop 1,419f 1/1 |
+| stairs09 v1 | `0x09` `(112,173)` 4000f | occupancy from leftover to south-face (96,160) |
+| stairs09 v2 | `0x09` `(96,148)` 4000f tile 119 | vacated south-face idle is mode 9 (push **did** move 96,144→136) |
+| stairs09 v3 | `0x09` `(96,133)` 4000f tile 179 | UP @ x=96 reaches NE (192,109); tile 179 is warp |
+| stairs09 v4 | `0x09` `(96,137)` 4000f tile 118 | idle (96,133) is mode 9 |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -512,18 +517,17 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_clear19_continuous_v1_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
-`recordings/l6_clear09_continuous_v1_final.png`. Dest `0x09` clear is
-**on the tape** (`l6_clear09_continuous_v1` 1/1). Map skipped. v2 KEY-UP
-from leftover `(176,158)` via x=136 occupancy north, keys 5→4, play
-`0x09` `(120,205)`. Left 0x68 `(96,144)` unpushed (Rod stairs residual).
-Do not grant Map/Rod. Do not close `rr-tne2`.
-
-Next: left-block 0x68 `(96,144)` UP then stairs toward Magical Rod. Do not
-grant Rod. Do not poke the block.
+`recordings/l6_clear09_continuous_v1_final.png`,
+`recordings/l6_stairs09_continuous_v{1,2,3,4}_final.png`. Dest `0x09`
+clear is **on the tape**. Left 0x68 south-face UP **moves**
+`(96,144)→(96,136)` then gone; remaining right block + PNG NE dark hole.
+Vacated-column idle is not mode 9; x=96 UP solid at y=133. Next: DOWN to
+y=173, RIGHT to x=192, UP idle NE. Do not grant Map/Rod. Do not close
+`rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear09 --no-video --trials 1 --tag l6_clear09_continuous_v1
+  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v5
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live

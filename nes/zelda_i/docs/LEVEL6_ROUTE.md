@@ -64,7 +64,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 0x38 (hard multi-wizzrobe / Like-Like / Bubble) ──left 0x68 UP then west-aisle──► 0x28
 0x28 (2× orange 0x24; diamond floor) ──LEFT+UP then RIGHT+UP──► 0x18 Gleeok 0x44 live
 0x18 ──y=141 occupancy RIGHT──► 0x19 (2× Zol + 2× Like-Like; Map optional skip)
-0x19 ──KEY-UP x=136 then occupancy──► 0x09 (3× blue + 2× orange; left 0x68 unpushed)
+0x19 ──KEY-UP x=136 then occupancy──► 0x09 (3× blue + 2× orange; left 0x68 pushes, stairs residual)
 ```
 
 | Room | Role | Enemies (live) | RoomItemId | Notes |
@@ -80,7 +80,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x28** | N of 0x38 | **2× orange `0x24`** | — | spine clear 1/1 leftover `(120,181)`; diamond floor not solid |
 | **0x18** | N of 0x28 | **1× `0x44`** 3-head Gleeok (not L4 `0x43`) + fireball `0x56`; `0x46` mid-fight | `0x03` | spine settle+kill+census 1/1; occupancy y=141 RIGHT → 0x19; north hole decorative |
 | **0x19** | E of 0x18 | **2× Zol `0x13` + 2× Like-Like `0x17`** (+ 2× `0x2b`) | **`0x17` Map** | spine clear 1/1 leftover `(176,158)`; Map sprite on floor not `ADDR_MAP\|0x20` (v6 idle); skip Map |
-| **0x09** | N of 0x19 | **3× blue `0x23` + 2× orange `0x24`** | `0x03` | spine enter v2 1/1 keys 5→4; clear v1 1/1 leftover `(112,173)`; left 0x68 `(96,144)` unpushed |
+| **0x09** | N of 0x19 | **3× blue `0x23` + 2× orange `0x24`** | `0x03` | spine enter v2 1/1 keys 5→4; clear v1 1/1 leftover `(112,173)`; left 0x68 pushes then gone; stairs red v1–v4 |
 
 ### Entry RIGHT policy (required)
 
@@ -456,6 +456,24 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room09 
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1
 ```
 
+### Left-block stairs 0x09 — **red**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x09` `(112,173)` |
+| Push | south-face UP **does** move left 0x68 `(96,144)→(96,136)` then gone |
+| v1 | occupancy leftover boxed `(112,173)` 4-cardinal |
+| v2 | idle vacated `(96,148)` tile 119; not mode 9 |
+| v3 | UP @ x=96 solid `(96,133)` tile 179; never reached NE |
+| v4 | idle `(96,137)` tile 118; not mode 9 |
+| Stop | `--through level6-stairs09` mode 9 |
+| Track | **assisted Survival** (miss) |
+| Notes | remaining right 0x68; PNG NE dark hole. Next DOWN y=173 RIGHT x=192 UP idle. Do not grant Rod. Do not poke the block. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -539,6 +557,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png` — Map sprite not `ADDR_MAP|0x20`
 - `recordings/l6_room09_continuous_v{1,2}_final.png` — skip-Map KEY-UP v2 1/1
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
+- `recordings/l6_stairs09_continuous_v{1,2,3,4}_final.png` — left 0x68 pushes; vacated idle not mode 9
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
@@ -557,8 +576,8 @@ Not claimed live as pure segments:
 5. **0x28** enter + orange-wizzrobe clear — **live**
 6. **Gleeok (3 heads)** `0x18` type **`0x44`** settle+kill+census — **live**
 7. **0x19 clear** 2× Zol + 2× Like-Like — **live**; Map skipped (`ADDR_MAP` still `0x0A`)
-8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; left 0x68 unpushed
-9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (push left 0x68 in 0x09)
+8. **0x19 KEY-UP → 0x09** — **live** v2; 0x09 wizzrobe clear **live**; left 0x68 **pushes** then gone
+9. Staircase → **Magical Rod** (`ADDR_ROD`) — residual (vacated idle not mode 9; NE hole next)
 10. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
 
 ## Not claimed

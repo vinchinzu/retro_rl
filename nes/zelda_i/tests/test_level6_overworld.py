@@ -62,6 +62,8 @@ from zelda_i.level6_spine import (
     level6_room09_success,
     level6_clear09_stages,
     level6_clear09_success,
+    level6_stairs09_stages,
+    level6_stairs09_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1062,6 +1064,63 @@ def test_level6_clear09_idles_then_occupancy_patrol() -> None:
     run = SpineRun(through="level6-clear09", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_clear_0x09"
     assert "level6-clear09" in L6_THROUGH
+
+
+def test_level6_stairs09_south_face_push_then_idle() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_path import south_face_stand
+    from zelda_i.level6_stairs09 import make_stairs_09_controller
+
+    stages = level6_stairs09_stages()
+    assert [name for name, _, _ in stages] == ["level6_stairs_0x09"]
+    leftover = _ram(level=6, screen=0x09, x=112, y=173)
+    _plant_block(leftover, 11, 96, 144)
+    _plant_block(leftover, 12, 144, 144)
+    ctl = make_stairs_09_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "stand_x"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    left = left_block_0x68(read_snapshot(leftover))
+    assert left is not None
+    stand = south_face_stand(left)
+    assert stand == (96, 160)
+    at_stand = make_stairs_09_controller()
+    ram_stand = _ram(level=6, screen=0x09, x=96, y=160)
+    _plant_block(ram_stand, 11, 96, 144)
+    _plant_block(ram_stand, 12, 144, 144)
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "push_left_block"
+    assert list(act.action) == list(nes_action("UP"))
+    ram_stand[ADDR_LINK_Y + 11] = 128
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "hole_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert any(n.startswith("pushed_96_144_to_96_128") for n in at_stand.notes)
+    ram_stand[ADDR_LINK_Y] = 173
+    ram_stand[ADDR_LINK_X] = 96
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "hole_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram_stand[ADDR_LINK_X] = 192
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "hole_y"
+    assert list(act.action) == list(nes_action("UP"))
+    ram_stand[ADDR_LINK_Y] = 109
+    act = at_stand.step(read_snapshot(ram_stand))
+    assert act.reason == "hole_idle"
+    assert list(act.action) == list(nes_idle_action())
+    ram = _ram(level=6, screen=0x09, x=96, y=144, mode=9)
+    arrive = make_stairs_09_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "warped_9"
+    assert level6_stairs09_success(read_snapshot(ram))
+    still = _ram(level=6, screen=0x09, x=96, y=144)
+    assert not level6_stairs09_success(read_snapshot(still))
+    run = SpineRun(through="level6-stairs09", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_stairs_0x09"
+    assert "level6-stairs09" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
