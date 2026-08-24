@@ -106,10 +106,10 @@ from damage heatmaps. Do not block tip progress on combat polish.
   either. Occupancy from leftover `(176,158)` freeze-miss boxes (v1/v4)
   or wanders (v5 244 misses); leftover LEFT is free. Axis idle `(136,137)`
   (v6) is not the bit; no persistent item object slot (0x2b + dead 0x14).
-  Skip Map. x=120 UP from y=157 freeze-misses (v1 KEY-UP); occupancy then
-  spent the key on the **south** door `(120,189)` (`cur_opened_doors` 4).
-  North lock remains. Next axis LEFT to x=136 (v6-free) then occupancy
-  north; halt y>=181.
+  Skip Map. x=120 UP from y=157 freeze-misses (v1 KEY-UP spent south).
+  v2 axis LEFT to x=136 then occupancy KEY-UP enters play `0x09` keys 5→4.
+  0x09 settle is 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)`
+  unpushed. Do not push this hop.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -135,14 +135,13 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 cleared `0x19` (`l6_clear19_continuous_v1` 1/1, 208,845f hop 4,213f
-leftover `(176,158)`, keys=5, bombs=8, TF=`0x1F`, map=`0x0A`,
-deaths/progression/capacity 0, no state load). Map pickup stays red
-(v6 idle `(136,137)` 214,845f, no item slot). Skip-Map KEY-UP
-`--through level6-room09` v1 leftover `(32,189)` keys 5→4 on the
-**south** door; north still locked. Next `l6_room09_continuous_v2`:
-axis LEFT x=136 then occupancy north, halt y>=181. North hole
-decorative. Rod / Gohma / TF `0x20` residual. Do not grant Map/Rod.
+L6 cleared `0x09` (`l6_clear09_continuous_v1` 1/1, 210,699f hop 1,419f
+leftover `(112,173)`, keys=4, bombs=8, TF=`0x1F`, map=`0x0A`,
+deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
+`--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4.
+Census 3× blue `0x23` + 2× orange `0x24`; left 0x68 `(96,144)` unpushed.
+Next left-block stairs toward Magical Rod. Map stays skipped. North hole
+decorative. Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads

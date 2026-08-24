@@ -1,7 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through 0x19 Zol/Like-Like clear.
+"""Survival-spine L6 from L5 TF settle through 0x09 wizzrobe clear.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / Bubble. Map / Rod / Gohma / TF 0x20 residual.
+Ignore object types 0x2b / Bubble. Map skipped. Rod / Gohma / TF 0x20 residual.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from zelda_i.level4_boss_combat import gleeok_heads_live
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
     LEVEL6_MAP_BIT,
+    ROOM_09_SPEC,
     ROOM_19_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
@@ -22,6 +23,7 @@ from zelda_i.level6_dungeon import (
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
+    make_clear_09_controller,
     make_clear_19_controller,
     make_clear_28_controller,
     make_compass_68_controller,
@@ -64,6 +66,7 @@ from zelda_i.level6_room19 import (
     make_map19_controller,
     make_room09_controller,
     make_room19_controller,
+    make_settle_09_controller,
     make_settle_19_controller,
 )
 from zelda_i.level6_stairs18 import (
@@ -121,6 +124,8 @@ __all__ = [
     "level6_map19_success",
     "level6_room09_stages",
     "level6_room09_success",
+    "level6_clear09_stages",
+    "level6_clear09_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -161,6 +166,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear19",
     "level6-map19",
     "level6-room09",
+    "level6-clear09",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -184,6 +190,7 @@ L6_STOPS: dict[str, str] = {
     "level6-clear19": "level6_clear_0x19",
     "level6-map19": "level6_map_0x19",
     "level6-room09": "level6_room_0x09",
+    "level6-clear09": "level6_clear_0x09",
 }
 
 
@@ -673,6 +680,28 @@ def level6_room09_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_clear09_stages():
+    """0x09 leftover → idle census then occupancy-patrol. Do not push 0x68."""
+    settle = make_settle_09_controller()
+    fight = make_clear_09_controller()
+    return (
+        ("level6_settle_0x09", settle, SETTLE_19_MAX_FRAMES),
+        ("level6_clear_0x09", fight, ROOM_09_SPEC.max_frames),
+    )
+
+
+def level6_clear09_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready empty 0x09. Ignore 0x2b/0x40/0x68. Do not require Rod."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == ROOM_09_SPEC.room_id
+        and not snap.transitioning
+        and not ROOM_09_SPEC.live_enemies(snap)
+        and snap.triforce == 0x1F
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -1037,3 +1066,20 @@ def continue_level6_spine(
     run.success = level6_room09_success(snap)
     if not run.success:
         run.failed_stage = "level6_room_0x09"
+        return
+    if through == "level6-room09":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_clear09_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_clear09_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_clear_0x09"
