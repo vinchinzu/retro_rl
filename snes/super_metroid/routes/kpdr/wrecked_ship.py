@@ -12,8 +12,8 @@ Product pure shine chain (compose, natural-entry when sources allow)
    (unpowered 4-screen dash + beam blue door).
 5. **WS Main Shaft → Basement** — :func:`play_ws_main_to_basement`
    (unpowered morph-stair descent + floor pipes + green Super hatch).
-
-Phantoon remains a scaffold placeholder until pure geometry.
+6. **WS Basement → Phantoon room** — :func:`play_ws_basement_to_phantoon`
+   (unpowered hallway + morph-tunnel bomb + Gadora Super). No fight.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ from super_metroid.routes.controller_common import (
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr import west_ocean as _west_ocean
+from super_metroid.routes.kpdr.k6 import ws_basement as _ws_basement
 from super_metroid.routes.rle import load_rle_json, play_script
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.shinespark import ChargeMode
@@ -158,7 +159,8 @@ def ws_main_to_basement_action(state: SuperMetroidState) -> tuple[str, ...]:
         return ("RIGHT",) if x < WS_MAIN_HATCH_X_MIN else ("LEFT",)
     if int(state.selected_item) != WEAPON_SUPER:
         return ("SELECT",)
-    return ("DOWN", "X")
+    # Shoulder angle-down Super — DOWN+X from standing double-tap morphs.
+    return ("L", "X")
 
 
 def _ws_main_guard(session: ControllerSession, label: str) -> None:
@@ -457,14 +459,14 @@ def play_ws_main_to_basement(session: ControllerSession) -> SuperMetroidState:
     )
 
 
-def play_ws_basement_to_phantoon(session: ControllerSession) -> SuperMetroidState:
-    """Scaffold WS basement ``0xCC6F`` -> Phantoon ``0xCD13``."""
-    return _scaffold_exit(
-        session,
-        entry_room=ROOM_WS_BASEMENT,
-        target_room=ROOM_PHANTOON,
-        label="ws_basement_to_phantoon",
-    )
+play_ws_basement_to_phantoon = _ws_basement.play_ws_basement_to_phantoon
+ws_basement_phantoon_settled = _ws_basement.ws_basement_phantoon_settled
+at_ws_basement_bomb_blocks = _ws_basement.at_ws_basement_bomb_blocks
+at_ws_basement_eye_seat = _ws_basement.at_ws_basement_eye_seat
+WS_BASEMENT_ALCOVE_X = _ws_basement.WS_BASEMENT_ALCOVE_X
+WS_BASEMENT_BOMB_X_MIN = _ws_basement.WS_BASEMENT_BOMB_X_MIN
+WS_BASEMENT_FLOOR_Y = _ws_basement.WS_BASEMENT_FLOOR_Y
+WS_BASEMENT_MORPH_X_MIN = _ws_basement.WS_BASEMENT_MORPH_X_MIN
 
 
 __all__ = [
@@ -499,4 +501,11 @@ __all__ = [
     "play_ws_entrance_to_main",
     "play_ws_main_to_basement",
     "play_ws_basement_to_phantoon",
+    "ws_basement_phantoon_settled",
+    "at_ws_basement_bomb_blocks",
+    "at_ws_basement_eye_seat",
+    "WS_BASEMENT_ALCOVE_X",
+    "WS_BASEMENT_BOMB_X_MIN",
+    "WS_BASEMENT_FLOOR_Y",
+    "WS_BASEMENT_MORPH_X_MIN",
 ]

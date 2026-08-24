@@ -524,6 +524,17 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 2, 24}),
     ),
     SourceFingerprint(
+        "post_ws_basement_to_phantoon",
+        "scratch/post_ws_basement_to_phantoon.state",
+        0xCD13,
+        use_for="pure dual GREEN Basement→Phantoon room (rr-cjpp, 718f ×2); Phantoon fight",
+        x_min=20,
+        x_max=80,
+        y_min=90,
+        y_max=160,
+        poses=frozenset({1, 9, 81}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,
