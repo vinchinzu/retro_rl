@@ -144,9 +144,10 @@ deaths/progression/capacity 0, no state load). Skip-Map KEY-UP
 `--through level6-room09` v2 1/1 play `0x09` `(120,205)` keys 5→4.
 Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
 `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
-`--through level6-stairs09` red v1–v13. v13 true idle `(48,172)` tile
-119 / 3887f SW floor not a hole. Remaining 0x68 `(208,96)` (v10 early).
-Next `l6_stairs09_continuous_v14` south-face that NE 0x68 until y-move.
+`--through level6-stairs09` **1/1** `l6_stairs09_continuous_v14` mode 9
+room `0x75` `(208,93)` tile `0x71` hop 203f, 210,902f. NE 0x68 `(208,96)`
+does not y-move; south-face UP onto `0x71` warps. rod=0. Next Magical Rod
+in cellar (do not grant).
 Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map/Rod.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm

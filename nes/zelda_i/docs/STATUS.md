@@ -369,20 +369,13 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-clear09` is green (`0x09`
-   `(112,173)`, TF `0x1F`, keys=4, v1 1/1). Left 0x68 **pushes**
-   `(96,144)→(96,136)` then gone. `--through level6-stairs09` red
-   (v1 occupancy boxed leftover; v2 vacated idle tile 119; v3 x=96 UP
-   solid y=133 tile 179; v4 idle `(96,137)` tile 118; v5 idle
-   `(192,113)` tile 119/0x77; v6 hold-UP `(208,97)` tile 0x73; v7 idle
-   `(208,97)` tile 0x73; v8 `(192,97)` tile 0x77 **on** the NE hole
-   hold-UP; v9 vacated `(96,145)` yo-yo; v10 no live pair 0x68; v11 idle
-   NW `(48,109)` tile 118; v12 true idle `(192,97)` tile 119 / 3830f
-   `stairs_idle` action none still mode 5, rod=0; v13 true idle
-   `(48,172)` tile 119 / 3887f SW floor not a hole). NE hole decorative.
-   Remaining 0x68 `(208,96)`. Next south-face that block
-   (`l6_stairs09_continuous_v14`). Do not grant Map/Rod. `rr-tne2` in
-   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
+1. **Active Survival tip:** `--through level6-stairs09` is green
+   (`l6_stairs09_continuous_v14` 1/1, 210,902f hop 203f). Mode 9 room
+   `0x75` `(208,93)` tile `0x71`, TF `0x1F`, keys=4, rod=0. Left 0x68
+   `(96,144)→(96,136)` then slot11 `(208,96)` (no y-move; south-face UP
+   onto `0x71` warps). Decorative NE hole / SW floor are not the warp.
+   Next Magical Rod in cellar `0x75` (do not grant `ADDR_ROD`). `rr-tne2`
+   in progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
    Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).

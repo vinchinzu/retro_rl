@@ -429,11 +429,11 @@ wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
 `(120,205)` hop 275f, 209,120f, keys 5→4 (v1 spent south). `--through
 level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
 `(112,173)` hop 1,419f, 210,699f. Census 3× blue `0x23` + 2× orange
-`0x24`. `--through level6-stairs09` **red** v1–v13: left 0x68 **does**
-push `(96,144)→(96,136)` then vanishes. v12 true idle `(192,97)` tile
-119 / 3830f — NE hole decorative. v13 true idle `(48,172)` tile 119 /
-3887f SW floor (not a hole); remaining 0x68 slot11 `(208,96)` (v10
-`no_right_0x68` was early). Do not grant Map/Rod. Do not poke doors/keys.
+`0x24`. `--through level6-stairs09` **1/1** `l6_stairs09_continuous_v14` mode 9
+room `0x75` `(208,93)` tile 113/`0x71` hop 203f, 210,902f. Left 0x68
+`(96,144)→(96,136)` then slot11 `(208,96)`. NE 0x68 does **not** y-move;
+south-face UP onto `0x71` warps. rod=0. v12 NE hole decorative; v13 SW
+floor not a hole. Do not grant Map/Rod. Do not poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -505,6 +505,7 @@ push `(96,144)→(96,136)` then vanishes. v12 true idle `(192,97)` tile
 | stairs09 v11 | `0x09` `(48,109)` 4000f tile 118 | idle NW (48,109) is warp |
 | stairs09 v12 | `0x09` `(192,97)` 4000f tile 119 | still-stand on NE hole interior is 0x71 / mode 9 (v8 hold-UP was not still) |
 | stairs09 v13 | `0x09` `(48,172)` 4000f tile 119 | idle SW (48,173) is a stairs hole |
+| stairs09 v14 | `0x75` `(208,93)` **mode 9** tile 113 hop 203f | NE 0x68 (208,96) y-moves like the left block (it does not; south-face UP onto 0x71 warps) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -529,13 +530,12 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
-`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13}_final.png`.
-Dest `0x09` clear is **on the tape**. Left 0x68 south-face UP **moves**
-then gone. NE hole decorative. SW `(48,172)` is floor not a hole. v10
-`no_right_0x68` was early — leftover 0x68 `(208,96)` after left y-move
-(slot11 jumps 96,131→208,96). Next: south-face that NE 0x68 until y-move,
-then still-stand. Halt y>=181. Do not grant Map/Rod. Do not close
-`rr-tne2`.
+`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`.
+Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
+Left 0x68 y-moves then gone. NE 0x68 `(208,96)` is the stairs object (no
+y-move). Decorative hole `(192,97)` / SW floor are not the warp. rod=0.
+Next: Magical Rod in cellar `0x75` (idle/walk; do not grant `ADDR_ROD`).
+Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
