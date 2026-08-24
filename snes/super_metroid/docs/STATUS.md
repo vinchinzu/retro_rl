@@ -58,7 +58,8 @@ remains valid history.
 
 ★ Next: Phantoon fight (`0xCD13`, `rr-tlaq`) from the Basement→room leave
 (scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8, rr-cjpp, not STATUS).
-Residual: [`tasks/rr-cjpp-residual.md`](tasks/rr-cjpp-residual.md).
+Window-1 chip GREEN; full kill RED. Residual:
+[`tasks/rr-tlaq-residual.md`](tasks/rr-tlaq-residual.md).
 Work: `bd ready -l super_metroid`.
 
 ## Continuous prefix tips (frames only)
