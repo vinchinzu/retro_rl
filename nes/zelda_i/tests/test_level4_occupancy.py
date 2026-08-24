@@ -7,7 +7,9 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level4_dungeon import (
     LADDER_60_PICKUP_XY,
+    MAP_21_PICKUP_XY,
     RIGHT_20_STAND,
+    ROOM_L4_MAP_21,
     ROOM_L4_STEPLADDER,
     ROOM_L4_WATER_NORTH_20,
 )
@@ -21,6 +23,14 @@ from zelda_i.level4_occupancy import (
     ROOM_20_SOUTH_Y_MAX,
     ROOM_20_SPAWN_XY,
     ROOM_20_WAYPOINTS,
+    ROOM_21_BOUNDS,
+    ROOM_21_CORRIDOR_XY,
+    ROOM_21_EAST_XY,
+    ROOM_21_INLAND_XY,
+    ROOM_21_SOUTH_XY,
+    ROOM_21_PICKUP_XY,
+    ROOM_21_SPAWN_XY,
+    ROOM_21_WAYPOINTS,
     ROOM_60_CAUSWAY_XY,
     ROOM_60_DOCK_MOUTH_XY,
     ROOM_60_DOCK_NORTH_XY,
@@ -33,6 +43,7 @@ from zelda_i.level4_occupancy import (
     ROOM_60_WAYPOINTS,
     ROOM_60_WEST_AISLE_X,
     room_20_grid,
+    room_21_grid,
     room_60_grid,
 )
 from zelda_i.level4_exit60 import make_exit60_controller
@@ -42,6 +53,7 @@ from zelda_i.ram import (
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
+    ADDR_MAP,
     ADDR_MODE,
     ADDR_SCREEN,
     PLAY_MODE,
@@ -377,3 +389,78 @@ def test_map21_path_walks_east_column() -> None:
     act = ctl2.step(read_snapshot(ram))
     assert ctl2.phase is Map21Phase.FAILED
     assert act.reason.startswith("map_solid_120_205")
+
+
+def test_room_21_grid_includes_west_door_leftover() -> None:
+    grid = room_21_grid()
+    assert ROOM_21_SPAWN_XY == (16, 141)
+    assert ROOM_21_INLAND_XY == (32, 141)
+    assert ROOM_21_PICKUP_XY == MAP_21_PICKUP_XY == (208, 181)
+    assert ROOM_21_BOUNDS[0] <= 16
+    assert grid.passable(*ROOM_21_SPAWN_XY)
+    assert grid.passable(*ROOM_21_INLAND_XY)
+    assert grid.passable(*ROOM_21_CORRIDOR_XY)
+    assert not grid.passable(48, 140)
+    assert not grid.passable(49, 141)
+    assert not grid.passable(48, 142)
+    assert grid.passable(*ROOM_21_EAST_XY)
+    assert grid.passable(*ROOM_21_SOUTH_XY)
+    assert grid.passable(*ROOM_21_PICKUP_XY)
+    path = grid.shortest_path(ROOM_21_SPAWN_XY, ROOM_21_PICKUP_XY)
+    assert path is not None
+    assert path[0] == ROOM_21_SPAWN_XY
+    assert path[-1] == ROOM_21_PICKUP_XY
+    walker = OccupancyWalker(grid=room_21_grid(), goal=ROOM_21_INLAND_XY)
+    assert walker.next_dir(ROOM_21_SPAWN_XY) == "RIGHT"
+
+
+def test_mappick_path_walks_corridor_waypoints() -> None:
+    from zelda_i.level4_dungeon import LEVEL4_MAP_BIT
+    from zelda_i.level4_mappick import MapPickPhase, make_mappick_controller
+
+    ctl = make_mappick_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = ROOM_L4_MAP_21
+    ram[ADDR_LINK_X] = 16
+    ram[ADDR_LINK_Y] = 141
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 32
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_y"
+    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_Y] = 189
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    ram[ADDR_LINK_X] = 64
+    ram[ADDR_LINK_Y] = 189
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 208
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "join_map_y"
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 181
+    ram[ADDR_MAP] = LEVEL4_MAP_BIT
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert act.reason == "done"
+    report = ctl.report()
+    assert "bfs" not in report
+    assert report["waypoints"] == [list(p) for p in ROOM_21_WAYPOINTS]
+    ctl2 = make_mappick_controller()
+    ctl2.phase = MapPickPhase.PATH
+    ctl2._last_xy = (16, 141)
+    ctl2._stall = 96
+    ram[ADDR_MAP] = 0
+    ram[ADDR_LINK_X] = 16
+    ram[ADDR_LINK_Y] = 141
+    act = ctl2.step(read_snapshot(ram))
+    assert ctl2.phase is MapPickPhase.FAILED
+    assert act.reason.startswith("map_solid_16_141")
