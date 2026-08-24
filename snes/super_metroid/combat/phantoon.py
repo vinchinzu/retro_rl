@@ -129,6 +129,10 @@ class PhantoonStrategy:
     charge_hold_frames: int = 70
     fire_release_frames: int = 2
     height_slop: int = 80
+    # W1 charge chip was dy=41 (y=149 vs eye 108). W2 miss was dy=78 (y=174
+    # vs eye 96) — still the floor hop. Release only in this band.
+    release_dy_min: int = 28
+    release_dy_max: int = 56
     max_fight_frames: int = 20_000
     boss_bit_grace_frames: int = 1_200
     window_timeout: int = 480
@@ -415,10 +419,32 @@ def _aim_names(state: SuperMetroidState, strategy: PhantoonStrategy) -> list[str
     on_floor = int(state.samus_y) >= strategy.floor_y_min - 4
     if (not close) and on_floor and names:
         names.append("B")
-    if close and int(state.samus_y) > int(state.enemy0_y) + 16:
-        names.append("UP")
+    # Jump only once close — A on the approach spin-dumps charge (p77).
+    # Hold A until the W1 release band (y≈149), not a floor hop.
+    if close and int(state.samus_x) >= 22 and _need_height(state, strategy):
         names.append("A")
+    if close and int(state.samus_y) > int(state.enemy0_y) + 10:
+        names.append("UP")
     return names
+
+
+def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
+    """True when Samus is below the charge-release band (needs more jump)."""
+    dy = int(state.samus_y) - int(state.enemy0_y)
+    return dy > strategy.release_dy_max
+
+
+def in_release_band(
+    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
+) -> bool:
+    """True when Samus is the measured W1 charge-release height below the eye.
+
+    W1 chip: samus (104, 149) vs eye (120, 108) → dy=41.
+    W2 miss: samus (120, 174) vs eye (128, 96) → dy=78 (floor hop).
+    """
+    strat = strategy or PhantoonStrategy()
+    dy = int(state.samus_y) - int(state.enemy0_y)
+    return strat.release_dy_min <= dy <= strat.release_dy_max
 
 
 def _height_ok(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
@@ -492,7 +518,6 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
             continue
 
         close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
-        on_floor = int(st.samus_y) >= strategy.floor_y_min - 6
         if int(st.enemy0_x) >= strategy.skip_enemy_x and not close:
             break
         if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
@@ -504,7 +529,7 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
         fire = (
             hittable
             and close
-            and (not on_floor)
+            and in_release_band(st, strategy)
             and st.pose not in HURT_POSES
             and shots < strategy.shots_per_window
         )
@@ -691,6 +716,7 @@ __all__ = [
     "enemy_extra",
     "eye_open",
     "fight_phantoon_action",
+    "in_release_band",
     "list_pickups",
     "phantoon_phase",
     "play_phantoon_fight",
