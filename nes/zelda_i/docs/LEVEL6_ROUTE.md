@@ -469,7 +469,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear09
 | v14 | **1/1** hop 203f, 210,902f; rod=0 |
 | Stop | `--through level6-stairs09` mode 9 |
 | Track | **assisted Survival** |
-| Notes | Next Magical Rod in cellar `0x75`. Do not grant Rod. |
+| Notes | Next Magical Rod in cellar `0x75`. Stairs spit west aisle. v6 LEFT `(48,69)` solid. Do not grant Rod. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1
@@ -559,9 +559,10 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_room09_continuous_v{1,2}_final.png` — skip-Map KEY-UP v2 1/1
 - `recordings/l6_clear09_continuous_v1.json` — 0x09 occupancy-patrol 3×0x23+2×0x24 1/1 1,419f
 - `recordings/l6_stairs09_continuous_v14.json` — 0x09 NE 0x68 south-face UP → mode 9 `0x75` 1/1 203f leftover `(208,93)` tile `0x71` rod=0
+- `recordings/l6_rod_continuous_v{1,2,5,6}_final.png` — cellar west statue; ADDR_ROD still 0
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs09 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-rod --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`

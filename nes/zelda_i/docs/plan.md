@@ -432,8 +432,10 @@ level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
 `0x24`. `--through level6-stairs09` **1/1** `l6_stairs09_continuous_v14` mode 9
 room `0x75` `(208,93)` tile 113/`0x71` hop 203f, 210,902f. Left 0x68
 `(96,144)→(96,136)` then slot11 `(208,96)`. NE 0x68 does **not** y-move;
-south-face UP onto `0x71` warps. rod=0. v12 NE hole decorative; v13 SW
-floor not a hole. Do not grant Map/Rod. Do not poke doors/keys.
+south-face UP onto `0x71` warps. `--through level6-rod` **red** v1–v6:
+cellar is a west-aisle statue (not a y=141 hall). Stairs spit
+`(208,93)→(48,74)→(48,93)`. v5 idle `(48,73)` on the statue rod=0. v6
+LEFT `(48,69)` tile 36 solid, rod=0. Do not grant Map/Rod. Do not poke.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -506,6 +508,10 @@ floor not a hole. Do not grant Map/Rod. Do not poke doors/keys.
 | stairs09 v12 | `0x09` `(192,97)` 4000f tile 119 | still-stand on NE hole interior is 0x71 / mode 9 (v8 hold-UP was not still) |
 | stairs09 v13 | `0x09` `(48,172)` 4000f tile 119 | idle SW (48,173) is a stairs hole |
 | stairs09 v14 | `0x75` `(208,93)` **mode 9** tile 113 hop 203f | NE 0x68 (208,96) y-moves like the left block (it does not; south-face UP onto 0x71 warps) |
+| rod v1 | `0x75` `(208,93)` 5f | y=141 LEFT is a free cellar hall from spawn (occupancy boxed 4-cardinal on 0x71) |
+| rod v2 | `0x75` `(48,93)` 4000f | cellar play submode is 0 (it is 9; stairs spit west while idle) |
+| rod v5 | `0x75` `(48,73)` 4000f tile 111 | idle on the west statue is ADDR_ROD |
+| rod v6 | `0x75` `(48,69)` 4000f tile 36 | LEFT from the statue to (32,73) is free |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -530,16 +536,17 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
-`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`.
+`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`,
+`recordings/l6_rod_continuous_v{1,2,5,6}_final.png`.
 Dest stairs **on the tape**: mode 9 room `0x75` `(208,93)` tile `0x71`.
 Left 0x68 y-moves then gone. NE 0x68 `(208,96)` is the stairs object (no
 y-move). Decorative hole `(192,97)` / SW floor are not the warp. rod=0.
-Next: Magical Rod in cellar `0x75` (idle/walk; do not grant `ADDR_ROD`).
-Do not close `rr-tne2`.
+Next: Magical Rod in cellar `0x75`. Stairs spit to west aisle; LEFT at
+`(48,69)` is solid. Do not grant `ADDR_ROD`. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v14
+  --through level6-rod --no-video --trials 1 --tag l6_rod_continuous_v7
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
