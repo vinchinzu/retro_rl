@@ -1,8 +1,7 @@
-"""Survival-spine L6 from L5 TF settle through hard room 0x38 clear.
+"""Survival-spine L6 from L5 TF settle through play 0x28.
 
 Do not poke Rod / doors / keys. Do not grant Whistle. Isolated BFS banned.
-Ignore object types 0x2b / 0x68 / Bubble. Left-block / Rod / Gohma / TF 0x20
-remain residual.
+Ignore object types 0x2b / Bubble. Rod / Gohma / TF 0x20 remain residual.
 """
 
 from __future__ import annotations
@@ -31,6 +30,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
+    LEVEL6_WIZZROBE_28_ROOM,
     LEVEL6_WIZZROBE_38_ROOM,
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
@@ -42,6 +42,7 @@ from zelda_i.level6_overworld import (
 from zelda_i.level6_path import (
     NORTH_68_MAX_FRAMES,
     Level6North68Controller,
+    make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
@@ -66,6 +67,8 @@ __all__ = [
     "level6_compass_success",
     "level6_clear38_stages",
     "level6_clear38_success",
+    "level6_room28_stages",
+    "level6_room28_success",
     "level6_clear58_stages",
     "level6_clear58_success",
     "level6_keese_stages",
@@ -93,6 +96,7 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-room48",
     "level6-room38",
     "level6-clear38",
+    "level6-room28",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -105,6 +109,7 @@ L6_STOPS: dict[str, str] = {
     "level6-room48": "level6_room_0x48",
     "level6-room38": "level6_room_0x38",
     "level6-clear38": "level6_clear_0x38",
+    "level6-room28": "level6_room_0x28",
 }
 
 
@@ -371,6 +376,25 @@ def level6_clear38_success(snap: ZeldaSnapshot) -> bool:
     )
 
 
+def level6_room28_stages():
+    """0x38 leftover → left-block UP then north into 0x28. Do not poke."""
+    north = make_north_28_controller()
+    return (
+        ("level6_north_0x28", north, north.max_frames),
+    )
+
+
+def level6_room28_success(snap: ZeldaSnapshot) -> bool:
+    """Play-ready 0x28. Wizzrobe clear / Rod / Gohma residual."""
+    return (
+        snap.level == LEVEL6
+        and snap.mode == PLAY_MODE
+        and snap.screen == LEVEL6_WIZZROBE_28_ROOM
+        and not snap.transitioning
+        and bool(snap.triforce & TF_BIT_L5)
+    )
+
+
 def continue_level6_spine(
     env,
     run,
@@ -550,3 +574,20 @@ def continue_level6_spine(
     run.success = level6_clear38_success(snap)
     if not run.success:
         run.failed_stage = "level6_clear_0x38"
+        return
+    if through == "level6-clear38":
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level6_room28_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = level6_room28_success(snap)
+    if not run.success:
+        run.failed_stage = "level6_room_0x28"
