@@ -37,7 +37,7 @@ from super_metroid.combat.features import (
 )
 from super_metroid.combat.primitives import ensure_weapon, settle_standing
 from super_metroid.combat.spore_spawn import Pickup, list_pickups
-from super_metroid.ram import GameplayPhase, SuperMetroidState
+from super_metroid.ram import GameplayPhase, SuperMetroidState, read_bank7e_wram
 from super_metroid.routes.controller_common import is_morph, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -45,6 +45,10 @@ ROOM_PHANTOON = 0xCD13
 WEAPON_BEAM = 0
 WEAPON_MISSILES = 1
 WEAPON_SUPERS = 2
+# Wrecked Ship boss bits ($7E:D82B); bit 0 = Phantoon. Low-WRAM
+# env.get_ram() is 8 KiB and never contains this byte.
+ADDR_WS_BOSS_BITS = 0xD82B
+PHANTOON_BOSS_BIT = 0x01
 PHANTOON_INVISIBLE = "invisible"
 PHANTOON_VULNERABLE = "vulnerable"
 PHANTOON_DEFEATED = "defeated"
@@ -402,6 +406,17 @@ def fight_phantoon_action(
 def _dead(session: ControllerSession) -> bool:
     st = session.state
     return int(st.health) == 0 or st.phase is GameplayPhase.DEATH_OR_GAME_OVER
+
+
+def _phantoon_boss_bit(session: ControllerSession) -> bool:
+    """True when $7E:D82B bit 0 is set. Unit doubles fall back to parsed state."""
+    env = _env_of(session)
+    if env is not None:
+        try:
+            return bool(int(read_bank7e_wram(env)[ADDR_WS_BOSS_BITS]) & PHANTOON_BOSS_BIT)
+        except Exception:
+            pass
+    return boss_defeated_in_state(session.state, phantoon_catalog())
 
 
 def _face_right(session: ControllerSession) -> None:
@@ -831,7 +846,6 @@ def play_phantoon_fight(
     Seat left, wait for a measured open-eye spritemap, spend charge/missiles
     counted by ammo or charge actually decreasing, retreat. Never Super.
     """
-    catalog = phantoon_catalog()
     start = session.frame
     if session.state.room_id != ROOM_PHANTOON:
         raise RuntimeError(
@@ -880,7 +894,7 @@ def play_phantoon_fight(
         prev_hp = state.enemy0_hp
 
         if body_zero_frame is not None:
-            if boss_defeated_in_state(session.state, catalog):
+            if _phantoon_boss_bit(session):
                 boss_bit_frame = session.frame
                 break
             if not require_boss_bit:
@@ -937,7 +951,7 @@ def play_phantoon_fight(
             hold(session, 1, "DOWN", reason="phan_wait_eye")
 
     final_hp = session.state.enemy0_hp
-    boss_set = boss_defeated_in_state(session.state, catalog)
+    boss_set = _phantoon_boss_bit(session)
     if _dead(session):
         outcome = "died"
     elif boss_set:
@@ -973,6 +987,8 @@ __all__ = [
     "PHANTOON_INVISIBLE",
     "PHANTOON_VULNERABLE",
     "Pickup",
+    "ADDR_WS_BOSS_BITS",
+    "PHANTOON_BOSS_BIT",
     "ROOM_PHANTOON",
     "SEAT_X",
     "SEAT_X_MAX",
