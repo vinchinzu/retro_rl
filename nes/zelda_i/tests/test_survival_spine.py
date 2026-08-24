@@ -72,6 +72,8 @@ from zelda_i.survival_spine import (
     level4_stepladder_success,
     level4_exit60_stages,
     level4_exit60_success,
+    level4_west31_stages,
+    level4_west31_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -94,6 +96,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-clear32",
         "level4-stepladder",
         "level4-exit60",
+        "level4-west31",
     )
 
 
@@ -357,6 +360,50 @@ def test_level4_exit60_stop_is_play32_with_ladder() -> None:
     ram[ADDR_OBJ_HP + 1] = 64
     ram[ADDR_OBJ_TYPE + 2] = 0x68
     assert level4_exit60_success(read_snapshot(ram))
+
+
+def test_level4_west31_attaches_after_exit60() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level4_west31 import West31Phase, make_west31_controller
+
+    stages = level4_west31_stages()
+    assert [name for name, _, _ in stages] == ["level4_west_0x31"]
+    report = stages[0][1].report()
+    assert report["segment"] == "level4_west_0x31"
+    assert "bfs" not in report
+    assert report["waypoints"][0] == [48, 189]
+    run = SpineRun(through="level4-west31", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_west_0x31"
+
+    ctl = make_west31_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x32
+    ram[ADDR_LINK_X] = 192
+    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("LEFT"))
+    ram[ADDR_LINK_X] = 48
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 141
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("LEFT"))
+    ram[ADDR_LINK_X] = 16
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "west_push_left"
+    ram[ADDR_SCREEN] = 0x31
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert ctl.phase is West31Phase.DONE
+    ram[ADDR_SCREEN] = 0x32
+    assert not level4_west31_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x31
+    assert level4_west31_success(read_snapshot(ram))
+    ram[ADDR_LADDER] = 0
+    assert not level4_west31_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
