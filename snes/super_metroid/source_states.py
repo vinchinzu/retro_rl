@@ -491,6 +491,17 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1}),
     ),
     SourceFingerprint(
+        "post_ws_poweron",
+        "scratch/post_ws_poweron.state",
+        0xCA08,
+        use_for="power-on --to ws dual 176141f leave (rr-p2bw); ship interior / Phantoon",
+        x_min=40,
+        x_max=90,
+        y_min=120,
+        y_max=160,
+        poses=frozenset({1}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,

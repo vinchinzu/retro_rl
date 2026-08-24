@@ -34,6 +34,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_acid,
     play_ice_snake_to_ice,
 )
+from super_metroid.routes.kpdr.post_ice_spine import POST_ICE_SPINE
 from super_metroid.routes.kpdr.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
@@ -851,4 +852,4 @@ POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
         requires=_K4_CAPS,
         policy_id="kpdr_k4_ice",
     ),
-)
+) + POST_ICE_SPINE

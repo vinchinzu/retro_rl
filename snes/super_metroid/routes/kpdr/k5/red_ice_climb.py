@@ -5,6 +5,10 @@ module owns checkpoint geometry and the first small edge:
 
 ``bottom_floor -> lower_ripper_1``
 
+Freeze the lowest Ripper from the floor, step off the ice column, then
+standing Hi-Jump and drift onto it from above.  Jumping in the same
+column bonks the underside.  No wall-jump.
+
 Later ice-ladder edges (`red_ice_r1_to_r2` … `red_ice_r4_to_tunnel`) live
 beside this file, not in the already-large :mod:`red_to_hellway` product
 controller.
@@ -12,7 +16,6 @@ controller.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,7 +24,7 @@ import numpy as np
 from retro_harness.actions import buttons, idle_action
 from super_metroid.ram import HI_JUMP_MASK, SuperMetroidState
 from super_metroid.routes.kpdr.ice.geometry import ICE_BEAM_MASK
-from super_metroid.routes.kpdr.rooms import ROOM_RED_TOWER
+from super_metroid.routes.kpdr.rooms import ROOM_HELLWAY, ROOM_RED_TOWER
 from super_metroid.routes.runtime import ControllerSession
 
 ENEMY_BASE = 0x0F78
@@ -75,9 +78,10 @@ class RedIceCheckpoint:
     grounded: bool = True
     support_enemy_y: int | None = None
     min_freeze_timer: int = 0
+    room_id: int = ROOM_RED_TOWER
 
     def matches(self, state: SuperMetroidState) -> bool:
-        if int(state.room_id) != ROOM_RED_TOWER:
+        if int(state.room_id) != int(self.room_id):
             return False
         if not self.x_range[0] <= int(state.samus_x) <= self.x_range[1]:
             return False
@@ -165,6 +169,13 @@ UPPER_RIPPER_4 = RedIceCheckpoint(
     (190, 224),
     support_enemy_y=UPPER_RIPPER_4_Y,
     min_freeze_timer=30,
+)
+HELLWAY_SILL = RedIceCheckpoint(
+    "hellway_sill",
+    (16, 80),
+    (120, 175),
+    grounded=False,
+    room_id=ROOM_HELLWAY,
 )
 
 
@@ -284,11 +295,19 @@ def _action(*names: str) -> np.ndarray:
     return buttons(*names) if names else idle_action()
 
 
-class RedIceBottomEdgeRunner:
-    """One-action-per-call runner for human-hot-swappable autopilot.
+_STAND = frozenset({1, 2})
+_TRUE_MORPH = frozenset({29, 30, 31, 32})
+_JUMP_UNTIL_Y = 2320
+_STEP_OFF_PX = 28
+_BRAKE_FRAMES = 4
 
-    Enemy alignment and landing are evaluated every frame.  The WJ technique
-    itself is a short, named span sequence; it is never mutated frame by frame.
+
+class RedIceBottomEdgeRunner:
+    """Floor freeze, step off the ice column, standing hop onto r1.
+
+    Same-column Hi-Jump bonks the frozen Ripper from below.  The floor is
+    solid, so walk ~24px away after the freeze, then drift onto the ice
+    from above.  No wall-jump.
     """
 
     policy_id = POLICY_ID
@@ -310,7 +329,7 @@ class RedIceBottomEdgeRunner:
         self.last_reason = "red_ice_init"
         self._phase_frames = 0
         self._settle_frames = 0
-        self._spans: deque[tuple[np.ndarray, str]] = deque()
+        self._target_x = 0
 
     def _fail(self, reason: str) -> None:
         self.failed = True
@@ -332,22 +351,6 @@ class RedIceBottomEdgeRunner:
         self.detail = detail or phase
         self._phase_frames = 0
 
-    def _queue_wj(self) -> None:
-        # Shared Bubble/Parlor consecutive-WJ family, tuned by the first
-        # natural Red pin sweep: WJ1 20/4/8, WJ2 14/2/6.
-        spans = (
-            (20, ("LEFT", "A"), "dwj_wj1_into"),
-            (4, ("A",), "dwj_wj1_amid"),
-            (8, ("RIGHT", "A"), "dwj_wj1_flip"),
-            (14, ("LEFT", "A"), "dwj_wj2_into"),
-            (2, ("A",), "dwj_wj2_amid"),
-            (6, ("RIGHT", "A"), "dwj_wj2_flip"),
-        )
-        for frames, names, label in spans:
-            action = _action(*names)
-            self._spans.extend((action, f"red_ice_{label}") for _ in range(frames))
-        self._set_phase("double_wj", "consecutive WJ")
-
     def _retry_or_fail(self, state: SuperMetroidState, reason: str) -> None:
         self.attempts += 1
         if self.attempts >= self.max_attempts or not BOTTOM_FLOOR.matches(state):
@@ -362,12 +365,6 @@ class RedIceBottomEdgeRunner:
         if int(state.room_id) != ROOM_RED_TOWER:
             self._fail(f"left room 0x{int(state.room_id):04X}")
             return None
-
-        if self._spans:
-            action, reason = self._spans.popleft()
-            if not self._spans:
-                self._set_phase("land", "track frozen Ripper")
-            return self._emit(action, reason)
 
         while not self.complete and not self.failed:
             if self.phase == "select_beam":
@@ -388,11 +385,10 @@ class RedIceBottomEdgeRunner:
                     self._fail("lower Ripper missing")
                     break
                 if enemy.freeze_timer > 40:
-                    self._set_phase("runup", f"frozen x={enemy.x}")
+                    self._target_x = int(enemy.x)
+                    self._set_phase("drop_aim", f"frozen x={enemy.x}")
                     continue
                 samus_x = int(state.samus_x)
-                # Beam travel shifts a left-moving target ~6 px.  Fire only
-                # inside this band so every WJ starts from usable geometry.
                 if 92 <= enemy.x <= 145 and abs(enemy.x - samus_x) <= 6:
                     return self._emit(_action("UP", "X"), "red_ice_freeze_shot")
                 target_x = max(90, min(148, enemy.x))
@@ -402,79 +398,73 @@ class RedIceBottomEdgeRunner:
                 direction = "RIGHT" if dx > 0 else "LEFT"
                 return self._emit(_action(direction), "red_ice_track_phase")
 
-            if self.phase == "runup":
+            if self.phase == "drop_aim":
+                if int(state.pose) in _STAND or self._phase_frames >= 10:
+                    self._set_phase("step_off", "walk off ice column")
+                    continue
+                return self._emit(idle_action(), "red_ice_drop_aim")
+
+            if self.phase == "step_off":
                 enemy = ripper_at_height(self.env, BOTTOM_RIPPER_Y)
-                if enemy is None:
-                    self._fail("lower Ripper missing during runup")
-                    break
-                # Start the first wall arc only after Samus has cleared the
-                # frozen Ripper horizontally.  A fixed 16f runup could put
-                # the rising spin within its collision box before the actual
-                # double wall jump began.
-                clear_of_ripper = int(state.samus_x) >= int(enemy.x) + 36
-                if self._phase_frames >= 16 and clear_of_ripper:
-                    self._set_phase("spin", "right-wall approach")
+                ex = int(enemy.x) if enemy is not None else self._target_x
+                x = int(state.samus_x)
+                if abs(x - ex) >= _STEP_OFF_PX or x <= 68 or x >= 180 or self._phase_frames >= 28:
+                    self._set_phase("brake", "kill leftover run")
                     continue
-                if self._phase_frames >= 60:
-                    self._retry_or_fail(state, "could not clear Ripper for launch")
-                    continue
-                return self._emit(_action("RIGHT", "B"), "red_ice_runup")
+                # Walk away from the ice column; stay off both door lips.
+                if x >= ex:
+                    direction = "RIGHT" if x < 190 else "LEFT"
+                else:
+                    direction = "LEFT" if x > 60 else "RIGHT"
+                return self._emit(_action(direction), "red_ice_step_off")
 
-            if self.phase == "spin":
-                if int(state.samus_x) >= 215 and self._phase_frames >= 30:
-                    self._set_phase("coast", "arm WJ")
+            if self.phase == "brake":
+                if self._phase_frames >= _BRAKE_FRAMES:
+                    self._set_phase("jump", "standing Hi-Jump")
                     continue
-                if self._phase_frames >= 90:
-                    self._retry_or_fail(state, "right wall not reached")
-                    continue
-                return self._emit(
-                    _action("RIGHT", "B", "A"),
-                    "red_ice_spin_to_wall",
-                )
+                enemy = ripper_at_height(self.env, BOTTOM_RIPPER_Y)
+                ex = int(enemy.x) if enemy is not None else self._target_x
+                direction = "RIGHT" if int(state.samus_x) < ex else "LEFT"
+                return self._emit(_action(direction), "red_ice_brake")
 
-            if self.phase == "coast":
-                if self._phase_frames >= 4:
-                    self._set_phase("release", "release jump")
+            if self.phase == "jump":
+                if int(state.samus_y) <= _JUMP_UNTIL_Y or self._phase_frames >= 36:
+                    self._set_phase("land", "drift onto ice top")
                     continue
-                return self._emit(_action("B", "A"), "red_ice_wj_coast")
-
-            if self.phase == "release":
-                if self._phase_frames >= 1:
-                    self._set_phase("idle_turn", "turn window")
-                    continue
-                return self._emit(_action("B"), "red_ice_wj_release")
-
-            if self.phase == "idle_turn":
-                if self._phase_frames < 2:
-                    return self._emit(idle_action(), "red_ice_wj_idle")
-                if self._phase_frames < 4:
-                    return self._emit(_action("LEFT"), "red_ice_wj_turn")
-                self._queue_wj()
-                action, reason = self._spans.popleft()
-                return self._emit(action, reason)
+                return self._emit(_action("A"), "red_ice_jump")
 
             if self.phase == "land":
                 if checkpoint_supported(self.env, state, LOWER_RIPPER_1):
                     self._set_phase("settle", "verify frozen support")
                     continue
-                if int(state.velocity_y) == 0 and int(state.vertical_direction) == 0:
+                grounded = (
+                    int(state.velocity_y) == 0
+                    and int(state.vertical_direction) == 0
+                )
+                if grounded and BOTTOM_FLOOR.matches(state):
                     self._retry_or_fail(
                         state,
                         f"missed Ripper xy=({state.samus_x},{state.samus_y})",
                     )
                     continue
+                if grounded and not LOWER_RIPPER_1.matches(state):
+                    self._retry_or_fail(
+                        state,
+                        f"missed Ripper xy=({state.samus_x},{state.samus_y})",
+                    )
+                    continue
+                if int(state.pose) in _TRUE_MORPH:
+                    return self._emit(_action("UP"), "red_ice_unmorph")
                 enemy = ripper_at_height(self.env, BOTTOM_RIPPER_Y)
                 if enemy is None or enemy.freeze_timer <= LOWER_RIPPER_1.min_freeze_timer:
                     self._fail("Ripper thawed before landing")
                     break
-                dx = enemy.x - int(state.samus_x)
-                if dx > 2:
-                    action = _action("RIGHT")
-                elif dx < -2:
-                    action = _action("LEFT")
-                else:
-                    action = idle_action()
-                return self._emit(action, "red_ice_land_track")
+                ex = int(enemy.x)
+                x = int(state.samus_x)
+                if abs(x - ex) > 3:
+                    direction = "RIGHT" if x < ex else "LEFT"
+                    return self._emit(_action(direction), "red_ice_land_track")
+                return self._emit(idle_action(), "red_ice_fall")
 
             if self.phase == "settle":
                 if not checkpoint_supported(self.env, state, LOWER_RIPPER_1):
@@ -561,6 +551,7 @@ __all__ = [
     "UPPER_RIPPER_4",
     "UPPER_RIPPER_4_LAND_Y",
     "UPPER_RIPPER_4_Y",
+    "HELLWAY_SILL",
     "MID_RIPPER_LAND_Y",
     "MID_RIPPER_Y",
     "POLICY_ID",

@@ -1188,13 +1188,18 @@ def _climb_upper(session: ControllerSession, label: str) -> SuperMetroidState:
 def play_red_to_hellway(session: ControllerSession) -> SuperMetroidState:
     """Red Tower bottom → ordinary Hellway left (K5 hop 12).
 
-    Product body: ``warehouse_to_red_human`` hop 6, dual-green from
-    ``post_ice_bat_to_red_pure`` ~(216,2443) as well as its live enter pin.
-    Ice-ladder RAM rewrite stays in this module as residual research.
+    Ice-pin spine: checkpoint climb to ordinary left-door (gs=8, x≤80).
+    Do not extra-settle — idle drops the airborne p11 seat into a plant.
+    Tape body remains the fallback when the Ice+HJ floor seat is absent.
     """
     label = "red_to_hellway"
     require_room(session, ROOM_RED_TOWER, label)
+    from super_metroid.routes.kpdr.k5.red_ice_climb import can_attach_bottom_edge
+    from super_metroid.routes.kpdr.k5.red_ice_to_hellway import play_ice_climb_to_hellway
     from super_metroid.routes.rle import load_rle_json, play_script
+
+    if can_attach_bottom_edge(session.state):
+        return play_ice_climb_to_hellway(session)
 
     body_path = _DATA / "red_to_hellway_human_hop.json"
     play_script(

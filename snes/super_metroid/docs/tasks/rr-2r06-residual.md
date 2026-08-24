@@ -70,9 +70,12 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \
 - [x] Ice-pin compose dual GREEN through West Ocean **28597f** ×2 `0x93FE` `(49,1163)` p1 max PB 5
 - [x] Power-on `--to moat` dual continuous **175526f** ×2 `0x93FE` `(49,1163)` p1 max PB 5 (scratch `moat_poweron.json` + `_dual.json`; Ice prefix **146937f**)
 - [x] Graph: `moat_to_kihunter` reverse door (spark-setup leave-back)
-- [x] Over-ocean spark from that leave dual GREEN **627f** ×2 `0xCA08` `(57,139)` p1
-- [ ] Planner STATUS promote `--to moat` (default CLI stays `ice`)
-- [ ] Wire `--to ws` (over-ocean spark is pin-green, not a continuous tip)
+- [x] Over-ocean spark from that leave dual GREEN **627f** ×2 `0xCA08` `(57,139)` p1 (probe)
+- [x] Wire `--to ws` (rr-p2bw): spine hop compose **615f** ×2 from the
+  power-on Moat leave; Ice-pin compose **29212f**; power-on dual
+  **176141f** ×2 `0xCA08` `(57,139)` p1 gs=8 items `0x3105` beams `0x1007`
+  max PB 5; integrity green (scratch `ws_poweron.json` + `_dual.json`)
+- [ ] Planner STATUS promote `--to moat` (default CLI stays `ice`; `rr-g3nj`)
 
 ### Zero-settle live Bat (`post_ice_live_bat` / `post_ice_below_to_bat_pure`)
 
@@ -225,21 +228,33 @@ loads/prog/deaths 0. Spark-reentry `kihunter_to_moat` @175000 pose 201.
 | Power-on `--to moat` (scratch dual) | 175526 | 2920.624 | 48:45.43 |
 | Ice prefix (Ceres-successor) | 146937 | 2444.924 | 40:48.95 |
 | Power-on post-Ice | 28589 | 475.700 | 07:56.48 |
-| Over-ocean spark from power-on leave | 627 | 10.433 | 00:10.45 |
+| Over-ocean spark from power-on leave (probe) | 627 | 10.433 | 00:10.45 |
+| Spine hop `west_ocean_to_ws` (compose dual) | 615 | 10.233 | 00:10.25 |
+| Ice-pin compose Ice → WS Entrance | 29212 | 486.066 | 08:06.87 |
+| Power-on `--to ws` (scratch dual) | 176141 | 2930.857 | 48:55.68 |
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws \
   --source snes/super_metroid/scratch/post_moat_poweron.state \
   --out snes/super_metroid/scratch/post_moat_poweron_wo_to_ws.state
 # → GREEN 0xCA08 (57,139) p1 frames=627 ×2 exact dual
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose moat-to-ws \
+  --source snes/super_metroid/scratch/post_moat_poweron.state \
+  --output snes/super_metroid/scratch/post_ws_from_moat_poweron.state \
+  --no-red-diag
+# → GREEN 0xCA08 (57,139) p1 frames=615 ×2 exact dual
+uv run python snes/super_metroid/scripts/record/continuous.py --to ws --no-video \
+  --report snes/super_metroid/scratch/ws_poweron.json \
+  --state-output snes/super_metroid/scratch/post_ws_poweron.state
+# → GREEN 0xCA08 (57,139) p1 frames=176141 ×2 exact dual; max PB 5
 ```
 
 https://wiki.supermetroid.run/West_Ocean
 
 ### Next action (required)
-- **One change:** wire `--to ws` (`rr-p2bw`; `play_west_ocean_over_ocean_spark`
-  from the power-on West Ocean leave). Planner STATUS for `moat` is
-  `rr-g3nj`. Do not STATUS-promote from this residual.
+- **One change:** ship interior / Phantoon from the WS leave
+  (`scratch/post_ws_poweron.state`; `0xCA08` `(57,139)` p1). Planner
+  STATUS for `moat` is `rr-g3nj`. Do not STATUS-promote from this residual.
 - Mid→thin is still the 2974f period WJ (p2 alcove ceiling caps a
   standing hop at y≈1219; next is freeze-Geega or 1–2 bombs then one
   jump onto p3).
@@ -249,8 +264,8 @@ https://wiki.supermetroid.run/West_Ocean
 ### Non-claims
 - Did not STATUS-promote past Ice
 - Did not change `DEFAULT_CONTINUOUS_TIP`
-- Did not write `recordings/moat.json` (scratch only)
-- Did not wire `--to ws` / ship interior
+- Did not write `recordings/moat.json` / `recordings/ws.json` (scratch only)
 - Did not replace mid→thin period WJ
 - Did not clobber `post_ice_bat_to_red_pure` (718f successor)
 - 698f named-pin dual was 5f-settle morph-fall, not zero-settle compose
+- Probe spark 627f vs spine hop 615f is session accounting, not a mismatch

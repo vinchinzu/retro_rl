@@ -24,6 +24,10 @@ uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big
 # K6 product shine chain: Kihunter pre-spark → Moat spark → over-ocean → WS
 # (video debug; then guided_human --from ws-entrance for Phantoon ship tape)
 uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
+
+# Red Tower Ice checkpoint climb only (same room 0xA253 → Hellway 0xA2F7).
+# Zero-settle p165 leave; same chain play_red_to_hellway now runs.
+uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset red-ice-to-hellway
 ```
 """
 
@@ -56,6 +60,37 @@ from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
 from super_metroid.routes.kpdr.wrecked_ship import (  # noqa: E402
     play_moat_to_west_ocean,
     play_west_ocean_to_ws,
+)
+from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
+    play_bottom_to_ripper1,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r1_to_r2 import (  # noqa: E402
+    play_ripper1_to_ripper2,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r2_to_r3 import (  # noqa: E402
+    play_ripper2_to_ripper3,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r3_to_r4 import (  # noqa: E402
+    play_ripper3_to_ripper4,
+)
+from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (  # noqa: E402
+    play_ripper4_to_tunnel,
+)
+from super_metroid.routes.kpdr.k5.red_ice_tunnel_to_mid import (  # noqa: E402
+    play_tunnel_to_mid_floor,
+)
+from super_metroid.routes.kpdr.k5.red_ice_mid_to_thin import (  # noqa: E402
+    play_mid_floor_to_thin_seat,
+)
+from super_metroid.routes.kpdr.k5.red_ice_thin_to_ur1 import (  # noqa: E402
+    play_thin_seat_to_upper_ripper1,
+)
+from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (  # noqa: E402
+    play_upper_ripper1_to_2,
+    play_upper_ripper2_to_3,
+)
+from super_metroid.routes.kpdr.k5.red_ice_ur3_to_hellway import (  # noqa: E402
+    play_upper_ripper3_to_hellway,
 )
 from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
     play_business_to_cathedral_entrance,
@@ -239,11 +274,32 @@ MOAT_TO_WS: tuple[tuple[str, PlayFn], ...] = (
     ("west-ocean-to-ws", play_west_ocean_to_ws),
 )
 
+# Same-room Ice climb: Red Tower 0xA253 bottom → Hellway 0xA2F7 sill.
+# Matches scripts/probe/red_ice_climb.py --edge chain (skips ur4 settle).
+RED_ICE_TO_HELLWAY: tuple[tuple[str, PlayFn], ...] = (
+    ("bottom-to-ripper1", play_bottom_to_ripper1),
+    ("ripper1-to-ripper2", play_ripper1_to_ripper2),
+    ("ripper2-to-ripper3", play_ripper2_to_ripper3),
+    ("ripper3-to-ripper4", play_ripper3_to_ripper4),
+    ("ripper4-to-tunnel", play_ripper4_to_tunnel),
+    ("tunnel-to-mid-floor", play_tunnel_to_mid_floor),
+    ("mid-floor-to-thin-seat", play_mid_floor_to_thin_seat),
+    ("thin-seat-to-upper-ripper1", play_thin_seat_to_upper_ripper1),
+    ("upper-ripper1-to-2", play_upper_ripper1_to_2),
+    ("upper-ripper2-to-3", play_upper_ripper2_to_3),
+    ("upper-ripper3-to-hellway", play_upper_ripper3_to_hellway),
+)
+
 # Named integration anchors (not scratch) preferred when continuous-like pure
 # sources are not yet cataloged for this room.
 _BIG_PINK_MAIN = INTEGRATION_DIR / "dev_b1_bigpink_main_controller.state"
 
-PRESETS: dict[str, tuple[Path, tuple[tuple[str, PlayFn], ...], str]] = {
+# Optional 4th/5th ints: settle_frames, extra_idle (default 5, 5).
+PresetSpec = tuple[Path, tuple[tuple[str, PlayFn], ...], str] | tuple[
+    Path, tuple[tuple[str, PlayFn], ...], str, int, int
+]
+
+PRESETS: dict[str, PresetSpec] = {
     "post-varia-to-bubble": (
         SCRATCH / "post_varia_continuous.state",
         POST_VARIA_TO_BUBBLE,
@@ -274,7 +330,23 @@ PRESETS: dict[str, tuple[Path, tuple[tuple[str, PlayFn], ...], str]] = {
         MOAT_TO_WS,
         "moat_to_ws_debug",
     ),
+    "red-ice-to-hellway": (
+        GAME_DIR / "scratch" / "bat_zero_settle_eq216_leave.state",
+        RED_ICE_TO_HELLWAY,
+        "red_ice_to_hellway_debug",
+        0,
+        0,
+    ),
 }
+
+
+def _unpack_preset(
+    entry: PresetSpec,
+) -> tuple[Path, tuple[tuple[str, PlayFn], ...], str, int, int]:
+    source, hops, stem, *rest = entry
+    settle_frames = int(rest[0]) if rest else 5
+    extra_idle = int(rest[1]) if len(rest) > 1 else 5
+    return source, hops, stem, settle_frames, extra_idle
 
 
 def run_chain(
@@ -287,6 +359,8 @@ def run_chain(
     scale: int = 2,
     crf: int = 20,
     preset: str | None = None,
+    settle_frames: int = 5,
+    extra_idle: int = 5,
 ) -> dict[str, object]:
     if not source.is_file():
         raise FileNotFoundError(f"source state missing: {source}")
@@ -304,8 +378,8 @@ def run_chain(
     failed_hop: str | None = None
 
     try:
-        boot_from_state(env, source)
-        for _ in range(5):
+        boot_from_state(env, source, settle_frames=max(0, int(settle_frames)))
+        for _ in range(max(0, int(extra_idle))):
             env.step(idle_action())
             assist.apply(env.data, parse_env_state(env, mode="nav"))
 
@@ -456,6 +530,8 @@ def run_chain(
         "preset": preset,
         "source": str(source.resolve()),
         "video": str(video_path.resolve()),
+        "settleFrames": int(settle_frames),
+        "extraIdle": int(extra_idle),
         "success": error is None and all(h.get("ok") for h in hop_results),
         "failedHop": failed_hop,
         "error": error,
@@ -498,26 +574,41 @@ def main() -> None:
     parser.add_argument("--no-audio", action="store_true")
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--crf", type=int, default=20)
+    parser.add_argument(
+        "--settle",
+        type=int,
+        default=None,
+        help="Idle frames after load (overrides preset; ice climb uses 0)",
+    )
     args = parser.parse_args()
 
     if args.list:
         for name in sorted(PRESETS):
-            source, hops, stem = PRESETS[name]
+            source, hops, stem, settle_frames, extra_idle = _unpack_preset(
+                PRESETS[name]
+            )
             print(f"{name}")
             print(f"  source={source}")
             print(f"  stem={stem}")
+            print(f"  settle={settle_frames} extra_idle={extra_idle}")
             print(f"  hops={[n for n, _ in hops]}")
         return
 
-    source, hops, stem = PRESETS[args.preset]
+    source, hops, stem, settle_frames, extra_idle = _unpack_preset(
+        PRESETS[args.preset]
+    )
     if args.source is not None:
         source = args.source
+    if args.settle is not None:
+        settle_frames = max(0, int(args.settle))
+        extra_idle = 0
     video = args.video or (RECORDINGS_DIR / f"{stem}.mp4")
     report = args.report or (RECORDINGS_DIR / f"{stem}.json")
 
     print(f"[record] preset={args.preset}", flush=True)
     print(f"[record] source={source}", flush=True)
     print(f"[record] video={video}", flush=True)
+    print(f"[record] settle={settle_frames} extra_idle={extra_idle}", flush=True)
     print(f"[record] hops={[n for n, _ in hops]}", flush=True)
 
     result = run_chain(
@@ -529,6 +620,8 @@ def main() -> None:
         scale=args.scale,
         crf=args.crf,
         preset=args.preset,
+        settle_frames=settle_frames,
+        extra_idle=extra_idle,
     )
     # Slim stdout: full reasonSpans live in the report JSON.
     slim = {

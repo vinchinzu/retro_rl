@@ -67,12 +67,22 @@ from super_metroid.routes.kpdr.ice import (
 from super_metroid.routes.kpdr.k5 import (
     play_bat_to_red,
     play_below_to_bat,
+    play_caterpillar_to_alpha_pb,
     play_east_to_glass,
     play_glass_to_west,
+    play_hellway_to_caterpillar,
     play_red_to_hellway,
     play_warehouse_to_east,
     play_west_to_below,
 )
+from super_metroid.routes.kpdr.k6 import (
+    play_alpha_pb_to_caterpillar,
+    play_caterpillar_to_elevator,
+    play_elevator_to_kihunter,
+    play_kihunter_to_moat,
+)
+from super_metroid.routes.kpdr.moat import play_moat_cross
+from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
 from super_metroid.routes.kpdr.k4_norfair import (
     play_bat_cave_to_speed_hall,
     play_bubble_to_single_chamber,
@@ -260,6 +270,14 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     # K5 stack hop 11: Bat Room → Red Tower bottom (reverse of red_tower_to_bat).
     "bat_to_red": play_bat_to_red,
     "red_to_hellway": play_red_to_hellway,
+    "hellway_to_caterpillar": play_hellway_to_caterpillar,
+    "caterpillar_to_alpha_pb": play_caterpillar_to_alpha_pb,
+    "alpha_pb_to_caterpillar": play_alpha_pb_to_caterpillar,
+    "caterpillar_to_elevator": play_caterpillar_to_elevator,
+    "elevator_to_kihunter": play_elevator_to_kihunter,
+    "kihunter_to_moat": play_kihunter_to_moat,
+    "moat_cross": play_moat_cross,
+    "west_ocean_to_ws": play_west_ocean_over_ocean_spark,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

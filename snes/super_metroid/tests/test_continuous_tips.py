@@ -74,13 +74,21 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "speed",
         "wave",
         "ice",
+        "alpha_pb",
+        "moat",
+        "ws",
     ]
     # Default tip is furthest STATUS-promoted integrity-green tip (Ice).
+    # alpha_pb / moat / ws are wired for compose (rr-2r06 / rr-p2bw)
+    # but not STATUS-promoted.
     assert DEFAULT_CONTINUOUS_TIP == "ice"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
     assert ids.index("wave") < ids.index("ice")
-    assert ids[-1] == DEFAULT_CONTINUOUS_TIP
+    assert ids.index("ice") < ids.index("alpha_pb")
+    assert ids.index("alpha_pb") < ids.index("moat")
+    assert ids.index("moat") < ids.index("ws")
+    assert ids[-1] == "ws"
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -122,6 +130,10 @@ def test_get_continuous_tip_aliases() -> None:
     assert get_continuous_tip("k3_return").tip_id == "business"
     assert get_continuous_tip("norfair_bat").tip_id == "bat_cave"
     assert get_continuous_tip("k4_4").tip_id == "bat_cave"
+    assert get_continuous_tip("wrecked_ship").tip_id == "ws"
+    assert get_continuous_tip("ws_entrance").tip_id == "ws"
+    assert get_continuous_tip("k6_ws").tip_id == "ws"
+    assert get_continuous_tip("west_ocean").tip_id == "moat"
 
 
 def test_default_tip_room_timing_path() -> None:
@@ -284,10 +296,24 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "speed",
         "wave",
         "ice",
+        "alpha_pb",
+        "moat",
+        "ws",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
-    for tip_id in ("morph", "supers", "red_tower", "bat_cave", "speed", "wave", "ice"):
+    for tip_id in (
+        "morph",
+        "supers",
+        "red_tower",
+        "bat_cave",
+        "speed",
+        "wave",
+        "ice",
+        "alpha_pb",
+        "moat",
+        "ws",
+    ):
         assert tip_id in TIP_BY_ID
         assert isinstance(TIP_BY_ID[tip_id], TipSpec)
     assert {s.tip_id for s in TIP_SPECS} >= set(expected_super) | {
@@ -345,6 +371,47 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     # Catalog alias + default tip is Ice after rr-kxge dual continuous green.
     assert get_continuous_tip("ice_beam").tip_id == "ice"
     assert get_continuous_tip("k4_11").tip_id == "ice"
+    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    assert SUPER_TIP_BY_ID["alpha_pb"].parent_tip_id == "ice"
+    assert SUPER_TIP_BY_ID["alpha_pb"].final_room == 0xA3AE
+    assert SUPER_TIP_BY_ID["alpha_pb"].success_outcome == "alpha_pb_collected"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["alpha_pb"].hops] == [
+        "ice_to_snake",
+        "ice_snake_to_tutorial",
+        "ice_tutorial_to_gate",
+        "ice_gate_to_business",
+        "ice_business_to_warehouse",
+        "warehouse_to_east",
+        "east_to_glass",
+        "glass_to_west",
+        "west_to_below",
+        "below_to_bat",
+        "bat_to_red",
+        "red_to_hellway",
+        "hellway_to_caterpillar",
+        "caterpillar_to_alpha_pb",
+    ]
+    assert SUPER_TIP_BY_ID["moat"].parent_tip_id == "alpha_pb"
+    assert SUPER_TIP_BY_ID["moat"].final_room == 0x93FE
+    assert SUPER_TIP_BY_ID["moat"].success_outcome == "moat_cleared"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["moat"].hops] == [
+        "alpha_pb_to_caterpillar",
+        "caterpillar_to_elevator",
+        "elevator_to_kihunter",
+        "kihunter_to_moat",
+        "moat_cross",
+    ]
+    assert get_continuous_tip("k5").tip_id == "alpha_pb"
+    assert get_continuous_tip("west_ocean").tip_id == "moat"
+    assert SUPER_TIP_BY_ID["ws"].parent_tip_id == "moat"
+    assert SUPER_TIP_BY_ID["ws"].final_room == 0xCA08
+    assert SUPER_TIP_BY_ID["ws"].success_outcome == "ws_entrance_reached"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["ws"].hops] == [
+        "west_ocean_to_ws",
+    ]
+    assert get_continuous_tip("wrecked_ship").tip_id == "ws"
+    assert get_continuous_tip("ws_entrance").tip_id == "ws"
+    assert get_continuous_tip("west_ocean").tip_id == "moat"
     assert DEFAULT_CONTINUOUS_TIP == "ice"
 
 
