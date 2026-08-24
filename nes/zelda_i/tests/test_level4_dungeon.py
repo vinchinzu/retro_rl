@@ -552,6 +552,17 @@ def test_room_30_live_enemies_ignore_invuln_0x2b() -> None:
     assert live[0].type_id == VIRE_OBJECT_TYPE
 
 
+def test_room_32_live_enemies_ignore_invuln_0x2b_and_block_0x68() -> None:
+    invuln = SimpleNamespace(slot=1, type_id=INVULN_MOVER_TYPE, x=80, y=133, hp=64)
+    block = SimpleNamespace(slot=2, type_id=0x68, x=80, y=144, hp=0)
+    zol = SimpleNamespace(slot=3, type_id=ZOL_OBJECT_TYPE, x=160, y=100, hp=64)
+    like = SimpleNamespace(slot=4, type_id=LIKE_LIKE_OBJECT_TYPE, x=100, y=141, hp=64)
+    assert ROOM_32_SPEC.live_enemies(SimpleNamespace(objects=(invuln, block))) == ()
+    live = ROOM_32_SPEC.live_enemies(SimpleNamespace(objects=(invuln, block, zol, like)))
+    types = {obj.type_id for obj in live}
+    assert types == {ZOL_OBJECT_TYPE, LIKE_LIKE_OBJECT_TYPE}
+
+
 def test_planning_interior_report() -> None:
     r = planning_interior_report()
     assert r["bead"] == "rr-5lu"

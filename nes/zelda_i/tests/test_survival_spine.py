@@ -17,7 +17,12 @@ from zelda_i.level2_spine import (
     level2_to_boom_stages,
 )
 from zelda_i.level2_tf_spine import level2_tf_stages
-from zelda_i.dungeon_ids import VIRE_OBJECT_TYPE
+from zelda_i.dungeon_ids import (
+    INVULN_MOVER_OBJECT_TYPE as INVULN_MOVER_TYPE,
+    LIKE_LIKE_OBJECT_TYPE,
+    VIRE_OBJECT_TYPE,
+    ZOL_OBJECT_TYPE,
+)
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_HEALTH,
@@ -60,6 +65,8 @@ from zelda_i.survival_spine import (
     level4_clear_31_success,
     level4_east_32_stages,
     level4_east_32_success,
+    level4_clear_32_stages,
+    level4_clear_32_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -79,6 +86,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-room31",
         "level4-clear31",
         "level4-room32",
+        "level4-clear32",
     )
 
 
@@ -225,6 +233,42 @@ def test_level4_east_32_stop_is_enter_room_not_clear() -> None:
     assert level4_east_32_success(snap)
     ram[ADDR_SCREEN] = 0x31
     assert not level4_east_32_success(read_snapshot(ram))
+
+
+def test_level4_clear_32_attaches_existing_zol_likelike_controller() -> None:
+    stages = level4_clear_32_stages()
+    assert [name for name, _, _ in stages] == ["level4_clear_0x32"]
+    assert stages[0][1].phase.name == "FIGHT"
+    assert stages[0][1].spec.room_id == 0x32
+    run = SpineRun(through="level4-clear32", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_clear_0x32"
+
+
+def test_level4_clear_32_stop_is_empty_room_not_stairs() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x32
+    ram[ADDR_LINK_X] = 48
+    ram[ADDR_LINK_Y] = 141
+    snap = read_snapshot(ram)
+    assert level4_clear_32_success(snap)
+    ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level4_clear_32_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = LIKE_LIKE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level4_clear_32_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = INVULN_MOVER_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert level4_clear_32_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0x68
+    ram[ADDR_OBJ_HP + 1] = 0
+    assert level4_clear_32_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_SCREEN] = 0x60
+    assert not level4_clear_32_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:

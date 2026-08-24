@@ -174,15 +174,24 @@ the verified exit is UP to y=113, RIGHT+DOWN clip into the east column
 `(160,125)`, then `(160,173)→(192,173)→(192,141)→(200,141)`. Do not close
 `.6` until TF `0x08`.
 
-Next boundary is the existing `0x32` Zol+LikeLike clear (ignore `0x2b`/`0x68`)
-from leftover `(16,141)`. Do not use checkpoint-mediated/emulator-state BFS.
+The `0x32` Zol+LikeLike clear is now on the continuous tape from leftover
+`(16,141)`: `l4_clear32_continuous_v1.json`, 1/1, 113,702f, room `0x32`
+`(80,109)`, keys=5, bombs=15, TF=`0x07`, hop 3,812f, deaths/state
+loads/progression/capacity writes all 0. `--through level4-clear32` is an
+empty-room stop (do not require push-block or stairs `0x60`). Existing
+`ROOM_32_SPEC` controller; no inland/occupancy change. Invuln `0x2b` and
+block `0x68` residual OK. Do not close `.6` until TF `0x08`.
+
+Next boundary is push left block → stairs `0x60` Stepladder (existing
+`make_stepladder_controller`). Do not use checkpoint-mediated/emulator-state
+BFS.
 Exact verified predecessor:
 
 ```bash
 UV_CACHE_DIR=/tmp/retro_rl_uv_cache QT_QPA_PLATFORM=offscreen \
   uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level4-room32 --no-video --trials 1 \
-  --tag l4_room32_continuous_v11
+  --through level4-clear32 --no-video --trials 1 \
+  --tag l4_clear32_continuous_v1
 ```
 Isolated 0x6b check:
 
