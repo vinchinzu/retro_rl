@@ -1,11 +1,12 @@
 """Level 6 0x09 left-block stairs toward Magical Rod.
 
 Clear leftover (112,173); live left 0x68 (96,144). Reuse 0x38 south-face UP
-until that object's y drops ≥8px. After y-move: idle on the vacated tile
-(CheckWarp needs still; 0x18 hole was decorative — this hole is post-push).
-v1 occupancy from leftover boxed 4-cardinal (112,173). Axis x-then-y
-to the south face (push38 analog). Do not occupancy from leftover or
-the push plane. Do not grant ADDR_ROD.
+until that object's y drops ≥8px. After y-move: south-around then idle the
+revealed stairs. CheckWarp needs still; do not hold-UP through the hole.
+v1 occupancy leftover boxed. v2 vacated idle tile 119 not warp. v3 x=96 UP
+solid. v4 vacated-column idle not mode 9. v5 DOWN/RIGHT/UP idle (192,113)
+tile 119 (0x77 decorative, 0x18 lesson) — remaining 0x68 at L9 (208,96).
+Do not occupancy from leftover or the push plane. Do not grant ADDR_ROD.
 """
 
 from __future__ import annotations
@@ -39,12 +40,14 @@ __all__ = [
 
 STAIRS_09_MAX_FRAMES = 4000
 STAIRS_09_SAMPLE_PERIOD = 12
-STAIR_ALIGN_TOL = 4
+# Exact idle; CheckWarp misses ALIGN_TOL (v5 109±4 idled 113; L9 0x30).
+STAIR_ALIGN_TOL = 0
 STAIRS_09_SOUTH_Y = 173
 # v2 idle (96,148) tile 119 not warp. v3 UP @x=96 solid (96,133) tile 179.
-# v4 idle (96,137) tile 118 not warp. PNG NE dark hole; remaining 0x68 at ~144,144.
-# v5: DOWN to y=173 (south of the pair), RIGHT to x=192, UP to y=109, idle.
-STAIRS_09_HOLE = (192, 109)
+# v4 idle (96,137) tile 118 not warp. v5 idle (192,113) tile 119 (0x77).
+# v6 hold-UP (208,97) tile 0x73; v7 idle same cell still mode 5. PNG hole is
+# west of that 0x68 — next (192,96). Do not hold-UP.
+STAIRS_09_HOLE = (192, 96)
 
 
 class Stairs09Phase(Enum):
@@ -58,7 +61,7 @@ class Stairs09Phase(Enum):
 
 @dataclass
 class Level6Stairs09Controller:
-    """South-face left 0x68 UP until y-move, then idle. Success is mode 9."""
+    """South-face left 0x68 UP until y-move, then idle (192,96). Success is mode 9."""
 
     spec_id: str = "level6_stairs_0x09"
     room: int = LEVEL6_ROD_WIZZ_ROOM
@@ -309,7 +312,7 @@ class Level6Stairs09Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "axis south-face UP until y-move, DOWN y=173 RIGHT x=192 UP idle"
+                "axis south-face UP until y-move, DOWN y=173 RIGHT x=192 idle (192,96)"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
@@ -325,5 +328,5 @@ class Level6Stairs09Controller:
 
 
 def make_stairs_09_controller() -> Level6Stairs09Controller:
-    """Push left 0x68 in 0x09 then idle the hole. Do not grant ADDR_ROD."""
+    """Push left 0x68 in 0x09 then idle (192,96). Do not grant ADDR_ROD."""
     return Level6Stairs09Controller()

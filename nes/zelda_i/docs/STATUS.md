@@ -373,11 +373,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
    `(112,173)`, TF `0x1F`, keys=4, v1 1/1). Left 0x68 **pushes**
    `(96,144)→(96,136)` then gone. `--through level6-stairs09` red
    (v1 occupancy boxed leftover; v2 vacated idle tile 119; v3 x=96 UP
-   solid y=133 tile 179; v4 idle `(96,137)` tile 118). Next south-around
-   remaining block then NE hole idle (`l6_stairs09_continuous_v5`).
-   Do not grant Map/Rod. `rr-tne2` in progress. Isolated BFS is still
-   not a spine path. See `docs/plan.md`. Isolated `Level3*` pins do
-   not close spine beads. No seamed compose. Bomb/key count pokes are
-   documented Survival shortcuts, not Clean.
+   solid y=133 tile 179; v4 idle `(96,137)` tile 118; v5 idle
+   `(192,113)` tile 119/0x77; v6 hold-UP `(208,97)` tile 0x73; v7 idle
+   `(208,97)` tile 0x73 still mode 5). Next idle `(192,96)`
+   (`l6_stairs09_continuous_v8`). Do not grant Map/Rod. `rr-tne2` in
+   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
+   Isolated `Level3*` pins do not close spine beads. No seamed compose.
+   Bomb/key count pokes are documented Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).
