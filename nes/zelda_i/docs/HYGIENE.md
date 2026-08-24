@@ -11,7 +11,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | OW geometry | `level*_overworld.py` | Hop tables + thin controller subclasses |
 | Room combat | `dungeon.py` + `level*_dungeon.py` | `DungeonRoomSpec` tables only |
 | Bomb walls | `level2_puzzles.BombWall` + `bomb_wall_path` | Geometry + one traverse controller |
-| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_exit60` / `level4_west31` / `level4_keyup20` / `level4_map21` / `level4_mappick` / `level4_bomb11` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level*_boss_*` | Path controllers + path timing knobs |
+| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_exit60` / `level4_west31` / `level4_keyup20` / `level4_map21` / `level4_mappick` / `level4_bomb11` / `level4_key01` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level*_boss_*` | Path controllers + path timing knobs |
 | L3 raft | `level3_raft_path` (canonical) | Raft passage controller; **not** `level3_path` |
 | L3 geometry | `level3_geometry` | Door bands, bomb stands, raft channel ints |
 | Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |

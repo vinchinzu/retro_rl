@@ -1,12 +1,12 @@
 # Level 4 — The Snake (route notes)
 
-**Status:** continuous power-on Survival is live through bomb-UP into
-play `0x11` (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`, hop
-435f). Path: map leftover `(208,181)` UP the east column to y=93, LEFT
-to stand `(120,105)` (v1 LEFT at y=109 is a 16px pillar), bomb-UP.
-Isolated BFS is still not this tape. Do not claim Clean STATUS — Survival
-assist only for this segment. Next: 0x01 natural key. Do not close `.6`
-until TF `0x08`.
+**Status:** continuous power-on Survival is live through 0x01 natural
+key (`l4_key01_continuous_v3` 2/2, leftover `(120,133)`, hop 1196f,
+keys 4→5). Path: 0x11 leftover `(120,189)` bomb-UP stand `(120,105)`
+(v1 hold-UP leftover `(120,93)` is the north wall), then pickup
+`(120,141)`. Isolated BFS is still not this tape. Do not claim Clean
+STATUS — Survival assist only for this segment. Next: 0x12 Vire clear
+(ignore block `0x68`). Do not close `.6` until TF `0x08`.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.
@@ -207,6 +207,10 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4-bomb11 --no-video --trials 1 \
   --tag l4_bomb11_continuous_v2
+# 0x01 natural key verified v3 2/2 (leftover (120,133), keys 4→5)
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level4-key01 --no-video --trials 1 \
+  --tag l4_key01_continuous_v3
 # Pure dual-green room segments (no --infinite-life)
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
 uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
@@ -272,7 +276,7 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 0x21 map (Level4Map)
   --maze BFS LEFT--> 0x20 --free UP--> 0x10 Manhandla 0x3c --UP--> 0x00 bubbles (dead-end)
   --BOMB_UP @(120,105)--> 0x11 type 0x35 cluster
-       --UP--> 0x01 8× Keese + key 0x19  (natural key for map KEY-UP residual)
+       --BOMB_UP @(120,105)--> 0x01 8× Keese + key 0x19  (v1 free-UP is north wall)
        --RIGHT--> 0x12 5× Vire + block 0x68
             --UP--> 0x02 blade traps 0x49 (dead-end)
             --clear + push 0x68 LEFT @(112,144)--> doors 2→3
@@ -282,8 +286,8 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 
 | Room | Live? | Notes |
 |------|-------|-------|
-| **0x11** | **live; continuous 2/2** | BOMB_UP from map via y=93 corridor (not y=109); leftover (120,189); type `0x35`; checkpoint `Level4Room11` |
-| **0x01** | **live** | Keese + key `0x19` (keys 0→1 after clear) |
+| **0x11** | **live; continuous 2/2** | BOMB_UP from map via y=93 corridor (not y=109); leftover (120,189); type `0x35`; north is **BOMB_UP** not free; checkpoint `Level4Room11` |
+| **0x01** | **live; continuous 2/2** | Keese + key `0x19` (keys 4→5); leftover (120,133); pickup ~(120,141) |
 | **0x12** | **live dual** | 5× Vire; push block LEFT opens R; `Level4Room12Cleared` |
 | **0x02** | **live** | traps only; DOWN→0x12 |
 | **0x13** | **live dual enter + kill** | Gleeok `0x43` HP≈160 + head `0x46` + HC; UP → 0x03 TF |

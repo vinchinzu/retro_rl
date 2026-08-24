@@ -153,8 +153,14 @@ def test_live_room_ids() -> None:
         make_room_12_clear_controller,
     )
 
+    from zelda_i.level4_key01 import ROOM_01_SPEC, KEY_01_PICKUP_XY
+
     assert ROOM_L4_MID_11 == 0x11
     assert ROOM_L4_KEY_01 == 0x01
+    assert ROOM_01_SPEC.room_id == 0x01
+    assert ROOM_01_SPEC.reward.reward_while_live is True
+    assert ROOM_01_SPEC.reward.inventory_field == "keys"
+    assert KEY_01_PICKUP_XY == (120, 141)
     assert ROOM_L4_VIRES_12 == 0x12
     assert ROOM_L4_TRAPS_02 == 0x02
     assert ROOM_L4_GLEEOK_13 == 0x13
