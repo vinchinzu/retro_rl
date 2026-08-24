@@ -132,6 +132,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-room38",
         "level6-clear38",
         "level6-room28",
+        "level6-clear28",
     )
 
 

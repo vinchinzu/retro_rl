@@ -1,6 +1,6 @@
 # Level 6 — The Dragon (route notes)
 
-Status: **assisted pure** through play 0x28 (not Clean STATUS)
+Status: **assisted pure** through clear 0x28 (not Clean STATUS)
 
 Planning sources:
 
@@ -62,7 +62,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 0x58 (8× Keese 0x1b; key drop live) ──UP──► 0x48
 0x48 (blade traps 0x49 — run through) ──UP──► 0x38
 0x38 (hard multi-wizzrobe / Like-Like / Bubble) ──left 0x68 UP then west-aisle──► 0x28
-0x28 (wizzrobes; diamond residual) → Gleeok / Map / Rod path residual
+0x28 (2× orange 0x24; diamond floor) ──clear──► Gleeok / Map / Rod path residual
 ```
 
 | Room | Role | Enemies (live) | RoomItemId | Notes |
@@ -75,7 +75,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 | **0x58** | N of 0x68 | **8× Keese `0x1b`** | rupee drop live | spine clear 1/1; **north still sealed** |
 | **0x48** | N of 0x58 | blade traps `0x49` | — | spine enter 1/1; run UP residual |
 | **0x38** | N of 0x48 | **7×** wizzrobe `0x23`/`0x24` + Like-Like `0x17` + Bubble `0x40` | — | spine clear 1/1; Bubble residual; left 0x68 `(96,144)` UP live |
-| **0x28** | N of 0x38 | orange wizzrobes live | — | spine enter 1/1 leftover `(120,189)`; clear residual |
+| **0x28** | N of 0x38 | **2× orange `0x24`** | — | spine clear 1/1 leftover `(120,181)`; diamond floor not solid |
 
 ### Entry RIGHT policy (required)
 
@@ -284,6 +284,21 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear38
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room28 --no-video --trials 1
 ```
 
+### Wizzrobe clear (0x28) — **spine 1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover `0x28` `(120,189)` |
+| Combat | occupancy-patrol GenericDungeonRoomController; 2 orange `0x24` |
+| Stop | `--through level6-clear28` no live orange wizzrobes |
+| Leftover | `(120,181)` south-inland; diamond floor walkable (0 occupancy misses) |
+| Ignore | invuln `0x2b` / block `0x68` / Bubble `0x40` |
+| Track | **assisted Survival** |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear28 --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -352,8 +367,9 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_room38_continuous_v1.json` — 0x38 enter 1/1 occupancy run-UP 261f
 - `recordings/l6_clear38_continuous_v1.json` — 0x38 occupancy-patrol clear 1/1 5,487f
 - `recordings/l6_room28_continuous_v6.json` — 0x28 enter 1/1 left-0x68 UP + west-aisle 3,207f
+- `recordings/l6_clear28_continuous_v1.json` — 0x28 occupancy-patrol 2× orange 0x24 1/1 2,587f
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-room28 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear28 --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -367,7 +383,7 @@ Not claimed live as pure segments:
 2. **0x58** Keese clear — **live**; key inventory no
 3. **0x48** enter + run-UP — **live**
 4. **0x38** clear — **live**
-5. **0x28** enter — **live**; wizzrobe clear / optional bomb shortcut residual
+5. **0x28** enter + orange-wizzrobe clear — **live**; optional bomb-east residual
 6. **Gleeok (3 heads)** + Map
 7. Staircase → **Magical Rod** (`ADDR_ROD`)
 8. Vire / wizzrobe path → Gohma arrow → Heart → TF `0x20`
