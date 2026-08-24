@@ -49,6 +49,7 @@ from zelda_i.level4_dungeon import (
     PUSH_32_DIR,
     PUSH_32_STAND,
     ROOM_20_SPEC,
+    ROOM_21_SPEC,
     ROOM_30_SPEC,
     ROOM_31_SPEC,
     ROOM_32_SPEC,
@@ -124,6 +125,11 @@ def test_live_room_ids() -> None:
     assert ROOM_20_SPEC.room_id == ROOM_L4_WATER_NORTH_20
     assert ROOM_20_SPEC.expected_enemy_count == 5
     assert all(y >= 192 for _, y in ROOM_20_SPEC.combat.patrol)
+    assert ROOM_21_SPEC.room_id == ROOM_L4_MAP_21
+    assert ROOM_21_SPEC.expected_enemy_count == 5
+    assert ROOM_21_SPEC.room_item_id == ROOM_ITEM_MAP
+    assert ROOM_21_SPEC.combat.occupancy_bounds is not None
+    assert ROOM_21_SPEC.combat.occupancy_bounds[0] <= 16
     # Gleeok approach anchors (rr-rvae dual-green enter)
     from zelda_i.level4_dungeon import (
         BOMB_21_NORTH_STAND,
@@ -631,6 +637,16 @@ def test_room_30_live_enemies_ignore_invuln_0x2b() -> None:
     live = ROOM_30_SPEC.live_enemies(SimpleNamespace(objects=(invuln, vire)))
     assert len(live) == 1
     assert live[0].type_id == VIRE_OBJECT_TYPE
+
+
+def test_room_21_live_enemies_ignore_invuln_0x2b_and_block_0x68() -> None:
+    invuln = SimpleNamespace(slot=1, type_id=INVULN_MOVER_TYPE, x=80, y=133, hp=64)
+    block = SimpleNamespace(slot=2, type_id=0x68, x=80, y=144, hp=0)
+    gel = SimpleNamespace(slot=3, type_id=GEL_OBJECT_TYPE, x=160, y=100, hp=0)
+    assert ROOM_21_SPEC.live_enemies(SimpleNamespace(objects=(invuln, block))) == ()
+    live = ROOM_21_SPEC.live_enemies(SimpleNamespace(objects=(invuln, block, gel)))
+    assert len(live) == 1
+    assert live[0].type_id == GEL_OBJECT_TYPE
 
 
 def test_room_32_live_enemies_ignore_invuln_0x2b_and_block_0x68() -> None:

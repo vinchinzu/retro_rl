@@ -125,6 +125,7 @@ class ZeldaSnapshot:
     heart_partial: int = 0xFF
     raft: int = 0
     ladder: int = 0
+    map: int = 0  # ADDR_MAP bitfield: one bit per dungeon level
 
     @property
     def overworld(self) -> bool:
@@ -221,6 +222,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         heart_partial=read_u8(ram, ADDR_HEART_PARTIAL),
         triforce=read_u8(ram, ADDR_TRIFORCE),
         compass=read_u8(ram, ADDR_COMPASS),
+        map=read_u8(ram, ADDR_MAP),
         dialog_timer=read_u8(ram, ADDR_DIALOG_TIMER),
         colliding_tile=read_u8(ram, ADDR_COLLIDING_TILE),
         room_item_id=read_u8(ram, ADDR_ROOM_ITEM_ID),
