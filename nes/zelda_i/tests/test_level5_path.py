@@ -67,6 +67,10 @@ def test_east_key_route_returns_south_from_cleared_66() -> None:
     snap = read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=117, keys=1))
     action = level5_east_key_step(snap)
     assert action.reason == "east_key_finish_ladder"
+    north_bank = level5_east_key_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=101, keys=6))
+    )
+    assert north_bank.reason == "east_key_to_ladder_x"
     off_ladder = level5_east_key_step(
         read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=149, keys=1))
     )

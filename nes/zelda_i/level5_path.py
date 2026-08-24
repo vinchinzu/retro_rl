@@ -70,7 +70,12 @@ def level5_east_key_step(snap: ZeldaSnapshot) -> FrameAction:
         # The fixed key can be collected while Link is still standing on the
         # Stepladder across the horizontal river. Finish the crossing before
         # horizontal alignment; sideways input is locked on the ladder tile.
+        # Spine leftover (32,101) is the north bank, not the ladder — reach
+        # x≈56 first. DOWN at x=32 never crosses.
         if snap.link_y < 141:
+            if snap.link_y < 117 and abs(snap.link_x - 56) > 4:
+                direction = "LEFT" if snap.link_x > 56 else "RIGHT"
+                return FrameAction(nes_action(direction), "east_key_to_ladder_x")
             return FrameAction(nes_action("DOWN"), "east_key_finish_ladder")
         if abs(snap.link_x - 120) > 4:
             direction = "LEFT" if snap.link_x > 120 else "RIGHT"

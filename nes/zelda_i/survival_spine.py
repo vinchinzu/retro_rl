@@ -50,6 +50,7 @@ from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
 from zelda_i.level4_overworld import level4_entry_stop
+from zelda_i.level5_spine import continue_level5_spine, validate_l5_endpoint
 from zelda_i.level4_spine import (
     level4_bomb11_stages,
     level4_bomb11_success,
@@ -120,6 +121,10 @@ Through = Literal[
     "level4-clear12",
     "level4-gleeok13",
     "level4",
+    "level5-entry",
+    "level5-clear66",
+    "level5-east77",
+    "level5-whistle",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -146,6 +151,10 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-clear12",
     "level4-gleeok13",
     "level4",
+    "level5-entry",
+    "level5-clear66",
+    "level5-east77",
+    "level5-whistle",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -236,6 +245,10 @@ class SpineRun:
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 "level4": "level4_triforce_0x08",
+                "level5-entry": "level5_entry_0x76",
+                "level5-clear66": "level5_clear_0x66",
+                "level5-east77": "level5_east_key_0x77",
+                "level5-whistle": "level5_whistle_0x04",
                 "level4-entry": "level4_entry_0x71",
                 "level4-key": "level4_natural_key_0x51",
                 "level4-clear50": "level4_clear_0x50",
@@ -258,30 +271,6 @@ class SpineRun:
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
-
-
-def validate_l5_endpoint(report: dict[str, object]) -> None:
-    """Accept only a continuous L5 TF stop (no stitch manifest)."""
-    if not report.get("continuous_emulator_session"):
-        raise ValueError("L5 endpoint must be a continuous emulator session")
-    if report.get("seamed") or report.get("tape_kind") == "state_seamed_viewing_compose":
-        raise ValueError("seamed L5 tapes are not a spine endpoint")
-    final = report.get("final")
-    if not isinstance(final, dict):
-        raise ValueError("Level 5 report has no final snapshot")
-    if not report.get("ok"):
-        raise ValueError("Level 5 report is not successful")
-    if int(final.get("level", -1)) != 5 or int(final.get("screen", -1)) != 0x14:
-        raise ValueError("Level 5 report does not end in the Triforce room (0x14)")
-    if int(final.get("triforce", 0)) & 0x10 == 0:
-        raise ValueError("Level 5 report does not have Triforce bit 0x10")
-    assist = report.get("assist")
-    if not isinstance(assist, dict):
-        raise ValueError("Level 5 report is missing Survival telemetry")
-    if int(assist.get("progression_writes", -1)) != 0:
-        raise ValueError("Level 5 report has progression writes")
-    if int(assist.get("capacity_writes", -1)) != 0:
-        raise ValueError("Level 5 report has capacity writes")
 
 
 def merge_inventory_assist(
@@ -985,4 +974,15 @@ def run_survival_spine(
         return run
 
     attach_level4_tf_suffix(env, run, assist=assist)
+    if not run.success or through == "level4":
+        return run
+    continue_level5_spine(
+        env,
+        run,
+        through=through,
+        run_stages=_run_stages,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    )
     return run

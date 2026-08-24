@@ -43,7 +43,7 @@ Full spine (do not claim ahead of the tip):
 | `rr-4d53.3` | parent: L2 exit → L3 TF `0x04` | **verified** — 1/1 continuous power-on, 92948f |
 | `rr-doua` | Natural bomb farm (power-on L2 entry is 0) | **parked** — Survival count poke until then |
 | `rr-4d53.6` | L3 exit → L4 TF `0x08` | **closed** — `l4_tf_continuous_v1` 2/2 TF `0x0F` mode 18 room `0x03`; HC not mid-room |
-| `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | blocked on `.6` |
+| `rr-4d53.7` | L4 exit → L5 TF `0x10` (attach `.5` pin) | **in progress** — power-on spine holds Recorder in cellar `0x04`; Digdogger/TF not on the tape yet |
 | `rr-4d53.4` | one session power-on → L5 TF | blocked on `.2` `.3` `.6` `.7` |
 
 Spine-only close contract + room DAG: `docs/LEVEL3_ROUTE.md` § Spine attach.
@@ -334,8 +334,42 @@ mid-room (`hc_collected=false`). Isolated BFS still not this tape.
 | tf v1 | `0x03` `(120,149)` **TF 0x08** | south-stand 3564f 2/2; HC not mid-room |
 
 PNGs: `recordings/l4_gleeok13_continuous_v{1,2,2b}_final.png`,
-`recordings/l4_tf_continuous_v{1,1b}_final.png`. `.6` closed. Next:
-`rr-4d53.7` L4 exit → L5 TF `0x10`.
+`recordings/l4_tf_continuous_v{1,1b}_final.png`. `.6` closed.
+
+`--through level5-entry` is **1/1** on `l5_entry_continuous_v1`: L4 fanfare
+settle 284f onto island `0x45`, then `POST_L4_TO_LEVEL5_HOPS` (not old
+At4A) through Lost Hills into play `0x76` `(120,205)`; 134,393f; TF=`0x0F`
+keys=5 bombs=13; deaths/progression/capacity 0; no state load.
+
+`--through level5-clear66` v1 timeout 12,000f leftover `0x66` `(119,173)`
+2/3 Gibdo north of the river (cardinal patrol never crossed). v2
+occupancy miss-block **1/1** `l5_clear66_continuous_v2`: 4,241f leftover
+`(32,101)` keys 5→6; 138,634f.
+
+`--through level5-east77` is **1/1** on `l5_east77_continuous_v1`:
+north-bank leftover RIGHT to ladder x=56 then DOWN (v1 DOWN at x=32
+never crosses); Pols Voice clear leftover `(136,165)` keys 7; 142,958f.
+
+`--through level5-whistle` is **1/1** on `l5_whistle_continuous_v1`:
+return 0x66 bomb-west → 0x65 bomb-west → 0x64 stairs → cellar → key-west
+0x05 → Recorder `0x04` mode 9 `(135,141)`; 160,648f hop 17,690f; keys
+7→6 bombs 13→8; deaths/progression/capacity 0; no state load. Whistle
+earned (not granted). `.7` stays open until TF `& 0x10`.
+
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| entry v1 | `0x76` `(120,205)` **play** | L4 settle + POST_L4 hops; hop 5,138f 1/1 |
+| 66 v1 | `0x66` `(119,173)` timeout | cardinal patrol reaches north-bank Gibdos |
+| 66 v2 | `0x66` `(32,101)` **keys 5→6** | occupancy miss-block; hop 4,241f 1/1 |
+| east77 v1 | `0x77` `(136,165)` **play** | north-bank to ladder x=56 then DOWN; 1/1 |
+| whistle v1 | `0x04` `(135,141)` mode 9 **Recorder** | EastKey→0x04 suffix; hop 17,690f 1/1 |
+
+PNGs: `recordings/l5_entry_continuous_v1_final.png`,
+`recordings/l5_clear66_continuous_v{1,2}_final.png`,
+`recordings/l5_east77_continuous_v1_final.png`,
+`recordings/l5_whistle_continuous_v1.json` (v1 PNG was a stale 0x77 obs;
+RAM is cellar 0x04). Next: extract `run_level5_whistle_tf` and attach
+`exit_whistle_04` → Digdogger `0x24` → TF room `0x14` (`rr-4d53.7`).
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
