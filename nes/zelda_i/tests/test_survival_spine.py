@@ -76,6 +76,8 @@ from zelda_i.survival_spine import (
     level4_west31_success,
     level4_keyup20_stages,
     level4_keyup20_success,
+    level4_map21_stages,
+    level4_map21_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -100,6 +102,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-exit60",
         "level4-west31",
         "level4-keyup20",
+        "level4-room21",
     )
 
 
@@ -446,6 +449,41 @@ def test_level4_keyup20_attaches_maze_west_then_key_up() -> None:
     assert level4_keyup20_success(read_snapshot(ram))
     ram[ADDR_SCREEN] = 0x30
     assert not level4_keyup20_success(read_snapshot(ram))
+
+
+def test_level4_map21_attaches_after_keyup20() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level4_map21 import make_map21_controller
+
+    stages = level4_map21_stages()
+    assert [name for name, _, _ in stages] == ["level4_map_0x21"]
+    report = stages[0][1].report()
+    assert report["segment"] == "level4_map_0x21"
+    assert "bfs" not in report
+    run = SpineRun(through="level4-room21", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_enter_0x21"
+    ctl = make_map21_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x20
+    ram[ADDR_LINK_X] = 120
+    ram[ADDR_LINK_Y] = 205
+    ram[ADDR_LADDER] = 1
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 192
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("UP"))
+    ram[ADDR_LINK_Y] = 141
+    act = ctl.step(read_snapshot(ram))
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_SCREEN] = 0x21
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert level4_map21_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x20
+    assert not level4_map21_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
