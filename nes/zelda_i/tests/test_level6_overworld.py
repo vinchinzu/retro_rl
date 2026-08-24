@@ -26,6 +26,7 @@ from zelda_i.level6_path import (
     BLOCK_OBJECT_TYPE,
     Level6North68Controller,
     left_block_0x68,
+    make_north_18_controller,
     make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
@@ -39,6 +40,8 @@ from zelda_i.level6_spine import (
     level6_clear28_success,
     level6_clear38_stages,
     level6_clear38_success,
+    level6_room18_stages,
+    level6_room18_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -571,6 +574,48 @@ def test_level6_clear28_attaches_occupancy() -> None:
     run = SpineRun(through="level6-clear28", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_clear_0x28"
     assert "level6-clear28" in L6_THROUGH
+
+
+def test_level6_room18_occupancy_up_from_0x28() -> None:
+    from retro_harness.nes import nes_action
+
+    stages = level6_room18_stages()
+    assert [name for name, _, _ in stages] == ["level6_north_0x18"]
+    ctl = make_north_18_controller()
+    assert ctl.source_room == 0x28
+    assert ctl.dest_room == 0x18
+    assert ctl.use_occupancy is False
+    assert ctl.clip_left_up is True
+    act = ctl.step(read_snapshot(_ram(level=6, screen=0x28, x=120, y=181)))
+    assert act.reason == "diamond_clip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    past = make_north_18_controller()
+    act = past.step(read_snapshot(_ram(level=6, screen=0x28, x=96, y=173)))
+    assert act.reason == "north_hold"
+    assert list(act.action) == list(nes_action("UP"))
+    hold = make_north_18_controller()
+    act = hold.step(read_snapshot(_ram(level=6, screen=0x28, x=80, y=165)))
+    assert act.reason == "north_hold"
+    assert list(act.action) == list(nes_action("UP"))
+    band = make_north_18_controller()
+    act = band.step(read_snapshot(_ram(level=6, screen=0x28, x=96, y=109)))
+    assert act.reason == "door_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    push = make_north_18_controller()
+    act = push.step(read_snapshot(_ram(level=6, screen=0x28, x=120, y=101)))
+    assert act.reason == "north_push"
+    assert list(act.action) == list(nes_action("UP"))
+    ram = _ram(level=6, screen=0x18, x=120, y=205)
+    arrive = make_north_18_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_18"
+    assert level6_room18_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x28
+    assert not level6_room18_success(read_snapshot(ram))
+    run = SpineRun(through="level6-room18", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x18"
+    assert "level6-room18" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
