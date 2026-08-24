@@ -100,6 +100,9 @@ from damage heatmaps. Do not block tip progress on combat polish.
   sealed: occupancy y=141 RIGHT enters play `0x19` (v1 1/1). Do not RIGHT
   at leftover y=133. North hole is decorative: y=109 `0x76`, y=101/95 `0x77`,
   hold-UP `(120,93)` not mode 9 (`--through level6-stairs18` stays red).
+  0x19 live is 2× Zol `0x13` + 2× Like-Like `0x17` (enter PNG beam is the
+  Like-Like, not a wizzrobe). Map sprite at south-center `(120,181)` idle
+  is **not** `ADDR_MAP|0x20`.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -125,12 +128,13 @@ bd ready -l zelda_i
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
 (`run_survival_spine.py`); no seamed compose. The live power-on spine holds
-L6 play `0x19` (`l6_room19_continuous_v1` 1/1, 204,632f hop 251f leftover
-`(16,141)`, keys=5, bombs=8, TF=`0x1F`, map=`0x0A`, deaths/progression/
-capacity 0, no state load). Occupancy y=141 RIGHT from 0x18 despite mask
-0 / PNG-black shutter. Map pickup residual (map still `0x0A`). North
-hole decorative (`level6-stairs18` red v1–v5). Rod / Gohma / TF `0x20`
-residual. Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b.
+L6 cleared `0x19` (`l6_clear19_continuous_v1` 1/1, 208,845f hop 4,213f
+leftover `(176,158)`, keys=5, bombs=8, TF=`0x1F`, map=`0x0A`,
+deaths/progression/capacity 0, no state load). Census 2× Zol `0x13` +
+2× Like-Like `0x17`; RoomItemId `0x17` Map on floor not collected
+(map19 v2 stood on `(120,181)` sprite, bit still off). North hole
+decorative. Rod / Gohma / TF `0x20` residual. Do not grant Map/Rod.
+Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
