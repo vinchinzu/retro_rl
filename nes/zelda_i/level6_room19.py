@@ -348,33 +348,26 @@ def make_settle_19_controller() -> Level6Settle19Controller:
 
 # v1 leftover (176,158): occupancy boxed 4-cardinal then (176,93).
 # v2 column x=120 south-band: leftover (120,181) ON the sprite, map still 0x0A.
-# Next: compass analog (120,141).
-MAP_19_GOAL = (120, 141)
-MAP_19_STANDS: tuple[tuple[int, int], ...] = (
-    MAP_19_GOAL,
-    (120, 173),
-    (120, 189),
-    (96, 181),
-    (144, 181),
-)
-MAP_19_COL_X = 120
-MAP_19_BAND_Y = (165, 189)
+# v3 idle (120,141) 120f then column through the sprite; leftover (120,179) 0x0A.
+# v4 occupancy y-first to (136,141) freeze-miss boxed leftover then (176,93).
+# v5 occupancy x-first wandered 244 misses; never idled (136,141); leftover (112,189).
+# Next: axis LEFT to x=136 (v2 leftover LEFT is free) then idle (136,141).
+MAP_19_GOAL = (136, 141)
+MAP_19_STANDS: tuple[tuple[int, int], ...] = (MAP_19_GOAL,)
 MAP_19_STAND_TOL = 4
-MAP_19_HOLD = 120
 MAP_19_MAX_FRAMES = 6000
+MAP_19_SAMPLE_PERIOD = 12
 
 
 @dataclass
 class Level6Map19Controller:
-    """Occupancy onto the 0x19 Map drop. Success is ADDR_MAP bit 0x20."""
+    """Axis onto (136,141) Map cell. Success is ADDR_MAP bit 0x20."""
 
     spec_id: str = "level6_map_0x19"
     room: int = LEVEL6_MAP_ROOM
-    stands: tuple[tuple[int, int], ...] = MAP_19_STANDS
+    goal: tuple[int, int] = MAP_19_GOAL
     max_frames: int = MAP_19_MAX_FRAMES
     frames: int = 0
-    stand_index: int = 0
-    hold_frames: int = 0
     success: bool = False
     failed: bool = False
     notes: list[str] = field(default_factory=list)
@@ -385,24 +378,37 @@ class Level6Map19Controller:
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
+        item_id = int(snap.room_item_id)
+        map_bits = int(snap.map)
         self.leftover = {
             "x": int(snap.link_x),
             "y": int(snap.link_y),
             "mode": int(snap.mode),
             "screen": int(snap.screen),
-            "map": int(snap.map),
-            "room_item_id": int(snap.room_item_id),
+            "map": map_bits,
+            "room_item_id": item_id,
+            "tile": int(snap.colliding_tile),
         }
-        if force or self.frames <= 2 or self.frames % 250 == 0:
+        changed = bool(self.samples) and (
+            self.samples[-1]["map"] != map_bits
+            or self.samples[-1]["room_item_id"] != item_id
+        )
+        if (
+            force
+            or changed
+            or self.frames <= 2
+            or self.frames % MAP_19_SAMPLE_PERIOD == 0
+        ):
             self.samples.append(
                 {
                     "frame": self.frames,
                     "x": int(snap.link_x),
                     "y": int(snap.link_y),
                     "reason": action.reason,
-                    "map": int(snap.map),
-                    "room_item_id": int(snap.room_item_id),
-                    "stand": self.stands[self.stand_index % len(self.stands)],
+                    "map": map_bits,
+                    "room_item_id": item_id,
+                    "tile": int(snap.colliding_tile),
+                    "goal": self.goal,
                     "misses": self.walker.misses,
                 }
             )
@@ -464,25 +470,18 @@ class Level6Map19Controller:
         ):
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
 
-        gx = MAP_19_COL_X
-        dest = self.stands[self.stand_index % len(self.stands)]
+        gx, gy = self.goal
+        # Axis only: occupancy from leftover boxed (v1/v4) then wandered (v5).
         if abs(xy[0] - gx) > MAP_19_STAND_TOL:
             self.walker.last_dir = None
             btn = "LEFT" if xy[0] > gx else "RIGHT"
             return self._emit(snap, FrameAction(nes_action(btn), "map_column"))
-        if abs(xy[0] - dest[0]) <= MAP_19_STAND_TOL and abs(xy[1] - dest[1]) <= MAP_19_STAND_TOL:
+        if abs(xy[1] - gy) > MAP_19_STAND_TOL:
             self.walker.last_dir = None
-            self.hold_frames += 1
-            if self.hold_frames >= MAP_19_HOLD:
-                self.notes.append(f"next_stand_{dest[0]}_{dest[1]}")
-                self.stand_index += 1
-                self.hold_frames = 0
-            return self._emit(snap, FrameAction(nes_idle_action(), "map_idle"))
-
-        self.hold_frames = 0
+            btn = "DOWN" if xy[1] < gy else "UP"
+            return self._emit(snap, FrameAction(nes_action(btn), "map_row"))
         self.walker.last_dir = None
-        btn = "DOWN" if xy[1] < dest[1] else "UP"
-        return self._emit(snap, FrameAction(nes_action(btn), "map_row"))
+        return self._emit(snap, FrameAction(nes_idle_action(), "map_idle"))
 
     def report(self) -> dict[str, Any]:
         return {
@@ -491,15 +490,15 @@ class Level6Map19Controller:
             "frames": self.frames,
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "column x=120 first then south-band idle; ADDR_MAP|0x20",
+            "policy": "axis LEFT to x=136 then idle (136,141); ADDR_MAP|0x20",
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
-            "stand_index": self.stand_index,
             "spec_id": self.spec_id,
             "room": self.room,
+            "goal": self.goal,
         }
 
 
 def make_map19_controller() -> Level6Map19Controller:
-    """Occupancy onto the 0x19 Map. Do not grant ADDR_MAP."""
+    """Axis onto the 0x19 Map cell. Do not grant ADDR_MAP."""
     return Level6Map19Controller()
