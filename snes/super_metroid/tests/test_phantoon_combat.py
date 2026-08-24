@@ -207,6 +207,11 @@ def test_release_band_is_window1_height_not_floor_hop() -> None:
     assert in_release_band(_state(samus_y=148, enemy0_y=96, enemy0_x=48))
     assert not in_release_band(_state(samus_y=138, enemy0_y=96, enemy0_x=48))
     assert not in_release_band(_state(samus_y=187, enemy0_y=96, enemy0_x=48))
+    # Fig-8 (53, 82): W1 dy 28–56 → fire y=110–138, not the rain hop at 148.
+    assert in_release_band(_state(samus_y=124, enemy0_y=82, enemy0_x=53))
+    assert in_release_band(_state(samus_y=138, enemy0_y=82, enemy0_x=53))
+    assert not in_release_band(_state(samus_y=148, enemy0_y=82, enemy0_x=53))
+    assert not in_release_band(_state(samus_y=160, enemy0_y=82, enemy0_x=53))
 
 
 def test_seated_right_side_open_does_not_chase() -> None:
