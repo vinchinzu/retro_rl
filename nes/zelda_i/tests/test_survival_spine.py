@@ -148,6 +148,8 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-exit75",
         "level6-south09",
         "level6-south19",
+        "level6-clear29",
+        "level6-east29",
     )
 
 

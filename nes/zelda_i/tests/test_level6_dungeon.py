@@ -14,6 +14,7 @@ from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
     ROOM_09_SPEC,
     ROOM_19_SPEC,
+    ROOM_29_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
@@ -29,6 +30,7 @@ from zelda_i.level6_dungeon import (
     ROOM_L6_WEST_WIZZROBE,
     ROOM_L6_MAP,
     ROOM_L6_ROD_WIZZ,
+    ROOM_L6_DARK_29,
     ROOM_L6_WIZZROBE_28,
     level6_room_09_clear_success,
     level6_room_19_clear_success,
@@ -39,6 +41,7 @@ from zelda_i.level6_dungeon import (
     level6_room_78_clear_success,
     level6_room_7a_key_success,
     make_clear_09_controller,
+    make_clear_29_controller,
     make_clear_19_controller,
     make_clear_28_controller,
     make_compass_68_controller,
@@ -149,6 +152,14 @@ def test_room_ids_and_specs() -> None:
     assert WIZZROBE_ORANGE_TYPE in ROOM_09_SPEC.enemy_types
     assert 0x2B not in ROOM_09_SPEC.enemy_types
     assert 0x68 not in ROOM_09_SPEC.enemy_types
+    assert ROOM_L6_DARK_29 == 0x29
+    assert ROOM_29_SPEC.room_id == 0x29
+    assert ROOM_29_SPEC.combat.occupancy_patrol
+    assert WIZZROBE_ORANGE_TYPE in ROOM_29_SPEC.enemy_types
+    assert WIZZROBE_BLUE_OBJECT_TYPE in ROOM_29_SPEC.enemy_types
+    assert 0x2B not in ROOM_29_SPEC.enemy_types
+    assert 0x40 not in ROOM_29_SPEC.enemy_types
+    assert make_clear_29_controller().spec is ROOM_29_SPEC
 
 
 def test_live_wizzrobes_type_and_hp() -> None:
