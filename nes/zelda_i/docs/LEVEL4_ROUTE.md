@@ -6,7 +6,7 @@
 `(112,144)` then hold4 `PATH_12_TO_GLEEOK` into `0x13` `(32,141)`,
 south-stand Gleeok. Isolated BFS is still not this tape. Do not claim
 Clean STATUS — Survival assist only. HC was not mid-room. `.6` closed.
-Next: L4 exit → L5 (`rr-4d53.7`).
+Next: L5 TF is on the tape (`rr-4d53.7` closed); L5 exit → L6.
 
 **Beads:** `rr-0fx` Z4.1 live entry (done); `rr-5lu` interior residual;
 epic `rr-q3n`.

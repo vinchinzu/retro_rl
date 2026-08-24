@@ -57,6 +57,7 @@
 | Power-on → L5 clear `0x66` | **1/1 continuous Survival**; occupancy miss-block (v1 cardinal timeout `(119,173)` 2/3); 138,634f hop 4,241f; leftover `(32,101)` keys 5→6; deaths 0; progression/capacity writes 0; no state load | `l5_clear66_continuous_v2.json` / `_final.png` |
 | Power-on → L5 east key `0x77` | **1/1 continuous Survival**; north-bank to ladder x=56 then DOWN; Pols Voice clear leftover `(136,165)` keys 7; 142,958f; deaths 0; progression/capacity writes 0; no state load | `l5_east77_continuous_v1.json` / `_final.png` |
 | Power-on → L5 Recorder `0x04` | **1/1 continuous Survival**; East Key → 0x66 bomb-west → 0x04; 160,648f hop 17,690f; mode 9 `(135,141)`; keys 7→6 bombs 13→8; whistle earned; deaths 0; progression/capacity writes 0; no state load | `l5_whistle_continuous_v1.json` |
+| Power-on → L5 TF `0x10` | **1/1 continuous Survival**; cellar `0x04` → Digdogger `0x24` → room `0x14` mode 18 `(120,149)`; 173,961f hop 13,311f; TF=`0x0F→0x1F`; keys 6→5 bombs=8; deaths 0; progression/capacity writes 0; no state load | `l5_tf_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -77,15 +78,13 @@ is on the tape (`l4_bomb11_continuous_v2` 2/2, leftover `(120,189)`).
 `(120,133)`, keys 4→5). 0x12 Vire clear is on the tape
 (`l4_clear12_continuous_v1` 2/2, leftover `(128,117)`). Gleeok enter and
 L4 TF `0x08` are on the tape (`l4_tf_continuous_v1` 2/2, TF=`0x0F`).
-`.6` closed. HC was not mid-room. Power-on spine now holds L5 Recorder
-in cellar `0x04` (`l5_whistle_continuous_v1` 1/1). Digdogger / TF `0x10`
-is not on the tape (`.7` still open).
+`.6` closed. HC was not mid-room. Power-on spine now holds L5 TF `0x10`
+(`l5_tf_continuous_v1` 1/1, room `0x14` mode 18). `.7` and `.4` closed.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
-→ Recorder seam is closed as an assisted pin (`rr-4d53.5`); attaching that
-pin to the proven `0x04`→TF suffix and composing power-on → L5 TF are still
-open (`rr-4d53.4`). The active backward pass is documented below and in
-`docs/plan.md`.
+→ Recorder seam (`rr-4d53.5`) is attached on the continuous tape through
+L5 TF `0x10` (`rr-4d53.7` / `rr-4d53.4` closed). The active backward pass
+is documented below and in `docs/plan.md`.
 
 ## Backward endgame recon (fixture-only; does not change either gate)
 
@@ -343,12 +342,11 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level4` is green (`0x03` mode 18,
-   TF `0x0F`, v1 2/2). `rr-4d53.6` closed. Next is L4 exit → L5 TF
-   (`rr-4d53.7`). Isolated BFS is still not a spine path. See
+1. **Active Survival tip:** `--through level5` is green (`0x14` mode 18,
+   TF `0x1F`, v1 1/1). `rr-4d53.7` and `rr-4d53.4` closed. Next is L5
+   fanfare settle → L6. Isolated BFS is still not a spine path. See
    `docs/plan.md`. Isolated `Level3*` pins do not close spine beads. No
    seamed compose. Bomb/key count pokes are documented Survival shortcuts,
-   not Clean. HC in 0x13 was not mid-room on this tape.
-2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`) until the
-   spine through L5 exists.
+   not Clean.
+2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

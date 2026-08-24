@@ -234,6 +234,51 @@ def test_level5_whistle_stop_requires_recorder() -> None:
     assert run.report()["stop"] == "level5_whistle_0x04"
 
 
+def test_level5_exit04_stop_is_play_05_not_cellar() -> None:
+    from zelda_i.level5_boss_path import STOP_EXIT04, TF_SUFFIX_STOPS
+    from zelda_i.level5_spine import L5_THROUGH, level5_exit04_success
+
+    assert "level5-exit04" in L5_THROUGH
+    assert STOP_EXIT04 in TF_SUFFIX_STOPS
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 5
+    ram[ADDR_SCREEN] = 0x05
+    ram[ADDR_TRIFORCE] = 0x0F
+    ram[ADDR_RAFT] = 1
+    ram[ADDR_LADDER] = 1
+    snap = read_snapshot(ram)
+    assert level5_exit04_success(snap, whistle=1)
+    assert not level5_exit04_success(snap, whistle=0)
+    ram[ADDR_SCREEN] = 0x04
+    ram[ADDR_MODE] = 9
+    assert not level5_exit04_success(read_snapshot(ram), whistle=1)
+    run = SpineRun(through="level5-exit04", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level5_exit_0x04"
+
+
+def test_level5_tf_stop_requires_bit_0x10_in_room_0x14() -> None:
+    from zelda_i.anchors import LEVEL5_TF_ROOM, TF_BIT_L5
+    from zelda_i.level5_spine import L5_STOPS, level5_tf_success
+
+    assert LEVEL5_TF_ROOM == 0x14
+    assert TF_BIT_L5 == 0x10
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 5
+    ram[ADDR_SCREEN] = 0x14
+    ram[ADDR_TRIFORCE] = 0x1F
+    snap = read_snapshot(ram)
+    assert level5_tf_success(snap)
+    ram[ADDR_TRIFORCE] = 0x0F
+    assert not level5_tf_success(read_snapshot(ram))
+    ram[ADDR_TRIFORCE] = 0x1F
+    ram[ADDR_SCREEN] = 0x24
+    assert not level5_tf_success(read_snapshot(ram))
+    run = SpineRun(through="level5", success=True, boot_frames=199)
+    assert run.report()["stop"] == L5_STOPS["level5"] == "level5_triforce_0x10"
+
+
 def test_lost_hills_east_ledge_steps_left_before_down() -> None:
     controller = OverworldToLevel5Controller()
     controller.phase = Level5NavPhase.FREE_POCKET

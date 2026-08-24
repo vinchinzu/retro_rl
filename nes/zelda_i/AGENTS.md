@@ -19,7 +19,7 @@ uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 # First file slot / first quest. Records MP4 unless --no-video.
 uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2 --trials 1
-uv run python nes/zelda_i/scripts/run_survival_spine.py --through level5-whistle --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level5 --no-video --trials 1
 
 uv run pytest zelda_i/tests retro_harness/adventure/tests -q
 bd ready -l zelda_i
@@ -40,7 +40,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
-| `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 |
+| `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -77,6 +77,10 @@ from damage heatmaps. Do not block tip progress on combat polish.
 - L5 `0x76→0x77` is a key door: clear north `0x66` first. Fixed key can leave
   Link on the river ladder x≈56,y≈117; finish DOWN before horizontal align.
   Do not poke doors or keys for a route claim.
+- L5 Recorder cellar `0x04` leftover `(135,141)`: ladder x=176 DOWN, pit y=189,
+  mouth x=48 UP. 0x06 return is `take_block_stairs_06` RIGHT onto `(128,141)`
+  after 0x68 push; center idle at `(120,141)` never warps. 0x65 north shutter
+  is one-way; bomb-east to 0x66.
 - Lost Hills entry from `0x1C` settles on the east ledge x≈240,y≈141; alternate
   short LEFT/DOWN bursts before the four consecutive UP wraps.
 - L9 final Patra `0x52`: body `0x47` + 8 eyes `0x25`; stand 30 px south, pulse
@@ -98,17 +102,14 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. The live power-on spine holds L4 TF `0x08` and is on L5 through Recorder
-`0x04` (`l5_whistle_continuous_v1` 1/1, 160,648f, mode 9 `(135,141)`,
-keys=6 bombs=8, deaths/progression/capacity 0, no state load). L4 fanfare
-settled 284f onto island `0x45`; `POST_L4_TO_LEVEL5_HOPS` (not old At4A)
-entered `0x76` `(120,205)` in 5,138f. 0x66 v1 timeout 12,000f leftover
-`(119,173)` 2/3 Gibdo north of the river (cardinal patrol). v2 occupancy
-miss-block 4,241f leftover `(32,101)` keys 5→6. East key: north-bank
-RIGHT to ladder x=56 then DOWN; Pols Voice 0x77 leftover `(136,165)`
-keys 7. Recorder suffix 17,690f bombs 13→8 keys 7→6. Isolated BFS banned.
-`.6` closed. `.7` still open until Digdogger TF `0x10`.
-Next: 0x04 → Digdogger → L5 TF (`rr-4d53.7`).
+(`run_survival_spine.py`); no seamed compose. The live power-on spine holds L5 TF `0x10`
+(`l5_tf_continuous_v1` 1/1, 173,961f, mode 18 room `0x14` `(120,149)`,
+TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity 0, no state load).
+Recorder leftover `(135,141)` mode 9; `exit_whistle_04` then 0x06
+block-stairs RIGHT onto `(128,141)` (center idle never warps); 0x65
+north shutter sealed so bomb-east 0x66; skip-fight to Digdogger; whistle
+shrink 0x38→0x18. Isolated BFS banned. `.7` and `.4` closed.
+Next: L5 fanfare settle → L6 entry (do not grant Whistle).
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.

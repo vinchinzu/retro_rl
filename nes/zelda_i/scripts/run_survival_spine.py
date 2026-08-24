@@ -18,7 +18,12 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
-from zelda_i.survival_spine import SPINE_THROUGH, run_survival_spine, spine_final_fields
+from zelda_i.survival_spine import (
+    SPINE_THROUGH,
+    run_survival_spine,
+    spine_final_fields,
+    validate_l5_endpoint,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -69,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
             }
         finally:
             env.close()
+        if args.through == "level5" and payload.get("ok"):
+            validate_l5_endpoint(payload)
         write_json_report(RECORDINGS_DIR / f"{tag}.json", payload)
         results.append(payload)
         video = payload.get("video") or {}
