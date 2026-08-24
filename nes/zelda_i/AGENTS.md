@@ -41,7 +41,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
-| `level6_spine.py` | L5 TF settle → L6 entry (0x1B west exit **blocked**) |
+| `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -84,6 +84,11 @@ from damage heatmaps. Do not block tip progress on combat polish.
   is one-way; bomb-east to 0x66.
 - Lost Hills entry from `0x1C` settles on the east ledge x≈240,y≈141; alternate
   short LEFT/DOWN bursts before the four consecutive UP wraps.
+- Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
+  (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
+  a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
+  SE blue paths (align_x 160 / 208), not x=112. 0x15 Lynels: inland then
+  south band y=165–189. Do not grant Whistle.
 - L9 final Patra `0x52`: body `0x47` + 8 eyes `0x25`; stand 30 px south, pulse
   UP+A. After clear, recenter x≈120 before UP into Ganon `0x42`.
 - L9 play `0x13` north is a **wall**. `0x03` south is a wall; east is bomb.
@@ -103,19 +108,14 @@ bd ready -l zelda_i
 ```
 
 Tip + parked work live in `docs/plan.md`. Spine is continuous only
-(`run_survival_spine.py`); no seamed compose. The live power-on spine holds L5 TF `0x10`
-(`l5_tf_continuous_v1` 1/1, 173,961f, mode 18 room `0x14` `(120,149)`,
+(`run_survival_spine.py`); no seamed compose. The live power-on spine holds
+L6 west 0x78 (`l6_west_continuous_v1` 1/1, 182,415f, play `0x78` `(144,141)`,
 TF=`0x1F`, keys=5 bombs=8, deaths/progression/capacity 0, no state load).
-`--through level6-entry` is wired (`settle_l5_tf` then
-`POST_L5_TO_LEVEL6_HOPS`) but **not live**: Isolated `Level5Complete`
-settle is 1/1 onto OW `0x0B` `(112,125)` (1115f, TF bit `0x10`, whistle
-earned). Hop 0 DOWN lands Lost Hills `0x1B` `(112,61)`. **Wrong belief:**
-walkthrough `0x0B ↓ ←×7` is not a free walk. 0x0B west/east are sealed;
-0x1B inland is a rock bowl (leftovers `(96,141)`, `(40,93)` NW alcove,
-`(32,165)` west notch — none reach x≤16); 0x1B RIGHT wraps; north-edge
-LEFT at `(112,61)` is solid (`l5_to_l6_v25`). Isolated BFS banned.
-Next: 0x1B west door channel (clip) or other 0x0B exit — do not grant
-Whistle. Do not poke Rod/doors/keys.
+`--through level6-entry` 1/1 `l6_entry_continuous_v2` 179,355f room `0x79`
+`(120,205)`. `--through level6-east-key` 1/1 keys 5→6. `--through level6-west`
+1/1 keys 6→5. 0x1B west is y=141 LEFT after south-around the x≈72 rock
+(not north-edge LEFT). Compass 0x68 / Rod / Gohma / TF `0x20` residual.
+Do not grant Whistle. Do not poke Rod/doors/keys. Ignore 0x2b/0x68.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
