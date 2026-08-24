@@ -38,7 +38,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `dungeon.py` + `dungeon_ids.py` | Combat engine + enemy/item IDs |
 | `level*_dungeon.py` | **Room specs + stop predicates only** |
 | `bomb_wall_path.py`, `level2_bomb_path.py` | Parameterized bomb-wall (`make_*`) |
-| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` | L4 path controllers (dungeon is specs only) |
+| `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` | L4 path controllers (dungeon is specs only) |
 | `level*_path.py` (L5 facade + west/whistle/cellar/tf), `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
@@ -114,9 +114,11 @@ Continuous `l4_stepladder_continuous_v34` 1/1: east grey dock UP at x=175
 y=189, y-first to y=141, LEFT onto `(136,141)`; `ADDR_LADDER` set; 118,292f.
 Continuous `l4_exit60_continuous_v2` 1/1: item freeze 150f, reverse dock
 DOWN at x=175/176 (v1 LEFT at `(176,173)` mid-dock solid), west-aisle UP;
-0x32 play leftover `(192,189)`; 118,806f hop 514f. Isolated BFS is still
-banned. Next is west `0x32→0x31→0x30` then KEY-UP `0x20`; do not close `.6`
-until TF `0x08`.
+0x32 play leftover `(192,189)`; 118,806f hop 514f.
+Continuous `l4_west31_continuous_v1` 1/1: south-U around pushed 0x68
+`(48,189)→(48,141)→(16,141)`; leftover `(208,141)` play `0x31`; hop 405f.
+Isolated BFS is still banned. Next is `0x31` maze west → `0x30` KEY-UP
+`0x20`; do not close `.6` until TF `0x08`.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm
 `rr-doua`. Isolated `Level3*` pins cannot close spine beads
 (`docs/LEVEL3_ROUTE.md` § Spine attach). L9 / hygiene / isolated L4 parked.
