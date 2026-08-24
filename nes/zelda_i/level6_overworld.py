@@ -50,7 +50,7 @@ LEVEL6_KEESE_ROOM = 0x58  # UP of 0x68; 8× Keese 0x1b + key drop
 LEVEL6_TRAPS_ROOM = 0x48  # UP of 0x58; blade traps; north is free after Keese clear
 LEVEL6_WIZZROBE_38_ROOM = 0x38  # UP of 0x48; hard wizzrobe / Like-Like / Bubble
 LEVEL6_WIZZROBE_28_ROOM = 0x28  # UP of 0x38; wizzrobes; optional bomb-east shortcut
-LEVEL6_GLEEOK_ROOM = 0x18  # UP of cleared 0x28; live Gleeok enter (v7)
+LEVEL6_GLEEOK_ROOM = 0x18  # UP of cleared 0x28; live 0x44 Gleeok (not 0x43)
 LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22
