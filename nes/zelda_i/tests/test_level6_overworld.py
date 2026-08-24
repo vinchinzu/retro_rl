@@ -58,6 +58,8 @@ from zelda_i.level6_spine import (
     level6_clear19_success,
     level6_map19_stages,
     level6_map19_success,
+    level6_room09_stages,
+    level6_room09_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -936,10 +938,18 @@ def test_level6_map19_occupancy_then_idle() -> None:
     assert [name for name, _, _ in stages] == ["level6_map_0x19"]
     assert MAP_19_GOAL == (136, 141)
     leftover = make_map19_controller()
-    act = leftover.step(read_snapshot(_ram(level=6, screen=0x19, x=176, y=158)))
+    leftover_ram = _ram(level=6, screen=0x19, x=176, y=158)
+    leftover_ram[ADDR_OBJ_TYPE + 3] = 0x40
+    leftover_ram[ADDR_OBJ_HP + 3] = 64
+    leftover_ram[ADDR_LINK_X + 3] = 48
+    leftover_ram[ADDR_LINK_Y + 3] = 109
+    act = leftover.step(read_snapshot(leftover_ram))
     assert act.reason == "map_column"
     assert list(act.action) == list(nes_action("LEFT"))
     assert list(act.action) != list(nes_action("RIGHT"))
+    assert leftover.samples[-1]["objects"] == [
+        {"slot": 3, "type": 0x40, "x": 48, "y": 109, "hp": 64}
+    ]
     col = make_map19_controller()
     act = col.step(read_snapshot(_ram(level=6, screen=0x19, x=136, y=158)))
     assert act.reason == "map_row"
@@ -960,6 +970,52 @@ def test_level6_map19_occupancy_then_idle() -> None:
     run = SpineRun(through="level6-map19", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_map_0x19"
     assert "level6-map19" in L6_THROUGH
+    assert list(nes_idle_action()) != list(nes_action("UP"))
+
+
+def test_level6_room09_axis_left_then_keyup() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_overworld import LEVEL6_ROD_WIZZ_ROOM
+    from zelda_i.level6_room19 import (
+        NORTH_09_COLUMN_X,
+        NORTH_09_DOOR_X,
+        make_room09_controller,
+    )
+
+    stages = level6_room09_stages()
+    assert [name for name, _, _ in stages] == ["level6_room_0x09"]
+    assert LEVEL6_ROD_WIZZ_ROOM == 0x09
+    assert NORTH_09_COLUMN_X == 136
+    leftover = make_room09_controller()
+    act = leftover.step(read_snapshot(_ram(level=6, screen=0x19, x=176, y=158)))
+    assert act.reason == "north_column"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    inland = make_room09_controller()
+    act = inland.step(read_snapshot(_ram(level=6, screen=0x19, x=136, y=141)))
+    assert act.reason == "north_path"
+    assert list(act.action) == list(nes_action("UP"))
+    band = make_room09_controller()
+    act = band.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=109)))
+    assert act.reason == "north_push"
+    assert list(act.action) == list(nes_action("UP"))
+    south = make_room09_controller()
+    act = south.step(read_snapshot(_ram(level=6, screen=0x19, x=120, y=189)))
+    assert act.reason == "north_south_halt"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert NORTH_09_DOOR_X == 120
+    ram = _ram(level=6, screen=0x09, x=120, y=205)
+    arrive = make_room09_controller()
+    act = arrive.step(read_snapshot(ram))
+    assert arrive.success
+    assert act.reason == "arrived_09"
+    assert level6_room09_success(read_snapshot(ram))
+    still = _ram(level=6, screen=0x19, x=120, y=93)
+    assert not level6_room09_success(read_snapshot(still))
+    run = SpineRun(through="level6-room09", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_room_0x09"
+    assert "level6-room09" in L6_THROUGH
     assert list(nes_idle_action()) != list(nes_action("UP"))
 
 
