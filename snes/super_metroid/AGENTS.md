@@ -30,7 +30,8 @@ beams `0x1007` max PB 5 (spark hop **615f** ×2 from the Moat leave). Do
 dual **403f** ×2 `0xCAF6` `(1063,907)` p9 gs=8 (rr-ahjo). Main Shaft → basement
 scratch dual **1208f** ×2 `0xCC6F` `(657,92)` p24 gs=8 (rr-4btp). Basement →
 Phantoon *room* scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8 (rr-cjpp);
-next is the Phantoon fight (`rr-tlaq`; do not STATUS-promote). Ice-pin
+Phantoon fight (`rr-tlaq`) window-1 chip GREEN, full kill RED (residual
+`docs/tasks/rr-tlaq-residual.md`; do not STATUS-promote). Ice-pin
 compose through WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
 checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
 (keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot
