@@ -28,14 +28,18 @@ from super_metroid.combat.phantoon import (
     PhantoonStrategy,
     _fire_window,
     _go_to_seat,
+    _rain_corner_wait,
     beam_charge,
     charge_window_ok,
     enemy_extra,
     eye_open,
     list_pickups,
     play_phantoon_fight,
+    rain_phase,
+    right_park,
     seated,
 )
+from super_metroid.routes.controller_common import is_morph, unmorph
 from super_metroid.combat.probe import (
     ProbeSession,
     open_state_env,
@@ -205,7 +209,7 @@ def _body_func(session: ProbeSession) -> int:
 
 
 def _fig8_left_open(session: ProbeSession) -> bool:
-    """W1-style open: eye IL / fig-8 vuln, not rain, not right-side."""
+    """Fig-8 open (left or right). Skip rain. Right park is a new window."""
     st = session.state
     return eye_open(st, session.env) and charge_window_ok(
         _body_func(session), st.enemy0_x
@@ -213,39 +217,93 @@ def _fig8_left_open(session: ProbeSession) -> bool:
 
 
 def _wait_open_window(
-    session: ProbeSession, *, timeout: int, func_log: list | None = None
+    session: ProbeSession,
+    *,
+    timeout: int,
+    func_log: list | None = None,
+    rain_dump: list | None = None,
 ) -> bool:
     from retro_harness.actions import buttons, idle_action
 
     last = None
+    strat = PhantoonStrategy()
+    rain_frames = 0
+    # Park x at func change — live x crosses 155 mid fig-8 then opens left.
+    park_x = int(session.state.enemy0_x)
     for _ in range(timeout):
         st = session.state
         func = _body_func(session)
         extra = enemy_extra(session.env)
         key = extra.get("func")
-        if func_log is not None and key != last:
-            func_log.append(
-                {
-                    "frame": session.frame,
-                    "func": key,
-                    "eye_ilist": extra.get("eye_ilist"),
-                    "enemy_xy": [st.enemy0_x, st.enemy0_y],
-                    "health": st.health,
-                    "charge": beam_charge(session.env),
-                    "fig8_left": _fig8_left_open(session),
-                }
-            )
+        if key != last:
+            park_x = int(st.enemy0_x)
+            if func_log is not None:
+                func_log.append(
+                    {
+                        "frame": session.frame,
+                        "func": key,
+                        "eye_ilist": extra.get("eye_ilist"),
+                        "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                        "park_x": park_x,
+                        "samus_xy": [st.samus_x, st.samus_y],
+                        "pose": st.pose,
+                        "health": st.health,
+                        "charge": beam_charge(session.env),
+                        "fig8_open": _fig8_left_open(session),
+                    }
+                )
             last = key
-        if _fig8_left_open(session):
-            return True
         if int(st.health) == 0:
             return False
-        if int(st.samus_x) > PhantoonStrategy().seat_x_max:
-            hold_dir = "LEFT"
+        if rain_phase(func):
+            if rain_dump is not None and rain_frames < 80:
+                rain_dump.append(
+                    {
+                        "frame": session.frame,
+                        "func": key,
+                        "health": st.health,
+                        "samus_xy": [st.samus_x, st.samus_y],
+                        "pose": st.pose,
+                        "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                        "charge": beam_charge(session.env),
+                    }
+                )
+                rain_frames += 1
+            _rain_corner_wait(session, strat)
+            continue
+        opened = _fig8_left_open(session)
+        if right_park(park_x):
+            if is_morph(int(st.pose)):
+                try:
+                    unmorph(session)
+                except Exception:
+                    session.step(idle_action(), "phan_unmorph")
+                continue
+            seated_right = int(st.samus_x) >= strat.right_seat_x_min
+            if opened and seated_right:
+                return True
+            if int(st.samus_x) < strat.right_seat_x:
+                names = ["RIGHT"]
+                if int(st.samus_y) >= strat.floor_y_min - 4:
+                    names.append("B")
+                if st.selected_item == WEAPON_BEAM:
+                    names.append("X")
+                session.step(buttons(*names), "phan_right_seat")
+                continue
+            if opened:
+                return True
             if st.selected_item == WEAPON_BEAM:
-                session.step(buttons(hold_dir, "X"), "phan_wait_eye")
+                session.step(buttons("X"), "phan_wait_eye")
             else:
-                session.step(buttons(hold_dir), "phan_wait_eye")
+                session.step(idle_action(), "phan_wait_eye")
+            continue
+        if opened:
+            return True
+        if int(st.samus_x) > strat.seat_x_max:
+            if st.selected_item == WEAPON_BEAM:
+                session.step(buttons("LEFT", "X"), "phan_wait_eye")
+            else:
+                session.step(buttons("LEFT"), "phan_wait_eye")
         elif st.selected_item == WEAPON_BEAM:
             session.step(buttons("X"), "phan_wait_eye")
         else:
@@ -322,9 +380,13 @@ def _one_window(
     seated_snap = _snapshot(session)
     opened = False
     wait_funcs: list[dict[str, object]] = []
-    if seated(session.state) and int(session.state.health) > 0:
+    rain_dump: list[dict[str, object]] = []
+    if int(session.state.health) > 0:
         opened = _wait_open_window(
-            session, timeout=wait, func_log=wait_funcs
+            session,
+            timeout=wait,
+            func_log=wait_funcs,
+            rain_dump=rain_dump,
         )
     pre = _snapshot(session)
     if opened:
@@ -360,6 +422,7 @@ def _one_window(
         "spends": fire["spends"],
         "events": fire["events"],
         "wait_funcs": wait_funcs,
+        "rain_dump": rain_dump,
     }
 
 
@@ -387,6 +450,30 @@ def cmd_window(args: argparse.Namespace) -> int:
             if int(session.state.health) == 0:
                 break
             if not result["success"]:
+                from retro_harness.actions import idle_action
+
+                miss_dump: list[dict[str, object]] = []
+                strat = PhantoonStrategy()
+                for _ in range(30):
+                    st = session.state
+                    miss_dump.append(
+                        {
+                            "frame": session.frame,
+                            "func": enemy_extra(session.env).get("func"),
+                            "health": st.health,
+                            "samus_xy": [st.samus_x, st.samus_y],
+                            "pose": st.pose,
+                            "enemy_xy": [st.enemy0_x, st.enemy0_y],
+                            "charge": beam_charge(session.env),
+                        }
+                    )
+                    if int(st.health) == 0:
+                        break
+                    if rain_phase(_body_func(session)):
+                        _rain_corner_wait(session, strat)
+                    else:
+                        session.step(idle_action(), "phan_miss_dump")
+                result["miss_dump"] = miss_dump
                 break
         first = windows[0]
         success = all(bool(w["success"]) for w in windows) and len(windows) == count

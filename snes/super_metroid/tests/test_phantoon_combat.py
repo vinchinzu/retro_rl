@@ -24,7 +24,10 @@ from super_metroid.combat.phantoon import (
     func_vulnerable,
     in_release_band,
     charge_window_ok,
+    rain_corner_morph,
+    rain_phase,
     rain_vulnerable,
+    right_park,
     phantoon_phase,
     play_phantoon_fight,
     seated,
@@ -137,12 +140,34 @@ def test_rain_vulnerable_is_d767_d788_not_figure8() -> None:
     assert not rain_vulnerable(0xD5E7)
 
 
-def test_charge_window_ok_skips_rain_and_right_side() -> None:
+def test_charge_window_ok_skips_rain_allows_right_fig8() -> None:
     assert charge_window_ok(0xD60D, 120)
     assert charge_window_ok(0xD4A8, 120)
+    assert charge_window_ok(0xD60D, 203)
     assert not charge_window_ok(0xD788, 128)
     assert not charge_window_ok(0xD767, 128)
-    assert not charge_window_ok(0xD60D, 200)
+    assert not charge_window_ok(0xD82A, 203)
+
+
+def test_rain_phase_is_cycle_not_fig8() -> None:
+    assert rain_phase(0xD82A)
+    assert rain_phase(0xD73F)
+    assert rain_phase(0xD767)
+    assert rain_phase(0xD788)
+    assert rain_phase(0xD7D5)
+    assert rain_phase(0xD7F7)
+    assert not rain_phase(0xD60D)
+    assert not rain_phase(0xD5E7)
+    assert not rain_phase(0xD4A8)
+
+
+def test_right_park_and_rain_corner_morph() -> None:
+    assert right_park(203)
+    assert not right_park(120)
+    assert rain_corner_morph(_state(pose=29, samus_x=40, samus_y=187))
+    assert rain_corner_morph(_state(pose=29, samus_x=200, samus_y=187))
+    assert not rain_corner_morph(_state(pose=1, samus_x=40, samus_y=187))
+    assert not rain_corner_morph(_state(pose=29, samus_x=100, samus_y=187))
 
 
 def test_floor_release_ok_is_stand_crouch_not_jump() -> None:
@@ -161,6 +186,10 @@ def test_release_band_is_window1_height_not_floor_hop() -> None:
     assert not in_release_band(_state(samus_y=174, enemy0_y=96))
     assert not in_release_band(_state(samus_y=187, enemy0_y=108))
     assert not in_release_band(_state(samus_y=100, enemy0_y=108))
+    # Right fig-8 (203, 83): same jump y≈149 (dy=66). y=159 was a miss.
+    assert in_release_band(_state(samus_y=149, enemy0_y=83, enemy0_x=203))
+    assert not in_release_band(_state(samus_y=159, enemy0_y=83, enemy0_x=203))
+    assert not in_release_band(_state(samus_y=187, enemy0_y=83, enemy0_x=203))
 
 
 def test_seated_right_side_open_does_not_chase() -> None:
