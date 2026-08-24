@@ -429,10 +429,10 @@ wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
 `(120,205)` hop 275f, 209,120f, keys 5→4 (v1 spent south). `--through
 level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
 `(112,173)` hop 1,419f, 210,699f. Census 3× blue `0x23` + 2× orange
-`0x24`. `--through level6-stairs09` **red** v1–v7: left 0x68 **does**
+`0x24`. `--through level6-stairs09` **red** v1–v8: left 0x68 **does**
 push `(96,144)→(96,136)` then vanishes; vacated idle is not mode 9.
-v5 idle `(192,113)` tile 119 (0x77); v7 idle `(208,97)` tile 0x73
-still mode 5. Do not grant Map/Rod. Do not poke doors/keys.
+v8 leftover `(192,97)` tile 119 (0x77) **on** the NE hole, mode 5.
+NE graphic is decorative. Do not grant Map/Rod. Do not poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -498,6 +498,7 @@ still mode 5. Do not grant Map/Rod. Do not poke doors/keys.
 | stairs09 v5 | `0x09` `(192,113)` 4000f tile 119 | idle (192,109) is warp (tol=4 idled 113; 0x77 decorative) |
 | stairs09 v6 | `0x09` `(208,97)` 4000f tile 115 | exact (208,96) L9-style is reachable / CheckWarp while holding UP |
 | stairs09 v7 | `0x09` `(208,97)` 4000f tile 0x73 | idle (208,97) on stair tile is mode 9 |
+| stairs09 v8 | `0x09` `(192,97)` 4000f tile 119 | idle (192,96) is warp (ON the NE hole; 0x77 decorative) |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -522,16 +523,16 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
-`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7}_final.png`. Dest `0x09`
+`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8}_final.png`. Dest `0x09`
 clear is **on the tape**. Left 0x68 south-face UP **moves**
-`(96,144)→(96,136)` then gone; remaining 0x68 at (208,96). PNG NE dark
-hole is **west** of v7 leftover. v5 tile 119 (0x77) and v7 tile 0x73
-idles are not mode 9. Next: idle `(192,96)`. Do not hold-UP. Do not
+`(96,144)→(96,136)` then gone. v8 leftover PNG is **on** the NE hole
+tile 0x77, still mode 5 — graphic is decorative (same class as 0x18).
+Do not y-nudge. Next: idle east door `(208,141)`. Do not hold-UP. Do not
 grant Map/Rod. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v8
+  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v9
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
