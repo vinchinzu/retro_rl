@@ -486,8 +486,8 @@ def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
 
 
 def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Skip-right / rain: beam-snipe flames from the left. Do not morph-tank."""
-    _rain_snipe(session, strategy)
+    """Skip-right / rain: pose-3 UP+tap X (living seat). Do not sit-charge."""
+    _flame_snipe_tap(session, strategy)
 
 
 def _go_to_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
@@ -657,7 +657,8 @@ def in_release_band(
     """
     strat = strategy or PhantoonStrategy()
     dy = int(state.samus_y) - int(state.enemy0_y)
-    if rain_charge_ok(state.enemy0_x):
+    # Tight rain band only for (48, 96)-class parks, not a fig-8 at y≈82.
+    if rain_charge_ok(state.enemy0_x) and int(state.enemy0_y) >= 90:
         return 48 <= dy <= strat.release_dy_max
     return strat.release_dy_min <= dy <= strat.release_dy_max
 
@@ -751,8 +752,8 @@ def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
         if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
             break
         if not _charged(session, strategy):
-            names.append("X")
-            hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
+            # Floor charge only — A while charging dumps (p77) or jumps into (48, 96).
+            hold(session, 1, "X", reason="phan_charge")
             continue
         face_ok = (not parked_right) or int(st.facing) == 4
         fire = (
