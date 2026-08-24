@@ -51,7 +51,7 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Phantoon leave / WS power-on | `rr-tlaq` assist kill dual-green **20537f** ×2; do not append `--to ws`; do not STATUS-promote |
+| **★ Product next** | Power-on `--to phantoon` dual | `rr-gyla` wired (catalog + wrapper); compose `rr-8g2u`; do not append `--to ws`; do not STATUS-promote |
 | Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
 | Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
 | Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
@@ -70,9 +70,10 @@ Entrance → Main Shaft is scratch dual-green (**403f** ×2 `0xCAF6`
 (**1208f** ×2 `0xCC6F` `(657,92)` p24, rr-4btp). Basement → Phantoon *room*
 is scratch dual-green (**718f** ×2 `0xCD13` `(39,124)` p81, rr-cjpp).
 Phantoon fight (`rr-tlaq`) assist dual-green **20537f** ×2 HP 0 + `$D82B`
-bit 0 from that leave (residual `tasks/rr-tlaq-residual.md`; pin
-`scratch/post_phantoon_poweron.state`). Do **not** append to `--to ws`.
-Planner STATUS for `moat` / `ws` is a follow-on — default CLI stays `ice`.
+bit 0 from that leave. `--to phantoon` is wired (rr-gyla; parent `ws`;
+`--to ws` still ends `0xCA08`). Power-on dual is `rr-8g2u` (scratch;
+residual `tasks/rr-gyla-residual.md`). Planner STATUS for `moat` / `ws` is
+a follow-on — default CLI stays `ice`.
 **Do not STATUS-promote past Ice without a planner STATUS pass.**
 
 **Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
@@ -282,7 +283,17 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   dual pin sources; **pin-only** — not power-on continuous STATUS)
 - [x] Compose wired to Phantoon ship recording (`--from ws-entrance` after
   `chain-ws`; `phantoon_combat` ← `ws_ship_human_end` ← Gravity free-record)
-- [ ] Natural Phantoon entry → fight → Gravity (continuous power-on compose)
+- [x] `--to phantoon` wired (rr-gyla: Entrance→Main→Basement→room→fight
+  wrapper; unit-green; `--to ws` still ends `0xCA08`; not STATUS)
+- [x] Wiki KPDR Phantoon pin-benches (rr-7lc5; same Basement→room pin,
+  assist; not wired; not STATUS). Charge-only **20537f** ×2 keep
+  (`shots_per_window=3` is a no-op vs `=1`). Charge+missiles **27645f**
+  ×2 slower. Doppler **12118f** ×2 faster but 2-2-1 (no close-eye extras)
+  + Super finisher — do not replace never-Super product. Ice-on X-Factor
+  window miss (HP 0 drop). Residual `docs/tasks/rr-7lc5-residual.md`
+- [ ] Power-on `--to phantoon` dual compose (rr-8g2u; pin compose first;
+  keep charge fight, do not swap doppler)
+- [ ] Natural Phantoon leave / WS power-on → Gravity (after dual kill)
 
 - [x] Grapple side-trek + Maridia free-record from post-gravity pin
   (`tasks/maridia_grapple_human.json` 44039f → Main Street trace end;
