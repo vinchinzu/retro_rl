@@ -429,10 +429,11 @@ wandered `(112,189)` 244 misses, never idled `(136,141)`; v6 axis idle
 `(120,205)` hop 275f, 209,120f, keys 5→4 (v1 spent south). `--through
 level6-clear09` **1/1** `l6_clear09_continuous_v1` play `0x09`
 `(112,173)` hop 1,419f, 210,699f. Census 3× blue `0x23` + 2× orange
-`0x24`. `--through level6-stairs09` **red** v1–v12: left 0x68 **does**
+`0x24`. `--through level6-stairs09` **red** v1–v13: left 0x68 **does**
 push `(96,144)→(96,136)` then vanishes. v12 true idle `(192,97)` tile
-119 / 3830f `stairs_idle` action none still mode 5 — NE hole decorative
-(v8 hold-UP was not still). Do not grant Map/Rod. Do not poke doors/keys.
+119 / 3830f — NE hole decorative. v13 true idle `(48,172)` tile 119 /
+3887f SW floor (not a hole); remaining 0x68 slot11 `(208,96)` (v10
+`no_right_0x68` was early). Do not grant Map/Rod. Do not poke doors/keys.
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -503,6 +504,7 @@ push `(96,144)→(96,136)` then vanishes. v12 true idle `(192,97)` tile
 | stairs09 v10 | `0x09` `(96,149)` 181f | remaining visual block is a live pair 0x68 (rx=-1) |
 | stairs09 v11 | `0x09` `(48,109)` 4000f tile 118 | idle NW (48,109) is warp |
 | stairs09 v12 | `0x09` `(192,97)` 4000f tile 119 | still-stand on NE hole interior is 0x71 / mode 9 (v8 hold-UP was not still) |
+| stairs09 v13 | `0x09` `(48,172)` 4000f tile 119 | idle SW (48,173) is a stairs hole |
 
 PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_entry_continuous_v{1,2}_final.png`,
@@ -527,16 +529,17 @@ PNGs: `recordings/l5_to_l6_v{25,26,31,35,42}_final.png`,
 `recordings/l6_map19_continuous_v{1,2,3,4,5,6}_final.png`,
 `recordings/l6_room09_continuous_v{1,2}_final.png`,
 `recordings/l6_clear09_continuous_v1_final.png`,
-`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12}_final.png`.
+`recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13}_final.png`.
 Dest `0x09` clear is **on the tape**. Left 0x68 south-face UP **moves**
-then gone. NE hole decorative (v12 true idle `(192,97)` tile 119 / 0x77
-3830f still mode 5, rod=0). Vacated slot yo-yos. Visual right block is
-not a live 0x68. NW `(48,109)` tile 118 not mode 9. Next: idle SW
-`(48,173)`. Halt y>=181. Do not grant Map/Rod. Do not close `rr-tne2`.
+then gone. NE hole decorative. SW `(48,172)` is floor not a hole. v10
+`no_right_0x68` was early — leftover 0x68 `(208,96)` after left y-move
+(slot11 jumps 96,131→208,96). Next: south-face that NE 0x68 until y-move,
+then still-stand. Halt y>=181. Do not grant Map/Rod. Do not close
+`rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v13
+  --through level6-stairs09 --no-video --trials 1 --tag l6_stairs09_continuous_v14
 ```
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
