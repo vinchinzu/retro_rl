@@ -140,10 +140,10 @@ def test_rain_vulnerable_is_d767_d788_not_figure8() -> None:
     assert not rain_vulnerable(0xD5E7)
 
 
-def test_charge_window_ok_skips_rain_allows_right_fig8() -> None:
+def test_charge_window_ok_skips_rain_and_right_fig8() -> None:
     assert charge_window_ok(0xD60D, 120)
     assert charge_window_ok(0xD4A8, 120)
-    assert charge_window_ok(0xD60D, 203)
+    assert not charge_window_ok(0xD60D, 203)
     assert not charge_window_ok(0xD788, 128)
     assert not charge_window_ok(0xD767, 128)
     assert not charge_window_ok(0xD82A, 203)

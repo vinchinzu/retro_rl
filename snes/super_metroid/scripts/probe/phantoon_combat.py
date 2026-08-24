@@ -208,11 +208,12 @@ def _body_func(session: ProbeSession) -> int:
         return 0
 
 
-def _fig8_left_open(session: ProbeSession) -> bool:
-    """Fig-8 open (left or right). Skip rain. Right park is a new window."""
+def _fig8_left_open(session: ProbeSession, park_x: int | None = None) -> bool:
+    """Left fig-8 open. Skip rain and the right wall (x=219 is the body)."""
     st = session.state
+    x = int(st.enemy0_x) if park_x is None else int(park_x)
     return eye_open(st, session.env) and charge_window_ok(
-        _body_func(session), st.enemy0_x
+        _body_func(session), x
     )
 
 
@@ -227,7 +228,7 @@ def _wait_open_window(
 
     last = None
     strat = PhantoonStrategy()
-    rain_frames = 0
+    last_dump = -999
     # Park x at func change — live x crosses 155 mid fig-8 then opens left.
     park_x = int(session.state.enemy0_x)
     for _ in range(timeout):
@@ -249,14 +250,17 @@ def _wait_open_window(
                         "pose": st.pose,
                         "health": st.health,
                         "charge": beam_charge(session.env),
-                        "fig8_open": _fig8_left_open(session),
+                        "fig8_open": _fig8_left_open(session, park_x),
                     }
                 )
             last = key
         if int(st.health) == 0:
             return False
-        if rain_phase(func):
-            if rain_dump is not None and rain_frames < 80:
+        skip = rain_phase(func) or right_park(park_x)
+        if skip:
+            if rain_dump is not None and (
+                session.frame - last_dump >= 30 or last_dump < 0
+            ):
                 rain_dump.append(
                     {
                         "frame": session.frame,
@@ -268,36 +272,16 @@ def _wait_open_window(
                         "charge": beam_charge(session.env),
                     }
                 )
-                rain_frames += 1
+                last_dump = session.frame
             _rain_corner_wait(session, strat)
             continue
-        opened = _fig8_left_open(session)
-        if right_park(park_x):
-            if is_morph(int(st.pose)):
-                try:
-                    unmorph(session)
-                except Exception:
-                    session.step(idle_action(), "phan_unmorph")
-                continue
-            seated_right = int(st.samus_x) >= strat.right_seat_x_min
-            if opened and seated_right:
-                return True
-            if int(st.samus_x) < strat.right_seat_x:
-                names = ["RIGHT"]
-                if int(st.samus_y) >= strat.floor_y_min - 4:
-                    names.append("B")
-                if st.selected_item == WEAPON_BEAM:
-                    names.append("X")
-                session.step(buttons(*names), "phan_right_seat")
-                continue
-            if opened:
-                return True
-            if st.selected_item == WEAPON_BEAM:
-                session.step(buttons("X"), "phan_wait_eye")
-            else:
-                session.step(idle_action(), "phan_wait_eye")
+        if is_morph(int(st.pose)):
+            try:
+                unmorph(session)
+            except Exception:
+                session.step(idle_action(), "phan_unmorph")
             continue
-        if opened:
+        if _fig8_left_open(session, park_x):
             return True
         if int(st.samus_x) > strat.seat_x_max:
             if st.selected_item == WEAPON_BEAM:
@@ -308,7 +292,7 @@ def _wait_open_window(
             session.step(buttons("X"), "phan_wait_eye")
         else:
             session.step(idle_action(), "phan_wait_eye")
-    return _fig8_left_open(session)
+    return _fig8_left_open(session, park_x)
 
 
 def _wait_window_closed(session: ProbeSession, *, timeout: int = 400) -> None:
@@ -454,7 +438,8 @@ def cmd_window(args: argparse.Namespace) -> int:
 
                 miss_dump: list[dict[str, object]] = []
                 strat = PhantoonStrategy()
-                for _ in range(30):
+                dump_n = 80 if int(session.state.health) == 0 else 30
+                for _ in range(dump_n):
                     st = session.state
                     miss_dump.append(
                         {
@@ -469,7 +454,7 @@ def cmd_window(args: argparse.Namespace) -> int:
                     )
                     if int(st.health) == 0:
                         break
-                    if rain_phase(_body_func(session)):
+                    if rain_phase(_body_func(session)) or right_park(st.enemy0_x):
                         _rain_corner_wait(session, strat)
                     else:
                         session.step(idle_action(), "phan_miss_dump")
