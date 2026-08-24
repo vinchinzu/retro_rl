@@ -19,10 +19,8 @@ from zelda_i.level4_north30 import (
 )
 from zelda_i.level4_occupancy import (
     ROOM_60_CLIP_BUDGET,
-    ROOM_60_CLIP_BUTTONS,
-    ROOM_60_CLIP_OPEN_X,
-    ROOM_60_CLIP_STAND,
-    ROOM_60_EXIT_X,
+    ROOM_60_DOCK_MOUTH_X_MIN,
+    ROOM_60_WAYPOINTS,
 )
 from zelda_i.level4_dungeon import (
     KEY_30_EAST_Y,
@@ -53,7 +51,7 @@ STAIRS_32_PUSH_FRAMES = 120
 MAZE_60_HOLD = 4
 MAZE_60_SPAWN_XY = (48, 69)
 MAZE_60_SETTLE = 30
-# Historical isolated BFS tokens (hold4). Spine PATH is ROOM_60_CLIP_STAND.
+# Historical isolated BFS tokens (hold4). Spine PATH is ROOM_60_WAYPOINTS.
 MAZE_60_TO_LADDER: tuple[str, ...] = (
     "UP",
     "UP",
@@ -573,7 +571,7 @@ class Level4StepladderController:
     """0x32 clear → push left block → stairs 0x60 → ADDR_LADDER (rr-tib8).
 
     Live dual-green: stand ~(120,141) hold LEFT; approach ~(208,96) hold UP into
-    mode-9 0x60; v26 LEFT+UP at north-strip (48,68). No BFS.
+    mode-9 0x60; east grey dock UP at x>=174 y=189. No BFS.
     """
 
     clear_first: bool = True
@@ -784,49 +782,62 @@ class Level4StepladderController:
                 return self._fail("path_exited_to_0x32")
             if snap.screen != ROOM_L4_STEPLADDER and snap.mode != 9:
                 return self._fail(f"path_wrong_room_0x{snap.screen:02x}")
-            if xy[0] >= ROOM_60_EXIT_X:
-                self._sample(snap, f"clip_exit_{xy[0]}_{xy[1]}")
-                return self._fail(f"clip_exit_{xy[0]}_{xy[1]}")
             tx, ty = LADDER_60_PICKUP_XY
-            if abs(xy[0] - tx) <= 6 and abs(xy[1] - ty) <= 6:
+            if abs(xy[0] - tx) <= 0 and abs(xy[1] - ty) <= 0:
                 self._set_phase(StepladderPhase.HUNT, "at_pedestal")
                 return FrameAction(nes_idle_action(), "at_pedestal")
-            # Interior east of west-brick and north of south-water.
-            if xy[0] > ROOM_60_CLIP_OPEN_X and xy[1] < 158:
-                self._set_phase(StepladderPhase.HUNT, f"clip_open_{xy[0]}_{xy[1]}")
-                return FrameAction(nes_idle_action(), "clip_open")
-            sx, sy = ROOM_60_CLIP_STAND
-            # West-brick blocks x>48 until the south corridor; y first.
-            if abs(xy[1] - sy) > 4:
-                return FrameAction(
-                    nes_action("DOWN" if xy[1] < sy else "UP"), "join_clip_y"
-                )
-            if abs(xy[0] - sx) > 4:
-                return FrameAction(
-                    nes_action("RIGHT" if xy[0] < sx else "LEFT"), "join_clip_x"
-                )
             if (
                 self._stall >= ROOM_60_CLIP_BUDGET
                 or self.hold_left >= ROOM_60_CLIP_BUDGET
             ):
-                self._sample(snap, "leftup68_solid")
-                return self._fail(f"leftup68_solid_{xy[0]}_{xy[1]}")
-            self.hold_left += 1
-            a, b = ROOM_60_CLIP_BUTTONS
-            return FrameAction(nes_action(a, b), "clip_leftup68")
+                self._sample(snap, "dock_solid")
+                return self._fail(f"dock_solid_{xy[0]}_{xy[1]}")
+            wps = ROOM_60_WAYPOINTS
+            i = self.path_index
+            while i < len(wps) - 1:
+                wx, wy = wps[i]
+                if i == 1:
+                    arrived = (
+                        xy[0] >= ROOM_60_DOCK_MOUTH_X_MIN
+                        and abs(xy[1] - wy) <= 4
+                    )
+                else:
+                    arrived = abs(xy[0] - wx) <= 4 and abs(xy[1] - wy) <= 4
+                if not arrived:
+                    break
+                i += 1
+                self.path_index = i
+            gx, gy = wps[min(i, len(wps) - 1)]
+            dx, dy = gx - xy[0], gy - xy[1]
+            # v27 leftover (171,189): abs(dx)>4 idled 4px short of the UP column.
+            # Geom from (176,151) y-first to island y=141 then LEFT (not LEFT at 151).
+            # v28-v31 LEFT at y=149..157 is water / y-yo-yo; dock continues north.
+            if i >= 2 and xy[0] >= 160 and abs(xy[1] - 141) > 2:
+                return FrameAction(
+                    nes_action("UP" if xy[1] > 141 else "DOWN"), "join_dock_y"
+                )
+            if abs(dy) > 1 and (abs(dx) <= 8 or abs(dy) >= abs(dx)):
+                return FrameAction(
+                    nes_action("DOWN" if dy > 0 else "UP"), "join_dock_y"
+                )
+            if dx != 0:
+                return FrameAction(
+                    nes_action("RIGHT" if dx > 0 else "LEFT"), "join_dock_x"
+                )
+            return FrameAction(nes_idle_action(), "dock_idle")
 
         if self.phase is StepladderPhase.HUNT:
             if snap.mode in (4, 6, 7) or snap.transitioning:
                 return FrameAction(nes_idle_action(), "hunt_settle")
             if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
                 return self._fail("hunt_exited_to_0x32")
-            if xy[0] >= ROOM_60_EXIT_X:
-                return self._fail(f"hunt_exit_{xy[0]}_{xy[1]}")
             tx, ty = LADDER_60_PICKUP_XY
             dx, dy = tx - snap.link_x, ty - snap.link_y
-            if abs(dx) <= 6 and abs(dy) <= 6:
+            # v32 leftover (141,141) / v33 (138,141): radius 6 then 2 idled
+            # east of (136,141); ADDR_LADDER stays 0 until the pickup cell.
+            if dx == 0 and dy == 0:
                 self._hunt_i += 1
-                if self._hunt_i > 20:
+                if self._hunt_i > 80:
                     self.success = True
                     self._set_phase(StepladderPhase.DONE, "ladder_pedestal")
                     return FrameAction(nes_idle_action(), "done")
@@ -834,11 +845,11 @@ class Level4StepladderController:
             if self._stall >= ROOM_60_CLIP_BUDGET:
                 self._sample(snap, "hunt_solid")
                 return self._fail(f"hunt_solid_{xy[0]}_{xy[1]}")
-            if abs(dy) > 6:
+            if dy != 0:
                 return FrameAction(
                     nes_action("DOWN" if dy > 0 else "UP"), "hunt_y"
                 )
-            if abs(dx) > 6:
+            if dx != 0:
                 return FrameAction(
                     nes_action("RIGHT" if dx > 0 else "LEFT"), "hunt_x"
                 )
@@ -859,7 +870,7 @@ class Level4StepladderController:
             "stairs_approach": list(STAIRS_32_APPROACH),
             "ladder_xy": list(LADDER_60_PICKUP_XY),
             "path_len": len(MAZE_60_TO_LADDER),
-            "clip_stand": list(ROOM_60_CLIP_STAND),
+            "waypoints": [list(p) for p in ROOM_60_WAYPOINTS],
             "samples": list(self.samples),
         }
 
