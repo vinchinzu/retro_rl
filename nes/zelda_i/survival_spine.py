@@ -98,6 +98,10 @@ from zelda_i.level4_keyup20 import (
     level4_keyup20_stages,
     level4_keyup20_success,
 )
+from zelda_i.level4_map21 import (
+    level4_map21_stages,
+    level4_map21_success,
+)
 from zelda_i.level4_stepladder import (
     make_key_right_31_controller,
     make_north_30_controller,
@@ -127,6 +131,7 @@ Through = Literal[
     "level4-exit60",
     "level4-west31",
     "level4-keyup20",
+    "level4-room21",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -146,6 +151,7 @@ SPINE_THROUGH: tuple[Through, ...] = (
     "level4-exit60",
     "level4-west31",
     "level4-keyup20",
+    "level4-room21",
 )
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
@@ -440,6 +446,7 @@ class SpineRun:
                 "level4-exit60": "level4_exit_0x60",
                 "level4-west31": "level4_west_0x31",
                 "level4-keyup20": "level4_key_up_0x20",
+                "level4-room21": "level4_enter_0x21",
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -1059,4 +1066,21 @@ def run_survival_spine(
     run.success = level4_keyup20_success(snap)
     if not run.success:
         run.failed_stage = "level4_key_up_0x20"
+        return run
+    if through == "level4-keyup20":
+        return run
+
+    if not _run_stages(
+        env,
+        run,
+        level4_map21_stages(),
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    ):
+        return run
+    snap = read_snapshot(env.get_ram())
+    run.success = level4_map21_success(snap)
+    if not run.success:
+        run.failed_stage = "level4_enter_0x21"
     return run
