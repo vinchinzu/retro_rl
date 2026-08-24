@@ -595,9 +595,9 @@ def planning_interior_report() -> dict:
                     "hold": EXIT_60_HOLD,
                     "settle_idle": POST_LADDER_ITEM_SETTLE,
                     "note": (
-                        "rr-05fz: item freeze ~100f; clear 4× Keese; hold4 BFS "
-                        "→ 0x32 play (sample EXIT_60_SAMPLE_PATH); settle through "
-                        "mode 4/6/7 scroll"
+                        "continuous: item freeze 150f; reverse-dock waypoints "
+                        "(no BFS) → 0x32 play leftover (192,189); isolated "
+                        "EXIT_60_SAMPLE_PATH is not this tape"
                     ),
                 },
             },

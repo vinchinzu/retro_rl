@@ -70,6 +70,8 @@ from zelda_i.survival_spine import (
     level4_clear_32_success,
     level4_stepladder_stages,
     level4_stepladder_success,
+    level4_exit60_stages,
+    level4_exit60_success,
     level2_entry_stages,
     merge_inventory_assist,
     spine_final_fields,
@@ -91,6 +93,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level4-room32",
         "level4-clear32",
         "level4-stepladder",
+        "level4-exit60",
     )
 
 
@@ -315,6 +318,45 @@ def test_level4_stepladder_stop_is_addr_ladder_not_exit() -> None:
     ram[ADDR_MODE] = 9
     ram[ADDR_LEVEL] = 3
     assert not level4_stepladder_success(read_snapshot(ram))
+
+
+def test_level4_exit60_attaches_after_stepladder() -> None:
+    stages = level4_exit60_stages()
+    assert [name for name, _, _ in stages] == ["level4_exit_0x60"]
+    controller = stages[0][1]
+    assert controller.phase.name == "SETTLE"
+    report = controller.report()
+    assert report["segment"] == "level4_exit_0x60"
+    assert "bfs" not in report
+    assert report["waypoints"][0] == [175, 141]
+    assert report["waypoints"][-1] == [48, 69]
+    run = SpineRun(through="level4-exit60", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level4_exit_0x60"
+
+
+def test_level4_exit60_stop_is_play32_with_ladder() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x32
+    ram[ADDR_LINK_X] = 192
+    ram[ADDR_LINK_Y] = 189
+    ram[ADDR_LADDER] = 1
+    assert level4_exit60_success(read_snapshot(ram))
+    ram[ADDR_LADDER] = 0
+    assert not level4_exit60_success(read_snapshot(ram))
+    ram[ADDR_LADDER] = 1
+    ram[ADDR_SCREEN] = 0x60
+    ram[ADDR_MODE] = 9
+    assert not level4_exit60_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x31
+    ram[ADDR_MODE] = PLAY_MODE
+    assert not level4_exit60_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x32
+    ram[ADDR_OBJ_TYPE + 1] = INVULN_MOVER_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    ram[ADDR_OBJ_TYPE + 2] = 0x68
+    assert level4_exit60_success(read_snapshot(ram))
 
 
 def test_through_level3_attaches_boss_suffix_after_natural_raft() -> None:
