@@ -81,6 +81,7 @@
 | Power-on → L6 stairs `0x09` | **1/1 continuous Survival**; left 0x68 y-move then NE 0x68 south-face UP onto `0x71`; 210,902f hop 203f; leftover mode 9 `0x75` `(208,93)` rod=0; deaths 0; progression/capacity writes 0; no state load | `l6_stairs09_continuous_v14.json` / `_final.png` |
 | Power-on → L6 Magical Rod | **1/1 continuous Survival**; south y=189 RIGHT, east RIGHT+UP, LEFT+UP pedestal; 211,529f hop 627f; leftover mode 9 `0x75` `(136,141)` `ADDR_ROD=1`; deaths 0; progression/capacity writes 0; no state load | `l6_rod_continuous_v15.json` / `_final.png` |
 | Power-on → L6 exit cellar `0x75` | **1/1 continuous Survival**; RIGHT y=141, LEFT+DOWN drop, west spit UP; 213,054f hop 1,525f; leftover play `0x09` `(192,141)` rod=1 bow=0 arrows=0 keys=4 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_exit75_continuous_v3.json` / `_final.png` |
+| Power-on → L6 south `0x09` → `0x19` | **1/1 continuous Survival**; occupancy south from leftover `(192,141)` (10 DOWN misses at x=192); 213,305f hop 251f; leftover play `0x19` `(120,77)` rod=1 bow=0 arrows=0 keys=4 bombs=8 TF=`0x1F` map=`0x0A`; deaths 0; progression/capacity writes 0; no state load | `l6_south09_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -109,9 +110,10 @@ leftover `(32,149)`). 0x28 enter is on the tape
 clear is on the tape (`l6_clear28_continuous_v1` 1/1, leftover
 `(120,181)`, max_live=2). Gleeok enter is on the tape
 (`l6_room18_continuous_v7` 1/1, leftover `(120,189)` play `0x18`).
-Gleeok fight, Rod, and cellar return are on the tape
-(`l6_exit75_continuous_v3` 1/1, leftover play `0x09` `(192,141)` rod=1
-bow=0 arrows=0). Gohma / TF `0x20` residual — Gohma needs an arrow.
+Gleeok fight, Rod, cellar return, and south `0x09`→`0x19` are on the tape
+(`l6_south09_continuous_v1` 1/1, leftover play `0x19` `(120,77)` rod=1
+bow=0 arrows=0). 0x19 already cleared. Gohma / TF `0x20` residual —
+Gohma needs an arrow.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam (`rr-4d53.5`) is attached on the continuous tape through
@@ -374,12 +376,14 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-rod` is green
-   (`l6_rod_continuous_v15` 1/1, mode 9 `0x75` `(136,141)` rod=1 hop
-   627f, tape 211,529f). West statue is not the Rod. Cellar return then
-   Gohma / TF `0x20` residual. Do not grant items. `rr-tne2` in
-   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
-   Isolated `Level3*` pins do not close spine beads. No seamed compose.
-   Bomb/key count pokes are documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** `--through level6-south09` is green
+   (`l6_south09_continuous_v1` 1/1, play `0x19` `(120,77)` rod=1 hop
+   251f, tape 213,305f). 0x19 already cleared. Next door from leftover
+   PNG (east/south mouths). Gohma / TF `0x20` residual — Gohma needs an
+   arrow; do not poke `ADDR_ARROWS`/`ADDR_BOW`. Do not invent Gohma
+   room id. `rr-tne2` in progress. Isolated BFS is still not a spine
+   path. See `docs/plan.md`. Isolated `Level3*` pins do not close spine
+   beads. No seamed compose. Bomb/key count pokes are documented
+   Survival shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

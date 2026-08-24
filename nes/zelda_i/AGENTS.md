@@ -42,7 +42,7 @@ Segment CLIs (L2–L9, TAS, lab): `docs/plan.md` and `docs/tasks/QUEUE.md`.
 | `level4_path.py` / `level4_maze_path.py` / `level4_stepladder.py` / `level4_exit60.py` / `level4_west31.py` / `level4_keyup20.py` / `level4_map21.py` / `level4_mappick.py` / `level4_bomb11.py` / `level4_key01.py` / `level4_clear12.py` / `level4_gleeok13.py` / `level4_spine.py` | L4 path controllers + spine stages (dungeon is specs only) |
 | `level5_spine.py` | L4 TF settle → L5 entry → 0x66 → east 0x77 → Recorder 0x04 → TF `0x10` |
 | `level6_spine.py` | L5 TF settle → L6 entry → east key 0x7a → west 0x78 → 0x18 Gleeok → 0x19 |
-| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level6_rod.py`, `level6_exit75.py`, `level*_boss_*` | Path controllers + timing knobs |
+| `level*_path.py` (L5 facade + west/whistle/cellar/tf; L6 north 0x68 / 0x18 settle), `level6_gleeok18.py`, `level6_stairs18.py`, `level6_room19.py`, `level6_stairs09.py`, `level6_rod.py`, `level6_exit75.py`, `level6_south09.py`, `level*_boss_*` | Path controllers + timing knobs |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Shared script env/assist/report helpers |
 | `docs/HYGIENE.md` | Architecture rules (do not re-expand phase machines) |
@@ -120,6 +120,9 @@ from damage heatmaps. Do not block tip progress on combat polish.
   is the pedestal. Cellar return v3 1/1: cardinal RIGHT y=141 to x=176,
   LEFT+DOWN drop (v1 DOWN @ (168,141) tile 250; v2 UP @ (208,141) tile
   243), floor LEFT x=48, UP west spit, idle then UP. Bow/arrows 0.
+  0x09 south occupancy: leftover `(192,141)` DOWN misses 10× at x=192
+  (remaining block / east column) then south-band LEFT; dest play `0x19`
+  `(120,77)` hop 251f keys 4. Do not invent Gohma. Do not poke arrows.
 - Post-L5 0x1B west exit is **y=141 LEFT** after south-around the x≈72 rock
   (v25 north-edge LEFT solid; v31 leftover `(24,149)` is mountain dither not
   a free walk; v32/v33 diagonal clips yo-yo). 0x14/0x23 south mouths are the
@@ -155,8 +158,12 @@ Census 3× blue `0x23` + 2× orange `0x24`. Left 0x68 **pushes**
 `--through level6-rod` **1/1** `l6_rod_continuous_v15` mode 9 `0x75`
 `(136,141)` rod=1 hop 627f. `--through level6-exit75` **1/1**
 `l6_exit75_continuous_v3` play `0x09` `(192,141)` rod=1 hop 1,525f
-tape 213,054f. Bow=0 arrows=0 (L1 bow skipped). Gohma needs an arrow —
-do not poke. Next door from leftover; do not invent Gohma room id.
+tape 213,054f. `--through level6-south09` **1/1**
+`l6_south09_continuous_v1` play `0x19` `(120,77)` hop 251f tape
+213,305f rod=1 keys=4 bombs=8 TF=`0x1F` map=`0x0A` bow=0 arrows=0.
+0x19 already cleared (no second combat hop). Bow=0 arrows=0 (L1 bow
+skipped). Gohma needs an arrow — do not poke. Next door from leftover
+PNG (east and south mouths visible); do not invent Gohma room id.
 Map stays skipped. Gohma / TF `0x20` residual. Do not grant Map.
 Do not poke doors/keys. Ignore 0x2b.
 L2 entry bombs=0; Survival count top-up `poke_bombs=16` until farm

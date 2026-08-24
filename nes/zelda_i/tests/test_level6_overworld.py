@@ -68,6 +68,8 @@ from zelda_i.level6_spine import (
     level6_rod_success,
     level6_exit75_stages,
     level6_exit75_success,
+    level6_south09_stages,
+    level6_south09_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1319,6 +1321,73 @@ def test_level6_exit75_walks_east_then_leftdown_clip() -> None:
     run = SpineRun(through="level6-exit75", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_exit_0x75"
     assert "level6-exit75" in L6_THROUGH
+
+
+def test_level6_south09_occupancy_then_down() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_south09 import (
+        SOUTH_DOOR_X,
+        SOUTH_DOOR_Y,
+        make_south09_controller,
+    )
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_south09_stages()
+    assert [name for name, _, _ in stages] == ["level6_south_0x09"]
+    leftover = _ram(level=6, screen=0x09, x=192, y=141)
+    leftover[ADDR_ROD] = 1
+    ctl = make_south09_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "south_path"
+    # BFS explores DOWN before LEFT; leftover LEFT is the remaining 0x68.
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    north = _ram(level=6, screen=0x09, x=192, y=109)
+    north[ADDR_ROD] = 1
+    halt = make_south09_controller()
+    act = halt.step(read_snapshot(north))
+    assert act.reason == "south_north_halt"
+    assert list(act.action) == list(nes_idle_action())
+    band = _ram(level=6, screen=0x09, x=192, y=181)
+    band[ADDR_ROD] = 1
+    align = make_south09_controller()
+    act = align.step(read_snapshot(band))
+    assert act.reason == "south_align"
+    assert list(act.action) == list(nes_action("LEFT"))
+    door = _ram(level=6, screen=0x09, x=SOUTH_DOOR_X, y=SOUTH_DOOR_Y)
+    door[ADDR_ROD] = 1
+    push = make_south09_controller()
+    act = push.step(read_snapshot(door))
+    assert act.reason == "south_push"
+    assert list(act.action) == list(nes_action("DOWN"))
+    dest = _ram(level=6, screen=0x19, x=120, y=93)
+    dest[ADDR_ROD] = 1
+    arrive = make_south09_controller()
+    act = arrive.step(read_snapshot(dest))
+    assert arrive.success
+    assert act.reason == "arrived_19"
+    assert level6_south09_success(read_snapshot(dest))
+    other = _ram(level=6, screen=0x1A, x=16, y=141)
+    other[ADDR_ROD] = 1
+    assert level6_south09_success(read_snapshot(other))
+    still = _ram(level=6, screen=0x09, x=192, y=141)
+    still[ADDR_ROD] = 1
+    assert not level6_south09_success(read_snapshot(still))
+    cellar = _ram(level=6, screen=0x75, x=136, y=141, mode=9)
+    cellar[ADDR_ROD] = 1
+    assert not level6_south09_success(read_snapshot(cellar))
+    snap = read_snapshot(dest)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    dest[ADDR_BOW] = 1
+    dest[ADDR_ARROWS] = 1
+    armed = read_snapshot(dest)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-south09", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_south_0x09"
+    assert "level6-south09" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:
