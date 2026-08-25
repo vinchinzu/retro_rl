@@ -1,8 +1,8 @@
-"""Survival-spine L6 from L5 TF settle through 0x39 census after Rod.
+"""Survival-spine L6 from L5 TF settle through Gleeok 0x18.
 
-Do not poke Rod / doors / keys / bow / arrows. Do not grant Whistle.
-Isolated BFS banned. Ignore object types 0x2b / Bubble. Map skipped.
-Gohma / TF 0x20 residual.
+Post-Gleeok hops live in ``level6_spine_suffix``. Do not poke Rod /
+doors / keys / bow / arrows. Do not grant Whistle. Isolated BFS banned.
+Ignore object types 0x2b / Bubble. Map skipped. Gohma / TF 0x20 residual.
 """
 
 from __future__ import annotations
@@ -15,23 +15,12 @@ from zelda_i.anchors import LEVEL6_ENTRY_ROOM, TF_BIT_L5
 from zelda_i.level4_boss_combat import gleeok_heads_live
 from zelda_i.level6_dungeon import (
     LEVEL6_COMPASS_BIT,
-    LEVEL6_MAP_BIT,
-    ROOM_09_SPEC,
-    ROOM_19_SPEC,
-    ROOM_29_SPEC,
-    ROOM_39_SPEC,
-    ROOM_3A_SPEC,
     ROOM_28_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
-    make_clear_09_controller,
-    make_clear_19_controller,
-    make_clear_29_controller,
-    make_clear_39_controller,
-    make_clear_3a_controller,
     make_clear_28_controller,
     make_compass_68_controller,
     make_east_key_controller,
@@ -41,12 +30,9 @@ from zelda_i.level6_dungeon import (
 )
 from zelda_i.level6_overworld import (
     LEVEL6,
-    LEVEL6_BLOCK_3A_ROOM,
     LEVEL6_COMPASS_ROOM,
-    LEVEL6_DARK_39_ROOM,
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_GLEEOK_ROOM,
-    LEVEL6_MAP_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
@@ -66,52 +52,6 @@ from zelda_i.level6_gleeok18 import (
     gleeok_3head_live,
     make_gleeok_18_controller,
     make_postgleeok_18_controller,
-)
-from zelda_i.level6_room19 import (
-    MAP_19_MAX_FRAMES,
-    ROOM09_MAX_FRAMES,
-    ROOM19_MAX_FRAMES,
-    SETTLE_19_MAX_FRAMES,
-    make_map19_controller,
-    make_room09_controller,
-    make_room19_controller,
-    make_settle_09_controller,
-    make_settle_19_controller,
-    make_settle_29_controller,
-    make_settle_39_controller,
-    make_settle_3a_controller,
-)
-from zelda_i.level6_exit75 import (
-    level6_exit75_stages,
-    level6_exit75_success,
-)
-from zelda_i.level6_south09 import (
-    level6_south09_stages,
-    level6_south09_success,
-)
-from zelda_i.level6_south19 import (
-    level6_south19_stages,
-    level6_south19_success,
-)
-from zelda_i.level6_east29 import (
-    level6_east29_stages,
-    level6_east29_success,
-)
-from zelda_i.level6_south29 import (
-    level6_south29_stages,
-    level6_south29_success,
-)
-from zelda_i.level6_east39 import (
-    level6_east39_stages,
-    level6_east39_success,
-)
-from zelda_i.level6_rod import (
-    ROD_75_MAX_FRAMES,
-    make_rod_75_controller,
-)
-from zelda_i.level6_stairs09 import (
-    STAIRS_09_MAX_FRAMES,
-    make_stairs_09_controller,
 )
 from zelda_i.level6_stairs18 import (
     STAIRS_18_MAX_FRAMES,
@@ -196,6 +136,48 @@ __all__ = [
     "level6_settle3a_success",
     "level6_clear3a_stages",
     "level6_clear3a_success",
+    "level6_west39_upclip_stages",
+    "level6_west39_upclip_success",
+    "level6_west39_stages",
+    "level6_west39_success",
+    "level6_clear39_west_stages",
+    "level6_clear39_west_success",
+    "level6_stairs3a_stages",
+    "level6_stairs3a_success",
+    "level6_north39_stages",
+    "level6_north39_success",
+    "level6_inland29_stages",
+    "level6_inland29_success",
+    "level6_west19_stages",
+    "level6_west19_success",
+    "level6_south18_stages",
+    "level6_south18_success",
+    "level6_aisle_west28_stages",
+    "level6_aisle_west28_success",
+    "level6_west28_stages",
+    "level6_west28_success",
+    "level6_east28_stages",
+    "level6_east28_success",
+    "level6_clear28_south_stages",
+    "level6_clear28_south_success",
+    "level6_west38_stages",
+    "level6_west38_success",
+    "level6_east38_stages",
+    "level6_east38_success",
+    "level6_east38_lane_stages",
+    "level6_east38_lane_success",
+    "level6_bomb38_south_stages",
+    "level6_bomb38_south_success",
+    "level6_south38_stages",
+    "level6_south38_success",
+    "level6_clear38_south_stages",
+    "level6_clear38_south_success",
+    "level6_aisle28_stages",
+    "level6_aisle28_success",
+    "level6_south28_stages",
+    "level6_south28_success",
+    "level6_exit_ow_stages",
+    "level6_exit_ow_success",
     "level6_room28_stages",
     "level6_room28_success",
     "level6_clear58_stages",
@@ -250,6 +232,27 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-east39",
     "level6-settle3a",
     "level6-clear3a",
+    "level6-west39-upclip",
+    "level6-west39",
+    "level6-clear39-west",
+    "level6-stairs3a",
+    "level6-north39",
+    "level6-inland29",
+    "level6-west19",
+    "level6-south18",
+    "level6-aisle-west28",
+    "level6-west28",
+    "level6-east28",
+    "level6-clear28-south",
+    "level6-west38",
+    "level6-east38",
+    "level6-east38-lane",
+    "level6-bomb38-south",
+    "level6-south38",
+    "level6-clear38-south",
+    "level6-aisle28",
+    "level6-south28",
+    "level6-exit-ow",
 )
 L6_STOPS: dict[str, str] = {
     "level6-entry": "level6_entry_0x79",
@@ -287,8 +290,28 @@ L6_STOPS: dict[str, str] = {
     "level6-east39": "level6_east_0x39",
     "level6-settle3a": "level6_settle_0x3a",
     "level6-clear3a": "level6_clear_0x3a",
+    "level6-west39-upclip": "level6_west39_upclip_0x39",
+    "level6-west39": "level6_west_0x39",
+    "level6-clear39-west": "level6_clear39_west_0x39",
+    "level6-stairs3a": "level6_stairs_0x3a",
+    "level6-north39": "level6_north39_0x29",
+    "level6-inland29": "level6_inland_0x29",
+    "level6-west19": "level6_west_0x19",
+    "level6-south18": "level6_south_0x18",
+    "level6-aisle-west28": "level6_aisle_west_0x28",
+    "level6-west28": "level6_west_0x28",
+    "level6-east28": "level6_east_0x28",
+    "level6-clear28-south": "level6_clear_south_0x28",
+    "level6-west38": "level6_west_0x38",
+    "level6-east38": "level6_east_0x38",
+    "level6-east38-lane": "level6_east_lane_0x38",
+    "level6-bomb38-south": "level6_bomb_south_0x38",
+    "level6-south38": "level6_south_0x38",
+    "level6-clear38-south": "level6_clear_south_0x38",
+    "level6-aisle28": "level6_aisle_0x28",
+    "level6-south28": "level6_south_0x28",
+    "level6-exit-ow": "level6_exit_ow_0x22",
 }
-
 
 def level6_entry_stages():
     """After L5 TF: idle the fanfare on 0x0B, then Lost Hills LEFT into L6."""
@@ -305,7 +328,6 @@ def level6_entry_stages():
         ),
     )
 
-
 def level6_entry_success(snap: ZeldaSnapshot, *, whistle: int) -> bool:
     """Room-ready Dragon entry 0x79 with L5 inventory. Do not grant Whistle."""
     return (
@@ -319,7 +341,6 @@ def level6_entry_success(snap: ZeldaSnapshot, *, whistle: int) -> bool:
         and snap.ladder > 0
     )
 
-
 def level6_east_key_stages():
     """Entry 0x79 leftover → wall-first RIGHT → 0x7a key. No door pokes."""
     right = Level6EntryRightController()
@@ -328,7 +349,6 @@ def level6_east_key_stages():
         ("level6_right_0x7a", right, right.max_frames),
         ("level6_east_key_0x7a", fight, ROOM_7A_SPEC.max_frames),
     )
-
 
 def level6_east_key_success(snap: ZeldaSnapshot, *, keys_before: int) -> bool:
     """Cleared 0x7a with a natural key pickup. Do not UP to Old Man 0x6a."""
@@ -341,7 +361,6 @@ def level6_east_key_success(snap: ZeldaSnapshot, *, keys_before: int) -> bool:
         and not ROOM_7A_SPEC.live_enemies(snap)
         and bool(snap.triforce & TF_BIT_L5)
     )
-
 
 @dataclass
 class Level6Return79Controller:
@@ -391,7 +410,6 @@ class Level6Return79Controller:
             return FrameAction(nes_action(btn), "return_ay")
         return FrameAction(nes_action("LEFT"), "return_left")
 
-
 def level6_west_stages():
     """0x7a leftover → free 0x79 → key-LEFT 0x78 → clear. No 0x68."""
     back = Level6Return79Controller()
@@ -402,7 +420,6 @@ def level6_west_stages():
         ("level6_west_key_0x78", door, door.max_frames),
         ("level6_west_clear_0x78", fight, ROOM_78_SPEC.max_frames),
     )
-
 
 def level6_west_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready empty 0x78. Do not enter compass 0x68."""
@@ -415,14 +432,12 @@ def level6_west_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_compass_stages():
     """0x78 leftover → occupancy UP into compass room 0x68. No fight."""
     north = Level6North68Controller()
     return (
         ("level6_north_0x68", north, NORTH_68_MAX_FRAMES),
     )
-
 
 def level6_compass_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x68. Compass pickup / Zol clear residual."""
@@ -434,14 +449,12 @@ def level6_compass_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_clear68_stages():
     """0x68 leftover → occupancy Zol clear + compass bit. Ignore 0x2b/0x68."""
     fight = make_compass_68_controller()
     return (
         ("level6_clear_0x68", fight, ROOM_68_SPEC.max_frames),
     )
-
 
 def level6_clear68_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready empty 0x68 with L6 compass bit. Do not poke ADDR_COMPASS."""
@@ -455,14 +468,12 @@ def level6_clear68_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_keese_stages():
     """0x68 leftover → occupancy UP into Keese 0x58. No fight."""
     north = make_north_58_controller()
     return (
         ("level6_north_0x58", north, NORTH_68_MAX_FRAMES),
     )
-
 
 def level6_keese_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x58. Keese clear / key drop residual."""
@@ -474,14 +485,12 @@ def level6_keese_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_clear58_stages():
     """0x58 leftover → occupancy Keese clear. Key drop residual. No pokes."""
     fight = make_keese_58_controller()
     return (
         ("level6_clear_0x58", fight, ROOM_58_SPEC.max_frames),
     )
-
 
 def level6_clear58_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready empty 0x58. Do not require key inventory."""
@@ -494,14 +503,12 @@ def level6_clear58_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_room48_stages():
     """0x58 leftover → occupancy long-UP into 0x48. No door poke."""
     north = make_north_48_controller()
     return (
         ("level6_north_0x48", north, north.max_frames),
     )
-
 
 def level6_room48_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x48. Blade-trap run residual."""
@@ -513,14 +520,12 @@ def level6_room48_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_room38_stages():
     """0x48 leftover → occupancy run-UP into 0x38. Do not fight traps."""
     north = make_north_38_controller()
     return (
         ("level6_north_0x38", north, north.max_frames),
     )
-
 
 def level6_room38_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x38. Hard wizzrobe clear residual."""
@@ -532,14 +537,12 @@ def level6_room38_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_clear38_stages():
     """0x38 leftover → occupancy-patrol wizzrobe/Like-Like clear. No pokes."""
     fight = make_hard_38_controller()
     return (
         ("level6_clear_0x38", fight, ROOM_38_SPEC.max_frames),
     )
-
 
 def level6_clear38_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready empty 0x38. Ignore Bubble/0x2b/0x68. Do not require push."""
@@ -552,14 +555,12 @@ def level6_clear38_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_room28_stages():
     """0x38 leftover → left-block UP then north into 0x28. Do not poke."""
     north = make_north_28_controller()
     return (
         ("level6_north_0x28", north, north.max_frames),
     )
-
 
 def level6_room28_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x28. Wizzrobe clear residual."""
@@ -571,14 +572,12 @@ def level6_room28_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_clear28_stages():
     """0x28 leftover → occupancy-patrol orange wizzrobes. Ignore 0x2b/0x40/0x68."""
     fight = make_clear_28_controller()
     return (
         ("level6_clear_0x28", fight, ROOM_28_SPEC.max_frames),
     )
-
 
 def level6_clear28_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready empty 0x28. Ignore 0x2b/0x40/0x68. Do not poke Rod/doors."""
@@ -591,14 +590,12 @@ def level6_clear28_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_room18_stages():
     """0x28 leftover → LEFT+UP at y=181, hold UP, RIGHT+UP at y=109 into 0x18."""
     north = make_north_18_controller()
     return (
         ("level6_north_0x18", north, north.max_frames),
     )
-
 
 def level6_room18_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x18. Spawn identity residual."""
@@ -610,14 +607,12 @@ def level6_room18_success(snap: ZeldaSnapshot) -> bool:
         and bool(snap.triforce & TF_BIT_L5)
     )
 
-
 def level6_settle18_stages():
     """0x18 leftover → idle census. Do not walk. Do not require type 0x43."""
     settle = make_settle_18_controller()
     return (
         ("level6_settle_0x18", settle, SETTLE_18_MAX_FRAMES),
     )
-
 
 def level6_settle18_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x18 after idle. TF still 0x1F. Type 0x43 is not required."""
@@ -629,14 +624,12 @@ def level6_settle18_success(snap: ZeldaSnapshot) -> bool:
         and snap.triforce == 0x1F
     )
 
-
 def level6_gleeok18_stages():
     """0x18 leftover → diamond clip + south-stand until 0x44 is gone."""
     fight = make_gleeok_18_controller()
     return (
         ("level6_gleeok_0x18", fight, GLEEOK_18_MAX_FRAMES),
     )
-
 
 def level6_gleeok18_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready 0x18 with body 0x44 gone. Head/fireball residual OK. No Map."""
@@ -649,14 +642,12 @@ def level6_gleeok18_success(snap: ZeldaSnapshot) -> bool:
         and not gleeok_3head_live(snap)
     )
 
-
 def level6_postgleeok18_stages():
     """0x18 leftover → south-stand residual + door census. Do not walk stairs."""
     settle = make_postgleeok_18_controller()
     return (
         ("level6_postgleeok_0x18", settle, POSTGLEEOK_18_MAX_FRAMES),
     )
-
 
 def level6_postgleeok18_success(snap: ZeldaSnapshot) -> bool:
     """Play 0x18 body-gone with heads gone or east open, or mode-9 stairs."""
@@ -674,14 +665,12 @@ def level6_postgleeok18_success(snap: ZeldaSnapshot) -> bool:
         return False
     return (not gleeok_heads_live(snap)) or east_door_open(snap)
 
-
 def level6_stairs18_stages():
     """0x18 leftover → occupancy onto north stairs. Do not grant Rod."""
     stairs = make_stairs_18_controller()
     return (
         ("level6_stairs_0x18", stairs, STAIRS_18_MAX_FRAMES),
     )
-
 
 def level6_stairs18_success(snap: ZeldaSnapshot) -> bool:
     """Mode 9 cellar or a new play room. Do not require Rod."""
@@ -695,850 +684,84 @@ def level6_stairs18_success(snap: ZeldaSnapshot) -> bool:
         and snap.screen != LEVEL6_GLEEOK_ROOM
     )
 
-
-def level6_room19_stages():
-    """0x18 leftover → occupancy east (208,141). Stairs stay a dedicated stop."""
-    east = make_room19_controller()
-    return (
-        ("level6_room_0x19", east, ROOM19_MAX_FRAMES),
-    )
-
-
-def level6_room19_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready 0x19. Map pickup residual. Do not require ADDR_MAP bit."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen == LEVEL6_MAP_ROOM
-        and snap.triforce == 0x1F
-    )
-
-
-def level6_clear19_stages():
-    """0x19 leftover → idle census then occupancy-patrol. Do not require Map."""
-    settle = make_settle_19_controller()
-    fight = make_clear_19_controller()
-    return (
-        ("level6_settle_0x19", settle, SETTLE_19_MAX_FRAMES),
-        ("level6_clear_0x19", fight, ROOM_19_SPEC.max_frames),
-    )
-
-
-def level6_clear19_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready empty 0x19. Ignore 0x2b/0x40. Do not require Map."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_MAP_ROOM
-        and not snap.transitioning
-        and not ROOM_19_SPEC.live_enemies(snap)
-        and snap.triforce == 0x1F
-    )
-
-
-def level6_map19_stages():
-    """0x19 leftover → occupancy onto Map drop. Do not poke ADDR_MAP."""
-    hunt = make_map19_controller()
-    return (
-        ("level6_map_0x19", hunt, MAP_19_MAX_FRAMES),
-    )
-
-
-def level6_map19_success(snap: ZeldaSnapshot) -> bool:
-    """Play 0x19 with L6 map bit. Do not grant ADDR_MAP."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_MAP_ROOM
-        and not snap.transitioning
-        and (snap.map & LEVEL6_MAP_BIT) != 0
-        and snap.triforce == 0x1F
-    )
-
-
-def level6_room09_stages():
-    """0x19 leftover → skip Map, occupancy KEY-UP. Do not poke the door."""
-    north = make_room09_controller()
-    return (
-        ("level6_room_0x09", north, ROOM09_MAX_FRAMES),
-    )
-
-
-def level6_room09_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready dest north of 0x19. Map optional. Do not require 0x09."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen != LEVEL6_MAP_ROOM
-        and snap.triforce == 0x1F
-    )
-
-
-def level6_clear09_stages():
-    """0x09 leftover → idle census then occupancy-patrol. Do not push 0x68."""
-    settle = make_settle_09_controller()
-    fight = make_clear_09_controller()
-    return (
-        ("level6_settle_0x09", settle, SETTLE_19_MAX_FRAMES),
-        ("level6_clear_0x09", fight, ROOM_09_SPEC.max_frames),
-    )
-
-
-def level6_clear09_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready empty 0x09. Ignore 0x2b/0x40/0x68. Do not require Rod."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == ROOM_09_SPEC.room_id
-        and not snap.transitioning
-        and not ROOM_09_SPEC.live_enemies(snap)
-        and snap.triforce == 0x1F
-    )
-
-
-def level6_clear29_stages():
-    """0x29 leftover → idle census then occupancy-patrol. No candle/Gohma."""
-    settle = make_settle_29_controller()
-    fight = make_clear_29_controller()
-    return (
-        ("level6_settle_0x29", settle, SETTLE_19_MAX_FRAMES),
-        ("level6_clear_0x29", fight, ROOM_29_SPEC.max_frames),
-    )
-
-
-def level6_clear29_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready empty 0x29. Ignore 0x2b/0x40. Do not require stairs/Gohma."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == ROOM_29_SPEC.room_id
-        and not snap.transitioning
-        and not ROOM_29_SPEC.live_enemies(snap)
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def level6_stairs09_stages():
-    """0x09 leftover → left 0x68 then NE 0x68 south-face. Do not grant Rod."""
-    stairs = make_stairs_09_controller()
-    return (
-        ("level6_stairs_0x09", stairs, STAIRS_09_MAX_FRAMES),
-    )
-
-
-def level6_stairs09_success(snap: ZeldaSnapshot) -> bool:
-    """Mode 9 cellar or a new L6 play room. Do not require ADDR_ROD."""
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
-        return False
-    if snap.mode == PASSAGE_MODE:
-        return True
-    return (
-        snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen != ROOM_09_SPEC.room_id
-    )
-
-
-def level6_rod_stages():
-    """Cellar 0x75 leftover → idle/walk until ADDR_ROD. Do not grant Rod."""
-    return (
-        ("level6_rod_0x75", make_rod_75_controller(), ROD_75_MAX_FRAMES),
-    )
-
-
-def level6_rod_success(snap: ZeldaSnapshot) -> bool:
-    """ADDR_ROD nonzero. Do not write the rod."""
-    return (
-        snap.level == LEVEL6
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def level6_settle39_stages():
-    """0x39 leftover → idle census. Do not invent Vire/Gohma."""
-    settle = make_settle_39_controller()
-    return (
-        ("level6_settle_0x39", settle, SETTLE_19_MAX_FRAMES),
-    )
-
-
-def level6_settle39_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready 0x39 after idle. TF still 0x1F. Types are RAM, not Gohma."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_DARK_39_ROOM
-        and not snap.transitioning
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def level6_clear39_stages():
-    """0x39 leftover → occupancy-patrol 5× Vire. Do not invent Gohma."""
-    fight = make_clear_39_controller()
-    return (
-        ("level6_clear_0x39", fight, ROOM_39_SPEC.max_frames),
-    )
-
-
-def level6_clear39_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready empty 0x39. Ignore 0x2b/0x40. Do not require stairs/Gohma."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == ROOM_39_SPEC.room_id
-        and not snap.transitioning
-        and not ROOM_39_SPEC.live_enemies(snap)
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def level6_settle3a_stages():
-    """0x3A leftover → idle census. Do not push the center block."""
-    settle = make_settle_3a_controller()
-    return (
-        ("level6_settle_0x3a", settle, SETTLE_19_MAX_FRAMES),
-    )
-
-
-def level6_settle3a_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready 0x3A after idle. TF still 0x1F. Types are RAM."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_BLOCK_3A_ROOM
-        and not snap.transitioning
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def level6_clear3a_stages():
-    """0x3A leftover → occupancy-patrol. Do not push 0x68 / invent Gohma."""
-    fight = make_clear_3a_controller()
-    return (
-        ("level6_clear_0x3a", fight, ROOM_3A_SPEC.max_frames),
-    )
-
-
-def level6_clear3a_success(snap: ZeldaSnapshot) -> bool:
-    """Play-ready empty 0x3A. Ignore 0x2b/0x40/0x68. Do not require stairs."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == ROOM_3A_SPEC.room_id
-        and not snap.transitioning
-        and not ROOM_3A_SPEC.live_enemies(snap)
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
-    )
-
-
-def continue_level6_spine(
-    env,
-    run,
-    *,
-    through: str,
-    run_stages,
-    room_timer=None,
-    assist=None,
-    on_frame=None,
-) -> None:
-    """Attach L6 suffix after L5 TF. Mutates ``run``; caller returns it."""
-    if not run_stages(
-        env,
-        run,
-        level6_entry_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    whistle = int(read_u8(env.get_ram(), ADDR_WHISTLE))
-    run.success = level6_entry_success(snap, whistle=whistle)
-    if not run.success:
-        run.failed_stage = "level6_entry_0x79"
-        return
-    if through == "level6-entry":
-        return
-
-    keys_before = int(snap.keys)
-    if not run_stages(
-        env,
-        run,
-        level6_east_key_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_east_key_success(snap, keys_before=keys_before)
-    if not run.success:
-        run.failed_stage = "level6_east_key_0x7a"
-        return
-    if through == "level6-east-key":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_west_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_west_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_west_0x78"
-        return
-    if through == "level6-west":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_compass_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_compass_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_compass_0x68"
-        return
-    if through == "level6-compass":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear68_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear68_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x68"
-        return
-    if through == "level6-clear68":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_keese_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_keese_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_keese_0x58"
-        return
-    if through == "level6-keese":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear58_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear58_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x58"
-        return
-    if through == "level6-clear58":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room48_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room48_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x48"
-        return
-    if through == "level6-room48":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room38_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room38_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x38"
-        return
-    if through == "level6-room38":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear38_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear38_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x38"
-        return
-    if through == "level6-clear38":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room28_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room28_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x28"
-        return
-    if through == "level6-room28":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear28_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear28_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x28"
-        return
-    if through == "level6-clear28":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room18_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room18_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x18"
-        return
-    if through == "level6-room18":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_settle18_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_settle18_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_settle_0x18"
-        return
-    if through == "level6-settle18":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_gleeok18_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_gleeok18_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_gleeok_0x18"
-        return
-    if through == "level6-gleeok18":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_postgleeok18_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_postgleeok18_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_postgleeok_0x18"
-        return
-    if through == "level6-postgleeok18":
-        return
-
-    if through == "level6-stairs18":
-        if not run_stages(
-            env,
-            run,
-            level6_stairs18_stages(),
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-        ):
-            return
-        snap = read_snapshot(env.get_ram())
-        run.success = level6_stairs18_success(snap)
-        if not run.success:
-            run.failed_stage = "level6_stairs_0x18"
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room19_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room19_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x19"
-        return
-    if through == "level6-room19":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear19_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear19_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x19"
-        return
-    if through == "level6-clear19":
-        return
-
-    if through == "level6-map19":
-        if not run_stages(
-            env,
-            run,
-            level6_map19_stages(),
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-        ):
-            return
-        snap = read_snapshot(env.get_ram())
-        run.success = level6_map19_success(snap)
-        if not run.success:
-            run.failed_stage = "level6_map_0x19"
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_room09_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_room09_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_room_0x09"
-        return
-    if through == "level6-room09":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear09_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear09_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x09"
-        return
-    if through == "level6-clear09":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_stairs09_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_stairs09_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_stairs_0x09"
-        return
-    if through == "level6-stairs09":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_rod_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_rod_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_rod_0x75"
-        return
-    if through == "level6-rod":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_exit75_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_exit75_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_exit_0x75"
-        return
-    if through == "level6-exit75":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_south09_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_south09_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_south_0x09"
-        return
-    if through == "level6-south09":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_south19_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_south19_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_south_0x19"
-        return
-    if through == "level6-south19":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear29_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear29_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x29"
-        return
-    if through == "level6-clear29":
-        return
-
-    # East of 0x29 is sealed (mask 12 = U+D). Dedicated red, like stairs18.
-    if through == "level6-east29":
-        if not run_stages(
-            env,
-            run,
-            level6_east29_stages(),
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-        ):
-            return
-        snap = read_snapshot(env.get_ram())
-        run.success = level6_east29_success(snap)
-        if not run.success:
-            run.failed_stage = "level6_east_0x29"
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_south29_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_south29_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_south_0x29"
-        return
-    if through == "level6-south29":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_settle39_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_settle39_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_settle_0x39"
-        return
-    if through == "level6-settle39":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear39_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear39_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x39"
-        return
-    if through == "level6-clear39":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_east39_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_east39_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_east_0x39"
-        return
-    if through == "level6-east39":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_settle3a_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_settle3a_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_settle_0x3a"
-        return
-    if through == "level6-settle3a":
-        return
-
-    if not run_stages(
-        env,
-        run,
-        level6_clear3a_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return
-    snap = read_snapshot(env.get_ram())
-    run.success = level6_clear3a_success(snap)
-    if not run.success:
-        run.failed_stage = "level6_clear_0x3a"
+from zelda_i.level6_spine_suffix import (  # noqa: E402
+    continue_level6_spine,
+    level6_clear09_stages,
+    level6_clear09_success,
+    level6_clear19_stages,
+    level6_clear19_success,
+    level6_clear29_stages,
+    level6_clear29_success,
+    level6_clear39_stages,
+    level6_clear39_success,
+    level6_clear3a_stages,
+    level6_clear3a_success,
+    level6_west39_upclip_stages,
+    level6_west39_upclip_success,
+    level6_west39_stages,
+    level6_west39_success,
+    level6_clear39_west_stages,
+    level6_clear39_west_success,
+    level6_east29_stages,
+    level6_east29_success,
+    level6_east39_stages,
+    level6_east39_success,
+    level6_exit75_stages,
+    level6_exit75_success,
+    level6_map19_stages,
+    level6_map19_success,
+    level6_rod_stages,
+    level6_rod_success,
+    level6_room09_stages,
+    level6_room09_success,
+    level6_room19_stages,
+    level6_room19_success,
+    level6_settle39_stages,
+    level6_settle39_success,
+    level6_settle3a_stages,
+    level6_settle3a_success,
+    level6_south09_stages,
+    level6_south09_success,
+    level6_south19_stages,
+    level6_south19_success,
+    level6_south29_stages,
+    level6_south29_success,
+    level6_stairs09_stages,
+    level6_stairs09_success,
+    level6_stairs3a_stages,
+    level6_stairs3a_success,
+    level6_north39_stages,
+    level6_north39_success,
+    level6_inland29_stages,
+    level6_inland29_success,
+    level6_west19_stages,
+    level6_west19_success,
+    level6_south18_stages,
+    level6_south18_success,
+    level6_aisle_west28_stages,
+    level6_aisle_west28_success,
+    level6_west28_stages,
+    level6_west28_success,
+    level6_east28_stages,
+    level6_east28_success,
+    level6_clear28_south_stages,
+    level6_clear28_south_success,
+    level6_west38_stages,
+    level6_west38_success,
+    level6_east38_stages,
+    level6_east38_success,
+    level6_east38_lane_stages,
+    level6_east38_lane_success,
+    level6_bomb38_south_stages,
+    level6_bomb38_south_success,
+    level6_south38_stages,
+    level6_south38_success,
+    level6_clear38_south_stages,
+    level6_clear38_south_success,
+    level6_aisle28_stages,
+    level6_aisle28_success,
+    level6_south28_stages,
+    level6_south28_success,
+    level6_exit_ow_stages,
+    level6_exit_ow_success,
+)
