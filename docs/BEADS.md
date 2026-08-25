@@ -17,7 +17,9 @@ bd export -o .beads/issues.jsonl  # then commit with the code
 
 ## Rules
 
-1. Start sessions with `bd ready` (SM product: `bd ready -l super_metroid -l spine`).
+1. Start sessions with `bd ready` (SM: `bd ready -l super_metroid -l spine`;
+   Zelda I: `bd ready -l zelda_i -l spine`; Harvest:
+   `bd ready -l harvest -l spine`).
 2. Claim one issue before coding; do not invent parallel trackers.
 3. Discovered work → `bd create … --deps discovered-from:<parent>`.
 4. Product evidence still lives under `<console>/<game>/docs/` (STATUS,
@@ -28,9 +30,11 @@ bd export -o .beads/issues.jsonl  # then commit with the code
    beads/history).
 
 Prefix: `rr-`. Labels: game name (`super_metroid`, `smb`, …), kind
-(`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`). Super Metroid
-product sessions use **`spine`** as well:
-`bd ready -l super_metroid -l spine` (TAS/oracle/library stay off this filter).
+(`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`). Super Metroid,
+Zelda I, and Harvest product sessions use **`spine`** as well:
+`bd ready -l super_metroid -l spine`, `bd ready -l zelda_i -l spine`,
+`bd ready -l harvest -l spine` (TAS/oracle/library and non-serial buffet
+stay off this filter).
 
 Game process still applies (e.g. Super Metroid pure-first in
 `snes/super_metroid/AGENTS.md`).

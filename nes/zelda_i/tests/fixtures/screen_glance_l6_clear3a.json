@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "runs": [
+    {
+      "success": true,
+      "hop": "level6-clear3a",
+      "final": {
+        "room": "0x3A",
+        "xy": [144, 141],
+        "mode": 5,
+        "triforce": "0x1F",
+        "keys": 4,
+        "bombs": 8,
+        "rod": 1,
+        "health": "0x66",
+        "progression_writes": 0
+      },
+      "frames": 1857
+    },
+    {
+      "success": true,
+      "hop": "level6-clear3a",
+      "final": {
+        "room": "0x3A",
+        "xy": [144, 141],
+        "mode": 5,
+        "triforce": "0x1F",
+        "keys": 4,
+        "bombs": 8,
+        "rod": 1,
+        "health": "0x66",
+        "progression_writes": 0
+      },
+      "frames": 1857
+    }
+  ]
+}
