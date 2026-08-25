@@ -15,7 +15,16 @@ from typing import Tuple
 import numpy as np
 
 from harvest.core.ram_catalog import field_spec
-from harvest.core.tile_catalog import TRAVEL_SOLID_TILES
+from harvest.core.tile_catalog import (
+    LARGE_ROCK_DAMAGE_TILES,
+    LARGE_ROCK_TL,
+    MAP_HEIGHT,
+    MAP_WIDTH,
+    STUMP_TL,
+    TRAVEL_SOLID_TILES,
+    debris_footprint,
+    get_tile_at,
+)
 
 ADDR_PLAYER_ACTION = field_spec("player_action").address
 ADDR_PLAYER_DIRECTION = field_spec("player_direction").address
@@ -52,6 +61,31 @@ PUSH_HOLD_FRAMES = 20
 def is_travel_solid(tile_id: int) -> bool:
     """True when travel BFS must refuse this metatile (weed/stump/rock/damage)."""
     return int(tile_id) in TRAVEL_SOLID_TILES
+
+
+_TWO_BY_TWO_ANCHORS = frozenset(
+    {STUMP_TL, LARGE_ROCK_TL, min(LARGE_ROCK_DAMAGE_TILES)}
+)
+
+
+def is_travel_occupied(ram: np.ndarray, tx: int, ty: int) -> bool:
+    """Refuse the cell and every sibling of a 2x2 stump/rock TL.
+
+    Live RAM often keeps 0x0D/0x09 only on the top-left; the other three
+    metatiles stay dirt/0x00 while the sprite still occupies the quad.
+    """
+    if is_travel_solid(get_tile_at(ram, tx, ty)):
+        return True
+    for dx, dy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
+        ax, ay = tx + dx, ty + dy
+        if ax < 0 or ay < 0 or ax >= MAP_WIDTH or ay >= MAP_HEIGHT:
+            continue
+        tid = get_tile_at(ram, ax, ay)
+        if tid not in _TWO_BY_TWO_ANCHORS:
+            continue
+        if (tx, ty) in debris_footprint((ax, ay), tid):
+            return True
+    return False
 
 
 def read_player_action(ram: np.ndarray) -> int:
