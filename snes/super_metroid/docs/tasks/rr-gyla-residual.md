@@ -40,12 +40,8 @@ QT_QPA_PLATFORM=offscreen uv run pytest \
 - [ ] Power-on / pin compose dual (rr-8g2u)
 
 ### Next action (required)
-- **One change:** `rr-8g2u` — pin compose `ws-to-phantoon` from
-  `scratch/post_ws_poweron.state` (~22866f) with the existing charge fight
-  (wiki doppler 12118f is pin-only scratch; do not swap). If GREEN, power-on
-  `continuous.py --to phantoon --no-video` dual (scratch only, ~199k).
-  Do not STATUS-promote. Do not write `recordings/phantoon.json` on a red run.
-  Do not leave the room / Gravity. Wiki benches: `docs/tasks/rr-7lc5-residual.md`.
+- **Follow-on done:** `rr-asyg` — doppler fight + loot/exit; tip ends
+  `0xCC6F`. Next is `rr-8g2u` pin compose from `post_ws_poweron.state`.
 
 ### Non-claims
 - Did not STATUS-promote past Ice

@@ -535,6 +535,20 @@ SOURCE_CATALOG: tuple[SourceFingerprint, ...] = (
         poses=frozenset({1, 9, 81}),
     ),
     SourceFingerprint(
+        "post_phantoon_leave",
+        "scratch/post_phantoon_leave.state",
+        0xCC6F,
+        use_for=(
+            "doppler fight + loot/exit dual GREEN 12455f ×2 (rr-asyg); "
+            "WS Basement right door; do not clobber post_phantoon_poweron"
+        ),
+        x_min=1180,
+        x_max=1280,
+        y_min=120,
+        y_max=160,
+        poses=frozenset({1, 9, 10}),
+    ),
+    SourceFingerprint(
         "post_frog_continuous",
         "scratch/post_frog_continuous.state",
         0xB167,

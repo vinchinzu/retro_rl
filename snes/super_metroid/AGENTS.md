@@ -30,9 +30,14 @@ beams `0x1007` max PB 5 (spark hop **615f** ×2 from the Moat leave). Do
 dual **403f** ×2 `0xCAF6` `(1063,907)` p9 gs=8 (rr-ahjo). Main Shaft → basement
 scratch dual **1208f** ×2 `0xCC6F` `(657,92)` p24 gs=8 (rr-4btp). Basement →
 Phantoon *room* scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8 (rr-cjpp);
-Phantoon fight (`rr-tlaq`) assist dual-green **20537f** ×2 HP 0 + `$D82B`
-bit 0 gs=8 (residual `docs/tasks/rr-tlaq-residual.md`; pin
-`scratch/post_phantoon_poweron.state`; do not STATUS-promote; not on `--to ws`).
+Phantoon fight is wiki doppler (rr-asyg) assist dual-green **12118f** ×2
+HP 0 + `$D82B` bit 0; loot + left-door exit **337f** → `0xCC6F` `(1240,139)`
+p10 gs=8; compose fight+leave **12455f** ×2. Charge-only **20537f**,
+charge+missiles, Ice-on X-Factor stay research. `--to phantoon` hops
+Entrance→Main→Basement→room→doppler→loot-exit (parent `ws`; `--to ws`
+still ends `0xCA08`). Power-on dual is `rr-8g2u` — do not STATUS-promote.
+Residual `docs/tasks/rr-asyg-residual.md`; pin
+`scratch/post_phantoon_leave.state`.
 Ice-pin compose through WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
 checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
 (keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot

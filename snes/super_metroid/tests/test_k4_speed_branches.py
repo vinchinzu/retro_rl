@@ -154,6 +154,26 @@ def test_west_ocean_to_ws_path_is_spine_hop() -> None:
     assert summary["blocking"] is None
 
 
+def test_ws_entrance_to_phantoon_room_is_spine_path() -> None:
+    """Unpowered ship interior hops; fight is in-room (no DoorEdge)."""
+    caps = CAPS | frozenset({"speed_booster"})
+    path = SPEED_GRAPH.shortest_path(0xCA08, 0xCD13, caps)
+    assert path is not None
+    assert [edge.edge_id for edge in path] == [
+        "ws_entrance_to_main",
+        "ws_main_to_basement",
+        "ws_basement_to_phantoon",
+    ]
+    assert all(edge.verification == "continuous" for edge in path)
+    assert SPEED_GRAPH.edge_for(0xCD13, 0xCD13) is None
+    leave = SPEED_GRAPH.edge_for(0xCD13, 0xCC6F)
+    assert leave is not None
+    assert leave.edge_id == "phantoon_loot_exit"
+    assert leave.exit_direction == "left"
+    assert leave.entry_direction == "right"
+    assert leave.verification == "continuous"
+
+
 def test_k4_speed_path_includes_farm_and_speed_hall_hops() -> None:
     path = SPEED_GRAPH.shortest_path(0xACB3, 0xAD1B, CAPS)
 

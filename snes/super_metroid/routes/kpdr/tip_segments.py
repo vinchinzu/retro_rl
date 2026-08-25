@@ -419,6 +419,37 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         aliases=("wrecked_ship", "ws_entrance", "k6_ws"),
         supports_checkpoint=True,
     ),
+    TipSegment(
+        tip_id="phantoon",
+        parent_tip_id="ws",
+        graph_id="speed",
+        kind="phantoon",
+        success_outcome="phantoon_defeated",
+        route_label="phantoon",
+        source_policy=(
+            "accepted Ice continuous + K5 Alpha PB + K6 Moat/WS spark "
+            "(rr-p2bw scratch) + unpowered Entrance→Main (rr-ahjo) + "
+            "Main→basement (rr-4btp) + Basement→room (rr-cjpp) + "
+            "wiki doppler fight (rr-asyg; routes/kpdr/k6/phantoon_fight.py) + "
+            "loot + left-door exit to basement"
+        ),
+        timing_source="phantoon",
+        entry_condition_key="natural_phantoon_entry",
+        ordinary_condition_key="post_phantoon_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Phantoon defeat + basement leave (KPDR K6)",
+        description=(
+            "WS Entrance through unpowered Main Shaft, Basement Gadora, "
+            "wiki 2-2-N doppler in 0xCD13 until HP 0 and $D82B bit 0, "
+            "then loot and left-door exit to 0xCC6F. Compose after rr-asyg; "
+            "not STATUS-promoted without dual continuous green. Default CLI "
+            "stays ice. Tip ws still ends at 0xCA08. Charge-only / "
+            "charge+missiles / Ice-on X-Factor stay research."
+        ),
+        aliases=("phan", "k6_phantoon"),
+        supports_checkpoint=True,
+    ),
 )
 
 POST_SUPERS_TIP_ORDER: tuple[str, ...] = tuple(

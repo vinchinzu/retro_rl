@@ -71,10 +71,8 @@ QT_QPA_PLATFORM=offscreen uv run pytest \
 
 ### Next action (required)
 
-- **One change:** `rr-8g2u` — pin compose `ws-to-phantoon` from
-  `scratch/post_ws_poweron.state` (~22866f) with the **existing** charge
-  fight. If GREEN, power-on `continuous.py --to phantoon --no-video` dual
-  (scratch only, ~199k). Do not STATUS-promote. Do not swap in doppler.
+- **Follow-on done:** `rr-asyg` wired doppler + loot/exit. Charge-only
+  stays research. Next is `rr-8g2u` pin compose with the doppler+leave body.
 
 ### Non-claims
 

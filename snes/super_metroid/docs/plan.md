@@ -285,14 +285,12 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   `chain-ws`; `phantoon_combat` ← `ws_ship_human_end` ← Gravity free-record)
 - [x] `--to phantoon` wired (rr-gyla: Entrance→Main→Basement→room→fight
   wrapper; unit-green; `--to ws` still ends `0xCA08`; not STATUS)
-- [x] Wiki KPDR Phantoon pin-benches (rr-7lc5; same Basement→room pin,
-  assist; not wired; not STATUS). Charge-only **20537f** ×2 keep
-  (`shots_per_window=3` is a no-op vs `=1`). Charge+missiles **27645f**
-  ×2 slower. Doppler **12118f** ×2 faster but 2-2-1 (no close-eye extras)
-  + Super finisher — do not replace never-Super product. Ice-on X-Factor
-  window miss (HP 0 drop). Residual `docs/tasks/rr-7lc5-residual.md`
+- [x] Wiki KPDR Phantoon pin-benches (rr-7lc5). Doppler wired (rr-asyg)
+  **12118f** ×2 + loot/exit **337f** → basement `(1240,139)` p10; compose
+  **12455f** ×2. Charge-only 20537f / charge+missiles / Ice-on X-Factor
+  stay research. Residual `docs/tasks/rr-asyg-residual.md`
 - [ ] Power-on `--to phantoon` dual compose (rr-8g2u; pin compose first;
-  keep charge fight, do not swap doppler)
+  doppler + loot-exit body; tip ends `0xCC6F`)
 - [ ] Natural Phantoon leave / WS power-on → Gravity (after dual kill)
 
 - [x] Grapple side-trek + Maridia free-record from post-gravity pin
