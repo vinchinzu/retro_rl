@@ -1,8 +1,8 @@
 {
   "hop": "level6-stairs3a-71",
-  "tag": "l6_stairs3a_71_continuous_v1",
+  "tag": "l6_stairs3a_71_continuous_v3",
   "status": "idle",
   "pid": null,
-  "reds": 1,
-  "note": "v1 occupancy_halt (114,149) tile 116 with misses still 1 after leftover LEFT+DOWN clip live. Dest stayed 0x3A. Center 0x68 unpushed. No v2 this worker (one trial)."
+  "reds": 3,
+  "note": "BLOCKED 3/3. v1 occupancy_halt (114,149) tile 116 misses=1. v2 push live, TO_NE UP leftover (72,165) tile 116. v3 RIGHT to x=184 live, leftover (184,147) tile 119 RIGHT 0px timeout. Dest 0x3A. No v4."
 }

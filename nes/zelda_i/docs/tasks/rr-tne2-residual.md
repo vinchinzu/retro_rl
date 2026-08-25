@@ -1,16 +1,15 @@
 ## Residual — rr-tne2 L6 Survival compose (stairs / Gohma / TF `0x20`)
 
-**Status:** `--through level6-stairs3a-71` **1 red** (v1). Occupancy
-halt `(114,149)` tile **116** with **misses still 1**. Dest stayed
-`0x3A`. LEFT+DOWN clip from leftover `(144,141)` tile 118 **live**
-(x 144→114, y 141→149). Center 0x68 **unpushed** `(112,144)`. Did not
-reach tile `0x71`. Did not idle on tile 119. Did not hold-UP past the
-hole. Bead `rr-tne2` still open. Predecessor `--through level6-clear3a`
-**1/1** do not re-prove. west39-reband / west39-upclip / west39 /
-clear39-west / stairs3a stay dedicated reds (no v4). Do **not** start
-west39-reband v4, west39-upclip v4, stairs3a v4. Do not take 0x29. Do
-not fight Gohma. Do not poke ADDR_BOW/ADDR_ARROWS. Do not KEY-UP `0x09`.
-Do not walk east door unarmed.
+**Status:** `--through level6-stairs3a-71` **BLOCKED 3 serial reds**.
+v1 occupancy_halt `(114,149)` tile 116 misses still 1. v2 push live,
+TO_NE y-first UP 0px leftover `(72,165)` tile 116. v3 RIGHT to x=184
+live, then tile **119** at `(184,147)` RIGHT 0px / timeout. Dest stayed
+`0x3A`. Did not reach tile `0x71`. East door **open** (do not walk).
+Bead `rr-tne2` still open. Predecessor `--through level6-clear3a` **1/1**
+do not re-prove. west39-reband / west39-upclip / west39 / clear39-west /
+stairs3a stay dedicated reds (no v4). Do **not** start stairs3a-71 v4.
+Do not take 0x29. Do not fight Gohma. Do not poke ADDR_BOW/ADDR_ARROWS.
+Do not KEY-UP `0x09`. Do not walk east door unarmed.
 
 **Pin:** clear3a leftover play `0x3A` `(144,141)` rod=1 keys=4 bombs=8
 bow=0 arrows=0 TF=`0x1F` map=`0x0A`. PNG:
@@ -28,23 +27,26 @@ Closed L1–L5 Survival spine. L6 hops through `--through level6-clear3a`
 1/1 leftover play `0x3A` `(144,141)`. North-leave through south18 1/1
 is a different through (skipped here). Split: `survival_spine.py` 713 /
 `level6_spine.py` 779 / `level6_spine_suffix.py` 645 /
-`level6_stairs3a_71.py` 554. Dedicated skipped: stairs3a, west39-reband,
+`level6_stairs3a_71.py` 571. Dedicated skipped: stairs3a, west39-reband,
 west39-upclip, west39, clear39-west, south28, aisle28, south38,
 clear38-south, bomb38-south, east38, east38-lane, west38, exit-ow,
 clear28-south, east28, west28, aisle-west28. north39 / inland29 /
 west19 / south18 stay green north-leave (skipped as this through). Unit
 tests passed (hygiene + through-list after clear3a is stairs3a-71 +
-leftover LEFT+DOWN clip not UP + tile 0x71 still-stand not UP + tile
-119 sidestep not idle + east-door fail + dest 0x29 / 0x09 / 0x39 fail
-+ occupancy halt first new miss + dest RAM mode 9).
+leftover LEFT+DOWN clip not UP + clip x-align DOWN not occupancy_halt +
+tile 0x71 still-stand not UP + tile 119 sidestep not idle + v2 leftover
+`(72,165)` RIGHT not UP + x>=184 UP + east-door fail + dest 0x29 / 0x09
+/ 0x39 fail + occupancy halt first new miss + dest RAM mode 9).
 
-### This hop (`level6-stairs3a-71`) — 1 red (v1)
+### This hop (`level6-stairs3a-71`) — BLOCKED 3 reds
 
 | Field | Live |
 |-------|------|
 | Start | clear3a play `0x3A` `(144,141)` rod=1 keys=4 bombs=8 TF=`0x1F` |
 | Stop | mode 9 **or** play dest ≠ `0x3A` — **not reached** |
 | v1 | leftover LEFT+DOWN clip **live**; occupancy halt `(114,149)` tile **116** with misses still 1. Dest `0x3A`. Center 0x68 unpushed. |
+| v2 | clip + DOWN y-align **live**; south-face UP y-move 8px **live** (`pushed_112_144_to_112_136`); TO_NE y-first UP 0px leftover `(72,165)` tile 116 timeout. Stairs revealed. East door open. |
+| v3 | RIGHT to x=184 **live**; leftover `(184,147)` tile **119** RIGHT 0px / timeout 4000f. Dest `0x3A`. Did not reach `0x71`. |
 
 Prefix: `--through level6-clear3a` 1/1 leftover play `0x3A`
 `(144,141)`. Continuous session, seamed=false,
@@ -52,26 +54,34 @@ mid_run_state_load=false, progression_writes=0, capacity_writes=0,
 deaths 0. stairs3a / west39-reband not composed. Did not enter `0x29`.
 Did not walk east door.
 
-Glance v1: mode 5, room `0x3A`, `(114,149)`, TF=`0x1F`, rod=1 keys=4
+Glance v3: mode 5, room `0x3A`, `(184,147)`, TF=`0x1F`, rod=1 keys=4
 bombs=8 bow=0 arrows=0 map=`0x0A`, health `0x66` lo==hi, deaths 0,
-tile 116. PNG:
-`nes/zelda_i/recordings/l6_stairs3a_71_continuous_v1_final.png` — west
-door open, center 0x68 still at `(112,144)` unpushed, stairs graphic
-not revealed, east door closed, Link SW of the block, bubble residual.
+tile 119. PNG:
+`nes/zelda_i/recordings/l6_stairs3a_71_continuous_v3_final.png` — west
+door open, center stairs revealed, NE 0x68 at `(208,96)`, east door
+**open**, Link on tile 119 at the NE column, bubble SE. Did not idle
+still-stand (RIGHT on 119). Did not enter east door (x=184 < 200).
 
 Dated:
 
 - Occupancy DOWN leftover `(144,141)` miss f2 tile **118**. **Clipped**
   LEFT+DOWN (not occupancy halt). Clip live: `(144,141)` tile 118 →
-  `(136,141)` tile 117 → `(128,144)` tile 118 → `(120,149)` tile 116 →
-  leftover `(114,149)` tile **116**. Hop **28f** tape 219,677f prefix
-  219,649f. `l6_stairs3a_71_continuous_v1`.
-- Halt was **not** a new occupancy miss (`misses` stayed 1). Clip
-  geometry ended when x=114 reached dest x=112 ±2; y still 149 <
-  south-face 160. Policy occupancy_halted instead of DOWN y-align.
-- Did not push center 0x68. Did not find tile `0x71`. Did not idle on
-  tile 119 (v3 stairs3a). Did not hold-UP past the hole (v2 stairs3a
-  leftover `(112,133)` tile 179). Isolated BFS unused.
+  `(136,141)` tile 117 → `(128,144)` tile 118 → `(120,149)` tile 116.
+- v1 halt `(114,149)` tile 116, misses still 1. Clip x-aligned; y=149 <
+  south-face 160. `l6_stairs3a_71_continuous_v1` hop 28f tape 219,677f.
+- v2 DOWN after clip x-align **live**. `stand_y` `(112,152)` then
+  `at_push_112_158_block_112_144`, `pushed_112_144_to_112_136`. TO_NE
+  y-first UP from `(121,149)` 0px at y=165 tile 116, knockback west.
+  Leftover `(72,165)` tile 116 timeout 4000f tape 223,649f.
+  `l6_stairs3a_71_continuous_v2`. Stairs graphic revealed. East door
+  open. Hold-UP also hit `(120,133)` tile **179** (stairs3a v2 class).
+- v3 RIGHT until x>=184 **live** (f88–f128 `(124,149)`→`(177,149)`).
+  Then `ne_y` UP at `(185,149)`. Tile **119** at NE column `(184,147)`
+  forces `ne_sidestep` RIGHT (do not idle 119). RIGHT 0px; knockback
+  yo-yo y=149↔181 / x=184↔154. Timeout leftover `(184,147)` tile 119
+  misses still 1. `l6_stairs3a_71_continuous_v3` hop 4000f tape
+  223,649f. Dest `0x3A` mode 5. Did not find tile `0x71`. Isolated BFS
+  unused.
 
 ### Historical reds (not this checkbox)
 
@@ -94,22 +104,19 @@ reds. `--through level6-exit-ow` 3 serial reds. stairs3a 3 serial reds
 
 ### Next action (not this worker)
 
-- **1 red** on `level6-stairs3a-71` v1. One change: after leftover
-  LEFT+DOWN clip x-aligns (x≈112±2), **DOWN** to south-face y=160. Do
-  **not** occupancy_halt when clip geometry ends with misses still 1
-  (dated v1 leftover `(114,149)` tile 116). Then reuse live stairs3a
-  push (south-face UP, y-move 8px) and tile **0x71** still-stand
-  (stairs09 analog). Do not idle on tile 119. Do not hold-UP past the
-  hole. Occupancy halt at first **new** miss only.
+- **BLOCKED 3/3** on `level6-stairs3a-71`. **No v4.** Occupancy halt at
+  first **new** miss. Reuse live push of center 0x68. Still-stand on
+  tile **`0x71`** (not 119). Dest RAM mode 9 or play ≠ `0x3A`.
+- Dated v3: NE column x=184 y=147 **is tile 119**. Hole-tile RIGHT
+  sidestep 0px there. Do not idle 119. Do not hold-UP past the hole.
+  Do not walk east door (open after push). Isolated BFS banned.
 - Do not start west39-reband v4 / west39-upclip v4 / stairs3a v4 /
-  west39 v4 / clear39-west v4. Do not KEY-UP north from 0x39. Do not
-  take 0x29. Do not walk east door unarmed. Do not invent Gohma. Do not
-  poke bow/arrows/doors/keys. Isolated BFS banned.
+  west39 v4 / clear39-west v4 / stairs3a-71 v4. Do not KEY-UP north
+  from 0x39. Do not take 0x29. Do not invent Gohma. Do not poke
+  bow/arrows/doors/keys.
 
 ```bash
-QT_QPA_PLATFORM=offscreen UV_CACHE_DIR=/tmp/retro_rl_uv_cache \
-  uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs3a-71 --no-video --trials 1 --tag l6_stairs3a_71_continuous_v2
+# Do not run v4. Manager retarget.
 ```
 
 ### Non-claims
@@ -123,10 +130,11 @@ QT_QPA_PLATFORM=offscreen UV_CACHE_DIR=/tmp/retro_rl_uv_cache \
 - Did not start west39-reband v4
 - Did not start west39-upclip v4
 - Did not start stairs3a v4
+- Did not start stairs3a-71 v4
 - Did not take 0x29
 - Did not fight Gohma
 - Did not walk east door unarmed
-- Did not idle on tile 119
-- Did not hold-UP past the hole
+- Did not idle on tile 119 (sidestep RIGHT; 0px at `(184,147)`)
+- Did not hold-UP past the hole (v3 RIGHT-first; v2 dated `(120,133)` tile 179)
 - Did not occupancy_halt leftover `(144,141)` (dated; clipped)
-- Did not start a second trial
+- Did not occupancy_halt clip x-align `(114,149)` (v2 DOWN live)
