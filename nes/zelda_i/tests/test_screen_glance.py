@@ -6,27 +6,22 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+from zelda_i.chain import ControllerStageResult
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 from zelda_i.screen_glance import (
+    CELLAR08_LEAVE,
+    CLEAR_3A,
     FANFARE_MODE,
-    LeaveSpec,
+    STAIRS3A_DEST,
+    grade_controller,
     grade_final,
     grade_report,
+    grade_stage_report,
+    leftover_from_controller,
     parse_room,
 )
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures"
-
-# Published leftover: l6_clear3a_continuous_v1 play 0x3A (144,141).
-CLEAR_3A = LeaveSpec(
-    hop="level6-clear3a",
-    room=0x3A,
-    x=(128, 160),
-    y=(133, 149),
-    triforce_bits=0x1F,
-    keys=4,
-    bombs=8,
-)
 
 
 def _load(name: str) -> dict:
@@ -136,3 +131,118 @@ def test_dual_frame_mismatch_still_glances_leave() -> None:
         ],
     }
     assert grade_report(report, CLEAR_3A) == []
+
+
+class _DummyHop:
+    """Controller stand-in: leftover dict, no emulator."""
+
+    def __init__(self, leftover: dict, *, success: bool = False) -> None:
+        self.leftover = leftover
+        self.success = success
+        self.failed = not success
+
+    def report(self) -> dict:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "leftover": dict(self.leftover),
+        }
+
+
+def _clear3a_leftover(**overrides: object) -> dict:
+    leftover: dict = {
+        "x": 144,
+        "y": 141,
+        "screen": 0x3A,
+        "mode": PLAY_MODE,
+        "triforce": 0x1F,
+        "keys": 4,
+        "bombs": 8,
+        "health": 0x66,
+    }
+    leftover.update(overrides)
+    return leftover
+
+
+def test_leftover_from_controller_grades_clear_3a_green() -> None:
+    leftover = leftover_from_controller(_DummyHop(_clear3a_leftover()))
+    assert leftover["room"] == 0x3A
+    assert leftover["xy"] == [144, 141]
+    graded = grade_controller(_DummyHop(_clear3a_leftover()), CLEAR_3A)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [144, 141]
+
+
+def test_wrong_room_miss_still_returns_leftover() -> None:
+    dummy = _DummyHop(_clear3a_leftover(screen=0x39))
+    graded = grade_controller(dummy, CLEAR_3A)
+    assert not graded.ok
+    assert any(m.startswith("room ") for m in graded.misses)
+    assert graded.leftover
+    assert graded.leftover["screen"] == 0x39
+    assert graded.leftover["xy"] == [144, 141]
+
+
+def test_failed_stage_report_includes_leftover() -> None:
+    leftover = {
+        "x": 96,
+        "y": 157,
+        "mode": PLAY_MODE,
+        "screen": 0x3A,
+        "keys": 4,
+        "bombs": 8,
+        "triforce": 0x1F,
+        "tile": 118,
+    }
+    stage = ControllerStageResult(
+        name="level6_east_0x3a",
+        controller=_DummyHop(leftover, success=False),
+        max_frames=4000,
+        frames=80,
+        success=False,
+    )
+    payload = stage.report()
+    assert payload["success"] is False
+    assert "leftover" in payload
+    assert payload["leftover"]["x"] == 96
+    assert payload["leftover"]["y"] == 157
+    graded = grade_stage_report(payload, CELLAR08_LEAVE)
+    assert graded.ok
+    assert graded.leftover["xy"] == [96, 157]
+
+
+def test_cellar08_leftover_96_157_glances() -> None:
+    leftover = {
+        "x": 96,
+        "y": 157,
+        "mode": PLAY_MODE,
+        "screen": 0x3A,
+        "keys": 4,
+        "bombs": 8,
+        "triforce": 0x1F,
+        "tile": 118,
+    }
+    graded = grade_controller(_DummyHop(leftover), CELLAR08_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [96, 157]
+    dest = {
+        "x": 208,
+        "y": 93,
+        "mode": 9,
+        "screen": 0x08,
+        "keys": 4,
+        "bombs": 8,
+        "triforce": 0x1F,
+    }
+    dest_graded = grade_controller(_DummyHop(dest), STAIRS3A_DEST)
+    assert dest_graded.ok
+    from zelda_i.level6_east3a import level6_east3a_glance
+
+    miss = level6_east3a_glance(
+        _DummyHop({**leftover, "y": 141}, success=False)
+    )
+    assert not miss.ok
+    assert any(m.startswith("y=") for m in miss.misses)
+    assert miss.leftover["xy"] == [96, 141]

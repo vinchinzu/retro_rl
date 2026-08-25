@@ -30,6 +30,7 @@ from retro_harness.headed import (
     idle_headed,
 )
 
+from harvest.clock_glance import d2_leftover_spec, leftover_json
 from harvest.core.carry import backpack_tool, selected_tool
 from harvest.core.game_clock import clock_from_ram, format_segment_time
 from harvest.core.ram_catalog import read_ram_value
@@ -239,6 +240,23 @@ def _write_payload(path: Path, payload: dict) -> None:
     print(json.dumps(payload, indent=2))
 
 
+def _try_snapshot(ram) -> dict:
+    if ram is None:
+        return {}
+    try:
+        return _snapshot(ram)
+    except Exception:
+        return {}
+
+
+def _emit(
+    path: Path, *, ram, section: str, ok: bool, done: bool | None = None, **fields
+) -> None:
+    spec = d2_leftover_spec(section, done=ok if done is None else done)
+    fields.setdefault("section", section)
+    _write_payload(path, leftover_json(_try_snapshot(ram), spec, ok=ok, **fields))
+
+
 def _print_table(start: dict, end: dict, cleared: dict, wanted: ClearQuota, frames: int) -> None:
     clock = (end.get("clock") or {}).get("clock", "?")
     rows = [
@@ -266,6 +284,8 @@ def main() -> int:
     env = make_harvest_env(state=args.state)
     journal = []
     pygame_mod = None
+    ram = None
+    start = None
     ctx = TaskBuildContext(state_name=args.state)
     try:
         env.reset()
@@ -292,13 +312,27 @@ def main() -> int:
                 }
             )
             if result is None or result.status != TaskStatus.SUCCESS:
-                _write_payload(args.out, {"journal": journal, "ok": False})
+                _emit(
+                    args.out,
+                    ram=ram,
+                    section=args.section,
+                    ok=False,
+                    journal=journal,
+                )
                 return 1
 
         start = _snapshot(ram)
         if args.dump:
-            payload = {"start": start, "journal": journal, "ok": True, "dump": True}
-            _write_payload(args.out, payload)
+            _emit(
+                args.out,
+                ram=ram,
+                section=args.section,
+                ok=True,
+                done=False,
+                start=start,
+                journal=journal,
+                dump=True,
+            )
             return 0
 
         wanted = _wanted_quota(args.section)
@@ -338,14 +372,14 @@ def main() -> int:
                 "clock": clock_from_ram(ram).to_dict(),
             }
             journal.append(row)
-            _write_payload(
+            _emit(
                 args.out,
-                {
-                    "start": start,
-                    "journal": journal,
-                    "partial": True,
-                    "ok": False,
-                },
+                ram=ram,
+                section=args.section,
+                ok=False,
+                start=start,
+                journal=journal,
+                partial=True,
             )
             if result is None or result.status != TaskStatus.SUCCESS:
                 ok = False
@@ -364,29 +398,34 @@ def main() -> int:
             "all": ("weeds", "fences", "stones", "small_rocks", "large_rocks", "stumps"),
         }[args.section]
         ok = ok and all(end["debris"].get(key, 0) == 0 for key in required)
-        payload = {
-            "start": start,
-            "journal": journal,
-            "end": end,
-            "cleared": cleared.as_dict(),
-            "required_empty": list(required),
-            "section": args.section,
-            "frames": frame,
-            "time": format_segment_time(frame),
-            "ok": ok,
-        }
+        saved = None
         if args.save_end_state and ok:
             saved = _save_emulator_state(env, args.save_end_state)
-            payload["saved_state"] = str(saved)
             print(f"[LEFTOVER] Saved end state -> {saved}")
-        _write_payload(args.out, payload)
+        extra = {}
+        if saved is not None:
+            extra["saved_state"] = str(saved)
+        _emit(
+            args.out,
+            ram=ram,
+            section=args.section,
+            ok=ok,
+            start=start,
+            journal=journal,
+            end=end,
+            cleared=cleared.as_dict(),
+            required_empty=list(required),
+            frames=frame,
+            time=format_segment_time(frame),
+            **extra,
+        )
         _print_table(start, end, cleared.as_dict(), wanted, frame)
         return 0 if ok else 1
     except KeyboardInterrupt:
-        _write_payload(
-            args.out,
-            {"journal": journal, "ok": False, "reason": "headed window closed"},
-        )
+        extra = {"journal": journal, "reason": "headed window closed"}
+        if start is not None:
+            extra["start"] = start
+        _emit(args.out, ram=ram, section=args.section, ok=False, **extra)
         return 1
     finally:
         if headed and pygame_mod is not None:

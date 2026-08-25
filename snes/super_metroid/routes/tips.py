@@ -21,6 +21,13 @@ from pathlib import Path
 from typing import Any, Literal
 
 from super_metroid.assist import UnlimitedAmmoAssist, UnlimitedResourcesAssist
+from super_metroid.hop_glance import (
+    LeaveMiss,
+    LeaveSpec,
+    final_from_state,
+    grade_final,
+    parse_room,
+)
 from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import RoomProgressionGraph
 from super_metroid.ram import HI_JUMP_MASK, VARIA_MASK, GameplayPhase, SuperMetroidState
@@ -59,6 +66,7 @@ __all__ = [
     "TIP_BY_ID",
     "get_tip",
     "register_tips",
+    "LeaveMiss",
     "play_hops",
     "play_tip",
     "run_tip",
@@ -194,18 +202,43 @@ def _invoke_after(
     after(session, splits, result)
 
 
+def _raise_if_leave_misses(hop: SpineHop, leftover: dict[str, Any]) -> None:
+    """Glance dest when ``hop.leave`` is set; dest-room check otherwise.
+
+    Always raise :class:`LeaveMiss` with leftover populated. Never drop the still.
+    """
+    spec = hop.leave
+    if isinstance(spec, LeaveSpec):
+        misses = grade_final(leftover, spec)
+    else:
+        got = parse_room(leftover.get("room", leftover.get("room_id", 0)))
+        if got == hop.to_room:
+            return
+        misses = [f"room 0x{got:04X} != 0x{hop.to_room:04X}"]
+    if misses:
+        raise LeaveMiss(
+            hop.hop_id,
+            leftover,
+            misses,
+            room_label=hop.room_label,
+            to_room=hop.to_room,
+        )
+
+
 def play_hops(
     session: RouteSession,
     splits: list[Split],
     hops: Sequence[SpineHop],
     segments: list[SegmentEvidence] | None = None,
 ) -> Any:
-    """Run ordered SpineHop legs: play → after → split → assert destination.
+    """Run ordered SpineHop legs: play → after → split → glance leave.
 
     Optional ``segments`` collects :class:`SegmentEvidence` return values from
     policy hops (early bombs path). ``after`` takes
     ``(session, splits, result)`` for multi-split bookkeeping. Returns the last
     non-``None`` play result (boss / collect evidence for early tips).
+
+    Failed hops raise :class:`LeaveMiss` with ``.leftover`` (the still).
     """
     last: Any = None
     for hop in hops:
@@ -231,11 +264,8 @@ def play_hops(
                 splits.append(
                     Split(hop.hop_id, session.frame, session.state.room_id)
                 )
-        if session.state.room_id != hop.to_room:
-            raise RuntimeError(
-                f"expected {hop.room_label} 0x{hop.to_room:04X}, got "
-                f"0x{session.state.room_id:04X}"
-            )
+        leftover = final_from_state(session.state)
+        _raise_if_leave_misses(hop, leftover)
     return last
 
 

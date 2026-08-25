@@ -18,7 +18,12 @@ PNG: `nes/zelda_i/recordings/l6_cellar08_continuous_v2_final.png`.
 
 Do **not** STATUS-promote. Do not overwrite Clean M5. Glance leave with
 `zelda_i.screen_glance` — no MP4. `--no-video` on spine CLIs. Occupancy
-halt at first **new** miss.
+halt at first **new** miss. Failed hops now publish leftover on
+`ControllerStageResult.report()["leftover"]`; `grade_controller` /
+`grade_stage_report` return that leftover even when glance misses is
+non-empty. Specs: `CLEAR_3A`, `CELLAR08_LEAVE` (play 0x3A (96,157)),
+`STAIRS3A_DEST` (mode 9 cellar 0x08). The next hop starts from leftover
+still, not a re-clear of 3a. Walk-on stairs remain BLOCKED.
 
 ### Already green (do not re-prove)
 

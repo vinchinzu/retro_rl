@@ -6,6 +6,7 @@ Business→Warehouse replay (edge already emitted on the Kraid tip).
 
 from __future__ import annotations
 
+from super_metroid.hop_glance import PHANTOON_LEAVE, WS_ENTRANCE_TO_MAIN
 from super_metroid.routes.kpdr.hijump import play_business_to_warehouse
 from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_business,
@@ -333,6 +334,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
+        leave=WS_ENTRANCE_TO_MAIN,
     ),
     SpineHop(
         "ws_main_to_basement",
@@ -382,5 +384,6 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         after=require_phantoon_left,
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
+        leave=PHANTOON_LEAVE,
     ),
 )
