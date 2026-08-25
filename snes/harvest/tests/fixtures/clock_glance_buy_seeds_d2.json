@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "hop": "buy_seeds_d2",
+  "money_before": 300,
+  "money_after": 100,
+  "potato_seeds_before": 0,
+  "potato_seeds_after": 1,
+  "shop_seen": true,
+  "maps_seen": ["0x00", "0x0C", "0x04", "0x1C", "0x00"],
+  "final": {
+    "tilemap": "0x00",
+    "hour": 8,
+    "minute": 20,
+    "money": 100,
+    "potato_seeds": 1,
+    "plot_cleared": true
+  },
+  "samples": [
+    {"frame": 0, "hour": 6, "minute": 8, "tilemap": "0x00", "x": 132, "y": 212},
+    {"frame": 400, "hour": 6, "minute": 40, "tilemap": "0x04", "x": 602, "y": 274},
+    {"frame": 800, "hour": 7, "minute": 10, "tilemap": "0x1C", "x": 182, "y": 342},
+    {"frame": 1400, "hour": 8, "minute": 20, "tilemap": "0x00", "x": 135, "y": 456}
+  ]
+}

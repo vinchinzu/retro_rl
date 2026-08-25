@@ -1,178 +1,70 @@
 # Harvest Agent Notes
 
 Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
-[root AGENTS.md](../../AGENTS.md).
+[root AGENTS.md](../../AGENTS.md). Session loop:
+`.grok/skills/harvest-session/SKILL.md`. Tracker:
+`bd ready -l harvest -l spine`.
+
+## Immediate goal
+
+`rr-20w.2.3` D2 CLEAR_PLOT (P0) + living residual
+[`docs/tasks/rr-20w.2.3-residual.md`](docs/tasks/rr-20w.2.3-residual.md).
+Water-refill `rr-3ae8` is also on the spine filter — claim **one**. Planner
+owns [STATUS.md](docs/STATUS.md); do not STATUS-promote Gate B.
 
 ## Commands
 
 ```bash
-./run_bot.sh play --autoplay --state latest
+bd ready -l harvest -l spine
 
-# Live power-on with bot (window + [ ] speed): title → D1 handoff → multi-day
-uv run python -m harvest.runtime.harvest_bot play --autoplay --power-on --end-of-spring
-# --no-d1-handoff skips town talks/shed/sleep after power-on
-
-# Boot / power-on (clean diary → Spring D1 07:00 town)
-uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
-HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
-  --out recordings/power_on_boot_probe.json
-
-# D1 town recon (docs/town_day1_recon.md)
-uv run python -m harvest.scripts.town_day1_recon checklist
-HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
-  --state Y1_Spring_D1_AnnEve --out recordings/town_day1_rest_auto.json
-
-# Multi-day soak (M3)
-HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
-  --state Y1_Inside_House --end-of-spring \
-  --out recordings/run_spring_month.json \
-  --save-end-state Y1_Summer_D1_Morning
-
-# Power-on continuous (rr-5in): D1 handoff auto + multi-day
-HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2 \
-  --out recordings/power_on_d1_handoff_d2.json
-# Composed D1 handoff from the power-on town gate (six talks → truck → shed → D2)
-HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
-  --state Y1_Spring_D1_Town_Gate \
-  --save-end-state Y1_D2_Morning_After_D1 \
-  --out recordings/town_day1_town_gate_composed.json
-# Continuous D2 work-entry checkpoint: grape ship + potato buy + 5pm dialogue.
-# Natural entry is power-on. Do not start this gate from Y1_D2_Morning_After_D1
-# — grape return-to-bin seals at the house fence (rr-oqri).
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on \
   --stop-after-d2-shipping --save-end-state Y1_D2_PostShipper_WorkStart \
   --out recordings/power_on_d2_spine_clear_final.json
-HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spring \
-  --out recordings/power_on_spring_to_summer.json
-# --no-d1-handoff disables auto town talks+shed after power-on
 
-# First mountain berry from Spring D2 house (reactive path segments)
-HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-  --state Y1_Inside_House --screenshot recordings/mountain_grape_stand.png
-# Ground-grape pick + Don't eat (rr-14xx)
-HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-  --state Y1_Inside_House --pick --screenshot recordings/mountain_grape_kept.png
-# Full Spring D2 pick/keep/return/bin route (rr-nn3x)
 HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
   --state Y1_Inside_House --ship --out recordings/mountain_grape_ship.json
-# Hour-by-hour RAM clock + 12:00 lunch stand (frames vs BERRY_SHIP_BENCH)
-HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-  --state Y1_Inside_House --ship --until-lunch \
-  --out recordings/mountain_segments_clock.json
 
-# Classify a pick/talk from an existing tape or a live pin (do not re-record)
 uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand
 uv run python -m harvest.scripts.interact_scan search grape
-# Seed shop: nav shop_door + RAM buy (not a day tape)
+
 HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
   --state Y1_Inside_House --out recordings/buy_seeds_d2_probe.json
-# West-pocket weeds/stones (inside y=31 fence; lift only, no plant tape)
+
 HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
-  --state Y1_Inside_House --out recordings/pocket_clear_probe.json
-# Post-shop hoe+seed collect + 3x3 plant (8 around (13,28); rr-m7mk)
-HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
-  --state Y1_After_Buy_Potato --out recordings/d2_plant_probe.json
-# Hoe-only tune (till the ring, do not plant)
-HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
-  --state Y1_After_Buy_Potato --hoe-only --out recordings/d2_hoe_ring.json
-# 8-ring plant then water (rr-m7mk / rr-bvam)
-HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
-  --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
-# Leftover smash: 10 bushes pick+toss → dump fences in ponds → 10 stones in ponds → hammer 4 large → axe 2 stumps
-HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
-  --state Y1_After_Buy_Potato --out recordings/d2_leftover_smash.json
-HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe --dump
-
-# Stamina object from a pin (`player.stamina` is current/max/tool_hits)
-uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact
-# Drain + outdoor spa until current == max, then return (rr-pzw)
-HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
-  --state Y1_D2_Night_Farm \
-  --min-stamina full --target-stamina 70 --return-to-farm \
-  --out recordings/hot_spring_full.json
-# Windowed watch (drain a bit so noon lunch does not fill and abort the walk)
-uv run python -m harvest.scripts.hot_spring_probe \
-  --state Y1_D2_Night_Farm \
-  --min-stamina full --target-stamina 70 --return-to-farm --watch
-
-# Harvest + ship + post-5pm wallet credit (rr-53g)
-HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
-  --state Y1_Day09_Harvest_Mode_Start \
-  --out recordings/harvest_ship_5pm_money.json
-
-# Gate A multi-day successor: harvest phases + money>$100 (rr-y8n)
-HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
-  --state Y1_Day09_Harvest_Mode_Start --days 1 \
-  --out recordings/run_spring_gate_a_day09.json
-
-# Record task (F5) / tests
-uv run python -m harvest.runtime.harvest_bot play --state latest --record <name> --no-day-plan
-uv run python -m unittest tests.test_day_plan_sequences tests.test_task_progress -v
-
-# Editor
-./kickoff.sh
-PYTHONPATH=.. uv run --project .. python -m retro_harness.editor_launcher harvest -- --state latest
+  --state Y1_After_Buy_Potato --out recordings/pocket_clear_probe.json
 ```
+
+`HEADLESS=1`; no MP4. Glance is `harvest.clock_glance`. Parked CLIs:
+[docs/plan.md](docs/plan.md) § CLI catalog. Natural entry is power-on.
+Do not start D2 from `Y1_D2_Morning_After_D1`.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `harvest/core/`, `maps/`, `planner/`, `runtime/`, `tasks/` | Package (import `harvest.*`) |
+| `harvest/core/`, `maps/`, `planner/`, `runtime/`, `tasks/` | Package (`harvest.*`) |
 | `custom_integrations/HarvestMoon-Snes/` | Save states |
-| `tasks/*.json` | Human task recordings (not the package) |
-| `docs/STATUS.md`, `plan.md`, `PLANNING_STACK.md`, `ram_map.md` | Specs |
+| `docs/STATUS.md`, `plan.md`, `FARM_CLEAR_D2.md`, `INTERACT.md` | Specs |
 
-Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration`
-(and `backup_mutable_start_state` before recording). Never hand-roll
-`Integrations.add_custom_path` in new scripts.
+Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration`.
+Nested import: workspace is `snes/harvest/`; package is `harvest.*` (disk
+`snes/harvest/harvest/`). Split a file **before 500 lines**; refuse a new
+knob on a file **≥800**. Extract before 1k; module map in plan.md.
 
 ## Traps
 
-- Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or use `densify_waypoints`.
-- Walkable tile IDs come from **recordings**, not static save-state dumps.
-- Travel BFS must not route onto WEED `0x03` (ROM-walkable, pins movement),
-  stumps `0x09`–`0x0C`, rocks `0x06`/`0x0D`–`0x14`, or a tile the farmer is
-  **pushing**. Live: `player_action` stays **0** for idle/walk/run/push
-  (3=jump, 9=dialogue) — treat 0 + zero pixel motion as push and temp-block
-  the facing neighbor. Clear from a neighbor stand; never BFS onto the
-  debris cell. D2 sections are `rr-20w.2.*` — do not soak the whole 3–4h
-  day as one ticket. Issue list: [docs/FARM_CLEAR_D2.md](docs/FARM_CLEAR_D2.md).
-- Interact: scan an existing tape / UnlinkedText before recording. Face-walk
-  is movement. Item box with held forage is Eat/Don't eat, not Gotz. See
-  [docs/INTERACT.md](docs/INTERACT.md).
-- 5pm farm ShippingScene: pulse A (press/release). Holding A
-  (`dismiss_dialogue_result(0)`) never closes the shipper box — CC waits
-  while `inputstate==2` for an edge. Text `0x031A`/`0x031B`.
-- Tasks must not import `day_plan` / orchestrator (circular); shared facts live
-  in `ram_catalog` / `tile_catalog` / `map_config`.
-- Prefer skill composition (`tasks/skills.py`) over new phase machines.
-- Nested import: workspace is `snes/harvest/`; package is `snes/harvest/harvest/`.
-  Root `conftest` / `repo.ensure_import_paths` put the workspace on `sys.path`.
+- Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or `densify_waypoints`.
+- WEED `0x03` is not travel-walkable. Never BFS onto debris/push. Clear from
+  a neighbor stand. D2 sections are `rr-20w.2.*`.
+- Interact: scan an existing tape / UnlinkedText before recording.
+- 5pm farm ShippingScene: pulse A (press/release). Do not hold A.
+- Do not start D2 from `Y1_D2_Morning_After_D1` — grape return-to-bin seals
+  at the house fence (rr-oqri).
 
 ## Pointers
 
 [docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
 [docs/FARM_CLEAR_D2.md](docs/FARM_CLEAR_D2.md) ·
-[docs/INTERACT.md](docs/INTERACT.md) ·
-[docs/PLANNING_STACK.md](docs/PLANNING_STACK.md) · [docs/town_day1_recon.md](docs/town_day1_recon.md)
+[docs/INTERACT.md](docs/INTERACT.md)
 
-Skills (repo `.grok/skills/`): `harvest-interact` · `harvest-route` · `harvest-shop`
-
-## Structure rule (1k LOC + no mono thrash)
-
-Soft max **~1000 LOC / file** (repo Working Norms). Do **not** grow monofiles
-with residual thrash `if`s — extract a module or data rule first.
-
-| Concern | Module(s) |
-|---------|-----------|
-| MultNav | `multi_nav` (not `navigation.py`) |
-| Pond / crop thrash | `pond_*`, `crop_{establish,water_ops,refill*,navigate,detect,act_verify,step}` |
-| Home | `home_return`, `home_sleep`, `home_approach`, `home_recover` |
-| Coop / cow | `coop_{layout,feed_ops,egg_ops}`, `cow_*` |
-| Maps / routes | `map_config` facade + `map_types` / `farm_pond` / `map_routes` |
-| Day plan | `day_plan_orchestrator`, `multi_day_planner`, `day_phase_{catalog,berry,chicken,cow}` |
-| D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
-
-Prefer skill composition (`tasks/skills.py`) over new phase machines.
-Gate board: `docs/MILESTONES.md` · structure debt: `docs/CODE_QUALITY_REVIEW.md`.
+Skills: `harvest-session` · `harvest-route` · `harvest-interact` · `harvest-shop`
