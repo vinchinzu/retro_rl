@@ -16,8 +16,8 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     VARIANT_ID,
     can_attach_tunnel_edge,
 )
-from super_metroid.routes.kpdr.k5.red_to_hellway import (
-    _MORPH,
+from super_metroid.routes.kpdr.k5.red_to_hellway_common import _MORPH
+from super_metroid.routes.kpdr.k5.red_to_hellway_mid import (
     _ibj_double,
     _tunnel_to_midplat,
 )

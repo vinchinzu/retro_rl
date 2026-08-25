@@ -1,4 +1,10 @@
-"""No-assist Phantoon policy: left-corner seat + open-eye charge/missiles.
+"""Phantoon seat/window helpers.
+
+Product spine fight is ``phantoon_doppler.play_phantoon_doppler_fight``.
+Charge-only / charge+missiles / X-Factor stay research modules. This file
+is shared seat + open-eye geometry used by those recipes.
+
+No-assist Phantoon policy: left-corner seat + open-eye charge/missiles.
 
 Public policy (https://wiki.supermetroid.run/Phantoon,
 https://wiki.supermetroid.run/Phantoon#Phantoon_First):

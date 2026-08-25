@@ -35,15 +35,16 @@ Print a three-row table: **before** / **after** / **Δ**. Negative Δ is faster.
 3. **Capture the enter pin.** Natural predecessor, not a door-warp.
 4. **Bench BEFORE** the current product body from that pin. Save the JSON.
 5. **Implement** a RAM-driven policy (seat → window → exit). Unit-test
-   actions without the emulator. Keep files ≤ ~500 lines.
-6. **Bench AFTER** from the **same pin**. If it is not faster and successful,
-   do not wire it.
+   actions without the emulator. Split before 500 lines.
+6. **Bench AFTER** from the **same pin**. Overwrite `scratch/<hop>_bench.json`
+   (not `_vN` / `_window_*`). If it is not faster and successful, do not
+   wire it. Three red windows on the same checkbox → BLOCKED, stop.
 7. **Wire** the winner only after the **next hop** still clears from the
-   new leave pin (faster fights change Ceres elev debris phase). Re-record
-   the continuous tip before any STATUS claim. If the next hop dies, keep
-   the old product body and leave the new policy behind a flag. Write
-   experimental continuous reports under `scratch/` — never overwrite
-   `recordings/<tip>.json` on a red run.
+   new leave pin (faster fights change Ceres elev debris phase). Glance
+   the leave with `hop_glance` — not an MP4. Re-record the continuous tip
+   before any STATUS claim. If the next hop dies, keep the old product
+   body and leave the new policy behind a flag. Never overwrite
+   `recordings/<tip>.json` on a red run. Session gates: `sm-session`.
 
 ## Probe shape
 

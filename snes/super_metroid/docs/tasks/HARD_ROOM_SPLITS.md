@@ -1,5 +1,8 @@
 # Hard-room splits — process ideas for future geometry
 
+Session halt lives in `.grok/skills/sm-pure-hop/`. This page is the phase
+ladder only — do not farm window/period knobs past three serial PARTIALs.
+
 Reusable playbook when a pure hop stays **PARTIAL** across serial one-knob
 cards (same acceptance checkbox red). First consumer: Bubble → Bat (continuous tip **done** 122304f; techniques in [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md)).
 
