@@ -49,7 +49,6 @@ from zelda_i.level3_spine import (
 from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
-from zelda_i.level4_overworld import level4_entry_stop
 from zelda_i.level5_spine import (
     L5_STOPS,
     L5_THROUGH,
@@ -59,6 +58,7 @@ from zelda_i.level5_spine import (
 from zelda_i.level6_spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level4_spine import (
     L4_STOPS,
+    continue_level4_spine,
     level4_bomb11_stages,
     level4_bomb11_success,
     level4_key01_stages,
@@ -169,6 +169,27 @@ Through = Literal[
     "level6-east39",
     "level6-settle3a",
     "level6-clear3a",
+    "level6-west39-upclip",
+    "level6-west39",
+    "level6-clear39-west",
+    "level6-stairs3a",
+    "level6-north39",
+    "level6-inland29",
+    "level6-west19",
+    "level6-south18",
+    "level6-aisle-west28",
+    "level6-west28",
+    "level6-east28",
+    "level6-clear28-south",
+    "level6-west38",
+    "level6-east38",
+    "level6-east38-lane",
+    "level6-bomb38-south",
+    "level6-south38",
+    "level6-clear38-south",
+    "level6-aisle28",
+    "level6-south28",
+    "level6-exit-ow",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
@@ -654,349 +675,18 @@ def run_survival_spine(
     if through == "level3":
         return run
 
-    if not _run_stages(
+    continue_level4_spine(
         env,
         run,
-        level4_entry_stages(),
+        through=through,
+        run_stages=_run_stages,
+        topup_bombs=topup_owned_bombs,
+        spine_fields=spine_final_fields,
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_entry_stop(snap)
-    if not run.success:
-        run.failed_stage = "level4_entry_0x71"
-        return run
-    run.l4_entry = spine_final_fields(snap)
-    if through == "level4-entry":
-        return run
-
-    entry_up, bomb_wall, natural_key = level4_first_key_stages()
-    if not _run_stages(
-        env, run, (entry_up,), room_timer=room_timer, assist=assist, on_frame=on_frame
-    ):
-        return run
-    # Operator-authorized Survival exception: known 0x61 bomb wall, while the
-    # continuous predecessor arrives at L4 with bombs=0. Preserve keys/items.
-    topup_owned_bombs(env, run)
-    if not _run_stages(
-        env,
-        run,
-        (bomb_wall, natural_key),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_first_key_success(
-        snap, keys_before=int(run.l4_entry["keys"])
     )
-    if not run.success:
-        run.failed_stage = "level4_natural_key_0x51"
-        return run
-    if through == "level4-key":
-        return run
-
-    keys_before_40 = snap.keys
-    if not _run_stages(
-        env,
-        run,
-        level4_room50_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_room50_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_clear_0x50"
-        return run
-    if through == "level4-clear50":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_room40_key_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_room40_key_success(snap, keys_before=keys_before_40)
-    if not run.success:
-        run.failed_stage = "level4_natural_key_0x40"
-        return run
-    if through == "level4-room40-key":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_north_30_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_north_30_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x30"
-        return run
-    if through == "level4-room30":
-        return run
-
-    keys_before_31 = snap.keys
-    if not _run_stages(
-        env,
-        run,
-        level4_key_right_31_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_key_right_31_success(snap, keys_before=keys_before_31)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x31"
-        return run
-    if through == "level4-room31":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_clear_31_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_clear_31_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_clear_0x31"
-        return run
-    if through == "level4-clear31":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_east_32_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_east_32_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x32"
-        return run
-    if through == "level4-room32":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_clear_32_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_clear_32_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_clear_0x32"
-        return run
-    if through == "level4-clear32":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_stepladder_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_stepladder_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_stepladder_0x60"
-        return run
-    if through == "level4-stepladder":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_exit60_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_exit60_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_exit_0x60"
-        return run
-    if through == "level4-exit60":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_west31_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_west31_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_west_0x31"
-        return run
-    if through == "level4-west31":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_keyup20_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_keyup20_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_key_up_0x20"
-        return run
-    if through == "level4-keyup20":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_map21_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_map21_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x21"
-        return run
-    if through == "level4-room21":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_mappick_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_mappick_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_map_pickup_0x21"
-        return run
-    if through == "level4-map":
-        return run
-
-    # Operator-authorized Survival exception at this verified bomb gate:
-    # count top-up + B-slot bombs. Never write capacity / max_bombs.
-    topup_owned_bombs(env, run)
-    if not _run_stages(
-        env,
-        run,
-        level4_bomb11_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_bomb11_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x11"
-        return run
-    if through == "level4-bomb11":
-        return run
-
-    keys_before_01 = snap.keys
-    if not _run_stages(
-        env,
-        run,
-        level4_key01_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_key01_success(snap, keys_before=keys_before_01)
-    if not run.success:
-        run.failed_stage = "level4_natural_key_0x01"
-        return run
-    if through == "level4-key01":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_clear12_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_clear12_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_clear_0x12"
-        return run
-    if through == "level4-clear12":
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level4_gleeok13_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = level4_gleeok13_success(snap)
-    if not run.success:
-        run.failed_stage = "level4_enter_0x13"
-        return run
-    if through == "level4-gleeok13":
-        return run
-
-    attach_level4_tf_suffix(env, run, assist=assist)
-    if not run.success or through == "level4":
+    if not run.success or through in L4_STOPS:
         return run
     continue_level5_spine(
         env,
