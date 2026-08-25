@@ -5,7 +5,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from super_metroid.hop_glance import LeaveSpec, grade_final, grade_report, pose_class
+from super_metroid.hop_glance import (
+    LeaveMiss,
+    LeaveSpec,
+    PHANTOON_LEAVE,
+    WS_BASEMENT_TO_MAIN,
+    WS_ENTRANCE_TO_MAIN,
+    final_from_state,
+    grade_final,
+    grade_leave,
+    grade_report,
+    pose_class,
+)
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_HELLWAY,
     ROOM_PHANTOON,
@@ -15,23 +26,6 @@ from super_metroid.routes.kpdr.room_ids import (
 )
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures"
-
-WS_ENTRANCE_TO_MAIN = LeaveSpec(
-    hop="ws_entrance_to_main",
-    room=ROOM_WS_MAIN,
-    x=(1000, 1100),
-    y=(880, 940),
-    pose_class="stand",
-)
-
-PHANTOON_LEAVE = LeaveSpec(
-    hop="phantoon_loot_exit",
-    room=ROOM_WS_BASEMENT,
-    x=(1200, 1280),
-    y=(120, 160),
-    pose_class="stand",
-    boss_bit=1,
-)
 
 
 def _load(name: str) -> dict:
@@ -153,3 +147,109 @@ def test_failed_run_is_a_glance_miss() -> None:
     misses = grade_report(report, PHANTOON_LEAVE)
     assert "success is false" in misses
     assert "run 1 success is false" in misses
+
+
+class _Duck:
+    def __init__(self, **kwargs: object) -> None:
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+def test_final_from_state_maps_samus_and_duck() -> None:
+    state = _Duck(
+        room_id=ROOM_WS_MAIN,
+        samus_x=1063,
+        samus_y=907,
+        pose=9,
+        game_state=8,
+        door_transition=0,
+        health=299,
+    )
+    final = final_from_state(state)
+    assert final == {
+        "room": "0xCAF6",
+        "xy": [1063, 907],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    duck = _Duck(room=0xCAF6, x=1063, y=907, pose=9, gs=8, dt=0, health=299)
+    assert final_from_state(duck)["xy"] == [1063, 907]
+
+
+def test_grade_leave_keeps_final_on_miss() -> None:
+    final = {"room": "0xCAF6", "xy": [57, 139], "pose": 9, "gs": 8, "dt": 0, "health": 299}
+    leftover = grade_leave(final, WS_ENTRANCE_TO_MAIN)
+    assert leftover["xy"] == [57, 139]
+    assert grade_final(leftover, WS_ENTRANCE_TO_MAIN)
+
+
+def test_leave_miss_carries_leftover_xy_when_glance_misses() -> None:
+    leftover = {
+        "room": "0xCAF6",
+        "xy": [1063, 907],
+        "pose": 29,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    misses = grade_final(leftover, WS_ENTRANCE_TO_MAIN)
+    assert any("not stand" in m for m in misses)
+    err = LeaveMiss("ws_entrance_to_main", leftover, misses)
+    assert err.leftover["xy"] == [1063, 907]
+    assert err.leftover["pose"] == 29
+    assert "leftover xy=[1063, 907]" in str(err)
+    assert "pose 29" in str(err)
+
+
+def test_leave_miss_populates_leftover_when_room_is_wrong() -> None:
+    leftover = {
+        "room": hex(ROOM_PHANTOON),
+        "xy": [39, 128],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 1,
+    }
+    misses = grade_final(leftover, PHANTOON_LEAVE)
+    err = LeaveMiss(
+        "phantoon_loot_exit",
+        leftover,
+        misses,
+        room_label="WS Basement (post-Phantoon)",
+        to_room=ROOM_WS_BASEMENT,
+    )
+    assert "expected WS Basement (post-Phantoon) 0xCC6F, got 0xCD13" in str(err)
+    assert err.leftover["xy"] == [39, 128]
+    assert err.leftover["pose"] == 10
+    assert err.leftover["gs"] == 8
+    assert err.misses == misses
+
+
+def test_ws_basement_to_main_spec_is_main_shaft_stand() -> None:
+    assert WS_BASEMENT_TO_MAIN.room == ROOM_WS_MAIN
+    assert WS_BASEMENT_TO_MAIN.pose_class == "stand"
+    assert WS_BASEMENT_TO_MAIN.gs == 8
+    assert WS_BASEMENT_TO_MAIN.dt == 0
+    seated = {
+        "room": "0xCAF6",
+        "xy": [1144, 1900],
+        "pose": 1,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    assert grade_final(seated, WS_BASEMENT_TO_MAIN) == []
+    basement_hatch = {
+        "room": hex(ROOM_WS_BASEMENT),
+        "xy": [657, 163],
+        "pose": 1,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    leftover = grade_leave(basement_hatch, WS_BASEMENT_TO_MAIN)
+    assert leftover["xy"] == [657, 163]
+    assert any(m.startswith("room ") for m in grade_final(leftover, WS_BASEMENT_TO_MAIN))

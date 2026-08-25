@@ -62,6 +62,9 @@ class SpineHop:
     edge_id: str | None = None
     """Graph ``DoorEdge.edge_id``; defaults to ``hop_id`` when emitting."""
 
+    leave: object | None = None
+    """Optional :class:`~super_metroid.hop_glance.LeaveSpec` dest glance."""
+
     def __post_init__(self) -> None:
         if self.requires:
             object.__setattr__(self, "requires", frozenset(self.requires))

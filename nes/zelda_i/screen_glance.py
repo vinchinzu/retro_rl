@@ -3,16 +3,21 @@
 A glance still (or RAM dump) is enough: wrong room, still cave, fanfare
 when the leave is play, TF bit missing, hearts nibble 0xF, xy not in the
 door/play band, keys/bombs not the owned HUD counts, door poke. No MP4.
+
+Hop leftover is progress: grade_* always return leftover even when misses
+is non-empty. Dest RAM success stays a separate predicate.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 
 FANFARE_MODE = 18
+# stairs3a-warp dest is RAM mode 9 cellar 0x08. Not cave (11).
+PASSAGE_MODE = 9
 _HEART_FILL_NIBBLE = 0x0F
 
 
@@ -32,6 +37,53 @@ class LeaveSpec:
     allow_cave: bool = False
     allow_fanfare: bool = False
     require_progression_writes: int = 0
+
+
+# Published leftover: l6_clear3a_continuous_v1 play 0x3A (144,141).
+CLEAR_3A = LeaveSpec(
+    hop="level6-clear3a",
+    room=0x3A,
+    x=(128, 160),
+    y=(133, 149),
+    triforce_bits=0x1F,
+    keys=4,
+    bombs=8,
+)
+
+# Residual pin: cellar08 leftover play 0x3A (96,157). HUD from live tape.
+CELLAR08_LEAVE = LeaveSpec(
+    hop="level6-cellar08",
+    room=0x3A,
+    x=(88, 112),
+    y=(149, 165),
+    triforce_bits=0x1F,
+    keys=4,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# stairs3a-warp dest: mode 9 cellar 0x08 (208,93). Walk-on stairs BLOCKED.
+# Spec documents dest; leftover documents where we actually stopped.
+STAIRS3A_DEST = LeaveSpec(
+    hop="level6-stairs3a-warp",
+    room=0x08,
+    x=(200, 216),
+    y=(85, 101),
+    mode=PASSAGE_MODE,
+    triforce_bits=0x1F,
+    keys=4,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+
+@dataclass
+class GlanceLeftover:
+    """Glance result. leftover is present even when misses is non-empty."""
+
+    ok: bool
+    leftover: dict[str, Any] = field(default_factory=dict)
+    misses: list[str] = field(default_factory=list)
 
 
 def parse_room(value: Any) -> int:
@@ -169,3 +221,138 @@ def grade_report(report: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
         for reason in grade_final(final, spec):
             misses.append(f"run {i}: {reason}")
     return misses
+
+
+def leftover_from_mapping(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Copy leftover and fill room/xy aliases so grade_final can read it."""
+    leftover = dict(raw)
+    room = _pick(leftover, "room", "screen")
+    if room is not None:
+        leftover.setdefault("room", parse_room(room))
+        leftover.setdefault("screen", parse_room(room))
+    if leftover.get("xy") is not None:
+        pair = list(leftover["xy"])
+        leftover["xy"] = [int(pair[0]), int(pair[1])]
+        leftover.setdefault("x", int(pair[0]))
+        leftover.setdefault("y", int(pair[1]))
+    else:
+        x = _pick(leftover, "x", "link_x")
+        y = _pick(leftover, "y", "link_y")
+        if x is not None and y is not None:
+            leftover["xy"] = [int(x), int(y)]
+            leftover.setdefault("x", int(x))
+            leftover.setdefault("y", int(y))
+    tf = _pick(leftover, "triforce", "tf")
+    if tf is not None:
+        leftover.setdefault("triforce", _as_int(tf))
+    health = _pick(leftover, "health", "hearts")
+    if health is not None:
+        leftover.setdefault("health", _as_int(health))
+    return leftover
+
+
+def leftover_from_snapshot(snap: Any) -> dict[str, Any]:
+    """Build leftover from a ZeldaSnapshot (or duck-typed last frame)."""
+    x = int(getattr(snap, "link_x", getattr(snap, "x", 0)))
+    y = int(getattr(snap, "link_y", getattr(snap, "y", 0)))
+    screen = int(getattr(snap, "screen", getattr(snap, "room", 0)))
+    leftover: dict[str, Any] = {
+        "x": x,
+        "y": y,
+        "xy": [x, y],
+        "mode": int(getattr(snap, "mode", -1)),
+        "screen": screen,
+        "room": screen,
+        "keys": int(getattr(snap, "keys", 0)),
+        "bombs": int(getattr(snap, "bombs", 0)),
+        "triforce": int(getattr(snap, "triforce", 0)),
+    }
+    health = getattr(snap, "health", None)
+    if health is None:
+        health = getattr(snap, "hearts", None)
+    if health is not None:
+        leftover["health"] = int(health)
+    tile = getattr(snap, "colliding_tile", getattr(snap, "tile", None))
+    if tile is not None:
+        leftover["tile"] = int(tile)
+    for key in ("rod", "bow", "arrows", "map"):
+        if hasattr(snap, key):
+            leftover[key] = int(getattr(snap, key) or 0)
+    return leftover
+
+
+def leftover_from_report(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Pull leftover from a stage / dual / probe report."""
+    nested = report.get("controller")
+    if isinstance(nested, Mapping):
+        raw = nested.get("leftover")
+        if isinstance(raw, Mapping) and raw:
+            return leftover_from_mapping(raw)
+    raw = report.get("leftover")
+    if isinstance(raw, Mapping) and raw:
+        return leftover_from_mapping(raw)
+    final = report.get("final")
+    if isinstance(final, Mapping) and final:
+        return leftover_from_mapping(final)
+    return {}
+
+
+def leftover_from_controller(controller: Any) -> dict[str, Any]:
+    """Read controller.leftover, else report leftover, else a last snapshot."""
+    raw = getattr(controller, "leftover", None)
+    if isinstance(raw, Mapping) and raw:
+        return leftover_from_mapping(raw)
+    report_fn = getattr(controller, "report", None)
+    if callable(report_fn):
+        nested = report_fn()
+        if isinstance(nested, Mapping):
+            pulled = leftover_from_report(nested)
+            if pulled:
+                return pulled
+    for attr in ("snap", "last_snap", "snapshot"):
+        snap = getattr(controller, attr, None)
+        if snap is not None and (
+            hasattr(snap, "link_x") or hasattr(snap, "screen")
+        ):
+            return leftover_from_snapshot(snap)
+    if isinstance(raw, Mapping):
+        return leftover_from_mapping(raw)
+    return {}
+
+
+def _grade_leftover(leftover: Mapping[str, Any], spec: LeaveSpec) -> GlanceLeftover:
+    payload = leftover_from_mapping(leftover) if leftover else {}
+    if not payload:
+        return GlanceLeftover(ok=False, leftover={}, misses=["missing leftover"])
+    misses = grade_final(payload, spec)
+    return GlanceLeftover(ok=not misses, leftover=payload, misses=misses)
+
+
+def grade_controller(controller: Any, spec: LeaveSpec) -> GlanceLeftover:
+    """Grade leftover on a hop controller. leftover is always returned."""
+    leftover = leftover_from_controller(controller)
+    return _grade_leftover(leftover, spec)
+
+
+def grade_stage_report(report: Mapping[str, Any], spec: LeaveSpec) -> GlanceLeftover:
+    """Grade leftover from report[controller][leftover] / leftover / final."""
+    leftover = leftover_from_report(report)
+    return _grade_leftover(leftover, spec)
+
+
+def clear3a_glance(controller: Any) -> GlanceLeftover:
+    """Published leftover play 0x3A (144,141). Dest RAM is separate."""
+    return grade_controller(controller, CLEAR_3A)
+
+
+def cellar08_glance(controller: Any) -> GlanceLeftover:
+    """Residual leftover play 0x3A (96,157). Dest RAM is separate."""
+    return grade_controller(controller, CELLAR08_LEAVE)
+
+
+def east3a_glance(controller: Any) -> GlanceLeftover:
+    """East dest is unknown; leftover is the cellar08 pin / where we stopped."""
+    return grade_controller(controller, CELLAR08_LEAVE)
+
+
+level6_clear3a_glance = clear3a_glance

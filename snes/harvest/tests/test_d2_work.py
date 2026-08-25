@@ -220,5 +220,54 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertNotIn("--watch", text)
 
 
+class LeftoverProbePayloadTests(unittest.TestCase):
+    def test_fail_payload_always_has_leftover_and_glance_misses(self) -> None:
+        from harvest.clock_glance import FENCE_STAND, leftover_json
+        from harvest.scripts.d2_leftover_probe import leftover_json as probe_leftover_json
+
+        self.assertIs(probe_leftover_json, leftover_json)
+        snap = {
+            "tilemap": "0x0",
+            "pos": [86, 69],
+            "tile": [5, 4],
+            "clock": {"hour": 18, "minute": 6, "clock": "18:06"},
+            "carry": {"selected": 16, "backpack": 2},
+            "debris": {
+                "weeds": 0,
+                "stones": 185,
+                "small_rocks": 0,
+                "large_rocks": 51,
+                "stumps": 38,
+                "fences": 80,
+            },
+        }
+        fail = leftover_json(
+            snap,
+            FENCE_STAND,
+            ok=False,
+            journal=[{"phase": "CLEAR_FENCES", "status": "failed"}],
+            partial=True,
+            section="fences",
+        )
+        self.assertFalse(fail["ok"])
+        self.assertIn("leftover", fail)
+        self.assertIn("final", fail)
+        self.assertIn("glance_misses", fail)
+        self.assertEqual(fail["leftover"]["tilemap"], 0)
+        self.assertEqual(fail["leftover"]["hour"], 18)
+        self.assertEqual(fail["leftover"]["debris"]["fences"], 80)
+        self.assertEqual(fail["glance_misses"], [])
+        exit_fail = leftover_json(
+            {"tilemap": "0x15", "clock": {"hour": 6, "minute": 8, "clock": "06:08"}},
+            FENCE_STAND,
+            ok=False,
+            journal=[{"phase": "exit_to_farm"}],
+        )
+        self.assertIn("leftover", exit_fail)
+        self.assertIn("glance_misses", exit_fail)
+        self.assertTrue(exit_fail["glance_misses"])
+        self.assertEqual(exit_fail["leftover"]["tilemap"], 0x15)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -29,6 +29,12 @@ from typing import Any
 from retro_harness.headed import add_headed_flag, attach_headed, idle_headed
 from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.dev.common import boot_from_state, make_dev_env, save_dev_state
+from super_metroid.hop_glance import (
+    LeaveMiss,
+    WS_BASEMENT_TO_MAIN,
+    final_from_state,
+    grade_final,
+)
 from super_metroid.paths import SCRATCH_STATE_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
@@ -78,24 +84,20 @@ class _Sess:
 
 def _snap(st: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     pose = int(st.pose)
-    out: dict[str, Any] = {
-        "room": f"0x{int(st.room_id):04X}",
-        "xy": [int(st.samus_x), int(st.samus_y)],
-        "pose": pose,
-        "gs": int(st.game_state),
-        "dt": int(st.door_transition),
-        "morph": pose in MORPH_POSES or is_morph(pose),
-        "selected": int(st.selected_item),
-        "items": f"0x{int(st.collected_items):04X}",
-        "beams": f"0x{int(st.collected_beams):04X}",
-        "health": int(st.health),
-        "vx": int(st.velocity_x),
-        "vy": int(st.velocity_y),
-        "facing": int(st.facing),
-        "boss": int(getattr(st, "boss_bits", (0, 0, 0, 0))[3]) & 1,
-        "supers": int(getattr(st, "super_missiles", 0) or 0),
-        "missiles": int(getattr(st, "missiles", 0) or 0),
-    }
+    out: dict[str, Any] = final_from_state(st)
+    out.update(
+        {
+            "morph": pose in MORPH_POSES or is_morph(pose),
+            "selected": int(st.selected_item),
+            "items": f"0x{int(st.collected_items):04X}",
+            "beams": f"0x{int(st.collected_beams):04X}",
+            "vx": int(st.velocity_x),
+            "vy": int(st.velocity_y),
+            "facing": int(st.facing),
+            "supers": int(getattr(st, "super_missiles", 0) or 0),
+            "missiles": int(getattr(st, "missiles", 0) or 0),
+        }
+    )
     if extra:
         out.update(extra)
     return out
@@ -132,8 +134,13 @@ def _run_hop(
         sess = _Sess(env, a)
         boot = _snap(sess.state, {"frame": 0})
         error = None
+        hop_misses: list[str] | None = None
         try:
             st = play_ws_basement_to_main(sess)
+        except LeaveMiss as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            st = sess.state
+            hop_misses = list(exc.misses)
         except Exception as exc:  # noqa: BLE001
             error = f"{type(exc).__name__}: {exc}"
             st = sess.state
@@ -175,17 +182,23 @@ def _run_hop(
         else:
             png = None
         timed = format_segment_time(sess.frame)
-        return {
+        final = _snap(st, extra)
+        report: dict[str, Any] = {
             "success": ok,
             "error": error,
             "source": str(source),
             "boot": boot,
-            "final": _snap(st, extra),
+            "final": final,
             "frames": sess.frame,
             "time": timed,
             "saved": str(save) if ok and save is not None else None,
             "red_png": str(png) if png is not None else None,
         }
+        if not ok:
+            # Leftover IS the final still. Next agent reads leftover, not the pin.
+            report["leftover"] = dict(final)
+            report["glance_misses"] = hop_misses or grade_final(final, WS_BASEMENT_TO_MAIN)
+        return report
     finally:
         if headed and pygame_mod is not None:
             idle_headed(env, pygame_mod)
@@ -230,6 +243,12 @@ def cmd_pure(args: argparse.Namespace) -> int:
             "frames": primary["frames"],
             "time": timed,
         }
+        if not dual_report["success"]:
+            leftover = primary.get("leftover", primary.get("final"))
+            dual_report["leftover"] = leftover
+            dual_report["glance_misses"] = primary.get(
+                "glance_misses", grade_final(primary["final"], WS_BASEMENT_TO_MAIN)
+            )
         dual_path = Path(args.dual_report or DEFAULT_DUAL)
         dual_path.parent.mkdir(parents=True, exist_ok=True)
         dual_path.write_text(json.dumps(dual_report, indent=2) + "\n", encoding="utf-8")

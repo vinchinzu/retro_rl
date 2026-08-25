@@ -10,6 +10,21 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from super_metroid.routes.controller_common import MORPH_POSES
+from super_metroid.routes.kpdr.room_ids import ROOM_WS_BASEMENT, ROOM_WS_MAIN
+
+__all__ = [
+    "LeaveMiss",
+    "LeaveSpec",
+    "PHANTOON_LEAVE",
+    "WS_BASEMENT_TO_MAIN",
+    "WS_ENTRANCE_TO_MAIN",
+    "final_from_state",
+    "grade_final",
+    "grade_leave",
+    "grade_report",
+    "parse_room",
+    "pose_class",
+]
 
 STAND_POSES = frozenset({1, 2, 9, 10, 12, 27, 28, 137, 138})
 AIR_POSES = frozenset({19, 20, 21, 25, 81, 82})
@@ -34,6 +49,59 @@ class LeaveSpec:
     dt: int = 0
     boss_bit: int | None = None
     min_health: int = 1
+
+
+# Canonical dest glances — compose and tests import these (do not copy numbers).
+WS_ENTRANCE_TO_MAIN = LeaveSpec(
+    hop="ws_entrance_to_main",
+    room=ROOM_WS_MAIN,
+    x=(1000, 1100),
+    y=(880, 940),
+    pose_class="stand",
+)
+PHANTOON_LEAVE = LeaveSpec(
+    hop="phantoon_loot_exit",
+    room=ROOM_WS_BASEMENT,
+    x=(1200, 1280),
+    y=(120, 160),
+    pose_class="stand",
+    boss_bit=1,
+)
+# Residual hop dest (not on POST_ICE_SPINE). Main Shaft floor hatch ~(1144,1900).
+# RED leftover is the still (basement hatch ~(630-690, 160-190)), not this band.
+WS_BASEMENT_TO_MAIN = LeaveSpec(
+    hop="ws_basement_to_main",
+    room=ROOM_WS_MAIN,
+    x=(1100, 1200),
+    y=(1800, 2000),
+    pose_class="stand",
+)
+
+
+class LeaveMiss(RuntimeError):
+    """Hop leave failed. Next agent boots ``.leftover`` (the still), not the pin."""
+
+    hop_id: str
+    leftover: dict[str, Any]
+    misses: list[str]
+
+    def __init__(
+        self,
+        hop_id: str,
+        leftover: Mapping[str, Any],
+        misses: list[str],
+        *,
+        room_label: str | None = None,
+        to_room: int | None = None,
+    ) -> None:
+        self.hop_id = hop_id
+        self.leftover = dict(leftover)
+        self.misses = list(misses)
+        super().__init__(
+            _leave_miss_message(
+                hop_id, self.leftover, self.misses, room_label=room_label, to_room=to_room
+            )
+        )
 
 
 def parse_room(value: Any) -> int:
@@ -63,6 +131,88 @@ def _xy(final: Mapping[str, Any]) -> tuple[int, int]:
         pair = list(final["xy"])
         return int(pair[0]), int(pair[1])
     return int(final["x"]), int(final["y"])
+
+
+def _int_attr(state: Any, *names: str, default: int = 0) -> int:
+    for name in names:
+        if hasattr(state, name):
+            val = getattr(state, name)
+            if val is not None:
+                return int(val)
+    return int(default)
+
+
+def _boss_from_state(state: Any) -> int | None:
+    for name in ("boss", "boss_bit"):
+        if hasattr(state, name):
+            val = getattr(state, name)
+            if val is not None:
+                return int(val)
+    bits = getattr(state, "boss_bits", None)
+    if bits is None:
+        return None
+    area = _int_attr(state, "area_index", default=3)
+    try:
+        return int(bits[area]) & 1
+    except (IndexError, TypeError):
+        return None
+
+
+def final_from_state(state: Any) -> dict[str, Any]:
+    """Glance still from SuperMetroidState or a room/x/y/pose/gs/dt/health duck."""
+    room = _int_attr(state, "room_id", "room")
+    x = _int_attr(state, "samus_x", "x")
+    y = _int_attr(state, "samus_y", "y")
+    final: dict[str, Any] = {
+        "room": f"0x{room:04X}",
+        "xy": [x, y],
+        "pose": _int_attr(state, "pose", default=-1),
+        "gs": _int_attr(state, "game_state", "gs", default=-1),
+        "dt": _int_attr(state, "door_transition", "dt"),
+        "health": _int_attr(state, "health"),
+    }
+    boss = _boss_from_state(state)
+    if boss is not None:
+        final["boss"] = boss
+    return final
+
+
+def grade_leave(final: Mapping[str, Any], spec: LeaveSpec) -> dict[str, Any]:
+    """Leftover is the final still, whether or not glance passes.
+
+    Miss reasons: :func:`grade_final`. Callers must keep leftover on miss.
+    """
+    leftover = dict(final)
+    if leftover.get("xy") is None:
+        leftover["xy"] = list(_xy(leftover))
+    del spec
+    return leftover
+
+
+def _leave_miss_message(
+    hop_id: str,
+    leftover: Mapping[str, Any],
+    misses: list[str],
+    *,
+    room_label: str | None,
+    to_room: int | None,
+) -> str:
+    bits: list[str] = []
+    got = parse_room(leftover.get("room", leftover.get("room_id", 0)))
+    if to_room is not None and got != to_room:
+        label = room_label or hop_id
+        bits.append(f"expected {label} 0x{to_room:04X}, got 0x{got:04X}")
+    try:
+        x, y = _xy(leftover)
+        xy_text = f"[{x}, {y}]"
+    except (KeyError, TypeError, ValueError):
+        xy_text = str(leftover.get("xy"))
+    bits.append(
+        f"leftover xy={xy_text} pose={leftover.get('pose')} gs={leftover.get('gs')}"
+    )
+    if misses:
+        bits.append("misses: " + "; ".join(misses))
+    return f"{hop_id}: " + "; ".join(bits)
 
 
 def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:

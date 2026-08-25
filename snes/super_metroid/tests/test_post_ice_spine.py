@@ -2,6 +2,7 @@
 
 import super_metroid.routes.continuous as _continuous  # noqa: F401
 
+from super_metroid.hop_glance import PHANTOON_LEAVE, WS_ENTRANCE_TO_MAIN
 from super_metroid.routes.kpdr.hops import (
     ALPHA_PB_ONLY_HOPS,
     MOAT_ONLY_HOPS,
@@ -68,3 +69,8 @@ def test_post_ice_spine_covers_alpha_pb_and_moat() -> None:
     assert leave.emits_door_edge is True
     assert leave.exit_direction == "left"
     assert leave.entry_direction == "right"
+    assert leave.leave is PHANTOON_LEAVE
+    entrance = next(h for h in PHANTOON_ONLY_HOPS if h.hop_id == "ws_entrance_to_main")
+    assert entrance.leave is WS_ENTRANCE_TO_MAIN
+    assert POST_ICE_SPINE[0].leave is None
+    assert all(h.hop_id != "ws_basement_to_main" for h in POST_ICE_SPINE)

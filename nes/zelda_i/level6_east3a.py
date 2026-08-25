@@ -20,12 +20,14 @@ from zelda_i.level6_stairs3a_warp import (
     make_stairs_3a_warp_controller,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.screen_glance import CELLAR08_LEAVE, GlanceLeftover, grade_controller
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
     "EAST3A_MAX_FRAMES",
     "EAST_DOOR",
     "Level6East3AController",
+    "level6_east3a_glance",
     "level6_east3a_stages",
     "level6_east3a_success",
     "make_east3a_controller",
@@ -67,6 +69,8 @@ class Level6East3AController:
             "bow": int(getattr(snap, "bow", 0)),
             "arrows": int(getattr(snap, "arrows", 0)),
             "keys": int(snap.keys),
+            "bombs": int(snap.bombs),
+            "health": int(snap.health),
             "triforce": int(snap.triforce),
         }
         if force or self.frames <= 2 or self.frames % EAST3A_SAMPLE_PERIOD == 0:
@@ -183,6 +187,11 @@ def level6_east3a_stages():
         ("level6_cellar_0x08", make_cellar08_controller(), CELLAR_08_MAX_FRAMES),
         ("level6_east_0x3a", make_east3a_controller(), EAST3A_MAX_FRAMES),
     )
+
+
+def level6_east3a_glance(controller: Any) -> GlanceLeftover:
+    """Leftover glance vs cellar08 pin. Dest RAM is level6_east3a_success."""
+    return grade_controller(controller, CELLAR08_LEAVE)
 
 
 def level6_east3a_success(snap: ZeldaSnapshot) -> bool:
