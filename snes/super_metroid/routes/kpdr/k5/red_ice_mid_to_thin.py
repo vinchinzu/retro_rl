@@ -9,8 +9,8 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     VARIANT_ID,
     can_attach_mid_floor_edge,
 )
-from super_metroid.routes.kpdr.k5.red_to_hellway import (
-    _HUMAN_FLOOR_RLE,
+from super_metroid.routes.kpdr.k5.red_to_hellway_common import _HUMAN_FLOOR_RLE
+from super_metroid.routes.kpdr.k5.red_to_hellway_upper import (
     _period_wj,
     _play_upper_rle,
     _seat_left_after_handoff,

@@ -2,7 +2,8 @@
 
 Scripted full-clear package `super_metroid` (disk: `snes/super_metroid/`).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
-`docs/ram_map.md`. Tracker: `bd ready -l super_metroid`.
+`docs/ram_map.md`. Session loop: `.grok/skills/sm-session/SKILL.md`.
+Tracker: `bd ready -l super_metroid -l spine`.
 
 ## Evaluation contract
 
@@ -12,66 +13,35 @@ Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
 - Natural ending/credits required; final boss alone is not a clear.
 - Clean track: [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md);
   `*_clean` stems only — never overwrite assisted baselines.
-- Pure-first: one hop or one residual change per session; dual-track
-  (spine continuous vs room practice). Practice greens are not
-  continuous evidence. Planner owns STATUS.
+- Dual-track: spine continuous vs room practice. Practice greens are
+  not continuous evidence. Planner owns STATUS.
 
 ## Immediate goal
 
-**Verified tip:** continuous power-on → Ice Beam (default `ice`).
-STATUS dual **148,167f** ×2 (2026-08-10). Ceres-successor reverify dual
-**146,937f** ×2 (2026-08-22, scratch `ice_ceres_successor.json` + `_dual.json`;
-STATUS promote `rr-ucl9`). `--to moat` power-on dual is scratch-green
-**175526f** ×2 `0x93FE` `(49,1163)` p1 max PB 5 (rr-2r06; Ice prefix
-**146937f**; post-Ice **28589f**). `--to ws` is wired (rr-p2bw): power-on
-scratch dual **176141f** ×2 `0xCA08` `(57,139)` p1 gs=8 items `0x3105`
-beams `0x1007` max PB 5 (spark hop **615f** ×2 from the Moat leave). Do
-**not** STATUS-promote — default CLI stays `ice`. Entrance→Main is scratch
-dual **403f** ×2 `0xCAF6` `(1063,907)` p9 gs=8 (rr-ahjo). Main Shaft → basement
-scratch dual **1208f** ×2 `0xCC6F` `(657,92)` p24 gs=8 (rr-4btp). Basement →
-Phantoon *room* scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8 (rr-cjpp);
-Phantoon fight is wiki doppler (rr-asyg) assist dual-green **12118f** ×2
-HP 0 + `$D82B` bit 0; loot + left-door exit **337f** → `0xCC6F` `(1240,139)`
-p10 gs=8; compose fight+leave **12455f** ×2. Charge-only **20537f**,
-charge+missiles, Ice-on X-Factor stay research. `--to phantoon` hops
-Entrance→Main→Basement→room→doppler→loot-exit (parent `ws`; `--to ws`
-still ends `0xCA08`). Power-on dual is `rr-8g2u` — do not STATUS-promote.
-Residual `docs/tasks/rr-asyg-residual.md`; pin
-`scratch/post_phantoon_leave.state`.
-Ice-pin compose through WS Entrance **29212f** (28597+615). Product `play_red_to_hellway` is the Ice-pin
-checkpoint climb to ordinary Hellway left-door **5846f** ×2 `(39,139)` p11
-(keep RIGHT until gs=8 x≤80; 163f/`(237,139)` was the Red Tower door-slot
-fire). Successor `hellway_to_caterpillar` **2110f** ×2;
-`caterpillar_to_alpha_pb` **1372f** ×2 (compose hop **1418f**). Mid→thin is
-still the 2974f period WJ. Tape body 6199f remains fallback when the Ice+HJ
-floor seat is absent. Tip history lives in STATUS — do not STATUS-promote
-or rewrite the route from this file.
+Verified tip: `--to ice` ([STATUS.md](docs/STATUS.md)). Next spine bead:
+`rr-8g2u` power-on `--to phantoon` dual (scratch; do not STATUS-promote).
+Default CLI stays `ice`. Living residual:
+[`docs/tasks/rr-8g2u-residual.md`](docs/tasks/rr-8g2u-residual.md).
 
 ## Commands
 
 ```bash
-bd ready -l super_metroid
+bd ready -l super_metroid -l spine
 
-# Continuous default (ice) / named tips
-uv run python snes/super_metroid/scripts/record/continuous.py --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
 
-# Pure hop (example; source under scratch/)
-uv run python snes/super_metroid/scripts/probe/kpdr.py pure bat-cave-to-speed-hall \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bat_cave_continuous.state
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/<pin>.state
 
-# Human record / hop replay (do not start a tape session unless that is the bead)
 ./snes/super_metroid/play
 uv run python snes/super_metroid/scripts/tools/replay_human_hop.py \
   snes/super_metroid/tasks/full_start_v1.json --hop 0 --dual
 ```
 
-Reports vs video: `recordings/<tip>.json` is machine integrity (on disk
-only). Quote frames, room, beams, integrity flags, and the `.mp4` path
-— do not paste the JSON body. Shine / TAS / practice CLIs stay in
-`docs/plan.md` and `docs/tasks/SHINE_PRACTICE.md`.
+`--no-video` on continuous/probe duals. Leave proof is RAM + dual JSON
+(`super_metroid.hop_glance`), not an MP4. Quote frames, room, beams,
+integrity flags — do not paste report JSON. Shine / TAS / practice CLIs:
+`docs/plan.md`.
 
 ## Layout
 
@@ -83,8 +53,8 @@ only). Quote frames, room, beams, integrity flags, and the `.mp4` path
 | `tas/` | Sniq movies + harness replay (`docs/TAS_ADAPT.md`) |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 
-Multi-hop → package from day 1 (no megafiles), room-prefixed geometry,
-RLE as JSON data, ≤~500 lines/file.
+Multi-hop → package from day 1. Split a file **before 500 lines**; refuse
+a new knob on a file **≥800**. Continuous hops only via `tips.play_hops`.
 
 ## Traps
 
@@ -92,18 +62,17 @@ RLE as JSON data, ≤~500 lines/file.
 - High WRAM (`$7E:D820+`): `read_bank7e_wram` / `write_wram_u8` — raw
   `get_ram()[0xD820]` is open-bus garbage.
 - Named anchors in `SuperMetroid-Snes/`; probe noise only in `scratch/`.
+  Overwrite `scratch/<hop>_dual.json` — do not mint `_vN` / `_window_*`.
 - Dual-track / door-warp / boss probes are **not** continuous evidence.
 - Morph bombs are **X** while morph (not A).
 - **D-pad vs shoulders:** `LEFT`/`RIGHT` walk; `L`/`R` are shoulders.
   Never use `L` as a hop side.
-- Door entry speed/position matter. Practice doorway bootstrap **zeros**
-  momentum — never treat those fixtures as natural leave-speed evidence.
+- Practice doorway bootstrap **zeros** momentum — not natural leave-speed.
 - **Shinespark store:** harness **B**=dash, **A**=activate, **DOWN**=store.
   After echoes=4, press DOWN **while still holding RIGHT**. Idle or **B
-  alone** dumps echoes **4→0 in one frame**. Drill:
-  `shine_practice.py drill`.
+  alone** dumps echoes **4→0 in one frame**.
 - **Ceres elev:** Falling→elev mid-transition can still read **y≈139**;
-  ordinary **gs=8 remaps to bottom y≈651**. Ledge pin **y=571**. Product
-  stays legacy boot **26,824f** until TAS ≤ that.
+  ordinary **gs=8 remaps to bottom y≈651**. Product stays `_BOOT_STYLE =
+  "legacy"` until TAS ≤ the published morph tip (STATUS).
 - **Spazer + HJ pillar:** single-frame peak down-shot fails under Spazer;
   `play_hj_room_collect` multi-taps DOWN+X at peak.

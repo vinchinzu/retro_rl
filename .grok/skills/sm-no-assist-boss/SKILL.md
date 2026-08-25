@@ -46,6 +46,9 @@ boss. `UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)`.
 4. Count shots by **`missiles` decreasing**, not by pressing `X` (spin/crouch
    eats the input).
 5. Do not start a 20k-frame run until that window chips HP.
+6. Three red windows on the same seat/vuln hypothesis → BLOCKED, stop.
+   Overwrite `scratch/<boss>_noassist.json` — do not mint `_window_vN`.
+   Glance HP delta + leave pose with `hop_glance`; no MP4.
 
 ## Geometry rules that keep showing up
 

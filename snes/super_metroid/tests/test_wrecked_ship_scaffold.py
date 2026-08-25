@@ -12,6 +12,9 @@ import pytest
 from super_metroid.ram import parse_state
 from super_metroid.routes.kpdr import wrecked_ship
 from super_metroid.routes.kpdr.guides import ROUTE_PRESETS
+from super_metroid.routes.kpdr.k6 import ws_basement as k6_ws_basement
+from super_metroid.routes.kpdr.k6 import ws_entrance as k6_ws_entrance
+from super_metroid.routes.kpdr.k6 import ws_main as k6_ws_main
 from super_metroid.source_states import get_source
 
 
@@ -32,17 +35,20 @@ def test_wrecked_ship_rooms_and_controllers() -> None:
         "play_ws_basement_to_phantoon",
     ):
         assert callable(getattr(wrecked_ship, name))
+    assert wrecked_ship.play_ws_entrance_to_main is k6_ws_entrance.play_ws_entrance_to_main
+    assert wrecked_ship.play_ws_main_to_basement is k6_ws_main.play_ws_main_to_basement
+    assert wrecked_ship.play_ws_basement_to_phantoon is k6_ws_basement.play_ws_basement_to_phantoon
 
 
 def test_ws_entrance_to_main_is_not_scaffold() -> None:
-    src = inspect.getsource(wrecked_ship.play_ws_entrance_to_main)
+    src = inspect.getsource(k6_ws_entrance.play_ws_entrance_to_main)
     assert "_scaffold_exit" not in src
     assert "super_door=False" in src
-    basement = inspect.getsource(wrecked_ship.play_ws_main_to_basement)
-    phant = inspect.getsource(wrecked_ship.play_ws_basement_to_phantoon)
+    basement = inspect.getsource(k6_ws_main.play_ws_main_to_basement)
+    phant = inspect.getsource(k6_ws_basement.play_ws_basement_to_phantoon)
     assert "_scaffold_exit" not in basement
     assert "play_script" in basement
-    assert sum(n for n, _b in wrecked_ship._WS_MAIN_RLE) == 1091
+    assert sum(n for n, _b in k6_ws_main._WS_MAIN_RLE) == 1091
     assert "_scaffold_exit" not in phant
     assert "wait_ordinary_room" in phant
     assert "Do not fight" in phant or "do not fight" in phant.lower()
@@ -264,11 +270,11 @@ def test_play_ws_main_to_basement_plays_human_rle(
         )
         return sess.state
 
-    monkeypatch.setattr(wrecked_ship, "require_room", _require)
-    monkeypatch.setattr(wrecked_ship, "play_script", _script)
-    monkeypatch.setattr(wrecked_ship, "wait_ordinary_room", _settle)
+    monkeypatch.setattr(k6_ws_main, "require_room", _require)
+    monkeypatch.setattr(k6_ws_main, "play_script", _script)
+    monkeypatch.setattr(k6_ws_main, "wait_ordinary_room", _settle)
 
-    out = wrecked_ship.play_ws_main_to_basement(session)
+    out = k6_ws_main.play_ws_main_to_basement(session)
     assert seen["require"][0] == 0xCAF6
     assert seen["rle"] == "ws_main_to_basement_body"
     assert seen["rle_n"] == 1091
@@ -322,12 +328,12 @@ def test_play_ws_entrance_to_main_selects_beam_then_blue_exit(
         )
         return sess.state
 
-    monkeypatch.setattr(wrecked_ship, "select_weapon", _select)
-    monkeypatch.setattr(wrecked_ship, "hold_until", _hold_until)
-    monkeypatch.setattr(wrecked_ship, "play_run_shoot_exit", _exit)
+    monkeypatch.setattr(k6_ws_entrance, "select_weapon", _select)
+    monkeypatch.setattr(k6_ws_entrance, "hold_until", _hold_until)
+    monkeypatch.setattr(k6_ws_entrance, "play_run_shoot_exit", _exit)
 
-    out = wrecked_ship.play_ws_entrance_to_main(session)
-    assert seen["weapon"] == wrecked_ship.WEAPON_BEAM
+    out = k6_ws_entrance.play_ws_entrance_to_main(session)
+    assert seen["weapon"] == k6_ws_entrance.WEAPON_BEAM
     assert seen["weapon"] != 2
     assert seen["dash"] == ("RIGHT", "B")
     assert seen["exit"]["super_door"] is False

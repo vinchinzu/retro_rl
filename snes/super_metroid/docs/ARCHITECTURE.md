@@ -184,7 +184,7 @@ Do not add new imports of legacy vision policies into continuous routes.
 Do **not** add a new `start_to_*.py` script.
 
 Sub-agent process (pure-first, stabilize waves, residual schema):
-`AGENTS.md` (pure-first). Source states:
+`.grok/skills/sm-session/` (not a QUEUE). Source states:
 [`docs/SOURCE_STATES.md`](SOURCE_STATES.md).
 
 1. Pure controller in `routes/kpdr/` (+ `KPDR_SEGMENTS`).
@@ -436,7 +436,7 @@ super_metroid/
 - Local rules: [`../AGENTS.md`](../AGENTS.md)
 - Gate / verified tip: [`STATUS.md`](STATUS.md)
 - Forward work + structure plan: [`plan.md`](plan.md)
-- Executor process: `AGENTS.md` (pure-first / one-knob)
+- Executor process: `.grok/skills/sm-session/` (pure-first / one-knob)
 - Assists: [`ASSIST_CONTRACT.md`](ASSIST_CONTRACT.md)
 - KPDR board: [`routes/ROUTE_KPDR.md`](routes/ROUTE_KPDR.md)
 - Path topology: [`routes/ROUTE_KPDR.md`](routes/ROUTE_KPDR.md)

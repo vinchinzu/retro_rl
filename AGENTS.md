@@ -48,14 +48,14 @@ Short import names (`import alttp`, `import smb`). Pytest path includes
 
 **[bd](https://github.com/steveyegge/beads)** — commands, labels (`rr-`,
 game/kind), STATUS-vs-beads split in [`docs/BEADS.md`](docs/BEADS.md).
-Start with `bd ready`; claim one issue; `bd sync` + commit
+Start with `bd ready`; claim one issue; `bd export -o .beads/issues.jsonl` + commit
 `.beads/issues.jsonl` with matching code.
 
 ## Landing the plane
 
 1. Update beads for remaining work; close finished issues honestly
 2. Run narrowest tests for files you changed
-3. `bd sync` and commit code + `.beads/issues.jsonl` together
+3. `bd export -o .beads/issues.jsonl` and commit code + that file together
 4. Push only if requested; hand off with `bd ready` + one-line next action
 
 ## Cursor Cloud specific instructions

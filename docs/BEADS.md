@@ -12,22 +12,25 @@ bd update <id> --status in_progress
 bd close <id> --reason "…"
 bd create "Title" -t task -p 0 -l super_metroid --json
 bd dep add <blocked> <blocker>   # blocker must finish first
-bd sync                  # export .beads/issues.jsonl (then commit)
+bd export -o .beads/issues.jsonl  # then commit with the code
 ```
 
 ## Rules
 
-1. Start sessions with `bd ready` (filter: `bd ready -l super_metroid`).
+1. Start sessions with `bd ready` (SM product: `bd ready -l super_metroid -l spine`).
 2. Claim one issue before coding; do not invent parallel trackers.
 3. Discovered work → `bd create … --deps discovered-from:<parent>`.
 4. Product evidence still lives under `<console>/<game>/docs/` (STATUS,
    pure-first, natural-entry). Closing a bead is not a STATUS promote.
 5. Commit `.beads/issues.jsonl` with the code that matches it.
-6. Session end: close/update issues → `bd sync` → commit. Push only when
-   the human asked for a push (do not force-push beads/history).
+6. Session end: close/update issues → `bd export -o .beads/issues.jsonl` →
+   commit. Push only when the human asked for a push (do not force-push
+   beads/history).
 
 Prefix: `rr-`. Labels: game name (`super_metroid`, `smb`, …), kind
-(`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`).
+(`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`). Super Metroid
+product sessions use **`spine`** as well:
+`bd ready -l super_metroid -l spine` (TAS/oracle/library stay off this filter).
 
 Game process still applies (e.g. Super Metroid pure-first in
 `snes/super_metroid/AGENTS.md`).
@@ -37,6 +40,6 @@ Game process still applies (e.g. Super Metroid pure-first in
 1. File or update beads for remaining work
 2. Run the narrowest tests for files you changed
 3. Close finished issues; leave in_progress honest
-4. `bd sync` and commit code + `.beads/issues.jsonl` together
+4. `bd export -o .beads/issues.jsonl` and commit code + that file together
 5. Push only if the user requested it
 6. Hand off: `bd ready` + one-line next action

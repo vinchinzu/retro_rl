@@ -2,15 +2,12 @@
 
 Verified facts: [STATUS.md](STATUS.md). Assist:
 [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers:
-[ARCHITECTURE.md](ARCHITECTURE.md). Tracker: `bd ready -l super_metroid`.
+[ARCHITECTURE.md](ARCHITECTURE.md). Tracker: `bd ready -l super_metroid -l spine`.
 
-**Doc consolidation (2026-08-18):** deleted closed/green hop residuals,
-`tasks/QUEUE.md`, `tasks/PROCESS.md`, `TASK_TEMPLATE.md`, `CODE_REVIEW.md`,
-`docs/research/*` essays, and duplicate route CSVs (`BACKLOG`,
-`MILESTONES.csv`, `TRACK_100.csv`). Kept STATUS, plan, ASSIST_CONTRACT,
-ram_map, ROUTE_KPDR, MILESTONES.md, KPDR_TRACKER (code-owned CSV), and
-the two open-tip residuals (`rr-dbu.8`, `rr-av5s`). Do not recreate a
-QUEUE. Do not rewrite the route or claim a new tip.
+**Doc home:** STATUS is verified facts; this file is future work; beads
+are ready/in-flight. Session loop lives in `.grok/skills/sm-session/`
+(not a QUEUE, not PROCESS.md). One living residual per open tip. Do not
+rewrite the route or claim a new tip from a pin bench.
 
 **Program role:** Super Metroid is **substrate A** of the solver flagship
 triangle (SM + ALTTP + SMZ3). Pure room policies and capability edges are Layer 1
@@ -38,9 +35,8 @@ pure → graph edge → catalog → hops → continuous compose → dual re-veri
 the played chain. Continuous acceptance still requires natural boss flags and
 zero progression writes. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
 
-**Agent discipline (non-negotiable):** pure-first, one-knob residual, residual
-schema with next-card ID + one change, dual-track (spine continuous vs room
-practice). Do not relax for scale. See `AGENTS.md` (pure-first).
+**Agent discipline:** `.grok/skills/sm-session/` (one bead, one knob, halt-3,
+no STATUS from a pin). Do not relax for scale.
 
 **Ticket size:** one pure hop or one residual change per card; prefer 30–90 min
 sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
@@ -51,38 +47,18 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Power-on `--to phantoon` dual | `rr-gyla` wired (catalog + wrapper); compose `rr-8g2u`; do not append `--to ws`; do not STATUS-promote |
-| Done compose + return | Ice tip 11 hops (return + Ice pure); continuous RED climb | `rr-kxge` compose · `rr-dbu.7` wire |
-| Done pure return | Wave→Business 7/7 dual GREEN | `rr-vqv3` |
-| Done pure stack | Business→Gate→Acid→Snake→Ice PLM dual GREEN | `rr-dbu.11` · hops `rr-fg3` `rr-9t4` `rr-5cf` `rr-5if` |
-| Product after Ice tip | K5 → Moat approach | `rr-dbu.8` → `.9` |
-| Done | Human full tape 39,711f Wave+Ice+Moat | `rr-dbu.12` · [SM-SPEED-ICE-MOAT-HUMAN.md](tasks/SM-SPEED-ICE-MOAT-HUMAN.md) |
-| Optional | Policy consolidate; duck-type; Clean STATUS; speed start Spazer | P3 |
-| Parallel Clean | bombs/Torizo Clean **GREEN** 49,321f ×2 | polish `rr-3z8` |
-| Done | Wave continuous **136,361f** + hygiene Pass A/B essential | |
+| **★ Product next** | Power-on `--to phantoon` dual | `rr-8g2u` (scratch; do not STATUS-promote) |
+| Wired, not this card | `--to phantoon` catalog + doppler + loot/exit | closed into `rr-8g2u` residual |
+| Planner follow-on | STATUS promote `moat` / `ws` / Ice reverify | `rr-g3nj` · `rr-ucl9` |
+| Parked | TAS/oracle, tape library, Tourian hops, Pass B | not `spine` |
 
-**Critical path to credits:** Ice dual continuous is **GREEN**
-(`rr-kxge` closed). Power-on `--to moat` is scratch dual-green
-(**175526f** ×2 `0x93FE` `(49,1163)` p1, rr-2r06). Power-on `--to ws`
-is scratch dual-green (**176141f** ×2 `0xCA08` `(57,139)` p1, rr-p2bw).
-Entrance → Main Shaft is scratch dual-green (**403f** ×2 `0xCAF6`
-`(1063,907)` p9, rr-ahjo). Main Shaft → basement is scratch dual-green
-(**1208f** ×2 `0xCC6F` `(657,92)` p24, rr-4btp). Basement → Phantoon *room*
-is scratch dual-green (**718f** ×2 `0xCD13` `(39,124)` p81, rr-cjpp).
-Phantoon fight (`rr-tlaq`) assist dual-green **20537f** ×2 HP 0 + `$D82B`
-bit 0 from that leave. `--to phantoon` is wired (rr-gyla; parent `ws`;
-`--to ws` still ends `0xCA08`). Power-on dual is `rr-8g2u` (scratch;
-residual `tasks/rr-gyla-residual.md`). Planner STATUS for `moat` / `ws` is
-a follow-on — default CLI stays `ice`.
+**Critical path:** Ice continuous is **GREEN** (STATUS). K5→Moat→WS interior
+→ Phantoon fight+leave are scratch dual-green. Power-on `--to phantoon` is
+`rr-8g2u`. Default CLI stays `ice`. Living residual:
+[tasks/rr-8g2u-residual.md](tasks/rr-8g2u-residual.md).
 **Do not STATUS-promote past Ice without a planner STATUS pass.**
 
-**Parked:** Frog Save → Speedway → Farm → Bubble (post-Speed shortcut);
-spore clean; Pass B.3 deep consolidate.
-
-Default continuous tip is **`ice`** (**148,167f** ×2). Wave / Speed remain
-valid prefixes. Hygiene Pass B does **not** block product.
-
-Live work: `bd ready -l super_metroid`.
+Live work: `bd ready -l super_metroid -l spine`.
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
 ---
 
@@ -288,7 +264,7 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 - [x] Wiki KPDR Phantoon pin-benches (rr-7lc5). Doppler wired (rr-asyg)
   **12118f** ×2 + loot/exit **337f** → basement `(1240,139)` p10; compose
   **12455f** ×2. Charge-only 20537f / charge+missiles / Ice-on X-Factor
-  stay research. Residual `docs/tasks/rr-asyg-residual.md`
+  stay research. Living residual `docs/tasks/rr-8g2u-residual.md`.
 - [ ] Power-on `--to phantoon` dual compose (rr-8g2u; pin compose first;
   doppler + loot-exit body; tip ends `0xCC6F`)
 - [ ] Natural Phantoon leave / WS power-on → Gravity (after dual kill)
