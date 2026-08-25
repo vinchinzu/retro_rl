@@ -78,6 +78,10 @@ HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
 # 8-ring plant then water (rr-m7mk / rr-bvam)
 HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
   --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
+# Leftover smash: 10 bushes pick+toss → dump fences in ponds → 10 stones in ponds → hammer 4 large → axe 2 stumps
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
+  --state Y1_After_Buy_Potato --out recordings/d2_leftover_smash.json
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe --dump
 
 # Stamina object from a pin (`player.stamina` is current/max/tool_hits)
 uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact

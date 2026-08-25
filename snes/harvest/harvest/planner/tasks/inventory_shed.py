@@ -22,11 +22,13 @@ from harvest.tasks.nav import (
     Point,
     make_action,
     get_pos_from_ram,
+    get_tile_at,
     TILE_SIZE,
 )
 from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
+    STALE_TILE_IDS,
 )
 from harvest.maps.map_config import ROUTES, WEST_POCKET_PLANT_CENTER
 from harvest.tasks.primitives import (
@@ -56,6 +58,7 @@ from harvest.planner.tasks.inventory_common import (
     farm_house_front_softlock,
 )
 from harvest.planner.tasks.inventory_exit import ExitToFarmTask
+from harvest.tasks.farm_ops import LOADED_FARM_STAND, SHED_DOOR_TILE
 
 # Shared outdoor approach target used by all shed shelf specs.
 _DEFAULT_SHED_NAV_PX = (422, 474)
@@ -397,10 +400,35 @@ class ShedFetchItemTask(Task):
     def _item_ready(self, ram: np.ndarray) -> bool:
         return tool_in_carry_pair(ram, self.item_id)
 
+    def _needs_leave_shed_door(self, ram: np.ndarray) -> bool:
+        """True on (26,30) 0xFF / unloaded farm after ExitToFarm."""
+        from harvest.tasks.farm_clear_quota import farm_map_loaded
+
+        pos = get_pos_from_ram(ram)
+        tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
+        if tile == SHED_DOOR_TILE:
+            return True
+        if int(get_tile_at(ram, *tile)) in STALE_TILE_IDS:
+            return True
+        return is_farm_tilemap(
+            int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+        ) and not farm_map_loaded(ram)
+
+    def _leave_door_task(self) -> NavTask:
+        stand = LOADED_FARM_STAND
+        return NavTask(
+            name=f"leave_shed_door_0x{self.item_id:02X}",
+            target_px=Point(stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8),
+            radius=14,
+            timeout=600,
+        )
+
     def _finish_ready(self, world: WorldState, reason: str) -> TaskResult:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if self.exit_when_done and tilemap == SHED_TILEMAP:
             return self._activate("exit_after_ready", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
+        if self.exit_when_done and self._needs_leave_shed_door(world.ram):
+            return self._activate("leave_door", self._leave_door_task(), world)
         return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
 
     def _start_next_phase(self, world: WorldState) -> TaskResult:
@@ -486,6 +514,12 @@ class ShedFetchItemTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
 
+        if self._phase == "leave_door":
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"tool 0x{self.item_id:02X} ready",
+            )
+
         if result.status == TaskStatus.FAILURE:
             tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
             if self._phase in {"route", "nav", "enter"} and tilemap == SHED_TILEMAP:
@@ -518,7 +552,7 @@ class ShedFetchItemTask(Task):
 
         # Sub-task succeeded.
         if self._phase == "exit_after_ready":
-            return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.item_id:02X} ready")
+            return self._finish_ready(world, f"tool 0x{self.item_id:02X} ready")
 
         if self._phase == "exit_after_failure":
             return TaskResult(

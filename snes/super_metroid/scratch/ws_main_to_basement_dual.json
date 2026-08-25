@@ -1,0 +1,135 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "runs": [
+    {
+      "success": true,
+      "error": null,
+      "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_entrance_to_main.state",
+      "boot": {
+        "room": "0xCAF6",
+        "xy": [
+          1077,
+          907
+        ],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "morph": false,
+        "selected": 0,
+        "items": "0x3105",
+        "beams": "0x1007",
+        "max_pb": 5,
+        "health": 299,
+        "vx": 0,
+        "vy": 0,
+        "facing": 8,
+        "movement": 1,
+        "door_ptr": "0xA1BC",
+        "floor_y": 907,
+        "frame": 0
+      },
+      "final": {
+        "room": "0xCC6F",
+        "xy": [
+          657,
+          92
+        ],
+        "pose": 24,
+        "gs": 8,
+        "dt": 0,
+        "morph": false,
+        "selected": 2,
+        "items": "0x3105",
+        "beams": "0x1007",
+        "max_pb": 5,
+        "health": 299,
+        "vx": 0,
+        "vy": 4,
+        "facing": 4,
+        "movement": 2,
+        "door_ptr": "0xA21C",
+        "floor_y": null,
+        "frame": 1208
+      },
+      "frames": 1208,
+      "time": {
+        "frames": 1208,
+        "seconds": 20.1,
+        "clock": "00:20.13",
+        "ntsc_fps": 60.0988
+      },
+      "saved": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_main_to_basement.state",
+      "command": "pure",
+      "hop": "ws_main_to_basement"
+    },
+    {
+      "success": true,
+      "error": null,
+      "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_entrance_to_main.state",
+      "boot": {
+        "room": "0xCAF6",
+        "xy": [
+          1077,
+          907
+        ],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "morph": false,
+        "selected": 0,
+        "items": "0x3105",
+        "beams": "0x1007",
+        "max_pb": 5,
+        "health": 299,
+        "vx": 0,
+        "vy": 0,
+        "facing": 8,
+        "movement": 1,
+        "door_ptr": "0xA1BC",
+        "floor_y": 907,
+        "frame": 0
+      },
+      "final": {
+        "room": "0xCC6F",
+        "xy": [
+          657,
+          92
+        ],
+        "pose": 24,
+        "gs": 8,
+        "dt": 0,
+        "morph": false,
+        "selected": 2,
+        "items": "0x3105",
+        "beams": "0x1007",
+        "max_pb": 5,
+        "health": 299,
+        "vx": 0,
+        "vy": 4,
+        "facing": 4,
+        "movement": 2,
+        "door_ptr": "0xA21C",
+        "floor_y": null,
+        "frame": 1208
+      },
+      "frames": 1208,
+      "time": {
+        "frames": 1208,
+        "seconds": 20.1,
+        "clock": "00:20.13",
+        "ntsc_fps": 60.0988
+      },
+      "saved": null,
+      "command": "pure",
+      "hop": "ws_main_to_basement"
+    }
+  ],
+  "frames": 1208,
+  "time": {
+    "frames": 1208,
+    "seconds": 20.1,
+    "clock": "00:20.13",
+    "ntsc_fps": 60.0988
+  }
+}

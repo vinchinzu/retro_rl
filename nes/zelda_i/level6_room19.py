@@ -16,7 +16,9 @@ from zelda_i.dungeon_ids import INVULN_MOVER_OBJECT_TYPE
 from zelda_i.level6_dungeon import LEVEL6_MAP_BIT
 from zelda_i.level6_overworld import (
     LEVEL6,
+    LEVEL6_BLOCK_3A_ROOM,
     LEVEL6_DARK_29_ROOM,
+    LEVEL6_DARK_39_ROOM,
     LEVEL6_GLEEOK_ROOM,
     LEVEL6_MAP_ROOM,
     LEVEL6_ROD_WIZZ_ROOM,
@@ -47,6 +49,8 @@ __all__ = [
     "make_settle_09_controller",
     "make_settle_19_controller",
     "make_settle_29_controller",
+    "make_settle_39_controller",
+    "make_settle_3a_controller",
 ]
 
 EAST_DOOR_X = 208
@@ -375,6 +379,24 @@ def make_settle_29_controller() -> Level6Settle19Controller:
         spec_id="level6_settle_0x29",
         room=LEVEL6_DARK_29_ROOM,
         policy="IDLE at 0x29 north mouth; census spawn; no candle",
+    )
+
+
+def make_settle_39_controller() -> Level6Settle19Controller:
+    """Idle ~160f in dark 0x39. Census types; do not invent Gohma."""
+    return Level6Settle19Controller(
+        spec_id="level6_settle_0x39",
+        room=LEVEL6_DARK_39_ROOM,
+        policy="IDLE at 0x39 north mouth; census spawn; no candle/Gohma",
+    )
+
+
+def make_settle_3a_controller() -> Level6Settle19Controller:
+    """Idle ~160f in play 0x3A. Census types; do not push the block."""
+    return Level6Settle19Controller(
+        spec_id="level6_settle_0x3a",
+        room=LEVEL6_BLOCK_3A_ROOM,
+        policy="IDLE at 0x3A west mouth; census spawn; do not push",
     )
 
 

@@ -42,10 +42,13 @@
       --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
     ```
     6292f, 8×`0x55` ring, notch `0x02`, bag spent, can 20→12. Leftover
-    quotas 10 bushes / 10 small rocks / 4 boulders / 2 stumps (`rr-w14t`)
-    with RAM `ENSURE_HAMMER` `(176,168)` / `ENSURE_AXE` `(192,168)`
-    (`rr-5aaw` live shed pickup GREEN). Redo power-on after leftover smash
-    so the compose plants 8 not 2. Gate B stays open.
+    (`rr-w14t`, not green): 10 bushes pick+toss, dump fence posts in
+    ponds (live 80→19, 19 house-row residual), toss 10 stones in ponds,
+    then hammer 4 large / axe 2 stumps.
+    RAM `ENSURE_HAMMER` `(176,168)` / `ENSURE_AXE` `(192,168)`
+    (`rr-5aaw` live shed pickup GREEN). Walk off shed door `(26,30)` onto
+    loaded a8/a1 before smash. Redo power-on after leftover smash so the
+    compose plants 8 not 2. Gate B stays open.
   - Checkpoint `Y1_D2_PostShipper_WorkStart`. Do not start this gate from
     `Y1_D2_Morning_After_D1` — grape return-to-bin seals at the house fence.
   - Grape shipped is **MOUNTAIN_BERRY phase success**, not `shipping_money` RAM.

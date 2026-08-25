@@ -20,6 +20,7 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     UPPER_RIPPER_2,
     UPPER_RIPPER_3,
     UPPER_RIPPER_4,
+    HELLWAY_SILL,
     RedIceBottomEdgeRunner,
     can_attach_bottom_edge,
     can_attach_ripper1_edge,
@@ -61,6 +62,10 @@ from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (
     RedIceUpperRipperHopRunner,
     UR12,
     UR34,
+)
+from super_metroid.routes.kpdr.k5.red_ice_ur3_to_hellway import (
+    POLICY_ID as UR3HW_POLICY,
+    RedIceUr3ToHellwayRunner,
 )
 
 
@@ -115,6 +120,19 @@ def test_checkpoint_requires_grounded_state() -> None:
     assert not UPPER_RIPPER_3.matches(_state(samus_x=110, samus_y=391))
     assert UPPER_RIPPER_4.matches(_state(samus_x=110, samus_y=207))
     assert not UPPER_RIPPER_4.matches(_state(samus_x=110, samus_y=295))
+    assert HELLWAY_SILL.matches(
+        _state(room_id=0xA2F7, samus_x=42, samus_y=153)
+    )
+    assert HELLWAY_SILL.matches(
+        _state(room_id=0xA2F7, samus_x=39, samus_y=139)
+    )
+    assert not HELLWAY_SILL.matches(_state(samus_x=192, samus_y=139))
+    assert not HELLWAY_SILL.matches(
+        _state(room_id=0xA2F7, samus_x=237, samus_y=139)
+    )
+    assert not HELLWAY_SILL.matches(
+        _state(room_id=0xA2F7, samus_x=65522, samus_y=139)
+    )
 
 
 def test_bottom_edge_attach_requires_equipped_ice_and_hi_jump() -> None:
@@ -254,6 +272,12 @@ def test_checkpoint_plan_has_one_verified_edge_and_planned_recovery_tree() -> No
     assert edges["upper_ripper_1_to_2"]["status"] == "verified_dual_from_p165_ur1"
     assert edges["upper_ripper_2_to_3"]["status"] == "verified_dual_from_p165_ur2"
     assert edges["upper_ripper_3_to_4"]["status"] == "verified_dual_from_p165_ur3"
+    assert edges["upper_ripper_4_to_hellway"]["status"] == "verified_dual_from_p165_ur3"
+    assert checkpoints["hellway_sill"]["roomIdHex"] == "0xA2F7"
+    assert checkpoints["hellway_sill"]["x"] == [16, 80]
+    assert checkpoints["hellway_sill"]["y"] == [120, 175]
+    assert edges["upper_ripper_4_to_hellway"]["verification"]["isolatedLeave"] == [39, 139]
+    assert edges["upper_ripper_4_to_hellway"]["verification"]["policyFrames"] == [283, 283]
     assert data["recovery"]
 
 
@@ -475,8 +499,114 @@ def test_ur34_aims_then_freezes_in_tighter_band() -> None:
     assert runner.policy_id == UR34_POLICY
 
 
-def test_first_wall_arc_waits_until_clear_of_lower_ripper() -> None:
-    """The initial rising spin must not pass through the frozen Ripper."""
+def test_ur3_hellway_keeps_ur34_freeze_band_and_does_not_walk() -> None:
+    """Same (10, 28) aim-then-shot as product UR34. No ice-walk. No early RIGHT."""
+    from retro_harness.actions import buttons
+
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    base3 = 0x0F78 + 2 * 0x40
+    _write_u16(ram, base3, RIPPER_ID)
+    _write_u16(ram, base3 + 0x02, 137)
+    _write_u16(ram, base3 + 0x06, 320)
+    _write_u16(ram, base3 + 0x26, 180)
+    base4 = 0x0F78 + 1 * 0x40
+    _write_u16(ram, base4, RIPPER_ID)
+    _write_u16(ram, base4 + 0x02, 151)
+    _write_u16(ram, base4 + 0x06, 232)
+    runner = RedIceUr3ToHellwayRunner(_Env(ram))
+    runner.phase = "acquire"
+    aim = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=1)
+    )
+    assert list(aim) == list(buttons("UP"))
+    shot = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=3)
+    )
+    assert list(shot) == list(buttons("UP", "X"))
+    assert list(shot) != list(buttons("RIGHT", "UP", "X"))
+    _write_u16(ram, base4 + 0x02, 163)
+    wait = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=3)
+    )
+    assert list(wait) == list(buttons("UP"))
+    assert runner.policy_id == UR3HW_POLICY
+    assert runner.from_checkpoint == "upper_ripper_3"
+    assert runner.to_checkpoint == "hellway_sill"
+
+    runner.phase = "break"
+    runner._phase_frames = 0
+    burst = runner.action(
+        _state(room_id=0xA253, samus_x=134, samus_y=295, pose=1)
+    )
+    assert list(burst) == list(buttons("UP", "X", "A"))
+
+    runner.phase = "rise"
+    keep = runner.action(
+        _state(
+            room_id=0xA253,
+            samus_x=134,
+            samus_y=184,
+            pose=77,
+            velocity_y=3,
+            vertical_direction=1,
+        )
+    )
+    assert list(keep) == list(buttons("A"))
+    assert list(keep) != list(buttons("RIGHT", "A"))
+
+    runner.phase = "sill"
+    walk = runner.action(
+        _state(
+            room_id=0xA253,
+            samus_x=134,
+            samus_y=139,
+            pose=77,
+            velocity_y=0,
+            vertical_direction=2,
+        )
+    )
+    assert list(walk) == list(buttons("RIGHT"))
+
+    door = runner.action(
+        _state(
+            room_id=0xA2F7,
+            samus_x=237,
+            samus_y=139,
+            pose=11,
+            game_state=11,
+            door_transition=1,
+        )
+    )
+    assert list(door) == list(buttons("RIGHT"))
+    assert not runner.complete
+    wrap = runner.action(
+        _state(
+            room_id=0xA2F7,
+            samus_x=65522,
+            samus_y=139,
+            pose=11,
+            game_state=8,
+            door_transition=0,
+        )
+    )
+    assert list(wrap) == list(buttons("RIGHT"))
+    assert not runner.complete
+    ice_leave = runner.action(
+        _state(
+            room_id=0xA2F7,
+            samus_x=39,
+            samus_y=139,
+            pose=11,
+            game_state=8,
+            door_transition=0,
+        )
+    )
+    assert ice_leave is None
+    assert runner.complete
+
+
+def test_bottom_edge_freezes_aligned_then_steps_off_and_jumps() -> None:
+    """Same-column jump bonks ice. Freeze at abs dx<=6, walk away, A-only hop."""
     from retro_harness.actions import buttons
 
     ram = np.zeros(0x20000, dtype=np.uint8)
@@ -484,15 +614,74 @@ def test_first_wall_arc_waits_until_clear_of_lower_ripper() -> None:
     _write_u16(ram, base, RIPPER_ID)
     _write_u16(ram, base + 0x02, 101)
     _write_u16(ram, base + 0x06, 2376)
-    _write_u16(ram, base + 0x26, 180)
+    _write_u16(ram, base + 0x26, 0)
     runner = RedIceBottomEdgeRunner(_Env(ram))
-    runner.phase = "runup"
-    runner._phase_frames = 16
+    runner.phase = "acquire"
 
-    too_close = runner.action(_state(samus_x=136, samus_y=2443))
-    assert list(too_close) == list(buttons("RIGHT", "B"))
-    assert runner.phase == "runup"
+    shot = runner.action(_state(samus_x=101, samus_y=2443, pose=1))
+    assert list(shot) == list(buttons("UP", "X"))
+    assert list(shot) != list(buttons("RIGHT", "B", "A"))
 
-    clear = runner.action(_state(samus_x=137, samus_y=2443))
-    assert list(clear) == list(buttons("RIGHT", "B", "A"))
-    assert runner.phase == "spin"
+    _write_u16(ram, base + 0x26, 180)
+    runner.phase = "acquire"
+    freeze = runner.action(_state(samus_x=101, samus_y=2443, pose=4))
+    assert freeze is not None
+    assert list(freeze) == list(buttons())
+    assert runner.phase == "drop_aim"
+
+    away = runner.action(_state(samus_x=94, samus_y=2443, pose=2))
+    assert list(away) == list(buttons("LEFT"))
+    assert runner.phase == "step_off"
+
+    runner.phase = "step_off"
+    runner._phase_frames = 0
+    runner._target_x = 101
+    brake = runner.action(_state(samus_x=73, samus_y=2443, pose=10))
+    assert brake is not None
+    assert runner.phase == "brake"
+    assert list(brake) == list(buttons("RIGHT"))
+
+    runner._phase_frames = 4
+    hopped = runner.action(_state(samus_x=80, samus_y=2443, pose=9))
+    assert hopped is not None
+    assert runner.phase == "jump"
+    assert list(hopped) == list(buttons("A"))
+
+
+def test_red_ice_to_hellway_record_preset_is_same_room_chain() -> None:
+    """Debug MP4 preset starts on the p165 Red pin and skips ur4 settle."""
+    import importlib.util
+
+    path = GAME_DIR / "scripts" / "probe" / "record_pure_chain.py"
+    spec = importlib.util.spec_from_file_location("record_pure_chain", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    source, hops, stem, settle, extra = module._unpack_preset(
+        module.PRESETS["red-ice-to-hellway"]
+    )
+    assert stem == "red_ice_to_hellway_debug"
+    assert settle == 0
+    assert extra == 0
+    assert source.name == "bat_zero_settle_eq216_leave.state"
+    names = [name for name, _ in hops]
+    assert names[0] == "bottom-to-ripper1"
+    assert names[-1] == "upper-ripper3-to-hellway"
+    assert "upper-ripper3-to-4" not in names
+    assert len(names) == 11
+
+
+def test_play_red_to_hellway_dispatches_ice_climb_from_bottom_floor() -> None:
+    """Ice-pin spine uses the checkpoint chain, not the 6199f tape."""
+    from super_metroid.routes.kpdr.k5.red_ice_to_hellway import (
+        POLICY_ID as ICEHW_POLICY,
+        play_ice_climb_to_hellway,
+    )
+
+    body = (
+        GAME_DIR / "routes" / "kpdr" / "k5" / "red_to_hellway.py"
+    ).read_text(encoding="utf-8")
+    assert "play_ice_climb_to_hellway" in body
+    assert "can_attach_bottom_edge" in body
+    assert ICEHW_POLICY == "red_tower_ice_bottom_to_hellway"
+    assert callable(play_ice_climb_to_hellway)

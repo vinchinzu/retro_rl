@@ -234,6 +234,16 @@ def _parse_args() -> argparse.Namespace:
         help="Optional state name to write under custom_integrations when done",
     )
     p.add_argument(
+        "--stop-after-d2-shipping",
+        action="store_true",
+        help=(
+            "Stop on Spring D2 immediately after the farm 5pm ShippingScene, "
+            "requiring a successful mountain grape route and potato seed "
+            "purchase. Use with --power-on (continuous D1 handoff) or a D2 "
+            "morning --state, plus --save-end-state."
+        ),
+    )
+    p.add_argument(
         "--video",
         type=Path,
         default=None,
@@ -471,9 +481,48 @@ def _crop_survival_report(ram: np.ndarray) -> dict:
     }
 
 
+def _d2_spine_checkpoint_evidence(task: object, world: WorldState) -> dict[str, object]:
+    """Report whether the continuous power-on D2 spine reached its save gate."""
+    fields = _date_fields(world.ram)
+    phase_results = list(getattr(task, "_last_day_phase_results", ()) or ())
+    successful = {
+        str(row.get("phase"))
+        for row in phase_results
+        if str(row.get("status")) == "success"
+    }
+    potato_seeds = int(read_ram_value(world.ram, "potato_seeds"))
+    ready = bool(
+        fields["season"] == 0
+        and fields["day"] == 2
+        and fields["hour"] >= 17
+        and getattr(task, "_phase", None) == "return_home"
+        and "MOUNTAIN_BERRY" in successful
+        and "BUY_SEEDS" in successful
+        and "WAIT_FARM_SHIPPING" in successful
+    )
+    return {
+        "ready": ready,
+        "date": fields,
+        "planner_phase": getattr(task, "_phase", None),
+        "successful_phases": sorted(successful),
+        "potato_seeds": potato_seeds,
+        "mountain_grape_shipped": "MOUNTAIN_BERRY" in successful,
+        # CROP_ESTABLISH may consume the newly purchased bag before the 5pm
+        # shipper gate.  BUY_SEEDS is already closed by stock-up + wallet-down
+        # evidence, so remaining bag count is diagnostic rather than a gate.
+        "potato_purchase_complete": "BUY_SEEDS" in successful,
+        "shipping_dialogue_cleared": "WAIT_FARM_SHIPPING" in successful,
+    }
+
+
 def main() -> int:
     args = _parse_args()
     _configure_headless()
+
+    if args.stop_after_d2_shipping and args.power_on is False and args.state is None:
+        raise SystemExit("--stop-after-d2-shipping needs --power-on or a D2 morning --state")
+    if args.stop_after_d2_shipping and args.day_plan:
+        raise SystemExit("--stop-after-d2-shipping uses the live multi-day planner")
 
     if args.end_of_spring:
         overnights_budget = 32
@@ -719,6 +768,7 @@ def main() -> int:
 
         reason = "budget"
         terminal = False
+        d2_checkpoint_evidence: dict[str, object] | None = None
         # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
         last_logged_day = (
@@ -733,6 +783,14 @@ def main() -> int:
             season = int(read_ram_value(world.ram, "season"))
             day = int(read_ram_value(world.ram, "day"))
             current = (season, day)
+
+            if args.stop_after_d2_shipping:
+                candidate = _d2_spine_checkpoint_evidence(task, world)
+                if bool(candidate["ready"]):
+                    d2_checkpoint_evidence = candidate
+                    reason = "day-2 grape/seed spine reached post-5pm checkpoint"
+                    terminal = True
+                    break
 
             if current != last_logged_day:
                 print(
@@ -798,7 +856,14 @@ def main() -> int:
         morning_ok = morning_scene_ready(scene, end_fields["hour"]) or (
             scene.is_normal_map and int(read_ram_value(world.ram, "input_lock")) == 1
         )
-        success = bool(goal and advanced and morning_ok)
+        if args.stop_after_d2_shipping:
+            d2_checkpoint_evidence = (
+                d2_checkpoint_evidence
+                or _d2_spine_checkpoint_evidence(task, world)
+            )
+            success = bool(terminal and d2_checkpoint_evidence["ready"])
+        else:
+            success = bool(goal and advanced and morning_ok)
 
         # The ROM can expose its next-day RAM before its fade has produced a
         # visible frame.  These neutral frames do not alter inputs, RAM, or
@@ -845,6 +910,7 @@ def main() -> int:
             "power_on": power_on_report,
             "d1_handoff": d1_handoff_report,
             "d1_handoff_frames": d1_handoff_frames,
+            "d2_spine_checkpoint": d2_checkpoint_evidence,
             "boot_frames": boot_frames,
             "planner_frames": frames - planner_start_frame,
             "day_plan": plan_label,
@@ -873,7 +939,9 @@ def main() -> int:
                 and money_ok
                 and end_key > (0, 30)
             ),
-            "reason": ("goal reached" if success else reason),
+            "reason": (reason if success and args.stop_after_d2_shipping else "goal reached")
+            if success
+            else reason,
             "terminal": terminal,
             "mid_run_state_load": False,
             "clean_run": {

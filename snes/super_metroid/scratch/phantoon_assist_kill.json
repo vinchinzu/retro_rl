@@ -1,0 +1,564 @@
+{
+  "command": "strategy",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_phantoon.state",
+  "success": true,
+  "assist_enabled": true,
+  "entry": {
+    "room_id_hex": "0xCD13",
+    "samus_x": 39,
+    "samus_y": 128,
+    "pose": 81,
+    "facing": 8,
+    "health": 299,
+    "game_state": 8,
+    "missiles": 20,
+    "super_missiles": 5,
+    "max_missiles": 20,
+    "selected_item": 2,
+    "equipped_beams": "0x1007",
+    "charge": 0,
+    "enemy0_hp": 2500,
+    "enemy0_x": 128,
+    "enemy0_y": 96,
+    "enemy0_spritemap": "0xDEDD",
+    "enemy_ilist": "0xCC45",
+    "enemy_timer": 65519,
+    "enemy_palette": "0x0E00",
+    "enemy_ai0": "0x0000",
+    "enemy_ai1": "0x0000",
+    "enemy_ai2": "0x0000",
+    "func": "0xD4A9",
+    "eye_ilist": "0xCC7F",
+    "eye_xy": [
+      128,
+      96
+    ],
+    "eye_open": false,
+    "seated": false,
+    "phase": "ordinary_gameplay",
+    "pickups": []
+  },
+  "fight": {
+    "start_frame": 0,
+    "body_zero_frame": 19507,
+    "boss_bit_frame": 20537,
+    "end_frame": 20537,
+    "peak_body_hp": 2500,
+    "min_body_hp": 0,
+    "action_frames": 20537,
+    "final_body_hp": 0,
+    "boss_bit_set": true,
+    "outcome": "phantoon_defeated",
+    "phase_transitions": [
+      {
+        "phase": "invisible",
+        "frame": 0
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 2497
+      },
+      {
+        "phase": "invisible",
+        "frame": 2556
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 3288
+      },
+      {
+        "phase": "invisible",
+        "frame": 3388
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 3449
+      },
+      {
+        "phase": "invisible",
+        "frame": 3549
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 3616
+      },
+      {
+        "phase": "invisible",
+        "frame": 3716
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 3807
+      },
+      {
+        "phase": "invisible",
+        "frame": 3906
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 3997
+      },
+      {
+        "phase": "invisible",
+        "frame": 4096
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 4157
+      },
+      {
+        "phase": "invisible",
+        "frame": 4256
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 4347
+      },
+      {
+        "phase": "invisible",
+        "frame": 4447
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 4603
+      },
+      {
+        "phase": "invisible",
+        "frame": 4717
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 5252
+      },
+      {
+        "phase": "invisible",
+        "frame": 5311
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 6043
+      },
+      {
+        "phase": "invisible",
+        "frame": 6175
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 6251
+      },
+      {
+        "phase": "invisible",
+        "frame": 6350
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 6418
+      },
+      {
+        "phase": "invisible",
+        "frame": 6530
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 7426
+      },
+      {
+        "phase": "invisible",
+        "frame": 7442
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 8183
+      },
+      {
+        "phase": "invisible",
+        "frame": 8284
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 8375
+      },
+      {
+        "phase": "invisible",
+        "frame": 8475
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 8566
+      },
+      {
+        "phase": "invisible",
+        "frame": 8679
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 9216
+      },
+      {
+        "phase": "invisible",
+        "frame": 9277
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 10010
+      },
+      {
+        "phase": "invisible",
+        "frame": 10110
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 10180
+      },
+      {
+        "phase": "invisible",
+        "frame": 10293
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 11189
+      },
+      {
+        "phase": "invisible",
+        "frame": 11207
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 11586
+      },
+      {
+        "phase": "invisible",
+        "frame": 11689
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 11783
+      },
+      {
+        "phase": "invisible",
+        "frame": 11882
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 11943
+      },
+      {
+        "phase": "invisible",
+        "frame": 12042
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 12199
+      },
+      {
+        "phase": "invisible",
+        "frame": 12298
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 12365
+      },
+      {
+        "phase": "invisible",
+        "frame": 12478
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 13013
+      },
+      {
+        "phase": "invisible",
+        "frame": 13074
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 13446
+      },
+      {
+        "phase": "invisible",
+        "frame": 13554
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 13630
+      },
+      {
+        "phase": "invisible",
+        "frame": 13729
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 13790
+      },
+      {
+        "phase": "invisible",
+        "frame": 13889
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 13953
+      },
+      {
+        "phase": "invisible",
+        "frame": 14052
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 14148
+      },
+      {
+        "phase": "invisible",
+        "frame": 14247
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 14341
+      },
+      {
+        "phase": "invisible",
+        "frame": 14440
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 14505
+      },
+      {
+        "phase": "invisible",
+        "frame": 14604
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 14671
+      },
+      {
+        "phase": "invisible",
+        "frame": 14770
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 14831
+      },
+      {
+        "phase": "invisible",
+        "frame": 14931
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 15087
+      },
+      {
+        "phase": "invisible",
+        "frame": 15186
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 15277
+      },
+      {
+        "phase": "invisible",
+        "frame": 15376
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 15467
+      },
+      {
+        "phase": "invisible",
+        "frame": 15580
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 16116
+      },
+      {
+        "phase": "invisible",
+        "frame": 16185
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 16558
+      },
+      {
+        "phase": "invisible",
+        "frame": 16692
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 16761
+      },
+      {
+        "phase": "invisible",
+        "frame": 16862
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 16932
+      },
+      {
+        "phase": "invisible",
+        "frame": 17031
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17122
+      },
+      {
+        "phase": "invisible",
+        "frame": 17220
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17288
+      },
+      {
+        "phase": "invisible",
+        "frame": 17386
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17453
+      },
+      {
+        "phase": "invisible",
+        "frame": 17552
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17643
+      },
+      {
+        "phase": "invisible",
+        "frame": 17742
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17833
+      },
+      {
+        "phase": "invisible",
+        "frame": 17932
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 17993
+      },
+      {
+        "phase": "invisible",
+        "frame": 18091
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 18182
+      },
+      {
+        "phase": "invisible",
+        "frame": 18281
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 18437
+      },
+      {
+        "phase": "invisible",
+        "frame": 18550
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 19086
+      },
+      {
+        "phase": "invisible",
+        "frame": 19147
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 19220
+      },
+      {
+        "phase": "invisible",
+        "frame": 19349
+      },
+      {
+        "phase": "vulnerable",
+        "frame": 19427
+      },
+      {
+        "phase": "defeated",
+        "frame": 19507
+      }
+    ],
+    "shots_fired": 9,
+    "windows": 9,
+    "vulnerable_spritemaps": [
+      57053,
+      57063,
+      57073
+    ]
+  },
+  "reasons": {
+    "select_weapon": 2,
+    "select_weapon_settle": 50,
+    "phan_charge": 2193,
+    "phan_hurt": 125,
+    "phan_fire": 18,
+    "phan_fall_in": 109,
+    "phan_seat_left": 34,
+    "phan_face": 1,
+    "phan_farm_snipe": 16704,
+    "phan_farm_land": 131,
+    "phan_land": 140,
+    "phantoon_death_anim": 1030,
+    "settle": 30
+  },
+  "assist": {
+    "energy_restored": 500,
+    "energy_writes": 25,
+    "missile_writes": 0,
+    "maximum_single_frame_damage": 20,
+    "deaths": 0
+  },
+  "final": {
+    "room_id_hex": "0xCD13",
+    "samus_x": 37,
+    "samus_y": 187,
+    "pose": 1,
+    "facing": 8,
+    "health": 299,
+    "game_state": 8,
+    "missiles": 20,
+    "super_missiles": 5,
+    "max_missiles": 20,
+    "selected_item": 0,
+    "equipped_beams": "0x1007",
+    "charge": 0,
+    "enemy0_hp": 0,
+    "enemy0_x": 384,
+    "enemy0_y": 128,
+    "enemy0_spritemap": "0xDEE7",
+    "enemy_ilist": "0xCC4B",
+    "enemy_timer": 64456,
+    "enemy_palette": "0x0E00",
+    "enemy_ai0": "0x0003",
+    "enemy_ai1": "0x1000",
+    "enemy_ai2": "0x0002",
+    "func": "0xDB3D",
+    "eye_ilist": "0xCCC3",
+    "eye_xy": [
+      384,
+      128
+    ],
+    "eye_open": true,
+    "seated": true,
+    "phase": "ordinary_gameplay",
+    "pickups": []
+  },
+  "saved_state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_phantoon_poweron.state",
+  "catalog": {
+    "name": "Phantoon",
+    "max_hp": 2500
+  },
+  "boss_bits_wrecked_ship": 1,
+  "phantoon_defeated": true,
+  "method": "left_corner_charge_beam",
+  "notes": "Same seat-window policy as window --weapon beam. Assist keeps energy through $D82A. No Super spray."
+}

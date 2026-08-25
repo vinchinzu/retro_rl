@@ -1,0 +1,230 @@
+{
+  "hypothesis": "pong to y>=1650, unmorph, shoot DOWN+X pipes",
+  "halt": null,
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 823,
+    "room": "0xCAF6",
+    "xy": [
+      1061,
+      1689
+    ],
+    "pose": 65,
+    "gs": 8,
+    "dt": 0,
+    "morph": true,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 1689
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "land1",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "bottom_plat",
+      "frame": 717,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1688
+      ],
+      "pose": 50,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1688
+    },
+    {
+      "phase": "unmorph",
+      "frame": 743,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1638
+      ],
+      "pose": 78,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 1,
+      "floor_y": null
+    },
+    {
+      "phase": "beam",
+      "frame": 743,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1638
+      ],
+      "pose": 78,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 1,
+      "floor_y": null
+    },
+    {
+      "phase": "shoot_pipes",
+      "frame": 759,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1669
+      ],
+      "pose": 24,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "shoot_pipes",
+      "frame": 775,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1689
+      ],
+      "pose": 65,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1689
+    },
+    {
+      "phase": "shoot_pipes",
+      "frame": 791,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1680
+      ],
+      "pose": 40,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1680
+    },
+    {
+      "phase": "shoot_pipes",
+      "frame": 807,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1663
+      ],
+      "pose": 24,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 1,
+      "floor_y": null
+    },
+    {
+      "phase": "shoot_pipes",
+      "frame": 823,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1689
+      ],
+      "pose": 65,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1689
+    },
+    {
+      "phase": "after_pipes",
+      "frame": 823,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1689
+      ],
+      "pose": 65,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1689
+    },
+    {
+      "phase": "final",
+      "frame": 823,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1689
+      ],
+      "pose": 65,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1689
+    }
+  ]
+}

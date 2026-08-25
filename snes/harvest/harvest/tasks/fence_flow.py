@@ -97,6 +97,11 @@ class FenceClearLoopTask(Task):
     # soft-blocks south transit while standing on the just-lifted gap tile with
     # a false BFS path through (x,32); thrashing navigate_pond burns the day.
     corridor_only: bool = False
+    # Leftover smash dumps stones with the same pond toss. Default is posts.
+    debris_types: tuple = (DebrisType.FENCE,)
+    # Leftover smash: dump every post/stone in a pond. Do not treat a local
+    # drop as a clear, skip a stuck target, and work the y=31 wall first.
+    pond_dump: bool = False
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -112,6 +117,7 @@ class FenceClearLoopTask(Task):
     cleared_count: int = 0
     _corridor_staged: bool = field(default=False, init=False)
     _corridor_stage: Optional[tuple[int, int]] = field(default=None, init=False)
+    _skip_tiles: set = field(default_factory=set, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -145,6 +151,9 @@ class FenceClearLoopTask(Task):
         self.cleared_count = 0
         self._corridor_staged = False
         self._corridor_stage = None
+        self._skip_tiles = set()
+        self._stasis_repaths = 0
+        self._toss_face = "up"
         if self._toss_task is None:
             self._toss_task = RecordedTask.load(self.toss_task_name)
             # Warn but don't fallback (User requested no fallback hacks)
@@ -160,6 +169,65 @@ class FenceClearLoopTask(Task):
             return True
         except FileNotFoundError:
             return False
+
+    def _pond_dump_key(self, target: Target):
+        tile = (int(target.tile[0]), int(target.tile[1]))
+        skip = 1 if tile in self._skip_tiles else 0
+        x, y = tile
+        x0, x1 = FARM_POND_ACCESS_FENCE_X_RANGE
+        wall = 0 if y == FARM_POND_ACCESS_FENCE_ROW and x0 <= x <= x1 else 1
+        pond = min(abs(x - p[0]) + abs(y - p[1]) for p in POND_TILES)
+        return (skip, wall, pond)
+
+    def _skip_current(self, reason: str) -> TaskResult:
+        if self._current is not None:
+            self._skip_tiles.add(
+                (int(self._current.tile[0]), int(self._current.tile[1]))
+            )
+        self._failures += 1
+        self._state = "scan"
+        self._current = None
+        self._approach_tile = None
+        self._steps_on_fence = 0
+        self._navigator.path = []
+        self._corridor_charge_done = False
+        self._action_queue.clear()
+        if self._failures >= self.max_failures:
+            return TaskResult(status=TaskStatus.FAILURE, reason="too many fence failures")
+        return TaskResult(status=TaskStatus.RUNNING, reason=reason)
+
+    def _arm_south_charge(self, current) -> TaskResult:
+        """B-run south through a just-lifted y=31 gap (ROM soft-blocks BFS)."""
+        self._corridor_charge_done = True
+        self._action_queue.clear()
+        self._action_queue.extend([make_action(down=True) for _ in range(12)])
+        self._action_queue.extend(
+            [make_action(down=True, b=True) for _ in range(160)]
+        )
+        for _ in range(4):
+            self._action_queue.extend(
+                [make_action(down=True, b=True) for _ in range(36)]
+            )
+            self._action_queue.extend([make_action(left=True) for _ in range(5)])
+            self._action_queue.extend(
+                [make_action(down=True, b=True) for _ in range(36)]
+            )
+            self._action_queue.extend([make_action(right=True) for _ in range(5)])
+        self._action_queue.extend([make_action() for _ in range(12)])
+        if self.debug:
+            print(f"[FENCE] south charge at {current}")
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(self._action_queue.popleft()),
+            reason="pond south charge",
+        )
+
+    def _mark_pond_toss(self) -> None:
+        self.cleared_count += 1
+        self._failures = 0
+        self._skip_tiles.clear()
+        self._corridor_charge_done = False
+        self._pond_hop_steps = 0
 
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
@@ -216,14 +284,15 @@ class FenceClearLoopTask(Task):
 
         self._steps_on_fence += 1
         if self._steps_on_fence > self.max_steps_per_fence:
-            self._failures += 1
-            self._state = "scan"
-            self._current = None
-            self._approach_tile = None
-            self._steps_on_fence = 0
-            if self._failures >= self.max_failures:
-                return TaskResult(status=TaskStatus.FAILURE, reason="too many fence failures")
-            return TaskResult(status=TaskStatus.RUNNING, reason="fence timeout, skipping")
+            carrying = bool(world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT)
+            if carrying:
+                self._state = "local_drop"
+                self._steps_on_fence = 0
+                self._action_queue.clear()
+                return TaskResult(
+                    status=TaskStatus.RUNNING, reason="timeout drop"
+                )
+            return self._skip_current("fence timeout, skipping")
 
         if self._action_queue:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._action_queue.popleft()))
@@ -327,7 +396,11 @@ class FenceClearLoopTask(Task):
                 self._steps_on_fence = 0
                 return TaskResult(status=TaskStatus.RUNNING)
 
-            targets = [t for t in self._scanner.scan(world.ram) if t.debris_type == DebrisType.FENCE]
+            wanted = tuple(self.debris_types) or (DebrisType.FENCE,)
+            targets = [
+                t for t in self._scanner.scan(world.ram, types=set(wanted))
+                if t.debris_type in wanted
+            ]
             if self.corridor_only:
                 self._pathfinder.no_go_tiles.update(
                     target.tile
@@ -350,7 +423,10 @@ class FenceClearLoopTask(Task):
             if not targets:
                 reason = "corridor already open" if self.corridor_only else "no fences found"
                 return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
-            targets.sort(key=lambda t: manhattan(t.pos, self._navigator.current_pos))
+            if self.pond_dump:
+                targets.sort(key=self._pond_dump_key)
+            else:
+                targets.sort(key=lambda t: manhattan(t.pos, self._navigator.current_pos))
             picked = False
             for target in targets:
                 if self.corridor_only:
@@ -379,9 +455,19 @@ class FenceClearLoopTask(Task):
                 self._navigator.path = path
                 self._state = "navigate"
                 self._steps_on_fence = 0
+                self._pond_hop_steps = 0
+                self._corridor_charge_done = False
+                self._local_drop_cycles = 0
+                self._stasis_repaths = 0
+                self._toss_face = "up"
                 picked = True
                 break
             if not picked:
+                if self._skip_tiles:
+                    self._skip_tiles.clear()
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, reason="retry skipped fences"
+                    )
                 return TaskResult(status=TaskStatus.FAILURE, reason="no reachable fence")
 
         if self._state == "navigate":
@@ -408,23 +494,30 @@ class FenceClearLoopTask(Task):
                 else:
                     return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
             else:
-                if self._navigator.stasis > self.stasis_repath and self._navigator.path:
-                    self._pathfinder.temp_blocked.add(self._navigator.path[0])
-                    path = self._pathfinder.find_path(world.ram, self._navigator.current_tile, self._approach_tile)
+                if (
+                    self._navigator.stasis > self.stasis_repath
+                    or not self._navigator.path
+                ):
+                    if self._navigator.path:
+                        self._pathfinder.temp_blocked.add(self._navigator.path[0])
+                    path = self._pathfinder.find_path(
+                        world.ram,
+                        self._navigator.current_tile,
+                        self._approach_tile,
+                    )
                     if path:
                         self._navigator.path = path
-                    else:
-                        self._failures += 1
-                        self._state = "scan"
-                        self._current = None
-                        self._approach_tile = None
-                        self._steps_on_fence = 0
-                        if self._failures >= self.max_failures:
-                            return TaskResult(status=TaskStatus.FAILURE, reason="too many fence failures")
-                        return TaskResult(status=TaskStatus.RUNNING, reason="repath failed, skipping")
-                
+                        if self._navigator.stasis > self.stasis_repath:
+                            self._stasis_repaths = getattr(self, "_stasis_repaths", 0) + 1
+                            if self._stasis_repaths >= 4:
+                                return self._skip_current("stasis repath cap")
+                    elif self._navigator.stasis > self.stasis_repath:
+                        return self._skip_current("repath failed, skipping")
+
                 action = self._navigator.follow_path(world.ram)
                 if action is None:
+                    if self._navigator.stasis > self.stasis_repath:
+                        return self._skip_current("idle at approach, skipping")
                     action = np.zeros(12, dtype=np.int32)
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
@@ -511,6 +604,15 @@ class FenceClearLoopTask(Task):
                     reason="corridor_only local drop",
                 )
 
+            # Leftover pond dump: same ROM south-gap trap, but keep carrying
+            # to the F0 lip instead of dropping the post on land.
+            if (
+                self.pond_dump
+                and current[1] <= 31
+                and not getattr(self, "_corridor_charge_done", False)
+            ):
+                return self._arm_south_charge(current)
+
             # ROM trap: BFS invents a path through (x,32) after lift, but game
             # physics soft-blocks south transit while standing on the gap tile.
             # After short stasis on y=31, fall through to local_drop so the gap
@@ -518,6 +620,7 @@ class FenceClearLoopTask(Task):
             if (
                 current[1] == 31
                 and self._navigator.stasis > 90
+                and not self.pond_dump
             ):
                 if self.debug:
                     print(
@@ -538,6 +641,7 @@ class FenceClearLoopTask(Task):
                 # Center on the toss tile
                 action = self._navigator.center_on_tile(best_pond, tolerance=1)
                 if action is None:
+                    self._toss_face = "up"
                     self._state = "toss"
                     self._steps_on_fence = 0
                     if self.debug:
@@ -590,7 +694,8 @@ class FenceClearLoopTask(Task):
                         path = None
                 # Cap multi-hop attempts; corridor-open only needs the gap open.
                 # Real ROM may still need a few hops for viewport load toward pond.
-                if path is not None and getattr(self, "_pond_hop_steps", 0) > 6:
+                hop_limit = 16 if self.pond_dump else 6
+                if path is not None and getattr(self, "_pond_hop_steps", 0) > hop_limit:
                     path = None
 
             if path:
@@ -630,11 +735,25 @@ class FenceClearLoopTask(Task):
                 and read_held_item(world.ram) == 0
                 and not self._action_queue
             ):
-                self.cleared_count += 1
+                origin = (
+                    (int(self._current.tile[0]), int(self._current.tile[1]))
+                    if self._current is not None
+                    else None
+                )
                 self._state = "scan"
                 self._current = None
                 self._approach_tile = None
                 self._steps_on_fence = 0
+                self._corridor_charge_done = False
+                if self.pond_dump:
+                    if origin is not None:
+                        self._skip_tiles.add(origin)
+                    if self.debug:
+                        print("[FENCE] pond_dump recovery drop (not a toss)")
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, reason="pond_dump recovery drop"
+                    )
+                self.cleared_count += 1
                 if self.debug:
                     print(f"[FENCE] local drop complete cleared={self.cleared_count}")
                 # corridor_only: one (or max_fences) local drops open the gap —
@@ -736,7 +855,7 @@ class FenceClearLoopTask(Task):
             # If we are no longer carrying, we are done
             state_val = world.ram[ADDR_PLAYER_STATE]
             if not (state_val & ACTION_CARRYING_BIT) and not self._action_queue:
-                self.cleared_count += 1
+                self._mark_pond_toss()
                 self._state = "scan"
                 self._current = None
                 self._approach_tile = None
@@ -746,10 +865,11 @@ class FenceClearLoopTask(Task):
                 return TaskResult(status=TaskStatus.RUNNING)
 
             if not self._action_queue:
-                # Sequence: Face UP 10 frames, Press A 15 frames
-                # Approaching from bottom (e.g. at (31, 32), pond at (31, 31))
-                self._action_queue.extend([make_action(up=True) for _ in range(10)])
-                self._action_queue.extend([make_action(up=True, a=True) for _ in range(15)])
+                face = getattr(self, "_toss_face", "up") or "up"
+                self._action_queue.extend([make_action(**{face: True}) for _ in range(10)])
+                self._action_queue.extend(
+                    [make_action(**{face: True, "a": True}) for _ in range(15)]
+                )
                 self._action_queue.extend([make_action() for _ in range(10)])
             
             action = self._action_queue.popleft()

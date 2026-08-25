@@ -40,6 +40,8 @@ from zelda_i.dungeon_ids import (
     GEL_SPLIT_OBJECT_TYPE,
     KEESE_OBJECT_TYPE,
     LIKE_LIKE_OBJECT_TYPE,
+    VIRE_OBJECT_TYPE,
+    VIRE_SPLIT_KEESE_TYPE,
     WIZZROBE_BLUE_OBJECT_TYPE,
     ZOL_OBJECT_TYPE,
 )
@@ -52,7 +54,9 @@ from zelda_i.level6_overworld import (
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WEST_WIZZROBE_ROOM,
     LEVEL6_GLEEOK_ROOM,
+    LEVEL6_BLOCK_3A_ROOM,
     LEVEL6_DARK_29_ROOM,
+    LEVEL6_DARK_39_ROOM,
     LEVEL6_MAP_ROOM,
     LEVEL6_ROD_WIZZ_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
@@ -72,6 +76,7 @@ ROOM_L6_WIZZROBE_28 = LEVEL6_WIZZROBE_28_ROOM  # 0x28
 ROOM_L6_MAP = LEVEL6_MAP_ROOM  # 0x19 east of Gleeok
 ROOM_L6_ROD_WIZZ = LEVEL6_ROD_WIZZ_ROOM  # 0x09 north of Map; skip-Map KEY-UP
 ROOM_L6_DARK_29 = LEVEL6_DARK_29_ROOM  # 0x29 south of Map; dark wizzrobes
+ROOM_L6_DARK_39 = LEVEL6_DARK_39_ROOM  # 0x39 south of 0x29; live 5× Vire 0x12
 # After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
 ROOM_78_UP_DOOR_BIT = 0x08
 # ADDR_COMPASS / ADDR_MAP bitfield: one bit per dungeon (L6 → bit5 → 0x20).
@@ -577,6 +582,118 @@ ROOM_29_SPEC = DungeonRoomSpec(
 
 register_room_spec(ROOM_29_SPEC)
 
+# South of 0x29: dark leftover north mouth (120,93). Live census (settle39 v1):
+# 5× Vire 0x12 HP64. Ignore 0x2b / Bubble 0x40 / split 0x1c HP0. Do not
+# invent Gohma. East PNG lock; dest after clear is RAM.
+_ROOM_39_PATROL: tuple[tuple[int, int], ...] = (
+    (120, 189),
+    (80, 189),
+    (80, 173),
+    (64, 141),
+    (80, 109),
+    (120, 109),
+    (160, 109),
+    (176, 141),
+    (160, 173),
+    (160, 189),
+    (48, 157),
+    (192, 157),
+    (120, 141),
+)
+
+ROOM_39_SPEC = DungeonRoomSpec(
+    spec_id="level6_room39_vires",
+    source_room=LEVEL6_DARK_29_ROOM,
+    room_id=LEVEL6_DARK_39_ROOM,
+    entry=DoorRoute("DOWN", ((120, 141), (120, 205))),
+    enemy_types=(VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
+    object_slot_max=12,
+    combat=CombatTuning(
+        patrol=_ROOM_39_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+        inland_dash=24,
+        avoid_walls=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("RIGHT", ((208, 141),)),
+        DoorRoute("LEFT", ((32, 141),)),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+    ),
+    max_frames=15000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_39_SPEC)
+
+# East of 0x39: leftover west mouth (16,141). Live census (settle3a v1):
+# 3× Like-Like 0x17 + 2× blue 0x23 + 2× orange 0x24 + 0x59 shots + center
+# 0x68 (112,144). Ignore 0x2b / 0x40 / 0x59 / block 0x68. Do not push.
+_ROOM_3A_PATROL: tuple[tuple[int, int], ...] = (
+    (48, 141),
+    (80, 189),
+    (160, 189),
+    (176, 141),
+    (160, 109),
+    (80, 109),
+    (48, 157),
+    (192, 157),
+    (120, 141),
+    (96, 173),
+    (144, 109),
+)
+
+ROOM_3A_SPEC = DungeonRoomSpec(
+    spec_id="level6_room3a_block",
+    source_room=LEVEL6_DARK_39_ROOM,
+    room_id=LEVEL6_BLOCK_3A_ROOM,
+    entry=DoorRoute("RIGHT", ((16, 141),)),
+    enemy_types=(
+        LIKE_LIKE_OBJECT_TYPE,
+        WIZZROBE_BLUE_OBJECT_TYPE,
+        WIZZROBE_ORANGE_TYPE,
+    ),
+    expected_enemy_count=7,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=_ROOM_3A_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
+        inland_dash=24,
+        avoid_walls=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    room_item_id=0x03,
+    exit_routes=(
+        DoorRoute("LEFT", ((32, 141),)),
+        DoorRoute("RIGHT", ((208, 141),)),
+        DoorRoute("UP", ((120, 141), (120, 93))),
+        DoorRoute("DOWN", ((120, 141), (120, 205))),
+    ),
+    max_frames=25000,
+    level=LEVEL6,
+)
+
+register_room_spec(ROOM_3A_SPEC)
+
 
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x7a with keys≥1 and no live type-0x24 enemies.
@@ -808,6 +925,27 @@ def make_clear_29_controller() -> GenericDungeonRoomController:
     return GenericDungeonRoomController(spec=ROOM_29_SPEC)
 
 
+def level6_room_39_clear_success(ram: np.ndarray) -> bool:
+    """Isolated pure: 0x39 no live Vires. Ignore 0x2b/0x40. No Gohma."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == LEVEL6_DARK_39_ROOM
+        and snap.mode == PLAY_MODE
+        and not ROOM_39_SPEC.live_enemies(snap)
+    )
+
+
+def make_clear_39_controller() -> GenericDungeonRoomController:
+    """Occupancy-patrol 0x39 Vire clear. Ignore 0x2b/0x40. Do not invent Gohma."""
+    return GenericDungeonRoomController(spec=ROOM_39_SPEC)
+
+
+def make_clear_3a_controller() -> GenericDungeonRoomController:
+    """Occupancy-patrol 0x3A clear. Ignore 0x2b/0x40/0x68. Do not push."""
+    return GenericDungeonRoomController(spec=ROOM_3A_SPEC)
+
+
 __all__ = [
     "ROOM_L6_ENTRY",
     "ROOM_L6_EAST_KEY",
@@ -819,6 +957,7 @@ __all__ = [
     "ROOM_L6_MAP",
     "ROOM_L6_ROD_WIZZ",
     "ROOM_L6_DARK_29",
+    "ROOM_L6_DARK_39",
     "ROOM_79_SPEC",
     "ROOM_7A_SPEC",
     "ROOM_78_SPEC",
@@ -829,6 +968,8 @@ __all__ = [
     "ROOM_19_SPEC",
     "ROOM_09_SPEC",
     "ROOM_29_SPEC",
+    "ROOM_39_SPEC",
+    "ROOM_3A_SPEC",
     "ROOM_78_UP_DOOR_BIT",
     "LEVEL6_COMPASS_BIT",
     "LEVEL6_MAP_BIT",
@@ -843,6 +984,8 @@ __all__ = [
     "make_clear_19_controller",
     "make_clear_09_controller",
     "make_clear_29_controller",
+    "make_clear_39_controller",
+    "make_clear_3a_controller",
     "level6_room_7a_key_success",
     "level6_room_78_clear_success",
     "level6_room_68_compass_success",

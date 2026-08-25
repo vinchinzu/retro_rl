@@ -1,0 +1,263 @@
+{
+  "kind": "red_right_wall_probe",
+  "dumps": {},
+  "ice": {},
+  "r12Dual": [
+    {
+      "tag": "r12_0",
+      "green": true,
+      "frames": 156,
+      "time": {
+        "frames": 156,
+        "seconds": 2.596,
+        "clock": "00:02.60",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "end": {
+        "room": "0xA253",
+        "pose": 1,
+        "x": 125,
+        "y": 2255,
+        "x_sub": 8191,
+        "y_sub": 0,
+        "vx": 0,
+        "vy": 0,
+        "mom": 0,
+        "facing": 8,
+        "movement_type": 0,
+        "vertical_direction": 0,
+        "selected_item": 0,
+        "beams": "0x1007",
+        "items": "0x3105",
+        "game_state": 8,
+        "door_transition": 0,
+        "bottom_floor": false,
+        "can_attach": false,
+        "rippers": [
+          {
+            "slot": 0,
+            "x": 152,
+            "y": 520,
+            "fr": 0
+          },
+          {
+            "slot": 1,
+            "x": 96,
+            "y": 232,
+            "fr": 0
+          },
+          {
+            "slot": 2,
+            "x": 152,
+            "y": 320,
+            "fr": 0
+          },
+          {
+            "slot": 3,
+            "x": 104,
+            "y": 416,
+            "fr": 0
+          },
+          {
+            "slot": 5,
+            "x": 101,
+            "y": 2376,
+            "fr": 27
+          },
+          {
+            "slot": 6,
+            "x": 127,
+            "y": 2280,
+            "fr": 337
+          },
+          {
+            "slot": 7,
+            "x": 98,
+            "y": 2184,
+            "fr": 0
+          },
+          {
+            "slot": 8,
+            "x": 189,
+            "y": 2048,
+            "fr": 0
+          }
+        ]
+      },
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/r12_0_r12_000.png",
+      "saved": "snes/super_metroid/scratch/red_ice_p165_ripper2.state"
+    },
+    {
+      "tag": "r12_1",
+      "green": true,
+      "frames": 156,
+      "time": {
+        "frames": 156,
+        "seconds": 2.596,
+        "clock": "00:02.60",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "end": {
+        "room": "0xA253",
+        "pose": 1,
+        "x": 125,
+        "y": 2255,
+        "x_sub": 8191,
+        "y_sub": 0,
+        "vx": 0,
+        "vy": 0,
+        "mom": 0,
+        "facing": 8,
+        "movement_type": 0,
+        "vertical_direction": 0,
+        "selected_item": 0,
+        "beams": "0x1007",
+        "items": "0x3105",
+        "game_state": 8,
+        "door_transition": 0,
+        "bottom_floor": false,
+        "can_attach": false,
+        "rippers": [
+          {
+            "slot": 0,
+            "x": 152,
+            "y": 520,
+            "fr": 0
+          },
+          {
+            "slot": 1,
+            "x": 96,
+            "y": 232,
+            "fr": 0
+          },
+          {
+            "slot": 2,
+            "x": 152,
+            "y": 320,
+            "fr": 0
+          },
+          {
+            "slot": 3,
+            "x": 104,
+            "y": 416,
+            "fr": 0
+          },
+          {
+            "slot": 5,
+            "x": 101,
+            "y": 2376,
+            "fr": 27
+          },
+          {
+            "slot": 6,
+            "x": 127,
+            "y": 2280,
+            "fr": 337
+          },
+          {
+            "slot": 7,
+            "x": 98,
+            "y": 2184,
+            "fr": 0
+          },
+          {
+            "slot": 8,
+            "x": 189,
+            "y": 2048,
+            "fr": 0
+          }
+        ]
+      },
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/r12_1_r12_000.png",
+      "saved": null
+    }
+  ],
+  "r12DualExact": true,
+  "chain": {
+    "tag": "p165_to_r2",
+    "green": true,
+    "frames": 518,
+    "time": {
+      "frames": 518,
+      "seconds": 8.619,
+      "clock": "00:08.63",
+      "ntsc_fps": 60.0988
+    },
+    "error": null,
+    "end": {
+      "room": "0xA253",
+      "pose": 1,
+      "x": 125,
+      "y": 2255,
+      "x_sub": 8191,
+      "y_sub": 0,
+      "vx": 0,
+      "vy": 0,
+      "mom": 0,
+      "facing": 8,
+      "movement_type": 0,
+      "vertical_direction": 0,
+      "selected_item": 0,
+      "beams": "0x1007",
+      "items": "0x3105",
+      "game_state": 8,
+      "door_transition": 0,
+      "bottom_floor": false,
+      "can_attach": false,
+      "rippers": [
+        {
+          "slot": 0,
+          "x": 152,
+          "y": 520,
+          "fr": 0
+        },
+        {
+          "slot": 1,
+          "x": 96,
+          "y": 232,
+          "fr": 0
+        },
+        {
+          "slot": 2,
+          "x": 152,
+          "y": 320,
+          "fr": 0
+        },
+        {
+          "slot": 3,
+          "x": 104,
+          "y": 416,
+          "fr": 0
+        },
+        {
+          "slot": 5,
+          "x": 101,
+          "y": 2376,
+          "fr": 27
+        },
+        {
+          "slot": 6,
+          "x": 127,
+          "y": 2280,
+          "fr": 337
+        },
+        {
+          "slot": 7,
+          "x": 98,
+          "y": 2184,
+          "fr": 0
+        },
+        {
+          "slot": 8,
+          "x": 189,
+          "y": 2048,
+          "fr": 0
+        }
+      ]
+    },
+    "shot": "snes/super_metroid/scratch/red_right_wall_shots/p165_to_r2_chain_000.png"
+  },
+  "r1State": "snes/super_metroid/scratch/red_ice_p165_ripper1.state"
+}

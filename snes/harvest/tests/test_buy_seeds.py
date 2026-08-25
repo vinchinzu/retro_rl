@@ -39,6 +39,16 @@ def _set_stock(ram, count: int) -> None:
 
 
 class ShopRouteTests(unittest.TestCase):
+    def test_east_gate_shop_corridor_force_runs(self) -> None:
+        """D2 town east-gate approach stalls on walk; force-run on the verified corridor."""
+        force = [
+            wp.target_px
+            for wp in SEGMENTS["town_to_shop_door"]
+            if wp.force_run
+        ]
+        self.assertEqual(force, [(692, 424), (684, 400), (684, 340)])
+        self.assertFalse(SEGMENTS["town_to_shop_door"][0].force_run)
+
     def test_shop_door_route_uses_landmark_open_face(self) -> None:
         found = find_landmark("shop_door", tilemap_id=0x04)
         self.assertIsNotNone(found)

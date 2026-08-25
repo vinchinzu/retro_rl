@@ -1,0 +1,1079 @@
+{
+  "command": "dump",
+  "hop": "ws_basement_to_phantoon",
+  "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_main_to_basement.state",
+  "hypothesis": "land idle then ('RIGHT', 'B'); halt at first miss; landed=True",
+  "screenshot": "snes/super_metroid/scratch/ws_basement_pin.png",
+  "halt": "x_stall",
+  "landed": true,
+  "boot": {
+    "room": "0xCC6F",
+    "xy": [
+      657,
+      91
+    ],
+    "pose": 165,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 2,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "max_pb": 5,
+    "health": 299,
+    "vx": 0,
+    "vy": 0,
+    "facing": 4,
+    "movement": 0,
+    "door_ptr": "0xA21C",
+    "floor_y": 91,
+    "supers": 5,
+    "missiles": 20,
+    "frame": 0,
+    "phase": "boot",
+    "enemies": [
+      {
+        "i": 0,
+        "id": "0xD87F",
+        "x": 875,
+        "y": 187,
+        "hp": 20
+      },
+      {
+        "i": 1,
+        "id": "0xD87F",
+        "x": 880,
+        "y": 184,
+        "hp": 20
+      },
+      {
+        "i": 2,
+        "id": "0xD87F",
+        "x": 880,
+        "y": 188,
+        "hp": 20
+      },
+      {
+        "i": 3,
+        "id": "0xD87F",
+        "x": 872,
+        "y": 195,
+        "hp": 20
+      },
+      {
+        "i": 4,
+        "id": "0xD87F",
+        "x": 882,
+        "y": 201,
+        "hp": 20
+      },
+      {
+        "i": 5,
+        "id": "0xD87F",
+        "x": 78,
+        "y": 170,
+        "hp": 20
+      },
+      {
+        "i": 6,
+        "id": "0xD87F",
+        "x": 81,
+        "y": 173,
+        "hp": 20
+      },
+      {
+        "i": 7,
+        "id": "0xD87F",
+        "x": 72,
+        "y": 200,
+        "hp": 20
+      }
+    ],
+    "plms": {
+      "room_width": 80,
+      "room_height": 16,
+      "plms": []
+    }
+  },
+  "final": {
+    "room": "0xCC6F",
+    "xy": [
+      863,
+      187
+    ],
+    "pose": 137,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 2,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "max_pb": 5,
+    "health": 299,
+    "vx": 0,
+    "vy": 0,
+    "facing": 8,
+    "movement": 21,
+    "door_ptr": "0xA21C",
+    "floor_y": 187,
+    "supers": 5,
+    "missiles": 20,
+    "frame": 113,
+    "phase": "walk",
+    "enemies": [
+      {
+        "i": 0,
+        "id": "0xD87F",
+        "x": 878,
+        "y": 249,
+        "hp": 20
+      },
+      {
+        "i": 1,
+        "id": "0xD87F",
+        "x": 935,
+        "y": 252,
+        "hp": 20
+      },
+      {
+        "i": 2,
+        "id": "0xD87F",
+        "x": 936,
+        "y": 250,
+        "hp": 20
+      },
+      {
+        "i": 3,
+        "id": "0xD87F",
+        "x": 877,
+        "y": 250,
+        "hp": 20
+      },
+      {
+        "i": 4,
+        "id": "0xD87F",
+        "x": 915,
+        "y": 250,
+        "hp": 20
+      },
+      {
+        "i": 5,
+        "id": "0xD87F",
+        "x": 78,
+        "y": 170,
+        "hp": 20
+      },
+      {
+        "i": 6,
+        "id": "0xD87F",
+        "x": 81,
+        "y": 173,
+        "hp": 20
+      },
+      {
+        "i": 7,
+        "id": "0xD87F",
+        "x": 72,
+        "y": 200,
+        "hp": 20
+      }
+    ],
+    "plms": {
+      "room_width": 80,
+      "room_height": 16,
+      "plms": []
+    }
+  },
+  "samples": [
+    {
+      "room": "0xCC6F",
+      "xy": [
+        657,
+        91
+      ],
+      "pose": 165,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 4,
+      "movement": 0,
+      "door_ptr": "0xA21C",
+      "floor_y": 91,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 0,
+      "phase": "boot",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 187,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 184,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 188,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 872,
+          "y": 195,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 201,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        657,
+        91
+      ],
+      "pose": 165,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 4,
+      "movement": 0,
+      "door_ptr": "0xA21C",
+      "floor_y": 91,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 0,
+      "phase": "landed",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 187,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 184,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 188,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 872,
+          "y": 195,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 201,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        667,
+        91
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 8,
+      "movement": 1,
+      "door_ptr": "0xA21C",
+      "floor_y": 91,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 15,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 187,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 184,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 188,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 872,
+          "y": 195,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 201,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        716,
+        107
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 1,
+      "vy": 0,
+      "facing": 8,
+      "movement": 1,
+      "door_ptr": "0xA21C",
+      "floor_y": 107,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 30,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 187,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 184,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 880,
+          "y": 188,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 872,
+          "y": 195,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 201,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        762,
+        121
+      ],
+      "pose": 41,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 1,
+      "vy": 1,
+      "facing": 8,
+      "movement": 6,
+      "door_ptr": "0xA21C",
+      "floor_y": null,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 45,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 195,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 187,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 190,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 872,
+          "y": 202,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 882,
+          "y": 201,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        805,
+        154
+      ],
+      "pose": 41,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 1,
+      "vy": 3,
+      "facing": 8,
+      "movement": 6,
+      "door_ptr": "0xA21C",
+      "floor_y": null,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 60,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 877,
+          "y": 240,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 920,
+          "y": 233,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 912,
+          "y": 223,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 875,
+          "y": 232,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 907,
+          "y": 238,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        839,
+        187
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 8,
+      "movement": 1,
+      "door_ptr": "0xA21C",
+      "floor_y": 187,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 75,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 878,
+          "y": 249,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 935,
+          "y": 252,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 936,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 877,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 915,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        863,
+        187
+      ],
+      "pose": 137,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 8,
+      "movement": 21,
+      "door_ptr": "0xA21C",
+      "floor_y": 187,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 90,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 878,
+          "y": 249,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 935,
+          "y": 252,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 936,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 877,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 915,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        863,
+        187
+      ],
+      "pose": 137,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 8,
+      "movement": 21,
+      "door_ptr": "0xA21C",
+      "floor_y": 187,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 105,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 878,
+          "y": 249,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 935,
+          "y": 252,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 936,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 877,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 915,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    },
+    {
+      "room": "0xCC6F",
+      "xy": [
+        863,
+        187
+      ],
+      "pose": 137,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "items": "0x3105",
+      "beams": "0x1007",
+      "max_pb": 5,
+      "health": 299,
+      "vx": 0,
+      "vy": 0,
+      "facing": 8,
+      "movement": 21,
+      "door_ptr": "0xA21C",
+      "floor_y": 187,
+      "supers": 5,
+      "missiles": 20,
+      "frame": 113,
+      "phase": "walk",
+      "enemies": [
+        {
+          "i": 0,
+          "id": "0xD87F",
+          "x": 878,
+          "y": 249,
+          "hp": 20
+        },
+        {
+          "i": 1,
+          "id": "0xD87F",
+          "x": 935,
+          "y": 252,
+          "hp": 20
+        },
+        {
+          "i": 2,
+          "id": "0xD87F",
+          "x": 936,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 3,
+          "id": "0xD87F",
+          "x": 877,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 4,
+          "id": "0xD87F",
+          "x": 915,
+          "y": 250,
+          "hp": 20
+        },
+        {
+          "i": 5,
+          "id": "0xD87F",
+          "x": 78,
+          "y": 170,
+          "hp": 20
+        },
+        {
+          "i": 6,
+          "id": "0xD87F",
+          "x": 81,
+          "y": 173,
+          "hp": 20
+        },
+        {
+          "i": 7,
+          "id": "0xD87F",
+          "x": 72,
+          "y": 200,
+          "hp": 20
+        }
+      ],
+      "plms": {
+        "room_width": 80,
+        "room_height": 16,
+        "plms": []
+      }
+    }
+  ]
+}

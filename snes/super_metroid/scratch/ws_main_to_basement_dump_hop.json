@@ -1,0 +1,295 @@
+{
+  "hypothesis": "RIGHT to save ledge x~1230, then LEFT+A hop onto stairs",
+  "halt": "went_up",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "vx": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "jump_left",
+    "frame": 96,
+    "room": "0xCAF6",
+    "xy": [
+      1236,
+      867
+    ],
+    "pose": 26,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 5,
+    "vx": 0,
+    "floor_y": null
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 20,
+      "room": "0xCAF6",
+      "xy": [
+        1110,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 40,
+      "room": "0xCAF6",
+      "xy": [
+        1154,
+        914
+      ],
+      "pose": 41,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 914
+    },
+    {
+      "phase": "right",
+      "frame": 60,
+      "room": "0xCAF6",
+      "xy": [
+        1179,
+        944
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 944
+    },
+    {
+      "phase": "right",
+      "frame": 80,
+      "room": "0xCAF6",
+      "xy": [
+        1210,
+        913
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 913
+    },
+    {
+      "phase": "right",
+      "frame": 81,
+      "room": "0xCAF6",
+      "xy": [
+        1212,
+        911
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 911
+    },
+    {
+      "phase": "right",
+      "frame": 82,
+      "room": "0xCAF6",
+      "xy": [
+        1215,
+        908
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 908
+    },
+    {
+      "phase": "right",
+      "frame": 83,
+      "room": "0xCAF6",
+      "xy": [
+        1218,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 84,
+      "room": "0xCAF6",
+      "xy": [
+        1221,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 85,
+      "room": "0xCAF6",
+      "xy": [
+        1223,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 86,
+      "room": "0xCAF6",
+      "xy": [
+        1226,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 87,
+      "room": "0xCAF6",
+      "xy": [
+        1229,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "right",
+      "frame": 88,
+      "room": "0xCAF6",
+      "xy": [
+        1232,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "save_ledge",
+      "frame": 88,
+      "room": "0xCAF6",
+      "xy": [
+        1232,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "jump_left",
+      "frame": 96,
+      "room": "0xCAF6",
+      "xy": [
+        1236,
+        867
+      ],
+      "pose": 26,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 5,
+      "vx": 0,
+      "floor_y": null
+    }
+  ]
+}

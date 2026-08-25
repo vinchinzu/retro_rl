@@ -1,0 +1,247 @@
+{
+  "hypothesis": "morph-roll hole, unmorph, walk/roll down to bottom",
+  "halt": "stuck_1243_907",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 188,
+    "room": "0xCAF6",
+    "xy": [
+      1243,
+      907
+    ],
+    "pose": 209,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "n": 13,
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "morphed",
+      "frame": 22,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        921
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "roll",
+      "frame": 37,
+      "room": "0xCAF6",
+      "xy": [
+        1118,
+        921
+      ],
+      "pose": 30,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "roll",
+      "frame": 52,
+      "room": "0xCAF6",
+      "xy": [
+        1152,
+        929
+      ],
+      "pose": 49,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 929
+    },
+    {
+      "phase": "roll",
+      "frame": 66,
+      "room": "0xCAF6",
+      "xy": [
+        1171,
+        951
+      ],
+      "pose": 49,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "roll",
+      "frame": 67,
+      "room": "0xCAF6",
+      "xy": [
+        1172,
+        953
+      ],
+      "pose": 49,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "roll",
+      "frame": 68,
+      "room": "0xCAF6",
+      "xy": [
+        1174,
+        956
+      ],
+      "pose": 49,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "roll",
+      "frame": 69,
+      "room": "0xCAF6",
+      "xy": [
+        1175,
+        959
+      ],
+      "pose": 49,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "roll",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "on_stairs",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "unmorph",
+      "frame": 96,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        909
+      ],
+      "pose": 77,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 1,
+      "floor_y": null
+    },
+    {
+      "phase": "stuck",
+      "frame": 188,
+      "room": "0xCAF6",
+      "xy": [
+        1243,
+        907
+      ],
+      "pose": 209,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "final",
+      "frame": 188,
+      "room": "0xCAF6",
+      "xy": [
+        1243,
+        907
+      ],
+      "pose": 209,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 907
+    }
+  ]
+}

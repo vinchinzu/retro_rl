@@ -35,6 +35,14 @@ from harvest.runtime.game_state import GameState
 from harvest.runtime.probe_utils import DEFAULT_WATCH_FIELDS, event_row, snapshot_from_ram, watch_values
 from harvest.runtime.recording_trace import recording_trace_entry, summarize_recording
 from harvest.runtime.retro_setup import backup_mutable_start_state, make_harvest_env
+from harvest.runtime.watch_display import (
+    SPEED_LEVELS,
+    bot_speed_timing,
+    configure_headed,
+    default_speed_index,
+    display_set_mode,
+    pace_present,
+)
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, CropWaterTask, tile_needs_watering
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
@@ -558,6 +566,9 @@ class PlaySession:
         return 60
 
     def run(self):
+        headless_boot = env_flag("HEADLESS") or os.getenv("SDL_VIDEODRIVER", "").lower() == "dummy"
+        if not headless_boot:
+            configure_headed()
         pygame.init()
 
         if self.record_name:
@@ -582,8 +593,11 @@ class PlaySession:
         headless = env_flag("HEADLESS") or os.getenv("SDL_VIDEODRIVER", "").lower() == "dummy"
         if not headless:
             try:
-                screen = pygame.display.set_mode((self.hud_width + w * self.scale, h * self.scale))
-                pygame.display.set_caption(f"Harvest Moon [{self.mode.upper()}]")
+                screen = display_set_mode(
+                    pygame,
+                    (self.hud_width + w * self.scale, h * self.scale),
+                    caption=f"Harvest Moon [{self.mode.upper()}]",
+                )
             except pygame.error:
                 self.mode = 'bot'
                 self.bot.enabled = True
@@ -618,10 +632,11 @@ class PlaySession:
         print(f"[INIT] {game_state.date_str} {game_state.time_str} | ${game_state.money:,} (raw={money_raw})")
         quick_save = None
         ram_search_candidates = None  # set of addresses from last search
-        speed_levels = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0]
+        speed_levels = list(SPEED_LEVELS)
         # Start a notch above realtime so power-on boot is watchable without waiting.
-        speed_idx = 4  # 4.0x
+        speed_idx = default_speed_index()
         self._display_speed = speed_levels[speed_idx]
+        self._next_present = 0.0
 
         while running:
             if screen:
@@ -766,150 +781,166 @@ class PlaySession:
                     self.bot.prepare_for_enable()
                     self._start_hotswap_cancel()
 
-            if self.mode == 'human':
-                action = np.zeros(12, dtype=np.int32)
-                get_keyboard_action(keys, action)
-                get_controller_action(joystick, action)
-                sanitize_action(action)
-            else:
-                action = self._bot_mode_action(env, game_state, obs)
-            self._note_task_state_for_hud()
-
             speed = speed_levels[speed_idx]
             self._display_speed = speed
-            turbo_mode = self.mode == 'bot' and speed > 4.0
-            fast_forward = (keys[pygame.K_TAB] if screen else True) or turbo_mode
-            render_this_frame = bool(
-                screen
-                and (
-                    not fast_forward
-                    or self.frame_count % self._preview_interval(speed) == 0
+            tab_turbo = bool(screen and keys[pygame.K_TAB])
+            if screen:
+                repeat, tick_fps, skip_presents = bot_speed_timing(
+                    speed, turbo=tab_turbo, bot=self.mode == "bot"
                 )
-            )
+            else:
+                repeat, tick_fps, skip_presents = 1, 0, True
 
-            obs, reward, terminated, truncated, info = self._step_env_fast(
-                env,
-                action,
-                obs,
-                update_obs=render_this_frame,
-            )
-
-            record_frame = None
-            if self.record_name:
-                record_frame = len(self.recorded_frames)
-                self.recorded_frames.append(action.tolist())
-            
-            # Keep optional cheats topped up for autoplay. Stamina is real by
-            # default so hot-spring refill / clear exhaustion can be verified;
-            # re-enable with INFINITE_STAMINA=1.
-            try:
-                if os.getenv("INFINITE_STAMINA", "").lower() in ("1", "true", "yes"):
-                    self._set_live_value(env, "stamina", 100, 0x4918)
-                if self.bot.grass_seed_hack:
-                    self._set_live_value(env, "grass_seeds", 99, 0x4927)
-                if self.bot.crop_seed_hack:
-                    if os.getenv("FULL_WATER_CAN_HACK", "").lower() in ("1", "true", "yes"):
-                        self._set_live_value(env, "water_can", 20, 0x4926)
-                    self._sync_active_item(env)
-                if self.money_hack is not None:
-                    self._apply_money_hack(env)
-                if self.ram_patches:
-                    self._apply_ram_patches(env)
-            except Exception as e:
-                if self.frame_count <= 5:
-                    import traceback
-                    print(f"[HACK ERR] {e}")
-                    traceback.print_exc()
-
-            if self.record_name and record_frame is not None:
-                self.recorded_trace.append(
-                    recording_trace_entry(
-                        env.get_ram(),
-                        frame=record_frame,
-                        action=action,
-                    )
-                )
-
-            self.frame_count += 1
-            game_state = GameState(info, env.get_ram())
-
-            if game_state.day != last_day:
-                print(f"[DAY] {game_state.date_str}")
-                if self.autoplay:
-                    self._append_event(
-                        {
-                            "event": "day_change",
-                            "frame": self.frame_count,
-                            "date": game_state.date_str,
-                            "time": game_state.time_str,
-                        }
-                    )
-                last_day = game_state.day
-
-            if self.frame_count % 300 == 0:
-                if getattr(self.bot, "power_on_enabled", False) and not getattr(self.bot, "power_on_done", True):
-                    task = getattr(self.bot, "power_on_task", None)
-                    phase = task.phase_text if task is not None else "power-on"
-                    print(f"[BOT] f={self.frame_count} {phase} speed={speed:g}x")
-                elif getattr(self.bot, "d1_handoff_enabled", False) and not getattr(self.bot, "d1_handoff_done", True):
-                    task = getattr(self.bot, "d1_handoff_task", None)
-                    phase = (
-                        task.progress_snapshot().phase_text
-                        if task is not None
-                        else "d1-handoff"
-                    )
-                    print(f"[BOT] f={self.frame_count} D1 handoff {phase} speed={speed:g}x")
-                elif self.bot.day_plan_enabled and not self.bot.day_plan_done:
-                    dp = self.bot.day_plan_task
-                    print(f"[BOT] f={self.frame_count} day_plan {dp.phase_text} {dp.progress_text}")
-                elif self.bot.crop_enabled and not self.bot.crop_task_done:
-                    ct = self.bot.crop_task
-                    print(f"[BOT] f={self.frame_count} {ct.phase_text} {ct.progress_text}")
-                elif self.bot.grass_enabled and not self.bot.grass_task_done:
-                    gt = self.bot.grass_task
-                    print(f"[BOT] f={self.frame_count} {gt.phase_text} {gt.progress_text}")
+            stop = False
+            action = np.zeros(12, dtype=np.int32)
+            terminated = truncated = False
+            for sub in range(repeat):
+                if self.mode == 'human':
+                    action = np.zeros(12, dtype=np.int32)
+                    get_keyboard_action(keys, action)
+                    get_controller_action(joystick, action)
+                    sanitize_action(action)
                 else:
-                    print(f"[BOT] f={self.frame_count} {self.bot.clearer.state}")
-                sys.stdout.flush()
+                    action = self._bot_mode_action(env, game_state, obs)
+                self._note_task_state_for_hud()
 
-            # Auto-save state when day plan or crop task completes
-            if self.save_end and not self._end_saved and (self.bot.day_plan_done or self.bot.crop_task_done):
-                suffix = "day_plan_end" if self.bot.day_plan_done else "crop_end"
-                save_name = f"{self.initial_state}_{suffix}" if self.initial_state else suffix
-                save_path = os.path.join(STATES_DIR, f"{save_name}.state")
-                state_data = env.em.get_state()
-                with gzip.open(save_path, 'wb') as f:
-                    f.write(state_data)
-                self._end_saved = True
-                print(f"[SAVED] {save_name} -> {save_path}")
+                render_this_frame = bool(
+                    screen
+                    and sub == repeat - 1
+                    and (
+                        not skip_presents
+                        or self.frame_count % self._preview_interval(speed) == 0
+                    )
+                )
 
-            if screen and render_this_frame:
-                surf = pygame.surfarray.make_surface(obs.swapaxes(0, 1))
-                scaled = pygame.transform.scale(surf, (w * self.scale, h * self.scale))
-                screen.fill((0, 0, 0))
-                self._draw_hud(screen, font, env, game_state, action, h * self.scale)
-                screen.blit(scaled, (self.hud_width, 0))
+                obs, reward, terminated, truncated, info = self._step_env_fast(
+                    env,
+                    action,
+                    obs,
+                    update_obs=render_this_frame,
+                )
 
-                color = (0, 255, 0) if self.mode == 'human' else (255, 100, 100)
-                mode_text = font.render(f"[{self.mode.upper()}]", True, color)
-                screen.blit(mode_text, (self.hud_width + w * self.scale - 70, 5))
+                record_frame = None
+                if self.record_name:
+                    record_frame = len(self.recorded_frames)
+                    self.recorded_frames.append(action.tolist())
 
-                pygame.display.flip()
-            elif screen:
-                pygame.event.pump()
+                # Keep optional cheats topped up for autoplay. Stamina is real by
+                # default so hot-spring refill / clear exhaustion can be verified;
+                # re-enable with INFINITE_STAMINA=1.
+                try:
+                    if os.getenv("INFINITE_STAMINA", "").lower() in ("1", "true", "yes"):
+                        self._set_live_value(env, "stamina", 100, 0x4918)
+                    if self.bot.grass_seed_hack:
+                        self._set_live_value(env, "grass_seeds", 99, 0x4927)
+                    if self.bot.crop_seed_hack:
+                        if os.getenv("FULL_WATER_CAN_HACK", "").lower() in ("1", "true", "yes"):
+                            self._set_live_value(env, "water_can", 20, 0x4926)
+                        self._sync_active_item(env)
+                    if self.money_hack is not None:
+                        self._apply_money_hack(env)
+                    if self.ram_patches:
+                        self._apply_ram_patches(env)
+                except Exception as e:
+                    if self.frame_count <= 5:
+                        import traceback
+                        print(f"[HACK ERR] {e}")
+                        traceback.print_exc()
+
+                if self.record_name and record_frame is not None:
+                    self.recorded_trace.append(
+                        recording_trace_entry(
+                            env.get_ram(),
+                            frame=record_frame,
+                            action=action,
+                        )
+                    )
+
+                self.frame_count += 1
+                game_state = GameState(info, env.get_ram())
+
+                if game_state.day != last_day:
+                    print(f"[DAY] {game_state.date_str}")
+                    if self.autoplay:
+                        self._append_event(
+                            {
+                                "event": "day_change",
+                                "frame": self.frame_count,
+                                "date": game_state.date_str,
+                                "time": game_state.time_str,
+                            }
+                        )
+                    last_day = game_state.day
+
+                if self.frame_count % 300 == 0:
+                    if getattr(self.bot, "power_on_enabled", False) and not getattr(self.bot, "power_on_done", True):
+                        task = getattr(self.bot, "power_on_task", None)
+                        phase = task.phase_text if task is not None else "power-on"
+                        print(f"[BOT] f={self.frame_count} {phase} speed={speed:g}x")
+                    elif getattr(self.bot, "d1_handoff_enabled", False) and not getattr(self.bot, "d1_handoff_done", True):
+                        task = getattr(self.bot, "d1_handoff_task", None)
+                        phase = (
+                            task.progress_snapshot().phase_text
+                            if task is not None
+                            else "d1-handoff"
+                        )
+                        print(f"[BOT] f={self.frame_count} D1 handoff {phase} speed={speed:g}x")
+                    elif self.bot.day_plan_enabled and not self.bot.day_plan_done:
+                        dp = self.bot.day_plan_task
+                        print(f"[BOT] f={self.frame_count} day_plan {dp.phase_text} {dp.progress_text}")
+                    elif self.bot.crop_enabled and not self.bot.crop_task_done:
+                        ct = self.bot.crop_task
+                        print(f"[BOT] f={self.frame_count} {ct.phase_text} {ct.progress_text}")
+                    elif self.bot.grass_enabled and not self.bot.grass_task_done:
+                        gt = self.bot.grass_task
+                        print(f"[BOT] f={self.frame_count} {gt.phase_text} {gt.progress_text}")
+                    else:
+                        print(f"[BOT] f={self.frame_count} {self.bot.clearer.state}")
+                    sys.stdout.flush()
+
+                # Auto-save state when day plan or crop task completes
+                if self.save_end and not self._end_saved and (self.bot.day_plan_done or self.bot.crop_task_done):
+                    suffix = "day_plan_end" if self.bot.day_plan_done else "crop_end"
+                    save_name = f"{self.initial_state}_{suffix}" if self.initial_state else suffix
+                    save_path = os.path.join(STATES_DIR, f"{save_name}.state")
+                    state_data = env.em.get_state()
+                    with gzip.open(save_path, 'wb') as f:
+                        f.write(state_data)
+                    self._end_saved = True
+                    print(f"[SAVED] {save_name} -> {save_path}")
+
+                if screen and render_this_frame:
+                    surf = pygame.surfarray.make_surface(obs.swapaxes(0, 1))
+                    scaled = pygame.transform.scale(surf, (w * self.scale, h * self.scale))
+                    screen.fill((0, 0, 0))
+                    self._draw_hud(screen, font, env, game_state, action, h * self.scale)
+                    screen.blit(scaled, (self.hud_width, 0))
+
+                    color = (0, 255, 0) if self.mode == 'human' else (255, 100, 100)
+                    mode_text = font.render(f"[{self.mode.upper()}]", True, color)
+                    screen.blit(mode_text, (self.hud_width + w * self.scale - 70, 5))
+
+                    pygame.display.flip()
+                elif screen:
+                    pygame.event.pump()
+
+                if self._handle_autoplay_terminal_disable(env, game_state, action, obs):
+                    stop = True
+                    break
+                if self._check_autoplay_watchdog(env, game_state, action, obs):
+                    stop = True
+                    break
+                if terminated or truncated:
+                    stop = True
+                    break
+                if self.max_frames is not None and self.frame_count >= self.max_frames:
+                    print(f"[STOP] max_frames={self.max_frames}")
+                    stop = True
+                    break
 
             if screen:
-                clock.tick(int(60 * speed))
-
-            if self._handle_autoplay_terminal_disable(env, game_state, action, obs):
-                break
-            if self._check_autoplay_watchdog(env, game_state, action, obs):
-                break
-
-            if terminated or truncated:
-                break
-            if self.max_frames is not None and self.frame_count >= self.max_frames:
-                print(f"[STOP] max_frames={self.max_frames}")
+                pace_present(tick_fps, self)
+            if stop:
                 break
 
         env.close()

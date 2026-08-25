@@ -27,8 +27,9 @@ sequence complete, `(13,28)=0x54`. One-cell does not spend the bag.
 **Next (`rr-m7mk` / `rr-bvam` / `rr-w14t` / `rr-5aaw`):** D2 work catalog
 is `harvest.planner.d2_work`. Shop splice concatenates plant+water+leftover
 so a 06:08 plan still gets evening smash (not `hour>=17` at plan time).
-Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer `0x06`),
-**4** large 2×2, **2** stumps (axe). Hammer then axe (2-slot carry). Spa
+Quotas: **8** plant/water, **10** bushes (pick+toss), **all** fence posts
+to ponds, **10** stones to ponds, **4** large 2×2 (hammer), **2** stumps
+(axe). Hammer then axe (2-slot carry). Spa
 inserts when stamina cannot finish an 8-swing 2×2. Hoe ring must not stand
 on the well `(15,27)`. Tune from `Y1_After_Buy_Potato`. **2026-08-23 live pin GREEN**
 (`rr-m7mk` / `rr-bvam`): `d2_plant_probe --water` from
@@ -58,6 +59,34 @@ is farm-walkable so the can-fetch can leave the boxed notch.
 `pocket_to_shed` skips `farm_to_shed`'s west hop `(137,375)` (shipping
 ditch). Live 8-plant/`--water` from `Y1_After_Buy_Potato` is still the
 pin. Shots: `recordings/d2_stone_probe/`.
+
+**2026-08-24 leftover pin (`rr-w14t`, not green):** `d2_leftover_probe`
+from `Y1_After_Buy_Potato`. Dump: 506 weeds, **80 fence posts** (house
+paddock + y=31 wall x=11–29 + east column x=32), **0× `0x06`**, 185
+stones (`0x04`), 51 large 2×2, 38 stumps.
+CLEAR_BUSHES 10 in the west pocket is GREEN (3007f). Leftover order is
+now **bushes pick+toss → dump all fence posts in ponds → toss 10 stones
+in ponds → walk off shed door onto loaded a8/a1 → hammer 4 large → axe
+2 stumps**. ENSURE_HAMMER RAM shelf is GREEN but used to land on shed
+door `(26,30)` `0xFF` (farm map unloads; counts look like a wipe with
+`cleared_count=0`). Hammer fetch now NavTasks to `(25,28)` a1 before
+SUCCESS; FarmClearer keeps holding west/NW until `farm_map_loaded`.
+`0x06` is absent — leftover "10 small" is 10 pond-tossed `0x04` stones,
+not hammered.
+
+Fence dump (`--section fences`, not green): y=31 wall first, F0 south-lip
+toss, skip a stuck post instead of burning the day on one target. Live
+`Y1_After_Buy_Potato`: **80→19** (61 pond-dumped) in 90 017f / 18:00;
+remaining 19 are house north y=13 + west x=2, boxed in house `0xA6`.
+Do not toss into `0xA6` (regression 80→79).
+
+Stones (`--section stones`, GREEN): 10 pond-tossed `0x04` in 7797f,
+185→175, end `(32,34)` F0 lip (`recordings/d2_leftover_stones.json`).
+
+Rocks (`--section rocks`, not green): `ENSURE_HAMMER` GREEN 1428f tool
+`0x03` off the shed door (not `0xFF`). `CLEAR_ROCKS` 0/4 — y=31 wall
+still up on this isolated pin, no reachable 2×2. Compose dumps fences
+before hammer. Do not redo power-on. Do not STATUS-promote Gate B.
 
 ## Invariants
 

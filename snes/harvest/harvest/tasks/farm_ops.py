@@ -36,10 +36,12 @@ from harvest.core.tile_catalog import (
     Tool,
     debris_footprint,
 )
-from harvest.tasks.nav import Point, get_tile_at, make_action
+from harvest.tasks.nav import Point, get_tile_at, make_action, manhattan
 
 __all__ = [
     "DAMAGE_ROCK_TL",
+    "LOADED_FARM_STAND",
+    "SHED_DOOR_TILE",
     "SWING_STAMINA_COST",
     "Target",
     "TileScanner",
@@ -47,10 +49,18 @@ __all__ = [
     "action_to_names",
     "cycle_tool",
     "drop_unarmed_debris",
+    "shed_door_step_off_actions",
+    "sort_targets_cluster",
     "snap_debris_anchor",
     "use_tool",
     "use_tool_facing",
 ]
+
+
+# Outdoor tool-shed door. Hammer fetch lands here on 0xFF and unloads the farm.
+SHED_DOOR_TILE = (26, 30)
+# a1 west-north of the door. Adjacent a8 still unloads distant metatiles.
+LOADED_FARM_STAND = (25, 28)
 
 
 # 2x2 damage-rock TL (0x11) matches intact LARGE_ROCK_TL (0x0D).
@@ -96,6 +106,43 @@ class Target:
     @property
     def footprint(self) -> Tuple[Tuple[int, int], ...]:
         return debris_footprint(self.tile, self.tile_id)
+
+
+def sort_targets_cluster(targets: List[Target], player_pos: Point) -> List[Target]:
+    """Nearest-neighbor with north bias so day-plan clear stays returnable.
+
+    Prefer targets north of / near the y=31 fence; deep-south debris
+    (y>38) is a softlock trap for return_home after water days (rr-5in).
+    """
+    remaining = list(targets)
+    ordered: List[Target] = []
+    cur = player_pos
+    row_dir = 1
+    while remaining:
+        remaining.sort(
+            key=lambda t: (
+                2 if t.tile[1] > 40 else (1 if t.tile[1] > 32 else 0),
+                manhattan(t.pos, cur),
+                t.tile[1],
+                t.tile[0] * row_dir,
+            )
+        )
+        nxt = remaining.pop(0)
+        ordered.append(nxt)
+        if ordered and len(ordered) >= 2:
+            prev_y = ordered[-2].tile[1]
+            if nxt.tile[1] != prev_y:
+                row_dir *= -1
+        cur = nxt.pos
+    return ordered
+
+
+def shed_door_step_off_actions() -> List[np.ndarray]:
+    """Hold west then north-west onto (25,28) a1. Door pin eats 1-frame taps."""
+    run = dict(b=True)
+    actions = [make_action(left=True, **run) for _ in range(16)]
+    actions.extend(make_action(left=True, up=True, **run) for _ in range(16))
+    return actions
 
 
 def drop_unarmed_debris(

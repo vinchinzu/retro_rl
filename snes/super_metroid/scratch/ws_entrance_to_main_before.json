@@ -1,0 +1,61 @@
+{
+  "hop": "ws_entrance_to_main",
+  "phase": "before",
+  "policy": "scaffold_240_RIGHT_B",
+  "success": false,
+  "error": "TimeoutError: ws_entrance_to_main: scaffold timeout before room 0xCAF6; room=0xCA08 pose=137 xy=(987,139)",
+  "source": "snes/super_metroid/scratch/post_ws_poweron.state",
+  "boot": {
+    "room": "0xCA08",
+    "xy": [
+      57,
+      139
+    ],
+    "pose": 1,
+    "gs": 8,
+    "dt": 0,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "selected": 2,
+    "max_pb": 5,
+    "health": 299,
+    "speed_counter": 0,
+    "enemy0": [
+      159,
+      35,
+      20
+    ],
+    "num_enemies": 32,
+    "frame": 0
+  },
+  "final": {
+    "room": "0xCA08",
+    "xy": [
+      987,
+      139
+    ],
+    "pose": 137,
+    "gs": 8,
+    "dt": 0,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "selected": 2,
+    "max_pb": 5,
+    "health": 299,
+    "speed_counter": 0,
+    "enemy0": [
+      224,
+      65527,
+      20
+    ],
+    "num_enemies": 32,
+    "frame": 240
+  },
+  "frames": 240,
+  "time": {
+    "frames": 240,
+    "seconds": 3.993,
+    "clock": "00:04.00",
+    "ntsc_fps": 60.0988
+  }
+}

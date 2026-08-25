@@ -1,0 +1,234 @@
+{
+  "halt": "still_caf6",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1163,
+      1707
+    ],
+    "pose": 137,
+    "gs": 8,
+    "morph": false,
+    "selected": 2,
+    "vy": 0,
+    "enemy0": [
+      1163,
+      1707,
+      300
+    ]
+  },
+  "final": {
+    "phase": "after_down",
+    "frame": 317,
+    "room": "0xCAF6",
+    "xy": [
+      1141,
+      1712
+    ],
+    "pose": 40,
+    "gs": 8,
+    "morph": false,
+    "selected": 2,
+    "vy": 0,
+    "enemy0": [
+      1163,
+      1700,
+      300
+    ]
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1163,
+        1707
+      ],
+      "pose": 137,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1707,
+        300
+      ]
+    },
+    {
+      "phase": "cover_timeout",
+      "frame": 90,
+      "room": "0xCAF6",
+      "xy": [
+        1163,
+        1707
+      ],
+      "pose": 41,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 2,
+      "enemy0": [
+        1163,
+        1703,
+        300
+      ]
+    },
+    {
+      "phase": "over_hole",
+      "frame": 109,
+      "room": "0xCAF6",
+      "xy": [
+        1148,
+        1707
+      ],
+      "pose": 10,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1708,
+        300
+      ]
+    },
+    {
+      "phase": "landed",
+      "frame": 139,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1709
+      ],
+      "pose": 24,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 2,
+      "enemy0": [
+        1163,
+        1702,
+        300
+      ]
+    },
+    {
+      "phase": "face_left",
+      "frame": 145,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1707
+      ],
+      "pose": 138,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1703,
+        300
+      ]
+    },
+    {
+      "phase": "Lx0",
+      "frame": 157,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1707
+      ],
+      "pose": 8,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1712,
+        300
+      ]
+    },
+    {
+      "phase": "Lx1",
+      "frame": 183,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1707
+      ],
+      "pose": 8,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1700,
+        300
+      ]
+    },
+    {
+      "phase": "Lx2",
+      "frame": 209,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1707
+      ],
+      "pose": 8,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1700,
+        300
+      ]
+    },
+    {
+      "phase": "Lx3",
+      "frame": 235,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1707
+      ],
+      "pose": 8,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1700,
+        300
+      ]
+    },
+    {
+      "phase": "after_down",
+      "frame": 317,
+      "room": "0xCAF6",
+      "xy": [
+        1141,
+        1712
+      ],
+      "pose": 40,
+      "gs": 8,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "enemy0": [
+        1163,
+        1700,
+        300
+      ]
+    }
+  ],
+  "frames": 317
+}

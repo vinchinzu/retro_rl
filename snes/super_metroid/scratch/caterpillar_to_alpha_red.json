@@ -1,0 +1,41 @@
+{
+  "success": false,
+  "error": "alpha_pb_collect: timeout before PB capacity increased: room=0xA3AE pose=40 xy=(642,192) max_pb=0",
+  "roomIdHex": "0xA3AE",
+  "samusX": 642,
+  "samusY": 192,
+  "pose": 40,
+  "doorTransition": 0,
+  "frame": 2843,
+  "frames": 2843,
+  "probePin": {
+    "room": "0xA3AE",
+    "roomId": 41902,
+    "pose": 40,
+    "x": 642,
+    "y": 192,
+    "x_sub": 57344,
+    "y_sub": 65535,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY",
+    "frame": 2843,
+    "velocity_x": 0,
+    "velocity_y": 5,
+    "momentum_x": 0,
+    "speed_counter": 0,
+    "speed_boosting": false,
+    "facing": 4,
+    "movement_type": 5,
+    "shinespark_timer": 0,
+    "door_def_ptr": "0x9096",
+    "collected_items": "0x3105"
+  },
+  "parseCounts": {
+    "nav": 2849,
+    "full": 6
+  },
+  "controllerOnly": true,
+  "developmentOnly": false,
+  "sourceId": "post_ice_hellway_to_caterpillar_pure",
+  "residualPinLine": "room=0xA3AE pose=40 x=642 y=192 door_transition=0 frames=2843"
+}

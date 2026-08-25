@@ -13,9 +13,11 @@ from harvest.planner.d2_work import (
     d2_post_shop_work_phases,
     ensure_axe_phase,
     ensure_hammer_phase,
+    fence_dump_phase,
     leftover_already_queued,
     pocket_water_phase,
     rock_quota_phase,
+    stone_pond_phase,
     stump_quota_phase,
 )
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
@@ -39,14 +41,34 @@ class D2QuotaContractTests(unittest.TestCase):
         self.assertEqual(spec.params["quota"]["weeds"], 10)
         self.assertFalse(spec.params["fetch_tools"])
         self.assertEqual(spec.params["priority"], ["weed"])
-        self.assertNotIn("farm_bounds", spec.params)
+        self.assertEqual(spec.params["farm_bounds"], (3, 14, 28, 30))
 
-    def test_rock_phase_needs_hammer_and_counts_small_plus_large(self) -> None:
+    def test_fence_dump_is_all_posts_to_pond(self) -> None:
+        spec = fence_dump_phase()
+        self.assertEqual(spec.phase, "CLEAR_FENCES")
+        self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
+        self.assertIsNone(spec.params["max_fences"])
+        self.assertFalse(spec.params["corridor_only"])
+        self.assertTrue(spec.params["pond_dump"])
+        self.assertEqual(spec.params["max_steps_per_fence"], 2800)
+        self.assertEqual(spec.params["debris_types"], ["fence"])
+
+    def test_stone_pond_phase_lifts_ten_not_hammer(self) -> None:
+        spec = stone_pond_phase()
+        self.assertEqual(spec.phase, "CLEAR_STONES")
+        self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
+        self.assertEqual(spec.params["max_fences"], 10)
+        self.assertFalse(spec.params["corridor_only"])
+        self.assertEqual(spec.params["debris_types"], ["stone"])
+
+    def test_rock_phase_needs_hammer_for_large_only(self) -> None:
         spec = rock_quota_phase()
         self.assertEqual(spec.phase, "CLEAR_ROCKS")
-        self.assertEqual(spec.params["quota"]["small_rocks"], 10)
+        self.assertNotIn("stones", spec.params["quota"])
+        self.assertNotIn("small_rocks", spec.params["quota"])
         self.assertEqual(spec.params["quota"]["large_rocks"], 4)
         self.assertEqual(spec.params["priority"], ["rock"])
+        self.assertFalse(spec.params["prefer_lift_for_stones"])
         self.assertEqual(spec.contract.required_tools, ("hammer",))
         self.assertFalse(spec.params["fetch_tools"])
 
@@ -72,7 +94,9 @@ class D2LeftoverOrderTests(unittest.TestCase):
         phases = d2_leftover_phases(stamina=Stamina(current=8, maximum=100))
         names = [p.phase for p in phases]
         self.assertEqual(names[0], "HOT_SPRING_STAMINA")
-        self.assertLess(names.index("CLEAR_BUSHES"), names.index("ENSURE_HAMMER"))
+        self.assertLess(names.index("CLEAR_BUSHES"), names.index("CLEAR_FENCES"))
+        self.assertLess(names.index("CLEAR_FENCES"), names.index("CLEAR_STONES"))
+        self.assertLess(names.index("CLEAR_STONES"), names.index("ENSURE_HAMMER"))
         self.assertLess(names.index("ENSURE_HAMMER"), names.index("CLEAR_ROCKS"))
         self.assertLess(names.index("CLEAR_ROCKS"), names.index("ENSURE_AXE"))
         self.assertLess(names.index("ENSURE_AXE"), names.index("CLEAR_STUMPS"))
@@ -86,6 +110,8 @@ class D2LeftoverOrderTests(unittest.TestCase):
             names,
             [
                 "CLEAR_BUSHES",
+                "CLEAR_FENCES",
+                "CLEAR_STONES",
                 "ENSURE_HAMMER",
                 "CLEAR_ROCKS",
                 "ENSURE_AXE",
@@ -134,8 +160,34 @@ class D2PostShopComposeTests(unittest.TestCase):
 
     def test_leftover_already_queued(self) -> None:
         self.assertTrue(leftover_already_queued(["CROP_WATER", "CLEAR_ROCKS"]))
+        self.assertTrue(leftover_already_queued(["CLEAR_FENCES", "RETURN_HOME"]))
+        self.assertTrue(leftover_already_queued(["CLEAR_STONES"]))
         self.assertFalse(leftover_already_queued(["CROP_WATER", "RETURN_HOME"]))
         self.assertFalse(leftover_already_queued(["HOT_SPRING_STAMINA"]))
+
+    def test_fence_dump_builder_dumps_all_posts(self) -> None:
+        import numpy as np
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+        from retro_harness import WorldState
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = build_phase_task(TaskBuildContext(), fence_dump_phase(), world)
+        self.assertIsInstance(task, FenceClearLoopTask)
+        self.assertIsNone(task.max_fences)
+        self.assertFalse(task.corridor_only)
+        self.assertTrue(task.pond_dump)
+        self.assertEqual(task.max_steps_per_fence, 2800)
+        self.assertEqual(task.max_failures, 20)
+        self.assertEqual(task.debris_types[0].name, "FENCE")
+
+        stones = build_phase_task(TaskBuildContext(), stone_pond_phase(), world)
+        self.assertIsInstance(stones, FenceClearLoopTask)
+        self.assertEqual(stones.max_fences, 10)
+        self.assertTrue(stones.pond_dump)
+        self.assertEqual(stones.max_steps_per_fence, 2800)
+        self.assertEqual(stones.debris_types[0].name, "STONE")
 
 
 if __name__ == "__main__":
