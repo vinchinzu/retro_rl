@@ -44,6 +44,9 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_WAVE,
     ROOM_WEST_OCEAN,
     ROOM_WS_ENTRANCE,
+    ROOM_WS_MAIN,
+    ROOM_WS_BASEMENT,
+    ROOM_PHANTOON,
 )
 from super_metroid.routes.kpdr.spine import continuous_edges_for_tips
 
@@ -88,6 +91,9 @@ ROOMS = _VARIA_ROOMS + (
     RoomNode(ROOM_MOAT, "The Moat", "Crateria"),
     RoomNode(ROOM_WEST_OCEAN, "West Ocean", "Crateria"),
     RoomNode(ROOM_WS_ENTRANCE, "Wrecked Ship Entrance", "Wrecked Ship"),
+    RoomNode(ROOM_WS_MAIN, "Wrecked Ship Main Shaft", "Wrecked Ship"),
+    RoomNode(ROOM_WS_BASEMENT, "Wrecked Ship Basement", "Wrecked Ship"),
+    RoomNode(ROOM_PHANTOON, "Phantoon's Room", "Wrecked Ship"),
 )
 
 # Spine continuous Super+ product edges (business return, frog, bat_cave).
@@ -215,6 +221,7 @@ EDGES = (
         "alpha_pb",
         "moat",
         "ws",
+        "phantoon",
     )
     + _BRANCH_EDGES
 )

@@ -308,6 +308,15 @@ def _play_named_chain(chain: str):
         hops = hops_for_tip("alpha_pb") + hops_for_tip("moat") + hops_for_tip("ws")
     elif chain == "moat-to-ws":
         hops = hops_for_tip("ws")
+    elif chain == "ws-to-phantoon":
+        hops = hops_for_tip("phantoon")
+    elif chain == "ice-to-phantoon":
+        hops = (
+            hops_for_tip("alpha_pb")
+            + hops_for_tip("moat")
+            + hops_for_tip("ws")
+            + hops_for_tip("phantoon")
+        )
     else:
         raise KeyError(chain)
 
@@ -744,10 +753,13 @@ def main() -> None:
             "alpha-pb-to-moat",
             "ice-to-ws",
             "moat-to-ws",
+            "ws-to-phantoon",
+            "ice-to-phantoon",
         ),
         help=(
             "Named hop chain (alpha_pb, alpha_pb+moat, moat from Alpha PB leave, "
-            "Ice→WS, or West Ocean spark from Moat leave)"
+            "Ice→WS, West Ocean spark from Moat leave, WS interior+fight, "
+            "or Ice→Phantoon)"
         ),
     )
     compose.add_argument("--source", type=Path, required=True)

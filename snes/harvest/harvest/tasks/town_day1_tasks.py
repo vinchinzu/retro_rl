@@ -13,6 +13,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.carry import tool_in_carry_pair
 from harvest.core.ram_catalog import read_ram_value
+from harvest.core.npc_catalog import game_objects
 from harvest.core.scene import SceneMode, classify_scene_from_ram
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.tasks.nav import make_action
@@ -98,6 +99,77 @@ class WaitForMaskBitTask(Task):
             self._step_count,
             pulse_every=1,
             reason=f"talk bit 0x{self.bit:02X}",
+        )
+
+
+@dataclass
+class WalkUntilCoordTask(Task):
+    """Hold a direction until the camera remaps onto a tilemap + coord box.
+
+    Building doors keep the previous map's pixels until the player walks off
+    the trigger.  MultiMapNav ``run_direction`` would first align X and miss
+    the remap.  Rest tape: hold Up into the animal shop until (128,200);
+    hold Down out until town-space ~(600,888).
+    """
+
+    name: str = "walk_until_coord"
+    direction: str = "up"
+    tilemap: int = ANIMAL_SHOP_TILEMAP
+    max_x: int | None = None
+    min_x: int | None = None
+    min_y: int | None = None
+    max_y: int | None = None
+    timeout: int = 240
+    run: bool = True
+
+    _step_count: int = field(default=0, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._step_count = 0
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def _in_box(self, px: int, py: int) -> bool:
+        if self.max_x is not None and px >= self.max_x:
+            return False
+        if self.min_x is not None and px < self.min_x:
+            return False
+        if self.max_y is not None and py >= self.max_y:
+            return False
+        if self.min_y is not None and py < self.min_y:
+            return False
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        tilemap = int(read_ram_value(world.ram, "tilemap"))
+        px = int(read_ram_value(world.ram, "player_x"))
+        py = int(read_ram_value(world.ram, "player_y"))
+        remapped = tilemap == self.tilemap and self._in_box(px, py)
+        if remapped:
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"coord remap tm=0x{tilemap:02X} ({px},{py})",
+            )
+        if self._step_count > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"coord remap timeout tm=0x{tilemap:02X} ({px},{py}) "
+                    f"want tm=0x{self.tilemap:02X}"
+                ),
+            )
+        scene = classify_scene_from_ram(world.ram)
+        if scene.needs_input_dismiss or int(read_ram_value(world.ram, "input_lock")) != 1:
+            return dismiss_dialogue_result(self._step_count)
+        kwargs = {self.direction: True}
+        if self.run:
+            kwargs["b"] = True
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**kwargs)),
+            reason=f"remap {self.direction} tm=0x{tilemap:02X} ({px},{py})",
         )
 
 
@@ -219,6 +291,90 @@ class PressAUntilBitOrTimeout(Task):
         # Idle between attempts. Do not hold face directions — on this ROM
         # holding a D-pad walks and can overshoot the talk stand (Ann probe).
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+
+@dataclass
+class TrackNpcUntilBitTask(Task):
+    """Follow the nearest live NPC object and talk until an event bit sets."""
+
+    name: str = "track_npc_until_bit"
+    bit: int = 0
+    timeout: int = 2400
+    face_hint: Optional[str] = None
+
+    _step_count: int = field(default=0, init=False)
+    _queue: deque = field(default_factory=deque, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._step_count = 0
+        self._queue = deque()
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        if mask_has(world.ram, self.bit):
+            scene = classify_scene_from_ram(world.ram)
+            if scene.needs_input_dismiss or int(read_ram_value(world.ram, "input_lock")) != 1:
+                return dismiss_dialogue_result(self._step_count, reason="dismiss after tracked talk")
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"bit 0x{self.bit:02X} set")
+        if self._step_count > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"moving NPC talk timeout bit=0x{self.bit:02X} mask=0x{read_mask(world.ram):02X}",
+            )
+
+        queued = drain_action_queue(self._queue, reason="tracked NPC press")
+        if queued is not None:
+            return queued
+        scene = classify_scene_from_ram(world.ram)
+        if scene.needs_input_dismiss or int(read_ram_value(world.ram, "input_lock")) != 1:
+            return dismiss_dialogue_result(self._step_count)
+
+        objects = game_objects(world.ram)
+        player = next((obj for obj in objects if obj.is_player), None)
+        candidates = [obj for obj in objects if obj.is_npc_candidate]
+        if player is None or not candidates:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason="waiting for live NPC object",
+            )
+        px, py = player.pixel
+        npc = min(candidates, key=lambda obj: abs(obj.pixel[0] - px) + abs(obj.pixel[1] - py))
+        dx, dy = npc.pixel[0] - px, npc.pixel[1] - py
+
+        # NPC/object origins are not sprite centers; live livestock is
+        # interactable at an object delta around (31, 14).
+        if (abs(dx) <= 36 and abs(dy) <= 18) or (abs(dy) <= 36 and abs(dx) <= 18):
+            preferred = "right" if abs(dx) >= abs(dy) and dx > 0 else "left"
+            if abs(dy) > abs(dx):
+                preferred = "down" if dy > 0 else "up"
+            face = self.face_hint or preferred
+            self._queue.extend(
+                press_a_sequence(face, face_frames=1, pre_press_settle_frames=1, hold_frames=2, settle_frames=3)
+            )
+            return drain_action_queue(
+                self._queue,
+                reason=(
+                    f"talk to moving NPC slot={npc.slot} "
+                    f"sprite=0x{npc.sprite_table_idx:04X} at={npc.pixel}"
+                ),
+            )
+
+        if abs(dx) > abs(dy):
+            direction = "right" if dx > 0 else "left"
+        else:
+            direction = "down" if dy > 0 else "up"
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**{direction: True})),
+            reason=(
+                f"track moving NPC slot={npc.slot} sprite=0x{npc.sprite_table_idx:04X} "
+                f"at={npc.pixel} dx={dx} dy={dy}"
+            ),
+        )
 
 
 @dataclass
@@ -539,5 +695,3 @@ class _TruckLeaveTask(Task):
             )
 
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-
-

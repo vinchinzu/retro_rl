@@ -1,0 +1,1014 @@
+{
+  "hypothesis": "land stairs, idle, morph-roll LEFT down",
+  "halt": "timeout",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "morph": false,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 1678,
+    "room": "0xCAF6",
+    "xy": [
+      1045,
+      1097
+    ],
+    "pose": 31,
+    "gs": 8,
+    "morph": true,
+    "vy": 0,
+    "floor_y": 1097
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "morph": false,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "landed",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "idle",
+      "frame": 78,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "left",
+      "frame": 103,
+      "room": "0xCAF6",
+      "xy": [
+        1114,
+        1023
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1023
+    },
+    {
+      "phase": "left",
+      "frame": 128,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1039
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1039
+    },
+    {
+      "phase": "left",
+      "frame": 131,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1041
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1041
+    },
+    {
+      "phase": "left",
+      "frame": 153,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1085
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 3,
+      "floor_y": null
+    },
+    {
+      "phase": "left",
+      "frame": 178,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 203,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 228,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 253,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 278,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 303,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 328,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 353,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 378,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 403,
+      "room": "0xCAF6",
+      "xy": [
+        1046,
+        1075
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1075
+    },
+    {
+      "phase": "left",
+      "frame": 428,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 453,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 478,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 503,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1078
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1078
+    },
+    {
+      "phase": "left",
+      "frame": 528,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 553,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 578,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 603,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 628,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 653,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 678,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 703,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 728,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 753,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 778,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 803,
+      "room": "0xCAF6",
+      "xy": [
+        1050,
+        1074
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1074
+    },
+    {
+      "phase": "left",
+      "frame": 828,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 853,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 878,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 903,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1075
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1075
+    },
+    {
+      "phase": "left",
+      "frame": 928,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 953,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 978,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1003,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1028,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1053,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1078,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1103,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1128,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1153,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1178,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1203,
+      "room": "0xCAF6",
+      "xy": [
+        1056,
+        1074
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1074
+    },
+    {
+      "phase": "left",
+      "frame": 1228,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1253,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1278,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1303,
+      "room": "0xCAF6",
+      "xy": [
+        1049,
+        1074
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1074
+    },
+    {
+      "phase": "left",
+      "frame": 1328,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1353,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1378,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1403,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1428,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1453,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1478,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1503,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1528,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1553,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1578,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1603,
+      "room": "0xCAF6",
+      "xy": [
+        1047,
+        1088
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 4,
+      "floor_y": null
+    },
+    {
+      "phase": "left",
+      "frame": 1628,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 2,
+      "floor_y": null
+    },
+    {
+      "phase": "left",
+      "frame": 1653,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "left",
+      "frame": 1678,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "timeout",
+      "frame": 1678,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "final",
+      "frame": 1678,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1097
+      ],
+      "pose": 31,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    }
+  ]
+}

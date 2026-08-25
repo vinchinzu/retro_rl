@@ -1,0 +1,476 @@
+{
+  "command": "dual",
+  "wiki": "https://wiki.supermetroid.run/Phantoon#Any.25_KPDR_.28Ice.2FWave.2FSpazer_Charge_Only.29",
+  "policy": "probe_default",
+  "assist_enabled": true,
+  "baseline_frames": 20537,
+  "runs": [
+    {
+      "policy": "probe_default",
+      "shots_per_window": 1,
+      "success": true,
+      "outcome": "phantoon_defeated",
+      "frames": 20537,
+      "seconds": 341.721,
+      "clock": "05:42.28",
+      "timing": {
+        "frames": 20537,
+        "seconds": 341.721,
+        "clock": "05:42.28",
+        "ntsc_fps": 60.0988
+      },
+      "shots_fired": 9,
+      "windows": 9,
+      "shots_per_window_observed": 1.0,
+      "final_hp": 0,
+      "boss_bit": true,
+      "boss_bits_wrecked_ship": 1,
+      "phantoon_defeated": true,
+      "body_zero_frame": 19507,
+      "boss_bit_frame": 20537,
+      "assist": {
+        "energy_restored": 500,
+        "energy_writes": 25,
+        "missile_writes": 0,
+        "maximum_single_frame_damage": 20,
+        "deaths": 0
+      },
+      "method": "left_corner_charge_beam",
+      "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_phantoon.state",
+      "entry": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 39,
+        "samus_y": 128,
+        "pose": 81,
+        "health": 299,
+        "game_state": 8,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 2,
+        "equipped_beams": "0x1007",
+        "collected_items": "0x3105",
+        "enemy0_hp": 2500,
+        "enemy0_x": 128,
+        "enemy0_y": 96
+      },
+      "final": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 37,
+        "samus_y": 187,
+        "pose": 1,
+        "health": 299,
+        "game_state": 8,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "equipped_beams": "0x1007",
+        "collected_items": "0x3105",
+        "enemy0_hp": 0,
+        "enemy0_x": 384,
+        "enemy0_y": 128
+      },
+      "fight": {
+        "start_frame": 0,
+        "body_zero_frame": 19507,
+        "boss_bit_frame": 20537,
+        "end_frame": 20537,
+        "peak_body_hp": 2500,
+        "min_body_hp": 0,
+        "action_frames": 20537,
+        "final_body_hp": 0,
+        "boss_bit_set": true,
+        "outcome": "phantoon_defeated",
+        "shots_fired": 9,
+        "windows": 9
+      },
+      "chips": [
+        {
+          "frame": 1566,
+          "reason": "phan_fire",
+          "hp_before": 2500,
+          "hp_after": 2200,
+          "drop": 300,
+          "charge_before": 120,
+          "charge_after": 0
+        },
+        {
+          "frame": 4682,
+          "reason": "phan_fire",
+          "hp_before": 2200,
+          "hp_after": 1900,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 6495,
+          "reason": "phan_fire",
+          "hp_before": 1900,
+          "hp_after": 1600,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 6654,
+          "reason": "phan_farm_snipe",
+          "hp_before": 1600,
+          "hp_after": 1600,
+          "drop": 0,
+          "charge_before": 120,
+          "charge_after": 0
+        },
+        {
+          "frame": 8644,
+          "reason": "phan_fire",
+          "hp_before": 1600,
+          "hp_after": 1300,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 10258,
+          "reason": "phan_fire",
+          "hp_before": 1300,
+          "hp_after": 1000,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 12443,
+          "reason": "phan_fire",
+          "hp_before": 1000,
+          "hp_after": 700,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 15545,
+          "reason": "phan_fire",
+          "hp_before": 700,
+          "hp_after": 400,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 18515,
+          "reason": "phan_fire",
+          "hp_before": 400,
+          "hp_after": 100,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 19506,
+          "reason": "phan_fire",
+          "hp_before": 100,
+          "hp_after": 0,
+          "drop": 100,
+          "charge_before": 69,
+          "charge_after": 0
+        }
+      ],
+      "chip_windows": {
+        "window_count": 9,
+        "shots_per_window": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mean": 1.0,
+        "max": 1,
+        "drops": [
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            100
+          ]
+        ],
+        "three_chips_landed": false,
+        "disappear_after_300": true
+      },
+      "reasons": {
+        "phan_farm_snipe": 16704,
+        "phan_charge": 2193,
+        "phan_fire": 18,
+        "phantoon_death_anim": 1030
+      },
+      "delta_vs_20537f": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "+00:00.00",
+        "ntsc_fps": 60.0988,
+        "baseline_frames": 20537
+      }
+    },
+    {
+      "policy": "probe_default",
+      "shots_per_window": 1,
+      "success": true,
+      "outcome": "phantoon_defeated",
+      "frames": 20537,
+      "seconds": 341.721,
+      "clock": "05:42.28",
+      "timing": {
+        "frames": 20537,
+        "seconds": 341.721,
+        "clock": "05:42.28",
+        "ntsc_fps": 60.0988
+      },
+      "shots_fired": 9,
+      "windows": 9,
+      "shots_per_window_observed": 1.0,
+      "final_hp": 0,
+      "boss_bit": true,
+      "boss_bits_wrecked_ship": 1,
+      "phantoon_defeated": true,
+      "body_zero_frame": 19507,
+      "boss_bit_frame": 20537,
+      "assist": {
+        "energy_restored": 500,
+        "energy_writes": 25,
+        "missile_writes": 0,
+        "maximum_single_frame_damage": 20,
+        "deaths": 0
+      },
+      "method": "left_corner_charge_beam",
+      "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_phantoon.state",
+      "entry": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 39,
+        "samus_y": 128,
+        "pose": 81,
+        "health": 299,
+        "game_state": 8,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 2,
+        "equipped_beams": "0x1007",
+        "collected_items": "0x3105",
+        "enemy0_hp": 2500,
+        "enemy0_x": 128,
+        "enemy0_y": 96
+      },
+      "final": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 37,
+        "samus_y": 187,
+        "pose": 1,
+        "health": 299,
+        "game_state": 8,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "equipped_beams": "0x1007",
+        "collected_items": "0x3105",
+        "enemy0_hp": 0,
+        "enemy0_x": 384,
+        "enemy0_y": 128
+      },
+      "fight": {
+        "start_frame": 0,
+        "body_zero_frame": 19507,
+        "boss_bit_frame": 20537,
+        "end_frame": 20537,
+        "peak_body_hp": 2500,
+        "min_body_hp": 0,
+        "action_frames": 20537,
+        "final_body_hp": 0,
+        "boss_bit_set": true,
+        "outcome": "phantoon_defeated",
+        "shots_fired": 9,
+        "windows": 9
+      },
+      "chips": [
+        {
+          "frame": 1566,
+          "reason": "phan_fire",
+          "hp_before": 2500,
+          "hp_after": 2200,
+          "drop": 300,
+          "charge_before": 120,
+          "charge_after": 0
+        },
+        {
+          "frame": 4682,
+          "reason": "phan_fire",
+          "hp_before": 2200,
+          "hp_after": 1900,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 6495,
+          "reason": "phan_fire",
+          "hp_before": 1900,
+          "hp_after": 1600,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 6654,
+          "reason": "phan_farm_snipe",
+          "hp_before": 1600,
+          "hp_after": 1600,
+          "drop": 0,
+          "charge_before": 120,
+          "charge_after": 0
+        },
+        {
+          "frame": 8644,
+          "reason": "phan_fire",
+          "hp_before": 1600,
+          "hp_after": 1300,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 10258,
+          "reason": "phan_fire",
+          "hp_before": 1300,
+          "hp_after": 1000,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 12443,
+          "reason": "phan_fire",
+          "hp_before": 1000,
+          "hp_after": 700,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 15545,
+          "reason": "phan_fire",
+          "hp_before": 700,
+          "hp_after": 400,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 18515,
+          "reason": "phan_fire",
+          "hp_before": 400,
+          "hp_after": 100,
+          "drop": 300,
+          "charge_before": 69,
+          "charge_after": 0
+        },
+        {
+          "frame": 19506,
+          "reason": "phan_fire",
+          "hp_before": 100,
+          "hp_after": 0,
+          "drop": 100,
+          "charge_before": 69,
+          "charge_after": 0
+        }
+      ],
+      "chip_windows": {
+        "window_count": 9,
+        "shots_per_window": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "mean": 1.0,
+        "max": 1,
+        "drops": [
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            300
+          ],
+          [
+            100
+          ]
+        ],
+        "three_chips_landed": false,
+        "disappear_after_300": true
+      },
+      "reasons": {
+        "phan_farm_snipe": 16704,
+        "phan_charge": 2193,
+        "phan_fire": 18,
+        "phantoon_death_anim": 1030
+      },
+      "delta_vs_20537f": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "+00:00.00",
+        "ntsc_fps": 60.0988,
+        "baseline_frames": 20537
+      }
+    }
+  ],
+  "match": true,
+  "frames": [
+    20537,
+    20537
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "hypothesis": "morph, roll RIGHT down stairs to bottom",
+  "halt": "stuck_1243_921",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "vx": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 137,
+    "room": "0xCAF6",
+    "xy": [
+      1243,
+      921
+    ],
+    "pose": 30,
+    "gs": 8,
+    "dt": 0,
+    "morph": true,
+    "selected": 0,
+    "vy": 0,
+    "vx": 0,
+    "floor_y": 921
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "morphed",
+      "frame": 22,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        921
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "yband_921",
+      "frame": 22,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        921
+      ],
+      "pose": 29,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "stuck",
+      "frame": 137,
+      "room": "0xCAF6",
+      "xy": [
+        1243,
+        921
+      ],
+      "pose": 30,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "final",
+      "frame": 137,
+      "room": "0xCAF6",
+      "xy": [
+        1243,
+        921
+      ],
+      "pose": 30,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "vx": 0,
+      "floor_y": 921
+    }
+  ]
+}

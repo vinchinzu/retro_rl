@@ -78,8 +78,7 @@ The first implemented edge is deliberately small:
 ```text
 bottom_floor ~(216,2443)
   → track lowest Ripper X and freeze in a bounded launch band
-  → right-wall spin + consecutive WJ (20/4/8, 14/2/6)
-  → steer back to frozen support
+  → step ~28px off the ice column, standing Hi-Jump, drift from above
   → lower_ripper_1 y=2351, grounded, freeze timer ≥30
   → freeze r2 at offset (UP+X, no walk), standing Hi-Jump, drift from above
   → lower_ripper_2 y=2255, grounded, freeze timer ≥30
@@ -89,14 +88,21 @@ bottom_floor ~(216,2443)
   → lower_ripper_4 y=2023, grounded, freeze timer ≥30
 ```
 
-Edge 1 waits for horizontal clearance before its first rising wall arc, is
-dual-exact from the natural Bat→Red predecessor, and passed 31 patrol phases
-total (offsets `0..240`, step 8) in **233–380 policy frames**. Edge 2 is
+Edge 1 is freeze + step-off + standing hop (no WJ; same-column jump bonks
+the ice underside), dual-exact **228f** ×2 from the natural Bat→Red
+predecessor. Sampled patrol offsets `0..64` step 8 are green
+(**164–228f**). Edge 2 is
 dual-exact **156f** ×2 from the Ice-pin r1 pin. Edge 3 is dual-exact
 **108f** ×2 from the Ice-pin r2 pin (wait for r3 to pass, then freeze
 right-side). Edge 4 is dual-exact **141f** ×2 from the Ice-pin r3 pin
 (standing hop is ~3px short; crouch-jump clears). p165 chain bottom→r4
-is **809f**. Hellway is not claimed.
+is **809f**. Upper ladder through ordinary Hellway left-door is
+dual-exact **283f** ×2 from the ur3 pin (12f UP+X+A, A-only through the
+x≈134 hole, RIGHT until gs=8 x≤80). 163f/`(237,139)` p11 was the Red
+Tower door-slot fire. Product ur3→ur4 **59f** ×2 is unchanged. Successor
+`hellway_to_caterpillar` from `(39,139)` p11 is dual **2110f** ×2.
+Ice-pin `play_red_to_hellway` is the checkpoint climb to ordinary
+Hellway left-door **5846f** ×2. Compose Ice → Alpha PB is dual **20016f** ×2.
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --edge 4 \

@@ -431,13 +431,24 @@ def _build_fence_clear(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     """Open y=31 fence gap so south-farm routes (berry, pond) can BFS."""
+    from harvest.core.tile_catalog import DebrisType
     from harvest.tasks.fence_flow import FenceClearLoopTask
 
+    raw_max = spec.params.get("max_fences", 2)
+    max_fences = None if raw_max is None else int(raw_max)
+    raw_types = spec.params.get("debris_types") or ("fence",)
+    debris_types = tuple(DebrisType[str(name).upper()] for name in raw_types)
+    raw_steps = spec.params.get("max_steps_per_fence")
+    # Phase timeout is the whole-loop budget. One stuck post must not eat it.
+    max_steps_per_fence = int(raw_steps) if raw_steps is not None else 2400
     return FenceClearLoopTask(
         name=f"fence_clear_{spec.phase.lower()}",
-        max_fences=spec.params.get("max_fences", 2),
+        max_fences=max_fences,
         corridor_only=bool(spec.params.get("corridor_only", True)),
-        max_steps_per_fence=int(spec.params.get("timeout", 8000)),
+        max_steps_per_fence=max_steps_per_fence,
+        max_failures=int(spec.params.get("max_failures", 3)),
+        pond_dump=bool(spec.params.get("pond_dump", False)),
+        debris_types=debris_types,
     )
 
 

@@ -1,0 +1,65 @@
+{
+  "success": false,
+  "error": "TimeoutError: ws_basement_to_phantoon: scaffold timeout before room 0xCD13; room=0xCC6F pose=137 xy=(863,187)",
+  "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_main_to_basement.state",
+  "boot": {
+    "room": "0xCC6F",
+    "xy": [
+      657,
+      91
+    ],
+    "pose": 165,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 2,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "max_pb": 5,
+    "health": 299,
+    "vx": 0,
+    "vy": 0,
+    "facing": 4,
+    "movement": 0,
+    "door_ptr": "0xA21C",
+    "floor_y": 91,
+    "supers": 5,
+    "missiles": 20,
+    "frame": 0
+  },
+  "final": {
+    "room": "0xCC6F",
+    "xy": [
+      863,
+      187
+    ],
+    "pose": 137,
+    "gs": 8,
+    "dt": 0,
+    "morph": false,
+    "selected": 2,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "max_pb": 5,
+    "health": 299,
+    "vx": 0,
+    "vy": 0,
+    "facing": 8,
+    "movement": 21,
+    "door_ptr": "0xA21C",
+    "floor_y": 187,
+    "supers": 5,
+    "missiles": 20,
+    "frame": 240
+  },
+  "frames": 240,
+  "time": {
+    "frames": 240,
+    "seconds": 3.993,
+    "clock": "00:04.00",
+    "ntsc_fps": 60.0988
+  },
+  "saved": null,
+  "command": "bench",
+  "hop": "ws_basement_to_phantoon"
+}

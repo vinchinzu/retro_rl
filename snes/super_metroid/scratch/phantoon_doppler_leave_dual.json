@@ -1,0 +1,81 @@
+{
+  "command": "compose",
+  "success": true,
+  "frames": [
+    12455,
+    12455
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "success": true,
+      "entry": {
+        "room": "0xcd13",
+        "xy": [
+          39,
+          128
+        ],
+        "pose": 81,
+        "hp": 2500
+      },
+      "fight_frames": 12118,
+      "fight_leave": [
+        37,
+        187,
+        1
+      ],
+      "final": {
+        "room": "0xcc6f",
+        "xy": [
+          1240,
+          139
+        ],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "frames": 12455,
+      "seconds": 207.242,
+      "clock": "03:27.58",
+      "ntsc_fps": 60.0988,
+      "boss": 1,
+      "saved_state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_phantoon_leave.state"
+    },
+    {
+      "run": 2,
+      "success": true,
+      "entry": {
+        "room": "0xcd13",
+        "xy": [
+          39,
+          128
+        ],
+        "pose": 81,
+        "hp": 2500
+      },
+      "fight_frames": 12118,
+      "fight_leave": [
+        37,
+        187,
+        1
+      ],
+      "final": {
+        "room": "0xcc6f",
+        "xy": [
+          1240,
+          139
+        ],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "frames": 12455,
+      "seconds": 207.242,
+      "clock": "03:27.58",
+      "ntsc_fps": 60.0988,
+      "boss": 1
+    }
+  ]
+}

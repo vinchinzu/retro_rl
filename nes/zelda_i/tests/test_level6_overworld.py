@@ -78,6 +78,16 @@ from zelda_i.level6_spine import (
     level6_east29_success,
     level6_south29_stages,
     level6_south29_success,
+    level6_settle39_stages,
+    level6_settle39_success,
+    level6_clear39_stages,
+    level6_clear39_success,
+    level6_east39_stages,
+    level6_east39_success,
+    level6_settle3a_stages,
+    level6_settle3a_success,
+    level6_clear3a_stages,
+    level6_clear3a_success,
     level6_room28_stages,
     level6_room28_success,
     level6_clear58_stages,
@@ -1618,6 +1628,227 @@ def test_level6_south29_clips_then_down() -> None:
     run = SpineRun(through="level6-south29", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_south_0x29"
     assert "level6-south29" in L6_THROUGH
+
+
+def test_level6_settle39_idles_and_censuses_spawn() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_room19 import SETTLE_19_IDLE_FRAMES, make_settle_39_controller
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_settle39_stages()
+    assert [name for name, _, _ in stages] == ["level6_settle_0x39"]
+    leftover = _ram(level=6, screen=0x39, x=120, y=93)
+    leftover[ADDR_ROD] = 1
+    ctl = make_settle_39_controller()
+    ctl.idle_frames = 2
+    ctl.max_frames = 8
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    act = ctl.step(read_snapshot(leftover))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert SETTLE_19_IDLE_FRAMES == 160
+    ram = _ram(level=6, screen=0x39, x=120, y=93)
+    ram[ADDR_ROD] = 1
+    assert level6_settle39_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x29
+    assert not level6_settle39_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x39
+    ram[ADDR_ROD] = 0
+    assert not level6_settle39_success(read_snapshot(ram))
+    ram[ADDR_ROD] = 1
+    ram[ADDR_OBJ_TYPE + 1] = 0x12
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert level6_settle39_success(read_snapshot(ram))
+    snap = read_snapshot(ram)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    armed = read_snapshot(ram)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-settle39", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_settle_0x39"
+    assert "level6-settle39" in L6_THROUGH
+
+
+def test_level6_clear39_occupancy_patrol_vires() -> None:
+    from zelda_i.dungeon_ids import VIRE_OBJECT_TYPE, VIRE_SPLIT_KEESE_TYPE
+    from zelda_i.level6_dungeon import ROOM_39_SPEC
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_clear39_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x39"]
+    assert stages[-1][1].spec is ROOM_39_SPEC
+    assert ROOM_39_SPEC.combat.occupancy_patrol
+    assert VIRE_OBJECT_TYPE in ROOM_39_SPEC.enemy_types
+    assert VIRE_SPLIT_KEESE_TYPE in ROOM_39_SPEC.enemy_types
+    assert 0x2B not in ROOM_39_SPEC.enemy_types
+    assert 0x40 not in ROOM_39_SPEC.enemy_types
+    ram = _ram(level=6, screen=0x39, x=120, y=93)
+    ram[ADDR_ROD] = 1
+    assert level6_clear39_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = VIRE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    assert not level6_clear39_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x40
+    ram[ADDR_OBJ_HP + 2] = 64
+    assert level6_clear39_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 3] = 0x2B
+    ram[ADDR_OBJ_HP + 3] = 240
+    assert level6_clear39_success(read_snapshot(ram))
+    snap = read_snapshot(ram)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    armed = read_snapshot(ram)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-clear39", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x39"
+    assert "level6-clear39" in L6_THROUGH
+
+
+def test_level6_east39_y_align_then_right() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_east39 import (
+        EAST_DOOR_X,
+        EAST_DOOR_Y,
+        make_east39_controller,
+    )
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_east39_stages()
+    assert [name for name, _, _ in stages] == ["level6_east_0x39"]
+    leftover = _ram(level=6, screen=0x39, x=136, y=173)
+    leftover[ADDR_ROD] = 1
+    ctl = make_east39_controller()
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "east_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    mid = _ram(level=6, screen=0x39, x=176, y=EAST_DOOR_Y)
+    mid[ADDR_ROD] = 1
+    hold = make_east39_controller()
+    act = hold.step(read_snapshot(mid))
+    assert act.reason == "east_hold"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_idle_action())
+    door = _ram(level=6, screen=0x39, x=EAST_DOOR_X, y=EAST_DOOR_Y)
+    door[ADDR_ROD] = 1
+    push = make_east39_controller()
+    act = push.step(read_snapshot(door))
+    assert act.reason == "east_push"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    dest = _ram(level=6, screen=0x3A, x=16, y=141)
+    dest[ADDR_ROD] = 1
+    arrive = make_east39_controller()
+    act = arrive.step(read_snapshot(dest))
+    assert arrive.success
+    assert act.reason == "arrived_3a"
+    assert level6_east39_success(read_snapshot(dest))
+    still = _ram(level=6, screen=0x39, x=136, y=173)
+    still[ADDR_ROD] = 1
+    assert not level6_east39_success(read_snapshot(still))
+    snap = read_snapshot(dest)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    dest[ADDR_BOW] = 1
+    dest[ADDR_ARROWS] = 1
+    armed = read_snapshot(dest)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-east39", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_east_0x39"
+    assert "level6-east39" in L6_THROUGH
+
+
+def test_level6_settle3a_idles_and_censuses_spawn() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level6_room19 import SETTLE_19_IDLE_FRAMES, make_settle_3a_controller
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_settle3a_stages()
+    assert [name for name, _, _ in stages] == ["level6_settle_0x3a"]
+    leftover = _ram(level=6, screen=0x3A, x=16, y=141)
+    leftover[ADDR_ROD] = 1
+    ctl = make_settle_3a_controller()
+    ctl.idle_frames = 2
+    ctl.max_frames = 8
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "spawn_idle"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("RIGHT"))
+    act = ctl.step(read_snapshot(leftover))
+    assert ctl.success
+    assert act.reason == "settled"
+    assert SETTLE_19_IDLE_FRAMES == 160
+    ram = _ram(level=6, screen=0x3A, x=16, y=141)
+    ram[ADDR_ROD] = 1
+    assert level6_settle3a_success(read_snapshot(ram))
+    ram[ADDR_SCREEN] = 0x39
+    assert not level6_settle3a_success(read_snapshot(ram))
+    snap = read_snapshot(_ram(level=6, screen=0x3A, x=16, y=141))
+    # rod still 0 on this ram
+    ram = _ram(level=6, screen=0x3A, x=16, y=141)
+    ram[ADDR_ROD] = 1
+    snap = read_snapshot(ram)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    armed = read_snapshot(ram)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-settle3a", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_settle_0x3a"
+    assert "level6-settle3a" in L6_THROUGH
+
+
+def test_level6_clear3a_occupancy_patrol() -> None:
+    from zelda_i.dungeon_ids import LIKE_LIKE_OBJECT_TYPE, WIZZROBE_BLUE_OBJECT_TYPE
+    from zelda_i.level6_dungeon import ROOM_3A_SPEC
+    from zelda_i.level6_overworld import WIZZROBE_ORANGE_TYPE
+    from zelda_i.ram import ADDR_ARROWS, ADDR_BOW, ADDR_ROD
+
+    stages = level6_clear3a_stages()
+    assert [name for name, _, _ in stages] == ["level6_clear_0x3a"]
+    assert stages[-1][1].spec is ROOM_3A_SPEC
+    assert ROOM_3A_SPEC.combat.occupancy_patrol
+    assert LIKE_LIKE_OBJECT_TYPE in ROOM_3A_SPEC.enemy_types
+    assert WIZZROBE_BLUE_OBJECT_TYPE in ROOM_3A_SPEC.enemy_types
+    assert WIZZROBE_ORANGE_TYPE in ROOM_3A_SPEC.enemy_types
+    assert 0x2B not in ROOM_3A_SPEC.enemy_types
+    assert 0x40 not in ROOM_3A_SPEC.enemy_types
+    assert 0x68 not in ROOM_3A_SPEC.enemy_types
+    ram = _ram(level=6, screen=0x3A, x=16, y=141)
+    ram[ADDR_ROD] = 1
+    assert level6_clear3a_success(read_snapshot(ram))
+    ram[ADDR_OBJ_TYPE + 1] = LIKE_LIKE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 144
+    assert not level6_clear3a_success(read_snapshot(ram))
+    ram[ADDR_OBJ_HP + 1] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0x68
+    ram[ADDR_OBJ_HP + 2] = 176
+    assert level6_clear3a_success(read_snapshot(ram))
+    snap = read_snapshot(ram)
+    assert snap.bow == 0
+    assert snap.arrows == 0
+    ram[ADDR_BOW] = 1
+    ram[ADDR_ARROWS] = 1
+    armed = read_snapshot(ram)
+    assert armed.bow == 1
+    assert armed.arrows == 1
+    run = SpineRun(through="level6-clear3a", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_clear_0x3a"
+    assert "level6-clear3a" in L6_THROUGH
 
 
 def test_level6_compass_fails_closed_on_east_return() -> None:

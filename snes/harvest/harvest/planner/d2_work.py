@@ -11,9 +11,9 @@ Section order after BUY_SEEDS::
     → CROP_ESTABLISH (8-ring hoe + plant)
     → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
     leftover (after plant+water, not 06:08 plan-time hour>=17):
-      spa? → CLEAR_BUSHES (10) → ENSURE_HAMMER → spa?
-      → CLEAR_ROCKS (10 small + 4 large) → ENSURE_AXE → spa?
-      → CLEAR_STUMPS (2)
+      spa? → CLEAR_BUSHES (10 pick+toss, lanes first) → CLEAR_FENCES
+      (all posts to pond) → CLEAR_STONES (10 to pond) → ENSURE_HAMMER → spa?
+      → CLEAR_ROCKS (4 large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (2)
 
 ``handoff=quota`` must not use pocket ``plot_ring`` SUCCESS. Spa inserts
 when stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
@@ -50,6 +50,8 @@ D2_QUOTAS = {
 D2_LEFTOVER_PHASE_NAMES = (
     "HOT_SPRING_STAMINA",
     "CLEAR_BUSHES",
+    "CLEAR_FENCES",
+    "CLEAR_STONES",
     "ENSURE_HAMMER",
     "CLEAR_ROCKS",
     "ENSURE_AXE",
@@ -128,7 +130,7 @@ def ensure_hammer_phase() -> PhaseSpec:
         {"tool_id": int(Tool.HAMMER)},
         failure_policy="optional",
         required_tools=("hammer",),
-        estimated_frames=2500,
+        estimated_frames=8000,
         failure_modes=("shelf_miss", "carry_full"),
     )
 
@@ -140,13 +142,17 @@ def ensure_axe_phase() -> PhaseSpec:
         {"tool_id": int(Tool.AXE)},
         failure_policy="optional",
         required_tools=("axe",),
-        estimated_frames=2500,
+        estimated_frames=8000,
         failure_modes=("shelf_miss", "carry_full"),
     )
 
 
 def bush_quota_phase() -> PhaseSpec:
-    """Lift 10 weeds. No hammer/axe. Not plot-ring handoff."""
+    """Lift 10 weeds in the west yard. No hammer/axe. Not plot-ring handoff.
+
+    Whole-farm weed scan walks into the east fence lip ((31,24) boxed
+    the live hammer fetch). Pocket has 19 weeds; 10 is the quota.
+    """
     return _optional_clear(
         "CLEAR_BUSHES",
         {
@@ -154,6 +160,7 @@ def bush_quota_phase() -> PhaseSpec:
             "fetch_tools": False,
             "prefer_lift_for_weeds": True,
             "prefer_lift_for_stones": True,
+            "farm_bounds": WEST_PLANT_POCKET_BOUNDS,
             "priority": ["weed"],
             "handoff": "quota",
             "quota": {"weeds": D2_QUOTAS["bushes"]},
@@ -162,8 +169,50 @@ def bush_quota_phase() -> PhaseSpec:
     )
 
 
+def fence_dump_phase() -> PhaseSpec:
+    """Lift every fence post and dump it in a pond. Not corridor-only."""
+    return PhaseSpec(
+        "CLEAR_FENCES",
+        "fence_clear",
+        {
+            "timeout": 90000,
+            "max_fences": None,
+            "corridor_only": False,
+            "pond_dump": True,
+            "max_steps_per_fence": 2800,
+            "max_failures": 20,
+            "debris_types": ["fence"],
+        },
+        failure_policy="optional",
+        required_maps=(0x00,),
+        estimated_frames=80000,
+        failure_modes=("timeout_budget", "no_reachable_fence"),
+    )
+
+
+def stone_pond_phase() -> PhaseSpec:
+    """Lift 10 stones and toss them in a pond. Hammer is for 2×2 later."""
+    return PhaseSpec(
+        "CLEAR_STONES",
+        "fence_clear",
+        {
+            "timeout": 24000,
+            "max_fences": D2_QUOTAS["small_rocks"],
+            "corridor_only": False,
+            "pond_dump": True,
+            "max_steps_per_fence": 2800,
+            "max_failures": 12,
+            "debris_types": ["stone"],
+        },
+        failure_policy="optional",
+        required_maps=(0x00,),
+        estimated_frames=15000,
+        failure_modes=("timeout_budget", "no_reachable_fence"),
+    )
+
+
 def rock_quota_phase() -> PhaseSpec:
-    """Hammer 10 small rocks (0x06) + 4 large 2×2. Hammer already in carry."""
+    """Hammer 4 large 2×2. Stones already went to the pond."""
     return _optional_clear(
         "CLEAR_ROCKS",
         {
@@ -174,7 +223,6 @@ def rock_quota_phase() -> PhaseSpec:
             "priority": ["rock"],
             "handoff": "quota",
             "quota": {
-                "small_rocks": D2_QUOTAS["small_rocks"],
                 "large_rocks": D2_QUOTAS["large_boulders"],
             },
         },
@@ -217,7 +265,7 @@ def d2_leftover_phases(
     stamina: Stamina | int | None = None,
     policy: Optional[DayPlannerPolicy] = None,
 ) -> List[PhaseSpec]:
-    """Hammer/axe leftover after plant+water. Spa between smash sections.
+    """Lift leftover after plant+water, then hammer/axe. Spa between smash.
 
     Morning 06:08 ``build_day_phases`` must not attach this (hour<17). The
     shop splice / CROP_WATER splice owns insertion so leftover still runs
@@ -230,6 +278,8 @@ def d2_leftover_phases(
     phases: List[PhaseSpec] = []
     phases.extend(_maybe_spa(stamina, include_spa=include_spa))
     phases.append(bush_quota_phase())
+    phases.append(fence_dump_phase())
+    phases.append(stone_pond_phase())
     phases.append(ensure_hammer_phase())
     phases.extend(_maybe_spa(stamina, include_spa=include_spa))
     phases.append(rock_quota_phase())
@@ -273,9 +323,11 @@ __all__ = [
     "d2_post_shop_work_phases",
     "ensure_axe_phase",
     "ensure_hammer_phase",
+    "fence_dump_phase",
     "leftover_already_queued",
     "pocket_clear_phase",
     "pocket_water_phase",
     "rock_quota_phase",
+    "stone_pond_phase",
     "stump_quota_phase",
 ]

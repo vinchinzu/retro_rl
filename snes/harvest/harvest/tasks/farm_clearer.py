@@ -20,6 +20,7 @@ from harvest.core.tile_catalog import (
     ADDR_STAMINA,
     CLEARABLE_DEBRIS_TYPES,
     MAP_WIDTH,
+    STALE_TILE_IDS,
     TILE_SIZE,
     TILE_TO_DEBRIS,
     DebrisType,
@@ -49,11 +50,13 @@ from harvest.tasks.farm_ops import (  # noqa: F401
     cycle_tool,
     drop_unarmed_debris,
     snap_debris_anchor,
+    sort_targets_cluster,
     use_tool,
     use_tool_facing,
 )
 from harvest.tasks.farm_toss import (
     FenceJumpTossSkill,
+    evaluate_lift_verify,
     in_place_toss_actions,
     needs_south_fence_drop,
     start_fence_jump_skill,
@@ -77,7 +80,6 @@ DEFAULT_PRIORITY: List[DebrisType] = [
 # Lifts may continue at 1. Multi-hit start budget is Stamina.can_finish_multi_hit
 # (8 swings / 16 stam), not this floor.
 MIN_CLEAR_STAMINA = 4
-
 
 # =============================================================================
 # FARM CLEARER
@@ -107,6 +109,8 @@ class FarmClearer:
         self.frame_count = 0
         self.farm_bounds: Optional[Tuple[int, int, int, int]] = None
         self._locked_bounds: Optional[Tuple[int, int, int, int]] = None
+        self.quota = None
+        self.quota_start_counts = None
 
         self.prefer_lift_for_weeds = True
         self.prefer_lift_for_stones = False
@@ -131,6 +135,7 @@ class FarmClearer:
         self.clearing_start_frame = 0
         self.suppress_move_frames = 0
         self._pending_lift_verify: Optional[Tuple[int, int]] = None
+        self._pending_toss_origin: Optional[Tuple[int, int]] = None
         self._toss_before_lift = 0
         self._toss_skill: Optional[FenceJumpTossSkill] = None
         self._init_no_go()
@@ -366,36 +371,6 @@ class FarmClearer:
             target.required_hits, lifting=self._should_lift(target)
         )
 
-    def _sort_targets_cluster(
-        self, targets: List[Target], player_pos: Point
-    ) -> List[Target]:
-        """Nearest-neighbor with north bias so day-plan clear stays returnable.
-
-        Prefer targets north of / near the y=31 fence; deep-south debris
-        (y>38) is a softlock trap for return_home after water days (rr-5in).
-        """
-        remaining = list(targets)
-        ordered: List[Target] = []
-        cur = player_pos
-        row_dir = 1
-        while remaining:
-            remaining.sort(
-                key=lambda t: (
-                    2 if t.tile[1] > 40 else (1 if t.tile[1] > 32 else 0),
-                    manhattan(t.pos, cur),
-                    t.tile[1],
-                    t.tile[0] * row_dir,
-                )
-            )
-            nxt = remaining.pop(0)
-            ordered.append(nxt)
-            if ordered and len(ordered) >= 2:
-                prev_y = ordered[-2].tile[1]
-                if nxt.tile[1] != prev_y:
-                    row_dir *= -1
-            cur = nxt.pos
-        return ordered
-
     def _try_adjacent_opportunity(
         self, ram: np.ndarray, player_tile: Tuple[int, int]
     ) -> Optional[str]:
@@ -441,15 +416,51 @@ class FarmClearer:
         )
         return "clearing"
 
+    def _step_off_stale(self, ram: np.ndarray) -> bool:
+        """Walk off shed-door 0xFF onto loaded a8/a1 before leftover smash.
+
+        Adjacent a8 still unloads distant metatiles. Keep holding west/NW
+        toward (25,28) until the farm map is loaded.
+        """
+        from harvest.tasks.farm_clear_quota import needs_shed_door_step_off
+        from harvest.tasks.farm_ops import shed_door_step_off_actions
+
+        if not needs_shed_door_step_off(ram):
+            return False
+        if self.action_queue:
+            return True
+        self.action_queue.extend(shed_door_step_off_actions())
+        return True
+
     def _handle_scanning(self, ram: np.ndarray) -> Optional[str]:
         stam = self._stamina(ram)
         if stam < 1:
             self.stamina_exhausted = True
             print("[CLEARER] Stamina empty; stopping clear")
             return "complete"
+        if self._step_off_stale(ram):
+            return None
 
         scan_bounds = self._locked_bounds or self.farm_bounds
         scan_types = set(self.priority) if self.priority else set(CLEARABLE_DEBRIS_TYPES)
+        if self.quota:
+            from harvest.tasks.farm_clear_quota import (
+                count_debris,
+                farm_map_loaded,
+                unmet_debris_types,
+            )
+
+            remaining = unmet_debris_types(
+                self.quota_start_counts,
+                count_debris(ram, scan_bounds),
+                self.quota,
+            )
+            if remaining is not None:
+                if not farm_map_loaded(ram):
+                    remaining = scan_types
+                scan_types &= remaining
+                if not scan_types:
+                    return "complete"
         scanned = self.scanner.scan(ram, scan_bounds, types=scan_types)
         targets = [t for t in scanned if self._can_afford_target(ram, t)]
         if not targets:
@@ -500,7 +511,7 @@ class FarmClearer:
             if t.debris_type == self.current_phase
             and t.tile not in self.failed_tiles
         ]
-        phase_targets = self._sort_targets_cluster(
+        phase_targets = sort_targets_cluster(
             phase_targets, self.navigator.current_pos
         )
 
@@ -547,10 +558,15 @@ class FarmClearer:
             return "complete"
         return None
 
-    def _queue_held_toss(self, ram, player, held: int, *, face: str = "down") -> None:
-        if needs_south_fence_drop(player, held):
+    def _queue_held_toss(
+        self, ram, player, held: int, *, face: str = "down", origin=None
+    ) -> None:
+        blocked = {tuple(origin)} if origin is not None else set()
+        if origin is not None or needs_south_fence_drop(player, held):
             self.action_queue.clear()
-            self._toss_skill = start_fence_jump_skill(frame=self.frame_count, ram=ram)
+            self._toss_skill = start_fence_jump_skill(
+                frame=self.frame_count, ram=ram, blocked=blocked
+            )
             return
         self.action_queue.extend(in_place_toss_actions(face=face))
 
@@ -641,11 +657,18 @@ class FarmClearer:
         if current_tile_id != self.current_target.tile_id:
             new_debris = TILE_TO_DEBRIS.get(current_tile_id)
             if new_debris is None:
-                # Tile fully cleared
-                pos_key = self.current_target.tile
-                if pos_key not in self.tiles_cleared:
-                    self.tiles_cleared.add(pos_key)
+                origin = self.current_target.tile
+                self._pending_lift_verify = None
+                held = int(read_held_item(ram))
+                if held:
+                    self._pending_toss_origin = origin
+                    self._queue_held_toss(
+                        ram, self.navigator.current_tile, held, origin=origin
+                    )
+                elif origin not in self.tiles_cleared:
+                    self.tiles_cleared.add(origin)
                     self.cleared_count += 1
+                    self.pathfinder.no_go_tiles.discard(origin)
                 self.current_target = None
                 self.clearing_start_frame = 0
                 return "scanning"
@@ -672,7 +695,6 @@ class FarmClearer:
         if self.action_queue:
             return None
 
-        # Finish verifying a lift after the queued A presses drain.
         if self._pending_lift_verify is not None:
             verify_tile = self._pending_lift_verify
             self._pending_lift_verify = None
@@ -681,19 +703,7 @@ class FarmClearer:
                 verify_tile[1],
                 int(get_tile_at(ram, *verify_tile)),
             )
-            if TILE_TO_DEBRIS.get(get_tile_at(ram, *verify_tile)) is None:
-                if verify_tile not in self.tiles_cleared:
-                    self.tiles_cleared.add(verify_tile)
-                    self.cleared_count += 1
-                held = read_held_item(ram)
-                face = self._face_dir(verify_tile, player)
-                if face not in {"up", "down", "left", "right"}:
-                    face = "down"
-                self._queue_held_toss(ram, player, held, face=face)
-                # Do not re-target this cell this clear pass — toss often
-                # re-deposits the same rock one tile over / back.
-                self.failed_tiles.add(verify_tile)
-            else:
+            if evaluate_lift_verify(ram, verify_tile) == "blocked":
                 attempts = self.tile_attempts.get(lift_key, 0) + 1
                 self.tile_attempts[lift_key] = attempts
                 print(
@@ -925,17 +935,41 @@ class FarmClearer:
         if self.task_queue:
             return self._emit_action(self.task_queue.popleft(), "task")
 
+        prev_toss = self._toss_skill
         self._toss_skill, toss_action = step_fence_jump_skill(
             self._toss_skill, ram, frame=self.frame_count
         )
         if toss_action is not None:
             return self._emit_action(toss_action, "fence_jump")
+        if prev_toss is not None and self._pending_toss_origin is not None:
+            origin = self._pending_toss_origin
+            self._pending_toss_origin = None
+            verdict = evaluate_lift_verify(ram, origin)
+            if verdict == "cleared":
+                if origin not in self.tiles_cleared:
+                    self.tiles_cleared.add(origin)
+                    self.cleared_count += 1
+                self.pathfinder.no_go_tiles.discard(origin)
+            else:
+                key = (origin[0], origin[1], int(get_tile_at(ram, *origin)))
+                attempts = self.tile_attempts.get(key, 0) + 1
+                self.tile_attempts[key] = attempts
+                print(
+                    f"[CLEARER] Toss did not free {origin} ({verdict}) "
+                    f"(attempt {attempts}/2)"
+                )
+                if attempts >= 2:
+                    self.failed_tiles.add(origin)
 
         if self.action_queue:
             return self._emit_action(self.action_queue.popleft(), "queue")
 
         input_lock = ram[ADDR_INPUT_LOCK] if ADDR_INPUT_LOCK < len(ram) else 1
-        if input_lock != 1:
+        on_stale = (
+            self.navigator.current_tile is not None
+            and int(get_tile_at(ram, *self.navigator.current_tile)) in STALE_TILE_IDS
+        )
+        if input_lock != 1 and not on_stale:
             action = (
                 make_action(a=True)
                 if self.frame_count % 2 == 0
@@ -976,6 +1010,7 @@ DEBRIS_NAMES = {
     "stone": DebrisType.STONE, "stones": DebrisType.STONE,
     "rock": DebrisType.ROCK, "rocks": DebrisType.ROCK,
     "stump": DebrisType.STUMP, "stumps": DebrisType.STUMP,
+    "fence": DebrisType.FENCE, "fences": DebrisType.FENCE,
 }
 
 

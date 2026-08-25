@@ -35,7 +35,7 @@
     {"id": "upper_ripper_2", "kind": "frozen_enemy", "x": [65, 180], "y": [374, 408], "enemyY": 416, "status": "verified_dual_from_p165_ur1"},
     {"id": "upper_ripper_3", "kind": "frozen_enemy", "x": [65, 180], "y": [278, 312], "enemyY": 320, "status": "verified_dual_from_p165_ur2"},
     {"id": "upper_ripper_4", "kind": "frozen_enemy", "x": [65, 180], "y": [190, 224], "enemyY": 232, "status": "verified_dual_from_p165_ur3"},
-    {"id": "hellway_sill", "kind": "solid_exit", "x": [190, 240], "y": [125, 155], "status": "observed_human"}
+    {"id": "hellway_sill", "kind": "solid_exit", "x": [16, 80], "y": [120, 175], "roomIdHex": "0xA2F7", "status": "verified_dual_from_p165_ur3", "note": "Ordinary Hellway left-door (gs=8, x<=80). (237,139) p11 was the Red Tower door-slot fire."}
   ],
   "edges": [
     {
@@ -43,9 +43,9 @@
       "from": "bottom_floor",
       "to": "lower_ripper_1",
       "executor": "red_tower_ice_bottom_to_ripper1",
-      "technique": ["live_enemy_track", "ice_freeze", "consecutive_walljump", "frozen_enemy_land"],
+      "technique": ["live_enemy_track", "ice_freeze", "step_off_ice_column", "standing_hijump", "drift_from_above"],
       "status": "verified_phase_sweep",
-      "verification": {"naturalRuns": 2, "phaseOffsets": 31, "policyFrames": [233, 380], "normalFrames": 335, "firstArcClearsRipper": true}
+      "verification": {"naturalRuns": 2, "policyFrames": [228, 228], "isolatedLeave": [94, 2351], "pose": 1, "sampledOffsets": "0..64 step 8 green 164-228f"}
     },
     {"id": "lower_ripper_1_to_2", "from": "lower_ripper_1", "to": "lower_ripper_2", "executor": "red_tower_ice_ripper1_to_ripper2", "technique": ["live_enemy_track", "ice_freeze_no_walk", "standing_hijump", "drift_from_above"], "status": "verified_dual_from_p165_r1", "verification": {"naturalRuns": 2, "policyFrames": [156, 156], "chainFromP165Frames": 501, "chainLeave": [115, 2255], "isolatedLeave": [125, 2255], "pose": 1}},
     {"id": "lower_ripper_2_to_3", "from": "lower_ripper_2", "to": "lower_ripper_3", "executor": "red_tower_ice_ripper2_to_ripper3", "technique": ["live_enemy_track", "ice_freeze_no_walk", "standing_hijump", "drift_from_above", "freeze_facing_side"], "status": "verified_dual_from_p165_r2", "verification": {"naturalRuns": 2, "policyFrames": [108, 108], "chainFromP165Frames": 635, "chainLeave": [130, 2159], "isolatedLeave": [140, 2159], "pose": 1}},
@@ -57,7 +57,7 @@
     {"id": "upper_ripper_1_to_2", "from": "upper_ripper_1", "to": "upper_ripper_2", "executor": "red_tower_ice_upper_ripper1_to_2", "technique": ["live_enemy_track", "ice_freeze_no_walk", "standing_hijump", "drift_from_above", "freeze_facing_side"], "status": "verified_dual_from_p165_ur1", "verification": {"naturalRuns": 2, "policyFrames": [130, 130], "chainFromP165Frames": 5286, "chainLeave": [119, 391], "isolatedLeave": [119, 391], "pose": 1}},
     {"id": "upper_ripper_2_to_3", "from": "upper_ripper_2", "to": "upper_ripper_3", "executor": "red_tower_ice_upper_ripper2_to_3", "technique": ["live_enemy_track", "ice_freeze_no_walk", "standing_hijump", "drift_from_above", "freeze_facing_side"], "status": "verified_dual_from_p165_ur2", "verification": {"naturalRuns": 2, "policyFrames": [158, 158], "chainFromP165Frames": 5444, "chainLeave": [134, 295], "isolatedLeave": [134, 295], "pose": 1}},
     {"id": "upper_ripper_3_to_4", "from": "upper_ripper_3", "to": "upper_ripper_4", "executor": "red_tower_ice_upper_ripper3_to_4", "technique": ["live_enemy_track", "ice_freeze_no_walk", "standing_hijump", "drift_from_above", "freeze_facing_side", "aim_before_shot"], "status": "verified_dual_from_p165_ur3", "verification": {"naturalRuns": 2, "policyFrames": [59, 59], "chainFromP165Frames": 5503, "chainLeave": [144, 207], "isolatedLeave": [144, 207], "pose": 1}},
-    {"id": "upper_ripper_4_to_hellway", "from": "upper_ripper_4", "to": "hellway_sill", "technique": ["overhang_walljump"], "status": "planned"}
+    {"id": "upper_ripper_4_to_hellway", "from": "upper_ripper_3", "to": "hellway_sill", "executor": "red_tower_ice_upper_ripper3_to_hellway", "technique": ["live_enemy_track", "ice_freeze_no_walk", "aim_before_shot", "gap_jump_no_ur4_settle", "ordinary_left_door_settle"], "status": "verified_dual_from_p165_ur3", "verification": {"naturalRuns": 2, "policyFrames": [283, 283], "isolatedLeave": [39, 139], "pose": 11, "room": "0xA2F7", "note": "Keep RIGHT until ordinary Hellway left-door gs=8 x<=80. 163f/x=237 was the Red Tower door-slot fire."}}
   ],
   "recovery": [
     {"from": ["lower_ripper_1", "lower_ripper_2", "lower_ripper_3", "lower_ripper_4"], "to": "bottom_floor", "condition": "fall_below_support"},

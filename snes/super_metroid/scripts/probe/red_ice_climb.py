@@ -41,6 +41,7 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     UPPER_RIPPER_3_Y,
     UPPER_RIPPER_4,
     UPPER_RIPPER_4_Y,
+    HELLWAY_SILL,
     checkpoint_supported,
     play_bottom_to_ripper1,
     ripper_at_height,
@@ -80,6 +81,14 @@ from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (  # noqa: E402
     play_upper_ripper1_to_2,
     play_upper_ripper2_to_3,
     play_upper_ripper3_to_4,
+)
+from super_metroid.routes.kpdr.k5.red_ice_ur3_to_hellway import (  # noqa: E402
+    POLICY_ID as UR3HW_POLICY,
+    play_upper_ripper3_to_hellway,
+)
+from super_metroid.routes.kpdr.k5.red_ice_to_hellway import (  # noqa: E402
+    POLICY_ID as ICEHW_POLICY,
+    play_ice_climb_to_hellway,
 )
 
 DEFAULT_SOURCE = INTEGRATION_DIR / "scratch" / "post_ice_bat_to_red_pure.state"
@@ -326,6 +335,7 @@ def run_supported(
     *,
     save: Path | None = None,
     enemy_y: int | None = None,
+    accept_rooms: tuple[int, ...] = (),
 ) -> dict[str, Any]:
     env = make_dev_env()
     try:
@@ -339,7 +349,10 @@ def run_supported(
             error = str(exc)
         enemy = ripper_at_height(env, enemy_y) if enemy_y is not None else None
         policy_frames = int(session.frame - start)
-        green = error is None and checkpoint_supported(env, session.state, checkpoint)
+        green = error is None and (
+            checkpoint_supported(env, session.state, checkpoint)
+            or int(session.state.room_id) in accept_rooms
+        )
         if green and save is not None:
             save.parent.mkdir(parents=True, exist_ok=True)
             write_state_bytes(save, env.em.get_state())
@@ -448,33 +461,19 @@ def run_chain(source: Path, *, save: Path | None = None) -> dict[str, Any]:
         started_at = time.perf_counter()
         error = None
         try:
-            play_bottom_to_ripper1(session)
-            play_ripper1_to_ripper2(session)
-            play_ripper2_to_ripper3(session)
-            play_ripper3_to_ripper4(session)
-            play_ripper4_to_tunnel(session)
-            play_tunnel_to_mid_floor(session)
-            play_mid_floor_to_thin_seat(session)
-            play_thin_seat_to_upper_ripper1(session)
-            play_upper_ripper1_to_2(session)
-            play_upper_ripper2_to_3(session)
-            play_upper_ripper3_to_4(session)
+            play_ice_climb_to_hellway(session)
         except Exception as exc:  # noqa: BLE001
             error = str(exc)
         policy_frames = int(session.frame - start)
         elapsed = max(time.perf_counter() - started_at, 1e-9)
         timed = format_segment_time(policy_frames)
-        green = error is None and checkpoint_supported(env, session.state, UPPER_RIPPER_4)
+        green = error is None and HELLWAY_SILL.matches(session.state)
         if green and save is not None:
             save.parent.mkdir(parents=True, exist_ok=True)
             write_state_bytes(save, env.em.get_state())
         return {
             "green": green,
-            "policy": (
-                f"{POLICY_ID}+{R12_POLICY}+{R23_POLICY}+{R34_POLICY}+"
-                f"{R4TUN_POLICY}+{TUNMID_POLICY}+{MIDTHIN_POLICY}+{THINUR1_POLICY}+"
-                f"{UR12_POLICY}+{UR23_POLICY}+{UR34_POLICY}"
-            ),
+            "policy": ICEHW_POLICY,
             "policyFrames": policy_frames,
             "time": timed,
             "fps": round(policy_frames / elapsed, 1),
@@ -493,9 +492,9 @@ def main() -> int:
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument(
         "--edge",
-        choices=("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "chain"),
+        choices=("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "chain"),
         default="1",
-        help="1=bottom→r1 … 8=thin→ur1, 9=ur1→ur2, 10=ur2→ur3, 11=ur3→ur4, chain=bottom→ur4",
+        help="1=bottom→r1 … 11=ur3→ur4, 12=ur3→hellway, chain=bottom→hellway_sill",
     )
     parser.add_argument(
         "--phase-offsets",
@@ -708,6 +707,26 @@ def main() -> int:
         if args.json:
             print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
         return code
+    if args.edge == "12":
+        runs = [
+            run_supported(
+                args.source,
+                play_upper_ripper3_to_hellway,
+                HELLWAY_SILL,
+                UR3HW_POLICY,
+                save=args.save,
+            ),
+            run_supported(
+                args.source,
+                play_upper_ripper3_to_hellway,
+                HELLWAY_SILL,
+                UR3HW_POLICY,
+            ),
+        ]
+        code = _print_dual(runs, UR3HW_POLICY)
+        if args.json:
+            print(json.dumps({"green": code == 0, "runs": runs}, indent=2))
+        return code
     if args.edge == "chain":
         row = run_chain(args.source, save=args.save)
         mark = "GREEN" if row["green"] else "RED"
@@ -719,7 +738,7 @@ def main() -> int:
         )
         if args.json:
             print(json.dumps(row, indent=2))
-        print("  partial only: upper_ripper_4; Hellway remains RED")
+        print("  chain through ordinary Hellway left-door; play_red_to_hellway uses this climb")
         return 0 if row["green"] else 1
 
     offsets = _offsets(args.phase_offsets)
