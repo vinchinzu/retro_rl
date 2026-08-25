@@ -357,6 +357,12 @@ snes/super_metroid/scratch/**/*_shots/
 snes/super_metroid/scratch/**/*.png
 snes/super_metroid/scratch/**/*_probe.py
 snes/super_metroid/docs/tasks/logs/
+# Zelda I scratch/window dumps (named pins in custom_integrations stay tracked)
+nes/zelda_i/scratch/**/*_window*.json
+nes/zelda_i/scratch/**/*_v[0-9]*.json
+nes/zelda_i/scratch/**/*.png
+# Harvest probe window dumps (named recordings stay; **/recordings/ already ignores the dir)
+snes/harvest/recordings/**/*_window*.json
 
 # Local OpenCode overrides / agent auth (never commit)
 **/opencode.local.json

@@ -6,7 +6,9 @@ Advance from M5 (Clean power-on → Level 1 Triforce shard 1) toward a verified
 continuous clear of The Legend of Zelda using the shared `retro_harness.adventure`
 route graph.
 
-Tracker: **`bd ready -l zelda_i`**. Process: `docs/tasks/PROCESS.md`.
+Tracker: **`bd ready -l zelda_i -l spine`**. Session:
+`.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
+One living residual: `docs/tasks/rr-tne2-residual.md`.
 
 ## Next pass — Survival spine from power-on (2026-08-15)
 
@@ -864,7 +866,7 @@ Hitbox-gated sword + faster boot landed (not a STATUS promote):
   dialog idle 180f.
 
 Residual room-by-room combat polish only if a clear regresses under hitbox gate.
-See `docs/tasks/QUEUE.md`.
+See `docs/tasks/rr-tne2-residual.md` / `bd ready -l zelda_i -l spine`.
 
 ## Notes
 

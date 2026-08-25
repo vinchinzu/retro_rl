@@ -52,8 +52,10 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 | Priority | Path | Target | Status |
 |---------:|------|--------|--------|
 | 1 | `snes/super_metroid/AGENTS.md` | ~50–60 lines (commands + traps) | **done** (session loop in `.grok/skills/sm-session/`) |
-| 2a | `snes/harvest/AGENTS.md`, `snes/hals_golf/AGENTS.md` | ~50 each | **done** |
-| 2b | Fat game AGENTS (`tmnt_iv`, `zelda_i`, MK, MKII, `smb`, `alttp`, `smz3`) | ~50 each | **done** |
+| 2a | `snes/harvest/AGENTS.md` | ~50 | **done** (session loop in `.grok/skills/harvest-session/`) |
+| 2a | `snes/hals_golf/AGENTS.md` | ~50 | **done** |
+| 2b | `nes/zelda_i/AGENTS.md` | ~50 | **done** (session loop in `.grok/skills/zelda-session/`) |
+| 2b | Fat game AGENTS (`tmnt_iv`, MK, MKII, `smb`, `alttp`, `smz3`) | ~50 each | **done** |
 | 3 | Root AGENTS further trim | ~45–60 | **done** (~59 lines; beads → `docs/BEADS.md`) |
 
 ## Engineering backlog (not docs)
@@ -64,7 +66,7 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 | Name clarity | **done** — `video.CaptureSession` (showcase/continuous) vs `recorder.RecordingSession` (labeled saves) |
 | `ladder.py` vs manifests | **done** — ladder loads from `docs/manifests/*.yaml` `setup:` blocks |
 | Nested package import roots | **done** — layout discovery in `repo.discover_nested_package_roots` (no slug map) |
-| Artifact gitignore | **done** — `**/probe*.png`, `debug_frames/`, SM/tmnt/FF probe globs |
+| Artifact gitignore | **done** — `**/probe*.png`, `debug_frames/`, SM/tmnt/FF probe globs, zelda/harvest window JSON |
 | Shared game layout + Clean stems | **done** — `game_layout.game_paths`, `artifacts.clean_artifact_stem` / `recording_artifacts` |
 | Cross-game CLI clones | **done** — `boot_probe`, `setup_rom_cli`, `env.reset_obs`, `input_script.period_script`; fighter `watch`/`validate_*` live in `retro_harness.fighters` |
 
