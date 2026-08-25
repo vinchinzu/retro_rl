@@ -214,7 +214,7 @@ def _parse_args() -> argparse.Namespace:
         "--max-frames",
         type=int,
         default=None,
-        help="Hard frame budget (default scales with overnight count)",
+        help="Hard frame budget (default scales with overnight count; 0 disables)",
     )
     p.add_argument(
         "--progress-every",
@@ -232,6 +232,17 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Optional state name to write under custom_integrations when done",
+    )
+    p.add_argument(
+        "--save-after-weeds",
+        type=int,
+        default=None,
+        help="Save one debug checkpoint after CLEAR_BUSHES clears this many weeds",
+    )
+    p.add_argument(
+        "--weed-checkpoint-state",
+        default="Y1_D2_After_400_Weeds",
+        help="State name used by --save-after-weeds",
     )
     p.add_argument(
         "--stop-after-d2-shipping",
@@ -508,11 +519,33 @@ def _d2_spine_checkpoint_evidence(task: object, world: WorldState) -> dict[str, 
         "potato_seeds": potato_seeds,
         "mountain_grape_shipped": "MOUNTAIN_BERRY" in successful,
         # CROP_ESTABLISH may consume the newly purchased bag before the 5pm
-        # shipper gate.  BUY_SEEDS is already closed by stock-up + wallet-down
-        # evidence, so remaining bag count is diagnostic rather than a gate.
+        # shipper gate. BUY_SEEDS is closed by stock-up + wallet-down evidence.
         "potato_purchase_complete": "BUY_SEEDS" in successful,
         "shipping_dialogue_cleared": "WAIT_FARM_SHIPPING" in successful,
     }
+
+
+def _active_farm_clear_task(task: object) -> object | None:
+    """Find the active FarmClearTask through planner/orchestrator wrappers."""
+    from harvest.tasks.farm_clear_task import FarmClearTask
+
+    current: object | None = task
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        if isinstance(current, FarmClearTask):
+            return current
+        seen.add(id(current))
+        current = getattr(current, "current_task", None)
+    return None
+
+
+def _save_emulator_state(env, state_name: str) -> Path:
+    import gzip
+
+    out_state = GAME_DIR / f"{state_name}.state"
+    with gzip.open(out_state, "wb", compresslevel=9) as handle:
+        handle.write(env.em.get_state())
+    return out_state
 
 
 def main() -> int:
@@ -534,8 +567,9 @@ def main() -> int:
         overnights_budget = 1
 
     if args.max_frames is None:
-        # ~25k frames/day upper bound with crop/clear work.
-        args.max_frames = 30_000 * max(1, overnights_budget)
+        # Campaign leftover (CLEAR_BUSHES / pond dumps) needs a day-sized
+        # budget; halt earlier only if nav oscillates with no progress.
+        args.max_frames = 200_000 * max(1, overnights_budget)
 
     source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
     source_state_sha256 = _file_sha256(source_state) if source_state else None
@@ -769,13 +803,14 @@ def main() -> int:
         reason = "budget"
         terminal = False
         d2_checkpoint_evidence: dict[str, object] | None = None
+        weed_checkpoint_saved: Path | None = None
         # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
         last_logged_day = (
             int(read_ram_value(world.ram, "season")),
             int(read_ram_value(world.ram, "day")),
         )
-        while frames - planner_start_frame < args.max_frames:
+        while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
             result = task.step(world)
             frames += 1
@@ -783,6 +818,23 @@ def main() -> int:
             season = int(read_ram_value(world.ram, "season"))
             day = int(read_ram_value(world.ram, "day"))
             current = (season, day)
+
+            if args.save_after_weeds is not None and weed_checkpoint_saved is None:
+                clear_task = _active_farm_clear_task(task)
+                if clear_task is not None:
+                    clearer = getattr(clear_task, "clearer", None)
+                    priority = getattr(clear_task, "priority", None) or []
+                    weed_only = len(priority) == 1 and getattr(priority[0], "name", "") == "WEED"
+                    cleared = int(getattr(clearer, "cleared_count", 0) or 0)
+                    if weed_only and cleared >= args.save_after_weeds:
+                        weed_checkpoint_saved = _save_emulator_state(
+                            env, args.weed_checkpoint_state
+                        )
+                        print(
+                            f"[RUN] Saved weed checkpoint cleared={cleared} "
+                            f"-> {weed_checkpoint_saved}",
+                            flush=True,
+                        )
 
             if args.stop_after_d2_shipping:
                 candidate = _d2_spine_checkpoint_evidence(task, world)
@@ -882,16 +934,7 @@ def main() -> int:
 
         if args.save_end_state and success:
             try:
-                import gzip
-
-                state_bytes = env.em.get_state()
-                # stable-retro expects gzip-compressed .state files (same as
-                # play_session / retro_harness.recorder). Raw s9xsnp bytes fail
-                # load with BadGzipFile.
-                out_state = GAME_DIR / f"{args.save_end_state}.state"
-                with gzip.open(out_state, "wb", compresslevel=9) as handle:
-                    # Preserve original basename inside the gzip header.
-                    handle.write(state_bytes)
+                out_state = _save_emulator_state(env, args.save_end_state)
                 print(f"[RUN] Saved end state -> {out_state}", flush=True)
             except Exception as exc:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)

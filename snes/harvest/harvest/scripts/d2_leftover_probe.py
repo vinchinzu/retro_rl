@@ -17,7 +17,7 @@ import argparse
 import json
 from pathlib import Path
 
-from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
+from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 
 ensure_monorepo_on_path()
 
@@ -34,15 +34,14 @@ from harvest.core.tile_catalog import (
     DebrisType,
 )
 from harvest.planner.d2_work import (
-    D2_QUOTAS,
-    bush_quota_phase,
+    bush_clear_phase,
     d2_leftover_phases,
     ensure_axe_phase,
     ensure_hammer_phase,
     fence_dump_phase,
-    rock_quota_phase,
+    rock_clear_phase,
     stone_pond_phase,
-    stump_quota_phase,
+    stump_clear_phase,
 )
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_phase_stamina import full_restore_spa_phase
@@ -61,7 +60,6 @@ from harvest.tasks.farm_clear_quota import (
     DebrisCounts,
     classify_target,
     count_debris,
-    quota_counts_met,
 )
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.nav import get_pos_from_ram, make_action
@@ -74,11 +72,17 @@ _SECTIONS = ("all", "bushes", "fences", "stones", "rocks", "stumps")
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_After_Buy_Potato")
-    p.add_argument("--timeout", type=int, default=180_000)
+    p.add_argument("--timeout", type=int, default=200_000)
     p.add_argument(
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "d2_leftover_smash.json",
+    )
+    p.add_argument(
+        "--save-end-state",
+        type=str,
+        default=None,
+        help="Write a gzip save under custom_integrations when the section is empty.",
     )
     p.add_argument(
         "--section",
@@ -177,21 +181,22 @@ def _snapshot(ram) -> dict:
 
 
 def _wanted_quota(section: str) -> ClearQuota:
+    """Legacy report shape; zero means the selected debris must be absent."""
     if section == "bushes":
-        return ClearQuota(weeds=D2_QUOTAS["bushes"])
+        return ClearQuota(weeds=0)
     if section == "fences":
         return ClearQuota(fences=10_000)
     if section == "stones":
-        return ClearQuota(stones=D2_QUOTAS["small_rocks"])
+        return ClearQuota(stones=0)
     if section == "rocks":
-        return ClearQuota(large_rocks=D2_QUOTAS["large_boulders"])
+        return ClearQuota(large_rocks=0)
     if section == "stumps":
-        return ClearQuota(stumps=D2_QUOTAS["stumps"])
+        return ClearQuota(stumps=0)
     return ClearQuota(
-        weeds=D2_QUOTAS["bushes"],
-        stones=D2_QUOTAS["small_rocks"],
-        large_rocks=D2_QUOTAS["large_boulders"],
-        stumps=D2_QUOTAS["stumps"],
+        weeds=0,
+        stones=0,
+        large_rocks=0,
+        stumps=0,
         fences=10_000,
     )
 
@@ -204,24 +209,37 @@ def _phases_for(section: str, *, stamina: Stamina, include_spa: bool):
     if include_spa and section in {"rocks", "stumps"} and not stamina.can_finish_multi_hit():
         phases.append(full_restore_spa_phase())
     if section == "bushes":
-        phases.append(bush_quota_phase())
+        phases.append(bush_clear_phase())
     elif section == "fences":
         phases.append(fence_dump_phase())
     elif section == "stones":
         phases.append(stone_pond_phase())
     elif section == "rocks":
-        phases.extend([ensure_hammer_phase(), rock_quota_phase()])
+        phases.extend([ensure_hammer_phase(), rock_clear_phase()])
     elif section == "stumps":
-        phases.extend([ensure_axe_phase(), stump_quota_phase()])
+        phases.extend([ensure_axe_phase(), stump_clear_phase()])
     return phases
 
 
 def _phase_timeout(spec, remaining: int) -> int:
+    """timeout <= 0 means exhaustive: spend the leftover probe budget."""
     params = spec.params or {}
     if "timeout" in params:
-        return min(int(params["timeout"]), remaining)
+        timeout = int(params["timeout"])
+        if timeout <= 0:
+            return remaining
+        return min(timeout, remaining)
     estimated = getattr(spec.contract, "estimated_frames", None)
     return min(int(estimated or 8000), remaining)
+
+
+def _save_emulator_state(env, state_name: str) -> Path:
+    import gzip
+
+    out_state = GAME_DIR / f"{state_name}.state"
+    with gzip.open(out_state, "wb", compresslevel=9) as handle:
+        handle.write(env.em.get_state())
+    return out_state
 
 
 def _write_payload(path: Path, payload: dict) -> None:
@@ -353,21 +371,30 @@ def main() -> int:
         cleared = DebrisCounts(**start["debris"]).cleared_since(
             DebrisCounts(**end["debris"])
         )
-        quota_ok = quota_counts_met(
-            DebrisCounts(**start["debris"]), DebrisCounts(**end["debris"]), wanted
-        )
-        ok = ok and quota_ok
+        required = {
+            "bushes": ("weeds",),
+            "fences": ("fences",),
+            "stones": ("stones",),
+            "rocks": ("large_rocks",),
+            "stumps": ("stumps",),
+            "all": ("weeds", "fences", "stones", "small_rocks", "large_rocks", "stumps"),
+        }[args.section]
+        ok = ok and all(end["debris"].get(key, 0) == 0 for key in required)
         payload = {
             "start": start,
             "journal": journal,
             "end": end,
             "cleared": cleared.as_dict(),
-            "quota": wanted.__dict__,
+            "required_empty": list(required),
             "section": args.section,
             "frames": frame,
             "time": format_segment_time(frame),
             "ok": ok,
         }
+        if args.save_end_state and ok:
+            saved = _save_emulator_state(env, args.save_end_state)
+            payload["saved_state"] = str(saved)
+            print(f"[LEFTOVER] Saved end state -> {saved}")
         _write_payload(args.out, payload)
         _print_table(start, end, cleared.as_dict(), wanted, frame)
         return 0 if ok else 1

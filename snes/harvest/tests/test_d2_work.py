@@ -1,4 +1,4 @@
-"""D2 work-section composition — quotas, order, shop-splice recombination."""
+"""D2 whole-farm composition — exhaustive debris and shop splice."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import unittest
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
 from harvest.planner.d2_work import (
-    D2_QUOTAS,
-    bush_quota_phase,
+    D2_TARGETS,
+    bush_clear_phase,
     d2_leftover_phases,
     d2_post_shop_work_phases,
     ensure_axe_phase,
@@ -16,32 +16,28 @@ from harvest.planner.d2_work import (
     fence_dump_phase,
     leftover_already_queued,
     pocket_water_phase,
-    rock_quota_phase,
+    rock_clear_phase,
     stone_pond_phase,
-    stump_quota_phase,
+    stump_clear_phase,
 )
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
 from harvest.planner.day_plan_phases import pocket_plant_phases
 
 
-class D2QuotaContractTests(unittest.TestCase):
-    def test_quotas_match_d2_work_day(self) -> None:
-        self.assertEqual(D2_QUOTAS["plant"], 8)
-        self.assertEqual(D2_QUOTAS["water"], 8)
-        self.assertEqual(D2_QUOTAS["bushes"], 10)
-        self.assertEqual(D2_QUOTAS["small_rocks"], 10)
-        self.assertEqual(D2_QUOTAS["large_boulders"], 4)
-        self.assertEqual(D2_QUOTAS["stumps"], 2)
+class D2WholeFarmContractTests(unittest.TestCase):
+    def test_crop_targets_are_not_debris_quotas(self) -> None:
+        self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8})
 
     def test_bush_phase_is_lift_quota_not_plot_ring(self) -> None:
-        spec = bush_quota_phase()
+        spec = bush_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_BUSHES")
         self.assertEqual(spec.kind, PhaseKind.CLEAR_FIELD)
-        self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"]["weeds"], 10)
+        self.assertEqual(spec.params["handoff"], "type_clear")
+        self.assertNotIn("quota", spec.params)
         self.assertFalse(spec.params["fetch_tools"])
         self.assertEqual(spec.params["priority"], ["weed"])
-        self.assertEqual(spec.params["farm_bounds"], (3, 14, 28, 30))
+        self.assertNotIn("farm_bounds", spec.params)
+        self.assertEqual(spec.params["timeout"], 0)
 
     def test_fence_dump_is_all_posts_to_pond(self) -> None:
         spec = fence_dump_phase()
@@ -52,30 +48,31 @@ class D2QuotaContractTests(unittest.TestCase):
         self.assertTrue(spec.params["pond_dump"])
         self.assertEqual(spec.params["max_steps_per_fence"], 2800)
         self.assertEqual(spec.params["debris_types"], ["fence"])
+        self.assertEqual(spec.params["timeout"], 0)
 
     def test_stone_pond_phase_lifts_ten_not_hammer(self) -> None:
         spec = stone_pond_phase()
         self.assertEqual(spec.phase, "CLEAR_STONES")
         self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
-        self.assertEqual(spec.params["max_fences"], 10)
+        self.assertIsNone(spec.params["max_fences"])
         self.assertFalse(spec.params["corridor_only"])
         self.assertEqual(spec.params["debris_types"], ["stone"])
 
     def test_rock_phase_needs_hammer_for_large_only(self) -> None:
-        spec = rock_quota_phase()
+        spec = rock_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_ROCKS")
-        self.assertNotIn("stones", spec.params["quota"])
-        self.assertNotIn("small_rocks", spec.params["quota"])
-        self.assertEqual(spec.params["quota"]["large_rocks"], 4)
+        self.assertEqual(spec.params["handoff"], "type_clear")
+        self.assertNotIn("quota", spec.params)
         self.assertEqual(spec.params["priority"], ["rock"])
         self.assertFalse(spec.params["prefer_lift_for_stones"])
         self.assertEqual(spec.contract.required_tools, ("hammer",))
         self.assertFalse(spec.params["fetch_tools"])
 
     def test_stump_phase_needs_axe(self) -> None:
-        spec = stump_quota_phase()
+        spec = stump_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_STUMPS")
-        self.assertEqual(spec.params["quota"]["stumps"], 2)
+        self.assertEqual(spec.params["handoff"], "type_clear")
+        self.assertNotIn("quota", spec.params)
         self.assertEqual(spec.params["priority"], ["stump"])
         self.assertEqual(spec.contract.required_tools, ("axe",))
 
@@ -184,10 +181,25 @@ class D2PostShopComposeTests(unittest.TestCase):
 
         stones = build_phase_task(TaskBuildContext(), stone_pond_phase(), world)
         self.assertIsInstance(stones, FenceClearLoopTask)
-        self.assertEqual(stones.max_fences, 10)
+        self.assertIsNone(stones.max_fences)
         self.assertTrue(stones.pond_dump)
         self.assertEqual(stones.max_steps_per_fence, 2800)
         self.assertEqual(stones.debris_types[0].name, "STONE")
+
+
+class LeftoverProbeBudgetTests(unittest.TestCase):
+    def test_zero_phase_timeout_spends_remaining_budget(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _phase_timeout
+
+        remaining = 200_000
+        self.assertEqual(_phase_timeout(bush_clear_phase(), remaining), remaining)
+        self.assertEqual(_phase_timeout(fence_dump_phase(), remaining), remaining)
+
+    def test_positive_phase_timeout_is_capped_by_remaining(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _phase_timeout
+
+        self.assertEqual(_phase_timeout(rock_clear_phase(), 50_000), 50_000)
+        self.assertEqual(_phase_timeout(rock_clear_phase(), 200_000), 120_000)
 
 
 if __name__ == "__main__":

@@ -64,10 +64,10 @@ class FarmClearTask(Task):
     is FAILURE so the optional day-plan policy can skip/defer. Pocket
     ``CLEAR_PLOT`` (farm_bounds set) still SUCCESS on the 3x3 plot + hoe
     stands, not a single notch cell.
-    Leftover smash (``handoff="quota"``) SUCCESS when RAM counts drop by
-    the requested quota, even if other debris remains. Unmet quota
-    (including ``stamina_exhausted``) is FAILURE — not a plot_ring or
-    empty-farm lie.
+    Ordered whole-farm phases (``handoff="type_clear"``) succeed only when
+    every debris type in ``priority`` is absent. This lets D2 clear weeds
+    before rocks and stumps without mistaking unrelated remaining debris for
+    failure.
     Always tries to drop a held weed/rock before finishing so return-home
     is not blocked.
     """
@@ -80,7 +80,8 @@ class FarmClearTask(Task):
     prefer_lift_for_weeds: bool = True
     prefer_lift_for_stones: bool = False
     farm_bounds: Optional[Tuple[int, int, int, int]] = None
-    # "plot_ring" (pocket plant) | "quota" (leftover smash) | "" (empty farm).
+    # "plot_ring" (pocket plant) | "type_clear" (priority exhausted)
+    # | legacy "quota" | "" (empty farm).
     handoff: str = ""
     quota: Optional[dict] = None
 
@@ -101,6 +102,7 @@ class FarmClearTask(Task):
     _pending_finish_status: TaskStatus = field(
         default=TaskStatus.SUCCESS, init=False
     )
+    _type_clear_retries: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self._clearer = FarmClearer(priority=self.priority)
@@ -219,6 +221,7 @@ class FarmClearTask(Task):
         self._toss_skill = None
         self._approach = None
         self._exit_nav = None
+        self._type_clear_retries = 0
         if self.handoff == "quota":
             from harvest.tasks.farm_clear_quota import count_debris
 
@@ -236,8 +239,11 @@ class FarmClearTask(Task):
         return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
 
     def _remaining_debris(self, ram) -> list:
+        scan_types = set(CLEARABLE_DEBRIS_TYPES)
+        if self.handoff == "type_clear" and self.priority:
+            scan_types = set(self.priority)
         return TileScanner().scan(
-            ram, self._scan_bounds(), types=set(CLEARABLE_DEBRIS_TYPES)
+            ram, self._scan_bounds(), types=scan_types
         )
 
     def _player_tile(self, ram) -> Tuple[int, int]:
@@ -299,7 +305,7 @@ class FarmClearTask(Task):
         Leftover quota smash (``handoff=quota``) keeps the requested bounds.
         Shrinking to the hoe ring made CLEAR_BUSHES see 5 cells and fail.
         """
-        if self.handoff == "quota":
+        if self.handoff in ("quota", "type_clear"):
             return
         bounds = self._plot_scan_bounds()
         self._clearer.farm_bounds = bounds
@@ -627,8 +633,10 @@ class FarmClearTask(Task):
 
         # CLEAR_PLOT feeds the 3x3 hoe/plant skill at (13,28). Hand off when
         # the ring + hoe stands are clear instead of roaming the full pocket.
-        # Quota leftover (CLEAR_BUSHES / ROCKS / STUMPS) must not use this.
-        if self.handoff != "quota" and self._plant_notch_is_clear(world.ram):
+        # Whole-farm leftover (CLEAR_BUSHES / ROCKS / STUMPS) must not use this.
+        if self.handoff not in ("quota", "type_clear") and self._plant_notch_is_clear(
+            world.ram
+        ):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=(
@@ -645,7 +653,9 @@ class FarmClearTask(Task):
                 ),
             )
 
-        if self._step_count > self.timeout:
+        # timeout <= 0 means exhaustive: rely on per-target no-progress
+        # recovery instead of declaring a partially cleared farm complete.
+        if self.timeout > 0 and self._step_count > self.timeout:
             remaining = self._remaining_debris(world.ram)
             lift_note = " lift_only" if self._clearer.tools_missing else ""
             return self._finish_or_drop(
@@ -660,6 +670,25 @@ class FarmClearTask(Task):
         action = self._clearer.tick(world.ram)
         if action is None:
             remaining = self._remaining_debris(world.ram)
+            if (
+                self.handoff == "type_clear"
+                and remaining
+                and self._type_clear_retries < 3
+                and (self.timeout <= 0 or self._step_count <= self.timeout)
+            ):
+                self._type_clear_retries += 1
+                self._clearer.failed_tiles.clear()
+                self._clearer.failed_approaches.clear()
+                self._clearer.state = "scanning"
+                self._clearer.current_target = None
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=(
+                        f"retry type clear pass {self._type_clear_retries} "
+                        f"remaining={len(remaining)}"
+                    ),
+                )
             lift_note = (
                 " lift_only" if self._clearer.tools_missing else ""
             )
