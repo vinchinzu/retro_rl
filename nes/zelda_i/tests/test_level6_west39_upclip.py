@@ -12,6 +12,8 @@ from zelda_i.level6_west39_upclip import (
     DATED_LEFT,
     DATED_LEFT2,
     DATED_LEFT3,
+    DATED_LEFT4,
+    DATED_LEFT5,
     LANE_Y,
     WEST_DOOR,
     WEST_SPAWN_XMIN,
@@ -221,6 +223,96 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert upclip.failed
     assert act.reason.startswith("occupancy_halt_133_138")
     assert list(act.action) == list(nes_idle_action())
+    dated_left4 = _ram(
+        level=6, screen=0x39, x=DATED_LEFT4[0], y=DATED_LEFT4[1], keys=4
+    )
+    dated_left4[ADDR_ROD] = 1
+    dated_left4[ADDR_COLLIDING_TILE] = 116
+    clip4 = make_west39_upclip_controller()
+    clip4.room = 0x39
+    clip4.keys = 4
+    clip4._arrive_39(read_snapshot(dated_left3))
+    act = clip4.step(read_snapshot(dated_left3))
+    assert act.reason == "west_upclip"
+    assert clip4.upclipped
+    act = clip4.step(read_snapshot(dated_left4))
+    assert act.reason == "west_clip"
+    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert not clip4.failed
+    assert "west_clip" in clip4.notes
+    act = clip4.step(read_snapshot(dated_left4))
+    assert act.reason == "west_clip"
+    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
+    assert not clip4.failed
+    new_band = _ram(level=6, screen=0x39, x=130, y=136, keys=4)
+    new_band[ADDR_ROD] = 1
+    act = clip4.step(read_snapshot(new_band))
+    assert act.reason == "west_lane"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert clip4.walker.grid.ymin == 136
+    assert clip4.walker.grid.ymax == 136
+    assert clip4._goal() == (WEST_DOOR[0], 136)
+    assert "upclip_band_136" in clip4.notes
+    assert not clip4.failed
+    act = clip4.step(read_snapshot(new_band))
+    assert clip4.failed
+    assert act.reason.startswith("occupancy_halt_130_136")
+    assert list(act.action) == list(nes_idle_action())
+    dated_left5 = _ram(
+        level=6, screen=0x39, x=DATED_LEFT5[0], y=DATED_LEFT5[1], keys=4
+    )
+    dated_left5[ADDR_ROD] = 1
+    dated_left5[ADDR_COLLIDING_TILE] = 116
+    clip5 = make_west39_upclip_controller()
+    clip5.room = 0x39
+    clip5.keys = 4
+    clip5._arrive_39(read_snapshot(dated_left3))
+    act = clip5.step(read_snapshot(dated_left3))
+    assert act.reason == "west_upclip"
+    assert clip5.upclipped
+    act = clip5.step(read_snapshot(dated_left4))
+    assert act.reason == "west_clip"
+    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
+    assert not clip5.failed
+    act = clip5.step(read_snapshot(dated_left5))
+    assert act.reason == "west_upclip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert not clip5.failed
+    assert "west_upclip" in clip5.notes
+    act = clip5.step(read_snapshot(dated_left5))
+    assert act.reason == "west_upclip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    assert not clip5.failed
+    new_band5 = _ram(level=6, screen=0x39, x=127, y=130, keys=4)
+    new_band5[ADDR_ROD] = 1
+    act = clip5.step(read_snapshot(new_band5))
+    assert act.reason == "west_lane"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert clip5.walker.grid.ymin == 130
+    assert clip5.walker.grid.ymax == 130
+    assert clip5._goal() == (WEST_DOOR[0], 130)
+    assert "upclip_band_130" in clip5.notes
+    assert not clip5.failed
+    act = clip5.step(read_snapshot(new_band5))
+    assert clip5.failed
+    assert act.reason.startswith("occupancy_halt_127_130")
+    assert list(act.action) == list(nes_idle_action())
     stuck = _ram(level=6, screen=0x39, x=208, y=141, keys=4)
     stuck[ADDR_ROD] = 1
     stuck[ADDR_COLLIDING_TILE] = 118
@@ -325,7 +417,10 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     run = SpineRun(through="level6-west39-upclip", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_west39_upclip_0x39"
     assert "level6-west39-upclip" in L6_THROUGH
-    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-west39-upclip"
+    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-west39-reband"
+    assert L6_THROUGH[L6_THROUGH.index("level6-west39-reband") + 1] == (
+        "level6-west39-upclip"
+    )
     assert L6_THROUGH[L6_THROUGH.index("level6-west39-upclip") + 1] == "level6-west39"
     assert L6_THROUGH[L6_THROUGH.index("level6-west39") + 1] == "level6-clear39-west"
     assert "level6-north39" not in L6_THROUGH[: L6_THROUGH.index("level6-west39-upclip")]

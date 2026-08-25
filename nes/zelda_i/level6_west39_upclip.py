@@ -5,9 +5,13 @@ Reuse west39 v3 enter: occupancy 0x3A LEFT, replan leftover miss
 remaining Vires (ignore 0x2B). LEFT+DOWN clips onto y=141 at dated
 (144,109) / (142,141) / (139,141). Then LEFT+UP at dated (136,141)
 (east39 reverse of RIGHT+UP, not LEFT+DOWN). OccupancyWalker LEFT on
-the band that clip produces. Halt at the first new occupancy miss.
-Isolated BFS banned. Do not KEY-UP 0x09 / 0x29. Do not CheckWarp
-0x3A stairs. Do not bomb. Dest is RAM. Do not invent Gohma.
+the clip band. v1 occupancy LEFT (133,133) tile 116 0px: LEFT+DOWN
+clip (PNG south floor open; north is the statue), then occupancy
+LEFT on the new band. v2 occupancy LEFT (130,133) tile 116: LEFT+UP
+clip (not another LEFT+DOWN 3px grind), then occupancy LEFT. Halt
+at the first new occupancy miss. Isolated BFS banned. Do not KEY-UP
+0x09 / 0x29. Do not CheckWarp 0x3A stairs. Do not bomb. Dest is RAM.
+Do not invent Gohma.
 """
 
 from __future__ import annotations
@@ -34,6 +38,8 @@ __all__ = [
     "DATED_LEFT",
     "DATED_LEFT2",
     "DATED_LEFT3",
+    "DATED_LEFT4",
+    "DATED_LEFT5",
     "LANE_Y",
     "WEST39_UPCLIP_MAX_FRAMES",
     "WEST_DOOR",
@@ -55,6 +61,10 @@ DATED_LEFT = (142, 141)
 DATED_LEFT2 = (139, 141)
 # v3 occupancy LEFT 0px tile 117 after the (139,141) LEFT+DOWN clip.
 DATED_LEFT3 = (136, 141)
+# v1 occupancy y=133 LEFT 0px tile 116. PNG south floor open.
+DATED_LEFT4 = (133, 133)
+# v2 occupancy y=133 LEFT 0px tile 116 after LEFT+DOWN at (133,133).
+DATED_LEFT5 = (130, 133)
 WEST39_UPCLIP_MAX_FRAMES = 20000
 WEST39_UPCLIP_SAMPLE_PERIOD = 12
 CELLAR_MODE = 9
@@ -302,7 +312,15 @@ class Level6West39UpclipController:
 
         if self.room == VIA_ROOM and xy == DATED_LEFT3:
             return self._west_upclip(snap, xy)
-        if self.upclipped and xy != DATED_LEFT3:
+        if self.room == VIA_ROOM and self.upclipped and xy == DATED_LEFT4:
+            return self._west_clip(snap, xy)
+        if self.room == VIA_ROOM and self.upclipped and xy == DATED_LEFT5:
+            return self._west_upclip(snap, xy)
+        if self.upclipped and xy not in (
+            DATED_LEFT3,
+            DATED_LEFT4,
+            DATED_LEFT5,
+        ):
             self._bind_upclip_band(xy)
 
         prev_dir = self.walker.last_dir
@@ -316,7 +334,13 @@ class Level6West39UpclipController:
         dated_left_miss = (
             self.room == VIA_ROOM
             and prev_dir == "LEFT"
-            and xy in (DATED_LEFT, DATED_LEFT2, DATED_LEFT3)
+            and xy in (
+                DATED_LEFT,
+                DATED_LEFT2,
+                DATED_LEFT3,
+                DATED_LEFT4,
+                DATED_LEFT5,
+            )
         )
         if self.walker.misses > misses_before:
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
@@ -325,6 +349,8 @@ class Level6West39UpclipController:
             # v1 occupancy LEFT (142,141) tile 119 0px: clip, do not halt.
             # v2 occupancy LEFT (139,141) tile 119 0px: clip, do not halt.
             # v3 occupancy LEFT (136,141) tile 117 0px: LEFT+UP, do not halt.
+            # v1 occupancy LEFT (133,133) tile 116 0px: LEFT+DOWN, do not halt.
+            # v2 occupancy LEFT (130,133) tile 116 0px: LEFT+UP, do not halt.
             if (
                 self.room != START_ROOM
                 and not dated_down_miss
@@ -385,8 +411,12 @@ class Level6West39UpclipController:
                 "118 and LEFT (142,141)/(139,141) tile 119; LEFT+UP clip "
                 "dated occupancy LEFT (136,141) tile 117 (east39 reverse, "
                 "not LEFT+DOWN); OccupancyWalker LEFT on the clip band; "
-                "halt first new miss; no north 0x29; no KEY-UP 0x09; no "
-                "stairs3a CheckWarp; dest is RAM; no bomb"
+                "LEFT+DOWN clip dated occupancy LEFT (133,133) tile 116 "
+                "(PNG south floor open); OccupancyWalker LEFT on the new "
+                "band; LEFT+UP clip dated occupancy LEFT (130,133) tile "
+                "116 (not LEFT+DOWN 3px grind); OccupancyWalker LEFT; "
+                "halt first new miss; no north 0x29; no KEY-UP 0x09; "
+                "no stairs3a CheckWarp; dest is RAM; no bomb"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
