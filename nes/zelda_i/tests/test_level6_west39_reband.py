@@ -495,7 +495,10 @@ def test_level6_west39_reband_reuses_prefix_then_down_at_125_133() -> None:
     run = SpineRun(through="level6-west39-reband", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_west39_reband_0x39"
     assert "level6-west39-reband" in L6_THROUGH
-    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-west39-reband"
+    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-stairs3a-71"
+    assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-71") + 1] == (
+        "level6-west39-reband"
+    )
     assert L6_THROUGH[L6_THROUGH.index("level6-west39-reband") + 1] == (
         "level6-west39-upclip"
     )

@@ -156,6 +156,7 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-east39",
         "level6-settle3a",
         "level6-clear3a",
+        "level6-stairs3a-71",
         "level6-west39-reband",
         "level6-west39-upclip",
         "level6-west39",
