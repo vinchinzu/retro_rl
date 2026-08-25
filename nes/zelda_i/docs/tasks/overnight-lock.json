@@ -1,0 +1,8 @@
+{
+  "hop": "level6-west39-upclip",
+  "tag": "l6_west39_upclip_continuous_v1",
+  "status": "idle",
+  "pid": null,
+  "reds": 1,
+  "note": "v1 occupancy LEFT (133,133) tile 116 halt after LEFT+UP clip (136,141) tile 117 produced y=133 band. Dest stayed 0x39. 1/3. No v2 this session."
+}
