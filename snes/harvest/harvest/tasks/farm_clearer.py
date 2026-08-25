@@ -62,6 +62,11 @@ from harvest.tasks.farm_toss import (
     start_fence_jump_skill,
     step_fence_jump_skill,
 )
+from harvest.tasks.farm_clear_nav import (
+    choose_clear_target,
+    handle_navigating,
+    start_progress_watch,
+)
 
 
 # =============================================================================
@@ -115,6 +120,15 @@ class FarmClearer:
         self.prefer_lift_for_weeds = True
         self.prefer_lift_for_stones = False
         self.max_stasis = 120
+        # Tile-level stasis misses loops that cross a metatile boundary by a
+        # few pixels (live D2: y=894↔902 forever). Track progress toward the
+        # selected debris stand independently of Navigator.stasis.
+        self.max_nav_no_progress = 360
+        self._nav_best_distance: Optional[int] = None
+        self._nav_last_progress_frame = 0
+        self.failed_approaches: Set[
+            Tuple[Tuple[int, int], Tuple[int, int]]
+        ] = set()
         self.debug_interval = 300
         self.min_stamina = MIN_CLEAR_STAMINA
         self.stamina_exhausted = False
@@ -515,38 +529,27 @@ class FarmClearer:
             phase_targets, self.navigator.current_pos
         )
 
-        for target in phase_targets:
-            approach = self.pathfinder.find_approach(
-                ram,
-                target.tile,
-                self.navigator.current_pos,
-                footprint=target.footprint,
+        chosen = choose_clear_target(self, ram, phase_targets)
+        if chosen is not None:
+            target, approach, path = chosen
+            self.scan_miss_streak = 0
+            self.current_target = target
+            self.approach_tile = approach
+            self.navigator.path = path
+            self.navigator.stasis = 0
+            start_progress_watch(self, approach)
+            self.target_hits = 0
+            self.clearing_start_frame = 0
+            tool = (
+                target.required_tool.name
+                if target.required_tool
+                else "HANDS"
             )
-            if approach:
-                path = self.pathfinder.find_path(
-                    ram,
-                    self.navigator.current_tile,
-                    approach,
-                    max_steps=VIEWPORT_HOP_TILES,
-                )
-                if path is not None:
-                    self.scan_miss_streak = 0
-                    self.current_target = target
-                    self.approach_tile = approach
-                    self.navigator.path = path
-                    self.navigator.stasis = 0
-                    self.target_hits = 0
-                    self.clearing_start_frame = 0
-                    tool = (
-                        target.required_tool.name
-                        if target.required_tool
-                        else "HANDS"
-                    )
-                    print(
-                        f"[CLEARER] Target: {target.debris_type.name} "
-                        f"at {target.tile} ({tool})"
-                    )
-                    return "navigating"
+            print(
+                f"[CLEARER] Target: {target.debris_type.name} "
+                f"at {target.tile} ({tool})"
+            )
+            return "navigating"
 
         self.scan_miss_streak += 1
         if self.scan_miss_streak >= self.max_scan_misses:
@@ -581,56 +584,17 @@ class FarmClearer:
             max_steps=VIEWPORT_HOP_TILES,
         )
         if path is None:
-            self.failed_tiles.add(self.current_target.tile)
+            failed = (self.current_target.tile, self.approach_tile)
+            self.failed_approaches.add(failed)
             self.current_target = None
+            self.approach_tile = None
             return "scanning"
         self.navigator.path = path
         self.navigator.stasis = 0
         return None
 
     def _handle_navigating(self, ram: np.ndarray) -> Optional[str]:
-        if not self.current_target or not self.approach_tile:
-            return "scanning"
-
-        live_id = get_tile_at(ram, *self.current_target.tile)
-        live_debris = TILE_TO_DEBRIS.get(live_id)
-        if live_debris is None:
-            self.current_target = None
-            return "scanning"
-        if live_debris != self.current_target.debris_type:
-            self.current_target = None
-            return "scanning"
-        if live_id != self.current_target.tile_id:
-            self.current_target = Target(
-                tile=self.current_target.tile,
-                pos=self.current_target.pos,
-                debris_type=live_debris,
-                tile_id=live_id,
-            )
-
-        if self.navigator.current_tile == self.approach_tile:
-            return "clearing"
-
-        if self.navigator.stasis > self.max_stasis:
-            print(
-                f"[NAV] Stuck at {self.navigator.current_tile}, "
-                "trying alternate path"
-            )
-            if self.navigator.path:
-                self.pathfinder.temp_blocked.add(self.navigator.path[0])
-            self.navigator.path = []
-            self.navigator.stasis = 0
-            return self._replan_nav_hop(ram)
-
-        action = self.navigator.follow_path(ram)
-        if action is not None:
-            self.action_queue.append(action)
-            return None
-
-        # Hop segment finished short of the approach — replan next hop.
-        if self.navigator.current_tile != self.approach_tile:
-            return self._replan_nav_hop(ram)
-        return "clearing"
+        return handle_navigating(self, ram)
 
     def _handle_clearing(self, ram: np.ndarray) -> Optional[str]:
         if not self.current_target:

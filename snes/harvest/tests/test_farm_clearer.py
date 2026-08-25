@@ -358,6 +358,93 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(ordered[0].tile, (5, 10))
         self.assertEqual(ordered[1].tile, (6, 10))
 
+    def test_navigation_watchdog_rejects_cross_tile_oscillation_approach(self) -> None:
+        """Pixel oscillation across a tile edge must not reset target progress."""
+        ram = _make_farm_ram(player_tile=(49, 55))
+        _set_tile(ram, 51, 56, WEED)
+        clearer = FarmClearer(priority=[DebrisType.WEED])
+        clearer.current_target = Target(
+            (51, 56), Point(51 * 16 + 8, 56 * 16 + 8), DebrisType.WEED, WEED
+        )
+        clearer.approach_tile = (50, 56)
+        clearer.state = "navigating"
+        clearer.max_nav_no_progress = 6
+
+        verdict = None
+        for frame, pos in enumerate(((785, 894), (790, 902)) * 5, start=1):
+            ram[ADDR_X] = pos[0] & 0xFF
+            ram[ADDR_X + 1] = pos[0] >> 8
+            ram[ADDR_Y] = pos[1] & 0xFF
+            ram[ADDR_Y + 1] = pos[1] >> 8
+            clearer.frame_count = frame
+            clearer.navigator.update(ram)
+            verdict = clearer._handle_navigating(ram)
+            if verdict == "scanning":
+                break
+
+        self.assertEqual(verdict, "scanning")
+        self.assertIn(((51, 56), (50, 56)), clearer.failed_approaches)
+        self.assertNotIn((51, 56), clearer.failed_tiles)
+
+    def test_pathable_stand_beats_nearer_blocked_neighbor(self) -> None:
+        """An isolated closer stand must lose to a farther reachable one."""
+        from harvest.tasks.farm_clear_nav import choose_clear_target
+
+        ram = _make_farm_ram(player_tile=(8, 10))
+        _set_tile(ram, 4, 10, WEED)
+        _set_tile(ram, 5, 10, 0xA1)  # nearer stand, boxed
+        _set_tile(ram, 6, 10, STONE)
+        _set_tile(ram, 5, 9, STONE)
+        _set_tile(ram, 5, 11, STONE)
+        clearer = FarmClearer(priority=[DebrisType.WEED])
+        clearer.navigator.update(ram)
+        weed = Target((4, 10), Point(4 * 16 + 8, 10 * 16 + 8), DebrisType.WEED, WEED)
+
+        chosen = choose_clear_target(clearer, ram, [weed])
+        self.assertIsNotNone(chosen)
+        target, stand, path = chosen
+        self.assertEqual(target.tile, (4, 10))
+        self.assertNotEqual(stand, (5, 10))
+        self.assertEqual(path[-1], stand)
+
+    def test_boxed_weed_opens_adjacent_stone(self) -> None:
+        from harvest.tasks.farm_clear_nav import choose_clear_target
+
+        ram = _make_farm_ram(player_tile=(16, 15))
+        _set_tile(ram, 18, 15, WEED)
+        _set_tile(ram, 19, 15, WEED)
+        _set_tile(ram, 17, 15, STONE)
+        _set_tile(ram, 18, 14, 0x05)
+        _set_tile(ram, 18, 16, 0xA6)
+        clearer = FarmClearer(priority=[DebrisType.WEED])
+        clearer.navigator.update(ram)
+        weed = Target((18, 15), Point(18 * 16 + 8, 15 * 16 + 8), DebrisType.WEED, WEED)
+
+        chosen = choose_clear_target(clearer, ram, [weed])
+        self.assertIsNotNone(chosen)
+        target, stand, _path = chosen
+        self.assertEqual(target.debris_type, DebrisType.STONE)
+        self.assertEqual(target.tile, (17, 15))
+        self.assertEqual(stand, (16, 15))
+
+    def test_replan_miss_rejects_approach_not_whole_tile(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10))
+        _set_tile(ram, 20, 20, WEED)
+        clearer = FarmClearer(priority=[DebrisType.WEED])
+        clearer.navigator.update(ram)
+        clearer.current_target = Target(
+            (20, 20), Point(20 * 16 + 8, 20 * 16 + 8), DebrisType.WEED, WEED
+        )
+        clearer.approach_tile = (21, 20)
+        clearer.pathfinder.temp_blocked.update(
+            {(11, 10), (10, 11), (9, 10), (10, 9)}
+        )
+
+        verdict = clearer._replan_nav_hop(ram)
+        self.assertEqual(verdict, "scanning")
+        self.assertIn(((20, 20), (21, 20)), clearer.failed_approaches)
+        self.assertNotIn((20, 20), clearer.failed_tiles)
+
     def test_lift_verify_does_not_claim_while_stone_is_held(self) -> None:
         ram = _make_farm_ram(player_tile=(11, 29), tool=0)
         _set_tile(ram, 11, 28, 0xA1)
@@ -619,6 +706,92 @@ class TestFarmClearTask(unittest.TestCase):
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("partial_clear", result.reason or "")
+
+    def test_type_clear_does_not_succeed_on_plot_ring(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 40, 40, 0x03)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            priority=[DebrisType.WEED],
+            handoff="type_clear",
+            timeout=0,
+        )
+        task.reset(world)
+        task._pocket_arrived = True
+        task.farm_bounds = (3, 14, 28, 30)
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertNotIn("plot_ring_clear", result.reason or "")
+
+    def test_type_clear_succeeds_when_selected_debris_is_exhausted(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 20, 20)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            priority=[DebrisType.WEED],
+            handoff="type_clear",
+        )
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("field_clear", result.reason or "")
+
+    def test_type_clear_fails_while_selected_debris_remains(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 20, 20, 0x03)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            priority=[DebrisType.WEED],
+            handoff="type_clear",
+            timeout=1,
+        )
+        task.reset(world)
+        task.step(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("remaining=1", result.reason or "")
+
+    def test_type_clear_retries_failed_stands_after_field_changes(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 20, 20, 0x03)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            priority=[DebrisType.WEED],
+            handoff="type_clear",
+        )
+        task.reset(world)
+        task.clearer.failed_tiles.add((20, 20))
+        task.clearer.failed_approaches.add(((20, 20), (19, 20)))
+        task.clearer.state = "complete"
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("retry type clear pass 1", result.reason or "")
+        self.assertEqual(task.clearer.failed_tiles, set())
+        self.assertEqual(task.clearer.failed_approaches, set())
+
+    def test_type_clear_retries_when_timeout_is_unbounded(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 20, 20, 0x03)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            priority=[DebrisType.WEED],
+            handoff="type_clear",
+            timeout=0,
+        )
+        task.reset(world)
+        task.clearer.failed_tiles.add((20, 20))
+        task.clearer.failed_approaches.add(((20, 20), (21, 20)))
+        task.clearer.state = "complete"
+        task._step_count = 80_000
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("retry type clear pass 1", result.reason or "")
+        self.assertEqual(task.clearer.failed_approaches, set())
 
     def test_low_stamina_does_not_start_six_hit_or_succeed(self) -> None:
         ram = _make_farm_ram(
