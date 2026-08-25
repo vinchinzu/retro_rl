@@ -77,6 +77,10 @@ from zelda_i.level6_west39 import (
     level6_west39_stages,
     level6_west39_success,
 )
+from zelda_i.level6_west39_reband import (
+    level6_west39_reband_stages,
+    level6_west39_reband_success,
+)
 from zelda_i.level6_west39_upclip import (
     level6_west39_upclip_stages,
     level6_west39_upclip_success,
@@ -201,6 +205,8 @@ __all__ = [
     "level6_settle3a_success",
     "level6_clear3a_stages",
     "level6_clear3a_success",
+    "level6_west39_reband_stages",
+    "level6_west39_reband_success",
     "level6_west39_upclip_stages",
     "level6_west39_upclip_success",
     "level6_west39_stages",
@@ -604,6 +610,7 @@ def continue_level6_spine(
         ("level6-east39", "level6_east_0x39", level6_east39_stages, level6_east39_success, False),
         ("level6-settle3a", "level6_settle_0x3a", level6_settle3a_stages, level6_settle3a_success, False),
         ("level6-clear3a", "level6_clear_0x3a", level6_clear3a_stages, level6_clear3a_success, False),
+        ("level6-west39-reband", "level6_west39_reband_0x39", level6_west39_reband_stages, level6_west39_reband_success, True),
         ("level6-west39-upclip", "level6_west39_upclip_0x39", level6_west39_upclip_stages, level6_west39_upclip_success, True),
         ("level6-west39", "level6_west_0x39", level6_west39_stages, level6_west39_success, True),
         ("level6-clear39-west", "level6_clear39_west_0x39", level6_clear39_west_stages, level6_clear39_west_success, True),

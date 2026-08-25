@@ -1,8 +1,8 @@
 {
-  "hop": "level6-west39-upclip",
-  "tag": "l6_west39_upclip_continuous_v1",
+  "hop": "level6-west39-reband",
+  "tag": "l6_west39_reband_continuous_v1",
   "status": "idle",
   "pid": null,
   "reds": 1,
-  "note": "v1 occupancy LEFT (133,133) tile 116 halt after LEFT+UP clip (136,141) tile 117 produced y=133 band. Dest stayed 0x39. 1/3. No v2 this session."
+  "note": "v1 reband DOWN at (125,133) tile 118 live y-dead (x slid 125→127, y stayed 133). Occupancy DOWN halt (127,133) tile 118. Dest stayed 0x39. 1/3."
 }
