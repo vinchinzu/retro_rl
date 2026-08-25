@@ -575,6 +575,63 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear29
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29 --no-video --trials 1
 ```
 
+### Settle dark 0x39 — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover play `0x39` `(120,93)` |
+| Policy | IDLE 160f census |
+| Census | **5× Vire `0x12`** |
+| Stop | `--through level6-settle39` play-ready `0x39` rod=1 |
+| Leftover | `(120,93)` |
+| Track | **assisted Survival** |
+
+### Clear dark 0x39 — **1/1**
+
+| Field | Live |
+|-------|------|
+| Combat | occupancy-patrol 5× Vire (splits max_live=9) |
+| Stop | `--through level6-clear39` play-ready empty `0x39` |
+| Leftover | `(136,173)`; keys=4; hop 1,330f tape 217,312f |
+| Track | **assisted Survival** |
+
+### East 0x39 → play 0x3A — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Survival leftover play `0x39` `(136,173)` |
+| Path | RIGHT+UP clip, then cardinal RIGHT on y=141 |
+| Stop | `--through level6-east39` play-ready dest (RAM `0x3A`) rod=1 |
+| Leftover | `(16,141)` west mouth of `0x3A`; keys=4 (no spend) |
+| v1 | occupancy boxed leftover tile 118 4-cardinal |
+| v2 | clip to y=141 then occupancy RIGHT boxed `(176,141)` |
+| v3 | **1/1** hop 320f, 217,632f |
+| Track | **assisted Survival** |
+
+### Settle 0x3A — **1/1**
+
+| Field | Live |
+|-------|------|
+| Census | 3× Like-Like `0x17` + 2× blue `0x23` + 2× orange `0x24` + center 0x68 `(112,144)` |
+| Stop | `--through level6-settle3a` play-ready `0x3A` |
+| Leftover | `(16,141)` |
+| Track | **assisted Survival** |
+| Notes | Ignore 0x59 shots. Do not push 0x68 this hop. |
+
+### Clear 0x3A — **1/1**
+
+| Field | Live |
+|-------|------|
+| Combat | occupancy-patrol 7 live |
+| Stop | `--through level6-clear3a` play-ready empty `0x3A` |
+| Leftover | `(144,141)`; hop 1,857f tape 219,649f; center 0x68 unpushed |
+| Track | **assisted Survival** |
+| Notes | Stairs / Gohma residual. Bow=0 arrows=0. Do not poke `ADDR_ARROWS`. |
+
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear3a --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
@@ -602,6 +659,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 | 0x19 south | **key** (PNG mouth looks open) | −1 | **spine 1/1** occupancy KEY-DOWN keys 4→3 → play `0x29` |
 | 0x29 east | **sealed** after wizzrobe clear | — | spine red; mask 12 = U+D; v2 RIGHT @ (208,141) 3750f |
 | 0x29 south | **free** (mask DOWN) | 0 | **spine 1/1** v4 occupancy x=120 @ y=141 → play `0x39` |
+| 0x39 east | **kill-door** after Vire clear | 0 | **spine 1/1** v3 cardinal RIGHT y=141 → play `0x3A` keys 4 |
 
 ### Walkthrough (not all live)
 
@@ -617,7 +675,10 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - Clear `0x29` — **live** `--through level6-clear29` v2 leftover `(55,133)` keys 3→4; census 3×`0x23`+2×`0x24` (not Vire)
 - East `0x29` — **red** PNG mouth sealed (mask 12)
 - South `0x29` → play `0x39` — **live** `--through level6-south29` v4 leftover `(120,93)`
-- Vires / Wizzrobes → staircase → **Gohma** (one arrow to open eye) — residual (rr-d6v)
+- Clear `0x39` 5× Vire — **live** `--through level6-clear39` leftover `(136,173)`
+- East `0x39` → play `0x3A` — **live** `--through level6-east39` v3 leftover `(16,141)` keys 4
+- Clear `0x3A` — **live** `--through level6-clear3a` leftover `(144,141)`; center 0x68 unpushed
+- Center-block stairs → **Gohma** (one arrow to open eye) — residual (rr-tne2)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
 
 ## Boss / Triforce
@@ -682,7 +743,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29 --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear3a --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -706,7 +767,10 @@ Not claimed live as pure segments:
 12. South `0x19` KEY-DOWN → play `0x29` — **live** v1 leftover dark `(120,77)` keys 4→3
 13. Clear `0x29` — **live** v2 leftover `(55,133)` keys 3→4; 3×`0x23`+2×`0x24` (not Vire)
 14. South `0x29` → play `0x39` — **live** v4 leftover `(120,93)`
-15. 0x39 combat / stairs → Gohma arrow → Heart → TF `0x20` — Gohma needs an arrow; do not poke
+15. Clear `0x39` 5× Vire — **live** v1 leftover `(136,173)`
+16. East `0x39` → play `0x3A` — **live** v3 leftover `(16,141)` keys 4
+17. Clear `0x3A` 3× Like-Like + 4 wizzrobes — **live** v1 leftover `(144,141)`; center 0x68 unpushed
+18. Center-block stairs → Gohma arrow → Heart → TF `0x20` — Gohma needs an arrow; do not poke
 
 ## Not claimed
 
@@ -714,4 +778,4 @@ Not claimed live as pure segments:
 - Clean east/west wizzrobe combat (beams kill without assist)
 - Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
-- Gohma / triforce bit live (Rod is live; cellar return is live; no arrows)
+- Gohma / triforce bit live (Rod is live; 0x3A clear is live; no arrows)

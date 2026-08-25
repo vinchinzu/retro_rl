@@ -56,21 +56,43 @@ def nearest_pocket_drop(player_tile: Tile) -> Tile:
     return (col, POCKET_DROP_Y)
 
 
-def open_toss_face(ram, player_tile: Tile) -> Optional[str]:
+def pocket_no_toss_tiles() -> set:
+    """3x3 ring, hoe stands, and the y=30 west lip — never land debris here."""
+    try:
+        from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+        from harvest.tasks.crop_geometry import hoe_plan, plot_tiles
+    except Exception:
+        return set()
+    cx, cy = WEST_POCKET_PLANT_CENTER
+    tiles = set(plot_tiles((cx, cy), include_center=True))
+    for target, stand, _face in hoe_plan((cx, cy)):
+        tiles.add(target)
+        tiles.add(stand)
+    for x in range(11, 16):
+        tiles.add((x, 30))
+    return tiles
+
+
+def open_toss_face(ram, player_tile: Tile, blocked=()) -> Optional[str]:
     """Choose an adjacent, loaded ground tile that can accept a throw.
 
     North of the fence, prefer north/sideways so the crop notch to the south
     stays free.  ``FARM_WALKABLE`` includes weeds, so debris must be excluded
-    explicitly.
+    explicitly.  Hoe stands and the lift origin are never valid landings —
+    tossing onto the cell just lifted is the (11,28) false-success.
     """
     faces = (
         ("up", "left", "right", "down")
         if int(player_tile[1]) <= FENCE_WALL_Y
         else ("down", "left", "right", "up")
     )
+    forbidden = pocket_no_toss_tiles() | {tuple(tile) for tile in blocked}
     for face in faces:
         dx, dy = _FACE_DELTAS[face]
-        tile_id = int(get_tile_at(ram, player_tile[0] + dx, player_tile[1] + dy))
+        dest = (int(player_tile[0]) + dx, int(player_tile[1]) + dy)
+        if dest in forbidden:
+            continue
+        tile_id = int(get_tile_at(ram, dest[0], dest[1]))
         if (
             tile_id in FARM_WALKABLE
             and tile_id not in STALE_TILE_IDS
@@ -78,6 +100,22 @@ def open_toss_face(ram, player_tile: Tile) -> Optional[str]:
         ):
             return face
     return None
+
+
+def evaluate_lift_verify(ram, origin: Tile) -> str:
+    """``blocked`` still debris, ``carrying`` in hands, ``cleared`` gone."""
+    from harvest.core.tile_catalog import TILE_TO_DEBRIS as debris_ids
+
+    tile_id = int(get_tile_at(ram, origin[0], origin[1]))
+    if debris_ids.get(tile_id) is not None:
+        return "blocked"
+    if int(read_held_item(ram)):
+        return "carrying"
+    return "cleared"
+
+
+def _plot_no_toss_tiles() -> set:
+    return pocket_no_toss_tiles()
 
 
 def fence_jump_action(
@@ -107,12 +145,18 @@ def fence_jump_action(
 
 
 def toss_pulse_action(pulse: int, *, face: str = "down") -> np.ndarray:
-    """Face an open tile + A. ``pulse`` is zero-based."""
+    """Face an open tile, settle, then A with no d-pad.
+
+    Holding the face on throw walks onto the landing (live D2: UP from
+    (11,30) re-drops the (11,29) stone onto (11,28)).
+    """
     phase = int(pulse) % 40
-    if phase < 8:
+    if phase < 2:
         return make_action(**{face: True})
+    if phase < 8:
+        return make_action()
     if phase < 24:
-        return make_action(**{face: True, "a": True})
+        return make_action(a=True)
     return make_action()
 
 
@@ -122,10 +166,12 @@ class FenceJumpTossSkill(Task):
 
     name: str = "fence_jump_toss"
     timeout: int = 300
+    blocked: frozenset = field(default_factory=frozenset)
 
     _steps: int = field(default=0, init=False)
     _toss_pulse: int = field(default=0, init=False)
     _last_y: Optional[int] = field(default=None, init=False)
+    _last_tile: Optional[Tile] = field(default=None, init=False)
     _stasis: int = field(default=0, init=False)
     _toss_face: Optional[str] = field(default=None, init=False)
 
@@ -133,6 +179,7 @@ class FenceJumpTossSkill(Task):
         self._steps = 0
         self._toss_pulse = 0
         self._last_y = None
+        self._last_tile = None
         self._stasis = 0
         self._toss_face = None
 
@@ -158,16 +205,17 @@ class FenceJumpTossSkill(Task):
                 status=TaskStatus.FAILURE,
                 reason=f"fence-jump toss timeout held=0x{held:02X} tile={tile}",
             )
-        if self._last_y == tile[1]:
+        if self._last_tile == tile:
             self._stasis += 1
         else:
             self._stasis = 0
+            self._last_tile = tile
             self._last_y = tile[1]
 
         # Latch one clear face for a full throw pulse.  Re-evaluate after the
         # pulse because the short facing nudge can cross a tile boundary.
         if self._toss_pulse % 40 == 0:
-            self._toss_face = open_toss_face(world.ram, tile)
+            self._toss_face = open_toss_face(world.ram, tile, blocked=self.blocked)
         if self._toss_face is not None:
             action = toss_pulse_action(self._toss_pulse, face=self._toss_face)
             face = self._toss_face
@@ -176,6 +224,15 @@ class FenceJumpTossSkill(Task):
                 status=TaskStatus.RUNNING,
                 action=ActionResult(action),
                 reason=f"toss held debris toward open {face}",
+            )
+
+        # West pond lip has no safe adjacent landing (origin / plot / water).
+        # Carry east to open ground before jumping the y=31 fence.
+        if int(tile[1]) <= FENCE_WALL_Y and int(tile[0]) < 16 and self._stasis < 24:
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(right=True, b=True)),
+                reason="carry east to open toss",
             )
 
         # Fully boxed-in fallback.  This is deliberately bounded by the skill
@@ -207,8 +264,13 @@ def in_place_toss_actions(*, face: str = "down") -> list:
     ]
 
 
-def start_fence_jump_skill(*, frame: int = 0, ram=None) -> FenceJumpTossSkill:
-    skill = FenceJumpTossSkill()
+def start_fence_jump_skill(
+    *,
+    frame: int = 0,
+    ram=None,
+    blocked=(),
+) -> FenceJumpTossSkill:
+    skill = FenceJumpTossSkill(blocked=frozenset(tuple(tile) for tile in blocked))
     skill.reset(
         WorldState(
             frame=frame,
@@ -264,6 +326,7 @@ __all__ = [
     "POCKET_DROP_Y",
     "POCKET_LIFT_HELD",
     "FenceJumpTossSkill",
+    "evaluate_lift_verify",
     "fence_jump_action",
     "in_place_toss_actions",
     "is_pocket_lift_held",
@@ -272,6 +335,7 @@ __all__ = [
     "nearest_pocket_drop",
     "needs_south_fence_drop",
     "open_toss_face",
+    "pocket_no_toss_tiles",
     "toss_pulse_action",
     "held_toss_actions",
 ]

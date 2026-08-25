@@ -13,6 +13,7 @@ from harvest.core.tile_catalog import (
     ADDR_X,
     ADDR_Y,
     MAP_WIDTH,
+    STONE,
     TILE_SIZE,
     WEED,
     Tool,
@@ -24,10 +25,13 @@ from harvest.tasks.farm_toss import (
     HELD_STONE,
     HELD_WEED,
     FenceJumpTossSkill,
+    evaluate_lift_verify,
     fence_jump_action,
     nearest_pocket_drop,
     needs_south_fence_drop,
     open_toss_face,
+    pocket_no_toss_tiles,
+    toss_pulse_action,
 )
 from retro_harness import TaskStatus, WorldState
 from retro_harness.actions import action_names
@@ -75,29 +79,75 @@ class PocketTossTests(unittest.TestCase):
         self.assertIsNone(fence_jump_action((15, 32), HELD_STONE))
         self.assertIsNone(fence_jump_action((12, 29), 0))
 
-    def test_fence_jump_skill_runs_south_then_clears(self) -> None:
+    def test_fence_jump_skill_carries_east_when_plot_blocks_toss(self) -> None:
         world = _world(tile=(12, 29), held=HELD_STONE)
         skill = FenceJumpTossSkill()
         skill.reset(world)
         result = skill.step(world)
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIn("UP", set(action_names(result.action.action)))
+        names = set(action_names(result.action.action))
+        # Hoe stands + 3x3 + y=30 lip eat every adjacent face. Carry east.
+        self.assertIn("RIGHT", names)
+        self.assertIn("B", names)
+        self.assertNotIn("UP", names)
         world.ram[ADDR_HELD_ITEM] = 0
         done = skill.step(world)
         self.assertEqual(done.status, TaskStatus.SUCCESS)
 
-    def test_bush_pin_tosses_north_when_south_and_east_are_weeds(self) -> None:
+    def test_open_toss_skips_3x3_plot_and_hoe_stands(self) -> None:
+        world = _world(tile=(12, 29), held=HELD_STONE)
+        self.assertIsNone(open_toss_face(world.ram, (12, 29)))
+        self.assertIn((11, 28), pocket_no_toss_tiles())
+        self.assertIn((12, 28), pocket_no_toss_tiles())
+
+    def test_open_toss_does_not_relend_on_lift_origin(self) -> None:
+        world = _world(tile=(11, 29), held=HELD_STONE)
+        _set_tile(world, (10, 29), 0xA6)
+        self.assertNotEqual(open_toss_face(world.ram, (11, 29)), "up")
+        self.assertIsNone(open_toss_face(world.ram, (11, 29), blocked={(11, 28)}))
+
+    def test_pond_lip_carry_east_not_toss_north(self) -> None:
+        world = _world(tile=(11, 29), held=HELD_STONE)
+        _set_tile(world, (10, 29), 0xA6)
+        skill = FenceJumpTossSkill(blocked=frozenset({(11, 28)}))
+        skill.reset(world)
+        result = skill.step(world)
+        names = set(action_names(result.action.action))
+        self.assertIn("RIGHT", names)
+        self.assertIn("B", names)
+        self.assertNotIn("UP", names)
+        self.assertNotIn("A", names)
+
+    def test_toss_pulse_does_not_hold_face_during_throw(self) -> None:
+        face_tap = set(action_names(toss_pulse_action(0, face="up")))
+        self.assertEqual(face_tap, {"UP"})
+        settle = set(action_names(toss_pulse_action(4, face="up")))
+        self.assertEqual(settle, set())
+        throw = set(action_names(toss_pulse_action(12, face="up")))
+        self.assertEqual(throw, {"A"})
+        self.assertNotIn("UP", throw)
+
+    def test_evaluate_lift_verify_carrying_is_not_cleared(self) -> None:
+        world = _world(tile=(11, 29), held=HELD_STONE)
+        _set_tile(world, (11, 28), 0x01)
+        self.assertEqual(evaluate_lift_verify(world.ram, (11, 28)), "carrying")
+        world.ram[ADDR_HELD_ITEM] = 0
+        self.assertEqual(evaluate_lift_verify(world.ram, (11, 28)), "cleared")
+        _set_tile(world, (11, 28), STONE)
+        self.assertEqual(evaluate_lift_verify(world.ram, (11, 28)), "blocked")
+
+    def test_bush_pin_does_not_toss_onto_hoe_stand(self) -> None:
         world = _world(tile=(13, 27), held=HELD_WEED)
         _set_tile(world, (13, 28), WEED)
         _set_tile(world, (14, 27), WEED)
-        self.assertEqual(open_toss_face(world.ram, (13, 27)), "up")
+        self.assertNotEqual(open_toss_face(world.ram, (13, 27)), "up")
 
         skill = FenceJumpTossSkill()
         skill.reset(world)
-        actions = [skill.step(world).action.action for _ in range(12)]
-        names = [set(action_names(action)) for action in actions]
-        self.assertTrue(all("DOWN" not in pressed for pressed in names))
-        self.assertTrue(any({"UP", "A"} <= pressed for pressed in names))
+        first = skill.step(world)
+        names = set(action_names(first.action.action))
+        self.assertNotIn("UP", names)
+        self.assertNotIn("A", names)
 
 
 class ToolManagerCarryTests(unittest.TestCase):

@@ -222,12 +222,15 @@ class FarmClearTask(Task):
         if self.handoff == "quota":
             from harvest.tasks.farm_clear_quota import count_debris
 
+            self._clearer.quota = self.quota
             self._clearer.quota_start_counts = count_debris(
                 world.ram, self.farm_bounds
             )
         self._pocket_arrived = False
 
     def _scan_bounds(self) -> Optional[Tuple[int, int, int, int]]:
+        if self.handoff == "quota":
+            return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
         if self.farm_bounds is not None and self._pocket_arrived:
             return self._plot_scan_bounds()
         return self.farm_bounds or self._clearer._locked_bounds or self._clearer.farm_bounds
@@ -291,7 +294,13 @@ class FarmClearTask(Task):
         return (min(xs), min(ys), max(xs), max(ys))
 
     def _lock_clearer_to_plot(self) -> None:
-        """Stop roaming the full pocket after arrival — only the 3x3 + stands."""
+        """Stop roaming the full pocket after arrival — only the 3x3 + stands.
+
+        Leftover quota smash (``handoff=quota``) keeps the requested bounds.
+        Shrinking to the hoe ring made CLEAR_BUSHES see 5 cells and fail.
+        """
+        if self.handoff == "quota":
+            return
         bounds = self._plot_scan_bounds()
         self._clearer.farm_bounds = bounds
         self._clearer._locked_bounds = bounds

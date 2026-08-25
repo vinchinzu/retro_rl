@@ -1,0 +1,84 @@
+{
+  "command": "bench",
+  "wiki": "https://wiki.supermetroid.run/Phantoon#Any.25_KPDR_.28Charge_Plus_Missiles.29",
+  "product_bench_frames": 20537,
+  "product_time": {
+    "frames": 20537,
+    "seconds": 341.721,
+    "clock": "05:42.28",
+    "ntsc_fps": 60.0988
+  },
+  "runs": [
+    {
+      "run": 1,
+      "success": true,
+      "frames": 27645,
+      "seconds": 459.993,
+      "clock": "07:40.75",
+      "time": {
+        "frames": 27645,
+        "seconds": 459.993,
+        "clock": "07:40.75",
+        "ntsc_fps": 60.0988
+      },
+      "hp": 0,
+      "boss_bit_set": true,
+      "rounds": 12,
+      "shots": {
+        "missiles": 22,
+        "charges": 2,
+        "supers": 0
+      },
+      "outcome": "phantoon_defeated",
+      "assist": {
+        "energy_restored": 1480,
+        "energy_writes": 73,
+        "missile_writes": 0,
+        "super_writes": 0,
+        "maximum_single_frame_damage": 40,
+        "deaths": 0
+      },
+      "delta_vs_product": 7108
+    },
+    {
+      "run": 2,
+      "success": true,
+      "frames": 27645,
+      "seconds": 459.993,
+      "clock": "07:40.75",
+      "time": {
+        "frames": 27645,
+        "seconds": 459.993,
+        "clock": "07:40.75",
+        "ntsc_fps": 60.0988
+      },
+      "hp": 0,
+      "boss_bit_set": true,
+      "rounds": 12,
+      "shots": {
+        "missiles": 22,
+        "charges": 2,
+        "supers": 0
+      },
+      "outcome": "phantoon_defeated",
+      "assist": {
+        "energy_restored": 1480,
+        "energy_writes": 73,
+        "missile_writes": 0,
+        "super_writes": 0,
+        "maximum_single_frame_damage": 40,
+        "deaths": 0
+      },
+      "delta_vs_product": 7108
+    }
+  ],
+  "success": true,
+  "dual": true,
+  "time": {
+    "frames": 27645,
+    "seconds": 459.993,
+    "clock": "07:40.75",
+    "ntsc_fps": 60.0988
+  },
+  "notes": "Dual-run only if first fight is green (HP 0 + boss bit). Do not replace product 20537f charge-only."
+}

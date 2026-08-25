@@ -1,0 +1,118 @@
+{
+  "hypothesis": "land on stairs (y>=950 vy=0), idle, probe RIGHT",
+  "halt": "right_ascends",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "morph": false,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "right_ascends",
+    "frame": 91,
+    "room": "0xCAF6",
+    "xy": [
+      1197,
+      940
+    ],
+    "pose": 30,
+    "gs": 8,
+    "morph": true,
+    "vy": 0,
+    "floor_y": 940
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "morph": false,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "morphed",
+      "frame": 22,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        921
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 921
+    },
+    {
+      "phase": "landed_stairs",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "idle_land",
+      "frame": 80,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "probe_right",
+      "frame": 88,
+      "room": "0xCAF6",
+      "xy": [
+        1190,
+        947
+      ],
+      "pose": 30,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 947
+    },
+    {
+      "phase": "right_ascends",
+      "frame": 91,
+      "room": "0xCAF6",
+      "xy": [
+        1197,
+        940
+      ],
+      "pose": 30,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 940
+    }
+  ]
+}

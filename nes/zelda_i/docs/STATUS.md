@@ -85,6 +85,11 @@
 | Power-on → L6 south `0x19` → `0x29` | **1/1 continuous Survival**; occupancy KEY-DOWN (PNG mouth spent a key); 213,968f hop 663f; leftover play `0x29` dark `(120,77)` rod=1 bow=0 arrows=0 keys 4→3 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_south19_continuous_v1.json` / `_final.png` |
 | Power-on → L6 clear `0x29` | **1/1 continuous Survival**; idle census 160f then occupancy-patrol 3× blue `0x23` + 2× orange `0x24`; 215,534f hop 1,406f; leftover `(55,133)` keys 3→4 (floor key); rod=1 bow=0 arrows=0 bombs=8 TF=`0x1F`; deaths 0; progression/capacity writes 0; no state load | `l6_clear29_continuous_v2.json` / `_final.png` |
 | Power-on → L6 south `0x29` → `0x39` | **1/1 continuous Survival**; RIGHT+DOWN clip then occupancy x=120 @ y=141 DOWN; 215,822f hop 288f; leftover play `0x39` `(120,93)` rod=1 keys=4 bombs=8 TF=`0x1F` bow=0 arrows=0; deaths 0; progression/capacity writes 0; no state load | `l6_south29_continuous_v4.json` / `_final.png` |
+| Power-on → L6 settle `0x39` | **1/1 continuous Survival**; IDLE census 160f; 5× Vire `0x12`; leftover `(120,93)`; 215,982f; deaths 0; progression/capacity writes 0; no state load | `l6_settle39_continuous_v1.json` / `_final.png` |
+| Power-on → L6 clear `0x39` | **1/1 continuous Survival**; occupancy-patrol 5× Vire (splits max_live=9); 217,312f hop 1,330f; leftover `(136,173)` keys=4; deaths 0; progression/capacity writes 0; no state load | `l6_clear39_continuous_v1.json` / `_final.png` |
+| Power-on → L6 east `0x39` → `0x3A` | **1/1 continuous Survival**; RIGHT+UP clip then cardinal RIGHT on y=141; 217,632f hop 320f; leftover play `0x3A` `(16,141)` keys=4 (no spend); deaths 0; progression/capacity writes 0; no state load | `l6_east39_continuous_v3.json` / `_final.png` |
+| Power-on → L6 settle `0x3A` | **1/1 continuous Survival**; IDLE census 160f; 3× Like-Like `0x17` + 2× blue `0x23` + 2× orange `0x24` + center 0x68; leftover `(16,141)`; 217,792f; deaths 0; progression/capacity writes 0; no state load | `l6_settle3a_continuous_v1.json` / `_final.png` |
+| Power-on → L6 clear `0x3A` | **1/1 continuous Survival**; occupancy-patrol 7 live; 219,649f hop 1,857f; leftover `(144,141)` center 0x68 unpushed; rod=1 keys=4 bow=0 arrows=0; deaths 0; progression/capacity writes 0; no state load | `l6_clear3a_continuous_v1.json` / `_final.png` |
 | L4 complete → L5 entry | 1/1 to room `0x76` in 5,031 path frames; bombs=7, Raft=1, Stepladder=1, Triforce=`0x0c` preserved | `l4_to_l5_assisted_v4.json`; `Level5EntranceFromL4` |
 | L5 entry → room `0x66` key | 1/1 assisted clear in 1,254 frames; three Gibdos dead, keys 0→1 | `l5_clear66_entrance_assisted.json`; `Level5Cleared66` |
 | East Key Pols Voice `0x77` → natural Recorder → Whistle basement `0x04` | **1/1 Survival** from `Level5EastKey`; whistle `$065C` 0→1; room `0x04` mode 9; deaths 0; progression/capacity writes 0; `route_eligible=false` | `l5_e2w_t2.json`; `Level5WhistleFrom77` |
@@ -113,11 +118,12 @@ leftover `(32,149)`). 0x28 enter is on the tape
 clear is on the tape (`l6_clear28_continuous_v1` 1/1, leftover
 `(120,181)`, max_live=2). Gleeok enter is on the tape
 (`l6_room18_continuous_v7` 1/1, leftover `(120,189)` play `0x18`).
-Gleeok fight, Rod, cellar return, south `0x09`→`0x19`→`0x29` clear, and
-south `0x29`→`0x39` are on the tape (`l6_south29_continuous_v4` 1/1,
-leftover play `0x39` `(120,93)` rod=1 keys=4 bow=0 arrows=0). 0x29 east
-sealed. 0x39 combat residual. Gohma / TF `0x20` residual — Gohma needs
-an arrow.
+Gleeok fight, Rod, cellar return, south `0x09`→`0x19`→`0x29` clear,
+south `0x29`→`0x39` Vire clear, and east `0x39`→`0x3A` clear are on
+the tape (`l6_clear3a_continuous_v1` 1/1, leftover play `0x3A`
+`(144,141)` rod=1 keys=4 bow=0 arrows=0). Center 0x68 unpushed. 0x29
+east sealed. Stairs / Gohma / TF `0x20` residual — Gohma needs an
+arrow.
 Isolated poke-16 tapes remain recon only.
 Isolated `Level3*` pins cannot close spine beads. The East Key
 → Recorder seam (`rr-4d53.5`) is attached on the continuous tape through
@@ -380,12 +386,12 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-south29` is green
-   (`l6_south29_continuous_v4` 1/1, play `0x39` `(120,93)` rod=1 hop
-   288f, tape 215,822f, keys=4). Occupancy DOWN @ x=64 is the y=181
-   diamond pocket. East of 0x29 sealed. 0x39 combat residual. Gohma /
-   TF `0x20` residual — Gohma needs an arrow; do not poke
-   `ADDR_ARROWS`/`ADDR_BOW`. Do not invent Gohma room id. `rr-tne2` in
+1. **Active Survival tip:** `--through level6-clear3a` is green
+   (`l6_clear3a_continuous_v1` 1/1, play `0x3A` `(144,141)` rod=1 hop
+   1,857f, tape 219,649f, keys=4). Center 0x68 unpushed. Stairs /
+   Gohma / TF `0x20` residual — Gohma needs an arrow; do not poke
+   `ADDR_ARROWS`/`ADDR_BOW`. Do not invent Gohma room id. L1 bow was
+   skipped; leftover ~39R cannot buy 80R arrows. `rr-tne2` in
    progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
    Isolated `Level3*` pins do not close spine beads. No seamed compose.
    Bomb/key count pokes are documented Survival shortcuts, not Clean.

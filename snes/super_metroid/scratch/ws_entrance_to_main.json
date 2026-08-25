@@ -1,0 +1,47 @@
+{
+  "success": true,
+  "error": null,
+  "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_poweron.state",
+  "boot": {
+    "room": "0xCA08",
+    "xy": [
+      57,
+      139
+    ],
+    "pose": 1,
+    "gs": 8,
+    "dt": 0,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "selected": 2,
+    "max_pb": 5,
+    "health": 299,
+    "frame": 0
+  },
+  "final": {
+    "room": "0xCAF6",
+    "xy": [
+      1063,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "dt": 0,
+    "items": "0x3105",
+    "beams": "0x1007",
+    "selected": 0,
+    "max_pb": 5,
+    "health": 299,
+    "frame": 403
+  },
+  "frames": 403,
+  "time": {
+    "frames": 403,
+    "seconds": 6.706,
+    "clock": "00:06.72",
+    "ntsc_fps": 60.0988
+  },
+  "saved": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ws_entrance_to_main.state",
+  "command": "pure",
+  "hop": "ws_entrance_to_main"
+}

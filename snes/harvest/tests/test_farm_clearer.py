@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 
 from harvest.core.carry import ADDR_TOOL_BACKPACK
+from harvest.core.animal_status import ADDR_HELD_ITEM
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_STAMINA,
@@ -20,6 +21,7 @@ from harvest.core.tile_catalog import (
     WEED,
     DebrisType,
 )
+from harvest.tasks.farm_toss import HELD_STONE
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
 from harvest.planner.day_plan_phases import PHASE_SEQUENCES, build_day_phases
 from harvest.tasks.farm_clear_task import FarmClearTask
@@ -42,6 +44,7 @@ from harvest.tasks.farm_clearer import (
     TileScanner,
     use_tool,
 )
+from harvest.tasks.farm_ops import sort_targets_cluster
 
 from retro_harness import TaskStatus, WorldState
 
@@ -302,8 +305,45 @@ class TestPocketClearTask(unittest.TestCase):
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertIn("plant_notch_clear", result.reason or "")
+        self.assertIn("plot_ring_clear", result.reason or "")
         self.assertEqual(ram[ADDR_MAP + 15 * MAP_WIDTH + 20], WEED)
+
+    def test_plot_scan_bounds_cover_hoe_stands(self) -> None:
+        task = FarmClearTask(farm_bounds=(3, 14, 28, 30))
+        self.assertEqual(task._plot_scan_bounds(), (11, 26, 15, 30))
+
+    def test_pocket_complete_fails_while_ring_is_dirty(self) -> None:
+        ram = _make_farm_ram(player_tile=(12, 28), tool=0)
+        _set_tile(ram, 14, 27, WEED)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+        task._pocket_arrived = True
+        task._lock_clearer_to_plot()
+        self.assertEqual(
+            task._complete_status(world, remaining=["weed"]),
+            TaskStatus.FAILURE,
+        )
+
+    def test_pocket_clear_does_not_hand_off_with_ring_weed(self) -> None:
+        ram = _make_farm_ram(player_tile=(12, 28), tool=0)
+        _set_tile(ram, 14, 27, WEED)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(
+            fetch_tools=False,
+            farm_bounds=(3, 14, 28, 30),
+            timeout=7000,
+        )
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(ram[ADDR_MAP + 27 * MAP_WIDTH + 14], WEED)
 
 
 class TestFarmClearerSelection(unittest.TestCase):
@@ -314,9 +354,29 @@ class TestFarmClearerSelection(unittest.TestCase):
             Target((5, 10), Point(5 * 16 + 8, 10 * 16 + 8), DebrisType.WEED, WEED),
             Target((6, 10), Point(6 * 16 + 8, 10 * 16 + 8), DebrisType.WEED, WEED),
         ]
-        ordered = clearer._sort_targets_cluster(targets, Point(5 * 16 + 8, 10 * 16 + 8))
+        ordered = sort_targets_cluster(targets, Point(5 * 16 + 8, 10 * 16 + 8))
         self.assertEqual(ordered[0].tile, (5, 10))
         self.assertEqual(ordered[1].tile, (6, 10))
+
+    def test_lift_verify_does_not_claim_while_stone_is_held(self) -> None:
+        ram = _make_farm_ram(player_tile=(11, 29), tool=0)
+        _set_tile(ram, 11, 28, 0xA1)
+        ram[ADDR_HELD_ITEM] = HELD_STONE
+        clearer = FarmClearer()
+        clearer.prefer_lift_for_stones = True
+        clearer.navigator.update(ram)
+        clearer.current_target = Target(
+            (11, 28), Point(11 * 16 + 8, 28 * 16 + 8), DebrisType.STONE, STONE
+        )
+        clearer._pending_lift_verify = (11, 28)
+        clearer.clearing_start_frame = 1
+        nxt = clearer._handle_clearing(ram)
+        self.assertEqual(nxt, "scanning")
+        self.assertNotIn((11, 28), clearer.tiles_cleared)
+        self.assertNotIn((11, 28), clearer.failed_tiles)
+        self.assertEqual(clearer.cleared_count, 0)
+        self.assertEqual(clearer._pending_toss_origin, (11, 28))
+        self.assertIsNotNone(clearer._toss_skill)
 
     def test_viewport_hop_limits_path_length(self) -> None:
         ram = _make_farm_ram(player_tile=(5, 5))

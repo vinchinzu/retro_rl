@@ -9,9 +9,11 @@ import numpy as np
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     ADDR_TILEMAP,
+    FENCE,
     LARGE_ROCK_TL,
     MAP_WIDTH,
     ROCK,
+    STONE,
     STUMP_TL,
     TILE_SIZE,
     WEED,
@@ -21,9 +23,14 @@ from harvest.core.tile_catalog import (
 from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
 from harvest.tasks.farm_clear_quota import (
     ClearQuota,
+    DebrisCounts,
+    capped_quota,
     classify_target,
     count_debris,
+    needs_shed_door_step_off,
+    quota_counts_met,
     quota_satisfied,
+    unmet_debris_types,
 )
 from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.core.carry import ADDR_TOOL_BACKPACK
@@ -137,6 +144,14 @@ class TestDebrisCountContract(unittest.TestCase):
             classify_target(LARGE_ROCK_TL, DebrisType.ROCK),
         )
 
+    def test_fence_posts_are_counted(self) -> None:
+        ram = _make_farm_ram()
+        for x in range(11, 16):
+            _set_tile(ram, x, 31, FENCE)
+        counts = count_debris(ram)
+        self.assertEqual(counts.fences, 5)
+        self.assertEqual(classify_target(FENCE, DebrisType.FENCE), "fences")
+
     def test_stumps_collapse_to_one_per_2x2(self) -> None:
         ram = _make_farm_ram()
         _place_stump(ram, 10, 10)
@@ -147,6 +162,18 @@ class TestDebrisCountContract(unittest.TestCase):
 
 
 class TestQuotaTaskHandoff(unittest.TestCase):
+    def test_quota_ram_drop_without_swings_is_not_success(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.HAMMER))
+        tiles = _place_weeds(ram, 12)
+        world = _world(ram)
+        task = _quota_task(quota={"weeds": 10}, priority=[DebrisType.WEED])
+        task.reset(world)
+        for tx, ty in tiles[:10]:
+            _set_tile(ram, tx, ty, 0xA1)
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.clearer.cleared_count, 0)
+
     def test_ten_weed_quota_success_with_leftover_weeds(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=0)
         tiles = _place_weeds(ram, 15)
@@ -156,6 +183,7 @@ class TestQuotaTaskHandoff(unittest.TestCase):
 
         for tx, ty in tiles[:10]:
             _set_tile(ram, tx, ty, 0xA1)
+        task.clearer.cleared_count = 10
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
@@ -179,12 +207,92 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
             _set_tile(ram, 12 + dx, 12 + dy, 0xA1)
             _set_tile(ram, 16 + dx, 12 + dy, 0xA1)
+        task.clearer.cleared_count = 2
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("quota_met", result.reason or "")
         self.assertEqual(count_debris(ram).stumps, 1)
         self.assertEqual(ram[ADDR_MAP + 12 * MAP_WIDTH + 20], STUMP_TL)
+
+    def test_quota_not_met_on_shed_door_unload(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.HAMMER))
+        for tx, ty in ((12, 10), (16, 10), (20, 10), (24, 10)):
+            _place_large_rock(ram, tx, ty)
+        world = _world(ram)
+        task = _quota_task(
+            quota={"large_rocks": 4},
+            priority=[DebrisType.ROCK],
+        )
+        task.reset(world)
+        self.assertEqual(task.clearer.quota_start_counts.large_rocks, 4)
+        _set_player(ram, (25, 30))
+        _set_tile(ram, 25, 30, 0xA8)
+        for y in range(MAP_WIDTH):
+            for x in range(MAP_WIDTH):
+                if (x, y) != (25, 30):
+                    _set_tile(ram, x, y, 0xFF)
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertNotIn("quota_met", result.reason or "")
+
+    def test_quota_scan_steps_off_shed_door_stale_tile(self) -> None:
+        ram = _make_farm_ram(player_tile=(26, 30), tool=int(Tool.HAMMER))
+        _set_tile(ram, 26, 30, 0xFF)
+        _place_large_rock(ram, 28, 30)
+        world = _world(ram)
+        task = _quota_task(
+            quota={"large_rocks": 1},
+            priority=[DebrisType.ROCK],
+        )
+        task.reset(world)
+        task.clearer.navigator.update(ram)
+        nxt = task.clearer._handle_scanning(ram)
+        self.assertIsNone(nxt)
+        self.assertGreaterEqual(len(task.clearer.action_queue), 10)
+
+    def test_quota_scan_steps_off_a8_when_farm_still_unloaded(self) -> None:
+        ram = _make_farm_ram(player_tile=(25, 30), tool=int(Tool.HAMMER))
+        _set_tile(ram, 25, 30, 0xA8)
+        for y in range(MAP_WIDTH):
+            for x in range(MAP_WIDTH):
+                if (x, y) != (25, 30):
+                    _set_tile(ram, x, y, 0xFF)
+        _place_large_rock(ram, 28, 28)
+        world = _world(ram)
+        task = _quota_task(
+            quota={"large_rocks": 1},
+            priority=[DebrisType.ROCK],
+        )
+        task.reset(world)
+        task.clearer.navigator.update(ram)
+        self.assertTrue(needs_shed_door_step_off(ram))
+        nxt = task.clearer._handle_scanning(ram)
+        self.assertIsNone(nxt)
+        self.assertGreaterEqual(len(task.clearer.action_queue), 16)
+
+    def test_quota_scan_stops_rocks_once_boulder_count_met(self) -> None:
+        ram = _make_farm_ram()
+        for i in range(3):
+            _set_tile(ram, 6 + i, 8, STONE)
+        for tx, ty in ((8, 12), (12, 12), (16, 12), (20, 12), (24, 12)):
+            _place_large_rock(ram, tx, ty)
+        world = _world(ram)
+        task = _quota_task(
+            quota={"stones": 2, "large_rocks": 2},
+            priority=[DebrisType.ROCK, DebrisType.STONE],
+        )
+        task.reset(world)
+        for tx, ty in ((8, 12), (12, 12)):
+            for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+                _set_tile(ram, tx + dx, ty + dy, 0xA1)
+        task.clearer.startup_done = True
+        task.clearer._tool_scan_done = True
+        task.clearer.navigator.update(ram)
+        nxt = task.clearer._handle_scanning(ram)
+        self.assertIn(nxt, {"navigating", "clearing"})
+        assert task.clearer.current_target is not None
+        self.assertEqual(task.clearer.current_target.debris_type, DebrisType.STONE)
 
     def test_rock_quota_counts_small_and_large_separately(self) -> None:
         ram = _make_farm_ram()
@@ -208,6 +316,7 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         for tx, ty in ((8, 12), (12, 12), (16, 12), (20, 12)):
             for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
                 _set_tile(ram, tx + dx, ty + dy, 0xA1)
+        task.clearer.cleared_count = 14
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.SUCCESS)
@@ -230,6 +339,21 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("plot_ring_clear", result.reason or "")
         self.assertEqual(ram[ADDR_MAP + 15 * MAP_WIDTH + 20], WEED)
+
+    def test_quota_pocket_bounds_do_not_shrink_to_hoe_ring(self) -> None:
+        ram = _make_farm_ram(player_tile=(13, 26), tool=0)
+        _set_tile(ram, 20, 15, WEED)
+        world = _world(ram)
+        task = _quota_task(
+            quota={"weeds": 10},
+            farm_bounds=WEST_PLANT_POCKET_BOUNDS,
+            priority=[DebrisType.WEED],
+        )
+        task.reset(world)
+        task._pocket_arrived = True
+        task._lock_clearer_to_plot()
+        self.assertEqual(task.clearer.farm_bounds, WEST_PLANT_POCKET_BOUNDS)
+        self.assertEqual(task._scan_bounds(), WEST_PLANT_POCKET_BOUNDS)
 
     def test_quota_handoff_does_not_plot_ring_success(self) -> None:
         ram = _make_farm_ram(player_tile=(12, 28), tool=0)
@@ -321,6 +445,27 @@ class TestQuotaSatisfiedSnapshot(unittest.TestCase):
         self.assertFalse(
             quota_satisfied(ram, {"weeds": 1}, clearer=_NoSnap())
         )
+
+    def test_small_rock_quota_caps_to_spawned_count(self) -> None:
+        start = DebrisCounts(small_rocks=0, large_rocks=5, stones=20)
+        want = ClearQuota(small_rocks=10, large_rocks=4, stones=10)
+        effective = capped_quota(want, start)
+        self.assertEqual(effective.small_rocks, 0)
+        self.assertEqual(effective.large_rocks, 4)
+        self.assertEqual(effective.stones, 10)
+        now = DebrisCounts(small_rocks=0, large_rocks=1, stones=10)
+        self.assertTrue(quota_counts_met(start, now, want))
+        still_short = DebrisCounts(small_rocks=0, large_rocks=2, stones=10)
+        self.assertFalse(quota_counts_met(start, still_short, want))
+
+    def test_unmet_types_drop_rock_after_boulder_quota(self) -> None:
+        start = DebrisCounts(small_rocks=0, large_rocks=5, stones=20)
+        want = ClearQuota(small_rocks=10, large_rocks=4, stones=10)
+        after_boulders = DebrisCounts(small_rocks=0, large_rocks=1, stones=20)
+        unmet = unmet_debris_types(start, after_boulders, want)
+        self.assertEqual(unmet, {DebrisType.STONE})
+        after_both = DebrisCounts(small_rocks=0, large_rocks=1, stones=10)
+        self.assertEqual(unmet_debris_types(start, after_both, want), set())
 
 
 if __name__ == "__main__":

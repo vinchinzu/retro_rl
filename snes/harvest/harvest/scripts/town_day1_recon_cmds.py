@@ -718,7 +718,7 @@ def cmd_auto(args: argparse.Namespace) -> int:
             and shed_ok
         )
 
-        if args.save_end_state:
+        if args.save_end_state and success:
             end_path = save_state(env, args.save_end_state)
             print(f"[RECON] saved end state {end_path}", flush=True)
 

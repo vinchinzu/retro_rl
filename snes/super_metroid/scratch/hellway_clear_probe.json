@@ -1,0 +1,320 @@
+{
+  "runs": [
+    {
+      "tag": "hw_spin_28_18",
+      "green": false,
+      "frames": 261,
+      "time": {
+        "frames": 261,
+        "seconds": 4.343,
+        "clock": "00:04.35",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "start": {
+        "room": "0xA2F7",
+        "pose": 11,
+        "x": 237,
+        "y": 139,
+        "vy": 0,
+        "vd": 0,
+        "mt": 1,
+        "facing": 8
+      },
+      "end": {
+        "room": "0xA2F7",
+        "pose": 137,
+        "x": 91,
+        "y": 187,
+        "vy": 0,
+        "vd": 0,
+        "mt": 21,
+        "facing": 8
+      },
+      "log": [
+        {
+          "f": 0,
+          "note": "start",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 1,
+          "note": "t0",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 13,
+          "note": "door_seat",
+          "room": "0xA2F7",
+          "x": 65522,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 261,
+          "note": "door_miss",
+          "room": "0xA2F7",
+          "x": 91,
+          "y": 187,
+          "p": 137,
+          "vy": 0,
+          "vd": 0,
+          "mt": 21
+        }
+      ],
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/hw_spin_28_18_000.png"
+    },
+    {
+      "tag": "hw_short_22_12",
+      "green": false,
+      "frames": 261,
+      "time": {
+        "frames": 261,
+        "seconds": 4.343,
+        "clock": "00:04.35",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "start": {
+        "room": "0xA2F7",
+        "pose": 11,
+        "x": 237,
+        "y": 139,
+        "vy": 0,
+        "vd": 0,
+        "mt": 1,
+        "facing": 8
+      },
+      "end": {
+        "room": "0xA2F7",
+        "pose": 137,
+        "x": 91,
+        "y": 187,
+        "vy": 0,
+        "vd": 0,
+        "mt": 21,
+        "facing": 8
+      },
+      "log": [
+        {
+          "f": 0,
+          "note": "start",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 1,
+          "note": "t0",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 13,
+          "note": "door_seat",
+          "room": "0xA2F7",
+          "x": 65522,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 261,
+          "note": "door_miss",
+          "room": "0xA2F7",
+          "x": 91,
+          "y": 187,
+          "p": 137,
+          "vy": 0,
+          "vd": 0,
+          "mt": 21
+        }
+      ],
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/hw_short_22_12_000.png"
+    },
+    {
+      "tag": "hw_long_40_28",
+      "green": false,
+      "frames": 261,
+      "time": {
+        "frames": 261,
+        "seconds": 4.343,
+        "clock": "00:04.35",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "start": {
+        "room": "0xA2F7",
+        "pose": 11,
+        "x": 237,
+        "y": 139,
+        "vy": 0,
+        "vd": 0,
+        "mt": 1,
+        "facing": 8
+      },
+      "end": {
+        "room": "0xA2F7",
+        "pose": 137,
+        "x": 91,
+        "y": 187,
+        "vy": 0,
+        "vd": 0,
+        "mt": 21,
+        "facing": 8
+      },
+      "log": [
+        {
+          "f": 0,
+          "note": "start",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 1,
+          "note": "t0",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 13,
+          "note": "door_seat",
+          "room": "0xA2F7",
+          "x": 65522,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 261,
+          "note": "door_miss",
+          "room": "0xA2F7",
+          "x": 91,
+          "y": 187,
+          "p": 137,
+          "vy": 0,
+          "vd": 0,
+          "mt": 21
+        }
+      ],
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/hw_long_40_28_000.png"
+    },
+    {
+      "tag": "hw_always_a",
+      "green": false,
+      "frames": 261,
+      "time": {
+        "frames": 261,
+        "seconds": 4.343,
+        "clock": "00:04.35",
+        "ntsc_fps": 60.0988
+      },
+      "error": null,
+      "start": {
+        "room": "0xA2F7",
+        "pose": 11,
+        "x": 237,
+        "y": 139,
+        "vy": 0,
+        "vd": 0,
+        "mt": 1,
+        "facing": 8
+      },
+      "end": {
+        "room": "0xA2F7",
+        "pose": 137,
+        "x": 91,
+        "y": 187,
+        "vy": 0,
+        "vd": 0,
+        "mt": 21,
+        "facing": 8
+      },
+      "log": [
+        {
+          "f": 0,
+          "note": "start",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 1,
+          "note": "t0",
+          "room": "0xA2F7",
+          "x": 237,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 13,
+          "note": "door_seat",
+          "room": "0xA2F7",
+          "x": 65522,
+          "y": 139,
+          "p": 11,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1
+        },
+        {
+          "f": 261,
+          "note": "door_miss",
+          "room": "0xA2F7",
+          "x": 91,
+          "y": 187,
+          "p": 137,
+          "vy": 0,
+          "vd": 0,
+          "mt": 21
+        }
+      ],
+      "shot": "snes/super_metroid/scratch/red_right_wall_shots/hw_always_a_000.png"
+    }
+  ]
+}

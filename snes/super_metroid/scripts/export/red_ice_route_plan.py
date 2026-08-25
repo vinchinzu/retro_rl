@@ -166,11 +166,11 @@ def render_full(plan: dict, output: Path) -> Path:
     draw.text((712, 122), "VERIFIED EDGE 01", font=label_font, fill=GREEN)
     lines = (
         "bottom_floor → lower_ripper_1",
-        "live X track → Ice shot → runup",
-        "consecutive WJ 20/4/8 + 14/2/6",
-        "steer to frozen support; settle 8f",
-        "2 exact natural runs; 31 patrol phases total",
-        "230–414 policy frames; 408–636 FPS",
+        "live X track → Ice shot → step off column",
+        "standing Hi-Jump; drift from above",
+        "no wall-jump; settle 8f",
+        "2 exact natural runs; sampled patrol offsets green",
+        "228f dual exact from p165 leave",
     )
     for line_index, line in enumerate(lines):
         draw.text((712, 154 + line_index * 21), line, font=small_font, fill=INK)
@@ -211,7 +211,7 @@ def render_first_edge(plan: dict, output: Path) -> Path:
     steps = (
         ("1", BLUE, "Natural entry", "Bottom floor ~(216,2443); keep clear of both doors."),
         ("2", YELLOW, "Phase-aware freeze", "Track the lowest Ripper's live X. Fire only in x=92..145."),
-        ("3", GREEN, "Run + double WJ", "Right-wall spin, then 20/4/8 + 14/2/6 timing spans."),
+        ("3", GREEN, "Step off + standing hop", "Walk ~28px off the ice column, then A-only Hi-Jump."),
         ("4", GREEN, "Stable checkpoint", "Land y=2351 on frozen support; require grounded + timer ≥30."),
     )
     y = 112

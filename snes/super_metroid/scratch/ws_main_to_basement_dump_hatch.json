@@ -1,0 +1,156 @@
+{
+  "hypothesis": "align x~1150 over hatch, jump+DOWN+X pipes, else morph",
+  "halt": "fell",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 840,
+    "room": "0xCAF6",
+    "xy": [
+      1143,
+      1721
+    ],
+    "pose": 55,
+    "gs": 8,
+    "morph": false,
+    "selected": 0,
+    "vy": 0,
+    "floor_y": 1721
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "land1",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "bottom_plat",
+      "frame": 717,
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1688
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1688
+    },
+    {
+      "phase": "over_hatch",
+      "frame": 802,
+      "room": "0xCAF6",
+      "xy": [
+        1135,
+        1675
+      ],
+      "pose": 9,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1675
+    },
+    {
+      "phase": "shot0",
+      "frame": 834,
+      "room": "0xCAF6",
+      "xy": [
+        1143,
+        1699
+      ],
+      "pose": 23,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 3,
+      "floor_y": null
+    },
+    {
+      "phase": "shot1",
+      "frame": 840,
+      "room": "0xCAF6",
+      "xy": [
+        1143,
+        1721
+      ],
+      "pose": 55,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1721
+    },
+    {
+      "phase": "after_shots",
+      "frame": 840,
+      "room": "0xCAF6",
+      "xy": [
+        1143,
+        1721
+      ],
+      "pose": 55,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1721
+    },
+    {
+      "phase": "final",
+      "frame": 840,
+      "room": "0xCAF6",
+      "xy": [
+        1143,
+        1721
+      ],
+      "pose": 55,
+      "gs": 8,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "floor_y": 1721
+    }
+  ]
+}

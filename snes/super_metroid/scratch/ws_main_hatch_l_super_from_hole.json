@@ -1,0 +1,202 @@
+{
+  "variant": "l_super_from_hole",
+  "success": false,
+  "frames": 1124,
+  "final": {
+    "room": "0xCAF6",
+    "xy": [
+      1259,
+      1689
+    ],
+    "pose": 30,
+    "gs": 8,
+    "dt": 0,
+    "morph": true,
+    "selected": 2,
+    "vy": 0,
+    "phase": "final",
+    "frame": 1124
+  },
+  "log": [
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "phase": "boot",
+      "frame": 0
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1688
+      ],
+      "pose": 50,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 0,
+      "vy": 0,
+      "phase": "bottom",
+      "frame": 690
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1061,
+        1638
+      ],
+      "pose": 78,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 1,
+      "phase": "unmorph",
+      "frame": 716
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1130,
+        1675
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "phase": "over_hole",
+      "frame": 761
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1150,
+        1675
+      ],
+      "pose": 9,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 0,
+      "vy": 0,
+      "phase": "at_1148",
+      "frame": 768
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super0",
+      "frame": 847
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super1",
+      "frame": 874
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super2",
+      "frame": 901
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super3",
+      "frame": 928
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super4",
+      "frame": 955
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1166,
+        1675
+      ],
+      "pose": 1,
+      "gs": 8,
+      "dt": 0,
+      "morph": false,
+      "selected": 2,
+      "vy": 0,
+      "phase": "super5",
+      "frame": 982
+    },
+    {
+      "room": "0xCAF6",
+      "xy": [
+        1259,
+        1689
+      ],
+      "pose": 30,
+      "gs": 8,
+      "dt": 0,
+      "morph": true,
+      "selected": 2,
+      "vy": 0,
+      "phase": "final",
+      "frame": 1124
+    }
+  ]
+}

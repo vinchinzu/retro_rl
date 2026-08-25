@@ -33,7 +33,10 @@ from harvest.tasks.town_day1_tasks import (
     BIT_NINA,
     TARGET_MASK,
     PressAUntilBitOrTimeout,
+    TrackNpcUntilBitTask,
     ScriptedWalkTask,
+    TOWN_TILEMAP,
+    WalkUntilCoordTask,
     SequenceTask,
     SkipIfBitSet,
     _AssertCarryToolsTask,
@@ -60,6 +63,35 @@ def _nav(name: str, waypoints: List[Waypoint], *, timeout: int = 6000, settle: i
     )
 
 
+def _clear_flower_shop_door(name: str) -> SequenceTask:
+    """Town-space flower-shop door: idle until tiles load, then walk south.
+
+    Rest tape: leaked interior (136,468) → snap (600,232) 0xFF → idle ~70f →
+    Down to y~280 path.  Immediate Down+Right or a (600,280) nav waypoint
+    re-enters the shop.
+    """
+    return SequenceTask(
+        name=name,
+        tasks=(
+            WalkUntilCoordTask(
+                name=f"{name}_remap",
+                direction="down",
+                tilemap=TOWN_TILEMAP,
+                min_x=400,
+                timeout=240,
+            ),
+            _HoldButtonsTask(name=f"{name}_idle", buttons=(), frames=80),
+            WalkUntilCoordTask(
+                name=f"{name}_south",
+                direction="down",
+                tilemap=TOWN_TILEMAP,
+                min_y=275,
+                timeout=120,
+            ),
+        ),
+    )
+
+
 def _talk_route(
     name: str,
     route_name: str,
@@ -70,16 +102,19 @@ def _talk_route(
     exit_route: str | None = None,
     required: bool = True,
 ) -> Task:
-    """Nav to stand, face+mash until bit, optional exit route back to town."""
+    """Nav to a neighborhood, then talk until bit; optional exit back to town.
+
+    Required outdoor talks (Ann/Eve) track the nearest live NPC because those
+    sprites wander off a 6px stand. Optional talks stay on a fixed face+A.
+    """
     steps: list[Task] = [
         _nav(f"nav_{name}", _clone_route(route_name), timeout=timeout),
-        PressAUntilBitOrTimeout(
-            name=f"talk_{name}",
-            bit=bit,
-            face=face,
-            attempts=6,
-            attempt_timeout=200,
-            required=required,
+        TrackNpcUntilBitTask(
+            name=f"talk_{name}", bit=bit, timeout=2400, face_hint=face
+        )
+        if required
+        else PressAUntilBitOrTimeout(
+            name=f"talk_{name}", bit=bit, face=face, required=False
         ),
     ]
     if exit_route:
@@ -185,7 +220,7 @@ def build_day1_handoff_tasks(
                 ScriptedWalkTask(name="owner_to_door_x", direction="right", frames=40, run=True),
                 ScriptedWalkTask(name="owner_exit_down", direction="down", frames=100, run=True),
                 _nav(
-                    "owner_exit_town",
+                    "owner_exit_shop",
                     [
                         Waypoint(tilemap=0x1C, target_px=(144, 456), radius=18),
                         Waypoint(
@@ -195,11 +230,11 @@ def build_day1_handoff_tasks(
                             is_exit=True,
                             exit_direction="down",
                         ),
-                        Waypoint(tilemap=0x04, target_px=(600, 280), radius=16),
                     ],
                     timeout=4000,
                     settle=10,
                 ),
+                _clear_flower_shop_door("owner_clear_door"),
             ),
         ),
     )
@@ -247,6 +282,7 @@ def build_day1_handoff_tasks(
                     required=True,
                 ),
                 _nav("nina_exit", _clone_route("d1_flower_back_exit_to_town"), timeout=5000, settle=15),
+                _clear_flower_shop_door("nina_clear_door"),
             ),
         ),
     )
@@ -312,9 +348,6 @@ def build_day1_handoff_tasks(
         # composed pure routes — rest desyncs after pure Ann|Eve (rr-bhr).
         rest_path = os.path.join(TASKS_DIR, "town_day1_rest.json")
         if use_rest_recording and os.path.isfile(rest_path):
-            # Full human rest capture (Ann|Eve → mask 0x3F → truck → house sleep
-            # → D2). Mask clears on day advance, so assert peak mask mid-run is
-            # not possible after the fact; success is day≥2 + optional shed.
             rest = load_recording_slice(
                 RecordingSliceSpec("town_day1_rest", start_frame=0, end_frame=None),
                 TASKS_DIR,
@@ -337,40 +370,80 @@ def build_day1_handoff_tasks(
                                     _clone_route("d1_town_to_livestock"),
                                     timeout=7000,
                                 ),
-                                ScriptedWalkTask(
-                                    name="livestock_up", direction="up", frames=30, run=True
+                                # Door entry keeps town-space pixels (~598,874)
+                                # until the player walks UP off the trigger.
+                                # Do not X-align toward the lobby — that walks
+                                # left and misses the remap.
+                                WalkUntilCoordTask(
+                                    name="livestock_remap_up",
+                                    direction="up",
+                                    max_x=400,
+                                    timeout=240,
                                 ),
-                                ScriptedWalkTask(
-                                    name="livestock_right",
-                                    direction="right",
-                                    frames=45,
-                                    run=True,
-                                ),
-                                ScriptedWalkTask(
-                                    name="livestock_down",
-                                    direction="down",
-                                    frames=22,
-                                    run=False,
+                                # Around the north of the counter to the D1
+                                # gift stand (230,139).  (201,157) face-right
+                                # is buy-cow and does not set bit 0x10.
+                                _nav(
+                                    "nav_livestock_stand",
+                                    _clone_route("d1_livestock_to_event_stand"),
+                                    timeout=4000,
+                                    settle=8,
                                 ),
                                 PressAUntilBitOrTimeout(
                                     name="talk_livestock",
                                     bit=BIT_LIVESTOCK,
                                     face="down",
-                                    attempts=12,
-                                    attempt_timeout=200,
+                                    attempts=10,
+                                    attempt_timeout=160,
                                     required=True,
                                 ),
-                                _nav(
-                                    "exit_livestock",
-                                    _clone_route("d1_livestock_to_town"),
-                                    timeout=5000,
-                                    settle=15,
+                                _AssertMaskTask(name="assert_livestock", expected=BIT_LIVESTOCK),
+                                # Leave the gift stand the way rest did: north
+                                # of the counter, west, then south through the
+                                # door.  MultiNav y-align uses safe-walk and
+                                # idles on 0xA1 structure.
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_north",
+                                    direction="up",
+                                    min_y=118,
+                                    max_y=123,
+                                    timeout=80,
                                 ),
-                                ScriptedWalkTask(
-                                    name="livestock_clear_door",
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_to_counter_x",
+                                    direction="left",
+                                    max_x=205,
+                                    timeout=80,
+                                ),
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_to_counter_row",
                                     direction="down",
-                                    frames=40,
-                                    run=True,
+                                    min_y=155,
+                                    timeout=80,
+                                ),
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_west",
+                                    direction="left",
+                                    max_x=129,
+                                    timeout=180,
+                                ),
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_south",
+                                    direction="down",
+                                    min_y=200,
+                                    timeout=180,
+                                ),
+                                WalkUntilCoordTask(
+                                    name="livestock_exit_remap",
+                                    direction="down",
+                                    tilemap=TOWN_TILEMAP,
+                                    min_x=400,
+                                    timeout=280,
+                                ),
+                                _HoldButtonsTask(
+                                    name="livestock_off_door",
+                                    buttons=("right", "b"),
+                                    frames=28,
                                 ),
                             ),
                         ),
@@ -444,4 +517,3 @@ def build_day1_handoff_tasks(
         # Baseline progress run: only the proven outdoor pair.
         parts.append(_AssertMaskTask(name="assert_ann_eve", expected=BIT_ANN | BIT_EVE))
     return SequenceTask(name="town_day1_handoff", tasks=tuple(parts))
-

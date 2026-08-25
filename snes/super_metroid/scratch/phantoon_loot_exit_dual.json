@@ -1,0 +1,123 @@
+{
+  "command": "bench",
+  "success": true,
+  "assist_enabled": true,
+  "frames": [
+    335,
+    335
+  ],
+  "seconds": [
+    5.574,
+    5.574
+  ],
+  "clock": [
+    "00:05.58",
+    "00:05.58"
+  ],
+  "runs": [
+    {
+      "success": true,
+      "entry": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 37,
+        "samus_y": 187,
+        "pose": 1,
+        "facing": 8,
+        "health": 299,
+        "game_state": 8,
+        "door_transition": 0,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "enemy0_hp": 0,
+        "pickups": []
+      },
+      "final": {
+        "room_id_hex": "0xCC6F",
+        "samus_x": 1240,
+        "samus_y": 139,
+        "pose": 10,
+        "facing": 4,
+        "health": 299,
+        "game_state": 8,
+        "door_transition": 0,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "enemy0_hp": 800,
+        "pickups": []
+      },
+      "timing": {
+        "frames": 335,
+        "seconds": 5.574,
+        "clock": "00:05.58",
+        "ntsc_fps": 60.0988
+      },
+      "frames": 335,
+      "seconds": 5.574,
+      "clock": "00:05.58",
+      "boss_bits_wrecked_ship": 1,
+      "phantoon_defeated": true,
+      "reasons": {
+        "phantoon_loot_exit_loot": 37,
+        "phantoon_loot_exit_door": 107,
+        "phantoon_loot_exit_hurt": 24,
+        "phantoon_loot_exit_settle": 167
+      },
+      "run": 1,
+      "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_phantoon_poweron.state"
+    },
+    {
+      "success": true,
+      "entry": {
+        "room_id_hex": "0xCD13",
+        "samus_x": 37,
+        "samus_y": 187,
+        "pose": 1,
+        "facing": 8,
+        "health": 299,
+        "game_state": 8,
+        "door_transition": 0,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "enemy0_hp": 0,
+        "pickups": []
+      },
+      "final": {
+        "room_id_hex": "0xCC6F",
+        "samus_x": 1240,
+        "samus_y": 139,
+        "pose": 10,
+        "facing": 4,
+        "health": 299,
+        "game_state": 8,
+        "door_transition": 0,
+        "missiles": 20,
+        "super_missiles": 5,
+        "selected_item": 0,
+        "enemy0_hp": 800,
+        "pickups": []
+      },
+      "timing": {
+        "frames": 335,
+        "seconds": 5.574,
+        "clock": "00:05.58",
+        "ntsc_fps": 60.0988
+      },
+      "frames": 335,
+      "seconds": 5.574,
+      "clock": "00:05.58",
+      "boss_bits_wrecked_ship": 1,
+      "phantoon_defeated": true,
+      "reasons": {
+        "phantoon_loot_exit_loot": 37,
+        "phantoon_loot_exit_door": 107,
+        "phantoon_loot_exit_hurt": 24,
+        "phantoon_loot_exit_settle": 167
+      },
+      "run": 2,
+      "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_phantoon_poweron.state"
+    }
+  ]
+}

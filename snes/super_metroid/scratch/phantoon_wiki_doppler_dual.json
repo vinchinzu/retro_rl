@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "frames": [12118, 12118],
+  "seconds": [201.635, 201.635],
+  "clock": ["03:21.97", "03:21.97"],
+  "hp": [0, 0],
+  "boss_bit": [true, true],
+  "missiles_spent": [25, 25],
+  "super_spent": [4, 4],
+  "rounds": [8, 8],
+  "close_eye_extra": [0, 0],
+  "max_barrage": [5, 5],
+  "baseline_frames": 20537,
+  "vs_baseline": -8419,
+  "pin": "scratch/post_ws_basement_to_phantoon.state",
+  "method": "wiki_missile_doppler_2_2_n",
+  "notes": "Two independent assist strategy runs from the same pin both 12118f (body 0 at 11093, $D82B bit 0 at 12118). Do not wire."
+}

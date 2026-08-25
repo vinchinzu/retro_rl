@@ -19,10 +19,14 @@ Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer),
 8-swing 2×2. Do **not** restore a morning whole-farm wipe. Grape+shop+
 8-ring plant+water from `Y1_After_Buy_Potato` is GREEN (`rr-m7mk` /
 `rr-bvam`, `recordings/d2_plant_water.json`: 8×`0x55`, bag spent, can
-20→12). Next live pin: leftover quota smash (`rr-w14t` / `rr-20w.2.8`).
-Hammer/axe RAM shelf is GREEN (`rr-5aaw`). Redo power-on after leftover
-is green so the compose plants 8 not 2. Gate B residual remains
-`rr-3ae8` / `rr-yuel` / `rr-rzpd`. Do not STATUS-promote Gate B.
+20→12). Leftover pin (`rr-w14t` / `rr-20w.2.8`) from the same state:
+10 pocket bushes GREEN, hammer shelf GREEN. Order is bushes pick+toss
+→ all fence posts to ponds → 10 stones to ponds → walk off shed door
+onto loaded a8/a1 → 4 large hammer → 2 stumps. CLEAR_ROCKS was red
+because hammer fetch stood on `(26,30)` `0xFF`. Do not redo power-on
+until leftover is green.
+Gate B residual remains `rr-3ae8` / `rr-yuel` / `rr-rzpd`. Do not
+STATUS-promote Gate B.
 
 **Already closed (do not re-open as bottleneck):**
 

@@ -1,0 +1,118 @@
+{
+  "hypothesis": "after left landing, morph RIGHT for next hole",
+  "halt": "dropped",
+  "boot": {
+    "phase": "boot",
+    "frame": 0,
+    "room": "0xCAF6",
+    "xy": [
+      1077,
+      907
+    ],
+    "pose": 9,
+    "gs": 8,
+    "morph": false,
+    "vy": 0,
+    "floor_y": 907
+  },
+  "final": {
+    "phase": "final",
+    "frame": 205,
+    "room": "0xCAF6",
+    "xy": [
+      1123,
+      1132
+    ],
+    "pose": 30,
+    "gs": 8,
+    "morph": true,
+    "vy": 0,
+    "floor_y": 1132
+  },
+  "samples": [
+    {
+      "phase": "boot",
+      "frame": 0,
+      "room": "0xCAF6",
+      "xy": [
+        1077,
+        907
+      ],
+      "pose": 9,
+      "gs": 8,
+      "morph": false,
+      "vy": 0,
+      "floor_y": 907
+    },
+    {
+      "phase": "land1",
+      "frame": 70,
+      "room": "0xCAF6",
+      "xy": [
+        1176,
+        961
+      ],
+      "pose": 29,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 961
+    },
+    {
+      "phase": "left_land",
+      "frame": 158,
+      "room": "0xCAF6",
+      "xy": [
+        1045,
+        1096
+      ],
+      "pose": 50,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1096
+    },
+    {
+      "phase": "p3_right",
+      "frame": 186,
+      "room": "0xCAF6",
+      "xy": [
+        1068,
+        1097
+      ],
+      "pose": 30,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1097
+    },
+    {
+      "phase": "p3_dropped",
+      "frame": 205,
+      "room": "0xCAF6",
+      "xy": [
+        1123,
+        1132
+      ],
+      "pose": 30,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1132
+    },
+    {
+      "phase": "final",
+      "frame": 205,
+      "room": "0xCAF6",
+      "xy": [
+        1123,
+        1132
+      ],
+      "pose": 30,
+      "gs": 8,
+      "morph": true,
+      "vy": 0,
+      "floor_y": 1132
+    }
+  ]
+}
