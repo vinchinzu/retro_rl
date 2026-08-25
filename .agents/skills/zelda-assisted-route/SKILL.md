@@ -5,15 +5,16 @@ description: Advance the Zelda I NES full-game route under Survival health refil
 
 # Zelda Assisted Route
 
-Advance one route boundary at a time with deterministic input, visual evidence,
-and the existing earned-capacity health refill.
+Advance one Survival route boundary with deterministic input and visual
+evidence. Session gates: `zelda-session`. Occupancy halt: `predict-path`.
+Do not use this skill to claim or tune Clean results.
 
 ## Establish the boundary
 
 1. Read `nes/zelda_i/AGENTS.md`, `docs/ASSIST_CONTRACT.md`, and the current
-   `docs/plan.md` handoff.
-2. Run `bd ready -l zelda_i` and inspect the active tip issue. Claim only one
-   issue.
+   `docs/plan.md` handoff. Session gates live in `zelda-session`.
+2. Run `bd ready -l zelda_i -l spine` and inspect the active tip issue.
+   Claim only one issue.
 3. Start from the real predecessor checkpoint. Record level, room, mode, x/y,
    keys, bombs, items, heart containers, and Triforce bits before acting.
    Predecessor inventory is sacred: do not default-zero keys or poke doors on a
@@ -28,18 +29,10 @@ and the existing earned-capacity health refill.
 
 ## Predict, then act
 
-Every live step needs a falsifiable RAM claim (`zelda_i.predict` /
-`retro_harness.predict`). A miss names the wrong belief; it is not a reason
-to extend a timeout.
-
-Offline first (no emulator):
-
-1. Room sequence: `door_graph.bfs_path` under inventory caps.
-2. In-room walk: `walk_physics.OccupancyWalker` grades `move DX,DY`
-   (`retro_harness.predict.grade_claims`). A stuck miss blocks the cell
-   ahead and replans. No path → stand. Halt at the first unrecoverable
-   miss; do not hunt or probe.
-3. Door clips (LEFT+UP residual) stay one-frame policies in `level*_path.py`.
+Occupancy / RAM-claim halt: [predict-path](../../../.grok/skills/predict-path/SKILL.md).
+Halt at the first occupancy miss; do not batch exploration; do not probe a
+path BFS/OccupancyWalker can close. Door clips (LEFT+UP residual) stay
+one-frame policies in `level*_path.py`.
 
 ## Run a screenshot-first loop
 
@@ -51,6 +44,8 @@ Offline first (no emulator):
    and add unit tests for boundary coordinates.
 3. Run one emulator trial. Save a screenshot on every room/screen transition,
    the final frame, and a compact sample every roughly 250 stuck frames.
+   Spine CLIs: `--no-video` (session gates). Leave proof is RAM +
+   `zelda_i.screen_glance`, not an MP4.
 4. On failure, inspect the final screenshot and the last coordinate/reason
    samples before editing. Change one thing, then rerun.
 5. Never add random jitter, silently extend timeouts, or repeat an unchanged
@@ -71,10 +66,8 @@ Offline first (no emulator):
 
 ## Stop cleanly
 
-Update `docs/plan.md` with the exact next command, expected transitions, last
-observed failure, and evidence paths. After a verified segment, also refresh
-the Next sections in `AGENTS.md` and `docs/STATUS.md`. If `LEVELN_ROUTE.md`
-still says poke, that is a bug. Put only verified facts plus the single
-program maturity gate in `docs/STATUS.md`. Run the narrow tests, update the
-active bead, `bd sync`, and commit code with `.beads/issues.jsonl`. Do not push
+Update the living residual (`nes/zelda_i/docs/tasks/rr-tne2-residual.md`) and
+the active bead. Do not refresh an AGENTS Next scoreboard. Do not
+STATUS-promote. Run the narrow tests. Export is
+`bd export -o .beads/issues.jsonl` (there is no `bd sync`). Do not push
 unless requested.
