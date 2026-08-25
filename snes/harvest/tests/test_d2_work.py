@@ -201,6 +201,24 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertEqual(_phase_timeout(rock_clear_phase(), 50_000), 50_000)
         self.assertEqual(_phase_timeout(rock_clear_phase(), 200_000), 120_000)
 
+    def test_leftover_probe_uses_repo_headed(self) -> None:
+        from pathlib import Path
+
+        src = (
+            Path(__file__).resolve().parents[1]
+            / "harvest"
+            / "scripts"
+            / "d2_leftover_probe.py"
+        )
+        text = src.read_text(encoding="utf-8")
+        self.assertIn("from retro_harness.headed import", text)
+        self.assertIn("add_headed_flag", text)
+        self.assertIn("attach_headed", text)
+        self.assertIn("idle_headed", text)
+        self.assertIn("headed_emu_repeat", text)
+        self.assertNotIn("WatchDisplay", text)
+        self.assertNotIn("--watch", text)
+
 
 if __name__ == "__main__":
     unittest.main()

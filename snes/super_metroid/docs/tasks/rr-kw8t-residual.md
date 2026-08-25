@@ -1,7 +1,8 @@
 ## Residual — rr-kw8t Gravity on the Phantoon tip
 
-**Status:** BLOCKED on hop 1 phase B (Ice kill + east takeoff). Living
-tip is `--to phantoon` **195,336f** ×2 (STATUS). Do not STATUS from a pin.
+**Status:** BLOCKED on hop 1 phase B (stand on the mid platform, then
+door). Ice hit on 638 is in. Living tip is `--to phantoon` **195,336f**
+×2 (STATUS). Do not STATUS from a pin.
 
 **Pin in:** `scratch/post_phantoon_leave.state` (`0xCC6F` ~(1240,139) p10
 gs=8, `$D82B` bit 0)
@@ -16,14 +17,17 @@ compose onto the one tip. Shape: `tasks/gravity_path_human` /
 | Power-on Phantoon | **195,336f** ×2 | `0xCC6F` (1240,139) p10 gs=8 |
 | Fight+leave pin compose | **12,455f** ×2 | same basement |
 | Hop 1 phase A | tunnel LEFT | floor under hatch ~(630–690, 185) |
+| Hatch-floor Atomic 638 | **dead** | `enemies_killed=2`; slot 3 gone |
 
 ### Hop 1 — powered Basement → Main Shaft
 
 Controller: `routes/kpdr/k6/ws_basement_return.py`
-`play_ws_basement_to_main`. **Keep it.** Do not revert Ice keepaway or
-`hatch_mount_action`. Dual:
+`play_ws_basement_to_main`. Ice policy in `ws_basement_ice.py`. **Keep
+both.** Do not revert Ice-until-dead or `hatch_mount_action` east
+takeoff (x≳720 spin-LEFT). Dual:
 `scripts/probe/ws_basement_return.py --dual --no-video`.
-Scratch: `ws_basement_to_main_dual.json` (RED, overwrite next).
+Scratch: `ws_basement_to_main_dual.json` (still the 8108f 879-tap miss —
+do not overwrite until a run actually sits on ~(657,163) p1/2).
 
 Watch (repo-wide `--headed`, not a custom pygame loop):
 
@@ -34,56 +38,64 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-basement-to-main 
 ./snes/super_metroid/play post_phantoon_leave --headed --assist-full
 ```
 
-`--headed` is `retro_harness.headed` (`add_headed_flag`, `attach_headed`).
-Probe calls `UnlimitedResourcesAssist.attach_env` **before** the window so
-the HUD reads `hp=n/max` after refill. `./play` default is ON@0.
-
 ### Phase A (reached, freeze)
 
 Morph-roll LEFT from the Phantoon door clears the tunnel.
 
-### Phase B (BLOCKED — halt duals)
+### Ice primitive (landed this session — do not re-prove the 879 miss)
 
-East takeoff + Ice-until-dead are in the hop. They still do not stand on
-~(657,91). Did **not** shoot the blue door.
+Shared shoot: `routes/skills/charge_shot.py`
+`position_then_charge_action`. Charge equipped: hold X, release fires
+(`$0CD0 >= 60`). Diagonal aim is shoulder **R** (never UP+LEFT).
+Jump-shot holds X through the first airborne frames, then releases.
 
-Earlier in-band floor jumps (do not restore): (651,188) p81 `UP+A`;
-(641,187) p9 into the Workrobot; (657,187) p2 standing on the robot.
+`ice_keepaway_action` walks into a seat (east of the Workrobot clamp)
+then charge-releases. Horizontal taps from x=879 do **not** connect:
+the hatch pillar blocks LOS to 638 at (638,168).
 
-This session (keep these adds):
+Movement stalls (not stun):
 
-| # | Final | Miss |
-|--:|-------|------|
-| 1 | (974,187) p37 mov=14 2222f | Charge held, no Ice shot; pose-37 stall |
-| 2 | **(879,187) p2** **8108f** | tap-release Ice. `enemies_killed=1`. Health **299/299** |
+| name | RAM | what |
+|------|-----|------|
+| turning | mov=14 / pose 37–38 | firing X during the turn is the pose-37 stall |
+| knockback | pose 137/138 | live Atomic contact |
+| frozen_atomic | freeze_timer>0, overlap | solid; walking into it zeros vx |
+| workrobot | `0xE8FF` gap<48 | solid, no damage |
 
-Timeout dump (do not re-dump unless the pin moved):
+Single-probe (not dual) after the primitive: **killed=2**, hatch-floor
+638 gone, map-side Atomic 152 skipped, health 299/299. First Ice-only
+window sat **(717,163) p48** on the right lip of the mid platform.
 
-| slot | id | xy | hp | freeze | what |
-|-----:|----|-----|---:|-------:|------|
-| 0 | `0xE8FF` | **(624,176)** | 800 | 0 | Workrobot — now on the hatch seat |
-| 1 | `0xE8FF` | (384,176) | 800 | 0 | Workrobot |
-| 2 | `0xE9FF` | (152,77) | 250 | 0 | Atomic, map-side — skip |
-| 3 | `0xE9FF` | **(638,168)** | **250** | 0 | hatch-floor Atomic. Unfrozen. Shots from 879 miss |
-| 5 | `0xEA3F` | (1145,106) | 80 | 0 | Covern — tank |
+### Phase B (BLOCKED — hatch seat)
 
-The 852 high Atomic is gone (the kill). 638 is still 250 after ~8k frames of
-2f-tap / 6f-release Ice from x=879. Horizontal taps do not connect;
-`ice_keepaway_action` stays on that blob and never reaches the 720 takeoff.
-Workrobot 624 occupies under-hatch. Beams Ice `0x1007`.
+East takeoff + Ice-until-dead are in the hop. They still do not **stand**
+on ~(657,163) p1/2. Did **not** shoot the blue door. Did **not** dual.
+
+Latest single (RED, `ws_basement_to_main.json` only):
+
+| run | frames | final | miss |
+|-----|-------:|-------|------|
+| Ice primitive first window | 1882 | **(717,163) p48** | on the lip, facing right; hatch_mount was still RIGHT+B |
+| latest | **2842** | (728,175) p26 mov=3 | spin-LEFT at takeoff height; not seated under the door |
+
+Workrobots after the Ice kill walk west (~260 and ~440). Under-hatch
+floor is then empty — but a gun-jump from y=187 hits the platform
+**underside**, not the ceiling door. Door is from the mid platform.
 
 ### Next session (add, do not revert)
 
-Keep `hatch_mount_action` (x≳720 `spin_jump("LEFT")`). Keep Ice-until-dead
-around `_run_to_hatch`. Keep `attach_env` before `--headed`.
+Keep Ice-until-dead + charge-release seat. Keep `hatch_mount_action`
+x≳720 spin-LEFT on the **floor**. Keep on-platform walk to x=657 once
+y≤175 and vy≈0.
 
-One add: **hit the 638 Atomic.** Tap Ice from 879 is not a hit. Need a
-shared shoot primitive (charge-release, aim angle / jump-shot, position
-under the blob, then fire) so 638 actually dies, then takeoff, then
-tap-shot the blue ceiling door into ordinary `0xCAF6` gs=8.
+One add: **stand on the platform under the door** ~(657,163) pose 1/2.
+The 717,163 lip landing is the handoff — land, walk LEFT, then
+`hatch_jump_action` tap-shot the blue ceiling door into ordinary
+`0xCAF6` gs=8.
 
-Do not 4th-dual this miss. Overwrite `scratch/ws_basement_to_main_dual.json`
-only. Glance the leave. No mid pin. No STATUS. Tip stays `phantoon`.
+Do not dual the 879-tap miss. Overwrite `scratch/ws_basement_to_main_dual.json`
+only after a seated platform standing. Glance the leave. No mid pin.
+No STATUS. Tip stays `phantoon`.
 
 ### Non-claims
 
@@ -95,3 +107,4 @@ only. Glance the leave. No mid pin. No STATUS. Tip stays `phantoon`.
 - Did not treat low-WRAM `boss_bits[3]` as Phantoon (open-bus); bank 7E
   still has bit 0
 - Did not revert Ice keepaway or the east takeoff
+- Did not dual after the 638 hit (hatch seat still red)

@@ -321,6 +321,134 @@ class LeftoverPondDumpTests(unittest.TestCase):
         self.assertIsNotNone(task._current)
         self.assertEqual(tuple(task._current.tile), (29, 31))
 
+    def test_pond_dump_hops_to_nearest_wall_post(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 11, 31, FENCE)
+        _set_tile(ram, 29, 31, FENCE)
+        _set_player_tile(ram, (12, 28))
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            corridor_only=False,
+            pond_dump=True,
+            max_steps_per_fence=400,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._current)
+        self.assertEqual(tuple(task._current.tile), (11, 31))
+
+    def test_pond_dump_does_not_south_charge_from_north_farm(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (18, 20))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            pond_dump=True,
+            max_steps_per_fence=400,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(18, 21), tile_id=0x05)
+        task._navigator.update(ram)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._state, "navigate_pond")
+        self.assertFalse(task._corridor_charge_done)
+        self.assertLess(len(task._action_queue), 40)
+
+    def test_pond_dump_timeout_keeps_carrying(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (18, 20))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            pond_dump=True,
+            max_steps_per_fence=10,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate"
+        task._current = SimpleNamespace(tile=(18, 21), tile_id=0x05)
+        task._approach_tile = (18, 20)
+        task._steps_on_fence = 10
+        task._navigator.update(ram)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._state, "navigate_pond")
+        self.assertNotEqual(task._state, "local_drop")
+        self.assertIn("keep carrying", result.reason)
+
+    def test_pond_dump_boxed_does_not_local_drop(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0x05)
+        for ty in range(18, 22):
+            for tx in range(16, 20):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_player_tile(ram, (18, 20))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            pond_dump=True,
+            max_steps_per_fence=400,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(18, 21), tile_id=0x05)
+        task._navigator.update(ram)
+        for _ in range(8):
+            result = task.step(world)
+            task._navigator.update(ram)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._state, "navigate_pond")
+
     def test_pond_dump_local_drop_does_not_count_as_cleared(self) -> None:
         from harvest.tasks.fence_flow import ADDR_PLAYER_STATE, FenceClearLoopTask
 
@@ -387,6 +515,73 @@ class LeftoverPondDumpTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._state, "scan")
         self.assertIn((32, 26), task._skip_tiles)
+
+    def test_skip_clears_temp_blocked_so_wall_is_not_sealed(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 29, 31, FENCE)
+        _set_player_tile(ram, (15, 29))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            pond_dump=True,
+            max_steps_per_fence=400,
+            max_failures=20,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._current = SimpleNamespace(tile=(29, 31), tile_id=0x05)
+        task._pathfinder.temp_blocked.update({(28, 30), (29, 30), (30, 30)})
+        result = task._skip_current("stasis")
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._pathfinder.temp_blocked, set())
+        self.assertIn((29, 31), task._skip_tiles)
+
+    def test_pond_dump_hops_around_stump_inside_viewport(self) -> None:
+        from harvest.tasks.fence_flow import (
+            ACTION_CARRYING_BIT,
+            ADDR_PLAYER_STATE,
+            FenceClearLoopTask,
+        )
+        from harvest.tasks.nav import VIEWPORT_HOP_TILES
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        stump = ((27, 30), (28, 30), (27, 31), (28, 31))
+        for (tx, ty), tid in zip(stump, (0x09, 0x0A, 0x0B, 0x0C)):
+            _set_tile(ram, tx, ty, tid)
+        _set_player_tile(ram, (24, 28))
+        ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(
+            max_fences=None,
+            pond_dump=True,
+            max_steps_per_fence=400,
+        )
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._corridor_charge_done = True
+        task._current = SimpleNamespace(tile=(24, 29), tile_id=0x05)
+        task._navigator.update(ram)
+
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        path = list(task._navigator.path or [])
+        self.assertTrue(path)
+        self.assertLessEqual(len(path), VIEWPORT_HOP_TILES)
+        self.assertTrue(set(stump).isdisjoint(path))
 
 
 if __name__ == "__main__":

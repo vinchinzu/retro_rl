@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
+from super_metroid.routes.kpdr.k6.ws_basement_ice import movement_stall_reason
 from super_metroid.routes.kpdr.k6.ws_basement_return import (
     ATOMIC_ID,
     WORKROBOT_ID,
@@ -26,6 +27,7 @@ from super_metroid.routes.kpdr.k6.ws_basement_return import (
     workrobot_avoid_action,
     ws_basement_main_settled,
 )
+from super_metroid.routes.skills.charge_shot import CHARGE_FULL
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_BASEMENT, ROOM_WS_MAIN
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
 
@@ -83,14 +85,20 @@ def test_hatch_seat_is_ceiling_band() -> None:
     assert not at_ws_basement_hatch_seat(pin)
     seat = _state(samus_x=657, samus_y=91, pose=2)
     assert at_ws_basement_hatch_seat(seat)
+    on_plat = _state(samus_x=657, samus_y=163, pose=2)
+    assert at_ws_basement_hatch_seat(on_plat)
     floor = _state(samus_x=657, samus_y=187, pose=2)
     assert not at_ws_basement_hatch_seat(floor)
+    peak = _state(samus_x=673, samus_y=160, pose=48, velocity_y=2)
+    assert not at_ws_basement_hatch_seat(peak)
+    lip = _state(samus_x=717, samus_y=163, pose=48)
+    assert not at_ws_basement_hatch_seat(lip)
     wrong_room = _state(room_id=ROOM_WS_MAIN, samus_x=657, samus_y=91)
     assert not at_ws_basement_hatch_seat(wrong_room)
 
 
 def test_hatch_mount_from_floor_under_hatch() -> None:
-    """Under-hatch is occupied. Takeoff is x≳720, spin-LEFT onto y=91."""
+    """Under-hatch floor still flees east. On-platform lip walks to x=657."""
     under = hatch_mount_action(WS_BASEMENT_PLATFORM_X, 185, 2, 0)
     assert under == ("RIGHT", "B")
     assert "A" not in under
@@ -107,12 +115,19 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
     assert "A" not in approach
     on_seat = hatch_mount_action(657, 91, 2, 0)
     assert "A" not in on_seat
+    assert hatch_mount_action(717, 163, 48, 2) == ()
+    lip_air_done = hatch_mount_action(717, 163, 48, 0)
+    assert "LEFT" in lip_air_done
+    lip = hatch_mount_action(717, 163, 2, 0)
+    assert "LEFT" in lip
+    assert "RIGHT" not in lip
     for x, y, pose, vy in (
         (630, 185, 81, 2),
         (630, 185, 2, 0),
         (641, 187, 9, 0),
         (680, 185, 10, 0),
         (657, 185, 2, 0),
+        (719, 185, 2, 0),
         (740, 185, 2, 0),
         (880, 185, 2, 0),
         (657, 91, 2, 0),
@@ -132,15 +147,21 @@ def _robot(*, x: int, y: int = 176, hp: int = 800) -> BasementEnemy:
 
 def test_ice_keepaway_taps_x_until_atomic_is_dead() -> None:
     shot = ice_keepaway_action(670, 185, FACING_LEFT, (_atomic(x=638, y=168),))
-    assert shot == ("X",)
+    assert "X" in shot
+    assert "LEFT" not in shot
     face = ice_keepaway_action(670, 185, FACING_RIGHT, (_atomic(x=638, y=168),))
     assert face == ("LEFT",)
     frozen_alive = ice_keepaway_action(
         670, 185, FACING_LEFT, (_atomic(x=638, y=168, freeze=180),)
     )
-    assert frozen_alive == ("X",)
+    assert "X" in frozen_alive
+    # x=879 cannot shoot through the hatch pillar — walk into a seat.
+    blocked = ice_keepaway_action(879, 187, FACING_LEFT, (_atomic(x=638, y=168),))
+    assert blocked[0] == "LEFT"
+    assert "B" in blocked
     under = ice_keepaway_action(900, 185, FACING_LEFT, (_atomic(x=852, y=73),))
-    assert under == ("LEFT",)
+    assert "X" in under
+    assert "R" in under
     above = ice_keepaway_action(852, 185, FACING_LEFT, (_atomic(x=852, y=73),))
     assert above == ("UP", "X")
     dead = ice_keepaway_action(
@@ -151,6 +172,27 @@ def test_ice_keepaway_taps_x_until_atomic_is_dead() -> None:
     assert map_side is None
     overlap = ice_keepaway_action(638, 168, FACING_LEFT, (_atomic(x=638, y=168),))
     assert overlap == ("X",)
+
+
+def test_ice_keepaway_charge_release_and_robot_clamp() -> None:
+    blob = _atomic(x=638, y=168)
+    robot = _robot(x=624)
+    release = ice_keepaway_action(
+        672, 187, FACING_LEFT, (blob, robot), charge=CHARGE_FULL, velocity_y=2
+    )
+    assert release is not None
+    assert "X" not in release
+    assert "A" in release
+    turning = ice_keepaway_action(
+        672, 187, FACING_LEFT, (blob,), movement_type=14
+    )
+    assert turning == ("LEFT",)
+    assert "X" not in turning
+    assert movement_stall_reason(672, 187, 14, 37, (blob, robot)) == "turning"
+    assert movement_stall_reason(640, 187, 0, 2, (robot,)) == "workrobot"
+    frozen = _atomic(x=670, y=185, freeze=180)
+    assert movement_stall_reason(670, 185, 0, 2, (frozen,)) == "frozen_atomic"
+    assert movement_stall_reason(879, 187, 0, 2, (blob,)) is None
 
 
 def test_workrobot_avoid_does_not_walk_into_robot() -> None:
@@ -193,8 +235,10 @@ def test_run_to_hatch_does_not_spin_left_in_band() -> None:
     assert "hatch_mount_action" in src
     assert "ice_keepaway_action" in src
     assert "workrobot_avoid_action" in src
-    assert "_ICE_TAP_FRAMES" in src
-    assert "_ICE_RELEASE_FRAMES" in src
+    assert "session_beam_charge" in src
+    assert "_ICE_TAP_FRAMES" not in src
+    assert "_MOVEMENT_STUN" not in src
+    assert "pose) in (37, 38)" not in src
     assert f"{'{'}label{'}'}_hop" not in src
     assert "LEFT\", \"B\", \"A\"" not in src
 
@@ -203,6 +247,7 @@ def test_hatch_jump_is_up_a_not_super_or_l() -> None:
     assert hatch_jump_action(657, 91, 2, 0) == ("UP", "X")
     assert hatch_jump_action(657, 91, 2, 2) == ("UP",)
     assert hatch_jump_action(657, 91, 2, 10) == ("UP", "A")
+    assert "LEFT" in hatch_jump_action(690, 176, 22, 0)
     assert "LEFT" in hatch_jump_action(WS_BASEMENT_HATCH_X_MAX + 10, 91, 2, 0)
     assert "RIGHT" in hatch_jump_action(WS_BASEMENT_HATCH_X_MIN - 10, 91, 2, 0)
     assert hatch_jump_action(657, 91, 138, 0) == ()

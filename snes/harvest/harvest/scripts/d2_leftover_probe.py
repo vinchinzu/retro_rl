@@ -8,7 +8,8 @@ Isolated leftover pin (rr-w14t / rr-20w.2.8). Do not redo power-on here.
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\
       --state Y1_After_Buy_Potato --out recordings/d2_leftover_smash.json
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe --dump
-    uv run python -m harvest.scripts.d2_leftover_probe --watch --section bushes
+    uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \\
+      --state Y1_D2_After_Bushes
 """
 
 from __future__ import annotations
@@ -22,6 +23,12 @@ from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 ensure_monorepo_on_path()
 
 from retro_harness import TaskStatus, WorldState
+from retro_harness.headed import (
+    add_headed_flag,
+    attach_headed,
+    headed_emu_repeat,
+    idle_headed,
+)
 
 from harvest.core.carry import backpack_tool, selected_tool
 from harvest.core.game_clock import clock_from_ram, format_segment_time
@@ -49,12 +56,7 @@ from harvest.planner.day_phase_types import DayPlannerPolicy
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
-from harvest.runtime.watch_display import (
-    WatchDisplay,
-    configure_headed,
-    configure_headless,
-    fast_env_step,
-)
+from harvest.runtime.watch_display import configure_headless
 from harvest.tasks.farm_clear_quota import (
     ClearQuota,
     DebrisCounts,
@@ -96,28 +98,24 @@ def _parse_args() -> argparse.Namespace:
         help="Snapshot debris/stamina/clock and exit (no smash).",
     )
     p.add_argument("--no-spa", action="store_true", help="Never insert HOT_SPRING_STAMINA.")
-    p.add_argument(
-        "--watch",
-        action="store_true",
-        help="Open a pygame window ([ ] speed, TAB turbo). No HEADLESS.",
-    )
-    p.add_argument("--watch-scale", type=int, default=3, help="Watch window integer scale")
+    add_headed_flag(p)
     return p.parse_args()
 
 
-def _run_task(env, task, *, timeout: int, start_frame: int, watch: WatchDisplay | None = None):
+def _headed_hud(env) -> str:
+    ram = env.get_ram()
+    clock = clock_from_ram(ram)
+    pos = get_pos_from_ram(ram)
+    tm = int(read_ram_value(ram, "tilemap") or 0)
+    return f"BOT leftover {clock} map={hex(tm)} ({pos.x // 16},{pos.y // 16})"
+
+
+def _run_task(env, task, *, timeout: int, start_frame: int):
     obs = None
     result = None
     frame = start_frame
-    closed = False
     while frame <= start_frame + timeout:
-        if watch is not None:
-            if not watch.pump():
-                closed = True
-                break
-            budget = watch.emu_repeat()
-        else:
-            budget = 1
+        budget = headed_emu_repeat(env)
         stopped = False
         for _ in range(budget):
             ram = env.get_ram()
@@ -133,21 +131,14 @@ def _run_task(env, task, *, timeout: int, start_frame: int, watch: WatchDisplay 
                     stopped = True
                     break
                 action = result.action.action if result.action is not None else make_action()
-            if watch is not None:
-                last = _ == budget - 1
-                obs = fast_env_step(env, action, update_obs=last)
-            else:
-                obs, _reward, _term, _trunc, _info = env.step(action)
+            obs, _reward, _term, _trunc, _info = env.step(action)
             frame += 1
             if frame > start_frame + timeout:
                 stopped = True
                 break
-        if watch is not None and not watch.present(obs, emu_frame=frame):
-            closed = True
-            break
         if stopped:
             break
-    return frame, result, env.get_ram(), closed
+    return frame, result, env.get_ram()
 
 
 def _carry(ram) -> dict:
@@ -269,22 +260,19 @@ def _print_table(start: dict, end: dict, cleared: dict, wanted: ClearQuota, fram
 
 def main() -> int:
     args = _parse_args()
-    if args.watch:
-        configure_headed()
-    else:
+    headed = bool(getattr(args, "headed", False))
+    if not headed:
         configure_headless()
     env = make_harvest_env(state=args.state)
     journal = []
-    watch = None
+    pygame_mod = None
     ctx = TaskBuildContext(state_name=args.state)
     try:
-        boot = env.reset()
-        obs = boot[0] if isinstance(boot, tuple) else boot
-        if args.watch:
-            watch = WatchDisplay(scale=args.watch_scale, title="Harvest D2 leftover")
-            if not watch.start(obs):
-                _write_payload(args.out, {"ok": False, "reason": "watch window failed"})
-                return 1
+        env.reset()
+        if headed:
+            pygame_mod = attach_headed(
+                env, title="Harvest D2 leftover", hud=_headed_hud, speed=4.0
+            )
         ram = env.get_ram()
         world = WorldState(frame=0, ram=ram, info={}, obs=None)
         frame = 0
@@ -292,20 +280,18 @@ def main() -> int:
         if is_house_tilemap(tilemap) or not is_farm_tilemap(tilemap):
             exit_task = ExitToFarmTask()
             exit_task.reset(world)
-            frame, result, ram, closed = _run_task(
-                env, exit_task, timeout=2_000, start_frame=0, watch=watch
+            frame, result, ram = _run_task(
+                env, exit_task, timeout=2_000, start_frame=0
             )
             journal.append(
                 {
                     "phase": "exit_to_farm",
                     "status": result.status.value if result is not None else "none",
-                    "reason": "watch window closed" if closed else (
-                        result.reason if result is not None else ""
-                    ),
+                    "reason": result.reason if result is not None else "",
                     "frames": frame,
                 }
             )
-            if closed or result is None or result.status != TaskStatus.SUCCESS:
+            if result is None or result.status != TaskStatus.SUCCESS:
                 _write_payload(args.out, {"journal": journal, "ok": False})
                 return 1
 
@@ -333,16 +319,14 @@ def main() -> int:
             before = count_debris(ram).as_dict()
             stam_before = Stamina.from_ram(ram).to_dict()
             task.reset(world)
-            frame, result, ram, closed = _run_task(
-                env, task, timeout=timeout, start_frame=frame, watch=watch
+            frame, result, ram = _run_task(
+                env, task, timeout=timeout, start_frame=frame
             )
             after = count_debris(ram).as_dict()
             row = {
                 "phase": spec.phase,
                 "status": result.status.value if result is not None else "none",
-                "reason": "watch window closed" if closed else (
-                    result.reason if result is not None else ""
-                ),
+                "reason": result.reason if result is not None else "",
                 "frames": frame,
                 "timeout": timeout,
                 "cleared_count": getattr(task, "cleared_count", None),
@@ -363,7 +347,7 @@ def main() -> int:
                     "ok": False,
                 },
             )
-            if closed or result is None or result.status != TaskStatus.SUCCESS:
+            if result is None or result.status != TaskStatus.SUCCESS:
                 ok = False
                 break
 
@@ -398,9 +382,15 @@ def main() -> int:
         _write_payload(args.out, payload)
         _print_table(start, end, cleared.as_dict(), wanted, frame)
         return 0 if ok else 1
+    except KeyboardInterrupt:
+        _write_payload(
+            args.out,
+            {"journal": journal, "ok": False, "reason": "headed window closed"},
+        )
+        return 1
     finally:
-        if watch is not None:
-            watch.close()
+        if headed and pygame_mod is not None:
+            idle_headed(env, pygame_mod)
         env.close()
 
 
