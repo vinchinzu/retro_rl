@@ -11,6 +11,7 @@ description: >
 
 Read [snes/harvest/docs/INTERACT.md](../../../snes/harvest/docs/INTERACT.md)
 and run the scan commands there before any new `tasks/*.json` recording.
+Session gates: `harvest-session`.
 
 ## This turn
 

@@ -2,7 +2,9 @@
 
 Future work only. Proven facts live in [STATUS.md](STATUS.md).
 Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
-Tracker: `bd ready -l harvest`.
+Tracker: `bd ready -l harvest -l spine`. Session loop:
+`.grok/skills/harvest-session/` (one bead, one living residual, halt-3,
+no STATUS from a pin). Immediate session card: `rr-20w.2.3` D2 CLEAR_PLOT.
 
 **Doc consolidation (2026-08-18):** deleted `CODE_QUALITY_REVIEW.md`
 (review essay), `bot_architecture_plan.md` (layer ownership folded here
@@ -43,6 +45,16 @@ Further MultNav residuals (forage interact, corridor densify) land as helpers,
 not thrash `if`s in the MultNav step machine. Layer ownership: RAM catalog
 and tile/map model stay in `core` / `maps`; domain tasks compose
 `tasks/skills.py` instead of growing monofile FSMs.
+
+| Concern | Module(s) |
+|---------|-----------|
+| MultNav | `multi_nav` (not `navigation.py`) |
+| Pond / crop thrash | `pond_*`, `crop_{establish,water_ops,refill*,navigate,detect,act_verify,step}` |
+| Home | `home_return`, `home_sleep`, `home_approach`, `home_recover` |
+| Coop / cow | `coop_{layout,feed_ops,egg_ops}`, `cow_*` |
+| Maps / routes | `map_config` facade + `map_types` / `farm_pond` / `map_routes` |
+| Day plan | `day_plan_orchestrator`, `multi_day_planner`, `day_phase_{catalog,berry,chicken,cow}` |
+| D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
 
 ## Gate table (from retired MILESTONES.md)
 
@@ -182,3 +194,96 @@ Ordered structural work — detail in PLANNING_STACK workstreams A1–A8.
 
 - ROM not in git; `retro_setup` SHA1 gate
 - Long soaks manual under `logs/long_runs/`
+
+## CLI catalog
+
+Parked from AGENTS. Session commands stay in `snes/harvest/AGENTS.md`.
+`HEADLESS=1` on live probes; glance is `harvest.clock_glance`; no MP4.
+
+```bash
+./run_bot.sh play --autoplay --state latest
+
+# Live power-on with bot (window + [ ] speed): title → D1 handoff → multi-day
+uv run python -m harvest.runtime.harvest_bot play --autoplay --power-on --end-of-spring
+# --no-d1-handoff skips town talks/shed/sleep after power-on
+
+# Boot / power-on (clean diary → Spring D1 07:00 town)
+uv run python -m harvest.scripts.boot_probe --state Y1_Inside_House
+HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on \
+  --out recordings/power_on_boot_probe.json
+
+# D1 town recon (docs/town_day1_recon.md)
+uv run python -m harvest.scripts.town_day1_recon checklist
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_AnnEve --out recordings/town_day1_rest_auto.json
+
+# Multi-day soak (M3)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Inside_House --end-of-spring \
+  --out recordings/run_spring_month.json \
+  --save-end-state Y1_Summer_D1_Morning
+
+# Power-on continuous (rr-5in): D1 handoff auto + multi-day
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2 \
+  --out recordings/power_on_d1_handoff_d2.json
+# Composed D1 handoff from the power-on town gate (six talks → truck → shed → D2)
+HEADLESS=1 uv run python -m harvest.scripts.town_day1_recon auto \
+  --state Y1_Spring_D1_Town_Gate \
+  --save-end-state Y1_D2_Morning_After_D1 \
+  --out recordings/town_day1_town_gate_composed.json
+# Do not start D2 work from Y1_D2_Morning_After_D1 — grape return-to-bin
+# seals at the house fence (rr-oqri).
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --end-of-spring \
+  --out recordings/power_on_spring_to_summer.json
+
+# Mountain berry variants
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --screenshot recordings/mountain_grape_stand.png
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --pick --screenshot recordings/mountain_grape_kept.png
+HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
+  --state Y1_Inside_House --ship --until-lunch \
+  --out recordings/mountain_segments_clock.json
+
+# Post-shop hoe+seed collect + 3x3 plant (8 around (13,28); rr-m7mk)
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --out recordings/d2_plant_probe.json
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --hoe-only --out recordings/d2_hoe_ring.json
+HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \
+  --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
+
+# Leftover smash: 10 bushes pick+toss → dump fences in ponds → 10 stones in ponds → hammer 4 large → axe 2 stumps
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
+  --state Y1_After_Buy_Potato --out recordings/d2_leftover_smash.json
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe --dump
+
+# Stamina object from a pin (`player.stamina` is current/max/tool_hits)
+uv run python -m harvest.runtime.harvest_bot world --state Y1_Inside_House --compact
+# Drain + outdoor spa until current == max, then return (rr-pzw)
+HEADLESS=1 uv run python -m harvest.scripts.hot_spring_probe \
+  --state Y1_D2_Night_Farm \
+  --min-stamina full --target-stamina 70 --return-to-farm \
+  --out recordings/hot_spring_full.json
+uv run python -m harvest.scripts.hot_spring_probe \
+  --state Y1_D2_Night_Farm \
+  --min-stamina full --target-stamina 70 --return-to-farm --watch
+
+# Harvest + ship + post-5pm wallet credit (rr-53g)
+HEADLESS=1 uv run python -m harvest.scripts.harvest_ship_money_probe \
+  --state Y1_Day09_Harvest_Mode_Start \
+  --out recordings/harvest_ship_5pm_money.json
+
+# Gate A multi-day successor: harvest phases + money>$100 (rr-y8n)
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Day09_Harvest_Mode_Start --days 1 \
+  --out recordings/run_spring_gate_a_day09.json
+
+# Record task (F5) / tests
+uv run python -m harvest.runtime.harvest_bot play --state latest --record <name> --no-day-plan
+uv run python -m unittest tests.test_day_plan_sequences tests.test_task_progress -v
+
+# Editor
+./kickoff.sh
+PYTHONPATH=.. uv run --project .. python -m retro_harness.editor_launcher harvest -- --state latest
+```
