@@ -6,6 +6,7 @@ import numpy as np
 
 from zelda_i.level6_path import BLOCK_OBJECT_TYPE, south_face_stand
 from zelda_i.level6_spine import L6_THROUGH
+from zelda_i.level6_stairs09 import NE_BLOCK_X_MIN
 from zelda_i.level6_stairs3a_71 import (
     DATED_LEFTOVER,
     HOLE_TILE,
@@ -80,6 +81,23 @@ def test_level6_stairs3a_71_push_then_tile_71_still_stand() -> None:
     assert list(act.action) == list(nes_action("LEFT", "DOWN"))
     assert list(act.action) != list(nes_action("UP"))
     assert not ctl.failed
+    aligned = _ram(level=6, screen=0x3A, x=114, y=149, tile=116)
+    aligned[ADDR_ROD] = 1
+    _plant_block(aligned, 11, 112, 144)
+    act = ctl.step(read_snapshot(aligned))
+    assert act.reason == "stand_y"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert not ctl.failed
+    assert ctl.walker.misses == 1
+    south = _ram(level=6, screen=0x3A, x=114, y=160)
+    south[ADDR_ROD] = 1
+    _plant_block(south, 11, 112, 144)
+    act = ctl.step(read_snapshot(south))
+    assert act.reason == "push_block"
+    assert list(act.action) == list(nes_action("UP"))
+    assert not ctl.failed
     block = center_block_0x68(read_snapshot(leftover))
     assert block is not None
     assert south_face_stand(block) == (112, 160)
@@ -118,6 +136,29 @@ def test_level6_stairs3a_71_push_then_tile_71_still_stand() -> None:
     to_ne.phase = hole.phase
     to_ne.hole_x = 112
     act = to_ne.step(read_snapshot(inland))
+    assert act.reason == "ne_sidestep"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("UP"))
+    west_south = _ram(level=6, screen=0x3A, x=72, y=165, tile=116)
+    west_south[ADDR_ROD] = 1
+    _plant_block(west_south, 11, 208, 96)
+    from_v2 = make_stairs_3a_71_controller()
+    from_v2.phase = hole.phase
+    from_v2.hole_x = 112
+    from_v2.walker.misses = 1
+    act = from_v2.step(read_snapshot(west_south))
+    assert act.reason == "ne_sidestep"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert not from_v2.failed
+    assert from_v2.walker.misses == 1
+    ne_col = _ram(level=6, screen=0x3A, x=NE_BLOCK_X_MIN, y=165)
+    ne_col[ADDR_ROD] = 1
+    _plant_block(ne_col, 11, 208, 96)
+    up_ne = make_stairs_3a_71_controller()
+    up_ne.phase = hole.phase
+    up_ne.hole_x = 112
+    act = up_ne.step(read_snapshot(ne_col))
     assert act.reason == "ne_y"
     assert list(act.action) == list(nes_action("UP"))
     assert list(act.action) != list(nes_action("RIGHT"))

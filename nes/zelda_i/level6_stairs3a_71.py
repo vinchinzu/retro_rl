@@ -2,7 +2,9 @@
 
 Leftover play 0x3A (144,141) rod=1 keys=4 bombs=8 TF=0x1F bow=0 arrows=0.
 Reuse stairs3a push: LEFT+DOWN clip after dated leftover miss (144,141)
-tile 118, south-face UP, y-move 8px. Then stairs09 analog: NE 0x68
+tile 118, then DOWN to south-face y=160 after clip x-aligns (v1 leftover
+(114,149) tile 116, misses still 1 — do not occupancy_halt), south-face
+UP, y-move 8px. Then stairs09 analog: NE 0x68
 (x>=184; live leftover slot11 jump 208,96) south-face UP onto tile 0x71,
 still-stand CheckWarp. Do not idle on tile 119 (v3 leftover 112,146).
 Do not hold-UP past the hole (v2 leftover 112,133 tile 179). Occupancy
@@ -29,7 +31,7 @@ from zelda_i.level6_path import (
     WAIT_BLOCK_MAX,
     south_face_stand,
 )
-from zelda_i.level6_stairs09 import ne_block_0x68
+from zelda_i.level6_stairs09 import NE_BLOCK_X_MIN, ne_block_0x68
 from zelda_i.level6_stairs3a import center_block_0x68
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
@@ -270,7 +272,13 @@ class Level6Stairs3A71Controller:
             return self._emit(
                 snap, FrameAction(nes_action("RIGHT"), "ne_sidestep")
             )
+        # v2 leftover (72,165) tile 116: y-first UP 0px then knockback west.
+        # RIGHT to NE column (x>=184, west of east door) then UP to y=112.
         if xy[1] > ty + PUSH_ALIGN_TOL and xy[0] < EAST_DOOR_XMIN:
+            if xy[0] < NE_BLOCK_X_MIN:
+                return self._emit(
+                    snap, FrameAction(nes_action("RIGHT"), "ne_sidestep")
+                )
             return self._emit(snap, FrameAction(nes_action("UP"), "ne_y"))
         if xy[1] < ty - PUSH_ALIGN_TOL:
             return self._emit(snap, FrameAction(nes_action("DOWN"), "ne_y"))
@@ -389,6 +397,12 @@ class Level6Stairs3A71Controller:
                             snap,
                             FrameAction(nes_action("LEFT", "DOWN"), "stand_clip"),
                         )
+                    # v1 leftover (114,149) tile 116: clip x-aligned, y
+                    # still short of south-face 160, misses still 1.
+                    if xy[1] < dest[1] - PUSH_ALIGN_TOL:
+                        return self._emit(
+                            snap, FrameAction(nes_action("DOWN"), "stand_y")
+                        )
                     return self._fail(
                         snap, f"occupancy_halt_{xy[0]}_{xy[1]}"
                     )
@@ -504,7 +518,10 @@ class Level6Stairs3A71Controller:
             "samples": list(self.samples),
             "policy": (
                 "LEFT+DOWN clip after leftover (144,141) tile-118 miss; "
-                "south-face UP until y-move 8px; NE 0x68 south-face UP onto "
+                "DOWN to south-face y=160 after clip x-aligns (misses still 1); "
+                "south-face UP until y-move 8px; RIGHT to x>=184 then UP to "
+                "NE south-face y (no y-first UP west of hole); NE 0x68 "
+                "south-face UP onto "
                 "tile 0x71 still-stand; no tile-119 idle; no hold-UP past hole; "
                 "halt first new occupancy miss; dest is RAM"
             ),
