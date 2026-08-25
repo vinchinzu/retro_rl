@@ -11,7 +11,7 @@ description: >
 # Harvest shop (door + wallet, not a day tape)
 
 Picks are [harvest-interact](../harvest-interact/SKILL.md). Path/cliff hops are
-[harvest-route](../harvest-route/SKILL.md).
+[harvest-route](../harvest-route/SKILL.md). Session gates: `harvest-session`.
 
 `BUY_SEEDS` today is `CrossMapRecordedTask`: walk west off the farm, replay
 `buy_potato_seeds` from `recording_start`, succeed on **farm tilemap again**
