@@ -53,3 +53,18 @@ def test_k6_controllers_are_registered() -> None:
 
     assert KPDR_SEGMENTS["moat_cross"] is play_moat_cross
     assert KPDR_SEGMENTS["west_ocean_to_ws"] is play_west_ocean_over_ocean_spark
+    from super_metroid.routes.kpdr.k6 import (
+        play_phantoon_loot_exit,
+        play_phantoon_room_fight,
+    )
+    from super_metroid.routes.kpdr.k6.ws_basement import play_ws_basement_to_phantoon
+    from super_metroid.routes.kpdr.wrecked_ship import (
+        play_ws_entrance_to_main,
+        play_ws_main_to_basement,
+    )
+
+    assert KPDR_SEGMENTS["ws_entrance_to_main"] is play_ws_entrance_to_main
+    assert KPDR_SEGMENTS["ws_main_to_basement"] is play_ws_main_to_basement
+    assert KPDR_SEGMENTS["ws_basement_to_phantoon"] is play_ws_basement_to_phantoon
+    assert KPDR_SEGMENTS["phantoon_fight"] is play_phantoon_room_fight
+    assert KPDR_SEGMENTS["phantoon_loot_exit"] is play_phantoon_loot_exit

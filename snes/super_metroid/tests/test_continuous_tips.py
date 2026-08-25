@@ -77,10 +77,11 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "alpha_pb",
         "moat",
         "ws",
+        "phantoon",
     ]
     # Default tip is furthest STATUS-promoted integrity-green tip (Ice).
-    # alpha_pb / moat / ws are wired for compose (rr-2r06 / rr-p2bw)
-    # but not STATUS-promoted.
+    # alpha_pb / moat / ws / phantoon are wired for compose
+    # (rr-2r06 / rr-p2bw / rr-gyla) but not STATUS-promoted.
     assert DEFAULT_CONTINUOUS_TIP == "ice"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
@@ -88,7 +89,8 @@ def test_continuous_tips_chain_ends_at_default() -> None:
     assert ids.index("ice") < ids.index("alpha_pb")
     assert ids.index("alpha_pb") < ids.index("moat")
     assert ids.index("moat") < ids.index("ws")
-    assert ids[-1] == "ws"
+    assert ids.index("ws") < ids.index("phantoon")
+    assert ids[-1] == "phantoon"
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -134,6 +136,8 @@ def test_get_continuous_tip_aliases() -> None:
     assert get_continuous_tip("ws_entrance").tip_id == "ws"
     assert get_continuous_tip("k6_ws").tip_id == "ws"
     assert get_continuous_tip("west_ocean").tip_id == "moat"
+    assert get_continuous_tip("phan").tip_id == "phantoon"
+    assert get_continuous_tip("k6_phantoon").tip_id == "phantoon"
 
 
 def test_default_tip_room_timing_path() -> None:
@@ -299,6 +303,7 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "alpha_pb",
         "moat",
         "ws",
+        "phantoon",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
@@ -313,6 +318,7 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "alpha_pb",
         "moat",
         "ws",
+        "phantoon",
     ):
         assert tip_id in TIP_BY_ID
         assert isinstance(TIP_BY_ID[tip_id], TipSpec)
@@ -412,6 +418,18 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     assert get_continuous_tip("wrecked_ship").tip_id == "ws"
     assert get_continuous_tip("ws_entrance").tip_id == "ws"
     assert get_continuous_tip("west_ocean").tip_id == "moat"
+    assert SUPER_TIP_BY_ID["phantoon"].parent_tip_id == "ws"
+    assert SUPER_TIP_BY_ID["phantoon"].final_room == 0xCC6F
+    assert SUPER_TIP_BY_ID["phantoon"].success_outcome == "phantoon_defeated"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["phantoon"].hops] == [
+        "ws_entrance_to_main",
+        "ws_main_to_basement",
+        "ws_basement_to_phantoon",
+        "phantoon_fight",
+        "phantoon_loot_exit",
+    ]
+    assert get_continuous_tip("phan").tip_id == "phantoon"
+    assert get_continuous_tip("k6_phantoon").tip_id == "phantoon"
     assert DEFAULT_CONTINUOUS_TIP == "ice"
 
 
