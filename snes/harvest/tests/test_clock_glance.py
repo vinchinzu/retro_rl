@@ -8,14 +8,21 @@ import unittest
 
 from harvest.clock_glance import (
     FARM_TILEMAP,
+    FENCE_DUMP,
+    FENCE_DUMP_DONE,
+    FENCE_STAND,
     HOUSE_TILEMAP,
     HopSpec,
     LeaveSpec,
     MOUNTAIN_TILEMAP,
     SHOP_TILEMAP,
+    d2_leftover_spec,
     glance_bench,
     grade_final,
+    grade_leftover,
     grade_report,
+    leftover_from_snapshot,
+    leftover_json,
     parse_tilemap,
 )
 
@@ -153,3 +160,102 @@ class ClockGlanceTests(unittest.TestCase):
         misses = grade_report(report, BUY_SEEDS_D2)
         self.assertIn("success is false", misses)
         self.assertIn("run 1 success is false", misses)
+
+
+def _fence_snapshot(*, fences: int = 80, tilemap: str = "0x0", hour: int = 18, minute: int = 6) -> dict:
+    """Hand-built probe ``_snapshot`` shape. No emulator."""
+    return {
+        "tilemap": tilemap,
+        "pos": [86, 69],
+        "tile": [5, 4],
+        "clock": {"hour": hour, "minute": minute, "clock": f"{hour:02d}:{minute:02d}"},
+        "stamina": {"current": 65, "maximum": 100},
+        "carry": {"selected": 16, "backpack": 2},
+        "debris": {
+            "weeds": 0,
+            "stones": 185,
+            "small_rocks": 0,
+            "large_rocks": 51,
+            "stumps": 38,
+            "fences": fences,
+        },
+        "samples": {"fences": [[2, 13, "0xa6"]]},
+    }
+
+
+class FenceLeftoverGlanceTests(unittest.TestCase):
+    def test_named_specs_are_farm_stand_not_frozen_clock(self) -> None:
+        self.assertIs(FENCE_DUMP, FENCE_STAND)
+        self.assertEqual(FENCE_STAND.tilemap, FARM_TILEMAP)
+        self.assertFalse(FENCE_STAND.clock_must_advance)
+        self.assertFalse(FENCE_STAND.require_plot_cleared)
+        self.assertIsNone(FENCE_STAND.money_delta)
+        self.assertEqual(FENCE_DUMP_DONE.require_empty, ("fences",))
+        self.assertFalse(FENCE_DUMP_DONE.clock_must_advance)
+        self.assertIs(d2_leftover_spec("fences"), FENCE_STAND)
+        self.assertIs(d2_leftover_spec("fences", done=True), FENCE_DUMP_DONE)
+
+    def test_leftover_from_snapshot_flattens_probe_clock_and_pos(self) -> None:
+        leftover = leftover_from_snapshot(_fence_snapshot())
+        self.assertEqual(leftover["tilemap"], FARM_TILEMAP)
+        self.assertEqual(leftover["hour"], 18)
+        self.assertEqual(leftover["minute"], 6)
+        self.assertEqual(leftover["x"], 86)
+        self.assertEqual(leftover["y"], 69)
+        self.assertEqual(leftover["tile"], [5, 4])
+        self.assertEqual(leftover["carry"]["selected"], 16)
+        self.assertEqual(leftover["debris"]["fences"], 80)
+        self.assertNotIn("samples", leftover)
+
+    def test_farm_stand_with_remaining_posts_is_not_a_location_miss(self) -> None:
+        glance = grade_leftover(_fence_snapshot(fences=80), FENCE_STAND)
+        self.assertTrue(glance.ok)
+        self.assertEqual(glance.misses, [])
+        self.assertEqual(glance.leftover["debris"]["fences"], 80)
+
+    def test_dump_done_requires_posts_gone(self) -> None:
+        remaining = grade_leftover(_fence_snapshot(fences=18), FENCE_DUMP_DONE)
+        self.assertFalse(remaining.ok)
+        self.assertTrue(remaining.leftover)
+        self.assertTrue(any("fences remaining" in m for m in remaining.misses))
+        gone = grade_leftover(_fence_snapshot(fences=0), FENCE_DUMP_DONE)
+        self.assertTrue(gone.ok)
+        self.assertEqual(gone.misses, [])
+
+    def test_hour_18_leftover_is_not_a_frozen_clock_miss_for_fence_stand(self) -> None:
+        still = leftover_from_snapshot(_fence_snapshot(hour=18, minute=6))
+        still["clock_samples"] = [
+            {"frame": 0, "hour": 18, "minute": 6, "tilemap": FARM_TILEMAP},
+            {"frame": 600, "hour": 18, "minute": 6, "tilemap": FARM_TILEMAP},
+        ]
+        self.assertEqual(grade_final(still, FENCE_STAND), [])
+        frozen = grade_final(still, LeaveSpec(hop="farm_stand", tilemap=FARM_TILEMAP))
+        self.assertTrue(any(m.startswith("clock frozen") for m in frozen))
+
+    def test_house_still_is_a_stand_miss_but_leftover_is_present(self) -> None:
+        glance = grade_leftover(_fence_snapshot(tilemap="0x15"), FENCE_STAND)
+        self.assertFalse(glance.ok)
+        self.assertEqual(glance.leftover["tilemap"], HOUSE_TILEMAP)
+        self.assertTrue(any(m.startswith("tilemap ") for m in glance.misses))
+
+    def test_fail_payload_always_has_leftover_and_glance_misses(self) -> None:
+        fail = leftover_json(
+            _fence_snapshot(),
+            FENCE_STAND,
+            ok=False,
+            journal=[{"phase": "CLEAR_FENCES", "status": "failed"}],
+            partial=True,
+        )
+        self.assertFalse(fail["ok"])
+        self.assertIn("leftover", fail)
+        self.assertIn("final", fail)
+        self.assertIn("glance_misses", fail)
+        self.assertEqual(fail["leftover"], fail["final"])
+        self.assertEqual(fail["glance_misses"], [])
+        empty = leftover_json({}, FENCE_STAND, ok=False, journal=[{"phase": "exit_to_farm"}])
+        self.assertIn("leftover", empty)
+        self.assertIn("glance_misses", empty)
+        self.assertTrue(empty["glance_misses"])
+        success = leftover_json(_fence_snapshot(fences=0), FENCE_DUMP_DONE, ok=True)
+        self.assertTrue(success["ok"])
+        self.assertEqual(success["glance_misses"], [])

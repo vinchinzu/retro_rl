@@ -13,7 +13,8 @@ https://wiki.supermetroid.run/Basement
 
 from __future__ import annotations
 
-from super_metroid.ram import SuperMetroidState
+from super_metroid.hop_glance import LeaveMiss, WS_BASEMENT_TO_MAIN, final_from_state, grade_final
+from super_metroid.ram import FACING_LEFT, SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
     hold,
@@ -45,7 +46,9 @@ ROOM_WS_MAP = 0xCCCB
 WEAPON_BEAM = 0
 
 # Pin is the Phantoon door. Tunnel clear x=900 LEFT. Hatch on ~(657,91).
-# Under-hatch floor is occupied — takeoff east of the Workrobot (x≳720).
+# Under-hatch floor is occupied — takeoff east of the Workrobot.  The first
+# x~720 seat hit the platform's right wall at (728,175); x~820 gives the
+# spin-left arc room to clear the lip before crossing it.
 WS_BASEMENT_FLOOR_Y = 170
 WS_BASEMENT_TUNNEL_LIP_X = 1140
 WS_BASEMENT_TUNNEL_CLEAR_X = 900
@@ -55,8 +58,8 @@ WS_BASEMENT_PLATFORM_X = 657
 # Standing center on the mid platform is ~163. Floor is ~187. 130 was too
 # tight and left 717/163 walking RIGHT into the lip wall.
 WS_BASEMENT_PLATFORM_Y = 175
-WS_BASEMENT_TAKEOFF_X_MIN = 720
-WS_BASEMENT_TAKEOFF_X_MAX = 780
+WS_BASEMENT_TAKEOFF_X_MIN = 820
+WS_BASEMENT_TAKEOFF_X_MAX = 880
 WS_BASEMENT_MAP_X = 80
 _BOMB_CYCLES = 8
 _SETTLE = 200
@@ -119,8 +122,10 @@ def hatch_mount_action(
     samus_y: int,
     pose: int,
     velocity_y: int,
+    facing: int = FACING_LEFT,
+    movement_type: int = 0,
 ) -> tuple[str, ...]:
-    """Floor: x≳720 spin-LEFT. On-platform (y≤175): land, walk to ~x=657."""
+    """Floor: x~820 spin-LEFT. On-platform (y≤175): land, walk to ~x=657."""
     if int(pose) in (137, 138):
         return ()
     x = int(samus_x)
@@ -132,6 +137,10 @@ def hatch_mount_action(
     if x > WS_BASEMENT_TAKEOFF_X_MAX:
         return ("LEFT", "B")
     if x >= WS_BASEMENT_TAKEOFF_X_MIN:
+        # A jump pressed on the same frame as the RIGHT→LEFT turn is lost.
+        # Finish the turn before asking spin_jump to latch.
+        if int(facing) != FACING_LEFT or int(movement_type) == 14:
+            return ("LEFT",)
         return spin_jump("LEFT")
     return ("RIGHT", "B")
 
@@ -242,7 +251,7 @@ def _bomb_tunnel_left(session: ControllerSession, label: str) -> None:
 
 
 def _run_to_hatch(session: ControllerSession, label: str) -> None:
-    """Unmorph. Ice keepaway (charge-release seat). Takeoff from x≳720."""
+    """Unmorph. Ice keepaway (charge-release seat). Takeoff from x~820."""
     if int(session.state.room_id) == ROOM_WS_MAIN:
         return
     if is_morph(int(session.state.pose)):
@@ -291,7 +300,12 @@ def _run_to_hatch(session: ControllerSession, label: str) -> None:
                 hold(session, 1, reason=f"{label}_robot_wait")
             continue
         names = hatch_mount_action(
-            int(st.samus_x), int(st.samus_y), int(st.pose), int(st.velocity_y)
+            int(st.samus_x),
+            int(st.samus_y),
+            int(st.pose),
+            int(st.velocity_y),
+            int(st.facing),
+            int(getattr(st, "movement_type", 0) or 0),
         )
         if names:
             hold(session, 1, *names, reason=f"{label}_mount")
@@ -330,6 +344,20 @@ def _jump_up_hatch(session: ControllerSession, label: str) -> None:
         raise TimeoutError(f"{label}: ceiling hatch missed: {session.state}")
 
 
+def _raise_leave_miss(session: ControllerSession, exc: BaseException | None = None) -> None:
+    leftover = final_from_state(session.state)
+    misses = list(grade_final(leftover, WS_BASEMENT_TO_MAIN))
+    if exc is not None:
+        misses.append(f"{type(exc).__name__}: {exc}")
+    raise LeaveMiss(
+        "ws_basement_to_main",
+        leftover,
+        misses or ["leave failed"],
+        room_label="Wrecked Ship Main Shaft",
+        to_room=ROOM_WS_MAIN,
+    ) from exc
+
+
 def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
     """Powered basement return. Morph-roll LEFT, jump UP into Main Shaft.
 
@@ -340,18 +368,24 @@ def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
     platform ~x=657. Lands ordinary ``gs=8`` in ``0xCAF6``.
     """
     label = "ws_basement_to_main"
-    if ws_basement_main_settled(session.state):
-        return session.state
-    require_room(session, ROOM_WS_BASEMENT, label)
-    if not phantoon_boss_bit_set(session):
-        raise RuntimeError(f"{label}: Phantoon not defeated: {session.state}")
-    _drop_to_tunnel_floor(session, label)
-    _bomb_tunnel_left(session, label)
-    _run_to_hatch(session, label)
-    _jump_up_hatch(session, label)
-    return wait_ordinary_room(
-        session, ROOM_WS_MAIN, settle_frames=_SETTLE, label=label
-    )
+    try:
+        if ws_basement_main_settled(session.state):
+            return session.state
+        require_room(session, ROOM_WS_BASEMENT, label)
+        if not phantoon_boss_bit_set(session):
+            raise RuntimeError(f"{label}: Phantoon not defeated: {session.state}")
+        _drop_to_tunnel_floor(session, label)
+        _bomb_tunnel_left(session, label)
+        _run_to_hatch(session, label)
+        _jump_up_hatch(session, label)
+        return wait_ordinary_room(
+            session, ROOM_WS_MAIN, settle_frames=_SETTLE, label=label
+        )
+    except LeaveMiss:
+        raise
+    except Exception as exc:
+        _raise_leave_miss(session, exc)
+        raise  # unreachable; keeps type checkers happy
 
 
 __all__ = [

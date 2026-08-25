@@ -24,6 +24,7 @@ from zelda_i.overworld_nav import (
 )
 from zelda_i.overworld_nav import OverworldToLevel1Controller
 from zelda_i.ram import is_level1_ready, read_snapshot
+from zelda_i.screen_glance import leftover_from_controller
 from zelda_i.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX_FRAMES
 from zelda_i.sword_cave import SwordCaveController
 
@@ -229,13 +230,25 @@ class ControllerStageResult:
     end_frame: int = 0
 
     def report(self) -> dict[str, Any]:
+        nested = (
+            self.controller.report()
+            if callable(getattr(self.controller, "report", None))
+            else {}
+        )
         payload = {
             "name": self.name,
             "max_frames": self.max_frames,
             "frames": self.frames,
             "success": self.success,
-            "controller": self.controller.report(),
+            "controller": nested,
         }
+        leftover = leftover_from_controller(self.controller)
+        if not leftover and isinstance(nested, dict):
+            raw = nested.get("leftover")
+            leftover = dict(raw) if isinstance(raw, dict) and raw else leftover
+        # Failed hops still publish leftover — that pin is the next start.
+        if leftover or isinstance(getattr(self.controller, "leftover", None), dict):
+            payload["leftover"] = leftover
         if self.frame_base or self.end_frame:
             payload["frame_base"] = self.frame_base
             payload["end_frame"] = self.end_frame

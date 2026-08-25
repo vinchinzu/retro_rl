@@ -41,6 +41,7 @@ class LeaveSpec:
     require_plot_cleared: bool = False
     forbid_tilemaps: tuple[int, ...] = ()
     clock_must_advance: bool = True
+    require_empty: tuple[str, ...] = ()
 
 
 HopSpec = LeaveSpec
@@ -222,6 +223,15 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
         moved = any(b is not None and a is not None and b != a for b, a in pairs)
         origin_miss = tm == FARM_TILEMAP and not moved
         misses.append("shop miss: returned to origin without 0x1C/stock/wallet delta" if origin_miss else "shop 0x1C not seen")
+    if spec.require_empty:
+        debris = row.get("debris") if isinstance(row.get("debris"), Mapping) else {}
+        for key in spec.require_empty:
+            raw = debris.get(key) if isinstance(debris, Mapping) and key in debris else row.get(key)
+            count = _as_int(raw)
+            if count is None:
+                misses.append(f"{key} remaining unknown (need 0)")
+            elif count != 0:
+                misses.append(f"{key} remaining {count}")
     return misses
 
 
@@ -247,3 +257,157 @@ def grade_report(report: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
             continue
         misses.extend(f"run {i}: {reason}" for reason in grade_final(payload, spec))
     return misses
+
+
+def _clock_from_snapshot(row: Mapping[str, Any]) -> ClockTime | None:
+    clock = _clock_of(row)
+    if clock is not None:
+        return clock
+    nested = row.get("clock")
+    if not isinstance(nested, Mapping):
+        return None
+    clock = clock_from_mapping(nested)
+    if clock is not None:
+        return clock
+    text = nested.get("clock")
+    if isinstance(text, str) and ":" in text:
+        hour_s, _, rest = text.partition(":")
+        try:
+            return ClockTime(int(hour_s), int(rest.split(":")[0]))
+        except ValueError:
+            return None
+    return None
+
+
+def leftover_from_snapshot(snap: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Normalize a probe ``_snapshot`` (or still) to grade_final keys.
+
+    Probe snapshots nest ``clock`` as ``{hour, minute, clock}`` and store
+    pixel ``pos`` / tile xy. Debris ``samples`` are not clock samples and
+    are omitted so leftover is a stand, not a scan dump.
+    """
+    if not isinstance(snap, Mapping) or not snap:
+        return {}
+    row = dict(snap)
+    for key in ("final", "leftover", "end"):
+        inner = snap.get(key)
+        if isinstance(inner, Mapping):
+            row = _merge(row, inner)
+            break
+
+    leftover: dict[str, Any] = {}
+    tm = _tilemap_of(row)
+    if tm is not None:
+        leftover["tilemap"] = tm
+
+    clock = _clock_from_snapshot(row)
+    if clock is not None:
+        leftover["hour"] = int(clock.hour)
+        leftover["minute"] = int(clock.minute)
+        leftover["clock"] = clock.to_dict()
+
+    pos = row.get("pos")
+    if isinstance(pos, (list, tuple)) and len(pos) >= 2:
+        leftover["x"] = int(pos[0])
+        leftover["y"] = int(pos[1])
+    else:
+        x = _as_int(row.get("x"))
+        y = _as_int(row.get("y"))
+        if x is not None:
+            leftover["x"] = x
+        if y is not None:
+            leftover["y"] = y
+
+    tile = row.get("tile")
+    if isinstance(tile, (list, tuple)) and len(tile) >= 2:
+        leftover["tile"] = [int(tile[0]), int(tile[1])]
+    elif "x" in leftover and "y" in leftover:
+        leftover["tile"] = [int(leftover["x"]) // 16, int(leftover["y"]) // 16]
+
+    for key in (
+        "carry",
+        "debris",
+        "stamina",
+        "money",
+        "shipping",
+        "shipping_money",
+        "plot_cleared",
+        "money_before",
+        "money_after",
+        "shop_seen",
+    ):
+        if key in row and row[key] is not None:
+            leftover[key] = row[key]
+    return leftover
+
+
+@dataclass(frozen=True)
+class GlanceLeftover:
+    """Stand leftover. ``leftover`` is present even when ``misses`` is not empty."""
+
+    ok: bool
+    leftover: dict[str, Any]
+    misses: list[str]
+
+
+def grade_leftover(final: Mapping[str, Any], spec: LeaveSpec) -> GlanceLeftover:
+    leftover = leftover_from_snapshot(final)
+    misses = grade_final(leftover, spec)
+    return GlanceLeftover(ok=not misses, leftover=leftover, misses=list(misses))
+
+
+def leftover_json(
+    snapshot: Mapping[str, Any] | None,
+    spec: LeaveSpec,
+    *,
+    ok: bool,
+    **fields: Any,
+) -> dict[str, Any]:
+    """Probe JSON with leftover still + glance_misses. Tests do not exec the CLI."""
+    glance = grade_leftover(snapshot or {}, spec)
+    payload = dict(fields)
+    payload["ok"] = ok
+    payload["final"] = glance.leftover
+    payload["leftover"] = glance.leftover
+    payload["glance_misses"] = glance.misses
+    return payload
+
+
+# D2 leftover: location stand vs posts-gone. Fail uses the stand so the next
+# agent takes off from that still, not a bushes re-run. Hour 18 is legal
+# (ADR-0003); do not treat advancing minutes as a frozen-clock miss.
+FENCE_STAND = LeaveSpec(
+    hop="FENCE_STAND",
+    tilemap=FARM_TILEMAP,
+    clock_must_advance=False,
+)
+FENCE_DUMP = FENCE_STAND
+D2_FENCE_LEFTOVER = FENCE_STAND
+FENCE_DUMP_DONE = LeaveSpec(
+    hop="FENCE_DUMP_DONE",
+    tilemap=FARM_TILEMAP,
+    clock_must_advance=False,
+    require_empty=("fences",),
+)
+
+_DONE_EMPTY = {
+    "fences": ("fences",),
+    "bushes": ("weeds",),
+    "stones": ("stones",),
+    "rocks": ("large_rocks",),
+    "stumps": ("stumps",),
+    "all": ("weeds", "fences", "stones", "small_rocks", "large_rocks", "stumps"),
+}
+
+
+def d2_leftover_spec(section: str = "fences", *, done: bool = False) -> LeaveSpec:
+    """Fail path: farm stand. Success path: section debris must be gone."""
+    if section == "fences":
+        return FENCE_DUMP_DONE if done else FENCE_STAND
+    empty = _DONE_EMPTY.get(section, ())
+    return LeaveSpec(
+        hop=f"d2_{section}_{'done' if done else 'stand'}",
+        tilemap=FARM_TILEMAP,
+        clock_must_advance=False,
+        require_empty=empty if done else (),
+    )

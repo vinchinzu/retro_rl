@@ -22,11 +22,13 @@ from zelda_i.level6_stairs3a_warp import (
     make_stairs_3a_warp_controller,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.screen_glance import CELLAR08_LEAVE, GlanceLeftover, grade_controller
 
 __all__ = [
     "CELLAR_08_MAX_FRAMES",
     "CELLAR_08_ROOM",
     "Level6Cellar08Controller",
+    "level6_cellar08_glance",
     "level6_cellar08_stages",
     "level6_cellar08_success",
     "make_cellar08_controller",
@@ -75,6 +77,7 @@ class Level6Cellar08Controller:
             "arrows": int(getattr(snap, "arrows", 0)),
             "keys": int(snap.keys),
             "bombs": int(snap.bombs),
+            "health": int(snap.health),
             "map": int(snap.map),
             "triforce": int(snap.triforce),
         }
@@ -194,6 +197,11 @@ def level6_cellar08_stages():
         ("level6_stairs_0x3a_warp", warp, STAIRS_3A_WARP_MAX_FRAMES),
         ("level6_cellar_0x08", cellar, CELLAR_08_MAX_FRAMES),
     )
+
+
+def level6_cellar08_glance(controller: Any) -> GlanceLeftover:
+    """Leftover glance. Dest RAM is level6_cellar08_success (unchanged)."""
+    return grade_controller(controller, CELLAR08_LEAVE)
 
 
 def level6_cellar08_success(snap: ZeldaSnapshot) -> bool:

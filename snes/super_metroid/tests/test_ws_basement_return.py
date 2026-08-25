@@ -8,6 +8,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
+from super_metroid.hop_glance import LeaveMiss
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
 from super_metroid.routes.kpdr.k6.ws_basement_ice import movement_stall_reason
 from super_metroid.routes.kpdr.k6.ws_basement_return import (
@@ -108,9 +109,21 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
     assert robot_block == ("RIGHT", "B")
     still_in_band = hatch_mount_action(680, 185, 10, 0)
     assert still_in_band == ("RIGHT", "B")
+    # A takeoff near x=720 reaches the platform's right wall at (728,175)
+    # before clearing its top.  Keep walking east until the higher arc seat.
     takeoff = hatch_mount_action(WS_BASEMENT_TAKEOFF_X_MIN, 185, 2, 0)
     assert takeoff == ("LEFT", "B", "A")
-    approach = hatch_mount_action(880, 185, 2, 0)
+    face_first = hatch_mount_action(
+        WS_BASEMENT_TAKEOFF_X_MIN, 185, 2, 0, FACING_RIGHT, 0
+    )
+    assert face_first == ("LEFT",)
+    finish_turn = hatch_mount_action(
+        WS_BASEMENT_TAKEOFF_X_MIN, 185, 37, 0, FACING_LEFT, 14
+    )
+    assert finish_turn == ("LEFT",)
+    too_close = hatch_mount_action(780, 185, 2, 0)
+    assert too_close == ("RIGHT", "B")
+    approach = hatch_mount_action(900, 185, 2, 0)
     assert approach == ("LEFT", "B")
     assert "A" not in approach
     on_seat = hatch_mount_action(657, 91, 2, 0)
@@ -129,7 +142,7 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
         (657, 185, 2, 0),
         (719, 185, 2, 0),
         (740, 185, 2, 0),
-        (880, 185, 2, 0),
+        (900, 185, 2, 0),
         (657, 91, 2, 0),
     ):
         names = hatch_mount_action(x, y, pose, vy)
@@ -271,9 +284,14 @@ def test_already_in_main_is_noop() -> None:
 
 
 def test_wrong_room() -> None:
-    session = _Session(_state(room_id=0xCD13))
-    with pytest.raises(RuntimeError, match="ws_basement_to_main"):
+    session = _Session(_state(room_id=0xCD13, samus_x=39, samus_y=128, pose=1))
+    with pytest.raises(LeaveMiss, match="ws_basement_to_main") as caught:
         play_ws_basement_to_main(session)
+    err = caught.value
+    assert err.leftover["xy"] == [39, 128]
+    assert err.leftover["pose"] == 1
+    assert err.leftover["gs"] == 8
+    assert "expected Wrecked Ship Main Shaft 0xCAF6, got 0xCD13" in str(err)
 
 
 def test_requires_boss_bit() -> None:
@@ -300,6 +318,9 @@ def test_probe_uses_repo_headed() -> None:
     assert "add_headed_flag" in text
     assert "attach_headed" in text
     assert "def _attach_headed" not in text
+    assert '"leftover"' in text
+    assert "glance_misses" in text
+    assert "final_from_state" in text
 
 
 def test_never_uses_l_as_left() -> None:
