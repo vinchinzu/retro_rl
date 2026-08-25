@@ -1,45 +1,49 @@
-# Plan — Super Metroid assisted full clear
+# Plan — Super Metroid
 
-Verified facts: [STATUS.md](STATUS.md). Assist:
-[ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Layers:
-[ARCHITECTURE.md](ARCHITECTURE.md). Tracker: `bd ready -l super_metroid -l spine`.
+Verified facts: [STATUS.md](STATUS.md). Language:
+[`CONTEXT.md`](../CONTEXT.md). Assist:
+[ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Tracker:
+`bd ready -l super_metroid -l spine`.
 
 **Doc home:** STATUS is verified facts; this file is future work; beads
 are ready/in-flight. Session loop lives in `.grok/skills/sm-session/`
 (not a QUEUE, not PROCESS.md). One living residual per open tip. Do not
 rewrite the route or claim a new tip from a pin bench.
 
-**Program role:** Super Metroid is **substrate A** of the solver flagship
-triangle (SM + ALTTP + SMZ3). Pure room policies and capability edges are Layer 1
-skills the shared item-logic planner will sequence; SMZ3 is the seed-abstract
-proof. See [`docs/SOLVER_ARCHITECTURE.md`](../../../docs/SOLVER_ARCHITECTURE.md).
+**Program role:** Beat vanilla Super Metroid with a **skill API**, equal token
+weight with Harvest. Solver/SMZ3 is downstream. See
+[`CONTEXT.md`](../CONTEXT.md) and
+[`docs/SOLVER_ARCHITECTURE.md`](../../../docs/SOLVER_ARCHITECTURE.md).
 
 ## Strategy
 
-Unlimited energy and ammo make combat attrition secondary. The hard problem is
-long-horizon navigation: room identity, doors/elevators, item gates, movement
-abilities, boss/event state, backtracking, and stall recovery.
+**Survival** (energy + unlocked ammo) makes combat attrition secondary. The
+hard problem is long-horizon navigation. The campaign is a skillset. TAS and
+human **tapes** are guidelines; trash them once the skill exists.
 
-**Clear rooms by play.** Each hop on the completion path must be crossed with a
-controller or room policy (natural door exit). Door-warps are topology
-diagnostics only — never route evidence. Living hop geometry:
-[routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md).
-Grow one hop at a time from the furthest played room. Continuous tip extension
-recipe ([ARCHITECTURE.md](ARCHITECTURE.md)):
+One **living tip**. Pin is for building; rung green is power-on to that tip.
+Scratch, Clean, and practice are parallel, not a second product.
+
+**Chip** is one room: tape → skill. **Sync** is a clean tie into the next room
+(doorway pause / a few frames allowed). If the seam will not join, both rooms
+are one change. Full power-on dual at milestones (Gravity, new living tip,
+credits) and before **Publish** — not every slop hop.
+
+**Clear rooms by play.** Door-warps are topology diagnostics only. Recipe
+([ARCHITECTURE.md](ARCHITECTURE.md)):
 
 ```text
-pure → graph edge → catalog → hops → continuous compose → dual re-verify → STATUS
+tape/TAS guideline → hop dual-green → SpineHop → power-on compose → Sync next
 ```
 
 **Boss fights stay deferred** until natural *entry* to that boss room exists on
-the played chain. Continuous acceptance still requires natural boss flags and
-zero progression writes. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
+the played chain. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
 
 **Agent discipline:** `.grok/skills/sm-session/` (one bead, one knob, halt-3,
 no STATUS from a pin). Do not relax for scale.
 
-**Ticket size:** one pure hop or one residual change per card; prefer 30–90 min
-sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
+**Ticket size:** one hop, or both rooms of a failed seam; prefer 30–90 min
+sessions. STATUS/docs updates are planner-owned.
 
 ---
 
@@ -47,16 +51,17 @@ sessions. STATUS/docs updates are planner-owned or tiny follow-ons.
 
 | Priority | Work | Beads |
 |----------|------|-------|
-| **★ Product next** | Power-on `--to phantoon` dual | `rr-8g2u` (scratch; do not STATUS-promote) |
-| Wired, not this card | `--to phantoon` catalog + doppler + loot/exit | closed into `rr-8g2u` residual |
-| Planner follow-on | STATUS promote `moat` / `ws` / Ice reverify | `rr-g3nj` · `rr-ucl9` |
-| Parked | TAS/oracle, tape library, Tourian hops, Pass B | not `spine` |
+| **★ Product next** | Gravity on the Phantoon tip (power-on) | `rr-kw8t` |
+| Living tip | `--to phantoon` **195,336f** ×2 | STATUS `rr-b926` |
+| Parallel | Chip prefix slop under Sync | not a second tip |
+| Parked | TAS/oracle, 100%, Clean spore+ | not `spine` |
 
-**Critical path:** Ice continuous is **GREEN** (STATUS). K5→Moat→WS interior
-→ Phantoon fight+leave are scratch dual-green. Power-on `--to phantoon` is
-`rr-8g2u`. Default CLI stays `ice`. Living residual:
-[tasks/rr-8g2u-residual.md](tasks/rr-8g2u-residual.md).
-**Do not STATUS-promote past Ice without a planner STATUS pass.**
+**Rungs:** Phantoon (living tip) → Gravity → Maridia → LN+Ridley → Tourian+credits
+→ rewrite toward sub-hour.
+
+**Critical path:** Phantoon is the living tip. Next compose is Gravity from
+`scratch/post_phantoon_leave.state`. Living residual:
+[tasks/rr-kw8t-residual.md](tasks/rr-kw8t-residual.md).
 
 Live work: `bd ready -l super_metroid -l spine`.
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
@@ -264,10 +269,10 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
 - [x] Wiki KPDR Phantoon pin-benches (rr-7lc5). Doppler wired (rr-asyg)
   **12118f** ×2 + loot/exit **337f** → basement `(1240,139)` p10; compose
   **12455f** ×2. Charge-only 20537f / charge+missiles / Ice-on X-Factor
-  stay research. Living residual `docs/tasks/rr-8g2u-residual.md`.
-- [ ] Power-on `--to phantoon` dual compose (rr-8g2u; pin compose first;
-  doppler + loot-exit body; tip ends `0xCC6F`)
-- [ ] Natural Phantoon leave / WS power-on → Gravity (after dual kill)
+  stay research.
+- [x] Power-on `--to phantoon` dual **195,336f** ×2 (rr-8g2u) + STATUS
+  living tip (`rr-b926`). Ice is prefix CI. Tip ends `0xCC6F`.
+- [ ] Natural Phantoon leave / WS power-on → Gravity (`rr-kw8t`)
 
 - [x] Grapple side-trek + Maridia free-record from post-gravity pin
   (`tasks/maridia_grapple_human.json` 44039f → Main Street trace end;
@@ -342,7 +347,7 @@ Highest leverage for whole-game length — see Structure below and
 
 | Gate | Target | Notes |
 |------|--------|-------|
-| **M5** | Bronze observation; resource-assisted continuous tip | **Current** (Bat Cave) |
+| **M5** | Bronze observation; Survival continuous tip | **Current** (Phantoon). Sticker, not a rung. |
 | **M6** | Complete route graph with owners/predicates | In progress |
 | **M7** | Continuous dry-run invariants (power-on → credits path) | Open |
 | **M8** | Verified capture + ending/credits evidence | Open |
@@ -440,13 +445,12 @@ ram/assist → combat) are correct. Planner-serial when touching
 ## Recommended next waves
 
 ```text
-★ NOW   Bat → Speed Hall pure → Speed/Wave/Ice pure stack
-        → graph → compose continuous tips → stabilize → STATUS
-THEN    K5 Alpha PB → Moat → WS → natural Phantoon + Gravity
-Parallel Clean bombs · Early Spazer/100% · 1–2 ARCH · boss primitives
-Opt-in  Room farm (metrics only; not product next-work)
-Parked  Speedway→Farm until post-Speed
-Later   Botwoon → Draygon → Ridley → MB + escape → credits (M8)
+★ NOW   Gravity on the Phantoon tip (rr-kw8t). Power-on is the rung.
+THEN    Maridia (tube / Botwoon / Draygon / SJ) on the tip
+        LN + Ridley → Tourian + MB + escape + credits
+Parallel Chip prefix slop under Sync (re-pin; couple rooms if the seam fails)
+Publish every 20–30 working sessions to the living tip (not a calendar)
+Later   rewrite toward sub-hour; drop convenience majors; 100%
 ```
 
 Live dispatch: `bd ready -l super_metroid`.
@@ -458,6 +462,7 @@ Milestone names: [routes/MILESTONES.md](routes/MILESTONES.md).
 
 | Doc | Role |
 |-----|------|
+| [`CONTEXT.md`](../CONTEXT.md) | Language |
 | [STATUS.md](STATUS.md) | Verified tip + prefix frames |
 | `bd ready -l super_metroid` | Ready / in-flight work |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers + structural debt |

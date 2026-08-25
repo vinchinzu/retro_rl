@@ -14,6 +14,7 @@ from super_metroid.routes.kpdr.ceres.magnet import (
     _ceres_reactive_falling,
     _ceres_reactive_magnet_escape,
 )
+from super_metroid.routes.kpdr.ceres.scientist import play_ceres_scientist_to_flat
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_MAGNET,
     ROOM_CERES_RIDLEY,
@@ -91,7 +92,9 @@ def _ceres_escape_spans() -> list[ActionSpan]:
 def play_ceres_to_ridley_door(session: RouteSession) -> None:
     """Ceres elevator → Ridley room ordinary settle (no fight)."""
     session.spans(_ceres_outbound_to_scientist_spans())
-    # Scientist → Flat → Ridley: classic L↔R room-gated run.
+    # Dead Scientist is its own hop: walk off the left alcove, jump the pit.
+    play_ceres_scientist_to_flat(session)
+    # Flat → Ridley: classic L↔R room-gated run.
     if session.state.room_id != ROOM_CERES_RIDLEY:
         _ceres_arm_pump_until(
             session,
@@ -110,9 +113,10 @@ def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
     """Ceres elevator → Ridley + countdown (classic L↔R arm-pump).
 
     Elev→Scientist keeps product geometry with arm-pump injected on RIGHT+B
-    holds. Scientist→Flat→Ridley is room-gated arm-pump (drops ~600f of product
-    idle+dash pad). Fight body is tail-tank :func:`play_ceres_ridley_fight`.
-    Escape re-solves magnet / falling / elev reactively.
+    holds. Dead Scientist walks off the left alcove then jumps the pit;
+    Flat→Ridley is room-gated arm-pump. Fight body is tail-tank
+    :func:`play_ceres_ridley_fight`. Escape re-solves magnet / falling / elev
+    reactively.
     """
     play_ceres_to_ridley_door(session)
     # Late import: combat.__init__ → progression → early_spine → this module.

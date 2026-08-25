@@ -251,7 +251,15 @@ def test_level6_stairs3a_71_push_then_tile_71_still_stand() -> None:
     run = SpineRun(through="level6-stairs3a-71", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_stairs_0x3a_71"
     assert "level6-stairs3a-71" in L6_THROUGH
-    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-stairs3a-71"
+    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == (
+        "level6-stairs3a-ne71"
+    )
+    assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-ne71") + 1] == (
+        "level6-stairs3a-ne"
+    )
+    assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-ne") + 1] == (
+        "level6-stairs3a-71"
+    )
     assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-71") + 1] == (
         "level6-west39-reband"
     )

@@ -30,6 +30,7 @@ from typing import Any, Mapping
 ROOT = Path(__file__).resolve().parents[4]
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.env import make_env, read_state_bytes  # noqa: E402
+from retro_harness.headed import add_headed_flag  # noqa: E402
 from retro_harness.path_overlay import (  # noqa: E402
     draw_guide_path,
     draw_player_marker,
@@ -279,6 +280,15 @@ def main() -> int:
         "--no-autopilot",
         action="store_true",
         help="Do not load the human-hot-swappable reactive room autopilot",
+    )
+    parser.add_argument(
+        "--autopilot-on",
+        action="store_true",
+        help="Start in BOT (autopilot active). Default is human until `",
+    )
+    add_headed_flag(
+        parser,
+        help="Start BOT immediately (window already open). Same as --autopilot-on.",
     )
     parser.add_argument(
         "--autopilot-candidates",
@@ -1065,8 +1075,10 @@ def main() -> int:
             allow_candidates=args.autopilot_candidates,
         )
         autopilot_box["bot"] = autopilot
-        # set_bot intentionally leaves this human-controlled until the toggle.
+        # Default: human until `. --autopilot-on starts the bot immediately.
         session.set_bot(autopilot)
+        if args.autopilot_on or bool(getattr(args, "headed", False)):
+            session._set_bot_active(True)
     # Closed over by _reset_then_boot for SELECT+L2 pin seed after env.reset.
     session_box: dict[str, Any] = {"s": session}
 

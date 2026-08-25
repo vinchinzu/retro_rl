@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Literal, Protocol
 
-from super_metroid.ram import GameplayPhase, SuperMetroidState
+from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_env_state
 
 # always: restore whenever current < capacity (product continuous default).
 # at_zero: practice handicap — ammo tops up only at 0; energy tops up at 0 **or**
@@ -244,3 +244,23 @@ class UnlimitedResourcesAssist(UnlimitedAmmoAssist):
                 self.telemetry.suspended_phase_frames[state.phase.value] += 1
 
         super().apply(data, state)
+
+    def attach_env(self, env) -> None:
+        """Refill inside ``env.step`` so a headed HUD sees topped-up health.
+
+        Wrap this *before* ``retro_harness.headed.attach_headed``. Idle after a
+        hop uses ``env.step`` directly and would otherwise skip ``_Sess``.
+        """
+        orig = env.step
+
+        def step(action):
+            out = orig(action)
+            st = parse_env_state(env, mode="nav")
+            data = getattr(env, "data", env)
+            try:
+                self.apply(data, st)
+            except Exception:  # noqa: BLE001
+                self.apply(env, st)
+            return out
+
+        env.step = step  # type: ignore[method-assign]

@@ -15,14 +15,14 @@ Sources: [STATUS.md](../STATUS.md) · [plan.md](../plan.md) ·
 
 | Field | Value |
 |-------|-------|
-| STATUS tip | **Ice Beam** dual green **148,167f** ×2 (`--to ice`) |
+| STATUS tip | **Phantoon** dual green **195,336f** ×2 (`--to phantoon`) |
 | Integrity | 0 loads / progression / capacity / deaths |
 | Beams / items | `0x1007` / `0x3105` (Charge+Spazer+Wave+Ice; Speed) |
-| Reports | `recordings/ice.json` + `ice_dual.json` |
-| Next continuous | **K5** Alpha PB pure stack → natural Moat → … → credits |
+| Reports | `recordings/phantoon.json` + `phantoon_dual.json` |
+| Next continuous | **Gravity** (`rr-kw8t`) → Maridia → LN → Tourian → credits |
 
-Everything after Ice is **not** continuous-product yet, even when pure
-one-hops or hop-replay skills are dual green.
+Everything after Phantoon is **not** continuous-product yet, even when
+pure one-hops or hop-replay skills are dual green. Gravity is the next rung.
 
 ---
 

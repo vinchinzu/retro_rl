@@ -1,65 +1,67 @@
 # Status — Super Metroid
 
+Glossary: [`CONTEXT.md`](../CONTEXT.md). Working board: [plan.md](plan.md).
+
 ## Program gate
 
 | Field | Value |
 |-------|-------|
-| Current maturity | M5 |
-| Best verified result | Continuous power-on → **Ice Beam collect** (KPDR K4 Ice) |
-| Last verification | 2026-08-10 |
+| Current maturity | M5 (matrix sticker; rungs are the board) |
+| Best verified result | Continuous power-on → **Phantoon defeat + basement leave** (KPDR K6) |
+| Last verification | 2026-08-24 (STATUS promote 2026-08-25, `rr-b926`) |
 | Runtime class | Bronze |
-| Intervention class | Resource-assisted |
-| Target | Continuous assisted power-on → ending/credits |
+| Intervention class | Survival (resource-assisted: energy + unlocked ammo) |
+| Target | Power-on through end of credits with an RTA (any% KPDR, noob loadout) |
 | Current assists | Current energy on Zebes + naturally unlocked current ammo |
-| Default CLI tip | `ice` |
-| Acceptance | Natural Ice Room entry + Ice Beam PLM (`beams …\|0x0002`) under Spazer mainline |
-| Machine report | `recordings/ice.json` + `ice_dual.json` (**148,167f** each) |
+| Default CLI tip | `phantoon` |
+| Acceptance | Ordinary WS Basement `0xCC6F` `(1240,139)` p10 gs=8 + `$D82B` bit 0 |
+| Machine report | `recordings/phantoon.json` + `phantoon_dual.json` (**195,336f** each, exact) |
 | Save-state loads | 0 |
 | Progression / capacity writes | 0 |
 | Deaths | 0 |
-| Video | No-video dual verification (first ice video still open) |
+| Video | `recordings/phantoon.mp4` (Ceres on tape; frames match) |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Ready work | `bd ready -l super_metroid` |
+| Ready work | `bd ready -l super_metroid -l spine` |
 | Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2 — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
 
-## Current verified tip — Ice Beam (K4 Ice)
+## Current verified tip — Phantoon (K6)
 
-Two matching `--to ice --no-video` runs (2026-08-10, `rr-kxge`) reached ordinary
-Ice Beam Room `0xA890` with Ice Beam collected. Exact frame match both runs
-(**148,167f**). Integrity green: known transitions, ordered splits, **0** loads /
-progression / capacity writes / deaths. Spazer mainline beams **`0x1007`**
-(Charge+Spazer+Wave+Ice). Business floor climb hardened (cont-tuned 907 runup
-ladder + classic warehouse setup preserved).
+Two matching `--to phantoon` runs (2026-08-24, `rr-8g2u`) reached ordinary
+Wrecked Ship Basement `0xCC6F` after doppler kill + loot/exit. Exact frame
+match both runs (**195,336f**). Integrity green: known transitions, ordered
+splits, **0** loads / progression / capacity writes / deaths. Beams **`0x1007`**
+(Charge+Spazer+Wave+Ice). Items **`0x3105`**. Video frames match. Planner
+STATUS promote `rr-b926` (2026-08-25): this is the **one living tip**. Ice /
+Wave / Speed / Moat / WS are prefix CI, not extra products.
 
 | Metric | Value |
 |--------|------:|
-| Total frames | **148,167** (~41.16 min @ 60 fps), ×2 |
-| Wave → Double (return) | 136,851 @ `0xADAD` (prefix of ice tip delta) |
-| Frog Save → Business | 141,473 @ `0xA7DE` |
-| Business → Ice Gate | 145,230 @ `0xA815` |
-| Ice Snake → Ice | 147,799 @ `0xA890` |
-| Final room | `0xA890` ordinary gameplay |
+| Total frames | **195,336** (~54.26 min @ 60 fps), ×2 exact |
+| WO → WS | 175,967 @ `0xCA08` |
+| Entrance | 176,402 @ `0xCAF6` |
+| Main | 177,636 @ `0xCC6F` |
+| Basement → room | 178,300 @ `0xCD13` |
+| Fight | 195,000 @ `0xCD13` |
+| Loot-exit | 195,168 @ `0xCC6F` |
+| Final room | `0xCC6F` ordinary gameplay `(1240,139)` p10 gs=8 |
 | Beams | **`0x1007`** (Charge+Spazer+Wave+Ice) |
-| Items | **`0x3105`** (includes Speed `0x2000`) |
-| Outcome | `ice_collected` |
-| Report | `recordings/ice.json` + `ice_dual.json` (from `ice_dual_d` / `ice_dual_e`) |
+| Items | **`0x3105`** |
+| Outcome | `phantoon_defeated` |
+| Report | `recordings/phantoon.json` + `phantoon_dual.json` |
+| Video | `recordings/phantoon.mp4` |
 
-Previous tip (still valid prefix): Wave Beam `--to wave` **136,361f** ×2
-(`recordings/wave.json` + `wave_dual.json`, 2026-08-06, room `0xADDE`, beams
-`0x1005`). Superseded as default CLI tip — not false.
+Previous living tip (still valid prefix): Ice Beam `--to ice` **148,167f** ×2
+(`recordings/ice.json` + `ice_dual.json`, 2026-08-10, room `0xA890`, beams
+`0x1007`). Superseded as default CLI tip — not false.
 
-Previous tip (still valid): Speed Booster `--to speed` **130,388f** ×2
-(`recordings/speed_spazer.json` + `_dual.json`, room `0xAD1B`, beams `0x1004`).
+Previous prefix: Wave Beam `--to wave` **136,361f** ×2. Speed Booster
+`--to speed` **130,388f** ×2. Frog Save `--to frog` **114,923f** ×2 (side).
+Non-Spazer Bat Cave **122,304f** ×2 remains valid history.
 
-Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
-(`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
-remains valid history.
-
-★ Next: power-on `--to phantoon` dual compose (`rr-8g2u`, scratch, not
-STATUS). Fight+leave is already scratch dual **12455f** ×2 at `0xCC6F`
-`(1240,139)` p10 gs=8 + `$D82B` bit 0. Default CLI stays `ice`. Residual:
-[`tasks/rr-8g2u-residual.md`](tasks/rr-8g2u-residual.md).
+★ Next: **Gravity** on this tip (`rr-kw8t`). Pin
+`scratch/post_phantoon_leave.state`. Power-on green is the rung. Residual:
+[`tasks/rr-kw8t-residual.md`](tasks/rr-kw8t-residual.md).
 Work: `bd ready -l super_metroid -l spine`.
 
 ## Continuous prefix tips (frames only)
@@ -81,8 +83,9 @@ Work: `bd ready -l super_metroid -l spine`.
 | Frog Save | `frog` | 114,923 | K4.0 side tip |
 | Bat Cave | `bat_cave` | **122,304** | K4.4 previous default tip (non-Spazer dual) |
 | Speed Booster | `speed` | **130,388** | K4.5 previous default (Spazer dual) |
-| Wave Beam | `wave` | **136,361** | K4.10 previous default (Spazer dual exact match) |
-| **Ice Beam** | **`ice`** | **148,167** | **K4 Ice default tip** (rr-kxge dual exact match) |
+| Wave Beam | `wave` | **136,361** | K4.10 prefix CI |
+| Ice Beam | `ice` | **148,167** | K4 previous living tip |
+| **Phantoon** | **`phantoon`** | **195,336** | **K6 living tip** (rr-8g2u dual exact match; STATUS `rr-b926`) |
 
 All listed tips are integrity-green continuous (0 loads / progression / capacity).
 Detail and history: [routes/MILESTONES.md](routes/MILESTONES.md).
@@ -128,13 +131,11 @@ No Clean dual / STATUS primary claim.
 ## Reproduce
 
 ```bash
-uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --no-video   # default tip = ice
-uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video  # previous tip
-uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video  # previous tip
-uv run python snes/super_metroid/scripts/record/continuous.py --to bat_cave --no-video
-uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video   # side tip
-uv run python snes/super_metroid/scripts/record/continuous.py --to warehouse --no-video  # Spazer warehouse prefix
+uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --no-video   # default tip = phantoon
+uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video     # previous living tip
+uv run python snes/super_metroid/scripts/record/continuous.py --to wave --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to speed --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to morph --clean
 ```
 

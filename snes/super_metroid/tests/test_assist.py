@@ -349,3 +349,42 @@ def test_norfair_knockback_does_not_suspend_energy() -> None:
 
     assert data.writes == [("health", 299)]
     assert "energy:metroid_latch" not in assist.telemetry.suspended_phase_frames
+
+
+def test_attach_env_refills_inside_env_step() -> None:
+    """Headed HUD reads RAM after env.step — refill must happen in that wrap."""
+    ram = np.zeros(0x10000, dtype=np.uint8)
+    # Ordinary gameplay + Zebes + health 10/99 so always-refill writes.
+    ram[0x0998] = 8  # game_state ordinary-ish; parse_state uses its own addrs
+
+    class Env:
+        def __init__(self):
+            self.data = FakeData()
+            self.ram = ram
+
+        def step(self, action):
+            del action
+            return None
+
+        def get_ram(self):
+            return self.ram
+
+    env = Env()
+    assist = UnlimitedResourcesAssist()
+    low = replace(
+        _state(),
+        phase=GameplayPhase.ORDINARY_GAMEPLAY,
+        area_index=0,
+        health=10,
+        max_health=99,
+    )
+    from super_metroid import assist as assist_mod
+
+    orig_parse = assist_mod.parse_env_state
+    assist_mod.parse_env_state = lambda *args, **kwargs: low  # type: ignore[assignment]
+    try:
+        assist.attach_env(env)
+        env.step(None)
+    finally:
+        assist_mod.parse_env_state = orig_parse
+    assert env.data.writes == [("health", 99)]

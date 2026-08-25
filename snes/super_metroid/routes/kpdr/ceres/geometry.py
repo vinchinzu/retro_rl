@@ -40,6 +40,19 @@ CERES_ELEV_HOPS: tuple[PlatformHop, ...] = (
 # Magnet escape: leave door height ~y139; outbound mid ~y395.
 _CERES_MAGNET_EXIT_Y = 200  # y at/below this → high enough for left exit
 
+# Dead Scientist Room 0xE021: raised door alcoves (y≈139) over a pit (y≈187).
+# Left alcove x≲80 — walk down, never jump (A bonks the ceiling / stalls).
+# Right stairs takeoff is the pit floor, not the door lip.
+_CERES_SCI_DOOR_Y = 139
+_CERES_SCI_FLOOR_Y = 187
+_CERES_SCI_ENTRY_LEDGE_X = 90
+CERES_SCIENTIST_FLOOR_HOP = PlatformHop(
+    _CERES_SCI_FLOOR_Y,
+    280,
+    430,
+    TakeoffWindow((350, 410), "RIGHT", min_momentum=1),
+)
+
 # Outbound room chain (rightward).
 _CERES_OUTBOUND_CHAIN = (
     ROOM_CERES_ELEVATOR,
@@ -70,6 +83,10 @@ __all__ = [
     "_CERES_ELEV_BOTTOM_Y",
     "CERES_ELEV_HOPS",
     "_CERES_MAGNET_EXIT_Y",
+    "_CERES_SCI_DOOR_Y",
+    "_CERES_SCI_FLOOR_Y",
+    "_CERES_SCI_ENTRY_LEDGE_X",
+    "CERES_SCIENTIST_FLOOR_HOP",
     "_CERES_OUTBOUND_CHAIN",
     "_CERES_ESCAPE_CHAIN",
 ]

@@ -5,6 +5,7 @@ Package layout
 * ``geometry`` — elev/magnet bands and hop *data* (``CERES_ELEV_HOPS``)
 * ``arm_pump`` — classic L↔R pump + knockback recovery
 * ``magnet`` — Magnet Stairs + Falling Tile reverse
+* ``scientist`` — Dead Scientist Room left-alcove walk-off + pit takeoff
 * ``elev_escape`` — elev shaft climb → ship leave
 * ``outbound`` — play_ceres_outbound_to_ridley / play_ceres_escape_to_landing
 * ``room_tape`` — rooms 1–3 as slices of the product outbound prefix

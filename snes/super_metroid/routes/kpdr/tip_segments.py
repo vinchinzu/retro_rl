@@ -442,9 +442,8 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         description=(
             "WS Entrance through unpowered Main Shaft, Basement Gadora, "
             "wiki 2-2-N doppler in 0xCD13 until HP 0 and $D82B bit 0, "
-            "then loot and left-door exit to 0xCC6F. Compose after rr-asyg; "
-            "not STATUS-promoted without dual continuous green. Default CLI "
-            "stays ice. Tip ws still ends at 0xCA08. Charge-only / "
+            "then loot and left-door exit to 0xCC6F. Living STATUS tip "
+            "(195,336f ×2). Tip ws still ends at 0xCA08. Charge-only / "
             "charge+missiles / Ice-on X-Factor stay research."
         ),
         aliases=("phan", "k6_phantoon"),

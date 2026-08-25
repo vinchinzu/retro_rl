@@ -128,9 +128,9 @@ class ContinuousTip:
     aliases: tuple[str, ...] = ()
 
 
-# Verified continuous tip (M5): Wave Beam (K4.10) dual exact match 136,361f
-# (Spazer mainline, beams 0x1005). Speed 130,388f remains a valid prefix tip.
-DEFAULT_CONTINUOUS_TIP = "ice"
+# Living tip (M5): Phantoon (K6) dual exact match 195,336f. Ice / Wave / Speed
+# remain valid prefix CI. See snes/super_metroid/CONTEXT.md.
+DEFAULT_CONTINUOUS_TIP = "phantoon"
 
 # Live views — mutated in place by :func:`rebuild_from_tip_specs` so importers
 # that bound the name early still see post-registration tips.

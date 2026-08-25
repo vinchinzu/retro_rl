@@ -1,8 +1,9 @@
 # Agent Instructions — Super Metroid
 
 Scripted full-clear package `super_metroid` (disk: `snes/super_metroid/`).
-Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
-`docs/ram_map.md`. Session loop: `.grok/skills/sm-session/SKILL.md`.
+Docs: `CONTEXT.md`, `docs/STATUS.md`, `docs/plan.md`,
+`docs/ASSIST_CONTRACT.md`, `docs/ram_map.md`. Session loop:
+`.grok/skills/sm-session/SKILL.md`.
 Tracker: `bd ready -l super_metroid -l spine`.
 
 ## Evaluation contract
@@ -18,17 +19,21 @@ Tracker: `bd ready -l super_metroid -l spine`.
 
 ## Immediate goal
 
-Verified tip: `--to ice` ([STATUS.md](docs/STATUS.md)). Next spine bead:
-`rr-8g2u` power-on `--to phantoon` dual (scratch; do not STATUS-promote).
-Default CLI stays `ice`. Living residual:
-[`docs/tasks/rr-8g2u-residual.md`](docs/tasks/rr-8g2u-residual.md).
+Living tip: `--to phantoon` ([STATUS.md](docs/STATUS.md),
+[CONTEXT.md](CONTEXT.md)). Next spine bead: `rr-kw8t` Gravity on that tip
+(power-on). Default CLI is `phantoon`. Living residual:
+[`docs/tasks/rr-kw8t-residual.md`](docs/tasks/rr-kw8t-residual.md).
 
 ## Commands
 
 ```bash
+# Watch any hop (bot on). --headed is retro_harness.headed, not a per-probe loop.
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> --source <pin> --headed
+./snes/super_metroid/play <pin> --headed --assist-full
+
 bd ready -l super_metroid -l spine
 
-uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --no-video
 
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/<pin>.state
@@ -67,6 +72,8 @@ a new knob on a file **≥800**. Continuous hops only via `tips.play_hops`.
 - Morph bombs are **X** while morph (not A).
 - **D-pad vs shoulders:** `LEFT`/`RIGHT` walk; `L`/`R` are shoulders.
   Never use `L` as a hop side.
+- **RED dual does not trash the hop.** Overwrite `scratch/<hop>_dual.json`
+  only. Do not revert the controller because it missed the pass gate.
 - Practice doorway bootstrap **zeros** momentum — not natural leave-speed.
 - **Shinespark store:** harness **B**=dash, **A**=activate, **DOWN**=store.
   After echoes=4, press DOWN **while still holding RIGHT**. Idle or **B

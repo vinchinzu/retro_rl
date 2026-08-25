@@ -18,6 +18,8 @@ Product pure shine chain (compose, natural-entry when sources allow)
    (wiki doppler; :func:`super_metroid.routes.kpdr.k6.phantoon_fight.play_phantoon_room_fight`).
    Loot + left-door exit is ``phantoon_loot_exit``
    (:func:`super_metroid.routes.kpdr.k6.phantoon_leave.play_phantoon_loot_exit`).
+7. **Powered Basement → Main Shaft** — :func:`play_ws_basement_to_main`
+   (morph-roll LEFT, jump UP the blue ceiling hatch). Gravity hop 1.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold
 from super_metroid.routes.kpdr import west_ocean as _west_ocean
 from super_metroid.routes.kpdr.k6 import ws_basement as _ws_basement
+from super_metroid.routes.kpdr.k6 import ws_basement_return as _ws_basement_return
 from super_metroid.routes.kpdr.k6 import ws_entrance as _ws_entrance
 from super_metroid.routes.kpdr.k6 import ws_main as _ws_main
 from super_metroid.routes.kpdr.room_ids import (
@@ -69,6 +72,10 @@ play_ws_main_to_basement = _ws_main.play_ws_main_to_basement
 
 play_ws_basement_to_phantoon = _ws_basement.play_ws_basement_to_phantoon
 ws_basement_phantoon_settled = _ws_basement.ws_basement_phantoon_settled
+play_ws_basement_to_main = _ws_basement_return.play_ws_basement_to_main
+ws_basement_main_settled = _ws_basement_return.ws_basement_main_settled
+at_ws_basement_hatch_seat = _ws_basement_return.at_ws_basement_hatch_seat
+hatch_jump_action = _ws_basement_return.hatch_jump_action
 at_ws_basement_bomb_blocks = _ws_basement.at_ws_basement_bomb_blocks
 at_ws_basement_eye_seat = _ws_basement.at_ws_basement_eye_seat
 WS_BASEMENT_ALCOVE_X = _ws_basement.WS_BASEMENT_ALCOVE_X
@@ -175,7 +182,11 @@ __all__ = [
     "play_ws_entrance_to_main",
     "play_ws_main_to_basement",
     "play_ws_basement_to_phantoon",
+    "play_ws_basement_to_main",
     "ws_basement_phantoon_settled",
+    "ws_basement_main_settled",
+    "at_ws_basement_hatch_seat",
+    "hatch_jump_action",
     "at_ws_basement_bomb_blocks",
     "at_ws_basement_eye_seat",
     "WS_BASEMENT_ALCOVE_X",

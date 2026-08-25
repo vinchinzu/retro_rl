@@ -186,6 +186,12 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     import zelda_i.level6_west39 as west39
     import zelda_i.level6_west39_reband as west39_reband
     import zelda_i.level6_stairs3a_71 as stairs3a_71
+    import zelda_i.level6_stairs3a_ne as stairs3a_ne
+    import zelda_i.level6_stairs3a_ne71 as stairs3a_ne71
+    import zelda_i.level6_stairs3a_warp as stairs3a_warp
+    import zelda_i.level6_cellar08 as cellar08
+    import zelda_i.level6_center3a as center3a
+    import zelda_i.level6_east3a as east3a
     import zelda_i.level6_clear39_west as clear39_west
     import zelda_i.level6_west19 as west19
     import zelda_i.level6_south18 as south18
@@ -205,6 +211,18 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
 
     assert "make_exit_ow_controller" not in l6d.__dict__
     assert "make_exit_ow_controller" not in l6p.__dict__
+    assert "make_stairs_3a_ne_controller" not in l6d.__dict__
+    assert "make_stairs_3a_ne_controller" not in l6p.__dict__
+    assert "make_stairs_3a_ne71_controller" not in l6d.__dict__
+    assert "make_stairs_3a_ne71_controller" not in l6p.__dict__
+    assert "make_stairs_3a_warp_controller" not in l6d.__dict__
+    assert "make_stairs_3a_warp_controller" not in l6p.__dict__
+    assert "make_cellar08_controller" not in l6d.__dict__
+    assert "make_cellar08_controller" not in l6p.__dict__
+    assert "make_center3a_controller" not in l6d.__dict__
+    assert "make_center3a_controller" not in l6p.__dict__
+    assert "make_east3a_controller" not in l6d.__dict__
+    assert "make_east3a_controller" not in l6p.__dict__
     assert "make_west39_controller" not in l6d.__dict__
     assert "make_west39_controller" not in l6p.__dict__
     assert "make_west39_reband_controller" not in l6d.__dict__
@@ -337,6 +355,28 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert l6s.level6_stairs3a_71_success is stairs3a_71.level6_stairs3a_71_success
     assert suffix.level6_stairs3a_71_success is stairs3a_71.level6_stairs3a_71_success
     assert stairs3a_71.make_stairs_3a_71_controller().spec_id == "level6_stairs_0x3a_71"
+    assert l6s.level6_stairs3a_ne_success is stairs3a_ne.level6_stairs3a_ne_success
+    assert suffix.level6_stairs3a_ne_success is stairs3a_ne.level6_stairs3a_ne_success
+    assert stairs3a_ne.make_stairs_3a_ne_controller().spec_id == "level6_stairs_0x3a_ne"
+    assert l6s.level6_stairs3a_ne71_success is stairs3a_ne71.level6_stairs3a_ne71_success
+    assert suffix.level6_stairs3a_ne71_success is stairs3a_ne71.level6_stairs3a_ne71_success
+    assert stairs3a_ne71.make_stairs_3a_ne71_controller().spec_id == (
+        "level6_stairs_0x3a_ne71"
+    )
+    assert l6s.level6_stairs3a_warp_success is stairs3a_warp.level6_stairs3a_warp_success
+    assert suffix.level6_stairs3a_warp_success is stairs3a_warp.level6_stairs3a_warp_success
+    assert stairs3a_warp.make_stairs_3a_warp_controller().spec_id == (
+        "level6_stairs_0x3a_warp"
+    )
+    assert l6s.level6_cellar08_success is cellar08.level6_cellar08_success
+    assert suffix.level6_cellar08_success is cellar08.level6_cellar08_success
+    assert cellar08.make_cellar08_controller().spec_id == "level6_cellar_0x08"
+    assert l6s.level6_center3a_success is center3a.level6_center3a_success
+    assert suffix.level6_center3a_success is center3a.level6_center3a_success
+    assert center3a.make_center3a_controller().spec_id == "level6_center_0x3a"
+    assert l6s.level6_east3a_success is east3a.level6_east3a_success
+    assert suffix.level6_east3a_success is east3a.level6_east3a_success
+    assert east3a.make_east3a_controller().spec_id == "level6_east_0x3a"
     assert l6s.level6_west39_reband_success is west39_reband.level6_west39_reband_success
     assert suffix.level6_west39_reband_success is west39_reband.level6_west39_reband_success
     assert l6s.level6_west39_success is west39.level6_west39_success
@@ -378,6 +418,12 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     src = open(suffix.__file__, encoding="utf-8").read()
     assert '"level6-stairs3a"' in src and "True)" in src
     assert '"level6-stairs3a-71"' in src and "True)" in src
+    assert '"level6-stairs3a-ne"' in src and "True)" in src
+    assert '"level6-stairs3a-ne71"' in src and "True)" in src
+    assert '"level6-stairs3a-warp"' in src and "True)" in src
+    assert '"level6-cellar08"' in src and "True)" in src
+    assert '"level6-center3a"' in src and "True)" in src
+    assert '"level6-east3a"' in src and "True)" in src
     assert '"level6-west39-reband"' in src
     assert '"level6-west39"' in src
     assert '"level6-clear39-west"' in src
@@ -398,6 +444,12 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert '"level6-aisle28"' in src
     assert '"level6-south28"' in src
     assert "level6_stairs3a_71_success, True)" in src
+    assert "level6_stairs3a_ne_success, True)" in src
+    assert "level6_stairs3a_ne71_success, True)" in src
+    assert "level6_stairs3a_warp_success, True)" in src
+    assert "level6_cellar08_success, True)" in src
+    assert "level6_center3a_success, True)" in src
+    assert "level6_east3a_success, True)" in src
     assert "level6_west39_reband_success, True)" in src
     assert "level6_west39_success, True)" in src
     assert "level6_clear39_west_success, True)" in src

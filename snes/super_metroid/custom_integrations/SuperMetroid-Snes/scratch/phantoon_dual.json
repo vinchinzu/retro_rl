@@ -1,0 +1,70 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "tip": "phantoon",
+  "outcome": "phantoon_defeated",
+  "command": "continuous --to phantoon",
+  "frames": [
+    195336,
+    195336
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "success": true,
+      "source": "power_on_video",
+      "outcome": "phantoon_defeated",
+      "final": {
+        "room": "0xCC6F",
+        "xy": [
+          1240,
+          139
+        ],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 1,
+        "beams": "0x1007",
+        "items": "0x3105"
+      },
+      "frames": 195336,
+      "boss": 1,
+      "integrity": {
+        "loads": true,
+        "prog": true,
+        "capacity": true,
+        "deaths": true
+      }
+    },
+    {
+      "run": 2,
+      "success": true,
+      "source": "power_on_novideo",
+      "outcome": "phantoon_defeated",
+      "final": {
+        "room": "0xCC6F",
+        "xy": [
+          1240,
+          139
+        ],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 1,
+        "beams": "0x1007",
+        "items": "0x3105"
+      },
+      "frames": 195336,
+      "boss": 1,
+      "integrity": {
+        "loads": true,
+        "prog": true,
+        "capacity": true,
+        "deaths": true
+      }
+    }
+  ],
+  "hop_glance_misses": []
+}
