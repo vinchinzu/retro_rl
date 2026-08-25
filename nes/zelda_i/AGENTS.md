@@ -24,6 +24,9 @@ bd ready -l zelda_i -l spine
 
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear3a --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-stairs3a-warp --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-cellar08 --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east3a --no-video --trials 1
 
 # Clean M5 (do not overwrite)
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2

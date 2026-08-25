@@ -4,7 +4,7 @@ Future work only. Proven facts live in [STATUS.md](STATUS.md).
 Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
 Tracker: `bd ready -l harvest -l spine`. Session loop:
 `.grok/skills/harvest-session/` (one bead, one living residual, halt-3,
-no STATUS from a pin). Immediate session card: `rr-20w.2.3` D2 CLEAR_PLOT.
+no STATUS from a pin). Immediate session card: `rr-20w.2.3` D2 whole-farm clear.
 
 **Doc consolidation (2026-08-18):** deleted `CODE_QUALITY_REVIEW.md`
 (review essay), `bot_architecture_plan.md` (layer ownership folded here
@@ -12,23 +12,32 @@ and in PLANNING_STACK), and `MILESTONES.md` (gate table folded below).
 Kept STATUS, plan, PLANNING_STACK, INTERACT, ram_map, and recon notes.
 Ready work stays in beads — do not recreate a gate board.
 
+## Working board
+
+1. **D2 farm clear (now):** every weed, stone, fence, large rock, and stump
+   gone; potatoes planted and watered; goods shipped before 17:00. The hour
+   stops at 18; continue until clear. No leftover quotas and no exception for
+   the 19 house-row posts.
+2. First potato harvest from those plants; no Day09 fixture.
+3. Spring → Summer.
+4. Animals, bought live.
+5. Year 1 done.
+6. Marriage.
+7. Natural Year 3 credits with a score.
+8. Published 10–20 hour video through the end of credits.
+
+The first natural credits run is intermediate: basics and some score, then
+refactor and rewrite. Ranch master and 999 are not requirements. All rung
+evidence is Clean controller input; RAM/resource pokes are retired. Build
+skills, not a frozen tape.
+
 ## Bottleneck
 
-**Tip (2026-08-23):** D2 work catalog is `harvest.planner.d2_work` (shop
-splice concatenates plant+water+leftover so a 06:08 plan still gets smash).
-Quotas: **8** plant/water, **10** bushes, **10** small rocks (hammer),
-**4** large 2×2, **2** stumps (axe). Spa when stamina cannot finish an
-8-swing 2×2. Do **not** restore a morning whole-farm wipe. Grape+shop+
-8-ring plant+water from `Y1_After_Buy_Potato` is GREEN (`rr-m7mk` /
-`rr-bvam`, `recordings/d2_plant_water.json`: 8×`0x55`, bag spent, can
-20→12). Leftover pin (`rr-w14t` / `rr-20w.2.8`) from the same state:
-10 pocket bushes GREEN, hammer shelf GREEN. Order is bushes pick+toss
-→ all fence posts to ponds → 10 stones to ponds → walk off shed door
-onto loaded a8/a1 → 4 large hammer → 2 stumps. CLEAR_ROCKS was red
-because hammer fetch stood on `(26,30)` `0xFF`. Do not redo power-on
-until leftover is green.
-Gate B residual remains `rr-3ae8` / `rr-yuel` / `rr-rzpd`. Do not
-STATUS-promote Gate B.
+`harvest.planner.d2_work` composes the D2 skills after the live grape and seed
+purchase. Crop targets are eight planted and watered tiles. Debris completion
+is exhaustive, ordered weeds → fences → stones → large rocks → stumps; numeric
+leftover quotas are not completion. The next proof is a natural power-on run,
+not `Y1_After_Buy_Potato` evidence.
 
 **Already closed (do not re-open as bottleneck):**
 
@@ -55,17 +64,6 @@ and tile/map model stay in `core` / `maps`; domain tasks compose
 | Maps / routes | `map_config` facade + `map_types` / `farm_pond` / `map_routes` |
 | Day plan | `day_plan_orchestrator`, `multi_day_planner`, `day_phase_{catalog,berry,chicken,cow}` |
 | D1 / ROM / editor | `town_day1_*`, `rom_*` / `save_state_io` / `map_render`, `editor_*` |
-
-## Gate table (from retired MILESTONES.md)
-
-| Gate | Status | Beads |
-|------|--------|-------|
-| M3 calendar | Met (calendar-only) | historical soak |
-| Gate A economy | Closed (Day09 $1260→$3180) | `rr-y8n` |
-| Empty-can natural | Mostly closed | `rr-3q27` |
-| Gate B continuous | Open (21 ovn partial) | `rr-5in` / `rr-20w` |
-| Gate C calendar richness | Open | `rr-1vc` |
-| M4 natural summer | Open after Gate B | `rr-hheu` |
 
 **Farm-bush residual (P3, not D2):** that legacy `SHIP_BERRY` route still
 leaves `shipping_money=0` (debris field north of the bush seals the interact).

@@ -65,6 +65,7 @@ from zelda_i.level4_overworld import (
     POST_L3_SETTLE_MAX_FRAMES,
     OverworldToLevel4Controller,
     PostL3TriforceSettleController,
+    level4_entry_stop,
 )
 from zelda_i.level4_path import (
     make_bomb_61_north_controller,
@@ -85,7 +86,7 @@ from zelda_i.level4_west31 import (
     level4_west31_stages,
     level4_west31_success,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 L4_STOPS: dict[str, str] = {
     "level4": "level4_triforce_0x08",
@@ -113,6 +114,7 @@ L4_STOPS: dict[str, str] = {
 
 __all__ = [
     "L4_STOPS",
+    "continue_level4_spine",
     "level4_clear_31_stages",
     "level4_clear_31_success",
     "level4_clear_32_stages",
@@ -345,3 +347,188 @@ def level4_stepladder_success(snap: ZeldaSnapshot) -> bool:
         and snap.ladder > 0
         and (snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9)
     )
+
+
+def continue_level4_spine(
+    env,
+    run,
+    *,
+    through: str,
+    run_stages,
+    topup_bombs,
+    spine_fields,
+    room_timer=None,
+    assist=None,
+    on_frame=None,
+) -> None:
+    """Attach L4 suffix after L3 TF. Mutates ``run``; caller returns it."""
+    hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
+
+    def attach(name: str, stop: str, stages, success_fn, *, keys_before=None) -> bool:
+        if not run_stages(env, run, stages, **hop_kw):
+            return False
+        snap = read_snapshot(env.get_ram())
+        if keys_before is None:
+            run.success = bool(success_fn(snap))
+        else:
+            run.success = bool(success_fn(snap, keys_before=keys_before))
+        if not run.success:
+            run.failed_stage = stop
+            return False
+        return through != name
+
+    if not run_stages(env, run, level4_entry_stages(), **hop_kw):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = bool(level4_entry_stop(snap))
+    if not run.success:
+        run.failed_stage = "level4_entry_0x71"
+        return
+    run.l4_entry = spine_fields(snap)
+    if through == "level4-entry":
+        return
+
+    entry_up, bomb_wall, natural_key = level4_first_key_stages()
+    if not run_stages(env, run, (entry_up,), **hop_kw):
+        return
+    # Survival exception: 0x61 bomb wall; continuous L4 entry is bombs=0.
+    topup_bombs(env, run)
+    if not attach(
+        "level4-key",
+        "level4_natural_key_0x51",
+        (bomb_wall, natural_key),
+        lambda s, keys_before: level4_first_key_success(s, keys_before=keys_before),
+        keys_before=int(run.l4_entry["keys"]),
+    ):
+        return
+
+    keys_before_40 = read_snapshot(env.get_ram()).keys
+    if not attach(
+        "level4-clear50",
+        "level4_clear_0x50",
+        level4_room50_stages(),
+        level4_room50_success,
+    ):
+        return
+    if not attach(
+        "level4-room40-key",
+        "level4_natural_key_0x40",
+        level4_room40_key_stages(),
+        lambda s, keys_before: level4_room40_key_success(s, keys_before=keys_before),
+        keys_before=keys_before_40,
+    ):
+        return
+    if not attach(
+        "level4-room30",
+        "level4_enter_0x30",
+        level4_north_30_stages(),
+        level4_north_30_success,
+    ):
+        return
+
+    keys_before_31 = read_snapshot(env.get_ram()).keys
+    if not attach(
+        "level4-room31",
+        "level4_enter_0x31",
+        level4_key_right_31_stages(),
+        lambda s, keys_before: level4_key_right_31_success(s, keys_before=keys_before),
+        keys_before=keys_before_31,
+    ):
+        return
+    if not attach(
+        "level4-clear31",
+        "level4_clear_0x31",
+        level4_clear_31_stages(),
+        level4_clear_31_success,
+    ):
+        return
+    if not attach(
+        "level4-room32",
+        "level4_enter_0x32",
+        level4_east_32_stages(),
+        level4_east_32_success,
+    ):
+        return
+    if not attach(
+        "level4-clear32",
+        "level4_clear_0x32",
+        level4_clear_32_stages(),
+        level4_clear_32_success,
+    ):
+        return
+    if not attach(
+        "level4-stepladder",
+        "level4_stepladder_0x60",
+        level4_stepladder_stages(),
+        level4_stepladder_success,
+    ):
+        return
+    if not attach(
+        "level4-exit60",
+        "level4_exit_0x60",
+        level4_exit60_stages(),
+        level4_exit60_success,
+    ):
+        return
+    if not attach(
+        "level4-west31",
+        "level4_west_0x31",
+        level4_west31_stages(),
+        level4_west31_success,
+    ):
+        return
+    if not attach(
+        "level4-keyup20",
+        "level4_key_up_0x20",
+        level4_keyup20_stages(),
+        level4_keyup20_success,
+    ):
+        return
+    if not attach(
+        "level4-room21",
+        "level4_enter_0x21",
+        level4_map21_stages(),
+        level4_map21_success,
+    ):
+        return
+    if not attach(
+        "level4-map",
+        "level4_map_pickup_0x21",
+        level4_mappick_stages(),
+        level4_mappick_success,
+    ):
+        return
+
+    topup_bombs(env, run)
+    if not attach(
+        "level4-bomb11",
+        "level4_enter_0x11",
+        level4_bomb11_stages(),
+        level4_bomb11_success,
+    ):
+        return
+
+    keys_before_01 = read_snapshot(env.get_ram()).keys
+    if not attach(
+        "level4-key01",
+        "level4_natural_key_0x01",
+        level4_key01_stages(),
+        lambda s, keys_before: level4_key01_success(s, keys_before=keys_before),
+        keys_before=keys_before_01,
+    ):
+        return
+    if not attach(
+        "level4-clear12",
+        "level4_clear_0x12",
+        level4_clear12_stages(),
+        level4_clear12_success,
+    ):
+        return
+    if not attach(
+        "level4-gleeok13",
+        "level4_enter_0x13",
+        level4_gleeok13_stages(),
+        level4_gleeok13_success,
+    ):
+        return
+    attach_level4_tf_suffix(env, run, assist=assist)

@@ -719,7 +719,7 @@ POST_SUPERS_SPINE: tuple[SpineHop, ...] = (
     # (rr-dbu.11). Compose prefix closes room gap wave tip 0xADDE → Business
     # 0xA7DE. Business pure settle is floor ~(216,1419); Ice Super mid-shaft —
     # play_business_to_ice_gate climbs/re-pins. Dual continuous GREEN 148167f×2
-    # (rr-kxge); DEFAULT_CONTINUOUS_TIP = ice.
+    # (rr-kxge); living tip is phantoon (rr-b926).
     SpineHop(
         "wave_to_double_chamber",
         play_wave_to_double_chamber,

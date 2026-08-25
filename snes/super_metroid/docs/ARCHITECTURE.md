@@ -62,7 +62,7 @@ legacy/*                                  frozen vision/RL remnants
 | `takeoff.TakeoffWindow` / `PlatformHop` | When to jump from a platform. Import from `super_metroid.takeoff` only. Hop `side` is D-pad `LEFT`/`RIGHT`; arm-pump is shoulder `L`/`R` (`shoulder_pump_button`). Do not invent a second hop type in a probe |
 | `ObservedTransition.leave/entry_kinematics` | Continuous hop snapshots (TAS door tech) |
 | Staged graphs | `START_TO_MORPH` ⊂ … ⊂ `START_TO_VARIA` ⊂ `START_TO_SPEED` (Business return + K4 scaffold) |
-| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is furthest integrity-green tip (`ice`) |
+| `routes/catalog.CONTINUOUS_TIPS` | CLI tip order; `DEFAULT_CONTINUOUS_TIP` is the one living tip (`phantoon`) |
 | `routes/tips.play_hops` + `SpineHop` | Ordered controller legs (only hop runner) |
 | `source_states.py` | Code twin of `SOURCE_STATES.md` — pure entry fingerprints |
 

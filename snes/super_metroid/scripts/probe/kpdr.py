@@ -49,6 +49,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 from retro_harness.actions import idle_action  # noqa: E402
+from retro_harness.headed import add_headed_flag, attach_headed, idle_headed  # noqa: E402
 from super_metroid.assist import UnlimitedResourcesAssist  # noqa: E402
 from super_metroid.dev.common import (  # noqa: E402
     boot_from_state,
@@ -343,6 +344,15 @@ def _play_named_chain(chain: str):
     return play
 
 
+def _headed_hud(env) -> str:
+    st = parse_env_state(env, mode="nav")
+    max_hp = int(getattr(st, "max_health", 0) or 0)
+    return (
+        f"BOT  0x{int(st.room_id):04X} ({int(st.samus_x)},{int(st.samus_y)}) "
+        f"p{int(st.pose)} gs={int(st.game_state)} hp={int(st.health)}/{max_hp}"
+    )
+
+
 def _run_pure(
     *,
     source: Path,
@@ -356,16 +366,23 @@ def _run_pure(
     red_diag: bool = True,
     ring_frames: int = DEFAULT_RING_FRAMES,
     phase_capture: bool = False,
+    headed: bool = False,
 ) -> dict[str, object]:
     env = make_dev_env()
     assist = UnlimitedResourcesAssist()
     session: _ProbeSession | None = None
+    pygame_mod = None
     reset_parse_counts()
     catalog = match_source_by_path(source)
     expected = expect_room
     if expected is None and catalog is not None:
         expected = catalog.room_id
     try:
+        assist.attach_env(env)
+        if headed:
+            pygame_mod = attach_headed(
+                env, title=f"SM BOT: {segment or 'pure'}", hud=_headed_hud
+            )
         # Open-loop hop bodies desync if we idle after a live pin
         # (human-tape default boot-settle is 0). RAM controllers tolerate 5.
         zero_settle_segments = {
@@ -375,6 +392,7 @@ def _run_pure(
             "caterpillar-to-elevator",
             "elevator-to-kihunter",
             "kihunter-to-moat",
+            "ws-to-phantoon",
         }
         boot_settle = 0 if segment in zero_settle_segments else 5
         boot_from_state(env, source, settle_frames=boot_settle)
@@ -534,6 +552,8 @@ def _run_pure(
             red_diag=red_diag,
         )
     finally:
+        if headed and pygame_mod is not None:
+            idle_headed(env, pygame_mod)
         env.close()
 
 
@@ -665,8 +685,10 @@ def main() -> None:
             "frog-save-to-business",
             "frog-save-to-speedway",
             "speedway-to-farm",
+            "ws-basement-to-main",
         ),
     )
+    add_headed_flag(pure)
     pure.add_argument("--source", type=Path, required=True)
     pure.add_argument("--output", type=Path, default=None)
     pure.add_argument(
@@ -772,6 +794,7 @@ def main() -> None:
     )
     compose.add_argument("--pin-json", type=Path, default=None)
     compose.add_argument("--no-red-diag", action="store_true")
+    add_headed_flag(compose)
 
     args = parser.parse_args()
 
@@ -861,6 +884,7 @@ def main() -> None:
             segment=args.chain,
             pin_json=args.pin_json,
             red_diag=not args.no_red_diag,
+            headed=bool(getattr(args, "headed", False)),
         )
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)
@@ -940,7 +964,11 @@ def main() -> None:
             "frog-save-to-business": play_frog_save_to_business,
             "frog-save-to-speedway": play_frog_save_to_speedway,
             "speedway-to-farm": play_speedway_to_farm,
-        }[args.segment]
+        }.get(args.segment)
+        if play_fn is None:
+            from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
+
+            play_fn = KPDR_SEGMENTS[args.segment.replace("-", "_")]
         bubble_phase_opts = (
             args.start_phase != "auto"
             or args.dump_phase_c is not None
@@ -989,6 +1017,7 @@ def main() -> None:
             pin_json=args.pin_json,
             red_diag=not args.no_red_diag,
             phase_capture=bool(args.stop_at_phase_c),
+            headed=bool(getattr(args, "headed", False)),
         )
         print(json.dumps(report, indent=2))
         sys.exit(0 if report.get("success") else 1)

@@ -169,6 +169,14 @@ Through = Literal[
     "level6-east39",
     "level6-settle3a",
     "level6-clear3a",
+    "level6-stairs3a-warp",
+    "level6-cellar08",
+    "level6-center3a",
+    "level6-east3a",
+    "level6-stairs3a-neunder",
+    "level6-stairs3a-neclip",
+    "level6-stairs3a-ne71",
+    "level6-stairs3a-ne",
     "level6-stairs3a-71",
     "level6-west39-reband",
     "level6-west39-upclip",
@@ -282,6 +290,7 @@ class SpineRun:
     l4_entry: dict[str, Any] | None = None
     bombs: dict[str, Any] | None = None
     inventory_assist: dict[str, Any] | None = None
+    position_assist: dict[str, Any] | None = None
 
     def report(self) -> dict[str, Any]:
         return {
@@ -302,6 +311,7 @@ class SpineRun:
             "l4_entry": self.l4_entry,
             "bombs": self.bombs,
             "inventory_assist": self.inventory_assist,
+            "position_assist": self.position_assist,
             "poke_bombs": (
                 (self.inventory_assist or {}).get("poke_bombs") or False
             ),
@@ -377,6 +387,8 @@ def _run_stages(
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
     for name, controller, max_frames in stages:
+        if hasattr(controller, "bind_env"):
+            controller.bind_env(env)
         if name in retopup:
             topup_owned_inventory(env, run)
         obs, stage = run_controller_stage(
@@ -393,6 +405,9 @@ def _run_stages(
         run.obs = obs
         run.stages.append(stage)
         run.end_frame = stage.end_frame
+        extra = getattr(controller, "position_assist", None)
+        if extra:
+            run.position_assist = extra
         if not stage.success:
             run.success = False
             run.failed_stage = name

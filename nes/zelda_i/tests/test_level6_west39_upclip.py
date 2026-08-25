@@ -417,7 +417,15 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     run = SpineRun(through="level6-west39-upclip", success=True, boot_frames=199)
     assert run.report()["stop"] == "level6_west39_upclip_0x39"
     assert "level6-west39-upclip" in L6_THROUGH
-    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-stairs3a-71"
+    assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == (
+        "level6-stairs3a-ne71"
+    )
+    assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-ne71") + 1] == (
+        "level6-stairs3a-ne"
+    )
+    assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-ne") + 1] == (
+        "level6-stairs3a-71"
+    )
     assert L6_THROUGH[L6_THROUGH.index("level6-stairs3a-71") + 1] == (
         "level6-west39-reband"
     )

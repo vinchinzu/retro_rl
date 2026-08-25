@@ -156,6 +156,14 @@ def test_spine_through_is_continuous_only() -> None:
         "level6-east39",
         "level6-settle3a",
         "level6-clear3a",
+        "level6-stairs3a-warp",
+        "level6-cellar08",
+        "level6-center3a",
+        "level6-east3a",
+        "level6-stairs3a-neunder",
+        "level6-stairs3a-neclip",
+        "level6-stairs3a-ne71",
+        "level6-stairs3a-ne",
         "level6-stairs3a-71",
         "level6-west39-reband",
         "level6-west39-upclip",
@@ -1078,4 +1086,3 @@ def test_validate_l5_endpoint_requires_continuous_session() -> None:
 def test_seamed_compose_module_is_gone() -> None:
     with pytest.raises(ModuleNotFoundError):
         __import__("zelda_i.scripts.compose_honest_route_recording")
-

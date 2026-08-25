@@ -1,9 +1,9 @@
 # Super Metroid docs
 
 **Goal:** continuous power-on → ending/credits with unlimited energy + ammo
-only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Current tip: **Ice Beam**
-(`--to ice`, **148,167f** ×2). ★ Next: K5 Alpha PB (`rr-dbu.8`). Tip
-history: [STATUS.md](STATUS.md).
+only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Living tip: **Phantoon**
+(`--to phantoon`, **195,336f** ×2). ★ Next: Gravity (`rr-kw8t`). Language:
+[CONTEXT.md](../CONTEXT.md). Tip history: [STATUS.md](STATUS.md).
 
 **Parallel Clean track:** Morph Clean green; ★ next bombs/Torizo Clean
 ([CLEAN_TRACK.md](CLEAN_TRACK.md)).
@@ -85,7 +85,7 @@ Full table: **[routes/MILESTONES.md](routes/MILESTONES.md)**.
 
 ```bash
 # Current continuous tip (default = ice)
-uv run python snes/super_metroid/scripts/record/continuous.py --to ice --no-video
+uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --no-video
 
 # Side tip (Frog Save — not primary)
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video

@@ -34,6 +34,7 @@ game/ RAM + maps + policy
 | Wire all ladder ROMs | `uv run python -m retro_harness.setup_all_roms` |
 | One-game `scripts/setup_rom.py` | `retro_harness.setup_rom_cli` |
 | Shared boot-to-checkpoint probe | `retro_harness.boot_probe` |
+| Watch a headless probe (`--headed`) | `retro_harness.headed` (`add_headed_flag`, `attach_headed`) |
 | Gymnasium vs classic `env.reset` | `retro_harness.env.reset_obs` |
 | Fighting watch / validate CLIs | `retro_harness.fighters.{watch,validate_states}` |
 

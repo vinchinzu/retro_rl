@@ -156,7 +156,7 @@ def default_tip_room_timing_path(
 
 
 def default_artifact_paths(*, clean: bool = False) -> tuple[Path, Path]:
-    """Video/report paths for the current continuous tip (Bat Cave)."""
+    """Video/report paths for the current continuous tip (Phantoon)."""
     return default_tip_artifact_paths(clean=clean)
 
 

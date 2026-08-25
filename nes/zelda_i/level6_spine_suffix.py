@@ -93,6 +93,38 @@ from zelda_i.level6_stairs3a import (
     level6_stairs3a_stages,
     level6_stairs3a_success,
 )
+from zelda_i.level6_stairs3a_warp import (
+    level6_stairs3a_warp_stages,
+    level6_stairs3a_warp_success,
+)
+from zelda_i.level6_cellar08 import (
+    level6_cellar08_stages,
+    level6_cellar08_success,
+)
+from zelda_i.level6_center3a import (
+    level6_center3a_stages,
+    level6_center3a_success,
+)
+from zelda_i.level6_east3a import (
+    level6_east3a_stages,
+    level6_east3a_success,
+)
+from zelda_i.level6_stairs3a_ne71 import (
+    level6_stairs3a_ne71_stages,
+    level6_stairs3a_ne71_success,
+)
+from zelda_i.level6_stairs3a_neclip import (
+    level6_stairs3a_neclip_stages,
+    level6_stairs3a_neclip_success,
+)
+from zelda_i.level6_stairs3a_neunder import (
+    level6_stairs3a_neunder_stages,
+    level6_stairs3a_neunder_success,
+)
+from zelda_i.level6_stairs3a_ne import (
+    level6_stairs3a_ne_stages,
+    level6_stairs3a_ne_success,
+)
 from zelda_i.level6_stairs3a_71 import (
     level6_stairs3a_71_stages,
     level6_stairs3a_71_success,
@@ -209,6 +241,22 @@ __all__ = [
     "level6_settle3a_success",
     "level6_clear3a_stages",
     "level6_clear3a_success",
+    "level6_stairs3a_warp_stages",
+    "level6_stairs3a_warp_success",
+    "level6_cellar08_stages",
+    "level6_cellar08_success",
+    "level6_center3a_stages",
+    "level6_center3a_success",
+    "level6_east3a_stages",
+    "level6_east3a_success",
+    "level6_stairs3a_ne71_stages",
+    "level6_stairs3a_ne71_success",
+    "level6_stairs3a_neclip_stages",
+    "level6_stairs3a_neclip_success",
+    "level6_stairs3a_neunder_stages",
+    "level6_stairs3a_neunder_success",
+    "level6_stairs3a_ne_stages",
+    "level6_stairs3a_ne_success",
     "level6_stairs3a_71_stages",
     "level6_stairs3a_71_success",
     "level6_west39_reband_stages",
@@ -616,6 +664,14 @@ def continue_level6_spine(
         ("level6-east39", "level6_east_0x39", level6_east39_stages, level6_east39_success, False),
         ("level6-settle3a", "level6_settle_0x3a", level6_settle3a_stages, level6_settle3a_success, False),
         ("level6-clear3a", "level6_clear_0x3a", level6_clear3a_stages, level6_clear3a_success, False),
+        ("level6-stairs3a-warp", "level6_stairs_0x3a_warp", level6_stairs3a_warp_stages, level6_stairs3a_warp_success, True),
+        ("level6-cellar08", "level6_cellar_0x08", level6_cellar08_stages, level6_cellar08_success, True),
+        ("level6-center3a", "level6_center_0x3a", level6_center3a_stages, level6_center3a_success, True),
+        ("level6-east3a", "level6_east_0x3a", level6_east3a_stages, level6_east3a_success, True),
+        ("level6-stairs3a-neunder", "level6_stairs_0x3a_neunder", level6_stairs3a_neunder_stages, level6_stairs3a_neunder_success, True),
+        ("level6-stairs3a-neclip", "level6_stairs_0x3a_neclip", level6_stairs3a_neclip_stages, level6_stairs3a_neclip_success, True),
+        ("level6-stairs3a-ne71", "level6_stairs_0x3a_ne71", level6_stairs3a_ne71_stages, level6_stairs3a_ne71_success, True),
+        ("level6-stairs3a-ne", "level6_stairs_0x3a_ne", level6_stairs3a_ne_stages, level6_stairs3a_ne_success, True),
         ("level6-stairs3a-71", "level6_stairs_0x3a_71", level6_stairs3a_71_stages, level6_stairs3a_71_success, True),
         ("level6-west39-reband", "level6_west39_reband_0x39", level6_west39_reband_stages, level6_west39_reband_success, True),
         ("level6-west39-upclip", "level6_west39_upclip_0x39", level6_west39_upclip_stages, level6_west39_upclip_success, True),
