@@ -1,4 +1,4 @@
-"""Unit tests for Level 6 reclear 0x39 then LEFT+UP at (136,141)."""
+"""Unit tests for Level 6 reclear 0x39 then DOWN onto y=141 at (125,133)."""
 
 from __future__ import annotations
 
@@ -7,19 +7,20 @@ import numpy as np
 from zelda_i.dungeon_ids import INVULN_MOVER_OBJECT_TYPE, VIRE_OBJECT_TYPE
 from zelda_i.level6_path import WEST_CLIP_X
 from zelda_i.level6_spine import L6_THROUGH
-from zelda_i.level6_west39_upclip import (
+from zelda_i.level6_west39_reband import (
     DATED_DOWN,
     DATED_LEFT,
     DATED_LEFT2,
     DATED_LEFT3,
     DATED_LEFT4,
     DATED_LEFT5,
+    DATED_LEFT6,
     LANE_Y,
     WEST_DOOR,
     WEST_SPAWN_XMIN,
-    level6_west39_upclip_stages,
-    level6_west39_upclip_success,
-    make_west39_upclip_controller,
+    level6_west39_reband_stages,
+    level6_west39_reband_success,
+    make_west39_reband_controller,
 )
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -55,15 +56,15 @@ def _ram(**fields: int) -> np.ndarray:
     return ram
 
 
-def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
+def test_level6_west39_reband_reuses_prefix_then_down_at_125_133() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
 
-    stages = level6_west39_upclip_stages()
-    assert [name for name, _, _ in stages] == ["level6_west39_upclip_0x39"]
+    stages = level6_west39_reband_stages()
+    assert [name for name, _, _ in stages] == ["level6_west39_reband_0x39"]
     leftover = _ram(level=6, screen=0x3A, x=144, y=141, keys=4)
     leftover[ADDR_ROD] = 1
     leftover[ADDR_BOMBS] = 8
-    ctl = make_west39_upclip_controller()
+    ctl = make_west39_reband_controller()
     act = ctl.step(read_snapshot(leftover))
     assert act.reason == "left_path"
     assert list(act.action) == list(nes_action("LEFT"))
@@ -77,7 +78,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert ctl.room == 0x3A
     assert ctl._goal() == (WEST_CLIP_X, LANE_Y)
     assert ctl.walker.grid.xmin == WEST_SPAWN_XMIN == 16
-    replan = make_west39_upclip_controller()
+    replan = make_west39_reband_controller()
     act = replan.step(read_snapshot(leftover))
     assert act.reason == "left_path"
     act = replan.step(read_snapshot(leftover))
@@ -109,7 +110,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     vires[ADDR_BOMBS] = 8
     vires[ADDR_OBJ_TYPE + 1] = VIRE_OBJECT_TYPE
     vires[ADDR_OBJ_HP + 1] = 144
-    reclear = make_west39_upclip_controller()
+    reclear = make_west39_reband_controller()
     reclear.room = 0x39
     reclear.keys = 4
     act = reclear.step(read_snapshot(vires))
@@ -121,7 +122,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     empty39 = _ram(level=6, screen=0x39, x=208, y=141, keys=4)
     empty39[ADDR_ROD] = 1
     empty39[ADDR_BOMBS] = 8
-    west = make_west39_upclip_controller()
+    west = make_west39_reband_controller()
     west.room = 0x39
     west.keys = 4
     west._arrive_39(read_snapshot(empty39))
@@ -137,7 +138,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     dated = _ram(level=6, screen=0x39, x=DATED_DOWN[0], y=DATED_DOWN[1], keys=4)
     dated[ADDR_ROD] = 1
     dated[ADDR_COLLIDING_TILE] = 118
-    clip = make_west39_upclip_controller()
+    clip = make_west39_reband_controller()
     clip.room = 0x39
     clip.keys = 4
     clip._arrive_39(read_snapshot(dated))
@@ -157,7 +158,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     )
     dated_left[ADDR_ROD] = 1
     dated_left[ADDR_COLLIDING_TILE] = 119
-    lane = make_west39_upclip_controller()
+    lane = make_west39_reband_controller()
     lane.room = 0x39
     lane.keys = 4
     lane._arrive_39(read_snapshot(dated_left))
@@ -173,7 +174,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     )
     dated_left2[ADDR_ROD] = 1
     dated_left2[ADDR_COLLIDING_TILE] = 119
-    lane2 = make_west39_upclip_controller()
+    lane2 = make_west39_reband_controller()
     lane2.room = 0x39
     lane2.keys = 4
     lane2._arrive_39(read_snapshot(dated_left2))
@@ -187,7 +188,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     )
     dated_left3[ADDR_ROD] = 1
     dated_left3[ADDR_COLLIDING_TILE] = 117
-    upclip = make_west39_upclip_controller()
+    upclip = make_west39_reband_controller()
     upclip.room = 0x39
     upclip.keys = 4
     upclip._arrive_39(read_snapshot(dated_left3))
@@ -228,7 +229,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     )
     dated_left4[ADDR_ROD] = 1
     dated_left4[ADDR_COLLIDING_TILE] = 116
-    clip4 = make_west39_upclip_controller()
+    clip4 = make_west39_reband_controller()
     clip4.room = 0x39
     clip4.keys = 4
     clip4._arrive_39(read_snapshot(dated_left3))
@@ -271,7 +272,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     )
     dated_left5[ADDR_ROD] = 1
     dated_left5[ADDR_COLLIDING_TILE] = 116
-    clip5 = make_west39_upclip_controller()
+    clip5 = make_west39_reband_controller()
     clip5.room = 0x39
     clip5.keys = 4
     clip5._arrive_39(read_snapshot(dated_left3))
@@ -313,10 +314,87 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert clip5.failed
     assert act.reason.startswith("occupancy_halt_127_130")
     assert list(act.action) == list(nes_idle_action())
+    dated_left6 = _ram(
+        level=6, screen=0x39, x=DATED_LEFT6[0], y=DATED_LEFT6[1], keys=4
+    )
+    dated_left6[ADDR_ROD] = 1
+    dated_left6[ADDR_COLLIDING_TILE] = 118
+    reband = make_west39_reband_controller()
+    reband.room = 0x39
+    reband.keys = 4
+    reband._arrive_39(read_snapshot(dated_left3))
+    act = reband.step(read_snapshot(dated_left3))
+    assert act.reason == "west_upclip"
+    act = reband.step(read_snapshot(dated_left4))
+    assert act.reason == "west_clip"
+    act = reband.step(read_snapshot(dated_left5))
+    assert act.reason == "west_upclip"
+    act = reband.step(read_snapshot(dated_left6))
+    assert act.reason == "west_reband"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert not reband.failed
+    assert reband.rebanded
+    assert "west_reband" in reband.notes
+    assert any(n.startswith("reband_125_133_tile=") for n in reband.notes)
+    act = reband.step(read_snapshot(dated_left6))
+    assert reband.failed
+    assert act.reason.startswith("occupancy_halt_125_133")
+    assert list(act.action) == list(nes_idle_action())
+    lane141 = make_west39_reband_controller()
+    lane141.room = 0x39
+    lane141.keys = 4
+    lane141._arrive_39(read_snapshot(dated_left3))
+    act = lane141.step(read_snapshot(dated_left3))
+    assert act.reason == "west_upclip"
+    act = lane141.step(read_snapshot(dated_left4))
+    assert act.reason == "west_clip"
+    act = lane141.step(read_snapshot(dated_left5))
+    assert act.reason == "west_upclip"
+    act = lane141.step(read_snapshot(dated_left6))
+    assert act.reason == "west_reband"
+    assert not lane141.failed
+    door_band = _ram(level=6, screen=0x39, x=125, y=LANE_Y, keys=4)
+    door_band[ADDR_ROD] = 1
+    act = lane141.step(read_snapshot(door_band))
+    assert act.reason == "west_lane"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert lane141.walker.grid.ymin == LANE_Y
+    assert lane141.walker.grid.ymax == LANE_Y
+    assert lane141._goal() == WEST_DOOR
+    assert "reband_lane_141" in lane141.notes
+    assert not lane141.failed
+    act = lane141.step(read_snapshot(door_band))
+    assert lane141.failed
+    assert act.reason.startswith("occupancy_halt_125_141")
+    assert list(act.action) == list(nes_idle_action())
+    direct = _ram(
+        level=6, screen=0x39, x=DATED_LEFT6[0], y=DATED_LEFT6[1], keys=4
+    )
+    direct[ADDR_ROD] = 1
+    direct[ADDR_COLLIDING_TILE] = 118
+    drop = make_west39_reband_controller()
+    drop.room = 0x39
+    drop.keys = 4
+    drop._arrive_39(read_snapshot(direct))
+    act = drop.step(read_snapshot(direct))
+    assert act.reason == "west_reband"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("LEFT", "DOWN"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+    assert not drop.failed
     stuck = _ram(level=6, screen=0x39, x=208, y=141, keys=4)
     stuck[ADDR_ROD] = 1
     stuck[ADDR_COLLIDING_TILE] = 118
-    halt = make_west39_upclip_controller()
+    halt = make_west39_reband_controller()
     halt.room = 0x39
     halt.keys = 4
     halt._arrive_39(read_snapshot(stuck))
@@ -329,7 +407,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert list(act.action) == list(nes_idle_action())
     door = _ram(level=6, screen=0x39, x=32, y=141, keys=4)
     door[ADDR_ROD] = 1
-    push = make_west39_upclip_controller()
+    push = make_west39_reband_controller()
     push.room = 0x39
     push.keys = 4
     push._arrive_39(read_snapshot(door))
@@ -339,7 +417,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert list(act.action) != list(nes_action("LEFT", "UP"))
     mouth = _ram(level=6, screen=0x3A, x=32, y=93, keys=4)
     mouth[ADDR_ROD] = 1
-    align = make_west39_upclip_controller()
+    align = make_west39_reband_controller()
     act = align.step(read_snapshot(mouth))
     assert act.reason == "west_align"
     assert list(act.action) == list(nes_action("DOWN"))
@@ -351,7 +429,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     invuln[ADDR_ROD] = 1
     invuln[ADDR_OBJ_TYPE + 1] = INVULN_MOVER_OBJECT_TYPE
     invuln[ADDR_OBJ_HP + 1] = 240
-    ignore = make_west39_upclip_controller()
+    ignore = make_west39_reband_controller()
     ignore.room = 0x39
     ignore.keys = 4
     ignore._arrive_39(read_snapshot(invuln))
@@ -360,7 +438,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert act.reason == "west_lane"
     ram_dest = _ram(level=6, screen=0x38, x=208, y=141, keys=4)
     ram_dest[ADDR_ROD] = 1
-    arrive = make_west39_upclip_controller()
+    arrive = make_west39_reband_controller()
     arrive.room = 0x39
     arrive.keys = 4
     act = arrive.step(read_snapshot(ram_dest))
@@ -368,25 +446,25 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert not arrive.failed
     assert act.reason == "arrived_38"
     assert list(act.action) == list(nes_idle_action())
-    assert level6_west39_upclip_success(read_snapshot(ram_dest))
+    assert level6_west39_reband_success(read_snapshot(ram_dest))
     north = _ram(level=6, screen=0x29, x=120, y=205, keys=4)
     north[ADDR_ROD] = 1
-    north_fail = make_west39_upclip_controller()
+    north_fail = make_west39_reband_controller()
     north_fail.room = 0x39
     north_fail.keys = 4
     act = north_fail.step(read_snapshot(north))
     assert north_fail.failed
     assert act.reason.startswith("north_29_")
-    assert not level6_west39_upclip_success(read_snapshot(north))
+    assert not level6_west39_reband_success(read_snapshot(north))
     still = _ram(level=6, screen=0x3A, x=144, y=141, keys=4)
     still[ADDR_ROD] = 1
-    assert not level6_west39_upclip_success(read_snapshot(still))
+    assert not level6_west39_reband_success(read_snapshot(still))
     via = _ram(level=6, screen=0x39, x=208, y=141, keys=4)
     via[ADDR_ROD] = 1
-    assert not level6_west39_upclip_success(read_snapshot(via))
+    assert not level6_west39_reband_success(read_snapshot(via))
     back = _ram(level=6, screen=0x3A, x=16, y=141, keys=4)
     back[ADDR_ROD] = 1
-    back_fail = make_west39_upclip_controller()
+    back_fail = make_west39_reband_controller()
     back_fail.room = 0x39
     back_fail.keys = 4
     act = back_fail.step(read_snapshot(back))
@@ -394,7 +472,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert act.reason.startswith("backtrack_3a_")
     key_up = _ram(level=6, screen=0x09, x=120, y=205, keys=3)
     key_up[ADDR_ROD] = 1
-    up_fail = make_west39_upclip_controller()
+    up_fail = make_west39_reband_controller()
     up_fail.room = 0x39
     up_fail.keys = 4
     act = up_fail.step(read_snapshot(key_up))
@@ -402,7 +480,7 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     assert act.reason.startswith("key_up_09_")
     cellar = _ram(level=6, screen=0x3A, x=144, y=141, keys=4, mode=9)
     cellar[ADDR_ROD] = 1
-    warp = make_west39_upclip_controller()
+    warp = make_west39_reband_controller()
     act = warp.step(read_snapshot(cellar))
     assert warp.failed
     assert act.reason.startswith("warped_cellar")
@@ -414,14 +492,13 @@ def test_level6_west39_upclip_reuses_enter_then_left_up_at_136_141() -> None:
     armed = read_snapshot(leftover)
     assert armed.bow == 1
     assert armed.arrows == 1
-    run = SpineRun(through="level6-west39-upclip", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level6_west39_upclip_0x39"
-    assert "level6-west39-upclip" in L6_THROUGH
+    run = SpineRun(through="level6-west39-reband", success=True, boot_frames=199)
+    assert run.report()["stop"] == "level6_west39_reband_0x39"
+    assert "level6-west39-reband" in L6_THROUGH
     assert L6_THROUGH[L6_THROUGH.index("level6-clear3a") + 1] == "level6-west39-reband"
     assert L6_THROUGH[L6_THROUGH.index("level6-west39-reband") + 1] == (
         "level6-west39-upclip"
     )
     assert L6_THROUGH[L6_THROUGH.index("level6-west39-upclip") + 1] == "level6-west39"
-    assert L6_THROUGH[L6_THROUGH.index("level6-west39") + 1] == "level6-clear39-west"
-    assert "level6-north39" not in L6_THROUGH[: L6_THROUGH.index("level6-west39-upclip")]
-    assert L6_THROUGH[L6_THROUGH.index("level6-clear39")] != "level6-west39-upclip"
+    assert "level6-north39" not in L6_THROUGH[: L6_THROUGH.index("level6-west39-reband")]
+    assert L6_THROUGH[L6_THROUGH.index("level6-clear39")] != "level6-west39-reband"
