@@ -185,6 +185,7 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     import zelda_i.level6_spine_suffix as suffix
     import zelda_i.level6_west39 as west39
     import zelda_i.level6_west39_reband as west39_reband
+    import zelda_i.level6_stairs3a_71 as stairs3a_71
     import zelda_i.level6_clear39_west as clear39_west
     import zelda_i.level6_west19 as west19
     import zelda_i.level6_south18 as south18
@@ -246,6 +247,8 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert west39_reband.WEST_DOOR == (32, 141)
     assert west39_reband.LANE_Y == 141
     assert west39_reband.DATED_LEFT6 == (125, 133)
+    assert west39_reband.DATED_LEFT7 == (127, 133)
+    assert west39_reband.DATED_LEFT8 == (128, 133)
     assert west39_reband_ctl.room == 0x3A
     assert west39_reband_ctl._goal() == (48, 141)
     assert not hasattr(west39_reband_ctl, "bomb")
@@ -331,6 +334,9 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert south28.make_south28_controller().spec_id == "level6_south_0x28"
     assert l6s.level6_exit_ow_success is exit_ow.level6_exit_ow_success
     assert suffix.level6_exit_ow_success is exit_ow.level6_exit_ow_success
+    assert l6s.level6_stairs3a_71_success is stairs3a_71.level6_stairs3a_71_success
+    assert suffix.level6_stairs3a_71_success is stairs3a_71.level6_stairs3a_71_success
+    assert stairs3a_71.make_stairs_3a_71_controller().spec_id == "level6_stairs_0x3a_71"
     assert l6s.level6_west39_reband_success is west39_reband.level6_west39_reband_success
     assert suffix.level6_west39_reband_success is west39_reband.level6_west39_reband_success
     assert l6s.level6_west39_success is west39.level6_west39_success
@@ -371,6 +377,7 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert suffix.level6_south28_success is south28.level6_south28_success
     src = open(suffix.__file__, encoding="utf-8").read()
     assert '"level6-stairs3a"' in src and "True)" in src
+    assert '"level6-stairs3a-71"' in src and "True)" in src
     assert '"level6-west39-reband"' in src
     assert '"level6-west39"' in src
     assert '"level6-clear39-west"' in src
@@ -390,6 +397,7 @@ def test_level6_exit_ow_is_own_module_and_spine_under_800() -> None:
     assert '"level6-clear38-south"' in src
     assert '"level6-aisle28"' in src
     assert '"level6-south28"' in src
+    assert "level6_stairs3a_71_success, True)" in src
     assert "level6_west39_reband_success, True)" in src
     assert "level6_west39_success, True)" in src
     assert "level6_clear39_west_success, True)" in src
