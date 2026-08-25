@@ -14,6 +14,10 @@ Product pure shine chain (compose, natural-entry when sources allow)
    (unpowered morph-stair descent + floor pipes + green Super hatch).
 6. **WS Basement → Phantoon room** — :func:`play_ws_basement_to_phantoon`
    (unpowered hallway + morph-tunnel bomb + Gadora Super). No fight.
+   Fight is the ``--to phantoon`` SpineHop ``phantoon_fight``
+   (wiki doppler; :func:`super_metroid.routes.kpdr.k6.phantoon_fight.play_phantoon_room_fight`).
+   Loot + left-door exit is ``phantoon_loot_exit``
+   (:func:`super_metroid.routes.kpdr.k6.phantoon_leave.play_phantoon_loot_exit`).
 """
 
 from __future__ import annotations

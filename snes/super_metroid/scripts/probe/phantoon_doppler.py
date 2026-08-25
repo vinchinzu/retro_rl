@@ -205,7 +205,7 @@ def _run_strategy(args: argparse.Namespace) -> dict[str, object]:
             "method": "wiki_missile_doppler_2_2_n",
             "notes": (
                 "Wiki 2-2-N doppler, 10f spacing, Super-only-if-kill (HP≤600). "
-                "Assist ON. Do not wire. Compare to left-corner charge 20537f."
+                "Assist ON. Spine product (rr-asyg). Charge-only 20537f is research."
             ),
         }
     finally:

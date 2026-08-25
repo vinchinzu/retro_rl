@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from super_metroid.combat.features import phantoon_catalog
 from super_metroid.combat.phantoon import (
@@ -37,6 +38,11 @@ from super_metroid.combat.phantoon import (
 )
 from super_metroid.combat.protocol import wrap_phantoon_as_boss_strategy
 from super_metroid.ram import GameplayPhase, parse_state
+from super_metroid.routes.kpdr.k6.phantoon_fight import (
+    phantoon_boss_bit_set,
+    play_phantoon_room_fight,
+    require_phantoon_defeated,
+)
 
 
 def _state(**overrides):
@@ -319,3 +325,41 @@ def test_wrapper_entry_room_and_catalog() -> None:
     assert strategy.entry.room_id == ROOM_PHANTOON
     assert strategy.catalog.name == "Phantoon"
     assert phantoon_catalog().max_hp == 2500
+
+
+def test_play_phantoon_room_fight_wrong_room() -> None:
+    session = _Session(_state(room_id=0xCA08))
+    with pytest.raises(RuntimeError, match="phantoon_room_fight"):
+        play_phantoon_room_fight(session)
+
+
+def test_play_phantoon_room_fight_already_defeated() -> None:
+    bits = (0, 0, 0, 0x01, 0, 0, 0, 0)
+    session = _Session(_state(enemy0_hp=0, boss_bits=bits))
+    assert phantoon_boss_bit_set(session)
+    out = play_phantoon_room_fight(session)
+    assert out.room_id == ROOM_PHANTOON
+    assert out.enemy0_hp == 0
+    assert session.actions == []
+
+
+def test_play_phantoon_room_fight_rejects_timeout(monkeypatch) -> None:
+    session = _Session(_state())
+
+    class _Timeout:
+        outcome = "timeout"
+
+    monkeypatch.setattr(
+        "super_metroid.combat.phantoon_doppler.play_phantoon_doppler_fight",
+        lambda *args, **kwargs: _Timeout(),
+    )
+    with pytest.raises(RuntimeError, match="fight failed"):
+        play_phantoon_room_fight(session)
+
+
+def test_require_phantoon_defeated_after_hook() -> None:
+    bits = (0, 0, 0, 0x01, 0, 0, 0, 0)
+    ok = _Session(_state(enemy0_hp=0, boss_bits=bits))
+    require_phantoon_defeated(ok, [], None)
+    with pytest.raises(RuntimeError, match=r"\$D82B"):
+        require_phantoon_defeated(_Session(_state()), [], None)

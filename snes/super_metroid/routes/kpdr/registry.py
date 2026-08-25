@@ -80,6 +80,13 @@ from super_metroid.routes.kpdr.k6 import (
     play_caterpillar_to_elevator,
     play_elevator_to_kihunter,
     play_kihunter_to_moat,
+    play_phantoon_loot_exit,
+    play_phantoon_room_fight,
+    play_ws_basement_to_phantoon,
+)
+from super_metroid.routes.kpdr.wrecked_ship import (
+    play_ws_entrance_to_main,
+    play_ws_main_to_basement,
 )
 from super_metroid.routes.kpdr.moat import play_moat_cross
 from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
@@ -278,6 +285,11 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "kihunter_to_moat": play_kihunter_to_moat,
     "moat_cross": play_moat_cross,
     "west_ocean_to_ws": play_west_ocean_over_ocean_spark,
+    "ws_entrance_to_main": play_ws_entrance_to_main,
+    "ws_main_to_basement": play_ws_main_to_basement,
+    "ws_basement_to_phantoon": play_ws_basement_to_phantoon,
+    "phantoon_fight": play_phantoon_room_fight,
+    "phantoon_loot_exit": play_phantoon_loot_exit,
     # Post-Speed shortcut only (Boost Blocks).
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,

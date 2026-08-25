@@ -29,9 +29,18 @@ from super_metroid.routes.kpdr.k6 import (
     play_caterpillar_to_elevator,
     play_elevator_to_kihunter,
     play_kihunter_to_moat,
+    play_phantoon_loot_exit,
+    play_phantoon_room_fight,
+    play_ws_basement_to_phantoon,
 )
+from super_metroid.routes.kpdr.k6.phantoon_fight import require_phantoon_defeated
+from super_metroid.routes.kpdr.k6.phantoon_leave import require_phantoon_left
 from super_metroid.routes.kpdr.moat import play_moat_cross
 from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
+from super_metroid.routes.kpdr.wrecked_ship import (
+    play_ws_entrance_to_main,
+    play_ws_main_to_basement,
+)
 from super_metroid.routes.kpdr.rooms import (
     ROOM_ALPHA_PB,
     ROOM_BAT,
@@ -47,12 +56,15 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ICE_SNAKE,
     ROOM_ICE_TUTORIAL,
     ROOM_MOAT,
+    ROOM_PHANTOON,
     ROOM_RED_BRINSTAR_ELEVATOR,
     ROOM_RED_TOWER,
     ROOM_WAREHOUSE,
     ROOM_WEST_OCEAN,
     ROOM_WEST_TUNNEL,
+    ROOM_WS_BASEMENT,
     ROOM_WS_ENTRANCE,
+    ROOM_WS_MAIN,
 )
 from super_metroid.routes.kpdr.spine_types import K4_CAPS, SpineHop
 from super_metroid.routes.runtime import RouteSession
@@ -311,5 +323,66 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=_K4_SPEED_CAPS,
         policy_id="kpdr_k6_ws",
+    ),
+    SpineHop(
+        "ws_entrance_to_main",
+        play_ws_entrance_to_main,
+        ROOM_WS_ENTRANCE,
+        ROOM_WS_MAIN,
+        "Wrecked Ship Main Shaft",
+        "phantoon",
+        exit_direction="right",
+        entry_direction="left",
+        requires=K4_CAPS,
+        policy_id="kpdr_k6_phantoon",
+    ),
+    SpineHop(
+        "ws_main_to_basement",
+        play_ws_main_to_basement,
+        ROOM_WS_MAIN,
+        ROOM_WS_BASEMENT,
+        "Wrecked Ship Basement",
+        "phantoon",
+        exit_direction="down",
+        entry_direction="up",
+        requires=K4_CAPS,
+        policy_id="kpdr_k6_phantoon",
+    ),
+    SpineHop(
+        "ws_basement_to_phantoon",
+        play_ws_basement_to_phantoon,
+        ROOM_WS_BASEMENT,
+        ROOM_PHANTOON,
+        "Phantoon's Room",
+        "phantoon",
+        exit_direction="right",
+        entry_direction="left",
+        requires=K4_CAPS,
+        policy_id="kpdr_k6_phantoon",
+    ),
+    SpineHop(
+        "phantoon_fight",
+        play_phantoon_room_fight,
+        ROOM_PHANTOON,
+        ROOM_PHANTOON,
+        "Phantoon defeated",
+        "phantoon",
+        use_transition_split=False,
+        after=require_phantoon_defeated,
+        requires=K4_CAPS,
+        policy_id="kpdr_k6_phantoon",
+    ),
+    SpineHop(
+        "phantoon_loot_exit",
+        play_phantoon_loot_exit,
+        ROOM_PHANTOON,
+        ROOM_WS_BASEMENT,
+        "WS Basement (post-Phantoon)",
+        "phantoon",
+        exit_direction="left",
+        entry_direction="right",
+        after=require_phantoon_left,
+        requires=K4_CAPS,
+        policy_id="kpdr_k6_phantoon",
     ),
 )
