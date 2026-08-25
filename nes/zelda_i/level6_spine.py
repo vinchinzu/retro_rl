@@ -4,7 +4,6 @@ Post-Gleeok hops live in ``level6_spine_suffix``. Do not poke Rod /
 doors / keys / bow / arrows. Do not grant Whistle. Isolated BFS banned.
 Ignore object types 0x2b / Bubble. Map skipped. Gohma / TF 0x20 residual.
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -136,6 +135,10 @@ __all__ = [
     "level6_settle3a_success",
     "level6_clear3a_stages",
     "level6_clear3a_success",
+    "level6_stairs3a_ne71_stages",
+    "level6_stairs3a_ne71_success",
+    "level6_stairs3a_ne_stages",
+    "level6_stairs3a_ne_success",
     "level6_stairs3a_71_stages",
     "level6_stairs3a_71_success",
     "level6_west39_reband_stages",
@@ -235,7 +238,11 @@ L6_THROUGH: tuple[str, ...] = (
     "level6-clear39",
     "level6-east39",
     "level6-settle3a",
-    "level6-clear3a",
+    "level6-clear3a", "level6-stairs3a-warp", "level6-cellar08", "level6-center3a", "level6-east3a",
+    "level6-stairs3a-neunder",
+    "level6-stairs3a-neclip",
+    "level6-stairs3a-ne71",
+    "level6-stairs3a-ne",
     "level6-stairs3a-71",
     "level6-west39-reband",
     "level6-west39-upclip",
@@ -295,7 +302,11 @@ L6_STOPS: dict[str, str] = {
     "level6-clear39": "level6_clear_0x39",
     "level6-east39": "level6_east_0x39",
     "level6-settle3a": "level6_settle_0x3a",
-    "level6-clear3a": "level6_clear_0x3a",
+    "level6-clear3a": "level6_clear_0x3a", "level6-stairs3a-warp": "level6_stairs_0x3a_warp",
+    "level6-cellar08": "level6_cellar_0x08", "level6-center3a": "level6_center_0x3a", "level6-east3a": "level6_east_0x3a", "level6-stairs3a-neunder": "level6_stairs_0x3a_neunder",
+    "level6-stairs3a-neclip": "level6_stairs_0x3a_neclip",
+    "level6-stairs3a-ne71": "level6_stairs_0x3a_ne71",
+    "level6-stairs3a-ne": "level6_stairs_0x3a_ne",
     "level6-stairs3a-71": "level6_stairs_0x3a_71",
     "level6-west39-reband": "level6_west39_reband_0x39",
     "level6-west39-upclip": "level6_west39_upclip_0x39",
@@ -691,7 +702,6 @@ def level6_stairs18_success(snap: ZeldaSnapshot) -> bool:
         and not snap.transitioning
         and snap.screen != LEVEL6_GLEEOK_ROOM
     )
-
 from zelda_i.level6_spine_suffix import (  # noqa: E402
     continue_level6_spine,
     level6_clear09_stages,
@@ -703,7 +713,15 @@ from zelda_i.level6_spine_suffix import (  # noqa: E402
     level6_clear39_stages,
     level6_clear39_success,
     level6_clear3a_stages,
-    level6_clear3a_success,
+    level6_clear3a_success, level6_stairs3a_warp_stages, level6_stairs3a_warp_success,
+    level6_cellar08_stages, level6_cellar08_success, level6_center3a_stages, level6_center3a_success, level6_east3a_stages, level6_east3a_success, level6_stairs3a_neunder_stages,
+    level6_stairs3a_neunder_success,
+    level6_stairs3a_neclip_stages,
+    level6_stairs3a_neclip_success,
+    level6_stairs3a_ne71_stages,
+    level6_stairs3a_ne71_success,
+    level6_stairs3a_ne_stages,
+    level6_stairs3a_ne_success,
     level6_stairs3a_71_stages,
     level6_stairs3a_71_success,
     level6_west39_reband_stages,

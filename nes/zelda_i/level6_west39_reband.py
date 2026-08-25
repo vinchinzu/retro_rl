@@ -1,15 +1,19 @@
-"""Level 6 reclear 0x39 then DOWN onto y=141 at dated (125,133).
+"""Level 6 reclear 0x39 then LEFT+DOWN onto y=141 at dated (125,133).
 
 Reuse west39-upclip live prefix: occupancy 0x3A LEFT, replan leftover
 miss (tile 119), west_align DOWN, west_push into 0x39. Occupancy-patrol
 remaining Vires (ignore 0x2B). LEFT+DOWN clips onto y=141 at dated
 (144,109) / (142,141) / (139,141). LEFT+UP at dated (136,141).
-LEFT+DOWN at (133,133). LEFT+UP at (130,133) (y-dead). Then DOWN onto
-y=141 at dated leftover (125,133) — west of the statue that boxed
-y=141 LEFT at x=136–142. Occupancy LEFT at y=133 is dated (upclip v3
-halt). OccupancyWalker LEFT on y=141. Halt at the first new occupancy
-miss. Isolated BFS banned. Do not KEY-UP 0x09 / 0x29. Do not CheckWarp
-0x3A stairs. Do not bomb. Dest is RAM. Do not invent Gohma.
+LEFT+DOWN at (133,133). LEFT+UP at (130,133) (y-dead). Cardinal DOWN
+at (125,133) is y-dead (v1 leftover (127,133) tile 118). RIGHT+DOWN
+at (125,133)/(127,133) is y-dead (v2 leftover (128,133) tile 116).
+LEFT+DOWN clip at dated (125,133)/(127,133)/(128,133) onto y=141 —
+west of the statue that boxed y=141 LEFT at x=136–142. Occupancy LEFT
+at y=133 is dated (upclip v3). Occupancy DOWN at (125,133) is dated
+(reband v1). OccupancyWalker LEFT on y=141. Halt at the first new
+occupancy miss. Isolated BFS banned. Do not KEY-UP 0x09 / 0x29. Do
+not CheckWarp 0x3A stairs. Do not bomb. Dest is RAM. Do not invent
+Gohma.
 """
 
 from __future__ import annotations
@@ -39,6 +43,8 @@ __all__ = [
     "DATED_LEFT4",
     "DATED_LEFT5",
     "DATED_LEFT6",
+    "DATED_LEFT7",
+    "DATED_LEFT8",
     "LANE_Y",
     "WEST39_REBAND_MAX_FRAMES",
     "WEST_DOOR",
@@ -61,6 +67,10 @@ DATED_LEFT4 = (133, 133)
 DATED_LEFT5 = (130, 133)
 # upclip v3 occupancy y=133 LEFT 0px tile 118. West of the y=141 statue.
 DATED_LEFT6 = (125, 133)
+# reband v1 occupancy DOWN leftover: cardinal DOWN y-dead, x slid 125→127.
+DATED_LEFT7 = (127, 133)
+# reband v2 RIGHT+DOWN leftover: y-dead, x slid 127→128, tile 116.
+DATED_LEFT8 = (128, 133)
 WEST39_REBAND_MAX_FRAMES = 20000
 WEST39_REBAND_SAMPLE_PERIOD = 12
 CELLAR_MODE = 9
@@ -87,7 +97,7 @@ def _lane_walker(y: int = LANE_Y) -> OccupancyWalker:
 
 @dataclass
 class Level6West39RebandController:
-    """v3 prefix to (125,133), then DOWN onto y=141. Dest is RAM."""
+    """v3 prefix to (125,133), then LEFT+DOWN onto y=141. Dest is RAM."""
 
     spec_id: str = "level6_west39_reband_0x39"
     room: int = START_ROOM
@@ -229,15 +239,15 @@ class Level6West39RebandController:
     def _west_reband(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction:
         self.walker.last_dir = None
         self.walker.path = None
-        self.walker.last_xy = xy
         self.rebanded = True
         clip_note = f"reband_{xy[0]}_{xy[1]}_tile={int(snap.colliding_tile)}"
         if "west_reband" not in self.notes:
             self.notes.append("west_reband")
         if clip_note not in self.notes:
             self.notes.append(clip_note)
-        self.walker.last_dir = "DOWN"
-        return self._emit(snap, FrameAction(nes_action("DOWN"), "west_reband"))
+        return self._emit(
+            snap, FrameAction(nes_action("LEFT", "DOWN"), "west_reband")
+        )
 
     def _bind_upclip_band(self, xy: tuple[int, int]) -> None:
         y = int(xy[1])
@@ -345,7 +355,16 @@ class Level6West39RebandController:
             return self._west_clip(snap, xy)
         if self.room == VIA_ROOM and self.upclipped and xy == DATED_LEFT5:
             return self._west_upclip(snap, xy)
-        if self.room == VIA_ROOM and xy == DATED_LEFT6 and not self.rebanded:
+        if self.room == VIA_ROOM and xy == DATED_LEFT6:
+            return self._west_reband(snap, xy)
+        if self.room == VIA_ROOM and self.rebanded and xy in (
+            DATED_LEFT7,
+            DATED_LEFT8,
+        ):
+            return self._west_reband(snap, xy)
+        if self.room == VIA_ROOM and self.rebanded and xy[1] < LANE_Y:
+            if xy[1] == DATED_LEFT6[1]:
+                return self._fail(snap, f"occupancy_halt_{xy[0]}_{xy[1]}")
             return self._west_reband(snap, xy)
         if self.upclipped and not self.rebanded and xy not in _CLIP_POINTS:
             self._bind_upclip_band(xy)
@@ -358,7 +377,7 @@ class Level6West39RebandController:
         dated_down_miss = (
             self.room == VIA_ROOM
             and prev_dir == "DOWN"
-            and xy == DATED_DOWN
+            and xy in (DATED_DOWN, DATED_LEFT6, DATED_LEFT7, DATED_LEFT8)
         )
         dated_left_miss = (
             self.room == VIA_ROOM
@@ -388,15 +407,6 @@ class Level6West39RebandController:
                 btn = "UP" if xy[1] > LANE_Y else "DOWN"
                 return self._emit(snap, FrameAction(nes_action(btn), "west_align"))
             return self._emit(snap, FrameAction(nes_action("LEFT"), "west_push"))
-
-        if self.rebanded and xy[1] < LANE_Y:
-            self.walker.last_dir = "DOWN"
-            return self._emit(
-                snap, FrameAction(nes_action("DOWN"), "west_reband")
-            )
-        if self.rebanded and xy[1] > LANE_Y:
-            self.walker.last_dir = "UP"
-            return self._emit(snap, FrameAction(nes_action("UP"), "west_reband"))
 
         if self.room == VIA_ROOM and not self.upclipped and not self.rebanded and (
             self._north_of_lane(xy) or xy in (DATED_LEFT, DATED_LEFT2)
@@ -441,10 +451,13 @@ class Level6West39RebandController:
                 "0x39 Vires (ignore 0x2B); LEFT+DOWN clip dated occupancy DOWN "
                 "(144,109) and LEFT (142,141)/(139,141); LEFT+UP clip dated "
                 "LEFT (136,141); LEFT+DOWN clip dated LEFT (133,133); LEFT+UP "
-                "clip dated LEFT (130,133) y-dead; DOWN onto y=141 at dated "
-                "LEFT (125,133) (not occupancy LEFT at y=133); OccupancyWalker "
-                "LEFT on y=141; halt first new miss; no north 0x29; no KEY-UP "
-                "0x09; no stairs3a CheckWarp; dest is RAM; no bomb"
+                "clip dated LEFT (130,133) y-dead; LEFT+DOWN clip dated "
+                "(125,133)/(127,133)/(128,133) onto y=141 (cardinal DOWN "
+                "y-dead; RIGHT+DOWN y-dead; not occupancy LEFT at y=133; "
+                "not occupancy DOWN at (125,133)); "
+                "OccupancyWalker LEFT on y=141; halt first new miss; no north "
+                "0x29; no KEY-UP 0x09; no stairs3a CheckWarp; dest is RAM; "
+                "no bomb"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
@@ -457,12 +470,12 @@ class Level6West39RebandController:
 
 
 def make_west39_reband_controller() -> Level6West39RebandController:
-    """Reclear 0x39 then DOWN onto y=141 at (125,133). Do not poke doors/bombs."""
+    """Reclear 0x39 then LEFT+DOWN onto y=141 at (125,133). No door/bomb poke."""
     return Level6West39RebandController()
 
 
 def level6_west39_reband_stages():
-    """Play 0x3A leftover (144,141) → 0x39 reclear → DOWN at (125,133). Dest RAM."""
+    """Play 0x3A leftover (144,141) → 0x39 reclear → LEFT+DOWN at (125,133)."""
     ctl = make_west39_reband_controller()
     return (
         ("level6_west39_reband_0x39", ctl, ctl.max_frames),

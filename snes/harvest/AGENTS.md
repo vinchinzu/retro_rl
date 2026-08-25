@@ -7,10 +7,10 @@ Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
 
 ## Immediate goal
 
-`rr-20w.2.3` D2 CLEAR_PLOT (P0) + living residual
+`rr-20w.2.3` D2 whole-farm clear (P0) + living residual
 [`docs/tasks/rr-20w.2.3-residual.md`](docs/tasks/rr-20w.2.3-residual.md).
-Water-refill `rr-3ae8` is also on the spine filter — claim **one**. Planner
-owns [STATUS.md](docs/STATUS.md); do not STATUS-promote Gate B.
+Water-refill `rr-3ae8` is also on the spine filter — claim **one**. Do not
+promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
 
 ## Commands
 

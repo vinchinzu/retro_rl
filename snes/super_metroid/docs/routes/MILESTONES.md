@@ -5,7 +5,7 @@ Verified tip: [STATUS.md](../STATUS.md). Spine export:
 
 **Goal:** one continuous power-on → ending/credits run with **only** unlimited energy + ammo ([`ASSIST_CONTRACT.md`](../ASSIST_CONTRACT.md)). Target runtime class: **less-than-Bronze** assisted full clear (M8).
 
-**Current tip (primary / assisted):** Speed Booster (`--to speed`, **130,388f** ×2 exact match integrity green, 2026-08-06). Room `0xAD1B`, beams `0x1004`, items `0x3105`, outcome `speed_collected`. Reports: `recordings/speed_spazer.json` + `speed_spazer_dual.json`. Previous tip history: non-Spazer Bat Cave **122,304f** ×2 (`--to bat_cave`, 2026-08-03) — superseded as default, still valid. Frog Savestation remains a **side tip** (`--to frog`, 114,923f ×2). Spazer warehouse dual is a promoted prefix (89,416 + 90,904f). ★ Next serial: stabilize wave after Speed (`rr-07b`); pure Speed return → Bubble (`rr-g4i`).
+**Living tip (primary / Survival):** Phantoon (`--to phantoon`, **195,336f** ×2 exact match integrity green, 2026-08-24; STATUS 2026-08-25). Room `0xCC6F` `(1240,139)` p10, beams `0x1007`, items `0x3105`, outcome `phantoon_defeated`. Reports: `recordings/phantoon.json` + `phantoon_dual.json`. Ice **148,167f** ×2 is the previous living tip (prefix CI). Wave / Speed / Frog / Bat Cave remain valid prefixes. ★ Next serial: Gravity on this tip (`rr-kw8t`). One tip; Moat/WS are not extra products.
 
 **Parallel Clean track:** no energy + no ammo writes — Morph Clean green; bombs/Torizo Clean **GREEN 49,321f** ×2 (`SM-CLEAN-BT-ECONOMY`). Contract: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Clean never demotes assisted greens.
 
@@ -43,13 +43,13 @@ Verified tip: [STATUS.md](../STATUS.md). Spine export:
 | ✅ | `M-BUBBLE` | K4 | Bubble Mountain via Cathedral — continuous-integrated | `0xACB3` | pure stack closed; on continuous tip | via `bat_cave` |
 | ✅ | `M-BAT-CAVE` | K4 | Continuous → Bat Cave (previous tip) | `0xB07A` | **122304** ×2 | `bat_cave` |
 | ✅ | `M-BAT-SPEED` | K4 | Bat → Speed Hall → Speed — continuous-integrated | `0xACF0`… | pure + continuous path | via `speed` hops |
-| ✅ | `M-SPEED` | K4 | Continuous → Speed Booster (**primary tip**) | `0xAD1B` | **130388** ×2 | `speed` |
-| ⬜ | `M-WAVE` | K4 | Continuous → Wave Beam | `0xADDE` | — | `wave` |
-| ⬜ | `M-ICE` | K4 | Continuous → Ice Beam | `0xA890` | — | `ice` |
-| ⬜ | `M-ALPHAPB` | K5 | Continuous → Alpha Power Bombs | `0xA3AE` | — | `alpha_pb` |
-| ⬜ | `M-MOAT` | K6 | Continuous → Moat clear | `0x95FF` | — | `moat` |
-| ⬜ | `M-WS` | K6 | Continuous → Wrecked Ship entry | `0xCA08` | — | `ws` |
-| ⬜ | `M-PHAN` | K6 | Continuous → Phantoon defeat | `0xCD13` | — | `phantoon` |
+| ✅ | `M-SPEED` | K4 | Continuous → Speed Booster (prefix) | `0xAD1B` | **130388** ×2 | `speed` |
+| ✅ | `M-WAVE` | K4 | Continuous → Wave Beam (prefix) | `0xADDE` | **136361** ×2 | `wave` |
+| ✅ | `M-ICE` | K4 | Continuous → Ice Beam (previous living tip) | `0xA890` | **148167** ×2 | `ice` |
+| ✅ | `M-ALPHAPB` | K5 | Continuous → Alpha Power Bombs (on Phantoon tip) | `0xA3AE` | via `phantoon` | `alpha_pb` |
+| ✅ | `M-MOAT` | K6 | Continuous → Moat clear (on Phantoon tip) | `0x95FF` | via `phantoon` | `moat` |
+| ✅ | `M-WS` | K6 | Continuous → Wrecked Ship entry (on Phantoon tip) | `0xCA08` | via `phantoon` | `ws` |
+| ✅ | `M-PHAN` | K6 | Continuous → Phantoon defeat (**living tip**) | `0xCC6F` | **195336** ×2 | `phantoon` |
 | ⬜ | `M-GRAV` | K6 | Continuous → Gravity Suit | `0xCE40` | — | `gravity` |
 | ⬜ | `M-TUBE` | K7 | Continuous → Maridia tube break | `0xCEFB` | — | `tube` |
 | ⬜ | `M-BOTW` | K7 | Continuous → Botwoon defeat | `0xD95E` | — | `botwoon` |
@@ -94,9 +94,9 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 
 ## Progress (product milestones only)
 
-- Continuous (assisted): **18** (includes CATH/BUBBLE/Bat→Speed continuous-integrated + Speed primary; Frog side tip still green)
-- Next pure ready (assisted): **1** (Speed return → Bubble, `rr-g4i`)
-- Open (assisted product): **17** (Wave+ product tips still open)
+- Continuous (assisted): living tip **Phantoon**; Ice/Wave/Speed and K5–K6 prefixes are on that tip
+- Next product: Gravity (`rr-kw8t`)
+- Open (assisted product): Gravity → credits
 - Clean track: **infra ✅ + morph ✅ + bombs ✅ 49,321f**; spore+ parked
 - KPDR tracker segments: **92** (`continuous`=41, `open`=50)
 - Backlog tickets: **~308** (includes CLEAN + Cathedral pure stack)

@@ -63,6 +63,27 @@ Allowed fields only:
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
 / `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
 
+### One-room Link position — L6 0x3A stairs (operator exception, 2026-08-25)
+
+Walk-on of the cleared 0x3A stairs is BLOCKED after six 3-red hops. One
+disclosed **Link-position** write is allowed so the same power-on session can
+leave 0x3A and continue L6. **Not Clean.** Dest is still RAM.
+
+Allowed fields only:
+
+| Field | Address / data key | Rule |
+|-------|--------------------|------|
+| link_x | `$0070` / `ADDR_LINK_X` | Once, in play 0x3A after the live center 0x68 push. |
+| link_y | `$0084` / `ADDR_LINK_Y` | Same write. Target is the 0x09 analog `(208, 93)`. |
+
+The pair counts as **one** position write (`position_writes=1`). List it in
+`position_assist`. Do not write facing, mode, room, doors, inventory,
+Triforce, or capacity. Do not load state. `continuous_emulator_session`
+stays true. Do not repeat the write on later rooms.
+
+This exception does not authorize walking the east door unarmed or fighting
+Gohma without bow+arrows.
+
 This exception does not authorize speculative top-ups on every frame. Apply it
 immediately before a known bomb-consuming stage, preserve all other inventory,
 and record the before/after count and semantic stage name.
@@ -77,7 +98,7 @@ compass, or triforce bits.
 - undiscovered inventory items (see table above)
 - triforce / dungeon completion bits
 - room, screen, door, object, or map state
-- Link position, facing, or mode
+- Link position, facing, or mode (except the one 0x3A `ADDR_LINK_X`/`ADDR_LINK_Y` pair above)
 - heart **containers** (high nibble of `ADDR_HEALTH`)
 - bomb **capacity** (`ADDR_MAX_BOMBS`)
 - timers / dialog counters
@@ -123,7 +144,8 @@ work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
 - no state loads after power-on (for natural-entry claims)
 - natural inventory / triforce acquisition
 - no progression or capacity writes
-- natural room and boss advancement
+- natural room and boss advancement (except the one disclosed 0x3A
+  Link-position write; room/door/inventory/TF still natural)
 
 ## Dual track (Clean vs assisted)
 

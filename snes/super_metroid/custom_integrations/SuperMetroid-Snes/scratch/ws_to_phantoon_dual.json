@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "command": "compose",
+  "chain": "ws-to-phantoon",
+  "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_poweron.state",
+  "boot_settle": 0,
+  "frames": [13823, 13823],
+  "runs": [
+    {
+      "run": 1,
+      "success": true,
+      "final": {
+        "room": "0xCC6F",
+        "xy": [1240, 139],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 1
+      },
+      "frames": 13823
+    },
+    {
+      "run": 2,
+      "success": true,
+      "final": {
+        "room": "0xCC6F",
+        "xy": [1240, 139],
+        "pose": 10,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 1
+      },
+      "frames": 13823
+    }
+  ]
+}

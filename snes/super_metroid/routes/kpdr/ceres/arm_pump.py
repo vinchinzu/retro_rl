@@ -139,12 +139,13 @@ def _ceres_arm_pump_until(
         if jump_every is not None and jump_every > 0 and (i % jump_every) == 0:
             jump = True
         x = int(st.samus_x)
-        # Progress in travel direction?
+        # Progress in travel direction? Door settle (gs≠8) is not a ledge.
         progressed = (x < last_x - 1) if direction == "LEFT" else (x > last_x + 1)
+        ordinary = int(st.game_state) == GS_ORDINARY
         if progressed:
             stagnant = 0
             last_x = x
-        else:
+        elif ordinary:
             stagnant += 1
             if stuck_jump_after is not None and stagnant >= stuck_jump_after:
                 jump = True

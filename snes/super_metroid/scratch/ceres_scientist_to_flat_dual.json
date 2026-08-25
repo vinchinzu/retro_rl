@@ -1,0 +1,62 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "hop": "ceres_scientist_to_flat",
+  "pin": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_scientist_enter.state",
+  "leave": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ceres_scientist_leave.state",
+  "frames": [
+    303,
+    303
+  ],
+  "timing": {
+    "frames": 303,
+    "seconds": 5.042,
+    "clock": "00:05.05",
+    "ntsc_fps": 60.0988
+  },
+  "hop_glance_misses": [],
+  "runs": [
+    {
+      "frames": 303,
+      "final": {
+        "room": 57451,
+        "x": 39,
+        "y": 139,
+        "pose": 17,
+        "gs": 8,
+        "dt": 0,
+        "health": 99
+      },
+      "misses": [],
+      "ledge_after_8": 2,
+      "reasons": {
+        "ceres_sci_ledge": 10,
+        "ceres_sci": 271,
+        "ceres_sci_stair": 15,
+        "ceres_sci_kb_run": 6,
+        "ceres_sci_kb_spin": 1
+      }
+    },
+    {
+      "frames": 303,
+      "final": {
+        "room": 57451,
+        "x": 39,
+        "y": 139,
+        "pose": 17,
+        "gs": 8,
+        "dt": 0,
+        "health": 99
+      },
+      "misses": [],
+      "ledge_after_8": 2,
+      "reasons": {
+        "ceres_sci_ledge": 10,
+        "ceres_sci": 271,
+        "ceres_sci_stair": 15,
+        "ceres_sci_kb_run": 6,
+        "ceres_sci_kb_spin": 1
+      }
+    }
+  ]
+}

@@ -47,11 +47,11 @@ def _put_u16(ram: np.ndarray, address: int, value: int) -> None:
 
 
 def test_default_artifact_paths() -> None:
-    """Primary continuous tip is Ice Beam (KPDR K4 Ice) after rr-kxge dual."""
+    """Primary continuous tip is Phantoon after planner STATUS promote."""
     video, report = default_artifact_paths()
-    assert video.name == "ice.mp4"
-    assert report.name == "ice.json"
-    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    assert video.name == "phantoon.mp4"
+    assert report.name == "phantoon.json"
+    assert DEFAULT_CONTINUOUS_TIP == "phantoon"
 
 
 def test_continuous_tips_chain_ends_at_default() -> None:
@@ -79,10 +79,9 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "ws",
         "phantoon",
     ]
-    # Default tip is furthest STATUS-promoted integrity-green tip (Ice).
-    # alpha_pb / moat / ws / phantoon are wired for compose
-    # (rr-2r06 / rr-p2bw / rr-gyla) but not STATUS-promoted.
-    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    # Default tip is the one living STATUS tip (Phantoon). Prefix stems stay
+    # on the CLI chain as CI history, not extra products.
+    assert DEFAULT_CONTINUOUS_TIP == "phantoon"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
     assert ids.index("wave") < ids.index("ice")
@@ -374,10 +373,10 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "ice_acid_to_snake",
         "ice_snake_to_ice",
     ]
-    # Catalog alias + default tip is Ice after rr-kxge dual continuous green.
+    # Catalog alias; Ice remains prefix CI. Living tip is Phantoon.
     assert get_continuous_tip("ice_beam").tip_id == "ice"
     assert get_continuous_tip("k4_11").tip_id == "ice"
-    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    assert DEFAULT_CONTINUOUS_TIP == "phantoon"
     assert SUPER_TIP_BY_ID["alpha_pb"].parent_tip_id == "ice"
     assert SUPER_TIP_BY_ID["alpha_pb"].final_room == 0xA3AE
     assert SUPER_TIP_BY_ID["alpha_pb"].success_outcome == "alpha_pb_collected"
@@ -430,7 +429,7 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     ]
     assert get_continuous_tip("phan").tip_id == "phantoon"
     assert get_continuous_tip("k6_phantoon").tip_id == "phantoon"
-    assert DEFAULT_CONTINUOUS_TIP == "ice"
+    assert DEFAULT_CONTINUOUS_TIP == "phantoon"
 
 
 def test_post_supers_aliases_and_hop_tables() -> None:
