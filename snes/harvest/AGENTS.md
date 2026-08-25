@@ -32,6 +32,9 @@ HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
 
 HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
   --state Y1_After_Buy_Potato --out recordings/pocket_clear_probe.json
+
+uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \
+  --state Y1_D2_After_Bushes
 ```
 
 `HEADLESS=1`; no MP4. Glance is `harvest.clock_glance`. Parked CLIs:

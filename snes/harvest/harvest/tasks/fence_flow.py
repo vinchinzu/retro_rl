@@ -192,6 +192,7 @@ class FenceClearLoopTask(Task):
         self._navigator.path = []
         self._corridor_charge_done = False
         self._action_queue.clear()
+        self._pathfinder.temp_blocked.clear()
         if self._failures >= self.max_failures:
             return TaskResult(status=TaskStatus.FAILURE, reason="too many fence failures")
         return TaskResult(status=TaskStatus.RUNNING, reason=reason)
@@ -285,6 +286,14 @@ class FenceClearLoopTask(Task):
         self._steps_on_fence += 1
         if self._steps_on_fence > self.max_steps_per_fence:
             carrying = bool(world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT)
+            if carrying and self.pond_dump:
+                self._steps_on_fence = 0
+                self._pond_hop_steps = 0
+                self._pathfinder.temp_blocked.clear()
+                self._state = "navigate_pond"
+                return TaskResult(
+                    status=TaskStatus.RUNNING, reason="pond_dump keep carrying"
+                )
             if carrying:
                 self._state = "local_drop"
                 self._steps_on_fence = 0
@@ -427,12 +436,22 @@ class FenceClearLoopTask(Task):
                 targets.sort(key=self._pond_dump_key)
             else:
                 targets.sort(key=lambda t: manhattan(t.pos, self._navigator.current_pos))
-            picked = False
+            x0, x1 = FARM_POND_ACCESS_FENCE_X_RANGE
+            player_tile = self._navigator.current_tile
+            reached_wall = None
+            reached_other = None
+            hop_wall = None
+            hop_wall_dist = None
+            hop_other = None
+            hop_other_dist = None
             for target in targets:
+                tile = (int(target.tile[0]), int(target.tile[1]))
+                if tile in self._skip_tiles:
+                    continue
                 if self.corridor_only:
                     # Always lift from north of the y=31 wall. A generic nearest
                     # approach can choose the sealed south side.
-                    approach = (target.tile[0], target.tile[1] - 1)
+                    approach = (tile[0], tile[1] - 1)
                     if not self._pathfinder.is_walkable(world.ram, *approach):
                         approach = None
                 else:
@@ -445,11 +464,48 @@ class FenceClearLoopTask(Task):
                     if self.debug:
                         print(f"[FENCE] skip target {target.tile}: no approach")
                     continue
-                path = self._pathfinder.find_path(world.ram, self._navigator.current_tile, approach)
+                path = self._pathfinder.find_path(
+                    world.ram,
+                    player_tile,
+                    approach,
+                    max_steps=VIEWPORT_HOP_TILES,
+                )
                 if path is None:
                     if self.debug:
                         print(f"[FENCE] skip target {target.tile}: no path")
                     continue
+                wall = (
+                    tile[1] == FARM_POND_ACCESS_FENCE_ROW and x0 <= tile[0] <= x1
+                )
+                reached = (
+                    not path
+                    or path[-1] == approach
+                    or player_tile == approach
+                )
+                row = (target, approach, path)
+                if reached:
+                    if wall:
+                        reached_wall = row
+                        break
+                    if reached_other is None:
+                        reached_other = row
+                    continue
+                dist = abs(player_tile[0] - approach[0]) + abs(
+                    player_tile[1] - approach[1]
+                )
+                if wall:
+                    if hop_wall is None or dist < hop_wall_dist:
+                        hop_wall = row
+                        hop_wall_dist = dist
+                elif hop_other is None or dist < hop_other_dist:
+                    hop_other = row
+                    hop_other_dist = dist
+            if self.pond_dump:
+                pick = reached_wall or hop_wall or reached_other or hop_other
+            else:
+                pick = reached_wall or reached_other or hop_wall or hop_other
+            if pick is not None:
+                target, approach, path = pick
                 self._current = target
                 self._approach_tile = approach
                 self._navigator.path = path
@@ -460,11 +516,10 @@ class FenceClearLoopTask(Task):
                 self._local_drop_cycles = 0
                 self._stasis_repaths = 0
                 self._toss_face = "up"
-                picked = True
-                break
-            if not picked:
+            if pick is None:
                 if self._skip_tiles:
                     self._skip_tiles.clear()
+                    self._pathfinder.temp_blocked.clear()
                     return TaskResult(
                         status=TaskStatus.RUNNING, reason="retry skipped fences"
                     )
@@ -504,13 +559,24 @@ class FenceClearLoopTask(Task):
                         world.ram,
                         self._navigator.current_tile,
                         self._approach_tile,
+                        max_steps=VIEWPORT_HOP_TILES,
                     )
-                    if path:
+                    reached = bool(
+                        path is not None
+                        and (
+                            not path
+                            or path[-1] == self._approach_tile
+                            or self._navigator.current_tile == self._approach_tile
+                        )
+                    )
+                    if path and reached:
                         self._navigator.path = path
                         if self._navigator.stasis > self.stasis_repath:
                             self._stasis_repaths = getattr(self, "_stasis_repaths", 0) + 1
                             if self._stasis_repaths >= 4:
                                 return self._skip_current("stasis repath cap")
+                    elif path and self._navigator.stasis <= self.stasis_repath:
+                        self._navigator.path = path
                     elif self._navigator.stasis > self.stasis_repath:
                         return self._skip_current("repath failed, skipping")
 
@@ -604,11 +670,11 @@ class FenceClearLoopTask(Task):
                     reason="corridor_only local drop",
                 )
 
-            # Leftover pond dump: same ROM south-gap trap, but keep carrying
-            # to the F0 lip instead of dropping the post on land.
+            # Leftover pond dump: ROM south-gap trap only on the y=31 wall.
+            # Charging south from a north-farm lift runs into rocks and drops.
             if (
                 self.pond_dump
-                and current[1] <= 31
+                and 30 <= current[1] <= 31
                 and not getattr(self, "_corridor_charge_done", False)
             ):
                 return self._arm_south_charge(current)
@@ -661,41 +727,33 @@ class FenceClearLoopTask(Task):
                 overrides.add((gx, gy))
                 overrides.add((gx, gy + 1))  # one step south through the wall gap
 
-            full_path = self._pathfinder.find_path(
+            # Viewport hop only. Unbounded BFS walks 0x00 stale farm cells that
+            # load as stumps/rocks when the camera catches up.
+            hop = self._pathfinder.find_path(
                 world.ram,
                 current,
                 best_pond,
                 walkable_override=overrides,
+                max_steps=VIEWPORT_HOP_TILES,
             )
-            path = full_path
-            # Viewport trap: full BFS dies beyond ~16 tiles of live map data.
-            # Hop toward the pond only when the hop end is strictly closer —
-            # otherwise we thrash inside a fenced pocket forever.
-            if path is None:
-                hop = self._pathfinder.find_path(
-                    world.ram,
-                    current,
-                    best_pond,
-                    walkable_override=overrides,
-                    max_steps=VIEWPORT_HOP_TILES,
+            path = None
+            if hop:
+                hop_end = hop[-1]
+                cur_dist = abs(current[0] - best_pond[0]) + abs(
+                    current[1] - best_pond[1]
                 )
-                if hop:
-                    hop_end = hop[-1]
-                    cur_dist = abs(current[0] - best_pond[0]) + abs(
-                        current[1] - best_pond[1]
-                    )
-                    hop_dist = abs(hop_end[0] - best_pond[0]) + abs(
-                        hop_end[1] - best_pond[1]
-                    )
-                    if hop_dist < cur_dist:
-                        path = hop
-                        self._pond_hop_steps = getattr(self, "_pond_hop_steps", 0) + 1
-                    else:
-                        path = None
-                # Cap multi-hop attempts; corridor-open only needs the gap open.
-                # Real ROM may still need a few hops for viewport load toward pond.
-                hop_limit = 16 if self.pond_dump else 6
-                if path is not None and getattr(self, "_pond_hop_steps", 0) > hop_limit:
+                hop_dist = abs(hop_end[0] - best_pond[0]) + abs(
+                    hop_end[1] - best_pond[1]
+                )
+                if self.pond_dump or hop_dist < cur_dist:
+                    path = hop
+                    self._pond_hop_steps = getattr(self, "_pond_hop_steps", 0) + 1
+            hop_limit = 16 if self.pond_dump else 6
+            if path is not None and getattr(self, "_pond_hop_steps", 0) > hop_limit:
+                if self.pond_dump:
+                    self._pond_hop_steps = 0
+                    self._pathfinder.temp_blocked.clear()
+                else:
                     path = None
 
             if path:
@@ -711,9 +769,15 @@ class FenceClearLoopTask(Task):
                     action = np.zeros(12, dtype=np.int32)
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
-            # Pond still unreachable (wall residue / viewport): drop locally so
-            # the lifted gap stays open for crop refill BFS. Corridor-open only
-            # needs ≥1 missing fence on y=31 — toss-into-pond is optional.
+            # Pond still unreachable (wall residue / viewport). Corridor-open
+            # only needs the gap; leftover dump keeps the post until F0.
+            if self.pond_dump:
+                self._pathfinder.temp_blocked.clear()
+                self._navigator.path = []
+                self._pond_hop_steps = 0
+                return TaskResult(
+                    status=TaskStatus.RUNNING, reason="pond_dump repath"
+                )
             if self.debug:
                 print(
                     f"[FENCE] pond {best_pond} unreachable from {current}; "

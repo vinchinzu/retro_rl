@@ -33,10 +33,15 @@ from super_metroid.paths import SCRATCH_STATE_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
+from super_metroid.routes.kpdr.k6.ws_basement_ice import (
+    list_basement_enemies,
+    movement_stall_reason,
+)
 from super_metroid.routes.kpdr.k6.ws_basement_return import (
     play_ws_basement_to_main,
     ws_basement_main_settled,
 )
+from super_metroid.routes.skills.charge_shot import session_beam_charge
 
 SCRATCH = SCRATCH_STATE_DIR
 DEFAULT_SOURCE = SCRATCH / "post_phantoon_leave.state"
@@ -132,6 +137,30 @@ def _run_hop(
         except Exception as exc:  # noqa: BLE001
             error = f"{type(exc).__name__}: {exc}"
             st = sess.state
+        enemies = list_basement_enemies(sess)
+        extra = {
+            "frame": sess.frame,
+            "charge": session_beam_charge(sess),
+            "mov": int(getattr(st, "movement_type", 0) or 0),
+            "killed": int(getattr(st, "enemies_killed", 0) or 0),
+            "stall": movement_stall_reason(
+                int(st.samus_x),
+                int(st.samus_y),
+                int(getattr(st, "movement_type", 0) or 0),
+                int(st.pose),
+                enemies,
+            ),
+            "enemies": [
+                {
+                    "slot": e.slot,
+                    "id": f"0x{e.enemy_id:04X}",
+                    "xy": [e.x, e.y],
+                    "hp": e.hp,
+                    "freeze": e.freeze_timer,
+                }
+                for e in enemies
+            ],
+        }
         ok = error is None and ws_basement_main_settled(st)
         if ok and save is not None:
             save_dev_state(env, save)
@@ -151,7 +180,7 @@ def _run_hop(
             "error": error,
             "source": str(source),
             "boot": boot,
-            "final": _snap(st, {"frame": sess.frame}),
+            "final": _snap(st, extra),
             "frames": sess.frame,
             "time": timed,
             "saved": str(save) if ok and save is not None else None,

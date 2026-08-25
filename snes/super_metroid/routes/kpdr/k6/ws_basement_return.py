@@ -2,9 +2,10 @@
 
 Phantoon leave pin is the right door ``0xCC6F`` ~(1240,139). Ship is on.
 Morph-roll LEFT through the tunnel (bomb blocks respawn; X while morph).
-Unmorph. Ice-freeze Atomics (``0xE9FF``), stay east of the Workrobot
-(``0xE8FF``), spin-LEFT from x≳720 onto ~(657,91), then tap-shot the blue
-ceiling hatch into Main Shaft ``0xCAF6``. Map station LEFT is dead — skip.
+Unmorph. Ice-until-dead Atomics (``0xE9FF``) via charge-release seat
+(not tap-X from x=879), stay east of the Workrobot (``0xE8FF``),
+spin-LEFT from x≳720 onto ~(657,91), then tap-shot the blue ceiling
+hatch into Main Shaft ``0xCAF6``. Map station LEFT is dead — skip.
 Coverns (``0xEA3F``) can tank. Do not re-enter Phantoon.
 
 https://wiki.supermetroid.run/Basement
@@ -12,9 +13,7 @@ https://wiki.supermetroid.run/Basement
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
-from super_metroid.ram import FACING_LEFT, FACING_RIGHT, SuperMetroidState
+from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
     hold,
@@ -25,8 +24,17 @@ from super_metroid.routes.controller_common import (
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.k6.phantoon_fight import phantoon_boss_bit_set
+from super_metroid.routes.kpdr.k6.ws_basement_ice import (
+    ATOMIC_ID,
+    WORKROBOT_ID,
+    BasementEnemy,
+    ice_keepaway_action,
+    list_basement_enemies,
+    workrobot_avoid_action,
+)
 from super_metroid.routes.kpdr.room_ids import ROOM_PHANTOON, ROOM_WS_BASEMENT, ROOM_WS_MAIN
 from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.skills.charge_shot import session_beam_charge
 from super_metroid.routes.skills.knockback import (
     escape_knockback_spin,
     is_knockback,
@@ -44,29 +52,17 @@ WS_BASEMENT_TUNNEL_CLEAR_X = 900
 WS_BASEMENT_HATCH_X_MIN = 630
 WS_BASEMENT_HATCH_X_MAX = 690
 WS_BASEMENT_PLATFORM_X = 657
-WS_BASEMENT_PLATFORM_Y = 130
+# Standing center on the mid platform is ~163. Floor is ~187. 130 was too
+# tight and left 717/163 walking RIGHT into the lip wall.
+WS_BASEMENT_PLATFORM_Y = 175
 WS_BASEMENT_TAKEOFF_X_MIN = 720
 WS_BASEMENT_TAKEOFF_X_MAX = 780
 WS_BASEMENT_MAP_X = 80
-ATOMIC_ID = 0xE9FF
-WORKROBOT_ID = 0xE8FF
-_ENEMY_BASE = 0x0F78
-_ENEMY_STRIDE = 0x40
-_MAX_ENEMY_SLOTS = 8
-_ICE_KEEPAWAY_PX = 400
-_ATOMIC_PATH_X_MIN = 400
-_ATOMIC_PATH_X_MAX = 1100
-_ATOMIC_OVERLAP_PX = 24
-_ATOMIC_AIM_UP_DY = -40
-_ICE_TAP_FRAMES = 2
-_ICE_RELEASE_FRAMES = 6
-_ROBOT_GAP_PX = 48
-_MOVEMENT_STUN = 14
 _BOMB_CYCLES = 8
 _SETTLE = 200
 _DROP_BUDGET = 240
 _TUNNEL_ROLL = 160
-_RUN_BUDGET = 960
+_RUN_BUDGET = 2400
 _DOOR_BUDGET = 480
 
 
@@ -80,11 +76,18 @@ def ws_basement_main_settled(state: SuperMetroidState) -> bool:
 
 
 def at_ws_basement_hatch_seat(state: SuperMetroidState) -> bool:
-    """True under the blue ceiling hatch of powered Basement."""
+    """Standing on the mid platform under the blue ceiling hatch.
+
+    Floor y~187 and gun-jump peaks do not count — those are under the
+    platform, not on it.
+    """
+    pose = int(state.pose)
     return (
         int(state.room_id) == ROOM_WS_BASEMENT
-        and WS_BASEMENT_HATCH_X_MIN <= int(state.samus_x) <= WS_BASEMENT_HATCH_X_MAX
+        and abs(int(state.samus_x) - WS_BASEMENT_PLATFORM_X) <= 16
         and int(state.samus_y) <= WS_BASEMENT_PLATFORM_Y
+        and pose in (1, 2, 9, 10)
+        and abs(int(state.velocity_y)) <= 1
     )
 
 
@@ -94,9 +97,9 @@ def hatch_jump_action(samus_x: int, samus_y: int, pose: int, frame: int) -> tupl
         return ()
     x = int(samus_x)
     y = int(samus_y)
-    if x < WS_BASEMENT_HATCH_X_MIN:
+    if x < WS_BASEMENT_PLATFORM_X - 16:
         return ("RIGHT", "B")
-    if x > WS_BASEMENT_HATCH_X_MAX:
+    if x > WS_BASEMENT_PLATFORM_X + 16:
         return ("LEFT", "B")
     # Charge beam: hold X charges. Tap 2f then jump. Door is the mid platform ~x=657.
     phase = int(frame) % 40
@@ -111,140 +114,20 @@ def hatch_jump_action(samus_x: int, samus_y: int, pose: int, frame: int) -> tupl
     return ("UP",)
 
 
-class BasementEnemy(NamedTuple):
-    """One enemy slot from ``$0F78 + i*0x40`` (id/x/y/hp/freeze at +0x26)."""
-
-    slot: int
-    enemy_id: int
-    x: int
-    y: int
-    hp: int
-    freeze_timer: int
-
-
-def _u16(ram, addr: int) -> int:
-    return int(ram[addr]) | (int(ram[addr + 1]) << 8)
-
-
-def list_basement_enemies(session: ControllerSession) -> tuple[BasementEnemy, ...]:
-    """Scan slots 0–7. Empty when the session has no ``env.get_ram``."""
-    env = getattr(session, "env", None)
-    get_ram = getattr(env, "get_ram", None) if env is not None else None
-    if get_ram is None:
-        return ()
-    ram = get_ram()
-    out: list[BasementEnemy] = []
-    for slot in range(_MAX_ENEMY_SLOTS):
-        base = _ENEMY_BASE + slot * _ENEMY_STRIDE
-        enemy_id = _u16(ram, base)
-        if enemy_id == 0:
-            continue
-        hp = _u16(ram, base + 0x14)
-        if hp <= 0:
-            continue
-        x = _u16(ram, base + 0x02)
-        y = _u16(ram, base + 0x06)
-        if x >= 0xFE00 or y >= 0xFE00:
-            continue
-        out.append(
-            BasementEnemy(
-                slot=slot,
-                enemy_id=enemy_id,
-                x=x,
-                y=y,
-                hp=hp,
-                freeze_timer=_u16(ram, base + 0x26),
-            )
-        )
-    return tuple(out)
-
-
-def ice_keepaway_action(
-    samus_x: int,
-    samus_y: int,
-    facing: int,
-    enemies: tuple[BasementEnemy, ...],
-) -> tuple[str, ...] | None:
-    """Shoot path Atomics until hp=0. None = none left to kill.
-
-    Frozen is not dead. Aim UP when the blob is above the beam line.
-    Caller tap-releases X so Charge actually fires.
-    """
-    atomics = [
-        enemy
-        for enemy in enemies
-        if int(enemy.enemy_id) == ATOMIC_ID
-        and int(enemy.hp) > 0
-        and _ATOMIC_PATH_X_MIN <= int(enemy.x) <= _ATOMIC_PATH_X_MAX
-    ]
-    if not atomics:
-        return None
-    sx, sy = int(samus_x), int(samus_y)
-    nearest = min(
-        atomics, key=lambda enemy: (int(enemy.x) - sx) ** 2 + (int(enemy.y) - sy) ** 2
-    )
-    dx = int(nearest.x) - sx
-    dy = int(nearest.y) - sy
-    dist = (dx * dx + dy * dy) ** 0.5
-    if dist > _ICE_KEEPAWAY_PX:
-        return None
-    if dy <= _ATOMIC_AIM_UP_DY and abs(dx) > 12:
-        return ("LEFT",) if dx < 0 else ("RIGHT",)
-    if dx < 0 and int(facing) != FACING_LEFT:
-        return ("LEFT",)
-    if dx > 0 and int(facing) != FACING_RIGHT:
-        return ("RIGHT",)
-    if dy <= _ATOMIC_AIM_UP_DY:
-        return ("UP", "X")
-    return ("X",)
-
-
-def workrobot_avoid_action(
-    samus_x: int,
-    samus_y: int,
-    enemies: tuple[BasementEnemy, ...],
-) -> tuple[str, ...] | None:
-    """Do not walk into Workrobot ``0xE8FF``. None = path is clear.
-
-    Empty tuple = idle (let the robot walk). Under-hatch is occupied —
-    flee east to the takeoff band.
-    """
-    robots = [
-        enemy
-        for enemy in enemies
-        if int(enemy.enemy_id) == WORKROBOT_ID
-        and int(enemy.hp) > 0
-        and abs(int(enemy.y) - int(samus_y)) < 50
-    ]
-    if not robots:
-        return None
-    sx = int(samus_x)
-    nearest = min(robots, key=lambda enemy: abs(int(enemy.x) - sx))
-    gap = int(nearest.x) - sx
-    if abs(gap) >= _ROBOT_GAP_PX:
-        return None
-    if sx < WS_BASEMENT_TAKEOFF_X_MIN:
-        if gap > 16:
-            return ("RIGHT", "B")
-        if gap > 0:
-            return ()
-        return ("RIGHT", "B")
-    return ()
-
-
 def hatch_mount_action(
     samus_x: int,
     samus_y: int,
     pose: int,
     velocity_y: int,
 ) -> tuple[str, ...]:
-    """Floor → ~(657,91) from x≳720 spin-LEFT. Never L. Under-hatch is occupied."""
-    del velocity_y
+    """Floor: x≳720 spin-LEFT. On-platform (y≤175): land, walk to ~x=657."""
     if int(pose) in (137, 138):
         return ()
     x = int(samus_x)
     y = int(samus_y)
     if y <= WS_BASEMENT_PLATFORM_Y:
+        if int(pose) in (47, 48, 81, 82, 83, 84) and abs(int(velocity_y)) > 1:
+            return ()
         return walk_toward_x(x, WS_BASEMENT_PLATFORM_X, slack=8)
     if x > WS_BASEMENT_TAKEOFF_X_MAX:
         return ("LEFT", "B")
@@ -359,7 +242,7 @@ def _bomb_tunnel_left(session: ControllerSession, label: str) -> None:
 
 
 def _run_to_hatch(session: ControllerSession, label: str) -> None:
-    """Unmorph. Ice keepaway. Takeoff east of the robot onto ~(657,91)."""
+    """Unmorph. Ice keepaway (charge-release seat). Takeoff from x≳720."""
     if int(session.state.room_id) == ROOM_WS_MAIN:
         return
     if is_morph(int(session.state.pose)):
@@ -375,28 +258,32 @@ def _run_to_hatch(session: ControllerSession, label: str) -> None:
         if is_knockback(st):
             _kb(session, f"{label}_run_kb")
             continue
-        if is_morph(int(st.pose)) or int(st.pose) in (37, 38):
+        if is_morph(int(st.pose)):
             unmorph(session)
             hold(session, 8, "UP", reason=f"{label}_unmorph")
             continue
         enemies = list_basement_enemies(session)
         keepaway = ice_keepaway_action(
-            int(st.samus_x), int(st.samus_y), int(st.facing), enemies
+            int(st.samus_x),
+            int(st.samus_y),
+            int(st.facing),
+            enemies,
+            movement_type=int(getattr(st, "movement_type", 0) or 0),
+            charge=session_beam_charge(session),
+            velocity_y=int(st.velocity_y),
         )
         if keepaway is not None:
-            if "X" in keepaway:
-                hold(session, _ICE_TAP_FRAMES, *keepaway, reason=f"{label}_ice")
-                hold(session, _ICE_RELEASE_FRAMES, reason=f"{label}_ice_shot")
-            elif keepaway:
+            if keepaway:
                 hold(session, 1, *keepaway, reason=f"{label}_ice")
             else:
                 hold(session, 1, reason=f"{label}_ice_wait")
             continue
-        if int(getattr(st, "movement_type", 0) or 0) == _MOVEMENT_STUN:
-            hold(session, _ICE_TAP_FRAMES, "X", reason=f"{label}_ice_stun")
-            hold(session, _ICE_RELEASE_FRAMES, reason=f"{label}_ice_shot")
-            continue
-        avoid = workrobot_avoid_action(int(st.samus_x), int(st.samus_y), enemies)
+        avoid = workrobot_avoid_action(
+            int(st.samus_x),
+            int(st.samus_y),
+            enemies,
+            takeoff_x_min=WS_BASEMENT_TAKEOFF_X_MIN,
+        )
         if avoid is not None:
             if avoid:
                 hold(session, 1, *avoid, reason=f"{label}_robot")
@@ -448,9 +335,9 @@ def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
 
     Pin: ``scratch/post_phantoon_leave.state`` ``0xCC6F`` ~(1240,139) p10
     gs=8, ``$D82B`` bit 0. Bomb the morph-tunnel obstruction (X while morph).
-    Ice-freeze Atomics, takeoff east of the Workrobot (x≳720), tap-shot the
-    blue ceiling hatch on the mid platform ~x=657. Lands ordinary ``gs=8``
-    in ``0xCAF6``.
+    Ice-until-dead Atomics from a charge-release seat (east of the
+    Workrobot), takeoff x≳720, tap-shot the blue ceiling hatch on the mid
+    platform ~x=657. Lands ordinary ``gs=8`` in ``0xCAF6``.
     """
     label = "ws_basement_to_main"
     if ws_basement_main_settled(session.state):

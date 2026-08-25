@@ -3,12 +3,20 @@
 **Status:** CLEAR_BUSHES is green from the 400-weed pin. CLEAR_FENCES is not
 exhaustive: 18 house-paddock posts remain after a 200k-frame pond dump.
 **Natural entry:** power-on. Pins may debug a skill but cannot green the rung.
-**Probe:** `harvest.scripts.d2_leftover_probe` (`HEADLESS=1`).
+**Probe:** `harvest.scripts.d2_leftover_probe` (`HEADLESS=1`). Watch is
+`--headed` (`retro_harness.headed`): `[` `]` speed, TAB turbo. Not harvest
+`--watch` / WatchDisplay. Fence pond-dump hops `VIEWPORT_HOP_TILES`.
+Travel occupies the full 2x2 of a stump/large-rock TL even when siblings
+stay dirt/`0x00`. Headed fence dump then 80→78 / `too many fence failures` in 38 891f
+(2 pond-tosses). Scan now hops to the nearest y=31 post instead of the
+east pond-end post across the farm.
 
 ```bash
 HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
   --state Y1_D2_After_Bushes --section fences --timeout 200000 \
   --out recordings/d2_leftover_smash.json
+uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \
+  --state Y1_D2_After_Bushes
 ```
 
 Glance with `harvest.clock_glance` — no MP4. Halt after 3 serial reds on

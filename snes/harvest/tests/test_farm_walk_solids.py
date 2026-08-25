@@ -26,7 +26,7 @@ from harvest.core.tile_catalog import (
     debris_footprint,
 )
 from harvest.tasks.nav import Pathfinder, Point, TILE_SIZE
-from harvest.tasks.travel_walk import is_travel_solid
+from harvest.tasks.travel_walk import is_travel_occupied, is_travel_solid
 
 
 DIRT = 0xA1
@@ -75,6 +75,22 @@ class TravelSolidDenylistTests(unittest.TestCase):
         pf.extra_walkable.add(cell)
         self.assertFalse(pf.is_walkable(ram, *cell))
         self.assertFalse(pf.is_walkable(ram, *cell, walkable_override={cell}))
+
+    def test_tl_only_large_rock_occupies_the_whole_quad(self) -> None:
+        ram = make_navigation_ram(current_tile=(11, 10), blocked_tile=(63, 63))
+        _set_tile(ram, 12, 10, LARGE_ROCK_TL)
+        pf = Pathfinder()
+        for cell in ROCK_QUAD:
+            self.assertFalse(
+                pf.is_walkable(ram, *cell),
+                msg=f"quad sibling {cell} must be occupied",
+            )
+            self.assertTrue(is_travel_occupied(ram, *cell))
+        path = pf.find_path(ram, (11, 10), (14, 10))
+        self.assertIsNotNone(path)
+        assert path is not None
+        self.assertTrue(set(ROCK_QUAD).isdisjoint(path))
+        self.assertEqual(path[-1], (14, 10))
 
     def test_find_path_goes_around_large_rock(self) -> None:
         ram = make_navigation_ram(current_tile=(11, 10), blocked_tile=(63, 63))

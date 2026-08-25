@@ -31,7 +31,7 @@ from harvest.core.tile_catalog import (
 from harvest.tasks.travel_walk import (
     PUSH_HOLD_FRAMES,
     block_push_facing,
-    is_travel_solid,
+    is_travel_occupied,
     read_player_action,
 )
 
@@ -156,7 +156,7 @@ class Pathfinder:
         if (tx, ty) in self.no_go_tiles or (tx, ty) in self.base_no_go_tiles(ram) or (tx, ty) in self.temp_blocked:
             return False
         tile_id = get_tile_at(ram, tx, ty)
-        if is_travel_solid(tile_id):
+        if is_travel_occupied(ram, tx, ty):
             return False
         if tile_id in self.base_walkable_tiles(ram):
             return True

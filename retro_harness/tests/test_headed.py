@@ -6,7 +6,13 @@ import argparse
 import os
 from pathlib import Path
 
-from retro_harness.headed import HEADED_FLAG_HELP, add_headed_flag, configure_headed
+from retro_harness.headed import (
+    HEADED_FLAG_HELP,
+    add_headed_flag,
+    bot_speed_timing,
+    configure_headed,
+    headed_emu_repeat,
+)
 
 
 def test_add_headed_flag_is_store_true() -> None:
@@ -59,3 +65,23 @@ def test_headed_module_does_not_import_harvest_or_play_session() -> None:
     assert "play_session" not in src
     assert "add_headed_flag" in src
     assert "attach_headed" in src
+    assert "headed_emu_repeat" in src
+    assert "[ ] speed" in src
+
+
+def test_bot_4x_repeats_four_emu_steps_at_60hz() -> None:
+    repeat, tick, skip = bot_speed_timing(4.0, bot=True)
+    assert repeat == 4
+    assert tick == 60
+    assert skip is False
+
+
+def test_tab_turbo_unthrottles() -> None:
+    repeat, tick, skip = bot_speed_timing(4.0, turbo=True, bot=True)
+    assert repeat == 1
+    assert tick == 0
+    assert skip is True
+
+
+def test_headed_emu_repeat_is_one_without_window() -> None:
+    assert headed_emu_repeat(object()) == 1
