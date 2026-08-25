@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "runs": [
+    {
+      "success": true,
+      "hop": "ws_entrance_to_main",
+      "boot": {"room": "0xCA08", "xy": [57, 139], "pose": 1, "gs": 8, "dt": 0},
+      "final": {
+        "room": "0xCAF6",
+        "xy": [1063, 907],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "frames": 403
+    },
+    {
+      "success": true,
+      "hop": "ws_entrance_to_main",
+      "boot": {"room": "0xCA08", "xy": [57, 139], "pose": 1, "gs": 8, "dt": 0},
+      "final": {
+        "room": "0xCAF6",
+        "xy": [1063, 907],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "frames": 403
+    }
+  ]
+}

@@ -56,9 +56,7 @@ def test_k6_controllers_are_registered() -> None:
     from super_metroid.routes.kpdr.k6 import (
         play_phantoon_loot_exit,
         play_phantoon_room_fight,
-    )
-    from super_metroid.routes.kpdr.k6.ws_basement import play_ws_basement_to_phantoon
-    from super_metroid.routes.kpdr.wrecked_ship import (
+        play_ws_basement_to_phantoon,
         play_ws_entrance_to_main,
         play_ws_main_to_basement,
     )

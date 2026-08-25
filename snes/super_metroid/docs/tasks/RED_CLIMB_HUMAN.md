@@ -104,13 +104,13 @@ scripts). Do not re-hardcode route-specific checkpoint trees into AP.
 The pure probe has one independently verified, enemy-aware edge from the
 natural Red bottom pin to the first frozen lower Ripper. It reads the live
 Ripper X instead of assuming the human tape's patrol phase, freezes only in a
-repeatable launch band, executes a consecutive WJ skill, and proves a grounded
+repeatable launch band, steps off the ice column, standing-hops onto it, and proves a grounded
 landing on still-frozen support before handing control back.
 
 ```bash
 uv run python snes/super_metroid/scripts/probe/red_ice_climb.py --save
-# GREEN dual exact + 31 patrol phases total; 230..414f at 408..636 FPS
-# partial only: lower_ripper_1; Hellway remains RED
+# GREEN dual exact 228f freeze+standing hop (no WJ)
+# ur3 → ordinary Hellway 283f (39,139) p11; play_red_to_hellway Ice climb 5846f ×2
 ```
 
 Use the PNGs as the review surface and the JSON as coordinate truth:
@@ -121,15 +121,17 @@ Use the PNGs as the review surface and the JSON as coordinate truth:
 | `docs/tasks/refs/red_tower_ice_checkpoint_plan.png` | Full ten-screen checkpoint/recovery tree |
 | `routes/kpdr/data/red_tower_ice_checkpoint_plan.json` | Exact checkpoint bands, edge status, equipment contract |
 
-Next edge is `lower_ripper_4 → tunnel_floor` (solid left alcove ~x104
-y1883). Crouch-jump from r4 clears the height (apex ~1847) but the shaft
-at x≈155 is open; need leftward travel onto the seat without walking off
-r4 ice.
+Ice checkpoints from the p165 leave are dual-green through ordinary
+Hellway left-door (`red_ice_ur3_to_hellway`, **283f** ×2 `(39,139)` p11).
+Successor `hellway_to_caterpillar` from that pin is **2110f** ×2.
+`play_red_to_hellway` is the Ice-pin climb **5846f** ×2; compose Ice →
+Alpha PB is dual **20016f** ×2. Tape 6199f remains the no-Ice fallback.
 
-Lower ice ladder is dual-green: r1→r2 **156f**, r2→r3 **108f**, r3→r4
-**141f** ×2 (`red_ice_r3_to_r4.py`) — freeze r4 on the facing (right)
-side, crouch, Hi-Jump crouch-jump, drift from above. Standing hop apex is
-only ~3px above r4 and falls through. Do not RIGHT+A from pose 3.
+Lower ice ladder is dual-green through the tunnel alcove: r1→r2 **156f**,
+r2→r3 **108f**, r3→r4 **141f**, r4→tunnel **69f** ×2
+(`red_ice_r4_to_tunnel.py`) — A-only until airborne, then LEFT+A onto
+~x104 y1883. LEFT on r4 ice walks off; a vertical crouch-jump at x≈155
+falls through the open shaft. Do not RIGHT+A from pose 3.
 
 ## Rank + pick best
 
@@ -185,4 +187,4 @@ Moat spark pure remains `rr-hhj` / `moat_spark_watch` — do not re-prove on thi
 - Splice board ≠ power-on STATUS tip
 - `alpha_pb_to_moat_human` ≠ continuous Moat approach from power-on (`rr-dbu.9`)
 
-See also: [FULL_STITCH_GAPS.md](FULL_STITCH_GAPS.md) · [rr-av5s-residual.md](rr-av5s-residual.md) · [HUMAN_TAPE_PIPELINE.md](HUMAN_TAPE_PIPELINE.md).
+See also: [FULL_STITCH_GAPS.md](FULL_STITCH_GAPS.md) · [HUMAN_TAPE_PIPELINE.md](HUMAN_TAPE_PIPELINE.md).

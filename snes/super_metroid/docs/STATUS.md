@@ -56,11 +56,11 @@ Side tip (still valid): Frog Save `--to frog` **114,923f** ×2
 (`recordings/frog.json` + reverify). Non-Spazer Bat Cave **122,304f** ×2
 remains valid history.
 
-★ Next: Phantoon fight (`0xCD13`, `rr-tlaq`) from the Basement→room leave
-(scratch dual **718f** ×2 `0xCD13` `(39,124)` p81 gs=8, rr-cjpp, not STATUS).
-Window-1 chip GREEN; full kill RED. Residual:
-[`tasks/rr-tlaq-residual.md`](tasks/rr-tlaq-residual.md).
-Work: `bd ready -l super_metroid`.
+★ Next: power-on `--to phantoon` dual compose (`rr-8g2u`, scratch, not
+STATUS). Fight+leave is already scratch dual **12455f** ×2 at `0xCC6F`
+`(1240,139)` p10 gs=8 + `$D82B` bit 0. Default CLI stays `ice`. Residual:
+[`tasks/rr-8g2u-residual.md`](tasks/rr-8g2u-residual.md).
+Work: `bd ready -l super_metroid -l spine`.
 
 ## Continuous prefix tips (frames only)
 

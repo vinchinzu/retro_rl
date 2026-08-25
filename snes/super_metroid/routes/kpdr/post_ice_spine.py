@@ -32,15 +32,13 @@ from super_metroid.routes.kpdr.k6 import (
     play_phantoon_loot_exit,
     play_phantoon_room_fight,
     play_ws_basement_to_phantoon,
+    play_ws_entrance_to_main,
+    play_ws_main_to_basement,
 )
 from super_metroid.routes.kpdr.k6.phantoon_fight import require_phantoon_defeated
 from super_metroid.routes.kpdr.k6.phantoon_leave import require_phantoon_left
 from super_metroid.routes.kpdr.moat import play_moat_cross
 from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
-from super_metroid.routes.kpdr.wrecked_ship import (
-    play_ws_entrance_to_main,
-    play_ws_main_to_basement,
-)
 from super_metroid.routes.kpdr.rooms import (
     ROOM_ALPHA_PB,
     ROOM_BAT,
