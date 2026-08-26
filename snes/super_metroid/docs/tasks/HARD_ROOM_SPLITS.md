@@ -166,10 +166,10 @@ Full hop GREEN is Attic gs=8 only. Seats in
 | attic_door | leave | Attic `0xCA52` gs=8 |
 
 Living checkbox is **west_super**. grate_seat PHASE **189f ×2** from the
-hop-1 pin. Morph-tunnel from the lip peaks **(1101, 1820) p25** — 155px
-short of y=1675. Left (1075,1845) is above floor HiJump — later. Do not
-open mid_climb while west_super is red. Do not farm another spin window
-from the mid ledge.
+hop-1 pin. Morph-tunnel spin peaked **(1101, 1820) p25**. Shelf land is
+**(1082, 1878) p10**; standing hole opens; jump through is Covern
+knockback **(1126, 1840) p83**, leftover hole (1112, 1900) p47. Do not
+open mid_climb while west_super is red. Do not farm the mid-ledge spin.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
