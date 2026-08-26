@@ -234,6 +234,9 @@ def stump_clear_phase() -> PhaseSpec:
     )
 
 
+_SPA_RETRY_PHASES = frozenset({"CLEAR_ROCKS", "CLEAR_STUMPS"})
+
+
 def _maybe_spa(
     stamina: Stamina | int | None,
     *,
@@ -245,6 +248,38 @@ def _maybe_spa(
     if stam is None or stam.can_finish_multi_hit():
         return []
     return [full_restore_spa_phase()]
+
+
+def should_spa_retry(
+    phase: str,
+    reason: str | None,
+    stamina: Stamina | int | None,
+    *,
+    include_spa: bool,
+) -> bool:
+    """Insert spa+retry when a smash phase stops on stamina, not aim."""
+    if not include_spa or phase not in _SPA_RETRY_PHASES:
+        return False
+    if "stamina_low" not in (reason or ""):
+        return False
+    stam = coerce_stamina(stamina)
+    return stam is not None and not stam.can_finish_multi_hit()
+
+
+def needs_spa_before_next_smash(
+    just_finished: str,
+    stamina: Stamina | int | None,
+    *,
+    include_spa: bool,
+    remaining_phases: Sequence[str],
+) -> bool:
+    """After rocks, soak if the axe section cannot finish an 8-swing 2×2."""
+    if not include_spa or just_finished != "CLEAR_ROCKS":
+        return False
+    if "CLEAR_STUMPS" not in remaining_phases:
+        return False
+    stam = coerce_stamina(stamina)
+    return stam is not None and not stam.can_finish_multi_hit()
 
 
 def d2_leftover_phases(
@@ -312,9 +347,11 @@ __all__ = [
     "ensure_hammer_phase",
     "fence_dump_phase",
     "leftover_already_queued",
+    "needs_spa_before_next_smash",
     "pocket_clear_phase",
     "pocket_water_phase",
     "rock_clear_phase",
+    "should_spa_retry",
     "stone_pond_phase",
     "stump_clear_phase",
 ]

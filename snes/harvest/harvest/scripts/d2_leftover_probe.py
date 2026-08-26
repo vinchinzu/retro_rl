@@ -47,7 +47,9 @@ from harvest.planner.d2_work import (
     ensure_axe_phase,
     ensure_hammer_phase,
     fence_dump_phase,
+    needs_spa_before_next_smash,
     rock_clear_phase,
+    should_spa_retry,
     stone_pond_phase,
     stump_clear_phase,
 )
@@ -352,12 +354,15 @@ def main() -> int:
             return 0
 
         wanted = _wanted_quota(args.section)
+        include_spa = not args.no_spa
         stam = Stamina.from_ram(ram)
-        phases = _phases_for(
-            args.section, stamina=stam, include_spa=not args.no_spa
+        pending = list(
+            _phases_for(args.section, stamina=stam, include_spa=include_spa)
         )
         ok = True
-        for spec in phases:
+        spa_retried: set[str] = set()
+        while pending:
+            spec = pending.pop(0)
             remaining = max(200, args.timeout - frame)
             timeout = _phase_timeout(spec, remaining)
             world = WorldState(frame=frame, ram=ram, info={}, obs=None)
@@ -373,10 +378,11 @@ def main() -> int:
                 env, task, timeout=timeout, start_frame=frame
             )
             after = count_debris(ram).as_dict()
+            reason = result.reason if result is not None else ""
             row = {
                 "phase": spec.phase,
                 "status": result.status.value if result is not None else "none",
-                "reason": result.reason if result is not None else "",
+                "reason": reason,
                 "frames": frame,
                 "timeout": timeout,
                 "cleared_count": getattr(task, "cleared_count", None),
@@ -397,9 +403,28 @@ def main() -> int:
                 journal=journal,
                 partial=True,
             )
-            if result is None or result.status != TaskStatus.SUCCESS:
-                ok = False
-                break
+            live_stam = Stamina.from_ram(ram)
+            if result is not None and result.status == TaskStatus.SUCCESS:
+                if needs_spa_before_next_smash(
+                    spec.phase,
+                    live_stam,
+                    include_spa=include_spa,
+                    remaining_phases=[p.phase for p in pending],
+                ):
+                    pending.insert(0, full_restore_spa_phase())
+                continue
+            if (
+                spec.phase not in spa_retried
+                and should_spa_retry(
+                    spec.phase, reason, live_stam, include_spa=include_spa
+                )
+            ):
+                spa_retried.add(spec.phase)
+                pending.insert(0, spec)
+                pending.insert(0, full_restore_spa_phase())
+                continue
+            ok = False
+            break
 
         end = _snapshot(ram)
         cleared = DebrisCounts(**start["debris"]).cleared_since(

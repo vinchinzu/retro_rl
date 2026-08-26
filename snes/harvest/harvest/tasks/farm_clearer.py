@@ -67,7 +67,7 @@ from harvest.tasks.farm_clear_nav import (
     handle_navigating,
     start_progress_watch,
 )
-from harvest.tasks.farm_clear_tool import handle_tool_clear
+from harvest.tasks.farm_clear_tool import handle_tool_clear, tool_clear_is_planted
 
 
 # =============================================================================
@@ -610,8 +610,12 @@ class FarmClearer:
             self.task_queue.clear()
             self.navigator.path = []
 
-        # Timeout (600 frames: per-hit clearing with centering between each)
-        if self.frame_count - self.clearing_start_frame > 600:
+        # Timeout is for a stuck approach, not a planted multi-hit. Walking
+        # away mid-hammer STZs $096D; stay until the tile breaks or misses out.
+        if (
+            self.frame_count - self.clearing_start_frame > 600
+            and not tool_clear_is_planted(self)
+        ):
             print(f"[CLEARER] Clearing timeout at {self.current_target.tile}, moving on")
             self.failed_tiles.add(self.current_target.tile)
             self.current_target = None
@@ -698,8 +702,8 @@ class FarmClearer:
         if input_lock != 1 or self.navigator.stasis < 6:
             return None
 
-        # Re-center on approach tile before every hit to correct animation drift
-        if self.approach_tile:
+        # Re-center only before the first face. Walking mid-hammer STZs $096D.
+        if self.approach_tile and not tool_clear_is_planted(self):
             center_action = self.navigator.center_on_tile(
                 self.approach_tile, tolerance=2
             )
