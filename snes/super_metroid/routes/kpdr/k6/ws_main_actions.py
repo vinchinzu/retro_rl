@@ -24,6 +24,12 @@ THREE_SHOT_X_MAX = 1210
 THREE_SHOT_FRAMES = 240
 TUNNEL_CLEAR_X = 1088
 PIT_EXIT_RIGHT_X = 1104
+# Tunnel unmorph stands on the metal shelf ~(1082, 1878) p10, next to the
+# remaining Wave blocks. Shoot a standing hole, gun-jump RIGHT. Do not spin.
+LEFT_PLATFORM_X = (1064, 1112)
+LEFT_PLATFORM_Y = (1860, 1904)
+LEFT_PLATFORM_TARGET_X = 1082
+TUNNEL_EXIT_X_MAX = 1112
 # Hatch column has no ceiling. Pin x=1173 is under the right lip (bonk y~1940).
 # Human tape: A from (1149,1979) p75 → land (1184,1883) p9. Floor HiJump peaks
 # ~1868; left (1075,1845) is above that. Gun-jump A, not spin, not X.
@@ -36,6 +42,7 @@ _TURNING = 14
 _DOOR_SHOOT_FRAMES = 240
 _GROUNDED = frozenset({1, 2, 3, 4, 9, 10})
 _CROUCH = frozenset({39, 40})
+_HURT = frozenset({41, 129, 130})
 
 SHAFT_HOPS: tuple[PlatformHop, ...] = (
     PlatformHop(1675, 1080, 1220, TakeoffWindow((1100, 1180), "RIGHT", min_momentum=0)),
@@ -85,6 +92,92 @@ def at_ws_main_first_jump_land(
         and int(pose) in _GROUNDED
         and abs(int(velocity_y)) <= 1
     )
+
+
+def at_ws_main_left_platform(
+    samus_x: int, samus_y: int, pose: int, velocity_y: int = 0
+) -> bool:
+    """Planted on the metal shelf ~(1082, 1878). Pose 37 turning still counts."""
+    x, y = int(samus_x), int(samus_y)
+    pose_i = int(pose)
+    return (
+        LEFT_PLATFORM_X[0] <= x <= LEFT_PLATFORM_X[1]
+        and LEFT_PLATFORM_Y[0] <= y <= LEFT_PLATFORM_Y[1]
+        and pose_i not in _AIR_POSES
+        and pose_i not in _HURT
+        and not is_morph(pose_i)
+        and abs(int(velocity_y)) <= 1
+    )
+
+
+def west_super_action(
+    samus_x: int,
+    samus_y: int,
+    pose: int,
+    facing: int,
+    frame: int = 0,
+    velocity_y: int = 0,
+    movement_type: int = 0,
+) -> tuple[str, ...]:
+    """Land the tunnel unmorph on ~(1075, 1845), shoot a standing hole, gun-jump.
+
+    Peak (1085, 1843) p78 is 10px right of the platform (over the gap). Steer
+    LEFT. Do not spin RIGHT off that mid ledge. Wave UP is reserved for the
+    hole — not from the metal stairs.
+    """
+    x = int(samus_x)
+    y = int(samus_y)
+    pose_i = int(pose)
+    facing_i = int(facing)
+    turning = int(movement_type) == _TURNING
+    airborne = (
+        pose_i in _AIR_POSES or pose_i in _HURT or abs(int(velocity_y)) > 1
+    )
+    on_left = at_ws_main_left_platform(x, y, pose_i, velocity_y) or (
+        LEFT_PLATFORM_X[0] <= x <= LEFT_PLATFORM_X[1]
+        and LEFT_PLATFORM_Y[0] <= y <= LEFT_PLATFORM_Y[1]
+        and pose_i in _CROUCH
+        and not airborne
+    )
+    if on_left:
+        if pose_i in _CROUCH:
+            return ("UP",)
+        if facing_i != FACING_RIGHT:
+            return ("RIGHT",)
+        if turning:
+            return ()
+        cycle = int(frame) % 80
+        if cycle < 56:
+            return ("X",) if cycle % 10 < 4 else ()
+        return ("A",)
+    if airborne:
+        if pose_i == 132:
+            return ("A",)
+        if x < LEFT_PLATFORM_X[0]:
+            return ("RIGHT", "A")
+        if (
+            x <= LEFT_PLATFORM_TARGET_X + 2
+            and LEFT_PLATFORM_Y[0] <= y <= LEFT_PLATFORM_Y[1]
+        ):
+            return ()
+        if x <= TUNNEL_EXIT_X_MAX:
+            if y > LEFT_PLATFORM_Y[1]:
+                return ("LEFT", "A")
+            return ("LEFT",)
+        if facing_i == FACING_LEFT:
+            return ("LEFT", "A") if x > WS_MAIN_SHAFT_CENTER else ("A",)
+        if x < FIRST_JUMP_LAND_TARGET_X - 4:
+            return ("RIGHT", "A")
+        return ("A",)
+    if x <= TUNNEL_EXIT_X_MAX:
+        if pose_i in _CROUCH:
+            return ("UP",)
+        if facing_i != FACING_LEFT or turning:
+            return ("LEFT",)
+        return ("LEFT", "A")
+    if facing_i != FACING_RIGHT or turning:
+        return ("RIGHT",)
+    return ("RIGHT", "A")
 
 
 def pit_exit_action(
@@ -201,6 +294,7 @@ def climb_action(
     facing: int = FACING_RIGHT,
     velocity_y: int = 0,
     movement_type: int = 0,
+    frame: int = 0,
 ) -> tuple[str, ...]:
     """Stay in the shaft and spin-hop up. DOWN is morph on the lip only; never hatch."""
     if int(pose) in (137, 138):
@@ -216,31 +310,17 @@ def climb_action(
         return ("RIGHT", "B")
     if y >= WS_MAIN_STAIR_Y:
         return pit_exit_action(x, y, pose, facing, movement_type, velocity_y)
-    # Grate band. Hatch-column gun-jump faces RIGHT onto the lip; west_super
-    # takeoff faces LEFT through the hole. Do not mix the two airs.
+    # Grate band. Lip morph stays DOWN. Tunnel exit lands LEFT on ~(1075, 1845).
     if y >= 1760:
-        airborne = pose_i in _AIR_POSES or abs(int(velocity_y)) > 1
-        if airborne:
-            if x < 1080:
-                return ("RIGHT", "A")
-            if facing_i == FACING_LEFT:
-                return ("LEFT", "A") if x > WS_MAIN_SHAFT_CENTER else ("A",)
-            if x < FIRST_JUMP_LAND_TARGET_X - 4:
-                return ("RIGHT", "A")
-            return ("A",)
         if at_ws_main_first_jump_land(x, y, pose_i, velocity_y) or (
             FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
             and FIRST_JUMP_LAND_Y[0] <= y <= FIRST_JUMP_LAND_Y[1]
             and pose_i in _CROUCH
         ):
             return ("DOWN",)
-        if x < FIRST_JUMP_LAND_X[0]:
-            if facing_i != FACING_RIGHT or turning:
-                return ("RIGHT",)
-            return spin_jump("RIGHT")
-        if facing_i != FACING_RIGHT or turning:
-            return ("RIGHT",)
-        return ("UP", "A")
+        return west_super_action(
+            x, y, pose_i, facing_i, frame, velocity_y, movement_type
+        )
     if pose_i in _AIR_POSES:
         if x > WS_MAIN_SHAFT_CENTER + 24:
             return ("LEFT", "A")
@@ -295,6 +375,7 @@ def grate_clear_action(
     frame: int,
     charge: int = 0,
     velocity_y: int = 0,
+    movement_type: int = 0,
 ) -> tuple[str, ...] | None:
     """From a grate seat, enter the opened shaft. Do not Wave UP.
 
@@ -304,7 +385,7 @@ def grate_clear_action(
     y~1845 breaks the floor you stand on. None outside the band so the
     climb loop can fall through.
     """
-    del frame, charge
+    del charge
     y = int(samus_y)
     if y < 1760 or y >= WS_MAIN_STAIR_Y:
         return None
@@ -312,25 +393,22 @@ def grate_clear_action(
         return ()
     x = int(samus_x)
     pose_i = int(pose)
-    facing_i = int(facing)
-    airborne = pose_i in _AIR_POSES or abs(int(velocity_y)) > 1
-    if airborne:
-        if x < 1080:
-            return ("RIGHT", "A")
-        if facing_i == FACING_LEFT:
-            return ("LEFT", "A") if x > WS_MAIN_SHAFT_CENTER else ("A",)
-        return None
     if at_ws_main_first_jump_land(x, y, pose_i, velocity_y) or (
         FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
         and FIRST_JUMP_LAND_Y[0] <= y <= FIRST_JUMP_LAND_Y[1]
         and pose_i in _CROUCH
     ):
         return ("DOWN",)
-    if x < FIRST_JUMP_LAND_X[0]:
-        if facing_i != FACING_RIGHT:
-            return ("RIGHT",)
-        return spin_jump("RIGHT")
-    return None
+    facing_i = int(facing)
+    airborne = (
+        pose_i in _AIR_POSES or pose_i in _HURT or abs(int(velocity_y)) > 1
+    )
+    # Hatch-column landing air: let climb_action / pit_exit steer.
+    if airborne and x >= FIRST_JUMP_LAND_X[0] and facing_i == FACING_RIGHT:
+        return None
+    return west_super_action(
+        x, y, pose_i, facing_i, frame, velocity_y, movement_type
+    )
 
 
 __all__ = [
@@ -338,12 +416,16 @@ __all__ = [
     "FIRST_JUMP_LAND_X",
     "FIRST_JUMP_LAND_Y",
     "FIRST_JUMP_TAKEOFF_X",
+    "LEFT_PLATFORM_TARGET_X",
+    "LEFT_PLATFORM_X",
+    "LEFT_PLATFORM_Y",
     "PIT_EXIT_RIGHT_X",
     "SHAFT_HOPS",
     "THREE_SHOT_FRAMES",
     "THREE_SHOT_X_MAX",
     "THREE_SHOT_X_MIN",
     "TUNNEL_CLEAR_X",
+    "TUNNEL_EXIT_X_MAX",
     "WS_MAIN_ATTIC_DOOR_X",
     "WS_MAIN_FLOOR_Y",
     "WS_MAIN_PIT_Y",
@@ -351,11 +433,13 @@ __all__ = [
     "WS_MAIN_SHAFT_CENTER",
     "at_ws_main_attic_door_seat",
     "at_ws_main_first_jump_land",
+    "at_ws_main_left_platform",
     "at_ws_main_pit",
     "attic_door_action",
     "climb_action",
     "grate_clear_action",
     "pit_exit_action",
     "three_shot_action",
+    "west_super_action",
     "ws_main_attic_settled",
 ]
