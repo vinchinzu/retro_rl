@@ -172,7 +172,8 @@ class HotSpringStaminaTask(Task):
     # Farm → path → full mountain corridor needs ~2–4k frames when clear;
     # return is similar length. Budget headroom for stasis recovery.
     nav_timeout: int = 20000
-    # Recording did ~5 A-runs; budget extras for missed edges.
+    # Live fill is ~5–6 jump-exits of 0xF7. This is a queue budget, not a
+    # "leave now" cap — full restore keeps bathing until current == max.
     max_jump_cycles: int = 10
 
     _phase: str = field(default="start", init=False)
@@ -297,6 +298,12 @@ class HotSpringStaminaTask(Task):
         return sliced
 
     def _start_return_or_done(self, world: WorldState, reason: str) -> TaskResult:
+        if not self._stamina_ok(world.ram):
+            stam = Stamina.from_ram(world.ram)
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"refusing return unrestored ({reason}); {stam}",
+            )
         if self.return_to_farm:
             waypoints = self._sliced_route(
                 "outdoor_spa_to_farm", world, fallback="mountain_to_farm"
@@ -520,6 +527,12 @@ class HotSpringStaminaTask(Task):
             return self._start_next(world)
 
         if self._phase == "return_farm":
+            if not self._stamina_ok(world.ram):
+                stam = Stamina.from_ram(world.ram)
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"returned unrestored; {stam}",
+                )
             return self._finish_success(world, "soaked; returned to farm")
 
         self._task = None
@@ -613,15 +626,18 @@ class HotSpringStaminaTask(Task):
         )
         timed_out = self._soak_steps >= self.soak_timeout
         cycles_done = self._jump_cycles >= self.max_jump_cycles and not self._action_queue
+        # Full restore needs ~5–6 jump-exits. Do not treat the cycle budget
+        # as "done enough" while current < max.
+        cycles_complete_partial = cycles_done and gained and not fill_to_max
 
-        if target_hit or plateau_done or timed_out or (cycles_done and gained):
+        if target_hit or plateau_done or timed_out or cycles_complete_partial:
             reason = (
                 "target reached"
                 if target_hit
                 else "soak plateau"
                 if plateau_done
                 else "cycles done"
-                if cycles_done and gained
+                if cycles_complete_partial
                 else "soak timeout"
             )
             self._action_queue.clear()
@@ -642,13 +658,17 @@ class HotSpringStaminaTask(Task):
                 )
             return self._finish_soak(world, reason)
 
-        if not self._action_queue and self._jump_cycles < self.max_jump_cycles:
+        keep_bathing = self._jump_cycles < self.max_jump_cycles or (
+            fill_to_max and not target_hit and not timed_out
+        )
+        if not self._action_queue and keep_bathing:
             enter_right = self._jump_cycles % 2 == 0
             _queue_a_bath_cycle(self._action_queue, enter_right=enter_right)
             self._jump_cycles += 1
             if self._jump_cycles == 1 or self._jump_cycles % 2 == 0:
+                cap = self.max_jump_cycles
                 print(
-                    f"[SPA] A-bath cycle {self._jump_cycles}/{self.max_jump_cycles} "
+                    f"[SPA] A-bath cycle {self._jump_cycles}/{cap} "
                     f"enter={'right' if enter_right else 'left'} stam={stam}"
                 )
 
