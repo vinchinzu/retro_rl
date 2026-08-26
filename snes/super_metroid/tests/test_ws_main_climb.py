@@ -178,11 +178,17 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     assert "A" not in cubby
     cubby_face = climb_action(1045, 1940, 1, FACING_LEFT)
     assert cubby_face == ("RIGHT",)
-    grate = climb_action(1075, 1845, 2, FACING_LEFT)
+    grate = climb_action(1082, 1878, 2, FACING_LEFT)
     assert grate == ("RIGHT",)
-    grate_jump = climb_action(1075, 1845, 2, FACING_RIGHT)
-    assert grate_jump == ("RIGHT", "B", "A")
+    grate_jump = climb_action(1082, 1878, 2, FACING_RIGHT)
+    assert grate_jump == ("X",)
+    assert "B" not in grate_jump
     assert "LEFT" not in grate_jump
+    hop = climb_action(1082, 1878, 2, FACING_RIGHT, frame=56)
+    assert hop == ("A",)
+    assert "B" not in hop
+    turning = climb_action(1082, 1878, 38, FACING_RIGHT, movement_type=14)
+    assert turning == ()
     lip = climb_action(1177, 1883, 2, FACING_LEFT)
     assert lip == ("DOWN",)
     assert "A" not in lip
@@ -225,11 +231,19 @@ def test_grate_clear_jumps_right_without_wave_up() -> None:
     face = grate_clear_action(1082, 1878, 8, FACING_LEFT, 0, charge=0)
     assert face == ("RIGHT",)
     assert "UP" not in face
-    jump = grate_clear_action(1075, 1845, 1, FACING_RIGHT, 0, charge=0)
-    assert jump == ("RIGHT", "B", "A")
+    assert "B" not in face
+    jump = grate_clear_action(1082, 1878, 1, FACING_RIGHT, 0, charge=0)
+    assert jump == ("X",)
     assert "UP" not in jump
+    assert "B" not in jump
+    hop = grate_clear_action(1082, 1878, 1, FACING_RIGHT, 56, charge=0)
+    assert hop == ("A",)
+    assert "B" not in hop
+    gap = grate_clear_action(1085, 1843, 78, FACING_LEFT, 0, velocity_y=0)
+    assert gap == ("LEFT",)
+    assert "A" not in gap
     mid = grate_clear_action(1152, 1845, 1, FACING_RIGHT, 0)
-    assert mid == ("RIGHT", "B", "A")
+    assert mid == ("RIGHT", "A")
     assert "UP" not in mid
     lip = grate_clear_action(1177, 1883, 2, FACING_LEFT, 0)
     assert lip == ("DOWN",)

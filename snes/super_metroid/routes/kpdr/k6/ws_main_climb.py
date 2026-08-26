@@ -193,6 +193,9 @@ def _climb_until(session: ControllerSession, label: str, done) -> None:
         if is_morph(int(st.pose)):
             if int(st.samus_x) > TUNNEL_CLEAR_X and int(st.samus_y) < WS_MAIN_STAIR_Y:
                 hold(session, 1, "LEFT", reason=f"{label}_roll")
+            elif int(st.samus_y) < WS_MAIN_STAIR_Y:
+                # UP only — generic unmorph A-settle idles over the gap.
+                hold(session, 1, "UP", reason=f"{label}_unmorph")
             else:
                 unmorph(session)
             continue
@@ -227,6 +230,7 @@ def _climb_until(session: ControllerSession, label: str, done) -> None:
             int(session.frame),
             session_beam_charge(session),
             int(st.velocity_y),
+            int(getattr(st, "movement_type", 0) or 0),
         )
         if grate is not None:
             if grate:
@@ -244,6 +248,7 @@ def _climb_until(session: ControllerSession, label: str, done) -> None:
                 int(st.facing),
                 int(st.velocity_y),
                 int(getattr(st, "movement_type", 0) or 0),
+                int(session.frame),
             )
             if names:
                 hold(session, 1, *names, reason=f"{label}_climb")
@@ -273,6 +278,7 @@ def _climb_until(session: ControllerSession, label: str, done) -> None:
             int(st.facing),
             int(st.velocity_y),
             int(getattr(st, "movement_type", 0) or 0),
+            int(session.frame),
         )
         if names:
             hold(session, 1, *names, reason=f"{label}_climb")
@@ -316,6 +322,7 @@ def _jump_up_attic(session: ControllerSession, label: str) -> None:
                 int(st.facing),
                 int(st.velocity_y),
                 int(getattr(st, "movement_type", 0) or 0),
+                int(session.frame),
             )
             reason = f"{label}_remount"
         else:
