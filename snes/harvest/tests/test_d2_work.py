@@ -1,4 +1,4 @@
-"""D2 whole-farm composition — exhaustive debris and shop splice."""
+"""D2 field-work composition — bounded quotas and exhaustive fences."""
 
 from __future__ import annotations
 
@@ -28,12 +28,12 @@ class D2WholeFarmContractTests(unittest.TestCase):
     def test_crop_targets_are_not_debris_quotas(self) -> None:
         self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8})
 
-    def test_bush_phase_is_lift_quota_not_plot_ring(self) -> None:
+    def test_bush_phase_is_ten_lifts_not_plot_ring(self) -> None:
         spec = bush_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_BUSHES")
         self.assertEqual(spec.kind, PhaseKind.CLEAR_FIELD)
-        self.assertEqual(spec.params["handoff"], "type_clear")
-        self.assertNotIn("quota", spec.params)
+        self.assertEqual(spec.params["handoff"], "quota")
+        self.assertEqual(spec.params["quota"], {"weeds": 10})
         self.assertFalse(spec.params["fetch_tools"])
         self.assertEqual(spec.params["priority"], ["weed"])
         self.assertNotIn("farm_bounds", spec.params)
@@ -54,15 +54,15 @@ class D2WholeFarmContractTests(unittest.TestCase):
         spec = stone_pond_phase()
         self.assertEqual(spec.phase, "CLEAR_STONES")
         self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
-        self.assertIsNone(spec.params["max_fences"])
+        self.assertEqual(spec.params["max_fences"], 10)
         self.assertFalse(spec.params["corridor_only"])
         self.assertEqual(spec.params["debris_types"], ["stone"])
 
     def test_rock_phase_needs_hammer_for_large_only(self) -> None:
         spec = rock_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_ROCKS")
-        self.assertEqual(spec.params["handoff"], "type_clear")
-        self.assertNotIn("quota", spec.params)
+        self.assertEqual(spec.params["handoff"], "quota")
+        self.assertEqual(spec.params["quota"], {"large_rocks": 4})
         self.assertEqual(spec.params["priority"], ["rock"])
         self.assertFalse(spec.params["prefer_lift_for_stones"])
         self.assertEqual(spec.contract.required_tools, ("hammer",))
@@ -71,8 +71,8 @@ class D2WholeFarmContractTests(unittest.TestCase):
     def test_stump_phase_needs_axe(self) -> None:
         spec = stump_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_STUMPS")
-        self.assertEqual(spec.params["handoff"], "type_clear")
-        self.assertNotIn("quota", spec.params)
+        self.assertEqual(spec.params["handoff"], "quota")
+        self.assertEqual(spec.params["quota"], {"stumps": 2})
         self.assertEqual(spec.params["priority"], ["stump"])
         self.assertEqual(spec.contract.required_tools, ("axe",))
 
@@ -181,13 +181,34 @@ class D2PostShopComposeTests(unittest.TestCase):
 
         stones = build_phase_task(TaskBuildContext(), stone_pond_phase(), world)
         self.assertIsInstance(stones, FenceClearLoopTask)
-        self.assertIsNone(stones.max_fences)
+        self.assertEqual(stones.max_fences, 10)
         self.assertTrue(stones.pond_dump)
         self.assertEqual(stones.max_steps_per_fence, 2800)
         self.assertEqual(stones.debris_types[0].name, "STONE")
 
 
 class LeftoverProbeBudgetTests(unittest.TestCase):
+    def test_probe_section_uses_day2_quotas_not_whole_farm_empty(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _section_complete
+        from harvest.tasks.farm_clear_quota import DebrisCounts
+
+        start = DebrisCounts(weeds=100, stones=185, large_rocks=51, stumps=38)
+        enough = DebrisCounts(weeds=90, stones=175, large_rocks=47, stumps=36)
+        short = DebrisCounts(weeds=91, stones=176, large_rocks=48, stumps=37)
+
+        self.assertTrue(_section_complete("all", start, enough))
+        self.assertFalse(_section_complete("all", start, short))
+
+    def test_probe_fence_quota_is_exhaustive(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _section_complete
+        from harvest.tasks.farm_clear_quota import DebrisCounts
+
+        start = DebrisCounts(fences=80)
+        self.assertTrue(_section_complete("fences", start, DebrisCounts()))
+        self.assertFalse(
+            _section_complete("fences", start, DebrisCounts(fences=1))
+        )
+
     def test_zero_phase_timeout_spends_remaining_budget(self) -> None:
         from harvest.scripts.d2_leftover_probe import _phase_timeout
 

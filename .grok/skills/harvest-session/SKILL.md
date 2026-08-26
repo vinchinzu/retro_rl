@@ -1,15 +1,17 @@
 ---
 name: harvest-session
 description: >
-  Harvest Moon session gates: one spine bead, one living residual, halt after
-  3 serial reds, no STATUS from a pin. Do not record a walk BFS can close.
+  Harvest Moon session gates: one active spine bead, one living residual,
+  diagnostic pivot after 3 serial reds, no STATUS from a pin. Do not record a
+  walk BFS can close.
   Use when working in snes/harvest, starting a D2 hop, CLEAR_PLOT, grape,
   shop, pocket clear, or running /harvest-session.
 ---
 
 # Harvest session
 
-One bead. One change. Planner owns `docs/STATUS.md`. Do not STATUS-promote Gate B.
+One active bead at a time. Carry it to a checkable completion. Planner owns
+`docs/STATUS.md`. Do not STATUS-promote Gate B.
 
 ## Loop
 
@@ -20,7 +22,11 @@ One bead. One change. Planner owns `docs/STATUS.md`. Do not STATUS-promote Gate 
    Delete closed residuals instead of stacking them.
 3. Overwrite one JSON report. Do not mint `_vN` or `_window_*`.
 4. File ≥500 → split before the knob. File ≥800 → refuse the knob.
-5. Three serial reds on the same checkbox → BLOCKED residual, stop.
+5. Three serial reds on the same checkbox → stop repeating that live command.
+   Preserve the last report, build a tighter replay/unit harness, rank and
+   instrument hypotheses, then continue. Mark BLOCKED only for a genuine
+   external blocker after exhausting in-scope alternatives; red count alone
+   is not a blocker.
 6. Do not edit `STATUS.md`. No STATUS from a pin.
 7. Glance with `harvest.clock_glance` (tilemap, hour/minute vs ClockTimeline,
    wallet/shipping delta, crop/plot flags). `HEADLESS=1`. No MP4.

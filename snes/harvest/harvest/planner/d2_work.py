@@ -1,8 +1,8 @@
 """Spring D2 work sections — composable PhaseSpecs for the shop splice.
 
 Product path is grape → shop → these sections → 5pm wait. Two carry
-slots: plant is hoe+seeds, water is can, whole-farm clear is lift work then
-hammer then axe (never both).
+slots: plant is hoe+seeds, water is can, field work is lift work then hammer
+then axe (never both).
 
 Section order after BUY_SEEDS::
 
@@ -10,12 +10,12 @@ Section order after BUY_SEEDS::
     → CROP_ESTABLISH (8-ring hoe + plant)
     → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
     leftover (after plant+water, not 06:08 plan-time hour>=17):
-      spa? → CLEAR_BUSHES (all pick+toss, lanes first) → CLEAR_FENCES
-      (all posts to pond) → CLEAR_STONES (all to pond) → ENSURE_HAMMER → spa?
-      → CLEAR_ROCKS (all large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (all)
+      spa? → CLEAR_BUSHES (10 pick+toss, lanes first) → CLEAR_FENCES
+      (all posts to pond) → CLEAR_STONES (10 to pond) → ENSURE_HAMMER → spa?
+      → CLEAR_ROCKS (4 large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (2)
 
-``handoff=type_clear`` must not use pocket ``plot_ring`` SUCCESS. Spa inserts
-when stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
+Quota handoffs must not use pocket ``plot_ring`` SUCCESS. Spa inserts when
+stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 
-# Crop establishment targets are counts; debris completion is exhaustive.
+# Crop establishment targets are separate from the evening debris quotas.
 D2_TARGETS = {
     "plant": 8,
     "water": 8,
@@ -142,7 +142,7 @@ def ensure_axe_phase() -> PhaseSpec:
 
 
 def bush_clear_phase() -> PhaseSpec:
-    """Lift every weed on the farm before tool-driven debris."""
+    """Lift ten weeds before tool-driven debris."""
     return _optional_clear(
         "CLEAR_BUSHES",
         {
@@ -151,7 +151,8 @@ def bush_clear_phase() -> PhaseSpec:
             "prefer_lift_for_weeds": True,
             "prefer_lift_for_stones": True,
             "priority": ["weed"],
-            "handoff": "type_clear",
+            "quota": {"weeds": 10},
+            "handoff": "quota",
         },
         estimated_frames=100000,
     )
@@ -179,13 +180,13 @@ def fence_dump_phase() -> PhaseSpec:
 
 
 def stone_pond_phase() -> PhaseSpec:
-    """Lift every stone and toss it in a pond. Hammer is for 2×2 later."""
+    """Lift ten stones and toss them in F0. Hammer is for 2×2 later."""
     return PhaseSpec(
         "CLEAR_STONES",
         "fence_clear",
         {
             "timeout": 120000,
-            "max_fences": None,
+            "max_fences": 10,
             "corridor_only": False,
             "pond_dump": True,
             "max_steps_per_fence": 2800,
@@ -200,7 +201,7 @@ def stone_pond_phase() -> PhaseSpec:
 
 
 def rock_clear_phase() -> PhaseSpec:
-    """Hammer every large 2×2 rock. Stones already went to the pond."""
+    """Hammer four distinct large 2×2 rocks."""
     return _optional_clear(
         "CLEAR_ROCKS",
         {
@@ -209,7 +210,8 @@ def rock_clear_phase() -> PhaseSpec:
             "prefer_lift_for_weeds": True,
             "prefer_lift_for_stones": False,
             "priority": ["rock"],
-            "handoff": "type_clear",
+            "quota": {"large_rocks": 4},
+            "handoff": "quota",
         },
         required_tools=("hammer",),
         estimated_frames=90000,
@@ -217,14 +219,15 @@ def rock_clear_phase() -> PhaseSpec:
 
 
 def stump_clear_phase() -> PhaseSpec:
-    """Axe every stump. Axe already in carry (hammer swapped out)."""
+    """Axe two distinct stumps. Axe replaces the hammer in carry."""
     return _optional_clear(
         "CLEAR_STUMPS",
         {
             "timeout": 120000,
             "fetch_tools": False,
             "priority": ["stump"],
-            "handoff": "type_clear",
+            "quota": {"stumps": 2},
+            "handoff": "quota",
         },
         required_tools=("axe",),
         estimated_frames=90000,
