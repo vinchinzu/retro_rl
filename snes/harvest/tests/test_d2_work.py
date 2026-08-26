@@ -15,8 +15,10 @@ from harvest.planner.d2_work import (
     ensure_hammer_phase,
     fence_dump_phase,
     leftover_already_queued,
+    needs_spa_before_next_smash,
     pocket_water_phase,
     rock_clear_phase,
+    should_spa_retry,
     stone_pond_phase,
     stump_clear_phase,
 )
@@ -128,6 +130,61 @@ class D2LeftoverOrderTests(unittest.TestCase):
         self.assertLess(names.index("CLEAR_ROCKS"), names.index("ENSURE_AXE"))
         self.assertEqual(names.count("ENSURE_HAMMER"), 1)
         self.assertEqual(names.count("ENSURE_AXE"), 1)
+
+    def test_stamina_low_rocks_retry_inserts_spa(self) -> None:
+        low = Stamina(current=8, maximum=100)
+        self.assertTrue(
+            should_spa_retry("CLEAR_ROCKS", "stamina_low cleared=2", low, include_spa=True)
+        )
+        self.assertFalse(
+            should_spa_retry("CLEAR_ROCKS", "stamina_low cleared=2", low, include_spa=False)
+        )
+        self.assertFalse(
+            should_spa_retry("CLEAR_STONES", "stamina_low", low, include_spa=True)
+        )
+        self.assertFalse(
+            should_spa_retry(
+                "CLEAR_ROCKS",
+                "partial_clear remaining=2",
+                low,
+                include_spa=True,
+            )
+        )
+        self.assertFalse(
+            should_spa_retry(
+                "CLEAR_STUMPS",
+                "stamina_low",
+                Stamina(current=40, maximum=100),
+                include_spa=True,
+            )
+        )
+
+    def test_after_rocks_spa_when_stumps_remain(self) -> None:
+        low = Stamina(current=10, maximum=100)
+        self.assertTrue(
+            needs_spa_before_next_smash(
+                "CLEAR_ROCKS",
+                low,
+                include_spa=True,
+                remaining_phases=("ENSURE_AXE", "CLEAR_STUMPS"),
+            )
+        )
+        self.assertFalse(
+            needs_spa_before_next_smash(
+                "CLEAR_ROCKS",
+                Stamina(current=40, maximum=100),
+                include_spa=True,
+                remaining_phases=("ENSURE_AXE", "CLEAR_STUMPS"),
+            )
+        )
+        self.assertFalse(
+            needs_spa_before_next_smash(
+                "CLEAR_ROCKS",
+                low,
+                include_spa=True,
+                remaining_phases=(),
+            )
+        )
 
 
 class D2PostShopComposeTests(unittest.TestCase):

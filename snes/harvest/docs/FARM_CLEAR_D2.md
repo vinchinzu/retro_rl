@@ -83,10 +83,10 @@ Do not toss into `0xA6` (regression 80→79).
 Stones (`--section stones`, GREEN): 10 pond-tossed `0x04` in 7797f,
 185→175, end `(32,34)` F0 lip (`recordings/d2_leftover_stones.json`).
 
-Rocks (`--section rocks`, not green): `ENSURE_HAMMER` GREEN 1428f tool
-`0x03` off the shed door (not `0xFF`). `CLEAR_ROCKS` 0/4 — y=31 wall
-still up on this isolated pin, no reachable 2×2. Compose dumps fences
-before hammer. Do not redo power-on. Do not STATUS-promote Gate B.
+Rocks (`--section rocks`, pin GREEN from `Y1_D2_After_Stones`): 4/4
+large 2×2 in 3747f, `51 → 47`, stam 65→17. Hammer stays planted after the
+first face — a d-pad re-center STZs `$096D`. Stumps and spa-return are
+still red (`Y1_D2_After_Rocks`). Do not STATUS-promote Gate B.
 
 ## Invariants
 

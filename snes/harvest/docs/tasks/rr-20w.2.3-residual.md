@@ -1,70 +1,62 @@
 ## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** IN PROGRESS. Stop point prepared for handoff; the natural-entry
-Day 2 rung is not green.
-**Natural entry:** power-on. The named states below are diagnostic pins and do
+**Status:** IN PROGRESS. 4/4 boulders are pin-green; 2 stumps and the
+natural-entry Day 2 rung are not.
+**Natural entry:** power-on. Named states below are diagnostic pins and do
 not promote STATUS.
 
 ### Verified this session
 
-- `CarryToPondStand` uses the verified F0 pond stand only. It waits through
-  the throw input lock and does not report success until reaching the
-  west-of-pond egress `(29,35)`.
-- From `Y1_D2_After_Bushes`, fence continuations cleared the farm count
-  `80 -> 49 -> 15 -> 0`. The post-fence diagnostic pin is
-  `Y1_D2_After_Fences`.
-- From that pin, the bounded stone section cleared 10 stones (`185 -> 175`)
-  in 2,602 frames. The stable successor pin is `Y1_D2_After_Stones`.
-- A valid stand beside the lower half of a 2x2 boulder is now recognized as
-  adjacent to its whole footprint. Previously it was compared only with the
-  top-left anchor, bounced back to navigation, and eventually timed out.
-- Day 2's bounded field contract is 10 bushes, all fences, 10 stones,
-  4 boulders, and 2 stumps. A bounded success no longer incorrectly requires
-  the entire debris type to be absent from the farm.
-- Focused non-ROM suite: 196 passed. Task/planner/script modules also pass
-  `compileall`.
+- Hammer/axe multi-hit must stay planted. `$096D` STZs on a d-pad walk.
+  `handle_tool_clear` faces once, then Y-only; `_handle_clearing` does not
+  re-center after that face. Hits are credited from a live tool-counter or
+  stamina edge after a short post-swing wait (the ROM can lag one frame).
+  A genuine miss stays on the same stand; three misses try another footprint
+  side (that walk resets the counter, which is expected).
+- From `Y1_D2_After_Stones` (65 stam, 18:04, hammer fetched 1094f):
+  `CLEAR_ROCKS` **4/4 GREEN**, `51 → 47` large rocks, 3747f / 62.45s,
+  stam `65 → 17`. Sequential planted hits 1–5 then break. Successor pin
+  `Y1_D2_After_Rocks` (tile 39,13, hammer selected, 17 stam).
+- Leftover probe inserts spa on smash `stamina_low` and before stumps when
+  live stamina cannot finish an 8-swing 2×2 (`should_spa_retry` /
+  `needs_spa_before_next_smash`).
+- Focused non-ROM suite for the changed modules passed (125+). `test_d2_spine`
+  still has two unrelated evidence failures.
 
-### Current red: hammer registration timing
+### Current red: stumps blocked on shed + west-gate, not on axe swings
 
-Start the next diagnostic at `Y1_D2_After_Stones` (65 stamina). Do not use
-the latest `Y1_D2_Rocks_Frontier`: it was overwritten by an experimental
-0/4 run.
+Do not use `Y1_D2_Stumps_Frontier` (axe-route timeout overwrite, then an
+earlier spa hug). Resume from `Y1_D2_After_Rocks`.
 
-The 2x2 stand/pathing bug is fixed. The remaining problem is that the live
-ROM registers a hammer hit one frame after the current 49-frame
-face/settle/swing/cooldown queue drains. A raw replay against the first
-boulder observed:
+`--section stumps` from that pin:
 
-| Frame | Stamina | Tool counter | Target hits |
-|---:|---:|---:|---:|
-| 1262 | 63 | 1 | 2 |
-| 1311 | 61 | 2 | 3 |
-| 1360 | 59 | 3 | 4 |
-| 1409 | 57 | 4 | 5 |
-| 1458 | 55 | 5 | 6 |
-| 1507 | 53 | reset | gone |
+1. `ENSURE_AXE` failed `multi_nav timeout` at 8000f. Start (39,13), shed
+   waypoint ~(456,489), stuck (29,25) after push-facing (30,20)/(30,21).
+   Hammer fetch from the pond stand `Y1_D2_After_Stones` (29,35) was fine;
+   north-farm leftover debris still seals the shed hop.
+2. Earlier spa insert from a 13-stam After_Rocks **did fire** (correct), then
+   `route_mountain` pixel-stuck at (118,421) tile (7,26) A8 “gate road”
+   going to (40,424). First spa red, different checkbox from the axe-shed
+   timeout. A8 is in `FARM_WALKABLE` but that row hugs the shipping ditch /
+   pond edge.
 
-This proves that checking the counter as soon as the queue empties rejects a
-real swing. That experimental rejection was reverted; the checked-in helper
-retains the prior fixed-attempt behavior. Its best stable live result was 2/4
-boulders before stamina/aim misses consumed the budget.
+Planted axe policy is the same helper as hammer; it has not been live-proven
+on a stump yet.
 
 ### Exact next action
 
-Add a delayed post-swing observation seam (at least the one proven frame)
-before deciding whether a swing registered. Count a hit only from a live
-tool-counter, stamina, or tile-disappearance edge; on a genuine miss, retry a
-different valid footprint side. Re-run only the 4-boulder section from
-`Y1_D2_After_Stones`, then clear 2 stumps. If the quota cannot fit the remaining
-stamina, compose the existing spa/refill path instead of weakening the quota.
-
-After those sections are green, the remaining product proof is one Clean
-power-on run through field clearing, eight wet potatoes, and shipping before
-17:00.
+From `Y1_D2_After_Rocks`, get the axe without a 8k shed timeout (open the
+(30,20) corridor or start the ensure from a loaded shed-adjacent stand),
+clear 2 stumps with the planted Y-only policy, and compose spa when stamina
+drops below the 8-swing budget. Do not weaken the stump quota. Do not treat
+the west-gate A8 hug as spa success. After those are green, the remaining
+product proof is one Clean power-on through field clearing, eight wet
+potatoes, and shipping before 17:00.
 
 ### Non-claims
 
 - No STATUS promotion
 - No natural power-on Day 2 completion
 - No claim that all rocks or stumps are gone
-- No claim that `Y1_D2_Rocks_Frontier` is a valid successor
+- No claim that spa filled stamina and returned to work
+- No claim that `Y1_D2_Stumps_Frontier` is a valid successor
