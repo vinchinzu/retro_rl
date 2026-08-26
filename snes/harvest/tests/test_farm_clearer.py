@@ -347,6 +347,23 @@ class TestPocketClearTask(unittest.TestCase):
 
 
 class TestFarmClearerSelection(unittest.TestCase):
+    def test_lower_2x2_footprint_stand_enters_clearing(self) -> None:
+        """A stand beside BL is valid even when two steps from the TL anchor."""
+        ram = _make_farm_ram(player_tile=(9, 11))
+        _place_large_rock(ram, 10, 10)
+        clearer = FarmClearer(priority=[DebrisType.ROCK])
+        clearer.navigator.update(ram)
+        clearer.current_target = Target(
+            (10, 10),
+            Point(10 * 16 + 8, 10 * 16 + 8),
+            DebrisType.ROCK,
+            LARGE_ROCK_TL,
+        )
+        clearer.approach_tile = (9, 11)
+        clearer.frame_count = 1
+
+        self.assertIsNone(clearer._handle_clearing(ram))
+
     def test_cluster_sort_prefers_nearby_then_row_order(self) -> None:
         clearer = FarmClearer()
         targets = [

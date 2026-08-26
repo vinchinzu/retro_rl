@@ -14,6 +14,7 @@ import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.tasks.recorded_task import RecordedTask
+from harvest.tasks.carry_toss import CarryToPondStand
 from harvest.core.tile_catalog import (
     DebrisType,
     ADDR_INPUT_LOCK,
@@ -118,16 +119,23 @@ class FenceClearLoopTask(Task):
     _corridor_staged: bool = field(default=False, init=False)
     _corridor_stage: Optional[tuple[int, int]] = field(default=None, init=False)
     _skip_tiles: set = field(default_factory=set, init=False)
+    _pond_carry: CarryToPondStand = field(init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
         self._navigator = Navigator(self._pathfinder)
+        self._pond_carry = CarryToPondStand(
+            stasis_repath=self.stasis_repath,
+            debug=self.debug,
+        )
         # Pond-side barriers (6-tile model). Leave south lip approach open:
         # (30,34)/(31,34) are the west approach to POND_TILES (32,34)/(33,34).
         self._pathfinder.no_go_tiles.update({
             (30, 29), (31, 29), (32, 29), (33, 29), (34, 29), (35, 29),  # Top
-            (30, 30), (30, 31), (30, 32), (30, 33),  # Far Left (not y=34)
-            (31, 30), (31, 31), (31, 32), (31, 33),  # Near Left (not y=34)
+            # Top-row (30,30)/(31,30) posts become the next approach as each
+            # is lifted; their live fence IDs already keep them solid.
+            (30, 31), (30, 32), (30, 33),  # Far Left (not y=30/34)
+            (31, 31), (31, 32), (31, 33),  # Near Left (not y=30/34)
             (34, 30), (34, 31), (34, 32), (34, 33), (34, 34),  # Near Right
             (35, 30), (35, 31), (35, 32), (35, 33), (35, 34),  # Far Right
             # Water body — stands (32–33,34) remain walkable for toss
@@ -154,6 +162,8 @@ class FenceClearLoopTask(Task):
         self._skip_tiles = set()
         self._stasis_repaths = 0
         self._toss_face = "up"
+        self._pond_carry.debug = self.debug
+        self._pond_carry.reset(world)
         if self._toss_task is None:
             self._toss_task = RecordedTask.load(self.toss_task_name)
             # Warn but don't fallback (User requested no fallback hacks)
@@ -230,6 +240,18 @@ class FenceClearLoopTask(Task):
         self._corridor_charge_done = False
         self._pond_hop_steps = 0
 
+    def _finish_pond_carry(self, world: WorldState) -> TaskResult:
+        self._mark_pond_toss()
+        self._state = "scan"
+        self._current = None
+        self._approach_tile = None
+        self._steps_on_fence = 0
+        self._pond_carry.reset(world)
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            reason=f"pond dump complete cleared={self.cleared_count}",
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._total_steps += 1
@@ -256,6 +278,27 @@ class FenceClearLoopTask(Task):
                     row.append(f"{tid:02x}")
                 print(f"Y={y:2d}: {' '.join(row)}")
             print("-----------------------------------------")
+
+        # Throw animation can clear carry RAM one frame before input lock. Let
+        # the carry module publish that success edge before generic lock mash;
+        # otherwise the parent skips both the count and failure-reset.
+        if (
+            self.pond_dump
+            and self._state == "navigate_pond"
+            and not (world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT)
+            and read_held_item(world.ram) == 0
+        ):
+            carry_result = self._pond_carry.step(world)
+            if carry_result.status == TaskStatus.SUCCESS:
+                if carry_result.reason == "pond toss complete":
+                    return self._finish_pond_carry(world)
+                self._state = "scan"
+                self._current = None
+                self._approach_tile = None
+                self._steps_on_fence = 0
+                self._pond_carry.reset(world)
+            elif carry_result.action is not None:
+                return carry_result
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if input_lock != 1:
@@ -595,6 +638,15 @@ class FenceClearLoopTask(Task):
                     print(f"[FENCE] navigate_pond called but not carrying! (state=0x{state_val:02x})")
                 self._state = "scan"
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(np.zeros(12, dtype=np.int32)))
+
+            # Full-field clearing composes fence selection/lift with the small
+            # carry-to-stand policy.  It never declares debris or stale cells
+            # walkable; every post uses the one live-verified F0 pond stand.
+            if self.pond_dump:
+                result = self._pond_carry.step(world)
+                if result.status == TaskStatus.SUCCESS:
+                    return self._finish_pond_carry(world)
+                return result
 
             current = self._navigator.current_tile
             best_pond = min(POND_TILES, key=lambda p: abs(p[0]-current[0]) + abs(p[1]-current[1]))
