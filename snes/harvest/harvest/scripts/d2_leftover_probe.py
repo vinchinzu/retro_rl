@@ -63,6 +63,7 @@ from harvest.tasks.farm_clear_quota import (
     DebrisCounts,
     classify_target,
     count_debris,
+    quota_counts_met,
 )
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.nav import get_pos_from_ram, make_action
@@ -86,6 +87,12 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Write a gzip save under custom_integrations when the section is empty.",
+    )
+    p.add_argument(
+        "--save-partial-state",
+        type=str,
+        default=None,
+        help="Write a debug-only gzip save when the selected section is still red.",
     )
     p.add_argument(
         "--section",
@@ -173,24 +180,33 @@ def _snapshot(ram) -> dict:
 
 
 def _wanted_quota(section: str) -> ClearQuota:
-    """Legacy report shape; zero means the selected debris must be absent."""
+    """Day 2 work contract; the oversized fence quota caps to all present."""
     if section == "bushes":
-        return ClearQuota(weeds=0)
+        return ClearQuota(weeds=10)
     if section == "fences":
         return ClearQuota(fences=10_000)
     if section == "stones":
-        return ClearQuota(stones=0)
+        return ClearQuota(stones=10)
     if section == "rocks":
-        return ClearQuota(large_rocks=0)
+        return ClearQuota(large_rocks=4)
     if section == "stumps":
-        return ClearQuota(stumps=0)
+        return ClearQuota(stumps=2)
     return ClearQuota(
-        weeds=0,
-        stones=0,
-        large_rocks=0,
-        stumps=0,
+        weeds=10,
+        stones=10,
+        large_rocks=4,
+        stumps=2,
         fences=10_000,
     )
+
+
+def _section_complete(
+    section: str,
+    start: DebrisCounts,
+    end: DebrisCounts,
+) -> bool:
+    """True when this pass removes the bounded D2 quota from its own start."""
+    return quota_counts_met(start, end, _wanted_quota(section))
 
 
 def _phases_for(section: str, *, stamina: Stamina, include_spa: bool):
@@ -389,19 +405,17 @@ def main() -> int:
         cleared = DebrisCounts(**start["debris"]).cleared_since(
             DebrisCounts(**end["debris"])
         )
-        required = {
-            "bushes": ("weeds",),
-            "fences": ("fences",),
-            "stones": ("stones",),
-            "rocks": ("large_rocks",),
-            "stumps": ("stumps",),
-            "all": ("weeds", "fences", "stones", "small_rocks", "large_rocks", "stumps"),
-        }[args.section]
-        ok = ok and all(end["debris"].get(key, 0) == 0 for key in required)
+        start_counts = DebrisCounts(**start["debris"])
+        end_counts = DebrisCounts(**end["debris"])
+        ok = ok and _section_complete(args.section, start_counts, end_counts)
+        required_empty = ["fences"] if args.section in {"fences", "all"} else []
         saved = None
         if args.save_end_state and ok:
             saved = _save_emulator_state(env, args.save_end_state)
             print(f"[LEFTOVER] Saved end state -> {saved}")
+        elif args.save_partial_state and not ok:
+            saved = _save_emulator_state(env, args.save_partial_state)
+            print(f"[LEFTOVER] Saved partial debug state -> {saved}")
         extra = {}
         if saved is not None:
             extra["saved_state"] = str(saved)
@@ -414,7 +428,8 @@ def main() -> int:
             journal=journal,
             end=end,
             cleared=cleared.as_dict(),
-            required_empty=list(required),
+            required_empty=required_empty,
+            required_quota=_wanted_quota(args.section).__dict__,
             frames=frame,
             time=format_segment_time(frame),
             **extra,

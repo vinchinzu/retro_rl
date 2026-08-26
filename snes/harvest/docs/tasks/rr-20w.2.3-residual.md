@@ -1,66 +1,70 @@
-## Residual — rr-20w.2.3 D2 whole-farm clear
+## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** CLEAR_BUSHES is green from the 400-weed pin. CLEAR_FENCES is not
-green. Headed pond-dump from `Y1_D2_After_Bushes` still **rams 2×2
-boulders** (`0x0D` quads) and burns frames on push-facing.
-**Natural entry:** power-on. Pins may debug a skill but cannot green the rung.
-**Probe:** `harvest.scripts.d2_leftover_probe`. Watch is `--headed`
-(`retro_harness.headed`: `[` `]` speed, TAB turbo), not harvest
-`--watch` / WatchDisplay.
+**Status:** IN PROGRESS. Stop point prepared for handoff; the natural-entry
+Day 2 rung is not green.
+**Natural entry:** power-on. The named states below are diagnostic pins and do
+not promote STATUS.
 
-```bash
-HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
-  --state Y1_D2_After_Bushes --section fences \
-  --out recordings/d2_leftover_smash.json
-uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \
-  --state Y1_D2_After_Bushes
-```
+### Verified this session
 
-Glance with `harvest.clock_glance` — no MP4. Halt after 3 serial reds on
-the same checkbox → BLOCKED, stop. Overwrite one JSON. Do not mint `_vN`
-or `_window_*`.
+- `CarryToPondStand` uses the verified F0 pond stand only. It waits through
+  the throw input lock and does not report success until reaching the
+  west-of-pond egress `(29,35)`.
+- From `Y1_D2_After_Bushes`, fence continuations cleared the farm count
+  `80 -> 49 -> 15 -> 0`. The post-fence diagnostic pin is
+  `Y1_D2_After_Fences`.
+- From that pin, the bounded stone section cleared 10 stones (`185 -> 175`)
+  in 2,602 frames. The stable successor pin is `Y1_D2_After_Stones`.
+- A valid stand beside the lower half of a 2x2 boulder is now recognized as
+  adjacent to its whole footprint. Previously it was compared only with the
+  top-left anchor, bounced back to navigation, and eventually timed out.
+- Day 2's bounded field contract is 10 bushes, all fences, 10 stones,
+  4 boulders, and 2 stumps. A bounded success no longer incorrectly requires
+  the entire debris type to be absent from the farm.
+- Focused non-ROM suite: 196 passed. Task/planner/script modules also pass
+  `compileall`.
 
-### Already green (do not re-prove)
+### Current red: hammer registration timing
 
-| Layer | Evidence |
-|-------|----------|
-| Grape + shop + 8-ring plant+water pin | `rr-m7mk` / `rr-bvam`, `recordings/d2_plant_water.json` |
-| CLEAR_BUSHES from `Y1_D2_After_400_Weeds` | 103→0 weeds in 21,618f, farm `0x00` 18:05, Clean. Saved `Y1_D2_After_Bushes`. Watchdog rejected `(789,902)` oscillation and continued. Pathable-stand select + boxed-weed stone/fence opener landed the last seven. |
+Start the next diagnostic at `Y1_D2_After_Stones` (65 stamina). Do not use
+the latest `Y1_D2_Rocks_Frontier`: it was overwritten by an experimental
+0/4 run.
 
-### Landed this session (not a green rung)
+The 2x2 stand/pathing bug is fixed. The remaining problem is that the live
+ROM registers a hammer hit one frame after the current 49-frame
+face/settle/swing/cooldown queue drains. A raw replay against the first
+boulder observed:
 
-- Leftover watch is `--headed` / `retro_harness.headed`.
-- Travel occupies a 2×2 stump/rock from the TL even when siblings stay dirt/`0x00`.
-- Pond-dump keeps the post until F0 `(32,34)`: no timeout local-drop, no
-  south-charge from north farm (charge only y=30–31), hops even when not
-  strictly closer.
-- Scan hops to the nearest y=31 wall post; skip/retry clears `temp_blocked`.
-- Headed pin runs: 80→80 `no reachable fence`; 80→78 then `too many fence
-  failures`; pick-and-drop was recovery local-drop. Unattended 200k earlier:
-  80→18. **Live still pounds 2×2 boulders** — occupancy is not enough
-  (viewport `0x00` fringe and/or carry pixel clip).
+| Frame | Stamina | Tool counter | Target hits |
+|---:|---:|---:|---:|
+| 1262 | 63 | 1 | 2 |
+| 1311 | 61 | 2 | 3 |
+| 1360 | 59 | 3 | 4 |
+| 1409 | 57 | 4 | 5 |
+| 1458 | 55 | 5 | 6 |
+| 1507 | 53 | reset | gone |
 
-Leftover JSON (`recordings/d2_leftover_smash.json`) now always carries
-`leftover` (last RAM still: tilemap, clock, tile xy, carry, debris) and
-`glance_misses` from `FENCE_STAND`. A dump fail is that stand, not a
-journal-only blob. Next fences takeoff is the leftover still, not a
-re-run of bushes from `Y1_D2_After_Bushes`.
+This proves that checking the counter as soon as the queue empties rejects a
+real swing. That experimental rejection was reverted; the checked-in helper
+retains the prior fixed-attempt behavior. Its best stable live result was 2/4
+boulders before stamina/aim misses consumed the budget.
 
-### Next action
+### Exact next action
 
-- **Do not re-prove bushes** from `Y1_D2_After_Bushes`.
-- **Do not spend another 200k** on the boxed house paddock (y=13 x=2–9 and
-  x=2 y=14–21, `0xA6`).
-- **First:** carry-to-pond travel must go around live 2×2 rocks (viewport
-  hop + pixel push), from `Y1_D2_After_Bushes`. Then house-paddock pond
-  stand (not `0xA6` toss).
-- **Acceptance:** every debris count is zero, eight potatoes are wet,
-  shipping occurred before 17:00, and Clean counters remain zero.
+Add a delayed post-swing observation seam (at least the one proven frame)
+before deciding whether a swing registered. Count a hit only from a live
+tool-counter, stamina, or tile-disappearance edge; on a genuine miss, retry a
+different valid footprint side. Re-run only the 4-boulder section from
+`Y1_D2_After_Stones`, then clear 2 stumps. If the quota cannot fit the remaining
+stamina, compose the existing spa/refill path instead of weakening the quota.
+
+After those sections are green, the remaining product proof is one Clean
+power-on run through field clearing, eight wet potatoes, and shipping before
+17:00.
 
 ### Non-claims
 
-- Did not STATUS-promote from a pin
-- Did not start from `Y1_D2_Morning_After_D1`
-- Did not record a walk BFS can close
-- Did not treat CrossMap origin-return as shop success
-- Did not green CLEAR_FENCES; 2×2 ram remains; 18 house posts remain
+- No STATUS promotion
+- No natural power-on Day 2 completion
+- No claim that all rocks or stumps are gone
+- No claim that `Y1_D2_Rocks_Frontier` is a valid successor

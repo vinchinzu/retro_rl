@@ -265,6 +265,74 @@ class FenceCorridorOnlyTests(unittest.TestCase):
 
 
 class LeftoverPondDumpTests(unittest.TestCase):
+    def test_cleared_pond_perimeter_post_becomes_next_approach(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        for ty in range(64):
+            for tx in range(64):
+                _set_tile(ram, tx, ty, 0xA1)
+        # Live frontier after the first perimeter post at (30,30) is gone.
+        _set_tile(ram, 31, 30, FENCE)
+        _set_tile(ram, 32, 30, FENCE)
+        _set_player_tile(ram, (29, 30))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=None, pond_dump=True)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._current)
+        self.assertEqual(tuple(task._current.tile), (31, 30))
+        self.assertEqual(task._approach_tile, (30, 30))
+
+    def test_toss_completion_counts_before_input_lock_mash(self) -> None:
+        from harvest.tasks.carry_toss import POND_WEST_EGRESS_STAND
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 0
+        _set_player_tile(ram, (32, 34))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = FenceClearLoopTask(max_fences=None, pond_dump=True)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        task._state = "navigate_pond"
+        task._current = SimpleNamespace(tile=(29, 31), tile_id=FENCE)
+        task._pond_carry._toss_started = True
+        task._pond_carry._egress_goal = POND_WEST_EGRESS_STAND
+
+        result = task.step(world)
+
+        self.assertEqual(result.reason, "input_lock")
+        self.assertEqual(task.cleared_count, 0)
+
+        ram[ADDR_INPUT_LOCK] = 1
+        _set_player_tile(ram, (33, 34))
+        result = task.step(world)
+
+        self.assertIn("egress boxed pond stand", result.reason)
+        self.assertEqual(task.cleared_count, 0)
+
+        _set_player_tile(ram, (33, 35))
+        result = task.step(world)
+
+        self.assertIn("egress boxed pond stand", result.reason)
+        self.assertEqual(task.cleared_count, 0)
+
+        _set_player_tile(ram, POND_WEST_EGRESS_STAND)
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(result.reason, "pond dump complete cleared=1")
+        self.assertEqual(task.cleared_count, 1)
+        self.assertEqual(task._state, "scan")
+
     def test_stone_dump_scans_stones_not_only_fences(self) -> None:
         from harvest.tasks.fence_flow import FenceClearLoopTask
 
@@ -578,7 +646,9 @@ class LeftoverPondDumpTests(unittest.TestCase):
 
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        path = list(task._navigator.path or [])
+        # Pond-dump travel is owned by the focused carry composer, not the
+        # fence-selection state machine.
+        path = list(task._pond_carry._navigator.path or [])
         self.assertTrue(path)
         self.assertLessEqual(len(path), VIEWPORT_HOP_TILES)
         self.assertTrue(set(stump).isdisjoint(path))

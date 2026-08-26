@@ -392,16 +392,18 @@ FENCE_DUMP_DONE = LeaveSpec(
 
 _DONE_EMPTY = {
     "fences": ("fences",),
-    "bushes": ("weeds",),
-    "stones": ("stones",),
-    "rocks": ("large_rocks",),
-    "stumps": ("stumps",),
-    "all": ("weeds", "fences", "stones", "small_rocks", "large_rocks", "stumps"),
+    # Other D2 sections are bounded quotas checked against the probe's start
+    # counts.  A final still alone cannot require those debris kinds empty.
+    "bushes": (),
+    "stones": (),
+    "rocks": (),
+    "stumps": (),
+    "all": ("fences",),
 }
 
 
 def d2_leftover_spec(section: str = "fences", *, done: bool = False) -> LeaveSpec:
-    """Fail path: farm stand. Success path: section debris must be gone."""
+    """Fail path: farm stand; success still enforces exhaustive fences only."""
     if section == "fences":
         return FENCE_DUMP_DONE if done else FENCE_STAND
     empty = _DONE_EMPTY.get(section, ())

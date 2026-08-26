@@ -67,6 +67,7 @@ from harvest.tasks.farm_clear_nav import (
     handle_navigating,
     start_progress_watch,
 )
+from harvest.tasks.farm_clear_tool import handle_tool_clear
 
 
 # =============================================================================
@@ -399,6 +400,8 @@ class FarmClearer:
             if snapped is None:
                 continue
             nx, ny, tile_id, debris = snapped
+            if ((nx, ny), player_tile) in self.failed_approaches:
+                continue
             if debris not in CLEARABLE_DEBRIS_TYPES or (nx, ny) in self.failed_tiles:
                 continue
             try:
@@ -652,7 +655,17 @@ class FarmClearer:
         player = self.navigator.current_tile
         target = self.current_target.tile
 
-        if tile_dist(player, target) > 1:
+        # A 2x2 object is represented by its top-left anchor, but a valid
+        # lower/right stand can be two or three steps from that anchor.  Stay
+        # in clearing whenever the player is cardinally adjacent to any live
+        # footprint cell; comparing only with ``target`` made those stands
+        # bounce back to navigation until the 600f timeout.
+        footprint = set(self.current_target.footprint)
+        adjacent_to_footprint = player not in footprint and any(
+            tile_dist(player, cell) == 1 for cell in footprint
+        )
+        if not adjacent_to_footprint:
+            self.clearing_start_frame = 0
             return "navigating"
 
         # Wait for any queued actions (current hit animation) to finish
@@ -739,106 +752,12 @@ class FarmClearer:
             self._pending_lift_verify = target
             return None
 
-        # Tool check
-        tool = self.current_target.required_tool
-        if tool is None:
-            self.failed_tiles.add(target)
-            self.current_target = None
-            self.clearing_start_frame = 0
-            return "scanning"
-
-        if self.tool_manager.current != tool:
-            print(
-                f"[CLEARER] Need {tool.name}, "
-                f"have 0x{self.tool_manager.current:02X}"
-            )
-            self.searching_tool = tool
-            self.tool_manager.start_search()
-            self.tool_search_frames = 0
-            return "tool_switch"
-
-        # Do not start a 2×2 unless 8-swing stamina is in the bank. Lifts
-        # already returned above and may continue at stamina 1–3.
-        if self.target_hits == 0 and not self._can_afford_target(
-            ram, self.current_target
-        ):
-            stam = self._stamina(ram)
-            print(
-                f"[CLEARER] Skip {self.current_target.debris_type.name} at "
-                f"{target}: need {stam.cost_to_clear(self.current_target.required_hits)} "
-                f"stam for {self.current_target.required_hits}+miss budget, have {stam}"
-            )
-            self.stamina_exhausted = True
-            self.current_target = None
-            self.clearing_start_frame = 0
-            return "scanning"
-        if self.target_hits > 0 and self._stamina(ram) < 2:
-            self.stamina_exhausted = True
-            self.current_target = None
-            self.clearing_start_frame = 0
-            return "complete"
-
-        # First hit: attempt tracking and logging
-        if self.target_hits == 0:
-            tile_key = (target[0], target[1], self.current_target.tile_id)
-            attempts = self.tile_attempts.get(tile_key, 0)
-            if attempts >= 3:
-                print(
-                    f"[CLEARER] Giving up on "
-                    f"{self.current_target.debris_type.name} at {target} "
-                    f"tile=0x{self.current_target.tile_id:02X} "
-                    "(3 failed attempts)"
-                )
-                self.failed_tiles.add(target)
-                self.current_target = None
-                return "scanning"
-            self.tile_attempts[tile_key] = attempts + 1
-            direction = self._face_dir(player, target)
-            if attempts == 0:
-                print(
-                    f"[CLEARER] Clearing "
-                    f"{self.current_target.debris_type.name} at {target} "
-                    f"tile=0x{self.current_target.tile_id:02X} from {player} "
-                    f"facing {direction} "
-                    f"({self.current_target.required_hits} hits)"
-                )
-            else:
-                print(
-                    f"[CLEARER] Re-targeting "
-                    f"{self.current_target.debris_type.name} at {target} "
-                    f"tile=0x{self.current_target.tile_id:02X} "
-                    f"(attempt {attempts + 1}/3)"
-                )
-
-        # Hits delivered — only count after the tile is actually gone.
-        if self.target_hits >= self.current_target.required_hits:
-            if TILE_TO_DEBRIS.get(current_tile_id) is None:
-                pos_key = self.current_target.tile
-                if pos_key not in self.tiles_cleared:
-                    self.tiles_cleared.add(pos_key)
-                    self.cleared_count += 1
-                self.current_target = None
-                self.clearing_start_frame = 0
-                return "scanning"
-            # Still present after claimed hits — keep swinging a bit more,
-            # then fail the tile.
-            if self.target_hits >= self.current_target.required_hits + 3:
-                print(
-                    f"[CLEARER] Hits exhausted but tile remains at {target}"
-                )
-                self.failed_tiles.add(target)
-                self.current_target = None
-                self.clearing_start_frame = 0
-                return "scanning"
-
-        # Queue a SINGLE hit: face → settle → swing → cooldown
-        direction = self._face_dir(player, target)
-        self.action_queue.append(make_action(**{direction: True}))
-        self.action_queue.extend([make_action() for _ in range(8)])
-        self.action_queue.extend(use_tool(frames=20, cooldown=20))
-        self.target_hits += 1
-
-        return None
+        return handle_tool_clear(
+            self,
+            ram,
+            player=player,
+            target=target,
+        )
 
     def _handle_tool_switch(self, ram: np.ndarray) -> Optional[str]:
         if not self.searching_tool:
