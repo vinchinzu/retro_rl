@@ -149,6 +149,33 @@ Phases A–E green; pure R19 + continuous tip **122,304f** → Bat Cave. Techniq
 ref (maintenance only): [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md). Card
 stack deleted after promote. Next serial: `bd ready -l super_metroid`.
 
+## Main Shaft → Attic (second consumer) — open
+
+Powered `0xCAF6` → Attic `0xCA52` on `rr-kw8t`. Living tip stays Phantoon.
+Full hop GREEN is Attic gs=8 only. Seats in
+`routes/kpdr/k6/ws_main_phases.py`. Living residual:
+[`rr-kw8t-residual.md`](rr-kw8t-residual.md).
+
+| Phase | Seam | Held exit |
+|-------|------|-----------|
+| pit_shot | pin (1173,1979) 3-shot | still Main, not Basement (approach) |
+| grate_seat | first stable seat | right hatch-lip ~(1177, 1883) p2 |
+| west_super | first shaft hop | y~1675 in shaft, not 0xCDA8 |
+| mid_climb | past sponge/save | y~680 in shaft |
+| attic_seat | blue ceiling door | ~(1135, ≤160) stand |
+| attic_door | leave | Attic `0xCA52` gs=8 |
+
+Living checkbox is **west_super**. grate_seat PHASE **189f ×2** from the
+hop-1 pin. Morph-tunnel from the lip peaks **(1101, 1820) p25** — 155px
+short of y=1675. Left (1075,1845) is above floor HiJump — later. Do not
+open mid_climb while west_super is red. Do not farm another spin window
+from the mid ledge.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python \
+  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video
+```
+
 ## See also
 
 - Pure-first: `AGENTS.md`

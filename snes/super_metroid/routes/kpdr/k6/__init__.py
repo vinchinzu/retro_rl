@@ -10,6 +10,7 @@ from super_metroid.routes.kpdr.k6.ws_basement import play_ws_basement_to_phantoo
 from super_metroid.routes.kpdr.k6.ws_basement_return import play_ws_basement_to_main
 from super_metroid.routes.kpdr.k6.ws_entrance import play_ws_entrance_to_main
 from super_metroid.routes.kpdr.k6.ws_main import play_ws_main_to_basement
+from super_metroid.routes.kpdr.k6.ws_main_climb import play_ws_main_to_attic
 
 __all__ = [
     "play_alpha_pb_to_caterpillar",
@@ -21,5 +22,6 @@ __all__ = [
     "play_ws_basement_to_main",
     "play_ws_basement_to_phantoon",
     "play_ws_entrance_to_main",
+    "play_ws_main_to_attic",
     "play_ws_main_to_basement",
 ]
