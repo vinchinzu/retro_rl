@@ -23,6 +23,7 @@ from harvest.maps.map_config import (
 )
 from harvest.tasks.hot_spring import (
     HotSpringStaminaTask,
+    PLAYER_ACTION_JUMP,
     SPA_TILEMAP,
     MOUNTAIN_TILEMAP,
     CAVE_TILEMAP,
@@ -31,11 +32,12 @@ from harvest.tasks.hot_spring import (
     read_stamina,
     read_max_stamina,
 )
-from retro_harness import TaskStatus
+from retro_harness import TaskResult, TaskStatus, WorldState
 
 
 ADDR_STAMINA = field_spec("stamina").address
 ADDR_MAX_STAMINA = field_spec("max_stamina").address
+ADDR_PLAYER_ACTION = field_spec("player_action").address
 
 
 def _blank_ram() -> np.ndarray:
@@ -304,6 +306,156 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(route[0].target_px, (137, 375))
         self.assertNotEqual(route[0].target_px, (136, 600))
         self.assertEqual(route[-1].target_px, (619, 201))
+
+
+def _set_u16(ram: np.ndarray, addr: int, value: int) -> None:
+    ram[addr] = value & 0xFF
+    ram[addr + 1] = (value >> 8) & 0xFF
+
+
+def _spa_lip_ram(*, stamina: int, maximum: int = 100) -> np.ndarray:
+    ram = _blank_ram()
+    ram[ADDR_TILEMAP] = MOUNTAIN_TILEMAP
+    ram[ADDR_STAMINA] = stamina
+    ram[ADDR_MAX_STAMINA] = maximum
+    ram[ADDR_INPUT_LOCK] = 1
+    sx, sy = SPA_OUTDOOR_STAND_PX
+    _set_u16(ram, ADDR_X, sx)
+    _set_u16(ram, ADDR_Y, sy)
+    return ram
+
+
+def _pulse_jump_exit(
+    task: HotSpringStaminaTask, ram: np.ndarray, new_stam: int
+) -> TaskResult:
+    """One in-water jump then lip exit, with stamina applied on the exit frame."""
+    ram[ADDR_PLAYER_ACTION] = PLAYER_ACTION_JUMP
+    task.step(_world(ram))
+    ram[ADDR_STAMINA] = new_stam
+    ram[ADDR_PLAYER_ACTION] = 0
+    return task.step(_world(ram))
+
+
+class _ArriveTask:
+    def reset(self, world) -> None:
+        return None
+
+    def step(self, world) -> TaskResult:
+        return TaskResult(status=TaskStatus.SUCCESS, reason="arrived")
+
+
+class SpaFillToMaxTests(unittest.TestCase):
+    """Full restore soaks ~5–6 jump-exits; do not walk home before current==max."""
+
+    def test_five_jump_exits_keep_soaking_until_max(self) -> None:
+        ram = _spa_lip_ram(stamina=17, maximum=100)
+        task = HotSpringStaminaTask(min_stamina=None, return_to_farm=True)
+        task.reset(_world(ram))
+        task._begin_soak(_world(ram))
+
+        # Human fill is ~+14–16 per water exit; 5 exits leave a remainder.
+        after_jumps = (33, 49, 65, 81, 97)
+        result = None
+        for stam in after_jumps:
+            result = _pulse_jump_exit(task, ram, stam)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertEqual(task.phase_text, "soak")
+            self.assertLess(read_stamina(ram), read_max_stamina(ram))
+
+        self.assertEqual(task._jumps_seen, 5)
+        self.assertFalse(task._stamina_ok(ram))
+
+        result = _pulse_jump_exit(task, ram, 100)
+        self.assertEqual(task._jumps_seen, 6)
+        self.assertEqual(read_stamina(ram), 100)
+        self.assertNotEqual(task.phase_text, "soak")
+        self.assertIn(task.phase_text, {"post_soak_settle", "return_farm"})
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+
+    def test_cycle_budget_does_not_end_a_partial_full_restore(self) -> None:
+        ram = _spa_lip_ram(stamina=17, maximum=100)
+        task = HotSpringStaminaTask(
+            min_stamina=None,
+            return_to_farm=False,
+            max_jump_cycles=4,
+            soak_plateau_frames=10_000,
+        )
+        task.reset(_world(ram))
+        task._begin_soak(_world(ram))
+
+        result = None
+        for stam in (40, 60, 80, 90):
+            result = _pulse_jump_exit(task, ram, stam)
+        self.assertEqual(task._jumps_seen, 4)
+        self.assertEqual(read_stamina(ram), 90)
+
+        # Drain the queued 4th bath so the cycle cap is live.
+        for _ in range(400):
+            result = task.step(_world(ram))
+            if result.status != TaskStatus.RUNNING:
+                break
+            if task._jump_cycles >= 4 and not task._action_queue:
+                result = task.step(_world(ram))
+                break
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "soak")
+        self.assertEqual(read_stamina(ram), 90)
+
+        ram[ADDR_STAMINA] = 100
+        result = None
+        for _ in range(20):
+            result = task.step(_world(ram))
+            if result.status == TaskStatus.SUCCESS:
+                break
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(read_stamina(ram), read_max_stamina(ram))
+        self.assertIn("soaked", result.reason or "")
+
+    def test_return_farm_success_requires_max_stamina(self) -> None:
+        ram = _spa_lip_ram(stamina=80, maximum=100)
+        ram[ADDR_TILEMAP] = 0x00
+        task = HotSpringStaminaTask(min_stamina=None, return_to_farm=True)
+        task.reset(_world(ram))
+        task._phase = "return_farm"
+        task._task = _ArriveTask()
+
+        result = task.step(_world(ram))
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("unrestored", result.reason or "")
+        self.assertEqual(read_stamina(ram), 80)
+
+    def test_return_farm_success_when_maxed(self) -> None:
+        ram = _spa_lip_ram(stamina=100, maximum=100)
+        ram[ADDR_TILEMAP] = 0x00
+        task = HotSpringStaminaTask(min_stamina=None, return_to_farm=True)
+        task.reset(_world(ram))
+        task._phase = "return_farm"
+        task._task = _ArriveTask()
+
+        result = task.step(_world(ram))
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(read_stamina(ram), read_max_stamina(ram))
+        self.assertIn("returned to farm", result.reason or "")
+
+    def test_full_restore_phase_builds_fill_to_max_task(self) -> None:
+        from harvest.planner.day_phase_stamina import full_restore_spa_phase
+        from harvest.planner.day_task_factory import DayTaskFactory
+
+        ram = _blank_ram()
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = DayTaskFactory().make_task(full_restore_spa_phase(), world)
+        self.assertIsInstance(task, HotSpringStaminaTask)
+        self.assertIsNone(task.min_stamina)
+        self.assertTrue(task.return_to_farm)
+        ram[ADDR_MAX_STAMINA] = 130
+        ram[ADDR_STAMINA] = 17
+        self.assertEqual(task._stamina_target(ram), 130)
+        self.assertFalse(task._stamina_ok(ram))
+        ram[ADDR_STAMINA] = 130
+        self.assertTrue(task._stamina_ok(ram))
 
 
 if __name__ == "__main__":

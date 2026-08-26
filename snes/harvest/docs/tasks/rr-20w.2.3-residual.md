@@ -20,6 +20,10 @@ not promote STATUS.
 - Leftover probe inserts spa on smash `stamina_low` and before stumps when
   live stamina cannot finish an 8-swing 2×2 (`should_spa_retry` /
   `needs_spa_before_next_smash`).
+- Spa soak is fill-to-max: ~5–6 jump-exits of 0xF7, keep bathing past the
+  cycle budget until `current == maximum`, and `return_farm` SUCCESS
+  requires that. Unit-tested in `SpaFillToMaxTests`. Live farm→spa from
+  `Y1_D2_After_Rocks` is still red (west-gate A8 hug).
 - Focused non-ROM suite for the changed modules passed (125+). `test_d2_spine`
   still has two unrelated evidence failures.
 
