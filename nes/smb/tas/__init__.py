@@ -1,6 +1,7 @@
 """TAS tooling for Super Mario Bros.
 
-- ``fm2``: import FCEUX movies (HappyLee warps, community RTA-rules)
+- ``fm2``: import FCEUX movies (HappyLee warps, warpless #3728M)
+- ``bk2``: NesHawk FM2→BK2 conversion (same mapping as ``*.fm2.bk2``)
 - ``stages``: StageSpec table + control/goal predicates + HL indices
 - ``slice``: probe / export / search from StageSpec
 - ``chain``: reach_* / verify_* navigation (single path for all tracks)
@@ -14,10 +15,12 @@ Typical CLI::
 
     uv run python -m smb.scripts.import_fm2 --summary-only
     uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
+    uv run python -m smb.tas.fetch_refs
+    uv run python -m smb.scripts.convert_fm2
     uv run python -m smb.scripts.tas_1_1 analyze
 """
 
-from smb.tas.fm2 import Fm2Movie, fm2_to_nes9_frames, parse_fm2
+from smb.tas.fm2 import Fm2Movie, fm2_to_nes9_frames, parse_fm2, parse_movie
 from smb.tas.pipeline import OptimizeReport, ensure_completing_seed, optimize_1_1
 from smb.tas.replay import to_action9
 from smb.tas.search import edge_shift_search, polish_systematic, systematic_delete_sweep
@@ -43,6 +46,7 @@ __all__ = [
     "get_stage",
     "optimize_1_1",
     "parse_fm2",
+    "parse_movie",
     "polish_systematic",
     "probe_from_control",
     "systematic_delete_sweep",

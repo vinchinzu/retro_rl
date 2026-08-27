@@ -29,7 +29,13 @@ uv run python -m smb.scripts.run_reactive_warp --retime-4-1 --retime-4-2 --retim
 uv run python -m smb.scripts.fold_continuous_policy
 uv run python -m smb.scripts.rle_polish --list-windows
 
-# 32-exit track: promote ./play stage pins to practice start states
+# 32-exit track: 1-2 flag pipe → 1-3 pin → practice start state
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.probe_1_2_flag
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_1_2_flag --record --trials 2
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.run_1_3 --search --trials 2
 uv run python -m smb.scripts.extract_stage_state --list
 uv run python -m smb.scripts.extract_stage_state 1-3
 
@@ -45,6 +51,24 @@ uv run python -m smb.scripts.tas_1_1 verify \
 uv run python -m smb.scripts.import_fm2 --summary-only
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 --verify
+# 32-exit TAS (HappyLee & Mars608 warpless #3728M; not the warp line)
+uv run python -m smb.tas.fetch_refs
+uv run python -m smb.scripts.convert_fm2
+uv run python -m smb.scripts.import_fm2 \
+  nes/smb/tas/ref/happylee_mars608_warpless_3728M.fm2 --summary-only
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --isolated-1-1 --export-1-1
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --search-1-2-flag --export-1-2-flag
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --search-1-3 --export-1-3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --verify-1-3
+# Same #3728M file for every leg (not #1715M warps / not smb_1_2_flag.json)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_warpless --to 1-3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_warpless --to 1-3 --record
 # Pure HappyLee track 3 (no hybrid/natural/skills; 8-4 blocked until 8-3 leave)
 uv run python -m smb.scripts.pure_hl status
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -99,11 +123,22 @@ uv run python -m smb.scripts.parse_human_recording \
 - 1-1-stairs polish window = frames **1050–1311** (wall-slam), not castle idle.
 - 1-2 polish mutates only `underground_from_control` in
   `smb_1_2_reactive_fragments.json` (surface stays reactive RIGHT/DOWN).
-- 32-exit pins: `all_exits_v1_pins` 1-3/1-4 are **stale mislabels** (written
-  pre-fb4118e9 AreaNumber gate; 1-3 pin = 1-2 UG re-entry, 1-4 pin = 1-3
-  castle tally). `extract_stage_state` rejects them — don't force it.
-  1-2 **flag** exit (normal, to 1-3) has no bot controller yet; pipe-entry
-  facts + probes: `docs/HANDOFF_32EXIT_1_3.md`.
+- 32-exit TAS is **warpless #3728M** (`happylee_mars608_warpless_3728M.fm2`),
+  not HappyLee warps #1715M. Convert with `smb.scripts.convert_fm2` (NesHawk
+  BK2, same mapping as `happylee_warps_1715M.fm2.bk2`). Do not fold warpless
+  slices into warp seeds.
+- 32-exit: 1-2 **flag** exit is the DOWN pipe on the brick platform after
+  the UG lifts (not plant pipes B/C, not the warp room). Body:
+  `smb.scripts.run_1_2_flag` / `smb.flag_12` (HL UG prefix + A19 lift/
+  pipe tail). `smb_1_3` **is** registered with `SMB_DASH_COMPUTED`
+  (`$075C` LevelNumber) — never default `_smb_level` (that target_id=2
+  is 1-2 UG AreaNumber). Warpless 1-3 TAS slice is control-relative
+  **1740f @ FM2 4653 → 1-4** (`smb_1_3_warpless_slice.json`); isolated
+  `Level1_3` is a different phase (ps=8/timer=300 vs TAS ps=7/timer=301)
+  and still open. Old 1-4 pin is still a castle tally. Facts:
+  `docs/HANDOFF_32EXIT_1_3.md`. Play/record the same #3728M cuts with
+  `smb.scripts.record_warpless --to 1-3` — `#1715M` 1-1 / W4 1-2 and
+  `smb_1_2_flag.json` desync this line. Human power-on is `./play smb`.
 - Pin/state boot: `set_state` → `reset()` → `set_state` again (stable-retro
   eats a frame on load). RAM y is head/top (floor stand y=176).
 

@@ -27,6 +27,8 @@ from smb.tas.stages import (
     StageSpec,
     get_stage,
     goal_hit,
+    is_1_3_control,
+    is_1_4_control,
     is_4_1_control,
     is_8_3_control,
 )
@@ -96,6 +98,18 @@ def test_is_4_1_control() -> None:
     assert not is_4_1_control(_snap(level=1))
     assert not is_4_1_control(_snap(player_x=250))
     assert not is_4_1_control(_snap(dying=True))
+
+
+def test_is_1_3_control_uses_dash_not_area_number() -> None:
+    assert is_1_3_control(_snap(world=0, level=3, dash_level=2, player_x=40, timer=301))
+    assert not is_1_3_control(_snap(world=0, level=2, dash_level=1, player_x=40, timer=301))
+    assert not is_1_3_control(_snap(world=0, level=3, dash_level=2, player_x=200, timer=301))
+
+
+def test_is_1_4_control_uses_dash_3() -> None:
+    assert is_1_4_control(_snap(world=0, level=4, dash_level=3, player_x=40, timer=301))
+    assert not is_1_4_control(_snap(world=0, level=3, dash_level=2, player_x=40, timer=301))
+    assert not is_1_4_control(_snap(world=0, level=4, dash_level=3, player_x=200, timer=301))
 
 
 def test_is_8_3_control() -> None:

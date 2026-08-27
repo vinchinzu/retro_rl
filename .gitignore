@@ -286,6 +286,7 @@ nes/smb/models/*
 !nes/smb/models/smb_1_1_stairs_best_frames.json
 !nes/smb/models/smb_1_2_warp_w4.json
 !nes/smb/models/smb_1_2_reactive_fragments.json
+!nes/smb/models/smb_1_2_flag.json
 !nes/smb/models/smb_warp_mid_to_ending.json
 !nes/smb/models/smb_1_1_to_ending.json
 !nes/smb/models/smb_1_1_to_ending_reactive_83_84.json
@@ -303,15 +304,20 @@ nes/smb/models/*
 !nes/smb/models/smb_8_4_flamexx_slice.json
 !nes/smb/models/smb_happylee_hybrid_ending.json
 !nes/smb/models/smb_happylee_hybrid_v2_fx84.json
+!nes/smb/models/smb_1_1_warpless_slice.json
+!nes/smb/models/smb_1_2_warpless_flag_slice.json
+!nes/smb/models/smb_1_3_warpless_slice.json
 !nes/smb/recordings/
 nes/smb/recordings/*
 !nes/smb/recordings/tas_import/
 nes/smb/recordings/tas_import/*
 !nes/smb/recordings/tas_import/happylee_8_3_skills_leave.json
 !nes/smb/recordings/tas_import/happylee_8_3_skills_verify.json
+!nes/smb/recordings/tas_import/warpless_3728M/
+nes/smb/recordings/tas_import/warpless_3728M/*
+!nes/smb/recordings/tas_import/warpless_3728M/warpless_1_3_play.json
 !nes/smb/recordings/segments_all_exits/
 nes/smb/recordings/segments_all_exits/*
-!nes/smb/recordings/segments_all_exits/extract_stage_state_report.json
 !nes/smb/recordings/segments_all_exits/evidence/
 !nes/smb/recordings/segments_all_exits/evidence/*.png
 !nes/smb/recordings/reactive_warp/
@@ -368,6 +374,8 @@ nes/zelda_i/scratch/**/*_v[0-9]*.json
 nes/zelda_i/scratch/**/*.png
 # Harvest probe window dumps (named recordings stay; **/recordings/ already ignores the dir)
 snes/harvest/recordings/**/*_window*.json
+# Human inspect tape from Y1_D2_Stones_Frontier (107k frames / ~187MB).
+snes/harvest/tasks/horse_barn_edges.json
 
 # Local OpenCode overrides / agent auth (never commit)
 **/opencode.local.json
