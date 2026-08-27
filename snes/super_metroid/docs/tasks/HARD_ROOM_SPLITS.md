@@ -159,20 +159,18 @@ Full hop GREEN is Attic gs=8 only. Seats in
 | Phase | Seam | Held exit |
 |-------|------|-----------|
 | pit_shot | pin (1173,1979) 3-shot | still Main, not Basement (approach) |
-| grate_seat | first stable seat | right hatch-lip ~(1177, 1883) p2 |
+| grate_seat | first stable seat | take02/04 fire slope ~(1223, 1860) p3 |
 | west_super | first shaft hop | y~1675 in shaft, not 0xCDA8 |
 | mid_climb | past sponge/save | y~680 in shaft |
 | attic_seat | blue ceiling door | ~(1135, ≤160) stand |
 | attic_door | leave | Attic `0xCA52` gs=8 |
 
-Living checkbox is **west_super** (**RED**). grate_seat PHASE **189f ×2**
-from the hop-1 pin lands the hatch-lip pocket ~(1177, 1883): Wave blocks
-LEFT, wall RIGHT, UP hits the ceiling. Do not walk/jump RIGHT toward
-take02 `(1223, 1860)` from that seat. Do not dual shoulder-R (fell to
-stairs `(1113, 1899)` p156; crystals still up). Pocket skill: face LEFT,
-X in place, release at 8, then LEFT+A after a 0xD080-family spawn. Morph
-later at ~(1189,1785) — not on the lip. Do not open mid_climb while
-west_super is red. Do not farm save-column WJ.
+Living checkbox is **west_super** (**RED**). Pocket X-tap cannot hit.
+First-jump air peaked `(1194, 1836)` and fell back — do not 4th-dual
+that land. Two-hop short A **facing LEFT** at 1166 leftover stairs
+`(1111, 1899)` p157 — do not 2nd-dual that facing. Next: take02 short A
+**facing RIGHT**. Morph later at ~(1189,1785) — not on the lip. Do not
+open mid_climb while west_super is red. Do not farm save-column WJ.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
