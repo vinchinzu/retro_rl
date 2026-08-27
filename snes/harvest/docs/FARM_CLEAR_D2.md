@@ -80,13 +80,23 @@ toss, skip a stuck post instead of burning the day on one target. Live
 remaining 19 are house north y=13 + west x=2, boxed in house `0xA6`.
 Do not toss into `0xA6` (regression 80→79).
 
-Stones (`--section stones`, GREEN): 10 pond-tossed `0x04` in 7797f,
-185→175, end `(32,34)` F0 lip (`recordings/d2_leftover_stones.json`).
+Stones (`--section stones`): first 10 pond-tossed `0x04` were GREEN from
+`Y1_After_Buy_Potato` (185→175, 7797f). CLEAR_STONES is exhaustive (all
+remaining `0x04` to ponds). Live from `Y1_D2_After_Stumps`: axe+hoe still
+lifts (no stow); 175→48 in 200001f, then 48→45 and `too many fence
+failures` at the barn walls. Pin `Y1_D2_Stones_Frontier` (45 left).
+Horse-barn sprite walls are `FARM_NO_GO_TILES` (push-into cells, not
+stand-on stasis). Takeoff from `(17,20)` leaves south onto `(17,21)`.
+North-of-barn leftover dumps at `(46,16)` face-up into `0xFA` (trimmed
+`horse_barn_edges` slice), not the F0 south lip. Do not STATUS-promote
+Gate B.
 
 Rocks (`--section rocks`, pin GREEN from `Y1_D2_After_Stones`): 4/4
 large 2×2 in 3747f, `51 → 47`, stam 65→17. Hammer stays planted after the
-first face — a d-pad re-center STZs `$096D`. Stumps and spa-return are
-still red (`Y1_D2_After_Rocks`). Do not STATUS-promote Gate B.
+first face — a d-pad re-center STZs `$096D`. Spa-return from
+`Y1_D2_After_Rocks` is pin-green (`Y1_D2_After_Spa`, 17→100). Stumps
+quota 2/2 is pin-green from that spa pin (`Y1_D2_After_Stumps`, 38→36).
+Do not STATUS-promote Gate B.
 
 ## Invariants
 
