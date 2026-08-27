@@ -52,39 +52,51 @@ Do not port spin-40 without a full-route re-tune.
 `policy.py` is ~1,360 LOC after CombatProfile + Baxter extract.
 Spin still 52. No A-special. No STATUS / BASELINE edit.
 
-**Next (2026-08-27): `rr-iprz.5` still Starbase stall, not Slash.**
+**Next (2026-08-27): `rr-iprz.5` still Fast+Boss9 bars, not Slash.**
 See `docs/tasks/rr-iprz.5-residual.md`. Shipped right-rail skip
-(`starbase_rail_right` at x≥220): Diag **33,825→24,645f** (time KEEP,
-dmg 1,004→1,076). Fast **23,272f / 917** vs 23,072 / 863. Boss9
-**6,540f / 64** vs 6,300 / 144. Recover Fast+Boss9 without restoring
-the Diag rail loop. Do not skip dumpster on x=126 / 207; do not
-tighten close_gap below `%4`.
+(`starbase_rail_right` at x≥220) and exhausted-207 RIGHT
+(`starbase_unstick_right` after 3 dumpster cycles). Power-on
+`--dry-run` **reaches credits** (00:59:01 / 5,529 / 79, gitignored
+`tmnt_iv_full_hard_dry_run_rr_iprz5.json`). Do not STATUS. Fast
+**23,272f / 917** vs 23,072 / 863. Boss9 **6,516f / 64** vs 6,300 / 144.
+Diag **24,645f / 1,076** time KEEP. Recover Fast+Boss9 without restoring
+the Diag rail loop or the 207 infinite dumpster. Do not skip dumpster on
+x=126; do not tighten close_gap below `%4`. No video until that sitting's
+dry-run also reaches credits.
 
 ## Continuous dry-run 2026-08-27 (do not STATUS)
 
-`recordings/tmnt_iv_full_hard_dry_run_rr_iprz.json` — did **not** overwrite
-the on-disk `tmnt_iv_full_hard_dry_run.json` or STATUS 00:57:19.
+Gitignored dry-run JSONs — did **not** overwrite
+`tmnt_iv_full_hard_dry_run.json` or STATUS 00:57:19.
 
-| | Published 57:19 | On-disk 08-02 file | This sitting |
-|--|-----------------|-------------------|--------------|
-| Time | **00:57:19.635** | 00:58:15.610 | **01:03:35.001** |
-| Damage | **4,667** | 5,801 | 5,721 |
-| E-heals | **65** | 81 | 83 |
-| Iframe | 4,635 | 5,040 | 7,494 |
-| Lives lost | 0 | 0 | **0** |
+| | Published 57:19 | 08-02 on-disk | rr_iprz 01:03 | **rr_iprz5 finish** |
+|--|-----------------|---------------|---------------|---------------------|
+| Time | **00:57:19.635** | 00:58:15.610 | 01:03:35.001 | **00:59:01.318** |
+| Damage | **4,667** | 5,801 | 5,721 | **5,529** |
+| E-heals | **65** | 81 | 83 | **79** |
+| Iframe | 4,635 | 5,040 | 7,494 | 7,420 |
+| Lives lost | 0 | 0 | **0** | **0** |
+| Finish? | credits | credits | credits | **credits** (was 207 freeze on rail-only HEAD) |
 
 Probe KEEPs ran (slash_jump_over 2,197f, blocker_jump_behind 38f,
 shredder_offset 596f) but later-stage RNG ate the time. First attempt
 soft-locked Alleycat mashing Y on an uncollectable box at (70,118);
 `PizzaSeek` now gives up after 48f with no HP restore.
 
-Do not promote. Slash follow-up (four isolated algorithms + KEEP
-trace + three parent patches) **REJECT** vs 9,595f / 435 — do not
-reopen. Next knob: **Starbase stall** (`rr-iprz.5`) — recover Fast
-23,272 / 917 and Boss9 6,540 / 64 without giving Diag 24,645 back
-to the rail loop. Do not skip dumpster on x=126 / 207; do not
-tighten close_gap below `%4`. Technodrome tank in
-continuous context is second (prehistoric entry 23:20 vs 22:23
+HEAD after rail skip **did not finish**: power-on freeze at Starbase
+x=207, damage 5285, 12k dumpster cycle (the killed 1080p dump). Encoder
+idle/1080p tests are not a route proof.
+
+This sitting's power-on `--dry-run` (exhausted-207 RIGHT, 127f) **did
+finish**: **00:59:01.318 / 5,529 / 79 e-heals / 7,420 iframe / 0 lives**.
+Do not promote. Do not overwrite the STATUS 00:57:19 file. No video.
+
+Slash follow-up (four isolated algorithms + KEEP trace + three parent
+patches) **REJECT** vs 9,595f / 435 — do not reopen. Next knob: recover
+Fast 23,272 / 917 and Boss9 6,516 / 64 without giving Diag 24,645 back
+to the rail loop and without restoring the 207 infinite dumpster. Do not
+skip dumpster on x=126; do not tighten close_gap below `%4`. Technodrome
+tank in continuous context is second (prehistoric entry 22:32 vs 22:23
 published).
 
 `policy.py` is **2026 LOC** (soft max ~1000). Extract tactics into
