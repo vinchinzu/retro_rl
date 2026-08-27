@@ -69,6 +69,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-3
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-3 --record
+# Next: 1-4 from that leave (hint 6393). See docs/HANDOFF_32EXIT.md
+# SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+#   uv run python -m smb.scripts.annotate_fm2 --search-1-4 --export-1-4
 # Pure HappyLee track 3 (no hybrid/natural/skills; 8-4 blocked until 8-3 leave)
 uv run python -m smb.scripts.pure_hl status
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -132,13 +135,11 @@ uv run python -m smb.scripts.parse_human_recording \
   `smb.scripts.run_1_2_flag` / `smb.flag_12` (HL UG prefix + A19 lift/
   pipe tail). `smb_1_3` **is** registered with `SMB_DASH_COMPUTED`
   (`$075C` LevelNumber) — never default `_smb_level` (that target_id=2
-  is 1-2 UG AreaNumber). Warpless 1-3 TAS slice is control-relative
-  **1740f @ FM2 4653 → 1-4** (`smb_1_3_warpless_slice.json`); isolated
-  `Level1_3` is a different phase (ps=8/timer=300 vs TAS ps=7/timer=301)
-  and still open. Old 1-4 pin is still a castle tally. Facts:
-  `docs/HANDOFF_32EXIT_1_3.md`. Play/record the same #3728M cuts with
-  `smb.scripts.record_warpless --to 1-3` — `#1715M` 1-1 / W4 1-2 and
-  `smb_1_2_flag.json` desync this line. Human power-on is `./play smb`.
+  is 1-2 UG AreaNumber). 32-exit through 1-3 is green
+  (`record_warpless --to 1-3`, 6205f → 1-4 castle). Next extract:
+  **1-4 @~6393 → 2-1**, same #3728M file. Recipe:
+  `docs/HANDOFF_32EXIT.md`. Flag-exit / isolated 1-3 archive:
+  `docs/HANDOFF_32EXIT_1_3.md`. Human 1-4 pin is a 1-3 castle tally.
 - Pin/state boot: `set_state` → `reset()` → `set_state` again (stable-retro
   eats a frame on load). RAM y is head/top (floor stand y=176).
 
