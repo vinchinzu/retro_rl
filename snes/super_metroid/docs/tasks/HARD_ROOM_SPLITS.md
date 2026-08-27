@@ -165,15 +165,17 @@ Full hop GREEN is Attic gs=8 only. Seats in
 | attic_seat | blue ceiling door | ~(1135, ≤160) stand |
 | attic_door | leave | Attic `0xCA52` gs=8 |
 
-Living checkbox is **west_super**. grate_seat PHASE **189f ×2** from the
-hop-1 pin. Morph-tunnel spin peaked **(1101, 1820) p25**. Shelf land is
-**(1082, 1878) p10**; standing hole opens; jump through is Covern
-knockback **(1126, 1840) p83**, leftover hole (1112, 1900) p47. Do not
-open mid_climb while west_super is red. Do not farm the mid-ledge spin.
+Living checkbox is **west_super** (**RED ×3**). grate_seat PHASE **189f ×2**
+from the hop-1 pin lands the hatch-lip pocket ~(1177, 1883): Wave blocks
+LEFT, wall RIGHT, UP hits the ceiling. Do not walk/jump RIGHT toward
+take02 `(1223, 1860)` from that seat. Pocket skill: LEFT+X until
+`0xD080`/`0xD074`/`0xD078` spawn, then LEFT+A. Morph later at
+~(1189,1785) — not on the lip. Do not open mid_climb while west_super is
+red. Do not farm save-column WJ.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video
+  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video --dual
 ```
 
 ## See also
