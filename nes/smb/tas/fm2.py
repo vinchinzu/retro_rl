@@ -72,11 +72,14 @@ class Fm2Movie:
     def author(self) -> str | None:
         for key in ("comment author", "author"):
             if key in self.header:
-                return self.header[key]
-        # multi-line author comments
+                return self.header[key].strip()
+        # FCEUX writes ``comment author Name`` (first space splits to key=comment).
         for k, v in self.header.items():
             if k.startswith("comment") and "author" in k.lower():
-                return v
+                return v.strip()
+            if k == "comment" and v.lower().startswith("author"):
+                rest = v.split(None, 1)
+                return rest[1].strip() if len(rest) > 1 else v.strip()
         return self.header.get("comment")
 
     @property
@@ -131,6 +134,16 @@ def _text_from_bytes(data: bytes) -> TextIO:
     import io
 
     return io.StringIO(data.decode("utf-8", errors="replace"))
+
+
+def parse_movie(path: Path | str) -> Fm2Movie:
+    """Parse ``.fm2`` or NesHawk ``.bk2`` (including ``*.fm2.bk2``)."""
+    path = Path(path)
+    if path.name.lower().endswith(".bk2"):
+        from smb.tas.bk2 import parse_bk2
+
+        return parse_bk2(path)
+    return parse_fm2(path)
 
 
 def parse_fm2(path: Path | str) -> Fm2Movie:

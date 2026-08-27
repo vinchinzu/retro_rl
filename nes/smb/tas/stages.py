@@ -157,6 +157,53 @@ def is_8_4_control(snap: Any) -> bool:
     )
 
 
+# 32-exit: 1-3 control after the 1-2 flag pipe (not 1-2 UG AreaNumber).
+CONTROL_X_MAX = 80
+
+
+def stage_dash(snap: Any) -> int:
+    """0-indexed LevelNumber ($075C). Falls back to AreaNumber for test snaps."""
+    if hasattr(snap, "dash_level"):
+        try:
+            return int(snap.dash_level)
+        except (TypeError, ValueError):
+            pass
+    raw = getattr(snap, "level_number", None)
+    if raw is not None:
+        return int(raw)
+    return int(snap.level)
+
+
+def is_1_3_control(snap: Any) -> bool:
+    """Controllable 1-3 spawn: LevelNumber 2, live timer, low x.
+
+    Uses ``dash_level`` ($075C), never AreaNumber ($0760). 1-2 underground
+    flips AreaNumber to 2 while LevelNumber stays 1.
+    """
+    return (
+        int(snap.world) == 0
+        and stage_dash(snap) == 2
+        and int(snap.oper_mode) == 1
+        and int(snap.player_state) in (7, 8)
+        and int(getattr(snap, "timer", 0) or 0) > 0
+        and int(snap.player_x) <= CONTROL_X_MAX
+        and not bool(getattr(snap, "dying", False))
+    )
+
+
+def is_1_4_control(snap: Any) -> bool:
+    """Controllable 1-4 spawn after the 1-3 flagpole (LevelNumber 3)."""
+    return (
+        int(snap.world) == 0
+        and stage_dash(snap) == 3
+        and int(snap.oper_mode) == 1
+        and int(snap.player_state) in (7, 8)
+        and int(getattr(snap, "timer", 0) or 0) > 0
+        and int(snap.player_x) <= CONTROL_X_MAX
+        and not bool(getattr(snap, "dying", False))
+    )
+
+
 def reached_world_8(ram: Any) -> bool:
     """True when warp-zone pipe delivered Mario to World 8."""
     return int(ram[ADDR_WORLD]) == WORLD_INDEX_8

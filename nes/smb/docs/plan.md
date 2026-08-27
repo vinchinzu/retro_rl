@@ -112,17 +112,37 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
 Standalone segment work on `smb_all_exits` (no warp-line changes). Gate
 order: 1-2 **flag** exit → 1-3 control state → per-stage extract/polish.
 
-- **Pin audit (rr-s81w):** `all_exits_v1_pins` 1-3/1-4 are pre-fb4118e9
-  AreaNumber mislabels (1-3 pin = 1-2 UG re-entry; 1-4 pin = 1-3 castle
-  tally, so the human cleared 1-3 once). 1-1/1-2/2-1 pins genuine; no tape
-  saved. Evidence: `recordings/segments_all_exits/evidence/`.
-- **Tooling:** `smb.scripts.extract_stage_state` promotes a verified pin to
-  an integration start state (fingerprint + round-trip checks); rejects the
-  bogus pins by design. `smb_1_3` LevelConfig registered.
-- **1-2 UG end map + probes:** HL slice pipe x=2860 → W4 verified; plant
-  pipes at x=2856/2920/2984; warp-room pocket; mid-fall DOWN entry works,
-  rim-standing does not. Full details + next probes:
-  `docs/HANDOFF_32EXIT_1_3.md`.
+- **Pin audit:** old `all_exits_v1` 1-3/1-4 were pre-fb4118e9 AreaNumber
+  mislabels. 1-3 pin is now a real control spawn (this session). 1-4 pin
+  is still a 1-3 castle tally (not extractable). 1-1/1-2 genuine; 2-1 is
+  mid-stage (x=2431). No full tape saved. Evidence:
+  `recordings/segments_all_exits/evidence/`.
+- **Tooling:** `smb.scripts.extract_stage_state` wrote `Level1_3.state`.
+  `smb_1_3` uses `SMB_DASH_COMPUTED` (not default `_smb_level`). 1-4 pin
+  is **not** extractable.
+- **1-2 flag exit (2026-08-27):** DOWN pipe on the brick platform after
+  the UG lifts (`probe_1_2_flag`). HL last physics-grounded lift pose
+  `(2520, 148)`, A-only 19f, land `(2620, 128)`, walk to short pipe
+  `player_state=2`. Outdoor flag → 1-3 control pin + `Level1_3.state`.
+  Plant pipes A/B/C and the warp room are not this exit.
+- **1-2 flag body (2026-08-27):** HL UG prefix + lift/pipe tail, **2/2**
+  into 1-3 control (2796f, `smb.flag_12` / `run_1_2_flag`). `smb_1_3`
+  registered with `SMB_DASH_COMPUTED` (`$075C`), completion `[3]`. Isolated
+  1-3 clear from `Level1_3` still open (athletic pits; bunny-20 dies
+  ~x=844). Full details: `docs/HANDOFF_32EXIT_1_3.md`.
+- **Warpless TAS import (2026-08-27):** no 32-exit movie was on disk.
+  Source is HappyLee & Mars608 [warpless #3728M](https://tasvideos.org/3728M)
+  (18:36.78, 67,117f). Fetch `smb.tas.fetch_refs`, NesHawk BK2 via
+  `smb.scripts.convert_fm2` (same mapping as `happylee_warps_1715M.fm2.bk2`),
+  then isolated 1-1 / dash-level annotate like the warp track. Do not fold
+  into #1715M warp slices. Encode (MKV/MP4) was not local; movie file is
+  the extract source. Isolated 1-1 **1754f @190** (3/5 even starts);
+  1-2 flag **2544f @2109 → 1-3** (not W4); 1-3 **1740f @4653 → 1-4**
+  (wait=0, `--verify-1-3`). Isolated `Level1_3` TAS body misses phase.
+  Seeds: `smb_1_1_warpless_slice.json`, `smb_1_2_warpless_flag_slice.json`,
+  `smb_1_3_warpless_slice.json`. Play/record the same-file chain (not
+  #1715M warps): `smb.scripts.record_warpless --to 1-3`. Next warpless
+  extract: 1-4 @~6393.
 
 ### D — Residual observation + approximate stepper (2026-08-13)
 

@@ -28,6 +28,7 @@ holds.
 | Source | Time | Format | Path / URL | Notes |
 |--------|------|--------|------------|-------|
 | **HappyLee warps** (published) | 04:57.31 power-on / 04:54.032 RTA | `.fm2` | vendored `tas/ref/happylee_warps_1715M.fm2` · [tasvideos.org/1715M](https://tasvideos.org/1715M) | **Primary** console-verified warps TAS. 17,868 frames. **85× L+R**. |
+| **HappyLee & Mars608 warpless** (published) | 18:36.78 | `.fm2` / `.fm2.bk2` | vendored `tas/ref/happylee_mars608_warpless_3728M.fm2` · [tasvideos.org/3728M](https://tasvideos.org/3728M) | **32-exit / no-warp.** 67,117 frames. Same FM2→NesHawk BK2 mapping as warps. Isolated 1-1 **1754f @190**; 1-2 flag **2544f @2109 → 1-3** (not W4); 1-3 **1740f @4653 → 1-4**. Do not fold into warp slices. |
 | flamexx warps userfile | claims ~4:54.099 RTA | `.fm2` | vendored `tas/ref/flamexx_warps_rta_4_54_099.fm2` · [UserFiles](https://tasvideos.org/UserFiles/Info/638803295557458382) | Newer community strategies (8-2 rule, 8-4 polish). Longer file (~18,392f) — different pad/timing; compare carefully. |
 | HappyLee #1715 encode | same | video | Archive.org / TASVideos YT | Visual route reference only. |
 | RTA-rules / IL practice | — | practice ROM | [github.com/pellsson/smb](https://github.com/pellsson/smb) | Frame-rule start, level select, PB tracking — not a movie, but gold for segment targets. |
@@ -98,6 +99,25 @@ uv run python -m smb.scripts.import_fm2 \
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.import_fm2 \
   nes/smb/tas/ref/happylee_warps_1715M.fm2 --verify
+
+# 32-exit / warpless (#3728M) — fetch, NesHawk BK2, isolated 1-1 / 1-2 flag / 1-3
+uv run python -m smb.tas.fetch_refs
+uv run python -m smb.scripts.convert_fm2
+uv run python -m smb.scripts.import_fm2 \
+  nes/smb/tas/ref/happylee_mars608_warpless_3728M.fm2 --summary-only
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --isolated-1-1 --export-1-1
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --search-1-2-flag --export-1-2-flag
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --search-1-3 --export-1-3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.annotate_fm2 --verify-1-3
+# Play / record the same #3728M cuts (do not splice #1715M warp slices)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_warpless --to 1-3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m smb.scripts.record_warpless --to 1-3 --record
 ```
 
 ### Hard rules when adapting
