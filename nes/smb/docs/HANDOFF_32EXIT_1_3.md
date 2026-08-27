@@ -1,19 +1,33 @@
 # Handoff — SMB 32-exit track: 1-3 unlock (1-2 flag exit)
 
-Session 2026-08-27. Goal was 1-3 segment work; outcome: **the 1-2 normal
-(flag) exit is the real gate**, and the existing `all_exits_v1` pins are
-partly mislabeled. Everything below was verified live on fceumm this session.
+Public TAS body (do not mix with warps #1715M): HappyLee & Mars608
+warpless [3728M](https://tasvideos.org/3728M). Fetch/convert/extract:
+`smb.tas.fetch_refs`, `smb.scripts.convert_fm2`, `smb.scripts.annotate_fm2`.
+Verified isolated: 1-1 **1754f @ FM2 190**; 1-2 flag **2544f @ 2109 → 1-3**;
+1-3 **1740f @ 4653 → 1-4** (wait=0 after flag leave).
+
+Session 2026-08-27 (continue). **1-3 TAS slice is verified into 1-4 control.**
+`smb_1_3` LevelConfig uses dash-level identity. Isolated 1-3 from
+`Level1_3.state` still misses TAS phase. Warp any% line still untouched.
 
 ## TL;DR for next session
 
-1. Find the 1-2 UG **normal exit** (outdoor flag area, `world` stays 0) by
-   entering the unlabeled plant pipes B/C with the **mid-fall DOWN entry**
-   (technique proven below). Skip lore — pipe truth table is what's missing.
-2. Once found: standalone 1-2 flag body = HL slice prefix + scripted tail;
-   run it; at 1-3 control capture a state (`dash_level==2`, `$075C==2`).
-3. `uv run python -m smb.scripts.extract_stage_state 1-3` → installs
-   `Level1_3.state`; `smb_1_3` LevelConfig is **already registered**
-   (`nes/smb/platformer_levels.py`). Segment work starts there.
+1. 1-3 TAS slice: `models/smb_1_3_warpless_slice.json` (**1740f** @ FM2
+   **4653 → 1-4**, warpless #3728M). Control-relative after 1-1 @190/1754
+   + wait 165 + 1-2 flag @2109/2544. Same-file play/record (not #1715M):
+   `uv run python -m smb.scripts.record_warpless --to 1-3`
+   (`--record` for MP4). FM2 replay:
+   `uv run python -m smb.scripts.annotate_fm2 --verify-1-3`.
+   1-4 spawn: `dash_level=3`, x=40, y=80 (castle), timer=301, ps=7.
+   Next extract: 1-4 from that leave (movie hint **4653+1740=6393**).
+2. 1-2 flag TAS slice: `models/smb_1_2_warpless_flag_slice.json` (**2544f**
+   @ FM2 2109 → 1-3). Hand-built `smb.flag_12` / `smb_1_2_flag.json` (2796f)
+   is the prior 2/2 body. Prefer the TAS slice for 32-exit extract.
+3. Isolated `Level1_3` is a **different phase** than TAS 1-3 control
+   (pin ps=8/timer=300 vs TAS ps=7/timer=301). TAS body dies there
+   (odd settle max_x≈2190; even dies ~x=1044). Bunny-20 still dies in
+   the first pit. rr-tb15 stays open; do not fold the TAS body onto
+   the human pin. Tape re-record is rr-8qpn / rr-n6sz.
 
 ## Pin audit (`recordings/human/all_exits_v1_pins/`, written 2026-08-13 16:00–16:04)
 
@@ -25,14 +39,13 @@ RAM + HUD renders (evidence: `recordings/segments_all_exits/evidence/`):
 |-----|---------|-------------|
 | 1-1 | OK | 1-1 control (x=40, dash=0) |
 | 1-2 | OK | 1-2 surface control (x=40, dash=1) |
-| 1-3 | **BOGUS** | 1-2 UG pipe-entry frame (x=160 y=176 state=7 area_ptr=192); settles into 1-2 underground (HUD says WORLD 1-2, `$075C=1`) |
+| 1-3 | **replaced 2026-08-27** | Real 1-3 control (`dash_level=2`, x=40, ps=7/8). Old bogus pin overwritten. |
 | 1-4 | **BOGUS label** | 1-3 **castle tally** (HUD WORLD 1-3, `$075C=2`) — proves the human DID flag-exit 1-2 and clear 1-3 once |
 | 2-1 | OK (mid-stage) | 2-1 at x=2431, lives=1 (interstitial → live) |
 
-All pins byte-match their `.json` metas. **No tape** `all_exits_v1.json` was
-saved (session cancelled without F5). `smb.scripts.extract_stage_state`
-correctly refuses the bogus 1-3 pin (dash-level check) — that refusal is the
-audit passing, not a bug.
+**No tape** `all_exits_v1.json` was saved (old session cancelled without
+F5). Extract still refuses mid-stage pins (`player_x <= 80`) and the 1-4
+castle tally. The 1-3 pin is now a real control spawn.
 
 ## Emulator facts measured this session
 
@@ -47,24 +60,35 @@ env.em.set_state(data); env.reset(); env.em.set_state(data)  # re-apply after fr
 
 Replay rig: HL 1-1 chain (`smb.tas.chain.reach_surface_after_hl_1_1`) →
 FM2 `happylee_warps_1715M.fm2` from index **2109** (`HL_1_2_FM2_START`).
-Body: surface → pipe @f334 → UG; **HL enters a pipe at x=2860, feet y=128,
-state 3 @f1656 → `world=3` = W4-1** (re-verified live).
+Body: surface → pipe @f334 → UG.
 
-- Ceiling-top route: y=64 ceiling (grounded) runs to x≈2855, jumps to a y=32
-  ledge (~2846–2886), then falls into the **warp room** at x≈2944–2962.
-- Floor corridor: three same-height plant pipes **A/B/C**, plant enemy slots
-  (type 13) at **x=2856 / 2920 / 2984**, rim-standing head-y≈152, floor y=176.
-  Floor is blocked at **2898** (B's left wall). Camera-relative geometry
-  capture: `evidence/plant_pipes_ABC_geometry.png` (camera screen_x=2771).
-- **Pipe A (x≈2856) = HL's W4 warp.** Mid-fall entry replicated: from HL
-  f1640 (2903,84, xs=−40) just **hold DOWN** → state 3 at (2860,128) →
-  world 3. Held-DOWN while *standing* on a rim (2881,152) does **not**
-  enter — entry seems to need the fall/tile alignment; don't burn time on
-  rim-standing attempts, use the mid-fall technique.
-- **Warp room** (separate sub-area, "WELCOME TO WARP ZONE!", pipes labeled
-  4/3/2): reached by falling past the y32 ledge at x≈2944+; Mario lands in a
-  **pocket at x=2962 between pipes "3" (≈2942–2978) and "2"** — blocked both
-  sides. `evidence/warp_room_from_floor.png`.
+**W4 warp enter is already measured** in
+`recordings/segment_1_2/polish_1_2_warp_pipe_report.json`
+(`polish_1_2_warp_pipe`: ceiling reverse → right platform → DOWN on W4 pipe
+lip in the warp room): **(player_x=2859, player_y=128, player_state=3,
+world=3)**. HL replication at x=2860 y=128 state 3 is the same pose.
+
+Two distinct rooms:
+
+- **Warp room** ("WELCOME TO WARP ZONE!", pipes labeled **4/3/2**): reached
+  by the ceiling-top route — y=64 ceiling (grounded) to x≈2855, jump to a
+  y=32 ledge (~2846–2886), fall at x≈2944–2962. Mario lands in a **pocket
+  at x=2962 between pipes "3" (≈2942–2978) and "2"** — blocked both sides.
+  `evidence/warp_room_from_floor.png`. Those labeled pipes go to worlds
+  **4/3/2**. There is **no** 1-2 flag exit on the floor past labeled pipe
+  "2". Hunting 1-3 in the warp room is a dead end.
+- **UG floor corridor** (different room; `world` stays 0 until an outdoor
+  flag pipe): three same-height plant pipes **A/B/C**, plant enemy slots
+  (type 13) at **x=2856 / 2920 / 2984**, rim-standing head-y≈152, floor
+  y=176. Floor is blocked at **2898** (B's left wall).
+  `evidence/plant_pipes_ABC_geometry.png` (camera screen_x=2771). Also
+  `evidence/hl_end_corridor.png`.
+
+Pipe A (x≈2856) is a **floor plant pipe**, not the W4 warp. Mid-fall DOWN
+entry works; held-DOWN while *standing* on a rim (2881,152) does **not**
+enter (`evidence/rim_stand_2881_no_enter.png`) — don't burn time on
+rim-standing. The 1-2 flag pipe is this floor corridor after the plant
+pipes, then the outdoor flag area.
 
 ### Traps for the next probe loop
 
@@ -77,30 +101,53 @@ state 3 @f1656 → `world=3` = W4-1** (re-verified live).
 - Emulator chain boot (HL 1-1 + surface control) takes ~60–90 s per trial —
   batch parameter sweeps inside one process.
 
-### Open questions (the actual next probes)
+### Flag exit (verified this session)
 
-1. **Pipes B (2920) / C (2984):** mid-fall DOWN entry with plant hidden →
-   does either give `world=0` (outdoor 1-2 flag area)? That's the normal
-   exit candidate. Entry approach: from the y64 ceiling walk off at the pipe's
-   x while holding DOWN, or drop from the y32 ledge with slight LEFT drift.
-2. If B/C aren't it: from the room pocket (2962), walk-jump right over pipe
-   "2" (runway ~2978–3030 is blocked; go over "3" leftward first for a long
-   runway, or jump from the pocket at ≈2990 with walk-speed) and check the
-   floor beyond the labeled pipes for a final exit pipe.
-3. On success: save the 1-3 control state, then `extract_stage_state 1-3`.
+Replay: `smb.scripts.probe_1_2_flag` (cache
+`recordings/segments_all_exits/hl_1_2_floor_corridor.state`).
+
+- HL FM2 leaves the **floor** at the end-of-UG **lifts** (`fm2_i≈1398`,
+  `x=2520 y=148`, `$001D=0`). Policy `snap.grounded` (y-speed) is a frame
+  behind — jump only when `player_on_ground`.
+- Jump is **A-only** (not RBA); xs is already 40. Hold 8–20 all land on the
+  brick at `y=128`. HL uses 19f A then idle; land `(2620, 128)`.
+- Short green pipe against the wall is the flag exit. Standing DOWN does
+  not enter; walking onto it sets `player_state=2`, then a pipe load
+  (`x=y=0`) into the outdoor flag area (`area_pointer=194`, world 0).
+- Outdoor: emerge on the piranha pipe, stairs, flagpole, castle. 1-3
+  control after the tally: `dash_level=2`, x=40, `area_pointer=38`.
+- Plant pipes A/B/C at 2856/2920/2984 are **not** this exit (mid-UG /
+  earlier corridor). Do not hunt 1-3 in the warp room (labeled 4/3/2).
+
+Evidence: `corridor_from_hl.png`, `land_hold_19.png`, `on_exit_pipe.png`,
+`flag_run_f0180.png`, `flag_run_f0360.png`, `1_3_control.png`.
 
 ## Landings already in place
 
-- `smb.scripts.extract_stage_state` — pin→practice-state promotion with
-  fingerprint verification + round-trip boot check (`--list` works, 1-3
-  correctly rejected; report at `recordings/segments_all_exits/`).
-- `smb_1_3` LevelConfig registered (`platformer_levels.py`) — state file
-  pending step 3 above.
+- `smb.scripts.probe_1_2_flag` — HL boot once, lift jump, flag pipe, 1-3 pin.
+- `smb.scripts.extract_stage_state 1-3` wrote `Level1_3.state` (roundtrip
+  needs `env.reset()`; close the pin env before the named boot — one
+  fceumm instance per process).
+- `smb.flag_12` + `run_1_2_flag` — 2796f body, **2/2** to 1-3 control.
+- `smb_1_3` LevelConfig uses `SMB_DASH_COMPUTED` / completion `[3]`. Isolated
+  clear (`run_1_3`) is not green (TAS body is control-relative only).
+- Warpless 1-3: `smb.scripts.annotate_fm2 --search-1-3 --export-1-3`
+  (**1740f @4653**, 2/161 starts; alt 4589/1803). `--verify-1-3` 1/1.
+- Same-file chain: `smb.scripts.record_warpless --to 1-3` plays
+  `smb_1_1_warpless_slice` + `smb_1_2_warpless_flag_slice` +
+  `smb_1_3_warpless_slice` from Level1_1. Verified **6205f / 1:43.247**
+  to 1-4 control (settle 2 + 1754 + wait 165 + 2544 + wait 0 + 1740;
+  leave `dash_level=3`, x=40, y=80, timer=301, ps=7). `#1715M` warp 1-1 /
+  W4 1-2 and `smb_1_2_flag.json` are a different phase — the runner
+  rejects them. Human power-on record is still `./play smb`. Evidence:
+  `recordings/tas_import/warpless_3728M/warpless_1_3_play.json`.
 - Warp any% line untouched: no changes to `reactive_12`, `natural_82`, HL
   seeds, `smb_1_2_reactive_fragments.json`.
 
 ## Beads
 
-- Pin-mislabel audit result: folded into the handoff issue for this track
-  (create/retitle as needed); re-record pins with the fixed gate whenever the
-  tape session resumes — old 1-3/1-4 pins are unusable as control entries.
+- rr-s81w / rr-tq2v done. rr-xpeq: same-file #3728M record/play through
+  1-3. rr-g2ht remaining extract is 1-4…8-4 (hint 6393). rr-tb15 isolated
+  1-3 still open (pin phase ≠ TAS). rr-8qpn stays open: re-record
+  `all_exits_v1` pins from 1-2 with the dash-level gate when the tape
+  session resumes (rr-n6sz). 1-4 human pin is still not extractable.
