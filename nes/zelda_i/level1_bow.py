@@ -37,10 +37,9 @@ LEVEL1_BOW_ROOM = 0x22  # ROM west of 0x23; bow cellar is the next hop
 WEST_DOOR_X, WEST_DOOR_Y, DOOR_TOL = 32, 141, 4
 WEST_AISLE_X = 64
 UPPER_CHANNEL_Y = 117
-# v1–v3 dated the y=141 moat (tile 244) and LEFT+UP clip. West-wall around
-# uses the north stone border (ROOM_23_SPEC (80, 93)); not a 4th clip.
-# Westwall v2 leftover (64,117) tile 119: UP at the aisle is solid.
-NORTH_JOIN_X = 80
+# Westwall v1–v3: UP at x=64 and x=80 from y=117 is tile 119 solid.
+# Plus stem is ROOM_23_SPEC (112, 93) / (112, 133); key stand (114, 117).
+NORTH_JOIN_X = 112
 NORTH_BAND_Y = 93
 WEST_SPAWN_XMIN = 16
 BOW22_MAX_FRAMES = 4000
@@ -60,7 +59,7 @@ def level1_to_clear23_stages():
 
 
 def make_bow22_controller() -> "Level1Bow22Controller":
-    """Occupancy north-around KEY-LEFT of 0x23. Do not poke bow/arrows."""
+    """Occupancy plus-stem KEY-LEFT of 0x23. Do not poke bow/arrows."""
     return Level1Bow22Controller()
 
 
@@ -104,7 +103,7 @@ def _leftover(snap: ZeldaSnapshot) -> dict[str, int]:
 
 @dataclass
 class Level1Bow22Controller:
-    """North-wall around 0x23 then KEY-LEFT. Dest play 0x22. Enter-stop."""
+    """Plus-stem north-around 0x23 then KEY-LEFT. Dest play 0x22. Enter-stop."""
 
     frames: int = 0
     keys: int = -1
@@ -165,15 +164,19 @@ class Level1Bow22Controller:
         )
 
     def _stage(self, xy: tuple[int, int]) -> tuple[tuple[int, int], str]:
-        """Upper channel to x=80, north y=93, west wall, door. Not aisle x=64."""
+        """Channel x-first to 112, UP y=93, LEFT (32,93), DOWN door. Not x=80."""
         x, y = xy
         gx, gy = self.goal
-        # Westwall v1 stood (69,117) after a 4px aisle fudge. v2 UP at x=64
-        # was solid. Join is ROOM_23_SPEC (80, 93): stop LEFT at x=80.
-        if x > NORTH_JOIN_X:
+        # x112 v1: climb and north LEFT live. y>97 is not "on channel" on the
+        # west column — that pull sent (32,109) east and stood (32,117).
+        west_column = x <= gx + DOOR_TOL
+        on_channel = y > NORTH_BAND_Y + DOOR_TOL
+        if west_column and y < gy - DOOR_TOL:
+            return (gx, gy), "door_drop"
+        if on_channel and x != NORTH_JOIN_X:
             return (NORTH_JOIN_X, UPPER_CHANNEL_Y), "west_path"
-        if y > NORTH_BAND_Y + DOOR_TOL:
-            return (x, NORTH_BAND_Y), "north_band"
+        if on_channel:
+            return (NORTH_JOIN_X, NORTH_BAND_Y), "north_band"
         if x > gx + DOOR_TOL:
             return (gx, NORTH_BAND_Y), "west_wall"
         return (gx, gy), "door_drop"
@@ -266,8 +269,8 @@ class Level1Bow22Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "occupancy LEFT to (80,117) then UP y=93 LEFT (32,93) "
-                "DOWN (32,141); dest play 0x22; no ADDR_BOW; no y=141 clip"
+                "occupancy LEFT to (112,117) then UP y=93 LEFT (32,93) "
+                "DOWN (32,141); dest play 0x22; no ADDR_BOW; no x=80 UP"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,

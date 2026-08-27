@@ -98,12 +98,13 @@ NORTH2C_LEAVE = LeaveSpec(
     hearts_lo_eq_hi=False,
 )
 
-# Planned leftover: KEY-LEFT 0x23 → play 0x22 east mouth. Keys live-TBD.
+# Live leftover: l1_bow22_x112_v2 play 0x22 (224,141); keys 1→0. ADDR_BOW=0.
 BOW22_LEAVE = LeaveSpec(
     hop="level1-bow",
     room=0x22,
     x=(208, 232),
     y=(133, 149),
+    keys=0,
     hearts_lo_eq_hi=False,
 )
 
