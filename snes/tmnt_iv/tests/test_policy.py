@@ -1023,6 +1023,52 @@ def test_starbase_mid_wave_freeze_still_dumpsters() -> None:
         reasons.append(result.action.reason)
     assert "stall_down" in reasons
     assert "starbase_rail_right" not in reasons
+    assert "starbase_unstick_right" not in reasons
+
+
+def test_starbase_exhausted_207_holds_right() -> None:
+    """Continuous 207 dumpster loop: after 3 cycles, hold RIGHT.
+
+    Power-on freeze at x=207 swept Y 113–194 for 12k frames. Fast pin
+    207 dumpsters recover in <600f, so the first three cycles stay
+    DOWN+JUMP. x=126 must not get this skip.
+    """
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 800):
+        state = replace(
+            _playing(player_x=207, player_y=194, camera_x=40_000 + frame, frame=frame),
+            stage=8,
+        )
+        result = policy.tick(state)
+        assert result.action is not None
+        reasons.append(result.action.reason)
+    assert "stall_down" in reasons
+    assert "starbase_unstick_right" in reasons
+    assert reasons[-1] == "starbase_unstick_right"
+    assert "starbase_rail_right" not in reasons
+    first_unstick = next(
+        i for i, r in enumerate(reasons) if r == "starbase_unstick_right"
+    )
+    assert first_unstick > 600
+    assert all(r != "starbase_unstick_right" for r in reasons[:600])
+
+
+def test_starbase_x126_dumpster_never_exhausts_to_right() -> None:
+    """Sewer-like always-RIGHT on x=126 is a 40k enemyless timeout."""
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 800):
+        state = replace(
+            _playing(player_x=126, player_y=139, camera_x=frame * 2, frame=frame),
+            stage=8,
+        )
+        result = policy.tick(state)
+        assert result.action is not None
+        reasons.append(result.action.reason)
+    assert "stall_down" in reasons
+    assert "starbase_unstick_right" not in reasons
+    assert "starbase_rail_right" not in reasons
 
 
 def test_starbase_form1_rail_skips_dumpster() -> None:
