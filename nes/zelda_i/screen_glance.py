@@ -50,15 +50,60 @@ CLEAR_3A = LeaveSpec(
     bombs=8,
 )
 
-# Residual pin: cellar08 leftover play 0x3A (96,157). HUD from live tape.
+# Cellar 0x08 B endpoint from ROM AttrB[0x08]=0x1D; AttrC lands (96,157).
 CELLAR08_LEAVE = LeaveSpec(
     hop="level6-cellar08",
-    room=0x3A,
+    room=0x1D,
     x=(88, 112),
     y=(149, 165),
     triforce_bits=0x1F,
     keys=4,
     bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# Live leftover: l6_south1d_continuous play 0x2D (120,77).
+SOUTH1D_LEAVE = LeaveSpec(
+    hop="level6-south1d",
+    room=0x2D,
+    x=(112, 128),
+    y=(69, 93),
+    triforce_bits=0x1F,
+    keys=4,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# Live leftover: l6_west2d_continuous play 0x2C (224,141); keys stay 4.
+WEST2D_LEAVE = LeaveSpec(
+    hop="level6-west2d",
+    room=0x2C,
+    x=(208, 232),
+    y=(133, 149),
+    triforce_bits=0x1F,
+    keys=4,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# Live leftover: l6_north2c_continuous play 0x1C (120,205); keys 4→3.
+NORTH2C_LEAVE = LeaveSpec(
+    hop="level6-north2c",
+    room=0x1C,
+    x=(112, 128),
+    y=(189, 221),
+    triforce_bits=0x1F,
+    keys=3,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# Planned leftover: KEY-LEFT 0x23 → play 0x22 east mouth. Keys live-TBD.
+BOW22_LEAVE = LeaveSpec(
+    hop="level1-bow",
+    room=0x22,
+    x=(208, 232),
+    y=(133, 149),
     hearts_lo_eq_hi=False,
 )
 
@@ -346,13 +391,28 @@ def clear3a_glance(controller: Any) -> GlanceLeftover:
 
 
 def cellar08_glance(controller: Any) -> GlanceLeftover:
-    """Residual leftover play 0x3A (96,157). Dest RAM is separate."""
+    """Decoded cellar 0x08 B-side leftover play 0x1D (96,157)."""
     return grade_controller(controller, CELLAR08_LEAVE)
+
+
+def south1d_glance(controller: Any) -> GlanceLeftover:
+    """Live 0x1D south leftover play 0x2D (120,77)."""
+    return grade_controller(controller, SOUTH1D_LEAVE)
+
+
+def west2d_glance(controller: Any) -> GlanceLeftover:
+    """Live 0x2D west leftover play 0x2C (224,141)."""
+    return grade_controller(controller, WEST2D_LEAVE)
+
+
+def north2c_glance(controller: Any) -> GlanceLeftover:
+    """Predicted 0x2C KEY-UP leftover play 0x1C south mouth; keys 4→3."""
+    return grade_controller(controller, NORTH2C_LEAVE)
 
 
 def east3a_glance(controller: Any) -> GlanceLeftover:
-    """East dest is unknown; leftover is the cellar08 pin / where we stopped."""
-    return grade_controller(controller, CELLAR08_LEAVE)
+    """Legacy east-wall diagnostic has no route-eligible leave."""
+    return grade_controller(controller, CLEAR_3A)
 
 
 level6_clear3a_glance = clear3a_glance

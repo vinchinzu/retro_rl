@@ -597,19 +597,30 @@ Rod **on the tape**: mode 9 `0x75` `(136,141)` `ADDR_ROD=1` hop 627f.
 South `0x29` **on the tape**: play `0x39` `(120,93)` hop 288f
 (`l6_south29_continuous_v4`). East `0x39` **on the tape**: play `0x3A`
 `(16,141)` hop 320f (`l6_east39_continuous_v3`). Clear `0x3A` **on the
-tape**: leftover `(144,141)` hop 1,857f (`l6_clear3a_continuous_v1`).
-Center 0x68 unpushed. East of 0x29 sealed. Bow=0 arrows=0. Stairs /
-Gohma / TF `0x20` — Gohma needs an arrow; do not poke `ADDR_ARROWS`.
-Do not invent Gohma room id. Do not close `rr-tne2`.
+tape**: leftover `(144,141)` hop 1,857f (`l6_clear3a_continuous_v1`). The
+disclosed `(208,93)` position assist enters cellar `0x08`; the decoded A/B
+pair is `0x3A`/`0x1D`. Crossing the tunnel floor to the right ladder is now
+**1/1** on the same power-on tape: play `0x1D` `(96,157)`, 220,280f
+(`l6_cellar08_continuous`). Open-south `0x1D` → play `0x2D` `(120,77)` is
+**1/1** (`l6_south1d_continuous`, 220,538f hop 258f). Open-west `0x2D` →
+play `0x2C` `(224,141)` is **1/1** (`l6_west2d_continuous`, 220,887f hop
+349f, keys stay 4). `0x2C` KEY-UP → play `0x1C` Gohma is **1/1**
+(`l6_north2c_continuous`, 221,280f hop 393f, keys 4→3 leftover
+`(120,205)`). Bow=0 arrows=0. Gohma / TF `0x20` remain; Gohma needs an
+arrow, so do not poke `ADDR_ARROWS`. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear3a --no-video --trials 1 --tag l6_clear3a_continuous_v1
+  --through level6-north2c --no-video --trials 1 --tag l6_north2c_continuous
 ```
 
-Leftover is play `0x3A` `(144,141)` rod=1 keys=4 bombs=8 TF=`0x1F`
-map=`0x0A` bow=0 arrows=0. Center 0x68 unpushed. Next south-face that
-block toward stairs. Do not invent Gohma.
+Leftover is play `0x1C` `(120,205)` rod=1 keys=3 bombs=8 TF=`0x1F`
+map=`0x0A` bow=0 arrows=0. ROM: Gohma `0x1C` N=shutter S=key item=heart;
+TF `0x0C` north after the kill. `--through level1-bow` (ROM dest `0x22`)
+is **BLOCKED 3/3** on west-wall around in L1 `0x23` (UP solid at x=64 and
+x=80 tile 119; leftover `(80,117)`). No v4. Next retarget is UP at x=112
+(`ROOM_23_SPEC` `(112,93)`), then cellar bow, then 80R arrows — not an
+unarmed Gohma loop.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.

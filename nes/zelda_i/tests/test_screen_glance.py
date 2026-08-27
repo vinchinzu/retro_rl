@@ -9,10 +9,14 @@ from pathlib import Path
 from zelda_i.chain import ControllerStageResult
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 from zelda_i.screen_glance import (
+    BOW22_LEAVE,
     CELLAR08_LEAVE,
     CLEAR_3A,
     FANFARE_MODE,
+    NORTH2C_LEAVE,
+    SOUTH1D_LEAVE,
     STAIRS3A_DEST,
+    WEST2D_LEAVE,
     grade_controller,
     grade_final,
     grade_report,
@@ -184,7 +188,7 @@ def test_wrong_room_miss_still_returns_leftover() -> None:
     assert graded.leftover["xy"] == [144, 141]
 
 
-def test_failed_stage_report_includes_leftover() -> None:
+def test_failed_east3a_stage_report_includes_nonclaim_leftover() -> None:
     leftover = {
         "x": 96,
         "y": 157,
@@ -208,16 +212,17 @@ def test_failed_stage_report_includes_leftover() -> None:
     assert payload["leftover"]["x"] == 96
     assert payload["leftover"]["y"] == 157
     graded = grade_stage_report(payload, CELLAR08_LEAVE)
-    assert graded.ok
+    assert not graded.ok
+    assert any(m.startswith("room ") for m in graded.misses)
     assert graded.leftover["xy"] == [96, 157]
 
 
-def test_cellar08_leftover_96_157_glances() -> None:
+def test_cellar08_b_endpoint_0x1d_96_157_glances() -> None:
     leftover = {
         "x": 96,
         "y": 157,
         "mode": PLAY_MODE,
-        "screen": 0x3A,
+        "screen": 0x1D,
         "keys": 4,
         "bombs": 8,
         "triforce": 0x1F,
@@ -241,8 +246,120 @@ def test_cellar08_leftover_96_157_glances() -> None:
     from zelda_i.level6_east3a import level6_east3a_glance
 
     miss = level6_east3a_glance(
-        _DummyHop({**leftover, "y": 141}, success=False)
+        _DummyHop(
+            {**leftover, "screen": 0x3A, "x": 96, "y": 141},
+            success=False,
+        )
     )
     assert not miss.ok
-    assert any(m.startswith("y=") for m in miss.misses)
+    assert any(m.startswith("x=") or m.startswith("y=") for m in miss.misses)
     assert miss.leftover["xy"] == [96, 141]
+
+
+def test_south1d_predicted_0x2d_120_77_glances() -> None:
+    leftover = {
+        "x": 120,
+        "y": 77,
+        "mode": PLAY_MODE,
+        "screen": 0x2D,
+        "keys": 4,
+        "bombs": 8,
+        "triforce": 0x1F,
+    }
+    graded = grade_controller(_DummyHop(leftover), SOUTH1D_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [120, 77]
+    still = grade_controller(
+        _DummyHop({**leftover, "screen": 0x1D, "x": 96, "y": 157}),
+        SOUTH1D_LEAVE,
+    )
+    assert not still.ok
+    from zelda_i.level6_south1d import level6_south1d_glance
+
+    ok = level6_south1d_glance(_DummyHop(leftover))
+    assert ok.ok
+
+
+def test_west2d_live_0x2c_224_141_glances() -> None:
+    leftover = {
+        "x": 224,
+        "y": 141,
+        "mode": PLAY_MODE,
+        "screen": 0x2C,
+        "keys": 4,
+        "bombs": 8,
+        "triforce": 0x1F,
+    }
+    graded = grade_controller(_DummyHop(leftover), WEST2D_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [224, 141]
+    still = grade_controller(
+        _DummyHop({**leftover, "screen": 0x2D, "x": 120, "y": 77}),
+        WEST2D_LEAVE,
+    )
+    assert not still.ok
+    from zelda_i.level6_west2d import level6_west2d_glance
+
+    ok = level6_west2d_glance(_DummyHop(leftover))
+    assert ok.ok
+    spent = grade_controller(
+        _DummyHop({**leftover, "keys": 3}),
+        WEST2D_LEAVE,
+    )
+    assert not spent.ok
+
+
+def test_north2c_live_0x1c_120_205_glances() -> None:
+    leftover = {
+        "x": 120,
+        "y": 205,
+        "mode": PLAY_MODE,
+        "screen": 0x1C,
+        "keys": 3,
+        "bombs": 8,
+        "triforce": 0x1F,
+    }
+    graded = grade_controller(_DummyHop(leftover), NORTH2C_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [120, 205]
+    still = grade_controller(
+        _DummyHop({**leftover, "screen": 0x2C, "x": 224, "y": 141, "keys": 4}),
+        NORTH2C_LEAVE,
+    )
+    assert not still.ok
+    from zelda_i.level6_north2c import level6_north2c_glance
+
+    ok = level6_north2c_glance(_DummyHop(leftover))
+    assert ok.ok
+    unspent = grade_controller(
+        _DummyHop({**leftover, "keys": 4}),
+        NORTH2C_LEAVE,
+    )
+    assert not unspent.ok
+
+
+def test_bow22_planned_0x22_east_mouth_glances() -> None:
+    leftover = {
+        "x": 224,
+        "y": 141,
+        "mode": PLAY_MODE,
+        "screen": 0x22,
+        "keys": 0,
+        "triforce": 0,
+    }
+    graded = grade_controller(_DummyHop(leftover), BOW22_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    assert graded.leftover["xy"] == [224, 141]
+    still = grade_controller(
+        _DummyHop({**leftover, "screen": 0x23, "x": 32, "y": 141}),
+        BOW22_LEAVE,
+    )
+    assert not still.ok
+    from zelda_i.level1_bow import level1_bow_glance
+
+    ok = level1_bow_glance(_DummyHop(leftover))
+    assert ok.ok
