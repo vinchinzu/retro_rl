@@ -53,6 +53,7 @@ _TARGET_LABELS = {
     "1-3": "Warpless #3728M 1-1 → 1-2 flag → 1-3 → 1-4",
     "1-4": "Warpless #3728M 1-1 → 1-4 castle → 2-1",
     "2-1": "Warpless #3728M 1-1 → 2-1 → 2-2",
+    "2-2": "Warpless #3728M 1-1 → 2-2 flag pipe → 2-3",
 }
 
 

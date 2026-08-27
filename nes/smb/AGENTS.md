@@ -69,9 +69,10 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-4
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-4 --record
-# Next: 2-2 from that leave (hint 10451). See docs/HANDOFF_32EXIT.md
+# Next: 2-2 coral tower @x=2225 from recut 2-1 drop (7999/2440, TAS @10451).
+# See docs/HANDOFF_32EXIT.md. TAS plays during the drop (control accepts y=0).
 # SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-#   uv run python -m smb.scripts.annotate_fm2 --search 2-2 --export
+#   uv run python -m smb.scripts.annotate_fm2 --search 2-2 --from-pred --export
 # Pure HappyLee track 3 (no hybrid/natural/skills; 8-4 blocked until 8-3 leave)
 uv run python -m smb.scripts.pure_hl status
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -133,10 +134,12 @@ uv run python -m smb.scripts.parse_human_recording \
 - 32-exit: 1-2 **flag** exit is the DOWN pipe on the brick platform after
   the UG lifts (not plant pipes B/C, not the warp room). `$075C`
   LevelNumber is the clock — never default `_smb_level` AreaNumber.
-  Through 2-1 is green (`record_warpless --to 2-1`, 10263f → 2-2
-  drop-in; 1-4 castle 1702f @6393; 2-1 2356f @8095). Next extract:
-  **2-2 @~10451 → 2-3**, same #3728M file (`--search 2-2 --export`). Recipe:
-  `docs/HANDOFF_32EXIT.md`. Flag-exit / isolated 1-3 archive:
+  Through 2-1 is green (`record_warpless --to 2-1`, 10347f → 2-2
+  drop-in; 1-4 castle 1702f @6393; 2-1 clip-phase **2440f @7999**).
+  Next extract: **2-2 from drop `--from-pred` TAS @10451 → 2-3**.
+  Unique peak clips the first wall then stalls at the coral tower
+  (x=2225); extra A at body 1480–1511 enters the tower (x≈2384) and
+  wrap-dies. Recipe: `docs/HANDOFF_32EXIT.md`. Flag-exit / isolated 1-3 archive:
   `docs/HANDOFF_32EXIT_1_3.md`. Human 1-4 pin is a 1-3 castle tally.
 - Pin/state boot: `set_state` → `reset()` → `set_state` again (stable-retro
   eats a frame on load). RAM y is head/top (floor stand y=176).
