@@ -55,12 +55,14 @@ WL_1_4_SEED = "smb_1_4_warpless_slice.json"
 WL_1_4_FM2_START = 6393
 WL_1_4_LEAVE_FRAMES = 1702
 WL_1_4_CTRL_WAIT = 0
-WL_2_1_FM2_HINT = WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES  # 8095
+WL_2_1_FM2_HINT = WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES  # 8095 movie-aligned
 WL_2_1_SEED = "smb_2_1_warpless_slice.json"
-WL_2_1_FM2_START = 8095
-WL_2_1_LEAVE_FRAMES = 2356
+# Clip-phase recut: 7999–8019 / 2440 leaves 2-2 TAS past the 1315 wall.
+# Movie-aligned 8095/2356 is +96f later and stalls the 2-2 clip.
+WL_2_1_FM2_START = 7999
+WL_2_1_LEAVE_FRAMES = 2440
 WL_2_1_CTRL_WAIT = 0
-WL_2_2_FM2_HINT = WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES  # 10451
+WL_2_2_FM2_HINT = WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES  # 10439 (TAS 2-2 @10451)
 
 WARPLESS_PUBLICATION_ID = "3728M"
 WARP_PUBLICATION_ID = "1715M"
@@ -160,6 +162,14 @@ def _surface_1_2(snap: Any) -> bool:
     return is_surface_control(snap)
 
 
+def _water_2_2(snap: Any) -> bool:
+    """2-2 water: TAS plays during the flag-pipe drop (y=0), not after land."""
+    if not is_dash_control(snap, 1, 1):
+        return False
+    y = int(getattr(snap, "player_y", 0) or 0)
+    return y == 0 or y >= 160
+
+
 def _stage_note(world_1: int, level_1: int) -> str:
     sid = f"{world_1}-{level_1}"
     if sid == "8-4":
@@ -217,6 +227,12 @@ def _build_legs() -> tuple[WarplessLeg, ...]:
                 sid,
                 (0, 0, None, f"smb_{world + 1}_{dash + 1}_warpless_slice.json"),
             )
+            if sid == "1-2":
+                control_fn = _surface_1_2
+            elif sid == "2-2":
+                control_fn = _water_2_2
+            else:
+                control_fn = None
             legs.append(
                 WarplessLeg(
                     id=sid,
@@ -231,7 +247,7 @@ def _build_legs() -> tuple[WarplessLeg, ...]:
                     ctrl_wait=wait,
                     max_play=_max_play_for(world + 1, dash + 1),
                     stop_on_leave=sid != "1-1",
-                    control_fn=_surface_1_2 if sid == "1-2" else None,
+                    control_fn=control_fn,
                 )
             )
     return tuple(legs)
@@ -275,6 +291,7 @@ def summary_dict() -> dict[str, object]:
         "note": (
             "Warpless / 32-exit TAS. 1-2 is the flag pipe, not W4. "
             "1-3 athletic 1740f @4653 → 1-4. 1-4 castle 1702f @6393 → 2-1. "
+            "2-1 clip-phase 2440f @7999 → 2-2 drop. "
             "Do not mix with happylee_warps_1715M slices."
         ),
     }
@@ -516,10 +533,12 @@ def play_warpless_to(
     ids = _legs_to(target)
     bodies: dict[str, list[list[int]]] = {}
     seeds: dict[str, str] = {}
+    leads: dict[str, int] = {}
     for sid in ids:
         meta, frames = load_warpless_slice(sid)
         bodies[sid] = frames
         seeds[sid] = str(slice_path(sid))
+        leads[sid] = int(meta.get("lead_idle") or 0)
         if int(meta.get("num_frames", -1)) != len(frames):
             raise ValueError(f"{sid} num_frames mismatch")
 
@@ -559,6 +578,14 @@ def play_warpless_to(
                 )
                 return _chain_result(False, timeout, target, settle, frame, stages)
             start_lives = int(ctrl.lives)
+            lead = leads.get(sid, 0)
+            for _ in range(lead):
+                frame += 1
+                _emit_step(
+                    env, IDLE, label=f"lead_{sk}", frame_i=frame, on_step=on_step
+                )
+            if lead:
+                stages[f"lead_idle_{sk}"] = lead
 
         stop = leg.leave if leg.stop_on_leave else None
         st = _play_body(

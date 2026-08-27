@@ -349,6 +349,7 @@ def _resolve_stage_job(args: argparse.Namespace) -> tuple[
     grid_max = args.grid_max
     window = args.window
     step = args.step
+    lead_max = args.lead_max
 
     if args.search_1_2_flag or args.export_1_2_flag:
         stage = "1-2"
@@ -393,6 +394,8 @@ def _resolve_stage_job(args: argparse.Namespace) -> tuple[
         "start_max": grid_max,
         "window": window,
         "step": max(1, int(step)),
+        "lead_max": max(0, int(lead_max)),
+        "from_pred": int(bool(args.from_pred)),
     }
     return stage, do_search, do_export, do_verify, grid
 
@@ -425,6 +428,8 @@ def _run_stage_job(
             start_max=grid["start_max"],
             window=int(grid["window"] or 80),
             step=int(grid["step"] or 1),
+            lead_max=int(grid.get("lead_max") or 0),
+            from_pred=bool(grid.get("from_pred")),
         )
         meta[stage.replace("-", "_")] = search
         print(json.dumps({k: search[k] for k in search if k != "clears"}, indent=2))
@@ -444,6 +449,7 @@ def _run_stage_job(
             start_idx=int(best["start_idx"]),
             body_frames=int(best["leave_frame"]),
             fm2_path=fm2_path,
+            lead_idle=int(best.get("lead_idle") or 0),
         )
         meta[f"exported_{stage.replace('-', '_')}"] = {
             k: payload[k] for k in payload if k != "segments"
@@ -453,7 +459,13 @@ def _run_stage_job(
     if do_verify:
         si = int(best["start_idx"]) if best.get("start_idx") is not None else None
         n = int(best["leave_frame"]) if best.get("leave_frame") is not None else None
-        report = verify_warpless_slice(frames, stage, start_idx=si, body_frames=n)
+        report = verify_warpless_slice(
+            frames,
+            stage,
+            start_idx=si,
+            body_frames=n,
+            lead_idle=int(best["lead_idle"]) if best.get("lead_idle") is not None else None,
+        )
         meta[f"verify_{stage.replace('-', '_')}"] = report
         print(json.dumps(report, indent=2))
         rp = report_path or (
@@ -514,6 +526,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--step", type=int, default=1)
     p.add_argument("--start-min", type=int, default=None, dest="grid_min")
     p.add_argument("--start-max", type=int, default=None, dest="grid_max")
+    p.add_argument(
+        "--lead-max",
+        type=int,
+        default=0,
+        help="extra idle frames after control, searched 0..N",
+    )
+    p.add_argument(
+        "--from-pred",
+        action="store_true",
+        help="pin at predecessor leave (drop-in) instead of idling to control",
+    )
     p.add_argument(
         "--search-1-2-flag",
         action="store_true",
