@@ -15,12 +15,10 @@ from typing import Any
 from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
+from tmnt_iv.assist import apply_emergency_hp  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR  # noqa: E402
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
-
-_EMERGENCY_HP_THRESHOLD = 16
-_EMERGENCY_HP_RESTORE = 80
 
 
 def run_probe(
@@ -29,6 +27,7 @@ def run_probe(
     max_frames: int = 12000,
     stop_stage_gt: int | None = None,
     heal_mode: str = "emergency",
+    trace_stall: bool = False,
 ) -> dict[str, Any]:
     """Fight from ``state_name`` until timeout, KO, or stage advance.
 
@@ -51,10 +50,17 @@ def run_probe(
     boss_hp_start = int(start.extras.get("boss_hp", 0))
     final = start
     outcome = "timeout"
+    stall_starts: list[dict[str, Any]] = []
+    stall_x_hist: dict[str, int] = {}
+    prev_cam = start.camera_x
+    prev_reason = ""
+    saw_form1 = any(e.kind == 0x52 for e in start.living_enemies)
     try:
         for frame in range(1, max_frames + 1):
             state = parse_game_state(env.get_ram(), frame=frame)
             final = state
+            if any(e.kind == 0x52 for e in state.living_enemies):
+                saw_form1 = True
             if 0 < state.health <= 0x60:
                 if prev_hp is not None and state.health < prev_hp:
                     hit = prev_hp - state.health
@@ -66,10 +72,7 @@ def run_probe(
 
             # Emergency heal assist (production-like).
             if heal_mode == "emergency":
-                if state.health == 0 or (
-                    0 < state.health <= _EMERGENCY_HP_THRESHOLD
-                ):
-                    env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                if apply_emergency_hp(env, state.health):
                     heals += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
                     final = state
@@ -107,6 +110,32 @@ def run_probe(
                 else tick.reason or "idle"
             )
             reasons[reason] = reasons.get(reason, 0) + 1
+            cam_delta = state.camera_x - prev_cam
+            if reason.startswith("stall_") and not prev_reason.startswith("stall_"):
+                sample = {
+                    "frame": frame,
+                    "reason": reason,
+                    "x": state.player_x,
+                    "y": state.player_y,
+                    "cam": state.camera_x,
+                    "dcam": cam_delta,
+                    "event": int(state.extras.get("event", -1)),
+                    "boss": int(state.boss_active),
+                    "n": len(state.living_enemies),
+                    "anim": int(state.extras.get("anim", -1)),
+                    "form1": int(saw_form1),
+                }
+                if len(stall_starts) < 40:
+                    stall_starts.append(sample)
+                bucket = (
+                    f"x{state.player_x // 16 * 16}"
+                    f"_y{state.player_y // 8 * 8}"
+                    f"_dcam{min(max(cam_delta, -2), 2)}"
+                    f"_f1{int(saw_form1)}"
+                )
+                stall_x_hist[bucket] = stall_x_hist.get(bucket, 0) + 1
+            prev_reason = reason
+            prev_cam = state.camera_x
             if action[8]:
                 outcome = "forbidden_a"
                 break
@@ -117,7 +146,7 @@ def run_probe(
         env.close()
 
     top = sorted(reasons.items(), key=lambda kv: -kv[1])[:12]
-    return {
+    report = {
         "state": state_name,
         "outcome": outcome,
         "frames": final.frame,
@@ -133,7 +162,12 @@ def run_probe(
         "boss_hp": f"{boss_hp_start}->{int(final.extras.get('boss_hp', 0))}",
         "event": hex(int(final.extras.get("event", -1))),
         "top_reasons": top,
+        "saw_form1": saw_form1,
+        "stall_hist": sorted(stall_x_hist.items(), key=lambda kv: -kv[1])[:16],
     }
+    if trace_stall:
+        report["stall_starts"] = stall_starts
+    return report
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -151,12 +185,18 @@ def main(argv: list[str] | None = None) -> int:
         default="emergency",
         help="HP assist mode (default: emergency, production-like)",
     )
+    parser.add_argument(
+        "--trace-stall",
+        action="store_true",
+        help="include per-start stall samples (x/y/cam/form-1)",
+    )
     args = parser.parse_args(argv)
     report = run_probe(
         state_name=args.state,
         max_frames=args.max_frames,
         stop_stage_gt=args.stop_stage_gt,
         heal_mode=args.heal,
+        trace_stall=args.trace_stall,
     )
     print(report)
     return 0 if report["outcome"] not in {"life_loss", "forbidden_a"} else 1

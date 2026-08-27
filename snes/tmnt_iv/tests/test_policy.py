@@ -10,10 +10,11 @@ from retro_harness.bot_runner import NodeStatus
 from retro_harness.ram_state import EnemyState, GameMode, GameState
 from tmnt_iv.policy import (
     HazardAvoid,
+    PizzaSeek,
     Stage1Policy,
-    TechnodromeTactics,
     build_stage1_tree,
 )
+from tmnt_iv.tactics.technodrome import TechnodromeTactics
 from tmnt_iv.ram import (
     ADDR_EVENT,
     ADDR_LIVES,
@@ -438,8 +439,8 @@ def test_duo_boss_forces_left_flank_before_attack() -> None:
     assert action.action[1] == 0  # not Y yet
 
 
-def test_super_shredder_form2_uses_dodge_cycle() -> None:
-    """Form 2 keeps a left standoff and hops instead of standing still."""
+def test_super_shredder_form2_uses_offset_tactics() -> None:
+    """Form 2 is owned by SuperShredderForm2Tactics (vertical offset)."""
     boss = EnemyState(
         slot=0, x=160, y=180, health=120, active=True, kind=0xAE
     )
@@ -453,18 +454,20 @@ def test_super_shredder_form2_uses_dodge_cycle() -> None:
     reasons = [
         policy.tick(state).action.reason for _ in range(80)
     ]
+    assert all(r.startswith("shredder_") for r in reasons)
     assert any(
         r in {
             "shredder_attack",
-            "shredder_dodge",
+            "shredder_offset",
+            "shredder_behind",
             "shredder_wait",
             "shredder_space",
             "shredder_approach",
-            "shredder_align",
+            "shredder_close",
         }
         for r in reasons
     )
-    assert "shredder_dodge" in reasons
+    assert all(policy.tick(state).action.action[8] == 0 for _ in range(4))
 
 
 def test_super_shredder_form2_switches_flank_at_left_wall() -> None:
@@ -487,8 +490,11 @@ def test_super_shredder_form2_switches_flank_at_left_wall() -> None:
     action = Stage1Policy().tick(state).action
 
     assert action is not None
-    assert action.reason == "shredder_approach"
-    assert action.action[7] == 1  # RIGHT, into the open arena
+    assert action.reason in {
+        "shredder_offset",
+        "shredder_behind",
+        "shredder_approach",
+    }
     assert action.action[6] == 0  # never walk into the left wall
 
 
@@ -611,6 +617,22 @@ def test_raphael_closes_starbase_stack_with_jump_slash() -> None:
     assert action.action[0] == 1  # B
     assert action.action[1] == 1  # Y
     assert action.action[6] == 1  # LEFT toward the target
+    assert action.action[8] == 0  # never A
+
+
+def test_raphael_starbase_close_gap_releases_jump() -> None:
+    """Gap frames must drop B+Y or the stack jump-locks."""
+    stack = replace(_enemy(40, 190, 8), kind=0xB0)
+    state = replace(
+        _playing(player_x=73, player_y=176, enemies=(stack,), frame=1),
+        stage=8,
+        extras={"char_id": 8},
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "raph_starbase_close_gap"
+    assert action.action[0] == 0  # no B
+    assert action.action[1] == 0  # no Y
     assert action.action[8] == 0  # never A
 
 
@@ -965,6 +987,71 @@ def test_sewer_skips_dumpster_stall_thrash() -> None:
     assert any(r in {"walk_right", "sewer_drop_lane", "walk"} for r in reasons)
 
 
+def test_starbase_frozen_x_keeps_dumpster_unstick() -> None:
+    """Sewer-like dumpster skip on byte 8 is a 40k enemyless timeout.
+
+    Frozen X past the launch lane is a real obstacle. Keep DOWN+JUMP.
+    Launch x<=64 is still RIGHT-only.
+    """
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 100):
+        state = replace(
+            _playing(player_x=128, player_y=192, frame=frame),
+            stage=8,
+        )
+        result = policy.tick(state)
+        assert result.action is not None
+        reasons.append(result.action.reason)
+    assert "stall_down" in reasons
+    assert "stall_jump_right" in reasons
+    assert "starbase_launch_right" not in reasons
+    assert "starbase_rail_right" not in reasons
+
+
+def test_starbase_mid_wave_freeze_still_dumpsters() -> None:
+    """x≈207 wave freeze is a dumpster-class obstacle, not the form-1 rail."""
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 100):
+        state = replace(
+            _playing(player_x=207, player_y=152, camera_x=frame * 2, frame=frame),
+            stage=8,
+        )
+        result = policy.tick(state)
+        assert result.action is not None
+        reasons.append(result.action.reason)
+    assert "stall_down" in reasons
+    assert "starbase_rail_right" not in reasons
+
+
+def test_starbase_form1_rail_skips_dumpster() -> None:
+    """Right-rail frozen X (form-1 vanish) holds RIGHT, not dumpster.
+
+    Diag loops x=229 for ~7k frames under dumpster. Form-1-seen latch
+    then RIGHT 40k-timeouts Diag. Keep dumpster at x=128 / 207.
+    """
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 100):
+        state = replace(
+            _playing(
+                player_x=229,
+                player_y=156,
+                camera_x=50582 + frame,
+                frame=frame,
+            ),
+            stage=8,
+        )
+        result = policy.tick(state)
+        assert result.action is not None
+        reasons.append(result.action.reason)
+        assert result.action.action[7] == 1  # RIGHT
+        assert result.action.action[0] == 0  # no dumpster jump
+    assert reasons == ["starbase_rail_right"] * 99
+    assert not any(r.startswith("stall_") for r in reasons)
+
+
 def test_sewer_spike_jump_when_near() -> None:
     """Hanging spike prop 0x1C within adx 56 → jump-right (A/B best)."""
     state = replace(
@@ -1196,6 +1283,28 @@ def test_pizza_seek_is_limited_to_big_apple() -> None:
     sewer_tick = Stage1Policy().tick(sewer_clear)
     assert sewer_tick.action is not None
     assert sewer_tick.action.reason == "pizza_seek"
+
+
+def test_alleycat_unreachable_pizza_gives_up() -> None:
+    """Between-wave Y-mash that never heals must not freeze the dumpster walk.
+
+    Power-on dry-run locked at (66,135) on a box at (70,118) — inside the
+    underfoot band, never collected.
+    """
+    policy = Stage1Policy()
+    pickup = (70, 118, 0x30)
+    state = replace(
+        _playing(player_x=66, player_y=135, health=38),
+        stage=1,
+        extras={"pickups": (pickup,)},
+    )
+    for _ in range(PizzaSeek._PICKUP_GIVE_UP_FRAMES - 1):
+        tick = policy.tick(state)
+        assert tick.action is not None
+        assert tick.action.reason == "pizza_pickup"
+    after = policy.tick(state)
+    assert after.action is not None
+    assert after.action.reason != "pizza_pickup"
 
 
 def test_alleycat_underfoot_pizza_pickup() -> None:
