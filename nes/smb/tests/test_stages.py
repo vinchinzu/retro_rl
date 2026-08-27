@@ -29,8 +29,11 @@ from smb.tas.stages import (
     goal_hit,
     is_1_3_control,
     is_1_4_control,
+    is_2_1_control,
     is_4_1_control,
     is_8_3_control,
+    is_dash_control,
+    is_ending_axe,
 )
 
 
@@ -110,6 +113,17 @@ def test_is_1_4_control_uses_dash_3() -> None:
     assert is_1_4_control(_snap(world=0, level=4, dash_level=3, player_x=40, timer=301))
     assert not is_1_4_control(_snap(world=0, level=3, dash_level=2, player_x=40, timer=301))
     assert not is_1_4_control(_snap(world=0, level=4, dash_level=3, player_x=200, timer=301))
+
+
+def test_is_2_1_control_world_1_dash_0() -> None:
+    castle = _snap(world=0, level=4, dash_level=3, player_x=40, timer=301, player_y=80)
+    overworld = _snap(world=1, level=0, dash_level=0, player_x=40, timer=301, player_y=176)
+    assert is_2_1_control(overworld)
+    assert not is_2_1_control(castle)
+    assert not is_2_1_control(_snap(world=1, dash_level=0, player_x=200, timer=301))
+    assert is_dash_control(overworld, 1, 0)
+    assert is_ending_axe(_snap(world=7, dash_level=3, oper_mode=2, player_x=40, timer=0))
+    assert not is_ending_axe(overworld)
 
 
 def test_is_8_3_control() -> None:

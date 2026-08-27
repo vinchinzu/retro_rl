@@ -174,15 +174,15 @@ def stage_dash(snap: Any) -> int:
     return int(snap.level)
 
 
-def is_1_3_control(snap: Any) -> bool:
-    """Controllable 1-3 spawn: LevelNumber 2, live timer, low x.
+def is_dash_control(snap: Any, world: int, dash: int) -> bool:
+    """Controllable spawn at ``(world, LevelNumber)``. Never AreaNumber.
 
-    Uses ``dash_level`` ($075C), never AreaNumber ($0760). 1-2 underground
-    flips AreaNumber to 2 while LevelNumber stays 1.
+    Same x/timer/ps shape as the 1-3 / 1-4 gates. 1-2 surface still uses
+    ``is_surface_control`` (area pointer + y).
     """
     return (
-        int(snap.world) == 0
-        and stage_dash(snap) == 2
+        int(snap.world) == world
+        and stage_dash(snap) == dash
         and int(snap.oper_mode) == 1
         and int(snap.player_state) in (7, 8)
         and int(getattr(snap, "timer", 0) or 0) > 0
@@ -191,16 +191,31 @@ def is_1_3_control(snap: Any) -> bool:
     )
 
 
+def is_1_3_control(snap: Any) -> bool:
+    """Controllable 1-3 spawn: LevelNumber 2, live timer, low x.
+
+    Uses ``dash_level`` ($075C), never AreaNumber ($0760). 1-2 underground
+    flips AreaNumber to 2 while LevelNumber stays 1.
+    """
+    return is_dash_control(snap, 0, 2)
+
+
 def is_1_4_control(snap: Any) -> bool:
     """Controllable 1-4 spawn after the 1-3 flagpole (LevelNumber 3)."""
+    return is_dash_control(snap, 0, 3)
+
+
+def is_2_1_control(snap: Any) -> bool:
+    """Controllable 2-1 overworld spawn after the 1-4 axe (world 1, dash 0)."""
+    return is_dash_control(snap, 1, 0)
+
+
+def is_ending_axe(snap: Any) -> bool:
+    """8-4 axe / Peach: World 8-4 with ``oper_mode=2``."""
     return (
-        int(snap.world) == 0
+        int(snap.world) == WORLD_INDEX_8
         and stage_dash(snap) == 3
-        and int(snap.oper_mode) == 1
-        and int(snap.player_state) in (7, 8)
-        and int(getattr(snap, "timer", 0) or 0) > 0
-        and int(snap.player_x) <= CONTROL_X_MAX
-        and not bool(getattr(snap, "dying", False))
+        and int(snap.oper_mode) == 2
     )
 
 

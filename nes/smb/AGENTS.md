@@ -63,15 +63,15 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.annotate_fm2 --search-1-3 --export-1-3
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.annotate_fm2 --verify-1-3
+  uv run python -m smb.scripts.annotate_fm2 --verify-1-4
 # Same #3728M file for every leg (not #1715M warps / not smb_1_2_flag.json)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.record_warpless --to 1-3
+  uv run python -m smb.scripts.record_warpless --to 1-4
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.record_warpless --to 1-3 --record
-# Next: 1-4 from that leave (hint 6393). See docs/HANDOFF_32EXIT.md
+  uv run python -m smb.scripts.record_warpless --to 1-4 --record
+# Next: 2-2 from that leave (hint 10451). See docs/HANDOFF_32EXIT.md
 # SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-#   uv run python -m smb.scripts.annotate_fm2 --search-1-4 --export-1-4
+#   uv run python -m smb.scripts.annotate_fm2 --search 2-2 --export
 # Pure HappyLee track 3 (no hybrid/natural/skills; 8-4 blocked until 8-3 leave)
 uv run python -m smb.scripts.pure_hl status
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -131,13 +131,11 @@ uv run python -m smb.scripts.parse_human_recording \
   BK2, same mapping as `happylee_warps_1715M.fm2.bk2`). Do not fold warpless
   slices into warp seeds.
 - 32-exit: 1-2 **flag** exit is the DOWN pipe on the brick platform after
-  the UG lifts (not plant pipes B/C, not the warp room). Body:
-  `smb.scripts.run_1_2_flag` / `smb.flag_12` (HL UG prefix + A19 lift/
-  pipe tail). `smb_1_3` **is** registered with `SMB_DASH_COMPUTED`
-  (`$075C` LevelNumber) — never default `_smb_level` (that target_id=2
-  is 1-2 UG AreaNumber). 32-exit through 1-3 is green
-  (`record_warpless --to 1-3`, 6205f → 1-4 castle). Next extract:
-  **1-4 @~6393 → 2-1**, same #3728M file. Recipe:
+  the UG lifts (not plant pipes B/C, not the warp room). `$075C`
+  LevelNumber is the clock — never default `_smb_level` AreaNumber.
+  Through 2-1 is green (`record_warpless --to 2-1`, 10263f → 2-2
+  drop-in; 1-4 castle 1702f @6393; 2-1 2356f @8095). Next extract:
+  **2-2 @~10451 → 2-3**, same #3728M file (`--search 2-2 --export`). Recipe:
   `docs/HANDOFF_32EXIT.md`. Flag-exit / isolated 1-3 archive:
   `docs/HANDOFF_32EXIT_1_3.md`. Human 1-4 pin is a 1-3 castle tally.
 - Pin/state boot: `set_state` → `reset()` → `set_state` again (stable-retro

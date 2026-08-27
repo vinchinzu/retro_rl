@@ -13,12 +13,14 @@ from smb.tas.fm2 import parse_fm2, parse_movie
 from smb.paths import MODELS_DIR
 from smb.policy import expand_nes9_rle, load_nes9_rle_seed
 from smb.scripts.annotate_fm2 import export_1_3_slice
+from smb.tas.warpless_extract import export_warpless_slice
 from smb.tas.warpless import (
     CHAIN_TARGETS,
     WARPLESS_BK2,
     WARPLESS_FIRST_LR,
     WARPLESS_FM2,
     WARPLESS_FRAMES,
+    WARPLESS_LEGS,
     WARPLESS_PUBLICATION_ID,
     WARPLESS_START_FRAME,
     WL_1_1_FM2_START,
@@ -31,7 +33,19 @@ from smb.tas.warpless import (
     WL_1_3_FM2_HINT,
     WL_1_3_FM2_START,
     WL_1_3_LEAVE_FRAMES,
+    WL_1_4_CTRL_WAIT,
     WL_1_4_FM2_HINT,
+    WL_1_4_FM2_START,
+    WL_1_4_LEAVE_FRAMES,
+    WL_1_4_SEED,
+    WL_2_1_CTRL_WAIT,
+    WL_2_1_FM2_HINT,
+    WL_2_1_FM2_START,
+    WL_2_1_LEAVE_FRAMES,
+    WL_2_1_SEED,
+    WL_2_2_FM2_HINT,
+    fm2_hint,
+    get_leg,
     load_warpless_slice,
     require_warpless_slice,
     slice_path,
@@ -134,6 +148,58 @@ def test_warpless_1_3_hint_follows_1_2_flag_leave() -> None:
     assert WL_1_3_FM2_START == WL_1_3_FM2_HINT
     assert WL_1_3_LEAVE_FRAMES == 1740
     assert WL_1_4_FM2_HINT == WL_1_3_FM2_START + WL_1_3_LEAVE_FRAMES == 6393
+    assert fm2_hint("1-4") == WL_1_4_FM2_HINT == 6393
+    assert WL_1_4_FM2_START == WL_1_4_FM2_HINT
+    assert WL_1_4_LEAVE_FRAMES == 1702
+    assert WL_1_4_CTRL_WAIT == 0
+    assert WL_2_1_FM2_HINT == WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES == 8095
+    assert fm2_hint("2-1") == WL_2_1_FM2_HINT
+    assert WL_2_1_FM2_START == WL_2_1_FM2_HINT
+    assert WL_2_1_LEAVE_FRAMES == 2356
+    assert WL_2_1_CTRL_WAIT == 0
+    assert WL_2_2_FM2_HINT == WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES == 10451
+
+
+def test_warpless_legs_cover_32_exits() -> None:
+    assert len(WARPLESS_LEGS) == 32
+    assert WARPLESS_LEGS[0].id == "1-1"
+    assert WARPLESS_LEGS[-1].id == "8-4"
+    assert WARPLESS_LEGS[-1].leave_ending
+    castle = get_leg("1-4")
+    assert castle.world == 0 and castle.dash == 3
+    assert castle.leave_world == 1 and castle.leave_dash == 0
+    assert castle.leave_outcome == "2_1_control"
+    assert castle.seed_name == WL_1_4_SEED
+    assert castle.max_play == 2500
+    flag22 = get_leg("2-2")
+    assert flag22.world == 1 and flag22.dash == 1
+    assert flag22.leave_id == "2-3"
+    assert "flag" in flag22.note.lower()
+    assert get_leg("8-4").leave_outcome == "ending_axe"
+    snap_14 = SimpleNamespace(
+        world=0, level=4, dash_level=3, oper_mode=1, player_state=7,
+        timer=301, player_x=40, player_y=80, dying=False, lives=2,
+    )
+    snap_21 = SimpleNamespace(
+        world=1, level=0, dash_level=0, oper_mode=1, player_state=7,
+        timer=301, player_x=40, player_y=176, dying=False, lives=2,
+    )
+    assert get_leg("1-3").leave(snap_14)
+    assert get_leg("1-4").control(snap_14)
+    assert get_leg("1-4").leave(snap_21)
+    assert not get_leg("1-4").leave(snap_14)
+    drop = SimpleNamespace(
+        world=1, level=2, dash_level=1, oper_mode=1, player_state=7,
+        timer=401, player_x=40, player_y=0, dying=False, lives=2,
+    )
+    land = SimpleNamespace(
+        world=1, level=2, dash_level=1, oper_mode=1, player_state=8,
+        timer=399, player_x=40, player_y=176, dying=False, lives=2,
+    )
+    assert get_leg("2-1").leave(drop)
+    assert get_leg("2-1").leave(land)
+    assert not get_leg("2-2").control(drop)
+    assert get_leg("2-2").control(land)
 
 
 def test_export_1_3_slice_metadata(tmp_path: Path) -> None:
@@ -155,6 +221,59 @@ def test_export_1_3_slice_metadata(tmp_path: Path) -> None:
     assert payload["route_id"] == "smb_all_exits"
     assert "1-3" in str(payload.get("note", ""))
     assert len(expand_nes9_rle(payload)) == 20
+
+
+def test_export_1_4_slice_metadata(tmp_path: Path) -> None:
+    frames = [[0] * 9 for _ in range(40)]
+    frames[12][7] = 1
+    dest = tmp_path / "smb_1_4_warpless_slice.json"
+    payload = export_warpless_slice(
+        frames,
+        stage_id="1-4",
+        start_idx=12,
+        body_frames=18,
+        fm2_path=Path("happylee_mars608_warpless_3728M.fm2"),
+        out_path=dest,
+    )
+    assert dest.is_file()
+    assert payload["num_frames"] == 18
+    assert payload["fm2_start_index"] == 12
+    assert payload["target"] == "2_1_control"
+    assert payload["stage_id"] == "1-4"
+    assert payload["route_id"] == "smb_all_exits"
+    assert "3728M" in str(payload.get("source", ""))
+    assert "warpless" in str(payload.get("source", "")).lower()
+    assert require_warpless_slice(payload, stage_id="1-4") is payload
+    assert len(expand_nes9_rle(payload)) == 18
+
+
+def test_warpless_2_1_slice_metadata_if_present() -> None:
+    path = MODELS_DIR / WL_2_1_SEED
+    if not path.exists() or not WL_2_1_LEAVE_FRAMES:
+        return
+    data = load_nes9_rle_seed(path)
+    assert data["num_frames"] == WL_2_1_LEAVE_FRAMES
+    assert data.get("fm2_start_index") == WL_2_1_FM2_START
+    assert data.get("target") == "2_2_control"
+    assert data.get("route_id") == "smb_all_exits"
+    assert data.get("stage_id") == "2-1"
+    assert "3728M" in str(data.get("source", ""))
+    assert "flag" not in str(data.get("note", "")).lower()
+    assert len(expand_nes9_rle(data)) == WL_2_1_LEAVE_FRAMES
+
+
+def test_warpless_1_4_slice_metadata_if_present() -> None:
+    path = MODELS_DIR / WL_1_4_SEED
+    if not path.exists() or not WL_1_4_LEAVE_FRAMES:
+        return
+    data = load_nes9_rle_seed(path)
+    assert data["num_frames"] == WL_1_4_LEAVE_FRAMES
+    assert data.get("fm2_start_index") == WL_1_4_FM2_START
+    assert data.get("target") == "2_1_control"
+    assert data.get("route_id") == "smb_all_exits"
+    assert data.get("stage_id") == "1-4"
+    assert "3728M" in str(data.get("source", ""))
+    assert len(expand_nes9_rle(data)) == WL_1_4_LEAVE_FRAMES
 
 
 def test_warpless_1_3_slice_metadata_if_present() -> None:
@@ -194,6 +313,22 @@ def test_require_warpless_slice_rejects_warp_any_percent() -> None:
         "note": "32-exit 1-3 athletic",
     }
     assert require_warpless_slice(ok, stage_id="1-3") is ok
+    ok14 = {
+        "source": "HappyLee & Mars608 warpless #3728M FM2 @6393",
+        "route_id": "smb_all_exits",
+        "stage_id": "1-4",
+        "note": "32-exit 1-4 castle",
+    }
+    assert require_warpless_slice(ok14, stage_id="1-4") is ok14
+    with pytest.raises(ValueError, match="1715M"):
+        require_warpless_slice(
+            {
+                "source": "HappyLee warps #1715M FM2 @190",
+                "route_id": "smb_all_exits",
+                "stage_id": "1-4",
+            },
+            stage_id="1-4",
+        )
 
 
 def test_warpless_same_file_cuts_chain() -> None:
@@ -202,7 +337,9 @@ def test_warpless_same_file_cuts_chain() -> None:
     assert WL_1_1_FM2_START + WL_1_1_LEAVE_FRAMES + WL_1_2_CTRL_WAIT == WL_1_2_FM2_START
     assert WL_1_2_FM2_START + WL_1_2_LEAVE_FRAMES + WL_1_3_CTRL_WAIT == WL_1_3_FM2_START
     assert WL_1_3_CTRL_WAIT == 0
-    assert CHAIN_TARGETS == ("1-1", "1-2", "1-3")
+    assert WL_1_3_FM2_START + WL_1_3_LEAVE_FRAMES + WL_1_4_CTRL_WAIT == WL_1_4_FM2_START
+    assert WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES + WL_2_1_CTRL_WAIT == WL_2_1_FM2_START
+    assert CHAIN_TARGETS == ("1-1", "1-2", "1-3", "1-4", "2-1")
     for sid in CHAIN_TARGETS:
         path = slice_path(sid)
         if not path.is_file():
@@ -215,7 +352,7 @@ def test_warpless_same_file_cuts_chain() -> None:
             "happylee_mars608_warpless_3728M"
         )
         assert len(frames) == int(data["num_frames"])
-    assert slices_present("1-3") is all(slice_path(s).is_file() for s in CHAIN_TARGETS)
+    assert slices_present("2-1") is all(slice_path(s).is_file() for s in CHAIN_TARGETS)
 
 
 def test_on_disk_warp_seeds_are_not_warpless_cuts() -> None:
