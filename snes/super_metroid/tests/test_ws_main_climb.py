@@ -36,6 +36,7 @@ from super_metroid.routes.kpdr.k6.ws_main_ice import (
     ATOMIC_ID,
     ice_keepaway_action,
 )
+from super_metroid.routes.kpdr.k6.ws_main_grate import POCKET_RELEASE_CHARGE
 from super_metroid.routes.skills.charge_shot import CHARGE_FULL
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_MAIN
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
@@ -199,7 +200,10 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     turning = climb_action(1082, 1878, 38, FACING_RIGHT, movement_type=14)
     assert turning == ()
     lip = climb_action(1177, 1883, 2, FACING_LEFT)
-    assert lip == ("LEFT", "X")
+    assert lip == ("X",)
+    assert "LEFT" not in lip
+    assert "UP" not in lip
+    assert "R" not in lip
     lip_face = climb_action(1177, 1883, 2, FACING_RIGHT)
     assert lip_face == ("LEFT",)
     assert "A" not in lip
@@ -207,6 +211,18 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     assert "DOWN" not in lip_face
     leftover = climb_action(1181, 1883, 1, FACING_RIGHT)
     assert leftover == ("LEFT",)
+    walked = climb_action(1169, 1883, 38, FACING_RIGHT, movement_type=14)
+    assert walked == ("LEFT",)
+    assert "A" not in walked
+    through = climb_action(
+        1202, 1854, 77, FACING_RIGHT, velocity_y=1, lip_hit=True
+    )
+    assert through == ("LEFT",)
+    assert "A" not in through
+    through_left = climb_action(
+        1202, 1854, 77, FACING_LEFT, velocity_y=1, lip_hit=True
+    )
+    assert through_left == ("LEFT", "A")
     assert climb_action(1177, 1883, 2, FACING_RIGHT, lip_hit=True) == ("LEFT",)
     assert climb_action(1177, 1883, 2, FACING_LEFT, lip_hit=True) == ("LEFT", "A")
     assert "DOWN" not in climb_action(1177, 1883, 2, FACING_RIGHT, lip_hit=True)
@@ -292,7 +308,10 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
     assert mid == ("RIGHT", "A")
     assert "UP" not in mid
     lip = grate_clear_action(1177, 1883, 2, FACING_LEFT, 0)
-    assert lip == ("LEFT", "X")
+    assert lip == ("X",)
+    assert "LEFT" not in lip
+    assert "UP" not in lip
+    assert "R" not in lip
     lip_face = grate_clear_action(1177, 1883, 2, FACING_RIGHT, 0)
     assert lip_face == ("LEFT",)
     assert grate_clear_action(
@@ -315,10 +334,21 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
         1223, 1860, 3, FACING_RIGHT, 0, charge=CHARGE_FULL
     ) == ("UP",)
     assert grate_lip_action(2, False) == shoot_up_action()
-    assert grate_lip_action(2, False, samus_x=1177) == ("LEFT", "X")
+    assert grate_lip_action(2, False, samus_x=1177) == ("X",)
+    assert "LEFT" not in grate_lip_action(2, False, samus_x=1177)
+    assert "UP" not in grate_lip_action(2, False, samus_x=1177)
+    assert "R" not in grate_lip_action(2, False, samus_x=1177)
     assert grate_lip_action(2, False, FACING_RIGHT, 1177) == ("LEFT",)
-    assert grate_lip_action(2, False, FACING_LEFT, 1177, CHARGE_FULL) == ("LEFT",)
-    assert "X" not in grate_lip_action(2, False, FACING_LEFT, 1177, CHARGE_FULL)
+    assert grate_lip_action(2, False, FACING_LEFT, 1177, POCKET_RELEASE_CHARGE) == ()
+    assert "X" not in grate_lip_action(2, False, FACING_LEFT, 1177, POCKET_RELEASE_CHARGE)
+    assert "LEFT" not in grate_lip_action(2, False, FACING_LEFT, 1177, POCKET_RELEASE_CHARGE)
+    assert grate_lip_action(2, False, FACING_LEFT, 1177, CHARGE_FULL) == ()
+    assert at_ws_main_lip_shot_seat(1169, 1883, 38)
+    assert grate_clear_action(1169, 1883, 38, FACING_RIGHT, 0) == ("LEFT",)
+    assert at_ws_main_lip_shot_seat(1177, 1883, 6)
+    assert grate_clear_action(1177, 1883, 6, FACING_LEFT, 0) == ("X",)
+    assert "RIGHT" not in grate_clear_action(1177, 1883, 6, FACING_LEFT, 0)
+    assert "R" not in grate_clear_action(1177, 1883, 6, FACING_LEFT, 0)
     assert grate_lip_action(2, False, charge=CHARGE_FULL) == ("UP",)
     assert "X" not in grate_lip_action(2, False, charge=CHARGE_FULL)
     assert grate_lip_action(2, True) == ("LEFT", "A")
@@ -345,6 +375,13 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
     )
     assert climb_action(1189, 1785, 2, FACING_LEFT, lip_hit=True) == ("DOWN",)
     assert "DOWN" not in climb_action(1189, 1785, 2, FACING_LEFT)
+    air_hit = grate_clear_action(
+        1202, 1854, 77, FACING_RIGHT, 0, velocity_y=1, lip_hit=True
+    )
+    assert air_hit == ("LEFT",)
+    assert grate_clear_action(
+        1202, 1854, 77, FACING_LEFT, 0, velocity_y=1, lip_hit=True
+    ) == ("LEFT", "A")
 
 
 def test_attic_door_is_up_a_not_super_or_l() -> None:
