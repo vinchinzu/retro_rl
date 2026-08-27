@@ -106,7 +106,7 @@ def test_pit_and_attic_door_seats() -> None:
     assert not at_ws_main_pit(wrong)
 
 
-def test_first_jump_hatch_takeoff_lands_right_lip() -> None:
+def test_first_jump_hatch_takeoff_lands_fire_slope() -> None:
     pin = pit_exit_action(1173, 1979, 1, FACING_LEFT)
     assert pin == ("LEFT",)
     assert "A" not in pin
@@ -123,14 +123,63 @@ def test_first_jump_hatch_takeoff_lands_right_lip() -> None:
     assert "DOWN" not in rise
     peak = pit_exit_action(1150, 1880, 81, FACING_RIGHT, velocity_y=3)
     assert peak == ("RIGHT", "A")
-    land = pit_exit_action(1184, 1883, 9, FACING_RIGHT)
-    assert land == ()
+    # Over the lip wall at take02's y~1844: keep RIGHT+A. Coast here drops in-pocket.
+    over_wall = pit_exit_action(1183, 1844, 81, FACING_RIGHT, velocity_y=0)
+    assert over_wall == ("RIGHT", "A")
+    # Dual leftover min_y (1188, 1836) p26: west_super stole LEFT+A to the stairs.
+    peak_left = pit_exit_action(1188, 1836, 26, FACING_LEFT, velocity_y=0)
+    assert peak_left == ("RIGHT", "A")
+    assert grate_clear_action(1188, 1836, 26, FACING_LEFT, 0, velocity_y=0) == (
+        "RIGHT",
+        "A",
+    )
+    pocket = pit_exit_action(1177, 1883, 2, FACING_RIGHT)
+    assert pocket == ("A",)
+    assert "LEFT" not in pocket
+    take02_land = pit_exit_action(1208, 1875, 9, FACING_RIGHT)
+    assert take02_land == ("RIGHT",)
+    fire = pit_exit_action(1223, 1860, 3, FACING_RIGHT)
+    assert fire == ()
     cubby = pit_exit_action(1070, 1962, 81, FACING_LEFT, velocity_y=4)
     assert cubby[0] == "RIGHT"
     assert "A" not in cubby
     bonk = pit_exit_action(1173, 1940, 20, FACING_LEFT, velocity_y=2)
     assert "A" not in bonk
     assert bonk == ("LEFT",)
+
+
+def test_first_jump_two_hop_takeoff() -> None:
+    """take02: short A at 1166, land, walk to 1156, committed A. Not a peak tweak."""
+    from super_metroid.routes.kpdr.k6.ws_main_pit import SHORT_HOP_X
+
+    assert SHORT_HOP_X[0] > 1162
+    assert SHORT_HOP_X[0] <= 1166 <= SHORT_HOP_X[1]
+    # Pin still walks LEFT — do not short-hop from 1173.
+    assert pit_exit_action(1173, 1979, 1, FACING_LEFT) == ("LEFT",)
+    assert "A" not in pit_exit_action(1173, 1979, 1, FACING_LEFT)
+    # Short A from ~1166 facing LEFT. Facing RIGHT here is the land.
+    short = pit_exit_action(1166, 1979, 2, FACING_LEFT)
+    assert short == ("A",)
+    assert "RIGHT" not in short
+    land = pit_exit_action(1166, 1979, 1, FACING_RIGHT)
+    assert land == ("LEFT",)
+    assert "A" not in land
+    # Short-hop air already releases A (x>takeoff at y>=1920).
+    short_air = pit_exit_action(1166, 1968, 81, FACING_LEFT, velocity_y=3)
+    assert short_air == ("LEFT",)
+    assert "A" not in short_air
+    # Committed takeoff at 1156, RIGHT+A at y~1920 (not off the floor).
+    committed = pit_exit_action(1156, 1979, 1, FACING_RIGHT)
+    assert committed == ("A",)
+    rise = pit_exit_action(1156, 1920, 77, FACING_RIGHT, velocity_y=5)
+    assert rise == ("A",)
+    over = pit_exit_action(1156, 1880, 81, FACING_RIGHT, velocity_y=3)
+    assert over == ("RIGHT", "A")
+    # Lip leftover is not the short hop (floor y>=1960 only).
+    pocket = pit_exit_action(1166, 1883, 2, FACING_LEFT)
+    assert pocket == ("RIGHT",)
+    assert climb_action(1166, 1979, 2, FACING_LEFT) == ("A",)
+    assert three_shot_action(1166, 1979, 2, FACING_LEFT, 0) == ("A",)
 
 
 def test_three_shot_pit_is_first_jump_not_charge_bonk() -> None:
@@ -200,19 +249,19 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     turning = climb_action(1082, 1878, 38, FACING_RIGHT, movement_type=14)
     assert turning == ()
     lip = climb_action(1177, 1883, 2, FACING_LEFT)
-    assert lip == ("X",)
-    assert "LEFT" not in lip
+    assert lip == ("RIGHT",)
+    assert "X" not in lip
     assert "UP" not in lip
     assert "R" not in lip
     lip_face = climb_action(1177, 1883, 2, FACING_RIGHT)
-    assert lip_face == ("LEFT",)
-    assert "A" not in lip
+    assert lip_face == ("A",)
+    assert "LEFT" not in lip
     assert "DOWN" not in lip
     assert "DOWN" not in lip_face
     leftover = climb_action(1181, 1883, 1, FACING_RIGHT)
-    assert leftover == ("LEFT",)
+    assert leftover == ("A",)
     walked = climb_action(1169, 1883, 38, FACING_RIGHT, movement_type=14)
-    assert walked == ("LEFT",)
+    assert walked == ("RIGHT",)
     assert "A" not in walked
     through = climb_action(
         1202, 1854, 77, FACING_RIGHT, velocity_y=1, lip_hit=True
@@ -231,7 +280,8 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     assert "DOWN" not in ledge_jump
     assert "A" not in ledge_jump
     lip_crouch = climb_action(1177, 1883, 39, FACING_LEFT)
-    assert lip_crouch == ("UP",)
+    assert lip_crouch == ("RIGHT",)
+    assert "X" not in lip_crouch
     save = climb_action(1240, 1675, 2, FACING_RIGHT)
     assert save == ("LEFT", "B")
     # Take02 seat ~(1223,1860) p3: shoot until PLM, never spin/morph here.
@@ -242,16 +292,17 @@ def test_climb_stays_in_shaft_never_down_or_l() -> None:
     assert ledge == shoot_up_action()
     assert "DOWN" not in ledge
     wj = climb_action(1216, 1852, 19, FACING_RIGHT, velocity_y=2)
-    assert wj == ("A",)
+    assert "A" in wj
+    assert "DOWN" not in wj
     jam = climb_action(1220, 1843, 77, FACING_RIGHT, velocity_y=0)
-    assert jam == ("A",)
+    assert jam == ("RIGHT", "A")
     assert "B" not in jam
     assert "DOWN" not in jam
     jam_face = climb_action(1220, 1843, 77, FACING_LEFT, velocity_y=0)
-    assert jam_face == ("LEFT", "A")
+    assert jam_face == ("RIGHT", "A")
     assert "B" not in jam_face
     peak = climb_action(1221, 1827, 77, FACING_RIGHT, velocity_y=2)
-    assert peak == ("A",)
+    assert peak == ("RIGHT", "A")
     assert "B" not in peak
     door = climb_action(1243, 1851, 9, FACING_RIGHT)
     assert door == ("LEFT", "B")
@@ -308,12 +359,12 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
     assert mid == ("RIGHT", "A")
     assert "UP" not in mid
     lip = grate_clear_action(1177, 1883, 2, FACING_LEFT, 0)
-    assert lip == ("X",)
-    assert "LEFT" not in lip
+    assert lip == ("RIGHT",)
+    assert "X" not in lip
     assert "UP" not in lip
     assert "R" not in lip
     lip_face = grate_clear_action(1177, 1883, 2, FACING_RIGHT, 0)
-    assert lip_face == ("LEFT",)
+    assert lip_face == ("A",)
     assert grate_clear_action(
         1177, 1883, 2, FACING_RIGHT, 0, lip_hit=True
     ) == ("LEFT",)
@@ -321,14 +372,15 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
         1177, 1883, 2, FACING_LEFT, 0, lip_hit=True
     ) == ("LEFT", "A")
     crouch = grate_clear_action(1177, 1883, 39, FACING_LEFT, 0)
-    assert crouch == ("UP",)
+    assert crouch == ("RIGHT",)
     air = grate_clear_action(1177, 1800, 20, FACING_LEFT, 0)
     assert air == ("LEFT", "A")
     assert "UP" not in air
     landing = grate_clear_action(1177, 1880, 19, FACING_RIGHT, 0)
-    assert landing is None
+    assert landing == ("RIGHT", "A")
     assert at_ws_main_lip_shot_seat(1223, 1860, 3)
-    assert not at_ws_main_lip_shot_seat(1224, 1860, 3)
+    assert at_ws_main_lip_shot_seat(1227, 1856, 3)
+    assert not at_ws_main_lip_shot_seat(1228, 1860, 3)
     assert grate_clear_action(1223, 1860, 3, FACING_RIGHT, 0) == shoot_up_action()
     assert grate_clear_action(
         1223, 1860, 3, FACING_RIGHT, 0, charge=CHARGE_FULL
@@ -344,10 +396,10 @@ def test_grate_clear_lip_shoots_up_until_plm_hit() -> None:
     assert "LEFT" not in grate_lip_action(2, False, FACING_LEFT, 1177, POCKET_RELEASE_CHARGE)
     assert grate_lip_action(2, False, FACING_LEFT, 1177, CHARGE_FULL) == ()
     assert at_ws_main_lip_shot_seat(1169, 1883, 38)
-    assert grate_clear_action(1169, 1883, 38, FACING_RIGHT, 0) == ("LEFT",)
+    assert grate_clear_action(1169, 1883, 38, FACING_RIGHT, 0) == ("A",)
     assert at_ws_main_lip_shot_seat(1177, 1883, 6)
-    assert grate_clear_action(1177, 1883, 6, FACING_LEFT, 0) == ("X",)
-    assert "RIGHT" not in grate_clear_action(1177, 1883, 6, FACING_LEFT, 0)
+    assert grate_clear_action(1177, 1883, 6, FACING_LEFT, 0) == ("RIGHT",)
+    assert "X" not in grate_clear_action(1177, 1883, 6, FACING_LEFT, 0)
     assert "R" not in grate_clear_action(1177, 1883, 6, FACING_LEFT, 0)
     assert grate_lip_action(2, False, charge=CHARGE_FULL) == ("UP",)
     assert "X" not in grate_lip_action(2, False, charge=CHARGE_FULL)
@@ -644,11 +696,13 @@ def test_probe_uses_repo_headed() -> None:
 def test_never_uses_l_as_left() -> None:
     from super_metroid.routes.kpdr.k6 import ws_main_actions as actions
     from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+    from super_metroid.routes.kpdr.k6 import ws_main_pit as pit
     from super_metroid.routes.kpdr.k6 import ws_main_shaft as shaft
 
     for src in (
         inspect.getsource(mod),
         inspect.getsource(actions),
+        inspect.getsource(pit),
         inspect.getsource(shaft),
     ):
         assert 'hold(session, 1, "L"' not in src
@@ -749,10 +803,14 @@ def test_main_shaft_has_six_named_seams() -> None:
     assert classify_ws_main_phase(leftover) == "pit_shot"
     left_guess = _state(samus_x=1075, samus_y=1845, pose=2, velocity_y=0)
     assert not at_ws_main_grate_seat(left_guess)
-    grate = _state(samus_x=1184, samus_y=1883, pose=9, velocity_y=0)
+    pocket = _state(samus_x=1177, samus_y=1883, pose=2, velocity_y=0)
+    assert not at_ws_main_grate_seat(pocket)
+    grate = _state(samus_x=1223, samus_y=1860, pose=3, velocity_y=0)
     assert at_ws_main_grate_seat(grate)
     assert classify_ws_main_phase(grate) == "grate_seat"
-    aim_up = _state(samus_x=1180, samus_y=1883, pose=3, velocity_y=0)
+    take04 = _state(samus_x=1195, samus_y=1883, pose=3, velocity_y=0)
+    assert at_ws_main_grate_seat(take04)
+    aim_up = _state(samus_x=1223, samus_y=1860, pose=3, velocity_y=0)
     assert at_ws_main_grate_seat(aim_up)
     west = _state(samus_x=1152, samus_y=1675, pose=10)
     assert at_ws_main_west_super_band(west)

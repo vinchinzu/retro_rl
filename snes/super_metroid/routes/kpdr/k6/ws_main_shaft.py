@@ -133,7 +133,7 @@ def exit_side_room(session: ControllerSession, label: str) -> None:
 
 
 def three_shot_tunnel(session: ControllerSession, label: str) -> None:
-    """Walk to the hatch column and gun-jump onto the right lip ~(1184, 1883)."""
+    """Take02 two-hop onto the fire slope: short A at 1166, committed at 1156."""
     if int(session.state.room_id) in (ROOM_WS_ATTIC, ROOM_WS_WEST_SUPER):
         return
     if at_ws_main_grate_seat(session.state) or not at_ws_main_pit(session.state):
