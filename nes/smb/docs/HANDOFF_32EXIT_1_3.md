@@ -21,7 +21,8 @@ Living 1-4…8-4 extract recipe: [`HANDOFF_32EXIT.md`](HANDOFF_32EXIT.md).
    (`--record` for MP4). FM2 replay:
    `uv run python -m smb.scripts.annotate_fm2 --verify-1-3`.
    1-4 spawn: `dash_level=3`, x=40, y=80 (castle), timer=301, ps=7.
-   Next extract: 1-4 from that leave — **use `HANDOFF_32EXIT.md`**.
+   1-4 castle is done (1702f @6393 → 2-1). Next extract: 2-1 —
+   **use `HANDOFF_32EXIT.md`**.
 2. 1-2 flag TAS slice: `models/smb_1_2_warpless_flag_slice.json` (**2544f**
    @ FM2 2109 → 1-3). Hand-built `smb.flag_12` / `smb_1_2_flag.json` (2796f)
    is the prior 2/2 body. Prefer the TAS slice for 32-exit extract.

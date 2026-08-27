@@ -2,18 +2,18 @@
 
 Power-on fceumm often desyncs FCEUX movies (same as any% warps). Isolated
 ``Level1_1`` search is the working extract path: find an FM2 start that
-clears 1-1, then export the body. Subsequent stages use control-relative
-slices like HappyLee warps.
+clears 1-1, then export the body. Later stages share one search/export/verify
+path (``smb.tas.warpless_extract``) driven by ``WARPLESS_LEGS``.
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.annotate_fm2
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python -m smb.scripts.annotate_fm2 --isolated-1-1 --export-1-1
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.annotate_fm2 --search-1-2-flag --export-1-2-flag
+  uv run python -m smb.scripts.annotate_fm2 --search-1-4 --export-1-4
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.annotate_fm2 --search-1-3 --export-1-3
+  uv run python -m smb.scripts.annotate_fm2 --verify-1-4
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python -m smb.scripts.annotate_fm2 --search 2-1 --export
 ```
 """
 
@@ -33,22 +33,21 @@ from smb.paths import MODELS_DIR
 from smb.ram import PLAYER_STATE_DYING, read_snapshot, reached_ending
 from smb.tas.annotate import AnnotateState, dash_key, is_live_control, stage_label
 from smb.tas.fm2 import frames_to_nes9_rle_payload, parse_movie
-from smb.reactive_12 import is_surface_control
-from smb.tas.replay import IDLE, idle_until, make_level1_env, to_action9
+from smb.tas.replay import IDLE, make_level1_env, to_action9
 from smb.tas.stages import is_1_3_control, is_1_4_control
 from smb.tas.warpless import (
     WARPLESS_EXITS_REPORT,
     WARPLESS_FM2,
     WARPLESS_REPORT_DIR,
-    WL_1_1_FM2_START,
-    WL_1_1_LEAVE_FRAMES,
-    WL_1_1_SETTLE,
-    WL_1_2_FM2_START,
-    WL_1_2_LEAVE_FRAMES,
-    WL_1_3_FM2_HINT,
     WL_1_3_FM2_START,
     WL_1_3_LEAVE_FRAMES,
+    get_leg,
     summary_dict,
+)
+from smb.tas.warpless_extract import (
+    export_warpless_slice,
+    search_warpless,
+    verify_warpless_slice,
 )
 
 
@@ -222,277 +221,6 @@ def export_1_1_slice(
     return payload
 
 
-def search_1_2_flag(
-    frames: list[list[int]],
-    *,
-    start_1_1: int = WL_1_1_FM2_START,
-    body_1_1: int = WL_1_1_LEAVE_FRAMES,
-    settle: int = WL_1_1_SETTLE,
-    start_min: int = 2080,
-    start_max: int = 2140,
-    step: int = 1,
-    max_play: int = 3500,
-) -> dict[str, Any]:
-    """After isolated warpless 1-1, search FM2 starts for 1-3 control (flag exit)."""
-    from smb.tas.replay import get_state, set_state
-
-    env = make_level1_env()
-    for _ in range(settle):
-        env.step(IDLE)
-    play_n = min(body_1_1, len(frames) - start_1_1)
-    for fr in frames[start_1_1 : start_1_1 + play_n]:
-        env.step(to_action9(fr))
-
-    wait, snap = idle_until(env, is_surface_control, max_wait=400)
-    ctrl = {
-        "wait": wait,
-        "at_1_2": bool(is_surface_control(snap)),
-        "snap": _snap_brief(snap),
-    }
-    if not ctrl["at_1_2"]:
-        env.close()
-        return {"mode": "1_2_flag", "control": ctrl, "best": None, "n_clear": 0}
-
-    pin = get_state(env)
-    start_lives = int(snap.lives)
-    trials: list[dict[str, Any]] = []
-    best: dict[str, Any] | None = None
-    for si in range(start_min, start_max + 1, max(1, step)):
-        set_state(env, pin)
-        max_x = 0
-        death: int | None = None
-        leave: int | None = None
-        leave_to: str | None = None
-        warped = False
-        body = frames[si:]
-        for i in range(min(len(body), max_play)):
-            env.step(to_action9(body[i]))
-            now = read_snapshot(env.get_ram(), frame=i + 1)
-            px = int(now.player_x)
-            if 0 < px < 20000:
-                max_x = max(max_x, px)
-            if int(now.lives) < start_lives or int(now.player_state) == PLAYER_STATE_DYING:
-                death = i + 1
-                break
-            if int(now.world) == 3:
-                warped = True
-                break
-            if is_1_3_control(now):
-                leave = i + 1
-                leave_to = "1-3"
-                break
-        tr = {
-            "start_idx": si,
-            "max_x": max_x,
-            "death": death,
-            "leave_frame": leave,
-            "leave_to": leave_to,
-            "warped_w4": warped,
-        }
-        trials.append(tr)
-        score = int(max_x)
-        if leave is not None:
-            score += 100_000 - int(leave)
-        if warped:
-            score -= 50_000
-        if best is None or score > int(best.get("_score", -1)):
-            best = {**tr, "_score": score}
-        if leave is not None or (max_x or 0) > 2000:
-            print(
-                f"  12 si={si} max_x={max_x} leave={leave} death={death} w4={warped}",
-                flush=True,
-            )
-    env.close()
-    clears = [t for t in trials if t["leave_frame"] is not None]
-    return {
-        "mode": "1_2_flag",
-        "control": ctrl,
-        "start_min": start_min,
-        "start_max": start_max,
-        "step": step,
-        "best": best,
-        "n_clear": len(clears),
-        "clears": clears[:12],
-        "n_trials": len(trials),
-    }
-
-
-def export_1_2_flag_slice(
-    frames: list[list[int]],
-    *,
-    start_idx: int,
-    body_frames: int,
-    fm2_path: Path,
-    out_path: Path | None = None,
-) -> dict[str, Any]:
-    dest = out_path or (MODELS_DIR / "smb_1_2_warpless_flag_slice.json")
-    body = [list(f) for f in frames[start_idx : start_idx + body_frames]]
-    payload = frames_to_nes9_rle_payload(
-        body,
-        route_id="smb_1_2_warpless_flag",
-        source=f"HappyLee & Mars608 warpless #3728M FM2 @{start_idx}",
-        extra={
-            "level_id": "smb_1_2_warpless_flag",
-            "start_state": "1-2_control_after_warpless_1_1",
-            "settle_frames": 0,
-            "game_name": "SuperMarioBros-Nes-v0",
-            "target": "1_3_control",
-            "body_frames": len(body),
-            "leave_frames": len(body),
-            "fm2": str(fm2_path),
-            "fm2_start_index": start_idx,
-            "route_id": "smb_all_exits",
-            "stage_id": "1-2",
-            "note": "32-exit 1-2 flag pipe. Not the W4 warp. Do not fold into happylee 1-2 slice.",
-        },
-    )
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(payload) + "\n", encoding="utf-8")
-    payload["_path"] = str(dest)
-    return payload
-
-
-def reach_1_3_control(
-    frames: list[list[int]],
-    *,
-    start_1_1: int = WL_1_1_FM2_START,
-    body_1_1: int = WL_1_1_LEAVE_FRAMES,
-    settle: int = WL_1_1_SETTLE,
-    start_1_2: int = WL_1_2_FM2_START,
-    body_1_2: int = WL_1_2_LEAVE_FRAMES,
-    max_wait: int = 400,
-) -> dict[str, Any]:
-    """Level1_1 → warpless 1-1 → 1-2 surface → 1-2 flag body → 1-3 control.
-
-    Returns an open env pinned at 1-3 control when ``ok``; caller must close it.
-    """
-    env = make_level1_env()
-    for _ in range(settle):
-        env.step(IDLE)
-    play_11 = min(body_1_1, len(frames) - start_1_1)
-    for fr in frames[start_1_1 : start_1_1 + play_11]:
-        env.step(to_action9(fr))
-    wait12, snap12 = idle_until(env, is_surface_control, max_wait=max_wait)
-    if not is_surface_control(snap12):
-        env.close()
-        return {
-            "ok": False,
-            "stage": "1_2_control",
-            "ctrl_wait_1_2": wait12,
-            "snap": _snap_brief(snap12),
-        }
-    play_12 = min(body_1_2, len(frames) - start_1_2)
-    for fr in frames[start_1_2 : start_1_2 + play_12]:
-        env.step(to_action9(fr))
-    wait13, snap13 = idle_until(env, is_1_3_control, max_wait=max_wait)
-    ok = is_1_3_control(snap13)
-    if not ok:
-        env.close()
-        return {
-            "ok": False,
-            "stage": "1_3_control",
-            "ctrl_wait_1_2": wait12,
-            "ctrl_wait_1_3": wait13,
-            "snap": _snap_brief(snap13),
-        }
-    return {
-        "ok": True,
-        "env": env,
-        "ctrl_wait_1_2": wait12,
-        "ctrl_wait_1_3": wait13,
-        "snap": _snap_brief(snap13),
-        "lives": int(snap13.lives),
-    }
-
-
-def search_1_3(
-    frames: list[list[int]],
-    *,
-    start_min: int | None = None,
-    start_max: int | None = None,
-    window: int = 80,
-    step: int = 1,
-    max_play: int = 3200,
-) -> dict[str, Any]:
-    """After warpless 1-1 + 1-2 flag, search FM2 starts for 1-4 control."""
-    from smb.tas.replay import get_state, set_state
-
-    reached = reach_1_3_control(frames)
-    if not reached.get("ok"):
-        return {
-            "mode": "1_3",
-            "control": reached,
-            "best": None,
-            "n_clear": 0,
-        }
-    env = reached.pop("env")
-    wait13 = int(reached["ctrl_wait_1_3"])
-    center = WL_1_3_FM2_HINT + wait13
-    lo = start_min if start_min is not None else max(0, center - window)
-    hi = start_max if start_max is not None else center + window
-    pin = get_state(env)
-    start_lives = int(reached["lives"])
-    trials: list[dict[str, Any]] = []
-    best: dict[str, Any] | None = None
-    print(
-        f"  13 control wait={wait13} center={center} "
-        f"search {lo}..{hi} step={step} {reached['snap']}",
-        flush=True,
-    )
-    try:
-        for si in range(lo, hi + 1, max(1, step)):
-            set_state(env, pin)
-            max_x = 0
-            death: int | None = None
-            leave: int | None = None
-            body = frames[si:]
-            for i in range(min(len(body), max_play)):
-                env.step(to_action9(body[i]))
-                now = read_snapshot(env.get_ram(), frame=i + 1)
-                px = int(now.player_x)
-                if 0 < px < 20000:
-                    max_x = max(max_x, px)
-                if int(now.lives) < start_lives or int(now.player_state) == PLAYER_STATE_DYING:
-                    death = i + 1
-                    break
-                if is_1_4_control(now):
-                    leave = i + 1
-                    break
-            tr = {
-                "start_idx": si,
-                "max_x": max_x,
-                "death": death,
-                "leave_frame": leave,
-                "leave_to": "1-4" if leave is not None else None,
-            }
-            trials.append(tr)
-            score = int(max_x)
-            if leave is not None:
-                score += 100_000 - int(leave)
-            if best is None or score > int(best.get("_score", -1)):
-                best = {**tr, "_score": score}
-            if leave is not None or (max_x or 0) > 400 or si == lo or si == hi:
-                print(
-                    f"  13 si={si} max_x={max_x} leave={leave} death={death}",
-                    flush=True,
-                )
-    finally:
-        env.close()
-    clears = [t for t in trials if t["leave_frame"] is not None]
-    return {
-        "mode": "1_3",
-        "control": reached,
-        "center": center,
-        "start_min": lo,
-        "start_max": hi,
-        "step": step,
-        "best": best,
-        "n_clear": len(clears),
-        "clears": clears[:12],
-        "n_trials": len(trials),
-    }
-
-
 def export_1_3_slice(
     frames: list[list[int]],
     *,
@@ -501,34 +229,15 @@ def export_1_3_slice(
     fm2_path: Path,
     out_path: Path | None = None,
 ) -> dict[str, Any]:
-    dest = out_path or (MODELS_DIR / "smb_1_3_warpless_slice.json")
-    body = [list(f) for f in frames[start_idx : start_idx + body_frames]]
-    payload = frames_to_nes9_rle_payload(
-        body,
-        route_id="smb_1_3_warpless",
-        source=f"HappyLee & Mars608 warpless #3728M FM2 @{start_idx}",
-        extra={
-            "level_id": "smb_1_3_warpless",
-            "start_state": "1-3_control_after_warpless_1_2_flag",
-            "settle_frames": 0,
-            "game_name": "SuperMarioBros-Nes-v0",
-            "target": "1_4_control",
-            "body_frames": len(body),
-            "leave_frames": len(body),
-            "fm2": str(fm2_path),
-            "fm2_start_index": start_idx,
-            "route_id": "smb_all_exits",
-            "stage_id": "1-3",
-            "note": (
-                "32-exit 1-3 athletic (mushroom route in #3728M). "
-                "Do not fold into happylee warps slices."
-            ),
-        },
+    """Back-compat wrapper used by tests; prefer ``export_warpless_slice``."""
+    return export_warpless_slice(
+        frames,
+        stage_id="1-3",
+        start_idx=start_idx,
+        body_frames=body_frames,
+        fm2_path=fm2_path,
+        out_path=out_path,
     )
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(payload) + "\n", encoding="utf-8")
-    payload["_path"] = str(dest)
-    return payload
 
 
 def verify_1_3_slice(
@@ -538,42 +247,9 @@ def verify_1_3_slice(
     body_frames: int = WL_1_3_LEAVE_FRAMES,
 ) -> dict[str, Any]:
     """Replay the 1-3 body from TAS 1-2 flag leave; success = 1-4 control."""
-    reached = reach_1_3_control(frames)
-    if not reached.get("ok"):
-        return {"ok": False, "stage": "1_3_control", "control": reached}
-    env = reached.pop("env")
-    start_lives = int(reached["lives"])
-    leave: int | None = None
-    death: int | None = None
-    max_x = 0
-    snap = None
-    try:
-        body = frames[start_idx : start_idx + body_frames]
-        for i, fr in enumerate(body):
-            env.step(to_action9(fr))
-            snap = read_snapshot(env.get_ram(), frame=i + 1)
-            px = int(snap.player_x)
-            if 0 < px < 20000:
-                max_x = max(max_x, px)
-            if int(snap.lives) < start_lives or int(snap.player_state) == PLAYER_STATE_DYING:
-                death = i + 1
-                break
-            if is_1_4_control(snap):
-                leave = i + 1
-                break
-    finally:
-        env.close()
-    return {
-        "ok": leave is not None and death is None,
-        "mode": "verify_1_3",
-        "control": reached,
-        "start_idx": start_idx,
-        "body_frames": body_frames,
-        "leave_frame": leave,
-        "death": death,
-        "max_x": max_x,
-        "end_snap": _snap_brief(snap) if snap is not None else None,
-    }
+    return verify_warpless_slice(
+        frames, "1-3", start_idx=start_idx, body_frames=body_frames
+    )
 
 
 def isolated_1_3_settle(
@@ -657,6 +333,146 @@ def isolated_1_3_settle(
     }
 
 
+def _stage_key(stage_id: str) -> str:
+    return stage_id.strip().lower().replace("_", "-")
+
+
+def _resolve_stage_job(args: argparse.Namespace) -> tuple[
+    str | None, bool, bool, bool, dict[str, int | None]
+]:
+    """Map CLI aliases onto one (stage, search, export, verify, grid) job."""
+    stage: str | None = None
+    do_search = False
+    do_export = False
+    do_verify = False
+    grid_min = args.grid_min
+    grid_max = args.grid_max
+    window = args.window
+    step = args.step
+
+    if args.search_1_2_flag or args.export_1_2_flag:
+        stage = "1-2"
+        do_search = True
+        do_export = bool(args.export_1_2_flag)
+        grid_min = args.flag_min
+        grid_max = args.flag_max
+        step = args.flag_step
+    if args.search_1_3 or args.export_1_3 or args.verify_1_3:
+        stage = "1-3"
+        do_search = bool(args.search_1_3 or args.export_1_3)
+        do_export = bool(args.export_1_3)
+        do_verify = bool(args.verify_1_3)
+        if args.s13_min is not None:
+            grid_min = args.s13_min
+        if args.s13_max is not None:
+            grid_max = args.s13_max
+        if args.s13_window is not None:
+            window = args.s13_window
+        if args.s13_step is not None:
+            step = args.s13_step
+    if args.search_1_4 or args.export_1_4 or args.verify_1_4:
+        stage = "1-4"
+        do_search = bool(args.search_1_4 or args.export_1_4)
+        do_export = bool(args.export_1_4)
+        do_verify = bool(args.verify_1_4)
+    if args.search_stage:
+        stage = _stage_key(args.search_stage)
+        do_search = True
+    if args.do_export_flag:
+        do_export = True
+        if stage is not None:
+            do_search = True
+    if args.verify_stage:
+        stage = _stage_key(args.verify_stage)
+        do_verify = True
+        if not args.search_stage:
+            do_search = False
+
+    grid = {
+        "start_min": grid_min,
+        "start_max": grid_max,
+        "window": window,
+        "step": max(1, int(step)),
+    }
+    return stage, do_search, do_export, do_verify, grid
+
+
+def _run_stage_job(
+    frames: list[list[int]],
+    fm2_path: Path,
+    meta: dict[str, Any],
+    *,
+    stage: str,
+    do_search: bool,
+    do_export: bool,
+    do_verify: bool,
+    grid: dict[str, int | None],
+    report_path: Path | None,
+) -> int:
+    try:
+        get_leg(stage)
+    except KeyError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    search: dict[str, Any] | None = None
+    best: dict[str, Any] = {}
+    if do_search:
+        search = search_warpless(
+            frames,
+            stage,
+            start_min=grid["start_min"],
+            start_max=grid["start_max"],
+            window=int(grid["window"] or 80),
+            step=int(grid["step"] or 1),
+        )
+        meta[stage.replace("-", "_")] = search
+        print(json.dumps({k: search[k] for k in search if k != "clears"}, indent=2))
+        best = search.get("best") or {}
+
+    if do_export:
+        if not best.get("leave_frame"):
+            print(f"ERROR: {stage} search found no leave; not exporting", file=sys.stderr)
+            rp = report_path or (WARPLESS_REPORT_DIR / f"{stage.replace('-', '_')}.json")
+            rp.parent.mkdir(parents=True, exist_ok=True)
+            rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+            print(f"wrote {rp}", file=sys.stderr)
+            return 1
+        payload = export_warpless_slice(
+            frames,
+            stage_id=stage,
+            start_idx=int(best["start_idx"]),
+            body_frames=int(best["leave_frame"]),
+            fm2_path=fm2_path,
+        )
+        meta[f"exported_{stage.replace('-', '_')}"] = {
+            k: payload[k] for k in payload if k != "segments"
+        }
+        print(f"wrote {payload.get('_path')} frames={payload['num_frames']}", file=sys.stderr)
+
+    if do_verify:
+        si = int(best["start_idx"]) if best.get("start_idx") is not None else None
+        n = int(best["leave_frame"]) if best.get("leave_frame") is not None else None
+        report = verify_warpless_slice(frames, stage, start_idx=si, body_frames=n)
+        meta[f"verify_{stage.replace('-', '_')}"] = report
+        print(json.dumps(report, indent=2))
+        rp = report_path or (
+            WARPLESS_REPORT_DIR / f"{stage.replace('-', '_')}_verify.json"
+        )
+        rp.parent.mkdir(parents=True, exist_ok=True)
+        rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {rp}", file=sys.stderr)
+        return 0 if report.get("ok") else 1
+
+    rp = report_path or (WARPLESS_REPORT_DIR / f"{stage.replace('-', '_')}.json")
+    rp.parent.mkdir(parents=True, exist_ok=True)
+    rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {rp}", file=sys.stderr)
+    if do_search:
+        return 0 if best.get("leave_frame") else 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("fm2", type=Path, nargs="?", default=WARPLESS_FM2)
@@ -675,29 +491,48 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--1-1-start", type=int, default=None, dest="export_start")
     p.add_argument("--1-1-body", type=int, default=None, dest="export_body")
     p.add_argument(
+        "--search",
+        metavar="STAGE",
+        dest="search_stage",
+        default=None,
+        help="grid-search FM2 starts for this 32-exit stage (1-2…8-4)",
+    )
+    p.add_argument(
+        "--export",
+        action="store_true",
+        dest="do_export_flag",
+        help="export the searched stage body (pair with --search STAGE)",
+    )
+    p.add_argument(
+        "--verify",
+        metavar="STAGE",
+        dest="verify_stage",
+        default=None,
+        help="replay exported body from the chained predecessor",
+    )
+    p.add_argument("--window", type=int, default=80, help="FM2 start grid ±window")
+    p.add_argument("--step", type=int, default=1)
+    p.add_argument("--start-min", type=int, default=None, dest="grid_min")
+    p.add_argument("--start-max", type=int, default=None, dest="grid_max")
+    p.add_argument(
         "--search-1-2-flag",
         action="store_true",
-        help="after warpless 1-1, grid-search FM2 starts for 1-3 control",
+        help="alias: --search 1-2 (flag pipe, not W4)",
     )
     p.add_argument("--export-1-2-flag", action="store_true")
     p.add_argument("--1-2-start-min", type=int, default=2080, dest="flag_min")
     p.add_argument("--1-2-start-max", type=int, default=2140, dest="flag_max")
     p.add_argument("--1-2-step", type=int, default=1, dest="flag_step")
-    p.add_argument(
-        "--search-1-3",
-        action="store_true",
-        help="after warpless 1-2 flag, grid-search FM2 starts for 1-4 control",
-    )
+    p.add_argument("--search-1-3", action="store_true")
     p.add_argument("--export-1-3", action="store_true")
+    p.add_argument("--verify-1-3", action="store_true")
     p.add_argument("--1-3-start-min", type=int, default=None, dest="s13_min")
     p.add_argument("--1-3-start-max", type=int, default=None, dest="s13_max")
-    p.add_argument("--1-3-window", type=int, default=80, dest="s13_window")
-    p.add_argument("--1-3-step", type=int, default=1, dest="s13_step")
-    p.add_argument(
-        "--verify-1-3",
-        action="store_true",
-        help="replay warpless 1-3 body from TAS 1-2 flag leave",
-    )
+    p.add_argument("--1-3-window", type=int, default=None, dest="s13_window")
+    p.add_argument("--1-3-step", type=int, default=None, dest="s13_step")
+    p.add_argument("--search-1-4", action="store_true")
+    p.add_argument("--export-1-4", action="store_true")
+    p.add_argument("--verify-1-4", action="store_true")
     p.add_argument(
         "--isolated-1-3",
         action="store_true",
@@ -739,43 +574,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {rp}", file=sys.stderr)
         return 0 if (search.get("best") or {}).get("leave_frame") else 1
 
-    if args.search_1_2_flag or args.export_1_2_flag:
-        search = search_1_2_flag(
-            movie.frames,
-            start_min=args.flag_min,
-            start_max=args.flag_max,
-            step=max(1, args.flag_step),
-        )
-        meta["1_2_flag"] = search
-        print(json.dumps({k: search[k] for k in search if k != "clears"}, indent=2))
-        best = search.get("best") or {}
-        if args.export_1_2_flag and best.get("leave_frame"):
-            payload = export_1_2_flag_slice(
-                movie.frames,
-                start_idx=int(best["start_idx"]),
-                body_frames=int(best["leave_frame"]),
-                fm2_path=args.fm2,
-            )
-            meta["exported_1_2_flag"] = {
-                k: payload[k] for k in payload if k != "segments"
-            }
-            print(f"wrote {payload.get('_path')} frames={payload['num_frames']}", file=sys.stderr)
-        rp = args.report or (WARPLESS_REPORT_DIR / "1_2_flag.json")
-        rp.parent.mkdir(parents=True, exist_ok=True)
-        rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-        print(f"wrote {rp}", file=sys.stderr)
-        return 0 if best.get("leave_frame") else 1
-
-    if args.verify_1_3:
-        report = verify_1_3_slice(movie.frames)
-        meta["verify_1_3"] = report
-        print(json.dumps(report, indent=2))
-        rp = args.report or (WARPLESS_REPORT_DIR / "1_3_verify.json")
-        rp.parent.mkdir(parents=True, exist_ok=True)
-        rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-        print(f"wrote {rp}", file=sys.stderr)
-        return 0 if report.get("ok") else 1
-
     if args.isolated_1_3:
         report = isolated_1_3_settle(movie.frames)
         meta["isolated_1_3"] = report
@@ -786,33 +584,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {rp}", file=sys.stderr)
         return 0 if report.get("ok") else 1
 
-    if args.search_1_3 or args.export_1_3:
-        search = search_1_3(
+    stage, do_search, do_export, do_verify, grid = _resolve_stage_job(args)
+    if stage is not None:
+        return _run_stage_job(
             movie.frames,
-            start_min=args.s13_min,
-            start_max=args.s13_max,
-            window=max(0, args.s13_window),
-            step=max(1, args.s13_step),
+            args.fm2,
+            meta,
+            stage=stage,
+            do_search=do_search,
+            do_export=do_export,
+            do_verify=do_verify,
+            grid=grid,
+            report_path=args.report,
         )
-        meta["1_3"] = search
-        print(json.dumps({k: search[k] for k in search if k != "clears"}, indent=2))
-        best = search.get("best") or {}
-        if args.export_1_3 and best.get("leave_frame"):
-            payload = export_1_3_slice(
-                movie.frames,
-                start_idx=int(best["start_idx"]),
-                body_frames=int(best["leave_frame"]),
-                fm2_path=args.fm2,
-            )
-            meta["exported_1_3"] = {
-                k: payload[k] for k in payload if k != "segments"
-            }
-            print(f"wrote {payload.get('_path')} frames={payload['num_frames']}", file=sys.stderr)
-        rp = args.report or (WARPLESS_REPORT_DIR / "1_3.json")
-        rp.parent.mkdir(parents=True, exist_ok=True)
-        rp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-        print(f"wrote {rp}", file=sys.stderr)
-        return 0 if best.get("leave_frame") else 1
 
     report = annotate_poweron(
         movie.frames,
