@@ -617,10 +617,10 @@ QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.p
 Leftover is play `0x1C` `(120,205)` rod=1 keys=3 bombs=8 TF=`0x1F`
 map=`0x0A` bow=0 arrows=0. ROM: Gohma `0x1C` N=shutter S=key item=heart;
 TF `0x0C` north after the kill. `--through level1-bow` (ROM dest `0x22`)
-is **BLOCKED 3/3** on west-wall around in L1 `0x23` (UP solid at x=64 and
-x=80 tile 119; leftover `(80,117)`). No v4. Next retarget is UP at x=112
-(`ROOM_23_SPEC` `(112,93)`), then cellar bow, then 80R arrows — not an
-unarmed Gohma loop.
+is **1/1** play `0x22` `(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop
+345f). `ADDR_BOW` still 0. Next is 0x22 west-block stairs → cellar bow,
+then 80R arrows — not an unarmed Gohma loop. `--through level2` and
+later still skip this branch.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.

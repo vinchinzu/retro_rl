@@ -59,7 +59,7 @@ def test_bow_through_is_wired_and_stops_before_tf() -> None:
     assert run.report()["stop"] == "level1_bow_0x22"
 
 
-def test_bow22_occupancy_north_wall_around() -> None:
+def test_bow22_occupancy_plus_stem_x112() -> None:
     from retro_harness.nes import nes_action
 
     leftover = _ram(x=136, y=117)
@@ -68,7 +68,13 @@ def test_bow22_occupancy_north_wall_around() -> None:
     assert act.reason == "west_path"
     assert list(act.action) == list(nes_action("LEFT"))
     assert list(act.action) != list(nes_action("DOWN"))
-    # Past the x=80 join: do not keep LEFT into aisle x=64 (westwall v2 solid).
+    # Westwall v3 leftover: UP at x=80 is tile 119. RIGHT back to plus stem.
+    aisle = _ram(x=80, y=117)
+    recover = make_bow22_controller()
+    act = recover.step(read_snapshot(aisle))
+    assert act.reason == "west_path"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("UP"))
     col = _ram(x=NORTH_JOIN_X, y=117)
     climb = make_bow22_controller()
     act = climb.step(read_snapshot(col))
@@ -77,8 +83,8 @@ def test_bow22_occupancy_north_wall_around() -> None:
     moat = _ram(x=WEST_AISLE_X, y=WEST_DOOR_Y)
     peel = make_bow22_controller()
     act = peel.step(read_snapshot(moat))
-    assert act.reason == "north_band"
-    assert list(act.action) == list(nes_action("UP"))
+    assert act.reason == "west_path"
+    assert list(act.action) != list(nes_action("LEFT"))
     assert list(act.action) != list(nes_action("LEFT", "UP"))
     band = _ram(x=NORTH_JOIN_X, y=NORTH_BAND_Y)
     wall = make_bow22_controller()
@@ -88,6 +94,12 @@ def test_bow22_occupancy_north_wall_around() -> None:
     nw = _ram(x=WEST_DOOR_X, y=NORTH_BAND_Y)
     drop = make_bow22_controller()
     act = drop.step(read_snapshot(nw))
+    assert act.reason == "door_drop"
+    assert list(act.action) == list(nes_action("DOWN"))
+    # x112 v1 leftover: west landing (32,117) must DOWN, not RIGHT to x=112.
+    drop_mid = _ram(x=WEST_DOOR_X, y=117)
+    mid = make_bow22_controller()
+    act = mid.step(read_snapshot(drop_mid))
     assert act.reason == "door_drop"
     assert list(act.action) == list(nes_action("DOWN"))
     door = _ram(x=WEST_DOOR_X, y=WEST_DOOR_Y)
