@@ -66,7 +66,7 @@ paddock + y=31 wall x=11–29 + east column x=32), **0× `0x06`**, 185
 stones (`0x04`), 51 large 2×2, 38 stumps.
 CLEAR_BUSHES 10 in the west pocket is GREEN (3007f). Leftover order is
 now **bushes pick+toss → dump all fence posts in ponds → toss 10 stones
-in ponds → walk off shed door onto loaded a8/a1 → hammer 4 large → axe
+in ponds → walk off shed door onto loaded a8/a1 → hammer remaining large → axe
 2 stumps**. ENSURE_HAMMER RAM shelf is GREEN but used to land on shed
 door `(26,30)` `0xFF` (farm map unloads; counts look like a wipe with
 `cleared_count=0`). Hammer fetch now NavTasks to `(25,28)` a1 before
@@ -88,15 +88,19 @@ failures` at the barn walls. Pin `Y1_D2_Stones_Frontier` (45 left).
 Horse-barn sprite walls are `FARM_NO_GO_TILES` (push-into cells, not
 stand-on stasis). Takeoff from `(17,20)` leaves south onto `(17,21)`.
 North-of-barn leftover dumps at `(46,16)` face-up into `0xFA` (trimmed
-`horse_barn_edges` slice), not the F0 south lip. Do not STATUS-promote
-Gate B.
+`horse_barn_edges` slice), not the F0 south lip. Live 400k from
+`Y1_D2_Stones_Frontier`: 45→39 then hug `(48,13)` held=13. y=13→14 is a
+physical wall at x=46–50; open south is x=51. 8k from
+`Y1_D2_Leftover_Checkpoint`: **39→21**. West of the spur do not RIGHT
+onto `(45,14)` 0xA1 — drop at x=44 to y=16. Stall abort at 24k (no
+more 400k hug). Do not STATUS-promote Gate B.
 
-Rocks (`--section rocks`, pin GREEN from `Y1_D2_After_Stones`): 4/4
-large 2×2 in 3747f, `51 → 47`, stam 65→17. Hammer stays planted after the
-first face — a d-pad re-center STZs `$096D`. Spa-return from
-`Y1_D2_After_Rocks` is pin-green (`Y1_D2_After_Spa`, 17→100). Stumps
-quota 2/2 is pin-green from that spa pin (`Y1_D2_After_Stumps`, 38→36).
-Do not STATUS-promote Gate B.
+Rocks (`--section rocks`): first slice 4/4 from `Y1_D2_After_Stones` in
+3747f, `51 → 47`, stam 65→17. CLEAR_ROCKS is now exhaustive (all remaining
+2×2). Hammer stays planted after the first face — a d-pad re-center STZs
+`$096D`. Spa-return from `Y1_D2_After_Rocks` is pin-green
+(`Y1_D2_After_Spa`, 17→100). Stumps quota 2/2 is pin-green from that spa
+pin (`Y1_D2_After_Stumps`, 38→36). Do not STATUS-promote Gate B.
 
 ## Invariants
 

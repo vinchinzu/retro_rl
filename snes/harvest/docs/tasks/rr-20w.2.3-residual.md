@@ -1,56 +1,57 @@
 ## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** IN PROGRESS. 4/4 boulders and 2/2 quota stumps are pin-green.
-CLEAR_STONES is exhaustive in catalog (unit-green) but not empty on the
-live leftover pin. Two live leftover-stone windows from
-`Y1_D2_Stones_Frontier` are red. Natural-entry Day 2 field clearing is
-not.
+**Status:** IN PROGRESS. 4/4 quota boulders and 2/2 quota stumps are
+pin-green. CLEAR_STONES / CLEAR_ROCKS are exhaustive in catalog.
+Live leftover from `Y1_D2_Leftover_Checkpoint` at 8k: **39→21** after
+the FA-east dump hop moved. 21 stones remain. Natural-entry Day 2 is not.
 **Natural entry:** power-on. Named states below are diagnostic pins and
 do not promote STATUS.
 
 ### Verified this session
 
-- Trimmed `horse_barn_edges` in place: dropped the idle prefix (no
-  input). 107066 → 9438 frames (~16.9MB, still gitignored). Start state
-  `Y1_D2_Stones_Frontier`. First step off `(17,20)` `0xA3` is south onto
-  `(17,21)`, then west around y=23. Do not start from
-  `Y1_D2_Morning_After_D1`.
-- Occupancy from the trimmed slice is **push-into cells the farmer never
-  stood on**, not stand-on stasis. Horse-barn no-go:
-  `(16,18)/(17,18)/(18,19)/(19,18)` plus leftover rams `(18,20)/(18,21)`.
-  Cow-barn body is **x=30 y=18–21**, not the dirt column x=31 the tape
-  stood on. `(16,20)` and `(17,21)` stay open. Treating stand-on stasis
-  as no-go boxed `(16,20)` against `0xD8` and blocked the human leave.
-- North-of-barn leftover dumps at `(46,16)` face-up into `0xFA`
-  (`east_spur_fa`). Tape lifted at `(43,12)`/`(43,11)` held=13 and tossed
-  there (held 13→0 twice). Do not haul that cluster around the cow barn
-  to F0. Live pin path from `(17,20)`: 59 adjacent tiles, leave
-  `(17,21)`, ends at FA, no sprite cells. Units: `test_map_config`,
-  `test_carry_toss`, `test_crop_skills` (58 passed).
-- Pin still 45 stones at 18:13, stamina 76, axe+hoe. Remaining samples
-  are the far-east north cluster (x≈40–59, y≈3–8) plus `(19,7)`. AFTER
-  45→32 / 200001f still stand. Do not spend a third 200k.
-- `d2_leftover_probe --headed` is watch-only. Human inspect is
-  `harvest.runtime.harvest_bot play` (`A+S+TAB` / `L+R+SELECT`, `P`
-  session no-go, `F5` save).
+- Leftover stall no longer "checkpoint and continue". Unchanged debris
+  for `stall_frames` (default 24k) **aborts the phase** (FAILURE
+  `no debris progress`). That is why 400k cannot recur on a hug.
+- FA-east lip live physics (checkpoint dump): stand `(46,16)=0x01`,
+  water `(46,14)/(46,15)=0xFA`, A8 bank `(48–50,16)`, stump 2×2 at
+  `(44,12)`, farmer on 0xA0 at `(48,13)` px (771,216) held=13.
+  **LEFT to (47,13) works in 2f. DOWN at x=46–50 y=13 is a wall.**
+  From (47,13), DOWN+B slides east back onto (48,13) — that was the
+  400k oscillation, not a missing via list. First open DOWN is **x=51**
+  (4f). Scripted dump (48,13)→(51,13)→(51,16)→(46,16) in 82f; toss
+  empties hands. On-map count does not include the held stone.
+- Carry vias now cross at `EAST_SPUR_FA_SOUTH_OPEN_X=51` when y≤13.
+  A8 stays no-go from the north (repair skirts y=17). FA-east stasis
+  does not temp-block the x=51 column.
+- West of the spur: `(45,14)/(45,15)=0xA1` push-blocks. Live 8k end
+  `(44,14)` RIGHT is blocked. Vias drop at x=44 to y=16 then east onto
+  `(45,16)`. Unit-green; not a second live leftover.
+- Live 8k from `Y1_D2_Leftover_Checkpoint`: stones **39→21** (18
+  pond-dumped), `cleared_count=18`, left the (48,13) lip. End `(44,14)`
+  still `carry to pond stand (46,16)`. Report
+  `recordings/d2_leftover_stones.json`. No 400k.
+- Do not start from `Y1_D2_Morning_After_D1`.
 
 ### Exact next action
 
-Leftover stones from `Y1_D2_Stones_Frontier` toward the NE cluster, dump
-at `(46,16)` `0xFA`. Optional headed watch under 8k to see takeoff leave
-south. Then a stones window well under 200k, or a human `play --record
-leftover_stones_ne` from that pin. Do not treat pond-lip / A-lift stasis
-from this tape as farm no-go.
+Continue leftover stones from `Y1_D2_Leftover_Checkpoint` (or a fresh
+checkpoint if one is saved). Default stall 24k, timeout **not** 400k
+until remaining 21 move. Human inspect:
 
 ```bash
 uv run python -m harvest.runtime.harvest_bot play \
-  --state Y1_D2_Stones_Frontier --no-day-plan --record leftover_stones_ne
+  --state Y1_D2_Leftover_Checkpoint --no-day-plan --record leftover_stones_ne
+```
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
+  --section stones --state Y1_D2_Leftover_Checkpoint --timeout 80000 \
+  --out recordings/d2_leftover_stones.json
 ```
 
 ### Non-claims
 
 - No STATUS promotion
 - No natural power-on Day 2 completion
-- No claim that remaining stones are gone
-- No live leftover-stone proof after the FA dump patch
-- No third 200k
+- No claim that remaining 21 stones or 47 boulders are gone
+- 8k did not finish CLEAR_STONES and did not start CLEAR_ROCKS

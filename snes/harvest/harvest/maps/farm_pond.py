@@ -26,6 +26,27 @@ COW_BARN_EAST_FACE_TILES: FrozenSet[Tuple[int, int]] = frozenset(
 # west around y=23. Dump NE stones at (46,16) face-up into 0xFA (46,15).
 EAST_SPUR_FA_STAND: Tuple[int, int] = (46, 16)
 EAST_SPUR_FA_FACE: str = "up"
+# Water cells north of the stand. Approach from west dirt (45,16), not (46,14).
+EAST_SPUR_FA_WATER: FrozenSet[Tuple[int, int]] = frozenset({(46, 14), (46, 15)})
+EAST_SPUR_FA_APPROACH: Tuple[int, int] = (45, 16)
+# Live leftover checkpoint: x=48 y=16 is 0xA8 bank (walkable ID, push-blocks
+# from the north). Keep it no-go so a y=15 hug cannot south onto it; y=16
+# east→west repair skirts via y=17.
+EAST_SPUR_FA_EAST_LANE_X: int = 47
+EAST_SPUR_FA_A8_BANK: FrozenSet[Tuple[int, int]] = frozenset(
+    (x, 16) for x in range(48, 51)
+)
+# y=13→14 is a physical wall at x=46–50 even when IDs are 0x01/0xA0/0xA1.
+# LEFT from (48,13) reaches (47,13) then DOWN slides back onto the 0xA0 bank
+# (the 400k leftover oscillation). First open DOWN is x=51 (4f live).
+EAST_SPUR_FA_SOUTH_OPEN_X: int = 51
+# West of the spur: (45,14)/(45,15) are 0xA1 (walkable ID, push-blocks).
+# Live leftover after the x=51 dump sat at (44,14); RIGHT is blocked.
+# Drop to y=16 at x=44, then east onto the approach.
+EAST_SPUR_FA_WEST_DROP_X: int = 44
+EAST_SPUR_FA_WEST_LIP: FrozenSet[Tuple[int, int]] = frozenset(
+    {(45, 14), (45, 15)}
+)
 HORSE_BARN_LEAVE_TILE: Tuple[int, int] = (17, 21)
 
 FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({

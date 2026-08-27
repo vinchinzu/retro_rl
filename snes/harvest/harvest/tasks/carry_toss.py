@@ -17,8 +17,15 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
 from harvest.maps.farm_pond import (
     COW_BARN_EAST_FACE_TILES,
+    EAST_SPUR_FA_A8_BANK,
+    EAST_SPUR_FA_APPROACH,
+    EAST_SPUR_FA_EAST_LANE_X,
     EAST_SPUR_FA_FACE,
+    EAST_SPUR_FA_SOUTH_OPEN_X,
     EAST_SPUR_FA_STAND,
+    EAST_SPUR_FA_WATER,
+    EAST_SPUR_FA_WEST_DROP_X,
+    EAST_SPUR_FA_WEST_LIP,
     HORSE_BARN_WALL_TILES,
 )
 from harvest.tasks.farm_toss import in_place_toss_actions
@@ -42,7 +49,7 @@ _BARN_EAST_HIGHWAY_Y = 14
 _BARN_EAST_HIGHWAY_X = 31
 _BARN_SOUTH_JOIN_Y = 26
 _POND_EAST_BYPASS_X = 35
-_FA_HIGHWAY_X = EAST_SPUR_FA_STAND[0]
+_FA_APPROACH_X = EAST_SPUR_FA_APPROACH[0]
 _CORRIDOR_BFS_STEPS = 48
 _COW_BARN_WEST_FACE = frozenset(
     (x, y) for x in range(29, 31) for y in range(18, 22)
@@ -90,10 +97,12 @@ def _barn_east_pond_vias(player: Tuple[int, int]) -> list[Tuple[int, int]]:
 
 
 def _east_spur_fa_vias(player: Tuple[int, int]) -> list[Tuple[int, int]]:
-    """y=14 highway to the tape-verified 0xFA toss stand.
+    """y=14 highway to the west dirt of the 0xFA toss stand.
 
-    Horse-barn takeoff leaves south (tape), then west around y=23. West onto
-    (16,20) is a pocket: 0xD8 / sprite walls, no north exit.
+    Last hop is (45,16) east onto (46,16). Do not route onto water
+    (46,14)/(46,15) — that hugs (45,14) facing the spur. Horse-barn
+    takeoff leaves south, then west around y=23. West onto (16,20) is a
+    pocket: 0xD8 / sprite walls, no north exit.
     """
     vias: list[Tuple[int, int]] = []
     cur = player
@@ -103,11 +112,39 @@ def _east_spur_fa_vias(player: Tuple[int, int]) -> list[Tuple[int, int]]:
     if under_horse:
         vias.extend(((17, 23), (13, 23), (13, _BARN_EAST_HIGHWAY_Y)))
         cur = vias[-1]
-    elif cur[1] != _BARN_EAST_HIGHWAY_Y:
+    # East of the spur. y<=13 cannot south at x=46-50 (live leftover lip).
+    # Cross at x=51, then y=16 west onto the stand. A8 is no-go from the
+    # north; repair may skirt y=17. Do not walk (46,14)/(46,15) water.
+    if cur[0] >= EAST_SPUR_FA_STAND[0]:
+        if cur[1] <= 13:
+            open_x = EAST_SPUR_FA_SOUTH_OPEN_X
+            if cur[0] != open_x:
+                vias.append((open_x, cur[1]))
+                cur = vias[-1]
+            if cur[1] != EAST_SPUR_FA_STAND[1]:
+                vias.append((open_x, EAST_SPUR_FA_STAND[1]))
+            vias.append(EAST_SPUR_FA_STAND)
+            return vias
+        lane_x = EAST_SPUR_FA_EAST_LANE_X
+        if cur[0] != lane_x:
+            vias.append((lane_x, cur[1]))
+            cur = vias[-1]
+        if cur[1] != EAST_SPUR_FA_APPROACH[1]:
+            vias.append((lane_x, EAST_SPUR_FA_APPROACH[1]))
+        vias.append(EAST_SPUR_FA_STAND)
+        return vias
+    drop_x = EAST_SPUR_FA_WEST_DROP_X
+    if cur[1] != _BARN_EAST_HIGHWAY_Y and cur[0] <= drop_x:
         vias.append((cur[0], _BARN_EAST_HIGHWAY_Y))
         cur = vias[-1]
-    if cur[0] != _FA_HIGHWAY_X:
-        vias.append((_FA_HIGHWAY_X, _BARN_EAST_HIGHWAY_Y))
+    if cur[0] != drop_x and cur[1] <= _BARN_EAST_HIGHWAY_Y:
+        vias.append((drop_x, cur[1]))
+        cur = vias[-1]
+    if cur[1] != EAST_SPUR_FA_STAND[1]:
+        vias.append((cur[0], EAST_SPUR_FA_STAND[1]))
+        cur = vias[-1]
+    if cur != EAST_SPUR_FA_APPROACH:
+        vias.append(EAST_SPUR_FA_APPROACH)
     vias.append(EAST_SPUR_FA_STAND)
     return vias
 
@@ -129,6 +166,12 @@ def _geometric_barn_east_path(
     for via in _corridor_vias(player, dest):
         path.extend(_adjacent_run(cur, via))
         cur = via
+    if dest == EAST_SPUR_FA_STAND:
+        path = [
+            tile
+            for tile in path
+            if tile not in EAST_SPUR_FA_WATER and tile not in EAST_SPUR_FA_WEST_LIP
+        ]
     return path
 
 
@@ -149,6 +192,9 @@ def _repair_walkable_path(
 
     saved = set(pathfinder.temp_blocked)
     pathfinder.temp_blocked.update(_BARN_PUSH_FACES)
+    pathfinder.temp_blocked.update(EAST_SPUR_FA_WATER)
+    pathfinder.temp_blocked.update(EAST_SPUR_FA_A8_BANK)
+    pathfinder.temp_blocked.update(EAST_SPUR_FA_WEST_LIP)
     try:
         path: list[Tuple[int, int]] = []
         cur = start
@@ -237,6 +283,9 @@ class CarryToPondStand:
 
     def __post_init__(self) -> None:
         self._navigator = Navigator(self._pathfinder)
+        self._pathfinder.no_go_tiles.update(EAST_SPUR_FA_WATER)
+        self._pathfinder.no_go_tiles.update(EAST_SPUR_FA_A8_BANK)
+        self._pathfinder.no_go_tiles.update(EAST_SPUR_FA_WEST_LIP)
 
     def reset(self, world: WorldState) -> None:
         self._stand = None
@@ -344,9 +393,18 @@ class CarryToPondStand:
 
         if self._navigator.stasis > self.stasis_repath or not self._navigator.path:
             if self._navigator.path:
-                self._pathfinder.block_push_facing(
-                    world.ram, self._navigator.path[0], pixel_moved=False
+                nxt = self._navigator.path[0]
+                fa_east_lip = (
+                    self._stand == EAST_SPUR_FA_STAND
+                    and player[1] <= 13
+                    and player[0] >= EAST_SPUR_FA_STAND[0]
                 )
+                # Do not temp-block the x=51 south-cross (or the east hops
+                # onto it). Blocking (47,13) is how the old lip sat 400k.
+                if not fa_east_lip:
+                    self._pathfinder.block_push_facing(
+                        world.ram, nxt, pixel_moved=False
+                    )
             self._stand = None
             self._navigator.path = []
             if not self._choose_stand(world, farm_toss_stands(player)):
