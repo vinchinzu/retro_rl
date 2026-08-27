@@ -8,6 +8,26 @@ from typing import Dict, FrozenSet, Tuple
 # Farm coordinates whose visual/collision behavior is not represented by the
 # metatile alone.  Several well-body tiles render as 0xA1, which is walkable in
 # other farm contexts, so keep the coordinate-specific facts here.
+
+# Horse barn sprite on farm 0x00. Live IDs are 0xA0/0xA3 (path), so occupancy
+# comes from the trimmed horse_barn_edges slice: cells the farmer pushed into
+# and never stood on. Stand-on stasis tiles stay walkable — treating those as
+# no-go boxed (16,20) against 0xD8 and blocked the human south leave.
+HORSE_BARN_WALL_TILES: FrozenSet[Tuple[int, int]] = frozenset({
+    (16, 18), (17, 18), (18, 19), (19, 18),
+    (18, 20), (18, 21),
+})
+# Cow-barn body west of the dirt the tape stood on (x=31 y=18–21). Push-into
+# was x=30, not the leftover x=31 column.
+COW_BARN_EAST_FACE_TILES: FrozenSet[Tuple[int, int]] = frozenset(
+    (30, y) for y in range(18, 22)
+)
+# Trimmed horse_barn_edges: first step off (17,20) is south onto (17,21), then
+# west around y=23. Dump NE stones at (46,16) face-up into 0xFA (46,15).
+EAST_SPUR_FA_STAND: Tuple[int, int] = (46, 16)
+EAST_SPUR_FA_FACE: str = "up"
+HORSE_BARN_LEAVE_TILE: Tuple[int, int] = (17, 21)
+
 FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     # Shipping-bin ditch / F2 water fringe (does NOT refill the can).
     (9, 26), (9, 27), (9, 28),
@@ -17,7 +37,7 @@ FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     # Well body.  These are visually solid even when the live tile ID is 0xA1.
     (15, 26), (16, 26), (17, 26),
     (15, 27), (16, 27), (17, 27),
-})
+}) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES
 
 # ── Farm water sources (ROM-mapped, spring farm tilemap 0x00) ──────────────
 # CheckToolSuccess farm fill only when tile-in-front *property* is F0/F9–FD

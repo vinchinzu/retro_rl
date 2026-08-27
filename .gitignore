@@ -374,7 +374,7 @@ nes/zelda_i/scratch/**/*_v[0-9]*.json
 nes/zelda_i/scratch/**/*.png
 # Harvest probe window dumps (named recordings stay; **/recordings/ already ignores the dir)
 snes/harvest/recordings/**/*_window*.json
-# Human inspect tape from Y1_D2_Stones_Frontier (107k frames / ~187MB).
+# Human inspect tape from Y1_D2_Stones_Frontier (idle prefix trimmed).
 snes/harvest/tasks/horse_barn_edges.json
 
 # Local OpenCode overrides / agent auth (never commit)

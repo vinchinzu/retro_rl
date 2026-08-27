@@ -1,66 +1,56 @@
 ## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** IN PROGRESS. 4/4 boulders are pin-green; 2 stumps and the
-natural-entry Day 2 rung are not.
-**Natural entry:** power-on. Named states below are diagnostic pins and do
-not promote STATUS.
+**Status:** IN PROGRESS. 4/4 boulders and 2/2 quota stumps are pin-green.
+CLEAR_STONES is exhaustive in catalog (unit-green) but not empty on the
+live leftover pin. Two live leftover-stone windows from
+`Y1_D2_Stones_Frontier` are red. Natural-entry Day 2 field clearing is
+not.
+**Natural entry:** power-on. Named states below are diagnostic pins and
+do not promote STATUS.
 
 ### Verified this session
 
-- Hammer/axe multi-hit must stay planted. `$096D` STZs on a d-pad walk.
-  `handle_tool_clear` faces once, then Y-only; `_handle_clearing` does not
-  re-center after that face. Hits are credited from a live tool-counter or
-  stamina edge after a short post-swing wait (the ROM can lag one frame).
-  A genuine miss stays on the same stand; three misses try another footprint
-  side (that walk resets the counter, which is expected).
-- From `Y1_D2_After_Stones` (65 stam, 18:04, hammer fetched 1094f):
-  `CLEAR_ROCKS` **4/4 GREEN**, `51 → 47` large rocks, 3747f / 62.45s,
-  stam `65 → 17`. Sequential planted hits 1–5 then break. Successor pin
-  `Y1_D2_After_Rocks` (tile 39,13, hammer selected, 17 stam).
-- Leftover probe inserts spa on smash `stamina_low` and before stumps when
-  live stamina cannot finish an 8-swing 2×2 (`should_spa_retry` /
-  `needs_spa_before_next_smash`).
-- Spa soak is fill-to-max: ~5–6 jump-exits of 0xF7, keep bathing past the
-  cycle budget until `current == maximum`, and `return_farm` SUCCESS
-  requires that. Unit-tested in `SpaFillToMaxTests`. Live farm→spa from
-  `Y1_D2_After_Rocks` is still red (west-gate A8 hug).
-- Focused non-ROM suite for the changed modules passed (125+). `test_d2_spine`
-  still has two unrelated evidence failures.
-
-### Current red: stumps blocked on shed + west-gate, not on axe swings
-
-Do not use `Y1_D2_Stumps_Frontier` (axe-route timeout overwrite, then an
-earlier spa hug). Resume from `Y1_D2_After_Rocks`.
-
-`--section stumps` from that pin:
-
-1. `ENSURE_AXE` failed `multi_nav timeout` at 8000f. Start (39,13), shed
-   waypoint ~(456,489), stuck (29,25) after push-facing (30,20)/(30,21).
-   Hammer fetch from the pond stand `Y1_D2_After_Stones` (29,35) was fine;
-   north-farm leftover debris still seals the shed hop.
-2. Earlier spa insert from a 13-stam After_Rocks **did fire** (correct), then
-   `route_mountain` pixel-stuck at (118,421) tile (7,26) A8 “gate road”
-   going to (40,424). First spa red, different checkbox from the axe-shed
-   timeout. A8 is in `FARM_WALKABLE` but that row hugs the shipping ditch /
-   pond edge.
-
-Planted axe policy is the same helper as hammer; it has not been live-proven
-on a stump yet.
+- Trimmed `horse_barn_edges` in place: dropped the idle prefix (no
+  input). 107066 → 9438 frames (~16.9MB, still gitignored). Start state
+  `Y1_D2_Stones_Frontier`. First step off `(17,20)` `0xA3` is south onto
+  `(17,21)`, then west around y=23. Do not start from
+  `Y1_D2_Morning_After_D1`.
+- Occupancy from the trimmed slice is **push-into cells the farmer never
+  stood on**, not stand-on stasis. Horse-barn no-go:
+  `(16,18)/(17,18)/(18,19)/(19,18)` plus leftover rams `(18,20)/(18,21)`.
+  Cow-barn body is **x=30 y=18–21**, not the dirt column x=31 the tape
+  stood on. `(16,20)` and `(17,21)` stay open. Treating stand-on stasis
+  as no-go boxed `(16,20)` against `0xD8` and blocked the human leave.
+- North-of-barn leftover dumps at `(46,16)` face-up into `0xFA`
+  (`east_spur_fa`). Tape lifted at `(43,12)`/`(43,11)` held=13 and tossed
+  there (held 13→0 twice). Do not haul that cluster around the cow barn
+  to F0. Live pin path from `(17,20)`: 59 adjacent tiles, leave
+  `(17,21)`, ends at FA, no sprite cells. Units: `test_map_config`,
+  `test_carry_toss`, `test_crop_skills` (58 passed).
+- Pin still 45 stones at 18:13, stamina 76, axe+hoe. Remaining samples
+  are the far-east north cluster (x≈40–59, y≈3–8) plus `(19,7)`. AFTER
+  45→32 / 200001f still stand. Do not spend a third 200k.
+- `d2_leftover_probe --headed` is watch-only. Human inspect is
+  `harvest.runtime.harvest_bot play` (`A+S+TAB` / `L+R+SELECT`, `P`
+  session no-go, `F5` save).
 
 ### Exact next action
 
-From `Y1_D2_After_Rocks`, get the axe without a 8k shed timeout (open the
-(30,20) corridor or start the ensure from a loaded shed-adjacent stand),
-clear 2 stumps with the planted Y-only policy, and compose spa when stamina
-drops below the 8-swing budget. Do not weaken the stump quota. Do not treat
-the west-gate A8 hug as spa success. After those are green, the remaining
-product proof is one Clean power-on through field clearing, eight wet
-potatoes, and shipping before 17:00.
+Leftover stones from `Y1_D2_Stones_Frontier` toward the NE cluster, dump
+at `(46,16)` `0xFA`. Optional headed watch under 8k to see takeoff leave
+south. Then a stones window well under 200k, or a human `play --record
+leftover_stones_ne` from that pin. Do not treat pond-lip / A-lift stasis
+from this tape as farm no-go.
+
+```bash
+uv run python -m harvest.runtime.harvest_bot play \
+  --state Y1_D2_Stones_Frontier --no-day-plan --record leftover_stones_ne
+```
 
 ### Non-claims
 
 - No STATUS promotion
 - No natural power-on Day 2 completion
-- No claim that all rocks or stumps are gone
-- No claim that spa filled stamina and returned to work
-- No claim that `Y1_D2_Stumps_Frontier` is a valid successor
+- No claim that remaining stones are gone
+- No live leftover-stone proof after the FA dump patch
+- No third 200k

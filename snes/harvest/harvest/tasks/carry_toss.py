@@ -15,6 +15,12 @@ from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 
 from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+from harvest.maps.farm_pond import (
+    COW_BARN_EAST_FACE_TILES,
+    EAST_SPUR_FA_FACE,
+    EAST_SPUR_FA_STAND,
+    HORSE_BARN_WALL_TILES,
+)
 from harvest.tasks.farm_toss import in_place_toss_actions
 from harvest.tasks.nav import Navigator, Pathfinder, VIEWPORT_HOP_TILES, make_action
 from harvest.tasks.pond_policy import (
@@ -29,16 +35,189 @@ PondStand = Tuple[Tuple[int, int], str]
 SOUTH_LIP_STANDS = frozenset({PRIMARY_POND_STAND, ALT_SOUTH_LIP_STAND})
 POND_WEST_EGRESS_STAND = (29, 35)
 
+# North-of-barn carry. y=14 is the 0x02 highway; y=26 is south of the barns.
+# horse_barn_edges: dump NE stones at EAST_SPUR_FA_STAND, not the F0 south lip.
+# x=31 y=18–21 is the cow-barn east wall, not dirt. F0 vias stay for south field.
+_BARN_EAST_HIGHWAY_Y = 14
+_BARN_EAST_HIGHWAY_X = 31
+_BARN_SOUTH_JOIN_Y = 26
+_POND_EAST_BYPASS_X = 35
+_FA_HIGHWAY_X = EAST_SPUR_FA_STAND[0]
+_CORRIDOR_BFS_STEPS = 48
+_COW_BARN_WEST_FACE = frozenset(
+    (x, y) for x in range(29, 31) for y in range(18, 22)
+)
+_BARN_PUSH_FACES = (
+    HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | _COW_BARN_WEST_FACE
+)
+
+
+def _needs_barn_east_corridor(tile: Tuple[int, int]) -> bool:
+    """True until south of the barn, including a stand under the horse barn."""
+    return tile[1] < _BARN_SOUTH_JOIN_Y
+
+
+def _adjacent_run(
+    start: Tuple[int, int], goal: Tuple[int, int]
+) -> list[Tuple[int, int]]:
+    """Goal-inclusive, start-exclusive 4-adjacent tiles. X then Y."""
+    x, y = start
+    gx, gy = goal
+    tiles: list[Tuple[int, int]] = []
+    while x != gx:
+        x += 1 if gx > x else -1
+        tiles.append((x, y))
+    while y != gy:
+        y += 1 if gy > y else -1
+        tiles.append((x, y))
+    return tiles
+
+
+def _barn_east_pond_vias(player: Tuple[int, int]) -> list[Tuple[int, int]]:
+    vias: list[Tuple[int, int]] = []
+    if player[0] != _BARN_EAST_HIGHWAY_X:
+        vias.append((player[0], _BARN_EAST_HIGHWAY_Y))
+        vias.append((_BARN_EAST_HIGHWAY_X, _BARN_EAST_HIGHWAY_Y))
+    vias.extend(
+        (
+            (_BARN_EAST_HIGHWAY_X, _BARN_SOUTH_JOIN_Y),
+            (_POND_EAST_BYPASS_X, _BARN_SOUTH_JOIN_Y),
+            (_POND_EAST_BYPASS_X, PRIMARY_POND_STAND[1]),
+            PRIMARY_POND_STAND,
+        )
+    )
+    return vias
+
+
+def _east_spur_fa_vias(player: Tuple[int, int]) -> list[Tuple[int, int]]:
+    """y=14 highway to the tape-verified 0xFA toss stand.
+
+    Horse-barn takeoff leaves south (tape), then west around y=23. West onto
+    (16,20) is a pocket: 0xD8 / sprite walls, no north exit.
+    """
+    vias: list[Tuple[int, int]] = []
+    cur = player
+    under_horse = player == (17, 20) or (
+        16 <= player[0] <= 18 and 19 <= player[1] <= 21
+    )
+    if under_horse:
+        vias.extend(((17, 23), (13, 23), (13, _BARN_EAST_HIGHWAY_Y)))
+        cur = vias[-1]
+    elif cur[1] != _BARN_EAST_HIGHWAY_Y:
+        vias.append((cur[0], _BARN_EAST_HIGHWAY_Y))
+        cur = vias[-1]
+    if cur[0] != _FA_HIGHWAY_X:
+        vias.append((_FA_HIGHWAY_X, _BARN_EAST_HIGHWAY_Y))
+    vias.append(EAST_SPUR_FA_STAND)
+    return vias
+
+
+def _corridor_vias(
+    player: Tuple[int, int], dest: Tuple[int, int]
+) -> list[Tuple[int, int]]:
+    if dest == EAST_SPUR_FA_STAND:
+        return _east_spur_fa_vias(player)
+    return _barn_east_pond_vias(player)
+
+
+def _geometric_barn_east_path(
+    player: Tuple[int, int], dest: Tuple[int, int] = PRIMARY_POND_STAND
+) -> list[Tuple[int, int]]:
+    """Adjacent vias to dest. FA stays on y=14; F0 still south-joins at x=31."""
+    path: list[Tuple[int, int]] = []
+    cur = player
+    for via in _corridor_vias(player, dest):
+        path.extend(_adjacent_run(cur, via))
+        cur = via
+    return path
+
+
+def _repair_walkable_path(
+    pathfinder: Pathfinder,
+    ram,
+    start: Tuple[int, int],
+    geometric: list[Tuple[int, int]],
+    dest: Tuple[int, int],
+) -> list[Tuple[int, int]]:
+    """Keep the highway order, but BFS around live solids (2x2 / 0xA6 / barn)."""
+    if not geometric:
+        return geometric
+    if all(
+        pathfinder.is_walkable(ram, x, y, current_pos=start) for x, y in geometric
+    ):
+        return geometric
+
+    saved = set(pathfinder.temp_blocked)
+    pathfinder.temp_blocked.update(_BARN_PUSH_FACES)
+    try:
+        path: list[Tuple[int, int]] = []
+        cur = start
+        i = 0
+        while i < len(geometric):
+            nxt = geometric[i]
+            if nxt == cur:
+                i += 1
+                continue
+            if (
+                abs(nxt[0] - cur[0]) + abs(nxt[1] - cur[1]) == 1
+                and pathfinder.is_walkable(ram, nxt[0], nxt[1], current_pos=cur)
+            ):
+                path.append(nxt)
+                cur = nxt
+                i += 1
+                continue
+            goal = None
+            goal_i = i
+            for j in range(i, len(geometric)):
+                cand = geometric[j]
+                if cand != cur and pathfinder.is_walkable(
+                    ram, cand[0], cand[1], current_pos=cur
+                ):
+                    goal = cand
+                    goal_i = j
+                    break
+            if goal is None:
+                goal = dest
+                goal_i = len(geometric) - 1
+            hop = pathfinder.find_path(
+                ram, cur, goal, max_steps=_CORRIDOR_BFS_STEPS
+            )
+            if not hop:
+                i = goal_i + 1
+                continue
+            path.extend(hop)
+            cur = hop[-1]
+            if cur == goal:
+                i = goal_i + 1
+            else:
+                break
+        return path
+    finally:
+        pathfinder.temp_blocked.clear()
+        pathfinder.temp_blocked.update(saved)
+
+
+def _barn_east_pond_path(
+    player: Tuple[int, int],
+    ram=None,
+    pathfinder: Optional[Pathfinder] = None,
+    dest: Tuple[int, int] = EAST_SPUR_FA_STAND,
+) -> list[Tuple[int, int]]:
+    geometric = _geometric_barn_east_path(player, dest)
+    if ram is None or pathfinder is None:
+        return geometric
+    return _repair_walkable_path(pathfinder, ram, player, geometric, dest)
+
 
 def farm_toss_stands(player: Tuple[int, int]) -> Tuple[PondStand, ...]:
-    """Return the verified debris dump stand.
+    """Verified dump stand. North of the barns uses tape 0xFA; south uses F0.
 
-    North F9 refills a watering can, but its A1 bank push-blocks held debris;
-    a throw from farther west merely re-drops the object on dry ground.  F0 is
-    reachable from the north paddock around the live 2x2 boulder, so keep one
-    honest destination instead of cycling through false local minima.
+    North F9 refills a can but its A1 bank push-blocks held debris. The
+    horse_barn_edges slice tossed leftover stones from (46,16) face-up into
+    east_spur_fa (46,15). Do not haul that cluster around the cow barn to F0.
     """
-    del player
+    if player[1] < _BARN_SOUTH_JOIN_Y:
+        return ((EAST_SPUR_FA_STAND, EAST_SPUR_FA_FACE),)
     return ((PRIMARY_POND_STAND, PRIMARY_POND_FACE),)
 
 
@@ -75,7 +254,19 @@ class CarryToPondStand:
 
     def _choose_stand(self, world: WorldState, stands: Iterable[PondStand]) -> bool:
         player = self._navigator.current_tile
-        for stand, face in stands:
+        ordered = tuple(stands)
+        if _needs_barn_east_corridor(player) and ordered:
+            path = _barn_east_pond_path(
+                player,
+                ram=world.ram,
+                pathfinder=self._pathfinder,
+                dest=ordered[0][0],
+            )
+            if path:
+                self._stand, self._face = ordered[0]
+                self._navigator.path = path
+                return True
+        for stand, face in ordered:
             path = self._pathfinder.find_path(
                 world.ram, player, stand, max_steps=VIEWPORT_HOP_TILES
             )
