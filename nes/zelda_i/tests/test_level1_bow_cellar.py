@@ -8,7 +8,8 @@ from zelda_i.level1_bow import LEVEL1_BOW_ROOM
 from zelda_i.level1_bow_cellar import (
     BLOCK_OBJECT_TYPE,
     EAST_INLAND_X,
-    NORTH_PEEL_Y,
+    SOUTH_LANE_Y,
+    WEST_AISLE_X,
     level1_bow_cellar_stages,
     level1_bow_cellar_success,
     make_bow_cellar_controller,
@@ -65,7 +66,7 @@ def test_bow_cellar_through_is_wired_after_enter_stop() -> None:
     assert run.report()["stop"] == "level1_bow_cellar"
 
 
-def test_bow_cellar_occupancy_north_face_then_down() -> None:
+def test_bow_cellar_occupancy_south_around_then_down() -> None:
     from retro_harness.nes import nes_action
 
     leftover = _ram(x=224, y=141)
@@ -79,15 +80,28 @@ def test_bow_cellar_occupancy_north_face_then_down() -> None:
     _plant_block(inland, 4, 96, 144)
     peel = make_bow_cellar_controller()
     act = peel.step(read_snapshot(inland))
-    assert act.reason == "north_peel"
-    assert list(act.action) == list(nes_action("UP"))
-    band = _ram(x=EAST_INLAND_X, y=NORTH_PEEL_Y)
-    _plant_block(band, 4, 96, 144)
-    west = make_bow_cellar_controller()
-    act = west.step(read_snapshot(band))
-    assert act.reason == "west_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason == "south_peel"
+    assert list(act.action) == list(nes_action("DOWN"))
     assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    south = _ram(x=EAST_INLAND_X, y=SOUTH_LANE_Y)
+    _plant_block(south, 4, 96, 144)
+    west = make_bow_cellar_controller()
+    act = west.step(read_snapshot(south))
+    assert act.reason == "west_south"
+    assert list(act.action) == list(nes_action("LEFT"))
+    aisle = _ram(x=WEST_AISLE_X, y=SOUTH_LANE_Y)
+    _plant_block(aisle, 4, 96, 144)
+    climb = make_bow_cellar_controller()
+    act = climb.step(read_snapshot(aisle))
+    assert act.reason == "north_aisle"
+    assert list(act.action) == list(nes_action("UP"))
+    lane = _ram(x=WEST_AISLE_X, y=128)
+    _plant_block(lane, 4, 96, 144)
+    across = make_bow_cellar_controller()
+    act = across.step(read_snapshot(lane))
+    assert act.reason == "east_face"
+    assert list(act.action) == list(nes_action("RIGHT"))
     face = north_face_stand(westmost_block_0x68(read_snapshot(leftover)))
     assert face == (96, 128)
     at_face = _ram(x=96, y=128)

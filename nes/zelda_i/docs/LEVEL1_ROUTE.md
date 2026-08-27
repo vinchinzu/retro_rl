@@ -41,7 +41,8 @@ still skips it; `--through level2` and later never run that branch.
 Survival `--through level1-bow` is **1/1** enter-stop play `0x22`
 `(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop 345f). Plus-stem UP at
 x=112 then north y=93 LEFT. `--through level1-bow-cellar` dest mode 9
-is open; leftover `(144,109)` on the north diamond. `ADDR_BOW` still 0.
+is open; leftover `(144,173)` on the south diamond (SE point).
+`ADDR_BOW` still 0.
 Not on Clean M5. Map and wooden Boomerang pickups stay skipped
 (L2 magical boomerang replaces the wooden).
 
@@ -56,7 +57,7 @@ Not on Clean M5. Map and wooden Boomerang pickups stay skipped
 | `0x43` | Map room | 5 Gels; `RoomItemId=0x17` |
 | `0x33` | Stalfos key | 3 Stalfos; fixed key inventory increase |
 | `0x23` | Goriya key / Bow branch | 3 Goriyas; fixed key; Survival KEY-LEFT into `0x22` 1/1 |
-| `0x22` | Bow cellar room | 4 blade traps; live 0x68 `(96,144)`; leftover `(144,109)` north diamond; bow not claimed |
+| `0x22` | Bow cellar room | 4 blade traps; live 0x68 `(96,144)`; leftover `(144,173)` south diamond; bow not claimed |
 | `0x44` | Boomerang | 3 Goriyas; `RoomItemId=0x1D`; pickup skipped |
 | `0x45` | Wallmaster key | 8 Wallmaster slots; fixed key; north boss door |
 | `0x35` | Aquamentus / Heart | type `0x3D`; fireballs `0x55`; health `0x20→0x31` |
