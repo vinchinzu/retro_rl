@@ -81,15 +81,18 @@ def test_bow_cellar_occupancy_south_around_then_down() -> None:
     peel = make_bow_cellar_controller()
     act = peel.step(read_snapshot(inland))
     assert act.reason == "south_peel"
+    assert SOUTH_LANE_Y == 157
     assert list(act.action) == list(nes_action("DOWN"))
     assert list(act.action) != list(nes_action("UP"))
     assert list(act.action) != list(nes_action("LEFT"))
+    # south173 leftover: LEFT at y=173 is the SE diamond. Peel stops at 157.
     south = _ram(x=EAST_INLAND_X, y=SOUTH_LANE_Y)
     _plant_block(south, 4, 96, 144)
     west = make_bow_cellar_controller()
     act = west.step(read_snapshot(south))
     assert act.reason == "west_south"
     assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
     aisle = _ram(x=WEST_AISLE_X, y=SOUTH_LANE_Y)
     _plant_block(aisle, 4, 96, 144)
     climb = make_bow_cellar_controller()

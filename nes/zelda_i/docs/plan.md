@@ -618,10 +618,10 @@ Leftover is play `0x1C` `(120,205)` rod=1 keys=3 bombs=8 TF=`0x1F`
 map=`0x0A` bow=0 arrows=0. ROM: Gohma `0x1C` N=shutter S=key item=heart;
 TF `0x0C` north after the kill. `--through level1-bow` (ROM dest `0x22`)
 is **1/1** play `0x22` `(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop
-345f). `--through level1-bow-cellar` leftover `0x22` `(144,173)` (south
-diamond SE point; dest mode 9 not on tape). `ADDR_BOW` still 0. Next
-retarget is LEFT at live y=157 from `(176,157)`, then 80R arrows — not
-an unarmed Gohma loop. `--through level2` and later still skip this
+345f). `--through level1-bow-cellar` leftover `0x22` `(160,157)` (SE
+diamond edge; dest mode 9 not on tape). `ADDR_BOW` still 0. Next
+retarget is LEFT at live y=189 only to x=128 then UP, then 80R arrows —
+not an unarmed Gohma loop. `--through level2` and later still skip this
 branch.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live

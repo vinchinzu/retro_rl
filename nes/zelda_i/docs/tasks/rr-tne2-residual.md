@@ -3,10 +3,11 @@
 **Status:** `--through level6-north2c` is still **1/1** play `0x1C`
 `(120,205)` Gohma unfought. `--through level1-bow` is **1/1** enter-stop
 play `0x22` `(224,141)` keys 1→0. `--through level1-bow-cellar` dest
-mode 9 is **open**; south-lane LEFT at y=173 **stopped** at the SE
-diamond `(144,173)`. `ADDR_BOW` still 0. Bead `rr-tne2` stays open. Do
-not fight Gohma. Do not poke `ADDR_BOW` / `ADDR_ARROWS`. `--through
-level2` and later still skip this branch.
+mode 9 is **open**; LEFT at y=157 **stopped** at `(160,157)` on the SE
+diamond edge. `ADDR_BOW` still 0. Bead `rr-tne2` stays open. Do not
+fight Gohma. Do not poke `ADDR_BOW` / `ADDR_ARROWS`. `--through level2`
+and later still skip this branch. Default `--through level1` still
+skips bow and still finishes L1 TF.
 
 ## L6 dest (still the live leftover)
 
@@ -26,7 +27,7 @@ a red stairs hop into the L2–L6 tape.
 
 `--through level1-bow-cellar` (`level1_bow_cellar.py`): dest mode 9, no
 `ADDR_BOW`. Wiki: push west block DOWN, stairs, cellar. Policy now
-south-lane y=173 then west aisle (last trial).
+south-lane y=157 then west aisle (last trial).
 
 | tag | leftover | wrong belief |
 |-----|----------|----------------|
@@ -37,20 +38,26 @@ south-lane y=173 then west aisle (last trial).
 | northwall `l1_bow_cellar_northwall` | `0x22` `(112,109)` tile 178 | From leftover UP y=93 **live**; LEFT y=93 144→113 **live**; then tile 119 **bricked north door** at x≈120. Occupancy DOWN into diamond; boxed north vertex. |
 | south189 `l1_bow_cellar_south189` | `0x22` `(176,189)` tile 117 | DOWN x=176 141→189 **live** (passed y=173). LEFT y=189 176→127 **live**; then tile 119 **bricked south door**. Oscillated 176↔208. |
 | south173 `l1_bow_cellar_south173` | `0x22` `(144,173)` tile 118 | LEFT y=173 from live `(176,173)` 176→144 **live**. LEFT at `(144,173)` is the **south diamond** (SE point; v4 mirror). PNG: stairs still covered. |
+| south157 `l1_bow_cellar_south157` | `0x22` `(160,157)` tile 118 | LEFT y=157 from live `(176,157)` 176→160 **live**; then tile 118 **SE diamond edge**. Occupancy stood (no path to x=64). PNG: stairs still covered. Wrong belief: y=157 is south of the east block. SE diagonal is `(176,141)→(160,157)→(144,173)`. |
 
 Live so far (do not regress): leftover `(224,141)` LEFT along y=141 to
 `(176,141)`; DOWN at x=176 through `(176,157)` to `(176,173)` and on to
 `(176,189)`; UP at x=176 to y=109; LEFT y=109 to `(144,109)`; UP at
-x=144 to y=93; LEFT y=93 to x=113; LEFT y=173 to `(144,173)`. West 0x68
+x=144 to y=93; LEFT y=93 to x=113; LEFT y=173 to `(144,173)`; LEFT y=157
+to `(160,157)`. y=189 LEFT reached **x=127** live (west of diamond
+x=144) then tile 119 south door; occupancy retraced 176↔208. West 0x68
 stays `(96,144)`. deaths/progression/capacity 0.
 
-Do not LEFT past x=144 at y=109 or y=173 (diamond). Do not LEFT at y=93
-or y=189 past x≈120 (bricked N/S door columns). Do not UP at x=208
-(statue).
+Do not LEFT past x=144 at y=109 or y=173 (diamond). Do not LEFT at y=157
+past x=160 (SE edge). Do not LEFT at y=93 or y=189 past x≈120 (bricked
+N/S door columns). Do not UP at x=208 (statue).
 
-Next retarget (offline): from live `(176,157)` (south_peel column,
-between east face y=141 and SE diamond y=173) LEFT along y=157 toward
-x=96. Interior y, so not a wall-door column. Do not go back to Gohma.
+Next retarget (offline): from live `(176,189)` LEFT only to x=128 (west
+of south diamond x=144; east of south-door column x≈120), then UP.
+south189 already proved y=189 LEFT to x=127. Do not dest west-aisle at
+y=189. Do not go back to Gohma. L1 TF finish stays after mode 9 +
+`ADDR_BOW` + backtrack; do not splice a red stairs hop into
+`--through level1` / `--through level2`.
 
 ## Non-claims
 
