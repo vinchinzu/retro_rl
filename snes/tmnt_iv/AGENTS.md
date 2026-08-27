@@ -19,7 +19,9 @@ uv run python -m tmnt_iv.scripts.probe_stage2_clean --suite
 uv run python -m tmnt_iv.scripts.probe_stage3_clean --suite
 
 # Full hard run (assisted default; Clean never clobbers assisted)
+# Video: shared VideoRecorder, 1080p60 YouTube layout ( --native-video to opt out)
 uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
+uv run python -m tmnt_iv.scripts.record_full_hard_run
 uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
 
 # Segment runners: run_stage{N}_segment / run_stage{N}_bridge
@@ -50,6 +52,7 @@ jump-dodge, global pizza seek, sewer dumpster thrash, or Slash spin=40.
 | Rewrite Slash from KEEP trace | Four algs + three patches lost to 9,595/435 |
 | Sewer-like dumpster skip on Starbase | 40k timeout; keep DOWN+JUMP (x=126 collision) |
 | Starbase dumpster on right rail (x≥220) | Diag 7k loop; hold RIGHT. 96f budget / form-1 latch then RIGHT both 40k-timeout Diag |
+| Starbase x=207 dumpster forever | Continuous auto-scroll loop (dmg stuck, stall_right/up/up_right). Three cycles then RIGHT (`starbase_unstick_right`). Do not skip x=126 |
 | `raph_starbase_close_gap` period < 4 | `%3` timeout / `%2` jump-lock |
 | Mid-run knob w/o full dry-run | Route desync |
 | Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |

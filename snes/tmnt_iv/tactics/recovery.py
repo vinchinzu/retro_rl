@@ -30,6 +30,12 @@ _STALL_SMASH_FRAMES = 24
 # A 96f dumpster budget then RIGHT 40k-timeout Diag. Y-steer to 156
 # made Boss9 8,880. Wave dumpsters stay at x=126 / 207.
 _STARBASE_RAIL_X = 220
+# Continuous power-on sticks at x=207 (cam auto-scrolls, dumpster Y-sweeps
+# 113–194, damage frozen). Fast pin 207 dumpsters recover in <600f; after
+# three full cycles the 207 freeze is the encode loop, not a dumpster.
+# Do not exhaust-skip x=126 (Sewer-like always-RIGHT 40k-timeout).
+_STARBASE_EXHAUST_X = 200
+_STARBASE_DUMPSTER_CYCLES_BEFORE_RIGHT = 3
 
 
 class PrehistoricCaveRecovery:
@@ -113,10 +119,8 @@ class PlayerXStallWalk:
         self._stall_frames = 0
         self._escape_frames = 0
 
-    def _stall_escape(self) -> FrameAction:
+    def _stall_escape(self, state: GameState) -> FrameAction:
         """Cycle dumpster breakers while X remains frozen."""
-        phase = self._escape_frames
-        self._escape_frames += 1
         down_end = _STALL_DOWN_FRAMES
         jump_end = down_end + _STALL_JUMP_RIGHT_FRAMES
         right_end = jump_end + _STALL_RIGHT_FRAMES
@@ -124,6 +128,18 @@ class PlayerXStallWalk:
         up_right_end = up_end + _STALL_UP_RIGHT_FRAMES
         smash_end = up_right_end + _STALL_SMASH_FRAMES
         cycle = smash_end
+        if (
+            state.stage == STARBASE_WAVES
+            and _STARBASE_EXHAUST_X <= state.player_x < _STARBASE_RAIL_X
+            and self._escape_frames >= cycle * _STARBASE_DUMPSTER_CYCLES_BEFORE_RIGHT
+        ):
+            self._escape_frames += 1
+            return FrameAction(
+                action=buttons("RIGHT"),
+                reason="starbase_unstick_right",
+            )
+        phase = self._escape_frames
+        self._escape_frames += 1
         slot = phase % cycle
         if slot < down_end:
             return FrameAction(action=buttons("DOWN"), reason="stall_down")
@@ -190,7 +206,7 @@ class PlayerXStallWalk:
             self._escape_frames = 0
             self._last_player_x = state.player_x
         if self._stall_frames >= _PLAYER_X_STALL_FRAMES:
-            return self._stall_escape()
+            return self._stall_escape(state)
         return self._walk.next(state)
 
 
