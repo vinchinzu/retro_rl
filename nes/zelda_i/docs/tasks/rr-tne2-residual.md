@@ -1,107 +1,68 @@
-## Residual — rr-tne2 L6 Survival compose (stairs / Gohma / TF `0x20`)
+# Residual — rr-tne2 L6 Survival (Gohma 0x1C unarmed; L1 bow BLOCKED)
 
-**Status:** operator 0x3A position cheat is **live**. `--through
-level6-stairs3a-warp` **1/1** dest mode 9 `0x08`. `--through
-level6-cellar08` **1/1** west mouth returns play `0x3A` `(96,157)` (two-mouth
-same-room cellar, not Gohma). `--through level6-center3a` v1 red: center
-hole is **not** CheckWarp (timeout `(112,141)` tile 118). `--through
-level6-east3a` **BLOCKED 3/3**; y-align to `(96,141)` **live**; RIGHT 0px
-tile 118. Do **not** east3a v4. Walk-on stairs hops stay BLOCKED 3/3; do
-not v4. Bead `rr-tne2` still open. TF still `0x1F`. Bow=0 arrows=0. Do
-not fight Gohma. Do not poke ADDR_BOW/ADDR_ARROWS. Do not KEY-UP `0x09`.
+**Status:** `--through level6-north2c` is still **1/1** play `0x1C`
+`(120,205)`. Gohma is on screen, not fought. `--through level1-bow` is
+**BLOCKED 3/3** on the west-wall-around checkbox in L1 `0x23`. Bead
+`rr-tne2` stays open. Do not fight Gohma. Do not poke `ADDR_BOW` /
+`ADDR_ARROWS`. No westwall v4.
 
-**Pin:** cellar08 leftover play `0x3A` `(96,157)` rod=1 keys=4 bombs=8
-bow=0 arrows=0 TF=`0x1F` map=`0x0A`. Center hole revealed; east door PNG
-open; west door open. Warp used **one** Link-position write
-`(112,149)→(208,93)`. Tape `l6_cellar08_continuous_v2` 220,267f.
-PNG: `nes/zelda_i/recordings/l6_cellar08_continuous_v2_final.png`.
+## L6 dest (still the live leftover)
 
-Do **not** STATUS-promote. Do not overwrite Clean M5. Glance leave with
-`zelda_i.screen_glance` — no MP4. `--no-video` on spine CLIs. Occupancy
-halt at first **new** miss. Failed hops now publish leftover on
-`ControllerStageResult.report()["leftover"]`; `grade_controller` /
-`grade_stage_report` return that leftover even when glance misses is
-non-empty. Specs: `CLEAR_3A`, `CELLAR08_LEAVE` (play 0x3A (96,157)),
-`STAIRS3A_DEST` (mode 9 cellar 0x08). The next hop starts from leftover
-still, not a re-clear of 3a. Walk-on stairs remain BLOCKED.
+`--through level6-north2c` 1/1: `l6_north2c_continuous.json` 221,280f,
+hop 393f, play `0x1C` `(120,205)`, keys 4→3, rod=1, bow=0, arrows=0,
+TF=`0x1F`, bombs=8, HUD ~39R. PNG: Gohma on screen, north shutter black.
+`position_writes=1` (the 0x3A warp only). deaths/progression/capacity 0.
 
-### Already green (do not re-prove)
+ROM: `0x1C` N=shutter S=key item=heart mon=`0x34`. `0x0C` north is TF
+`0x20` after the kill. Do not walk `0x2C` south (`0x3C`).
 
-Closed L1–L5 Survival spine. L6 hops through `--through level6-clear3a`
-1/1 leftover play `0x3A` `(144,141)`. `--through level6-stairs3a-warp`
-1/1 dest mode 9 `0x08` `(208,93)` position_writes=1 hop 86f tape 219,735f.
-`--through level6-cellar08` 1/1 play `0x3A` `(96,157)` hop 532f tape
-220,267f. Dedicated skipped: stairs3a-neunder/neclip/ne71/ne/71, west39*,
-clear39-west, south28, aisle28, south38, clear38-south, bomb38-south,
-east38*, west38, exit-ow, clear28-south, east28, west28, aisle-west28.
-north39 / inland29 / west19 / south18 stay green north-leave (skipped).
+Wiki (Zelda Dungeon / GameFAQs): red Gohma dies to **one arrow in the
+open eye**. Magical Rod does not replace the bow. L6 has no bow room.
+Wooden arrows are a shop buy (~80R); leftover ~39R is short. Do not
+use candle shop `0x5E` (Shield/Key/Candle, no arrows). Gathering hyp
+arrow shop `0x6B` is **not live**.
 
-### Current hop (`level6-east3a`) — BLOCKED 3 serial reds
+## L1 bow insert — BLOCKED 3/3 (west-wall around)
 
-| Field | Live |
-|-------|------|
-| Start | cellar08 play `0x3A` `(96,157)` |
-| v1 | occupancy UP `(96,157)` 2px halt `(96,155)` tile 118 |
-| v2 | y-align live to `(96,143)`; RIGHT 0px occupancy_halt tile 119 |
-| v3 | y-align live to `(96,141)`; RIGHT 0px occupancy_halt tile 118 |
+Prefix insert (spine re-runs from power-on) is the bow source: west of
+verified `0x23`. Q1 ROM `$18700`: `0x23` W=**key**, dest `0x22` E=key
+N/S/W=wall item=`0x03` secret=none. Walkthrough: 4 blade traps, westmost
+block, stairs, cellar bow. **Enter-stop `0x22` is not on tape.**
 
-All stayed play `0x3A`; deaths/progression/capacity 0; bow=0 arrows=0;
-position_writes=1 (warp only); no state load. No east3a v4. Dated: x=96
-y=141 RIGHT 0px (west of center hole). East door PNG-open, not reached.
+`--through level1-bow` (Survival-only; Clean M5 unchanged) runs prefix
+through `clear23_key` then occupancy KEY-LEFT. Live start after
+`clear23_key` is play `0x23` `(136,117)` keys=1 bombs=0.
 
-### Prior hop (`level6-center3a`) — red 1/3, not this checkbox
+Clip checkbox (prior session) BLOCKED 3/3 — not this hop:
 
-Walk onto center hole from spit. Hole idle/UP yo-yo `(112,140↔141)` tile
-118/119 still mode 5 timeout 4000f. Center hole is **not** CheckWarp.
-Do not center3a v2.
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| v1 `l1_bow22_continuous` | `0x23` `(136,125)` tile 119 | y-align DOWN to 141. Documented `(136,125)` water pocket. |
+| v2 `l1_bow22_continuous_v2` | `0x23` `(64,141)` tile 244 | west aisle then cardinal LEFT. LEFT is the moat. Upper channel LEFT to `(64,117)` **was live**. |
+| v3 `l1_bow22_continuous_v3` | `0x23` `(64,136)` tile 118 | LEFT+UP clip at `(64,141)`. UP 141→136; LEFT 0px. |
 
-### Prior hop (`level6-cellar08`) — 1/1
+West-wall around checkbox **BLOCKED 3/3** (this session; no v4):
 
-West mouth UP of cellar `0x08` is play `0x3A` `(96,157)` (center-stairs
-spit). Both mouths of 0x08 are in 0x3A. Not the Gohma passage.
+| tag | leftover | wrong belief |
+|-----|----------|----------------|
+| v1 `l1_bow22_westwall` | `0x23` `(69,117)` tile 116 | `DOOR_TOL=4` aisle fudge. Switched to north-band UP at x=66; stood east of x=64. |
+| v2 `l1_bow22_westwall_v2` | `0x23` `(64,117)` tile 119 | UP at west aisle x=64 from y=117 reaches y=93. **Solid.** Channel LEFT to `(64,117)` still live. |
+| v3 `l1_bow22_westwall_v3` | `0x23` `(80,117)` tile 119 | `ROOM_23_SPEC` `(80,93)` means UP at x=80 from y=117. LEFT to `(80,117)` **live**; UP **solid** (tile 119 ceiling). 18572f hop 4000f; deaths/progression/capacity 0. |
 
-### Prior hop (`level6-stairs3a-warp`) — 1/1
+Upper channel y=117 is a 1-tile corridor: UP solid at both x=64 and x=80
+(tile 119). `(80,93)` is walkable on the combat patrol, but not by
+climbing the channel at x=80.
 
-Live center 0x68 push, one `ADDR_LINK_X`/`Y` write `(112,149)→(208,93)`.
-Dest mode 9 room `0x08` leftover `(208,93)` tile 113. Assist:
-position_writes=1, progression/capacity/door/inventory/TF writes 0,
-mid_run_state_load=false, seamed=false.
+No v4 under session gate. Next retarget (offline, not a 4th westwall):
+**UP at x=112** (`ROOM_23_SPEC` `(112,93)` / `(114,117)` / `(112,133)`),
+then LEFT along north y=93 onto `(32,141)`. South band y=189 is still
+untested; do not DOWN at x≈128 (v1 pocket). Do not LEFT+UP clip.
 
-### Historical reds (not this checkbox)
+## Non-claims
 
-`--through level6-stairs3a-neunder` 3 serial reds. `--through
-level6-stairs3a-neclip` 3 serial reds. `--through
-level6-stairs3a-ne71` 3 serial reds. `--through level6-stairs3a-ne` 3
-serial reds. `--through level6-stairs3a-71` 3 serial reds. `--through
-level6-stairs3a` 3 serial reds. west39-reband / upclip / west39 /
-clear39-west / aisle-west28 / west28 / east28 / west38 / east38-lane /
-east38 / bomb38-south / clear38-south / south38 / aisle28 / south28 /
-exit-ow 3 serial reds. stairs18 v1–v5 red.
-
-### Next action — blocked
-
-- **No east3a v4.** y=141 at x=96 RIGHT is sealed (tile 118, west of the
-  hole). Retarget from offline geometry: south-around the hole (y≈157)
-  then RIGHT, then y=141 to the east mouth. New file. Do not walk Gohma.
-  Do not poke bow/arrows.
-- Do not start stairs3a* v4 / west39* v4 / center3a v2. Do not KEY-UP
-  `0x09`. Do not take 0x29. Do not invent Gohma.
-
-Do not rerun this checkbox unchanged.
-
-### Non-claims
-
-- Did not STATUS-promote
-- Did not overwrite Clean M5
-- Did not poke doors/keys/bow/arrows/undiscovered items
-- Did not grant Map/Whistle
-- Did not write room/door/inventory/TF/capacity/facing/mode (only one
-  disclosed 0x3A Link-position pair)
-- Did not load state
-- Did not KEY-UP `0x09`
-- Did not close `rr-tne2`
-- Did not fight Gohma
-- Did not start east3a v4
-- Did not start center3a v2
-- Did not start stairs3a* v4
-- Did not start L7 fixture-only work
+- Did not kill Gohma; did not collect L6 Heart / TF `0x20`.
+- Did not reach play `0x22` or `ADDR_BOW`.
+- Did not STATUS-promote or overwrite Clean M5.
+- Did not poke doors, keys, bow, arrows, rupees, undiscovered items,
+  progression, or capacity.
+- Did not close `rr-tne2`, start L7, or push.
