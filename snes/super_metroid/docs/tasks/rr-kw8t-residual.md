@@ -6,9 +6,12 @@ A new sitting (c) only because context died; it still reads this file.
 Do not dest-hop dual this checkbox. Do not reboot the hop because the
 count hit three.
 
-**Miss class:** standing hole is open; jump through is Covern knockback.
-Peak **(1126, 1840) p83** f2583; leftover hole (1112, 1900) p47 falling.
-165px short of y=1675. Living checkbox is `west_super`.
+**Miss class:** Hatch-lip pocket `(1181, 1883)` p1. Wall is RIGHT; Wave
+blocks are LEFT; UP hits the pocket ceiling (`min_y` 1843). Take02 fire
+column `(1223, 1860)` is not reachable by walk/jump-RIGHT from the green
+grate_seat. Three duals RED × same leftover. New angle (ROM-free, not
+dualed): LEFT+X from the pocket until `0xD080` spawn, then LEFT+A.
+Morph only after that spawn, at ~(1189, 1785) — not on the lip.
 
 **Status:** Hop 1 dual-green. Hop 2 **grate_seat PHASE 189f ×2**. Living
 tip is `--to phantoon` **195,336f** ×2 (STATUS). Do not STATUS from a pin.
@@ -28,49 +31,68 @@ p1 gs=8)
 
 ### Hop 2 seams (HARD_ROOM_SPLITS)
 
-Controller kept: `ws_main_climb.py` / `ws_main_actions.py` / `ws_main_ice.py`.
-Seats: `ws_main_phases.py`. Six chunks, not one climb:
+Controller kept: `ws_main_climb.py` / `ws_main_shaft.py` / `ws_main_actions.py`
+/ `ws_main_ice.py` / `ws_main_grate.py`. Seats: `ws_main_phases.py`.
+Six chunks, not one climb.
 
 | Phase | From | Held exit | Status |
 |-------|------|-----------|--------|
 | 1 pit_shot | pin (1173,1979) | 3-shot, still Main, not Basement | PARTIAL — Wave+Spazer **opens the grate** |
 | 2 grate_seat | pin | right hatch-lip ~(1177, 1883) p2 | **PHASE 189f ×2** |
-| 3 west_super | lip | y~1675 in shaft, not 0xCDA8 | **RED** living |
+| 3 west_super | lip | y~1675 in shaft, not 0xCDA8 | **RED ×3** living |
 | 4 mid_climb | 1675 | y~680 in shaft | not started |
 | 5 attic_seat | 680 | ~(1135, ≤160) stand | not started |
 | 6 attic_door | door | Attic `0xCA52` gs=8 | hop GREEN only |
 
 Do not open mid_climb while west_super is red. Phase dumps are not hop GREEN.
 
-Measured (do not re-guess): pin x=1173 is under the right lip (bonk y~1940);
-hatch-column A from ~x=1150 lands (1177,1883) p2 (pose 3 aiming-up is also
-the seat); floor HiJump peaks ~1868 so left (1075,1845) is **air over the
-gap**, not a standing seat. Standing shelf is **(1082, 1878) p10**. DOWN
-on the **hatch** → Basement, DOWN on the **lip** is morph; Wave UP from 1845
-breaks the floor you stand on; cubby spin is a leftover, not a takeoff.
-Hatch-column HiJump (no ceiling) clears y=1850 so `_three_shot_tunnel`
-returns early; climb must finish the lip landing facing RIGHT. Ice
-jump-shot from the lip is a vertical bonk at y~1843. Spin-jump LEFT off
-the lip falls through the hole. Morph + roll LEFT + mid-ledge spin RIGHT
-peaks **(1101, 1820) p25** — do not farm that spin. Unmorph A-settle idles
-over the gap; UP-only unmorph **lands the shelf**. From the shelf, stand
-and Wave **opens a standing hole** (leftover still: blocks gone). Gun-jump
-A through it is Covern knockback **(1126, 1840) p83**; leftover falls in
-the hole (1112, 1900) p47. HiJump from shelf y~1885 peaks ~1774 even
-through the hole — short of 1675. Ice-first without a y-filter locks onto
-the stairs enemy (1048, 1928) and crouch-charges LEFT 3600f. RIGHT+A off
-the shelf pose-38 turn-locks.
+### west_super duals this sitting (stop dualing this arc)
+
+All from hop-1 pin `--stop-at west_super`. Leftover always
+`0xCAF6` (1181, 1883). `min_y` 1843 @ f61 (pit jump). 3691f timeout.
+
+| # | Knob | Leftover | Why |
+|---|------|----------|-----|
+| 1 | hold UP+X until spawn | p3 charge 120 | X held; never releases; UP misses pocket blocks |
+| 2 | walk RIGHT to take02 column | p1 charge 0 | wall; x stuck 1181 |
+| 3 | RIGHT+A onto save-ledge | p1 charge 0 | same leftover; ceiling/wall bonk |
+
+PNG: Samus on the hatch-lip, Wave blocks LEFT, save-column wall RIGHT.
+
+### Tape scan (take02 policy; 03/04/05 agree; 01 is the retry)
+
+Five human takes, all Attic `0xCA52`. Series `tasks/ws_main_attic_v1/`.
+
+| Take | Frames | Attic f | Lip UP+X seat | First `0xD080` | Morph (not lip) | First y≤1675 |
+|------|-------:|--------:|---------------|----------------|-----------------|--------------|
+| 02 | **2175** | 2053 | (1223,1860) p3, 20f | f306 | (1189,1785) p56 | f717 (1099,1675) |
+| 03 | 2235 | 2120 | (1227,1856) p3, 13f | f139 | (1189,1785) p56 | f547 (1099,1675) |
+| 04 | 2452 | 2383 | (1194,1883) p15, 14f | f215 | (1214,1801) p56 | f1039 (1093,1675) |
+| 05 | 2633 | 2560 | (1221,1862) p4 + R cubby | f296 | (1189,1785) p56 | f974 (1093,1672) |
+| 01 | 10338 | 9651 | (1215,1868) p3 @f7640 | f7648 | (1189,1785) p56 | f8021 |
+
+Take02/03 fire from the save-ledge ~(1223,1860) then LEFT+A to
+~(1189,1771) and morph at ~(1189,1785). The bot never reaches that
+column from grate_seat. Take04 did fire UP from y=1883 at x=1195 — after
+a different first-jump. Do not retouch grate_seat.
+
+### Taught this sitting (ROM-free; 30 passed)
+
+`ws_main_grate.py`: hatch-lip x<1216 faces LEFT and fires (`LEFT+X`,
+release at CHARGE_FULL), then LEFT+A. Take02 column still UP+X.
+`grate_morph_action` DOWN-morphs at ~(1189,1785) only after spawn.
+Alcove x≥1224 stays out. No 24f DOWN on the lip.
 
 ### Next — one seam only
 
-`--stop-at west_super` from the hop-1 pin. Hole is open. Wall-jump the
-gap, or ice **only** the shelf Covern (1129, 1818) then jump. Do not ice
-the stairs enemy. Do not farm mid-ledge spin. Do not dual the cubby. Do
-not farm mid_climb.
+New trajectory, not a 4th dual of walk/jump-RIGHT. Dual `--stop-at
+west_super` from the hop-1 pin with the LEFT-shot pocket skill. Morph
+only after a 0xD080-family spawn, and not on the lip. Do not dest-hop.
+Do not STATUS. Do not wire `--to phantoon`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video
+  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video --dual
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state \
   --headed
@@ -84,3 +106,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
 - Did not dual the full hop this wrap
 - Did not pin out `post_ws_main_to_attic.state`
 - Did not treat a phase dump as hop GREEN
+- Did not 4th-dual the RIGHT-into-wall arc
