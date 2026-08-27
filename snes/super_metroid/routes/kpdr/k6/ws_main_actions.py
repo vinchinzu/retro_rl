@@ -344,8 +344,8 @@ def climb_action(
         return ("RIGHT", "B")
     if y >= WS_MAIN_STAIR_Y:
         return pit_exit_action(x, y, pose, facing, movement_type, velocity_y)
-    # Grate band. Lip shoots UP until 0xD080 spawns, then jump. Morph later
-    # at ~(1189, 1785) — never DOWN on the lip.
+    # Grate band. Lip shoots until 0xD080 spawns, then LEFT+A through the
+    # hole (take02). Morph later at ~(1189, 1785) — never DOWN on the lip.
     if y >= 1760:
         if at_ws_main_lip_shot_seat(x, y, pose_i, velocity_y):
             return grate_lip_action(
@@ -355,6 +355,10 @@ def climb_action(
             morph = grate_morph_action(pose_i, bool(lip_hit))
             if morph is not None:
                 return morph
+        if lip_hit:
+            return grate_lip_action(
+                pose_i, True, facing_i, x, int(charge)
+            )
         return west_super_action(
             x, y, pose_i, facing_i, frame, velocity_y, movement_type
         )
@@ -430,6 +434,10 @@ def grate_clear_action(
         morph = grate_morph_action(pose_i, bool(lip_hit))
         if morph is not None:
             return morph
+    if lip_hit:
+        # Dual leftover (1202, 1854) p77: hole is open; do not RIGHT-A
+        # at the save-column. Take02 keeps LEFT+A to ~(1189, 1785).
+        return grate_lip_action(pose_i, True, facing_i, x, int(charge))
     airborne = (
         pose_i in _AIR_POSES or pose_i in _HURT or abs(int(velocity_y)) > 1
     )

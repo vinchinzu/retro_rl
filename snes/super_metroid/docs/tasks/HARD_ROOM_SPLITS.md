@@ -165,13 +165,14 @@ Full hop GREEN is Attic gs=8 only. Seats in
 | attic_seat | blue ceiling door | ~(1135, ≤160) stand |
 | attic_door | leave | Attic `0xCA52` gs=8 |
 
-Living checkbox is **west_super** (**RED ×3**). grate_seat PHASE **189f ×2**
+Living checkbox is **west_super** (**RED**). grate_seat PHASE **189f ×2**
 from the hop-1 pin lands the hatch-lip pocket ~(1177, 1883): Wave blocks
 LEFT, wall RIGHT, UP hits the ceiling. Do not walk/jump RIGHT toward
-take02 `(1223, 1860)` from that seat. Pocket skill: LEFT+X until
-`0xD080`/`0xD074`/`0xD078` spawn, then LEFT+A. Morph later at
-~(1189,1785) — not on the lip. Do not open mid_climb while west_super is
-red. Do not farm save-column WJ.
+take02 `(1223, 1860)` from that seat. Do not dual shoulder-R (fell to
+stairs `(1113, 1899)` p156; crystals still up). Pocket skill: face LEFT,
+X in place, release at 8, then LEFT+A after a 0xD080-family spawn. Morph
+later at ~(1189,1785) — not on the lip. Do not open mid_climb while
+west_super is red. Do not farm save-column WJ.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
