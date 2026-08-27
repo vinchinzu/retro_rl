@@ -13,7 +13,11 @@ from smb.tas.fm2 import parse_fm2, parse_movie
 from smb.paths import MODELS_DIR
 from smb.policy import expand_nes9_rle, load_nes9_rle_seed
 from smb.scripts.annotate_fm2 import export_1_3_slice
-from smb.tas.warpless_extract import export_warpless_slice
+from smb.tas.warpless_extract import (
+    STALL_FRAMES,
+    _trial_score,
+    export_warpless_slice,
+)
 from smb.tas.warpless import (
     CHAIN_TARGETS,
     WARPLESS_BK2,
@@ -154,10 +158,11 @@ def test_warpless_1_3_hint_follows_1_2_flag_leave() -> None:
     assert WL_1_4_CTRL_WAIT == 0
     assert WL_2_1_FM2_HINT == WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES == 8095
     assert fm2_hint("2-1") == WL_2_1_FM2_HINT
-    assert WL_2_1_FM2_START == WL_2_1_FM2_HINT
-    assert WL_2_1_LEAVE_FRAMES == 2356
+    assert WL_2_1_FM2_START == 7999
+    assert WL_2_1_LEAVE_FRAMES == 2440
     assert WL_2_1_CTRL_WAIT == 0
-    assert WL_2_2_FM2_HINT == WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES == 10451
+    assert WL_2_2_FM2_HINT == WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES == 10439
+    assert fm2_hint("2-2") == WL_2_2_FM2_HINT
 
 
 def test_warpless_legs_cover_32_exits() -> None:
@@ -198,8 +203,54 @@ def test_warpless_legs_cover_32_exits() -> None:
     )
     assert get_leg("2-1").leave(drop)
     assert get_leg("2-1").leave(land)
-    assert not get_leg("2-2").control(drop)
+    assert get_leg("2-2").control(drop)
     assert get_leg("2-2").control(land)
+    falling = SimpleNamespace(**{**drop.__dict__, "player_y": 80})
+    assert not get_leg("2-2").control(falling)
+
+
+def test_trial_score_prefers_clear_then_short_then_few_leads() -> None:
+    center = 10451
+    miss = {"start_idx": 10451, "max_x": 1315, "leave_frame": None, "lead_idle": 0}
+    hit = {
+        "start_idx": 10440,
+        "max_x": 3100,
+        "leave_frame": 2400,
+        "lead_idle": 3,
+        "warped": False,
+    }
+    closer = {**hit, "start_idx": 10451, "lead_idle": 3}
+    fewer = {**hit, "start_idx": 10451, "lead_idle": 0}
+    assert _trial_score(hit, center) > _trial_score(miss, center)
+    assert _trial_score(fewer, center) > _trial_score(closer, center)
+    near_miss = {"start_idx": 10439, "max_x": 563, "leave_frame": None, "lead_idle": 0}
+    far_clip = {"start_idx": 10451, "max_x": 2225, "leave_frame": None, "lead_idle": 0}
+    assert _trial_score(far_clip, center) > _trial_score(near_miss, center)
+    assert STALL_FRAMES >= 120
+
+
+def test_export_2_2_slice_stores_lead_idle(tmp_path: Path) -> None:
+    frames = [[0] * 9 for _ in range(40)]
+    frames[15][7] = 1
+    dest = tmp_path / "smb_2_2_warpless_slice.json"
+    payload = export_warpless_slice(
+        frames,
+        stage_id="2-2",
+        start_idx=15,
+        body_frames=12,
+        fm2_path=Path("happylee_mars608_warpless_3728M.fm2"),
+        out_path=dest,
+        lead_idle=4,
+    )
+    assert dest.is_file()
+    assert payload["num_frames"] == 12
+    assert payload["fm2_start_index"] == 15
+    assert payload["lead_idle"] == 4
+    assert payload["target"] == "2_3_control"
+    assert payload["stage_id"] == "2-2"
+    assert "flag" in str(payload.get("note", "")).lower()
+    assert require_warpless_slice(payload, stage_id="2-2") is payload
+    assert len(expand_nes9_rle(payload)) == 12
 
 
 def test_export_1_3_slice_metadata(tmp_path: Path) -> None:
@@ -338,7 +389,8 @@ def test_warpless_same_file_cuts_chain() -> None:
     assert WL_1_2_FM2_START + WL_1_2_LEAVE_FRAMES + WL_1_3_CTRL_WAIT == WL_1_3_FM2_START
     assert WL_1_3_CTRL_WAIT == 0
     assert WL_1_3_FM2_START + WL_1_3_LEAVE_FRAMES + WL_1_4_CTRL_WAIT == WL_1_4_FM2_START
-    assert WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES + WL_2_1_CTRL_WAIT == WL_2_1_FM2_START
+    assert WL_1_4_FM2_START + WL_1_4_LEAVE_FRAMES + WL_2_1_CTRL_WAIT == WL_2_1_FM2_HINT
+    assert WL_2_1_FM2_START + WL_2_1_LEAVE_FRAMES == WL_2_2_FM2_HINT
     assert CHAIN_TARGETS == ("1-1", "1-2", "1-3", "1-4", "2-1")
     for sid in CHAIN_TARGETS:
         path = slice_path(sid)
