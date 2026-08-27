@@ -7,6 +7,15 @@ from __future__ import annotations
 
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, SuperMetroidState
 from super_metroid.routes.controller_common import is_morph
+from super_metroid.routes.kpdr.k6.ws_ceiling_door import ceiling_door_action
+from super_metroid.routes.kpdr.k6.ws_main_grate import (
+    LIP_SHOT_X,
+    LIP_SHOT_Y,
+    at_ws_main_lip_shot_seat,
+    at_ws_main_morph_drop,
+    grate_lip_action,
+    grate_morph_action,
+)
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_MAIN
 from super_metroid.routes.skills.charge_shot import CHARGE_FULL
 from super_metroid.takeoff import PlatformHop, TakeoffWindow, spin_jump, walk_toward_x
@@ -30,6 +39,9 @@ LEFT_PLATFORM_X = (1064, 1112)
 LEFT_PLATFORM_Y = (1860, 1904)
 LEFT_PLATFORM_TARGET_X = 1082
 TUNNEL_EXIT_X_MAX = 1112
+# Human WJ seat on the save-column wall. Stay left of the save door x=1240.
+SAVE_LEDGE_X = (1208, 1232)
+SAVE_LEDGE_Y = (1836, 1876)
 # Hatch column has no ceiling. Pin x=1173 is under the right lip (bonk y~1940).
 # Human tape: A from (1149,1979) p75 → land (1184,1883) p9. Floor HiJump peaks
 # ~1868; left (1075,1845) is above that. Gun-jump A, not spin, not X.
@@ -39,7 +51,6 @@ FIRST_JUMP_LAND_Y = (1868, 1896)
 FIRST_JUMP_LAND_TARGET_X = 1184
 _AIR_POSES = frozenset({19, 20, 21, 25, 26, 47, 48, 75, 76, 77, 78, 81, 82, 83, 84})
 _TURNING = 14
-_DOOR_SHOOT_FRAMES = 240
 _GROUNDED = frozenset({1, 2, 3, 4, 9, 10})
 _CROUCH = frozenset({39, 40})
 _HURT = frozenset({41, 129, 130})
@@ -53,6 +64,15 @@ SHAFT_HOPS: tuple[PlatformHop, ...] = (
     PlatformHop(680, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),
     PlatformHop(200, 1100, 1180, TakeoffWindow((1110, 1160), "LEFT", min_momentum=0)),
 )
+
+
+def plant_then_spin(facing: int, turning: bool, pose: int) -> tuple[str, ...]:
+    """Uncrouch, face RIGHT, then spin-jump."""
+    if int(pose) in _CROUCH:
+        return ("UP",)
+    if int(facing) != FACING_RIGHT or turning:
+        return ("RIGHT",)
+    return spin_jump("RIGHT")
 
 
 def ws_main_attic_settled(state: SuperMetroidState) -> bool:
@@ -89,7 +109,23 @@ def at_ws_main_first_jump_land(
     return (
         FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
         and FIRST_JUMP_LAND_Y[0] <= y <= FIRST_JUMP_LAND_Y[1]
-        and int(pose) in _GROUNDED
+        and int(pose) in _GROUNDED | _CROUCH
+        and abs(int(velocity_y)) <= 1
+    )
+
+
+def at_ws_main_save_ledge(
+    samus_x: int, samus_y: int, pose: int, velocity_y: int = 0
+) -> bool:
+    """Planted on the save-column ledge ~(1219, 1864). Human WJ seat."""
+    x, y = int(samus_x), int(samus_y)
+    pose_i = int(pose)
+    return (
+        SAVE_LEDGE_X[0] <= x <= SAVE_LEDGE_X[1]
+        and SAVE_LEDGE_Y[0] <= y <= SAVE_LEDGE_Y[1]
+        and pose_i not in _AIR_POSES
+        and pose_i not in _HURT
+        and not is_morph(pose_i)
         and abs(int(velocity_y)) <= 1
     )
 
@@ -119,40 +155,32 @@ def west_super_action(
     velocity_y: int = 0,
     movement_type: int = 0,
 ) -> tuple[str, ...]:
-    """Land the tunnel unmorph on ~(1075, 1845), shoot a standing hole, gun-jump.
+    """Leftover takeoff: shelf gun-jump, morph-tunnel leftover, air steer.
 
-    Peak (1085, 1843) p78 is 10px right of the platform (over the gap). Steer
-    LEFT. Do not spin RIGHT off that mid ledge. Wave UP is reserved for the
-    hole — not from the metal stairs.
+    Shelf hole (X-cycle) lives in ``climb_until``. Save-column WJ and alcove
+    leftover live in the climb overlay. Peak (1085, 1843) p78 is over the
+    gap — steer LEFT. Wave UP is reserved for the hole, not the stairs.
     """
+    del frame
     x = int(samus_x)
     y = int(samus_y)
     pose_i = int(pose)
     facing_i = int(facing)
     turning = int(movement_type) == _TURNING
+    if x >= WS_MAIN_SAVE_X - 8:
+        return ("LEFT", "B")
     airborne = (
         pose_i in _AIR_POSES or pose_i in _HURT or abs(int(velocity_y)) > 1
     )
-    on_left = at_ws_main_left_platform(x, y, pose_i, velocity_y) or (
-        LEFT_PLATFORM_X[0] <= x <= LEFT_PLATFORM_X[1]
-        and LEFT_PLATFORM_Y[0] <= y <= LEFT_PLATFORM_Y[1]
-        and pose_i in _CROUCH
-        and not airborne
-    )
-    if on_left:
+    if at_ws_main_left_platform(x, y, pose_i, velocity_y):
         if pose_i in _CROUCH:
             return ("UP",)
         if facing_i != FACING_RIGHT:
             return ("RIGHT",)
         if turning:
             return ()
-        cycle = int(frame) % 80
-        if cycle < 56:
-            return ("X",) if cycle % 10 < 4 else ()
         return ("A",)
     if airborne:
-        if pose_i == 132:
-            return ("A",)
         if x < LEFT_PLATFORM_X[0]:
             return ("RIGHT", "A")
         if (
@@ -163,12 +191,16 @@ def west_super_action(
         if x <= TUNNEL_EXIT_X_MAX:
             if y > LEFT_PLATFORM_Y[1]:
                 return ("LEFT", "A")
+            if facing_i == FACING_RIGHT:
+                return ("RIGHT", "A")
             return ("LEFT",)
         if facing_i == FACING_LEFT:
             return ("LEFT", "A") if x > WS_MAIN_SHAFT_CENTER else ("A",)
         if x < FIRST_JUMP_LAND_TARGET_X - 4:
             return ("RIGHT", "A")
         return ("A",)
+    if at_ws_main_save_ledge(x, y, pose_i, velocity_y):
+        return plant_then_spin(facing_i, turning, pose_i)
     if x <= TUNNEL_EXIT_X_MAX:
         if pose_i in _CROUCH:
             return ("UP",)
@@ -295,8 +327,10 @@ def climb_action(
     velocity_y: int = 0,
     movement_type: int = 0,
     frame: int = 0,
+    lip_hit: bool = False,
+    charge: int = 0,
 ) -> tuple[str, ...]:
-    """Stay in the shaft and spin-hop up. DOWN is morph on the lip only; never hatch."""
+    """Stay in the shaft and spin-hop up. Lip takeoff is shoot-up until PLM hit."""
     if int(pose) in (137, 138):
         return ()
     x = int(samus_x)
@@ -310,14 +344,17 @@ def climb_action(
         return ("RIGHT", "B")
     if y >= WS_MAIN_STAIR_Y:
         return pit_exit_action(x, y, pose, facing, movement_type, velocity_y)
-    # Grate band. Lip morph stays DOWN. Tunnel exit lands LEFT on ~(1075, 1845).
+    # Grate band. Lip shoots UP until 0xD080 spawns, then jump. Morph later
+    # at ~(1189, 1785) — never DOWN on the lip.
     if y >= 1760:
-        if at_ws_main_first_jump_land(x, y, pose_i, velocity_y) or (
-            FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
-            and FIRST_JUMP_LAND_Y[0] <= y <= FIRST_JUMP_LAND_Y[1]
-            and pose_i in _CROUCH
-        ):
-            return ("DOWN",)
+        if at_ws_main_lip_shot_seat(x, y, pose_i, velocity_y):
+            return grate_lip_action(
+                pose_i, bool(lip_hit), facing_i, x, int(charge)
+            )
+        if at_ws_main_morph_drop(x, y, pose_i, velocity_y):
+            morph = grate_morph_action(pose_i, bool(lip_hit))
+            if morph is not None:
+                return morph
         return west_super_action(
             x, y, pose_i, facing_i, frame, velocity_y, movement_type
         )
@@ -342,29 +379,20 @@ def attic_door_action(
     samus_x: int, samus_y: int, pose: int, frame: int
 ) -> tuple[str, ...]:
     """Open the blue ceiling door from the seat, then jump through. Never L."""
-    if int(pose) in (137, 138):
-        return ()
-    x = int(samus_x)
-    y = int(samus_y)
-    slack = 12
-    phase = int(frame) % 80
-    if y < 50:
-        if x > WS_MAIN_ATTIC_DOOR_X + 4:
-            return ("LEFT", "A")
-        if x < WS_MAIN_ATTIC_DOOR_X - 4:
-            return ("RIGHT", "A")
-        return ("A",)
-    if y < 160:
-        if x > WS_MAIN_ATTIC_DOOR_X + slack:
-            return ("LEFT", "UP", "A")
-        if x < WS_MAIN_ATTIC_DOOR_X - slack:
-            return ("RIGHT", "UP", "A")
-        if phase < 60:
-            return ("UP", "X")
-        if int(frame) < _DOOR_SHOOT_FRAMES or phase < 68:
-            return ("UP",)
-        return ("UP", "A")
-    return climb_action(x, y, pose)
+    names = ceiling_door_action(
+        samus_x,
+        samus_y,
+        pose,
+        frame,
+        seat_x=WS_MAIN_ATTIC_DOOR_X,
+        lip_y=160,
+        shaft_y=50,
+        slack=12,
+        hold_charge=True,
+    )
+    if names is not None:
+        return names
+    return climb_action(int(samus_x), int(samus_y), pose)
 
 
 def grate_clear_action(
@@ -376,16 +404,16 @@ def grate_clear_action(
     charge: int = 0,
     velocity_y: int = 0,
     movement_type: int = 0,
+    lip_hit: bool = False,
 ) -> tuple[str, ...] | None:
-    """From a grate seat, enter the opened shaft. Do not Wave UP.
+    """From a grate seat, shoot UP until a Wave-block PLM spawns, then jump.
 
-    Right lip ~(1177,1883): remaining Wave blocks are a morph tunnel (AFS
-    3-shot). DOWN to morph, then roll LEFT. Jumping LEFT falls to the pit
-    (ceiling y~1843). Left seat ~(1075,1845): spin-jump RIGHT. Wave UP from
-    y~1845 breaks the floor you stand on. None outside the band so the
-    climb loop can fall through.
+    Right lip / save-ledge ~(1223,1860): ``shoot_up`` until 0xD080-family
+    spawn. Morph only after that spawn, at ~(1189,1785) — not on the lip.
+    Wave UP from the left shelf y~1845 still breaks the floor you stand
+    on — that is not this seat. None outside the band so the climb loop
+    can fall through.
     """
-    del charge
     y = int(samus_y)
     if y < 1760 or y >= WS_MAIN_STAIR_Y:
         return None
@@ -393,13 +421,15 @@ def grate_clear_action(
         return ()
     x = int(samus_x)
     pose_i = int(pose)
-    if at_ws_main_first_jump_land(x, y, pose_i, velocity_y) or (
-        FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
-        and FIRST_JUMP_LAND_Y[0] <= y <= FIRST_JUMP_LAND_Y[1]
-        and pose_i in _CROUCH
-    ):
-        return ("DOWN",)
     facing_i = int(facing)
+    if at_ws_main_lip_shot_seat(x, y, pose_i, velocity_y):
+        return grate_lip_action(
+            pose_i, bool(lip_hit), facing_i, x, int(charge)
+        )
+    if at_ws_main_morph_drop(x, y, pose_i, velocity_y):
+        morph = grate_morph_action(pose_i, bool(lip_hit))
+        if morph is not None:
+            return morph
     airborne = (
         pose_i in _AIR_POSES or pose_i in _HURT or abs(int(velocity_y)) > 1
     )
@@ -419,6 +449,10 @@ __all__ = [
     "LEFT_PLATFORM_TARGET_X",
     "LEFT_PLATFORM_X",
     "LEFT_PLATFORM_Y",
+    "LIP_SHOT_X",
+    "LIP_SHOT_Y",
+    "SAVE_LEDGE_X",
+    "SAVE_LEDGE_Y",
     "PIT_EXIT_RIGHT_X",
     "SHAFT_HOPS",
     "THREE_SHOT_FRAMES",
@@ -434,11 +468,17 @@ __all__ = [
     "at_ws_main_attic_door_seat",
     "at_ws_main_first_jump_land",
     "at_ws_main_left_platform",
+    "at_ws_main_lip_shot_seat",
+    "at_ws_main_morph_drop",
     "at_ws_main_pit",
+    "at_ws_main_save_ledge",
     "attic_door_action",
     "climb_action",
     "grate_clear_action",
+    "grate_lip_action",
+    "grate_morph_action",
     "pit_exit_action",
+    "plant_then_spin",
     "three_shot_action",
     "west_super_action",
     "ws_main_attic_settled",
