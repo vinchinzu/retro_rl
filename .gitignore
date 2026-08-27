@@ -309,6 +309,11 @@ nes/smb/recordings/*
 nes/smb/recordings/tas_import/*
 !nes/smb/recordings/tas_import/happylee_8_3_skills_leave.json
 !nes/smb/recordings/tas_import/happylee_8_3_skills_verify.json
+!nes/smb/recordings/segments_all_exits/
+nes/smb/recordings/segments_all_exits/*
+!nes/smb/recordings/segments_all_exits/extract_stage_state_report.json
+!nes/smb/recordings/segments_all_exits/evidence/
+!nes/smb/recordings/segments_all_exits/evidence/*.png
 !nes/smb/recordings/reactive_warp/
 nes/smb/recordings/reactive_warp/*
 !nes/smb/recordings/reactive_warp/reactive_83_84_poweron_trials_report.json
