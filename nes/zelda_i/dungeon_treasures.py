@@ -5,7 +5,7 @@ Bow is L1 (west of ``0x23``), not L6. L6 item is Magical Rod. Gohma still
 needs bow + wooden arrows (OW shop). Default ``--through level2`` and later
 never run ``level1-bow``; that through is a side branch enter-stop
 (play ``0x22`` 1/1). ``--through level1-bow-cellar`` is the stairs hop
-(leftover ``(144,173)``); ``ADDR_BOW`` is still 0.
+(leftover ``(160,157)``); ``ADDR_BOW`` is still 0.
 """
 
 from __future__ import annotations
