@@ -96,7 +96,7 @@ from zelda_i.survival_spine import (
 
 def test_spine_through_is_continuous_only() -> None:
     assert SPINE_THROUGH == (
-        "level1", "level1-bow", "level2", "level3", "level4-entry", "level4-key",
+        "level1", "level1-bow", "level1-bow-cellar", "level2", "level3", "level4-entry", "level4-key",
         "level4-clear50",
         "level4-room40-key",
         "level4-room30",

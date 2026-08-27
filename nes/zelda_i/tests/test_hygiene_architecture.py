@@ -274,12 +274,16 @@ def test_level6_north39_is_own_module_and_spine_under_800() -> None:
 def test_level1_bow_is_own_module() -> None:
     import zelda_i.dungeon as dungeon
     import zelda_i.level1_bow as l1bow
+    import zelda_i.level1_bow_cellar as l1cellar
     import zelda_i.level1_finish as l1f
 
     assert "make_bow22_controller" not in dungeon.__dict__
     assert "Level1Bow22Controller" not in l1f.__dict__
+    assert "make_bow_cellar_controller" not in l1bow.__dict__
     assert l1bow.make_bow22_controller().spec_id == "level1_bow_0x22"
+    assert l1cellar.make_bow_cellar_controller().spec_id == "level1_bow_cellar"
     assert open(l1bow.__file__, encoding="utf-8").read().count("\n") + 1 < 500
+    assert open(l1cellar.__file__, encoding="utf-8").read().count("\n") + 1 < 500
 
 
 def test_dungeon_ids_has_l4_l5_enemy_types() -> None:

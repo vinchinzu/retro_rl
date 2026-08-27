@@ -30,6 +30,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south1d
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west2d --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-cellar --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east3a --no-video --trials 1
 
 # Clean M5 (do not overwrite)

@@ -17,6 +17,10 @@ from zelda_i.chain import (
     run_natural_to_milestone,
 )
 from zelda_i.level1_bow import level1_bow_stages, level1_bow_success
+from zelda_i.level1_bow_cellar import (
+    level1_bow_cellar_stages,
+    level1_bow_cellar_success,
+)
 from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
 from zelda_i.level2_overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
@@ -110,7 +114,7 @@ BOOT_POLICY = {
 }
 
 Through = Literal[
-    "level1", "level1-bow", "level2", "level3", "level4-entry", "level4-key",
+    "level1", "level1-bow", "level1-bow-cellar", "level2", "level3", "level4-entry", "level4-key",
     "level4-clear50",
     "level4-room40-key",
     "level4-room30",
@@ -185,6 +189,7 @@ Through = Literal[
 SPINE_THROUGH: tuple[Through, ...] = (
     "level1",
     "level1-bow",
+    "level1-bow-cellar",
     "level2",
     "level3",
     "level4-entry",
@@ -314,6 +319,7 @@ class SpineRun:
             "stop": {
                 "level1": "level1_triforce",
                 "level1-bow": "level1_bow_0x22",
+                "level1-bow-cellar": "level1_bow_cellar",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 **L4_STOPS,
@@ -488,20 +494,27 @@ def run_survival_spine(
     if not run.success:
         return run
 
-    if through == "level1-bow":
+    if through in ("level1-bow", "level1-bow-cellar"):
+        # Side branch. Default --through level2+ skips it (Gohma still needs
+        # L1 bow). Catalog: zelda_i.dungeon_treasures.
+        cellar = through == "level1-bow-cellar"
         if not _run_stages(
             env,
             run,
-            level1_bow_stages(),
+            level1_bow_cellar_stages() if cellar else level1_bow_stages(),
             room_timer=room_timer,
             assist=assist,
             on_frame=on_frame,
         ):
             return run
         snap = read_snapshot(env.get_ram())
-        run.success = level1_bow_success(snap)
+        run.success = (
+            level1_bow_cellar_success(snap) if cellar else level1_bow_success(snap)
+        )
         if not run.success:
-            run.failed_stage = "level1_bow_0x22"
+            run.failed_stage = (
+                "level1_bow_cellar" if cellar else "level1_bow_0x22"
+            )
         return run
 
     if not _run_stages(

@@ -31,7 +31,11 @@ Local Level 2 notes: [LEVEL2_ROUTE.md](../LEVEL2_ROUTE.md).
 ## Level 1 — The Eagle (verified locally)
 
 - **OW door (verified):** screen `0x37`.
-- **Item:** Bow (optional speed skip).
+- **Item:** Bow (west of `0x23`, dest play `0x22` then cellar). **Not optional**
+  for a full clear: L6 Gohma and L9 Silver Arrows need it. Default
+  `--through level1` still skips it (speed TF). `--through level1-bow` is a
+  side branch, enter-stop **1/1** play `0x22`. Cellar dest mode 9 is open
+  (leftover `(144,109)`); `ADDR_BOW` still 0.
 - **Boss:** Aquamentus (sword).
 - **Triforce bit:** `0x01`.
 - Full live route: `docs/LEVEL1_ROUTE.md`.
@@ -196,7 +200,9 @@ Potion shop: bomb between two staircases one screen SE of door.
 - More Vires / Wizzrobes → staircase to **Gohma**
 - Gohma: **one arrow to open eye**; Heart → Triforce shard 6
 
-**Item:** Magical Rod. **Boss:** Gohma (arrow eye). **Triforce bit:** `0x20`.
+**Item:** Magical Rod (on tape, `level6-rod`). **Boss:** Gohma (**one arrow**
+to the open eye; Rod does not count). **Triforce bit:** `0x20`. L6 has no bow
+room — bow is L1. Default spine leftover at Gohma is `bow=0 arrows=0`.
 
 ---
 
@@ -283,6 +289,40 @@ Local route plan: [LEVEL9_ROUTE.md](../LEVEL9_ROUTE.md). Scaffold:
 
 ---
 
+## Spine vs wiki dungeon treasures (2026-08-27 scan)
+
+Code catalog: `zelda_i.dungeon_treasures`. Default path means
+`--through level6-north2c` (Gohma enter, unarmed).
+
+| Level | Wiki treasure | Kind | Default spine | Live |
+|------:|---------------|------|---------------|------|
+| 1 | **Bow** | gate (Gohma / Silver) | **skip** | side branch `level1-bow` enter-stop `0x22` **1/1**; cellar leftover `(144,109)` |
+| 1 | Wooden Boomerang | upgrade | skip | OK — L2 magical replaces it |
+| 2 | Magical Boomerang | combat | collect | `level2` / `0x4f` |
+| 3 | Raft | gate (L4 island) | collect | `level3` / `0x0f` |
+| 4 | Stepladder | gate (L4 water) | collect | `level4-stepladder` / `0x60` |
+| 5 | Whistle | gate (Digdogger / L7 pond) | collect | `level5-whistle` / `0x04` |
+| 5 | Bomb upgrade 8→12 | capacity | skip | Survival count top-up; never write `max_bombs` |
+| 6 | Magical Rod | combat | collect | `level6-rod` / `0x75` |
+| 6 | *(no bow)* | — | — | Gohma still needs L1 bow + 80R arrows |
+| 7 | Red Candle | gate (L8 bush if candle=0) | not reached | |
+| 7 | Bomb upgrade 12→16 | capacity | not reached | |
+| 8 | Book of Magic | upgrade | not reached | credits do not require it |
+| 8 | Magical Key | upgrade | not reached | L9 path split |
+| 9 | Red Ring | upgrade | not reached | |
+| 9 | Silver Arrows | gate (Ganon) | not reached | needs L1 bow first |
+
+HUD Compass/Map are optional. Collected on tape: L2/L3/L4/L6 compass, L4 map.
+Skipped: L1 compass+map, L2/L3/L5/L6 map (L6 map 6 reds then skip), L5 compass.
+
+OW buys the wiki still needs (not dungeon drops): wooden arrows 80R (Gohma),
+bait 60R (L7 Hungry Goriya), blue candle 60R at `0x5E` unless L7 drops red.
+
+**Only required-gate miss on the L6 tape is L1 Bow.** Do not KEY-UP Gohma
+unarmed. Do not poke `ADDR_BOW` / `ADDR_ARROWS`.
+
+---
+
 ## Triforce bit map
 
 | Shard | Bit | Dungeon |
@@ -303,7 +343,9 @@ Local route plan: [LEVEL9_ROUTE.md](../LEVEL9_ROUTE.md). Scaffold:
 1. Prefer this file + Zelda Dungeon URLs when planning a new dungeon.
 2. Never promote a room controller until live RAM shows room id, enemy types,
    and a 2/2 isolated stop predicate.
-3. Keep speed skips explicit (e.g. L1 skips Bow/Map/Boomerang; L2 may skip
-   Compass/Map if keys allow).
+3. Keep speed skips explicit. HUD Compass/Map and wooden boomerang (replaced
+   by L2 magical) may skip. **Do not skip L1 Bow** on a route that will fight
+   Gohma or Ganon. `--through level1` still skips it; that is a known gap,
+   not a wiki speed option.
 4. Dodongo / Digdogger / Gohma require inventory actions (bombs, whistle, arrows)
    — controllers must equip B-item, not only mash A.
