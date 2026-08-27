@@ -118,6 +118,7 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-3
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_warpless --to 1-3 --record
+# Next stage: 1-4 from that leave (docs/HANDOFF_32EXIT.md)
 ```
 
 ### Hard rules when adapting

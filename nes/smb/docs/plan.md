@@ -141,8 +141,9 @@ order: 1-2 **flag** exit → 1-3 control state → per-stage extract/polish.
   (wait=0, `--verify-1-3`). Isolated `Level1_3` TAS body misses phase.
   Seeds: `smb_1_1_warpless_slice.json`, `smb_1_2_warpless_flag_slice.json`,
   `smb_1_3_warpless_slice.json`. Play/record the same-file chain (not
-  #1715M warps): `smb.scripts.record_warpless --to 1-3`. Next warpless
-  extract: 1-4 @~6393.
+  #1715M warps): `smb.scripts.record_warpless --to 1-3` (**6205f** to
+  1-4 control). Next: 1-4 @~6393 → 2-1, then 2-1…8-4. Recipe:
+  `docs/HANDOFF_32EXIT.md`.
 
 ### D — Residual observation + approximate stepper (2026-08-13)
 

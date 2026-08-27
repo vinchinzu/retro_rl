@@ -10,7 +10,9 @@ Session 2026-08-27 (continue). **1-3 TAS slice is verified into 1-4 control.**
 `smb_1_3` LevelConfig uses dash-level identity. Isolated 1-3 from
 `Level1_3.state` still misses TAS phase. Warp any% line still untouched.
 
-## TL;DR for next session
+Living 1-4…8-4 extract recipe: [`HANDOFF_32EXIT.md`](HANDOFF_32EXIT.md).
+
+## TL;DR (1-3 unlock — done)
 
 1. 1-3 TAS slice: `models/smb_1_3_warpless_slice.json` (**1740f** @ FM2
    **4653 → 1-4**, warpless #3728M). Control-relative after 1-1 @190/1754
@@ -19,7 +21,7 @@ Session 2026-08-27 (continue). **1-3 TAS slice is verified into 1-4 control.**
    (`--record` for MP4). FM2 replay:
    `uv run python -m smb.scripts.annotate_fm2 --verify-1-3`.
    1-4 spawn: `dash_level=3`, x=40, y=80 (castle), timer=301, ps=7.
-   Next extract: 1-4 from that leave (movie hint **4653+1740=6393**).
+   Next extract: 1-4 from that leave — **use `HANDOFF_32EXIT.md`**.
 2. 1-2 flag TAS slice: `models/smb_1_2_warpless_flag_slice.json` (**2544f**
    @ FM2 2109 → 1-3). Hand-built `smb.flag_12` / `smb_1_2_flag.json` (2796f)
    is the prior 2/2 body. Prefer the TAS slice for 32-exit extract.
