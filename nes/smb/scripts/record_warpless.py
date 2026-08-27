@@ -1,29 +1,14 @@
-"""Record / play HappyLee & Mars608 warpless #3728M through 1-3.
+"""Record / play HappyLee & Mars608 warpless #3728M through a named leave.
 
-Uses **only** exported cuts from ``happylee_mars608_warpless_3728M.fm2``:
-
-  Level1_1 + settle 2
-    → ``smb_1_1_warpless_slice.json`` (1754f @ FM2 190)
-    → idle to 1-2 surface
-    → ``smb_1_2_warpless_flag_slice.json`` (2544f @ 2109 → 1-3)
-    → idle to 1-3 (wait=0)
-    → ``smb_1_3_warpless_slice.json`` (1740f @ 4653 → 1-4)
-
-HappyLee #1715M warp 1-1 / W4 1-2 and the hand-built ``smb_1_2_flag`` body
-are a different phase — this runner will not load them.
-
-Raw FM2 power-on still desyncs on fceumm. This is the 32-exit analog of
-``record_happylee``: gameplay-start ``Level1_1`` through the named leave.
-Human power-on record remains ``./play smb``.
+Uses **only** exported cuts from ``happylee_mars608_warpless_3728M.fm2``.
+``play_warpless_to`` is table-driven (``WARPLESS_LEGS``). Do not load #1715M
+warp seeds or the hand-built ``smb_1_2_flag`` body.
 
 ```bash
-# Play / verify (no MP4)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.record_warpless --to 1-3
-
-# Record HUD+audio MP4
+  uv run python -m smb.scripts.record_warpless --to 1-4
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
-  uv run python -m smb.scripts.record_warpless --to 1-3 --record
+  uv run python -m smb.scripts.record_warpless --to 1-4 --record
 ```
 """
 
@@ -51,7 +36,7 @@ from smb.scripts.run_warp_finish import (
 )
 from smb.tas.replay import IDLE
 from smb.tas.warpless import (
-    CHAIN_TARGETS,
+    WARPLESS_LEGS,
     WL_1_1_SETTLE,
     play_warpless_to,
     slices_present,
@@ -60,11 +45,14 @@ from smb.timing import NTSC_FPS, format_time
 
 DEFAULT_OUT_DIR = RECORDINGS_DIR / "tas_import" / "warpless_3728M"
 DEFAULT_TAIL_HOLD = 120
+_STAGE_IDS = tuple(leg.id for leg in WARPLESS_LEGS)
 
 _TARGET_LABELS = {
     "1-1": "Warpless #3728M 1-1 (Level1_1)",
     "1-2": "Warpless #3728M 1-1 → 1-2 flag → 1-3",
     "1-3": "Warpless #3728M 1-1 → 1-2 flag → 1-3 → 1-4",
+    "1-4": "Warpless #3728M 1-1 → 1-4 castle → 2-1",
+    "2-1": "Warpless #3728M 1-1 → 2-1 → 2-2",
 }
 
 
@@ -83,12 +71,12 @@ def record_warpless(
     out_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Play (and optionally record) the #3728M chain through *target*."""
-    if target not in CHAIN_TARGETS:
-        raise ValueError(f"target must be one of {CHAIN_TARGETS}, got {target!r}")
+    if target not in _STAGE_IDS:
+        raise ValueError(f"target must be one of 1-1…8-4, got {target!r}")
     if not slices_present(target):
         raise FileNotFoundError(
             f"missing warpless seeds through {target}; "
-            "export with annotate_fm2 --export-1-1 / --export-1-2-flag / --export-1-3"
+            f"export with: uv run python -m smb.scripts.annotate_fm2 --search {target} --export"
         )
 
     out_dir = out_dir or DEFAULT_OUT_DIR
@@ -120,7 +108,9 @@ def record_warpless(
         if intro_enabled and intro_frames > 0:
             lines = project_intro_lines(
                 game_title="Super Mario Bros. (NES)",
-                run_summary=_TARGET_LABELS[target],
+                run_summary=_TARGET_LABELS.get(
+                    target, f"Warpless #3728M 1-1 → {target}"
+                ),
                 extra_lines=(
                     "HappyLee & Mars608 warpless #3728M (same-file cuts)",
                     "HUD: frame timer · level/lives · NES buttons",
@@ -218,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--to",
-        choices=CHAIN_TARGETS,
+        choices=_STAGE_IDS,
         default="1-3",
         help="leave milestone (default: 1-3 → 1-4 control)",
     )

@@ -1,0 +1,182 @@
+{
+  "chain_frames_to_target": 7907,
+  "chain_time_ntsc": "2:11.567",
+  "end_snap": {
+    "dash_level": 0,
+    "level": 0,
+    "lives": 2,
+    "oper_mode": 1,
+    "player_state": 7,
+    "player_x": 40,
+    "player_y": 176,
+    "timer": 401,
+    "world": 1
+  },
+  "end_snapshot": {
+    "dash_level": 1,
+    "lives": 2,
+    "player_state": 8,
+    "player_x": 40,
+    "player_y": 176,
+    "timer": 396,
+    "world": 2
+  },
+  "frame": 8027,
+  "note": "Control-relative #3728M bodies on fceumm. Same movie for every leg. L+R preserved. Isolated Level1_3 is a different phase.",
+  "ok": true,
+  "outcome": "2_1_control",
+  "recording": {
+    "audio": false,
+    "audio_rate": null,
+    "bytes": 0,
+    "enabled": false,
+    "exists": false,
+    "hud": null,
+    "path": null,
+    "scale": null
+  },
+  "settle": 2,
+  "source": "HappyLee & Mars608 warpless #3728M",
+  "stages": {
+    "1_1": {
+      "body_len": 1754,
+      "death": null,
+      "end_frame": 1756,
+      "end_snap": {
+        "dash_level": 1,
+        "level": 1,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 5,
+        "player_x": 3266,
+        "player_y": 176,
+        "timer": 0,
+        "world": 0
+      },
+      "label": "wl_1_1",
+      "max_x": 3267,
+      "played": 1754,
+      "stop_at": null
+    },
+    "1_2": {
+      "body_len": 2544,
+      "death": null,
+      "end_frame": 4465,
+      "end_snap": {
+        "dash_level": 2,
+        "level": 3,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 7,
+        "player_x": 40,
+        "player_y": 176,
+        "timer": 301,
+        "world": 0
+      },
+      "label": "wl_1_2_flag",
+      "max_x": 3266,
+      "played": 2544,
+      "stop_at": 4465
+    },
+    "1_3": {
+      "body_len": 1740,
+      "death": null,
+      "end_frame": 6205,
+      "end_snap": {
+        "dash_level": 3,
+        "level": 4,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 7,
+        "player_x": 40,
+        "player_y": 80,
+        "timer": 301,
+        "world": 0
+      },
+      "label": "wl_1_3",
+      "max_x": 2425,
+      "played": 1740,
+      "stop_at": 6205
+    },
+    "1_4": {
+      "body_len": 1702,
+      "death": null,
+      "end_frame": 7907,
+      "end_snap": {
+        "dash_level": 0,
+        "level": 0,
+        "lives": 2,
+        "oper_mode": 1,
+        "player_state": 7,
+        "player_x": 40,
+        "player_y": 176,
+        "timer": 401,
+        "world": 1
+      },
+      "label": "wl_1_4",
+      "max_x": 2430,
+      "played": 1702,
+      "stop_at": 7907
+    },
+    "ctrl_1_2": {
+      "dash_level": 1,
+      "level": 1,
+      "lives": 2,
+      "oper_mode": 1,
+      "player_state": 7,
+      "player_x": 40,
+      "player_y": 176,
+      "timer": 0,
+      "world": 0
+    },
+    "ctrl_1_3": {
+      "dash_level": 2,
+      "level": 3,
+      "lives": 2,
+      "oper_mode": 1,
+      "player_state": 7,
+      "player_x": 40,
+      "player_y": 176,
+      "timer": 301,
+      "world": 0
+    },
+    "ctrl_1_4": {
+      "dash_level": 3,
+      "level": 4,
+      "lives": 2,
+      "oper_mode": 1,
+      "player_state": 7,
+      "player_x": 40,
+      "player_y": 80,
+      "timer": 301,
+      "world": 0
+    },
+    "ctrl_2_1": {
+      "dash_level": 0,
+      "level": 0,
+      "lives": 2,
+      "oper_mode": 1,
+      "player_state": 7,
+      "player_x": 40,
+      "player_y": 176,
+      "timer": 401,
+      "world": 1
+    },
+    "ctrl_wait_1_2": 165,
+    "ctrl_wait_1_3": 0,
+    "ctrl_wait_1_4": 0,
+    "seeds": {
+      "1-1": "/home/v/01_projects/11_games/retro_rl/nes/smb/models/smb_1_1_warpless_slice.json",
+      "1-2": "/home/v/01_projects/11_games/retro_rl/nes/smb/models/smb_1_2_warpless_flag_slice.json",
+      "1-3": "/home/v/01_projects/11_games/retro_rl/nes/smb/models/smb_1_3_warpless_slice.json",
+      "1-4": "/home/v/01_projects/11_games/retro_rl/nes/smb/models/smb_1_4_warpless_slice.json"
+    },
+    "settle": {
+      "frames": 2
+    }
+  },
+  "start_state": "Level1_1",
+  "success": true,
+  "tail_hold": 120,
+  "target": "1-4"
+}
