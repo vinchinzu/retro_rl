@@ -22,7 +22,9 @@ from harvest.tasks.nav import (
 )
 from harvest.tasks.farm_clearer import TileScanner
 from harvest.maps.map_config import (
+    COW_BARN_EAST_FACE_TILES,
     FARM_WALKABLE,
+    HORSE_BARN_WALL_TILES,
     ROUTES,
     find_landmark,
     get_landmarks,
@@ -255,6 +257,15 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertIn((17, 27), no_go)
         self.assertIn((15, 26), no_go)
 
+    def test_farm_no_go_tiles_include_horse_barn_walls(self) -> None:
+        no_go = get_no_go_tiles(0x00)
+        self.assertTrue(HORSE_BARN_WALL_TILES.issubset(no_go))
+        self.assertTrue(COW_BARN_EAST_FACE_TILES.issubset(no_go))
+        self.assertNotIn((16, 20), no_go)
+        self.assertNotIn((17, 20), no_go)
+        self.assertNotIn((17, 21), no_go)
+        self.assertNotIn((31, 20), no_go)
+
     def test_pathfinder_blocks_coordinate_specific_well_tiles(self) -> None:
         ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
         ram[ADDR_TILEMAP] = 0x00
@@ -263,6 +274,24 @@ class FarmWalkableTests(unittest.TestCase):
         pathfinder = Pathfinder(TileScanner())
 
         self.assertFalse(pathfinder.is_walkable(ram, 17, 27))
+
+    def test_pathfinder_leaves_horse_barn_stand_without_walking_walls(self) -> None:
+        ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
+        ram[ADDR_TILEMAP] = 0x00
+        for y in range(MAP_WIDTH):
+            for x in range(MAP_WIDTH):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = 0xA1
+        pathfinder = Pathfinder(TileScanner())
+        start = (17, 20)
+        self.assertTrue(pathfinder.is_walkable(ram, *start, current_pos=start))
+        self.assertFalse(pathfinder.is_walkable(ram, 17, 18, current_pos=start))
+        self.assertFalse(pathfinder.is_walkable(ram, 18, 20, current_pos=start))
+        self.assertTrue(pathfinder.is_walkable(ram, 16, 20, current_pos=start))
+        self.assertTrue(pathfinder.is_walkable(ram, 17, 21, current_pos=start))
+        path = pathfinder.find_path(ram, start, (15, 21), max_steps=16)
+        self.assertTrue(path)
+        self.assertIn(path[0], {(16, 20), (17, 21)})
+        self.assertFalse(HORSE_BARN_WALL_TILES.intersection(path))
 
     def test_default_pathfinder_uses_current_tilemap_walkability(self) -> None:
         ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
