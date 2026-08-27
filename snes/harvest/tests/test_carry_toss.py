@@ -16,7 +16,11 @@ from water_refill_helpers import _blank_ram, _set_player_tile, _set_tile
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, ADDR_X, ADDR_Y
 from harvest.maps.farm_pond import (
     COW_BARN_EAST_FACE_TILES,
+    EAST_SPUR_FA_A8_BANK,
+    EAST_SPUR_FA_APPROACH,
+    EAST_SPUR_FA_SOUTH_OPEN_X,
     EAST_SPUR_FA_STAND,
+    EAST_SPUR_FA_WATER,
     HORSE_BARN_LEAVE_TILE,
     HORSE_BARN_WALL_TILES,
 )
@@ -134,6 +138,8 @@ class CarryToPondStandTests(unittest.TestCase):
         self.assertIn((20, 14), path)
         self.assertIn((31, 14), path)
         self.assertIn(EAST_SPUR_FA_STAND, path)
+        self.assertIn(EAST_SPUR_FA_APPROACH, path)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
         self.assertNotIn(PRIMARY_POND_STAND, path)
         self.assertLess(path.index((20, 14)), path.index((31, 14)))
         barn = HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | {
@@ -165,6 +171,7 @@ class CarryToPondStandTests(unittest.TestCase):
         path = task._navigator.path
         self.assertIn((31, 14), path)
         self.assertIn(EAST_SPUR_FA_STAND, path)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
         self.assertNotIn((31, 26), path)
         self.assertNotIn(PRIMARY_POND_STAND, path)
         barn = HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | {
@@ -182,6 +189,8 @@ class CarryToPondStandTests(unittest.TestCase):
         self.assertTrue(path)
         self.assertEqual(path[0], HORSE_BARN_LEAVE_TILE)
         self.assertIn(EAST_SPUR_FA_STAND, path)
+        self.assertIn(EAST_SPUR_FA_APPROACH, path)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
         self.assertFalse(HORSE_BARN_WALL_TILES.intersection(path))
         self.assertFalse(COW_BARN_EAST_FACE_TILES.intersection(path))
         self.assertNotEqual(path[0], (18, 20))
@@ -215,6 +224,85 @@ class CarryToPondStandTests(unittest.TestCase):
         self.assertIn((20, 14), path)
         self.assertIn((31, 14), path)
         self.assertIn(EAST_SPUR_FA_STAND, path)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
+
+    def _paint_fa_east_lip(self, ram) -> None:
+        for x, y in EAST_SPUR_FA_WATER:
+            _set_tile(ram, x, y, 0xFA)
+        for x, y in EAST_SPUR_FA_A8_BANK:
+            _set_tile(ram, x, y, 0xA8)
+        _set_tile(ram, 44, 12, 0x09)
+        _set_tile(ram, 45, 12, 0x0A)
+        _set_tile(ram, 44, 13, 0x0B)
+        _set_tile(ram, 45, 13, 0x0C)
+        for x in range(48, 51):
+            _set_tile(ram, x, 12, 0xA0)
+            _set_tile(ram, x, 13, 0xA0)
+        _set_tile(ram, 46, 16, 0x01)
+        _set_tile(ram, EAST_SPUR_FA_SOUTH_OPEN_X, 13, 0x01)
+        _set_tile(ram, EAST_SPUR_FA_SOUTH_OPEN_X, 16, 0x01)
+
+    def _assert_fa_east_south_cross(self, path) -> None:
+        open_x = EAST_SPUR_FA_SOUTH_OPEN_X
+        self.assertTrue(path)
+        self.assertIn((open_x, 13), path)
+        self.assertIn((open_x, 16), path)
+        self.assertEqual(path[-1], EAST_SPUR_FA_STAND)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
+        self.assertFalse(EAST_SPUR_FA_A8_BANK.intersection(path))
+        self.assertNotIn((47, 14), path)
+        self.assertNotIn((47, 15), path)
+        self.assertNotIn((48, 14), path)
+        self.assertLess(path.index((open_x, 13)), path.index((open_x, 16)))
+        self.assertLess(path.index((open_x, 16)), path.index(EAST_SPUR_FA_STAND))
+
+    def test_fa_from_east_crosses_south_at_x51(self) -> None:
+        world = self._world(player=(48, 13))
+        task = CarryToPondStand()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self._assert_fa_east_south_cross(task._navigator.path)
+        self.assertIn("RIGHT", action_names(result.action.action))
+
+    def test_fa_east_lip_live_occupancy_still_uses_x51(self) -> None:
+        world = self._world(player=(48, 13))
+        self._paint_fa_east_lip(world.ram)
+        task = CarryToPondStand()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self._assert_fa_east_south_cross(task._navigator.path)
+
+    def test_fa_east_lip_stasis_does_not_block_south_open_column(self) -> None:
+        world = self._world(player=(48, 13))
+        self._paint_fa_east_lip(world.ram)
+        task = CarryToPondStand()
+        task.reset(world)
+        task.step(world)
+        self.assertTrue(task._navigator.path)
+        task._navigator.stasis = task.stasis_repath + 1
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertNotIn((EAST_SPUR_FA_SOUTH_OPEN_X, 13), task._pathfinder.temp_blocked)
+        self.assertNotIn((49, 13), task._pathfinder.temp_blocked)
+        self._assert_fa_east_south_cross(task._navigator.path)
+        self.assertIn("RIGHT", action_names(result.action.action))
+
+    def test_fa_from_west_lip_drops_south_not_into_a1(self) -> None:
+        world = self._world(player=(44, 14))
+        task = CarryToPondStand()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        path = task._navigator.path
+        self.assertIn((44, 16), path)
+        self.assertIn(EAST_SPUR_FA_APPROACH, path)
+        self.assertEqual(path[-1], EAST_SPUR_FA_STAND)
+        self.assertNotIn((45, 14), path)
+        self.assertNotIn((45, 15), path)
+        self.assertFalse(EAST_SPUR_FA_WATER.intersection(path))
+        self.assertIn("DOWN", action_names(result.action.action))
 
 
 if __name__ == "__main__":

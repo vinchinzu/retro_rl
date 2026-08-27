@@ -52,11 +52,13 @@ class D2WholeFarmContractTests(unittest.TestCase):
         self.assertEqual(spec.params["debris_types"], ["fence"])
         self.assertEqual(spec.params["timeout"], 0)
 
-    def test_stone_pond_phase_lifts_ten_not_hammer(self) -> None:
+    def test_stone_pond_phase_dumps_all_not_hammer(self) -> None:
         spec = stone_pond_phase()
         self.assertEqual(spec.phase, "CLEAR_STONES")
         self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
-        self.assertEqual(spec.params["max_fences"], 10)
+        self.assertIsNone(spec.params["max_fences"])
+        self.assertEqual(spec.params["timeout"], 0)
+        self.assertEqual(spec.params["max_failures"], 60)
         self.assertFalse(spec.params["corridor_only"])
         self.assertEqual(spec.params["debris_types"], ["stone"])
 
@@ -64,7 +66,8 @@ class D2WholeFarmContractTests(unittest.TestCase):
         spec = rock_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_ROCKS")
         self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"large_rocks": 4})
+        self.assertEqual(spec.params["quota"], {"large_rocks": 10_000})
+        self.assertEqual(spec.params["timeout"], 0)
         self.assertEqual(spec.params["priority"], ["rock"])
         self.assertFalse(spec.params["prefer_lift_for_stones"])
         self.assertEqual(spec.contract.required_tools, ("hammer",))
@@ -238,10 +241,24 @@ class D2PostShopComposeTests(unittest.TestCase):
 
         stones = build_phase_task(TaskBuildContext(), stone_pond_phase(), world)
         self.assertIsInstance(stones, FenceClearLoopTask)
-        self.assertEqual(stones.max_fences, 10)
+        self.assertIsNone(stones.max_fences)
         self.assertTrue(stones.pond_dump)
         self.assertEqual(stones.max_steps_per_fence, 2800)
+        self.assertEqual(stones.max_failures, 60)
         self.assertEqual(stones.debris_types[0].name, "STONE")
+
+
+class LeftoverSkipClearTests(unittest.TestCase):
+    def test_skip_bushes_when_weeds_already_gone(self) -> None:
+        from harvest.scripts.leftover_exec import phase_already_clear
+        from harvest.tasks.farm_clear_quota import DebrisCounts
+
+        empty = DebrisCounts(stones=45, large_rocks=47, stumps=36)
+        self.assertTrue(phase_already_clear("CLEAR_BUSHES", empty))
+        self.assertTrue(phase_already_clear("CLEAR_FENCES", empty))
+        self.assertFalse(phase_already_clear("CLEAR_STONES", empty))
+        self.assertFalse(phase_already_clear("CLEAR_ROCKS", empty))
+        self.assertFalse(phase_already_clear("ENSURE_HAMMER", empty))
 
 
 class LeftoverProbeBudgetTests(unittest.TestCase):
@@ -249,9 +266,15 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         from harvest.scripts.d2_leftover_probe import _section_complete
         from harvest.tasks.farm_clear_quota import DebrisCounts
 
-        start = DebrisCounts(weeds=100, stones=185, large_rocks=51, stumps=38)
-        enough = DebrisCounts(weeds=90, stones=175, large_rocks=47, stumps=36)
-        short = DebrisCounts(weeds=91, stones=176, large_rocks=48, stumps=37)
+        start = DebrisCounts(
+            weeds=100, stones=185, large_rocks=51, stumps=38, fences=80
+        )
+        enough = DebrisCounts(
+            weeds=90, stones=0, large_rocks=0, stumps=36, fences=0
+        )
+        short = DebrisCounts(
+            weeds=90, stones=1, large_rocks=0, stumps=36, fences=0
+        )
 
         self.assertTrue(_section_complete("all", start, enough))
         self.assertFalse(_section_complete("all", start, short))
@@ -266,18 +289,30 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
             _section_complete("fences", start, DebrisCounts(fences=1))
         )
 
+    def test_probe_stone_quota_is_exhaustive(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _section_complete
+        from harvest.tasks.farm_clear_quota import DebrisCounts
+
+        start = DebrisCounts(stones=175)
+        self.assertTrue(_section_complete("stones", start, DebrisCounts()))
+        self.assertFalse(
+            _section_complete("stones", start, DebrisCounts(stones=1))
+        )
+
     def test_zero_phase_timeout_spends_remaining_budget(self) -> None:
         from harvest.scripts.d2_leftover_probe import _phase_timeout
 
         remaining = 200_000
         self.assertEqual(_phase_timeout(bush_clear_phase(), remaining), remaining)
         self.assertEqual(_phase_timeout(fence_dump_phase(), remaining), remaining)
+        self.assertEqual(_phase_timeout(stone_pond_phase(), remaining), remaining)
+        self.assertEqual(_phase_timeout(rock_clear_phase(), remaining), remaining)
 
     def test_positive_phase_timeout_is_capped_by_remaining(self) -> None:
         from harvest.scripts.d2_leftover_probe import _phase_timeout
 
-        self.assertEqual(_phase_timeout(rock_clear_phase(), 50_000), 50_000)
-        self.assertEqual(_phase_timeout(rock_clear_phase(), 200_000), 120_000)
+        self.assertEqual(_phase_timeout(stump_clear_phase(), 50_000), 50_000)
+        self.assertEqual(_phase_timeout(stump_clear_phase(), 200_000), 120_000)
 
     def test_leftover_probe_uses_repo_headed(self) -> None:
         from pathlib import Path
@@ -293,7 +328,8 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertIn("add_headed_flag", text)
         self.assertIn("attach_headed", text)
         self.assertIn("idle_headed", text)
-        self.assertIn("headed_emu_repeat", text)
+        exec_src = src.parent / "leftover_exec.py"
+        self.assertIn("headed_emu_repeat", exec_src.read_text(encoding="utf-8"))
         self.assertNotIn("WatchDisplay", text)
         self.assertNotIn("--watch", text)
 
@@ -345,6 +381,109 @@ class LeftoverProbePayloadTests(unittest.TestCase):
         self.assertIn("glance_misses", exit_fail)
         self.assertTrue(exit_fail["glance_misses"])
         self.assertEqual(exit_fail["leftover"]["tilemap"], 0x15)
+
+
+class LeftoverStallAbortTests(unittest.TestCase):
+    def test_stall_aborts_after_unchanged_window(self) -> None:
+        from harvest.scripts.leftover_exec import _should_abort_stall
+
+        self.assertTrue(_should_abort_stall(24_000, 0, 24_000))
+        self.assertFalse(_should_abort_stall(23_999, 0, 24_000))
+
+    def test_progress_resets_the_stall_timer(self) -> None:
+        from harvest.scripts.leftover_exec import _should_abort_stall
+
+        self.assertFalse(_should_abort_stall(24_000, 1_000, 24_000))
+        self.assertTrue(_should_abort_stall(25_000, 1_000, 24_000))
+
+    def test_nonpositive_stall_frames_never_aborts(self) -> None:
+        from harvest.scripts.leftover_exec import _should_abort_stall
+
+        self.assertFalse(_should_abort_stall(400_001, 0, 0))
+        self.assertFalse(_should_abort_stall(400_001, 0, -1))
+
+    def _idle_run(self, *, stall_frames, timeout, key_fn=None, checkpoint_state=None):
+        from unittest.mock import patch
+
+        import numpy as np
+        from retro_harness import TaskResult, TaskStatus
+
+        from harvest.scripts.leftover_exec import run_leftover_task
+
+        class Env:
+            def __init__(self):
+                self._ram = np.zeros(8, dtype=np.uint8)
+                self.n_steps = 0
+
+            def get_ram(self):
+                return self._ram
+
+            def step(self, action):
+                self.n_steps += 1
+                return None, 0.0, False, False, {}
+
+        class Task:
+            def step(self, world):
+                return TaskResult(status=TaskStatus.RUNNING)
+
+        env = Env()
+        keys = (lambda _ram: key_fn(env)) if key_fn else (lambda _ram: (0,))
+        with (
+            patch("harvest.scripts.leftover_exec._debris_key", keys),
+            patch(
+                "harvest.scripts.leftover_exec.shipping_scene_needs_dismiss",
+                return_value=False,
+            ),
+            patch("harvest.scripts.leftover_exec.save_emulator_state") as save,
+        ):
+            frame, result, _ram = run_leftover_task(
+                env,
+                Task(),
+                timeout=timeout,
+                start_frame=0,
+                checkpoint_state=checkpoint_state,
+                stall_frames=stall_frames,
+            )
+        return frame, result, env, save
+
+    def test_run_leftover_task_stops_on_stall(self) -> None:
+        from retro_harness import TaskStatus
+
+        frame, result, env, save = self._idle_run(
+            stall_frames=60,
+            timeout=400,
+            checkpoint_state="Y1_D2_Leftover_Checkpoint",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("no debris progress", result.reason)
+        self.assertIn("60", result.reason)
+        self.assertLess(frame, 400)
+        self.assertLessEqual(env.n_steps, 120)
+        save.assert_called_once()
+
+    def test_run_leftover_task_progress_delays_abort(self) -> None:
+        from retro_harness import TaskStatus
+
+        frame, result, env, _save = self._idle_run(
+            stall_frames=100,
+            timeout=250,
+            key_fn=lambda e: (1,) if e.n_steps >= 60 else (0,),
+        )
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("no debris progress", result.reason)
+        self.assertGreaterEqual(frame, 160)
+        self.assertLess(frame, 250)
+        self.assertGreater(env.n_steps, 100)
+
+    def test_run_leftover_task_disabled_stall_runs_to_timeout(self) -> None:
+        from retro_harness import TaskStatus
+
+        frame, result, env, save = self._idle_run(stall_frames=0, timeout=80)
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+        self.assertGreater(env.n_steps, 60)
+        self.assertGreater(frame, 80)
+        save.assert_not_called()
 
 
 if __name__ == "__main__":
