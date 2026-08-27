@@ -16,6 +16,7 @@ from zelda_i.chain import (
     run_controller_stage,
     run_natural_to_milestone,
 )
+from zelda_i.level1_bow import level1_bow_stages, level1_bow_success
 from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
 from zelda_i.level2_overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
@@ -109,7 +110,7 @@ BOOT_POLICY = {
 }
 
 Through = Literal[
-    "level1", "level2", "level3", "level4-entry", "level4-key",
+    "level1", "level1-bow", "level2", "level3", "level4-entry", "level4-key",
     "level4-clear50",
     "level4-room40-key",
     "level4-room30",
@@ -171,39 +172,19 @@ Through = Literal[
     "level6-clear3a",
     "level6-stairs3a-warp",
     "level6-cellar08",
-    "level6-center3a",
+    "level6-south1d",
+    "level6-west2d",
+    "level6-north2c",
     "level6-east3a",
-    "level6-stairs3a-neunder",
-    "level6-stairs3a-neclip",
-    "level6-stairs3a-ne71",
-    "level6-stairs3a-ne",
-    "level6-stairs3a-71",
-    "level6-west39-reband",
-    "level6-west39-upclip",
-    "level6-west39",
-    "level6-clear39-west",
-    "level6-stairs3a",
     "level6-north39",
     "level6-inland29",
     "level6-west19",
     "level6-south18",
-    "level6-aisle-west28",
-    "level6-west28",
-    "level6-east28",
-    "level6-clear28-south",
-    "level6-west38",
-    "level6-east38",
-    "level6-east38-lane",
-    "level6-bomb38-south",
-    "level6-south38",
-    "level6-clear38-south",
-    "level6-aisle28",
-    "level6-south28",
-    "level6-exit-ow",
 ]
 
 SPINE_THROUGH: tuple[Through, ...] = (
     "level1",
+    "level1-bow",
     "level2",
     "level3",
     "level4-entry",
@@ -292,6 +273,20 @@ class SpineRun:
     inventory_assist: dict[str, Any] | None = None
     position_assist: dict[str, Any] | None = None
 
+    def _position_assist_from_stages(self) -> dict[str, Any] | None:
+        """Prefer an explicit field; else take it from a stage controller report."""
+        if self.position_assist is not None:
+            return self.position_assist
+        for stage in self.stages:
+            reporter = getattr(stage.controller, "report", None)
+            if not callable(reporter):
+                continue
+            nested = reporter()
+            extra = nested.get("position_assist") if isinstance(nested, dict) else None
+            if extra:
+                return extra
+        return None
+
     def report(self) -> dict[str, Any]:
         return {
             "ok": self.success,
@@ -311,13 +306,14 @@ class SpineRun:
             "l4_entry": self.l4_entry,
             "bombs": self.bombs,
             "inventory_assist": self.inventory_assist,
-            "position_assist": self.position_assist,
+            "position_assist": self._position_assist_from_stages(),
             "poke_bombs": (
                 (self.inventory_assist or {}).get("poke_bombs") or False
             ),
             "poke_keys": (self.inventory_assist or {}).get("poke_keys") or False,
             "stop": {
                 "level1": "level1_triforce",
+                "level1-bow": "level1_bow_0x22",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 **L4_STOPS,
@@ -387,8 +383,6 @@ def _run_stages(
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
     for name, controller, max_frames in stages:
-        if hasattr(controller, "bind_env"):
-            controller.bind_env(env)
         if name in retopup:
             topup_owned_inventory(env, run)
         obs, stage = run_controller_stage(
@@ -405,9 +399,6 @@ def _run_stages(
         run.obs = obs
         run.stages.append(stage)
         run.end_frame = stage.end_frame
-        extra = getattr(controller, "position_assist", None)
-        if extra:
-            run.position_assist = extra
         if not stage.success:
             run.success = False
             run.failed_stage = name
@@ -495,6 +486,22 @@ def run_survival_spine(
         failed_stage=None if prefix.success else "prefix_clear53",
     )
     if not run.success:
+        return run
+
+    if through == "level1-bow":
+        if not _run_stages(
+            env,
+            run,
+            level1_bow_stages(),
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+        ):
+            return run
+        snap = read_snapshot(env.get_ram())
+        run.success = level1_bow_success(snap)
+        if not run.success:
+            run.failed_stage = "level1_bow_0x22"
         return run
 
     if not _run_stages(

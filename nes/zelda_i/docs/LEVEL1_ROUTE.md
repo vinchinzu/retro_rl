@@ -34,9 +34,11 @@ was used to disambiguate the boss and Triforce room directions.
 ```
 
 The optional east branch from `0x53` is `0x54`: eight Keese and the Compass.
-The optional Bow branch is west of `0x23`. Neither item is required by the
-current completion policy. The route also skips the Map and Boomerang pickups
-after clearing their rooms.
+The optional Bow branch is west of `0x23`. Q1 ROM `$18700`: `0x23` W=key,
+dest play `0x22` (E=key, N/S/W=wall). Survival `--through level1-bow` is
+**BLOCKED 3/3** on west-wall around in `0x23` (UP solid at x=64 and x=80
+from y=117, leftover `(80,117)` tile 119). Not on the Clean M5 path. The route also skips
+the Map and Boomerang pickups after clearing their rooms.
 
 ## Source correlation and live evidence
 
