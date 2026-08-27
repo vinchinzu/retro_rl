@@ -107,6 +107,23 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
 7. **Default fold + capture:** promote natural_82 as source-owned continuous
    seed and re-record Clean power-on MP4.
 
+### E — All-32-exits track (2026-08-27)
+
+Standalone segment work on `smb_all_exits` (no warp-line changes). Gate
+order: 1-2 **flag** exit → 1-3 control state → per-stage extract/polish.
+
+- **Pin audit (rr-s81w):** `all_exits_v1_pins` 1-3/1-4 are pre-fb4118e9
+  AreaNumber mislabels (1-3 pin = 1-2 UG re-entry; 1-4 pin = 1-3 castle
+  tally, so the human cleared 1-3 once). 1-1/1-2/2-1 pins genuine; no tape
+  saved. Evidence: `recordings/segments_all_exits/evidence/`.
+- **Tooling:** `smb.scripts.extract_stage_state` promotes a verified pin to
+  an integration start state (fingerprint + round-trip checks); rejects the
+  bogus pins by design. `smb_1_3` LevelConfig registered.
+- **1-2 UG end map + probes:** HL slice pipe x=2860 → W4 verified; plant
+  pipes at x=2856/2920/2984; warp-room pocket; mid-fall DOWN entry works,
+  rim-standing does not. Full details + next probes:
+  `docs/HANDOFF_32EXIT_1_3.md`.
+
 ### D — Residual observation + approximate stepper (2026-08-13)
 
 Scaffold only (not a route-clear claim). Same `R(τ)` lattice as Super Metroid,

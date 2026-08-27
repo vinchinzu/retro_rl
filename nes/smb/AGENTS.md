@@ -29,6 +29,10 @@ uv run python -m smb.scripts.run_reactive_warp --retime-4-1 --retime-4-2 --retim
 uv run python -m smb.scripts.fold_continuous_policy
 uv run python -m smb.scripts.rle_polish --list-windows
 
+# 32-exit track: promote ./play stage pins to practice start states
+uv run python -m smb.scripts.extract_stage_state --list
+uv run python -m smb.scripts.extract_stage_state 1-3
+
 # 1-1 TAS polish (analyze / multi-window hillclimb / systematic delete)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.tas_1_1 analyze
@@ -95,6 +99,13 @@ uv run python -m smb.scripts.parse_human_recording \
 - 1-1-stairs polish window = frames **1050–1311** (wall-slam), not castle idle.
 - 1-2 polish mutates only `underground_from_control` in
   `smb_1_2_reactive_fragments.json` (surface stays reactive RIGHT/DOWN).
+- 32-exit pins: `all_exits_v1_pins` 1-3/1-4 are **stale mislabels** (written
+  pre-fb4118e9 AreaNumber gate; 1-3 pin = 1-2 UG re-entry, 1-4 pin = 1-3
+  castle tally). `extract_stage_state` rejects them — don't force it.
+  1-2 **flag** exit (normal, to 1-3) has no bot controller yet; pipe-entry
+  facts + probes: `docs/HANDOFF_32EXIT_1_3.md`.
+- Pin/state boot: `set_state` → `reset()` → `set_state` again (stable-retro
+  eats a frame on load). RAM y is head/top (floor stand y=176).
 
 ## Layout (pointers)
 

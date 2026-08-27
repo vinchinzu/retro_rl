@@ -193,6 +193,9 @@ _smb_level(8, 2, "Level8_2", "smb_8_2", "smb_82",
            completion_min_progress=2000.0)
 _smb_level(8, 3, "Level8_3", "smb_8_3", "smb_83",
            completion_min_progress=2000.0)
+# All-exits route stages (32-exit track; start states come from ./play pins
+# via smb.scripts.extract_stage_state — see all_exits_v1_pins).
+_smb_level(1, 3, "Level1_3", "smb_1_3", "smb_13")
 # 8-4 uses area_pointer as level_id so pipe/venue transitions are visible.
 # First pass: register the full level for discovery (play + trace to find all areas).
 # Once areas are known, register individual segments below.
