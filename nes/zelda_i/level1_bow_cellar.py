@@ -1,8 +1,9 @@
 """Level 1 play 0x22 leftover: westmost 0x68 DOWN, stairs, dest mode 9.
 
-Leftover (144,173) SE diamond, keys=0 bow=0. Wiki: 4 blade traps, push
-the west block down, stairs, cellar bow. This hop is enter-cellar only.
-Do not claim ADDR_BOW. Do not poke bow/arrows/doors/keys. Isolated BFS banned.
+Leftover (160,157) SE diamond edge, keys=0 bow=0. Wiki: 4 blade traps,
+push the west block down, stairs, cellar bow. This hop is enter-cellar
+only. Do not claim ADDR_BOW. Do not poke bow/arrows/doors/keys.
+Isolated BFS banned.
 """
 
 from __future__ import annotations
@@ -46,9 +47,12 @@ EAST_SPAWN_XMAX = 232
 # at y=93 reaches x=113 then tile 119 (bricked north door column).
 # south189 leftover (176,189) tile 117: DOWN x=176 to y=189 live; LEFT
 # at y=189 reaches x=127 then tile 119 (bricked south door column).
-# DOWN at x=176 passed (176,173) live. LEFT that lane, north of the door.
+# south173 leftover (144,173) tile 118: LEFT y=173 176→144 live; LEFT
+# at (144,173) is the south diamond (SE point; v4 mirror).
+# south157 leftover (160,157) tile 118: LEFT y=157 176→160 live; LEFT
+# at (160,157) is the SE diamond edge (v3–v4 diagonal).
 EAST_INLAND_X = 176
-SOUTH_LANE_Y = 173
+SOUTH_LANE_Y = 157
 WEST_AISLE_X = 64
 BOW_CELLAR_MAX_FRAMES = 4000
 SAMPLE_PERIOD = 12
@@ -223,12 +227,13 @@ class Level1BowCellarController:
     def _stage(
         self, xy: tuple[int, int], block: ZeldaObject
     ) -> tuple[tuple[int, int], str]:
-        """East mouth LEFT, south y=173, west aisle, north face. Not y=189."""
+        """East mouth LEFT, south y=157, west aisle, north face. Not y=173."""
         x, y = xy
         gx, gy = north_face_stand(block)
         # northwall: LEFT y=93 pinches at the bricked north door.
         # south189: LEFT y=189 pinches at the bricked south door.
-        # Do not UP at x=208. Do not LEFT at y=109 through the diamond.
+        # south173: LEFT y=173 is the south diamond. Do not UP at x=208.
+        # Do not LEFT past x=144 at y=109 or y=173.
         if x > EAST_INLAND_X:
             return (EAST_INLAND_X, 141), "west_inland"
         if x > WEST_AISLE_X + PUSH_ALIGN_TOL and y < SOUTH_LANE_Y - PUSH_ALIGN_TOL:
@@ -375,10 +380,11 @@ class Level1BowCellarController:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "LEFT inland x=176, DOWN y=173 (north of south door), "
-                "LEFT west aisle x=64, UP to north-face y, RIGHT onto "
-                "westmost 0x68, DOWN until y+8; idle original xy; dest "
-                "mode 9; no ADDR_BOW; no y=93/y=189 LEFT; no UP at x=208"
+                "LEFT inland x=176, DOWN y=157 (south_peel, not diamond "
+                "y=173 / door y=189), LEFT west aisle x=64 toward x=96, "
+                "UP to north-face y, RIGHT onto westmost 0x68, DOWN until "
+                "y+8; idle original xy; dest mode 9; no ADDR_BOW; no "
+                "LEFT past x=144 at y=109/y=173; no UP at x=208"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,
