@@ -6,26 +6,23 @@ held seat, or replace the takeoff (b). A new sitting (c) only because
 context died; it still reads this file. Gravity epic continues from this
 residual. `attic_door` is the Attic dual. Farm plan: `rr-1xc2.8`.
 
-**Miss class:** west_super LEFT+A from the usable pin still launches at
-x~1217 (not `SLOPE_LEFT_A` 1227–1231). Dual `--start-phase grate_seat
---stop-at west_super` 3618f timeout leftover `(1209, 1787) p2`. Peak
-`y=1769` at `(1217, 1769) p26` f107 — same class as the prior two reds
-(peaks 1762 then 1769, fall to ~1209,1787). Halt-3: do not repeat this
-dual. Next is a new trajectory or a dump at a held seat that is not
-this leftover.
+**Miss class:** `mid_climb` has not started. Natural-entry `west_super`
+now dual-greens after explicitly neutral-settling the grate-seat momentum
+that the direct phase-pin boot had hidden.
 
-**Status:** Hop 1 dual-green. Hop 2 usable `grate_seat` **118f** ×2
-`(1217, 1867) p9` gs=8 (sha256
-`a19a2078cc0c844ace7927cb2bfc72725500406b8fe5ed5c11e1f6903354315f`).
-Living checkbox is `west_super` (**RED**). Living tip `--to phantoon`
+**Status:** Hop 1 dual-green. Hop 2 natural-entry `west_super` **580f** ×2
+to `(1094, 1700) p48` gs=8, beam selected, freeze 0. The five-frame neutral
+join turns the natural `(1217, 1867) p9` momentum handoff into the same
+take02 launch proven from the phase pin. Living checkbox is `mid_climb`
+(**RED**). Living tip `--to phantoon`
 **195,336f** ×2 (STATUS). Hop GREEN is Attic gs=8 only.
 Phase dumps are named scratch pins.
 
 **Pin in:** `scratch/post_ws_basement_to_main.state` (`0xCAF6` ~(1173,1979)
 p1 gs=8)
 **Goal:** Attic `0xCA52` gs=8. Full hop GREEN is that leave only.
-**Living checkbox:** `west_super` (**RED**). Usable grate_seat pin is
-`scratch/post_ws_main_grate_seat.state` (1217, 1867) p9, not the 1189 land.
+**Living checkbox:** `mid_climb` (**RED**). Natural west-super pin is
+`scratch/post_ws_main_west_super.state` `(1094, 1700) p48`.
 
 ### Already green (do not re-prove)
 
@@ -34,6 +31,7 @@ p1 gs=8)
 | Power-on Phantoon | **195,336f** ×2 | `0xCC6F` (1240,139) p10 gs=8 |
 | Hop 1 Basement → Main | **1,579f** ×2 | `0xCAF6` (1173,1979) p1 gs=8 |
 | Hop 2 grate_seat (usable) | **118f** ×2 | `0xCAF6` (1217,1867) p9 gs=8 |
+| Hop 2 natural west_super | **580f** ×2 | `0xCAF6` (1094,1700) p48 gs=8 |
 
 Observable `(1189, 1883) p2` and take04 `~(1195, 1883)` are not that pin.
 
@@ -57,12 +55,12 @@ Controller: `routes/kpdr/k6/` geometry + overlay + play. Unpowered
 |-------|------|-----------|--------|
 | 1 pit_shot | pin (1173,1979) | 3-shot, still Main, not Basement | PARTIAL — Wave+Spazer **opens the grate** |
 | 2 grate_seat | pin | usable take02 fire slope | **118f** ×2 (1217,1867) p9 |
-| 3 west_super | usable fire slope | y~1675 in shaft, not 0xCDA8 | **RED** — 3× peak y=1762–1769 from x~1217 |
-| 4 mid_climb | 1675 | y~680 in shaft | not started |
+| 3 west_super | usable fire slope | y~1675 in shaft, not 0xCDA8 | **580f** ×2 natural entry, `(1094,1700) p48` |
+| 4 mid_climb | 1675 | y~680 in shaft | **RED** — not started |
 | 5 attic_seat | 680 | ~(1135, ≤160) stand | not started |
 | 6 attic_door | door | Attic `0xCA52` gs=8 | hop GREEN only |
 
-west_super greens before mid_climb opens. Phase dumps are not hop GREEN.
+west_super is green; mid_climb is now open. Phase dumps are not hop GREEN.
 Do not `--source` `post_ws_main_grate_land.state` (or the 1189 hash) as
 if it were grate_seat.
 
@@ -90,21 +88,15 @@ to 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 
 ### Next — one seam
 
-`rr-1xc2.8.4` (halt-3): LEFT+A still leaves from x~1217, not
-`SLOPE_LEFT_A`. Do not repeat `--start-phase grate_seat --stop-at
-west_super` from `post_ws_main_grate_seat.state` without a new
-trajectory (walk to 1227–1231 before A, or dump a held takeoff pin).
-Ice stays off this seat. Do not open mid_climb. Natural-entry is
-`rr-1xc2.8.5`.
+Continue from the natural `west_super` phase pin to `mid_climb`; do not
+restart the grate departure. Keep the controller after a red and dump a held
+seat or replace the trajectory after three identical misses.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   snes/super_metroid/scripts/probe/ws_main_climb.py \
-  --start-phase grate_seat --stop-at west_super --no-video --dual \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_grate_seat.state
-# Natural-entry (rr-1xc2.8.5, after 8.4):
-# QT_QPA_PLATFORM=offscreen uv run python \
-#   snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video --dual
+  --start-phase west_super --stop-at mid_climb --no-video --dual \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_west_super.state
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state \
   --headed
@@ -120,5 +112,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
 - Did not treat a phase dump as hop GREEN
 - Did not treat pocket `(1177, 1883)` or land `(1189, 1883)` as fire-slope green
 - Did not treat take04 alcove as the living handoff
-- Did not treat leftover `(1209, 1787)` as west_super
-- Did not open mid_climb, compose, or STATUS
+- Did not run mid_climb, compose, or STATUS

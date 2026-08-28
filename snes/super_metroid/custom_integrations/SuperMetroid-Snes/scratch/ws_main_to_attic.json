@@ -1,14 +1,14 @@
 {
   "success": true,
   "error": null,
-  "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_grate_seat.state",
+  "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state",
   "boot": {
     "room": "0xCAF6",
     "xy": [
-      1228,
-      1856
+      1173,
+      1979
     ],
-    "pose": 9,
+    "pose": 1,
     "gs": 8,
     "dt": 0,
     "health": 299,
@@ -44,7 +44,7 @@
     "facing": 8,
     "supers": 5,
     "missiles": 20,
-    "frame": 457,
+    "frame": 580,
     "charge": 0,
     "mov": 23,
     "killed": 0,
@@ -54,7 +54,7 @@
       1700
     ],
     "min_y_pose": 48,
-    "min_y_frame": 457,
+    "min_y_frame": 580,
     "enemies": [
       {
         "slot": 0,
@@ -268,11 +268,11 @@
       }
     ]
   },
-  "frames": 457,
+  "frames": 580,
   "time": {
-    "frames": 457,
-    "seconds": 7.604,
-    "clock": "00:07.62",
+    "frames": 580,
+    "seconds": 9.651,
+    "clock": "00:09.67",
     "ntsc_fps": 60.0988
   },
   "saved": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_west_super.state",
