@@ -57,11 +57,14 @@ GAUNTLET_DOOR_Y = (560, 760)
 IBJ_FIRST_WAIT = 52
 IBJ_WAIT1 = 18
 IBJ_WAIT2 = 30
-# Door height is y≈640. Climb past it so a left spin still has air to node 7 / A.
-IBJ_STOP_Y = 520
+# Door height is y≈640. Hand off just above it; the drift/cliff cadence owns
+# the remaining height and must not send Samus to the top of the room.
+IBJ_STOP_Y = 700
 IBJ_DOOR_Y = 680
 IBJ_MAX_CYCLES = 90
-BOMB_WALL_CYCLES = 24
+BOMB_WALL_MAX_FRAMES = 650
+BOMB_WALL_PULSE_PERIOD = 8
+BOMB_WALL_EXIT_X = 450
 CAVE_HOP_MAX = 8
 
 # --- Gauntlet Entrance (0x92B3): enter from the right door (node 2)
@@ -162,7 +165,9 @@ def is_morph_pose(pose: int) -> bool:
 
 
 __all__ = [
-    "BOMB_WALL_CYCLES",
+    "BOMB_WALL_EXIT_X",
+    "BOMB_WALL_MAX_FRAMES",
+    "BOMB_WALL_PULSE_PERIOD",
     "BOMB_WALL_X",
     "CAVE_HOP_MAX",
     "FLYWAY_X",

@@ -3,8 +3,8 @@
 Live sequence (do not IBJ the V-gap or hug the cliff):
 
 1. Hop right out of the parlor cave onto the ship floor (x≳650).
-2. Open-air IBJ at x≈840–900: first bomb wait 52, then 18/30 to y≲520.
-3. More IBJ + 4f-left drift to the cliff face, climb, 12f-left above A.
+2. Open-air IBJ at x≈840–900: first bomb wait 52, then 18/30 to y≈640.
+3. Drift directly to the cliff, climb its face, and align above Obstacle A.
 4. Morph-bomb Obstacle A, hop the cave ledge, shoot the blue door.
 """
 
@@ -18,7 +18,9 @@ from super_metroid.routes.controller_common import (
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.gauntlet.geometry import (
-    BOMB_WALL_CYCLES,
+    BOMB_WALL_EXIT_X,
+    BOMB_WALL_MAX_FRAMES,
+    BOMB_WALL_PULSE_PERIOD,
     BOMB_WALL_X,
     CAVE_HOP_MAX,
     IBJ_CENTER_X,
@@ -235,46 +237,45 @@ def climb_open_air_ibj(
 
 
 def drift_to_bomb_wall(session: ControllerSession) -> None:
-    """From a rested open-air peak ~y520, IBJ + drift onto Obstacle A.
+    """Take the shortest stable bomb line from open air to Obstacle A.
 
-    The idle seats are part of the bomb cadence, not cosmetic.  From
-    ``gauntlet_ibj_peak2.state`` this exact chain reaches (629,573):
-
-    1 up + 10×4f-left → 50 idle → 12 up → 30 idle → 8 up + 6×12f-left.
+    Drift hard left until the cliff catches the morph ball, use the slightly
+    faster 20/30 cadence to climb its face, then correct the last few pixels
+    left.  There are no fixed bomb-timer seats: live position owns each phase.
     """
     if _near_bomb_wall(session):
         return
 
-    def _y() -> int:
-        return int(session.state.samus_y)
+    for _ in range(10):
+        if not _in_landing(session) or int(session.state.samus_x) <= 650:
+            break
+        ibj_cycle(
+            session,
+            label="landing_ibj_drift",
+            stop_y=-1,
+            left_frames=8,
+        )
 
-    def _raw(n: int, left: int = 0, tag: str = "landing_ibj") -> None:
-        # Byte-match of the peak-pin search: no recenter, no mid-cycle abort.
-        for _ in range(n):
-            if not _in_landing(session) or _y() >= 1100:
-                return
-            hold(session, 2, "X", reason=f"{tag}_b1")
-            hold(session, 18, reason=f"{tag}_w1")
-            hold(session, 2, "X", reason=f"{tag}_b2")
-            if left:
-                hold(session, left, "LEFT", reason=f"{tag}_L")
-                hold(session, max(0, 30 - left), reason=f"{tag}_w2")
-            else:
-                hold(session, 30, reason=f"{tag}_w2")
+    for _ in range(18):
+        if not _in_landing(session) or int(session.state.samus_y) <= 610:
+            break
+        ibj_cycle(
+            session,
+            label="landing_ibj_cliff",
+            center_x=645,
+            stop_y=-1,
+            wait1=20,
+        )
 
-    # From rest peak (867,518): 1 extra 18/30 then 10×4f-left → (645,738).
-    _raw(1, 0, "landing_ibj_up")
-    _raw(10, 4, "landing_ibj_dL4")
-    if _y() >= 900:
-        return
-    hold(session, 50, reason="landing_ibj_cliff_seat")
-    _raw(12, 0, "landing_ibj_face")
-    if _y() >= 900:
-        return
-    hold(session, 30, reason="landing_ibj_face_seat")
-    _raw(8, 0, "landing_ibj_above_a")
-    _raw(6, 12, "landing_ibj_dL12")
-    hold(session, 40, reason="landing_ibj_a_seat")
+    for _ in range(3):
+        if not _in_landing(session) or int(session.state.samus_x) <= 630:
+            break
+        ibj_cycle(
+            session,
+            label="landing_ibj_align_a",
+            stop_y=-1,
+            left_frames=12,
+        )
 
 
 def _jump_off_lip_right(session: ControllerSession) -> None:
@@ -303,17 +304,17 @@ def climb_to_ledge(session: ControllerSession) -> None:
 
 
 def bomb_gauntlet_wall(session: ControllerSession) -> None:
-    """Morph-bomb Obstacle A. Live from (629,573): 4f LEFT + X + 32 idle."""
+    """Continuously roll and pulse bombs through Obstacle A."""
     ensure_morph(session)
-    for _ in range(BOMB_WALL_CYCLES):
+    for frame in range(BOMB_WALL_MAX_FRAMES):
         st = session.state
         if not _in_landing(session):
             return
-        if int(st.samus_x) <= 500 and 600 <= int(st.samus_y) <= 720:
+        if int(st.samus_x) <= BOMB_WALL_EXIT_X and 580 <= int(st.samus_y) <= 740:
             return
-        hold(session, 4, "LEFT", reason="landing_bomb_wall_roll")
-        hold(session, 2, "X", reason="landing_bomb_wall")
-        hold(session, 32, reason="landing_bomb_wall_wait")
+        buttons = ("LEFT", "X") if frame % BOMB_WALL_PULSE_PERIOD < 2 else ("LEFT",)
+        hold(session, 1, *buttons, reason="landing_bomb_wall_speed")
+    raise TimeoutError(f"landing_to_gauntlet: bomb wall timed out {session.state}")
 
 
 def _enter_gauntlet_door(session: ControllerSession) -> None:
