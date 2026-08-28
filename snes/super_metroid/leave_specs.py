@@ -201,8 +201,8 @@ WS_MAIN_TO_ATTIC = _spec(
 WS_MAIN_PIT_SHOT = _spec(
     "ws_main_pit_shot", ROOM_WS_MAIN, (1100, 1220), (1920, 2020), "any"
 )
-# Usable take02 outgoing pin: LEFT+A from x≈1221–1227 at ~(1223,1860) p3.
-# Not observable land (1189,1883) p2, not take04 (1195,1883), not pocket 1177.
+# Usable take02 outgoing pin: fire ~(1223,1860) p3 and LEFT+A takeoff
+# (1227,1231)×(1852,1856). Not land (1189,1883) p2, not take04 (1195,1883).
 WS_MAIN_GRATE_SEAT = _spec(
     "ws_main_grate_seat", ROOM_WS_MAIN, (1216, 1232), (1852, 1868), "any"
 )
