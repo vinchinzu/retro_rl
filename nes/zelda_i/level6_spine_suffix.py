@@ -26,7 +26,7 @@ from zelda_i.level6_overworld import (
     LEVEL6_DARK_39_ROOM,
     LEVEL6_MAP_ROOM,
 )
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
+
 from zelda_i.level6_room19 import (
     MAP_19_MAX_FRAMES,
     ROOM09_MAX_FRAMES,
@@ -73,26 +73,6 @@ from zelda_i.level6_stairs09 import (
     STAIRS_09_MAX_FRAMES,
     make_stairs_09_controller,
 )
-from zelda_i.level6_west39 import (
-    level6_west39_stages,
-    level6_west39_success,
-)
-from zelda_i.level6_west39_reband import (
-    level6_west39_reband_stages,
-    level6_west39_reband_success,
-)
-from zelda_i.level6_west39_upclip import (
-    level6_west39_upclip_stages,
-    level6_west39_upclip_success,
-)
-from zelda_i.level6_clear39_west import (
-    level6_clear39_west_stages,
-    level6_clear39_west_success,
-)
-from zelda_i.level6_stairs3a import (
-    level6_stairs3a_stages,
-    level6_stairs3a_success,
-)
 from zelda_i.level6_stairs3a_warp import (
     level6_stairs3a_warp_stages,
     level6_stairs3a_warp_success,
@@ -101,37 +81,23 @@ from zelda_i.level6_cellar08 import (
     level6_cellar08_stages,
     level6_cellar08_success,
 )
-from zelda_i.level6_center3a import (
-    level6_center3a_stages,
-    level6_center3a_success,
+from zelda_i.level6_south1d import (
+    level6_south1d_stages,
+    level6_south1d_success,
+)
+from zelda_i.level6_west2d import (
+    level6_west2d_stages,
+    level6_west2d_success,
+)
+from zelda_i.level6_north2c import (
+    level6_north2c_stages,
+    level6_north2c_success,
 )
 from zelda_i.level6_east3a import (
     level6_east3a_stages,
     level6_east3a_success,
 )
-from zelda_i.level6_stairs3a_ne71 import (
-    level6_stairs3a_ne71_stages,
-    level6_stairs3a_ne71_success,
-)
-from zelda_i.level6_stairs3a_neclip import (
-    level6_stairs3a_neclip_stages,
-    level6_stairs3a_neclip_success,
-)
-from zelda_i.level6_stairs3a_neunder import (
-    level6_stairs3a_neunder_stages,
-    level6_stairs3a_neunder_success,
-)
-from zelda_i.level6_stairs3a_ne import (
-    level6_stairs3a_ne_stages,
-    level6_stairs3a_ne_success,
-)
-from zelda_i.level6_stairs3a_71 import (
-    level6_stairs3a_71_stages,
-    level6_stairs3a_71_success,
-)
-from zelda_i.level6_exit_ow import (
-    level6_exit_ow_stages,
-    level6_exit_ow_success,
+from zelda_i.level6_north39 import (
     level6_north39_stages,
     level6_north39_success,
 )
@@ -147,56 +113,9 @@ from zelda_i.level6_south18 import (
     level6_south18_stages,
     level6_south18_success,
 )
-from zelda_i.level6_aisle_west28 import (
-    level6_aisle_west28_stages,
-    level6_aisle_west28_success,
-)
-from zelda_i.level6_west28 import (
-    level6_west28_stages,
-    level6_west28_success,
-)
-from zelda_i.level6_east28 import (
-    level6_east28_stages,
-    level6_east28_success,
-)
-from zelda_i.level6_clear28_south import (
-    level6_clear28_south_stages,
-    level6_clear28_south_success,
-)
-from zelda_i.level6_west38 import (
-    level6_west38_stages,
-    level6_west38_success,
-)
-from zelda_i.level6_east38 import (
-    level6_east38_stages,
-    level6_east38_success,
-)
-from zelda_i.level6_east38_lane import (
-    level6_east38_lane_stages,
-    level6_east38_lane_success,
-)
-from zelda_i.level6_bomb38_south import (
-    level6_bomb38_south_stages,
-    level6_bomb38_south_success,
-)
-from zelda_i.level6_south38 import (
-    level6_south38_stages,
-    level6_south38_success,
-)
-from zelda_i.level6_clear38_south import (
-    level6_clear38_south_stages,
-    level6_clear38_south_success,
-)
-from zelda_i.level6_aisle28 import (
-    level6_aisle28_stages,
-    level6_aisle28_success,
-)
-from zelda_i.level6_south28 import (
-    level6_south28_stages,
-    level6_south28_success,
-)
 from zelda_i.ram import (
     ADDR_WHISTLE,
+    PASSAGE_MODE,
     PLAY_MODE,
     ZeldaSnapshot,
     read_snapshot,
@@ -245,30 +164,14 @@ __all__ = [
     "level6_stairs3a_warp_success",
     "level6_cellar08_stages",
     "level6_cellar08_success",
-    "level6_center3a_stages",
-    "level6_center3a_success",
+    "level6_south1d_stages",
+    "level6_south1d_success",
+    "level6_west2d_stages",
+    "level6_west2d_success",
+    "level6_north2c_stages",
+    "level6_north2c_success",
     "level6_east3a_stages",
     "level6_east3a_success",
-    "level6_stairs3a_ne71_stages",
-    "level6_stairs3a_ne71_success",
-    "level6_stairs3a_neclip_stages",
-    "level6_stairs3a_neclip_success",
-    "level6_stairs3a_neunder_stages",
-    "level6_stairs3a_neunder_success",
-    "level6_stairs3a_ne_stages",
-    "level6_stairs3a_ne_success",
-    "level6_stairs3a_71_stages",
-    "level6_stairs3a_71_success",
-    "level6_west39_reband_stages",
-    "level6_west39_reband_success",
-    "level6_west39_upclip_stages",
-    "level6_west39_upclip_success",
-    "level6_west39_stages",
-    "level6_west39_success",
-    "level6_clear39_west_stages",
-    "level6_clear39_west_success",
-    "level6_stairs3a_stages",
-    "level6_stairs3a_success",
     "level6_north39_stages",
     "level6_north39_success",
     "level6_inland29_stages",
@@ -277,32 +180,6 @@ __all__ = [
     "level6_west19_success",
     "level6_south18_stages",
     "level6_south18_success",
-    "level6_aisle_west28_stages",
-    "level6_aisle_west28_success",
-    "level6_west28_stages",
-    "level6_west28_success",
-    "level6_east28_stages",
-    "level6_east28_success",
-    "level6_clear28_south_stages",
-    "level6_clear28_south_success",
-    "level6_west38_stages",
-    "level6_west38_success",
-    "level6_east38_stages",
-    "level6_east38_success",
-    "level6_east38_lane_stages",
-    "level6_east38_lane_success",
-    "level6_bomb38_south_stages",
-    "level6_bomb38_south_success",
-    "level6_south38_stages",
-    "level6_south38_success",
-    "level6_clear38_south_stages",
-    "level6_clear38_south_success",
-    "level6_aisle28_stages",
-    "level6_aisle28_success",
-    "level6_south28_stages",
-    "level6_south28_success",
-    "level6_exit_ow_stages",
-    "level6_exit_ow_success",
 ]
 
 
@@ -427,7 +304,7 @@ def level6_clear29_success(snap: ZeldaSnapshot) -> bool:
         and not snap.transitioning
         and not ROOM_29_SPEC.live_enemies(snap)
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -464,7 +341,7 @@ def level6_rod_success(snap: ZeldaSnapshot) -> bool:
     return (
         snap.level == LEVEL6
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -484,7 +361,7 @@ def level6_settle39_success(snap: ZeldaSnapshot) -> bool:
         and snap.screen == LEVEL6_DARK_39_ROOM
         and not snap.transitioning
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -505,7 +382,7 @@ def level6_clear39_success(snap: ZeldaSnapshot) -> bool:
         and not snap.transitioning
         and not ROOM_39_SPEC.live_enemies(snap)
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -525,7 +402,7 @@ def level6_settle3a_success(snap: ZeldaSnapshot) -> bool:
         and snap.screen == LEVEL6_BLOCK_3A_ROOM
         and not snap.transitioning
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -546,7 +423,7 @@ def level6_clear3a_success(snap: ZeldaSnapshot) -> bool:
         and not snap.transitioning
         and not ROOM_3A_SPEC.live_enemies(snap)
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )
 
 
@@ -666,35 +543,14 @@ def continue_level6_spine(
         ("level6-clear3a", "level6_clear_0x3a", level6_clear3a_stages, level6_clear3a_success, False),
         ("level6-stairs3a-warp", "level6_stairs_0x3a_warp", level6_stairs3a_warp_stages, level6_stairs3a_warp_success, True),
         ("level6-cellar08", "level6_cellar_0x08", level6_cellar08_stages, level6_cellar08_success, True),
-        ("level6-center3a", "level6_center_0x3a", level6_center3a_stages, level6_center3a_success, True),
+        ("level6-south1d", "level6_south_0x1d", level6_south1d_stages, level6_south1d_success, True),
+        ("level6-west2d", "level6_west_0x2d", level6_west2d_stages, level6_west2d_success, True),
+        ("level6-north2c", "level6_north_0x2c", level6_north2c_stages, level6_north2c_success, True),
         ("level6-east3a", "level6_east_0x3a", level6_east3a_stages, level6_east3a_success, True),
-        ("level6-stairs3a-neunder", "level6_stairs_0x3a_neunder", level6_stairs3a_neunder_stages, level6_stairs3a_neunder_success, True),
-        ("level6-stairs3a-neclip", "level6_stairs_0x3a_neclip", level6_stairs3a_neclip_stages, level6_stairs3a_neclip_success, True),
-        ("level6-stairs3a-ne71", "level6_stairs_0x3a_ne71", level6_stairs3a_ne71_stages, level6_stairs3a_ne71_success, True),
-        ("level6-stairs3a-ne", "level6_stairs_0x3a_ne", level6_stairs3a_ne_stages, level6_stairs3a_ne_success, True),
-        ("level6-stairs3a-71", "level6_stairs_0x3a_71", level6_stairs3a_71_stages, level6_stairs3a_71_success, True),
-        ("level6-west39-reband", "level6_west39_reband_0x39", level6_west39_reband_stages, level6_west39_reband_success, True),
-        ("level6-west39-upclip", "level6_west39_upclip_0x39", level6_west39_upclip_stages, level6_west39_upclip_success, True),
-        ("level6-west39", "level6_west_0x39", level6_west39_stages, level6_west39_success, True),
-        ("level6-clear39-west", "level6_clear39_west_0x39", level6_clear39_west_stages, level6_clear39_west_success, True),
-        ("level6-stairs3a", "level6_stairs_0x3a", level6_stairs3a_stages, level6_stairs3a_success, True),
         ("level6-north39", "level6_north39_0x29", level6_north39_stages, level6_north39_success, False),
         ("level6-inland29", "level6_inland_0x29", level6_inland29_stages, level6_inland29_success, False),
         ("level6-west19", "level6_west_0x19", level6_west19_stages, level6_west19_success, False),
         ("level6-south18", "level6_south_0x18", level6_south18_stages, level6_south18_success, False),
-        ("level6-aisle-west28", "level6_aisle_west_0x28", level6_aisle_west28_stages, level6_aisle_west28_success, True),
-        ("level6-west28", "level6_west_0x28", level6_west28_stages, level6_west28_success, True),
-        ("level6-east28", "level6_east_0x28", level6_east28_stages, level6_east28_success, True),
-        ("level6-clear28-south", "level6_clear_south_0x28", level6_clear28_south_stages, level6_clear28_south_success, True),
-        ("level6-west38", "level6_west_0x38", level6_west38_stages, level6_west38_success, True),
-        ("level6-east38", "level6_east_0x38", level6_east38_stages, level6_east38_success, True),
-        ("level6-east38-lane", "level6_east_lane_0x38", level6_east38_lane_stages, level6_east38_lane_success, True),
-        ("level6-bomb38-south", "level6_bomb_south_0x38", level6_bomb38_south_stages, level6_bomb38_south_success, True),
-        ("level6-south38", "level6_south_0x38", level6_south38_stages, level6_south38_success, True),
-        ("level6-clear38-south", "level6_clear_south_0x38", level6_clear38_south_stages, level6_clear38_south_success, True),
-        ("level6-aisle28", "level6_aisle_0x28", level6_aisle28_stages, level6_aisle28_success, True),
-        ("level6-south28", "level6_south_0x28", level6_south28_stages, level6_south28_success, True),
-        ("level6-exit-ow", "level6_exit_ow_0x22", level6_exit_ow_stages, level6_exit_ow_success, True),
     )
     for name, stop, stages_fn, success_fn, dedicated in hops:
         if not attach(name, stop, stages_fn, success_fn, dedicated=dedicated):

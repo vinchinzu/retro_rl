@@ -6,28 +6,36 @@
       "pin": "/home/v/01_projects/11_games/retro_rl/nes/smb/recordings/human/all_exits_v1_pins/1-3.state",
       "entry_snapshot": {
         "world": 0,
-        "level": 2,
-        "area_pointer": 192,
+        "level": 3,
+        "area_pointer": 38,
         "oper_mode": 1,
         "player_state": 7,
-        "player_x": 160,
+        "player_x": 40,
         "player_y": 176,
         "x_speed": 0,
         "y_speed": 0,
-        "lives": 2
+        "grounded": 1,
+        "timer": 301,
+        "timer_mod21": 7,
+        "lives": 2,
+        "screen_x": 0
       },
       "settled_snapshot": {
-        "dash_level": 1,
-        "timer": 397,
+        "dash_level": 2,
+        "timer": 299,
         "player_x": 40,
         "player_state": 8,
         "lives": 2
       },
-      "probe_max_player_x": 160,
-      "issues": [
-        "dash_level=1 expected 2"
-      ],
-      "ok": false
+      "probe_max_player_x": 40,
+      "issues": [],
+      "ok": true,
+      "roundtrip": {
+        "dash_level": 2,
+        "lives": 2,
+        "ok": true
+      },
+      "written": "/home/v/01_projects/11_games/retro_rl/nes/smb/custom_integrations/SuperMarioBros-Nes-v0/Level1_3.state"
     }
   ]
 }

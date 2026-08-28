@@ -2,8 +2,9 @@
 
 **Status:** OPEN. Do not STATUS. Do not reopen Slash. Do not skip
 dumpster on byte 8 at x=126. Do not tighten
-`raph_starbase_close_gap` below `% 4`. Do not encode video until a
-power-on `--dry-run` on the sitting's tree has already reached credits.
+`raph_starbase_close_gap` below `% 4`. Dry-run credits **green** on
+this tree; veryfast 1080p encode **done** (scratch `rr_iprz5` stems
+only — do not overwrite STATUS `tmnt_iv_full_hard_credits.*`).
 
 Shipped: **right-rail skip** (`starbase_rail_right`, x≥220) and
 **exhausted-207 RIGHT** (`starbase_unstick_right` after 3 dumpster
@@ -43,6 +44,14 @@ Power-on proof (do not STATUS / BASELINE):
 5,529 dmg, 79 e-heals, 7,420 iframe, **0 lives lost**. Starbase split
 00:43:13 → form-2 00:51:39. Freeze abort in the runner is 12,000
 enemyless frozen-X frames (saves PNG + `ScratchFreeze_*` state).
+Integrity: 0 lives / loads / stage / lives writes / A-special; Hard
+WRAM 2; 127f `starbase_unstick_right`. ROM-free tests 118 passed.
+
+Veryfast 1080p60 encode (not `--hq`), wall **29m02s**, exit 0:
+`recordings/tmnt_iv_full_hard_credits_rr_iprz5.mp4` (881MB, 1920×1080
+@60, 213,430f, audio AAC) + matching JSON. Same clock as dry-run
+**00:59:01.318 / 5,529 / 79 / 7,420 / 0 lives**. Do not clobber
+STATUS `tmnt_iv_full_hard_credits.mp4` / dry_run.json.
 
 ## Exact next action
 
@@ -84,7 +93,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
    damage before promoting BASELINE. Continuous finish on this tree is
    already proven (`rr_iprz5` dry-run). Re-dry-run after the Fast/Boss9
    recovery. No STATUS. Do not overwrite `tmnt_iv_full_hard_dry_run.json`.
-   No video encode until that sitting's `--dry-run` reaches credits.
+   Scratch encode is `tmnt_iv_full_hard_credits_rr_iprz5.mp4` — do not
+   overwrite STATUS `tmnt_iv_full_hard_credits.mp4`.
 
 ## Burned (do not relearn)
 

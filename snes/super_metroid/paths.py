@@ -39,10 +39,17 @@ SHARED_PRACTICE_ROM = REPO_DIR / "roms" / "SuperMetroid_Practice.sfc"
 SHARED_PRACTICE_ROM_TINYSTATES = (
     REPO_DIR / "roms" / "SuperMetroid_Practice_tinystates.sfc"
 )
+# Practice-hack ROM integration (contractor / repertoire capture only).
+PRACTICE_GAME = "SuperMetroid-Practice-Snes"
+PRACTICE_INTEGRATION_DIR = GAME_DIR / "custom_integrations" / PRACTICE_GAME
+PRACTICE_PRESET_ADDR_PATH = MAPS_DIR / "practice_preset_addresses.json"
 # Full practice-hack preset menu/save repertoire (JSON catalog).
 PRACTICE_REPERTOIRE_PATH = MAPS_DIR / "practice_repertoire.json"
 # Canonical harness states/demos keyed by repertoire session id.
+# Vanilla integration: product pins. Contractor captures go to the
+# practice-ROM integration (PRACTICE_CONTRACTOR_STATE_DIR).
 PRACTICE_REPERTOIRE_STATE_DIR = INTEGRATION_DIR / "practice_repertoire"
+PRACTICE_CONTRACTOR_STATE_DIR = PRACTICE_INTEGRATION_DIR / "practice_repertoire"
 PRACTICE_REPERTOIRE_DEMO_DIR = RECORDINGS_DIR / "practice_repertoire"
 # Vendored TAS movies (Sniq any%/100%) + snes12_rle slices — see tas/README.md.
 TAS_DIR = GAME_DIR / "tas"

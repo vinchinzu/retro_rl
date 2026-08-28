@@ -14,7 +14,7 @@ from retro_harness.ram_state import GameMode, GameState
 # --- Core engine ---
 ADDR_LEVEL = 0x0010  # 0 = overworld; 1-9 = dungeon
 ADDR_IS_UPDATING_MODE = 0x0011  # 0=mode init, nonzero=ordinary update loop
-ADDR_MODE = 0x0012  # 5=play, 6/7=scroll, 11=cave/underworld play, 16=cave enter
+ADDR_MODE = 0x0012  # 5=play, 6/7=scroll, 9=passage, 11=cave, 16=cave enter
 ADDR_SUBMODE = 0x0013  # mode-local phase; ending uses 3=credits, 4=final screen
 ADDR_DIALOG_TIMER = 0x0029
 ADDR_LINK_X = 0x0070
@@ -73,6 +73,7 @@ SCREEN_LEVEL2_ENTRANCE = 0x3C  # walkthrough-correlated Moon overworld door
 SCREEN_LEVEL2_ENTRY_ROOM = 0x7D  # Moon dungeon south mouth (live settle)
 CAVE_MODE = 11
 PLAY_MODE = 5
+PASSAGE_MODE = 9
 
 SWORD_WOODEN = 1
 

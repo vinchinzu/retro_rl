@@ -25,7 +25,6 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 import time
 from pathlib import Path
 
@@ -36,6 +35,7 @@ from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 ensure_monorepo_on_path()
 
 from retro_harness import TaskStatus, WorldState
+from retro_harness.video import VideoCaptureConfig, VideoRecorder
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
@@ -66,98 +66,44 @@ def _file_sha256(path: Path) -> str | None:
     return digest.hexdigest()
 
 
-class _VideoRecorder:
-    """Stream raw emulator RGB frames to an H.264 MP4 without dropping frames."""
+def _rgb_frame(frame) -> np.ndarray:
+    image = np.asarray(frame, dtype=np.uint8)
+    if image.ndim != 3 or image.shape[2] < 3:
+        raise ValueError(f"expected RGB emulator frame, got shape={image.shape}")
+    return np.ascontiguousarray(image[:, :, :3])
 
-    def __init__(self, path: Path, first_frame, *, fps: int, scale: int) -> None:
-        if fps <= 0:
-            raise ValueError("video fps must be positive")
-        if scale <= 0:
-            raise ValueError("video scale must be positive")
 
-        frame = self._normalize_frame(first_frame)
-        self.path = path
-        self.fps = fps
-        self.scale = scale
-        self.width = int(frame.shape[1])
-        self.height = int(frame.shape[0])
-        self.frames = 0
-        self._closed = False
-        self._result: dict[str, object] | None = None
+def _open_video(path: Path, first_frame, *, fps: int, scale: int) -> VideoRecorder:
+    rgb = _rgb_frame(first_frame)
+    recorder = VideoRecorder(
+        path,
+        width=int(rgb.shape[1]),
+        height=int(rgb.shape[0]),
+        config=VideoCaptureConfig(
+            fps=fps,
+            scale=scale,
+            crf=18,
+            preset="medium",
+            audio=False,
+            footer=False,
+        ),
+    )
+    recorder.write(rgb)
+    return recorder
 
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self._process = subprocess.Popen(
-            [
-                "ffmpeg",
-                "-y",
-                "-loglevel",
-                "error",
-                "-f",
-                "rawvideo",
-                "-pixel_format",
-                "rgb24",
-                "-video_size",
-                f"{self.width}x{self.height}",
-                "-framerate",
-                str(fps),
-                "-i",
-                "-",
-                "-an",
-                "-vf",
-                f"scale=iw*{scale}:ih*{scale}:flags=neighbor,setsar=7/6",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                str(path),
-            ],
-            stdin=subprocess.PIPE,
-        )
-        self.write(frame)
 
-    @staticmethod
-    def _normalize_frame(frame) -> np.ndarray:
-        image = np.asarray(frame, dtype=np.uint8)
-        if image.ndim != 3 or image.shape[2] < 3:
-            raise ValueError(f"expected RGB emulator frame, got shape={image.shape}")
-        return np.ascontiguousarray(image[:, :, :3])
-
-    def write(self, frame) -> None:
-        image = self._normalize_frame(frame)
-        if image.shape != (self.height, self.width, 3):
-            raise ValueError(
-                f"emulator video size changed from {self.width}x{self.height} "
-                f"to {image.shape[1]}x{image.shape[0]}"
-            )
-        if self._process.stdin is None:
-            raise RuntimeError("ffmpeg stdin is unavailable")
-        self._process.stdin.write(image.tobytes())
-        self.frames += 1
-
-    def close(self) -> dict[str, object]:
-        if self._result is not None:
-            return self._result
-        if self._process.stdin is not None:
-            self._process.stdin.close()
-        return_code = self._process.wait()
-        self._closed = True
-        self._result = {
-            "path": str(self.path),
-            "fps": self.fps,
-            "scale": self.scale,
-            "frames": self.frames,
-            "duration_seconds": round(self.frames / self.fps, 3),
-            "encoded": return_code == 0 and self.path.is_file(),
-            "ffmpeg_return_code": return_code,
-            "audio": False,
-        }
-        return self._result
+def _video_report(recorder: VideoRecorder, **extra: object) -> dict[str, object]:
+    fps = recorder.config.fps
+    return {
+        "path": str(recorder.path),
+        "fps": fps,
+        "scale": recorder.config.scale,
+        "frames": recorder.frames,
+        "duration_seconds": round(recorder.frames / fps, 3),
+        "encoded": True,
+        "audio": False,
+        **extra,
+    }
 
 
 def _parse_args() -> argparse.Namespace:
@@ -574,14 +520,14 @@ def main() -> int:
     source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
     source_state_sha256 = _file_sha256(source_state) if source_state else None
     env = make_harvest_env(state=None if args.power_on else args.state, render_mode="rgb_array")
-    video: _VideoRecorder | None = None
+    video: VideoRecorder | None = None
     t0 = time.monotonic()
     try:
         obs = env.reset()
         if isinstance(obs, tuple):
             obs = obs[0]
         if args.video is not None:
-            video = _VideoRecorder(
+            video = _open_video(
                 args.video,
                 obs,
                 fps=args.video_fps,
@@ -631,7 +577,7 @@ def main() -> int:
                 )
                 step = env.step(action)
                 if video is not None:
-                    video.write(step[0])
+                    video.write(_rgb_frame(step[0]))
                 frames += 1
                 boot_frames += 1
             else:
@@ -747,7 +693,7 @@ def main() -> int:
                 action = hr.action.action if hr.action is not None else make_action()
                 step = env.step(action)
                 if video is not None:
-                    video.write(step[0])
+                    video.write(_rgb_frame(step[0]))
                 frames += 1
             else:
                 world = _world(env, frames)
@@ -890,7 +836,7 @@ def main() -> int:
             )
             step = env.step(action)
             if video is not None:
-                video.write(step[0])
+                video.write(_rgb_frame(step[0]))
 
         world = _world(env, frames)
         scene = classify_scene_from_ram(world.ram)
@@ -925,12 +871,16 @@ def main() -> int:
         if video is not None and success:
             for _ in range(360):
                 presentation_step = env.step(make_action())
-                video.write(presentation_step[0])
+                video.write(_rgb_frame(presentation_step[0]))
                 presentation_settle_frames += 1
 
-        video_result = video.close() if video is not None else None
-        if video_result is not None:
-            video_result["post_success_neutral_frames"] = presentation_settle_frames
+        video_result = None
+        if video is not None:
+            video.close()
+            video_result = _video_report(
+                video,
+                post_success_neutral_frames=presentation_settle_frames,
+            )
 
         if args.save_end_state and success:
             try:

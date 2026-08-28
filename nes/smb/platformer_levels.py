@@ -36,7 +36,8 @@ SMB_RAM = PlatformerRAM(
         "screen_page": (0x071A, "u8"),  # camera page
         "screen_x_off": (0x071C, "u8"), # camera X within page
         "world": (0x075F, "u8"),        # world number (0-indexed)
-        "level": (0x0760, "u8"),        # level number (0-indexed)
+        "level": (0x0760, "u8"),        # AreaNumber; 1-2 UG increments this
+        "dash_level": (0x075C, "u8"),   # LevelNumber; stable through 1-2/4-2 UG
         "player_status": (0x000E, "u8"),  # 0x0B = dying
         "player_power": (0x0756, "u8"), # 0=small, 1=big, 2=fire
         "area_pointer": (0x0750, "u8"), # area/venue within a level (8-4 pipe transitions)
@@ -59,6 +60,15 @@ SMB_COMPUTED = {
 SMB_84_COMPUTED = {
     "player_x": lambda v: v["x_page"] * 256 + v["x_offset"],
     "level_id": lambda v: v["area_pointer"],
+}
+
+# 32-exit overworlds: identity is LevelNumber ($075C), not AreaNumber ($0760).
+# Default _smb_level would give 1-3 target_id=2, which is 1-2 UG's AreaNumber.
+SMB_DASH_COMPUTED = {
+    "player_x": lambda v: v["x_page"] * 256 + v["x_offset"],
+    "level_id": lambda v: v["world"] * 4 + v["dash_level"],
+    "screen_x": lambda v: v["screen_page"] * 256 + v["screen_x_off"],
+    "timer": lambda v: v["timer_hundreds"] * 100 + v["timer_tens"] * 10 + v["timer_ones"],
 }
 
 # -- Action table -------------------------------------------------------------
@@ -193,9 +203,32 @@ _smb_level(8, 2, "Level8_2", "smb_8_2", "smb_82",
            completion_min_progress=2000.0)
 _smb_level(8, 3, "Level8_3", "smb_8_3", "smb_83",
            completion_min_progress=2000.0)
-# All-exits route stages (32-exit track; start states come from ./play pins
-# via smb.scripts.extract_stage_state — see all_exits_v1_pins).
-_smb_level(1, 3, "Level1_3", "smb_1_3", "smb_13")
+# 32-exit 1-3: LevelNumber ($075C)=2, not AreaNumber. Default _smb_level
+# target_id=2 is 1-2 UG's $0760 — that false-completes a 1-3 spawn. Dash
+# computed start id is still 2, but the byte is $075C (1-2 UG stays 1).
+register_level(
+    LevelConfig(
+        level_id="smb_1_3",
+        display_name="Super Mario Bros 1-3",
+        game_name="SuperMarioBros-Nes-v0",
+        game_dir_name="smb",
+        start_state="Level1_3",
+        ram=SMB_RAM,
+        target_level_id=2,
+        level_id_aliases=[],
+        progress_axis="player_x",
+        progress_direction=1,
+        death_signals=["lives_drop"],
+        completion_signal="level_id_change",
+        completion_min_progress=2000.0,
+        completion_level_ids=[3],  # 1-4 dash (world*4 + LevelNumber)
+        action_table=SMB_ACTIONS,
+        max_stall_frames=900,
+        computed_values=SMB_DASH_COMPUTED,
+        bk2_to_env=[8 - i for i in range(9)],
+    ),
+    "smb_13",
+)
 # 8-4 uses area_pointer as level_id so pipe/venue transitions are visible.
 # First pass: register the full level for discovery (play + trace to find all areas).
 # Once areas are known, register individual segments below.

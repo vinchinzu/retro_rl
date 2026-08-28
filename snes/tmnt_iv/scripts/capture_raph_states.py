@@ -43,17 +43,16 @@ from retro_harness.env import make_env, reset_obs, save_state  # noqa: E402
 from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.ram_state import GameMode  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
+from tmnt_iv.assist import apply_emergency_hp  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR  # noqa: E402
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
 from tmnt_iv.scripts.record_full_hard_run import (  # noqa: E402
     _BOOT_ACTIONS,
-    _EMERGENCY_HP_RESTORE,
-    _EMERGENCY_HP_THRESHOLD,
     _boot_action,
 )
+from tmnt_iv.stages import RAPH_CHAR  # noqa: E402
 
-_RAPH_CHAR = 8
 _SLASH = 0x50
 _TOKKA = 0x48
 _RAHZAR = 0xA0
@@ -138,7 +137,7 @@ def run_capture(
             menu = int(state.extras.get("menu", -1))
             event = int(state.extras.get("event", -1))
             char_id = int(state.extras.get("char_id", -1))
-            if char_id == _RAPH_CHAR:
+            if char_id == RAPH_CHAR:
                 char_seen = char_id
 
             active = (
@@ -155,18 +154,17 @@ def run_capture(
             ):
                 damage += prev_health - max(0, state.health)
             if active and 0 < state.health <= 0x60:
-                if state.health <= _EMERGENCY_HP_THRESHOLD:
-                    env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                if apply_emergency_hp(env, state.health):
                     heals += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
                     prev_health = state.health
                 else:
                     prev_health = state.health
             elif active and state.health == 0:
-                env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
-                heals += 1
-                state = parse_game_state(env.get_ram(), frame=frame)
-                prev_health = state.health
+                if apply_emergency_hp(env, state.health):
+                    heals += 1
+                    state = parse_game_state(env.get_ram(), frame=frame)
+                    prev_health = state.health
 
             # Stage entry dumps (same moment as full-run splits).
             if (
@@ -187,7 +185,7 @@ def run_capture(
                     state.health if 0 < state.health <= 0x60 else None
                 )
 
-            if char_seen == _RAPH_CHAR:
+            if char_seen == RAPH_CHAR:
                 # Gate by stage — entity kind IDs are reused outside the
                 # intended fights (e.g. 0x52 mid-Technodrome is not form 1).
                 if (
@@ -269,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     report = run_capture(max_frames=args.max_frames, report_path=args.report)
     saved = sum(1 for p in report["captures"].values() if p["saved"])
-    if report.get("char_seen") != _RAPH_CHAR:
+    if report.get("char_seen") != RAPH_CHAR:
         print("ERROR: Raphael (char 8) never appeared", file=sys.stderr)
         return 2
     if saved < 4:

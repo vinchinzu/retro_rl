@@ -21,6 +21,7 @@ from harvest.tasks.nav import (
     WALKABLE_TILES,
 )
 from harvest.tasks.farm_clearer import TileScanner
+from harvest.maps.farm_pond import SOUTH_STREAM_FC_BANKS
 from harvest.maps.map_config import (
     COW_BARN_EAST_FACE_TILES,
     FARM_WALKABLE,
@@ -266,6 +267,14 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertNotIn((17, 21), no_go)
         self.assertNotIn((31, 20), no_go)
 
+    def test_farm_no_go_tiles_include_south_stream_fc_banks(self) -> None:
+        no_go = get_no_go_tiles(0x00)
+        self.assertTrue(SOUTH_STREAM_FC_BANKS.issubset(no_go))
+        self.assertNotIn((16, 48), no_go)
+        self.assertNotIn((16, 49), no_go)
+        self.assertNotIn((14, 48), no_go)
+        self.assertNotIn((12, 56), no_go)
+
     def test_pathfinder_blocks_coordinate_specific_well_tiles(self) -> None:
         ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
         ram[ADDR_TILEMAP] = 0x00
@@ -274,6 +283,33 @@ class FarmWalkableTests(unittest.TestCase):
         pathfinder = Pathfinder(TileScanner())
 
         self.assertFalse(pathfinder.is_walkable(ram, 17, 27))
+
+    def test_pathfinder_south_stream_last_stone_stays_on_x16(self) -> None:
+        ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
+        ram[ADDR_TILEMAP] = 0x00
+        for y in range(MAP_WIDTH):
+            for x in range(MAP_WIDTH):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x01
+        ram[ADDR_MAP + 49 * MAP_WIDTH + 14] = 0xFC
+        ram[ADDR_MAP + 50 * MAP_WIDTH + 14] = 0xFC
+        for x, y in SOUTH_STREAM_FC_BANKS:
+            ram[ADDR_MAP + y * MAP_WIDTH + x] = 0xA1
+        ram[ADDR_MAP + 55 * MAP_WIDTH + 12] = STONE
+        pathfinder = Pathfinder(TileScanner())
+        start = (16, 48)
+        approach = (13, 55)
+        self.assertFalse(pathfinder.is_walkable(ram, 15, 49, current_pos=start))
+        self.assertFalse(pathfinder.is_walkable(ram, 13, 49, current_pos=start))
+        self.assertTrue(pathfinder.is_walkable(ram, 16, 49, current_pos=start))
+        path = pathfinder.find_path(ram, start, approach, max_steps=16)
+        self.assertTrue(path)
+        self.assertEqual(path[0], (16, 49))
+        self.assertEqual(path[-1], approach)
+        self.assertFalse(SOUTH_STREAM_FC_BANKS.intersection(path))
+        hop = pathfinder.find_path(ram, start, approach, max_steps=7)
+        self.assertTrue(hop)
+        self.assertEqual(hop[0], (16, 49))
+        self.assertFalse(SOUTH_STREAM_FC_BANKS.intersection(hop))
 
     def test_pathfinder_leaves_horse_barn_stand_without_walking_walls(self) -> None:
         ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)

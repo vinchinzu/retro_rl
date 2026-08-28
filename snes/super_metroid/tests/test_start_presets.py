@@ -24,6 +24,7 @@ def test_known_keys_present() -> None:
         "metal-pirates",
         "post-ridley",
         "post-draygon",
+        "ws-main",
     ):
         assert name in START_PRESETS
 
@@ -100,6 +101,14 @@ def test_resolve_start_preset() -> None:
     assert resolve_start_preset("morph") == START_PRESETS["morph"]
     assert resolve_start_preset("post-bombs") == START_PRESETS["post-bombs"]
     assert resolve_start_preset("no-such-preset") is None
+
+
+def test_ws_main_is_hop1_leave() -> None:
+    path, blurb = resolve_start_preset("ws-main")
+    assert path == "scratch/post_ws_basement_to_main.state"
+    assert "0xCAF6" in blurb
+    assert resolve_start_preset("post-ws-basement")[0] == path
+    assert resolve_start_preset("ws-main-to-attic")[0] == path
 
 
 def test_power_on_starts_unchanged() -> None:

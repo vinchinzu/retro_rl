@@ -15,18 +15,14 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
+from zelda_i.assist import poke_link_position
+from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_BLOCK_3A_ROOM
 from zelda_i.level6_stairs3a import (
     Stairs3APhase,
     make_stairs_3a_controller,
 )
-from zelda_i.ram import (
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    PLAY_MODE,
-    ZeldaSnapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 
 __all__ = [
     "STAIRS_3A_WARP_MAX_FRAMES",
@@ -36,7 +32,6 @@ __all__ = [
     "level6_stairs3a_warp_stages",
     "level6_stairs3a_warp_success",
     "make_stairs_3a_warp_controller",
-    "poke_link_position",
 ]
 
 STAIRS_3A_WARP_MAX_FRAMES = 4000
@@ -50,67 +45,6 @@ NORTH_29 = 0x29
 KEY_UP_09 = 0x09
 IDLE_AFTER_POKE = 16
 UP_AFTER_IDLE = 240
-
-
-def poke_link_position(
-    env: Any,
-    x: int,
-    y: int,
-    *,
-    room: int,
-    from_xy: tuple[int, int],
-) -> dict[str, Any]:
-    """Write only ``ADDR_LINK_X`` / ``ADDR_LINK_Y``. Not Clean."""
-    writes: list[dict[str, Any]] = []
-    notes: list[str] = []
-    assigned = 0
-    try:
-        mem = env.unwrapped.data.memory
-        if hasattr(mem, "assign"):
-            mem.assign(ADDR_LINK_X, "|u1", int(x) & 0xFF)
-            mem.assign(ADDR_LINK_Y, "|u1", int(y) & 0xFF)
-            assigned = 2
-            notes.append("memory.assign")
-        elif hasattr(mem, "set_byte"):
-            mem.set_byte(ADDR_LINK_X, int(x) & 0xFF)
-            mem.set_byte(ADDR_LINK_Y, int(y) & 0xFF)
-            assigned = 2
-            notes.append("memory.set_byte")
-    except Exception as exc:
-        notes.append(f"poke_fail={exc!r}")
-    writes.append(
-        {
-            "field": "link_x",
-            "address": ADDR_LINK_X,
-            "from": int(from_xy[0]),
-            "to": int(x),
-        }
-    )
-    writes.append(
-        {
-            "field": "link_y",
-            "address": ADDR_LINK_Y,
-            "from": int(from_xy[1]),
-            "to": int(y),
-        }
-    )
-    return {
-        "writes": writes,
-        "notes": notes,
-        "room": int(room),
-        "room_hex": f"0x{int(room):02x}",
-        "xy": [int(x), int(y)],
-        "from_xy": [int(from_xy[0]), int(from_xy[1])],
-        "position_writes": 1 if assigned == 2 else 0,
-        "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
-        "progression_writes": 0,
-        "capacity_writes": 0,
-        "door_writes": 0,
-        "inventory_writes": 0,
-        "triforce_writes": 0,
-        "state_load": False,
-        "mid_run_state_load": False,
-    }
 
 
 class Stairs3AWarpPhase(Enum):
@@ -169,20 +103,7 @@ class Level6Stairs3AWarpController:
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
-        self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": int(getattr(snap, "rod", 0)),
-            "bow": int(getattr(snap, "bow", 0)),
-            "arrows": int(getattr(snap, "arrows", 0)),
-            "keys": int(snap.keys),
-            "bombs": int(snap.bombs),
-            "map": int(snap.map),
-            "triforce": int(snap.triforce),
-        }
+        self.leftover = {**l6_leftover(snap), "map": int(snap.map)}
         if force or self.frames <= 2 or self.frames % STAIRS_3A_WARP_SAMPLE_PERIOD == 0:
             self.samples.append(
                 {
@@ -194,9 +115,9 @@ class Level6Stairs3AWarpController:
                     "phase": self.phase.name,
                     "reason": action.reason,
                     "tile": int(snap.colliding_tile),
-                    "rod": int(getattr(snap, "rod", 0)),
-                    "bow": int(getattr(snap, "bow", 0)),
-                    "arrows": int(getattr(snap, "arrows", 0)),
+                    "rod": int(snap.rod),
+                    "bow": int(snap.bow),
+                    "arrows": int(snap.arrows),
                     "keys": int(snap.keys),
                 }
             )
@@ -330,18 +251,8 @@ def level6_stairs3a_warp_stages():
 
 def level6_stairs3a_warp_success(snap: ZeldaSnapshot) -> bool:
     """Mode 9 cellar or a new L6 play room. Rod and TF 0x1F stay."""
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
-        return False
-    if int(getattr(snap, "rod", 0)) == 0:
-        return False
-    if snap.mode == PASSAGE_MODE:
-        return True
-    if (
-        snap.mode != PLAY_MODE
-        or snap.transitioning
-        or snap.screen == LEVEL6_BLOCK_3A_ROOM
-    ):
-        return False
-    if snap.screen in (NORTH_29, KEY_UP_09, EAST_ROOM, WEST_ROOM):
-        return False
-    return True
+    return l6_play_dest_success(
+        snap,
+        not_room=LEVEL6_BLOCK_3A_ROOM,
+        forbid=(NORTH_29, KEY_UP_09, EAST_ROOM, WEST_ROOM),
+    )

@@ -1,0 +1,32 @@
+{
+  "info": {
+    "room_id": {"address": 1947, "type": "<u2"},
+    "area_index": {"address": 1951, "type": "<u2"},
+    "door_transition": {"address": 1943, "type": "<u2"},
+    "transition_direction": {"address": 1937, "type": "<u2"},
+    "game_state": {"address": 2456, "type": "<u2"},
+    "equipped_items": {"address": 2466, "type": "<u2"},
+    "collected_items": {"address": 2468, "type": "<u2"},
+    "equipped_beams": {"address": 2470, "type": "<u2"},
+    "collected_beams": {"address": 2472, "type": "<u2"},
+    "health": {"address": 2498, "type": "<u2"},
+    "max_health": {"address": 2500, "type": "<u2"},
+    "missiles": {"address": 2502, "type": "<u2"},
+    "max_missiles": {"address": 2504, "type": "<u2"},
+    "super_missiles": {"address": 2506, "type": "<u2"},
+    "max_super_missiles": {"address": 2508, "type": "<u2"},
+    "power_bombs": {"address": 2510, "type": "<u2"},
+    "max_power_bombs": {"address": 2512, "type": "<u2"},
+    "max_reserve_health": {"address": 2516, "type": "<u2"},
+    "reserve_health": {"address": 2518, "type": "<u2"},
+    "samus_pose": {"address": 2588, "type": "<u2"},
+    "samus_x": {"address": 2806, "type": "<u2"},
+    "samus_y": {"address": 2810, "type": "<u2"},
+    "velocity_y": {"address": 2862, "type": "<i2"},
+    "velocity_x": {"address": 2882, "type": "<i2"},
+    "timer_type": {"address": 2371, "type": "|u1"},
+    "escape_timer_frames": {"address": 2373, "type": "|u1"},
+    "escape_timer_seconds": {"address": 2374, "type": "|u1"},
+    "escape_timer_minutes": {"address": 2375, "type": "|u1"}
+  }
+}

@@ -47,6 +47,14 @@ EAST_SPUR_FA_WEST_DROP_X: int = 44
 EAST_SPUR_FA_WEST_LIP: FrozenSet[Tuple[int, int]] = frozenset(
     {(45, 14), (45, 15)}
 )
+# South-stream 0xFC at (14,49)/(14,50). Live leftover 1-stone pin (16,48):
+# DOWN at x=16 is open (8f to (16,49)). DOWN from (15,48) onto 0xA1 (15,49)
+# slides east back to (16,48). DOWN from (13,48) onto (13,49) is a wall.
+# Pickup BFS treated those A1 banks as dirt and never reached (12,55).
+SOUTH_STREAM_FC_BANKS: FrozenSet[Tuple[int, int]] = frozenset({
+    (13, 49), (15, 49),
+    (13, 50), (15, 50),
+})
 HORSE_BARN_LEAVE_TILE: Tuple[int, int] = (17, 21)
 
 FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
@@ -58,7 +66,7 @@ FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     # Well body.  These are visually solid even when the live tile ID is 0xA1.
     (15, 26), (16, 26), (17, 26),
     (15, 27), (16, 27), (17, 27),
-}) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES
+}) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | SOUTH_STREAM_FC_BANKS
 
 # ── Farm water sources (ROM-mapped, spring farm tilemap 0x00) ──────────────
 # CheckToolSuccess farm fill only when tile-in-front *property* is F0/F9–FD

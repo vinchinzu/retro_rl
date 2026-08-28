@@ -59,6 +59,7 @@ def test_k6_controllers_are_registered() -> None:
         play_ws_basement_to_main,
         play_ws_basement_to_phantoon,
         play_ws_entrance_to_main,
+        play_ws_main_to_attic,
         play_ws_main_to_basement,
     )
 
@@ -66,5 +67,6 @@ def test_k6_controllers_are_registered() -> None:
     assert KPDR_SEGMENTS["ws_main_to_basement"] is play_ws_main_to_basement
     assert KPDR_SEGMENTS["ws_basement_to_phantoon"] is play_ws_basement_to_phantoon
     assert KPDR_SEGMENTS["ws_basement_to_main"] is play_ws_basement_to_main
+    assert KPDR_SEGMENTS["ws_main_to_attic"] is play_ws_main_to_attic
     assert KPDR_SEGMENTS["phantoon_fight"] is play_phantoon_room_fight
     assert KPDR_SEGMENTS["phantoon_loot_exit"] is play_phantoon_loot_exit

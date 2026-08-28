@@ -17,7 +17,7 @@ from typing import Any
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
+from zelda_i.level6_occupancy import l6_leftover
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_ROD_WIZZ_ROOM
 from zelda_i.level6_path import (
     BLOCK_OBJECT_TYPE,
@@ -28,7 +28,7 @@ from zelda_i.level6_path import (
     left_block_0x68,
     south_face_stand,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
@@ -161,19 +161,12 @@ class Level6Stairs09Controller:
         block = self._find_block(snap, ne=ne)
         blocks = self._blocks_68(snap)
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
+            **l6_leftover(snap),
             "submode": int(snap.submode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": int(getattr(snap, "rod", 0)),
             "bx": -1 if block is None else int(block.x),
             "by": -1 if block is None else int(block.y),
             "blocks": blocks,
-            "keys": int(snap.keys),
             "map": int(snap.map),
-            "triforce": int(snap.triforce),
             "idle_frames": int(self.idle_frames),
         }
         if force or self.frames <= 2 or self.frames % STAIRS_09_SAMPLE_PERIOD == 0:
@@ -194,7 +187,7 @@ class Level6Stairs09Controller:
                     "reason": action.reason,
                     "action": "none" if not buttons else "+".join(buttons),
                     "tile": int(snap.colliding_tile),
-                    "rod": int(getattr(snap, "rod", 0)),
+                    "rod": int(snap.rod),
                     "bx": None if block is None else int(block.x),
                     "by": None if block is None else int(block.y),
                     "blocks": blocks,

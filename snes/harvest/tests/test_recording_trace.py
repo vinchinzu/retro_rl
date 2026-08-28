@@ -121,6 +121,37 @@ class RecordingTraceTests(unittest.TestCase):
         self.assertEqual(summary["stasis_windows"][0]["start"], 0)
         self.assertEqual(summary["stasis_windows"][0]["length"], 50)
         self.assertEqual(summary["stasis_windows"][0]["nearest_chicken_distance_min"], 1)
+        self.assertEqual(
+            summary["push_faces"],
+            [
+                {
+                    "tile": [2, 7],
+                    "tilemap": 0x28,
+                    "length": 50,
+                    "buttons": ["Right"],
+                }
+            ],
+        )
+
+    def test_farm_trace_includes_facing_and_neighbor_cells(self) -> None:
+        ram = _make_ram(tilemap=0x00, tile=(17, 20))
+        ram[ADDR_MAP + 20 * 64 + 18] = 0xA1
+        ram[ADDR_MAP + 19 * 64 + 17] = 0x00
+        ram[0x00DA] = 2  # face right
+        action = [0] * 12
+        action[7] = 1
+
+        row = recording_trace_entry(ram, frame=0, action=action)
+
+        self.assertEqual(row["tm"], 0)
+        self.assertEqual(row["tx"], 17)
+        self.assertEqual(row["ty"], 20)
+        self.assertEqual(row["facing"], "right")
+        self.assertEqual(row["facing_tile"]["tile"], [18, 20])
+        self.assertEqual(row["facing_tile"]["hex"], "0xA1")
+        self.assertEqual(row["neighbors"]["up"]["tile"], [17, 19])
+        self.assertEqual(row["neighbors"]["up"]["hex"], "0x00")
+        self.assertEqual(row["buttons"], ["Right"])
 
 
 if __name__ == "__main__":

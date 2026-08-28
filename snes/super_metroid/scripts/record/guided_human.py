@@ -52,6 +52,7 @@ from super_metroid.human_tape.rta_clock import (  # noqa: E402
     resolve_rta_clock,
 )
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR, RECORDINGS_DIR  # noqa: E402
+from super_metroid.plm import coverage_trace  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
 from super_metroid.rooms.canonical_names import (  # noqa: E402
     load_canonical_names,
@@ -126,7 +127,11 @@ def _resolve_state(arg: str) -> Path:
 
 def _trace_row(env, frame: int, action) -> dict[str, object]:
     state = parse_env_state(env, frame=frame, mode="nav")
-    return {
+    try:
+        ram = env.get_ram()
+    except Exception:
+        ram = None
+    row: dict[str, object] = {
         "frame": frame,
         "x": int(state.samus_x),
         "y": int(state.samus_y),
@@ -147,6 +152,8 @@ def _trace_row(env, frame: int, action) -> dict[str, object]:
         "items": int(state.collected_items),
         "beams": int(state.collected_beams),
     }
+    row.update(coverage_trace(ram))
+    return row
 
 
 def _fmt_time(frames: int) -> str:

@@ -33,13 +33,14 @@ import sys
 from pathlib import Path
 
 from super_metroid.assist import UnlimitedResourcesAssist
-from super_metroid.combat import (
-    DEFAULT_NATURAL_ACTIVE_STATE,
+from super_metroid.combat.bomb_torizo import (
     BombTorizoStrategy,
-    capture_natural_bomb_torizo_activation,
-    features_from_state,
-    bomb_torizo_catalog,
     play_bomb_torizo_fight,
+)
+from super_metroid.combat.features import bomb_torizo_catalog, features_from_state
+from super_metroid.combat.natural_entry import (
+    DEFAULT_NATURAL_ACTIVE_STATE,
+    capture_natural_bomb_torizo_activation,
 )
 from super_metroid.combat.probe import ProbeSession, open_state_env, write_json_report
 from super_metroid.paths import GAME_DIR, MODELS_DIR, SCRATCH_STATE_DIR

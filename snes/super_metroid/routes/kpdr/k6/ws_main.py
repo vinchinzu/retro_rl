@@ -15,15 +15,18 @@ from super_metroid.routes.controller_common import (
     require_room,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.room_ids import ROOM_WS_BASEMENT, ROOM_WS_MAIN
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_WS_ATTIC,
+    ROOM_WS_BASEMENT,
+    ROOM_WS_MAIN,
+    ROOM_WS_SAVE,
+)
 from super_metroid.routes.rle import load_rle_json, play_script
 from super_metroid.routes.runtime import ControllerSession
 
 _DATA = Path(__file__).resolve().parents[1] / "data"
 _WS_MAIN_RLE = load_rle_json(_DATA / "ws_main_to_basement_rle.json")
 
-ROOM_WS_ATTIC = 0xCA52
-ROOM_WS_SAVE = 0xCE8A
 WEAPON_SUPER = 2
 
 # Main Shaft descent (rr-4btp dumps from post_ws_entrance_to_main).

@@ -12,9 +12,8 @@ from super_metroid.combat.draygon import (
     draygon_gunk_clear_action,
     fight_draygon_action,
 )
-from super_metroid.combat import wrap_draygon_as_boss_strategy
 from super_metroid.combat.features import draygon_catalog
-from super_metroid.combat.protocol import BossStrategy
+from super_metroid.combat.protocol import BossStrategy, wrap_draygon_as_boss_strategy
 from super_metroid.ram import GameplayPhase, parse_state
 
 def _state(**overrides):

@@ -52,7 +52,10 @@ class PathSegmentTests(unittest.TestCase):
         self.assertEqual(shared[0].tilemap, 0x00)
         self.assertEqual(shared[0].target_px, (137, 375))
         self.assertFalse(shared[0].is_exit)
-        self.assertEqual(shared[1].target_px, (136, 424))
+        self.assertEqual(shared[1].target_px, (136, 392))
+        self.assertIn((136, 440), [wp.target_px for wp in shared])
+        self.assertIn((72, 440), [wp.target_px for wp in shared])
+        self.assertNotIn((120, 408), [wp.target_px for wp in shared])
         farm_exit = next(wp for wp in shared if wp.is_exit)
         self.assertEqual(farm_exit.target_px, (40, 424))
         self.assertEqual(farm_exit.exit_direction, "left")
@@ -129,7 +132,9 @@ class PathSegmentTests(unittest.TestCase):
         self.assertEqual(stand.target_px, (326, 409))
         hops = SEGMENTS["mountain_entry_to_first_berry"]
         # Cliff blocks due-north from land; recorded gap is east to x=32.
+        # Spa pull-up (328, 688) is spa-only — grape inbound stays land→east.
         self.assertEqual(hops[0].target_px, (328, 728))
+        self.assertEqual(hops[1].target_px, (424, 712))
         self.assertGreaterEqual(max(wp.target_px[0] for wp in hops), 500)
         self.assertEqual(hops[-1].target_px, (326, 409))
 

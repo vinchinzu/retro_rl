@@ -122,6 +122,8 @@ from super_metroid.routes.skills.basic_moves import (
     dash,
     down_grab,
     mid_air_morph,
+    shoot_up,
+    shoot_up_action,
     speedy_jump,
     stop_on_a_dime,
 )
@@ -264,6 +266,8 @@ __all__ = [
     "dash",
     "down_grab",
     "mid_air_morph",
+    "shoot_up",
+    "shoot_up_action",
     "speedy_jump",
     "stop_on_a_dime",
     "BUILDER_SKILLS",

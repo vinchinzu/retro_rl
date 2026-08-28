@@ -307,7 +307,13 @@ def run_controller_stage(
 
     When ``on_frame`` is provided, it is called after each step with
     ``(env, obs, action, global_frame)`` (e.g. video capture).
+
+    When the controller defines ``bind_env``, it is called once with ``env``
+    before the first step (position-assist controllers write through it).
     """
+    bind_env = getattr(controller, "bind_env", None)
+    if callable(bind_env):
+        bind_env(env)
     result = ControllerStageResult(
         name=name,
         controller=controller,

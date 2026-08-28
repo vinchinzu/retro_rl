@@ -10,12 +10,14 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | OW path engine | `ow_path.py` | Hop/maze/door frame policy |
 | OW geometry | `level*_overworld.py` | Hop tables + thin controller subclasses |
 | Room combat | `dungeon.py` + `level*_dungeon.py` | `DungeonRoomSpec` tables only |
+| L6 wizzrobe combat | `level6_wizzrobe` | 0x7a/0x78 backstep; re-exported from `level6_dungeon` |
 | Bomb walls | `level2_puzzles.BombWall` + `bomb_wall_path` | Geometry + one traverse controller |
-| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_exit60` / `level4_west31` / `level4_keyup20` / `level4_map21` / `level4_mappick` / `level4_bomb11` / `level4_key01` / `level4_clear12` / `level4_gleeok13` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level6_path` (0x78 occupancy UP → 0x68; 0x28 LEFT+UP/RIGHT+UP → 0x18; 0x18 IDLE census), `level6_gleeok18` (0x44 south-stand + post-body census), `level6_stairs18` (0x18 north hole, dedicated red), `level6_room19` (0x18 y=141 RIGHT → 0x19; settle/map hunt), `level6_stairs09`, `level6_rod` (0x75 ADDR_ROD), `level6_exit75` (0x75 → play 0x09), `level6_south09` (0x09 occupancy south → RAM dest), `level6_south19` (0x19 KEY-DOWN → RAM dest), `level6_east29` (0x29 east, red sealed), `level6_south29` (0x29 occupancy south → RAM dest), `level6_east39` (0x39 RIGHT+UP then cardinal RIGHT → RAM `0x3A`), `level6_stairs3a` (0x3A center 0x68 south-face, dedicated red), `level6_stairs3a_71` (0x3A live push then tile 0x71 still-stand), `level6_west39` (0x3A occupancy LEFT → reclear 0x39 Vires → occupancy west; dest RAM; skip north 0x29), `level6_clear39_west` (west39 v3 enter; reclear then occupancy y=141 LEFT; LEFT+DOWN clip dated (144,109) tile 118; dest RAM), `level6_exit_ow` (0x3A occupancy leave; `level6-north39` enter-stop play `0x29`; `level6-exit-ow` dedicated red OW `0x22`; skips stairs3a), `level6_inland29` (0x29 LEFT+UP off tile-244 column then occupancy north; dest RAM), `level6_east38` (0x38 occupancy y=141 RIGHT; RIGHT+DOWN clip on dated x=128 column; dest RAM), `level6_east38_lane` (0x38 RIGHT+UP onto y=141 east of x=136 after east38 v3 leftover; occupancy RIGHT; dest RAM), `level6_bomb38_south` (0x38 east/west census; bomb-south dedicated red), `level6_spine_suffix` (post-Gleeok continue), `level*_boss_*` | Path controllers + path timing knobs |
+| Multi-room paths | `level2_bomb_path` (`make_*`), `level3_path`, `level3_raft_path`, `level4_path` / `level4_maze_path` / `level4_stepladder` / `level4_exit60` / `level4_west31` / `level4_keyup20` / `level4_map21` / `level4_mappick` / `level4_bomb11` / `level4_key01` / `level4_clear12` / `level4_gleeok13` / `level4_room_nav`, `level5_path` (facade; west/whistle/cellar/tf), `level6_path` (occupancy north 0x78→0x68, 0x38 push, 0x18 settle; not a dest facade), dest hops (`L6_THROUGH` / per-hop modules + shared `level6_door_hop`), `level6_gleeok18` (0x44 south-stand + post-body census), `level6_room19` (0x18→0x19 cluster), `level6_north39` (0x3A west enter-stop), `level*_boss_*` | Path controllers + path timing knobs |
 | L3 raft | `level3_raft_path` (canonical) | Raft passage controller; **not** `level3_path` |
 | L3 geometry | `level3_geometry` | Door bands, bomb stands, raft channel ints |
 | Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |
-| Walk physics | `walk_physics.py`, `predict.py` | OccupancyWalker grades `move`; no path → stand |
+| Walk physics | `walk_physics.py`, `predict.py` | OccupancyWalker grades `move`; miss → block that cell → replan; no path → stand |
+| L6 dest helpers | `level6_occupancy` | leftover / dest success / occupancy halt (L6-prefixed dest). Halt-on-miss is the east3a diagnostic, not the OccupancyWalker default. Distinct from `level4_occupancy` (seeds). |
 | L3 dest spine | `level3_spine.py` | `--through level3` dest 0x5b (west key closed) |
 | L5 dest spine | `level5_spine.py` | `--through level5` TF `0x10` in room `0x14` |
 | Route catalog | `routes.py` (L1–L2), `routes_later.py` + `route_legs_later.py` (L3–L5 + L9 fixture) | NamedRoute / RouteLeg; L6–L8 stay stubs |
@@ -23,6 +25,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Eligibility | `route_eligible.py`, `natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |
 | Resource cost | `health_cost.py`, `damage_heatmap.py` | Hop heart costs + Survival heatmap ranker |
 | Item gates | `item_gate_hops.py`, `item_gate_routes.py` | Candle / white sword / bomb shop NamedRoutes |
+| Dungeon treasures | `dungeon_treasures.py` | First-quest wiki items vs default-spine collection |
 | Combat helpers | `combat.py` + `combat_behaviors.py` | Hitbox swing gate + reusable enemy policies |
 | Continuous spine | `survival_spine.py` + `scripts/run_survival_spine.py` | One env, power-on, stop at first fail |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |
@@ -32,7 +35,8 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 1. **No new phase machine for bomb walls.** Configure `BombWallController` with a `BombWall`.
 2. **`level*_dungeon.py` = specs + stop predicates only.** Path controllers and
    path timing (`*_MAX_FRAMES`, `SPAWN_SETTLE_FRAMES`, raft channel knobs) go in
-   `*_path` / `level3_geometry` / boss modules — not the room table.
+   `*_path` / `level3_geometry` / boss modules / `level6_wizzrobe` — not the
+   room table.
 3. **No new screen/TF hex** outside `anchors.py` (L3+) or `overworld`/`ram` (L1–L2).
 4. **No path logic in `scripts/`.** Call library controllers; use `zelda_i.runner`.
 5. **Enemy type IDs** live in `dungeon_ids` (and re-exports in `dungeon.py` for engine types).

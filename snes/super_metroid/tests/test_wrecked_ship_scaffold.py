@@ -34,6 +34,7 @@ def test_wrecked_ship_rooms_and_controllers() -> None:
         "play_ws_main_to_basement",
         "play_ws_basement_to_phantoon",
         "play_ws_basement_to_main",
+        "play_ws_main_to_attic",
     ):
         assert callable(getattr(wrecked_ship, name))
     assert wrecked_ship.play_ws_entrance_to_main is k6_ws_entrance.play_ws_entrance_to_main

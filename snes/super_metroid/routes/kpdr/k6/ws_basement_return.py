@@ -4,7 +4,7 @@ Phantoon leave pin is the right door ``0xCC6F`` ~(1240,139). Ship is on.
 Morph-roll LEFT through the tunnel (bomb blocks respawn; X while morph).
 Unmorph. Ice-until-dead Atomics (``0xE9FF``) via charge-release seat
 (not tap-X from x=879), stay east of the Workrobot (``0xE8FF``),
-spin-LEFT from x≳720 onto ~(657,91), then tap-shot the blue ceiling
+spin-LEFT from x~750 onto ~(657,91), then tap-shot the blue ceiling
 hatch into Main Shaft ``0xCAF6``. Map station LEFT is dead — skip.
 Coverns (``0xEA3F``) can tank. Do not re-enter Phantoon.
 
@@ -13,7 +13,16 @@ https://wiki.supermetroid.run/Basement
 
 from __future__ import annotations
 
-from super_metroid.hop_glance import LeaveMiss, WS_BASEMENT_TO_MAIN, final_from_state, grade_final
+from super_metroid.combat.enemies import (
+    ATOMIC_ID,
+    COVERN_ID,
+    WORKROBOT_ID,
+    Intent,
+    choose,
+    list_enemies,
+)
+from super_metroid.hop_glance import LeaveMiss, raise_leave_miss
+from super_metroid.leave_specs import WS_BASEMENT_TO_MAIN
 from super_metroid.ram import FACING_LEFT, SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
@@ -22,18 +31,21 @@ from super_metroid.routes.controller_common import (
     require_room,
     select_weapon,
     unmorph,
-    wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.k6.phantoon_fight import phantoon_boss_bit_set
-from super_metroid.routes.kpdr.k6.ws_basement_ice import (
-    ATOMIC_ID,
-    WORKROBOT_ID,
-    BasementEnemy,
-    ice_keepaway_action,
-    list_basement_enemies,
-    workrobot_avoid_action,
+from super_metroid.routes.kpdr.k6.ws_basement_ice import basement_overlay_targets
+from super_metroid.routes.kpdr.k6.ws_ceiling_door import (
+    ceiling_door_action,
+    play_ceiling_door,
+    settle_ceiling_dest,
+    tap_up_action,
 )
-from super_metroid.routes.kpdr.room_ids import ROOM_PHANTOON, ROOM_WS_BASEMENT, ROOM_WS_MAIN
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_PHANTOON,
+    ROOM_WS_BASEMENT,
+    ROOM_WS_MAIN,
+    ROOM_WS_MAP,
+)
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.charge_shot import session_beam_charge
 from super_metroid.routes.skills.knockback import (
@@ -42,31 +54,42 @@ from super_metroid.routes.skills.knockback import (
 )
 from super_metroid.takeoff import spin_jump, walk_toward_x
 
-ROOM_WS_MAP = 0xCCCB
 WEAPON_BEAM = 0
 
 # Pin is the Phantoon door. Tunnel clear x=900 LEFT. Hatch on ~(657,91).
-# Under-hatch floor is occupied — takeoff east of the Workrobot.  The first
-# x~720 seat hit the platform's right wall at (728,175); x~820 gives the
-# spin-left arc room to clear the lip before crossing it.
+# Under-hatch floor is occupied — takeoff just east of the platform wall
+# (~728). A standstill jump from x~820 never reaches the lip (lands ~787);
+# a running jump from x~720 hits the wall. 750–780 is the lip landing
+# that sat (717,163) p48. Hold A in air (variable jump height).
 WS_BASEMENT_FLOOR_Y = 170
 WS_BASEMENT_TUNNEL_LIP_X = 1140
 WS_BASEMENT_TUNNEL_CLEAR_X = 900
 WS_BASEMENT_HATCH_X_MIN = 630
 WS_BASEMENT_HATCH_X_MAX = 690
 WS_BASEMENT_PLATFORM_X = 657
-# Standing center on the mid platform is ~163. Floor is ~187. 130 was too
-# tight and left 717/163 walking RIGHT into the lip wall.
+# Standing center on the mid platform is ~163. Floor is ~187. 175 is the
+# approach band (hatch_jump). Walk only once landed ~(≤168, vy≈0) — releasing
+# A at 175 cuts the jump 7px short of the lip (leftover 737,170 p82).
 WS_BASEMENT_PLATFORM_Y = 175
-WS_BASEMENT_TAKEOFF_X_MIN = 820
-WS_BASEMENT_TAKEOFF_X_MAX = 880
+WS_BASEMENT_SEAT_Y = 168
+WS_BASEMENT_TAKEOFF_X_MIN = 750
+WS_BASEMENT_TAKEOFF_X_MAX = 780
+# Turnaround at the 750 lip coasts a few px west. Stay in takeoff.
+WS_BASEMENT_TAKEOFF_LATCH_SLACK = 16
 WS_BASEMENT_MAP_X = 80
+_HATCH_OVERLAY = Intent(
+    engage=frozenset({ATOMIC_ID}),
+    absorb=frozenset({COVERN_ID}),
+    avoid=frozenset({WORKROBOT_ID}),
+)
+_AIR_POSES = frozenset({19, 20, 21, 25, 26, 47, 48, 81, 82, 83, 84})
+_TURNING = 14
+_HATCH_SLACK = 8
 _BOMB_CYCLES = 8
 _SETTLE = 200
 _DROP_BUDGET = 240
 _TUNNEL_ROLL = 160
 _RUN_BUDGET = 2400
-_DOOR_BUDGET = 480
 
 
 def ws_basement_main_settled(state: SuperMetroidState) -> bool:
@@ -95,26 +118,31 @@ def at_ws_basement_hatch_seat(state: SuperMetroidState) -> bool:
 
 
 def hatch_jump_action(samus_x: int, samus_y: int, pose: int, frame: int) -> tuple[str, ...]:
-    """Jump-up through the blue ceiling hatch. Tap X (Charge is on). Never L."""
-    if int(pose) in (137, 138):
-        return ()
+    """Open the blue ceiling hatch from the seat, then jump through.
+
+    Charge-release UP from the platform (y~163) for ``_DOOR_SHOOT_FRAMES``
+    before A. Jumping first lands on the hatch lip ~(662,91) p4 with the
+    door still closed. Lip: charge-release then A. Never L.
+    """
+    names = ceiling_door_action(
+        samus_x,
+        samus_y,
+        pose,
+        frame,
+        seat_x=WS_BASEMENT_PLATFORM_X,
+        lip_y=140,
+        shaft_y=80,
+        slack=_HATCH_SLACK,
+        hold_charge=False,
+    )
+    if names is not None:
+        return names
     x = int(samus_x)
-    y = int(samus_y)
-    if x < WS_BASEMENT_PLATFORM_X - 16:
+    if x < WS_BASEMENT_PLATFORM_X - _HATCH_SLACK:
         return ("RIGHT", "B")
-    if x > WS_BASEMENT_PLATFORM_X + 16:
+    if x > WS_BASEMENT_PLATFORM_X + _HATCH_SLACK:
         return ("LEFT", "B")
-    # Charge beam: hold X charges. Tap 2f then jump. Door is the mid platform ~x=657.
-    phase = int(frame) % 40
-    if y > WS_BASEMENT_PLATFORM_Y:
-        return ("UP", "A") if phase >= 4 else ("UP", "X")
-    if phase < 2:
-        return ("UP", "X")
-    if phase < 8:
-        return ("UP",)
-    if phase < 28:
-        return ("UP", "A")
-    return ("UP",)
+    return tap_up_action(frame, hold_charge=True)
 
 
 def hatch_mount_action(
@@ -125,21 +153,32 @@ def hatch_mount_action(
     facing: int = FACING_LEFT,
     movement_type: int = 0,
 ) -> tuple[str, ...]:
-    """Floor: x~820 spin-LEFT. On-platform (y≤175): land, walk to ~x=657."""
+    """Floor: x~750–780 spin-LEFT. On-platform: walk to ~x=657.
+
+    Drift below 750 during the LEFT turn must not resume RIGHT. Airborne
+    holds A (variable jump height).
+    """
     if int(pose) in (137, 138):
         return ()
     x = int(samus_x)
     y = int(samus_y)
-    if y <= WS_BASEMENT_PLATFORM_Y:
-        if int(pose) in (47, 48, 81, 82, 83, 84) and abs(int(velocity_y)) > 1:
-            return ()
+    pose_i = int(pose)
+    facing_i = int(facing)
+    turning = int(movement_type) == _TURNING
+    if y <= WS_BASEMENT_SEAT_Y and abs(int(velocity_y)) <= 1:
         return walk_toward_x(x, WS_BASEMENT_PLATFORM_X, slack=8)
+    if pose_i in _AIR_POSES:
+        # Hold A: SM jump height is variable; releasing A is a short hop
+        # that never clears the lip (leftover 819,181 p82).
+        return spin_jump("LEFT") if facing_i == FACING_LEFT else ()
     if x > WS_BASEMENT_TAKEOFF_X_MAX:
         return ("LEFT", "B")
-    if x >= WS_BASEMENT_TAKEOFF_X_MIN:
-        # A jump pressed on the same frame as the RIGHT→LEFT turn is lost.
-        # Finish the turn before asking spin_jump to latch.
-        if int(facing) != FACING_LEFT or int(movement_type) == 14:
+    in_band = x >= WS_BASEMENT_TAKEOFF_X_MIN
+    latched = x >= WS_BASEMENT_TAKEOFF_X_MIN - WS_BASEMENT_TAKEOFF_LATCH_SLACK and (
+        facing_i == FACING_LEFT or turning
+    )
+    if in_band or latched:
+        if facing_i != FACING_LEFT or turning:
             return ("LEFT",)
         return spin_jump("LEFT")
     return ("RIGHT", "B")
@@ -251,7 +290,7 @@ def _bomb_tunnel_left(session: ControllerSession, label: str) -> None:
 
 
 def _run_to_hatch(session: ControllerSession, label: str) -> None:
-    """Unmorph. Ice keepaway (charge-release seat). Takeoff from x~820."""
+    """Unmorph. Ice keepaway (charge-release seat). Takeoff from x~750."""
     if int(session.state.room_id) == ROOM_WS_MAIN:
         return
     if is_morph(int(session.state.pose)):
@@ -271,33 +310,27 @@ def _run_to_hatch(session: ControllerSession, label: str) -> None:
             unmorph(session)
             hold(session, 8, "UP", reason=f"{label}_unmorph")
             continue
-        enemies = list_basement_enemies(session)
-        keepaway = ice_keepaway_action(
+        enemies = basement_overlay_targets(
+            int(st.samus_x), int(st.samus_y), list_enemies(session)
+        )
+        choice = choose(
             int(st.samus_x),
             int(st.samus_y),
             int(st.facing),
             enemies,
-            movement_type=int(getattr(st, "movement_type", 0) or 0),
+            _HATCH_OVERLAY,
+            movement_type=int(st.movement_type),
             charge=session_beam_charge(session),
             velocity_y=int(st.velocity_y),
-        )
-        if keepaway is not None:
-            if keepaway:
-                hold(session, 1, *keepaway, reason=f"{label}_ice")
-            else:
-                hold(session, 1, reason=f"{label}_ice_wait")
-            continue
-        avoid = workrobot_avoid_action(
-            int(st.samus_x),
-            int(st.samus_y),
-            enemies,
             takeoff_x_min=WS_BASEMENT_TAKEOFF_X_MIN,
+            clamp_solids=True,
         )
-        if avoid is not None:
-            if avoid:
-                hold(session, 1, *avoid, reason=f"{label}_robot")
+        if choice.buttons is not None:
+            stance = choice.stance.name.lower()
+            if choice.buttons:
+                hold(session, 1, *choice.buttons, reason=f"{label}_{stance}")
             else:
-                hold(session, 1, reason=f"{label}_robot_wait")
+                hold(session, 1, reason=f"{label}_{stance}_wait")
             continue
         names = hatch_mount_action(
             int(st.samus_x),
@@ -305,7 +338,7 @@ def _run_to_hatch(session: ControllerSession, label: str) -> None:
             int(st.pose),
             int(st.velocity_y),
             int(st.facing),
-            int(getattr(st, "movement_type", 0) or 0),
+            int(st.movement_type),
         )
         if names:
             hold(session, 1, *names, reason=f"{label}_mount")
@@ -322,40 +355,25 @@ def _jump_up_hatch(session: ControllerSession, label: str) -> None:
     if int(session.state.room_id) == ROOM_WS_MAIN:
         return
     select_weapon(session, WEAPON_BEAM)
-    for frame in range(_DOOR_BUDGET):
-        st = session.state
-        _guard(session, label)
-        if int(st.room_id) == ROOM_WS_MAIN:
-            return
-        if is_knockback(st):
-            _kb(session, f"{label}_door_kb")
-            continue
-        if is_morph(int(st.pose)):
-            unmorph(session)
-            continue
-        names = hatch_jump_action(
-            int(st.samus_x), int(st.samus_y), int(st.pose), frame
-        )
-        if names:
-            hold(session, 1, *names, reason=f"{label}_door")
-        else:
-            hold(session, 1, reason=f"{label}_hurt")
-    if int(session.state.room_id) != ROOM_WS_MAIN:
-        raise TimeoutError(f"{label}: ceiling hatch missed: {session.state}")
-
-
-def _raise_leave_miss(session: ControllerSession, exc: BaseException | None = None) -> None:
-    leftover = final_from_state(session.state)
-    misses = list(grade_final(leftover, WS_BASEMENT_TO_MAIN))
-    if exc is not None:
-        misses.append(f"{type(exc).__name__}: {exc}")
-    raise LeaveMiss(
-        "ws_basement_to_main",
-        leftover,
-        misses or ["leave failed"],
-        room_label="Wrecked Ship Main Shaft",
-        to_room=ROOM_WS_MAIN,
-    ) from exc
+    play_ceiling_door(
+        session,
+        label=label,
+        dest_room=ROOM_WS_MAIN,
+        lip_y=WS_BASEMENT_PLATFORM_Y,
+        remount=lambda st: hatch_mount_action(
+            int(st.samus_x),
+            int(st.samus_y),
+            int(st.pose),
+            int(st.velocity_y),
+            int(st.facing),
+            int(st.movement_type),
+        ),
+        door_action=lambda st, i: hatch_jump_action(
+            int(st.samus_x), int(st.samus_y), int(st.pose), i
+        ),
+        guard=_guard,
+        on_knockback=_kb,
+    )
 
 
 def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
@@ -364,7 +382,7 @@ def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
     Pin: ``scratch/post_phantoon_leave.state`` ``0xCC6F`` ~(1240,139) p10
     gs=8, ``$D82B`` bit 0. Bomb the morph-tunnel obstruction (X while morph).
     Ice-until-dead Atomics from a charge-release seat (east of the
-    Workrobot), takeoff x≳720, tap-shot the blue ceiling hatch on the mid
+    Workrobot), takeoff x~750–780, tap-shot the blue ceiling hatch on the mid
     platform ~x=657. Lands ordinary ``gs=8`` in ``0xCAF6``.
     """
     label = "ws_basement_to_main"
@@ -378,13 +396,20 @@ def play_ws_basement_to_main(session: ControllerSession) -> SuperMetroidState:
         _bomb_tunnel_left(session, label)
         _run_to_hatch(session, label)
         _jump_up_hatch(session, label)
-        return wait_ordinary_room(
-            session, ROOM_WS_MAIN, settle_frames=_SETTLE, label=label
+        return settle_ceiling_dest(
+            session, ROOM_WS_MAIN, label=label, settle_frames=_SETTLE
         )
     except LeaveMiss:
         raise
     except Exception as exc:
-        _raise_leave_miss(session, exc)
+        raise_leave_miss(
+            session.state,
+            "ws_basement_to_main",
+            WS_BASEMENT_TO_MAIN,
+            room_label="Wrecked Ship Main Shaft",
+            to_room=ROOM_WS_MAIN,
+            exc=exc,
+        )
         raise  # unreachable; keeps type checkers happy
 
 
@@ -403,13 +428,9 @@ __all__ = [
     "WS_BASEMENT_TAKEOFF_X_MIN",
     "WS_BASEMENT_TUNNEL_CLEAR_X",
     "WS_BASEMENT_TUNNEL_LIP_X",
-    "BasementEnemy",
     "at_ws_basement_hatch_seat",
     "hatch_jump_action",
     "hatch_mount_action",
-    "ice_keepaway_action",
-    "list_basement_enemies",
     "play_ws_basement_to_main",
-    "workrobot_avoid_action",
     "ws_basement_main_settled",
 ]

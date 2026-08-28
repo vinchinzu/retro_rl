@@ -18,7 +18,7 @@ from typing import Any
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
+from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_BLOCK_3A_ROOM
 from zelda_i.level6_path import (
     BLOCK_OBJECT_TYPE,
@@ -28,7 +28,7 @@ from zelda_i.level6_path import (
     WAIT_BLOCK_MAX,
     south_face_stand,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
@@ -145,13 +145,13 @@ class Level6Stairs3AController:
         ]
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "rod", 0))
+        return int(snap.rod)
 
     def _bow(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "bow", 0))
+        return int(snap.bow)
 
     def _arrows(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "arrows", 0))
+        return int(snap.arrows)
 
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
@@ -159,22 +159,12 @@ class Level6Stairs3AController:
         block = self._find_block(snap)
         blocks = self._blocks_68(snap)
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
+            **l6_leftover(snap),
             "submode": int(snap.submode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": self._rod(snap),
-            "bow": self._bow(snap),
-            "arrows": self._arrows(snap),
             "bx": -1 if block is None else int(block.x),
             "by": -1 if block is None else int(block.y),
             "blocks": blocks,
-            "keys": int(snap.keys),
-            "bombs": int(snap.bombs),
             "map": int(snap.map),
-            "triforce": int(snap.triforce),
         }
         if force or self.frames <= 2 or self.frames % STAIRS_3A_SAMPLE_PERIOD == 0:
             buttons = [
@@ -416,14 +406,4 @@ def level6_stairs3a_stages():
 
 def level6_stairs3a_success(snap: ZeldaSnapshot) -> bool:
     """Mode 9 cellar or a new L6 play room. Rod and TF 0x1F stay."""
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
-        return False
-    if int(getattr(snap, "rod", 0)) == 0:
-        return False
-    if snap.mode == PASSAGE_MODE:
-        return True
-    return (
-        snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen != LEVEL6_BLOCK_3A_ROOM
-    )
+    return l6_play_dest_success(snap, not_room=LEVEL6_BLOCK_3A_ROOM)

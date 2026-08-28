@@ -21,13 +21,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 from super_metroid.assist import UnlimitedAmmoAssist, UnlimitedResourcesAssist
-from super_metroid.hop_glance import (
-    LeaveMiss,
-    LeaveSpec,
-    final_from_state,
-    grade_final,
-    parse_room,
-)
+from super_metroid.hop_glance import LeaveMiss, final_from_state, grade_final, parse_room
+from super_metroid.leave_specs import LeaveSpec
 from super_metroid.policy import SegmentEvidence
 from super_metroid.progression import RoomProgressionGraph
 from super_metroid.ram import HI_JUMP_MASK, VARIA_MASK, GameplayPhase, SuperMetroidState

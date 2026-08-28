@@ -45,8 +45,10 @@ from harvest.maps.map_types import (
 )
 from harvest.maps.farm_pond import (
     COW_BARN_EAST_FACE_TILES,
+    EAST_SPUR_FA_APPROACH,
     EAST_SPUR_FA_FACE,
     EAST_SPUR_FA_STAND,
+    EAST_SPUR_FA_WATER,
     FARM_MAIN_POND_STANDS,
     FARM_MAIN_POND_WATER_BOUNDS,
     FARM_NO_GO_TILES,
@@ -506,8 +508,10 @@ __all__ = [
     "TILE_SIZE",
     # farm / pond
     "COW_BARN_EAST_FACE_TILES",
+    "EAST_SPUR_FA_APPROACH",
     "EAST_SPUR_FA_FACE",
     "EAST_SPUR_FA_STAND",
+    "EAST_SPUR_FA_WATER",
     "FARM_NO_GO_TILES",
     "HORSE_BARN_LEAVE_TILE",
     "HORSE_BARN_WALL_TILES",

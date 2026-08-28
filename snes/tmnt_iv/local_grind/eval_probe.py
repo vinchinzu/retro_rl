@@ -11,13 +11,11 @@ from PIL import Image
 from retro_harness.env import make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.segment_runner import configure_headless
+from tmnt_iv.assist import apply_emergency_hp
 from tmnt_iv.grind_knobs import override_knobs
 from tmnt_iv.paths import GAME, GAME_DIR
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import parse_game_state
-
-_EMERGENCY_HP_THRESHOLD = 16
-_EMERGENCY_HP_RESTORE = 80
 
 
 def run_knob_probe(
@@ -63,10 +61,7 @@ def run_knob_probe(
                         min_hp = state.health
 
                 if heal_mode == "emergency":
-                    if state.health == 0 or (
-                        0 < state.health <= _EMERGENCY_HP_THRESHOLD
-                    ):
-                        env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                    if apply_emergency_hp(env, state.health):
                         heals += 1
                         state = parse_game_state(env.get_ram(), frame=frame)
                         final = state

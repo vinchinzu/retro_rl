@@ -3,6 +3,9 @@
 Reusable across NES/SNES packages. The intro is **pre-roll only** — gameplay
 itself remains one continuous emulator session (not a stitch of segment clips).
 
+Product recordings start on gameplay. Intro cards are opt-in
+(``--intro-frames N``); the default hold is 0.
+
 Typical use::
 
     from retro_harness.youtube_intro import project_intro_lines, render_intro_card
@@ -32,8 +35,8 @@ PROJECT_METHOD = "Clean continuous run - one emulator session"
 PROJECT_NO_STITCH = "Not a stitch of segment clips"
 PROJECT_REPO = "github.com/vinchinzu/retro_rl"
 
-# Default hold at 60 fps (~1.5 s) — snappy pre-roll; slide is still readable.
-DEFAULT_INTRO_FRAMES = 90
+# Product default: no pre-roll. Pass a positive hold to opt in.
+DEFAULT_INTRO_FRAMES = 0
 
 
 def _ascii_safe(text: str) -> str:

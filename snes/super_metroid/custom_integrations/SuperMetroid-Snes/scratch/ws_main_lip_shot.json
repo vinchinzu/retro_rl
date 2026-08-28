@@ -1,0 +1,75 @@
+{
+  "frames": 3716,
+  "final": [
+    1202,
+    1854,
+    77
+  ],
+  "min_y": 1820,
+  "min_y_xy": [
+    1224,
+    1820
+  ],
+  "min_y_frame": 2645,
+  "n_plm_changes": 1,
+  "any_fam": false,
+  "any_hit": false,
+  "error": "LeaveMiss: ws_main_to_attic: expected Attic 0xCA52, got 0xCAF6; leftover xy=[1202, 1854] pose=77 gs=8; misses: room 0xCAF6 != 0xCA52; y=1854 not in [100, 220]; pose 77 (other) not door; TimeoutError: ws_main_to_attic_west_super: did not rea",
+  "changes": [
+    {
+      "frame": 59,
+      "xy": [
+        1161,
+        1847
+      ],
+      "pose": 81,
+      "facing": 8,
+      "lip_hit": false,
+      "fam": [],
+      "ids": [
+        "0xc842",
+        "0xc848",
+        "0xeedb",
+        "0xb703",
+        "0xb703",
+        "0xb703",
+        "0xb703",
+        "0xb703"
+      ],
+      "slots": [
+        {
+          "i": 32,
+          "id": "0xc842"
+        },
+        {
+          "i": 33,
+          "id": "0xc848"
+        },
+        {
+          "i": 34,
+          "id": "0xeedb"
+        },
+        {
+          "i": 35,
+          "id": "0xb703"
+        },
+        {
+          "i": 36,
+          "id": "0xb703"
+        },
+        {
+          "i": 37,
+          "id": "0xb703"
+        },
+        {
+          "i": 38,
+          "id": "0xb703"
+        },
+        {
+          "i": 39,
+          "id": "0xb703"
+        }
+      ]
+    }
+  ]
+}

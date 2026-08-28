@@ -32,7 +32,7 @@ Documented in `docs/ram_map.md`. Highlights:
 3. Clear one segment at a time from save states
    (`scripts/run_stage*_segment.py`).
 4. **Clean proof per stage** (heal=none, multi-entry) before removing
-   assists — copy `scripts/probe_stage1_clean.py` pattern.
+   assists — add a `CleanProbeSpec` in `clean_suite.py`, not a copied loop.
 5. Continuous validation:
    `uv run python -m tmnt_iv.scripts.record_full_hard_run`.
 
@@ -64,7 +64,9 @@ Stage order (infra first, then stages, then ★ full run):
 
 Parallel assisted polish (does not block Clean): Technodrome 1,022 /
 Prehistoric 861 / Starbase 749 / Wounded Knee 579, then a planner
-dry-run before BASELINE promote.
+dry-run before BASELINE promote. Sitting map: `RAPH_SPEED_HANDOFF.md`
++ wiki notes `SPEEDRUN_STRATEGIES.md` (`rr-iprz`). Raph tools are
+jump-kick and dash+Y, not standing Y and not A-special.
 
 ### Non-negotiable process (every stage)
 

@@ -194,10 +194,10 @@ class FenceLeftoverGlanceTests(unittest.TestCase):
         self.assertFalse(FENCE_DUMP_DONE.clock_must_advance)
         self.assertIs(d2_leftover_spec("fences"), FENCE_STAND)
         self.assertIs(d2_leftover_spec("fences", done=True), FENCE_DUMP_DONE)
-        self.assertEqual(d2_leftover_spec("stones", done=True).require_empty, ())
+        self.assertEqual(d2_leftover_spec("stones", done=True).require_empty, ("stones",))
         self.assertEqual(
             d2_leftover_spec("all", done=True).require_empty,
-            ("fences",),
+            ("fences", "stones", "large_rocks"),
         )
 
     def test_leftover_from_snapshot_flattens_probe_clock_and_pos(self) -> None:

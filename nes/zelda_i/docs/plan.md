@@ -618,11 +618,13 @@ Leftover is play `0x1C` `(120,205)` rod=1 keys=3 bombs=8 TF=`0x1F`
 map=`0x0A` bow=0 arrows=0. ROM: Gohma `0x1C` N=shutter S=key item=heart;
 TF `0x0C` north after the kill. `--through level1-bow` (ROM dest `0x22`)
 is **1/1** play `0x22` `(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop
-345f). `--through level1-bow-cellar` leftover `0x22` `(160,157)` (SE
-diamond edge; dest mode 9 not on tape). `ADDR_BOW` still 0. Next
-retarget is LEFT at live y=189 only to x=128 then UP, then 80R arrows —
-not an unarmed Gohma loop. `--through level2` and later still skip this
-branch.
+345f). `--through level1-bow-cellar` is **1/1** mode 9 room `0x7F`
+`(128,141)` tile `0x71` (`l1_bow_cellar`, hop 270f). West `0x68` UP
+`(96,144)→(96,128)` then CheckWarps at x=128 y=141. `ADDR_BOW` still 0.
+Next is walk onto the bow in `0x7F` (no poke). Splice into
+`--through level1` is `clear23_key` → bow detour → `backtrack44` after
+walked bow + return `0x23` — not an unarmed Gohma loop.
+`--through level2` and later still skip this branch.
 
 Wrong belief (clear58 leftover PNG): north shutter closed ⇒ sealed. Live
 occupancy UP from `(112,167)` entered 0x48 with keys still 5.

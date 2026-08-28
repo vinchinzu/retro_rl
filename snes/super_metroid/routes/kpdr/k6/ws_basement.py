@@ -17,16 +17,18 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_PHANTOON,
+    ROOM_WS_BASEMENT,
+    ROOM_WS_MAIN,
+    ROOM_WS_MAP,
+)
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import (
     escape_knockback_spin,
     is_knockback,
 )
 
-ROOM_WS_BASEMENT = 0xCC6F
-ROOM_PHANTOON = 0xCD13
-ROOM_WS_MAP = 0xCCCB
-ROOM_WS_MAIN = 0xCAF6
 WEAPON_SUPER = 2
 
 # Pin lands on the center platform ~(657,91) p165 after a few idle frames.

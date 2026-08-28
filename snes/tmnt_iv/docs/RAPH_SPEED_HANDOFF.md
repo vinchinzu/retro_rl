@@ -61,8 +61,8 @@ See `docs/tasks/rr-iprz.5-residual.md`. Shipped right-rail skip
 **23,272f / 917** vs 23,072 / 863. Boss9 **6,516f / 64** vs 6,300 / 144.
 Diag **24,645f / 1,076** time KEEP. Recover Fast+Boss9 without restoring
 the Diag rail loop or the 207 infinite dumpster. Do not skip dumpster on
-x=126; do not tighten close_gap below `%4`. No video until that sitting's
-dry-run also reaches credits.
+x=126; do not tighten close_gap below `%4`. Dry-run credits green;
+veryfast 1080p encode uses scratch `rr_iprz5` stems only.
 
 ## Continuous dry-run 2026-08-27 (do not STATUS)
 
@@ -89,7 +89,8 @@ idle/1080p tests are not a route proof.
 
 This sitting's power-on `--dry-run` (exhausted-207 RIGHT, 127f) **did
 finish**: **00:59:01.318 / 5,529 / 79 e-heals / 7,420 iframe / 0 lives**.
-Do not promote. Do not overwrite the STATUS 00:57:19 file. No video.
+Do not promote. Do not overwrite the STATUS 00:57:19 file.
+Scratch veryfast 1080p: `tmnt_iv_full_hard_credits_rr_iprz5.mp4`.
 
 Slash follow-up (four isolated algorithms + KEEP trace + three parent
 patches) **REJECT** vs 9,595f / 435 — do not reopen. Next knob: recover

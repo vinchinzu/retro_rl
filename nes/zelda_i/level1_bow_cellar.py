@@ -1,9 +1,9 @@
-"""Level 1 play 0x22 leftover: westmost 0x68 DOWN, stairs, dest mode 9.
+"""Level 1 play 0x22: push west 0x68 UP, take center stairs, dest mode 9.
 
-Leftover (160,157) SE diamond edge, keys=0 bow=0. Wiki: 4 blade traps,
-push the west block down, stairs, cellar bow. This hop is enter-cellar
-only. Do not claim ADDR_BOW. Do not poke bow/arrows/doors/keys.
-Isolated BFS banned.
+The staircase is visible at room center before the push. Enter from the east,
+thread the south diamond from its stable face, push the west block UP, and
+walk through the opened gap. This hop is enter-cellar only. Do not poke
+ADDR_BOW / ADDR_ARROWS. Isolated BFS banned.
 """
 
 from __future__ import annotations
@@ -16,26 +16,35 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level1_bow import LEVEL1_BOW_ROOM, level1_bow_stages
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.screen_glance import BOW_CELLAR_LEAVE, GlanceLeftover, grade_controller
 from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
 
 __all__ = [
     "BOW_CELLAR_MAX_FRAMES",
     "EAST_INLAND_X",
-    "SOUTH_LANE_Y",
-    "WEST_AISLE_X",
+    "SOUTH_FACE_Y",
+    "SOUTH_GAP_X",
+    "SOUTH_MOUTH_Y",
+    "STAIRS_STAND_X",
+    "STAIRS_STAND_Y",
+    "VACATED_SLOT_Y",
     "Level1BowCellarController",
+    "LEVEL1_BOW_CELLAR_ROOM",
+    "level1_bow_cellar_glance",
     "level1_bow_cellar_glance_fields",
     "level1_bow_cellar_stages",
     "level1_bow_cellar_success",
     "make_bow_cellar_controller",
-    "north_face_stand",
+    "south_face_stand",
     "westmost_block_0x68",
 ]
 
 LEVEL1 = 1
+LEVEL1_BOW_CELLAR_ROOM = 0x7F
 BLOCK_OBJECT_TYPE = 0x68
-PUSH_NORTH_OFFSET = 16
+PUSH_SOUTH_OFFSET = 13
 PUSH_ALIGN_TOL = 2
+PUSH_FACE_TOL = 3
 PUSH_MOVED_PX = 8
 PUSH_MAX_HOLD = 600
 WAIT_BLOCK_MAX = 120
@@ -43,17 +52,16 @@ EAST_SPAWN_XMAX = 232
 # v2 leftover (208,93): UP at x=208 is the NE statue.
 # v3 leftover (176,141) tile 118: LEFT at y=141 hits the east diamond.
 # v4 leftover (144,109) tile 118: LEFT at y=109 is the north diamond.
-# northwall leftover (112,109) tile 178: UP y=93 from x=144 live; LEFT
-# at y=93 reaches x=113 then tile 119 (bricked north door column).
-# south189 leftover (176,189) tile 117: DOWN x=176 to y=189 live; LEFT
-# at y=189 reaches x=127 then tile 119 (bricked south door column).
-# south173 leftover (144,173) tile 118: LEFT y=173 176→144 live; LEFT
-# at (144,173) is the south diamond (SE point; v4 mirror).
-# south157 leftover (160,157) tile 118: LEFT y=157 176→160 live; LEFT
-# at (160,157) is the SE diamond edge (v3–v4 diagonal).
 EAST_INLAND_X = 176
-SOUTH_LANE_Y = 157
-WEST_AISLE_X = 64
+SOUTH_MOUTH_Y = 189
+SOUTH_GAP_X = 128
+SOUTH_FACE_Y = 181
+# Original west 0x68 y. After the UP push the slot is empty; RIGHT from
+# leftover (96,149) is solid until Link walks through this y.
+VACATED_SLOT_Y = 144
+# The existing center stair square accepts the standard UW CheckWarps pose.
+STAIRS_STAND_X = 128
+STAIRS_STAND_Y = 141
 BOW_CELLAR_MAX_FRAMES = 4000
 SAMPLE_PERIOD = 12
 DEATH_MODE = 17
@@ -68,13 +76,13 @@ def westmost_block_0x68(snap: ZeldaSnapshot) -> ZeldaObject | None:
     return min(blocks, key=lambda obj: (int(obj.x), int(obj.y)))
 
 
-def north_face_stand(block: ZeldaObject) -> tuple[int, int]:
-    """One tile north of a 0x68. DOWN from here should register a push."""
-    return (int(block.x), int(block.y) - PUSH_NORTH_OFFSET)
+def south_face_stand(block: ZeldaObject) -> tuple[int, int]:
+    """South of a 0x68. UP from here should register a push."""
+    return (int(block.x), int(block.y) + PUSH_SOUTH_OFFSET)
 
 
 def make_bow_cellar_controller() -> "Level1BowCellarController":
-    """Westmost 0x68 north-face DOWN. Dest mode 9. Do not poke bow."""
+    """Westmost 0x68 south-face UP, then center stairs. Do not poke bow."""
     return Level1BowCellarController()
 
 
@@ -89,6 +97,11 @@ def level1_bow_cellar_stages():
 def level1_bow_cellar_success(snap: ZeldaSnapshot) -> bool:
     """L1 mode-9 cellar. Do not require ADDR_BOW. Reject play 0x22/0x23."""
     return snap.level == LEVEL1 and snap.mode == PASSAGE_MODE
+
+
+def level1_bow_cellar_glance(controller) -> GlanceLeftover:
+    """Mode-9 0x7F leftover after the 0x22 stairs. ADDR_BOW may still be 0."""
+    return grade_controller(controller, BOW_CELLAR_LEAVE)
 
 
 def level1_bow_cellar_glance_fields(snap: ZeldaSnapshot) -> dict[str, int]:
@@ -110,7 +123,7 @@ def level1_bow_cellar_glance_fields(snap: ZeldaSnapshot) -> dict[str, int]:
 class CellarPhase(Enum):
     TO_PUSH = auto()
     PUSH = auto()
-    ON_HOLE = auto()
+    TO_STAIRS = auto()
     DONE = auto()
     FAILED = auto()
 
@@ -125,7 +138,7 @@ def _leftover(snap: ZeldaSnapshot, block: ZeldaObject | None) -> dict[str, Any]:
 
 @dataclass
 class Level1BowCellarController:
-    """North-face westmost 0x68, hold DOWN, idle original xy. Dest mode 9."""
+    """South-face westmost 0x68, hold UP, then idle on center stairs."""
 
     frames: int = 0
     phase_frames: int = 0
@@ -217,34 +230,64 @@ class Level1BowCellarController:
             snap, FrameAction(nes_idle_action(), "arrived_cellar"), force=True
         )
 
-    def _at_north_face(self, xy: tuple[int, int], block: ZeldaObject) -> bool:
-        tx, ty = north_face_stand(block)
+    def _at_south_face(self, xy: tuple[int, int], block: ZeldaObject) -> bool:
+        tx, ty = south_face_stand(block)
         return (
             abs(xy[0] - tx) <= PUSH_ALIGN_TOL
-            and abs(xy[1] - ty) <= PUSH_ALIGN_TOL
+            and abs(xy[1] - ty) <= PUSH_FACE_TOL
         )
 
-    def _stage(
+    def _push_stage(
         self, xy: tuple[int, int], block: ZeldaObject
     ) -> tuple[tuple[int, int], str]:
-        """East mouth LEFT, south y=157, west aisle, north face. Not y=173."""
+        """South mouth, stable south face, then LEFT+UP around the diamond."""
         x, y = xy
-        gx, gy = north_face_stand(block)
-        # northwall: LEFT y=93 pinches at the bricked north door.
-        # south189: LEFT y=189 pinches at the bricked south door.
-        # south173: LEFT y=173 is the south diamond. Do not UP at x=208.
-        # Do not LEFT past x=144 at y=109 or y=173.
+        gx, gy = south_face_stand(block)
         if x > EAST_INLAND_X:
             return (EAST_INLAND_X, 141), "west_inland"
-        if x > WEST_AISLE_X + PUSH_ALIGN_TOL and y < SOUTH_LANE_Y - PUSH_ALIGN_TOL:
-            return (min(x, EAST_INLAND_X), SOUTH_LANE_Y), "south_peel"
-        if x > WEST_AISLE_X + PUSH_ALIGN_TOL:
-            return (WEST_AISLE_X, SOUTH_LANE_Y), "west_south"
-        if y > gy + PUSH_ALIGN_TOL:
-            return (WEST_AISLE_X, gy), "north_aisle"
-        if x < gx - PUSH_ALIGN_TOL:
-            return (gx, gy), "east_face"
+        if y < SOUTH_MOUTH_Y - PUSH_ALIGN_TOL and x > SOUTH_GAP_X + PUSH_ALIGN_TOL:
+            return (EAST_INLAND_X, SOUTH_MOUTH_Y), "south_peel"
+        if x > SOUTH_GAP_X + PUSH_ALIGN_TOL:
+            return (SOUTH_GAP_X, SOUTH_MOUTH_Y), "south_gap"
+        if y > SOUTH_FACE_Y:
+            return (SOUTH_GAP_X, SOUTH_FACE_Y), "south_face"
+        if x > gx + PUSH_ALIGN_TOL and y > gy + PUSH_ALIGN_TOL:
+            return (gx, gy), "southwest_clip"
+        if y > gy + PUSH_FACE_TOL:
+            return (gx, gy), "push_align_y"
+        if abs(x - gx) > PUSH_ALIGN_TOL:
+            return (gx, gy), "push_align_x"
         return (gx, gy), "stand_path"
+
+    def _stairs_step(self, snap: ZeldaSnapshot) -> FrameAction:
+        """UP through the vacated west-block slot, then RIGHT onto stairs."""
+        x, y = int(snap.link_x), int(snap.link_y)
+        self.walker.last_dir = None
+        slot_y = self.block_y0 if self.block_y0 is not None else VACATED_SLOT_Y
+        # Live leftover (96,149): RIGHT is solid south of the original 0x68.
+        if x < STAIRS_STAND_X and y > slot_y:
+            return self._emit(
+                snap, FrameAction(nes_action("UP"), "stairs_slot")
+            )
+        # CheckWarps UW: X must be a multiple of $10. PUSH_ALIGN_TOL idle at
+        # x=126 (tile 0x73) never warps; stand is x=128, y=141 (= $10k+$D).
+        if x < STAIRS_STAND_X:
+            return self._emit(
+                snap, FrameAction(nes_action("RIGHT"), "stairs_east")
+            )
+        if y > STAIRS_STAND_Y:
+            return self._emit(
+                snap, FrameAction(nes_action("UP"), "stairs_north")
+            )
+        if y < STAIRS_STAND_Y:
+            return self._emit(
+                snap, FrameAction(nes_action("DOWN"), "stairs_south")
+            )
+        if x > STAIRS_STAND_X:
+            return self._emit(
+                snap, FrameAction(nes_action("LEFT"), "stairs_west")
+            )
+        return self._emit(snap, FrameAction(nes_idle_action(), "stairs_idle"))
 
     def _walk_to(self, snap: ZeldaSnapshot, dest: tuple[int, int], reason: str) -> FrameAction:
         xy = (int(snap.link_x), int(snap.link_y))
@@ -317,15 +360,33 @@ class Level1BowCellarController:
                     snap, FrameAction(nes_idle_action(), "wait_block")
                 )
             self._lock(block)
-            if self._at_north_face(xy, block):
+            if self._at_south_face(xy, block):
                 self.walker.last_dir = None
                 self.walker.path = None
                 self._set_phase(
                     CellarPhase.PUSH,
                     f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
                 )
-                return self._emit(snap, FrameAction(nes_action("DOWN"), "push_block"))
-            dest, reason = self._stage(xy, block)
+                return self._emit(snap, FrameAction(nes_action("UP"), "push_block"))
+            dest, reason = self._push_stage(xy, block)
+            if reason in {"south_peel", "south_gap", "south_face", "push_align_y", "push_align_x"}:
+                self.walker.last_dir = None
+                if reason == "south_peel":
+                    btn = "DOWN"
+                elif reason == "south_gap":
+                    btn = "LEFT"
+                elif reason in {"south_face", "push_align_y"}:
+                    btn = "UP"
+                else:
+                    btn = "LEFT" if xy[0] > dest[0] else "RIGHT"
+                return self._emit(
+                    snap, FrameAction(nes_action(btn), reason)
+                )
+            if reason == "southwest_clip":
+                self.walker.last_dir = None
+                return self._emit(
+                    snap, FrameAction(nes_action("LEFT", "UP"), "southwest_clip")
+                )
             return self._walk_to(snap, dest, reason)
 
         if self.phase is CellarPhase.PUSH:
@@ -335,11 +396,11 @@ class Level1BowCellarController:
             if self.block_y0 is None:
                 self.block_x0 = int(block.x)
                 self.block_y0 = int(block.y)
-            if int(block.y) >= int(self.block_y0) + PUSH_MOVED_PX:
+            if int(block.y) <= int(self.block_y0) - PUSH_MOVED_PX:
                 self.walker.last_dir = None
                 self.walker.path = None
                 self._set_phase(
-                    CellarPhase.ON_HOLE,
+                    CellarPhase.TO_STAIRS,
                     f"pushed_{self.block_x0}_{self.block_y0}"
                     f"_to_{int(block.x)}_{int(block.y)}",
                 )
@@ -352,22 +413,11 @@ class Level1BowCellarController:
             else:
                 self.walker.last_dir = None
                 return self._emit(
-                    snap, FrameAction(nes_action("DOWN"), "push_block")
+                    snap, FrameAction(nes_action("UP"), "push_block")
                 )
 
-        if self.phase is CellarPhase.ON_HOLE:
-            self.walker.last_dir = None
-            hx = int(self.block_x0 or xy[0])
-            hy = int(self.block_y0 or xy[1])
-            if abs(xy[0] - hx) <= PUSH_ALIGN_TOL and abs(xy[1] - hy) <= PUSH_ALIGN_TOL:
-                return self._emit(
-                    snap, FrameAction(nes_idle_action(), "hole_idle")
-                )
-            if abs(xy[0] - hx) > PUSH_ALIGN_TOL:
-                btn = "LEFT" if xy[0] > hx else "RIGHT"
-                return self._emit(snap, FrameAction(nes_action(btn), "hole_x"))
-            btn = "UP" if xy[1] > hy else "DOWN"
-            return self._emit(snap, FrameAction(nes_action(btn), "hole_y"))
+        if self.phase is CellarPhase.TO_STAIRS:
+            return self._stairs_step(snap)
 
         return self._emit(snap, FrameAction(nes_idle_action(), "failed"), force=True)
 
@@ -380,11 +430,12 @@ class Level1BowCellarController:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "LEFT inland x=176, DOWN y=157 (south_peel, not diamond "
-                "y=173 / door y=189), LEFT west aisle x=64 toward x=96, "
-                "UP to north-face y, RIGHT onto westmost 0x68, DOWN until "
-                "y+8; idle original xy; dest mode 9; no ADDR_BOW; no "
-                "LEFT past x=144 at y=109/y=173; no UP at x=208"
+                "LEFT inland x=176; DOWN y=189; LEFT only to x=128; "
+                "cardinal UP to the stable south face y=181; LEFT+UP to "
+                "west-block south stand; push UP until its y moves; UP "
+                "through vacated slot y=144 then RIGHT to exact x=128 "
+                "(CheckWarps X multiple of $10; y=141 is $10k+$D); idle; "
+                "dest mode 9; no ADDR_BOW poke"
             ),
             "leftover": dict(self.leftover),
             "misses": self.walker.misses,

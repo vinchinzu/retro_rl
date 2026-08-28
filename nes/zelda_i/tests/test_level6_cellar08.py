@@ -5,8 +5,12 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.level6_cellar08 import (
+    CELLAR_08_DEST_ROOM,
     CELLAR_08_ROOM,
     EAST_MOUTH,
+    FLOOR_Y,
+    LEFT_LADDER_X,
+    RIGHT_LADDER_X,
     level6_cellar08_stages,
     level6_cellar08_success,
     make_cellar08_controller,
@@ -42,37 +46,22 @@ def _ram(**fields: int) -> np.ndarray:
     return ram
 
 
-def test_center3a_from_spit_goes_right_not_east() -> None:
-    from retro_harness.nes import nes_action
-    from zelda_i.level6_center3a import (
-        DATED_SPIT,
-        level6_center3a_stages,
-        level6_center3a_success,
-        make_center3a_controller,
-    )
-    from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y
-
-    stages = level6_center3a_stages()
-    assert [name for name, _, _ in stages] == [
-        "level6_stairs_0x3a_warp",
-        "level6_cellar_0x08",
-        "level6_center_0x3a",
-    ]
-    ram = _ram(mode=PLAY_MODE, screen=0x3A, x=DATED_SPIT[0], y=DATED_SPIT[1])
-    ram[ADDR_LINK_X] = DATED_SPIT[0]
-    ram[ADDR_LINK_Y] = DATED_SPIT[1]
-    ctl = make_center3a_controller()
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "hole_x"
-    assert list(act.action) == list(nes_action("RIGHT"))
-    loop = _ram(mode=9, screen=CELLAR_08_ROOM, x=48, y=93)
-    assert not level6_center3a_success(read_snapshot(loop))
-
-
 def test_cellar08_through_is_wired_after_warp() -> None:
     assert "level6-cellar08" in L6_THROUGH
     assert L6_THROUGH.index("level6-cellar08") == L6_THROUGH.index(
         "level6-stairs3a-warp"
+    ) + 1
+    assert L6_THROUGH.index("level6-south1d") == L6_THROUGH.index(
+        "level6-cellar08"
+    ) + 1
+    assert L6_THROUGH.index("level6-west2d") == L6_THROUGH.index(
+        "level6-south1d"
+    ) + 1
+    assert L6_THROUGH.index("level6-north2c") == L6_THROUGH.index(
+        "level6-west2d"
+    ) + 1
+    assert L6_THROUGH.index("level6-east3a") == L6_THROUGH.index(
+        "level6-north2c"
     ) + 1
     assert L6_STOPS["level6-cellar08"] == "level6_cellar_0x08"
     stages = level6_cellar08_stages()
@@ -84,26 +73,58 @@ def test_cellar08_through_is_wired_after_warp() -> None:
     assert run.report()["stop"] == "level6_cellar_0x08"
 
 
-def test_east_mouth_drops_not_up() -> None:
-    from retro_harness.nes import nes_action
+def test_warp_trigger_waits_for_engine_a_side_spawn() -> None:
+    from retro_harness.nes import nes_idle_action
 
     leftover = _ram()
     ctl = make_cellar08_controller()
     act = ctl.step(read_snapshot(leftover))
-    assert act.reason == "drop_clip"
-    assert list(act.action) == list(nes_action("LEFT", "DOWN"))
-    assert list(act.action) != list(nes_action("UP"))
+    assert act.reason == "passage_init_wait"
+    assert list(act.action) == list(nes_idle_action())
 
 
-def test_emerge_play_includes_dated_0x3a_return() -> None:
-    emerge = _ram(mode=PLAY_MODE, screen=0x07, x=120, y=205)
+def test_a_side_spawn_descends_to_floor_then_crosses_right() -> None:
+    from retro_harness.nes import nes_action
+
+    ctl = make_cellar08_controller()
+    drop = ctl.step(read_snapshot(_ram(x=LEFT_LADDER_X, y=93)))
+    assert ctl.arrival_seen
+    assert drop.reason == "drop_y"
+    assert list(drop.action) == list(nes_action("DOWN"))
+
+    cross = ctl.step(read_snapshot(_ram(x=LEFT_LADDER_X, y=FLOOR_Y)))
+    assert ctl.on_floor
+    assert cross.reason == "cross_x"
+    assert list(cross.action) == list(nes_action("RIGHT"))
+
+    climb = ctl.step(read_snapshot(_ram(x=RIGHT_LADDER_X, y=FLOOR_Y)))
+    assert climb.reason == "climb_y"
+    assert list(climb.action) == list(nes_action("UP"))
+
+
+def test_emerge_requires_exact_b_endpoint_0x1d() -> None:
+    emerge = _ram(
+        mode=PLAY_MODE,
+        screen=CELLAR_08_DEST_ROOM,
+        x=96,
+        y=157,
+    )
     assert level6_cellar08_success(read_snapshot(emerge))
     still = _ram(mode=9, screen=CELLAR_08_ROOM)
     assert not level6_cellar08_success(read_snapshot(still))
     back = _ram(mode=PLAY_MODE, screen=0x3A, x=96, y=157)
-    assert level6_cellar08_success(read_snapshot(back))
+    assert not level6_cellar08_success(read_snapshot(back))
+    wrong = _ram(mode=PLAY_MODE, screen=0x07, x=120, y=205)
+    assert not level6_cellar08_success(read_snapshot(wrong))
+
     ctl = make_cellar08_controller()
     ctl.step(read_snapshot(_ram()))
-    act = ctl.step(read_snapshot(back))
+    act = ctl.step(read_snapshot(emerge))
     assert ctl.success
     assert act.reason == "emerged"
+
+    returned = make_cellar08_controller()
+    returned.step(read_snapshot(_ram()))
+    fail = returned.step(read_snapshot(back))
+    assert returned.failed
+    assert fail.reason == "returned_source_0x3a"
