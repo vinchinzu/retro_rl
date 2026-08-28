@@ -4,6 +4,10 @@ The run uses one emulator session and selects Hard through the real menus. It
 never loads a save state, never writes stage/lives/boss RAM, and never presses
 the HP-draining special. Damage is measured from natural HP drops.
 
+Video uses the shared :class:`retro_harness.video.VideoRecorder` (1080p60
+YouTube pad + button sidebars by default). ``--native-video`` is the 16px
+footer escape hatch.
+
 Assists (disclosed, minimized vs the old every-hit restore-to-96; **default ON**):
 1. Emergency HP top-up when about to die (HP <= threshold → 80).
 2. Super Shredder form-2 iframe hold at 1 — his demutation projectile
@@ -22,9 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import subprocess
-import wave
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -38,8 +40,17 @@ from retro_harness.env import make_env, reset_obs, save_state  # noqa: E402
 from retro_harness.controls import SNES_START  # noqa: E402
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.ram_state import GameMode, GameState  # noqa: E402
-from retro_harness.video import render_footer_frame  # noqa: E402
+from retro_harness.video import VideoCaptureConfig, VideoRecorder  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
+from tmnt_iv.assist import (  # noqa: E402
+    EMERGENCY_HP_RESTORE,
+    EMERGENCY_HP_THRESHOLD,
+    FORM2_IFRAME_VALUE,
+    apply_emergency_hp,
+    apply_form2_iframe_hold,
+    assist_integrity,
+    evaluate_clean_integrity,
+)
 from tmnt_iv.paths import (  # noqa: E402
     GAME,
     GAME_DIR,
@@ -50,16 +61,17 @@ from tmnt_iv.paths import (  # noqa: E402
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
 
-_FOOTER_HEIGHT = 16
 _METRIC_HOLD_FRAMES = 600
 _FINAL_SCENE_SETTLE_FRAMES = 1200
 _HARD_VALUE = 2
 _FINAL_CREDITS_EVENT = 0x1A
-# Only write HP when the turtle is one solid hit from death. The assist
-# contract retains its fixed 80 restore after the route switches to Raphael
-# (natural max 48); every intervention remains explicit in the manifest.
-_EMERGENCY_HP_THRESHOLD = 16
-_EMERGENCY_HP_RESTORE = 80
+# Enemyless frozen X this long is an infinite dumpster/rail loop, not a
+# finish. Pin dumpsters recover in hundreds of frames; Diag rail skip
+# recovered after ~600f. The 180k–230k encode stall was this hole.
+_FREEZE_ABORT_FRAMES = 12_000
+# Re-export private names so existing test imports keep working.
+_EMERGENCY_HP_THRESHOLD = EMERGENCY_HP_THRESHOLD
+_EMERGENCY_HP_RESTORE = EMERGENCY_HP_RESTORE
 
 _STAGE_NAMES = {
     0: "BIG APPLE",
@@ -186,157 +198,28 @@ class CreditsTracker:
         ):
             metrics.credits_complete_frame = frame
 
-class NativeCapture:
-    """Stream RGB video and native emulator PCM, then mux an MP4."""
-
-    def __init__(
-        self,
-        output: Path,
-        *,
-        width: int,
-        height: int,
-        fps: float,
-        audio_rate: int,
-        scale: int,
-    ) -> None:
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg is None:
-            raise RuntimeError("ffmpeg is required for video recording")
-        self.output = output
-        self.output.parent.mkdir(parents=True, exist_ok=True)
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.audio_rate = audio_rate
-        self.scale = scale
-        self.frames_written = 0
-        self.audio_samples = 0
-        self._silent = output.with_suffix(".partial.video.mp4")
-        self._wav = output.with_suffix(".partial.audio.wav")
-        self._video = subprocess.Popen(
-            [
-                ffmpeg,
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                "rgb24",
-                "-s",
-                f"{width}x{height}",
-                "-r",
-                f"{fps:.12f}",
-                "-i",
-                "-",
-                "-an",
-                "-vf",
-                f"scale={width * scale}:{height * scale}:flags=neighbor",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                str(self._silent),
-            ],
-            stdin=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+def full_run_video_config(
+    *,
+    native: bool = False,
+    scale: int = 3,
+    hq: bool = False,
+) -> VideoCaptureConfig:
+    """Product capture is 1080p60 YouTube; native is the 16px-footer hatch."""
+    if native:
+        if hq:
+            return VideoCaptureConfig.high_quality(scale=scale)
+        return VideoCaptureConfig(
+            fps=60,
+            scale=scale,
+            audio=True,
+            footer=True,
+            layout="native",
         )
-        self._audio = wave.open(str(self._wav), "wb")
-        self._audio.setnchannels(2)
-        self._audio.setsampwidth(2)
-        self._audio.setframerate(audio_rate)
-
-    def write(self, frame: np.ndarray, audio: np.ndarray | None) -> None:
-        """Append one decorated RGB frame and the latest native PCM block."""
-        if self._video.stdin is None:
-            raise RuntimeError("ffmpeg video input is closed")
-        rgb = np.asarray(frame, dtype=np.uint8)
-        expected = (self.height, self.width, 3)
-        if rgb.shape != expected:
-            raise ValueError(f"expected frame {expected}, got {rgb.shape}")
-        self._video.stdin.write(rgb.tobytes())
-        self.frames_written += 1
-        if audio is None:
-            return
-        pcm = np.asarray(audio, dtype=np.int16)
-        if pcm.size == 0:
-            return
-        if pcm.ndim == 1:
-            if pcm.size % 2:
-                raise ValueError(f"odd stereo PCM sample count: {pcm.size}")
-            pcm = pcm.reshape(-1, 2)
-        if pcm.ndim != 2 or pcm.shape[1] != 2:
-            raise ValueError(f"expected stereo PCM, got {pcm.shape}")
-        little = pcm.astype("<i2", copy=False)
-        self._audio.writeframesraw(little.tobytes())
-        self.audio_samples += int(pcm.shape[0])
-
-    def _close_streams(self) -> None:
-        """Finalize the elementary video and WAV streams."""
-        self._audio.close()
-        if self._video.stdin is not None:
-            self._video.stdin.close()
-        stderr = (
-            self._video.stderr.read()
-            if self._video.stderr is not None
-            else b""
-        )
-        code = self._video.wait()
-        if code:
-            raise RuntimeError(stderr.decode("utf-8", errors="replace"))
-
-    def finish(self) -> Path:
-        """Mux the completed streams and remove the two partial files."""
-        self._close_streams()
-        result = subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-i",
-                str(self._silent),
-                "-i",
-                str(self._wav),
-                "-map",
-                "0:v:0",
-                "-map",
-                "1:a:0",
-                "-c:v",
-                "copy",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-shortest",
-                "-movflags",
-                "+faststart",
-                str(self.output),
-            ],
-            capture_output=True,
-            check=False,
-        )
-        if result.returncode:
-            raise RuntimeError(result.stderr.decode("utf-8", errors="replace"))
-        self._silent.unlink(missing_ok=True)
-        self._wav.unlink(missing_ok=True)
-        return self.output
-
-    def abort(self) -> None:
-        """Close a failed capture without publishing a final MP4."""
-        try:
-            self._close_streams()
-        except Exception:
-            if self._video.poll() is None:
-                self._video.kill()
+    overrides: dict[str, Any] = {}
+    if hq:
+        overrides["crf"] = 15
+        overrides["preset"] = "slow"
+    return VideoCaptureConfig.youtube(**overrides)
 
 
 def _format_duration(seconds: float) -> str:
@@ -352,53 +235,21 @@ def _boot_action(frame: int) -> list[int]:
     names = _BOOT_ACTIONS.get(frame)
     return buttons(*names) if names else idle_action()
 
-def _short_clock(frame: int, fps: float) -> str:
-    """Return MM:SS for the persistent footer."""
-    seconds = int(frame / fps)
-    minutes, secs = divmod(seconds, 60)
-    return f"{minutes:02d}:{secs:02d}"
-
 def _render_frame(
     obs: np.ndarray,
     *,
-    state: GameState,
     frame: int,
     fps: float,
     metrics: RunMetrics,
-    action: list[int] | None = None,
 ) -> np.ndarray:
-    """Add a compact live footer and, at the end, an honest metric card."""
+    """Return native RGB, with a metric card after the credits settle."""
     rgb = np.asarray(obs, dtype=np.uint8)
-    height, width = rgb.shape[:2]
-    stage_name = _STAGE_NAMES.get(state.stage, "HARD CREDITS")
-    stage_no = min(max(state.stage + 1, 1), 10)
-    display_lives = (
-        metrics.lives_end
-        if metrics.credits_start_frame is not None
-        else state.lives
-    )
-    assist = (
-        f"E-HEAL {metrics.health_guard_interventions}"
-        if metrics.health_guard_interventions
-        else "NO HEAL"
-    )
-    image = render_footer_frame(
-        rgb,
-        upper_left=f"HARD  {stage_no:02d}/10 {stage_name}",
-        upper_right=_short_clock(frame, fps),
-        lower_left=(
-            f"DMG {metrics.total_damage_taken:05d}  "
-            f"LIVES {display_lives}  LOSS {metrics.life_losses}  {assist}"
-        ),
-        action=action,
-        players=1,
-    )
-
     complete = metrics.credits_complete_frame
     if complete is None or frame < complete:
-        return image
+        return rgb
 
-    pil_image = Image.fromarray(image, mode="RGB")
+    height, width = rgb.shape[:2]
+    pil_image = Image.fromarray(rgb, mode="RGB")
     overlay = Image.new("RGBA", pil_image.size, (0, 0, 0, 0))
     card = ImageDraw.Draw(overlay)
     card.rounded_rectangle(
@@ -500,42 +351,18 @@ def _metrics_dict(metrics: RunMetrics, *, fps: float) -> dict[str, Any]:
         payload["credits_start_seconds"] = start / fps
     return payload
 
-def assist_integrity(
-    metrics: RunMetrics,
-    *,
-    require_clean_assists: bool = False,
-) -> dict[str, bool]:
-    """Boolean integrity flags for continuous assist counters."""
-    flags = {
-        "emergency_hp_zero": metrics.health_guard_interventions == 0,
-        "iframe_guard_zero": metrics.final_boss_iframe_guard_frames == 0,
-        "life_losses_zero": metrics.life_losses == 0,
-        "state_loads_zero": True,
-        "stage_writes_zero": True,
-        "lives_writes_zero": True,
-    }
-    if require_clean_assists:
-        flags["clean_assists_zero"] = (
-            flags["emergency_hp_zero"] and flags["iframe_guard_zero"]
-        )
-    return flags
-
-def evaluate_clean_integrity(metrics: RunMetrics) -> tuple[bool, dict[str, bool]]:
-    """Return (ok, flags) requiring zero e-HP and zero iframe frames."""
-    flags = assist_integrity(metrics, require_clean_assists=True)
-    return bool(flags.get("clean_assists_zero")), flags
 
 def run_full_hard(
     *,
     output: Path,
     report_path: Path,
     max_frames: int = 400_000,
-    scale: int = 3,
     dry_run: bool = False,
     entry_state_prefix: str | None = None,
     emergency_hp: bool = True,
     iframe_hold: bool = True,
     require_clean_assists: bool | None = None,
+    video_config: VideoCaptureConfig | None = None,
 ) -> dict[str, Any]:
     """Run from power-on through complete Hard credits and record artifacts.
 
@@ -546,13 +373,14 @@ def run_full_hard(
     if require_clean_assists is None:
         require_clean_assists = not emergency_hp and not iframe_hold
     clean_mode = not emergency_hp and not iframe_hold
+    capture_config = video_config or full_run_video_config()
 
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
     metrics = RunMetrics()
     credits = CreditsTracker()
-    capture: NativeCapture | None = None
+    capture: VideoRecorder | None = None
     succeeded = False
     obs, _info = reset_obs(env)
     fps = float(env.em.get_screen_rate())
@@ -565,18 +393,30 @@ def run_full_hard(
     last_stage = -1
     split_stages: set[int] = set()
     hard_confirmed = False
+    freeze_x = -1
+    freeze_stage = -1
+    freeze_frames = 0
     frame = 0
     final_state = parse_game_state(env.get_ram(), frame=0)
 
     try:
         if not dry_run:
-            capture = NativeCapture(
+            capture = VideoRecorder(
                 output,
                 width=width,
-                height=height + _FOOTER_HEIGHT,
-                fps=fps,
+                height=height,
+                config=capture_config,
                 audio_rate=audio_rate,
-                scale=scale,
+            )
+            canvas = (
+                f"{capture_config.canvas_width}x{capture_config.canvas_height}"
+                if capture_config.layout == "youtube"
+                else f"{width}x{height}*{capture_config.scale}"
+            )
+            print(
+                f"recording {capture_config.layout} {canvas} "
+                f"{capture_config.fps}fps -> {output}",
+                flush=True,
             )
 
         for frame in range(0, max_frames + 1):
@@ -614,8 +454,7 @@ def run_full_hard(
                     or state.health < metrics.min_health_seen
                 ):
                     metrics.min_health_seen = state.health
-                if emergency_hp and state.health <= _EMERGENCY_HP_THRESHOLD:
-                    env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                if emergency_hp and apply_emergency_hp(env, state.health):
                     metrics.health_guard_interventions += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
                     final_state = state
@@ -633,8 +472,7 @@ def run_full_hard(
                     metrics.damage_by_stage[state.stage] = (
                         metrics.damage_by_stage.get(state.stage, 0) + damage
                     )
-                if emergency_hp:
-                    env.set_value("player_hp", _EMERGENCY_HP_RESTORE)
+                if emergency_hp and apply_emergency_hp(env, state.health):
                     metrics.health_guard_interventions += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
                     final_state = state
@@ -646,13 +484,9 @@ def run_full_hard(
 
             # Form-2 demutation bypasses HP; hold a 1-frame iframe while the
             # finale arena is live. Still far cheaper than the old full-bar spam.
-            if (
-                iframe_hold
-                and active
-                and state.stage == 9
-                and event == 0x0A
+            if iframe_hold and active and apply_form2_iframe_hold(
+                env, stage=state.stage, event=event
             ):
-                env.set_value("player_iframes", 1)
                 metrics.final_boss_iframe_guard_frames += 1
 
             if active and not started:
@@ -767,18 +601,72 @@ def run_full_hard(
             if capture is not None:
                 decorated = _render_frame(
                     obs,
-                    state=state,
                     frame=frame,
                     fps=fps,
                     metrics=metrics,
-                    action=action,
                 )
-                capture.write(decorated, pending_audio)
+                capture.write(
+                    decorated,
+                    action=action,
+                    audio=pending_audio,
+                    frame_index=frame,
+                )
 
             complete = metrics.credits_complete_frame
             if complete is not None and frame >= complete + _METRIC_HOLD_FRAMES:
                 succeeded = True
                 break
+
+            if (
+                started
+                and metrics.credits_start_frame is None
+                and state.mode is GameMode.PLAYING
+                and state.player_x > 0
+                and not state.living_enemies
+            ):
+                if (
+                    state.player_x == freeze_x
+                    and state.stage == freeze_stage
+                ):
+                    freeze_frames += 1
+                else:
+                    freeze_x = state.player_x
+                    freeze_stage = state.stage
+                    freeze_frames = 0
+                if freeze_frames in {2_000, 5_000} or (
+                    freeze_frames >= 2_000 and freeze_frames % 5_000 == 0
+                ):
+                    print(
+                        f"FREEZE {freeze_frames}f  frame={frame} "
+                        f"stage={state.stage} "
+                        f"p=({state.player_x},{state.player_y}) "
+                        f"cam={state.camera_x} reason={reason} "
+                        f"dmg={metrics.total_damage_taken}",
+                        flush=True,
+                    )
+                if freeze_frames >= _FREEZE_ABORT_FRAMES:
+                    shot = RECORDINGS_DIR / (
+                        f"scratch_freeze_s{state.stage}_"
+                        f"x{state.player_x}_f{frame}.png"
+                    )
+                    Image.fromarray(np.asarray(obs, dtype=np.uint8)).save(shot)
+                    save_state(
+                        env,
+                        GAME_DIR,
+                        GAME,
+                        f"ScratchFreeze_s{state.stage}_x{state.player_x}",
+                    )
+                    raise RuntimeError(
+                        f"frozen X for {freeze_frames}f at frame {frame}: "
+                        f"stage={state.stage} "
+                        f"p=({state.player_x},{state.player_y}) "
+                        f"cam={state.camera_x} reason={reason} "
+                        f"dmg={metrics.total_damage_taken} shot={shot}"
+                    )
+            else:
+                freeze_x = -1
+                freeze_stage = -1
+                freeze_frames = 0
 
             if frame and frame % 10_000 == 0:
                 targets = [
@@ -789,6 +677,8 @@ def run_full_hard(
                     f"frame {frame}  stage={state.stage} event={event:#04x} "
                     f"damage={metrics.total_damage_taken} lives={state.lives} "
                     f"p=({state.player_x},{state.player_y}) "
+                    f"hp={state.health} char={state.extras.get('char_id')} "
+                    f"reason={reason} pickups={state.extras.get('pickups')} "
                     f"targets={targets}",
                     flush=True,
                 )
@@ -811,7 +701,7 @@ def run_full_hard(
 
         video_path: Path | None = None
         if capture is not None:
-            video_path = capture.finish()
+            video_path = capture.close()
             capture = None
 
         integrity_flags = assist_integrity(
@@ -864,9 +754,9 @@ def run_full_hard(
                     "health_restore_to_96": False,
                     "emergency_hp_enabled": emergency_hp,
                     "iframe_hold_enabled": iframe_hold,
-                    "emergency_hp_threshold": _EMERGENCY_HP_THRESHOLD,
-                    "emergency_hp_restore": _EMERGENCY_HP_RESTORE,
-                    "super_shredder_form2_iframe_value": 1,
+                    "emergency_hp_threshold": EMERGENCY_HP_THRESHOLD,
+                    "emergency_hp_restore": EMERGENCY_HP_RESTORE,
+                    "super_shredder_form2_iframe_value": FORM2_IFRAME_VALUE,
                     "require_clean_assists": require_clean_assists,
                 },
                 "forbidden_a_special_uses": 0,
@@ -880,6 +770,7 @@ def run_full_hard(
                 "native_width": width,
                 "native_height": height,
                 "frames_executed": frame,
+                "video_capture": capture_config.to_dict(),
             },
             "reproducibility": {
                 "rom_filename": rom_name,
@@ -900,6 +791,7 @@ def run_full_hard(
                 "path": str(video_path),
                 "sha256": _file_sha256(video_path),
                 "ffprobe": _probe_video(video_path),
+                "capture": capture_config.to_dict(),
             }
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
@@ -945,7 +837,22 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--max-frames", type=int, default=400_000)
-    parser.add_argument("--scale", type=int, default=3)
+    parser.add_argument(
+        "--scale",
+        type=int,
+        default=3,
+        help="Native-layout nearest-neighbor scale (ignored for YouTube)",
+    )
+    parser.add_argument(
+        "--native-video",
+        action="store_true",
+        help="Nx gameplay + 16px footer instead of 1080p60 YouTube sidebars",
+    )
+    parser.add_argument(
+        "--hq",
+        action="store_true",
+        help="Higher quality encode (CRF 15, preset slow); YouTube still 1080p60",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -1016,12 +923,16 @@ def main(argv: list[str] | None = None) -> int:
         output=output,
         report_path=report,
         max_frames=args.max_frames,
-        scale=args.scale,
         dry_run=args.dry_run,
         entry_state_prefix=args.entry_state_prefix,
         emergency_hp=emergency_hp,
         iframe_hold=iframe_hold,
         require_clean_assists=clean,
+        video_config=full_run_video_config(
+            native=args.native_video,
+            scale=args.scale,
+            hq=args.hq,
+        ),
     )
     return 0
 

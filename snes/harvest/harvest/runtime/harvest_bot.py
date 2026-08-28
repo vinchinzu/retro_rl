@@ -23,6 +23,7 @@ from harvest.core.world_snapshot import load_state_ram, parse_bounds as parse_wo
 from harvest.paths import CUSTOM_INTEGRATIONS_DIR, PROJECT_DIR, SAVES_DIR as PROJECT_SAVES_DIR
 from harvest.planner.day_plan import PHASE_SEQUENCES
 from harvest.runtime.autoplay_bot import AutoClearBot
+from harvest.runtime.bot_input import print_controls
 from harvest.runtime.game_state import GameState
 from harvest.runtime.play_session import PlaySession
 from harvest.runtime.retro_setup import register_harvest_integration
@@ -296,6 +297,7 @@ def main() -> None:
             power_on=bool(args.power_on),
             d1_handoff=False if args.no_d1_handoff else (True if args.power_on else None),
         )
+        print_controls()
         PlaySession(
             state=None if args.power_on else args.state,
             scale=args.scale,

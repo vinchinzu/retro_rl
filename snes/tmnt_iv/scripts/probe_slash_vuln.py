@@ -24,7 +24,8 @@ from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.actions import buttons, idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR  # noqa: E402
-from tmnt_iv.policy import SlashTactics, Stage1Policy  # noqa: E402
+from tmnt_iv.policy import Stage1Policy  # noqa: E402
+from tmnt_iv.tactics.slash import SlashTactics  # noqa: E402
 from tmnt_iv.ram import (  # noqa: E402
     ENEMY_BASES,
     OFF_CHAR,
@@ -39,7 +40,8 @@ from tmnt_iv.ram import (  # noqa: E402
 
 _SLASH_CHAR = 0x50
 _DEFAULT_STATE = "FullHardBoss5"
-_PLAYER_HP_RESTORE = 96
+# Probe survival (full bar). Not the Assist emergency restore (16 → 80).
+_FULL_HEAL_HP = 96
 _PRE_HIT_DEFAULT = 16
 
 @dataclass(frozen=True)
@@ -158,8 +160,8 @@ def _snap(ram: Any, frame: int) -> SlashSnap | None:
     )
 
 def _heal_player(env: Any) -> None:
-    """Keep Leo alive so the probe can thrash for the full window."""
-    env.set_value("player_hp", _PLAYER_HP_RESTORE)
+    """Full-bar probe survival so the window log is not cut by a KO."""
+    env.set_value("player_hp", _FULL_HEAL_HP)
 
 def _pick_action(
     *,
@@ -409,10 +411,10 @@ def run_probe(
                 )
 
             if heal_every > 0 and frame % heal_every == 0:
-                if 0 < state.health <= 0x60 and state.health < _PLAYER_HP_RESTORE:
+                if 0 < state.health <= 0x60 and state.health < _FULL_HEAL_HP:
                     _heal_player(env)
                     heals += 1
-                    prev_player_hp = _PLAYER_HP_RESTORE
+                    prev_player_hp = _FULL_HEAL_HP
                 elif 0 < state.health <= 0x60:
                     prev_player_hp = state.health
                 else:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""D2 leftover quota smash from Y1_After_Buy_Potato (not a plant tape).
+"""D2 leftover smash from a live pin (not a plant tape).
 
-10 bushes (pick+toss) → dump fence posts in ponds → toss 10 stones in ponds
-→ hammer 4 boulders → axe 2 stumps.
+10 bushes (pick+toss) → dump fence posts in ponds → toss remaining stones
+in ponds → hammer remaining 2×2 boulders → axe 2 stumps.
 Isolated leftover pin (rr-w14t / rr-20w.2.8). Do not redo power-on here.
 
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\
@@ -18,7 +18,7 @@ import argparse
 import json
 from pathlib import Path
 
-from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
+from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
 
 ensure_monorepo_on_path()
 
@@ -26,7 +26,6 @@ from retro_harness import TaskStatus, WorldState
 from retro_harness.headed import (
     add_headed_flag,
     attach_headed,
-    headed_emu_repeat,
     idle_headed,
 )
 
@@ -34,7 +33,6 @@ from harvest.clock_glance import d2_leftover_spec, leftover_json
 from harvest.core.carry import backpack_tool, selected_tool
 from harvest.core.game_clock import clock_from_ram, format_segment_time
 from harvest.core.ram_catalog import read_ram_value
-from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
@@ -60,6 +58,12 @@ from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.runtime.watch_display import configure_headless
+from harvest.scripts.leftover_exec import (
+    phase_already_clear,
+    print_leftover_table,
+    run_leftover_task,
+    save_emulator_state,
+)
 from harvest.tasks.farm_clear_quota import (
     ClearQuota,
     DebrisCounts,
@@ -68,8 +72,7 @@ from harvest.tasks.farm_clear_quota import (
     quota_counts_met,
 )
 from harvest.tasks.farm_ops import TileScanner
-from harvest.tasks.nav import get_pos_from_ram, make_action
-from harvest.tasks.primitives import dismiss_dialogue_result
+from harvest.tasks.nav import get_pos_from_ram
 
 
 _SECTIONS = ("all", "bushes", "fences", "stones", "rocks", "stumps")
@@ -78,7 +81,7 @@ _SECTIONS = ("all", "bushes", "fences", "stones", "rocks", "stumps")
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_After_Buy_Potato")
-    p.add_argument("--timeout", type=int, default=200_000)
+    p.add_argument("--timeout", type=int, default=400_000)
     p.add_argument(
         "--out",
         type=Path,
@@ -97,6 +100,24 @@ def _parse_args() -> argparse.Namespace:
         help="Write a debug-only gzip save when the selected section is still red.",
     )
     p.add_argument(
+        "--checkpoint-state",
+        type=str,
+        default="Y1_D2_Leftover_Checkpoint",
+        help="Overwrite this gzip save on a progress interval (empty disables).",
+    )
+    p.add_argument(
+        "--checkpoint-every",
+        type=int,
+        default=15_000,
+        help="Frames between leftover checkpoint saves.",
+    )
+    p.add_argument(
+        "--stall-frames",
+        type=int,
+        default=24_000,
+        help="Abort a phase if debris counts stay unchanged this long.",
+    )
+    p.add_argument(
         "--section",
         choices=_SECTIONS,
         default="all",
@@ -108,7 +129,14 @@ def _parse_args() -> argparse.Namespace:
         help="Snapshot debris/stamina/clock and exit (no smash).",
     )
     p.add_argument("--no-spa", action="store_true", help="Never insert HOT_SPRING_STAMINA.")
-    add_headed_flag(p)
+    add_headed_flag(
+        p,
+        help=(
+            "Watch-only pygame window (no human/bot toggle). Inspect and F5-record "
+            "with: python -m harvest.runtime.harvest_bot play --state STATE "
+            "--no-day-plan --record NAME"
+        ),
+    )
     return p.parse_args()
 
 
@@ -120,35 +148,25 @@ def _headed_hud(env) -> str:
     return f"BOT leftover {clock} map={hex(tm)} ({pos.x // 16},{pos.y // 16})"
 
 
-def _run_task(env, task, *, timeout: int, start_frame: int):
-    obs = None
-    result = None
-    frame = start_frame
-    while frame <= start_frame + timeout:
-        budget = headed_emu_repeat(env)
-        stopped = False
-        for _ in range(budget):
-            ram = env.get_ram()
-            if shipping_scene_needs_dismiss(ram):
-                dismiss = dismiss_dialogue_result(
-                    frame, buttons=("a",), pulse_every=2, reason="shipping scene"
-                )
-                action = dismiss.action.action
-            else:
-                world = WorldState(frame=frame, ram=ram, info={}, obs=obs)
-                result = task.step(world)
-                if result.status != TaskStatus.RUNNING:
-                    stopped = True
-                    break
-                action = result.action.action if result.action is not None else make_action()
-            obs, _reward, _term, _trunc, _info = env.step(action)
-            frame += 1
-            if frame > start_frame + timeout:
-                stopped = True
-                break
-        if stopped:
-            break
-    return frame, result, env.get_ram()
+def _run_task(
+    env,
+    task,
+    *,
+    timeout: int,
+    start_frame: int,
+    checkpoint_state: str | None = None,
+    checkpoint_every: int = 0,
+    stall_frames: int = 0,
+):
+    return run_leftover_task(
+        env,
+        task,
+        timeout=timeout,
+        start_frame=start_frame,
+        checkpoint_state=checkpoint_state or None,
+        checkpoint_every=checkpoint_every,
+        stall_frames=stall_frames,
+    )
 
 
 def _carry(ram) -> dict:
@@ -188,15 +206,15 @@ def _wanted_quota(section: str) -> ClearQuota:
     if section == "fences":
         return ClearQuota(fences=10_000)
     if section == "stones":
-        return ClearQuota(stones=10)
+        return ClearQuota(stones=10_000)
     if section == "rocks":
-        return ClearQuota(large_rocks=4)
+        return ClearQuota(large_rocks=10_000)
     if section == "stumps":
         return ClearQuota(stumps=2)
     return ClearQuota(
         weeds=10,
-        stones=10,
-        large_rocks=4,
+        stones=10_000,
+        large_rocks=10_000,
         stumps=2,
         fences=10_000,
     )
@@ -244,12 +262,7 @@ def _phase_timeout(spec, remaining: int) -> int:
 
 
 def _save_emulator_state(env, state_name: str) -> Path:
-    import gzip
-
-    out_state = GAME_DIR / f"{state_name}.state"
-    with gzip.open(out_state, "wb", compresslevel=9) as handle:
-        handle.write(env.em.get_state())
-    return out_state
+    return save_emulator_state(env, state_name)
 
 
 def _write_payload(path: Path, payload: dict) -> None:
@@ -273,25 +286,6 @@ def _emit(
     spec = d2_leftover_spec(section, done=ok if done is None else done)
     fields.setdefault("section", section)
     _write_payload(path, leftover_json(_try_snapshot(ram), spec, ok=ok, **fields))
-
-
-def _print_table(start: dict, end: dict, cleared: dict, wanted: ClearQuota, frames: int) -> None:
-    clock = (end.get("clock") or {}).get("clock", "?")
-    rows = [
-        ("Weeds", f"{cleared.get('weeds', 0)} / {wanted.weeds}  ({start['debris']['weeds']}→{end['debris']['weeds']})"),
-        ("Fences", f"{cleared.get('fences', 0)} / {wanted.fences}  ({start['debris']['fences']}→{end['debris']['fences']})"),
-        ("Stones", f"{cleared.get('stones', 0)} / {wanted.stones}  ({start['debris']['stones']}→{end['debris']['stones']})"),
-        ("Small06", f"{cleared.get('small_rocks', 0)} / {wanted.small_rocks}  ({start['debris']['small_rocks']}→{end['debris']['small_rocks']})"),
-        ("Boulders", f"{cleared.get('large_rocks', 0)} / {wanted.large_rocks}  ({start['debris']['large_rocks']}→{end['debris']['large_rocks']})"),
-        ("Stumps", f"{cleared.get('stumps', 0)} / {wanted.stumps}  ({start['debris']['stumps']}→{end['debris']['stumps']})"),
-        ("Stamina", f"{start['stamina']['current']}→{end['stamina']['current']} / {end['stamina']['maximum']}"),
-        ("Frames", f"{frames} ({clock})"),
-    ]
-    print()
-    print(f"{'Check':<10} {'Result'}")
-    print("-" * 56)
-    for name, result in rows:
-        print(f"{name:<10} {result}")
 
 
 def main() -> int:
@@ -319,7 +313,7 @@ def main() -> int:
             exit_task = ExitToFarmTask()
             exit_task.reset(world)
             frame, result, ram = _run_task(
-                env, exit_task, timeout=2_000, start_frame=0
+                env, exit_task, timeout=2_000, start_frame=0, stall_frames=0
             )
             journal.append(
                 {
@@ -360,12 +354,23 @@ def main() -> int:
             _phases_for(args.section, stamina=stam, include_spa=include_spa)
         )
         ok = True
-        spa_retried: set[str] = set()
         while pending:
             spec = pending.pop(0)
             remaining = max(200, args.timeout - frame)
             timeout = _phase_timeout(spec, remaining)
             world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+            live_counts = count_debris(ram)
+            if phase_already_clear(spec.phase, live_counts):
+                journal.append(
+                    {
+                        "phase": spec.phase,
+                        "status": "skipped",
+                        "reason": "already clear on pin",
+                        "frames": frame,
+                        "debris_after": live_counts.as_dict(),
+                    }
+                )
+                continue
             task = build_phase_task(ctx, spec, world)
             if task is None:
                 journal.append({"phase": spec.phase, "status": "none", "reason": "no task"})
@@ -374,8 +379,15 @@ def main() -> int:
             before = count_debris(ram).as_dict()
             stam_before = Stamina.from_ram(ram).to_dict()
             task.reset(world)
+            ckpt = (args.checkpoint_state or "").strip() or None
             frame, result, ram = _run_task(
-                env, task, timeout=timeout, start_frame=frame
+                env,
+                task,
+                timeout=timeout,
+                start_frame=frame,
+                checkpoint_state=ckpt,
+                checkpoint_every=int(args.checkpoint_every),
+                stall_frames=int(args.stall_frames),
             )
             after = count_debris(ram).as_dict()
             reason = result.reason if result is not None else ""
@@ -413,13 +425,9 @@ def main() -> int:
                 ):
                     pending.insert(0, full_restore_spa_phase())
                 continue
-            if (
-                spec.phase not in spa_retried
-                and should_spa_retry(
-                    spec.phase, reason, live_stam, include_spa=include_spa
-                )
+            if should_spa_retry(
+                spec.phase, reason, live_stam, include_spa=include_spa
             ):
-                spa_retried.add(spec.phase)
                 pending.insert(0, spec)
                 pending.insert(0, full_restore_spa_phase())
                 continue
@@ -433,7 +441,13 @@ def main() -> int:
         start_counts = DebrisCounts(**start["debris"])
         end_counts = DebrisCounts(**end["debris"])
         ok = ok and _section_complete(args.section, start_counts, end_counts)
-        required_empty = ["fences"] if args.section in {"fences", "all"} else []
+        required_empty = []
+        if args.section in {"fences", "all"}:
+            required_empty.append("fences")
+        if args.section in {"stones", "all"}:
+            required_empty.append("stones")
+        if args.section in {"rocks", "all"}:
+            required_empty.append("large_rocks")
         saved = None
         if args.save_end_state and ok:
             saved = _save_emulator_state(env, args.save_end_state)
@@ -459,7 +473,7 @@ def main() -> int:
             time=format_segment_time(frame),
             **extra,
         )
-        _print_table(start, end, cleared.as_dict(), wanted, frame)
+        print_leftover_table(start, end, cleared.as_dict(), wanted, frame)
         return 0 if ok else 1
     except KeyboardInterrupt:
         extra = {"journal": journal, "reason": "headed window closed"}

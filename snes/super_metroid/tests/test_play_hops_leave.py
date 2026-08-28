@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from super_metroid.hop_glance import LeaveMiss, WS_ENTRANCE_TO_MAIN, final_from_state
-from super_metroid.routes.kpdr.room_ids import ROOM_WS_ENTRANCE, ROOM_WS_MAIN
+from super_metroid.hop_glance import LeaveMiss, final_from_state
+from super_metroid.leave_specs import WS_BASEMENT_TO_PHANTOON, WS_ENTRANCE_TO_MAIN
+from super_metroid.routes.kpdr.post_ice_spine import POST_ICE_SPINE
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_PHANTOON,
+    ROOM_WS_BASEMENT,
+    ROOM_WS_ENTRANCE,
+    ROOM_WS_MAIN,
+)
 from super_metroid.routes.kpdr.spine_types import SpineHop
 from super_metroid.routes.tips import play_hops
 
@@ -113,3 +120,54 @@ def test_play_hops_pass_when_leave_glances() -> None:
         return "ok"
 
     assert play_hops(session, [], [_hop(play=_land_ok, leave=WS_ENTRANCE_TO_MAIN)]) == "ok"
+
+
+def test_play_hops_morph_in_basement_exit_raises_leave_miss() -> None:
+    """Already-green basement→Phantoon hop: morph in the door is a glance miss."""
+    spine = next(h for h in POST_ICE_SPINE if h.hop_id == "ws_basement_to_phantoon")
+    assert spine.leave is WS_BASEMENT_TO_PHANTOON
+    session = _Session(_State(room_id=ROOM_WS_BASEMENT, x=657, y=92, pose=24))
+
+    def _land_morph(sess: _Session) -> None:
+        sess.state = _State(room_id=ROOM_PHANTOON, x=39, y=124, pose=29)
+
+    hop = SpineHop(
+        spine.hop_id,
+        _land_morph,
+        spine.from_room,
+        spine.to_room,
+        spine.room_label,
+        spine.tip_id,
+        use_transition_split=False,
+        leave=spine.leave,
+    )
+    with pytest.raises(LeaveMiss) as caught:
+        play_hops(session, [], [hop])
+    err = caught.value
+    assert err.hop_id == "ws_basement_to_phantoon"
+    assert err.leftover["xy"] == [39, 124]
+    assert err.leftover["pose"] == 29
+    assert err.leftover["gs"] == 8
+    assert err.leftover == final_from_state(session.state)
+    assert any("not door" in m for m in err.misses)
+
+
+def test_play_hops_basement_exit_spin_glances() -> None:
+    spine = next(h for h in POST_ICE_SPINE if h.hop_id == "ws_basement_to_phantoon")
+    session = _Session(_State(room_id=ROOM_WS_BASEMENT, x=657, y=92, pose=24))
+
+    def _land_spin(sess: _Session) -> str:
+        sess.state = _State(room_id=ROOM_PHANTOON, x=39, y=124, pose=81)
+        return "ok"
+
+    hop = SpineHop(
+        spine.hop_id,
+        _land_spin,
+        spine.from_room,
+        spine.to_room,
+        spine.room_label,
+        spine.tip_id,
+        use_transition_split=False,
+        leave=spine.leave,
+    )
+    assert play_hops(session, [], [hop]) == "ok"

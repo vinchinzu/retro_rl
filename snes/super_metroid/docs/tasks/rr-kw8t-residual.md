@@ -1,26 +1,28 @@
 ## Residual — rr-kw8t Gravity on the Phantoon tip
 
 **Continue (rr-1xc2.3):** Halt-3 is out. After a red, keep going from Next
-below (a). Three of the same miss class → new probe angle, same sitting (b).
-A new sitting (c) only because context died; it still reads this file.
-Do not dest-hop dual this checkbox. Do not reboot the hop because the
-count hit three.
+below (a). Three of the same miss class → dump a phase pin at the last
+held seat, or replace the takeoff (b). A new sitting (c) only because
+context died; it still reads this file. Gravity epic continues from this
+residual. `attic_door` is the Attic dual.
 
-**Miss class:** Two-hop takeoff (take02 floor recipe). Short A facing LEFT
-at ~(1166,1979) peaked `(1177, 1843)` p81 f59 — hatch-column, not over
-the lip wall — then leftover stairs `(1111, 1899)` p157. Fire slope was
-not seated. One dual this sitting; do not 2nd-dual this LEFT-facing short
-hop. Previous sitting's first-jump air peaked `(1194, 1836)` and fell
-back — do not restore that peak tweak.
+**Miss class:** Take02 two-hop. Short A facing LEFT at ~(1166,1979) peaked
+`(1177, 1843)` p81 f59 (hatch-column, not over the lip wall) then leftover
+stairs `(1111, 1899)` p157. Fire slope was not seated. 3692f ×2. Stairs
+leftover is pit-takeoff recovery. Closed knobs: pocket X / walk-RIGHT
+leftover `(1181, 1883)`, shoulder-R to stairs, first-jump air peak
+`(1194, 1836)` then fall-back.
 
-**Status:** Hop 1 dual-green. Hop 2 **grate_seat PHASE 189f ×2** (old
-pocket seat; fire-slope land is not PHASE-green). Living tip is
-`--to phantoon` **195,336f** ×2 (STATUS). Do not STATUS from a pin.
-Do not wire hops 1–2 onto `--to phantoon`. Phase dumps are not hop GREEN.
+**Status:** Hop 1 dual-green. Hop 2 fire-slope `grate_seat` is RED. Pocket
+`(1177, 1883)` p2 was a 189f PhaseStop, not the fire slope. Living tip
+`--to phantoon` **195,336f** ×2 (STATUS). Hop GREEN is Attic gs=8 only.
+Phase dumps are named scratch pins.
 
 **Pin in:** `scratch/post_ws_basement_to_main.state` (`0xCAF6` ~(1173,1979)
 p1 gs=8)
 **Goal:** Attic `0xCA52` gs=8. Full hop GREEN is that leave only.
+**Living checkbox:** `west_super` (**RED**). Gate in front is a held
+fire-slope pin.
 
 ### Already green (do not re-prove)
 
@@ -28,25 +30,34 @@ p1 gs=8)
 |-------|-----:|-------|
 | Power-on Phantoon | **195,336f** ×2 | `0xCC6F` (1240,139) p10 gs=8 |
 | Hop 1 Basement → Main | **1,579f** ×2 | `0xCAF6` (1173,1979) p1 gs=8 |
-| Hop 2 grate_seat (phase) | **189f** ×2 | `0xCAF6` (1177,1883) p2 gs=8 |
 
-### Hop 2 seams (HARD_ROOM_SPLITS)
+Hop 2 has no green phase row until a dual glances the fire slope
+`~(1223, 1860) p3` (or take04 `~(1195, 1883)`).
 
-Controller kept: `ws_main_climb.py` / `ws_main_shaft.py` / `ws_main_pit.py`
-/ `ws_main_actions.py` / `ws_main_ice.py` / `ws_main_grate.py`. Seats:
-`ws_main_phases.py`. Split: `ws_main_actions.py` **401**, `ws_main_pit.py`
-**202** (was 524 before the two-hop knob). `ws_main_shaft.py` still **500**.
+### Hop 2 seams
+
+Controller: `routes/kpdr/k6/` geometry + overlay + play. Unpowered
+`ws_main.py` is a different hop. Phase ladder:
+[`HARD_ROOM_SPLITS.md`](HARD_ROOM_SPLITS.md).
+
+| File | Role |
+|------|------|
+| `ws_main_geometry.py` | bands + region |
+| `ws_main_actions.py` | one action per region |
+| `ws_main_shaft.py` | overlay loop |
+| `ws_main_ice.py` | ice overlay |
+| `ws_main_climb.py` | play |
 
 | Phase | From | Held exit | Status |
 |-------|------|-----------|--------|
 | 1 pit_shot | pin (1173,1979) | 3-shot, still Main, not Basement | PARTIAL — Wave+Spazer **opens the grate** |
-| 2 grate_seat | pin | take02/04 fire slope ~(1223, 1860) p3 | old PHASE 189f ×2 was the **pocket**; fire-slope land RED |
+| 2 grate_seat | pin | take02/04 fire slope ~(1223, 1860) p3 | **RED** — pocket `(1177, 1883)` is not this seat |
 | 3 west_super | fire slope | y~1675 in shaft, not 0xCDA8 | **RED** living |
 | 4 mid_climb | 1675 | y~680 in shaft | not started |
 | 5 attic_seat | 680 | ~(1135, ≤160) stand | not started |
 | 6 attic_door | door | Attic `0xCA52` gs=8 | hop GREEN only |
 
-Do not open mid_climb while west_super is red. Phase dumps are not hop GREEN.
+west_super greens before mid_climb opens. Phase dumps are not hop GREEN.
 
 ### Tape scan (take02 policy; 03/04/05 agree)
 
@@ -62,50 +73,27 @@ two-hop: short A from ~(1166,1979) that **fails**, land, walk LEFT to
 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 (1223,1860). Human never hops LEFT off 1166 toward the stairs.
 
-### west_super duals — previous sittings (stop)
+### Next — one seam
 
-Pocket walk/jump-RIGHT leftover always `(1181, 1883)`. Shoulder-R fell
-to stairs `(1113, 1899)` p156. Pocket X-tap leftover `(1179, 1883)` p2
-crystals still up. First-jump air-steer best peak `(1194, 1836)` then
-fell back; ceiling-release reverted. Do not 4th-dual those.
+1. Land the take02 two-hop onto the fire slope from the hop-1 pin.
+2. When a dual PhaseStops on `grate_seat` **and** glances the fire-slope
+   spec (`~(1223, 1860) p3`, or take04 `~(1195, 1883)`), the probe writes
+   `scratch/post_ws_main_grate_seat.state`.
+3. Dual `--start-phase grate_seat --stop-at west_super --source` that pin.
 
-### west_super duals — this sitting
-
-From hop-1 pin `--stop-at west_super`. One two-hop dual, then stop.
-
-| # | Knob | Leftover | Why |
-|---|------|----------|-----|
-| 1 | take02 two-hop: short A facing LEFT at 1166, committed at 1156 | **(1111, 1899) p157** stairs face R mov=14 | 3692f ×2; min_y **(1177, 1843) p81** f59. LEFT-facing short A never cleared the wall |
-
-PNG: Samus on the left stairs west of the hatch, Wave crystals still up
-over the pit. Not the fire slope.
-
-### Taught this sitting (kept)
-
-`ws_main_pit.py` (split out of `ws_main_actions.py` **before** the knob):
-
-- Take02 two-hop floor recipe, not another first-jump peak tweak.
-- Short A at `SHORT_HOP_X` (1163, 1171) on the floor y≥1960, facing LEFT.
-- Facing RIGHT in that band walks LEFT to 1156 (land, do not hop again).
-- Committed takeoff target x=1156. RIGHT+A at y~1920 unchanged.
-- Lip leftover y~1883 is **not** the short hop.
-- Do not revert the two-hop because the dual was RED.
-
-ROM-free: `uv run pytest snes/super_metroid/tests/test_ws_main_climb.py snes/super_metroid/tests/test_practice_takes.py -q` → 31 passed.
-
-### Next — one seam only
-
-Do **not** 2nd-dual LEFT-facing short A. Do not 4th-dual first-jump
-air-steer / land. Do not dual pocket X. Do not dual shoulder-R. New
-angle, still the two-hop floor recipe: take02's short A at ~1166
-**facing RIGHT** (fail into the wall), land, walk LEFT to 1156, committed
-A. This sitting hopped LEFT and stole to the stairs. Compose only after
-Attic is dual-green. Do not dest-hop. Do not STATUS. Do not wire
+Until that pin exists, `--stop-at west_super` from the hop-1 pit pin is
+the diagnostic. Stairs leftover `(1111, 1899)` is pit-takeoff recovery
+(classifier). Compose after Attic is dual-green. Living tip stays
 `--to phantoon`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video --dual
+# Once scratch/post_ws_main_grate_seat.state exists:
+# QT_QPA_PLATFORM=offscreen uv run python \
+#   snes/super_metroid/scripts/probe/ws_main_climb.py \
+#   --start-phase grate_seat --stop-at west_super --no-video --dual \
+#   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_grate_seat.state
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state \
   --headed
@@ -119,6 +107,4 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
 - Did not dual the full hop this wrap
 - Did not pin out `post_ws_main_to_attic.state`
 - Did not treat a phase dump as hop GREEN
-- Did not 4th-dual first-jump land / air-steer
-- Did not 2nd-dual the LEFT-facing short hop
-- Did not compose hop 1 + hop 2 onto `--to phantoon`
+- Did not treat pocket `(1177, 1883)` as fire-slope green

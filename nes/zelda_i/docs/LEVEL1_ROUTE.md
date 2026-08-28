@@ -40,11 +40,14 @@ route that will fight L6 Gohma or L9 Ganon. Default `--through level1`
 still skips it; `--through level2` and later never run that branch.
 Survival `--through level1-bow` is **1/1** enter-stop play `0x22`
 `(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop 345f). Plus-stem UP at
-x=112 then north y=93 LEFT. `--through level1-bow-cellar` dest mode 9
-is open; leftover `(160,157)` on the SE diamond edge. `ADDR_BOW` still
-0.
-Not on Clean M5. Map and wooden Boomerang pickups stay skipped
-(L2 magical boomerang replaces the wooden).
+x=112 then north y=93 LEFT. `--through level1-bow-cellar` is **1/1**
+mode 9 room `0x7F` `(128,141)` tile `0x71` (`l1_bow_cellar`, hop 270f).
+West `0x68` UP `(96,144)→(96,128)`, then UP through vacated slot and
+RIGHT to CheckWarps x=128. `ADDR_BOW` still 0. Splice into
+`--through level1` is after `clear23_key`, before `backtrack44` — not
+until walked bow + return `0x23`. Not on Clean M5. Map and wooden
+Boomerang pickups stay skipped (L2 magical boomerang replaces the
+wooden).
 
 ## Source correlation and live evidence
 
@@ -57,7 +60,7 @@ Not on Clean M5. Map and wooden Boomerang pickups stay skipped
 | `0x43` | Map room | 5 Gels; `RoomItemId=0x17` |
 | `0x33` | Stalfos key | 3 Stalfos; fixed key inventory increase |
 | `0x23` | Goriya key / Bow branch | 3 Goriyas; fixed key; Survival KEY-LEFT into `0x22` 1/1 |
-| `0x22` | Bow cellar room | 4 blade traps; live 0x68 `(96,144)`; leftover `(160,157)` SE diamond edge; bow not claimed |
+| `0x22` | Bow cellar room | 4 blade traps; west 0x68 UP `(96,144)→(96,128)`; stairs 1/1 mode 9 `0x7F` `(128,141)`; bow not claimed |
 | `0x44` | Boomerang | 3 Goriyas; `RoomItemId=0x1D`; pickup skipped |
 | `0x45` | Wallmaster key | 8 Wallmaster slots; fixed key; north boss door |
 | `0x35` | Aquamentus / Heart | type `0x3D`; fireballs `0x55`; health `0x20→0x31` |

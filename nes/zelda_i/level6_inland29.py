@@ -15,6 +15,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level6_dungeon import ROOM_29_SPEC, make_clear_29_controller
+from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_DARK_29_ROOM, LEVEL6_DARK_39_ROOM
 from zelda_i.level6_path import NORTH_BAND_Y, NORTH_DOOR_X, NORTH_DOOR_Y
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -61,30 +62,14 @@ class Level6Inland29Controller:
     fighter: Any = None
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "rod", 0))
-
-    def _bow(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "bow", 0))
-
-    def _arrows(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "arrows", 0))
+        return int(snap.rod)
 
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
-            "screen": int(snap.screen),
-            "keys": int(snap.keys),
-            "bombs": int(snap.bombs),
+            **l6_leftover(snap),
             "map": int(snap.map),
-            "triforce": int(snap.triforce),
-            "rod": self._rod(snap),
-            "bow": self._bow(snap),
-            "arrows": self._arrows(snap),
-            "tile": int(snap.colliding_tile),
             "cur_opened_doors": int(snap.cur_opened_doors),
             "open_doorway_mask": int(snap.open_doorway_mask),
         }
@@ -270,12 +255,9 @@ def level6_inland29_stages():
 
 def level6_inland29_success(snap: ZeldaSnapshot) -> bool:
     """Play-ready L6 room other than 0x29/0x39 with ADDR_ROD. Dest is RAM."""
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen != LEVEL6_DARK_29_ROOM
-        and snap.screen != LEVEL6_DARK_39_ROOM
-        and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+    return l6_play_dest_success(
+        snap,
+        not_room=LEVEL6_DARK_29_ROOM,
+        passage_ok=False,
+        forbid=(LEVEL6_DARK_39_ROOM,),
     )

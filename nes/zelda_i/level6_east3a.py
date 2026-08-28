@@ -1,8 +1,10 @@
-"""Level 6 0x3A east door after the 0x08 cellar return.
+"""Historical Level 6 0x3A east-wall diagnostic.
 
-cellar08 leftover play 0x3A (96,157). Center hole is not CheckWarp
-(center3a v1 timeout (112,141) tile 118). East door is PNG-open. y=141
-RIGHT to the mouth. Dest is RAM. Do not poke bow/arrows/doors/keys.
+The dated A-side cellar return was play 0x3A (96,157). Center hole is not CheckWarp
+(center3a v1 timeout (112,141) tile 118). The visual east mouth is a ROM
+wall: the south-around path reaches (208,141), but RIGHT cannot transition.
+This controller preserves that exact diagnostic path. Occupancy grades every
+walk. Do not poke bow/arrows/doors/keys.
 """
 
 from __future__ import annotations
@@ -12,15 +14,13 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_cellar08 import CELLAR_08_MAX_FRAMES, make_cellar08_controller
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
-from zelda_i.level6_overworld import LEVEL6, LEVEL6_BLOCK_3A_ROOM
-from zelda_i.level6_stairs3a_warp import (
-    STAIRS_3A_WARP_MAX_FRAMES,
-    make_stairs_3a_warp_controller,
+from zelda_i.level6_occupancy import (
+    l6_play_dest_success,
+    record_l6_walk,
 )
+from zelda_i.level6_overworld import LEVEL6, LEVEL6_BLOCK_3A_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.screen_glance import CELLAR08_LEAVE, GlanceLeftover, grade_controller
+from zelda_i.screen_glance import CLEAR_3A, GlanceLeftover, grade_controller
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
@@ -36,6 +36,10 @@ __all__ = [
 EAST3A_MAX_FRAMES = 4000
 EAST3A_SAMPLE_PERIOD = 8
 EAST_DOOR = (208, 141)
+# The cellar spits Link immediately southwest of the revealed center hole.
+# x=144 is the first conservative column east of its collision footprint.
+SOUTH_AROUND_X = 144
+SOUTH_LANE_Y = 157
 # v2 (96,143) tile 119 counted as y-band (tol=4) then RIGHT 0px.
 DOOR_TOL = 1
 DATED_SPIT = (96, 157)
@@ -43,7 +47,7 @@ DATED_SPIT = (96, 157)
 
 @dataclass
 class Level6East3AController:
-    """From cellar spit, y=141 then RIGHT. Occupancy halt. Dest is RAM."""
+    """From cellar spit, walk south-around the hole to the east door."""
 
     spec_id: str = "level6_east_0x3a"
     room: int = LEVEL6_BLOCK_3A_ROOM
@@ -59,33 +63,15 @@ class Level6East3AController:
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
-        self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": int(getattr(snap, "rod", 0)),
-            "bow": int(getattr(snap, "bow", 0)),
-            "arrows": int(getattr(snap, "arrows", 0)),
-            "keys": int(snap.keys),
-            "bombs": int(snap.bombs),
-            "health": int(snap.health),
-            "triforce": int(snap.triforce),
-        }
-        if force or self.frames <= 2 or self.frames % EAST3A_SAMPLE_PERIOD == 0:
-            self.samples.append(
-                {
-                    "frame": self.frames,
-                    "x": int(snap.link_x),
-                    "y": int(snap.link_y),
-                    "mode": int(snap.mode),
-                    "screen": int(snap.screen),
-                    "reason": action.reason,
-                    "tile": int(snap.colliding_tile),
-                    "misses": self.walker.misses,
-                }
-            )
+        self.leftover = record_l6_walk(
+            self.samples,
+            snap,
+            reason=action.reason,
+            frames=self.frames,
+            period=EAST3A_SAMPLE_PERIOD,
+            misses=self.walker.misses,
+            force=force,
+        )
         return action
 
     def _fail(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
@@ -95,15 +81,7 @@ class Level6East3AController:
         return self._emit(snap, FrameAction(nes_idle_action(), note), force=True)
 
     def _warped(self, snap: ZeldaSnapshot) -> bool:
-        if snap.level != LEVEL6:
-            return False
-        if snap.mode == PASSAGE_MODE:
-            return True
-        return (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != self.room
-        )
+        return l6_play_dest_success(snap, not_room=self.room)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -140,22 +118,42 @@ class Level6East3AController:
 
         xy = (int(snap.link_x), int(snap.link_y))
         gx, gy = EAST_DOOR
-        # v1 leftover (96,157) UP moved 2px; occupancy 1px-grade halted.
-        if abs(xy[1] - gy) > DOOR_TOL:
-            self.walker.last_dir = None
-            btn = "UP" if xy[1] > gy else "DOWN"
-            return self._emit(snap, FrameAction(nes_action(btn), "door_y"))
-        prev = self.walker.last_dir
-        before = self.walker.misses
+        prev_dir = self.walker.last_dir
+        misses_before = self.walker.misses
         self.walker.observe(xy)
-        if self.walker.misses > before:
-            return self._fail(
-                snap, f"occupancy_halt_{prev}_{xy[0]}_{xy[1]}_tile_{snap.colliding_tile}"
+        if self.walker.misses > misses_before:
+            self.notes.append(
+                f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}"
+                f"_tile_{snap.colliding_tile}"
             )
-        self.walker.last_dir = "RIGHT"
-        if xy[0] < gx - DOOR_TOL:
-            return self._emit(snap, FrameAction(nes_action("RIGHT"), "door_x"))
-        return self._emit(snap, FrameAction(nes_action("RIGHT"), "door_push"))
+
+        # The direct y-align at x=96 is the dated BLOCKED path: it puts Link
+        # against the west face of the revealed center hole. Keep the cellar
+        # spit on its live south lane until the full sprite is east of the hole.
+        if xy[0] < SOUTH_AROUND_X:
+            goal, reason = (SOUTH_AROUND_X, SOUTH_LANE_Y), "south_around"
+        elif abs(xy[1] - gy) > DOOR_TOL:
+            goal, reason = (xy[0], gy), "east_side"
+        elif xy[0] < gx - DOOR_TOL:
+            goal, reason = EAST_DOOR, "door"
+        else:
+            return self._fail(
+                snap,
+                f"rom_wall_east_{xy[0]}_{xy[1]}_tile_{snap.colliding_tile}",
+            )
+
+        if goal != self.walker.goal:
+            self.walker.path = None
+            self.walker.goal = goal
+        direction = self.walker.next_dir(xy, goal)
+        if direction is None:
+            self.walker.last_dir = None
+            return self._emit(
+                snap, FrameAction(nes_idle_action(), f"{reason}_stand")
+            )
+        return self._emit(
+            snap, FrameAction(nes_action(direction), f"{reason}_path")
+        )
 
     def report(self) -> dict[str, Any]:
         return {
@@ -165,8 +163,10 @@ class Level6East3AController:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                f"cellar08 spit {DATED_SPIT} → y=141 RIGHT to {EAST_DOOR}; "
-                "occupancy halt; dest RAM"
+                f"cellar08 spit {DATED_SPIT} → y={SOUTH_LANE_Y} RIGHT to "
+                f"x={SOUTH_AROUND_X} → y=141 RIGHT to {EAST_DOOR}; "
+                "occupancy miss-block/replan on every walk; no path stands; "
+                "ROM 0x3A east=wall diagnostic"
             ),
             "leftover": dict(self.leftover),
             "spec_id": self.spec_id,
@@ -181,29 +181,17 @@ def make_east3a_controller() -> Level6East3AController:
 
 
 def level6_east3a_stages():
-    """Warp + cellar08 return, then east door. Dest is RAM."""
+    """Run only the dated 0x3A wall diagnostic from the cleared-room boundary."""
     return (
-        ("level6_stairs_0x3a_warp", make_stairs_3a_warp_controller(), STAIRS_3A_WARP_MAX_FRAMES),
-        ("level6_cellar_0x08", make_cellar08_controller(), CELLAR_08_MAX_FRAMES),
         ("level6_east_0x3a", make_east3a_controller(), EAST3A_MAX_FRAMES),
     )
 
 
 def level6_east3a_glance(controller: Any) -> GlanceLeftover:
-    """Leftover glance vs cellar08 pin. Dest RAM is level6_east3a_success."""
-    return grade_controller(controller, CELLAR08_LEAVE)
+    """Diagnostic leftover; it is not the route-eligible cellar leave."""
+    return grade_controller(controller, CLEAR_3A)
 
 
 def level6_east3a_success(snap: ZeldaSnapshot) -> bool:
     """Mode 9 or play ≠ 0x3A. Rod and TF 0x1F stay."""
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
-        return False
-    if int(getattr(snap, "rod", 0)) == 0:
-        return False
-    if snap.mode == PASSAGE_MODE:
-        return True
-    return (
-        snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.screen != LEVEL6_BLOCK_3A_ROOM
-    )
+    return l6_play_dest_success(snap, not_room=LEVEL6_BLOCK_3A_ROOM)

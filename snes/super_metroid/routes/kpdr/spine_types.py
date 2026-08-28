@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from super_metroid.leave_specs import LeaveSpec
 from super_metroid.progression.types import DoorEdge
 from super_metroid.routes.runtime import RouteSession, Split
 
@@ -62,7 +63,7 @@ class SpineHop:
     edge_id: str | None = None
     """Graph ``DoorEdge.edge_id``; defaults to ``hop_id`` when emitting."""
 
-    leave: object | None = None
+    leave: LeaveSpec | None = None
     """Optional :class:`~super_metroid.hop_glance.LeaveSpec` dest glance."""
 
     def __post_init__(self) -> None:

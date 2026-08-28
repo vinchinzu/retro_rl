@@ -145,7 +145,10 @@ def _all_32_exits() -> tuple[ExitSegment, ...]:
     for world in range(1, 9):
         for level in range(1, 5):
             exit_id = f"{world}-{level}"
-            exits.append(_stage(exit_id))
+            if exit_id == "1-2":
+                exits.append(_stage("1-2", policy_id="smb_1_2_flag"))
+            else:
+                exits.append(_stage(exit_id))
     return tuple(exits)
 
 

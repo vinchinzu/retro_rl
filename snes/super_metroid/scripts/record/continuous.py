@@ -4,17 +4,18 @@
 One CLI for every milestone — do not add ``start_to_*.py`` scripts. Tips are
 functions in ``routes/continuous.py`` registered in ``routes/catalog.py``.
 
-Video uses the shared :class:`retro_harness.video.VideoRecorder` (audio, footer,
-quality knobs, start gate). Metroid presets live in ``super_metroid.video``.
+Video uses the shared :class:`retro_harness.video.VideoRecorder` (audio,
+1080p60 YouTube pad + button sidebars, start gate). Opening credits are
+dropped by default (``--video-start after_credits``). Metroid presets live
+in ``super_metroid.video``.
 
 ```bash
 # Current tip (Frog Savestation / KPDR K4.0), no video (integrity check)
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 
-# Showcase: Zebes start, sound, button footer, higher quality
-uv run python snes/super_metroid/scripts/record/continuous.py --to frog \\
-  --video-start zebes --hq
+# Showcase: skip Nintendo/title, 1080p60 sidebars
+uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --hq
 
 # List tips
 uv run python snes/super_metroid/scripts/record/continuous.py --list
@@ -114,23 +115,29 @@ def main() -> None:
         "--scale",
         type=int,
         default=None,
-        help="Nearest-neighbor upscale (default: 2, or 3 with --hq)",
+        help=(
+            "Nearest-neighbor upscale. YouTube auto-fits 1920x1080; "
+            "native default is 2"
+        ),
     )
     parser.add_argument(
         "--crf",
         type=int,
         default=None,
-        help="x264 CRF quality (lower = better; default: 17, or 15 with --hq)",
+        help="x264 CRF quality (lower = better; youtube default 17, 15 with --hq)",
     )
     parser.add_argument(
         "--preset",
         default=None,
-        help="x264 preset (default: medium, or slow with --hq)",
+        help="x264 preset (youtube default medium, slow with --hq)",
     )
     parser.add_argument(
         "--hq",
         action="store_true",
-        help="Higher quality: scale=3, crf=15, preset=slow",
+        help=(
+            "Higher quality encode (CRF 15, preset slow). "
+            "YouTube still auto-fits 1920x1080; native uses scale=3"
+        ),
     )
     parser.add_argument(
         "--no-audio",
@@ -140,17 +147,26 @@ def main() -> None:
     parser.add_argument(
         "--no-footer",
         action="store_true",
-        help="Disable bottom button/frame footer (default: footer on)",
+        help=(
+            "Disable bottom button/frame footer (youtube already has none; "
+            "native default is footer on)"
+        ),
     )
     parser.add_argument(
         "--video-start",
         choices=("power_on", "zebes", "after_credits", "frame"),
-        default="zebes",
+        default="after_credits",
         help=(
             "When to begin writing frames (play always power-on). "
-            "Default: zebes (Landing Site latch). "
-            "after_credits uses --video-start-frame or the default title cutoff."
+            "Default: after_credits (drop Nintendo/title). "
+            "power_on keeps opening credits — not for YouTube. "
+            "zebes latches Landing Site."
         ),
+    )
+    parser.add_argument(
+        "--native-video",
+        action="store_true",
+        help="2x gameplay + 16px footer instead of 1080p60 YouTube sidebars",
     )
     parser.add_argument(
         "--video-start-frame",
@@ -206,8 +222,11 @@ def main() -> None:
         overrides: dict = {
             "fps": args.fps,
             "audio": not args.no_audio,
-            "footer": not args.no_footer,
         }
+        if args.native_video:
+            overrides["layout"] = "native"
+        if args.no_footer:
+            overrides["footer"] = False
         if args.scale is not None:
             overrides["scale"] = args.scale
         if args.crf is not None:

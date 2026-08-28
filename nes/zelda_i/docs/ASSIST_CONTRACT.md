@@ -81,6 +81,17 @@ The pair counts as **one** position write (`position_writes=1`). List it in
 Triforce, or capacity. Do not load state. `continuous_emulator_session`
 stays true. Do not repeat the write on later rooms.
 
+Live follow-up dated 2026-08-27: this exact `(208,93)` target enters cellar
+`0x08`. The first controllers climbed its A-side ladder and therefore returned
+to play `0x3A` at `(96,157)`. Offline PRG1 ROM + disassembly decoding showed
+the pairing is `AttrA[0x08]=0x3A`, `AttrB[0x08]=0x1D`; `InitMode9` spawns on
+the left ladder for an A-side source, and `CheckSubroom` selects the B endpoint
+when Link exits at `x>=0x80`. The corrected controller keeps this same
+authorized target, crosses the tunnel floor to the right ladder at `x=192`,
+and reached play `0x1D` 1/1. No second position target or write was added.
+
+The implementation is `zelda_i.assist.poke_link_position`.
+
 This exception does not authorize walking the east door unarmed or fighting
 Gohma without bow+arrows.
 

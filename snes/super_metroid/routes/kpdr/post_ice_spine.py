@@ -6,7 +6,7 @@ Business→Warehouse replay (edge already emitted on the Kraid tip).
 
 from __future__ import annotations
 
-from super_metroid.hop_glance import PHANTOON_LEAVE, WS_ENTRANCE_TO_MAIN
+from super_metroid.leave_specs import LEAVE_BY_HOP
 from super_metroid.routes.kpdr.hijump import play_business_to_warehouse
 from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_business,
@@ -96,6 +96,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["ice_to_snake"],
     ),
     SpineHop(
         "ice_snake_to_tutorial",
@@ -108,6 +109,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["ice_snake_to_tutorial"],
     ),
     SpineHop(
         "ice_tutorial_to_gate",
@@ -120,6 +122,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["ice_tutorial_to_gate"],
     ),
     SpineHop(
         "ice_gate_to_business",
@@ -132,6 +135,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["ice_gate_to_business"],
     ),
     SpineHop(
         "ice_business_to_warehouse",
@@ -141,6 +145,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         "Warehouse (Ice return)",
         "alpha_pb",
         # Reuses kraid-tip business_to_warehouse DoorEdge.
+        leave=LEAVE_BY_HOP["ice_business_to_warehouse"],
     ),
     SpineHop(
         "warehouse_to_east",
@@ -153,6 +158,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["warehouse_to_east"],
     ),
     SpineHop(
         "east_to_glass",
@@ -165,6 +171,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["east_to_glass"],
     ),
     SpineHop(
         "glass_to_west",
@@ -177,6 +184,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["glass_to_west"],
     ),
     SpineHop(
         "west_to_below",
@@ -189,6 +197,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["west_to_below"],
     ),
     SpineHop(
         "below_to_bat",
@@ -201,6 +210,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["below_to_bat"],
     ),
     SpineHop(
         "bat_to_red",
@@ -213,6 +223,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["bat_to_red"],
     ),
     SpineHop(
         "red_to_hellway",
@@ -225,6 +236,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["red_to_hellway"],
     ),
     SpineHop(
         "hellway_to_caterpillar",
@@ -237,6 +249,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["hellway_to_caterpillar"],
     ),
     SpineHop(
         "caterpillar_to_alpha_pb",
@@ -250,6 +263,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k5_alpha_pb",
+        leave=LEAVE_BY_HOP["caterpillar_to_alpha_pb"],
     ),
     SpineHop(
         "alpha_pb_to_caterpillar",
@@ -262,6 +276,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k6_moat",
+        leave=LEAVE_BY_HOP["alpha_pb_to_caterpillar"],
     ),
     SpineHop(
         "caterpillar_to_elevator",
@@ -274,6 +289,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="down",
         requires=K4_CAPS,
         policy_id="kpdr_k6_moat",
+        leave=LEAVE_BY_HOP["caterpillar_to_elevator"],
     ),
     SpineHop(
         "elevator_to_kihunter",
@@ -286,6 +302,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="down",
         requires=K4_CAPS,
         policy_id="kpdr_k6_moat",
+        leave=LEAVE_BY_HOP["elevator_to_kihunter"],
     ),
     SpineHop(
         "kihunter_to_moat",
@@ -298,6 +315,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=K4_CAPS,
         policy_id="kpdr_k6_moat",
+        leave=LEAVE_BY_HOP["kihunter_to_moat"],
     ),
     SpineHop(
         "moat_cross",
@@ -310,6 +328,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="right",
         requires=_K4_SPEED_CAPS,
         policy_id="kpdr_k6_moat",
+        leave=LEAVE_BY_HOP["moat_cross"],
     ),
     SpineHop(
         "west_ocean_to_ws",
@@ -322,6 +341,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=_K4_SPEED_CAPS,
         policy_id="kpdr_k6_ws",
+        leave=LEAVE_BY_HOP["west_ocean_to_ws"],
     ),
     SpineHop(
         "ws_entrance_to_main",
@@ -334,7 +354,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
-        leave=WS_ENTRANCE_TO_MAIN,
+        leave=LEAVE_BY_HOP["ws_entrance_to_main"],
     ),
     SpineHop(
         "ws_main_to_basement",
@@ -347,6 +367,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="up",
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
+        leave=LEAVE_BY_HOP["ws_main_to_basement"],
     ),
     SpineHop(
         "ws_basement_to_phantoon",
@@ -359,6 +380,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         entry_direction="left",
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
+        leave=LEAVE_BY_HOP["ws_basement_to_phantoon"],
     ),
     SpineHop(
         "phantoon_fight",
@@ -371,6 +393,7 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         after=require_phantoon_defeated,
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
+        leave=LEAVE_BY_HOP["phantoon_fight"],
     ),
     SpineHop(
         "phantoon_loot_exit",
@@ -384,6 +407,6 @@ POST_ICE_SPINE: tuple[SpineHop, ...] = (
         after=require_phantoon_left,
         requires=K4_CAPS,
         policy_id="kpdr_k6_phantoon",
-        leave=PHANTOON_LEAVE,
+        leave=LEAVE_BY_HOP["phantoon_loot_exit"],
     ),
 )

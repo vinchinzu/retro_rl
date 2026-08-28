@@ -72,6 +72,7 @@ from super_metroid.routes.kpdr.room_ids import (  # noqa: F401
     ROOM_WEST_OCEAN,
     ROOM_WS_ENTRANCE,
     ROOM_WS_MAIN,
+    ROOM_WS_ATTIC,
     ROOM_WS_BASEMENT,
     ROOM_PHANTOON,
     ROOM_RISING_TIDE,

@@ -1,20 +1,21 @@
-# Overnight Survival spine — hop queue (manager)
+# Overnight Survival spine — historical BLOCKED log
 
-Parent is **observer only**. Do not STATUS. Do not overwrite Clean M5.
-`--no-video` on hop trials. Encode **one** watchable MP4 only after L9
-credits greens. Manager does **not** implement path controllers or start a
-spine trial. Worker owns the current hop.
+This file is a **historical BLOCKED log**, not the overnight hop queue.
+Living residual and current hop: [`rr-tne2-residual.md`](rr-tne2-residual.md).
+Catalog cleanup removed walk-on stairs3a* / exit-ow from `L6_THROUGH`.
+Do not restore those through-names. Unchecked `stairs3a-ne71` (and other
+walk-on stairs) are **superseded** — off the spine.
 
-**Bead:** `rr-tne2` (in_progress until L6 TF `0x20`; then child beads for
-L7/L8/L9). Living residual: `docs/tasks/rr-tne2-residual.md`. This file is
-the overnight hop queue — do not mint a second residual.
+Do not STATUS. Do not overwrite Clean M5. `--no-video` on hop trials.
+Encode **one** watchable MP4 only after L9 credits greens.
+
+**Bead:** `rr-tne2` (open until L6 TF `0x20`).
 
 **Lock:** if `overnight-lock.json` has `status=running`, do not start a
 second `run_survival_spine`. Spine to L6 is ~220k frames (~60 min).
 
-**Halt:** 3 serial reds on the SAME checkbox → BLOCKED residual, retarget
-that hop (see 3-red table). Occupancy halt at first miss. One change per
-trial.
+**Halt (historical):** 3 serial reds on the SAME checkbox → BLOCKED
+residual, retarget that hop (see 3-red table).
 
 ---
 
@@ -29,7 +30,8 @@ Refuse a new knob on a file **≥800** lines. Split **before** wiring.
 
 New hop policy lives in a **new file**. Do not attach a through by growing
 a file back over 800. `level6_stairs3a_ne.py` is 601 (dedicated red).
-stairs3a-ne71 is a **new sibling**. Prefix is **clear3a**, not a red leftover.
+stairs3a-ne71 was a sibling; it is **superseded** (walk-on stairs off
+`L6_THROUGH`). Prefix for the historical stairs trials was **clear3a**.
 
 - [x] Split `level6_spine.py` (<800)
 - [x] Split `survival_spine.py` (<800)
@@ -37,11 +39,14 @@ stairs3a-ne71 is a **new sibling**. Prefix is **clear3a**, not a red leftover.
 - [x] Wire `--through level6-stairs3a` (**BLOCKED** 3 reds; push yes, idle tile 119)
 - [x] Wire `--through level6-stairs3a-71` (**BLOCKED** 3 reds; RIGHT on 119 at x=184)
 - [x] Wire `--through level6-stairs3a-ne` (**BLOCKED** 3 reds; UP on 119 at x=160)
-- [ ] Wire `--through level6-stairs3a-ne71` from **clear3a** leftover (dest RAM)
+- **superseded** `--through level6-stairs3a-ne71` — walk-on stairs off the spine; do not restore
 
 ---
 
-## Tip (live)
+## Tip (historical — 2026-08-25 stairs halt)
+
+Living hop is [`rr-tne2-residual.md`](rr-tne2-residual.md) (east3a dest).
+Walk-on stairs3a* through-names stay off `L6_THROUGH`.
 
 **Leave predecessor (real):** `--through level6-clear3a` 1/1
 `l6_clear3a_continuous_v1`: play `0x3A` `(144,141)` rod=1 keys=4 bombs=8
@@ -133,7 +138,11 @@ keys, Map, Whistle, TF bits, rupees, undiscovered items.
 
 ---
 
-## Current worker hop (one checkbox)
+## Historical worker hop (stairs3a-ne71 — superseded)
+
+Living hop is [`rr-tne2-residual.md`](rr-tne2-residual.md) (east3a dest).
+`level6-stairs3a-ne71` is **superseded** — walk-on stairs off `L6_THROUGH`;
+do not restore that through-name.
 
 **Abandon 0x28/0x38 leave.** **Abandon 0x39-west leave.** `#1c`
 stairs3a-ne **BLOCKED** 3 reds. Push live; RIGHT+DOWN to ~x=160 **live**;
@@ -144,13 +153,12 @@ stairs3a-ne v4.** **No stairs3a-71 v4.** **No stairs3a v4.**
 committed hop: `#1d` `level6-stairs3a-ne71` **v1 red 1/3**. Do not claim
 v2/v3.
 
-**Resume `#1d` `level6-stairs3a-ne71`.** Real predecessor: **clear3a**
-play `0x3A` `(144,141)`. **Reuse live push + RIGHT+DOWN to ~x=160.**
-Then **LEFT around tile 119** (not UP), continue to NE 0x68 `(208,96)`,
-south-face UP onto `0x71` at `(208,93)`. Dest **RAM** mode 9 **or** play
-≠ `0x3A`. Do **not** UP on 119. Do **not** walk east door. Do **not**
-invent/fight Gohma. Do **not** poke bow/arrows. Occupancy halt at first
-miss.
+**Do not resume `#1d` `level6-stairs3a-ne71`.** Historical leftover:
+**clear3a** play `0x3A` `(144,141)`. Live push + RIGHT+DOWN to ~x=160,
+then LEFT around tile 119 (not UP), NE 0x68 `(208,96)`, south-face UP onto
+`0x71` at `(208,93)` was the 2026-08-25 trial. Dest **RAM** mode 9 **or**
+play ≠ `0x3A`. Do **not** UP on 119. Do **not** walk east door. Do **not**
+invent/fight Gohma. Do **not** poke bow/arrows.
 
 | Field | Value |
 |-------|--------|
@@ -159,6 +167,8 @@ miss.
 | Stop | dest **from RAM**: mode 9 **or** play ≠ `0x3A`. Do not invent room id / Gohma. |
 | Forbidden | `ADDR_BOW` / `ADDR_ARROWS` / doors / keys / Map / Whistle; stairs3a-ne v4; stairs3a-71 v4; stairs3a v4; UP on 119 at x=160; walk east door; fight Gohma; invent Gohma |
 | One change | LEFT around tile 119 at ~x=160, then NE 0x68 UP onto `0x71`. New file. Do **not** compose through stairs3a-ne. Do not grow spine files ≥800. |
+
+Historical trial command (do not run as the current hop):
 
 ```bash
 QT_QPA_PLATFORM=offscreen UV_CACHE_DIR=/tmp/retro_rl_uv_cache \
@@ -170,7 +180,7 @@ QT_QPA_PLATFORM=offscreen UV_CACHE_DIR=/tmp/retro_rl_uv_cache \
 - [x] `level6-stairs3a` **BLOCKED** 3 reds. Push live. Idle tile 119. No v4.
 - [x] `level6-stairs3a-71` **BLOCKED** 3 reds. RIGHT on 119 at x=184. No v4.
 - [x] `level6-stairs3a-ne` **BLOCKED** 3 reds. UP on 119 at x=160. No v4.
-- [ ] `level6-stairs3a-ne71` dest RAM mode 9 or play ≠ `0x3A`
+- **superseded** `level6-stairs3a-ne71` — walk-on stairs off `L6_THROUGH`; do not restore
 
 ### Leave path `0x3A` → `0x79` DOWN (split into room hops)
 
@@ -203,11 +213,13 @@ stairs push is **forbidden**. Coordinate clip only after a live miss.
 
 ---
 
-## Hop queue (planned `--through` names — not wired, not green)
+## Hop queue (historical labels — living dest is the residual)
 
-Names below are **queue labels**. None of L7/L8/L9 OW modules are
-spine-green. Do not claim `level7_overworld.py` / `level8_overworld.py` /
-`level9_*` as continuous Survival.
+Names below are **historical queue labels**. Living dest hop:
+[`rr-tne2-residual.md`](rr-tne2-residual.md). Walk-on stairs3a* / exit-ow
+are **off** `L6_THROUGH`; do not restore those through-names. None of
+L7/L8/L9 OW modules are spine-green. Do not claim `level7_overworld.py` /
+`level8_overworld.py` / `level9_*` as continuous Survival.
 
 Forbidden on every hop: doors, keys, undiscovered items, Map, Whistle,
 bow/arrows grants, TF pokes.
@@ -220,7 +232,7 @@ bow/arrows grants, TF pokes.
 | 1 | `level6-stairs3a` | `0x3A` `(144,141)` unarmed | mode 9 **or** new play room RAM | [x] **BLOCKED** 3 reds (push yes, idle tile 119). No v4. |
 | 1b | `level6-stairs3a-71` | **clear3a** `0x3A` `(144,141)` | dest **RAM** mode 9 **or** play ≠ `0x3A` | [x] **BLOCKED** 3 reds. RIGHT on 119 at `(184,147)`. No v4. |
 | 1c | `level6-stairs3a-ne` | **clear3a** `0x3A` `(144,141)` | dest **RAM** mode 9 **or** play ≠ `0x3A` | [x] **BLOCKED** 3 reds. UP on 119 at `(160,147)`. No v4. |
-| 1d | `level6-stairs3a-ne71` | **clear3a** `0x3A` `(144,141)` | dest **RAM** mode 9 **or** play ≠ `0x3A` | [ ] **current** — LEFT around 119 at x=160, then NE 0x68 UP onto `0x71` |
+| 1d | `level6-stairs3a-ne71` | **clear3a** `0x3A` `(144,141)` | dest **RAM** mode 9 **or** play ≠ `0x3A` | **superseded** — walk-on stairs off `L6_THROUGH`; do not restore |
 | 2a | `level6-exit3a` | dest of #1 if mode 9 | play-ready `0x3A` again (Rod-class return) | [x] skipped (dest unknown) |
 | 2b | *(abort warp)* | `0x3A` if dest is one-way play | still `0x3A`; no CheckWarp | [x] dest unknown after 3 reds |
 | 3 | `level6-exit-ow` | **clear3a** `0x3A` `(144,141)` unpushed | OW `0x22` mode 5 from `0x79` DOWN | [x] **BLOCKED** 3 reds (full leave too big). No v4. Split below. |
@@ -263,12 +275,13 @@ bow/arrows grants, TF pokes.
 | 14 | `level6-gohma` | west leftover, **keys≥1, bow+arrows** | Gohma dead from RAM (do not invent room id). B=`2` | [ ] **never unarmed** |
 | 15 | `level6` / TF | post-Gohma + heart | `ADDR_TRIFORCE & 0x20`; then fanfare settle | [ ] closes `rr-tne2` **only then** |
 
-3-red retarget: #1 stairs3a **BLOCKED** (push yes, idle 119). Leave
-toward `0x79` **abandoned**. #1b stairs3a-71 **BLOCKED** (RIGHT on 119
-at x=184). #1c stairs3a-ne **BLOCKED** (UP on 119 at x=160). #1d LEFT
-around 119 then NE 0x68 UP onto `0x71` from **clear3a**. Do not
-stairs3a-ne v4. Do not invent/fight Gohma. Do not poke. #14 unarmed →
-bow detour **after dest**.
+3-red retarget (historical): #1 stairs3a **BLOCKED** (push yes, idle 119).
+Leave toward `0x79` **abandoned**. #1b stairs3a-71 **BLOCKED** (RIGHT on
+119 at x=184). #1c stairs3a-ne **BLOCKED** (UP on 119 at x=160). #1d
+stairs3a-ne71 **superseded** (walk-on stairs off `L6_THROUGH`; do not
+restore). Do not stairs3a-ne v4. Do not invent/fight Gohma. Do not poke.
+#14 unarmed → bow detour **after dest**. Living dest:
+[`rr-tne2-residual.md`](rr-tne2-residual.md).
 
 ### B. L7 TF `0x40` (child bead after `rr-tne2` closes)
 
@@ -362,7 +375,7 @@ First L9 hop = **`level9-entry`** (OW to `0x05` bomb → `0x76`).
 | `level6-west39-reband` | **FIRED.** y=133 at x≈124–128 y-dead for DOWN / RIGHT+DOWN / LEFT+DOWN. Dest stayed `0x39` `(124,133)`. `doors=9` N+E; west bit never set. PNG-open RAM-sealed. **Abandon 0x39-west leave.** No v4. Next: `#1b` stairs3a-71. |
 | `level6-stairs3a-71` | **FIRED.** v1 clip live; false occupancy_halt leftover `(114,149)` tile 116. v2 push live `112,144→136`; TO_NE y-first UP 0px leftover `(72,165)` tile 116. v3 RIGHT to x=184 live; leftover `(184,147)` tile **119** RIGHT 0px. Stairs revealed. NE 0x68 `(208,96)`. East door open. Dest stayed `0x3A`. No v4. Next: `#1c` south-face NE 0x68 UP onto `0x71`. |
 | `level6-stairs3a-ne` | **FIRED.** v1 leftover `(114,149)` tile 116 first RIGHT after push knockback. v2 leftover `(122,149)` tile 118 skip v1 halt; DOWN 0px; halt RIGHT. v3 leftover `(160,147)` tile **119** last_dir=UP. RIGHT+DOWN around y=149 **live** to AROUND_X. Tile 119 at **x=160**, not only x=184. NE 0x68 live `(208,96)`. East door open. Dest stayed `0x3A`. No v4. Next: `#1d` LEFT around 119, then NE 0x68 UP onto `0x71`. |
-| `level6-stairs3a-ne71` 3 reds | Occupancy halt at first miss. Reuse live push + RIGHT+DOWN to ~x=160. LEFT around tile 119 (not UP). Continue to NE 0x68 `(208,96)`, south-face UP onto `0x71`. Do not walk east door. Dest RAM mode 9 or play ≠ `0x3A`. |
+| `level6-stairs3a-ne71` 3 reds | **Superseded** (walk-on stairs off `L6_THROUGH`). Evidence: occupancy halt at first miss. Reuse live push + RIGHT+DOWN to ~x=160. LEFT around tile 119 (not UP). Continue to NE 0x68 `(208,96)`, south-face UP onto `0x71`. Do not walk east door. Dest RAM mode 9 or play ≠ `0x3A`. Do not restore. |
 | `level6-south68` | Kill-door reclear TBD; do not poke. |
 | `level6-north29` | **Skipped** — 3b already in `0x19` already-open. |
 | `l1-bow` west of 0x23 | Occupancy halt; do not invent cellar id; glance PNG. |

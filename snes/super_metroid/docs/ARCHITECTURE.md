@@ -27,6 +27,7 @@ routes/segment.py                         practice Segment adapters only
         │
 routes/kpdr/*.py                          pure room controllers (no env ownership)
 combat/*.py                               boss fight policies (after natural entry)
+combat/enemies/                           room-enemy Overlay (scan + Stance)
 policy.py + policies/**                   JSON raw-button PolicySegments
         │
 progression/                              RoomNode / DoorEdge / milestones / graphs
@@ -78,6 +79,7 @@ The path board (`maps/path_room_board.json`) is **topology**, not KPDR order.
 | Mid | `SpineHop` / `ControllerSegment` / `PolicySegment` | entry → play → exit evidence |
 | Low | `routes/controller_common` | hybrid primitives (below) |
 | Boss | `combat/*` via `BossStrategy` / `BossSegment` | only after natural boss-room entry |
+| Overlay | `combat/enemies` via `list_enemies` / `choose` | per-frame Stance on a movement hop |
 
 - **Controllers** (`routes/kpdr/`): pure movement/combat on
   `ControllerSession`; registered in `KPDR_SEGMENTS`.
@@ -88,6 +90,14 @@ The path board (`maps/path_room_board.json`) is **topology**, not KPDR order.
   the boss (Route / Approach / Trigger split). Full pipeline:
   [`docs/BOSS_PIPELINE.md`](BOSS_PIPELINE.md) — catalog → natural entry →
   strategy → optional structured RL → continuous promote.
+- **Overlay**: room enemies (not bosses) on a hop. Scan `$0F78`, Species
+  facts, Stance (Engage / Avoid / Absorb / Ignore). Hops pass Intent;
+  each frame makes one `list_enemies` call and one `choose` call. `choose`
+  returns buttons, idle, or “continue walking.” Old room-specific enemy
+  modules are compatibility shims, not additional seams. ADR
+  [`0008-room-enemy-overlay.md`](adr/0008-room-enemy-overlay.md).
+  Language: [`CONTEXT.md`](../CONTEXT.md) Enemy / Species / Contact /
+  Stance / Overlay.
 
 **Hybrid primitives** (`routes/controller_common.py`) reduce blank-JSON
 poking without dropping evidence:

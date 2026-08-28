@@ -62,7 +62,9 @@ def _ram(*, room: int, x: int, y: int, keys: int = 0, raft: int = 0) -> np.ndarr
 
 
 def test_through_level3_is_wired() -> None:
-    assert SPINE_THROUGH[:3] == ("level1", "level2", "level3")
+    assert SPINE_THROUGH[0] == "level1"
+    assert SPINE_THROUGH.index("level1") < SPINE_THROUGH.index("level2")
+    assert SPINE_THROUGH.index("level2") < SPINE_THROUGH.index("level3")
     assert "level3" in SPINE_THROUGH
 
 

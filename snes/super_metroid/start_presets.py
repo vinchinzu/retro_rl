@@ -166,6 +166,10 @@ _CANONICAL: dict[str, tuple[str, str]] = {
         "scratch/post_west_ocean_ws_spark.state",
         "WS Entrance 0xCA08 post over-ocean/chain-ws ~(57,139) gs=8 — Phantoon ship human",
     ),
+    "ws-main": (
+        "scratch/post_ws_basement_to_main.state",
+        "WS Main Shaft 0xCAF6 hop-1 leave ~(1173,1979) p1 gs=8 — Attic climb human",
+    ),
     "phantoon": (
         "scratch/full_start_v1_phantoon_mid.state",
         "Phantoon 0xCD13 mid-fight ~2k into fight phant~2200 full HP/ammo — living tape pin",
@@ -314,6 +318,9 @@ _ALIASES: dict[str, str] = {
     "post-wo-ws": "ws-entrance",
     "post-ws-spark": "ws-entrance",
     "wrecked-ship": "ws-entrance",
+    "post-ws-basement": "ws-main",
+    "ws-main-to-attic": "ws-main",
+    "post-basement-to-main": "ws-main",
     "phantoon-mid": "phantoon",
     "phantoon-fight": "phantoon",
     "full-start-phantoon": "phantoon",

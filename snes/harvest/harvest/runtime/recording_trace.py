@@ -20,6 +20,7 @@ from harvest.maps.map_config import get_map_name
 from harvest.core.npc_catalog import game_objects
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.tile_catalog import TILE_SIZE, get_tile_at, tile_category, tile_label
+from harvest.tasks.travel_walk import DIR_DELTA, DIR_FROM_CODE, read_player_direction
 from retro_harness.task_recording import (
     coalesce_action_runs as _shared_coalesce_action_runs,
     coalesce_windows as _shared_coalesce_windows,
@@ -44,6 +45,16 @@ BUTTON_NAMES = {
 _BUTTON_NAME_SEQ = tuple(BUTTON_NAMES[i] for i in range(12))
 
 MOVEMENT_BUTTONS = {"Up", "Down", "Left", "Right"}
+
+
+def _cell(ram: np.ndarray, tx: int, ty: int) -> dict[str, object]:
+    tid = int(get_tile_at(ram, tx, ty))
+    return {
+        "tile": [int(tx), int(ty)],
+        "id": tid,
+        "hex": f"0x{tid:02X}",
+        "label": tile_label(tid),
+    }
 
 
 def pressed_buttons(action: Sequence[int]) -> list[str]:
@@ -163,6 +174,12 @@ def recording_trace_entry(
     tile_id = get_tile_at(ram, *tile)
     tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
     buttons = pressed_buttons(action)
+    facing = DIR_FROM_CODE.get(read_player_direction(ram), "down")
+    fdx, fdy = DIR_DELTA[facing]
+    neighbors = {
+        name: _cell(ram, tile[0] + dx, tile[1] + dy)
+        for name, (dx, dy) in DIR_DELTA.items()
+    }
 
     row: dict[str, object] = {
         "frame": int(frame),
@@ -176,6 +193,9 @@ def recording_trace_entry(
         "tile_hex": f"0x{int(tile_id):02X}",
         "tile_label": tile_label(tile_id),
         "tile_category": tile_category(tile_id),
+        "facing": facing,
+        "facing_tile": neighbors[facing],
+        "neighbors": neighbors,
         "buttons": buttons,
         "input_lock": _read_scalar(ram, "input_lock", raw=True),
         "player_state": _read_scalar(ram, "player_state", raw=True),
@@ -219,6 +239,29 @@ def _nearest_chicken_distance(row: dict[str, object]) -> int | None:
             continue
         distances.append(abs(int(tile[0]) - px) + abs(int(tile[1]) - py))
     return min(distances) if distances else None
+
+
+def _push_faces(trace: Sequence[dict[str, object]]) -> list[dict[str, object]]:
+    """Tiles where a held d-pad did not change occupancy — bump/edge candidates."""
+    faces: list[dict[str, object]] = []
+    seen: set[tuple[int, int, int]] = set()
+    for window in _stasis_windows(trace):
+        tile = window["tile"]
+        if not isinstance(tile, list) or len(tile) != 2:
+            continue
+        key = (int(window.get("tilemap", 0)), int(tile[0]), int(tile[1]))
+        if key in seen:
+            continue
+        seen.add(key)
+        faces.append(
+            {
+                "tile": [key[1], key[2]],
+                "tilemap": key[0],
+                "length": int(window["length"]),
+                "buttons": list(window.get("buttons", [])),
+            }
+        )
+    return faces
 
 
 def _stasis_windows(trace: Sequence[dict[str, object]], *, min_length: int = 45) -> list[dict[str, object]]:
@@ -371,6 +414,7 @@ def summarize_recording(
         "recorded_input_runs": coalesce_action_runs(frames),
         "visited_tiles": visited_tiles,
         "stasis_windows": _stasis_windows(trace),
+        "push_faces": _push_faces(trace),
         "coop": {
             "frame_count": coop_frames,
             "player_tiles": visited_tiles.get("0x28", []),

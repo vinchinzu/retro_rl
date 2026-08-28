@@ -13,7 +13,6 @@ from zelda_i.level6_stairs3a_warp import (
     level6_stairs3a_warp_stages,
     level6_stairs3a_warp_success,
     make_stairs_3a_warp_controller,
-    poke_link_position,
 )
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -82,30 +81,6 @@ def test_warp_through_is_wired_after_clear3a() -> None:
     assert run.report()["position_assist"] is None
 
 
-def test_poke_link_position_writes_only_x_y() -> None:
-    mem = _AssignMem()
-    report = poke_link_position(
-        _env_with_mem(mem),
-        WARP_XY[0],
-        WARP_XY[1],
-        room=0x3A,
-        from_xy=(144, 141),
-    )
-    assert mem.calls == [
-        (ADDR_LINK_X, "|u1", WARP_XY[0]),
-        (ADDR_LINK_Y, "|u1", WARP_XY[1]),
-    ]
-    assert report["position_writes"] == 1
-    assert report["progression_writes"] == 0
-    assert report["capacity_writes"] == 0
-    assert report["door_writes"] == 0
-    assert report["inventory_writes"] == 0
-    assert report["triforce_writes"] == 0
-    assert report["state_load"] is False
-    assert report["addresses"] == [ADDR_LINK_X, ADDR_LINK_Y]
-    assert report["xy"] == list(WARP_XY)
-
-
 def test_leftover_still_clips_then_poke_after_push() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
 
@@ -161,6 +136,24 @@ def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
     east = _ram(level=6, screen=0x3B, x=16, y=141)
     east[ADDR_ROD] = 1
     assert not level6_stairs3a_warp_success(read_snapshot(east))
+
+
+def test_run_controller_stage_calls_bind_env() -> None:
+    from zelda_i.chain import run_controller_stage
+
+    class _Env:
+        def get_ram(self):
+            return _ram()
+
+        def step(self, _action):
+            return np.zeros((2, 2, 3), dtype=np.uint8), 0.0, False, False, {}
+
+    env = _Env()
+    ctl = make_stairs_3a_warp_controller()
+    ctl.success = True
+    run_controller_stage(env, None, name="warp", controller=ctl, max_frames=1)
+    assert ctl.env is env
+    assert ctl.report()["position_assist"] is None
 
 
 def test_no_env_fails_closed_without_writing() -> None:

@@ -151,34 +151,12 @@ stack deleted after promote. Next serial: `bd ready -l super_metroid`.
 
 ## Main Shaft → Attic (second consumer) — open
 
-Powered `0xCAF6` → Attic `0xCA52` on `rr-kw8t`. Living tip stays Phantoon.
-Full hop GREEN is Attic gs=8 only. Seats in
-`routes/kpdr/k6/ws_main_phases.py`. Living residual:
+Powered Main Shaft → Attic on `rr-kw8t`. Seats in
+`routes/kpdr/k6/ws_main_geometry.py`. Live pin, checkbox, and probe CLI:
 [`rr-kw8t-residual.md`](rr-kw8t-residual.md).
-
-| Phase | Seam | Held exit |
-|-------|------|-----------|
-| pit_shot | pin (1173,1979) 3-shot | still Main, not Basement (approach) |
-| grate_seat | first stable seat | take02/04 fire slope ~(1223, 1860) p3 |
-| west_super | first shaft hop | y~1675 in shaft, not 0xCDA8 |
-| mid_climb | past sponge/save | y~680 in shaft |
-| attic_seat | blue ceiling door | ~(1135, ≤160) stand |
-| attic_door | leave | Attic `0xCA52` gs=8 |
-
-Living checkbox is **west_super** (**RED**). Pocket X-tap cannot hit.
-First-jump air peaked `(1194, 1836)` and fell back — do not 4th-dual
-that land. Two-hop short A **facing LEFT** at 1166 leftover stairs
-`(1111, 1899)` p157 — do not 2nd-dual that facing. Next: take02 short A
-**facing RIGHT**. Morph later at ~(1189,1785) — not on the lip. Do not
-open mid_climb while west_super is red. Do not farm save-column WJ.
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video --dual
-```
 
 ## See also
 
 - Pure-first: `AGENTS.md`
-- Live work: `bd ready -l super_metroid`
+- Live work: [`rr-kw8t-residual.md`](rr-kw8t-residual.md) while `rr-kw8t` is in_progress
 - Source catalog: [`../SOURCE_STATES.md`](../SOURCE_STATES.md)

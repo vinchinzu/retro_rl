@@ -23,6 +23,7 @@ from retro_harness.segment_runner import (
     snapshot_state,
     write_json_report,
 )
+from tmnt_iv.assist import EMERGENCY_HP_RESTORE
 from tmnt_iv.paths import (
     GAME,
     GAME_DIR,
@@ -144,7 +145,7 @@ def _walk_until_enemies(
 def _maybe_heal(env: Any, state: GameState) -> GameState:
     """Top up Leo when corridor DPS drains him (dev resume helper)."""
     if 0 < state.health < 28 and state.health <= 0x60:
-        env.set_value("player_hp", 80)
+        env.set_value("player_hp", EMERGENCY_HP_RESTORE)
         return parse_game_state(env.get_ram(), frame=state.frame)
     return state
 

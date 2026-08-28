@@ -12,9 +12,9 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_gleeok18 import PASSAGE_MODE
+from zelda_i.level6_occupancy import l6_leftover
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker
 
 __all__ = [
@@ -54,10 +54,7 @@ class Level6Stairs18Controller:
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
-            "screen": int(snap.screen),
+            **l6_leftover(snap),
             "cur_opened_doors": int(snap.cur_opened_doors),
             "open_doorway_mask": int(snap.open_doorway_mask),
         }

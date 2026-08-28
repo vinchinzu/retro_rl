@@ -44,6 +44,12 @@ uv run python snes/super_metroid/scripts/record/practice_takes.py \\
 uv run python snes/super_metroid/scripts/record/practice_takes.py \\
   --segment ws-entrance --series ws_ship_v1
 
+# Post-Phantoon win → Gravity Suit collect (scratch get-ahead; live anchors)
+# Do not reuse gravity_path_human (legacy extract / no anchors).
+uv run python snes/super_metroid/scripts/record/practice_takes.py \\
+  --segment post-phantoon-to-gravity --series gravity_path_v2 --no-guide
+# Single long take (same pin): ./snes/super_metroid/play post-phantoon gravity_path_v2
+
 # Post-Gravity Caterpillar → Grapple side-trek + Maridia free-record
 uv run python snes/super_metroid/scripts/record/practice_takes.py \\
   --segment post-gravity --series maridia_grapple_v1 --no-guide
@@ -186,6 +192,18 @@ SEGMENTS: dict[str, Segment] = {
         pure_source_rel="scratch/post_west_ocean_ws_spark.state",
         no_guide_default=False,
     ),
+    "ws-main-to-attic": Segment(
+        key="ws-main-to-attic",
+        start="ws-main",
+        route="ws-entrance",
+        description=(
+            "Powered Main Shaft 0xCAF6 hop-1 leave ~(1173,1979) p1 gs=8 → "
+            "Attic 0xCA52. Multi-take for shoot-up / Wave-block / Atomic pathing."
+        ),
+        pure_hop="ws-main-to-attic",
+        pure_source_rel="scratch/post_ws_basement_to_main.state",
+        no_guide_default=True,
+    ),
     "moat-to-ws": Segment(
         key="moat-to-ws",
         start="pre-moat",
@@ -196,6 +214,19 @@ SEGMENTS: dict[str, Segment] = {
         ),
         pure_hop=None,
         pure_source_rel="scratch/post_kihunter_pre_moat_spark.state",
+        no_guide_default=True,
+    ),
+    "post-phantoon-to-gravity": Segment(
+        key="post-phantoon-to-gravity",
+        start="post-phantoon",
+        route="ws-entrance",
+        description=(
+            "Phantoon 0xCD13 post-defeat ~(177,187) boss_ws bit0 → WS climb / "
+            "Attic / Bowling / Gravity Suit collect. Scratch get-ahead; live "
+            "anchors. Do not reuse gravity_path_human (legacy extract)."
+        ),
+        pure_hop=None,
+        pure_source_rel="scratch/post_phantoon_defeated.state",
         no_guide_default=True,
     ),
     "post-gravity": Segment(
@@ -524,6 +555,12 @@ def _run_one_take(
     if seg.key.startswith("red-to-hellway"):
         print("  Red climb: F6 thin seat + ice tiers · F5 in Hellway 0xA2F7")
         print("  Fail mid-climb → ESC (no save) or F5 only if useful mid pin")
+    if seg.key == "ws-main-to-attic":
+        print("  Main Shaft: F6 at grate lip / west-super band · F5 in Attic 0xCA52")
+        print("  Vary shoot-up vs morph tunnel vs Atomic Ice; ESC discards take")
+    if seg.key == "post-phantoon-to-gravity":
+        print("  Post-Phantoon: F6 Attic / bowling chozo / Gravity fanfare")
+        print("  F5 after Gravity collect (0xCE40) or WO leave; ESC discards")
     print("=" * 60)
     return subprocess.run(cmd, cwd=str(ROOT)).returncode
 
@@ -657,6 +694,20 @@ def main() -> int:
         print("  ~(91,587), ice tiers y495/391/295/207, Hellway enter → F5.")
         print("  ESC = discard take (reload next). Rank: rank_red_climb_takes.py")
         print("  Splice = pick best take + hop-replay from live anchors, NOT RLE concat.")
+    elif seg.key == "ws-main-to-attic":
+        print("Recipe (Main Shaft → Attic, rr-kw8t hop 2):")
+        print("  Boot hop-1 leave 0xCAF6 ~(1173,1979). Climb to Attic 0xCA52 → F5.")
+        print("  Vary takes: Wave UP vs morph tunnel vs Ice Atomics vs wall-jump.")
+        print("  F6 at grate lip / y~1675. ESC = discard. Tape stores enemies+PLMs+projs.")
+        print("  After 4–5 saves: extract_human_tape.py --materialize on the series dir.")
+    elif seg.key == "post-phantoon-to-gravity":
+        print("Recipe (post-Phantoon win → Gravity collect, scratch get-ahead):")
+        print("  Boot 0xCD13 post-defeat. Play WS climb → Attic left → WO maze")
+        print("  → Bowling chozo → Gravity 0xCE40 collect. F5 there or WO leave.")
+        print("  F6: Attic ordinary, bowling spikes/chozo, Gravity fanfare.")
+        print("  Morph only after a 0xD080-family spawn (not on the grate lip).")
+        print("  Do not dual. Do not STATUS. Do not reuse gravity_path_human.")
+        print("  ESC = discard take (reload next). Legacy extract stays in place.")
     else:
         print("Recipe (dc-missile-wave / Spazer) — reference take04:")
         print("  P1 purple hop upper y≲180 → gate seat ~(379,139)")

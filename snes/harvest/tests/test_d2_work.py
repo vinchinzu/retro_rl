@@ -332,6 +332,8 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertIn("headed_emu_repeat", exec_src.read_text(encoding="utf-8"))
         self.assertNotIn("WatchDisplay", text)
         self.assertNotIn("--watch", text)
+        self.assertNotIn("spa_retried", text)
+        self.assertIn("should_spa_retry", text)
 
 
 class LeftoverProbePayloadTests(unittest.TestCase):

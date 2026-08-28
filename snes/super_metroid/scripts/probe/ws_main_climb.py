@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 """Powered Wrecked Ship Main Shaft → Attic (rr-kw8t hop 2).
 
-Six in-room seams (not hop GREEN): pit_shot → grate_seat → west_super →
-mid_climb → attic_seat → attic_door. Full hop GREEN is Attic gs=8 only.
-Save room RIGHT is dead — skip. Do not go DOWN through the floor hatch.
-https://wiki.supermetroid.run/Wrecked_Ship_Main_Shaft
+``--start-phase`` / ``--stop-at`` over ``WS_MAIN_PHASES``. Full hop GREEN
+is Attic gs=8 only. PhaseStop is graded against the phase seat, not dest
+Attic. Pin, checkbox, and default argv:
+``snes/super_metroid/docs/tasks/rr-kw8t-residual.md``.
 
 ```bash
-# Watch: repo-wide --headed (same flag on kpdr.py pure / ./play).
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state \
-  --headed
+  --source <pin> --headed
 
-# One seam (diagnostic PhaseStop, not hop GREEN):
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at west_super --no-video
+  snes/super_metroid/scripts/probe/ws_main_climb.py --stop-at <phase> --no-video --dual
 ```
 
-Default source: ``scratch/post_ws_basement_to_main.state``. Boot settle 5.
 ``--headed`` is ``retro_harness.headed``. Do not revert the controller on RED.
+https://wiki.supermetroid.run/Wrecked_Ship_Main_Shaft
 """
 
 from __future__ import annotations
@@ -31,24 +28,18 @@ from typing import Any
 from retro_harness.headed import add_headed_flag, attach_headed, idle_headed
 from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.dev.common import boot_from_state, make_dev_env, save_dev_state
-from super_metroid.hop_glance import (
-    LeaveMiss,
-    WS_MAIN_TO_ATTIC,
-    final_from_state,
-    grade_final,
-)
+from super_metroid.hop_glance import LeaveMiss, final_from_state, grade_final
+from super_metroid.leave_specs import WS_MAIN_PHASE_SPECS, WS_MAIN_TO_ATTIC
 from super_metroid.paths import SCRATCH_STATE_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
 from super_metroid.routes.kpdr.k6.ws_main_climb import (
     play_ws_main_to_attic,
-    play_ws_main_to_attic_phased,
     ws_main_attic_settled,
 )
-from super_metroid.routes.kpdr.k6.ws_main_phases import WS_MAIN_PHASES
 from super_metroid.routes.skills.geometry import PhaseStop
-from super_metroid.routes.kpdr.k6.ws_main_ice import list_shaft_enemies
+from super_metroid.combat.enemies import list_enemies
 from super_metroid.routes.skills.charge_shot import session_beam_charge
 
 SCRATCH = SCRATCH_STATE_DIR
@@ -56,8 +47,26 @@ DEFAULT_SOURCE = SCRATCH / "post_ws_basement_to_main.state"
 DEFAULT_OUT = SCRATCH / "post_ws_main_to_attic.state"
 DEFAULT_REPORT = SCRATCH / "ws_main_to_attic.json"
 DEFAULT_DUAL = SCRATCH / "ws_main_to_attic_dual.json"
+GRATE_SEAT_PIN = SCRATCH / "post_ws_main_grate_seat.state"
 BOOT_SETTLE = 5
 HOP = "ws_main_to_attic"
+
+
+def phase_glance(
+    phase_stop: str | None, final: dict[str, Any], error: str | None
+) -> tuple[bool, list[str]]:
+    """Grade a PhaseStop still against the in-room seat, not dest Attic."""
+    if not phase_stop:
+        return False, []
+    spec = WS_MAIN_PHASE_SPECS[phase_stop]
+    misses = list(grade_final(final, spec))
+    return error is None and not misses, misses
+
+
+def _held_pin(phase_stop: str) -> Path:
+    if phase_stop == "grate_seat":
+        return GRATE_SEAT_PIN
+    return SCRATCH / f"post_ws_main_{phase_stop}.state"
 
 
 class _Sess:
@@ -150,14 +159,8 @@ def _run_hop(
         error = None
         hop_misses: list[str] | None = None
         phase_stop = None
-        sliced = start_phase != "pit_shot" or stop_at != "attic_door"
         try:
-            if sliced:
-                st = play_ws_main_to_attic_phased(
-                    sess, start=start_phase, stop=stop_at
-                )
-            else:
-                st = play_ws_main_to_attic(sess)
+            st = play_ws_main_to_attic(sess, start=start_phase, stop=stop_at)
         except PhaseStop as exc:
             phase_stop = exc.phase
             st = exc.state
@@ -169,11 +172,11 @@ def _run_hop(
         except Exception as exc:  # noqa: BLE001
             error = f"{type(exc).__name__}: {exc}"
             st = sess.state
-        enemies = list_shaft_enemies(sess)
+        enemies = list_enemies(sess)
         extra = {
             "frame": sess.frame,
             "charge": session_beam_charge(sess),
-            "mov": int(getattr(st, "movement_type", 0) or 0),
+            "mov": int(st.movement_type),
             "killed": int(getattr(st, "enemies_killed", 0) or 0),
             "min_y": sess.min_y,
             "min_y_xy": sess.min_y_xy,
@@ -190,13 +193,38 @@ def _run_hop(
                 for e in enemies
             ],
         }
+        timed = format_segment_time(sess.frame)
+        final = _snap(st, extra)
         hop_green = error is None and ws_main_attic_settled(st)
-        phase_ok = phase_stop is not None and error is None
+        if phase_stop is not None:
+            phase_ok, glance_misses = phase_glance(phase_stop, final, error)
+        elif stop_at != "attic_door":
+            _, glance_misses = phase_glance(stop_at, final, error)
+            phase_ok = False
+        elif hop_misses:
+            glance_misses = hop_misses
+            phase_ok = False
+        elif not hop_green:
+            glance_misses = grade_final(final, WS_MAIN_TO_ATTIC)
+            phase_ok = False
+        else:
+            glance_misses = []
+            phase_ok = False
         ok = hop_green or phase_ok
-        if hop_green and save is not None:
+        saved: str | None = None
+        if hop_green and save is not None and not phase_stop:
             save_dev_state(env, save)
+            saved = str(save)
+        if phase_ok and phase_stop:
+            pin = _held_pin(phase_stop)
+            try:
+                save_dev_state(env, pin)
+                saved = str(pin)
+            except Exception:  # noqa: BLE001
+                pass
         leftover_state = None
-        if not hop_green:
+        png = None
+        if not ok:
             leftover_state = SCRATCH / "ws_main_to_attic_leftover.state"
             try:
                 save_dev_state(env, leftover_state)
@@ -209,10 +237,6 @@ def _run_hop(
                 Image.fromarray(env.render()).save(png)
             except Exception:  # noqa: BLE001
                 png = None
-        else:
-            png = None
-        timed = format_segment_time(sess.frame)
-        final = _snap(st, extra)
         report: dict[str, Any] = {
             "success": ok,
             "error": error,
@@ -221,15 +245,16 @@ def _run_hop(
             "final": final,
             "frames": sess.frame,
             "time": timed,
-            "saved": str(save) if ok and save is not None else None,
+            "saved": saved,
             "leftover_state": str(leftover_state) if leftover_state is not None else None,
             "red_png": str(png) if png is not None else None,
             "hop_green": hop_green,
+            "phase_ok": phase_ok,
             "phase_stop": phase_stop,
+            "glance_misses": glance_misses,
         }
-        if not hop_green:
+        if not ok:
             report["leftover"] = dict(final)
-            report["glance_misses"] = hop_misses or grade_final(final, WS_MAIN_TO_ATTIC)
         return report
     finally:
         if headed and pygame_mod is not None:
@@ -280,9 +305,7 @@ def cmd_pure(args: argparse.Namespace) -> int:
         if not dual_report["success"]:
             leftover = primary.get("leftover", primary.get("final"))
             dual_report["leftover"] = leftover
-            dual_report["glance_misses"] = primary.get(
-                "glance_misses", grade_final(primary["final"], WS_MAIN_TO_ATTIC)
-            )
+            dual_report["glance_misses"] = primary.get("glance_misses") or []
         dual_path = Path(args.dual_report or DEFAULT_DUAL)
         dual_path.parent.mkdir(parents=True, exist_ok=True)
         dual_path.write_text(json.dumps(dual_report, indent=2) + "\n", encoding="utf-8")
@@ -291,9 +314,13 @@ def cmd_pure(args: argparse.Namespace) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(primary, indent=2) + "\n", encoding="utf-8")
     hop_green = bool(primary.get("hop_green"))
-    flag = "GREEN" if hop_green and dual_exact else (
-        "PHASE" if primary.get("phase_stop") else "RED"
-    )
+    phase_ok = bool(primary.get("phase_ok"))
+    if hop_green and dual_exact:
+        flag = "GREEN"
+    elif phase_ok:
+        flag = "PHASE"
+    else:
+        flag = "RED"
     print(
         f"{flag} dual={dual_exact if dual else 'n/a'} "
         f"phase_stop={primary.get('phase_stop')} "
@@ -306,6 +333,8 @@ def cmd_pure(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from super_metroid.routes.kpdr.k6.ws_main_geometry import WS_MAIN_PHASES
+
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,

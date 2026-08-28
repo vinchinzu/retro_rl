@@ -4,8 +4,10 @@ Wiki plan: ``docs/research/DUNGEON_WALKTHROUGHS.md`` (Zelda Dungeon 100%).
 Bow is L1 (west of ``0x23``), not L6. L6 item is Magical Rod. Gohma still
 needs bow + wooden arrows (OW shop). Default ``--through level2`` and later
 never run ``level1-bow``; that through is a side branch enter-stop
-(play ``0x22`` 1/1). ``--through level1-bow-cellar`` is the stairs hop
-(leftover ``(160,157)``); ``ADDR_BOW`` is still 0.
+(play ``0x22`` 1/1). ``--through level1-bow-cellar`` is **1/1** mode 9
+room ``0x7F`` ``(128,141)``; ``ADDR_BOW`` is still 0. Splice is
+``clear23_key`` → bow detour → ``backtrack44`` once walked bow +
+return play ``0x23`` exist.
 """
 
 from __future__ import annotations

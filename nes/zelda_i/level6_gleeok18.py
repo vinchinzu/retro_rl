@@ -29,7 +29,7 @@ from zelda_i.level4_boss_combat import (
 )
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_GLEEOK_ROOM
 from zelda_i.level6_path import CLIP_CLEAR_Y
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyWalker, WALK_DELTA
 
 __all__ = [
@@ -195,7 +195,6 @@ def make_gleeok_18_controller() -> Level6Gleeok18Controller:
     return Level6Gleeok18Controller()
 
 
-PASSAGE_MODE = 9
 EAST_DOOR_BIT = int(DoorDir.RIGHT)
 # Leftover inland (121,133) is already south of body (124,111)+STAND_DY.
 POSTGLEEOK_STAND_X = 120

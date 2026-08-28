@@ -1,13 +1,13 @@
 """Powered Wrecked Ship Main Shaft → Attic (rr-kw8t hop 2).
 
-Pin is hop-1 leave ``0xCAF6`` ~(1173,1979) p1 gs=8. First jump is
-take02's two-hop onto the fire slope ~(1223,1860) (do not go DOWN to
-Basement; save ``0xCE8A`` is x≳1240). Ice Atomics if they block. Blue
-ceiling door UP into Attic ``0xCA52``. West Super ``0xCDA8`` is an
-optional in-hop side trip.
+Pin is hop-1 leave ``0xCAF6`` ~(1173,1979) p1 gs=8. Take02 two-hop onto
+the fire slope ~(1223,1860), then climb (do not go DOWN to Basement;
+save ``0xCE8A`` is x≳1240). Ice Atomics if they block. Blue ceiling
+door UP into Attic ``0xCA52``. West Super ``0xCDA8`` is an optional
+in-hop side trip.
 
-Climb loop: ``ws_main_shaft``. Pit takeoff: ``ws_main_pit``. Actions:
-``ws_main_actions``.
+Phases live in ``ws_main_geometry``. Climb loop: ``ws_main_shaft``.
+Actions: ``ws_main_actions``. Overlay Ice: ``ws_main_ice``.
 
 https://wiki.supermetroid.run/Wrecked_Ship_Main_Shaft
 """
@@ -26,12 +26,13 @@ from super_metroid.routes.kpdr.k6.ws_ceiling_door import (
 from super_metroid.routes.kpdr.k6.ws_main_actions import (
     attic_door_action,
     climb_action,
-    ws_main_attic_settled,
 )
-from super_metroid.routes.kpdr.k6.ws_main_phases import (
+from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     at_ws_main_grate_seat,
     at_ws_main_mid_climb,
     at_ws_main_west_super_band,
+    classify_region,
+    ws_main_attic_settled,
     ws_main_phase_index,
 )
 from super_metroid.routes.kpdr.k6.ws_main_shaft import (
@@ -68,6 +69,7 @@ def _jump_up_attic(session: ControllerSession, label: str) -> None:
             int(st.velocity_y),
             int(st.movement_type),
             int(session.frame),
+            region=classify_region(st),
         )
 
     def _door(st: SuperMetroidState, shoot_i: int) -> tuple[str, ...]:
@@ -100,7 +102,7 @@ def play_ws_main_to_attic(
     Pin: ``scratch/post_ws_basement_to_main.state`` ``0xCAF6`` ~(1173,1979)
     p1 gs=8. Take02 two-hop onto ~(1223,1860), climb, tap-shot the blue
     ceiling door ~x=1135. Lands ordinary ``gs=8`` in ``0xCA52``. Six
-    in-room phases: see ``ws_main_phases``.
+    in-room phases: see ``ws_main_geometry``.
 
     Diagnostic ``stop`` raises ``PhaseStop`` unless it is ``attic_door``.
     """

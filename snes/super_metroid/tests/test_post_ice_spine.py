@@ -2,7 +2,14 @@
 
 import super_metroid.routes.continuous as _continuous  # noqa: F401
 
-from super_metroid.hop_glance import PHANTOON_LEAVE, WS_ENTRANCE_TO_MAIN
+from super_metroid.leave_specs import (
+    LEAVE_BY_HOP,
+    PHANTOON_LEAVE,
+    WS_BASEMENT_TO_MAIN,
+    WS_BASEMENT_TO_PHANTOON,
+    WS_ENTRANCE_TO_MAIN,
+    WS_MAIN_TO_ATTIC,
+)
 from super_metroid.routes.kpdr.hops import (
     ALPHA_PB_ONLY_HOPS,
     MOAT_ONLY_HOPS,
@@ -72,5 +79,13 @@ def test_post_ice_spine_covers_alpha_pb_and_moat() -> None:
     assert leave.leave is PHANTOON_LEAVE
     entrance = next(h for h in PHANTOON_ONLY_HOPS if h.hop_id == "ws_entrance_to_main")
     assert entrance.leave is WS_ENTRANCE_TO_MAIN
-    assert POST_ICE_SPINE[0].leave is None
-    assert all(h.hop_id != "ws_basement_to_main" for h in POST_ICE_SPINE)
+    basement_exit = next(
+        h for h in PHANTOON_ONLY_HOPS if h.hop_id == "ws_basement_to_phantoon"
+    )
+    assert basement_exit.leave is WS_BASEMENT_TO_PHANTOON
+    assert all(h.leave is LEAVE_BY_HOP[h.hop_id] for h in POST_ICE_SPINE)
+    assert "ws_basement_to_main" not in {h.hop_id for h in POST_ICE_SPINE}
+    assert LEAVE_BY_HOP["ws_basement_to_main"] is WS_BASEMENT_TO_MAIN
+    assert "ws_main_to_attic" not in {h.hop_id for h in POST_ICE_SPINE}
+    assert "ws_main_to_attic" not in {h.hop_id for h in PHANTOON_ONLY_HOPS}
+    assert LEAVE_BY_HOP["ws_main_to_attic"] is WS_MAIN_TO_ATTIC

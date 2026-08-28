@@ -626,11 +626,70 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29
 | Stop | `--through level6-clear3a` play-ready empty `0x3A` |
 | Leftover | `(144,141)`; hop 1,857f tape 219,649f; center 0x68 unpushed |
 | Track | **assisted Survival** |
-| Notes | Stairs / Gohma residual. Bow=0 arrows=0. Do not poke `ADDR_ARROWS`. |
+| Notes | Stairs use the disclosed Survival position assist. Bow=0 arrows=0. Do not poke `ADDR_ARROWS`. |
 
 ```bash
-uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear3a --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1
 ```
+
+### Cellar `0x08` A-side → B-side `0x1D` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | cleared `0x3A` `(144,141)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| Trigger | disclosed position assist `(112,149)→(208,93)` after the live center 0x68 push |
+| ROM pairing | cellar `0x08`: AttrA=`0x3A`, AttrB=`0x1D`, AttrC=`0x69` → `(96,157)` |
+| Path | engine A-side spawn x=48 → DOWN to y=189 → RIGHT to x=192 → UP B-side ladder |
+| Stop | exact play `0x1D` `(96,157)`; reject A-side return `0x3A` |
+| Evidence | `l6_cellar08_continuous` 1/1, 220,280f total; cellar hop 545f |
+| Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
+
+The three prior Gohma-entry reds climbed the A-side ladder at x=48 and
+naturally returned to `0x3A`; they did not cross the tunnel. No corrected
+position target or second write was needed.
+
+### `0x1D` open-south → play `0x2D` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | cellar B-side play `0x1D` `(96,157)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| ROM doors | `0x1D` N/W/E=wall, S=**open**; dest `0x2D` N=open W=**open** |
+| Path | occupancy to `(120,189)` then DOWN; `x=96` DOWN misses south wall and replans |
+| Stop | exact play `0x2D` `(120,77)`; reject `0x1D` / `0x2C` / Gohma `0x1C` |
+| Evidence | `l6_south1d_continuous` 1/1, 220,538f total; south hop 258f |
+| Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
+
+ROM doors continue `0x2D LEFT → 0x2C KEY-UP → 0x1C` Gohma.
+
+### `0x2D` open-west → play `0x2C` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | south1d leftover play `0x2D` `(120,77)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| ROM doors | `0x2D` N/W=**open**, S/E=wall; dest `0x2C` N=**key** E=open |
+| Path | occupancy y=141 then LEFT; leftover y=77 is occupancy ymin (no north halt) |
+| Stop | exact play `0x2C` `(224,141)`; reject `0x2D` / `0x1D` / Gohma `0x1C` |
+| Evidence | `l6_west2d_continuous` 1/1, 220,887f total; west hop 349f; keys stay 4 |
+| Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
+
+PNG leftover is east mouth, north door keyed, south open, west wall.
+KEY-UP `0x2C` → `0x1C` is now live. Do not poke bow/arrows.
+
+### `0x2C` KEY-UP → play `0x1C` Gohma — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | west2d leftover play `0x2C` `(224,141)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| ROM doors | `0x2C` N=**key** S=open W=wall E=open; dest `0x1C` S=**key** N=shutter item=heart |
+| Path | occupancy x-align LEFT from east mouth (grid xmax=232), KEY-UP `(120,93)` |
+| Stop | exact play `0x1C` `(120,205)`; keys 4→3; reject `0x2C` / `0x2D` / south `0x3C` |
+| Evidence | `l6_north2c_continuous` 1/1, 221,280f total; hop 393f; 22 LEFT misses |
+| Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
+
+PNG leftover is Gohma on screen, Link in the south mouth, north shutter
+black. Enter-stop only. Bow=0 arrows=0 — do not fight; do not poke bow.
+`0x0C` north of Gohma is TF `0x20` after the kill. `0x2C` south is `0x3C`,
+not the route.
 
 ### Post-east-key graph (live recon)
 
@@ -678,7 +737,8 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - Clear `0x39` 5× Vire — **live** `--through level6-clear39` leftover `(136,173)`
 - East `0x39` → play `0x3A` — **live** `--through level6-east39` v3 leftover `(16,141)` keys 4
 - Clear `0x3A` — **live** `--through level6-clear3a` leftover `(144,141)`; center 0x68 unpushed
-- Center-block stairs → **Gohma** (one arrow to open eye) — residual (rr-tne2)
+- Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1 with the disclosed position assist
+- `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 4→3; fight residual (bow=0 arrows=0)
 - Heart → Triforce shard 6 (`triforce & 0x20`)
 
 ## Boss / Triforce
@@ -743,7 +803,7 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear3a --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1`
 - Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
 - Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
 - Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
@@ -770,7 +830,10 @@ Not claimed live as pure segments:
 15. Clear `0x39` 5× Vire — **live** v1 leftover `(136,173)`
 16. East `0x39` → play `0x3A` — **live** v3 leftover `(16,141)` keys 4
 17. Clear `0x3A` 3× Like-Like + 4 wizzrobes — **live** v1 leftover `(144,141)`; center 0x68 unpushed
-18. Center-block stairs → Gohma arrow → Heart → TF `0x20` — Gohma needs an arrow; do not poke
+18. Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1; disclosed position assist
+19. South `0x1D` → play `0x2D` — **live** 1/1 leftover `(120,77)` keys=4
+20. `0x2D` west → `0x2C` KEY-UP → Gohma `0x1C` enter — **live** 1/1 leftover `(120,205)` keys 4→3
+21. Gohma kill → Heart → TF `0x20` — residual; bow=0 arrows=0, do not poke
 
 ## Not claimed
 
@@ -778,4 +841,4 @@ Not claimed live as pure segments:
 - Clean east/west wizzrobe combat (beams kill without assist)
 - Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
-- Gohma / triforce bit live (Rod is live; 0x3A clear is live; no arrows)
+- Gohma kill / triforce bit live (Gohma `0x1C` enter is live; bow=0 arrows=0)

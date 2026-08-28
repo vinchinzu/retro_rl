@@ -11,8 +11,8 @@ Section order after BUY_SEEDS::
     → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
     leftover (after plant+water, not 06:08 plan-time hour>=17):
       spa? → CLEAR_BUSHES (10 pick+toss, lanes first) → CLEAR_FENCES
-      (all posts to pond) → CLEAR_STONES (10 to pond) → ENSURE_HAMMER → spa?
-      → CLEAR_ROCKS (4 large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (2)
+      (all posts to pond) → CLEAR_STONES (all to pond) → ENSURE_HAMMER → spa?
+      → CLEAR_ROCKS (all large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (2)
 
 Quota handoffs must not use pocket ``plot_ring`` SUCCESS. Spa inserts when
 stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
@@ -180,41 +180,44 @@ def fence_dump_phase() -> PhaseSpec:
 
 
 def stone_pond_phase() -> PhaseSpec:
-    """Lift ten stones and toss them in F0. Hammer is for 2×2 later."""
+    """Lift every remaining stone and dump it in a pond. Hammer is for 2×2.
+
+    After_Stumps (axe selected, hoe backpack) still lifts; do not stow first.
+    """
     return PhaseSpec(
         "CLEAR_STONES",
         "fence_clear",
         {
-            "timeout": 120000,
-            "max_fences": 10,
+            "timeout": 0,
+            "max_fences": None,
             "corridor_only": False,
             "pond_dump": True,
             "max_steps_per_fence": 2800,
-            "max_failures": 12,
+            "max_failures": 60,
             "debris_types": ["stone"],
         },
         failure_policy="optional",
         required_maps=(0x00,),
-        estimated_frames=90000,
+        estimated_frames=400000,
         failure_modes=("timeout_budget", "no_reachable_fence"),
     )
 
 
 def rock_clear_phase() -> PhaseSpec:
-    """Hammer four distinct large 2×2 rocks."""
+    """Hammer every remaining large 2×2 boulder. Quota 4 was the first slice."""
     return _optional_clear(
         "CLEAR_ROCKS",
         {
-            "timeout": 120000,
+            "timeout": 0,
             "fetch_tools": False,
             "prefer_lift_for_weeds": True,
             "prefer_lift_for_stones": False,
             "priority": ["rock"],
-            "quota": {"large_rocks": 4},
+            "quota": {"large_rocks": 10_000},
             "handoff": "quota",
         },
         required_tools=("hammer",),
-        estimated_frames=90000,
+        estimated_frames=400000,
     )
 
 

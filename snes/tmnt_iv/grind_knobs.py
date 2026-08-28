@@ -1,8 +1,8 @@
-"""Whitelist of policy tunables for local-model grinding experiments.
+"""Whitelist of tunables for local-model grinding experiments.
 
-Production defaults match ``policy.py`` behavior. The local grind runner
-overrides a subset via ``override_knobs`` for short probe trials; winners
-are meant to be ported by hand (or a smarter agent) into production code.
+Production defaults match CombatProfile, SlashTactics, and form-2.
+The local grind runner overrides a subset via ``override_knobs`` for
+short probe trials; winners are ported by hand into production code.
 """
 
 from __future__ import annotations
@@ -51,12 +51,16 @@ class GrindKnobs:
     blocker_charge_timeout: int = 70
     blocker_hit_frames: int = 10
 
-    # Super Shredder form-2 dodge cadence
-    shredder_attack_window: int = 40
-    shredder_dodge_frames: int = 18
-    shredder_post_dodge_attack: int = 36
-    shredder_attack_adx: int = 72
-    shredder_space_adx: int = 24
+    # Super Shredder form-2: offset hold / drop-window chip / hop-behind.
+    # drop_chip_frames = brief Y mash after 0xEE/0xFE drop;
+    # behind_hop_frames = B-hop duration when overlapping his lane;
+    # blind_offset_timeout = aura-up wait fallback when anim is blind.
+    # Do not retune Slash here.
+    shredder_drop_chip_frames: int = 56
+    shredder_behind_hop_frames: int = 12
+    shredder_blind_offset_timeout: int = 48
+    shredder_attack_adx: int = 48
+    shredder_space_adx: int = 20
 
 
 # Bounds prevent catastrophic nonsense from a 12B model.
@@ -85,9 +89,9 @@ KNOB_BOUNDS: dict[str, tuple[int, int]] = {
     "blocker_charge_dx": (10, 40),
     "blocker_charge_timeout": (40, 120),
     "blocker_hit_frames": (4, 24),
-    "shredder_attack_window": (16, 80),
-    "shredder_dodge_frames": (8, 40),
-    "shredder_post_dodge_attack": (16, 64),
+    "shredder_drop_chip_frames": (16, 80),
+    "shredder_behind_hop_frames": (8, 40),
+    "shredder_blind_offset_timeout": (16, 64),
     "shredder_attack_adx": (40, 120),
     "shredder_space_adx": (8, 48),
 }

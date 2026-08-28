@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 from retro_harness.env import get_available_states, make_env, reset_obs
 from retro_harness.actions import idle_action
 from retro_harness.segment_runner import configure_headless
+from tmnt_iv.assist import EMERGENCY_HP_RESTORE
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import ADDR_EVENT, parse_game_state, read_u8
@@ -253,7 +254,7 @@ def record_showcase(
                 for frame in range(1, clip.max_frames + 1):
                     state = parse_game_state(env.get_ram(), frame=frame)
                     if 0 < state.health < 28:
-                        env.set_value("player_hp", 80)
+                        env.set_value("player_hp", EMERGENCY_HP_RESTORE)
                         env.set_value("player_lives", 2)
                         heals += 1
                         state = parse_game_state(env.get_ram(), frame=frame)

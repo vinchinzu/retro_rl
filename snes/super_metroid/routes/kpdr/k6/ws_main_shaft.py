@@ -1,8 +1,8 @@
 """Powered Main Shaft climb loop (rr-kw8t hop 2).
 
-Pit 3-shot, Ice keepaway, save-column wall-jump. Play wrappers and the
-attic door live in ``ws_main_climb``. Product ``west_super`` is y~1675
-in the shaft — not West Super ``0xCDA8``.
+Pit two-hop, Ice keepaway, save-column wall-jump. Dispatch is
+``classify_region`` — stairs leftover is PIT, not the Wave-hole shelf.
+Product ``west_super`` is y~1675 in the shaft — not West Super ``0xCDA8``.
 """
 
 from __future__ import annotations
@@ -20,33 +20,29 @@ from super_metroid.routes.controller_common import (
     unmorph,
     walljump_once,
 )
-from super_metroid.takeoff import spin_jump
-from super_metroid.routes.kpdr.k6.ws_main_actions import (
-    SAVE_LEDGE_Y,
+from super_metroid.routes.kpdr.k6.ws_main_actions import climb_action, three_shot_action
+from super_metroid.routes.kpdr.k6.ws_main_geometry import (
+    MORPH_DROP_BOMB_FRAMES,
+    SAVE_COLUMN_LATCH_X,
     THREE_SHOT_FRAMES,
     TUNNEL_CLEAR_X,
+    WJ_POSES,
     WS_MAIN_SAVE_X,
     WS_MAIN_SHAFT_CENTER,
     WS_MAIN_STAIR_Y,
+    ShaftRegion,
     at_ws_main_attic_door_seat,
-    at_ws_main_left_platform,
-    at_ws_main_pit,
-    climb_action,
-    grate_clear_action,
-    three_shot_action,
-)
-from super_metroid.routes.kpdr.k6.ws_main_grate import (
-    MORPH_DROP_BOMB_FRAMES,
+    at_ws_main_grate_seat,
     at_ws_main_morph_drop,
+    at_ws_main_pit,
+    at_ws_main_save_alcove,
+    at_ws_main_save_column_wj,
+    classify_region,
 )
 from super_metroid.routes.kpdr.k6.ws_main_ice import (
     SHELF_HOLE_FRAMES,
     ice_keepaway_action,
     shelf_covern_ice_action,
-)
-from super_metroid.routes.kpdr.k6.ws_main_phases import (
-    at_ws_main_grate_seat,
-    classify_ws_main_phase,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_WS_ATTIC,
@@ -60,18 +56,12 @@ from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.basic_moves import shoot_up_action
 from super_metroid.routes.skills.charge_shot import session_beam_charge
 from super_metroid.routes.skills.knockback import escape_knockback_spin, is_knockback
+from super_metroid.takeoff import spin_jump
 
 WEAPON_BEAM = 0
 _THREE_SHOT_FRAMES = THREE_SHOT_FRAMES + 40
 _CLIMB_BUDGET = 3600
 _SIDE_TRIP_BUDGET = 400
-# Past the right-lip land (x≤1210) and left of save (x≥1240). Human WJ
-# (1216, 1852) p19; leftover jam (1220, 1843) p77. Peak 1827 is in-band.
-SAVE_COLUMN_WJ_X = (1212, 1232)
-SAVE_COLUMN_WJ_Y = (1701, 1888)
-SAVE_COLUMN_LATCH_X = 1216
-# Same-wall climb on the save-column LEFT face. Short into (long RIGHT
-# walked onto the save ledge at x=1232 and aborted before flip). Kick LEFT.
 SAVE_COLUMN_WJ = WallJumpTiming(
     into="RIGHT",
     flip="LEFT",
@@ -80,10 +70,6 @@ SAVE_COLUMN_WJ = WallJumpTiming(
     flip_frames=14,
     delay_into_frames=0,
 )
-_WJ_POSES = frozenset({19, 20, 132})
-_GROUNDED = frozenset({1, 2, 3, 4, 9, 10})
-_TURN = frozenset({37, 38})
-_CROUCH = frozenset({39, 40})
 
 
 def guard_main_shaft(session: ControllerSession, label: str) -> None:
@@ -178,41 +164,6 @@ def at_attic_climb_done(state: SuperMetroidState) -> bool:
     )
 
 
-def at_ws_main_save_column_wj(state: SuperMetroidState) -> bool:
-    """Air against the save-column LEFT face. Not the save door, not the lip."""
-    pose = int(state.pose)
-    x, y = int(state.samus_x), int(state.samus_y)
-    airborne = (
-        (pose not in _GROUNDED and pose not in _CROUCH)
-        or abs(int(state.velocity_y)) > 1
-    )
-    return (
-        int(state.room_id) == ROOM_WS_MAIN
-        and SAVE_COLUMN_WJ_X[0] <= x < SAVE_COLUMN_WJ_X[1]
-        and SAVE_COLUMN_WJ_Y[0] <= y <= SAVE_COLUMN_WJ_Y[1]
-        and (airborne or pose in _WJ_POSES)
-        and not is_morph(pose)
-        and pose not in _CROUCH
-        # Facing RIGHT = approaching the LEFT face from the shaft. Alcove
-        # leftover (1235, 1851) p10 faces LEFT — do not steal that jump.
-        and int(state.facing) == FACING_RIGHT
-    )
-
-
-def at_ws_main_save_alcove(state: SuperMetroidState) -> bool:
-    """Planted on the save-door alcove ~(1235, 1851). Jump LEFT into the shaft."""
-    pose = int(state.pose)
-    x, y = int(state.samus_x), int(state.samus_y)
-    return (
-        int(state.room_id) == ROOM_WS_MAIN
-        and WS_MAIN_SAVE_X - 16 <= x < WS_MAIN_SAVE_X
-        and SAVE_LEDGE_Y[0] <= y <= SAVE_LEDGE_Y[1]
-        and pose in _GROUNDED | _TURN
-        and abs(int(state.velocity_y)) <= 1
-        and not is_morph(pose)
-    )
-
-
 def save_alcove_jump(session: ControllerSession, label: str) -> None:
     """Cubby ceiling blocks A; still try LEFT so we do not LEFT+B into the wall."""
     st = session.state
@@ -246,10 +197,10 @@ def save_column_walljump(
 
     pose = int(session.state.pose)
     x = int(session.state.samus_x)
-    if pose not in _WJ_POSES and x < SAVE_COLUMN_LATCH_X:
+    if pose not in WJ_POSES and x < SAVE_COLUMN_LATCH_X:
         for _ in range(8):
             st = session.state
-            if _stop(st) or int(st.pose) in _WJ_POSES:
+            if _stop(st) or int(st.pose) in WJ_POSES:
                 break
             if int(st.samus_x) >= SAVE_COLUMN_LATCH_X:
                 break
@@ -286,20 +237,6 @@ def _shelf_hole_buttons(st: SuperMetroidState, shelf_open: int) -> tuple[str, ..
     return ()
 
 
-def _dispatch_pit_shot(session: ControllerSession, st: SuperMetroidState, label: str) -> None:
-    names = three_shot_action(
-        int(st.samus_x),
-        int(st.samus_y),
-        int(st.pose),
-        int(st.facing),
-        int(session.frame),
-        session_beam_charge(session),
-        int(st.movement_type),
-        int(st.velocity_y),
-    )
-    _hold_names(session, names, f"{label}_pit", f"{label}_pit_fire")
-
-
 def _update_lip_hit(
     session: ControllerSession,
     prev_plms: tuple[dict[str, int], ...],
@@ -315,97 +252,20 @@ def _update_lip_hit(
     return lip_hit, cur
 
 
-def _dispatch_west_super_band(
-    session: ControllerSession,
-    st: SuperMetroidState,
-    label: str,
-    shelf_open: int,
-    lip_hit: bool,
-) -> tuple[int, bool]:
-    """Shelf-hole + Ice, then grate-band takeoff. Returns shelf / lip-hit."""
-    x = int(st.samus_x)
-    y = int(st.samus_y)
-    pose = int(st.pose)
-    if at_ws_main_left_platform(x, y, pose, int(st.velocity_y)):
-        if shelf_open < SHELF_HOLE_FRAMES:
-            shelf_open += 1
-            names = _shelf_hole_buttons(st, shelf_open)
-            reason = f"{label}_shelf_stand" if names == ("UP",) else (
-                f"{label}_shelf_face" if names == ("RIGHT",) else (
-                    f"{label}_shelf_hole" if names else f"{label}_shelf_hole_tap"
-                )
-            )
-            _hold_names(session, names, reason, reason)
-            return shelf_open, lip_hit
-        keepaway = shelf_covern_ice_action(
-            x,
-            y,
-            int(st.facing),
-            list_enemies(session),
-            movement_type=int(st.movement_type),
-            charge=session_beam_charge(session),
-            velocity_y=int(st.velocity_y),
-        )
-        if keepaway:
-            hold(session, 1, *keepaway, reason=f"{label}_shelf_ice")
-            return shelf_open, lip_hit
-    grate = grate_clear_action(
-        x,
-        y,
-        pose,
-        int(st.facing),
-        int(session.frame),
-        session_beam_charge(session),
-        int(st.velocity_y),
-        int(st.movement_type),
-        lip_hit,
-    )
-    if grate is not None:
-        reason = f"{label}_lip_up" if grate == shoot_up_action() else (
-            f"{label}_lip_jump" if "A" in grate else (
-                f"{label}_drop_morph" if "DOWN" in grate else f"{label}_grate"
-            )
-        )
-        _hold_names(session, grate, reason, f"{label}_grate_wait")
-        return shelf_open, lip_hit
-    names = climb_action(
-        x,
-        y,
-        pose,
-        int(st.facing),
-        int(st.velocity_y),
-        int(st.movement_type),
-        int(session.frame),
-        lip_hit,
-        session_beam_charge(session),
-    )
-    _hold_names(session, names, f"{label}_climb", f"{label}_wait")
-    return shelf_open, lip_hit
-
-
-def _dispatch_mid_shaft(session: ControllerSession, st: SuperMetroidState, label: str) -> None:
-    keepaway = ice_keepaway_action(
-        int(st.samus_x),
-        int(st.samus_y),
-        int(st.facing),
-        list_enemies(session),
-        movement_type=int(st.movement_type),
-        charge=session_beam_charge(session),
-        velocity_y=int(st.velocity_y),
-    )
-    if keepaway is not None:
-        _hold_names(session, keepaway, f"{label}_ice", f"{label}_ice_wait")
-        return
-    names = climb_action(
-        int(st.samus_x),
-        int(st.samus_y),
-        int(st.pose),
-        int(st.facing),
-        int(st.velocity_y),
-        int(st.movement_type),
-        int(session.frame),
-    )
-    _hold_names(session, names, f"{label}_climb", f"{label}_wait")
+def _climb_reason(
+    label: str, region: ShaftRegion, names: tuple[str, ...]
+) -> str:
+    if names == shoot_up_action():
+        return f"{label}_lip_up"
+    if "DOWN" in names:
+        return f"{label}_drop_morph"
+    if region is ShaftRegion.GRATE_SEAT and "A" in names:
+        return f"{label}_lip_jump"
+    if region is ShaftRegion.PIT:
+        return f"{label}_pit" if names else f"{label}_pit_fire"
+    if names:
+        return f"{label}_climb"
+    return f"{label}_wait"
 
 
 def climb_until(
@@ -447,7 +307,6 @@ def climb_until(
             if mx > TUNNEL_CLEAR_X and my < WS_MAIN_STAIR_Y:
                 hold(session, 1, "LEFT", reason=f"{label}_roll")
             elif my < WS_MAIN_STAIR_Y:
-                # UP only — generic unmorph A-settle idles over the gap.
                 hold(session, 1, "UP", reason=f"{label}_unmorph")
             else:
                 unmorph(session)
@@ -458,25 +317,72 @@ def climb_until(
         if at_ws_main_save_column_wj(st):
             save_column_walljump(session, label, done)
             continue
-        phase = classify_ws_main_phase(st)
-        y = int(st.samus_y)
-        # Floor fall-recovery is pit_shot. y>=1760 leftover (shelf / lip /
-        # grate) is the west_super takeoff band — not the y~1675 hop.
-        if (
-            phase == "pit_shot"
-            and at_ws_main_pit(st)
-            and not at_ws_main_grate_seat(st)
-            and y >= WS_MAIN_STAIR_Y
-        ):
-            _dispatch_pit_shot(session, st, label)
-            continue
-        if phase == "grate_seat" or y >= 1760:
-            lip_hit, prev_plms = _update_lip_hit(session, prev_plms, lip_hit)
-            shelf_open, lip_hit = _dispatch_west_super_band(
-                session, st, label, shelf_open, lip_hit
+        lip_hit, prev_plms = _update_lip_hit(session, prev_plms, lip_hit)
+        x, y = int(st.samus_x), int(st.samus_y)
+        pose = int(st.pose)
+        region = classify_region(st, lip_hit=lip_hit)
+        if region is ShaftRegion.SHELF:
+            if shelf_open < SHELF_HOLE_FRAMES:
+                shelf_open += 1
+                names = _shelf_hole_buttons(st, shelf_open)
+                reason = (
+                    f"{label}_shelf_stand"
+                    if names == ("UP",)
+                    else (
+                        f"{label}_shelf_face"
+                        if names == ("RIGHT",)
+                        else (
+                            f"{label}_shelf_hole"
+                            if names
+                            else f"{label}_shelf_hole_tap"
+                        )
+                    )
+                )
+                _hold_names(session, names, reason, reason)
+                continue
+            keepaway = shelf_covern_ice_action(
+                x,
+                y,
+                int(st.facing),
+                list_enemies(session),
+                movement_type=int(st.movement_type),
+                charge=session_beam_charge(session),
+                velocity_y=int(st.velocity_y),
             )
-            continue
-        _dispatch_mid_shaft(session, st, label)
+            if keepaway:
+                hold(session, 1, *keepaway, reason=f"{label}_shelf_ice")
+                continue
+        elif region is ShaftRegion.SHAFT:
+            keepaway = ice_keepaway_action(
+                x,
+                y,
+                int(st.facing),
+                list_enemies(session),
+                movement_type=int(st.movement_type),
+                charge=session_beam_charge(session),
+                velocity_y=int(st.velocity_y),
+            )
+            if keepaway is not None:
+                _hold_names(session, keepaway, f"{label}_ice", f"{label}_ice_wait")
+                continue
+        names = climb_action(
+            x,
+            y,
+            pose,
+            int(st.facing),
+            int(st.velocity_y),
+            int(st.movement_type),
+            int(session.frame),
+            lip_hit,
+            session_beam_charge(session),
+            region=region,
+        )
+        _hold_names(
+            session,
+            names,
+            _climb_reason(label, region, names),
+            f"{label}_wait",
+        )
     if int(session.state.room_id) != ROOM_WS_ATTIC and not done(session.state):
         raise TimeoutError(f"{label}: did not reach phase seat: {session.state}")
 
@@ -484,8 +390,6 @@ def climb_until(
 __all__ = [
     "SAVE_COLUMN_LATCH_X",
     "SAVE_COLUMN_WJ",
-    "SAVE_COLUMN_WJ_X",
-    "SAVE_COLUMN_WJ_Y",
     "WEAPON_BEAM",
     "at_attic_climb_done",
     "at_ws_main_save_alcove",

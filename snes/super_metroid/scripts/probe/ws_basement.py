@@ -32,6 +32,7 @@ from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
 from super_metroid.routes.kpdr import wrecked_ship as ws
+from super_metroid.routes.kpdr.room_ids import ROOM_WS_MAP
 
 SCRATCH = GAME_DIR / "scratch"
 DEFAULT_SOURCE = SCRATCH / "post_ws_main_to_basement.state"
@@ -42,7 +43,6 @@ DEFAULT_BEFORE = SCRATCH / "ws_basement_to_phantoon_before.json"
 DEFAULT_DUMP = SCRATCH / "ws_basement_to_phantoon_dump.json"
 BOOT_SETTLE = 5
 
-ROOM_WS_MAP = 0xCCCB
 FALLING_POSES = frozenset({23, 24, 25, 26, 29, 30})
 
 
