@@ -12,7 +12,7 @@ Hybrid policy surface (raise abstraction without dropping raw timing):
 - :func:`collect_item_mask` — wait for PLM item bit
 - :func:`wait_ordinary_room` — multi-truth settle (room + phase + door)
 - :func:`walljump_once` / :func:`consecutive_walljumps` — room-agnostic WJ
-  pulses (Bubble Phase D, post-Torizo Parlor Alcatraz climb, …)
+  pulses (Bubble Phase D, Spazer, …)
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ _hold = hold
 # 65=0x41, 66=0x42 ground/move. Expand from live logs only.
 MORPH_POSES = frozenset({29, 30, 31, 32, 49, 50, 65, 66})
 
-# Wall-latch pose (ready to wall-jump). Shared across Bubble, Parlor, Spazer.
+# Wall-latch pose (ready to wall-jump). Shared across Bubble, Alcatraz, Spazer.
 POSE_WALL_LATCH = 132
 
 

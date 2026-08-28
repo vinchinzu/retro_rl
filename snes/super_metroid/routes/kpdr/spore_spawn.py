@@ -3,9 +3,7 @@
 The room sequence is pre-calculated from the Super Metroid editor export.  This
 module owns movement and combat only: it reads typed state and emits ordinary
 12-button controller actions.  It never loads emulator state or writes RAM.
-
-Parlor left (Alcatraz) climb after Bomb Torizo reuses the shared wall-jump
-skill from :mod:`controller_common` (same pulse shape as Bubble Phase D).
+The post-Torizo escape is owned by :mod:`kpdr.alcatraz_escape`.
 """
 
 from __future__ import annotations
@@ -15,17 +13,16 @@ from dataclasses import asdict, dataclass
 from super_metroid.ram import GameplayPhase
 from super_metroid.routes.controller_common import (
     WallJumpTiming,
-    consecutive_walljumps,
     hold_until,
     require_room,
-    settle_hold,
+    wait_ordinary_room,
 )
+from super_metroid.routes.kpdr.alcatraz_escape import play_alcatraz_escape
+from super_metroid.routes.kpdr.room_ids import ROOM_TERMINATOR
 from super_metroid.routes.runtime import ControllerSession, hold
 
-# Post-Torizo Alcatraz chimney (pre-Hi-Jump): open-loop into-wall + A pulses.
-# Frame-matched to the legacy RIGHT×6 / LEFT×2 holds; expressed as named
-# WallJumpTiming so the skill is visible on the continuous spine (second
-# consumer after Bubble R15 double WJ).
+# Legacy right-side Parlor route retained for the in-progress Gauntlet side
+# quest. The clean/main Spore spine uses the shorter Alcatraz escape module.
 _PARLOR_CHIMNEY_RIGHT = WallJumpTiming(
     into="RIGHT",
     flip="RIGHT",
@@ -128,74 +125,7 @@ def play_parlor_to_main_shaft(session: ControllerSession) -> None:
     _require_room(session, 0x92FD, "post-Torizo entry")
     if not session.state.bombs or session.state.max_missiles < 10:
         raise RuntimeError(f"post-Torizo capabilities missing: {session.state}")
-    if session.state.samus_x > 956:
-        alignment_frames = 10 if session.state.pose == 2 else 15
-        hold(
-            session,
-            alignment_frames,
-            "LEFT",
-            reason="post_torizo_parlor_alignment",
-        )
-        hold(session, 10, reason="post_torizo_parlor_alignment")
-    if not (
-        948 <= session.state.samus_x <= 954
-        and session.state.samus_y == 651
-        and session.state.pose == 2
-    ):
-        raise RuntimeError(f"post-Torizo Parlor alignment missed: {session.state}")
-
-    for _ in range(2):
-        hold(session, 20, "LEFT", "A", "B", "X", reason="parlor_left_traverse")
-        hold(session, 12, "LEFT", "B", "X", reason="parlor_left_traverse")
-    hold(session, 50, reason="parlor_left_traverse_settle")
-    # Alcatraz left climb: shared consecutive wall-jump skill (visible WJ).
-    consecutive_walljumps(
-        session,
-        _PARLOR_CHIMNEY_WJ,
-        reason="parlor_chimney_wj",
-        gap_frames=_PARLOR_CHIMNEY_GAP,
-    )
-    # Final pulse had no trailing gap in the old open-loop (gap only between);
-    # add one post-chain settle matching the last idle of the old 8×(30+12).
-    settle_hold(session, _PARLOR_CHIMNEY_GAP, reason="parlor_chimney_wj_tail")
-    hold(session, 100, reason="parlor_chimney_settle")
-    hold(session, 30, "LEFT", "A", reason="parlor_upper_platforms")
-    hold(session, 30, "LEFT", reason="parlor_upper_platforms")
-    hold(session, 60, reason="parlor_upper_platforms")
-    hold(session, 40, "LEFT", "A", reason="parlor_upper_platforms")
-    hold(session, 100, reason="parlor_upper_platforms")
-    for names, frames in (
-        (("RIGHT", "A"), 30),
-        (("RIGHT",), 15),
-        (("LEFT",), 10),
-        ((), 100),
-        (("RIGHT", "A"), 10),
-        (("RIGHT",), 40),
-        (("LEFT",), 10),
-        ((), 100),
-        (("RIGHT", "A"), 20),
-        (("RIGHT",), 30),
-        ((), 100),
-        (("LEFT", "A"), 40),
-        (("LEFT",), 16),
-        ((), 30),
-        (("RIGHT", "B"), 21),
-        (("RIGHT", "A", "B"), 8),
-        (("LEFT",), 8),
-        (("LEFT", "A"), 50),
-        ((), 40),
-        (("RIGHT", "A"), 35),
-        ((), 100),
-    ):
-        hold(session, frames, *names, reason="parlor_upper_platforms")
-    hold(session, 2, "DOWN", reason="parlor_bomb_tunnel_morph")
-    hold(session, 3, reason="parlor_bomb_tunnel_morph")
-    hold(session, 2, "DOWN", reason="parlor_bomb_tunnel_morph")
-    hold(session, 10, reason="parlor_bomb_tunnel_morph")
-    for _ in range(10):
-        hold(session, 45, "RIGHT", "X", reason="parlor_bomb_tunnel")
-        hold(session, 15, "RIGHT", reason="parlor_bomb_tunnel")
-    hold(session, 100, reason="parlor_bomb_tunnel_settle")
+    play_alcatraz_escape(session)
     for _ in range(9):
         hold(session, 50, "LEFT", "A", "B", "X", reason="parlor_terminator_exit")
         hold(session, 10, "LEFT", "B", "X", reason="parlor_terminator_exit")
@@ -207,7 +137,12 @@ def play_parlor_to_main_shaft(session: ControllerSession) -> None:
     for _ in range(8):
         hold(session, 45, "LEFT", "X", reason="terminator_bomb_tunnel")
         hold(session, 15, "LEFT", reason="terminator_bomb_tunnel")
-    _require_room(session, 0x990D, "Terminator traversal")
+    wait_ordinary_room(
+        session,
+        ROOM_TERMINATOR,
+        settle_frames=240,
+        label="terminator_traversal",
+    )
 
     for _ in range(7):
         hold(session, 50, "LEFT", "A", "B", "X", reason="terminator_energy_tank")
