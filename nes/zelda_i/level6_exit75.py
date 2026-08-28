@@ -14,6 +14,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.level6_occupancy import l6_leftover
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_ROD_WIZZ_ROOM
 from zelda_i.level6_rod import (
     ROD_75_ALIGN_TOL,
@@ -63,13 +64,13 @@ class Level6Exit75Controller:
     mouth_idle: int = 0
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "rod", 0))
+        return int(snap.rod)
 
     def _bow(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "bow", 0))
+        return int(snap.bow)
 
     def _arrows(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "arrows", 0))
+        return int(snap.arrows)
 
     def _play_09(self, snap: ZeldaSnapshot) -> bool:
         return (
@@ -84,18 +85,9 @@ class Level6Exit75Controller:
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
+            **l6_leftover(snap),
             "submode": int(snap.submode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": self._rod(snap),
-            "bow": self._bow(snap),
-            "arrows": self._arrows(snap),
-            "keys": int(snap.keys),
             "map": int(snap.map),
-            "triforce": int(snap.triforce),
         }
         if force or self.frames <= 2 or self.frames % EXIT_75_SAMPLE_PERIOD == 0:
             self.samples.append(
@@ -243,5 +235,5 @@ def level6_exit75_success(snap: ZeldaSnapshot) -> bool:
         and not snap.transitioning
         and snap.screen == LEVEL6_ROD_WIZZ_ROOM
         and snap.triforce == 0x1F
-        and int(getattr(snap, "rod", 0)) != 0
+        and snap.rod != 0
     )

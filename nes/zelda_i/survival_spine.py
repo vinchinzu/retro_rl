@@ -495,8 +495,10 @@ def run_survival_spine(
         return run
 
     if through in ("level1-bow", "level1-bow-cellar"):
-        # Side branch. Default --through level2+ skips it (Gohma still needs
-        # L1 bow). Catalog: zelda_i.dungeon_treasures.
+        # Side branch until cellar + walked ADDR_BOW + return play 0x23.
+        # Splice into --through level1 / level2+ sits after clear23_key,
+        # before backtrack44. Do not insert a red hop.
+        # Catalog: zelda_i.dungeon_treasures.
         cellar = through == "level1-bow-cellar"
         if not _run_stages(
             env,

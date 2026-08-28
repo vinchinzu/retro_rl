@@ -8,12 +8,17 @@ from zelda_i.level1_bow import LEVEL1_BOW_ROOM
 from zelda_i.level1_bow_cellar import (
     BLOCK_OBJECT_TYPE,
     EAST_INLAND_X,
-    SOUTH_LANE_Y,
-    WEST_AISLE_X,
+    SOUTH_FACE_Y,
+    SOUTH_GAP_X,
+    SOUTH_MOUTH_Y,
+    STAIRS_STAND_X,
+    STAIRS_STAND_Y,
+    VACATED_SLOT_Y,
+    CellarPhase,
     level1_bow_cellar_stages,
     level1_bow_cellar_success,
     make_bow_cellar_controller,
-    north_face_stand,
+    south_face_stand,
     westmost_block_0x68,
 )
 from zelda_i.ram import (
@@ -66,7 +71,7 @@ def test_bow_cellar_through_is_wired_after_enter_stop() -> None:
     assert run.report()["stop"] == "level1_bow_cellar"
 
 
-def test_bow_cellar_occupancy_south_around_then_down() -> None:
+def test_bow_cellar_uses_stable_south_face_to_push_west_block_up() -> None:
     from retro_harness.nes import nes_action
 
     leftover = _ram(x=224, y=141)
@@ -81,38 +86,74 @@ def test_bow_cellar_occupancy_south_around_then_down() -> None:
     peel = make_bow_cellar_controller()
     act = peel.step(read_snapshot(inland))
     assert act.reason == "south_peel"
-    assert SOUTH_LANE_Y == 157
     assert list(act.action) == list(nes_action("DOWN"))
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("LEFT"))
-    # south173 leftover: LEFT at y=173 is the SE diamond. Peel stops at 157.
-    south = _ram(x=EAST_INLAND_X, y=SOUTH_LANE_Y)
-    _plant_block(south, 4, 96, 144)
-    west = make_bow_cellar_controller()
-    act = west.step(read_snapshot(south))
-    assert act.reason == "west_south"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("DOWN"))
-    aisle = _ram(x=WEST_AISLE_X, y=SOUTH_LANE_Y)
-    _plant_block(aisle, 4, 96, 144)
-    climb = make_bow_cellar_controller()
-    act = climb.step(read_snapshot(aisle))
-    assert act.reason == "north_aisle"
-    assert list(act.action) == list(nes_action("UP"))
-    lane = _ram(x=WEST_AISLE_X, y=128)
-    _plant_block(lane, 4, 96, 144)
+    mouth = _ram(x=EAST_INLAND_X, y=SOUTH_MOUTH_Y)
+    _plant_block(mouth, 4, 96, 144)
     across = make_bow_cellar_controller()
-    act = across.step(read_snapshot(lane))
-    assert act.reason == "east_face"
-    assert list(act.action) == list(nes_action("RIGHT"))
-    face = north_face_stand(westmost_block_0x68(read_snapshot(leftover)))
-    assert face == (96, 128)
-    at_face = _ram(x=96, y=128)
+    act = across.step(read_snapshot(mouth))
+    assert act.reason == "south_gap"
+    assert list(act.action) == list(nes_action("LEFT"))
+    gap = _ram(x=SOUTH_GAP_X, y=SOUTH_MOUTH_Y)
+    _plant_block(gap, 4, 96, 144)
+    face = make_bow_cellar_controller()
+    act = face.step(read_snapshot(gap))
+    assert act.reason == "south_face"
+    assert list(act.action) == list(nes_action("UP"))
+    clip = _ram(x=SOUTH_GAP_X, y=SOUTH_FACE_Y)
+    _plant_block(clip, 4, 96, 144)
+    southwest = make_bow_cellar_controller()
+    act = southwest.step(read_snapshot(clip))
+    assert act.reason == "southwest_clip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+    face = south_face_stand(westmost_block_0x68(read_snapshot(leftover)))
+    assert face == (96, 157)
+    at_face = _ram(x=96, y=157)
     _plant_block(at_face, 4, 96, 144)
     push = make_bow_cellar_controller()
     act = push.step(read_snapshot(at_face))
     assert act.reason == "push_block"
-    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_bow_cellar_heads_to_center_stairs_after_block_moves() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+
+    ctl = make_bow_cellar_controller()
+    ctl.phase = CellarPhase.TO_STAIRS
+    ctl.block_x0 = 96
+    ctl.block_y0 = VACATED_SLOT_Y
+    # Live leftover after UP-push: Link (96,149), block (96,128).
+    leftover = _ram(x=96, y=149)
+    _plant_block(leftover, 4, 96, 128)
+    act = ctl.step(read_snapshot(leftover))
+    assert act.reason == "stairs_slot"
+    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+
+    east = _ram(x=96, y=VACATED_SLOT_Y)
+    _plant_block(east, 4, 96, 128)
+    act = ctl.step(read_snapshot(east))
+    assert act.reason == "stairs_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+    short = _ram(x=126, y=STAIRS_STAND_Y)
+    _plant_block(short, 4, 96, 128)
+    act = ctl.step(read_snapshot(short))
+    assert act.reason == "stairs_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert act.reason != "stairs_idle"
+
+    north = _ram(x=STAIRS_STAND_X, y=157)
+    _plant_block(north, 4, 96, 128)
+    act = ctl.step(read_snapshot(north))
+    assert act.reason == "stairs_north"
+    assert list(act.action) == list(nes_action("UP"))
+
+    stairs = _ram(x=STAIRS_STAND_X, y=STAIRS_STAND_Y)
+    _plant_block(stairs, 4, 96, 128)
+    act = ctl.step(read_snapshot(stairs))
+    assert act.reason == "stairs_idle"
+    assert list(act.action) == list(nes_idle_action())
 
 
 def test_bow_cellar_requires_mode_9_not_play_22() -> None:

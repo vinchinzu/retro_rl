@@ -16,7 +16,7 @@ Recon table below is the live door map; dungeon geometry lives in
 
 | Level | Name | Door screen (hex) | Entry room | Evidence | Required items (to *enter*) | TF bit | Item inside | Local route doc |
 |------:|------|-------------------|------------|----------|-----------------------------|--------|-------------|-----------------|
-| 1 | Eagle | **`0x37`** | **`0x73`** | **verified** Clean | wooden sword | `0x01` | Bow (optional) | [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md) |
+| 1 | Eagle | **`0x37`** | **`0x73`** | **verified** Clean | wooden sword | `0x01` | Bow (**required** for Gohma; default spine still skips) | [LEVEL1_ROUTE.md](LEVEL1_ROUTE.md) |
 | 2 | Moon | **`0x3C`** | **`0x7d`** | **verified** assisted/geometry; Clean health open | wooden sword; TF1 for natural chain | `0x02` | Magical Boomerang | [LEVEL2_ROUTE.md](LEVEL2_ROUTE.md) |
 | 3 | Manji | **`0x74`** | **`0x7c`** | **verified** assisted; `Level3Entrance.state` (source ↑L×4 path **blocked** at 0x67) | wooden sword | `0x04` | Raft | [LEVEL3_ROUTE.md](LEVEL3_ROUTE.md) |
 | 4 | Snake | **`0x45`** | **`0x71`** | **live** raft dock `0x55` → island `0x45` (rr-0fx) | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |

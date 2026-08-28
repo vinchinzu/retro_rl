@@ -4,6 +4,7 @@ Primary reference: HappyLee warps TASVideos #1715M (04:57.31 power-on /
 04:54.032 RTA). Community RTA-rules movies also work.
 
 ```bash
+# Accepts .fm2 or NesHawk .bk2 (``*.fm2.bk2``). 32-exit: warpless #3728M.
 # Parse + write continuous seed from vendored HappyLee movie
 uv run python -m smb.scripts.import_fm2 \\
   nes/smb/tas/ref/happylee_warps_1715M.fm2 \\
@@ -47,7 +48,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 from smb.paths import GAME_DIR, MODELS_DIR, RECORDINGS_DIR
 from smb.policy import compress_nes9_rle, expand_nes9_rle
 from smb.ram import read_snapshot, reached_ending
-from smb.tas.fm2 import fm2_to_nes9_frames, frames_to_nes9_rle_payload, parse_fm2
+from smb.tas.fm2 import frames_to_nes9_rle_payload, parse_movie
 from smb.tas.replay import IDLE, to_action9
 from smb.timing import NTSC_FPS, build_timing_block, format_time
 
@@ -827,7 +828,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"missing fm2: {args.fm2}", file=sys.stderr)
         return 2
 
-    movie = parse_fm2(args.fm2)
+    movie = parse_movie(args.fm2)
     summary = movie.summary()
     print(json.dumps(summary, indent=2))
 

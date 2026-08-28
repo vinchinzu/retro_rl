@@ -686,6 +686,7 @@ def main() -> None:
             "frog-save-to-speedway",
             "speedway-to-farm",
             "ws-basement-to-main",
+            "ws-main-to-attic",
         ),
     )
     add_headed_flag(pure)

@@ -5,6 +5,7 @@ One recorder surface for continuous / showcase MP4s:
 - nearest-neighbor scale, x264 quality knobs (``crf`` / ``preset`` / ``fps``)
 - optional stereo s16le audio mux from ``env.em.get_audio()``
 - optional bottom footer with frame clock + pressed buttons
+- ``layout="youtube"``: 1920x1080 pad + Twitch-style button sidebars
 - optional start gate (skip until frame N, or until a room id latches)
 
 Game packages should only supply presets (paths, room ids, default cutoffs),
@@ -25,6 +26,12 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from retro_harness.controls import pressed_nes_buttons, pressed_snes_buttons
+from retro_harness.video_layout import (
+    YOUTUBE_HEIGHT,
+    YOUTUBE_WIDTH,
+    compose_youtube_frame,
+    fit_integer_scale,
+)
 
 FOOTER_HEIGHT = 16
 
@@ -51,12 +58,24 @@ class VideoCaptureConfig:
     footer: bool = True
     start_frame: int | None = None
     start_room_id: int | None = None
+    # ``native`` = source * scale (+ optional footer). ``youtube`` = 16:9
+    # canvas with Twitch-style button sidebars (YouTube 60 fps ladder).
+    layout: str = "native"
+    canvas_width: int | None = None
+    canvas_height: int | None = None
+    buttons: str = "snes"
 
     def __post_init__(self) -> None:
         if self.fps <= 0:
             raise ValueError("fps must be positive")
-        if self.scale < 1:
-            raise ValueError("scale must be >= 1")
+        if self.scale < 0:
+            raise ValueError("scale must be >= 0 (0 = auto-fit youtube canvas)")
+        if self.layout == "native" and self.scale < 1:
+            raise ValueError("native layout requires scale >= 1")
+        if self.layout not in ("native", "youtube"):
+            raise ValueError(f"unknown video layout: {self.layout!r}")
+        if self.buttons not in ("snes", "nes"):
+            raise ValueError(f"unknown buttons layout: {self.buttons!r}")
         if not 0 <= self.crf <= 51:
             raise ValueError("crf must be in 0..51")
         if self.start_frame is not None and self.start_frame < 0:
@@ -76,6 +95,28 @@ class VideoCaptureConfig:
         base.update(overrides)
         return cls(**base)
 
+    @classmethod
+    def youtube(cls, **overrides: Any) -> VideoCaptureConfig:
+        """1080p60 padded capture so YouTube keeps 60 fps.
+
+        Gameplay is integer NN-scaled into 1920x1080 with controller
+        sidebars. ``scale=0`` auto-fits the canvas. No 16 px footer and
+        no intro card — those are opt-in on the native layout.
+        """
+        base: dict[str, Any] = dict(
+            fps=60,
+            scale=0,
+            crf=17,
+            preset="veryfast",
+            audio=True,
+            footer=False,
+            layout="youtube",
+            canvas_width=YOUTUBE_WIDTH,
+            canvas_height=YOUTUBE_HEIGHT,
+        )
+        base.update(overrides)
+        return cls(**base)
+
     def to_dict(self) -> dict[str, object]:
         return {
             "fps": self.fps,
@@ -87,6 +128,10 @@ class VideoCaptureConfig:
             "footer": self.footer,
             "start_frame": self.start_frame,
             "start_room_id": self.start_room_id,
+            "layout": self.layout,
+            "canvas_width": self.canvas_width,
+            "canvas_height": self.canvas_height,
+            "buttons": self.buttons,
         }
 
 
@@ -282,13 +327,21 @@ class FrameVideoWriter:
         audio_rate: int | float | None = None,
         audio_bitrate: str = "192k",
         footer: bool = False,
+        layout: str = "native",
+        canvas_width: int | None = None,
+        canvas_height: int | None = None,
+        buttons: str = "snes",
     ) -> None:
         if width <= 0 or height <= 0:
             raise ValueError("frame dimensions must be positive")
         if fps <= 0:
             raise ValueError("fps must be positive")
-        if scale < 1:
-            raise ValueError("scale must be >= 1")
+        if scale < 0:
+            raise ValueError("scale must be >= 0")
+        if layout not in ("native", "youtube"):
+            raise ValueError(f"unknown video layout: {layout!r}")
+        if layout == "native" and scale < 1:
+            raise ValueError("native layout requires scale >= 1")
         if audio_rate is not None and audio_rate <= 0:
             raise ValueError("audio_rate must be positive")
 
@@ -304,13 +357,28 @@ class FrameVideoWriter:
         self.scale = scale
         self.crf = crf
         self.preset = preset
-        self.footer = footer
+        self.footer = footer and layout == "native"
+        self.layout = layout
+        self.buttons = buttons
+        self.canvas_width = canvas_width or YOUTUBE_WIDTH
+        self.canvas_height = canvas_height or YOUTUBE_HEIGHT
         self.audio_rate = int(audio_rate) if audio_rate is not None else None
         self.audio_bitrate = audio_bitrate
         self.audio_bytes_written = 0
         self.frames = 0
         self.frames_written = 0  # alias used by showcase / golf callers
-        self._src_height = height + FOOTER_HEIGHT if footer else height
+        if layout == "youtube":
+            self.scale = scale or fit_integer_scale(
+                width, height, self.canvas_width, self.canvas_height
+            )
+            self._pipe_width = self.canvas_width
+            self._pipe_height = self.canvas_height
+            self._vf_scale = 1
+        else:
+            self._pipe_width = width
+            self._pipe_height = height + FOOTER_HEIGHT if self.footer else height
+            self._vf_scale = scale
+        self._src_height = self._pipe_height
         self._video_path = self.path
         self._audio_handle = None
         self._audio_path: Path | None = None
@@ -343,13 +411,13 @@ class FrameVideoWriter:
             "-pixel_format",
             "rgb24",
             "-video_size",
-            f"{width}x{self._src_height}",
+            f"{self._pipe_width}x{self._pipe_height}",
             "-framerate",
             str(fps),
             "-i",
             "-",
             "-vf",
-            f"scale=iw*{scale}:ih*{scale}:flags=neighbor",
+            f"scale=iw*{self._vf_scale}:ih*{self._vf_scale}:flags=neighbor",
             "-an",
             "-c:v",
             "libx264",
@@ -372,6 +440,7 @@ class FrameVideoWriter:
         if self._process.stdin is None:
             raise RuntimeError("ffmpeg did not expose stdin")
         self._stdin: BinaryIO = self._process.stdin
+        self._finalized = False
 
     def write(
         self,
@@ -390,8 +459,19 @@ class FrameVideoWriter:
                 f"frame size {rgb.shape[1]}x{rgb.shape[0]} != "
                 f"{self.width}x{self.height}"
             )
-        if self.footer:
-            idx = self.frames if frame_index is None else frame_index
+        idx = self.frames if frame_index is None else frame_index
+        if self.layout == "youtube":
+            rgb = compose_youtube_frame(
+                rgb,
+                action=action,
+                frame=idx,
+                fps=self.fps,
+                buttons=self.buttons,
+                canvas_width=self.canvas_width,
+                canvas_height=self.canvas_height,
+                scale=self.scale,
+            )
+        elif self.footer:
             rgb = render_button_footer(
                 rgb,
                 action=action,
@@ -410,9 +490,11 @@ class FrameVideoWriter:
 
     def close(self) -> Path:
         """Finalize the MP4 (mux audio if present) and return the path."""
-        if self._stdin.closed:
+        if self._finalized:
             return self.path
-        self._stdin.close()
+        self._finalized = True
+        if not self._stdin.closed:
+            self._stdin.close()
         stderr = b""
         if self._process.stderr is not None:
             stderr = self._process.stderr.read()
@@ -436,6 +518,43 @@ class FrameVideoWriter:
             finally:
                 self._cleanup_temporary_files()
         return self.path
+
+    def abort(self) -> None:
+        """Close a failed capture without publishing the output MP4.
+
+        Temporary encode/audio files are deleted. Direct-to-path encodes
+        (no audio) are unlinked; a pre-existing output is left alone when
+        audio mux has not yet written ``self.path``.
+        """
+        if self._finalized:
+            return
+        self._finalized = True
+        wrote_direct = self._video_path == self.path
+        try:
+            if not self._stdin.closed:
+                self._stdin.close()
+        except Exception:
+            pass
+        if self._process.poll() is None:
+            self._process.kill()
+            try:
+                self._process.wait(timeout=8)
+            except Exception:
+                pass
+        if self._process.stderr is not None:
+            try:
+                self._process.stderr.read()
+            except Exception:
+                pass
+        if self._audio_handle is not None:
+            try:
+                self._audio_handle.close()
+            except Exception:
+                pass
+            self._audio_handle = None
+        self._cleanup_temporary_files()
+        if wrote_direct:
+            self.path.unlink(missing_ok=True)
 
     def _mux_audio(self) -> None:
         assert self.audio_rate is not None
@@ -493,6 +612,9 @@ class FrameVideoWriter:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        if exc_type is not None:
+            self.abort()
+            return
         self.close()
 
 
@@ -532,6 +654,10 @@ class VideoRecorder:
             audio_rate=resolved_rate if self.config.audio else None,
             audio_bitrate=self.config.audio_bitrate,
             footer=self.config.footer,
+            layout=self.config.layout,
+            canvas_width=self.config.canvas_width,
+            canvas_height=self.config.canvas_height,
+            buttons=self.config.buttons,
         )
 
     @property
@@ -603,10 +729,17 @@ class VideoRecorder:
     def close(self) -> Path:
         return self._writer.close()
 
+    def abort(self) -> None:
+        """Close a failed capture without publishing the output MP4."""
+        self._writer.abort()
+
     def __enter__(self) -> VideoRecorder:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        if exc_type is not None:
+            self.abort()
+            return
         self.close()
 
 

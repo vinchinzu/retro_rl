@@ -12,6 +12,9 @@ grill or design actually resolves terms.
 - [Super Metroid](snes/super_metroid/CONTEXT.md): Survival skill API that plays
   any% KPDR (noob loadout) from power-on through credits; living tip is
   Phantoon; first credits may be a two-hour class, then rewrite; 100% is later
+- [TMNT IV](snes/tmnt_iv/CONTEXT.md): Continuous Hard power-on through staff
+  credits; assisted Bronze first, Clean (pizza-only) in parallel; maturity
+  stays M8
 
 ## Relationships
 
@@ -24,6 +27,9 @@ grill or design actually resolves terms.
   power-on credits, then rewrite). Harvest Finish is Clean; Super Metroid first
   pass keeps Survival because the game is harder. Solver/SMZ3 is downstream of
   vanilla credits.
+- **TMNT IV → program glossary**: First credits is **assisted** (emergency HP
+  + form-2 iframe). **Clean** is pizza-only, a parallel track, not a new
+  maturity gate. M8 stays. **Pizza** is play, not an Assist.
 - **Scratch → Tip**: Scratch duals may lead the living tip. Phantoon was
   scratch and is now the tip. Gravity is get-ahead until it is power-on on
   that tip. Rung green is power-on.

@@ -162,7 +162,7 @@ class HotSpringStaminaTask(Task):
     """
 
     name: str = "hot_spring_stamina"
-    # None = soak until current >= max (full restore).
+    # None = soak until current == max (full restore).
     min_stamina: int | None = None
     return_to_farm: bool = True
     tasks_dir: str = TASKS_DIR

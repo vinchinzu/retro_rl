@@ -94,7 +94,12 @@ ROOM_MOAT = 0x95FF
 ROOM_WEST_OCEAN = 0x93FE
 ROOM_WS_ENTRANCE = 0xCA08  # Wrecked Ship Entrance (over-ocean spark)
 ROOM_WS_MAIN = 0xCAF6  # Wrecked Ship Main Shaft
+ROOM_WS_ATTIC = 0xCA52  # Wrecked Ship Attic
 ROOM_WS_BASEMENT = 0xCC6F  # Wrecked Ship Basement (Gadora)
+ROOM_WS_MAP = 0xCCCB  # Wrecked Ship Map Room (left of Basement)
+ROOM_WS_WEST_SUPER = 0xCDA8  # West Super Missile (Main Shaft side trip)
+ROOM_WS_SAVE = 0xCE8A  # Wrecked Ship Save (Main Shaft right)
+ROOM_WS_SPONGE = 0xCD5C  # Sponge Bath (Main Shaft left)
 ROOM_PHANTOON = 0xCD13  # Phantoon's Room
 
 __all__ = [
@@ -173,6 +178,11 @@ __all__ = [
     "ROOM_WEST_OCEAN",
     "ROOM_WS_ENTRANCE",
     "ROOM_WS_MAIN",
+    "ROOM_WS_ATTIC",
     "ROOM_WS_BASEMENT",
+    "ROOM_WS_MAP",
+    "ROOM_WS_WEST_SUPER",
+    "ROOM_WS_SAVE",
+    "ROOM_WS_SPONGE",
     "ROOM_PHANTOON",
 ]

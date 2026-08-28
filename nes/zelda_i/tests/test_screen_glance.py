@@ -7,9 +7,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from zelda_i.chain import ControllerStageResult
-from zelda_i.ram import CAVE_MODE, PLAY_MODE
+from zelda_i.ram import CAVE_MODE, PASSAGE_MODE, PLAY_MODE
 from zelda_i.screen_glance import (
     BOW22_LEAVE,
+    BOW_CELLAR_LEAVE,
     CELLAR08_LEAVE,
     CLEAR_3A,
     FANFARE_MODE,
@@ -362,4 +363,28 @@ def test_bow22_planned_0x22_east_mouth_glances() -> None:
     from zelda_i.level1_bow import level1_bow_glance
 
     ok = level1_bow_glance(_DummyHop(leftover))
+    assert ok.ok
+
+
+def test_bow_cellar_planned_mode9_0x7f_glances() -> None:
+    leftover = {
+        "x": 128,
+        "y": 141,
+        "mode": PASSAGE_MODE,
+        "screen": 0x7F,
+        "keys": 0,
+        "triforce": 0,
+        "bow": 0,
+    }
+    graded = grade_controller(_DummyHop(leftover), BOW_CELLAR_LEAVE)
+    assert graded.ok
+    assert graded.misses == []
+    still = grade_controller(
+        _DummyHop({**leftover, "mode": PLAY_MODE, "screen": 0x22}),
+        BOW_CELLAR_LEAVE,
+    )
+    assert not still.ok
+    from zelda_i.level1_bow_cellar import level1_bow_cellar_glance
+
+    ok = level1_bow_cellar_glance(_DummyHop(leftover))
     assert ok.ok

@@ -12,9 +12,13 @@ from tmnt_iv.paths import (
 )
 from tmnt_iv.scripts.record_full_hard_run import (
     RunMetrics,
+    _EMERGENCY_HP_RESTORE,
+    _EMERGENCY_HP_THRESHOLD,
+    _FREEZE_ABORT_FRAMES,
     _build_parser,
     assist_integrity,
     evaluate_clean_integrity,
+    full_run_video_config,
     resolve_cli_paths,
 )
 
@@ -66,6 +70,41 @@ def test_resolve_cli_paths_explicit_wins() -> None:
     assert report == custom_rep
 
 
+def test_full_run_video_config_youtube_is_1080p60() -> None:
+    cfg = full_run_video_config()
+    assert cfg.layout == "youtube"
+    assert cfg.fps == 60
+    assert cfg.canvas_width == 1920
+    assert cfg.canvas_height == 1080
+    assert cfg.footer is False
+    assert cfg.audio is True
+
+
+def test_full_run_video_config_native_and_hq() -> None:
+    native = full_run_video_config(native=True, scale=3)
+    assert native.layout == "native"
+    assert native.scale == 3
+    assert native.footer is True
+    hq = full_run_video_config(hq=True)
+    assert hq.layout == "youtube"
+    assert hq.crf == 15
+    assert hq.preset == "slow"
+    assert hq.fps == 60
+    default = full_run_video_config()
+    assert default.preset == "veryfast"
+
+
+def test_cli_defaults_youtube_and_native_flag() -> None:
+    parser = _build_parser()
+    default = parser.parse_args([])
+    assert default.native_video is False
+    assert default.hq is False
+    native = parser.parse_args(["--native-video", "--hq", "--scale", "2"])
+    assert native.native_video is True
+    assert native.hq is True
+    assert native.scale == 2
+
+
 def test_resolve_cli_paths_clean_defaults() -> None:
     video, report = resolve_cli_paths(
         output=None,
@@ -75,6 +114,17 @@ def test_resolve_cli_paths_clean_defaults() -> None:
     )
     assert video.name == f"{CLEAN_FULL_RUN_STEM}.mp4"
     assert report.name == f"{CLEAN_FULL_RUN_STEM}_dry_run.json"
+
+
+def test_freeze_abort_is_above_pin_dumpster_and_rail() -> None:
+    """Abort dumpster loops; do not trip Diag's ~600f rail skip freeze."""
+    assert _FREEZE_ABORT_FRAMES >= 8_000
+    assert _FREEZE_ABORT_FRAMES < 50_000
+
+
+def test_emergency_hp_constants_reexported() -> None:
+    assert _EMERGENCY_HP_THRESHOLD == 16
+    assert _EMERGENCY_HP_RESTORE == 80
 
 
 def test_assist_integrity_clean_requires_zeros() -> None:

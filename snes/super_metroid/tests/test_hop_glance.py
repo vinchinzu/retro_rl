@@ -7,15 +7,19 @@ from pathlib import Path
 
 from super_metroid.hop_glance import (
     LeaveMiss,
-    LeaveSpec,
-    PHANTOON_LEAVE,
-    WS_BASEMENT_TO_MAIN,
-    WS_ENTRANCE_TO_MAIN,
     final_from_state,
     grade_final,
-    grade_leave,
     grade_report,
     pose_class,
+    raise_leave_miss,
+)
+from super_metroid.leave_specs import (
+    PHANTOON_LEAVE,
+    RED_TO_HELLWAY,
+    WS_BASEMENT_TO_MAIN,
+    WS_BASEMENT_TO_PHANTOON,
+    WS_ENTRANCE_TO_MAIN,
+    WS_MAIN_TO_ATTIC,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_HELLWAY,
@@ -74,22 +78,13 @@ def test_xy_outside_door_band_is_a_glance_miss() -> None:
     assert any(m.startswith("x=") for m in misses)
 
 
-HELLWAY_SILL = LeaveSpec(
-    hop="red_to_hellway",
-    room=ROOM_HELLWAY,
-    x=(1, 80),
-    y=(120, 160),
-    pose_class="any",
-)
-
-
 def test_hellway_door_slot_fire_is_not_a_leave() -> None:
     """x=237 in Red Tower is the door-slot fire, not Hellway."""
     fire = {"room": hex(ROOM_RED_TOWER), "xy": [237, 139], "pose": 11, "gs": 8, "dt": 0, "health": 299}
-    misses = grade_final(fire, HELLWAY_SILL)
+    misses = grade_final(fire, RED_TO_HELLWAY)
     assert any(m.startswith("room ") for m in misses)
     sill = {"room": hex(ROOM_HELLWAY), "xy": [39, 139], "pose": 11, "gs": 8, "dt": 0, "health": 299}
-    assert grade_final(sill, HELLWAY_SILL) == []
+    assert grade_final(sill, RED_TO_HELLWAY) == []
 
 
 def test_dual_frame_mismatch_still_glances_leave() -> None:
@@ -178,11 +173,16 @@ def test_final_from_state_maps_samus_and_duck() -> None:
     assert final_from_state(duck)["xy"] == [1063, 907]
 
 
-def test_grade_leave_keeps_final_on_miss() -> None:
-    final = {"room": "0xCAF6", "xy": [57, 139], "pose": 9, "gs": 8, "dt": 0, "health": 299}
-    leftover = grade_leave(final, WS_ENTRANCE_TO_MAIN)
+def test_grade_final_keeps_final_on_miss() -> None:
+    leftover = {"room": "0xCAF6", "xy": [57, 139], "pose": 9, "gs": 8, "dt": 0, "health": 299}
     assert leftover["xy"] == [57, 139]
     assert grade_final(leftover, WS_ENTRANCE_TO_MAIN)
+
+
+def test_missing_health_is_a_glance_miss() -> None:
+    final = {"room": "0xCAF6", "xy": [1063, 907], "pose": 9, "gs": 8, "dt": 0}
+    misses = grade_final(final, WS_ENTRANCE_TO_MAIN)
+    assert "missing health" in misses
 
 
 def test_leave_miss_carries_leftover_xy_when_glance_misses() -> None:
@@ -225,7 +225,56 @@ def test_leave_miss_populates_leftover_when_room_is_wrong() -> None:
     assert err.leftover["xy"] == [39, 128]
     assert err.leftover["pose"] == 10
     assert err.leftover["gs"] == 8
-    assert err.misses == misses
+
+
+def test_raise_leave_miss_grades_state_and_chains() -> None:
+    state = _Duck(
+        room_id=ROOM_WS_BASEMENT,
+        samus_x=657,
+        samus_y=91,
+        pose=2,
+        game_state=8,
+        door_transition=0,
+        health=299,
+    )
+    try:
+        raise_leave_miss(
+            state,
+            "ws_main_to_attic",
+            WS_MAIN_TO_ATTIC,
+            room_label="Attic",
+            to_room=0xCA52,
+            exc=RuntimeError("wrong room"),
+        )
+    except LeaveMiss as err:
+        assert err.leftover["xy"] == [657, 91]
+        assert err.leftover["pose"] == 2
+        assert "expected Attic 0xCA52, got 0xCC6F" in str(err)
+        assert any("RuntimeError" in m for m in err.misses)
+        assert err.__cause__.__class__ is RuntimeError
+    else:
+        raise AssertionError("raise_leave_miss must raise LeaveMiss")
+
+
+def test_ws_basement_to_phantoon_air_or_stand_is_a_leave() -> None:
+    """Dual-green exit of basement: spin or stand in 0xCD13, not morph."""
+    assert WS_BASEMENT_TO_PHANTOON.room == ROOM_PHANTOON
+    assert WS_BASEMENT_TO_PHANTOON.pose_class == "door"
+    spin = {
+        "room": hex(ROOM_PHANTOON),
+        "xy": [39, 124],
+        "pose": 81,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    assert grade_final(spin, WS_BASEMENT_TO_PHANTOON) == []
+    stand = {**spin, "pose": 1}
+    assert grade_final(stand, WS_BASEMENT_TO_PHANTOON) == []
+    morph = {**spin, "pose": 29}
+    assert pose_class(29) == "morph"
+    misses = grade_final(morph, WS_BASEMENT_TO_PHANTOON)
+    assert any("not door" in m for m in misses)
 
 
 def test_ws_basement_to_main_spec_is_main_shaft_stand() -> None:
@@ -250,6 +299,37 @@ def test_ws_basement_to_main_spec_is_main_shaft_stand() -> None:
         "dt": 0,
         "health": 299,
     }
-    leftover = grade_leave(basement_hatch, WS_BASEMENT_TO_MAIN)
+    leftover = dict(basement_hatch)
     assert leftover["xy"] == [657, 163]
     assert any(m.startswith("room ") for m in grade_final(leftover, WS_BASEMENT_TO_MAIN))
+
+
+def test_ws_main_to_attic_spec_is_attic_door() -> None:
+    from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC
+
+    assert WS_MAIN_TO_ATTIC.room == ROOM_WS_ATTIC
+    assert WS_MAIN_TO_ATTIC.pose_class == "door"
+    assert WS_MAIN_TO_ATTIC.gs == 8
+    assert WS_MAIN_TO_ATTIC.dt == 0
+    seated = {
+        "room": "0xCA52",
+        "xy": [1135, 184],
+        "pose": 1,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    assert grade_final(seated, WS_MAIN_TO_ATTIC) == []
+    air = {**seated, "pose": 21}
+    assert grade_final(air, WS_MAIN_TO_ATTIC) == []
+    transition = {
+        "room": "0xCAF6",
+        "xy": [1135, 31],
+        "pose": 21,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    leftover = dict(transition)
+    assert leftover["xy"] == [1135, 31]
+    assert any(m.startswith("room ") for m in grade_final(leftover, WS_MAIN_TO_ATTIC))

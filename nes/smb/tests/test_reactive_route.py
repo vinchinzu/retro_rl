@@ -68,6 +68,7 @@ def test_warp_and_normal_routes_declare_different_1_2_destinations() -> None:
     warp_12 = ROUTE_WARP_ANY_PERCENT.exits[1]
     normal_12 = ROUTE_ALL_EXITS.exits[1]
     assert warp_12.policy_id == "smb_1_2_warp"
+    assert normal_12.policy_id == "smb_1_2_flag"
     assert warp_12.accepts_successor(_snap(world=3, level=0))
     assert not warp_12.accepts_successor(_snap(world=0, level=2))
     assert normal_12.accepts_successor(_snap(world=0, level=2))
@@ -116,7 +117,7 @@ def test_gate_waiter_captures_control_state_and_times_out() -> None:
 
 
 def test_coverage_reports_missing_policies_without_skipping_stages() -> None:
-    missing = missing_policies(ROUTE_ALL_EXITS, {"smb_1_1", "smb_1_2"})
+    missing = missing_policies(ROUTE_ALL_EXITS, {"smb_1_1", "smb_1_2_flag"})
     assert len(missing) == 30
     assert missing[0] == {"exit_id": "1-3", "policy_id": "smb_1_3"}
 

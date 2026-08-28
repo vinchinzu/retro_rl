@@ -99,6 +99,15 @@ def farm_to_west_gate_waypoints(
     """Farm → path crossroads. South crop field uses the dirt-row corridor."""
     if tilemap in FARM_TILEMAP_IDS and py >= SOUTH_FIELD_MIN_Y_PX:
         return list(_FARM_SOUTH_FIELD_TO_WEST_GATE)
+    if (
+        tilemap in FARM_TILEMAP_IDS
+        and py < NORTH_FARM_MAX_Y_PX
+        and px >= EAST_FARM_MIN_X_PX
+    ):
+        # Skip house-south (137,375): NE prefix already joins at (136,392).
+        return densify_waypoints(
+            list(_NORTH_EAST_FARM_TO_HOUSE) + list(_FARM_TO_PATH[1:])
+        )
     return list(_FARM_TO_PATH)
 
 
@@ -257,14 +266,33 @@ _PATH_FARM_EXIT = Waypoint(
     exit_push_frames=18,
 )
 
+# Pond A6 occupies y=25 x=0-6. Column x=8 is A0 y=23-25 then A8 y=26-28.
+# Live After_Rocks on (7,25)/(7,26) sat at (127,420) against the pond
+# face. Stay on the house column until y=27, then run west.
+_FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x00,
+        target_px=(136, 440),
+        radius=8,
+        run_direction="down",
+        force_run=True,
+    ),  # (8,27) A8 south of pond
+    Waypoint(
+        tilemap=0x00,
+        target_px=(72, 440),
+        radius=8,
+        run_direction="left",
+    ),  # (4,27) A8
+    _FARM_WEST_EXIT,
+]
+
 # L1 house front ~(136,344) BFS-cuts the NW ledge toward the west
-# gate. Drop south first (farm_to_shed stand), then the F0-door dirt
-# at gate y, then west — not the house NW corner or the paddock
-# north fence at ~(80,392).
+# gate. Drop south first (farm_to_shed stand), then A0 above the pond
+# and the x=7 pinch — not the A8 pond-edge row at y=424.
 _FARM_TO_PATH: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
-    Waypoint(tilemap=0x00, target_px=(136, 424), radius=12),
-    _FARM_WEST_EXIT,
+    Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0
+    *_FARM_GATE_PINCH_TO_EXIT,
     _PATH_FARM_GATE,
     _PATH_CROSSROADS,
 ]
@@ -276,6 +304,18 @@ _FARM_TO_PATH: List[Waypoint] = [
 # the A8 gate road. House/pocket starts keep _FARM_TO_PATH.
 # py ≥ this is south of the gate road (y=424) / y=31 fence row.
 SOUTH_FIELD_MIN_Y_PX = 520
+# After_Rocks ~(633,223) tile (39,13). House-first hop (137,375) is a
+# 31-tile BFS; barn A1 at (24-30,18-22) push-faces (30,19-21). Drop
+# south east of the barn onto y=24 dirt, then west to the pond pinch.
+NORTH_FARM_MAX_Y_PX = 320
+EAST_FARM_MIN_X_PX = 480
+_NORTH_EAST_FARM_TO_HOUSE: List[Waypoint] = [
+    Waypoint(tilemap=0x00, target_px=(624, 272), radius=12),  # (39,17)
+    Waypoint(tilemap=0x00, target_px=(624, 384), radius=12),  # (39,24)
+    Waypoint(tilemap=0x00, target_px=(512, 384), radius=12),  # (32,24)
+    Waypoint(tilemap=0x00, target_px=(384, 384), radius=12),  # (24,24)
+    Waypoint(tilemap=0x00, target_px=(256, 384), radius=12),  # (16,24)
+]
 _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
     Waypoint(
         tilemap=0x00,
@@ -300,8 +340,7 @@ _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
         radius=8,
         run_direction="left",
     ),  # (8,24) A0 above ditch
-    Waypoint(tilemap=0x00, target_px=(120, 424), radius=8),  # (7,26) A8 gate road
-    _FARM_WEST_EXIT,
+    *_FARM_GATE_PINCH_TO_EXIT,
     # Crossroads next — not PATH_FARM_GATE (232,128), which is east
     # toward the farm and pins leaked (10,422) landings.
     _PATH_CROSSROADS,
@@ -510,9 +549,22 @@ _WEST_MID_TO_OUTDOOR_SPA: List[Waypoint] = [
 ]
 
 # Farm/path land → carpenter-gap dirt → west climb → east mid → lip.
-# Same hops as first grape until (312, 360). Never the east fish pond.
+# Same hops as first grape until (312, 360), plus a 40px north pull
+# after land so BFS to (424,712) does not walk off the south exit.
+# Never the east fish pond. Grape inbound stays without the pull.
 _MOUNTAIN_ENTRY_TO_OUTDOOR_SPA: List[Waypoint] = (
-    list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:-1]) + list(_WEST_MID_TO_OUTDOOR_SPA)
+    [
+        _MOUNTAIN_ENTRY_TO_FIRST_BERRY[0],
+        Waypoint(
+            tilemap=0x10,
+            target_px=(328, 688),
+            radius=16,
+            run_direction="up",
+            force_run=True,
+        ),
+    ]
+    + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[1:-1])
+    + list(_WEST_MID_TO_OUTDOOR_SPA)
 )
 
 # Spa lip → reverse ridge to west-mid → reverse grape dirt (west climb)

@@ -166,3 +166,83 @@ def test_high_quality_preset() -> None:
     assert cfg.crf == 15
     assert cfg.preset == "slow"
     assert cfg.start_room_id == 1
+
+
+def test_frame_video_writer_youtube_layout_is_16x9(tmp_path: Path) -> None:
+    out = tmp_path / "yt.mp4"
+    height, width = 56, 64
+    with FrameVideoWriter(
+        out,
+        width=width,
+        height=height,
+        fps=30,
+        scale=0,
+        crf=28,
+        preset="ultrafast",
+        footer=True,
+        layout="youtube",
+        canvas_width=640,
+        canvas_height=360,
+    ) as writer:
+        for i in range(8):
+            frame = np.full((height, width, 3), i * 12, dtype=np.uint8)
+            writer.write(frame, action=buttons("RIGHT", "B"), frame_index=i)
+    probe = subprocess.check_output(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,r_frame_rate",
+            "-of",
+            "csv=p=0",
+            str(out),
+        ],
+        text=True,
+    ).strip()
+    assert probe.startswith("640,360,")
+    assert writer.frames == 8
+
+
+def test_frame_video_writer_abort_keeps_prior_output_when_audio(tmp_path: Path) -> None:
+    out = tmp_path / "keep.mp4"
+    out.write_bytes(b"prior-artifact")
+    height, width = 16, 16
+    writer = FrameVideoWriter(
+        out,
+        width=width,
+        height=height,
+        fps=30,
+        scale=1,
+        crf=28,
+        preset="ultrafast",
+        audio_rate=3000,
+        footer=False,
+    )
+    frame = np.zeros((height, width, 3), dtype=np.uint8)
+    tone = np.zeros((100, 2), dtype=np.int16)
+    writer.write(frame, audio=tone)
+    writer.abort()
+    assert out.read_bytes() == b"prior-artifact"
+    assert list(tmp_path.glob(".*")) == []
+
+
+def test_frame_video_writer_abort_removes_direct_output(tmp_path: Path) -> None:
+    out = tmp_path / "clip.mp4"
+    height, width = 16, 16
+    writer = FrameVideoWriter(
+        out,
+        width=width,
+        height=height,
+        fps=30,
+        scale=1,
+        crf=28,
+        preset="ultrafast",
+        footer=False,
+    )
+    frame = np.zeros((height, width, 3), dtype=np.uint8)
+    writer.write(frame)
+    writer.abort()
+    assert not out.exists()

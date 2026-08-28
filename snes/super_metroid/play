@@ -20,6 +20,7 @@
 #   ./play bat-cave full_start_v1      # Bat Cave after Bubble climb — continue
 #   ./play wave full_start_v1          # Wave collect 0xADDE — continue to Ice
 #   ./play alpha-pb full_start_v1      # Alpha PB 0xA3AE — continue to Moat/WS
+#   ./play post-phantoon gravity_path_v2  # Phantoon win → Gravity collect (scratch; live anchors)
 #   ./play gravity full_start_v1       # Gravity Suit Room 0xCE40 (0x3125) — leave/return
 #   ./play post-gravity full_start_v1  # Caterpillar after Gravity return — Grapple/Maridia
 #   ./play grapple full_start_v1       # Grapple Beam Room 0xAC2B (0x7125) — leave/return

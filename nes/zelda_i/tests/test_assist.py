@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from zelda_i.assist import (
     UnlimitedHealthAssist,
     assist_phase_name,
     location_key,
+    poke_link_position,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, full_health_byte
+from zelda_i.ram import (
+    ADDR_LINK_X,
+    ADDR_LINK_Y,
+    PLAY_MODE,
+    ZeldaSnapshot,
+    full_health_byte,
+)
 
 
 def _snap(
@@ -220,3 +229,62 @@ def test_health_byte_for_containers_roundtrip() -> None:
     assert health_byte_for_containers(3) == 0x22
     assert health_byte_for_containers(5) == 0x44
     assert health_byte_for_containers(7) == 0x66
+
+
+class _AssignMem:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, str, int]] = []
+
+    def assign(self, addr: int, fmt: str, val: int) -> None:
+        self.calls.append((addr, fmt, val))
+
+
+def _env_with_mem(mem: object) -> SimpleNamespace:
+    data = SimpleNamespace(memory=mem)
+    return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
+
+
+def test_poke_link_position_writes_only_x_y() -> None:
+    mem = _AssignMem()
+    report = poke_link_position(
+        _env_with_mem(mem),
+        208,
+        93,
+        room=0x3A,
+        from_xy=(144, 141),
+    )
+    assert mem.calls == [
+        (ADDR_LINK_X, "|u1", 208),
+        (ADDR_LINK_Y, "|u1", 93),
+    ]
+    assert [addr for addr, _fmt, _val in mem.calls] == [ADDR_LINK_X, ADDR_LINK_Y]
+    assert report["position_writes"] == 1
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+    assert report["door_writes"] == 0
+    assert report["inventory_writes"] == 0
+    assert report["triforce_writes"] == 0
+    assert report["state_load"] is False
+    assert report["mid_run_state_load"] is False
+    assert report["addresses"] == [ADDR_LINK_X, ADDR_LINK_Y]
+    assert report["xy"] == [208, 93]
+    assert report["from_xy"] == [144, 141]
+    assert report["room"] == 0x3A
+
+
+def test_poke_link_position_no_assign_does_not_write() -> None:
+    mem = SimpleNamespace()
+    report = poke_link_position(
+        _env_with_mem(mem),
+        208,
+        93,
+        room=0x3A,
+        from_xy=(144, 141),
+    )
+    assert report["position_writes"] == 0
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+    assert report["door_writes"] == 0
+    assert report["inventory_writes"] == 0
+    assert report["triforce_writes"] == 0
+    assert report["addresses"] == [ADDR_LINK_X, ADDR_LINK_Y]

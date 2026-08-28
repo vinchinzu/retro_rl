@@ -32,6 +32,7 @@ from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
 from super_metroid.routes.kpdr import wrecked_ship as ws
+from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_SAVE
 
 SCRATCH = GAME_DIR / "scratch"
 DEFAULT_SOURCE = SCRATCH / "post_ws_entrance_to_main.state"
@@ -43,8 +44,6 @@ DEFAULT_DUMP = SCRATCH / "ws_main_to_basement_dump.json"
 BOOT_SETTLE = 5
 
 # Wrong-room halt (do not enter). Save 0xCE8A, Attic 0xCA52, back to Entrance.
-ROOM_WS_SAVE = 0xCE8A
-ROOM_WS_ATTIC = 0xCA52
 
 # Save door is on the right of the entry platform. Dash RIGHT hits it.
 SAVE_DOOR_X = 1240

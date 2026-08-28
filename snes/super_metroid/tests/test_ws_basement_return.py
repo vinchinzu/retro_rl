@@ -8,9 +8,14 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
+from super_metroid.combat.enemies import Enemy, list_enemies
+from super_metroid.combat.enemies.workrobot import stall_reason
 from super_metroid.hop_glance import LeaveMiss
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.ws_basement_ice import movement_stall_reason
+from super_metroid.routes.kpdr.k6.ws_basement_ice import (
+    ice_keepaway_action,
+    workrobot_avoid_action,
+)
 from super_metroid.routes.kpdr.k6.ws_basement_return import (
     ATOMIC_ID,
     WORKROBOT_ID,
@@ -18,14 +23,10 @@ from super_metroid.routes.kpdr.k6.ws_basement_return import (
     WS_BASEMENT_HATCH_X_MIN,
     WS_BASEMENT_PLATFORM_X,
     WS_BASEMENT_TAKEOFF_X_MIN,
-    BasementEnemy,
     at_ws_basement_hatch_seat,
     hatch_jump_action,
     hatch_mount_action,
-    ice_keepaway_action,
-    list_basement_enemies,
     play_ws_basement_to_main,
-    workrobot_avoid_action,
     ws_basement_main_settled,
 )
 from super_metroid.routes.skills.charge_shot import CHARGE_FULL
@@ -109,8 +110,7 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
     assert robot_block == ("RIGHT", "B")
     still_in_band = hatch_mount_action(680, 185, 10, 0)
     assert still_in_band == ("RIGHT", "B")
-    # A takeoff near x=720 reaches the platform's right wall at (728,175)
-    # before clearing its top.  Keep walking east until the higher arc seat.
+    # Lip seat ~750: facing LEFT jumps; facing RIGHT turns first.
     takeoff = hatch_mount_action(WS_BASEMENT_TAKEOFF_X_MIN, 185, 2, 0)
     assert takeoff == ("LEFT", "B", "A")
     face_first = hatch_mount_action(
@@ -121,14 +121,14 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
         WS_BASEMENT_TAKEOFF_X_MIN, 185, 37, 0, FACING_LEFT, 14
     )
     assert finish_turn == ("LEFT",)
-    too_close = hatch_mount_action(780, 185, 2, 0)
+    too_close = hatch_mount_action(720, 185, 2, 0)
     assert too_close == ("RIGHT", "B")
     approach = hatch_mount_action(900, 185, 2, 0)
     assert approach == ("LEFT", "B")
     assert "A" not in approach
     on_seat = hatch_mount_action(657, 91, 2, 0)
     assert "A" not in on_seat
-    assert hatch_mount_action(717, 163, 48, 2) == ()
+    assert hatch_mount_action(717, 163, 48, 2) == ("LEFT", "B", "A")
     lip_air_done = hatch_mount_action(717, 163, 48, 0)
     assert "LEFT" in lip_air_done
     lip = hatch_mount_action(717, 163, 2, 0)
@@ -150,12 +150,38 @@ def test_hatch_mount_from_floor_under_hatch() -> None:
         assert "SUPER" not in names
 
 
-def _atomic(*, x: int, y: int, freeze: int = 0, hp: int = 250) -> BasementEnemy:
-    return BasementEnemy(0, ATOMIC_ID, x, y, hp, freeze)
+def test_hatch_mount_latches_left_turn_across_x_drift() -> None:
+    """Leftover just west of 750 p38 mov=14 facing RIGHT must finish LEFT.
+
+    Drift below the 750 band used to resume RIGHT and oscillate. West
+    approach that has not started turning still walks RIGHT into the band.
+    """
+    leftover = hatch_mount_action(748, 187, 38, 0, FACING_RIGHT, 14)
+    assert leftover == ("LEFT",)
+    assert "RIGHT" not in leftover
+    after_turn = hatch_mount_action(748, 187, 2, 0, FACING_LEFT, 0)
+    assert after_turn == ("LEFT", "B", "A")
+    west_approach = hatch_mount_action(748, 187, 2, 0, FACING_RIGHT, 0)
+    assert west_approach == ("RIGHT", "B")
+    too_far = hatch_mount_action(787, 187, 9, 0, FACING_RIGHT, 1)
+    assert too_far == ("LEFT", "B")
+    air = hatch_mount_action(780, 180, 25, -4, FACING_LEFT, 3)
+    assert air == ("LEFT", "B", "A")
+    wall_spin = hatch_mount_action(728, 175, 26, 3)
+    assert wall_spin == ("LEFT", "B", "A")
+    leftover_spin = hatch_mount_action(819, 181, 82, 0, FACING_LEFT, 2)
+    assert leftover_spin == ("LEFT", "B", "A")
+    assert "RIGHT" not in leftover_spin
+    lip_bounce = hatch_mount_action(737, 170, 82, 5, FACING_LEFT, 2)
+    assert lip_bounce == ("LEFT", "B", "A")
 
 
-def _robot(*, x: int, y: int = 176, hp: int = 800) -> BasementEnemy:
-    return BasementEnemy(1, WORKROBOT_ID, x, y, hp, 0)
+def _atomic(*, x: int, y: int, freeze: int = 0, hp: int = 250) -> Enemy:
+    return Enemy(0, ATOMIC_ID, x, y, hp, freeze)
+
+
+def _robot(*, x: int, y: int = 176, hp: int = 800) -> Enemy:
+    return Enemy(1, WORKROBOT_ID, x, y, hp, 0)
 
 
 def test_ice_keepaway_taps_x_until_atomic_is_dead() -> None:
@@ -201,11 +227,11 @@ def test_ice_keepaway_charge_release_and_robot_clamp() -> None:
     )
     assert turning == ("LEFT",)
     assert "X" not in turning
-    assert movement_stall_reason(672, 187, 14, 37, (blob, robot)) == "turning"
-    assert movement_stall_reason(640, 187, 0, 2, (robot,)) == "workrobot"
+    assert stall_reason(672, 187, 14, 37, (blob, robot)) == "turning"
+    assert stall_reason(640, 187, 0, 2, (robot,)) == "workrobot"
     frozen = _atomic(x=670, y=185, freeze=180)
-    assert movement_stall_reason(670, 185, 0, 2, (frozen,)) == "frozen_atomic"
-    assert movement_stall_reason(879, 187, 0, 2, (blob,)) is None
+    assert stall_reason(670, 185, 0, 2, (frozen,)) == "frozen_atomic"
+    assert stall_reason(879, 187, 0, 2, (blob,)) is None
 
 
 def test_workrobot_avoid_does_not_walk_into_robot() -> None:
@@ -217,7 +243,7 @@ def test_workrobot_avoid_does_not_walk_into_robot() -> None:
     assert clear is None
 
 
-def test_list_basement_enemies_reads_freeze_timer() -> None:
+def test_list_enemies_reads_freeze_timer() -> None:
     ram = np.zeros(0x2000, dtype=np.uint8)
     base = 0x0F78
     ram[base] = ATOMIC_ID & 0xFF
@@ -234,7 +260,7 @@ def test_list_basement_enemies_reads_freeze_timer() -> None:
 
     session = _Session(_state())
     session.env = _Env()
-    found = list_basement_enemies(session)
+    found = list_enemies(session)
     assert len(found) == 1
     assert found[0].enemy_id == ATOMIC_ID
     assert found[0].x == 638
@@ -246,8 +272,10 @@ def test_run_to_hatch_does_not_spin_left_in_band() -> None:
 
     src = inspect.getsource(mod._run_to_hatch)
     assert "hatch_mount_action" in src
-    assert "ice_keepaway_action" in src
-    assert "workrobot_avoid_action" in src
+    assert src.count("list_enemies(session)") == 1
+    assert src.count("choice = choose(") == 1
+    assert "ice_keepaway_action(" not in src
+    assert "workrobot_avoid_action(" not in src
     assert "session_beam_charge" in src
     assert "_ICE_TAP_FRAMES" not in src
     assert "_MOVEMENT_STUN" not in src
@@ -255,21 +283,46 @@ def test_run_to_hatch_does_not_spin_left_in_band() -> None:
     assert f"{'{'}label{'}'}_hop" not in src
     assert "LEFT\", \"B\", \"A\"" not in src
 
+    # Hop-local takeoff is x=750. At x=740 the generic x=720 takeoff idled.
+    robot = _robot(x=720)
+    choice = mod.choose(
+        740,
+        185,
+        FACING_LEFT,
+        (robot,),
+        mod._HATCH_OVERLAY,
+        takeoff_x_min=mod.WS_BASEMENT_TAKEOFF_X_MIN,
+    )
+    assert choice.stance.name == "AVOID"
+    assert choice.buttons == ("RIGHT", "B")
+
 
 def test_hatch_jump_is_up_a_not_super_or_l() -> None:
-    assert hatch_jump_action(657, 91, 2, 0) == ("UP", "X")
-    assert hatch_jump_action(657, 91, 2, 2) == ("UP",)
-    assert hatch_jump_action(657, 91, 2, 10) == ("UP", "A")
+    assert hatch_jump_action(657, 163, 2, 0) == ("UP", "X")
+    assert hatch_jump_action(657, 163, 2, 60) == ("UP",)
+    assert "A" not in hatch_jump_action(657, 163, 2, 64)
+    assert hatch_jump_action(657, 163, 2, 308) == ("UP", "A")
+    assert hatch_jump_action(662, 91, 4, 0) == ("UP", "X")
+    assert hatch_jump_action(662, 91, 4, 60) == ("UP",)
+    assert hatch_jump_action(662, 91, 4, 68) == ("UP", "A")
+    open_hatch = hatch_jump_action(672, 68, 22, 0)
+    assert open_hatch == ("LEFT", "A")
+    assert "UP" not in open_hatch
+    in_shaft = hatch_jump_action(663, 36, 22, 0)
+    assert in_shaft == ("LEFT", "A")
+    assert "UP" not in in_shaft
+    shaft_center = hatch_jump_action(657, 36, 22, 0)
+    assert shaft_center == ("A",)
+    assert "A" not in hatch_jump_action(662, 91, 4, 0)
     assert "LEFT" in hatch_jump_action(690, 176, 22, 0)
-    assert "LEFT" in hatch_jump_action(WS_BASEMENT_HATCH_X_MAX + 10, 91, 2, 0)
-    assert "RIGHT" in hatch_jump_action(WS_BASEMENT_HATCH_X_MIN - 10, 91, 2, 0)
+    assert hatch_jump_action(640, 91, 4, 0) == ("RIGHT", "UP", "A")
     assert hatch_jump_action(657, 91, 138, 0) == ()
     x_frames = sum(
-        1 for frame in range(40) if "X" in hatch_jump_action(657, 91, 2, frame)
+        1 for frame in range(80) if "X" in hatch_jump_action(657, 163, 2, frame)
     )
-    assert 1 <= x_frames <= 4
-    for frame in range(40):
-        names = hatch_jump_action(657, 91, 2, frame)
+    assert 50 <= x_frames <= 62
+    for frame in range(80):
+        names = hatch_jump_action(657, 163, 2, frame)
         assert "L" not in names
         assert "SUPER" not in names
 
@@ -381,7 +434,7 @@ def test_play_drops_bombs_runs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod, "_bomb_tunnel_left", _bomb)
     monkeypatch.setattr(mod, "_run_to_hatch", _run)
     monkeypatch.setattr(mod, "_jump_up_hatch", _jump)
-    monkeypatch.setattr(mod, "wait_ordinary_room", _settle)
+    monkeypatch.setattr(mod, "settle_ceiling_dest", _settle)
 
     out = mod.play_ws_basement_to_main(session)
     assert seen["require"][0] == ROOM_WS_BASEMENT

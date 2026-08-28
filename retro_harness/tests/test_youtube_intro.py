@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from retro_harness.video import FOOTER_HEIGHT
 from retro_harness.youtube_intro import (
+    DEFAULT_INTRO_FRAMES,
     PROJECT_NAME,
     PROJECT_REPO,
     project_intro_lines,
     render_intro_card,
 )
+
+
+def test_product_recordings_skip_intro_cards() -> None:
+    assert DEFAULT_INTRO_FRAMES == 0
 
 
 def test_project_intro_lines_are_generic_and_game_aware() -> None:

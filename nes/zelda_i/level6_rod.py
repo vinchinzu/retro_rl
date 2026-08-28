@@ -13,6 +13,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.level6_occupancy import l6_leftover
 from zelda_i.level6_overworld import LEVEL6
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
@@ -75,22 +76,15 @@ class Level6RodController:
     climbed: bool = False
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
-        return int(getattr(snap, "rod", 0))
+        return int(snap.rod)
 
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "mode": int(snap.mode),
+            **l6_leftover(snap),
             "submode": int(snap.submode),
-            "screen": int(snap.screen),
-            "tile": int(snap.colliding_tile),
-            "rod": self._rod(snap),
-            "keys": int(snap.keys),
             "map": int(snap.map),
-            "triforce": int(snap.triforce),
         }
         if force or self.frames <= 2 or self.frames % ROD_75_SAMPLE_PERIOD == 0:
             self.samples.append(

@@ -24,7 +24,7 @@ import os
 import time
 from pathlib import Path
 
-from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
+from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 
 ensure_monorepo_on_path()
 
@@ -128,6 +128,12 @@ def _parse_args() -> argparse.Namespace:
         help="Open a pygame window and blit each frame (no HEADLESS)",
     )
     p.add_argument("--watch-scale", type=int, default=3, help="Watch window integer scale")
+    p.add_argument(
+        "--save-end-state",
+        type=str,
+        default=None,
+        help="Write a gzip save under custom_integrations on soak+return SUCCESS.",
+    )
     return p.parse_args()
 
 
@@ -622,6 +628,16 @@ def main() -> int:
             and summary["soak_peak"] > summary["soak_start"]
         )
 
+        saved_end = None
+        if ok and args.save_end_state:
+            import gzip
+
+            out_state = GAME_DIR / f"{args.save_end_state}.state"
+            with gzip.open(out_state, "wb", compresslevel=9) as handle:
+                handle.write(env.em.get_state())
+            saved_end = str(out_state)
+            print(f"[SPA] saved end state {args.save_end_state} -> {out_state}")
+
         report = {
             "ok": ok,
             "soft_ok": soft_ok,
@@ -632,6 +648,7 @@ def main() -> int:
             "final_stamina": final_stam.to_dict(),
             "restored": restored,
             "return_to_farm": args.return_to_farm,
+            "saved_end_state": saved_end,
             "poke": False,
             "drain": drain,
             "task": summary,

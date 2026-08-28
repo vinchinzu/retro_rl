@@ -56,6 +56,10 @@ LEVEL6_ROD_WIZZ_ROOM = 0x09  # UP of 0x19; spine enter leftover (120,205) 5 wizz
 LEVEL6_DARK_29_ROOM = 0x29  # DOWN of 0x19; dark 3×0x23+2×0x24; leftover (120,77)
 LEVEL6_DARK_39_ROOM = 0x39  # DOWN of 0x29; dark; leftover (120,93); 5× Vire 0x12
 LEVEL6_BLOCK_3A_ROOM = 0x3A  # RIGHT of cleared 0x39; leftover (16,141); center block
+LEVEL6_GOHMA_WING_1D_ROOM = 0x1D  # cellar 0x08 B-side leftover (96,157)
+LEVEL6_GOHMA_WING_2D_ROOM = 0x2D  # DOWN of 0x1D; leftover (120,77); west open
+LEVEL6_GOHMA_WING_2C_ROOM = 0x2C  # LEFT of 0x2D; N=key, E=open; not Gohma
+LEVEL6_GOHMA_ROOM = 0x1C  # KEY-UP of 0x2C; ROM N=shutter S=key item=heart; TF 0x0C north
 LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22

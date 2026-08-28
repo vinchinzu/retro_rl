@@ -12,19 +12,13 @@ Live recon (2026-08-06 / 2026-08-07)::
     West **0x78**: key-LEFT from 0x79 (fire-bypass y≈157→141); 5× type 0x24.
     Trap: UP from 0x7a spends key on Old Man **0x6a** — do not.
 
-Wizzrobe combat: sword misses when overlapping at the door; controller
-backsteps when stuck too close without a kill, then re-engages.
+Wizzrobe backstep combat lives in ``level6_wizzrobe`` (re-exported here).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
 import numpy as np
 
-from retro_harness.nes import nes_action
-from retro_harness.input_script import FrameAction
 from zelda_i.dungeon import (
     AliveRule,
     CombatTuning,
@@ -63,7 +57,13 @@ from zelda_i.level6_overworld import (
     LEVEL6_WIZZROBE_38_ROOM,
     WIZZROBE_ORANGE_TYPE,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.level6_wizzrobe import (
+    Level6EastKeyController,
+    Level6WestWizzrobeController,
+    make_east_key_controller,
+    make_west_wizzrobe_controller,
+)
+from zelda_i.ram import PLAY_MODE, read_snapshot
 
 # Re-export for runners / docs.
 ROOM_L6_ENTRY = LEVEL6_ENTRY_ROOM  # 0x79
@@ -695,6 +695,16 @@ ROOM_3A_SPEC = DungeonRoomSpec(
 register_room_spec(ROOM_3A_SPEC)
 
 
+def _l6_enemies_dead(ram: np.ndarray, room: int, spec: DungeonRoomSpec) -> bool:
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL6
+        and snap.screen == room
+        and snap.mode == PLAY_MODE
+        and not spec.live_enemies(snap)
+    )
+
+
 def level6_room_7a_key_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x7a with keys≥1 and no live type-0x24 enemies.
 
@@ -711,102 +721,12 @@ def level6_room_7a_key_success(ram: np.ndarray) -> bool:
     )
 
 
-@dataclass
-class Level6EastKeyController(GenericDungeonRoomController):
-    """Generic room clear + wizzrobe backstep when overlapping without kills.
-
-    Live: sword swings at distance 0 on the west door miss forever; retreat
-    when stuck too close, then re-engage from a short offset.
-    """
-
-    last_progress_frame: int = 0
-    prev_live_count: int = -1
-    backstep_frames: int = 0
-
-    def _combat(
-        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
-    ) -> FrameAction:
-        self.combat_frames += 1
-        n_live = len(live)
-        if self.prev_live_count < 0:
-            self.prev_live_count = n_live
-            self.last_progress_frame = self.frames
-        elif n_live < self.prev_live_count:
-            self.prev_live_count = n_live
-            self.last_progress_frame = self.frames
-            self.backstep_frames = 0
-            self.notes.append(f"kill_to_{n_live}_f{self.frames}")
-
-        if not live:
-            return self._patrol(snap)
-
-        nearest = min(
-            live,
-            key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
-        )
-        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        stuck_close = (
-            dist < 16 and (self.frames - self.last_progress_frame) > 100
-        )
-        if stuck_close or self.backstep_frames > 0:
-            if self.backstep_frames <= 0:
-                self.backstep_frames = 24
-                self.notes.append(f"backstep_f{self.frames}_d{dist}")
-            self.backstep_frames -= 1
-            if self.backstep_frames == 0:
-                # Allow a fresh engage window after retreat.
-                self.last_progress_frame = self.frames
-            dx = nearest.x - snap.link_x
-            dy = nearest.y - snap.link_y
-            if abs(dx) >= abs(dy):
-                direction = "LEFT" if dx >= 0 else "RIGHT"
-            else:
-                direction = "UP" if dy >= 0 else "DOWN"
-            # Prefer center when pinned on a door edge.
-            if snap.link_x < 40:
-                direction = "RIGHT"
-            elif snap.link_x > 200:
-                direction = "LEFT"
-            return FrameAction(nes_action(direction), "wizzrobe_backstep")
-
-        if dist < self.spec.combat.engage_distance:
-            return self._engage(snap, nearest)
-        return self._patrol(snap)
-
-    def report(self) -> dict[str, Any]:
-        base = super().report()
-        base["last_progress_frame"] = self.last_progress_frame
-        base["prev_live_count"] = self.prev_live_count
-        return base
-
-
-def make_east_key_controller() -> Level6EastKeyController:
-    """Factory: GenericDungeonRoomController subclass bound to ROOM_7A_SPEC."""
-    return Level6EastKeyController(spec=ROOM_7A_SPEC)
-
-
 def level6_room_78_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x78 cleared — no live type-0x24, play mode.
 
     Does not require UP door bit (mask lag) or inventory change.
     """
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_78_SPEC.live_enemies(snap)
-    )
-
-
-@dataclass
-class Level6WestWizzrobeController(Level6EastKeyController):
-    """Same wizzrobe backstep combat as east key, bound to ROOM_78_SPEC."""
-
-
-def make_west_wizzrobe_controller() -> Level6WestWizzrobeController:
-    """Factory: backstep combat controller for 0x78 west wizzrobes."""
-    return Level6WestWizzrobeController(spec=ROOM_78_SPEC)
+    return _l6_enemies_dead(ram, LEVEL6_WEST_WIZZROBE_ROOM, ROOM_78_SPEC)
 
 
 def level6_room_68_compass_success(ram: np.ndarray) -> bool:
@@ -831,13 +751,7 @@ def make_compass_68_controller() -> GenericDungeonRoomController:
 
 def level6_room_58_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x58 no live Keese. Key drop residual."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_KEESE_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_58_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_KEESE_ROOM, ROOM_58_SPEC)
 
 
 def make_keese_58_controller() -> GenericDungeonRoomController:
@@ -847,13 +761,7 @@ def make_keese_58_controller() -> GenericDungeonRoomController:
 
 def level6_room_38_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x38 no live wizzrobe/Like-Like. Bubble residual."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_WIZZROBE_38_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_38_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_WIZZROBE_38_ROOM, ROOM_38_SPEC)
 
 
 def make_hard_38_controller() -> GenericDungeonRoomController:
@@ -863,13 +771,7 @@ def make_hard_38_controller() -> GenericDungeonRoomController:
 
 def level6_room_28_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x28 no live orange wizzrobes. Ignore 0x2b/0x40/0x68."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_WIZZROBE_28_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_28_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_WIZZROBE_28_ROOM, ROOM_28_SPEC)
 
 
 def make_clear_28_controller() -> GenericDungeonRoomController:
@@ -879,13 +781,7 @@ def make_clear_28_controller() -> GenericDungeonRoomController:
 
 def level6_room_19_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x19 no live spec enemies. Ignore 0x2b/0x40. No Map."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_MAP_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_19_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_MAP_ROOM, ROOM_19_SPEC)
 
 
 def make_clear_19_controller() -> GenericDungeonRoomController:
@@ -895,13 +791,7 @@ def make_clear_19_controller() -> GenericDungeonRoomController:
 
 def level6_room_09_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x09 no live wizzrobes. Ignore 0x2b/0x40/0x68. No Rod."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_ROD_WIZZ_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_09_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_ROD_WIZZ_ROOM, ROOM_09_SPEC)
 
 
 def make_clear_09_controller() -> GenericDungeonRoomController:
@@ -911,13 +801,7 @@ def make_clear_09_controller() -> GenericDungeonRoomController:
 
 def level6_room_29_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x29 no live wizzrobes. Ignore 0x2b/0x40. No stairs."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_DARK_29_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_29_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_DARK_29_ROOM, ROOM_29_SPEC)
 
 
 def make_clear_29_controller() -> GenericDungeonRoomController:
@@ -927,13 +811,7 @@ def make_clear_29_controller() -> GenericDungeonRoomController:
 
 def level6_room_39_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x39 no live Vires. Ignore 0x2b/0x40. No Gohma."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.screen == LEVEL6_DARK_39_ROOM
-        and snap.mode == PLAY_MODE
-        and not ROOM_39_SPEC.live_enemies(snap)
-    )
+    return _l6_enemies_dead(ram, LEVEL6_DARK_39_ROOM, ROOM_39_SPEC)
 
 
 def make_clear_39_controller() -> GenericDungeonRoomController:

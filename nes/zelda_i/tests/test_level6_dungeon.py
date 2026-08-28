@@ -208,8 +208,15 @@ def test_68_compass_success_predicate() -> None:
 
 
 def test_factories_bind_specs() -> None:
+    from zelda_i.level6_wizzrobe import (
+        Level6EastKeyController,
+        Level6WestWizzrobeController,
+    )
+
     east = make_east_key_controller()
     west = make_west_wizzrobe_controller()
+    assert type(east) is Level6EastKeyController
+    assert type(west) is Level6WestWizzrobeController
     compass = make_compass_68_controller()
     assert east.spec.room_id == 0x7A
     assert west.spec.room_id == 0x78

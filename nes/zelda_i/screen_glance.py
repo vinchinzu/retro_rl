@@ -108,6 +108,17 @@ BOW22_LEAVE = LeaveSpec(
     hearts_lo_eq_hi=False,
 )
 
+# Live leftover: l1_bow_cellar mode 9 0x7F (128,141) tile 0x71. ADDR_BOW=0.
+BOW_CELLAR_LEAVE = LeaveSpec(
+    hop="level1-bow-cellar",
+    room=0x7F,
+    x=(120, 136),
+    y=(133, 149),
+    mode=PASSAGE_MODE,
+    keys=0,
+    hearts_lo_eq_hi=False,
+)
+
 # stairs3a-warp dest: mode 9 cellar 0x08 (208,93). Walk-on stairs BLOCKED.
 # Spec documents dest; leftover documents where we actually stopped.
 STAIRS3A_DEST = LeaveSpec(

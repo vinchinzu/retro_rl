@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -31,6 +30,7 @@ from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
 ensure_monorepo_on_path()
 
 from retro_harness import TaskStatus, WorldState
+from retro_harness.video import VideoCaptureConfig, VideoRecorder
 
 from harvest.core.animal_status import read_held_item
 from harvest.core.game_clock import (
@@ -142,69 +142,37 @@ def _snap(ram, frame: int, *, phase: str = "", extra: dict | None = None) -> dic
     return row
 
 
-class _VideoRecorder:
-    def __init__(self, path: Path, first_frame, *, fps: int, scale: int) -> None:
-        frame = np.ascontiguousarray(np.asarray(first_frame, dtype=np.uint8)[:, :, :3])
-        self.path = path
-        self.fps = fps
-        self.scale = scale
-        self.width = int(frame.shape[1])
-        self.height = int(frame.shape[0])
-        self.frames = 0
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self._process = subprocess.Popen(
-            [
-                "ffmpeg",
-                "-y",
-                "-loglevel",
-                "error",
-                "-f",
-                "rawvideo",
-                "-pixel_format",
-                "rgb24",
-                "-video_size",
-                f"{self.width}x{self.height}",
-                "-framerate",
-                str(fps),
-                "-i",
-                "-",
-                "-an",
-                "-vf",
-                f"scale=iw*{scale}:ih*{scale}:flags=neighbor,setsar=7/6",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                str(path),
-            ],
-            stdin=subprocess.PIPE,
-        )
-        self.write(frame)
+def _rgb_frame(frame) -> np.ndarray:
+    return np.ascontiguousarray(np.asarray(frame, dtype=np.uint8)[:, :, :3])
 
-    def write(self, frame) -> None:
-        image = np.ascontiguousarray(np.asarray(frame, dtype=np.uint8)[:, :, :3])
-        if self._process.stdin is None:
-            raise RuntimeError("ffmpeg stdin is unavailable")
-        self._process.stdin.write(image.tobytes())
-        self.frames += 1
 
-    def close(self) -> dict:
-        if self._process.stdin is not None:
-            self._process.stdin.close()
-        code = self._process.wait()
-        return {
-            "path": str(self.path),
-            "frames": self.frames,
-            "fps": self.fps,
-            "scale": self.scale,
-            "ffmpeg_ok": code == 0,
-        }
+def _open_video(path: Path, first_frame, *, fps: int, scale: int) -> VideoRecorder:
+    rgb = _rgb_frame(first_frame)
+    recorder = VideoRecorder(
+        path,
+        width=int(rgb.shape[1]),
+        height=int(rgb.shape[0]),
+        config=VideoCaptureConfig(
+            fps=fps,
+            scale=scale,
+            crf=18,
+            preset="medium",
+            audio=False,
+            footer=False,
+        ),
+    )
+    recorder.write(rgb)
+    return recorder
+
+
+def _video_report(recorder: VideoRecorder) -> dict:
+    return {
+        "path": str(recorder.path),
+        "frames": recorder.frames,
+        "fps": recorder.config.fps,
+        "scale": recorder.config.scale,
+        "encoded": True,
+    }
 
 
 def _save_png(obs, path: Path) -> None:
@@ -218,7 +186,7 @@ def _save_png(obs, path: Path) -> None:
         Image.fromarray(arr[..., :3].astype("uint8")).save(path)
 
 
-def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -> dict:
+def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) -> dict:
     ram = env.get_ram()
     if args.ship:
         task = MountainGrapeShipTask(
@@ -262,7 +230,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
         step = env.step(action)
         obs = step[0]
         if video is not None:
-            video.write(obs)
+            video.write(_rgb_frame(obs))
         frame += 1
         ram = env.get_ram()
         held_now = int(read_held_item(ram))
@@ -389,7 +357,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
             step = env.step(action)
             obs = step[0]
             if video is not None:
-                video.write(obs)
+                video.write(_rgb_frame(obs))
             frame += 1
             pos = get_pos_from_ram(env.get_ram())
             ram = env.get_ram()
@@ -473,7 +441,7 @@ def _run_reactive(env, args: argparse.Namespace, video: _VideoRecorder | None) -
     }
 
 
-def _run_replay(env, args: argparse.Namespace, video: _VideoRecorder | None) -> dict:
+def _run_replay(env, args: argparse.Namespace, video: VideoRecorder | None) -> dict:
     tape = RecordedTask.load(args.task)
     ram = env.get_ram()
     start = _snap(ram, 0, phase="replay")
@@ -496,7 +464,7 @@ def _run_replay(env, args: argparse.Namespace, video: _VideoRecorder | None) -> 
         step = env.step(action)
         obs = step[0]
         if video is not None:
-            video.write(obs)
+            video.write(_rgb_frame(obs))
         frame += 1
         ram = env.get_ram()
         tilemap = int(read_ram_value(ram, "tilemap"))
@@ -544,15 +512,18 @@ def main() -> int:
         if obs is None:
             step = env.step(make_action())
             obs = step[0]
-        video = _VideoRecorder(args.video, obs, fps=args.video_fps, scale=args.video_scale)
+        video = _open_video(args.video, obs, fps=args.video_fps, scale=args.video_scale)
 
+    video_result = None
     try:
         if args.mode == "replay":
             report = _run_replay(env, args, video)
         else:
             report = _run_reactive(env, args, video)
     finally:
-        video_result = video.close() if video is not None else None
+        if video is not None:
+            video.close()
+            video_result = _video_report(video)
 
     report["state"] = args.state
     report["timeout"] = args.timeout

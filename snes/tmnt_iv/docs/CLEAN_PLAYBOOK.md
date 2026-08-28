@@ -81,15 +81,16 @@ assists for that stage byte only (or whole-run when all green).
 | 1 | 1 | Alleycat Blues | **In progress** — left flank + between-wave pizza; Metalhead Clean OK; early waves still die |
 | 2 | 2 | Sewer Surfin' | **In progress** — stall thrash offline; 0x1C spike jump; LiveHard entry (lives=2); Rat King HP≥1 boss_active |
 | 3 | 3 | Technodrome | Duo left-flank; tank throws; blocker Foot; no stall override on duo |
-| 4 | 4 | Prehistoric | Slash hybrid (spin 52 production); dino B+Y; no jump-slash on Slash |
+| 4 | 4 | Prehistoric | Slash jump-over behind-combo (spin 52); dino B+Y; no jump-slash on Slash |
 | 5 | 5 | Skull & Crossbones | **No global pizza seek**; duo left-flank |
 | 6 | 6 | Wounded Knee | Stacked `0xb0` jump-slash; Raph cadence; stall Y-quantize |
 | 7 | 7 | Neon Night Riders | Near-band only `y≥140`; Krang left-flank; Mode-7 props filtered |
-| 8 | 8–9 | Starbase / Shredder | Hover jump-slash; form-2 wall dodge **without** iframe write |
+| 8 | 8–9 | Starbase / Shredder | Hover jump-slash; form-2 vertical offset / drop-chip **without** iframe write |
 
 ## Probe recipe (copy per stage)
 
-1. Build `heal=none` segment probe from fight-ready state (like
+1. Build `heal=none` segment probe from fight-ready state (add a
+   `CleanProbeSpec` in `clean_suite.py`, CLI adapter like
    `probe_stage1_clean.py`).
 2. Suite: checkpoint + continuous-faithful or power-on/natural entry.
 3. Metrics: frames, damage, min HP, pizza heal count, emergency heals
@@ -120,14 +121,13 @@ assists for that stage byte only (or whole-run when all green).
 
 | Concern | Where |
 |---------|--------|
-| Pizza seek (stage 0 full; stage 1 underfoot + between-wave) | `policy.py` `PizzaSeek` |
-| Alleycat left flank / standoff 36 | `policy.py` `_ALLEY_*` + `PreferredFlank.LEFT` |
-| Baxter Clean standoff | `policy.py` `BaxterTactics` |
-| Hazard helper (tests only) | `policy.py` `HazardAvoid` (not in production tick) |
-| Elevated jump (stage 0 only) | `policy.py` `_elevated_jump_slash` / `_suppress_elevated_jump` |
-| Stage 1 Clean suite | `scripts/probe_stage1_clean.py` |
-| Stage 2 Clean suite | `scripts/probe_stage2_clean.py` |
-| Stage 3 Clean suite | `scripts/probe_stage3_clean.py` (prefer `LiveHardStage3`) |
-| Sewer spike dodge | `policy.py` `SewerSpikeAvoid` |
-| Continuous assist | `scripts/record_full_hard_run.py` (emergency + form-2) |
+| Pizza seek (stage 0 full; stage 1 underfoot + between-wave) | `tactics/pizza.py` `PizzaSeek` |
+| Alleycat left flank / standoff 36 | `tactics/fight.py` `_ALLEY_*` + `PreferredFlank.LEFT` |
+| Alleycat pack (0x5E kick / 0x76 grab / jumper) | `tactics/alleycat.py` `AlleycatPackTactics` |
+| Baxter Clean standoff | `tactics/baxter.py` `BaxterTactics` |
+| Hazard helper (tests only) | `tactics/hazards.py` `HazardAvoid` (not in production tick) |
+| Elevated jump (stage 0 only) | `tactics/fight.py` `fight()` |
+| Stage 1–3 Clean suite | `clean_suite.py` + `scripts/probe_stage{N}_clean.py` adapters |
+| Sewer spike dodge | `tactics/hazards.py` `SewerSpikeAvoid` |
+| Continuous assist | `assist.py` (emergency + form-2); runner `scripts/record_full_hard_run.py` |
 | Assist contract | `docs/ASSIST_CONTRACT.md` |

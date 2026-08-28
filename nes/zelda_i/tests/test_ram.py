@@ -13,6 +13,8 @@ from zelda_i.ram import (
     ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SWORD,
+    CAVE_MODE,
+    PASSAGE_MODE,
     PLAY_MODE,
     SCREEN_START,
     capabilities_from_ram,
@@ -20,6 +22,12 @@ from zelda_i.ram import (
     parse_game_state,
     read_snapshot,
 )
+
+
+def test_mode_constants() -> None:
+    assert PLAY_MODE == 5
+    assert PASSAGE_MODE == 9
+    assert CAVE_MODE == 11
 
 
 def test_parse_game_state_menu_by_default() -> None:

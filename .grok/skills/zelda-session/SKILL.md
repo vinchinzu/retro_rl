@@ -28,8 +28,8 @@ Planner owns `docs/STATUS.md`.
    bits, earned keys/bombs, hearts lo==hi). No MP4. `--no-video` on spine
    CLIs.
 8. Occupancy/predict halt is **not** duplicated here. See
-   [predict-path](../predict-path/SKILL.md): halt at first occupancy miss;
-   do not batch exploration; do not probe a path BFS/OccupancyWalker can
+   [predict-path](../predict-path/SKILL.md): occupancy miss → block that
+   cell → replan; no path → stand; do not probe a path OccupancyWalker can
    close.
 
 ## Skills

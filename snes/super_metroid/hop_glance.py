@@ -2,28 +2,24 @@
 
 A glance still (or RAM dump) is enough: wrong room, not gs=8, still morph
 when the door needs stand, boss alive, xy not in the door band. No MP4.
+Dest-glance numbers live in :mod:`super_metroid.leave_specs`.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping
 
+from super_metroid.leave_specs import LeaveSpec
 from super_metroid.routes.controller_common import MORPH_POSES
-from super_metroid.routes.kpdr.room_ids import ROOM_WS_BASEMENT, ROOM_WS_MAIN
 
 __all__ = [
     "LeaveMiss",
-    "LeaveSpec",
-    "PHANTOON_LEAVE",
-    "WS_BASEMENT_TO_MAIN",
-    "WS_ENTRANCE_TO_MAIN",
     "final_from_state",
     "grade_final",
-    "grade_leave",
     "grade_report",
     "parse_room",
     "pose_class",
+    "raise_leave_miss",
 ]
 
 STAND_POSES = frozenset({1, 2, 9, 10, 12, 27, 28, 137, 138})
@@ -33,49 +29,9 @@ _POSE_CLASS = {
     "stand": STAND_POSES,
     "morph": MORPH_POSES,
     "air": AIR_POSES,
+    # Doorway leave: stand or spin through. Morph in the door is a miss.
+    "door": STAND_POSES | AIR_POSES,
 }
-
-
-@dataclass(frozen=True)
-class LeaveSpec:
-    """What a human would check in a couple of seconds on a still."""
-
-    hop: str
-    room: int
-    x: tuple[int, int]
-    y: tuple[int, int]
-    pose_class: str = "any"
-    gs: int = 8
-    dt: int = 0
-    boss_bit: int | None = None
-    min_health: int = 1
-
-
-# Canonical dest glances — compose and tests import these (do not copy numbers).
-WS_ENTRANCE_TO_MAIN = LeaveSpec(
-    hop="ws_entrance_to_main",
-    room=ROOM_WS_MAIN,
-    x=(1000, 1100),
-    y=(880, 940),
-    pose_class="stand",
-)
-PHANTOON_LEAVE = LeaveSpec(
-    hop="phantoon_loot_exit",
-    room=ROOM_WS_BASEMENT,
-    x=(1200, 1280),
-    y=(120, 160),
-    pose_class="stand",
-    boss_bit=1,
-)
-# Residual hop dest (not on POST_ICE_SPINE). Main Shaft floor hatch ~(1144,1900).
-# RED leftover is the still (basement hatch ~(630-690, 160-190)), not this band.
-WS_BASEMENT_TO_MAIN = LeaveSpec(
-    hop="ws_basement_to_main",
-    room=ROOM_WS_MAIN,
-    x=(1100, 1200),
-    y=(1800, 2000),
-    pose_class="stand",
-)
 
 
 class LeaveMiss(RuntimeError):
@@ -158,6 +114,29 @@ def _boss_from_state(state: Any) -> int | None:
         return None
 
 
+def raise_leave_miss(
+    state: Any,
+    hop_id: str,
+    spec: LeaveSpec,
+    *,
+    room_label: str,
+    to_room: int,
+    exc: BaseException | None = None,
+) -> None:
+    """Grade ``state`` against ``spec`` and raise :class:`LeaveMiss`. Never returns."""
+    leftover = final_from_state(state)
+    misses = list(grade_final(leftover, spec))
+    if exc is not None:
+        misses.append(f"{type(exc).__name__}: {exc}")
+    raise LeaveMiss(
+        hop_id,
+        leftover,
+        misses or ["leave failed"],
+        room_label=room_label,
+        to_room=to_room,
+    ) from exc
+
+
 def final_from_state(state: Any) -> dict[str, Any]:
     """Glance still from SuperMetroidState or a room/x/y/pose/gs/dt/health duck."""
     room = _int_attr(state, "room_id", "room")
@@ -175,18 +154,6 @@ def final_from_state(state: Any) -> dict[str, Any]:
     if boss is not None:
         final["boss"] = boss
     return final
-
-
-def grade_leave(final: Mapping[str, Any], spec: LeaveSpec) -> dict[str, Any]:
-    """Leftover is the final still, whether or not glance passes.
-
-    Miss reasons: :func:`grade_final`. Callers must keep leftover on miss.
-    """
-    leftover = dict(final)
-    if leftover.get("xy") is None:
-        leftover["xy"] = list(_xy(leftover))
-    del spec
-    return leftover
 
 
 def _leave_miss_message(
@@ -242,9 +209,11 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
         boss = int(final.get("boss", final.get("boss_bit", 0)))
         if boss != spec.boss_bit:
             misses.append(f"boss={boss} != {spec.boss_bit}")
-    health = int(final.get("health", spec.min_health))
-    if health < spec.min_health:
-        misses.append(f"health={health} < {spec.min_health}")
+    health = final.get("health")
+    if health is None:
+        misses.append("missing health")
+    elif int(health) < spec.min_health:
+        misses.append(f"health={int(health)} < {spec.min_health}")
     return misses
 
 

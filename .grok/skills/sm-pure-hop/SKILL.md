@@ -32,7 +32,9 @@ Do not STATUS-promote.
 
 ## Hard in-room climbs
 
-If the same acceptance checkbox stays red after **3** serial PARTIALs, stop.
-Split at named phase edges (seat → height → contact → top → door) per
-`snes/super_metroid/docs/tasks/HARD_ROOM_SPLITS.md`. Intermediate dumps are
-not GREEN for the hop.
+3 serial PARTIALs of the same miss class → dump a named phase pin from the
+natural path and iterate from that handoff, or replace the trajectory
+(`snes/super_metroid/docs/tasks/HARD_ROOM_SPLITS.md`). Intermediate dumps
+are not hop GREEN. Glance the phase seat with `hop_glance` against the
+**phase** spec (not the dest-room leave). Pin out the held seat once
+(`scratch/post_<hop>_<phase>.state`).

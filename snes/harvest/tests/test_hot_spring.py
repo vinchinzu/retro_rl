@@ -238,6 +238,9 @@ class HotSpringUnitTests(unittest.TestCase):
         spa = ROUTES["mountain_entry_to_outdoor_spa"]
         ret = ROUTES["mountain_to_farm"]
         self.assertEqual(spa[0].target_px, (328, 728))
+        self.assertEqual(spa[1].target_px, (328, 688))
+        self.assertEqual(spa[1].run_direction, "up")
+        self.assertTrue(spa[1].force_run)
         self.assertIn((72, 368), [wp.target_px for wp in spa])
         self.assertNotIn((686, 430), [wp.target_px for wp in spa])
         self.assertNotIn((620, 488), [wp.target_px for wp in ret])
@@ -270,6 +273,11 @@ class HotSpringUnitTests(unittest.TestCase):
         ret = ROUTES["mountain_to_farm"]
         self.assertEqual(spa[-1].target_px, (619, 201))
         self.assertEqual(farm[-1].target_px, (619, 201))
+        farm_mtn = [wp for wp in farm if wp.tilemap == 0x10]
+        self.assertEqual(farm_mtn[0].target_px, (328, 728))
+        self.assertEqual(farm_mtn[1].target_px, (328, 688))
+        self.assertEqual(farm_mtn[1].run_direction, "up")
+        self.assertTrue(farm_mtn[1].force_run)
         self.assertGreaterEqual(len(ret), 10)
         self.assertTrue(ret[-1].tilemap in (0x00, 0x0C) or ret[-2].is_exit)
         # Return walks path plaza then farm gate, not a single mountain-south hop.
@@ -295,7 +303,16 @@ class HotSpringUnitTests(unittest.TestCase):
     def test_house_farm_to_spa_keeps_house_south_then_gate(self) -> None:
         house = farm_to_west_gate_waypoints(136, 375, tilemap=0x00)
         self.assertEqual(house[0].target_px, (137, 375))
-        self.assertEqual(house[1].target_px, (136, 424))
+        self.assertEqual(house[1].target_px, (136, 392))
+        self.assertNotEqual(house[1].target_px, (136, 424))
+        self.assertNotIn((120, 408), [wp.target_px for wp in house])
+        self.assertIn((136, 440), [wp.target_px for wp in house])
+        self.assertIn((72, 440), [wp.target_px for wp in house])
+        drop = next(wp for wp in house if wp.target_px == (136, 440))
+        west = next(wp for wp in house if wp.target_px == (72, 440))
+        self.assertEqual(drop.run_direction, "down")
+        self.assertTrue(drop.force_run)
+        self.assertEqual(west.run_direction, "left")
         spa = farm_to_spa_waypoints(136, 375, tilemap=0x00)
         self.assertEqual(spa[-1].target_px, (619, 201))
         self.assertEqual(spa[0].target_px, (137, 375))
@@ -306,6 +323,30 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(route[0].target_px, (137, 375))
         self.assertNotEqual(route[0].target_px, (136, 600))
         self.assertEqual(route[-1].target_px, (619, 201))
+
+    def test_after_rocks_farm_to_spa_prefixes_north_east(self) -> None:
+        """Y1_D2_After_Rocks ~(633,223) must not first-hop house or barn A1."""
+        route = farm_to_spa_waypoints(633, 223, tilemap=0x00)
+        sliced = slice_route_from_position(route, 633, 223, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        self.assertNotEqual(sliced[0].target_px, (137, 375))
+        dx = abs(sliced[0].target_px[0] - 633)
+        dy = abs(sliced[0].target_px[1] - 223)
+        self.assertLessEqual(max(dx, dy), 7 * 16)
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+        self.assertIn((624, 384), farm_px)
+        self.assertNotIn((400, 352), farm_px)
+        self.assertNotIn((512, 320), farm_px)
+        self.assertIn((136, 440), farm_px)
+        self.assertIn((72, 440), farm_px)
+        self.assertNotIn((120, 408), farm_px)
+        self.assertNotIn((88, 432), farm_px)
+        mtn = [wp for wp in sliced if wp.tilemap == 0x10]
+        self.assertGreaterEqual(len(mtn), 3)
+        self.assertEqual(mtn[0].target_px, (328, 728))
+        self.assertEqual(mtn[1].target_px, (328, 688))
+        self.assertEqual(mtn[1].run_direction, "up")
+        self.assertTrue(mtn[1].force_run)
 
 
 def _set_u16(ram: np.ndarray, addr: int, value: int) -> None:
@@ -453,6 +494,8 @@ class SpaFillToMaxTests(unittest.TestCase):
         ram[ADDR_MAX_STAMINA] = 130
         ram[ADDR_STAMINA] = 17
         self.assertEqual(task._stamina_target(ram), 130)
+        self.assertFalse(task._stamina_ok(ram))
+        ram[ADDR_STAMINA] = 90
         self.assertFalse(task._stamina_ok(ram))
         ram[ADDR_STAMINA] = 130
         self.assertTrue(task._stamina_ok(ram))

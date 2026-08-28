@@ -9,7 +9,7 @@ import numpy as np
 from retro_harness.controls import NES_A, NES_B, NES_LEFT, NES_RIGHT, NES_START
 from smb.paths import GAME_DIR, MODELS_DIR
 from smb.policy import expand_nes9_rle, load_nes9_rle_seed
-from smb.tas.fm2 import parse_fm2
+from smb.tas.fm2 import parse_fm2, parse_movie
 from smb.tas.replay import to_action9
 from smb.tas.slice import (
     HL_1_2_FM2_START,
@@ -72,6 +72,7 @@ def test_parse_minimal_inline(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     movie = parse_fm2(path)
+    assert parse_movie(path).num_frames == 3
     assert movie.num_frames == 3
     assert movie.frames[1][NES_RIGHT] == 1
     assert movie.frames[1][NES_B] == 1

@@ -85,6 +85,7 @@ from super_metroid.routes.kpdr.k6 import (
     play_ws_basement_to_main,
     play_ws_basement_to_phantoon,
     play_ws_entrance_to_main,
+    play_ws_main_to_attic,
     play_ws_main_to_basement,
 )
 from super_metroid.routes.kpdr.moat import play_moat_cross
@@ -288,6 +289,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "ws_main_to_basement": play_ws_main_to_basement,
     "ws_basement_to_phantoon": play_ws_basement_to_phantoon,
     "ws_basement_to_main": play_ws_basement_to_main,
+    "ws_main_to_attic": play_ws_main_to_attic,
     "phantoon_fight": play_phantoon_room_fight,
     "phantoon_loot_exit": play_phantoon_loot_exit,
     # Post-Speed shortcut only (Boost Blocks).

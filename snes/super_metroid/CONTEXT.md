@@ -74,6 +74,11 @@ tip is not “those rooms are done.”
 _Avoid_: freezing the Phantoon prefix because the dual is green, shipping a
 leave that the next skill cannot **Sync**
 
+**Sitting**:
+One agent session on the living checkbox. It ends when that checkbox greens
+or the human/context dies.
+_Avoid_: three red windows as the sitting-end, treating a sitting as a hop restart
+
 **Chip**:
 One room at a time: TAS or human **Tape** as guideline → **Skill** on the tip.
 Not TAS concat. Not a geographic freeze except the serial NOW (Gravity).
@@ -114,3 +119,39 @@ _Avoid_: 100% as this year’s Finish
 **Program gate**:
 An M0–M8 label for the game matrix. Not the Super Metroid working board.
 _Avoid_: using M-gates as the session ladder
+
+**Enemy**:
+A currently active, non-boss room entity with its own health, position, and status.
+_Avoid_: mob, “the Atomic” as the individual entity
+
+**Species**:
+The kind shared by Enemies, including maximum health, live and frozen Contact, and default Stance.
+_Avoid_: using an Enemy instance as the kind
+
+**Contact**:
+What overlap does: knockback, solid, platform, none.
+_Avoid_: collision as the domain word, keepaway as a Contact kind
+
+**Stance**:
+This-frame choice toward an Enemy: Engage (kill/freeze), Avoid (path around / wait), Absorb (take the hit; Survival refills), Ignore (out of band).
+_Avoid_: keepaway, tank (comment, not Stance), run (that is Avoid)
+
+**Overlay**:
+The per-frame room-enemy Skill that cooperates with a movement hop without owning the room.
+_Avoid_: BossSegment for room enemies, SpineHop per enemy
+
+**Generalist**:
+A goal-conditioned neural contractor that covers rooms the skill library does not own. Not a Skill. Not the Tip.
+_Avoid_: treating a generalist door as a continuous green, STATUS from a net pin
+
+**Contractor**:
+The solver-layer job of synthesizing or covering missing L1. Existing skills stay the library.
+_Avoid_: replacing SpineHop with a net, calling the generalist a Skill
+
+**Steering**:
+Injecting a Goal (next door, node, or repertoire session) without taking the controller.
+_Avoid_: full human takeover as the only way to change destination
+
+**Join**:
+A `hop_glance` green against the next hop's LeaveSpec so a Skill can Sync. Room-change alone is not Join.
+_Avoid_: morph-in-door as success, room-id as the handoff

@@ -134,11 +134,33 @@ def dash(
     return session.state
 
 
+def shoot_up_action() -> tuple[str, ...]:
+    """Vertical beam: D-pad UP + fire. Not shoulder R (diagonal)."""
+    return ("UP", "X")
+
+
+def shoot_up(
+    session: ControllerSession,
+    *,
+    frames: int = 2,
+    reason: str = "shoot_up",
+) -> SuperMetroidState:
+    """Fire a vertical shot to break overhead shot / Wave blocks.
+
+    Hops were inlining ``UP+X``. Shoulder ``R`` is aim-up diagonal; ``L``
+    is aim-down. Neither is a vertical shot.
+    """
+    hold(session, frames, *shoot_up_action(), reason=reason)
+    return session.state
+
+
 __all__ = [
     "crouch_jump",
     "dash",
     "down_grab",
     "mid_air_morph",
+    "shoot_up",
+    "shoot_up_action",
     "speedy_jump",
     "stop_on_a_dime",
 ]

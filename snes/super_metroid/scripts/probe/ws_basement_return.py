@@ -29,20 +29,14 @@ from typing import Any
 from retro_harness.headed import add_headed_flag, attach_headed, idle_headed
 from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.dev.common import boot_from_state, make_dev_env, save_dev_state
-from super_metroid.hop_glance import (
-    LeaveMiss,
-    WS_BASEMENT_TO_MAIN,
-    final_from_state,
-    grade_final,
-)
+from super_metroid.hop_glance import LeaveMiss, final_from_state, grade_final
+from super_metroid.leave_specs import WS_BASEMENT_TO_MAIN
 from super_metroid.paths import SCRATCH_STATE_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
-from super_metroid.routes.kpdr.k6.ws_basement_ice import (
-    list_basement_enemies,
-    movement_stall_reason,
-)
+from super_metroid.combat.enemies import list_enemies
+from super_metroid.combat.enemies.workrobot import stall_reason
 from super_metroid.routes.kpdr.k6.ws_basement_return import (
     play_ws_basement_to_main,
     ws_basement_main_settled,
@@ -144,16 +138,16 @@ def _run_hop(
         except Exception as exc:  # noqa: BLE001
             error = f"{type(exc).__name__}: {exc}"
             st = sess.state
-        enemies = list_basement_enemies(sess)
+        enemies = list_enemies(sess)
         extra = {
             "frame": sess.frame,
             "charge": session_beam_charge(sess),
-            "mov": int(getattr(st, "movement_type", 0) or 0),
+            "mov": int(st.movement_type),
             "killed": int(getattr(st, "enemies_killed", 0) or 0),
-            "stall": movement_stall_reason(
+            "stall": stall_reason(
                 int(st.samus_x),
                 int(st.samus_y),
-                int(getattr(st, "movement_type", 0) or 0),
+                int(st.movement_type),
                 int(st.pose),
                 enemies,
             ),
@@ -171,7 +165,13 @@ def _run_hop(
         ok = error is None and ws_basement_main_settled(st)
         if ok and save is not None:
             save_dev_state(env, save)
+        leftover_state = None
         if not ok:
+            leftover_state = SCRATCH / "ws_basement_to_main_leftover.state"
+            try:
+                save_dev_state(env, leftover_state)
+            except Exception:  # noqa: BLE001
+                leftover_state = None
             try:
                 from PIL import Image
 
@@ -192,6 +192,7 @@ def _run_hop(
             "frames": sess.frame,
             "time": timed,
             "saved": str(save) if ok and save is not None else None,
+            "leftover_state": str(leftover_state) if leftover_state is not None else None,
             "red_png": str(png) if png is not None else None,
         }
         if not ok:

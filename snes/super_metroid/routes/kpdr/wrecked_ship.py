@@ -20,6 +20,9 @@ Product pure shine chain (compose, natural-entry when sources allow)
    (:func:`super_metroid.routes.kpdr.k6.phantoon_leave.play_phantoon_loot_exit`).
 7. **Powered Basement → Main Shaft** — :func:`play_ws_basement_to_main`
    (morph-roll LEFT, jump UP the blue ceiling hatch). Gravity hop 1.
+8. **Powered Main Shaft → Attic** — :func:`play_ws_main_to_attic`
+   (take02 two-hop onto the fire slope, spin-climb, jump UP the blue
+   ceiling door). Gravity hop 2. Not on ``--to phantoon``.
 """
 
 from __future__ import annotations
@@ -31,14 +34,17 @@ from super_metroid.routes.kpdr.k6 import ws_basement as _ws_basement
 from super_metroid.routes.kpdr.k6 import ws_basement_return as _ws_basement_return
 from super_metroid.routes.kpdr.k6 import ws_entrance as _ws_entrance
 from super_metroid.routes.kpdr.k6 import ws_main as _ws_main
+from super_metroid.routes.kpdr.k6 import ws_main_climb as _ws_main_climb
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CRATERIA_KIHUNTER as ROOM_KIHUNTER,
     ROOM_MOAT,
     ROOM_PHANTOON,
     ROOM_WEST_OCEAN,
+    ROOM_WS_ATTIC,
     ROOM_WS_BASEMENT,
     ROOM_WS_ENTRANCE,
     ROOM_WS_MAIN,
+    ROOM_WS_SAVE,
 )
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.shinespark import ChargeMode
@@ -47,8 +53,6 @@ from super_metroid.routes.skills.shinespark import ChargeMode
 play_west_ocean_to_ws = _west_ocean.play_west_ocean_to_ws
 play_west_ocean_over_ocean_spark = _west_ocean.play_west_ocean_over_ocean_spark
 
-ROOM_WS_ATTIC = _ws_main.ROOM_WS_ATTIC
-ROOM_WS_SAVE = _ws_main.ROOM_WS_SAVE
 WEAPON_BEAM = _ws_entrance.WEAPON_BEAM
 WEAPON_SUPER = _ws_main.WEAPON_SUPER
 WS_ENTRANCE_DOOR_X_MIN = _ws_entrance.WS_ENTRANCE_DOOR_X_MIN
@@ -74,6 +78,8 @@ play_ws_basement_to_phantoon = _ws_basement.play_ws_basement_to_phantoon
 ws_basement_phantoon_settled = _ws_basement.ws_basement_phantoon_settled
 play_ws_basement_to_main = _ws_basement_return.play_ws_basement_to_main
 ws_basement_main_settled = _ws_basement_return.ws_basement_main_settled
+play_ws_main_to_attic = _ws_main_climb.play_ws_main_to_attic
+ws_main_attic_settled = _ws_main_climb.ws_main_attic_settled
 at_ws_basement_hatch_seat = _ws_basement_return.at_ws_basement_hatch_seat
 hatch_jump_action = _ws_basement_return.hatch_jump_action
 at_ws_basement_bomb_blocks = _ws_basement.at_ws_basement_bomb_blocks
@@ -183,8 +189,10 @@ __all__ = [
     "play_ws_main_to_basement",
     "play_ws_basement_to_phantoon",
     "play_ws_basement_to_main",
+    "play_ws_main_to_attic",
     "ws_basement_phantoon_settled",
     "ws_basement_main_settled",
+    "ws_main_attic_settled",
     "at_ws_basement_hatch_seat",
     "hatch_jump_action",
     "at_ws_basement_bomb_blocks",
