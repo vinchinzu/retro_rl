@@ -184,6 +184,33 @@ def test_bomb_north_1e_clips_right_up_at_stand_y() -> None:
     assert list(act.action) == list(nes_action("RIGHT", "UP"))
 
 
+def test_bomb_north_1e_skips_to_stand_in_door_alcove() -> None:
+    """v10 leftover (120, 93): already inside stand_tol. Do not DOWN."""
+    from zelda_i.bomb_wall_path import BombWallPhase
+    from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
+
+    ctl = Level2BombNorth1eSpineController()
+    act = ctl.step(_snap(room=0x1E, x=120, y=93, bombs=16))
+    assert list(act.action) == list(nes_action("UP"))
+    assert act.reason == "face_up"
+    assert ctl.phase is BombWallPhase.FACE
+    assert "DOWN" not in str(act.action)
+
+
+def test_bomb_north_1e_skips_to_stand_after_clip_overshoot() -> None:
+    """Continuous v10: RIGHT+UP from (96,101) lands in the alcove; FACE."""
+    from zelda_i.bomb_wall_path import BombWallPhase
+    from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
+
+    ctl = Level2BombNorth1eSpineController()
+    clip = ctl.step(_snap(room=0x1E, x=96, y=101, bombs=16))
+    assert clip.reason == "stand_clip"
+    act = ctl.step(_snap(room=0x1E, x=120, y=93, bombs=16))
+    assert list(act.action) == list(nes_action("UP"))
+    assert act.reason == "face_up"
+    assert ctl.phase is BombWallPhase.FACE
+
+
 def test_enter_1e_north_band_pushes_up() -> None:
     ctl = Level2Enter1eController()
     act = ctl.step(_snap(room=0x2E, x=120, y=93))

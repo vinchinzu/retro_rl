@@ -283,7 +283,12 @@ class BombWallController:
             return action
 
         if self.phase is BombWallPhase.SOUTH_BAND:
-            if self.approach_waypoints:
+            # stand_tol can already hold while approach_tol still hunts
+            # the last waypoint (v10: (120,93) DOWN into a solid alcove).
+            if self._at_stand(snap):
+                self.approach_index = len(self.approach_waypoints)
+                self._set_phase(BombWallPhase.TO_STAND, "skip_to_stand")
+            elif self.approach_waypoints:
                 if self.approach_index >= len(self.approach_waypoints):
                     self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
                     return self._goto_stand(snap)
@@ -316,25 +321,26 @@ class BombWallController:
                 return FrameAction(nes_idle_action(), "approach_hold")
             # Only dive south from a north pocket. Mid-y (96,141) is already
             # walkable; extra DOWN walks into a dead column (live 0x1e).
-            if (
+            elif (
                 snap.link_y < 130
                 and snap.link_y < self.south_band_y
                 and self.phase_frames <= self.south_band_max_frames
             ):
                 return FrameAction(nes_action("DOWN"), "south_band")
-            tx = self.stand[0]
-            if abs(snap.link_x - tx) > self.stand_tol:
-                if self.phase_frames > (
-                    self.south_band_max_frames + self.south_center_max_frames
-                ):
-                    self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
-                    return self._goto_stand(snap)
-                return FrameAction(
-                    nes_action("RIGHT" if snap.link_x < tx else "LEFT"),
-                    "south_center_x",
-                )
-            self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
-            return self._goto_stand(snap)
+            else:
+                tx = self.stand[0]
+                if abs(snap.link_x - tx) > self.stand_tol:
+                    if self.phase_frames > (
+                        self.south_band_max_frames + self.south_center_max_frames
+                    ):
+                        self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
+                        return self._goto_stand(snap)
+                    return FrameAction(
+                        nes_action("RIGHT" if snap.link_x < tx else "LEFT"),
+                        "south_center_x",
+                    )
+                self._set_phase(BombWallPhase.TO_STAND, "to_bomb_stand")
+                return self._goto_stand(snap)
 
         if self.phase is BombWallPhase.TO_STAND:
             if snap.bombs <= 0:
