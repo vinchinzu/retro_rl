@@ -10,6 +10,7 @@ import pytest
 
 from super_metroid.combat.enemies import Enemy, list_enemies
 from super_metroid.hop_glance import LeaveMiss
+from super_metroid.leave_specs import WS_MAIN_GRATE_SEAT
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
 from super_metroid.routes.kpdr.k6.ws_main_actions import (
     attic_door_action,
@@ -20,6 +21,10 @@ from super_metroid.routes.kpdr.k6.ws_main_climb import (
     ws_main_attic_settled,
 )
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
+    FIRST_JUMP_LAND_X,
+    FIRST_JUMP_LAND_Y,
+    GRATE_LAND_X,
+    GRATE_LAND_Y,
     SHAFT_HOPS,
     WS_MAIN_ATTIC_DOOR_X,
     WS_MAIN_PHASES,
@@ -133,6 +138,16 @@ def test_classifier_regions_and_phases() -> None:
     take04 = _state(samus_x=1195, samus_y=1883, pose=3, velocity_y=0)
     assert at_ws_main_grate_seat(take04)
     assert classify_ws_main_phase(take04) == "grate_seat"
+
+    land = _state(samus_x=1189, samus_y=1883, pose=2, velocity_y=0)
+    assert at_ws_main_grate_seat(land)
+    assert classify_ws_main_phase(land) == "grate_seat"
+    assert GRATE_LAND_X == (1188, 1232)
+    assert GRATE_LAND_Y == (1852, 1888)
+    assert FIRST_JUMP_LAND_X == GRATE_LAND_X
+    assert FIRST_JUMP_LAND_Y == GRATE_LAND_Y
+    assert FIRST_JUMP_LAND_X != WS_MAIN_GRATE_SEAT.x
+    assert FIRST_JUMP_LAND_Y != WS_MAIN_GRATE_SEAT.y
 
     stairs = _state(samus_x=1111, samus_y=1899, pose=157, velocity_y=0)
     assert classify_region(stairs) is ShaftRegion.PIT

@@ -4,8 +4,9 @@ Single source of truth for x/y/pose contracts used by climb, overlay, and
 play. Controllers import predicates — do not re-encode magic thresholds.
 
 Take02 two-hop: short A at ~1166 facing LEFT (fails), land, walk LEFT to
-1156, committed A, RIGHT+A at y~1920. Fire slope is grate_seat; stairs
-leftover (1111, 1899) is PIT, not the Wave-hole shelf.
+1156, committed A, RIGHT+A at y~1920. Observable fire-slope land is
+grate_seat region; usable outgoing pin is leave_specs.WS_MAIN_GRATE_SEAT.
+Stairs leftover (1111, 1899) is PIT, not the Wave-hole shelf.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ import enum
 
 from super_metroid.leave_specs import (
     WS_MAIN_ATTIC_SEAT,
-    WS_MAIN_GRATE_SEAT,
     WS_MAIN_MID_CLIMB,
     WS_MAIN_WEST_SUPER,
 )
@@ -61,9 +61,13 @@ WS_MAIN_SHAFT_CENTER = 1152
 WS_MAIN_ATTIC_DOOR_X = (WS_MAIN_ATTIC_SEAT.x[0] + WS_MAIN_ATTIC_SEAT.x[1]) // 2
 TUNNEL_CLEAR_X = 1088
 
-# Glance bands in leave_specs. Pocket x=1177 is out of grate_seat.
-FIRST_JUMP_LAND_X = WS_MAIN_GRATE_SEAT.x
-FIRST_JUMP_LAND_Y = WS_MAIN_GRATE_SEAT.y
+# Observable fire-slope land after the pit two-hop. Pocket x=1177 is out.
+# Usable outgoing pin is leave_specs.WS_MAIN_GRATE_SEAT ~(1223,1860), not
+# this band: (1189,1883) p2 and take04 (1195,1883) land here.
+GRATE_LAND_X = (1188, 1232)
+GRATE_LAND_Y = (1852, 1888)
+FIRST_JUMP_LAND_X = GRATE_LAND_X
+FIRST_JUMP_LAND_Y = GRATE_LAND_Y
 FIRST_JUMP_LAND_TARGET_X = 1223
 GRATE_SEAT_X = FIRST_JUMP_LAND_X
 GRATE_SEAT_Y = FIRST_JUMP_LAND_Y
@@ -168,7 +172,7 @@ def at_ws_main_attic_door_seat(state: SuperMetroidState) -> bool:
 def at_ws_main_first_jump_land(
     samus_x: int, samus_y: int, pose: int, velocity_y: int = 0
 ) -> bool:
-    """Grounded on the take02/04 fire slope. Not the hatch-lip pocket."""
+    """Grounded on observable fire-slope land. Not the hatch-lip pocket."""
     x, y = int(samus_x), int(samus_y)
     return (
         FIRST_JUMP_LAND_X[0] <= x <= FIRST_JUMP_LAND_X[1]
@@ -179,7 +183,7 @@ def at_ws_main_first_jump_land(
 
 
 def at_ws_main_grate_seat(state: SuperMetroidState) -> bool:
-    """Held take02/04 fire slope ~(1223, 1860). Not the hatch-lip pocket."""
+    """Observable fire-slope land. Usable pin is WS_MAIN_GRATE_SEAT glance."""
     return _in_main(state) and at_ws_main_first_jump_land(
         int(state.samus_x),
         int(state.samus_y),
@@ -369,6 +373,8 @@ __all__ = [
     "FIRST_JUMP_LAND_Y",
     "FIRST_JUMP_TAKEOFF_TARGET_X",
     "FIRST_JUMP_TAKEOFF_X",
+    "GRATE_LAND_X",
+    "GRATE_LAND_Y",
     "GRATE_SEAT_X",
     "GRATE_SEAT_Y",
     "GROUNDED_POSES",
