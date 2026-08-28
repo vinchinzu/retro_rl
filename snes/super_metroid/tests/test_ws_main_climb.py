@@ -557,6 +557,47 @@ def test_grate_seat_phase_waits_for_usable_handoff(
     assert done_fns == [at_ws_main_usable_grate_seat]
 
 
+def test_natural_grate_seat_settles_momentum_before_west_super(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+
+    session = _Session(_state())
+    climbs: list[tuple[str, int]] = []
+
+    def _climb(sess, label, done):
+        del done
+        climbs.append((label, len(sess.actions)))
+        if label.endswith("grate_seat"):
+            sess.state = replace(
+                sess.state,
+                samus_x=1217,
+                samus_y=1867,
+                pose=9,
+                momentum_x=2,
+                momentum_x_sub=49152,
+            )
+        else:
+            sess.state = replace(sess.state, samus_x=1094, samus_y=1700, pose=48)
+
+    monkeypatch.setattr(mod, "require_room", lambda *args: None)
+    monkeypatch.setattr(mod, "three_shot_tunnel", lambda *args: None)
+    monkeypatch.setattr(mod, "climb_until", _climb)
+
+    with pytest.raises(PhaseStop) as caught:
+        mod.play_ws_main_to_attic(session, stop="west_super")
+
+    assert caught.value.phase == "west_super"
+    assert climbs == [
+        ("ws_main_to_attic_grate_seat", 0),
+        ("ws_main_to_attic_west_super", 5),
+    ]
+    assert [reason for _, reason in session.actions] == [
+        "ws_main_to_attic_grate_seat_settle"
+    ] * 5
+    assert all(not pressed_snes_buttons(action) for action, _ in session.actions)
+
+
 def test_phased_play_stop_at_pit_shot(monkeypatch: pytest.MonkeyPatch) -> None:
     from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
 
