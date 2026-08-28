@@ -12,6 +12,7 @@ from super_metroid.ram import (
     ADDR_MAX_HEALTH,
     ADDR_MAX_MISSILES,
     ADDR_MISSILES,
+    ADDR_MOONWALK,
     ADDR_ROOM_ID,
     ADDR_SAMUS_X,
     ADDR_SAMUS_Y,
@@ -79,6 +80,16 @@ def test_hi_jump_and_varia_masks() -> None:
     assert state.hi_jump
     assert state.varia
     assert not state.morph_ball
+
+
+def test_moonwalk_flag_is_special_setting_mode() -> None:
+    ram = np.zeros(0x10000, dtype=np.uint8)
+    assert not parse_state(ram).moonwalk_enabled
+    _put_u16(ram, ADDR_MOONWALK, 1)
+    state = parse_state(ram)
+    assert state.moonwalk == 1
+    assert state.moonwalk_enabled
+    assert state.kinematics_dict()["moonwalk_enabled"] is True
 
 
 def test_source_defined_game_state_phases() -> None:

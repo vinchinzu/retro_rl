@@ -38,7 +38,7 @@ sm-json-data.
 For **room optimization** (hop hill-climb / skill bank), only spend engineering
 on:
 
-1. **core** = Implicit + Basic  
+1. **core** = Implicit + Basic, plus project-core `canMoonwalk` / `canMoonfall`  
 2. **try** = Medium  
 
 Higher tiers enter via **human tape** or **TAS hop import**, not by writing
@@ -75,6 +75,21 @@ Status legend:
 | `canMidAirMorph` | green | `ensure_morph` / morph_bomb |
 | `canHeatRun` | partial | K4 heat frame budgets |
 | `canUseFrozenEnemies` | **missing** | ice freeze builder |
+
+### Project-core (Map Rando Hard / Very Hard, bot still builds them)
+
+Moonfall is a first-credits skill, not a rando-tier luxury. Map Rando
+labels stay Hard / Very Hard; `PROJECT_CORE_TECHS` promotes the builders.
+
+| Tech | Map Rando | Status | Bot surface |
+|------|-----------|--------|-------------|
+| `canMoonwalk` | Hard | partial | `ram.set_moonwalk` (`$09E4`) + `skills/moonfall.moonwalk_buttons` |
+| `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`; Climb: `kpdr/climb_descent` |
+
+Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). First
+consumer is Climb `0x96BA` first descent on the Morph path (clean poke on,
+restore off after Pit so later seeds stay valid). Probe:
+`scripts/probe/climb_descent.py`.
 
 ### Medium (try)
 

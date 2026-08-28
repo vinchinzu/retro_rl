@@ -224,6 +224,14 @@ def play_parlor_to_climb(session: RouteSession) -> None:
 
 
 def play_climb_to_pit(session: RouteSession) -> None:
+    from super_metroid.routes.kpdr.climb_descent import (
+        climb_moonfall_enabled,
+        play_climb_to_pit_moonfall,
+    )
+
+    if climb_moonfall_enabled(session):
+        play_climb_to_pit_moonfall(session)
+        return
     _play_seed_to_room(session, index=2, name="climb", target_room=ROOM_PIT)
 
 
