@@ -213,7 +213,8 @@ class Level2BombNorth1eSpineController:
     def report(self) -> dict[str, Any]:
         payload = self.inner.report()
         payload["policy"] = (
-            "west peel (96,117)->(96,101); RIGHT+UP clip to stand (120,101)"
+            "west peel (96,117)->(96,101); RIGHT+UP clip to stand (120,101); "
+            "skip-to-stand FACE/PLACE when within stand_tol"
         )
         return payload
 
