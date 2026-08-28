@@ -17,7 +17,7 @@ from __future__ import annotations
 from super_metroid.hop_glance import LeaveMiss, raise_leave_miss
 from super_metroid.leave_specs import WS_MAIN_TO_ATTIC
 from super_metroid.ram import SuperMetroidState
-from super_metroid.routes.controller_common import require_room, select_weapon
+from super_metroid.routes.controller_common import hold, require_room, select_weapon
 from super_metroid.routes.kpdr.k6.phantoon_fight import phantoon_boss_bit_set
 from super_metroid.routes.kpdr.k6.ws_ceiling_door import (
     play_ceiling_door,
@@ -52,6 +52,19 @@ from super_metroid.routes.kpdr.room_ids import (
 )
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.geometry import PhaseStop
+
+_GRATE_SEAT_SETTLE_FRAMES = 5
+
+
+def _settle_grate_seat_momentum(session: ControllerSession, label: str) -> None:
+    """Release the natural-entry slide before the tape-locked lip shot."""
+    if abs(int(session.state.momentum_x)) == 0:
+        return
+    hold(
+        session,
+        _GRATE_SEAT_SETTLE_FRAMES,
+        reason=f"{label}_grate_seat_settle",
+    )
 
 
 def _jump_up_attic(session: ControllerSession, label: str) -> None:
@@ -128,6 +141,7 @@ def play_ws_main_to_attic(
         if start_i <= 1:
             climb_until(session, f"{label}_grate_seat", at_ws_main_usable_grate_seat)
             _maybe_stop("grate_seat")
+            _settle_grate_seat_momentum(session, label)
         if start_i <= 2:
             climb_until(session, f"{label}_west_super", at_ws_main_west_super_band)
             _maybe_stop("west_super")
