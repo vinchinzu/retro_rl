@@ -6,6 +6,7 @@ import unittest
 
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
+from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_ORDER
 from harvest.planner.d2_work import (
     D2_TARGETS,
     bush_clear_phase,
@@ -15,6 +16,7 @@ from harvest.planner.d2_work import (
     ensure_hammer_phase,
     fence_dump_phase,
     leftover_already_queued,
+    leftover_section_phases,
     needs_spa_before_next_smash,
     pocket_water_phase,
     rock_clear_phase,
@@ -77,7 +79,8 @@ class D2WholeFarmContractTests(unittest.TestCase):
         spec = stump_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_STUMPS")
         self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"stumps": 2})
+        self.assertEqual(spec.params["quota"], {"stumps": EXHAUSTIVE})
+        self.assertEqual(spec.params["timeout"], 0)
         self.assertEqual(spec.params["priority"], ["stump"])
         self.assertEqual(spec.contract.required_tools, ("axe",))
 
@@ -113,13 +116,15 @@ class D2LeftoverOrderTests(unittest.TestCase):
             [
                 "CLEAR_BUSHES",
                 "CLEAR_FENCES",
-                "CLEAR_STONES",
+                *["CLEAR_STONES"] * 4,
                 "ENSURE_HAMMER",
-                "CLEAR_ROCKS",
+                *["CLEAR_ROCKS"] * 4,
                 "ENSURE_AXE",
-                "CLEAR_STUMPS",
+                *["CLEAR_STUMPS"] * 4,
             ],
         )
+        stones = [p for p in phases if p.phase == "CLEAR_STONES"]
+        self.assertEqual([p.params["chunk"] for p in stones], list(FARM_CHUNK_ORDER))
 
     def test_policy_can_drop_leftover(self) -> None:
         phases = d2_leftover_phases(
@@ -246,6 +251,12 @@ class D2PostShopComposeTests(unittest.TestCase):
         self.assertEqual(stones.max_steps_per_fence, 2800)
         self.assertEqual(stones.max_failures, 60)
         self.assertEqual(stones.debris_types[0].name, "STONE")
+        self.assertIsNone(stones.farm_bounds)
+
+        sw = leftover_section_phases("stones", chunk="sw")[0]
+        sw_task = build_phase_task(TaskBuildContext(), sw, world)
+        self.assertEqual(sw.params["chunk"], "sw")
+        self.assertEqual(sw_task.farm_bounds, (0, 32, 31, 63))
 
 
 class LeftoverSkipClearTests(unittest.TestCase):
@@ -270,14 +281,18 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
             weeds=100, stones=185, large_rocks=51, stumps=38, fences=80
         )
         enough = DebrisCounts(
-            weeds=90, stones=0, large_rocks=0, stumps=36, fences=0
+            weeds=90, stones=0, large_rocks=0, stumps=0, fences=0
         )
         short = DebrisCounts(
-            weeds=90, stones=1, large_rocks=0, stumps=36, fences=0
+            weeds=90, stones=1, large_rocks=0, stumps=0, fences=0
+        )
+        leftover_stumps = DebrisCounts(
+            weeds=90, stones=0, large_rocks=0, stumps=36, fences=0
         )
 
         self.assertTrue(_section_complete("all", start, enough))
         self.assertFalse(_section_complete("all", start, short))
+        self.assertFalse(_section_complete("all", start, leftover_stumps))
 
     def test_probe_fence_quota_is_exhaustive(self) -> None:
         from harvest.scripts.d2_leftover_probe import _section_complete
@@ -307,12 +322,18 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertEqual(_phase_timeout(fence_dump_phase(), remaining), remaining)
         self.assertEqual(_phase_timeout(stone_pond_phase(), remaining), remaining)
         self.assertEqual(_phase_timeout(rock_clear_phase(), remaining), remaining)
-
-    def test_positive_phase_timeout_is_capped_by_remaining(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _phase_timeout
-
+        self.assertEqual(_phase_timeout(stump_clear_phase(), remaining), remaining)
         self.assertEqual(_phase_timeout(stump_clear_phase(), 50_000), 50_000)
-        self.assertEqual(_phase_timeout(stump_clear_phase(), 200_000), 120_000)
+
+    def test_probe_stump_quota_is_exhaustive(self) -> None:
+        from harvest.scripts.d2_leftover_probe import _section_complete
+        from harvest.tasks.farm_clear_quota import DebrisCounts
+
+        start = DebrisCounts(stumps=38)
+        self.assertTrue(_section_complete("stumps", start, DebrisCounts()))
+        self.assertFalse(
+            _section_complete("stumps", start, DebrisCounts(stumps=1))
+        )
 
     def test_leftover_probe_uses_repo_headed(self) -> None:
         from pathlib import Path
@@ -334,6 +355,8 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertNotIn("--watch", text)
         self.assertNotIn("spa_retried", text)
         self.assertIn("should_spa_retry", text)
+        self.assertIn("--chunk", text)
+        self.assertIn("leftover_section_phases", text)
 
 
 class LeftoverProbePayloadTests(unittest.TestCase):

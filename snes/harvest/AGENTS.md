@@ -35,6 +35,9 @@ HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
 
 uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \
   --state Y1_D2_After_Bushes
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
+  --section stones --chunk sw --state Y1_D2_After_Stones \
+  --out recordings/d2_leftover_stones_sw.json
 ```
 
 `HEADLESS=1`; no MP4. Glance is `harvest.clock_glance`. Parked CLIs:

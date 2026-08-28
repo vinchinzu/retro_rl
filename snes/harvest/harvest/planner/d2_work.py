@@ -11,8 +11,9 @@ Section order after BUY_SEEDS::
     → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
     leftover (after plant+water, not 06:08 plan-time hour>=17):
       spa? → CLEAR_BUSHES (10 pick+toss, lanes first) → CLEAR_FENCES
-      (all posts to pond) → CLEAR_STONES (all to pond) → ENSURE_HAMMER → spa?
-      → CLEAR_ROCKS (all large 2×2) → ENSURE_AXE → spa? → CLEAR_STUMPS (2)
+      (all posts to pond) → CLEAR_STONES (all to pond, 4 farm chunks) →
+      ENSURE_HAMMER → spa? → CLEAR_ROCKS (all large 2×2, 4 chunks) →
+      ENSURE_AXE → spa? → CLEAR_STUMPS (all, 4 chunks)
 
 Quota handoffs must not use pocket ``plot_ring`` SUCCESS. Spa inserts when
 stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
@@ -24,6 +25,11 @@ from typing import List, Optional, Sequence
 
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
+from harvest.planner.d2_farm_chunks import (
+    EXHAUSTIVE,
+    FARM_CHUNK_BOUNDS,
+    resolve_chunks,
+)
 from harvest.planner.day_phase_catalog import (
     CROP_ESTABLISH_PHASE,
     ENSURE_CROP_SEEDS_PHASE,
@@ -179,23 +185,36 @@ def fence_dump_phase() -> PhaseSpec:
     )
 
 
-def stone_pond_phase() -> PhaseSpec:
-    """Lift every remaining stone and dump it in a pond. Hammer is for 2×2.
+def _with_chunk(params: dict, *, farm_bounds=None, chunk: str | None = None) -> dict:
+    out = dict(params)
+    if farm_bounds is not None:
+        out["farm_bounds"] = tuple(int(v) for v in farm_bounds)
+    if chunk is not None:
+        out["chunk"] = chunk
+    return out
+
+
+def stone_pond_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
+    """Lift remaining stones in bounds (or the whole farm) and dump in a pond.
 
     After_Stumps (axe selected, hoe backpack) still lifts; do not stow first.
     """
     return PhaseSpec(
         "CLEAR_STONES",
         "fence_clear",
-        {
-            "timeout": 0,
-            "max_fences": None,
-            "corridor_only": False,
-            "pond_dump": True,
-            "max_steps_per_fence": 2800,
-            "max_failures": 60,
-            "debris_types": ["stone"],
-        },
+        _with_chunk(
+            {
+                "timeout": 0,
+                "max_fences": None,
+                "corridor_only": False,
+                "pond_dump": True,
+                "max_steps_per_fence": 2800,
+                "max_failures": 60,
+                "debris_types": ["stone"],
+            },
+            farm_bounds=farm_bounds,
+            chunk=chunk,
+        ),
         failure_policy="optional",
         required_maps=(0x00,),
         estimated_frames=400000,
@@ -203,38 +222,52 @@ def stone_pond_phase() -> PhaseSpec:
     )
 
 
-def rock_clear_phase() -> PhaseSpec:
-    """Hammer every remaining large 2×2 boulder. Quota 4 was the first slice."""
+def rock_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
+    """Hammer every remaining large 2×2 boulder in bounds."""
     return _optional_clear(
         "CLEAR_ROCKS",
-        {
-            "timeout": 0,
-            "fetch_tools": False,
-            "prefer_lift_for_weeds": True,
-            "prefer_lift_for_stones": False,
-            "priority": ["rock"],
-            "quota": {"large_rocks": 10_000},
-            "handoff": "quota",
-        },
+        _with_chunk(
+            {
+                "timeout": 0,
+                "fetch_tools": False,
+                "prefer_lift_for_weeds": True,
+                "prefer_lift_for_stones": False,
+                "priority": ["rock"],
+                "quota": {"large_rocks": EXHAUSTIVE},
+                "handoff": "quota",
+            },
+            farm_bounds=farm_bounds,
+            chunk=chunk,
+        ),
         required_tools=("hammer",),
         estimated_frames=400000,
     )
 
 
-def stump_clear_phase() -> PhaseSpec:
-    """Axe two distinct stumps. Axe replaces the hammer in carry."""
+def stump_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
+    """Axe every remaining stump in bounds. Axe replaces the hammer in carry."""
     return _optional_clear(
         "CLEAR_STUMPS",
-        {
-            "timeout": 120000,
-            "fetch_tools": False,
-            "priority": ["stump"],
-            "quota": {"stumps": 2},
-            "handoff": "quota",
-        },
+        _with_chunk(
+            {
+                "timeout": 0,
+                "fetch_tools": False,
+                "priority": ["stump"],
+                "quota": {"stumps": EXHAUSTIVE},
+                "handoff": "quota",
+            },
+            farm_bounds=farm_bounds,
+            chunk=chunk,
+        ),
         required_tools=("axe",),
-        estimated_frames=90000,
+        estimated_frames=400000,
     )
+
+
+def _chunked_smash(builder, chunks: Sequence[str]) -> List[PhaseSpec]:
+    return [
+        builder(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name) for name in chunks
+    ]
 
 
 _SPA_RETRY_PHASES = frozenset({"CLEAR_ROCKS", "CLEAR_STUMPS"})
@@ -289,28 +322,69 @@ def d2_leftover_phases(
     *,
     stamina: Stamina | int | None = None,
     policy: Optional[DayPlannerPolicy] = None,
+    chunks: str | Sequence[str] | None = "all",
 ) -> List[PhaseSpec]:
     """Lift leftover after plant+water, then hammer/axe. Spa between smash.
 
-    Morning 06:08 ``build_day_phases`` must not attach this (hour<17). The
-    shop splice / CROP_WATER splice owns insertion so leftover still runs
-    on a 6am plan.
+    Smash phases (stones / rocks / stumps) run one farm quadrant at a time
+    so a last-cell stall cannot eat the whole farm. Morning 06:08
+    ``build_day_phases`` must not attach this (hour<17). The shop splice /
+    CROP_WATER splice owns insertion so leftover still runs on a 6am plan.
     """
     policy = policy or DayPlannerPolicy()
     if not policy.include_field_clear:
         return []
     include_spa = bool(getattr(policy, "include_spa", True))
+    smash = resolve_chunks(chunks)
     phases: List[PhaseSpec] = []
     phases.extend(_maybe_spa(stamina, include_spa=include_spa))
     phases.append(bush_clear_phase())
     phases.append(fence_dump_phase())
-    phases.append(stone_pond_phase())
+    phases.extend(_chunked_smash(stone_pond_phase, smash))
     phases.append(ensure_hammer_phase())
     phases.extend(_maybe_spa(stamina, include_spa=include_spa))
-    phases.append(rock_clear_phase())
+    phases.extend(_chunked_smash(rock_clear_phase, smash))
     phases.append(ensure_axe_phase())
     phases.extend(_maybe_spa(stamina, include_spa=include_spa))
-    phases.append(stump_clear_phase())
+    phases.extend(_chunked_smash(stump_clear_phase, smash))
+    return phases
+
+
+def leftover_section_phases(
+    section: str,
+    *,
+    stamina: Stamina | int | None = None,
+    include_spa: bool = True,
+    chunk: str | Sequence[str] | None = "all",
+) -> List[PhaseSpec]:
+    """One leftover section, optionally a single farm quadrant."""
+    if section == "all":
+        policy = DayPlannerPolicy(include_spa=include_spa)
+        return d2_leftover_phases(stamina=stamina, policy=policy, chunks=chunk)
+    smash = resolve_chunks(chunk)
+    phases: List[PhaseSpec] = []
+    stam = coerce_stamina(stamina)
+    if (
+        include_spa
+        and section in {"rocks", "stumps"}
+        and stam is not None
+        and not stam.can_finish_multi_hit()
+    ):
+        phases.append(full_restore_spa_phase())
+    if section == "bushes":
+        phases.append(bush_clear_phase())
+    elif section == "fences":
+        phases.append(fence_dump_phase())
+    elif section == "stones":
+        phases.extend(_chunked_smash(stone_pond_phase, smash))
+    elif section == "rocks":
+        phases.append(ensure_hammer_phase())
+        phases.extend(_chunked_smash(rock_clear_phase, smash))
+    elif section == "stumps":
+        phases.append(ensure_axe_phase())
+        phases.extend(_chunked_smash(stump_clear_phase, smash))
+    else:
+        raise ValueError(f"unknown leftover section {section!r}")
     return phases
 
 
@@ -350,6 +424,7 @@ __all__ = [
     "ensure_hammer_phase",
     "fence_dump_phase",
     "leftover_already_queued",
+    "leftover_section_phases",
     "needs_spa_before_next_smash",
     "pocket_clear_phase",
     "pocket_water_phase",

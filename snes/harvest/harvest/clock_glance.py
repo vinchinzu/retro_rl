@@ -393,12 +393,10 @@ FENCE_DUMP_DONE = LeaveSpec(
 _DONE_EMPTY = {
     "fences": ("fences",),
     "stones": ("stones",),
-    # Other D2 sections are bounded quotas checked against the probe's start
-    # counts.  A final still alone cannot require those debris kinds empty.
     "bushes": (),
     "rocks": ("large_rocks",),
-    "stumps": (),
-    "all": ("fences", "stones", "large_rocks"),
+    "stumps": ("stumps",),
+    "all": ("fences", "stones", "large_rocks", "stumps"),
 }
 
 
