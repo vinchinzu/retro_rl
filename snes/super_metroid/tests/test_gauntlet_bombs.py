@@ -168,7 +168,7 @@ def test_ibj_first_bomb_waits_from_rest() -> None:
     assert sum(1 for r in reasons if r.endswith("_w0")) == IBJ_FIRST_WAIT
 
 
-def test_peak_to_obstacle_a_preserves_pin_chain_seats() -> None:
+def test_peak_to_obstacle_a_uses_speedrun_choreography() -> None:
     session = _Session(
         _state(
             room_id=ROOM_LANDING_SITE,
@@ -179,13 +179,12 @@ def test_peak_to_obstacle_a_preserves_pin_chain_seats() -> None:
     )
     drift_to_bomb_wall(session)
     reasons = [reason for _, reason in session.actions]
-    assert sum(r.endswith("_b1") for r in reasons) == 74
-    assert sum(r.endswith("_b2") for r in reasons) == 74
-    assert reasons.count("landing_ibj_cliff_seat") == 50
-    assert reasons.count("landing_ibj_face_seat") == 30
-    assert reasons.count("landing_ibj_a_seat") == 40
-    assert reasons.count("landing_ibj_dL4_L") == 40
-    assert reasons.count("landing_ibj_dL12_L") == 72
+    # Each two-frame bomb press produces two session actions: 13 cycles max.
+    assert sum(r.endswith("_b1") for r in reasons) <= 26
+    assert sum(r.endswith("_b2") for r in reasons) <= 26
+    assert session.frame < 800
+    assert not any(r.endswith("_seat") for r in reasons)
+    assert reasons.count("landing_ibj_drift_w2L") <= 80
 
 
 def test_wall_latch_pose() -> None:
