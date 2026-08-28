@@ -20,7 +20,11 @@ from super_metroid.routes.controller_common import (
     unmorph,
     walljump_once,
 )
-from super_metroid.routes.kpdr.k6.ws_main_actions import climb_action, three_shot_action
+from super_metroid.routes.kpdr.k6.ws_main_actions import (
+    at_take02_departure,
+    climb_action,
+    three_shot_action,
+)
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     MORPH_DROP_BOMB_FRAMES,
     SAVE_COLUMN_LATCH_X,
@@ -62,6 +66,45 @@ WEAPON_BEAM = 0
 _THREE_SHOT_FRAMES = THREE_SHOT_FRAMES + 40
 _CLIMB_BUDGET = 3600
 _SIDE_TRIP_BUDGET = 400
+_TAKE02_DROP_HANDOFF = (
+    (5, ("LEFT",)),
+    (9, ("LEFT", "A")),
+    (6, ("LEFT",)),
+    (3, ("LEFT", "X")),
+    (4, ("X",)),
+    (5, ()),
+    (6, ("X",)),
+    (9, ()),
+    (7, ("A",)),
+    (1, ("DOWN", "A")),
+    (9, ("DOWN", "A", "X")),
+    (1, ("DOWN", "A")),
+    (4, ("DOWN",)),
+    (2, ("X",)),
+    (4, ("LEFT", "X")),
+    (3, ("LEFT",)),
+    (3, ("UP", "LEFT")),
+    (1, ("LEFT",)),
+    (11, ()),
+    (1, ("DOWN",)),
+)
+_TAKE02_TUNNEL_HANDOFF = (
+    (11, ("UP",)),
+    (6, ("UP", "X")),
+    (7, ("UP",)),
+    (5, ("UP", "X")),
+    (15, ("UP",)),
+    (4, ("X",)),
+    (4, ()),
+    (11, ("UP",)),
+    (6, ("UP", "X")),
+    (5, ("UP",)),
+    (6, ("UP", "X")),
+    (1, ("UP",)),
+    (7, ()),
+    (4, ("A",)),
+    (20, ("RIGHT", "A")),
+)
 SAVE_COLUMN_WJ = WallJumpTiming(
     into="RIGHT",
     flip="LEFT",
@@ -70,6 +113,27 @@ SAVE_COLUMN_WJ = WallJumpTiming(
     flip_frames=14,
     delay_into_frames=0,
 )
+
+
+def _rle_action(
+    recipe: tuple[tuple[int, tuple[str, ...]], ...], frame: int
+) -> tuple[str, ...] | None:
+    cursor = int(frame)
+    for count, names in recipe:
+        if cursor < count:
+            return names
+        cursor -= count
+    return None
+
+
+def _take02_drop_handoff_action(frame: int) -> tuple[str, ...] | None:
+    """Tape-locked x=1189 contact clear through the first DOWN-morph."""
+    return _rle_action(_TAKE02_DROP_HANDOFF, frame)
+
+
+def _take02_tunnel_handoff_action(frame: int) -> tuple[str, ...] | None:
+    """Tape-locked x=1093 unmorph, ceiling shots, and west-super jump."""
+    return _rle_action(_TAKE02_TUNNEL_HANDOFF, frame)
 
 
 def guard_main_shaft(session: ControllerSession, label: str) -> None:
@@ -281,6 +345,8 @@ def climb_until(
     select_weapon(session, WEAPON_BEAM)
     shelf_open = 0
     lip_hit = False
+    drop_handoff_frame: int | None = None
+    tunnel_handoff_frame: int | None = None
     morph_bombs = 0
     prev_plms: tuple[dict[str, int], ...] = ()
     for _ in range(_CLIMB_BUDGET):
@@ -291,7 +357,40 @@ def climb_until(
         if int(st.room_id) in (ROOM_WS_WEST_SUPER, ROOM_WS_SPONGE):
             exit_side_room(session, label)
             continue
+        if drop_handoff_frame is not None:
+            drop_names = _take02_drop_handoff_action(drop_handoff_frame)
+            if drop_names is not None:
+                drop_handoff_frame += 1
+                _hold_names(
+                    session,
+                    drop_names,
+                    f"{label}_drop_handoff",
+                    f"{label}_drop_handoff_wait",
+                )
+                continue
+        if tunnel_handoff_frame is not None:
+            tunnel_names = _take02_tunnel_handoff_action(tunnel_handoff_frame)
+            if tunnel_names is not None:
+                tunnel_handoff_frame += 1
+                _hold_names(
+                    session,
+                    tunnel_names,
+                    f"{label}_tunnel_handoff",
+                    f"{label}_tunnel_handoff_wait",
+                )
+                continue
         if is_knockback(st):
+            if lip_hit and at_ws_main_morph_drop(
+                int(st.samus_x), int(st.samus_y)
+            ):
+                drop_handoff_frame = 1
+                _hold_names(
+                    session,
+                    _TAKE02_DROP_HANDOFF[0][1],
+                    f"{label}_drop_handoff",
+                    f"{label}_drop_handoff_wait",
+                )
+                continue
             knockback_main_shaft(session, f"{label}_climb_kb")
             continue
         if is_morph(int(st.pose)):
@@ -304,23 +403,42 @@ def climb_until(
                 morph_bombs += 1
                 hold(session, 1, "X", reason=f"{label}_drop_bomb")
                 continue
-            if mx > TUNNEL_CLEAR_X and my < WS_MAIN_STAIR_Y:
+            # The take02 tape plants against the left tunnel wall at x=1093;
+            # x=1088 is geometry clearance, not a reachable morph-ball center.
+            if mx > TUNNEL_CLEAR_X + 5 and my < WS_MAIN_STAIR_Y:
                 hold(session, 1, "LEFT", reason=f"{label}_roll")
             elif my < WS_MAIN_STAIR_Y:
-                hold(session, 1, "UP", reason=f"{label}_unmorph")
+                tunnel_handoff_frame = 1
+                _hold_names(
+                    session,
+                    _TAKE02_TUNNEL_HANDOFF[0][1],
+                    f"{label}_tunnel_handoff",
+                    f"{label}_tunnel_handoff_wait",
+                )
             else:
                 unmorph(session)
-            continue
-        if at_ws_main_save_alcove(st):
-            save_alcove_jump(session, label)
-            continue
-        if at_ws_main_save_column_wj(st):
-            save_column_walljump(session, label, done)
             continue
         lip_hit, prev_plms = _update_lip_hit(session, prev_plms, lip_hit)
         x, y = int(st.samus_x), int(st.samus_y)
         pose = int(st.pose)
         region = classify_region(st, lip_hit=lip_hit)
+        if at_take02_departure(x, y, int(st.velocity_y)):
+            region = ShaftRegion.GRATE_SEAT
+        take02_active = lip_hit
+        if (
+            take02_active
+            and drop_handoff_frame is None
+            and at_ws_main_morph_drop(x, y, pose, int(st.velocity_y))
+        ):
+            hold(session, 1, "B", "LEFT", reason=f"{label}_drop_plant")
+            continue
+        if region is not ShaftRegion.GRATE_SEAT and not take02_active:
+            if at_ws_main_save_alcove(st):
+                save_alcove_jump(session, label)
+                continue
+            if at_ws_main_save_column_wj(st):
+                save_column_walljump(session, label, done)
+                continue
         if region is ShaftRegion.SHELF:
             if shelf_open < SHELF_HOLE_FRAMES:
                 shelf_open += 1
@@ -352,7 +470,7 @@ def climb_until(
             if keepaway:
                 hold(session, 1, *keepaway, reason=f"{label}_shelf_ice")
                 continue
-        elif region is ShaftRegion.SHAFT:
+        elif region is ShaftRegion.SHAFT and not take02_active:
             keepaway = ice_keepaway_action(
                 x,
                 y,
@@ -376,6 +494,7 @@ def climb_until(
             lip_hit,
             session_beam_charge(session),
             region=region,
+            take02_active=take02_active,
         )
         _hold_names(
             session,
