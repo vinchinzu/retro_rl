@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from retro_harness.controls import pressed_snes_buttons
 
 from super_metroid.combat.enemies import Enemy, list_enemies
 from super_metroid.hop_glance import LeaveMiss
@@ -231,6 +232,12 @@ def test_fire_slope_walks_to_take02_seat_before_shoot() -> None:
     assert "X" not in take04_low
     mid = climb_action(1210, 1868, 9, FACING_RIGHT)
     assert mid == ("RIGHT",)
+    near = climb_action(1227, 1856, 4, FACING_LEFT)
+    assert near == ("LEFT",)
+    assert "X" not in near
+    fire_face = climb_action(1223, 1860, 4, FACING_LEFT)
+    assert fire_face == ("RIGHT",)
+    assert "X" not in fire_face
 
 
 def test_fire_slope_shoots_up_until_lip_hit() -> None:
@@ -240,11 +247,35 @@ def test_fire_slope_shoots_up_until_lip_hit() -> None:
     jumped = climb_action(1231, 1852, 3, FACING_LEFT, lip_hit=True)
     assert jumped == ("LEFT", "A")
     assert "DOWN" not in jumped
-    face = climb_action(1231, 1852, 3, FACING_RIGHT, lip_hit=True)
-    assert face == ("LEFT",)
-    assert "DOWN" not in face
+    right_facing_take02 = climb_action(
+        1231, 1852, 3, FACING_RIGHT, lip_hit=True
+    )
+    assert right_facing_take02 == ("LEFT", "A")
+    assert "DOWN" not in right_facing_take02
+    slope_walk = climb_action(1228, 1856, 9, FACING_RIGHT, lip_hit=True)
+    assert slope_walk == ("UP", "RIGHT")
+    assert "A" not in slope_walk
+    coast = climb_action(
+        1230,
+        1853,
+        15,
+        FACING_RIGHT,
+        lip_hit=True,
+        region=ShaftRegion.GRATE_SEAT,
+    )
+    assert coast == ("UP",)
+    above_window = climb_action(
+        1228,
+        1800,
+        77,
+        FACING_LEFT,
+        velocity_y=3,
+        lip_hit=True,
+        region=ShaftRegion.GRATE_SEAT,
+    )
+    assert above_window == ()
     before = climb_action(1223, 1860, 3, FACING_LEFT, lip_hit=True)
-    assert before == ("RIGHT",)
+    assert before == ("UP", "RIGHT")
     assert "A" not in before
     assert "DOWN" not in climb_action(1223, 1860, 3, FACING_RIGHT, charge=CHARGE_FULL)
 
@@ -337,6 +368,119 @@ def test_climb_until_overlay_save_and_lip() -> None:
     climb_until(lip, "test", _stop_after_first(lip))
     assert any(r.endswith("_lip_up") for _, r in lip.actions)
     assert not any("DOWN" in str(a) for a, _ in lip.actions)
+
+
+def test_take02_slope_owns_moving_aim_pose(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+
+    session = _Session(
+        _state(
+            samus_x=1224,
+            samus_y=1859,
+            pose=15,
+            facing=FACING_RIGHT,
+            velocity_y=0,
+        )
+    )
+    save_column_calls: list[str] = []
+
+    monkeypatch.setattr(
+        mod,
+        "_update_lip_hit",
+        lambda sess, prev, hit: (False, prev),
+    )
+    monkeypatch.setattr(
+        mod,
+        "save_column_walljump",
+        lambda sess, label, done: save_column_calls.append(label),
+    )
+    mod.climb_until(session, "test", lambda st: session.frame > 0)
+    assert save_column_calls == []
+    assert session.actions[0][1] == "test_climb"
+
+
+def test_latched_take02_suppresses_save_column_and_ice_keeps_morph_drop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+
+    save_column_calls: list[str] = []
+    ice_calls: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        mod,
+        "_update_lip_hit",
+        lambda sess, prev, hit: (True, prev),
+    )
+    monkeypatch.setattr(
+        mod,
+        "save_column_walljump",
+        lambda sess, label, done: save_column_calls.append(label),
+    )
+    monkeypatch.setattr(
+        mod,
+        "ice_keepaway_action",
+        lambda x, y, *args, **kwargs: ice_calls.append((x, y)) or ("X",),
+    )
+
+    airborne = _Session(
+        _state(
+            samus_x=1231,
+            samus_y=1852,
+            pose=75,
+            facing=FACING_RIGHT,
+            velocity_y=6,
+        )
+    )
+    mod.climb_until(airborne, "test", lambda st: airborne.frame > 0)
+    assert save_column_calls == []
+    assert airborne.actions[0][1] == "test_climb"
+    assert set(pressed_snes_buttons(airborne.actions[0][0])) == {"LEFT", "A"}
+
+    contact = _Session(
+        _state(
+            samus_x=1209,
+            samus_y=1787,
+            pose=2,
+            facing=FACING_LEFT,
+            velocity_y=0,
+        )
+    )
+    mod.climb_until(contact, "test", lambda st: contact.frame > 0)
+    assert ice_calls == []
+    assert contact.actions[0][1] == "test_drop_plant"
+    contact_buttons = set(pressed_snes_buttons(contact.actions[0][0]))
+    assert contact_buttons == {"B", "LEFT"}
+    assert "X" not in contact_buttons
+
+
+def test_take02_drop_handoff_matches_tape_rle() -> None:
+    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+
+    actions = [
+        mod._take02_drop_handoff_action(frame)
+        for frame in range(sum(count for count, _ in mod._TAKE02_DROP_HANDOFF))
+    ]
+    assert len(actions) == 94
+    assert actions[:5] == [("LEFT",)] * 5
+    assert actions[5:14] == [("LEFT", "A")] * 9
+    assert actions[23:27] == [("X",)] * 4
+    assert actions[27:32] == [()] * 5
+    assert actions[-12:-1] == [()] * 11
+    assert actions[-1] == ("DOWN",)
+    assert mod._take02_drop_handoff_action(len(actions)) is None
+
+    tunnel_actions = [
+        mod._take02_tunnel_handoff_action(frame)
+        for frame in range(sum(count for count, _ in mod._TAKE02_TUNNEL_HANDOFF))
+    ]
+    assert len(tunnel_actions) == 112
+    assert tunnel_actions[:11] == [("UP",)] * 11
+    assert tunnel_actions[11:17] == [("UP", "X")] * 6
+    assert tunnel_actions[-24:-20] == [("A",)] * 4
+    assert tunnel_actions[-20:] == [("RIGHT", "A")] * 20
+    assert mod._take02_tunnel_handoff_action(len(tunnel_actions)) is None
 
 
 def test_play_shots_climbs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
