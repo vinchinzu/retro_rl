@@ -11,8 +11,8 @@ from super_metroid.routes.kpdr.rooms import ROOM_BIG_PINK, ROOM_GHZ
 # wall-jump up the shaft left of the door, midair morph out (no Terminator bomb
 # tunnel). Pins from continuous post-BT settle + spore debug waypoint names.
 #
-# NOT the product parlor_chimney open-loop that wanders right-side platforms
-# toward Terminator — that is a different chimney.
+# Product route: ``play_alcatraz_escape`` follows these left-shaft pins, uses
+# turn-away walljumps, then instant-Morphs through the top opening.
 GUIDE_PARLOR_ALCATRAZ = RoomGuide(
     room_id=ROOM_PARLOR,
     name="Parlor Alcatraz LEFT WJ (Flyway door)",
