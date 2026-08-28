@@ -41,13 +41,20 @@ def _final(
     }
 
 
-def test_grate_seat_glances_fire_slope_not_pocket_or_stairs() -> None:
+def test_grate_seat_glances_usable_handoff_not_observable_land() -> None:
     assert WS_MAIN_GRATE_SEAT.room == ROOM_WS_MAIN
     assert WS_MAIN_GRATE_SEAT.pose_class == "any"
     assert WS_MAIN_GRATE_SEAT.gs == 8
-    assert WS_MAIN_GRATE_SEAT.x == (1188, 1232)
+    assert WS_MAIN_GRATE_SEAT.x == (1216, 1232)
+    assert WS_MAIN_GRATE_SEAT.y == (1852, 1868)
     assert grade_final(_final((1223, 1860)), WS_MAIN_GRATE_SEAT) == []
-    assert grade_final(_final((1195, 1883)), WS_MAIN_GRATE_SEAT) == []
+    assert grade_final(_final((1227, 1856)), WS_MAIN_GRATE_SEAT) == []
+    assert grade_final(_final((1221, 1862), pose=4), WS_MAIN_GRATE_SEAT) == []
+    land = grade_final(_final((1189, 1883), pose=2), WS_MAIN_GRATE_SEAT)
+    assert any(m.startswith("x=") for m in land)
+    assert any(m.startswith("y=") for m in land)
+    take04 = grade_final(_final((1195, 1883)), WS_MAIN_GRATE_SEAT)
+    assert any(m.startswith("x=") for m in take04)
     pocket = grade_final(_final((1177, 1883), pose=2), WS_MAIN_GRATE_SEAT)
     assert any(m.startswith("x=") for m in pocket)
     stairs = grade_final(_final((1111, 1899), pose=157), WS_MAIN_GRATE_SEAT)
@@ -103,7 +110,13 @@ def test_phase_glance_pocket_is_red_fire_slope_is_ok() -> None:
     assert ok is True
     assert misses == []
     take04 = _final((1195, 1883))
-    assert phase_glance("grate_seat", take04, None) == (True, [])
+    ok, misses = phase_glance("grate_seat", take04, None)
+    assert ok is False
+    assert misses
+    land = _final((1189, 1883), pose=2)
+    ok, misses = phase_glance("grate_seat", land, None)
+    assert ok is False
+    assert any(m.startswith("x=") for m in misses)
     pocket = _final((1177, 1883), pose=2)
     ok, misses = phase_glance("grate_seat", pocket, None)
     assert ok is False
@@ -134,3 +147,6 @@ def test_probe_source_grades_phase_spec_and_writes_held_pin() -> None:
     leftover_block = src[src.index("if not ok") :]
     assert "ws_main_to_attic_leftover.state" in leftover_block
     assert "leftover.state" not in src[src.index("if hop_green") : src.index("if not ok")]
+    pin_block = src[src.index("if phase_ok and phase_stop") : src.index("if not ok")]
+    assert "post_ws_main_grate_seat" in src
+    assert "phase_ok and phase_stop" in pin_block

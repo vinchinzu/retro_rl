@@ -215,6 +215,8 @@ def _run_hop(
         if hop_green and save is not None and not phase_stop:
             save_dev_state(env, save)
             saved = str(save)
+        # Usable outgoing pin only. Observable land that PhaseStops but
+        # fails phase_glance must not clobber post_ws_main_grate_seat.state.
         if phase_ok and phase_stop:
             pin = _held_pin(phase_stop)
             try:
