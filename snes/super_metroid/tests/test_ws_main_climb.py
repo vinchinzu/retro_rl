@@ -30,6 +30,7 @@ from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     WS_MAIN_PHASES,
     ShaftRegion,
     at_ws_main_grate_seat,
+    at_ws_main_usable_grate_seat,
     at_ws_main_left_platform,
     at_ws_main_mid_climb,
     at_ws_main_morph_drop,
@@ -132,15 +133,18 @@ def test_classifier_regions_and_phases() -> None:
 
     fire = _state(samus_x=1223, samus_y=1860, pose=3, velocity_y=0)
     assert at_ws_main_grate_seat(fire)
+    assert at_ws_main_usable_grate_seat(fire)
     assert classify_region(fire) is ShaftRegion.GRATE_SEAT
     assert classify_ws_main_phase(fire) == "grate_seat"
 
     take04 = _state(samus_x=1195, samus_y=1883, pose=3, velocity_y=0)
     assert at_ws_main_grate_seat(take04)
+    assert not at_ws_main_usable_grate_seat(take04)
     assert classify_ws_main_phase(take04) == "grate_seat"
 
     land = _state(samus_x=1189, samus_y=1883, pose=2, velocity_y=0)
     assert at_ws_main_grate_seat(land)
+    assert not at_ws_main_usable_grate_seat(land)
     assert classify_ws_main_phase(land) == "grate_seat"
     assert GRATE_LAND_X == (1188, 1232)
     assert GRATE_LAND_Y == (1852, 1888)
@@ -217,16 +221,31 @@ def test_two_hop_take02() -> None:
         assert "X" not in names
 
 
+def test_fire_slope_walks_to_take02_seat_before_shoot() -> None:
+    land = climb_action(1189, 1883, 2, FACING_LEFT)
+    assert land == ("RIGHT",)
+    assert "X" not in land
+    assert "A" not in land
+    take04_low = climb_action(1195, 1883, 3, FACING_RIGHT)
+    assert take04_low == ("RIGHT",)
+    assert "X" not in take04_low
+    mid = climb_action(1210, 1868, 9, FACING_RIGHT)
+    assert mid == ("RIGHT",)
+
+
 def test_fire_slope_shoots_up_until_lip_hit() -> None:
     take02 = climb_action(1223, 1860, 3, FACING_RIGHT)
     assert take02 == shoot_up_action()
     assert "DOWN" not in take02
-    jumped = climb_action(1223, 1860, 3, FACING_LEFT, lip_hit=True)
+    jumped = climb_action(1231, 1852, 3, FACING_LEFT, lip_hit=True)
     assert jumped == ("LEFT", "A")
     assert "DOWN" not in jumped
-    face = climb_action(1223, 1860, 3, FACING_RIGHT, lip_hit=True)
+    face = climb_action(1231, 1852, 3, FACING_RIGHT, lip_hit=True)
     assert face == ("LEFT",)
     assert "DOWN" not in face
+    before = climb_action(1223, 1860, 3, FACING_LEFT, lip_hit=True)
+    assert before == ("RIGHT",)
+    assert "A" not in before
     assert "DOWN" not in climb_action(1223, 1860, 3, FACING_RIGHT, charge=CHARGE_FULL)
 
 
@@ -246,6 +265,8 @@ def test_shaft_hops_are_dpad_sides() -> None:
 
 
 def test_save_alcove_jumps_left() -> None:
+    takeoff = _state(samus_x=1231, samus_y=1852, pose=3, facing=FACING_LEFT)
+    assert not at_ws_main_save_alcove(takeoff)
     planted = _state(samus_x=1235, samus_y=1851, pose=10, facing=FACING_LEFT)
     assert at_ws_main_save_alcove(planted)
     assert classify_region(planted) is ShaftRegion.SAVE_ALCOVE
@@ -362,6 +383,34 @@ def test_play_shots_climbs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
     assert seen["jump"] == "ws_main_to_attic"
     assert seen["settle"] == (ROOM_WS_ATTIC, "ws_main_to_attic")
     assert ws_main_attic_settled(out)
+
+
+def test_grate_seat_phase_waits_for_usable_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+
+    session = _Session(_state())
+    done_fns: list[object] = []
+
+    def _require(sess, room, label):
+        del sess, room, label
+
+    def _shot(sess, label):
+        del sess, label
+
+    def _climb(sess, label, done):
+        del sess
+        if label.endswith("grate_seat"):
+            done_fns.append(done)
+
+    monkeypatch.setattr(mod, "require_room", _require)
+    monkeypatch.setattr(mod, "three_shot_tunnel", _shot)
+    monkeypatch.setattr(mod, "climb_until", _climb)
+    with pytest.raises(PhaseStop) as caught:
+        mod.play_ws_main_to_attic(session, start="pit_shot", stop="grate_seat")
+    assert caught.value.phase == "grate_seat"
+    assert done_fns == [at_ws_main_usable_grate_seat]
 
 
 def test_phased_play_stop_at_pit_shot(monkeypatch: pytest.MonkeyPatch) -> None:

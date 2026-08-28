@@ -15,6 +15,7 @@ import enum
 
 from super_metroid.leave_specs import (
     WS_MAIN_ATTIC_SEAT,
+    WS_MAIN_GRATE_SEAT,
     WS_MAIN_MID_CLIMB,
     WS_MAIN_WEST_SUPER,
 )
@@ -192,6 +193,18 @@ def at_ws_main_grate_seat(state: SuperMetroidState) -> bool:
     )
 
 
+def at_ws_main_usable_grate_seat(state: SuperMetroidState) -> bool:
+    """take02 fire-slope handoff. Observable land is at_ws_main_grate_seat."""
+    if not _in_main(state):
+        return False
+    x, y = int(state.samus_x), int(state.samus_y)
+    return (
+        WS_MAIN_GRATE_SEAT.x[0] <= x <= WS_MAIN_GRATE_SEAT.x[1]
+        and WS_MAIN_GRATE_SEAT.y[0] <= y <= WS_MAIN_GRATE_SEAT.y[1]
+        and abs(int(state.velocity_y)) <= 1
+    )
+
+
 def at_ws_main_pit(state: SuperMetroidState) -> bool:
     """Hatch floor, pocket, cubby, stairs leftover. Not the fire slope."""
     if not _in_room_main(state) or at_ws_main_grate_seat(state):
@@ -268,7 +281,7 @@ def at_ws_main_save_alcove(state: SuperMetroidState) -> bool:
     x, y = int(state.samus_x), int(state.samus_y)
     return (
         _in_room_main(state)
-        and WS_MAIN_SAVE_X - 16 <= x < WS_MAIN_SAVE_X
+        and WS_MAIN_GRATE_SEAT.x[1] < x < WS_MAIN_SAVE_X
         and SAVE_LEDGE_Y[0] <= y <= SAVE_LEDGE_Y[1]
         and pose in GROUNDED_POSES | TURN_POSES
         and abs(int(state.velocity_y)) <= 1
@@ -419,6 +432,7 @@ __all__ = [
     "at_ws_main_attic_door_seat",
     "at_ws_main_first_jump_land",
     "at_ws_main_grate_seat",
+    "at_ws_main_usable_grate_seat",
     "at_ws_main_left_platform",
     "at_ws_main_lip_shot_seat",
     "at_ws_main_mid_climb",
