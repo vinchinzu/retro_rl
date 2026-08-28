@@ -9,7 +9,11 @@ from __future__ import annotations
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT
 from super_metroid.routes.controller_common import is_morph
 from super_metroid.routes.kpdr.k6.ws_ceiling_door import ceiling_door_action
-from super_metroid.routes.kpdr.k6.ws_main_departure import SLOPE_LEFT_A
+from super_metroid.routes.kpdr.k6.ws_main_departure import (
+    SLOPE_LEFT_A,
+    SLOPE_LEFT_A_Y,
+    TAKE02_LIP_FIRE,
+)
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     AIR_POSES,
     CROUCH_POSES,
@@ -44,6 +48,15 @@ from super_metroid.routes.skills.charge_shot import CHARGE_FULL
 from super_metroid.takeoff import spin_jump, walk_toward_x
 
 
+def at_take02_departure(samus_x: int, samus_y: int, velocity_y: int = 0) -> bool:
+    """Take02 fire-to-takeoff slope, including moving-aim pose 15/16."""
+    return (
+        TAKE02_LIP_FIRE[0] - 2 <= int(samus_x) <= SLOPE_LEFT_A.x_range[1] + 1
+        and SLOPE_LEFT_A_Y[0] - 1 <= int(samus_y) <= TAKE02_LIP_FIRE[1] + 2
+        and abs(int(velocity_y)) <= 1
+    )
+
+
 def plant_then_spin(facing: int, turning: bool, pose: int) -> tuple[str, ...]:
     """Uncrouch, face RIGHT, then spin-jump."""
     if int(pose) in CROUCH_POSES:
@@ -58,12 +71,15 @@ def grate_lip_action(
     lip_hit: bool,
     facing: int = FACING_LEFT,
     samus_x: int = 1223,
+    samus_y: int = 1860,
+    velocity_y: int = 0,
     charge: int = 0,
 ) -> tuple[str, ...]:
     """Shoot the Wave blocks until a 0xD080-family PLM spawns, then jump LEFT.
 
     Observable land walks RIGHT to take02 ~(1223,1860) before UP+X.
-    After spawn: LEFT+A, never DOWN. Take04 alcove is not this seat.
+    After spawn: LEFT+A directly from the grounded takeoff window, never
+    a bare LEFT turn first. Take04 alcove is not this seat.
     """
     if int(pose) in CROUCH_POSES:
         return ("UP",)
@@ -75,23 +91,34 @@ def grate_lip_action(
             if int(charge) >= POCKET_RELEASE_CHARGE:
                 return ()
             return ("X",)
-        walk = walk_toward_x(x, FIRST_JUMP_LAND_TARGET_X, slack=4)
+        walk = walk_toward_x(x, FIRST_JUMP_LAND_TARGET_X, slack=0)
         if walk:
             return walk
         if x > LIP_FIRE_X[1]:
             return ("LEFT",)
+        if int(facing) != FACING_RIGHT:
+            return ("RIGHT",)
         if int(charge) >= CHARGE_FULL:
             return ("UP",)
         return shoot_up_action()
     if is_morph(int(pose)):
         return ("LEFT",)
-    lo, hi = SLOPE_LEFT_A.x_range
-    if x < lo:
-        return walk_toward_x(x, lo, slack=0) or ("RIGHT",)
+    if not at_take02_departure(samus_x, samus_y, velocity_y):
+        return ()
+    _, hi = SLOPE_LEFT_A.x_range
+    if x < hi:
+        if x == hi - 1 and int(pose) in (15, 16):
+            return ("UP",)
+        return ("UP", "RIGHT")
     if x > hi:
-        return ("LEFT",)
-    if int(facing) != FACING_LEFT:
-        return ("LEFT",)
+        return ("UP", "LEFT")
+    grounded_takeoff = (
+        SLOPE_LEFT_A_Y[0] <= int(samus_y) <= SLOPE_LEFT_A_Y[1]
+        and int(pose) in GROUNDED_POSES
+        and abs(int(velocity_y)) <= 1
+    )
+    if not grounded_takeoff:
+        return ("UP",) if abs(int(velocity_y)) <= 1 else ()
     return ("LEFT", "A")
 
 
@@ -235,6 +262,10 @@ def _shaft_action(
     pose_i = int(pose)
     facing_i = int(facing)
     if at_ws_main_morph_drop(x, y, pose_i, velocity_y):
+        if lip_hit and not is_morph(pose_i):
+            plant = walk_toward_x(x, 1189, slack=1)
+            if plant:
+                return plant
         morph = grate_morph_action(pose_i, bool(lip_hit))
         if morph is not None:
             return morph
@@ -272,6 +303,7 @@ def climb_action(
     charge: int = 0,
     *,
     region: ShaftRegion | None = None,
+    take02_active: bool = False,
 ) -> tuple[str, ...]:
     """Stay in the shaft. Dispatch is ``ShaftRegion`` — no y>=1760 steal."""
     if int(pose) in (137, 138):
@@ -285,19 +317,43 @@ def climb_action(
         region = classify_region_xy(
             x, y, pose_i, velocity_y, lip_hit=bool(lip_hit)
         )
-    if x >= WS_MAIN_SAVE_X - 16 and region is not ShaftRegion.GRATE_SEAT:
+    if (
+        x >= WS_MAIN_SAVE_X - 16
+        and region is not ShaftRegion.GRATE_SEAT
+        and not take02_active
+    ):
         return ("LEFT", "B")
     if x < 1040:
         return ("RIGHT", "B")
     if region is ShaftRegion.PIT:
+        if take02_active:
+            return _shaft_action(
+                x, y, pose_i, facing_i, turning, velocity_y, bool(lip_hit)
+            )
         return pit_exit_action(x, y, pose_i, facing_i, movement_type, velocity_y)
     if region is ShaftRegion.GRATE_SEAT:
-        return grate_lip_action(pose_i, bool(lip_hit), facing_i, x, int(charge))
+        return grate_lip_action(
+            pose_i,
+            bool(lip_hit),
+            facing_i,
+            x,
+            y,
+            int(velocity_y),
+            int(charge),
+        )
     if region is ShaftRegion.SHELF:
         return _shelf_action(pose_i, facing_i, turning)
     if region is ShaftRegion.ATTIC_SEAT:
         return attic_door_action(x, y, pose_i, int(frame))
-    return _shaft_action(x, y, pose_i, facing_i, turning, velocity_y, bool(lip_hit))
+    return _shaft_action(
+        x,
+        y,
+        pose_i,
+        facing_i,
+        turning,
+        velocity_y,
+        bool(lip_hit),
+    )
 
 
 def attic_door_action(
@@ -323,6 +379,7 @@ def attic_door_action(
 
 
 __all__ = [
+    "at_take02_departure",
     "attic_door_action",
     "climb_action",
     "grate_lip_action",
