@@ -165,6 +165,21 @@ BUILDER_SKILLS: tuple[BuilderSkill, ...] = (
         status="partial",
         summary="Morph roll / bomb window (horizontal bias partial)",
     ),
+    # --- Project-core (Map Rando Hard / Very Hard) ---
+    BuilderSkill(
+        tech="canMoonwalk",
+        callable_path="super_metroid.routes.skills.moonfall.moonwalk_buttons",
+        difficulty="Hard",
+        status="partial",
+        summary="Opposite-facing shot walk (needs $09E4 on)",
+    ),
+    BuilderSkill(
+        tech="canMoonfall",
+        callable_path="super_metroid.routes.skills.moonfall.initiate_moonfall",
+        difficulty="Very Hard",
+        status="partial",
+        summary="Uncapped fall via moonwalk jump",
+    ),
 )
 
 

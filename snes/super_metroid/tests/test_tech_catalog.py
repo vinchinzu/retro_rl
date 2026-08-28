@@ -40,7 +40,10 @@ def test_maprando_difficulty_table_covers_core() -> None:
     assert diffs["canIBJ"] == ("Medium", 89)
     assert builder_priority_for("Basic") == "core"
     assert builder_priority_for("Medium") == "try"
+    assert builder_priority_for("Hard") == "later"
     assert builder_priority_for("Expert") == "out_of_scope"
+    assert builder_priority_for("Very Hard", name="canMoonfall") == "core"
+    assert builder_priority_for("Hard", name="canMoonwalk") == "core"
 
 
 def test_tech_by_id_stop_on_a_dime() -> None:
@@ -64,12 +67,16 @@ def test_basic_and_medium_counts() -> None:
 def test_builder_targets_are_core_and_try() -> None:
     targets = builder_targets()
     assert all(t.builder_priority in ("core", "try") for t in targets)
-    assert len(targets) == 9 + 5 + 17  # Implicit + Basic + Medium
+    names = {t.name for t in targets}
+    assert "canMoonwalk" in names
+    assert "canMoonfall" in names
+    # Implicit + Basic + Medium + project-core (moonwalk / moonfall)
+    assert len(targets) == 9 + 5 + 17 + 2
 
 
 def test_builder_coverage_scores_core_try() -> None:
     cov = builder_coverage_summary()
-    assert cov["total"] == 31
+    assert cov["total"] == 33
     assert "canWallJump" in cov["green"]
     assert "canShinespark" in cov["green"]
     assert "canUseFrozenEnemies" in cov["missing"]
@@ -92,6 +99,10 @@ def test_builder_registry_resolves_callables() -> None:
         skill = builder_skill(name)
         assert skill is not None, name
         assert callable(skill.resolve())
+    moon = builder_skill("canMoonfall")
+    assert moon is not None
+    assert callable(moon.resolve())
+    assert builder_skill("canMoonwalk") is not None
 
 
 def test_builder_gap_report_lists_unregistered() -> None:

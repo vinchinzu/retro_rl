@@ -32,6 +32,9 @@ ADDR_MAX_SUPER_MISSILES = 0x09CC
 ADDR_POWER_BOMBS = 0x09CE
 ADDR_MAX_POWER_BOMBS = 0x09D0
 ADDR_SELECTED_ITEM = 0x09D2
+# Special Setting Mode moonwalk (PJBoy RAM map). 0 = off, 1 = on.
+# Default-off on every new file; gameplay reads this WRAM copy.
+ADDR_MOONWALK = 0x09E4
 ADDR_MAX_RESERVE_HEALTH = 0x09D4
 ADDR_RESERVE_HEALTH = 0x09D6
 ADDR_SAMUS_POSE = 0x0A1C
@@ -207,6 +210,8 @@ class SuperMetroidState:
     facing: int = 0
     movement_type: int = 0
     shinespark_timer: int = 0
+    # $09E4 Special Setting Mode; 1 = moonwalk on (required for moonfall).
+    moonwalk: int = 0
 
     @property
     def morph_ball(self) -> bool:
@@ -255,6 +260,10 @@ class SuperMetroidState:
     def shinesparking(self) -> bool:
         return self.shinespark_timer > 0
 
+    @property
+    def moonwalk_enabled(self) -> bool:
+        return self.moonwalk != 0
+
     def progress_vector(self) -> tuple[int, ...]:
         """Progress identity intentionally richer than coordinates alone."""
         return (
@@ -298,6 +307,8 @@ class SuperMetroidState:
             "facing": self.facing,
             "movement_type": self.movement_type,
             "shinespark_timer": self.shinespark_timer,
+            "moonwalk": self.moonwalk,
+            "moonwalk_enabled": self.moonwalk_enabled,
             "pose": self.pose,
             "door_transition": self.door_transition,
             "transition_direction": self.transition_direction,
@@ -318,6 +329,7 @@ class SuperMetroidState:
         data["hi_jump"] = self.hi_jump
         data["speed_boosting"] = self.speed_boosting
         data["shinesparking"] = self.shinesparking
+        data["moonwalk_enabled"] = self.moonwalk_enabled
         data["facing_left"] = self.facing_left
         data["facing_right"] = self.facing_right
         data["door_def_ptr_hex"] = f"0x{self.door_def_ptr:04X}"
@@ -398,6 +410,7 @@ def peek_wram(env: Any, addresses: dict[str, int]) -> dict[str, int]:
         ADDR_INVINCIBILITY_TIMER,
         ADDR_KNOCKBACK_TIMER,
         ADDR_DOOR_DEF_PTR,
+        ADDR_MOONWALK,
     }
     out: dict[str, int] = {}
     for name, address in addresses.items():
@@ -433,6 +446,20 @@ def write_wram_u16(env: Any, address: int, value: int) -> None:
     """Write one little-endian WRAM word."""
     mapped = SNES_WRAM_BANK + address if address >= 0x2000 else address
     env.data.memory.assign(mapped, "<u2", value & 0xFFFF)
+
+
+def set_moonwalk(env: Any, enabled: bool = True) -> bool:
+    """Set Special Setting Mode moonwalk (``$09E4``).
+
+    Returns True when a write happened. This is a file-option poke, not
+    progression — see ``docs/ASSIST_CONTRACT.md``. Gameplay reads this
+    WRAM copy; SRAM is only involved if the file is saved afterward.
+    """
+    want = 1 if enabled else 0
+    if read_wram_u16(env, ADDR_MOONWALK) == want:
+        return False
+    write_wram_u16(env, ADDR_MOONWALK, want)
+    return True
 
 
 def set_event_flag(env: Any, event_id: int) -> None:
@@ -487,6 +514,7 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
         facing=_u8(ram, ADDR_SAMUS_FACING),
         movement_type=_u8(ram, ADDR_MOVEMENT_TYPE),
         shinespark_timer=_u16(ram, ADDR_SHINESPARK_TIMER),
+        moonwalk=_u16(ram, ADDR_MOONWALK),
         pose=_u16(ram, ADDR_SAMUS_POSE),
         health=_u16(ram, ADDR_HEALTH),
         max_health=_u16(ram, ADDR_MAX_HEALTH),
@@ -582,6 +610,7 @@ def probe_pin(state: SuperMetroidState) -> dict[str, object]:
         "facing": state.facing,
         "movement_type": state.movement_type,
         "shinespark_timer": state.shinespark_timer,
+        "moonwalk": state.moonwalk,
         "door_def_ptr": f"0x{state.door_def_ptr:04X}",
         "collected_items": f"0x{state.collected_items:04X}",
     }
