@@ -278,20 +278,29 @@ def test_consecutive_walljumps_with_gap(
     assert session.frame == 7
 
 
-def test_parlor_chimney_uses_shared_walljump_skill() -> None:
-    """Post-Torizo Parlor left climb is a named consecutive_walljumps consumer."""
-    from super_metroid.routes.kpdr import spore_spawn as ssc
+def test_alcatraz_walljump_releases_jump_before_press(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Alcatraz uses the game's turn-away, then jump input ordering."""
+    from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
 
-    assert len(ssc._PARLOR_CHIMNEY_WJ) == 8
-    assert ssc._PARLOR_CHIMNEY_WJ[0].into == "RIGHT"
-    assert ssc._PARLOR_CHIMNEY_WJ[0].into_frames == 30
-    assert ssc._PARLOR_CHIMNEY_WJ[6].into == "LEFT"
-    assert ssc._PARLOR_CHIMNEY_GAP == 12
-    # Frame budget matches legacy 8×(30 into + 12 idle).
-    into = sum(t.into_frames for t in ssc._PARLOR_CHIMNEY_WJ)
-    gaps = ssc._PARLOR_CHIMNEY_GAP * (len(ssc._PARLOR_CHIMNEY_WJ) - 1)
-    tail = ssc._PARLOR_CHIMNEY_GAP
-    assert into + gaps + tail == 8 * (30 + 12)
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+
+    def _hold(session: Any, frames: int, *buttons: str, reason: str = "") -> None:
+        del session
+        calls.append((frames, buttons, reason))
+
+    monkeypatch.setattr(alcatraz, "hold", _hold)
+    alcatraz._play_walljump_pulse(
+        object(),
+        alcatraz.WallJumpPulse("LEFT", turn_frames=5, jump_frames=12),
+        reason="alcatraz_test",
+    )
+
+    assert calls == [
+        (5, ("LEFT",), "alcatraz_test_turn"),
+        (12, ("LEFT", "A"), "alcatraz_test_jump"),
+    ]
 
 
 def test_collect_item_mask_waits_for_bit(monkeypatch: pytest.MonkeyPatch) -> None:
