@@ -9,6 +9,7 @@ from __future__ import annotations
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT
 from super_metroid.routes.controller_common import is_morph
 from super_metroid.routes.kpdr.k6.ws_ceiling_door import ceiling_door_action
+from super_metroid.routes.kpdr.k6.ws_main_departure import SLOPE_LEFT_A
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     AIR_POSES,
     CROUCH_POSES,
@@ -61,7 +62,8 @@ def grate_lip_action(
 ) -> tuple[str, ...]:
     """Shoot the Wave blocks until a 0xD080-family PLM spawns, then jump LEFT.
 
-    Fire slope x>=1188: take02/04 UP+X. After spawn: LEFT+A, never DOWN.
+    Observable land walks RIGHT to take02 ~(1223,1860) before UP+X.
+    After spawn: LEFT+A, never DOWN. Take04 alcove is not this seat.
     """
     if int(pose) in CROUCH_POSES:
         return ("UP",)
@@ -73,12 +75,20 @@ def grate_lip_action(
             if int(charge) >= POCKET_RELEASE_CHARGE:
                 return ()
             return ("X",)
+        walk = walk_toward_x(x, FIRST_JUMP_LAND_TARGET_X, slack=4)
+        if walk:
+            return walk
         if x > LIP_FIRE_X[1]:
             return ("LEFT",)
         if int(charge) >= CHARGE_FULL:
             return ("UP",)
         return shoot_up_action()
     if is_morph(int(pose)):
+        return ("LEFT",)
+    lo, hi = SLOPE_LEFT_A.x_range
+    if x < lo:
+        return walk_toward_x(x, lo, slack=0) or ("RIGHT",)
+    if x > hi:
         return ("LEFT",)
     if int(facing) != FACING_LEFT:
         return ("LEFT",)
@@ -271,14 +281,14 @@ def climb_action(
     pose_i = int(pose)
     facing_i = int(facing)
     turning = int(movement_type) == TURNING_MOVEMENT
-    if x >= WS_MAIN_SAVE_X - 16:
-        return ("LEFT", "B")
-    if x < 1040:
-        return ("RIGHT", "B")
     if region is None:
         region = classify_region_xy(
             x, y, pose_i, velocity_y, lip_hit=bool(lip_hit)
         )
+    if x >= WS_MAIN_SAVE_X - 16 and region is not ShaftRegion.GRATE_SEAT:
+        return ("LEFT", "B")
+    if x < 1040:
+        return ("RIGHT", "B")
     if region is ShaftRegion.PIT:
         return pit_exit_action(x, y, pose_i, facing_i, movement_type, velocity_y)
     if region is ShaftRegion.GRATE_SEAT:

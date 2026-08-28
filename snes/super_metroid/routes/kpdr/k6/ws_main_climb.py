@@ -28,8 +28,8 @@ from super_metroid.routes.kpdr.k6.ws_main_actions import (
     climb_action,
 )
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
-    at_ws_main_grate_seat,
     at_ws_main_mid_climb,
+    at_ws_main_usable_grate_seat,
     at_ws_main_west_super_band,
     classify_region,
     ws_main_attic_settled,
@@ -126,7 +126,7 @@ def play_ws_main_to_attic(
             three_shot_tunnel(session, f"{label}_pit_shot")
             _maybe_stop("pit_shot")
         if start_i <= 1:
-            climb_until(session, f"{label}_grate_seat", at_ws_main_grate_seat)
+            climb_until(session, f"{label}_grate_seat", at_ws_main_usable_grate_seat)
             _maybe_stop("grate_seat")
         if start_i <= 2:
             climb_until(session, f"{label}_west_super", at_ws_main_west_super_band)
