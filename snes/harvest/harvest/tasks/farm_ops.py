@@ -314,6 +314,25 @@ class TileScanner:
         )
 
 
+def scan_typed_targets(
+    ram,
+    types,
+    bounds: Optional[Tuple[int, int, int, int]] = None,
+    *,
+    scanner: Optional[TileScanner] = None,
+) -> List[Target]:
+    """Scan one debris kind (or set) and optionally clip to farm_bounds."""
+    scanner = scanner or TileScanner()
+    wanted = tuple(types)
+    if not wanted:
+        return []
+    return [
+        target
+        for target in scanner.scan(ram, bounds, types=set(wanted))
+        if target.debris_type in wanted
+    ]
+
+
 # =============================================================================
 # TOOL MANAGER
 # =============================================================================

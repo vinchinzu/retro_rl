@@ -441,6 +441,9 @@ def _build_fence_clear(
     raw_steps = spec.params.get("max_steps_per_fence")
     # Phase timeout is the whole-loop budget. One stuck post must not eat it.
     max_steps_per_fence = int(raw_steps) if raw_steps is not None else 2400
+    bounds = spec.params.get("farm_bounds")
+    if bounds is not None:
+        bounds = tuple(int(v) for v in bounds)
     return FenceClearLoopTask(
         name=f"fence_clear_{spec.phase.lower()}",
         max_fences=max_fences,
@@ -449,6 +452,7 @@ def _build_fence_clear(
         max_failures=int(spec.params.get("max_failures", 3)),
         pond_dump=bool(spec.params.get("pond_dump", False)),
         debris_types=debris_types,
+        farm_bounds=bounds,
     )
 
 

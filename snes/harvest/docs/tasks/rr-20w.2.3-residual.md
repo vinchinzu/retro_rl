@@ -1,55 +1,60 @@
 ## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** IN PROGRESS. 4/4 quota boulders and 2/2 quota stumps are
-pin-green. CLEAR_STONES is pin-green exhaustive from leftover
-continuation (not natural-entry). CLEAR_ROCKS live **47→1**.
-**Natural entry:** power-on. Named states below are diagnostic pins and
-do not promote STATUS.
+**Status:** IN PROGRESS. Leftover smash is now four farm chunks
+(`nw`/`ne`/`sw`/`se`) chained stones → rocks → stumps. Stumps are
+exhaustive (not quota 2). Unit chunked + full-chain tests are green.
+Live last-cell stalls are still open.
 
 ### Verified this session
 
-- FA-east / west-A1 trap-escapes still hold. Live 80k from
-  `Y1_D2_Leftover_Checkpoint` (48,13) held stone: stones **39→1** in
-  26.5k then stall-abort 24k (no 400k). `cleared_count=39`.
-- Last on-map stone was **(12,55)**. Farmer sat at **(16,48)** empty-
-  handed. Viewport BFS walked onto south-stream 0xFC A1 banks
-  `(13/15,49–50)`. Live: DOWN at x=16 is open (8f to (16,49)); DOWN
-  from (15,48) slides east back to (16,48); DOWN from (13,48) is a
-  wall. `SOUTH_STREAM_FC_BANKS` is now in `FARM_NO_GO_TILES`.
-- From `Y1_D2_Leftover_Partial` after that no-go: last stone **1→0**
-  in **545f**, F0 toss, egress `(29,35)`. Pin `Y1_D2_After_Stones`
-  (0 stones, 47 large, 36 stumps, axe+hoe, stam 76). Report
-  `recordings/d2_leftover_stones.json`.
-- CLEAR_ROCKS from After_Stones: hammer fetched. One-shot spa retry
-  capped the first 80k at **47→33**. Cap removed: `stamina_low`
-  requeues spa until timeout/stall.
-- Continue from Partial: **33→1** with three successful spa soaks
-  then last spa **timeout 12k** still on farm. End `(54,42)` stam 4
-  hammer, last boulder **(60,51)**. Report
-  `recordings/d2_leftover_rocks.json`. Partial pin is that stall.
-- Do not start from `Y1_D2_Morning_After_D1`.
+- Farm 64×64 partitions with no gap: `nw` (0,0)-(31,31), `ne`
+  (32,0)-(63,31), `sw` (0,32)-(31,63), `se` (32,32)-(63,63). Live stall
+  tiles land in named chunks: pocket `(11,29)` nw, FA-east `(48,13)` ne,
+  south-stream stone `(12,55)` sw, last boulder `(60,51)` se.
+- `d2_leftover_phases` emits 4 CLEAR_STONES + 4 CLEAR_ROCKS + 4
+  CLEAR_STUMPS, each with `farm_bounds`. `--section stones --chunk sw`
+  is one bounded phase. Stall abort still 24k per phase (no 400k hug).
+- CLEAR_STUMPS quota is exhaustive (`10_000`, timeout 0). Full-chain
+  complete requires stones=0, large_rocks=0, stumps=0. Skipping one
+  chunk keeps the farm red.
+- Quota smash with `farm_bounds` does not walk to the plant notch
+  (pocket approach stays CLEAR_PLOT only). Fence stone dump passes
+  `farm_bounds` into `FenceClearLoopTask`.
+- Unit: `tests/test_d2_farm_chunks.py` + leftover/quota/clearer/glance
+  190 passed. Did not re-run a live leftover pin.
 
 ### Exact next action
 
-Last boulder from `Y1_D2_Leftover_Partial` (stam 4, must spa). Spa
-estimated 12k was not enough from (54,42) — diagnose `farm_to_spa`
-from that tile, do not 400k. Then smash (60,51). Human inspect:
-
-```bash
-uv run python -m harvest.runtime.harvest_bot play \
-  --state Y1_D2_Leftover_Partial --no-day-plan --record leftover_rocks_last
-```
+Live leftover is still last-cell work. Run one chunk, not `--section all`.
+Last boulder is SE; last stone was SW. From the leftover partial pin:
 
 ```bash
 HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
-  --section rocks --state Y1_D2_Leftover_Partial --timeout 80000 \
-  --out recordings/d2_leftover_rocks.json
+  --section rocks --chunk se --state Y1_D2_Leftover_Partial \
+  --timeout 80000 --out recordings/d2_leftover_rocks_se.json
 ```
+
+Then stumps by chunk from a hammer-done pin:
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
+  --section stumps --chunk nw --state Y1_D2_After_Spa \
+  --timeout 80000 --out recordings/d2_leftover_stumps_nw.json
+```
+
+Human inspect if a chunk stalls:
+
+```bash
+uv run python -m harvest.runtime.harvest_bot play \
+  --state Y1_D2_Leftover_Partial --no-day-plan --record leftover_rocks_se
+```
+
+Do not start from `Y1_D2_Morning_After_D1`. Do not 400k `--section all`.
 
 ### Non-claims
 
 - No STATUS promotion
 - No natural power-on Day 2 completion
 - CLEAR_STONES green is leftover-pin continuation, not power-on
-- 1 large rock and 36 stumps remain
-- Last spa from (54,42) did not reach the spring
+- Live farm still has leftover smash (last boulder + stumps)
+- Chunked unit empty ≠ live pin empty

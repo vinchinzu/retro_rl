@@ -34,6 +34,7 @@ from harvest.tasks.nav import (
 from harvest.tasks.farm_ops import (
     TileScanner,
     Target,
+    scan_typed_targets,
 )
 from harvest.maps.map_config import (
     FARM_POND_ACCESS_FENCE_ROW,
@@ -103,6 +104,9 @@ class FenceClearLoopTask(Task):
     # Leftover smash: dump every post/stone in a pond. Do not treat a local
     # drop as a clear, skip a stuck target, and work the y=31 wall first.
     pond_dump: bool = False
+    # D2 leftover chunks clip the scan so a last distant stone cannot stall
+    # the whole farm. Inclusive (x0, y0, x1, y1); None is the full map.
+    farm_bounds: Optional[tuple[int, int, int, int]] = None
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -449,10 +453,9 @@ class FenceClearLoopTask(Task):
                 return TaskResult(status=TaskStatus.RUNNING)
 
             wanted = tuple(self.debris_types) or (DebrisType.FENCE,)
-            targets = [
-                t for t in self._scanner.scan(world.ram, types=set(wanted))
-                if t.debris_type in wanted
-            ]
+            targets = scan_typed_targets(
+                world.ram, wanted, self.farm_bounds, scanner=self._scanner
+            )
             if self.corridor_only:
                 self._pathfinder.no_go_tiles.update(
                     target.tile
