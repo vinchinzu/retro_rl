@@ -127,6 +127,13 @@ from super_metroid.routes.skills.basic_moves import (
     speedy_jump,
     stop_on_a_dime,
 )
+from super_metroid.routes.skills.moonfall import (
+    initiate_moonfall,
+    is_moonfalling,
+    is_moonwalking,
+    moonwalk_buttons,
+    moonwalk_direction,
+)
 from super_metroid.routes.skills.builders import (
     BUILDER_SKILLS,
     builder_gap_report,
@@ -270,6 +277,11 @@ __all__ = [
     "shoot_up_action",
     "speedy_jump",
     "stop_on_a_dime",
+    "initiate_moonfall",
+    "is_moonfalling",
+    "is_moonwalking",
+    "moonwalk_buttons",
+    "moonwalk_direction",
     "BUILDER_SKILLS",
     "builder_gap_report",
     "builder_skill",

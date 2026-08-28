@@ -47,6 +47,10 @@ Difficulty = Literal[
 ]
 
 BuilderPriority = Literal["core", "try", "later", "out_of_scope"]
+
+# Project-core techs we execute as reusable skills even when Map Rando
+# rates them Hard / Very Hard. Difficulty labels stay Map Rando's.
+PROJECT_CORE_TECHS: frozenset[str] = frozenset({"canMoonwalk", "canMoonfall"})
 BotStatus = Literal["green", "partial", "missing", "unassessed"]
 
 DIFFICULTY_ORDER: tuple[str, ...] = (
@@ -444,6 +448,17 @@ _BOT_ASSESSMENTS: dict[str, tuple[str, str, str]] = {
         "runway_dash + jump patterns",
         "skills/runway, basic_moves.speedy_jump",
     ),
+    # Project-core (Map Rando Hard / Very Hard)
+    "canMoonwalk": (
+        "partial",
+        "File option $09E4 + opposite-facing shot walk",
+        "ram.set_moonwalk, skills/moonfall",
+    ),
+    "canMoonfall": (
+        "partial",
+        "Uncapped fall via moonwalk jump; Climb first descent",
+        "skills/moonfall, kpdr/climb_descent",
+    ),
     "canHorizontalShinespark": (
         "green",
         "activate_shinespark LEFT/RIGHT",
@@ -510,7 +525,9 @@ def parse_maprando_difficulties(
     return out
 
 
-def builder_priority_for(difficulty: str) -> str:
+def builder_priority_for(difficulty: str, name: str | None = None) -> str:
+    if name in PROJECT_CORE_TECHS:
+        return "core"
     if difficulty in ("Implicit", "Basic"):
         return "core"
     if difficulty == "Medium":
@@ -558,7 +575,7 @@ def _walk_tech(
         "otherRequires": list(tech.get("otherRequires") or []),
         "note": _note_str(tech.get("note")),
         "url": f"{MAPRANDO_LOGIC_URL}/tech/{tech_id}" if tech_id is not None else None,
-        "builderPriority": builder_priority_for(difficulty),
+        "builderPriority": builder_priority_for(difficulty, name=name),
         "bot": {
             "status": status,
             "notes": notes,
@@ -607,7 +624,7 @@ def parse_techs_from_sm_json_data(
                 "otherRequires": [],
                 "note": "Present on maprando.com/logic but not in vendored sm-json-data.",
                 "url": f"{MAPRANDO_LOGIC_URL}/tech/{tid}",
-                "builderPriority": builder_priority_for(difficulty),
+                "builderPriority": builder_priority_for(difficulty, name=name),
                 "bot": {"status": status, "notes": notes, "module": module},
             }
         )
@@ -640,7 +657,10 @@ def build_catalog_payload(
         },
         "difficultyOrder": list(DIFFICULTY_ORDER),
         "builderPolicy": {
-            "core": "Implicit + Basic — bot must execute as reusable skills",
+            "core": (
+                "Implicit + Basic, plus project-core techs "
+                "(canMoonwalk, canMoonfall) — bot must execute as reusable skills"
+            ),
             "try": "Medium — build as room-optimization builders when useful",
             "later": "Hard / Very Hard — only when a route demands it",
             "out_of_scope": (
@@ -695,7 +715,11 @@ def _row_to_node(row: Mapping[str, Any]) -> TechNode:
         tech_requires=tuple(row.get("techRequires") or ()),
         other_requires=tuple(row.get("otherRequires") or ()),
         note=str(row.get("note") or ""),
-        builder_priority=str(row.get("builderPriority") or "out_of_scope"),
+        builder_priority=(
+            "core"
+            if str(row["name"]) in PROJECT_CORE_TECHS
+            else str(row.get("builderPriority") or "out_of_scope")
+        ),
         bot_status=str(bot.get("status") or "unassessed"),
         bot_notes=str(bot.get("notes") or ""),
         bot_module=str(bot.get("module") or ""),
@@ -783,6 +807,7 @@ __all__ = [
     "builder_coverage_summary",
     "builder_priority_for",
     "builder_targets",
+    "PROJECT_CORE_TECHS",
     "clear_tech_cache",
     "load_tech_catalog",
     "parse_maprando_difficulties",

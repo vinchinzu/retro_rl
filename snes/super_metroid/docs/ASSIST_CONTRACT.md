@@ -63,6 +63,21 @@ damage and firing fewer shots / farming less. Human record: `./play` uses
 The implementation should be a separate assist controller, not scattered
 `set_value` calls in route policy.
 
+### File options (moonwalk)
+
+Moonwalk is a Special Setting Mode flag (`$09E4`, 1 = on), off on every new
+file. It is **not** energy, ammo, items, or pose. `ram.set_moonwalk` may
+write that word so moonfall (Climb first descent, later shafts) can run
+without menuing Option Mode. Telemetry must not count it as
+`progression_writes` or `capacity_writes`.
+
+On a seed-backed prefix, poke **on** only for the moonfall hop and poke
+**off** before the next hash-pinned seed (those tapes were recorded with
+moonwalk off). A full-run moonwalk-on rewrite is a later sitting.
+
+Menuing Special Setting Mode at boot is the buttons-only equivalent; it
+costs real time and is not required while the poke is contracted.
+
 ## Forbidden writes
 
 - item/equipment ownership
