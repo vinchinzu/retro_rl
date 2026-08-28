@@ -2,14 +2,19 @@
 """D2 leftover smash from a live pin (not a plant tape).
 
 10 bushes (pick+toss) → dump fence posts in ponds → toss remaining stones
-in ponds → hammer remaining 2×2 boulders → axe 2 stumps.
-Isolated leftover pin (rr-w14t / rr-20w.2.8). Do not redo power-on here.
+in ponds → hammer remaining 2×2 boulders → axe remaining stumps.
+Smash types run as four farm chunks (nw/ne/sw/se) so a last-cell stall
+cannot eat the whole farm. Isolated leftover pin (rr-w14t / rr-20w.2.8).
+Do not redo power-on here.
 
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\
       --state Y1_After_Buy_Potato --out recordings/d2_leftover_smash.json
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe --dump
     uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \\
       --state Y1_D2_After_Bushes
+    HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\
+      --section stones --chunk sw --state Y1_D2_After_Stones \\
+      --out recordings/d2_leftover_stones_sw.json
 """
 
 from __future__ import annotations
@@ -39,21 +44,21 @@ from harvest.core.tile_catalog import (
     CLEARABLE_DEBRIS_TYPES,
     DebrisType,
 )
+from harvest.planner.d2_farm_chunks import (
+    FARM_CHUNK_ORDER,
+    chunk_bounds,
+    resolve_chunks,
+    section_complete,
+    smash_done_empty,
+    wanted_quota,
+)
 from harvest.planner.d2_work import (
-    bush_clear_phase,
-    d2_leftover_phases,
-    ensure_axe_phase,
-    ensure_hammer_phase,
-    fence_dump_phase,
+    leftover_section_phases,
     needs_spa_before_next_smash,
-    rock_clear_phase,
     should_spa_retry,
-    stone_pond_phase,
-    stump_clear_phase,
 )
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_phase_stamina import full_restore_spa_phase
-from harvest.planner.day_phase_types import DayPlannerPolicy
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
@@ -65,11 +70,9 @@ from harvest.scripts.leftover_exec import (
     save_emulator_state,
 )
 from harvest.tasks.farm_clear_quota import (
-    ClearQuota,
     DebrisCounts,
     classify_target,
     count_debris,
-    quota_counts_met,
 )
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.nav import get_pos_from_ram
@@ -122,6 +125,12 @@ def _parse_args() -> argparse.Namespace:
         choices=_SECTIONS,
         default="all",
         help="Run one leftover section or the full smash.",
+    )
+    p.add_argument(
+        "--chunk",
+        choices=("all",) + FARM_CHUNK_ORDER,
+        default="all",
+        help="Farm quadrant for stones/rocks/stumps (default: chain all four).",
     )
     p.add_argument(
         "--dump",
@@ -199,25 +208,20 @@ def _snapshot(ram) -> dict:
     }
 
 
-def _wanted_quota(section: str) -> ClearQuota:
-    """Day 2 work contract; the oversized fence quota caps to all present."""
-    if section == "bushes":
-        return ClearQuota(weeds=10)
-    if section == "fences":
-        return ClearQuota(fences=10_000)
-    if section == "stones":
-        return ClearQuota(stones=10_000)
-    if section == "rocks":
-        return ClearQuota(large_rocks=10_000)
-    if section == "stumps":
-        return ClearQuota(stumps=2)
-    return ClearQuota(
-        weeds=10,
-        stones=10_000,
-        large_rocks=10_000,
-        stumps=2,
-        fences=10_000,
-    )
+def _scan_bounds(section: str, chunk: str):
+    """Clip completion counts to one quadrant; None is the whole farm."""
+    if chunk == "all":
+        return None
+    if section not in {"stones", "rocks", "stumps", "all"}:
+        return None
+    names = resolve_chunks(chunk)
+    if len(names) != 1:
+        return None
+    return chunk_bounds(names[0])
+
+
+def _wanted_quota(section: str):
+    return wanted_quota(section)
 
 
 def _section_complete(
@@ -226,27 +230,13 @@ def _section_complete(
     end: DebrisCounts,
 ) -> bool:
     """True when this pass removes the bounded D2 quota from its own start."""
-    return quota_counts_met(start, end, _wanted_quota(section))
+    return section_complete(section, start, end)
 
 
-def _phases_for(section: str, *, stamina: Stamina, include_spa: bool):
-    if section == "all":
-        policy = DayPlannerPolicy(include_spa=include_spa)
-        return d2_leftover_phases(stamina=stamina, policy=policy)
-    phases = []
-    if include_spa and section in {"rocks", "stumps"} and not stamina.can_finish_multi_hit():
-        phases.append(full_restore_spa_phase())
-    if section == "bushes":
-        phases.append(bush_clear_phase())
-    elif section == "fences":
-        phases.append(fence_dump_phase())
-    elif section == "stones":
-        phases.append(stone_pond_phase())
-    elif section == "rocks":
-        phases.extend([ensure_hammer_phase(), rock_clear_phase()])
-    elif section == "stumps":
-        phases.extend([ensure_axe_phase(), stump_clear_phase()])
-    return phases
+def _phases_for(section: str, *, stamina: Stamina, include_spa: bool, chunk: str = "all"):
+    return leftover_section_phases(
+        section, stamina=stamina, include_spa=include_spa, chunk=chunk
+    )
 
 
 def _phase_timeout(spec, remaining: int) -> int:
@@ -350,8 +340,15 @@ def main() -> int:
         wanted = _wanted_quota(args.section)
         include_spa = not args.no_spa
         stam = Stamina.from_ram(ram)
+        scan_bounds = _scan_bounds(args.section, args.chunk)
+        start_counts = count_debris(ram, scan_bounds)
         pending = list(
-            _phases_for(args.section, stamina=stam, include_spa=include_spa)
+            _phases_for(
+                args.section,
+                stamina=stam,
+                include_spa=include_spa,
+                chunk=args.chunk,
+            )
         )
         ok = True
         while pending:
@@ -359,13 +356,15 @@ def main() -> int:
             remaining = max(200, args.timeout - frame)
             timeout = _phase_timeout(spec, remaining)
             world = WorldState(frame=frame, ram=ram, info={}, obs=None)
-            live_counts = count_debris(ram)
+            live_counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
             if phase_already_clear(spec.phase, live_counts):
                 journal.append(
                     {
                         "phase": spec.phase,
                         "status": "skipped",
                         "reason": "already clear on pin",
+                        "chunk": (spec.params or {}).get("chunk"),
+                        "farm_bounds": (spec.params or {}).get("farm_bounds"),
                         "frames": frame,
                         "debris_after": live_counts.as_dict(),
                     }
@@ -395,6 +394,8 @@ def main() -> int:
                 "phase": spec.phase,
                 "status": result.status.value if result is not None else "none",
                 "reason": reason,
+                "chunk": (spec.params or {}).get("chunk"),
+                "farm_bounds": (spec.params or {}).get("farm_bounds"),
                 "frames": frame,
                 "timeout": timeout,
                 "cleared_count": getattr(task, "cleared_count", None),
@@ -438,16 +439,10 @@ def main() -> int:
         cleared = DebrisCounts(**start["debris"]).cleared_since(
             DebrisCounts(**end["debris"])
         )
-        start_counts = DebrisCounts(**start["debris"])
-        end_counts = DebrisCounts(**end["debris"])
+        end_counts = count_debris(ram, scan_bounds)
         ok = ok and _section_complete(args.section, start_counts, end_counts)
-        required_empty = []
-        if args.section in {"fences", "all"}:
-            required_empty.append("fences")
-        if args.section in {"stones", "all"}:
-            required_empty.append("stones")
-        if args.section in {"rocks", "all"}:
-            required_empty.append("large_rocks")
+        whole_farm = args.chunk == "all"
+        required_empty = list(smash_done_empty(args.section) if whole_farm else ())
         saved = None
         if args.save_end_state and ok:
             saved = _save_emulator_state(env, args.save_end_state)
@@ -458,17 +453,20 @@ def main() -> int:
         extra = {}
         if saved is not None:
             extra["saved_state"] = str(saved)
+        glance_done = ok and whole_farm
         _emit(
             args.out,
             ram=ram,
             section=args.section,
             ok=ok,
+            done=glance_done,
             start=start,
             journal=journal,
             end=end,
             cleared=cleared.as_dict(),
             required_empty=required_empty,
             required_quota=_wanted_quota(args.section).__dict__,
+            chunk=args.chunk,
             frames=frame,
             time=format_segment_time(frame),
             **extra,

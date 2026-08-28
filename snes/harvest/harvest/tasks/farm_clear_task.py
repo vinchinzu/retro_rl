@@ -369,9 +369,16 @@ class FarmClearTask(Task):
             initial_settle_frames=8,
         )
 
+    def _uses_pocket_approach(self) -> bool:
+        """West-pocket CLEAR_PLOT. Quota/type_clear farm_bounds is a leftover chunk."""
+        return self.farm_bounds is not None and self.handoff not in (
+            "quota",
+            "type_clear",
+        )
+
     def _step_pocket_approach(self, world: WorldState) -> Optional[TaskResult]:
         """Walk into the west plant pocket before trusting an empty scan."""
-        if self.farm_bounds is None or self._pocket_arrived:
+        if not self._uses_pocket_approach() or self._pocket_arrived:
             return None
         if self._pocket_is_ready(world):
             if not self._pocket_arrived:
@@ -708,7 +715,7 @@ class FarmClearTask(Task):
                     ),
                     status=finish_status,
                 )
-            if self.farm_bounds is not None and not self._pocket_arrived:
+            if self._uses_pocket_approach() and not self._pocket_arrived:
                 retry = self._step_pocket_approach(world)
                 if retry is not None:
                     return retry

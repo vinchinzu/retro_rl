@@ -28,8 +28,9 @@ sequence complete, `(13,28)=0x54`. One-cell does not spend the bag.
 is `harvest.planner.d2_work`. Shop splice concatenates plant+water+leftover
 so a 06:08 plan still gets evening smash (not `hour>=17` at plan time).
 Quotas: **8** plant/water, **10** bushes (pick+toss), **all** fence posts
-to ponds, **10** stones to ponds, **4** large 2×2 (hammer), **2** stumps
-(axe). Hammer then axe (2-slot carry). Spa
+to ponds, **all** stones to ponds, **all** large 2×2 (hammer), **all**
+stumps (axe). Smash types chain four farm chunks (nw/ne/sw/se). Hammer
+then axe (2-slot carry). Spa
 inserts when stamina cannot finish an 8-swing 2×2. Hoe ring must not stand
 on the well `(15,27)`. Tune from `Y1_After_Buy_Potato`. **2026-08-23 live pin GREEN**
 (`rr-m7mk` / `rr-bvam`): `d2_plant_probe --water` from
@@ -65,9 +66,10 @@ from `Y1_After_Buy_Potato`. Dump: 506 weeds, **80 fence posts** (house
 paddock + y=31 wall x=11–29 + east column x=32), **0× `0x06`**, 185
 stones (`0x04`), 51 large 2×2, 38 stumps.
 CLEAR_BUSHES 10 in the west pocket is GREEN (3007f). Leftover order is
-now **bushes pick+toss → dump all fence posts in ponds → toss 10 stones
-in ponds → walk off shed door onto loaded a8/a1 → hammer remaining large → axe
-2 stumps**. ENSURE_HAMMER RAM shelf is GREEN but used to land on shed
+now **bushes pick+toss → dump all fence posts in ponds → toss remaining
+stones in ponds (4 farm chunks nw/ne/sw/se) → walk off shed door onto
+loaded a8/a1 → hammer remaining large (4 chunks) → axe remaining stumps
+(4 chunks)**. Numeric leftover quotas are not completion. ENSURE_HAMMER RAM shelf is GREEN but used to land on shed
 door `(26,30)` `0xFF` (farm map unloads; counts look like a wipe with
 `cleared_count=0`). Hammer fetch now NavTasks to `(25,28)` a1 before
 SUCCESS; FarmClearer keeps holding west/NW until `farm_map_loaded`.
