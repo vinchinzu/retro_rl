@@ -7,6 +7,7 @@ import numpy as np
 from zelda_i.bomb_wall_path import BombWallController
 from zelda_i.dungeon import GenericDungeonRoomController, RewardKind
 from zelda_i.level2_spine import Level2RoomWalkController
+from zelda_i.level2_enter_1e import Level2Enter1eController
 from zelda_i.level2_tf_spine import (
     DodongoPhase,
     Level2ClearDoorController,
@@ -90,11 +91,17 @@ def test_tf_stage_names_and_types() -> None:
     assert isinstance(by_name["enter_3e"], Level2RoomWalkController)
     assert isinstance(by_name["enter_2e"], Level2SouthBandUpController)
     assert by_name["enter_2e"].dest_room == 0x2E
-    assert isinstance(by_name["enter_1e"], Level2SouthBandUpController)
+    assert isinstance(by_name["enter_1e"], Level2Enter1eController)
     assert by_name["enter_1e"].dest_room == 0x1E
-    assert isinstance(by_name["bomb_north_1e"], BombWallController)
+    from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
+
+    assert isinstance(by_name["bomb_north_1e"], Level2BombNorth1eSpineController)
     assert by_name["bomb_north_1e"].to_room == 0x0E
-    assert by_name["bomb_north_1e"].approach_waypoints == ((120, 93),)
+    assert by_name["bomb_north_1e"].approach_waypoints == (
+        (96, 117),
+        (96, 101),
+        (120, 101),
+    )
     assert isinstance(by_name["clear2e"], Level2ClearDoorController)
     assert by_name["clear2e"].door_bit == 0x08
     assert isinstance(by_name["fight_dodongo"], Level2DodongoController)
@@ -141,6 +148,50 @@ def test_south_band_frees_live_timeout_poses() -> None:
     act = ne.step(_snap(room=0x3E, x=175, y=109))
     assert act.reason == "north_align_x"
     assert act.action == nes_action("LEFT")
+
+
+def test_enter_1e_gutter_tries_right_then_clips() -> None:
+    """v5 LEFT / v6 DOWN / v7 UP no-op at (96,141). Occupancy RIGHT, then clip."""
+    ctl = Level2Enter1eController()
+    snap = _snap(room=0x2E, x=96, y=141)
+    act = ctl.step(snap)
+    assert act.reason == "gutter_right"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    act = ctl.step(snap)
+    assert act.reason == "gutter_clip"
+    assert list(act.action) == list(nes_action("LEFT", "UP"))
+
+
+def test_bomb_north_1e_peels_west_from_north_pinch() -> None:
+    """v8 leftover (120, 117): do not UP into the closed bomb wall."""
+    from zelda_i.bomb_wall_path import BombWallPhase
+    from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
+
+    ctl = Level2BombNorth1eSpineController()
+    act = ctl.step(_snap(room=0x1E, x=120, y=117, bombs=16))
+    assert ctl.phase is BombWallPhase.SOUTH_BAND
+    assert act.reason == "approach_x"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+
+def test_bomb_north_1e_clips_right_up_at_stand_y() -> None:
+    """v9 leftover (96, 101): cardinal RIGHT is solid."""
+    from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
+
+    ctl = Level2BombNorth1eSpineController()
+    act = ctl.step(_snap(room=0x1E, x=96, y=101, bombs=16))
+    assert act.reason == "stand_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "UP"))
+
+
+def test_enter_1e_north_band_pushes_up() -> None:
+    ctl = Level2Enter1eController()
+    act = ctl.step(_snap(room=0x2E, x=120, y=93))
+    assert act.reason == "push_up"
+    assert list(act.action) == list(nes_action("UP"))
+    act = ctl.step(_snap(room=0x1E, x=120, y=205))
+    assert ctl.success is True
+    assert act.reason == "done"
 
 
 def test_dodongo_fails_without_bombs() -> None:

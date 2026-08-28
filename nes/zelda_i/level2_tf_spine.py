@@ -24,7 +24,7 @@ from zelda_i.dungeon import (
     RewardSpec,
 )
 from zelda_i.level2_bomb_path import (
-    make_bomb_north_1e_controller,
+    Level2BombNorth1eSpineController,
     make_post_boom_bomb_north_controller,
 )
 from zelda_i.level2_boss_combat import (
@@ -44,6 +44,7 @@ from zelda_i.level2_dungeon import (
     ROOM_3E_MOLDORM_SPEC,
     ROOM_3F_SPEC,
 )
+from zelda_i.level2_enter_1e import ENTER_1E_MAX_FRAMES, Level2Enter1eController
 from zelda_i.level2_puzzles import DOOR_UP, LEVEL2_TRIFORCE_BIT, ROOM_L2_TF
 from zelda_i.level2_spine import Level2RoomWalkController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -275,7 +276,10 @@ class Level2SouthBandUpController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         x, y = snap.link_x, snap.link_y
         if self._stuck > 14:
-            return FrameAction(nes_idle_action(), "south_wait")
+            # v5 LEFT solid. v6 DOWN solid. Same leftover (96,141) gutter.
+            # North band y<=117 is the documented free strip.
+            self._last_dir = "UP"
+            return FrameAction(nes_action("UP"), "diamond_unstick_north")
         # Diamond rooms (0x3e / 0x2e): v1 (120,185); v2 (154,141); v3 (175,109)
         # was still inside the old free box and held RIGHT. Side aisle north,
         # then door-column UP. North band y<=117 is not "diamond".
@@ -484,13 +488,10 @@ def level2_tf_stages():
     0x0e Dodongo → LEFT 0x0d. TF is WEST of the boss, not east.
     """
     bomb_4f = make_post_boom_bomb_north_controller()
-    # clear1e leftover is the north band (~80,93). Isolated approach dives
-    # south then east-north to (120,93). From the north leftover, walk to
-    # (120,93) then TO_STAND down to (120,101). Do not UP from south center
-    # (v9 stand_timeout at (120,181)).
-    bomb_1e = make_bomb_north_1e_controller(
-        approach_waypoints=((120, 93),)
-    )
+    # v8 leftover (120, 117): waypoint (120, 93) is the closed bomb wall.
+    # v9 west peel reached (96, 101); cardinal RIGHT solid. Spine wrapper
+    # peels west then RIGHT+UP clips to stand. Isolated default unchanged.
+    bomb_1e = Level2BombNorth1eSpineController()
     return (
         ("bomb_north_4f", bomb_4f, bomb_4f.max_frames),
         ("clear3f", _fight(ROOM_3F_SPINE_SPEC), ROOM_3F_SPINE_SPEC.max_frames),
@@ -520,8 +521,8 @@ def level2_tf_stages():
         ),
         (
             "enter_1e",
-            Level2SouthBandUpController(dest_room=0x1E),
-            SOUTH_BAND_UP_MAX_FRAMES,
+            Level2Enter1eController(),
+            ENTER_1E_MAX_FRAMES,
         ),
         ("clear1e", _fight(ROOM_1E_SPINE_SPEC), ROOM_1E_SPINE_SPEC.max_frames),
         ("bomb_north_1e", bomb_1e, bomb_1e.max_frames),
@@ -536,6 +537,7 @@ __all__ = [
     "EAST_AISLE_X",
     "Level2ClearDoorController",
     "Level2DodongoController",
+    "Level2Enter1eController",
     "Level2SouthBandUpController",
     "Level2ToSouthCenterController",
     "Level2TfCollectController",
