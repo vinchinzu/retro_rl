@@ -13,8 +13,9 @@ Verified (Clean Bronze, 2026-08-10):
 - target 5 from ``HeatScreen4``: late 20/12 ph4 (~131f cam)
 - target 7 from ``HeatScreen5Ground``: screen5 j1/LEFT/j2 + hop 9/gw3 (~305f)
 - target 8 from ``HeatScreen7Mid``: screen7 high-path ladder/scroll_down (~587f)
-- from ``HeatScreen8``: screen8 first Yoku land sx~168 sy~100 (~44f; use
-  ``--yoku-land`` success); boss door residual (rr-k1ea PARTIAL)
+- from ``HeatScreen8``: screen8 Yoku room → cam ≥ 9 (~680f; use
+  ``--target-screen 9``). ``--yoku-land`` still hits first-block stand.
+  Residual: E columns / F lava / G Sniper → boss door (rr-k1ea PARTIAL)
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
@@ -40,6 +41,9 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
   uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
   --state HeatScreen8 --yoku-land --trials 3
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \\
+  uv run python nes/mega_man_2/scripts/run_heat_segment.py \\
+  --state HeatScreen8 --target-screen 9 --trials 3
 ```
 """
 
@@ -124,8 +128,8 @@ def run_heat_segment(
             "Recipes: early 50/12; screen2 mid 60→25; screen3 pillars 25/10 ph10; "
             "screen4 late 20/12 ph4; screen5 j1/LEFT/j2 + hop 9/gw3 → cam≥7; "
             "screen7 high-path ladder → cam≥8 Sniper shaft; "
-            "screen8 first Yoku land sx~168 sy~100. "
-            "Boss door + Item-1 residual (rr-k1ea / rr-809 PARTIAL)."
+            "screen8 Yoku room catch → left ladder → cam≥9. "
+            "E/F/G Sniper + boss door residual (rr-k1ea / rr-809 PARTIAL)."
         ),
     }
     write_json_report(out / "heat_segment.json", report)

@@ -16,9 +16,10 @@ M3 isolated segments (Clean Bronze):
   j1/LEFT/j2 + hop 9/gw3 (~293f cam7; 3/3; 2026-08-10).
 - **Heat cam ≥ 8 Sniper shaft** from ``HeatScreen7Mid``: ``start=screen7`` high-path
   past sx152 wall → ladder → scroll_down (~587f; 3/3; 2026-08-10).
-- **HeatScreen8 first Yoku land** from ``HeatScreen8``: ``start=screen8`` LEFT10 +
-  A+LEFT14 → stand sx~168 sy~100 (~44f; 3/3; 2026-08-10). Residual: multi-level
-  Yoku chain → Sniper → boss door + Item-1 (rr-k1ea / rr-809 PARTIAL).
+- **HeatScreen8 Yoku room → cam ≥ 9** from ``HeatScreen8``: ``start=screen8``
+  wait no-ceiling phase → first Yoku → catch upper → D → left ladder
+  scroll_down (~680f cam9; 2026-08-29). Residual: E columns / F lava Yoku /
+  G Sniper → boss door + Item-1 (rr-k1ea / rr-809 PARTIAL).
 
 Level1 recipe (0-based frame index ``i``):
 
@@ -133,14 +134,16 @@ class HeatManPolicy:
     - ``screen7`` (HeatScreen7Mid): high-path — LEFT back to cam6, climb sy~68,
       cross ABOVE sx152 wall into cam7, micro-hop to mapset7 ladder, DOWN
       scroll_down → camera ≥8 Sniper shaft (~587f; 3/3; 2026-08-10).
-    - ``screen8`` (HeatScreen8): first Yoku land — LEFT 10, idle 1, A+LEFT 14,
-      coast LEFT → stand sx~168 sy~100 (~44f; 3/3; 2026-08-10). Block solid
-      ~20f (fl $90→$A0). Then explore hops (residual multi-level / boss).
+    - ``screen8`` (HeatScreen8): Yoku room → cam ≥ 9. Wait 187 (upper
+      ceiling off), land first Yoku, jump up to catch appearing upper B,
+      jump LEFT to D, hop to left-wall ledge, walk onto ladder, DOWN
+      scroll_down (~680f). Upper B is a ceiling while first is solid on
+      the opening phase — do not jump-from-below then.
 
-    Residual: HeatScreen8 multi-level Yoku → Sniper → boss door + Item-1
-    (rr-k1ea / rr-809 PARTIAL). Low alcove sx152 is a dead-end; do not
-    RIGHT-spam from HeatScreen7 floor. Do not jump straight up into upper
-    Yoku from below (bonks underside).
+    Residual: Heat cam ≥ 9 section E columns / F lava Yoku / G Sniper →
+    boss door + Item-1 (rr-k1ea / rr-809 PARTIAL). Low alcove sx152 is a
+    dead-end. Do not jump straight up into upper Yoku while it is already
+    solid (bonks underside).
     """
 
     # early (Heat1 / HeatScreen1)
@@ -364,33 +367,35 @@ class HeatManPolicy:
         return FrameAction(nes_action("DOWN"), "s7_down")
 
     def _tick_screen8(self, *, frame: int, tile_feet: int) -> FrameAction:
-        """Frame script: first Yoku land then residual multi-level hops.
+        """Frame script: Yoku room (no-ceiling catch) → left ladder → cam ≥ 9.
 
-        0-based ``i`` (verified 3/3 HeatScreen8 → sx~168 sy~100 ~44f):
+        0-based ``i`` (HeatScreen8 → camera 9 via scroll_down):
 
-        - 0–9: LEFT (approach ledge edge)
-        - 10: idle (A rising edge)
-        - 11–24: A+LEFT 14 (jump onto Yoku at ~168,119)
-        - 25–44: LEFT coast to settle stand
-        - then: release + A+LEFT micro-hops (residual; upper block bonks from below)
+        - 0–186: idle (wait until first+D on, upper B off)
+        - land first Yoku (LEFT 8, idle 1, A+LEFT 14, LEFT 18)
+        - idle 4, A 20: jump up; appearing B catches at sy~52
+        - idle 1, A+LEFT 16, LEFT 32: jump to D (104,55) then hop
+        - idle 1, A+LEFT 8, LEFT 50: left-wall ledge → ladder
+        - DOWN: scroll_down into section E (cam ≥ 9)
         """
         i = max(0, frame - 1)
         segs: list[tuple[tuple[str, ...], int, str]] = [
-            (("LEFT",), 10, "s8_approach"),
+            ((), 187, "s8_wait"),
+            (("LEFT",), 8, "s8_approach"),
             ((), 1, "s8_release"),
             (("A", "LEFT"), 14, "s8_yoku_jump"),
-            (("LEFT",), 20, "s8_yoku_coast"),
+            (("LEFT",), 18, "s8_yoku_coast"),
+            ((), 4, "s8_catch_gap"),
+            (("A",), 20, "s8_catch"),
+            ((), 3, "s8_catch_hang"),
+            ((), 1, "s8_to_d_rel"),
+            (("A", "LEFT"), 16, "s8_to_d"),
+            (("LEFT",), 32, "s8_to_d_coast"),
+            ((), 1, "s8_ledge_rel"),
+            (("A", "LEFT"), 8, "s8_ledge_hop"),
+            (("LEFT",), 50, "s8_ledge_walk"),
+            (("DOWN",), 400, "s8_down"),
         ]
-        # residual: try leftward multi-level hops (not yet dual-green past first land)
-        for _ in range(12):
-            segs += [
-                ((), 3, "s8_hop_release"),
-                (("A", "LEFT"), 12, "s8_hop"),
-                (("LEFT",), 14, "s8_hop_coast"),
-                ((), 8, "s8_hop_idle"),
-            ]
-        segs.append((("LEFT",), 200, "s8_left"))
-
         t = 0
         for btns, n, reason in segs:
             if i < t + n:
@@ -398,7 +403,7 @@ class HeatManPolicy:
                     return FrameAction(nes_idle_action(), reason)
                 return FrameAction(nes_action(*btns), reason)
             t += n
-        return FrameAction(nes_action("LEFT"), "s8_left")
+        return FrameAction(nes_action("DOWN"), "s8_down")
 
     def _want_jump(self, i: int) -> bool:
         if self.start == "screen2":
