@@ -32,6 +32,134 @@ from retro_harness.combat import (
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import EnemyState, GameState
 
+# West Area1 Andore (HP≈250): face-Y punch band, grab-throw on overlap.
+# Continuous LEFT+Y whiffs; chasing knockdown flyaway walks the gutter
+# or right fence and dies. Probe: ``scripts/stage3_area1_probe.py``.
+AREA1_FENCE_SX = 165
+AREA1_GUTTER_SX = 52
+AREA1_FAR_ADX = 70
+AREA1_PUNCH_LO = 24
+AREA1_PUNCH_HI = 70
+AREA1_GRAB_ADX = 16
+
+
+def area1_andore_action(
+    *,
+    frame: int,
+    sx: int,
+    dx: int | None,
+    dy: int = 0,
+    status: int = 3,
+    faced: bool = False,
+    enemy_hp: int = 250,
+) -> tuple[FrameAction, bool]:
+    """One-frame Area1 Andore recipe: clamp, wait-far, face-Y, throw.
+
+    ``dx`` is enemy_x - player_x (behind is negative). ``status`` is the
+    entity byte (``3`` fighting, ``1`` spawn/KD flyaway). ``faced`` tracks
+    a brief LEFT/RIGHT face before bare Y — holding dir+Y whiffs.
+    HP≤50 waits for Andore to walk into grab, then UP+Y (chasing
+    after the first throw walks the fence and dies).
+    """
+    if sx > AREA1_FENCE_SX:
+        # JD-left off the lock edge — ground LEFT is too slow vs Andore push.
+        return FrameAction(action=buttons("B", "LEFT"), reason="clamp_l"), faced
+    if sx < AREA1_GUTTER_SX:
+        return FrameAction(action=buttons("RIGHT"), reason="clamp_r"), faced
+    if dx is None:
+        if sx < 110:
+            return FrameAction(action=buttons("RIGHT"), reason="walk"), faced
+        return FrameAction(action=idle_action(), reason="wait"), faced
+
+    adx = abs(dx)
+    toward = "RIGHT" if dx >= 0 else "LEFT"
+    # Knockdown flyaway (~40-dmg throw launches adx 100+). Hold mid;
+    # chasing walks the gutter/fence and dies.
+    if (status == 1 and adx > 50) or adx > AREA1_FAR_ADX:
+        if sx > 140:
+            return FrameAction(action=buttons("LEFT"), reason="clamp_l"), faced
+        if sx < 75:
+            return FrameAction(action=buttons("RIGHT"), reason="clamp_r"), faced
+        return FrameAction(action=idle_action(), reason="wait_far"), faced
+    # Crumb: do not chase. Hop out of Andore's grab, throw at 16–32.
+    if enemy_hp <= 50:
+        if adx < 12:
+            away = "RIGHT" if dx < 0 else "LEFT"
+            if away == "LEFT" and sx < 70:
+                away = "RIGHT"
+            if away == "RIGHT" and sx > 140:
+                away = "LEFT"
+            return FrameAction(action=buttons("B", away), reason="space"), faced
+        if adx > 32:
+            if abs(dy) < 8:
+                away_v = "DOWN" if dy >= 0 else "UP"
+                return FrameAction(action=buttons(away_v), reason="desync"), faced
+            return FrameAction(action=idle_action(), reason="wait_far"), faced
+        cycle = frame % 4
+        if cycle == 0:
+            return FrameAction(action=buttons("UP", "Y"), reason="throw"), faced
+        if cycle == 1:
+            return (
+                FrameAction(action=buttons(toward, "Y"), reason="throw"),
+                faced,
+            )
+        if cycle == 2:
+            return FrameAction(action=buttons("LEFT", "Y"), reason="throw"), faced
+        return FrameAction(action=idle_action(), reason="gap"), faced
+    if abs(dy) > 10 and adx > 20:
+        vert = "UP" if dy > 0 else "DOWN"
+        return FrameAction(action=buttons(vert), reason="align"), faced
+    if adx <= 18:
+        cycle = frame % 4
+        if cycle == 0:
+            return FrameAction(action=buttons("UP", "Y"), reason="throw"), faced
+        if cycle == 1:
+            return (
+                FrameAction(action=buttons(toward, "Y"), reason="throw"),
+                faced,
+            )
+        if cycle == 2:
+            return FrameAction(action=buttons("LEFT", "Y"), reason="throw"), True
+        return FrameAction(action=buttons("RIGHT"), reason="space"), faced
+    if adx <= 32:
+        if dx < 0 and not faced:
+            return FrameAction(action=buttons("LEFT"), reason="face"), True
+        if frame % 3 < 2:
+            return FrameAction(action=buttons("UP", "Y"), reason="throw"), faced
+        return FrameAction(action=buttons(toward), reason="close"), faced
+    # Walk into grab range. Bare Y only as a 2/12 pulse while closing
+    # behind — LEFT+Y from here is the documented 0-dmg lock.
+    if dx < 0 and sx > 70:
+        if not faced:
+            return FrameAction(action=buttons("LEFT"), reason="face"), True
+        if frame % 12 < 2:
+            return FrameAction(action=buttons("Y"), reason="y"), faced
+        return FrameAction(action=buttons("LEFT"), reason="close"), True
+    if toward == "RIGHT" and sx >= 150:
+        return FrameAction(action=buttons("B", "LEFT"), reason="clamp_l"), faced
+    return FrameAction(action=buttons(toward), reason="close"), faced
+
+
+def area1_andore_from_snap(
+    frame: int,
+    enemy: dict[str, int] | None,
+    *,
+    sx: int,
+    faced: bool,
+) -> tuple[FrameAction, bool]:
+    """Probe adapter: enemy snap dict ``{dx, dy, st, hp}`` or ``None``."""
+    if enemy is None:
+        return area1_andore_action(frame=frame, sx=sx, dx=None, faced=faced)
+    return area1_andore_action(
+        frame=frame,
+        sx=sx,
+        dx=int(enemy["dx"]),
+        dy=int(enemy.get("dy", 0)),
+        status=int(enemy.get("st", 3)),
+        faced=faced,
+        enemy_hp=int(enemy.get("hp", 250)),
+    )
+
 
 def _right_edge_fight_action(
     state: GameState,
