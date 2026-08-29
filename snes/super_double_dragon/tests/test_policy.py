@@ -15,7 +15,7 @@ from retro_harness.controls import (
 )
 from retro_harness.ram_state import EnemyState, GameMode, GameState
 from super_double_dragon.policy import Stage1Policy
-from super_double_dragon.ram import ADDR_PLAYER_PAGE, parse_game_state
+from super_double_dragon.ram import ADDR_PLAYER_PAGE, ACTOR_BASES, parse_game_state
 
 
 def _ram() -> np.ndarray:
@@ -114,6 +114,29 @@ def test_parser_follows_player_pointer_to_a_new_actor_page() -> None:
     assert any(enemy.kind == 7 for enemy in state.living_enemies)
 
 
+def test_parser_reads_page_17_drawn_fighter() -> None:
+    ram = _ram()
+    ram[0x1700] = 3
+    ram[0x1702] = 7
+    ram[0x1727] = 82
+    ram[0x170C] = 0xAA
+    ram[0x170D] = 0x01
+    ram[0x1710] = 61
+    ram[0x1774] = 171
+    ram[0x0018] = 1
+    ram[0x00DE] = 0x20
+    state = parse_game_state(ram)
+    assert 0x1700 in ACTOR_BASES
+    assert len(state.living_enemies) == 1
+    enemy = state.living_enemies[0]
+    assert (enemy.kind, enemy.x, enemy.health) == (7, 171, 82)
+    assert state.extras["player_world_x"] == 0
+    assert state.extras["scene_lock"] == 1
+    assert state.extras["floor"] == 0x20
+    assert state.extras["drawn_actors"][0]["base"] == 0x1700
+    assert state.extras["drawn_actors"][0]["world_x"] == 0x01AA
+
+
 def test_parser_does_not_assume_player_kind_is_stable() -> None:
     ram = _ram()
     ram[0x1100] = 3
@@ -186,6 +209,18 @@ def test_attacks_offscreen_enemy_when_pinned_to_left_edge() -> None:
         for _ in range(4)
     ]
     assert any(action and action.action[SNES_Y] for action in actions)
+
+
+def test_gym_stairs_walk_left_then_up_when_clear() -> None:
+    policy = Stage1Policy()
+    actions = [policy.tick(_state(stage=0x19)).action for _ in range(1101)]
+    approach = actions[0]
+    climb = actions[500]
+    landing = actions[1100]
+    assert approach is not None and approach.action[SNES_LEFT] == 1
+    assert climb is not None
+    assert climb.action[SNES_UP] == 1 and climb.action[SNES_LEFT] == 1
+    assert landing is not None and landing.action[SNES_UP] == 1
 
 
 def test_chin_finisher_uses_block_counter() -> None:
