@@ -348,6 +348,7 @@ def run_trials(
         "success": wins >= trials and trials > 0,
         "outcomes": [r["outcome"] for r in reports],
         "frames": [r["frames"] for r in reports],
+        "waited_for_clock": [r["waited_for_clock"] for r in reports],
         "opp_kd": [r["opp_kd"] for r in reports],
         "mac_kd": [r["mac_kd"] for r in reports],
         "reports": [f"trial_{i:02d}/report.json" for i in range(1, trials + 1)],
