@@ -330,11 +330,12 @@ def main(argv: list[str] | None = None) -> int:
         "successes": sum(1 for r in reports if r.get("ok")),
         "reports": reports,
         "note": (
-            "Verified naturally through three blue doors and the third stable "
-            "west-shaft platform. Expect ok=false at FRONTIER until the upper "
-            "shaft, bridge, east shaft, and missile pickup clear. "
-            "AfterMorph/Level1 starts are diagnostic state loads, not Clean "
-            "natural-entry evidence. Opt-in --screen-timing writes hop timing "
+            "Verified naturally through three blue doors, the (11,13) west-"
+            "shaft platform, and the leftover climb onto (11,12). Expect "
+            "ok=false at FRONTIER until the upper shaft, bridge, east shaft, "
+            "and missile pickup clear. AfterMorph/Level1 starts are "
+            "diagnostic state loads, not Clean natural-entry evidence. "
+            "Opt-in --screen-timing writes hop timing "
             f"under {SCREEN_TIMINGS_DIR}/."
         ),
     }
