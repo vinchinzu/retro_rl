@@ -13,9 +13,14 @@ ADDR_X_PAGE = 0x0075  # coarse horizontal (8-block units in levels; dual-use on 
 ADDR_IN_AIR = 0x00D8
 ADDR_HVEL = 0x00BD
 
-# Map
+# Map (southbird: World_Map_* at $75/$77/$79; Map_Operation at $0729)
 ADDR_MAP_Y = 0x0078
 ADDR_MAP_X = 0x0079
+ADDR_MAP_MOVE = 0x007B  # remaining walk pixels (even)
+ADDR_MAP_TILE = 0x00E5  # tile under Mario
+ADDR_MAP_OPERATION = 0x0729
+MAP_OPERATION_NORMAL = 0x0D  # MO_NormalMoveEnter
+TILE_PANEL2 = 0x04  # World 1-2 panel
 
 # Meta
 ADDR_LIVES = 0x0736
@@ -43,6 +48,11 @@ def is_in_level(ram) -> bool:
 def is_goal_auto(ram) -> bool:
     """True while the game auto-controls Mario (goal grab / card)."""
     return int(ram[ADDR_AUTO_CONTROL]) != 0
+
+
+def is_map_controllable(ram) -> bool:
+    """True when the world map is in normal move/enter (Map_Operation = $0D)."""
+    return int(ram[ADDR_MAP_OPERATION]) == MAP_OPERATION_NORMAL
 
 
 def is_level1_ready(ram, obs_mean: float | None = None) -> bool:
@@ -76,6 +86,9 @@ def parse_game_state(ram: np.ndarray, frame: int = 0, obs_mean: float | None = N
         "auto_control": int(ram[ADDR_AUTO_CONTROL]),
         "map_x": int(ram[ADDR_MAP_X]),
         "map_y": int(ram[ADDR_MAP_Y]),
+        "map_tile": int(ram[ADDR_MAP_TILE]),
+        "map_operation": int(ram[ADDR_MAP_OPERATION]),
+        "map_controllable": is_map_controllable(ram),
     }
     if in_level:
         mode = GameMode.PLAYING
