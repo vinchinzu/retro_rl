@@ -58,6 +58,11 @@ def test_combat_profile_table_pins_stage_rows() -> None:
     neon = CombatProfile.from_state(playing(stage=7, enemies=(foot,)))
     assert _poke(neon) == (48, 68, 8, 24, 2, 5, PreferredFlank.NONE)
 
+    shredder = CombatProfile.from_state(
+        playing(stage=8, boss_active=True, enemies=(enemy(120, 160, kind=0x52),))
+    )
+    assert _poke(shredder) == (8, 72, 10, 28, 2, 1, PreferredFlank.NONE)
+
 
 def test_slash_spin_dodge_adx_stays_52_and_never_presses_a() -> None:
     assert GrindKnobs().slash_spin_dodge_adx == 52
