@@ -53,7 +53,11 @@ from retro_harness.fighters.contracts import (
 )
 from retro_harness.fighters.game_configs import GAME_REGISTRY, get_game_config
 from retro_harness.fighters.menu_nav import create_fight_state
-from retro_harness.model_artifacts import load_policy_artifact, write_policy_artifact
+from retro_harness.model_artifacts import (
+    load_policy_artifact,
+    policy_artifact_path,
+    write_policy_artifact,
+)
 from retro_harness.repo import resolve_game_dir
 
 
@@ -345,7 +349,7 @@ def train(args):
 
 
 def evaluate(args):
-    """Run a trained model with rendering for visual evaluation."""
+    """Run a trained model. Headless when SDL_VIDEODRIVER=dummy or no DISPLAY."""
     game_config = get_game_config(args.game)
     game_dir = resolve_game_dir(game_config.game_dir_name)
 
@@ -370,7 +374,11 @@ def evaluate(args):
     )
 
     contracts = _runtime_contracts(game_config, game_dir, args, monitor=True)
-    load_policy_artifact(args.load, contracts)
+    artifact_path = policy_artifact_path(args.load)
+    if artifact_path.is_file():
+        load_policy_artifact(args.load, contracts)
+    else:
+        print(f"No PolicyArtifact at {artifact_path}; evaluating legacy zip")
 
     env = make_fighting_env(
         game=game_config.game_id,
@@ -386,12 +394,28 @@ def evaluate(args):
 
     model = PPO.load(args.load, device=device)
 
-    # Render with pygame
-    import pygame
-    pygame.init()
-    screen = pygame.display.set_mode((84 * 6, 84 * 6))
-    pygame.display.set_caption(f"Eval: {game_config.display_name}")
-    clock = pygame.time.Clock()
+    headless = (
+        os.environ.get("SDL_VIDEODRIVER") == "dummy"
+        or not os.environ.get("DISPLAY")
+    )
+    screen = None
+    clock = None
+    pygame = None
+    if not headless:
+        try:
+            import pygame as _pygame
+            pygame = _pygame
+            pygame.init()
+            screen = pygame.display.set_mode((84 * 6, 84 * 6))
+            pygame.display.set_caption(f"Eval: {game_config.display_name}")
+            clock = pygame.time.Clock()
+        except Exception as exc:
+            print(f"pygame unavailable ({exc}); running headless")
+            headless = True
+
+    episodes_target = int(getattr(args, "episodes", 0) or 0)
+    if episodes_target <= 0:
+        episodes_target = 1 if headless else 10**9
 
     obs, info = env.reset()
     wins = 0
@@ -400,28 +424,30 @@ def evaluate(args):
     running = True
 
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                running = False
+        if screen is not None:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (
+                    event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                ):
+                    running = False
 
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = env.step(action)
 
-        # Render the last grayscale frame scaled up
-        frame = obs[-1] if obs.ndim == 3 else obs
-        rgb = np.stack([frame, frame, frame], axis=-1) if frame.ndim == 2 else frame
-        surf = pygame.surfarray.make_surface(rgb.swapaxes(0, 1))
-        screen.blit(pygame.transform.scale(surf, screen.get_size()), (0, 0))
-
-        font = pygame.font.SysFont("monospace", 18)
-        hud = font.render(
-            f"W:{info.get('rounds_won', 0)} L:{info.get('rounds_lost', 0)} | "
-            f"Dmg:{info.get('episode_damage_dealt', 0)} Taken:{info.get('episode_damage_taken', 0)}",
-            True, (0, 255, 0),
-        )
-        screen.blit(hud, (10, 10))
-        pygame.display.flip()
-        clock.tick(15)  # Slow for visibility (frame skip already 4x)
+        if screen is not None:
+            frame = obs[-1] if obs.ndim == 3 else obs
+            rgb = np.stack([frame, frame, frame], axis=-1) if frame.ndim == 2 else frame
+            surf = pygame.surfarray.make_surface(rgb.swapaxes(0, 1))
+            screen.blit(pygame.transform.scale(surf, screen.get_size()), (0, 0))
+            font = pygame.font.SysFont("monospace", 18)
+            hud = font.render(
+                f"W:{info.get('rounds_won', 0)} L:{info.get('rounds_lost', 0)} | "
+                f"Dmg:{info.get('episode_damage_dealt', 0)} Taken:{info.get('episode_damage_taken', 0)}",
+                True, (0, 255, 0),
+            )
+            screen.blit(hud, (10, 10))
+            pygame.display.flip()
+            clock.tick(15)
 
         if terminated or truncated:
             episodes += 1
@@ -429,13 +455,26 @@ def evaluate(args):
             rl = info.get("rounds_lost", 0)
             if rw >= 2 and rw > rl:
                 wins += 1
+                result = "WIN"
             else:
                 losses += 1
-            print(f"Episode {episodes}: W={wins} L={losses} (rate={wins/max(1,episodes):.0%})")
-            obs, info = env.reset()
+                result = "LOSS"
+            print(
+                f"Episode {episodes}: {result} rounds={rw}-{rl} "
+                f"W={wins} L={losses} (rate={wins/max(1,episodes):.0%})"
+            )
+            if episodes >= episodes_target:
+                running = False
+            else:
+                obs, info = env.reset()
 
     env.close()
-    pygame.quit()
+    if pygame is not None:
+        pygame.quit()
+    print(
+        f"EVAL {args.load} state={args.state} W={wins} L={losses} "
+        f"{'WIN' if wins > losses else 'LOSS'}"
+    )
 
 
 def do_create_state(args):
@@ -461,6 +500,12 @@ def main():
     parser.add_argument("--load", type=str, default=None, help="Model checkpoint to load")
     parser.add_argument("--prefix", type=str, default=None, help="Model name prefix (default: {game}_ppo)")
     parser.add_argument("--eval", action="store_true", help="Evaluate mode (render)")
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=0,
+        help="Eval episodes (0 = 1 headless / until quit with display)",
+    )
     parser.add_argument("--create-state", action="store_true", help="Create fight state from menus")
     parser.add_argument("--practice", action="store_true", help="Practice mode: 2P with idle P2 (null bot)")
     parser.add_argument("--seed", type=int, default=0, help="Training/evaluation seed")

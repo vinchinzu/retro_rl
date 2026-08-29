@@ -8,7 +8,14 @@ SNES MK2 (12 characters; longer tournament). Shared fighters stack:
 ```bash
 ./run_bot.sh play --state Fight_LiuKang
 
-# Train
+# Isolated Fight_LiuKang (RAM-gated; CNN zip is un-eval'd / lost)
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python snes/mortal_kombat_ii/eval_match.py --probe-health
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python snes/mortal_kombat_ii/eval_match.py --scripted
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python retro_harness/fighters/train_ppo.py \
+  --game mk2 --state Fight_LiuKang --eval \
+  --load snes/mortal_kombat_ii/models/mk2_ppo_final.zip
+
+# Train (do not overnight-train until RAM-gated isolated win exists)
 uv run python retro_harness/fighters/train_ppo.py \
   --game mk2 --state Fight_LiuKang --steps 500000
 ./train_multichar.sh
@@ -34,8 +41,12 @@ python cheat_extractor.py --char LiuKang --start-from Match6
   varies by character.
 - States: 134 total (CharSelect + Fight_* + tournament stages) — already
   extracted; do not re-run full extraction unless corrupted.
+- ``rom.sfc`` must point at repo ``roms/Mortal Kombat II.smc`` (SHA1
+  f6aa5291759e982ea249c4b76f729ca2f4ab1cf4). A stale absolute symlink
+  from another checkout will raise ``No romfiles found``.
 
 ## Next
 
-- Train multi-character tournament policies
-- More RAM: rounds won, timer, character ID
+- Isolated Fight_LiuKang RAM-gated match-win (scripted fireball / hitbox). CNN
+  ``mk2_ppo_final.zip`` lost 0-2; do not overnight-train.
+- More RAM: P1/P2 X, rounds won, timer, character ID

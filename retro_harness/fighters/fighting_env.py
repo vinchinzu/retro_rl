@@ -261,7 +261,7 @@ class DirectRAMReader(gym.Wrapper):
         """
         Args:
             env: RetroEnv (must be unwrapped or close to it)
-            ram_map: {"variable_name": ram_offset} e.g. {"health": 0x2EFC}
+            ram_map: {"variable_name": get_ram_index} e.g. {"health": 0x4EFD}
         """
         super().__init__(env)
         self.ram_map = ram_map

@@ -299,11 +299,19 @@ class TestGameConfigConsistency(unittest.TestCase):
 
     def test_mk2_has_ram_overrides(self):
         """MK2 needs ram_overrides for health (high WRAM addresses)."""
+        from mortal_kombat_ii.ram import ADDR_P1_HEALTH, ADDR_P2_HEALTH, DECOY_NOT_HEALTH
+
         config = get_game_config("mk2")
         self.assertTrue(config.ram_overrides,
                         "MK2 must have ram_overrides for health/enemy_health")
         self.assertIn("health", config.ram_overrides)
         self.assertIn("enemy_health", config.ram_overrides)
+        self.assertEqual(config.ram_overrides["health"], ADDR_P1_HEALTH)
+        self.assertEqual(config.ram_overrides["enemy_health"], ADDR_P2_HEALTH)
+        self.assertNotIn(config.ram_overrides["health"], DECOY_NOT_HEALTH)
+        self.assertNotIn(config.ram_overrides["enemy_health"], DECOY_NOT_HEALTH)
+        self.assertNotEqual(config.ram_overrides["health"], 0x020A)
+        self.assertNotEqual(config.ram_overrides["enemy_health"], 0x020E)
 
     def test_game_dirs_exist(self):
         """Game directories referenced in configs should exist."""

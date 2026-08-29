@@ -76,4 +76,6 @@ Value head: [256, 128] → 1
 
 - **stable-retro SNES mapping**: Only first 8KB of WRAM is mapped for `data.json`. Use `DirectRAMReader` for high addresses.
 - **Menu navigation**: Button timing is approximate. MK2 required especially long waits (15s boot logos + START mashing through story screens). If states don't reach fights, save frames at each step to debug visually.
-- **MK2 health addresses**: Originally documented as 0x2EFC/0x2EFE (high WRAM), but actual addresses are 0x020A/0x020E (low WRAM). Found by scanning for value pairs matching 161 during active fights.
+- **MK2 health addresses**: High WRAM. P1 ``get_ram`` 0x4EFD (WRAM 0x2EFC), P2
+  ``get_ram`` 0x50AB (WRAM 0x30AA). 0x020A/0x020E are **not** health. DirectRAMReader
+  is required because ``data.json`` only maps the first 8KB of WRAM.
