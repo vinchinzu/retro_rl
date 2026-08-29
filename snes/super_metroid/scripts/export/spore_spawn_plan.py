@@ -12,16 +12,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 from super_metroid.map_planning import (  # noqa: E402
     EditorNavigationGraph,
+    POST_TORIZO_CAPABILITIES,
+    POST_TORIZO_ROUTE_PATCHES,
+    POST_TORIZO_TO_SPORE_SPAWN,
     edge_to_editor_dict,
     planned_leg_to_editor_dict,
     sha256_file,
 )
 from super_metroid.paths import MAPS_DIR, SHARED_ROM  # noqa: E402
-from super_metroid.routes.spore_spawn_route import (  # noqa: E402
-    POST_TORIZO_CAPABILITIES,
-    POST_TORIZO_ROUTE_PATCHES,
-    POST_TORIZO_TO_SPORE_SPAWN,
-)
 
 
 def _default_editor_nav() -> Path:

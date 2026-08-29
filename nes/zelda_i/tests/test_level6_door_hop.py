@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from retro_harness.nes import nes_action
-from zelda_i.level6_door_hop import (
+from zelda_i.level6.door_hop import (
     DoorHopSpec,
     Level6DoorHopController,
     NORTH2C_SPEC,

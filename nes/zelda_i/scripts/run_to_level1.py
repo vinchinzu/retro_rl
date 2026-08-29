@@ -23,16 +23,16 @@ from retro_harness.segment_runner import (
     save_rgb_png,
     write_json_report,
 )
-from zelda_i.chain import boot_to_ready
-from zelda_i.overworld_nav import (
+from zelda_i.route.chain import boot_to_ready
+from zelda_i.overworld.nav import (
     SEGMENT_MAX_FRAMES,
     OverworldToLevel1Controller,
     level1_entrance_success,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import parse_game_state, read_snapshot
-from zelda_i.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
-from zelda_i.sword_cave import SwordCaveController, sword_segment_success
+from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
+from zelda_i.overworld.sword_cave import SwordCaveController, sword_segment_success
 
 def run_once(
     *,

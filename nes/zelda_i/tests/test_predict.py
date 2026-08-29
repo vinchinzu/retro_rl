@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.predict import grade_walk, snapshot_fields, walk_claim
+from zelda_i.walk.predict import grade_walk, snapshot_fields, walk_claim
 from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y, ADDR_MODE, ADDR_SCREEN, PLAY_MODE, read_snapshot
 
 

@@ -53,12 +53,10 @@ from smb.ram import (
     reached_world_4,
 )
 from smb.reactive_12 import is_surface_control
-from smb.scripts.run_warp_finish import (
-    ENDING_PEACH_HOLD_FRAMES,
-    _VideoWriter,
-    _env_audio_rate,
-    _write_video,
-)
+from smb.policy import ENDING_PEACH_HOLD_FRAMES
+from smb.rta_panel import VideoWriter as _VideoWriter
+from smb.rta_panel import env_audio_rate as _env_audio_rate
+from smb.rta_panel import write_video as _write_video
 from smb.tas.replay import IDLE, to_action9
 from smb.tas.slice import (
     HL_1_1_SETTLE,

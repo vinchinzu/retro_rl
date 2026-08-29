@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level3_dungeon import (
+from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
     MANHANDLA_OBJECT_TYPE,
     ROOM_5B_SPEC,

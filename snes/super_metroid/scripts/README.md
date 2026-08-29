@@ -4,7 +4,7 @@
 |-----|---------|
 | `record/` | Continuous power-on recordings (baselines) + guided human demos |
 | `verify/` | Offline report / graph checks on recordings |
-| `probe/` | Daily/dev CLIs (KPDR pure, bosses, route warps, room timer, post-Spore) |
+| `probe/` | A/B loop (`kpdr.py` load pin / play / compare) + Gravity `ws_main_climb` / Alcatraz WIP |
 | `export/` | Regenerate maps / path board / plans |
 | `room/` | Room-problem practice runner |
 | `scaffold_tip.py` | Pure-first tip extension scaffold (controller stub + residual + checklist) |
@@ -49,7 +49,8 @@ uv run python snes/super_metroid/scripts/record/guided_human.py \
 ./snes/super_metroid/scripts/record/red_climb_session.sh rank red_climb_v1
 uv run python snes/super_metroid/scripts/tools/rank_red_climb_takes.py --series red_climb_v1
 
-uv run python snes/super_metroid/scripts/probe/post_spore_pb.py --to main
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure big-pink-to-ghz \
+  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_bigpink_main_controller.state
 uv run python snes/super_metroid/scripts/export/path_room_board.py
 
 # Room timing (emulator frames; stock ROM — see docs/ROOM_TIMER.md)
@@ -61,11 +62,6 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py suggest-source --room 0xA
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_varia_collected.state \
   --pin-json super_metroid/debug/varia_to_kraid_pin.json
-
-# Pure-chain video + reasonSpans (skill extraction source; not continuous evidence)
-uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --list
-uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset charge-collect-return
-uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset big-pink-to-ghz
 
 # Scaffold next pure hop (dry-run checklist; --write to emit files)
 uv run python snes/super_metroid/scripts/scaffold_tip.py \
@@ -79,21 +75,16 @@ uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk \
   --start 1338 --end 1351 --name moat_shinespark --spark
 uv run python snes/super_metroid/scripts/tools/yt_ref.py chunk --segment-id k2_spazer --stride 2
 
-# Shinespark gym + K6 pure (docs/tasks/SHINE_PRACTICE.md)
-# Landing Site store drill (bot holds RIGHT+B; you press DOWN when e=4)
-uv run python snes/super_metroid/scripts/probe/shine_practice.py drill
-uv run python snes/super_metroid/scripts/probe/shine_practice.py human --series ls_edge_v1
-uv run python snes/super_metroid/scripts/probe/shine_practice.py diagnose \
-  snes/super_metroid/tasks/shine_practice/ls_edge_v1/take03.json
-# Moat pure → West Ocean handoff
-uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure
-# Product WO → green Super WS 0xCA08 (pin: post_west_ocean_ws_spark.state)
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
-# Compose Kihunter/Moat → Moat spark → over-ocean → WS pin (Phantoon record handoff)
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws
-uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
+# Shinespark / K6 (docs/tasks/SHINE_PRACTICE.md): Skill in routes/skills/shinespark.py
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose moat-to-ws \
+  --source snes/super_metroid/scratch/post_moat_poweron.state
+# Product WO → green Super WS 0xCA08
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-ws \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state
 # Edge bowling practice only (0xC98E — not product WS)
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-bowling \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state \
+  --place-x 350 --place-y 550
 # Human: optional WO practice, or ship free-record from product WS pin
 uv run python snes/super_metroid/scripts/record/guided_human.py --from west-ocean --list
 uv run python snes/super_metroid/scripts/record/guided_human.py --from ws-entrance --name ws_ship_human

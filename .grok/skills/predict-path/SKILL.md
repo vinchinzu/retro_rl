@@ -25,7 +25,7 @@ Unknown clauses miss (not a weak "pose changed" fallback).
 
 | Game | Search model | Live halt |
 |------|----------------|-----------|
-| Zelda I | `door_graph.bfs_path` + `walk_physics.OccupancyWalker` | occupancy miss → block that cell → replan; no path → stand (do not probe) |
+| Zelda I | `door_graph.bfs_path` + `walk.physics.OccupancyWalker` | occupancy miss → block that cell → replan; no path → stand (do not probe) |
 | SMB | `smb.approx.step` / `rollout` | first missed `Grade` / `first_miss_index` (not residual wrapped as `halt_plan`) |
 
 Do not probe the emulator to feel a path BFS can close. Do not hill-climb

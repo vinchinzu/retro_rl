@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from zelda_i.chain import ControllerStageResult
+from zelda_i.route.chain import ControllerStageResult
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 from zelda_i.screen_glance import (
     BOW22_LEAVE,

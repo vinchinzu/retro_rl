@@ -30,104 +30,39 @@ from typing import Any
 
 import numpy as np
 
-from retro_harness.env import make_env
-from smb.full_run import read_state_bytes
+from retro_harness.env import make_env, read_state_bytes
 from smb.paths import GAME_DIR, GAME_V0, INTEGRATION_V0_DIR, RECORDINGS_DIR
 from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
+    DEFAULT_STAIRS_1_1 as STAIRS_1_1,
     compress_nes9_rle,
     expand_nes9_rle,
     load_nes9_rle_seed,
+    play_1_1_until_clear as _play_1_1_until_clear,
 )
 from smb.ram import read_snapshot, reached_ending
 from smb.reactive_12 import Reactive12Policy, play_reactive_12
 from smb.reactive_late import LateRouteController
-from smb.reactive_route import RouteProgressTracker
-from smb.reactive_route import level_control_gate
-from smb.reactive_route import snapshot_fingerprint
+from smb.reactive_route import (
+    DEFAULT_CONTINUATION,
+    DEFAULT_CONTINUATION_START,
+    KNOWN_41_CONTROL_RESUME,
+    KNOWN_42_CONTROL_RESUME,
+    KNOWN_82_CONTROL_RESUME,
+    KNOWN_82_LEAD_IDLES,
+    KNOWN_82_RETIME_COUNT,
+    KNOWN_82_RETIME_START,
+    RouteProgressTracker,
+    continuation_frames as _continuation_frames,
+    in_4_1_exit_auto as _in_4_1_exit_auto,
+    level_control_gate,
+    snapshot_fingerprint,
+)
 from smb.routes import ROUTE_WARP_ANY_PERCENT
-from smb.scripts.run_1_2 import STAIRS_1_1, _play_1_1_until_clear
 from retro_harness.segment_runner import configure_headless, write_json_report
 
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
-DEFAULT_CONTINUATION = GAME_DIR / "models" / "smb_1_1_to_ending_stairs_try.json"
-# The continuation starts immediately after the reactive 1-2 World-4 split.
-DEFAULT_CONTINUATION_START = 3_981
 DEFAULT_MAX_FRAMES = 25_000
-# In the stairs/M8 continuation (start=3981), natural 4-1 control is first
-# observed after 218 tail frames. Index 218 is the one-frame post-control idle
-# before the intentional RIGHT+B run at 219. After a faster 1-2 the pipe
-# transition is shorter (~210f); idle until control then resume here so the
-# body stays control-relative (no W4 pad). Verified: 4-1 split 2335→2314.
-KNOWN_41_CONTROL_RESUME = 218
-# First controllable 4-2 frame in the stairs/M8 continuation tail (start=3981).
-# Body from here is surface → UG vine → W8 pipe (2599f in smb_4_2_natural_control).
-# Lead 12 idles are phase-critical (trimming any of them dies). After a shifted
-# 4-1 tally, idle through flag/score/load then resume here — never pad.
-KNOWN_42_CONTROL_RESUME = 2_487
-# Natural 8-2 control in the stairs/M8 continuation (start=3981) is cont
-# index 8917 (= abs 12,898). After 1-2 −97f polish, drop-5 at that abs index
-# is phase-stale; +1 lead idle before the body clears 8-2 (verified 2026-08-05).
-# Cont index 8917 is the first frame of the 8-2 body (6 lead idles then B).
-KNOWN_82_CONTROL_RESUME = 8_917
-KNOWN_82_LEAD_IDLES = 1
-# Legacy abs-frame drop (pre −97f path only; kept for --drop-at experiments).
-KNOWN_82_RETIME_START = 12_898
-KNOWN_82_RETIME_COUNT = 5
-
-
-def _in_4_1_exit_auto(snap) -> bool:
-    """True during 4-1 flagpole / score tally / inter-stage load (no player input).
-
-    Do **not** treat player_state 3 alone as exit-auto — it is a normal alive
-    state mid-level. Real end-of-4-1 signals from the retimed path:
-    - score tally: state 5, timer 0, near flag x
-    - load: zeroed coords / timer dead before 4-2 control
-    """
-    if snap.world != 3 or snap.dying:
-        return False
-    # Castle score tally after flag (verified: x≈3698, timer=0, state=5).
-    if snap.player_state == 5 and snap.timer == 0 and snap.player_x >= 3000:
-        return True
-    # Flagpole slide / auto-walk into castle (state 3/4 near end, timer dead).
-    if (
-        snap.player_state in (3, 4)
-        and snap.timer == 0
-        and snap.player_x >= 3000
-    ):
-        return True
-    # Black-screen / load into 4-2.
-    if (
-        snap.oper_mode == 1
-        and snap.level == 1
-        and snap.player_state in (0, 1, 2)
-        and snap.player_x == 0
-        and snap.timer == 0
-    ):
-        return True
-    return False
-
-
-def _continuation_frames(
-    seed_path: Path,
-    *,
-    start: int,
-    drop_at: int | None,
-    drop_count: int,
-) -> list[list[int]]:
-    frames = expand_nes9_rle(load_nes9_rle_seed(seed_path))
-    if not 0 <= start < len(frames):
-        raise ValueError(f"continuation start {start} outside {len(frames)} frames")
-    if drop_at is not None:
-        if drop_at < start:
-            raise ValueError("drop-at must be inside the continuation")
-        if drop_count <= 0:
-            raise ValueError("drop-count must be positive with --drop-at")
-        end = drop_at + drop_count
-        if end > len(frames):
-            raise ValueError(f"drop range [{drop_at}, {end}) outside {len(frames)}")
-        del frames[drop_at:end]
-    return frames[start:]
 
 
 def run_reactive_warp_candidate(

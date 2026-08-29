@@ -28,8 +28,6 @@ from harvest.core.harvest_state import HarvestStateDocument
 from harvest.core.npc_catalog import game_objects
 from harvest.maps.map_config import FARM_TILEMAP_IDS, MAP_REGISTRY, ROUTES, MapExit, Waypoint, get_walkable_tiles
 
-# -- Harvest Moon constants --
-
 SCRIPT_DIR = PROJECT_DIR
 ROOT_DIR = PROJECT_DIR
 INTEGRATION_PATH = CUSTOM_INTEGRATIONS_DIR
@@ -44,22 +42,17 @@ ADDR_STAMINA = 0x0918
 ADDR_MAP = 0x09B6
 ADDR_TILEMAP = 0x0022
 MAP_WIDTH = 64
-TILE_PX = 16  # each tile is 16x16 pixels in-game
-
-# SNES frame dimensions
+TILE_PX = 16
 SCREEN_W = 256
 SCREEN_H = 224
-
-# Map pixel dimensions
-MAP_PX_W = MAP_WIDTH * TILE_PX  # 1024
-MAP_PX_H = MAP_WIDTH * TILE_PX  # 1024
+MAP_PX_W = MAP_WIDTH * TILE_PX
+MAP_PX_H = MAP_WIDTH * TILE_PX
 TWIN_CACHE_VERSION = 2
 TWIN_CACHE_DIR = DEBUG_ALIGNMENT_DIR / "editor_twin_cache"
 FARM_REFERENCE_MAP_PATH = DEBUG_ALIGNMENT_DIR / "reference_ranch_map.png"
 FARM_REFERENCE_BASELINE_STATE = "Y1_Spring_D1_Farm"
 FARM_REFERENCE_WORLD_Y = 16
 
-# RAM addresses
 WALKABLE_TILES = {
     0x00, 0x01, 0x02, 0x03, 0x07, 0x08, 0x70,
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85,
@@ -221,25 +214,8 @@ def _document_from_state_path(state_name: str, state_path: Path) -> HarvestState
     return HarvestStateDocument(state_name, state_path, MutableSaveState.load(state_path))
 
 
-# ---------------------------------------------------------------------------
-# Map Canvas - single QImage approach for performance
-# ---------------------------------------------------------------------------
-
 class TileMapCanvas(QGraphicsView):
-    """Renders the 64x64 tile grid as a single pixmap.
-
-    Loading from disk populates the full observed buffer from ROM-rendered
-    map data (no emulator needed). Live emulator sessions only add viewport
-    observations when no complete ROM render is available, keeping sprites and
-    dialogue boxes out of the full-map base image.
-
-    Performance strategy:
-    - _observed_rgb/_observed_mask: pixels placed in world coords (ROM or emu)
-    - _tile_atlas: per-tile ROM atlas for atlas render mode
-    - _base_img: pre-rendered map (rebuilt when observed pixels or mode change)
-    - Composited each frame: base + overlays + player marker
-    - Only 1 QGraphicsPixmapItem, no per-tile items
-    """
+    """64x64 tile grid as one pixmap (ROM base + optional live overlays)."""
 
     tile_hovered = Signal(int, int, int)  # tx, ty, tile_id
     tile_clicked = Signal(int, int, int)
@@ -349,51 +325,48 @@ class TileMapCanvas(QGraphicsView):
         self._object_clamp_rect = object_clamp_rect
         self._refresh_frame()
 
-    def set_collision_overlay_enabled(self, enabled: bool) -> None:
-        self._show_collision_overlay = enabled
+    def _set_flag(self, attr: str, enabled: bool) -> None:
+        setattr(self, attr, bool(enabled))
         self._refresh_frame()
+
+    def set_collision_overlay_enabled(self, enabled: bool) -> None:
+        self._set_flag("_show_collision_overlay", enabled)
 
     def collision_overlay_enabled(self) -> bool:
         return self._show_collision_overlay
 
     def set_doors_overlay_enabled(self, enabled: bool) -> None:
-        self._show_doors_overlay = enabled
-        self._refresh_frame()
+        self._set_flag("_show_doors_overlay", enabled)
 
     def doors_overlay_enabled(self) -> bool:
         return self._show_doors_overlay
 
     def set_clamp_overlay_enabled(self, enabled: bool) -> None:
-        self._show_clamp_overlay = enabled
-        self._refresh_frame()
+        self._set_flag("_show_clamp_overlay", enabled)
 
     def clamp_overlay_enabled(self) -> bool:
         return self._show_clamp_overlay
 
     def set_sprite_delta_enabled(self, enabled: bool) -> None:
-        self._show_sprite_delta = enabled
-        self._refresh_frame()
+        self._set_flag("_show_sprite_delta", enabled)
 
     def sprite_delta_enabled(self) -> bool:
         return self._show_sprite_delta
 
     def set_player_marker_enabled(self, enabled: bool) -> None:
-        self._show_player_marker = enabled
-        self._refresh_frame()
+        self._set_flag("_show_player_marker", enabled)
 
     def player_marker_enabled(self) -> bool:
         return self._show_player_marker
 
     def set_entities_overlay_enabled(self, enabled: bool) -> None:
-        self._show_entities_overlay = enabled
-        self._refresh_frame()
+        self._set_flag("_show_entities_overlay", enabled)
 
     def entities_overlay_enabled(self) -> bool:
         return self._show_entities_overlay
 
     def set_route_overlay_enabled(self, enabled: bool) -> None:
-        self._show_route_overlay = enabled
-        self._refresh_frame()
+        self._set_flag("_show_route_overlay", enabled)
 
     def route_overlay_enabled(self) -> bool:
         return self._show_route_overlay
@@ -803,15 +776,12 @@ class TileMapCanvas(QGraphicsView):
         self.centerOn(tx * TILE_PX + TILE_PX / 2, ty * TILE_PX + TILE_PX / 2)
 
     def set_live_overlay_enabled(self, enabled: bool):
-        self._show_live_overlay = enabled
-        self._refresh_frame()
+        self._set_flag("_show_live_overlay", enabled)
 
     def live_overlay_enabled(self) -> bool:
         return self._show_live_overlay
 
 
-
-# Farm twin helpers used when patching atlas tiles (imported late to avoid cycles).
 from harvest.tools.editor_farm_twin import (  # noqa: E402
     _copy_reference_tile_patch,
     _farm_reference_map,

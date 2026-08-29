@@ -152,26 +152,12 @@ def _unmorph_probe_pose(session: ControllerSession) -> None:
 
 
 def _land_left_wall_base(session: ControllerSession) -> int:
-    hold(session, 4, "LEFT", reason="alcatraz_base_face")
-    for frame in range(18):
-        run_button = "Y" if frame % 6 == 0 else "B"
-        hold(session, 1, "LEFT", run_button, reason="alcatraz_base_run")
-
-    for jump_frames in (10, 12, 16):
-        hold(session, 2, "LEFT", reason="alcatraz_base_turn")
-        hold(
-            session,
-            jump_frames,
-            "LEFT",
-            "A",
-            reason="alcatraz_base_hop",
-        )
-        hold(session, 18, reason="alcatraz_base_land")
-        _unmorph_probe_pose(session)
-        state = session.state
-        if at_left_wall_base(state):
-            break
-
+    """One dash-jump up the door slope onto the left-wall platform."""
+    hold(session, 2, "LEFT", reason="alcatraz_base_face")
+    hold(session, 30, "LEFT", "B", reason="alcatraz_base_run")
+    hold(session, 18, "LEFT", "A", reason="alcatraz_base_hop")
+    hold(session, 16, reason="alcatraz_base_land")
+    _unmorph_probe_pose(session)
     _require_geometry(
         session,
         "left-wall base",
@@ -192,7 +178,9 @@ def _reach_mid_ledge(session: ControllerSession) -> int:
             and session.state.pose in _GROUNDED_POSES
         ):
             break
-    hold(session, 25, reason="alcatraz_ledge_settle")
+    hold(session, 16, reason="alcatraz_ledge_settle")
+    _unmorph_probe_pose(session)
+    hold(session, 8, reason="alcatraz_ledge_stand")
     _require_geometry(
         session,
         "mid ledge",

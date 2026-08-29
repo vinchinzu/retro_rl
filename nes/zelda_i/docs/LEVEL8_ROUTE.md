@@ -48,20 +48,14 @@ L1 north lane and L2 door corridor + **0x5C maze**:
   S@x≈48 → 0x6D  (Lion bush pocket)
 ```
 
-Hop table + controller: `level8_overworld.LEVEL8_BUSH_HOPS`,
+Hop table + controller: `level8.overworld.LEVEL8_BUSH_HOPS`,
 `OverworldToLevel8Controller` (maze waypoints =
-`overworld.LEVEL2_5C_MAZE_WAYPOINTS`).
+`overworld.graph.LEVEL2_5C_MAZE_WAYPOINTS`).
 
-Probe:
+Isolated `probe_level8_entry.py` pruned. Durable runner (no L8 SpineHop yet):
 
 ```bash
-PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level8_entry.py \
-  --infinite-life --save-state --tag l8_recon
-
-# RECON only (not Clean): poke candle + try burn from bush state
-PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level8_entry.py \
-  --from-state Level8BushOW --infinite-life --poke-candle --candle-value 2 \
-  --burn --enter-dungeon --save-state --tag l8_burn_recon
+uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
 Mid-path fixtures used during recon: `OW_5B`, `OW_5C`, `OW_5D`, `OW_6A`,
@@ -107,17 +101,14 @@ Reuses L8 bush corridor through **0x5C maze** + **0x5D**, then **east**
   cave: UP @ x≈112 → mode 11
 ```
 
-Hop table + controller: `level8_overworld.CANDLE_SHOP_HOPS`,
+Hop table + controller: `level8.overworld.CANDLE_SHOP_HOPS`,
 `OverworldToCandleShopController` (door_x=`CANDLE_SHOP_CAVE_X`).
 
-```bash
-# Assisted OW → shop cave (Survival)
-PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level8_entry.py \
-  --to-shop --infinite-life --save-state --tag l8_shop
+Isolated `probe_level8_entry.py` pruned. Shop hops live on
+`OverworldToCandleShopController`. Durable runner (no L8 SpineHop yet):
 
-# From mid-path / existing OW 0x5E
-PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level8_entry.py \
-  --to-shop --from-state BFS_5E --infinite-life --tag l8_shop_from5e
+```bash
+uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
 ##### Buy interaction (live geometry; needs ≥60R)
@@ -192,9 +183,8 @@ Items optional for credits (source). TF bit **`0x80`**.
 
 | Path | Role |
 |------|------|
-| `level8_overworld.py` | Bush + **shop** hops, burn controller, `OverworldToCandleShopController` |
-| `scripts/probe_level8_entry.py` | `--to-shop` / burn/enter/room probe + `--poke-candle` |
-| `tests/test_level8_overworld.py` | Hop-chain + shop constant unit tests |
+| `level8/overworld.py` | Bush + **shop** hops, burn controller, `OverworldToCandleShopController` |
+| Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |
 
 ## Evidence
@@ -214,9 +204,10 @@ Items optional for credits (source). TF bit **`0x80`**.
 ## Next
 
 1. **60R farm policy** on `RUPEE_FARM_SCREENS_SKETCH` (or pre-path) → natural
-   buy with `--to-shop --buy-candle` → `CandleOwned` state (no inventory poke).
+   buy → `CandleOwned` state (no inventory poke). Isolated
+   `probe_level8_entry.py` pruned.
 2. From candle-owned state: burn east-channel bush on **0x6D** →
-   `Level8Entrance` + entry room id + `--probe-rooms`.
+   `Level8Entrance` + entry room id.
 3. Tune fire spawn / bush tile aim if poke burn still fails (engine accepts use
    via `0x0513` but stairs not observed).
 4. Isolated pure room segments after graph exists.

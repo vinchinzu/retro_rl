@@ -1,12 +1,12 @@
 import numpy as np
 
-from zelda_i.level5_overworld import (
+from zelda_i.level5.overworld import (
     POST_L4_TO_LEVEL5_HOPS,
     PostL4SettlePhase,
     PostL4TriforceSettleController,
     post_l4_overworld_ready,
 )
-from zelda_i.level5_spine import level5_entry_success
+from zelda_i.level5.spine import level5_entry_success
 from zelda_i.ram import (
     ADDR_LADDER,
     ADDR_LEVEL,

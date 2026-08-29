@@ -2,8 +2,10 @@
 
 Scriptable vanilla Super Metroid (SNES): a skill API that plays any% KPDR from
 power-on through the end of credits. First credits is Survival, noob loadout,
-and a two-hour class is fine. Then rewrite toward speed. 100% is a later year.
-Solver/SMZ3 is downstream.
+and a two-hour class is fine. **Gut** the tree until a **Skill** can be A/B’d
+without rewriting the harness; **Speed** (RTA / button-press) runs through that
+loop and is not a fail line until then. Both may run in the same week. 100% is
+a later year. Solver/SMZ3 is downstream.
 
 ## Language
 
@@ -17,14 +19,34 @@ year’s fail line
 
 **First run**:
 Power-on through credits with an RTA, noob loadout, Survival. A two-hour class
-is fine. Then refactor and rewrite. It is not the speed rewrite.
+is fine. **Gut** may run before or beside it. It is not **Speed**.
 _Avoid_: sub-hour as the first-credits fail line, WR, starting credits from a
 late pin
 
+**Gut**:
+File/module structure until a **Skill** has a stable **A/B loop**. Merge into
+the **Composer** (`tips.play_hops` / `TipSpec`) or delete. Soft max ~1000 LOC;
+no sibling extract. Probe CLIs, clone runners, and leftover packages go unless
+they *are* the loop.
+_Avoid_: minting `start_to_*.py`, a 13-file extract, calling this **Speed**
+
+**A/B loop**:
+Load a pin, play two **Skills** or **Tapes**, compare RAM/video. **Speed**
+must go through it. **Gut** must not rewrite it.
+_Avoid_: a new probe CLI as the compare tool, TAS concat as the compare
+
+**Speed**:
+Button-press / RTA work through the **A/B loop**. May run in the same week as
+**Gut**. Must not mint a runner or rewrite the loop. Sub-hour is **Speed**,
+not a first-credits fail line.
+_Avoid_: sub-hour as Finish, a new timer script per room, “rewrite toward speed”
+as a second tree
+
 **RTA**:
 Whatever time the power-on run shows on screen. First path only needs a time
-to exist. Sub-hour is a later rewrite.
-_Avoid_: WR as a fail line, requiring sub-hour before first credits
+to exist. Sub-hour is **Speed**, after the **A/B loop** is stable.
+_Avoid_: WR as a fail line, requiring sub-hour before first credits, requiring
+sub-hour before **Gut**
 
 **Survival**:
 First-pass intervention: refill current energy (after Ceres) and currently
@@ -64,7 +86,7 @@ TAS concat onto the tip
 **Noob route**:
 First path keeps convenience majors already on the late tapes (Grapple, Plasma,
 Screw as taken). They are easier to tune than every walljump and grappleless
-line. They are not rungs. Cut on the rewrite.
+line. They are not rungs. Cut on **Speed**.
 _Avoid_: grappleless / WJ-perfect first path, treating those majors as board
 rows, Golden Torizo / all tanks / maps as first-path rungs
 

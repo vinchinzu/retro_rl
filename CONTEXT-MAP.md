@@ -8,10 +8,12 @@ grill or design actually resolves terms.
 
 - [Harvest Moon](snes/harvest/CONTEXT.md): Clean skill API that plays Harvest
   Moon (SNES) from power-on to a 10–20 hour YouTube through credits, with a
-  score; first path is basic, then rewrite
+  score; first path is basic; **Gut** until a **Skill** A/B loop is stable,
+  then **Speed** through that loop
 - [Super Metroid](snes/super_metroid/CONTEXT.md): Survival skill API that plays
   any% KPDR (noob loadout) from power-on through credits; living tip is
-  Phantoon; first credits may be a two-hour class, then rewrite; 100% is later
+  Phantoon; first credits may be a two-hour class; **Gut** then **Speed**;
+  100% is later
 - [TMNT IV](snes/tmnt_iv/CONTEXT.md): Continuous Hard power-on through staff
   credits; assisted Bronze first, Clean (pizza-only) in parallel; maturity
   stays M8
@@ -24,9 +26,9 @@ grill or design actually resolves terms.
   (energy + unlocked ammo). M0–M8 is a matrix label, not the working board.
   The living **tip** is. Clean is a parallel track.
 - **Harvest ↔ Super Metroid**: Equal token weight. Same shape (skill API,
-  power-on credits, then rewrite). Harvest Finish is Clean; Super Metroid first
-  pass keeps Survival because the game is harder. Solver/SMZ3 is downstream of
-  vanilla credits.
+  power-on credits, **Gut** then **Speed**). Harvest Finish is Clean; Super
+  Metroid first pass keeps Survival because the game is harder. Solver/SMZ3 is
+  downstream of vanilla credits.
 - **TMNT IV → program glossary**: First credits is **assisted** (emergency HP
   + form-2 iframe). **Clean** is pizza-only, a parallel track, not a new
   maturity gate. M8 stays. **Pizza** is play, not an Assist.

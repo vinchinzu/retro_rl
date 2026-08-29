@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from zelda_i.level3_bomb_budget import (
+from zelda_i.level3.bomb_budget import (
     ISOLATED_POKE16_CLOSES_SPINE,
     ISOLATED_RAFT_BOMBS,
     ISOLATED_TO_BOSS_POKE_BOMBS,
@@ -23,7 +23,7 @@ from zelda_i.level3_bomb_budget import (
     planned_bomb_spend,
     report_used_poke16,
 )
-from zelda_i.level3_dungeon import ROOM_L3_DARKNUTS
+from zelda_i.level3.dungeon import ROOM_L3_DARKNUTS
 
 
 def test_planned_spend_positive_and_labeled() -> None:

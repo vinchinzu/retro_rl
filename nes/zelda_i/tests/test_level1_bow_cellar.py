@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level1_bow import LEVEL1_BOW_ROOM
-from zelda_i.level1_bow_cellar import (
+from zelda_i.level1.bow import LEVEL1_BOW_ROOM
+from zelda_i.level1.bow_cellar import (
     BLOCK_OBJECT_TYPE,
     EAST_INLAND_X,
     SOUTH_FACE_Y,

@@ -2,7 +2,9 @@
 
 Scriptable full-game Harvest Moon (SNES): a reactive skill API that plays the
 whole game from power-on, Clean, then a 10–20 hour YouTube through the end of
-credits with a score on the board. First credits is a basic path; then rewrite.
+credits with a score on the board. First credits is a basic path. **Gut** the
+tree until a **Skill** can be A/B’d without rewriting the harness; **Speed**
+runs through that loop.
 
 ## Language
 
@@ -15,10 +17,29 @@ crop-loop closed, leftover quotas, date-patched credits, speedrun input movies
 
 **First run**:
 An intermediate natural playthrough through credits with a score, basics only.
-Then refactor and rewrite. It is not Finish. Built as **Skills**, not a one-off
-tape.
+**Gut** may run before or beside it. It is not Finish. Built as **Skills**,
+not a one-off tape.
 _Avoid_: treating first credits as the YouTube, ranch-master route as the first
 path, freezing a TAS movie as the route
+
+**Gut**:
+File/module structure until a **Skill** has a stable **A/B loop**. Merge into
+the **Composer** (`DayPlanTask` / skill table) or delete. Soft max ~1000 LOC;
+no sibling extract. Mixin clusters, `utils/` graveyards, and clone runners go
+unless they *are* the loop.
+_Avoid_: 13 `crop_*` files as a “split”, calling this **Speed**
+
+**A/B loop**:
+Load a pin, play two **Skills** or input sequences, compare RAM/video.
+**Speed** must go through it. **Gut** must not rewrite it.
+_Avoid_: a new CrossMap tape as the compare tool, a new probe CLI per shop
+
+**Speed**:
+Button-press / policy work through the **A/B loop**. May run in the same week
+as **Gut**. Must not mint a runner or rewrite the loop. Ranch master / 999 is
+**Speed**, not a first-credits fail line.
+_Avoid_: “then rewrite” as a second tree, baking D2 as an unparameterized script
+to shave minutes before the loop is stable
 
 **Published video**:
 A 10–20 hour YouTube of the entire game (split into parts as needed). Emulator
@@ -28,7 +49,7 @@ watch as the runtime
 
 **Score**:
 Whatever number the credits evaluation shows on a natural run. First path only
-needs a score to exist. Ranch master / 999 is a later rewrite, not required.
+needs a score to exist. Ranch master / 999 is later **Speed**, not required.
 _Avoid_: ranch master as a fail line, 999, requiring the ranch-master branch
 
 **Clean**:

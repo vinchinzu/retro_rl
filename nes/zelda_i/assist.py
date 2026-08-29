@@ -20,7 +20,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
-from zelda_i.dungeon_ops import poke_link_position, poke_wooden_arrows
+from zelda_i.dungeon.ops import poke_link_position, poke_wooden_arrows
 from zelda_i.ram import (
     PLAY_MODE,
     ZeldaSnapshot,

@@ -22,12 +22,12 @@ from smb.reactive_route import (
     missing_policies,
 )
 from smb.routes import ROUTE_ALL_EXITS, ROUTE_WARP_ANY_PERCENT
-from smb.scripts.run_reactive_warp import (
+from smb.reactive_route import (
     KNOWN_41_CONTROL_RESUME,
     KNOWN_42_CONTROL_RESUME,
     DEFAULT_CONTINUATION_START,
-    _continuation_frames,
-    _in_4_1_exit_auto,
+    continuation_frames as _continuation_frames,
+    in_4_1_exit_auto as _in_4_1_exit_auto,
 )
 
 

@@ -106,7 +106,7 @@ pipes, then the outdoor flag area.
 
 ### Flag exit (verified this session)
 
-Replay: `smb.scripts.probe_1_2_flag` (cache
+Replay: `smb.flag_12` / `smb.scripts.run_1_2_flag` (cache
 `recordings/segments_all_exits/hl_1_2_floor_corridor.state`).
 
 - HL FM2 leaves the **floor** at the end-of-UG **lifts** (`fm2_i≈1398`,
@@ -127,7 +127,7 @@ Evidence: `corridor_from_hl.png`, `land_hold_19.png`, `on_exit_pipe.png`,
 
 ## Landings already in place
 
-- `smb.scripts.probe_1_2_flag` — HL boot once, lift jump, flag pipe, 1-3 pin.
+- `smb.flag_12` — UG floor-pipe truth table + lift/pipe tail.
 - `smb.scripts.extract_stage_state 1-3` wrote `Level1_3.state` (roundtrip
   needs `env.reset()`; close the pin env before the named boot — one
   fceumm instance per process).

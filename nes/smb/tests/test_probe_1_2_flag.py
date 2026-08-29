@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from smb.ram import PLAYER_STATE_AUTO_WALK, PLAYER_STATE_FLAGPOLE
-from smb.scripts.probe_1_2_flag import (
+from smb.flag_12 import (
     CEILING,
-    CONTROL_X_MAX,
     DEATH,
     ENEMY_TYPE_PIRANHA,
     OUTDOOR_FLAG,
@@ -18,11 +16,13 @@ from smb.scripts.probe_1_2_flag import (
     WARP,
     aligned_with_pipe,
     classify_destination,
-    is_1_3_control,
+    is_ceiling,
+    is_pipe_transition,
     plant_hidden,
     sky_is_overworld,
 )
-from smb.ram import SmbSnapshot
+from smb.ram import PLAYER_STATE_AUTO_WALK, PLAYER_STATE_FLAGPOLE, SmbSnapshot
+from smb.tas.stages import CONTROL_X_MAX, is_1_3_control
 
 
 def _snap(**kwargs: object) -> SmbSnapshot:
@@ -114,8 +114,6 @@ def test_sky_is_overworld_rejects_ug_black() -> None:
 
 
 def test_ceiling_is_standing_on_y64_not_jump_apex() -> None:
-    from smb.scripts.probe_1_2_flag import is_ceiling, is_pipe_transition
-
     assert is_ceiling(_snap(player_y=50, player_x=2550)) is True
     assert is_ceiling(_snap(player_y=70, player_x=2550)) is True  # grounded default
     assert is_ceiling(_snap(player_y=148, player_x=2520)) is False

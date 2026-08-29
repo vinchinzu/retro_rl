@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from zelda_i.dungeon_ids import (
+from zelda_i.dungeon.ids import (
     KEESE_OBJECT_TYPE,
     LIKE_LIKE_OBJECT_TYPE,
     ZOL_OBJECT_TYPE,
 )
-from zelda_i.level6_dungeon import (
+from zelda_i.level6.dungeon import (
     LEVEL6_COMPASS_BIT,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
@@ -32,7 +32,7 @@ from zelda_i.level6_dungeon import (
     level6_room_78_clear_success,
     level6_room_7a_key_success,
 )
-from zelda_i.level6_overworld import (
+from zelda_i.level6.overworld import (
     Level6WestKeyDoorController,
     WIZZROBE_ORANGE_TYPE,
 )

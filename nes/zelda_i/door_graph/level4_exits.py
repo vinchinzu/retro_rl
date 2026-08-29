@@ -9,7 +9,7 @@ from zelda_i.door_graph.core import (
     RoomExit,
     clone_graph,
 )
-from zelda_i.level4_dungeon import (
+from zelda_i.level4.dungeon import (
     BOMB_21_NORTH_STAND,
     BOMB_61_NORTH_STAND,
     ROOM_L4_COMPASS_62,

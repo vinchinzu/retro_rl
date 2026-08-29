@@ -51,8 +51,9 @@ bd ready -l super_metroid -l spine
 | `tas/` | Sniq movies + harness replay (`docs/TAS_ADAPT.md`) |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 
-Hop ≠ fight. Split a source file **before 1000 LOC**; merge into the
-owner rather than a new sibling. Import `play_*` from the owner
+Hop ≠ fight. Soft max ~1000 LOC: merge into the **Composer**
+(`tips.play_hops`) or delete ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)).
+Import `play_*` from the owner
 (`registry.get_segment`). Continuous hops only via `tips.play_hops`.
 New-file table:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) “Where a new file goes”.

@@ -9,7 +9,7 @@ from zelda_i.door_graph.core import (
     RoomExit,
 )
 # Stands from puzzle catalog (single geometry authority).
-from zelda_i.level2_puzzles import (
+from zelda_i.level2.puzzles import (
     BOMB_WALL_1E_NORTH,
     BOMB_WALL_4F_NORTH,
     BOMB_WALL_5F_NORTH,

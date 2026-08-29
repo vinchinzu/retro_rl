@@ -764,7 +764,7 @@ def search_8_3_offsets(
         lead_idles=lead_idles,
         use_savestate=True,
     )
-    # Preserve legacy key names used by import_fm2 / evidence.
+    # Preserve legacy key names used by evidence JSON.
     pred = report.get("pred") or {}
     report["ctrl_wait_8_1"] = pred.get("ctrl_wait_8_1")
     report["leave_8_1"] = pred.get("leave_8_1")

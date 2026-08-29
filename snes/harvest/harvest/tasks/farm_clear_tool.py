@@ -8,13 +8,16 @@ RAM edge after a short post-swing wait, never from the queued attempt count.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Tuple
+import json
+import os
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple
 
 import numpy as np
 
 from harvest.core.stamina import SWING_STAMINA_COST, Stamina
-from harvest.tasks.farm_ops import use_tool
-from harvest.tasks.nav import make_action
+from harvest.core.tile_catalog import DebrisType, Tool
+from harvest.tasks.farm_ops import cycle_tool, drop_unarmed_debris, use_tool
+from harvest.tasks.nav import TILE_SIZE, make_action
 
 if TYPE_CHECKING:
     from harvest.tasks.farm_clearer import FarmClearer
@@ -83,7 +86,7 @@ def _retry_other_stand(
     current = clearer.current_target
     player = clearer.navigator.current_tile
     clearer.failed_approaches.add((target, player))
-    from harvest.tasks.farm_clear_nav import find_unfailed_approach
+    from harvest.tasks.farm_ops import find_unfailed_approach
 
     nxt = find_unfailed_approach(clearer, ram, current) if current is not None else None
     print(
@@ -265,6 +268,185 @@ __all__ = [
     "FACE_SETTLE_FRAMES",
     "MAX_STAND_MISSES",
     "POST_SWING_OBSERVE_FRAMES",
+    "enable_lift_only_mode",
     "handle_tool_clear",
+    "load_clearer_task",
+    "run_startup",
     "tool_clear_is_planted",
 ]
+
+
+_STARTUP_TOOL_NAMES = {
+    "get_hammer": Tool.HAMMER,
+    "get_axe": Tool.AXE,
+    "get_sickle": Tool.SICKLE,
+    "get_hoe": Tool.HOE,
+}
+
+
+def load_clearer_task(clearer: "FarmClearer", name: str) -> Optional[List[np.ndarray]]:
+    if not clearer.tasks_dir:
+        return None
+    path = os.path.join(clearer.tasks_dir, f"{name}.json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        data = json.load(f)
+    return [np.array(frame, dtype=np.int32) for frame in data.get("frames", [])]
+
+
+def requested_startup_tools(clearer: "FarmClearer") -> Set[int]:
+    wanted: Set[int] = set()
+    for step in clearer.startup_tasks:
+        if step.get("type") != "task":
+            continue
+        tool_id = _STARTUP_TOOL_NAMES.get(str(step.get("name", "")))
+        if tool_id is not None:
+            wanted.add(int(tool_id))
+    return wanted
+
+
+def enable_lift_only_mode(clearer: "FarmClearer", missing: List[int]) -> None:
+    """Drop only debris whose required tool is actually missing."""
+    clearer.prefer_lift_for_weeds = True
+    if int(Tool.HAMMER) in missing:
+        clearer.prefer_lift_for_stones = True
+    clearer.priority = drop_unarmed_debris(clearer.priority, missing)
+    names = ", ".join(f"0x{tool:02X}" for tool in missing) or "lift-only"
+    kept = ", ".join(dt.name for dt in clearer.priority)
+    print(f"[CLEARER] Startup missing tools: {names}; priority={kept}")
+
+
+def finalize_startup_tools(clearer: "FarmClearer") -> None:
+    """Re-scan carry (selected + backpack) and drop unarmed debris types."""
+    have = set(clearer.tool_manager.seen)
+    have.add(clearer.tool_manager.current)
+    if clearer.tool_manager.has(int(Tool.HAMMER)):
+        have.add(int(Tool.HAMMER))
+    if clearer.tool_manager.has(int(Tool.AXE)):
+        have.add(int(Tool.AXE))
+    missing = sorted(requested_startup_tools(clearer) - have)
+
+    if DebrisType.ROCK in clearer.priority and not clearer.tool_manager.has(
+        int(Tool.HAMMER)
+    ):
+        missing = sorted(set(missing) | {int(Tool.HAMMER)})
+    if DebrisType.STUMP in clearer.priority and not clearer.tool_manager.has(
+        int(Tool.AXE)
+    ):
+        missing = sorted(set(missing) | {int(Tool.AXE)})
+
+    if missing:
+        clearer.tools_missing = True
+        enable_lift_only_mode(clearer, missing)
+    else:
+        clearer.tools_missing = False
+
+
+def run_startup(
+    clearer: "FarmClearer", ram: np.ndarray
+) -> Tuple[bool, Optional[np.ndarray]]:
+    if clearer.startup_done:
+        return False, None
+
+    if not hasattr(clearer, "_tool_scan_done"):
+        clearer._tool_scan_done = False
+        clearer._tool_scan_frames = 0
+        clearer.tool_manager.start_search()
+
+    if not clearer._tool_scan_done:
+        clearer._tool_scan_frames += 1
+        clearer.tool_manager.record()
+        if clearer.tool_manager.cycle_complete() or clearer._tool_scan_frames > 60:
+            clearer._tool_scan_done = True
+            tools_found = [f"0x{t:02X}" for t in sorted(clearer.tool_manager.seen)]
+            print(f"[CLEARER] Tool inventory: {', '.join(tools_found)}")
+        else:
+            if clearer._tool_scan_frames % 6 == 0:
+                clearer.action_queue.extend(cycle_tool())
+            queued = clearer.action_queue.popleft() if clearer.action_queue else make_action()
+            return True, queued
+
+    if clearer.task_queue:
+        return True, clearer.task_queue.popleft()
+
+    if clearer.startup_index >= len(clearer.startup_tasks):
+        finalize_startup_tools(clearer)
+        clearer.startup_done = True
+        print("[CLEARER] Startup complete")
+        return False, None
+
+    step = clearer.startup_tasks[clearer.startup_index]
+    step_type = step.get("type", "")
+
+    if step_type == "task":
+        task_name = step.get("name", "")
+        if task_name in _STARTUP_TOOL_NAMES:
+            required_tool = _STARTUP_TOOL_NAMES[task_name]
+            if clearer.tool_manager.has(int(required_tool)):
+                print(
+                    f"[CLEARER] Skipping {task_name} "
+                    f"(already have {required_tool.name})"
+                )
+                clearer.startup_index += 1
+                return True, make_action()
+        frames = load_clearer_task(clearer, task_name)
+        if frames:
+            print(f"[CLEARER] Task: {task_name} ({len(frames)} frames)")
+            clearer.task_queue.extend(frames)
+        else:
+            print(f"[CLEARER] Task not found: {task_name}")
+        clearer.startup_index += 1
+        queued = clearer.task_queue.popleft() if clearer.task_queue else make_action()
+        return True, queued
+
+    if step_type == "nav":
+        target = step.get("target")
+        radius = step.get("radius", 12)
+        timeout = step.get("timeout", 0)
+        if "start_frame" not in step:
+            step["start_frame"] = clearer.frame_count
+
+        if timeout and clearer.frame_count - step["start_frame"] >= timeout:
+            print(f"[CLEARER] Nav timeout: {step.get('name')}")
+            clearer.startup_index += 1
+            clearer.navigator.path = []
+            return True, make_action()
+
+        if (
+            target
+            and abs(target.x - clearer.navigator.current_pos.x) <= radius
+            and abs(target.y - clearer.navigator.current_pos.y) <= radius
+        ):
+            print(f"[CLEARER] Nav done: {step.get('name')}")
+            clearer.startup_index += 1
+            clearer.navigator.path = []
+            return True, make_action()
+
+        if clearer.navigator.stasis > clearer.max_stasis:
+            if clearer.navigator.path:
+                clearer.pathfinder.temp_blocked.add(clearer.navigator.path[0])
+            clearer.navigator.path = []
+            clearer.navigator.stasis = 0
+
+        if target and not clearer.navigator.path:
+            target_tile = (target.x // TILE_SIZE, target.y // TILE_SIZE)
+            approach = clearer.pathfinder.find_approach(
+                ram, target_tile, clearer.navigator.current_pos
+            )
+            if not approach:
+                approach = clearer.pathfinder.find_nearest_walkable(
+                    ram, target_tile, max_radius=4
+                )
+            if approach:
+                path = clearer.pathfinder.find_path(
+                    ram, clearer.navigator.current_tile, approach
+                )
+                if path:
+                    clearer.navigator.path = path
+
+        action = clearer.navigator.follow_path(ram)
+        return True, action if action is not None else make_action()
+
+    clearer.startup_index += 1
+    return True, make_action()

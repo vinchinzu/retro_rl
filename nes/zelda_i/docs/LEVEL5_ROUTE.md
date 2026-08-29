@@ -36,7 +36,7 @@ UP/RIGHT/DOWN loops the hill screen.
   → free pocket → UP×4 → 0x0B → door UP → L5 0x76
 ```
 
-Hops table: `level5_overworld.LEVEL5_PATH_HOPS`. Controller:
+Hops table: `level5.overworld.LEVEL5_PATH_HOPS`. Controller:
 `OverworldToLevel5Controller` (pocket free + four-up counter + door hunt).
 
 Can visit L5 without clearing L2–L4 (first quest). Ladder / bracelet / magic
@@ -66,17 +66,16 @@ sword are optional for the **door** itself; bracelet warp shortens OW only.
 
 ### Pure: clear 0x66 (bead `rr-vqw`)
 
-- Spec: `level5_dungeon.ROOM_66_SPEC` / stop `level5_room_66_cleared`
-- Controller: `GenericDungeonRoomController` (import-only from `dungeon`)
+- Spec: `level5.dungeon.ROOM_66_SPEC` / stop `level5_room_66_cleared`
+- Controller: `GenericDungeonRoomController` (import-only from `dungeon.engine`)
 - Start: `L5_Room_66` (in-room) or chain north from `Level5EntranceFromL4` (0x76)
 - Track: **Clean** isolated (no health write); ~2k frames in-room, ~4k from entrance
 - Object confirm: type **0x30**, spawn HP **112**, expected count **3**
 - Doors after clear: **`cur_opened_doors=0x08`** → east open to 0x67
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level5_clear66.py --trials 2
-uv run python nes/zelda_i/scripts/run_level5_clear66.py \
-  --from-state Level5EntranceFromL4 --infinite-life --save-state --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-clear66 --no-video --trials 1
 ```
 
 ### Graph pure: 0x66 → 0x67 (bead `rr-87a`)
@@ -89,22 +88,23 @@ uv run python nes/zelda_i/scripts/run_level5_clear66.py \
   candle poke; forced doors open west → 0x65 (5× Gibdo) → north 0x55 (5× Zol)
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level5_east67.py --trials 2
-uv run python nes/zelda_i/scripts/run_level5_east67.py --save-state
+# Isolated segment CLI pruned (0x67 is a Bubble dead-end, not a SpineHop).
+# Durable runner:
+uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
 ### Route: 0x66 → 0x76 → east key 0x77
 
-East `0x76→0x77` is a **key door**. Policy: `level5_path.level5_east_key_step`.
-Spec/stop stay in `level5_dungeon` (`ROOM_77_SPEC` / `level5_room_77_key_success`).
+East `0x76→0x77` is a **key door**. Policy: `level5.path.level5_east_key_step`.
+Spec/stop stay in `level5.dungeon` (`ROOM_77_SPEC` / `level5_room_77_key_success`).
 Do not detour **0x67** (Bubble dead-end residual).
 
 Start: **`Level5Cleared66`** (from `Level5EntranceFromL4` / `Level4Complete`).
-`--keep-keys` is optional explicit safety (predecessors keep keys by default).
+Isolated `run_level5_east_key.py` pruned.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level5_east_key.py \
-  --from-state Level5Cleared66 --infinite-life --save-state --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-east77 --no-video --trials 1
 ```
 
 ### Isolated combat: 0x77 Pols Voice + key (bead `rr-076`)
@@ -115,8 +115,8 @@ uv run python nes/zelda_i/scripts/run_level5_east_key.py \
 - Live 2/2 isolated ~5.3k frames (infinite-life optional for recon)
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level5_east_key.py --trials 2 --infinite-life
-uv run python nes/zelda_i/scripts/run_level5_east_key.py --save-state --infinite-life
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-east77 --no-video --trials 1
 ```
 
 ### Route: 0x77 → bomb-west 0x66 → Recorder 0x04 (bead `rr-4d53.5`)
@@ -133,8 +133,8 @@ progression_writes=0, capacity_writes=0. `route_eligible=false` until
 natural-entry from L4 complete is composed.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level5_east_to_whistle.py \
-    --from-state Level5EastKey --infinite-life --save-state
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-whistle --no-video --trials 1
 ```
 
 Source route (live through Recorder; Digdogger/TF is a separate suffix):
@@ -171,17 +171,11 @@ Source route (live through Recorder; Digdogger/TF is a separate suffix):
 
 ## Probe
 
+Isolated `probe_level5_entry.py` pruned. Durable runner:
+
 ```bash
-# From mid-east OW checkpoint
-uv run python zelda_i/scripts/probe_level5_entry.py --infinite-life --save-state
-
-# From Lost Hills
-uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_1B_LostHills \
-  --infinite-life --save-state --tag l5_from_hills
-
-# From door screen only
-uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
-  --infinite-life --save-state --tag l5_from_door
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-entry --no-video --trials 1
 ```
 
 ## Evidence
@@ -195,12 +189,12 @@ uv run python zelda_i/scripts/probe_level5_entry.py --from-state OW_0B_L5Door \
 - `recordings/l5_e2w_t2.json` / `l5_e2w_t2_final.png` — EastKey → Recorder 0x04
 - `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
-- Modules: `level5_overworld.py`, `level5_dungeon.py`, `level5_path.py`
-  (facade; `level5_west_path`, `level5_whistle_path`, `level5_cellar_path`,
-  `level5_tf_path`, `level5_boss_path`),
-  `scripts/run_level5_clear66.py`, `scripts/run_level5_east67.py`,
-  `scripts/run_level5_east_key.py`, `scripts/run_level5_east_to_whistle.py`,
-  `scripts/run_level5_whistle_tf.py`, `scripts/probe_level5_entry.py`
+- Modules: `level5/overworld.py`, `level5/dungeon.py`, `level5/path.py`
+  (facade; `level5.west_path`, `level5.whistle_path`, `level5.cellar_path`,
+  `level5.tf_path`, `level5.boss_path`). Durable runner:
+  `scripts/run_survival_spine.py` (`--through level5-entry` /
+  `level5-clear66` / `level5-east77` / `level5-whistle` / `level5-exit04` /
+  `level5`). Isolated L5 segment CLIs pruned.
 
 ## Spine attach (rr-4d53.7 closed)
 
@@ -214,7 +208,7 @@ cardinal timeout north of the river). East key from north-bank leftover
 `0x04` mode 9 `(135,141)`. TF suffix: `exit_whistle_04`, 0x06
 block-stairs RIGHT onto `(128,141)` (center idle never warps), 0x65
 north shutter sealed so bomb-east `0x66`, skip-fight to Digdogger,
-whistle shrink `0x38→0x18`. Library: `level5_boss_path.run_level5_tf_suffix`.
+whistle shrink `0x38→0x18`. Library: `level5.boss_path.run_level5_tf_suffix`.
 `validate_l5_endpoint` passes. Still `route_eligible=false` (Survival).
 
 ## Next

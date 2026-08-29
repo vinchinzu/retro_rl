@@ -16,7 +16,6 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.tasks.nav import (
     Point,
-    make_action,
     get_pos_from_ram,
 )
 from harvest.core.tile_catalog import ADDR_TILEMAP
@@ -28,8 +27,6 @@ from harvest.core.ram_catalog import field_spec, read_ram_u16
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
     FARM_TILEMAP,
-    HOUSE_TILEMAP,
-    HOUSE_TILEMAPS,
     is_farm_tilemap,
     is_house_tilemap,
 )
@@ -37,28 +34,25 @@ from harvest.planner.tasks.home_approach import (
     EAST_AROUND_FENCE_X,
     build_house_approach_waypoints,
     deep_south_of_house,
+    drop_spot_px,
     far_east_of_pond_lane,
+    house_enter_task,
     south_of_fence_wall,
 )
 from harvest.planner.tasks.home_recover import (
     RecoverDecision,
     RecoverKind,
     decide_child_failure,
+    drop_carried_actions,
     enter_fail_south_recovery_actions,
     exit_to_farm_recover_actions,
+    short_east_north_actions,
+    south_escape_actions,
 )
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
 from harvest.core.animal_status import read_held_item
-from harvest.planner.tasks.transitions import (
-    DirectionalTransitionTask,
-    HOUSE_ENTER_DOOR_X,
-    HOUSE_ENTER_OVERSHOOT_Y,
-    HOUSE_ENTER_STAND_TILE,
-    hands_are_clear,
-    multi_face_toss_actions,
-    toss_held_actions,
-)
+from harvest.planner.tasks.transitions import hands_are_clear
 
 # Return-home routes live in map_config and are selected by upgrade state; these
 # constants are fallbacks for any missing route data.
@@ -126,38 +120,9 @@ class ReturnHomeTask(Task):
         return HOUSE_FRONT_PX
 
     @classmethod
-    def _house_enter_task(cls, world: WorldState) -> DirectionalTransitionTask:
-        """Build the outdoor→house doorway push.
-
-        Always stand on the catalog door tile (or the remodeled threshold
-        waypoint). Never adopt a mid-wall overshoot tile as the stand — that
-        is what stuck soaks at (8,24)/y≈389 pushing into the house sprite.
-        """
-        front = cls._house_front_px(world.ram)
-        # Base farmhouse approach ends at (136,424) → tile (8,26).
-        # Remodeled routes end on the door threshold (~y=344).
-        if front.y <= 360:
-            stand_tile = (front.x // 16, front.y // 16)
-            overshoot_y = min(HOUSE_ENTER_OVERSHOOT_Y, front.y - 12)
-        else:
-            stand_tile = HOUSE_ENTER_STAND_TILE
-            overshoot_y = HOUSE_ENTER_OVERSHOOT_Y
-        return DirectionalTransitionTask(
-            name="enter_house",
-            direction="up",
-            origin_tilemap=FARM_TILEMAP,
-            target_tilemap=HOUSE_TILEMAP,
-            target_tilemaps=tuple(sorted(HOUSE_TILEMAPS)),
-            timeout=2500,
-            min_frames_before_success=15,
-            settle_frames=20,
-            stand_tile=stand_tile,
-            stand_tolerance=0,
-            door_align_px=front.x if front.x else HOUSE_ENTER_DOOR_X,
-            overshoot_limit_px=overshoot_y,
-            require_empty_hands=True,
-            clear_hands_limit=6,
-        )
+    def _house_enter_task(cls, world: WorldState):
+        """Build the outdoor→house doorway push (geometry in home_approach)."""
+        return house_enter_task(cls._house_front_px(world.ram))
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
@@ -178,19 +143,8 @@ class ReturnHomeTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
-    @staticmethod
-    def _drop_spot_px(front: Point, *, deep: bool = False) -> Point:
-        """Open ground south of the house door — not mid-field debris.
-
-        ``deep`` is a second tier further south used when primary drop thrash
-        leaves the same held rock fragment (power-on held=0x0F residual).
-        """
-        if deep:
-            return Point(front.x, min(560, front.y + 112))
-        return Point(front.x, min(520, front.y + 56))
-
     def _at_drop_spot(self, pos: Point, front: Point) -> bool:
-        drop = self._drop_spot_px(front, deep=self._drop_deep_relocated)
+        drop = drop_spot_px(front, deep=self._drop_deep_relocated)
         return abs(pos.x - drop.x) <= 28 and abs(pos.y - drop.y) <= 28
 
     @classmethod
@@ -220,70 +174,14 @@ class ReturnHomeTask(Task):
         )
 
     def _queue_drop_carried(self) -> None:
-        """Toss held debris so building doors accept entry.
-
-        After CLEAR_FIELD leaves a stone/weed (held 0x0D/0x09/0x0F rock
-        fragment), in-place field tosses often fail or re-pickup. Prefer
-        multi-face stationary at the open drop spot; later cycles use shorter
-        step-away tosses so the outer timeout can still hard-fail cleanly.
-        """
-        n = self._drop_attempts
-        if n <= 1:
-            self._action_queue.extend(toss_held_actions(face="down", step_away=True))
-            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
-        elif n <= 3:
-            # Full multi-face without the expensive first-cycle step-away.
-            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
-        else:
-            # Stuck debris (power-on held=0x0F): short step-away per face,
-            # skip pure-up which re-seals toward the house wall.
-            for face in ("down", "left", "right"):
-                self._action_queue.extend(
-                    toss_held_actions(face=face, step_away=True)
-                )
+        self._action_queue.extend(drop_carried_actions(self._drop_attempts))
 
     def _queue_south_escape(
         self, *, long_east: bool = False, far_east: bool = False
     ) -> None:
-        """Leave south-of-fence softlock for re-nav.
-
-        West of fence (x<176) or east-of-pond (x≥576): charge north. Mid-wall:
-        east first. Far-east pond latitude: west toward free lane then north
-        (right-first makes the D12 thrash worse). Mix A thrash so a blocking
-        weed can be lifted.
-        """
-        # long_east used when pre-escape starts deep SW (unknown x at queue time).
-        def _push(direction: str, frames: int) -> None:
-            for i in range(frames):
-                kwargs = {direction: True, "b": True}
-                if i % 20 == 0:
-                    kwargs = {direction: True, "a": True}
-                self._action_queue.append(make_action(**kwargs))
-
-        if far_east:
-            # East of pond / shipping scrub: west onto free lane, then north.
-            _push("left", 90)
-            _push("up", 80)
-            _push("left", 70)
-            _push("up", 90)
-            _push("left", 40)
-            _push("up", 60)
-        elif long_east:
-            # Prefer north-first then east: SW pocket is often already west of
-            # the fence wall (tile x≤10) where north is the free path.
-            _push("up", 80)
-            _push("right", 70)
-            _push("up", 90)
-            _push("right", 60)
-            _push("up", 80)
-            _push("left", 20)
-        else:
-            _push("right", 70)
-            _push("up", 70)
-            _push("right", 50)
-            _push("up", 80)
-            _push("left", 16)
-        self._action_queue.extend(make_action() for _ in range(8))
+        self._action_queue.extend(
+            south_escape_actions(long_east=long_east, far_east=far_east)
+        )
 
     def _activate(self, phase: str, task: Task, world: WorldState) -> None:
         self._phase = phase
@@ -313,7 +211,7 @@ class ReturnHomeTask(Task):
         From deep south, use densified multi_nav (same as house approach) so
         we are not stuck with single-point NavTask in the SW pocket.
         """
-        drop = self._drop_spot_px(front, deep=self._drop_deep_relocated)
+        drop = drop_spot_px(front, deep=self._drop_deep_relocated)
         pos = get_pos_from_ram(world.ram)
         child_timeout = min(4000, max(800, self.timeout - self._total_steps - 400))
         if deep_south_of_house(pos, front):
@@ -352,22 +250,7 @@ class ReturnHomeTask(Task):
         return self._task.step(world)
 
     def _queue_short_east_north(self) -> None:
-        """Compact east→north charge when outer timeout is almost gone.
-
-        Shorter than full south_escape (~370f vs ~500f+) so a late D19
-        residual after drop can still clear the y=31 wall.
-        """
-        for i in range(50):
-            kwargs = {"right": True, "b": True}
-            if i % 16 == 0:
-                kwargs = {"right": True, "a": True}
-            self._action_queue.append(make_action(**kwargs))
-        for i in range(70):
-            kwargs = {"up": True, "b": True}
-            if i % 16 == 0:
-                kwargs = {"up": True, "a": True}
-            self._action_queue.append(make_action(**kwargs))
-        self._action_queue.extend(make_action() for _ in range(6))
+        self._action_queue.extend(short_east_north_actions())
 
     def _start_house_approach(self, world: WorldState, front: Point) -> TaskResult:
         """Activate multi_nav (densified from south) or simple NavTask."""
@@ -522,7 +405,7 @@ class ReturnHomeTask(Task):
             ):
                 self._drop_deep_relocated = True
                 self._drop_spot_navs += 1
-                deep = self._drop_spot_px(front, deep=True)
+                deep = drop_spot_px(front, deep=True)
                 print(
                     f"[RETURN_HOME] Deep drop relocate held=0x{held:02X} "
                     f"→ ({deep.x},{deep.y}) after same_held="

@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Sequence, Tuple
 
+import numpy as np
+
 from harvest.maps.map_config import (
     FARM_MAIN_POND_STANDS,
     FARM_POND_ACCESS_STAGING_TILES,
@@ -18,6 +20,7 @@ from harvest.maps.map_config import (
     farm_pond_refill_stands,
     player_in_west_plant_pocket,
 )
+from harvest.tasks.nav import MAP_WIDTH, WALKABLE_TILES, get_tile_at
 
 PathFn = Callable[
     [Tuple[int, int], Tuple[int, int]],
@@ -28,6 +31,32 @@ PathFn = Callable[
 # Preferred CheckToolSuccess fill properties (raw map IDs that usually map).
 REFILL_PREFERRED_WATER_TILES = frozenset({0xF0, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD})
 REFILL_NONFILL_WATER_TILES = frozenset({0xF1, 0xF2, 0xF7, 0xF8})
+
+# Pond/water tiles — stand adjacent, face them, use watering can.
+WATER_TILES = frozenset({
+    0xA6,  # pond edge
+    0xF0, 0xF1, 0xF2,
+    0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD,
+})
+# Actual refill water — excludes 0xA6 (decorative pond border).
+REFILL_WATER_TILES = REFILL_PREFERRED_WATER_TILES | REFILL_NONFILL_WATER_TILES
+
+# Shipping-bin F2 pocket (x~8-9, y~29-30) never fills. Inclusive stand bbox.
+BAD_REFILL_STAND_BOUNDS = (6, 27, 12, 33)
+# Lower band = better; secondary to preferred-water-id in refill_edge_sort_key.
+REFILL_BAND_POND = 0    # main F0 pond stands (y 28–36, x 28–36)
+REFILL_BAND_SOUTH = 1   # y >= 45: south stream FC / SE FD
+REFILL_BAND_NORTH = 2   # y <= 25: north spur F9 / east FA
+REFILL_BAND_MID = 3     # other mid-farm (east FB, etc.)
+REFILL_BAND_BAD = 4     # known-bad shipping pocket
+MAIN_POND_STAND_BOUNDS = (28, 28, 36, 36)
+
+_REFILL_FACE_DELTA = {
+    "up": (0, -1),
+    "down": (0, 1),
+    "left": (-1, 0),
+    "right": (1, 0),
+}
 
 
 @dataclass(frozen=True)
@@ -228,15 +257,174 @@ def crop_completion_status(
     return ("no_work", "no_work: no plots detected")
 
 
+def is_bad_refill_stand(tile: Tuple[int, int]) -> bool:
+    """True if stand is in the shipping-bin F2 pocket that never refills."""
+    x, y = tile
+    x0, y0, x1, y1 = BAD_REFILL_STAND_BOUNDS
+    return x0 <= x <= x1 and y0 <= y <= y1
+
+
+def is_main_pond_stand(tile: Tuple[int, int]) -> bool:
+    """True if stand is on the main F0 pond lip (verified fill stands)."""
+    x, y = tile
+    x0, y0, x1, y1 = MAIN_POND_STAND_BOUNDS
+    return x0 <= x <= x1 and y0 <= y <= y1
+
+
+def refill_stand_band(tile: Tuple[int, int]) -> int:
+    """Preference band for a refill stand (lower is better)."""
+    if is_bad_refill_stand(tile):
+        return REFILL_BAND_BAD
+    if is_main_pond_stand(tile):
+        return REFILL_BAND_POND
+    y = tile[1]
+    if y >= 45:
+        return REFILL_BAND_SOUTH
+    if y <= 25:
+        return REFILL_BAND_NORTH
+    return REFILL_BAND_MID
+
+
+def edge_water_tile_id(
+    ram: np.ndarray,
+    tile: Tuple[int, int],
+    face: str,
+) -> int:
+    """Tilemap id of the water cell a stand faces, or -1 if out of bounds."""
+    dx, dy = _REFILL_FACE_DELTA.get(face, (0, 0))
+    nx, ny = tile[0] + dx, tile[1] + dy
+    if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH:
+        return int(get_tile_at(ram, nx, ny))
+    return -1
+
+
+def refill_edge_sort_key(
+    edge: Tuple[Tuple[int, int], str],
+    player: Tuple[int, int],
+    water_tid: int = -1,
+) -> Tuple[int, int, int]:
+    """Sort key: preferred CheckToolSuccess water → band → Manhattan dist."""
+    tile, _face = edge
+    preferred = 0 if water_tid in REFILL_PREFERRED_WATER_TILES else 1
+    px, py = player
+    dist = abs(tile[0] - px) + abs(tile[1] - py)
+    return (preferred, refill_stand_band(tile), dist)
+
+
+def pond_access_blocking_fences(
+    ram: np.ndarray,
+    *,
+    fence_row: Optional[int] = None,
+    x_range: Optional[Tuple[int, int]] = None,
+) -> List[Tuple[int, int]]:
+    """Fence tiles on the y=31 wall that cut west field off from the main pond."""
+    try:
+        from harvest.maps.map_config import (
+            FARM_POND_ACCESS_FENCE_ROW,
+            FARM_POND_ACCESS_FENCE_X_RANGE,
+        )
+        from harvest.core.tile_catalog import FENCE
+    except Exception:
+        FARM_POND_ACCESS_FENCE_ROW = 31
+        FARM_POND_ACCESS_FENCE_X_RANGE = (11, 29)
+        FENCE = 0x05
+
+    row = FARM_POND_ACCESS_FENCE_ROW if fence_row is None else fence_row
+    x0, x1 = FARM_POND_ACCESS_FENCE_X_RANGE if x_range is None else x_range
+    found: List[Tuple[int, int]] = []
+    for tx in range(x0, x1 + 1):
+        if get_tile_at(ram, tx, row) == FENCE:
+            found.append((tx, row))
+    return found
+
+
+def find_pond_edges(
+    ram: np.ndarray,
+    bounds: Tuple[int, int, int, int] = (3, 3, 62, 60),
+    water_tiles: Optional[frozenset] = None,
+    *,
+    exclude_bad_stands: bool = False,
+) -> List[Tuple[Tuple[int, int], str]]:
+    """Walkable tiles adjacent to water, as (tile, face_dir) toward water."""
+    if water_tiles is None:
+        water_tiles = WATER_TILES
+
+    x_min, y_min, x_max, y_max = bounds
+    results = []
+    directions = [
+        (0, -1, "up"), (0, 1, "down"), (-1, 0, "left"), (1, 0, "right"),
+    ]
+    for ty in range(y_min, y_max + 1):
+        for tx in range(x_min, x_max + 1):
+            if exclude_bad_stands and is_bad_refill_stand((tx, ty)):
+                continue
+            tid = get_tile_at(ram, tx, ty)
+            if tid not in WALKABLE_TILES:
+                continue
+            best_face: Optional[str] = None
+            best_rank = 2  # 0=preferred, 1=other refill water
+            for dx, dy, face in directions:
+                nx, ny = tx + dx, ty + dy
+                if 0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH:
+                    ntid = get_tile_at(ram, nx, ny)
+                    if ntid in water_tiles:
+                        rank = 0 if ntid in REFILL_PREFERRED_WATER_TILES else 1
+                        if best_face is None or rank < best_rank:
+                            best_face = face
+                            best_rank = rank
+                            if rank == 0:
+                                break
+            if best_face is not None:
+                results.append(((tx, ty), best_face))
+    return results
+
+
+def nearest_pond_edge(
+    ram: np.ndarray,
+    player_tile: Tuple[int, int],
+    bounds: Tuple[int, int, int, int] = (3, 3, 62, 60),
+) -> Optional[Tuple[Tuple[int, int], str]]:
+    """Closest pond-edge (tile, face_dir), or None."""
+    edges = find_pond_edges(ram, bounds)
+    if not edges:
+        return None
+    px, py = player_tile
+    best = None
+    best_dist = float("inf")
+    for tile, face in edges:
+        d = abs(tile[0] - px) + abs(tile[1] - py)
+        if d < best_dist:
+            best_dist = d
+            best = (tile, face)
+    return best
+
+
 __all__ = [
+    "BAD_REFILL_STAND_BOUNDS",
     "FARM_POND_REFILL_CORRIDOR",
+    "MAIN_POND_STAND_BOUNDS",
+    "REFILL_BAND_BAD",
+    "REFILL_BAND_MID",
+    "REFILL_BAND_NORTH",
+    "REFILL_BAND_POND",
+    "REFILL_BAND_SOUTH",
     "REFILL_NONFILL_WATER_TILES",
     "REFILL_PREFERRED_WATER_TILES",
+    "REFILL_WATER_TILES",
+    "WATER_TILES",
     "RefillTarget",
     "corridor_needs_fence_open",
     "crop_completion_status",
+    "edge_water_tile_id",
+    "find_pond_edges",
+    "is_bad_refill_stand",
+    "is_main_pond_stand",
     "is_no_work_reason",
+    "nearest_pond_edge",
     "order_preferred_edges",
+    "pond_access_blocking_fences",
+    "refill_edge_sort_key",
+    "refill_stand_band",
     "select_main_pond_refill",
     "select_staging_stand",
 ]

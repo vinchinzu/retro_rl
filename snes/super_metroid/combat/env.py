@@ -5,13 +5,8 @@ the shared discrete combat table. Reward shapes boss damage, Samus damage,
 and fight length — suitable for short PPO/SB3 loops before distilling back
 to a deterministic controller.
 
-```bash
-# Smoke eval (strategy projected onto discrete actions)
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py eval --episodes 1
-
-# Short PPO train (requires ml extras; already present in this checkout)
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py train --timesteps 4096
-```
+Gymnasium env only — no dedicated probe CLI. Distill back to
+``combat.bomb_torizo.play_bomb_torizo_fight``.
 """
 
 from __future__ import annotations

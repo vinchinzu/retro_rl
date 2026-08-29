@@ -56,7 +56,7 @@ Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough pat
 | Bait / Food special shop | `0x34` | source Armos top-middle — **TBD live** | 60R | `ADDR_FOOD` `0x065D`; required for L7 Hungry Goriya |
 | Whistle pond (L7 mouth) | `0x42` | source — **TBD live** | Whistle | drains water → L7 stairs |
 | Raft dock (east heart) | `0x3F` | source path →×8 ↑×4 — **TBD live** | Raft | raft↑ optional Heart Container island `0x2F` |
-| Raft dock (L4 island) | `0x55` → `0x45` | **live** assisted rr-0fx (`level4_overworld`) | Raft | only two first-quest raft docks |
+| Raft dock (L4 island) | `0x55` → `0x45` | **live** assisted rr-0fx (`level4.overworld`) | Raft | only two first-quest raft docks |
 | Ladder heart (coast) | `0x5F` | source →×8 ↑×2 — **TBD live** | Stepladder | water platform Heart Container |
 | Lost Hills maze | **`0x1B`** | **verified** assisted; enter from `0x1C` W@y140; pocket free then ↑×4 | none | 4th UP → door `0x0B`; see LEVEL5_ROUTE |
 | L8 candle bush | **`0x6D`** | **verified** bush pocket; candle buy residual | Candle | burn then enter; see LEVEL8_ROUTE |
@@ -101,8 +101,8 @@ Triforce bit map (matches walkthrough):
 
 ## Graph stubs
 
-Planning NamedRoutes (no Clean claims): `zelda_i.routes_later`  
-Node id constants: `zelda_i.later_nodes`
+Planning NamedRoutes (no Clean claims): `zelda_i.route.catalog_later`  
+Node id constants: `zelda_i.route.nodes`
 
 Refresh this file when sibling probes land live door screens
 (`LevelNEntrance.state` + `LEVELN_ROUTE.md` Evidence section).
@@ -111,9 +111,9 @@ Refresh this file when sibling probes land live door screens
 
 - Zelda Dungeon: [The Gathering](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/the-gathering/),
   L1–L9 dungeon chapters (linked from walkthroughs doc)
-- Local: `docs/research/DUNGEON_WALKTHROUGHS.md`, `overworld.py`, `ram.py`,
-  `level3_overworld.py` (L3 path seed)
+- Local: `docs/research/DUNGEON_WALKTHROUGHS.md`, `overworld/graph.py`, `ram.py`,
+  `level3/overworld.py` (L3 path seed)
 
 ## Item-gate hops (`rr-iri`)
 
-See `item_gate_hops.py` / `probe_item_gate_hops.py` for candle 0x66 / bomb 0x4A / white-sword region hops (assisted).
+See `route/item_gate_hops.py` / `scripts/probe_item_gate_hops.py` for candle 0x66 / bomb 0x4A / white-sword region hops (assisted).

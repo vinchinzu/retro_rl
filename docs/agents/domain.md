@@ -8,22 +8,26 @@ documentation. This is a multi-game monorepo, not a single `CONTEXT.md`.
 - Root [`AGENTS.md`](../../AGENTS.md) — repo-wide layout, import names, bd
 - [`docs/BEADS.md`](../BEADS.md) — issue tracker
 - [`docs/REPO_HYGIENE.md`](../REPO_HYGIENE.md) — when shared docs may grow
+- [`CODING_STANDARDS.md`](../../CODING_STANDARDS.md) — **Gut** / structure
+  review (Composer, ~1000 LOC merge-or-delete)
+- [`docs/adr/`](../adr/) — program ADRs when present
 - Nearest game `AGENTS.md` under `snes/<game>/` or `nes/<game>/` for the
   files you are about to touch
 - Game `STATUS.md` / `plan.md` in that same tree (verified vs future)
 
-If `CONTEXT.md` or `docs/adr/` do not exist, **proceed silently**. Do not
-flag their absence; `/domain-modeling` and `/grill-with-docs` create them
-lazily when a term or decision actually gets resolved.
+If a game `CONTEXT.md` does not exist, **proceed silently**.
+`/domain-modeling` and `/grill-with-docs` create glossaries lazily.
 
 ## File structure
 
 ```
 /
 ├── AGENTS.md
+├── CODING_STANDARDS.md
 ├── docs/
 │   ├── BEADS.md
 │   ├── REPO_HYGIENE.md
+│   ├── adr/             ← program ADRs
 │   └── agents/          ← this folder
 ├── snes/<game>/AGENTS.md
 └── nes/<game>/AGENTS.md

@@ -34,8 +34,8 @@ from smb.flag_12 import (
     play_flag_12,
 )
 from smb.paths import RECORDINGS_DIR
+from smb.flag_12 import is_ceiling
 from smb.ram import player_on_ground, read_snapshot
-from smb.scripts.probe_1_2_flag import is_ceiling
 from smb.tas.chain import reach_surface_after_hl_1_1
 from smb.tas.fm2 import frames_to_nes9_rle_payload, parse_fm2
 from smb.tas.replay import get_state, make_level1_env, set_state, to_action9

@@ -1,8 +1,7 @@
 """Multi-map waypoint navigation used by day-plan phases.
 
-Travel policy (soft solids, entities, lift_throw, fail-closed seal) lives here.
-Soft max ~1000 LOC: new residual thrash must extract a helper module, not
-grow this monofile.
+Corridor policy (soft solids, entities, lift_throw, fail-closed seal) lives in
+:mod:`nav_corridor`. This module owns the waypoint FSM and A/B-loop loader.
 """
 
 from __future__ import annotations
@@ -22,32 +21,34 @@ from harvest.tasks.nav import (
     TILE_SIZE,
 )
 from harvest.core.animal_status import read_held_item
-from harvest.core.npc_catalog import game_objects
-from harvest.core.tile_catalog import (
-    ADDR_TILEMAP,
-    DebrisType,
-    FENCE,
-    LIFTABLE_TILES,
-    WEED,
-)
+from harvest.core.tile_catalog import ADDR_TILEMAP, LIFTABLE_TILES
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.maps.map_config import Waypoint, get_walkable_tiles
 from harvest.tasks.primitives import (
     drain_action_queue,
-    press_a_sequence,
     press_button_sequence,
 )
 from harvest.planner.day_plan_status import tilemaps_match
+from harvest.planner.tasks.nav_corridor import (
+    dirs_toward,
+    entity_blocks,
+    farm_soft_blocks,
+    hop_target,
+    liftable_gate_toward,
+    micro_center_action,
+    opportunistic_clear_waypoint,
+    queue_lift_throw,
+    replace_no_go,
+    safe_walk_action,
+    tile_blocks_charge,
+)
 from harvest.planner.tasks.navigation import (
-    MAX_HOP,
     STALE_TILE_IDS,
     find_frontier_path,
     find_loaded_direction,
-    _DIR_DELTA,
     _neighbor_tile,
     _nav_needs_menu_dismiss,
-    _OPPOSITE_FACE,
 )
 
 # ── MultiMapNavTask ───────────────────────────────────────────────
@@ -167,73 +168,14 @@ class MultiMapNavTask(Task):
         self._entity_blocks.clear()
 
     def _sync_farm_soft_blocks(self, ram: np.ndarray, tilemap: int) -> None:
-        """Keep farm soft-solids out of BFS travel paths.
-
-        Weed metatiles are ROM-walkable, so Pathfinder accepts them for clear
-        tasks. MultiNav is travel-only: walking onto a weed/stone pins movement.
-        Stones are already non-walkable on farm walkable sets; weeds still need
-        an explicit no-go so BFS never routes through them.
-        """
-        self._pathfinder.no_go_tiles.difference_update(self._farm_soft_blocks)
-        self._farm_soft_blocks.clear()
-        if not tilemaps_match(tilemap, 0x00):
-            return
-        self._farm_soft_blocks = {
-            target.tile
-            for target in self._scanner.scan(
-                ram,
-                types={DebrisType.WEED, DebrisType.STONE, DebrisType.FENCE},
-            )
-        }
-        self._pathfinder.no_go_tiles.update(self._farm_soft_blocks)
+        nxt = farm_soft_blocks(self._scanner, ram, tilemap)
+        replace_no_go(self._pathfinder, self._farm_soft_blocks, nxt)
+        self._farm_soft_blocks = nxt
 
     def _sync_entity_blocks(self, ram: np.ndarray) -> None:
-        """Reroute around live dog / NPC / animal sprites (not the player)."""
-        self._pathfinder.no_go_tiles.difference_update(self._entity_blocks)
-        self._entity_blocks.clear()
-        player_tile = self._navigator.current_tile
-        blocked: Set[Tuple[int, int]] = set()
-        try:
-            objects = game_objects(ram)
-        except Exception:
-            objects = []
-        for obj in objects:
-            if getattr(obj, "is_player", False):
-                continue
-            tile = getattr(obj, "tile", None)
-            if not tile:
-                continue
-            tx, ty = int(tile[0]), int(tile[1])
-            if (tx, ty) == player_tile:
-                continue
-            # Only block when in the loaded viewport neighborhood.
-            if abs(tx - player_tile[0]) > 10 or abs(ty - player_tile[1]) > 10:
-                continue
-            kind = str(getattr(obj, "kind", "") or "")
-            label = str(getattr(obj, "label", "") or "")
-            if kind in {"animal", "npc_candidate"} or label in {
-                "dog",
-                "chicken",
-                "cow",
-            }:
-                blocked.add((tx, ty))
-            elif getattr(obj, "is_npc_candidate", False):
-                blocked.add((tx, ty))
-        # Gotz auto-talks on adjacent carpenter-band tiles (x>=28). Do not
-        # pad the west grape wrap (x=19); a 1-tile halo sealed that gap.
-        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-        if tilemap == 0x10 and blocked:
-            padded = set(blocked)
-            for bx, by in blocked:
-                if bx < 28:
-                    continue
-                for dx in (-1, 0, 1):
-                    for dy in (-1, 0, 1):
-                        padded.add((bx + dx, by + dy))
-            padded.discard(player_tile)
-            blocked = padded
-        self._entity_blocks = blocked
-        self._pathfinder.no_go_tiles.update(self._entity_blocks)
+        nxt = entity_blocks(ram, self._navigator.current_tile)
+        replace_no_go(self._pathfinder, self._entity_blocks, nxt)
+        self._entity_blocks = nxt
 
     def _sync_travel_blocks(self, ram: np.ndarray, tilemap: int) -> None:
         self._sync_farm_soft_blocks(ram, tilemap)
@@ -244,123 +186,10 @@ class MultiMapNavTask(Task):
     def _farm_weed_blocks(self) -> Set[Tuple[int, int]]:
         return set(self._farm_soft_blocks)
 
-    def _facing_tile(self, face: str) -> Tuple[int, int]:
-        return _neighbor_tile(
-            self._navigator.current_tile[0],
-            self._navigator.current_tile[1],
-            face,
-        )
-
-    def _liftable_gate_toward(
-        self, ram: np.ndarray, wp: Waypoint
-    ) -> Optional[Tuple[str, Tuple[int, int], int]]:
-        """If a liftable soft solid blocks progress toward wp, return face/tile/id."""
-        cur = self._navigator.current_tile
-        goal = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
-        dx = goal[0] - cur[0]
-        dy = goal[1] - cur[1]
-        faces: List[str] = []
-        if abs(dx) >= abs(dy):
-            faces.append("right" if dx > 0 else "left")
-            if dy != 0:
-                faces.append("down" if dy > 0 else "up")
-        else:
-            faces.append("down" if dy > 0 else "up")
-            if dx != 0:
-                faces.append("right" if dx > 0 else "left")
-        for face in faces:
-            nx, ny = _neighbor_tile(cur[0], cur[1], face)
-            if not (0 <= nx < 64 and 0 <= ny < 64):
-                continue
-            tid = int(get_tile_at(ram, nx, ny))
-            if tid in LIFTABLE_TILES:
-                return face, (nx, ny), tid
-        return None
-
     def _queue_lift_throw(self, ram: np.ndarray, wp: Waypoint) -> Optional[str]:
-        """Queue lift then throw, or skip when the gate is already open.
-
-        Returns a reason string when work was queued, None when already clear.
-        """
-        face = wp.action_face or "up"
-        throw_face = _OPPOSITE_FACE.get(face, "down")
-        # Prefer throwing south on farm so tossed debris does not reseal the
-        # northbound berry pocket entry.
-        if tilemaps_match(
-            int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0, 0x00
-        ):
-            throw_face = "down"
-        held = int(read_held_item(ram))
-        # Prefer the facing cell, but if the stand is still one tile off the
-        # intended row (loose arrival), also check one step further along the
-        # face axis so a (36,60) stand still clears (36,58) weed.
-        face_tile = self._facing_tile(face)
-        candidates = [face_tile]
-        fx, fy = face_tile
-        dx, dy = _DIR_DELTA.get(face, (0, 0))
-        candidates.append((fx + dx, fy + dy))
-        target: Optional[Tuple[int, int]] = None
-        tid = 0
-        lift_face = face
-        for cand in candidates:
-            if not (0 <= cand[0] < 64 and 0 <= cand[1] < 64):
-                continue
-            cand_tid = int(get_tile_at(ram, *cand))
-            if cand_tid in LIFTABLE_TILES:
-                target = cand
-                tid = cand_tid
-                # Face toward the actual debris cell from current stand.
-                cur = self._navigator.current_tile
-                if cand[1] < cur[1]:
-                    lift_face = "up"
-                elif cand[1] > cur[1]:
-                    lift_face = "down"
-                elif cand[0] < cur[0]:
-                    lift_face = "left"
-                elif cand[0] > cur[0]:
-                    lift_face = "right"
-                break
-        hold = max(12, int(wp.action_frames))
-        settle = max(12, int(wp.action_cooldown))
-
-        if held != 0:
-            self._action_queue.extend(
-                press_a_sequence(
-                    throw_face,
-                    face_frames=6,
-                    pre_press_settle_frames=4,
-                    hold_frames=hold,
-                    settle_frames=settle,
-                )
-            )
-            return f"throw held=0x{held:02X} face={throw_face}"
-
-        if target is not None:
-            self._action_queue.extend(
-                press_a_sequence(
-                    lift_face,
-                    face_frames=8,
-                    pre_press_settle_frames=4,
-                    hold_frames=hold,
-                    settle_frames=settle,
-                )
-            )
-            self._action_queue.extend(
-                press_a_sequence(
-                    throw_face,
-                    face_frames=6,
-                    pre_press_settle_frames=4,
-                    hold_frames=hold,
-                    settle_frames=settle,
-                )
-            )
-            return (
-                f"lift_throw stand={self._navigator.current_tile} "
-                f"target={target} tid=0x{tid:02X} face={lift_face}"
-            )
-
-        # Already clear and hands empty — no thrash presses.
-        return None
+        return queue_lift_throw(
+            self._action_queue, self._navigator.current_tile, ram, wp
+        )
 
     def _start_waypoint_action(self, world: WorldState, wp: Waypoint) -> TaskResult:
         """Begin the action for the current waypoint (same-frame on arrival)."""
@@ -393,32 +222,13 @@ class MultiMapNavTask(Task):
                 reason="lift_throw empty queue",
             )
 
-        if wp.action_on_arrive == "press_a":
+        button = {"press_a": "a", "press_b": "b", "press_y": "y"}.get(
+            wp.action_on_arrive or ""
+        )
+        if button:
             self._action_queue.extend(
                 press_button_sequence(
-                    "a",
-                    face=wp.action_face,
-                    face_frames=1 if wp.action_face else 0,
-                    pre_press_settle_frames=5 if wp.action_face else 0,
-                    hold_frames=wp.action_frames,
-                    settle_frames=wp.action_cooldown,
-                )
-            )
-        elif wp.action_on_arrive == "press_b":
-            self._action_queue.extend(
-                press_button_sequence(
-                    "b",
-                    face=wp.action_face,
-                    face_frames=1 if wp.action_face else 0,
-                    pre_press_settle_frames=5 if wp.action_face else 0,
-                    hold_frames=wp.action_frames,
-                    settle_frames=wp.action_cooldown,
-                )
-            )
-        elif wp.action_on_arrive == "press_y":
-            self._action_queue.extend(
-                press_button_sequence(
-                    "y",
+                    button,
                     face=wp.action_face,
                     face_frames=1 if wp.action_face else 0,
                     pre_press_settle_frames=5 if wp.action_face else 0,
@@ -448,43 +258,8 @@ class MultiMapNavTask(Task):
         return (abs(pos.x - wp.target_px[0]) <= wp.radius and
                 abs(pos.y - wp.target_px[1]) <= wp.radius)
 
-    def _hop_target(self, wp: Waypoint) -> Tuple[int, int]:
-        """BFS target clamped to stay within loaded viewport.
-
-        SNES loads ~16x14 tiles around the player. Clamp each axis
-        independently to 7 tiles so diagonal hops stay within the
-        loaded region (unlike Chebyshev MAX_HOP which can overshoot).
-        """
-        cur = self._navigator.current_tile
-        final = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
-        dx = final[0] - cur[0]
-        dy = final[1] - cur[1]
-        if abs(dx) <= MAX_HOP and abs(dy) <= MAX_HOP:
-            return final
-        # Clamp each axis to MAX_HOP tiles
-        cx = max(-MAX_HOP, min(MAX_HOP, dx))
-        cy = max(-MAX_HOP, min(MAX_HOP, dy))
-        # Scale down to keep within viewport (7 tiles = half viewport)
-        limit = 7
-        if abs(cx) > limit or abs(cy) > limit:
-            scale = limit / max(abs(cx), abs(cy))
-            cx = int(cx * scale)
-            cy = int(cy * scale)
-        return (cur[0] + cx, cur[1] + cy)
-
     def _tile_blocks_charge(self, ram: np.ndarray, tx: int, ty: int) -> bool:
-        """True when charging into this tile wastes frames (fence/solid/bush)."""
-        if not (0 <= tx < 64 and 0 <= ty < 64):
-            return True
-        if not self._pathfinder.is_walkable(ram, tx, ty):
-            return True
-        tid = int(get_tile_at(ram, tx, ty))
-        # Weeds are walkable in ROM but thrash-look like bushes; refuse
-        # blind charges into them (BFS may still path onto weed dirt).
-        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-        if tilemaps_match(tilemap, 0x00) and tid in {FENCE, WEED}:
-            return True
-        return False
+        return tile_blocks_charge(self._pathfinder, ram, tx, ty)
 
     def _safe_walk_action(
         self,
@@ -494,30 +269,14 @@ class MultiMapNavTask(Task):
         secondary: Optional[str] = None,
         allow_detour: bool = False,
     ) -> Optional[np.ndarray]:
-        """Hold B+dir only if the next tile is not a solid/bush thrash cell.
-
-        Returns None when the requested axes are blocked — caller must idle,
-        replan, or fail, never B-run into walls. ``allow_detour`` is reserved
-        for callers with no route-level directional constraint.
-        """
-        cur = self._navigator.current_tile
-        order: List[str] = []
-        candidates = (
-            (preferred, secondary, "down", "right", "left", "up")
-            if allow_detour
-            else (preferred, secondary)
+        return safe_walk_action(
+            self._pathfinder,
+            self._navigator,
+            ram,
+            preferred,
+            secondary=secondary,
+            allow_detour=allow_detour,
         )
-        for d in candidates:
-            if d and d not in order:
-                order.append(d)
-        for direction in order:
-            nx, ny = _neighbor_tile(cur[0], cur[1], direction)
-            if self._tile_blocks_charge(ram, nx, ny):
-                continue
-            if self._navigator.note_push_facing(ram, (nx, ny)):
-                continue
-            return make_action(**{direction: True, "b": True})
-        return None
 
     def _update_pixel_stuck(self) -> None:
         """Count frames with no real movement. Tile-stasis misses L/R wiggle."""
@@ -605,14 +364,9 @@ class MultiMapNavTask(Task):
             wp = self._current_wp()
             if wp:
                 cur = self._navigator.current_pos
-                dx = wp.target_px[0] - cur.x
-                dy = wp.target_px[1] - cur.y
-                if abs(dx) >= abs(dy):
-                    primary = "right" if dx > 0 else "left"
-                    secondary = "down" if dy > 0 else "up"
-                else:
-                    primary = "down" if dy > 0 else "up"
-                    secondary = "right" if dx > 0 else "left"
+                primary, secondary = dirs_toward(
+                    wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
+                )
                 action = self._safe_walk_action(
                     world.ram, primary, secondary=secondary
                 )
@@ -726,7 +480,11 @@ class MultiMapNavTask(Task):
                     return queued
             held = int(read_held_item(world.ram))
             face = wp.action_face or "up"
-            target = self._facing_tile(face)
+            target = _neighbor_tile(
+                self._navigator.current_tile[0],
+                self._navigator.current_tile[1],
+                face,
+            )
             tid = int(get_tile_at(world.ram, *target))
             # Also treat opportunistic mid-nav clears (no lift_throw action on wp).
             waypoint_owned = wp.action_on_arrive == "lift_throw"
@@ -850,14 +608,9 @@ class MultiMapNavTask(Task):
                 and stasis < 40
                 and self._pixel_stuck < 20
             ):  # ~5 tiles; bail if L/R pin
-                dx = wp.target_px[0] - cur.x
-                dy = wp.target_px[1] - cur.y
-                if abs(dx) >= abs(dy):
-                    primary = "right" if dx > 0 else "left"
-                    secondary = "down" if dy > 0 else "up"
-                else:
-                    primary = "down" if dy > 0 else "up"
-                    secondary = "right" if dx > 0 else "left"
+                primary, secondary = dirs_toward(
+                    wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
+                )
                 preferred = primary if stasis < 20 else secondary
                 safe = self._safe_walk_action(
                     world.ram, preferred, secondary=secondary
@@ -911,7 +664,7 @@ class MultiMapNavTask(Task):
         # BFS path (viewport-aware hopping)
         if not self._navigator.path:
             self._sync_travel_blocks(world.ram, tilemap)
-            hop = self._hop_target(wp)
+            hop = hop_target(self._navigator.current_tile, wp.target_px)
             goal = self._pathfinder.find_nearest_walkable(world.ram, hop, max_radius=4)
             if goal is None:
                 goal = hop
@@ -935,18 +688,11 @@ class MultiMapNavTask(Task):
                 # inside the current tile (berry lift_throw radius=4).
                 if not path:
                     cur = self._navigator.current_pos
-                    dx = wp.target_px[0] - cur.x
-                    dy = wp.target_px[1] - cur.y
-                    # Walk without B to avoid overshoot; prefer dominant axis.
-                    if abs(dx) >= abs(dy) and abs(dx) > 0:
-                        action = make_action(right=dx > 0, left=dx < 0)
-                    elif abs(dy) > 0:
-                        action = make_action(down=dy > 0, up=dy < 0)
-                    else:
-                        action = make_action()
                     return TaskResult(
                         status=TaskStatus.RUNNING,
-                        action=ActionResult(action),
+                        action=ActionResult(
+                            micro_center_action(cur.x, cur.y, wp.target_px)
+                        ),
                         reason="micro_center same tile",
                     )
             else:
@@ -986,19 +732,14 @@ class MultiMapNavTask(Task):
                     and self._stuck_frames >= 30
                     and self._stuck_frames < 90
                 ):
-                    gate = self._liftable_gate_toward(world.ram, wp)
+                    gate = liftable_gate_toward(
+                        self._navigator.current_tile, world.ram, wp
+                    )
                     if gate is not None and self._lift_throw_attempts < 4:
-                        face, target, tid = gate
-                        pseudo = Waypoint(
-                            tilemap=wp.tilemap,
-                            target_px=wp.target_px,
-                            radius=wp.radius,
-                            action_on_arrive="lift_throw",
-                            action_face=face,
-                            action_frames=22,
-                            action_cooldown=24,
+                        face, _target, _tid = gate
+                        reason = self._queue_lift_throw(
+                            world.ram, opportunistic_clear_waypoint(wp, face)
                         )
-                        reason = self._queue_lift_throw(world.ram, pseudo)
                         if reason is not None:
                             self._lift_throw_attempts += 1
                             print(
@@ -1018,8 +759,6 @@ class MultiMapNavTask(Task):
                             f"target={wp.target_px} stuck={self._stuck_frames}"
                         ),
                     )
-                dx = wp.target_px[0] - cur.x
-                dy = wp.target_px[1] - cur.y
                 final = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
                 loaded_direction = find_loaded_direction(
                     world.ram, self._navigator.current_tile, final
@@ -1033,12 +772,9 @@ class MultiMapNavTask(Task):
                         return TaskResult(
                             status=TaskStatus.RUNNING, action=ActionResult(safe)
                         )
-                if abs(dx) >= abs(dy):
-                    primary = "right" if dx > 0 else "left"
-                    secondary = "down" if dy > 0 else "up"
-                else:
-                    primary = "down" if dy > 0 else "up"
-                    secondary = "right" if dx > 0 else "left"
+                primary, secondary = dirs_toward(
+                    wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
+                )
                 safe = self._safe_walk_action(
                     world.ram, primary, secondary=secondary
                 )

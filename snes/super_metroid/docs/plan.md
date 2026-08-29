@@ -96,7 +96,7 @@ do not blind-restore product open-loop. Speed every section; re-pin tails.
 
 ### Improvement table — Ceres Ridley fight (same enter pin)
 
-Public RTA: [wiki Ridley § Ceres Station](https://wiki.supermetroid.run/Ridley#Ceres_Station) — escape starts at energy **< 30**; five tail hits at the right wall. Probe: `scripts/probe/ceres_ridley_combat.py bench`. Seconds @ 60.0988.
+Public RTA: [wiki Ridley § Ceres Station](https://wiki.supermetroid.run/Ridley#Ceres_Station) — escape starts at energy **< 30**; five tail hits at the right wall. Skill: `combat/ceres_ridley.py`. Seconds @ 60.0988.
 
 | Policy | Frames | Seconds | Clock | Hits | Notes |
 |--------|-------:|--------:|------:|-----:|-------|
@@ -111,8 +111,8 @@ card: takeoff windows live in ``takeoff.PlatformHop`` (shared, every room),
 not a Ceres-only hop type and not frame hillclimb. Pin seats 571 / 475 /
 363; live climb still no ship.
 KPDR Ceres Station goal is **1:35** from first elev control. Do not
-STATUS-promote from the pin bench. Probe:
-`scripts/probe/ceres_elev_escape.py`. Residual:
+STATUS-promote from the pin bench. Skill:
+`routes/kpdr/early_spine.py` elev hop. Residual:
 `docs/plan.md` § Ceres arm-pump.
 
 ### Elev re-pin findings (`rr-14u`, 2026-08-07)
@@ -238,12 +238,12 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   residual purged after pure green; **not** continuous / STATUS)
 - [x] Landing Site shine practice gym + diagnose/drill
   — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md)
-  (`scripts/probe/shine_practice.py` human/drill/demo; store trap documented)
+  (`routes/skills/shinespark.py` + `kpdr.py`; store trap documented)
 - [x] West Ocean edge-turn-hop pure → mid-right door `0xC98E` (Bowling)
-  — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md) / `west_ocean_spark.py pure`
+  — [tasks/SHINE_PRACTICE.md](tasks/SHINE_PRACTICE.md) / `kpdr.py pure west-ocean-to-bowling`
   (practice only; free-place spit bootstrap)
 - [x] West Ocean over-ocean spark → green Super WS `0xCA08` pure
-  — `west_ocean_spark.py pure-ws` / `play_west_ocean_over_ocean_spark`
+  — `kpdr.py pure west-ocean-to-ws` / `play_west_ocean_over_ocean_spark`
   (natural Moat handoff ~(49,1163); stutter dual-green from the power-on
   `--to moat` leave **627f** ×2 probe / **615f** ×2 spine hop; pin
   `scratch/post_moat_poweron_wo_to_ws.state`; `--to ws` scratch dual
@@ -260,10 +260,10 @@ warehouse without Spazer bit is RED until residual pure is green — intentional
   (`scratch/post_gravity_caterpillar.state`; `--from post-gravity`)
 - [ ] Natural climb onto West Ocean dry spit (only if reusing edge-bowling path)
 - [x] Moat → West Ocean → Wrecked Ship pure compose (`play_moat_to_ws` /
-  `west_ocean_spark.py chain-ws` / `record_pure_chain --preset moat-to-ws`;
+  `kpdr.py compose moat-to-ws`;
   dual pin sources; **pin-only** — not power-on continuous STATUS)
 - [x] Compose wired to Phantoon ship recording (`--from ws-entrance` after
-  `chain-ws`; `phantoon_combat` ← `ws_ship_human_end` ← Gravity free-record)
+  `kpdr.py compose moat-to-ws`; Phantoon hop ← `ws_ship_human_end` ← Gravity free-record)
 - [x] `--to phantoon` wired (rr-gyla: Entrance→Main→Basement→room→fight
   wrapper; unit-green; `--to ws` still ends `0xCA08`; not STATUS)
 - [x] Wiki KPDR Phantoon pin-benches (rr-7lc5). Doppler wired (rr-asyg)

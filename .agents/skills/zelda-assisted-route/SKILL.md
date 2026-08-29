@@ -32,7 +32,7 @@ Do not use this skill to claim or tune Clean results.
 Occupancy / RAM-claim: [predict-path](../../../.grok/skills/predict-path/SKILL.md).
 OccupancyWalker: miss → block that cell → replan; no path → stand.
 Fail-the-hop on a new miss is a dest diagnostic, not the default.
-Reuse leftover/dest helpers (`zelda_i.level6_occupancy` while dest is L6).
+Reuse leftover/dest helpers (`zelda_i.level6.occupancy` while dest is L6).
 Do not mint `level7_occupancy.py`. Do not batch exploration; do not probe
 a path OccupancyWalker can close. Door clips (LEFT+UP residual) stay
 one-frame policies in `level*_path.py`.

@@ -4,7 +4,7 @@
 60 HP left with 1 missile, Samus at 11 energy. Full 22k still RED.
 **Pin:** `tasks/full_start_v1_anchors/f015374_enter_0x9DC7_0x9DC7.state`
 **760 HP pin:** `scratch/spore_hp760.state` (after window 1)
-**Probe:** `uv run python scripts/probe/spore_spawn_combat.py window --windows 7`
+**Skill:** `combat/spore_spawn.py` (`play_spore_spawn_fight`). Tests: `tests/test_spore_spawn_combat.py`.
 **Report:** `scratch/spore_window_v28.json`
 **Human tape:** `full_start_v1` s6 hop 11, room `0x9DC7`, morph seat `(21, 697)`.
 
@@ -70,12 +70,5 @@ kills) and the last missile did not spend.
    with `energy_writes 0`, `missile_writes 0`, not dead. Then swap
    `routes/kpdr/spore_spawn.py`.
 
-```bash
-# From game dir. 3-window check (should still be 2/2 + 2/2 + 2/2):
-uv run python scripts/probe/spore_spawn_combat.py window --windows 3 \
-  --report scratch/spore_window.json
-
-# Later parks from the 760 pin:
-uv run python scripts/probe/spore_spawn_combat.py window \
-  --state scratch/spore_hp760.state --windows 2
-```
+Window benches live in `combat/spore_spawn.py` + `tests/test_spore_spawn_combat.py`.
+Do not mint a second probe CLI.

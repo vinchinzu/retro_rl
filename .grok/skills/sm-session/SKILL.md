@@ -29,7 +29,8 @@ Pin, checkbox, and probe CLI:
 4. Overwrite the **living** residual
    (`snes/super_metroid/docs/tasks/rr-kw8t-residual.md`).
    Delete closed-hop residuals instead of stacking them.
-5. Split a source file **before 1000 LOC**.
+5. Soft max ~1000 LOC: merge into the **Composer** or delete. No sibling
+   extract (`CODING_STANDARDS.md`). Gut sittings use `/gut-package`.
 6. Gravity epic (`rr-1xc2`) **continues** from the residual. Three reds do
    not restart the hop or dest-dual Attic. Three of the same miss class →
    new trajectory or dump pin

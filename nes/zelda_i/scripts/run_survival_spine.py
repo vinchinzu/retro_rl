@@ -18,7 +18,7 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
-from zelda_i.survival_spine import (
+from zelda_i.spine.survival import (
     SPINE_THROUGH,
     run_survival_spine,
     spine_final_fields,

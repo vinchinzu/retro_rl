@@ -7,18 +7,14 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from zelda_i.level1_finish import level1_triforce_stages
-from zelda_i.level2_spine import level2_to_boom_stages
-from zelda_i.level2_tf_spine import level2_tf_stages
+from zelda_i.level1.finish import level1_triforce_stages
+from zelda_i.level2.spine import level2_to_boom_stages
+from zelda_i.level2.tf_spine import level2_tf_stages
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
 )
-from zelda_i.survival_spine import (
+from zelda_i.spine.survival import (
     BOOT_POLICY,
     SPINE_BOMB_RETOPUP,
     SPINE_L1_KEY_RETOPUP,
@@ -27,82 +23,11 @@ from zelda_i.survival_spine import (
     topup_owned_bombs,
     topup_owned_inventory,
     validate_l5_endpoint,
-    _run_level3_boss_suffix,
 )
 
 
-def test_level3_boss_suffix_uses_carried_bombs_without_poke(monkeypatch) -> None:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_LEVEL] = 3
-    ram[ADDR_SCREEN] = 0x0F
-    ram[ADDR_MODE] = 9
-    ram[ADDR_BOMBS] = 8
-    seen = {}
-
-    class FakeBoss:
-        def __init__(self, *, poke_bombs, tag, continuous_mode):
-            seen["poke_bombs"] = poke_bombs
-            seen["continuous_mode"] = continuous_mode
-            self.success = False
-            self.failed = False
-
-        def path_to_5d(self, env, assist, total):
-            total[0] += 10
-            return {"ok": True}
-
-        def open_5d_up(self, env, assist, total):
-            total[0] += 20
-            return {"ok": True}
-
-        def fight_manhandla(self, env, assist, total, *, max_frames):
-            total[0] += 30
-            ram[ADDR_TRIFORCE] |= 0x04
-            self.success = True
-            return {"ok": True, "tf04": True}
-
-        def report(self):
-            return {"poke_bombs": seen["poke_bombs"]}
-
-    monkeypatch.setattr("zelda_i.survival_spine.Level3BossPathController", FakeBoss)
-    env = SimpleNamespace(get_ram=lambda: ram)
-    run = SpineRun(through="level3", success=True, boot_frames=199, end_frame=100)
-    assert _run_level3_boss_suffix(env, run, assist=object())
-    assert seen["poke_bombs"] is None
-    assert seen["continuous_mode"] is True
-    assert run.end_frame == 160
-    assert run.stages[-1].name == "level3_boss_tf"
-    assert run.stages[-1].success
-
-
-def test_level3_boss_suffix_fails_closed_before_verified_wall_budget(monkeypatch) -> None:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_LEVEL] = 3
-    ram[ADDR_SCREEN] = 0x0F
-    ram[ADDR_MODE] = 9
-    ram[ADDR_BOMBS] = 1
-
-    class FakeBoss:
-        def __init__(self, *, poke_bombs, tag, continuous_mode):
-            self.success = False
-            self.failed = False
-            self.last_error = None
-
-        def _fail(self, error):
-            self.failed = True
-            self.last_error = error
-
-        def report(self):
-            return {"last_error": self.last_error}
-
-    monkeypatch.setattr("zelda_i.survival_spine.Level3BossPathController", FakeBoss)
-    run = SpineRun(through="level3", success=True, boot_frames=199, end_frame=100)
-    assert not _run_level3_boss_suffix(SimpleNamespace(get_ram=lambda: ram), run, assist=object())
-    assert run.failed_stage == "level3_boss_tf"
-    assert "bomb_budget_gate" in run.stages[-1].controller.last_error
-
-
 def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
-    from zelda_i.level1_bow_pickup import level1_survival_tf_stages
+    from zelda_i.level1.bow_pickup import level1_survival_tf_stages
 
     names = [name for name, _, _ in level1_survival_tf_stages()]
     assert names.index("level1_bow_rejoin") < names.index("backtrack44")

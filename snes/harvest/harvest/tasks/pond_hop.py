@@ -1,20 +1,54 @@
-"""Multi-hop densify goal selection for pond can refill.
+"""Pond refill hop densify.
 
-``compute_refill_hop_goal`` picks the next intermediate waypoint when a
-direct path to the F0 stand is unreliable (viewport soft-blocks, fence
-residue, south-lip thrash).
+``compute_refill_hop_goal`` picks intermediate waypoints when a direct
+path to the F0 stand is unreliable. Thrash rules and charge-completion
+kinds re-export from pond_policy; scripted charges from pond_charges.
 """
 
 from __future__ import annotations
 
 from typing import Callable, List, Optional, Sequence, Tuple
 
-from harvest.maps.map_config import (
-    FARM_POND_MULTIHOP_WAYPOINTS,
-    FARM_POND_POST_GAP_CORRIDOR,
-)
+from harvest.maps.map_config import FARM_POND_MULTIHOP_WAYPOINTS
 from harvest.tasks.nav import VIEWPORT_HOP_TILES, tile_dist
-
+from harvest.tasks.pond_charges import (
+    FENCE_WALL_END_X,
+    SOFT_BLOCK_Y_BAND,
+    SOUTH_LIP_Y,
+    build_east_south_corridor_charge,
+    build_gap_south_fallback,
+    build_west_south_lip_charge,
+)
+from harvest.tasks.pond_policy import (
+    ALT_SOUTH_LIP_STAND,
+    CORRIDOR_THRASH_RULES,
+    KIND_ACT_AT_STAND,
+    KIND_ARM_F0_AND_LIP,
+    KIND_COMMIT_MULTIHOP_MAYBE_ACT_OR_REFILL,
+    KIND_COMMIT_MULTIHOP_OR_REFILL,
+    KIND_QUEUE_EAST_SOUTH,
+    KIND_QUEUE_GAP_SOUTH,
+    KIND_QUEUE_WEST_SOUTH_LIP,
+    KIND_TRY_MULTIHOP_CONTINUE,
+    KIND_TRY_MULTIHOP_MAYBE_ACT_CONTINUE,
+    PRIMARY_POND_FACE,
+    PRIMARY_POND_STAND,
+    CorridorNavDecision,
+    CorridorNavKind,
+    CorridorThrashRule,
+    PondCorridorController,
+    ThrashChargeKind,
+    ThrashCounters,
+    ThrashEvalResult,
+    ThrashFireMode,
+    decide_after_east_south_charge,
+    decide_after_gap_reseat,
+    decide_after_multihop_drop,
+    decide_after_south_lip_charge,
+    evaluate_corridor_thrash,
+    match_thrash_rule,
+    pond_corridor_gap_open,
+)
 
 # find_path(start, goal, max_steps=None) → path list or None
 PathFn = Callable[..., Optional[Sequence[Tuple[int, int]]]]
@@ -63,7 +97,6 @@ def compute_refill_hop_goal(
         if not south_corridor_far:
             return ultimate
 
-    post_gap = FARM_POND_POST_GAP_CORRIDOR
     chain = FARM_POND_MULTIHOP_WAYPOINTS
 
     # Near pond but off-stand (e.g. (33,38) after lip overshoot): hop to lip.
@@ -476,8 +509,41 @@ def compute_refill_hop_goal(
     return ultimate
 
 
-
 __all__ = [
+    "ALT_SOUTH_LIP_STAND",
+    "CORRIDOR_THRASH_RULES",
+    "CorridorNavDecision",
+    "CorridorNavKind",
+    "CorridorThrashRule",
+    "FENCE_WALL_END_X",
+    "KIND_ACT_AT_STAND",
+    "KIND_ARM_F0_AND_LIP",
+    "KIND_COMMIT_MULTIHOP_MAYBE_ACT_OR_REFILL",
+    "KIND_COMMIT_MULTIHOP_OR_REFILL",
+    "KIND_QUEUE_EAST_SOUTH",
+    "KIND_QUEUE_GAP_SOUTH",
+    "KIND_QUEUE_WEST_SOUTH_LIP",
+    "KIND_TRY_MULTIHOP_CONTINUE",
+    "KIND_TRY_MULTIHOP_MAYBE_ACT_CONTINUE",
+    "PRIMARY_POND_FACE",
+    "PRIMARY_POND_STAND",
     "PathFn",
+    "SOFT_BLOCK_Y_BAND",
+    "SOUTH_LIP_Y",
+    "PondCorridorController",
+    "ThrashChargeKind",
+    "ThrashCounters",
+    "ThrashEvalResult",
+    "ThrashFireMode",
+    "build_east_south_corridor_charge",
+    "build_gap_south_fallback",
+    "build_west_south_lip_charge",
     "compute_refill_hop_goal",
+    "decide_after_east_south_charge",
+    "decide_after_gap_reseat",
+    "decide_after_multihop_drop",
+    "decide_after_south_lip_charge",
+    "evaluate_corridor_thrash",
+    "match_thrash_rule",
+    "pond_corridor_gap_open",
 ]

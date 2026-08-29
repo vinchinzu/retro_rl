@@ -66,7 +66,7 @@ screen.
 → tour/UP hunt → level 3 room 0x7c
 ```
 
-Code: `zelda_i.level3_overworld` (`LEVEL3_PATH_HOPS`, `LEVEL3_DOOR_HOPS_FROM_66`).
+Code: `zelda_i.level3.overworld` (`LEVEL3_PATH_HOPS`, `LEVEL3_DOOR_HOPS_FROM_66`).
 
 Required items to *enter*: wooden sword (potion recommended by walkthrough;
 not required for assisted entry).
@@ -134,7 +134,7 @@ geometry libraries. They are **not** spine approvals and cannot close a
 ### Approval (required to close any `rr-4d53.3*` leaf)
 
 1. Command (one trial, same env as the predecessor stop):
-   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --trials 1`
+   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --no-video --trials 1`
 2. Predecessor is the previous spine stop on that session (never a loaded
    `Level3Entrance` / `Level3WestKey` / `Level3Darknuts` / `Level3Raft` pin).
 3. Exact RAM stop for the leaf (table below). No timeout bump in place of a miss.
@@ -144,9 +144,9 @@ geometry libraries. They are **not** spine approvals and cannot close a
    poke (`docs/ASSIST_CONTRACT.md`). No door poke, no undiscovered items, no
    `max_bombs` write. `--poke-bombs 16` on `run_level3_to_boss` is recon.
 6. Evidence: `recordings/survival_spine.json` + `_final.png`. Report `stop`
-   field equals the leaf name. Library stages live in `level3_spine.py` (or a
-   `level3_*_spine.py` extract); unit tests cover stage names + stop predicate.
-7. Occupancy / door-graph first (`zelda_i.predict`). Halt at the first
+   field equals the leaf name. Library stages live in `level3/spine.py` (or a
+   `level3/` extract); unit tests cover stage names + stop predicate.
+7. Occupancy / door-graph first (`zelda_i.walk.predict`). Halt at the first
    unrecoverable miss; do not hunt.
 
 ### Not approval
@@ -190,7 +190,7 @@ map rooms that are off the Raft route stay optional and do not block TF.
 
 West-key close (2026-08-21): `l3_west_key_spine.json` 1/1 Survival 54589f,
 room `0x7b` keys=5 (entry keys=4), bombs=8, `tf=0x03`, west_key 671f
-(door 320f LEFT+UP y≈149 + combat 351f 6× Zol last_live=0). `chain.py`
+(door 320f LEFT+UP y≈149 + combat 351f 6× Zol last_live=0). `route/chain.py`
 `controller_stage_done` accepts string-phase L3 path controllers (enum
 `.phase.name` crashed the first attach). Isolated west-key is not this close.
 
@@ -200,7 +200,7 @@ progression/capacity writes. Combat occupancy_patrol held at 1435f / 5 Zol.
 UP (v8), LEFT+UP (v9), LEFT (v10), and DOWN (v11) all failed at the north
 diagonal pocket; RIGHT escaped it in v12 and reached `0x5b` in 945 exit frames.
 
-Library `zelda_i.level3_bomb_budget` counts Raft→boss spend: verified bomb-R
+Library `zelda_i.level3.bomb_budget` counts Raft→boss spend: verified bomb-R
 0x59 and bomb-R 0x5b (stands `(192,141)`), plus an **assumed** Manhandla-heads
 estimate (type `0x3c`, 5 heads live; bombs preferred — not TAS-perfect).
 Isolated `Level3Raft` stops at bombs=0 so `run_level3_to_boss --poke-bombs 16`
@@ -224,10 +224,11 @@ From `Level3Raft` (mode 9, `ADDR_RAFT=1`, room 0x0f):
   bomb heads → HC mid-room → UP → 0x3d → TF bit 0x04
 ```
 
-Runner: `scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`.
-Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter+kill+TF,
+Durable runner: `scripts/run_survival_spine.py --through level3 --no-video --trials 1`.
+Isolated `run_level3_to_boss.py` pruned. Evidence:
+`recordings/level3_to_boss_assisted.json` (**2/2** enter+kill+TF,
 ~21653f/trial). Checkpoints: `Level3Boss`, `Level3Complete`.
-Library: `level3_boss_path.Level3BossPathController`.
+Library: `level3.boss_path.Level3BossPathController`.
 
 West door residual (fixed for pure): pure **LEFT** sticks at **x≈32**
 (`open_doorway_mask==0`, solid door tiles). **LEFT+UP** at the west wall
@@ -260,8 +261,9 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 
 #### West key (0x7c → 0x7b)
 
-- Module: `zelda_i.level3_dungeon` (`ROOM_7B_SPEC`, `Level3WestKeyController`)
-- Runner: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2`
+- Module: `zelda_i.level3.dungeon` (`ROOM_7B_SPEC`, `Level3WestKeyController`)
+- Isolated segment CLI pruned. Spine dest 0x5b (includes west key):
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through l3-dest-6b --no-video --trials 1`
 - Stop: `level3_room_7b_key_success` (keys≥1, no live Zols, room 0x7b)
 - Checkpoint: `Level3WestKey.state` (`--save-state`)
 - Evidence: `recordings/level3_west_key_isolated.json` (3/3 Clean lab; door ~319f + combat ~658f)
@@ -269,9 +271,10 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 
 #### North chain (0x7b → 0x6b → 0x5b) — rr-65w
 
-- Module: `zelda_i.level3_dungeon` (`ROOM_6B_SPEC`, `ROOM_5B_SPEC`,
+- Module: `zelda_i.level3.dungeon` (`ROOM_6B_SPEC`, `ROOM_5B_SPEC`,
   `Level3NorthChainController`)
-- Runner: `uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2`
+- Isolated segment CLI pruned. Spine dest 0x5b:
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through l3-dest-6b --no-video --trials 1`
 - Stop: `level3_reached_5b` (play mode in room **0x5b**)
 - Checkpoint: `Level3Darknuts.state` (`--save-state`)
 - Evidence: `recordings/level3_north_chain_isolated.json` (**2/2 Clean**;
@@ -291,7 +294,7 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 | TF room | **`0x3d`** north of boss | RoomItemId `0x1B`; UP after kill |
 | Item | Raft (`ADDR_RAFT=0x0660`) | LIVE assisted in 0x0f |
 | Triforce bit | **`0x04`** | **2/2 assisted** collected |
-| Constants | `ROOM_L3_BOSS`, `MANHANDLA_OBJECT_TYPE` | `level3_dungeon.py` — assisted only |
+| Constants | `ROOM_L3_BOSS`, `MANHANDLA_OBJECT_TYPE` | `level3/dungeon.py` — assisted only |
 
 ## Checkpoints
 
@@ -309,17 +312,19 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 1. **Assisted Raft runner 2/2 LIVE** (Survival) from `Level3Darknuts` → Compass
    west → 0x59/0x69 → stairs → passage → `ADDR_RAFT`. Checkpoint
    `Level3Raft.state`. **Not Clean STATUS.**
-   - Module: `Level3RaftPathController` in `level3_dungeon.py`
-   - Runner: `uv run python nes/zelda_i/scripts/run_level3_raft.py --infinite-life --trials 2 --save-state`
+   - Module: `Level3RaftPathController` in `level3/raft_path.py`
+   - Isolated segment CLI pruned. Durable runner:
+     `uv run python nes/zelda_i/scripts/run_survival_spine.py --through l3-raft --no-video --trials 1`
    - Evidence: `recordings/level3_raft_assisted.json` (**2/2 assisted**, ~6448f/trial)
 2. **Assisted Manhandla + TF `0x04` 2/2 LIVE** from `Level3Raft` (Survival).
    Checkpoint `Level3Complete.state`. **Not Clean STATUS.**
-   - Runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
+   - Isolated segment CLI pruned. Durable runner:
+     `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --no-video --trials 1`
    - Evidence: `recordings/level3_to_boss_assisted.json` (**2/2** enter 0x4d + kill + TF)
 3. **0x5b Darknut clear pure** — side/back hits; combat residual (off the
    Raft skip; not a spine blocker).
-4. **0x4b Zol clear** — spec `ROOM_4B_SPEC` + `run_level3_clear4b.py` (try 2/2;
-   optional, not on the Raft TF route).
+4. **0x4b Zol clear** — spec `ROOM_4B_SPEC` (optional, not on the Raft TF
+   route). Isolated `run_level3_clear4b.py` pruned.
 5. **0x6b key pickup** residual (inventory may not increment).
 6. **Natural-entry / Clean STATUS** only after the continuous spine TF `0x04`
    tape exists. Isolated pins stay development evidence.
@@ -358,12 +363,9 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 - `recordings/l3_westkey_probe_report.json` — door probes from Level3WestKey
 - `recordings/l3_5b_spawn.png` / `l3_north_up_x120.png` — room visuals
 - Entry: `uv run python nes/zelda_i/scripts/run_l2_to_l3.py --infinite-life --from-state Level2ExitOverworld`
-- Boss+TF runner: `uv run python nes/zelda_i/scripts/run_level3_to_boss.py --infinite-life --trials 2 --save-state`
-- Map-only: `… --from-state Level3Entrance --map-only --infinite-life`
-- West key: `uv run python nes/zelda_i/scripts/run_level3_west_key.py --trials 2 --save-state`
-- North chain: `uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2 --save-state`
-- Raft (assisted): `uv run python nes/zelda_i/scripts/run_level3_raft.py --infinite-life --trials 2 --save-state`
-- 0x4b clear: `uv run python nes/zelda_i/scripts/run_level3_clear4b.py --trials 2`
+- Isolated L3 segment CLIs pruned. Durable runner:
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level3 --no-video --trials 1`
+  (prefix hops: `--through l3-entry` / `l3-dest-6b` / `l3-raft`)
 
 ## Sources
 

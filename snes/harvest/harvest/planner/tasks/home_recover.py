@@ -20,6 +20,10 @@ from harvest.planner.tasks.home_approach import (
     deep_south_of_house,
     south_of_fence_wall,
 )
+from harvest.planner.tasks.transitions import (
+    multi_face_toss_actions,
+    toss_held_actions,
+)
 from harvest.tasks.nav import Point, make_action
 
 
@@ -246,3 +250,75 @@ def decide_child_failure(
             reason=reason,
         )
     return RecoverDecision(kind=RecoverKind.HARD_FAIL, reason=reason)
+
+
+def _charge_mix(direction: str, frames: int, *, a_every: int) -> List[np.ndarray]:
+    actions: List[np.ndarray] = []
+    for i in range(frames):
+        if i % a_every == 0:
+            actions.append(make_action(**{direction: True, "a": True}))
+        else:
+            actions.append(make_action(**{direction: True, "b": True}))
+    return actions
+
+
+def drop_carried_actions(attempt: int) -> List[np.ndarray]:
+    """Toss held debris so building doors accept entry."""
+    if attempt <= 1:
+        return list(toss_held_actions(face="down", step_away=True)) + list(
+            multi_face_toss_actions(prefer_south=True)
+        )
+    if attempt <= 3:
+        return list(multi_face_toss_actions(prefer_south=True))
+    actions: List[np.ndarray] = []
+    for face in ("down", "left", "right"):
+        actions.extend(toss_held_actions(face=face, step_away=True))
+    return actions
+
+
+def south_escape_actions(
+    *, long_east: bool = False, far_east: bool = False
+) -> List[np.ndarray]:
+    """Leave south-of-fence softlock for re-nav.
+
+    Far-east pond latitude: west toward free lane then north. SW pocket:
+    north-first then east. Mid-wall: east first. Mix A so a blocking weed
+    can be lifted.
+    """
+    if far_east:
+        actions = (
+            _charge_mix("left", 90, a_every=20)
+            + _charge_mix("up", 80, a_every=20)
+            + _charge_mix("left", 70, a_every=20)
+            + _charge_mix("up", 90, a_every=20)
+            + _charge_mix("left", 40, a_every=20)
+            + _charge_mix("up", 60, a_every=20)
+        )
+    elif long_east:
+        actions = (
+            _charge_mix("up", 80, a_every=20)
+            + _charge_mix("right", 70, a_every=20)
+            + _charge_mix("up", 90, a_every=20)
+            + _charge_mix("right", 60, a_every=20)
+            + _charge_mix("up", 80, a_every=20)
+            + _charge_mix("left", 20, a_every=20)
+        )
+    else:
+        actions = (
+            _charge_mix("right", 70, a_every=20)
+            + _charge_mix("up", 70, a_every=20)
+            + _charge_mix("right", 50, a_every=20)
+            + _charge_mix("up", 80, a_every=20)
+            + _charge_mix("left", 16, a_every=20)
+        )
+    actions.extend(make_action() for _ in range(8))
+    return actions
+
+
+def short_east_north_actions() -> List[np.ndarray]:
+    """Compact east→north charge when outer timeout is almost gone."""
+    actions = _charge_mix("right", 50, a_every=16) + _charge_mix(
+        "up", 70, a_every=16
+    )
+    actions.extend(make_action() for _ in range(6))
+    return actions

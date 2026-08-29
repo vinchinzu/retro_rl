@@ -25,18 +25,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from retro_harness.env import get_available_states, make_env, reset_obs, save_state
-from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
     write_json_report,
 )
-from smb.menus import boot_to_level1_script
+from smb.menus import boot_to_ready, idle_n
 from smb.paths import GAME_DIR, GAME_V0, RECORDINGS_DIR
-from smb.policy import DEFAULT_1_1_SEED, Level11ReplayPolicy
+from smb.policy import DEFAULT_1_1_SEED, NATURAL_SETTLE_FRAMES, Level11ReplayPolicy
 from smb.ram import (
     is_level1_ready,
     parse_game_state,
@@ -47,38 +44,7 @@ from smb.ram import (
 DEFAULT_STATE = "Level1_1"
 DEFAULT_MAX_FRAMES = 4000
 MIN_PROGRESS_X = 2500
-STABLE_BOOT_FRAMES = 20
-MIN_BOOT_FRAME = 200
-# Phase-align seed with continuous boot. Verified: settle=1 and 3 clear;
-# settle=0 and 2 die at first pit (~x=676).
-NATURAL_SETTLE_FRAMES = 1
 
-def _boot_to_ready(env) -> tuple[object, int]:
-    frame = 0
-    obs = None
-    stable = 0
-    for scripted in boot_to_level1_script():
-        obs, *_ = env.step(scripted.action)
-        frame += 1
-        mean = float(obs.mean())
-        if frame >= MIN_BOOT_FRAME and is_level1_ready(env.get_ram(), obs_mean=mean):
-            stable += 1
-        else:
-            stable = 0
-        if stable >= STABLE_BOOT_FRAMES:
-            return obs, frame
-    return obs, frame
-
-def _settle(env, n: int) -> object:
-    """Hold idle for ``n`` frames after boot ready (natural-entry phase align)."""
-    obs = None
-    idle = np.asarray(nes_idle_action(), dtype=np.int8)
-    action_size = int(env.action_space.shape[0])
-    if idle.shape[0] != action_size:
-        idle = np.zeros(action_size, dtype=np.int8)
-    for _ in range(n):
-        obs, *_ = env.step(idle)
-    return obs
 
 def run_1_1(
     *,
@@ -114,7 +80,7 @@ def run_1_1(
         boot_frames = 0
         settle_frames = 0
         if natural_entry:
-            obs, boot_frames = _boot_to_ready(env)
+            obs, boot_frames = boot_to_ready(env)
             if not is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
                 png = save_rgb_png(obs, out / f"{tag}_boot_fail.png")
                 return {
@@ -124,7 +90,7 @@ def run_1_1(
                     "screenshot": str(png),
                 }
             if natural_settle_frames > 0:
-                obs = _settle(env, natural_settle_frames)
+                obs = idle_n(env, natural_settle_frames)
                 settle_frames = natural_settle_frames
 
         snap0 = read_snapshot(env.get_ram(), frame=0)

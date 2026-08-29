@@ -5,25 +5,9 @@ settled room-entry) on a continuous prefix or from a source save-state.
 Development infrastructure — not continuous evidence by itself. Continuous
 acceptance still requires full power-on integrity with natural boss flags.
 
-CLI lives under ``scripts/probe/natural_entry_cli.py`` (not this module):
-
-```bash
-uv run python snes/super_metroid/scripts/probe/natural_entry_cli.py list
-uv run python snes/super_metroid/scripts/probe/natural_entry_cli.py capture-natural bomb_torizo
-uv run python snes/super_metroid/scripts/probe/natural_entry_cli.py capture-natural \\
-  kraid --from-state entry --mode room_entry
-uv run python snes/super_metroid/scripts/probe/natural_entry_cli.py capture-natural \\
-  phantoon --from-state path/to/phantoon_entry.state --mode room_entry
-uv run python snes/super_metroid/scripts/probe/natural_entry_cli.py capture-natural \\
-  botwoon --from-state path/to/botwoon_entry.state --mode room_entry
-```
-
-Bomb Torizo back-compat path:
-
-```bash
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py capture-natural
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py prove-natural
-```
+Library capture: :func:`capture_natural_activation` /
+:func:`capture_natural_from_source_state` / :func:`run_capture_natural`.
+A/B for attached fights is ``kpdr.py pure <hop> --source <pin>``.
 
 Capture paths never write boss / event / item / capacity progression RAM.
 See ``docs/BOSS_PIPELINE.md``.

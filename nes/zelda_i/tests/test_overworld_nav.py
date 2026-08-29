@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.overworld_nav import (
+from zelda_i.overworld.nav import (
     NavPhase,
     OverworldToLevel1Controller,
     level1_entrance_success,

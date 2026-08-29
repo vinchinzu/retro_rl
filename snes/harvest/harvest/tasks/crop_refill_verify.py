@@ -12,9 +12,9 @@ import numpy as np
 
 from retro_harness import TaskResult
 
-from harvest.tasks.crop_fsm import CropState, PlotPhase
+from harvest.tasks.crop_planter import CropState, PlotPhase
 from harvest.tasks.nav import VIEWPORT_HOP_TILES, tile_dist
-from harvest.tasks.pond_corridor import (
+from harvest.tasks.pond_hop import (
     KIND_ACT_AT_STAND,
     KIND_ARM_F0_AND_LIP,
     KIND_COMMIT_MULTIHOP_MAYBE_ACT_OR_REFILL,
@@ -27,11 +27,9 @@ from harvest.tasks.pond_corridor import (
     PRIMARY_POND_FACE,
     PRIMARY_POND_STAND,
     CorridorNavDecision,
-    decide_after_south_lip_charge,
-)
-from harvest.tasks.pond_thrash import (
     ThrashChargeKind,
     ThrashCounters,
+    decide_after_south_lip_charge,
     evaluate_corridor_thrash,
 )
 from harvest.tasks.crop_geometry import is_main_pond_stand
@@ -59,7 +57,7 @@ class CropRefillVerifyMixin:
         hop = VIEWPORT_HOP_TILES + 3 if self._plot_phase == PlotPhase.REFILL else VIEWPORT_HOP_TILES
         nav_goal = goal
         if self._plot_phase == PlotPhase.REFILL and getattr(self, "_refill_multihop", False):
-            # Densify thrash → scripted charges. Rules live in pond_thrash
+            # Densify thrash → scripted charges. Rules live in pond_hop
             # (past-fence pure-south, N/S/E stall regions, near-F0 short lip).
             thrash = evaluate_corridor_thrash(
                 start,
@@ -250,9 +248,9 @@ class CropRefillVerifyMixin:
         north_band_multihop_tried: bool = False,
         near_f0_multihop_tried: bool = False,
     ) -> Optional[TaskResult]:
-        """Apply a pond_corridor charge-completion decision (navigate thrash).
+        """Apply a pond_hop charge-completion decision (navigate thrash).
 
-        Decision body lives in ``pond_corridor.decide_after_*``.
+        Decision body lives in ``pond_hop.decide_after_*``.
         """
         if decision.log:
             for line in decision.log.split("\n"):

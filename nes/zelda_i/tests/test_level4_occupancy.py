@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from zelda_i.level4_dungeon import LADDER_60_PICKUP_XY, MAP_21_PICKUP_XY, RIGHT_20_STAND
-from zelda_i.level4_occupancy import room_20_grid, room_21_grid, room_60_grid
+from zelda_i.level4.dungeon import LADDER_60_PICKUP_XY, MAP_21_PICKUP_XY, RIGHT_20_STAND
+from zelda_i.level4.occupancy import room_20_grid, room_21_grid, room_60_grid
 
 
 def test_dest_cells_not_overblocked() -> None:

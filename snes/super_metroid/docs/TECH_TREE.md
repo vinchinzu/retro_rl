@@ -88,8 +88,8 @@ labels stay Hard / Very Hard; `PROJECT_CORE_TECHS` promotes the builders.
 
 Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). Climb
 `0x96BA` and Parlor `0x92FD` first descents on the Morph path (clean poke
-on, restore off so later seeds stay valid). Probes:
-`scripts/probe/climb_descent.py`, `scripts/probe/parlor_descent.py`.
+on, restore off so later seeds stay valid). A/B:
+`kpdr.py pure climb-to-pit-moonfall` / `parlor-to-climb-moonfall`.
 
 ### Medium (try)
 

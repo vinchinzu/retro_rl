@@ -55,8 +55,8 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
     WR-class movies + trick catalog; adapt under fceumm.
     - Vendored: `tas/ref/happylee_warps_1715M.fm2` (TASVideos #1715),
       `tas/ref/flamexx_warps_rta_4_54_099.fm2`
-    - Tooling: `smb.tas.fm2`, `smb.tas.slice`, `smb.scripts.import_fm2`
-      (parse, verify, align-search, **--verify-1-2-slice** / export / search).
+    - Tooling: `smb.tas.fm2`, `smb.tas.slice`, `smb.scripts.annotate_fm2`
+      (parse, verify, align-search / export / search).
       **L+R preserved**; FM2 `T`=Start.
     - Power-on full FM2 **desyncs** on fceumm (blackout longer than FCEUX).
     - **Isolated Level1_1** HappyLee slice **1733f clear**
@@ -84,7 +84,7 @@ Next: claw back frames via hierarchical RLE polish + richer policies.
       (land-pin cut1478 + pure hop jh=44/gap=6/hops=3 + idle fold) → **8-4
       control 2374f** (`smb_8_3_stitchless_skills_leave.json`). Evidence
       `happylee_8_3_skills_leave.json`. Rich FP + skills in `ram.py` /
-      `tas/skills_8_3.py` / `scripts/stitchless_8_3.py`. Pure continuous FM2
+      `tas/skills_8_3.py`. Pure continuous FM2
       8-3 still phase-blocked; hybrid v2 showcase-only. Grounded/pit-jump
       long grids **paused**.
     - **Pure capture handoff (2026-08-09):** the original 17,868-frame
@@ -121,7 +121,7 @@ order: 1-2 **flag** exit → 1-3 control state → per-stage extract/polish.
   `smb_1_3` uses `SMB_DASH_COMPUTED` (not default `_smb_level`). 1-4 pin
   is **not** extractable.
 - **1-2 flag exit (2026-08-27):** DOWN pipe on the brick platform after
-  the UG lifts (`probe_1_2_flag`). HL last physics-grounded lift pose
+  the UG lifts (`flag_12` truth table). HL last physics-grounded lift pose
   `(2520, 148)`, A-only 19f, land `(2620, 128)`, walk to short pipe
   `player_state=2`. Outdoor flag → 1-3 control pin + `Level1_3.state`.
   Plant pipes A/B/C and the warp room are not this exit.
@@ -173,46 +173,29 @@ coverage report as the source of truth. Do not use the stitch renderer as
 completion evidence; each new stage needs a natural-entry controller before
 it can count toward a Clean route.
 
-## Commands (polish)
+## CLI catalog (parked)
+
+Daily commands live in `AGENTS.md`. These are not the living 32-exit
+extract. Prefer TAS adapt (`docs/TAS_ADAPT.md`) over hill-climb.
 
 ```bash
-# List bottleneck windows (continuous seed)
-uv run python -m smb.scripts.rle_polish --list-windows
+# Warp A/B (M8)
+uv run python -m smb.scripts.run_warp_finish --mode poweron --record
+uv run python smb/scripts/run_1_1.py --natural-entry --trials 3
+uv run python -m smb.scripts.run_1_2 --predecessor stairs --trials 3
+uv run python -m smb.scripts.run_reactive_warp --retime-4-1 --retime-4-2 --retime-8-2
+uv run python -m smb.scripts.fold_continuous_policy
 
-# Hillclimb 1-1 stairs window on continuous seed
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.rle_polish --window 1-1-stairs --iters 400
+# 32-exit flag body / isolated 1-3
+uv run python -m smb.scripts.run_1_2_flag --record --trials 2
+uv run python -m smb.scripts.run_1_3 --search --trials 2
+uv run python -m smb.scripts.extract_stage_state --list
 
-# Isolated 1-1 TAS toolkit (analyze / optimize / verify)
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.tas_1_1 analyze
-uv run python -m smb.scripts.tas_1_1 optimize --window stairs,first-pipe --iters 400
-uv run python -m smb.scripts.tas_1_1 optimize --delete-stride 1 --iters 0 --window stairs
-
-# GA on 4-2 entry
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.rle_polish --window 4-2-entry --mode ga --gens 40
-
-# 8-1 Level8_1 body polish (natural_82 slice; best first: late window)
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.polish_8_1 --windows late --delete-stride 1
-uv run python -m smb.scripts.polish_8_1 --baseline-only
-
-# TAS / FM2 import (prefer over blind hill-climb)
-uv run python -m smb.scripts.import_fm2 --summary-only
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 --verify
-# HappyLee 1-1 slice (Level1_1, settle=2, fm2 index 190)
-uv run python -m smb.scripts.tas_1_1 verify \
-  --seed nes/smb/models/smb_1_1_happylee_slice.json
-# Natural-entry 1-1 + control-relative 1-2 → W4
-uv run python smb/scripts/run_1_1.py --natural-entry \
-  --seed nes/smb/models/smb_1_1_happylee_slice.json
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
-# HL 4-1 + 4-2 → W8
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
+# TAS import
+uv run python -m smb.scripts.convert_fm2
+uv run python -m smb.scripts.annotate_fm2 --search 2-2 --from-pred --export
+uv run python -m smb.scripts.record_happylee --to ending
+uv run python -m smb.scripts.pure_hl status
 ```
 
 ## Notes

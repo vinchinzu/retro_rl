@@ -22,7 +22,7 @@ model workflows.
 
 ## Save / Load State UX
 - F5 save + F9 quick-load during play: harvest_bot
-- F5 save in RAM tooling: harvest `utils/find_ram.py`
+- F5 save in RAM tooling: `harvest.runtime.play_session`
 - State naming conventions + list/rename/record flow: super_metroid state_manager
 - Auto state save per room transition during replay extraction: super_metroid recording/extractor
 
@@ -41,7 +41,8 @@ model workflows.
 - Recording HUD (state name, HP, frame count, blinking REC): super_metroid recording/recorder
 
 ## RAM Watch / Analysis Tools
-- RAM correlation recorder/analyzer: harvest `utils/find_ram.py`
+- RAM watch / named-field snapshots: `harvest.runtime.probe_utils`
+- Live RAM search (F2/F3) during play: `harvest.runtime.play_session`
 
 ## Training / Model Structure
 - Observation wrappers + reward shaping: super_metroid env / train scripts
@@ -49,5 +50,5 @@ model workflows.
 - Generic task/harness runtime: harvest harness_runtime
 
 ## Headless / SDL Setup
-- SDL driver + dummy audio/headless toggles: `snes/harvest/run_bot.sh`, find_ram
+- SDL driver + dummy audio/headless toggles: `snes/harvest/run_bot.sh`
 - X11 forcing for SDL: super_metroid controls / recording

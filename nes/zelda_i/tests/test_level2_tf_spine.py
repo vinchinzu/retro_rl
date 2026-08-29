@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 from retro_harness.nes import nes_action
-from zelda_i.bomb_wall_path import BombWallPhase
-from zelda_i.level2_bomb_path import Level2BombNorth1eSpineController
-from zelda_i.level2_tf_spine import (
+from zelda_i.dungeon.bomb_wall import BombWallPhase
+from zelda_i.level2.bomb_path import Level2BombNorth1eSpineController
+from zelda_i.level2.tf_spine import (
     DodongoPhase,
     Level2DodongoController,
     Level2SouthBandUpController,

@@ -40,7 +40,7 @@ uv run python snes/super_metroid/scripts/record/practice_takes.py \\
   --segment west-ocean-to-ws --series west_ocean_ws_v1
 
 # K6 WS Entrance after pure over-ocean / chain-ws → ship free-record → Phantoon
-# Refresh pin: west_ocean_spark.py chain-ws  (or pure-ws)
+# Refresh pin: kpdr.py compose moat-to-ws  (or pure west-ocean-to-ws)
 uv run python snes/super_metroid/scripts/record/practice_takes.py \\
   --segment ws-entrance --series ws_ship_v1
 
@@ -186,7 +186,7 @@ SEGMENTS: dict[str, Segment] = {
         description=(
             "Wrecked Ship Entrance after pure over-ocean / chain-ws "
             "(0xCA08 ~(57,139) gs=8) → ship rooms free-record for Phantoon approach. "
-            "Refresh pin: west_ocean_spark.py chain-ws (Kihunter/Moat→WO→WS)."
+            "Refresh pin: kpdr.py compose moat-to-ws (Kihunter/Moat→WO→WS)."
         ),
         pure_hop=None,
         pure_source_rel="scratch/post_west_ocean_ws_spark.state",
@@ -380,15 +380,13 @@ SEGMENTS: dict[str, Segment] = {
         no_guide_default=True,
     ),
     # Bubble Save station → leave RIGHT → save-runway WJ climb (Phase D).
-    # Prefer live timing gym: scripts/probe/bubble_save_practice.py
     "bubble-save": Segment(
         key="bubble-save",
         start="bubble-save",
         route="ws-entrance",  # free-record; guide shows Bubble path if present
         description=(
             "Bubble Save 0xB0DD ~(96,152) items 0x1105 → leave RIGHT → "
-            "Bubble runway walljump climb. For EARLY/LATE frames_off feedback "
-            "use bubble_save_practice.py instead of this multi-take wrapper."
+            "Bubble runway walljump climb."
         ),
         pure_hop=None,
         pure_source_rel="scratch/bubble_save.state",
