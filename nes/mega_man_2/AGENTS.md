@@ -6,7 +6,7 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 
 | Field | Value |
 |-------|-------|
-| Status | Air s4 clear; post-s4 cloud RED; Heat cam≥8 + first Yoku dual-green (rr-k1ea PARTIAL) |
+| Status | Air s4 clear; post-s4 cloud RED; Heat Yoku room cam≥9 (rr-k1ea PARTIAL) |
 | Integration | `MegaMan2-Nes` |
 | Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
 | Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
@@ -29,15 +29,17 @@ uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --t
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid --target-screen 8 --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --yoku-land --trials 3
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --target-screen 9 --trials 3
 uv run pytest nes/mega_man_2/tests -q
 ```
 
 ## Next milestone
 
-**Heat multi-level Yoku → boss door + Item-1** (rr-k1ea / rr-809 PARTIAL):
-dual-green cam≥8 from `HeatScreen7Mid` (~587f) and **first Yoku land** from
-`HeatScreen8` (~44f, sx168 sy100, 3/3). Yoku solid ~20f only; jump-from-below
-into upper block bonks. Residual: multi-level chain → Sniper → boss → Item-1.
+**Heat Yoku room cam≥9 → E/F/G + boss door + Item-1** (rr-k1ea / rr-809
+PARTIAL): dual-green cam≥8 from `HeatScreen7Mid` (~587f) and **Yoku room →
+cam≥9** from `HeatScreen8` (wait no-ceiling → catch upper → D → left
+ladder scroll). Upper B is a ceiling while first is solid — jump-from-below
+bonks. Residual: section E columns / F lava Yoku / G Sniper → boss → Item-1.
 Doc: `docs/HEAT_ITEM1_PATH.md`. Cloud solid still RED; do not re-grid.
 Use `HeatScreen5Ground` (not mid-air `HeatScreen5`). Low alcove sx152 trap.
 
@@ -72,6 +74,7 @@ HEAT_ITEM1_PATH (external).
   via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`8`,
   `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatLadder`, `HeatScreen8Yoku`.
   screen5 needs `tile_feet` (A-edge hops). screen7 = high-path; screen8 =
-  first Yoku land (`--yoku-land`). Death: `tile_feet==3` or lives drop.
-  s7 low alcove sx152 trap; s8 upper Yoku bonks from below — no re-spam
-  without new route hypothesis.
+  Yoku room → cam≥9 (`--target-screen 9`; `--yoku-land` still first stand).
+  Death: `tile_feet==3` or lives drop. s7 low alcove sx152 trap; s8 upper
+  Yoku bonks from below while solid — wait no-ceiling phase, catch appearing
+  B. No re-spam without new route hypothesis.
