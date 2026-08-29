@@ -65,30 +65,52 @@ SMB3_ACTIONS = [
 ]
 
 
-register_level(
-    LevelConfig(
-        level_id="smb3_1_1",
-        display_name="Super Mario Bros. 3 World 1-1",
-        game_name="SuperMarioBros3-Nes",
-        game_dir_name="smb3",
-        start_state="Level1_1",
-        ram=SMB3_RAM,
-        target_level_id=0,  # world 0
-        progress_axis="player_x",
-        progress_direction=1,
-        death_signals=["lives_drop"],
-        completion_signal="ram_flag",
-        completion_ram_key="goal_auto",
-        completion_ram_value=1,
-        # ~2816 px level; page unit ~256px → clear past ~2000
-        completion_min_progress=1800.0,
-        action_table=SMB3_ACTIONS,
-        max_stall_frames=450,
-        computed_values=SMB3_COMPUTED,
-        bk2_to_env=[8 - i for i in range(9)],
-        population_size=40,
-        num_generations=80,
-    ),
-    "smb3_11",
-    "smb3",
+def _smb3_level(
+    level_id: str,
+    display_name: str,
+    start_state: str,
+    *,
+    completion_min_progress: float,
+    aliases: tuple[str, ...],
+) -> None:
+    register_level(
+        LevelConfig(
+            level_id=level_id,
+            display_name=display_name,
+            game_name="SuperMarioBros3-Nes",
+            game_dir_name="smb3",
+            start_state=start_state,
+            ram=SMB3_RAM,
+            target_level_id=0,  # world 0
+            progress_axis="player_x",
+            progress_direction=1,
+            death_signals=["lives_drop"],
+            completion_signal="ram_flag",
+            completion_ram_key="goal_auto",
+            completion_ram_value=1,
+            completion_min_progress=completion_min_progress,
+            action_table=SMB3_ACTIONS,
+            max_stall_frames=450,
+            computed_values=SMB3_COMPUTED,
+            bk2_to_env=[8 - i for i in range(9)],
+            population_size=40,
+            num_generations=80,
+        ),
+        *aliases,
+    )
+
+
+_smb3_level(
+    "smb3_1_1",
+    "Super Mario Bros. 3 World 1-1",
+    "Level1_1",
+    completion_min_progress=1800.0,
+    aliases=("smb3_11", "smb3"),
+)
+_smb3_level(
+    "smb3_1_2",
+    "Super Mario Bros. 3 World 1-2",
+    "Level1_2",
+    completion_min_progress=1800.0,
+    aliases=("smb3_12",),
 )

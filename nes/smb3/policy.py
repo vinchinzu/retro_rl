@@ -1,6 +1,6 @@
-"""World 1-1 clear policy for Super Mario Bros. 3 (NES).
+"""World 1 stage table and action-index replay for Super Mario Bros. 3 (NES).
 
-Action indices match ``smb3.platformer_levels.SMB3_ACTIONS``:
+Composer: ``STAGES`` rows. Action indices match ``SMB3_ACTIONS``:
 
 0 NOTHING, 1 RIGHT, 2 RIGHT+B (run), 3 RIGHT+B+A (run+jump),
 4 RIGHT+A, 5 A, 6 LEFT, 7 LEFT+B, 8 LEFT+B+A, 9 LEFT+A, 10 DOWN.
@@ -9,6 +9,7 @@ Action indices match ``smb3.platformer_levels.SMB3_ACTIONS``:
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from retro_harness.input_script import FrameAction
 
 POLICY_DIR = Path(__file__).resolve().parent / "policies"
 DEFAULT_LEVEL1_POLICY = POLICY_DIR / "level1_1.json"
+DEFAULT_LEVEL2_POLICY = POLICY_DIR / "level1_2.json"
 
 
 def load_action_indices(path: Path | str | None = None) -> list[int]:
@@ -37,9 +39,22 @@ def action_index_to_nes(index: int) -> list[int]:
     return list(buttons[:9])
 
 
+@dataclass(frozen=True)
+class StageSpec:
+    """One World 1 segment: map-enter script, in-level tape, checkpoints."""
+
+    id: str
+    policy_file: Path
+    start_state: str
+    after_state: str
+    enter: Callable[[], list[FrameAction]] | None
+    completion_min_progress: float
+    recordings_prefix: str
+
+
 @dataclass
 class Level1Policy:
-    """Replay a fixed action sequence for World 1-1."""
+    """Replay a fixed action-index tape (World 1-1 or 1-2)."""
 
     actions: list[int]
     frame: int = 0
@@ -84,3 +99,49 @@ def enter_level1_script() -> list[FrameAction]:
         for _ in range(8):
             frames.append(FrameAction(nes_idle_action(), "map_enter_wait"))
     return frames
+
+
+def enter_level2_script() -> list[FrameAction]:
+    """Map path from post-1-1 control onto World 1-2, then confirm entry.
+
+    AfterLevel1 sits on completed 1-1. One RIGHT is a path T-junction
+    (not enterable); a second RIGHT lands on the 1-2 panel (tile $04).
+    Caller must wait for Map_Operation $0D before playing this script.
+    """
+    frames: list[FrameAction] = []
+    for _ in range(8):
+        frames.append(FrameAction(nes_action("RIGHT"), "map_right"))
+    for _ in range(45):
+        frames.append(FrameAction(nes_idle_action(), "map_settle"))
+    for _ in range(8):
+        frames.append(FrameAction(nes_action("RIGHT"), "map_right"))
+    for _ in range(50):
+        frames.append(FrameAction(nes_idle_action(), "map_settle"))
+    for _ in range(3):
+        for _ in range(2):
+            frames.append(FrameAction(nes_action("A"), "map_enter"))
+        for _ in range(8):
+            frames.append(FrameAction(nes_idle_action(), "map_enter_wait"))
+    return frames
+
+
+STAGES: dict[str, StageSpec] = {
+    "1-1": StageSpec(
+        id="1-1",
+        policy_file=DEFAULT_LEVEL1_POLICY,
+        start_state="Level1_1",
+        after_state="AfterLevel1",
+        enter=enter_level1_script,
+        completion_min_progress=1500.0,
+        recordings_prefix="level1",
+    ),
+    "1-2": StageSpec(
+        id="1-2",
+        policy_file=DEFAULT_LEVEL2_POLICY,
+        start_state="Level1_2",
+        after_state="AfterLevel2",
+        enter=enter_level2_script,
+        completion_min_progress=1500.0,
+        recordings_prefix="level2",
+    ),
+}

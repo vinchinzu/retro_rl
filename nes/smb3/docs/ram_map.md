@@ -10,6 +10,9 @@ ADDR_IN_AIR       = 0x00D8
 ADDR_HVEL         = 0x00BD
 ADDR_MAP_Y        = 0x0078
 ADDR_MAP_X        = 0x0079
+ADDR_MAP_MOVE     = 0x007B  # remaining map-walk pixels
+ADDR_MAP_TILE     = 0x00E5  # tile under Mario ($04 = 1-2 panel)
+ADDR_MAP_OPERATION= 0x0729  # $0D = normal move/enter
 ADDR_LIVES        = 0x0736
 ADDR_WORLD        = 0x0727  # world number - 1
 ADDR_FORM         = 0x0746
