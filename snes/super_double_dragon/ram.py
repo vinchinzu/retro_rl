@@ -16,13 +16,18 @@ import numpy as np
 from retro_harness.ram_state import EnemyState, GameMode, GameState
 
 ADDR_STAGE = 0x001C
+ADDR_SCENE_LOCK = 0x0018
+ADDR_SCENE_SUB = 0x0019
 ADDR_CREDITS = 0x00D9
 ADDR_LIVES = 0x00DC
+ADDR_FLOOR = 0x00DE
 # High byte of the current P1 actor page (for example 0x12 -> 0x1200).
 # It is 0xFF while no player actor exists during an area transition.
 ADDR_PLAYER_PAGE = 0x1CF9
 
-ACTOR_BASES: tuple[int, ...] = tuple(page << 8 for page in range(0x06, 0x17))
+# Pages 0x06-0x17 are fighters.  0x17 holds the leftover gym fighter on
+# Area19_Clear and a third 0x1A enemy the 0x06-0x16 window missed.
+ACTOR_BASES: tuple[int, ...] = tuple(page << 8 for page in range(0x06, 0x18))
 # Mission 1 area 0x10 starts here, but the actor allocator moves P1 between
 # pages at area transitions. ``PLAYER_KIND`` is only a fallback for tests and
 # transition frames; ``ADDR_PLAYER_PAGE`` is authoritative during play.
@@ -159,6 +164,12 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
     )
     living = tuple(enemy for enemy in enemies if enemy.active)
     boss = max(living, key=lambda enemy: enemy.health, default=None)
+    drawn = [
+        base
+        for base in enemy_bases
+        if read_u8(ram, base + OFF_STATUS) == ACTOR_STATUS_DRAWN
+        and read_u8(ram, base + OFF_KIND) != UNUSED_KIND
+    ]
     return GameState(
         frame=frame,
         mode=_player_mode(stage, status, health),
@@ -178,19 +189,25 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
             "player_base": player_base,
             "player_status": status,
             "player_kind": read_u8(ram, player_base + OFF_KIND),
-            "player_world_x": read_u8(ram, player_base + OFF_WORLD_X),
+            "player_world_x": read_u16le(ram, player_base + OFF_WORLD_X),
             "player_screen_y": read_u8(ram, player_base + OFF_SCREEN_Y),
-            "active_actor_bases": [
-                base
-                for base in enemy_bases
-                if read_u8(ram, base + OFF_STATUS) == ACTOR_STATUS_DRAWN
-                and read_u8(ram, base + OFF_KIND) != UNUSED_KIND
+            "scene_lock": read_u8(ram, ADDR_SCENE_LOCK),
+            "scene_sub": read_u8(ram, ADDR_SCENE_SUB),
+            "floor": read_u8(ram, ADDR_FLOOR),
+            "active_actor_bases": drawn,
+            "drawn_actors": [
+                {
+                    "base": base,
+                    "kind": read_u8(ram, base + OFF_KIND),
+                    "world_x": read_u16le(ram, base + OFF_WORLD_X),
+                    "y": read_u8(ram, base + OFF_Y),
+                    "hp": read_u8(ram, base + OFF_HP),
+                    "screen_x": read_u8(ram, base + OFF_SCREEN_X),
+                }
+                for base in drawn
             ],
             "raw_enemy_hp": {
-                f"0x{base:04X}": read_u8(ram, base + OFF_HP)
-                for base in enemy_bases
-                if read_u8(ram, base + OFF_STATUS) == ACTOR_STATUS_DRAWN
-                and read_u8(ram, base + OFF_KIND) != UNUSED_KIND
+                f"0x{base:04X}": read_u8(ram, base + OFF_HP) for base in drawn
             },
         },
     )

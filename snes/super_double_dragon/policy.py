@@ -15,6 +15,7 @@ ATTACK_CYCLE = 14
 LEFTWARD_AREAS = frozenset({0x13})
 AIRPORT_STAIRS_AREA = 0x15
 AIRPORT_RUNWAY_AREA = 0x16
+GYM_STAIRS_AREA = 0x19
 # Runway actors shift between several screen-X projections while the plane
 # scrolls.  A wider poke band prevents left/right oscillation around Billy.
 AREA_ATTACK_RANGES = {0x16: 72, 0x17: 32}
@@ -57,6 +58,18 @@ class Stage1Policy(BehaviorNode):
             return FrameAction(buttons("RIGHT"), "stairs_right")
         return FrameAction(buttons("DOWN"), "stairs_down")
 
+    def _climb_gym_stairs(self, state: GameState) -> FrameAction:
+        """Walk left to Mission 3's gym stairs, then up the diagonal."""
+        # The dummy sits on the right; the staircase climbs up-left.  Walk
+        # right never leaves 0x19.  Long holds match the airport spiral.
+        phase = self._stairs_frame % 1600
+        self._stairs_frame += 1
+        if phase < 500:
+            return FrameAction(buttons("LEFT"), "gym_left")
+        if phase < 1100:
+            return FrameAction(buttons("UP", "LEFT"), "gym_up_left")
+        return FrameAction(buttons("UP"), "gym_up")
+
     def _attack(self) -> FrameAction:
         phase = self._combat_frame % ATTACK_CYCLE
         self._combat_frame += 1
@@ -87,6 +100,8 @@ class Stage1Policy(BehaviorNode):
                 self._combat_frame = 0
                 if state.stage == AIRPORT_STAIRS_AREA:
                     action = self._descend_airport_stairs(state)
+                elif state.stage == GYM_STAIRS_AREA:
+                    action = self._climb_gym_stairs(state)
                 elif state.stage == AIRPORT_RUNWAY_AREA:
                     action = FrameAction(
                         buttons("DOWN", "RIGHT"), "runway_down_right"
