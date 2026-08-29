@@ -30,3 +30,10 @@ def test_dead_idles() -> None:
     policy = Stage1Policy()
     tick = policy.tick(frame=1, score=0, health=0)
     assert tick.reason == "dead"
+
+
+def test_play_relative_frame_one_opens_walk() -> None:
+    """M4 leftover hands the policy play-relative frame 1, not boot time."""
+    policy = Stage1Policy(target_score=5)
+    tick = policy.tick(frame=1, score=0, health=60)
+    assert tick.reason == "open_walk"

@@ -19,6 +19,8 @@ uv run python tmnt_ii/scripts/setup_rom.py
 uv run python tmnt_ii/scripts/boot_probe.py
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python tmnt_ii/scripts/run_stage1_segment.py
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python tmnt_ii/scripts/run_stage1_segment.py --from-boot --trials 3
 uv run pytest tmnt_ii/tests -q
 ```
 
@@ -31,7 +33,7 @@ uv run pytest tmnt_ii/tests -q
 
 ## Next milestone
 
-Extend past score 5 / unlock next packs; natural-entry from boot (M4).
+Extend past score 5 / unlock next packs (`--target 8` from boot leftover).
 
 ## Norms
 

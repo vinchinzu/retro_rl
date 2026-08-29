@@ -1,6 +1,7 @@
 """Stage 1 segment policy for TMNT II (NES).
 
-First-wave clear (M3): from ``Level1``, score ≥ 5 without death.
+First-wave clear: score ≥ 5 without death from ``Level1`` (M3) or from
+power-on leftover (M4: boot script + leftover walk, no Level1 load).
 
 Recipe discovered by probe:
 
@@ -9,7 +10,8 @@ Recipe discovered by probe:
    (pure RIGHT+B stalls at score 4).
 3. **Push (score ≥ 5):** RIGHT pressure + B for later packs.
 
-NES buttons: B=attack, A=jump (fceumm 9-button layout).
+``tick`` ``frame`` is play-relative (1 after leftover / Level1), not boot
+time. NES buttons: B=attack, A=jump (fceumm 9-button layout).
 """
 
 from __future__ import annotations
