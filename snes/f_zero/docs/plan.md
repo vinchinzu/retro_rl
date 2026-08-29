@@ -9,9 +9,11 @@ continuous racing (steer, accelerate, boost)
 
 ## Useful RAM (targets)
 
-Confirmed: raw speed `0x0002`, live race/track state `0x0046/0x0047`,
-lateral `0x007F`, fine lateral `0x00A6`. Still needed: track progress,
-heading, lap, rank, energy, and collision state.
+Confirmed: raw speed `0x0002`, lateral `0x007F`, camera Y `0x00A6`,
+finish-line HUD `0x00B8` bit 4, explosion `0x00C3` bit 6, machine power
+`0x00C9`, heading `0x0BD1`, checkpoint facing `0x00C5`. Still needed: a
+sticky lap index, rank, and a track-relative offset (crash vs finish-line
+was the M3 risk).
 
 The confirmed fields are in `custom_integrations/FZero-Snes/data.json`; extend
 them with controlled steering, wall-contact, and finish-line perturbations.

@@ -19,6 +19,26 @@
     "lateral_fine": {
       "address": 166,
       "type": "<u2"
+    },
+    "screen_text": {
+      "address": 184,
+      "type": "|u1"
+    },
+    "finish_state": {
+      "address": 195,
+      "type": "|u1"
+    },
+    "checkpoint_facing": {
+      "address": 197,
+      "type": "|u1"
+    },
+    "power": {
+      "address": 201,
+      "type": "<i2"
+    },
+    "heading": {
+      "address": 3025,
+      "type": "|u1"
     }
   }
 }
