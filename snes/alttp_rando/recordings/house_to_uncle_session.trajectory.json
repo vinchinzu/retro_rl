@@ -1,0 +1,119 @@
+{
+  "action_schema_digest": "5fae99ab5c3c40109d28891c4660babdc71e8e296e05234d3aca849b556c37fb",
+  "contract_bundle_digest": "c0aeec2fd2724bc06853fe6397ec338f0e28272aa5dbeb4d86ec673a13de9d17",
+  "final_observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+  "identity_digest": "9ca226b3194ef557bcc80c425eabca1f093eed13f3c38a0f23cd6d3614ce4342",
+  "initial_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+  "milestones": [
+    {
+      "edge_id": "house_to_uncle_injected_failure",
+      "end_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+      "frames": 0,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {},
+      "reason": "injected house-exit desync",
+      "recovery_hint": "exclude_primary_and_replan",
+      "replan": true,
+      "skill_id": "z3.house_to_uncle.injected_failure",
+      "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+      "status": "retryable_failure"
+    },
+    {
+      "edge_id": "house_to_uncle",
+      "end_observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+      "frames": 5214,
+      "observed_capability_delta": [
+        "lamp",
+        "sword"
+      ],
+      "observed_resource_delta": {},
+      "reason": null,
+      "recovery_hint": null,
+      "replan": false,
+      "skill_id": "z3.house_to_uncle.vanilla_opening",
+      "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+      "status": "success"
+    }
+  ],
+  "observation_schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+  "policy_identity_digest": "9dfd4b612ebac2ffb0b172a2c308d1356465a0dd40cd753367b37aa730249b5e",
+  "provenance": {
+    "evidence_path": "snes/alttp_rando/recordings/house_to_uncle.evidence.json",
+    "game": "ALTTPRando-Snes",
+    "source": "SolverSession",
+    "start": "FirstPlay",
+    "substrate": "vanilla"
+  },
+  "reward_schema_digest": "10dd3d06b6eecb5d2a6d5f217a6450672f1351dcb072380719ecb39441929276",
+  "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
+  "steps": [
+    {
+      "action": {
+        "type": "alttp_rando.solver_adapter.RouteSkillCommand",
+        "value": {
+          "edge_id": "house_to_uncle",
+          "runner": "alttp_rando.house_to_uncle.play_house_to_uncle",
+          "target_node": "z3_uncle_sword"
+        }
+      },
+      "applied_frames": 5214,
+      "edge_id": "house_to_uncle",
+      "frame_end": 5214,
+      "frame_start": 0,
+      "milestones": [
+        "house_to_uncle"
+      ],
+      "observation_after": {
+        "capabilities": [
+          "lamp",
+          "sword"
+        ],
+        "frame": 5214,
+        "identity_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+        "node": {
+          "repr": "'z3_uncle_sword'",
+          "type": "str"
+        },
+        "resources": {},
+        "schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+        "values": {
+          "game_mode": 7,
+          "has_control": true,
+          "has_fighter_sword": true,
+          "has_lamp": true,
+          "indoors": true,
+          "room_base_id": 85
+        }
+      },
+      "observation_before": {
+        "capabilities": [],
+        "frame": 0,
+        "identity_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+        "node": {
+          "repr": "'z3_links_house'",
+          "type": "str"
+        },
+        "resources": {},
+        "schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+        "values": {
+          "game_mode": 7,
+          "has_control": true,
+          "has_fighter_sword": false,
+          "has_lamp": false,
+          "indoors": true,
+          "room_base_id": 4
+        }
+      },
+      "reward_components": {
+        "node_progress": 1.0
+      },
+      "sequence": 0,
+      "skill_id": "z3.house_to_uncle.vanilla_opening",
+      "state_digest_after": null,
+      "state_digest_before": null
+    }
+  ],
+  "succeeded": true,
+  "terminal_reason": "completed",
+  "version": "1"
+}

@@ -40,6 +40,9 @@ uv run python -c "from alttp_rando.seed import ensure_test_seed; ensure_test_see
 # FirstPlay → uncle (natural-entry edge; writes report + evidence)
 SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle
 
+# SolverSession house→uncle (replan + audited traces; vanilla FirstPlay)
+SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle_session
+
 # Multi-seed opening tip S/T dry-run (fixture seeds; publishes docs report)
 uv run python -m alttp_rando.scripts.run_opening_tip_campaign --mode dry --publish-docs
 uv run pytest snes/alttp_rando/tests/test_alttp_rando_opening_tip_campaign.py -q
@@ -55,6 +58,7 @@ Recordings → `recordings/` (MP4 + JSON).
 - Seed ROM / ALTTPR patch integration still open; demo uses JP vanilla.
 - Opening S/T dry-run is **substrate=vanilla** / **seed_source=fixture** —
   not shuffled-seed robustness until a generator/patch is wired.
+- SolverSession house→uncle is vanilla FirstPlay substrate, not shuffled S/T.
 - `house_to_uncle` is natural_entry; remaining early-graph edges stay planned
   until skills bind them.
 

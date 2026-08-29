@@ -1,0 +1,37 @@
+{
+  "action_schema_digest": "5fae99ab5c3c40109d28891c4660babdc71e8e296e05234d3aca849b556c37fb",
+  "contract_bundle_digest": "c0aeec2fd2724bc06853fe6397ec338f0e28272aa5dbeb4d86ec673a13de9d17",
+  "final_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+  "identity_digest": "8e6c4d20af06df2e30f53e4e3900b71eb4f172c483dbc622331d67c9e5702a40",
+  "initial_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+  "milestones": [
+    {
+      "edge_id": "house_to_uncle_injected_failure",
+      "end_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+      "frames": 0,
+      "observed_capability_delta": [],
+      "observed_resource_delta": {},
+      "reason": "injected house-exit desync",
+      "recovery_hint": "exclude_primary_and_replan",
+      "replan": true,
+      "skill_id": "z3.house_to_uncle.injected_failure",
+      "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+      "status": "retryable_failure"
+    }
+  ],
+  "observation_schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+  "policy_identity_digest": "9dfd4b612ebac2ffb0b172a2c308d1356465a0dd40cd753367b37aa730249b5e",
+  "provenance": {
+    "game": "ALTTPRando-Snes",
+    "outcome_index": 0,
+    "parent_trajectory_digest": "9ca226b3194ef557bcc80c425eabca1f093eed13f3c38a0f23cd6d3614ce4342",
+    "recovery_hint": "exclude_primary_and_replan",
+    "source": "SolverSession.failed-outcome"
+  },
+  "reward_schema_digest": "10dd3d06b6eecb5d2a6d5f217a6450672f1351dcb072380719ecb39441929276",
+  "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
+  "steps": [],
+  "succeeded": false,
+  "terminal_reason": "injected house-exit desync",
+  "version": "1"
+}
