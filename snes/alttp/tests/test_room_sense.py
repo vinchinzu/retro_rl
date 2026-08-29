@@ -226,6 +226,7 @@ def test_all_sanctuary_path_maps_load() -> None:
         "room_81",
         "room_82",
         "screen_1b_courtyard",
+        "screen_1b_grounds",
     }
     maps = set(list_room_maps())
     assert expected <= maps, f"missing maps: {expected - maps}"
@@ -239,6 +240,27 @@ def test_all_sanctuary_path_maps_load() -> None:
         assert m.name
         # Zelda-path rooms should declare at least one door seed.
         assert m.doors or mid in {"room_71"}, mid
+
+
+def test_grounds_outdoor_hole_map() -> None:
+    from alttp.ram import SECRET_HOLE_WORLD_X, SECRET_HOLE_WORLD_Y, SECRET_PASSAGE_ROOM
+
+    m = load_room_map("screen_1b_grounds")
+    assert m.outdoors is True
+    assert m.screen_id == 0x1B
+    door = m.door("secret_hole_to_0x55")
+    assert door is not None
+    assert door.direction == "UP"
+    assert door.to_room == SECRET_PASSAGE_ROOM
+    assert door.approach_xy == (2430, 1704)
+    hole = m.point("secret_hole")
+    assert hole is not None
+    assert (hole.x, hole.y) == (SECRET_HOLE_WORLD_X, SECRET_HOLE_WORLD_Y)
+    wps = m.waypoints_for_door(door)
+    assert len(wps) >= 8
+    assert wps[-1][0] == door.approach_xy[0]
+    assert wps[-1][1] == door.approach_xy[1]
+    assert "west_lane" in door.path
 
 
 def test_courtyard_outdoor_map() -> None:
