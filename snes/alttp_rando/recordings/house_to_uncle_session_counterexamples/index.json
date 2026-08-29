@@ -1,0 +1,19 @@
+{
+  "counterexamples": [
+    {
+      "cluster": "cc5049f61c798c28",
+      "path": "trajectories/8e6c4d20af06df2e30f53e4e3900b71eb4f172c483dbc622331d67c9e5702a40.json",
+      "provenance": {
+        "game": "ALTTPRando-Snes",
+        "outcome_index": 0,
+        "parent_trajectory_digest": "9ca226b3194ef557bcc80c425eabca1f093eed13f3c38a0f23cd6d3614ce4342",
+        "recovery_hint": "exclude_primary_and_replan",
+        "source": "SolverSession.failed-outcome"
+      },
+      "step_count": 0,
+      "terminal_reason": "injected house-exit desync",
+      "trajectory_digest": "8e6c4d20af06df2e30f53e4e3900b71eb4f172c483dbc622331d67c9e5702a40"
+    }
+  ],
+  "schema_version": 1
+}
