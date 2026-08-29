@@ -5,10 +5,13 @@ use progression writes or door warps. State loads are development-only.
 
 Authority:
 - stable-retro RAM (``alttp.ram``) is gameplay truth.
-- z3 / Yaze labels are logic/nav associations only.
+- Outdoor approach geometry: ``maps/screen_1b_grounds.json`` door
+  ``secret_hole_to_0x55``. Do not redeclare world coords or the former
+  open-loop D-pad approach macro in Python.
+- Bush-lift / hole-drop remains a measured trigger (candidates below).
 
 Measured 2026-07-29 headless probes (HyruleCastleGrounds predecessor):
-- Scripted walk reaches the secret-hole approach (~world 2430,1704 on
+- Map path reaches the secret-hole approach (~world 2430,1704 on
   screen 0x1B), near Yaze entrance 0x7D (2432,1696).
 - Main south gate is soldier-blocked (text mode 0x0E) until sword.
 - Proven bush-lift / hole-drop: face up, short A, wait, walk up into the
@@ -17,13 +20,12 @@ Measured 2026-07-29 headless probes (HyruleCastleGrounds predecessor):
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from functools import lru_cache
 
 from alttp import primitives
 from alttp.opening_route.runner import PhaseFn
 from alttp.ram import (
-    SECRET_HOLE_WORLD_X,
-    SECRET_HOLE_WORLD_Y,
     SECRET_PASSAGE_ROOM,
     AlttpSnapshot,
     castle_entry_accepted,
@@ -31,6 +33,7 @@ from alttp.ram import (
     snapshot_to_diag,
     uncle_sword_event_accepted,
 )
+from alttp.room_map import KnownDoor, RoomMap, load_room_map
 from alttp.route_report import RoutePhaseResult, SegmentResult, segment_result_factory
 from alttp.startup import (
     BootEnv,
@@ -44,28 +47,30 @@ from alttp.startup import (
 
 _REPORT = segment_result_factory("alttp_castle_to_sword_report")
 
-# ---------------------------------------------------------------------------
-# Proven approach script: castle-grounds spawn → near secret hole 0x7D.
-# Derived from beam/BFS search on real ROM (see recordings/castle_to_sword*).
-# ---------------------------------------------------------------------------
+MAP_ID = "screen_1b_grounds"
+HOLE_DOOR_LABEL = "secret_hole_to_0x55"
 
-CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT: tuple[tuple[tuple[str, ...], int], ...] = (
-    (("UP",), 16),
-    (("LEFT",), 64),
-    (("UP",), 16),
-    (("LEFT",), 16),
-    (("UP",), 16),
-    (("LEFT",), 128),
-    (("UP",), 144),
-    (("RIGHT",), 208),
-    (("UP",), 32),
-    (("UP",), 160),
-    (("UP", "LEFT"), 20),
-    (("UP", "RIGHT"), 40),
-    (("UP",), 100),
-    (("UP", "RIGHT"), 20),
-    (("UP", "LEFT"), 20),
-)
+
+@lru_cache(maxsize=1)
+def grounds_map() -> RoomMap:
+    return load_room_map(MAP_ID)
+
+
+@lru_cache(maxsize=1)
+def hole_door() -> KnownDoor:
+    door = grounds_map().door(HOLE_DOOR_LABEL)
+    if door is None:
+        raise KeyError(f"door {HOLE_DOOR_LABEL!r} missing from {MAP_ID}")
+    return door
+
+
+def hole_approach_waypoints() -> list[primitives.Waypoint]:
+    """Map-backed axis-aligned path from grounds spawn toward the hole."""
+    return [
+        primitives.Waypoint(x, y, tolerance=tol, label=label)
+        for x, y, label, tol in grounds_map().waypoints_for_door(hole_door())
+    ]
+
 
 # Proven bush-lift / hole-drop from the hole-approach position (2026-07-29).
 # Face up, lift the bush with A, wait for the lift anim, walk north into the
@@ -100,8 +105,87 @@ UNCLE_APPROACH_SCRIPT: tuple[tuple[tuple[str, ...], int], ...] = (
 )
 
 
+def _at_hole_approach(snap: AlttpSnapshot) -> bool:
+    """Tight map approach (not the 48px RAM near_secret_hole window)."""
+    if snap.indoors or snap.dark_world:
+        return False
+    ax, ay = hole_door().approach_xy
+    tol = hole_door().tolerance_for("secret_hole_approach", 12)
+    return abs(snap.link_x - ax) <= tol and abs(snap.link_y - ay) <= tol
+
+
+def _arrived(snap: AlttpSnapshot) -> bool:
+    return snap.in_secret_passage or snap.indoors or _at_hole_approach(snap)
+
+
+def _walk_axis_aligned(
+    env: BootEnv,
+    waypoint: primitives.Waypoint,
+    *,
+    stop_when: Callable[[AlttpSnapshot], bool] | None = None,
+    max_frames: int = 900,
+) -> primitives.PrimitiveResult:
+    """Cardinal-only walk to a map waypoint.
+
+    Greedy diagonal ``move_to`` clips the south/west hedges on this screen.
+    """
+    frames = 0
+    unchanged = 0
+    previous_xy: tuple[int, int] | None = None
+    while frames < max_frames:
+        snap = snapshot_env(env)
+        if stop_when is not None and stop_when(snap):
+            return primitives.PrimitiveResult(
+                True, waypoint.label or "stopped", frames, snap
+            )
+        if waypoint.reached(snap.link_x, snap.link_y):
+            return primitives.PrimitiveResult(
+                True, waypoint.label or "waypoint reached", frames, snap
+            )
+        dx = waypoint.x - snap.link_x
+        dy = waypoint.y - snap.link_y
+        if abs(dx) >= abs(dy) and abs(dx) > waypoint.tolerance:
+            face = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            face = "DOWN" if dy > 0 else "UP"
+        step_frames(env, action_for(face), 2)
+        frames += 2
+        xy = (snapshot_env(env).link_x, snapshot_env(env).link_y)
+        if xy == previous_xy:
+            unchanged += 1
+        else:
+            unchanged = 0
+            previous_xy = xy
+        if unchanged < 40:
+            continue
+        # Nudge the other axis once; hedges often block the longer remainder.
+        snap = snapshot_env(env)
+        dx = waypoint.x - snap.link_x
+        dy = waypoint.y - snap.link_y
+        if abs(dx) > waypoint.tolerance:
+            step_frames(env, action_for("RIGHT" if dx > 0 else "LEFT"), 8)
+            frames += 8
+        if abs(dy) > waypoint.tolerance:
+            step_frames(env, action_for("DOWN" if dy > 0 else "UP"), 8)
+            frames += 8
+        if (snapshot_env(env).link_x, snapshot_env(env).link_y) == xy:
+            return primitives.PrimitiveResult(
+                False,
+                f"stuck before {waypoint.label or 'waypoint'}",
+                frames,
+                snapshot_env(env),
+            )
+        unchanged = 0
+    return primitives.PrimitiveResult(
+        False,
+        f"timeout before {waypoint.label or 'waypoint'}",
+        frames,
+        snapshot_env(env),
+    )
+
+
 def approach_secret_hole(env: BootEnv) -> RoutePhaseResult:
-    """Walk from castle-grounds spawn toward the secret-hole approach."""
+    """Walk map path from castle-grounds spawn toward the secret-hole approach."""
     frames = 0
     settle = primitives.settle_control(env)
     frames += settle.frames
@@ -115,17 +199,44 @@ def approach_secret_hole(env: BootEnv) -> RoutePhaseResult:
             detail="predecessor is not castle-grounds controllable",
             diag=snapshot_to_diag(start),
         )
+    if _arrived(start):
+        return RoutePhaseResult(
+            phase="approach_secret_hole",
+            ok=True,
+            frames=frames,
+            snapshot=start,
+            detail="already at hole approach or indoors",
+            diag=snapshot_to_diag(start),
+        )
 
-    script = primitives.run_script(
-        env,
-        CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT,
-        stop_when=lambda s: s.indoors,
-    )
-    frames += script.frames
+    wps = hole_approach_waypoints()
+    if not wps:
+        return RoutePhaseResult(
+            phase="approach_secret_hole",
+            ok=False,
+            frames=frames,
+            snapshot=start,
+            detail=f"no hole path in {MAP_ID}",
+            diag=snapshot_to_diag(start),
+        )
+
+    last = primitives.PrimitiveResult(True, "path", 0, start)
+    for wp in wps:
+        snap = snapshot_env(env)
+        if _arrived(snap) or wp.reached(snap.link_x, snap.link_y):
+            continue
+        last = _walk_axis_aligned(env, wp, stop_when=_arrived)
+        frames += last.frames
+        if _arrived(last.snapshot):
+            break
+        if not last.ok:
+            break
+
     settle = primitives.settle_control(env)
     frames += settle.frames
     snap = settle.snapshot
-    ok = snap.near_secret_hole or snap.in_secret_passage or snap.indoors
+    ok = _arrived(snap) or snap.near_secret_hole
+    ax, ay = hole_door().approach_xy
     return RoutePhaseResult(
         phase="approach_secret_hole",
         ok=ok,
@@ -137,10 +248,14 @@ def approach_secret_hole(env: BootEnv) -> RoutePhaseResult:
             else (
                 "entered indoors during approach"
                 if snap.indoors
-                else "finished approach off hole tolerance"
+                else (
+                    last.reason
+                    if not last.ok
+                    else f"finished approach off hole tolerance xy=({snap.link_x},{snap.link_y}) target~{ax},{ay}"
+                )
             )
         ),
-        diag=snapshot_to_diag(snap),
+        diag={**snapshot_to_diag(snap), "mapId": MAP_ID, "door": HOLE_DOOR_LABEL},
     )
 
 
@@ -446,7 +561,7 @@ def run_from_castle_grounds(
         blocker = (
             "at secret-hole approach but bush-lift/hole-drop into room "
             f"0x{SECRET_PASSAGE_ROOM:02X} did not complete "
-            f"(target world ~{SECRET_HOLE_WORLD_X},{SECRET_HOLE_WORLD_Y})"
+            f"(target world ~{hole_door().approach_xy[0]},{hole_door().approach_xy[1]})"
         )
     else:
         phase = approach.phase

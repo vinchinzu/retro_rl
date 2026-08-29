@@ -24,8 +24,6 @@ from alttp.ram import (
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
     SECRET_HOLE_APPROACH_TOLERANCE,
-    SECRET_HOLE_WORLD_X,
-    SECRET_HOLE_WORLD_Y,
     SECRET_PASSAGE_ROOM,
     ZELDA_CELL_ROOM,
     AlttpSnapshot,
@@ -87,6 +85,19 @@ MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y = _map_xy(
     default=(2040, 1790),
 )
 MAIN_DOOR_APPROACH_TOLERANCE = 24
+
+# Secret bush hole (maps/screen_1b_grounds.json secret_hole_to_0x55).
+SECRET_HOLE_APPROACH_X, SECRET_HOLE_APPROACH_Y = _map_xy(
+    "screen_1b_grounds",
+    door="secret_hole_to_0x55",
+    point="secret_hole_approach",
+    default=(2430, 1704),
+)
+SECRET_HOLE_X, SECRET_HOLE_Y = _map_xy(
+    "screen_1b_grounds",
+    point="secret_hole",
+    default=(2432, 1696),
+)
 
 AnchorTier = str  # "route" | "approach" | "trigger"
 
@@ -239,13 +250,13 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             screen_id=HYRULE_CASTLE_SCREEN,
             require_indoors=False,
             position=PositionWindow(
-                SECRET_HOLE_WORLD_X,
-                SECRET_HOLE_WORLD_Y,
+                SECRET_HOLE_APPROACH_X,
+                SECRET_HOLE_APPROACH_Y,
                 SECRET_HOLE_APPROACH_TOLERANCE,
                 label="secret_hole_approach",
             ),
             yaze_entrance_id=0x7D,
-            map_note="Yaze entrance 0x7D @ world (2432,1696)",
+            map_note="maps/screen_1b_grounds.json door secret_hole_to_0x55; Yaze 0x7D",
             screenshot_hint="recordings/debug_nav/exact_hole.png",
             graph_node_id="castle_grounds",
             notes=("Approach pocket before bush-lift; not yet in room 0x55.",),
@@ -258,13 +269,16 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             screen_id=HYRULE_CASTLE_SCREEN,
             require_indoors=False,
             position=PositionWindow(
-                SECRET_HOLE_WORLD_X,
-                SECRET_HOLE_WORLD_Y,
+                SECRET_HOLE_X,
+                SECRET_HOLE_Y,
                 16,
                 label="secret_hole_exact",
             ),
             yaze_entrance_id=0x7D,
-            map_note="Hitbox: face UP, A×4, wait 20, UP×56 → room 0x55",
+            map_note=(
+                "maps/screen_1b_grounds.json secret_hole; "
+                "hitbox: face UP, A×4, wait 20, UP×56 → room 0x55"
+            ),
             notes=(
                 "Trigger/hitbox problem — see docs/TRIGGER_HANDOFF.md.",
                 "Proven SECRET_HOLE_ENTRY_SCRIPT; min UP after A/wait = 40.",

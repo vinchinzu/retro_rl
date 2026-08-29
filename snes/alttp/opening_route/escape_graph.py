@@ -182,12 +182,19 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_ROOM_55_UNCLE,
         direction="down",
         verification=VERIFICATION_CONTINUOUS,
-        provenance="castle_to_sword.SECRET_HOLE_ENTRY_SCRIPT",
+        provenance="castle_to_sword.approach_secret_hole",
         goal="enter_secret_passage_0x55",
         paths=_BOTH_PATHS,
         meta={
             "status_fact": "grounds→hole",
             "z3_label": "Hyrule Castle Secret Entrance Drop",
+            "map_id": "screen_1b_grounds",
+            "door_label": "secret_hole_to_0x55",
+            "tier": "route+approach",
+            "note": (
+                "Map path axis-aligned; bush-lift trigger is "
+                "castle_to_sword.BUSH_LIFT_CANDIDATES."
+            ),
         },
     ),
     EscapeHop(

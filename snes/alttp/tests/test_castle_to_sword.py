@@ -6,9 +6,11 @@ import numpy as np
 
 from alttp.opening_route.castle_to_sword import (
     BUSH_LIFT_CANDIDATES,
-    CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT,
+    HOLE_DOOR_LABEL,
+    MAP_ID,
     SECRET_HOLE_ENTRY_SCRIPT,
     evaluate_acceptance,
+    hole_approach_waypoints,
     run_from_castle_grounds,
 )
 from alttp.ram import (
@@ -166,8 +168,18 @@ def test_env_predicates_use_get_ram() -> None:
 
 
 def test_approach_script_nonempty_and_candidates() -> None:
-    assert len(CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT) >= 8
-    assert all(frames > 0 for _, frames in CASTLE_GROUNDS_TO_SECRET_HOLE_SCRIPT)
+    from alttp.room_map import load_room_map
+
+    m = load_room_map(MAP_ID)
+    door = m.door(HOLE_DOOR_LABEL)
+    assert door is not None
+    assert door.approach_xy == (2430, 1704)
+    wps = hole_approach_waypoints()
+    assert len(wps) >= 8
+    assert wps[-1].label in {"secret_hole_approach", f"{HOLE_DOOR_LABEL}_approach"}
+    assert (wps[-1].x, wps[-1].y) == door.approach_xy
+    assert m.point("secret_hole") is not None
+    assert m.point("grounds_spawn") is not None
     assert len(BUSH_LIFT_CANDIDATES) >= 3
     assert SECRET_HOLE_ENTRY_SCRIPT[0][0] == ("UP",)
     assert any(buttons == ("A",) for buttons, _ in SECRET_HOLE_ENTRY_SCRIPT)
@@ -205,14 +217,16 @@ class _FakeRouteEnv:
 
     def step(self, _action: object) -> None:
         self.steps += 1
-        # After enough steps, fake arrival near hole for controller smoke.
-        if self.steps > 500:
+        # After enough steps, fake arrival at the map hole-approach tile.
+        if self.steps > 40:
             from alttp.ram import LINK_X, LINK_Y
+            from alttp.opening_route.castle_to_sword import hole_door
 
-            self._writes[LINK_X] = SECRET_HOLE_WORLD_X & 0xFF
-            self._writes[LINK_X + 1] = (SECRET_HOLE_WORLD_X >> 8) & 0xFF
-            self._writes[LINK_Y] = SECRET_HOLE_WORLD_Y & 0xFF
-            self._writes[LINK_Y + 1] = (SECRET_HOLE_WORLD_Y >> 8) & 0xFF
+            ax, ay = hole_door().approach_xy
+            self._writes[LINK_X] = ax & 0xFF
+            self._writes[LINK_X + 1] = (ax >> 8) & 0xFF
+            self._writes[LINK_Y] = ay & 0xFF
+            self._writes[LINK_Y + 1] = (ay >> 8) & 0xFF
 
 
 def test_run_from_castle_grounds_controller_smoke() -> None:
