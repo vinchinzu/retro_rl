@@ -58,6 +58,9 @@ Soft max ~1000 LOC: merge into `StageSpec` / `policy` or delete
 - Do not absolute-stitch a faster 1-1 into old 1-2. Retime from control.
   Warpless is **#3728M**, not warps #1715M. Pin boot: `set_state` →
   `reset()` → `set_state`. RAM y is head/top (floor stand y=176).
+  2-2 TAS @10451 from 7999/2440 unique-peaks x=2225 after a Cheep hit at
+  body 1399 / x=2041 (Fire→Small). Do not patch that body; do not
+  approx-heal swim.
 
 ## Pointers
 

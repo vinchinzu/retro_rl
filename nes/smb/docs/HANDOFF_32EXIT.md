@@ -12,8 +12,11 @@ Warp any% is a different track (`record_happylee`, `natural_82`).
 ## TL;DR
 
 **1-4 and 2-1 are green.** 2-1 is the clip-phase recut **2440f @7999**
-(+84f vs movie-aligned 8095/2356). Next knob is **2-2** from that drop.
-Do not start 2-3 until 2-2 plays from the 2-1 predecessor.
+(+84f vs movie-aligned 8095/2356). **2-2 is not exported.** First miss
+on the unique TAS @10451 peak is a Cheep-cheep hit (Fire→Small) at body
+**1399 / x=2041**, then the whirlpool corner clip fails at **x=2225**.
+Do not start 2-3 until 2-2 plays from the 2-1 predecessor. Do not bake a
+patched 2-2 body.
 
 Search / export / verify is one table (`WARPLESS_LEGS` +
 `smb.tas.warpless_extract`). Do not clone per-stage search functions.
@@ -43,7 +46,7 @@ approx-heal 2-2 clips.
 
 Leave success = **2-3 control** (world 1, dash 2, x≤80, timer>0, ps 7/8).
 
-## 2-2 search (open)
+## 2-2 search (open — first miss)
 
 Movie-aligned 2-1 (8095/2356) never left 2-3. Recut 2-1 to **7999/2440**
 and searched from that drop (`--from-pred`, wait=0, play 10347f):
@@ -54,19 +57,29 @@ and searched from that drop (`--from-pred`, wait=0, play 10347f):
 | 8095/2356 drop + lead 0..21 | 10445–10457 | `si+lead=10451` only; same 1315 miss |
 | 7999/2440 drop ±80 @10439 | 10359–10519 | unique peak **10451 / x=2225** stall @1769 |
 | 7999/2440 drop lead 0..16 @10451 | 17 trials | lead≥1 loses the 1315 clip |
+| 7999/2440 drop odd 10291–10611 step=2 | 161 trials | unique peak **10451 / x=2225** (n_clear=0) |
+| 7999/2440 drop 10451 ±6 | 13 trials | only 10451 passes 1315 |
+| 7999/2440 drop 10451 ± 21k (k=-8..8) | 17 trials | k=0 only at 2225 |
 
-7999–8019 / 2440 leaves are identical at TAS @10451 (all 2225 @1769).
-7979/2461 and ≥8045 stay stuck at 1315. 2-2 `control` now accepts y=0.
+All 2-1 drop leaves in 7935–8095 are **21f classes** (2356…2503) with the
+same drop RAM (y=0, timer=401, frame_counter=24). Only **7999/2440**
+lets TAS @10451 clip the first wall (x=1315 @907, still Fire). The next
+2-1 class (8021/2419) peaks at x=1235. 2-1 lead=1 dies at x=531.
 
-**2225 is the coral tower**, not the exit pipe. TAS @10451 from the recut
-drop clips the first wall then bonks the tower face (y≈61, xs→0). Extra
-A at body 1480–1511 enters the tower to **x=2383–2385** (xs=24 at x=2301
-y=75) then wrap-death at the bottom (y 0→255, ps=6). Holding R/RA/RLA
-from inside does not pop out. Evidence:
+**First miss (halt):** TAS @10451 from 7999/2440 is Fire through 1315
+then a Cheep-cheep (type 10) at body **1399 / x=2041 / y=89 / ps=10**
+drops power 2→0. TAS B-shots at 1366 and 1379 do not connect. Whirlpool
+corner (HappyLee 2-2 clip) then fails as Small: wrap y=202 @1588 / x=2224
+(xf=16), stall x=2225 @1769, death @2017 x=2160. Extra A at 1480–1511
+enters the tower to x=2383–2385 then wrap-death — that is a patched
+body, not a #3728M cut. Evidence:
+`recordings/tas_import/warpless_3728M/2_2.json` (wider odd search),
 `recordings/tas_import/warpless_3728M/2_2_x2225.png`.
 
-Next: finish the tower clip from 7999/2440 + TAS @10451 (keep a pure
-#3728M cut; do not bake a patched body). Isolated 1-3 remains rr-tb15.
+`smb.approx` does not model swim. Next 2-2 extract is still a **pure
+#3728M cut** that reaches 2-3 control from this 2-1 drop (or a new 2-1
+class that still clips 1315 **and** keeps Fire through x=2041). Isolated
+1-3 remains rr-tb15.
 
 ## Same-file chain (locked)
 
@@ -157,7 +170,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 - Cap every walk/search loop. 1-3 search was 161 starts; 2 clears
   (4653/1740 shorter than 4589/1803). 1-4 search 161 starts; 7 clears
   (6393/1702 shortest, movie-aligned). 2-2 from 7999/2440 unique-peaks
-  TAS @10451 at the coral tower (x=2225); 8095/2356 unique-peaks at 1315.
+  TAS @10451 at x=2225 after Cheep hit 1399/x=2041; 8095/2356 unique-
+  peaks at 1315. Pure cut only.
 - `--from-pred` pins at predecessor leave (2-2 drop). 2-2 `control`
   accepts y=0, so default reach is also wait=0. Landed y≥160 is the
   x≈700 stall path.
@@ -168,7 +182,8 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 ## Beads
 
 - **rr-g2ht** — remaining #3728M extract (2-2…8-4). 2-1 recut 2440f
-  @7999. Next: heal 2-2 coral tower @x=2225 from TAS 10451.
+  @7999. 2-2 first miss: Cheep hit f=1399 x=2041 on unique TAS @10451
+  peak (then 2225 stall). Keep a pure cut; do not patch.
 - **rr-z01b** — 1-4 slice; done.
 - **rr-tb15** — isolated Level1_3; leave open.
 - **rr-n6sz** — human `all_exits_v1` tape; not this track.
