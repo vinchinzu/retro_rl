@@ -1,0 +1,183 @@
+{
+  "game": "DonkeyKongCountry-Snes",
+  "level_id": "dkc_jungle_hijinks",
+  "display_name": "Jungle Hijinxs",
+  "start_state": "JungleHijinks",
+  "natural_entry": false,
+  "actions": "snes/donkey_kong_country/recordings/jungle_hijinks_isolated_actions.json",
+  "hillclimb_run": "snes/donkey_kong_country/optimizer/runs/dkc_jungle_hijinks/hc_clean_001",
+  "hillclimb_checkpoint": "hillclimb_iter021000_best.json",
+  "hillclimb_claimed": {
+    "completed": true,
+    "total_frames": 1678,
+    "max_progress": 5251.0,
+    "bonus_frames": 1,
+    "num_frames": 1781,
+    "fitness": 98323.0
+  },
+  "completion_contract": {
+    "start_level_id": 22,
+    "start_level_id_hex": "0x16",
+    "real_exit_id": 114,
+    "real_exit_id_hex": "0x72",
+    "real_exit_name": "level complete screen",
+    "next_level_id": 12,
+    "next_level_id_hex": "0x0C",
+    "next_level_name": "Ropey Rampage",
+    "bonus_ids": [
+      "0x06",
+      "0x25"
+    ],
+    "completion_min_progress": 4000.0
+  },
+  "start": {
+    "level_id": 22,
+    "level_id_hex": "0x16",
+    "camera_x": 144,
+    "player_x": 201,
+    "player_y": 8,
+    "lives": 4,
+    "bonus_timer": 95,
+    "timer_frames": 219,
+    "timer_minutes": 9
+  },
+  "completed": true,
+  "died": false,
+  "frames": 1682,
+  "gameplay_secs": 28.03,
+  "max_progress": 5252.0,
+  "timer_frames": 1566,
+  "level_id_leftover": "0x72",
+  "level_id_leftover_int": 114,
+  "level_id_after_full_sequence": "0x0C",
+  "leftover_at_complete": {
+    "level_id": 114,
+    "level_id_hex": "0x72",
+    "camera_x": 0,
+    "player_x": 0,
+    "player_y": 0,
+    "lives": 5,
+    "bonus_timer": 0,
+    "timer_frames": 1786,
+    "timer_minutes": 9
+  },
+  "leftover_after_full_sequence": {
+    "level_id": 12,
+    "level_id_hex": "0x0C",
+    "camera_x": 0,
+    "player_x": 0,
+    "player_y": 0,
+    "lives": 5,
+    "bonus_timer": 0,
+    "timer_frames": 1786,
+    "timer_minutes": 9
+  },
+  "bonus_frames": 1,
+  "bonus_ids_visited": [],
+  "level_id_transitions": [
+    {
+      "frame": 1681,
+      "from": "0x16",
+      "to": "0x72",
+      "camera_x": 0,
+      "lives": 5,
+      "bonus_timer": 0
+    },
+    {
+      "frame": 1746,
+      "from": "0x72",
+      "to": "0x0C",
+      "camera_x": 0,
+      "lives": 5,
+      "bonus_timer": 0
+    }
+  ],
+  "trials": [
+    {
+      "trial": 1,
+      "completed": true,
+      "died": false,
+      "total_frames": 1682,
+      "gameplay_start_frame": 0,
+      "timer_frames": 1566,
+      "max_progress": 5252.0,
+      "max_x": 403.0,
+      "final_x": 0.0,
+      "final_y": 0.0,
+      "level_id_at_end": 114,
+      "level_id_at_end_hex": "0x72",
+      "bonus_frames": 1,
+      "fitness": 98319.0,
+      "leftover": {
+        "level_id": 114,
+        "level_id_hex": "0x72",
+        "camera_x": 0,
+        "player_x": 0,
+        "player_y": 0,
+        "lives": 5,
+        "bonus_timer": 0,
+        "timer_frames": 1786,
+        "timer_minutes": 9
+      }
+    },
+    {
+      "trial": 2,
+      "completed": true,
+      "died": false,
+      "total_frames": 1682,
+      "gameplay_start_frame": 0,
+      "timer_frames": 1566,
+      "max_progress": 5252.0,
+      "max_x": 403.0,
+      "final_x": 0.0,
+      "final_y": 0.0,
+      "level_id_at_end": 114,
+      "level_id_at_end_hex": "0x72",
+      "bonus_frames": 1,
+      "fitness": 98319.0,
+      "leftover": {
+        "level_id": 114,
+        "level_id_hex": "0x72",
+        "camera_x": 0,
+        "player_x": 0,
+        "player_y": 0,
+        "lives": 5,
+        "bonus_timer": 0,
+        "timer_frames": 1786,
+        "timer_minutes": 9
+      }
+    },
+    {
+      "trial": 3,
+      "completed": true,
+      "died": false,
+      "total_frames": 1682,
+      "gameplay_start_frame": 0,
+      "timer_frames": 1566,
+      "max_progress": 5252.0,
+      "max_x": 403.0,
+      "final_x": 0.0,
+      "final_y": 0.0,
+      "level_id_at_end": 114,
+      "level_id_at_end_hex": "0x72",
+      "bonus_frames": 1,
+      "fitness": 98319.0,
+      "leftover": {
+        "level_id": 114,
+        "level_id_hex": "0x72",
+        "camera_x": 0,
+        "player_x": 0,
+        "player_y": 0,
+        "lives": 5,
+        "bonus_timer": 0,
+        "timer_frames": 1786,
+        "timer_minutes": 9
+      }
+    }
+  ],
+  "trial_count": 3,
+  "success_rate": 1.0,
+  "real_level_complete": true,
+  "false_bonus_green": false,
+  "notes": "Isolated Jungle Hijinks clear from JungleHijinks.state. level_id stays 0x16 until frame 1681, then 0x72 (level-complete screen), then 0x0C (Ropey Rampage). Bonus rooms 0x25/0x06 were never entered. bonus_frames=1 is the completion frame counted as sub-level. Hillclimb JSON reported 1678f / progress 5251; live verify is 1682f / 5252."
+}
