@@ -14,7 +14,7 @@ from typing import Dict, List
 
 from harvest.core.tile_catalog import Tool
 from harvest.planner.day_plan_status import FARM_TILEMAP
-from harvest.planner.day_phase_types import PhaseSpec
+from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 # Domain modules (re-exported below; no cycle — they only import PhaseSpec).
 from harvest.planner.day_phase_berry import (  # noqa: F401
@@ -579,6 +579,83 @@ GO_HOME_TRIGGER_PHASES = frozenset({
 })
 
 
+def crop_establish_phases() -> List[PhaseSpec]:
+    """Hoe + plant pass: ensure seeds/hoe, walk to field, establish plots."""
+    return [
+        ENSURE_CROP_SEEDS_PHASE,
+        NAV_CROP_PHASE,
+        CROP_ESTABLISH_PHASE,
+    ]
+
+
+def pocket_clear_phase() -> PhaseSpec:
+    """Lift weeds/stones inside the y=31 fence so hoe stands have a BFS path."""
+    from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
+
+    return PhaseSpec(
+        "CLEAR_PLOT",
+        "clear_field",
+        {
+            "timeout": 7000,
+            "fetch_tools": False,
+            "prefer_lift_for_weeds": True,
+            "prefer_lift_for_stones": True,
+            "farm_bounds": WEST_PLANT_POCKET_BOUNDS,
+            "priority": ["weed", "stone"],
+        },
+        failure_policy="optional",
+        required_maps=(0x00,),
+        estimated_frames=5000,
+        failure_modes=("timeout_budget", "pocket_sealed"),
+    )
+
+
+def pocket_plant_phases() -> List[PhaseSpec]:
+    """Shed hoe+seeds first, then pocket clear → hoe/plant → can/water."""
+    from harvest.planner.d2_work import d2_post_shop_work_phases
+
+    return d2_post_shop_work_phases()
+
+
+def crop_water_phases(*, include_nav: bool = True) -> List[PhaseSpec]:
+    """Water pass: ensure can, optional field nav, water established crops."""
+    phases: List[PhaseSpec] = [ENSURE_WATERING_CAN_PHASE]
+    if include_nav:
+        phases.append(NAV_CROP_PHASE)
+    phases.append(CROP_WATER_PHASE)
+    return phases
+
+
+def _crop_work_phases(
+    *,
+    has_harvest: bool,
+    has_waterable: bool,
+    has_seeds: bool,
+    is_rainy: bool,
+    late_day: bool,
+    policy: DayPlannerPolicy,
+) -> List[PhaseSpec]:
+    plant_seeds = bool(has_seeds and policy.include_planting and not late_day)
+    needs_manual_water = bool(not is_rainy and (has_waterable or plant_seeds))
+    needs_crop_phase = plant_seeds or needs_manual_water
+    if late_day:
+        needs_crop_phase = bool(has_waterable and not is_rainy)
+        plant_seeds = False
+        needs_manual_water = bool(has_waterable and not is_rainy)
+    if not policy.include_watering or not needs_crop_phase:
+        return []
+
+    phases: List[PhaseSpec] = []
+    if plant_seeds:
+        phases.extend(crop_establish_phases())
+    if needs_manual_water:
+        prefer_harvest_nav = bool(
+            policy.include_harvest and has_harvest and not late_day and not plant_seeds
+        )
+        phases.extend(crop_water_phases(include_nav=not prefer_harvest_nav))
+    return phases
+
+
 __all__ = [
     "EXIT_HOUSE_PHASE",
     "EXIT_TO_FARM_PHASE",
@@ -665,4 +742,9 @@ __all__ = [
     "OPTIONAL_CHICKEN_SALE_PHASES",
     "OPTIONAL_MONEY_PHASES",
     "GO_HOME_TRIGGER_PHASES",
+    "crop_establish_phases",
+    "crop_water_phases",
+    "pocket_clear_phase",
+    "pocket_plant_phases",
+    "_crop_work_phases",
 ]

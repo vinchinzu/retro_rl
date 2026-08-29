@@ -178,7 +178,7 @@ warehouse_to_red_human        Warehouse → Red → Hellway → Alpha PB  (slopp
 alpha_pb_to_moat_human        Alpha PB → Moat pre-spark  ✅ clean
 ```
 
-Moat spark pure remains `rr-hhj` / `moat_spark_watch` — do not re-prove on this tape.
+Moat spark pure remains `rr-hhj` / `kpdr.py` Moat hop — do not re-prove on this tape.
 
 ## Non-claims
 

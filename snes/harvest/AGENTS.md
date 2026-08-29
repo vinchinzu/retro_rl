@@ -54,8 +54,9 @@ Do not start D2 from `Y1_D2_Morning_After_D1`.
 
 Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration`.
 Nested import: workspace is `snes/harvest/`; package is `harvest.*` (disk
-`snes/harvest/harvest/`). Split a file **before 500 lines**; refuse a new
-knob on a file **≥800**. Extract before 1k; module map in plan.md.
+`snes/harvest/harvest/`). Soft max ~1000 LOC: merge into the **Composer**
+or delete ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)). Module map
+in plan.md.
 
 ## Traps
 

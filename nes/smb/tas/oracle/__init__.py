@@ -20,7 +20,6 @@ __all__ = [
     "extract_checkpoints",
     "run_fceux_dump",
     "compare_chain_to_oracle",
-    "run_probe",
 ]
 
 
@@ -40,8 +39,4 @@ def __getattr__(name: str) -> Any:
         from smb.tas.oracle.compare_fceumm_chain import compare_chain_to_oracle
 
         return compare_chain_to_oracle
-    if name == "run_probe":
-        from smb.tas.oracle.probe_early_8_3 import run_probe
-
-        return run_probe
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

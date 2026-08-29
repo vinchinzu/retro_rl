@@ -20,8 +20,8 @@ SMB_BOTTLENECK_WINDOWS: tuple[RleWindow, ...] = (
     # Tighter natural-entry polish region at the start of 4-2
     RleWindow(6366, 7000, "4-2-entry", min_progress=0, max_progress=None),
     # 8-1 body in natural_82 continuous seed (after 219f lead idle from 4-2 exit).
-    # Prefer isolated Level8_1 polish via smb.scripts.polish_8_1 — continuous
-    # absolute windows need full-route eval or a natural-control checkpoint.
+    # Isolated Level8_1 polish uses tas.search; continuous absolute windows
+    # need full-route eval or a natural-control checkpoint.
     RleWindow(9181, 12159, "8-1-body", min_progress=0, max_progress=None),
     RleWindow(9181, 9981, "8-1-early", min_progress=0, max_progress=None),
     RleWindow(11581, 12159, "8-1-late", min_progress=2500, max_progress=None),

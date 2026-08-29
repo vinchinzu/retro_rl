@@ -13,8 +13,10 @@ from typing import Optional, Tuple
 
 import numpy as np
 
+from harvest.core.animal_probe import chicken_slot_snapshots
 from harvest.tasks.nav import (
     MAP_WIDTH,
+    Navigator,
     Pathfinder,
     make_action,
 )
@@ -98,3 +100,105 @@ def fallback_action(current: Tile, goal: Tile) -> np.ndarray:
     else:
         direction = "down" if delta_y > 0 else "up"
     return make_action(**{direction: True, "b": True})
+
+
+def chicken_stage_tiles(
+    ram: np.ndarray,
+    stages: Collection[str],
+    *,
+    require_coop: bool = True,
+) -> list[Tile]:
+    """Unique chicken tiles at the given life stages, in slot order."""
+    tiles: list[Tile] = []
+    seen: set[Tile] = set()
+    wanted = set(stages)
+    for row in chicken_slot_snapshots(ram, require_coop=require_coop):
+        if row.get("stage") not in wanted:
+            continue
+        tile = row.get("tile")
+        if not (isinstance(tile, list) and len(tile) == 2):
+            continue
+        chicken_tile = (int(tile[0]), int(tile[1]))
+        if chicken_tile in seen:
+            continue
+        seen.add(chicken_tile)
+        tiles.append(chicken_tile)
+    return tiles
+
+
+def adjacent_face_stands(tile: Tile) -> tuple[tuple[Tile, str], ...]:
+    """Cardinal neighbor stands and the face looking back at ``tile``."""
+    x, y = tile
+    return (
+        ((x + 1, y), "left"),
+        ((x - 1, y), "right"),
+        ((x, y + 1), "up"),
+        ((x, y - 1), "down"),
+    )
+
+
+def select_adjacent_pickup_target(
+    ram: np.ndarray,
+    pathfinder: Pathfinder,
+    current: Tile,
+    targets: Collection[Tile],
+    blockers: Collection[Tile],
+) -> Optional[tuple[Tile, str, Tile]]:
+    """Nearest walkable neighbor stand facing one of ``targets``."""
+    blocked = set(blockers)
+    best: Optional[tuple[int, Tile, str, Tile]] = None
+    for animal_tile in targets:
+        for stand, face in adjacent_face_stands(animal_tile):
+            sx, sy = stand
+            if not (0 <= sx < MAP_WIDTH and 0 <= sy < MAP_WIDTH):
+                continue
+            if stand in blocked and stand != current:
+                continue
+            if not pathfinder.is_walkable(ram, sx, sy, current_pos=current):
+                continue
+            path = find_path_around_blockers(ram, pathfinder, current, stand, blocked)
+            if path is None:
+                continue
+            score = len(path)
+            if best is None or score < best[0]:
+                best = (score, stand, face, animal_tile)
+    if best is None:
+        return None
+    return best[1], best[2], best[3]
+
+
+def navigate_to_tile_around_blockers(
+    ram: np.ndarray,
+    pathfinder: Pathfinder,
+    navigator: Navigator,
+    goal: Tile,
+    blockers: Collection[Tile],
+) -> Optional[np.ndarray]:
+    """Walk to ``goal`` while treating live animals as dynamic no-go tiles."""
+    if navigator.current_tile == goal or navigator.at_tile(goal, tolerance=1):
+        return navigator.center_on_tile(goal, tolerance=1)
+
+    blocked = set(blockers)
+    blocked.discard(navigator.current_tile)
+    if goal in blocked:
+        navigator.path = []
+        return make_action()
+    if navigator.path and navigator.path[0] in blocked:
+        navigator.path = []
+        return make_action()
+    if navigator.stasis > 90 and navigator.path:
+        pathfinder.temp_blocked.add(navigator.path[0])
+        navigator.path = []
+
+    if not navigator.path:
+        path = find_path_around_blockers(
+            ram, pathfinder, navigator.current_tile, goal, blocked
+        )
+        if path is None:
+            return fallback_action(navigator.current_tile, goal)
+        navigator.path = path
+
+    action = navigator.follow_path(ram)
+    if action is None:
+        return fallback_action(navigator.current_tile, goal)
+    return action

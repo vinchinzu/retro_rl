@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from zelda_i.level3_overworld import (
+from zelda_i.level3.overworld import (
     LEVEL3_HOPS_FROM_POST_L2,
     LEVEL3_POST_L2_SCREENS,
     SCREEN_LEVEL3_ENTRANCE,
     SCREEN_POST_L2_RETURN,
     OverworldPostL2ToLevel3Controller,
 )
-from zelda_i.overworld import neighbor_screens
+from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 

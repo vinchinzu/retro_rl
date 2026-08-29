@@ -29,7 +29,7 @@ Phases (bot / pure — verified hop path from pin):
    into Moat at y≈115–122 → jam ~x475 → after spark dies, ``RIGHT+X``
    opens blue door into West Ocean ``0x93FE``.
 
-Probe: ``scripts/probe/moat_spark_watch.py hop`` (pure residual purged after green).
+A/B: ``scripts/probe/kpdr.py pure`` the Moat hop (pure residual purged after green).
 """
 
 from __future__ import annotations

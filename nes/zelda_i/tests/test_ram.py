@@ -18,6 +18,7 @@ from zelda_i.ram import (
     PLAY_MODE,
     SCREEN_START,
     capabilities_from_ram,
+    full_health_byte,
     is_level1_ready,
     parse_game_state,
     read_snapshot,
@@ -35,6 +36,29 @@ def test_parse_game_state_menu_by_default() -> None:
     state = parse_game_state(ram, frame=0)
     assert state.extras["ram_map_partial"] is False
     assert state.extras["sword"] == 0
+
+
+def test_hearts_full_is_lo_eq_hi_not_nibble_f() -> None:
+    """$066F low nibble is whole hearts. Full is lo==hi (0x22=3/3), never 0xF."""
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_HEALTH] = 0x22
+    snap = read_snapshot(ram)
+    assert snap.heart_containers == 3
+    assert snap.filled_hearts == 2
+    assert snap.health_is_full is True
+    assert full_health_byte(0x20) == 0x22
+
+    ram[ADDR_HEALTH] = 0x21
+    snap = read_snapshot(ram)
+    assert snap.filled_hearts == 1
+    assert snap.health_is_full is False
+
+    ram[ADDR_HEALTH] = 0x2F
+    snap = read_snapshot(ram)
+    assert snap.filled_hearts == 0xF
+    assert snap.health_is_full is False
+    ram[ADDR_HEALTH] = 0x0F
+    assert read_snapshot(ram).health_is_full is False
 
 
 def test_is_level1_ready_requires_play_mode_and_health() -> None:

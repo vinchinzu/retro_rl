@@ -12,10 +12,10 @@ import numpy as np
 
 from retro_harness import TaskResult, TaskStatus
 
-from harvest.tasks.crop_fsm import CropState, PlotPhase
+from harvest.tasks.crop_planter import CropState, PlotPhase
 from harvest.tasks.crop_geometry import count_tilled, pond_access_blocking_fences
 from harvest.tasks.nav import make_action, tile_dist
-from harvest.tasks.pond_corridor import (
+from harvest.tasks.pond_hop import (
     decide_after_east_south_charge,
     decide_after_gap_reseat,
     decide_after_multihop_drop,
@@ -28,7 +28,7 @@ class CropNavigateMixin:
 
     def _handle_navigate(self, ram: np.ndarray) -> Optional[TaskResult]:
         # Finish local drop before multi-hop after fence open.
-        # Charge-completion policy: pond_corridor.decide_after_*.
+        # Charge-completion policy: pond_hop.decide_after_*.
         if getattr(self, "_pending_multihop_after_drop", False):
             if self._player_carrying(ram):
                 if not self._action_queue:

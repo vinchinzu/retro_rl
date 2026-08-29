@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level5_dungeon import (
+from zelda_i.level5.dungeon import (
     LEVEL_5,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
 )
-from zelda_i.level5_path import (
+from zelda_i.level5.path import (
     level5_east_key_step,
     level5_west65_step,
 )
@@ -93,7 +93,7 @@ def test_west65_uses_statue_bypass_on_76() -> None:
 
 
 def test_take_center_stairs_06_is_center_tile_not_spawn() -> None:
-    from zelda_i.level5_path import take_center_stairs_06, cellar_to_64
+    from zelda_i.level5.path import take_center_stairs_06, cellar_to_64
     assert "120,141" in (take_center_stairs_06.__doc__ or "")
     assert "return take_block_stairs_06" not in (take_center_stairs_06.__doc__ or "")
     assert "189" in (cellar_to_64.__doc__ or "") or "pit" in (cellar_to_64.__doc__ or "").lower()
@@ -101,7 +101,7 @@ def test_take_center_stairs_06_is_center_tile_not_spawn() -> None:
 
 def test_whistle_tf_stand_geometry() -> None:
     """Whistle stand is (120, 141); 0x04 exit is 135,141, 0x06 stairs 128/120,141."""
-    from zelda_i.level5_boss_path import (
+    from zelda_i.level5.boss_path import (
         WHISTLE_STAND,
         fight_digdogger,
         path_exit_whistle_04,

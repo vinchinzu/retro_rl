@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level1 import (
+from zelda_i.level1.path import (
     FIRST_KEY_ITEM_ID,
     ROOM_ENTRANCE,
     ROOM_FIRST_KEY,

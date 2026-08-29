@@ -29,11 +29,9 @@ from retro_harness.segment_runner import configure_headless, write_json_report
 from retro_harness.youtube_intro import DEFAULT_INTRO_FRAMES, project_intro_lines
 from smb.paths import GAME_DIR, GAME_V0, RECORDINGS_DIR
 from smb.ram import read_snapshot
-from smb.scripts.run_warp_finish import (
-    _VideoWriter,
-    _env_audio_rate,
-    _write_video,
-)
+from smb.rta_panel import VideoWriter as _VideoWriter
+from smb.rta_panel import env_audio_rate as _env_audio_rate
+from smb.rta_panel import write_video as _write_video
 from smb.tas.replay import IDLE
 from smb.tas.warpless import (
     WARPLESS_LEGS,

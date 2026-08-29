@@ -32,18 +32,19 @@ from typing import Any
 
 import numpy as np
 
-from retro_harness.env import make_env, reset_obs, save_state
+from retro_harness.env import make_env, read_state_bytes, reset_obs, save_state
 from retro_harness.segment_runner import (
     configure_headless,
     save_rgb_png,
     write_json_report,
 )
-from smb.full_run import read_state_bytes
-from smb.menus import boot_to_level1_script
+from smb.menus import boot_to_ready, idle_n
 from smb.paths import GAME_DIR, GAME_V0, INTEGRATION_V0_DIR, RECORDINGS_DIR
 from smb.policy import (
     DEFAULT_1_1_SEED,
     DEFAULT_1_2_WARP_SEED,
+    DEFAULT_MAX_FRAMES_11,
+    NATURAL_SETTLE_FRAMES,
     Level11ReplayPolicy,
     Nes9ReplayPolicy,
 )
@@ -58,34 +59,8 @@ from smb.ram import (
 )
 
 WARP_MID_STATE = INTEGRATION_V0_DIR / "Level1_2_WarpMid.state"
-NATURAL_SETTLE = 1
-BOOT_STABLE = 20
-MIN_BOOT_FRAME = 200
-DEFAULT_MAX_FRAMES_11 = 4000
 DEFAULT_MAX_FRAMES_12 = 4000
 
-def _boot_to_ready(env) -> tuple[object, int]:
-    frame = 0
-    obs = None
-    stable = 0
-    for scripted in boot_to_level1_script():
-        obs, *_ = env.step(scripted.action)
-        frame += 1
-        mean = float(obs.mean())
-        if frame >= MIN_BOOT_FRAME and is_level1_ready(env.get_ram(), obs_mean=mean):
-            stable += 1
-        else:
-            stable = 0
-        if stable >= BOOT_STABLE:
-            return obs, frame
-    return obs, frame
-
-def _idle(env, n: int) -> object:
-    obs = None
-    action = np.zeros(int(env.action_space.shape[0]), dtype=np.int8)
-    for _ in range(n):
-        obs, *_ = env.step(action)
-    return obs
 
 def _load_warp_mid(env) -> None:
     if not WARP_MID_STATE.exists():
@@ -174,12 +149,12 @@ def run_warp_chain(
         frames_11 = 0
 
         if mode == "chain":
-            obs, boot_frames = _boot_to_ready(env)
+            obs, boot_frames = boot_to_ready(env)
             if not is_level1_ready(env.get_ram(), obs_mean=float(obs.mean())):
                 report["outcome"] = "boot_fail"
                 report["boot_frames"] = boot_frames
                 return report
-            obs = _idle(env, NATURAL_SETTLE)
+            obs = idle_n(env, NATURAL_SETTLE_FRAMES)
 
             policy11 = Level11ReplayPolicy(
                 seed_path=seed_11,
@@ -210,7 +185,7 @@ def run_warp_chain(
                 "frames": frames_11,
                 "max_player_x": max_x,
                 "boot_frames": boot_frames,
-                "settle": NATURAL_SETTLE,
+                "settle": NATURAL_SETTLE_FRAMES,
             }
             if outcome_11 != "success":
                 png = save_rgb_png(obs, out / f"{tag}_1_1_fail.png")

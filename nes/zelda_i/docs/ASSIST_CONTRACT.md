@@ -38,7 +38,7 @@ telemetry block in the run report.
   fanfare (mode 18).
 
 The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
-`chain.run_controller_stage` / probe loops—not scattered policy writes.
+`zelda_i.route.chain.run_controller_stage` / probe loops—not scattered policy writes.
 
 ### Owned inventory counts (bombs / keys) — Survival route-development shortcut
 
@@ -195,5 +195,6 @@ stems when both exist.
 uv run python zelda_i/scripts/probe_level2_suffix.py \
   --infinite-life --enter-dungeon --tag l2_assist
 
-uv run python zelda_i/scripts/run_to_level2_prefix.py --infinite-life --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level2 --no-video --trials 1
 ```

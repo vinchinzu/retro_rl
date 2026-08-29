@@ -44,11 +44,10 @@ from typing import Any, Literal
 
 import numpy as np
 
-from retro_harness.env import make_env
+from retro_harness.env import make_env, read_state_bytes
 from retro_harness.nes import NES_ACTION_SIZE
 from retro_harness.play_session import PlaySession
 from retro_harness.segment_runner import configure_headless
-from smb.full_run import read_state_bytes
 from smb.paths import GAME_DIR, GAME_V0, INTEGRATION_V0_DIR, RECORDINGS_DIR
 from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
@@ -60,12 +59,12 @@ from smb.ram import read_snapshot
 from smb.reactive_12 import Reactive12Policy, play_reactive_12
 from smb.reactive_route import level_control_gate, snapshot_fingerprint
 from smb.routes import ROUTE_WARP_ANY_PERCENT
-from smb.scripts.run_1_2 import STAIRS_1_1, _play_1_1_until_clear
-from smb.scripts.run_reactive_warp import (
+from smb.policy import DEFAULT_STAIRS_1_1 as STAIRS_1_1, play_1_1_until_clear as _play_1_1_until_clear
+from smb.reactive_route import (
     DEFAULT_CONTINUATION,
     DEFAULT_CONTINUATION_START,
     KNOWN_41_CONTROL_RESUME,
-    _continuation_frames,
+    continuation_frames as _continuation_frames,
 )
 
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"

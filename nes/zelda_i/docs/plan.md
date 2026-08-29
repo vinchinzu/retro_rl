@@ -14,8 +14,8 @@ One living residual: `docs/tasks/rr-tne2-residual.md`.
 
 Watchable main spine is **one continuous Survival session from power-on**.
 Do not overwrite Clean M5. Seamed compose is gone (`rr-cont`). L9 backward
-recon, `run_level4_rooms` slim (`rr-ekwl`), and isolated L4 (`rr-q3n`) are
-**parked**.
+recon and isolated L4 (`rr-q3n`) are **parked**. Parked L4 segment CLIs
+are gone; L4 is SpineHop rows on `run_survival_spine.py`.
 
 Beads: **`rr-4d53`** epic. Parent **`rr-4d53.3`** (L2 exit → L3 TF `0x04`).
 Entrance `0x7c` is **`rr-4d53.3.0` closed**. West key `0x7b` is
@@ -751,14 +751,11 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4 --no-video --trials 1 \
   --tag l4_tf_continuous_v1
 ```
-Isolated 0x6b check:
-
-```bash
-uv run python nes/zelda_i/scripts/run_level3_north_chain.py --trials 2
-```
+Isolated 0x6b check is `--through level3` (`level3_dest_6b_stages`), not a
+clone north-chain CLI.
 
 L2-exit → L3 OW hops are 2/2 assisted from `Level2ExitOverworld`
-(`run_l2_to_l3.py`). L3 dest 0x5b is on `--through level3` (`level3_dest_6b_stages`).
+(`run_l2_to_l3.py`). L3 dest 0x5b is on `--through level3`.
 Isolated north-chain does not close `.3.1.2`.
 
 Bomb/key **count** pokes are a documented Survival shortcut
@@ -775,13 +772,8 @@ Bomb/key **count** pokes are a documented Survival shortcut
 it had zero deaths and zero progression/capacity writes. It did **not** reach
 the pond, so `OW_L7Pond` was not saved.
 
-Exact continuation command:
-
-```bash
-PYTHONPATH=nes uv run python nes/zelda_i/scripts/probe_level7_entry.py \
-  --allow-missing-caps --infinite-life --save-state --max-frames 10000 \
-  --tag l7_dnp_pond_assisted_v10
-```
+Parked continuation is library `level7.overworld` (no clone probe CLI).
+Watchable spine remains `run_survival_spine` (L7 not on tape).
 
 Before rerunning, add one `level7_overworld.py` micro for `0x53`: move LEFT
 inland from the east edge before descending toward the lower west gap, then
@@ -818,8 +810,7 @@ route STATUS:
   out. `route_eligible=false`.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --dump-51 --tag l9_room51_dump
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 The forward East Key `0x77` → natural Recorder → Whistle basement `0x04`
@@ -910,5 +901,4 @@ See `docs/tasks/rr-tne2-residual.md` / `bd ready -l zelda_i -l spine`.
 
 ### Item gates (`rr-iri`)
 - ### ZOW — early item gates (rr-iri pathing; rr-38p residual)
-- Planned hop tables in `item_gate_hops.py` (geometry only, assisted OK):
-- Probe: `scripts/probe_item_gate_hops.py --route all --infinite-life`.
+- Planned hop tables in `route/item_gate_hops.py` (geometry only, assisted OK).

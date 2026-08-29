@@ -105,6 +105,88 @@ def is_pipe_transition(snap: SmbSnapshot) -> bool:
     return int(snap.player_x) == 0 and int(snap.player_y) == 0
 
 
+# UG floor-pipe truth table (32-exit flag exit; not the W4 warp).
+ENEMY_TYPE_PIRANHA = 13
+PIPE_A_X = 2856
+PIPE_B_X = 2920
+PIPE_C_X = 2984
+PIPE_SLOP = 12
+PLANT_HIDDEN_Y = 158
+FLOOR_Y_MIN = 148
+CEILING_Y_MAX = 80
+OUTDOOR_FLAG = "outdoor_flag"
+WARP = "warp"
+STILL_UG = "still_ug"
+DEATH = "death"
+CEILING = "ceiling"
+
+
+def plant_hidden(
+    enemies: list[dict[str, int]],
+    pipe_x: int,
+    *,
+    slop: int = 24,
+) -> bool:
+    """True when no piranha is up at *pipe_x* (absent or y >= hidden line)."""
+    plants = [
+        enemy
+        for enemy in enemies
+        if int(enemy.get("type", -1)) == ENEMY_TYPE_PIRANHA
+        and abs(int(enemy["x"]) - pipe_x) <= slop
+    ]
+    if not plants:
+        return True
+    return all(int(enemy["y"]) >= PLANT_HIDDEN_Y for enemy in plants)
+
+
+def aligned_with_pipe(player_x: int, pipe_x: int, *, slop: int = PIPE_SLOP) -> bool:
+    return abs(int(player_x) - int(pipe_x)) <= slop
+
+
+def is_ceiling(snap: SmbSnapshot) -> bool:
+    """True on the y64 ceiling run (warp), not a jump apex or pipe transition."""
+    if is_pipe_transition(snap):
+        return False
+    y = int(snap.player_y)
+    if y < 64:
+        return True
+    return y < CEILING_Y_MAX and bool(snap.grounded)
+
+
+def is_floor(snap: SmbSnapshot) -> bool:
+    return int(snap.player_y) >= FLOOR_Y_MIN
+
+
+def sky_is_overworld(rgb: np.ndarray | None) -> bool:
+    """True on blue overworld (flag area or the pipe-wipe into it), not UG black."""
+    if rgb is None or getattr(rgb, "ndim", 0) != 3 or rgb.shape[0] < 56:
+        return False
+    band = rgb[32:56, :, :]
+    return float(band[:, :, 2].mean()) > 120.0
+
+
+def classify_destination(
+    *,
+    world: int,
+    player_state: int,
+    outdoor_sky: bool,
+    dying: bool,
+    ceiling: bool = False,
+) -> str:
+    """Halt label for one pipe trial. Outdoor world-0 flag wins; warp rejects."""
+    if dying:
+        return DEATH
+    if int(world) != 0:
+        return WARP
+    if int(player_state) in (PLAYER_STATE_FLAGPOLE, PLAYER_STATE_AUTO_WALK):
+        return OUTDOOR_FLAG
+    if outdoor_sky:
+        return OUTDOOR_FLAG
+    if ceiling:
+        return CEILING
+    return STILL_UG
+
+
 def _nes9(buttons: list[int], action_size: int = NES_ACTION_SIZE) -> np.ndarray:
     b = list(buttons[:action_size])
     if len(b) < action_size:

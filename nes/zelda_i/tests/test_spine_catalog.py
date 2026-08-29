@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
-import zelda_i.survival_spine as spine
-from zelda_i.level5_spine import L5_STOPS, L5_THROUGH
-from zelda_i.level6_spine import L6_STOPS, L6_THROUGH
+from zelda_i.level5.spine import L5_STOPS, L5_THROUGH
+from zelda_i.level6.spine import L6_STOPS, L6_THROUGH
 from zelda_i.screen_glance import (
     BOW22_LEAVE,
     BOW_CELLAR_LEAVE,
@@ -20,7 +15,7 @@ from zelda_i.screen_glance import (
     STAIRS3A_DEST,
     WEST2D_LEAVE,
 )
-from zelda_i.survival_spine import BOOT_POLICY, SPINE_THROUGH, SpineRun
+from zelda_i.spine.survival import BOOT_POLICY, SPINE_THROUGH, SpineRun
 
 LEAVE_SPECS = (
     CLEAR_3A,
@@ -67,17 +62,3 @@ def test_spine_run_gohma_report_stop() -> None:
 
 def test_boot_policy_file_slot_and_quest() -> None:
     assert BOOT_POLICY["file_slot"] == 1 and BOOT_POLICY["quest"] == 1
-
-
-def test_seamed_compose_module_is_gone() -> None:
-    with pytest.raises(ModuleNotFoundError):
-        __import__("zelda_i.scripts.compose_honest_route_recording")
-    names = [name.lower() for name in dir(spine)]
-    assert not any("compose" in name or "seam" in name for name in names)
-    root = Path(__file__).resolve().parents[1]
-    gone = (
-        root / "compose_survival.py",
-        root / "scripts" / "compose_honest_route_recording.py",
-        root / "scripts" / "compose_survival.py",
-    )
-    assert not any(path.exists() for path in gone)

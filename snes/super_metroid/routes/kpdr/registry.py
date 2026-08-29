@@ -92,8 +92,13 @@ from super_metroid.routes.kpdr.k6 import (
     play_ws_main_to_attic,
     play_ws_main_to_basement,
 )
+from super_metroid.routes.kpdr.climb_descent import play_climb_to_pit_moonfall
 from super_metroid.routes.kpdr.moat import play_moat_cross
-from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
+from super_metroid.routes.kpdr.parlor_descent import play_parlor_to_climb_moonfall
+from super_metroid.routes.kpdr.west_ocean import (
+    play_west_ocean_edge_spark,
+    play_west_ocean_over_ocean_spark,
+)
 from super_metroid.routes.kpdr.k4_business_frog import (
     play_business_to_frog_save,
     play_farm_to_bubble,
@@ -145,6 +150,7 @@ from super_metroid.routes.kpdr.red_stack import (
     play_west_to_glass,
 )
 from super_metroid.routes.kpdr.spazer import (
+    play_below_spazer_climb,
     play_below_spazer_to_spazer,
     play_spazer_collect,
     play_spazer_detour,
@@ -199,6 +205,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "bat_to_below_spazer": play_bat_to_below_spazer,
     # K2.2 Spazer mainline (detour folded into below_spazer_to_west)
     "below_spazer_to_spazer": play_below_spazer_to_spazer,
+    "below_spazer_climb": play_below_spazer_climb,
     "spazer_collect": play_spazer_collect,
     "spazer_return_to_below": play_spazer_return_to_below,
     "spazer_top_to_west": play_spazer_top_to_west,
@@ -297,6 +304,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "kihunter_to_moat": play_kihunter_to_moat,
     "moat_cross": play_moat_cross,
     "west_ocean_to_ws": play_west_ocean_over_ocean_spark,
+    "west_ocean_to_bowling": play_west_ocean_edge_spark,
     "ws_entrance_to_main": play_ws_entrance_to_main,
     "ws_main_to_basement": play_ws_main_to_basement,
     "ws_basement_to_phantoon": play_ws_basement_to_phantoon,
@@ -308,6 +316,9 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "frog_save_to_speedway": play_frog_save_to_speedway,
     "speedway_to_farm": play_speedway_to_farm,
     "farm_to_bubble": play_farm_to_bubble,
+    # Early Morph moonfall (A/B; not KPDR tracker rows).
+    "climb_to_pit_moonfall": play_climb_to_pit_moonfall,
+    "parlor_to_climb_moonfall": play_parlor_to_climb_moonfall,
 }
 
 

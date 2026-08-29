@@ -22,17 +22,19 @@ uv run python -m smb.scripts.run_warp_finish --mode poweron --record
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
-import wave
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from retro_harness.env import make_env, reset_obs
-from smb.full_run import read_state_bytes
-from smb.menus import boot_to_level1_script
+from retro_harness.env import make_env, read_state_bytes, reset_obs
+from retro_harness.segment_runner import (
+    configure_headless,
+    save_rgb_png,
+    write_json_report,
+)
+from retro_harness.youtube_intro import DEFAULT_INTRO_FRAMES, project_intro_lines
+from smb.menus import boot_to_level1_script, boot_to_ready, idle_n
 from smb.paths import (
     FULLGAME_REPLAYS_DIR,
     GAME_DIR,
@@ -44,7 +46,11 @@ from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
     DEFAULT_1_1_SEED,
     DEFAULT_CONTINUOUS_SEED,
+    DEFAULT_MAX_FRAMES_11,
     DEFAULT_WARP_SUFFIX_SEED,
+    ENDING_PEACH_HOLD_FRAMES,
+    ENDING_SETTLE_FRAMES,
+    NATURAL_SETTLE_FRAMES,
     POWERON_BOOT_FRAMES,
     POWERON_SETTLE_FRAMES,
     Level11ReplayPolicy,
@@ -53,41 +59,17 @@ from smb.policy import (
 from smb.ram import read_snapshot, reached_ending, segment_1_1_success
 from smb.reactive_route import RouteProgressTracker
 from smb.routes import ROUTE_WARP_ANY_PERCENT
-from smb.scripts.run_warp_chain import (
-    DEFAULT_MAX_FRAMES_11,
-    NATURAL_SETTLE,
-    _boot_to_ready,
-    _idle,
-)
+from smb.rta_panel import VideoWriter, env_audio_rate, write_video
 from smb.timing import build_timing_block, summarize_comparisons
-from retro_harness.video import (
-    FOOTER_HEIGHT,
-    frame_timestamp,
-    render_footer_frame,
-)
-from retro_harness.youtube_intro import (
-    DEFAULT_INTRO_FRAMES,
-    project_intro_lines,
-    render_intro_card,
-)
-from retro_harness.segment_runner import (
-    configure_headless,
-    save_rgb_png,
-    write_json_report,
-)
-from smb.rta_panel import RtaSplitTracker, draw_rta_split_panel
-from smb.timing import NTSC_FPS
 
 WARP_MID_STATE = INTEGRATION_V0_DIR / "Level1_2_WarpMid.state"
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
 DEFAULT_MAX_SUFFIX_FRAMES = 22_000
 DEFAULT_MAX_CONTINUOUS_FRAMES = 25_000
-# Success gate: oper_mode=2 held this many idle frames (RTA excludes settle).
-ENDING_SETTLE_FRAMES = 120
-# YouTube / capture hold after first reached_ending: bridge walk → Mario+Peach
-# courtyard (~300f) → full "THANK YOU MARIO!" text (~600–720f). Measured on
-# natural_82 power-on 2026-08-06; do not cut on Bowser-drop alone.
-ENDING_PEACH_HOLD_FRAMES = 780
+_VideoWriter = VideoWriter
+_write_video = write_video
+_env_audio_rate = env_audio_rate
+
 
 def _snapshot_dict(snap) -> dict[str, int]:
     return {
@@ -101,354 +83,6 @@ def _snapshot_dict(snap) -> dict[str, int]:
         "player_state": snap.player_state,
         "oper_mode": snap.oper_mode,
     }
-
-
-class _VideoWriter:
-    """ffmpeg RGB (+ native PCM) capture with NES button / timestamp footer.
-
-    When ``splits_panel`` is on (default with HUD), a top-left RTA level list
-    tracks exit-detect cum times and **freezes on Axe** (``oper_mode=2`` on
-    8-4). The footer speedrun clock freezes on the same frame so Peach hold
-    does not inflate the on-screen RTA time.
-    """
-
-    def __init__(
-        self,
-        path: Path,
-        *,
-        width: int,
-        height: int,
-        scale: int = 3,
-        fps: int = 60,
-        audio_rate: int | None = None,
-        hud: bool = True,
-        route_label: str = "SMB any%",
-        splits_panel: bool = True,
-        splits_fps: float = NTSC_FPS,
-    ) -> None:
-        ffmpeg = shutil.which("ffmpeg")
-        if ffmpeg is None:
-            raise RuntimeError("ffmpeg is required for video recording")
-        self.path = path
-        self.scale = max(1, scale)
-        self.fps = fps
-        self.hud = hud
-        self.route_label = route_label
-        self.splits_panel = bool(splits_panel and hud)
-        self.src_w = width
-        self.src_h = height + (FOOTER_HEIGHT if hud else 0)
-        self.out_w = self.src_w * self.scale
-        self.out_h = self.src_h * self.scale
-        self.frames = 0  # total encoded frames (intro + gameplay)
-        self.timer_frames = 0  # HUD speedrun clock (gameplay only; freezes on axe)
-        self.intro_frames = 0
-        self.audio_samples = 0
-        self.audio_rate = audio_rate
-        self.game_w = width
-        self.game_h = height
-        self._timer_frozen = False
-        self.splits = (
-            RtaSplitTracker(fps=splits_fps) if self.splits_panel else None
-        )
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._silent = path.with_suffix(".partial.video.mp4")
-        self._wav = path.with_suffix(".partial.audio.wav")
-        self._proc = subprocess.Popen(
-            [
-                ffmpeg,
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                "rgb24",
-                "-s",
-                f"{self.out_w}x{self.out_h}",
-                "-r",
-                str(fps),
-                "-i",
-                "-",
-                "-an",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "fast",
-                "-crf",
-                "20",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                str(self._silent),
-            ],
-            stdin=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        self._audio: wave.Wave_write | None = None
-        if audio_rate is not None and audio_rate > 0:
-            self._audio = wave.open(str(self._wav), "wb")
-            self._audio.setnchannels(2)
-            self._audio.setsampwidth(2)
-            self._audio.setframerate(audio_rate)
-
-    def write(
-        self,
-        obs: np.ndarray,
-        *,
-        action: list[int] | np.ndarray | None = None,
-        audio: np.ndarray | None = None,
-        label: str = "",
-        snap: Any | None = None,
-    ) -> None:
-        if self._proc.stdin is None:
-            return
-        rgb = np.asarray(obs, dtype=np.uint8)
-        act_list: list[int] | None
-        if action is None:
-            act_list = None
-        else:
-            act_list = [int(v) for v in np.asarray(action).tolist()]
-
-        # Advance RTA clock before paint so this frame's HUD matches step index.
-        # Freeze after Axe so Peach / thank-you hold does not keep counting.
-        if not self._timer_frozen:
-            self.timer_frames += 1
-        display_clock = self.timer_frames
-
-        if snap is not None and self.splits is not None:
-            self.splits.observe(snap, clock_frames=display_clock)
-            if self.splits.frozen:
-                self._timer_frozen = True
-                if self.splits.freeze_frame is not None:
-                    self.timer_frames = int(self.splits.freeze_frame)
-                    display_clock = self.timer_frames
-
-        if self.hud:
-            # Top-left level-by-level RTA panel (baked into pixels).
-            if self.splits is not None:
-                panel_lines = self.splits.lines(clock_frames=display_clock)
-                rgb = draw_rta_split_panel(rgb, panel_lines)
-
-            level = ""
-            lives = ""
-            xpos = ""
-            if snap is not None:
-                level = f"{int(snap.world) + 1}-{int(snap.level) + 1}"
-                lives = f"L{int(snap.lives)}"
-                xpos = f"x={int(snap.player_x)}"
-            upper_left = f"{self.route_label}  {level}  {lives}".strip()
-            if label:
-                upper_left = f"{upper_left}  {label}".strip()
-            if self._timer_frozen:
-                upper_left = f"{upper_left}  AXE".strip()
-            # Timer is pure gameplay (intro pre-roll does not advance the clock).
-            upper_right = frame_timestamp(display_clock, self.fps)
-            lower_left = xpos or "---"
-            rgb = render_footer_frame(
-                rgb,
-                upper_left=upper_left,
-                upper_right=upper_right,
-                lower_left=lower_left,
-                action=act_list,
-                players=1,
-                layout="nes",
-            )
-
-        self._emit_rgb(rgb, audio=audio, count_timer=False)
-
-    def write_intro(
-        self,
-        lines: list[str],
-        *,
-        hold_frames: int = DEFAULT_INTRO_FRAMES,
-    ) -> None:
-        """Write a project intro slide before gameplay (same encode session)."""
-        if hold_frames <= 0:
-            return
-        card = render_intro_card(
-            lines,
-            width=self.game_w,
-            height=self.game_h,
-            with_footer=self.hud,
-        )
-        silent = self._silent_audio_frame()
-        for _ in range(hold_frames):
-            self._emit_rgb(card, audio=silent, count_timer=False)
-            self.intro_frames += 1
-
-    def _silent_audio_frame(self) -> np.ndarray | None:
-        if self.audio_rate is None or self.audio_rate <= 0:
-            return None
-        n = max(1, int(round(self.audio_rate / float(self.fps))))
-        return np.zeros((n, 2), dtype=np.int16)
-
-    def _emit_rgb(
-        self,
-        rgb: np.ndarray,
-        *,
-        audio: np.ndarray | None,
-        count_timer: bool,
-    ) -> None:
-        if self._proc.stdin is None:
-            return
-        frame = np.asarray(rgb, dtype=np.uint8)
-        if frame.shape != (self.src_h, self.src_w, 3):
-            raise ValueError(
-                f"expected frame {(self.src_h, self.src_w, 3)}, got {frame.shape}"
-            )
-        if self.scale > 1:
-            frame = np.repeat(
-                np.repeat(frame, self.scale, axis=0), self.scale, axis=1
-            )
-        self._proc.stdin.write(frame.tobytes())
-        self.frames += 1
-        if count_timer:
-            self.timer_frames += 1
-
-        if self._audio is None or audio is None:
-            return
-        pcm = np.asarray(audio, dtype=np.int16)
-        if pcm.size == 0:
-            return
-        if pcm.ndim == 1:
-            if pcm.size % 2:
-                raise ValueError(f"odd stereo PCM sample count: {pcm.size}")
-            pcm = pcm.reshape(-1, 2)
-        if pcm.ndim != 2 or pcm.shape[1] != 2:
-            raise ValueError(f"expected stereo PCM, got {pcm.shape}")
-        self._audio.writeframesraw(pcm.astype("<i2", copy=False).tobytes())
-        self.audio_samples += int(pcm.shape[0])
-
-    def _close_streams(self) -> None:
-        if self._audio is not None:
-            self._audio.close()
-            self._audio = None
-        if self._proc.stdin is not None:
-            try:
-                self._proc.stdin.close()
-            except BrokenPipeError:
-                pass
-        stderr = self._proc.stderr.read() if self._proc.stderr else b""
-        code = self._proc.wait()
-        if code != 0:
-            raise RuntimeError(
-                f"ffmpeg video encode failed ({code}): "
-                f"{stderr.decode('utf-8', errors='replace')[-500:]}"
-            )
-
-    def close(self) -> None:
-        # Pad silent audio so -shortest does not clip the final frames.
-        if (
-            self._audio is not None
-            and self.audio_rate is not None
-            and self.audio_rate > 0
-            and self.frames > 0
-        ):
-            expected = int(round(self.frames * self.audio_rate / float(self.fps)))
-            missing = expected - self.audio_samples
-            if missing > 0:
-                pad = np.zeros((missing, 2), dtype=np.int16)
-                self._audio.writeframesraw(pad.astype("<i2", copy=False).tobytes())
-                self.audio_samples += missing
-        self._close_streams()
-        if self.audio_rate is None or not self._wav.exists():
-            # Silent path: just promote the partial video.
-            self._silent.replace(self.path)
-            return
-        result = subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-i",
-                str(self._silent),
-                "-i",
-                str(self._wav),
-                "-map",
-                "0:v:0",
-                "-map",
-                "1:a:0",
-                "-c:v",
-                "copy",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-shortest",
-                "-movflags",
-                "+faststart",
-                str(self.path),
-            ],
-            capture_output=True,
-            check=False,
-        )
-        if result.returncode:
-            raise RuntimeError(
-                result.stderr.decode("utf-8", errors="replace")[-500:]
-            )
-        self._silent.unlink(missing_ok=True)
-        self._wav.unlink(missing_ok=True)
-
-
-def _env_audio(env) -> np.ndarray | None:
-    """Pull native stereo PCM from the emulator core when available."""
-    em = getattr(env, "em", None)
-    if em is None or not hasattr(em, "get_audio"):
-        return None
-    try:
-        return np.asarray(em.get_audio(), dtype=np.int16)
-    except Exception:  # noqa: BLE001 — audio is best-effort for recordings
-        return None
-
-
-def _env_audio_rate(env) -> int | None:
-    em = getattr(env, "em", None)
-    if em is None or not hasattr(em, "get_audio_rate"):
-        return None
-    try:
-        rate = int(em.get_audio_rate())
-    except Exception:  # noqa: BLE001
-        return None
-    return rate if rate > 0 else None
-
-
-def _hud_action(action, snap) -> list[int] | np.ndarray | None:
-    """Blank the footer buttons during automated flagpole / castle walk.
-
-    The emulator still receives the real action; this only cleans the overlay
-    so junk holds during player_state 3/4/5 do not clutter the recording.
-    """
-    if action is None:
-        return None
-    if snap is not None and int(getattr(snap, "player_state", -1)) in (3, 4, 5):
-        return [0] * len(np.asarray(action).tolist())
-    return action
-
-
-def _write_video(
-    video: _VideoWriter | None,
-    obs,
-    *,
-    env=None,
-    action=None,
-    label: str = "",
-    snap=None,
-) -> None:
-    if video is None or obs is None:
-        return
-    if snap is None and env is not None:
-        snap = read_snapshot(env.get_ram())
-    video.write(
-        obs,
-        action=_hud_action(action, snap),
-        audio=_env_audio(env) if env is not None else None,
-        label=label,
-        snap=snap,
-    )
 
 
 def _run_policy_to_ending(
@@ -597,13 +231,13 @@ def _run_natural_1_1(
     max_frames: int,
     video: _VideoWriter | None = None,
 ) -> tuple[dict[str, Any], object | None]:
-    obs, boot_frames = _boot_to_ready(env)
+    obs, boot_frames = boot_to_ready(env)
     if obs is None:
         return {"success": False, "outcome": "boot_fail"}, obs
     if video is not None:
         # Boot frames were not recorded; capture from settle onward.
         pass
-    obs = _idle(env, NATURAL_SETTLE)
+    obs = idle_n(env, NATURAL_SETTLE_FRAMES)
     policy = Level11ReplayPolicy(
         seed_path=seed_path,
         action_size=int(env.action_space.shape[0]),
@@ -641,7 +275,7 @@ def _run_natural_1_1(
             "outcome": outcome,
             "frames": frame,
             "boot_frames": boot_frames,
-            "settle_frames": NATURAL_SETTLE,
+            "settle_frames": NATURAL_SETTLE_FRAMES,
             "max_player_x": max_x,
             "policy": policy.report(),
         },

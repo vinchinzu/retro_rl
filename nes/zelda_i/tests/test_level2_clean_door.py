@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from zelda_i.level2_clean_door import EAST_Y, REJOIN_HOPS
-from zelda_i.level2_overworld import (
+from zelda_i.level2.clean_door import EAST_Y, REJOIN_HOPS
+from zelda_i.level2.overworld import (
     LEVEL2_CLEAN_FROM_4A_TO_5A,
     LEVEL2_CLEAN_FROM_5A_TO_3C,
     is_5c_maze_hop,

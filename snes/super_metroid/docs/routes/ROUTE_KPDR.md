@@ -108,7 +108,6 @@ Labels: **continuous** | **dev controller** | **dev warp** | **open**.
 | Walkthrough | Wiki KPDR “Green/Pink/Red Brinstar & Kraid’s Lair” (through Red Tower) |
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/post_spore_pb.py --to main
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure big-pink-to-ghz \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_b1_bigpink_main_controller.state
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure ghz-to-noob \
@@ -149,7 +148,7 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kra
 | Path | Kraid room `0xA59F` → Super-spray fight → rear door → Varia Room `0xA6E2` → real Varia PLM |
 | Continuous evidence | `recordings/varia.json` (**101,954** frames, integrity green; 0 loads / 0 progression writes) |
 | Code | `combat/kraid.py` (`play_kraid_fight_to_varia`); KPDR segment `kraid_entry_to_varia`; `run_to("varia")` |
-| Probe | `scripts/probe/kraid_combat.py varia --state entry` → `debug/kraid_varia_run.json` |
+| Probe | `kpdr.py pure kraid-entry-to-varia --source <entry pin>` |
 | ★ Next | K4 pure: **Bat → Speed Hall** (Cathedral + Bubble→Bat pure GREEN; continuous tip `bat_cave`) |
 | Walkthrough | Wiki Kraid fight and Varia Suit room pages |
 

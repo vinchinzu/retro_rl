@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level6_east3a import (
+from zelda_i.level6.east3a import (
     DATED_SPIT,
     EAST_DOOR,
     SOUTH_AROUND_X,

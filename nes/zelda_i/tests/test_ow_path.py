@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.overworld import LEVEL2_5C_MAZE_WAYPOINTS, ScreenHop, is_5c_maze_hop
-from zelda_i.ow_path import OverworldPathController, PathNavPhase
+from zelda_i.overworld.graph import LEVEL2_5C_MAZE_WAYPOINTS, ScreenHop, is_5c_maze_hop
+from zelda_i.overworld.path import OverworldPathController, PathNavPhase
 from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_LEVEL,
@@ -33,12 +33,6 @@ def _ram(**fields: int) -> np.ndarray:
 def test_is_5c_maze_hop_shared() -> None:
     assert is_5c_maze_hop(ScreenHop(0x5D, "RIGHT", y_band_lo=120, y_band_hi=140))
     assert not is_5c_maze_hop(ScreenHop(0x5C, "RIGHT"))
-    # Re-export from ow_path matches overworld.
-    from zelda_i.ow_path import is_5c_maze_hop as from_ow_path
-    from zelda_i.level2_overworld import is_5c_maze_hop as from_l2
-
-    assert from_ow_path is is_5c_maze_hop
-    assert from_l2 is is_5c_maze_hop
 
 
 def test_hop_advance_on_arrival() -> None:

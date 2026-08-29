@@ -8,7 +8,7 @@ from zelda_i.door_graph.core import (
     GateKind,
     RoomExit,
 )
-from zelda_i.level3_geometry import (
+from zelda_i.level3.geometry import (
     BOMB_STAND_5B_RIGHT,
     KEY_DOOR_Y,
     STAIRS_69_RIGHT_Y,

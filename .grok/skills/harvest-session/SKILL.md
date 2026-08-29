@@ -21,7 +21,8 @@ One active bead at a time. Carry it to a checkable completion. Planner owns
 2. Overwrite living residual `snes/harvest/docs/tasks/rr-20w.2.3-residual.md`.
    Delete closed residuals instead of stacking them.
 3. Overwrite one JSON report. Do not mint `_vN` or `_window_*`.
-4. File ≥500 → split before the knob. File ≥800 → refuse the knob.
+4. File ~1000 LOC: merge into the **Composer** or delete. No sibling extract
+   (`CODING_STANDARDS.md`). Gut sittings use `/gut-package`, not this loop.
 5. Three serial reds on the same checkbox → stop repeating that live command.
    Preserve the last report, build a tighter replay/unit harness, rank and
    instrument hypotheses, then continue. Mark BLOCKED only for a genuine

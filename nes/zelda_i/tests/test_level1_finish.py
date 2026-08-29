@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level1_finish import (
+from zelda_i.level1.finish import (
     ROOM_BOOMERANG_GORIYA,
     ROOM_TRIFORCE,
     AquamentusPhase,

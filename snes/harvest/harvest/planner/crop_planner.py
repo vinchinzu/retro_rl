@@ -1,10 +1,4 @@
-"""Standalone crop layout and planting planner.
-
-This module is intentionally separate from ``crop_planter.CropWaterTask``.
-Watering already has a live state machine; this planner chooses where crop
-plots should go, which layout to use, and what planting steps a future planting
-task can execute.
-"""
+"""Crop layout and planting planner (not ``crop_planter.CropWaterTask``)."""
 
 from __future__ import annotations
 
@@ -67,7 +61,6 @@ class CropSpec:
         return self.regrow_days is not None
 
     def harvests_from_planting_day(self, day: int, season_length: int = SEASON_LENGTH) -> int:
-        """Return harvest count for one planting before the season rolls."""
         first_harvest_day = day + self.days_to_first_harvest
         if first_harvest_day > season_length:
             return 0
@@ -82,7 +75,6 @@ class CropSpec:
         day: int,
         season_length: int = SEASON_LENGTH,
     ) -> int:
-        """Net value for one seed bag planted today."""
         harvests = self.harvests_from_planting_day(day, season_length)
         if harvests <= 0:
             return -self.seed_cost_g
@@ -90,22 +82,15 @@ class CropSpec:
 
 
 CROP_SPECS: dict[str, CropSpec] = {
-    # Growth/economics are planning defaults, kept in one place for tuning.
-    # HM SNES only sells spring/summer seeds; fall/winter have no field crops.
     "turnip": CropSpec("turnip", (SEASON_SPRING,), seed_cost_g=200, sell_price_g=60, days_to_first_harvest=4),
     "potato": CropSpec("potato", (SEASON_SPRING,), seed_cost_g=200, sell_price_g=80, days_to_first_harvest=6),
     "tomato": CropSpec("tomato", (SEASON_SUMMER,), seed_cost_g=300, sell_price_g=100, days_to_first_harvest=10, regrow_days=3),
     "corn": CropSpec("corn", (SEASON_SUMMER,), seed_cost_g=300, sell_price_g=120, days_to_first_harvest=10, regrow_days=3),
 }
 
-# Ranch Master crop categories use shipped totals (capped via 0x01FF bug).
 RANCH_MASTER_SHIPPED_TARGET = 511
-
-# Recorded shop routes that buy the season's seed bag(s).
 SEED_PURCHASE_RECORDINGS: dict[int, str] = {
     SEASON_SPRING: "buy_potato_seeds",
-    # buy_summer purchases corn+tomato but currently ends in the shop;
-    # day-plan treats it as optional until a return slice is recorded.
     SEASON_SUMMER: "buy_summer",
 }
 
@@ -148,42 +133,27 @@ def _ring_offsets_without(*missing: Tile) -> tuple[Tile, ...]:
     )
 
 
+def _notch_layout(name: str, missing: Tile) -> CropLayoutPattern:
+    return CropLayoutPattern(
+        name=name,
+        crop_offsets=_ring_offsets_without(missing),
+        access_offsets=((0, 0), missing),
+        sprinkler_ready=True,
+        note=f"Leaves a {name.split('_')[1]} notch into the center for sprinkler access.",
+    )
+
+
 CROP_LAYOUTS: dict[str, CropLayoutPattern] = {
     "eight_tile_ring": CropLayoutPattern(
         name="eight_tile_ring",
         crop_offsets=_ring_offsets_without(),
         access_offsets=((0, 0),),
-        sprinkler_ready=False,
         note="Maximum seed-bag yield; center can become sealed once crops block movement.",
     ),
-    "seven_south_access": CropLayoutPattern(
-        name="seven_south_access",
-        crop_offsets=_ring_offsets_without((0, 1)),
-        access_offsets=((0, 0), (0, 1)),
-        sprinkler_ready=True,
-        note="Leaves a south notch into the center for sprinkler access.",
-    ),
-    "seven_north_access": CropLayoutPattern(
-        name="seven_north_access",
-        crop_offsets=_ring_offsets_without((0, -1)),
-        access_offsets=((0, 0), (0, -1)),
-        sprinkler_ready=True,
-        note="Leaves a north notch into the center for sprinkler access.",
-    ),
-    "seven_west_access": CropLayoutPattern(
-        name="seven_west_access",
-        crop_offsets=_ring_offsets_without((-1, 0)),
-        access_offsets=((0, 0), (-1, 0)),
-        sprinkler_ready=True,
-        note="Leaves a west notch into the center for sprinkler access.",
-    ),
-    "seven_east_access": CropLayoutPattern(
-        name="seven_east_access",
-        crop_offsets=_ring_offsets_without((1, 0)),
-        access_offsets=((0, 0), (1, 0)),
-        sprinkler_ready=True,
-        note="Leaves an east notch into the center for sprinkler access.",
-    ),
+    "seven_south_access": _notch_layout("seven_south_access", (0, 1)),
+    "seven_north_access": _notch_layout("seven_north_access", (0, -1)),
+    "seven_west_access": _notch_layout("seven_west_access", (-1, 0)),
+    "seven_east_access": _notch_layout("seven_east_access", (1, 0)),
 }
 
 
@@ -308,12 +278,10 @@ def read_tile(ram: np.ndarray, tile: Tile) -> int:
 
 
 def is_plannable_soil(tile_id: int) -> bool:
-    """Tiles a planting plan may reserve for new crop cells."""
     return tile_id in TILLABLE_TILES or tile_id in {FRESH_TILLED, WATERED_TILLED}
 
 
 def is_planning_walkable(tile_id: int) -> bool:
-    """Tiles usable as access or tool stand positions."""
     return tile_id in FARM_WALKABLE and tile_id not in STALE_TILE_IDS
 
 
@@ -354,7 +322,6 @@ def _adjacent_tiles(tile: Tile) -> Iterable[Tile]:
 
 
 def _trace_row_is_farm(row: dict) -> bool:
-    """Return True for farm trace rows across seasonal tilemap variants."""
     tilemap = row.get("tm")
     if tilemap is not None:
         try:
@@ -398,12 +365,7 @@ def watering_access_for_layout(
     mode: WateringMode = "manual",
     no_go_tiles: Optional[set[Tile]] = None,
 ) -> tuple[WateringAccess, ...]:
-    """Return valid watering stands for every crop tile in a layout.
-
-    In sprinkler mode, the center tile must remain reachable through a notch.
-    In manual mode, every planted tile needs at least one non-crop adjacent
-    stand tile.
-    """
+    """Valid watering stands per crop tile (sprinkler: reachable center notch)."""
     no_go = set(FARM_NO_GO_TILES if no_go_tiles is None else no_go_tiles)
     crop_tiles = set(layout.crop_tiles(center))
     access_tiles = set(layout.access_tiles(center))
@@ -435,7 +397,6 @@ def watering_access_for_layout(
 
 
 def choose_crop_for_date(season: int | str, day: int, *, layout_tiles: int = 8) -> Optional[CropSpec]:
-    """Pick the best crop for one seed bag planted on this date."""
     season_id = normalize_season(season)
     choices = [crop for crop in CROP_SPECS.values() if season_id in crop.seasons]
     if not choices:
@@ -452,23 +413,19 @@ def choose_crop_for_date(season: int | str, day: int, *, layout_tiles: int = 8) 
 
 
 def is_crop_planting_season(season: int | str) -> bool:
-    """Return True when HM SNES sells plantable field-crop seeds."""
     return normalize_season(season) in (SEASON_SPRING, SEASON_SUMMER)
 
 
 def crops_for_season(season: int | str) -> tuple[CropSpec, ...]:
-    """Return crop specs valid in the given season."""
     season_id = normalize_season(season)
     return tuple(crop for crop in CROP_SPECS.values() if season_id in crop.seasons)
 
 
 def seed_purchase_recording_for_season(season: int | str) -> Optional[str]:
-    """Return the recorded shop route name for this season, if any."""
     return SEED_PURCHASE_RECORDINGS.get(normalize_season(season))
 
 
 def can_plant_crop_today(season: int | str, day: int, crop_name: str) -> bool:
-    """Return True when planting ``crop_name`` today still yields a harvest."""
     crop = CROP_SPECS.get(crop_name)
     if crop is None:
         return False
@@ -486,11 +443,7 @@ def resolve_seed_type_for_date(
     shipped: Optional[dict[str, int]] = None,
     layout_tiles: int = 8,
 ) -> Optional[str]:
-    """Pick the active seed type for planting/watering today.
-
-    Prefers in-season inventory seeds, then under-shipped ranch-master crops,
-    then pure profit via :func:`choose_crop_for_date`. Fall/winter return None.
-    """
+    """Pick today's seed: inventory, then ranch-master remaining, then profit."""
     season_id = normalize_season(season)
     day_i = int(day)
     if not is_crop_planting_season(season_id):
@@ -524,7 +477,6 @@ def resolve_seed_type_for_date(
 
 
 def should_buy_seeds_for_date(season: int | str, day: int) -> bool:
-    """Return True when buying seeds today can still produce a harvest."""
     return resolve_seed_type_for_date(season, day) is not None
 
 
@@ -547,7 +499,6 @@ def evaluate_plot_candidate(
     *,
     no_go_tiles: Optional[set[Tile]] = None,
 ) -> Optional[PlotCandidate]:
-    """Validate one center/layout and score it for planting."""
     season_id = normalize_season(config.season)
     if season_id not in crop.seasons:
         return None
@@ -598,7 +549,6 @@ def build_plot_candidates(
     ram: np.ndarray,
     config: CropPlanningConfig,
 ) -> tuple[PlotCandidate, ...]:
-    """Scan the farm and return valid candidate plots."""
     layout_names = _layout_names_for_config(config)
     layouts = tuple(CROP_LAYOUTS[name] for name in layout_names)
     seed_crop = CROP_SPECS.get(config.seed_type) if config.seed_type else None
@@ -629,7 +579,6 @@ def _seed_bag_limit(crop: CropSpec, config: CropPlanningConfig) -> int:
 
 
 def plan_crop_field(ram: np.ndarray, config: CropPlanningConfig = CropPlanningConfig()) -> CropFieldPlan:
-    """Choose non-blocking plots and route order for a planting pass."""
     candidates = list(build_plot_candidates(ram, config))
     if not candidates:
         season_id = normalize_season(config.season)
@@ -701,7 +650,6 @@ def plan_crop_field(ram: np.ndarray, config: CropPlanningConfig = CropPlanningCo
 
 
 def build_planting_steps(plan: CropFieldPlan) -> tuple[PlantingStep, ...]:
-    """Convert a field plan into hoe/seed steps for a planting task."""
     steps: list[PlantingStep] = []
     for plot in plan.plots:
         crop_tiles = set(plot.crop_tiles)
@@ -736,7 +684,6 @@ def build_planting_steps(plan: CropFieldPlan) -> tuple[PlantingStep, ...]:
 
 
 def extract_planting_template_from_recording(path: str | Path) -> PlantingRecordingTemplate:
-    """Extract reusable crop-action landmarks from a recorded task JSON."""
     recording_path = Path(path)
     data = json.loads(recording_path.read_text())
     trace = data.get("trace", [])

@@ -152,11 +152,11 @@ _CANONICAL: dict[str, tuple[str, str]] = {
     # --- K6 moat → west ocean → wrecked ship → phantoon ---
     "pre-moat": (
         "scratch/post_kihunter_pre_moat_spark.state",
-        "Kihunter 0x948C pre-spark pin — bot: west_ocean_spark chain-ws; or free-record",
+        "Kihunter 0x948C pre-spark pin — bot: kpdr.py compose moat-to-ws; or free-record",
     ),
     "moat-end": (
         "scratch/alpha_pb_to_moat_human_end.state",
-        "Moat 0x95FF human Alpha-PB end — bot chain-ws (leave+open+clear+spark→WS)",
+        "Moat 0x95FF human Alpha-PB end — bot: kpdr.py compose moat-to-ws",
     ),
     "west-ocean": (
         "scratch/post_moat_west_ocean_spark.state",

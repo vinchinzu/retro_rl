@@ -4,6 +4,7 @@ Multi-game **NES + SNES** automation monorepo. Repo-wide rules only; keep
 game-specific workflow and status in the owning game directory. Spine:
 `docs/{VISION,ROADMAP,DEVELOPMENT_LADDER,BENCHMARK_SPEC,PROGRAM_STATUS,GAME_MATRIX,FULL_RUN_PROCESS}.md`
 (matrix from `docs/manifests/*.yaml`). Hygiene: `docs/REPO_HYGIENE.md`.
+**Gut** / structure review: [`CODING_STANDARDS.md`](CODING_STANDARDS.md).
 
 ## Shared Layout
 
@@ -35,8 +36,8 @@ Short import names (`import alttp`, `import smb`). Pytest path includes
 ## Working Norms
 
 - Prefer nearest local `AGENTS.md`; add one there instead of growing this file.
-- **Soft max ~1000 LOC per source file.** Extract a focused module/helper
-  before pushing past 1k; prefer deleting complexity over rearranging it.
+- **Soft max ~1000 LOC per source file.** Merge into the **Composer** or
+  delete; no sibling extract.
 - Shared-helper changes → update closest tests + describing docs. After
   `docs/manifests/*.yaml` edits: `uv run python docs/generate_game_matrix.py`.
 - Narrowest relevant tests; include `uv run pytest tests/test_docs.py -q`

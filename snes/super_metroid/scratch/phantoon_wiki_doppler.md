@@ -94,7 +94,6 @@ vs **20537f**, dual-exact this session) and a real HP-0 + boss-bit kill, but:
 ## Files
 
 - `snes/super_metroid/combat/phantoon_doppler.py` (500 lines)
-- `snes/super_metroid/scripts/probe/phantoon_doppler.py`
 - `snes/super_metroid/tests/test_phantoon_doppler.py` (4 passed)
 - `snes/super_metroid/scratch/phantoon_wiki_doppler.json`
 - `snes/super_metroid/scratch/phantoon_wiki_doppler_dual.json`

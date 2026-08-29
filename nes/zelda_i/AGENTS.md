@@ -49,19 +49,19 @@ not an MP4. Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 
 | Path | Role |
 |------|------|
-| `ram.py`, `overworld.py`, `overworld_nav.py` | Snapshots + OW graph / L1 path |
-| `ow_path.py` | Shared hop engine (L2–L8) |
-| `walk_physics.py`, `predict.py` | OccupancyWalker + RAM claims |
-| `dungeon.py` + `level*_dungeon.py` | Combat + **specs/stop predicates only** |
-| `spine_hops.py` | `SpineHop` rows + `attach_hops` / `ready` |
-| `hop_controller.py` | Dest-hop timeout/death/scroll guard |
-| `token_path.py` | L4 maze hold-token walker |
-| `level*_path.py`, `level*_spine.py` | Path controllers + dest spine tables |
-| `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
+| `ram.py`, `overworld/graph.py`, `overworld/nav.py` | Snapshots + OW graph / L1 path |
+| `overworld/path.py` | Shared hop engine (L2–L8) |
+| `walk/physics.py`, `walk/predict.py` | OccupancyWalker + RAM claims |
+| `dungeon/engine.py` + `level*/dungeon.py` | Combat + **specs/stop predicates only** |
+| `spine/hops.py` | `SpineHop` rows + `attach_hops` / `ready` |
+| `dungeon/hop_controller.py` | Dest-hop timeout/death/scroll guard |
+| `dungeon/token_path.py` | L4 maze hold-token walker |
+| `level*/path.py`, `level*/spine.py` | Path controllers + dest spine tables |
+| `level*/overworld.py` | Hop tables + thin `overworld.path` subclasses |
 | `runner.py` | Script env/assist/report helpers |
 
 Split a file **before 500 lines**; refuse a new knob on a file **≥800**.
-Do not boil already-split `level4_*`. Named pins stay named. Probe PNG /
+Do not boil already-split `level4/`. Named pins stay named. Probe PNG /
 window JSON go gitignored scratch — not an AGENTS novel.
 
 ## Traps (burned once)

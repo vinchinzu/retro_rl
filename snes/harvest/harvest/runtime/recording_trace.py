@@ -457,3 +457,67 @@ def summarize_recording(
             "fed_cows_flags_change_windows": _value_change_windows(barn_trace, "fed_cows_flags"),
         },
     }
+
+
+def write_task_recording(
+    *,
+    name: str,
+    frames: Sequence[Sequence[int]],
+    trace: Sequence[dict],
+    start_state,
+    tasks_dir: str,
+    states_dir: str,
+    end_state: bytes,
+) -> dict[str, object]:
+    """Persist a human/bot task JSON plus mirrored end states."""
+    import gzip
+    import json
+    import os
+
+    os.makedirs(tasks_dir, exist_ok=True)
+    metadata = summarize_recording(frames=frames, trace=trace)
+    path = os.path.join(tasks_dir, f"{name}.json")
+    with open(path, "w") as f:
+        json.dump(
+            {
+                "name": name,
+                "frames": frames,
+                "trace": trace,
+                "start_state": start_state,
+                "metadata": metadata,
+            },
+            f,
+            indent=2,
+        )
+    print(f"[REC] Saved task: {path} ({len(frames)} frames)")
+    print(f"[REC] Trace rows: {len(trace)}")
+    coop_summary = metadata.get("coop", {})
+    if coop_summary.get("frame_count"):
+        print(
+            "[REC] Coop trace: "
+            f"{coop_summary.get('frame_count')} frames, "
+            f"{len(coop_summary.get('player_tiles', []))} player tiles, "
+            f"{len(coop_summary.get('adult_chicken_tiles', []))} adult chicken tiles, "
+            f"{len(coop_summary.get('chick_tiles', []))} chick tiles"
+        )
+    stasis_windows = metadata.get("stasis_windows", [])
+    if stasis_windows:
+        print(f"[REC] Stasis windows >=45f: {len(stasis_windows)}")
+        for window in stasis_windows[:8]:
+            print(
+                "  "
+                f"f={window['start']}-{window['end']} "
+                f"len={window['length']} "
+                f"tm=0x{window['tilemap']:02X} "
+                f"tile={tuple(window['tile'])} "
+                f"buttons={'+'.join(window['buttons'])}"
+            )
+    task_state_path = os.path.join(tasks_dir, f"{name}_end.state")
+    with gzip.open(task_state_path, "wb") as f:
+        f.write(end_state)
+    print(f"[REC] Saved end state: {task_state_path}")
+    state_path = os.path.join(states_dir, f"{name}_end.state")
+    with gzip.open(state_path, "wb") as f:
+        f.write(end_state)
+    print(f"[REC] Mirrored end state: {state_path}")
+    return metadata

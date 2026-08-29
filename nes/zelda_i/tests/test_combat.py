@@ -120,7 +120,7 @@ def test_should_swing_in_hitbox_or_contact_only() -> None:
 
 def test_should_swing_consumes_engagement_hint_veto() -> None:
     """Hint can veto; it cannot authorize a swing outside the hitbox."""
-    from zelda_i.combat_behaviors import EngagementHint
+    from zelda_i.dungeon.behaviors import EngagementHint
 
     lx, ly = 120, 141
     front = _obj(1, x=lx + 12, y=ly)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level1_bow import (
+from zelda_i.level1.bow import (
     LEVEL1_BOW_ROOM,
     NORTH_BAND_Y,
     NORTH_JOIN_X,

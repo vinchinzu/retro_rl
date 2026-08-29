@@ -5,13 +5,11 @@ import json
 from retro_harness.adventure.graph import GraphEdge, PlannedLeg, RouteLeg
 from super_metroid.map_planning import (
     EditorNavigationGraph,
-    edge_to_editor_dict,
-    planned_leg_to_editor_dict,
-)
-from super_metroid.routes.spore_spawn_route import (
     POST_TORIZO_CAPABILITIES,
     POST_TORIZO_ROUTE_PATCHES,
     POST_TORIZO_TO_SPORE_SPAWN,
+    edge_to_editor_dict,
+    planned_leg_to_editor_dict,
 )
 
 

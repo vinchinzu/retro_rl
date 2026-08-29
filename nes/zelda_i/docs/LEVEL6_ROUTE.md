@@ -33,7 +33,7 @@ From start `0x77`: right two screens → `0x79`, Power Bracelet push left rock, 
 
 ### Controller / hops
 
-Scaffold: `level6_overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). `POST_L5_TO_LEVEL6_HOPS` is **live** on `--through level6-entry` (`l6_entry_continuous_v2` 1/1). Full hop table from start is **planned**.
+Scaffold: `level6/overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt stop predicates). `POST_L5_TO_LEVEL6_HOPS` is **live** on `--through level6-entry` (`l6_entry_continuous_v2` 1/1). Full hop table from start is **planned**.
 
 ## Interior (live recon + assisted pure)
 
@@ -93,7 +93,7 @@ Correct (no sword-A while aligning — A softlocks the channel):
 3. At **x≥206**, nudge **y≈144–149**
 4. Push **RIGHT** → room **0x7a** (5× type `0x24`, RoomItemId `0x19` key)
 
-Controller: `level6_overworld.Level6EntryRightController` (~374f from spawn).
+Controller: `level6.overworld.Level6EntryRightController` (~374f from spawn).
 
 ### ⚠ Old Man key trap (0x7a UP → 0x6a)
 
@@ -123,18 +123,18 @@ Fire solids block naive `y≈141` LEFT from east return (~x224) or mid-room (~x1
 
 From south spawn **(120,205)** with keys≥1: **UP** to y≈157 → **LEFT** to x≈32 → y≈141 → LEFT.
 
-Controller: `level6_overworld.Level6WestKeyDoorController`.
+Controller: `level6.overworld.Level6WestKeyDoorController`.
 
 ### East key pure (0x79 → 0x7a) — **assisted 2/2**
 
 | Field | Live |
 |-------|------|
 | Start | `Level6Entrance` (0x79) or `L6Room_7a` |
-| Specs | `level6_dungeon.ROOM_79_SPEC` / `ROOM_7A_SPEC` |
+| Specs | `level6.dungeon.ROOM_79_SPEC` / `ROOM_7A_SPEC` |
 | Combat | `Level6EastKeyController` (GenericDungeonRoomController + backstep) |
 | Stop | `level6_room_7a_key_success` — keys≥1, no live 0x24 |
 | Checkpoint | `Level6EastKey.state` — room **0x7a**, keys **1**, xy≈(120,141) |
-| Runner | `scripts/run_level6_east_key.py --infinite-life --trials 2 --save-state` |
+| Runner | `scripts/run_survival_spine.py --through level6-east-key --no-video --trials 1` |
 | Track | **assisted pure** (Survival health writes; Clean dies to beams) |
 
 Combat notes:
@@ -146,8 +146,8 @@ Combat notes:
   LEFT still returns to **0x79**
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level6_east_key.py --from-state L6Room_7a --infinite-life --trials 2
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-east-key --no-video --trials 1
 ```
 
 ### West wizzrobes pure (Level6EastKey → 0x78 clear) — **assisted 2/2**
@@ -156,16 +156,17 @@ uv run python nes/zelda_i/scripts/run_level6_east_key.py --from-state L6Room_7a 
 |-------|------|
 | Start | `Level6EastKey` (0x7a keys≥1) or `L6Room_79_keys1` |
 | Path | free LEFT → 0x79 → key LEFT (fire-bypass) → 0x78 |
-| Spec | `level6_dungeon.ROOM_78_SPEC` |
+| Spec | `level6.dungeon.ROOM_78_SPEC` |
 | Combat | `Level6WestWizzrobeController` (same backstep as east) |
 | Stop | `level6_room_78_clear_success` — room 0x78, no live 0x24 |
 | Checkpoint | `Level6WestWizzrobes.state` — room **0x78**, cleared |
-| Runner | `scripts/run_level6_west_wizzrobes.py --infinite-life --trials 2 --save-state` |
+| Runner | `scripts/run_survival_spine.py --through level6-west --no-video --trials 1` |
 | Track | **assisted pure** |
 | Post-clear | `doors=0x01` (RIGHT), `mask=0x09` (R+U) — **UP → 0x68** |
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level6_west_wizzrobes.py --infinite-life --trials 2 --save-state
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-west --no-video --trials 1
 ```
 
 ### Compass room enter (0x78 leftover → 0x68) — **spine 1/1**
@@ -176,7 +177,7 @@ uv run python nes/zelda_i/scripts/run_level6_west_wizzrobes.py --infinite-life -
 | Path | OccupancyWalker to north door `(120,93)`; UP on band y≤109 |
 | Stop | `--through level6-compass` play-ready `0x68` |
 | Leftover | `(120,205)` south mouth; 5× Zol `0x13` live; north door open |
-| Controller | `level6_path.Level6North68Controller` |
+| Controller | `level6.path.Level6North68Controller` |
 | Track | **assisted Survival** |
 | Notes | 8 miss-blocks UP at x=144 (statue column); no door poke |
 
@@ -693,7 +694,8 @@ not the route.
 
 ### Post-east-key graph (live recon)
 
-Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
+Isolated `probe_level6_past_east_key.py` pruned. Graph dests are SpineHop
+rows on `scripts/run_survival_spine.py`.
 
 | Edge | Type | Keys | Live |
 |------|------|------|------|
@@ -804,10 +806,10 @@ Probe: `scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`.
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1`
-- Probe: `uv run python zelda_i/scripts/probe_level6_entry.py --infinite-life --save-state`
-- Graph: `uv run python nes/zelda_i/scripts/probe_level6_past_east_key.py --infinite-life --try-old-man`
-- Pure: `uv run python nes/zelda_i/scripts/run_level6_east_key.py --infinite-life --trials 2`
-- Pure: `uv run python nes/zelda_i/scripts/run_level6_west_wizzrobes.py --infinite-life --trials 2`
+- Isolated L6 segment CLIs pruned. Prefix hops:
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-entry --no-video --trials 1`
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east-key --no-video --trials 1`
+  `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west --no-video --trials 1`
 
 ## Residual to Rod / Gohma (rr-d6v)
 

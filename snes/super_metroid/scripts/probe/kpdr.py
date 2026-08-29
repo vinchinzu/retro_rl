@@ -1,20 +1,10 @@
 #!/usr/bin/env python3
-"""KPDR probes: active controller route gets Hi-Jump before Kraid.
+"""KPDR probes: load a pin, play a Skill, compare RAM.
 
 ```bash
 # Safer pure composition: Warehouse → Hi-Jump → Warehouse → Kraid entry
 uv run python snes/super_metroid/scripts/probe/kpdr.py pure warehouse-hijump-kraid \
   --source super_metroid/custom_integrations/SuperMetroid-Snes/scratch/red_to_warehouse_controller.state
-
-# Full door-warp chain Big Pink main → Hi-Jump room (dev)
-uv run python snes/super_metroid/scripts/probe/kpdr.py route-to-hijump
-
-# Shorter: Varia state → Hi-Jump (+ grant boots bit)
-uv run python snes/super_metroid/scripts/probe/kpdr.py varia-to-hijump
-
-# Single hop from a save state
-uv run python snes/super_metroid/scripts/probe/kpdr.py hop hj-room \\
-  --source super_metroid/custom_integrations/SuperMetroid-Snes/dev_kpdr_hj_shaft.state
 
 # Chain Ice return + K5 + K6 from the Ice leave pin (not continuous evidence)
 uv run python snes/super_metroid/scripts/probe/kpdr.py compose ice-to-moat \\
@@ -36,7 +26,6 @@ uv run python snes/super_metroid/scripts/export/kpdr_tracker.py
 ```
 
 The ``pure`` subcommand uses controller inputs and resource assists only.
-Door-warp and item-grant subcommands remain development-only topology tools.
 """
 
 from __future__ import annotations
@@ -57,22 +46,18 @@ from super_metroid.dev.common import (  # noqa: E402
     place_samus,
     save_dev_state,
 )
-from super_metroid.dev.kpdr_dev import (  # noqa: E402
-    BIG_PINK_MAIN,
-    HJ_COLLECTED_DEV,
-    HJ_ENTRY,
-    HOP_BY_ID,
-    KPDR_TO_HIJUMP,
-    VARIA_STATE,
-    hop_once,
-    route_to_hijump,
-    route_varia_to_hijump,
-)
 from super_metroid.ram import (  # noqa: E402
     parse_counts,
     parse_env_state,
     probe_pin,
     reset_parse_counts,
+)
+from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS, get_segment  # noqa: E402
+from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
+    BubblePhaseStop,
+    play_bubble_climb_from_handoff,
+    play_bubble_from_top_door,
+    play_bubble_to_bat_cave_with_phase_capture,
 )
 from super_metroid.scripts.probe.red_diag import (  # noqa: E402
     DEFAULT_RING_FRAMES,
@@ -87,119 +72,17 @@ from super_metroid.source_states import (  # noqa: E402
     suggest_source_path,
     validate_fingerprint,
 )
-from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
-    BubblePhaseStop,
-    play_bubble_climb_from_handoff,
-    play_bubble_from_top_door,
-    play_bubble_to_bat_cave,
-    play_bubble_to_bat_cave_with_phase_capture,
-)
-from super_metroid.routes.kpdr.ice import (  # noqa: E402
-    play_business_to_ice_gate,
-    play_ice_acid_to_snake,
-    play_ice_gate_to_acid,
-    play_ice_snake_to_ice,
-    play_ice_snake_to_tutorial,
-    play_ice_to_snake,
-    play_ice_tutorial_to_gate,
-    play_ice_gate_to_business,
-)
-from super_metroid.routes.kpdr.k5 import (  # noqa: E402
-    play_bat_to_red,
-    play_below_to_bat,
-    play_caterpillar_to_alpha_pb,
-    play_east_to_glass,
-    play_glass_to_west,
-    play_hellway_to_caterpillar,
-    play_red_to_hellway,
-    play_warehouse_to_east,
-    play_west_to_below,
-)
-from super_metroid.routes.kpdr.k6 import (  # noqa: E402
-    play_alpha_pb_to_caterpillar,
-    play_caterpillar_to_elevator,
-    play_elevator_to_kihunter,
-    play_kihunter_to_moat,
-)
-from super_metroid.routes.kpdr.moat import play_moat_cross  # noqa: E402
-from super_metroid.routes.kpdr.business_climb import (  # noqa: E402
-    play_business_to_warehouse,
-)
-from super_metroid.routes.kpdr.collect_hijump import play_warehouse_to_hijump  # noqa: E402
-from super_metroid.routes.kpdr.from_kraid import (  # noqa: E402
-    play_baby_to_kihunter_return,
-    play_eye_to_baby_return,
-    play_kihunter_to_zeela_return,
-    play_zeela_to_warehouse_return,
-)
-from super_metroid.routes.kpdr.ghz_to_red import (  # noqa: E402
-    play_ghz_to_noob,
-    play_noob_to_red_tower,
-)
-from super_metroid.routes.kpdr.k4_business_frog import (  # noqa: E402
-    play_business_to_frog_save,
-    play_frog_save_to_speedway,
-    play_speedway_to_farm,
-)
-from super_metroid.routes.kpdr.k4_cathedral import (  # noqa: E402
-    play_business_to_cathedral_entrance,
-    play_cathedral_entrance_to_cathedral,
-    play_cathedral_to_rising_tide,
-)
-from super_metroid.routes.kpdr.k4_rising_tide import (  # noqa: E402
-    play_rising_tide_to_bubble,
-)
-from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz  # noqa: E402
-from super_metroid.routes.kpdr.red_stack import (  # noqa: E402
-    play_bat_to_below_spazer,
-    play_below_spazer_to_west,
-    play_east_to_warehouse,
-    play_glass_to_east,
-    play_red_tower_to_bat,
-    play_red_tower_to_warehouse,
-    play_west_to_glass,
-)
-from super_metroid.routes.kpdr.return_hijump import (  # noqa: E402
-    play_hijump_to_warehouse,
-    play_hj_shaft_to_business,
-)
-from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble  # noqa: E402
-from super_metroid.routes.kpdr.to_kraid import (  # noqa: E402
-    play_warehouse_hijump_kraid,
-    play_warehouse_to_kraid_with_hijump,
-)
-from super_metroid.routes.kpdr.to_speed import (  # noqa: E402
-    play_bat_cave_to_speed_hall,
-    play_speed_hall_to_speed,
-)
-from super_metroid.routes.kpdr.varia_return import (  # noqa: E402
-    play_kraid_to_eye_return,
-    play_varia_to_kraid,
-)
-from super_metroid.routes.kpdr.warehouse_stack import (  # noqa: E402
-    play_warehouse_to_business,
-    play_warehouse_wall_to_lower_lip,
-)
-from super_metroid.routes.kpdr.wave import (  # noqa: E402
-    play_bubble_to_farm,
-    play_bubble_to_single_chamber,
-    play_double_chamber_to_wave,
-    play_double_to_single_chamber,
-    play_farm_to_speedway,
-    play_frog_save_to_business,
-    play_single_to_bubble,
-    play_single_to_double_chamber,
-    play_speedway_to_frog_save,
-    play_wave_to_double_chamber,
-)
-from super_metroid.routes.kpdr.spazer import (  # noqa: E402
-    play_below_spazer_climb,
-    play_below_spazer_to_spazer,
-    play_spazer_collect,
-    play_spazer_detour,
-    play_spazer_return_to_below,
-    play_spazer_top_to_west,
-)
+
+# CLI short names that do not 1:1 hyphenate a KPDR_SEGMENTS key.
+_PURE_ALIASES = {
+    "noob-to-red": "noob_to_red_tower",
+    "red-to-bat": "red_tower_to_bat",
+    "bat-to-below": "bat_to_below_spazer",
+    "below-to-west": "below_spazer_to_west",
+    "red-to-warehouse": "red_tower_to_warehouse",
+    "warehouse-wall": "warehouse_wall_to_lower_lip",
+    "warehouse-to-kraid-hijump": "warehouse_to_kraid_with_hijump",
+}
 
 
 _REVERSE_ISOLATION_COMMANDS = (
@@ -583,44 +466,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("list", help="List hop ids on KPDR → Hi-Jump warp chain")
-
-    rth = sub.add_parser(
-        "route-to-hijump",
-        help="Door-warp Big Pink → Kraid → Varia → Hi-Jump room",
-    )
-    rth.add_argument("--source", type=Path, default=BIG_PINK_MAIN)
-    rth.add_argument("--output", type=Path, default=HJ_ENTRY)
-    rth.add_argument("--no-save-hops", action="store_true")
-    rth.add_argument(
-        "--grant-hijump",
-        action="store_true",
-        help="Grant Hi-Jump item bit at end (dev)",
-    )
-
-    vth = sub.add_parser(
-        "varia-to-hijump",
-        help="Door-warp from Varia state to Hi-Jump room",
-    )
-    vth.add_argument("--source", type=Path, default=VARIA_STATE)
-    vth.add_argument("--output", type=Path, default=HJ_ENTRY)
-    vth.add_argument("--no-grant-hijump", action="store_true")
-
-    hop = sub.add_parser("hop", help="Single door-warp hop")
-    hop.add_argument(
-        "hop_id",
-        choices=sorted(HOP_BY_ID),
-        help="Hop id (see list)",
-    )
-    hop.add_argument("--source", type=Path, required=True)
-    hop.add_argument("--output", type=Path, default=None)
-
-    col = sub.add_parser(
-        "collect-hijump",
-        help="Warp Varia→Hi-Jump and grant boots bit (dev)",
-    )
-    col.add_argument("--source", type=Path, default=VARIA_STATE)
-    col.add_argument("--output", type=Path, default=HJ_COLLECTED_DEV)
+    sub.add_parser("list", help="List pure hop ids (KPDR_SEGMENTS + CLI aliases)")
 
     sub.add_parser(
         "iso-reverse",
@@ -633,82 +479,8 @@ def main() -> None:
     )
     pure.add_argument(
         "segment",
-        choices=(
-            "big-pink-to-ghz",
-            "ghz-to-noob",
-            "noob-to-red",
-            "red-to-bat",
-            "bat-to-below",
-            "below-spazer-to-spazer",
-            "below-spazer-climb",
-            "spazer-collect",
-            "spazer-return-to-below",
-            "spazer-top-to-west",
-            "spazer-detour",
-            "below-to-west",
-            "west-to-glass",
-            "glass-to-east",
-            "east-to-warehouse",
-            "red-to-warehouse",
-            "warehouse-wall",
-            "warehouse-to-hijump",
-            "hijump-to-warehouse",
-            "warehouse-to-kraid-hijump",
-            "warehouse-hijump-kraid",
-            "hj-shaft-to-business",
-            "business-to-warehouse",
-            "warehouse-to-business",
-            "varia-to-kraid",
-            "kraid-to-eye-return",
-            "eye-to-baby-return",
-            "baby-to-kihunter-return",
-            "kihunter-to-zeela-return",
-            "zeela-to-warehouse-return",
-            "business-to-frog-save",
-            "business-to-cathedral-entrance",
-            "business-to-ice-gate",
-            "ice-gate-to-acid",
-            "ice-acid-to-snake",
-            "ice-snake-to-ice",
-            "ice-to-snake",
-            "ice-snake-to-tutorial",
-            "ice-tutorial-to-gate",
-            "ice-gate-to-business",
-            "warehouse-to-east",
-            "east-to-glass",
-            "glass-to-west",
-            "west-to-below",
-            "below-to-bat",
-            "bat-to-red",
-            "red-to-hellway",
-            "hellway-to-caterpillar",
-            "caterpillar-to-alpha-pb",
-            "alpha-pb-to-caterpillar",
-            "caterpillar-to-elevator",
-            "elevator-to-kihunter",
-            "kihunter-to-moat",
-            "moat-cross",
-            "cathedral-entrance-to-cathedral",
-            "cathedral-to-rising-tide",
-            "rising-tide-to-bubble",
-            "bubble-to-bat-cave",
-            "bat-cave-to-speed-hall",
-            "speed-hall-to-speed",
-            "speed-return-to-bubble",
-            "bubble-to-single-chamber",
-            "single-to-double-chamber",
-            "double-chamber-to-wave",
-            "wave-to-double-chamber",
-            "double-to-single-chamber",
-            "single-to-bubble",
-            "bubble-to-farm",
-            "farm-to-speedway",
-            "speedway-to-frog-save",
-            "frog-save-to-business",
-            "frog-save-to-speedway",
-            "speedway-to-farm",
-            "ws-basement-to-main",
-            "ws-main-to-attic",
+        choices=sorted(
+            {k.replace("_", "-") for k in KPDR_SEGMENTS} | set(_PURE_ALIASES)
         ),
     )
     add_headed_flag(pure)
@@ -822,46 +594,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "list":
-        for name, door, room, px, py in KPDR_TO_HIJUMP:
-            print(f"{name:20} door=0x{door:04X} room=0x{room:04X} place=({px},{py})")
+        names = {k.replace("_", "-") for k in KPDR_SEGMENTS}
+        names.update(_PURE_ALIASES)
+        for name in sorted(names):
+            print(name)
         return
-
-    if args.command == "route-to-hijump":
-        report = route_to_hijump(
-            source=args.source,
-            output=args.output,
-            save_hops=not args.no_save_hops,
-            grant_hijump=args.grant_hijump,
-        )
-        print(json.dumps(report, indent=2))
-        sys.exit(0 if report.get("success") else 1)
-
-    if args.command == "varia-to-hijump":
-        report = route_varia_to_hijump(
-            source=args.source,
-            output=args.output,
-            grant_hijump=not args.no_grant_hijump,
-        )
-        print(json.dumps(report, indent=2))
-        sys.exit(0 if report.get("success") else 1)
-
-    if args.command == "hop":
-        report = hop_once(
-            hop_id=args.hop_id,
-            source=args.source,
-            output=args.output,
-        )
-        print(json.dumps(report, indent=2))
-        sys.exit(0 if report.get("success") else 1)
-
-    if args.command == "collect-hijump":
-        report = route_varia_to_hijump(
-            source=args.source,
-            output=args.output,
-            grant_hijump=True,
-        )
-        print(json.dumps(report, indent=2))
-        sys.exit(0 if report.get("success") else 1)
 
     if args.command == "iso-reverse":
         source_root = "super_metroid/custom_integrations/SuperMetroid-Snes/scratch"
@@ -913,85 +650,9 @@ def main() -> None:
         sys.exit(0 if report.get("success") else 1)
 
     if args.command == "pure":
-        play_fn = {
-            "big-pink-to-ghz": play_big_pink_to_ghz,
-            "ghz-to-noob": play_ghz_to_noob,
-            "noob-to-red": play_noob_to_red_tower,
-            "red-to-bat": play_red_tower_to_bat,
-            "bat-to-below": play_bat_to_below_spazer,
-            "below-spazer-to-spazer": play_below_spazer_to_spazer,
-            "below-spazer-climb": play_below_spazer_climb,
-            "spazer-collect": play_spazer_collect,
-            "spazer-return-to-below": play_spazer_return_to_below,
-            "spazer-top-to-west": play_spazer_top_to_west,
-            "spazer-detour": play_spazer_detour,
-            "below-to-west": play_below_spazer_to_west,
-            "west-to-glass": play_west_to_glass,
-            "glass-to-east": play_glass_to_east,
-            "east-to-warehouse": play_east_to_warehouse,
-            "red-to-warehouse": play_red_tower_to_warehouse,
-            "warehouse-wall": play_warehouse_wall_to_lower_lip,
-            "warehouse-to-hijump": play_warehouse_to_hijump,
-            "hijump-to-warehouse": play_hijump_to_warehouse,
-            "warehouse-to-kraid-hijump": play_warehouse_to_kraid_with_hijump,
-            "warehouse-hijump-kraid": play_warehouse_hijump_kraid,
-            "hj-shaft-to-business": play_hj_shaft_to_business,
-            "business-to-warehouse": play_business_to_warehouse,
-            "warehouse-to-business": play_warehouse_to_business,
-            "varia-to-kraid": play_varia_to_kraid,
-            "kraid-to-eye-return": play_kraid_to_eye_return,
-            "eye-to-baby-return": play_eye_to_baby_return,
-            "baby-to-kihunter-return": play_baby_to_kihunter_return,
-            "kihunter-to-zeela-return": play_kihunter_to_zeela_return,
-            "zeela-to-warehouse-return": play_zeela_to_warehouse_return,
-            "business-to-frog-save": play_business_to_frog_save,
-            "business-to-cathedral-entrance": play_business_to_cathedral_entrance,
-            "business-to-ice-gate": play_business_to_ice_gate,
-            "ice-gate-to-acid": play_ice_gate_to_acid,
-            "ice-acid-to-snake": play_ice_acid_to_snake,
-            "ice-snake-to-ice": play_ice_snake_to_ice,
-            "ice-to-snake": play_ice_to_snake,
-            "ice-snake-to-tutorial": play_ice_snake_to_tutorial,
-            "ice-tutorial-to-gate": play_ice_tutorial_to_gate,
-            "ice-gate-to-business": play_ice_gate_to_business,
-            "warehouse-to-east": play_warehouse_to_east,
-            "east-to-glass": play_east_to_glass,
-            "glass-to-west": play_glass_to_west,
-            "west-to-below": play_west_to_below,
-            "below-to-bat": play_below_to_bat,
-            "bat-to-red": play_bat_to_red,
-            "red-to-hellway": play_red_to_hellway,
-            "hellway-to-caterpillar": play_hellway_to_caterpillar,
-            "caterpillar-to-alpha-pb": play_caterpillar_to_alpha_pb,
-            "alpha-pb-to-caterpillar": play_alpha_pb_to_caterpillar,
-            "caterpillar-to-elevator": play_caterpillar_to_elevator,
-            "elevator-to-kihunter": play_elevator_to_kihunter,
-            "kihunter-to-moat": play_kihunter_to_moat,
-            "moat-cross": play_moat_cross,
-            "cathedral-entrance-to-cathedral": play_cathedral_entrance_to_cathedral,
-            "cathedral-to-rising-tide": play_cathedral_to_rising_tide,
-            "rising-tide-to-bubble": play_rising_tide_to_bubble,
-            "bubble-to-bat-cave": play_bubble_to_bat_cave,
-            "bat-cave-to-speed-hall": play_bat_cave_to_speed_hall,
-            "speed-hall-to-speed": play_speed_hall_to_speed,
-            "speed-return-to-bubble": play_speed_return_to_bubble,
-            "bubble-to-single-chamber": play_bubble_to_single_chamber,
-            "single-to-double-chamber": play_single_to_double_chamber,
-            "double-chamber-to-wave": play_double_chamber_to_wave,
-            "wave-to-double-chamber": play_wave_to_double_chamber,
-            "double-to-single-chamber": play_double_to_single_chamber,
-            "single-to-bubble": play_single_to_bubble,
-            "bubble-to-farm": play_bubble_to_farm,
-            "farm-to-speedway": play_farm_to_speedway,
-            "speedway-to-frog-save": play_speedway_to_frog_save,
-            "frog-save-to-business": play_frog_save_to_business,
-            "frog-save-to-speedway": play_frog_save_to_speedway,
-            "speedway-to-farm": play_speedway_to_farm,
-        }.get(args.segment)
-        if play_fn is None:
-            from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
-
-            play_fn = KPDR_SEGMENTS[args.segment.replace("-", "_")]
+        play_fn = get_segment(
+            _PURE_ALIASES.get(args.segment, args.segment.replace("-", "_"))
+        )
         bubble_phase_opts = (
             args.start_phase != "auto"
             or args.dump_phase_c is not None

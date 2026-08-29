@@ -76,8 +76,8 @@ Evidence: `recordings/l7_dnp_pond_assisted_v9.json` and
 `progression_writes=capacity_writes=0`; `success=false`, so no checkpoint was
 saved and this is not a route claim.
 
-**Controller:** `level7_overworld.OverworldToLevel7PondController`; the probe
-refuses missing Whistle unless `--allow-missing-caps` is explicit.
+**Controller:** `level7.overworld.OverworldToLevel7PondController`. Isolated
+`probe_level7_entry.py` pruned. Whistle is a pond-entry gate.
 
 ### Live recon goals
 
@@ -155,13 +155,14 @@ Scaffold: `level7_triforce_stop(snap)` → `bool(snap.triforce & 0x40)`.
 
 ## Scaffold / probe
 
+Isolated `probe_level7_entry.py` pruned. Durable runner (no L7 SpineHop yet):
+
 ```bash
-uv run python zelda_i/scripts/probe_level7_entry.py --plan-only
-uv run python zelda_i/scripts/probe_level7_entry.py --infinite-life --save-state
+uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
-Module: `zelda_i/level7_overworld.py`. Live probe **refuses** without Whistle
-unless `--plan-only` (or explicit `--allow-missing-caps` for dock-only walk).
+Module: `zelda_i/level7/overworld.py`. Pond walk is
+`OverworldToLevel7PondController`; Whistle is required to drain.
 
 ---
 

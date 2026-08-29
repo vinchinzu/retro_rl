@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from zelda_i.combat import FACING_SOUTH, SWORD_REACH
-from zelda_i.combat_behaviors import (
+from zelda_i.dungeon.behaviors import (
     DIGDOGGER_POLICY,
     DIGDOGGER_SHRUNK_TYPE,
     DIGDOGGER_TYPE,
@@ -32,7 +32,7 @@ from zelda_i.combat_behaviors import (
     sword_legal,
     uses_type_only_liveness,
 )
-from zelda_i.dungeon import AliveRule
+from zelda_i.dungeon.engine import AliveRule
 from zelda_i.ram import ZeldaObject
 
 

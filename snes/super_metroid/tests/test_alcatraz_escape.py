@@ -87,6 +87,32 @@ def test_rollout_is_morph_left_of_chimney() -> None:
     assert not at_alcatraz_rollout(standing)
 
 
+def test_base_approach_is_one_dash_jump_not_a_retry_ladder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
+
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+    session = _Session(_state())
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        sess.frame += frames
+        if reason == "alcatraz_base_land":
+            sess.state = replace(sess.state, samus_x=805, samus_y=545, pose=2)
+        else:
+            sess.state = replace(sess.state, frame=sess.frame)
+        return sess.state
+
+    monkeypatch.setattr(alcatraz, "hold", _hold)
+    monkeypatch.setattr(alcatraz, "_unmorph_probe_pose", lambda _s: None)
+    alcatraz._land_left_wall_base(session)
+    hops = [c for c in calls if c[2] == "alcatraz_base_hop"]
+    assert hops == [(18, ("LEFT", "A"), "alcatraz_base_hop")]
+    assert calls[0][2] == "alcatraz_base_face"
+    assert calls[1] == (30, ("LEFT", "B"), "alcatraz_base_run")
+
+
 def test_play_rejects_wrong_entry_seat() -> None:
     session = _Session(_state(samus_x=900, samus_y=651, pose=2))
     with pytest.raises(RuntimeError, match="natural entry"):
@@ -147,6 +173,9 @@ def test_natural_pin_lands_at_lip_and_rolls_out() -> None:
         evidence = play_alcatraz_escape(session)
         assert at_alcatraz_rollout(session.state)
         assert min_y <= SHAFT_LIP_Y
+        assert evidence.base_frame <= 80
+        assert evidence.ledge_frame <= 330
+        assert evidence.exit_frame <= 540
         assert evidence.exit_x <= ROLLOUT_MAX_X
         assert evidence.exit_y <= ROLLOUT_MAX_Y
         assert evidence.exit_x == session.state.samus_x

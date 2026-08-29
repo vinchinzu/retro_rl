@@ -110,8 +110,8 @@ Assisted recon from `Level2Entrance` (Survival, 2026-08-06) is recorded in
 | Dodongo needs bombs | walkthrough + live | **LIVE** bomb-mouth type `0x32` (assisted) |
 | Triforce bit 0x02 | live assisted | **LIVE 2/2** Boom→TF (`rr-5dk`) |
 
-Specs + controllers: `dungeon.ROOM_7D_SPEC`, `ROOM_6D_SPEC`, `ROOM_6C_SPEC`,
-`ROOM_7E_SPEC`; `ROPE_OBJECT_TYPE=0x28`; `GenericDungeonRoomController`. Stops:
+Specs + controllers: `level2.dungeon.ROOM_7D_SPEC`, `ROOM_6D_SPEC`, `ROOM_6C_SPEC`,
+`ROOM_7E_SPEC`; `ROPE_OBJECT_TYPE=0x28`; `dungeon.engine.GenericDungeonRoomController`. Stops:
 `level2_room_6d_cleared`, `level2_room_6c_key_success`,
 `level2_room_7e_key_success`.
 
@@ -157,7 +157,7 @@ From `Level2WestKey` / `Level2Entrance`. Survival + optional bombs/keys poke.
 ```
 
 **Trap — diamond solids (0x7d / 0x6e east):** naive `y≈141` RIGHT hits solid
-near **x≈128–176**. Helper: `nav_common.diamond_east_phase` (also
+near **x≈128–176**. Helper: `overworld.common.diamond_east_phase` (also
 `ROOM_7E_SPEC.entry` waypoints):
 
 1. Free mid (east alcove: **LEFT** first; do not y-only spin)
@@ -213,7 +213,7 @@ Walk-RIGHT on 0x5f is **not** required (bomb-UP is the boom open).
 
 ## Puzzle catalog (`rr-3pz`)
 
-Path/puzzle geometry for lab use. **Data module:** `nes/zelda_i/level2_puzzles.py`
+Path/puzzle geometry for lab use. **Data module:** `nes/zelda_i/level2/puzzles.py`
 (pure constants + open predicates; no combat rewrite). Does **not** claim Clean
 STATUS. Walkthrough-only future bomb walls (map room, Moldorm detour, Dodongo
 corridor) stay residual until room IDs are live.
@@ -253,11 +253,11 @@ solids** block naive east corridors (not classic center-block stairs).
 |------|--------|----------|-------------|------|----------|
 | **0x7d** | **157** (or 149) | `diamond_east_phase`: free → band → wall x≥200 → S2 (LEFT×6, vert door_y, RIGHT×10) → **pure RIGHT** on y=141 | **0x7e** | no | `level2_clear7e_isolated.json`, `l2_east_open.json` |
 | **0x6e** | **113** | same; prefer **WEST** entry via 0x6d | **0x6f** | **yes** | `l2_6e_right_ok.json`, `l2_6e_band_scan.json` |
-| 0x6f | 113 (probe try) | diamond-east RIGHT residual | — | — | `level2_puzzles.DIAMOND_EAST_ROOMS` |
+| 0x6f | 113 (probe try) | diamond-east RIGHT residual | — | — | `level2.puzzles.DIAMOND_EAST_ROOMS` |
 
 **Door y poke:** east wall opens only for **y≥137** (y≤133 never). Constants:
 `DIAMOND_BAND_7D=157`, `DIAMOND_BAND_6E=113`, `DOOR_Y_MIN_OPEN=137` (also
-`nav_common`). **Trap:** no LEFT during final push; south entry into 0x6e from
+`overworld.common`). **Trap:** no LEFT during final push; south entry into 0x6e from
 0x7e can stick ~y=181.
 
 **Push-block probe (negative):** centers
@@ -295,7 +295,7 @@ see room specs, not this catalog).
 | 0x6d UP | sealed | live recon |
 | OW 0x4B→0x5B north entry | east of 0x5B sealed | door-path section above |
 
-Code lists: `BOMB_WALL_NEGATIVES_6F`, `SEALED_EXITS` in `level2_puzzles.py`.
+Code lists: `BOMB_WALL_NEGATIVES_6F`, `SEALED_EXITS` in `level2/puzzles.py`.
 
 ## L2 assisted complete LIVE (`rr-5dk`, 2026-08-07)
 
@@ -311,17 +311,14 @@ Clean STATUS / natural power-on (deferred).
 | Fight | Dodongo type `0x32` bomb-mouth ~1632f |
 | TF phase | south-band policy ~513f (`policy_live=True`) |
 | Checkpoint | **`Level2Complete.state`** (+ provenance) |
-| Runner | `scripts/run_level2_dodongo.py` / `scripts/run_level2_complete.py` |
+| Runner | `level2.boss_path` / Composer `run_survival_spine.py --through level2` |
 | Evidence | `recordings/l2_complete_assisted.json` (+ `_t0`/`_t1`/`_summary`) |
 | Prior geometry | `recordings/l2_tf02_encode.json` (`rr-n5i`) |
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level2_dodongo.py \
-  --infinite-life --from-state Level2Boom --trials 2 \
-  --tag l2_complete_assisted --save-state
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 # or:
-uv run python nes/zelda_i/scripts/run_level2_complete.py \
-  --infinite-life --trials 2 --save-state
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 **Compose scope:** post-boom tip only (one env session, no mid-run state load).
@@ -339,7 +336,7 @@ Goal: bomb Dodongo → Heart Container → **LEFT** into TF room **0x0d** →
 **Geometry trap:** walkthrough “TF **east** of boss” is **wrong live**. After
 kill, doors are **LEFT-only** → room **0x0d** is **WEST** of Dodongo 0x0e.
 RIGHT is sealed (key/bomb/push fail). Catalog: `ROOM_L2_BOSS=0x0E`,
-`ROOM_L2_TF=0x0D`, `L2_TF_COLLECT_WAYPOINTS` in `level2_puzzles.py`.
+`ROOM_L2_TF=0x0D`, `L2_TF_COLLECT_WAYPOINTS` in `level2/puzzles.py`.
 
 ### Post-boom tip chain (assisted LIVE)
 
@@ -367,7 +364,7 @@ never sets `tf&0x02`). Push/bomb not required.
 | tol | ≈3 |
 | Constants | `L2_TF_COLLECT_WAYPOINTS`, `POST_BOSS_TF_POLICY` (`live=True`) |
 | Checkpoint | `Level2_0D_PostBoss` |
-| Runner | `level2_boss_path` / `run_level2_dodongo.py` / `run_level2_complete.py` |
+| Runner | `level2.boss_path` / Composer `run_survival_spine.py --through level2` |
 | Evidence | `recordings/l2_0d_tf_reach.json`, `l2_tf02_encode.json` |
 
 | Claim | Live |
@@ -433,37 +430,26 @@ Ropes unlock → Goriya bombs → **Dodongo** (2 mouths) → Heart → Triforce 
 ## Controllers / runner
 
 ```bash
-uv run python zelda_i/scripts/run_to_level2_prefix.py --trials 2
-uv run python zelda_i/scripts/run_to_level2_prefix.py --room-timing --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level2 --no-video --trials 1
 uv run python zelda_i/scripts/probe_level2_suffix.py --help
 # Assisted first-pass to Moon entry room (not Clean):
-uv run python zelda_i/scripts/probe_level2_suffix.py --infinite-life --enter-dungeon --save-state --tag l2_entry_assisted
-# Isolated pure key branch (Clean from Level2Entrance / Level2RopesCleared):
-uv run python nes/zelda_i/scripts/run_level2_clear6d.py --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear6c.py --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear6c.py --from-entrance --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear7e.py --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear7e.py --save-state --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear6f.py --trials 2
-uv run python nes/zelda_i/scripts/run_level2_clear6f.py --save-state --trials 2
-# Assisted Boom → Dodongo → TF (not Clean):
-uv run python nes/zelda_i/scripts/run_level2_magic_boomerang.py --infinite-life
-uv run python nes/zelda_i/scripts/run_level2_complete.py --infinite-life --trials 2
-# Diamond-east: nav_common.diamond_east_phase / ROOM_7E_SPEC.entry.
-# 0x6e RIGHT: WEST entry + key + band≈113 wall-vertical pure push → 0x6f (door y≥137).
-# 0x6f bomb N: stand (120,101) UP+B → 0x5f; LEFT key → 0x5e Goriya.
-# Puzzle constants (no emu): zelda_i.level2_puzzles — BOMB_WALL_6F_NORTH, KEY_DOORS, DIAMOND_*
+uv run python zelda_i/scripts/probe_level2_suffix.py \
+  --infinite-life --enter-dungeon --save-state --tag l2_entry_assisted
+# Isolated L2 segment CLIs were pruned. Dest hops are SpineHop rows.
+# Diamond-east: overworld.common.diamond_east_phase / ROOM_7E_SPEC.entry.
+# Puzzle constants (no emu): zelda_i.level2.puzzles — BOMB_WALL_6F_NORTH, KEY_DOORS, DIAMOND_*
 ```
 
-- `level2_overworld.PostTriforceSettleController`
-- `level2_puzzles` — bomb stands / key doors / diamond bands (lab import)
-- `level2_overworld.OverworldToLevel2Controller` (default stop 0x4A;
+- `level2.overworld.PostTriforceSettleController`
+- `level2.puzzles` — bomb stands / key doors / diamond bands (lab import)
+- `level2.overworld.OverworldToLevel2Controller` (default stop 0x4A;
   `door_path=True` + maze; `require_dungeon=True` → room-ready 0x7d)
-- `dungeon.GenericDungeonRoomController` + `ROOM_6D_SPEC` / `ROOM_6C_SPEC` /
+- `dungeon.engine.GenericDungeonRoomController` + `ROOM_6D_SPEC` / `ROOM_6C_SPEC` /
   `ROOM_7E_SPEC` / `ROOM_6E_SPEC` / `ROOM_6F_SPEC`
-- `nav_common.diamond_east_phase` — reusable diamond-blocked east doors
+- `overworld.common.diamond_east_phase` — reusable diamond-blocked east doors
 - Door path + maze not yet promoted to a 2/2 Clean natural runner
-- Opt-in hop timing: `chain.run_controller_stage(..., room_timer=)` /
+- Opt-in hop timing: `zelda_i.route.chain.run_controller_stage(..., room_timer=)` /
   runner `--room-timing` → `recordings/room_timings/`
 
 ## Measured door-path fail (not route progress)
@@ -495,7 +481,7 @@ From `Level1ExitOverworld` with `LEVEL2_DOOR_HOPS` + `require_level2_screen`
 - [x] **0x6f bomb N → 0x5f** live (stand 120,101) + **0x5f LEFT key → 0x5e** Goriya (`rr-ebe` advance)
 - [x] Isolated pure 0x6f bomb N → 0x5f 2/2 Clean (`rr-lzk`; `Level2BombNorthController` / `Level2_5F`)
 - [x] Isolated pure 0x5e 5× Goriya clear 2/2 Clean (`rr-etl`; `ROOM_5E_SPEC` / `Level2_5E`)
-- [x] Puzzle catalog bomb/key/diamond + `level2_puzzles.py` data (`rr-3pz`) — not Clean STATUS
+- [x] Puzzle catalog bomb/key/diamond + `level2/puzzles.py` data (`rr-3pz`) — not Clean STATUS
 - [x] Open past 0x5e/0x5f: **0x4e / 0x4f / 0x3e** live + graph edges (`rr-cjf`; `l2_cjf_expand.json`)
 - [ ] 0x4f boom clear + Magical Boomerang pure 2/2 (`ADDR_MAGIC_BOOMERANG`; `rr-bsq` / `rr-ebe`)
 - [x] Dodongo path recon (`rr-a1t` **PARTIAL**) — boss not reached; residual past 0x4f / 0x3e
@@ -528,7 +514,7 @@ from checkpoint **`Level2_5E`** (post-Goriya, Survival + inventory poke).
 2. Alt: `0x5e` free UP → `0x4e` RIGHT → **0x4f**
 
 Graph/constants: `door_graph` (`L2_BOOM_CANDIDATE` / `L2_ROPES_NORTH` /
-`L2_NORTH_OF_4E`), `level2_puzzles.BOMB_WALL_5F_NORTH` / `BOMB_WALL_5E_EAST`.
+`L2_NORTH_OF_4E`), `level2.puzzles.BOMB_WALL_5F_NORTH` / `BOMB_WALL_5E_EAST`.
 
 **Residual for `rr-bsq` / `rr-ebe`:** clear 0x4f (obj types + collect
 `ADDR_MAGIC_BOOMERANG`); map 0x3e / Dodongo branch.

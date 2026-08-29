@@ -79,11 +79,10 @@ Pit gs=8 **GREEN** 895f pose 9 ~(39,139).
 ### Probe
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/climb_descent.py capture-warp
-uv run python snes/super_metroid/scripts/probe/climb_descent.py bench
-uv run python snes/super_metroid/scripts/probe/parlor_descent.py capture
-uv run python snes/super_metroid/scripts/probe/parlor_descent.py bench
-uv run python snes/super_metroid/scripts/probe/parlor_descent.py trace --shots snes/super_metroid/scratch/parlor_descent_shots
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure climb-to-pit-moonfall \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/climb_descent_enter.state
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure parlor-to-climb-moonfall \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/parlor_descent_enter.state
 ```
 
 Overwrite `scratch/climb_descent_bench.json` and

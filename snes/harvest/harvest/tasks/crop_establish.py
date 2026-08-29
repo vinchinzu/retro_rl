@@ -5,7 +5,7 @@ Establish-only and full-mode plant ceremony arms.
 
 from __future__ import annotations
 
-from harvest.tasks.crop_fsm import CropState, PlotPhase
+from harvest.tasks.crop_planter import CropState, PlotPhase
 
 from typing import List, Optional, Tuple
 
@@ -23,6 +23,7 @@ from harvest.tasks.crop_geometry import (
     TILLABLE_TILES,
     UNTILLED,
     WATERED_TILLED,
+    _count_crop_tiles,
     _merge_plot_centers,
     count_tilled,
     detect_crop_resume_plots,
@@ -36,7 +37,143 @@ from harvest.tasks.nav import WALKABLE_TILES, get_tile_at, make_action, tile_dis
 
 
 class CropEstablishMixin:
-    """Hoe and plant phase methods for CropWaterTask."""
+    """Detect / plot-lifecycle plus hoe and plant phase methods."""
+
+    def _handle_detect(self, ram: np.ndarray) -> Optional[TaskResult]:
+        """Scan for crop plots."""
+        self._snapshot_start_acceptance(ram)
+        resume_plots = detect_crop_resume_plots(ram, self.bounds)
+        if resume_plots:
+            supplemental = detect_plots(ram, self.bounds)
+            self._plots = _merge_plot_centers(resume_plots, supplemental)
+        else:
+            self._plots = detect_plots(ram, self.bounds)
+        if not self._plots and self._is_water_only and self._dry_crop_tiles_at_start > 0:
+            # Partial plant misses default resume min_count=4; keep-alive
+            # still needs dry singles/pairs (rr-5in residual).
+            sparse = detect_crop_resume_plots(ram, self.bounds, min_count=1)
+            if sparse:
+                print(
+                    f"[CROP] Sparse water plots (min_count=1): {sparse} "
+                    f"dry={self._dry_crop_tiles_at_start}"
+                )
+                self._plots = sparse
+        if not self._plots:
+            can_plant = (
+                not self._is_water_only
+                and self._has_plantable_seed_stock(ram)
+            )
+            if self._pass_number == 1 and can_plant:
+                planned = self._plan_new_plot_centers(ram)
+                if planned:
+                    self._plots = planned
+                else:
+                    print("[CROP] No plots detected and no plantable plan")
+                    return self._terminal_result()
+            elif self._pass_number == 1:
+                return self._terminal_result()
+            else:
+                self._state = CropState.DONE
+                return None
+        current_tile = self._navigator.current_tile
+        self._plots.sort(key=lambda center: (tile_dist(current_tile, center), center[1], center[0]))
+        self._plot_index = 0
+        pass_label = f"(pass {self._pass_number})" if self._pass_number > 1 else ""
+        print(
+            f"[CROP] Detected {len(self._plots)} plots: {self._plots} "
+            f"mode={self.work_mode} {pass_label}"
+        )
+        self._start_plot(ram)
+        return None
+
+    def _start_plot(self, ram: np.ndarray):
+        """Begin processing the current plot."""
+        if self._plot_index >= len(self._plots):
+            return
+        center = self._plots[self._plot_index]
+        self._set_crop_walkable()
+        tilled = count_tilled(ram, center)
+        crop_tiles = _count_crop_tiles(ram, center[0], center[1])
+
+        if self._is_water_only:
+            if crop_tiles > 0:
+                self._begin_water_phase(ram, allow_unknown_tiles=False)
+            else:
+                print(
+                    f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                    f"center=({center[0]},{center[1]}) water-only with no crops; skip"
+                )
+                self._advance_plot(ram)
+            return
+
+        if crop_tiles == 0 and tilled >= 4:
+            self._plot_phase = PlotPhase.PLANT
+            self._target_tile = center
+            self._approach_tile = center
+            self._face_direction = "down"
+            self._set_crop_walkable()
+            self._state = CropState.NAVIGATE
+            self._navigator.path = []
+            self._steps_on_target = 0
+            print(
+                f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                f"center=({center[0]},{center[1]}) phase=PLANT tilled={tilled}"
+            )
+        elif crop_tiles == 0 and tilled < 4:
+            self._begin_hoe_phase(ram)
+        else:
+            if crop_tiles > 0 and tilled > 0:
+                print(
+                    f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                    f"has {crop_tiles} crop tiles and {tilled} open tilled tiles; "
+                    f"skip seeding partial plot"
+                )
+            if self._is_establish_only:
+                print(
+                    f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} "
+                    f"already established; establish-only skips water"
+                )
+                self._advance_plot(ram)
+            else:
+                self._begin_water_phase(ram, allow_unknown_tiles=False)
+
+    def _advance_plot(self, ram: np.ndarray):
+        """Move to the next plot, or trigger a re-scan pass, or finish."""
+        self._clear_crop_walkable()
+        self._plot_index += 1
+        if self._plot_index >= len(self._plots):
+            can_retry_establish = (
+                self._is_establish_only
+                and self._pass_number < 2
+                and self.planted_count == 0
+                and bool(self._rejected_plan_centers)
+            )
+            can_retry_water = (
+                not self._is_establish_only
+                and self._pass_number < 3
+                and self.skipped_water > 0
+                and not self._refill_exhausted
+            )
+            if can_retry_establish or can_retry_water:
+                prev_skip = self.skipped_water
+                self._pass_number += 1
+                self._state = CropState.DETECT
+                self._pathfinder.temp_blocked.clear()
+                self._refill_exhausted = False
+                if can_retry_establish:
+                    print(
+                        f"[CROP] Establish pass {self._pass_number - 1} planted=0; "
+                        f"retry with rejected={sorted(self._rejected_plan_centers)}"
+                    )
+                else:
+                    print(
+                        f"[CROP] Pass {self._pass_number - 1} complete "
+                        f"({prev_skip} skipped), starting pass {self._pass_number}..."
+                    )
+            else:
+                self._state = CropState.DONE
+        else:
+            self._start_plot(ram)
 
     def _begin_hoe_phase(self, ram: np.ndarray) -> None:
         """Hoe untilled ring tiles for the current planned plot center."""

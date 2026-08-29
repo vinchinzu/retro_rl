@@ -287,15 +287,16 @@ def wrap_spore_spawn_as_boss_strategy() -> CallableBossStrategy:
 
 
 def wrap_phantoon_as_boss_strategy() -> CallableBossStrategy:
-    """Phantoon development fight as a BossStrategy; continuous is deferred."""
+    """Phantoon doppler fight as a BossStrategy; continuous is deferred."""
     from super_metroid.combat.features import phantoon_catalog
-    from super_metroid.combat.phantoon import ROOM_PHANTOON, play_phantoon_fight
+    from super_metroid.combat.phantoon import ROOM_PHANTOON
+    from super_metroid.combat.phantoon_doppler import play_phantoon_doppler_fight
 
     return _wrap_simple_fight(
         boss_id="phantoon",
         room_id=ROOM_PHANTOON,
         catalog_fn=phantoon_catalog,
-        play_fn=play_phantoon_fight,
+        play_fn=play_phantoon_doppler_fight,
         success=lambda r: r.outcome == "phantoon_defeated",
         boss_defeated=lambda r: bool(r.boss_bit_set),
     )

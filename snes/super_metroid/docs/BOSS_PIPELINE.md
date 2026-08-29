@@ -110,16 +110,14 @@ Before writing fight code for boss N:
   with integrity checks
 - only promote STATUS after a green continuous report
 
-### 6. Probe CLI template
+### 6. A/B loop (no new probe CLI)
 
-Standardize on the Kraid / Torizo probe pattern:
+Load the natural-entry pin, play the hop through `kpdr.py`, compare RAM.
+Do not mint a per-boss probe script.
 
 ```bash
-# strategy --state <entry>
-# capture-natural
-# prove-natural
-# closeout variants (e.g. varia)
-# optional eval / short train for structured RL
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kraid-entry-to-varia \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/eye_hj_kraid_entry.state
 ```
 
 ### 7. Finish / attach Kraid first (living template)
@@ -135,7 +133,8 @@ cleaned-up version of that pattern.
 
 ```bash
 uv run python snes/super_metroid/scripts/record/continuous.py --to varia --no-video
-uv run python snes/super_metroid/scripts/probe/kraid_combat.py varia --state entry
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kraid-entry-to-varia \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/eye_hj_kraid_entry.state
 ```
 
 ## Implementation order (after foundations)
@@ -179,14 +178,9 @@ exist; they are less blocking than Phantoon → Botwoon → Draygon → Ridley �
 ## Probe commands (current)
 
 ```bash
-# Bomb Torizo
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py strategy --state BossTorizo
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py capture-natural
-uv run python snes/super_metroid/scripts/probe/bomb_torizo_combat.py prove-natural
-
-# Kraid + Varia
-uv run python snes/super_metroid/scripts/probe/kraid_combat.py strategy --state entry
-uv run python snes/super_metroid/scripts/probe/kraid_combat.py varia --state entry
+# Kraid + Varia (A/B loop)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kraid-entry-to-varia \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/eye_hj_kraid_entry.state
 
 # Continuous tips (promote STATUS only when integrity green)
 uv run python snes/super_metroid/scripts/record/continuous.py --to kraid --no-video

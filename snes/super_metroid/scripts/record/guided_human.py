@@ -1177,8 +1177,7 @@ def main() -> int:
         ):
             boot_bits += (
                 " | Bubble Save 0xB0DD — leave RIGHT → runway WJ climb; "
-                "SELECT+L2 reloads pin (CP1 seeded); live grades: "
-                "bubble_save_practice.py"
+                "SELECT+L2 reloads pin (CP1 seeded)"
             )
         print(boot_bits)
         # Seed checkpoint slot 1 with the boot pin so SELECT+L2 works immediately

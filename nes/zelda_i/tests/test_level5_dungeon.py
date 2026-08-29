@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level5_dungeon import (
+from zelda_i.level5.dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
     POLS_VOICE_OBJECT_TYPE,

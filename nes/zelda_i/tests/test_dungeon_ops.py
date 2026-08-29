@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from zelda_i.dungeon_ops import (
+from zelda_i.dungeon.ops import (
     ADDR_SELECTED_ITEM,
     B_ITEM_ARROWS,
     B_ITEM_BOMB,
@@ -14,19 +14,14 @@ from zelda_i.dungeon_ops import (
     poke_bombs,
     poke_keys,
 )
-from zelda_i.level2_puzzles import B_ITEM_BOMB_PROBE
-from zelda_i.level9_ganon import B_ITEM_ARROWS as L9_ARROWS
-from zelda_i.level9_ganon import B_ITEM_BOMBS as L9_BOMBS
 from zelda_i.ram import ADDR_SELECTED_ITEM as RAM_SELECTED
 
 
 def test_b_item_slot_is_bombs_1_arrows_2() -> None:
     assert ADDR_SELECTED_ITEM == RAM_SELECTED == 0x0656
-    assert B_ITEM_BOMB == B_ITEM_BOMBS == B_ITEM_BOMB_PROBE == 1
+    assert B_ITEM_BOMB == B_ITEM_BOMBS == 1
     assert B_ITEM_ARROWS == 2
     assert B_ITEM_CANDLE == 4
-    assert L9_BOMBS is B_ITEM_BOMBS
-    assert L9_ARROWS is B_ITEM_ARROWS
 
 
 def test_poke_bombs_and_keys_use_data_set_value() -> None:

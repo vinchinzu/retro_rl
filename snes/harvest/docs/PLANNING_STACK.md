@@ -41,9 +41,9 @@ closed; power-on→D2 shed Clean (`rr-bhr`); ship debris residual closed
 (`rr-9xyy`); return_home house short-circuit unit-closed (`rr-ws8h`). Gate B
 continuous still open — tip ExitToFarm dialogue residual (`rr-uru1`) + full
 power-on re-soak (`rr-5in`).
-**Arch debt (2026-08-10 structure pass):** `crop_planter.py` ~1.16k after
-navigate extract (mixins: refill/water_ops/establish/navigate + `crop_fsm`
-enums) — line bar met; dual-FSM skill rewrite still optional residual.
+**Arch debt:** `crop_planter.py` owns CropWaterTask + CropState/PlotPhase +
+detect/step (mixins still: refill+verify/water_ops/establish/navigate);
+dual-FSM skill rewrite still optional residual.
 `pond_*` + `crop_geometry` + `home_recover` + inventory split + nav promote
 landed. Skills layer: coop feed/ship nav wired; cow/crop still under-consumed.
 See [AGENTS.md](../AGENTS.md) structure rule (soft max ~1000 LOC / file).

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List
 
-from harvest.planner.day_phase_types import PhaseSpec
+from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 # ── Chicken coop phases ──
 
@@ -360,6 +360,61 @@ SELL_THREE_CHICKENS_BATCH_TEST_PHASES: List[PhaseSpec] = chicken_sale_batch_phas
     failure_policy="required",
 )
 
+def _chicken_oversupplied(adult_chickens: int, policy: DayPlannerPolicy) -> bool:
+    return policy.include_chickens and adult_chickens > policy.max_adult_chickens
+
+
+def _coop_chores_phase(*, oversupplied: bool, policy: DayPlannerPolicy) -> PhaseSpec:
+    if not oversupplied:
+        return COOP_CHORES_PHASE
+    return PhaseSpec(
+        "COOP_CHORES",
+        "coop_chores",
+        {"egg_mode": "ship", "max_feed_adults": policy.max_adult_chickens},
+    )
+
+
+def _chicken_phases(
+    *,
+    exited_barn: bool,
+    oversupplied: bool,
+    policy: DayPlannerPolicy,
+) -> List[PhaseSpec]:
+    phases = list(CHICKEN_AFTER_BARN_PHASES if exited_barn else CHICKEN_PHASES)
+    chores = _coop_chores_phase(oversupplied=oversupplied, policy=policy)
+    return [chores if phase.phase == "COOP_CHORES" else phase for phase in phases]
+
+
+def _coop_current_phases(*, oversupplied: bool, policy: DayPlannerPolicy) -> List[PhaseSpec]:
+    return [_coop_chores_phase(oversupplied=oversupplied, policy=policy), EXIT_COOP_PHASE]
+
+
+def _chicken_sale_phases(
+    *,
+    adult_chickens: int,
+    hour: int,
+    is_sunday: bool,
+    policy: DayPlannerPolicy,
+) -> List[PhaseSpec]:
+    if (
+        not policy.include_chicken_sales
+        or not policy.include_shop_run
+        or is_sunday
+        or not _chicken_oversupplied(adult_chickens, policy)
+        or hour >= policy.chicken_sale_cutoff_hour
+    ):
+        return []
+    return [
+        PhaseSpec(
+            "SELL_CHICKEN_WINDOW",
+            "deadline",
+            {"latest_hour": policy.chicken_sale_cutoff_hour, "latest_minute": 0},
+            failure_policy="optional",
+        ),
+        *chicken_sale_cycle_phases(failure_policy="optional"),
+    ]
+
+
 OPTIONAL_CHICKEN_SALE_PHASES = frozenset({
     "SELL_CHICKEN_WINDOW",
     "NAV_SELL_CHICKEN_START",
@@ -404,4 +459,8 @@ __all__ = [
     "SELL_THREE_CHICKENS_TEST_PHASES",
     "SELL_THREE_CHICKENS_BATCH_TEST_PHASES",
     "OPTIONAL_CHICKEN_SALE_PHASES",
+    "_chicken_oversupplied",
+    "_chicken_phases",
+    "_chicken_sale_phases",
+    "_coop_current_phases",
 ]

@@ -1,0 +1,23 @@
+{
+  "kind": "alcatraz_approach_search",
+  "ledge": {
+    "f": 316,
+    "xy": [
+      828,
+      459
+    ],
+    "pose": 167,
+    "mid": false
+  },
+  "rolled": true,
+  "f": 525,
+  "minY": 183,
+  "exit": [
+    759,
+    185
+  ],
+  "pose": 31,
+  "wj": 472,
+  "morph": 473,
+  "error": null
+}
