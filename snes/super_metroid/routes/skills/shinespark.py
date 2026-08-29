@@ -862,6 +862,99 @@ def _snap(session: Any) -> dict[str, Any]:
         }
 
 
+def diagnose_trace(trace: list[dict[str, Any]]) -> dict[str, Any]:
+    """Classify a shine attempt from per-frame WRAM/nav rows."""
+    empty = {
+        "ok": False, "grade": "EMPTY", "failures": ["no frames recorded"],
+        "cues": [], "peaks": {}, "milestones": {},
+    }
+    if not trace:
+        return empty
+
+    def btns(row: dict[str, Any]) -> set[str]:
+        return {str(b).upper() for b in (row.get("buttons") or [])}
+
+    peak_e = spark_n = down_n = 0
+    first_store = first_spark = start_i = None
+    wins: list[tuple[int, int]] = []
+    for i, row in enumerate(trace):
+        e = int(row.get("speed_echoes") or 0)
+        t = int(row.get("spark_timer") or 0)
+        pose = int(row.get("pose") or 0)
+        peak_e = max(peak_e, e)
+        if first_store is None and t > 0:
+            first_store = int(row.get("frame") or i)
+        if is_spark_pose(pose):
+            spark_n += 1
+            if first_spark is None:
+                first_spark = int(row.get("frame") or i)
+        if "DOWN" in btns(row):
+            down_n += 1
+        if e >= ECHOES_FULL and start_i is None:
+            start_i = i
+        elif e < ECHOES_FULL and start_i is not None:
+            wins.append((start_i, i - 1))
+            start_i = None
+    if start_i is not None:
+        wins.append((start_i, len(trace) - 1))
+
+    missed = 0
+    kill_dir = False
+    for s, e_i in wins:
+        if any("DOWN" in btns(r) for r in trace[s : e_i + 1]):
+            continue
+        if any("DOWN" in btns(r) for r in trace[e_i + 1 :]):
+            missed += 1
+            nxt = btns(trace[e_i + 1]) if e_i + 1 < len(trace) else set()
+            if "B" in nxt and "RIGHT" not in nxt and "LEFT" not in nxt:
+                kill_dir = True
+    late = first_store is None and peak_e >= ECHOES_FULL and missed > 0 and down_n > 0
+
+    crouch_walk = False
+    if first_store is not None and first_spark is None:
+        a_hold = 0
+        for r in trace:
+            if int(r.get("spark_timer") or 0) <= 0:
+                continue
+            b = btns(r)
+            pose = int(r.get("pose") or 0)
+            if "A" in b and ({"RIGHT", "LEFT", "UP"} & b):
+                a_hold += 1
+            if pose in (39, 40, 53, 54) and "A" in b and "RIGHT" in b:
+                crouch_walk = True
+        crouch_walk = crouch_walk or a_hold >= 8
+
+    ok = first_spark is not None and spark_n >= 3
+    failures: list[str] = []
+    cues: list[str] = []
+    if peak_e < ECHOES_FULL:
+        failures.append(f"charge incomplete (peak echoes={peak_e}, need ≥4)")
+    elif first_store is None:
+        failures.append("never crouch-stored ($0A68 stayed 0)")
+        if late:
+            failures.append("late crouch: charged but DOWN never during echoes=4")
+            if kill_dir:
+                failures.append("boost killed by releasing LEFT/RIGHT while keeping B")
+            cues.append("CRITICAL: ALSO press DOWN while still holding RIGHT+B")
+    elif first_spark is None:
+        failures.append("stored but never entered spark pose")
+    if ok:
+        grade = "GREEN"
+    elif peak_e >= ECHOES_FULL and first_store is not None:
+        grade = "YELLOW"
+    elif peak_e >= ECHOES_FULL:
+        grade = "ORANGE"
+    else:
+        grade = "RED"
+    return {
+        "ok": ok, "grade": grade, "failures": failures, "cues": cues,
+        "peaks": {"echoes": peak_e, "spark_travel_frames": spark_n,
+                  "missed_store_windows": missed},
+        "milestones": {"late_store_after_charge_died": late,
+                       "activate_from_crouch_walk": crouch_walk},
+    }
+
+
 __all__ = [
     "ECHOES_FULL",
     "TYPICAL_ARM_TIMER",
@@ -896,4 +989,5 @@ __all__ = [
     "activate_shinespark",
     "store_then_spin_unspin_activate",
     "charge_store_activate",
+    "diagnose_trace",
 ]

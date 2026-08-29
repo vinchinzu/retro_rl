@@ -33,6 +33,16 @@ from harvest.planner.tasks.transitions import (
     multi_face_toss_actions,
     toss_held_actions,
 )
+from harvest.tasks.farm_clearer import FarmClearer
+from harvest.tasks.farm_ops import (  # noqa: F401
+    TileScanner,
+    choose_clear_target,
+    find_blocker_opener,
+    find_pathable_approach,
+    find_unfailed_approach,
+    handle_navigating,
+    start_progress_watch,
+)
 from harvest.tasks.farm_toss import FenceJumpTossSkill, needs_south_fence_drop
 from harvest.tasks.nav import (
     Point,
@@ -40,10 +50,6 @@ from harvest.tasks.nav import (
     get_pos_from_ram,
     get_tile_at,
     make_action,
-)
-from harvest.tasks.farm_clearer import (
-    FarmClearer,
-    TileScanner,
 )
 
 
@@ -740,4 +746,12 @@ class FarmClearTask(Task):
         )
 
 
-__all__ = ["FarmClearTask"]
+__all__ = [
+    "FarmClearTask",
+    "choose_clear_target",
+    "find_blocker_opener",
+    "find_pathable_approach",
+    "find_unfailed_approach",
+    "handle_navigating",
+    "start_progress_watch",
+]

@@ -1,34 +1,22 @@
 """Phantoon seat/window helpers.
 
 Product spine fight is ``phantoon_doppler.play_phantoon_doppler_fight``.
-Charge-only / charge+missiles / X-Factor stay research modules. This file
-is shared seat + open-eye geometry used by those recipes.
+This file is shared seat + open-eye geometry used by that recipe.
 
-No-assist Phantoon policy: left-corner seat + open-eye charge/missiles.
-
-Public policy (https://wiki.supermetroid.run/Phantoon,
-https://wiki.supermetroid.run/Phantoon#Phantoon_First):
-
-KPDR Room Strategies: eye opens after 1 / 6 / 11 s (fast/mid/slow), left or
-right. Round-1 has 6 positions; later rounds another 6.
-
-Passable KPDR (Charge+Wave+Spazer+Ice): beginner 4-round — charge shot when
-the eye opens, then two more, he disappears; repeat. Charge+Missiles variant:
-2 missiles + 2 missiles + charge × 4 rounds. Do not invent X-factor / 2-round
-TAS unless a measured window makes it free.
+Public policy (https://wiki.supermetroid.run/Phantoon): eye opens after
+1 / 6 / 11 s (fast/mid/slow), left or right. Round-1 has 6 positions;
+later rounds another 6.
 
 Traps:
 - Super Missile enrages Phantoon (flame-wave counter). Super-spray is a
-  scaffold, not a hit. Pin boots with supers selected — select beam or
-  missiles before the first open.
+  scaffold, not a hit.
 - Ice is equipped (0x1007). Ice charge can change hide behavior. Measure.
 - Invisible / closed eye = no damage. Stock RAM may lack a dedicated eye
   flag — log enemy0 x/y/hp/spritemap every distinct map.
-- Flame droplets: shoot for drops when farming; do not stand under the body.
-- ``select_weapon`` at 0 ammo raises (game forces beam). Farm first.
+- Flame droplets: do not stand under the body.
 - Jump into a wall can climb out (Spore lesson).
 
-HP 2500. Charged Spazer/Wave/Ice ~300; missile 100; Super 600 but enrages.
+HP 2500. Missile 100; Super 600 but enrages.
 """
 
 from __future__ import annotations
@@ -36,14 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from super_metroid.combat.features import (
-    boss_defeated_in_state,
-    features_from_state,
-    phantoon_catalog,
-)
 from super_metroid.combat.primitives import ensure_weapon, settle_standing
-from super_metroid.combat.primitives import Pickup, list_pickups
-from super_metroid.ram import GameplayPhase, SuperMetroidState, read_bank7e_wram
+from super_metroid.ram import GameplayPhase, SuperMetroidState
 from super_metroid.routes.controller_common import is_morph, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -55,9 +37,6 @@ WEAPON_SUPERS = 2
 # env.get_ram() is 8 KiB and never contains this byte.
 ADDR_WS_BOSS_BITS = 0xD82B
 PHANTOON_BOSS_BIT = 0x01
-PHANTOON_INVISIBLE = "invisible"
-PHANTOON_VULNERABLE = "vulnerable"
-PHANTOON_DEFEATED = "defeated"
 
 # Left-corner floor seat (door-enter pin lands ~(39,124) p81 and falls in).
 SEAT_X = 32
@@ -122,8 +101,6 @@ FUNC_RAIN_NEXT = 0xD7F7
 RAIN_PHASE_FUNCS = RAIN_VULN_FUNCS | frozenset(
     {FUNC_RAIN_START, FUNC_RAIN_MOVE, FUNC_RAIN_HIDE, FUNC_RAIN_NEXT}
 )
-# Standing / crouch / turn — W2 rain floor release. Not jump (21/25) or hurt.
-FLOOR_RELEASE_POSES = frozenset({1, 2, 3, 4, 5, 11})
 
 # Knockback / hit-stun only. Pose 81 is ordinary falling — keep jump held.
 HURT_POSES = frozenset({83, 84, 109, 143, 158, 159, 160})
@@ -131,7 +108,7 @@ HURT_POSES = frozenset({83, 84, 109, 143, 158, 159, 160})
 
 @dataclass(frozen=True)
 class PhantoonStrategy:
-    """Left-corner seat + open-eye charge (optional missiles). Never Super."""
+    """Left-corner seat and open-eye geometry. Seat fields are the living ones."""
 
     seat_x: int = SEAT_X
     seat_x_min: int = SEAT_X_MIN
@@ -163,47 +140,6 @@ class PhantoonStrategy:
     window_timeout: int = 480
 
 
-@dataclass(frozen=True)
-class PhantoonEvidence:
-    """Measured result of one no-assist Phantoon fight attempt."""
-
-    start_frame: int
-    body_zero_frame: int | None
-    boss_bit_frame: int | None
-    end_frame: int
-    peak_body_hp: int
-    min_body_hp: int
-    action_frames: int
-    final_body_hp: int
-    boss_bit_set: bool
-    outcome: str
-    phase_transitions: tuple[tuple[str, int], ...] = ()
-    shots_fired: int = 0
-    windows: int = 0
-    vulnerable_spritemaps: tuple[int, ...] = ()
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "start_frame": self.start_frame,
-            "body_zero_frame": self.body_zero_frame,
-            "boss_bit_frame": self.boss_bit_frame,
-            "end_frame": self.end_frame,
-            "peak_body_hp": self.peak_body_hp,
-            "min_body_hp": self.min_body_hp,
-            "action_frames": self.action_frames,
-            "final_body_hp": self.final_body_hp,
-            "boss_bit_set": self.boss_bit_set,
-            "outcome": self.outcome,
-            "phase_transitions": [
-                {"phase": phase, "frame": frame}
-                for phase, frame in self.phase_transitions
-            ],
-            "shots_fired": self.shots_fired,
-            "windows": self.windows,
-            "vulnerable_spritemaps": list(self.vulnerable_spritemaps),
-        }
-
-
 def _ram(env: Any) -> Any:
     if env is None:
         return None
@@ -217,11 +153,6 @@ def _u16(ram: Any, address: int) -> int:
     if ram is None or len(ram) < address + 2:
         return 0
     return int(ram[address]) | (int(ram[address + 1]) << 8)
-
-
-def beam_charge(env: Any) -> int:
-    """Live beam-charge counter ($0CD0). 0 if RAM is missing."""
-    return _u16(_ram(env), ADDR_BEAM_CHARGE)
 
 
 def _in_il(value: int, span: tuple[int, int]) -> bool:
@@ -285,18 +216,6 @@ def seated(state: SuperMetroidState, strategy: PhantoonStrategy | None = None) -
     )
 
 
-def phantoon_phase(state: SuperMetroidState) -> str:
-    """Classify observable phase: open-eye vulnerable vs closed/invisible."""
-    if state.enemy0_hp == 0:
-        return PHANTOON_DEFEATED
-    if eye_open(state):
-        return PHANTOON_VULNERABLE
-    features = features_from_state(state, phantoon_catalog())
-    if not features.enemy_active:
-        return PHANTOON_INVISIBLE
-    return PHANTOON_INVISIBLE
-
-
 def eye_ilist_open(ilist: int) -> bool:
     """True when the eye-slot instruction list is the open/look window."""
     return _in_il(int(ilist), IL_EYE_OPEN) or _in_il(int(ilist), IL_EYE_LOOK)
@@ -357,111 +276,15 @@ def right_park(enemy_x: int, *, skip_x: int = 155) -> bool:
     return int(enemy_x) >= skip_x
 
 
-def rain_corner_morph(
-    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
-) -> bool:
-    """Morph in a bottom corner — rain seat, not standing, not under the body."""
-    strat = strategy or PhantoonStrategy()
-    if not is_morph(int(state.pose)):
-        return False
-    if not (strat.floor_y_min <= int(state.samus_y) <= strat.floor_y_max):
-        return False
-    x = int(state.samus_x)
-    return x <= strat.seat_x_max or x >= strat.right_seat_x_min
-
-
-def floor_release_ok(
-    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
-) -> bool:
-    """Standing/crouch on the floor — rain charge release, no jump."""
-    strat = strategy or PhantoonStrategy()
-    return (
-        int(state.pose) in FLOOR_RELEASE_POSES
-        and int(state.samus_y) >= strat.floor_y_min - 6
-    )
-
-
-def fight_phantoon_action(
-    state: SuperMetroidState,
-    frame_index: int,
-    strategy: PhantoonStrategy = PhantoonStrategy(),
-) -> tuple[str, ...]:
-    """One-frame seat / charge / fire hint (tests + AP). Play loop owns shots."""
-    del frame_index
-    if state.enemy0_hp == 0:
-        return ()
-    if seated(state, strategy):
-        if not eye_open(state):
-            return ("X",) if strategy.weapon == WEAPON_BEAM else ()
-        if int(state.enemy0_x) >= strategy.skip_enemy_x:
-            return ()
-        if strategy.weapon == WEAPON_MISSILES and state.missiles <= 0:
-            return ()
-        if strategy.weapon == WEAPON_MISSILES:
-            return ("X",)
-        return ()
-    if int(state.samus_y) < strategy.floor_y_min:
-        return ()
-    if int(state.samus_x) > strategy.seat_x_max:
-        return ("LEFT",)
-    if int(state.samus_x) < strategy.seat_x_min:
-        return ("RIGHT",)
-    return ()
-
-
 def _dead(session: ControllerSession) -> bool:
     st = session.state
     return int(st.health) == 0 or st.phase is GameplayPhase.DEATH_OR_GAME_OVER
-
-
-def _phantoon_boss_bit(session: ControllerSession) -> bool:
-    """True when $7E:D82B bit 0 is set. Unit doubles fall back to parsed state."""
-    env = _env_of(session)
-    if env is not None:
-        try:
-            return bool(int(read_bank7e_wram(env)[ADDR_WS_BOSS_BITS]) & PHANTOON_BOSS_BIT)
-        except Exception:
-            pass
-    return boss_defeated_in_state(session.state, phantoon_catalog())
 
 
 def _face_right(session: ControllerSession) -> None:
     if session.state.facing == 8:
         return
     hold(session, 1, "RIGHT", reason="phan_face")
-
-
-def _right_seat_names(state: SuperMetroidState, strategy: PhantoonStrategy) -> list[str]:
-    """Floor RIGHT+B, keep charge. Do not jump under the body."""
-    names: list[str] = ["RIGHT"]
-    if int(state.samus_y) >= strategy.floor_y_min - 4:
-        names.append("B")
-    if strategy.weapon == WEAPON_BEAM:
-        names.append("X")
-    return names
-
-
-def _go_to_right_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Floor dash to the right seat (x≥180). No jump under the body."""
-    if is_morph(session.state.pose):
-        try:
-            unmorph(session)
-        except Exception:
-            return
-    for _ in range(180):
-        st = session.state
-        if _dead(session) or st.enemy0_hp == 0:
-            return
-        if (
-            int(st.samus_x) >= strategy.right_seat_x
-            and int(st.samus_y) >= strategy.floor_y_min - 4
-            and st.pose not in (81, 82, 164)
-        ):
-            return
-        if int(st.samus_y) < strategy.floor_y_min:
-            hold(session, 1, reason="phan_fall_in")
-            continue
-        hold(session, 1, *_right_seat_names(st, strategy), reason="phan_right_seat")
 
 
 def _flame_snipe_tap(session: ControllerSession, strategy: PhantoonStrategy) -> None:
@@ -496,33 +319,6 @@ def _flame_snipe_tap(session: ControllerSession, strategy: PhantoonStrategy) -> 
     if session.frame % 8 < 2:
         names.append("X")
     hold(session, 1, *names, reason="phan_farm_snipe")
-
-
-def _rain_snipe(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    """Stand the living left seat and hold charge. Do not morph-tank or chase."""
-    st = session.state
-    if is_morph(int(st.pose)):
-        try:
-            unmorph(session)
-        except Exception:
-            hold(session, 1, reason="phan_farm_idle")
-        return
-    if int(st.selected_item) != WEAPON_BEAM:
-        try:
-            ensure_weapon(session, WEAPON_BEAM)
-        except RuntimeError:
-            hold(session, 1, reason="phan_farm_idle")
-        return
-    if int(st.samus_y) < strategy.floor_y_min:
-        hold(session, 1, reason="phan_fall_in")
-        return
-    if int(st.pose) in HURT_POSES:
-        hold(session, 1, reason="phan_hurt")
-        return
-    if int(st.samus_x) > strategy.seat_x_max:
-        hold(session, 1, "LEFT", "X", reason="phan_farm_left")
-        return
-    hold(session, 1, "X", reason="phan_farm_charge")
 
 
 def _rain_corner_wait(session: ControllerSession, strategy: PhantoonStrategy) -> None:
@@ -584,415 +380,10 @@ def _go_to_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
             pass
 
 
-def _keep_seat(session: ControllerSession, strategy: PhantoonStrategy) -> None:
-    if seated(session.state, strategy):
-        return
-    _go_to_seat(session, strategy)
-
-
-def _env_of(session: ControllerSession) -> Any:
-    return getattr(session, "env", None)
-
-
-def _session_eye_open(session: ControllerSession) -> bool:
-    return eye_open(session.state, _env_of(session))
-
-
-def _charged(session: ControllerSession, strategy: PhantoonStrategy) -> bool:
-    return beam_charge(_env_of(session)) >= strategy.charge_full
-
-
-def _hold_charge(session: ControllerSession, frames: int = 1) -> None:
-    hold(session, frames, "X", reason="phan_charge")
-
-
-def _hittable(session: ControllerSession) -> bool:
-    extra = enemy_extra(_env_of(session))
-    return bool(extra.get("func_vuln") or extra.get("eye_il_open") or extra.get("body_eye_hit"))
-
-
-def _aim_names(
-    state: SuperMetroidState,
-    strategy: PhantoonStrategy,
-    *,
-    rain: bool = False,
-) -> list[str]:
-    names: list[str] = []
-    dx = int(state.enemy0_x) - int(state.samus_x)
-    close = abs(dx) <= strategy.fire_close_x
-    if rain:
-        # Stay left of the body. Dash-to-|dx|≤16 walks under (128,96) and
-        # a floor UP from (116,187) dumped charge with no HP chip.
-        if int(state.samus_x) > strategy.seat_x_max:
-            names.append("LEFT")
-            return names
-        if int(state.facing) != 8:
-            names.append("RIGHT")
-            return names
-        names.append("UP")
-        return names
-    # Right fig-8: stay on the floor until the right seat (x≥180). No jump
-    # under the body while crossing from the left. Keep charge (X).
-    # Once there, face LEFT then jump in place — LEFT+A drifts under the body.
-    if right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x):
-        if int(state.samus_x) < strategy.right_jump_x:
-            return _right_seat_names(state, strategy)
-        if int(state.facing) != 4:
-            return ["LEFT"]
-        if int(state.samus_x) >= 22 and _need_height(state, strategy):
-            names.append("A")
-        if int(state.samus_y) > int(state.enemy0_y) + 10:
-            names.append("UP")
-        return names
-    # Jump in place only for rain (48, 96). Never A on fig-8 (53, 82).
-    if int(state.enemy0_x) <= RAIN_FIRE_X_MAX:
-        if rain_charge_ok(state.enemy0_x, state.enemy0_y):
-            if close and _need_height(state, strategy):
-                names.append("A")
-            if close and int(state.samus_y) > int(state.enemy0_y) + 10:
-                names.append("UP")
-        return names
-    if (
-        (not right_park(state.enemy0_x, skip_x=strategy.skip_enemy_x))
-        and int(state.samus_x) >= strategy.kite_x_max
-    ):
-        names.append("LEFT")
-    elif state.samus_x < 22:
-        names.append("RIGHT")
-    elif dx > 10:
-        names.append("RIGHT")
-    elif dx < -10:
-        names.append("LEFT")
-    on_floor = int(state.samus_y) >= strategy.floor_y_min - 4
-    if (not close) and on_floor and names:
-        names.append("B")
-    # Rain: never A. Fig-8: jump only once close — A on the approach dumps p77.
-    if (
-        (not rain)
-        and close
-        and int(state.samus_x) >= 22
-        and _need_height(state, strategy)
-    ):
-        names.append("A")
-    if close and int(state.samus_y) > int(state.enemy0_y) + 10:
-        names.append("UP")
-    return names
-
-
-def _need_height(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
-    """True when Samus is below the charge-release band (needs more jump)."""
-    dy = int(state.samus_y) - int(state.enemy0_y)
-    return dy > strategy.release_dy_max
-
-
-def in_release_band(
-    state: SuperMetroidState, strategy: PhantoonStrategy | None = None
-) -> bool:
-    """True when Samus is the measured W1 charge-release height below the eye.
-
-    W1 chip: samus (104, 149) vs eye (120, 108) → dy=41.
-    Rain (48, 96): fire dy 48–56 (y=144–152) before the p84 at y=138.
-    """
-    strat = strategy or PhantoonStrategy()
-    dy = int(state.samus_y) - int(state.enemy0_y)
-    # Tight rain band only for (48, 96)-class parks, not a fig-8 at y≈82.
-    if rain_charge_ok(state.enemy0_x, state.enemy0_y):
-        return 48 <= dy <= strat.release_dy_max
-    return strat.release_dy_min <= dy <= strat.release_dy_max
-
-
-def _height_ok(state: SuperMetroidState, strategy: PhantoonStrategy) -> bool:
-    return int(state.samus_y) <= int(state.enemy0_y) + strategy.height_slop
-
-
-def _fire_window(session: ControllerSession, strategy: PhantoonStrategy) -> int:
-    """Spend N counted shots (ammo/charge delta) while the eye is open."""
-    if is_morph(session.state.pose):
-        try:
-            unmorph(session)
-        except Exception:
-            return 0
-    if session.state.selected_item != strategy.weapon:
-        try:
-            ensure_weapon(session, strategy.weapon)
-        except RuntimeError:
-            return 0
-
-    shots = 0
-    last_spend = -99
-    seen_open = False
-    func0 = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
-    if int(session.state.health) <= 20:
-        return 0
-    if int(session.state.enemy0_x) <= RAIN_FIRE_X_MAX and not rain_charge_ok(
-        session.state.enemy0_x, session.state.enemy0_y
-    ):
-        return 0
-    if rain_phase(func0) and not rain_charge_ok(
-        session.state.enemy0_x, session.state.enemy0_y
-    ):
-        return 0
-    if right_park(session.state.enemy0_x, skip_x=strategy.skip_enemy_x):
-        if int(session.state.samus_x) < strategy.right_jump_x:
-            _go_to_right_seat(session, strategy)
-    for _ in range(strategy.window_timeout):
-        st = session.state
-        if _dead(session) or st.enemy0_hp == 0:
-            break
-        hittable = _hittable(session)
-        if hittable:
-            seen_open = True
-        if not hittable and (shots >= strategy.min_shots_to_fire or seen_open):
-            break
-        if strategy.weapon == WEAPON_MISSILES and st.missiles <= 0:
-            break
-        if shots >= strategy.shots_per_window:
-            break
-
-        func_now = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
-        if int(st.health) <= 20:
-            break
-        if rain_phase(func_now) and not rain_charge_ok(st.enemy0_x, st.enemy0_y):
-            break
-        names = _aim_names(st, strategy, rain=False)
-        if st.pose in HURT_POSES:
-            hold(session, 1, reason="phan_hurt")
-            continue
-
-        parked_right = right_park(st.enemy0_x, skip_x=strategy.skip_enemy_x)
-        still_left = int(st.samus_x) < strategy.right_seat_x_min
-        if strategy.weapon == WEAPON_MISSILES:
-            close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
-            on_floor = int(st.samus_y) >= strategy.floor_y_min - 6
-            if parked_right and still_left:
-                break
-            if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
-                break
-            if shots >= strategy.min_shots_to_fire and not close:
-                break
-            fire = (
-                hittable
-                and close
-                and (not on_floor)
-                and st.missiles > 0
-                and st.pose not in HURT_POSES
-                and shots < strategy.shots_per_window
-                and (session.frame - last_spend) >= 10
-            )
-            if fire:
-                # No LEFT/RIGHT on the spend — diagonal walks the shot off the eye.
-                fire_names = ["X"]
-                if int(st.samus_y) > int(st.enemy0_y) + 10:
-                    fire_names.insert(0, "UP")
-                names = fire_names
-            ms_before = st.missiles
-            hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_eye_shot")
-            if session.state.missiles < ms_before:
-                shots += 1
-                last_spend = session.frame
-            continue
-
-        close = abs(int(st.samus_x) - int(st.enemy0_x)) <= strategy.fire_close_x
-        if parked_right:
-            close = int(st.samus_x) >= strategy.right_jump_x
-        if parked_right and still_left:
-            break
-        if int(st.samus_x) >= strategy.kite_x_max and shots >= 1:
-            break
-        if not _charged(session, strategy):
-            # Floor charge only — A while charging dumps (p77) or jumps into (48, 96).
-            hold(session, 1, "X", reason="phan_charge")
-            continue
-        face_ok = (not parked_right) or int(st.facing) == 4
-        fire = (
-            hittable
-            and close
-            and face_ok
-            and in_release_band(st, strategy)
-            and (not _need_height(st, strategy))
-            and st.pose not in HURT_POSES
-            and shots < strategy.shots_per_window
-        )
-        if not fire:
-            names.append("X")
-            hold(session, 1, *tuple(dict.fromkeys(names)), reason="phan_charge")
-            continue
-        fire_names: list[str] = []
-        if int(st.samus_y) > int(st.enemy0_y) + 10:
-            fire_names.append("UP")
-        ch_before = beam_charge(_env_of(session))
-        hold(
-            session,
-            strategy.fire_release_frames,
-            *tuple(fire_names),
-            reason="phan_fire",
-        )
-        ch_after = beam_charge(_env_of(session))
-        if ch_after < ch_before and ch_before >= strategy.charge_full:
-            shots += 1
-            last_spend = session.frame
-
-    if not _dead(session) and session.state.enemy0_hp > 0:
-        for _ in range(24):
-            if session.state.pose not in HURT_POSES:
-                break
-            hold(session, 1, reason="phan_land")
-        _go_to_seat(session, strategy)
-    return shots
-
-
-def play_phantoon_fight(
-    session: ControllerSession,
-    *,
-    strategy: PhantoonStrategy = PhantoonStrategy(),
-    require_boss_bit: bool = True,
-) -> PhantoonEvidence:
-    """Fight Phantoon from room ``0xCD13`` until HP 0 (+ optional boss bit).
-
-    Seat left, wait for a measured open-eye spritemap, spend charge/missiles
-    counted by ammo or charge actually decreasing, retreat. Never Super.
-    """
-    start = session.frame
-    if session.state.room_id != ROOM_PHANTOON:
-        raise RuntimeError(
-            f"Phantoon fight expected room 0x{ROOM_PHANTOON:04X}, "
-            f"got 0x{session.state.room_id:04X}"
-        )
-
-    try:
-        ensure_weapon(session, strategy.weapon)
-    except RuntimeError:
-        pass
-    _go_to_seat(session, strategy)
-
-    peak_hp = session.state.enemy0_hp
-    min_hp = session.state.enemy0_hp
-    body_zero_frame: int | None = start if peak_hp == 0 else None
-    boss_bit_frame: int | None = None
-    prev_hp = session.state.enemy0_hp
-    current_phase = phantoon_phase(session.state)
-    phase_transitions: list[tuple[str, int]] = [(current_phase, start)]
-    shots_fired = 0
-    windows = 0
-    seen: set[int] = set()
-    park_x = int(session.state.enemy0_x)
-    last_func: int | None = None
-
-    for _ in range(strategy.max_fight_frames):
-        state = session.state
-        if state.room_id != ROOM_PHANTOON:
-            break
-        if _dead(session):
-            break
-        peak_hp = max(peak_hp, state.enemy0_hp)
-        min_hp = min(min_hp, state.enemy0_hp)
-        if _session_eye_open(session):
-            seen.add(int(state.enemy0_spritemap))
-
-        next_phase = phantoon_phase(state)
-        if next_phase != current_phase:
-            phase_transitions.append((next_phase, session.frame))
-            current_phase = next_phase
-
-        if body_zero_frame is None and state.enemy0_hp == 0 and prev_hp > 0:
-            body_zero_frame = session.frame
-            min_hp = 0
-        prev_hp = state.enemy0_hp
-
-        if body_zero_frame is not None:
-            if _phantoon_boss_bit(session):
-                boss_bit_frame = session.frame
-                break
-            if not require_boss_bit:
-                break
-            if session.frame - body_zero_frame >= strategy.boss_bit_grace_frames:
-                break
-            hold(session, 1, reason="phantoon_death_anim")
-            continue
-
-        func_now = _u16(_ram(_env_of(session)), ADDR_ENEMY0_FUNC)
-        if func_now != last_func:
-            park_x = int(state.enemy0_x)
-            last_func = func_now
-        if not charge_window_ok(func_now, park_x, state.enemy0_y) and (
-            rain_phase(func_now)
-            or right_park(park_x, skip_x=strategy.skip_enemy_x)
-            or int(park_x) < 100
-        ):
-            _rain_corner_wait(session, strategy)
-            continue
-        ready = (
-            _session_eye_open(session)
-            and state.samus_y >= strategy.floor_y_min
-            and charge_window_ok(func_now, park_x, state.enemy0_y)
-        )
-        if strategy.weapon == WEAPON_MISSILES and state.missiles < strategy.min_shots_to_fire:
-            try:
-                ensure_weapon(session, WEAPON_BEAM)
-            except RuntimeError:
-                pass
-            strategy = PhantoonStrategy(
-                weapon=WEAPON_BEAM,
-                shots_per_window=3,
-                max_fight_frames=strategy.max_fight_frames,
-                boss_bit_grace_frames=strategy.boss_bit_grace_frames,
-            )
-            continue
-        if strategy.weapon == WEAPON_MISSILES:
-            ready = ready and state.missiles >= strategy.min_shots_to_fire
-        if ready:
-            got = _fire_window(session, strategy)
-            if got:
-                windows += 1
-                shots_fired += got
-            else:
-                hold(session, 1, reason="phan_wait_eye")
-            continue
-
-        if not seated(state, strategy):
-            _keep_seat(session, strategy)
-        elif strategy.weapon == WEAPON_BEAM:
-            _hold_charge(session, 1)
-        else:
-            hold(session, 1, "DOWN", reason="phan_wait_eye")
-
-    final_hp = session.state.enemy0_hp
-    boss_set = _phantoon_boss_bit(session)
-    if _dead(session):
-        outcome = "died"
-    elif boss_set:
-        outcome = "phantoon_defeated"
-    elif body_zero_frame is not None:
-        outcome = "phantoon_body_zero_no_boss_bit"
-    else:
-        outcome = "timeout"
-
-    return PhantoonEvidence(
-        start_frame=start,
-        body_zero_frame=body_zero_frame,
-        boss_bit_frame=boss_bit_frame,
-        end_frame=session.frame,
-        peak_body_hp=peak_hp,
-        min_body_hp=min_hp,
-        action_frames=session.frame - start,
-        final_body_hp=final_hp,
-        boss_bit_set=boss_set,
-        outcome=outcome,
-        phase_transitions=tuple(phase_transitions),
-        shots_fired=shots_fired,
-        windows=windows,
-        vulnerable_spritemaps=tuple(sorted(seen)),
-    )
-
-
 __all__ = [
     "CHARGE_FULL",
     "FLOOR_Y_MAX",
     "FLOOR_Y_MIN",
-    "PHANTOON_DEFEATED",
-    "PHANTOON_INVISIBLE",
-    "PHANTOON_VULNERABLE",
-    "Pickup",
     "ADDR_WS_BOSS_BITS",
     "PHANTOON_BOSS_BIT",
     "ROOM_PHANTOON",
@@ -1003,20 +394,13 @@ __all__ = [
     "WEAPON_BEAM",
     "WEAPON_MISSILES",
     "WEAPON_SUPERS",
-    "PhantoonEvidence",
     "PhantoonStrategy",
-    "beam_charge",
     "charge_window_ok",
     "enemy_extra",
+    "eye_ilist_open",
     "eye_open",
-    "fight_phantoon_action",
-    "floor_release_ok",
-    "in_release_band",
-    "list_pickups",
-    "phantoon_phase",
-    "play_phantoon_fight",
+    "func_vulnerable",
     "rain_charge_ok",
-    "rain_corner_morph",
     "rain_phase",
     "rain_vulnerable",
     "right_park",

@@ -71,7 +71,7 @@ Start: checkpoint **`Level3Complete`** (mode 18, room 0x3d, `raft=1`,
 - Dock `0x55`: UP at x≤112 never boards; align **x≈128** then UP.
 - Do not poke Raft. Not Clean STATUS.
 
-**Module:** `level4_overworld.py` — `LEVEL4_HOPS_FROM_POST_L3`,
+**Module:** `level4/overworld.py` — `LEVEL4_HOPS_FROM_POST_L3`,
 `OverworldToLevel4Controller`, `PostL3TriforceSettleController`.
 `SOURCE_HYPOTHESIS = False`.
 
@@ -79,13 +79,13 @@ Start: checkpoint **`Level3Complete`** (mode 18, room 0x3d, `raft=1`,
 
 ```bash
 # 2/2 assisted entry + Level4Entrance.state
-uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --trials 2 --save-state
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 
 # Dock only → OW_L4Dock.state
-uv run python nes/zelda_i/scripts/run_level4_entry.py --infinite-life --dock-only --save-state
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 
 # Plan dry-run
-uv run python nes/zelda_i/scripts/run_level4_entry.py --plan-only
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l4_entry_recon.json` (**2/2 assisted**, ~2173f/trial).
@@ -95,8 +95,9 @@ Checkpoints: **`Level3ExitOverworld`**, **`OW_L4Dock`**, **`Level4Entrance`**.
 
 ## Interior (live pure dual-green — rr-5lu / rr-2ysf 2026-08-09/10)
 
-Module: `level4_dungeon.py`. Runner:
-`scripts/run_level4_rooms.py`. Evidence:
+Module: `level4/dungeon.py`. Durable runner:
+`scripts/run_survival_spine.py` (`--through level4`). Isolated
+`run_level4_rooms.py` pruned. Evidence:
 `recordings/l4_chain_key_pure_chain_to_key.json` (**2/2 pure** ~1278f),
 `recordings/l4_clear50_pure_clear_50.json` (**2/2 pure** ~2478f),
 `recordings/l4_keyright62_pure_key_right_62.json` (**2/2 pure** ~1133f),
@@ -223,40 +224,12 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level4 --no-video --trials 1 \
   --tag l4_tf_continuous_v1
-# Pure dual-green room segments (no --infinite-life)
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment entry_up --trials 2
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_61 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment bomb_61 --from-state Level4Entrance --trials 2
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_51 --from-state Level4Entrance --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_key --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_50 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_62 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment chain_to_62 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_62 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment compass_62 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_40 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_40 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment north_30 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_30 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment key_right_31 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_31 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment east_32 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment clear_32 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment stepladder --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment exit_60 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment west_31 --trials 2 --save-state
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 --infinite-life --trials 2 --save-state
-# Natural key (no recon poke) from skip-compass checkpoint
-uv run python nes/zelda_i/scripts/run_level4_rooms.py --segment map_21 \
-  --from-state Level4Room31PostLadderNaturalKey --infinite-life --no-key-poke --trials 2
-# Continuous natural PostLadder → TF 0x08 (assisted first-pass)
-uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \
-  --from-state Level4Room31PostLadderNaturalKey --infinite-life --trials 2 --save-state
+# Isolated L4 segment CLIs (`run_level4_rooms.py`, `run_level4_continuous_tf.py`)
+# were pruned. Room dests are SpineHop rows on the Composer above.
 # Clean continuous (rr-vdnc dual-green; no assist)
-uv run python nes/zelda_i/scripts/run_level4_continuous_tf.py \
-  --from-state Level4Room31PostLadderNaturalKey --trials 2 --tag l4_vdnc_clean_cont_tf
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 # Clean Gleeok-only smoke
-uv run python nes/zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_vdnc_gleeok_clean
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 ### Post-ladder (rr-05fz pure + natural continuous 2026-08-10)
@@ -311,7 +284,7 @@ melee + HC + TF `0x08` dual-green from `Level4GleeokEnter`.**
 UP → **0x03** → mid walk → **`tf&0x08`**. Evidence:
 `recordings/l4_rvae_gleeok_tf_dual.json` (2/2 dual exact ~4.3k f). Runner:
 `scripts/run_level4_gleeok.py --infinite-life --trials 2 --save-state`.
-Checkpoint **`Level4Complete`**. Module: `level4_boss_combat.py`.
+Checkpoint **`Level4Complete`**. Module: `level4/boss_combat.py`.
 
 **Residual closed (rr-05fz assisted dual-green 2026-08-10):** natural KEY-UP
 via **skip-compass** spare key (`Level4Room31PostLadderNaturalKey`, keys≥1,
@@ -329,7 +302,7 @@ remains (head kite dies Clean; south stand clears faster/safer). Evidence:
 `l4_vdnc_clean_cont_tf.json` (dual_green, track=clean),
 `l4_vdnc_gleeok_clean_dual.json` (GleeokEnter-only Clean dual ~1.6k f). Runner:
 `run_level4_continuous_tf.py` **without** `--infinite-life`;
-`run_level4_gleeok.py` without assist. Module: `level4_boss_combat.py`
+`run_level4_gleeok.py` without assist. Module: `level4/boss_combat.py`
 (`STAND_DY=22`). **Not full-game Clean STATUS** (lab checkpoint continuous).
 
 **Natural-entry compose PARTIAL (rr-zavx 2026-08-10):** Clean dual-green
@@ -357,7 +330,7 @@ Lab cliffs (7 containers, full health byte `0x6F=111`):
 | Natural enter Gleeok | map→0x13 | **~98–100** | clear12 often −0..2; fight death mid-approach |
 
 **rr-gjey pins:** post-boss residual fireball care in
-`level4_boss_combat.py` (lateral flee while any `0x56` present; no long
+`level4/boss_combat.py` (lateral flee while any `0x56` present; no long
 unprotected idle/goto). Evidence:
 
 - `l4_gjey_gleeok_clean_dual.json` — GleeokEnter full Clean dual (reg)
@@ -374,13 +347,11 @@ dual-green (rr-05fz). GleeokEnter-only Clean dual remains green (rr-vdnc).
 
 ```bash
 # Clean dual skip-compass NaturalKey from Entrance (rr-zavx pin)
-uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
-  --to-natural-key-only --trials 2 --save-state --tag l4_zavx_natkey_dual
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 # Full compose (spine + continuous TF; Clean dual still residual rr-gjey)
-uv run python nes/zelda_i/scripts/run_level4_entrance_tf.py \
-  --trials 2 --save-state --tag l4_gjey_entrance_tf
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 # Gleeok Clean reg + floor poke pins
-uv run python nes/zelda_i/scripts/run_level4_gleeok.py --trials 2 --tag l4_gjey_gleeok_clean
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 **Traps (0x12→0x13):** after clear doors often L-only (raw=2); **bomb RIGHT and

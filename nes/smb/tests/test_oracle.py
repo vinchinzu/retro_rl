@@ -19,7 +19,7 @@ from smb.tas.oracle.extract_fceux_checkpoints import (
     load_jsonl,
     write_run_config,
 )
-from smb.tas.oracle.probe_early_8_3 import (
+from smb.tas.search import (
     ORACLE_CONTROL_FRAME,
     ORACLE_FIRST_DIVERGENCE_OFFSET,
     ORACLE_FIRST_OBSTACLE_FRAME,

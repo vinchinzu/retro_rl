@@ -58,7 +58,7 @@ and tile/map model stay in `core` / `maps`; domain tasks compose
 | Concern | Module(s) |
 |---------|-----------|
 | MultNav | `multi_nav` (not `navigation.py`) |
-| Pond / crop thrash | `pond_*`, `crop_{establish,water_ops,refill*,navigate,detect,act_verify,step}` |
+| Pond / crop thrash | `pond_*`, `crop_{establish,water_ops,refill,refill_verify,navigate}` |
 | Home | `home_return`, `home_sleep`, `home_approach`, `home_recover` |
 | Coop / cow | `coop_{layout,feed_ops,egg_ops}`, `cow_*` |
 | Maps / routes | `map_config` facade + `map_types` / `farm_pond` / `map_routes` |

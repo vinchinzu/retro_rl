@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from retro_harness.nes import nes_action
-from zelda_i.level6_overworld import (
+from zelda_i.level6.overworld import (
     HILLS_AISLE_X,
     HILLS_CHANNEL_Y_HI,
     HILLS_CHANNEL_Y_LO,
@@ -18,12 +18,12 @@ from zelda_i.level6_overworld import (
     lost_hills_west_dir,
     make_post_l5_level6_controller,
 )
-from zelda_i.level6_path import Level6North68Controller
-from zelda_i.level6_spine import (
+from zelda_i.level6.path import Level6North68Controller
+from zelda_i.level6.spine import (
     level6_east_key_success,
     level6_entry_success,
 )
-from zelda_i.overworld import neighbor_screens
+from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
     ADDR_KEYS,
     ADDR_LADDER,

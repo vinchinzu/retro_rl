@@ -1,4 +1,4 @@
-"""Cow targeting, pin memory, and stand selection for CowChoresTask."""
+"""Cow targeting, pin memory, stand selection, and slot-need predicates."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from harvest.core.animal_probe import cow_slot_snapshots
 from harvest.core.animal_status import (
     COW_DAILY_BRUSHED_FLAG,
     COW_DAILY_TALKED_FLAG,
+    cow_needs_milking,
+    existing_cow_slots,
     read_cow_daily_flags,
 )
 from harvest.tasks.animal_navigation import align_to_pixel
@@ -20,6 +22,7 @@ from harvest.tasks.cow_geometry import (
     cow_interact_pixel,
     cow_push_escape_tile,
     face_for_cow_at_stand,
+    facing_tile,
     geometric_fallback_stands,
     is_adjacent_to_cow_tile,
     preferred_cow_stands,
@@ -246,3 +249,74 @@ class CowTargetMixin:
         return not self._pathfinder.is_walkable(
             ram, escape[0], escape[1], current_pos=self._navigator.current_tile
         )
+
+    def _facing_tile(self, stand: Tuple[int, int], face: str) -> Tuple[int, int]:
+        return facing_tile(stand, face)
+
+    def _select_target_cow_slot(self, ram: np.ndarray) -> Optional[int]:
+        rows = cow_slot_snapshots(ram, require_barn=True)
+        if not rows:
+            slots = existing_cow_slots(ram)
+            return slots[0] if slots else None
+
+        target_tile = facing_tile(COW_TALK_STAND, COW_TALK_FACE)
+        for row in rows:
+            tile = row.get("tile")
+            if isinstance(tile, list) and tuple(tile) == target_tile:
+                return int(row["slot"])
+
+        def score(row: dict[str, object]) -> int:
+            tile = row.get("tile")
+            if not isinstance(tile, list) or len(tile) != 2:
+                return 999
+            return abs(int(tile[0]) - target_tile[0]) + abs(int(tile[1]) - target_tile[1])
+
+        return int(min(rows, key=score)["slot"])
+
+    def _cow_flag_set_for_slot(self, ram: np.ndarray, slot: int, flag: int) -> bool:
+        return bool(read_cow_daily_flags(ram, slot) & flag)
+
+    def _milkable_cow_slots(self, ram: np.ndarray) -> list[int]:
+        return [
+            slot
+            for slot in existing_cow_slots(ram)
+            if cow_needs_milking(ram, slot) and slot not in self._skipped_milk_slots
+        ]
+
+    def _barn_cow_slots(self, ram: np.ndarray) -> list[int]:
+        rows = cow_slot_snapshots(ram, require_barn=True)
+        slots = [int(row["slot"]) for row in rows if "slot" in row]
+        return slots or existing_cow_slots(ram)
+
+    def _slot_needs_talk(self, ram: np.ndarray, slot: int) -> bool:
+        return (
+            self.talk
+            and slot not in self._skipped_talk_slots
+            and not self._cow_flag_set_for_slot(ram, slot, COW_DAILY_TALKED_FLAG)
+        )
+
+    def _slot_needs_brush(self, ram: np.ndarray, slot: int) -> bool:
+        return (
+            self.brush
+            and self._brush_in_carry_pair(ram)
+            and slot not in self._skipped_brush_slots
+            and not self._cow_flag_set_for_slot(ram, slot, COW_DAILY_BRUSHED_FLAG)
+        )
+
+    def _slot_needs_milk(self, ram: np.ndarray, slot: int) -> bool:
+        return (
+            self.milk
+            and self._milker_in_carry_pair(ram)
+            and slot not in self._skipped_milk_slots
+            and cow_needs_milking(ram, slot)
+        )
+
+    def _slot_needs_care(self, ram: np.ndarray, slot: int) -> bool:
+        return (
+            self._slot_needs_talk(ram, slot)
+            or self._slot_needs_brush(ram, slot)
+            or self._slot_needs_milk(ram, slot)
+        )
+
+    def _care_needed_cow_slots(self, ram: np.ndarray) -> list[int]:
+        return [slot for slot in self._barn_cow_slots(ram) if self._slot_needs_care(ram, slot)]

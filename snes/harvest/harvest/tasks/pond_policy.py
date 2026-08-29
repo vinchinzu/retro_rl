@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from harvest.maps.map_config import (
     FARM_MAIN_POND_STANDS,
@@ -399,11 +399,289 @@ def decide_after_south_lip_charge(
     )
 
 
+# ── densify-thrash rule table (applied by CropRefillMixin) ───────────
+
+Tile = Tuple[int, int]
+ThrashLast = Tuple[Tile, Tile]
+MatchFn = Callable[["ThrashCounters", Tile, Tile], bool]
+LogFn = Callable[[Tile, int], str]
+
+
+class ThrashChargeKind(str, Enum):
+    """Scripted charge builders applied by CropRefillMixin."""
+
+    EAST_SOUTH = "east_south"
+    WEST_SOUTH_LIP = "west_south_lip"
+
+
+class ThrashFireMode(str, Enum):
+    """When a matched rule queues a charge."""
+
+    IMMEDIATE = "immediate"
+    STALL_SAME_GOAL = "stall_same_goal"
+    STALL_COUNT = "stall_count"
+
+
+@dataclass(frozen=True)
+class ThrashCounters:
+    """Snapshot of PondCorridorController thrash fields used by rules."""
+
+    east_south_charges: int = 0
+    south_lip_charges: int = 0
+    refill_densify_stalls: int = 0
+    refill_densify_last: Optional[ThrashLast] = None
+
+
+@dataclass(frozen=True)
+class CorridorThrashRule:
+    """One densify-thrash region / bail-out."""
+
+    name: str
+    priority: int
+    mode: ThrashFireMode
+    charge: ThrashChargeKind
+    match: MatchFn
+    stall_threshold: int = 0
+    require_same_last: bool = False
+    fire_gate: Optional[Callable[["ThrashCounters"], bool]] = None
+    log: Optional[LogFn] = None
+
+
+@dataclass(frozen=True)
+class ThrashEvalResult:
+    """Outcome of one densify thrash evaluation (apply in _find_nav_path)."""
+
+    fire_charge: bool
+    charge: Optional[ThrashChargeKind]
+    log: str
+    rule_name: Optional[str]
+    refill_densify_stalls: int
+    refill_densify_last: Optional[ThrashLast]
+
+
+def _match_past_fence_north(c: ThrashCounters, start: Tile, goal: Tile) -> bool:
+    return (
+        start[0] >= 31
+        and start[1] <= 31
+        and goal[1] >= 32
+        and c.east_south_charges < 6
+    )
+
+
+def _match_north_thrash(c: ThrashCounters, start: Tile, goal: Tile) -> bool:
+    return (
+        start[1] <= 31
+        and 18 <= start[0] <= 32
+        and goal[0] >= 30
+        and goal[1] >= 30
+        and c.east_south_charges < 6
+    )
+
+
+def _match_near_f0(c: ThrashCounters, start: Tile, goal: Tile) -> bool:
+    del c
+    return (
+        start[1] >= 33
+        and 26 <= start[0] <= 31
+        and goal[0] >= 32
+        and goal[1] >= 33
+        and tile_dist(start, goal) <= 5
+    )
+
+
+def _match_south_thrash(c: ThrashCounters, start: Tile, goal: Tile) -> bool:
+    if _match_near_f0(c, start, goal):
+        return False
+    return (
+        start[1] >= 32
+        and start[0] <= 31
+        and goal[0] >= 30
+        and goal[1] >= 33
+        and c.south_lip_charges < 8
+    )
+
+
+def _match_east_thrash(c: ThrashCounters, start: Tile, goal: Tile) -> bool:
+    return (
+        start[0] >= 36
+        and goal[0] <= 34
+        and goal[1] >= 30
+        and c.south_lip_charges < 8
+    )
+
+
+def _log_past_fence(start: Tile, stalls: int) -> str:
+    del stalls
+    return f"[CROP] Past-fence north at {start}; pure-south charge"
+
+
+def _log_west_lip_thrash(start: Tile, stalls: int) -> str:
+    return (
+        f"[CROP] Densify thrash at {start}→F0 (n={stalls}); "
+        f"west→south-lip charge"
+    )
+
+
+def _log_east_south_thrash(start: Tile, stalls: int) -> str:
+    return (
+        f"[CROP] Densify thrash at {start}→F0 (n={stalls}); "
+        f"east→south corridor charge"
+    )
+
+
+def _log_near_f0(start: Tile, stalls: int) -> str:
+    del stalls
+    return f"[CROP] Near-F0 densify stall at {start}; short lip charge"
+
+
+def _near_f0_fire_gate(c: ThrashCounters) -> bool:
+    return c.south_lip_charges < 4
+
+
+# Priority: past-fence immediate → north/south/east stall → near-F0 long stall.
+CORRIDOR_THRASH_RULES: List[CorridorThrashRule] = [
+    CorridorThrashRule(
+        name="past_fence_north",
+        priority=0,
+        mode=ThrashFireMode.IMMEDIATE,
+        charge=ThrashChargeKind.EAST_SOUTH,
+        match=_match_past_fence_north,
+        log=_log_past_fence,
+    ),
+    CorridorThrashRule(
+        name="north_thrash",
+        priority=10,
+        mode=ThrashFireMode.STALL_SAME_GOAL,
+        charge=ThrashChargeKind.EAST_SOUTH,
+        match=_match_north_thrash,
+        stall_threshold=2,
+        require_same_last=True,
+        log=_log_east_south_thrash,
+    ),
+    CorridorThrashRule(
+        name="south_thrash",
+        priority=20,
+        mode=ThrashFireMode.STALL_SAME_GOAL,
+        charge=ThrashChargeKind.WEST_SOUTH_LIP,
+        match=_match_south_thrash,
+        stall_threshold=2,
+        require_same_last=True,
+        log=_log_west_lip_thrash,
+    ),
+    CorridorThrashRule(
+        name="east_thrash",
+        priority=30,
+        mode=ThrashFireMode.STALL_SAME_GOAL,
+        charge=ThrashChargeKind.WEST_SOUTH_LIP,
+        match=_match_east_thrash,
+        stall_threshold=2,
+        require_same_last=True,
+        log=_log_west_lip_thrash,
+    ),
+    CorridorThrashRule(
+        name="near_f0",
+        priority=40,
+        mode=ThrashFireMode.STALL_COUNT,
+        charge=ThrashChargeKind.WEST_SOUTH_LIP,
+        match=_match_near_f0,
+        stall_threshold=6,
+        require_same_last=False,
+        fire_gate=_near_f0_fire_gate,
+        log=_log_near_f0,
+    ),
+]
+
+
+def _sorted_rules(rules: Optional[List[CorridorThrashRule]] = None) -> List[CorridorThrashRule]:
+    src = rules if rules is not None else CORRIDOR_THRASH_RULES
+    return sorted(src, key=lambda r: r.priority)
+
+
+def match_thrash_rule(
+    start: Tile,
+    goal: Tile,
+    counters: ThrashCounters,
+    *,
+    rules: Optional[List[CorridorThrashRule]] = None,
+) -> Optional[CorridorThrashRule]:
+    """First matching rule by priority, or None (caller resets stalls)."""
+    for rule in _sorted_rules(rules):
+        if rule.match(counters, start, goal):
+            return rule
+    return None
+
+
+def _thrash_result(
+    *,
+    fire: bool = False,
+    charge: Optional[ThrashChargeKind] = None,
+    log: str = "",
+    name: Optional[str] = None,
+    stalls: int = 0,
+    last: Optional[ThrashLast] = None,
+) -> ThrashEvalResult:
+    return ThrashEvalResult(
+        fire_charge=fire,
+        charge=charge,
+        log=log,
+        rule_name=name,
+        refill_densify_stalls=stalls,
+        refill_densify_last=last,
+    )
+
+
+def evaluate_corridor_thrash(
+    start: Tile,
+    goal: Tile,
+    counters: ThrashCounters,
+    *,
+    rules: Optional[List[CorridorThrashRule]] = None,
+) -> ThrashEvalResult:
+    """Pure densify-thrash decision + updated stall counters."""
+    rule = match_thrash_rule(start, goal, counters, rules=rules)
+    if rule is None:
+        return _thrash_result()
+
+    if rule.mode is ThrashFireMode.IMMEDIATE:
+        log = rule.log(start, 0) if rule.log else ""
+        return _thrash_result(fire=True, charge=rule.charge, log=log, name=rule.name)
+
+    stalls = counters.refill_densify_stalls + 1
+    last_key: ThrashLast = (start, goal)
+
+    if rule.mode is ThrashFireMode.STALL_SAME_GOAL:
+        same = (
+            counters.refill_densify_last == last_key
+            if rule.require_same_last
+            else True
+        )
+        if same and stalls >= rule.stall_threshold:
+            if rule.fire_gate is not None and not rule.fire_gate(counters):
+                return _thrash_result(name=rule.name, stalls=stalls, last=last_key)
+            log = rule.log(start, stalls) if rule.log else ""
+            return _thrash_result(
+                fire=True, charge=rule.charge, log=log, name=rule.name
+            )
+        return _thrash_result(name=rule.name, stalls=stalls, last=last_key)
+
+    if rule.mode is ThrashFireMode.STALL_COUNT:
+        gate_ok = rule.fire_gate is None or rule.fire_gate(counters)
+        if stalls >= rule.stall_threshold and gate_ok:
+            log = rule.log(start, stalls) if rule.log else ""
+            return _thrash_result(
+                fire=True, charge=rule.charge, log=log, name=rule.name
+            )
+        return _thrash_result(name=rule.name, stalls=stalls, last=last_key)
+
+    return _thrash_result(name=rule.name)
+
 
 __all__ = [
     "ALT_SOUTH_LIP_STAND",
+    "CORRIDOR_THRASH_RULES",
     "CorridorNavDecision",
     "CorridorNavKind",
+    "CorridorThrashRule",
     "KIND_ACT_AT_STAND",
     "KIND_ARM_F0_AND_LIP",
     "KIND_COMMIT_MULTIHOP_MAYBE_ACT_OR_REFILL",
@@ -416,9 +694,15 @@ __all__ = [
     "PRIMARY_POND_FACE",
     "PRIMARY_POND_STAND",
     "PondCorridorController",
+    "ThrashChargeKind",
+    "ThrashCounters",
+    "ThrashEvalResult",
+    "ThrashFireMode",
     "decide_after_east_south_charge",
     "decide_after_gap_reseat",
     "decide_after_multihop_drop",
     "decide_after_south_lip_charge",
+    "evaluate_corridor_thrash",
+    "match_thrash_rule",
     "pond_corridor_gap_open",
 ]

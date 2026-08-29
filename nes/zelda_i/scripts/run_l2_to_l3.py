@@ -28,8 +28,6 @@ Examples::
 from __future__ import annotations
 
 import argparse
-import importlib.util
-from pathlib import Path
 
 from retro_harness.env import make_env, save_state
 from retro_harness.nes import nes_idle_action
@@ -39,8 +37,11 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.assist import UnlimitedHealthAssist
-from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level3_overworld import (
+from zelda_i.dungeon.trace import write_state_provenance
+from zelda_i.level2.boss_combat import fight_dodongo
+from zelda_i.level2.boss_path import BossPathStart, run_boss_path
+from zelda_i.level2.boss_tf import collect_and_tf
+from zelda_i.level3.overworld import (
     LEVEL3,
     LEVEL3_HOPS_FROM_POST_L2,
     LEVEL3_POST_L2_SCREENS,
@@ -66,14 +67,6 @@ _POST_TF_STATES = frozenset(
         "Level2_0D_PostBoss",  # may still need collect
     }
 )
-
-def _load_dodongo_mod():
-    path = Path(__file__).resolve().parent / "run_level2_dodongo.py"
-    spec = importlib.util.spec_from_file_location("run_level2_dodongo", path)
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
 
 def _snap_dict(snap) -> dict:
     return {
@@ -111,40 +104,22 @@ def _ensure_tf_and_settle(
         start_state in ("Level2Boom", "Level2_0E", "Level2_0D_PostBoss")
         and not (tf & LEVEL2_TRIFORCE_BIT)
     ):
-        dod = _load_dodongo_mod()
         if start_state == "Level2_0D_PostBoss" or snap.screen == 0x0D:
-            stages["tf"] = dod._collect_and_tf(env, assist, budget=4000)
+            stages["tf"] = collect_and_tf(env, assist, budget=4000)
         elif start_state == "Level2_0E" or snap.screen == 0x0E:
-            fight = dod._fight_dodongo(env, assist, max_frames=14000)
+            fight = fight_dodongo(env, assist, max_frames=14000)
             stages["fight"] = {k: v for k, v in fight.items() if k != "log"}
             if not fight.get("success"):
                 return {"ok": False, "stage": "dodongo", "stages": stages}
-            stages["tf"] = dod._collect_and_tf(env, assist, budget=4000)
+            stages["tf"] = collect_and_tf(env, assist, budget=4000)
         else:
-            # Full boom path via run_once pieces is long; reuse run_once internals
-            # by calling collect path after fighting from boom is heavy — call
-            # the module's run_once in-process is cleaner for Boom.
-            r = dod.run_once(
-                start_state=start_state,
-                infinite_life=assist is not None,
-                tag=f"{tag}_tf",
-                save_checkpoint=False,
-            )
+            path = run_boss_path(env, start=BossPathStart.BOOM, assist=assist)
             stages["dodongo_run"] = {
-                "ok": r.get("ok"),
-                "result": r.get("result"),
-                "triforce": r.get("triforce"),
+                "ok": path.get("ok"),
+                "reason": path.get("reason"),
             }
-            if not r.get("ok"):
+            if not path.get("ok"):
                 return {"ok": False, "stage": "tf_run", "stages": stages}
-            # run_once closes env — cannot continue. Prefer inline for Boom.
-            return {
-                "ok": False,
-                "stage": "tf_run_closed_env",
-                "stages": stages,
-                "hint": "use --from-state Level2_0D_PostBoss|Level2Complete|Level2ExitOverworld "
-                "or Level2_0E; Boom full path should use run_level2_dodongo --save-state first",
-            }
 
         tf = int(read_u8(env.get_ram(), ADDR_TRIFORCE))
         if not (tf & LEVEL2_TRIFORCE_BIT):
@@ -195,16 +170,23 @@ def run_once(
     track = "assisted" if infinite_life else "clean"
     boom_pre: dict | None = None
 
-    # Level2Boom closes a full dodongo env — run TF first, then resume from Complete.
+    # Level2Boom: library boss path → Level2Complete, then resume this env.
     if start_state == "Level2Boom":
-        dod = _load_dodongo_mod()
-        boom_pre = dod.run_once(
-            start_state="Level2Boom",
-            infinite_life=infinite_life,
-            tag=f"{tag}_tf",
-            save_checkpoint=True,
-        )
-        if not boom_pre.get("ok"):
+        env_tf = make_env(GAME, "Level2Boom", GAME_DIR, render_mode="rgb_array")
+        assist_tf = UnlimitedHealthAssist(enabled=True) if infinite_life else None
+        try:
+            env_tf.reset()
+            env_tf.step(nes_idle_action())
+            if assist_tf is not None:
+                assist_tf.apply_env(env_tf, frame=0)
+            boom_pre = run_boss_path(
+                env_tf, start=BossPathStart.BOOM, assist=assist_tf
+            )
+            if boom_pre.get("ok"):
+                save_state(env_tf, GAME_DIR, GAME, "Level2Complete")
+        finally:
+            env_tf.close()
+        if not boom_pre or not boom_pre.get("ok"):
             out = {
                 "ok": False,
                 "bead": "rr-rnx",

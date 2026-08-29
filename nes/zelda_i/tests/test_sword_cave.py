@@ -13,7 +13,7 @@ from zelda_i.ram import (
     PLAY_MODE,
     SCREEN_START,
 )
-from zelda_i.sword_cave import (
+from zelda_i.overworld.sword_cave import (
     SwordCaveController,
     SwordPhase,
     sword_segment_success,

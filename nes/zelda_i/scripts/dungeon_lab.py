@@ -15,11 +15,11 @@ import argparse
 import json
 from pathlib import Path
 
-from zelda_i.dungeon import AliveRule, ensure_default_specs, spec_for_room
-from zelda_i.dungeon_lab import LabRequest, run_lab
+from zelda_i.dungeon.engine import AliveRule, ensure_default_specs, spec_for_room
+from zelda_i.dungeon.lab import LabRequest, run_lab
 
 ensure_default_specs()
-from zelda_i.dungeon_trace import (
+from zelda_i.dungeon.trace import (
     first_trace_divergence,
     read_jsonl,
 )

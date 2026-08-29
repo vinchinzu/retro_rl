@@ -74,7 +74,7 @@ framerule-optimal and does not systematically encode FPG/BBG/fast-accel.
 ## Adaptation pipeline (new main loop)
 
 ```text
-1. Import FM2  →  nes9_rle  (smb.scripts.import_fm2)
+1. Import FM2  →  nes9_rle  (`smb.tas.fm2` / `smb.tas.slice`)
 2. Power-on verify under stable-retro (no L+R sanitize)
 3. If desync: phase-align boot (Select vs Start, RAM init) or
    segment-split at natural control and retime like reactive_warp
@@ -86,25 +86,9 @@ framerule-optimal and does not systematically encode FPG/BBG/fast-accel.
 ### Commands
 
 ```bash
-# Summary of vendored HappyLee movie
-uv run python -m smb.scripts.import_fm2 --summary-only
-
-# Write raw continuous seed (includes title/boot frames)
-uv run python -m smb.scripts.import_fm2 \
-  nes/smb/tas/ref/happylee_warps_1715M.fm2 \
-  --out nes/smb/models/smb_happylee_warps_raw.json \
-  --route-id smb_happylee_warps
-
-# Verify playback (expect ending ≈ 17868 if fully syncs)
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 \
-  nes/smb/tas/ref/happylee_warps_1715M.fm2 --verify
-
 # 32-exit / warpless (#3728M) — fetch, NesHawk BK2, isolated 1-1 / 1-2 flag / 1-3
 uv run python -m smb.tas.fetch_refs
 uv run python -m smb.scripts.convert_fm2
-uv run python -m smb.scripts.import_fm2 \
-  nes/smb/tas/ref/happylee_mars608_warpless_3728M.fm2 --summary-only
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.annotate_fm2 --isolated-1-1 --export-1-1
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -152,11 +136,8 @@ Recipe: `Level1_1` + settle **2** + FM2 body from index **190** (even indices
 176–196 also clear; **odd indices die** — hitbox parity). Artifact written by
 import/search session.
 
-```bash
-# 1-1 only (verified path)
-uv run python -m smb.scripts.tas_1_1 verify \
-  --seed nes/smb/models/smb_1_1_happylee_slice.json
-```
+Seed: `models/smb_1_1_happylee_slice.json` (isolated 1-1). Replay via
+`smb.tas.slice` / `record_happylee --to 1-1`.
 
 ### Natural-entry 1-1 (works)
 
@@ -195,12 +176,8 @@ Predecessor: Level1_1 + HL 1-1 (settle 2) + idle until `is_surface_control`
 | HL 1-2 body alone vs our 1973 | **1657** | **≈ −316f** |
 
 ```bash
-# Verify natural chain HL 1-1 → surface → FM2 → W4
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
-# Re-export / re-search if 1-1 body changes
-uv run python -m smb.scripts.import_fm2 --export-1-2-slice
-# uv run python -m smb.scripts.import_fm2 --search-1-2 --1-2-start-min 2080 --1-2-start-max 2140
+  uv run python -m smb.scripts.record_happylee --to w4
 ```
 
 Helpers: `smb.tas.chain` (`reach_surface_after_hl_1_1`, `verify_1_2_natural_chain`),
@@ -232,11 +209,6 @@ even). Then FM2 bodies:
 | 4-2 (wait+body) vs 2764 | **165+1516=1681** | **≈ −1083f** |
 
 ```bash
-# Verify HL 1-1 → 1-2 W4 → 4-1 → 4-2 → W8 (fresh rebuild)
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.import_fm2 --verify-4-1-4-2-slice
-uv run python -m smb.scripts.import_fm2 --export-4-1-slice --export-4-2-slice
-
 # MP4 of the same verified chain (HUD + audio; same writer as any%)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.record_happylee --to w8
@@ -320,10 +292,8 @@ Predecessor: verified HL chain to W8 @**7512**. Idle **209** → 8-1 control.
 | Gate wait | 209 (odd) | 165 |
 | Seed | `smb_8_1_happylee_slice.json` | `smb_8_2_happylee_slice.json` |
 
-```bash
-uv run python -m smb.scripts.import_fm2 --verify-8-1-8-2-slice
-uv run python -m smb.scripts.import_fm2 --export-8-1-slice --export-8-2-slice
-```
+Seeds already on disk. Re-play: `record_happylee --to ending`. Library:
+`smb.tas.slice` (`verify` / `export` / `search_*`).
 
 Evidence: ``happylee_8_1_8_2_slice_verify.json`` (to 8-3 load **12976**).
 
@@ -334,7 +304,7 @@ continuous dies early). **Stitchless leave (skills path, 2026-08-07):**
 HL 8-2 control → progress-healed body prefix (max_x 3390) → land-pin skill
 (cut1478 + hop jh=44/gap=6/hops=3) + idle fold → **8-4 control 2374f 2/2**.
 No natural_82 mid-splice. Seed: `smb_8_3_stitchless_skills_leave.json`.
-Evidence: `happylee_8_3_skills_leave.json`. CLI: `smb.scripts.stitchless_8_3`.
+Evidence: `happylee_8_3_skills_leave.json`. Library: `smb.tas.skills_8_3`.
 
 **8-4 TAS after natural 8-3 (works 3/3):** after HL→8-2 + wait83 + natural
 bridge to ``is_8_4_control`` (nat@15933 for **2227f**), **flamexx** FM2
@@ -405,11 +375,7 @@ No hybrid, no natural_82, no flamexx, no skill macros. HappyLee #1715M only.
 
 ```bash
 uv run python -m smb.scripts.pure_hl status
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m smb.scripts.pure_hl verify-to-83   # gate 1
-uv run python -m smb.scripts.pure_hl probe-83        # continuous diag
-uv run python -m smb.scripts.pure_hl search-83 --with-continuous
-uv run python -m smb.scripts.pure_hl check-8-4-gate  # hard block until 8-3 leave
+uv run python -m smb.scripts.pure_hl check-8-4-gate
 ```
 
 **Rules:** write only under pure_hl dirs; open `gate_8_3_leave.json` only after
@@ -434,7 +400,7 @@ Dense re-scan around 12975 (leads 0–5, max_play 3200): same best, still no lea
   - **rr-34v (stitchless 8-3):** leave **done 2/2** at **2374f**
     (`smb_8_3_stitchless_skills_leave.json`) after HL 8-2 control — progress
     prefix + pure hop/flagpole skill + idle fold; **no natural_82 splice**.
-    Rich handoff FP + `stitchless_8_3` / `skills_8_3`. Grounded/pit-jump
+    Rich handoff FP + `skills_8_3`. Grounded/pit-jump
     grids paused. **Next:** fold continuous HL…8-2 + skills 8-3 + FX 8-4;
     Clean power-on 3/3; optional 21f/FPG polish. Hybrid v2 18031 showcase only.
   - **rr-32c (pure HL track 3):** isolated pure FM2 reproduction — **8-3 sync

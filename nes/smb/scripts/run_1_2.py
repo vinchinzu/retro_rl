@@ -23,60 +23,25 @@ from typing import Any, Literal
 
 import numpy as np
 
-from retro_harness.env import make_env
-from smb.full_run import read_state_bytes
+from retro_harness.env import make_env, read_state_bytes
 from smb.paths import GAME_DIR, GAME_V0, INTEGRATION_V0_DIR, RECORDINGS_DIR
 from smb.policy import (
     CONTINUOUS_SETTLE_FRAMES,
     DEFAULT_1_1_SEED,
     DEFAULT_CONTINUOUS_SEED,
+    DEFAULT_STAIRS_1_1,
     expand_nes9_rle,
     load_nes9_rle_seed,
-    frames_to_actions,
+    play_1_1_until_clear,
 )
 from smb.ram import read_snapshot
 from smb.reactive_12 import Reactive12Policy, play_reactive_12
 from retro_harness.segment_runner import configure_headless, save_rgb_png, write_json_report
 
 LEVEL1_1_STATE = INTEGRATION_V0_DIR / "Level1_1.state"
-STAIRS_1_1 = GAME_DIR / "models" / "smb_1_1_stairs_best_frames.json"
+STAIRS_1_1 = DEFAULT_STAIRS_1_1
 Predecessor = Literal["stairs", "baseline", "tas"]
-
-
-def _play_1_1_until_clear(env, seed_frames: list[list[int]]) -> dict[str, Any]:
-    """Replay a 1-1 seed until level becomes 1-2 (or death)."""
-    idle = np.zeros(int(env.action_space.shape[0]), dtype=np.int8)
-    start = read_snapshot(env.get_ram())
-    lives0 = start.lives
-    recorded: list[list[int]] = []
-    for i, act in enumerate(frames_to_actions(seed_frames), start=1):
-        env.step(act)
-        recorded.append([int(b) for b in act[:9]])
-        snap = read_snapshot(env.get_ram(), frame=i)
-        if snap.lives < lives0 or snap.dying:
-            return {
-                "success": False,
-                "outcome": "death",
-                "frames": i,
-                "recorded": recorded,
-                "final": snap,
-            }
-        if snap.world == 0 and snap.level == 1:
-            return {
-                "success": True,
-                "outcome": "clear",
-                "frames": i,
-                "recorded": recorded,
-                "final": snap,
-            }
-    snap = read_snapshot(env.get_ram())
-    return {
-        "success": False,
-        "outcome": "timeout",
-        "frames": len(recorded),
-        "recorded": recorded,
-        "final": snap,
-    }
+_play_1_1_until_clear = play_1_1_until_clear
 
 
 def run_1_2_natural(

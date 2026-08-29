@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 
 from zelda_i.door_graph import DoorDir, L3_DARKNUTS, L3_ENTRY, L3_NORTH_ZOLS, L3_WEST_KEY
-from zelda_i.level3_dungeon import DARKNUT_OBJECT_TYPE, ROOM_5B_SPEC
-from zelda_i.level3_dungeon import ROOM_L3_NORTH_ZOLS as ROOM_6B
-from zelda_i.level3_path import (
+from zelda_i.level3.dungeon import DARKNUT_OBJECT_TYPE, ROOM_5B_SPEC
+from zelda_i.level3.dungeon import ROOM_L3_NORTH_ZOLS as ROOM_6B
+from zelda_i.level3.path import (
     Level3NorthChainController,
     Level3NorthExit6bController,
 )
-from zelda_i.level3_spine import (
+from zelda_i.level3.spine import (
     dest_6b_room_plan,
     level3_dest_6b_stages,
     level3_dest_6b_success,
@@ -29,7 +29,7 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.walk_physics import WALK_DELTA
+from zelda_i.walk.physics import WALK_DELTA
 
 
 def _ram(
@@ -67,7 +67,7 @@ def test_dest_6b_room_plan_is_kill_clear_north() -> None:
 
 
 def test_dest_stages_fail_closed_without_graph_path(monkeypatch) -> None:
-    import zelda_i.level3_spine as spine
+    import zelda_i.level3.spine as spine
 
     monkeypatch.setattr(spine.LEVEL_3_DOOR_GRAPH, "bfs_path", lambda *a, **k: None)
     with pytest.raises(RuntimeError, match="0x7c"):

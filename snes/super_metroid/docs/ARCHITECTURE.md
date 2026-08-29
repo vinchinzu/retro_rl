@@ -67,7 +67,7 @@ check). Do not grow a per-frame HP loop in a hop.
 | `routes/early_continuous.py` | Morph→supers play/run (seeds + policies) |
 | `routes/catalog.py` | `ContinuousTip`, split tuples, `NamedRoute` |
 | `scripts/record/continuous.py` | One CLI for all continuous tips (`--to`) |
-| `scripts/probe/` | Dev probes (KPDR pure, kraid combat, route tour) |
+| `scripts/probe/` | A/B loop (`kpdr.py`); Gravity `ws_main_climb`; Alcatraz WIP |
 | `scripts/export/` | Path board, KPDR tracker, room queue, graphs |
 | `scripts/room/run_problem.py` | Isolated room practice bootstrap/run |
 

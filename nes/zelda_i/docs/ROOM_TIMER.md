@@ -30,22 +30,10 @@ non-settled phase (modes 6/7 scroll, 16 cave enter, 18 triforce fanfare, etc.).
 ## How to run
 
 ```bash
-# Import / logic smoke (no ROM)
-uv run python zelda_i/scripts/probe_room_timer.py self-check
-
-# Offline fixture → durable JSON under zelda_i/
-uv run python zelda_i/scripts/probe_room_timer.py offline \
-  -i path/to/samples.json \
-  -o zelda_i/recordings/room_timings/offline.json
-
-# Live idle session from an integration state (needs ROM)
-uv run python zelda_i/scripts/probe_room_timer.py session \
-  --state Level1Entrance \
-  --frames 600 \
-  -o zelda_i/recordings/room_timings/session.json
-
-# Opt-in hop timing on real segment runners (needs ROM + state)
-uv run python zelda_i/scripts/run_to_level2_prefix.py --room-timing --trials 1
+# Library: zelda_i.room_timer (no probe CLI). Opt-in hop timing on the
+# Composer / Clean M5 (needs ROM + state):
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level2 --no-video --trials 1
 uv run python zelda_i/scripts/run_level1_complete.py --room-timing --trials 1
 uv run python zelda_i/scripts/run_level1_complete.py \
   --natural-entry --room-timing --trials 1
@@ -82,7 +70,6 @@ report = timer.report(source="my_run")
 ```
 
 Core module: `zelda_i/room_timer.py`.
-Tests: `zelda_i/tests/test_room_timer.py` (no ROM).
 
 ## What is ignored / abandoned
 
@@ -109,7 +96,7 @@ Tests: `zelda_i/tests/test_room_timer.py` (no ROM).
   the loaded state is mid-transition or you integrate the timer into a real
   controller/run loop.
 - Controllers are unchanged by default. Opt-in live capture is available on the
-  shared stage loop (`chain.run_controller_stage(..., room_timer=...)`) and the
+  shared stage loop (`zelda_i.route.chain.run_controller_stage(..., room_timer=...)`) and the
   Level 1 complete / Level 2 prefix runners via `--room-timing`.
 
 ## Output location

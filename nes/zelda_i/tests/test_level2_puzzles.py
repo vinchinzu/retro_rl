@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from zelda_i import level2_puzzles as puz
+from zelda_i.level2 import puzzles as puz
 
 
 def test_bomb_wall_6f_north_stand() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level6_occupancy import (
+from zelda_i.level6.occupancy import (
     l6_play_dest_success,
     occupancy_new_miss,
 )
@@ -25,7 +25,7 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.walk_physics import OccupancyWalker
+from zelda_i.walk.physics import OccupancyWalker
 
 
 def _ram(**fields: int) -> np.ndarray:

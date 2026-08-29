@@ -8,8 +8,11 @@ import numpy as np
 
 from smb.rta_panel import (
     RtaSplitTracker,
+    VideoWriter,
     draw_rta_split_panel,
+    env_audio_rate,
     stage_label,
+    write_video,
 )
 
 
@@ -102,3 +105,9 @@ def test_draw_panel_composites_without_resize() -> None:
     assert out.shape == (224, 256, 3)
     # Panel region should differ from flat fill.
     assert not np.array_equal(out[:40, :70], obs[:40, :70])
+
+
+def test_video_writer_lives_on_rta_panel_not_cli() -> None:
+    assert VideoWriter.__name__ == "VideoWriter"
+    assert callable(write_video)
+    assert callable(env_audio_rate)

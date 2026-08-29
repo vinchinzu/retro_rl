@@ -26,10 +26,10 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.assist import UnlimitedHealthAssist
-from zelda_i.chain import run_controller_stage
-from zelda_i.heart_farm import HeartFarmController
-from zelda_i.level2_clean_door import run_clean_door_from_env
-from zelda_i.level2_overworld import (
+from zelda_i.route.chain import run_controller_stage
+from zelda_i.overworld.heart_farm import HeartFarmController
+from zelda_i.level2.clean_door import run_clean_door_from_env
+from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES,
     OverworldToLevel2Controller,
     level2_door_hops_from,

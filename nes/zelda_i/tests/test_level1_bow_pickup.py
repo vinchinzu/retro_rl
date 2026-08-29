@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level1_bow_cellar import LEVEL1_BOW_CELLAR_ROOM
-from zelda_i.level1_bow_pickup import (
+from zelda_i.level1.bow_cellar import LEVEL1_BOW_CELLAR_ROOM
+from zelda_i.level1.bow_pickup import (
     BOW_PEDESTAL,
     EAST_X,
     EXIT_STAIRS,
@@ -16,7 +16,7 @@ from zelda_i.level1_bow_pickup import (
     level1_bow_pickup_success,
     make_bow_pickup_controller,
 )
-from zelda_i.level1_bow_rejoin import (
+from zelda_i.level1.bow_rejoin import (
     REJOIN_DEST,
     REJOIN_EAST_X,
     REJOIN_NORTH_Y,

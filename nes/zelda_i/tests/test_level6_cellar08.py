@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level6_cellar08 import (
+from zelda_i.level6.cellar08 import (
     CELLAR_08_DEST_ROOM,
     CELLAR_08_ROOM,
     EAST_MOUTH,

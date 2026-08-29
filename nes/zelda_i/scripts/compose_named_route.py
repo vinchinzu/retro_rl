@@ -17,8 +17,8 @@ import json
 from pathlib import Path
 
 from zelda_i.paths import INTEGRATION_DIR
-from zelda_i.route_composer import describe_named_route
-from zelda_i.route_eligible import classify
+from zelda_i.route.composer import describe_named_route
+from zelda_i.route.eligible import classify
 from zelda_i.runner import add_common_args, write_report
 
 

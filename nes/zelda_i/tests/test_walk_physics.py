@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from zelda_i.walk_physics import (
+from zelda_i.walk.physics import (
     OccupancyGrid,
     OccupancyWalker,
     follow_path,

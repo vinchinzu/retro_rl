@@ -461,7 +461,7 @@ def render_markdown(board: dict[str, object]) -> str:
         "",
         str(board["principle"]),
         "",
-        "Door-warp tools (`probe_route.py full` / `full-hybrid`) remain useful "
+        "Door-warp tools (`dev/route_dev.py`) remain useful "
         "only for topology debugging. **Route progress** = natural room exit "
         "under a controller/policy, eventually chained from power-on.",
         "",

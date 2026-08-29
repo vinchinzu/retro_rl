@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from zelda_i.assist import UnlimitedHealthAssist, poke_wooden_arrows
-from zelda_i.dungeon_ops import B_ITEM_ARROWS, WOODEN_ARROWS
+from zelda_i.dungeon.ops import B_ITEM_ARROWS, WOODEN_ARROWS
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOW,

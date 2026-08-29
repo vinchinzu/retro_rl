@@ -9,7 +9,6 @@ compatibility.
 from typing import Optional, List, Dict, Tuple, Set
 from collections import deque
 import os
-import json
 
 import numpy as np
 
@@ -24,7 +23,6 @@ from harvest.core.tile_catalog import (
     TILE_SIZE,
     TILE_TO_DEBRIS,
     DebrisType,
-    Tool,
 )
 
 # Nav primitives — re-exported so existing importers keep working.
@@ -43,14 +41,17 @@ from harvest.tasks.nav import (  # noqa: F401
 
 # Tile-scan / tool helpers — re-exported for backward compatibility.
 from harvest.tasks.farm_ops import (  # noqa: F401
+    DEFAULT_PRIORITY,
     Target,
     TileScanner,
     ToolManager,
     action_to_names,
+    choose_clear_target,
     cycle_tool,
-    drop_unarmed_debris,
+    parse_priority_list,
     snap_debris_anchor,
     sort_targets_cluster,
+    start_progress_watch,
     use_tool,
     use_tool_facing,
 )
@@ -62,25 +63,14 @@ from harvest.tasks.farm_toss import (
     start_fence_jump_skill,
     step_fence_jump_skill,
 )
-from harvest.tasks.farm_clear_nav import (
-    choose_clear_target,
-    handle_navigating,
-    start_progress_watch,
+from harvest.tasks.farm_clear_tool import (
+    enable_lift_only_mode,
+    finalize_startup_tools,
+    handle_tool_clear,
+    load_clearer_task,
+    run_startup,
+    tool_clear_is_planted,
 )
-from harvest.tasks.farm_clear_tool import handle_tool_clear, tool_clear_is_planted
-
-
-# =============================================================================
-# CONSTANTS
-# =============================================================================
-
-# Hard obstacles first so pathing opens up, then cheap lifts.
-DEFAULT_PRIORITY: List[DebrisType] = [
-    DebrisType.ROCK,
-    DebrisType.STUMP,
-    DebrisType.STONE,
-    DebrisType.WEED,
-]
 
 # Hammer/axe hits cost 2 stamina; stop before a multi-hit cannot finish.
 # Lifts may continue at 1. Multi-hit start budget is Stamina.can_finish_multi_hit
@@ -176,14 +166,16 @@ class FarmClearer:
         self.startup_tasks.append({"type": task_type, **kwargs})
 
     def _load_task(self, name: str) -> Optional[List[np.ndarray]]:
-        if not self.tasks_dir:
-            return None
-        path = os.path.join(self.tasks_dir, f"{name}.json")
-        if not os.path.exists(path):
-            return None
-        with open(path) as f:
-            data = json.load(f)
-        return [np.array(frame, dtype=np.int32) for frame in data.get("frames", [])]
+        return load_clearer_task(self, name)
+
+    def _enable_lift_only_mode(self, missing: List[int]) -> None:
+        enable_lift_only_mode(self, missing)
+
+    def _finalize_startup_tools(self) -> None:
+        finalize_startup_tools(self)
+
+    def _run_startup(self, ram: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
+        return run_startup(self, ram)
 
     def _emit_action(self, action: np.ndarray, src: str) -> np.ndarray:
         if self.suppress_move_frames > 0:
@@ -200,167 +192,6 @@ class FarmClearer:
             if buttons != "none" or os.getenv("ACTION_DEBUG_VERBOSE") == "1" and self.frame_count % 30 == 0:
                 print(f"[ACTION] frame={self.frame_count} state={self.state} src={src} buttons={buttons}")
         return action
-
-    def _requested_startup_tools(self) -> Set[int]:
-        wanted: Set[int] = set()
-        for step in self.startup_tasks:
-            if step.get("type") != "task":
-                continue
-            name = str(step.get("name", ""))
-            mapping = {
-                "get_hammer": int(Tool.HAMMER),
-                "get_axe": int(Tool.AXE),
-                "get_sickle": int(Tool.SICKLE),
-                "get_hoe": int(Tool.HOE),
-            }
-            tool_id = mapping.get(name)
-            if tool_id is not None:
-                wanted.add(tool_id)
-        return wanted
-
-    def _enable_lift_only_mode(self, missing: List[int]) -> None:
-        """Drop only debris whose required tool is actually missing."""
-        self.prefer_lift_for_weeds = True
-        if int(Tool.HAMMER) in missing:
-            self.prefer_lift_for_stones = True
-        self.priority = drop_unarmed_debris(self.priority, missing)
-        names = ", ".join(f"0x{tool:02X}" for tool in missing) or "lift-only"
-        kept = ", ".join(dt.name for dt in self.priority)
-        print(f"[CLEARER] Startup missing tools: {names}; priority={kept}")
-
-    def _finalize_startup_tools(self) -> None:
-        """Re-scan carry (selected + backpack) and drop unarmed debris types."""
-        have = set(self.tool_manager.seen)
-        have.add(self.tool_manager.current)
-        if self.tool_manager.has(int(Tool.HAMMER)):
-            have.add(int(Tool.HAMMER))
-        if self.tool_manager.has(int(Tool.AXE)):
-            have.add(int(Tool.AXE))
-        missing = sorted(self._requested_startup_tools() - have)
-
-        if DebrisType.ROCK in self.priority and not self.tool_manager.has(
-            int(Tool.HAMMER)
-        ):
-            missing = sorted(set(missing) | {int(Tool.HAMMER)})
-        if DebrisType.STUMP in self.priority and not self.tool_manager.has(
-            int(Tool.AXE)
-        ):
-            missing = sorted(set(missing) | {int(Tool.AXE)})
-
-        if missing:
-            self.tools_missing = True
-            self._enable_lift_only_mode(missing)
-        else:
-            self.tools_missing = False
-
-    def _run_startup(self, ram: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
-        if self.startup_done:
-            return False, None
-
-        # One-time tool inventory scan at the very beginning
-        if not hasattr(self, '_tool_scan_done'):
-            self._tool_scan_done = False
-            self._tool_scan_frames = 0
-            self.tool_manager.start_search()
-
-        if not self._tool_scan_done:
-            self._tool_scan_frames += 1
-            self.tool_manager.record()
-
-            # Scan complete after one full cycle or timeout
-            if self.tool_manager.cycle_complete() or self._tool_scan_frames > 60:
-                self._tool_scan_done = True
-                tools_found = [f"0x{t:02X}" for t in sorted(self.tool_manager.seen)]
-                print(f"[CLEARER] Tool inventory: {', '.join(tools_found)}")
-            else:
-                # Continue cycling
-                if self._tool_scan_frames % 6 == 0:  # Cycle every 6 frames
-                    self.action_queue.extend(cycle_tool())
-                return True, self.action_queue.popleft() if self.action_queue else make_action()
-
-        if self.task_queue:
-            return True, self.task_queue.popleft()
-
-        if self.startup_index >= len(self.startup_tasks):
-            self._finalize_startup_tools()
-            self.startup_done = True
-            print("[CLEARER] Startup complete")
-            return False, None
-
-        step = self.startup_tasks[self.startup_index]
-        step_type = step.get("type", "")
-
-        if step_type == "task":
-            task_name = step.get("name", "")
-
-            # Check if we should skip tool acquisition tasks using pre-scanned inventory
-            if task_name in ("get_hammer", "get_axe", "get_sickle", "get_hoe"):
-                tool_map = {
-                    "get_hammer": Tool.HAMMER,
-                    "get_axe": Tool.AXE,
-                    "get_sickle": Tool.SICKLE,
-                    "get_hoe": Tool.HOE,
-                }
-                required_tool = tool_map.get(task_name)
-
-                if required_tool and self.tool_manager.has(int(required_tool)):
-                    print(
-                        f"[CLEARER] Skipping {task_name} "
-                        f"(already have {required_tool.name})"
-                    )
-                    self.startup_index += 1
-                    return True, make_action()
-
-            # Execute the task
-            frames = self._load_task(task_name)
-            if frames:
-                print(f"[CLEARER] Task: {task_name} ({len(frames)} frames)")
-                self.task_queue.extend(frames)
-            else:
-                print(f"[CLEARER] Task not found: {task_name}")
-            self.startup_index += 1
-            return True, self.task_queue.popleft() if self.task_queue else make_action()
-
-        elif step_type == "nav":
-            target = step.get("target")
-            radius = step.get("radius", 12)
-            timeout = step.get("timeout", 0)
-            if "start_frame" not in step:
-                step["start_frame"] = self.frame_count
-
-            if timeout and self.frame_count - step["start_frame"] >= timeout:
-                print(f"[CLEARER] Nav timeout: {step.get('name')}")
-                self.startup_index += 1
-                self.navigator.path = []
-                return True, make_action()
-
-            if target and abs(target.x - self.navigator.current_pos.x) <= radius and abs(target.y - self.navigator.current_pos.y) <= radius:
-                print(f"[CLEARER] Nav done: {step.get('name')}")
-                self.startup_index += 1
-                self.navigator.path = []
-                return True, make_action()
-
-            if self.navigator.stasis > self.max_stasis:
-                if self.navigator.path:
-                    self.pathfinder.temp_blocked.add(self.navigator.path[0])
-                self.navigator.path = []
-                self.navigator.stasis = 0
-
-            if target and not self.navigator.path:
-                target_tile = (target.x // TILE_SIZE, target.y // TILE_SIZE)
-                approach = self.pathfinder.find_approach(ram, target_tile, self.navigator.current_pos)
-                if not approach:
-                    approach = self.pathfinder.find_nearest_walkable(ram, target_tile, max_radius=4)
-                if approach:
-                    path = self.pathfinder.find_path(ram, self.navigator.current_tile, approach)
-                    if path:
-                        self.navigator.path = path
-
-            action = self.navigator.follow_path(ram)
-            return True, action if action is not None else make_action()
-
-        self.startup_index += 1
-        return True, make_action()
 
     def _should_lift(self, target: Target) -> bool:
         if not target.is_liftable:
@@ -597,6 +428,7 @@ class FarmClearer:
         return None
 
     def _handle_navigating(self, ram: np.ndarray) -> Optional[str]:
+        from harvest.tasks.farm_ops import handle_navigating
         return handle_navigating(self, ram)
 
     def _handle_clearing(self, ram: np.ndarray) -> Optional[str]:
@@ -886,37 +718,3 @@ class FarmClearer:
             return self._emit_action(self.action_queue.popleft(), "queue")
 
         return self._emit_action(make_action(), "idle")
-
-
-# =============================================================================
-# PRIORITY PARSING
-# =============================================================================
-
-DEBRIS_NAMES = {
-    "weed": DebrisType.WEED, "weeds": DebrisType.WEED, "bush": DebrisType.WEED,
-    "stone": DebrisType.STONE, "stones": DebrisType.STONE,
-    "rock": DebrisType.ROCK, "rocks": DebrisType.ROCK,
-    "stump": DebrisType.STUMP, "stumps": DebrisType.STUMP,
-    "fence": DebrisType.FENCE, "fences": DebrisType.FENCE,
-}
-
-
-def parse_priority_list(raw: Optional[str], priority_only: bool = False) -> List[DebrisType]:
-    if not raw:
-        return list(DEFAULT_PRIORITY)
-
-    parsed = []
-    for name in raw.split(","):
-        debris = DEBRIS_NAMES.get(name.strip().lower())
-        if debris and debris not in parsed:
-            parsed.append(debris)
-
-    if not parsed:
-        return list(DEFAULT_PRIORITY)
-
-    if not priority_only:
-        for dt in DEFAULT_PRIORITY:
-            if dt not in parsed:
-                parsed.append(dt)
-
-    return parsed

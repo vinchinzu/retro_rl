@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.combat import in_sword_hitbox, overworld_threat_objects, should_swing_at
-from zelda_i.nav_common import (
+from zelda_i.overworld.common import (
     swing_action,
     walk_or_swing,
 )
-from zelda_i.overworld import ScreenHop, path_screens_from_hops
+from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from zelda_i.ram import (
     ADDR_LINK_X,
     ADDR_LINK_Y,

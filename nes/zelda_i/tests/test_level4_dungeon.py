@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from zelda_i.dungeon_ids import VIRE_OBJECT_TYPE
-from zelda_i.level4_dungeon import (
+from zelda_i.dungeon.ids import VIRE_OBJECT_TYPE
+from zelda_i.level4.dungeon import (
     GEL_OBJECT_TYPE,
     INVULN_MOVER_TYPE,
     LIKE_LIKE_OBJECT_TYPE,
@@ -17,16 +17,16 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_VIRES_50,
     ZOL_OBJECT_TYPE,
 )
-from zelda_i.level4_maze_path import make_north_40_controller
-from zelda_i.level4_stepladder import make_stepladder_controller
+from zelda_i.level4.maze_path import make_north_40_controller
+from zelda_i.level4.stepladder import make_stepladder_controller
 
 
 def test_stepladder_notch_stall_fails_without_bfs() -> None:
     """Dock-path stall fail-closes; do not fall through to BFS."""
     import numpy as np
 
-    from zelda_i.level4_occupancy import ROOM_60_CLIP_BUDGET
-    from zelda_i.level4_stepladder import StepladderPhase
+    from zelda_i.level4.occupancy import ROOM_60_CLIP_BUDGET
+    from zelda_i.level4.stepladder import StepladderPhase
     from zelda_i.ram import (
         ADDR_LEVEL,
         ADDR_LINK_X,
@@ -73,7 +73,7 @@ def test_maze_50_live_corner_turns_at_observed_coordinates() -> None:
 
 def test_room_31_west_alcove_clip_is_right_up() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
-    from zelda_i.level4_maze_path import make_maze_31_inland_controller
+    from zelda_i.level4.maze_path import make_maze_31_inland_controller
 
     def snap(x: int, y: int, *, screen: int = ROOM_L4_EAST_31):
         return SimpleNamespace(
@@ -106,7 +106,7 @@ def test_room_31_west_alcove_clip_is_right_up() -> None:
 
 def test_room_31_east_leftover_goes_up_not_through_water() -> None:
     from retro_harness.nes import nes_action, nes_idle_action
-    from zelda_i.level4_maze_path import make_maze_31_east_controller
+    from zelda_i.level4.maze_path import make_maze_31_east_controller
 
     def snap(x: int, y: int, *, screen: int = ROOM_L4_EAST_31):
         return SimpleNamespace(
@@ -160,7 +160,7 @@ def test_live_enemies_ignore_invuln_0x2b() -> None:
 def test_level4_clear12_attaches_after_key01() -> None:
     """key01 leftover (120,133) walks DOWN; bomb-east stand opens 0x12 not 0x11."""
     from retro_harness.nes import nes_action
-    from zelda_i.level4_clear12 import (
+    from zelda_i.level4.clear12 import (
         BOMB_11_EAST_STAND,
         BombWall11East,
         level4_clear12_success,
@@ -200,8 +200,8 @@ def test_level4_clear12_attaches_after_key01() -> None:
 def test_level4_gleeok13_attaches_after_clear12() -> None:
     """clear12 leftover (128,117) walks to PUSH_12_STAND; success is play 0x13."""
     from retro_harness.nes import nes_action
-    from zelda_i.level4_dungeon import PUSH_12_STAND
-    from zelda_i.level4_gleeok13 import (
+    from zelda_i.level4.dungeon import PUSH_12_STAND
+    from zelda_i.level4.gleeok13 import (
         level4_gleeok13_success,
         make_gleeok13_controller,
     )

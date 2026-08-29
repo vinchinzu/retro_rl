@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.dungeon_treasures import (
+from zelda_i.route.treasures import (
     KIND_GATE,
     TREASURES,
     treasure,
 )
-from zelda_i.level6_door_hop import NORTH2C_SPEC, door_hop_success
+from zelda_i.level6.door_hop import NORTH2C_SPEC, door_hop_success
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOW,

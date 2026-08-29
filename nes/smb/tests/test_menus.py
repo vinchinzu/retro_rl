@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from smb.menus import BOOT_MAX_FRAMES, boot_to_level1_script
+from smb.menus import BOOT_MAX_FRAMES, boot_to_level1_script, boot_to_ready, idle_n
+
+
+def test_boot_helpers_are_library_entry_points() -> None:
+    assert callable(boot_to_ready)
+    assert callable(idle_n)
 
 
 def test_boot_script_is_bounded_and_nonempty() -> None:

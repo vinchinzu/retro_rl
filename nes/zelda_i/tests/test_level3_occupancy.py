@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level3_dungeon import ROOM_L3_NORTH_ZOLS as ROOM_6B
-from zelda_i.level3_geometry import NORTH_DOOR_X, ROOM_6B_BAND_Y
-from zelda_i.walk_physics import WALK_DELTA
+from zelda_i.level3.dungeon import ROOM_L3_NORTH_ZOLS as ROOM_6B
+from zelda_i.level3.geometry import NORTH_DOOR_X, ROOM_6B_BAND_Y
+from zelda_i.walk.physics import WALK_DELTA
 from retro_harness.nes import nes_action
-from zelda_i.level3_path import Level3NorthExit6bController
+from zelda_i.level3.path import Level3NorthExit6bController
 from zelda_i.ram import (
     ADDR_LEVEL,
     ADDR_LINK_X,

@@ -9,6 +9,7 @@ import pytest
 from smb.full_run import (
     build_session_playthrough_plan,
     build_stitch_plan,
+    render_stitch_plan,
     resolve_state_path,
     verify_clip_deathless,
 )
@@ -44,6 +45,15 @@ def test_all_exits_route_has_thirty_two() -> None:
     assert route.exits[-1].exit_id == "8-4"
     assert route.exits[0].segment_id == "smb_1_1"
     assert route.exits[-1].segment_id == "smb_8_4"
+
+
+def test_render_stitch_plan_uses_shared_video_writer() -> None:
+    import inspect
+
+    src = inspect.getsource(render_stitch_plan)
+    assert "VideoWriter" in src
+    assert "Popen" not in src
+    assert "draw_text" not in src
 
 
 def test_list_routes_dedupes() -> None:

@@ -167,7 +167,7 @@ class ZeldaSnapshot:
     def health_is_full(self) -> bool:
         """True when whole hearts match containers (low nibble == high nibble)."""
         hv = int(self.health)
-        return (hv & 0x0F) >= ((hv >> 4) & 0x0F)
+        return (hv & 0x0F) == ((hv >> 4) & 0x0F)
 
     def object_in_slot(self, slot: int) -> ZeldaObject | None:
         return next((obj for obj in self.objects if obj.slot == slot), None)

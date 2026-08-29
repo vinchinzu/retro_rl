@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.level6_path import BLOCK_OBJECT_TYPE
-from zelda_i.level6_stairs3a_warp import (
+from zelda_i.level6.path import BLOCK_OBJECT_TYPE
+from zelda_i.level6.stairs3a_warp import (
     WARP_XY,
     level6_stairs3a_warp_success,
     make_stairs_3a_warp_controller,

@@ -7,14 +7,12 @@ compose with predecessor stack.
 
 ## Scripts (findable entry points)
 
+Leftover practice is the A/B loop + Skill owner:
+
 | Script | Role |
 |--------|------|
-| `scripts/probe/shine_practice.py` | **Landing Site human gym** — multi-take record + diagnose; **store drill** |
-| `scripts/probe/moat_spark_watch.py` | Kihunter → Moat pure hop/spark (GREEN) |
-| `scripts/probe/west_ocean_spark.py` | **Product** `pure-ws` / `watch-ws` → `0xCA08`; **`chain-ws`** Moat+WO compose → WS pin; edge `pure`/`watch` → bowling |
-| `scripts/probe/landing_shine_practice.py` | Dual-track measure / bootstrap LS pin / diagonal proof |
-| `scripts/probe/record_pure_chain.py` | `--preset moat-to-ws` video debug of compose |
-| `routes/skills/shinespark.py` | Shared charge / store / activate skill surface |
+| `scripts/probe/kpdr.py` | **A/B loop** — `pure west-ocean-to-ws` / `pure west-ocean-to-bowling` / `compose moat-to-ws` |
+| `routes/skills/shinespark.py` | Shared charge / store / activate Skill + `diagnose_trace` |
 | `routes/kpdr/moat.py` | `play_moat_shinespark`; `play_moat_to_ws` compose → `0xCA08` |
 | `routes/kpdr/west_ocean.py` | `play_west_ocean_over_ocean_spark` (product), `play_west_ocean_edge_spark` |
 | `scripts/record/guided_human.py` | `--from west-ocean` · `--from ws-entrance` (Phantoon ship) · `--from pre-moat` |
@@ -34,13 +32,14 @@ Also listed in `AGENTS.md` (Commands) and `scripts/README.md`.
 
 - Path: `custom_integrations/SuperMetroid-Snes/scratch/landing_site_speed_practice.state`
 - Room `0x91F8` ~(899,1163), items `0x3105` (Speed), **not** escape-finish `0xF32F`
-- Bootstrap from pre-Moat Kihunter (walk left a few rooms):
+- Bootstrap from pre-Moat Kihunter (walk left a few rooms). Practice via:
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/shine_practice.py bootstrap
-# or
-uv run python snes/super_metroid/scripts/probe/landing_shine_practice.py bootstrap
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kihunter-to-moat \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_kihunter_pre_moat_spark.state
 ```
+
+Skill surface: `routes/skills/shinespark.py` (`charge_store_activate`, `diagnose_trace`).
 
 ## Human store drill (preferred if store never arms)
 
@@ -52,21 +51,11 @@ Crouching after that is ordinary crouch (`pose` 39/53, `$0A68=0`) — not a shin
 `DOWN+RIGHT+B` arms store. Do **not** release direction first.
 
 ```bash
-# Bot charges + holds RIGHT+B after e=4; you only press arrow DOWN
-uv run python snes/super_metroid/scripts/probe/shine_practice.py drill
-
-# Free multi-take (F5=save+diagnose+reload)
-uv run python snes/super_metroid/scripts/probe/shine_practice.py human --series ls_edge_v1
-
-# Re-diagnose a take
-uv run python snes/super_metroid/scripts/probe/shine_practice.py diagnose \
-  snes/super_metroid/tasks/shine_practice/ls_edge_v1/take03.json
-
-# Bot full horizontal spark demo
-uv run python snes/super_metroid/scripts/probe/shine_practice.py demo
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kihunter-to-moat \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_kihunter_pre_moat_spark.state
 ```
 
-Takes land under `tasks/shine_practice/<series>/takeNN.json` with `diagnosis` + WRAM trace.
+`diagnose_trace` lives on `routes/skills/shinespark.py` (not a gym CLI).
 
 Units: `tests/test_shine_practice_diagnose.py`, `tests/test_shinespark_skill.py`.
 
@@ -112,16 +101,13 @@ Controllers accept `charge_mode="full"|"short"|"stutter"`:
 
 ```bash
 # Product: Moat handoff → over-ocean spark → Super WS 0xCA08
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws --charge-mode short
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
-
-# Measure delta_x of short/stutter charge on West Ocean spit
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py short-charge --mode stutter
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py short-charge --mode short
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-ws \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state --headed
 
 # Edge-spark bowling (practice; not Phantoon entry)
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure --charge-mode stutter
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-bowling \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state \
+  --place-x 350 --place-y 550 --headed
 ```
 
 ### Measured (emulator, 2026-08-10)
@@ -147,12 +133,12 @@ Harness: **B**=dash on magic frames only; forward is RIGHT/LEFT.
 ## Moat pure (GREEN, pin-only)
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/moat_spark_watch.py pure \
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure kihunter-to-moat \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_kihunter_pre_moat_spark.state
 # → scratch/post_moat_west_ocean_spark.state  West Ocean 0x93FE ~(49,1163)
 ```
 
-Pure Moat spark residual purged (hop closed green; probe above). Product default
+Pure Moat spark residual purged (hop closed green; A/B loop above). Product default
 charge remains **full** continuous `RIGHT+B`; pass `charge_mode="short"` /
 `"stutter"` on `play_moat_shinespark` when the left runway is cramped.
 
@@ -162,11 +148,10 @@ sm-json *Over Ocean Spark* (node 13 → green Super door 5). Natural Moat
 handoff — **no free-place**, **no bottom swim as primary**.
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure-ws
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-ws \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state
 # GREEN room=0xCA08 ~(57,139) gs=8  charge=stutter ~627f  (dual ×2)
 # saved scratch/post_west_ocean_ws_spark.state
-
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py watch-ws
 
 # Human free-record from product WS pin (ship rooms / Phantoon approach)
 uv run python snes/super_metroid/scripts/record/guided_human.py \
@@ -199,32 +184,24 @@ pins (not power-on continuous tip yet):
 | Compose | `play_moat_to_ws` | both |
 
 ```bash
-# Product pin or human Moat end → save post_west_ocean_ws_spark.state
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py chain-ws \
+# Product pin or human Moat end
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose moat-to-ws \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_kihunter_pre_moat_spark.state
+uv run python snes/super_metroid/scripts/probe/kpdr.py compose moat-to-ws \
   --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/alpha_pb_to_moat_human_end.state
 
-# Video debug of same hops
-uv run python snes/super_metroid/scripts/probe/record_pure_chain.py --preset moat-to-ws
-
-# Ship free-record → Phantoon approach (refresh pin with chain-ws first)
+# Ship free-record → Phantoon approach (refresh pin with compose first)
 uv run python snes/super_metroid/scripts/record/guided_human.py \
   --from ws-entrance --name ws_ship_human
 uv run python snes/super_metroid/scripts/record/practice_takes.py \
   --segment ws-entrance --series ws_ship_v1
-
-# Bot Phantoon from human ship end, then Gravity free-record
-uv run python snes/super_metroid/scripts/probe/phantoon_combat.py strategy \
-  --state ws_ship_human_end --save-state
-uv run python snes/super_metroid/scripts/record/guided_human.py \
-  --from post-phantoon --name gravity_path_human --no-guide
 ```
 
 | Source | Result (2026-08-10 dual) |
 |--------|--------------------------|
 | `scratch/post_kihunter_pre_moat_spark.state` | **GREEN** `0xCA08` ~(57,139) gs=8 ×2 (~1348f) |
 | `scratch/alpha_pb_to_moat_human_end.state` | **GREEN** `0xCA08` ~(57,139) gs=8 ×2 (~4435f leave+clear) |
-| `scratch/post_moat_west_ocean_spark.state` | over-ocean only (same as `pure-ws`) |
+| `scratch/post_moat_west_ocean_spark.state` | over-ocean only (`kpdr.py pure west-ocean-to-ws`) |
 
 Not continuous STATUS — pin compose only. Recording handoff: `--from ws-entrance`.
 
@@ -234,9 +211,10 @@ VOD recipe (screenshots under `debug/west_ocean_spark/`):
 run to water edge → **store at edge** → turn back a few steps → hop up → spark right.
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/west_ocean_spark.py pure
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure west-ocean-to-bowling \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_moat_west_ocean_spark.state \
+  --place-x 350 --place-y 550
 # GREEN room=0xC98E Bowling Alley (mid-right blue) — not product WS
-# saved scratch/post_west_ocean_door_spark.state
 ```
 
 | Fact | Value |
@@ -250,14 +228,13 @@ Notes: `debug/west_ocean_spark/USER_RECIPE.md`.
 
 ## Follow-up work (not done)
 
-1. **Human store mastery** — use `drill` until `$0A68` arms consistently; then full spark on LS.
+1. **Human store mastery** — `kpdr.py pure` + `shinespark.py` until `$0A68` arms consistently; then full spark on LS.
 2. **Natural spit climb** — only needed if re-using edge-bowling path; product WO→WS uses ocean floor.
 3. **Compose** Kihunter → Moat pure → over-ocean WS; natural-entry only for STATUS.
-4. Optional: HUD flash / audio on echoes=4 in `shine_practice human`.
-5. Keep Moat product on `full` unless runway pin moves.
+4. Keep Moat product on `full` unless runway pin moves.
 
 ## Related docs / plan
 
 - Plan K6: `docs/plan.md` § Ship / Phantoon / Gravity
 - Skill module: `routes/skills/shinespark.py`
-- Probe: `scripts/probe/moat_spark_watch.py`, `west_ocean_spark.py`
+- Probe: `scripts/probe/kpdr.py`

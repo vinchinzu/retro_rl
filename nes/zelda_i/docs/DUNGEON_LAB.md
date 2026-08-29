@@ -1,7 +1,7 @@
 # Zelda I dungeon laboratory
 
 The dungeon lab turns room discovery into a repeatable checkpoint-isolated
-experiment. Room behavior stays in `zelda_i/dungeon.py` as data until another
+experiment. Room behavior stays in `zelda_i/dungeon/engine.py` as data until another
 game proves a shared API.
 
 ## Quick start
@@ -73,7 +73,7 @@ differs. This is the primary tool for deterministic timing failures.
 
 Stalfos (`0x2A`) require positive HP. Keese (`0x1B`) keep HP at zero while
 alive, so they use type-only liveness. Unknown IDs remain explicitly named
-`unknown_*` in `dungeon_ids.py`; do not promote guesses into verified labels.
+`unknown_*` in `dungeon/ids.py`; do not promote guesses into verified labels.
 
 ## Acceptance boundary
 
@@ -83,7 +83,7 @@ predecessor in a no-state-load natural-entry run.
 
 ## Door graph (pathfinding primitive)
 
-Shared dungeon door-graph template: `zelda_i/door_graph.py` encodes per-room
+Shared dungeon door-graph template: `zelda_i/door_graph/` encodes per-room
 exits with gate kinds (`OPEN` / `KILL_CLEAR` / `KEY` / `BOMB` / `SEALED`) and
 inventory-aware BFS. Seed `LEVEL_2_DOOR_GRAPH` matches the verified L2 interior
 in `LEVEL2_ROUTE.md` (rooms `0x7d`–`0x5e`). Pure tests:

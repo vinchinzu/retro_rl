@@ -15,7 +15,7 @@ from harvest.core.animal_status import (
     read_stored_grass,
 )
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
-from harvest.tasks.cow_fsm import MAX_MILK_ATTEMPTS, MAX_MILK_DEFERRALS, CowPhase
+from harvest.tasks.cow_task import MAX_MILK_ATTEMPTS, MAX_MILK_DEFERRALS, CowPhase
 from harvest.tasks.cow_geometry import BARN_SHIP_BIN_FACE, BARN_SHIP_BIN_INTERACT_STAND, MILK_SHIP_PIXEL_ROUTE
 from harvest.tasks.cow_care import milk_ship_escape_prefix_action, milk_ship_route_step_action
 from harvest.tasks.harvest_task import read_shipping_money

@@ -9,7 +9,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
     """Pure densify-thrash match/priority/fire (no emulator)."""
 
     def test_past_fence_north_fires_immediate_east_south(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashChargeKind,
             ThrashCounters,
             evaluate_corridor_thrash,
@@ -27,7 +27,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
         self.assertEqual(r.refill_densify_stalls, 0)
 
     def test_south_thrash_stalls_then_west_lip(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashChargeKind,
             ThrashCounters,
             evaluate_corridor_thrash,
@@ -53,7 +53,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
         self.assertEqual(r2.refill_densify_stalls, 0)
 
     def test_near_f0_beats_south_thrash_and_needs_six_stalls(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashChargeKind,
             ThrashCounters,
             evaluate_corridor_thrash,
@@ -94,7 +94,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
         self.assertIn("Near-F0", r6.log)
 
     def test_north_thrash_priority_over_unrelated_and_east_south_charge(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashChargeKind,
             ThrashCounters,
             evaluate_corridor_thrash,
@@ -120,7 +120,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
         self.assertIn("east→south", r2.log)
 
     def test_east_thrash_match_and_no_match_resets(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashChargeKind,
             ThrashCounters,
             evaluate_corridor_thrash,
@@ -156,7 +156,7 @@ class CorridorThrashRulesTests(unittest.TestCase):
         self.assertIsNone(clear.refill_densify_last)
 
     def test_charge_caps_suppress_match(self) -> None:
-        from harvest.tasks.pond_thrash import (
+        from harvest.tasks.pond_hop import (
             ThrashCounters,
             match_thrash_rule,
         )

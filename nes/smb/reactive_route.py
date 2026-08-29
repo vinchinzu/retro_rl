@@ -11,8 +11,10 @@ both a Clean single-environment runner and a development evaluator.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from smb.paths import GAME_DIR
 from smb.ram import PLAYER_STATE_DYING, SmbSnapshot
 from smb.routes import ExitRoute, ExitSegment
 
@@ -218,3 +220,67 @@ def missing_policies(
         for exit_seg in route.exits
         if exit_seg.policy_id not in available
     ]
+
+
+# Stairs/M8 continuation tail (start=3981). Resume indices are
+# control-relative; do not pad macros to an old absolute phase.
+DEFAULT_CONTINUATION = GAME_DIR / "models" / "smb_1_1_to_ending_stairs_try.json"
+DEFAULT_CONTINUATION_START = 3_981
+KNOWN_41_CONTROL_RESUME = 218
+KNOWN_42_CONTROL_RESUME = 2_487
+KNOWN_82_CONTROL_RESUME = 8_917
+KNOWN_82_LEAD_IDLES = 1
+KNOWN_82_RETIME_START = 12_898
+KNOWN_82_RETIME_COUNT = 5
+
+
+def in_4_1_exit_auto(snap: SmbSnapshot) -> bool:
+    """True during 4-1 flagpole / score tally / inter-stage load (no player input).
+
+    Do **not** treat player_state 3 alone as exit-auto — it is a normal alive
+    state mid-level.
+    """
+    if snap.world != 3 or snap.dying:
+        return False
+    if snap.player_state == 5 and snap.timer == 0 and snap.player_x >= 3000:
+        return True
+    if (
+        snap.player_state in (3, 4)
+        and snap.timer == 0
+        and snap.player_x >= 3000
+    ):
+        return True
+    if (
+        snap.oper_mode == 1
+        and snap.level == 1
+        and snap.player_state in (0, 1, 2)
+        and snap.player_x == 0
+        and snap.timer == 0
+    ):
+        return True
+    return False
+
+
+def continuation_frames(
+    seed_path: Path,
+    *,
+    start: int,
+    drop_at: int | None = None,
+    drop_count: int = 0,
+) -> list[list[int]]:
+    """Slice a continuous NES-9 seed from *start*, optionally dropping a range."""
+    from smb.policy import expand_nes9_rle, load_nes9_rle_seed
+
+    frames = expand_nes9_rle(load_nes9_rle_seed(seed_path))
+    if not 0 <= start < len(frames):
+        raise ValueError(f"continuation start {start} outside {len(frames)} frames")
+    if drop_at is not None:
+        if drop_at < start:
+            raise ValueError("drop-at must be inside the continuation")
+        if drop_count <= 0:
+            raise ValueError("drop-count must be positive with --drop-at")
+        end = drop_at + drop_count
+        if end > len(frames):
+            raise ValueError(f"drop range [{drop_at}, {end}) outside {len(frames)}")
+        del frames[drop_at:end]
+    return frames[start:]

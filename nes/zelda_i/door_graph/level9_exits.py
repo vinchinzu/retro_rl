@@ -9,8 +9,8 @@ from zelda_i.door_graph.core import (
     RoomExit,
     clone_graph,
 )
-from zelda_i.level9_ganon import ROOM_BEFORE_GANON, ROOM_GANON, ROOM_ZELDA
-from zelda_i.level9_stairs import (
+from zelda_i.level9.ganon import ROOM_BEFORE_GANON, ROOM_GANON, ROOM_ZELDA
+from zelda_i.level9.stairs import (
     BOMB_WALL_04_WEST,
     BOMB_WALL_31_WEST,
     CELLAR_67,

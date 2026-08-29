@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from harvest.planner.day_phase_types import PhaseSpec
+from typing import List, Optional
+
+from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 GET_BERRIES_AND_SHIP_PHASE = PhaseSpec(
     "GET_BERRIES_AND_SHIP",
@@ -106,6 +108,100 @@ OPTIONAL_BERRY_PHASES = frozenset({
     "MOUNTAIN_BERRY",
 })
 
+
+def _seed_purchase_cost_g(season: int, day: int) -> int:
+    """Gold cost of today's seasonal seed bag (0 when no plantable crop)."""
+    from harvest.planner.crop_planner import CROP_SPECS, resolve_seed_type_for_date
+
+    name = resolve_seed_type_for_date(season, day)
+    if not name:
+        return 0
+    crop = CROP_SPECS.get(name)
+    return int(crop.seed_cost_g) if crop is not None else 0
+
+
+def _can_afford_seed_purchase(money: Optional[int], season: int, day: int) -> bool:
+    """True when wallet is unknown (tests) or covers the seasonal seed bag."""
+    if money is None:
+        return True
+    cost = _seed_purchase_cost_g(season, day)
+    if cost <= 0:
+        return False
+    return int(money) >= cost
+
+
+def _berry_run_phases(
+    *,
+    is_sunday: bool,
+    hour: int,
+    has_seeds: bool,
+    policy: DayPlannerPolicy,
+    season: int = 0,
+    day: int = 1,
+    money: Optional[int] = None,
+) -> List[PhaseSpec]:
+    """Build early money / seed-shop phases when the hour window allows.
+
+    Priority within this list (Spring D2 empty-farm path):
+    1. Mountain berry pick + ship (must hit bin before the 5pm window)
+    2. Seed shop only when the wallet covers the bag (potato $200)
+    """
+    from harvest.core.game_clock import ClockTime
+    from harvest.planner.crop_planner import (
+        seed_purchase_recording_for_season,
+        should_buy_seeds_for_date,
+    )
+    from harvest.planner.day_phase_catalog import NAV_FARM_EXIT_PHASE, buy_seeds_phase
+
+    now = ClockTime(hour, 0)
+    if now.hour >= policy.berry_cutoff_hour and now.hour > policy.buy_seed_hour:
+        return []
+
+    phases: List[PhaseSpec] = []
+    if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
+        phases.append(
+            PhaseSpec(
+                "BERRY_RUN_WINDOW",
+                "deadline",
+                {"latest_hour": policy.berry_exit_cutoff_hour, "latest_minute": 0},
+                failure_policy="optional",
+            )
+        )
+        if season == 0 and day == 2:
+            phases.append(MOUNTAIN_BERRY_PHASE)
+        else:
+            phases.extend(ship_berry_phases(count=2))
+
+    can_buy = (
+        policy.include_shop_run
+        and policy.include_planting
+        and not is_sunday
+        and not has_seeds
+        and hour <= policy.buy_seed_hour
+        and should_buy_seeds_for_date(season, day)
+        and _can_afford_seed_purchase(money, season, day)
+    )
+    if can_buy:
+        recording = (
+            policy.seed_purchase_recording
+            or seed_purchase_recording_for_season(season)
+            or "buy_potato_seeds"
+        )
+        phases.extend(
+            [
+                PhaseSpec(
+                    "BUY_SEEDS_WINDOW",
+                    "deadline",
+                    {"latest_hour": policy.buy_seed_hour + 1, "latest_minute": 0},
+                    failure_policy="optional",
+                ),
+                NAV_FARM_EXIT_PHASE,
+                buy_seeds_phase(recording_name=recording),
+            ]
+        )
+    return phases
+
+
 __all__ = [
     "GET_BERRIES_AND_SHIP_PHASE",
     "OPEN_FENCE_GAP_PHASE",
@@ -115,4 +211,5 @@ __all__ = [
     "ship_berry_phases",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_BERRY_PHASES",
+    "_berry_run_phases",
 ]

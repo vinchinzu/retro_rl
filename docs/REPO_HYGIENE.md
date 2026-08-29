@@ -44,8 +44,9 @@ Agents auto-load hierarchical `AGENTS.md`. Every extra section costs tokens on
 - The 3–8 commands you actually run every day
 - Burned-once traps (wrong paths, settle frames, clean-vs-assisted stems)
 - One-line pointers to STATUS / plan / process
-- High-level structure bar only (e.g. soft max ~1000 LOC / file; extract
-  thrash residuals instead of growing monofiles) — not full review essays
+- High-level structure bar only (soft max ~1000 LOC / file; merge into the
+  Composer or delete) — not full review essays. Review:
+  [`CODING_STANDARDS.md`](../CODING_STANDARDS.md)
 
 ## Slim backlog
 

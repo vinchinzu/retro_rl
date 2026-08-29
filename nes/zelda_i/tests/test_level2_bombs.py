@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from zelda_i.level2_bombs import (
+from zelda_i.level2.bombs import (
     L1_COMPLETE_BOMBS_MEASURED,
     L2_BOMB_BUDGET,
     L2_BOMB_BUDGET_BOOM,
@@ -16,8 +16,8 @@ from zelda_i.level2_bombs import (
     natural_bomb_plan,
     poke_kwarg_default,
 )
-from zelda_i.level2_boss_combat import fight_dodongo
-from zelda_i.level2_boss_path import run_boss_path
+from zelda_i.level2.boss_combat import fight_dodongo
+from zelda_i.level2.boss_path import run_boss_path
 
 
 def test_budget_is_six_successful_placements() -> None:

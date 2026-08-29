@@ -36,6 +36,15 @@ CONTINUOUS_SETTLE_FRAMES = 14
 # Verified 3/3: boot=350 + settle=16 → 8-4 ending, zero mid-attempt loads.
 POWERON_BOOT_FRAMES = 350
 POWERON_SETTLE_FRAMES = 16
+# Natural 1-1 alone: idle after boot readiness (settle=0/2 desyncs).
+NATURAL_SETTLE_FRAMES = 1
+# Stairs-improved 1-1 body used as the natural predecessor for reactive 1-2.
+DEFAULT_STAIRS_1_1 = GAME_DIR / "models" / "smb_1_1_stairs_best_frames.json"
+DEFAULT_MAX_FRAMES_11 = 4000
+# Success gate: oper_mode=2 held this many idle frames (RTA excludes settle).
+ENDING_SETTLE_FRAMES = 120
+# YouTube / capture hold after first reached_ending through Peach + thank-you.
+ENDING_PEACH_HOLD_FRAMES = 780
 
 
 def load_nes9_rle_seed(path: Path | str) -> dict[str, Any]:
@@ -87,6 +96,43 @@ def frames_to_actions(
         if len(buttons) < action_size:
             buttons.extend([0] * (action_size - len(buttons)))
         yield np.array(buttons, dtype=np.int8)
+
+
+def play_1_1_until_clear(env: Any, seed_frames: list[list[int]]) -> dict[str, Any]:
+    """Replay a 1-1 seed until the level becomes 1-2 (or death)."""
+    from smb.ram import read_snapshot
+
+    start = read_snapshot(env.get_ram())
+    lives0 = start.lives
+    recorded: list[list[int]] = []
+    for i, act in enumerate(frames_to_actions(seed_frames), start=1):
+        env.step(act)
+        recorded.append([int(b) for b in act[:9]])
+        snap = read_snapshot(env.get_ram(), frame=i)
+        if snap.lives < lives0 or snap.dying:
+            return {
+                "success": False,
+                "outcome": "death",
+                "frames": i,
+                "recorded": recorded,
+                "final": snap,
+            }
+        if snap.world == 0 and snap.level == 1:
+            return {
+                "success": True,
+                "outcome": "clear",
+                "frames": i,
+                "recorded": recorded,
+                "final": snap,
+            }
+    snap = read_snapshot(env.get_ram())
+    return {
+        "success": False,
+        "outcome": "timeout",
+        "frames": len(recorded),
+        "recorded": recorded,
+        "final": snap,
+    }
 
 
 @dataclass

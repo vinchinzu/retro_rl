@@ -18,6 +18,17 @@ from harvest.maps.map_config import (
     FARM_POND_ACCESS_FENCE_X_RANGE,
     Waypoint,
 )
+from harvest.planner.day_plan_status import (
+    FARM_TILEMAP,
+    HOUSE_TILEMAP,
+    HOUSE_TILEMAPS,
+)
+from harvest.planner.tasks.transitions import (
+    DirectionalTransitionTask,
+    HOUSE_ENTER_DOOR_X,
+    HOUSE_ENTER_OVERSHOOT_Y,
+    HOUSE_ENTER_STAND_TILE,
+)
 from harvest.tasks.nav import Point, get_tile_at
 
 # y=31 fence wall (x=11–29) blocks northbound return from south field after
@@ -277,6 +288,39 @@ def build_house_approach_waypoints(
     return stages
 
 
+def drop_spot_px(front: Point, *, deep: bool = False) -> Point:
+    """Open ground south of the house door — not mid-field debris."""
+    if deep:
+        return Point(front.x, min(560, front.y + 112))
+    return Point(front.x, min(520, front.y + 56))
+
+
+def house_enter_task(front: Point) -> DirectionalTransitionTask:
+    """Build the outdoor→house doorway push from a door-front stand."""
+    if front.y <= 360:
+        stand_tile = (front.x // 16, front.y // 16)
+        overshoot_y = min(HOUSE_ENTER_OVERSHOOT_Y, front.y - 12)
+    else:
+        stand_tile = HOUSE_ENTER_STAND_TILE
+        overshoot_y = HOUSE_ENTER_OVERSHOOT_Y
+    return DirectionalTransitionTask(
+        name="enter_house",
+        direction="up",
+        origin_tilemap=FARM_TILEMAP,
+        target_tilemap=HOUSE_TILEMAP,
+        target_tilemaps=tuple(sorted(HOUSE_TILEMAPS)),
+        timeout=2500,
+        min_frames_before_success=15,
+        settle_frames=20,
+        stand_tile=stand_tile,
+        stand_tolerance=0,
+        door_align_px=front.x if front.x else HOUSE_ENTER_DOOR_X,
+        overshoot_limit_px=overshoot_y,
+        require_empty_hands=True,
+        clear_hands_limit=6,
+    )
+
+
 __all__ = [
     "ApproachZone",
     "EAST_AROUND_FENCE_X",
@@ -288,7 +332,9 @@ __all__ = [
     "build_house_approach_waypoints",
     "classify_approach_zone",
     "deep_south_of_house",
+    "drop_spot_px",
     "far_east_of_pond_lane",
+    "house_enter_task",
     "open_fence_gap_tiles",
     "south_of_fence_wall",
 ]

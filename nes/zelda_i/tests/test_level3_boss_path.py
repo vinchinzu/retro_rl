@@ -8,15 +8,15 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from zelda_i.dungeon_ops import (
+from zelda_i.dungeon.ops import (
     GEL_SPLIT_OBJECT_TYPE,
     live_killables,
 )
-from zelda_i.level3_boss_path import (
+from zelda_i.level3.boss_path import (
     Level3BossPathController,
     prep_5d_still_killable,
 )
-from zelda_i.level3_dungeon import (
+from zelda_i.level3.dungeon import (
     INVULN_MOVER_0X2B,
     KEESE_OBJECT_TYPE,
     ROOM_L3_BOSS_PREP,

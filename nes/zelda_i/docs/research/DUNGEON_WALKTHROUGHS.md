@@ -130,7 +130,7 @@ From start: up, left 4, down, right 1. Harder dungeon; potion recommended
 Source:
 [Zelda Dungeon L4](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-4-the-snake/).
 Local route plan: [LEVEL4_ROUTE.md](../LEVEL4_ROUTE.md). Scaffold:
-`level4_overworld.py`, `scripts/run_level4_entry.py --plan-only`.
+`level4/overworld.py`, `scripts/run_level4_entry.py --plan-only`.
 
 ### Overworld prep (source)
 
@@ -212,7 +212,7 @@ room — bow is L1. Default spine leftover at Gohma is `bow=0 arrows=0`.
 Source:
 [Zelda Dungeon L7](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-7-the-demon/).
 Local route plan: [LEVEL7_ROUTE.md](../LEVEL7_ROUTE.md). Scaffold:
-`level7_overworld.py`, `scripts/probe_level7_entry.py --plan-only`.
+`level7/overworld.py`, `scripts/probe_level7_entry.py --plan-only`.
 
 ### Overworld (source)
 
@@ -265,7 +265,7 @@ From start: right 4, up 2, right, down, right; burn lone bush with Candle.
 Source:
 [Zelda Dungeon L9](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-9-death-mountain/).
 Local route plan: [LEVEL9_ROUTE.md](../LEVEL9_ROUTE.md). Scaffold:
-`level9_overworld.py`, `scripts/probe_level9_entry.py --plan-only`.
+`level9/overworld.py`, `scripts/probe_level9_entry.py --plan-only`.
 
 ### Overworld (source)
 
@@ -292,7 +292,7 @@ Local route plan: [LEVEL9_ROUTE.md](../LEVEL9_ROUTE.md). Scaffold:
 
 ## Spine vs wiki dungeon treasures (2026-08-27 scan)
 
-Code catalog: `zelda_i.dungeon_treasures`. Default path means
+Code catalog: `zelda_i.route.treasures`. Default path means
 `--through level6-north2c` (Gohma enter, unarmed).
 
 | Level | Wiki treasure | Kind | Default spine | Live |

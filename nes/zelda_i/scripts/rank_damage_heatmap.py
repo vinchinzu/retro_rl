@@ -13,7 +13,7 @@ _NES = Path(__file__).resolve().parents[2]
 if str(_NES) not in sys.path:
     sys.path.insert(0, str(_NES))
 
-from zelda_i.damage_heatmap import format_heatmap_table, rank_report_paths
+from zelda_i.route.heatmap import format_heatmap_table, rank_report_paths
 
 
 def main(argv: list[str] | None = None) -> int:

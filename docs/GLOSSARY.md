@@ -74,6 +74,11 @@ archived
 |------|---------|
 | Solver | Reactive loop: observe → plan → invoke skill → replan |
 | Skill library | Seed-invariant low-level controllers (rooms, bosses, menus) |
+| Composer | The one production tick that dispatches **Skills** from a table of rows (`TipSpec`, `StageSpec`, `DayPlanTask`). New behavior is a row or a **Tactic**, not a sibling runner. |
+| Tactic | A `next(state)` that may return a frame or fall through; lives behind a **Composer**, not as its own CLI. |
+| Gut | Structure work: merge into the **Composer** or delete. Clone runners, mixin clusters, graveyards, and probe CLIs go. Soft max ~1000 LOC; no sibling extract. Default is delete if unused; grep callers (including spec tables and JSON) before deleting a **Skill** on the living tip/rung. |
+| A/B loop | Load a pin, play two **Skills** or **input tapes**, compare RAM/video. The protected harness: **Gut** may not rewrite it; **Speed** must go through it. |
+| Speed | Button-press / RTA work through the **A/B loop**. Must not mint a new runner or rewrite the loop. Not a fail line until the loop is stable. |
 | Input tape | Precomputed input sequence; CI regression + imitation demo only |
 | Item-logic graph | Transitions annotated with prerequisite item/capability sets |
 | Logic-graph planner | Inventory-aware search over the item-logic graph (Layer 4) |

@@ -32,17 +32,8 @@ live final Patra 0x52 (body 0x47 + 8 eyes 0x25)
   ─clear two guard fires / center trigger─► ending → rolling credits → final page
 ```
 
-Repeatable proof:
-
-```bash
-uv run python nes/zelda_i/scripts/run_level9_ganon.py \
-  --build-fixture --from-state Level9BeforeGanonReconFixture \
-  --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
-
-uv run python nes/zelda_i/scripts/run_level9_patra.py \
-  --build-fixture --from-state Level9FinalPatraReconFixture \
-  --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
-```
+Repeatable proof lives in `level9/` (`ganon.py`, `patra.py`, `stair_suffix.py`).
+Isolated `run_level9_*.py` recon CLIs pruned. Composer binds the fixture dests.
 
 Both builds begin from live `Level9EntranceReconFixture`, use the game room
 loader for `0x52`, and explicitly write the full inventory. The older
@@ -136,9 +127,7 @@ after this walk (not InitMode9). No `Level9Room13ReconFixture` — 0x13 is
 not a clean predecessor.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --play-source 03 --infinite-life --save-state --trials 2 \
-  --tag l9_play03_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_play03_patra_credits_recon.json`,
@@ -170,10 +159,7 @@ Stitch pin `Level9Room04BombWestReconFixture` is the live Patra landing
 after this real bomb-west walk (0x04 start is still fixture-loaded).
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-04 --tag l9_room04_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-04 --infinite-life --save-state --trials 2 \
-  --tag l9_play04_bombwest_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room04_dump.json` +
@@ -220,15 +206,7 @@ Next clean 0x30 entry (ROM only until dumped):
 clean walk.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-30 --tag l9_room30_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-30 --infinite-life --save-state --trials 2 \
-  --tag l9_play30_cellar67_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-31 --infinite-life --save-state --trials 1 \
-  --tag l9_play31_bombwest_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room30_dump.json` +
@@ -275,11 +253,7 @@ separate live predecessor of 0x30 and stays dirty — do not treat it as the
 next pred.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-31 --infinite-life --save-state --trials 1 \
-  --tag l9_play31_bombwest_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room31_dump.json` +
@@ -320,8 +294,7 @@ Next clean 0x31 entry:
 **0x41 north is live** (see below). 0x40 stays dirty.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room21_dump.json` +
@@ -353,10 +326,7 @@ Stitch pin `Level9Room41NorthReconFixture` is the live Patra landing
 after this real walk (0x41 start is still fixture-loaded).
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-41 --infinite-life --save-state --trials 1 \
-  --tag l9_play41_north_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room41_dump.json` +
@@ -399,7 +369,7 @@ clear, or materialize play **0x61** (ROM N/S open, E open; current
 | `0x50` | key (5) into dirty 0x40 | wall (1) | wall (1) | shutter (7) |
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-51 --tag l9_room51_dump
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room51_dump.json` +
@@ -444,10 +414,7 @@ Primary next: play **0x50 key-north** (same Magical Key walk). 0x40 W/E
 are walls.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-40 --tag l9_room40_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-40 --infinite-life --save-state --trials 1 \
-  --tag l9_play40_keynorth_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room40_dump.json` +
@@ -489,11 +456,7 @@ fake transition, same class as the disproved `0x72 → 0x62` load.
 section). Clean 0x04 entry is play `0x30` / cellar `0x67` right (see above).
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-13 --tag l9_room13_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-04 --tag l9_room04_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-04 --infinite-life --save-state --trials 2 \
-  --tag l9_play04_bombwest_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_room13_dump.json`; PNGs
@@ -505,10 +468,7 @@ left mouth `(0x50, 0x3D)` + UP). Suffix from that entry is **2/2**
 (Patra 1652f → credits 9762 → final page 10962).
 
 ```bash
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dest-table --tag l9_stair77
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --build-fixture --source 77 --infinite-life --save-state --trials 2 \
-  --tag l9_stair77_patra_credits_recon
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
 Evidence: `recordings/l9_stair77_dest_table.json`,
@@ -565,7 +525,7 @@ Live recon reached `0x05` through the authentic overworld scroll loader and
 bombed the left rock to settle in Level 9 room `0x76`. The full natural walk
 from the earned L8 predecessor remains unverified.
 
-**Scaffold:** `level9_overworld.py` — `LEVEL9_ROCK_HOPS`, `has_full_triforce()`,
+**Scaffold:** `level9/overworld.py` — `LEVEL9_ROCK_HOPS`, `has_full_triforce()`,
 bomb-entry notes (controller TBD).
 
 ### Remaining natural-entry goals
@@ -727,36 +687,14 @@ development-only and not a natural-entry checkpoint.
 ## Runners / probes
 
 ```bash
-uv run python zelda_i/scripts/probe_level9_entry.py --plan-only
-uv run python nes/zelda_i/scripts/run_level9_ganon.py --build-fixture \
-  --infinite-life --save-state --trials 1 --tag l9_ganon_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_patra.py --build-fixture \
-  --infinite-life --save-state --trials 2 --tag l9_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_room62.py --probe
-uv run python nes/zelda_i/scripts/run_level9_room62.py --build-fixture
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --play-source 03 --infinite-life --save-state --trials 2 \
-  --tag l9_play03_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-13 --tag l9_room13_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-30 --tag l9_room30_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-30 --infinite-life --save-state --trials 2 \
-  --tag l9_play30_cellar67_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-31 --tag l9_room31_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-31 --infinite-life --save-state --trials 1 \
-  --tag l9_play31_bombwest_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-21 --tag l9_room21_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-41 --tag l9_room41_dump
-uv run python nes/zelda_i/scripts/run_level9_stairs.py \
-  --compose-41 --infinite-life --save-state --trials 1 \
-  --tag l9_play41_north_patra_credits_recon
-uv run python nes/zelda_i/scripts/run_level9_stairs.py --dump-51 --tag l9_room51_dump
+# Isolated segment CLI pruned. Durable runner:
+uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
+# Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 ```
 
-Modules: `level9_overworld.py`, `level9_ganon.py`, `level9_patra.py`,
-`level9_path.py`, `level9_room62.py`, `level9_stairs.py`,
-`level9_room51.py`.
+Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
+`level9/path.py`, `level9/room62.py`, `level9/stairs.py`,
+`level9/room51.py`.
 
 ---
 

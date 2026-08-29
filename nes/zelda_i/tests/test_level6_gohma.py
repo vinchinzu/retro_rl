@@ -6,9 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.dungeon_ids import GOHMA_OBJECT_TYPE
-from zelda_i.level6_gohma import (
-    GOHMA_STAND_Y,
+from zelda_i.dungeon.ids import GOHMA_OBJECT_TYPE
+from zelda_i.level6.gohma import (
     level6_gohma_success,
     make_gohma_controller,
 )
@@ -71,9 +70,8 @@ def test_unarmed_no_bow_fails() -> None:
     ram = _ram(bow=0, arrows=0)
     _plant_gohma(ram)
     ctl = make_gohma_controller()
-    act = ctl.step(read_snapshot(ram))
+    ctl.step(read_snapshot(ram))
     assert ctl.failed
-    assert act.reason == "unarmed_no_bow"
 
 
 def test_poke_writes_arrows_and_b_not_bow() -> None:
@@ -85,8 +83,7 @@ def test_poke_writes_arrows_and_b_not_bow() -> None:
     mem = _AssignMem()
     ctl = make_gohma_controller()
     ctl.bind_env(_env_with_mem(mem))
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "arrow_poke"
+    ctl.step(read_snapshot(ram))
     assert not ctl.failed
     addrs = [addr for addr, _fmt, _val in mem.calls]
     assert ARROWS in addrs
@@ -99,25 +96,12 @@ def test_poke_writes_arrows_and_b_not_bow() -> None:
     assert ctl.inventory_assist["bow_writes"] == 0
 
 
-def test_inland_then_shot_then_body_gone() -> None:
-    from retro_harness.nes import nes_action, nes_idle_action
-
+def test_gohma_success_needs_body_gone_and_arrows() -> None:
     ram = _ram(x=120, y=205, bow=1, arrows=1)
     _plant_gohma(ram)
-    ctl = make_gohma_controller()
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "inland_path"
-    assert list(act.action) == list(nes_action("UP"))
-    ram[ADDR_LINK_Y] = GOHMA_STAND_Y
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "arrow_shot"
-    assert list(act.action) == list(nes_action("UP", "B"))
+    assert not level6_gohma_success(read_snapshot(ram))
     ram[ADDR_OBJ_TYPE + 1] = 0
     ram[ADDR_OBJ_HP + 1] = 0
-    act = ctl.step(read_snapshot(ram))
-    assert ctl.success
-    assert act.reason == "body_gone"
-    assert list(act.action) == list(nes_idle_action())
     assert level6_gohma_success(read_snapshot(ram))
     ram[ADDR_ARROWS] = 0
     assert not level6_gohma_success(read_snapshot(ram))

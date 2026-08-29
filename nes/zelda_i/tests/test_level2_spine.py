@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from retro_harness.controls import pressed_nes_buttons
-from zelda_i.level2_spine import (
+from zelda_i.level2.spine import (
     Level2BacktrackTo7dController,
     Level2Enter6fKeyController,
     Level2NavPhase,

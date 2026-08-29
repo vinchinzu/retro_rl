@@ -1,33 +1,17 @@
-"""Unit tests for shine_practice.diagnose_trace (no emulator)."""
+"""Unit tests for shinespark.diagnose_trace (no emulator)."""
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-
-import pytest
-
-_SCRIPT = (
-    Path(__file__).resolve().parents[1] / "scripts" / "probe" / "shine_practice.py"
-)
+from super_metroid.routes.skills import shinespark as spark
 
 
-@pytest.fixture(scope="module")
-def sp():
-    spec = importlib.util.spec_from_file_location("shine_practice", _SCRIPT)
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def test_empty(sp) -> None:
-    d = sp.diagnose_trace([])
+def test_empty() -> None:
+    d = spark.diagnose_trace([])
     assert d["ok"] is False
     assert d["grade"] == "EMPTY"
 
 
-def test_red_no_charge(sp) -> None:
+def test_red_no_charge() -> None:
     rows = [
         {
             "frame": i,
@@ -40,12 +24,12 @@ def test_red_no_charge(sp) -> None:
         }
         for i in range(40)
     ]
-    d = sp.diagnose_trace(rows)
+    d = spark.diagnose_trace(rows)
     assert d["grade"] == "RED"
     assert any("charge" in f for f in d["failures"])
 
 
-def test_green_spark(sp) -> None:
+def test_green_spark() -> None:
     rows: list[dict] = []
     for i in range(90):
         rows.append(
@@ -95,13 +79,13 @@ def test_green_spark(sp) -> None:
                 "spark_timer": 100,
             }
         )
-    d = sp.diagnose_trace(rows)
+    d = spark.diagnose_trace(rows)
     assert d["ok"] is True
     assert d["grade"] == "GREEN"
     assert d["peaks"]["spark_travel_frames"] >= 3
 
 
-def test_orange_late_store_after_charge_died(sp) -> None:
+def test_orange_late_store_after_charge_died() -> None:
     """Charge full while holding B, never DOWN in window, DOWN a few frames later."""
     rows: list[dict] = []
     # build to echoes 4
@@ -156,7 +140,7 @@ def test_orange_late_store_after_charge_died(sp) -> None:
                 "spark_timer": 0,
             }
         )
-    d = sp.diagnose_trace(rows)
+    d = spark.diagnose_trace(rows)
     assert d["ok"] is False
     assert d["grade"] == "ORANGE"
     assert d["milestones"]["late_store_after_charge_died"] is True
@@ -169,7 +153,7 @@ def test_orange_late_store_after_charge_died(sp) -> None:
     assert any("PRESS DOWN" in c or "ALSO press DOWN" in c or "CRITICAL" in c for c in d["cues"])
 
 
-def test_yellow_crouch_walk(sp) -> None:
+def test_yellow_crouch_walk() -> None:
     rows: list[dict] = []
     for i in range(90):
         rows.append(
@@ -207,7 +191,7 @@ def test_yellow_crouch_walk(sp) -> None:
                 "spark_timer": max(0, 179 - (i - 90)),
             }
         )
-    d = sp.diagnose_trace(rows)
+    d = spark.diagnose_trace(rows)
     assert d["ok"] is False
     assert d["grade"] == "YELLOW"
     assert d["milestones"]["activate_from_crouch_walk"] is True

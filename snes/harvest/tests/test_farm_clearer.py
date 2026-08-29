@@ -24,7 +24,7 @@ from harvest.core.tile_catalog import (
 from harvest.tasks.farm_toss import HELD_STONE
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
 from harvest.planner.day_plan_phases import PHASE_SEQUENCES, build_day_phases
-from harvest.tasks.farm_clear_task import FarmClearTask
+from harvest.tasks.farm_clear_task import FarmClearTask, choose_clear_target
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
@@ -405,8 +405,6 @@ class TestFarmClearerSelection(unittest.TestCase):
 
     def test_pathable_stand_beats_nearer_blocked_neighbor(self) -> None:
         """An isolated closer stand must lose to a farther reachable one."""
-        from harvest.tasks.farm_clear_nav import choose_clear_target
-
         ram = _make_farm_ram(player_tile=(8, 10))
         _set_tile(ram, 4, 10, WEED)
         _set_tile(ram, 5, 10, 0xA1)  # nearer stand, boxed
@@ -425,8 +423,6 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(path[-1], stand)
 
     def test_boxed_weed_opens_adjacent_stone(self) -> None:
-        from harvest.tasks.farm_clear_nav import choose_clear_target
-
         ram = _make_farm_ram(player_tile=(16, 15))
         _set_tile(ram, 18, 15, WEED)
         _set_tile(ram, 19, 15, WEED)

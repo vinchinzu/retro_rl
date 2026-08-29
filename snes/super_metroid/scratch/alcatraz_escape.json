@@ -3,9 +3,9 @@
   "source": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_torizo_parlor_continuous.state",
   "success": true,
   "error": null,
-  "frames": 580,
-  "seconds": 9.651,
-  "clock": "00:09.67",
+  "frames": 525,
+  "seconds": 8.736,
+  "clock": "00:08.75",
   "minY": 183,
   "minYxy": [
     834,
@@ -77,7 +77,7 @@
       "y_sub": 65535,
       "door_transition": 0,
       "phase": "ORDINARY_GAMEPLAY",
-      "frame": 580,
+      "frame": 525,
       "velocity_x": 0,
       "velocity_y": 0,
       "momentum_x": 3,
@@ -95,20 +95,20 @@
       834,
       183
     ],
-    "frames": 580
+    "frames": 525
   },
   "evidence": {
     "entry_frame": 0,
-    "base_frame": 134,
-    "ledge_frame": 371,
-    "walljump_frame": 527,
-    "morph_frame": 528,
-    "exit_frame": 580,
+    "base_frame": 80,
+    "ledge_frame": 316,
+    "walljump_frame": 472,
+    "morph_frame": 473,
+    "exit_frame": 525,
     "exit_x": 759,
     "exit_y": 185
   },
   "video": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/recordings/alcatraz_escape.mp4",
-  "encodedFrames": 581,
-  "elapsedSec": 1.22,
+  "encodedFrames": 526,
+  "elapsedSec": 1.09,
   "shot": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/alcatraz_escape_leave.png"
 }

@@ -17,12 +17,7 @@ from harvest.paths import PROJECT_DIR, SAVES_DIR as PROJECT_SAVES_DIR, TASKS_DIR
 from harvest.core.ram_catalog import LiveRamEditor, RamPatch, read_ram_value
 from harvest.core.scene import classify_scene_from_ram
 from harvest.core.task_progress import task_progress_snapshot
-from harvest.maps.map_config import get_map_name
-from harvest.planner.day_plan import (
-    count_chicken_slots,
-    is_farm_tilemap,
-    read_world_day_time,
-)
+from harvest.planner.day_plan import is_farm_tilemap, read_world_day_time
 from harvest.runtime.autoplay_bot import AutoClearBot
 from harvest.runtime.bot_input import (
     check_hotswap_chord,
@@ -32,18 +27,31 @@ from harvest.runtime.bot_input import (
     init_controller,
 )
 from harvest.runtime.game_state import GameState
-from harvest.runtime.probe_utils import DEFAULT_WATCH_FIELDS, event_row, snapshot_from_ram, watch_values
-from harvest.runtime.recording_trace import recording_trace_entry, summarize_recording
+from harvest.runtime.probe_utils import (
+    DEFAULT_WATCH_FIELDS,
+    event_row,
+    print_ram_narrow_hits,
+    print_ram_search_hits,
+    ram_narrow_hits,
+    ram_search_hits,
+    snapshot_from_ram,
+    watch_values,
+)
+from harvest.runtime.recording_trace import recording_trace_entry, write_task_recording
 from harvest.runtime.retro_setup import backup_mutable_start_state, make_harvest_env
 from harvest.runtime.watch_display import (
     SPEED_LEVELS,
     bot_speed_timing,
+    build_session_hud_lines,
     configure_headed,
     default_speed_index,
     display_set_mode,
+    draw_session_hud,
+    gym_env_step,
     pace_present,
+    preview_interval,
 )
-from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, CropWaterTask, tile_needs_watering
+from harvest.tasks.crop_planter import CropWaterTask
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
@@ -56,8 +64,8 @@ from harvest.tasks.nav import (
     Point,
 )
 
-from harvest.tasks.harvest_task import HarvestTask, live_harvestable_crop_tiles
-from retro_harness import SNES_BUTTON_NAMES, WorldState, sanitize_action
+from harvest.tasks.harvest_task import HarvestTask
+from retro_harness import WorldState, sanitize_action
 
 WATCHDOG_POSITION_PROGRESS_PIXELS = 64
 SCRIPT_DIR = os.fspath(PROJECT_DIR)
@@ -351,157 +359,11 @@ class PlaySession:
         if desired_item is not None:
             self._set_live_value(env, "item_in_hand", desired_item, 0x4921)
 
-    def _crop_waterable_count(self, ram: np.ndarray, skip_tiles: Optional[set] = None) -> int:
-        left, top, right, bottom = DEFAULT_CROP_BOUNDS
-        count = 0
-        from harvest.tasks.nav import get_tile_at
-
-        if skip_tiles is None:
-            state_name = getattr(self.bot, "auto_day_plan_state_name", None)
-            skip_tiles = set(live_harvestable_crop_tiles(ram, state_name)) if state_name else set()
-        for y in range(top, bottom + 1):
-            for x in range(left, right + 1):
-                if (x, y) in skip_tiles:
-                    continue
-                tile_id = get_tile_at(ram, x, y)
-                if tile_needs_watering(tile_id):
-                    count += 1
-        return count
-
-    def _cached_hud_crop_counts(self, ram: np.ndarray) -> tuple[Optional[int], Optional[int]]:
-        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-        if not is_farm_tilemap(tilemap):
-            return None, None
-
-        interval = 60 if self._active_harvest_task() is not None else 15
-        if self.frame_count - self._hud_counts_frame < interval:
-            return self._hud_crop_counts
-
-        state_name = getattr(self.bot, "auto_day_plan_state_name", None)
-        ready_tiles = set(live_harvestable_crop_tiles(ram, state_name))
-        skip_tiles = ready_tiles if state_name else set()
-        self._hud_crop_counts = (
-            len(ready_tiles),
-            self._crop_waterable_count(ram, skip_tiles=skip_tiles),
-        )
-        self._hud_counts_frame = self.frame_count
-        return self._hud_crop_counts
-
-    @staticmethod
-    def _hud_count_text(value: Optional[int]) -> str:
-        return "--" if value is None else str(value)
-
-    @staticmethod
-    def _location_text(ram: np.ndarray) -> str:
-        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-        name = get_map_name(tilemap).replace("_", " ")
-        return f"{name} (0x{tilemap:02X})"
-
-    def _active_task_lines(self, ram: np.ndarray) -> List[str]:
-        if getattr(self.bot, "power_on_enabled", False) and not getattr(self.bot, "power_on_done", True):
-            task = getattr(self.bot, "power_on_task", None)
-            if task is not None and getattr(self.bot, "power_on_started", False):
-                return [f"Power-on: {task.phase_text}", task.progress_text]
-            return ["Power-on: waiting"]
-        if getattr(self.bot, "d1_handoff_enabled", False) and not getattr(self.bot, "d1_handoff_done", True):
-            task = getattr(self.bot, "d1_handoff_task", None)
-            if task is not None and getattr(self.bot, "d1_handoff_started", False):
-                snap = task.progress_snapshot()
-                return [f"D1 handoff: {snap.phase_text or 'running'}", f"step={snap.step_count}"]
-            return ["D1 handoff: waiting"]
-        if self.bot.day_plan_enabled and self.bot.day_plan_started and not self.bot.day_plan_done:
-            dp = self.bot.day_plan_task
-            lines = [f"Plan: {dp.phase_text}", dp.progress_text]
-            task = dp.current_task
-            if task is not None and hasattr(task, "progress_text"):
-                lines.append(str(task.progress_text))
-            return lines
-        if self.bot.crop_enabled and self.bot.crop_task_started and not self.bot.crop_task_done:
-            ct = self.bot.crop_task
-            return [f"Crop: {ct.phase_text}", ct.progress_text]
-        if self.bot.grass_enabled and self.bot.grass_task_started and not self.bot.grass_task_done:
-            gt = self.bot.grass_task
-            return [f"Grass: {gt.phase_text}", gt.progress_text]
-        return [f"Clearer: {self.bot.clearer.state}"]
-
-    def _target_lines(self) -> List[str]:
-        if self.bot.day_plan_enabled and self.bot.day_plan_started and not self.bot.day_plan_done:
-            task = self.bot.day_plan_task.current_task
-            target = getattr(task, "_target_tile", None)
-            approach = getattr(task, "_approach_tile", None)
-            if target is not None:
-                return [f"Target: {target}", f"Stand: {approach}"]
-        if self.bot.crop_enabled and self.bot.crop_task_started and not self.bot.crop_task_done:
-            ct = self.bot.crop_task
-            if ct._target_tile:
-                return [f"Target: {ct._target_tile}", f"Plot: {ct._plot_index + 1}/{len(ct._plots)}"]
-        if self.bot.clearer.current_target:
-            t = self.bot.clearer.current_target
-            return [f"Target: {t.debris_type.name}", f"Tile: {t.tile} id=0x{t.tile_id:02X}"]
-        return []
-
     def _build_hud_lines(self, env, game_state: GameState, action: np.ndarray) -> List[str]:
-        ram = env.get_ram()
-        pos = get_pos_from_ram(ram)
-        adults, chicks, eggs = count_chicken_slots(ram)
-        btn_names = list(SNES_BUTTON_NAMES)
-        active_btns = " ".join(btn_names[i] for i, v in enumerate(action) if v > 0)
-        self._note_task_state_for_hud()
-        ready_count, waterable_count = self._cached_hud_crop_counts(ram)
-        speed = getattr(self, "_display_speed", 1.0)
-
-        lines = [
-            "HARVEST",
-            f"Mode {self.mode.upper()}",
-            f"Speed {speed:g}x [ ]",
-            f"{game_state.date_str}",
-            f"{game_state.time_str}",
-            f"Loc {self._location_text(ram)}",
-            f"$ {game_state.money:,}",
-            f"Ship ${read_ram_value(ram, 'shipping_money'):,}",
-            f"Can {read_ram_value(ram, 'water_can', raw=True)}/20",
-            f"Item {game_state.item_name}",
-            "",
-            "Coop",
-            f"A/C/E {adults}/{chicks}/{eggs}",
-            f"Fed {read_ram_value(ram, 'fed_chickens_n', raw=True)}",
-            f"Egg {read_ram_value(ram, 'egg_available', raw=True)}",
-            "",
-            "Crops",
-            f"Ready {self._hud_count_text(ready_count)}",
-            f"Unwatered {self._hud_count_text(waterable_count)}",
-            "",
-        ]
-        lines.extend(self._active_task_lines(ram))
-        lines.extend([
-            "",
-            f"Pos: ({pos.x // TILE_SIZE},{pos.y // TILE_SIZE})",
-            f"Px: ({pos.x},{pos.y})",
-        ])
-        lines.extend(self._target_lines())
-        if active_btns:
-            lines.append(f"Buttons: {active_btns}")
-        if self.bot.disable_reason:
-            lines.append(f"Disabled: {self.bot.disable_reason}")
-        return lines
+        return build_session_hud_lines(self, env, game_state, action)
 
     def _draw_hud(self, screen, font, env, game_state: GameState, action: np.ndarray, height: int) -> None:
-        panel = pygame.Rect(0, 0, self.hud_width, height)
-        pygame.draw.rect(screen, (18, 22, 25), panel)
-        pygame.draw.line(screen, (72, 82, 88), (self.hud_width - 1, 0), (self.hud_width - 1, height))
-        y = 8
-        for line in self._build_hud_lines(env, game_state, action):
-            if not line:
-                y += 8
-                continue
-            color = (210, 232, 218)
-            if line.isupper() or line in {"Coop", "Crops"}:
-                color = (255, 238, 170)
-            text = font.render(line[:24], True, color)
-            screen.blit(text, (8, y))
-            y += 13
-            if y > height - 16:
-                break
+        draw_session_hud(self, screen, font, env, game_state, action, height)
 
     def _start_hotswap_cancel(self) -> None:
         """Clear any modal/input-lock state introduced by the hotswap chord."""
@@ -525,45 +387,6 @@ class PlaySession:
             return action
 
         return self.bot.get_action(game_state, obs)
-
-    def _step_env_fast(self, env, action: np.ndarray, obs: np.ndarray, *, update_obs: bool):
-        """Step stable-retro without the expensive per-frame info dictionary.
-
-        Harvest's bot reads RAM directly, and this integration exposes thousands
-        of tile info entries. Calling env.step() forces lookup_all() every frame,
-        which dominates high-speed autoplay.
-        """
-        if env.img is None and env.ram is None:
-            raise RuntimeError("Please call env.reset() before stepping")
-
-        for player, player_action in enumerate(env.action_to_array(action)):
-            if env.movie:
-                for button_idx in range(env.num_buttons):
-                    env.movie.set_key(button_idx, player_action[button_idx], player)
-            env.em.set_button_mask(player_action, player)
-
-        if env.movie:
-            env.movie.step()
-        env.em.step()
-        env.data.update_ram()
-
-        if update_obs:
-            obs = env._update_obs()
-
-        try:
-            terminated = bool(env.data.is_done())
-        except Exception:
-            terminated = False
-        return obs, 0.0, terminated, False, {}
-
-    def _preview_interval(self, speed: float) -> int:
-        if speed <= 4.0:
-            return 1
-        if speed <= 8.0:
-            return 30
-        if speed <= 32.0:
-            return 45
-        return 60
 
     def run(self):
         headless_boot = env_flag("HEADLESS") or os.getenv("SDL_VIDEODRIVER", "").lower() == "dummy"
@@ -662,89 +485,36 @@ class PlaySession:
                             self._invalidate_hud_counts()
                             print("[LOADED]")
                         elif event.key == pygame.K_F2:
-                            # Search RAM for a value (like Cheat Engine)
-                            # Prompt in terminal
                             print("[RAM SEARCH] Enter value to find (decimal): ", end="", flush=True)
                             try:
-                                val_str = input().strip()
-                                search_val = int(val_str)
+                                search_val = int(input().strip())
                             except (ValueError, EOFError):
                                 print("[RAM SEARCH] invalid input")
                                 search_val = None
                             if search_val is not None:
                                 ram = np.array(env.get_ram(), dtype=np.uint8)
-                                hits = set()
-                                # Search as u8
-                                if 0 <= search_val <= 255:
-                                    for addr in np.where(ram == search_val)[0]:
-                                        hits.add((int(addr), "u8"))
-                                # Search as u16 LE
-                                if 0 <= search_val <= 65535:
-                                    lo, hi = search_val & 0xFF, (search_val >> 8) & 0xFF
-                                    for addr in range(len(ram) - 1):
-                                        if ram[addr] == lo and ram[addr + 1] == hi:
-                                            hits.add((int(addr), "u16"))
-                                # Search as u24 LE
-                                if 0 <= search_val <= 0xFFFFFF:
-                                    b0, b1, b2 = search_val & 0xFF, (search_val >> 8) & 0xFF, (search_val >> 16) & 0xFF
-                                    for addr in range(len(ram) - 2):
-                                        if ram[addr] == b0 and ram[addr + 1] == b1 and ram[addr + 2] == b2:
-                                            hits.add((int(addr), "u24"))
-                                # Also search value/10 (HM stores money/10 in SRAM)
-                                if search_val >= 10 and search_val % 10 == 0:
-                                    sv10 = search_val // 10
-                                    if 0 <= sv10 <= 65535:
-                                        lo10, hi10 = sv10 & 0xFF, (sv10 >> 8) & 0xFF
-                                        for addr in range(len(ram) - 1):
-                                            if ram[addr] == lo10 and ram[addr + 1] == hi10:
-                                                hits.add((int(addr), f"u16(/10={sv10})"))
-                                        if sv10 <= 255:
-                                            for addr in np.where(ram == sv10)[0]:
-                                                hits.add((int(addr), f"u8(/10={sv10})"))
-                                ram_search_candidates = hits
-                                print(f"[RAM SEARCH] {len(hits)} hits for {search_val}:")
-                                for addr, kind in sorted(hits)[:60]:
-                                    print(f"  0x{addr:04X} ({kind})")
-                                if len(hits) > 60:
-                                    print(f"  ... and {len(hits) - 60} more")
+                                ram_search_candidates = ram_search_hits(ram, search_val)
+                                print_ram_search_hits(ram_search_candidates, search_val)
                         elif event.key == pygame.K_F3:
-                            # Narrow: search again with new value, intersect with previous candidates
                             if ram_search_candidates is None:
                                 print("[RAM NARROW] no previous search — press F2 first")
                             else:
-                                print(f"[RAM NARROW] Enter NEW value to narrow {len(ram_search_candidates)} candidates: ", end="", flush=True)
+                                print(
+                                    f"[RAM NARROW] Enter NEW value to narrow {len(ram_search_candidates)} candidates: ",
+                                    end="",
+                                    flush=True,
+                                )
                                 try:
-                                    val_str = input().strip()
-                                    search_val = int(val_str)
+                                    search_val = int(input().strip())
                                 except (ValueError, EOFError):
                                     print("[RAM NARROW] invalid input")
                                     search_val = None
                                 if search_val is not None:
                                     ram = np.array(env.get_ram(), dtype=np.uint8)
-                                    surviving = set()
-                                    for addr, kind in ram_search_candidates:
-                                        if "u24" in kind:
-                                            if addr + 2 < len(ram):
-                                                cur = int(ram[addr]) | (int(ram[addr+1]) << 8) | (int(ram[addr+2]) << 16)
-                                                if cur == search_val:
-                                                    surviving.add((addr, kind))
-                                        elif "u16" in kind:
-                                            if addr + 1 < len(ram):
-                                                cur = int(ram[addr]) | (int(ram[addr+1]) << 8)
-                                                expected = search_val // 10 if "/10" in kind else search_val
-                                                if cur == expected:
-                                                    surviving.add((addr, kind))
-                                        else:  # u8
-                                            expected = search_val // 10 if "/10" in kind else search_val
-                                            if expected <= 255 and int(ram[addr]) == expected:
-                                                surviving.add((addr, kind))
-                                    ram_search_candidates = surviving
-                                    print(f"[RAM NARROW] {len(surviving)} surviving:")
-                                    for addr, kind in sorted(surviving):
-                                        cur_bytes = ' '.join(f'{ram[addr+i]:02X}' for i in range(min(4, len(ram)-addr)))
-                                        print(f"  0x{addr:04X} ({kind}) = [{cur_bytes}]")
-                                    if not surviving:
-                                        print("  (none — try F2 again with the current value)")
+                                    ram_search_candidates = ram_narrow_hits(
+                                        ram, ram_search_candidates, search_val
+                                    )
+                                    print_ram_narrow_hits(ram, ram_search_candidates)
                         elif event.key in (pygame.K_LEFTBRACKET, pygame.K_COMMA, pygame.K_MINUS):
                             # [ , - all slow down (comma/minus as layout fallbacks)
                             speed_idx = max(0, speed_idx - 1)
@@ -809,11 +579,11 @@ class PlaySession:
                     and sub == repeat - 1
                     and (
                         not skip_presents
-                        or self.frame_count % self._preview_interval(speed) == 0
+                        or self.frame_count % preview_interval(speed) == 0
                     )
                 )
 
-                obs, reward, terminated, truncated, info = self._step_env_fast(
+                obs, reward, terminated, truncated, info = gym_env_step(
                     env,
                     action,
                     obs,
@@ -975,54 +745,13 @@ class PlaySession:
         LiveRamEditor(env).apply(self.ram_patches)
 
     def _save_recording(self, env, game_state: GameState):
-        import json as _json
-
-        os.makedirs(TASKS_DIR, exist_ok=True)
-        metadata = summarize_recording(
+        del game_state
+        write_task_recording(
+            name=self.record_name,
             frames=self.recorded_frames,
             trace=self.recorded_trace,
+            start_state=self.initial_state,
+            tasks_dir=TASKS_DIR,
+            states_dir=STATES_DIR,
+            end_state=env.em.get_state(),
         )
-        task_data = {
-            "name": self.record_name,
-            "frames": self.recorded_frames,
-            "trace": self.recorded_trace,
-            "start_state": self.initial_state,
-            "metadata": metadata,
-        }
-        path = os.path.join(TASKS_DIR, f"{self.record_name}.json")
-        with open(path, "w") as f:
-            _json.dump(task_data, f, indent=2)
-        print(f"[REC] Saved task: {path} ({len(self.recorded_frames)} frames)")
-        print(f"[REC] Trace rows: {len(self.recorded_trace)}")
-        coop_summary = metadata.get("coop", {})
-        if coop_summary.get("frame_count"):
-            print(
-                "[REC] Coop trace: "
-                f"{coop_summary.get('frame_count')} frames, "
-                f"{len(coop_summary.get('player_tiles', []))} player tiles, "
-                f"{len(coop_summary.get('adult_chicken_tiles', []))} adult chicken tiles, "
-                f"{len(coop_summary.get('chick_tiles', []))} chick tiles"
-            )
-        stasis_windows = metadata.get("stasis_windows", [])
-        if stasis_windows:
-            print(f"[REC] Stasis windows >=45f: {len(stasis_windows)}")
-            for window in stasis_windows[:8]:
-                print(
-                    "  "
-                    f"f={window['start']}-{window['end']} "
-                    f"len={window['length']} "
-                    f"tm=0x{window['tilemap']:02X} "
-                    f"tile={tuple(window['tile'])} "
-                    f"buttons={'+'.join(window['buttons'])}"
-                )
-
-        end_state = env.em.get_state()
-        task_state_path = os.path.join(TASKS_DIR, f"{self.record_name}_end.state")
-        with gzip.open(task_state_path, "wb") as f:
-            f.write(end_state)
-        print(f"[REC] Saved end state: {task_state_path}")
-
-        state_path = os.path.join(STATES_DIR, f"{self.record_name}_end.state")
-        with gzip.open(state_path, "wb") as f:
-            f.write(end_state)
-        print(f"[REC] Mirrored end state: {state_path}")

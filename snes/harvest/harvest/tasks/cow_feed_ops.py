@@ -8,7 +8,9 @@ import numpy as np
 
 from harvest.core.animal_status import (
     ITEM_FODDER,
+    existing_cow_slots,
     read_fed_cows_flags,
+    read_fed_cows_n,
     read_held_item,
     read_stored_grass,
 )
@@ -18,13 +20,17 @@ from harvest.tasks.cow_care import (
     left_feed_spot_action,
     left_trough_return_action,
 )
-from harvest.tasks.cow_fsm import CowPhase
+from harvest.tasks.cow_task import CowPhase
 from harvest.tasks.cow_geometry import (
+    COW_FEED_SPOTS,
     FODDER_FACE,
     FODDER_STAND,
     LEFT_TROUGH_LANE_Y,
     CowFeedSpot,
+    count_fed_trough_flags,
+    feed_route_for_spot,
     fodder_route_from,
+    next_unfed_spot,
 )
 from harvest.tasks.nav import make_action
 from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
@@ -32,6 +38,27 @@ from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 
 class CowFeedMixin:
     """Fodder bin nav and trough placement phases."""
+
+    def _feedable_cow_slots(self, ram: np.ndarray) -> list[int]:
+        return existing_cow_slots(ram)
+
+    def _feed_goal(self, ram: np.ndarray) -> int:
+        return min(len(self._feedable_cow_slots(ram)), len(COW_FEED_SPOTS))
+
+    def _current_feed_goal(self, ram: np.ndarray) -> int:
+        return self._feed_goal_count or self._feed_goal(ram)
+
+    def _fed_trough_count(self, ram: np.ndarray) -> int:
+        return count_fed_trough_flags(read_fed_cows_flags(ram), self._current_feed_goal(ram))
+
+    def _fed_count_now(self, ram: np.ndarray) -> int:
+        return max(read_fed_cows_n(ram), self._fed_trough_count(ram))
+
+    def _next_feed_spot(self, ram: np.ndarray) -> CowFeedSpot:
+        return next_unfed_spot(read_fed_cows_flags(ram), self._current_feed_goal(ram))
+
+    def _feed_route(self, spot: CowFeedSpot) -> Tuple[Tuple[int, int], ...]:
+        return feed_route_for_spot(spot)
 
     def _fodder_route(self) -> Tuple[Tuple[int, int], ...]:
         return fodder_route_from(self._navigator.current_tile)

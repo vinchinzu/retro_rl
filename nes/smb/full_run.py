@@ -1,33 +1,21 @@
-"""Flexible full-run stitch + video render for Super Mario Bros.
+"""Showcase stitch + video render (not the A/B loop).
 
-Builds a multi-exit showcase video from:
-
-- ``playthrough`` (default): one completed practice session's *successful*
-  final attempt per exit, each **emulator-verified death-free** before encode.
-  This is a real playthrough path (checkpoint-resume style), not a naive
-  cross-session legal-stitch of desyncing PBs.
-- ``legal_stitch``: fastest per-exit rows from ``leaderboard.json`` (may desync).
-- ``optimizer``: hillclimb / recording artifacts under ``optimizer/runs/``.
-
-Route definitions live in ``smb.routes`` (warp 8-exit now, all 32 later).
-
-Typical usage::
+Sources: ``playthrough`` (one session, death-verified), ``legal_stitch``
+(leaderboard PBs, may desync), ``optimizer`` (hillclimb recordings).
 
     uv run python -m smb.scripts.render_full_run --route warp
-    uv run python -m smb.scripts.render_full_run --route warp --session 20260429_172649
 """
 
 from __future__ import annotations
 
-import gzip
 import json
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
 
+from retro_harness.env import read_state_bytes
 from smb.paths import (
     FULLGAME_RECORDINGS_DIR,
     GAME_DIR,
@@ -37,12 +25,10 @@ from smb.paths import (
     OPTIMIZER_RUNS_DIR,
     SNES_EDITOR_SMB_ROOT,
 )
+from smb.ram import read_snapshot
 from smb.routes import ExitRoute, ExitSegment, get_route
 
 SourceKind = Literal["playthrough", "legal_stitch", "optimizer"]
-
-# Player status 0x0B == dying (SMB).
-_STATUS_DYING = 0x0B
 
 
 @dataclass
@@ -103,11 +89,6 @@ class StitchPlan:
             "notes": self.notes,
             "clips": [c.to_manifest_row() for c in self.clips],
         }
-
-
-def read_state_bytes(path: Path) -> bytes:
-    with gzip.open(path, "rb") as fh:
-        return fh.read()
 
 
 def resolve_state_path(
@@ -244,8 +225,8 @@ def resolve_legal_stitch_clip(
         integration_dir=integration_dir,
     )
 
-    play = [list(map(int, frame)) for frame in raw[offset:end]]
-    prefix = [list(map(int, frame)) for frame in raw[:offset]]
+    play = _nes9(raw, offset, end)
+    prefix = _nes9(raw, 0, offset)
 
     return SegmentClip(
         exit=exit_seg,
@@ -316,7 +297,7 @@ def resolve_optimizer_clip(
         )
     data = _load_json(rec_path)
     if data.get("raw_buttons"):
-        play = [list(map(int, frame)) for frame in data["raw_buttons"]]
+        play = _nes9(data["raw_buttons"])
     else:
         # Action indices — expand via SMB action table at render time is heavier;
         # store as single-int "buttons" and expand later.
@@ -376,27 +357,46 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
 def _branch_covering(
     summary: dict[str, Any], frame: int
 ) -> dict[str, Any] | None:
-    for branch in summary.get("branches", []):
-        start = int(branch.get("started_at_frame") or 0)
-        end = int(branch.get("ended_at_frame") or 10**9)
-        if start <= frame < end:
-            return branch
-    for branch in summary.get("branches", []):
-        start = int(branch.get("started_at_frame") or 0)
-        end = int(branch.get("ended_at_frame") or 10**9)
-        if start <= frame <= end:
-            return branch
+    branches = summary.get("branches") or []
+    for inclusive in (False, True):
+        for branch in branches:
+            start = int(branch.get("started_at_frame") or 0)
+            end = int(branch.get("ended_at_frame") or 10**9)
+            if start <= frame < end or (inclusive and start <= frame <= end):
+                return branch
     return None
 
 
-def _smb_ram_snapshot(env: Any) -> dict[str, Any]:
-    from smb.platformer_levels import SMB_COMPUTED, SMB_RAM
+def _nes9(raw: list[Any], lo: int = 0, hi: int | None = None) -> list[list[int]]:
+    return [list(map(int, frame)) for frame in raw[lo:hi]]
 
-    schema = SMB_RAM.to_schema()
-    values = schema.read(env.get_ram())
-    for key, fn in SMB_COMPUTED.items():
-        values[key] = fn(values)
-    return values
+
+def _pad_action(raw: list[int], action_size: int) -> np.ndarray:
+    buttons = list(raw[:action_size])
+    if len(buttons) < action_size:
+        buttons += [0] * (action_size - len(buttons))
+    return np.array(buttons, dtype=np.int8)
+
+
+def _open_clip_env(
+    clip: SegmentClip,
+    *,
+    game_dir: Path = GAME_DIR,
+    game_name: str = GAME_V0,
+) -> Any:
+    from retro_harness.env import make_env
+
+    env = make_env(game_name, None, game_dir, render_mode="rgb_array")
+    env.reset()
+    env.em.set_state(read_state_bytes(clip.state_path))
+    return env
+
+
+def _warm_prefix(env: Any, clip: SegmentClip) -> int:
+    action_size = int(env.action_space.shape[0])
+    for raw in clip.prefix_buttons:
+        env.step(_pad_action(raw, action_size))
+    return action_size
 
 
 def verify_clip_deathless(
@@ -406,47 +406,29 @@ def verify_clip_deathless(
     game_name: str = GAME_V0,
 ) -> dict[str, Any]:
     """Replay a clip in the emulator; report deaths / dying status."""
-    from retro_harness.env import make_env
-
-    env = make_env(game_name, None, game_dir, render_mode="rgb_array")
+    env = _open_clip_env(clip, game_dir=game_dir, game_name=game_name)
     try:
-        env.reset()
-        env.em.set_state(read_state_bytes(clip.state_path))
-        action_size = int(env.action_space.shape[0])
-
-        def step_raw(raw: list[int]) -> dict[str, Any]:
-            buttons = list(raw[:action_size])
-            if len(buttons) < action_size:
-                buttons = buttons + [0] * (action_size - len(buttons))
-            env.step(np.array(buttons, dtype=np.int8))
-            return _smb_ram_snapshot(env)
-
-        for raw in clip.prefix_buttons:
-            step_raw(raw)
-
-        values = _smb_ram_snapshot(env)
-        last_lives = int(values.get("lives", 0))
-        last_status = int(values.get("player_status", 0))
-        max_x = int(values.get("player_x", 0))
+        action_size = _warm_prefix(env, clip)
+        snap = read_snapshot(env.get_ram())
+        last_lives = int(snap.lives)
+        was_dying = snap.dying
+        max_x = int(snap.player_x)
         deaths = 0
         dying = 0
         first_death_frame: int | None = None
 
         for i, raw in enumerate(clip.play_buttons):
-            values = step_raw(raw)
-            lives = int(values.get("lives", 0))
-            status = int(values.get("player_status", 0))
-            px = int(values.get("player_x", 0))
-            if px > max_x:
-                max_x = px
-            if lives < last_lives:
+            env.step(_pad_action(raw, action_size))
+            snap = read_snapshot(env.get_ram())
+            max_x = max(max_x, int(snap.player_x))
+            if int(snap.lives) < last_lives:
                 deaths += 1
                 if first_death_frame is None:
                     first_death_frame = i
-            if status == _STATUS_DYING and last_status != _STATUS_DYING:
+            if snap.dying and not was_dying:
                 dying += 1
-            last_lives = lives
-            last_status = status
+            last_lives = int(snap.lives)
+            was_dying = snap.dying
 
         return {
             "ok": deaths == 0 and dying == 0,
@@ -455,15 +437,12 @@ def verify_clip_deathless(
             "max_x": max_x,
             "first_death_frame": first_death_frame,
             "final": {
-                k: values.get(k)
-                for k in (
-                    "world",
-                    "level",
-                    "player_x",
-                    "lives",
-                    "game_mode",
-                    "player_status",
-                )
+                "world": snap.world,
+                "level": snap.level,
+                "player_x": snap.player_x,
+                "lives": snap.lives,
+                "game_mode": snap.oper_mode,
+                "player_status": snap.player_state,
             },
         }
     finally:
@@ -501,8 +480,8 @@ def resolve_session_window_clip(
             f"{branch_id} ({len(raw)} frames, start={branch_start})"
         )
     end = min(offset + frames, len(raw))
-    play = [list(map(int, frame)) for frame in raw[offset:end]]
-    prefix = [list(map(int, frame)) for frame in raw[:offset]]
+    play = _nes9(raw, offset, end)
+    prefix = _nes9(raw, 0, offset)
 
     state_path = resolve_state_path(
         str(branch.get("state_file") or ""),
@@ -681,21 +660,16 @@ def select_playthrough_session(
     candidates: list[str] = list(prefer_sessions)
     if leaderboard_path.exists():
         lb = _load_json(leaderboard_path)
-        for row in lb.get("full_runs") or []:
-            sid = str(row.get("session_id") or "")
-            if sid and sid not in candidates:
-                candidates.append(sid)
-        for row in lb.get("completed_sessions") or []:
-            sid = str(row.get("session_id") or "")
-            if sid and sid not in candidates:
-                candidates.append(sid)
-
-    # Known completed any% practice sessions that fully verify (ordered by
-    # preferred world-8 coverage / total length from manual checks).
+        for key in ("full_runs", "completed_sessions"):
+            for row in lb.get(key) or []:
+                sid = str(row.get("session_id") or "")
+                if sid and sid not in candidates:
+                    candidates.append(sid)
+    # Known completed any% practice sessions (world-8 coverage / length).
     for sid in (
-        "20260429_214207",  # long verified 8-1 (~2903f)
-        "20260429_172649",  # longer 8-2; all exits verify
-        "20260429_165717",  # fastest overall wall-clock (early segs may fail verify)
+        "20260429_214207",
+        "20260429_172649",
+        "20260429_165717",
         "20260429_174136",
     ):
         if sid not in candidates:
@@ -840,18 +814,6 @@ def build_stitch_plan(
     )
 
 
-def _draw_text(
-    frame: np.ndarray,
-    text: str,
-    x: int,
-    y: int,
-    color: tuple[int, int, int] = (255, 255, 255),
-) -> None:
-    from retro_harness.platformer.record_video import draw_text
-
-    draw_text(frame, text, x, y, color)
-
-
 def render_stitch_plan(
     plan: StitchPlan,
     output: Path | str,
@@ -863,174 +825,102 @@ def render_stitch_plan(
     fps: int = 60,
     abort_on_death: bool = True,
 ) -> Path:
-    """Replay resolved clips into a single MP4.
+    """Replay resolved clips into a single MP4 via ``rta_panel.VideoWriter``."""
+    from retro_harness.segment_runner import configure_headless
+    from smb.rta_panel import VideoWriter, env_audio_rate, write_video
 
-    Playthrough sources use a short interstitials (or none) so the video reads
-    as one continuous run rather than a highlight reel of black title cards.
-    """
-    from retro_harness.env import make_env
-
+    configure_headless()
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     if not plan.clips:
         raise RuntimeError("Stitch plan has no clips to render")
-
-    if title_card_frames is None:
-        title_card_frames = 24 if plan.source_kind == "playthrough" else 90
-
-    # Probe dimensions from first clip's state.
-    env = make_env(game_name, None, game_dir, render_mode="rgb_array")
-    try:
-        obs, _ = env.reset()
-        env.em.set_state(read_state_bytes(plan.clips[0].state_path))
-        obs = env.render()
-        if obs is None:
-            obs, *_ = env.step(np.zeros(env.action_space.shape[0], dtype=np.int8))
-        h, w = int(obs.shape[0]), int(obs.shape[1])
-    finally:
-        env.close()
-
-    out_h, out_w = h * scale, w * scale
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-y",
-        "-f",
-        "rawvideo",
-        "-vcodec",
-        "rawvideo",
-        "-s",
-        f"{out_w}x{out_h}",
-        "-pix_fmt",
-        "rgb24",
-        "-r",
-        str(fps),
-        "-i",
-        "-",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "fast",
-        "-crf",
-        "20",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        str(output_path),
-    ]
-
-    print(f"Recording route: {plan.route.display_name}")
-    print(
-        f"Source: {plan.source_kind}  clips: {len(plan.clips)}  "
-        f"play frames: {plan.total_play_frames}"
+    hold = (
+        (24 if plan.source_kind == "playthrough" else 90)
+        if title_card_frames is None
+        else title_card_frames
     )
-    print(f"Output: {output_path} at {out_w}x{out_h}")
+
+    probe = _open_clip_env(plan.clips[0], game_dir=game_dir, game_name=game_name)
+    try:
+        obs = probe.render()
+        if obs is None:
+            obs, *_ = probe.step(
+                np.zeros(probe.action_space.shape[0], dtype=np.int8)
+            )
+        h, w = int(obs.shape[0]), int(obs.shape[1])
+        audio_rate = env_audio_rate(probe)
+    finally:
+        probe.close()
+
+    video = VideoWriter(
+        output_path,
+        width=w,
+        height=h,
+        scale=scale,
+        fps=fps,
+        audio_rate=audio_rate,
+        hud=True,
+        route_label=plan.route.display_name,
+        splits_panel=plan.route.route_id == "smb_warp_any_percent",
+    )
+    print(
+        f"Recording {plan.route.display_name} source={plan.source_kind} "
+        f"clips={len(plan.clips)} frames={plan.total_play_frames} → {output_path} "
+        f"{video.out_w}x{video.out_h}"
+    )
     if plan.missing:
         print(f"Missing exits (skipped): {', '.join(plan.missing)}")
     for note in plan.notes:
         print(f"  note: {note}")
 
-    proc = subprocess.Popen(
-        ffmpeg_cmd,
-        stdin=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    assert proc.stdin is not None
-
     cumulative = 0
     deaths_seen = 0
     try:
-        def write_frame(frame: np.ndarray) -> None:
-            assert proc.stdin is not None
-            proc.stdin.write(frame.tobytes())
-
-        def title_card(text: str, frames: int = title_card_frames) -> None:
-            if frames <= 0:
-                return
-            card = np.zeros((out_h, out_w, 3), dtype=np.uint8)
-            cx = max(4, out_w // 2 - len(text) * 5 // 2)
-            cy = out_h // 2 - 3
-            _draw_text(card, text, cx, cy, (255, 255, 255))
-            for _ in range(frames):
-                write_frame(card)
-
         for i, clip in enumerate(plan.clips):
             label = clip.exit.display()
-            title_card(label)
-            env = make_env(game_name, None, game_dir, render_mode="rgb_array")
+            if hold > 0:
+                video.write_intro([label], hold_frames=hold)
+            env = _open_clip_env(clip, game_dir=game_dir, game_name=game_name)
             try:
-                env.reset()
-                env.em.set_state(read_state_bytes(clip.state_path))
-                action_size = int(env.action_space.shape[0])
-
-                # Warm-up: advance branch offset without encoding.
-                for raw in clip.prefix_buttons:
-                    buttons = list(raw[:action_size])
-                    if len(buttons) < action_size:
-                        buttons = buttons + [0] * (action_size - len(buttons))
-                    env.step(np.array(buttons, dtype=np.int8))
-
-                values = _smb_ram_snapshot(env)
-                last_lives = int(values.get("lives", 0))
-                last_status = int(values.get("player_status", 0))
-
+                action_size = _warm_prefix(env, clip)
+                snap = read_snapshot(env.get_ram())
+                last_lives = int(snap.lives)
+                was_dying = snap.dying
                 print(
                     f"  [{i}] {label}: {len(clip.play_buttons)}f "
                     f"(+{len(clip.prefix_buttons)} prefix) "
                     f"from {clip.state_path.name}"
                     + (f" session={clip.session_id}" if clip.session_id else "")
                 )
-
                 for frame_idx, raw in enumerate(clip.play_buttons):
-                    buttons = list(raw[:action_size])
-                    if len(buttons) < action_size:
-                        buttons = buttons + [0] * (action_size - len(buttons))
-                    obs, *_ = env.step(np.array(buttons, dtype=np.int8))
-                    values = _smb_ram_snapshot(env)
-                    lives = int(values.get("lives", 0))
-                    status = int(values.get("player_status", 0))
-                    died_now = lives < last_lives or (
-                        status == _STATUS_DYING and last_status != _STATUS_DYING
+                    action = _pad_action(raw, action_size)
+                    obs, *_ = env.step(action)
+                    snap = read_snapshot(env.get_ram())
+                    died_now = int(snap.lives) < last_lives or (
+                        snap.dying and not was_dying
                     )
-                    last_lives = lives
-                    last_status = status
-
-                    frame = np.repeat(
-                        np.repeat(obs, scale, axis=0), scale, axis=1
-                    ).copy()
-                    secs = cumulative / float(fps)
-                    _draw_text(frame, f"F:{cumulative}", 4, 4)
-                    _draw_text(frame, f"T:{secs:.1f}S", 4, 12, (200, 200, 200))
-                    _draw_text(frame, label, 4, 20, (100, 255, 100))
+                    last_lives = int(snap.lives)
+                    was_dying = snap.dying
+                    write_video(
+                        video, obs, env=env, action=action, label=label, snap=snap
+                    )
+                    cumulative += 1
                     if died_now:
                         deaths_seen += 1
-                        _draw_text(frame, "DEAD", out_w - 30, 4, (255, 0, 0))
-                        write_frame(frame)
-                        cumulative += 1
                         if abort_on_death:
                             raise RuntimeError(
                                 f"Death during render at {label} frame {frame_idx} "
                                 f"(session={clip.session_id}). "
                                 "Plan should have been verify-filtered."
                             )
-                    else:
-                        write_frame(frame)
-                        cumulative += 1
             finally:
                 env.close()
     finally:
         try:
-            proc.stdin.close()
-        except BrokenPipeError:
-            pass
-        stderr = proc.stderr.read() if proc.stderr else b""
-        code = proc.wait()
-        if code != 0 and deaths_seen == 0:
-            raise RuntimeError(
-                f"ffmpeg failed ({code}): "
-                f"{stderr.decode('utf-8', errors='replace')[-800:]}"
-            )
+            video.close()
+        except RuntimeError:
+            if deaths_seen == 0:
+                raise
 
     if not output_path.exists():
         raise RuntimeError(f"Video not written: {output_path}")

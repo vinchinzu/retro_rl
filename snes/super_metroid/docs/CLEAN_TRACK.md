@@ -84,7 +84,7 @@ and early skirmishes on natural packs + collected capacity (10 missiles).
 Moonwalk (`$09E4`) is a file option, not a resource write. Clean Morph may
 poke it **on** for Climb's first descent moonfall and **off** before the
 Pit seed so later hash-pinned rooms stay valid. Do not flip
-`CLIMB_MOONFALL_ON_CLEAN` until `scripts/probe/climb_descent.py bench` is
+`CLIMB_MOONFALL_ON_CLEAN` until `kpdr.py pure climb-to-pit-moonfall` is
 green and faster from the natural Climb enter pin. See
 `docs/tasks/rr-0hjh-residual.md`.
 

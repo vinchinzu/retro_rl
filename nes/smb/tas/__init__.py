@@ -13,11 +13,9 @@ Prefer **import + adapt** public movies over blind hill-climb. See
 
 Typical CLI::
 
-    uv run python -m smb.scripts.import_fm2 --summary-only
-    uv run python -m smb.scripts.import_fm2 --verify-1-2-slice
     uv run python -m smb.tas.fetch_refs
     uv run python -m smb.scripts.convert_fm2
-    uv run python -m smb.scripts.tas_1_1 analyze
+    uv run python -m smb.scripts.annotate_fm2 --search 2-2 --from-pred --export
 """
 
 from smb.tas.fm2 import Fm2Movie, fm2_to_nes9_frames, parse_fm2, parse_movie

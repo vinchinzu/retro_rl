@@ -28,7 +28,7 @@ from zelda_i.door_graph import (
     RoomExit,
     dirs_from_mask,
 )
-from zelda_i.level2_puzzles import BOMB_WALL_6F_NORTH
+from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
 
 
 def _toy_graph() -> DungeonDoorGraph:

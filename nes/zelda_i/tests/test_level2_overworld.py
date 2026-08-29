@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level2_overworld import (
+from zelda_i.level2.overworld import (
     LEVEL2_ENTRY_ROOM,
     LEVEL2_PATH_SCREENS,
     OverworldToLevel2Controller,
@@ -10,7 +10,7 @@ from zelda_i.level2_overworld import (
     level2_door_hops_from,
     level2_entrance_success,
 )
-from zelda_i.overworld import (
+from zelda_i.overworld.graph import (
     LEVEL2_5C_MAZE_WAYPOINTS,
     LEVEL2_DOOR_HOPS,
     LEVEL2_DOOR_SCREENS,

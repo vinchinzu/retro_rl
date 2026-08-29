@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.level4_overworld import (
+from zelda_i.level4.overworld import (
     LEVEL4,
     LEVEL4_DOCK_SCREEN,
     LEVEL4_ENTRY_ROOM,
@@ -15,7 +15,7 @@ from zelda_i.level4_overworld import (
     level4_entrance_success,
     level4_entry_stop,
 )
-from zelda_i.overworld import neighbor_screens
+from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
     ADDR_LEVEL,
     ADDR_LINK_X,

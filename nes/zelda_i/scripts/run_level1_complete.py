@@ -41,9 +41,9 @@ from retro_harness.youtube_intro import (
     render_intro_card,
 )
 from zelda_i.assist import UnlimitedHealthAssist
-from zelda_i.chain import run_controller_stage, run_natural_to_milestone
-from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
+from zelda_i.route.chain import run_controller_stage, run_natural_to_milestone
+from zelda_i.dungeon.trace import write_state_provenance
+from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR, ROOM_TIMINGS_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.room_timer import RoomTimer, bottleneck_visits

@@ -15,7 +15,6 @@ from harvest.tasks.nav import (
     Navigator,
     make_action,
     get_pos_from_ram,
-    MAP_WIDTH,
 )
 from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
@@ -25,13 +24,26 @@ from harvest.tasks.farm_ops import TileScanner
 
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.maps.map_config import ROUTES, get_walkable_tiles
-from harvest.core.animal_probe import chicken_slot_snapshots
-from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16, read_ram_value
+from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_value
+from harvest.tasks.animal_navigation import (
+    chicken_stage_tiles,
+    navigate_to_tile_around_blockers,
+    select_adjacent_pickup_target,
+)
+from harvest.planner.tasks.sale_menu import (
+    SHOP_MENU_TEXT_ID,
+    chicken_count_reason,
+    dialog_text_id,
+    near_px,
+    open_counter_menu_actions,
+    payout_press_actions,
+    sale_request_ready,
+    sell_chicken_choice_actions,
+)
 from harvest.tasks.primitives import (
     dismiss_dialogue_result,
     drain_action_queue,
     press_a_sequence,
-    press_button_sequence,
 )
 from harvest.tasks.recorded_task import RecordedTask
 from harvest.planner.day_plan_status import (
@@ -87,146 +99,6 @@ class CoopPickupChickenTask(Task):
     def _held_item(self, ram: np.ndarray) -> int:
         return read_ram_u8(ram, ADDR_ITEM_ON_HAND)
 
-    def _adult_chicken_tiles(self, ram: np.ndarray) -> list[Tuple[int, int]]:
-        tiles: list[Tuple[int, int]] = []
-        seen: set[Tuple[int, int]] = set()
-        for row in chicken_slot_snapshots(ram, require_coop=True):
-            if row.get("stage") != "adult":
-                continue
-            tile = row.get("tile")
-            if not (isinstance(tile, list) and len(tile) == 2):
-                continue
-            chicken_tile = (int(tile[0]), int(tile[1]))
-            if chicken_tile in seen:
-                continue
-            seen.add(chicken_tile)
-            tiles.append(chicken_tile)
-        return tiles
-
-    def _blocker_tiles(self, ram: np.ndarray) -> set[Tuple[int, int]]:
-        blockers: set[Tuple[int, int]] = set()
-        for row in chicken_slot_snapshots(ram, require_coop=True):
-            if row.get("stage") not in {"adult", "egg"}:
-                continue
-            tile = row.get("tile")
-            if isinstance(tile, list) and len(tile) == 2:
-                blockers.add((int(tile[0]), int(tile[1])))
-        return blockers
-
-    def _candidate_stands(self, chicken_tile: Tuple[int, int]) -> tuple[Tuple[Tuple[int, int], str], ...]:
-        x, y = chicken_tile
-        return (
-            ((x + 1, y), "left"),
-            ((x - 1, y), "right"),
-            ((x, y + 1), "up"),
-            ((x, y - 1), "down"),
-        )
-
-    def _find_path_around_chickens(
-        self,
-        ram: np.ndarray,
-        start: Tuple[int, int],
-        goal: Tuple[int, int],
-    ) -> Optional[list[Tuple[int, int]]]:
-        blockers = self._blocker_tiles(ram)
-        blockers.discard(start)
-        if goal in blockers:
-            return None
-        if start == goal:
-            return []
-
-        queue = deque([start])
-        came_from: dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
-        while queue:
-            cx, cy = queue.popleft()
-            if (cx, cy) == goal:
-                break
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = cx + dx, cy + dy
-                nxt = (nx, ny)
-                if not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
-                    continue
-                if nxt in came_from or nxt in blockers:
-                    continue
-                if not self._pathfinder.is_walkable(ram, nx, ny, current_pos=start):
-                    continue
-                came_from[nxt] = (cx, cy)
-                queue.append(nxt)
-
-        if goal not in came_from:
-            return None
-
-        path: list[Tuple[int, int]] = []
-        cur = goal
-        while cur != start:
-            path.append(cur)
-            parent = came_from[cur]
-            if parent is None:
-                break
-            cur = parent
-        path.reverse()
-        return path
-
-    def _select_target(self, ram: np.ndarray) -> Optional[Tuple[Tuple[int, int], str, Tuple[int, int]]]:
-        current = self._navigator.current_tile
-        blockers = self._blocker_tiles(ram)
-        best: Optional[Tuple[int, Tuple[int, int], str, Tuple[int, int]]] = None
-        for chicken_tile in self._adult_chicken_tiles(ram):
-            for stand, face in self._candidate_stands(chicken_tile):
-                sx, sy = stand
-                if not (0 <= sx < MAP_WIDTH and 0 <= sy < MAP_WIDTH):
-                    continue
-                if stand in blockers and stand != current:
-                    continue
-                if not self._pathfinder.is_walkable(ram, sx, sy, current_pos=current):
-                    continue
-                path = self._find_path_around_chickens(ram, current, stand)
-                if path is None:
-                    continue
-                score = len(path)
-                if best is None or score < best[0]:
-                    best = (score, stand, face, chicken_tile)
-        if best is None:
-            return None
-        return best[1], best[2], best[3]
-
-    def _fallback_action(self, goal: Tuple[int, int]) -> np.ndarray:
-        current = self._navigator.current_tile
-        dx = goal[0] - current[0]
-        dy = goal[1] - current[1]
-        if abs(dx) >= abs(dy):
-            direction = "right" if dx > 0 else "left"
-        else:
-            direction = "down" if dy > 0 else "up"
-        return make_action(**{direction: True, "b": True})
-
-    def _navigate_to_tile(self, ram: np.ndarray, goal: Tuple[int, int]) -> Optional[np.ndarray]:
-        if self._navigator.current_tile == goal or self._navigator.at_tile(goal, tolerance=1):
-            return self._navigator.center_on_tile(goal, tolerance=1)
-
-        blockers = self._blocker_tiles(ram)
-        blockers.discard(self._navigator.current_tile)
-        if goal in blockers:
-            self._navigator.path = []
-            return make_action()
-        if self._navigator.path and self._navigator.path[0] in blockers:
-            self._navigator.path = []
-            return make_action()
-        if self._navigator.stasis > 90 and self._navigator.path:
-            self._pathfinder.temp_blocked.add(self._navigator.path[0])
-            self._navigator.path = []
-
-        if not self._navigator.path:
-            path = self._find_path_around_chickens(ram, self._navigator.current_tile, goal)
-            if path is None:
-                return self._fallback_action(goal)
-            self._navigator.path = path
-
-        action = self._navigator.follow_path(ram)
-        if action is None:
-            return self._fallback_action(goal)
-        return action
-
     def _queue_pickup(self, face: str) -> None:
         self._action_queue.extend(
             press_a_sequence(
@@ -263,20 +135,29 @@ class CoopPickupChickenTask(Task):
 
         if self._phase == "nav":
             target = self._target
-            blockers = self._blocker_tiles(world.ram)
+            adults = chicken_stage_tiles(world.ram, ("adult",), require_coop=True)
+            blockers = set(chicken_stage_tiles(world.ram, ("adult", "egg"), require_coop=True))
             if (
                 target is None
                 or (target[0] in blockers and target[0] != self._navigator.current_tile)
-                or target[2] not in self._adult_chicken_tiles(world.ram)
+                or target[2] not in adults
             ):
-                target = self._select_target(world.ram)
+                target = select_adjacent_pickup_target(
+                    world.ram,
+                    self._pathfinder,
+                    self._navigator.current_tile,
+                    adults,
+                    blockers,
+                )
                 self._target = target
                 self._navigator.path = []
             if target is None:
                 return TaskResult(status=TaskStatus.FAILURE, reason="no reachable adult chicken")
 
             stand, face, _chicken_tile = target
-            action = self._navigate_to_tile(world.ram, stand)
+            action = navigate_to_tile_around_blockers(
+                world.ram, self._pathfinder, self._navigator, stand, blockers
+            )
             if action is not None:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
@@ -429,15 +310,6 @@ class ChickenSaleFollowupTask(Task):
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         return is_farm_tilemap(tilemap)
 
-    def _start_position_ok(self, ram: np.ndarray) -> bool:
-        if self.require_start_px is None:
-            return True
-        pos = get_pos_from_ram(ram)
-        return (
-            abs(pos.x - self.require_start_px[0]) <= self.start_tolerance
-            and abs(pos.y - self.require_start_px[1]) <= self.start_tolerance
-        )
-
     def _update_observed_sale(self, ram: np.ndarray) -> None:
         current_chickens = read_ram_u8(ram, ADDR_CHICKEN_COUNT)
         current_shipping_money = read_shipping_money(ram)
@@ -457,9 +329,11 @@ class ChickenSaleFollowupTask(Task):
         return self._success_frames >= self.success_settle_frames
 
     def _completion_reason(self, ram: np.ndarray) -> str:
-        return (
-            f"chickens {self._start_chickens}->{read_ram_u8(ram, ADDR_CHICKEN_COUNT)} "
-            f"shipping {self._start_shipping_money}->{read_shipping_money(ram)}"
+        return chicken_count_reason(
+            self._start_chickens,
+            read_ram_u8(ram, ADDR_CHICKEN_COUNT),
+            self._start_shipping_money,
+            read_shipping_money(ram),
         )
 
     def step(self, world: WorldState) -> TaskResult:
@@ -470,7 +344,9 @@ class ChickenSaleFollowupTask(Task):
             tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
             if not is_farm_tilemap(tilemap):
                 return TaskResult(status=TaskStatus.FAILURE, reason=f"expected farm start, got tilemap=0x{tilemap:02X}")
-            if not self._start_position_ok(world.ram):
+            if self.require_start_px is not None and not near_px(
+                world.ram, self.require_start_px, self.start_tolerance
+            ):
                 pos = get_pos_from_ram(world.ram)
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -536,50 +412,15 @@ class ChickenSaleRequestTask(Task):
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         return tilemap == 0x24
 
-    def _start_position_ok(self, ram: np.ndarray) -> bool:
-        pos = get_pos_from_ram(ram)
-        return (
-            abs(pos.x - self.require_start_px[0]) <= self.start_tolerance
-            and abs(pos.y - self.require_start_px[1]) <= self.start_tolerance
-        )
-
-    def _aligned_for_replay(self, ram: np.ndarray) -> bool:
-        pos = get_pos_from_ram(ram)
-        return abs(pos.x - self.require_start_px[0]) <= 1 and abs(pos.y - self.require_start_px[1]) <= 1
-
     def _update_request_seen(self, ram: np.ndarray) -> None:
-        if self._saw_shop_menu and self._dialog_text_id(ram) == self.request_text_id:
+        if sale_request_ready(self._saw_shop_menu, ram, self.request_text_id):
             self._request_seen = True
 
-    def _dialog_text_id(self, ram: np.ndarray) -> int:
-        return read_ram_u16(ram, field_spec("dialog_text_id").address, live_offset=False)
-
     def _queue_open_menu(self) -> None:
-        self._action_queue.extend(
-            press_a_sequence(
-                "right",
-                face_frames=4,
-                pre_press_settle_frames=0,
-                hold_frames=12,
-                settle_frames=12,
-                hold_face_with_a=True,
-            )
-        )
+        self._action_queue.extend(open_counter_menu_actions())
 
     def _queue_sell_chicken_choice(self) -> None:
-        # Match the successful counter-menu cadence from sell_chicken.json.
-        # The shop menu ignores early A pulses, then two Down taps select
-        # "sell chicken" (dialog text 0x030B) from the four-option menu.
-        self._action_queue.extend(make_action(right=True, a=True) for _ in range(6))
-        self._action_queue.extend(make_action(right=True) for _ in range(7))
-        self._action_queue.extend(make_action(right=True, a=True) for _ in range(3))
-        self._action_queue.extend(make_action(a=True) for _ in range(4))
-        self._action_queue.extend(make_action() for _ in range(12))
-        self._action_queue.extend(press_button_sequence("a", hold_frames=8, settle_frames=19))
-        self._action_queue.extend(press_button_sequence("a", hold_frames=8, settle_frames=141))
-        self._action_queue.extend(press_button_sequence("down", hold_frames=11, settle_frames=7))
-        self._action_queue.extend(press_button_sequence("down", hold_frames=7, settle_frames=16))
-        self._action_queue.extend(press_button_sequence("a", hold_frames=10, settle_frames=30))
+        self._action_queue.extend(sell_chicken_choice_actions())
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
@@ -589,7 +430,9 @@ class ChickenSaleRequestTask(Task):
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if tilemap != 0x24:
             return TaskResult(status=TaskStatus.BLOCKED, reason=f"not in animal shop tilemap=0x{tilemap:02X}")
-        if self._idx == 0 and not self._start_position_ok(world.ram):
+        if self._idx == 0 and not near_px(
+            world.ram, self.require_start_px, self.start_tolerance
+        ):
             pos = get_pos_from_ram(world.ram)
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -597,7 +440,7 @@ class ChickenSaleRequestTask(Task):
             )
 
         if self._phase == "align":
-            if not self._aligned_for_replay(world.ram):
+            if not near_px(world.ram, self.require_start_px, 1):
                 if self._task is None:
                     self._task = NavTask(
                         name="nav_chicken_sale_request_counter",
@@ -628,13 +471,13 @@ class ChickenSaleRequestTask(Task):
         if queued is not None:
             return queued
 
-        text_id = self._dialog_text_id(world.ram)
+        text_id = dialog_text_id(world.ram)
         if self._request_seen:
             if input_lock != 1:
                 return dismiss_dialogue_result(self._step_count, buttons=("a", "b"), pulse_every=1)
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
-        if text_id == 0x0305:
+        if text_id == SHOP_MENU_TEXT_ID:
             self._saw_shop_menu = True
             if self._phase != "choose_sale":
                 self._phase = "choose_sale"
@@ -705,10 +548,13 @@ class ChickenSaleEventTask(Task):
             self._money_seen = True
 
     def _completion_reason(self, ram: np.ndarray) -> str:
-        return (
-            f"chickens {self._start_chickens}->{read_ram_u8(ram, ADDR_CHICKEN_COUNT)} "
-            f"money {self._start_money}->{int(read_ram_value(ram, 'money'))} "
-            f"target_sales={self.target_sales}"
+        return chicken_count_reason(
+            self._start_chickens,
+            read_ram_u8(ram, ADDR_CHICKEN_COUNT),
+            self._start_money,
+            int(read_ram_value(ram, "money")),
+            money_label="money",
+            extra=f"target_sales={self.target_sales}",
         )
 
     def _make_nav(self, name: str, px: Tuple[int, int], *, radius: int = 10, timeout: int = 3000) -> NavTask:
@@ -721,21 +567,7 @@ class ChickenSaleEventTask(Task):
         )
 
     def _queue_payout_action(self) -> None:
-        self._action_queue.extend(
-            press_button_sequence(
-                "a",
-                face="down",
-                face_frames=8,
-                pre_press_settle_frames=0,
-                hold_frames=10,
-                settle_frames=45,
-                hold_face_with_button=True,
-            )
-        )
-
-    def _near_payout(self, ram: np.ndarray, *, radius: int = 12) -> bool:
-        pos = get_pos_from_ram(ram)
-        return abs(pos.x - self.payout_px[0]) <= radius and abs(pos.y - self.payout_px[1]) <= radius
+        self._action_queue.extend(payout_press_actions())
 
     def _payout_alignment_action(self, ram: np.ndarray) -> Optional[np.ndarray]:
         pos = get_pos_from_ram(ram)
@@ -877,7 +709,9 @@ class ChickenSaleEventTask(Task):
             result = self._task.step(world)
             if result.status == TaskStatus.RUNNING:
                 return result
-            if result.status != TaskStatus.SUCCESS and not self._near_payout(world.ram):
+            if result.status != TaskStatus.SUCCESS and not near_px(
+                world.ram, self.payout_px, 12
+            ):
                 return TaskResult(status=result.status, reason=f"payout nav failed: {result.reason or result.status.value}")
             self._task = None
             self._phase = "align_payout"

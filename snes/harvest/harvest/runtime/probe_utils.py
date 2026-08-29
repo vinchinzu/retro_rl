@@ -238,3 +238,82 @@ def event_row(
     if extras:
         row.update(extras)
     return row
+
+
+def ram_search_hits(ram: np.ndarray, search_val: int) -> set[tuple[int, str]]:
+    """Find u8/u16/u24 (and /10 money) encodings of ``search_val`` in RAM."""
+    hits: set[tuple[int, str]] = set()
+    ram = np.asarray(ram, dtype=np.uint8)
+    if 0 <= search_val <= 255:
+        for addr in np.where(ram == search_val)[0]:
+            hits.add((int(addr), "u8"))
+    if 0 <= search_val <= 65535:
+        lo, hi = search_val & 0xFF, (search_val >> 8) & 0xFF
+        for addr in range(len(ram) - 1):
+            if ram[addr] == lo and ram[addr + 1] == hi:
+                hits.add((int(addr), "u16"))
+    if 0 <= search_val <= 0xFFFFFF:
+        b0 = search_val & 0xFF
+        b1 = (search_val >> 8) & 0xFF
+        b2 = (search_val >> 16) & 0xFF
+        for addr in range(len(ram) - 2):
+            if ram[addr] == b0 and ram[addr + 1] == b1 and ram[addr + 2] == b2:
+                hits.add((int(addr), "u24"))
+    if search_val >= 10 and search_val % 10 == 0:
+        sv10 = search_val // 10
+        if 0 <= sv10 <= 65535:
+            lo10, hi10 = sv10 & 0xFF, (sv10 >> 8) & 0xFF
+            for addr in range(len(ram) - 1):
+                if ram[addr] == lo10 and ram[addr + 1] == hi10:
+                    hits.add((int(addr), f"u16(/10={sv10})"))
+            if sv10 <= 255:
+                for addr in np.where(ram == sv10)[0]:
+                    hits.add((int(addr), f"u8(/10={sv10})"))
+    return hits
+
+
+def ram_narrow_hits(
+    ram: np.ndarray,
+    candidates: Iterable[tuple[int, str]],
+    search_val: int,
+) -> set[tuple[int, str]]:
+    """Keep prior RAM-search hits whose encoding now matches ``search_val``."""
+    ram = np.asarray(ram, dtype=np.uint8)
+    surviving: set[tuple[int, str]] = set()
+    for addr, kind in candidates:
+        if "u24" in kind:
+            if addr + 2 < len(ram):
+                cur = int(ram[addr]) | (int(ram[addr + 1]) << 8) | (int(ram[addr + 2]) << 16)
+                if cur == search_val:
+                    surviving.add((addr, kind))
+        elif "u16" in kind:
+            if addr + 1 < len(ram):
+                cur = int(ram[addr]) | (int(ram[addr + 1]) << 8)
+                expected = search_val // 10 if "/10" in kind else search_val
+                if cur == expected:
+                    surviving.add((addr, kind))
+        else:
+            expected = search_val // 10 if "/10" in kind else search_val
+            if expected <= 255 and int(ram[addr]) == expected:
+                surviving.add((addr, kind))
+    return surviving
+
+
+def print_ram_search_hits(hits: Iterable[tuple[int, str]], search_val: int, *, limit: int = 60) -> None:
+    rows = sorted(hits)
+    print(f"[RAM SEARCH] {len(rows)} hits for {search_val}:")
+    for addr, kind in rows[:limit]:
+        print(f"  0x{addr:04X} ({kind})")
+    if len(rows) > limit:
+        print(f"  ... and {len(rows) - limit} more")
+
+
+def print_ram_narrow_hits(ram: np.ndarray, surviving: Iterable[tuple[int, str]]) -> None:
+    rows = sorted(surviving)
+    print(f"[RAM NARROW] {len(rows)} surviving:")
+    ram = np.asarray(ram, dtype=np.uint8)
+    for addr, kind in rows:
+        cur_bytes = " ".join(f"{ram[addr + i]:02X}" for i in range(min(4, len(ram) - addr)))
+        print(f"  0x{addr:04X} ({kind}) = [{cur_bytes}]")
+    if not rows:
+        print("  (none — try F2 again with the current value)")

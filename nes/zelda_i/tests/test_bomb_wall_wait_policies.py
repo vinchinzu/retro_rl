@@ -8,17 +8,17 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.bomb_wall_path import (
+from zelda_i.dungeon.bomb_wall import (
     BOMB_N_STEP_BACK,
     BombWallController,
     BombWallPhase,
 )
-from zelda_i.level2_bomb_path import (
+from zelda_i.level2.bomb_path import (
     make_bomb_north_1e_controller,
     make_bomb_north_controller,
     make_post_boom_bomb_north_controller,
 )
-from zelda_i.level2_puzzles import BOMB_WALL_6F_NORTH
+from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_LEVEL,
