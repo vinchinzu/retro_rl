@@ -173,15 +173,39 @@ def test_heat_man_screen7_left_then_climb() -> None:
 
 def test_heat_man_screen8_yoku_approach() -> None:
     pol = HeatManPolicy(start="screen8", target_camera_screen=99)
-    # frames 1–10 → i=0..9 LEFT approach
-    left = pol.tick(frame=1, health=18, camera_x_screen=8, tile_feet=1)
+    # frames 1–187 → i=0..186 wait no-ceiling phase
+    wait = pol.tick(frame=1, health=18, camera_x_screen=8, tile_feet=1)
+    assert wait.reason == "s8_wait"
+    assert list(wait.action) == list(nes_idle_action())
+    wait_last = pol.tick(frame=187, health=18, camera_x_screen=8, tile_feet=1)
+    assert wait_last.reason == "s8_wait"
+    # frame 188 → i=187 LEFT approach
+    left = pol.tick(frame=188, health=18, camera_x_screen=8, tile_feet=1)
     assert left.reason == "s8_approach"
     assert list(left.action) == list(nes_action("LEFT"))
-    # frame 11 → i=10 idle release
-    rel = pol.tick(frame=11, health=18, camera_x_screen=8, tile_feet=1)
+    # frame 196 → i=195 idle release
+    rel = pol.tick(frame=196, health=18, camera_x_screen=8, tile_feet=1)
     assert rel.reason == "s8_release"
     assert list(rel.action) == list(nes_idle_action())
-    # frame 12 → i=11 A+LEFT yoku jump
-    hop = pol.tick(frame=12, health=18, camera_x_screen=8, tile_feet=1)
+    # frame 197 → i=196 A+LEFT first yoku jump
+    hop = pol.tick(frame=197, health=18, camera_x_screen=8, tile_feet=1)
     assert hop.reason == "s8_yoku_jump"
     assert list(hop.action) == list(nes_action("A", "LEFT"))
+
+
+def test_heat_man_screen8_catch_and_down() -> None:
+    pol = HeatManPolicy(start="screen8", target_camera_screen=9)
+    # wait 187 + LEFT8 + idle1 + A+LEFT14 + LEFT18 = 228; then gap 4
+    # frame 229 → i=228 catch gap
+    gap = pol.tick(frame=229, health=18, camera_x_screen=8, tile_feet=1)
+    assert gap.reason == "s8_catch_gap"
+    # frame 233 → i=232 A catch
+    catch = pol.tick(frame=233, health=18, camera_x_screen=8, tile_feet=1)
+    assert catch.reason == "s8_catch"
+    assert list(catch.action) == list(nes_action("A"))
+    # late DOWN window
+    down = pol.tick(frame=400, health=18, camera_x_screen=8, tile_feet=2)
+    assert down.reason == "s8_down"
+    assert list(down.action) == list(nes_action("DOWN"))
+    done = pol.tick(frame=400, health=18, camera_x_screen=9, tile_feet=2)
+    assert done.reason == "clear_hold"
