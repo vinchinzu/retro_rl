@@ -116,6 +116,7 @@ MK2 = FightingGameConfig(
     # Health in high WRAM (>= 0x2000) — needs DirectRAMReader
     # P1=WRAM 0x2EFC (get_ram 0x4EFD), P2=WRAM 0x30AA (get_ram 0x50AB)
     # Gap = 0x1AE (430 bytes) — player structs are far apart
+    # 0x020A / 0x020E are transitional state values, NOT health.
     ram_overrides={
         "health": 0x4EFD,          # P1 health (WRAM 0x2EFC + 0x2001 offset)
         "enemy_health": 0x50AB,    # P2 health (WRAM 0x30AA + 0x2001 offset)
