@@ -71,10 +71,12 @@ from zelda_i.level2_boss_tf import (
     policy_push,
     policy_waypoints,
 )
-from zelda_i.level2_dungeon import (
+from zelda_i.level2_bomb_path import (
     BOMB_N_STAND,
     Level2PostBoomBombNorthController,
     PostBoomBombNorthPhase,
+)
+from zelda_i.level2_dungeon import (
     ROOM_1E_SPEC,
     ROOM_2E_SPEC,
     ROOM_L2_GORIYA_BOMBS,

@@ -57,10 +57,8 @@ from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
     BubblePhaseStop,
     play_bubble_to_bat_cave,
 )
-from super_metroid.routes.kpdr.wrecked_ship import (  # noqa: E402
-    play_moat_to_west_ocean,
-    play_west_ocean_to_ws,
-)
+from super_metroid.routes.kpdr.moat import play_moat_to_west_ocean  # noqa: E402
+from super_metroid.routes.kpdr.west_ocean import play_west_ocean_to_ws  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_climb import (  # noqa: E402
     play_bottom_to_ripper1,
 )
@@ -92,20 +90,26 @@ from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (  # noqa: E402
 from super_metroid.routes.kpdr.k5.red_ice_ur3_to_hellway import (  # noqa: E402
     play_upper_ripper3_to_hellway,
 )
-from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
+from super_metroid.routes.kpdr.k4_cathedral import (  # noqa: E402
     play_business_to_cathedral_entrance,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
+)
+from super_metroid.routes.kpdr.k4_rising_tide import (  # noqa: E402
     play_rising_tide_to_bubble,
 )
-from super_metroid.routes.kpdr import (  # noqa: E402
+from super_metroid.routes.kpdr.from_kraid import (  # noqa: E402
     play_baby_to_kihunter_return,
     play_eye_to_baby_return,
     play_kihunter_to_zeela_return,
+    play_zeela_to_warehouse_return,
+)
+from super_metroid.routes.kpdr.varia_return import (  # noqa: E402
     play_kraid_to_eye_return,
     play_varia_to_kraid,
+)
+from super_metroid.routes.kpdr.warehouse_stack import (  # noqa: E402
     play_warehouse_to_business,
-    play_zeela_to_warehouse_return,
 )
 
 SCRATCH = GAME_DIR / "custom_integrations" / "SuperMetroid-Snes" / "scratch"

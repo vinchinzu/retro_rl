@@ -39,6 +39,8 @@ from super_metroid.routes.kpdr.room_ids import (  # noqa: F401
     ROOM_FARMING,
     ROOM_FIRST_MISSILE,
     ROOM_FLYWAY,
+    ROOM_GAUNTLET_ENTRANCE,
+    ROOM_GAUNTLET_ETANK,
     ROOM_FROG_SAVE,
     ROOM_FROG_SPEEDWAY,
     ROOM_GHZ,

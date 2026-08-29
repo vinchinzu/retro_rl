@@ -3,11 +3,14 @@
 Wiki plan: ``docs/research/DUNGEON_WALKTHROUGHS.md`` (Zelda Dungeon 100%).
 Bow is L1 (west of ``0x23``), not L6. L6 item is Magical Rod. Gohma still
 needs bow + wooden arrows (OW shop). Default ``--through level2`` and later
-never run ``level1-bow``; that through is a side branch enter-stop
-(play ``0x22`` 1/1). ``--through level1-bow-cellar`` is **1/1** mode 9
-room ``0x7F`` ``(128,141)``; ``ADDR_BOW`` is still 0. Splice is
-``clear23_key`` → bow detour → ``backtrack44`` once walked bow +
-return play ``0x23`` exist.
+never run ``level1-bow`` as the default stop; that through is a side
+branch enter-stop (play ``0x22`` 1/1). ``--through level1-bow-cellar``
+is **1/1** mode 9 room ``0x7F`` ``(128,141)``. Survival ``--through
+level1`` / ``level2+`` splice ``clear23_key`` → bow detour →
+``backtrack44``. ``--through level1-bow-pickup`` is **1/1** play
+``0x23`` ``ADDR_BOW=1``. ``--through level2-entry`` is **1/1** play
+``0x7d`` ``(120,205)`` TF=``0x01`` bow=1 (``l1_bow_splice_l2_entry_v14``).
+Clean M5 does not run the detour. Arrows still 0.
 """
 
 from __future__ import annotations
@@ -74,9 +77,9 @@ TREASURES: tuple[DungeonTreasure, ...] = (
         addr=ADDR_BOW,
         ram_attr="bow",
         wiki_room="L1 west of 0x23; dest play 0x22 then cellar",
-        through="level1-bow-cellar",
-        on_default_spine=False,
-        live=LIVE_SIDE,
+        through="level1-bow-pickup",
+        on_default_spine=True,
+        live=LIVE_COLLECTED,
         gates="L6 Gohma eye; L9 Silver Arrows need the bow first",
     ),
     DungeonTreasure(
@@ -294,7 +297,7 @@ def required_gate_skips_on_default_spine() -> tuple[DungeonTreasure, ...]:
 
 
 def default_spine_collected() -> tuple[str, ...]:
-    """Names collected on ``--through level6-north2c`` (bow=0 leftover)."""
+    """Names on the default Survival spine (bow spliced after clear23)."""
     return tuple(item.name for item in TREASURES if item.on_default_spine)
 
 

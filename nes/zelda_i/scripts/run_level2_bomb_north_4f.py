@@ -27,12 +27,12 @@ from retro_harness.segment_runner import (
 )
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level2_dungeon import (
+from zelda_i.level2_bomb_path import (
     BOMB_N_STAND,
-    make_post_boom_bomb_north_controller,
     PostBoomBombNorthPhase,
-    level2_room_3f_ready,
+    make_post_boom_bomb_north_controller,
 )
+from zelda_i.level2_dungeon import level2_room_3f_ready
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot, read_u8
 

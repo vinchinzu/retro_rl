@@ -153,11 +153,27 @@ def knob_field_names() -> tuple[str, ...]:
     return tuple(f.name for f in fields(GrindKnobs))
 
 
+def focus_knob_names(focus: str) -> list[str]:
+    """Whitelist knobs for a probe target, plus shared combat poke keys."""
+    if focus in {"technodrome_tank", "tokka_rahzar"}:
+        prefix = "blocker_"
+    elif focus == "super_shredder":
+        prefix = "shredder_"
+    else:
+        prefix = "slash_"
+    names = [k for k in KNOB_BOUNDS if k.startswith(prefix)]
+    for shared in ("attack_range", "standoff", "attack_gap"):
+        if shared in KNOB_BOUNDS and shared not in names:
+            names.append(shared)
+    return names
+
+
 __all__ = [
     "GrindKnobs",
     "KNOB_BOUNDS",
     "active_knobs",
     "clamp_knob_patch",
+    "focus_knob_names",
     "knob_field_names",
     "knobs_as_dict",
     "merge_knobs",

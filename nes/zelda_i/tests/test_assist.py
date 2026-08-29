@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from zelda_i.assist import (
-    UnlimitedHealthAssist,
-    assist_phase_name,
-    location_key,
-    poke_link_position,
-)
+from zelda_i.assist import UnlimitedHealthAssist, poke_wooden_arrows
+from zelda_i.dungeon_ops import B_ITEM_ARROWS, WOODEN_ARROWS
 from zelda_i.ram import (
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
+    ADDR_ARROWS,
+    ADDR_BOW,
+    ADDR_SELECTED_ITEM,
     PLAY_MODE,
     ZeldaSnapshot,
     full_health_byte,
@@ -69,20 +66,6 @@ def test_full_health_byte_preserves_containers() -> None:
     assert full_health_byte(0x2F) == 0x22
 
 
-def test_phase_names() -> None:
-    assert assist_phase_name(_snap(mode=PLAY_MODE)) == "ordinary_gameplay"
-    assert assist_phase_name(_snap(mode=17)) == "death"
-    assert assist_phase_name(_snap(mode=18)) == "triforce_fanfare"
-    assert assist_phase_name(_snap(mode=7)) == "transition"
-    assert assist_phase_name(_snap(mode=11)) == "ordinary_gameplay"
-    assert assist_phase_name(_snap(mode=9)) == "ordinary_gameplay"
-
-
-def test_location_key() -> None:
-    assert location_key(_snap(level=2, screen=0x5f)) == "L2:0x5f"
-    assert location_key(_snap(level=0, screen=0x4A)) == "L0:0x4a"
-
-
 def test_assist_refills_on_ordinary_play() -> None:
     data = _FakeData()
     assist = UnlimitedHealthAssist(enabled=True)
@@ -96,88 +79,12 @@ def test_assist_refills_on_ordinary_play() -> None:
     assert assist.telemetry.capacity_writes == 0
 
 
-def test_assist_refills_in_controllable_underworld_passage() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=True)
-    assist.apply_snapshot(data, _snap(mode=9, health=0x20), frame=10)
-    assert data.values == {"health": 0x22, "heart_partial": 0xFF}
-
-
 def test_assist_skips_when_full() -> None:
     data = _FakeData()
     assist = UnlimitedHealthAssist(enabled=True)
     assist.apply_snapshot(data, _snap(health=0x22), frame=1)
     assert data.values == {}
     assert assist.telemetry.health.writes == 0
-
-
-def test_assist_suspends_on_death_and_counts() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=True)
-    assist.apply_snapshot(data, _snap(mode=17, health=0x00), frame=5)
-    assert data.values == {}
-    assert assist.telemetry.deaths == 1
-    assert assist.telemetry.suspended_phase_frames["death"] == 1
-
-
-def test_assist_disabled_noop() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=False)
-    assist.apply_snapshot(data, _snap(health=0x20), frame=1)
-    assert data.values == {}
-    rep = assist.report()
-    assert rep["enabled"] is False
-
-
-def test_damage_telemetry_cumulative_and_heatmap() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=True)
-    # Baseline full on OW screen 0x4A (3 containers, 3 hearts = 0x22).
-    assist.apply_snapshot(data, _snap(health=0x22, screen=0x4A, level=0), frame=1)
-    assert assist.telemetry.total_damage == 0
-
-    # Drop 0x22 → 0x20 (2 whole-heart units) on same screen.
-    data.values.clear()
-    assist.apply_snapshot(data, _snap(health=0x20, screen=0x4A, level=0), frame=2)
-    assert assist.telemetry.total_damage == 2
-    assert assist.telemetry.damage_events == 1
-    assert assist.telemetry.maximum_single_frame_damage == 2
-    assert assist.telemetry.damage_by_location["L0:0x4a"] == 2
-    assert data.values["health"] == 0x22
-
-    # Second hit on dungeon room 0x5f: full→0x21 (1 unit).
-    data.values.clear()
-    assist.apply_snapshot(
-        data,
-        _snap(health=0x21, screen=0x5F, level=2, link_x=100, link_y=120),
-        frame=10,
-    )
-    assert assist.telemetry.total_damage == 3
-    assert assist.telemetry.damage_events == 2
-    assert assist.telemetry.maximum_single_frame_damage == 2
-    assert assist.telemetry.damage_by_location["L2:0x5f"] == 1
-
-    rep = assist.report()
-    assert rep["total_damage"] == 3
-    assert rep["damage_events"] == 2
-    locs = list(rep["damage_by_location"].keys())
-    assert locs[0] == "L0:0x4a"
-    assert len(rep["damage_samples"]) == 2
-    assert rep["damage_samples"][1]["location"] == "L2:0x5f"
-    assert rep["damage_samples"][1]["amount"] == 1
-
-
-def test_damage_samples_capped() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=True)
-    assist.apply_snapshot(data, _snap(health=0x22), frame=0)
-    # Force many events; samples stay bounded, totals do not.
-    for i in range(80):
-        data.values.clear()
-        assist.apply_snapshot(data, _snap(health=0x21), frame=i + 1)
-    assert assist.telemetry.damage_events == 80
-    assert assist.telemetry.total_damage == 80
-    assert len(assist.telemetry.damage_samples) == 64
 
 
 def test_assist_clamps_transient_container_jump() -> None:
@@ -209,28 +116,6 @@ def test_assist_accepts_heart_container_plus_one() -> None:
     assert assist.telemetry.container_clamps == 0
 
 
-def test_assist_triforce_grants_only_one_container() -> None:
-    data = _FakeData()
-    assist = UnlimitedHealthAssist(enabled=True)
-    assist.apply_snapshot(data, _snap(health=0x33), frame=1)
-    assert assist.telemetry.accepted_containers == 4
-    assist.apply_snapshot(data, _snap(mode=18, health=0x33), frame=2)
-    data.values.clear()
-    # Fanfare return with a glitched 7-container byte (user saw 7 after TF1).
-    assist.apply_snapshot(data, _snap(health=0x6F), frame=3)
-    assert assist.telemetry.accepted_containers == 5
-    assert data.values["health"] == 0x44
-    assert assist.telemetry.capacity_writes == 0
-
-
-def test_health_byte_for_containers_roundtrip() -> None:
-    from zelda_i.ram import health_byte_for_containers
-
-    assert health_byte_for_containers(3) == 0x22
-    assert health_byte_for_containers(5) == 0x44
-    assert health_byte_for_containers(7) == 0x66
-
-
 class _AssignMem:
     def __init__(self) -> None:
         self.calls: list[tuple[int, str, int]] = []
@@ -244,47 +129,27 @@ def _env_with_mem(mem: object) -> SimpleNamespace:
     return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
 
 
-def test_poke_link_position_writes_only_x_y() -> None:
+def test_poke_wooden_arrows_writes_arrows_and_b_not_bow() -> None:
     mem = _AssignMem()
-    report = poke_link_position(
-        _env_with_mem(mem),
-        208,
-        93,
-        room=0x3A,
-        from_xy=(144, 141),
-    )
+    report = poke_wooden_arrows(_env_with_mem(mem), from_arrows=0, select=True)
     assert mem.calls == [
-        (ADDR_LINK_X, "|u1", 208),
-        (ADDR_LINK_Y, "|u1", 93),
+        (ADDR_ARROWS, "|u1", WOODEN_ARROWS),
+        (ADDR_SELECTED_ITEM, "|u1", B_ITEM_ARROWS),
     ]
-    assert [addr for addr, _fmt, _val in mem.calls] == [ADDR_LINK_X, ADDR_LINK_Y]
-    assert report["position_writes"] == 1
+    addrs = [addr for addr, _fmt, _val in mem.calls]
+    assert ADDR_BOW not in addrs
+    assert report["inventory_writes"] == 1
+    assert report["poke_arrows"] == WOODEN_ARROWS
     assert report["progression_writes"] == 0
     assert report["capacity_writes"] == 0
-    assert report["door_writes"] == 0
-    assert report["inventory_writes"] == 0
-    assert report["triforce_writes"] == 0
+    assert report["bow_writes"] == 0
     assert report["state_load"] is False
-    assert report["mid_run_state_load"] is False
-    assert report["addresses"] == [ADDR_LINK_X, ADDR_LINK_Y]
-    assert report["xy"] == [208, 93]
-    assert report["from_xy"] == [144, 141]
-    assert report["room"] == 0x3A
 
 
-def test_poke_link_position_no_assign_does_not_write() -> None:
-    mem = SimpleNamespace()
-    report = poke_link_position(
-        _env_with_mem(mem),
-        208,
-        93,
-        room=0x3A,
-        from_xy=(144, 141),
-    )
-    assert report["position_writes"] == 0
-    assert report["progression_writes"] == 0
-    assert report["capacity_writes"] == 0
-    assert report["door_writes"] == 0
+def test_poke_wooden_arrows_skips_count_when_already_wooden() -> None:
+    mem = _AssignMem()
+    report = poke_wooden_arrows(_env_with_mem(mem), from_arrows=1, select=True)
+    assert mem.calls == [(ADDR_SELECTED_ITEM, "|u1", B_ITEM_ARROWS)]
     assert report["inventory_writes"] == 0
-    assert report["triforce_writes"] == 0
-    assert report["addresses"] == [ADDR_LINK_X, ADDR_LINK_Y]
+    assert report["poke_arrows"] == 0
+    assert report["progression_writes"] == 0

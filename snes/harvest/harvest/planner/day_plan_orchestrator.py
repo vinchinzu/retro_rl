@@ -286,7 +286,7 @@ class DayPlanTask(Task):
                 phase.phase,
                 phase.kind,
                 dict(phase.params),
-                failure_policy="optional",
+                failure_policy=phase.failure_policy,
                 contract=phase.contract,
             )
             for phase in d2_post_shop_work_phases(

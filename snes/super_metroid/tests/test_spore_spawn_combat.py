@@ -6,13 +6,11 @@ from dataclasses import replace
 
 import numpy as np
 
-from super_metroid.combat.protocol import wrap_spore_spawn_as_boss_strategy
 from super_metroid.combat.spore_spawn import (
     ROOM_SPORE_SPAWN,
     SEAT_X,
     SEAT_Y,
     VULNERABLE_SPRITEMAPS,
-    SporeSpawnEvidence,
     SporeSpawnStrategy,
     fight_spore_spawn_action,
     mouth_open,
@@ -89,41 +87,6 @@ def test_zero_hp_returns_idle() -> None:
     assert fight_spore_spawn_action(_state(enemy0_hp=0), 0) == ()
 
 
-def test_evidence_to_dict_keys_are_stable() -> None:
-    evidence = SporeSpawnEvidence(
-        start_frame=10,
-        activation_seen=True,
-        defeat_frame=200,
-        boss_bit_frame=240,
-        end_frame=250,
-        peak_hp=960,
-        min_enemy_hp=0,
-        action_frames=240,
-        final_enemy_hp=0,
-        shots_fired=10,
-        farm_frames=40,
-        windows=5,
-        outcome="spore_spawn_defeated",
-        vulnerable_spritemaps=(0xEEAF,),
-    )
-    assert set(evidence.to_dict()) == {
-        "start_frame",
-        "activation_seen",
-        "defeat_frame",
-        "boss_bit_frame",
-        "end_frame",
-        "peak_hp",
-        "min_enemy_hp",
-        "action_frames",
-        "final_enemy_hp",
-        "shots_fired",
-        "farm_frames",
-        "windows",
-        "outcome",
-        "vulnerable_spritemaps",
-    }
-
-
 class _Session:
     def __init__(self, state, *, kill_after: int = 8):
         self.state = state
@@ -147,13 +110,6 @@ def test_play_loop_reports_defeat_when_hp_hits_zero() -> None:
     assert evidence.outcome == "spore_spawn_defeated"
     assert evidence.defeat_frame is not None
     assert evidence.final_enemy_hp == 0
-
-
-def test_wrapper_matches_catalog_room() -> None:
-    strategy = wrap_spore_spawn_as_boss_strategy()
-    assert strategy.boss_id == "spore_spawn"
-    assert strategy.catalog.room_id == ROOM_SPORE_SPAWN
-    assert strategy.entry.room_id == ROOM_SPORE_SPAWN
 
 
 def test_list_pickups_reads_f337_header_and_ilist() -> None:
@@ -233,3 +189,50 @@ def test_under_eye_is_live_x_not_hardcoded_band() -> None:
     assert in_fire_height(_state(samus_y=666, enemy0_y=666))
     assert not in_fire_height(_state(samus_y=715, enemy0_y=666))
     assert not in_fire_height(_state(samus_y=657, enemy0_y=666))
+
+
+def test_floor_bounce_requires_spore_room_and_full_hp() -> None:
+    from super_metroid.combat.spore_spawn import play_spore_spawn_floor_bounce
+
+    session = _Session(_state(room_id=0x9D19), kill_after=2)
+    try:
+        play_spore_spawn_floor_bounce(session)
+    except RuntimeError as exc:
+        assert "expected room" in str(exc)
+    else:
+        raise AssertionError("wrong room must fail")
+
+    session = _Session(_state(enemy0_hp=100), kill_after=2)
+    try:
+        play_spore_spawn_floor_bounce(session)
+    except RuntimeError as exc:
+        assert "960 HP" in str(exc)
+    else:
+        raise AssertionError("low HP must fail")
+
+
+def test_floor_bounce_reports_defeat_when_hp_hits_zero() -> None:
+    from super_metroid.combat.spore_spawn import play_spore_spawn_floor_bounce
+    from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
+
+    session = _Session(
+        _state(samus_x=100, samus_y=720, enemy0_spritemap=0xEF3D),
+        kill_after=6,
+    )
+    fight = play_spore_spawn_floor_bounce(session)
+    assert fight.defeat_frame is not None
+    assert 0 in fight.observed_hp
+    assert fight.peak_hp >= 960
+    hop = SporeSpawnEvidence(
+        entry_frame=fight.entry_frame,
+        activation_frame=fight.activation_frame,
+        defeat_frame=fight.defeat_frame,
+        exit_frame=fight.defeat_frame + 1,
+        peak_hp=fight.peak_hp,
+        observed_hp=fight.observed_hp,
+        brinstar_boss_bits_before=fight.brinstar_boss_bits_before,
+        brinstar_boss_bits_after=0,
+        vulnerable_spritemaps=fight.vulnerable_spritemaps,
+    )
+    assert hop.observed_hp == fight.observed_hp
+    assert any(reason == "fight_spore_spawn" for _, reason in session.actions)

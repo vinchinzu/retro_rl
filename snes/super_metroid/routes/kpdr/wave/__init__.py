@@ -36,7 +36,7 @@ Package layout
 * ``speedway_to_frog`` — Speedway → Frog Save return (Wave return stack hop 6)
 * ``frog_to_business`` — Frog Save → Business return (Wave return stack hop 7)
 
-Import hop callables from this package (or ``k4_norfair`` for the K4 barrel).
+Import hop callables from this package.
 """
 
 from __future__ import annotations

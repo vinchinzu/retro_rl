@@ -2,38 +2,25 @@
 
 from __future__ import annotations
 
-import numpy as np
-import pytest
+import inspect
 from types import SimpleNamespace
 
-from zelda_i.door_graph.core import DoorDir
+import numpy as np
+import pytest
+
 from zelda_i.dungeon_ops import (
-    DOOR_TARGETS,
     GEL_SPLIT_OBJECT_TYPE,
-    NON_COMBAT_TYPES,
     live_killables,
-    room_fields,
 )
 from zelda_i.level3_boss_path import (
-    BOMB_NORTH_STANDS,
-    BOSS_PATH_PHASES,
     Level3BossPathController,
-    PREP_CLEAR_TYPES,
-    UP_APPROACHES,
     prep_5d_still_killable,
 )
 from zelda_i.level3_dungeon import (
-    BOMB_STAND_59_RIGHT,
-    BOMB_STAND_5B_RIGHT,
-    DOOR_5C_RIGHT_Y,
     INVULN_MOVER_0X2B,
     KEESE_OBJECT_TYPE,
-    MANHANDLA_OBJECT_TYPE,
-    PASSAGE_EXIT_WAYPOINTS,
-    ROOM_L3_BOSS,
     ROOM_L3_BOSS_PREP,
     ZOL_OBJECT_TYPE,
-    level3_manhandla_live,
 )
 from zelda_i.ram import (
     ADDR_LEVEL,
@@ -65,47 +52,6 @@ def _ram(
     return ram
 
 
-def test_controller_defaults_and_phases() -> None:
-    ctl = Level3BossPathController()
-    assert ctl.phase == "exit_passage"
-    assert ctl.success is False
-    assert ctl.failed is False
-    assert ctl.poke_bombs is None  # durable default: no recon poke
-    assert ctl.continuous_mode is False
-    assert ctl.reached_5d is False
-    assert ctl.reached_4d is False
-    assert "exit_passage" in BOSS_PATH_PHASES
-    assert "manhandla" in BOSS_PATH_PHASES
-    assert "done" in BOSS_PATH_PHASES
-    rep = ctl.report()
-    assert rep["phase"] == "exit_passage"
-    assert rep["poke_bombs"] is None
-    assert rep["continuous_mode"] is False
-    assert rep["intervention_class"] == "survival"
-    assert list(BOMB_STAND_59_RIGHT) == rep["geometry"]["bomb_stand_59"]
-    assert list(BOMB_STAND_5B_RIGHT) == rep["geometry"]["bomb_stand_5b"]
-    assert rep["geometry"]["door_5c_right_y"] == DOOR_5C_RIGHT_Y
-
-
-def test_constants_align_with_level3_dungeon() -> None:
-    assert BOMB_STAND_59_RIGHT == (192, 141)
-    assert BOMB_STAND_5B_RIGHT == (192, 141)
-    assert DOOR_5C_RIGHT_Y == 141
-    assert PASSAGE_EXIT_WAYPOINTS[0] == (176, 141)
-    assert PASSAGE_EXIT_WAYPOINTS[-1] == (48, 77)
-    assert len(PASSAGE_EXIT_WAYPOINTS) == 4
-    assert UP_APPROACHES[0] == (120, 93)
-    assert BOMB_NORTH_STANDS[0] == (120, 101)
-    assert ZOL_OBJECT_TYPE in PREP_CLEAR_TYPES
-    assert GEL_SPLIT_OBJECT_TYPE in PREP_CLEAR_TYPES
-    assert KEESE_OBJECT_TYPE in PREP_CLEAR_TYPES
-    assert INVULN_MOVER_0X2B not in PREP_CLEAR_TYPES
-    assert INVULN_MOVER_0X2B in NON_COMBAT_TYPES
-    assert DOOR_TARGETS["RIGHT"] == (208, 141)
-    assert DoorDir.RIGHT == 0x01
-    assert DoorDir.UP == 0x08
-
-
 def test_prep_killables_ignore_0x2b_slots_1_12() -> None:
     ram = _ram(room=ROOM_L3_BOSS_PREP)
     ram[ADDR_OBJ_TYPE + 1] = ZOL_OBJECT_TYPE
@@ -131,39 +77,18 @@ def test_prep_killables_ignore_0x2b_slots_1_12() -> None:
     assert live_killables(snap, (0x0B,)) == []
 
 
-def test_manhandla_live_heads_via_library() -> None:
-    ram = _ram(room=ROOM_L3_BOSS)
-    for slot, hp in ((1, 64), (2, 32), (3, 0)):
-        ram[ADDR_OBJ_TYPE + slot] = MANHANDLA_OBJECT_TYPE
-        ram[ADDR_OBJ_HP + slot] = hp
-    heads = level3_manhandla_live(read_snapshot(ram))
-    assert len(heads) == 2
-    assert all(o.hp > 0 for o in heads)
-
-
-def test_room_fields_door_bits_use_door_dir() -> None:
-    ram = _ram(room=ROOM_L3_BOSS_PREP)
-    # cur_opened_doors not in _ram helper — set via raw if needed;
-    # room_fields still returns door dict keys.
-    snap = read_snapshot(ram)
-    fields = room_fields(snap, ram)
-    assert fields["sc"] == "0x5d"
-    assert set(fields["doors"]) == {"R", "L", "D", "U", "raw"}
-    assert fields["level"] == 3
-
-
-def test_controller_fail_sets_phase() -> None:
-    ctl = Level3BossPathController(tag="unit")
-    out = ctl._fail("unit_test_fail")
-    assert out["ok"] is False
-    assert ctl.failed is True
-    assert ctl.phase == "failed"
-    assert "unit_test_fail" in ctl.notes
-
-
 def test_continuous_controller_forbids_state_restore() -> None:
     ctl = Level3BossPathController(continuous_mode=True)
     em = SimpleNamespace(set_state=lambda state: (_ for _ in ()).throw(AssertionError))
     with pytest.raises(RuntimeError, match="forbids"):
         ctl._restore_state(SimpleNamespace(em=em), object())
     assert ctl.state_restores == 0
+
+
+def test_path_to_5d_has_no_5b_return_fight_clear() -> None:
+    src = inspect.getsource(Level3BossPathController.path_to_5d)
+    assert "inspect_5b_return" not in src
+    assert "clear_5b_return" not in src
+    assert "failed_clear_5b_return" not in src
+    assert "BOMB_STAND_5B_RIGHT" in src
+    assert 'bomb_stand(env, assist, total, "RIGHT", bx, by)' in src

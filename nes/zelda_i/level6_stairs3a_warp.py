@@ -16,6 +16,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.assist import poke_link_position
+from zelda_i.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_BLOCK_3A_ROOM
 from zelda_i.level6_stairs3a import (
@@ -56,18 +57,15 @@ class Stairs3AWarpPhase(Enum):
 
 
 @dataclass
-class Level6Stairs3AWarpController:
+class Level6Stairs3AWarpController(HopController):
     """Live center push, then one (x, y) write onto 0x71. Dest is RAM."""
 
     spec_id: str = "level6_stairs_0x3a_warp"
     room: int = LEVEL6_BLOCK_3A_ROOM
     max_frames: int = STAIRS_3A_WARP_MAX_FRAMES
-    frames: int = 0
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
     phase_frames: int = 0
-    success: bool = False
-    failed: bool = False
     phase: Stairs3AWarpPhase = Stairs3AWarpPhase.PUSH
-    notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
     position_assist: dict[str, Any] | None = None
@@ -84,23 +82,7 @@ class Level6Stairs3AWarpController:
             if note:
                 self.notes.append(note)
 
-    def _fail(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
-        self.failed = True
-        self._set_phase(Stairs3AWarpPhase.FAILED, note)
-        return self._emit(snap, FrameAction(nes_idle_action(), note), force=True)
-
-    def _warped(self, snap: ZeldaSnapshot) -> bool:
-        if snap.level != LEVEL6:
-            return False
-        if snap.mode == PASSAGE_MODE:
-            return True
-        return (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != self.room
-        )
-
-    def _emit(
+    def emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {**l6_leftover(snap), "map": int(snap.map)}
@@ -123,9 +105,32 @@ class Level6Stairs3AWarpController:
             )
         return action
 
+    def mark_fail(self, note: str, reason: str | None = None) -> FrameAction:
+        self._set_phase(Stairs3AWarpPhase.FAILED, note)
+        return super().mark_fail(note, reason)
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if snap.level != LEVEL6:
+            return False
+        if snap.mode == PASSAGE_MODE:
+            return True
+        return (
+            snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen != self.room
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"warped_{snap.mode}_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def mark_done(self, snap: ZeldaSnapshot, note: str | None = None) -> FrameAction:
+        self.done_reason = f"warped_{snap.mode}"
+        self._set_phase(Stairs3AWarpPhase.DONE, note or self.on_arrive(snap))
+        return super().mark_done(snap, note)
+
     def _poke(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.env is None:
-            return self._fail(snap, "no_env_for_position_write")
+            return self.mark_fail("no_env_for_position_write")
         wx, wy = WARP_XY
         self.position_assist = poke_link_position(
             self.env,
@@ -136,85 +141,55 @@ class Level6Stairs3AWarpController:
         )
         n = int(self.position_assist.get("position_writes") or 0)
         if n != 1:
-            return self._fail(snap, "position_write_failed")
+            return self.mark_fail("position_write_failed")
         self._set_phase(
             Stairs3AWarpPhase.IDLE,
             f"poked_{int(snap.link_x)}_{int(snap.link_y)}_to_{wx}_{wy}",
         )
-        return self._emit(
-            snap, FrameAction(nes_idle_action(), "position_write"), force=True
-        )
+        return FrameAction(nes_idle_action(), "position_write")
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            if "timeout" not in self.notes:
-                self.notes.append(
-                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-                    f"_mode={snap.mode}"
-                )
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), "timeout"), force=True
-            )
-        if snap.mode == 17:
-            return self._fail(snap, "link_death")
-        if self._warped(snap):
-            self.success = True
-            self._set_phase(
-                Stairs3AWarpPhase.DONE,
-                f"warped_{snap.mode}_{snap.screen:02x}_{snap.link_x}_{snap.link_y}",
-            )
-            return self._emit(
-                snap,
-                FrameAction(nes_idle_action(), f"warped_{snap.mode}"),
-                force=True,
-            )
-        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7, 10):
-            return FrameAction(nes_idle_action(), "wait_scroll")
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.level != LEVEL6:
-            return self._fail(snap, f"left_level_{snap.level}")
+            return self.mark_fail(f"left_level_{snap.level}")
         if snap.screen != self.room:
-            return self._fail(
-                snap, f"left_0x{self.room:02x}_to_0x{snap.screen:02x}"
+            return self.mark_fail(
+                f"left_0x{self.room:02x}_to_0x{snap.screen:02x}"
             )
         if int(snap.link_x) >= EAST_DOOR_XMIN and int(snap.link_y) in range(
             133, 150
         ):
-            return self._fail(snap, f"east_door_{snap.link_x}_{snap.link_y}")
+            return self.mark_fail(f"east_door_{snap.link_x}_{snap.link_y}")
 
         if self.phase is Stairs3AWarpPhase.PUSH:
             action = self.inner.step(snap)
             if self.inner.failed:
-                return self._fail(
-                    snap, self.inner.notes[-1] if self.inner.notes else "push_fail"
+                return self.mark_fail(
+                    self.inner.notes[-1] if self.inner.notes else "push_fail"
                 )
             if self.inner.phase is Stairs3APhase.ON_HOLE:
                 self._set_phase(Stairs3AWarpPhase.POKE, "center_pushed")
                 return self._poke(snap)
-            return self._emit(snap, action)
+            return action
 
         if self.phase is Stairs3AWarpPhase.POKE:
             return self._poke(snap)
 
         if self.phase is Stairs3AWarpPhase.IDLE:
             if self.phase_frames <= IDLE_AFTER_POKE:
-                return self._emit(
-                    snap, FrameAction(nes_idle_action(), "warp_idle")
-                )
+                return FrameAction(nes_idle_action(), "warp_idle")
             if self.phase_frames > IDLE_AFTER_POKE + UP_AFTER_IDLE:
-                return self._fail(
-                    snap,
-                    f"warp_no_dest_{snap.link_x}_{snap.link_y}_tile_{snap.colliding_tile}",
+                return self.mark_fail(
+                    f"warp_no_dest_{snap.link_x}_{snap.link_y}_tile_{snap.colliding_tile}"
                 )
-            return self._emit(snap, FrameAction(nes_action("UP"), "warp_up"))
+            return FrameAction(nes_action("UP"), "warp_up")
 
-        return self._emit(snap, FrameAction(nes_idle_action(), "failed"), force=True)
+        return FrameAction(nes_idle_action(), "failed")
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.phase_frames += 1
+        return super().step(snap)
 
     def report(self) -> dict[str, Any]:
         return {

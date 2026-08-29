@@ -47,6 +47,7 @@ from zelda_i.level9_ganon import (
 )
 from zelda_i.level9_patra import PATRA_EYE_COUNT, final_patra_live, patra_eyes
 from zelda_i.level9_path import final_patra_to_ganon_step
+from zelda_i.level9_stair_session import _assign, _idle, _step
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -123,37 +124,6 @@ FULL_LOADOUT: tuple[tuple[str, int, int], ...] = (
     ("magic_shield", ADDR_MAGIC_SHIELD, 1),
     ("max_bombs", ADDR_MAX_BOMBS, 16),
 )
-
-
-def _assign(env: Any, address: int, value: int) -> None:
-    env.unwrapped.data.memory.assign(int(address), "|u1", int(value) & 0xFF)
-
-
-def _step(
-    env: Any,
-    action: list[int],
-    *,
-    assist: UnlimitedHealthAssist | None,
-    total: list[int],
-):
-    obs, *_ = env.step(action)
-    total[0] += 1
-    if assist is not None:
-        assist.apply_env(env, frame=total[0])
-    return obs
-
-
-def _idle(
-    env: Any,
-    frames: int,
-    *,
-    assist: UnlimitedHealthAssist | None,
-    total: list[int],
-):
-    obs = None
-    for _ in range(frames):
-        obs = _step(env, nes_idle_action(), assist=assist, total=total)
-    return obs
 
 
 def _fixture_write_rows(

@@ -6,6 +6,7 @@ Coordinate lists are hand-authored from recordings; do not "simplify" hops.
 from typing import Dict, List, Optional, Sequence
 
 from harvest.core.tile_catalog import TILE_SIZE
+from harvest.maps.farm_gate import farm_to_west_gate_waypoints
 from harvest.maps.farm_pond import FARM_TILEMAP_IDS
 from harvest.maps.map_types import Waypoint
 
@@ -89,26 +90,6 @@ def slice_route_from_position(
     # Start one hop earlier so we still approach along the corridor.
     start = max(0, best_i - 1)
     return list(waypoints[start:])
-
-
-def farm_to_west_gate_waypoints(
-    px: int,
-    py: int,
-    tilemap: Optional[int] = None,
-) -> List[Waypoint]:
-    """Farm → path crossroads. South crop field uses the dirt-row corridor."""
-    if tilemap in FARM_TILEMAP_IDS and py >= SOUTH_FIELD_MIN_Y_PX:
-        return list(_FARM_SOUTH_FIELD_TO_WEST_GATE)
-    if (
-        tilemap in FARM_TILEMAP_IDS
-        and py < NORTH_FARM_MAX_Y_PX
-        and px >= EAST_FARM_MIN_X_PX
-    ):
-        # Skip house-south (137,375): NE prefix already joins at (136,392).
-        return densify_waypoints(
-            list(_NORTH_EAST_FARM_TO_HOUSE) + list(_FARM_TO_PATH[1:])
-        )
-    return list(_FARM_TO_PATH)
 
 
 def farm_to_spa_waypoints(

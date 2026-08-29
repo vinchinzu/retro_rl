@@ -786,51 +786,6 @@ for _spec in (
     register_room_spec(_spec)
 
 
-# ---------------------------------------------------------------------------
-# Path controllers re-exported for backward-compatible imports.
-# Canonical home: zelda_i.level2_bomb_path / zelda_i.bomb_wall_path
-# ---------------------------------------------------------------------------
-_PATH_EXPORTS = frozenset({
-    "ADDR_SELECTED_ITEM",
-    "B_ITEM_BOMB",
-    "BOMB_N_MAX_FRAMES",
-    "BOMB_N_STAND",
-    "BOMB_N_STAND_TOL",
-    "BOMB_N_STEP_BACK",
-    "BOMB_N_WAIT_BLAST",
-    "BOOM_BOMB_N_MAX_FRAMES",
-    "BOOM_BOMB_N_STAND",
-    "BombNorth1EPhase",
-    "BombNorthPhase",
-    "BombWallController",
-    "BombWallPhase",
-    "BoomBombNorthPhase",
-    "Level2BombNorth1EController",
-    "Level2BombNorth5FController",
-    "Level2BombNorthController",
-    "Level2BoomBombNorthController",
-    "Level2PostBoomBombNorthController",
-    "PostBoomBombNorthPhase",
-    "make_bomb_north_1e_controller",
-    "make_bomb_north_5f_controller",
-    "make_bomb_north_controller",
-    "make_boom_bomb_north_controller",
-    "make_post_boom_bomb_north_controller",
-})
-
-
-def __getattr__(name: str):
-    if name in _PATH_EXPORTS:
-        from zelda_i import level2_bomb_path as _paths
-
-        return getattr(_paths, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__():
-    return sorted(set(globals()) | set(_PATH_EXPORTS))
-
-
 __all__ = [
     "LEVEL_2",
     "ROOM_L2_ENTRY",
@@ -881,5 +836,4 @@ __all__ = [
     "level2_room_2e_cleared",
     "level2_room_1e_cleared",
     "level2_triforce_bit_02",
-    *sorted(_PATH_EXPORTS),
 ]

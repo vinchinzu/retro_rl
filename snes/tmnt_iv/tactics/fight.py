@@ -1,8 +1,7 @@
 """CombatProfile + fight() seam for Stage1Policy's fight_seq.
 
-Elevated / Raphael Starbase / neon / duo stay here (not pre-tree tactics):
-neon returns drift/wait even with no near-band enemies, and fight_seq only
-runs when living_enemies is true.
+Elevated / Raphael Starbase / Krang poke / duo stay here (not pre-tree
+tactics). Mode-7 empty-lane hold lives in ``tactics.neon``.
 """
 
 from __future__ import annotations
@@ -10,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from retro_harness.actions import buttons, idle_action
+from retro_harness.actions import buttons
 from retro_harness.combat import AttackCadence, PreferredFlank, fight_nearest_action
 from retro_harness.controls import SNES_LEFT, SNES_RIGHT
 from retro_harness.input_script import FrameAction
@@ -18,9 +17,10 @@ from retro_harness.ram_state import GameState
 from tmnt_iv.grind_knobs import active_knobs
 from tmnt_iv.stages import (
     DUO_BOSS_CHARS,
+    KRANG_CHAR,
+    NEON_MIN_FIGHT_Y,
     RAPH_CHAR,
     RAPH_STARBASE_GROUND_CHARS,
-    SEWER_SAFE_WALK_Y,
     WOUNDED_KNEE_JUMP_CHARS,
     is_neon_highway,
     is_prehistoric,
@@ -28,7 +28,9 @@ from tmnt_iv.stages import (
     is_starbase,
     is_wounded_knee,
 )
+from tmnt_iv.tactics.neon import NeonLaneTactics
 from tmnt_iv.tactics.raph_air import raph_starbase_jump_action
+from tmnt_iv.tactics.slash import SLASH_CHAR
 
 # Screen coords: UP decreases Y (probe-confirmed). Do NOT invert.
 _Y_TOLERANCE = 8
@@ -111,12 +113,9 @@ _LEFT_THREAT_X = 80
 
 # Starbase: hover Foot / teleporter spawns / stack tops whiff grounded Y.
 _STARBASE_JUMP_CHARS: frozenset[int] = frozenset({0x6A, 0x6C, 0xB0, 0xB2, 0xB4, 0xF2})
-# Mode-7: enemies approach in depth (rising Y). Player Y clamps ~160–213;
-# chasing far slots (y≪player) only burns frames. Fight the near band.
-_NEON_MIN_FIGHT_Y = 140
+# Mode-7 poke band. Near-band Y / Krang id live in stages.py (NeonLane).
 _NEON_Y_TOLERANCE = 48
 _NEON_ATTACK_RANGE = 68
-_KRANG_CHAR = 0x4E
 _KRANG_LEFT_STANDOFF = 36
 _SHREDDER_F1_ATTACK_RANGE = 72
 _SHREDDER_F1_Y_TOLERANCE = 8
@@ -125,7 +124,6 @@ _SHREDDER_F1_Y_TOLERANCE = 8
 # beat-'em-up lock.  Pink Foot / tank throw live in ``tactics.technodrome``.
 _TECHNODROME_STAGE = 3
 _TECHNODROME_JUMP_CHARS: frozenset[int] = frozenset({0x6A})
-_SLASH_CHAR = 0x50
 # General elevated jump: only true air / high platforms — ordinary lane
 # offsets (~20–40px) still use walk-align + grounded Y.
 _ELEVATED_JUMP_DY = 44
@@ -163,9 +161,8 @@ def _keep_sewer_pace(state: GameState, action: FrameAction) -> FrameAction:
 
     Continuous B+RIGHT at the left wall soft-locks x≈24 (jump thrash).
     Prefer grounded RIGHT until mid-screen; hop only in the 56–80 band.
-
-    Rat King Clean: py≲140 is the 10-dmg chip band. When fighting the
-    Footski, drop into the water lane before resuming the long poke.
+    Empty-screen drop-lane lives in ``PlayerXStallWalk`` (fight_seq is
+    living-enemies only).
     """
     if not is_sewer(state):
         return action
@@ -175,14 +172,6 @@ def _keep_sewer_pace(state: GameState, action: FrameAction) -> FrameAction:
             # Grounded run — continuous jump freezes recovery on the wall.
             return FrameAction(action=buttons("RIGHT"), reason="boss_run_right")
         return FrameAction(action=buttons("B", "RIGHT"), reason="boss_jump_right")
-    # Between waves: if still high after combat, drop before the next spike column.
-    if (
-        not state.living_enemies
-        and not state.boss_active
-        and state.player_y < SEWER_SAFE_WALK_Y
-        and action.reason in {"walk_right", "walk"}
-    ):
-        return FrameAction(action=buttons("DOWN", "RIGHT"), reason="sewer_drop_lane")
     held = list(action.action)
     # Spacing LEFT is intentional poke-retreat — do not force RIGHT.
     if held[SNES_LEFT] and action.reason in {
@@ -204,7 +193,7 @@ def _neon_combat_state(state: GameState) -> GameState:
         if (
             e.active
             and e.health > 0
-            and (e.kind == _KRANG_CHAR or e.y >= _NEON_MIN_FIGHT_Y)
+            and (e.kind == KRANG_CHAR or e.y >= NEON_MIN_FIGHT_Y)
         )
         else replace(e, active=False, health=0)
         for e in combat.enemies
@@ -280,26 +269,22 @@ def _duo_boss_fight_action(
 
 
 def _neon_fight_action(state: GameState) -> FrameAction | None:
-    """Mode-7 lane wait / lateral match, or left-flank Krang poke.
+    """Left-flank Krang poke on the Mode-7 near band.
 
-    Returns ``None`` when the shared ``fight_nearest_action`` path should
-    run on the filtered neon combat state.
+    Lane hold is ``NeonLaneTactics`` (same object as empty-screen walk).
+    Returns ``None`` when the shared ``fight_nearest_action`` path should run.
     """
     if not is_neon_highway(state):
         return None
     near = [
         e
         for e in state.living_enemies
-        if e.kind == _KRANG_CHAR or e.y >= _NEON_MIN_FIGHT_Y
+        if e.kind == KRANG_CHAR or e.y >= NEON_MIN_FIGHT_Y
     ]
     if not near:
-        if state.player_x < 90:
-            return FrameAction(action=buttons("RIGHT"), reason="neon_drift_right")
-        if state.player_x > 180:
-            return FrameAction(action=buttons("LEFT"), reason="neon_drift_left")
-        return FrameAction(action=idle_action(), reason="neon_wait")
-    if state.boss_active or any(e.kind == _KRANG_CHAR for e in near):
-        krang = next((e for e in near if e.kind == _KRANG_CHAR), near[0])
+        return NeonLaneTactics().next(state)
+    if state.boss_active or any(e.kind == KRANG_CHAR for e in near):
+        krang = next((e for e in near if e.kind == KRANG_CHAR), near[0])
         target_x = krang.x - _KRANG_LEFT_STANDOFF
         dx = target_x - state.player_x
         dy = krang.y - state.player_y
@@ -336,7 +321,7 @@ def _suppress_elevated_jump(state: GameState) -> bool:
         return True
     if state.stage == 9:
         return True
-    if any(e.kind == _SLASH_CHAR for e in state.living_enemies):
+    if any(e.kind == SLASH_CHAR for e in state.living_enemies):
         return True
     return False
 
@@ -376,6 +361,148 @@ def _elevated_jump_slash(state: GameState) -> FrameAction | None:
         action=buttons("B", "Y", *toward),
         reason="jump_slash",
     )
+
+
+@dataclass(frozen=True)
+class _PokeRow:
+    """Six poke-band fields + flank. ``None`` means overlay live knobs."""
+
+    y_tolerance: int
+    attack_range: int | None
+    min_range: int | None
+    standoff: int | None
+    hold_frames: int | None
+    gap_frames: int | None
+    flank: PreferredFlank
+
+
+_DUO_ROW = _PokeRow(_Y_TOLERANCE, 70, 12, 36, _BOSS_ATTACK_HOLD, _BOSS_ATTACK_GAP, PreferredFlank.LEFT)
+_SHREDDER_ROW = _PokeRow(
+    _SHREDDER_F1_Y_TOLERANCE,
+    _SHREDDER_F1_ATTACK_RANGE,
+    10,
+    28,
+    _BOSS_ATTACK_HOLD,
+    _BOSS_ATTACK_GAP,
+    PreferredFlank.NONE,
+)
+_NEON_ROW = _PokeRow(_NEON_Y_TOLERANCE, _NEON_ATTACK_RANGE, None, None, None, None, PreferredFlank.NONE)
+_ALLEY_ROW = _PokeRow(
+    _ALLEY_Y_TOLERANCE,
+    _ALLEY_ATTACK_RANGE,
+    _ALLEY_MIN_RANGE,
+    _ALLEY_STANDOFF,
+    _ALLEY_ATTACK_HOLD,
+    _ALLEY_ATTACK_GAP,
+    _ALLEY_PREFERRED_FLANK,
+)
+_STAGE0_ROW = _PokeRow(
+    _Y_TOLERANCE,
+    _STAGE1_ATTACK_RANGE,
+    _STAGE1_MIN_RANGE,
+    _STAGE1_STANDOFF,
+    _STAGE1_ATTACK_HOLD,
+    _STAGE1_ATTACK_GAP,
+    PreferredFlank.NONE,
+)
+_LATE_ROW = _PokeRow(
+    _Y_TOLERANCE,
+    _ATTACK_RANGE,
+    _MIN_RANGE,
+    _STANDOFF,
+    _LATE_ATTACK_HOLD,
+    _LATE_ATTACK_GAP,
+    PreferredFlank.NONE,
+)
+
+# Keyed by (stage byte, boss_active). Miss → knobs + _Y_TOLERANCE.
+_POKE_TABLE: dict[tuple[int, bool], _PokeRow] = {
+    (2, True): _PokeRow(
+        _RAT_KING_Y_TOLERANCE,
+        _RAT_KING_ATTACK_RANGE,
+        _RAT_KING_MIN_RANGE,
+        _RAT_KING_STANDOFF,
+        _RAT_KING_ATTACK_HOLD,
+        _RAT_KING_ATTACK_GAP,
+        PreferredFlank.NONE,
+    ),
+    (3, True): _DUO_ROW,
+    (5, True): _DUO_ROW,
+    (4, True): _PokeRow(_Y_TOLERANCE, 72, 10, 28, _BOSS_ATTACK_HOLD, _BOSS_ATTACK_GAP, PreferredFlank.NONE),
+    (8, True): _SHREDDER_ROW,
+    (9, True): _SHREDDER_ROW,
+    (7, False): _NEON_ROW,
+    (7, True): _NEON_ROW,
+    (2, False): _PokeRow(
+        _SEWER_Y_TOLERANCE,
+        _SEWER_ATTACK_RANGE,
+        _SEWER_MIN_RANGE,
+        _SEWER_STANDOFF,
+        _SEWER_ATTACK_HOLD,
+        _SEWER_ATTACK_GAP,
+        PreferredFlank.NONE,
+    ),
+    (1, False): _ALLEY_ROW,
+    (1, True): _ALLEY_ROW,
+    (0, False): _STAGE0_ROW,
+    (0, True): _STAGE0_ROW,
+    (5, False): _LATE_ROW,
+    (6, False): _LATE_ROW,
+    (6, True): _LATE_ROW,
+}
+
+
+def _poke_fields(
+    state: GameState,
+) -> tuple[int, int, int, int, int, int, PreferredFlank]:
+    """Table poke-band plus knobs / Raphael Leatherhead gap overlays."""
+    row = _POKE_TABLE.get((state.stage, bool(state.boss_active)))
+    if row is None:
+        attack_range, min_range, standoff, hold, gap = _combat_knobs()
+        y_tol = _Y_TOLERANCE
+        flank = PreferredFlank.NONE
+    else:
+        knobs = _combat_knobs()
+        y_tol = row.y_tolerance
+        attack_range = knobs[0] if row.attack_range is None else row.attack_range
+        min_range = knobs[1] if row.min_range is None else row.min_range
+        standoff = knobs[2] if row.standoff is None else row.standoff
+        hold = knobs[3] if row.hold_frames is None else row.hold_frames
+        gap = knobs[4] if row.gap_frames is None else row.gap_frames
+        flank = row.flank
+    if (
+        state.stage == 6
+        and int(state.extras.get("char_id", -1)) == RAPH_CHAR
+    ):
+        gap = (
+            _RAPH_LEATHERHEAD_ATTACK_GAP
+            if state.boss_active
+            else _RAPH_WOUNDED_ATTACK_GAP
+        )
+    return y_tol, attack_range, min_range, standoff, hold, gap, flank
+
+
+def _jump_kinds(state: GameState) -> frozenset[int]:
+    """Wave-only jump-slash kinds (empty during bosses)."""
+    if state.boss_active:
+        return frozenset()
+    if is_prehistoric(state):
+        return frozenset({0x6C})
+    if state.stage == _TECHNODROME_STAGE:
+        return _TECHNODROME_JUMP_CHARS
+    if is_wounded_knee(state):
+        return WOUNDED_KNEE_JUMP_CHARS
+    if is_starbase(state):
+        raph_ground = (
+            int(state.extras.get("char_id", -1)) == RAPH_CHAR
+            and any(
+                e.kind in RAPH_STARBASE_GROUND_CHARS
+                for e in state.living_enemies
+            )
+        )
+        if not raph_ground:
+            return _STARBASE_JUMP_CHARS
+    return frozenset()
 
 
 @dataclass(frozen=True)
@@ -430,139 +557,43 @@ class CombatProfile:
     @classmethod
     def from_state(cls, state: GameState) -> CombatProfile:
         """Build the per-stage poke-band for this frame."""
-        return _combat_profile(state)
-
-
-def _combat_profile(state: GameState) -> CombatProfile:
-    technodrome_boss = state.boss_active and state.stage == 3
-    prehistoric_boss = state.boss_active and is_prehistoric(state)
-    pirate_boss = state.boss_active and state.stage == 5
-    neon_boss = state.boss_active and is_neon_highway(state)
-    shredder_boss = state.boss_active and is_starbase(state)
-    if technodrome_boss or pirate_boss:
-        combat_state = _duo_boss_combat_state
-    elif is_neon_highway(state):
-        combat_state = _neon_combat_state
-    else:
-        combat_state = _sewer_combat_state
-    far_park = any(e.x > _CAMERA_RIGHT_MARGIN + 24 for e in state.living_enemies)
-    wide_right = (
-        far_park
-        or (state.boss_active and state.stage == 0)
-        or is_sewer(state)
-        or technodrome_boss
-        or prehistoric_boss
-        or pirate_boss
-        or neon_boss
-        or shredder_boss
-        or is_neon_highway(state)
-        or is_starbase(state)
-    )
-    jump_kinds: frozenset[int] = frozenset()
-    if not state.boss_active:
-        if is_prehistoric(state):
-            jump_kinds = frozenset({0x6C})
-        elif state.stage == _TECHNODROME_STAGE:
-            jump_kinds = _TECHNODROME_JUMP_CHARS
-        elif is_wounded_knee(state):
-            jump_kinds = WOUNDED_KNEE_JUMP_CHARS
-        elif is_starbase(state):
-            raph_ground = (
-                int(state.extras.get("char_id", -1)) == RAPH_CHAR
-                and any(
-                    e.kind in RAPH_STARBASE_GROUND_CHARS
-                    for e in state.living_enemies
-                )
-            )
-            if not raph_ground:
-                jump_kinds = _STARBASE_JUMP_CHARS
-    if state.boss_active and is_sewer(state):
-        y_tol = _RAT_KING_Y_TOLERANCE
-        attack_range = _RAT_KING_ATTACK_RANGE
-        min_range = _RAT_KING_MIN_RANGE
-        standoff = _RAT_KING_STANDOFF
-        hold = _RAT_KING_ATTACK_HOLD
-        gap = _RAT_KING_ATTACK_GAP
-        flank = PreferredFlank.NONE
-    elif technodrome_boss or pirate_boss:
-        y_tol = _Y_TOLERANCE
-        attack_range = 70
-        min_range = 12
-        standoff = 36
-        hold = _BOSS_ATTACK_HOLD
-        gap = _BOSS_ATTACK_GAP
-        flank = PreferredFlank.LEFT
-    elif prehistoric_boss or shredder_boss:
-        y_tol = _SHREDDER_F1_Y_TOLERANCE if shredder_boss else _Y_TOLERANCE
-        attack_range = _SHREDDER_F1_ATTACK_RANGE if shredder_boss else 72
-        min_range = 10
-        standoff = 28
-        hold = _BOSS_ATTACK_HOLD
-        gap = _BOSS_ATTACK_GAP
-        flank = PreferredFlank.NONE
-    elif is_neon_highway(state):
-        y_tol = _NEON_Y_TOLERANCE
-        attack_range = _NEON_ATTACK_RANGE
-        _, min_range, standoff, hold, gap = _combat_knobs()
-        flank = PreferredFlank.NONE
-    elif is_sewer(state):
-        y_tol = _SEWER_Y_TOLERANCE
-        attack_range = _SEWER_ATTACK_RANGE
-        min_range = _SEWER_MIN_RANGE
-        standoff = _SEWER_STANDOFF
-        hold = _SEWER_ATTACK_HOLD
-        gap = _SEWER_ATTACK_GAP
-        flank = PreferredFlank.NONE
-    elif state.stage == 1:
-        y_tol = _ALLEY_Y_TOLERANCE
-        attack_range = _ALLEY_ATTACK_RANGE
-        min_range = _ALLEY_MIN_RANGE
-        standoff = _ALLEY_STANDOFF
-        hold = _ALLEY_ATTACK_HOLD
-        gap = _ALLEY_ATTACK_GAP
-        flank = _ALLEY_PREFERRED_FLANK
-    elif state.stage == 0:
-        y_tol = _Y_TOLERANCE
-        attack_range = _STAGE1_ATTACK_RANGE
-        min_range = _STAGE1_MIN_RANGE
-        standoff = _STAGE1_STANDOFF
-        hold = _STAGE1_ATTACK_HOLD
-        gap = _STAGE1_ATTACK_GAP
-        flank = PreferredFlank.NONE
-    elif state.stage in {5, 6}:
-        y_tol = _Y_TOLERANCE
-        attack_range = _ATTACK_RANGE
-        min_range = _MIN_RANGE
-        standoff = _STANDOFF
-        hold = _LATE_ATTACK_HOLD
-        if (
-            state.stage == 6
-            and int(state.extras.get("char_id", -1)) == RAPH_CHAR
-        ):
-            gap = (
-                _RAPH_LEATHERHEAD_ATTACK_GAP
-                if state.boss_active
-                else _RAPH_WOUNDED_ATTACK_GAP
-            )
+        technodrome_boss = state.boss_active and state.stage == 3
+        prehistoric_boss = state.boss_active and is_prehistoric(state)
+        pirate_boss = state.boss_active and state.stage == 5
+        neon_boss = state.boss_active and is_neon_highway(state)
+        shredder_boss = state.boss_active and is_starbase(state)
+        if technodrome_boss or pirate_boss:
+            combat_state = _duo_boss_combat_state
+        elif is_neon_highway(state):
+            combat_state = _neon_combat_state
         else:
-            gap = _LATE_ATTACK_GAP
-        flank = PreferredFlank.NONE
-    else:
-        y_tol = _Y_TOLERANCE
-        attack_range, min_range, standoff, hold, gap = _combat_knobs()
-        flank = PreferredFlank.NONE
-    return CombatProfile(
-        y_tolerance=y_tol,
-        attack_range=attack_range,
-        min_range=min_range,
-        standoff=standoff,
-        hold_frames=hold,
-        gap_frames=gap,
-        flank=flank,
-        combat_state=combat_state,
-        wide_right_margin=wide_right,
-        jump_kinds=jump_kinds,
-    )
+            combat_state = _sewer_combat_state
+        far_park = any(e.x > _CAMERA_RIGHT_MARGIN + 24 for e in state.living_enemies)
+        wide_right = (
+            far_park
+            or (state.boss_active and state.stage == 0)
+            or is_sewer(state)
+            or technodrome_boss
+            or prehistoric_boss
+            or pirate_boss
+            or neon_boss
+            or shredder_boss
+            or is_neon_highway(state)
+            or is_starbase(state)
+        )
+        y_tol, attack_range, min_range, standoff, hold, gap, flank = _poke_fields(state)
+        return cls(
+            y_tolerance=y_tol,
+            attack_range=attack_range,
+            min_range=min_range,
+            standoff=standoff,
+            hold_frames=hold,
+            gap_frames=gap,
+            flank=flank,
+            combat_state=combat_state,
+            wide_right_margin=wide_right,
+            jump_kinds=_jump_kinds(state),
+        )
 
 
 def fight(state: GameState, cadence: AttackCadence) -> FrameAction:

@@ -1,0 +1,312 @@
+{
+  "slice": "hero_bubbleroom_full",
+  "skill": "arm_pump",
+  "window": {
+    "start": 3,
+    "end": 23
+  },
+  "state": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/room_acb3_from_b07a.state",
+  "start": {
+    "room": "0xACB3",
+    "pose": 2,
+    "x": 448,
+    "y": 121,
+    "facing": 4,
+    "game_state": 8,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY"
+  },
+  "claim": "room stays 0xACB3; x does not move against LEFT",
+  "assist": "off",
+  "played": 20,
+  "timing": {
+    "frames": 20,
+    "seconds": 0.333,
+    "clock": "00:00.33",
+    "ntsc_fps": 60.0988
+  },
+  "miss": null,
+  "final": {
+    "room": "0xACB3",
+    "pose": 42,
+    "x": 419,
+    "y": 139,
+    "facing": 4,
+    "game_state": 8,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY"
+  },
+  "grades": [
+    {
+      "i": 0,
+      "movie_frame": 3,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 446,
+      "y": 121,
+      "pose": 18,
+      "hit": true
+    },
+    {
+      "i": 1,
+      "movie_frame": 4,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 445,
+      "y": 123,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 2,
+      "movie_frame": 5,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 443,
+      "y": 123,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 3,
+      "movie_frame": 6,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 442,
+      "y": 123,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 4,
+      "movie_frame": 7,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 440,
+      "y": 123,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 5,
+      "movie_frame": 8,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 439,
+      "y": 123,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 6,
+      "movie_frame": 9,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 437,
+      "y": 124,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 7,
+      "movie_frame": 10,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 436,
+      "y": 124,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 8,
+      "movie_frame": 11,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 434,
+      "y": 125,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 9,
+      "movie_frame": 12,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 433,
+      "y": 126,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 10,
+      "movie_frame": 13,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 432,
+      "y": 126,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 11,
+      "movie_frame": 14,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 430,
+      "y": 127,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 12,
+      "movie_frame": 15,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 429,
+      "y": 129,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 13,
+      "movie_frame": 16,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 428,
+      "y": 130,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 14,
+      "movie_frame": 17,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 426,
+      "y": 131,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 15,
+      "movie_frame": 18,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 425,
+      "y": 132,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 16,
+      "movie_frame": 19,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 423,
+      "y": 134,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 17,
+      "movie_frame": 20,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 422,
+      "y": 136,
+      "pose": 42,
+      "hit": true
+    },
+    {
+      "i": 18,
+      "movie_frame": 21,
+      "buttons": [
+        "B",
+        "LEFT",
+        "L"
+      ],
+      "room": "0xACB3",
+      "x": 420,
+      "y": 137,
+      "pose": 112,
+      "hit": true
+    },
+    {
+      "i": 19,
+      "movie_frame": 22,
+      "buttons": [
+        "B",
+        "LEFT"
+      ],
+      "room": "0xACB3",
+      "x": 419,
+      "y": 139,
+      "pose": 42,
+      "hit": true
+    }
+  ],
+  "status": "hit"
+}

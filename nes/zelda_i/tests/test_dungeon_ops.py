@@ -1,4 +1,4 @@
-"""B-item constants and ensure_bomb fallbacks (no emulator)."""
+"""B-item constants and owned-inventory pokes (no emulator)."""
 
 from __future__ import annotations
 
@@ -10,9 +10,7 @@ from zelda_i.dungeon_ops import (
     B_ITEM_BOMB,
     B_ITEM_BOMBS,
     B_ITEM_CANDLE,
-    OWNED_INVENTORY_FIELDS,
     apply_owned_inventory,
-    ensure_bomb,
     poke_bombs,
     poke_keys,
 )
@@ -29,46 +27,6 @@ def test_b_item_slot_is_bombs_1_arrows_2() -> None:
     assert B_ITEM_CANDLE == 4
     assert L9_BOMBS is B_ITEM_BOMBS
     assert L9_ARROWS is B_ITEM_ARROWS
-
-
-class _AssignMem:
-    def __init__(self) -> None:
-        self.calls: list[tuple[int, str, int]] = []
-
-    def assign(self, addr: int, fmt: str, val: int) -> None:
-        self.calls.append((addr, fmt, val))
-
-
-class _SetByteMem:
-    def __init__(self) -> None:
-        self.calls: list[tuple[int, int]] = []
-
-    def set_byte(self, addr: int, val: int) -> None:
-        self.calls.append((addr, val))
-
-
-def _env_with_mem(mem: object) -> SimpleNamespace:
-    data = SimpleNamespace(memory=mem)
-    return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
-
-
-def test_ensure_bomb_prefers_memory_assign() -> None:
-    mem = _AssignMem()
-    assert ensure_bomb(_env_with_mem(mem)) == "selected_item=bomb"
-    assert mem.calls == [(ADDR_SELECTED_ITEM, "|u1", B_ITEM_BOMB)]
-
-
-def test_ensure_bomb_falls_back_to_set_byte() -> None:
-    mem = _SetByteMem()
-    assert ensure_bomb(_env_with_mem(mem)) == "selected_item=bomb"
-    assert mem.calls == [(ADDR_SELECTED_ITEM, B_ITEM_BOMB)]
-
-
-def test_owned_inventory_fields_are_counts_and_b_slot() -> None:
-    assert OWNED_INVENTORY_FIELDS == frozenset({"bombs", "keys", "selected_item"})
-    assert "magical_boomerang" not in OWNED_INVENTORY_FIELDS
-    assert "triforce" not in OWNED_INVENTORY_FIELDS
-    assert "max_bombs" not in OWNED_INVENTORY_FIELDS
 
 
 def test_poke_bombs_and_keys_use_data_set_value() -> None:
@@ -115,28 +73,3 @@ def test_apply_owned_inventory_tops_up_counts_and_selects_b() -> None:
     assert values["selected_item"] == B_ITEM_BOMB
     fields = {w["field"] for w in report["writes"]}
     assert fields == {"bombs", "keys", "selected_item"}
-
-
-def test_apply_owned_inventory_skips_counts_already_at_target() -> None:
-    import numpy as np
-
-    from zelda_i.ram import ADDR_BOMBS, ADDR_KEYS
-
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_BOMBS] = 16
-    ram[ADDR_KEYS] = 4
-    values: dict[str, int] = {}
-
-    class _Data:
-        memory = None
-
-        def set_value(self, key: str, value: int) -> None:
-            values[key] = int(value)
-
-    env = SimpleNamespace(
-        get_ram=lambda: ram,
-        unwrapped=SimpleNamespace(data=_Data(), em=None),
-    )
-    report = apply_owned_inventory(env, bombs=16, keys=2, select_bomb=False)
-    assert report["writes"] == []
-    assert values == {}

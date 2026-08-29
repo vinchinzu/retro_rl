@@ -58,7 +58,6 @@ from zelda_i.level4_dungeon import (
     BOMB_21_NORTH_FACE,
     BOMB_21_NORTH_STAND,
     GEL_OBJECT_TYPE,
-    PATH_12_TO_GLEEOK,
     ROOM_L4_GLEEOK_13,
     ROOM_L4_MAP_21,
     ROOM_L4_MID_11,
@@ -67,6 +66,7 @@ from zelda_i.level4_dungeon import (
     level4_map_success,
     level4_room_12_cleared,
 )
+from zelda_i.level4_maze_path import PATH_12_TO_GLEEOK
 from zelda_i.level4_overworld import LEVEL4
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_LADDER, PLAY_MODE, read_snapshot, read_u8

@@ -26,6 +26,8 @@ from retro_harness.segment_runner import (
 from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
+)
+from zelda_i.level2_dungeon import (
     ROOM_6C_SPEC,
     ROOM_6D_SPEC,
     level2_room_6c_key_success,

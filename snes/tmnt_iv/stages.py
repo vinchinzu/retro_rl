@@ -23,6 +23,10 @@ DUO_BOSS_CHARS: frozenset[int] = frozenset({0x48, 0xA0, 0xA8, 0xAC})
 RAPH_STARBASE_GROUND_CHARS: frozenset[int] = frozenset({0xB2, 0xB4})
 # Hover / stack tops the Starbase jump-kick must close.
 RAPH_STARBASE_CLOSE_CHARS: frozenset[int] = frozenset({0x6A, 0xB0, 0xBA})
+# Mode-7: enemies approach in depth (rising Y). Player Y clamps ~160–213;
+# fight the near band (y >= this) or Krang. Shared by NeonLane + fight().
+NEON_MIN_FIGHT_Y = 140
+KRANG_CHAR = 0x4E
 
 
 def is_sewer(state: GameState) -> bool:

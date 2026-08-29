@@ -111,7 +111,7 @@ def play_phantoon_loot_exit(session: ControllerSession) -> SuperMetroidState:
 
 
 def _collect_loot(session: ControllerSession, label: str) -> None:
-    from super_metroid.combat.spore_spawn import list_pickups
+    from super_metroid.combat.primitives import list_pickups
 
     swept = False
     for _ in range(360):

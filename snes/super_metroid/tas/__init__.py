@@ -1,8 +1,9 @@
 """Super Metroid TAS movie import + harness replay/annotate.
 
-Parse lsnes ``.lsmv`` and BizHawk ``.bk2`` movies into SNES-12 env frames,
-compress to ``snes12_rle`` seeds, export named slices, and replay under
-stable-retro with WRAM annotation (pose / x,y / velocity / rooms / items).
+Parse lsnes ``.lsmv``, BizHawk ``.bk2``, and Snes9x ``.smv`` movies into
+SNES-12 env frames, compress to ``snes12_rle`` seeds, export named slices,
+and replay under stable-retro with WRAM annotation (pose / x,y / velocity /
+rooms / items).
 
 Ref movies live under ``tas/ref/`` (HappyLee-style vendored inputs).
 

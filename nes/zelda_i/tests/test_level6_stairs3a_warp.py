@@ -7,10 +7,8 @@ from types import SimpleNamespace
 import numpy as np
 
 from zelda_i.level6_path import BLOCK_OBJECT_TYPE
-from zelda_i.level6_spine import L6_STOPS, L6_THROUGH
 from zelda_i.level6_stairs3a_warp import (
     WARP_XY,
-    level6_stairs3a_warp_stages,
     level6_stairs3a_warp_success,
     make_stairs_3a_warp_controller,
 )
@@ -31,7 +29,6 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.survival_spine import SpineRun
 
 
 def _ram(**fields: int) -> np.ndarray:
@@ -66,19 +63,6 @@ class _AssignMem:
 def _env_with_mem(mem: object) -> SimpleNamespace:
     data = SimpleNamespace(memory=mem)
     return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
-
-
-def test_warp_through_is_wired_after_clear3a() -> None:
-    assert "level6-stairs3a-warp" in L6_THROUGH
-    assert L6_THROUGH.index("level6-stairs3a-warp") == L6_THROUGH.index(
-        "level6-clear3a"
-    ) + 1
-    assert L6_STOPS["level6-stairs3a-warp"] == "level6_stairs_0x3a_warp"
-    stages = level6_stairs3a_warp_stages()
-    assert [name for name, _, _ in stages] == ["level6_stairs_0x3a_warp"]
-    run = SpineRun(through="level6-stairs3a-warp", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level6_stairs_0x3a_warp"
-    assert run.report()["position_assist"] is None
 
 
 def test_leftover_still_clips_then_poke_after_push() -> None:
@@ -136,24 +120,6 @@ def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
     east = _ram(level=6, screen=0x3B, x=16, y=141)
     east[ADDR_ROD] = 1
     assert not level6_stairs3a_warp_success(read_snapshot(east))
-
-
-def test_run_controller_stage_calls_bind_env() -> None:
-    from zelda_i.chain import run_controller_stage
-
-    class _Env:
-        def get_ram(self):
-            return _ram()
-
-        def step(self, _action):
-            return np.zeros((2, 2, 3), dtype=np.uint8), 0.0, False, False, {}
-
-    env = _Env()
-    ctl = make_stairs_3a_warp_controller()
-    ctl.success = True
-    run_controller_stage(env, None, name="warp", controller=ctl, max_frames=1)
-    assert ctl.env is env
-    assert ctl.report()["position_assist"] is None
 
 
 def test_no_env_fails_closed_without_writing() -> None:

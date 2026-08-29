@@ -9,7 +9,7 @@ Clean M5 stays on ``run_level1_complete`` without ``--infinite-life``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from zelda_i.chain import (
     ControllerStageResult,
@@ -21,7 +21,12 @@ from zelda_i.level1_bow_cellar import (
     level1_bow_cellar_stages,
     level1_bow_cellar_success,
 )
-from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT, level1_triforce_stages
+from zelda_i.level1_bow_pickup import (
+    level1_bow_pickup_stages,
+    level1_bow_pickup_success,
+    level1_survival_tf_stages,
+)
+from zelda_i.level1_finish import LEVEL1_TRIFORCE_BIT
 from zelda_i.level2_overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
     SETTLE_MAX_FRAMES,
@@ -37,23 +42,11 @@ from zelda_i.level2_tf_spine import (
     level2_tf_stages,
     level2_through_success,
 )
-from zelda_i.level3_spine import (
-    level3_compass_stages,
-    level3_compass_success,
-    level3_west_darknuts_stages,
-    level3_west_darknuts_success,
-    level3_south_darknuts_stages,
-    level3_south_darknuts_success,
-    level3_raft_stages,
-    level3_raft_success,
-    level3_dest_6b_stages,
-    level3_dest_6b_success,
-    level3_entry_stages,
-    level3_entry_success,
-)
+from zelda_i.level3_spine import l3_hops
 from zelda_i.level3_bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3_boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
 from zelda_i.level3_dungeon import LEVEL3_TRIFORCE_BIT
+from zelda_i.level4_spine import L4_STOPS, continue_level4_spine
 from zelda_i.level5_spine import (
     L5_STOPS,
     L5_THROUGH,
@@ -61,50 +54,9 @@ from zelda_i.level5_spine import (
     validate_l5_endpoint,
 )
 from zelda_i.level6_spine import L6_STOPS, L6_THROUGH, continue_level6_spine
-from zelda_i.level4_spine import (
-    L4_STOPS,
-    continue_level4_spine,
-    level4_bomb11_stages,
-    level4_bomb11_success,
-    level4_key01_stages,
-    level4_key01_success,
-    level4_clear12_stages,
-    level4_clear12_success,
-    attach_level4_tf_suffix,
-    level4_gleeok13_stages,
-    level4_gleeok13_success,
-    level4_clear_31_stages,
-    level4_clear_31_success,
-    level4_clear_32_stages,
-    level4_clear_32_success,
-    level4_east_32_stages,
-    level4_east_32_success,
-    level4_entry_stages,
-    level4_exit60_stages,
-    level4_exit60_success,
-    level4_first_key_stages,
-    level4_first_key_success,
-    level4_key_right_31_stages,
-    level4_key_right_31_success,
-    level4_keyup20_stages,
-    level4_keyup20_success,
-    level4_map21_stages,
-    level4_map21_success,
-    level4_mappick_stages,
-    level4_mappick_success,
-    level4_north_30_stages,
-    level4_north_30_success,
-    level4_room40_key_stages,
-    level4_room40_key_success,
-    level4_room50_stages,
-    level4_room50_success,
-    level4_stepladder_stages,
-    level4_stepladder_success,
-    level4_west31_stages,
-    level4_west31_success,
-)
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.spine_hops import SpineHop, attach_hops
 
 BOOT_POLICY = {
     "file_slot": BOOT_FILE_SLOT,
@@ -113,106 +65,16 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
-Through = Literal[
-    "level1", "level1-bow", "level1-bow-cellar", "level2", "level3", "level4-entry", "level4-key",
-    "level4-clear50",
-    "level4-room40-key",
-    "level4-room30",
-    "level4-room31",
-    "level4-clear31",
-    "level4-room32",
-    "level4-clear32",
-    "level4-stepladder",
-    "level4-exit60",
-    "level4-west31",
-    "level4-keyup20",
-    "level4-room21",
-    "level4-map",
-    "level4-bomb11",
-    "level4-key01",
-    "level4-clear12",
-    "level4-gleeok13",
-    "level4",
-    "level5-entry",
-    "level5-clear66",
-    "level5-east77",
-    "level5-whistle",
-    "level5-exit04",
-    "level5",
-    "level6-entry",
-    "level6-east-key",
-    "level6-west",
-    "level6-compass",
-    "level6-clear68",
-    "level6-keese",
-    "level6-clear58",
-    "level6-room48",
-    "level6-room38",
-    "level6-clear38",
-    "level6-room28",
-    "level6-clear28",
-    "level6-room18",
-    "level6-settle18",
-    "level6-gleeok18",
-    "level6-postgleeok18",
-    "level6-stairs18",
-    "level6-room19",
-    "level6-clear19",
-    "level6-map19",
-    "level6-room09",
-    "level6-clear09",
-    "level6-stairs09",
-    "level6-rod",
-    "level6-exit75",
-    "level6-south09",
-    "level6-south19",
-    "level6-clear29",
-    "level6-east29",
-    "level6-south29",
-    "level6-settle39",
-    "level6-clear39",
-    "level6-east39",
-    "level6-settle3a",
-    "level6-clear3a",
-    "level6-stairs3a-warp",
-    "level6-cellar08",
-    "level6-south1d",
-    "level6-west2d",
-    "level6-north2c",
-    "level6-east3a",
-    "level6-north39",
-    "level6-inland29",
-    "level6-west19",
-    "level6-south18",
-]
-
-SPINE_THROUGH: tuple[Through, ...] = (
+_L4_THROUGH = tuple(k for k in L4_STOPS if k != "level4") + ("level4",)
+SPINE_THROUGH: tuple[str, ...] = (
     "level1",
     "level1-bow",
     "level1-bow-cellar",
+    "level1-bow-pickup",
+    "level2-entry",
     "level2",
     "level3",
-    "level4-entry",
-    "level4-key",
-    "level4-clear50",
-    "level4-room40-key",
-    "level4-room30",
-    "level4-room31",
-    "level4-clear31",
-    "level4-room32",
-    "level4-clear32",
-    "level4-stepladder",
-    "level4-exit60",
-    "level4-west31",
-    "level4-keyup20",
-    "level4-room21",
-    "level4-map",
-    "level4-bomb11",
-    "level4-key01",
-    "level4-clear12",
-    "level4-gleeok13",
-    "level4",
-) + L5_THROUGH + L6_THROUGH
+) + _L4_THROUGH + L5_THROUGH + L6_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -225,6 +87,35 @@ SPINE_BOMB_RETOPUP: frozenset[str] = frozenset(
         "bomb_north_1e",
         "fight_dodongo",
     }
+)
+
+# Bow KEY-LEFT spends the 0x23 key. 0x43 E still needs one. Restore the
+# spent count (ASSIST_CONTRACT). Natural extra is L1 0x72 west of entrance.
+SPINE_L1_KEY_POKE = 1
+SPINE_L1_KEY_RETOPUP: frozenset[str] = frozenset({"backtrack44"})
+
+_BOW_HOPS = (
+    SpineHop(
+        "level1-bow",
+        "level1_bow_0x22",
+        level1_bow_stages,
+        level1_bow_success,
+        dedicated=True,
+    ),
+    SpineHop(
+        "level1-bow-cellar",
+        "level1_bow_cellar",
+        level1_bow_cellar_stages,
+        level1_bow_cellar_success,
+        dedicated=True,
+    ),
+    SpineHop(
+        "level1-bow-pickup",
+        "level1_bow_pickup",
+        level1_bow_pickup_stages,
+        level1_bow_pickup_success,
+        dedicated=True,
+    ),
 )
 
 
@@ -320,6 +211,8 @@ class SpineRun:
                 "level1": "level1_triforce",
                 "level1-bow": "level1_bow_0x22",
                 "level1-bow-cellar": "level1_bow_cellar",
+                "level1-bow-pickup": "level1_bow_pickup",
+                "level2-entry": "level2_entry",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
                 **L4_STOPS,
@@ -367,6 +260,12 @@ def topup_owned_bombs(env, run: SpineRun) -> None:
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
 
+def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> None:
+    """Restore the key spent on 0x23 W. Survival only. No bomb write."""
+    extra = apply_owned_inventory(env, keys=keys, select_bomb=False)
+    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
+
+
 def _record_bombs_out(env, run: SpineRun) -> None:
     end = read_snapshot(env.get_ram())
     run.bombs = spine_bomb_report(
@@ -385,12 +284,15 @@ def _run_stages(
     on_frame=None,
     room_timer=None,
     retopup: frozenset[str] = frozenset(),
+    key_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
     for name, controller, max_frames in stages:
         if name in retopup:
             topup_owned_inventory(env, run)
+        if name in key_retopup:
+            topup_owned_keys(env, run)
         obs, stage = run_controller_stage(
             env,
             run.obs,
@@ -466,7 +368,7 @@ def run_survival_spine(
     assist: Any,
     on_frame=None,
     room_timer=None,
-    through: Through = "level1",
+    through: str = "level1",
 ) -> SpineRun:
     """Power-on → requested dungeon stop. One env. No state reload."""
     if through not in SPINE_THROUGH:
@@ -494,38 +396,17 @@ def run_survival_spine(
     if not run.success:
         return run
 
-    if through in ("level1-bow", "level1-bow-cellar"):
-        # Side branch until cellar + walked ADDR_BOW + return play 0x23.
-        # Splice into --through level1 / level2+ sits after clear23_key,
-        # before backtrack44. Do not insert a red hop.
-        # Catalog: zelda_i.dungeon_treasures.
-        cellar = through == "level1-bow-cellar"
-        if not _run_stages(
-            env,
-            run,
-            level1_bow_cellar_stages() if cellar else level1_bow_stages(),
-            room_timer=room_timer,
-            assist=assist,
-            on_frame=on_frame,
-        ):
-            return run
-        snap = read_snapshot(env.get_ram())
-        run.success = (
-            level1_bow_cellar_success(snap) if cellar else level1_bow_success(snap)
-        )
-        if not run.success:
-            run.failed_stage = (
-                "level1_bow_cellar" if cellar else "level1_bow_0x22"
-            )
+    hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
+    if through in ("level1-bow", "level1-bow-cellar", "level1-bow-pickup"):
+        attach_hops(env, run, _BOW_HOPS, through=through, run_stages=_run_stages, **hop_kw)
         return run
 
     if not _run_stages(
         env,
         run,
-        level1_triforce_stages(natural_entry=True, survival=True),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
+        level1_survival_tf_stages(),
+        key_retopup=SPINE_L1_KEY_RETOPUP,
+        **hop_kw,
     ):
         return run
 
@@ -537,14 +418,7 @@ def run_survival_spine(
     if through == "level1":
         return run
 
-    if not _run_stages(
-        env,
-        run,
-        level2_entry_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
+    if not _run_stages(env, run, level2_entry_stages(), **hop_kw):
         return run
 
     snap = read_snapshot(env.get_ram())
@@ -558,6 +432,8 @@ def run_survival_spine(
         return run
 
     run.l2_entry = spine_final_fields(snap)
+    if through == "level2-entry":
+        return run
     run.bombs = spine_bomb_report(snap.bombs, through="tf")
     # Survival shortcut until a farm pass: power-on L2 entry is bombs=0.
     # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
@@ -567,11 +443,9 @@ def run_survival_spine(
         env,
         run,
         level2_to_boom_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
         retopup=SPINE_BOMB_RETOPUP,
         update_bombs=True,
+        **hop_kw,
     ):
         return run
 
@@ -586,11 +460,9 @@ def run_survival_spine(
         env,
         run,
         level2_tf_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
         retopup=SPINE_BOMB_RETOPUP,
         update_bombs=True,
+        **hop_kw,
     ):
         return run
 
@@ -604,101 +476,19 @@ def run_survival_spine(
     if through == "level2":
         return run
 
-    if not _run_stages(
+    def _set_l3_entry(env, run, snap):
+        if run.success:
+            run.l3_entry = spine_final_fields(snap)
+
+    attach_hops(
         env,
         run,
-        level3_entry_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    if not level3_entry_success(snap):
-        run.success = False
-        run.failed_stage = "enter_level3"
-        return run
-    run.l3_entry = spine_final_fields(snap)
-
-    if not _run_stages(
-        env,
-        run,
-        level3_dest_6b_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    if not level3_dest_6b_success(snap):
-        run.success = False
-        run.failed_stage = "north_chain"
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level3_compass_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level3_compass_success(snap)
+        l3_hops(after_entry=_set_l3_entry),
+        through=through,
+        run_stages=_run_stages,
+        **hop_kw,
+    )
     if not run.success:
-        run.failed_stage = "compass_0x5a"
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level3_west_darknuts_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level3_west_darknuts_success(snap)
-    if not run.success:
-        run.failed_stage = "west_darknuts_0x59"
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level3_south_darknuts_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level3_south_darknuts_success(snap)
-    if not run.success:
-        run.failed_stage = "south_darknuts_0x69"
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level3_raft_stages(),
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level3_raft_success(snap)
-    if not run.success:
-        run.failed_stage = "raft_0x0f"
         return run
 
     # Temporary Survival shortcut until rr-doua supplies the natural farm.
@@ -721,9 +511,7 @@ def run_survival_spine(
         run_stages=_run_stages,
         topup_bombs=topup_owned_bombs,
         spine_fields=spine_final_fields,
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
+        **hop_kw,
     )
     if not run.success or through in L4_STOPS:
         return run
@@ -732,9 +520,7 @@ def run_survival_spine(
         run,
         through=through,
         run_stages=_run_stages,
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
+        **hop_kw,
     )
     if not run.success or through in L5_THROUGH:
         return run
@@ -743,8 +529,6 @@ def run_survival_spine(
         run,
         through=through,
         run_stages=_run_stages,
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
+        **hop_kw,
     )
     return run

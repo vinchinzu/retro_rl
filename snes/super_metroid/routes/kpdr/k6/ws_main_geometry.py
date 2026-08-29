@@ -120,7 +120,9 @@ WJ_POSES = frozenset({19, 20, 132})
 TURNING_MOVEMENT = 14
 
 SHAFT_HOPS: tuple[PlatformHop, ...] = (
-    PlatformHop(1675, 1080, 1220, TakeoffWindow((1100, 1180), "RIGHT", min_momentum=0)),
+    # Powered take02 lands near x=1108, repositions to x=1062, then launches
+    # RIGHT to the y=1543 ledge (frames 742-828).
+    PlatformHop(1675, 1048, 1220, TakeoffWindow((1054, 1070), "RIGHT", min_momentum=0)),
     PlatformHop(1468, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),
     PlatformHop(1288, 1080, 1220, TakeoffWindow((1100, 1180), "RIGHT", min_momentum=0)),
     PlatformHop(1163, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),

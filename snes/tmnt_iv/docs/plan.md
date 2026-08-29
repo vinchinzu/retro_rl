@@ -30,9 +30,10 @@ Documented in `docs/ram_map.md`. Highlights:
 1. `uv run python scripts/setup_rom.py`
 2. `SDL_VIDEODRIVER=dummy uv run python scripts/boot_probe.py`
 3. Clear one segment at a time from save states
-   (`scripts/run_stage*_segment.py`).
+   (`python -m tmnt_iv.scripts.run_segment --stage N`).
 4. **Clean proof per stage** (heal=none, multi-entry) before removing
-   assists — add a `CleanProbeSpec` in `clean_suite.py`, not a copied loop.
+   assists — add a `CleanProbeSpec` in `run/clean_suite.py`, not a copied loop.
+   Tests stay ROM-free and protect finish / time / damage, not file layout.
 5. Continuous validation:
    `uv run python -m tmnt_iv.scripts.record_full_hard_run`.
 

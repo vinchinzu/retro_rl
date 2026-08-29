@@ -25,6 +25,9 @@ _STALL_RIGHT_FRAMES = 40
 _STALL_UP_FRAMES = 36
 _STALL_UP_RIGHT_FRAMES = 48
 _STALL_SMASH_FRAMES = 24
+# Starbase holds Raphael at x=64 during its opening spawn delay.
+# Dumpster-stall on those frames pushes him down a lane.
+_STARBASE_LAUNCH_X = 64
 # Starbase right-rail form-1 vanish: X glued at ~229 while cam still
 # ticks. Immediate RIGHT (no dumpster) is the Diag 33,825→24,645 cut.
 # A 96f dumpster budget then RIGHT 40k-timeout Diag. Y-steer to 156
@@ -102,8 +105,8 @@ class PlayerXStallWalk:
     a wave lock, and DOWN thrash walks into chip. Starbase (byte 8) must
     **keep** dumpster DOWN+JUMP on mid-lane frozen X (x=126 / 207) —
     Sewer-like always-RIGHT and climb-only both 40k-timeout this pin.
-    Right-rail frozen X (x>=220, form-1 vanish) holds RIGHT — dumpster
-    DOWN+JUMP there is the Diag 7k-frame loop.
+    Opening spawn (x<=64) and right-rail frozen X (x>=220, form-1 vanish)
+    hold RIGHT — dumpster DOWN+JUMP on the rail is the Diag 7k-frame loop.
     """
 
     def __init__(self, *, pickup_every: int = 24) -> None:
@@ -182,6 +185,18 @@ class PlayerXStallWalk:
                     reason="sewer_drop_lane",
                 )
             return FrameAction(action=buttons("RIGHT"), reason="walk_right")
+        if (
+            state.stage == STARBASE_WAVES
+            and state.player_x <= _STARBASE_LAUNCH_X
+            and not state.living_enemies
+        ):
+            self._stall_frames = 0
+            self._escape_frames = 0
+            self._last_player_x = state.player_x
+            return FrameAction(
+                action=buttons("RIGHT"),
+                reason="starbase_launch_right",
+            )
         if (
             state.stage == STARBASE_WAVES
             and state.player_x >= _STARBASE_RAIL_X

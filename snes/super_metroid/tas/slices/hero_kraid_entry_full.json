@@ -1,0 +1,187 @@
+{
+  "format": "snes12_rle",
+  "route_id": "hero_kraid_entry_full",
+  "game_name": "SuperMetroid-Snes",
+  "num_frames": 422,
+  "source": "hero_of_the_day Kraid entry idea (userfile)",
+  "segments": [
+    {
+      "n": 1,
+      "b": [
+        "B"
+      ]
+    },
+    {
+      "n": 70,
+      "b": [
+        "B",
+        "X"
+      ]
+    },
+    {
+      "n": 53,
+      "b": [
+        "B",
+        "RIGHT",
+        "X"
+      ]
+    },
+    {
+      "n": 5,
+      "b": [
+        "B",
+        "RIGHT",
+        "A",
+        "X"
+      ]
+    },
+    {
+      "n": 4,
+      "b": [
+        "B",
+        "DOWN",
+        "A",
+        "X"
+      ]
+    },
+    {
+      "n": 36,
+      "b": [
+        "B",
+        "LEFT",
+        "X"
+      ]
+    },
+    {
+      "n": 131,
+      "b": [
+        "B",
+        "X"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "DOWN",
+        "X"
+      ]
+    },
+    {
+      "n": 2,
+      "b": [
+        "B",
+        "X"
+      ]
+    },
+    {
+      "n": 4,
+      "b": [
+        "B",
+        "LEFT",
+        "X"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "UP",
+        "X"
+      ]
+    },
+    {
+      "n": 3,
+      "b": [
+        "B",
+        "LEFT",
+        "X"
+      ]
+    },
+    {
+      "n": 12,
+      "b": [
+        "B",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "X",
+        "L"
+      ]
+    },
+    {
+      "n": 4,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 3,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 3,
+      "b": [
+        "B",
+        "UP"
+      ]
+    },
+    {
+      "n": 9,
+      "b": [
+        "B"
+      ]
+    },
+    {
+      "n": 9,
+      "b": [
+        "B",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 43,
+      "b": [
+        "B",
+        "RIGHT",
+        "A"
+      ]
+    },
+    {
+      "n": 26,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    }
+  ],
+  "movie": "tas/ref/hero_kraid_entry.smv",
+  "movie_kind": "smv",
+  "movie_start_index": 0,
+  "movie_end_index": 422,
+  "movie_num_frames": 422,
+  "notes": "Isolated vanilla Kraid-entry idea. Convert to BK2 for BizHawk.",
+  "tags": [
+    "room",
+    "kraid",
+    "isolated",
+    "full"
+  ]
+}

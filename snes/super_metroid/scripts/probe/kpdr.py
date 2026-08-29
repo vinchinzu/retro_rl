@@ -122,24 +122,75 @@ from super_metroid.routes.kpdr.k6 import (  # noqa: E402
     play_kihunter_to_moat,
 )
 from super_metroid.routes.kpdr.moat import play_moat_cross  # noqa: E402
-from super_metroid.routes.kpdr.k4_norfair import (  # noqa: E402
-    play_bat_cave_to_speed_hall,
+from super_metroid.routes.kpdr.business_climb import (  # noqa: E402
+    play_business_to_warehouse,
+)
+from super_metroid.routes.kpdr.collect_hijump import play_warehouse_to_hijump  # noqa: E402
+from super_metroid.routes.kpdr.from_kraid import (  # noqa: E402
+    play_baby_to_kihunter_return,
+    play_eye_to_baby_return,
+    play_kihunter_to_zeela_return,
+    play_zeela_to_warehouse_return,
+)
+from super_metroid.routes.kpdr.ghz_to_red import (  # noqa: E402
+    play_ghz_to_noob,
+    play_noob_to_red_tower,
+)
+from super_metroid.routes.kpdr.k4_business_frog import (  # noqa: E402
+    play_business_to_frog_save,
+    play_frog_save_to_speedway,
+    play_speedway_to_farm,
+)
+from super_metroid.routes.kpdr.k4_cathedral import (  # noqa: E402
     play_business_to_cathedral_entrance,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
+)
+from super_metroid.routes.kpdr.k4_rising_tide import (  # noqa: E402
     play_rising_tide_to_bubble,
+)
+from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz  # noqa: E402
+from super_metroid.routes.kpdr.red_stack import (  # noqa: E402
+    play_bat_to_below_spazer,
+    play_below_spazer_to_west,
+    play_east_to_warehouse,
+    play_glass_to_east,
+    play_red_tower_to_bat,
+    play_red_tower_to_warehouse,
+    play_west_to_glass,
+)
+from super_metroid.routes.kpdr.return_hijump import (  # noqa: E402
+    play_hijump_to_warehouse,
+    play_hj_shaft_to_business,
+)
+from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble  # noqa: E402
+from super_metroid.routes.kpdr.to_kraid import (  # noqa: E402
+    play_warehouse_hijump_kraid,
+    play_warehouse_to_kraid_with_hijump,
+)
+from super_metroid.routes.kpdr.to_speed import (  # noqa: E402
+    play_bat_cave_to_speed_hall,
     play_speed_hall_to_speed,
-    play_speed_return_to_bubble,
+)
+from super_metroid.routes.kpdr.varia_return import (  # noqa: E402
+    play_kraid_to_eye_return,
+    play_varia_to_kraid,
+)
+from super_metroid.routes.kpdr.warehouse_stack import (  # noqa: E402
+    play_warehouse_to_business,
+    play_warehouse_wall_to_lower_lip,
+)
+from super_metroid.routes.kpdr.wave import (  # noqa: E402
+    play_bubble_to_farm,
     play_bubble_to_single_chamber,
     play_double_chamber_to_wave,
-    play_single_to_double_chamber,
-    play_wave_to_double_chamber,
     play_double_to_single_chamber,
-    play_single_to_bubble,
-    play_bubble_to_farm,
     play_farm_to_speedway,
-    play_speedway_to_frog_save,
     play_frog_save_to_business,
+    play_single_to_bubble,
+    play_single_to_double_chamber,
+    play_speedway_to_frog_save,
+    play_wave_to_double_chamber,
 )
 from super_metroid.routes.kpdr.spazer import (  # noqa: E402
     play_below_spazer_climb,
@@ -148,35 +199,6 @@ from super_metroid.routes.kpdr.spazer import (  # noqa: E402
     play_spazer_detour,
     play_spazer_return_to_below,
     play_spazer_top_to_west,
-)
-from super_metroid.routes.kpdr import (  # noqa: E402
-    play_baby_to_kihunter_return,
-    play_bat_to_below_spazer,
-    play_business_to_frog_save,
-    play_below_spazer_to_west,
-    play_big_pink_to_ghz,
-    play_east_to_warehouse,
-    play_eye_to_baby_return,
-    play_frog_save_to_speedway,
-    play_speedway_to_farm,
-    play_glass_to_east,
-    play_ghz_to_noob,
-    play_kraid_to_eye_return,
-    play_kihunter_to_zeela_return,
-    play_noob_to_red_tower,
-    play_red_tower_to_bat,
-    play_red_tower_to_warehouse,
-    play_varia_to_kraid,
-    play_warehouse_hijump_kraid,
-    play_warehouse_to_hijump,
-    play_warehouse_to_kraid_with_hijump,
-    play_hijump_to_warehouse,
-    play_hj_shaft_to_business,
-    play_business_to_warehouse,
-    play_warehouse_to_business,
-    play_warehouse_wall_to_lower_lip,
-    play_west_to_glass,
-    play_zeela_to_warehouse_return,
 )
 
 

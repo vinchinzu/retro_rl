@@ -1,0 +1,275 @@
+{
+  "format": "snes12_rle",
+  "route_id": "hero_bubbleroom_full",
+  "game_name": "SuperMetroid-Snes",
+  "num_frames": 407,
+  "source": "hero_of_the_day Norfair bubble-room alt (userfile)",
+  "segments": [
+    {
+      "n": 1,
+      "b": [
+        "B"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "X"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "LEFT",
+        "L"
+      ]
+    },
+    {
+      "n": 6,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 6,
+      "b": [
+        "B",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 26,
+      "b": [
+        "B",
+        "DOWN"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "A"
+      ]
+    },
+    {
+      "n": 8,
+      "b": [
+        "B",
+        "DOWN",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 228,
+      "b": [
+        "B",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 36,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 43,
+      "b": [
+        "B",
+        "LEFT",
+        "A"
+      ]
+    },
+    {
+      "n": 25,
+      "b": [
+        "B",
+        "LEFT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "RIGHT"
+      ]
+    },
+    {
+      "n": 1,
+      "b": [
+        "B",
+        "UP",
+        "RIGHT"
+      ]
+    },
+    {
+      "n": 4,
+      "b": [
+        "B",
+        "RIGHT"
+      ]
+    }
+  ],
+  "movie": "tas/ref/hero_bubbleroom.smv",
+  "movie_kind": "smv",
+  "movie_start_index": 0,
+  "movie_end_index": 407,
+  "movie_num_frames": 407,
+  "notes": "Isolated vanilla room strategy. Convert to BK2 for BizHawk.",
+  "tags": [
+    "room",
+    "norfair",
+    "isolated",
+    "full"
+  ]
+}

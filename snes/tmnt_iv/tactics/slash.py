@@ -7,7 +7,7 @@ hop away. Jump-kick (B+Y) only once airborne / to meet his hop. Spin
 spin_dodge_adx stays **52** (do not port probe KEEP 40).
 
 One production path: the Raph jump-over behind-combo. Leo hybrid-whiplash
-probes live in ``slash_pattern_lab`` / HybridWhiplash, not this class.
+probes live in ``lab.slash_lab`` / HybridWhiplash, not this class.
 """
 
 from __future__ import annotations

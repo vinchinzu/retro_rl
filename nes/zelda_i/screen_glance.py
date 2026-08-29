@@ -119,6 +119,16 @@ BOW_CELLAR_LEAVE = LeaveSpec(
     hearts_lo_eq_hi=False,
 )
 
+# Planned leftover after bow cellar return: play 0x23 west mouth, walked bow.
+BOW_PICKUP_LEAVE = LeaveSpec(
+    hop="level1-bow-pickup",
+    room=0x23,
+    x=(16, 48),
+    y=(133, 149),
+    keys=0,
+    hearts_lo_eq_hi=False,
+)
+
 # stairs3a-warp dest: mode 9 cellar 0x08 (208,93). Walk-on stairs BLOCKED.
 # Spec documents dest; leftover documents where we actually stopped.
 STAIRS3A_DEST = LeaveSpec(

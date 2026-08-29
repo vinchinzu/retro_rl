@@ -27,10 +27,12 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level2_dungeon import (
+from zelda_i.level2_bomb_path import (
     BOMB_N_STAND,
     BombNorthPhase,
     make_boom_bomb_north_controller,
+)
+from zelda_i.level2_dungeon import (
     ROOM_L2_BOOM_CANDIDATE,
     level2_room_4f_ready,
 )

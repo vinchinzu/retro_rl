@@ -8,7 +8,8 @@ Production rules already burned in:
   Alleycat may **underfoot-pickup** only (no seek path change).
 - Walk uses ``pickup_every=0`` — no empty-screen RIGHT+Y stutter.
 - Stage 1 wrecking-ball jump-dodge is **offline** in ``Stage1Policy.tick``
-  (jump-through caused Clean deaths). ``HazardAvoid`` remains for tests.
+  (jump-through caused Clean deaths). ``HazardAvoid`` stays for future
+  phase-safe work.
 - Baxter uses left standoff + elevated jump-slash; never approach into body.
 - Jump-slash only where grounded Y fails; suppress for Slash / Rat King /
   form-2 / Mode-7 depth.
@@ -28,11 +29,11 @@ from retro_harness.bot_runner import (
 from retro_harness.combat import AttackCadence, WalkProgress
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import GameMode, GameState
-from tmnt_iv.stages import is_neon_highway
 from tmnt_iv.tactics.alleycat import AlleycatPackTactics
 from tmnt_iv.tactics.baxter import BaxterTactics
 from tmnt_iv.tactics.fight import CombatProfile, fight
 from tmnt_iv.tactics.hazards import HazardAvoid, SewerSpikeAvoid
+from tmnt_iv.tactics.neon import NeonLaneTactics
 from tmnt_iv.tactics.pizza import PizzaSeek
 from tmnt_iv.tactics.recovery import (
     CombatPositionStall,
@@ -43,7 +44,7 @@ from tmnt_iv.tactics.shredder_f2 import SuperShredderForm2Tactics
 from tmnt_iv.tactics.slash import SlashTactics
 from tmnt_iv.tactics.technodrome import TechnodromeTactics
 
-# Public seam: tests and scripts import PizzaSeek / HazardAvoid from here.
+# Public seam: scripts import PizzaSeek / HazardAvoid from here.
 __all__ = [
     "CombatPositionStall",
     "CombatProfile",
@@ -95,31 +96,11 @@ def build_stage1_tree(
         return fight(state, cadence)
 
     def walk_action(state: GameState) -> FrameAction:
-        # Mode-7 auto-scrolls; frozen X must not trigger dumpster escapes.
-        if is_neon_highway(state):
-            if state.player_x < 90:
-                return FrameAction(action=buttons("RIGHT"), reason="neon_drift_right")
-            if state.player_x > 180:
-                return FrameAction(action=buttons("LEFT"), reason="neon_drift_left")
-            return FrameAction(action=idle_action(), reason="neon_wait")
-        # Starbase holds Raphael at x=64 during its opening spawn delay.
-        # Feeding those frames into the dumpster-stall detector pushes him
-        # down a lane and desynchronizes the later wave triggers. Keep the
-        # intended launch input until the stage actually starts moving.
-        if state.stage == 8 and state.player_x <= 64:
-            return FrameAction(
-                action=buttons("RIGHT"),
-                reason="starbase_launch_right",
-            )
-        # Form-1 vanish / end-of-wave rail: X glued at ~229 while cam still
-        # ticks. Dumpster DOWN+JUMP here is Diag's 7k-frame loop. Immediate
-        # RIGHT is the 33,825→24,645 cut. Wave dumpsters sit near x=126/207.
-        # Form-1-seen latch then RIGHT 40k-timeout Diag (bad Y then rail).
-        if state.stage == 8 and state.player_x >= 220:
-            return FrameAction(
-                action=buttons("RIGHT"),
-                reason="starbase_rail_right",
-            )
+        # Mode-7 empty-lane hold; far-band living enemies go through fight()
+        # so CombatPositionStall can still overlay a freeze.
+        lane = NeonLaneTactics().next(state)
+        if lane is not None:
+            return lane
         return walk_progress.next(state)
 
     return Selector(
@@ -153,7 +134,8 @@ class Stage1Policy:
 
     Tick order: pizza → Alleycat pack → sewer spikes → Baxter →
     Technodrome → cave → Slash → form-2 Shredder → combat tree →
-    combat-stall escape. HazardAvoid is not ticked.
+    combat-stall escape. Neon lane hold lives in the tree (walk + fight)
+    so stall can still overlay a freeze. HazardAvoid is not ticked.
 
     Clean production choices are intentional — see module docstring and
     ``docs/CLEAN_PLAYBOOK.md`` before reordering or re-enabling hazard dodge.
@@ -163,6 +145,16 @@ class Stage1Policy:
         self._cadence = AttackCadence(hold_frames=_ATTACK_HOLD, gap_frames=_ATTACK_GAP)
         # No blind walk-Y: PizzaSeek owns pizza; empty-screen Y is visual junk.
         self._walk = PlayerXStallWalk(pickup_every=0)
+        self._bind()
+
+    def reset(self) -> None:
+        """Reset cadence / walk stall and rebuild tactics + tree."""
+        self._cadence.reset()
+        self._walk.reset()
+        self._bind()
+
+    def _bind(self) -> None:
+        """Construct pizza / stage tactics and rebuild the combat tree."""
         self._pizza = PizzaSeek()
         self._alleycat = AlleycatPackTactics()
         self._sewer_spikes = SewerSpikeAvoid()
@@ -172,24 +164,6 @@ class Stage1Policy:
         self._slash = SlashTactics()
         self._shredder_f2 = SuperShredderForm2Tactics()
         self._combat_stall = CombatPositionStall()
-        self._tree = build_stage1_tree(
-            cadence=self._cadence,
-            walk_progress=self._walk,
-        )
-
-    def reset(self) -> None:
-        """Reset cadence / walk stall and rebuild the tree."""
-        self._cadence.reset()
-        self._walk.reset()
-        self._pizza = PizzaSeek()
-        self._alleycat = AlleycatPackTactics()
-        self._sewer_spikes = SewerSpikeAvoid()
-        self._baxter = BaxterTactics()
-        self._technodrome.reset()
-        self._prehistoric_cave.reset()
-        self._slash.reset()
-        self._shredder_f2.reset()
-        self._combat_stall.reset()
         self._tree = build_stage1_tree(
             cadence=self._cadence,
             walk_progress=self._walk,

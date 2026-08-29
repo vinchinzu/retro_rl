@@ -8,7 +8,6 @@ Keep this game-local until a second adventure game proves the API shape.
 
 from __future__ import annotations
 
-import importlib
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Any
@@ -479,6 +478,13 @@ class GenericDungeonRoomController:
         self, xy: tuple[int, int], dest: tuple[int, int]
     ) -> str | None:
         dest_i = (int(dest[0]), int(dest[1]))
+        bounds = self.spec.combat.occupancy_bounds
+        if bounds is not None:
+            xmin, xmax, ymin, ymax = bounds
+            dest_i = (
+                min(max(dest_i[0], xmin), xmax),
+                min(max(dest_i[1], ymin), ymax),
+            )
         if self.walker.goal != dest_i:
             self.walker.goal = dest_i
             self.walker.path = None
@@ -816,125 +822,3 @@ class GenericDungeonRoomController:
                 "occupancy_blocked": len(self.walker.grid.blocked),
             },
         }
-
-
-# ---------------------------------------------------------------------------
-# Lazy re-exports (PEP 562) so ``from zelda_i.dungeon import ROOM_6D_SPEC``
-# and L2 constants/preds keep working without circular imports at load time.
-# ---------------------------------------------------------------------------
-
-_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    # Level 1 room specs
-    "ROOM_23_SPEC": ("zelda_i.level1_dungeon", "ROOM_23_SPEC"),
-    "ROOM_33_SPEC": ("zelda_i.level1_dungeon", "ROOM_33_SPEC"),
-    "ROOM_35_SPEC": ("zelda_i.level1_dungeon", "ROOM_35_SPEC"),
-    "ROOM_42_SPEC": ("zelda_i.level1_dungeon", "ROOM_42_SPEC"),
-    "ROOM_43_SPEC": ("zelda_i.level1_dungeon", "ROOM_43_SPEC"),
-    "ROOM_44_SPEC": ("zelda_i.level1_dungeon", "ROOM_44_SPEC"),
-    "ROOM_45_SPEC": ("zelda_i.level1_dungeon", "ROOM_45_SPEC"),
-    "ROOM_52_SPEC": ("zelda_i.level1_dungeon", "ROOM_52_SPEC"),
-    "ROOM_53_SPEC": ("zelda_i.level1_dungeon", "ROOM_53_SPEC"),
-    "ROOM_54_SPEC": ("zelda_i.level1_dungeon", "ROOM_54_SPEC"),
-    # Level 2 constants + room specs + stop preds
-    "LEVEL_2": ("zelda_i.level2_dungeon", "LEVEL_2"),
-    "ROOM_L2_ENTRY": ("zelda_i.level2_dungeon", "ROOM_L2_ENTRY"),
-    "ROOM_L2_ROPES": ("zelda_i.level2_dungeon", "ROOM_L2_ROPES"),
-    "ROOM_L2_WEST_KEY": ("zelda_i.level2_dungeon", "ROOM_L2_WEST_KEY"),
-    "ROOM_L2_EAST_KEY": ("zelda_i.level2_dungeon", "ROOM_L2_EAST_KEY"),
-    "ROOM_L2_EAST_OF_ROPES": ("zelda_i.level2_dungeon", "ROOM_L2_EAST_OF_ROPES"),
-    "ROOM_L2_COMPASS": ("zelda_i.level2_dungeon", "ROOM_L2_COMPASS"),
-    "ROOM_L2_BOMB_N": ("zelda_i.level2_dungeon", "ROOM_L2_BOMB_N"),
-    "ROOM_L2_GORIYA_WEST": ("zelda_i.level2_dungeon", "ROOM_L2_GORIYA_WEST"),
-    "ROOM_L2_ROPES_NORTH": ("zelda_i.level2_dungeon", "ROOM_L2_ROPES_NORTH"),
-    "ROOM_L2_BOOM_CANDIDATE": ("zelda_i.level2_dungeon", "ROOM_L2_BOOM_CANDIDATE"),
-    "ROOM_L2_NORTH_OF_4E": ("zelda_i.level2_dungeon", "ROOM_L2_NORTH_OF_4E"),
-    "ROOM_6D_LEFT_DOOR_BIT": ("zelda_i.level2_dungeon", "ROOM_6D_LEFT_DOOR_BIT"),
-    "ROOM_7D_SPEC": ("zelda_i.level2_dungeon", "ROOM_7D_SPEC"),
-    "ROOM_6D_SPEC": ("zelda_i.level2_dungeon", "ROOM_6D_SPEC"),
-    "ROOM_6C_SPEC": ("zelda_i.level2_dungeon", "ROOM_6C_SPEC"),
-    "ROOM_7E_SPEC": ("zelda_i.level2_dungeon", "ROOM_7E_SPEC"),
-    "ROOM_6E_SPEC": ("zelda_i.level2_dungeon", "ROOM_6E_SPEC"),
-    "ROOM_6F_SPEC": ("zelda_i.level2_dungeon", "ROOM_6F_SPEC"),
-    "ROOM_5E_SPEC": ("zelda_i.level2_dungeon", "ROOM_5E_SPEC"),
-    "ROOM_4E_SPEC": ("zelda_i.level2_dungeon", "ROOM_4E_SPEC"),
-    "ROOM_4F_SPEC": ("zelda_i.level2_dungeon", "ROOM_4F_SPEC"),
-    "level2_room_6d_cleared": ("zelda_i.level2_dungeon", "level2_room_6d_cleared"),
-    "level2_room_6c_key_success": (
-        "zelda_i.level2_dungeon",
-        "level2_room_6c_key_success",
-    ),
-    "level2_room_7e_key_success": (
-        "zelda_i.level2_dungeon",
-        "level2_room_7e_key_success",
-    ),
-    "level2_room_6e_cleared": ("zelda_i.level2_dungeon", "level2_room_6e_cleared"),
-    "level2_room_6f_compass_success": (
-        "zelda_i.level2_dungeon",
-        "level2_room_6f_compass_success",
-    ),
-    "level2_room_5f_ready": ("zelda_i.level2_dungeon", "level2_room_5f_ready"),
-    "PostBoomBombNorthPhase": ("zelda_i.level2_bomb_path", "PostBoomBombNorthPhase"),
-    "Level2PostBoomBombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "Level2PostBoomBombNorthController",
-    ),
-    "level2_room_3f_ready": ("zelda_i.level2_dungeon", "level2_room_3f_ready"),
-    "ROOM_3F_SPEC": ("zelda_i.level2_dungeon", "ROOM_3F_SPEC"),
-    "level2_room_5e_cleared": ("zelda_i.level2_dungeon", "level2_room_5e_cleared"),
-    "level2_room_4e_key_success": (
-        "zelda_i.level2_dungeon",
-        "level2_room_4e_key_success",
-    ),
-    "level2_room_4f_ready": ("zelda_i.level2_dungeon", "level2_room_4f_ready"),
-    "level2_room_4f_magic_boomerang_success": (
-        "zelda_i.level2_dungeon",
-        "level2_room_4f_magic_boomerang_success",
-    ),
-    "BOMB_N_STAND": ("zelda_i.level2_bomb_path", "BOMB_N_STAND"),
-    "BOOM_BOMB_N_STAND": ("zelda_i.level2_bomb_path", "BOOM_BOMB_N_STAND"),
-    "B_ITEM_BOMB": ("zelda_i.dungeon_ops", "B_ITEM_BOMB"),
-    "BombNorthPhase": ("zelda_i.level2_bomb_path", "BombNorthPhase"),
-    "BoomBombNorthPhase": ("zelda_i.level2_bomb_path", "BoomBombNorthPhase"),
-    # Canonical factories (make_*); class-named aliases still resolve via same module.
-    "make_bomb_north_controller": (
-        "zelda_i.level2_bomb_path",
-        "make_bomb_north_controller",
-    ),
-    "make_boom_bomb_north_controller": (
-        "zelda_i.level2_bomb_path",
-        "make_boom_bomb_north_controller",
-    ),
-    "make_post_boom_bomb_north_controller": (
-        "zelda_i.level2_bomb_path",
-        "make_post_boom_bomb_north_controller",
-    ),
-    "make_bomb_north_1e_controller": (
-        "zelda_i.level2_bomb_path",
-        "make_bomb_north_1e_controller",
-    ),
-    "Level2BombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "make_bomb_north_controller",
-    ),
-    "Level2BoomBombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "make_boom_bomb_north_controller",
-    ),
-    "Level2PostBoomBombNorthController": (
-        "zelda_i.level2_bomb_path",
-        "make_post_boom_bomb_north_controller",
-    ),
-}
-
-
-def __getattr__(name: str) -> Any:
-    if name in _LAZY_EXPORTS:
-        mod_name, attr = _LAZY_EXPORTS[name]
-        value = getattr(importlib.import_module(mod_name), attr)
-        globals()[name] = value
-        return value
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(_LAZY_EXPORTS))

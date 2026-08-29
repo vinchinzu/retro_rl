@@ -24,7 +24,6 @@ from zelda_i.dungeon import (
     CombatTuning,
     DoorRoute,
     DungeonRoomSpec,
-    GenericDungeonRoomController,
     RewardKind,
     RewardSpec,
     register_room_spec,
@@ -696,6 +695,7 @@ register_room_spec(ROOM_3A_SPEC)
 
 
 def _l6_enemies_dead(ram: np.ndarray, room: int, spec: DungeonRoomSpec) -> bool:
+    """Play-mode room with no live spec enemies. Combat: GenericDungeonRoomController(spec)."""
     snap = read_snapshot(ram)
     return (
         snap.level == LEVEL6
@@ -744,19 +744,9 @@ def level6_room_68_compass_success(ram: np.ndarray) -> bool:
     )
 
 
-def make_compass_68_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol Zol clear + compass hunt on 0x68. Ignore 0x2b/0x68."""
-    return GenericDungeonRoomController(spec=ROOM_68_SPEC)
-
-
 def level6_room_58_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x58 no live Keese. Key drop residual."""
     return _l6_enemies_dead(ram, LEVEL6_KEESE_ROOM, ROOM_58_SPEC)
-
-
-def make_keese_58_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol Keese clear on 0x58. Ignore 0x2b/0x68. No key poke."""
-    return GenericDungeonRoomController(spec=ROOM_58_SPEC)
 
 
 def level6_room_38_clear_success(ram: np.ndarray) -> bool:
@@ -764,19 +754,9 @@ def level6_room_38_clear_success(ram: np.ndarray) -> bool:
     return _l6_enemies_dead(ram, LEVEL6_WIZZROBE_38_ROOM, ROOM_38_SPEC)
 
 
-def make_hard_38_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x38 clear. Ignore 0x2b/0x68/Bubble. No block poke."""
-    return GenericDungeonRoomController(spec=ROOM_38_SPEC)
-
-
 def level6_room_28_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x28 no live orange wizzrobes. Ignore 0x2b/0x40/0x68."""
     return _l6_enemies_dead(ram, LEVEL6_WIZZROBE_28_ROOM, ROOM_28_SPEC)
-
-
-def make_clear_28_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x28 orange-wizzrobe clear. Ignore 0x2b/0x40/0x68."""
-    return GenericDungeonRoomController(spec=ROOM_28_SPEC)
 
 
 def level6_room_19_clear_success(ram: np.ndarray) -> bool:
@@ -784,19 +764,9 @@ def level6_room_19_clear_success(ram: np.ndarray) -> bool:
     return _l6_enemies_dead(ram, LEVEL6_MAP_ROOM, ROOM_19_SPEC)
 
 
-def make_clear_19_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x19 clear. Ignore 0x2b/0x40. Do not require Map."""
-    return GenericDungeonRoomController(spec=ROOM_19_SPEC)
-
-
 def level6_room_09_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x09 no live wizzrobes. Ignore 0x2b/0x40/0x68. No Rod."""
     return _l6_enemies_dead(ram, LEVEL6_ROD_WIZZ_ROOM, ROOM_09_SPEC)
-
-
-def make_clear_09_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x09 wizzrobe clear. Ignore 0x2b/0x68. Do not push."""
-    return GenericDungeonRoomController(spec=ROOM_09_SPEC)
 
 
 def level6_room_29_clear_success(ram: np.ndarray) -> bool:
@@ -804,24 +774,9 @@ def level6_room_29_clear_success(ram: np.ndarray) -> bool:
     return _l6_enemies_dead(ram, LEVEL6_DARK_29_ROOM, ROOM_29_SPEC)
 
 
-def make_clear_29_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x29 wizzrobe clear. Ignore 0x2b/0x40. No candle."""
-    return GenericDungeonRoomController(spec=ROOM_29_SPEC)
-
-
 def level6_room_39_clear_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x39 no live Vires. Ignore 0x2b/0x40. No Gohma."""
     return _l6_enemies_dead(ram, LEVEL6_DARK_39_ROOM, ROOM_39_SPEC)
-
-
-def make_clear_39_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x39 Vire clear. Ignore 0x2b/0x40. Do not invent Gohma."""
-    return GenericDungeonRoomController(spec=ROOM_39_SPEC)
-
-
-def make_clear_3a_controller() -> GenericDungeonRoomController:
-    """Occupancy-patrol 0x3A clear. Ignore 0x2b/0x40/0x68. Do not push."""
-    return GenericDungeonRoomController(spec=ROOM_3A_SPEC)
 
 
 __all__ = [
@@ -855,15 +810,6 @@ __all__ = [
     "Level6WestWizzrobeController",
     "make_east_key_controller",
     "make_west_wizzrobe_controller",
-    "make_compass_68_controller",
-    "make_keese_58_controller",
-    "make_hard_38_controller",
-    "make_clear_28_controller",
-    "make_clear_19_controller",
-    "make_clear_09_controller",
-    "make_clear_29_controller",
-    "make_clear_39_controller",
-    "make_clear_3a_controller",
     "level6_room_7a_key_success",
     "level6_room_78_clear_success",
     "level6_room_68_compass_success",
@@ -873,4 +819,5 @@ __all__ = [
     "level6_room_19_clear_success",
     "level6_room_09_clear_success",
     "level6_room_29_clear_success",
+    "level6_room_39_clear_success",
 ]

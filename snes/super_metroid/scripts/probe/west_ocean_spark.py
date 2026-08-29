@@ -5,7 +5,7 @@
 Super open from Moat handoff ``~(49,1163)``.
 
 **Compose chain (Kihunter/Moat → WO → WS):** ``chain-ws`` runs
-:func:`~super_metroid.routes.kpdr.wrecked_ship.play_moat_to_ws` then saves the
+:func:`~super_metroid.routes.kpdr.moat.play_moat_to_ws` then saves the
 WS pin for ship free-record / Phantoon.
 
 **Practice (Bowling ``0xC98E``):** spit edge store→hop→spark (VOD recipe).
@@ -64,7 +64,7 @@ from super_metroid.dev.common import place_samus, save_dev_state  # noqa: E402
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state, write_wram_u16  # noqa: E402
 from super_metroid.routes.kpdr import west_ocean as wo  # noqa: E402
-from super_metroid.routes.kpdr import wrecked_ship as ws  # noqa: E402
+from super_metroid.routes.kpdr.moat import play_moat_to_ws  # noqa: E402
 from super_metroid.routes.skills import shinespark as spark  # noqa: E402
 
 SCRATCH = INTEGRATION_DIR / "scratch"
@@ -589,7 +589,7 @@ def cmd_chain_ws(args: argparse.Namespace) -> int:
         f"pose={sess.state.pose} path=moat_to_ws source={source.name}"
     )
     try:
-        st = ws.play_moat_to_ws(
+        st = play_moat_to_ws(
             sess,
             moat_charge_mode=args.moat_charge_mode,
             wo_charge_mode=args.wo_charge_mode,

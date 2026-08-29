@@ -24,6 +24,8 @@ OBJECT_NAMES: dict[int, str] = {
     0x30: "gibdo",
     0x2B: "invuln_mover_residual",  # L3 0x49/0x5d HP240; sword/bomb no dmg (not Manhandla)
     0x32: "dodongo",  # L2 boss room 0x0e (live rr-n5i 2026-08-07)
+    0x33: "gohma_red",  # L6 0x1C; one wooden arrow to open eye
+    0x34: "gohma_blue",  # L8 Gohma (3 arrows); not this hop
     0x35: "l4_mid_11_cluster",  # L4 room 0x11 live rr-rvae
     0x3C: "manhandla",  # L3 room 0x4d assisted kill 2/2 (rr-vpl 2026-08-07); L4 0x10
     0x3D: "aquamentus",
@@ -38,6 +40,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x4e: "trap_or_fire_residual",
     0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
     0x56: "manhandla_projectile_residual",  # L3 Manhandla + L4 Gleeok fireball
+    0x5C: "boomerang_projectile",  # L1 0x44 Goriya throw (lab); not type 0x06
     0x60: "green_rupee_drop",
 }
 
@@ -62,6 +65,8 @@ ROPE_OBJECT_TYPE = 0x28
 INVULN_MOVER_OBJECT_TYPE = 0x2B
 GIBDO_OBJECT_TYPE = 0x30  # L5 0x66/0x65/0x26/0x34 live
 DODONGO_OBJECT_TYPE = 0x32
+GOHMA_OBJECT_TYPE = 0x33  # L6 red Gohma; source + Data Crystal ObjType
+GOHMA_BLUE_OBJECT_TYPE = 0x34  # L8 blue Gohma; not this hop
 L4_MID_11_OBJECT_TYPE = 0x35  # L4 0x11 live rr-rvae
 MANHANDLA_OBJECT_TYPE = 0x3C
 AQUAMENTUS_OBJECT_TYPE = 0x3D
@@ -74,6 +79,7 @@ PATRA_OBJECT_TYPE = 0x47  # L9 room 0x52 final Patra
 BLADE_TRAP_OBJECT_TYPE = 0x49  # L4 0x02 live rr-rvae
 FIREBALL_OBJECT_TYPE = 0x55
 MANHANDLA_PROJECTILE_TYPE = 0x56  # also Gleeok fireball residual
+GORIYA_BOOMERANG_OBJECT_TYPE = 0x5C  # L1 0x44 lab traces; HP 0/144; not 0x06
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",

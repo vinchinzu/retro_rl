@@ -1,0 +1,40 @@
+{
+  "command": "floater",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/climb_descent_enter.state",
+  "success": false,
+  "outcome": "timeout",
+  "phase": "hop",
+  "frames": 900,
+  "timing": {
+    "frames": 900,
+    "seconds": 14.975,
+    "clock": "00:15.00",
+    "ntsc_fps": 60.0988
+  },
+  "max_y": 109,
+  "max_vy": 4,
+  "moonfall_frames": 0,
+  "jump_at": null,
+  "first_ground": null,
+  "first_kb": null,
+  "final": {
+    "f": 900,
+    "x": 395,
+    "y": 108,
+    "pose": 81,
+    "mt": 2,
+    "vd": 2,
+    "vy": 0,
+    "vx": 0,
+    "face": 8,
+    "gs": 8,
+    "room": "0x96BA",
+    "mw": 1,
+    "mf": 0,
+    "mwalk": 0,
+    "air": 1,
+    "kb": 0,
+    "phase": "hop"
+  },
+  "shots": "snes/super_metroid/scratch/climb_descent_shots/ledge"
+}

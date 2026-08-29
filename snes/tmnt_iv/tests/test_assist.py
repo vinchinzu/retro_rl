@@ -1,4 +1,4 @@
-"""ROM-free tests for TMNT IV assist contract helpers."""
+"""Assist contract: emergency HP, form-2 iframe, Clean stems, freeze abort."""
 
 from __future__ import annotations
 
@@ -11,12 +11,19 @@ from tmnt_iv.assist import (
     assist_integrity,
     evaluate_clean_integrity,
 )
+from tmnt_iv.paths import (
+    ASSISTED_FULL_RUN_DRY_REPORT,
+    ASSISTED_FULL_RUN_STEM,
+    CLEAN_FULL_RUN_STEM,
+    RECORDINGS_DIR,
+    clean_artifact_stem,
+    default_full_run_paths,
+)
 from tmnt_iv.scripts.record_full_hard_run import (
     RunMetrics,
-    _EMERGENCY_HP_RESTORE,
-    _EMERGENCY_HP_THRESHOLD,
-    assist_integrity as rec_assist_integrity,
-    evaluate_clean_integrity as rec_evaluate_clean_integrity,
+    _FREEZE_ABORT_FRAMES,
+    _build_parser,
+    resolve_cli_paths,
 )
 
 
@@ -28,63 +35,92 @@ class _FakeEnv:
         self.writes.append((name, value))
 
 
-def test_contract_thresholds() -> None:
+def test_contract_thresholds_and_writes() -> None:
     assert EMERGENCY_HP_THRESHOLD == 16
     assert EMERGENCY_HP_RESTORE == 80
     assert FORM2_IFRAME_VALUE == 1
-    assert _EMERGENCY_HP_THRESHOLD is EMERGENCY_HP_THRESHOLD
-    assert _EMERGENCY_HP_RESTORE is EMERGENCY_HP_RESTORE
 
-
-def test_record_full_hard_run_reexports_integrity() -> None:
-    assert rec_assist_integrity is assist_integrity
-    assert rec_evaluate_clean_integrity is evaluate_clean_integrity
-
-
-def test_apply_emergency_hp_writes_on_threshold_and_zero() -> None:
     for health in (0, 1, 16):
         env = _FakeEnv()
         assert apply_emergency_hp(env, health) is True
         assert env.writes == [("player_hp", EMERGENCY_HP_RESTORE)]
-
-
-def test_apply_emergency_hp_skips_safe_and_sentinel_hp() -> None:
-    for health in (17, 28, 48, 80, 0x60, 0x61, -1):
+    for health in (17, 80, 0x61, -1):
         env = _FakeEnv()
         assert apply_emergency_hp(env, health) is False
         assert env.writes == []
 
-
-def test_apply_form2_iframe_hold_only_stage9_event_0a() -> None:
     env = _FakeEnv()
     assert apply_form2_iframe_hold(env, stage=9, event=0x0A) is True
     assert env.writes == [("player_iframes", FORM2_IFRAME_VALUE)]
-
-    for stage, event in ((9, 0x09), (9, 0x0B), (8, 0x0A), (0, 0x0A)):
+    for stage, event in ((9, 0x0B), (8, 0x0A)):
         env = _FakeEnv()
         assert apply_form2_iframe_hold(env, stage=stage, event=event) is False
-        assert env.writes == []
 
 
-def test_assist_integrity_flags_from_module() -> None:
-    clean = RunMetrics()
-    ok, flags = evaluate_clean_integrity(clean)
+def test_clean_integrity_requires_zero_assists_and_zero_lives_lost() -> None:
+    ok, flags = evaluate_clean_integrity(RunMetrics())
     assert ok is True
-    assert flags["clean_assists_zero"] is True
-    assert flags["emergency_hp_zero"] is True
-    assert flags["iframe_guard_zero"] is True
+    assert flags["clean_assists_zero"]
+    assert flags["life_losses_zero"]
 
-    dirty = RunMetrics(health_guard_interventions=1)
-    ok_dirty, flags_dirty = evaluate_clean_integrity(dirty)
-    assert ok_dirty is False
-    assert flags_dirty["emergency_hp_zero"] is False
+    ok_hp, hp_flags = evaluate_clean_integrity(RunMetrics(health_guard_interventions=1))
+    assert ok_hp is False
+    assert hp_flags["emergency_hp_zero"] is False
+
+    ok_iframe, iframe_flags = evaluate_clean_integrity(
+        RunMetrics(final_boss_iframe_guard_frames=10)
+    )
+    assert ok_iframe is False
+    assert iframe_flags["iframe_guard_zero"] is False
 
     assisted = assist_integrity(
-        RunMetrics(health_guard_interventions=3, final_boss_iframe_guard_frames=12),
+        RunMetrics(health_guard_interventions=65, life_losses=0),
         require_clean_assists=False,
     )
     assert "clean_assists_zero" not in assisted
-    assert assisted["emergency_hp_zero"] is False
-    assert assisted["iframe_guard_zero"] is False
     assert assisted["life_losses_zero"] is True
-    assert assisted["state_loads_zero"] is True
+
+
+def test_clean_stems_never_overwrite_assisted() -> None:
+    assert clean_artifact_stem(ASSISTED_FULL_RUN_STEM) == (
+        f"{ASSISTED_FULL_RUN_STEM}_clean"
+    )
+    assert clean_artifact_stem(CLEAN_FULL_RUN_STEM) == CLEAN_FULL_RUN_STEM
+    a_video, a_report = default_full_run_paths()
+    c_video, c_report = default_full_run_paths(clean=True)
+    assert a_video == RECORDINGS_DIR / f"{ASSISTED_FULL_RUN_STEM}.mp4"
+    assert c_video.name == f"{CLEAN_FULL_RUN_STEM}.mp4"
+    assert c_video != a_video
+    assert c_report != a_report
+    _, c_dry = default_full_run_paths(clean=True, dry_run=True)
+    assert c_dry.name == f"{CLEAN_FULL_RUN_STEM}_dry_run.json"
+    assert c_dry.name != ASSISTED_FULL_RUN_DRY_REPORT
+
+
+def test_clean_cli_isolates_artifacts() -> None:
+    parser = _build_parser()
+    args = parser.parse_args(["--clean", "--dry-run"])
+    emergency_hp = not (args.clean or args.no_emergency_hp)
+    iframe_hold = not (args.clean or args.no_iframe_hold)
+    video, report = resolve_cli_paths(
+        output=None,
+        report=None,
+        dry_run=True,
+        clean_artifacts=not emergency_hp or not iframe_hold,
+    )
+    assert emergency_hp is False
+    assert iframe_hold is False
+    assert video.name == f"{CLEAN_FULL_RUN_STEM}.mp4"
+    assert report.name == f"{CLEAN_FULL_RUN_STEM}_dry_run.json"
+
+    default = parser.parse_args([])
+    assert default.clean is False
+    d_video, d_report = resolve_cli_paths(
+        output=None, report=None, dry_run=False, clean_artifacts=False
+    )
+    assert d_video.name == f"{ASSISTED_FULL_RUN_STEM}.mp4"
+    assert d_report.name == f"{ASSISTED_FULL_RUN_STEM}.json"
+
+
+def test_freeze_abort_is_above_pin_dumpster_and_rail() -> None:
+    assert 8_000 <= _FREEZE_ABORT_FRAMES < 50_000

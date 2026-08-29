@@ -11,10 +11,12 @@ from tmnt_iv.grind_knobs import (
     KNOB_BOUNDS,
     GrindKnobs,
     clamp_knob_patch,
+    focus_knob_names,
     knobs_as_dict,
     merge_knobs,
 )
 from tmnt_iv.local_grind.eval_probe import run_knob_probe
+from tmnt_iv.local_grind.tools import compact_metrics
 from tmnt_iv.local_grind.ollama_client import OllamaConfig, OllamaError, chat_json
 from tmnt_iv.local_grind.schema import (
     DEFAULT_TARGETS,
@@ -211,7 +213,7 @@ def _next_proposal(
             trial_id=trial_id,
             best_knobs=best_knobs,
         )
-    focus_keys = _focus_knob_names(config.focus_target)
+    focus_keys = focus_knob_names(config.focus_target)
     bounds = {k: KNOB_BOUNDS[k] for k in focus_keys if k in KNOB_BOUNDS}
     defaults = knobs_as_dict(GrindKnobs())
     best = knobs_as_dict(best_knobs)
@@ -227,7 +229,7 @@ def _next_proposal(
             "knob_bounds": json.dumps(bounds, sort_keys=True),
             "best_knobs": json.dumps(best_compact, sort_keys=True),
             "baselines": json.dumps(
-                {k: _compact_metrics(v) for k, v in baselines.items()},
+                {k: compact_metrics(v) for k, v in baselines.items()},
                 sort_keys=True,
             ),
             "history": json.dumps(
@@ -362,33 +364,6 @@ def _append_jsonl(path: Path, row: dict[str, Any]) -> None:
         handle.write(json.dumps(row, sort_keys=True) + "\n")
 
 
-def _focus_knob_names(focus: str) -> list[str]:
-    if focus == "technodrome_tank" or focus == "tokka_rahzar":
-        prefix = "blocker_"
-    elif focus == "super_shredder":
-        prefix = "shredder_"
-    else:
-        prefix = "slash_"
-    names = [k for k in KNOB_BOUNDS if k.startswith(prefix)]
-    # A couple shared combat knobs are always fair game.
-    for shared in ("attack_range", "standoff", "attack_gap"):
-        if shared in KNOB_BOUNDS and shared not in names:
-            names.append(shared)
-    return names
-
-
-def _compact_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
-    keys = (
-        "outcome",
-        "frames",
-        "damage_taken",
-        "heals",
-        "min_hp",
-        "boss_hp",
-    )
-    return {k: metrics[k] for k in keys if k in metrics}
-
-
 def _compact_trial(record: TrialRecord) -> dict[str, Any]:
     proposal = record.proposal
     return {
@@ -398,7 +373,7 @@ def _compact_trial(record: TrialRecord) -> dict[str, Any]:
         "delta": round(record.delta_score, 1),
         "hypothesis": proposal.hypothesis if proposal else "",
         "knobs": proposal.knobs if proposal else {},
-        "metrics": _compact_metrics(record.metrics),
+        "metrics": compact_metrics(record.metrics),
         "notes": record.model_notes[:160],
     }
 

@@ -199,8 +199,11 @@ class FenceLeftoverGlanceTests(unittest.TestCase):
             d2_leftover_spec("stumps", done=True).require_empty, ("stumps",)
         )
         self.assertEqual(
+            d2_leftover_spec("bushes", done=True).require_empty, ("weeds",)
+        )
+        self.assertEqual(
             d2_leftover_spec("all", done=True).require_empty,
-            ("fences", "stones", "large_rocks", "stumps"),
+            ("weeds", "fences", "stones", "large_rocks", "stumps"),
         )
 
     def test_leftover_from_snapshot_flattens_probe_clock_and_pos(self) -> None:

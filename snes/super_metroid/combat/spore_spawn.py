@@ -1,4 +1,4 @@
-"""No-assist Spore Spawn policy: left-ledge morph seat + live-eye missiles.
+"""Spore Spawn fight policies: Survival floor-bounce and Clean left-ledge.
 
 Human tape (full_start_v1 s6 hop 11, room ``0x9DC7``) sits morphed at the
 left-corner ledge top ``(x≈21, y≈697)``. Windows 1–3 are two-missile
@@ -6,21 +6,37 @@ dash-bounces under the live eye. Later parks collapse after one hit.
 Missiles are farmable from bouncing-spore droplets (sm-json 80% missiles)
 so a short fight can clear on the natural 10-cap without resource writes.
 
-This is the Clean-track fight. The assisted floor-bounce loop in
-``routes/kpdr/spore_spawn.py`` remains as the old continuous path until this
-policy is dual-green from natural entry.
+- :func:`play_spore_spawn_floor_bounce` — Survival continuous (assisted
+  floor bounce + aim-up missiles). Approach/exit stay on the hop.
+- :func:`play_spore_spawn_fight` — Clean left-ledge ball + 2-missile windows.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import asdict, dataclass
 
 from super_metroid.combat.features import (
     boss_defeated_in_state,
     spore_spawn_catalog,
 )
-from super_metroid.combat.primitives import ensure_weapon, settle_standing
+from super_metroid.combat.primitives import (
+    ADDR_PROJ_ID,
+    ADDR_PROJ_ILIST,
+    ADDR_PROJ_X,
+    ADDR_PROJ_Y,
+    ILIST_BIG_ENERGY,
+    ILIST_MISSILES,
+    ILIST_SMALL_ENERGY,
+    N_ENEMY_PROJECTILES,
+    PICKUP_BIG_ENERGY,
+    PICKUP_MISSILE,
+    PICKUP_PROJ_ID,
+    PICKUP_SMALL_ENERGY,
+    Pickup,
+    ensure_weapon,
+    list_pickups,
+    settle_standing,
+)
 from super_metroid.ram import GameplayPhase, SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
@@ -57,28 +73,6 @@ VULNERABLE_SPRITEMAPS = frozenset(
 )
 # Fully-open holds — transition maps (EE79…) are not a reliable hit.
 FULLY_OPEN_SPRITEMAPS = frozenset({0xEF3D, 0xEF4F, 0xEF61})
-
-# Enemy-projectile tables (Kejardon / PJBoy bank $86): 18 slots × 2 bytes.
-# $1997 is the header pointer (not a 1-byte type). $19BB is graphics/palette.
-# Pickups are projectile $F337; kind is the instruction list at $1B47.
-N_ENEMY_PROJECTILES = 18
-ADDR_PROJ_ID = 0x1997
-ADDR_PROJ_X = 0x1A4B
-ADDR_PROJ_Y = 0x1A93
-ADDR_PROJ_ILIST = 0x1B47
-PICKUP_PROJ_ID = 0xF337
-ILIST_SMALL_ENERGY = 0xED8D
-ILIST_BIG_ENERGY = 0xEDA3
-ILIST_MISSILES = 0xEDB9
-PICKUP_SMALL_ENERGY = 0x16
-PICKUP_BIG_ENERGY = 0x17
-PICKUP_MISSILE = 0x18
-_ILIST_TO_KIND = {
-    ILIST_SMALL_ENERGY: PICKUP_SMALL_ENERGY,
-    ILIST_BIG_ENERGY: PICKUP_BIG_ENERGY,
-    ILIST_MISSILES: PICKUP_MISSILE,
-}
-
 
 @dataclass(frozen=True)
 class SporeSpawnStrategy:
@@ -153,14 +147,6 @@ class SporeSpawnEvidence:
             "outcome": self.outcome,
             "vulnerable_spritemaps": list(self.vulnerable_spritemaps),
         }
-
-
-@dataclass(frozen=True)
-class Pickup:
-    slot: int
-    kind: int
-    x: int
-    y: int
 
 
 def mouth_open(state: SuperMetroidState) -> bool:
@@ -245,38 +231,6 @@ def seated(state: SuperMetroidState, strategy: SporeSpawnStrategy | None = None)
         and int(state.samus_x) <= strat.seat_x_max
         and LEDGE_Y_MIN <= int(state.samus_y) <= LEDGE_Y_MAX
     )
-
-
-def _read_u16(ram: Any, address: int) -> int:
-    return int(ram[address]) | (int(ram[address + 1]) << 8)
-
-
-def list_pickups(env: Any) -> tuple[Pickup, ...]:
-    """Live enemy-projectile pickups (energy / missiles). Empty if no RAM."""
-    if env is None:
-        return ()
-    try:
-        ram = env.get_ram()
-    except Exception:
-        return ()
-    need = ADDR_PROJ_ILIST + N_ENEMY_PROJECTILES * 2
-    if ram is None or len(ram) < need:
-        return ()
-    found: list[Pickup] = []
-    for slot in range(N_ENEMY_PROJECTILES):
-        header = _read_u16(ram, ADDR_PROJ_ID + slot * 2)
-        if header == PICKUP_PROJ_ID:
-            kind = _ILIST_TO_KIND.get(_read_u16(ram, ADDR_PROJ_ILIST + slot * 2), 0)
-        else:
-            kind = header & 0xFF
-        if kind not in (PICKUP_SMALL_ENERGY, PICKUP_BIG_ENERGY, PICKUP_MISSILE):
-            continue
-        x = _read_u16(ram, ADDR_PROJ_X + slot * 2)
-        y = _read_u16(ram, ADDR_PROJ_Y + slot * 2)
-        if x == 0 and y == 0:
-            continue
-        found.append(Pickup(slot=slot, kind=kind, x=x, y=y))
-    return tuple(found)
 
 
 def fight_spore_spawn_action(
@@ -715,4 +669,102 @@ def play_spore_spawn_fight(
         windows=windows,
         outcome=outcome,
         vulnerable_spritemaps=tuple(sorted(seen)),
+    )
+
+
+@dataclass(frozen=True)
+class SporeSpawnFloorBounceEvidence:
+    """Survival floor-bounce fight only (approach/exit stay on the hop)."""
+
+    entry_frame: int
+    activation_frame: int
+    defeat_frame: int
+    peak_hp: int
+    observed_hp: tuple[int, ...]
+    brinstar_boss_bits_before: int
+    vulnerable_spritemaps: tuple[int, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+def play_spore_spawn_floor_bounce(
+    session: ControllerSession,
+) -> SporeSpawnFloorBounceEvidence:
+    """Assisted floor bounce + aim-up missiles until HP 0.
+
+    Continuous Survival path. Expects natural doorway entry already in
+    ``0x9DC7`` at full HP. Leave/exit climb stays on the hop.
+    """
+    if int(session.state.room_id) != ROOM_SPORE_SPAWN:
+        raise RuntimeError(
+            f"Spore Spawn floor bounce expected room 0x{ROOM_SPORE_SPAWN:04X}, "
+            f"got {session.state}"
+        )
+    if session.state.enemy0_hp < 960:
+        raise RuntimeError(f"Spore Spawn did not activate at 960 HP: {session.state}")
+
+    entry_frame = session.frame
+    activation_frame = session.frame
+    peak_hp = session.state.enemy0_hp
+    observed_hp = {session.state.enemy0_hp}
+    boss_bits_before = session.state.boss_bits[1]
+    seen_spritemaps: set[int] = set()
+    # Floor bounce + aim-up missiles during open windows. Unlimited energy
+    # means survival is free; damage requires airborne proximity to the core
+    # (shell blocks floor shots). Continuous power-on fight ~5.2k frames
+    # (~86s) vs the prior ~23k (~6+ min) single-hit-per-window loop.
+    jump_direction = "RIGHT"
+    jump_hold = 0
+    for index in range(12_000):
+        state = session.state
+        peak_hp = max(peak_hp, state.enemy0_hp)
+        observed_hp.add(state.enemy0_hp)
+        mouth = mouth_open(state)
+        if mouth:
+            seen_spritemaps.add(state.enemy0_spritemap)
+        # Bounce across the floor so open windows still cross under the core.
+        if state.samus_x <= 65:
+            jump_direction = "RIGHT"
+        elif state.samus_x >= 191:
+            jump_direction = "LEFT"
+        if state.samus_y >= 710 and jump_hold == 0:
+            # Slightly longer hold while open keeps height for multi-missile
+            # windows (missile cadence ~every other frame while open).
+            jump_hold = 52 if mouth else 44
+        hold_jump = jump_hold > 0
+        jump_hold = max(0, jump_hold - 1)
+        fire = mouth and index % 2 == 0
+        aim_direction = "LEFT" if state.enemy0_x < state.samus_x else "RIGHT"
+        if state.samus_y >= 710:
+            # Launch jump; still fire if the mouth opens during takeoff.
+            names_list = [jump_direction, "A"]
+            if hold_jump:
+                names_list.append("B")
+            if fire:
+                names_list.extend(("UP", "X"))
+            names = tuple(names_list)
+        else:
+            # Airborne: hold UP to unspin so missiles can fire, face the core.
+            names_list = [aim_direction, "UP"]
+            if hold_jump:
+                names_list.extend(("A", "B"))
+            if fire:
+                names_list.append("X")
+            names = tuple(names_list)
+        hold(session, 1, *names, reason="fight_spore_spawn")
+        if session.state.enemy0_hp == 0:
+            observed_hp.add(0)
+            break
+    else:
+        raise TimeoutError(f"Spore Spawn HP never reached zero: {session.state}")
+
+    return SporeSpawnFloorBounceEvidence(
+        entry_frame=entry_frame,
+        activation_frame=activation_frame,
+        defeat_frame=session.frame,
+        peak_hp=peak_hp,
+        observed_hp=tuple(sorted(observed_hp, reverse=True)),
+        brinstar_boss_bits_before=boss_bits_before,
+        vulnerable_spritemaps=tuple(sorted(seen_spritemaps)),
     )

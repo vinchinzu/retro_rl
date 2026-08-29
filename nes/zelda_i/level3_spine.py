@@ -1,7 +1,6 @@
-"""Survival-spine L3 stage factories through the natural Raft boundary.
+"""Survival-spine L3 hops through the natural Raft boundary.
 
-The continuous runner composes these frame controllers, then attaches the
-carried-bomb boss suffix without the isolated suffix's recon poke.
+The continuous runner attaches these rows, then the carried-bomb boss suffix.
 """
 
 from __future__ import annotations
@@ -18,11 +17,10 @@ from zelda_i.door_graph import (
 )
 from zelda_i.level3_dungeon import (
     LEVEL3,
-    ROOM_7B_SPEC,
+    ROOM_5B_SPEC,
     ROOM_L3_DARKNUTS,
     ROOM_L3_ENTRY,
-    ROOM_L3_WEST_KEY,
-    level3_reached_5b,
+    ROOM_L3_RAFT_PASSAGE,
 )
 from zelda_i.level3_overworld import (
     POST_L2_PATH_MAX_FRAMES,
@@ -41,10 +39,11 @@ from zelda_i.level3_raft_path import (
     PASSAGE_RAFT_MAX_FRAMES,
     Level3RaftPathController,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE
+from zelda_i.spine_hops import SpineHop, ready
 
 WEST_KEY_SPINE_MAX_FRAMES = 8000
-NORTH_CHAIN_SPINE_MAX_FRAMES = 16000
+NORTH_CHAIN_SPINE_MAX_FRAMES = 32000  # 0x6b zols + occupancy north + 0x5b Darknuts
 COMPASS_SPINE_MAX_FRAMES = LEFT_5B_MAX_FRAMES + 100
 WEST_DARKNUTS_SPINE_MAX_FRAMES = 3000
 SOUTH_DARKNUTS_SPINE_MAX_FRAMES = (
@@ -58,6 +57,11 @@ RAFT_SPINE_MAX_FRAMES = (
     + 500
 )
 _DEST_6B_ROOMS = (L3_ENTRY, L3_WEST_KEY, L3_NORTH_ZOLS, L3_DARKNUTS)
+
+__all__ = [
+    "dest_6b_room_plan",
+    "l3_hops",
+]
 
 
 def dest_6b_room_plan() -> tuple[RoomExit, ...]:
@@ -78,56 +82,10 @@ def dest_6b_room_plan() -> tuple[RoomExit, ...]:
     return path
 
 
-def level3_entry_stages():
-    """After L2 TF: idle fanfare, then walk the Manji door and enter."""
-    return (
-        (
-            "settle_l2_tf",
-            PostL2TriforceSettleController(),
-            POST_L2_SETTLE_MAX_FRAMES,
-        ),
-        (
-            "enter_level3",
-            OverworldPostL2ToLevel3Controller(require_dungeon=True),
-            POST_L2_PATH_MAX_FRAMES,
-        ),
-    )
-
-
-def level3_entry_success(snap: ZeldaSnapshot) -> bool:
-    """Play mode in Manji entry 0x7c (predecessor of west key)."""
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_ENTRY
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_west_key_stages():
-    """0x7c LEFT+UP → 0x7b Zol clear + key (rr-4d53.3.1.1)."""
-    return (
-        ("west_key", Level3WestKeyController(), WEST_KEY_SPINE_MAX_FRAMES),
-    )
-
-
-def level3_west_key_success(snap: ZeldaSnapshot) -> bool:
-    """Predecessor stop (rr-4d53.3.1.1 closed): 0x7b with keys≥1."""
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_WEST_KEY
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-        and snap.keys >= 1
-        and not ROOM_7B_SPEC.live_enemies(snap)
-    )
-
-
-def level3_dest_6b_stages():
-    """0x7c west key → 0x6b occupancy north dest into 0x5b."""
+def _dest_6b_stages():
     dest_6b_room_plan()
     return (
-        *level3_west_key_stages(),
+        ("west_key", Level3WestKeyController(), WEST_KEY_SPINE_MAX_FRAMES),
         (
             "north_chain",
             Level3NorthChainController(),
@@ -136,113 +94,78 @@ def level3_dest_6b_stages():
     )
 
 
-def level3_dest_6b_success(snap: ZeldaSnapshot) -> bool:
-    """Spine stop for ``--through level3`` this leaf: play mode in 0x5b."""
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_DARKNUTS
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_dest_6b_success_ram(ram) -> bool:
-    return level3_reached_5b(ram)
-
-
-def level3_compass_stages():
-    """Live 0x5b predecessor → west door → Compass room 0x5a."""
-    return (
-        (
-            "compass_0x5a",
-            PredicateStopController(
-                Level3RaftPathController(),
-                level3_compass_success,
-                "level3_compass_0x5a",
+def _raft_hop(through: str, stop: str, pred, name: str, max_frames: int) -> SpineHop:
+    def stages():
+        return (
+            (
+                stop,
+                PredicateStopController(Level3RaftPathController(), pred, name),
+                max_frames,
             ),
+        )
+
+    return SpineHop(through, stop, stages, pred)
+
+
+def l3_hops(*, after_entry=None) -> tuple[SpineHop, ...]:
+    """Entry → dest 0x5b → compass → west/south Darknuts → Raft."""
+    compass = ready(level=LEVEL3, screen=0x5A)
+    west = ready(level=LEVEL3, screen=0x59)
+    south = ready(level=LEVEL3, screen=0x69)
+    raft = ready(
+        level=LEVEL3, screen=ROOM_L3_RAFT_PASSAGE, mode=PASSAGE_MODE, item="raft"
+    )
+    return (
+        SpineHop(
+            "l3-entry",
+            "enter_level3",
+            (
+                (
+                    "settle_l2_tf",
+                    PostL2TriforceSettleController(),
+                    POST_L2_SETTLE_MAX_FRAMES,
+                ),
+                (
+                    "enter_level3",
+                    OverworldPostL2ToLevel3Controller(require_dungeon=True),
+                    POST_L2_PATH_MAX_FRAMES,
+                ),
+            ),
+            ready(level=LEVEL3, screen=ROOM_L3_ENTRY),
+            after=after_entry,
+        ),
+        SpineHop(
+            "l3-dest-6b",
+            "north_chain",
+            _dest_6b_stages,
+            ready(level=LEVEL3, screen=ROOM_L3_DARKNUTS, spec=ROOM_5B_SPEC),
+        ),
+        _raft_hop(
+            "l3-compass",
+            "compass_0x5a",
+            compass,
+            "level3_compass_0x5a",
             COMPASS_SPINE_MAX_FRAMES,
         ),
-    )
-
-
-def level3_compass_success(snap: ZeldaSnapshot) -> bool:
-    """Spine stop for rr-4d53.3.3.1: playable Compass room 0x5a."""
-    return (
-        snap.level == LEVEL3
-        and snap.screen == 0x5A
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_west_darknuts_stages():
-    """Live 0x5a predecessor → long KEY-LEFT → playable 0x59."""
-    return (
-        (
+        _raft_hop(
+            "l3-west-darknuts",
             "west_darknuts_0x59",
-            PredicateStopController(
-                Level3RaftPathController(),
-                level3_west_darknuts_success,
-                "level3_west_darknuts_0x59",
-            ),
+            west,
+            "level3_west_darknuts_0x59",
             WEST_DARKNUTS_SPINE_MAX_FRAMES,
         ),
-    )
-
-
-def level3_west_darknuts_success(snap: ZeldaSnapshot) -> bool:
-    return (
-        snap.level == LEVEL3
-        and snap.screen == 0x59
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_south_darknuts_stages():
-    """Live 0x59 predecessor → clear → DOWN → playable 0x69."""
-    return (
-        (
+        _raft_hop(
+            "l3-south-darknuts",
             "south_darknuts_0x69",
-            PredicateStopController(
-                Level3RaftPathController(),
-                level3_south_darknuts_success,
-                "level3_south_darknuts_0x69",
-            ),
+            south,
+            "level3_south_darknuts_0x69",
             SOUTH_DARKNUTS_SPINE_MAX_FRAMES,
         ),
-    )
-
-
-def level3_south_darknuts_success(snap: ZeldaSnapshot) -> bool:
-    return (
-        snap.level == LEVEL3
-        and snap.screen == 0x69
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_raft_stages():
-    """Live 0x69 predecessor → clear → stairs passage → natural Raft."""
-    return (
-        (
+        _raft_hop(
+            "l3-raft",
             "raft_0x0f",
-            PredicateStopController(
-                Level3RaftPathController(),
-                level3_raft_success,
-                "level3_raft",
-            ),
+            raft,
+            "level3_raft",
             RAFT_SPINE_MAX_FRAMES,
         ),
-    )
-
-
-def level3_raft_success(snap: ZeldaSnapshot) -> bool:
-    return (
-        snap.level == LEVEL3
-        and snap.screen == 0x0F
-        and snap.mode == 9
-        and not snap.transitioning
-        and bool(snap.raft)
     )

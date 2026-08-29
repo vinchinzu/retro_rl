@@ -33,7 +33,7 @@ picked up with controller input. Collecting pizza is **not** an assist.
 - no A-special
 
 Stage 1 Clean suite is verified pizza-only
-(`scripts/probe_stage1_clean.py --suite`). Later stages keep emergency
+(`scripts/probe_clean.py --stage 1 --suite`). Later stages keep emergency
 until their own heal=none multi-entry suite is green; then drop assists
 for that stage / whole run per playbook order.
 

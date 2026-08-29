@@ -9,6 +9,9 @@ uv run python -m super_metroid.tas.export_slices --all
 
 # One slice
 uv run python -m super_metroid.tas.export_slices sniq_any_final_10k
+
+# Full movies from tas/catalog.py (low%, RBO, room tests, …)
+uv run python -m super_metroid.tas.export_slices --catalog
 ```
 """
 
@@ -19,6 +22,7 @@ import json
 import sys
 
 from super_metroid.paths import GAME_DIR
+from super_metroid.tas.catalog import catalog_full_slice_ids
 from super_metroid.tas.slice import (
     SLICE_CATALOG,
     SLICE_DIR,
@@ -78,6 +82,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Export entire catalog including full movies",
     )
+    p.add_argument(
+        "--catalog",
+        action="store_true",
+        help="Export full-movie slices from tas/catalog.py (new vanilla corpus)",
+    )
     p.add_argument("--list", action="store_true", help="List catalog and exit")
     args = p.parse_args(argv)
 
@@ -88,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.all:
         ids = list(SLICE_CATALOG.keys())
+    elif args.catalog:
+        ids = catalog_full_slice_ids()
     elif args.slices:
         ids = list(args.slices)
     else:

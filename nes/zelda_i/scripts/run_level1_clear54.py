@@ -19,9 +19,9 @@ from zelda_i.chain import run_natural_to_milestone
 from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
-    ROOM_54_SPEC,
     dungeon_room_cleared,
 )
+from zelda_i.level1_dungeon import ROOM_54_SPEC
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot

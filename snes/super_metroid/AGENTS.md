@@ -45,13 +45,17 @@ bd ready -l super_metroid -l spine
 | Path | Role |
 |------|------|
 | `routes/continuous.py`, `early_continuous.py`, `catalog.py` | Power-on chain + tip registry |
-| `routes/kpdr/` | Pure movement/combat controllers |
-| `routes/kpdr/spazer/` | Gold-standard multi-hop package |
+| `routes/kpdr/` | Pure **movement** hops (no env ownership, no fight loops) |
+| `combat/` | Boss fight policies after natural entry; hops are thin adapters |
+| `routes/skills/` | Reusable movement Skills (walljump, moonfall, shinespark, poses) |
 | `tas/` | Sniq movies + harness replay (`docs/TAS_ADAPT.md`) |
 | `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
 
-Multi-hop → package from day 1. Split a source file **before 1000 LOC**.
-Continuous hops only via `tips.play_hops`.
+Hop ≠ fight. Split a source file **before 1000 LOC**; merge into the
+owner rather than a new sibling. Import `play_*` from the owner
+(`registry.get_segment`). Continuous hops only via `tips.play_hops`.
+New-file table:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) “Where a new file goes”.
 
 ## Traps
 
