@@ -21,6 +21,7 @@ from mortal_kombat.scripts.capture_natural_endurance1 import (
     make_policy_loader,
     mask_from_buttons,
     rle_encode,
+    _run_courtyard_pinprobe,
 )
 
 
@@ -225,6 +226,37 @@ def test_round2_kano_loader_wraps_ram_oracle() -> None:
     assert wrapped.first.name == "dummy"
 
 
+def test_courtyard_pinprobe_driver_is_one_based() -> None:
+    frames: list[int] = []
+
+    class Dummy:
+        def __init__(self):
+            self.ram = make_test_ram(p1_health=59, p2_health=0, timer=102)
+            self.steps = 0
+
+        def get_ram(self):
+            return self.ram
+
+        def step(self, _buttons):
+            self.steps += 1
+
+    dummy = Dummy()
+
+    class Env:
+        unwrapped = dummy
+
+        def step(self, buttons):
+            dummy.step(buttons)
+
+    def on_frame(_env, frame, _snap, _prev):
+        frames.append(frame)
+        return len(frames) >= 3
+
+    _run_courtyard_pinprobe(Env(), on_frame, max_frames=10)
+    assert frames == [1, 2, 3]
+    assert dummy.steps == 2
+
+
 def test_courtyard_loader_returns_jump_specialist() -> None:
     loader = make_policy_loader(None, courtyard=True)
     policy = loader("ignored.zip", KIND_SCRIPT)
@@ -250,6 +282,9 @@ def test_courtyard_idles_until_jump_then_air_hk() -> None:
     wait = policy.act(idle, None)
     assert wait[UP] == 0
     assert wait[B] == 0
+    # y=143 during startup is not a y-drop. HK here cancels the hop.
+    startup = policy.act(make_test_ram(p1_x=70, p2_x=180, p1_y=143), None)
+    assert int(startup.sum()) == 0
     air = make_test_ram(p1_x=90, p2_x=180, p1_y=70)
     kick = policy.act(air, None)
     assert kick[B] == 1
@@ -261,10 +296,10 @@ def test_courtyard_idles_until_jump_then_air_hk() -> None:
     almost = policy.act(make_test_ram(p1_x=150, p2_x=180, p1_y=143), None)
     assert almost[B] == 1
     assert almost[RIGHT] == 0
-    # Land far: opener done, do not land-HK (that crosses).
+    # Land: opener done. Standing HK at ~50 is ok; do not jump or chase.
     land = policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
-    assert land[B] == 0
     assert land[UP] == 0
+    assert land[RIGHT] == 0
 
 
 def test_courtyard_air_hk_ignores_knife_sprite() -> None:
@@ -287,7 +322,7 @@ def test_courtyard_standing_hk_when_kano_walks_in() -> None:
     for _ in range(10):
         policy.act(idle, None)
     policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
-    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=183, p1_y=144, p1_state=1), None)
     close = policy.act(make_test_ram(p1_x=182, p2_x=214, p1_y=144), None)
     assert close[B] == 1
     assert close[UP] == 0
@@ -300,14 +335,18 @@ def test_courtyard_does_not_chase_kano_off_right_edge() -> None:
     for _ in range(10):
         policy.act(idle, None)
     policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
-    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=183, p1_y=144, p1_state=1), None)
     close = make_test_ram(p1_x=182, p2_x=214, p1_y=144)
     policy.act(close, None)
     for _ in range(4):
         policy.act(close, None)
     chase = policy.act(make_test_ram(p1_x=170, p2_x=214, p1_y=144), None)
-    assert chase[RIGHT] == 1
+    assert chase[RIGHT] == 0
     assert chase[B] == 0
+    # Kano already on the rim: do not walk him into the 192/231 wrap.
+    edge = policy.act(make_test_ram(p1_x=170, p2_x=231, p1_y=144), None)
+    assert edge[RIGHT] == 0
+    assert edge[LEFT] == 1
     rim = policy.act(make_test_ram(p1_x=192, p2_x=231, p1_y=144), None)
     assert rim[LEFT] == 1
     assert rim[RIGHT] == 0
@@ -340,6 +379,36 @@ def test_courtyard_idles_on_leftover_ko_hud() -> None:
     )
     frame = policy.act(leftover, None)
     assert int(frame.sum()) == 0
+
+
+def test_courtyard_y143_flicker_does_not_end_opener() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=1, later_jump_at=1)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    flicker = policy.act(make_test_ram(p1_x=70, p2_x=180, p1_y=143), None)
+    assert int(flicker.sum()) == 0
+    still = policy.act(idle, None)
+    assert still[B] == 0
+    assert still[RIGHT] == 0
+    kick = policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
+    assert kick[B] == 1
+
+
+def test_courtyard_does_not_walk_in_after_opener() -> None:
+    policy = CourtyardKanoPolicy(round1_jump_at=1, later_jump_at=1)
+    idle = make_test_ram(p1_x=68, p2_x=180, p1_y=144)
+    policy.act(idle, None)
+    for _ in range(10):
+        policy.act(idle, None)
+    policy.act(make_test_ram(p1_x=90, p2_x=180, p1_y=70), None)
+    policy.act(make_test_ram(p1_x=151, p2_x=202, p1_y=144), None)
+    wait = policy.act(make_test_ram(p1_x=120, p2_x=214, p1_y=144), None)
+    assert wait[RIGHT] == 0
+    kick = policy.act(make_test_ram(p1_x=182, p2_x=214, p1_y=144), None)
+    assert kick[B] == 1
+    assert kick[RIGHT] == 0
 
 
 def test_courtyard_ducks_real_knife_after_opener() -> None:
