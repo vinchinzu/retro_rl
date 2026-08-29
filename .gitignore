@@ -336,6 +336,11 @@ nes/smb/recordings/segment_1_2/*
 !nes/smb/recordings/segment_8_1/
 nes/smb/recordings/segment_8_1/*
 !nes/smb/recordings/segment_8_1/polish_8_1_report.json
+# DKC isolated Jungle Hijinks M3 evidence (bonus-room false greens elsewhere)
+!snes/donkey_kong_country/recordings/
+snes/donkey_kong_country/recordings/*
+!snes/donkey_kong_country/recordings/jungle_hijinks_isolated_clear.json
+!snes/donkey_kong_country/recordings/jungle_hijinks_isolated_actions.json
 # Legacy root smb/ paths (if present)
 !smb/models/
 smb/models/*

@@ -27,6 +27,16 @@ def test_dkc_winkys_registered():
     assert config.target_level_id == 0xD9
 
 
+def test_dkc_jungle_hijinks_completion_gates():
+    config = get_level_config("jungle_hijinks")
+    assert config.start_state == "JungleHijinks"
+    assert config.target_level_id == 0x16
+    assert config.completion_level_ids == [0x72]
+    assert 0x25 in config.completion_exclude_ids
+    assert 0x06 in config.completion_exclude_ids
+    assert config.completion_min_progress >= 4000.0
+
+
 def test_alias_lookup():
     c1 = get_level_config("winkys")
     c2 = get_level_config("dkc_winkys")
