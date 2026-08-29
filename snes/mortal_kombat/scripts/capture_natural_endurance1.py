@@ -16,9 +16,10 @@ keepaway after that first KO. Keepaway ducks when knife sprite 0x1B36
 leaves Kano — ``p2.state`` stays 0 for the whole throw. Courtyard
 specialist (``scripted-courtyard``) idles so Kano commits the knife,
 jump-forwards at 240f after a *visible* fight (296f from first-ready
-black fade), then air HK before Kano walks under. Ducking or jumping
-early makes Kano rush. Land HK crosses (~174/67); air HK stays
-same-side (~151/183, 25 dmg) and standing-HK punishes the walk-in.
+black fade), then waits for y < 140 and air-HKs. HK at y=143 during
+startup cancels the hop (TournamentRunner cross ~177/54). Land HK
+crosses (~174/67); air HK stays same-side (~151/183, 25 dmg) and
+standing-HK punishes the walk-in without chasing the 192/231 rim.
 
 Liu Kang CPU walkthrough (IceMaster / LWang): fireball F,F,HP and flying
 kick F,F,HK. Jump-kick into flying kick; fireball on wakeup. Do not jump
@@ -43,7 +44,7 @@ for _path in (_ROOT, _ROOT / "snes"):
 
 from retro_harness.env import make_env, reset_obs  # noqa: E402
 from retro_harness.snapshot import get_emulator_state, set_emulator_state  # noqa: E402
-from mortal_kombat.boot import BootController, action_from_buttons  # noqa: E402
+from mortal_kombat.boot import BootController, Phase, action_from_buttons  # noqa: E402
 from mortal_kombat.paths import GAME_DIR, GAME_ID  # noqa: E402
 from mortal_kombat.ram import (  # noqa: E402
     ADDR_MATCH_COUNTER,
@@ -334,17 +335,26 @@ class CourtyardKanoPolicy(ScriptedPolicy):
     and rushes. Jump on the in-flight sprite is too late. Land HK lets
     him walk under (cross ~174/67); air HK at y-drop hits 25 and stays
     same-side (~151/183). Then walk in and standing-HK the roll.
+
+    y=143 is still airborne (standing=144) but is also jump *startup*:
+    HK there cancels the hop into a cross (~177/54, TournamentRunner).
+    Wait until y < 140 (pin-probe gate) before air HK; hold B through
+    143 on the way down. Do not chase a rim wrap (~192/231).
     """
 
     name = "scripted-courtyard"
     round1_jump_at = 296
     later_jump_at = 240
     jump_hold = 10
-    jump_startup = 40
+    jump_startup = 60
     hk_hold = 4
-    close_range = 40
+    close_range = 56
     chase_range = 80
     hk_cooldown = 32
+    standing_y = 144
+    air_hk_y = 140
+    rim_p1 = 190
+    rim_p2 = 220
 
     def __init__(
         self,
@@ -360,8 +370,11 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         self._jump_left = 0
         self._wait_air = 0
         self._airborne = False
+        self._air_hk = False
         self._hk_left = 0
         self._opener_done = False
+        self._need_neutral = False
+        self._keepaway = NoJumpFireballPolicy(intro_frames=0)
 
     def reset(self) -> None:
         super().reset()
@@ -370,8 +383,11 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         self._jump_left = 0
         self._wait_air = 0
         self._airborne = False
+        self._air_hk = False
         self._hk_left = 0
         self._opener_done = False
+        self._need_neutral = False
+        self._keepaway.reset()
 
     @property
     def jump_at(self) -> int:
@@ -415,8 +431,11 @@ class CourtyardKanoPolicy(ScriptedPolicy):
             self._jump_left = 0
             self._wait_air = 0
             self._airborne = False
+            self._air_hk = False
             self._hk_left = 0
             self._opener_done = False
+            self._need_neutral = False
+            self._keepaway.reset()
             self._fights += 1
             print(
                 f"  courtyard fight#{self._fights} jump_at={self.jump_at}",
@@ -430,13 +449,20 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         p2_x = int(ram[ADDR_P2_X]) & 0xFF if ADDR_P2_X < len(ram) else 0
         dist = abs(p2_x - p1_x)
         facing = 1 if p1_x <= p2_x else -1
-        # Standing pose is 144. 140 left a 4px hole: y=143 looked like a
-        # land and we walked/fireballed while still hopping, which is how
-        # capture crossed (~174/74) when the pin probe did not.
-        airborne = 40 < p1_y < 144
-        if airborne:
+        # Standing=144. y=143 is still a hop: do not walk. Air HK only
+        # after y < 140 (pin-probe); HK at 143 during startup crosses.
+        airborne = 40 < p1_y < self.standing_y
+        deep_air = 40 < p1_y < self.air_hk_y
+        if deep_air:
+            if not self._air_hk:
+                print(
+                    f"  courtyard air-hk start clock={self._clock} "
+                    f"x={p1_x}/{p2_x} y={p1_y} dist={dist}",
+                    flush=True,
+                )
+            self._air_hk = True
             self._airborne = True
-        elif self._airborne and not self._opener_done:
+        elif self._airborne and not self._opener_done and p1_y >= self.standing_y:
             self._opener_done = True
             print(
                 f"  courtyard air-hk done clock={self._clock} idle={self._idle} "
@@ -446,14 +472,16 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         if not self._opener_done:
             if self._jump_left > 0:
                 self._jump_left -= 1
-                if self._wait_air > 0:
-                    self._wait_air -= 1
                 out = forward(facing)
                 out[UP] = 1
                 return out
             # Count start-pose idle only. TournamentRunner leftover/VS
             # frames must not pull the jump early (Kano then rushes).
-            idle_pose = p1_y >= 144 and 60 <= p1_x <= 76 and 172 <= p2_x <= 188
+            idle_pose = (
+                p1_y >= self.standing_y
+                and 60 <= p1_x <= 76
+                and 172 <= p2_x <= 188
+            )
             if idle_pose:
                 self._idle += 1
             if self._idle == self.jump_at and idle_pose:
@@ -469,13 +497,13 @@ class CourtyardKanoPolicy(ScriptedPolicy):
                 return out
             if self._idle < self.jump_at:
                 return zeros()
-            # y drops ~20-30f after the 10f tap. Walk/special during
-            # startup cancels the jump. Air HK once airborne, before
-            # Kano walks under.
-            if airborne:
+            # Idle until y drops below 140. y=143 startup must not HK.
+            if self._air_hk and p1_y < self.standing_y:
                 out = zeros()
                 out[B] = 1
                 return out
+            if airborne:
+                return zeros()
             if self._wait_air > 0:
                 self._wait_air -= 1
                 return zeros()
@@ -497,25 +525,26 @@ class CourtyardKanoPolicy(ScriptedPolicy):
         if snap.p1.state != 0:
             return zeros()
         if dist <= 24:
+            self._need_neutral = False
             return back(facing)
-        # Chase the retreat through ~214 (standing HK at 182/214). Stop
-        # before a rim HK: 192/231 wraps Kano to x≈11 and we land crossed.
-        kano_at_edge = (facing > 0 and p1_x > 190 and p2_x > 220) or (
-            facing < 0 and p1_x < 60 and p2_x < 40
+        # Do not walk in. Chase+HK is F,F,HK and wraps (~192/231 → x=0).
+        kano_at_edge = (facing > 0 and (p1_x > self.rim_p1 or p2_x > self.rim_p2)) or (
+            facing < 0 and (p1_x < 60 or p2_x < 40)
         )
         if kano_at_edge:
+            self._need_neutral = False
             return back(facing)
         if dist <= self.close_range and self._cooldown == 0:
+            if self._need_neutral:
+                self._need_neutral = False
+                return zeros()
             self._hk_left = self.hk_hold - 1
             self._cooldown = self.hk_cooldown
             out = zeros()
             out[B] = 1
             return out
-        if dist <= self.chase_range:
-            return forward(facing)
-        if self._cooldown == 0 and dist > FIREBALL_RANGE:
-            return self._enqueue(fireball_sequence(facing))
-        return back(facing)
+        self._need_neutral = False
+        return self._keepaway.act(ram, None)
 
 
 class RoundMixPolicy:
@@ -633,6 +662,37 @@ def apply_oracle(runner: TournamentRunner, *, ladder_model: str | None, pixel_mo
         ]
 
 
+def _run_courtyard_pinprobe(env, on_frame, *, max_frames: int) -> None:
+    """Drive E1 like the leftover-pin probe, not TournamentRunner.
+
+    TournamentRunner's START-pulse phase makes Kano walk in during the
+    hop (air-HK start 78/162 vs pin-probe 78/180) and land crossed.
+    """
+    boot = BootController(allow_continue=False)
+    policy = CourtyardKanoPolicy()
+    prev = parse_ram(env.unwrapped.get_ram())
+    # 1-based: TournamentRunner's 0-based START pulse shifts Kano's walk-in.
+    for frame in range(1, max_frames + 1):
+        ram = env.unwrapped.get_ram()
+        snap = parse_ram(ram)
+        live = (
+            snap.screen is Screen.FIGHT
+            and snap.p1_health > 0
+            and snap.p2_health > 0
+            and snap.timer > 50
+        )
+        if on_frame(env, frame, snap, prev) is True:
+            return
+        if live:
+            buttons = policy.act(ram, None)
+        else:
+            policy.reset()
+            phase, names = boot.decide(snap, frame)
+            buttons = zeros() if phase is Phase.FIGHT else action_from_buttons(names)
+        env.step(buttons)
+        prev = snap
+
+
 def capture_from_pin(
     env,
     pin,
@@ -698,6 +758,16 @@ def capture_from_pin(
         if snap.screen is Screen.CONTINUE:
             return True
         return snap.match_counter >= win_at and snap.p1_character == LIU_KANG_ID
+
+    if courtyard:
+        _run_courtyard_pinprobe(recorder, on_frame, max_frames=max_frames)
+        won = last_snap.match_counter >= win_at and last_snap.p1_character == LIU_KANG_ID
+        opponents = ",".join(f"{pid}/{char_name(pid)}" for pid in live_p2) or "?"
+        print(
+            f"  done won={won} frames={len(recorder.masks)} kos={p1_kos}-{p2_kos} "
+            f"live_p2={opponents} furthest=Endurance 1 (opp 1) {describe(last_snap)}"
+        )
+        return won, recorder.masks, last_snap
 
     runner = TournamentRunner(
         deterministic=deterministic,

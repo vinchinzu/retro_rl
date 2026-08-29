@@ -117,7 +117,15 @@ uv run --extra ml python snes/mortal_kombat/scripts/capture_natural_endurance1.p
   walks under so we land crossed. Air HK on y-drop hits 25 and stays
   same-side from a leftover-pin probe (~151/183); standing HK then
   10 at ~182/214. `--oracles scripted-courtyard --win-at 8` still
-  0-2: the TournamentRunner path lands crossed (~177/54, Kano 136).
-  Do not treat y=143 as a land (standing is 144) or we walk during
-  the hop. Keepaway still has not closed a round; rolling Match5 v3
+  0-2. TournamentRunner's 0-based START pulse makes Kano walk in
+  (air-HK start 78/162, land crossed ~177/54). Capture drives
+  courtyard like the leftover-pin probe (1-based BootController,
+  reset on non-live). That opener is 25 dmg same-side ~151/201.
+  Idle until y < 140 before HK; y=143 is still airborne (standing
+  =144) — do not walk, and do not HK until the hop drops. Do not
+  chase: walk+HK is F,F,HK and wraps ~192/231. After opener, R1
+  keepaway reached 121/96 then Liu died with Kano at 56. R2 jump
+  at 240 still crosses (~175/44) but traded to 1 hp; 296 is too
+  late (Kano rushes). Keepaway still has not closed a round;
+  rolling Match5 v3
   for 2–0 is the wrong next step.
