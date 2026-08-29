@@ -4,9 +4,10 @@ Target: missile capacity ``$687A > 0`` (and usually missiles-enabled
 ``$010E != 0``).
 
 The verified prefix now runs from the morph pedestal through all three
-east-corridor blue doors and onto the third stable platform in the west
-shaft.  The remaining frontier is the enemy-populated upper shaft, bridge,
-east-shaft descent, and missile pickup.
+east-corridor blue doors, the third west-shaft platform at (11,13)
+x≈106/y=225, and the leftover climb onto (11,12).  The remaining
+frontier is the enemy-populated upper shaft, bridge, east-shaft
+descent, and missile pickup.
 
 Probe notes (2026-07-28)
 ------------------------
@@ -135,6 +136,19 @@ _WEST_SHAFT_NATURAL_SPANS: tuple[Span, ...] = (
     (("A",), 32, "west_shaft_jump_3"),
     (("LEFT",), 28, "west_shaft_drift"),
     ((), 1, "west_shaft_land_3"),
+)
+
+# From leftover FRONTIER (11,13) x≈106/y=225 facing left.  A standing jump
+# at x=106 bonks a low ceiling (peak y=207); walk left first, then arc
+# up-right onto the Ripper ledge and again into (11,12).
+_WEST_SHAFT_CLIMB_SPANS: tuple[Span, ...] = (
+    ((), 4, "west_shaft_climb_settle"),
+    (("LEFT",), 12, "west_shaft_climb_backoff"),
+    (("RIGHT", "A"), 36, "west_shaft_climb_jump_1"),
+    ((), 50, "west_shaft_climb_land_1"),
+    (("RIGHT", "A"), 40, "west_shaft_climb_jump_2"),
+    (("RIGHT",), 4, "west_shaft_climb_drift_2"),
+    ((), 20, "west_shaft_climb_land_2"),
 )
 
 
@@ -413,6 +427,10 @@ class FirstMissilesController:
         return self._enter_east(snap, 11, MissilesPhase.WEST_SHAFT)
 
     def _west_shaft(self, snap) -> FrameAction:
+        if snap.health_units <= 0:
+            self._set_phase(MissilesPhase.FAILED, "west_shaft_died")
+            return FrameAction(nes_idle_action(), "west_shaft_failed")
+
         if self.shaft_variant is None:
             action = self._run_spans(_WEST_SHAFT_ENTRY_SPANS)
             if action is not None:
@@ -421,24 +439,40 @@ class FirstMissilesController:
             self.span_index = 0
             self.span_progress = 0
 
-        spans = (
-            _WEST_SHAFT_NATURAL_SPANS
-            if self.shaft_variant == "natural"
-            else _WEST_SHAFT_AFTER_MORPH_SPANS
-        )
-        action = self._run_spans(spans)
-        if action is not None:
-            return action
+        if self.shaft_variant in {"natural", "after_morph"}:
+            spans = (
+                _WEST_SHAFT_NATURAL_SPANS
+                if self.shaft_variant == "natural"
+                else _WEST_SHAFT_AFTER_MORPH_SPANS
+            )
+            action = self._run_spans(spans)
+            if action is not None:
+                return action
+            if not (
+                snap.map_cell == (11, 13)
+                and 90 <= snap.samus_x <= 125
+                and snap.samus_y == 225
+                and snap.samus_status == 0
+                and snap.health_units > 0
+            ):
+                self._set_phase(MissilesPhase.FAILED, "west_shaft_landing_failed")
+                return FrameAction(nes_idle_action(), "west_shaft_failed")
+            self.shaft_variant = "climb"
+            self.span_index = 0
+            self.span_progress = 0
+            self.notes.append("west_shaft_upper_platform")
+
         if (
-            snap.map_cell == (11, 13)
-            and 90 <= snap.samus_x <= 125
-            and snap.samus_y == 225
+            snap.map_cell == (11, 12)
             and snap.samus_status == 0
             and snap.health_units > 0
         ):
-            self._set_phase(MissilesPhase.FRONTIER, "west_shaft_upper_platform")
+            self._set_phase(MissilesPhase.FRONTIER, "west_shaft_11_12")
             return FrameAction(nes_idle_action(), "frontier")
-        self._set_phase(MissilesPhase.FAILED, "west_shaft_landing_failed")
+        action = self._run_spans(_WEST_SHAFT_CLIMB_SPANS)
+        if action is not None:
+            return action
+        self._set_phase(MissilesPhase.FAILED, "west_shaft_climb_failed")
         return FrameAction(nes_idle_action(), "west_shaft_failed")
 
     def report(self) -> dict[str, object]:

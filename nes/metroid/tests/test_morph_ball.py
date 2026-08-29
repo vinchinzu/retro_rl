@@ -11,7 +11,11 @@ from metroid.brinstar import (
     morph_route_legs,
     validate_early_milestones,
 )
-from metroid.first_missiles import FirstMissilesController, MissilesPhase
+from metroid.first_missiles import (
+    FirstMissilesController,
+    MissilesPhase,
+    _WEST_SHAFT_CLIMB_SPANS,
+)
 from metroid.morph_ball import MorphBallController, MorphPhase
 from metroid.routes import ROUTE_FIRST_MISSILES, ROUTE_MORPH_BALL, get_route
 
@@ -79,6 +83,56 @@ def test_missiles_frontier_is_terminal_but_not_success() -> None:
     ctrl = FirstMissilesController(phase=MissilesPhase.FRONTIER)
     assert ctrl.terminal is True
     assert ctrl.success is False
+
+
+def test_west_shaft_climb_spans_clear_ceiling_then_arc() -> None:
+    labels = [label for _buttons, _hold, label in _WEST_SHAFT_CLIMB_SPANS]
+    assert labels[:2] == [
+        "west_shaft_climb_settle",
+        "west_shaft_climb_backoff",
+    ]
+    assert _WEST_SHAFT_CLIMB_SPANS[1][0] == ("LEFT",)
+    assert any(label.endswith("jump_2") for label in labels)
+    assert sum(hold for _b, hold, _l in _WEST_SHAFT_CLIMB_SPANS) == 166
+    assert _WEST_SHAFT_CLIMB_SPANS[-2][0] == ("RIGHT",)
+
+
+def test_west_shaft_climb_halts_on_11_12_stand() -> None:
+    from types import SimpleNamespace
+
+    ctrl = FirstMissilesController(phase=MissilesPhase.WEST_SHAFT)
+    ctrl.shaft_variant = "climb"
+    ctrl.span_index = len(_WEST_SHAFT_CLIMB_SPANS)
+    snap = SimpleNamespace(
+        map_cell=(11, 12),
+        samus_x=160,
+        samus_y=113,
+        samus_status=0,
+        health_units=14,
+    )
+    action = ctrl._west_shaft(snap)
+    assert action.reason == "frontier"
+    assert ctrl.phase is MissilesPhase.FRONTIER
+    assert ctrl.success is False
+    assert "west_shaft_11_12" in ctrl.notes
+
+
+def test_west_shaft_climb_fails_if_not_held() -> None:
+    from types import SimpleNamespace
+
+    ctrl = FirstMissilesController(phase=MissilesPhase.WEST_SHAFT)
+    ctrl.shaft_variant = "climb"
+    ctrl.span_index = len(_WEST_SHAFT_CLIMB_SPANS)
+    snap = SimpleNamespace(
+        map_cell=(11, 13),
+        samus_x=133,
+        samus_y=161,
+        samus_status=0,
+        health_units=14,
+    )
+    action = ctrl._west_shaft(snap)
+    assert ctrl.phase is MissilesPhase.FAILED
+    assert action.reason == "west_shaft_failed"
 
 
 def test_missiles_reset_clears_span_state() -> None:

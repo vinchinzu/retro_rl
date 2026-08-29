@@ -34,5 +34,6 @@ uv run pytest metroid/tests retro_harness/adventure/tests -q
 
 ## Next
 
-Morph → first missiles (`$687A` > 0) natural-entry from map (11,13)
-x≈106/y=225 west-shaft platform through bridge + east shaft.
+Morph → first missiles (`$687A` > 0) natural-entry from leftover
+(11,12) west-shaft hold through bridge + east shaft. Do not reopen
+morph/doors/corridor or the (11,13)→(11,12) climb.
