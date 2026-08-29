@@ -257,3 +257,33 @@ def test_right_edge_waits_instead_of_chasing() -> None:
         "attack_gap",
     }
     assert action.reason != "approach_right"
+
+
+def test_area1_andore_face_y_behind_then_throw() -> None:
+    from final_fight.edge_combat import area1_andore_action
+
+    face, faced = area1_andore_action(
+        frame=1, sx=110, dx=-52, dy=8, faced=False
+    )
+    assert face.reason == "face"
+    assert faced is True
+    y, _ = area1_andore_action(frame=24, sx=110, dx=-52, dy=8, faced=True)
+    assert y.reason in {"y", "close", "throw"}
+    throw, _ = area1_andore_action(frame=4, sx=110, dx=-8, dy=0, faced=True)
+    assert throw.reason == "throw"
+    far, _ = area1_andore_action(frame=10, sx=110, dx=-120, dy=0, faced=True)
+    assert far.reason in {"wait_far", "wait_desync"}
+    fence, _ = area1_andore_action(frame=10, sx=180, dx=-40, dy=0, faced=True)
+    assert fence.reason == "clamp_l"
+    crumb, _ = area1_andore_action(
+        frame=8, sx=110, dx=-20, dy=0, faced=True, enemy_hp=40
+    )
+    assert crumb.reason in {"throw", "gap"}
+    hop, _ = area1_andore_action(
+        frame=8, sx=110, dx=-6, dy=0, faced=True, enemy_hp=40
+    )
+    assert hop.reason == "space"
+    wait, _ = area1_andore_action(
+        frame=8, sx=110, dx=-50, dy=8, faced=True, enemy_hp=40
+    )
+    assert wait.reason in {"wait_far", "desync"}

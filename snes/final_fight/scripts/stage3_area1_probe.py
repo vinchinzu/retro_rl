@@ -1,17 +1,17 @@
 """Probe / develop West Side Area1 HP≈250 thug clear.
 
-Loads ``Stage3_Area1_hp50_L1_cam2560`` (or a mid resume). The preferred
-chip recipe is **face-then-Y**:
+Loads ``Stage3_Area1_hp50_L1_cam2560`` (or a mid resume). The preferred chip recipe (``edge_combat.area1_andore_action``):
 
-- Face LEFT briefly (do not hold LEFT every frame — that walks into the
-  gutter and dies).
-- Pulse bare ``Y`` (2/12 frames) while the thug sits behind at dx≈−40…−70.
-- Continuous ``LEFT+Y`` deals **0** damage (animation lock).
-- First hit lands ~f120–140 after spawn; first combo ~23 dmg, then more
-  as the thug re-enters band.
+- Face LEFT/RIGHT briefly, then pulse bare ``Y`` in punch band
+  (|dx| 24–70). Continuous ``LEFT+Y`` deals **0** damage (animation lock).
+- On overlap (|dx|≤16) cycle ``UP+Y`` / toward+Y / ``LEFT+Y`` throws
+  (~40 dmg when they latch).
+- Wait knockdown flyaway (|dx|>80 or st=01); never chase into the
+  gutter or right fence (clamp sx 52–165).
 
-Best observed chip with heal pokes: **250 → ~101** (~149 dmg) before
-death. Full legit kill still open.
+From preferred mid ``p70_e101``: **101 → 23** (heal). Crumb mid
+``p36_e23``: underflow + plant + CLEAR_AREA → **Boss3** cam3072 (heal).
+One-shot from e101 still dies at leftover ~23. Heal pokes ≠ M4.
 
 After a kill (living=0), plant-punch HP0 st=03 ghosts, then
 ``CLEAR_AREA`` advances to Area2 / **Boss3** entry (cam≈3072,
@@ -32,6 +32,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from final_fight.edge_combat import area1_andore_from_snap
 from final_fight.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from final_fight.ram import (
     ENEMY_BASES,
@@ -81,21 +82,11 @@ def _face_y_action(
     enemy: dict[str, int] | None,
     *,
     faced: bool,
+    sx: int = 110,
 ) -> tuple[Any, str, bool]:
-    """Return (action, reason, faced_flag)."""
-    if enemy is None:
-        return buttons("RIGHT"), "walk", faced
-    if enemy["dx"] > -28:
-        return buttons("RIGHT"), "space", faced
-    if enemy["dx"] < -90:
-        return buttons("LEFT"), "step", faced
-    if not faced or frame < 20:
-        return buttons("LEFT"), "face", True
-    if frame % 60 < 3:
-        return buttons("LEFT"), "reface", faced
-    if frame % 12 < 2:
-        return buttons("Y"), "y", faced
-    return idle_action(), "gap", faced
+    """Return (action, reason, faced_flag). Area1 Andore recipe."""
+    tick, faced = area1_andore_from_snap(frame, enemy, sx=sx, faced=faced)
+    return tick.action, tick.reason, faced
 
 def run_area1_probe(
     *,
@@ -137,6 +128,8 @@ def run_area1_probe(
         print(f"force enemy0_hp→{force_enemy_hp} (now {enemy})")
 
     faced = False
+    recover_until = 0
+    prev_ehp: int | None = None
     clear_hold = 0
     death = False
     saved: list[str] = []
@@ -161,6 +154,11 @@ def run_area1_probe(
             )
         if enemy and start_ehp is not None:
             peak_dmg = max(peak_dmg, start_ehp - enemy["hp"])
+            if prev_ehp is not None and prev_ehp - enemy["hp"] >= 20:
+                recover_until = frame + 100
+            prev_ehp = enemy["hp"]
+        elif start_ehp is not None and prev_ehp is None:
+            prev_ehp = start_ehp
 
         php = state.health
         if (
@@ -281,9 +279,21 @@ def run_area1_probe(
                 saved.append(path.name)
                 print(f"mid → {path.name} dmg={start_ehp - enemy['hp']}")
 
-        act, reason, faced = _face_y_action(
-            frame, enemy, faced=faced
-        )
+        sx = state.player_x - state.camera_x
+        if frame < recover_until and enemy is not None:
+            if sx > 145:
+                act, reason, faced = buttons("LEFT"), "recover_l", faced
+            elif sx < 70:
+                act, reason, faced = buttons("RIGHT"), "recover_r", faced
+            else:
+                act, reason, faced = idle_action(), "recover", faced
+        else:
+            act, reason, faced = _face_y_action(
+                frame,
+                enemy,
+                faced=faced,
+                sx=sx,
+            )
         reasons[reason] = reasons.get(reason, 0) + 1
         if frame % 500 == 0:
             print(
@@ -325,10 +335,11 @@ def run_area1_probe(
         "saved_states": saved,
         "screenshots": screenshots,
         "notes": (
-            "face-Y chip: brief LEFT face + pulsed Y. Continuous LEFT+Y "
-            "whiffs. Heal pokes are Survival assists (document if used). "
-            "force_enemy_hp is dev-only mapping. Post-kill CLEAR_AREA → "
-            "Area2/Boss3."
+            "Area1 Andore: face-Y in punch band, UP+Y throw on overlap, "
+            "wait knockdown flyaway, clamp gutter/fence. Continuous "
+            "LEFT+Y whiffs. Heal pokes are Survival assists (document). "
+            "force_enemy_hp is dev-only mapping. Post-kill plant + "
+            "CLEAR_AREA → Area2/Boss3."
         ),
     }
     write_json_report(out / "stage3_area1_probe.json", report)
