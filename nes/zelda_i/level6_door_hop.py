@@ -11,6 +11,12 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.hop_controller import (
+    CELLAR_MODE,
+    HopController,
+    WAIT_SCROLL,
+    WAIT_SCROLL_B,
+)
 from zelda_i.level6_occupancy import l6_play_dest_success, record_l6_walk
 from zelda_i.level6_overworld import (
     LEVEL6,
@@ -34,9 +40,6 @@ WEST_DOOR_X, WEST_DOOR_Y, WEST_SPAWN_XMIN = 32, 141, 16
 NORTH_DOOR_X, NORTH_DOOR_Y, EAST_SPAWN_XMAX = 120, 93, 232
 NORTH_HALT_Y, CLIP_Y, DOOR_TOL = 109, 141, 4
 DOOR_HOP_MAX_FRAMES, SAMPLE_PERIOD = 4000, 12
-CELLAR_MODE, DEATH_MODE = 9, 17
-WAIT_SCROLL = (2, 3, 4, 6, 7)
-WAIT_SCROLL_B = (2, 3, 4, 6, 7, 10, 16)
 SOUTH09_MAX_FRAMES = SOUTH19_MAX_FRAMES = SOUTH29_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 EAST29_MAX_FRAMES = EAST39_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 WEST19_MAX_FRAMES = SOUTH18_MAX_FRAMES = SOUTH1D_MAX_FRAMES = WEST2D_MAX_FRAMES = NORTH2C_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
@@ -208,23 +211,17 @@ def door_hop_success(spec: DoorHopSpec, snap: ZeldaSnapshot) -> bool:
 
 
 @dataclass
-class Level6DoorHopController:
+class Level6DoorHopController(HopController):
     """Occupancy dest hop. Unique leftover geometry lives on ``spec``."""
 
     spec: DoorHopSpec
-    frames: int = 0
     keys: int = -1
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, int] = field(default_factory=dict)
     walker: OccupancyWalker = field(init=False)
-    spec_id: str = field(init=False)
     room: int = field(init=False)
     dest: int | None = field(init=False)
     goal: tuple[int, int] = field(init=False)
-    max_frames: int = field(init=False)
 
     def __post_init__(self) -> None:
         spec = self.spec
@@ -233,12 +230,13 @@ class Level6DoorHopController:
         self.dest = spec.dest_room
         self.goal = spec.goal
         self.max_frames = spec.max_frames
+        self.wait_modes = spec.wait_modes
         self.walker = _walker(spec)
 
     def _tag(self) -> str:
         return _TAG[self.spec.hold_dir]
 
-    def _emit(
+    def emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
@@ -253,15 +251,22 @@ class Level6DoorHopController:
         }
         return action
 
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        extra = f"_keys={int(snap.keys)}" if self.spec.track_keys else ""
+        return (
+            f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_rod={int(snap.rod)}{extra}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.walker.last_dir = None
+        return FrameAction(nes_action(self.spec.hold_dir), f"{self._tag()}_scroll")
+
     def _fail(
         self, snap: ZeldaSnapshot, note: str, reason: str | None = None
     ) -> FrameAction:
-        self.failed = True
-        if note not in self.notes:
-            self.notes.append(note)
-        return self._emit(
-            snap, FrameAction(nes_idle_action(), reason or note), force=True
-        )
+        del snap
+        return self.mark_fail(note, reason)
 
     def _mark_success(self, snap: ZeldaSnapshot) -> FrameAction:
         spec = self.spec
@@ -281,13 +286,9 @@ class Level6DoorHopController:
                 f"arrived_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
                 f"_rod={int(snap.rod)}"
             )
-        self.success = True
-        self.notes.append(note)
         self.walker.last_dir = None
-        return self._emit(
-            snap, FrameAction(nes_idle_action(), f"arrived_{snap.screen:02x}"),
-            force=True,
-        )
+        self.done_reason = f"arrived_{snap.screen:02x}"
+        return self.mark_done(snap, note)
 
     def _dest(self, snap: ZeldaSnapshot) -> FrameAction | None:
         spec = self.spec
@@ -320,24 +321,52 @@ class Level6DoorHopController:
             return (x, gy)
         return spec.goal
 
-    def _walk(self, snap: ZeldaSnapshot) -> FrameAction:
+    def _idle(self, reason: str) -> FrameAction:
+        self.walker.last_dir = None
+        return FrameAction(nes_idle_action(), reason)
+
+    def _halt(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction | None:
         spec = self.spec
-        xy = (int(snap.link_x), int(snap.link_y))
-        prev_dir = self.walker.last_dir
-        misses_before = self.walker.misses
-        self.walker.observe(xy)
-        if self.walker.misses > misses_before and (
-            self.walker.misses <= 8 or self.frames % 60 == 0
-        ):
-            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
-        tag = self._tag()
+        if spec.north_halt_y is not None and xy[1] <= spec.north_halt_y:
+            return self._idle(spec.north_halt_reason)
+        return None
+
+    def _clip(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction | None:
+        spec = self.spec
+        if spec.clip_buttons is None or spec.clip_y is None:
+            return None
+        tol = spec.door_tol
+        if spec.clip_side == "below":
+            clipping = xy[1] < spec.clip_y - tol
+        elif spec.clip_side == "above":
+            clipping = xy[1] > spec.clip_y + tol
+        else:
+            clipping = False
+        if not clipping:
+            return None
+        self.walker.last_dir = None
+        return FrameAction(nes_action(*spec.clip_buttons), spec.clip_reason)
+
+    def _south_band(
+        self, snap: ZeldaSnapshot, xy: tuple[int, int]
+    ) -> FrameAction | None:
+        spec = self.spec
+        if not spec.south_band or xy[1] < SOUTH_BAND_Y:
+            return None
+        self.walker.last_dir = None
+        gx, tol = spec.goal[0], spec.door_tol
+        if abs(xy[0] - gx) > tol:
+            horiz = "LEFT" if xy[0] > gx else "RIGHT"
+            if spec.south_face:
+                return FrameAction(nes_action(horiz, "UP"), "south_face")
+            return FrameAction(nes_action(horiz), "south_align")
+        return FrameAction(nes_action("DOWN"), "south_push")
+
+    def _hold(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction | None:
+        spec = self.spec
         gx, gy = spec.goal
         tol = spec.door_tol
-        if spec.north_halt_y is not None and xy[1] <= spec.north_halt_y:
-            self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), spec.north_halt_reason)
-            )
+        tag = self._tag()
         at_push = False
         if spec.push_at_goal:
             if spec.hold_dir == "RIGHT" and abs(snap.link_y - gy) <= tol:
@@ -348,43 +377,22 @@ class Level6DoorHopController:
                 at_push = snap.link_y <= gy + tol
         if at_push:
             self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_action(spec.hold_dir), f"{tag}_push")
-            )
-        clipping = False
-        if spec.clip_buttons is not None and spec.clip_y is not None:
-            if spec.clip_side == "below":
-                clipping = xy[1] < spec.clip_y - tol
-            elif spec.clip_side == "above":
-                clipping = xy[1] > spec.clip_y + tol
-        if clipping:
-            self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_action(*spec.clip_buttons), spec.clip_reason)
-            )
-        if spec.south_band and xy[1] >= SOUTH_BAND_Y:
-            self.walker.last_dir = None
-            if abs(xy[0] - gx) > tol:
-                horiz = "LEFT" if xy[0] > gx else "RIGHT"
-                if spec.south_face:
-                    return self._emit(
-                        snap, FrameAction(nes_action(horiz, "UP"), "south_face")
-                    )
-                return self._emit(
-                    snap, FrameAction(nes_action(horiz), "south_align")
-                )
-            return self._emit(snap, FrameAction(nes_action("DOWN"), "south_push"))
+            return FrameAction(nes_action(spec.hold_dir), f"{tag}_push")
         if spec.hold_dir == "UP" and xy[1] <= NORTH_HALT_Y:
             self.walker.last_dir = None
             if abs(xy[0] - gx) > tol:
                 horiz = "LEFT" if xy[0] > gx else "RIGHT"
-                return self._emit(snap, FrameAction(nes_action(horiz), "north_align"))
-            return self._emit(snap, FrameAction(nes_action("UP"), "north_push"))
+                return FrameAction(nes_action(horiz), "north_align")
+            return FrameAction(nes_action("UP"), "north_push")
         if spec.cardinal_hold:
             self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_action(spec.hold_dir), f"{tag}_hold")
-            )
+            return FrameAction(nes_action(spec.hold_dir), f"{tag}_hold")
+        return None
+
+    def _occupancy(
+        self, snap: ZeldaSnapshot, xy: tuple[int, int]
+    ) -> FrameAction | None:
+        spec = self.spec
         dest = self._path_dest(xy)
         if dest != self.walker.goal:
             self.walker.path = None
@@ -393,43 +401,35 @@ class Level6DoorHopController:
         if direction == "UP" and spec.forbid_up and (
             spec.forbid_up_y is None or xy[1] <= spec.forbid_up_y
         ):
-            self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), spec.forbid_up_reason)
-            )
+            return self._idle(spec.forbid_up_reason)
         if direction == "DOWN" and spec.forbid_down:
-            self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), "south_open_halt")
-            )
+            return self._idle("south_open_halt")
         if direction is None:
             if self.frames <= 8 or self.frames % 60 == 0:
                 self.notes.append(f"stand_f{self.frames}_{xy[0]}_{xy[1]}")
-            self.walker.last_dir = None
-            reason = spec.stand_reason or f"{tag}_stand"
-            return self._emit(snap, FrameAction(nes_idle_action(), reason))
-        return self._emit(snap, FrameAction(nes_action(direction), f"{tag}_path"))
+            return self._idle(spec.stand_reason or f"{self._tag()}_stand")
+        return FrameAction(nes_action(direction), f"{self._tag()}_path")
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+    def _walk(self, snap: ZeldaSnapshot) -> FrameAction:
+        xy = (int(snap.link_x), int(snap.link_y))
+        prev_dir = self.walker.last_dir
+        misses_before = self.walker.misses
+        self.walker.observe(xy)
+        if self.walker.misses > misses_before and (
+            self.walker.misses <= 8 or self.frames % 60 == 0
+        ):
+            self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
+        for fn in (self._halt, self._clip, self._south_band, self._hold, self._occupancy):
+            action = fn(snap, xy)
+            if action is not None:
+                return action
+        return self._idle(f"{self._tag()}_stand")
+
+    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
         spec = self.spec
-        self.frames += 1
-        if spec.track_keys and self.keys < 0:
-            self.keys = int(snap.keys)
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            extra = f"_keys={int(snap.keys)}" if spec.track_keys else ""
-            if not any(n.startswith("timeout") for n in self.notes):
-                self.notes.append(
-                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-                    f"_mode={snap.mode}_rod={int(snap.rod)}{extra}"
-                )
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), "timeout"), force=True
-            )
-        if snap.mode == DEATH_MODE:
-            return self._fail(snap, "link_death")
+        blocked = HopController.guard(self, snap)
+        if blocked is not None:
+            return blocked
         if snap.mode == CELLAR_MODE:
             note = f"warped_cellar_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
             return self._fail(snap, note, None if spec.fail_ow else "warped_cellar")
@@ -445,9 +445,6 @@ class Level6DoorHopController:
         arrived = self._dest(snap)
         if arrived is not None:
             return arrived
-        if snap.transitioning or snap.mode in spec.wait_modes:
-            self.walker.last_dir = None
-            return FrameAction(nes_action(spec.hold_dir), f"{self._tag()}_scroll")
         if snap.mode != PLAY_MODE:
             self.walker.last_dir = None
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
@@ -456,7 +453,15 @@ class Level6DoorHopController:
         if snap.screen != spec.room:
             self.walker.last_dir = None
             return FrameAction(nes_action(spec.hold_dir), f"{self._tag()}_settle")
+        return None
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         return self._walk(snap)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.spec.track_keys and self.keys < 0:
+            self.keys = int(snap.keys)
+        return super().step(snap)
 
     def report(self) -> dict[str, Any]:
         out: dict[str, Any] = {

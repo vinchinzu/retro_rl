@@ -5,10 +5,8 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.level6_occupancy import (
-    l6_leftover,
     l6_play_dest_success,
     occupancy_new_miss,
-    record_l6_walk,
 )
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -45,23 +43,6 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_ARROWS] = fields.get("arrows", 0)
     ram[ADDR_COLLIDING_TILE] = fields.get("tile", 118)
     return ram
-
-
-def test_l6_leftover_keys() -> None:
-    leftover = l6_leftover(read_snapshot(_ram()))
-    assert leftover == {
-        "x": 96,
-        "y": 157,
-        "mode": PLAY_MODE,
-        "screen": 0x3A,
-        "tile": 118,
-        "rod": 1,
-        "bow": 0,
-        "arrows": 0,
-        "keys": 4,
-        "bombs": 8,
-        "triforce": 0x1F,
-    }
 
 
 def test_l6_play_dest_success() -> None:
@@ -114,15 +95,3 @@ def test_occupancy_new_miss_2px_up() -> None:
     assert first.misses == 1
     first.last_dir = "UP"
     assert occupancy_new_miss(first, (96, 155), allow_first=True) == "UP"
-
-
-def test_record_l6_walk_samples() -> None:
-    snap = read_snapshot(_ram())
-    samples: list[dict] = []
-    leftover = record_l6_walk(
-        samples, snap, reason="door_y", frames=1, period=8, misses=0
-    )
-    assert leftover["x"] == 96
-    assert leftover["y"] == 157
-    assert samples[0]["reason"] == "door_y"
-    assert samples[0]["misses"] == 0

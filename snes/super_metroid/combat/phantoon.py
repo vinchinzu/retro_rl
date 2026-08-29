@@ -42,7 +42,7 @@ from super_metroid.combat.features import (
     phantoon_catalog,
 )
 from super_metroid.combat.primitives import ensure_weapon, settle_standing
-from super_metroid.combat.spore_spawn import Pickup, list_pickups
+from super_metroid.combat.primitives import Pickup, list_pickups
 from super_metroid.ram import GameplayPhase, SuperMetroidState, read_bank7e_wram
 from super_metroid.routes.controller_common import is_morph, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold

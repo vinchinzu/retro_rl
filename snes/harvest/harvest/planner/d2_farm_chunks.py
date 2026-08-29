@@ -94,7 +94,7 @@ def smash_is_clear(counts: DebrisCounts) -> bool:
 def wanted_quota(section: str) -> ClearQuota:
     """Day 2 work contract. Oversized counts cap to whatever the pin spawned."""
     if section == "bushes":
-        return ClearQuota(weeds=10)
+        return ClearQuota(weeds=EXHAUSTIVE)
     if section == "fences":
         return ClearQuota(fences=EXHAUSTIVE)
     if section == "stones":
@@ -104,7 +104,7 @@ def wanted_quota(section: str) -> ClearQuota:
     if section == "stumps":
         return ClearQuota(stumps=EXHAUSTIVE)
     return ClearQuota(
-        weeds=10,
+        weeds=EXHAUSTIVE,
         stones=EXHAUSTIVE,
         large_rocks=EXHAUSTIVE,
         stumps=EXHAUSTIVE,
@@ -127,6 +127,8 @@ def section_complete(
 
 def smash_done_empty(section: str) -> tuple[str, ...]:
     """Glance ``require_empty`` keys when a smash section (or all) is done."""
+    if section == "bushes":
+        return ("weeds",)
     if section == "fences":
         return ("fences",)
     if section == "stones":
@@ -136,7 +138,7 @@ def smash_done_empty(section: str) -> tuple[str, ...]:
     if section == "stumps":
         return ("stumps",)
     if section == "all":
-        return ("fences", "stones", "large_rocks", "stumps")
+        return ("weeds", "fences", "stones", "large_rocks", "stumps")
     return ()
 
 

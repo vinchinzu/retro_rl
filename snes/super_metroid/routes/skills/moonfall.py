@@ -12,7 +12,9 @@ Public policy (wiki.supermetroid.run/Moonwalk):
 * Spinning moonfall: release the angle button during the turnaround.
 
 These are builders, not a room AI. Climb's first descent (Parlor → Pit)
-composes them in :mod:`super_metroid.routes.kpdr.climb_descent`.
+composes them in :mod:`super_metroid.routes.kpdr.climb_descent`. Parlor's
+first descent (Landing → Climb) composes them in
+:mod:`super_metroid.routes.kpdr.parlor_descent`.
 """
 
 from __future__ import annotations

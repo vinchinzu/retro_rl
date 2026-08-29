@@ -29,7 +29,7 @@ from super_metroid.dev.common import boot_from_state, make_dev_env, save_dev_sta
 from super_metroid.paths import GAME_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
-from super_metroid.routes.kpdr import wrecked_ship as ws
+from super_metroid.routes.kpdr.k6 import ws_entrance as ws
 
 SCRATCH = GAME_DIR / "scratch"
 DEFAULT_SOURCE = SCRATCH / "post_ws_poweron.state"

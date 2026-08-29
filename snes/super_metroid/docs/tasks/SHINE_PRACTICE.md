@@ -15,9 +15,8 @@ compose with predecessor stack.
 | `scripts/probe/landing_shine_practice.py` | Dual-track measure / bootstrap LS pin / diagonal proof |
 | `scripts/probe/record_pure_chain.py` | `--preset moat-to-ws` video debug of compose |
 | `routes/skills/shinespark.py` | Shared charge / store / activate skill surface |
-| `routes/kpdr/moat.py` | `play_moat_shinespark` |
+| `routes/kpdr/moat.py` | `play_moat_shinespark`; `play_moat_to_ws` compose → `0xCA08` |
 | `routes/kpdr/west_ocean.py` | `play_west_ocean_over_ocean_spark` (product), `play_west_ocean_edge_spark` |
-| `routes/kpdr/wrecked_ship.py` | `play_moat_to_ws` compose → `0xCA08` |
 | `scripts/record/guided_human.py` | `--from west-ocean` · `--from ws-entrance` (Phantoon ship) · `--from pre-moat` |
 | `scripts/record/practice_takes.py` | `--segment west-ocean-to-ws` · `--segment ws-entrance` · `--segment moat-to-ws` |
 

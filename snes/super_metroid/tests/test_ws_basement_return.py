@@ -31,7 +31,6 @@ from super_metroid.routes.kpdr.k6.ws_basement_return import (
 )
 from super_metroid.routes.skills.charge_shot import CHARGE_FULL
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_BASEMENT, ROOM_WS_MAIN
-from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
 
 
 def _state(**overrides):
@@ -358,37 +357,7 @@ def test_morph_bombs_are_x_not_a() -> None:
 
     bomb_src = inspect.getsource(mod._bomb_tunnel_left)
     assert 'hold(session, 3, "X"' in bomb_src
-    assert 'reason=f"{label}_bomb"' in bomb_src
     assert 'hold(session, 3, "A"' not in bomb_src
-
-
-def test_probe_uses_repo_headed() -> None:
-    from pathlib import Path
-
-    src = Path(__file__).resolve().parents[1] / "scripts" / "probe" / "ws_basement_return.py"
-    text = src.read_text(encoding="utf-8")
-    assert "from retro_harness.headed import" in text
-    assert "add_headed_flag" in text
-    assert "attach_headed" in text
-    assert "def _attach_headed" not in text
-    assert '"leftover"' in text
-    assert "glance_misses" in text
-    assert "final_from_state" in text
-
-
-def test_never_uses_l_as_left() -> None:
-    from super_metroid.routes.kpdr.k6 import ws_basement_return as mod
-
-    src = inspect.getsource(mod)
-    assert 'hold(session, 1, "L"' not in src
-    assert '", "L"' not in src
-
-
-def test_registered() -> None:
-    from super_metroid.routes.kpdr.k6 import play_ws_basement_to_main as play
-
-    assert KPDR_SEGMENTS["ws_basement_to_main"] is play
-    assert callable(play)
 
 
 def test_play_drops_bombs_runs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:

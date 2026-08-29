@@ -36,10 +36,8 @@ from super_metroid.routes.kpdr.rooms import (
 )
 from super_metroid.routes.runtime import ControllerSession
 
-from super_metroid.routes.kpdr.hijump import (
-    play_hijump_to_warehouse,
-    play_warehouse_to_hijump,
-)
+from super_metroid.routes.kpdr.collect_hijump import play_warehouse_to_hijump
+from super_metroid.routes.kpdr.return_hijump import play_hijump_to_warehouse
 from super_metroid.routes.kpdr.warehouse_stack import play_warehouse_wall_to_lower_lip
 
 def play_warehouse_to_zeela_with_hijump(

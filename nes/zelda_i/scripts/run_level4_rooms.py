@@ -75,29 +75,28 @@ from zelda_i.dungeon import (
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.level4_dungeon import (
     BOMB_61_NORTH_STAND,
-    EXIT_60_HOLD,
-    EXIT_60_SAMPLE_PATH,
     GEL_OBJECT_TYPE,
     KEY_30_NORTH_X,
     LEVEL4_COMPASS_BIT,
-    MAP_21_HOLD,
-    MAP_21_SAMPLE_PATH,
-    MAZE_31_CELL_Q,
     MAZE_31_EAST_X_MIN,
     MAZE_31_EAST_Y,
     MAZE_31_EAST_Y_TOL,
-    MAZE_31_HOLD,
     RIGHT_20_STAND,
     ROOM_30_SPEC,
     ROOM_31_SPEC,
+    ROOM_32_SPEC,
     ROOM_40_SPEC,
     ROOM_50_SPEC,
     ROOM_51_SPEC,
     ROOM_61_SPEC,
+    ROOM_62_SPEC,
     ROOM_L4_COMPASS_62,
+    ROOM_L4_EAST_31,
+    ROOM_L4_EAST_32,
     ROOM_L4_ENTRY,
     ROOM_L4_KEESE_KEY_51,
     ROOM_L4_MAP_21,
+    ROOM_L4_NORTH_30,
     ROOM_L4_STEPLADDER,
     ROOM_L4_VIRES_50,
     ROOM_L4_VIRES_61,
@@ -105,11 +104,14 @@ from zelda_i.level4_dungeon import (
     ROOM_L4_ZOLS_40,
     VIRE_OBJECT_TYPE,
     VIRE_SPLIT_KEESE_TYPE,
-    WEST_31_HOLD,
-    WEST_31_SAMPLE_PATH,
     level4_compass_route_success,
+    level4_map_room_success,
+    level4_map_success,
+    level4_post_ladder_success,
     level4_room_30_cleared,
+    level4_room_30_ready,
     level4_room_31_cleared,
+    level4_room_31_ready,
     level4_room_32_cleared,
     level4_room_32_ready,
     level4_room_40_key_success,
@@ -119,37 +121,41 @@ from zelda_i.level4_dungeon import (
     level4_room_51_ready,
     level4_room_61_cleared,
     level4_room_61_ready,
+    level4_room_62_cleared,
     level4_room_62_ready,
     level4_stepladder_success,
-    level4_post_ladder_success,
     level4_west_31_success,
-    level4_map_success,
-    level4_map_room_success,
-    make_bomb_61_north_controller,
+)
+from zelda_i.level4_maze_path import (
+    MAP_21_HOLD,
+    MAP_21_SAMPLE_PATH,
     make_compass_62_controller,
+    make_north_40_controller,
+    make_room_40_key_controller,
+)
+from zelda_i.level4_path import (
+    make_bomb_61_north_controller,
     make_entry_up_controller,
     make_key_right_62_controller,
     make_left_50_controller,
-    make_north_30_controller,
-    make_north_40_controller,
-    make_key_right_31_controller,
-    make_room_30_clear_controller,
     make_room_31_clear_controller,
     make_room_32_clear_controller,
-    make_room_40_key_controller,
     make_room_50_clear_controller,
-    make_stepladder_controller,
-    level4_room_30_ready,
-    level4_room_31_ready,
-    ROOM_L4_EAST_31,
-    ROOM_L4_EAST_32,
-    ROOM_L4_NORTH_30,
-    ROOM_32_SPEC,
     make_room_51_key_controller,
     make_room_61_clear_controller,
     make_room_62_clear_controller,
-    level4_room_62_cleared,
-    ROOM_62_SPEC,
+)
+from zelda_i.level4_stepladder import (
+    EXIT_60_HOLD,
+    EXIT_60_SAMPLE_PATH,
+    MAZE_31_CELL_Q,
+    MAZE_31_HOLD,
+    WEST_31_HOLD,
+    WEST_31_SAMPLE_PATH,
+    make_key_right_31_controller,
+    make_north_30_controller,
+    make_room_30_clear_controller,
+    make_stepladder_controller,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_LADDER, ADDR_MAP, PLAY_MODE, read_snapshot, read_u8
@@ -337,7 +343,7 @@ def run_once(
         obs, _ = reset_obs(env)
         # stepladder dual-green isolation used 5 idle frames pre-clear (RNG).
         # exit_60 needs ~150 idle after item pickup freeze on Level4Stepladder.
-        from zelda_i.level4_dungeon import POST_LADDER_ITEM_SETTLE
+        from zelda_i.level4_stepladder import POST_LADDER_ITEM_SETTLE
 
         if segment == "stepladder":
             idle_n = 5
@@ -1212,11 +1218,13 @@ def run_once(
             # makes the name function-local for all of run_once and breaks
             # exit_60 (UnboundLocalError). Module-level import is enough.
             from zelda_i.level4_dungeon import (
-                MAZE_60_HOLD,
                 PUSH_32_DIR,
-                PUSH_32_HOLD,
                 PUSH_32_STAND,
                 STAIRS_32_APPROACH,
+            )
+            from zelda_i.level4_stepladder import (
+                MAZE_60_HOLD,
+                PUSH_32_HOLD,
                 STAIRS_32_PUSH,
                 STAIRS_32_PUSH_FRAMES,
                 StepladderPhase,

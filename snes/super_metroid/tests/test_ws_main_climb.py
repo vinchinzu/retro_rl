@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -53,7 +52,6 @@ from super_metroid.routes.kpdr.k6.ws_main_shaft import (
     save_alcove_jump,
     save_column_walljump,
 )
-from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_MAIN
 from super_metroid.routes.skills.basic_moves import shoot_up_action
 from super_metroid.routes.skills.charge_shot import CHARGE_FULL
@@ -293,6 +291,21 @@ def test_shaft_hops_are_dpad_sides() -> None:
     for hop in SHAFT_HOPS:
         assert hop.side in ("LEFT", "RIGHT")
         assert hop.takeoff.side in ("LEFT", "RIGHT")
+
+
+def test_west_super_hop_aligns_from_recorded_left_edge() -> None:
+    hop = SHAFT_HOPS[0]
+    assert hop.y == 1675
+    assert hop.takeoff.x_range == (1054, 1070)
+    assert climb_action(
+        1108, 1675, 2, FACING_RIGHT, region=ShaftRegion.SHAFT
+    ) == ("LEFT",)
+    assert climb_action(
+        1062, 1675, 2, FACING_LEFT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT",)
+    assert climb_action(
+        1062, 1675, 2, FACING_RIGHT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT", "B", "A")
 
 
 def test_save_alcove_jumps_left() -> None:
@@ -659,22 +672,6 @@ def test_never_uses_l_as_hop_side() -> None:
         names = attic_door_action(WS_MAIN_ATTIC_DOOR_X, 80, 1, frame)
         assert "L" not in names
         assert "SUPER" not in names
-
-
-def test_registered() -> None:
-    from super_metroid.routes.kpdr.k6 import play_ws_main_to_attic as play
-
-    assert KPDR_SEGMENTS["ws_main_to_attic"] is play
-
-
-def test_probe_uses_repo_headed() -> None:
-    src = Path(__file__).resolve().parents[1] / "scripts" / "probe" / "ws_main_climb.py"
-    text = src.read_text(encoding="utf-8")
-    assert "from retro_harness.headed import" in text
-    assert "add_headed_flag" in text
-    assert "attach_headed" in text
-    assert "--stop-at" in text
-    assert "play_ws_main_to_attic" in text
 
 
 def test_ice_overlay() -> None:

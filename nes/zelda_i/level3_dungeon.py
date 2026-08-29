@@ -195,9 +195,10 @@ ROOM_6B_SPEC = DungeonRoomSpec(
     level=LEVEL3,
 )
 
-# Darknut room graph node (combat not pure-encoded yet — side/back hits only).
-# LIVE doors (no clear required): UP→0x4b, DOWN→0x6b, LEFT→0x5a; RIGHT walk sealed
-# (bomb-RIGHT @ (192,141) → 0x5c boss shortcut; recon poke OK).
+# Darknut room graph node (side/back hits only; wooden sword). dest_6b first-visit
+# clear from the south leftover. ymin=109 excludes north-door y=93 alcove;
+# ymax includes south mouth y=205.
+_ROOM_5B_OCCUPANCY_BOUNDS: tuple[int, int, int, int] = (16, 216, 109, 205)
 ROOM_5B_SPEC = DungeonRoomSpec(
     spec_id="level3_room5b_darknuts",
     source_room=ROOM_L3_NORTH_ZOLS,
@@ -210,21 +211,17 @@ ROOM_5B_SPEC = DungeonRoomSpec(
     expected_enemy_count=3,
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
-        patrol=(
-            (80, 141),
-            (120, 117),
-            (160, 141),
-            (160, 173),
-            (120, 173),
-            (80, 173),
-            (120, 141),
-        ),
-        engage_distance=48,
+        patrol=_DARKNUT_PATROL,
+        engage_distance=40,
         attack_phase=2,
-        patrol_attack_period=8,
+        patrol_attack_period=6,
         patrol_attack_hold=3,
+        engage_attack_period=5,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=_ROOM_5B_OCCUPANCY_BOUNDS,
     ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     exit_routes=(
         DoorRoute("DOWN", ((NORTH_DOOR_X, 205),)),
         DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),
@@ -409,6 +406,18 @@ def level3_reached_5b(ram: np.ndarray) -> bool:
         and snap.screen == ROOM_L3_DARKNUTS
         and snap.mode == PLAY_MODE
         and not snap.transitioning
+    )
+
+
+def level3_cleared_5b(ram: np.ndarray) -> bool:
+    """Play 0x5b with no live Darknuts (spine dest_6b stop)."""
+    snap = read_snapshot(ram)
+    return (
+        snap.level == LEVEL3
+        and snap.screen == ROOM_L3_DARKNUTS
+        and snap.mode == PLAY_MODE
+        and not snap.transitioning
+        and not ROOM_5B_SPEC.live_enemies(snap)
     )
 
 

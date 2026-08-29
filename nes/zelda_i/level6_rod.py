@@ -13,6 +13,13 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.hop_controller import (
+    CELLAR_MODE,
+    CellarCross,
+    HopController,
+    WAIT_SCROLL_B,
+    cellar_cross_dir,
+)
 from zelda_i.level6_occupancy import l6_leftover
 from zelda_i.level6_overworld import LEVEL6
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -44,23 +51,26 @@ ROD_75_SETTLE_Y = 88
 ROD_75_STABLE = 16
 ROD_75_MAX_FRAMES = 4000
 ROD_75_SAMPLE_PERIOD = 8
-# Mode 9/11 are playable cellar; 10/16 are enter/scroll.
-CELLAR_PLAY_MODES = (9, 11)
-WAIT_MODES = (2, 3, 4, 6, 7, 10, 16)
+CELLAR_PLAY_MODES = (CELLAR_MODE, 11)
+ROD_CROSS = CellarCross(
+    west_x=ROD_75_WEST_X,
+    east_x=ROD_75_EAST_X,
+    floor_y=ROD_75_FLOOR_Y,
+    mouth_y=ROD_75_MID_Y,
+    tol=ROD_75_ALIGN_TOL,
+)
 
 
 @dataclass
-class Level6RodController:
+class Level6RodController(HopController):
     """Wait stairs spit, then DOWN west column, RIGHT floor, UP pedestal."""
 
     spec_id: str = "level6_rod_0x75"
     room: int = ROD_75_ROOM
     goal: tuple[int, int] = ROD_75_GOAL
     max_frames: int = ROD_75_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "rod_got"
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
     walker: OccupancyWalker = field(
@@ -78,7 +88,13 @@ class Level6RodController:
     def _rod(self, snap: ZeldaSnapshot) -> int:
         return int(snap.rod)
 
-    def _emit(
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_rod={self._rod(snap)}"
+        )
+
+    def emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
@@ -103,57 +119,37 @@ class Level6RodController:
             )
         return action
 
-    def _fail(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
-        self.failed = True
-        if note not in self.notes:
-            self.notes.append(note)
+    def mark_fail(self, note: str, reason: str | None = None) -> FrameAction:
         self.walker.last_dir = None
-        return self._emit(snap, FrameAction(nes_idle_action(), note), force=True)
+        return super().mark_fail(note, reason)
 
-    def _got_rod(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
-        self.success = True
-        self.notes.append(note)
+    def mark_done(self, snap: ZeldaSnapshot, note: str | None = None) -> FrameAction:
         self.walker.last_dir = None
-        return self._emit(
-            snap, FrameAction(nes_idle_action(), "rod_got"), force=True
-        )
+        return super().mark_done(snap, note)
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            if "timeout" not in self.notes:
-                self.notes.append(
-                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-                    f"_mode={snap.mode}_rod={self._rod(snap)}"
-                )
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), "timeout"), force=True
-            )
-        if snap.mode == 17:
-            return self._fail(snap, "link_death")
-        if self._rod(snap):
-            return self._got_rod(
-                snap,
-                f"rod_{snap.mode}_{snap.screen:02x}_{snap.link_x}_{snap.link_y}",
-            )
-        if snap.transitioning or snap.mode in WAIT_MODES:
-            self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), "wait_scroll")
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return bool(self._rod(snap))
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"rod_{snap.mode}_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.walker.last_dir = None
+        return FrameAction(nes_idle_action(), "wait_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         # Warp frame may still look like 0x09. Wait; do not re-push.
         if snap.screen == 0x09:
             self.walker.last_dir = None
-            return self._emit(snap, FrameAction(nes_idle_action(), "wait_warp"))
+            return FrameAction(nes_idle_action(), "wait_warp")
         if snap.mode not in CELLAR_PLAY_MODES and snap.mode != PLAY_MODE:
             self.walker.last_dir = None
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.level != LEVEL6:
-            return self._fail(snap, f"left_level_{snap.level}")
+            return self.mark_fail(f"left_level_{snap.level}")
         if snap.mode == PLAY_MODE and snap.screen != self.room:
-            return self._fail(
-                snap, f"left_cellar_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            return self.mark_fail(
+                f"left_cellar_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
             )
 
         xy = (int(snap.link_x), int(snap.link_y))
@@ -167,18 +163,14 @@ class Level6RodController:
                 self.settle_xy = None
                 self.stable_frames = 0
                 self.walker.last_dir = None
-                return self._emit(
-                    snap, FrameAction(nes_idle_action(), "wait_spawn")
-                )
+                return FrameAction(nes_idle_action(), "wait_spawn")
             if self.settle_xy != xy:
                 self.settle_xy = xy
                 self.stable_frames = 0
             self.stable_frames += 1
             if self.stable_frames < ROD_75_STABLE:
                 self.walker.last_dir = None
-                return self._emit(
-                    snap, FrameAction(nes_idle_action(), "wait_spawn")
-                )
+                return FrameAction(nes_idle_action(), "wait_spawn")
             self.settled = True
         gx, gy = self.goal
         if (
@@ -196,42 +188,27 @@ class Level6RodController:
             and abs(xy[0] - ROD_75_EAST_X) <= 8
         ):
             self.walker.last_dir = None
-            return self._emit(
-                snap, FrameAction(nes_action("RIGHT", "UP"), "rod_clip")
-            )
+            return FrameAction(nes_action("RIGHT", "UP"), "rod_clip")
         if not self.climbed:
-            if xy[1] < ROD_75_FLOOR_Y and xy[0] < ROD_75_EAST_X - 8:
-                dest = (xy[0], ROD_75_FLOOR_Y)
-            elif abs(xy[0] - ROD_75_EAST_X) > ROD_75_ALIGN_TOL:
-                dest = (ROD_75_EAST_X, xy[1])
-            else:
-                dest = (xy[0], ROD_75_MID_Y)
+            on_floor = (
+                xy[1] >= ROD_75_FLOOR_Y - ROD_75_ALIGN_TOL
+                or xy[0] >= ROD_75_EAST_X - 8
+            )
+            btn = cellar_cross_dir(xy, ROD_CROSS, on_floor=on_floor)
+            reason = "rod_y" if btn in ("DOWN", "UP") else "rod_x"
         elif abs(xy[0] - gx) > ROD_75_ALIGN_TOL:
             # v12 cardinal LEFT @ (176,157) tile 250 / v14 LEFT+UP @ y=149
             # no-ops. Clip off the east column onto the mid-floor.
             if abs(xy[0] - ROD_75_EAST_X) <= 8:
                 self.walker.last_dir = None
-                return self._emit(
-                    snap, FrameAction(nes_action("LEFT", "UP"), "rod_clip")
-                )
-            dest = (gx, xy[1])
+                return FrameAction(nes_action("LEFT", "UP"), "rod_clip")
+            btn, reason = ("LEFT" if xy[0] > gx else "RIGHT"), "rod_x"
+        elif abs(xy[1] - gy) > ROD_75_ALIGN_TOL:
+            btn, reason = ("DOWN" if xy[1] < gy else "UP"), "rod_y"
         else:
-            dest = self.goal
-        at_dest = (
-            abs(xy[0] - gx) <= ROD_75_ALIGN_TOL
-            and abs(xy[1] - gy) <= ROD_75_ALIGN_TOL
-        )
-        if at_dest:
             self.walker.last_dir = None
-            return self._emit(snap, FrameAction(nes_idle_action(), "rod_idle"))
+            return FrameAction(nes_idle_action(), "rod_idle")
 
-        dx, dy = dest[0] - xy[0], dest[1] - xy[1]
-        if dest[0] == xy[0] or (dy != 0 and abs(dy) >= abs(dx)):
-            btn = "DOWN" if dy > 0 else "UP"
-            reason = "rod_y"
-        else:
-            btn = "LEFT" if dx < 0 else "RIGHT"
-            reason = "rod_x"
         if xy[1] >= ROD_75_FLOOR_Y:
             prev_dir = self.walker.last_dir
             misses_before = self.walker.misses
@@ -245,7 +222,7 @@ class Level6RodController:
             self.walker.last_dir = btn
         else:
             self.walker.last_dir = None
-        return self._emit(snap, FrameAction(nes_action(btn), reason))
+        return FrameAction(nes_action(btn), reason)
 
     def report(self) -> dict[str, Any]:
         return {

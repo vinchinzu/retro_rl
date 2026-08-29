@@ -755,17 +755,17 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
     """
     from dataclasses import replace
 
-    from zelda_i.dungeon import (
-        GenericDungeonRoomController,
+    from zelda_i.dungeon import GenericDungeonRoomController
+    from zelda_i.level1_dungeon import (
         ROOM_23_SPEC,
         ROOM_33_SPEC,
         ROOM_42_SPEC,
         ROOM_43_SPEC,
         ROOM_44_SPEC,
         ROOM_45_SPEC,
+        ROOM_45_SURVIVAL_SPEC,
         ROOM_52_SPEC,
     )
-    from zelda_i.level1_dungeon import ROOM_45_SURVIVAL_SPEC
 
     room33 = ROOM_33_SPEC
     room23 = ROOM_23_SPEC

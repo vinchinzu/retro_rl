@@ -6,8 +6,6 @@ themselves on import so ``dungeon.spec_for_room`` can find them.
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from zelda_i.dungeon import (
     AQUAMENTUS_OBJECT_TYPE,
     AliveRule,
@@ -19,8 +17,14 @@ from zelda_i.dungeon import (
     KEESE_OBJECT_TYPE,
     RewardKind,
     RewardSpec,
-    WALLMASTER_OBJECT_TYPE,
     register_room_spec,
+)
+from zelda_i.level1_east_dungeon import (
+    ROOM_44_SPEC,
+    ROOM_44_SURVIVAL_SPEC,
+    ROOM_45_SPEC,
+    ROOM_45_SURVIVAL_SPEC,
+    Room44SurvivalController,
 )
 from zelda_i.level1 import (
     LEVEL_1,
@@ -80,29 +84,6 @@ _ROOM_43_PATROL: tuple[tuple[int, int], ...] = (
     (144, 173),
     (96, 173),
     (48, 173),
-)
-
-# Open floor at door height. Live timeout sat at (87, 101) on the north
-# statue band: patrol included (80, 93) and engage=64 never reached the
-# Goriyas. Stay on y=141 (west door → east door). Occupancy chase blocks
-# statue cells on a miss and BFS-replans; no path falls back to this line.
-_ROOM_44_PATROL: tuple[tuple[int, int], ...] = (
-    (48, 141),
-    (80, 141),
-    (120, 141),
-    (160, 141),
-    (192, 141),
-)
-
-# Stay inland. Dormant Wallmasters at x=0 still grab on the west door
-# (x=32) after TYPE_AND_HP treats them as dead.
-_WALLMASTER_PATROL: tuple[tuple[int, int], ...] = (
-    (32, 117),
-    (80, 117),
-    (120, 117),
-    (160, 117),
-    (80, 117),
-    (32, 141),
 )
 
 ROOM_53_SPEC = DungeonRoomSpec(
@@ -323,106 +304,6 @@ ROOM_23_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
-ROOM_44_SPEC = DungeonRoomSpec(
-    spec_id="level1_room44",
-    source_room=0x43,
-    room_id=0x44,
-    entry=DoorRoute(
-        "RIGHT",
-        ((120, 93), (208, 93), (208, 141)),
-    ),
-    enemy_types=(GORIYA_OBJECT_TYPE,),
-    expected_enemy_count=3,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_ROOM_44_PATROL,
-        engage_distance=64,
-        patrol_attack_period=8,
-        patrol_attack_hold=4,
-        attack_phase=7,
-        occupancy_patrol=True,
-    ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-    room_item_id=0x1D,
-    level=LEVEL_1,
-)
-
-ROOM_45_SPEC = DungeonRoomSpec(
-    spec_id="level1_room45",
-    source_room=0x44,
-    room_id=0x45,
-    entry=DoorRoute(
-        "RIGHT",
-        (
-            (80, 101),
-            (80, 93),
-            (160, 93),
-            (160, 101),
-            (208, 101),
-            (208, 141),
-        ),
-    ),
-    enemy_types=(WALLMASTER_OBJECT_TYPE,),
-    expected_enemy_count=8,
-    alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(
-        patrol=_WALLMASTER_PATROL,
-        # Dormant Wallmasters sit just outside the wall (x=0).  A wider
-        # engage radius makes Link face and slash into the doorway instead of
-        # walking a vertical patrol forever once only those slots remain.
-        engage_distance=80,
-        engage_dominant_axis=True,
-        attack_phase=0,
-        patrol_attack_period=8,
-        patrol_attack_hold=4,
-    ),
-    reward=RewardSpec(
-        kind=RewardKind.FIXED_INVENTORY,
-        inventory_field="keys",
-        # Single south-wall target. Hunt the live stand (152, 189) via the
-        # east column. Do not linger on the south wall.
-        waypoints=(
-            (160, 141),
-            (160, 173),
-            (152, 189),
-            (120, 189),
-            (80, 141),
-            (120, 141),
-        ),
-    ),
-    room_item_id=0x19,
-    max_frames=9000,
-    level=LEVEL_1,
-)
-
-# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (x=160 east-column hunt).
-# Off-wall fight avoids the grab-to-entrance. Continuous combat ends in the
-# y=149–157 band; south of that at x=80/120/160 is solid, so collect first
-# walks the free east column at x=208 (same column the entry route uses).
-ROOM_45_SURVIVAL_SPEC = replace(
-    ROOM_45_SPEC,
-    spec_id="level1_room45_survival",
-    combat=replace(
-        ROOM_45_SPEC.combat,
-        engage_distance=56,
-        contact_backstep=16,
-        avoid_walls=True,
-        inland_dash=48,
-    ),
-    reward=replace(
-        ROOM_45_SPEC.reward,
-        waypoints=(
-            (208, 157),
-            (208, 189),
-            (152, 189),
-            (208, 141),
-            (160, 141),
-            (32, 157),
-            (32, 189),
-        ),
-    ),
-)
-
 ROOM_35_SPEC = DungeonRoomSpec(
     spec_id="level1_room35_aquamentus",
     source_room=0x45,
@@ -457,8 +338,6 @@ for _spec in (
     ROOM_35_SPEC,
     ROOM_42_SPEC,
     ROOM_43_SPEC,
-    ROOM_44_SPEC,
-    ROOM_45_SPEC,
     ROOM_52_SPEC,
     ROOM_53_SPEC,
     ROOM_54_SPEC,
@@ -472,8 +351,11 @@ __all__ = [
     "ROOM_42_SPEC",
     "ROOM_43_SPEC",
     "ROOM_44_SPEC",
+    "ROOM_44_SURVIVAL_SPEC",
     "ROOM_45_SPEC",
+    "ROOM_45_SURVIVAL_SPEC",
     "ROOM_52_SPEC",
     "ROOM_53_SPEC",
     "ROOM_54_SPEC",
+    "Room44SurvivalController",
 ]

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import gzip
 from pathlib import Path
+from typing import Sequence
 
 from retro_harness import TaskResult, TaskStatus, WorldState
 from retro_harness.headed import headed_emu_repeat
 
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
+from harvest.core.stamina import Stamina
 from harvest.paths import GAME_DIR
+from harvest.planner.d2_work import needs_spa_before_next_smash, should_spa_retry
 from harvest.tasks.farm_clear_quota import ClearQuota, DebrisCounts, count_debris
 from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result
@@ -35,6 +38,38 @@ def phase_already_clear(phase: str, counts: DebrisCounts) -> bool:
     """True when this leftover smash section has nothing left on the pin."""
     key = _EMPTY_SKIP.get(phase)
     return key is not None and int(getattr(counts, key, 0)) <= 0
+
+
+def leftover_chain_decision(
+    phase: str,
+    status: TaskStatus | str | None,
+    reason: str | None,
+    stamina: Stamina | int | None,
+    remaining_phases: Sequence[str],
+    *,
+    include_spa: bool = True,
+) -> str:
+    """What the leftover probe does after one phase of ``--section all``.
+
+    ``continue`` / ``insert_spa`` keep the chain. ``spa_retry`` requeues the
+    same smash after a soak. ``abort`` stops later chunks — a stalled SE
+    boulder never reaches axe/stumps.
+    """
+    if status is None:
+        return "abort"
+    text = status.value if isinstance(status, TaskStatus) else str(status)
+    if text == TaskStatus.SUCCESS.value:
+        if needs_spa_before_next_smash(
+            phase,
+            stamina,
+            include_spa=include_spa,
+            remaining_phases=remaining_phases,
+        ):
+            return "insert_spa"
+        return "continue"
+    if should_spa_retry(phase, reason, stamina, include_spa=include_spa):
+        return "spa_retry"
+    return "abort"
 
 
 def print_leftover_table(
@@ -66,6 +101,36 @@ def _debris_key(ram) -> tuple:
 def _should_abort_stall(frame: int, last_progress: int, stall_frames: int) -> bool:
     """True when debris counts have not changed for stall_frames."""
     return stall_frames > 0 and frame - last_progress >= stall_frames
+
+
+def _is_spa_phase(spec) -> bool:
+    phase = str(getattr(spec, "phase", "") or "")
+    kind = str(getattr(spec, "kind", "") or "")
+    return phase == "HOT_SPRING_STAMINA" or kind == "hot_spring"
+
+
+def _phase_timeout(spec, remaining: int) -> int:
+    """timeout<=0 or spa spends remaining; other estimates cap."""
+    params = spec.params or {}
+    if "timeout" in params:
+        timeout = int(params["timeout"])
+        if timeout <= 0:
+            return remaining
+        return min(timeout, remaining)
+    if _is_spa_phase(spec):
+        return remaining
+    estimated = getattr(spec.contract, "estimated_frames", None)
+    return min(int(estimated or 8000), remaining)
+
+
+def _phase_timeout_result(result: TaskResult | None, timeout: int) -> TaskResult:
+    """FAILURE when the phase frame budget elapsed with no terminal status."""
+    if result is None or result.status == TaskStatus.RUNNING:
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            reason=f"phase timeout {timeout}f",
+        )
+    return result
 
 
 def run_leftover_task(
@@ -152,4 +217,4 @@ def run_leftover_task(
                 break
         if stopped:
             break
-    return frame, result, env.get_ram()
+    return frame, _phase_timeout_result(result, timeout), env.get_ram()

@@ -393,15 +393,15 @@ FENCE_DUMP_DONE = LeaveSpec(
 _DONE_EMPTY = {
     "fences": ("fences",),
     "stones": ("stones",),
-    "bushes": (),
+    "bushes": ("weeds",),
     "rocks": ("large_rocks",),
     "stumps": ("stumps",),
-    "all": ("fences", "stones", "large_rocks", "stumps"),
+    "all": ("weeds", "fences", "stones", "large_rocks", "stumps"),
 }
 
 
 def d2_leftover_spec(section: str = "fences", *, done: bool = False) -> LeaveSpec:
-    """Fail path: farm stand; success still enforces exhaustive fences/stones."""
+    """Fail path: farm stand; success still enforces exhaustive weeds/fences/stones."""
     if section == "fences":
         return FENCE_DUMP_DONE if done else FENCE_STAND
     empty = _DONE_EMPTY.get(section, ())

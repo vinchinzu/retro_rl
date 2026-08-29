@@ -33,9 +33,8 @@ from retro_harness.segment_runner import (
 from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
-    ROOM_5E_SPEC,
-    level2_room_5e_cleared,
 )
+from zelda_i.level2_dungeon import ROOM_5E_SPEC, level2_room_5e_cleared
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot

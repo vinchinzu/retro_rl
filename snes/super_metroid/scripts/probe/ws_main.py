@@ -31,7 +31,7 @@ from super_metroid.paths import GAME_DIR
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
-from super_metroid.routes.kpdr import wrecked_ship as ws
+from super_metroid.routes.kpdr.k6 import ws_main as ws
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_SAVE
 
 SCRATCH = GAME_DIR / "scratch"

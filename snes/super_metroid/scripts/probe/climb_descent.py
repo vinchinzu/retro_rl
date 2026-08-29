@@ -20,6 +20,11 @@ uv run python snes/super_metroid/scripts/probe/climb_descent.py strategy --polic
 
 # Before/after from the same pin
 uv run python snes/super_metroid/scripts/probe/climb_descent.py bench
+
+# Diagnostics (practice pin)
+uv run python snes/super_metroid/scripts/probe/climb_descent.py lip
+uv run python snes/super_metroid/scripts/probe/climb_descent.py trace --shots snes/super_metroid/scratch/climb_descent_shots
+uv run python snes/super_metroid/scripts/probe/climb_descent.py search
 ```
 """
 
@@ -37,9 +42,15 @@ from super_metroid.combat.probe import (
 from super_metroid.dev.common import door_warp, save_dev_state
 from super_metroid.paths import GAME, GAME_DIR, SCRATCH_STATE_DIR
 from super_metroid.progression import MORPH_GRAPH
+from retro_harness.actions import buttons, idle_action
 from super_metroid.ram import ADDR_MOONWALK, parse_state, set_moonwalk
 from super_metroid.room_timer import format_segment_time
-from super_metroid.routes.kpdr.climb_descent import play_climb_to_pit_moonfall
+from super_metroid.routes.kpdr.climb_descent import (
+    BOTTOM_Y,
+    FALL_X,
+    climb_moonfall_action,
+    play_climb_to_pit_moonfall,
+)
 from super_metroid.routes.kpdr.early_spine import (
     play_boot_to_ceres,
     play_ceres_escape_to_landing,
@@ -50,6 +61,8 @@ from super_metroid.routes.kpdr.early_spine import (
 )
 from super_metroid.routes.kpdr.room_ids import ROOM_CLIMB, ROOM_PIT
 from super_metroid.routes.runtime import RouteSession
+from super_metroid.routes.skills.knockback import is_knockback
+from super_metroid.routes.skills.moonfall import is_airborne, is_moonfalling, is_moonwalking
 from retro_harness.env import make_env
 
 DEFAULT_ENTRY = SCRATCH_STATE_DIR / "climb_descent_enter.state"
@@ -203,9 +216,42 @@ def cmd_capture_warp(args: argparse.Namespace) -> int:
         env.close()
 
 
-def cmd_dump(args: argparse.Namespace) -> int:
-    from retro_harness.actions import idle_action
+def _kin(session: RouteSession, extra: dict | None = None) -> dict[str, object]:
+    s = session.state
+    out: dict[str, object] = {
+        "f": session.frame,
+        "x": s.samus_x,
+        "y": s.samus_y,
+        "pose": s.pose,
+        "mt": s.movement_type,
+        "vd": s.vertical_direction,
+        "vy": s.velocity_y,
+        "vx": s.velocity_x,
+        "face": s.facing,
+        "gs": s.game_state,
+        "room": f"0x{s.room_id:04X}",
+        "mw": int(s.moonwalk),
+        "mf": int(is_moonfalling(s)),
+        "mwalk": int(is_moonwalking(s)),
+        "air": int(is_airborne(s)),
+        "kb": int(is_knockback(s)),
+        "e0x": int(s.enemy0_x),
+        "e0y": int(s.enemy0_y),
+        "e0hp": int(s.enemy0_hp),
+    }
+    if extra:
+        out.update(extra)
+    return out
 
+
+def _save_shot(env, path: Path) -> None:
+    from PIL import Image
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(env.render()).save(path)
+
+
+def cmd_dump(args: argparse.Namespace) -> int:
     env, loaded = _open_env(_resolve_state(args.state))
     try:
         session = _make_session(env)
@@ -242,7 +288,7 @@ def _run_policy(env, policy: str) -> tuple[RouteSession, dict]:
     start = session.frame
     try:
         if policy == "moonfall":
-            play_climb_to_pit_moonfall(session, restore_moonwalk=False)
+            play_climb_to_pit_moonfall(session, restore_moonwalk=True)
         else:
             play_climb_to_pit(session)
     except Exception as exc:
@@ -321,6 +367,316 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0 if rows["seed"].get("success") and rows["moonfall"].get("success") else 1
 
 
+def cmd_trace(args: argparse.Namespace) -> int:
+    """Per-frame kinematics of the current RAM moonfall policy."""
+    env, loaded = _open_env(_resolve_state(args.state))
+    shots_dir = Path(args.shots) if args.shots else None
+    try:
+        session = _make_session(env)
+        set_moonwalk(env, True)
+        session.state = parse_state(env.get_ram(), frame=session.frame)
+        from super_metroid.routes.kpdr.climb_descent import ClimbMoonfallTrack
+
+        track = ClimbMoonfallTrack()
+        samples: list[dict] = []
+        events: list[dict] = []
+        max_y = session.state.samus_y
+        max_vy = 0
+        mf_frames = 0
+        last_phase = track.phase
+        if shots_dir:
+            _save_shot(env, shots_dir / "f000_start.png")
+        for i in range(args.frames):
+            st = session.state
+            max_y = max(max_y, int(st.samus_y))
+            max_vy = max(max_vy, int(st.velocity_y))
+            if is_moonfalling(st):
+                mf_frames += 1
+            names, track = climb_moonfall_action(st, track)
+            row = _kin(session, {"phase": track.phase, "btns": list(names)})
+            if (
+                i == 0
+                or i + 1 == args.frames
+                or i % args.stride == 0
+                or track.phase != last_phase
+                or is_knockback(st)
+                or (not is_airborne(st) and int(st.samus_y) > 90)
+            ):
+                samples.append(row)
+            if track.phase != last_phase:
+                events.append({**row, "event": f"phase_{track.phase}"})
+                last_phase = track.phase
+                if shots_dir:
+                    _save_shot(env, shots_dir / f"f{session.frame:04d}_{track.phase}.png")
+            if is_knockback(st) and shots_dir and i % 15 == 0:
+                _save_shot(env, shots_dir / f"f{session.frame:04d}_kb.png")
+            action = buttons(*names) if names else idle_action()
+            session.step(action, f"trace_{track.phase}")
+            if st.room_id == ROOM_PIT:
+                events.append({**_kin(session), "event": "pit"})
+                break
+            if track.phase == "done":
+                break
+        if shots_dir:
+            _save_shot(env, shots_dir / f"f{session.frame:04d}_final.png")
+        report = {
+            "command": "trace",
+            "state": loaded,
+            "frames": session.frame,
+            "timing": format_segment_time(session.frame),
+            "max_y": max_y,
+            "max_vy": max_vy,
+            "moonfall_frames": mf_frames,
+            "final": _kin(session, {"phase": track.phase}),
+            "events": events,
+            "samples": samples,
+            "shots": str(shots_dir) if shots_dir else None,
+        }
+        write_json_report(report, Path(args.report) if args.report else None)
+        return 0 if session.state.room_id == ROOM_PIT else 1
+    finally:
+        env.close()
+
+
+
+def cmd_lip(args: argparse.Namespace) -> int:
+    """Moonwalk right until airborne; report last grounded x (start-platform lip)."""
+    env, loaded = _open_env(_resolve_state(args.state))
+    try:
+        session = _make_session(env)
+        set_moonwalk(env, True)
+        session.state = parse_state(env.get_ram(), frame=session.frame)
+        last_ground: dict | None = None
+        samples: list[dict] = []
+        landed = False
+        for i in range(args.frames):
+            st = session.state
+            if not is_airborne(st):
+                landed = True
+                last_ground = _kin(session)
+                names = ("RIGHT", "X", "L")
+            else:
+                names = ("X", "L", "A") if not landed else ("RIGHT", "X", "L")
+            if i == 0 or i % 10 == 0 or (landed and is_airborne(st)):
+                samples.append(_kin(session, {"btns": list(names), "landed": int(landed)}))
+            session.step(buttons(*names), "lip")
+            if landed and is_airborne(session.state):
+                samples.append(_kin(session, {"event": "walked_off"}))
+                break
+        report = {
+            "command": "lip",
+            "state": loaded,
+            "last_grounded": last_ground,
+            "final": _kin(session),
+            "samples": samples,
+            "frames": session.frame,
+            "timing": format_segment_time(session.frame),
+        }
+        write_json_report(report, Path(args.report) if args.report else None)
+        return 0 if last_ground else 1
+    finally:
+        env.close()
+
+
+def _setup_then_fall(
+    session: RouteSession,
+    *,
+    jump_x: int,
+    walk_max: int,
+    jump_hold: int,
+    spin: int,
+    clear_y: int,
+    steer: str,
+    max_frames: int,
+    drop_right: bool = False,
+    weave_left_y: int = 0,
+    weave_right_y: int = 0,
+) -> dict:
+    """Open-loop moonfall setup used by search. Never LEFT-steers before clear_y
+    unless a weave window is set."""
+    set_moonwalk(session.env, True)
+    session.state = parse_state(session.env.get_ram(), frame=session.frame)
+    max_y = int(session.state.samus_y)
+    max_vy = 0
+    mf_frames = 0
+    jump_at: dict | None = None
+    first_ground: dict | None = None
+    first_kb: dict | None = None
+    landed = False
+    jumped = False
+    jump_left = 0
+    spin_left = 0
+    walk_held = 0
+    for _ in range(max_frames):
+        st = session.state
+        x, y = int(st.samus_x), int(st.samus_y)
+        max_y = max(max_y, y)
+        max_vy = max(max_vy, int(st.velocity_y))
+        if is_moonfalling(st):
+            mf_frames += 1
+        if is_knockback(st) and first_kb is None:
+            first_kb = _kin(session)
+        if st.room_id == ROOM_PIT and st.game_state == 8:
+            return {
+                "success": True,
+                "outcome": "pit",
+                "jump_x": jump_x,
+                "steer": steer,
+                "frames": session.frame,
+                "timing": format_segment_time(session.frame),
+                "max_y": max_y,
+                "max_vy": max_vy,
+                "moonfall_frames": mf_frames,
+                "jump_at": jump_at,
+                "first_ground": first_ground,
+                "first_kb": first_kb,
+                "final": _kin(session),
+            }
+        if st.room_id != ROOM_CLIMB:
+            names = ("LEFT", "X")
+        elif not landed:
+            if is_airborne(st):
+                # Door-drop: keep RIGHT so we may skip the start platform.
+                names = ("RIGHT", "X", "L", "A") if drop_right else ("X", "L", "A")
+            else:
+                landed = True
+                names = ("RIGHT", "X", "L")
+        elif not jumped:
+            walk_held += 1
+            if is_airborne(st) or x >= jump_x or walk_held >= walk_max:
+                jumped = True
+                jump_left = jump_hold
+                jump_at = _kin(session)
+                names = ("RIGHT", "X", "L", "A")
+            else:
+                names = ("RIGHT", "X", "L")
+        elif jump_left > 0:
+            jump_left -= 1
+            if jump_left == 0:
+                spin_left = spin
+            names = ("RIGHT", "X", "L", "A")
+        elif spin_left > 0:
+            spin_left -= 1
+            names = ("RIGHT", "A")
+        elif (not is_airborne(st)) and y < BOTTOM_Y:
+            if first_ground is None:
+                first_ground = _kin(session)
+            names = ("RIGHT",) if x < FALL_X else ()
+        elif y >= BOTTOM_Y:
+            names = ("LEFT", "X") if x > 80 else ("LEFT", "X")
+        elif weave_left_y and weave_left_y <= y < (weave_right_y or 9999):
+            names = ("LEFT",)
+        elif y < clear_y:
+            # Residual: do not LEFT-steer the first ~200px of fall.
+            if steer == "left":
+                names = ("LEFT",)
+            elif steer in ("right", "wall"):
+                names = ("RIGHT",)
+            else:
+                names = ()
+        elif y >= 1800:
+            names = ("LEFT", "X", "L") if x > 120 else ("LEFT", "X")
+        elif steer == "wall":
+            if x < FALL_X - 12:
+                names = ("RIGHT",)
+            elif x > FALL_X + 12:
+                names = ()
+            else:
+                names = ()
+        elif steer == "right":
+            names = ("RIGHT",)
+        else:
+            names = ()
+        session.step(buttons(*names) if names else idle_action(), "search")
+    return {
+        "success": False,
+        "outcome": "timeout" if first_kb is None else "knockback",
+        "jump_x": jump_x,
+        "steer": steer,
+        "frames": session.frame,
+        "timing": format_segment_time(session.frame),
+        "max_y": max_y,
+        "max_vy": max_vy,
+        "moonfall_frames": mf_frames,
+        "jump_at": jump_at,
+        "first_ground": first_ground,
+        "first_kb": first_kb,
+        "final": _kin(session),
+    }
+
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    """Grid jump_x × steer. Same pin each cell. Print a compact table."""
+    state_path = _resolve_state(args.state)
+    jump_xs = [int(p) for p in str(args.jump_x).split(",") if p.strip()]
+    steers = [s.strip() for s in str(args.steer).split(",") if s.strip()]
+    rows: list[dict] = []
+    for jump_x in jump_xs:
+        for steer in steers:
+            env, loaded = _open_env(state_path)
+            try:
+                session = _make_session(env)
+                body = _setup_then_fall(
+                    session,
+                    jump_x=jump_x,
+                    walk_max=args.walk_max,
+                    jump_hold=args.jump_hold,
+                    spin=args.spin,
+                    clear_y=args.clear_y,
+                    steer=steer,
+                    max_frames=args.frames,
+                    drop_right=bool(args.drop_right),
+                    weave_left_y=int(args.weave_left_y),
+                    weave_right_y=int(args.weave_right_y),
+                )
+                body["state"] = loaded
+                rows.append(body)
+            finally:
+                env.close()
+            jx = body.get("jump_at") or {}
+            fg = body.get("first_ground") or {}
+            print(
+                f"jx={jump_x:3d} steer={steer:5s} ok={int(body['success'])} "
+                f"out={body['outcome']:10s} f={body['frames']:4d} "
+                f"max_y={body['max_y']:4d} max_vy={body['max_vy']:3d} "
+                f"mf={body['moonfall_frames']:3d} "
+                f"jump@({jx.get('x')},{jx.get('y')}) "
+                f"gnd@({fg.get('x')},{fg.get('y')})"
+            )
+    best = max(
+        rows,
+        key=lambda r: (
+            int(r["success"]),
+            int(r["max_y"]),
+            int(r["moonfall_frames"]),
+            -int(r["frames"]),
+        ),
+    )
+    report = {
+        "command": "search",
+        "state": str(state_path),
+        "rows": rows,
+        "best": {
+            "jump_x": best["jump_x"],
+            "steer": best["steer"],
+            "success": best["success"],
+            "outcome": best["outcome"],
+            "max_y": best["max_y"],
+            "max_vy": best["max_vy"],
+            "moonfall_frames": best["moonfall_frames"],
+            "frames": best["frames"],
+        },
+        "notes": "Practice grid, not continuous evidence. Negative LEFT before clear_y.",
+    }
+    out = Path(args.report) if args.report else GAME_DIR / "scratch" / "climb_descent_search.json"
+    # Compact stdout; full JSON on disk only.
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(__import__("json").dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"best={report['best']} wrote={out}")
+    return 0 if any(r["success"] for r in rows) else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -354,6 +710,35 @@ def main() -> int:
     bench.add_argument("--state", default="enter")
     bench.add_argument("--report", default=str(DEFAULT_REPORT))
     bench.set_defaults(func=cmd_bench)
+
+    tr = sub.add_parser("trace")
+    tr.add_argument("--state", default="enter")
+    tr.add_argument("--frames", type=int, default=400)
+    tr.add_argument("--stride", type=int, default=15)
+    tr.add_argument("--shots")
+    tr.add_argument("--report")
+    tr.set_defaults(func=cmd_trace)
+
+    lip = sub.add_parser("lip")
+    lip.add_argument("--state", default="enter")
+    lip.add_argument("--frames", type=int, default=180)
+    lip.add_argument("--report")
+    lip.set_defaults(func=cmd_lip)
+
+    sr = sub.add_parser("search")
+    sr.add_argument("--state", default="enter")
+    sr.add_argument("--jump-x", default="360,370,380,390,400,410,420,430")
+    sr.add_argument("--steer", default="right,none,wall")
+    sr.add_argument("--walk-max", type=int, default=120)
+    sr.add_argument("--jump-hold", type=int, default=3)
+    sr.add_argument("--spin", type=int, default=4)
+    sr.add_argument("--clear-y", type=int, default=280)
+    sr.add_argument("--frames", type=int, default=500)
+    sr.add_argument("--drop-right", action="store_true")
+    sr.add_argument("--weave-left-y", type=int, default=0)
+    sr.add_argument("--weave-right-y", type=int, default=0)
+    sr.add_argument("--report")
+    sr.set_defaults(func=cmd_search)
 
     args = parser.parse_args()
     return int(args.func(args))

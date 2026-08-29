@@ -7,7 +7,7 @@ Business→Warehouse replay (edge already emitted on the Kraid tip).
 from __future__ import annotations
 
 from super_metroid.leave_specs import LEAVE_BY_HOP
-from super_metroid.routes.kpdr.hijump import play_business_to_warehouse
+from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
 from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_business,
     play_ice_snake_to_tutorial,

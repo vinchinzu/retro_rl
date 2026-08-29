@@ -348,6 +348,73 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(mtn[1].run_direction, "up")
         self.assertTrue(mtn[1].force_run)
 
+    def test_se_leftover_farm_to_spa_uses_y39_row(self) -> None:
+        """Y1_D2_Leftover_Partial ~(879,686) must not first-hop (136,600) RIGHT."""
+        px, py = 879, 686
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        dx = abs(sliced[0].target_px[0] - px)
+        dy = abs(sliced[0].target_px[1] - py)
+        self.assertLessEqual(max(dx, dy), 7 * 16)
+        self.assertNotEqual(sliced[0].target_px, (136, 600))
+        self.assertNotEqual(sliced[0].target_px, (137, 375))
+        farm = [wp for wp in sliced if wp.tilemap == 0x00]
+        farm_px = [wp.target_px for wp in farm]
+        self.assertNotIn((136, 600), farm_px)
+        self.assertIn((216, 632), farm_px)
+        self.assertIn((216, 536), farm_px)
+        self.assertIn((136, 440), farm_px)
+        self.assertIn((72, 440), farm_px)
+        prev = (px, py)
+        for wp in farm:
+            gap = max(abs(wp.target_px[0] - prev[0]), abs(wp.target_px[1] - prev[1]))
+            if wp.run_direction is None and not wp.is_exit:
+                self.assertLessEqual(gap, 7 * 16, f"{prev} -> {wp.target_px}")
+            prev = wp.target_px
+        stones = farm_to_spa_waypoints(478, 566, tilemap=0x00)
+        stones_sliced = slice_route_from_position(stones, 478, 566, tilemap=0x00)
+        self.assertNotEqual(stones_sliced[0].target_px, (136, 600))
+        self.assertIn((216, 632), [wp.target_px for wp in stones_sliced])
+
+    def test_wood_checkpoint_farm_to_spa_densifies_east_of_join(self) -> None:
+        """Y1_D2_Wood_Checkpoint ~(774,216) tile (48,13) is 8 tiles east of (39,17)."""
+        px, py = 774, 216
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        dx = abs(sliced[0].target_px[0] - px)
+        dy = abs(sliced[0].target_px[1] - py)
+        self.assertLessEqual(max(dx, dy), 7 * 16)
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+        self.assertIn((624, 272), farm_px)
+        self.assertIn((624, 384), farm_px)
+        self.assertIn((824, 216), farm_px)
+        self.assertNotEqual(sliced[0].target_px, (624, 272))
+        self.assertNotEqual(sliced[1].target_px, (px, 272))
+        prev = (px, py)
+        for wp in sliced:
+            if wp.tilemap != 0x00:
+                break
+            gap = max(abs(wp.target_px[0] - prev[0]), abs(wp.target_px[1] - prev[1]))
+            if wp.run_direction is None and not wp.is_exit:
+                self.assertLessEqual(gap, 7 * 16, f"{prev} -> {wp.target_px}")
+            prev = wp.target_px
+
+    def test_ditch_lip_farm_to_spa_joins_pinch_not_house(self) -> None:
+        """Wood_Progress ~(190,400) tile (11,25) must not first-hop (137,375)."""
+        px, py = 190, 400
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        self.assertNotEqual(sliced[0].target_px, (137, 375))
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+        self.assertIn((200, 408), farm_px)
+        self.assertIn((136, 392), farm_px)
+        self.assertIn((72, 440), farm_px)
+        night = farm_to_spa_waypoints(199, 486, tilemap=0x00)
+        self.assertEqual(night[0].target_px, (137, 375))
+
 
 def _set_u16(ram: np.ndarray, addr: int, value: int) -> None:
     ram[addr] = value & 0xFF

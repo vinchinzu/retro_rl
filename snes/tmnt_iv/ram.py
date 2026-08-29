@@ -184,32 +184,30 @@ def _read_enemy(
     )
 
 
-def read_pizza_pickups(ram: np.ndarray) -> tuple[tuple[int, int, int], ...]:
-    """Return ``(x, y, char)`` for on-screen pizza boxes (HP byte is 0)."""
+def _read_entities(
+    ram: np.ndarray,
+    char_ids: frozenset[int],
+) -> tuple[tuple[int, int, int], ...]:
     found: list[tuple[int, int, int]] = []
     for base in ENEMY_BASES:
         char_id = read_u8(ram, base + OFF_CHAR)
-        if char_id not in PIZZA_CHAR_IDS:
+        if char_id not in char_ids:
             continue
         x = read_u16le(ram, base + OFF_X)
         y = read_u16le(ram, base + OFF_Y)
         if 0 < x < ENTITY_X_MAX and 0 < y < 256:
             found.append((x, y, char_id))
     return tuple(found)
+
+
+def read_pizza_pickups(ram: np.ndarray) -> tuple[tuple[int, int, int], ...]:
+    """Return ``(x, y, char)`` for on-screen pizza boxes (HP byte is 0)."""
+    return _read_entities(ram, PIZZA_CHAR_IDS)
 
 
 def read_hazards(ram: np.ndarray) -> tuple[tuple[int, int, int], ...]:
     """Return ``(x, y, char)`` for on-screen wrecking-ball hazards."""
-    found: list[tuple[int, int, int]] = []
-    for base in ENEMY_BASES:
-        char_id = read_u8(ram, base + OFF_CHAR)
-        if char_id not in HAZARD_CHAR_IDS:
-            continue
-        x = read_u16le(ram, base + OFF_X)
-        y = read_u16le(ram, base + OFF_Y)
-        if 0 < x < ENTITY_X_MAX and 0 < y < 256:
-            found.append((x, y, char_id))
-    return tuple(found)
+    return _read_entities(ram, HAZARD_CHAR_IDS)
 
 
 def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:

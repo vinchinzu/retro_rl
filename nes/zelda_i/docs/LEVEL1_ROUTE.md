@@ -36,18 +36,18 @@ was used to disambiguate the boss and Triforce room directions.
 The optional east branch from `0x53` is `0x54`: eight Keese and the Compass.
 The Bow branch is west of `0x23`. Q1 ROM `$18700`: `0x23` W=key,
 dest play `0x22` (E=key, N/S/W=wall). **Bow is not a speed skip** on a
-route that will fight L6 Gohma or L9 Ganon. Default `--through level1`
-still skips it; `--through level2` and later never run that branch.
+route that will fight L6 Gohma or L9 Ganon. Survival `--through level1`
+/ `level2+` splice the detour after `clear23_key`. Clean M5 does not.
 Survival `--through level1-bow` is **1/1** enter-stop play `0x22`
-`(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop 345f). Plus-stem UP at
-x=112 then north y=93 LEFT. `--through level1-bow-cellar` is **1/1**
-mode 9 room `0x7F` `(128,141)` tile `0x71` (`l1_bow_cellar`, hop 270f).
-West `0x68` UP `(96,144)→(96,128)`, then UP through vacated slot and
-RIGHT to CheckWarps x=128. `ADDR_BOW` still 0. Splice into
-`--through level1` is after `clear23_key`, before `backtrack44` — not
-until walked bow + return `0x23`. Not on Clean M5. Map and wooden
-Boomerang pickups stay skipped (L2 magical boomerang replaces the
-wooden).
+`(224,141)` keys 1→0 (`l1_bow22_x112_v2`, hop 345f). `--through
+level1-bow-cellar` is **1/1** mode 9 `0x7F` `(128,141)`. `--through
+level1-bow-pickup` is **1/1** play `0x23` `(16,141)` `ADDR_BOW=1`
+(`l1_bow_pickup`, hop 1343f). Two-ladder cellar: floor y=189, east clip,
+LEFT+DOWN drop, left-ladder UP, 0x22 south-peel then east column.
+West-mouth leftover rejoins `(176,117)` before `backtrack44`. Survival
+`--through level2-entry` is **1/1** (`l1_bow_splice_l2_entry_v14`) play
+`0x7d` `(120,205)` TF=`0x01` bow=1. Arrows still 0. Map and wooden
+Boomerang pickups stay skipped (L2 magical boomerang replaces the wooden).
 
 ## Source correlation and live evidence
 
@@ -60,7 +60,7 @@ wooden).
 | `0x43` | Map room | 5 Gels; `RoomItemId=0x17` |
 | `0x33` | Stalfos key | 3 Stalfos; fixed key inventory increase |
 | `0x23` | Goriya key / Bow branch | 3 Goriyas; fixed key; Survival KEY-LEFT into `0x22` 1/1 |
-| `0x22` | Bow cellar room | 4 blade traps; west 0x68 UP `(96,144)→(96,128)`; stairs 1/1 mode 9 `0x7F` `(128,141)`; bow not claimed |
+| `0x22` | Bow cellar room | 4 blade traps; west 0x68 UP `(96,144)→(96,128)`; stairs 1/1 mode 9 `0x7F`; pickup 1/1 `ADDR_BOW=1` return play `0x23` `(16,141)` |
 | `0x44` | Boomerang | 3 Goriyas; `RoomItemId=0x1D`; pickup skipped |
 | `0x45` | Wallmaster key | 8 Wallmaster slots; fixed key; north boss door |
 | `0x35` | Aquamentus / Heart | type `0x3D`; fireballs `0x55`; health `0x20→0x31` |

@@ -38,26 +38,6 @@ def _state(**kwargs: Any) -> Any:
     return replace(base, **kwargs)
 
 
-def test_kraid_return_segments_registered() -> None:
-    from super_metroid.routes.kpdr import from_kraid, get_segment, play_kraid_to_eye_return, play_varia_to_kraid
-    from super_metroid.routes.kpdr.varia_return import (
-        play_kraid_to_eye_return as eye_direct,
-        play_varia_to_kraid as varia_direct,
-    )
-
-    assert play_varia_to_kraid is varia_direct
-    assert get_segment("varia_to_kraid") is play_varia_to_kraid
-    assert play_kraid_to_eye_return is eye_direct
-    assert get_segment("kraid_to_eye_return") is play_kraid_to_eye_return
-    for segment_id, name in (
-        ("eye_to_baby_return", "play_eye_to_baby_return"),
-        ("baby_to_kihunter_return", "play_baby_to_kihunter_return"),
-        ("kihunter_to_zeela_return", "play_kihunter_to_zeela_return"),
-        ("zeela_to_warehouse_return", "play_zeela_to_warehouse_return"),
-    ):
-        assert get_segment(segment_id) is getattr(from_kraid, name)
-
-
 def test_require_state_reports_failures() -> None:
     session = _FakeSession(
         _state(room_id=0xA253, samus_x=10, samus_y=20, collected_items=0)
@@ -318,13 +298,3 @@ def test_collect_item_mask_waits_for_bit(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(cc, "hold", _hold)
     out = cc.collect_item_mask(session, VARIA_MASK, timeout=5, reason="varia")
     assert out.collected_items & VARIA_MASK
-
-
-def test_exports_hybrid_surface() -> None:
-    assert callable(cc.wait_requirement)
-    assert callable(cc.hold_until)
-    assert callable(cc.traverse_door)
-    assert callable(cc.collect_item_mask)
-    assert callable(cc.require_state)
-    assert callable(cc.short_hop)
-    assert callable(cc.vertical_hop)

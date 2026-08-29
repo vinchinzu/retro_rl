@@ -220,6 +220,14 @@ def play_landing_to_parlor(session: RouteSession) -> None:
 
 
 def play_parlor_to_climb(session: RouteSession) -> None:
+    from super_metroid.routes.kpdr.parlor_descent import (
+        parlor_moonfall_enabled,
+        play_parlor_to_climb_moonfall,
+    )
+
+    if parlor_moonfall_enabled(session):
+        play_parlor_to_climb_moonfall(session)
+        return
     _play_seed_to_room(session, index=1, name="parlor", target_room=ROOM_CLIMB)
 
 

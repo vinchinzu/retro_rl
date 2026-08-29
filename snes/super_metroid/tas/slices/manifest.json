@@ -167,6 +167,231 @@
       ],
       "source": "Sniq any% WIP userfile (to Red Brinstar 2nd visit)",
       "notes": "Shorter early/mid route experiment; good parser + early slice tests."
+    },
+    "sniq_low_full": {
+      "path": "slices/sniq_low_full.json",
+      "movie": "tas/ref/sniq_low_3273M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "low%",
+        "published",
+        "shinespark",
+        "full"
+      ],
+      "source": "Sniq low% #3273M (13%)",
+      "notes": "Shinespark-without-Gravity encyclopedia. Skill-dense low%."
+    },
+    "sniq_100_lsmv_full": {
+      "path": "slices/sniq_100_lsmv_full.json",
+      "movie": "tas/ref/sniq_100_4010M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "100%",
+        "published",
+        "lsnes",
+        "full"
+      ],
+      "source": "Sniq 100% #4010M (native lsnes)",
+      "notes": "Authoring-core 100%. Pair with sniq_100p.bk2 for BizHawk."
+    },
+    "sniq_geg_full": {
+      "path": "slices/sniq_geg_full.json",
+      "movie": "tas/ref/sniq_geg_5238M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "glitch",
+        "ace",
+        "published",
+        "full"
+      ],
+      "source": "Sniq & NobodyNada game-end-glitch #5238M",
+      "notes": "OOB + ACE ending. PAL ROM. Not a movement-skill source."
+    },
+    "sniq_any_3362_full": {
+      "path": "slices/sniq_any_3362_full.json",
+      "movie": "tas/ref/sniq_any_3362M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "any%",
+        "obsolete",
+        "draygon",
+        "full"
+      ],
+      "source": "Sniq any% #3362M (obsolete)",
+      "notes": "Prior any%; includes the Draygon ammo glitch current any% dropped."
+    },
+    "total_13pct_full": {
+      "path": "slices/total_13pct_full.json",
+      "movie": "tas/ref/total_13pct_charge_speed.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "low%",
+        "wip",
+        "charge",
+        "speed",
+        "full"
+      ],
+      "source": "total 13% Charge/Speed route test (userfile)",
+      "notes": "Charge+Speed 13% route test. Alternate low% item path."
+    },
+    "hero_bubbleroom_full": {
+      "path": "slices/hero_bubbleroom_full.json",
+      "movie": "tas/ref/hero_bubbleroom.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "room",
+        "norfair",
+        "isolated",
+        "full"
+      ],
+      "source": "hero_of_the_day Norfair bubble-room alt (userfile)",
+      "notes": "Isolated vanilla room strategy. Convert to BK2 for BizHawk."
+    },
+    "hero_kraid_entry_full": {
+      "path": "slices/hero_kraid_entry_full.json",
+      "movie": "tas/ref/hero_kraid_entry.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "room",
+        "kraid",
+        "isolated",
+        "full"
+      ],
+      "source": "hero_of_the_day Kraid entry idea (userfile)",
+      "notes": "Isolated vanilla Kraid-entry idea. Convert to BK2 for BizHawk."
+    },
+    "saturn_rbo_full": {
+      "path": "slices/saturn_rbo_full.json",
+      "movie": "tas/ref/saturn_rbo_2078M.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "rbo",
+        "crystal-flash",
+        "suitless",
+        "full"
+      ],
+      "source": "Saturn Reverse Boss Order #2078M",
+      "notes": "Crystal flash, suitless heat/water, gravity-jump class tech."
+    },
+    "taco_kriole_any_full": {
+      "path": "slices/taco_kriole_any_full.json",
+      "movie": "tas/ref/taco_kriole_any_1368M.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "any%",
+        "obsolete",
+        "movement",
+        "full"
+      ],
+      "source": "Taco & Kriole any% #1368M",
+      "notes": "Classic realtime any% movement (CWJ, mockball era)."
+    },
+    "cpadolf_xray_full": {
+      "path": "slices/cpadolf_xray_full.json",
+      "movie": "tas/ref/cpadolf_xray_1978M.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "glitch",
+        "x-ray",
+        "climb",
+        "full"
+      ],
+      "source": "Cpadolf X-Ray glitch #1978M",
+      "notes": "X-ray climb / door-glitch encyclopedia. Convert to BK2."
+    },
+    "nymx_100map_full": {
+      "path": "slices/nymx_100map_full.json",
+      "movie": "tas/ref/nymx_ed_100map_5110S.bk2",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "100%",
+        "map",
+        "flash-suit",
+        "spike-spark",
+        "playground",
+        "full"
+      ],
+      "source": "nymx & EternisedDragon 100% map #5110S",
+      "notes": "Spike spark, flash suit, boomerang. Rooms any% never visits."
+    },
+    "sniq_geg_ntsc_full": {
+      "path": "slices/sniq_geg_ntsc_full.json",
+      "movie": "tas/ref/sniq_geg_3768M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "glitch",
+        "ace",
+        "ntsc",
+        "full"
+      ],
+      "source": "Sniq game-end-glitch #3768M (NTSC, console-verified)",
+      "notes": "JU/NTSC ACE (5238M is PAL/EU). Better harness ROM match."
+    },
+    "saturn_low_ice_full": {
+      "path": "slices/saturn_low_ice_full.json",
+      "movie": "tas/ref/saturn_low_ice_2202M.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "low%",
+        "ice",
+        "full"
+      ],
+      "source": "Saturn low% Ice Beam #2202M",
+      "notes": "14% Ice route (no Speed). Frozen-enemy CWJ, ice-only bosses."
+    },
+    "namespoofer_low_speed_full": {
+      "path": "slices/namespoofer_low_speed_full.json",
+      "movie": "tas/ref/namespoofer_low_speed_2220M.smv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "low%",
+        "speed",
+        "full"
+      ],
+      "source": "NameSpoofer low% Speedbooster #2220M",
+      "notes": "14% Speed route (no Ice). Ancestor of 3273 Charge/Speed."
+    },
+    "cpadolf_gt_full": {
+      "path": "slices/cpadolf_gt_full.json",
+      "movie": "tas/ref/cpadolf_gt_2558M.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "glitch",
+        "gt-code",
+        "ace",
+        "full"
+      ],
+      "source": "amaurea, Cpadolf & total GT-code GEG #2558M",
+      "notes": "GT debug code + charged spacetime ACE. Best Glitch% lineage."
+    },
+    "nymx_sporespawn_full": {
+      "path": "slices/nymx_sporespawn_full.json",
+      "movie": "tas/ref/nymx_sniq_sporespawn_4481S.lsmv",
+      "start": 0,
+      "end": null,
+      "tags": [
+        "boss",
+        "spore-spawn",
+        "playground",
+        "full"
+      ],
+      "source": "nymx & Sniq Spore Spawn playground #4481S",
+      "notes": "Isolated Spore Spawn (skipped in any%/low%/100%). Walljump catalog."
     }
   }
 }

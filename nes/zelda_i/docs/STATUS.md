@@ -23,7 +23,7 @@
 
 | Segment | Result | Evidence |
 |---------|--------|----------|
-| Power-on → L1 TF → L2 entry (`rr-4d53.1` closed) | **1/1 Survival**; first-quest slot 1; `aquamentus_heart` 877f; TF `0x01`; enter L2 `0x7d` at (120, 205); 31828f; deaths 0; progression/capacity writes 0 | `survival_spine.json` / `.mp4` (not Clean M5) |
+| Power-on → L1 TF → L2 entry (`rr-4d53.1` closed; Survival bow splice) | **1/1 Survival**; TF `0x01`; `ADDR_BOW=1`; arrows=0; enter L2 `0x7d` `(120,205)`; 27180f; deaths 0; progression/capacity writes 0; **documented keys 0→1** before `backtrack44` (bow KEY-LEFT spent the 0x23 key). Clean M5 still skips bow. | `l1_bow_splice_l2_entry_v14.json` / `_final.png` (not Clean M5) |
 | Power-on → L2 Magical Boomerang (`rr-4d53.2.1` closed) | **1/1 Survival**; boom in `0x4f`; 44551f; L2 entry bombs=4 keys=0; final bombs=2 keys=1; deaths 0; poke_bombs=false; progression/capacity writes 0 | `survival_spine.json` / `survival_spine_l2_boom_v14.json` |
 | L2 Boom → Dodongo → TF `0x02` | **1/1 Survival** on the continuous spine; 50529f; room `0x0d` mode 18; `tf=0x03`; deaths 0; progression/capacity writes 0; **documented bombs 2→16 + keys 1→2 + B-slot bombs** (owned counts only) | `survival_spine.json` / `.mp4` / `survival_spine_l2_tf_v10.json` |
 | Power-on → L3 entrance `0x7c` (`rr-4d53.3.0` closed) | **1/1 Survival**; 53918f; `tf=0x03`; L2 entry bombs=0; L3 `0x7c` (120,205) bombs=8 keys=4; deaths 0; progression/capacity writes 0; **documented bombs/keys count top-up** (`poke_bombs=16`); dest `0x5b` not on this stop | `l3_entrance_bombtopup.json` / `_final.png` |
@@ -97,9 +97,11 @@
 
 These runs used the Survival health refill and reported zero progression writes
 and zero capacity writes. They are development checkpoints, not Clean or
-power-on STATUS promotions. Power-on → L3 west key `0x7b` is on the
-continuous tape (`rr-4d53.3.1.1` closed) with documented bomb/key count pokes —
-not Clean. The continuous spine now holds the natural `0x40` key and has
+power-on STATUS promotions. Survival `--through level2-entry` now includes
+L1 bow (`l1_bow_splice_l2_entry_v14`, `ADDR_BOW=1`). L6 leftover rows below
+were recorded **before** that splice (bow=0 on those tapes). Power-on → L3
+west key `0x7b` is on the continuous tape (`rr-4d53.3.1.1` closed) with
+documented bomb/key count pokes — not Clean. The continuous spine now holds the natural `0x40` key and has
 cleared `0x32`, collected `ADDR_LADDER` on `0x60`, exited to play `0x32`,
 and walked west into `0x31` then KEY-UP `0x20` `(120,205)` keys 5→4. 0x20
 Vire clear and `0x20→0x21` are on the continuous tape (`l4_room21_continuous_v22`,
@@ -386,14 +388,15 @@ is STATUS-promoted yet**. Work: `bd ready -l zelda_i`.
 
 ## Next
 
-1. **Active Survival tip:** `--through level6-clear3a` is green
-   (`l6_clear3a_continuous_v1` 1/1, play `0x3A` `(144,141)` rod=1 hop
-   1,857f, tape 219,649f, keys=4). Center 0x68 unpushed. Stairs /
-   Gohma / TF `0x20` residual — Gohma needs an arrow; do not poke
-   `ADDR_ARROWS`/`ADDR_BOW`. Do not invent Gohma room id. L1 bow was
-   skipped; leftover ~39R cannot buy 80R arrows. `rr-tne2` in
-   progress. Isolated BFS is still not a spine path. See `docs/plan.md`.
-   Isolated `Level3*` pins do not close spine beads. No seamed compose.
-   Bomb/key count pokes are documented Survival shortcuts, not Clean.
+1. **Active Survival tip:** L1 bow is on `--through level2-entry` **1/1**
+   (`l1_bow_splice_l2_entry_v14`, play `0x7d` `(120,205)` TF=`0x01`
+   bow=1 arrows=0, 27180f). `--through level6-clear3a` remains green on
+   the **pre-splice** tape (`l6_clear3a_continuous_v1` 1/1, play `0x3A`
+   `(144,141)` rod=1 bow=0). Stairs / Gohma / TF `0x20` residual — Gohma
+   needs wooden arrows; do not poke `ADDR_ARROWS`. Do not invent Gohma
+   room id. `rr-tne2` in progress. Isolated BFS is still not a spine
+   path. See `docs/plan.md`. Isolated `Level3*` pins do not close spine
+   beads. No seamed compose. Bomb/key count pokes are documented Survival
+   shortcuts, not Clean.
 2. **Parked:** L9 dest walk (`rr-yxy6`) and hygiene (`rr-ekwl`).
 3. Clean residual only after a continuous assist pass (`rr-4oz`).

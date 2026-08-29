@@ -17,46 +17,38 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from zelda_i.level9_stair_east import (
-    dump_room_40,
-    run_room30_stairs_to_credits,
-    run_room40_key_north_to_credits,
-)
-from zelda_i.level9_stair_north import (
-    dump_room_21,
-    dump_room_41,
-    run_room21_south_to_credits,
-)
-from zelda_i.level9_stair_probe import (
-    dump_play_rooms,
-    dump_room_04,
-    dump_room_13,
-    dump_room_30,
-    probe_cellar_dest_table,
-    probe_sources,
-)
-from zelda_i.level9_stair_run import (
+from zelda_i.level9_room51 import dump_room_51
+from zelda_i.level9_stair_session import (
     BEAD,
     TAG,
     _apply_loader,
     _exit_cellar,
     _hold_until_room,
     _walk_target,
+    dump_play_rooms,
+    dump_room_04,
+    dump_room_13,
+    dump_room_21,
+    dump_room_30,
+    dump_room_31,
+    dump_room_40,
+    dump_room_41,
     dump_room_tiles,
     materialize_stair_room,
+    probe_cellar_dest_table,
+    probe_sources,
+    run_play_source_to_credits,
+    run_room04_bomb_west_to_credits,
+    run_room21_south_to_credits,
+    run_room30_stairs_to_credits,
+    run_room31_bomb_west_to_credits,
+    run_room40_key_north_to_credits,
     take_stairs_from_source,
 )
 from zelda_i.level9_stair_suffix import (
     _trial_summary,
     build_winning_fixture,
-    run_play_source_to_credits,
-    run_room04_bomb_west_to_credits,
     run_suffix_from_fixture,
-)
-from zelda_i.level9_room51 import dump_room_51
-from zelda_i.level9_stair_west import (
-    dump_room_31,
-    run_room31_bomb_west_to_credits,
 )
 from zelda_i.runner import add_common_args, write_report
 

@@ -10,7 +10,7 @@ Section order after BUY_SEEDS::
     → CROP_ESTABLISH (8-ring hoe + plant)
     → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
     leftover (after plant+water, not 06:08 plan-time hour>=17):
-      spa? → CLEAR_BUSHES (10 pick+toss, lanes first) → CLEAR_FENCES
+      spa? → CLEAR_BUSHES (all weeds, quota handoff) → CLEAR_FENCES
       (all posts to pond) → CLEAR_STONES (all to pond, 4 farm chunks) →
       ENSURE_HAMMER → spa? → CLEAR_ROCKS (all large 2×2, 4 chunks) →
       ENSURE_AXE → spa? → CLEAR_STUMPS (all, 4 chunks)
@@ -59,7 +59,7 @@ D2_LEFTOVER_PHASE_NAMES = (
 )
 
 
-def _optional_clear(
+def _required_clear(
     phase: str,
     params: dict,
     *,
@@ -76,7 +76,7 @@ def _optional_clear(
         phase,
         "clear_field",
         params,
-        failure_policy="optional",
+        failure_policy="required",
         required_maps=(0x00,),
         required_tools=tuple(required_tools),
         estimated_frames=estimated_frames,
@@ -148,8 +148,8 @@ def ensure_axe_phase() -> PhaseSpec:
 
 
 def bush_clear_phase() -> PhaseSpec:
-    """Lift ten weeds before tool-driven debris."""
-    return _optional_clear(
+    """Lift every remaining weed before tool-driven debris."""
+    return _required_clear(
         "CLEAR_BUSHES",
         {
             "timeout": 0,
@@ -157,7 +157,7 @@ def bush_clear_phase() -> PhaseSpec:
             "prefer_lift_for_weeds": True,
             "prefer_lift_for_stones": True,
             "priority": ["weed"],
-            "quota": {"weeds": 10},
+            "quota": {"weeds": EXHAUSTIVE},
             "handoff": "quota",
         },
         estimated_frames=100000,
@@ -178,7 +178,7 @@ def fence_dump_phase() -> PhaseSpec:
             "max_failures": 20,
             "debris_types": ["fence"],
         },
-        failure_policy="optional",
+        failure_policy="required",
         required_maps=(0x00,),
         estimated_frames=200000,
         failure_modes=("timeout_budget", "no_reachable_fence"),
@@ -215,7 +215,7 @@ def stone_pond_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec
             farm_bounds=farm_bounds,
             chunk=chunk,
         ),
-        failure_policy="optional",
+        failure_policy="required",
         required_maps=(0x00,),
         estimated_frames=400000,
         failure_modes=("timeout_budget", "no_reachable_fence"),
@@ -224,7 +224,7 @@ def stone_pond_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec
 
 def rock_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
     """Hammer every remaining large 2×2 boulder in bounds."""
-    return _optional_clear(
+    return _required_clear(
         "CLEAR_ROCKS",
         _with_chunk(
             {
@@ -246,7 +246,7 @@ def rock_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec
 
 def stump_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
     """Axe every remaining stump in bounds. Axe replaces the hammer in carry."""
-    return _optional_clear(
+    return _required_clear(
         "CLEAR_STUMPS",
         _with_chunk(
             {
@@ -309,10 +309,10 @@ def needs_spa_before_next_smash(
     include_spa: bool,
     remaining_phases: Sequence[str],
 ) -> bool:
-    """After rocks, soak if the axe section cannot finish an 8-swing 2×2."""
-    if not include_spa or just_finished != "CLEAR_ROCKS":
+    """Soak before the next 2×2 smash when the last rocks/stumps chunk drained us."""
+    if not include_spa or just_finished not in _SPA_RETRY_PHASES:
         return False
-    if "CLEAR_STUMPS" not in remaining_phases:
+    if not any(name in remaining_phases for name in _SPA_RETRY_PHASES):
         return False
     stam = coerce_stamina(stamina)
     return stam is not None and not stam.can_finish_multi_hit()

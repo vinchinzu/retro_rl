@@ -84,12 +84,12 @@ labels stay Hard / Very Hard; `PROJECT_CORE_TECHS` promotes the builders.
 | Tech | Map Rando | Status | Bot surface |
 |------|-----------|--------|-------------|
 | `canMoonwalk` | Hard | partial | `ram.set_moonwalk` (`$09E4`) + `skills/moonfall.moonwalk_buttons` |
-| `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`; Climb: `kpdr/climb_descent` |
+| `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`; Climb warp-pin **503f** vs seed 895f (`kpdr/climb_descent`); Parlor handoff **1067f** vs seed 1095f (`kpdr/parlor_descent`). Both `*_MOONFALL_ON_CLEAN` still False |
 
-Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). First
-consumer is Climb `0x96BA` first descent on the Morph path (clean poke on,
-restore off after Pit so later seeds stay valid). Probe:
-`scripts/probe/climb_descent.py`.
+Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). Climb
+`0x96BA` and Parlor `0x92FD` first descents on the Morph path (clean poke
+on, restore off so later seeds stay valid). Probes:
+`scripts/probe/climb_descent.py`, `scripts/probe/parlor_descent.py`.
 
 ### Medium (try)
 

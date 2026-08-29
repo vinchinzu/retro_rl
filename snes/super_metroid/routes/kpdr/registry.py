@@ -25,15 +25,19 @@ from super_metroid.routes.kpdr.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
 )
-from super_metroid.routes.kpdr.hijump import (
-    play_business_to_hj_shaft,
+from super_metroid.routes.kpdr.business_climb import (
     play_business_to_warehouse,
-    play_hijump_to_warehouse,
+)
+from super_metroid.routes.kpdr.collect_hijump import (
+    play_business_to_hj_shaft,
     play_hj_room_collect,
-    play_hj_room_to_shaft,
-    play_hj_shaft_to_business,
     play_hj_shaft_to_hj_room,
     play_warehouse_to_hijump,
+)
+from super_metroid.routes.kpdr.return_hijump import (
+    play_hijump_to_warehouse,
+    play_hj_room_to_shaft,
+    play_hj_shaft_to_business,
 )
 from super_metroid.routes.kpdr.to_kraid import (
     play_baby_kraid_to_eye,
@@ -90,28 +94,36 @@ from super_metroid.routes.kpdr.k6 import (
 )
 from super_metroid.routes.kpdr.moat import play_moat_cross
 from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
-from super_metroid.routes.kpdr.k4_norfair import (
-    play_bat_cave_to_speed_hall,
-    play_bubble_to_single_chamber,
-    play_business_to_cathedral_entrance,
+from super_metroid.routes.kpdr.k4_business_frog import (
     play_business_to_frog_save,
+    play_farm_to_bubble,
+    play_frog_save_to_speedway,
+    play_speedway_to_farm,
+)
+from super_metroid.routes.kpdr.k4_cathedral import (
+    play_business_to_cathedral_entrance,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
-    play_double_chamber_to_wave,
-    play_farm_to_bubble,
-    play_frog_save_to_business,
-    play_frog_save_to_speedway,
+)
+from super_metroid.routes.kpdr.k4_rising_tide import (
     play_rising_tide_to_bubble,
-    play_single_to_double_chamber,
+)
+from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
+from super_metroid.routes.kpdr.to_speed import (
+    play_bat_cave_to_speed_hall,
     play_speed_hall_to_speed,
-    play_speed_return_to_bubble,
-    play_speedway_to_farm,
-    play_wave_to_double_chamber,
-    play_double_to_single_chamber,
-    play_single_to_bubble,
+)
+from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
+    play_bubble_to_single_chamber,
+    play_double_chamber_to_wave,
+    play_double_to_single_chamber,
     play_farm_to_speedway,
+    play_frog_save_to_business,
+    play_single_to_bubble,
+    play_single_to_double_chamber,
     play_speedway_to_frog_save,
+    play_wave_to_double_chamber,
 )
 from super_metroid.routes.kpdr.pb_door import (
     play_big_pink_enter_pb_door_from_sill,

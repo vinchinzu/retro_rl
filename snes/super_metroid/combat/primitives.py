@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import select_weapon, unmorph
@@ -411,17 +411,96 @@ class PhaseMachine:
 
 
 # ---------------------------------------------------------------------------
+# Enemy-projectile pickups (bank $86; not boss-specific)
+# ---------------------------------------------------------------------------
+
+# 18 slots × 2 bytes. $1997 is the header pointer (not a 1-byte type).
+# Pickups are projectile $F337; kind is the instruction list at $1B47.
+N_ENEMY_PROJECTILES = 18
+ADDR_PROJ_ID = 0x1997
+ADDR_PROJ_X = 0x1A4B
+ADDR_PROJ_Y = 0x1A93
+ADDR_PROJ_ILIST = 0x1B47
+PICKUP_PROJ_ID = 0xF337
+ILIST_SMALL_ENERGY = 0xED8D
+ILIST_BIG_ENERGY = 0xEDA3
+ILIST_MISSILES = 0xEDB9
+PICKUP_SMALL_ENERGY = 0x16
+PICKUP_BIG_ENERGY = 0x17
+PICKUP_MISSILE = 0x18
+_ILIST_TO_KIND = {
+    ILIST_SMALL_ENERGY: PICKUP_SMALL_ENERGY,
+    ILIST_BIG_ENERGY: PICKUP_BIG_ENERGY,
+    ILIST_MISSILES: PICKUP_MISSILE,
+}
+
+
+@dataclass(frozen=True)
+class Pickup:
+    slot: int
+    kind: int
+    x: int
+    y: int
+
+
+def _read_u16(ram: Any, address: int) -> int:
+    return int(ram[address]) | (int(ram[address + 1]) << 8)
+
+
+def list_pickups(env: Any) -> tuple[Pickup, ...]:
+    """Live enemy-projectile pickups (energy / missiles). Empty if no RAM."""
+    if env is None:
+        return ()
+    try:
+        ram = env.get_ram()
+    except Exception:
+        return ()
+    need = ADDR_PROJ_ILIST + N_ENEMY_PROJECTILES * 2
+    if ram is None or len(ram) < need:
+        return ()
+    found: list[Pickup] = []
+    for slot in range(N_ENEMY_PROJECTILES):
+        header = _read_u16(ram, ADDR_PROJ_ID + slot * 2)
+        if header == PICKUP_PROJ_ID:
+            kind = _ILIST_TO_KIND.get(_read_u16(ram, ADDR_PROJ_ILIST + slot * 2), 0)
+        else:
+            kind = header & 0xFF
+        if kind not in (PICKUP_SMALL_ENERGY, PICKUP_BIG_ENERGY, PICKUP_MISSILE):
+            continue
+        x = _read_u16(ram, ADDR_PROJ_X + slot * 2)
+        y = _read_u16(ram, ADDR_PROJ_Y + slot * 2)
+        if x == 0 and y == 0:
+            continue
+        found.append(Pickup(slot=slot, kind=kind, x=x, y=y))
+    return tuple(found)
+
+
+# ---------------------------------------------------------------------------
 # Re-exports for strategy modules
 # ---------------------------------------------------------------------------
 
 __all__ = [
+    "ADDR_PROJ_ID",
+    "ADDR_PROJ_ILIST",
+    "ADDR_PROJ_X",
+    "ADDR_PROJ_Y",
+    "ILIST_BIG_ENERGY",
+    "ILIST_MISSILES",
+    "ILIST_SMALL_ENERGY",
+    "N_ENEMY_PROJECTILES",
+    "PICKUP_BIG_ENERGY",
+    "PICKUP_MISSILE",
+    "PICKUP_PROJ_ID",
+    "PICKUP_SMALL_ENERGY",
     "PhaseMachine",
     "PhaseResult",
+    "Pickup",
     "ensure_weapon",
     "face_toward_action",
     "hold_for",
     "lane_hold_action",
     "lane_hold_window",
+    "list_pickups",
     "push_horizontal_door",
     "range_kite_action",
     "select_weapon",

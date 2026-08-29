@@ -24,11 +24,10 @@ from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.dungeon_trace import write_state_provenance
 from zelda_i.dungeon_ops import ADDR_SELECTED_ITEM
+from zelda_i.level2_bomb_path import BOMB_N_STAND, make_bomb_north_controller
 from zelda_i.level2_dungeon import (
-    BOMB_N_STAND,
     ROOM_L2_BOMB_N,
     level2_room_5f_ready,
-    make_bomb_north_controller,
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import read_snapshot, read_u8

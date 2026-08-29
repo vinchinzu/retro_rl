@@ -4,6 +4,7 @@ from tmnt_iv.tactics.alleycat import AlleycatPackTactics
 from tmnt_iv.tactics.baxter import BaxterTactics
 from tmnt_iv.tactics.fight import CombatProfile, fight
 from tmnt_iv.tactics.hazards import HazardAvoid, SewerSpikeAvoid
+from tmnt_iv.tactics.neon import NeonLaneTactics
 from tmnt_iv.tactics.pizza import PizzaSeek
 from tmnt_iv.tactics.raph_air import raph_starbase_jump_action
 from tmnt_iv.tactics.recovery import (
@@ -21,6 +22,7 @@ __all__ = [
     "CombatPositionStall",
     "CombatProfile",
     "HazardAvoid",
+    "NeonLaneTactics",
     "PizzaSeek",
     "PlayerXStallWalk",
     "PrehistoricCaveRecovery",

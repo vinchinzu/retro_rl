@@ -22,7 +22,7 @@ natural/power-on entry). Stage 1 reference:
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
+  uv run python -m tmnt_iv.scripts.probe_clean --stage 1 --suite
 ```
 
 ## Verified Stage 1 results (2× suite)
@@ -90,8 +90,8 @@ assists for that stage byte only (or whole-run when all green).
 ## Probe recipe (copy per stage)
 
 1. Build `heal=none` segment probe from fight-ready state (add a
-   `CleanProbeSpec` in `clean_suite.py`, CLI adapter like
-   `probe_stage1_clean.py`).
+   `CleanProbeSpec` in `run/clean_suite.py`; CLI is
+   `probe_clean --stage N`).
 2. Suite: checkpoint + continuous-faithful or power-on/natural entry.
 3. Metrics: frames, damage, min HP, pizza heal count, emergency heals
    (must be 0), life losses (must be 0).
@@ -127,7 +127,7 @@ assists for that stage byte only (or whole-run when all green).
 | Baxter Clean standoff | `tactics/baxter.py` `BaxterTactics` |
 | Hazard helper (tests only) | `tactics/hazards.py` `HazardAvoid` (not in production tick) |
 | Elevated jump (stage 0 only) | `tactics/fight.py` `fight()` |
-| Stage 1–3 Clean suite | `clean_suite.py` + `scripts/probe_stage{N}_clean.py` adapters |
+| Stage 1–3 Clean suite | `run/clean_suite.py` + `scripts/probe_clean.py --stage N` |
 | Sewer spike dodge | `tactics/hazards.py` `SewerSpikeAvoid` |
 | Continuous assist | `assist.py` (emergency + form-2); runner `scripts/record_full_hard_run.py` |
 | Assist contract | `docs/ASSIST_CONTRACT.md` |

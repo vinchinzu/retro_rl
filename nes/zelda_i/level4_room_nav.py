@@ -13,7 +13,8 @@ def _bfs_50_to_north(env, *, assist, frame0: int, hold: int = 6, long_up: int = 
     """Live BFS on 0x50 to a north-band cell that admits long-UP into 0x40."""
     from collections import deque
 
-    from zelda_i.level4_dungeon import MAZE_50_HOLD, MAZE_50_LONG_UP, ROOM_L4_ZOLS_40
+    from zelda_i.level4_dungeon import ROOM_L4_ZOLS_40
+    from zelda_i.level4_maze_path import MAZE_50_HOLD, MAZE_50_LONG_UP
 
     hold = MAZE_50_HOLD
     long_up = MAZE_50_LONG_UP
@@ -115,7 +116,8 @@ def _bfs_50_to_north(env, *, assist, frame0: int, hold: int = 6, long_up: int = 
 
 def _follow_50_north_path(env, path: list[str], *, assist, frame0: int):
     """Execute BFS path tokens then long UP into 0x40."""
-    from zelda_i.level4_dungeon import MAZE_50_HOLD, MAZE_50_LONG_UP, ROOM_L4_ZOLS_40
+    from zelda_i.level4_dungeon import ROOM_L4_ZOLS_40
+    from zelda_i.level4_maze_path import MAZE_50_HOLD, MAZE_50_LONG_UP
 
     frame = frame0
     obs = None
@@ -333,12 +335,11 @@ def _follow_31_east_path(env, path: list[str], *, assist, frame0: int):
 
 def _scripted_60_ladder(env, *, assist, frame0: int):
     """Settle NW on 0x60 then follow MAZE_60_TO_LADDER hold4 to pedestal."""
-    from zelda_i.level4_dungeon import (
-        LADDER_60_PICKUP_XY,
+    from zelda_i.level4_dungeon import LADDER_60_PICKUP_XY, ROOM_L4_STEPLADDER
+    from zelda_i.level4_stepladder import (
         MAZE_60_HOLD,
         MAZE_60_SPAWN_XY,
         MAZE_60_TO_LADDER,
-        ROOM_L4_STEPLADDER,
     )
     from zelda_i.ram import ADDR_LADDER, read_u8
 
@@ -450,11 +451,13 @@ def _push_and_enter_60(env, *, assist, frame0: int):
     """
     from zelda_i.level4_dungeon import (
         PUSH_32_DIR,
-        PUSH_32_HOLD,
         PUSH_32_STAND,
         ROOM_L4_EAST_32,
         ROOM_L4_STEPLADDER,
         STAIRS_32_APPROACH,
+    )
+    from zelda_i.level4_stepladder import (
+        PUSH_32_HOLD,
         STAIRS_32_PUSH,
         STAIRS_32_PUSH_FRAMES,
     )
@@ -551,7 +554,8 @@ def _bfs_60_to_ladder(env, *, assist, frame0: int, hold: int | None = None):
     """
     from collections import deque
 
-    from zelda_i.level4_dungeon import MAZE_60_HOLD, ROOM_L4_STEPLADDER
+    from zelda_i.level4_dungeon import ROOM_L4_STEPLADDER
+    from zelda_i.level4_stepladder import MAZE_60_HOLD
     from zelda_i.ram import ADDR_LADDER, read_u8
 
     em = env.unwrapped.em
@@ -712,7 +716,7 @@ def _follow_60_ladder_path(env, path: list[str], *, assist, frame0: int):
                 assist.apply_env(env, frame=frame)
         return obs, frame, True
     # Fallback: try replaying path tokens if goal state was not applied.
-    from zelda_i.level4_dungeon import MAZE_60_HOLD
+    from zelda_i.level4_stepladder import MAZE_60_HOLD
 
     ladder0 = int(read_u8(env.get_ram(), ADDR_LADDER))
     for d in path:
@@ -773,7 +777,8 @@ def _bfs_60_exit_play(env, *, assist, frame0: int):
     """BFS on mode-9 0x60 to 0x32 play (rr-05fz). Returns (path, meta)."""
     from collections import deque
 
-    from zelda_i.level4_dungeon import EXIT_60_HOLD, ROOM_L4_EAST_32, ROOM_L4_STEPLADDER
+    from zelda_i.level4_dungeon import ROOM_L4_EAST_32, ROOM_L4_STEPLADDER
+    from zelda_i.level4_stepladder import EXIT_60_HOLD
 
     em = env.unwrapped.em
     s0 = read_snapshot(env.get_ram())

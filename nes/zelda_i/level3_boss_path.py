@@ -323,29 +323,6 @@ class Level3BossPathController(Level3BossCombatMixin):
         # --- 0x5b BOMB_RIGHT → 0x5c ---
         self._set_phase("bomb_5b")
         idle(env, assist, total, 30)
-        if self.continuous_mode:
-            snap = read_snapshot(env.get_ram())
-            live_dn = live_killables(snap, (DARKNUT_OBJECT_TYPE,))
-            path_log.append({
-                "step": "inspect_5b_return",
-                "live_darknuts": len(live_dn),
-                "fields": room_fields(snap, env.get_ram()),
-            })
-            # Return-visit sprites can precede reliable HP bytes. The exact
-            # clear is safe to call unconditionally and returns if truly clear.
-            clr = fight_clear(
-                env, assist, total,
-                enemy_types=(DARKNUT_OBJECT_TYPE,), max_frames=6000,
-            )
-            path_log.append({
-                "step": "clear_5b_return", "ok": clr.get("ok"),
-                "frames": clr.get("frames"), "final": clr.get("final"),
-            })
-            if not clr.get("ok"):
-                out = self._fail("failed_clear_5b_return")
-                out.update({"path_log": path_log, "final": clr.get("final")})
-                self.path_log.extend(path_log)
-                return out
         if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
             poke_bombs(env, self.poke_bombs)
         bx, by = BOMB_STAND_5B_RIGHT

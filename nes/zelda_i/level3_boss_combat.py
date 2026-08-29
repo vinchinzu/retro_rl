@@ -708,7 +708,8 @@ class Level3BossCombatMixin:
                             }
                         )
                 final = room_fields(read_snapshot(env.get_ram()), env.get_ram())
-                self.tf04 = bool(final.get("tf04"))
+                tf_final = int(final.get("triforce") or 0)
+                self.tf04 = bool(tf_final & LEVEL3_TRIFORCE_BIT)
                 self.boss_beaten = True
                 self.dmg_events = dmg_events
                 if self.tf04:

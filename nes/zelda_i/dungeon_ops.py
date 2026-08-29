@@ -4,8 +4,9 @@ Pure-ish ops used by thin scripts and library path controllers (goto, door
 exit, bomb stand, patrol clear). Prefer ``DoorDir`` bits from
 ``zelda_i.door_graph`` over redefining door masks.
 
-``poke_bombs`` / ``poke_keys`` are Survival inventory-count writes (owned
-bombs/keys only). Document every call in the trial report. Never write
+``poke_bombs`` / ``poke_keys`` / ``poke_wooden_arrows`` are Survival
+inventory writes (owned counts / Gohma arrows). ``poke_link_position``
+is the L6 0x3A stairs exception. Document every call. Never write
 undiscovered items or ``max_bombs``. Not Clean.
 """
 
@@ -25,7 +26,6 @@ from zelda_i.dungeon import (
     RewardKind,
     RewardSpec,
 )
-from zelda_i.anchors import TF_BIT_L3 as TRIFORCE_BIT_L3
 from zelda_i.dungeon_ids import (
     DARKNUT_OBJECT_TYPE,
     GEL_OBJECT_TYPE as GEL_ALT_OBJECT_TYPE,
@@ -37,8 +37,11 @@ from zelda_i.dungeon_ids import (
     room_item_name,
 )
 from zelda_i.ram import (
+    ADDR_ARROWS,
     ADDR_BOMBS,
     ADDR_KEYS,
+    ADDR_LINK_X,
+    ADDR_LINK_Y,
     ADDR_RAFT,
     ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
@@ -59,6 +62,7 @@ B_ITEM_BOMB = 1
 B_ITEM_BOMBS = B_ITEM_BOMB  # L9 recon alias
 B_ITEM_ARROWS = 2
 B_ITEM_CANDLE = 4
+WOODEN_ARROWS = 1  # ADDR_ARROWS; silver is 2
 
 DOOR_TARGETS: dict[str, tuple[int, int]] = {
     "RIGHT": (208, 141),
@@ -166,7 +170,6 @@ def room_fields(snap: ZeldaSnapshot, ram: Any | None = None) -> dict[str, Any]:
         "objects": objs(snap),
         "raft": raft,
         "triforce": tf,
-        "tf04": bool(tf & TRIFORCE_BIT_L3) if tf is not None else None,
     }
 
 
@@ -262,22 +265,30 @@ def push_dir(
             assist.apply_env(env, frame=total[0])
 
 
-def ensure_bomb(env: Any) -> str:
-    """Select bomb on B button via RAM poke.
-
-    Prefer stable-retro ``memory.assign`` (fceumm), then ``set_byte``,
-    then ``data.set_value``. Never invent a second B-item map.
-    """
+def mem_write(env: Any, addr: int, value: int) -> str:
+    """Write one RAM byte. Prefer ``memory.assign``, then ``set_byte``."""
     try:
         mem = env.unwrapped.data.memory
         if hasattr(mem, "assign"):
-            mem.assign(ADDR_SELECTED_ITEM, "|u1", B_ITEM_BOMB)
-            return "selected_item=bomb"
+            mem.assign(int(addr), "|u1", int(value) & 0xFF)
+            return "memory.assign"
         if hasattr(mem, "set_byte"):
-            mem.set_byte(ADDR_SELECTED_ITEM, B_ITEM_BOMB)
-            return "selected_item=bomb"
-    except Exception:
-        pass
+            mem.set_byte(int(addr), int(value) & 0xFF)
+            return "memory.set_byte"
+    except Exception as exc:
+        return f"poke_fail={exc!r}"
+    return "no_memory_write"
+
+
+def ensure_bomb(env: Any) -> str:
+    """Select bomb on B button via RAM poke.
+
+    Prefer ``mem_write`` (assign / set_byte), then ``em.set_bytes``,
+    then ``data.set_value``. Never invent a second B-item map.
+    """
+    msg = mem_write(env, ADDR_SELECTED_ITEM, B_ITEM_BOMB)
+    if msg.startswith("memory."):
+        return "selected_item=bomb"
     try:
         em = getattr(env.unwrapped, "em", None)
         if em is not None and hasattr(em, "set_bytes"):
@@ -314,6 +325,116 @@ def poke_keys(env: Any, n: int = 4) -> str:
         return f"keys={n}"
     except Exception as exc:
         return f"poke_fail={exc!r}"
+
+
+def poke_link_position(
+    env: Any,
+    x: int,
+    y: int,
+    *,
+    room: int,
+    from_xy: tuple[int, int],
+) -> dict[str, Any]:
+    """Write only ``ADDR_LINK_X`` / ``ADDR_LINK_Y``. Not Clean.
+
+    Operator exception for the L6 0x3A stairs (see ``docs/ASSIST_CONTRACT.md``).
+    The pair counts as one position write. Do not write room, door,
+    inventory, Triforce, capacity, facing, mode, or load state.
+    """
+    notes: list[str] = []
+    nx = mem_write(env, ADDR_LINK_X, int(x))
+    ny = mem_write(env, ADDR_LINK_Y, int(y))
+    notes.append(nx)
+    if ny != nx:
+        notes.append(ny)
+    assigned = int(nx.startswith("memory.")) + int(ny.startswith("memory."))
+    writes: list[dict[str, Any]] = [
+        {
+            "field": "link_x",
+            "address": ADDR_LINK_X,
+            "from": int(from_xy[0]),
+            "to": int(x),
+        },
+        {
+            "field": "link_y",
+            "address": ADDR_LINK_Y,
+            "from": int(from_xy[1]),
+            "to": int(y),
+        },
+    ]
+    return {
+        "writes": writes,
+        "notes": notes,
+        "room": int(room),
+        "room_hex": f"0x{int(room):02x}",
+        "xy": [int(x), int(y)],
+        "from_xy": [int(from_xy[0]), int(from_xy[1])],
+        "position_writes": 1 if assigned == 2 else 0,
+        "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
+        "progression_writes": 0,
+        "capacity_writes": 0,
+        "door_writes": 0,
+        "inventory_writes": 0,
+        "triforce_writes": 0,
+        "state_load": False,
+        "mid_run_state_load": False,
+    }
+
+
+def poke_wooden_arrows(
+    env: Any,
+    *,
+    from_arrows: int,
+    select: bool = True,
+) -> dict[str, Any]:
+    """Write ``ADDR_ARROWS=1`` and optionally B-slot 2. Not Clean.
+
+    Operator exception for L6 Gohma (see ``docs/ASSIST_CONTRACT.md``).
+    Do not write ``ADDR_BOW``. Bow must already be earned on this session.
+    """
+    writes: list[dict[str, Any]] = []
+    notes: list[str] = []
+    assigned = 0
+    want_arrows = WOODEN_ARROWS
+    if int(from_arrows) < want_arrows:
+        msg = mem_write(env, ADDR_ARROWS, want_arrows)
+        notes.append(msg)
+        if msg.startswith("memory."):
+            assigned += 1
+        writes.append(
+            {
+                "field": "arrows",
+                "address": ADDR_ARROWS,
+                "from": int(from_arrows),
+                "to": want_arrows,
+            }
+        )
+    if select:
+        msg = mem_write(env, ADDR_SELECTED_ITEM, B_ITEM_ARROWS)
+        notes.append(msg)
+        writes.append(
+            {
+                "field": "selected_item",
+                "address": ADDR_SELECTED_ITEM,
+                "to": B_ITEM_ARROWS,
+                "owned_only": True,
+            }
+        )
+    return {
+        "writes": writes,
+        "notes": notes,
+        "poke_arrows": want_arrows if assigned else 0,
+        "select_arrows": bool(select),
+        "inventory_writes": 1 if assigned else 0,
+        "addresses": [ADDR_ARROWS, ADDR_SELECTED_ITEM] if select else [ADDR_ARROWS],
+        "progression_writes": 0,
+        "capacity_writes": 0,
+        "door_writes": 0,
+        "triforce_writes": 0,
+        "bow_writes": 0,
+        "state_load": False,
+        "mid_run_state_load": False,
+    }
 
 
 # Fields this helper may write. Anything else is an undiscovered-item grant.
@@ -688,7 +809,7 @@ __all__ = [
     "NON_COMBAT_TYPES",
     "PUSH_FRAMES",
     "SETTLE_FRAMES",
-    "TRIFORCE_BIT_L3",
+    "WOODEN_ARROWS",
     "bomb_stand",
     "apply_owned_inventory",
     "ensure_bomb",
@@ -697,10 +818,13 @@ __all__ = [
     "goto",
     "idle",
     "live_killables",
+    "mem_write",
     "objs",
     "OWNED_INVENTORY_FIELDS",
     "poke_bombs",
     "poke_keys",
+    "poke_link_position",
+    "poke_wooden_arrows",
     "push_dir",
     "room_fields",
 ]

@@ -12,6 +12,7 @@ from typing import Callable
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import overworld_threat_objects, should_swing_at
+from zelda_i.hop_controller import dungeon_align_then_push as dungeon_align_then_push
 from zelda_i.ram import ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 12

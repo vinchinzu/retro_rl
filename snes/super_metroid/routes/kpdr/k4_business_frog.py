@@ -214,17 +214,9 @@ def play_farm_to_bubble(session: ControllerSession) -> SuperMetroidState:
     )
 
 
-# Pure Wave-return hop 7 lives in wave/frog_to_business (rr-vsjy). Re-export
-# so registry / k4_norfair / tests keep importing from this module.
-from super_metroid.routes.kpdr.wave.frog_to_business import (  # noqa: E402
-    play_frog_save_to_business,
-)
-
-
 __all__ = [
     "play_business_to_frog_save",
     "play_farm_to_bubble",
-    "play_frog_save_to_business",
     "play_frog_save_to_speedway",
     "play_speedway_to_farm",
 ]

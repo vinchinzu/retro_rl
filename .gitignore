@@ -112,6 +112,7 @@ snes/SMW/tas/ref/
 *.bk2
 *.fm2
 *.lsmv
+*.smv
 *.replay.jsonl
 *.jsonl
 # Beads exports must be trackable (override blanket *.jsonl)

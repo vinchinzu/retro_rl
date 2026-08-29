@@ -33,21 +33,27 @@ from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.combat.probe import ProbeSession
 from super_metroid.paths import GAME, GAME_DIR, INTEGRATION_DIR
 from super_metroid.dev.common import place_samus
-from super_metroid.routes.kpdr import (  # noqa: E402
-    play_big_pink_bomb_to_walkway_edge,
-    play_big_pink_clear_super_block,
-    play_big_pink_crest_pocket,
-    play_big_pink_drop_to_pocket,
+from super_metroid.routes.kpdr.pb_door import (  # noqa: E402
     play_big_pink_enter_pb_door_from_sill,
     play_big_pink_enter_pb_door_from_top_ledge,
-    play_big_pink_into_main_shaft,
-    play_big_pink_morph_to_tunnel,
-    play_big_pink_tunnel_west,
-    play_farming_to_big_pink,
+)
+from super_metroid.routes.kpdr.pink_pb import (  # noqa: E402
     play_pink_pb_break_maze_wall,
     play_pink_pb_from_left_zone,
     play_pink_pb_mid_maze_to_collect,
     play_pink_pb_morph_bomb_collect,
+)
+from super_metroid.routes.kpdr.pink_shaft import (  # noqa: E402
+    play_big_pink_bomb_to_walkway_edge,
+    play_big_pink_clear_super_block,
+    play_big_pink_crest_pocket,
+    play_big_pink_drop_to_pocket,
+    play_big_pink_into_main_shaft,
+    play_big_pink_morph_to_tunnel,
+    play_big_pink_tunnel_west,
+)
+from super_metroid.routes.kpdr.super_collect import (  # noqa: E402
+    play_farming_to_big_pink,
     play_super_room_collect,
     play_super_room_to_farming,
 )

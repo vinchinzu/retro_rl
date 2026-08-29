@@ -2,6 +2,8 @@
 
 Room specs and stop predicates remain in ``level3_dungeon``. Raft path lives in
 ``level3_raft_path`` (import there, or via ``level3_dungeon`` shim).
+``Level3NorthChainController`` is defined in ``level3_clear5b`` and re-exported
+here.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from zelda_i.level3_geometry import (
     WEST_DOOR_WALL_X,
 )
 from zelda_i.level3_occupancy import room_6b_grid
+from zelda_i.level3_clear5b import Level3NorthChainController as Level3NorthChainController
 from zelda_i.level3_dungeon import (
     ROOM_6B_SPEC,
     ROOM_7B_SPEC,
@@ -35,6 +38,7 @@ from zelda_i.level3_dungeon import (
     ROOM_L3_WEST_KEY,
 )
 from zelda_i.level3_overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
+from zelda_i.hop_controller import HopController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk_physics import OccupancyGrid, OccupancyWalker
 
@@ -93,39 +97,31 @@ def north_door_7b_step(snap: ZeldaSnapshot) -> FrameAction:
 
 
 @dataclass
-class Level3WestDoorController:
+class Level3WestDoorController(HopController):
     """Route 0x7c → 0x7b only (no combat). Success when room-ready on 0x7b."""
 
     max_frames: int = WEST_ENTER_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "west_arrived"
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success or self.failed:
-            return FrameAction(nes_idle_action(), "done" if self.success else "failed")
-        if self.frames >= self.max_frames:
-            self.failed = True
-            self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "timeout"
 
-        action = west_door_step(snap)
-        if (
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
             snap.level == LEVEL3
             and snap.screen == ROOM_L3_WEST_KEY
             and snap.mode == PLAY_MODE
             and not snap.transitioning
-        ):
-            self.success = True
-            self.notes.append("entered_0x7b")
-            return FrameAction(nes_idle_action(), "west_arrived")
-        return action
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "entered_0x7b"
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return west_door_step(snap)
 
     def report(self) -> dict[str, Any]:
         return {
@@ -138,39 +134,31 @@ class Level3WestDoorController:
 
 
 @dataclass
-class Level3NorthDoor7bController:
+class Level3NorthDoor7bController(HopController):
     """Route 0x7b → 0x6b only (no combat). Strict x≈120 UP residual."""
 
     max_frames: int = NORTH_ENTER_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "north_arrived_6b"
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success or self.failed:
-            return FrameAction(nes_idle_action(), "done" if self.success else "failed")
-        if self.frames >= self.max_frames:
-            self.failed = True
-            self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "timeout"
 
-        action = north_door_7b_step(snap)
-        if (
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
             snap.level == LEVEL3
             and snap.screen == ROOM_L3_NORTH_ZOLS
             and snap.mode == PLAY_MODE
             and not snap.transitioning
-        ):
-            self.success = True
-            self.notes.append("entered_0x6b")
-            return FrameAction(nes_idle_action(), "north_arrived_6b")
-        return action
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "entered_0x6b"
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return north_door_7b_step(snap)
 
     def report(self) -> dict[str, Any]:
         return {
@@ -414,100 +402,6 @@ class Level3WestKeyController:
             "intervention_class": "clean",
             "track": "clean",
         }
-
-
-@dataclass
-class Level3NorthChainController:
-    """Isolated pure from ``Level3WestKey``: 0x7b → 0x6b clear → 0x5b.
-
-    Phase 1: ``Level3NorthDoor7bController`` (UP @ x≈120).
-    Phase 2: ``GenericDungeonRoomController(ROOM_6B_SPEC)`` Zol clear.
-    Phase 3: ``Level3NorthExit6bController`` north to Darknut room.
-    Stop: ``level3_reached_5b``.
-    """
-
-    door: Level3NorthDoor7bController = field(
-        default_factory=Level3NorthDoor7bController
-    )
-    combat: GenericDungeonRoomController = field(
-        default_factory=lambda: GenericDungeonRoomController(ROOM_6B_SPEC)
-    )
-    north_exit: Level3NorthExit6bController = field(
-        default_factory=Level3NorthExit6bController
-    )
-    frames: int = 0
-    success: bool = False
-    phase: str = "door"
-    notes: list[str] = field(default_factory=list)
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-
-        # Early success if already in 0x5b (reload / resume).
-        if (
-            snap.level == LEVEL3
-            and snap.screen == ROOM_L3_DARKNUTS
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-        ):
-            self.success = True
-            self.phase = "done"
-            self.notes.append("already_0x5b")
-            return FrameAction(nes_idle_action(), "done")
-
-        if self.phase == "door":
-            action = self.door.step(snap)
-            if self.door.success:
-                self.phase = "combat"
-                self.notes.append("door_6b_ok")
-                return self.combat.step(snap)
-            if self.door.failed:
-                self.phase = "failed"
-                self.notes.append("door_6b_failed")
-            return action
-
-        if self.phase == "combat":
-            action = self.combat.step(snap)
-            if self.combat.success:
-                self.phase = "north_exit"
-                self.notes.append("zols_cleared")
-                return self.north_exit.step(snap)
-            if self.combat.phase is DungeonPhase.FAILED:
-                self.phase = "failed"
-                self.notes.append("combat_failed")
-            return action
-
-        if self.phase == "north_exit":
-            action = self.north_exit.step(snap)
-            if self.north_exit.success:
-                self.success = True
-                self.phase = "done"
-                self.notes.append("reached_0x5b")
-            elif self.north_exit.failed:
-                self.phase = "failed"
-                self.notes.append("north_exit_failed")
-            return action
-
-        return FrameAction(nes_idle_action(), self.phase)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "door": self.door.report(),
-            "combat": self.combat.report(),
-            "north_exit": self.north_exit.report(),
-            "spec_id": ROOM_6B_SPEC.spec_id,
-            "stop": "level3_reached_5b",
-            "intervention_class": "clean",
-            "track": "clean",
-        }
-
-
 
 
 # Raft path: import from ``level3_raft_path`` (canonical) or

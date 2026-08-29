@@ -32,12 +32,12 @@ class D2WholeFarmContractTests(unittest.TestCase):
     def test_crop_targets_are_not_debris_quotas(self) -> None:
         self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8})
 
-    def test_bush_phase_is_ten_lifts_not_plot_ring(self) -> None:
+    def test_bush_phase_is_exhaustive_quota_not_plot_ring(self) -> None:
         spec = bush_clear_phase()
         self.assertEqual(spec.phase, "CLEAR_BUSHES")
         self.assertEqual(spec.kind, PhaseKind.CLEAR_FIELD)
         self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"weeds": 10})
+        self.assertEqual(spec.params["quota"], {"weeds": EXHAUSTIVE})
         self.assertFalse(spec.params["fetch_tools"])
         self.assertEqual(spec.params["priority"], ["weed"])
         self.assertNotIn("farm_bounds", spec.params)
@@ -193,6 +193,22 @@ class D2LeftoverOrderTests(unittest.TestCase):
                 remaining_phases=(),
             )
         )
+        self.assertTrue(
+            needs_spa_before_next_smash(
+                "CLEAR_STUMPS",
+                low,
+                include_spa=True,
+                remaining_phases=("CLEAR_STUMPS",),
+            )
+        )
+        self.assertFalse(
+            needs_spa_before_next_smash(
+                "CLEAR_STUMPS",
+                Stamina(current=40, maximum=100),
+                include_spa=True,
+                remaining_phases=("CLEAR_STUMPS",),
+            )
+        )
 
 
 class D2PostShopComposeTests(unittest.TestCase):
@@ -273,14 +289,14 @@ class LeftoverSkipClearTests(unittest.TestCase):
 
 
 class LeftoverProbeBudgetTests(unittest.TestCase):
-    def test_probe_section_uses_day2_quotas_not_whole_farm_empty(self) -> None:
+    def test_probe_section_all_requires_weeds_gone(self) -> None:
         from harvest.scripts.d2_leftover_probe import _section_complete
         from harvest.tasks.farm_clear_quota import DebrisCounts
 
         start = DebrisCounts(
             weeds=100, stones=185, large_rocks=51, stumps=38, fences=80
         )
-        enough = DebrisCounts(
+        leftover_weeds = DebrisCounts(
             weeds=90, stones=0, large_rocks=0, stumps=0, fences=0
         )
         short = DebrisCounts(
@@ -290,7 +306,8 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
             weeds=90, stones=0, large_rocks=0, stumps=36, fences=0
         )
 
-        self.assertTrue(_section_complete("all", start, enough))
+        self.assertTrue(_section_complete("all", start, DebrisCounts()))
+        self.assertFalse(_section_complete("all", start, leftover_weeds))
         self.assertFalse(_section_complete("all", start, short))
         self.assertFalse(_section_complete("all", start, leftover_stumps))
 
@@ -354,7 +371,8 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertNotIn("WatchDisplay", text)
         self.assertNotIn("--watch", text)
         self.assertNotIn("spa_retried", text)
-        self.assertIn("should_spa_retry", text)
+        self.assertIn("leftover_chain_decision", text)
+        self.assertIn("should_spa_retry", exec_src.read_text(encoding="utf-8"))
         self.assertIn("--chunk", text)
         self.assertIn("leftover_section_phases", text)
 
@@ -505,7 +523,8 @@ class LeftoverStallAbortTests(unittest.TestCase):
         from retro_harness import TaskStatus
 
         frame, result, env, save = self._idle_run(stall_frames=0, timeout=80)
-        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertEqual(result.reason, "phase timeout 80f")
         self.assertGreater(env.n_steps, 60)
         self.assertGreater(frame, 80)
         save.assert_not_called()

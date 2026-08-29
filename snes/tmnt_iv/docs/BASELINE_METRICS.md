@@ -183,7 +183,7 @@ Park spin-40 for a full-route re-tune (Skull/WK regressed hardest).
 
 Research artifacts:
 - `docs/SLASH_VULN_MAP.md` — status lexicon, claw vs punish
-- `scripts/probe_slash_vuln.py`
-- `scripts/slash_pattern_lab.py`
+- `lab/slash_vuln.py`
+- `lab/slash_lab.py`
 - `docs/SLASH_PATTERN_LAB.md`
 - `recordings/local_grind_agent/summary.json` — original approach_band KEEP

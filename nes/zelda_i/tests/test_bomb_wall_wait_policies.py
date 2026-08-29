@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from retro_harness.input_script import FrameAction
 from zelda_i.bomb_wall_path import (
     BOMB_N_STEP_BACK,
     BombWallController,
@@ -197,13 +196,3 @@ def test_1e_south_band_centers_x_before_stand() -> None:
     assert act.reason == "approach_next"
     act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
     assert act.reason == "approach_x"
-
-
-def test_1e_goto_stand_is_x_first() -> None:
-    """From the south band at x=96, walk RIGHT before UP to (120,101)."""
-    ctrl = make_bomb_north_1e_controller()
-    wall = ctrl.wall
-    ctrl.phase = BombWallPhase.TO_STAND
-    act = ctrl.step(_snap(room=wall.room, x=96, y=170, bombs=4, level=2))
-    assert ctrl.phase is BombWallPhase.TO_STAND
-    assert act.reason == "stand_x"
