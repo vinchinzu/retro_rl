@@ -11,6 +11,7 @@ from tmnt_iv.grind_knobs import (
     KNOB_BOUNDS,
     GrindKnobs,
     clamp_knob_patch,
+    focus_knob_names,
     knobs_as_dict,
     merge_knobs,
 )
@@ -202,7 +203,7 @@ class GrindToolbox:
         }
 
     def list_knobs(self, focus: str) -> dict[str, Any]:
-        names = _focus_knob_names(focus)
+        names = focus_knob_names(focus)
         current = knobs_as_dict(self.best_knobs)
         return {
             "ok": True,
@@ -241,7 +242,7 @@ class GrindToolbox:
             "ok": True,
             "target_label": target.label,
             "score": score,
-            "metrics": _compact_metrics(metrics),
+            "metrics": compact_metrics(metrics),
             "image_paths": [str(p) for p in images],
             "note": "Use these numbers as the keep/discard baseline.",
         }
@@ -347,7 +348,7 @@ class GrindToolbox:
             "score": score,
             "baseline_score": baseline_score,
             "delta_score": score - baseline_score,
-            "metrics": _compact_metrics(metrics),
+            "metrics": compact_metrics(metrics),
             "knobs_applied": patch,
             "image_paths": [str(p) for p in images],
             "trials_remaining": self.max_trials - len(self.trials),
@@ -365,7 +366,7 @@ class GrindToolbox:
             "trials_done": len(self.trials),
             "trials_remaining": max(0, self.max_trials - len(self.trials)),
             "baselines": {
-                k: _compact_metrics(v) for k, v in self.baselines.items()
+                k: compact_metrics(v) for k, v in self.baselines.items()
             },
             "best_scores": self.best_scores,
             "best_knobs": knobs_as_dict(self.best_knobs),
@@ -451,21 +452,7 @@ def _as_dict(arguments: MappingLike) -> dict[str, Any]:
     return {}
 
 
-def _focus_knob_names(focus: str) -> list[str]:
-    if focus in {"technodrome_tank", "tokka_rahzar"}:
-        prefix = "blocker_"
-    elif focus == "super_shredder":
-        prefix = "shredder_"
-    else:
-        prefix = "slash_"
-    names = [k for k in KNOB_BOUNDS if k.startswith(prefix)]
-    for shared in ("attack_range", "standoff", "attack_gap"):
-        if shared in KNOB_BOUNDS and shared not in names:
-            names.append(shared)
-    return names
-
-
-def _compact_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
+def compact_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
     keys = (
         "outcome",
         "frames",
@@ -483,4 +470,4 @@ def _write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-__all__ = ["TOOL_SPECS", "GrindToolbox"]
+__all__ = ["TOOL_SPECS", "GrindToolbox", "compact_metrics"]

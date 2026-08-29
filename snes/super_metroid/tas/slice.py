@@ -1,4 +1,4 @@
-"""Named Super Metroid TAS slices (Sniq any% / 100%).
+"""Named Super Metroid TAS slices (Sniq any% / 100% + catalog corpus).
 
 Frame windows are **movie-relative** (power-on index). They are intentional
 coarse cuts for finish-route work (late MB/escape, full seeds, menu), not
@@ -10,16 +10,18 @@ Sources
 - any%: Sniq #3653M / submission #5833, lsnes ``.lsmv``, 129_712 frames
 - 100%: Sniq 100% converted BK2 (feos userfile), 222_789 frames
 - any% WIP: Sniq userfile to Red Brinstar 2nd visit, 55_037 frames
+- extra vanilla corpus: ``tas/catalog.py`` (low%, RBO, room tests, …)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from super_metroid.paths import GAME_DIR
 from super_metroid.tas.bk2 import parse_bk2
+from super_metroid.tas.catalog import MOVIES, MovieKind, MovieRef
 from super_metroid.tas.lsmv import parse_lsmv
 from super_metroid.tas.rle import frames_to_snes12_rle_payload, write_snes12_rle_seed
 
@@ -31,8 +33,6 @@ REF_ANY = REF_DIR / "sniq_any_3653M.lsmv"
 REF_ANY_WIP = REF_DIR / "sniq_any_wip.lsmv"
 REF_100 = REF_DIR / "sniq_100p.bk2"
 REF_SMTC4 = REF_DIR / "moozooh_smtc4.bk2"
-
-MovieKind = Literal["lsmv", "bk2"]
 
 
 @dataclass(frozen=True)
@@ -210,6 +210,25 @@ SLICE_CATALOG: dict[str, SliceSpec] = {
 }
 
 
+def _full_slice_from_ref(ref: MovieRef) -> SliceSpec:
+    assert ref.full_slice_id is not None
+    return SliceSpec(
+        id=ref.full_slice_id,
+        movie=ref.path,
+        kind=ref.kind,
+        start=0,
+        end=None,
+        source=ref.source,
+        notes=ref.notes,
+        tags=tuple(dict.fromkeys((*ref.tags, "full"))),
+    )
+
+
+for _ref in MOVIES:
+    if _ref.full_slice_id and _ref.full_slice_id not in SLICE_CATALOG:
+        SLICE_CATALOG[_ref.full_slice_id] = _full_slice_from_ref(_ref)
+
+
 def load_movie_frames(path: Path | str, kind: MovieKind | None = None) -> list[list[int]]:
     """Load SNES-12 frames from a ref movie path."""
     path = Path(path)
@@ -219,12 +238,18 @@ def load_movie_frames(path: Path | str, kind: MovieKind | None = None) -> list[l
             kind = "lsmv"
         elif suf == ".bk2":
             kind = "bk2"
+        elif suf == ".smv":
+            kind = "smv"
         else:
             raise ValueError(f"unknown movie kind for {path}")
     if kind == "lsmv":
         return parse_lsmv(path).frames
     if kind == "bk2":
         return parse_bk2(path).frames
+    if kind == "smv":
+        from super_metroid.tas.smv import parse_smv_env
+
+        return parse_smv_env(path).frames
     raise ValueError(f"bad kind {kind}")
 
 

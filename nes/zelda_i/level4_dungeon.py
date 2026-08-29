@@ -1,8 +1,7 @@
 """Level 4 (Snake) dungeon room specs, stop predicates, and live anchors.
 
 Path controllers and maze timing live in ``level4_path``, ``level4_maze_path``,
-and ``level4_stepladder``. ``__getattr__`` keeps ``from zelda_i.level4_dungeon
-import make_*`` working.
+and ``level4_stepladder``. Import those modules directly.
 
 Uses ``dungeon.DungeonRoomSpec`` / ``GenericDungeonRoomController`` read-only.
 Interior recon (assisted/pure, rr-5lu / rr-2ysf 2026-08-09/10) —
@@ -890,62 +889,6 @@ def level4_room_30_ready(ram: np.ndarray) -> bool:
     return level4_room_ready(read_snapshot(ram), ROOM_L4_NORTH_30)
 
 
-# Path controllers + timing knobs (canonical: level4_path / maze / stepladder).
-_PATH_EXPORTS = frozenset({
-    "BombWall61North", "EntryUpPhase", "KeyRight62Phase", "Left50Phase",
-    "Level4EntryUpController", "Level4KeyRight62Controller",
-    "Level4Left50Controller",
-    "make_bomb_61_north_controller", "make_entry_up_controller",
-    "make_key_right_62_controller", "make_left_50_controller",
-    "make_room_12_clear_controller",
-    "make_room_31_clear_controller", "make_room_32_clear_controller",
-    "make_room_40_clear_controller", "make_room_50_clear_controller",
-    "make_room_51_key_controller", "make_room_61_clear_controller",
-    "make_room_62_clear_controller", "planning_interior_report",
-})
-
-_MAZE_EXPORTS = frozenset({
-    "Compass62Phase", "KEY_40_PATH_ANCHOR", "Key40Phase",
-    "Level4Compass62Controller", "Level4Key40Controller",
-    "Level4North40Controller", "MAP_21_HOLD", "MAP_21_SAMPLE_PATH",
-    "MAZE_40_KEY_HOLD", "MAZE_40_TO_KEY", "MAZE_50_HOLD", "MAZE_50_LONG_UP",
-    "MAZE_50_TO_NORTH", "MAZE_50_WAYPOINTS", "MAZE_62_RETURN_WEST",
-    "MAZE_62_TO_COMPASS", "MAZE_IN_HOLD", "MAZE_OUT_HOLD", "North40Phase",
-    "PATH_12_TO_GLEEOK", "PUSH_12_HOLD", "RIGHT_12_HOLD",
-    "make_compass_62_controller", "make_north_40_controller",
-    "make_room_40_key_controller",
-})
-
-_STEPLADDER_EXPORTS = frozenset({
-    "Clear30Phase", "EXIT_60_HOLD", "EXIT_60_SAMPLE_PATH", "KeyRight31Phase",
-    "Level4Clear30Controller", "Level4KeyRight31Controller",
-    "Level4North30Controller", "Level4StepladderController",
-    "MAZE_31_CELL_Q", "MAZE_31_HOLD", "MAZE_60_HOLD", "MAZE_60_SETTLE",
-    "MAZE_60_SPAWN_XY", "MAZE_60_TO_LADDER", "North30Phase",
-    "POST_LADDER_ITEM_SETTLE", "PUSH_32_HOLD", "STAIRS_32_PUSH",
-    "STAIRS_32_PUSH_FRAMES", "StepladderPhase", "WEST_31_HOLD",
-    "WEST_31_SAMPLE_PATH", "make_key_right_31_controller",
-    "make_north_30_controller", "make_room_30_clear_controller",
-    "make_stepladder_controller",
-})
-
-_EXIT60_EXPORTS = frozenset({
-    "Exit60Phase", "Level4Exit60Controller", "level4_exit60_stages",
-    "level4_exit60_success", "make_exit60_controller",
-})
-
-_WEST31_EXPORTS = frozenset({
-    "Level4West31Controller", "WEST_32_WAYPOINTS", "West31Phase",
-    "level4_west31_stages", "level4_west31_success", "make_west31_controller",
-})
-
-_KEYUP20_EXPORTS = frozenset({
-    "KeyUp20Phase", "Level4KeyUp20Controller", "Level4Maze31WestController",
-    "MAZE_31_WEST_WAYPOINTS", "Maze31WestPhase", "level4_keyup20_stages",
-    "level4_keyup20_success", "make_keyup20_controller",
-    "make_maze_31_west_controller",
-})
-
 _IMPORT_NAMES = frozenset({
     "AliveRule", "CombatTuning", "DoorRoute", "DungeonRoomSpec",
     "KEESE_OBJECT_TYPE", "LEVEL4_ENTRY_ROOM", "PLAY_MODE", "RewardKind",
@@ -954,50 +897,8 @@ _IMPORT_NAMES = frozenset({
 })
 
 
-def __getattr__(name: str):
-    if name in _PATH_EXPORTS:
-        from zelda_i import level4_path as _paths
-        return getattr(_paths, name)
-    if name in _MAZE_EXPORTS:
-        from zelda_i import level4_maze_path as _maze
-        return getattr(_maze, name)
-    if name in _STEPLADDER_EXPORTS:
-        from zelda_i import level4_stepladder as _step
-        return getattr(_step, name)
-    if name in _EXIT60_EXPORTS:
-        from zelda_i import level4_exit60 as _exit60
-        return getattr(_exit60, name)
-    if name in _WEST31_EXPORTS:
-        from zelda_i import level4_west31 as _west31
-        return getattr(_west31, name)
-    if name in _KEYUP20_EXPORTS:
-        from zelda_i import level4_keyup20 as _keyup
-        return getattr(_keyup, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__():
-    return sorted(
-        set(globals())
-        | set(_PATH_EXPORTS)
-        | set(_MAZE_EXPORTS)
-        | set(_STEPLADDER_EXPORTS)
-        | set(_EXIT60_EXPORTS)
-        | set(_WEST31_EXPORTS)
-        | set(_KEYUP20_EXPORTS)
-    )
-
-
 __all__ = sorted(
-    {
-        n
-        for n in globals()
-        if not n.startswith("_") and n not in _IMPORT_NAMES
-    }
-    | _PATH_EXPORTS
-    | _MAZE_EXPORTS
-    | _STEPLADDER_EXPORTS
-    | _EXIT60_EXPORTS
-    | _WEST31_EXPORTS
-    | _KEYUP20_EXPORTS
+    n
+    for n in globals()
+    if not n.startswith("_") and n not in _IMPORT_NAMES
 )

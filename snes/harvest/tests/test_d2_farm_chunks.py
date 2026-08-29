@@ -39,6 +39,7 @@ from harvest.planner.d2_work import (
     rock_clear_phase,
     stump_clear_phase,
 )
+from harvest.scripts.leftover_exec import leftover_chain_decision, phase_already_clear
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.tasks.farm_clear_quota import DebrisCounts, count_debris
 from harvest.tasks.farm_clear_task import FarmClearTask
@@ -285,6 +286,139 @@ class QuotaChunkDoesNotPocketApproachTests(unittest.TestCase):
         stumps = stump_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS["sw"], chunk="sw")
         self.assertEqual(stumps.params["quota"], {"stumps": EXHAUSTIVE})
         self.assertEqual(stumps.params["timeout"], 0)
+
+
+class LeftoverChainReadinessTests(unittest.TestCase):
+    """Edges that would cut a full D2 leftover movie before the farm is empty."""
+
+    def test_stall_on_se_rock_aborts_and_never_reaches_stumps(self) -> None:
+        remaining = ("CLEAR_ROCKS", "ENSURE_AXE", "CLEAR_STUMPS")
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_ROCKS",
+                TaskStatus.FAILURE,
+                "no debris progress 24000f (last_progress=1000)",
+                Stamina(current=40, maximum=100),
+                remaining,
+            ),
+            "abort",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_ROCKS",
+                TaskStatus.SUCCESS,
+                "quota met",
+                Stamina(current=10, maximum=100),
+                remaining,
+            ),
+            "insert_spa",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_ROCKS",
+                TaskStatus.FAILURE,
+                "stamina_low cleared=2",
+                Stamina(current=8, maximum=100),
+                remaining,
+            ),
+            "spa_retry",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "HOT_SPRING_STAMINA",
+                TaskStatus.RUNNING,
+                None,
+                Stamina(current=4, maximum=100),
+                ("ENSURE_HAMMER", "CLEAR_ROCKS"),
+            ),
+            "abort",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_STUMPS",
+                TaskStatus.SUCCESS,
+                "quota met",
+                Stamina(current=4, maximum=100),
+                ("CLEAR_STUMPS",),
+            ),
+            "insert_spa",
+        )
+
+    def test_partial_pin_skips_empty_chunks_and_keeps_se_boulder(self) -> None:
+        ram = _make_farm_ram()
+        _place_large_rock(ram, 60, 51)
+        phases = leftover_section_phases(
+            "all", stamina=Stamina(current=100, maximum=100)
+        )
+        run = []
+        skipped = []
+        for spec in phases:
+            counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
+            row = (spec.phase, (spec.params or {}).get("chunk"))
+            if phase_already_clear(spec.phase, counts):
+                skipped.append(row)
+            else:
+                run.append(row)
+        self.assertEqual(
+            skipped,
+            [
+                ("CLEAR_BUSHES", None),
+                ("CLEAR_FENCES", None),
+                ("CLEAR_STONES", "nw"),
+                ("CLEAR_STONES", "ne"),
+                ("CLEAR_STONES", "sw"),
+                ("CLEAR_STONES", "se"),
+                ("CLEAR_ROCKS", "nw"),
+                ("CLEAR_ROCKS", "ne"),
+                ("CLEAR_ROCKS", "sw"),
+                ("CLEAR_STUMPS", "nw"),
+                ("CLEAR_STUMPS", "ne"),
+                ("CLEAR_STUMPS", "sw"),
+                ("CLEAR_STUMPS", "se"),
+            ],
+        )
+        self.assertEqual(
+            run,
+            [
+                ("ENSURE_HAMMER", None),
+                ("CLEAR_ROCKS", "se"),
+                ("ENSURE_AXE", None),
+            ],
+        )
+
+    def test_section_all_green_requires_empty_weeds(self) -> None:
+        from harvest.planner.d2_farm_chunks import smash_done_empty, wanted_quota
+
+        self.assertIn("weeds", smash_done_empty("all"))
+        self.assertEqual(smash_done_empty("all"), ("weeds", "fences", "stones", "large_rocks", "stumps"))
+        self.assertEqual(smash_done_empty("bushes"), ("weeds",))
+        self.assertEqual(wanted_quota("all").weeds, EXHAUSTIVE)
+        self.assertEqual(wanted_quota("bushes").weeds, EXHAUSTIVE)
+
+    def test_leftover_smash_is_required_so_a_day_plan_cannot_skip_a_stall(self) -> None:
+        phases = d2_leftover_phases(stamina=Stamina(current=100, maximum=100))
+        smash = [
+            p
+            for p in phases
+            if p.phase
+            in {"CLEAR_BUSHES", "CLEAR_FENCES", "CLEAR_STONES", "CLEAR_ROCKS", "CLEAR_STUMPS"}
+        ]
+        self.assertTrue(smash)
+        for spec in smash:
+            self.assertEqual(spec.failure_policy, "required")
+
+    def test_default_day_budgets_cover_multi_section_leftover(self) -> None:
+        from pathlib import Path
+
+        harvest_dir = Path(__file__).resolve().parents[1] / "harvest"
+        leftover_src = (harvest_dir / "scripts" / "d2_leftover_probe.py").read_text(
+            encoding="utf-8"
+        )
+        run_src = (harvest_dir / "scripts" / "run_to_day2.py").read_text(encoding="utf-8")
+        self.assertIn("default=2_000_000", leftover_src)
+        self.assertNotIn("default=400_000", leftover_src)
+        self.assertIn("2_000_000 * max(1, overnights_budget)", run_src)
+        self.assertNotIn("200_000 * max(1, overnights_budget)", run_src)
 
 
 if __name__ == "__main__":

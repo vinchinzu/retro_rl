@@ -1,7 +1,11 @@
 # Super Metroid TAS import
 
 HappyLee-style **button-press movies** for Super Metroid, vendored under
-`ref/` and sliced into `snes12_rle` JSON under `slices/`.
+`ref/` and sliced into `snes12_rle` JSON under `slices/`. Catalog:
+[`catalog.py`](catalog.py) (TASVideos [game 121](https://tasvideos.org/121G) +
+[userfiles](https://tasvideos.org/UserFiles/Game/121)). ROM hacks and RAM
+watches are listed as skips. Another agent owns moonfall policy — this
+tree only vendors inputs for later skill parse.
 
 ## Ref movies
 
@@ -10,7 +14,23 @@ HappyLee-style **button-press movies** for Super Metroid, vendored under
 | `ref/sniq_any_3653M.lsmv` | [TASVideos #3653M](https://tasvideos.org/3653M) Sniq any% | 129 712 | lsnes LSMV |
 | `ref/sniq_100p.bk2` | [Userfile](https://tasvideos.org/UserFiles/Info/55928342467251616) Sniq 100% | 222 789 | BizHawk BK2 |
 | `ref/sniq_any_wip.lsmv` | Sniq WIP → Red Brinstar | 55 037 | LSMV |
-| `ref/moozooh_smtc4.bk2` | SM TAS Contest R4 (short) | 5 384 | BK2 |
+| `ref/moozooh_smtc4.bk2` | SM TAS Contest R4 (short, **not vanilla**) | 5 384 | BK2 |
+| `ref/sniq_low_3273M.lsmv` | [TASVideos #3273M](https://tasvideos.org/3273M) Sniq 13% | 167 797 | LSMV |
+| `ref/sniq_100_4010M.lsmv` | [TASVideos #4010M](https://tasvideos.org/4010M) Sniq 100% native | 222 788 | LSMV |
+| `ref/sniq_geg_5238M.lsmv` | [TASVideos #5238M](https://tasvideos.org/5238M) game-end-glitch | 18 640 | LSMV |
+| `ref/sniq_any_3362M.lsmv` | [TASVideos #3362M](https://tasvideos.org/3362M) prior any% | 135 769 | LSMV |
+| `ref/total_13pct_charge_speed.lsmv` | [Userfile](https://tasvideos.org/UserFiles/Info/30904919119106655) 13% Charge/Speed | 182 797 | LSMV |
+| `ref/saturn_rbo_2078M.smv` | [TASVideos #2078M](https://tasvideos.org/2078M) RBO | 168 144 | SMV → sidecar BK2 |
+| `ref/taco_kriole_any_1368M.smv` | [TASVideos #1368M](https://tasvideos.org/1368M) any% | 139 292 | SMV → sidecar BK2 |
+| `ref/cpadolf_xray_1978M.smv` | [TASVideos #1978M](https://tasvideos.org/1978M) X-ray climb | 77 108 | SMV → sidecar BK2 |
+| `ref/hero_bubbleroom.smv` | Isolated Norfair bubble-room | 407 | SMV → sidecar BK2 |
+| `ref/hero_kraid_entry.smv` | Isolated Kraid entry | 422 | SMV → sidecar BK2 |
+| `ref/cpadolf_gt_2558M.lsmv` | [TASVideos #2558M](https://tasvideos.org/2558M) GT-code GEG | 53 661 | LSMV |
+| `ref/nymx_sniq_sporespawn_4481S.lsmv` | [Playground #4481S](https://tasvideos.org/4481S) Spore Spawn | 33 342 | LSMV |
+| `ref/nymx_ed_100map_5110S.bk2` | [Playground #5110S](https://tasvideos.org/5110S) 100% map | 261 130 | BKM-in-zip |
+| `ref/sniq_geg_3768M.lsmv` | [TASVideos #3768M](https://tasvideos.org/3768M) GEG NTSC | 24 192 | LSMV |
+| `ref/saturn_low_ice_2202M.smv` | [TASVideos #2202M](https://tasvideos.org/2202M) 14% Ice | 153 429 | SMV → sidecar BK2 |
+| `ref/namespoofer_low_speed_2220M.smv` | [TASVideos #2220M](https://tasvideos.org/2220M) 14% Speed | 159 518 | SMV → sidecar BK2 |
 
 Author notes (tech + multi-frame chords): [submission #5833](https://tasvideos.org/5833S).
 
@@ -18,13 +38,19 @@ Formats:
 
 - LSMV input: `F.|BYsSudlrAXLR` — [spec](https://tasvideos.org/EmulatorResources/Lsnes/LSMV)
 - BK2 `Input Log.txt` + LogKey — [spec](https://tasvideos.org/Bizhawk/BK2Format)
+- SMV snes9x — parsed via `tas/smv.py` (BizHawk SmvImport mapping) and written
+  as a sidecar `.bk2` for BizHawk replay. Sync on snes9x vs BSNES is unverified.
+- BKM (BizHawk 1.x) — TASVideos may wrap a `.bkm` log in a zip named `.bk2`;
+  `tas/bk2.py` reads that log with mnemonic button order.
 
 ## Commands
 
 ```bash
-# Movies are gitignored (*.lsmv / *.bk2) — fetch then slice
+# Movies are gitignored (*.lsmv / *.bk2 / *.smv) — fetch then slice
+uv run python -m super_metroid.tas.fetch_refs --list --skipped
 uv run python -m super_metroid.tas.fetch_refs
 uv run python -m super_metroid.tas.export_slices --finish
+uv run python -m super_metroid.tas.export_slices --catalog
 
 # List catalog / full RLE export (large JSON under slices/)
 uv run python -m super_metroid.tas.export_slices --list
@@ -52,6 +78,14 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
     --states-on room_enter,control,item_gain,beam_gain,capacity_gain \
     --out snes/super_metroid/recordings/tas_import/sniq_100_full
 
+# Named skill windows from snes12_rle (offline; no emulator)
+uv run python -m super_metroid.tas.skills_extract --slice hero_bubbleroom_full
+uv run python -m super_metroid.tas.skills_extract --slice hero_kraid_entry_full
+# Live pin, assist off, halt at first RAM miss (scratch JSON; not STATUS)
+uv run python snes/super_metroid/scripts/probe/tas_skill_window.py \
+  --slice hero_bubbleroom_full --skill arm_pump \
+  --state-path snes/super_metroid/custom_integrations/SuperMetroid-Snes/room_acb3_from_b07a.state
+
 # Hop inventory + skills/graph extraction board (offline; no emulator)
 uv run python -m super_metroid.tas.extract_hops \
   snes/super_metroid/recordings/tas_import/sniq_100_full
@@ -66,6 +100,7 @@ uv run python -m super_metroid.tas.materialize \
 
 # Tests (no emulator for parse; skip if refs missing)
 uv run pytest snes/super_metroid/tests/test_tas_movies.py \
+  snes/super_metroid/tests/test_tas_catalog.py \
   snes/super_metroid/tests/test_tas_trace.py \
   snes/super_metroid/tests/test_tas_stages_extract.py \
   snes/super_metroid/tests/test_tas_materialize.py -q
@@ -102,14 +137,17 @@ KPDR remains the continuous tip.
 
 ```
 tas/
-  ref/           # vendored .lsmv / .bk2
+  ref/           # vendored .lsmv / .bk2 / .smv (+ SMV sidecar .bk2)
   slices/        # snes12_rle JSON + manifest.json
+  catalog.py     # TASVideos game 121 fetch list (vanilla vs skip)
   lsmv.py        # lsnes parser
   bk2.py         # BizHawk parser (LogKey-aware)
+  smv.py         # snes9x SMV → SNES-12 + BizHawk BK2 sidecar
   rle.py         # compress / expand
-  slice.py       # catalog + export
+  slice.py       # named windows + catalog full-movie slices
   stages.py      # RoomStageSpec table (control settle → goal)
   extract_hops.py # hop inventory + skills/graph extraction board
+  skills_extract.py # named button-pattern windows from snes12_rle
   materialize.py # stage window → snes12_rle body seeds (unproven)
   bodies/        # materialized stage seeds (not STATUS)
   annotate.py    # event detectors (rooms/items/speed/shine/stall)

@@ -13,11 +13,11 @@ Usage (from repo root)::
   uv run python snes/super_metroid/scripts/scaffold_tip.py \\
     --segment business_to_frog_save \\
     --from-room 0xA7DE --to-room 0xB167 \\
-    --module k4_norfair --card-id SM-K4-BUBBLE-01 --dry-run
+    --module k4_cathedral --card-id SM-K4-BUBBLE-01 --dry-run
 
   uv run python snes/super_metroid/scripts/scaffold_tip.py \\
     --segment my_hop --from-room 0xA7DE --to-room 0xB167 \\
-    --module k4_norfair --card-id SM-K4-XX --write
+    --module k4_cathedral --card-id SM-K4-XX --write
 """
 
 from __future__ import annotations
@@ -247,8 +247,8 @@ def main() -> None:
     )
     p.add_argument(
         "--module",
-        default="k4_norfair",
-        help="kpdr module stem (default k4_norfair)",
+        default="k4_cathedral",
+        help="kpdr module stem (default k4_cathedral)",
     )
     p.add_argument(
         "--card-id",

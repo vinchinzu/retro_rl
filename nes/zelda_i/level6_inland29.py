@@ -14,7 +14,8 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level6_dungeon import ROOM_29_SPEC, make_clear_29_controller
+from zelda_i.dungeon import GenericDungeonRoomController
+from zelda_i.level6_dungeon import ROOM_29_SPEC
 from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6, LEVEL6_DARK_29_ROOM, LEVEL6_DARK_39_ROOM
 from zelda_i.level6_path import NORTH_BAND_Y, NORTH_DOOR_X, NORTH_DOOR_Y
@@ -184,7 +185,7 @@ class Level6Inland29Controller:
 
         if ROOM_29_SPEC.live_enemies(snap):
             if self.fighter is None:
-                self.fighter = make_clear_29_controller()
+                self.fighter = GenericDungeonRoomController(ROOM_29_SPEC)
                 self.notes.append(f"reclear_29_{xy[0]}_{xy[1]}")
             self.walker.last_dir = None
             return self._emit(snap, self.fighter.step(snap))

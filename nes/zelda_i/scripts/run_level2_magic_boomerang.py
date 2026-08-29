@@ -43,14 +43,16 @@ from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.dungeon import (
     DungeonPhase,
     GenericDungeonRoomController,
-    ROOM_4E_SPEC,
-    ROOM_4F_SPEC,
 )
 from zelda_i.dungeon_trace import write_state_provenance
-from zelda_i.level2_dungeon import (
+from zelda_i.level2_bomb_path import (
     BOOM_BOMB_N_STAND,
     BoomBombNorthPhase,
     make_boom_bomb_north_controller,
+)
+from zelda_i.level2_dungeon import (
+    ROOM_4E_SPEC,
+    ROOM_4F_SPEC,
     ROOM_L2_BOOM_CANDIDATE,
     level2_room_4f_magic_boomerang_success,
 )

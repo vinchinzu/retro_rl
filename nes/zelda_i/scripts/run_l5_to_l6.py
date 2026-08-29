@@ -23,8 +23,8 @@ from retro_harness.segment_runner import (
 )
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.chain import run_controller_stage
+from zelda_i.level6_hops import l6_prefix
 from zelda_i.level6_overworld import level6_entrance_success
-from zelda_i.level6_spine import level6_entry_stages, level6_entry_success
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_WHISTLE, read_snapshot, read_u8
 
@@ -62,7 +62,9 @@ def run_once(*, start_state: str, tag: str) -> dict[str, Any]:
     failed = None
     reports: list[dict[str, Any]] = []
     try:
-        for name, controller, max_frames in level6_entry_stages():
+        entry_hop = l6_prefix(env)[0]
+        stages = entry_hop.stages() if callable(entry_hop.stages) else entry_hop.stages
+        for name, controller, max_frames in stages:
             obs, stage = run_controller_stage(
                 env,
                 obs,
@@ -86,7 +88,7 @@ def run_once(*, start_state: str, tag: str) -> dict[str, Any]:
         whistle = int(read_u8(env.get_ram(), ADDR_WHISTLE))
         # Isolated Level5Complete may lack Raft/Ladder; hops still must land 0x79.
         ok = failed is None and bool(level6_entrance_success(env.get_ram()))
-        spine_ok = ok and level6_entry_success(snap, whistle=whistle)
+        spine_ok = ok and bool(entry_hop.success(snap))
         screenshot = RECORDINGS_DIR / f"{tag}_final.png"
         save_rgb_png(obs, screenshot)
         return {

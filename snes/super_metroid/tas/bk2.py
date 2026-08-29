@@ -35,6 +35,12 @@ from retro_harness.controls import (
 # BK2 hardware: R L X A Right Left Down Up Start Select Y B
 _LEGACY_BK2_TO_ENV = [11 - i for i in range(12)]
 
+# BizHawk 1.x BKM / modern mnemonic order (Up Down Left Right Select Start Y B X A L R).
+_MNEMONIC_LOGKEY = (
+    "LogKey:#Reset|Power|#P1 Up|P1 Down|P1 Left|P1 Right|"
+    "P1 Select|P1 Start|P1 Y|P1 B|P1 X|P1 A|P1 L|P1 R|"
+)
+
 _P1_TOKEN_RE = re.compile(r"P1\s+(\w+)", re.I)
 
 
@@ -141,9 +147,17 @@ def parse_bk2(path: Path | str) -> Bk2Movie:
                     header[k] = v
                 else:
                     header[line] = ""
-        if "Input Log.txt" not in names:
-            raise ValueError(f"BK2 missing Input Log.txt: {path}")
-        log_text = zf.read("Input Log.txt").decode("utf-8", errors="replace")
+        if "Input Log.txt" in names:
+            log_text = zf.read("Input Log.txt").decode("utf-8", errors="replace")
+        else:
+            bkm = [n for n in names if n.lower().endswith(".bkm")]
+            if len(bkm) != 1:
+                raise ValueError(f"BK2 missing Input Log.txt: {path}")
+            log_text = zf.read(bkm[0]).decode("utf-8", errors="replace")
+            logkey = _MNEMONIC_LOGKEY
+            mapped = parse_logkey_p1_to_env(_MNEMONIC_LOGKEY)
+            if mapped is not None:
+                p1_to_env = mapped
 
     for line in log_text.splitlines():
         line = line.strip()
@@ -160,7 +174,7 @@ def parse_bk2(path: Path | str) -> Bk2Movie:
         groups = [g for g in line.split("|") if g != ""]
         if len(groups) < 2:
             continue
-        # groups[0] = reset/power (usually 2 chars), groups[1] = P1
+        # groups[0] = reset/power (BK2: 2 chars; BKM: often 1 char), groups[1] = P1
         p1 = groups[1]
         if len(p1) < SNES_ACTION_SIZE:
             continue

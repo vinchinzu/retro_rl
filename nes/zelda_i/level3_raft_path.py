@@ -37,6 +37,7 @@ from zelda_i.level3_dungeon import (
     ROOM_L3_SOUTH_DARKNUTS,
     ROOM_L3_WEST_DARKNUTS,
 )
+from zelda_i.hop_controller import dungeon_align_then_push
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # Path timing knobs (not room-table data).
@@ -47,6 +48,10 @@ KEY_5A_MAX_FRAMES = 2500
 CLEAR_59_MAX_FRAMES = 18000
 DOWN_69_MAX_FRAMES = 2000
 DOWN_69_LOWER_AISLE_Y = 173
+# Diamonds block the mid-band. East leftover (192,157); dest_6b-clear
+# leftover sat in the west mouth (48,141) and RIGHT no-op'd for 2000f.
+DOWN_69_EAST_DIAMOND_X = 176
+DOWN_69_WEST_DIAMOND_X = 64
 CLEAR_69_MAX_FRAMES = 28000
 STAIRS_69_MAX_FRAMES = 2500
 PASSAGE_RAFT_MAX_FRAMES = 6000
@@ -66,40 +71,6 @@ RAFT_PATH_PHASES: tuple[str, ...] = (
     "done",
     "failed",
 )
-
-
-def _align_then_push(
-    snap: ZeldaSnapshot,
-    *,
-    target_x: int | None,
-    target_y: int | None,
-    push_dir: str,
-    y_tol: int = KEY_DOOR_Y_TOL,
-    x_tol: int = NORTH_DOOR_X_TOL,
-    reason_prefix: str = "door",
-    door_plane: int | None = None,
-) -> FrameAction:
-    """Align to door band then hold push direction (scroll handled by caller).
-
-    For side doors, pass ``door_plane`` (e.g. 48 for west): once Link is at or
-    past the plane toward the exit, only push — do not snap back to target_x
-    (Link can sit at x≈26 on the west wall while target_x=32).
-    """
-    if target_y is not None and abs(snap.link_y - target_y) > y_tol:
-        direction = "UP" if snap.link_y > target_y else "DOWN"
-        return FrameAction(nes_action(direction), f"{reason_prefix}_align_y")
-    # Side-door plane: walk until near wall, then hold push.
-    if door_plane is not None and push_dir in ("LEFT", "RIGHT"):
-        if push_dir == "LEFT" and snap.link_x > door_plane:
-            return FrameAction(nes_action("LEFT"), f"{reason_prefix}_approach")
-        if push_dir == "RIGHT" and snap.link_x < door_plane:
-            return FrameAction(nes_action("RIGHT"), f"{reason_prefix}_approach")
-        return FrameAction(nes_action(push_dir), f"{reason_prefix}_push_{push_dir}")
-    # North/south or explicit x target.
-    if target_x is not None and abs(snap.link_x - target_x) > x_tol:
-        direction = "LEFT" if snap.link_x > target_x else "RIGHT"
-        return FrameAction(nes_action(direction), f"{reason_prefix}_align_x")
-    return FrameAction(nes_action(push_dir), f"{reason_prefix}_push_{push_dir}")
 
 
 def raft_passage_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -288,13 +259,15 @@ class Level3RaftPathController:
                 return FrameAction(
                     nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
                 )
-            return _align_then_push(
+            return dungeon_align_then_push(
                 snap,
+                push_dir="LEFT",
                 target_x=32,
                 target_y=KEY_DOOR_Y,
-                push_dir="LEFT",
-                reason_prefix="left_5a",
+                y_tol=KEY_DOOR_Y_TOL,
+                x_tol=NORTH_DOOR_X_TOL,
                 door_plane=48,
+                reason="left_5a",
             )
 
         # --- key_to_59: long LEFT KEY push @ y≈141 (trap: short push wastes key) ---
@@ -407,9 +380,15 @@ class Level3RaftPathController:
                     nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
                 )
             # Live spine v1: combat ended east of the right diamond at
-            # (192,157); LEFT cannot cross it. Descend to the lower aisle
-            # before aligning toward the south door column.
-            if snap.link_x >= 176 and snap.link_y < DOWN_69_LOWER_AISLE_Y:
+            # (192,157); LEFT cannot cross it. dest_6b-clear leftover
+            # (48,141): RIGHT cannot leave the west mouth. Descend to the
+            # lower aisle before aligning toward the south door column.
+            west_of_diamond = snap.link_x <= DOWN_69_WEST_DIAMOND_X
+            east_of_diamond = snap.link_x >= DOWN_69_EAST_DIAMOND_X
+            if (
+                (west_of_diamond or east_of_diamond)
+                and snap.link_y < DOWN_69_LOWER_AISLE_Y
+            ):
                 return FrameAction(nes_action("DOWN"), "down_69_escape_diamond")
             # Align x≈120 then hold DOWN. Do not chase y=205 — past the door
             # plane Link thrash-oscillates align_y/push and never scrolls.
@@ -480,14 +459,15 @@ class Level3RaftPathController:
                 return FrameAction(
                     nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
                 )
-            return _align_then_push(
+            return dungeon_align_then_push(
                 snap,
+                push_dir="RIGHT",
                 target_x=208,
                 target_y=STAIRS_69_RIGHT_Y,
-                push_dir="RIGHT",
                 y_tol=KEY_DOOR_Y_TOL,
-                reason_prefix="stairs",
+                x_tol=NORTH_DOOR_X_TOL,
                 door_plane=192,
+                reason="stairs",
             )
 
         # --- passage_raft: mode-9 channel geometry ---

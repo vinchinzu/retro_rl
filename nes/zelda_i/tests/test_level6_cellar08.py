@@ -11,11 +11,9 @@ from zelda_i.level6_cellar08 import (
     FLOOR_Y,
     LEFT_LADDER_X,
     RIGHT_LADDER_X,
-    level6_cellar08_stages,
     level6_cellar08_success,
     make_cellar08_controller,
 )
-from zelda_i.level6_spine import L6_STOPS, L6_THROUGH
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_KEYS,
@@ -29,7 +27,6 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.survival_spine import SpineRun
 
 
 def _ram(**fields: int) -> np.ndarray:
@@ -44,33 +41,6 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_BOMBS] = fields.get("bombs", 8)
     ram[ADDR_ROD] = fields.get("rod", 1)
     return ram
-
-
-def test_cellar08_through_is_wired_after_warp() -> None:
-    assert "level6-cellar08" in L6_THROUGH
-    assert L6_THROUGH.index("level6-cellar08") == L6_THROUGH.index(
-        "level6-stairs3a-warp"
-    ) + 1
-    assert L6_THROUGH.index("level6-south1d") == L6_THROUGH.index(
-        "level6-cellar08"
-    ) + 1
-    assert L6_THROUGH.index("level6-west2d") == L6_THROUGH.index(
-        "level6-south1d"
-    ) + 1
-    assert L6_THROUGH.index("level6-north2c") == L6_THROUGH.index(
-        "level6-west2d"
-    ) + 1
-    assert L6_THROUGH.index("level6-east3a") == L6_THROUGH.index(
-        "level6-north2c"
-    ) + 1
-    assert L6_STOPS["level6-cellar08"] == "level6_cellar_0x08"
-    stages = level6_cellar08_stages()
-    assert [name for name, _, _ in stages] == [
-        "level6_stairs_0x3a_warp",
-        "level6_cellar_0x08",
-    ]
-    run = SpineRun(through="level6-cellar08", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level6_cellar_0x08"
 
 
 def test_warp_trigger_waits_for_engine_a_side_spawn() -> None:

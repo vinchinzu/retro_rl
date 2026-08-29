@@ -1,50 +1,26 @@
-"""Controller-only post-Torizo route through Spore Spawn (KPDR continuous).
+"""Post-Torizo approach + Spore room leave (KPDR continuous).
 
-The room sequence is pre-calculated from the Super Metroid editor export.  This
-module owns movement and combat only: it reads typed state and emits ordinary
-12-button controller actions.  It never loads emulator state or writes RAM.
-The post-Torizo escape is owned by :mod:`kpdr.alcatraz_escape`.
+Movement only. The Survival fight is
+:func:`super_metroid.combat.spore_spawn.play_spore_spawn_floor_bounce`.
+The post-Torizo Parlor escape is :mod:`kpdr.alcatraz_escape`. Gauntlet's
+right-side parlor chimney lives in ``gauntlet.parlor_to_landing``.
+This module never loads emulator state or writes RAM.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
+from super_metroid.combat.spore_spawn import play_spore_spawn_floor_bounce
 from super_metroid.ram import GameplayPhase
 from super_metroid.routes.controller_common import (
-    WallJumpTiming,
     hold_until,
     require_room,
     wait_ordinary_room,
 )
 from super_metroid.routes.kpdr.alcatraz_escape import play_alcatraz_escape
-from super_metroid.routes.kpdr.room_ids import ROOM_TERMINATOR
+from super_metroid.routes.kpdr.room_ids import ROOM_SPORE_SPAWN, ROOM_SUPER, ROOM_TERMINATOR
 from super_metroid.routes.runtime import ControllerSession, hold
-
-# Legacy right-side Parlor route retained for the in-progress Gauntlet side
-# quest. The clean/main Spore spine uses the shorter Alcatraz escape module.
-_PARLOR_CHIMNEY_RIGHT = WallJumpTiming(
-    into="RIGHT",
-    flip="RIGHT",
-    into_frames=30,
-    amid_frames=0,
-    flip_frames=0,
-    delay_into_frames=0,
-)
-_PARLOR_CHIMNEY_LEFT = WallJumpTiming(
-    into="LEFT",
-    flip="LEFT",
-    into_frames=30,
-    amid_frames=0,
-    flip_frames=0,
-    delay_into_frames=0,
-)
-# Six right-wall pulses then two left-wall pulses; 12f settle between.
-_PARLOR_CHIMNEY_WJ: tuple[WallJumpTiming, ...] = (
-    *(_PARLOR_CHIMNEY_RIGHT for _ in range(6)),
-    *(_PARLOR_CHIMNEY_LEFT for _ in range(2)),
-)
-_PARLOR_CHIMNEY_GAP = 12
 
 @dataclass(frozen=True)
 class SporeSpawnEvidence:
@@ -60,6 +36,7 @@ class SporeSpawnEvidence:
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
+
 
 _LJ = ("LEFT", "A", "B", "X")
 _RJ = ("RIGHT", "A", "B", "X")
@@ -84,23 +61,6 @@ _SPORE_EXIT_CLIMB = (
     _RJ, _RJ, _RJ, _RJ, _J, _RJ, (), _LJ, (), _J, _LJ,
 )
 
-# Mouth open/close transition plus fully-open hold spritemaps. The old set
-# (EEAF/EEC1/EED3/EEE5 only) missed the long open hold windows EF3D/EF4F/EF61
-# where multi-missile damage is available.
-_VULNERABLE_SPRITEMAPS = frozenset(
-    {
-        0xEE79,
-        0xEE8B,
-        0xEE9D,
-        0xEEAF,
-        0xEEC1,
-        0xEED3,
-        0xEEE5,
-        0xEF3D,
-        0xEF4F,
-        0xEF61,
-    }
-)
 
 def _require_room(
     session: ControllerSession,
@@ -119,6 +79,7 @@ def _require_room(
         raise RuntimeError(
             f"{label}: expected room 0x{room_id:04X}, got {session.state}"
         )
+
 
 def play_parlor_to_main_shaft(session: ControllerSession) -> None:
     """Travel from the accepted post-Torizo Parlor settle to Green Brinstar."""
@@ -305,65 +266,8 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
     hold(session, 10, reason="release_spore_spawn_door_shot")
     hold(session, 120, "UP", "A", "B", reason="enter_spore_spawn")
     hold(session, 300, reason="spore_spawn_entry_settle")
-    _require_room(session, 0x9DC7, "Spore Spawn entry")
-    if session.state.enemy0_hp < 960:
-        raise RuntimeError(f"Spore Spawn did not activate at 960 HP: {session.state}")
-
-    entry_frame = session.frame
-    activation_frame = session.frame
-    peak_hp = session.state.enemy0_hp
-    observed_hp = {session.state.enemy0_hp}
-    boss_bits_before = session.state.boss_bits[1]
-    seen_spritemaps: set[int] = set()
-    # Floor bounce + aim-up missiles during open windows. Unlimited energy
-    # means survival is free; damage requires airborne proximity to the core
-    # (shell blocks floor shots). Continuous power-on fight ~5.2k frames
-    # (~86s) vs the prior ~23k (~6+ min) single-hit-per-window loop.
-    jump_direction = "RIGHT"
-    jump_hold = 0
-    for index in range(12_000):
-        state = session.state
-        peak_hp = max(peak_hp, state.enemy0_hp)
-        observed_hp.add(state.enemy0_hp)
-        mouth_open = state.enemy0_spritemap in _VULNERABLE_SPRITEMAPS
-        if mouth_open:
-            seen_spritemaps.add(state.enemy0_spritemap)
-        # Bounce across the floor so open windows still cross under the core.
-        if state.samus_x <= 65:
-            jump_direction = "RIGHT"
-        elif state.samus_x >= 191:
-            jump_direction = "LEFT"
-        if state.samus_y >= 710 and jump_hold == 0:
-            # Slightly longer hold while open keeps height for multi-missile
-            # windows (missile cadence ~every other frame while open).
-            jump_hold = 52 if mouth_open else 44
-        hold_jump = jump_hold > 0
-        jump_hold = max(0, jump_hold - 1)
-        fire = mouth_open and index % 2 == 0
-        aim_direction = "LEFT" if state.enemy0_x < state.samus_x else "RIGHT"
-        if state.samus_y >= 710:
-            # Launch jump; still fire if the mouth opens during takeoff.
-            names_list = [jump_direction, "A"]
-            if hold_jump:
-                names_list.append("B")
-            if fire:
-                names_list.extend(("UP", "X"))
-            names = tuple(names_list)
-        else:
-            # Airborne: hold UP to unspin so missiles can fire, face the core.
-            names_list = [aim_direction, "UP"]
-            if hold_jump:
-                names_list.extend(("A", "B"))
-            if fire:
-                names_list.append("X")
-            names = tuple(names_list)
-        hold(session, 1, *names, reason="fight_spore_spawn")
-        if session.state.enemy0_hp == 0:
-            observed_hp.add(0)
-            break
-    else:
-        raise TimeoutError(f"Spore Spawn HP never reached zero: {session.state}")
-    defeat_frame = session.frame
+    _require_room(session, ROOM_SPORE_SPAWN, "Spore Spawn entry")
+    fight = play_spore_spawn_floor_bounce(session)
 
     hold(session, 600, reason="spore_spawn_death_settle")
     for names in _SPORE_EXIT_CLIMB:
@@ -374,19 +278,20 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
         hold(session, 2, "RIGHT", "X", reason="open_spore_exit_door")
         hold(session, 8, "RIGHT", reason="open_spore_exit_door")
     hold(session, 300, reason="spore_spawn_exit_settle")
-    _require_room(session, 0x9B5B, "Spore Spawn natural exit")
+    _require_room(session, ROOM_SUPER, "Spore Spawn natural exit")
 
     return SporeSpawnEvidence(
-        entry_frame=entry_frame,
-        activation_frame=activation_frame,
-        defeat_frame=defeat_frame,
+        entry_frame=fight.entry_frame,
+        activation_frame=fight.activation_frame,
+        defeat_frame=fight.defeat_frame,
         exit_frame=session.frame,
-        peak_hp=peak_hp,
-        observed_hp=tuple(sorted(observed_hp, reverse=True)),
-        brinstar_boss_bits_before=boss_bits_before,
+        peak_hp=fight.peak_hp,
+        observed_hp=fight.observed_hp,
+        brinstar_boss_bits_before=fight.brinstar_boss_bits_before,
         brinstar_boss_bits_after=session.state.boss_bits[1],
-        vulnerable_spritemaps=tuple(sorted(seen_spritemaps)),
+        vulnerable_spritemaps=fight.vulnerable_spritemaps,
     )
+
 
 def play_post_torizo_to_spore_spawn(
     session: ControllerSession,

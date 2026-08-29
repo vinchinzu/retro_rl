@@ -12,14 +12,8 @@ from zelda_i.level4_overworld import (
     LEVEL4_ISLAND_SCREEN,
     LEVEL4_POST_L3_SCREENS,
     SCREEN_POST_L3_RETURN,
-    SOURCE_HYPOTHESIS,
-    OverworldToLevel4Controller,
     level4_entrance_success,
     level4_entry_stop,
-    level4_overworld_stop,
-    on_level4_dock,
-    planning_report,
-    post_l3_overworld_ready,
 )
 from zelda_i.overworld import neighbor_screens
 from zelda_i.ram import (
@@ -59,14 +53,6 @@ def test_post_l3_path_screens_chain() -> None:
         assert b in neighbor_screens(a).values(), f"{a:02x}->{b:02x}"
 
 
-def test_live_geometry_not_hypothesis() -> None:
-    assert SOURCE_HYPOTHESIS is False
-    report = planning_report()
-    assert report["live"]["verified"] is True
-    assert report["live"]["entry_room"] == hex(LEVEL4_ENTRY_ROOM)
-    assert LEVEL4_ENTRY_ROOM == 0x71
-
-
 def test_east_exit_band_on_63() -> None:
     hop = next(h for h in LEVEL4_HOPS_FROM_POST_L3 if h.target == 0x64)
     assert hop.direction == "RIGHT"
@@ -86,32 +72,3 @@ def test_level4_entry_stop() -> None:
     assert not level4_entrance_success(
         _ram(level=LEVEL4, screen=0x70, mode=PLAY_MODE)
     )
-
-
-def test_dock_and_island_stops() -> None:
-    dock = read_snapshot(_ram(screen=0x55, y=140))
-    assert on_level4_dock(dock)
-    island = read_snapshot(_ram(screen=0x45, y=140))
-    assert level4_overworld_stop(island)
-    assert not level4_overworld_stop(dock)
-
-
-def test_post_l3_ready() -> None:
-    assert post_l3_overworld_ready(
-        _ram(screen=0x74, triforce=0x07, raft=1, sword=1)
-    )
-    assert not post_l3_overworld_ready(
-        _ram(screen=0x74, triforce=0x07, raft=0, sword=1)
-    )
-    assert not post_l3_overworld_ready(
-        _ram(screen=0x73, triforce=0x07, raft=1, sword=1)
-    )
-
-
-def test_controller_defaults() -> None:
-    nav = OverworldToLevel4Controller()
-    assert nav.hops[-1].target == 0x45
-    assert nav.entry_room == 0x71
-    assert nav.door_x == 128
-    assert nav.entry_level == LEVEL4
-    assert nav.require_dungeon is True

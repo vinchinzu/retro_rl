@@ -32,10 +32,11 @@ Local Level 2 notes: [LEVEL2_ROUTE.md](../LEVEL2_ROUTE.md).
 
 - **OW door (verified):** screen `0x37`.
 - **Item:** Bow (west of `0x23`, dest play `0x22` then cellar). **Not optional**
-  for a full clear: L6 Gohma and L9 Silver Arrows need it. Default
-  `--through level1` still skips it (speed TF). `--through level1-bow` is a
-  side branch, enter-stop **1/1** play `0x22`. Cellar dest mode 9 is **1/1**
-  room `0x7F` `(128,141)`; `ADDR_BOW` still 0.
+  for a full clear: L6 Gohma and L9 Silver Arrows need it. Survival
+  `--through level1-bow-pickup` is **1/1** play `0x23` `(16,141)`
+  `ADDR_BOW=1`. Default Survival `--through level1` / `level2+` splice that
+  detour after `clear23_key`. `--through level2-entry` is **1/1** play
+  `0x7d` `(120,205)` TF=`0x01` bow=1. Clean M5 does not. Arrows still 0.
 - **Boss:** Aquamentus (sword).
 - **Triforce bit:** `0x01`.
 - Full live route: `docs/LEVEL1_ROUTE.md`.
@@ -296,7 +297,7 @@ Code catalog: `zelda_i.dungeon_treasures`. Default path means
 
 | Level | Wiki treasure | Kind | Default spine | Live |
 |------:|---------------|------|---------------|------|
-| 1 | **Bow** | gate (Gohma / Silver) | **skip** | side branch `level1-bow-cellar` mode 9 `0x7F` **1/1**; `ADDR_BOW` still 0 |
+| 1 | **Bow** | gate (Gohma / Silver) | **collect** | Survival splice `level1-bow-pickup` play `0x23` **1/1** `ADDR_BOW=1`; `--through level2-entry` **1/1** play `0x7d` bow=1 TF=`0x01`; arrows 0 |
 | 1 | Wooden Boomerang | upgrade | skip | OK — L2 magical replaces it |
 | 2 | Magical Boomerang | combat | collect | `level2` / `0x4f` |
 | 3 | Raft | gate (L4 island) | collect | `level3` / `0x0f` |

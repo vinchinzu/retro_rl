@@ -37,7 +37,7 @@ writes), not a new M9 gate.
 Full Big Apple **heal=none** = **no emergency HP writes**; only natural
 pizza (`0x30`) restores. Path-RNG suite (2/2 identical full passes):
 
-`SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite`
+`SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy uv run python -m tmnt_iv.scripts.probe_clean --stage 1 --suite`
 
 Evidence: [clean_suite.json](../recordings/stage1_clean_track/clean_suite.json).
 
@@ -72,7 +72,7 @@ Whole-run continuous still uses emergency HP outside Stage 1 Clean probes.
 
 ## Stage 3 Clean track (Sewer Surfin' — in progress 2026-07-27)
 
-Probe: `scripts/probe_stage3_clean.py` (`--suite` / `--state` /
+Probe: `scripts/probe_clean.py --stage 3` (`--suite` / `--state` /
 `--from-stage2-clear`). Evidence dir: `recordings/stage3_clean_track/`.
 
 **Prefer `LiveHardStage3` (lives=2).** `Stage3` / `Boss3` are last-life
@@ -103,7 +103,7 @@ Next: zero residual 0x1C columns on LiveHard entry so boss entry HP ≥ 70
 
 ## Stage 2 Clean track (Alleycat — in progress 2026-08-02)
 
-Probe: `scripts/probe_stage2_clean.py` (`--suite` / `--state` /
+Probe: `scripts/probe_clean.py --stage 2` (`--suite` / `--state` /
 `--from-stage1-clear`). Evidence dir: `recordings/stage2_clean_track/`.
 
 Pizza-only Clean ≫ emergency-HP assist. Suite-of-record
@@ -262,14 +262,14 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
   (`invert_vertical=False`; combat zeros progress-as-camera)
 - Multi-wave Stage 1 chain (`WaveChainTracker`) + mid clears
 - Stage 1 boss **Baxter Stockman** defeated → stage byte `0→1`
-- Stage 1→2 bridge (`scripts/run_stage2_bridge.py`) → fight-ready
+- Stage 1→2 bridge (`scripts/run_bridge.py --to 2`) → fight-ready
   `Stage2.state` (Alleycat Blues, lives 1, HUD + Foot)
 - Early Stage 2 wave clears + mid states; April NPC filtered
   (`char 0xC4`); dumpster X-stall → DOWN + JUMP+RIGHT escape
 - Far-park Foot (`x > ~244`) no longer `edge_wait` soft-lock
 - Stage 2 alley boss **Metalhead** (`char 0x46`, HP 128, HUD
   `M. HEAD`) → `Boss2.state` → `Stage2_Clear` (stage byte `1→2`)
-- Stage 2→3 bridge (`scripts/run_stage3_bridge.py`) → fight-ready
+- Stage 2→3 bridge (`scripts/run_bridge.py --to 3`) → fight-ready
   `Stage3.state` (**Sewer Surfin'**, hoverboard, stage byte **2**)
 - Stage 3 early waves (spike lane) + mid states; surf ghost slots
   (`char 0` / `x 0` / `y≥256`) filtered; sewer Y-clamp avoids spikes
@@ -284,7 +284,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
   `Stage2_Clear_post` with `ADDR_STAGE` set to 3 (natural Rat King
   fade was missing in the old isolated probe; the continuous hard run now
   traverses this transition naturally.
-- Stage 4 Technodrome wave chain (`scripts/run_stage4_segment.py`);
+- Stage 4 Technodrome wave chain (`scripts/run_segment.py --stage 4`);
   stage byte **3** confirmed. Mids through pre-boss
   (`Stage4_Clear_w*`). Policy: sewer rules only for stage `==2`.
 - Stage 4 boss **Tokka & Rahzar** (`chars 0x48` / `0xA0`, spawn HP
@@ -294,7 +294,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
 - **Historical `Stage4_Clear` / `_post` segment states**: template clone of
   `Stage3_Clear_post` with `stage=4`. The continuous hard run reaches
   **`Stage5`** naturally (Prehistoric Turtlesaurus, stage byte **4**).
-- Stage 5 Prehistoric wave chain (`scripts/run_stage5_segment.py`);
+- Stage 5 Prehistoric wave chain (`scripts/run_segment.py --stage 5`);
   stage byte **4** confirmed. Early mids `Stage5_Clear_w1`–`w7`.
   NPC filter: pterodactyl `0xEE`. Dinos `0x6C` need **jump-slash**
   (B+Y); cave bruisers `0xB0`/`0x76` (HP 40/32).
@@ -306,7 +306,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
   `Stage4_Clear` with `stage=5`. The continuous hard run reaches fight-ready
   **`Stage6`** naturally (stage byte **5**, Foot `0x62`).
 - Stage 6 **Skull and Crossbones** wave chain
-  (`scripts/run_stage6_segment.py`); stage byte **5** confirmed.
+  (`scripts/run_segment.py --stage 6`); stage byte **5** confirmed.
   Mids `Stage6_Clear_w1`–`w14` (deeper mids often need HP heal).
   Foot `0x60`/`0x62`/`0x68`, pirates `0x70`/`0x66`, bruisers
   `0xB0`/`0xB2` (HP 40).
@@ -318,7 +318,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
 - **`Stage6_Clear` / `_post`** (natural, not a template clone) →
   fight-ready **`Stage7`** (stage byte **6**, Foot `0x60`).
 - Stage 7 **Bury My Shell at Wounded Knee** wave chain
-  (`scripts/run_stage7_segment.py`); stage byte **6** confirmed.
+  (`scripts/run_segment.py --stage 7`); stage byte **6** confirmed.
   Early mids `Stage7_Clear_w1`–`w8` + deeper `*_cam59*`. Foot
   `0x60`/`0x68`/`0x66`/`0x6A`, train bruisers `0xB8`, stacked bazooka
   Foot `0xB0`/`0xB6` need **jump-slash** (B+Y) for the top soldier.
@@ -329,7 +329,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
 - **`Stage7_Clear` / `_post`** (natural) → fight-ready **`Stage8`**
   (Neon Night Riders, stage byte **7**, Mode-7 highway).
 - Stage 8 **Neon Night Riders** wave chain
-  (`scripts/run_stage8_segment.py`); stage byte **7** confirmed.
+  (`scripts/run_segment.py --stage 8`); stage byte **7** confirmed.
   Mode-7: wait for near-band Foot (`y≥140`, chars `0x86`/`0x88`/
   `0x8A` HP2); do not chase vanishing-point slots. Props
   `0x36`/`0x3C`/`0xAC`@HP2 filtered. Mids `Stage8_Clear_w1`–`w11+`.
@@ -340,7 +340,7 @@ grind late-route Raph states (Starbase/Boss9) where path desync is smaller.
   `Boss8_hp5`, `Boss8_hp0`.
 - **`Stage8_Clear` / `_post`** (natural) → fight-ready **`Stage9`**
   (Starbase, stage byte **8**, Foot `0x5C`).
-- Stage 9 **Starbase** wave chain (`scripts/run_stage9_segment.py`);
+- Stage 9 **Starbase** wave chain (`scripts/run_segment.py --stage 9`);
   stage byte **8** confirmed. Hover/teleporter Foot `0x6A` (and
   `0x6C`/`0xB0`/`0xB2`/`0xB4`/`0xF2`) need **jump-slash** (B+Y) or
   grounded Y soft-locks. Dev heals + `player_lives` for long runs.

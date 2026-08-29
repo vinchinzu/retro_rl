@@ -52,11 +52,7 @@ from harvest.planner.d2_farm_chunks import (
     smash_done_empty,
     wanted_quota,
 )
-from harvest.planner.d2_work import (
-    leftover_section_phases,
-    needs_spa_before_next_smash,
-    should_spa_retry,
-)
+from harvest.planner.d2_work import leftover_section_phases
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_phase_stamina import full_restore_spa_phase
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
@@ -64,6 +60,8 @@ from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.runtime.watch_display import configure_headless
 from harvest.scripts.leftover_exec import (
+    _phase_timeout,
+    leftover_chain_decision,
     phase_already_clear,
     print_leftover_table,
     run_leftover_task,
@@ -84,7 +82,7 @@ _SECTIONS = ("all", "bushes", "fences", "stones", "rocks", "stumps")
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_After_Buy_Potato")
-    p.add_argument("--timeout", type=int, default=400_000)
+    p.add_argument("--timeout", type=int, default=2_000_000)
     p.add_argument(
         "--out",
         type=Path,
@@ -237,18 +235,6 @@ def _phases_for(section: str, *, stamina: Stamina, include_spa: bool, chunk: str
     return leftover_section_phases(
         section, stamina=stamina, include_spa=include_spa, chunk=chunk
     )
-
-
-def _phase_timeout(spec, remaining: int) -> int:
-    """timeout <= 0 means exhaustive: spend the leftover probe budget."""
-    params = spec.params or {}
-    if "timeout" in params:
-        timeout = int(params["timeout"])
-        if timeout <= 0:
-            return remaining
-        return min(timeout, remaining)
-    estimated = getattr(spec.contract, "estimated_frames", None)
-    return min(int(estimated or 8000), remaining)
 
 
 def _save_emulator_state(env, state_name: str) -> Path:
@@ -417,18 +403,20 @@ def main() -> int:
                 partial=True,
             )
             live_stam = Stamina.from_ram(ram)
-            if result is not None and result.status == TaskStatus.SUCCESS:
-                if needs_spa_before_next_smash(
-                    spec.phase,
-                    live_stam,
-                    include_spa=include_spa,
-                    remaining_phases=[p.phase for p in pending],
-                ):
-                    pending.insert(0, full_restore_spa_phase())
+            decision = leftover_chain_decision(
+                spec.phase,
+                None if result is None else result.status,
+                reason,
+                live_stam,
+                [p.phase for p in pending],
+                include_spa=include_spa,
+            )
+            if decision == "continue":
                 continue
-            if should_spa_retry(
-                spec.phase, reason, live_stam, include_spa=include_spa
-            ):
+            if decision == "insert_spa":
+                pending.insert(0, full_restore_spa_phase())
+                continue
+            if decision == "spa_retry":
                 pending.insert(0, spec)
                 pending.insert(0, full_restore_spa_phase())
                 continue

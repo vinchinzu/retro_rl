@@ -513,9 +513,9 @@ def main() -> int:
         overnights_budget = 1
 
     if args.max_frames is None:
-        # Campaign leftover (CLEAR_BUSHES / pond dumps) needs a day-sized
-        # budget; halt earlier only if nav oscillates with no progress.
-        args.max_frames = 200_000 * max(1, overnights_budget)
+        # Leftover (CLEAR_BUSHES / pond dumps / chunked smash) needs a
+        # multi-section day budget; 200k was one leftover section.
+        args.max_frames = 2_000_000 * max(1, overnights_budget)
 
     source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
     source_state_sha256 = _file_sha256(source_state) if source_state else None

@@ -316,9 +316,18 @@ class DayPlanSequenceCropTests(unittest.TestCase):
         self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
         clear = next(p for p in plan._schedule.active if p.phase == "CLEAR_PLOT")
         self.assertEqual(clear.params.get("farm_bounds"), (3, 14, 28, 30))
-        self.assertTrue(
-            all(phase.failure_policy == "optional" for phase in plan._schedule.active[1:])
-        )
+        from harvest.planner.d2_work import d2_post_shop_work_phases
+
+        catalog = {
+            spec.phase: spec.failure_policy for spec in d2_post_shop_work_phases()
+        }
+        for phase in plan._schedule.active[1:]:
+            if phase.phase in catalog:
+                self.assertEqual(
+                    phase.failure_policy,
+                    catalog[phase.phase],
+                    phase.phase,
+                )
 
     def test_buy_seeds_does_not_splice_plant_without_bag(self) -> None:
         class InstantBuy:

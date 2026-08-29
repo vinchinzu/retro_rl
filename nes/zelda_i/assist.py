@@ -8,7 +8,10 @@ See ``docs/ASSIST_CONTRACT.md``. Zelda I segment scripts default to Survival
 Damage is observed and aggregated so Clean combat harden can target hot
 rooms later — do not prioritize sword polish over route completion.
 
-The L6 0x3A stairs exception is ``poke_link_position`` (Link x/y only).
+Inventory pokes live in ``dungeon_ops``. This module re-exports
+``poke_link_position`` (L6 0x3A stairs: Link x/y only) and
+``poke_wooden_arrows`` (L6 Gohma: ``ADDR_ARROWS=1`` + B=2) so existing
+imports keep working. Do not write ``ADDR_BOW``; bow must already be earned.
 """
 
 from __future__ import annotations
@@ -17,10 +20,8 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
+from zelda_i.dungeon_ops import poke_link_position, poke_wooden_arrows
 from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
     PLAY_MODE,
     ZeldaSnapshot,
     health_byte_for_containers,
@@ -262,72 +263,6 @@ class UnlimitedHealthAssist:
         self.apply_snapshot(env.data, snap, frame=frame)
 
 
-def poke_link_position(
-    env: Any,
-    x: int,
-    y: int,
-    *,
-    room: int,
-    from_xy: tuple[int, int],
-) -> dict[str, Any]:
-    """Write only ``ADDR_LINK_X`` / ``ADDR_LINK_Y``. Not Clean.
-
-    Operator exception for the L6 0x3A stairs (see ``docs/ASSIST_CONTRACT.md``).
-    The pair counts as one position write. Do not write room, door,
-    inventory, Triforce, capacity, facing, mode, or load state.
-    """
-    writes: list[dict[str, Any]] = []
-    notes: list[str] = []
-    assigned = 0
-    try:
-        mem = env.unwrapped.data.memory
-        if hasattr(mem, "assign"):
-            mem.assign(ADDR_LINK_X, "|u1", int(x) & 0xFF)
-            mem.assign(ADDR_LINK_Y, "|u1", int(y) & 0xFF)
-            assigned = 2
-            notes.append("memory.assign")
-        elif hasattr(mem, "set_byte"):
-            mem.set_byte(ADDR_LINK_X, int(x) & 0xFF)
-            mem.set_byte(ADDR_LINK_Y, int(y) & 0xFF)
-            assigned = 2
-            notes.append("memory.set_byte")
-    except Exception as exc:
-        notes.append(f"poke_fail={exc!r}")
-    writes.append(
-        {
-            "field": "link_x",
-            "address": ADDR_LINK_X,
-            "from": int(from_xy[0]),
-            "to": int(x),
-        }
-    )
-    writes.append(
-        {
-            "field": "link_y",
-            "address": ADDR_LINK_Y,
-            "from": int(from_xy[1]),
-            "to": int(y),
-        }
-    )
-    return {
-        "writes": writes,
-        "notes": notes,
-        "room": int(room),
-        "room_hex": f"0x{int(room):02x}",
-        "xy": [int(x), int(y)],
-        "from_xy": [int(from_xy[0]), int(from_xy[1])],
-        "position_writes": 1 if assigned == 2 else 0,
-        "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
-        "progression_writes": 0,
-        "capacity_writes": 0,
-        "door_writes": 0,
-        "inventory_writes": 0,
-        "triforce_writes": 0,
-        "state_load": False,
-        "mid_run_state_load": False,
-    }
-
-
 def write_health_u8(env: Any, value: int) -> None:
     """Low-level health write (tests / diagnostics). Prefer the assist class."""
     env.data.set_value("health", int(value) & 0xFF)
@@ -342,8 +277,6 @@ __all__ = [
     "assist_phase_name",
     "location_key",
     "poke_link_position",
+    "poke_wooden_arrows",
     "write_health_u8",
-    "ADDR_HEALTH",
-    "ADDR_LINK_X",
-    "ADDR_LINK_Y",
 ]

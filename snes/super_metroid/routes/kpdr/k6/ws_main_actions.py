@@ -279,15 +279,15 @@ def _shaft_action(
     side = hop.side if hop is not None else (
         "LEFT" if x > WS_MAIN_SHAFT_CENTER else "RIGHT"
     )
-    want = FACING_LEFT if side == "LEFT" else FACING_RIGHT
-    if facing_i != want or turning:
-        return (side,)
     in_window = (
         hop is not None and hop.takeoff.x_range[0] <= x <= hop.takeoff.x_range[1]
     )
     if hop is not None and not in_window:
         mid = (hop.takeoff.x_range[0] + hop.takeoff.x_range[1]) // 2
         return walk_toward_x(x, mid, slack=8)
+    want = FACING_LEFT if side == "LEFT" else FACING_RIGHT
+    if facing_i != want or turning:
+        return (side,)
     return spin_jump(side)
 
 

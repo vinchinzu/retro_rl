@@ -43,7 +43,7 @@ def run_once(
 ) -> dict:
     configure_headless()
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
-    controller = Level3NorthChainController()
+    controller = Level3NorthChainController(clear_darknuts=False)
     assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     track = "assisted" if infinite_life else "clean"
     intervention = "survival" if infinite_life else "clean"

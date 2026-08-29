@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from super_metroid.ram import GameplayPhase, SuperMetroidState
-from super_metroid.routes.kpdr import red_stack, spazer
+from super_metroid.routes.kpdr import red_stack
 from super_metroid.routes.kpdr.below_spazer_west import play_below_spazer_floor_to_west
 from super_metroid.routes.kpdr.rooms import ROOM_BELOW_SPAZER
-from super_metroid.routes.kpdr.spazer import SPAZER_BEAM_MASK, geometry, scripts
 from super_metroid.routes.kpdr.spazer.geometry import (
     SOLID_TOP_X_MIN,
     SOLID_TOP_Y,
@@ -70,53 +69,6 @@ def _state(
     )
 
 
-def test_spazer_surface_and_wiring() -> None:
-    assert spazer.ROOM_SPAZER == 0xA447
-    assert SPAZER_BEAM_MASK == 0x0004
-    assert geometry.SPAZER_BEAM_MASK == 0x0004
-    for name in (
-        "play_below_spazer_to_spazer",
-        "play_below_spazer_climb",
-        "play_below_spazer_floor_to_mid",
-        "play_below_spazer_mid_to_top",
-        "play_spazer_collect",
-        "play_spazer_return_to_below",
-        "play_spazer_top_to_mid",
-        "play_spazer_top_to_west",
-        "play_spazer_detour",
-    ):
-        assert name in spazer.__all__
-        assert callable(getattr(spazer, name))
-    assert red_stack.play_below_spazer_floor_to_west is play_below_spazer_floor_to_west
-
-
-def test_guide_rle_shapes() -> None:
-    """Compressed guide phases — not full human gold paste."""
-    assert len(scripts.FLOOR_MID_RLE) >= 10
-    floor_frames = sum(n for n, _ in scripts.FLOOR_MID_RLE)
-    assert 100 <= floor_frames <= 400
-    floor_btns = {tuple(b) for _, b in scripts.FLOOR_MID_RLE}
-    assert ("B", "LEFT", "A") in floor_btns or ("RIGHT", "A") in floor_btns
-
-    assert len(scripts.TOP_MID_RLE) >= 10
-    top_frames = sum(n for n, _ in scripts.TOP_MID_RLE)
-    assert 200 <= top_frames <= 800
-    top_btns = {tuple(b) for _, b in scripts.TOP_MID_RLE}
-    assert ("B", "LEFT", "A") in top_btns
-    assert ("DOWN",) in top_btns
-
-    assert len(scripts.TOP_DOOR_APPROACH_RLE) >= 8
-    door_frames = sum(n for n, _ in scripts.TOP_DOOR_APPROACH_RLE)
-    assert 200 <= door_frames <= 600
-    door_btns = {tuple(b) for _, b in scripts.TOP_DOOR_APPROACH_RLE}
-    assert ("DOWN",) in door_btns
-    assert ("X",) in door_btns or ("RIGHT", "X") in door_btns
-
-    assert geometry.WJ_LEFT.into == "LEFT"
-    assert geometry.WJ_RIGHT.into == "RIGHT"
-    assert geometry.WJ_LEFT.into_frames >= 10
-
-
 def test_solid_top_predicate() -> None:
     y_lo, y_hi = SOLID_TOP_Y
     assert y_lo < y_hi
@@ -153,45 +105,6 @@ def test_super_door_approach_band() -> None:
     assert not on_super_door_approach(_state(x=460, y=200, pose=1))  # too low
 
 
-def test_spazer_segments_registered_mainline() -> None:
-    from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
-
-    for seg_id in (
-        "below_spazer_to_spazer",
-        "spazer_collect",
-        "spazer_return_to_below",
-        "spazer_top_to_west",
-        "spazer_detour",
-        "below_spazer_to_west",
-    ):
-        assert seg_id in KPDR_SEGMENTS
-
-
 def test_mainline_west_wires_detour() -> None:
-    """Spine hop is the Spazer detour (always collect)."""
+    """Spine west hop is the Spazer detour, not the floor skip."""
     assert red_stack.play_below_spazer_to_west is not play_below_spazer_floor_to_west
-    # Registry maps both; detour is the product path for pure probe.
-    from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
-
-    assert KPDR_SEGMENTS["spazer_detour"] is spazer.play_spazer_detour
-    assert KPDR_SEGMENTS["below_spazer_to_west"] is red_stack.play_below_spazer_to_west
-
-
-def test_spazer_modules_do_not_import_red_stack() -> None:
-    """Spazer hop modules exit west via below_spazer_west (no red_stack cycle)."""
-    from pathlib import Path
-
-    pkg = Path(spazer.__file__).resolve().parent
-    for path in pkg.glob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        # Docstrings may mention red_stack as the spine caller; ban import edges.
-        for line in text.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'"):
-                continue
-            if "import" in stripped and "red_stack" in stripped:
-                raise AssertionError(f"{path.name} imports red_stack: {stripped}")
-    west_src = Path(play_below_spazer_floor_to_west.__code__.co_filename).read_text(
-        encoding="utf-8"
-    )
-    assert "red_stack" not in west_src

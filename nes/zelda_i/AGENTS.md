@@ -29,8 +29,11 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-cellar0
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south1d --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west2d --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-gohma --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-cellar --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-pickup --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2-entry --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east3a --no-video --trials 1
 
 # Clean M5 (do not overwrite)
@@ -50,7 +53,10 @@ not an MP4. Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 | `ow_path.py` | Shared hop engine (L2–L8) |
 | `walk_physics.py`, `predict.py` | OccupancyWalker + RAM claims |
 | `dungeon.py` + `level*_dungeon.py` | Combat + **specs/stop predicates only** |
-| `level*_path.py`, `level*_spine.py` | Path controllers + dest spine |
+| `spine_hops.py` | `SpineHop` rows + `attach_hops` / `ready` |
+| `hop_controller.py` | Dest-hop timeout/death/scroll guard |
+| `token_path.py` | L4 maze hold-token walker |
+| `level*_path.py`, `level*_spine.py` | Path controllers + dest spine tables |
 | `level*_overworld.py` | Hop tables + thin `ow_path` subclasses |
 | `runner.py` | Script env/assist/report helpers |
 

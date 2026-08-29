@@ -12,7 +12,7 @@ from zelda_i.level9_stairs import (
     ROOM30_STAIR_Y,
     chase_sword_step,
     dest_report,
-    in_room_30,
+    in_stair_source,
     live_combat_objects,
     on_warp_tile,
     pushable_block,
@@ -48,7 +48,7 @@ def main() -> int:
         cooldown = 0
         for _ in range(2500):
             snap = read_snapshot(env.get_ram())
-            if in_room_30(snap) and not live_combat_objects(snap):
+            if in_stair_source(snap, ROOM30) and not live_combat_objects(snap):
                 break
             frame, cooldown = chase_sword_step(snap, cooldown)
             obs = _step(env, frame.action, assist=assist, total=total)
@@ -74,7 +74,7 @@ def main() -> int:
         cooldown = 0
         for _ in range(2500):
             snap = read_snapshot(env.get_ram())
-            if in_room_30(snap) and not live_combat_objects(snap):
+            if in_stair_source(snap, ROOM30) and not live_combat_objects(snap):
                 break
             frame, cooldown = chase_sword_step(snap, cooldown)
             _step(env, frame.action, assist=assist, total=total)
@@ -121,7 +121,7 @@ def main() -> int:
             cooldown = 0
             for _ in range(2500):
                 snap = read_snapshot(env.get_ram())
-                if in_room_30(snap) and not live_combat_objects(snap):
+                if in_stair_source(snap, ROOM30) and not live_combat_objects(snap):
                     break
                 frame, cooldown = chase_sword_step(snap, cooldown)
                 _step(env, frame.action, assist=assist, total=total)

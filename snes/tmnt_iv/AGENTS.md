@@ -1,8 +1,9 @@
 # Agent Instructions — tmnt_iv
 
 SNES TMNT IV (M8 continuous hard clear). Shared combat helpers:
-`retro_harness.combat` / `segment_runner`. Docs: `CONTEXT.md`, `docs/STATUS.md`,
-`docs/plan.md`, `docs/ASSIST_CONTRACT.md`, `docs/CLEAN_PLAYBOOK.md`.
+`retro_harness.combat` / `segment_runner`. Docs: `CONTEXT.md`,
+`docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/plan.md`,
+`docs/ASSIST_CONTRACT.md`, `docs/CLEAN_PLAYBOOK.md`.
 Raph hard speed: `docs/RAPH_SPEED_HANDOFF.md`,
 `docs/SPEEDRUN_STRATEGIES.md` (`rr-iprz`). Tracker: `bd ready -l tmnt_iv`.
 
@@ -12,11 +13,9 @@ Raph hard speed: `docs/RAPH_SPEED_HANDOFF.md`,
 uv run python -m tmnt_iv.scripts.setup_rom
 uv run python -m tmnt_iv.scripts.boot_probe
 
-# Stage Clean suites
+# Stage Clean suites (human stage 1–3)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_stage1_clean --suite
-uv run python -m tmnt_iv.scripts.probe_stage2_clean --suite
-uv run python -m tmnt_iv.scripts.probe_stage3_clean --suite
+  uv run python -m tmnt_iv.scripts.probe_clean --stage 1 --suite
 
 # Full hard run (assisted default; Clean never clobbers assisted)
 # Video: shared VideoRecorder, 1080p60 YouTube layout ( --native-video to opt out)
@@ -24,7 +23,7 @@ uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
 uv run python -m tmnt_iv.scripts.record_full_hard_run
 uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
 
-# Segment runners: run_stage{N}_segment / run_stage{N}_bridge
+# Segment / bridge: run_segment --stage N / run_bridge --to {2,3}
 # Raph grind states (char 8): capture_raph_states
 # Local knob agent: run_local_grind_agent --focus slash --max-trials 2
 uv run pytest tmnt_iv/tests -q
@@ -56,5 +55,6 @@ jump-dodge, global pizza seek, sewer dumpster thrash, or Slash spin=40.
 | `raph_starbase_close_gap` period < 4 | `%3` timeout / `%2` jump-lock |
 | Mid-run knob w/o full dry-run | Route desync |
 | Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |
+| Clone `run_stageN_segment.py` | Add a `StageSpec` / `CleanProbeSpec` / `BridgeSpec` |
 
 RAM: `docs/ram_map.md`. Ready work: `bd ready -l tmnt_iv`.

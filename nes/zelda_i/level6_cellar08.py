@@ -18,6 +18,13 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.hop_controller import (
+    CELLAR_MODE,
+    CellarCross,
+    HopController,
+    WAIT_SCROLL_B,
+    cellar_cross_dir,
+)
 from zelda_i.level6_occupancy import l6_leftover, l6_play_dest_success
 from zelda_i.level6_overworld import LEVEL6
 from zelda_i.level6_stairs3a_warp import (
@@ -50,27 +57,31 @@ RIGHT_LADDER_X = 192
 FLOOR_Y = 189
 MOUTH_Y = 93
 ALIGN_TOL = 4
-WAIT_MODES = (2, 3, 4, 6, 7, 10, 16)
-CELLAR_PLAY_MODES = (9, 11)
+CELLAR_PLAY_MODES = (CELLAR_MODE, 11)
+CELLAR08_CROSS = CellarCross(
+    west_x=LEFT_LADDER_X,
+    east_x=RIGHT_LADDER_X,
+    floor_y=FLOOR_Y,
+    mouth_y=MOUTH_Y,
+    tol=ALIGN_TOL,
+)
 
 
 @dataclass
-class Level6Cellar08Controller:
+class Level6Cellar08Controller(HopController):
     """Wait for A-side spawn, then floor RIGHT → B-side UP → 0x1D."""
 
     spec_id: str = "level6_cellar_0x08"
     room: int = CELLAR_08_ROOM
     max_frames: int = CELLAR_08_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "emerged"
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
     arrival_seen: bool = False
     on_floor: bool = False
 
-    def _emit(
+    def emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
     ) -> FrameAction:
         self.leftover = {
@@ -93,18 +104,7 @@ class Level6Cellar08Controller:
             )
         return action
 
-    def _fail(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
-        self.failed = True
-        if note not in self.notes:
-            self.notes.append(note)
-        return self._emit(snap, FrameAction(nes_idle_action(), note), force=True)
-
-    def _done(self, snap: ZeldaSnapshot, note: str) -> FrameAction:
-        self.success = True
-        self.notes.append(note)
-        return self._emit(snap, FrameAction(nes_idle_action(), "emerged"), force=True)
-
-    def _at_dest(self, snap: ZeldaSnapshot) -> bool:
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
         return l6_play_dest_success(
             snap,
             not_room=self.room,
@@ -112,40 +112,22 @@ class Level6Cellar08Controller:
             passage_ok=False,
         )
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            if "timeout" not in self.notes:
-                self.notes.append(
-                    f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-                    f"_mode={snap.mode}"
-                )
-            return self._emit(snap, FrameAction(nes_idle_action(), "timeout"), force=True)
-        if snap.mode == 17:
-            return self._fail(snap, "link_death")
-        if self._at_dest(snap):
-            return self._done(
-                snap, f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            )
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if (
             snap.mode == PLAY_MODE
             and not snap.transitioning
             and snap.screen != self.room
         ):
             if snap.screen == CELLAR_08_SOURCE_ROOM:
-                return self._fail(snap, "returned_source_0x3a")
-            return self._fail(snap, f"wrong_play_0x{snap.screen:02x}")
-        if snap.transitioning or snap.mode in WAIT_MODES:
-            return self._emit(snap, FrameAction(nes_idle_action(), "wait_scroll"))
+                return self.mark_fail("returned_source_0x3a")
+            return self.mark_fail(f"wrong_play_0x{snap.screen:02x}")
         if snap.mode not in CELLAR_PLAY_MODES and snap.mode != PLAY_MODE:
-            return self._emit(
-                snap, FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-            )
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.level != LEVEL6:
-            return self._fail(snap, f"left_level_{snap.level}")
+            return self.mark_fail(f"left_level_{snap.level}")
 
         xy = (int(snap.link_x), int(snap.link_y))
         if not self.arrival_seen:
@@ -156,21 +138,17 @@ class Level6Cellar08Controller:
                 self.arrival_seen = True
                 self.notes.append(f"a_side_spawn_{xy[0]}_{xy[1]}")
             else:
-                return self._emit(
-                    snap,
-                    FrameAction(nes_idle_action(), "passage_init_wait"),
-                )
+                return FrameAction(nes_idle_action(), "passage_init_wait")
         if xy[1] >= FLOOR_Y - ALIGN_TOL:
             self.on_floor = True
-        if not self.on_floor:
-            if xy[1] < FLOOR_Y - ALIGN_TOL:
-                return self._emit(snap, FrameAction(nes_action("DOWN"), "drop_y"))
-        if abs(xy[0] - RIGHT_LADDER_X) > ALIGN_TOL:
-            btn = "LEFT" if xy[0] > RIGHT_LADDER_X else "RIGHT"
-            return self._emit(snap, FrameAction(nes_action(btn), "cross_x"))
+        btn = cellar_cross_dir(xy, CELLAR08_CROSS, on_floor=self.on_floor)
+        if btn == "DOWN":
+            return FrameAction(nes_action("DOWN"), "drop_y")
+        if btn != "UP":
+            return FrameAction(nes_action(btn), "cross_x")
         if xy[1] > MOUTH_Y:
-            return self._emit(snap, FrameAction(nes_action("UP"), "climb_y"))
-        return self._emit(snap, FrameAction(nes_action("UP"), "mouth_up"))
+            return FrameAction(nes_action("UP"), "climb_y")
+        return FrameAction(nes_action("UP"), "mouth_up")
 
     def report(self) -> dict[str, Any]:
         return {

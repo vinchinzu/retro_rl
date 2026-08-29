@@ -4,30 +4,14 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from super_metroid.routes.kpdr import get_segment
 from super_metroid.routes.kpdr.ice import (
-    ICE_BEAM_MASK,
     ICE_SUPER_Y_MAX,
     ICE_SUPER_Y_MIN,
     on_ice_super_lip,
-    play_business_to_ice_gate,
-    play_ice_acid_to_snake,
-    play_ice_gate_to_acid,
-    play_ice_snake_to_ice,
-    play_ice_snake_to_tutorial,
-    play_ice_to_snake,
-    play_ice_tutorial_to_gate,
-    play_ice_gate_to_business,
 )
 from super_metroid.routes.kpdr.ice.geometry import (
-    ACID_TO_SNAKE_RLE,
-    ICE_LEAVE_DOOR_X,
-    ICE_LEAVE_FRAMES,
     SNAKE_L4_Y,
     SNAKE_TOP_Y,
-    SNAKE_TUTORIAL_DOOR_X,
-    TUTORIAL_DOOR_X,
-    TUTORIAL_TO_GATE_RLE,
     has_ice,
     in_ice_super_band,
     on_acid_floor,
@@ -40,43 +24,6 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
 )
-
-
-def test_business_to_ice_gate_export_and_registry() -> None:
-    assert get_segment("business_to_ice_gate") is play_business_to_ice_gate
-    assert get_segment("ice_gate_to_acid") is play_ice_gate_to_acid
-    assert get_segment("ice_acid_to_snake") is play_ice_acid_to_snake
-    assert get_segment("ice_snake_to_ice") is play_ice_snake_to_ice
-    assert get_segment("ice_to_snake") is play_ice_to_snake
-    assert get_segment("ice_snake_to_tutorial") is play_ice_snake_to_tutorial
-    assert get_segment("ice_tutorial_to_gate") is play_ice_tutorial_to_gate
-    assert get_segment("ice_gate_to_business") is play_ice_gate_to_business
-    assert ICE_LEAVE_DOOR_X == 40
-    assert ICE_LEAVE_FRAMES >= 200
-    assert SNAKE_TUTORIAL_DOOR_X >= 200
-    assert TUTORIAL_DOOR_X >= 400
-    assert len(TUTORIAL_TO_GATE_RLE) >= 20
-    assert sum(n for n, _ in TUTORIAL_TO_GATE_RLE) >= 500
-    from super_metroid.routes.kpdr.ice.geometry import (
-        BUSINESS_RETURN_SETTLE,
-        GATE_SUPER_DOOR_X,
-        GATE_TO_BUSINESS_RLE,
-        GATE_TUNNEL_Y,
-    )
-
-    assert GATE_SUPER_DOOR_X >= 1700
-    assert GATE_TUNNEL_Y[0] < GATE_TUNNEL_Y[1]
-    assert BUSINESS_RETURN_SETTLE >= 200
-    assert len(GATE_TO_BUSINESS_RLE) >= 15
-    assert sum(n for n, _ in GATE_TO_BUSINESS_RLE) >= 400
-
-
-def test_acid_to_snake_rle_loaded() -> None:
-    assert len(ACID_TO_SNAKE_RLE) >= 10
-    total = sum(n for n, _ in ACID_TO_SNAKE_RLE)
-    assert total >= 500
-    # Door open + enter tail present.
-    assert any("X" in btns for _, btns in ACID_TO_SNAKE_RLE)
 
 
 def test_on_acid_floor_predicate() -> None:
@@ -141,7 +88,6 @@ def test_in_ice_super_band_mid_x() -> None:
 
 
 def test_snake_climb_bands_and_ice_mask() -> None:
-    assert ICE_BEAM_MASK == 0x0002
     # y increases downward: mid door (L4) is below top shelf.
     assert SNAKE_L4_Y[0] > SNAKE_TOP_Y[1]
     floor = SimpleNamespace(

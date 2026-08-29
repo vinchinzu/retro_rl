@@ -1,0 +1,71 @@
+{
+  "command": "dump",
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/parlor_descent_enter.state",
+  "entry": {
+    "room_id_hex": "0x92FD",
+    "samus_x": 19,
+    "samus_y": 1163,
+    "pose": 12,
+    "facing": 4,
+    "movement_type": 1,
+    "vertical_direction": 0,
+    "velocity_y": 0,
+    "game_state": 11,
+    "moonwalk": 0,
+    "collected_items": "0x0000",
+    "i": 0,
+    "frame": 0
+  },
+  "samples": [
+    {
+      "room_id_hex": "0x92FD",
+      "samus_x": 19,
+      "samus_y": 1163,
+      "pose": 12,
+      "facing": 4,
+      "movement_type": 1,
+      "vertical_direction": 0,
+      "velocity_y": 0,
+      "game_state": 11,
+      "moonwalk": 0,
+      "collected_items": "0x0000",
+      "i": 0,
+      "frame": 0
+    },
+    {
+      "room_id_hex": "0x92FD",
+      "samus_x": 19,
+      "samus_y": 1163,
+      "pose": 12,
+      "facing": 4,
+      "movement_type": 1,
+      "vertical_direction": 0,
+      "velocity_y": 0,
+      "game_state": 11,
+      "moonwalk": 0,
+      "collected_items": "0x0000",
+      "i": 4,
+      "frame": 4
+    }
+  ],
+  "final": {
+    "room_id_hex": "0x92FD",
+    "samus_x": 19,
+    "samus_y": 1163,
+    "pose": 12,
+    "facing": 4,
+    "movement_type": 1,
+    "vertical_direction": 0,
+    "velocity_y": 0,
+    "game_state": 11,
+    "moonwalk": 0,
+    "collected_items": "0x0000"
+  },
+  "frames": 5,
+  "timing": {
+    "frames": 5,
+    "seconds": 0.083,
+    "clock": "00:00.08",
+    "ntsc_fps": 60.0988
+  }
+}

@@ -1,7 +1,7 @@
 """Quick headless boss-fight metrics from a save state.
 
 Supports heal modes (default: emergency) to match the production low-assist
-run and the slash_pattern_lab trial runner:
+run and the lab.slash_lab trial runner:
 
   - ``none``: no HP writes (pure survival stress)
   - ``emergency``: restore to 80 when HP <= 16 (production-like)
@@ -13,9 +13,9 @@ import argparse
 from typing import Any
 
 from retro_harness.env import make_env, reset_obs  # noqa: E402
-from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.assist import apply_emergency_hp  # noqa: E402
+from tmnt_iv.observe import HpDelta, policy_input  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR  # noqa: E402
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
@@ -40,11 +40,8 @@ def run_probe(
     policy = Stage1Policy()
     reset_obs(env)
     start = parse_game_state(env.get_ram(), frame=0)
-    prev_hp = start.health if 0 < start.health <= 0x60 else None
+    meter = HpDelta.start(start.health)
     prev_lives = start.lives
-    damage = 0
-    max_hit = 0
-    min_hp = prev_hp
     heals = 0
     reasons: dict[str, int] = {}
     boss_hp_start = int(start.extras.get("boss_hp", 0))
@@ -61,14 +58,7 @@ def run_probe(
             final = state
             if any(e.kind == 0x52 for e in state.living_enemies):
                 saw_form1 = True
-            if 0 < state.health <= 0x60:
-                if prev_hp is not None and state.health < prev_hp:
-                    hit = prev_hp - state.health
-                    damage += hit
-                    max_hit = max(max_hit, hit)
-                prev_hp = state.health
-                if min_hp is None or state.health < min_hp:
-                    min_hp = state.health
+            meter.note(state.health)
 
             # Emergency heal assist (production-like).
             if heal_mode == "emergency":
@@ -76,7 +66,7 @@ def run_probe(
                     heals += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
                     final = state
-                    prev_hp = state.health
+                    meter.note(state.health)
 
             if state.lives < prev_lives:
                 outcome = "life_loss"
@@ -98,17 +88,7 @@ def run_probe(
                 ) in {0x19, 0x04}:
                     outcome = "cleared"
                     break
-            tick = policy.tick(state)
-            action = (
-                tick.action.action
-                if tick.action is not None
-                else idle_action()
-            )
-            reason = (
-                tick.action.reason
-                if tick.action is not None
-                else tick.reason or "idle"
-            )
+            action, reason = policy_input(policy, state)
             reasons[reason] = reasons.get(reason, 0) + 1
             cam_delta = state.camera_x - prev_cam
             if reason.startswith("stall_") and not prev_reason.startswith("stall_"):
@@ -154,9 +134,9 @@ def run_probe(
         "end_stage": final.stage,
         "start_hp": start.health,
         "end_hp": final.health,
-        "min_hp": min_hp,
-        "damage_taken": damage,
-        "max_hit": max_hit,
+        "min_hp": meter.min_hp,
+        "damage_taken": meter.damage,
+        "max_hit": meter.max_hit,
         "heals": heals,
         "lives": f"{start.lives}->{final.lives}",
         "boss_hp": f"{boss_hp_start}->{int(final.extras.get('boss_hp', 0))}",

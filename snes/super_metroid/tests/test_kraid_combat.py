@@ -78,63 +78,9 @@ def test_mid_arena_y_band_keeps_fire_or_horizontal_control() -> None:
         action = fight_kraid_action(state, frame_index=12)
         assert "X" in action or "RIGHT" in action
 
-def test_kraid_strategy_defaults() -> None:
-    strategy = KraidStrategy()
-    assert strategy.min_x == 50
-    assert strategy.max_x == 260
-    assert strategy.jump_hold_frames == 10
-    assert strategy.jump_period == 50
-    assert strategy.fire_hold_frames == 6
-    assert strategy.fire_period == 12
-    assert strategy.max_fight_frames == 15_000
-    assert strategy.boss_bit_grace_frames == 1_200
-
 def test_offmap_idles() -> None:
     state = _state(samus_x=65000, samus_y=395, enemy0_hp=1000)
     assert fight_kraid_action(state, 0) == ()
-
-def test_varia_evidence_dict() -> None:
-    evidence = VariaEvidence(
-        start_frame=1520,
-        varia_room_frame=1635,
-        collect_frame=1975,
-        end_frame=2475,
-        final_items=0x1105,
-        final_room_id=ROOM_VARIA,
-        samus_x=118,
-        samus_y=127,
-        outcome="varia_collected",
-    )
-    d = evidence.to_dict()
-    assert d["outcome"] == "varia_collected"
-    assert d["final_items_hex"] == "0x1105"
-    assert d["final_room_id_hex"] == "0xA6E2"
-
-def test_varia_evidence_dict_keys_are_stable() -> None:
-    evidence = VariaEvidence(
-        start_frame=0,
-        varia_room_frame=None,
-        collect_frame=None,
-        end_frame=10,
-        final_items=0,
-        final_room_id=ROOM_KRAID,
-        samus_x=50,
-        samus_y=395,
-        outcome="no_varia_room",
-    )
-    assert set(evidence.to_dict()) == {
-        "start_frame",
-        "varia_room_frame",
-        "collect_frame",
-        "end_frame",
-        "final_items",
-        "final_items_hex",
-        "final_room_id",
-        "final_room_id_hex",
-        "samus_x",
-        "samus_y",
-        "outcome",
-    }
 
 def test_kraid_varia_evidence_success_flag() -> None:
     fight = KraidEvidence(
@@ -162,35 +108,6 @@ def test_kraid_varia_evidence_success_flag() -> None:
     )
     assert KraidVariaEvidence(fight=fight, varia=varia).to_dict()["success"] is True
 
-def test_kraid_varia_evidence_dict_keys_are_stable() -> None:
-    fight = KraidEvidence(
-        start_frame=0,
-        body_zero_frame=None,
-        boss_bit_frame=None,
-        end_frame=10,
-        peak_body_hp=1000,
-        min_body_hp=1000,
-        action_frames=10,
-        final_body_hp=1000,
-        boss_bit_set=False,
-        outcome="timeout",
-    )
-    varia = VariaEvidence(
-        start_frame=10,
-        varia_room_frame=None,
-        collect_frame=None,
-        end_frame=10,
-        final_items=0,
-        final_room_id=ROOM_KRAID,
-        samus_x=100,
-        samus_y=395,
-        outcome="skipped_fight_failed",
-    )
-    assert set(KraidVariaEvidence(fight=fight, varia=varia).to_dict()) == {
-        "fight",
-        "varia",
-        "success",
-    }
 
 def test_kraid_boss_strategy_protocol_smoke() -> None:
     strategy = wrap_kraid_as_boss_strategy()

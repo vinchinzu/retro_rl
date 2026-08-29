@@ -11,9 +11,7 @@ from zelda_i.level1_bow import (
     WEST_AISLE_X,
     WEST_DOOR_X,
     WEST_DOOR_Y,
-    level1_bow_stages,
     level1_bow_success,
-    level1_to_clear23_stages,
     make_bow22_controller,
 )
 from zelda_i.ram import (
@@ -29,7 +27,6 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.survival_spine import SPINE_THROUGH, SpineRun
 
 
 def _ram(**fields: int) -> np.ndarray:
@@ -44,19 +41,6 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_BOW] = fields.get("bow", 0)
     ram[ADDR_ARROWS] = fields.get("arrows", 0)
     return ram
-
-
-def test_bow_through_is_wired_and_stops_before_tf() -> None:
-    assert "level1-bow" in SPINE_THROUGH
-    assert SPINE_THROUGH.index("level1-bow") == SPINE_THROUGH.index("level1") + 1
-    names = [name for name, _, _ in level1_to_clear23_stages()]
-    assert names[0] == "clear52"
-    assert names[-1] == "clear23_key"
-    assert "backtrack44" not in names
-    stages = level1_bow_stages()
-    assert [name for name, _, _ in stages][-1] == "level1_bow_0x22"
-    run = SpineRun(through="level1-bow", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level1_bow_0x22"
 
 
 def test_bow22_occupancy_plus_stem_x112() -> None:

@@ -44,13 +44,11 @@ from retro_harness.actions import idle_action  # noqa: E402
 from retro_harness.ram_state import GameMode  # noqa: E402
 from retro_harness.segment_runner import configure_headless  # noqa: E402
 from tmnt_iv.assist import apply_emergency_hp  # noqa: E402
+from tmnt_iv.menus import RAPH_HARD_BOOT_LAST, raph_hard_boot_action  # noqa: E402
+from tmnt_iv.observe import HpDelta, living_hp, policy_input  # noqa: E402
 from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR  # noqa: E402
 from tmnt_iv.policy import Stage1Policy  # noqa: E402
 from tmnt_iv.ram import parse_game_state  # noqa: E402
-from tmnt_iv.scripts.record_full_hard_run import (  # noqa: E402
-    _BOOT_ACTIONS,
-    _boot_action,
-)
 from tmnt_iv.stages import RAPH_CHAR  # noqa: E402
 
 _SLASH = 0x50
@@ -106,9 +104,8 @@ def run_capture(
         ),
     }
     prev_stage = -1
-    prev_health: int | None = None
+    hp = HpDelta(count_zero=True)
     heals = 0
-    damage = 0
     char_seen: int | None = None
     done_reason = "max_frames"
 
@@ -145,26 +142,12 @@ def run_capture(
                 and state.player_x > 0
                 and state.stage <= 9
             )
-            if (
-                active
-                and prev_health is not None
-                and 0 <= state.health <= 0x60
-                and prev_health <= 0x60
-                and state.health < prev_health
-            ):
-                damage += prev_health - max(0, state.health)
-            if active and 0 < state.health <= 0x60:
+            if active:
+                hp.note(state.health)
                 if apply_emergency_hp(env, state.health):
                     heals += 1
                     state = parse_game_state(env.get_ram(), frame=frame)
-                    prev_health = state.health
-                else:
-                    prev_health = state.health
-            elif active and state.health == 0:
-                if apply_emergency_hp(env, state.health):
-                    heals += 1
-                    state = parse_game_state(env.get_ram(), frame=frame)
-                    prev_health = state.health
+                    hp.prev = state.health
 
             # Stage entry dumps (same moment as full-run splits).
             if (
@@ -181,9 +164,7 @@ def run_capture(
                     dump("stage7", state, frame)
                 prev_stage = state.stage
                 policy.reset()
-                prev_health = (
-                    state.health if 0 < state.health <= 0x60 else None
-                )
+                hp.prev = state.health if living_hp(state.health) else None
 
             if char_seen == RAPH_CHAR:
                 # Gate by stage — entity kind IDs are reused outside the
@@ -215,26 +196,21 @@ def run_capture(
                     done_reason = "shredder_captured"
                     break
 
-            if frame <= max(_BOOT_ACTIONS):
-                action = _boot_action(frame)
+            if frame <= RAPH_HARD_BOOT_LAST:
+                action = raph_hard_boot_action(frame)
             elif state.player_x == 0 or state.mode in {
                 GameMode.CUTSCENE,
                 GameMode.CONTINUE,
             }:
                 action = idle_action()
             else:
-                tick = policy.tick(state)
-                action = (
-                    tick.action.action
-                    if tick.action is not None
-                    else idle_action()
-                )
+                action, _reason = policy_input(policy, state)
             env.step(action)
 
             if frame and frame % 10000 == 0:
                 print(
                     f"frame {frame} stage={state.stage} event={hex(event)} "
-                    f"dmg={damage} heals={heals} "
+                    f"dmg={hp.damage} heals={heals} "
                     f"saved={[k for k, p in points.items() if p.saved]}",
                     flush=True,
                 )
@@ -244,7 +220,7 @@ def run_capture(
     report = {
         "char_seen": char_seen,
         "done_reason": done_reason,
-        "damage_taken": damage,
+        "damage_taken": hp.damage,
         "heals": heals,
         "captures": {k: asdict(v) for k, v in points.items()},
     }

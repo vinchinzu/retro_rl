@@ -27,7 +27,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Item gates | `item_gate_hops.py`, `item_gate_routes.py` | Candle / white sword / bomb shop NamedRoutes |
 | Dungeon treasures | `dungeon_treasures.py` | First-quest wiki items vs default-spine collection |
 | Combat helpers | `combat.py` + `combat_behaviors.py` | Hitbox swing gate + reusable enemy policies |
-| Continuous spine | `survival_spine.py` + `scripts/run_survival_spine.py` | One env, power-on, stop at first fail |
+| Continuous spine | `survival_spine.py` + `spine_hops.attach_hops` + `level*_spine` hop tables | One env, power-on, stop at first fail. New dest hops are `SpineHop` rows, not `*_stages`/`*_success` pairs. |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |
 
 ## Hard rules

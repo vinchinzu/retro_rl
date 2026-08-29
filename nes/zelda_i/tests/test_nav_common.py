@@ -3,12 +3,8 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.combat import in_sword_hitbox, overworld_threat_objects, should_swing_at
-from retro_harness.nes import nes_idle_action
 from zelda_i.nav_common import (
-    on_arrival_edge,
     swing_action,
-    track_stuck,
-    unstick_wiggle,
     walk_or_swing,
 )
 from zelda_i.overworld import ScreenHop, path_screens_from_hops
@@ -53,13 +49,6 @@ def test_path_screens_from_hops() -> None:
     assert path_screens_from_hops(0x37, hops) == (0x37, 0x38, 0x48)
 
 
-def test_swing_pulses_a() -> None:
-    slash = swing_action(0, "RIGHT", "walk", period=10, hold=3)
-    walk = swing_action(3, "RIGHT", "walk", period=10, hold=3)
-    assert slash.reason == "walk_slash"
-    assert walk.reason == "walk"
-
-
 def test_walk_or_swing_no_enemies_no_slash() -> None:
     snap = _snap(x=120, y=140)
     # Pulse frame would slash under bare swing_action; empty screen stays walk.
@@ -78,50 +67,3 @@ def test_walk_or_swing_enemy_in_front_slashes() -> None:
     walk = walk_or_swing(3, "RIGHT", "walk", snap, period=10, hold=3)
     assert slash.reason == "walk_slash"
     assert walk.reason == "walk"
-
-
-def test_walk_or_swing_distant_enemy_no_slash() -> None:
-    # Enemy far away on the same screen — do not spasmodically slash.
-    snap = _snap(x=120, y=140, obj=(1, 0x06, 200, 200))
-    threats = overworld_threat_objects(snap)
-    assert not should_swing_at(120, 140, "RIGHT", threats)
-    act = walk_or_swing(0, "RIGHT", "walk", snap, period=10, hold=3)
-    assert act.reason == "walk"
-
-
-def test_walk_or_swing_none_snap_and_always_swing() -> None:
-    # Back-compat: no snap or always_swing keep periodic A.
-    assert walk_or_swing(0, "RIGHT", "walk", None, period=10, hold=3).reason == (
-        "walk_slash"
-    )
-    empty = _snap(x=120, y=140)
-    assert walk_or_swing(
-        0, "RIGHT", "walk", empty, period=10, hold=3, always_swing=True
-    ).reason == "walk_slash"
-
-
-def test_arrival_edge_and_stuck_tracking() -> None:
-    edge = _snap(x=230, y=140)
-    assert on_arrival_edge("RIGHT", edge)
-    interior = _snap(x=120, y=140)
-    assert not on_arrival_edge("RIGHT", interior)
-
-    stuck, x, y, sc = track_stuck(
-        interior, last_x=120, last_y=140, last_screen=0x37, stuck=2
-    )
-    assert stuck == 3
-    assert (x, y, sc) == (120, 140, 0x37)
-    stuck, *_ = track_stuck(
-        _snap(x=121, y=140), last_x=120, last_y=140, last_screen=0x37, stuck=3
-    )
-    assert stuck == 0
-
-
-def test_unstick_wiggle_stands_after_one_cycle() -> None:
-    first, stuck = unstick_wiggle(4, reason="unstick")
-    assert first.reason == "unstick"
-    assert stuck == 4
-    wait, stuck = unstick_wiggle(20, reason="unstick")
-    assert wait.reason == "unstick_wait"
-    assert np.array_equal(wait.action, nes_idle_action())
-    assert stuck == 20

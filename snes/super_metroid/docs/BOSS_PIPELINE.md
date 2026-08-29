@@ -33,7 +33,7 @@ Never write boss, event, or item RAM to claim a win.
 
 | Boss | Status | Notes |
 |------|--------|-------|
-| Spore Spawn | Continuous (assisted bounce) + no-assist policy in progress | Assisted loop: `routes/kpdr/spore_spawn.py`. Clean policy: `combat/spore_spawn.py` (left-ledge ball + 2-missile windows). Residual: `docs/tasks/SPORE_NOASSIST.md` |
+| Spore Spawn | Continuous (assisted bounce) + no-assist policy in progress | Survival floor-bounce: `combat.spore_spawn.play_spore_spawn_floor_bounce`. Approach/exit hop: `routes/kpdr/spore_spawn.py`. Clean policy: `play_spore_spawn_fight` (left-ledge ball + 2-missile windows). Residual: `docs/tasks/SPORE_NOASSIST.md` |
 | Bomb Torizo | Continuous (hash-pinned replay) | Strategy + natural prove + PPO scaffolding |
 | Kraid | Wired continuous tip (`--to varia`); verify STATUS after green report | Full fight + Varia closeout |
 

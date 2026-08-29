@@ -15,7 +15,6 @@ from zelda_i.level1_bow_cellar import (
     STAIRS_STAND_Y,
     VACATED_SLOT_Y,
     CellarPhase,
-    level1_bow_cellar_stages,
     level1_bow_cellar_success,
     make_bow_cellar_controller,
     south_face_stand,
@@ -36,7 +35,6 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
-from zelda_i.survival_spine import SPINE_THROUGH, SpineRun
 
 
 def _ram(**fields: int) -> np.ndarray:
@@ -57,18 +55,6 @@ def _plant_block(ram: np.ndarray, slot: int, x: int, y: int) -> None:
     ram[ADDR_OBJ_TYPE + slot] = BLOCK_OBJECT_TYPE
     ram[ADDR_LINK_X + slot] = x
     ram[ADDR_LINK_Y + slot] = y
-
-
-def test_bow_cellar_through_is_wired_after_enter_stop() -> None:
-    assert "level1-bow-cellar" in SPINE_THROUGH
-    assert SPINE_THROUGH.index("level1-bow-cellar") == SPINE_THROUGH.index(
-        "level1-bow"
-    ) + 1
-    names = [name for name, _, _ in level1_bow_cellar_stages()]
-    assert names[-2] == "level1_bow_0x22"
-    assert names[-1] == "level1_bow_cellar"
-    run = SpineRun(through="level1-bow-cellar", success=True, boot_frames=199)
-    assert run.report()["stop"] == "level1_bow_cellar"
 
 
 def test_bow_cellar_uses_stable_south_face_to_push_west_block_up() -> None:

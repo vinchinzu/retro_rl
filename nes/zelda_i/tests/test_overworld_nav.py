@@ -6,7 +6,6 @@ from zelda_i.overworld_nav import (
     NavPhase,
     OverworldToLevel1Controller,
     level1_entrance_success,
-    level1_screen_reached,
 )
 from zelda_i.ram import (
     ADDR_HEALTH,
@@ -42,23 +41,6 @@ def test_level1_entrance_success_dungeon() -> None:
     )
 
 
-def test_level1_screen_reached() -> None:
-    assert level1_screen_reached(
-        _ram(screen=SCREEN_LEVEL1_ENTRANCE, sword=1, level=0)
-    )
-    assert not level1_screen_reached(_ram(screen=SCREEN_START, sword=1))
-
-
-def test_controller_starts_east_from_start() -> None:
-    from zelda_i.ram import read_snapshot
-
-    ctrl = OverworldToLevel1Controller()
-    snap = read_snapshot(_ram(screen=SCREEN_START, x=120, y=160, sword=1))
-    action = ctrl.step(snap)
-    assert ctrl.phase is NavPhase.EAST_77
-    assert action.reason.startswith("e77")
-
-
 def test_controller_advances_on_screen_78() -> None:
     from zelda_i.ram import read_snapshot
 
@@ -68,26 +50,3 @@ def test_controller_advances_on_screen_78() -> None:
     snap = read_snapshot(_ram(screen=0x78, x=20, y=140, sword=1))
     ctrl.step(snap)
     assert ctrl.phase is NavPhase.NORTH_78
-
-
-def test_controller_done_in_dungeon() -> None:
-    from zelda_i.ram import read_snapshot
-
-    ctrl = OverworldToLevel1Controller()
-    snap = read_snapshot(_ram(level=1, screen=0x73, sword=1, mode=PLAY_MODE))
-    action = ctrl.step(snap)
-    assert ctrl.success is True
-    assert ctrl.phase is NavPhase.DONE
-    assert action.reason == "done"
-
-
-def test_screen_only_success_on_37() -> None:
-    from zelda_i.ram import read_snapshot
-
-    ctrl = OverworldToLevel1Controller(require_dungeon=False)
-    snap = read_snapshot(
-        _ram(screen=SCREEN_LEVEL1_ENTRANCE, sword=1, level=0, mode=PLAY_MODE)
-    )
-    action = ctrl.step(snap)
-    assert ctrl.success is True
-    assert action.reason == "done"

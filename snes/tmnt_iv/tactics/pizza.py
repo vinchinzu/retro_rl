@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from retro_harness.actions import buttons
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import GameMode, GameState
@@ -9,6 +11,24 @@ from tmnt_iv.ram import LEO_MAX_HP
 
 # Post-pickup step-out; 6f lines up Baxter entry for the Clean clear.
 _PIZZA_DISENGAGE_FRAMES = 6
+_UNDERFOOT_ADX = 14
+_UNDERFOOT_ADY = 18
+_WALK_AXIS_SLACK = 4
+
+
+def _underfoot(dx: int, dy: int) -> bool:
+    """True when the box is close enough to mash Y."""
+    return abs(dx) <= _UNDERFOOT_ADX and abs(dy) <= _UNDERFOOT_ADY
+
+
+def _walk_dirs(dx: int, dy: int) -> list[str]:
+    """Horizontal then vertical walk-to buttons (empty when already on the box)."""
+    dirs: list[str] = []
+    if abs(dx) > _WALK_AXIS_SLACK:
+        dirs.append("RIGHT" if dx > 0 else "LEFT")
+    if abs(dy) > _WALK_AXIS_SLACK:
+        dirs.append("DOWN" if dy > 0 else "UP")
+    return dirs
 
 
 class PizzaSeek:
@@ -60,71 +80,84 @@ class PizzaSeek:
         # Alleycat / Sewer: underfoot always; far seek only between waves.
         # Mid-wave seek desynced emergency Stage2 190→479 dmg.
         if state.stage in self._BETWEEN_WAVE_STAGES:
-            if not (0 < state.health < LEO_MAX_HP):
-                return None
-            pickups = state.extras.get("pickups") or ()
-            if not pickups:
-                self._reset_pickup_mash()
-                return None
-            live = {
-                (int(p[0]), int(p[1]))
-                for p in pickups
-            }
-            self._skip &= live
-            reachable = [
-                p
-                for p in pickups
-                if (int(p[0]), int(p[1])) not in self._skip
-            ]
-            if not reachable:
-                self._reset_pickup_mash()
-                return None
-            target = min(
-                reachable,
-                key=lambda p: abs(p[0] - state.player_x)
-                + abs(p[1] - state.player_y),
-            )
-            dx = int(target[0]) - state.player_x
-            dy = int(target[1]) - state.player_y
-            dist = abs(dx) + abs(dy)
-            key = (int(target[0]), int(target[1]))
-            if abs(dx) <= 14 and abs(dy) <= 18:
-                if self._give_up_uncollected(state, key):
-                    return None
-                return FrameAction(action=buttons("Y"), reason="pizza_pickup")
-            # Between waves only — dumpster-aware RIGHT toward the box.
-            if state.living_enemies or dist > self._FAR_DIST:
-                self._reset_pickup_mash()
-                return None
-            dirs: list[str] = []
-            if abs(dx) > 4:
-                dirs.append("RIGHT" if dx > 0 else "LEFT")
-            if abs(dy) > 4:
-                dirs.append("DOWN" if dy > 0 else "UP")
-            if not dirs:
-                if self._give_up_uncollected(state, key):
-                    return None
-                return FrameAction(action=buttons("Y"), reason="pizza_pickup")
-            self._reset_pickup_mash()
-            return FrameAction(action=buttons(*dirs), reason="pizza_seek")
+            return self._between_wave_seek(state)
         if state.stage != 0:
             return None
+        return self._stage0_seek(state)
+
+    def _pickups(self, state: GameState) -> Sequence[tuple[int, ...]]:
+        return state.extras.get("pickups") or ()
+
+    def _nearest_box(
+        self,
+        state: GameState,
+        pickups: Sequence[tuple[int, ...]],
+        *,
+        skip: bool,
+    ) -> tuple[int, ...] | None:
+        """Closest on-screen box; optionally drop uncollected skips."""
+        if skip:
+            live = {(int(p[0]), int(p[1])) for p in pickups}
+            self._skip &= live
+            boxes = [p for p in pickups if (int(p[0]), int(p[1])) not in self._skip]
+        else:
+            boxes = list(pickups)
+        if not boxes:
+            return None
+        return min(
+            boxes,
+            key=lambda p: abs(p[0] - state.player_x) + abs(p[1] - state.player_y),
+        )
+
+    def _between_wave_seek(self, state: GameState) -> FrameAction | None:
+        """Stages 1–2: underfoot always; far seek only with an empty screen."""
+        if not (0 < state.health < LEO_MAX_HP):
+            return None
+        pickups = self._pickups(state)
+        if not pickups:
+            self._reset_pickup_mash()
+            return None
+        target = self._nearest_box(state, pickups, skip=True)
+        if target is None:
+            self._reset_pickup_mash()
+            return None
+        dx = int(target[0]) - state.player_x
+        dy = int(target[1]) - state.player_y
+        dist = abs(dx) + abs(dy)
+        key = (int(target[0]), int(target[1]))
+        if _underfoot(dx, dy):
+            if self._give_up_uncollected(state, key):
+                return None
+            return FrameAction(action=buttons("Y"), reason="pizza_pickup")
+        # Between waves only — dumpster-aware RIGHT toward the box.
+        if state.living_enemies or dist > self._FAR_DIST:
+            self._reset_pickup_mash()
+            return None
+        dirs = _walk_dirs(dx, dy)
+        if not dirs:
+            if self._give_up_uncollected(state, key):
+                return None
+            return FrameAction(action=buttons("Y"), reason="pizza_pickup")
+        self._reset_pickup_mash()
+        return FrameAction(action=buttons(*dirs), reason="pizza_seek")
+
+    def _stage0_seek(self, state: GameState) -> FrameAction | None:
+        """Big Apple: HP-adaptive max_dist; no uncollected give-up."""
         # After a pickup in a crowd, step out before resuming the poke.
         if self._disengage_frames > 0:
             self._disengage_frames -= 1
             return FrameAction(action=buttons("LEFT"), reason="pizza_disengage")
         if not (0 < state.health < LEO_MAX_HP):
             return None
-        pickups = state.extras.get("pickups") or ()
+        pickups = self._pickups(state)
         if not pickups:
             return None
         # Baxter: only break the poke for pizza when Clean survival needs it.
         if state.boss_active and state.health > self._BOSS_PIZZA_HP:
             return None
-        target = min(
-            pickups,
-            key=lambda p: abs(p[0] - state.player_x) + abs(p[1] - state.player_y),
-        )
+        target = self._nearest_box(state, pickups, skip=False)
+        if target is None:
+            return None
         tx, ty = int(target[0]), int(target[1])
         dx = tx - state.player_x
         dy = ty - state.player_y
@@ -158,14 +191,10 @@ class PizzaSeek:
             and not state.boss_active
         ):
             return None
-        if abs(dx) <= 14 and abs(dy) <= 18:
+        if _underfoot(dx, dy):
             self._disengage_frames = _PIZZA_DISENGAGE_FRAMES
             return FrameAction(action=buttons("Y"), reason="pizza_pickup")
-        dirs: list[str] = []
-        if abs(dx) > 4:
-            dirs.append("RIGHT" if dx > 0 else "LEFT")
-        if abs(dy) > 4:
-            dirs.append("DOWN" if dy > 0 else "UP")
+        dirs = _walk_dirs(dx, dy)
         if state.frame % 3 == 0:
             dirs.append("Y")
         if not dirs:

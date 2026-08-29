@@ -95,14 +95,34 @@ The implementation is `zelda_i.assist.poke_link_position`.
 This exception does not authorize walking the east door unarmed or fighting
 Gohma without bow+arrows.
 
+### Wooden arrows at L6 Gohma (operator exception, 2026-08-28)
+
+Bow is earned on the Survival L1 splice (`ADDR_BOW=1`). Wooden arrows are
+an OW shop item (~80R) not yet on the tape. One disclosed write grants
+**wooden arrows** so the same power-on session can kill Gohma. **Not Clean.**
+Do not write `ADDR_BOW`. Do not grant silver arrows (`ADDR_ARROWS=2`).
+
+Allowed fields only:
+
+| Field | Address / data key | Rule |
+|-------|--------------------|------|
+| arrows | `$0659` / `ADDR_ARROWS` | Once, in play `0x1C`, set to `1` (wooden) if still 0. |
+| selected_item | `$0656` / `ADDR_SELECTED_ITEM` | B-slot `2` (arrows) of the just-granted item. |
+
+The implementation is `zelda_i.assist.poke_wooden_arrows`. List the write in
+the Gohma controller `inventory_assist`. `progression_writes` and
+`capacity_writes` stay 0. `bow_writes` stay 0. Natural 80R shop buy replaces
+this on the later resource pass.
+
 This exception does not authorize speculative top-ups on every frame. Apply it
 immediately before a known bomb-consuming stage, preserve all other inventory,
 and record the before/after count and semantic stage name.
 
 Do **not** grant an item Link has not found on this session: sword upgrade,
-boomerang / magical boomerang, bow, arrows, candle, whistle, raft,
+boomerang / magical boomerang, bow, candle, whistle, raft,
 stepladder, book, ring, bracelet, letter, potion, rod, magic key, map,
-compass, or triforce bits.
+compass, or triforce bits. Wooden arrows at Gohma `0x1C` are the exception
+above; silver arrows stay forbidden.
 
 ## Forbidden writes
 

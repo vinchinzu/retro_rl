@@ -3,8 +3,12 @@
 HappyLee-style **button-stream import → harness replay → annotate → re-anchor**.
 Movies are vendored under `tas/ref/`; slices under `tas/slices/` (`snes12_rle`).
 
-Primary refs: Sniq any% (lsnes LSMV #3653M), Sniq 100% (BK2). See
-[`tas/README.md`](../tas/README.md).
+Primary refs: Sniq any% (lsnes LSMV #3653M), Sniq 100% (BK2). Vanilla
+corpus (low%, RBO, X-ray, isolated rooms) is [`tas/catalog.py`](../tas/catalog.py).
+See [`tas/README.md`](../tas/README.md). Do not treat this catalog as moonfall
+policy work — that lives in `routes/skills/moonfall.py`. Named button-pattern
+windows (arm pump, mockball) come from [`tas/skills_extract.py`](../tas/skills_extract.py)
+over `snes12_rle`; they are not graph edges.
 
 > **Long path (preferred for full-movie truth):** native-core oracle under
 > BizHawk BSNES / lsnes — see [`TAS_BSNES_ORACLE.md`](TAS_BSNES_ORACLE.md) and

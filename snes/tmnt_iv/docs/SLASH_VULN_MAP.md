@@ -6,7 +6,7 @@ implementer pass.
 
 | Item | Value |
 |------|--------|
-| Probe script | `tmnt_iv/scripts/probe_slash_vuln.py` |
+| Probe script | `tmnt_iv/lab/slash_vuln.py` |
 | State | `FullHardBoss5` (spawn HP **160**, stage 4, event `0x0A`) |
 | Method | Production thrash (`Stage1Policy` → `SlashTactics`) + constant player HP top-up |
 | Sample | 40k frames, **28** boss HP drops (160 → 32), + 20k/25k player-damage passes |
@@ -17,7 +17,7 @@ Re-run:
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_slash_vuln \
+  uv run python -m tmnt_iv.lab.slash_vuln \
   --state FullHardBoss5 --max-frames 40000 --pre-hit 20 --mode thrash
 # JSON → tmnt_iv/recordings/slash_vuln_probe/FullHardBoss5_thrash.json
 ```

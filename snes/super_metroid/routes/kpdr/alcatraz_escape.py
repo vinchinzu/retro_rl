@@ -16,6 +16,54 @@ from super_metroid.routes.runtime import ControllerSession, hold
 
 _GROUNDED_POSES = frozenset({1, 2, 5, 6, 7, 8, 9, 10})
 _PROBE_MORPH_POSES = MORPH_POSES | frozenset({165, 166, 167})
+_ROLLOUT_MORPH_POSES = _PROBE_MORPH_POSES
+
+# World pins from live parlor_chimney_double recon + Alcatraz-escape refs.
+SHAFT_LIP_Y = 210
+ROLLOUT_MAX_X = 760
+ROLLOUT_MAX_Y = 230
+_LEFT_WALL_BASE = ((795, 820), (535, 550))
+_MID_LEDGE = ((820, 838), (450, 470))
+_LOWER_WJ_BAND = ((795, 815), (350, 375))
+
+
+def at_left_wall_base(state) -> bool:
+    x_range, y_range = _LEFT_WALL_BASE
+    return (
+        int(state.room_id) == ROOM_PARLOR
+        and x_range[0] <= int(state.samus_x) <= x_range[1]
+        and y_range[0] <= int(state.samus_y) <= y_range[1]
+        and int(state.pose) in _GROUNDED_POSES
+    )
+
+
+def at_mid_ledge(state) -> bool:
+    x_range, y_range = _MID_LEDGE
+    return (
+        int(state.room_id) == ROOM_PARLOR
+        and x_range[0] <= int(state.samus_x) <= x_range[1]
+        and y_range[0] <= int(state.samus_y) <= y_range[1]
+        and int(state.pose) in _GROUNDED_POSES
+    )
+
+
+def at_shaft_lip(state) -> bool:
+    """Air/latch in the morph-hole band. y<=210 is the lip class."""
+    return (
+        int(state.room_id) == ROOM_PARLOR
+        and int(state.samus_y) <= SHAFT_LIP_Y
+        and 790 <= int(state.samus_x) <= 870
+    )
+
+
+def at_alcatraz_rollout(state) -> bool:
+    """Morph ball left of the chimney opening, still in Parlor."""
+    return (
+        int(state.room_id) == ROOM_PARLOR
+        and int(state.samus_x) <= ROLLOUT_MAX_X
+        and int(state.samus_y) <= ROLLOUT_MAX_Y
+        and int(state.pose) in _ROLLOUT_MORPH_POSES
+    )
 
 
 @dataclass(frozen=True)
@@ -121,18 +169,14 @@ def _land_left_wall_base(session: ControllerSession) -> int:
         hold(session, 18, reason="alcatraz_base_land")
         _unmorph_probe_pose(session)
         state = session.state
-        if (
-            state.samus_y <= 550
-            and state.samus_x <= 820
-            and state.pose in _GROUNDED_POSES
-        ):
+        if at_left_wall_base(state):
             break
 
     _require_geometry(
         session,
         "left-wall base",
-        x_range=(795, 820),
-        y_range=(535, 550),
+        x_range=_LEFT_WALL_BASE[0],
+        y_range=_LEFT_WALL_BASE[1],
     )
     return session.frame
 
@@ -143,7 +187,7 @@ def _reach_mid_ledge(session: ControllerSession) -> int:
         hold(session, 40, "RIGHT", "A", reason="alcatraz_ledge_cross")
         hold(session, 2, "LEFT", reason="alcatraz_ledge_turn")
         hold(session, 28, "LEFT", "A", reason="alcatraz_ledge_latch")
-        if (
+        if at_mid_ledge(session.state) or (
             session.state.samus_y <= 470
             and session.state.pose in _GROUNDED_POSES
         ):
@@ -152,8 +196,8 @@ def _reach_mid_ledge(session: ControllerSession) -> int:
     _require_geometry(
         session,
         "mid ledge",
-        x_range=(820, 838),
-        y_range=(450, 470),
+        x_range=_MID_LEDGE[0],
+        y_range=_MID_LEDGE[1],
     )
     return session.frame
 
@@ -179,8 +223,8 @@ def _climb_chimney(session: ControllerSession) -> tuple[int, int]:
     _require_geometry(
         session,
         "lower walljumps",
-        x_range=(795, 815),
-        y_range=(350, 375),
+        x_range=_LOWER_WJ_BAND[0],
+        y_range=_LOWER_WJ_BAND[1],
     )
 
     _play_walljump_pulse(
@@ -208,19 +252,18 @@ def _climb_chimney(session: ControllerSession) -> tuple[int, int]:
     else:
         raise RuntimeError(f"Alcatraz final walljump missed: {session.state}")
 
-    # Holding jump after a walljump makes DOWN an instant aerial Morph. LEFT
-    # then carries the ball through the Alcatraz opening.
+    morph_frame = _instant_morph_rollout(session)
+    return walljump_frame, morph_frame
+
+
+def _instant_morph_rollout(session: ControllerSession) -> int:
+    """WJ mockball: keep A, tap DOWN once, then roll LEFT through the hole."""
     hold(session, 1, "DOWN", "A", reason="alcatraz_instant_morph")
     morph_frame = session.frame
     for _ in range(80):
         hold(session, 1, "LEFT", reason="alcatraz_escape")
-        state = session.state
-        if (
-            state.samus_x <= 760
-            and state.samus_y <= 230
-            and state.pose in MORPH_POSES
-        ):
-            return walljump_frame, morph_frame
+        if at_alcatraz_rollout(session.state):
+            return morph_frame
     raise RuntimeError(f"Alcatraz Morph opening missed: {session.state}")
 
 
@@ -258,6 +301,13 @@ def play_alcatraz_escape(session: ControllerSession) -> AlcatrazEscapeEvidence:
 
 __all__ = [
     "AlcatrazEscapeEvidence",
+    "ROLLOUT_MAX_X",
+    "ROLLOUT_MAX_Y",
+    "SHAFT_LIP_Y",
     "WallJumpPulse",
+    "at_alcatraz_rollout",
+    "at_left_wall_base",
+    "at_mid_ledge",
+    "at_shaft_lip",
     "play_alcatraz_escape",
 ]

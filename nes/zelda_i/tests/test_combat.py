@@ -7,14 +7,10 @@ from zelda_i.combat import (
     FACING_EAST,
     FACING_NORTH,
     FACING_SOUTH,
-    FACING_WEST,
     SWORD_HALF_WIDTH,
     SWORD_REACH,
     THREAT_RADIUS,
-    direction_to_facing,
-    facing_to_direction,
     in_sword_hitbox,
-    manhattan,
     nearest_enemy,
     overworld_threat_objects,
     should_swing_at,
@@ -71,21 +67,6 @@ def _snap(
         open_doorway_mask=0,
         objects=objects,
     )
-
-
-def test_direction_facing_roundtrip() -> None:
-    assert direction_to_facing("UP") == FACING_NORTH
-    assert direction_to_facing("down") == FACING_SOUTH
-    assert direction_to_facing("RIGHT") == FACING_EAST
-    assert direction_to_facing("LEFT") == FACING_WEST
-    assert facing_to_direction(FACING_NORTH) == "UP"
-    assert facing_to_direction(FACING_SOUTH) == "DOWN"
-    assert facing_to_direction(FACING_EAST) == "RIGHT"
-    assert facing_to_direction(FACING_WEST) == "LEFT"
-
-
-def test_manhattan() -> None:
-    assert manhattan(10, 20, 13, 17) == 6
 
 
 def test_in_sword_hitbox_front_true_behind_false() -> None:

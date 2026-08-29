@@ -9,11 +9,9 @@ from zelda_i.level6_east3a import (
     EAST_DOOR,
     SOUTH_AROUND_X,
     SOUTH_LANE_Y,
-    level6_east3a_stages,
     level6_east3a_success,
     make_east3a_controller,
 )
-from zelda_i.level6_spine import L6_STOPS, L6_THROUGH
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_KEYS,
@@ -47,14 +45,6 @@ def _ram(**fields: int) -> np.ndarray:
 def test_east3a_diagnostic_and_spit_stays_on_south_lane() -> None:
     from retro_harness.nes import nes_action
 
-    stages = level6_east3a_stages()
-    assert [name for name, _, _ in stages] == ["level6_east_0x3a"]
-    assert "level6-east3a" in L6_THROUGH
-    assert L6_STOPS["level6-east3a"] == "level6_east_0x3a"
-    assert L6_THROUGH[L6_THROUGH.index("level6-cellar08") + 1] == "level6-south1d"
-    assert L6_THROUGH[L6_THROUGH.index("level6-south1d") + 1] == "level6-west2d"
-    assert L6_THROUGH[L6_THROUGH.index("level6-west2d") + 1] == "level6-north2c"
-    assert L6_THROUGH[L6_THROUGH.index("level6-north2c") + 1] == "level6-east3a"
     ctl = make_east3a_controller()
     act = ctl.step(read_snapshot(_ram()))
     assert act.reason == "south_around_path"

@@ -9,10 +9,10 @@ import numpy as np
 from PIL import Image
 
 from retro_harness.env import make_env, reset_obs
-from retro_harness.actions import idle_action
 from retro_harness.segment_runner import configure_headless
 from tmnt_iv.assist import apply_emergency_hp
 from tmnt_iv.grind_knobs import override_knobs
+from tmnt_iv.observe import HpDelta, policy_input
 from tmnt_iv.paths import GAME, GAME_DIR
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import parse_game_state
@@ -37,11 +37,8 @@ def run_knob_probe(
         policy = Stage1Policy()
         reset_obs(env)
         start = parse_game_state(env.get_ram(), frame=0)
-        prev_hp = start.health if 0 < start.health <= 0x60 else None
+        meter = HpDelta.start(start.health)
         prev_lives = start.lives
-        damage = 0
-        max_hit = 0
-        min_hp = prev_hp
         heals = 0
         reasons: dict[str, int] = {}
         boss_hp_start = int(start.extras.get("boss_hp", 0))
@@ -51,21 +48,14 @@ def run_knob_probe(
             for frame in range(1, max_frames + 1):
                 state = parse_game_state(env.get_ram(), frame=frame)
                 final = state
-                if 0 < state.health <= 0x60:
-                    if prev_hp is not None and state.health < prev_hp:
-                        hit = prev_hp - state.health
-                        damage += hit
-                        max_hit = max(max_hit, hit)
-                    prev_hp = state.health
-                    if min_hp is None or state.health < min_hp:
-                        min_hp = state.health
+                meter.note(state.health)
 
                 if heal_mode == "emergency":
                     if apply_emergency_hp(env, state.health):
                         heals += 1
                         state = parse_game_state(env.get_ram(), frame=frame)
                         final = state
-                        prev_hp = state.health
+                        meter.note(state.health)
 
                 if state.lives < prev_lives:
                     outcome = "life_loss"
@@ -95,17 +85,7 @@ def run_knob_probe(
                         outcome = "cleared"
                         break
 
-                tick = policy.tick(state)
-                action = (
-                    tick.action.action
-                    if tick.action is not None
-                    else idle_action()
-                )
-                reason = (
-                    tick.action.reason
-                    if tick.action is not None
-                    else tick.reason or "idle"
-                )
+                action, reason = policy_input(policy, state)
                 reasons[reason] = reasons.get(reason, 0) + 1
                 if action[8]:
                     outcome = "forbidden_a"
@@ -145,9 +125,9 @@ def run_knob_probe(
         "end_stage": final.stage,
         "start_hp": start.health,
         "end_hp": final.health,
-        "min_hp": min_hp,
-        "damage_taken": damage,
-        "max_hit": max_hit,
+        "min_hp": meter.min_hp,
+        "damage_taken": meter.damage,
+        "max_hit": meter.max_hit,
         "heals": heals,
         "lives": f"{start.lives}->{final.lives}",
         "boss_hp": f"{boss_hp_start}->{int(final.extras.get('boss_hp', 0))}",

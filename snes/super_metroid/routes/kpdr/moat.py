@@ -40,6 +40,8 @@ from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.door_exit import beam_open_door
 from super_metroid.routes.skills.knockback import escape_knockback_spin, is_knockback
 from super_metroid.routes.skills import shinespark as spark
+from super_metroid.routes.kpdr.room_ids import ROOM_WS_ENTRANCE
+from super_metroid.routes.kpdr.west_ocean import play_west_ocean_to_ws
 from super_metroid.routes.skills.shinespark import ChargeMode
 
 ROOM_KIHUNTER = 0x948C
@@ -627,6 +629,53 @@ def play_moat_cross(session: ControllerSession) -> SuperMetroidState:
     )
 
 
+def play_moat_to_west_ocean(
+    session: ControllerSession,
+    *,
+    charge_mode: ChargeMode = "full",
+) -> SuperMetroidState:
+    """Moat ``0x95FF`` (or Kihunter) → West Ocean via pure shinespark."""
+    st = session.state
+    if st.room_id not in (ROOM_KIHUNTER, ROOM_MOAT):
+        raise TimeoutError(
+            f"moat_to_west_ocean: expected Kihunter 0x948C or Moat 0x95FF, "
+            f"got 0x{st.room_id:04X}"
+        )
+    return play_moat_shinespark(session, charge_mode=charge_mode)
+
+
+def play_moat_to_ws(
+    session: ControllerSession,
+    *,
+    moat_charge_mode: ChargeMode = "full",
+    wo_charge_mode: ChargeMode = "stutter",
+    label: str = "moat_to_ws",
+) -> SuperMetroidState:
+    """Compose Kihunter/Moat → West Ocean → WS ``0xCA08``."""
+    st = session.state
+    if st.room_id == ROOM_WS_ENTRANCE:
+        if st.door_transition == 0 and st.game_state == 8:
+            return st
+        hold(session, 12, reason=f"{label}_ws_settle")
+        return session.state
+
+    if st.room_id in (ROOM_KIHUNTER, ROOM_MOAT):
+        play_moat_to_west_ocean(session, charge_mode=moat_charge_mode)
+        st = session.state
+
+    if st.room_id == ROOM_WEST_OCEAN:
+        return play_west_ocean_to_ws(
+            session,
+            charge_mode=wo_charge_mode,
+            label=f"{label}_wo",
+        )
+
+    raise TimeoutError(
+        f"{label}: expected Kihunter/Moat/West Ocean/WS entrance, "
+        f"got 0x{st.room_id:04X} xy=({st.samus_x},{st.samus_y})"
+    )
+
+
 __all__ = [
     "ROOM_KIHUNTER",
     "ROOM_MOAT",
@@ -643,5 +692,7 @@ __all__ = [
     "play_leave_moat_to_kihunter",
     "play_moat_cross",
     "play_moat_shinespark",
+    "play_moat_to_west_ocean",
+    "play_moat_to_ws",
     "play_open_kihunter_moat_door",
 ]
