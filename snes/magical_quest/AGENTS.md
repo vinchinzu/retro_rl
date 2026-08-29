@@ -20,8 +20,8 @@ goal, not the first milestone.
 
 ## Next milestone
 
-From `Stage1.state`, clear the first room/segment to the next door or
-checkpoint.
+Enter the 1-1 house door (wizard room). RIGHT from `Stage1.state` already
+pins Mickey on the door (~788 frames, HP>0). UP has not opened it yet.
 
 ## Norms
 
@@ -35,9 +35,12 @@ checkpoint.
 - `scripts/boot_probe.py` — reset → one-player/default Mickey → Stage 1
 - `scripts/ram_probe.py` — controlled LEFT/RIGHT progress deltas
 - `scripts/setup_rom.py` — extract/link the shared ROM
+- `python -m magical_quest.policy` — RIGHT from `Stage1.state` to the 1-1 door
 
 ## RAM quick ref
 
-Player/world X `0x0024`, horizontal progress `0x002A`, gameplay-active
-`0x02C0` (`1`). Player Y/velocity/grounded, health, room, and enemies remain
-open.
+Player/world X `0x0024`, screen Y `0x0027`, horizontal progress `0x002A`,
+gameplay-active `0x02C0` (`1`), current hearts `0x02B1`, max hearts `0x02B0`,
+lives `0x0372`. First-door stop: `player_x >= 374` and `player_y >= 36` and
+`health > 0` (house wall, ~788 frames of RIGHT). Velocity/grounded, room id
+after entering the house, and enemies remain open.

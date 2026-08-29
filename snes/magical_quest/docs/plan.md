@@ -9,9 +9,10 @@ forgiving side-scrolling platformer (run, jump, transform abilities)
 
 ## Useful RAM (targets)
 
-Confirmed: player/world X `0x0024`, horizontal progress `0x002A`, gameplay
-active `0x02C0`. Still needed: player Y/velocity, health, lives, room/stage,
-grounded flag, transformation id, and camera semantics.
+Confirmed: player/world X `0x0024`, screen Y `0x0027`, horizontal progress
+`0x002A`, gameplay active `0x02C0`, current/max hearts `0x02B1`/`0x02B0`,
+lives `0x0372`. First-door stop: `x >= 374` and `y >= 36` and `HP > 0`.
+Still needed: velocity, grounded, room id after the house door, enemies.
 
 The confirmed fields are in
 `custom_integrations/MagicalQuest-Snes/data.json`; extend them with controlled

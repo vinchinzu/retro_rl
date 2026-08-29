@@ -4,12 +4,28 @@
       "address": 36,
       "type": "<u2"
     },
+    "player_y": {
+      "address": 39,
+      "type": "|u1"
+    },
     "progress_x": {
       "address": 42,
       "type": "<u2"
     },
+    "health_max": {
+      "address": 688,
+      "type": "|u1"
+    },
+    "health": {
+      "address": 689,
+      "type": "|u1"
+    },
     "gameplay_active": {
       "address": 704,
+      "type": "|u1"
+    },
+    "lives": {
+      "address": 882,
       "type": "|u1"
     }
   }
