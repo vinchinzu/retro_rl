@@ -34,8 +34,9 @@ promotion over one-off full-game routes.
   `stairs_to_courtyard` (no open-loop LEFT×100+DOWN×250). Courtyard geometry
   lives in `maps/screen_1b_courtyard.json`; `pocket_to_main_hall` loads
   approach/push from the map (bush-cut locomotion remains). Live verified
-  FighterSword → outdoors → room `0x61`. Remaining: castle-grounds → hole
-  still uses measured open-loop approach + bush-lift candidates.
+  FighterSword → outdoors → room `0x61`. Castle-grounds → hole approach
+  waypoints live in `maps/screen_1b_grounds.json`; bush-lift stays measured
+  candidates.
 - **Tip exit after 0x50 (2026-08-02):** exhaustive probe — only forward exit is
   east→`0x01` (natural_entry graph edge). Exploration chain
   `0x01→0x52→0x62`; `maps/room_70.json` seed; no B1 stairs isolated yet.

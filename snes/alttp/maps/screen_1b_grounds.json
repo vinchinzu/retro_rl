@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_1b_grounds",
+  "outdoors": true,
+  "screenId": 27,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Hyrule Castle grounds (screen 0x1B spawn → secret hole)",
+  "measured": "2026-07-29",
+  "sourceState": "HyruleCastleGrounds",
+  "z3Label": "Hyrule Castle Secret Entrance Drop",
+  "points": [
+    {
+      "label": "grounds_spawn",
+      "xy": [2386, 2528],
+      "role": "spawn",
+      "notes": "HyruleCastleGrounds controllable spawn; not hole approach"
+    },
+    {
+      "label": "north_of_spawn",
+      "xy": [2386, 2504],
+      "role": "waypoint",
+      "notes": "First UP off spawn before the south hedge jogs"
+    },
+    {
+      "label": "south_west_lane",
+      "xy": [2290, 2504],
+      "role": "waypoint",
+      "notes": "West along the south fence"
+    },
+    {
+      "label": "south_hedge_n1",
+      "xy": [2288, 2483],
+      "role": "waypoint",
+      "notes": "North jog through south hedges"
+    },
+    {
+      "label": "south_hedge_w1",
+      "xy": [2272, 2483],
+      "role": "waypoint",
+      "notes": "West jog through south hedges"
+    },
+    {
+      "label": "south_hedge_gap",
+      "xy": [2272, 2459],
+      "role": "waypoint",
+      "notes": "North into the west-lane gap"
+    },
+    {
+      "label": "west_lane",
+      "xy": [2085, 2456],
+      "role": "waypoint",
+      "notes": "West corridor south of the castle (around the soldier-blocked south gate)"
+    },
+    {
+      "label": "west_north_corner",
+      "xy": [2080, 2247],
+      "role": "waypoint",
+      "notes": "NW corner before crossing east to the hole axis"
+    },
+    {
+      "label": "east_to_hole_axis",
+      "xy": [2391, 2248],
+      "role": "waypoint",
+      "notes": "East to the hole's x-axis"
+    },
+    {
+      "label": "north_hedge",
+      "xy": [2391, 1960],
+      "role": "waypoint",
+      "notes": "North along hole x through outer hedges"
+    },
+    {
+      "label": "bush_nudge_w",
+      "xy": [2384, 1933],
+      "role": "waypoint",
+      "notes": "UP+LEFT weave around bushes"
+    },
+    {
+      "label": "bush_nudge_e",
+      "xy": [2410, 1886],
+      "role": "waypoint",
+      "notes": "UP+RIGHT weave around bushes"
+    },
+    {
+      "label": "bush_lane",
+      "xy": [2416, 1745],
+      "role": "waypoint",
+      "notes": "North toward the secret-bush pocket"
+    },
+    {
+      "label": "hole_nudge",
+      "xy": [2438, 1730],
+      "role": "waypoint",
+      "notes": "Last UP+RIGHT into the hole approach"
+    },
+    {
+      "label": "secret_hole_approach",
+      "xy": [2430, 1704],
+      "role": "approach",
+      "notes": "Measured hole-approach pocket before bush-lift; Yaze 0x7D is 2432,1696"
+    },
+    {
+      "label": "secret_hole",
+      "xy": [2432, 1696],
+      "role": "edge",
+      "notes": "Yaze entrance 0x7D exact bush/hole tile"
+    }
+  ],
+  "doors": [
+    {
+      "label": "secret_hole_to_0x55",
+      "direction": "UP",
+      "toRoom": 85,
+      "outdoors": false,
+      "approachXy": [2430, 1704],
+      "landingXy": [2975, 2710],
+      "role": "zelda_path",
+      "path": [
+        "north_of_spawn",
+        "south_west_lane",
+        "south_hedge_n1",
+        "south_hedge_w1",
+        "south_hedge_gap",
+        "west_lane",
+        "west_north_corner",
+        "east_to_hole_axis",
+        "north_hedge",
+        "bush_nudge_w",
+        "bush_nudge_e",
+        "bush_lane",
+        "hole_nudge",
+        "secret_hole_approach"
+      ],
+      "pathTolerances": {
+        "west_lane": 6,
+        "west_north_corner": 6,
+        "east_to_hole_axis": 6,
+        "north_hedge": 6,
+        "secret_hole_approach": 6,
+        "default": 4
+      },
+      "pushFrames": 0,
+      "notes": "Approach geometry only. Bush-lift/hole-drop is a measured trigger (BUSH_LIFT_CANDIDATES), not a door push. Greedy diagonal move_to clips hedges — walk axis-aligned."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [2070, 1690, 2450, 2540],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Outdoor geometry authority for castle_grounds → secret hole.",
+    "Waypoints sampled 2026-07-29 from the former open-loop D-pad approach on HyruleCastleGrounds.",
+    "Do not reintroduce the open-loop D-pad macro in Python; walk these points axis-aligned.",
+    "Bush-lift trigger stays measured candidates in castle_to_sword.",
+    "Authority: maps/screen_1b_grounds.json"
+  ]
+}

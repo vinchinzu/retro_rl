@@ -14,8 +14,8 @@ See also: `opening_route/anchors.py`, `docs/STATUS.md`.
 |-------|--------|
 | Tier | trigger |
 | Anchor | `HyruleCastle_SecretPassageExactTile` |
-| Map | Yaze entrance `0x7D` @ world `(2432, 1696)` |
-| Approach | `HyruleCastle_SecretPassageApproach` ~`(2430, 1704)` tol 48 |
+| Map | `maps/screen_1b_grounds.json` door `secret_hole_to_0x55`; Yaze `0x7D` @ `(2432, 1696)` |
+| Approach | `HyruleCastle_SecretPassageApproach` ~`(2430, 1704)` tol 48 (map path, axis-aligned) |
 | Script | `SECRET_HOLE_ENTRY_SCRIPT`: face UP, `A`×4, wait 20, `UP`×56 |
 | Min measured | UP walk after A/wait ≥ 40 frames |
 | Exit RAM | indoors room base `0x55` |
