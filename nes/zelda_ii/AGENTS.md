@@ -16,12 +16,13 @@ Scripted NES completion agent for **Zelda II: The Adventure of Link** (graph_nav
 ```bash
 uv run python zelda_ii/scripts/setup_rom.py
 uv run python zelda_ii/scripts/boot_probe.py
+uv run python zelda_ii/scripts/run_leave_palace.py --trials 3
 uv run pytest zelda_ii/tests -q
 ```
 
 ## Next milestone
 
-leave North Palace / first side-scroll segment.
+first overworld walk / first encounter side-scroll from `NorthPalaceExit`.
 
 ## Norms
 
