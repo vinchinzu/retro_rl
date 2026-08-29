@@ -1,0 +1,516 @@
+{
+  "game": "ALTTPRando-Snes",
+  "package": "alttp_rando",
+  "started_at": "2026-08-29T22:27:23Z",
+  "seed": "vanilla-substrate",
+  "seed_settings": {},
+  "start_state": "FirstPlay",
+  "mode": "bot",
+  "milestones": [
+    {
+      "name": "house_to_uncle_injected_failure",
+      "at": "2026-08-29T22:27:27Z",
+      "frame": 5214,
+      "status": "retryable_failure",
+      "frames": 0
+    },
+    {
+      "name": "house_to_uncle",
+      "at": "2026-08-29T22:27:27Z",
+      "frame": 5214,
+      "status": "success",
+      "frames": 5214
+    }
+  ],
+  "notes": [],
+  "frames": 5214,
+  "outcome": "completed",
+  "video_path": null,
+  "meta": {
+    "schema_version": 2,
+    "solver_result": {
+      "status": "completed",
+      "final_observation": {
+        "frame": 5214,
+        "node": {
+          "type": "str",
+          "repr": "'z3_uncle_sword'"
+        },
+        "schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+        "capabilities": [
+          "lamp",
+          "sword"
+        ],
+        "resources": {},
+        "values": {
+          "game_mode": 7,
+          "room_base_id": 85,
+          "indoors": true,
+          "has_control": true,
+          "has_fighter_sword": true,
+          "has_lamp": true
+        },
+        "identity_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea"
+      },
+      "outcomes": [
+        {
+          "edge_id": "house_to_uncle_injected_failure",
+          "skill_id": "z3.house_to_uncle.injected_failure",
+          "status": "retryable_failure",
+          "frames": 0,
+          "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "end_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "observed_capability_delta": [],
+          "observed_resource_delta": {},
+          "reason": "injected house-exit desync",
+          "recovery_hint": "exclude_primary_and_replan",
+          "replan": true
+        },
+        {
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "status": "success",
+          "frames": 5214,
+          "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "end_observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "observed_capability_delta": [
+            "lamp",
+            "sword"
+          ],
+          "observed_resource_delta": {},
+          "reason": null,
+          "recovery_hint": null,
+          "replan": false
+        }
+      ],
+      "trace": [
+        {
+          "sequence": 0,
+          "lifecycle": "planning",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": []
+          }
+        },
+        {
+          "sequence": 1,
+          "lifecycle": "planning",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [
+                {
+                  "edge_id": "house_to_uncle_injected_failure",
+                  "source": {
+                    "type": "str",
+                    "repr": "'z3_links_house'"
+                  },
+                  "target": {
+                    "type": "str",
+                    "repr": "'z3_uncle_sword'"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [],
+                  "cost": 0.5,
+                  "verification": "planned",
+                  "provenance": "",
+                  "meta": {}
+                }
+              ],
+              "path_edge_ids": [
+                "house_to_uncle_injected_failure"
+              ],
+              "total_cost": 0.5,
+              "final_progression": {
+                "node": {
+                  "type": "str",
+                  "repr": "'z3_uncle_sword'"
+                },
+                "capabilities": [],
+                "collected_checks": []
+              },
+              "expanded_count": 1,
+              "dominated_pruned": 0,
+              "frontier_blockers": [],
+              "request_digest": "e06327f31f916cd2dede100cf2698f821dabc98a94d325d2a91244aa66b8d917",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "lifecycle": "dispatching",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": "house_to_uncle_injected_failure",
+          "skill_id": "z3.house_to_uncle.injected_failure",
+          "policy_identity_digest": "1f868c4e595b1858e4e50641033e93a5d7701bfffeb99b8f514151553ba59581",
+          "detail": {}
+        },
+        {
+          "sequence": 3,
+          "lifecycle": "executing",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": "house_to_uncle_injected_failure",
+          "skill_id": "z3.house_to_uncle.injected_failure",
+          "policy_identity_digest": "1f868c4e595b1858e4e50641033e93a5d7701bfffeb99b8f514151553ba59581",
+          "detail": {}
+        },
+        {
+          "sequence": 4,
+          "lifecycle": "validating",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": "house_to_uncle_injected_failure",
+          "skill_id": "z3.house_to_uncle.injected_failure",
+          "policy_identity_digest": "1f868c4e595b1858e4e50641033e93a5d7701bfffeb99b8f514151553ba59581",
+          "detail": {
+            "outcome": {
+              "edge_id": "house_to_uncle_injected_failure",
+              "skill_id": "z3.house_to_uncle.injected_failure",
+              "status": "retryable_failure",
+              "frames": 0,
+              "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+              "end_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+              "observed_capability_delta": [],
+              "observed_resource_delta": {},
+              "reason": "injected house-exit desync",
+              "recovery_hint": "exclude_primary_and_replan",
+              "replan": true
+            }
+          }
+        },
+        {
+          "sequence": 5,
+          "lifecycle": "replanning",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": [
+              "house_to_uncle_injected_failure"
+            ]
+          }
+        },
+        {
+          "sequence": 6,
+          "lifecycle": "replanning",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [
+                {
+                  "edge_id": "house_to_uncle",
+                  "source": {
+                    "type": "str",
+                    "repr": "'z3_links_house'"
+                  },
+                  "target": {
+                    "type": "str",
+                    "repr": "'z3_uncle_sword'"
+                  },
+                  "direction": "",
+                  "requires": [],
+                  "acquires": [
+                    "sword"
+                  ],
+                  "cost": 1.0,
+                  "verification": "natural_entry",
+                  "provenance": "alttp opening skills from FirstPlay; binding in solver_bindings",
+                  "meta": {}
+                }
+              ],
+              "path_edge_ids": [
+                "house_to_uncle"
+              ],
+              "total_cost": 1.0,
+              "final_progression": {
+                "node": {
+                  "type": "str",
+                  "repr": "'z3_uncle_sword'"
+                },
+                "capabilities": [
+                  "sword"
+                ],
+                "collected_checks": []
+              },
+              "expanded_count": 1,
+              "dominated_pruned": 0,
+              "frontier_blockers": [],
+              "request_digest": "4bd3db4a98df477dd08eff1ab33ab5743e5843dd29d298916287d03ed1a1f18b",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 7,
+          "lifecycle": "dispatching",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "detail": {}
+        },
+        {
+          "sequence": 8,
+          "lifecycle": "executing",
+          "observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "detail": {}
+        },
+        {
+          "sequence": 9,
+          "lifecycle": "executing",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "detail": {
+            "action": {
+              "type": "alttp_rando.solver_adapter.RouteSkillCommand",
+              "value": {
+                "edge_id": "house_to_uncle",
+                "runner": "alttp_rando.house_to_uncle.play_house_to_uncle",
+                "target_node": "z3_uncle_sword"
+              }
+            },
+            "skill_frame": 5214
+          }
+        },
+        {
+          "sequence": 10,
+          "lifecycle": "validating",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "detail": {}
+        },
+        {
+          "sequence": 11,
+          "lifecycle": "validating",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "detail": {
+            "outcome": {
+              "edge_id": "house_to_uncle",
+              "skill_id": "z3.house_to_uncle.vanilla_opening",
+              "status": "success",
+              "frames": 5214,
+              "start_observation_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c",
+              "end_observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+              "observed_capability_delta": [
+                "lamp",
+                "sword"
+              ],
+              "observed_resource_delta": {},
+              "reason": null,
+              "recovery_hint": null,
+              "replan": false
+            }
+          }
+        },
+        {
+          "sequence": 12,
+          "lifecycle": "replanning",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "excluded_edges": [
+              "house_to_uncle_injected_failure"
+            ]
+          }
+        },
+        {
+          "sequence": 13,
+          "lifecycle": "replanning",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {
+            "plan_result": {
+              "status": "FOUND",
+              "path": [],
+              "path_edge_ids": [],
+              "total_cost": 0.0,
+              "final_progression": {
+                "node": {
+                  "type": "str",
+                  "repr": "'z3_uncle_sword'"
+                },
+                "capabilities": [],
+                "collected_checks": []
+              },
+              "expanded_count": 0,
+              "dominated_pruned": 0,
+              "frontier_blockers": [],
+              "request_digest": "837c8523cb3871dca1d3f375b440efba1cb32a108da27f50231eb88956578649",
+              "resource_trajectory": [],
+              "resource_blockers": [],
+              "risk_adjusted_cost": null
+            }
+          }
+        },
+        {
+          "sequence": 14,
+          "lifecycle": "completed",
+          "observation_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea",
+          "edge_id": null,
+          "skill_id": null,
+          "policy_identity_digest": null,
+          "detail": {}
+        }
+      ],
+      "replans": 1,
+      "completed_edges": [
+        "house_to_uncle"
+      ],
+      "actions": [
+        {
+          "sequence": 0,
+          "edge_id": "house_to_uncle",
+          "skill_id": "z3.house_to_uncle.vanilla_opening",
+          "policy_identity_digest": "c3d3bcdf28aaff861695efe70346dd7340d16bee2d5d302881465b3ef64c6efb",
+          "frame_start": 0,
+          "frame_end": 5214,
+          "applied_frames": 5214,
+          "observation_before": {
+            "frame": 0,
+            "node": {
+              "type": "str",
+              "repr": "'z3_links_house'"
+            },
+            "schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+            "capabilities": [],
+            "resources": {},
+            "values": {
+              "game_mode": 7,
+              "room_base_id": 4,
+              "indoors": true,
+              "has_control": true,
+              "has_fighter_sword": false,
+              "has_lamp": false
+            },
+            "identity_digest": "535eeb6afdef18f640858ce7115da929d47a3be2b0640e2732d6834e6f72800c"
+          },
+          "observation_after": {
+            "frame": 5214,
+            "node": {
+              "type": "str",
+              "repr": "'z3_uncle_sword'"
+            },
+            "schema_digest": "90bf1371eb83d47799f280d2d5f2862da07057e28e05b2c736f7148335eca77b",
+            "capabilities": [
+              "lamp",
+              "sword"
+            ],
+            "resources": {},
+            "values": {
+              "game_mode": 7,
+              "room_base_id": 85,
+              "indoors": true,
+              "has_control": true,
+              "has_fighter_sword": true,
+              "has_lamp": true
+            },
+            "identity_digest": "ff8118c40fffba3be6404af73c2da2577425879c22a22028e590e91f107addea"
+          },
+          "action": {
+            "type": "alttp_rando.solver_adapter.RouteSkillCommand",
+            "value": {
+              "edge_id": "house_to_uncle",
+              "runner": "alttp_rando.house_to_uncle.play_house_to_uncle",
+              "target_node": "z3_uncle_sword"
+            }
+          }
+        }
+      ]
+    },
+    "benchmark_contract": {
+      "benchmark_id": "alttp_rando_house_to_uncle_session_v1",
+      "objective": "Natural FirstPlay house\u2192uncle with recovery replan",
+      "runtime_observation_class": "Bronze",
+      "intervention_class": "Clean",
+      "start_identity_digest": "18902f0e2fc83c87305efb304b16091444a5e1d533aa2b1c9984ed1e5bfd4de7",
+      "policy_identity_digest": "9dfd4b612ebac2ffb0b172a2c308d1356465a0dd40cd753367b37aa730249b5e",
+      "start_identity": {
+        "start_state": "FirstPlay",
+        "digest": "18902f0e2fc83c87305efb304b16091444a5e1d533aa2b1c9984ed1e5bfd4de7",
+        "rom_sha256": "794e040b02c7591b59ad8843b51e7c619b88f87cddc6083a8e7a4027b96a2271"
+      },
+      "policy_identity": {
+        "name": "alttp_rando.solver_adapter",
+        "digest": "9dfd4b612ebac2ffb0b172a2c308d1356465a0dd40cd753367b37aa730249b5e",
+        "version": "1",
+        "source": "alttp_rando.solver_adapter:build_solver_session",
+        "metadata": {
+          "binding_count": 2
+        }
+      },
+      "assist_contract_path": null,
+      "assist_contract_digest": null,
+      "assist_mode": null,
+      "metadata": {}
+    },
+    "attempt_audit": {
+      "ram_writes": 0,
+      "mid_run_loads": 0,
+      "assists": {},
+      "runtime_observation_class": "Bronze",
+      "intervention_class": "Clean",
+      "start_identity_digest": "18902f0e2fc83c87305efb304b16091444a5e1d533aa2b1c9984ed1e5bfd4de7",
+      "policy_identity_digest": "9dfd4b612ebac2ffb0b172a2c308d1356465a0dd40cd753367b37aa730249b5e",
+      "audit_capabilities": {
+        "schema_version": 1,
+        "provider": "alttp-rando.HouseSolverSession.audit-v1",
+        "observes_ram_writes": true,
+        "observes_mid_run_loads": true,
+        "observes_assists": true
+      }
+    },
+    "claim_valid": true,
+    "evidence_path": "snes/alttp_rando/recordings/house_to_uncle.evidence.json",
+    "real_edges": [
+      "house_to_uncle"
+    ],
+    "fault_edge": "house_to_uncle_injected_failure",
+    "production_graph_edge_count": 1,
+    "substrate": "vanilla",
+    "seed_source": "fixture",
+    "trajectory": {
+      "path": "snes/alttp_rando/recordings/house_to_uncle_session.trajectory.json",
+      "identity_digest": "9ca226b3194ef557bcc80c425eabca1f093eed13f3c38a0f23cd6d3614ce4342",
+      "schema_digest": "8df3c9d5b3d6c5c8e8922b35c58a5975f73ce2b514672b53484094953411a841",
+      "steps": 1
+    },
+    "counterexamples": [
+      {
+        "identity_digest": "8e6c4d20af06df2e30f53e4e3900b71eb4f172c483dbc622331d67c9e5702a40",
+        "terminal_reason": "injected house-exit desync",
+        "steps": 0
+      }
+    ]
+  }
+}
