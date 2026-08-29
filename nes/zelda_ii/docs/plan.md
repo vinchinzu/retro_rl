@@ -6,13 +6,17 @@ Advance from M1 (boot) toward a verified continuous clear of Zelda II: The Adven
 
 ## Next milestones
 
-1. **M2 instrumentation** — map player position, mode, death, and stage/progress.
-2. **M3 isolated segment** — clear one early segment from `Level1.state` with timeout.
-3. **M4 natural-entry** — same segment from the real predecessor state (not a warp).
+1. **M3 leftover** — from `NorthPalaceExit` (overworld palace tile), walk to
+   Rauru / first encounter and stop on the next `$0736` side-scroll latch.
+2. **M4 natural-entry** — leave North Palace from power-on (not `Level1` warp).
+3. Broader instrumentation only as later stops need it.
 
 ## Bottleneck
 
-leave North Palace / first side-scroll segment.
+first overworld walk / first encounter side-scroll from `NorthPalaceExit`.
+
+Leave-palace (Level1 LEFT → `$0736 == 5`) is an isolated segment; STATUS stays
+M1 until that gate is promoted.
 
 ## Notes
 
