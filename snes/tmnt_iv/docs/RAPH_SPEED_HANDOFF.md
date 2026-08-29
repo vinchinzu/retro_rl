@@ -52,17 +52,19 @@ Do not port spin-40 without a full-route re-tune.
 `policy.py` is ~1,360 LOC after CombatProfile + Baxter extract.
 Spin still 52. No A-special. No STATUS / BASELINE edit.
 
-**Next (2026-08-27): `rr-iprz.5` still Fast+Boss9 bars, not Slash.**
+**Next (2026-08-29): `rr-iprz.5` still Fast+Boss9 bars, not Slash.**
 See `docs/tasks/rr-iprz.5-residual.md`. Shipped right-rail skip
 (`starbase_rail_right` at x≥220) and exhausted-207 RIGHT
 (`starbase_unstick_right` after 3 dumpster cycles). Power-on
 `--dry-run` **reaches credits** (00:59:01 / 5,529 / 79, gitignored
 `tmnt_iv_full_hard_dry_run_rr_iprz5.json`). Do not STATUS. Fast
 **23,272f / 917** vs 23,072 / 863. Boss9 **6,516f / 64** vs 6,300 / 144.
-Diag **24,645f / 1,076** time KEEP. Recover Fast+Boss9 without restoring
-the Diag rail loop or the 207 infinite dumpster. Do not skip dumpster on
-x=126; do not tighten close_gap below `%4`. Dry-run credits green;
-veryfast 1080p encode uses scratch `rr_iprz5` stems only.
+Diag **24,645f / 1,076** time KEEP. 2026-08-29 sitting REJECT: rail
+Y-steer, form-1 jump (any ADY / off-rail), y_tol 16, hover ADY 56 — all
+restore Diag's rail loop. Next class is form-1 cadence/range, not Y.
+Do not skip dumpster on x=126; do not tighten close_gap below `%4`.
+Dry-run credits green; veryfast 1080p encode uses scratch `rr_iprz5`
+stems only.
 
 ## Continuous dry-run 2026-08-27 (do not STATUS)
 
@@ -96,7 +98,8 @@ Slash follow-up (four isolated algorithms + KEEP trace + three parent
 patches) **REJECT** vs 9,595f / 435 — do not reopen. Next knob: recover
 Fast 23,272 / 917 and Boss9 6,516 / 64 without giving Diag 24,645 back
 to the rail loop and without restoring the 207 infinite dumpster. Do not
-skip dumpster on x=126; do not tighten close_gap below `%4`. Technodrome
+Y-steer the rail, jump-kick form-1, or widen hover ADY. Do not skip
+dumpster on x=126; do not tighten close_gap below `%4`. Technodrome
 tank in continuous context is second (prehistoric entry 22:32 vs 22:23
 published).
 

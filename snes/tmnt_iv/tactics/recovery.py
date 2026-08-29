@@ -31,7 +31,8 @@ _STARBASE_LAUNCH_X = 64
 # Starbase right-rail form-1 vanish: X glued at ~229 while cam still
 # ticks. Immediate RIGHT (no dumpster) is the Diag 33,825→24,645 cut.
 # A 96f dumpster budget then RIGHT 40k-timeout Diag. Y-steer to 156
-# made Boss9 8,880. Wave dumpsters stay at x=126 / 207.
+# made Boss9 8,880; Y-steer to 192 40k-timeout Diag (stuck y=184).
+# Wave dumpsters stay at x=126 / 207.
 _STARBASE_RAIL_X = 220
 # Continuous power-on sticks at x=207 (cam auto-scrolls, dumpster Y-sweeps
 # 113–194, damage frozen). Fast pin 207 dumpsters recover in <600f; after

@@ -53,6 +53,32 @@ Veryfast 1080p60 encode (not `--hq`), wall **29m02s**, exit 0:
 **00:59:01.318 / 5,529 / 79 / 7,420 / 0 lives**. Do not clobber
 STATUS `tmnt_iv_full_hard_credits.mp4` / dry_run.json.
 
+## This sitting (2026-08-29) — form-1 arrival Y / hover gap REJECT
+
+HEAD re-probed (heal=emergency, never A): Fast / Diag / Boss9
+**23,272f / 24,645f / 6,516f** and **917 / 1,076 / 64**. Matches the
+prior sitting. Boss9 `starbase_rail_right` **836f**; Y while holding
+RIGHT at x=229 drifts **185→120** (Shredder spawn Y **192**, pin start
+**x=231 y=170**). Align_up+down **1,676f**. Dual-green still open.
+
+One-knob attempts (reverted; production still rail skip + 207 exhaust):
+
+| Knob | Fast | Diag | Boss9 | Ship? |
+|------|-----:|-----:|------:|-------|
+| Rail RIGHT+DOWN toward y=192 | 23618 / 807 | **40k** (21k rail @ y=184) | 13324 / 224 | REJECT |
+| Form-1 B+Y ADY=80 | 26661 / 922 | **40k** (19k rail) | **5394 / 116** (pin win) | REJECT |
+| Form-1 B+Y ADY=36 | **22054 / 872** | 31777 / 1329 (9.7k rail) | 8717 / 156 | REJECT |
+| Form-1 B+Y ADY=36 off-rail only (x<220) | 28082 / 913 | **40k** (22k rail) | 9370 / 217 | REJECT |
+| Form-1 y_tol 8→16 | 26758 / 965 | **40k** (17k rail) | 9677 / 168 | REJECT |
+| Wave hover ADY 36→56 + close 0x6C/0xF2 | **40k** (19k rail) | **40k** (21k rail) | 6516 / 64 (unchanged) | REJECT |
+
+Form-1 jump can beat the Boss9 or Fast pin in isolation; **any** Y
+physics on the vanish rail (steer, jump, wider poke band, higher hover)
+restores a Diag rail loop. Do not ship checkpoint-only form-1 jump.
+
+No STATUS. Policy reverted to HEAD. Comment-only burned note in
+`tactics/recovery.py`. CombatProfile pin: shredder y_tol stays **8**.
+
 ## Exact next action
 
 1. Claim `rr-iprz.5`. Read this residual. **Do not touch Slash.**
@@ -66,11 +92,14 @@ STATUS `tmnt_iv_full_hard_credits.mp4` / dry_run.json.
    `test_starbase_form1_rail_skips_dumpster`,
    `test_starbase_spawn_delay_does_not_trigger_dumpster_escape`.
 3. Do **not** set `_JUMP_PERIOD` below 4. Never hold B+Y.
-4. Remaining speed hole is **Fast 23,272f / 917** vs 23,072 / 863 and
-   **Boss9 6,516f / 64** vs 6,300 / 144 — form-1 arrival Y after holding
-   RIGHT at x=229. Recover those bars **without** restoring the Diag
-   rail loop (24,645f) or the 207 infinite dumpster. Do not 96f-budget
-   or form-1-latch the skip.
+4. Remaining speed hole is still **Fast 23,272f / 917** vs 23,072 / 863
+   and **Boss9 6,516f / 64** vs 6,300 / 144. Form-1 arrival Y after
+   RIGHT at x=229 is real (Boss9 rail 836f, Y drift to 120 vs Shredder
+   192) but **do not** Y-steer the rail, jump-kick form-1, widen
+   y_tol, or widen hover ADY — all restore Diag's rail loop. Next class:
+   form-1 **cadence / range / standoff** (hold already 2, gap already 1)
+   or a wave-only cut that does not change Y. Dual-green still requires
+   Diag **≤24,645f / 1,076**. Do not 96f-budget or form-1-latch the skip.
 5. Live probe (heal=emergency, never A):
 
 ```bash
@@ -105,6 +134,10 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 | 96f dumpster then RIGHT on rail | Diag 40k timeout (15k rail_right, bad Y) |
 | Skip rail only after 0x52 seen | Diag 40k timeout (21k rail_right) |
 | Y-steer rail to y=156 | Boss9 6,300→8,880 |
+| Y-steer rail to y=192 (RIGHT+DOWN) | Diag 40k, stuck y=184. Drift to 120 is load-bearing |
+| Form-1 jump-kick (ADY 80 / 36 / off-rail) | Pin wins, Diag rail loop. Any Y physics during 0x52 |
+| Form-1 y_tol 8→16 | Fast/Boss9 worse, Diag 40k |
+| Wave hover ADY 36→56 + close 0x6C/0xF2 | Fast+Diag 40k rail. Keep ADY 36 and CLOSE {0x6A,0xB0,0xBA} |
 | Sewer-like dumpster skip on byte 8 | 40k timeout, 29k walk_right, y=196 past form-1 |
 | Climb-only instead of dumpster | 40k timeout, stuck x=126 y=139 |
 | Exhausted RIGHT on x=126 | same 40k class as sewer skip — 207 band only |
