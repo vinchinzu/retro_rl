@@ -19,6 +19,12 @@ from super_metroid.splice.errors import (
     SelectError,
     SpliceError,
 )
+from super_metroid.splice.ranges import (
+    RangePlan,
+    assemble_attic_to_gravity,
+    attic_to_gravity_range,
+    gravity_range,
+)
 from super_metroid.splice.grade import GradeReport, JoinGrade, LeftoverPackage, grade
 from super_metroid.splice.manifest import load_manifest, manifest_from_board
 from super_metroid.splice.preflight import (
@@ -74,6 +80,7 @@ __all__ = [
     "PrepareError",
     "PreflightError",
     "PreflightReport",
+    "RangePlan",
     "RomPreflight",
     "RouteEdge",
     "RouteManifest",
@@ -84,11 +91,14 @@ __all__ = [
     "SpliceError",
     "TaskCard",
     "assemble",
+    "assemble_attic_to_gravity",
     "assembly_table",
+    "attic_to_gravity_range",
     "file_digest",
     "format_preflight_summary",
     "generate_cards",
     "grade",
+    "gravity_range",
     "load_manifest",
     "manifest_from_board",
     "prepare",

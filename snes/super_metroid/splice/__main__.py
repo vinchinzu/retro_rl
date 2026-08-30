@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble (no emulator)."""
+"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble, range (no emulator)."""
 
 from __future__ import annotations
 
@@ -34,6 +34,11 @@ from super_metroid.splice.preflight import (  # noqa: E402
     run_preflight,
 )
 from super_metroid.splice.prepare import prepare  # noqa: E402
+from super_metroid.splice.ranges import (  # noqa: E402
+    assemble_attic_to_gravity,
+    attic_to_gravity_range,
+    format_range,
+)
 from super_metroid.splice.schema import INTERVENTION_PROFILES  # noqa: E402
 
 
@@ -43,7 +48,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Planning/verification over tips.play_hops. "
             "Artifact digest preflight, read-only task cards, fail-closed "
-            "prepare, grade, and assemble (refuses to boot without a session factory)."
+            "prepare, grade, assemble, and the Attic→Gravity Scaffold range "
+            "(refuses to boot without a session factory)."
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -134,6 +140,17 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=INTERVENTION_PROFILES,
         help="Planner selection profile (default: scaffold)",
     )
+    rng = sub.add_parser(
+        "range",
+        help="Print the Attic→Gravity Scaffold range (no emulator; development-only)",
+    )
+    rng.add_argument("--segment", type=Path, help="s23 directory (fail closed if missing)")
+    rng.add_argument("--json", action="store_true", help="Print JSON plan only")
+    asr = sub.add_parser(
+        "assemble-range",
+        help="Assemble Attic→Gravity Scaffold (refuses to boot without a session factory)",
+    )
+    asr.add_argument("--segment", type=Path, help="s23 directory (fail closed if missing)")
     return parser
 
 
@@ -240,6 +257,29 @@ def _run_assemble(args: argparse.Namespace) -> int:
     return 1
 
 
+def _run_range(args: argparse.Namespace) -> int:
+    try:
+        plan = attic_to_gravity_range(args.segment)
+    except (PreflightError, AssembleError, SchemaError) as exc:
+        _print_error(exc, as_json=bool(args.json))
+        return 1
+    if args.json:
+        print(json.dumps(plan.to_dict(), indent=2))
+    else:
+        print(format_range(plan))
+    return 0
+
+
+def _run_assemble_range(args: argparse.Namespace) -> int:
+    # Dry planner: load the range (fail closed on missing s23), never boot.
+    try:
+        assemble_attic_to_gravity(args.segment)
+    except (PreflightError, AssembleError, SchemaError) as exc:
+        _print_error(exc, as_json=True)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -253,6 +293,10 @@ def main(argv: list[str] | None = None) -> int:
         return _run_grade(args)
     if args.cmd == "assemble":
         return _run_assemble(args)
+    if args.cmd == "range":
+        return _run_range(args)
+    if args.cmd == "assemble-range":
+        return _run_assemble_range(args)
     parser.print_help()
     return 2
 
