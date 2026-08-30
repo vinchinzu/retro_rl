@@ -39,3 +39,16 @@ class PreflightError(SpliceError):
         details: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code=code, details=details)
+
+
+class SchemaError(SpliceError):
+    """Route/task/candidate schema rejected (invalid room, kind, or path)."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "schema.invalid",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, details=details)

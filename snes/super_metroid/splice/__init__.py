@@ -7,7 +7,9 @@ uncovered route edge. Does not boot an emulator.
 
 from __future__ import annotations
 
-from super_metroid.splice.errors import PreflightError, SpliceError
+from super_metroid.splice.cards import assembly_table, generate_cards
+from super_metroid.splice.errors import PreflightError, SchemaError, SpliceError
+from super_metroid.splice.manifest import load_manifest, manifest_from_board
 from super_metroid.splice.preflight import (
     ArtifactRef,
     CorePreflight,
@@ -21,19 +23,48 @@ from super_metroid.splice.preflight import (
     repo_relative,
     run_preflight,
 )
+from super_metroid.splice.schema import (
+    CANDIDATE_KINDS,
+    FORBIDDEN_HOT_FILES,
+    INTERVENTION_PROFILES,
+    NON_CLAIMS,
+    CandidateArtifact,
+    EntryFingerprint,
+    JoinPredicate,
+    LeaveSpecRef,
+    RouteEdge,
+    RouteManifest,
+    TaskCard,
+)
 
 __all__ = [
     "ArtifactRef",
+    "CANDIDATE_KINDS",
+    "CandidateArtifact",
     "CorePreflight",
+    "EntryFingerprint",
+    "FORBIDDEN_HOT_FILES",
     "HopPreflight",
+    "INTERVENTION_PROFILES",
     "InventoryRegression",
+    "JoinPredicate",
+    "LeaveSpecRef",
+    "NON_CLAIMS",
     "PreflightError",
     "PreflightReport",
     "RomPreflight",
+    "RouteEdge",
+    "RouteManifest",
+    "SchemaError",
     "SegmentArtifacts",
     "SpliceError",
+    "TaskCard",
+    "assembly_table",
     "file_digest",
     "format_preflight_summary",
+    "generate_cards",
+    "load_manifest",
+    "manifest_from_board",
     "repo_relative",
     "run_preflight",
 ]
