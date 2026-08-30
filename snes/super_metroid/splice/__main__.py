@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight and read-only cards, no emulator."""
+"""``python -m super_metroid.splice`` — preflight, cards, prepare (no emulator)."""
 
 from __future__ import annotations
 
@@ -20,12 +20,13 @@ ensure_import_paths(root=_ROOT)
 
 from super_metroid.human_tape.product_chain import DEFAULT_BOARD, DEFAULT_TASK  # noqa: E402
 from super_metroid.splice.cards import format_cards, generate_cards  # noqa: E402
-from super_metroid.splice.errors import PreflightError, SchemaError  # noqa: E402
+from super_metroid.splice.errors import PrepareError, PreflightError, SchemaError  # noqa: E402
 from super_metroid.splice.manifest import load_manifest, manifest_from_product_chain  # noqa: E402
 from super_metroid.splice.preflight import (  # noqa: E402
     format_preflight_summary,
     run_preflight,
 )
+from super_metroid.splice.prepare import prepare  # noqa: E402
 from super_metroid.splice.schema import INTERVENTION_PROFILES  # noqa: E402
 
 
@@ -34,7 +35,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m super_metroid.splice",
         description=(
             "Planning/verification over tips.play_hops. "
-            "Artifact digest preflight and read-only task cards (no emulator)."
+            "Artifact digest preflight, read-only task cards, and fail-closed "
+            "prepare (no emulator)."
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -76,10 +78,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Product-chain task used when --manifest is omitted",
     )
     cards.add_argument("--no-live", action="store_true", help="Skip the live task tape")
+    prep = sub.add_parser(
+        "prepare",
+        help="Validate a task card before boot (report-only JSON; no emulator)",
+    )
+    prep.add_argument("task_id")
+    prep.add_argument("--manifest", type=Path, help="Route-manifest JSON (skip board adapter)")
+    prep.add_argument(
+        "--profile",
+        default="scaffold",
+        choices=INTERVENTION_PROFILES,
+        help="Planner selection profile (default: scaffold)",
+    )
+    prep.add_argument(
+        "--chain",
+        type=Path,
+        default=DEFAULT_TASK,
+        help="Product-chain task used when --manifest is omitted",
+    )
+    prep.add_argument("--no-live", action="store_true", help="Skip the live task tape")
+    prep.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit nonzero if the task cannot be prepared",
+    )
     return parser
 
 
-def _print_error(exc: PreflightError | SchemaError, *, as_json: bool) -> None:
+def _print_error(exc: PreflightError | SchemaError | PrepareError, *, as_json: bool) -> None:
     if as_json:
         print(json.dumps(exc.to_dict(), indent=2))
         return
@@ -139,6 +165,27 @@ def _run_cards(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_prepare(args: argparse.Namespace) -> int:
+    try:
+        prepared = prepare(
+            args.task_id,
+            manifest=args.manifest,
+            profile=args.profile,
+            chain=args.chain,
+            include_live=not args.no_live,
+        )
+    except (PrepareError, SchemaError, OSError) as exc:
+        if isinstance(exc, (PrepareError, SchemaError)):
+            _print_error(exc, as_json=True)
+        else:
+            print(json.dumps({"error": type(exc).__name__, "message": str(exc)}, indent=2))
+        if isinstance(exc, PrepareError):
+            return 1 if args.strict else 0
+        return 1
+    print(json.dumps(prepared.to_dict(), indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -146,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_preflight(args)
     if args.cmd == "cards":
         return _run_cards(args)
+    if args.cmd == "prepare":
+        return _run_prepare(args)
     parser.print_help()
     return 2
 
