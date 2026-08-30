@@ -1,4 +1,4 @@
-"""Phase 0 splice preflight (no ROM)."""
+"""splice preflight (no ROM)."""
 
 from __future__ import annotations
 
