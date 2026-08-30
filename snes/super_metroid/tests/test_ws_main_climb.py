@@ -26,6 +26,8 @@ from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     GRATE_LAND_X,
     GRATE_LAND_Y,
     SHAFT_HOPS,
+    SLOPE_1130_TAKEOFF,
+    STAIRS_1543_TAKEOFF,
     WS_MAIN_ATTIC_DOOR_X,
     WS_MAIN_PHASES,
     ShaftRegion,
@@ -35,6 +37,8 @@ from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     at_ws_main_mid_climb,
     at_ws_main_morph_drop,
     at_ws_main_pit,
+    at_ws_main_slope_1130,
+    at_ws_main_stairs_1543,
     at_ws_main_west_super_band,
     classify_region,
     classify_ws_main_phase,
@@ -296,7 +300,7 @@ def test_shaft_hops_are_dpad_sides() -> None:
 def test_west_super_hop_aligns_from_recorded_left_edge() -> None:
     hop = SHAFT_HOPS[0]
     assert hop.y == 1675
-    assert hop.takeoff.x_range == (1054, 1070)
+    assert hop.takeoff.x_range == (1054, 1074)
     assert climb_action(
         1108, 1675, 2, FACING_RIGHT, region=ShaftRegion.SHAFT
     ) == ("LEFT",)
@@ -305,7 +309,167 @@ def test_west_super_hop_aligns_from_recorded_left_edge() -> None:
     ) == ("RIGHT",)
     assert climb_action(
         1062, 1675, 2, FACING_RIGHT, region=ShaftRegion.SHAFT
-    ) == ("RIGHT", "B", "A")
+    ) == ("RIGHT", "A")
+    assert climb_action(
+        1070, 1675, 2, FACING_LEFT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT",)
+    assert climb_action(
+        1071, 1675, 1, FACING_RIGHT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT", "A")
+    assert climb_action(
+        1067, 1675, 1, FACING_RIGHT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT", "A")
+
+
+def test_west_super_airborne_lands_toward_takeoff() -> None:
+    """Natural west_super pin is airborne; mount 1675 then walk to 1062."""
+    pin = climb_action(
+        1094, 1700, 48, FACING_RIGHT, velocity_y=2, region=ShaftRegion.SHAFT
+    )
+    assert pin == ("LEFT", "A")
+    settled = climb_action(
+        1095, 1690, 81, FACING_RIGHT, velocity_y=-2, region=ShaftRegion.SHAFT
+    )
+    assert settled == ("LEFT", "A")
+    above = climb_action(
+        1106, 1651, 81, FACING_RIGHT, velocity_y=2, region=ShaftRegion.SHAFT
+    )
+    assert above == ("RIGHT", "A")
+    assert climb_action(
+        1065, 1675, 75, FACING_RIGHT, velocity_y=6, region=ShaftRegion.SHAFT
+    ) == ("RIGHT", "A")
+    midair = climb_action(
+        1100, 1600, 81, FACING_RIGHT, velocity_y=3, region=ShaftRegion.SHAFT
+    )
+    assert midair == ("RIGHT", "A")
+    low = climb_action(1099, 1711, 2, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert low == ("RIGHT",)
+    assert climb_action(
+        1099, 1711, 1, FACING_RIGHT, region=ShaftRegion.SHAFT
+    ) == ("RIGHT", "A")
+
+
+def test_stairs_1543_dashes_far_right_not_atomic_overlap() -> None:
+    """Takes 02–05 plant then dash to x~1252–1259; guessed x1150 LEFT is out."""
+    hop = next(h for h in SHAFT_HOPS if h.y == 1543)
+    assert hop.takeoff.x_range == STAIRS_1543_TAKEOFF.x_range
+    assert hop.takeoff.x_range == (1248, 1260)
+    assert hop.side == "LEFT"
+    assert hop.x_hi >= 1259
+    assert at_ws_main_stairs_1543(1129, 1587, 9)
+    assert at_ws_main_stairs_1543(1255, 1547, 9)
+    assert not at_ws_main_stairs_1543(1154, 1561, 76, velocity_y=2)
+
+    plant = climb_action(1129, 1587, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert plant == ("RIGHT", "B")
+    assert "LEFT" not in plant
+    run = climb_action(1150, 1547, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert run == ("RIGHT", "B")
+    leftover = climb_action(
+        1154, 1561, 76, FACING_RIGHT, velocity_y=2, region=ShaftRegion.SHAFT
+    )
+    assert leftover == ("RIGHT",)
+    assert "LEFT" not in leftover
+    assert climb_action(
+        1248, 1549, 42, FACING_LEFT, region=ShaftRegion.SHAFT
+    ) == ("LEFT", "A")
+    air_takeoff = climb_action(
+        1232, 1528, 84, FACING_RIGHT, velocity_y=2, region=ShaftRegion.SHAFT
+    )
+    assert air_takeoff == ("LEFT",)
+    peak = climb_action(
+        1171, 1503, 84, FACING_RIGHT, velocity_y=-2, region=ShaftRegion.SHAFT
+    )
+    assert peak == ("RIGHT", "A")
+    turn = climb_action(1255, 1547, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert turn == ("LEFT",)
+    launch = climb_action(1255, 1547, 9, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert launch == ("LEFT", "B", "A")
+    save_guard = climb_action(1255, 1547, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert save_guard != ("LEFT", "B")
+
+
+def test_slope_1130_dashes_left_not_jump_from_plant() -> None:
+    """Takes 02/03 plant (1133, 1130) then B+LEFT to wall (1045, 1083)."""
+    hop = next(h for h in SHAFT_HOPS if h.y == 1130)
+    assert hop.takeoff.x_range == SLOPE_1130_TAKEOFF.x_range
+    assert hop.takeoff.x_range == (1044, 1046)
+    assert hop.side == "LEFT"
+    assert hop.x_lo <= 1045
+    assert at_ws_main_slope_1130(1133, 1130, 10)
+    assert at_ws_main_slope_1130(1099, 1095, 38)
+    assert at_ws_main_slope_1130(1045, 1083, 10)
+    assert not at_ws_main_slope_1130(1098, 1019, 9)
+    assert not at_ws_main_slope_1130(1136, 1082, 83, velocity_y=-2)
+
+    plant = climb_action(1133, 1130, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert plant == ("LEFT", "B")
+    assert "A" not in plant
+    leftover = climb_action(
+        1099, 1095, 38, FACING_RIGHT, movement_type=14, region=ShaftRegion.SHAFT
+    )
+    assert leftover == ("LEFT",)
+    assert "RIGHT" not in leftover
+    assert "A" not in leftover
+    wall = climb_action(1045, 1083, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert wall == ("LEFT", "B")
+    assert "A" not in wall
+    wall_air = climb_action(
+        1045, 1083, 26, FACING_LEFT, velocity_y=7, region=ShaftRegion.SHAFT
+    )
+    assert wall_air == ("LEFT", "A")
+    assert "RIGHT" not in wall_air
+    bounce = climb_action(
+        1045, 1083, 76, FACING_LEFT, velocity_y=6, region=ShaftRegion.SHAFT
+    )
+    assert bounce == ("LEFT", "A")
+    amid = climb_action(
+        1045, 1077, 78, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert amid == ("A",)
+    turn = climb_action(
+        1045, 1072, 48, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert turn == ("RIGHT", "A")
+    assert "LEFT" not in turn
+    rise = climb_action(
+        1045, 1066, 48, FACING_RIGHT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert rise == ("RIGHT", "A")
+    boost = climb_action(
+        1045, 1044, 48, FACING_RIGHT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert boost == ("B", "RIGHT", "A")
+    incoming = climb_action(
+        1194, 1130, 26, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert incoming == ("LEFT", "B", "A")
+    land_air = climb_action(
+        1135, 1137, 26, FACING_LEFT, velocity_y=4, region=ShaftRegion.SHAFT
+    )
+    assert "LEFT" in land_air
+    assert "RIGHT" not in land_air
+    over_1019 = climb_action(
+        1136, 988, 47, FACING_LEFT, velocity_y=0, region=ShaftRegion.SHAFT
+    )
+    assert over_1019 == ("RIGHT", "A")
+    assert "LEFT" not in over_1019
+    over_1019_face = climb_action(
+        1136, 988, 47, FACING_RIGHT, velocity_y=0, region=ShaftRegion.SHAFT
+    )
+    assert over_1019_face == ("B", "RIGHT")
+    assert "A" not in over_1019_face
+    peak = climb_action(
+        1062, 980, 81, FACING_RIGHT, velocity_y=3, region=ShaftRegion.SHAFT
+    )
+    assert peak == ("B", "RIGHT", "A")
+    land = climb_action(1098, 1019, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert "RIGHT" in land
+    assert "LEFT" not in land
+    assert climb_action(1152, 1131, 2, FACING_LEFT, region=ShaftRegion.SHAFT) == (
+        "LEFT",
+        "B",
+    )
 
 
 def test_save_alcove_jumps_left() -> None:
@@ -381,6 +545,15 @@ def test_climb_until_overlay_save_and_lip() -> None:
     climb_until(lip, "test", _stop_after_first(lip))
     assert any(r.endswith("_lip_up") for _, r in lip.actions)
     assert not any("DOWN" in str(a) for a, _ in lip.actions)
+
+    wall_kb = _Session(
+        _state(samus_x=1045, samus_y=1083, pose=138, facing=FACING_LEFT)
+    )
+    climb_until(wall_kb, "test", _stop_after_first(wall_kb))
+    assert wall_kb.actions[0][1] == "test_slope_1130_wall"
+    wall_btns = set(pressed_snes_buttons(wall_kb.actions[0][0]))
+    assert "LEFT" in wall_btns
+    assert "A" in wall_btns
 
 
 def test_take02_slope_owns_moving_aim_pose(
@@ -682,6 +855,26 @@ def test_ice_overlay() -> None:
 
     blob = Enemy(0, ATOMIC_ID, 1150, 1160, 250, 0)
     assert ice_keepaway_action(1173, 1979, FACING_LEFT, (blob,)) is None
+    overlap = Enemy(0, ATOMIC_ID, 1155, 1561, 250, 0)
+    assert ice_keepaway_action(
+        1154, 1561, FACING_RIGHT, (overlap,), velocity_y=2
+    ) is None
+    planted_ice = ice_keepaway_action(1255, 1547, FACING_LEFT, (overlap,))
+    assert planted_ice is not None
+    slope_atomic = Enemy(0, ATOMIC_ID, 1116, 1112, 250, 0)
+    assert ice_keepaway_action(1099, 1095, FACING_RIGHT, (slope_atomic,)) is None
+    wall_atomic = Enemy(0, ATOMIC_ID, 1046, 1081, 250, 0)
+    wall_ice = ice_keepaway_action(1050, 1083, FACING_LEFT, (wall_atomic,))
+    assert wall_ice is not None and ("X" in wall_ice or "A" in wall_ice)
+    assert ice_keepaway_action(1050, 1083, FACING_RIGHT, (wall_atomic,)) is None
+    assert ice_keepaway_action(
+        1050, 1083, FACING_LEFT, (wall_atomic,), movement_type=14
+    ) is None
+    assert ice_keepaway_action(
+        1045, 1066, FACING_RIGHT, (wall_atomic,), velocity_y=5
+    ) is None
+    frozen_wall = Enemy(0, ATOMIC_ID, 1046, 1081, 250, 80)
+    assert ice_keepaway_action(1050, 1083, FACING_LEFT, (frozen_wall,)) is None
     shot = ice_keepaway_action(1152, 1163, FACING_LEFT, (blob,))
     assert shot is not None and ("X" in shot or "A" in shot)
     assert ice_keepaway_action(1152, 1163, FACING_LEFT, ()) is None

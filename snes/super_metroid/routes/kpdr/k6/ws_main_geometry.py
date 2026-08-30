@@ -119,15 +119,36 @@ DROP_MORPH_POSES = frozenset({56, 57})
 WJ_POSES = frozenset({19, 20, 132})
 TURNING_MOVEMENT = 14
 
+# 1675→1543: takes 02–05 plant the shelf then dash to x~1252–1259 at y1547.
+# First grounded plant is ~(1129, 1587) p9, not the leftover (1154, 1561) p76.
+STAIRS_1543_Y = 1543
+STAIRS_1543_X = (1100, 1264)
+STAIRS_1543_SEAT_Y = (1540, 1592)
+STAIRS_1543_TAKEOFF = TakeoffWindow((1248, 1260), "LEFT", min_momentum=0)
+
+# 1130→1019: plant (1133, 1130) p10, B+LEFT down the slope, wall-bounce at
+# (1045, 1083) p138 then LEFT+A / RIGHT+A. Leftover (1099, 1095) p38 is on
+# that slope, not a 1019 seat. Leftover (1045, 1066) p48 is bounce air.
+SLOPE_1130_Y = 1130
+SLOPE_1130_X = (1040, 1160)
+SLOPE_1130_SEAT_Y = (1076, 1140)
+SLOPE_1130_TAKEOFF = TakeoffWindow((1044, 1046), "LEFT", min_momentum=0)
+SLOPE_1130_AIR_Y = (960, 1148)
+
 SHAFT_HOPS: tuple[PlatformHop, ...] = (
-    # Powered take02 lands near x=1108, repositions to x=1062, then launches
-    # RIGHT to the y=1543 ledge (frames 742-828).
-    PlatformHop(1675, 1048, 1220, TakeoffWindow((1054, 1070), "RIGHT", min_momentum=0)),
+    # Left 1675 ledge. Window includes post-turn x=1071; (1054,1070) walks
+    # out of band while facing RIGHT. Open-loop RIGHT+B+A peaks ~1508 onto 1543.
+    PlatformHop(1675, 1048, 1220, TakeoffWindow((1054, 1074), "RIGHT", min_momentum=0)),
+    PlatformHop(STAIRS_1543_Y, STAIRS_1543_X[0], STAIRS_1543_X[1], STAIRS_1543_TAKEOFF),
     PlatformHop(1468, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),
     PlatformHop(1288, 1080, 1220, TakeoffWindow((1100, 1180), "RIGHT", min_momentum=0)),
-    PlatformHop(1163, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),
-    PlatformHop(857, 1080, 1220, TakeoffWindow((1100, 1180), "RIGHT", min_momentum=0)),
-    PlatformHop(680, 1080, 1220, TakeoffWindow((1100, 1180), "LEFT", min_momentum=0)),
+    PlatformHop(
+        SLOPE_1130_Y, SLOPE_1130_X[0], SLOPE_1130_X[1], SLOPE_1130_TAKEOFF
+    ),
+    # take02 (1098, 1019) p9 after 1083 wall bounce; next is 827 LEFT.
+    PlatformHop(1019, 1080, 1220, TakeoffWindow((1088, 1118), "RIGHT", min_momentum=0)),
+    PlatformHop(827, 1080, 1220, TakeoffWindow((1188, 1220), "LEFT", min_momentum=0)),
+    PlatformHop(651, 1080, 1220, TakeoffWindow((1088, 1118), "RIGHT", min_momentum=0)),
     PlatformHop(200, 1100, 1180, TakeoffWindow((1110, 1160), "LEFT", min_momentum=0)),
 )
 
@@ -262,6 +283,32 @@ def at_ws_main_west_super_band(state: SuperMetroidState) -> bool:
         _in_main(state)
         and SHAFT_X[0] <= x <= SHAFT_X[1]
         and WEST_SUPER_Y[0] <= y <= WEST_SUPER_Y[1]
+    )
+
+
+def at_ws_main_stairs_1543(
+    samus_x: int, samus_y: int, pose: int, velocity_y: int = 0
+) -> bool:
+    """Planted 1543 stair shelf. Airborne leftover (1154, 1561) p76 is out."""
+    x, y = int(samus_x), int(samus_y)
+    return (
+        STAIRS_1543_X[0] <= x <= STAIRS_1543_X[1]
+        and STAIRS_1543_SEAT_Y[0] <= y <= STAIRS_1543_SEAT_Y[1]
+        and int(pose) in GROUNDED_POSES
+        and abs(int(velocity_y)) <= 1
+    )
+
+
+def at_ws_main_slope_1130(
+    samus_x: int, samus_y: int, pose: int, velocity_y: int = 0
+) -> bool:
+    """Planted 1130 slope through the 1083 wall. Leftover p38 turning is in."""
+    x, y = int(samus_x), int(samus_y)
+    return (
+        SLOPE_1130_X[0] <= x <= SLOPE_1130_X[1]
+        and SLOPE_1130_SEAT_Y[0] <= y <= SLOPE_1130_SEAT_Y[1]
+        and int(pose) in GROUNDED_POSES | TURN_POSES
+        and abs(int(velocity_y)) <= 1
     )
 
 
@@ -415,6 +462,15 @@ __all__ = [
     "SHAFT_X",
     "SHORT_HOP",
     "SHORT_HOP_X",
+    "SLOPE_1130_AIR_Y",
+    "SLOPE_1130_SEAT_Y",
+    "SLOPE_1130_TAKEOFF",
+    "SLOPE_1130_X",
+    "SLOPE_1130_Y",
+    "STAIRS_1543_SEAT_Y",
+    "STAIRS_1543_TAKEOFF",
+    "STAIRS_1543_X",
+    "STAIRS_1543_Y",
     "THREE_SHOT_FRAMES",
     "THREE_SHOT_X_MAX",
     "THREE_SHOT_X_MIN",
@@ -442,6 +498,8 @@ __all__ = [
     "at_ws_main_pit",
     "at_ws_main_save_alcove",
     "at_ws_main_save_column_wj",
+    "at_ws_main_slope_1130",
+    "at_ws_main_stairs_1543",
     "at_ws_main_west_super_band",
     "classify_region",
     "classify_region_xy",

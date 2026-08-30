@@ -10,6 +10,18 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
+## Immediate — L5 entry recovered (2026-08-30)
+
+`--through level5-entry` is **1/1** (`l5_entry_recompose`, play `0x76`
+`(120,205)`, TF=`0x0F`, keys=4). L4 leftover mode 18 room `0x03`
+`(120,149)` settled 283f onto island `0x45`, then `POST_L4_TO_LEVEL5_HOPS`
+(not old At4A) 5,282f. Do not retouch 0x40, maze-west, or L5 entry.
+Next: `--through level5-clear66` from this leftover. Living residual:
+`docs/tasks/rr-tne2-residual.md`. Do not STATUS-promote.
+
+Keys still 4 vs historical 5. Deficit already at L4 `0x40`
+(`keys_before` 4 vs 5). Do not hide it with a key top-up.
+
 ## Next pass — Survival spine from power-on (2026-08-15)
 
 Watchable main spine is **one continuous Survival session from power-on**.

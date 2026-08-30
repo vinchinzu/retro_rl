@@ -8,6 +8,7 @@ from zelda_i.level5.dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
     POLS_VOICE_OBJECT_TYPE,
+    ROOM_66_SPEC,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
     ROOM_L5_POLS_77,
@@ -58,6 +59,12 @@ def _ram(
         ram[ADDR_LINK_X + slot] = 64 + slot * 16
         ram[ADDR_LINK_Y + slot] = 141
     return ram
+
+
+def test_room_66_combat_uses_occupancy_across_river() -> None:
+    """TF suffix leftover (79,165): cardinal patrol never crossed the river."""
+    assert ROOM_66_SPEC.combat.occupancy_patrol is True
+    assert ROOM_66_SPEC.combat.occupancy_bounds == (16, 216, 77, 205)
 
 
 def test_room_66_cleared_predicate() -> None:

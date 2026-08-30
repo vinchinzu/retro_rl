@@ -14,8 +14,10 @@ from super_metroid.plm import (
     ADDR_SAMUS_PROJ_Y,
     SHOT_BLOCK_PLM_IDS,
     coverage_trace,
+    plm_block_pixels,
     plms_from_compact,
     shot_block_spawns,
+    snapshot_plms,
 )
 from super_metroid.scripts.record.practice_takes import SEGMENTS
 
@@ -47,11 +49,24 @@ def test_coverage_trace_empty_ram() -> None:
     assert coverage_trace(np.zeros(8, dtype=np.uint8))["plms"] == []
 
 
+def test_plm_byte_offset_not_cell_index() -> None:
+    """$1C87 is a byte offset into two-byte level data (bank $84)."""
+    even = (10 * 16 + 5) * 2
+    odd = even + 1
+    assert plm_block_pixels(even, 16) == (5, 10, 5 * 16 + 8, 10 * 16 + 8)
+    assert plm_block_pixels(odd, 16)[:2] == (5, 10)
+    # Wrecked Ship Main Shaft width 96, cell (12, 5).
+    ws_off = (5 * 96 + 12) * 2
+    bx, by, px, py = plm_block_pixels(ws_off, 96)
+    assert (bx, by) == (12, 5)
+    assert (px, py) == (12 * 16 + 8, 5 * 16 + 8)
+
+
 def test_coverage_trace_plm_and_projectile() -> None:
     ram = np.zeros(0x2000, dtype=np.uint8)
     _put_u16(ram, ADDR_ROOM_WIDTH, 16)
     _put_u16(ram, ADDR_PLM_ID, 0xB091)
-    _put_u16(ram, ADDR_PLM_BLOCK, 16 * 10 + 5)
+    _put_u16(ram, ADDR_PLM_BLOCK, (16 * 10 + 5) * 2)
     _put_u16(ram, ADDR_PLM_INST, 0xAABB)
     _put_u16(ram, ADDR_SAMUS_PROJ_TYPE, 0x0005)
     _put_u16(ram, ADDR_SAMUS_PROJ_X, 1180)
@@ -60,6 +75,9 @@ def test_coverage_trace_plm_and_projectile() -> None:
     assert cov["plms"] == [[0, 0xB091, 5 * 16 + 8, 10 * 16 + 8, 0xAABB]]
     assert cov["projs"] == [[0, 0x0005, 1180, 1800]]
     assert cov["enemies"] == []
+    snap = snapshot_plms(ram)
+    assert snap[0]["bx"] == 5
+    assert snap[0]["by"] == 10
 
 
 def test_shot_block_spawns_from_take02_lip_rows() -> None:
