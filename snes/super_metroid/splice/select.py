@@ -61,10 +61,18 @@ class Selection:
     def previous_map(self) -> dict[str, str]:
         return {task: cid for task, cid in self.previous}
 
-    def offer_for(self, task_id: str, candidate_id: str) -> CandidateOffer | None:
+    def offer_for(
+        self,
+        task_id: str,
+        candidate_id: str,
+        profile: str | None = None,
+    ) -> CandidateOffer | None:
         for offer in self.offers:
-            if offer.task_id == task_id and offer.candidate_id == candidate_id:
-                return offer
+            if offer.task_id != task_id or offer.candidate_id != candidate_id:
+                continue
+            if profile is not None and offer.profile != profile:
+                continue
+            return offer
         return None
 
     def to_dict(self) -> dict[str, Any]:
