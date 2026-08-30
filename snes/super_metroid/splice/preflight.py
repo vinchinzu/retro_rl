@@ -1,4 +1,4 @@
-"""Phase 0 artifact digest preflight (no emulator).
+"""Artifact digest preflight (no emulator).
 
 Snapshot hashes and availability for product-chain tapes, pins, joins, bodies,
 late G4/Tourian tapes, ROM, and core. Rewrite host-absolute paths to
@@ -31,7 +31,6 @@ from super_metroid.human_tape.product_chain import (
     _rel,
     build_product_chain_board,
     format_board_summary,
-    write_product_chain_board,
 )
 from super_metroid.human_tape.rta_clock import product_chain_segments
 from super_metroid.human_tape.segment_archive import list_segment_ids, segments_dir_for
@@ -52,7 +51,7 @@ KNOWN_DUMP_ROOMS = frozenset(
     }
 )
 POWER_ON_ALIASES = frozenset(
-    {"power_on", "start", "power-on", "beginning", "full", "poweron", ""}
+    {"power_on", "start", "power-on", "beginning", "full", "poweron"}
 )
 GRAVITY_ROOM = 0xCE40
 GRAVITY_PATH_HUMAN = "gravity_path_human"
@@ -422,9 +421,16 @@ def _start_state_path(join: Mapping[str, Any], sdir: Path) -> Path | None:
     if raw is None:
         return None
     token = str(raw).strip()
-    if token.lower() in POWER_ON_ALIASES:
+    if not token or token.lower() in POWER_ON_ALIASES:
         return None
     return _resolve_on_disk(token, extra=(sdir, sdir.parent, INTEGRATION_DIR))
+
+
+def _is_power_on_join(join: Mapping[str, Any]) -> bool:
+    start = str(join.get("start_state") or "").strip()
+    if start.lower() in POWER_ON_ALIASES:
+        return True
+    return bool(join.get("power_on")) and not start
 
 
 def _segment_state(
@@ -436,8 +442,8 @@ def _segment_state(
     root: Path | str | None = None,
     required: bool,
 ) -> ArtifactRef:
-    start = str(join.get("start_state") or "")
-    if start.lower() in POWER_ON_ALIASES:
+    start = str(join.get("start_state") or "").strip()
+    if _is_power_on_join(join):
         return ArtifactRef(
             kind="state",
             path="power_on",
@@ -497,6 +503,12 @@ def _snapshot_segment(
     )
 
 
+def _same_room(pin_room: int | None, room: int | None) -> bool:
+    if pin_room is None or room is None:
+        return False
+    return int(pin_room) == int(room)
+
+
 def _hop_pin(
     hop: Mapping[str, Any],
     tape: Path,
@@ -509,20 +521,32 @@ def _hop_pin(
     room = parse_room_id(hop.get("room_id") if hop.get("room_id") is not None else hop.get("room"))
     start_i = int(hop.get("start_index") or hop.get("frame") or 0)
     hit = match_anchor(anchors_idx, start_i, room, task_path=tape) if room is not None else None
-    if hit is None:
-        return None, None, ("enter_pin",)
-    pin_room = parse_room_id(hit.get("room_id") if hit.get("room_id") is not None else hit.get("room"))
-    if room is not None and pin_room is not None and int(pin_room) != int(room):
-        return None, None, ("enter_pin",)
-    raw = hit.get("resolved_path") or hit.get("path")
-    resolved = _resolve_on_disk(raw, extra=(tape.parent,))
-    if resolved is None:
-        rel = repo_relative(raw, root=root)
-        return rel, None, ("enter_pin",)
-    digest = file_digest(resolved)
-    rel = repo_relative(resolved, root=root)
-    missing: tuple[str, ...] = () if digest else ("enter_pin",)
-    return rel, digest, missing
+    pin_room = None
+    if hit is not None:
+        pin_room = parse_room_id(
+            hit.get("room_id") if hit.get("room_id") is not None else hit.get("room")
+        )
+    if hit is not None and _same_room(pin_room, room):
+        raw = hit.get("resolved_path") or hit.get("path")
+        resolved = _resolve_on_disk(raw, extra=(tape.parent,))
+        if resolved is None:
+            return repo_relative(raw, root=root), None, ("enter_pin",)
+        digest = file_digest(resolved)
+        return repo_relative(resolved, root=root), digest, () if digest else ("enter_pin",)
+    rows = anchors_idx.get("anchors") if isinstance(anchors_idx.get("anchors"), list) else []
+    for row in rows:
+        if not isinstance(row, Mapping) or not row.get("path"):
+            continue
+        row_room = parse_room_id(
+            row.get("room_id") if row.get("room_id") is not None else row.get("room")
+        )
+        if not _same_room(row_room, room):
+            continue
+        resolved = resolve_anchor_path(row, anchors_index=anchors_idx, task_path=tape)
+        if resolved is not None and resolved.is_file() and file_digest(resolved):
+            continue
+        return repo_relative(resolved or row.get("path"), root=root), None, ("enter_pin",)
+    return None, None, ("enter_pin",)
 
 
 def _inventory_regressions(hops: Sequence[Mapping[str, Any]]) -> tuple[InventoryRegression, ...]:
@@ -565,6 +589,29 @@ def _inventory_regressions(hops: Sequence[Mapping[str, Any]]) -> tuple[Inventory
     return tuple(out)
 
 
+def _doc_treats_gravity_tape_as_route(text: str) -> bool:
+    if "gravity_path_human" not in text:
+        return False
+    lower = text.lower()
+    if "legacy" in lower or "not a hop board" in lower or "oracle" in lower:
+        return False
+    return True
+
+
+def _doc_claims_missing_gravity_anchors(text: str) -> bool:
+    for line in text.splitlines():
+        lower = line.lower()
+        if "gravity" not in lower and "0xce40" not in lower:
+            continue
+        if (
+            "missing anchor" in lower
+            or "no live anchor" in lower
+            or "no live enter" in lower
+        ):
+            return True
+    return False
+
+
 def _stale_docs(hops: Sequence[HopPreflight], board_hops: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     flags: list[str] = []
     has_gravity_anchor = any(
@@ -579,18 +626,11 @@ def _stale_docs(hops: Sequence[HopPreflight], board_hops: Sequence[Mapping[str, 
         except OSError:
             continue
         rel = repo_relative(path) or path.name
-        lower = text.lower()
-        mentions_gravity_tape = "gravity_path_human" in text
-        claims_missing_anchors = (
-            "no live anchors" in lower
-            or "legacy extract" in lower
-            or "missing anchors" in lower
-        )
-        if mentions_gravity_tape:
+        if _doc_treats_gravity_tape_as_route(text):
             flags.append(
-                f"{rel}: gravity_path_human is oracle-only; prefer anchored s23/s24"
+                f"{rel}: gravity_path_human is treated as a route tape; it is oracle-only"
             )
-        if mentions_gravity_tape and claims_missing_anchors and has_gravity_anchor:
+        if has_gravity_anchor and _doc_claims_missing_gravity_anchors(text):
             flags.append(
                 f"{rel}: Gravity-anchor gap is stale vs generated inventory"
             )
@@ -746,8 +786,6 @@ def run_preflight(
         pin_path, pin_digest, pin_missing = _hop_pin(
             hop, tape or path, anchors_idx, root=repo_root
         )
-        if hop.get("anchor_path"):
-            pin_path = pin_path or repo_relative(str(hop["anchor_path"]), root=repo_root)
         room_id = int(hop.get("room_id") or parse_room_id(hop.get("room")) or 0)
         invalid = room_id in INVALID_ROOMS
         missing = list(pin_missing)
@@ -806,7 +844,7 @@ def run_preflight(
 
     if write:
         dest = Path(out) if out is not None else DEFAULT_BOARD
-        write_product_chain_board(path, out=dest, include_live=include_live)
+        dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(board, indent=2) + "\n", encoding="utf-8")
         board["written"] = repo_relative(dest, root=repo_root)
 
@@ -877,7 +915,9 @@ def format_preflight_summary(report: PreflightReport) -> str:
         for flag in report.stale_docs:
             lines.append(f"    - {flag}")
     edge = report.first_uncovered_edge
-    if edge:
+    if not report.hops:
+        lines.append("  first uncovered: no hops inventoried")
+    elif edge:
         lines.append(
             f"  first uncovered: {edge.get('segment')} hop {edge.get('hop_index')} "
             f"{edge.get('room')} {edge.get('hop_key')} "
