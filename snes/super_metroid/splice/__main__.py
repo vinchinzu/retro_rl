@@ -31,7 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m super_metroid.splice",
         description=(
             "Planning/verification over tips.play_hops. "
-            "Phase 0: artifact digest preflight (no emulator)."
+            "Artifact digest preflight (no emulator)."
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -41,7 +41,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     pre.add_argument("--task", type=Path, default=DEFAULT_TASK)
     pre.add_argument("--out", type=Path, default=DEFAULT_BOARD)
-    pre.add_argument("--write", action="store_true", help="Write the product-chain board")
+    pre.add_argument(
+        "--write",
+        action="store_true",
+        help="Write the hop board with rewritten paths (never host-absolute)",
+    )
     pre.add_argument("--json", action="store_true", help="Print JSON report only")
     pre.add_argument(
         "--strict",
