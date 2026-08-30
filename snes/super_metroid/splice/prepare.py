@@ -12,7 +12,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from super_metroid.human_tape.anchors import load_anchors_index, match_anchor, resolve_anchor_path
+from super_metroid.human_tape.anchors import (
+    load_anchors_index,
+    parse_room_id,
+    resolve_anchor_path,
+)
 from super_metroid.paths import SHARED_ROM
 from super_metroid.source_states import match_source_by_path
 from super_metroid.splice.cards import generate_cards
@@ -22,7 +26,9 @@ from super_metroid.splice.preflight import (
     INVALID_ROOMS,
     ArtifactRef,
     _artifact,
+    _hop_pin,
     _resolve_on_disk,
+    _same_room,
     discover_core_identity,
     file_digest,
     run_preflight,
@@ -83,30 +89,6 @@ def _extra_roots(repo_root: Path | str | None) -> tuple[Path, ...]:
     return (Path(repo_root),)
 
 
-def _locate(path: str | Path | None, *, extra: Sequence[Path] = ()) -> Path | None:
-    if path is None or str(path).strip() == "":
-        return None
-    found = _resolve_on_disk(path, extra=extra)
-    if found is not None:
-        return found
-    raw = str(path).strip()
-    p = Path(raw)
-    candidates: list[Path] = [p]
-    if not p.is_absolute() and not raw.startswith("/"):
-        candidates.append(Path("/") / p)
-    for base in extra:
-        b = Path(base)
-        candidates.append(b / raw)
-        candidates.append(b / p.name)
-    for cand in candidates:
-        try:
-            if cand.is_file():
-                return cand
-        except OSError:
-            continue
-    return None
-
-
 def _ref(
     kind: str,
     path: Path | str | None,
@@ -115,7 +97,7 @@ def _ref(
     extra: Sequence[Path],
     required: bool,
 ) -> ArtifactRef:
-    found = _locate(path, extra=extra)
+    found = _resolve_on_disk(path, extra=extra)
     return _artifact(kind, found or path, root=repo_root, required=required)
 
 
@@ -138,18 +120,47 @@ def _core_ref(
     )
 
 
-def _pin_from_anchors(edge: RouteEdge, *, extra: Sequence[Path]) -> Path | None:
-    tape = _locate(edge.tape_path, extra=extra)
+def _anchor_room(row: Mapping[str, Any]) -> int | None:
+    return parse_room_id(row.get("room_id") if row.get("room_id") is not None else row.get("room"))
+
+
+def _pin_from_anchors(
+    edge: RouteEdge,
+    *,
+    extra: Sequence[Path],
+    repo_root: Path | str | None,
+) -> Path | None:
+    """Same-room enter pin only. Other-room / unlabelled rows do not cover."""
+    tape = _resolve_on_disk(edge.tape_path, extra=extra)
     if tape is None:
         return None
     idx = load_anchors_index(tape)
-    if not idx:
+    hop = {
+        "room_id": edge.room_id,
+        "room": edge.room_id,
+        "start_index": edge.frame_start or 0,
+        "frame": edge.frame_start or 0,
+    }
+    pin_path, pin_digest, missing = _hop_pin(hop, tape, idx, root=repo_root)
+    if missing or not pin_digest:
         return None
-    frame = int(edge.frame_start or 0)
-    hit = match_anchor(idx, frame, edge.room_id, task_path=tape)
-    if hit is None:
+    resolved = _resolve_on_disk(pin_path, extra=(tape.parent, *tuple(extra)))
+    if resolved is None:
         return None
-    return resolve_anchor_path(hit, anchors_index=idx, task_path=tape)
+    rows = idx.get("anchors") if isinstance(idx.get("anchors"), list) else []
+    for row in rows:
+        if not isinstance(row, Mapping):
+            continue
+        row_path = resolve_anchor_path(row, anchors_index=idx, task_path=tape)
+        if row_path is None:
+            continue
+        try:
+            same_file = row_path.resolve() == resolved.resolve()
+        except OSError:
+            same_file = False
+        if same_file and _same_room(_anchor_room(row), edge.room_id):
+            return resolved
+    return None
 
 
 def _mismatch(expected: str | None, actual: str | None, *, kind: str) -> str | None:
@@ -211,16 +222,19 @@ def _catalog_issues(fp: EntryFingerprint, pin: Path | None) -> tuple[list[str], 
     return issues, source.source_id
 
 
+def _require_equal(edge_val: int | None, fp_val: int | None, *, label: str) -> list[str]:
+    if edge_val is None or fp_val is None:
+        return [f"{label}:missing"]
+    if int(edge_val) != int(fp_val):
+        return [f"{label}:mismatch"]
+    return []
+
+
 def _contract_issues(edge: RouteEdge, fp: EntryFingerprint, card: TaskCard) -> list[str]:
     issues: list[str] = []
-    if edge.required_items is not None and fp.items is not None and int(edge.required_items) != int(fp.items):
-        issues.append(
-            f"inventory:mismatch:required=0x{int(edge.required_items):04X}:got=0x{int(fp.items):04X}"
-        )
-    if edge.boss_bits is not None and fp.boss_bits is not None and int(edge.boss_bits) != int(fp.boss_bits):
-        issues.append("boss:mismatch")
-    if edge.event_bits is not None and fp.event_bits is not None and int(edge.event_bits) != int(fp.event_bits):
-        issues.append("event:mismatch")
+    issues.extend(_require_equal(edge.required_items, fp.items, label="inventory"))
+    issues.extend(_require_equal(edge.boss_bits, fp.boss_bits, label="boss"))
+    issues.extend(_require_equal(edge.event_bits, fp.event_bits, label="event"))
     pred_room = edge.predecessor_room_id
     if pred_room is not None:
         if fp.prior_room_id is None:
@@ -317,6 +331,8 @@ def prepare(
 
     extra = _extra_roots(repo_root)
     issues: list[str] = []
+    if not str(edge.selected_map().get(profile) or "").strip():
+        issues.append(f"profile:unselected:{profile}")
     if card.invalid_room or edge.invalid_room or edge.room_id in INVALID_ROOMS:
         issues.append(f"invalid_room:0x{int(edge.room_id):04X}")
 
@@ -335,9 +351,11 @@ def prepare(
         issues.append(f"core:{','.join(core.missing) or 'file'}")
 
     pin_path = card.entry_state_path or edge.entry.state_path
-    pin_file = _locate(pin_path, extra=extra)
-    if pin_file is None:
-        pin_file = _pin_from_anchors(edge, extra=extra)
+    # Named path is authoritative: do not fall back to another-room tape pin.
+    if pin_path:
+        pin_file = _resolve_on_disk(pin_path, extra=extra)
+    else:
+        pin_file = _pin_from_anchors(edge, extra=extra, repo_root=repo_root)
     pin = _ref("state", pin_file or pin_path, repo_root=repo_root, extra=extra, required=True)
     expected_pin = card.entry_state_digest or edge.entry.state_digest
     actual_pin = file_digest(pin_file) if pin_file is not None else pin.digest
@@ -356,6 +374,8 @@ def prepare(
     tape = _ref("tape", tape_path, repo_root=repo_root, extra=extra, required=need_tape)
     expected_tape = card.tape_digest or edge.tape_digest
     if need_tape:
+        if tape.missing:
+            issues.append(f"tape:{','.join(tape.missing)}")
         tape_issue = _mismatch(expected_tape, tape.digest, kind="tape")
         if tape_issue is not None:
             issues.append(tape_issue)
