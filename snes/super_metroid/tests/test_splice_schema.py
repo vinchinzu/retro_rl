@@ -20,7 +20,7 @@ from super_metroid.splice import (
     manifest_from_board,
     repo_relative,
 )
-from super_metroid.splice.cards import assembly_table, format_card
+from super_metroid.splice.cards import assembly_table, format_card, format_cards
 from super_metroid.splice.schema import (
     LeaveSpecRef,
     RouteManifest,
@@ -339,4 +339,101 @@ def test_manifest_from_synthetic_board_keeps_board_order() -> None:
     assert reversed_ids.edges[0].room_id == CERES
     cards = generate_cards(manifest)
     assert [c.task_id for c in cards] == ["ceres_elev", "landing_site"]
-    assert cards[1].adapter_kind in {"reactive_policy", "tape", "controller"}
+    assert "tape" in manifest.edges[0].allowed_kinds
+    assert manifest.edges[0].selected_map() == {"scaffold": "tape:board"}
+    assert "tape" not in manifest.edges[1].allowed_kinds
+    assert manifest.edges[1].selected_map() == {"survival": "reactive_policy:landing_v1"}
+    assert cards[0].adapter_kind == "tape"
+    survival = generate_cards(manifest, profile="survival")
+    assert survival[1].adapter_kind == "reactive_policy"
+
+
+def test_empty_manifest_cards_do_not_claim_coverage() -> None:
+    cards = generate_cards(RouteManifest.from_dict({"route_id": "empty", "edges": []}))
+    assert cards == ()
+    assert format_cards(cards) == "no hops inventoried"
+
+
+def test_board_game_relative_pin_digest() -> None:
+    from super_metroid.paths import GAME_DIR
+
+    pin = GAME_DIR / "tasks" / "_splice_pr2_pin.state"
+    tape = GAME_DIR / "tasks" / "_splice_pr2_tape.json"
+    payload = b"pin-bytes-board"
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_bytes(payload)
+    tape.write_bytes(b'{"frames":[]}\n')
+    board = {
+        "hops": [
+            {
+                "segment": "s1",
+                "hop_index": 0,
+                "room_id": CERES,
+                "to_room_id": LANDING,
+                "items": 0,
+                "dwell": 80,
+                "tape": "tasks/_splice_pr2_tape.json",
+                "anchor_path": "tasks/_splice_pr2_pin.state",
+            }
+        ]
+    }
+    try:
+        edge = manifest_from_board(board).edges[0]
+        assert edge.entry.state_path == "snes/super_metroid/tasks/_splice_pr2_pin.state"
+        assert edge.entry.state_digest == hashlib.sha256(payload).hexdigest()
+        assert edge.tape_path == "snes/super_metroid/tasks/_splice_pr2_tape.json"
+        assert edge.tape_digest == hashlib.sha256(b'{"frames":[]}\n').hexdigest()
+        card = generate_cards(manifest_from_board(board))[0]
+        assert card.entry_state_path == edge.entry.state_path
+        assert card.entry_state_digest == edge.entry.state_digest
+        assert not Path(str(card.entry_state_path)).is_absolute()
+    finally:
+        pin.unlink(missing_ok=True)
+        tape.unlink(missing_ok=True)
+
+
+def test_board_bad_frame_raises() -> None:
+    board = {
+        "hops": [
+            {
+                "room_id": CERES,
+                "to_room_id": LANDING,
+                "items": 0,
+                "dwell": 10,
+                "start_index": "nope",
+            }
+        ]
+    }
+    with pytest.raises(SchemaError, match="start_index"):
+        manifest_from_board(board)
+
+
+def test_candidate_rows_must_be_objects() -> None:
+    base = {
+        "candidate_id": "tape:ceres",
+        "kind": "tape",
+        "implementation_id": "s1",
+        "task_id": "ceres_elev",
+        "entry_fingerprint": {"room_id": CERES},
+    }
+    with pytest.raises(SchemaError):
+        CandidateArtifact.from_dict({**base, "replay_rows": {"trial": 1, "passed": True}})
+    with pytest.raises(SchemaError):
+        CandidateArtifact.from_dict({**base, "join_rows": ["oops"]})
+    with pytest.raises(SchemaError):
+        CandidateArtifact.from_dict({**base, "memory_writes": "oops"})
+
+
+def test_fingerprint_and_join_rooms_must_agree() -> None:
+    raw = _tiny_manifest()
+    raw["edges"][0]["entry"]["fingerprint"] = "nope"
+    with pytest.raises(SchemaError, match="fingerprint"):
+        RouteManifest.from_dict(raw)
+    raw = _tiny_manifest()
+    raw["edges"][0]["entry"]["fingerprint"]["room_id"] = LANDING
+    with pytest.raises(SchemaError, match="fingerprint room"):
+        RouteManifest.from_dict(raw)
+    raw = _tiny_manifest()
+    raw["edges"][0]["successor_leave"] = _leave("mismatch", CERES)
+    with pytest.raises(SchemaError, match="successor_leave"):
+        RouteManifest.from_dict(raw)

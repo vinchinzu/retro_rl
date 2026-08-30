@@ -162,27 +162,34 @@ def candidate_kind(candidate_id: str) -> str:
 
 def _allowed_kinds(value: Any) -> tuple[str, ...]:
     if value is None:
-        raise SchemaError("allowed_kinds required", code="schema.missing")
+        _fail("allowed_kinds required", "schema.missing")
     if isinstance(value, str):
         value = (value,)
     if not isinstance(value, (list, tuple)):
-        raise SchemaError("allowed_kinds must be a sequence", code="schema.type")
+        _fail("allowed_kinds must be a sequence", "schema.type")
     out: list[str] = []
     for item in value:
         kind = str(item).strip()
-        if not kind:
-            raise SchemaError("empty candidate kind", code="schema.kind")
-        if kind not in CANDIDATE_KINDS:
-            raise SchemaError(
-                f"unknown candidate kind {kind!r}",
-                code="schema.kind",
-                details={"kind": kind},
-            )
+        if not kind or kind not in CANDIDATE_KINDS:
+            _fail(f"unknown candidate kind {kind!r}", "schema.kind", kind=kind)
         if kind not in out:
             out.append(kind)
     if not out:
-        raise SchemaError("allowed_kinds must not be empty", code="schema.kind")
+        _fail("allowed_kinds must not be empty", "schema.kind")
     return tuple(out)
+
+
+def _rows(value: Any, *, field: str) -> tuple[Mapping[str, Any], ...]:
+    if value is None:
+        return ()
+    if isinstance(value, Mapping) or not isinstance(value, (list, tuple)):
+        _fail(f"{field} must be a sequence of objects", "schema.type", field=field)
+    rows: list[Mapping[str, Any]] = []
+    for i, row in enumerate(value):
+        if not isinstance(row, Mapping):
+            _fail(f"{field}[{i}] must be an object", "schema.type", field=field)
+        rows.append(row)
+    return tuple(rows)
 
 
 def _selected(
@@ -199,37 +206,28 @@ def _selected(
         rows = []
         for item in value:
             if not isinstance(item, (list, tuple)) or len(item) != 2:
-                raise SchemaError("selected rows must be [profile, candidate_id]", code="schema.selected")
+                _fail("selected rows must be [profile, candidate_id]", "schema.selected")
             rows.append((item[0], item[1]))
     else:
-        raise SchemaError("selected must be a mapping or pair list", code="schema.selected")
+        _fail("selected must be a mapping or pair list", "schema.selected")
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
     for profile, cand in rows:
         prof = str(profile).strip()
         cid = str(cand).strip()
-        if not prof:
-            raise SchemaError("empty intervention profile", code="schema.profile")
-        if prof not in INTERVENTION_PROFILES:
-            raise SchemaError(
-                f"unknown intervention profile {prof!r}",
-                code="schema.profile",
-                details={"profile": prof},
-            )
+        if not prof or prof not in INTERVENTION_PROFILES:
+            _fail(f"unknown intervention profile {prof!r}", "schema.profile", profile=prof)
         if not cid:
-            raise SchemaError("empty candidate id", code="schema.selected")
+            _fail("empty candidate id", "schema.selected")
         if prof in seen:
-            raise SchemaError(
-                f"duplicate profile {prof!r}",
-                code="schema.profile",
-                details={"profile": prof},
-            )
+            _fail(f"duplicate profile {prof!r}", "schema.profile", profile=prof)
         kind = candidate_kind(cid)
         if kind not in allowed:
-            raise SchemaError(
+            _fail(
                 f"selected candidate id {cid!r} is not in allowed kinds {list(allowed)}",
-                code="schema.selected",
-                details={"candidate_id": cid, "kind": kind, "allowed_kinds": list(allowed)},
+                "schema.selected",
+                candidate_id=cid,
+                kind=kind,
             )
         seen.add(prof)
         out.append((prof, cid))
@@ -439,7 +437,9 @@ class EntryContract:
     def from_dict(cls, data: Mapping[str, Any] | None) -> EntryContract:
         raw = dict(data or {})
         fp_raw = raw.get("fingerprint")
-        if isinstance(fp_raw, Mapping):
+        if "fingerprint" in raw:
+            if not isinstance(fp_raw, Mapping):
+                _fail("entry.fingerprint must be an object", "schema.entry")
             fp = EntryFingerprint.from_dict(fp_raw)
         else:
             fp = EntryFingerprint.from_dict(raw)
@@ -599,14 +599,20 @@ class RouteEdge:
             _fail("frame budgets must be >= 1", "schema.budget")
         order = _int(raw.get("integration_order"), field="integration_order", required=False, default=0)
         assert order is not None
+        entry = EntryContract.from_dict(entry_raw)
+        leave = LeaveSpecRef.from_dict(leave_raw)
+        if entry.fingerprint.room_id != int(room_id):
+            _fail("entry fingerprint room does not match room_id", "schema.room")
+        if next_room is not None and leave.room != int(next_room):
+            _fail("successor_leave.room does not match next_room_id", "schema.leave")
         return cls(
             task_id=task_id,
             hop_key=hop_key,
             room_id=int(room_id),
             predecessor_room_id=pred_room,
             next_room_id=next_room,
-            entry=EntryContract.from_dict(entry_raw),
-            successor_leave=LeaveSpecRef.from_dict(leave_raw),
+            entry=entry,
+            successor_leave=leave,
             allowed_kinds=allowed,
             selected=selected,
             owner_package=owner,
@@ -662,6 +668,15 @@ def _link_edges(edges: Sequence[RouteEdge]) -> tuple[RouteEdge, ...]:
             )
         if given_pred is None or given_succ is None:
             edge = replace(edge, predecessor_task_id=pred, successor_task_id=succ)
+        nxt = edges[i + 1] if i + 1 < len(edges) else None
+        if (
+            edge.next_room_id is not None
+            and nxt is not None
+            and not edge.invalid_room
+            and not nxt.invalid_room
+            and nxt.entry.fingerprint.room_id != edge.next_room_id
+        ):
+            _fail("next entry room does not match next_room_id", "schema.room")
         linked.append(edge)
     return tuple(linked)
 
@@ -685,17 +700,10 @@ class RouteManifest:
 
     def validate(self) -> None:
         if self.schema_version != SCHEMA_VERSION:
-            raise SchemaError(
-                f"unsupported schema_version {self.schema_version}",
-                code="schema.version",
-            )
+            _fail(f"unsupported schema_version {self.schema_version}", "schema.version")
         bad = [e.task_id for e in self.edges if e.invalid_room or e.room_id in INVALID_ROOMS]
         if bad:
-            raise SchemaError(
-                "invalid room 0x0000/0x5555",
-                code="schema.room",
-                details={"task_ids": bad},
-            )
+            _fail("invalid room 0x0000/0x5555", "schema.room", task_ids=bad)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> RouteManifest:
@@ -703,14 +711,10 @@ class RouteManifest:
         version = _int(raw.get("schema_version"), field="schema_version", required=False, default=SCHEMA_VERSION)
         assert version is not None
         if int(version) != SCHEMA_VERSION:
-            raise SchemaError(
-                f"unsupported schema_version {version}",
-                code="schema.version",
-                details={"schema_version": version},
-            )
+            _fail(f"unsupported schema_version {version}", "schema.version")
         kind = str(raw.get("kind") or MANIFEST_KIND)
         if kind != MANIFEST_KIND:
-            raise SchemaError(f"unknown manifest kind {kind!r}", code="schema.kind")
+            _fail(f"unknown manifest kind {kind!r}", "schema.kind")
         route_id = _text(raw.get("route_id"), field="route_id")
         assert route_id is not None
         rows = raw.get("edges")
@@ -974,19 +978,15 @@ class CandidateArtifact:
             if isinstance(final_raw, Mapping)
             else None,
             replay_rows=tuple(
-                ReplayRow.from_dict(r) for r in (raw.get("replay_rows") or ()) if isinstance(r, Mapping)
+                ReplayRow.from_dict(r) for r in _rows(raw.get("replay_rows"), field="replay_rows")
             ),
-            join_rows=tuple(
-                JoinRow.from_dict(r) for r in (raw.get("join_rows") or ()) if isinstance(r, Mapping)
-            ),
+            join_rows=tuple(JoinRow.from_dict(r) for r in _rows(raw.get("join_rows"), field="join_rows")),
             frame_count=_int(raw.get("frame_count"), field="frame_count", required=False),
             max_no_progress=_int(raw.get("max_no_progress"), field="max_no_progress", required=False),
             action_reasons=tuple(str(x) for x in (raw.get("action_reasons") or ())),
             failure_class=_text(raw.get("failure_class"), field="failure_class", required=False),
             memory_writes=tuple(
-                MemoryWrite.from_dict(w)
-                for w in (raw.get("memory_writes") or ())
-                if isinstance(w, Mapping)
+                MemoryWrite.from_dict(w) for w in _rows(raw.get("memory_writes"), field="memory_writes")
             ),
             leftover_state_path=_require_rel(raw.get("leftover_state_path"), field="leftover_state_path"),
             screenshot_path=_require_rel(raw.get("screenshot_path"), field="screenshot_path"),
