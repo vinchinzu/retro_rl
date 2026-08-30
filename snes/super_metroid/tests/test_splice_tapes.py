@@ -15,6 +15,7 @@ from super_metroid.splice.tapes import (
     ATTIC_ROOM,
     ATTIC_TASK_ID,
     BOWLING_INTERNAL_MAX_FRAMES,
+    BOWLING_PLANNED_DWELL,
     BOWLING_ROOM,
     BOWLING_TASK_ID,
     GRAVITY_ROOM,
@@ -32,7 +33,7 @@ ITEMS = 0x3105
 ATTIC_START = 100
 ATTIC_END = 180
 BOWLING_START = 2000
-BOWLING_DWELL = 5015
+BOWLING_DWELL = BOWLING_PLANNED_DWELL
 BOWLING_END = BOWLING_START + BOWLING_DWELL - 1
 
 
@@ -92,14 +93,17 @@ def _write_s23(
     write_anchors: bool = True,
     write_extract: bool = True,
     tape_payload: dict[str, Any] | None = None,
+    anchors: list[dict[str, Any]] | None = None,
 ) -> Path:
     sdir = root / "s23"
     sdir.mkdir(parents=True, exist_ok=True)
     hops = _s23_hops() if hops is None else hops
     attic_pin = sdir / "attic.state"
     bowl_pin = sdir / "bowling.state"
+    main_pin = sdir / "main.state"
     attic_pin.write_bytes(b"attic-enter")
     bowl_pin.write_bytes(b"bowling-enter")
+    main_pin.write_bytes(b"main-enter")
     if write_tape:
         if empty_tape:
             (sdir / "tape.json").write_bytes(b"")
@@ -115,31 +119,28 @@ def _write_s23(
             json.dumps({"room_hops": hops}) + "\n", encoding="utf-8"
         )
     if write_anchors:
-        (sdir / "anchors.json").write_text(
-            json.dumps(
+        rows = anchors
+        if rows is None:
+            rows = [
                 {
-                    "anchors_dir": str(sdir),
-                    "anchors": [
-                        {
-                            "kind": "room_enter",
-                            "frame": ATTIC_START,
-                            "room": f"0x{ATTIC_ROOM:04X}",
-                            "room_id": ATTIC_ROOM,
-                            "path": str(attic_pin.resolve()),
-                            "xy": [40, 120],
-                        },
-                        {
-                            "kind": "room_enter",
-                            "frame": BOWLING_START,
-                            "room": f"0x{BOWLING_ROOM:04X}",
-                            "room_id": BOWLING_ROOM,
-                            "path": str(bowl_pin.resolve()),
-                            "xy": [40, 180],
-                        },
-                    ],
-                }
-            )
-            + "\n",
+                    "kind": "room_enter",
+                    "frame": ATTIC_START,
+                    "room": f"0x{ATTIC_ROOM:04X}",
+                    "room_id": ATTIC_ROOM,
+                    "path": str(attic_pin.resolve()),
+                    "xy": [40, 120],
+                },
+                {
+                    "kind": "room_enter",
+                    "frame": BOWLING_START,
+                    "room": f"0x{BOWLING_ROOM:04X}",
+                    "room_id": BOWLING_ROOM,
+                    "path": str(bowl_pin.resolve()),
+                    "xy": [40, 180],
+                },
+            ]
+        (sdir / "anchors.json").write_text(
+            json.dumps({"anchors_dir": str(sdir), "anchors": rows}) + "\n",
             encoding="utf-8",
         )
     return sdir
@@ -190,6 +191,58 @@ def test_missing_attic_or_bowling_hop_fails_closed(tmp_path: Path) -> None:
         load_s23_tape_candidates(sdir)
     missing = exc.value.details.get("missing") or []
     assert any("0xCA52" in str(label) for label in missing)
+    hops = [h for h in _s23_hops() if h["room_id"] != BOWLING_ROOM]
+    sdir = _write_s23(tmp_path / "no-bowl", hops=hops)
+    with pytest.raises(PreflightError) as exc:
+        load_s23_tape_candidates(sdir)
+    missing = exc.value.details.get("missing") or []
+    assert any("0xC98E" in str(label) for label in missing)
+
+
+def test_other_room_enter_pin_fails_closed(tmp_path: Path) -> None:
+    sdir = _write_s23(
+        tmp_path,
+        anchors=[
+            {
+                "kind": "room_enter",
+                "frame": 0,
+                "room": f"0x{MAIN_SHAFT_ROOM:04X}",
+                "room_id": MAIN_SHAFT_ROOM,
+                "path": str((tmp_path / "s23" / "main.state").resolve()),
+                "xy": [1135, 80],
+            }
+        ],
+    )
+    with pytest.raises(PreflightError) as exc:
+        load_s23_tape_candidates(sdir)
+    missing = exc.value.details.get("missing") or []
+    assert any("enter_pin" in str(label) for label in missing)
+    assert any("0xCA52" in str(label) or "0xC98E" in str(label) for label in missing)
+
+
+def test_hop_span_and_successor_fail_closed(tmp_path: Path) -> None:
+    hops = _s23_hops()
+    for hop in hops:
+        if hop["room_id"] == ATTIC_ROOM:
+            for key in ("start_index", "end_index", "end_frame", "dwell", "frame"):
+                hop.pop(key, None)
+    sdir = _write_s23(tmp_path, hops=hops)
+    with pytest.raises(PreflightError) as exc:
+        load_s23_tape_candidates(sdir)
+    missing = exc.value.details.get("missing") or []
+    assert any("span" in str(label) and "0xCA52" in str(label) for label in missing)
+    hops = [h for h in _s23_hops() if h["room_id"] != GRAVITY_ROOM]
+    sdir = _write_s23(tmp_path / "no-grav", hops=hops)
+    with pytest.raises(PreflightError) as exc:
+        load_s23_tape_candidates(sdir)
+    missing = exc.value.details.get("missing") or []
+    assert any("0xCE40" in str(label) for label in missing)
+    hops = [h for h in _s23_hops() if h["room_id"] != WEST_OCEAN_ROOM]
+    sdir = _write_s23(tmp_path / "no-wo", hops=hops)
+    with pytest.raises(PreflightError) as exc:
+        load_s23_tape_candidates(sdir)
+    missing = exc.value.details.get("missing") or []
+    assert any("0x93FE" in str(label) for label in missing)
 
 
 def test_repo_relative_paths(tmp_path: Path) -> None:
@@ -297,5 +350,8 @@ def test_bounded_projection_and_search_live_adapter_recovery(tmp_path: Path) -> 
     )
     assert not miss_frame.within_bound
     assert miss_frame.recovery == "search_live_adapter"
-    assert bowling.adapter_config.max_depth <= 5
-    assert bowling.adapter_config.beam_width <= 12
+    miss_no_xy = project_live(attic, {"room_id": ATTIC_ROOM})
+    assert not miss_no_xy.within_bound
+    assert miss_no_xy.recovery == "search_live_adapter"
+    assert bowling.adapter_config.max_depth == 4
+    assert bowling.adapter_config.beam_width == 8
