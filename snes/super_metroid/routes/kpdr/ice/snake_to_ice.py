@@ -56,7 +56,7 @@ from super_metroid.routes.kpdr.ice.geometry import (
     on_snake_top,
     on_snake_tunnel_band,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE, ROOM_ICE_SNAKE
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import (

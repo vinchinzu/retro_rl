@@ -1,7 +1,7 @@
 """KPDR package surface: room ids, evidence types, registry.
 
 Hop controllers live in owner modules. Import ``play_*`` from the owner
-(``registry.get_segment``, spine hops, ``k4_cathedral``, ``wave``, …).
+(``registry.get_segment``, spine hops, ``norfair.cathedral``, ``wave``, …).
 This package does not re-export every hop callable.
 
 Exports load lazily so ``room_ids`` (pure constants) can be imported from

@@ -10,72 +10,213 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — L6 compass recovered (2026-08-30)
+## Immediate — finish L6 from the recovered compass boundary (2026-08-30)
 
-Power-on Survival `--through level6-compass` is **1/1** (`l6_compass_recompose`,
-169,403f, play `0x68` `(120,205)`, TF=`0x1F`, keys=4, hop 315f). West-pocket
-peel DOWN to y=189, RIGHT to historical x=144, occupancy UP (21 miss-blocks
-on x=144). Do not retouch 0x40, maze-west, L5, or the 0x78 peel. Next:
-recompose the L6 body from this leftover — `--through level6-clear68`. Living
-residual: `docs/tasks/rr-tne2-residual.md`. Do not STATUS-promote.
+Power-on Survival `--through level6-compass` is **1/1** on
+`l6_compass_recompose`: 169,403f, hop `level6_north_0x68` 315f, play `0x68`
+`(120,205)`, TF=`0x1F`, keys=4, bombs=8, Bow=1, health `0x66` with `lo==hi`.
+This boundary is carried by commit `ccbc058c`. The report has deaths 0,
+`mid_run_state_load=false`, and progression/capacity writes 0. The final PNG
+shows Link at the south mouth, live Zols, and the north door.
+`--through level6-compass` is therefore the only current predecessor;
+historical later greens are route hypotheses until recomposed from this exact
+power-on boundary.
 
-Keys still 4 vs historical 5. Do not hide it with a key top-up.
+The verified `0x78` peel is DOWN to y=189, RIGHT to x=144, then occupancy UP
+(21 miss-blocks on the x=144 statue column). The v4 `(120,149)` leftover was
+the door column on the middle statue row, not proof that x=120 UP works. Do not
+retry it, and do not retouch 0x40, maze-west, L5, or the `0x78` peel.
 
-### L6 blocker plan
+Keys are 4 here versus 5 on the historical prefix. This is a measured route
+input, not a reason to top up: `0x58` should supply one natural key, the `0x19`
+and `0x29` route spends/gain should leave 4 at `0x3A`, and KEY-UP `0x2C`
+should leave 3 at Gohma. Stop at the first mismatch instead of masking it.
 
-Work only from the recovered power-on prefix. The historical compass green
-started from cleared `0x78` `(144,141)` and is geometry evidence, not the
-current predecessor. Run one hypothesis at a time, stop at the first red, and
-inspect the final PNG plus coordinate/reason samples before changing policy.
+Living residual: `docs/tasks/rr-tne2-residual.md`. Bead `rr-tne2` stays open
+until the fresh power-on L6 endpoint passes. This is Survival evidence only;
+do not update `STATUS.md` or overwrite Clean M5.
 
-1. **Recover `0x78` north from the west statue pocket.** **Done** —
-   `l6_compass_recompose` 1/1 play `0x68` `(120,205)` hop 315f. Preserve
-   v1–v4 failed beliefs in the residual. Do not retouch the 0x78 peel. Do
-   not retry x=120 UP.
-2. **Recompose the existing L6 body from the new predecessor.** After the
-   compass gate is green, advance successive power-on `--through` boundaries
-   through `level6-clear3a`; do not assume the historical `(144,141)` prefix
-   or retune a later room from a checkpoint. Preserve the actual key count at
-   every boundary and stop at the first insufficient spend rather than adding
-   a key top-up.
-3. **Make every dedicated post-`0x3A` target cumulative.** In
-   `level6/spine_suffix.py`, each dedicated target must start from the real
-   non-dedicated predecessor, `level6-clear3a`. Compose these exact prefixes:
+### Session rule for every remaining checkbox
 
-   | through | required stages after `clear3A` |
-   |---------|----------------------------------|
-   | `level6-stairs3a-warp` | stairs-position assist / warp |
-   | `level6-cellar08` | warp → cellar `0x08` crossing |
-   | `level6-south1d` | warp → cellar → south `0x1D` |
-   | `level6-west2d` | warp → cellar → south `0x1D` → west `0x2D` |
-   | `level6-north2c` | warp → cellar → south `0x1D` → west `0x2D` → north `0x2C` |
-   | `level6-gohma` | the full prefix above → wooden-arrow assist → Gohma |
+- Start a new power-on Survival run from the real predecessor chain; never
+  tune a later room from a loaded checkpoint.
+- Run exactly one new `--through` target with `--no-video --trials 1`. Stop at
+  the first red. Inspect the final PNG, RAM glance, and controller
+  coordinate/reason samples before changing one policy.
+- A boundary is green only when its exact stop predicate passes with deaths
+  0, no measured mid-run state load, progression/capacity writes 0, TF still
+  `0x1F` until the natural shard, full health (`lo==hi`), and the expected
+  earned inventory. Keep the actual keys/bombs/Bow/Rod/Map/Compass values in
+  every residual update.
+- Preserve failed beliefs in the one living residual. Never add random
+  jitter, extend a timeout without new evidence, poke a door/key/Map/Rod/TF,
+  or rerun an unchanged policy. Three serial reds on the same checkbox means
+  mark that checkbox blocked and stop the sitting.
 
-   The authorized `(208,93)` position pair occurs exactly once in `0x3A`;
-   the cellar exits from its right ladder. The arrow assist occurs exactly
-   once in play `0x1C`, requires the naturally earned Bow, and grants only
-   wooden arrows plus B-slot selection. Merge both assists into the whole-run
-   audit instead of relying only on nested controller reports.
-4. **Add the natural L6 finish.** Gohma body-gone in `0x1C` is not a dungeon
-   endpoint. Continue with a dedicated post-boss controller that observes and
-   collects the natural heart container, walks north into `0x0C`, and collects
-   the shard without writing room, door, item, or Triforce state. Expose a
-   canonical `--through level6` stop whose success requires the `0x20`
-   Triforce bit (and the prior `0x1F` bits), the natural heart-container
-   increase, and the expected fanfare/room endpoint.
-5. **Make the continuous-session claim measurable.** The spine currently
-   hardcodes `mid_run_state_load=false` even though the Level 4 boss fallback
-   can call `env.em.set_state()`. Instrument the emulator boundary with a real
-   post-boot state-load counter, report the count, and fail the spine when it
-   is nonzero. In continuous mode, make the Level 4 fallback fail closed
-   instead of restoring trial states. No L6 green or final endpoint is
-   promotable until the measured count is zero.
-6. **Close only on a fresh power-on endpoint.** Final evidence is one
-   continuous Survival session through `level6`: no state load, deaths 0,
-   progression/capacity writes 0, exactly one disclosed position assist,
-   exactly one disclosed wooden-arrow assist, natural heart and TF `0x20`,
-   and no key top-up. Keep `rr-tne2` open and do not STATUS-promote before
-   that endpoint.
+The next and only command is:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-clear68 --no-video --trials 1 \
+  --tag l6_clear68_recompose
+```
+
+### Phase 1 — recompose the existing body through clear `0x3A`
+
+Advance in the order below. Each row is a separate fresh power-on checkbox;
+do not batch past a red. “Expected leave” is historical geometry to verify,
+not permission to claim the old run or force its coordinates.
+
+| Order | `--through` | Work and exact success gate | Expected leave / inventory |
+|------:|-------------|-----------------------------|----------------------------|
+| 1 | `level6-clear68` | Occupancy-patrol the five Zols/gels in `0x68`; collect the natural L6 Compass. | play `0x68`, historical `(120,149)`; Compass bit `0x20`; keys=4 |
+| 2 | `level6-keese` | From the clear leftover, take the free north door into `0x58`. | play `0x58` south mouth; keys=4 |
+| 3 | `level6-clear58` | Clear eight Keese and collect the natural floor key. | cleared `0x58`, historical `(112,167)`; keys 4→5 |
+| 4 | `level6-room48` | Occupancy north through the trap room; no key spend. | play `0x48` south mouth; keys=5 |
+| 5 | `level6-room38` | Continue north through traps into live Wizzrobes. | play `0x38`, historical `(120,189)`; keys=5 |
+| 6 | `level6-clear38` | Clear the seven live enemies; Bubble residual is allowed. | cleared `0x38`, historical west pocket `(32,149)` |
+| 7 | `level6-room28` | Reuse the live-left-`0x68` y-move and west-aisle north path; no emulator-state BFS. | play `0x28`, historical `(120,189)` |
+| 8 | `level6-clear28` | Clear the two orange Wizzrobes with occupancy patrol. | cleared `0x28`, historical `(120,181)` |
+| 9 | `level6-room18` | LEFT+UP off the south band, long UP, then RIGHT+UP at y≈109 into Gleeok. | play `0x18`, historical `(120,189)`; no key spend |
+| 10 | `level6-settle18` | Idle for the exact census before combat. | live three-head Gleeok type `0x44` plus `0x56` |
+| 11 | `level6-gleeok18` | Kill the Gleeok body from the south stand. | play `0x18`, body gone; historical `(121,133)` |
+| 12 | `level6-postgleeok18` | Wait out the head/fireball residual and observe the east door become usable. | play `0x18`, historical `(156,133)`; no live head required |
+| 13 | `level6-room19` | Go east into `0x19`. The decorative north hole in `0x18` is not a stair. | play `0x19` `(16,141)` |
+| 14 | `level6-clear19` | Clear two Zols plus two Like-Likes. | cleared `0x19`; do not detour for the unresolved Map |
+| 15 | `level6-room09` | KEY-UP from `0x19` using the verified x=136 axis approach. | play `0x09` south mouth; keys 5→4 |
+| 16 | `level6-clear09` | Clear three blue plus two orange Wizzrobes. | cleared `0x09`, historical `(112,173)` |
+| 17 | `level6-stairs09` | Push the left `0x68`, then south-face the NE `0x68` and UP onto tile `0x71`. | mode 9 `0x75` `(208,93)` |
+| 18 | `level6-rod` | Cross the cellar geometry and collect the Recorder naturally. | mode 9 `0x75`, Rod=1; historical `(136,141)` |
+| 19 | `level6-exit75` | Leave by the verified east-column drop and west spit. | play `0x09` `(192,141)`; Rod=1 |
+| 20 | `level6-south09` | Occupancy to the south door and descend. | play `0x19` north mouth; keys=4 |
+| 21 | `level6-south19` | Take the natural south key door. | dark play `0x29`; keys 4→3 |
+| 22 | `level6-clear29` | Clear five Wizzrobes and collect the natural key. | cleared `0x29`, historical `(55,133)`; keys 3→4 |
+| 23 | `level6-south29` | Use the verified RIGHT+DOWN peel, x-align at y=141, then descend. | play `0x39` `(120,93)`; do not retry sealed east `0x29` |
+| 24 | `level6-settle39` | Idle for the five-Vire census. | play `0x39`, five type `0x12` live |
+| 25 | `level6-clear39` | Clear the Vires with occupancy patrol. | cleared `0x39`, historical `(136,173)` |
+| 26 | `level6-east39` | RIGHT+UP clip to y=141, then cardinal RIGHT. | play `0x3A` `(16,141)`; keys=4 |
+| 27 | `level6-settle3a` | Record the live census before combat. | 3×`0x17`, 2×`0x23`, 2×`0x24`, center `0x68` |
+| 28 | `level6-clear3a` | Clear the seven enemies without pushing the center `0x68`. | play `0x3A`, historical `(144,141)`; Rod=1, Bow=1, keys=4 |
+
+Keep the known dead branches dedicated and skipped: `level6-stairs18`
+(decorative north hole), `level6-map19` (unresolved pickup), and
+`level6-east29` (sealed east door). They are not prerequisites for the Rod,
+Gohma, or L6 shard route.
+
+For rows 2–28, use the same command shape and a fresh descriptive tag:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_survival_spine.py \
+  --through <target> --no-video --trials 1 --tag <target>_recompose
+```
+
+### Phase 2 — make every post-`0x3A` target cumulative
+
+Do this only after `level6-clear3a` is green from the recovered prefix. The
+current dedicated filtering skips earlier dedicated rows, so `south1d`,
+`west2d`, `north2c`, and Gohma can start from the wrong room. Refactor
+`level6/spine_suffix.py` so every factory below creates fresh controllers and
+begins at the real non-dedicated predecessor, clear `0x3A`:
+
+| `--through` | Required stages after `level6-clear3a` | Exact gate |
+|-------------|------------------------------------------------|------------|
+| `level6-stairs3a-warp` | push center `0x68` → one `(208,93)` position assist → warp | mode 9 cellar `0x08`; Rod/Bow/keys/TF preserved |
+| `level6-cellar08` | warp → wait for A-side x=48 spawn → DOWN to y=189 → RIGHT to x=192 → UP B-side ladder | play `0x1D` `(96,157)`; never return to `0x3A` |
+| `level6-south1d` | warp → cellar cross → open-south `0x1D` | play `0x2D` `(120,77)`; keys remain 4 |
+| `level6-west2d` | prior prefix → open-west `0x2D` | play `0x2C` `(224,141)`; keys remain 4 |
+| `level6-north2c` | prior prefix → KEY-UP `0x2C` | play Gohma `0x1C` `(120,205)`; keys 4→3 |
+| `level6-gohma` | full prefix above → wooden-arrow assist → Gohma fight | play `0x1C`, body absent, Bow=1, wooden arrows=1, TF still `0x1F` |
+
+The position exception is exactly one logical position write in play `0x3A`
+after the live center-block push; it must not recur in a nested prefix. The
+Gohma exception is exactly one grant in play `0x1C`, only after confirming the
+naturally earned Bow and the incoming arrow count. It may set wooden arrows
+to 1 and select B-slot 2, but must never write Bow, silver arrows, room, door,
+key, capacity, or TF state.
+
+Merge both nested assist reports into the top-level `SpineRun` audit. The
+whole-run report must distinguish the one position exception, the one
+wooden-arrow grant, and the earlier documented bomb/key-count Survival
+shortcuts. In particular, add no new L6 key top-up and do not misreport the
+earlier spine shortcut as natural inventory.
+
+Run the six targets in table order, one fresh power-on trial each, stopping at
+the first red. Do not skip directly from `clear3a` to Gohma just because the
+historical door controllers were green.
+
+### Phase 3 — add the natural heart and shard endpoint
+
+Gohma body-gone is an intermediate boundary, not completion. Add a dedicated
+post-boss finish controller and a canonical `--through level6` row with these
+observable phases:
+
+1. In play `0x1C`, wait for the boss death/door-open sequence without a state
+   load or RAM write. Find and collect the natural room item `0x1A` heart
+   container. Prove one container increase from the incoming value (current
+   prefix is health `0x66`; the expected full post-heart value is `0x77`) and
+   require `lo==hi` after Survival refill.
+2. After the heart is gone and the north door is naturally usable, align to
+   the north mouth and enter `0x0C`. Fail on any wrong room, return to `0x2C`,
+   overworld exit, or death transition.
+3. Walk onto the Triforce shard naturally and stop on the fanfare/endpoint.
+   Success requires the new `0x20` bit and all incoming `0x1F` bits
+   (`TF==0x3F`), the recorded heart-container increase, Level 6 room `0x0C`,
+   and the expected fanfare or settled post-fanfare mode. Do not write room,
+   door, item, health-container, or Triforce state.
+
+Keep the post-boss stages separately named in the report (heart pickup, north
+door, shard pickup) so a red identifies the first missing natural event. The
+canonical `level6` target must compose the full Phase 2 prefix, Gohma, and all
+three finish phases; it must not be a body-gone alias.
+
+### Phase 4 — replace the claimed no-load flag with measured evidence
+
+Before the final endpoint trial, wrap the spine environment at construction
+with the existing `retro_harness.audit.AuditedEnv` boundary so every
+post-reset `env.em.set_state()` is counted. Report the integer count as well
+as the compatibility boolean; derive `mid_run_state_load` from the measured
+count instead of hardcoding `false`, and fail the run if the count is nonzero.
+
+The Level 4 Gleeok TF-exit fallback currently snapshots and tries multiple
+approaches with `env.em.set_state()`. Give that controller an explicit
+continuous mode, pass it from the Survival spine, and fail closed after the
+natural exit attempt instead of entering the restore loop. Isolated lab use
+may retain its search behavior, but no continuous-spine path may call it.
+
+This audit work is a prerequisite for the final `level6` green even if all L6
+controllers themselves report success.
+
+### Phase 5 — final power-on acceptance and bead close
+
+Run one fresh endpoint trial:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6 --no-video --trials 1 \
+  --tag l6_complete_recompose
+```
+
+Close `rr-tne2` only if the report and final glance prove all of the following:
+
+- one continuous power-on emulator session; measured post-reset state loads
+  exactly 0; deaths 0;
+- progression writes 0 and capacity writes 0;
+- exactly one disclosed `0x3A` position exception and exactly one disclosed
+  wooden-arrow grant; Bow remains naturally earned and no silver arrows;
+- no new L6 key top-up: natural keys follow 4→5→4→3→4→3, final bombs remain
+  the observed carried count unless naturally changed, Rod=1, L6 Compass bit
+  `0x20`, and no requirement to collect the skipped L6 Map;
+- Gohma naturally absent, one natural heart-container increase with full
+  hearts, final room `0x0C`, and TF `0x1F→0x3F` by natural shard collection;
+- the final PNG and `screen_glance` agree on room, mode, TF, inventory, and
+  hearts; `status_claim=false` remains explicit.
+
+Then update the one living residual with the final evidence, close/export the
+bead with the matching implementation commit, and leave `STATUS.md` unchanged.
+Do not push unless requested.
 
 ## Next pass — Survival spine from power-on (2026-08-15)
 

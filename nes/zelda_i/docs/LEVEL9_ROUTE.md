@@ -6,6 +6,36 @@ unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
 The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.
 
+## Natural-spine seam (Wave A, implementation only)
+
+The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
+and exposes exactly four cumulative public targets:
+
+```text
+level9-entry → level9-silver-arrows → level9-patra → level9-credits
+```
+
+`level9-entry`, `level9-silver-arrows`, and `level9-patra` deliberately attach
+one-frame fail-closed controllers.  The complete first-quest room graph,
+Silver Arrow room, and natural suffix join have not been decoded or observed,
+so those chapters cannot move Link or accidentally inherit fixture evidence.
+`door_graph/level9_exits.py` likewise exposes an empty natural graph rooted at
+entry `0x76`; the observed suffix remains a separate fixture-only graph.
+
+The `level9-credits` chapter is callable only after the exact live-Patra
+endpoint: room `0x52`, body `0x47`, eight eyes `0x25`, north closed, TF
+`0xFF`, naturally owned Silver Arrows and Bow, and the Magical Sword used by
+the proven policy.  Its fresh controller stages adapt Patra, Ganon, Power
+Triforce, Zelda, and credits input policies.  They load no fixture and perform
+zero direct inventory, room, door, progression, or capacity writes.  Ganon fails
+closed unless arrows are selected.  The adapter performs that selection with a
+bounded normal pause-menu cursor loop; it never assigns `ADDR_SELECTED_ITEM`.
+
+This is structural evidence only.  It does not promote the ending suffix,
+select a natural route, or make any `*ReconFixture` route-eligible.  The
+`0x51→0x41` work remains conditional: `requires_51_to_41=None` until decoded
+topology selects or excludes it.
+
 **Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
 `rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (room `0x62` disproved;
 play `0x03` stairs → cellar `0x77` → Patra **2/2**; `0x13` north wall, not a

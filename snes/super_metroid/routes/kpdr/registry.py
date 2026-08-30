@@ -68,7 +68,7 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_tutorial_to_gate,
     play_ice_gate_to_business,
 )
-from super_metroid.routes.kpdr.k5 import (
+from super_metroid.routes.kpdr.red_tower import (
     play_bat_to_red,
     play_below_to_bat,
     play_caterpillar_to_alpha_pb,
@@ -79,13 +79,19 @@ from super_metroid.routes.kpdr.k5 import (
     play_warehouse_to_east,
     play_west_to_below,
 )
-from super_metroid.routes.kpdr.k6 import (
+from super_metroid.routes.kpdr.wrecked_ship import (
     play_alpha_pb_to_caterpillar,
+    play_attic_to_west_ocean,
+    play_bowling_to_gravity,
     play_caterpillar_to_elevator,
     play_elevator_to_kihunter,
+    play_gravity_collect,
+    play_homing_geemer_to_bowling,
     play_kihunter_to_moat,
+    play_pancakes_to_homing_geemer,
     play_phantoon_loot_exit,
     play_phantoon_room_fight,
+    play_west_ocean_to_pancakes,
     play_ws_basement_to_main,
     play_ws_basement_to_phantoon,
     play_ws_entrance_to_main,
@@ -99,19 +105,15 @@ from super_metroid.routes.kpdr.west_ocean import (
     play_west_ocean_edge_spark,
     play_west_ocean_over_ocean_spark,
 )
-from super_metroid.routes.kpdr.k4_business_frog import (
-    play_business_to_frog_save,
-    play_farm_to_bubble,
-    play_frog_save_to_speedway,
-    play_speedway_to_farm,
-)
-from super_metroid.routes.kpdr.k4_cathedral import (
+from super_metroid.routes.kpdr.norfair import (
     play_business_to_cathedral_entrance,
+    play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
-)
-from super_metroid.routes.kpdr.k4_rising_tide import (
+    play_farm_to_bubble,
+    play_frog_save_to_speedway,
     play_rising_tide_to_bubble,
+    play_speedway_to_farm,
 )
 from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
 from super_metroid.routes.kpdr.to_speed import (
@@ -310,6 +312,12 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     "ws_basement_to_phantoon": play_ws_basement_to_phantoon,
     "ws_basement_to_main": play_ws_basement_to_main,
     "ws_main_to_attic": play_ws_main_to_attic,
+    "attic_to_west_ocean": play_attic_to_west_ocean,
+    "west_ocean_to_pancakes": play_west_ocean_to_pancakes,
+    "pancakes_to_homing_geemer": play_pancakes_to_homing_geemer,
+    "homing_geemer_to_bowling": play_homing_geemer_to_bowling,
+    "bowling_to_gravity": play_bowling_to_gravity,
+    "gravity_collect": play_gravity_collect,
     "phantoon_fight": play_phantoon_room_fight,
     "phantoon_loot_exit": play_phantoon_loot_exit,
     # Post-Speed shortcut only (Boost Blocks).

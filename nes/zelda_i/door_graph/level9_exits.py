@@ -1,4 +1,4 @@
-"""Level 9 fixture-suffix door-graph (route_eligible=false)."""
+"""Level 9 door graphs with fixture and natural evidence kept separate."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ L9_ROOM_03 = ROOM03
 L9_PATRA = ROOM_BEFORE_GANON
 L9_GANON = ROOM_GANON
 L9_ZELDA = ROOM_ZELDA
+L9_ENTRY = 0x76
 
 _FIXTURE = "fixture_only"
 
@@ -157,7 +158,21 @@ LEVEL_9_DOOR_GRAPH = DungeonDoorGraph.from_exits(
     name="level_9_fixture_suffix",
 )
 
+# The first-quest natural graph has not been decoded.  Keeping only the known
+# entry room makes pathfinding fail closed instead of accidentally treating the
+# observed fixture suffix as reachable from 0x76.
+LEVEL_9_NATURAL_DOOR_GRAPH = DungeonDoorGraph.from_exits(
+    {L9_ENTRY: ()},
+    level=9,
+    name="level_9_natural_undecoded",
+)
+
 
 def level_9_door_graph() -> DungeonDoorGraph:
     """Return a fresh copy of the L9 fixture suffix graph."""
     return clone_graph(LEVEL_9_DOOR_GRAPH)
+
+
+def level_9_natural_door_graph() -> DungeonDoorGraph:
+    """Return the fail-closed natural graph; no fixture edge is included."""
+    return clone_graph(LEVEL_9_NATURAL_DOOR_GRAPH)

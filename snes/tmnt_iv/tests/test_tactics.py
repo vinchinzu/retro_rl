@@ -99,6 +99,67 @@ def test_alleycat_relefts_instead_of_aligning_into_the_pack() -> None:
     assert action.action[A] == 0
 
 
+def test_alleycat_right_exits_left_5e_clump_instead_of_releft() -> None:
+    state = playing(
+        player_x=164,
+        player_y=180,
+        stage=1,
+        enemies=(
+            enemy(78, 180, kind=0x5E),
+            enemy(96, 180, slot=1, kind=0x5E),
+        ),
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "alley_right_exit"
+    assert action.action[7] == 1
+    assert action.action[6] == 0
+    assert action.action[B] == 0
+    assert action.action[A] == 0
+
+
+def test_alleycat_right_kicker_still_relefts() -> None:
+    state = playing(
+        player_x=199,
+        player_y=180,
+        stage=1,
+        enemies=(enemy(226, 180, kind=0x5E),),
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "alley_releft"
+    assert action.action[6] == 1
+    assert action.action[A] == 0
+
+
+def test_alleycat_overlap_5e_still_plants() -> None:
+    state = playing(
+        player_x=164,
+        player_y=180,
+        stage=1,
+        enemies=(enemy(164, 180, kind=0x5E),),
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "alley_poke"
+    assert action.action[Y] == 1
+    assert action.action[A] == 0
+
+
+def test_alleycat_60_wrong_side_still_relefts() -> None:
+    state = playing(
+        player_x=113,
+        player_y=180,
+        stage=1,
+        enemies=(enemy(80, 180, kind=0x60),),
+    )
+    action = Stage1Policy().tick(state).action
+    assert action is not None
+    assert action.reason == "alley_releft"
+    assert action.action[6] == 1
+    assert action.action[A] == 0
+
+
 def test_duo_wall_escape_from_right_door() -> None:
     state = playing(
         player_x=224,

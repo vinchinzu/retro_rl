@@ -1,14 +1,14 @@
 {
-  "success": false,
-  "error": "LeaveMiss: ws_main_to_attic: expected Attic 0xCA52, got 0xCAF6; leftover xy=[1187, 817] pose=48 gs=8; misses: room 0xCAF6 != 0xCA52; y=817 not in [100, 220]; pose 48 (other) not door; TimeoutError: ws_main_to_attic_mid_climb: did not reach phase seat: SuperMetroidState(frame=3600, game_state=8, phase=<GameplayPhase.ORDINARY_GAMEPLAY: 'ordinary_gameplay'>, room_id=51958, area_index=3, door_transition=0, transition_direction=7, samus_x=1187, samus_y=817, velocity_x=0, velocity_y=0, pose=48, health=299, max_health=299, reserve_health=0, max_reserve_health=0, missiles=20, max_missiles=20, super_missiles=5, max_super_missiles=5, power_bombs=5, max_power_bombs=5, selected_item=0, equipped_items=12549, collected_items=12549, equipped_beams=4103, collected_beams=4103, timer_type=0, escape_timer_frames=82, escape_timer_seconds=50, escape_timer_minutes=0, num_enemies=21, enemies_killed=0, enemy0_x=1176, enemy0_y=680, enemy0_hp=80, enemy0_spritemap=32845, event_flags=(254, 254, 254, 254, 27, 7, 93, 87), boss_bits=(254, 254, 94, 254, 123, 237, 213, 246), door_def_ptr=41620, samus_x_sub=33792, samus_y_sub=49151, velocity_x_sub=0, velocity_y_sub=43008, momentum_x=0, momentum_x_sub=0, speed_counter=0, speed_flag=0, vertical_direction=2, facing=8, movement_type=23, shinespark_timer=0, moonwalk=0)",
-  "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_west_super.state",
+  "success": true,
+  "error": null,
+  "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_basement_to_main.state",
   "boot": {
     "room": "0xCAF6",
     "xy": [
-      1095,
-      1690
+      1173,
+      1979
     ],
-    "pose": 81,
+    "pose": 1,
     "gs": 8,
     "dt": 0,
     "health": 299,
@@ -25,12 +25,12 @@
     "frame": 0
   },
   "final": {
-    "room": "0xCAF6",
+    "room": "0xCA52",
     "xy": [
-      1187,
-      817
+      1133,
+      203
     ],
-    "pose": 48,
+    "pose": 1,
     "gs": 8,
     "dt": 0,
     "health": 299,
@@ -44,94 +44,84 @@
     "facing": 8,
     "supers": 5,
     "missiles": 20,
-    "frame": 3600,
+    "frame": 2745,
     "charge": 0,
-    "mov": 23,
+    "mov": 0,
     "killed": 0,
-    "min_y": 792,
+    "min_y": 29,
     "min_y_xy": [
-      1164,
-      792
+      1133,
+      29
     ],
-    "min_y_pose": 84,
-    "min_y_frame": 1296,
+    "min_y_pose": 77,
+    "min_y_frame": 2617,
     "enemies": [
       {
         "slot": 0,
-        "id": "0xEA3F",
+        "id": "0xEB3F",
         "xy": [
-          1176,
-          680
+          1063,
+          176
         ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 1,
-        "id": "0xEA3F",
-        "xy": [
-          1136,
-          857
-        ],
-        "hp": 80,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 2,
-        "id": "0xEA3F",
+        "id": "0xEB3F",
         "xy": [
-          1056,
-          1164
+          468,
+          131
         ],
-        "hp": 80,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 3,
-        "id": "0xEA3F",
+        "id": "0xEB7F",
         "xy": [
-          1224,
-          1288
+          468,
+          131
         ],
-        "hp": 80,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 4,
-        "id": "0xEA3F",
+        "id": "0xEB3F",
         "xy": [
-          1160,
-          1468
+          1450,
+          107
         ],
-        "hp": 80,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 5,
-        "id": "0xEA3F",
+        "id": "0xEB7F",
         "xy": [
-          1129,
-          1818
+          1450,
+          107
         ],
-        "hp": 80,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 6,
-        "id": "0xEA3F",
+        "id": "0xE9FF",
         "xy": [
-          1048,
-          1928
+          1423,
+          90
         ],
-        "hp": 80,
+        "hp": 250,
         "freeze": 0
       },
       {
         "slot": 7,
         "id": "0xE9FF",
         "xy": [
-          1144,
-          594
+          850,
+          97
         ],
         "hp": 250,
         "freeze": 0
@@ -140,8 +130,8 @@
         "slot": 8,
         "id": "0xE9FF",
         "xy": [
-          1188,
-          822
+          556,
+          96
         ],
         "hp": 250,
         "freeze": 0
@@ -150,108 +140,98 @@
         "slot": 9,
         "id": "0xE9FF",
         "xy": [
-          1129,
-          1179
+          147,
+          124
         ],
         "hp": 250,
         "freeze": 0
       },
       {
         "slot": 10,
-        "id": "0xE9FF",
+        "id": "0xEB3F",
         "xy": [
-          1136,
-          1228
+          1242,
+          176
         ],
-        "hp": 250,
-        "freeze": 0
-      },
-      {
-        "slot": 11,
-        "id": "0xDFFF",
-        "xy": [
-          608,
-          1368
-        ],
-        "hp": 500,
+        "hp": 360,
         "freeze": 0
       },
       {
         "slot": 12,
-        "id": "0xE03F",
+        "id": "0xEA3F",
         "xy": [
-          608,
-          1380
+          224,
+          88
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 13,
-        "id": "0xDFFF",
+        "id": "0xEA3F",
         "xy": [
-          448,
-          1368
+          304,
+          184
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 14,
-        "id": "0xE03F",
+        "id": "0xEA3F",
         "xy": [
-          448,
-          1380
+          656,
+          184
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 15,
-        "id": "0xDFFF",
+        "id": "0xEA3F",
         "xy": [
-          288,
-          1368
+          752,
+          104
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 16,
-        "id": "0xE03F",
+        "id": "0xEA3F",
         "xy": [
-          288,
-          1380
+          880,
+          216
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 17,
-        "id": "0xDFFF",
+        "id": "0xEA3F",
         "xy": [
-          128,
-          1368
+          1072,
+          136
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 18,
-        "id": "0xE03F",
+        "id": "0xEA3F",
         "xy": [
-          128,
-          1380
+          1232,
+          136
         ],
-        "hp": 500,
+        "hp": 80,
         "freeze": 0
       },
       {
         "slot": 19,
         "id": "0xEA3F",
         "xy": [
-          1232,
-          1992
+          1488,
+          184
         ],
         "hp": 80,
         "freeze": 0
@@ -260,274 +240,3733 @@
         "slot": 20,
         "id": "0xEA3F",
         "xy": [
-          1072,
-          1992
+          1584,
+          120
         ],
         "hp": 80,
         "freeze": 0
       }
-    ]
+    ],
+    "events": [
+      {
+        "kind": "plm",
+        "frame": 211,
+        "xy": [
+          1223,
+          1860
+        ],
+        "ids": [
+          "0xD080",
+          "0xD074"
+        ],
+        "pxpy": [
+          [
+            1224,
+            1784
+          ],
+          [
+            1208,
+            1800
+          ]
+        ],
+        "n": 2
+      },
+      {
+        "kind": "plm",
+        "frame": 214,
+        "xy": [
+          1224,
+          1859
+        ],
+        "ids": [
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1192,
+            1768
+          ]
+        ],
+        "n": 3
+      },
+      {
+        "kind": "plm",
+        "frame": 218,
+        "xy": [
+          1227,
+          1856
+        ],
+        "ids": [
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1224,
+            1752
+          ]
+        ],
+        "n": 4
+      },
+      {
+        "kind": "plm",
+        "frame": 221,
+        "xy": [
+          1231,
+          1852
+        ],
+        "ids": [
+          "0xD078"
+        ],
+        "pxpy": [
+          [
+            1192,
+            1752
+          ]
+        ],
+        "n": 5
+      },
+      {
+        "kind": "plm",
+        "frame": 230,
+        "xy": [
+          1231,
+          1813
+        ],
+        "ids": [
+          "0xD078"
+        ],
+        "pxpy": [
+          [
+            1208,
+            1704
+          ]
+        ],
+        "n": 6
+      },
+      {
+        "kind": "plm",
+        "frame": 301,
+        "xy": [
+          1189,
+          1771
+        ],
+        "ids": [
+          "0xD074",
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1096,
+            1752
+          ],
+          [
+            1080,
+            1720
+          ]
+        ],
+        "n": 8
+      },
+      {
+        "kind": "plm",
+        "frame": 548,
+        "xy": [
+          1093,
+          1739
+        ],
+        "ids": [
+          "0xD078"
+        ],
+        "pxpy": [
+          [
+            1080,
+            1704
+          ]
+        ],
+        "n": 9
+      },
+      {
+        "kind": "plm",
+        "frame": 644,
+        "xy": [
+          1079,
+          1723
+        ],
+        "ids": [
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1144,
+            1704
+          ]
+        ],
+        "n": 10
+      },
+      {
+        "kind": "wall_587",
+        "frame": 1704,
+        "xy": [
+          1228,
+          587
+        ]
+      },
+      {
+        "kind": "plm",
+        "frame": 1722,
+        "xy": [
+          1234,
+          587
+        ],
+        "ids": [
+          "0xD074"
+        ],
+        "pxpy": [
+          [
+            1224,
+            552
+          ]
+        ],
+        "n": 11
+      },
+      {
+        "kind": "plm",
+        "frame": 1726,
+        "xy": [
+          1234,
+          587
+        ],
+        "ids": [
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1208,
+            520
+          ]
+        ],
+        "n": 12
+      },
+      {
+        "kind": "plm",
+        "frame": 1733,
+        "xy": [
+          1234,
+          587
+        ],
+        "ids": [
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1208,
+            488
+          ]
+        ],
+        "n": 13
+      },
+      {
+        "kind": "land_523",
+        "frame": 1756,
+        "xy": [
+          1216,
+          518
+        ]
+      },
+      {
+        "kind": "plm",
+        "frame": 1773,
+        "xy": [
+          1205,
+          523
+        ],
+        "ids": [
+          "0xD080",
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1176,
+            520
+          ],
+          [
+            1176,
+            488
+          ]
+        ],
+        "n": 15
+      },
+      {
+        "kind": "plm",
+        "frame": 1777,
+        "xy": [
+          1201,
+          518
+        ],
+        "ids": [
+          "0xD080",
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1144,
+            520
+          ],
+          [
+            1144,
+            488
+          ]
+        ],
+        "n": 17
+      },
+      {
+        "kind": "plm",
+        "frame": 1785,
+        "xy": [
+          1191,
+          522
+        ],
+        "ids": [
+          "0xD080",
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1112,
+            520
+          ],
+          [
+            1112,
+            488
+          ]
+        ],
+        "n": 19
+      },
+      {
+        "kind": "plm",
+        "frame": 1791,
+        "xy": [
+          1187,
+          517
+        ],
+        "ids": [
+          "0xD080",
+          "0xD080"
+        ],
+        "pxpy": [
+          [
+            1080,
+            520
+          ],
+          [
+            1080,
+            488
+          ]
+        ],
+        "n": 21
+      },
+      {
+        "kind": "plm",
+        "frame": 1936,
+        "xy": [
+          1077,
+          523
+        ],
+        "ids": [
+          "0xD074"
+        ],
+        "pxpy": [
+          [
+            1080,
+            472
+          ]
+        ],
+        "n": 22
+      },
+      {
+        "kind": "land_443",
+        "frame": 2110,
+        "xy": [
+          1166,
+          443
+        ]
+      }
+    ],
+    "trace": [
+      {
+        "f": 2506,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2507,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2508,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2509,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2510,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2511,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2512,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2513,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2514,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2515,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2516,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2517,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2518,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2519,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2520,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2521,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2522,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2523,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2524,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2525,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2526,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2527,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2528,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2529,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2530,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 1,
+        "x_edge": true,
+        "proj": 0
+      },
+      {
+        "f": 2531,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 2,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2532,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 3,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2533,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 4,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2534,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 5,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2535,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 6,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2536,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 7,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2537,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP",
+          "X"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 8,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2538,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": true,
+        "proj": 0
+      },
+      {
+        "f": 2539,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2540,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2541,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2542,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2543,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2544,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2545,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2546,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2547,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 3,
+        "bt": [
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2548,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 85,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2549,
+        "xy": [
+          1133,
+          91
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2550,
+        "xy": [
+          1133,
+          85
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2551,
+        "xy": [
+          1133,
+          79
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2552,
+        "xy": [
+          1133,
+          73
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2553,
+        "xy": [
+          1133,
+          67
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2554,
+        "xy": [
+          1133,
+          62
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2555,
+        "xy": [
+          1133,
+          56
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2556,
+        "xy": [
+          1133,
+          51
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2557,
+        "xy": [
+          1133,
+          46
+        ],
+        "p": 21,
+        "bt": [
+          "A",
+          "UP"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2558,
+        "xy": [
+          1133,
+          41
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2559,
+        "xy": [
+          1133,
+          36
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2560,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2561,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2562,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2563,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2564,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2565,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2566,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2567,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2568,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2569,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2570,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2571,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2572,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2573,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2574,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2575,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2576,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2577,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2578,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2579,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2580,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2581,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2582,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2583,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2584,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2585,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2586,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2587,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2588,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2589,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2590,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2591,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2592,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2593,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2594,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2595,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2596,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2597,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2598,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2599,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2600,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2601,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2602,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2603,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [
+          "A"
+        ],
+        "why": "ws_main_to_attic_door",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2604,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2605,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2606,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2607,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2608,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2609,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2610,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2611,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2612,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2613,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2614,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2615,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2616,
+        "xy": [
+          1133,
+          31
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2617,
+        "xy": [
+          1133,
+          29
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2618,
+        "xy": [
+          1133,
+          280
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2619,
+        "xy": [
+          1133,
+          278
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2620,
+        "xy": [
+          1133,
+          277
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2621,
+        "xy": [
+          1133,
+          275
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2622,
+        "xy": [
+          1133,
+          273
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2623,
+        "xy": [
+          1133,
+          271
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2624,
+        "xy": [
+          1133,
+          270
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2625,
+        "xy": [
+          1133,
+          268
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2626,
+        "xy": [
+          1133,
+          266
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2627,
+        "xy": [
+          1133,
+          264
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2628,
+        "xy": [
+          1133,
+          263
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2629,
+        "xy": [
+          1133,
+          261
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2630,
+        "xy": [
+          1133,
+          259
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2631,
+        "xy": [
+          1133,
+          257
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2632,
+        "xy": [
+          1133,
+          256
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2633,
+        "xy": [
+          1133,
+          254
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2634,
+        "xy": [
+          1133,
+          252
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2635,
+        "xy": [
+          1133,
+          250
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2636,
+        "xy": [
+          1133,
+          249
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2637,
+        "xy": [
+          1133,
+          247
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2638,
+        "xy": [
+          1133,
+          245
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2639,
+        "xy": [
+          1133,
+          243
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2640,
+        "xy": [
+          1133,
+          242
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2641,
+        "xy": [
+          1133,
+          240
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2642,
+        "xy": [
+          1133,
+          238
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2643,
+        "xy": [
+          1133,
+          236
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2644,
+        "xy": [
+          1133,
+          235
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2645,
+        "xy": [
+          1133,
+          233
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2646,
+        "xy": [
+          1133,
+          231
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2647,
+        "xy": [
+          1133,
+          229
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2648,
+        "xy": [
+          1133,
+          228
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2649,
+        "xy": [
+          1133,
+          226
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2650,
+        "xy": [
+          1133,
+          224
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2651,
+        "xy": [
+          1133,
+          222
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2652,
+        "xy": [
+          1133,
+          221
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2653,
+        "xy": [
+          1133,
+          219
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2654,
+        "xy": [
+          1133,
+          217
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2655,
+        "xy": [
+          1133,
+          215
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2656,
+        "xy": [
+          1133,
+          214
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2657,
+        "xy": [
+          1133,
+          212
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2658,
+        "xy": [
+          1133,
+          210
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2659,
+        "xy": [
+          1133,
+          208
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2660,
+        "xy": [
+          1133,
+          207
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2661,
+        "xy": [
+          1133,
+          205
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2662,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2663,
+        "xy": [
+          1133,
+          201
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2664,
+        "xy": [
+          1133,
+          200
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2665,
+        "xy": [
+          1133,
+          198
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2666,
+        "xy": [
+          1133,
+          196
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2667,
+        "xy": [
+          1133,
+          194
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2668,
+        "xy": [
+          1133,
+          193
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2669,
+        "xy": [
+          1133,
+          191
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2670,
+        "xy": [
+          1133,
+          189
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2671,
+        "xy": [
+          1133,
+          187
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2672,
+        "xy": [
+          1133,
+          186
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2673,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2674,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2675,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2676,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2677,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2678,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2679,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2680,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2681,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2682,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2683,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2684,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2685,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2686,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2687,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2688,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2689,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2690,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2691,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2692,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2693,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2694,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2695,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2696,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2697,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2698,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2699,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2700,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2701,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2702,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2703,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2704,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2705,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2706,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2707,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2708,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2709,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2710,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2711,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2712,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2713,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2714,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2715,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2716,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2717,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_settle",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2718,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2719,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2720,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2721,
+        "xy": [
+          1133,
+          184
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2722,
+        "xy": [
+          1133,
+          185
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2723,
+        "xy": [
+          1133,
+          185
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2724,
+        "xy": [
+          1133,
+          186
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2725,
+        "xy": [
+          1133,
+          187
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2726,
+        "xy": [
+          1133,
+          188
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2727,
+        "xy": [
+          1133,
+          189
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2728,
+        "xy": [
+          1133,
+          190
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2729,
+        "xy": [
+          1133,
+          191
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2730,
+        "xy": [
+          1133,
+          192
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2731,
+        "xy": [
+          1133,
+          194
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2732,
+        "xy": [
+          1133,
+          195
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2733,
+        "xy": [
+          1133,
+          197
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2734,
+        "xy": [
+          1133,
+          199
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2735,
+        "xy": [
+          1133,
+          201
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2736,
+        "xy": [
+          1133,
+          202
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2737,
+        "xy": [
+          1133,
+          205
+        ],
+        "p": 77,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2738,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2739,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2740,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2741,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2742,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2743,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2744,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 164,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      },
+      {
+        "f": 2745,
+        "xy": [
+          1133,
+          203
+        ],
+        "p": 1,
+        "bt": [],
+        "why": "ws_main_to_attic_land",
+        "ch": 0,
+        "x_edge": false,
+        "proj": 0
+      }
+    ],
+    "upper_n": 22
   },
-  "frames": 3600,
+  "frames": 2745,
   "time": {
-    "frames": 3600,
-    "seconds": 59.901,
-    "clock": "01:00.00",
+    "frames": 2745,
+    "seconds": 45.675,
+    "clock": "00:45.75",
     "ntsc_fps": 60.0988
   },
-  "saved": null,
-  "leftover_state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ws_main_to_attic_leftover.state",
-  "red_png": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/ws_main_to_attic_red.png",
-  "hop_green": false,
+  "saved": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_to_attic.state",
+  "leftover_state": null,
+  "red_png": null,
+  "hop_green": true,
   "phase_ok": false,
   "phase_stop": null,
-  "glance_misses": [
-    "y=817 not in [655, 705]"
-  ],
-  "leftover": {
-    "room": "0xCAF6",
-    "xy": [
-      1187,
-      817
-    ],
-    "pose": 48,
-    "gs": 8,
-    "dt": 0,
-    "health": 299,
-    "boss": 0,
-    "morph": false,
-    "selected": 0,
-    "items": "0x3105",
-    "beams": "0x1007",
-    "vx": 0,
-    "vy": 0,
-    "facing": 8,
-    "supers": 5,
-    "missiles": 20,
-    "frame": 3600,
-    "charge": 0,
-    "mov": 23,
-    "killed": 0,
-    "min_y": 792,
-    "min_y_xy": [
-      1164,
-      792
-    ],
-    "min_y_pose": 84,
-    "min_y_frame": 1296,
-    "enemies": [
-      {
-        "slot": 0,
-        "id": "0xEA3F",
-        "xy": [
-          1176,
-          680
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 1,
-        "id": "0xEA3F",
-        "xy": [
-          1136,
-          857
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 2,
-        "id": "0xEA3F",
-        "xy": [
-          1056,
-          1164
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 3,
-        "id": "0xEA3F",
-        "xy": [
-          1224,
-          1288
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 4,
-        "id": "0xEA3F",
-        "xy": [
-          1160,
-          1468
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 5,
-        "id": "0xEA3F",
-        "xy": [
-          1129,
-          1818
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 6,
-        "id": "0xEA3F",
-        "xy": [
-          1048,
-          1928
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 7,
-        "id": "0xE9FF",
-        "xy": [
-          1144,
-          594
-        ],
-        "hp": 250,
-        "freeze": 0
-      },
-      {
-        "slot": 8,
-        "id": "0xE9FF",
-        "xy": [
-          1188,
-          822
-        ],
-        "hp": 250,
-        "freeze": 0
-      },
-      {
-        "slot": 9,
-        "id": "0xE9FF",
-        "xy": [
-          1129,
-          1179
-        ],
-        "hp": 250,
-        "freeze": 0
-      },
-      {
-        "slot": 10,
-        "id": "0xE9FF",
-        "xy": [
-          1136,
-          1228
-        ],
-        "hp": 250,
-        "freeze": 0
-      },
-      {
-        "slot": 11,
-        "id": "0xDFFF",
-        "xy": [
-          608,
-          1368
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 12,
-        "id": "0xE03F",
-        "xy": [
-          608,
-          1380
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 13,
-        "id": "0xDFFF",
-        "xy": [
-          448,
-          1368
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 14,
-        "id": "0xE03F",
-        "xy": [
-          448,
-          1380
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 15,
-        "id": "0xDFFF",
-        "xy": [
-          288,
-          1368
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 16,
-        "id": "0xE03F",
-        "xy": [
-          288,
-          1380
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 17,
-        "id": "0xDFFF",
-        "xy": [
-          128,
-          1368
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 18,
-        "id": "0xE03F",
-        "xy": [
-          128,
-          1380
-        ],
-        "hp": 500,
-        "freeze": 0
-      },
-      {
-        "slot": 19,
-        "id": "0xEA3F",
-        "xy": [
-          1232,
-          1992
-        ],
-        "hp": 80,
-        "freeze": 0
-      },
-      {
-        "slot": 20,
-        "id": "0xEA3F",
-        "xy": [
-          1072,
-          1992
-        ],
-        "hp": 80,
-        "freeze": 0
-      }
-    ]
-  },
+  "glance_misses": [],
   "command": "pure",
   "hop": "ws_main_to_attic"
 }

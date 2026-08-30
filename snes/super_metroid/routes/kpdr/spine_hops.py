@@ -45,13 +45,13 @@ from super_metroid.routes.kpdr.collect_hijump import (
     play_hj_room_collect,
     play_hj_shaft_to_hj_room,
 )
-from super_metroid.routes.kpdr.k4_business_frog import play_business_to_frog_save
-from super_metroid.routes.kpdr.k4_cathedral import (
+from super_metroid.routes.kpdr.norfair import (
     play_business_to_cathedral_entrance,
+    play_business_to_frog_save,
     play_cathedral_entrance_to_cathedral,
     play_cathedral_to_rising_tide,
+    play_rising_tide_to_bubble,
 )
-from super_metroid.routes.kpdr.k4_rising_tide import play_rising_tide_to_bubble
 from super_metroid.routes.kpdr.return_hijump import (
     play_hj_room_to_shaft,
     play_hj_shaft_to_business,

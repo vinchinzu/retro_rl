@@ -149,11 +149,12 @@ Phases A–E green; pure R19 + continuous tip **122,304f** → Bat Cave. Techniq
 ref (maintenance only): [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md). Card
 stack deleted after promote. Next serial: `bd ready -l super_metroid`.
 
-## Main Shaft → Attic (second consumer) — open
+## Main Shaft → Attic (second consumer) — closed
 
-Powered Main Shaft → Attic on `rr-kw8t`. Seats in
-`routes/kpdr/k6/ws_main_geometry.py`. Live pin, checkbox, and probe CLI:
-[`rr-kw8t-residual.md`](rr-kw8t-residual.md).
+Phases A–E green; natural Basement-leave → Attic is dual-exact **2,745f**
+×2. Seats live in `routes/kpdr/wrecked_ship/ws_main_geometry.py`. The
+next open boundary on `rr-kw8t` is Attic → West Ocean; evidence and probe
+CLI: [`rr-kw8t-residual.md`](rr-kw8t-residual.md).
 
 ## See also
 

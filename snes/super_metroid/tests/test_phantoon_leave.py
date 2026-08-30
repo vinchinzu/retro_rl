@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from super_metroid.ram import GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.phantoon_leave import (
+from super_metroid.routes.kpdr.wrecked_ship.phantoon_leave import (
     DOOR_X_MAX,
     SWEEP_X,
     door_jump_action,

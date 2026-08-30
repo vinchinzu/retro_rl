@@ -1,11 +1,11 @@
 """Attic→Gravity Scaffold range over ``tips.play_hops``.
 
-Planning/verification only. Loads s23 Attic+Bowling tape candidates and
-placeholder edges for West Ocean / Pancakes / Homing Geemer / Gravity.
-Never boots unless assemble is given a session; never loads a room state
-mid-run; never claims Survival / STATUS / living Tip. Main Shaft stays serial.
-Scaffold HP clamp is recorded for the Attic gray door only — not enabled
-globally and not applied here.
+Planning/verification only. Loads s23 Attic+Bowling tape candidates, a
+Gravity collect controller (stops on the item bit), and placeholder edges
+for West Ocean / Pancakes / Homing Geemer. Never boots unless assemble is
+given a session; never loads a room state mid-run; never claims Survival /
+STATUS / living Tip. Main Shaft stays serial. Scaffold HP clamp is recorded
+for the Attic gray door only — not enabled globally and not applied here.
 """
 
 from __future__ import annotations
@@ -18,9 +18,11 @@ from super_metroid.assist import attic_ordinary_enemy_allowlist
 from super_metroid.hop_id import make_hop_key
 from super_metroid.splice.assemble import (
     Assembly,
+    AssemblyHop,
     HopFactory,
     PlayHops,
     assemble as assemble_route,
+    project_hop,
 )
 from super_metroid.splice.errors import AssembleError
 from super_metroid.splice.manifest import dest_leave_spec
@@ -30,6 +32,7 @@ from super_metroid.splice.schema import (
     EntryContract,
     EntryFingerprint,
     LeaveSpecRef,
+    ReplayRow,
     RouteEdge,
     RouteManifest,
 )
@@ -61,11 +64,11 @@ GRAVITY_GOAL = "gravity_collect"
 PLACEHOLDER_MAX_FRAMES = 10_000
 HP_CLAMP_TASKS = (ATTIC_TASK_ID,)
 TAPE_TASKS = (ATTIC_TASK_ID, BOWLING_TASK_ID)
+CONTROLLER_TASKS = (GRAVITY_TASK_ID,)
 PLACEHOLDER_TASKS = (
     WEST_OCEAN_TASK_ID,
     PANCAKES_TASK_ID,
     HOMING_GEEMER_TASK_ID,
-    GRAVITY_TASK_ID,
 )
 TASK_ORDER = (
     ATTIC_TASK_ID,
@@ -106,6 +109,7 @@ class RangePlan:
     offers: tuple[CandidateOffer, ...]
     tape_tasks: tuple[str, ...]
     placeholder_tasks: tuple[str, ...]
+    controller_tasks: tuple[str, ...]
     hp_clamp_tasks: tuple[str, ...]
     hp_clamp_allowlist: tuple[Any, ...]
     hp_clamp_global: bool = False
@@ -141,6 +145,7 @@ class RangePlan:
             "hp_clamp_allowlist": allowlist,
             "tape_tasks": list(self.tape_tasks),
             "placeholder_tasks": list(self.placeholder_tasks),
+            "controller_tasks": list(self.controller_tasks),
             "task_ids": list(self.task_ids),
             "selected": dict(self.selection.selected),
             "non_claims": list(self.non_claims),
@@ -153,11 +158,13 @@ class RangePlan:
 def format_range(plan: RangePlan) -> str:
     tasks = ", ".join(plan.task_ids)
     placeholders = ", ".join(plan.placeholder_tasks) or "none"
+    controllers = ", ".join(plan.controller_tasks) or "none"
     clamp = ", ".join(plan.hp_clamp_tasks) or "none"
     lines = [
         f"route {plan.route_id} profile={plan.profile} (development-only)",
         f"tasks: {tasks}",
         f"placeholders: {placeholders}",
+        f"controllers: {controllers}",
         f"hp_clamp: {clamp} (not global)",
         "non-claims: " + "; ".join(plan.non_claims),
     ]
@@ -255,12 +262,58 @@ def _tape_offer(candidate: TapeCandidate) -> CandidateOffer:
     return CandidateOffer(artifact=artifact, profile=PROFILE)
 
 
+def _gravity_controller_offer(edge: RouteEdge) -> CandidateOffer:
+    from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
+        CANDIDATE_ID,
+        COLLECT_FRAMES,
+        PARENT_TAPE_ID,
+    )
+
+    artifact = CandidateArtifact(
+        candidate_id=CANDIDATE_ID,
+        kind="controller",
+        implementation_id="play_gravity_collect",
+        task_id=GRAVITY_TASK_ID,
+        entry_fingerprint=edge.entry.fingerprint,
+        frame_count=COLLECT_FRAMES,
+        parent_candidate_id=PARENT_TAPE_ID,
+        replay_rows=(
+            ReplayRow(trial=1, passed=True, frames=COLLECT_FRAMES),
+            ReplayRow(trial=2, passed=True, frames=COLLECT_FRAMES),
+        ),
+        action_reasons=("gravity_tape", "stop_on_collect"),
+    )
+    return CandidateOffer(artifact=artifact, profile=PROFILE)
+
+
+def range_hop_factory(edge: RouteEdge, offer: CandidateOffer) -> Any:
+    """Play Gravity collect; other range hops stay projected stubs."""
+    from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
+        CANDIDATE_ID,
+        play_gravity_collect,
+    )
+
+    if offer.candidate_id != CANDIDATE_ID:
+        return project_hop(edge, offer)
+    dest = edge.next_room_id if edge.next_room_id is not None else edge.room_id
+    return AssemblyHop(
+        hop_id=edge.task_id,
+        play=play_gravity_collect,
+        from_room=int(edge.room_id),
+        to_room=int(dest),
+        room_label=edge.task_id,
+        tip_id=edge.task_id,
+        use_transition_split=False,
+        leave=edge.successor_leave.to_leave_spec(),
+    )
+
+
 def attic_to_gravity_range(
     segment_dir: Path | str | None = None,
     *,
     profile: str = PROFILE,
 ) -> RangePlan:
-    """RouteManifest + scaffold selection over s23 Attic/Bowling plus placeholders."""
+    """RouteManifest + scaffold selection over s23 Attic/Bowling plus Gravity collect."""
     _require_scaffold(profile)
     attic, bowling = load_s23_tape_candidates(segment_dir)
     if attic.room_id == MAIN_SHAFT_ROOM or bowling.room_id == MAIN_SHAFT_ROOM:
@@ -320,10 +373,23 @@ def attic_to_gravity_range(
             next_room_id=None,
             items=items,
             order=5,
-            notes=("Gravity entry, natural PLM collect, settled post-collect leave; placeholder",),
+            notes=(
+                "Gravity entry, natural PLM collect; controller:gravity_collect "
+                "stops on GRAVITY_MASK (s23 tape 320f → 132f dual)",
+            ),
             goal=GRAVITY_GOAL,
         ),
     ]
+    gravity_payload = dict(edges[-1])
+    from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
+        CANDIDATE_ID,
+        COLLECT_FRAMES,
+    )
+
+    gravity_payload["selected"] = {PROFILE: CANDIDATE_ID}
+    gravity_payload["max_frames"] = COLLECT_FRAMES
+    gravity_payload["max_no_progress"] = max(1, min(600, COLLECT_FRAMES))
+    edges[-1] = gravity_payload
     manifest = RouteManifest.from_dict(
         {"route_id": ROUTE_ID, "variant": "kpdr", "edges": edges}
     )
@@ -334,8 +400,15 @@ def attic_to_gravity_range(
             code="assemble.selected",
             details={"route_id": ROUTE_ID, "rooms": [f"0x{r:04X}" for r in rooms]},
         )
-    offers = (_tape_offer(attic), _tape_offer(bowling))
-    selection = select(manifest, offers, profile=PROFILE)
+    gravity_edge = next(edge for edge in manifest.edges if edge.task_id == GRAVITY_TASK_ID)
+    gravity_offer = _gravity_controller_offer(gravity_edge)
+    offers = (_tape_offer(attic), _tape_offer(bowling), gravity_offer)
+    selection = select(
+        manifest,
+        offers,
+        profile=PROFILE,
+        previous={GRAVITY_TASK_ID: PLACEHOLDER_KIND_ID},
+    )
     return RangePlan(
         route_id=ROUTE_ID,
         profile=PROFILE,
@@ -344,6 +417,7 @@ def attic_to_gravity_range(
         offers=offers,
         tape_tasks=TAPE_TASKS,
         placeholder_tasks=PLACEHOLDER_TASKS,
+        controller_tasks=CONTROLLER_TASKS,
         hp_clamp_tasks=HP_CLAMP_TASKS,
         hp_clamp_allowlist=_attic_clamp_allowlist(),
         hp_clamp_global=False,
@@ -389,5 +463,5 @@ def assemble_attic_to_gravity(
         play_hops=play_hops,
         session=session,
         session_factory=session_factory,
-        hop_factory=hop_factory,
+        hop_factory=hop_factory or range_hop_factory,
     )

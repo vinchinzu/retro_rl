@@ -34,6 +34,10 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> --source <pin>
 
 uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --no-video
 
+# Scratch Gravity collect from the s23 enter pin (not STATUS / not --to gravity green)
+uv run python snes/super_metroid/scripts/probe/kpdr.py pure gravity-collect \
+  --source snes/super_metroid/tasks/full_start_v1_anchors/f022887_enter_0xCE40_0xCE40.state
+
 bd ready -l super_metroid -l spine
 ```
 

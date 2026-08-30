@@ -175,19 +175,6 @@ def on_level7_bait_shop_hyp(snap: ZeldaSnapshot) -> bool:
     )
 
 
-def level7_dungeon_play(snap: ZeldaSnapshot) -> bool:
-    return snap.level == LEVEL7 and snap.mode == PLAY_MODE
-
-
-def level7_triforce_stop(snap: ZeldaSnapshot) -> bool:
-    return bool(snap.triforce & LEVEL7_TRIFORCE_BIT)
-
-
-def level7_entry_stop(_snap: ZeldaSnapshot) -> bool:
-    """Placeholder until live entry room id exists."""
-    return False
-
-
 def level7_overworld_stop(_snap: ZeldaSnapshot) -> bool:
     """Exact overworld geometry stop: controllable on the pond screen."""
     return on_level7_pond_hyp(_snap)

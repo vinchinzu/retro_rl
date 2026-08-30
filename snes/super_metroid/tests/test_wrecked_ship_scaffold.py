@@ -9,19 +9,19 @@ from typing import Any
 import numpy as np
 
 from super_metroid.ram import parse_state
-from super_metroid.routes.kpdr.k6 import ws_basement as k6ws
-from super_metroid.routes.kpdr.k6.ws_basement import (
+from super_metroid.routes.kpdr.wrecked_ship import ws_basement as ws
+from super_metroid.routes.kpdr.wrecked_ship.ws_basement import (
     at_ws_basement_bomb_blocks,
     at_ws_basement_eye_seat,
 )
-from super_metroid.routes.kpdr.k6.ws_entrance import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_entrance import (
     WEAPON_BEAM,
     WS_ENTRANCE_DOOR_X_MIN,
     at_ws_entrance_door_seat,
     ws_entrance_main_settled,
     ws_entrance_to_main_action,
 )
-from super_metroid.routes.kpdr.k6.ws_main import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main import (
     WEAPON_SUPER,
     WS_MAIN_BOTTOM_Y,
     at_ws_main_green_floor,
@@ -125,12 +125,12 @@ def test_ws_basement_bomb_and_eye_seats() -> None:
 
 
 def test_ws_basement_product_morph_bombs_are_x_not_a() -> None:
-    bomb_src = inspect.getsource(k6ws._bomb_tunnel)
+    bomb_src = inspect.getsource(ws._bomb_tunnel)
     assert 'hold(session, 3, "X"' in bomb_src
     assert 'hold(session, 3, "A"' not in bomb_src
 
 
 def test_ws_basement_does_not_fight_phantoon() -> None:
-    src = inspect.getsource(k6ws)
+    src = inspect.getsource(ws)
     assert "play_phantoon" not in src
-    assert "Do not fight" in k6ws.play_ws_basement_to_phantoon.__doc__
+    assert "Do not fight" in ws.play_ws_basement_to_phantoon.__doc__

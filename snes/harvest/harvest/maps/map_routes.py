@@ -189,8 +189,13 @@ _FISH_TO_OUTDOOR_SPA: List[Waypoint] = [
 
 # Path 0x0C is the farm / town / mountain fork. Town and mountain share
 # farm→crossroads instead of forking the farm exit.
+# Live Wood_Progress dump + spa probe: MapExit lists x=0 y=24–28, but the
+# trigger is 0xC0 at x=0 y=26–28 (not in FARM_WALKABLE). Stand ~px(11,424)
+# tile (0,26). (0,24)=0xA1 is the gate wall — LEFT+B pins at x=22, no map
+# change. (1,27)=0xFF, so LEFT on y=27 never reaches C0. Open face is
+# (1,26)=0xA8. Do not BFS onto C0; is_exit walk left into it.
 _FARM_WEST_EXIT = Waypoint(
-    tilemap=0x00, target_px=(40, 424), radius=16, is_exit=True, exit_direction="left"
+    tilemap=0x00, target_px=(40, 424), radius=6, is_exit=True, exit_direction="left"
 )
 _PATH_FARM_GATE = Waypoint(tilemap=0x0C, target_px=(232, 128), radius=16)
 _PATH_CROSSROADS = Waypoint(tilemap=0x0C, target_px=(132, 128), radius=16)
@@ -211,18 +216,23 @@ _PATH_FARM_EXIT = Waypoint(
 )
 _FARM_WEST_TO_TOWN: List[Waypoint] = [_FARM_WEST_EXIT, _PATH_TOWN_EXIT]
 
-# Pond A6 occupies y=25 x=0-6 *and* x=9-10 (gap east of the house
-# column). Column x=8 is A0 y=23-25 then A8 y=26-28. Live After_Rocks
-# on (7,25)/(7,26) sat at (127,420) against the pond face. Stay on the
-# house column until y=27, then run west. Do not LEFT-hold on y=25.
+# Pond A6 is y=25 x=0-6. House column x=8 is A0 y=24–25 then A8 y=26 (door).
+# Down that column onto y=26, then west on A8. Do not LEFT-hold on y=24
+# (A1 gate), y=25 (pond), or y=27 (FF at x=1).
 _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
-    Waypoint(tilemap=0x00, target_px=(136, 440), radius=8, run_direction="down", force_run=True),
-    Waypoint(tilemap=0x00, target_px=(72, 440), radius=8, run_direction="left"),
+    Waypoint(
+        tilemap=0x00,
+        target_px=(136, 424),
+        radius=6,
+        run_direction="down",
+        force_run=True,
+    ),
+    Waypoint(tilemap=0x00, target_px=(72, 424), radius=8, run_direction="left"),
     _FARM_WEST_EXIT,
 ]
 
-# L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first, then
-# A0 above the pond and the x=7 pinch — not the A8 pond-edge row at y=424.
+# L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first onto
+# A0 above the pond, then the house-column pinch down to y=26.
 _FARM_TO_PATH: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
     Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0

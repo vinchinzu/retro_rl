@@ -13,16 +13,20 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_ALPHA_PB,
     ROOM_BAT,
     ROOM_BELOW_SPAZER,
+    ROOM_BOWLING,
     ROOM_BUSINESS,
     ROOM_CATERPILLAR,
     ROOM_CRATERIA_KIHUNTER,
     ROOM_EAST_TUNNEL,
     ROOM_GLASS,
+    ROOM_GRAVITY,
     ROOM_HELLWAY,
+    ROOM_HOMING_GEEMER,
     ROOM_ICE_GATE,
     ROOM_ICE_SNAKE,
     ROOM_ICE_TUTORIAL,
     ROOM_MOAT,
+    ROOM_PANCAKES,
     ROOM_PHANTOON,
     ROOM_RED_BRINSTAR_ELEVATOR,
     ROOM_RED_TOWER,
@@ -65,6 +69,12 @@ __all__ = [
     "PHANTOON_LEAVE",
     "WS_BASEMENT_TO_MAIN",
     "WS_MAIN_TO_ATTIC",
+    "ATTIC_TO_WEST_OCEAN",
+    "WEST_OCEAN_TO_PANCAKES",
+    "PANCAKES_TO_HOMING_GEEMER",
+    "HOMING_GEEMER_TO_BOWLING",
+    "BOWLING_TO_GRAVITY",
+    "GRAVITY_COLLECT",
     "WS_MAIN_PIT_SHOT",
     "WS_MAIN_GRATE_SEAT",
     "WS_MAIN_WEST_SUPER",
@@ -195,6 +205,26 @@ WS_BASEMENT_TO_MAIN = _spec(
 WS_MAIN_TO_ATTIC = _spec(
     "ws_main_to_attic", ROOM_WS_ATTIC, (1050, 1220), (100, 220), "door"
 )
+# s23 tape leaves (wide bands; not Main Shaft GREEN). pose any: door/morph/idle.
+ATTIC_TO_WEST_OCEAN = _spec(
+    "attic_to_west_ocean", ROOM_WEST_OCEAN, (1, 80), (100, 180), "any"
+)
+WEST_OCEAN_TO_PANCAKES = _spec(
+    "west_ocean_to_pancakes", ROOM_PANCAKES, (1, 80), (100, 180), "any"
+)
+PANCAKES_TO_HOMING_GEEMER = _spec(
+    "pancakes_to_homing_geemer", ROOM_HOMING_GEEMER, (1, 80), (100, 180), "any"
+)
+HOMING_GEEMER_TO_BOWLING = _spec(
+    "homing_geemer_to_bowling", ROOM_BOWLING, (1, 120), (100, 220), "any"
+)
+BOWLING_TO_GRAVITY = _spec(
+    "bowling_to_gravity", ROOM_GRAVITY, (80, 320), (80, 220), "any"
+)
+# Dual from f022887: (127, 135) p46 gs=8 items 0x3125.
+GRAVITY_COLLECT = _spec(
+    "gravity_collect", ROOM_GRAVITY, (100, 160), (110, 160), "any"
+)
 
 # In-room Main Shaft seats (not dest hops). pose any: fire slope is p3.
 # Approach still in Main, not Basement. Weak on purpose.
@@ -211,7 +241,7 @@ WS_MAIN_WEST_SUPER = _spec(
     "ws_main_west_super", ROOM_WS_MAIN, (1080, 1220), (1650, 1700), "any"
 )
 WS_MAIN_MID_CLIMB = _spec(
-    "ws_main_mid_climb", ROOM_WS_MAIN, (1080, 1220), (655, 705), "any"
+    "ws_main_mid_climb", ROOM_WS_MAIN, (1080, 1220), (630, 710), "any"
 )
 WS_MAIN_ATTIC_SEAT = _spec(
     "ws_main_attic_seat", ROOM_WS_MAIN, (1111, 1159), (0, 160), "stand"
@@ -256,6 +286,12 @@ LEAVE_BY_HOP: dict[str, LeaveSpec] = {
         PHANTOON_LEAVE,
         WS_BASEMENT_TO_MAIN,
         WS_MAIN_TO_ATTIC,
+        ATTIC_TO_WEST_OCEAN,
+        WEST_OCEAN_TO_PANCAKES,
+        PANCAKES_TO_HOMING_GEEMER,
+        HOMING_GEEMER_TO_BOWLING,
+        BOWLING_TO_GRAVITY,
+        GRAVITY_COLLECT,
         WS_MAIN_PIT_SHOT,
         WS_MAIN_GRATE_SEAT,
         WS_MAIN_WEST_SUPER,

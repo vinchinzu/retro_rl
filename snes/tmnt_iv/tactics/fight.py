@@ -173,12 +173,18 @@ def _keep_sewer_pace(state: GameState, action: FrameAction) -> FrameAction:
             return FrameAction(action=buttons("RIGHT"), reason="boss_run_right")
         return FrameAction(action=buttons("B", "RIGHT"), reason="boss_jump_right")
     held = list(action.action)
-    # Spacing LEFT is intentional poke-retreat — do not force RIGHT.
-    if held[SNES_LEFT] and action.reason in {
-        "space_left",
-        "approach_left",
-    }:
-        return action
+    if not state.boss_active and held[SNES_LEFT]:
+        # Wave LEFT walks into hanging spikes (LiveHard 4-dmg at x=96).
+        # Keep only a short overlap retreat when a Foot is on the right.
+        overlapping_right = any(
+            0 < enemy.x - state.player_x <= _SEWER_STANDOFF
+            for enemy in state.living_enemies
+        )
+        if action.reason == "space_left" and overlapping_right:
+            return action
+        held[SNES_LEFT] = 0
+        held[SNES_RIGHT] = 1
+        return FrameAction(action=held, reason="walk_right")
     held[SNES_RIGHT] = 1
     return FrameAction(action=held, reason=action.reason)
 

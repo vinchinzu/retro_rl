@@ -30,6 +30,7 @@ from super_metroid.splice.ranges import (
     assemble_attic_to_gravity,
     attic_to_gravity_range,
     gravity_range,
+    range_hop_factory,
 )
 from super_metroid.splice.grade import GradeReport, JoinGrade, LeftoverPackage, grade
 from super_metroid.splice.manifest import load_manifest, manifest_from_board
@@ -109,6 +110,7 @@ __all__ = [
     "generate_cards",
     "grade",
     "gravity_range",
+    "range_hop_factory",
     "load_manifest",
     "manifest_from_board",
     "prepare",

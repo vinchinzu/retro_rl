@@ -94,6 +94,9 @@ ROOM_RED_BRINSTAR_ELEVATOR = 0x962A
 ROOM_CRATERIA_KIHUNTER = 0x948C
 ROOM_MOAT = 0x95FF
 ROOM_WEST_OCEAN = 0x93FE
+ROOM_PANCAKES = 0x9461  # Pancakes and Wavers (Bowling approach)
+ROOM_HOMING_GEEMER = 0x968F  # Homing Geemer Room
+ROOM_BOWLING = 0xC98E  # Bowling Alley
 ROOM_WS_ENTRANCE = 0xCA08  # Wrecked Ship Entrance (over-ocean spark)
 ROOM_WS_MAIN = 0xCAF6  # Wrecked Ship Main Shaft
 ROOM_WS_ATTIC = 0xCA52  # Wrecked Ship Attic
@@ -103,6 +106,7 @@ ROOM_WS_WEST_SUPER = 0xCDA8  # West Super Missile (Main Shaft side trip)
 ROOM_WS_SAVE = 0xCE8A  # Wrecked Ship Save (Main Shaft right)
 ROOM_WS_SPONGE = 0xCD5C  # Sponge Bath (Main Shaft left)
 ROOM_PHANTOON = 0xCD13  # Phantoon's Room
+ROOM_GRAVITY = 0xCE40  # Gravity Suit Room (Bowling drop)
 
 __all__ = [
     "ROOM_CERES_ELEVATOR",
@@ -180,6 +184,9 @@ __all__ = [
     "ROOM_CRATERIA_KIHUNTER",
     "ROOM_MOAT",
     "ROOM_WEST_OCEAN",
+    "ROOM_PANCAKES",
+    "ROOM_HOMING_GEEMER",
+    "ROOM_BOWLING",
     "ROOM_WS_ENTRANCE",
     "ROOM_WS_MAIN",
     "ROOM_WS_ATTIC",
@@ -189,4 +196,5 @@ __all__ = [
     "ROOM_WS_SAVE",
     "ROOM_WS_SPONGE",
     "ROOM_PHANTOON",
+    "ROOM_GRAVITY",
 ]

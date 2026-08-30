@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from super_metroid.ram import GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.ws_ceiling_door import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_ceiling_door import (
     ceiling_door_action,
     play_ceiling_door,
     settle_ceiling_dest,

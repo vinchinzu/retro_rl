@@ -1,7 +1,7 @@
 # Hitbox recon — SM-K4.10-GATE / rr-dbu.10 (Double Chamber blue gate)
 
 Scratch recon only. Does **not** STATUS-promote, claim Wave, or close the bead.
-Controller geometry in `routes/kpdr/k4_wave.py` is owned by the controller agent.
+Controller geometry in `routes/kpdr/wave/` is owned by the controller agent.
 
 ## Sources
 
@@ -13,7 +13,7 @@ Controller geometry in `routes/kpdr/k4_wave.py` is owned by the controller agent
 | `debug/wave_recon/` (gate_switch*, human_full, human_replay) | Visual switch top; closed bars hard-stop; open vs closed frames |
 | GHZ pattern `routes/kpdr/ghz_to_red.py` | Tight **Samus y** band + settle pose before shot |
 | `scripts/probe/red_diag.py` | PLM open-state WRAM **blocked** (no trusted PLM record offset) |
-| Pure gate open (promoted; residual purged) | Entry / Kamer / fail pin → controller `k4_wave.py` |
+| Pure gate open (promoted; residual purged) | Entry / Kamer / fail pin → controller `wave/` |
 
 ## Geometry truth (verified)
 
@@ -102,7 +102,7 @@ tape used assist so missiles stayed 15.
 ## Probe scratch
 
 One-off `dc_gate_plm_recon.py` was deleted after the gate recon. Product
-controller is `routes/kpdr/k4_wave.py`; do not resurrect the scratch probe.
+controller is `routes/kpdr/wave/`; do not resurrect the scratch probe.
 
 ## Recommended single experiment (controller agent)
 
@@ -132,4 +132,4 @@ Why this knob:
 - No Wave beam / rr-re9 close
 - No Ice hop invent
 - PLM open bit still unmapped
-- Did not edit `k4_wave.py`
+- Did not edit `wave/`

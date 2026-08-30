@@ -1,0 +1,786 @@
+"""Powered Main Shaft climb loop (rr-kw8t hop 2).
+
+Pit two-hop, Ice keepaway, save-column wall-jump. Dispatch is
+``classify_region`` — stairs leftover is PIT, not the Wave-hole shelf.
+Product ``west_super`` is y~1675 in the shaft — not West Super ``0xCDA8``.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from super_metroid.combat.enemies import list_enemies
+from super_metroid.plm import near_samus, session_ram, shot_block_spawns, snapshot_plms
+from super_metroid.ram import FACING_LEFT, FACING_RIGHT, SuperMetroidState
+from super_metroid.routes.controller_common import (
+    WallJumpTiming,
+    hold,
+    is_morph,
+    select_weapon,
+    unmorph,
+    walljump_once,
+)
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_actions import (
+    at_take02_departure,
+    climb_action,
+    three_shot_action,
+    wall_up_shot_action,
+)
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import (
+    MORPH_DROP_BOMB_FRAMES,
+    SAVE_COLUMN_LATCH_X,
+    SLOPE_523_SEAT_Y,
+    SLOPE_651_SEAT_Y,
+    SLOPE_651_WALL_X,
+    UPPER_WALL_CLEAR,
+    UPPER_WALL_SHOT_X,
+    SLOPE_827_SEAT_Y,
+    SLOPE_827_WALL_X,
+    SLOPE_1019_SEAT_Y,
+    SLOPE_1019_WALL_X,
+    SLOPE_1130_SEAT_Y,
+    THREE_SHOT_FRAMES,
+    TUNNEL_CLEAR_X,
+    UPPER_SHAFT_HOPS,
+    WJ_POSES,
+    WS_MAIN_SAVE_X,
+    WS_MAIN_SHAFT_CENTER,
+    WS_MAIN_STAIR_Y,
+    ShaftRegion,
+    at_ws_main_attic_door_seat,
+    at_ws_main_grate_seat,
+    at_ws_main_morph_drop,
+    at_ws_main_pit,
+    at_ws_main_save_alcove,
+    at_ws_main_save_column_wj,
+    classify_region,
+)
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_ice import (
+    SHELF_HOLE_FRAMES,
+    SLOPE_523_ICE_X,
+    ice_keepaway_action,
+    shelf_covern_ice_action,
+)
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_WS_ATTIC,
+    ROOM_WS_BASEMENT,
+    ROOM_WS_MAIN,
+    ROOM_WS_SAVE,
+    ROOM_WS_SPONGE,
+    ROOM_WS_WEST_SUPER,
+)
+from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.skills.basic_moves import shoot_up_action
+from super_metroid.routes.skills.charge_shot import session_beam_charge
+from super_metroid.routes.skills.knockback import escape_knockback_spin, is_knockback
+from super_metroid.takeoff import spin_jump, walk_toward_x
+
+WEAPON_BEAM = 0
+_THREE_SHOT_FRAMES = THREE_SHOT_FRAMES + 40
+_CLIMB_BUDGET = 3600
+_SIDE_TRIP_BUDGET = 400
+_TAKE02_DROP_HANDOFF = (
+    (5, ("LEFT",)),
+    (9, ("LEFT", "A")),
+    (6, ("LEFT",)),
+    (3, ("LEFT", "X")),
+    (4, ("X",)),
+    (5, ()),
+    (6, ("X",)),
+    (9, ()),
+    (7, ("A",)),
+    (1, ("DOWN", "A")),
+    (9, ("DOWN", "A", "X")),
+    (1, ("DOWN", "A")),
+    (4, ("DOWN",)),
+    (2, ("X",)),
+    (4, ("LEFT", "X")),
+    (3, ("LEFT",)),
+    (3, ("UP", "LEFT")),
+    (1, ("LEFT",)),
+    (11, ()),
+    (1, ("DOWN",)),
+)
+_TAKE02_TUNNEL_HANDOFF = (
+    (11, ("UP",)),
+    (6, ("UP", "X")),
+    (7, ("UP",)),
+    (5, ("UP", "X")),
+    (15, ("UP",)),
+    (4, ("X",)),
+    (4, ()),
+    (11, ("UP",)),
+    (6, ("UP", "X")),
+    (5, ("UP",)),
+    (6, ("UP", "X")),
+    (1, ("UP",)),
+    (7, ()),
+    (4, ("A",)),
+    (20, ("RIGHT", "A")),
+)
+SAVE_COLUMN_WJ = WallJumpTiming(
+    into="RIGHT",
+    flip="LEFT",
+    into_frames=3,
+    amid_frames=2,
+    flip_frames=14,
+    delay_into_frames=0,
+)
+
+
+def _rle_action(
+    recipe: tuple[tuple[int, tuple[str, ...]], ...], frame: int
+) -> tuple[str, ...] | None:
+    cursor = int(frame)
+    for count, names in recipe:
+        if cursor < count:
+            return names
+        cursor -= count
+    return None
+
+
+def _take02_drop_handoff_action(frame: int) -> tuple[str, ...] | None:
+    """Tape-locked x=1189 contact clear through the first DOWN-morph."""
+    return _rle_action(_TAKE02_DROP_HANDOFF, frame)
+
+
+def _take02_tunnel_handoff_action(frame: int) -> tuple[str, ...] | None:
+    """Tape-locked x=1093 unmorph, ceiling shots, and west-super jump."""
+    return _rle_action(_TAKE02_TUNNEL_HANDOFF, frame)
+
+
+def guard_main_shaft(session: ControllerSession, label: str) -> None:
+    room = int(session.state.room_id)
+    if room in (ROOM_WS_MAIN, ROOM_WS_ATTIC, ROOM_WS_WEST_SUPER, ROOM_WS_SPONGE):
+        return
+    if room == ROOM_WS_SAVE:
+        raise TimeoutError(f"{label}: entered save 0xCE8A: {session.state}")
+    if room == ROOM_WS_BASEMENT:
+        raise TimeoutError(f"{label}: dropped back to Basement 0xCC6F: {session.state}")
+    raise TimeoutError(f"{label}: left Main Shaft into 0x{room:04X}: {session.state}")
+
+
+def knockback_main_shaft(session: ControllerSession, label: str) -> None:
+    x = int(session.state.samus_x)
+    prefer = "LEFT" if x > WS_MAIN_SHAFT_CENTER else "RIGHT"
+    escape_knockback_spin(
+        session,
+        prefer_dir=prefer,
+        run_frames=6,
+        spin_frames=24,
+        label=label,
+        stop_room_id=ROOM_WS_ATTIC,
+    )
+
+
+def exit_side_room(session: ControllerSession, label: str) -> None:
+    """West Super RIGHT, Sponge Bath LEFT — both rooms one change."""
+    for _ in range(_SIDE_TRIP_BUDGET):
+        st = session.state
+        room = int(st.room_id)
+        if room in (ROOM_WS_MAIN, ROOM_WS_ATTIC):
+            return
+        guard_main_shaft(session, label)
+        if is_knockback(st):
+            knockback_main_shaft(session, f"{label}_side_kb")
+            continue
+        if is_morph(int(st.pose)):
+            unmorph(session)
+            continue
+        if room == ROOM_WS_WEST_SUPER:
+            hold(session, 1, "RIGHT", "B", reason=f"{label}_west_super")
+        else:
+            hold(session, 1, "LEFT", "B", reason=f"{label}_sponge")
+    if int(session.state.room_id) not in (ROOM_WS_MAIN, ROOM_WS_ATTIC):
+        raise TimeoutError(f"{label}: side room did not return: {session.state}")
+
+
+def three_shot_tunnel(session: ControllerSession, label: str) -> None:
+    """Take02 two-hop onto the fire slope: short A at 1166, committed at 1156."""
+    if int(session.state.room_id) in (ROOM_WS_ATTIC, ROOM_WS_WEST_SUPER):
+        return
+    if at_ws_main_grate_seat(session.state) or not at_ws_main_pit(session.state):
+        return
+    select_weapon(session, WEAPON_BEAM)
+    shot_i = 0
+    for _ in range(_THREE_SHOT_FRAMES):
+        st = session.state
+        guard_main_shaft(session, label)
+        if int(st.room_id) in (ROOM_WS_ATTIC, ROOM_WS_WEST_SUPER):
+            return
+        if at_ws_main_grate_seat(st) or not at_ws_main_pit(st):
+            return
+        if is_knockback(st):
+            knockback_main_shaft(session, f"{label}_shot_kb")
+            continue
+        if is_morph(int(st.pose)):
+            unmorph(session)
+            continue
+        names = three_shot_action(
+            int(st.samus_x),
+            int(st.samus_y),
+            int(st.pose),
+            int(st.facing),
+            shot_i,
+            session_beam_charge(session),
+            int(st.movement_type),
+            int(st.velocity_y),
+        )
+        shot_i += 1
+        if names:
+            hold(session, 1, *names, reason=f"{label}_3shot")
+        else:
+            hold(session, 1, reason=f"{label}_3shot_land")
+
+
+def at_attic_climb_done(state: SuperMetroidState) -> bool:
+    return (
+        int(state.room_id) == ROOM_WS_ATTIC
+        or at_ws_main_attic_door_seat(state)
+    )
+
+
+def save_alcove_jump(session: ControllerSession, label: str) -> None:
+    """Cubby ceiling blocks A; still try LEFT so we do not LEFT+B into the wall."""
+    st = session.state
+    turning = int(st.movement_type) == 14
+    if int(st.facing) != FACING_LEFT or turning:
+        hold(session, 1, "LEFT", reason=f"{label}_alcove_face")
+        return
+    hold(session, 1, *spin_jump("LEFT"), reason=f"{label}_alcove_jump")
+
+
+def _save_column_stop(
+    state: SuperMetroidState, done: Callable[[SuperMetroidState], bool]
+) -> bool:
+    return (
+        done(state)
+        or int(state.room_id) != ROOM_WS_MAIN
+        or int(state.samus_x) >= WS_MAIN_SAVE_X
+        or int(state.samus_y) > WS_MAIN_STAIR_Y
+    )
+
+
+def save_column_walljump(
+    session: ControllerSession,
+    label: str,
+    done: Callable[[SuperMetroidState], bool],
+) -> None:
+    """Seek pose 19 at x~1216, then one walljump_once. Loop repeats for 2–3."""
+
+    def _stop(state: SuperMetroidState) -> bool:
+        return _save_column_stop(state, done)
+
+    pose = int(session.state.pose)
+    x = int(session.state.samus_x)
+    if pose not in WJ_POSES and x < SAVE_COLUMN_LATCH_X:
+        for _ in range(8):
+            st = session.state
+            if _stop(st) or int(st.pose) in WJ_POSES:
+                break
+            if int(st.samus_x) >= SAVE_COLUMN_LATCH_X:
+                break
+            hold(session, 1, "RIGHT", reason=f"{label}_wj_seek")
+    if _stop(session.state):
+        return
+    walljump_once(
+        session,
+        SAVE_COLUMN_WJ,
+        reason=f"{label}_save_wj",
+        stop_when=_stop,
+    )
+
+
+def _hold_names(
+    session: ControllerSession,
+    names: tuple[str, ...],
+    reason: str,
+    wait_reason: str,
+) -> None:
+    if names:
+        hold(session, 1, *names, reason=reason)
+    else:
+        hold(session, 1, reason=wait_reason)
+
+
+def _shelf_hole_buttons(st: SuperMetroidState, shelf_open: int) -> tuple[str, ...]:
+    if int(st.pose) in (39, 40):
+        return ("UP",)
+    if int(st.facing) != FACING_RIGHT:
+        return ("RIGHT",)
+    if shelf_open % 10 < 4:
+        return ("X",)
+    return ()
+
+
+def _observe_shot_blocks(
+    session: ControllerSession,
+    prev_plms: tuple[dict[str, int], ...],
+    lip_hit: bool,
+) -> tuple[bool, tuple[dict[str, int], ...], tuple[dict[str, int], ...]]:
+    """Diff shot-block PLMs. Empty prev is a seed, not a hit."""
+    ram = session_ram(session)
+    if ram is None:
+        return lip_hit, prev_plms, ()
+    cur = snapshot_plms(ram)
+    spawned = shot_block_spawns(prev_plms, cur)
+    if spawned:
+        return True, cur, spawned
+    return lip_hit, cur, spawned
+
+
+def _update_lip_hit(
+    session: ControllerSession,
+    prev_plms: tuple[dict[str, int], ...],
+    lip_hit: bool,
+) -> tuple[bool, tuple[dict[str, int], ...]]:
+    """Latch True on a new 0xD080-family PLM. Empty prev is a seed, not a hit."""
+    hit, cur, _spawned = _observe_shot_blocks(session, prev_plms, lip_hit)
+    return hit, cur
+
+
+def note_upper_wall(
+    cleared: set[tuple[int, int]],
+    spawned: tuple[dict[str, int], ...],
+    samus_x: int,
+    samus_y: int,
+) -> set[tuple[int, int]]:
+    """Add near-Samus shot-block pixels while Samus is on the 587 wall."""
+    if not (
+        SLOPE_651_SEAT_Y[0] <= int(samus_y) <= SLOPE_651_SEAT_Y[1]
+        and int(samus_x) >= 1180
+    ):
+        return cleared
+    out = set(cleared)
+    for row in spawned:
+        if near_samus(row, samus_x, samus_y):
+            out.add((int(row["px"]), int(row["py"])))
+    return out
+
+
+def upper_wall_open(cleared: set[tuple[int, int]]) -> bool:
+    return len(cleared) >= UPPER_WALL_CLEAR
+
+
+def _at_651_shot_seat(samus_x: int, samus_y: int) -> bool:
+    return (
+        SLOPE_651_SEAT_Y[0] <= int(samus_y) <= SLOPE_651_SEAT_Y[1]
+        and int(samus_x) >= UPPER_WALL_SHOT_X
+    )
+
+
+def _at_523_ledge(samus_x: int, samus_y: int) -> bool:
+    del samus_x
+    lo, hi = SLOPE_523_SEAT_Y
+    return lo <= int(samus_y) <= hi
+
+
+def _in_523_to_443_handoff(samus_x: int, samus_y: int, pose: int) -> bool:
+    """Airborne take03 jump after the left end of the 523 traverse."""
+    return (
+        int(samus_x) <= SLOPE_523_ICE_X
+        # The preliminary LEFT+A bounce peaks around y=499.  Only the
+        # block-clearing UP+A jump reaches this band.
+        and 350 <= int(samus_y) <= 480
+        and int(pose) not in (1, 2, 9, 10, 137, 138, 164, 165)
+    )
+
+
+def _upper_seat_index(
+    samus_x: int, samus_y: int, pose: int, velocity_y: int
+) -> int | None:
+    if int(pose) not in (1, 2, 9, 10) or abs(int(velocity_y)) > 1:
+        return None
+    for i, hop in enumerate(UPPER_SHAFT_HOPS):
+        if hop.covers_y(int(samus_y), slack=8) and hop.x_lo <= int(samus_x) <= hop.x_hi:
+            return i
+    return None
+
+
+def _upper_shaft_action(
+    stage: int,
+    samus_x: int,
+    samus_y: int,
+    pose: int,
+    facing: int,
+    velocity_y: int,
+    peaked: bool,
+) -> tuple[str, ...]:
+    """Takes 02/03 upper ladder from the planted 443 seat to y=91."""
+    hop = UPPER_SHAFT_HOPS[int(stage)]
+    grounded = int(pose) in (1, 2, 9, 10) and abs(int(velocity_y)) <= 1
+    if grounded:
+        lo, hi = hop.takeoff.x_range
+        target = (lo + hi) // 2
+        walk = walk_toward_x(int(samus_x), target, slack=4)
+        if walk:
+            return (*walk, "B") if stage in (1, 3) else walk
+        side = hop.takeoff.side
+        want = FACING_LEFT if side == "LEFT" else FACING_RIGHT
+        if int(facing) != want:
+            return (side,)
+        return (side, "B", "A") if stage in (1, 2, 3) else (side, "A")
+    if stage == 0:
+        return ("RIGHT",) if peaked else ("RIGHT", "A")
+    if stage == 1:
+        if int(samus_y) > 337:
+            return ("RIGHT", "B", "A")
+        return ("LEFT", "B") if peaked else ("LEFT", "B", "A")
+    if stage == 2:
+        return ("LEFT", "B") if peaked else ("LEFT", "B", "A")
+    if int(samus_y) > 155:
+        return ("LEFT", "B", "A")
+    return ("RIGHT", "B") if peaked else ("RIGHT", "B", "A")
+
+
+def _slope_523_ice(session: ControllerSession, label: str) -> bool:
+    """Ice bounce-lane Atomics at the 523 plant. False = movement owns the frame."""
+    st = session.state
+    x, y = int(st.samus_x), int(st.samus_y)
+    lo, hi = SLOPE_523_SEAT_Y
+    if not (lo <= y <= hi and x <= SLOPE_523_ICE_X):
+        return False
+    keepaway = ice_keepaway_action(
+        x,
+        y,
+        int(st.facing),
+        list_enemies(session),
+        movement_type=int(st.movement_type),
+        charge=session_beam_charge(session),
+        velocity_y=int(st.velocity_y),
+    )
+    if keepaway is None:
+        return False
+    _hold_names(
+        session,
+        keepaway,
+        f"{label}_slope_523_ice",
+        f"{label}_slope_523_ice_wait",
+    )
+    return True
+
+
+def _climb_reason(
+    label: str, region: ShaftRegion, names: tuple[str, ...]
+) -> str:
+    if names == shoot_up_action():
+        return f"{label}_lip_up"
+    if "DOWN" in names:
+        return f"{label}_drop_morph"
+    if region is ShaftRegion.GRATE_SEAT and "A" in names:
+        return f"{label}_lip_jump"
+    if region is ShaftRegion.PIT:
+        return f"{label}_pit" if names else f"{label}_pit_fire"
+    if names:
+        return f"{label}_climb"
+    return f"{label}_wait"
+
+
+def climb_until(
+    session: ControllerSession,
+    label: str,
+    done: Callable[[SuperMetroidState], bool],
+) -> None:
+    """Spin-hop the shaft until ``done(state)``. Ice nearby Atomics."""
+    if int(session.state.room_id) == ROOM_WS_ATTIC or done(session.state):
+        return
+    if is_morph(int(session.state.pose)):
+        unmorph(session)
+    select_weapon(session, WEAPON_BEAM)
+    shelf_open = 0
+    lip_hit = False
+    ceiling_open = False
+    drop_handoff_frame: int | None = None
+    tunnel_handoff_frame: int | None = None
+    morph_bombs = 0
+    prev_plms: tuple[dict[str, int], ...] = ()
+    upper_cleared: set[tuple[int, int]] = set()
+    wall_shot_i = 0
+    handoff_443_armed = False
+    handoff_443 = False
+    handoff_443_peaked = False
+    upper_stage: int | None = None
+    upper_peaked = False
+    for _ in range(_CLIMB_BUDGET):
+        st = session.state
+        guard_main_shaft(session, label)
+        if int(st.room_id) == ROOM_WS_ATTIC or done(st):
+            return
+        if int(st.room_id) in (ROOM_WS_WEST_SUPER, ROOM_WS_SPONGE):
+            exit_side_room(session, label)
+            continue
+        x, y = int(st.samus_x), int(st.samus_y)
+        if _at_523_ledge(x, y) and x <= SLOPE_523_ICE_X:
+            handoff_443_armed = True
+        if handoff_443_armed and _in_523_to_443_handoff(x, y, int(st.pose)):
+            handoff_443_armed = False
+            handoff_443 = True
+        if handoff_443 and int(st.velocity_y) == 0:
+            handoff_443_peaked = True
+        if handoff_443 and _at_523_ledge(x, y) and int(st.pose) in (1, 2, 9, 10):
+            handoff_443 = False
+            handoff_443_peaked = False
+        if handoff_443 and 430 <= y <= 455 and int(st.pose) in (1, 2, 9, 10):
+            handoff_443_armed = False
+            handoff_443 = False
+            handoff_443_peaked = False
+        seat_i = _upper_seat_index(x, y, int(st.pose), int(st.velocity_y))
+        if seat_i is not None:
+            upper_stage = seat_i
+            upper_peaked = False
+        elif upper_stage is not None and int(st.velocity_y) == 0:
+            upper_peaked = True
+        was_hit = lip_hit
+        lip_hit, prev_plms, spawned = _observe_shot_blocks(
+            session, prev_plms, lip_hit
+        )
+        if _at_651_shot_seat(x, y) or (
+            SLOPE_651_SEAT_Y[0] <= y <= SLOPE_651_SEAT_Y[1] and x >= 1180
+        ):
+            if lip_hit and not was_hit:
+                lip_hit = was_hit
+            upper_cleared = note_upper_wall(upper_cleared, spawned, x, y)
+            ceiling_open = upper_wall_open(upper_cleared)
+        if _at_651_shot_seat(x, y) and not ceiling_open:
+            shot_i = wall_shot_i
+            wall_shot_i += 1
+        elif _at_523_ledge(x, y):
+            shot_i = wall_shot_i
+            wall_shot_i += 1
+        else:
+            shot_i = 0
+            if not (
+                SLOPE_651_SEAT_Y[0] <= y <= SLOPE_651_SEAT_Y[1]
+                or _at_523_ledge(x, y)
+            ):
+                wall_shot_i = 0
+        if drop_handoff_frame is not None:
+            drop_names = _take02_drop_handoff_action(drop_handoff_frame)
+            if drop_names is not None:
+                drop_handoff_frame += 1
+                _hold_names(
+                    session,
+                    drop_names,
+                    f"{label}_drop_handoff",
+                    f"{label}_drop_handoff_wait",
+                )
+                continue
+        if tunnel_handoff_frame is not None:
+            tunnel_names = _take02_tunnel_handoff_action(tunnel_handoff_frame)
+            if tunnel_names is not None:
+                tunnel_handoff_frame += 1
+                _hold_names(
+                    session,
+                    tunnel_names,
+                    f"{label}_tunnel_handoff",
+                    f"{label}_tunnel_handoff_wait",
+                )
+                continue
+        if is_knockback(st):
+            kx, ky = int(st.samus_x), int(st.samus_y)
+            slope_lo, slope_hi = SLOPE_1130_SEAT_Y
+            if slope_lo <= ky <= slope_hi and kx <= 1056:
+                # take02 p138 is brief; LEFT+A leaves knockback onto p76.
+                hold(session, 1, "LEFT", "A", reason=f"{label}_slope_1130_wall")
+                continue
+            slope_1019_lo, slope_1019_hi = SLOPE_1019_SEAT_Y
+            if slope_1019_lo <= ky <= slope_1019_hi and kx >= SLOPE_1019_WALL_X:
+                # take04: A only from p137. LEFT+A kicks past 827 (peak x=1177).
+                hold(session, 1, "A", reason=f"{label}_slope_1019_wall")
+                continue
+            slope_827_lo, slope_827_hi = SLOPE_827_SEAT_Y
+            if slope_827_lo <= ky <= slope_827_hi and kx <= SLOPE_827_WALL_X:
+                hold(session, 1, "A", reason=f"{label}_slope_827_wall")
+                continue
+            slope_523_lo, slope_523_hi = SLOPE_523_SEAT_Y
+            if slope_523_lo <= ky <= slope_523_hi and kx <= SLOPE_523_ICE_X:
+                if _slope_523_ice(session, label):
+                    continue
+                hold(session, 1, "LEFT", "A", reason=f"{label}_slope_523_wall")
+                continue
+            slope_651_lo, slope_651_hi = SLOPE_651_SEAT_Y
+            if slope_651_lo <= ky <= slope_651_hi and kx >= SLOPE_651_WALL_X:
+                if ceiling_open:
+                    hold(session, 1, "LEFT", "A", reason=f"{label}_slope_651_wall")
+                else:
+                    names = wall_up_shot_action(
+                        shot_i, session_beam_charge(session)
+                    )
+                    _hold_names(
+                        session,
+                        names,
+                        f"{label}_slope_651_shot",
+                        f"{label}_slope_651_shot",
+                    )
+                continue
+            if lip_hit and at_ws_main_morph_drop(
+                int(st.samus_x), int(st.samus_y)
+            ):
+                drop_handoff_frame = 1
+                _hold_names(
+                    session,
+                    _TAKE02_DROP_HANDOFF[0][1],
+                    f"{label}_drop_handoff",
+                    f"{label}_drop_handoff_wait",
+                )
+                continue
+            knockback_main_shaft(session, f"{label}_climb_kb")
+            continue
+        if upper_stage is not None and upper_stage < len(UPPER_SHAFT_HOPS) - 1:
+            names = _upper_shaft_action(
+                upper_stage,
+                x,
+                y,
+                int(st.pose),
+                int(st.facing),
+                int(st.velocity_y),
+                upper_peaked,
+            )
+            _hold_names(
+                session,
+                names,
+                f"{label}_upper_{UPPER_SHAFT_HOPS[upper_stage].y}",
+                f"{label}_upper_{UPPER_SHAFT_HOPS[upper_stage].y}",
+            )
+            continue
+        if is_morph(int(st.pose)):
+            mx, my = int(st.samus_x), int(st.samus_y)
+            if (
+                lip_hit
+                and at_ws_main_morph_drop(mx, my)
+                and morph_bombs < MORPH_DROP_BOMB_FRAMES
+            ):
+                morph_bombs += 1
+                hold(session, 1, "X", reason=f"{label}_drop_bomb")
+                continue
+            # The take02 tape plants against the left tunnel wall at x=1093;
+            # x=1088 is geometry clearance, not a reachable morph-ball center.
+            if mx > TUNNEL_CLEAR_X + 5 and my < WS_MAIN_STAIR_Y:
+                hold(session, 1, "LEFT", reason=f"{label}_roll")
+            elif my < WS_MAIN_STAIR_Y:
+                tunnel_handoff_frame = 1
+                _hold_names(
+                    session,
+                    _TAKE02_TUNNEL_HANDOFF[0][1],
+                    f"{label}_tunnel_handoff",
+                    f"{label}_tunnel_handoff_wait",
+                )
+            else:
+                unmorph(session)
+            continue
+        pose = int(st.pose)
+        region = classify_region(st, lip_hit=lip_hit)
+        if at_take02_departure(x, y, int(st.velocity_y)):
+            region = ShaftRegion.GRATE_SEAT
+        take02_active = lip_hit
+        if (
+            take02_active
+            and drop_handoff_frame is None
+            and at_ws_main_morph_drop(x, y, pose, int(st.velocity_y))
+        ):
+            hold(session, 1, "B", "LEFT", reason=f"{label}_drop_plant")
+            continue
+        if region is not ShaftRegion.GRATE_SEAT and not take02_active:
+            if at_ws_main_save_alcove(st):
+                save_alcove_jump(session, label)
+                continue
+            if at_ws_main_save_column_wj(st):
+                save_column_walljump(session, label, done)
+                continue
+        if region is ShaftRegion.SHELF:
+            if shelf_open < SHELF_HOLE_FRAMES:
+                shelf_open += 1
+                names = _shelf_hole_buttons(st, shelf_open)
+                reason = (
+                    f"{label}_shelf_stand"
+                    if names == ("UP",)
+                    else (
+                        f"{label}_shelf_face"
+                        if names == ("RIGHT",)
+                        else (
+                            f"{label}_shelf_hole"
+                            if names
+                            else f"{label}_shelf_hole_tap"
+                        )
+                    )
+                )
+                _hold_names(session, names, reason, reason)
+                continue
+            keepaway = shelf_covern_ice_action(
+                x,
+                y,
+                int(st.facing),
+                list_enemies(session),
+                movement_type=int(st.movement_type),
+                charge=session_beam_charge(session),
+                velocity_y=int(st.velocity_y),
+            )
+            if keepaway:
+                hold(session, 1, *keepaway, reason=f"{label}_shelf_ice")
+                continue
+        elif region is ShaftRegion.SHAFT and not take02_active:
+            keepaway = ice_keepaway_action(
+                x,
+                y,
+                int(st.facing),
+                list_enemies(session),
+                movement_type=int(st.movement_type),
+                charge=session_beam_charge(session),
+                velocity_y=int(st.velocity_y),
+            )
+            if keepaway is not None:
+                _hold_names(session, keepaway, f"{label}_ice", f"{label}_ice_wait")
+                continue
+        if _slope_523_ice(session, label):
+            continue
+        if handoff_443:
+            names = ("RIGHT",) if handoff_443_peaked else ("RIGHT", "A")
+            _hold_names(
+                session,
+                names,
+                f"{label}_523_to_443",
+                f"{label}_523_to_443",
+            )
+            continue
+        names = climb_action(
+            x,
+            y,
+            pose,
+            int(st.facing),
+            int(st.velocity_y),
+            int(st.movement_type),
+            int(session.frame),
+            lip_hit,
+            session_beam_charge(session),
+            region=region,
+            take02_active=take02_active,
+            ceiling_open=ceiling_open,
+            wall_shot_frame=shot_i,
+        )
+        _hold_names(
+            session,
+            names,
+            _climb_reason(label, region, names),
+            f"{label}_wait",
+        )
+    if int(session.state.room_id) != ROOM_WS_ATTIC and not done(session.state):
+        raise TimeoutError(f"{label}: did not reach phase seat: {session.state}")
+
+
+__all__ = [
+    "SAVE_COLUMN_LATCH_X",
+    "SAVE_COLUMN_WJ",
+    "WEAPON_BEAM",
+    "at_attic_climb_done",
+    "at_ws_main_save_alcove",
+    "at_ws_main_save_column_wj",
+    "climb_until",
+    "exit_side_room",
+    "guard_main_shaft",
+    "knockback_main_shaft",
+    "note_upper_wall",
+    "save_alcove_jump",
+    "save_column_walljump",
+    "three_shot_tunnel",
+    "upper_wall_open",
+]

@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "hop": "gravity_collect",
+  "source": "snes/super_metroid/tasks/full_start_v1_anchors/f022887_enter_0xCE40_0xCE40.state",
+  "candidate": "controller:gravity_collect",
+  "parent_tape": "tape:s23_gravity",
+  "tape_body_frames": 320,
+  "collect_frames": 132,
+  "runs": [
+    {
+      "success": true,
+      "frames": 132,
+      "room": "0xCE40",
+      "xy": [127, 135],
+      "pose": 46,
+      "items": "0x3125"
+    },
+    {
+      "success": true,
+      "frames": 132,
+      "room": "0xCE40",
+      "xy": [127, 135],
+      "pose": 46,
+      "items": "0x3125"
+    }
+  ],
+  "glance": [],
+  "notes": [
+    "Pin dual; not power-on Gravity",
+    "Not STATUS / not DEFAULT_CONTINUOUS_TIP",
+    "s23 hop 08 recording dry-resolve GREEN"
+  ]
+}

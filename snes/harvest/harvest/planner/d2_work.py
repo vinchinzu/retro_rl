@@ -832,17 +832,18 @@ class D2FarmClearTactic:
             if chunk:
                 bits.append(f"chunk={chunk}")
         if st is not None:
-            bits.append(
-                f"debris=w{st.weeds}/f{st.fences}/s{st.stones}/r{st.large_rocks}/u{st.stumps}"
-            )
+            bits.append(f"debris=w{st.weeds}/f{st.fences}/s{st.stones}/r{st.large_rocks}/u{st.stumps}")
             bits.append(f"stamina={st.stamina.current}/{st.stamina.maximum}")
             bits.append(f"carry_clear={st.hands_clear}")
         return " ".join(bits)
 
-    def _idle(self, reason: str) -> TaskResult:
+    def _idle(self, reason: str, ram=None) -> TaskResult:
+        from harvest.tasks.farm_clear_quota import yard_load_action
         from harvest.tasks.nav import make_action
 
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason=reason)
+        walk = reason == "stale_farm_map" and ram is not None
+        action = yard_load_action(ram) if walk else make_action()
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason=reason)
 
     def _blocked(self, prefix: str, st: D2FarmStatus | None = None) -> TaskResult:
         return TaskResult(status=TaskStatus.BLOCKED, reason=self._snap(prefix, st))
@@ -851,7 +852,7 @@ class D2FarmClearTactic:
         from harvest.core.carry import backpack_tool, selected_tool
         from harvest.tasks.nav import get_pos_from_ram
 
-        if self._child is not None:
+        if self._child is not None and getattr(self._child, "name", "") != "hot_spring_stamina":
             pos = get_pos_from_ram(world.ram)
             motion = (
                 (pos.x, pos.y),
@@ -977,7 +978,7 @@ class D2FarmClearTactic:
             self._unobs += 1
             if self._unobs >= GOAL_STALL_FRAMES:
                 return self._blocked("stale_farm_map", status)
-            return self._idle(status.reason or "temporarily_unobservable")
+            return self._idle(status.reason or "temporarily_unobservable", world.ram)
         self._unobs = 0
         if self._child is not None:
             result = self._child.step(world)

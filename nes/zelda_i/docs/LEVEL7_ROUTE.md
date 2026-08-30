@@ -1,9 +1,10 @@
 # Level 7 — The Demon (route notes)
 
-**Status:** PARTIAL assisted overworld approach. The live controller reaches
-`0x53`; the `0x53→0x52→0x42` pond suffix is not yet green. There is no pond
-checkpoint, entry room, or Clean segment. **Whistle** from Level 5 gates pond
-entry; **Bait/Food** is a separate mid-dungeon hungry-Goriya gate.
+**Status:** PARTIAL assisted overworld approach plus a fail-closed cumulative
+module seam. The live controller reaches `0x53`; the `0x53→0x52→0x42` pond
+suffix is not yet green. There is no pond checkpoint, entry room, or Clean
+segment. **Whistle** from Level 5 gates pond entry; **Bait/Food** is a separate
+mid-dungeon hungry-Goriya gate.
 
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach).
 
@@ -130,14 +131,50 @@ Digdogger before boss, Aquamentus.
 
 ---
 
-## Boss / Triforce stop predicates (stubs)
+## Cumulative chapter seam
+
+`level7/spine.py` exposes only the three plan-level targets:
+
+| `--through` | Internal chapter stages | Current evidence |
+|-------------|-------------------------|------------------|
+| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | hypothesis blocker |
+| `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | hypothesis blocker |
+| `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | hypothesis blocker |
+
+Factories in `level7/hops.py` always return fresh controllers. The current
+controllers in `level7/path.py` press no direction and fail after one frame
+with `evidence=hypothesis` and `route_eligible=false`. This is intentional:
+the old start-based pond walk is not a substitute for the measured post-L6
+leftover, and source room ids cannot become executable stop predicates.
+
+Promote a blocker only with a chapter handoff containing the exact natural
+predecessor, live room/screen transitions, item and key/bomb deltas, and the
+one-frame policy that replaces it. Keep room specs and exact endpoint
+predicates in `level7/dungeon.py`; keep movement in `level7/path.py` or a
+cohesive purpose-named path module.
+
+The stop predicates additionally require:
+
+- `level7-entry`: exact observed entry room, TF `0x3F`, Whistle and Food owned;
+- `level7-red-candle`: exact observed room, TF `0x3F`, Candle exactly `2`,
+  Whistle retained, Food consumed;
+- `level7`: exact observed settled leave, TF `0x7F`, Candle `2`, Whistle
+  retained, one natural heart-container increase, and full hearts.
+
+The stop specs intentionally carry no room ids yet, use
+`evidence=hypothesis`, and set `route_eligible=false`, so all three fail
+closed. A room id alone is insufficient: public success accepts only an exact
+stop promoted to `natural-segment` or `spine-green` evidence.
+
+## Boss / Triforce evidence still needed
 
 ```text
 level7_boss_cleared  — TBD: Aquamentus dead + HC
 level7_complete      — ADDR_TRIFORCE & 0x40
 ```
 
-Scaffold: `level7_triforce_stop(snap)` → `bool(snap.triforce & 0x40)`.
+The public seam uses the strict stop contracts in `level7/dungeon.py`; there
+is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 
 ---
 
@@ -155,14 +192,17 @@ Scaffold: `level7_triforce_stop(snap)` → `bool(snap.triforce & 0x40)`.
 
 ## Scaffold / probe
 
-Isolated `probe_level7_entry.py` pruned. Durable runner (no L7 SpineHop yet):
+Isolated `probe_level7_entry.py` pruned. The durable runner does not attach L7
+until the integrator imports its public seam into the shared spine:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
-Module: `zelda_i/level7/overworld.py`. Pond walk is
-`OverworldToLevel7PondController`; Whistle is required to drain.
+Modules: `zelda_i/level7/{dungeon,path,hops,spine}.py`. The historical pond
+walk remains `level7.overworld.OverworldToLevel7PondController`; it begins at
+the start screen and therefore remains recon-only. Whistle is required to
+drain the pond.
 
 ---
 

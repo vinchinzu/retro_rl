@@ -25,6 +25,39 @@ _STALL_RIGHT_FRAMES = 40
 _STALL_UP_FRAMES = 36
 _STALL_UP_RIGHT_FRAMES = 48
 _STALL_SMASH_FRAMES = 24
+_DUMPSTER_CYCLE = (
+    _STALL_DOWN_FRAMES
+    + _STALL_JUMP_RIGHT_FRAMES
+    + _STALL_RIGHT_FRAMES
+    + _STALL_UP_FRAMES
+    + _STALL_UP_RIGHT_FRAMES
+    + _STALL_SMASH_FRAMES
+)
+_ALLEY_STAGE = 1
+_FADE_EVENTS = frozenset({0x0B, 0x19, 0x04})
+
+
+def dumpster_unstick(escape_frames: int) -> FrameAction:
+    """DOWN → JUMP+RIGHT → RIGHT → UP → UP+RIGHT → Y. Alleycat dumpster."""
+    slot = escape_frames % _DUMPSTER_CYCLE
+    down_end = _STALL_DOWN_FRAMES
+    jump_end = down_end + _STALL_JUMP_RIGHT_FRAMES
+    right_end = jump_end + _STALL_RIGHT_FRAMES
+    up_end = right_end + _STALL_UP_FRAMES
+    up_right_end = up_end + _STALL_UP_RIGHT_FRAMES
+    if slot < down_end:
+        return FrameAction(action=buttons("DOWN"), reason="stall_down")
+    if slot < jump_end:
+        return FrameAction(action=buttons("B", "RIGHT"), reason="stall_jump_right")
+    if slot < right_end:
+        return FrameAction(action=buttons("RIGHT"), reason="stall_right")
+    if slot < up_end:
+        return FrameAction(action=buttons("UP"), reason="stall_up")
+    if slot < up_right_end:
+        return FrameAction(action=buttons("UP", "RIGHT"), reason="stall_up_right")
+    return FrameAction(action=buttons("Y"), reason="stall_smash")
+
+
 # Starbase holds Raphael at x=64 during its opening spawn delay.
 # Dumpster-stall on those frames pushes him down a lane.
 _STARBASE_LAUNCH_X = 64
@@ -125,13 +158,7 @@ class PlayerXStallWalk:
 
     def _stall_escape(self, state: GameState) -> FrameAction:
         """Cycle dumpster breakers while X remains frozen."""
-        down_end = _STALL_DOWN_FRAMES
-        jump_end = down_end + _STALL_JUMP_RIGHT_FRAMES
-        right_end = jump_end + _STALL_RIGHT_FRAMES
-        up_end = right_end + _STALL_UP_FRAMES
-        up_right_end = up_end + _STALL_UP_RIGHT_FRAMES
-        smash_end = up_right_end + _STALL_SMASH_FRAMES
-        cycle = smash_end
+        cycle = _DUMPSTER_CYCLE
         if (
             state.stage == STARBASE_WAVES
             and _STARBASE_EXHAUST_X <= state.player_x < _STARBASE_RAIL_X
@@ -142,20 +169,9 @@ class PlayerXStallWalk:
                 action=buttons("RIGHT"),
                 reason="starbase_unstick_right",
             )
-        phase = self._escape_frames
+        action = dumpster_unstick(self._escape_frames)
         self._escape_frames += 1
-        slot = phase % cycle
-        if slot < down_end:
-            return FrameAction(action=buttons("DOWN"), reason="stall_down")
-        if slot < jump_end:
-            return FrameAction(action=buttons("B", "RIGHT"), reason="stall_jump_right")
-        if slot < right_end:
-            return FrameAction(action=buttons("RIGHT"), reason="stall_right")
-        if slot < up_end:
-            return FrameAction(action=buttons("UP"), reason="stall_up")
-        if slot < up_right_end:
-            return FrameAction(action=buttons("UP", "RIGHT"), reason="stall_up_right")
-        return FrameAction(action=buttons("Y"), reason="stall_smash")
+        return action
 
     def next(self, state: GameState) -> FrameAction:
         """Walk via WalkProgress; on X-stall run dumpster escape."""
@@ -185,6 +201,16 @@ class PlayerXStallWalk:
                     action=buttons("DOWN", "RIGHT"),
                     reason="sewer_drop_lane",
                 )
+            return FrameAction(action=buttons("RIGHT"), reason="walk_right")
+        # Metalhead kill: event 0x0B freezes X. Dumpster DOWN walks the
+        # fade instead of holding for 0x19 / stage advance.
+        if (
+            state.stage == _ALLEY_STAGE
+            and int(state.extras.get("event", 0)) in _FADE_EVENTS
+        ):
+            self._stall_frames = 0
+            self._escape_frames = 0
+            self._last_player_x = state.player_x
             return FrameAction(action=buttons("RIGHT"), reason="walk_right")
         if (
             state.stage == STARBASE_WAVES
@@ -271,36 +297,7 @@ class CombatPositionStall:
             sum(enemy.health for enemy in state.living_enemies),
         )
         if self._escape_frame >= 0:
-            phase = self._escape_frame // 32
-            self._escape_frame += 1
-            if self._escape_frame >= 160:
-                self.reset()
-            # Wounded Knee elevated stacks: jump-slash laterally so escape
-            # is not a pure hop that leaves the 0xb0 untouched.
-            if is_wounded_knee(state) and any(
-                e.kind in WOUNDED_KNEE_JUMP_CHARS for e in state.living_enemies
-            ):
-                side = "LEFT" if (phase % 2) == 0 else "RIGHT"
-                if phase < 3:
-                    return FrameAction(
-                        action=buttons("B", "Y", side),
-                        reason="combat_stall_escape",
-                    )
-                return FrameAction(
-                    action=buttons(side),
-                    reason="combat_stall_escape",
-                )
-            patterns = (
-                ("B", "DOWN", "RIGHT"),
-                ("B", "DOWN", "LEFT"),
-                ("B", "UP", "RIGHT"),
-                ("B", "UP", "LEFT"),
-                ("B", "Y"),
-            )
-            return FrameAction(
-                action=buttons(*patterns[min(phase, 4)]),
-                reason="combat_stall_escape",
-            )
+            return self._escape_action(state)
         if signature == self._signature:
             self._stalled_frames += 1
         else:
@@ -309,16 +306,46 @@ class CombatPositionStall:
         if self._stalled_frames < 240:
             return None
         self._escape_frame = 0
-        # First escape frame — same branch as the ongoing escape cycle so
-        # Wounded Knee stacks get a jump-slash instead of a pure hop.
+        return self._escape_action(state)
+
+    def _escape_action(self, state: GameState) -> FrameAction:
+        """One overlay frame. Alleycat waves use dumpster DOWN, not hop-LEFT.
+
+        Metalhead (stage 1 + boss_active) must not enter the dumpster cycle —
+        LATE/Boss2 scratch reported stall_up_right over the boss.
+        """
+        frame = self._escape_frame
+        self._escape_frame += 1
+        if state.stage == _ALLEY_STAGE and not state.boss_active:
+            if self._escape_frame >= _DUMPSTER_CYCLE:
+                self.reset()
+            return dumpster_unstick(frame)
+        if self._escape_frame >= 160:
+            self.reset()
+        phase = frame // 32
+        # Wounded Knee elevated stacks: jump-slash laterally so escape
+        # is not a pure hop that leaves the 0xb0 untouched.
         if is_wounded_knee(state) and any(
             e.kind in WOUNDED_KNEE_JUMP_CHARS for e in state.living_enemies
         ):
+            side = "LEFT" if (phase % 2) == 0 else "RIGHT"
+            if phase < 3:
+                return FrameAction(
+                    action=buttons("B", "Y", side),
+                    reason="combat_stall_escape",
+                )
             return FrameAction(
-                action=buttons("B", "Y", "LEFT"),
+                action=buttons(side),
                 reason="combat_stall_escape",
             )
+        patterns = (
+            ("B", "DOWN", "RIGHT"),
+            ("B", "DOWN", "LEFT"),
+            ("B", "UP", "RIGHT"),
+            ("B", "UP", "LEFT"),
+            ("B", "Y"),
+        )
         return FrameAction(
-            action=buttons("B", "DOWN", "RIGHT"),
+            action=buttons(*patterns[min(phase, 4)]),
             reason="combat_stall_escape",
         )

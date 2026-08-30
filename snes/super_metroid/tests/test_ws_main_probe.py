@@ -134,7 +134,7 @@ def test_probe_source_grades_phase_spec_and_writes_held_pin() -> None:
     assert "--stop-at" in src
     assert "WS_MAIN_PHASE_SPECS" in src
     assert "post_ws_main_grate_seat" in src
-    assert "from super_metroid.routes.kpdr.k6.ws_main_geometry import WS_MAIN_PHASES" in src
+    assert "from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import WS_MAIN_PHASES" in src
     assert "phase_glance" in src
     dual_lines = [
         line.strip()
@@ -150,3 +150,8 @@ def test_probe_source_grades_phase_spec_and_writes_held_pin() -> None:
     pin_block = src[src.index("if phase_ok and phase_stop") : src.index("if not ok")]
     assert "post_ws_main_grate_seat" in src
     assert "phase_ok and phase_stop" in pin_block
+    assert "TRACE_FRAMES" in src
+    assert "WALL_STUCK_FRAMES" in src
+    assert "planted-wall deadlock" in src
+    assert "events" in src
+    assert "atomics" in src

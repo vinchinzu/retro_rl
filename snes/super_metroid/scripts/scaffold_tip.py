@@ -13,11 +13,11 @@ Usage (from repo root)::
   uv run python snes/super_metroid/scripts/scaffold_tip.py \\
     --segment business_to_frog_save \\
     --from-room 0xA7DE --to-room 0xB167 \\
-    --module k4_cathedral --card-id SM-K4-BUBBLE-01 --dry-run
+    --module norfair/cathedral --card-id SM-K4-BUBBLE-01 --dry-run
 
   uv run python snes/super_metroid/scripts/scaffold_tip.py \\
     --segment my_hop --from-room 0xA7DE --to-room 0xB167 \\
-    --module k4_cathedral --card-id SM-K4-XX --write
+    --module norfair/cathedral --card-id SM-K4-XX --write
 """
 
 from __future__ import annotations
@@ -31,6 +31,16 @@ SM = ROOT / "snes" / "super_metroid"
 KPDR = SM / "routes" / "kpdr"
 TASKS = SM / "docs" / "tasks"
 REGISTRY = KPDR / "registry.py"
+
+
+def _module_path_stem(module: str) -> str:
+    """``norfair/cathedral`` or ``norfair.cathedral`` → ``norfair/cathedral``."""
+    return module.strip().replace(".", "/").strip("/")
+
+
+def _module_import_stem(module: str) -> str:
+    """``norfair/cathedral`` or ``norfair.cathedral`` → ``norfair.cathedral``."""
+    return _module_path_stem(module).replace("/", ".")
 
 
 def _snake(s: str) -> str:
@@ -112,7 +122,7 @@ Luna
 implement
 
 ## Own files only
-- routes/kpdr/{module}.py
+- routes/kpdr/{_module_path_stem(module)}.py
 - routes/kpdr/registry.py
 - docs/tasks/{card_id}-residual.md
 
@@ -159,7 +169,7 @@ Residual below. Integrity / STATUS stays with planner.
 PARTIAL
 
 ### Files changed
-- routes/kpdr/{module}.py — scaffold `{fn}` 0x{from_room:04X}→0x{to_room:04X}
+- routes/kpdr/{_module_path_stem(module)}.py — scaffold `{fn}` 0x{from_room:04X}→0x{to_room:04X}
 
 ### Verify paste
 (scaffold only — pure not green)
@@ -200,7 +210,7 @@ def _checklist(
 
 | Step | Action | Owner |
 |------|--------|-------|
-| 1 | Pure controller `{fn}` in `routes/kpdr/{module}.py` + `KPDR_SEGMENTS` | Luna (this scaffold) |
+| 1 | Pure controller `{fn}` in `routes/kpdr/{_module_path_stem(module)}.py` + `KPDR_SEGMENTS` | Luna (this scaffold) |
 | 2 | `DoorEdge` `{edge_id}` in `progression.py` (`verification=controller_dev` after pure green) | Luna / planner |
 | 3 | `SpineHop` + `TipSegment` (CLI fields: display/aliases/flags) in spine | Luna (after pure) |
 | 4 | TipSpec generates ContinuousTip + NamedRoute on register | automatic |
@@ -224,7 +234,7 @@ def _register_snippet(segment: str, module: str) -> str:
     fn = _fn_name(segment)
     key = _snake(segment)
     return (
-        f'from super_metroid.routes.kpdr.{module} import {fn}\n'
+        f'from super_metroid.routes.kpdr.{_module_import_stem(module)} import {fn}\n'
         f'# In KPDR_SEGMENTS:\n'
         f'    "{key}": {fn},\n'
     )
@@ -247,8 +257,8 @@ def main() -> None:
     )
     p.add_argument(
         "--module",
-        default="k4_cathedral",
-        help="kpdr module stem (default k4_cathedral)",
+        default="norfair/cathedral",
+        help="kpdr module stem (default norfair/cathedral; nested ok)",
     )
     p.add_argument(
         "--card-id",
@@ -274,7 +284,7 @@ def main() -> None:
 
     segment = _snake(args.segment)
     card_id = args.card_id or f"SM-SCAFFOLD-{segment.upper().replace('_', '-')}"
-    module_path = KPDR / f"{args.module}.py"
+    module_path = KPDR / f"{_module_path_stem(args.module)}.py"
     residual_path = TASKS / f"{card_id}.md"
     write = args.write and not args.dry_run
 
@@ -345,7 +355,7 @@ def main() -> None:
             print(f"skip registry: {key} already registered")
         else:
             import_line = (
-                f"from super_metroid.routes.kpdr.{args.module} import {fn}\n"
+                f"from super_metroid.routes.kpdr.{_module_import_stem(args.module)} import {fn}\n"
             )
             if import_line not in reg_text:
                 # Insert import near other kpdr imports (before SegmentFn).
