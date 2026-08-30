@@ -254,6 +254,46 @@ class FullChainEmptyTests(unittest.TestCase):
         self.assertTrue(section_complete("rocks", start, end))
         self.assertFalse(section_complete("stumps", start, end))
 
+    def test_last_five_stumps_skip_empty_chunks(self) -> None:
+        ram = _make_farm_ram()
+        last = ((4, 20), (12, 8), (20, 24), (8, 48), (52, 44))
+        for tile in last:
+            _place_stump(ram, *tile)
+        start = count_debris(ram)
+        self.assertEqual(start.stumps, 5)
+        self.assertEqual(count_debris(ram, FARM_CHUNK_BOUNDS["ne"]).stumps, 0)
+        self.assertFalse(section_complete("stumps", start, start))
+
+        phases = leftover_section_phases("stumps")
+        run = []
+        skipped = []
+        for spec in phases:
+            counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
+            row = (spec.phase, (spec.params or {}).get("chunk"))
+            if phase_already_clear(spec.phase, counts):
+                skipped.append(row)
+            else:
+                run.append(row)
+        self.assertEqual(skipped, [("CLEAR_STUMPS", "ne")])
+        self.assertEqual(
+            run,
+            [
+                ("ENSURE_AXE", None),
+                ("CLEAR_STUMPS", "nw"),
+                ("CLEAR_STUMPS", "sw"),
+                ("CLEAR_STUMPS", "se"),
+            ],
+        )
+        se_bounds = FARM_CHUNK_BOUNDS["se"]
+        se_start = count_debris(ram, se_bounds)
+        sx, sy = 52, 44
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            _set_tile(ram, sx + dx, sy + dy, 0xA1)
+        se_end = count_debris(ram, se_bounds)
+        self.assertTrue(section_complete("stumps", se_start, se_end))
+        self.assertFalse(section_complete("stumps", start, count_debris(ram)))
+        self.assertFalse(smash_is_clear(count_debris(ram)))
+
 
 class QuotaChunkDoesNotPocketApproachTests(unittest.TestCase):
     def test_quota_farm_bounds_do_not_walk_to_the_plant_notch(self) -> None:

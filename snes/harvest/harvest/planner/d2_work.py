@@ -908,7 +908,11 @@ class D2FarmClearTactic:
             retry, self._retry = self._retry, None
             self._spec = None
             return self._queue_next(retry) if retry is not None else self._idle("advance")
-        remaining = ["CLEAR_ROCKS", "CLEAR_STUMPS"] if last in _SPA_RETRY_PHASES else []
+        remaining = []
+        if last in _SPA_RETRY_PHASES and not _section_done(
+            status, self.section, self.chunk
+        ):
+            remaining = ["CLEAR_ROCKS", "CLEAR_STUMPS"]
         decision = leftover_chain_decision(
             last, result.status, result.reason, status.stamina, remaining,
             include_spa=self.include_spa,
