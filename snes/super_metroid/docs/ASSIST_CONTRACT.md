@@ -4,6 +4,14 @@ This project intentionally uses disclosed survival/resource assists. The goal
 is reliable navigation, item routing, room transitions, bosses, and the
 endgame—not resource conservation.
 
+Three explicit intervention profiles. Mixed evidence is rejected.
+
+| Profile | Runtime use | Allowed writes | Claim |
+|---------|-------------|----------------|-------|
+| `clean` | Later privilege removal | none | Existing Clean rules |
+| `survival` | Primary product | current energy + naturally unlocked ammo only | Eligible for living Tip after normal gates |
+| `scaffold` | Fast first bot credits chain | Survival plus an allowlisted live-enemy HP clamp | Development-only, never STATUS/Finish |
+
 ## Allowed writes
 
 ### Unlimited energy
@@ -117,6 +125,7 @@ The full-run report records:
 - maximum single-frame damage
 - deaths and game-over entries
 - forbidden/progression writes (must be zero)
+- scaffold HP-clamp writes and counts by room/entity (empty on Survival)
 
 ## Integrity assertions
 
@@ -145,3 +154,39 @@ Hard constraints:
 - Clean runs must not overwrite assisted `recordings/<tip>.json` / videos.
 - STATUS primary program gate stays assisted until an explicit program decision
   changes it; Clean results are documented as a secondary track.
+
+## Scaffold mode (development only)
+
+**Scaffold** is Survival plus an allowlisted live-enemy HP clamp. Conservatively
+label it **Bronze / Progression-assisted development**. It is a splice and
+traversal unblocking tool. It is **never** STATUS, Finish, or the living Tip.
+
+The clamp is not a generic `enemy0_hp = 0` switch:
+
+- Allowlist by room, species/boss, optional spawn state, and optional phase.
+  Unknown `(room, species)` pairs are never written. An empty allowlist writes
+  no HP.
+- Change a live target from positive HP to **1**, once per eligible phase, so a
+  real controller hit triggers the game's death / phase / event logic. Never
+  write HP to 0.
+- Scan every enemy slot. Multi-phase bosses need an explicit phase on the
+  allowlist row; a new phase may be clamped once. Fail closed for unknown
+  layouts. Suspend during non-ordinary gameplay (door, death, cutscene).
+- Log every write as `{frame, room_id, slot, enemy_id, old, new, reason}` and
+  expose counts by room/entity. These writes are **not**
+  `progression_writes` or `capacity_writes`.
+- Removable per task (`enabled=False` default). Product
+  `UnlimitedResourcesAssist` does not enable the clamp unless constructed with
+  `profile="scaffold"` or an explicit allowlist.
+
+The first ordinary-enemy pilot is Attic `0xCA52` (gray-door kill-all). The
+factory species is a documented placeholder until a ROM-backed header id is
+recorded; unknown species in Attic still fail closed.
+
+Use the clamp to unblock traversal and validate splicing, not to skip doors,
+items, boss flags, escape, or credits. A room whose phase logic breaks under
+the clamp gets a normal reactive boss Skill immediately.
+
+Item, door, boss, event, room, timer, position, and capacity writes remain
+**forbidden**. Survival refill rules still apply. Scaffold evidence must not
+be claimed as Survival or Finish.
