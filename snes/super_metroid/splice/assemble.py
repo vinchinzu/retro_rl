@@ -27,7 +27,7 @@ from super_metroid.splice.select import (
     as_selection,
 )
 
-_LOAD_NAMES = ("load", "load_state", "load_state_data", "restore_state")
+_LOAD_NAMES = ("load", "load_state", "load_state_data", "restore_state", "set_state")
 _SURVIVAL_TOKS = ("energy", "ammo", "missile", "super", "power_bomb", "resource")
 PlayHops = Callable[..., Any]
 
@@ -177,12 +177,34 @@ def _offer_for(
     selection: Selection,
     extras: Sequence[CandidateOffer],
 ) -> CandidateOffer:
-    found = selection.offer_for(edge.task_id, candidate_id)
+    # Same kind:id is reused across profiles. Bind only a matching-profile
+    # artifact; a clean-graded tape:a0 must not block scaffold tape:a0.
+    found = selection.offer_for(edge.task_id, candidate_id, profile=profile)
     if found is not None:
         return found
     for offer in extras:
-        if offer.task_id == edge.task_id and offer.candidate_id == candidate_id:
+        if (
+            offer.task_id == edge.task_id
+            and offer.candidate_id == candidate_id
+            and offer.profile == profile
+        ):
             return offer
+    other = [
+        offer
+        for offer in (*selection.offers, *extras)
+        if offer.task_id == edge.task_id and offer.candidate_id == candidate_id
+    ]
+    incumbent = edge.selected_map().get(profile)
+    if other and candidate_id != incumbent:
+        _fail(
+            f"candidate {candidate_id!r} profile {other[0].profile!r} "
+            f"does not match assembly profile {profile!r}",
+            "assemble.profile",
+            candidate_id=candidate_id,
+            candidate_profile=other[0].profile,
+            profile=profile,
+            task_id=edge.task_id,
+        )
     return _synthetic_offer(edge, candidate_id, profile)
 
 
@@ -241,11 +263,20 @@ def _guard_loads(session: Any) -> Callable[[], None]:
             fn = getattr(obj, name, None)
             if not callable(fn):
                 continue
-            patched.append((obj, name, fn))
             try:
                 setattr(obj, name, blocked(name))
             except (AttributeError, TypeError):
-                continue
+                for pobj, pname, orig in patched:
+                    try:
+                        setattr(pobj, pname, orig)
+                    except (AttributeError, TypeError):
+                        continue
+                _fail(
+                    "assemble cannot shadow mid-run state load",
+                    "assemble.load",
+                    method=name,
+                )
+            patched.append((obj, name, fn))
 
     def restore() -> None:
         for obj, name, orig in patched:
