@@ -65,3 +65,16 @@ class PrepareError(SpliceError):
         details: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code=code, details=details)
+
+
+class GradeError(SpliceError):
+    """Replay/Join grade failed closed: digest mismatch, missing runner, or invalid candidate."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "grade.invalid",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, details=details)
