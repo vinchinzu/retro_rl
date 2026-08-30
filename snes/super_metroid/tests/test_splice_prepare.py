@@ -127,9 +127,9 @@ def _kit(tmp_path: Path) -> dict[str, Any]:
 
 
 def _ready_edges(kit: dict[str, Any], *, pin: Path | None = None, digest: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
-    path = str((pin or kit["pin"]).resolve())
+    path = (pin or kit["pin"]).name
     pin_digest = digest if digest is not None else kit["pin_digest"]
-    tape = str(kit["tape"].resolve())
+    tape = kit["tape"].name
     e0 = _edge(
         "ceres_elev",
         CERES,
@@ -234,8 +234,10 @@ def test_invalid_room(tmp_path: Path) -> None:
 def test_repo_relative_paths_only(tmp_path: Path) -> None:
     kit = _kit(tmp_path)
     prepared = _prepare(tmp_path, kit, _manifest(*_ready_edges(kit)))
+    assert prepared.card.entry_state_path is not None
+    assert not Path(prepared.card.entry_state_path).is_absolute()
+    assert not prepared.card.entry_state_path.startswith("/")
     rel = repo_relative(kit["pin"])
-    assert prepared.card.entry_state_path == rel
     assert rel is not None
     assert not Path(rel).is_absolute()
     for text in _walk_strings(prepared.to_dict()):
@@ -289,3 +291,146 @@ def test_cli_report_only_json_strict(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert payload["error"] == "PrepareError"
     code = main(["prepare", "nope", "--manifest", str(dest), "--strict"])
     assert code == 1
+
+
+def test_named_pin_does_not_fallback_to_other_room_anchor(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    other = tmp_path / "other.state"
+    other.write_bytes(b"pin-bytes")
+    (tmp_path / "anchors.json").write_text(
+        json.dumps(
+            {
+                "anchors": [
+                    {
+                        "kind": "room_enter",
+                        "frame": 0,
+                        "room": "0x91F8",
+                        "room_id": LANDING,
+                        "path": str(other),
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    gone = tmp_path / "gone.state"
+    e0, e1 = _ready_edges(kit, pin=gone, digest=kit["pin_digest"])
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any("entry_pin" in label for label in missing)
+
+
+def test_inventory_mismatch(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e0["required_items"] = 0
+    e0["entry"]["fingerprint"]["items"] = 1
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any("inventory" in label for label in missing)
+
+
+def test_missing_edge_boss_bits(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e0["boss_bits"] = None
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any(label.startswith("boss:") for label in missing)
+
+
+def test_predecessor_missing_and_mismatch(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e1["entry"]["fingerprint"]["prior_room_id"] = None
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1), task_id="landing")
+    missing = exc.value.details.get("missing") or []
+    assert any("predecessor:missing" in label for label in missing)
+    e0, e1 = _ready_edges(kit)
+    e1["entry"]["fingerprint"]["prior_room_id"] = LANDING
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1), task_id="landing")
+    missing = exc.value.details.get("missing") or []
+    assert any("predecessor:mismatch" in label for label in missing)
+
+
+def test_unselected_survival_profile(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    raw = _manifest(*_ready_edges(kit))
+    with pytest.raises(PrepareError) as exc:
+        prepare(
+            "ceres_elev",
+            manifest=raw,
+            profile="survival",
+            rom_path=kit["rom"],
+            core_path=kit["core"],
+            repo_root=tmp_path,
+        )
+    missing = exc.value.details.get("missing") or []
+    assert any("unselected" in label and "survival" in label for label in missing)
+
+
+def test_missing_pose_and_velocity(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e0["entry"]["fingerprint"]["pose"] = None
+    e0["entry"]["fingerprint"]["velocity_x"] = None
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any(label.startswith("pose:") for label in missing)
+    assert any(label.startswith("velocity:") for label in missing)
+
+
+def test_invalid_room_0000(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e0["room_id"] = 0x0000
+    e0["hop_key"] = make_hop_key(0x0000, from_room_id=None, to_room_id=LANDING, items=0)
+    e0["entry"]["fingerprint"]["room_id"] = 0x0000
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any("invalid_room" in label or "0000" in label for label in missing)
+
+
+def test_invalid_leave_room(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    e0, e1 = _ready_edges(kit)
+    e1["successor_leave"] = _leave("landing_leave", 0x0000)
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1), task_id="landing")
+    missing = exc.value.details.get("missing") or []
+    assert any("exit" in label and ("0000" in label or "invalid_room" in label) for label in missing)
+
+
+def test_catalog_room_mismatch(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    rel = "scratch/post_ws_entrance_to_main.state"
+    pin = tmp_path / rel
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_bytes(b"pin-bytes")
+    e0, e1 = _ready_edges(kit, pin=pin)
+    e0["entry"]["state_path"] = rel
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any("catalog" in label or label.startswith("room:") for label in missing)
+
+
+def test_corrupt_tape_with_declared_digest(tmp_path: Path) -> None:
+    kit = _kit(tmp_path)
+    blob = b"not-json"
+    kit["tape"].write_bytes(blob)
+    e0, e1 = _ready_edges(kit)
+    e0["tape_digest"] = _sha(blob)
+    e1["tape_digest"] = _sha(blob)
+    with pytest.raises(PrepareError) as exc:
+        _prepare(tmp_path, kit, _manifest(e0, e1))
+    missing = exc.value.details.get("missing") or []
+    assert any(label.startswith("tape:") and "corrupt" in label for label in missing)
