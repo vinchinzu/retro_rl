@@ -26,7 +26,7 @@ from super_metroid.routes.kpdr.room_ids import ROOM_WEST_OCEAN, ROOM_WS_ATTIC, R
 from super_metroid.splice.cards import artifact_dir
 from super_metroid.splice.errors import PreflightError
 from super_metroid.splice.manifest import dest_leave_spec
-from super_metroid.splice.preflight import file_digest, repo_relative
+from super_metroid.splice.preflight import file_digest
 from super_metroid.splice.schema import (
     CandidateArtifact,
     EntryContract,
@@ -47,13 +47,12 @@ MAIN_SHAFT_ROOM = ROOM_WS_MAIN  # serial; never a tape hop here
 DEFAULT_S23_DIR = GAME_DIR / "tasks" / "full_start_v1_segments" / SEGMENT
 OWNER_PACKAGE = "snes/super_metroid/splice"
 RECOVERY = "search_live_adapter"
-# 5015-frame bowling hop splits into a few bounded windows.
+BOWLING_PLANNED_DWELL = 5015  # s23 bowling hop; split internally, one Gravity contract
 BOWLING_INTERNAL_MAX_FRAMES = 1800
 BOUNDED_LIVE_ADAPTER = AdapterSearchConfig(beam_width=8, max_depth=4, frame_penalty=0.35)
 PROJECTION_XY_TOL = 24
 PROJECTION_FRAME_WINDOW = 16
 _LEAVE_BAND = 80
-_SERIAL_ROOMS = frozenset({MAIN_SHAFT_ROOM})
 _SOURCE_NOTES = (
     "Scaffold tape candidate; not Survival/Finish",
     "Main Shaft / rr-kw8t remains serial",
@@ -64,6 +63,7 @@ __all__ = [
     "ATTIC_TASK_ID",
     "BOUNDED_LIVE_ADAPTER",
     "BOWLING_INTERNAL_MAX_FRAMES",
+    "BOWLING_PLANNED_DWELL",
     "BOWLING_ROOM",
     "BOWLING_TASK_ID",
     "DEFAULT_S23_DIR",
@@ -229,20 +229,35 @@ def _find_hop(hops: Sequence[Mapping[str, Any]], room_id: int) -> tuple[int, dic
     return None
 
 
-def _hop_span(hop: Mapping[str, Any]) -> tuple[int, int]:
-    start_raw = hop.get("start_index")
-    if start_raw is None:
-        start_raw = hop.get("frame") or 0
-    start = int(start_raw)
-    if hop.get("end_index") is not None:
-        end = int(hop["end_index"])
-    elif hop.get("end_frame") is not None:
-        end = int(hop["end_frame"])
-    elif hop.get("dwell") is not None:
-        end = start + int(hop["dwell"]) - 1
-    else:
-        end = start
-    return start, max(start, end)
+def _int_field(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _hop_span(hop: Mapping[str, Any]) -> tuple[int, int] | None:
+    """Inclusive [start, end] from extract fields. Missing bounds → None."""
+    start = _int_field(hop.get("start_index"))
+    if start is None:
+        start = _int_field(hop.get("frame"))
+    if start is None:
+        return None
+    end = _int_field(hop.get("end_index"))
+    if end is None:
+        end = _int_field(hop.get("end_frame"))
+    if end is None:
+        dwell = _int_field(hop.get("dwell"))
+        if dwell is None:
+            return None
+        end = start + int(dwell) - 1
+    if end < start:
+        return None
+    return start, end
 
 
 def _split_span(start: int, end: int, max_frames: int) -> tuple[tuple[int, int], ...]:
@@ -303,22 +318,31 @@ def _rel(path: Path | str | None) -> str | None:
     return rel_path(path)
 
 
+def _anchor_room(row: Mapping[str, Any]) -> int | None:
+    return parse_room_id(row.get("room_id", row.get("room")))
+
+
 def _pin(
     anchors: Mapping[str, Any] | None,
     frame: int,
     room_id: int,
     tape: Path,
 ) -> tuple[str | None, str | None]:
+    """Same-room enter pin only. Other-room / Main Shaft hits do not cover."""
     if not anchors:
         return None, None
     hit = match_anchor(anchors, frame, room_id, task_path=tape)
     if hit is None:
         return None, None
+    hit_room = _anchor_room(hit)
+    if hit_room is None or int(hit_room) != int(room_id):
+        return None, None
     resolved = resolve_anchor_path(hit, anchors_index=anchors, task_path=tape)
     if resolved is None:
-        raw = hit.get("resolved_path") or hit.get("path")
-        return _rel(raw), None
+        return None, None
     digest = file_digest(resolved)
+    if digest is None:
+        return _rel(resolved), None
     return _rel(resolved), digest
 
 
@@ -424,7 +448,19 @@ def _build_candidate(
     pred = _room_of(hops[index - 1]) if index else None
     nxt_hop = hops[index + 1] if index + 1 < len(hops) else None
     items = hop_items_int(hop)
-    start, end = _hop_span(hop)
+    span = _hop_span(hop)
+    if span is None:
+        raise PreflightError(
+            f"s23 {task_id} hop span missing",
+            code="preflight.missing",
+            details={
+                "missing": [f"{SEGMENT}:hop:0x{int(room):04X}:span"],
+                "segment": SEGMENT,
+                "task_id": task_id,
+                "room": f"0x{int(room):04X}",
+            },
+        )
+    start, end = span
     hop_key = make_hop_key(
         int(room),
         from_room_id=pred,
@@ -530,27 +566,24 @@ def _build_candidate(
 def _intended_next(
     hops: Sequence[Mapping[str, Any]],
     index: int,
-    default: int,
+    expected: int,
     *,
     task_id: str,
     room_id: int,
 ) -> int:
-    if index + 1 >= len(hops):
-        return int(default)
-    nxt = _room_of(hops[index + 1])
-    if nxt is None:
-        return int(default)
-    if int(nxt) != int(default):
+    nxt = _room_of(hops[index + 1]) if index + 1 < len(hops) else None
+    if nxt is None or int(nxt) != int(expected):
+        got = None if nxt is None else f"0x{int(nxt):04X}"
         raise PreflightError(
-            f"s23 {task_id} next room is 0x{int(nxt):04X}, expected 0x{int(default):04X}",
+            f"s23 {task_id} successor hop 0x{int(expected):04X} missing",
             code="preflight.missing",
             details={
-                "missing": [f"{SEGMENT}:hop:0x{int(room_id):04X}:next"],
+                "missing": [f"{SEGMENT}:hop:0x{int(expected):04X}"],
                 "segment": SEGMENT,
                 "task_id": task_id,
                 "room": f"0x{int(room_id):04X}",
-                "next_room": f"0x{int(nxt):04X}",
-                "expected_next": f"0x{int(default):04X}",
+                "next_room": got,
+                "expected_next": f"0x{int(expected):04X}",
             },
         )
     return int(nxt)
@@ -627,12 +660,6 @@ def load_s23_tape_candidates(
         ),
         order=1,
     )
-    if attic.room_id in _SERIAL_ROOMS or bowling.room_id in _SERIAL_ROOMS:
-        raise PreflightError(
-            "Main Shaft hops are serial; tape adapters must not own them",
-            code="schema.serial",
-            details={"missing": [f"{SEGMENT}:hop:0x{MAIN_SHAFT_ROOM:04X}:serial"]},
-        )
     return attic, bowling
 
 
@@ -682,7 +709,15 @@ def project_live(
             recovery=RECOVERY,
             room_id=int(room),
         )
-    if x is not None and y is not None and entry.x is not None and entry.y is not None:
+    if entry.x is not None and entry.y is not None:
+        if x is None or y is None:
+            return LiveProjection(
+                within_bound=False,
+                score=1_000_000.0,
+                sample_index=candidate.edge.frame_start,
+                recovery=RECOVERY,
+                room_id=int(room),
+            )
         score = float(abs(int(x) - int(entry.x)) + abs(int(y) - int(entry.y)))
         if score > int(xy_tol):
             return LiveProjection(
