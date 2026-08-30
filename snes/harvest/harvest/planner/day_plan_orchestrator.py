@@ -267,11 +267,13 @@ class DayPlanTask(Task):
 
     def _splice_plant_after_shop(self, world: WorldState) -> None:
         """rr-20w.1: outdoor plan expands at 06:08 before the bag exists."""
-        from harvest.planner.d2_work import d2_post_shop_work_phases
+        from harvest.planner.d2_work import d2_post_shop_work_phases, leftover_already_queued
         from harvest.planner.world_probe import WorldProbe
 
         remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
-        if any(name in remaining for name in ("CROP_ESTABLISH", "CLEAR_PLOT")):
+        if leftover_already_queued(remaining) or any(
+            name in remaining for name in ("CROP_ESTABLISH", "CLEAR_PLOT", "D2_FARM_CLEAR")
+        ):
             return
         if not self.policy.include_planting:
             return
@@ -525,6 +527,11 @@ class DayPlanTask(Task):
         reason: str,
         world: WorldState,
     ) -> TaskResult:
+        if spec.phase == "D2_FARM_CLEAR":
+            return TaskResult(
+                status=status,
+                reason=f"required phase {spec.phase} failed: {reason}",
+            )
         policy = self._failure_policy(spec)
         if policy in {"optional", "opportunistic"}:
             if spec.phase in OPTIONAL_MONEY_PHASES:

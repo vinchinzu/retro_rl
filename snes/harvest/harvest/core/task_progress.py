@@ -1,9 +1,34 @@
-"""Structured progress snapshots for autoplay watchdog and diagnostics."""
+"""Structured progress snapshots for autoplay watchdog and diagnostics.
+
+``ProgressSnapshot.signature()`` is a *semantic* stall key: task identity,
+phase, child signature, and non-tick details. Elapsed ``step_count`` stays on
+the snapshot for UI/diagnostics but is not progress, including any
+``("step_count", ...)`` pair smuggled in ``details``.
+
+Two independent stall windows sit beside the snapshot for later D2 / PlaySession
+use (leftover_exec still has its own comparator this slice):
+
+- Motion liveness (``motion_liveness_key``): target / approach / player
+  position. Short window: ``MOTION_STALL_FRAMES`` (6s at 60fps).
+- Goal progress (``goal_progress_key``): debris counts, crop planted/wet,
+  carry, stamina. Long window: ``GOAL_STALL_FRAMES`` (leftover_exec default).
+
+``stalled(last_frame, now, window)`` is the shared comparator.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Optional, Sequence, Tuple
+
+
+MOTION_STALL_FRAMES = 360
+GOAL_STALL_FRAMES = 24_000
+_TICK_DETAIL_KEYS = frozenset({"step_count"})
+
+
+def _semantic_details(details: Sequence[Tuple[str, Any]]) -> Tuple[Tuple[str, Any], ...]:
+    return tuple(pair for pair in details if pair[0] not in _TICK_DETAIL_KEYS)
 
 
 @dataclass(frozen=True)
@@ -18,15 +43,39 @@ class ProgressSnapshot:
     child: Optional["ProgressSnapshot"] = None
 
     def signature(self) -> Tuple[Any, ...]:
-        """Hashable signature for stall detection."""
+        """Hashable semantic signature for stall detection.
+
+        Elapsed ``step_count`` is diagnostic-only and is excluded.
+        """
         return (
             self.task_name,
             self.phase_text,
             self.phase_index,
-            self.step_count,
-            self.details,
+            _semantic_details(self.details),
             self.child.signature() if self.child is not None else None,
         )
+
+
+def motion_liveness_key(*, target: Any, approach: Any, pos: Any) -> Tuple[Any, ...]:
+    """Short-window key: navigation target / approach / player position."""
+    return (target, approach, pos)
+
+
+def goal_progress_key(
+    *,
+    debris: Any,
+    planted: Any,
+    wet: Any,
+    carry: Any,
+    stamina: Any,
+) -> Tuple[Any, ...]:
+    """Long-window key: debris / crop planted-wet / carry / stamina."""
+    return (debris, planted, wet, carry, stamina)
+
+
+def stalled(last_frame: int, now: int, window: int) -> bool:
+    """True when ``now - last_frame`` has reached a positive ``window``."""
+    return window > 0 and now - last_frame >= window
 
 
 def _read_attr(task: object, name: str) -> Any:

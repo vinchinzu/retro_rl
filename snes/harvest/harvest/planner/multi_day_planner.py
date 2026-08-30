@@ -480,6 +480,8 @@ class MultiDayPlannerTask(Task):
                 return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
             if self._phase == "plan_day":
                 self._capture_day_plan_outcomes()
+                if not self.policy.include_end_day:
+                    return TaskResult(status=result.status, reason=reason)
                 return self._force_return_home_after_failure(world, result.status, reason)
             if self._phase == "wait_shipping":
                 # Optional window — go home even if 5pm wait fails.
@@ -537,6 +539,11 @@ class MultiDayPlannerTask(Task):
                     "[MULTI_DAY] Day work done with shipping bin goods; "
                     "staying on farm for 5pm ShippingScene (Day09 path)"
                 )
+            elif not self.policy.include_end_day:
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=result.reason or "day work complete",
+                )
             else:
                 self._phase = "return_home"
                 self._current_task = None
@@ -553,6 +560,11 @@ class MultiDayPlannerTask(Task):
                 }
             )
             print(f"[MULTI_DAY] Farm shipping wait done: {result.reason or 'success'}")
+            if not self.policy.include_end_day:
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=result.reason or "shipping wait done",
+                )
             self._phase = "return_home"
             self._current_task = None
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))

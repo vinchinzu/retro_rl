@@ -404,6 +404,10 @@ def _build_harvest(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -
 def _build_clear_field(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    if spec.phase == "D2_FARM_CLEAR":
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        return D2FarmClearTactic.from_spec(ctx, spec)
     bounds = spec.params.get("farm_bounds")
     if bounds is not None:
         bounds = tuple(int(v) for v in bounds)
@@ -453,6 +457,7 @@ def _build_fence_clear(
         pond_dump=bool(spec.params.get("pond_dump", False)),
         debris_types=debris_types,
         farm_bounds=bounds,
+        timeout=int(spec.params.get("timeout", 0) or 0),
     )
 
 
