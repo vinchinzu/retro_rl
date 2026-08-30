@@ -14,7 +14,8 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, DebrisType
 from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_ROW
 from harvest.tasks.carry_toss import CarryToPondStand
-from harvest.tasks.farm_ops import Target, TileScanner
+from harvest.tasks.farm_clear_quota import farm_map_loaded
+from harvest.tasks.farm_ops import Target, TileScanner, shed_door_step_off_actions
 from harvest.tasks.fence_corridor import (
     ACTION_CARRYING_BIT,
     ACTION_DROPPING,
@@ -86,6 +87,10 @@ class FenceClearLoopTask(Task):
     max_steps_per_fence: int = 2400
     stasis_repath: int = 180
     max_failures: int = 3
+    # <=0: exhaustive (honor carry/stall bounds). >0: whole-loop frame budget.
+    timeout: int = 0
+    max_pond_carry_retries: int = 3
+    max_input_lock_presses: int = 12
     debug: bool = False
     debug_interval: int = 300
     # When True (empty-can pond corridor): after one successful lift+local_drop
@@ -97,6 +102,8 @@ class FenceClearLoopTask(Task):
     debris_types: tuple = (DebrisType.FENCE,)
     # Leftover smash: dump every post/stone in a pond. Do not treat a local
     # drop as a clear, skip a stuck target, and work the y=31 wall first.
+    # House-north / west-column / barn-wall / FA-east use alternate
+    # approaches (fence_corridor, CarryToPondStand); still dump to zero.
     pond_dump: bool = False
     # D2 leftover chunks clip the scan so a last distant stone cannot stall
     # the whole farm. Inclusive (x0, y0, x1, y1); None is the full map.
@@ -138,6 +145,8 @@ class FenceClearLoopTask(Task):
         self._steps_on_fence = 0
         self._total_steps = 0
         self._failures = 0
+        self._pond_carry_retries = 0
+        self._input_lock_presses = 0
         self._pond_hop_steps = 0
         self._corridor_charge_done = False
         self._local_drop_cycles = 0
@@ -177,6 +186,7 @@ class FenceClearLoopTask(Task):
         self._current = None
         self._approach_tile = None
         self._steps_on_fence = 0
+        self._pond_carry_retries = 0
         self._navigator.path = []
         self._corridor_charge_done = False
         self._action_queue.clear()
@@ -205,7 +215,7 @@ class FenceClearLoopTask(Task):
     def _mark_pond_toss(self) -> None:
         self.cleared_count += 1
         self._failures = 0
-        self._skip_tiles.clear()
+        self._pond_carry_retries = 0
         self._corridor_charge_done = False
         self._pond_hop_steps = 0
 
@@ -311,8 +321,28 @@ class FenceClearLoopTask(Task):
             corridor_only=self.corridor_only,
         )
         if not targets:
-            reason = "corridor already open" if self.corridor_only else "no fences found"
-            return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
+            if self.corridor_only:
+                return TaskResult(
+                    status=TaskStatus.SUCCESS, reason="corridor already open"
+                )
+            if self.pond_dump or self.max_fences is None:
+                if not farm_map_loaded(world.ram):
+                    if not self._action_queue:
+                        self._action_queue.extend(shed_door_step_off_actions())
+                    action = (
+                        self._action_queue.popleft()
+                        if self._action_queue
+                        else make_action()
+                    )
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(action),
+                        reason="stale_farm_map",
+                    )
+                return TaskResult(
+                    status=TaskStatus.SUCCESS, reason="loaded-farm zero debris"
+                )
+            return TaskResult(status=TaskStatus.SUCCESS, reason="no fences found")
         sort_fence_targets(
             targets,
             pond_dump=self.pond_dump,
@@ -338,6 +368,7 @@ class FenceClearLoopTask(Task):
             self._state = "navigate"
             self._steps_on_fence = 0
             self._pond_hop_steps = 0
+            self._pond_carry_retries = 0
             self._corridor_charge_done = False
             self._local_drop_cycles = 0
             self._stasis_repaths = 0
@@ -647,9 +678,47 @@ class FenceClearLoopTask(Task):
         action = self._action_queue.popleft()
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
+    def _input_lock_kind(self, world: WorldState) -> str:
+        ram = world.ram
+        state = int(ram[ADDR_PLAYER_STATE]) if ADDR_PLAYER_STATE < len(ram) else 0
+        if state & 0x80:
+            return "map_transition"
+        lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 0
+        if lock == 0:
+            return "tool_animation"
+        return "input_lock"
+
+    def _handle_input_lock(self, world: WorldState) -> TaskResult:
+        self._input_lock_presses = getattr(self, "_input_lock_presses", 0) + 1
+        if self._input_lock_presses > self.max_input_lock_presses:
+            kind = self._input_lock_kind(world)
+            reason = f"input_lock_stuck {kind}"
+            if self._current is not None:
+                return self._skip_current(reason)
+            return TaskResult(status=TaskStatus.FAILURE, reason=reason)
+        if self.corridor_only and (
+            world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT
+        ):
+            if self._state not in ("local_drop",):
+                self._state = "local_drop"
+                self._steps_on_fence = 0
+        action = (
+            make_action(a=True)
+            if (self._steps_on_fence % 2 == 0)
+            else make_action(b=True)
+        )
+        return TaskResult(
+            status=TaskStatus.RUNNING, action=ActionResult(action), reason="input_lock"
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._total_steps += 1
+        if self.timeout > 0 and self._total_steps > self.timeout:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"fence_loop timeout steps={self._total_steps}",
+            )
 
         if self.debug and self._total_steps % self.debug_interval == 0:
             cur = self._navigator.current_tile
@@ -683,20 +752,8 @@ class FenceClearLoopTask(Task):
 
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if input_lock != 1:
-            if self.corridor_only and (
-                world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT
-            ):
-                if self._state not in ("local_drop",):
-                    self._state = "local_drop"
-                    self._steps_on_fence = 0
-            action = (
-                make_action(a=True)
-                if (self._steps_on_fence % 2 == 0)
-                else make_action(b=True)
-            )
-            return TaskResult(
-                status=TaskStatus.RUNNING, action=ActionResult(action), reason="input_lock"
-            )
+            return self._handle_input_lock(world)
+        self._input_lock_presses = 0
 
         if self.max_fences is not None and self.cleared_count >= self.max_fences:
             return TaskResult(status=TaskStatus.SUCCESS)
@@ -713,13 +770,23 @@ class FenceClearLoopTask(Task):
         if self._steps_on_fence > self.max_steps_per_fence:
             carrying = bool(world.ram[ADDR_PLAYER_STATE] & ACTION_CARRYING_BIT)
             if carrying and self.pond_dump:
-                self._steps_on_fence = 0
-                self._pond_hop_steps = 0
-                self._pathfinder.temp_blocked.clear()
-                self._state = "navigate_pond"
-                return TaskResult(
-                    status=TaskStatus.RUNNING, reason="pond_dump keep carrying"
-                )
+                self._pond_carry_retries = getattr(self, "_pond_carry_retries", 0) + 1
+                if self._pond_carry_retries <= self.max_pond_carry_retries:
+                    self._steps_on_fence = 0
+                    self._pond_hop_steps = 0
+                    self._pathfinder.temp_blocked.clear()
+                    self._state = "navigate_pond"
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, reason="pond_dump keep carrying"
+                    )
+                skipped = self._skip_current("pond_carry retry cap")
+                if skipped.status != TaskStatus.FAILURE:
+                    self._state = "local_drop"
+                    self._action_queue.clear()
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, reason="pond_carry retry cap"
+                    )
+                return skipped
             if carrying:
                 self._state = "local_drop"
                 self._steps_on_fence = 0

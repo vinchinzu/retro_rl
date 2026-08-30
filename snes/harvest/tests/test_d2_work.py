@@ -213,20 +213,11 @@ class D2LeftoverOrderTests(unittest.TestCase):
 
 class D2PostShopComposeTests(unittest.TestCase):
     def test_post_shop_is_plant_water_then_leftover(self) -> None:
-        names = [p.phase for p in d2_post_shop_work_phases()]
-        self.assertEqual(
-            names[:6],
-            [
-                "ENSURE_CROP_SEEDS",
-                "CLEAR_PLOT",
-                "NAV_CROP",
-                "CROP_ESTABLISH",
-                "ENSURE_WATERING_CAN",
-                "CROP_WATER",
-            ],
-        )
-        self.assertLess(names.index("CROP_WATER"), names.index("CLEAR_BUSHES"))
-        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
+        phases = d2_post_shop_work_phases()
+        names = [p.phase for p in phases]
+        self.assertEqual(names, ["D2_FARM_CLEAR"])
+        self.assertEqual(phases[0].kind, PhaseKind.CLEAR_FIELD)
+        self.assertEqual(phases[0].failure_policy, "required")
         self.assertNotIn("CLEAR_FIELD", names)
         self.assertEqual(pocket_water_phase().params["work_mode"], "pocket")
         self.assertEqual(pocket_water_phase().params["min_wet"], 8)
@@ -240,6 +231,7 @@ class D2PostShopComposeTests(unittest.TestCase):
         self.assertTrue(leftover_already_queued(["CROP_WATER", "CLEAR_ROCKS"]))
         self.assertTrue(leftover_already_queued(["CLEAR_FENCES", "RETURN_HOME"]))
         self.assertTrue(leftover_already_queued(["CLEAR_STONES"]))
+        self.assertTrue(leftover_already_queued(["D2_FARM_CLEAR"]))
         self.assertFalse(leftover_already_queued(["CROP_WATER", "RETURN_HOME"]))
         self.assertFalse(leftover_already_queued(["HOT_SPRING_STAMINA"]))
 
@@ -371,10 +363,16 @@ class LeftoverProbeBudgetTests(unittest.TestCase):
         self.assertNotIn("WatchDisplay", text)
         self.assertNotIn("--watch", text)
         self.assertNotIn("spa_retried", text)
-        self.assertIn("leftover_chain_decision", text)
-        self.assertIn("should_spa_retry", exec_src.read_text(encoding="utf-8"))
+        self.assertIn("D2FarmClearTactic", text)
+        exec_text = exec_src.read_text(encoding="utf-8")
+        self.assertIn("leftover_chain_decision", exec_text)
+        d2_src = (
+            Path(__file__).resolve().parents[1] / "harvest" / "planner" / "d2_work.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("should_spa_retry", d2_src)
+        self.assertIn("D2FarmClearTactic", d2_src)
         self.assertIn("--chunk", text)
-        self.assertIn("leftover_section_phases", text)
+        self.assertIn("--no-spa", text)
 
 
 class LeftoverProbePayloadTests(unittest.TestCase):
@@ -528,6 +526,281 @@ class LeftoverStallAbortTests(unittest.TestCase):
         self.assertGreater(env.n_steps, 60)
         self.assertGreater(frame, 80)
         save.assert_not_called()
+
+
+_SHIP_OK = [{"phase": "WAIT_FARM_SHIPPING", "status": "success"}]
+
+
+def _farm_ram(*, stamina=100, lock=1, hour=12, player=(10, 10)):
+    import numpy as np
+    from harvest.core.ram_catalog import field_spec
+    from harvest.core.tile_catalog import (
+        ADDR_INPUT_LOCK,
+        ADDR_MAP,
+        ADDR_STAMINA,
+        ADDR_TILEMAP,
+        ADDR_X,
+        ADDR_Y,
+        MAP_WIDTH,
+        TILE_SIZE,
+    )
+
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    ram[ADDR_TILEMAP] = 0x00
+    ram[ADDR_INPUT_LOCK] = lock
+    ram[ADDR_STAMINA] = stamina
+    ram[field_spec("max_stamina").address] = 100
+    ram[field_spec("hour").address] = hour
+    ram[field_spec("day").address] = 2
+    for i in range(MAP_WIDTH * MAP_WIDTH):
+        ram[ADDR_MAP + i] = 0xA1
+    px, py = player[0] * TILE_SIZE + 8, player[1] * TILE_SIZE + 8
+    ram[ADDR_X] = px & 0xFF
+    ram[ADDR_X + 1] = (px >> 8) & 0xFF
+    ram[ADDR_Y] = py & 0xFF
+    ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+    return ram
+
+
+def _set_tile(ram, tx, ty, tile_id):
+    from harvest.core.tile_catalog import ADDR_MAP, MAP_WIDTH
+
+    ram[ADDR_MAP + ty * MAP_WIDTH + tx] = tile_id
+
+
+def _place_large_rock(ram, tx, ty, *, damage=False):
+    ids = (0x11, 0x12, 0x13, 0x14) if damage else (0x0D, 0x0E, 0x0F, 0x10)
+    for (dx, dy), tid in zip(((0, 0), (1, 0), (0, 1), (1, 1)), ids):
+        _set_tile(ram, tx + dx, ty + dy, tid)
+
+
+def _plant_eight_wet(ram):
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_geometry import plot_tiles
+    from harvest.tasks.crop_skills import PLANTED_WET
+
+    cx, cy = WEST_POCKET_PLANT_CENTER
+    for tx, ty in plot_tiles((cx, cy), include_center=False):
+        _set_tile(ram, tx, ty, PLANTED_WET)
+
+
+class D2ObserveTruthTableTests(unittest.TestCase):
+    def test_complete_only_when_all_adr_clauses_hold(self) -> None:
+        from harvest.planner.d2_work import (
+            D2FarmOutcome,
+            confirm_d2_complete,
+            observe_d2_farm,
+        )
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        status = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(status.outcome, D2FarmOutcome.COMPLETE)
+        self.assertTrue(status.is_complete)
+        self.assertEqual(status.planted, 8)
+        self.assertEqual(status.wet, 8)
+        self.assertFalse(status.damaged_boulder)
+        self.assertTrue(status.hands_clear)
+        self.assertTrue(status.farm_map_loaded)
+        self.assertFalse(status.animating)
+        self.assertTrue(status.shipped_before_17)
+
+        dry = _farm_ram()
+        from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+        from harvest.tasks.crop_geometry import plot_tiles
+        from harvest.tasks.crop_skills import PLANTED_DRY
+
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        for tx, ty in plot_tiles((cx, cy), include_center=False):
+            _set_tile(dry, tx, ty, PLANTED_DRY)
+        self.assertFalse(observe_d2_farm(dry, _SHIP_OK).is_complete)
+
+        weed = _farm_ram()
+        _plant_eight_wet(weed)
+        _set_tile(weed, 20, 20, 0x03)
+        self.assertFalse(observe_d2_farm(weed, _SHIP_OK).is_complete)
+
+        dmg = _farm_ram()
+        _plant_eight_wet(dmg)
+        _place_large_rock(dmg, 50, 50, damage=True)
+        hit = observe_d2_farm(dmg, _SHIP_OK)
+        self.assertTrue(hit.damaged_boulder)
+        self.assertNotEqual(hit.outcome, D2FarmOutcome.COMPLETE)
+
+        stale = _farm_ram()
+        _plant_eight_wet(stale)
+        from harvest.core.tile_catalog import ADDR_MAP, MAP_WIDTH
+
+        for i in range(MAP_WIDTH * MAP_WIDTH):
+            stale[ADDR_MAP + i] = 0xFF
+        self.assertEqual(
+            observe_d2_farm(stale, _SHIP_OK).outcome,
+            D2FarmOutcome.TEMPORARILY_UNOBSERVABLE,
+        )
+        self.assertFalse(observe_d2_farm(stale, _SHIP_OK).is_complete)
+
+        swinging = _farm_ram(lock=0)
+        _plant_eight_wet(swinging)
+        self.assertEqual(
+            observe_d2_farm(swinging, _SHIP_OK).outcome,
+            D2FarmOutcome.TEMPORARILY_UNOBSERVABLE,
+        )
+
+        hands = _farm_ram()
+        _plant_eight_wet(hands)
+        from harvest.core.ram_catalog import field_spec, live_wram_base
+        from harvest.planner.tasks.transitions import PLAYER_STATE_CARRYING_BIT
+
+        idx = field_spec("player_state").address + live_wram_base(hands)
+        hands[idx] = PLAYER_STATE_CARRYING_BIT
+        self.assertFalse(observe_d2_farm(hands, _SHIP_OK).is_complete)
+
+        noship = _farm_ram()
+        _plant_eight_wet(noship)
+        self.assertFalse(observe_d2_farm(noship).is_complete)
+        self.assertFalse(observe_d2_farm(noship, []).shipped_before_17)
+
+        late = _farm_ram(hour=18)
+        _plant_eight_wet(late)
+        self.assertFalse(observe_d2_farm(late).shipped_before_17)
+        self.assertFalse(observe_d2_farm(late).is_complete)
+        from harvest.core.ram_catalog import field_spec
+
+        late[field_spec("shipping_money_raw").address] = 1
+        self.assertTrue(observe_d2_farm(late).shipped_before_17)
+        self.assertTrue(observe_d2_farm(late).is_complete)
+
+        done = observe_d2_farm(ram, _SHIP_OK)
+        self.assertTrue(confirm_d2_complete(done, done))
+        self.assertFalse(confirm_d2_complete(None, done))
+        self.assertFalse(confirm_d2_complete(observe_d2_farm(weed, _SHIP_OK), done))
+
+
+class D2NextSpecTests(unittest.TestCase):
+    def test_empty_rock_chunk_is_omitted(self) -> None:
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        ram = _farm_ram()
+        _place_large_rock(ram, 60, 51)
+        status = observe_d2_farm(ram)
+        spec = next_d2_spec(status, section="rocks", last_phase="ENSURE_HAMMER")
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.phase, "CLEAR_ROCKS")
+        self.assertEqual(spec.params["chunk"], "se")
+
+        empty_se = _farm_ram()
+        _place_large_rock(empty_se, 8, 18)
+        empty_status = observe_d2_farm(empty_se)
+        skipped = next_d2_spec(
+            empty_status, section="rocks", chunk="se", last_phase="ENSURE_HAMMER"
+        )
+        self.assertIsNone(skipped)
+        nw = next_d2_spec(
+            empty_status, section="rocks", chunk="nw", last_phase="ENSURE_HAMMER"
+        )
+        self.assertEqual(nw.phase, "CLEAR_ROCKS")
+        self.assertEqual(nw.params["chunk"], "nw")
+
+    def test_live_stamina_inserts_spa_before_rocks(self) -> None:
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        low = _farm_ram(stamina=8)
+        _place_large_rock(low, 50, 50)
+        low_status = observe_d2_farm(low)
+        self.assertEqual(low_status.stamina.current, 8)
+        spec = next_d2_spec(low_status, section="rocks")
+        self.assertEqual(spec.phase, "HOT_SPRING_STAMINA")
+
+        full = _farm_ram(stamina=100)
+        _place_large_rock(full, 50, 50)
+        full_status = observe_d2_farm(full)
+        spec = next_d2_spec(full_status, section="rocks")
+        self.assertEqual(spec.phase, "ENSURE_HAMMER")
+        spec = next_d2_spec(full_status, section="rocks", last_phase="ENSURE_HAMMER")
+        self.assertEqual(spec.phase, "CLEAR_ROCKS")
+
+
+class D2FarmClearTacticTests(unittest.TestCase):
+    def test_complete_ram_succeeds_after_settle(self) -> None:
+        from retro_harness import TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        tactic = D2FarmClearTactic(evidence=_SHIP_OK)
+        tactic.reset(world)
+        first = tactic.step(world)
+        self.assertEqual(first.status, TaskStatus.RUNNING)
+        second = tactic.step(world)
+        self.assertEqual(second.status, TaskStatus.SUCCESS)
+        self.assertTrue(tactic.farm_status.is_complete)
+
+    def test_skips_empty_se_rock_chunk(self) -> None:
+        from unittest.mock import patch
+
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram()
+        _place_large_rock(ram, 8, 18)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        seen = []
+
+        class Instant:
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, _world):
+                return TaskResult(status=TaskStatus.SUCCESS, reason="ok")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append((spec.phase, (spec.params or {}).get("chunk")))
+            if spec.phase == "CLEAR_ROCKS" and spec.params.get("chunk") == "se":
+                return None
+            return Instant()
+
+        tactic = D2FarmClearTactic(section="rocks", chunk="all", include_spa=False)
+        tactic.reset(world)
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(12):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+        self.assertNotIn(("CLEAR_ROCKS", "se"), seen)
+        self.assertIn(("CLEAR_ROCKS", "nw"), seen)
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+
+    def test_leftover_exec_still_exports_spa_retry(self) -> None:
+        from retro_harness import TaskStatus
+
+        from harvest.scripts.leftover_exec import leftover_chain_decision
+
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_ROCKS",
+                TaskStatus.FAILURE,
+                "stamina_low cleared=2",
+                Stamina(current=8, maximum=100),
+                ("ENSURE_AXE", "CLEAR_STUMPS"),
+            ),
+            "spa_retry",
+        )
+
+
+class D2RunnerFlagTests(unittest.TestCase):
+    def test_argparse_has_stop_after_d2_clear(self) -> None:
+        from harvest.scripts.run_to_day2 import _parse_args
+
+        args = _parse_args(["--stop-after-d2-clear", "--power-on"])
+        self.assertTrue(args.stop_after_d2_clear)
+        self.assertFalse(args.stop_after_d2_shipping)
+        shipping = _parse_args(["--stop-after-d2-shipping"])
+        self.assertTrue(shipping.stop_after_d2_shipping)
+        self.assertFalse(getattr(shipping, "stop_after_d2_clear", False))
 
 
 if __name__ == "__main__":

@@ -52,9 +52,8 @@ from harvest.planner.d2_farm_chunks import (
     smash_done_empty,
     wanted_quota,
 )
-from harvest.planner.d2_work import leftover_section_phases
-from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
-from harvest.planner.day_phase_stamina import full_restore_spa_phase
+from harvest.planner.d2_work import D2FarmClearTactic, leftover_section_phases, observe_d2_farm
+from harvest.planner.day_phase_registry import TaskBuildContext
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.day_plan_tasks import ExitToFarmTask
 from harvest.runtime.retro_setup import make_harvest_env
@@ -325,103 +324,39 @@ def main() -> int:
 
         wanted = _wanted_quota(args.section)
         include_spa = not args.no_spa
-        stam = Stamina.from_ram(ram)
         scan_bounds = _scan_bounds(args.section, args.chunk)
         start_counts = count_debris(ram, scan_bounds)
-        pending = list(
-            _phases_for(
-                args.section,
-                stamina=stam,
-                include_spa=include_spa,
-                chunk=args.chunk,
-            )
+        world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+        tactic = D2FarmClearTactic(
+            section=args.section,
+            chunk=args.chunk,
+            include_spa=include_spa,
+            ctx=ctx,
         )
-        ok = True
-        while pending:
-            spec = pending.pop(0)
-            remaining = max(200, args.timeout - frame)
-            timeout = _phase_timeout(spec, remaining)
-            world = WorldState(frame=frame, ram=ram, info={}, obs=None)
-            live_counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
-            if phase_already_clear(spec.phase, live_counts):
-                journal.append(
-                    {
-                        "phase": spec.phase,
-                        "status": "skipped",
-                        "reason": "already clear on pin",
-                        "chunk": (spec.params or {}).get("chunk"),
-                        "farm_bounds": (spec.params or {}).get("farm_bounds"),
-                        "frames": frame,
-                        "debris_after": live_counts.as_dict(),
-                    }
-                )
-                continue
-            task = build_phase_task(ctx, spec, world)
-            if task is None:
-                journal.append({"phase": spec.phase, "status": "none", "reason": "no task"})
-                ok = False
-                break
-            before = count_debris(ram).as_dict()
-            stam_before = Stamina.from_ram(ram).to_dict()
-            task.reset(world)
-            ckpt = (args.checkpoint_state or "").strip() or None
-            frame, result, ram = _run_task(
-                env,
-                task,
-                timeout=timeout,
-                start_frame=frame,
-                checkpoint_state=ckpt,
-                checkpoint_every=int(args.checkpoint_every),
-                stall_frames=int(args.stall_frames),
-            )
-            after = count_debris(ram).as_dict()
-            reason = result.reason if result is not None else ""
-            row = {
-                "phase": spec.phase,
-                "status": result.status.value if result is not None else "none",
-                "reason": reason,
-                "chunk": (spec.params or {}).get("chunk"),
-                "farm_bounds": (spec.params or {}).get("farm_bounds"),
-                "frames": frame,
-                "timeout": timeout,
-                "cleared_count": getattr(task, "cleared_count", None),
-                "carry": _carry(ram),
-                "stamina": Stamina.from_ram(ram).to_dict(),
-                "stamina_before": stam_before,
-                "debris_before": before,
-                "debris_after": after,
-                "clock": clock_from_ram(ram).to_dict(),
-            }
-            journal.append(row)
-            _emit(
-                args.out,
-                ram=ram,
-                section=args.section,
-                ok=False,
-                start=start,
-                journal=journal,
-                partial=True,
-            )
-            live_stam = Stamina.from_ram(ram)
-            decision = leftover_chain_decision(
-                spec.phase,
-                None if result is None else result.status,
-                reason,
-                live_stam,
-                [p.phase for p in pending],
-                include_spa=include_spa,
-            )
-            if decision == "continue":
-                continue
-            if decision == "insert_spa":
-                pending.insert(0, full_restore_spa_phase())
-                continue
-            if decision == "spa_retry":
-                pending.insert(0, spec)
-                pending.insert(0, full_restore_spa_phase())
-                continue
-            ok = False
-            break
+        tactic.reset(world)
+        ckpt = (args.checkpoint_state or "").strip() or None
+        frame, result, ram = _run_task(
+            env,
+            tactic,
+            timeout=max(200, args.timeout - frame),
+            start_frame=frame,
+            checkpoint_state=ckpt,
+            checkpoint_every=int(args.checkpoint_every),
+            stall_frames=int(args.stall_frames),
+        )
+        journal.extend(tactic.journal)
+        farm = tactic.farm_status or observe_d2_farm(ram, tactic.journal)
+        ok = result is not None and result.status == TaskStatus.SUCCESS
+        _emit(
+            args.out,
+            ram=ram,
+            section=args.section,
+            ok=False,
+            start=start,
+            journal=journal,
+            farm_status=farm.outcome.value if farm is not None else "",
+            partial=True,
+        )
 
         end = _snapshot(ram)
         cleared = DebrisCounts(**start["debris"]).cleared_since(

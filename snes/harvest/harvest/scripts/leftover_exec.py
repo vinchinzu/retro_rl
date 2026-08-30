@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import gzip
 from pathlib import Path
-from typing import Sequence
 
 from retro_harness import TaskResult, TaskStatus, WorldState
 from retro_harness.headed import headed_emu_repeat
 
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
-from harvest.core.stamina import Stamina
 from harvest.paths import GAME_DIR
-from harvest.planner.d2_work import needs_spa_before_next_smash, should_spa_retry
+from harvest.planner.d2_work import leftover_chain_decision, phase_already_clear
 from harvest.tasks.farm_clear_quota import ClearQuota, DebrisCounts, count_debris
 from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result
@@ -23,53 +21,6 @@ def save_emulator_state(env, state_name: str) -> Path:
     with gzip.open(out_state, "wb", compresslevel=9) as handle:
         handle.write(env.em.get_state())
     return out_state
-
-
-_EMPTY_SKIP = {
-    "CLEAR_BUSHES": "weeds",
-    "CLEAR_FENCES": "fences",
-    "CLEAR_STONES": "stones",
-    "CLEAR_ROCKS": "large_rocks",
-    "CLEAR_STUMPS": "stumps",
-}
-
-
-def phase_already_clear(phase: str, counts: DebrisCounts) -> bool:
-    """True when this leftover smash section has nothing left on the pin."""
-    key = _EMPTY_SKIP.get(phase)
-    return key is not None and int(getattr(counts, key, 0)) <= 0
-
-
-def leftover_chain_decision(
-    phase: str,
-    status: TaskStatus | str | None,
-    reason: str | None,
-    stamina: Stamina | int | None,
-    remaining_phases: Sequence[str],
-    *,
-    include_spa: bool = True,
-) -> str:
-    """What the leftover probe does after one phase of ``--section all``.
-
-    ``continue`` / ``insert_spa`` keep the chain. ``spa_retry`` requeues the
-    same smash after a soak. ``abort`` stops later chunks — a stalled SE
-    boulder never reaches axe/stumps.
-    """
-    if status is None:
-        return "abort"
-    text = status.value if isinstance(status, TaskStatus) else str(status)
-    if text == TaskStatus.SUCCESS.value:
-        if needs_spa_before_next_smash(
-            phase,
-            stamina,
-            include_spa=include_spa,
-            remaining_phases=remaining_phases,
-        ):
-            return "insert_spa"
-        return "continue"
-    if should_spa_retry(phase, reason, stamina, include_spa=include_spa):
-        return "spa_retry"
-    return "abort"
 
 
 def print_leftover_table(

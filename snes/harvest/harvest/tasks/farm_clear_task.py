@@ -658,10 +658,15 @@ class FarmClearTask(Task):
                 ),
             )
         if self._quota_met(world.ram):
+            noop = (
+                " no-op"
+                if int(getattr(self._clearer, "cleared_count", 0) or 0) <= 0
+                else ""
+            )
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=(
-                    f"field_clear quota_met "
+                    f"field_clear quota_met{noop} "
                     f"cleared={self._clearer.cleared_count} quota={self.quota}"
                 ),
             )

@@ -27,6 +27,7 @@ from harvest.tasks.farm_clear_quota import (
     capped_quota,
     classify_target,
     count_debris,
+    farm_map_loaded,
     needs_shed_door_step_off,
     quota_counts_met,
     quota_satisfied,
@@ -214,6 +215,54 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertIn("quota_met", result.reason or "")
         self.assertEqual(count_debris(ram).stumps, 1)
         self.assertEqual(ram[ADDR_MAP + 12 * MAP_WIDTH + 20], STUMP_TL)
+
+    def test_capped_empty_quota_is_satisfied_when_farm_loaded(self) -> None:
+        ram = _make_farm_ram(player_tile=(40, 40), tool=int(Tool.HAMMER))
+        _place_large_rock(ram, 12, 12)
+        world = _world(ram)
+        se = (32, 32, 63, 63)
+        task = _quota_task(
+            quota={"large_rocks": 10000},
+            farm_bounds=se,
+            priority=[DebrisType.ROCK],
+        )
+        task.reset(world)
+        self.assertEqual(task.clearer.quota_start_counts.large_rocks, 0)
+        self.assertEqual(task.clearer.cleared_count, 0)
+        self.assertTrue(farm_map_loaded(ram))
+        self.assertTrue(
+            quota_satisfied(ram, task.quota, clearer=task.clearer, bounds=se)
+        )
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        reason = result.reason or ""
+        self.assertIn("quota_met", reason)
+        self.assertIn("no-op", reason)
+
+    def test_capped_empty_quota_rejected_when_farm_unloaded(self) -> None:
+        ram = _make_farm_ram(player_tile=(40, 40), tool=int(Tool.HAMMER))
+        _place_large_rock(ram, 12, 12)
+        world = _world(ram)
+        se = (32, 32, 63, 63)
+        task = _quota_task(
+            quota={"large_rocks": 10000},
+            farm_bounds=se,
+            priority=[DebrisType.ROCK],
+        )
+        task.reset(world)
+        _set_player(ram, (25, 30))
+        _set_tile(ram, 25, 30, 0xA8)
+        for y in range(MAP_WIDTH):
+            for x in range(MAP_WIDTH):
+                if (x, y) != (25, 30):
+                    _set_tile(ram, x, y, 0xFF)
+        self.assertFalse(farm_map_loaded(ram))
+        self.assertFalse(
+            quota_satisfied(ram, task.quota, clearer=task.clearer, bounds=se)
+        )
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertNotIn("quota_met", result.reason or "")
 
     def test_quota_not_met_on_shed_door_unload(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.HAMMER))
