@@ -78,3 +78,29 @@ class GradeError(SpliceError):
         details: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code=code, details=details)
+
+
+class SelectError(SpliceError):
+    """Planner selection rejected: unknown profile, missing candidate, or invalid offer."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "select.invalid",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, details=details)
+
+
+class AssembleError(SpliceError):
+    """Assembly failed closed: profile mismatch, missing session, or mid-run state load."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "assemble.invalid",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, details=details)

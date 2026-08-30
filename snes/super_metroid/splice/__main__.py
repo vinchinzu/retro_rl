@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade (no emulator)."""
+"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble (no emulator)."""
 
 from __future__ import annotations
 
@@ -21,10 +21,12 @@ ensure_import_paths(root=_ROOT)
 from super_metroid.human_tape.product_chain import DEFAULT_BOARD, DEFAULT_TASK  # noqa: E402
 from super_metroid.splice.cards import format_cards, generate_cards  # noqa: E402
 from super_metroid.splice.errors import (  # noqa: E402
+    AssembleError,
     GradeError,
     PrepareError,
     PreflightError,
     SchemaError,
+    SpliceError,
 )
 from super_metroid.splice.manifest import load_manifest, manifest_from_product_chain  # noqa: E402
 from super_metroid.splice.preflight import (  # noqa: E402
@@ -41,7 +43,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Planning/verification over tips.play_hops. "
             "Artifact digest preflight, read-only task cards, fail-closed "
-            "prepare, and grade (refuses to boot without a runner hook)."
+            "prepare, grade, and assemble (refuses to boot without a session factory)."
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -120,12 +122,22 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=INTERVENTION_PROFILES,
         help="Planner selection profile (default: scaffold)",
     )
+    asm = sub.add_parser(
+        "assemble",
+        help="Assemble a route (refuses to boot without a session factory)",
+    )
+    asm.add_argument("route_id")
+    asm.add_argument("--manifest", type=Path, help="Route-manifest JSON (skip board adapter)")
+    asm.add_argument(
+        "--profile",
+        default="scaffold",
+        choices=INTERVENTION_PROFILES,
+        help="Planner selection profile (default: scaffold)",
+    )
     return parser
 
 
-def _print_error(
-    exc: PreflightError | SchemaError | PrepareError | GradeError, *, as_json: bool
-) -> None:
+def _print_error(exc: SpliceError, *, as_json: bool) -> None:
     if as_json:
         print(json.dumps(exc.to_dict(), indent=2))
         return
@@ -217,6 +229,17 @@ def _run_grade(args: argparse.Namespace) -> int:
     return 1
 
 
+def _run_assemble(args: argparse.Namespace) -> int:
+    # Dry planner: never boots. A session factory is required to play_hops.
+    err = AssembleError(
+        "assemble refuses to boot without a session factory",
+        code="assemble.session",
+        details={"route_id": args.route_id, "profile": args.profile},
+    )
+    _print_error(err, as_json=True)
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -228,6 +251,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_prepare(args)
     if args.cmd == "grade":
         return _run_grade(args)
+    if args.cmd == "assemble":
+        return _run_assemble(args)
     parser.print_help()
     return 2
 
