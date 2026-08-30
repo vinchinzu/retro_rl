@@ -211,9 +211,10 @@ _PATH_FARM_EXIT = Waypoint(
 )
 _FARM_WEST_TO_TOWN: List[Waypoint] = [_FARM_WEST_EXIT, _PATH_TOWN_EXIT]
 
-# Pond A6 occupies y=25 x=0-6. Column x=8 is A0 y=23-25 then A8 y=26-28.
-# Live After_Rocks on (7,25)/(7,26) sat at (127,420) against the pond
-# face. Stay on the house column until y=27, then run west.
+# Pond A6 occupies y=25 x=0-6 *and* x=9-10 (gap east of the house
+# column). Column x=8 is A0 y=23-25 then A8 y=26-28. Live After_Rocks
+# on (7,25)/(7,26) sat at (127,420) against the pond face. Stay on the
+# house column until y=27, then run west. Do not LEFT-hold on y=25.
 _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(136, 440), radius=8, run_direction="down", force_run=True),
     Waypoint(tilemap=0x00, target_px=(72, 440), radius=8, run_direction="left"),
@@ -232,7 +233,7 @@ _FARM_TO_PATH: List[Waypoint] = [
 
 # Sunday south crop ~(78,598). Viewport BFS to (136,424) cuts 0x5E beds and
 # F2 ditch (9/11,26–28). Stay on untilled dirt, x=13 through y=31 fence,
-# then north of the ditch onto the A8 gate road.
+# then UP to y=24 and west on dirt onto house-column A0. y=25 x=9-10 is A6.
 SOUTH_FIELD_MIN_Y_PX = 520
 # After_Rocks ~(633,223). House-first hop (137,375) is a 31-tile BFS; barn
 # A1 push-faces (30,19-21). Drop south east of the barn onto y=24 dirt.
@@ -252,8 +253,8 @@ _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(216, 600), radius=6, run_direction="right"),
     Waypoint(tilemap=0x00, target_px=(216, 536), radius=6),  # (13,33)
     Waypoint(tilemap=0x00, target_px=(216, 440), radius=6),  # (13,27)
-    Waypoint(tilemap=0x00, target_px=(200, 408), radius=8),  # (12,25) north of ditch
-    Waypoint(tilemap=0x00, target_px=(136, 392), radius=8, run_direction="left"),
+    Waypoint(tilemap=0x00, target_px=(216, 392), radius=8),  # (13,24) dirt; not y=25 LEFT
+    Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0 house column
     *_FARM_GATE_PINCH_TO_EXIT,
     # Crossroads next — not PATH_FARM_GATE (232,128), which is east
     # toward the farm and pins leaked (10,422) landings.

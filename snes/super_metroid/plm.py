@@ -53,6 +53,22 @@ def session_ram(session: Any) -> np.ndarray | None:
     return np.asarray(ram, dtype=np.uint8)
 
 
+def plm_block_pixels(
+    block: int, room_width_blocks: int
+) -> tuple[int, int, int, int]:
+    """Map ``$1C87`` to ``(bx, by, px, py)``.
+
+    ``$1C87`` is a byte offset into two-byte level data, not a cell
+    index. Bank ``$84`` divides by two before converting to block
+    coordinates.
+    """
+    width = max(int(room_width_blocks), 1)
+    cell = int(block) // 2
+    bx = cell % width
+    by = cell // width
+    return bx, by, bx * 16 + 8, by * 16 + 8
+
+
 def snapshot_plms(ram: np.ndarray, n: int = N_PLMS) -> tuple[dict[str, int], ...]:
     """Active PLM slots: id, instruction pointer, block index, pixel xy."""
     width = _u16(ram, ADDR_ROOM_WIDTH) or 1
@@ -63,8 +79,7 @@ def snapshot_plms(ram: np.ndarray, n: int = N_PLMS) -> tuple[dict[str, int], ...
             continue
         block = _u16(ram, ADDR_PLM_BLOCK + i * 2)
         inst = _u16(ram, ADDR_PLM_INST + i * 2)
-        bx = block % width
-        by = block // width
+        bx, by, px, py = plm_block_pixels(block, width)
         rows.append(
             {
                 "i": i,
@@ -73,8 +88,8 @@ def snapshot_plms(ram: np.ndarray, n: int = N_PLMS) -> tuple[dict[str, int], ...
                 "block": block,
                 "bx": bx,
                 "by": by,
-                "px": bx * 16 + 8,
-                "py": by * 16 + 8,
+                "px": px,
+                "py": py,
             }
         )
     return tuple(rows)
@@ -329,6 +344,7 @@ __all__ = [
     "dump_shot_trace",
     "near_samus",
     "nearby_hits",
+    "plm_block_pixels",
     "plms_from_compact",
     "session_ram",
     "shot_block_spawns",

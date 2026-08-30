@@ -28,6 +28,7 @@ from super_metroid.routes.kpdr.k6.ws_main_actions import (
 from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     MORPH_DROP_BOMB_FRAMES,
     SAVE_COLUMN_LATCH_X,
+    SLOPE_1130_SEAT_Y,
     THREE_SHOT_FRAMES,
     TUNNEL_CLEAR_X,
     WJ_POSES,
@@ -380,6 +381,12 @@ def climb_until(
                 )
                 continue
         if is_knockback(st):
+            kx, ky = int(st.samus_x), int(st.samus_y)
+            slope_lo, slope_hi = SLOPE_1130_SEAT_Y
+            if slope_lo <= ky <= slope_hi and kx <= 1056:
+                # take02 p138 is brief; LEFT+A leaves knockback onto p76.
+                hold(session, 1, "LEFT", "A", reason=f"{label}_slope_1130_wall")
+                continue
             if lip_hit and at_ws_main_morph_drop(
                 int(st.samus_x), int(st.samus_y)
             ):

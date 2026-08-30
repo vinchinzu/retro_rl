@@ -1,66 +1,70 @@
-# Residual — rr-tne2 L6 Survival (L3 dest_6b-clear 1/1; L4 0x40 key BLOCKED)
+# Residual — rr-tne2 L6 Survival handoff
 
-**Status:** dest_6b first-visit 0x5b clear is on the spine. `south_darknuts_0x69`
-from that predecessor is **1/1**. `--through level3` **1/1** OW `0x74` TF `0x07`.
-`--through level6-gohma` / `level4-room40-key` then **BLOCKED 3/3** at
-`level4_key_0x40`. Do not STATUS. Bead `rr-tne2` stays open until TF `0x20`.
-Did not retouch `bomb_north_1e`. Did not restore `clear_5b_return`.
+**Status:** L5 entry recovered from leftover L4 TF (`--through level5-entry`
+1/1, play `0x76` `(120,205)`, TF `0x0F`). Bead `rr-tne2` stays open. Do not
+STATUS-promote or claim Level 5 / Level 6 complete.
 
-## What is green
+## Recovered — L5 entry from L4 leftover
 
-| Stage | Result |
-|-------|--------|
-| `--through level1-bow-pickup` | **1/1** `ADDR_BOW=1` |
-| **`bomb_north_1e`** | **1/1** 323f; entered `0x0e` |
-| **`north_chain` 0x5b clear** | **1/1** 3898f; spawn → occupancy → `darknuts_cleared` |
-| **`south_darknuts_0x69`** | **1/1** `l3_dest_clear5b_v3` 2760f; `entered_0x69` |
-| **`--through level3`** | **1/1** `l3_dest_clear5b_v3` 73229f; OW `0x74` `(128,130)` mode 4; `tf=7`; bow=1 arrows=0 keys=3 bombs=0; deaths/progression/capacity 0 |
-
-Gohma hop wiring and wooden-arrow poke stay; not applied (never reached 0x1C).
-
-## Policy that greened L3
-
-`down_to_69` drops to the lower aisle from **either** diamond side:
-
-- east: `x >= 176` (unchanged)
-- west: `x <= 64` — dest_6b-clear leftover `(48,141)` where RIGHT no-op'd
-
-v2 notes were `cleared_59_doors=5_alldead=9` then `down_69_timeout`.
-`doors=5` is RIGHT|DOWN — kill-open already fired. v3 same clear, then
-`entered_0x69`. Do not restore `fight_clear` on 0x5b return.
-
-## BLOCKED — `level4_key_0x40` (3/3)
-
-dest_6b-clear predecessor reaches play `0x40` and clears Zols. Key is on the
-floor in the center opening; Link cannot collect. PNG
-`l4_key40_pocket_v3_final.png`.
-
-| Trial | Leftover | Notes |
-|-------|----------|-------|
-| `l6_dest_clear5b_v1` | `(120,149)` keys=4 | `path_done` + `key_hunt_timeout` (scripted hunt) |
-| `l4_key40_pocket_v1` | `(120,149)` 25000f | greedy UP to `(120,141)` no-op |
-| `l4_key40_pocket_v2` | `(128,149)` 8 misses | occupancy RIGHT; dest unreachable |
-| `l4_key40_pocket_v3` | `(128,149)` 8 misses | unblock dest + fallback `(120,117)`; same leftover |
-
-Play `0x40` `(128,149)` mode 5 keys=4 bombs=15 bow=1 arrows=0 tf=7. Key sprite
-sits ~north of the south pocket; UP is solid. Occupancy wrapper lives in
-`level4_key40.py` (did not grow 1128-line `level4_maze_path`). Halt.
-
-Do not rerun the same hunt. Next knob is a **maze occupancy seed** or the
-already-verified v7 coordinate thread `(160,177)→(116,181)→(112,124)→(128,103)`
-then UP/LEFT from leftover `(128,149)`. Do not poke bow. Wooden arrows only at
-Gohma `0x1C`.
+`--through level5-entry` from mode 18 room `0x03` `(120,149)`. Existing
+`PostL4TriforceSettleController` + `POST_L4_TO_LEVEL5_HOPS` (not old At4A).
+Did not retouch maze-west or 0x40. Did not edit L5 overworld policy.
 
 ```bash
-uv run python nes/zelda_i/scripts/run_survival_spine.py --through level4-room40-key --no-video --trials 1 --tag l4_key40_pocket_v4
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_survival_spine.py \
+  --through level5-entry --no-video --trials 1 \
+  --tag l5_entry_recompose
 ```
 
-Only after a **new** 0x40 path policy (not another dest-tile tweak).
+`l5_entry_recompose` **1/1**, 116,491f, play `0x76` `(120,205)`, TF=`0x0F`,
+keys=4, bombs=13, bow=1, map=`0x0A`, health `0x55` lo==hi. settle_l4_tf
+283f (`post_l4_ow_ready` island `0x45`). enter_level5 5,282f: hops
+`0x55…0x1B`, pocket DOWN then already-free, hills_ups=3 then door `0x0B`,
+entered L5. `mid_run_state_load=false`, deaths 0, progression/capacity
+writes 0. Glance empty. PNG: `recordings/l5_entry_recompose_final.png`
+(L5 south mouth, 3 Zols live). `status_claim=false`.
+
+Historical `l5_entry_continuous_v1` was 134,393f keys=5 hop 5,138f. This
+tape is the recovered L4 prefix (110,926f keys=4) plus 5,565f settle+path.
+
+## Key deficit (still open; do not top-up)
+
+L4-entry keys 3 vs historical 4; L4 TF and L5 entry ended keys=4 vs
+historical 5. Deficit is already at L4 `0x40` (`keys_before` 4 vs 5).
+Bow splice KEY-LEFT spends the 0x23 key then `SPINE_L1_KEY_RETOPUP` writes
+0→1 at `backtrack44`; L2 still pokes keys 0→2, so that L1 spend is not
+the live L4 gap. Do not hide it with another key top-up.
+
+## Next knob — L5 0x66 from this leftover
+
+`--through level5-clear66` from play `0x76` `(120,205)`. Historical green
+is occupancy `l5_clear66_continuous_v2` leftover `(32,101)` keys 5→6.
+This leftover has keys=4. Do not retouch maze-west, 0x40, or L5 entry.
+
+## L6 defects already audited
+
+Even after L4/L5-entry greens, current `--through level6-gohma` cannot
+finish L6:
+
+- Dedicated composition skips stairs `0x3A`, cellar `0x08`, south `0x1D`,
+  and west `0x2D`; `_gohma_stages()` starts NORTH2C from the wrong predecessor.
+- There is no `level6` / TF `0x20` endpoint. Gohma success only proves the
+  body is gone in `0x1C`; add natural heart pickup, north into `0x0C`, and TF.
+- `level4/boss_combat.py` has an `em.set_state()` fallback while the spine
+  hardcodes `mid_run_state_load=false`. Fail closed and measure state loads.
+- Arrow assist telemetry is not merged into the whole-run inventory audit.
+  Add an L6 endpoint validator.
+
+Required chain:
+
+`clear3A → stairs-position assist → cellar08 → south1D → west2D → north2C →`
+`wooden-arrow assist/Gohma → natural heart → north 0x0C → natural TF 0x20`.
 
 ## Non-claims
 
-- Did not buy arrows. Did not collect L1 `0x72`. Did not poke bow.
-- Did not overwrite Clean M5. Wooden arrows at Gohma `0x1C` not applied.
-- Did not close `rr-tne2`, start L7, or push.
-- Did not STATUS-promote.
-- Did not restore `clear_5b_return`. Did not retouch `bomb_north_1e`.
+- Did not STATUS-promote or overwrite Clean M5.
+- Did not close `rr-tne2` or reach Gohma / TF `0x20`.
+- Did not poke doors, TF, bow, Rod, Map, Whistle, or capacity.
+- Did not retouch maze-west or 0x40.
+- Did not push or commit.

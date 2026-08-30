@@ -31,7 +31,6 @@ from zelda_i.level4.clear12 import level4_clear12_stages
 from zelda_i.level4.exit60 import level4_exit60_stages
 from zelda_i.level4.gleeok13 import attach_level4_tf_suffix, level4_gleeok13_stages
 from zelda_i.level4.key01 import level4_key01_stages
-from zelda_i.level4.key40 import make_room_40_key_controller
 from zelda_i.level4.keyup20 import level4_keyup20_stages
 from zelda_i.level4.map21 import level4_map21_stages
 from zelda_i.level4.mappick import level4_mappick_stages
@@ -39,6 +38,7 @@ from zelda_i.level4.maze_path import (
     make_maze_31_east_controller,
     make_maze_31_inland_controller,
     make_north_40_controller,
+    make_room_40_key_controller,
 )
 from zelda_i.level4.overworld import (
     LEVEL4_ENTRY_ROOM,

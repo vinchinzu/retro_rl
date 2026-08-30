@@ -26,6 +26,8 @@ MOVIES_DIR = GAME_DIR / "movies"
 ARTIFACTS_DIR = GAME_DIR / "artifacts"
 EVIDENCE_DIR = ARTIFACTS_DIR / "evidence"
 EVIDENCE_MANIFEST_PATH = EVIDENCE_DIR / "level1_tas_evidence.json"
+CONTROL_PROOF_PATH = EVIDENCE_DIR / "level1_control_proof.json"
+REF_MOVIE_PATH = GAME_DIR / "tas" / "ref" / "tasvideos_1724_warps.fm2"
 
 # State files stay under the integration directory even though the manifest
 # stores portable, game-relative paths.
