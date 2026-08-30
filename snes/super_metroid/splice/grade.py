@@ -24,7 +24,6 @@ from super_metroid.splice.schema import (
     MemoryWrite,
     ReplayRow,
     candidate_kind,
-    rel_path,
 )
 
 GREEN = "GREEN"
@@ -180,7 +179,7 @@ def _as_candidate(
 
 def _check_start_digest(candidate: CandidateArtifact, expected: str) -> None:
     given = candidate.start_state_digest
-    if given and given != expected:
+    if not given or given != expected:
         _fail(
             "candidate start digest does not match prepared entry digest",
             "grade.digest",
@@ -284,28 +283,26 @@ def _join_grade(leftover: Mapping[str, Any], join: JoinPredicate) -> JoinGrade:
         misses = list(grade_final(leftover, spec))
     except (KeyError, TypeError, ValueError) as exc:
         misses = [f"{type(exc).__name__}: {exc}"]
-    still = dict(leftover)
-    if misses:
-        # Bind LeaveMiss so RED leftover carries the same still the runner uses.
-        err = LeaveMiss(join.leave.hop, still, misses, to_room=spec.room)
-        still = dict(err.leftover)
-        misses = list(err.misses)
     return JoinGrade(
         passed=not misses,
         misses=tuple(misses),
         join=join,
-        leftover=still,
+        leftover=dict(leftover),
     )
 
 
-def _rel_under(path: Path, *, root: Path) -> str:
-    rel = rel_path(path)
-    if rel:
-        return rel
+def _still_rel(still_path: Path, *, dest: Path, planned_still: str) -> str:
+    # Dest-relative first so host-absolute tmp dirs stay leftover.state, not a stripped repo path.
     try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        rel = still_path.resolve().relative_to(dest.resolve()).as_posix()
+        if rel and not Path(rel).is_absolute() and not rel.startswith("/"):
+            return rel.replace("\\", "/")
     except (OSError, ValueError):
-        return path.name
+        pass
+    planned = str(planned_still or "").replace("\\", "/")
+    if planned and not Path(planned).is_absolute() and not planned.startswith("/"):
+        return planned
+    return still_path.name
 
 
 def _save_leftover(
@@ -320,7 +317,7 @@ def _save_leftover(
     dest.mkdir(parents=True, exist_ok=True)
     still_path = dest / "leftover.state"
     package_path = dest / "leftover.json"
-    still_rel = _rel_under(still_path, root=dest) or Path(planned_still).name
+    still_rel = _still_rel(still_path, dest=dest, planned_still=planned_still)
     package = {
         "path": still_rel,
         "misses": list(misses),
@@ -331,7 +328,7 @@ def _save_leftover(
     still_path.write_text(json.dumps(dict(leftover), indent=2) + "\n", encoding="utf-8")
     package_path.write_text(json.dumps(package, indent=2) + "\n", encoding="utf-8")
     return LeftoverPackage(
-        path=_rel_under(package_path, root=dest),
+        path=still_rel,
         misses=tuple(misses),
         leftover=dict(leftover),
     )

@@ -255,7 +255,8 @@ def test_red_writes_leftover_package(tmp_path: Path) -> None:
     assert pkg.is_file()
     assert still.is_file()
     data = json.loads(pkg.read_text(encoding="utf-8"))
-    assert data["path"]
+    assert report.leftover_package.path.endswith("leftover.state")
+    assert data["path"] == report.leftover_package.path
     assert data["misses"]
     assert data["leftover"]["xy"] == [1, 1]
     assert not Path(str(report.leftover_package.path)).is_absolute()
@@ -309,6 +310,26 @@ def test_digest_mismatch_fails_closed(tmp_path: Path) -> None:
     assert exc.value.code == "grade.digest"
     assert not (tmp_path / "leftover.json").exists()
     assert not (tmp_path / "bank.json").exists()
+
+
+def test_missing_candidate_start_digest_fails_closed(tmp_path: Path) -> None:
+    prepared = _prepared(tmp_path)
+    cand = {
+        "candidate_id": "tape:board",
+        "kind": "tape",
+        "implementation_id": "board",
+        "task_id": "ceres_elev",
+        "entry_fingerprint": prepared.entry_fingerprint.to_dict(),
+    }
+    with pytest.raises(GradeError) as exc:
+        grade(
+            prepared,
+            cand,
+            runner=lambda *_: _GREEN_STILL,
+            artifact_dir=tmp_path,
+        )
+    assert exc.value.code == "grade.digest"
+    assert not (tmp_path / "leftover.json").exists()
 
 
 def test_runner_start_digest_mismatch_fails_closed(tmp_path: Path) -> None:
