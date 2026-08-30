@@ -6,16 +6,16 @@ held seat, or replace the takeoff (b). A new sitting (c) only because
 context died; it still reads this file. Gravity epic continues from this
 residual. `attic_door` is the Attic dual. Farm plan: `rr-1xc2.8`.
 
-**Miss class:** `mid_climb` has not started. Natural-entry `west_super`
-now dual-greens after explicitly neutral-settling the grate-seat momentum
-that the direct phase-pin boot had hidden.
+**Miss class:** 1083 wall bounce now plants 1019 from natural west-super
+(take02: p138 LEFT+A, amid A, RIGHT+A, peak ~980). Living miss is 827:
+leftover `(1187, 817) p48` spin RIGHT overlapping Atomic `(1188, 822)`
+hp 250 freeze 0. **min_y 792**. Not mid_climb (y~680). Do not restart
+1675, grate, 1543, the 1130 slope-run, or the 1083→1019 bounce.
 
 **Status:** Hop 1 dual-green. Hop 2 natural-entry `west_super` **580f** ×2
-to `(1094, 1700) p48` gs=8, beam selected, freeze 0. The five-frame neutral
-join turns the natural `(1217, 1867) p9` momentum handoff into the same
-take02 launch proven from the phase pin. Living checkbox is `mid_climb`
-(**RED**). Living tip `--to phantoon`
-**195,336f** ×2 (STATUS). Hop GREEN is Attic gs=8 only.
+to `(1094, 1700) p48` gs=8. Living checkbox is `mid_climb` (**RED** —
+827 LEFT from 1019, not 1543 and not the 1130/1083 bounce). Living tip
+`--to phantoon` **195,336f** ×2 (STATUS). Hop GREEN is Attic gs=8 only.
 Phase dumps are named scratch pins.
 
 **Pin in:** `scratch/post_ws_basement_to_main.state` (`0xCAF6` ~(1173,1979)
@@ -56,13 +56,20 @@ Controller: `routes/kpdr/k6/` geometry + overlay + play. Unpowered
 | 1 pit_shot | pin (1173,1979) | 3-shot, still Main, not Basement | PARTIAL — Wave+Spazer **opens the grate** |
 | 2 grate_seat | pin | usable take02 fire slope | **118f** ×2 (1217,1867) p9 |
 | 3 west_super | usable fire slope | y~1675 in shaft, not 0xCDA8 | **580f** ×2 natural entry, `(1094,1700) p48` |
-| 4 mid_climb | 1675 | y~680 in shaft | **RED** — not started |
+| 4 mid_climb | 1675 | y~680 in shaft | **RED** — 1130 slope-run and 1083→1019 bounce hold; leftover `(1187, 817) p48` min_y 792 |
 | 5 attic_seat | 680 | ~(1135, ≤160) stand | not started |
 | 6 attic_door | door | Attic `0xCA52` gs=8 | hop GREEN only |
 
-west_super is green; mid_climb is now open. Phase dumps are not hop GREEN.
-Do not `--source` `post_ws_main_grate_land.state` (or the 1189 hash) as
-if it were grate_seat.
+west_super is green; mid_climb is open. 1675 takeoff is
+`TakeoffWindow((1054, 1074), "RIGHT")` gun-jump RIGHT+A (tape; no air-B).
+1543 takeoff is far-right `(1248, 1260) LEFT` (takes 02–05), not guessed
+`(1120, 1180)`. `$1C87` PLM coords divide the byte offset by two. Phase
+dumps are not hop GREEN. Do not `--source` `post_ws_main_grate_land.state`
+(or the 1189 hash) as if it were grate_seat. Do not boot
+`post_ws_main_shaft_1543.state`, leftover `(1099, 1095) p38`, leftover
+`(1045, 1066) p48`, leftover `(1187, 817) p48`, or
+`post_ws_main_shaft_1083.state` as if they were a planted mid_climb pin.
+The 1083 dump is p138 wall-contact, not hop GREEN.
 
 ### Departure windows (rr-1xc2.8.2 locked)
 
@@ -88,9 +95,13 @@ to 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 
 ### Next — one seam
 
-Continue from the natural `west_super` phase pin to `mid_climb`; do not
-restart the grate departure. Keep the controller after a red and dump a held
-seat or replace the trajectory after three identical misses.
+Plant 827 LEFT from the 1019 seat. Tape take 02: `(1205, 827) p10` B+LEFT,
+window x~(1188, 1220). Latest red from natural west-super is leftover
+`(1187, 817) p48` overlapping Atomic `(1188, 822)` — airborne, not a 827
+plant. Ice that Atomic only from a planted 827 seat if the hop still dies.
+Then 651 RIGHT to mid_climb y~680. Keep this controller. Do not restart
+grate, west_super, 1543, the 1130 slope-run, or the 1083→1019 bounce.
+The 1083 dump is not hop GREEN.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
@@ -110,6 +121,11 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure ws-main-to-attic \
 - Did not dual the full hop this wrap
 - Did not pin out `post_ws_main_to_attic.state`
 - Did not treat a phase dump as hop GREEN
+- Did not treat leftover `(1099, 1095) p38` or min_y 1082 as mid_climb green
+- Did not treat leftover `(1045, 1066) p48` or min_y 1066 as mid_climb green
+- Did not treat leftover `(1187, 817) p48` or min_y 792 as mid_climb green
+- Did not treat leftover `(1159, 958) p47` as mid_climb green
+- Did not treat `post_ws_main_shaft_1083.state` as hop GREEN or mid_climb green
+- Did not treat leftover `(1154, 1561) p76` as mid_climb green
 - Did not treat pocket `(1177, 1883)` or land `(1189, 1883)` as fire-slope green
 - Did not treat take04 alcove as the living handoff
-- Did not run mid_climb, compose, or STATUS

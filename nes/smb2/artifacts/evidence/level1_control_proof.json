@@ -1,0 +1,28 @@
+{
+  "bizhawk_validation_status": "blocked",
+  "gate": "is_level1_control",
+  "movie_frame": 304,
+  "name": "level1_control",
+  "replay_core": "fceumm",
+  "snapshot": {
+    "abs_x": 120,
+    "abs_y": 192,
+    "area": 0,
+    "character": 2,
+    "frame": 304,
+    "hearts": 31,
+    "jump_physics": 7,
+    "level": 0,
+    "lives": 3,
+    "obs_mean": 0.771,
+    "player_x": 120,
+    "player_y": 192,
+    "subarea": 0,
+    "transition": 0,
+    "world": 0,
+    "x_page": 0,
+    "x_speed": 0,
+    "y_page": 0
+  },
+  "source_core": "FCEUX 0.98.28 (movie header emuVersion 9828)"
+}

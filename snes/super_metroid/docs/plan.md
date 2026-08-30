@@ -65,6 +65,13 @@ sessions. STATUS/docs updates are planner-owned.
 
 Live work: `bd ready -l super_metroid -l spine`.
 Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
+
+Parallel room work, human-tape bootstrap, permissive scaffold assists, and
+safe ten-agent speed waves are specified in
+[PARALLEL_SPINE_PLAN.md](PARALLEL_SPINE_PLAN.md). Read it before dispatching
+work that starts from archived room pins, changes a room already on the spine,
+or attempts a tape-backed continuous chain. Its scaffold track is development
+evidence, not the Survival living tip.
 ---
 
 ## Ceres opener (TAS boot) + arm-pump — 2026-08-07

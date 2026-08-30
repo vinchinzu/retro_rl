@@ -4,6 +4,11 @@ v1 west leftover (208,141) east door. Reverse of the verified east U
 (192,141)→(192,173)→(160,173) then UP the east column and LEFT+UP clip
 onto the inland north strip, then west alcove to the 0x30 door.
 KEY-UP aligns x=120 and holds UP (ladder water + key door).
+
+INLAND door approach: leftover (40,165) is the SW water pocket south of
+the west-door frame. Cardinal UP there is solid; peel RIGHT onto the
+west aisle (x=48). Alcove leftover (32,149) aligns UP to y=141, then
+LEFT. Do not LEFT at y=149. Do not retouch 0x40.
 """
 
 from __future__ import annotations
@@ -52,6 +57,12 @@ MAZE_31_WEST_WAYPOINTS: tuple[tuple[int, int], ...] = (
     MAZE_31_WEST_EAST_U + MAZE_31_WEST_INLAND
 )
 MAZE_31_NORTH_STRIP_Y = 113
+MAZE_31_WEST_AISLE_X = 48
+MAZE_31_WEST_DOOR_Y = 141
+# (40,165) is south of the door frame (UP solid). (32,149) is the alcove:
+# cardinal LEFT at y=149 hits the frame; align to y=141 then LEFT.
+MAZE_31_WEST_POCKET_DY = 8
+MAZE_31_WEST_DOOR_ALIGN_TOL = 2
 MAZE_31_WEST_PUSH = 280
 KEY_UP_PUSH = 450
 
@@ -82,6 +93,24 @@ def _dir_to(xy: tuple[int, int], goal: tuple[int, int]) -> str | None:
         return "DOWN" if dy > 0 else "UP"
     if dx != 0:
         return "RIGHT" if dx > 0 else "LEFT"
+    return None
+
+
+def _west_door_dir(xy: tuple[int, int], goal: tuple[int, int]) -> tuple[str, str] | None:
+    """Peel the SW pocket, then y-first onto the door band, then LEFT.
+
+    (40,165) UP is the west-door-frame south face. (32,149) LEFT is the
+    same frame, one tile north; align Y before LEFT. Cardinals stick in
+    the alcove only when leaving inland (RIGHT); LEFT at y=141 is the door.
+    """
+    x, y = xy
+    gx, gy = goal
+    if x < MAZE_31_WEST_AISLE_X and (y - gy) > MAZE_31_WEST_POCKET_DY:
+        return "RIGHT", "west_aisle_peel"
+    if abs(y - gy) > MAZE_31_WEST_DOOR_ALIGN_TOL:
+        return ("DOWN" if y < gy else "UP"), "west_door_align_y"
+    if x != gx:
+        return ("LEFT" if gx < x else "RIGHT"), "west_door_left"
     return None
 
 
@@ -145,6 +174,8 @@ class Level4Maze31WestController:
         wps: tuple[tuple[int, int], ...],
         next_phase: Maze31WestPhase,
         next_note: str,
+        *,
+        door_approach: bool = False,
     ) -> FrameAction:
         if self._stall >= CLIP_BUDGET:
             self._sample(snap, "west_solid")
@@ -153,7 +184,15 @@ class Level4Maze31WestController:
         if self.path_index >= len(wps):
             self._set_phase(next_phase, next_note)
             return FrameAction(nes_idle_action(), next_note)
-        direction = _dir_to(xy, wps[self.path_index])
+        goal = wps[self.path_index]
+        if door_approach and goal[1] == MAZE_31_WEST_DOOR_Y:
+            stepped = _west_door_dir(xy, goal)
+            if stepped is None:
+                self.path_index += 1
+                return FrameAction(nes_idle_action(), "wp_idle")
+            direction, reason = stepped
+            return FrameAction(nes_action(direction), reason)
+        direction = _dir_to(xy, goal)
         if direction is None:
             self.path_index += 1
             return FrameAction(nes_idle_action(), "wp_idle")
@@ -209,7 +248,12 @@ class Level4Maze31WestController:
                 return FrameAction(nes_action("LEFT", "UP"), "maze31_west_clip")
         if self.phase is Maze31WestPhase.INLAND:
             return self._thread(
-                xy, snap, MAZE_31_WEST_INLAND, Maze31WestPhase.PUSH, "at_west_door"
+                xy,
+                snap,
+                MAZE_31_WEST_INLAND,
+                Maze31WestPhase.PUSH,
+                "at_west_door",
+                door_approach=True,
             )
         if self.phase is Maze31WestPhase.PUSH:
             if abs(xy[1] - 141) > 8:

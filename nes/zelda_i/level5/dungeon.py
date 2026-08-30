@@ -196,6 +196,10 @@ ROOM_66_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        # River locks cardinal patrol. TF suffix leftover (79,165) 1 Gibdo
+        # north of the water; same occupancy as ROOM_66_SPINE_SPEC.
+        occupancy_patrol=True,
+        occupancy_bounds=(16, 216, 77, 205),
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     required_open_doors=ROOM_66_EAST_DOOR_BIT,

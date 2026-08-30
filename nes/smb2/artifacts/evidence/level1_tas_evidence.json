@@ -2,18 +2,18 @@
   "bizhawk_validation_status": "blocked",
   "checkpoints": [
     {
-      "description": "Planned slot; no emulator state has been generated.",
-      "frame": null,
+      "description": "Materialized on fceumm from FCEUX 0.98.28 (movie header emuVersion 9828) at movie frame 253; level1_start x=120 y=192 jump_physics=0. BizHawk not run.",
+      "frame": 253,
       "name": "level1_start",
       "state_artifact_path": "custom_integrations/SuperMarioBros2-Nes/checkpoints/level1_start.state",
-      "status": "planned"
+      "status": "materialized"
     },
     {
-      "description": "Planned slot; no emulator state has been generated.",
-      "frame": null,
+      "description": "Materialized on fceumm from FCEUX 0.98.28 (movie header emuVersion 9828) at movie frame 304; level1_control x=120 y=192 jump_physics=7. BizHawk not run.",
+      "frame": 304,
       "name": "level1_control",
       "state_artifact_path": "custom_integrations/SuperMarioBros2-Nes/checkpoints/level1_control.state",
-      "status": "planned"
+      "status": "materialized"
     },
     {
       "description": "Planned slot; no emulator state has been generated.",

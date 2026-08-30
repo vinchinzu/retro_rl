@@ -16,6 +16,8 @@ from harvest.maps.map_types import Waypoint
 SOUTH_FIELD_CLEAR_ROW_Y_PX = 39 * 16 + 8
 # South-field join column (13, 37) / (216, 600).
 SOUTH_FIELD_DIRT_COL_X_PX = 13 * 16 + 8
+# House-column dirt row. y=25 x=9-10 is A6; LEFT from (11,25) hugs the pond.
+HOUSE_COLUMN_DIRT_Y_PX = 24 * 16 + 8
 # After_Rocks / wood-checkpoint join. Authored as (624, 272), not tile-center.
 NORTH_EAST_JOIN_PX = (624, 272)
 
@@ -81,10 +83,10 @@ def _on_ditch_north_lip(px: int, py: int) -> bool:
 
 
 def _ditch_lip_to_pinch(px: int, py: int) -> List[Waypoint]:
-    """Join south-field (12,25)/(8,24). House-south (137,375) cuts the well."""
+    """UP onto y=24 dirt, then south-field (8,24) pinch. Not (12,25) LEFT."""
     return [
         Waypoint(tilemap=0x00, target_px=(px, py), radius=16),
-        Waypoint(tilemap=0x00, target_px=(200, 408), radius=8),
+        Waypoint(tilemap=0x00, target_px=(px, HOUSE_COLUMN_DIRT_Y_PX), radius=8),
     ]
 
 

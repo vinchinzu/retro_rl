@@ -402,16 +402,24 @@ class HotSpringUnitTests(unittest.TestCase):
             prev = wp.target_px
 
     def test_ditch_lip_farm_to_spa_joins_pinch_not_house(self) -> None:
-        """Wood_Progress ~(190,400) tile (11,25) must not first-hop (137,375)."""
+        """Wood_Progress ~(190,400) tile (11,25) must not LEFT-hold into A6."""
         px, py = 190, 400
         route = farm_to_spa_waypoints(px, py, tilemap=0x00)
         sliced = slice_route_from_position(route, px, py, tilemap=0x00)
         self.assertEqual(sliced[-1].target_px, (619, 201))
         self.assertNotEqual(sliced[0].target_px, (137, 375))
-        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
-        self.assertIn((200, 408), farm_px)
+        farm = [wp for wp in sliced if wp.tilemap == 0x00]
+        farm_px = [wp.target_px for wp in farm]
+        self.assertNotIn((200, 408), farm_px)
+        self.assertNotIn((137, 375), farm_px)
+        self.assertIn((px, 392), farm_px)
         self.assertIn((136, 392), farm_px)
         self.assertIn((72, 440), farm_px)
+        join = next(wp for wp in farm if wp.target_px == (136, 392))
+        self.assertIsNone(join.run_direction)
+        dx = abs(sliced[0].target_px[0] - px)
+        dy = abs(sliced[0].target_px[1] - py)
+        self.assertLessEqual(max(dx, dy), 7 * 16)
         night = farm_to_spa_waypoints(199, 486, tilemap=0x00)
         self.assertEqual(night[0].target_px, (137, 375))
 

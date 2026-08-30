@@ -28,6 +28,7 @@ from retro_harness.actions import buttons, idle_action
 from super_metroid.assist import UnlimitedResourcesAssist
 from super_metroid.dev.common import boot_from_state, make_dev_env, save_dev_state
 from super_metroid.paths import GAME_DIR
+from super_metroid.plm import plm_block_pixels
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
@@ -121,8 +122,9 @@ def _plms(env: Any, n: int = 24) -> dict[str, Any]:
         block = int(ram[0x1C87 + i * 2]) | (int(ram[0x1C88 + i * 2]) << 8)
         if not pid:
             continue
-        bx = block % width if width else None
-        by = block // width if width else None
+        bx = by = px = py = None
+        if width:
+            bx, by, px, py = plm_block_pixels(block, width)
         rows.append(
             {
                 "i": i,
@@ -130,8 +132,8 @@ def _plms(env: Any, n: int = 24) -> dict[str, Any]:
                 "block": block,
                 "bx": bx,
                 "by": by,
-                "px": (bx * 16 + 8) if bx is not None else None,
-                "py": (by * 16 + 8) if by is not None else None,
+                "px": px,
+                "py": py,
             }
         )
     return {"room_width": width, "room_height": height, "plms": rows}

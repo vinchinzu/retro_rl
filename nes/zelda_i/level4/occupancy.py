@@ -1,4 +1,4 @@
-"""Level 4 occupancy seeds (no emulator). 0x60 east-dock + 0x20 H-water + dark 0x21.
+"""Level 4 occupancy seeds (no emulator). 0x60 east-dock + 0x20 H-water + dark 0x21 + 0x40 maze.
 
 Unknown cells stay free until a live miss blocks them (OccupancyWalker).
 Solids from leftover samples plus screenshot floor:
@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from zelda_i.level4.dungeon import (
     BOMB_21_NORTH_STAND,
+    KEY_40_PICKUP_XY,
     LADDER_60_PICKUP_XY,
     MAP_21_PICKUP_XY,
     RIGHT_20_STAND,
@@ -58,6 +59,10 @@ __all__ = [
     "ROOM_21_PICKUP_XY",
     "ROOM_21_SPAWN_XY",
     "ROOM_21_WAYPOINTS",
+    "ROOM_40_BOUNDS",
+    "ROOM_40_EAST_FACE_X",
+    "ROOM_40_LEFTOVER_XY",
+    "ROOM_40_PICKUP_XY",
     "ROOM_60_BOUNDS",
     "ROOM_60_CAUSWAY_XY",
     "ROOM_60_CLIP_BUDGET",
@@ -74,6 +79,7 @@ __all__ = [
     "ROOM_60_WEST_AISLE_X",
     "room_20_grid",
     "room_21_grid",
+    "room_40_grid",
     "room_60_grid",
 ]
 
@@ -358,3 +364,35 @@ def room_21_grid() -> OccupancyGrid:
     return OccupancyGrid(
         blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
     )
+
+
+# 0x40 south-pocket leftover (128,149) after dest_6b-clear Zols (v1–v3).
+# PNG: N/E/W boxed; only DOWN escapes. Key is north of the 16px bar.
+# v1 UP at (120,149) no-op. v2 RIGHT at (128,149) miss. Pickup (120,117)
+# stays free. Do not treat the 0x50 north-door thread as 0x40 geometry.
+ROOM_40_LEFTOVER_XY = (128, 149)
+ROOM_40_PICKUP_XY = KEY_40_PICKUP_XY
+ROOM_40_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 205)
+ROOM_40_EAST_FACE_X = 129
+# 16px bar immediately north of leftover y=149. West aisle x=112 stays open.
+_H40_BAR_X0, _H40_BAR_X1 = 120, 144
+_H40_BAR_Y0, _H40_BAR_Y1 = 133, 148
+# v2 RIGHT miss. Do not include leftover x=128 (start must walk DOWN).
+_H40_EAST_X0, _H40_EAST_X1 = ROOM_40_EAST_FACE_X, 144
+_H40_EAST_Y0, _H40_EAST_Y1 = 141, 157
+# West face of the pocket; x=112 west aisle stays free.
+_H40_WEST_X0, _H40_WEST_X1 = 113, 119
+_H40_WEST_Y0, _H40_WEST_Y1 = 141, 157
+
+
+def room_40_grid() -> OccupancyGrid:
+    """Fresh 0x40 south-pocket seed. Callers may mutate ``blocked`` on a miss."""
+    xmin, xmax, ymin, ymax = ROOM_40_BOUNDS
+    blocked: set[tuple[int, int]] = set()
+    _block_rect(blocked, _H40_BAR_X0, _H40_BAR_X1, _H40_BAR_Y0, _H40_BAR_Y1)
+    _block_rect(blocked, _H40_EAST_X0, _H40_EAST_X1, _H40_EAST_Y0, _H40_EAST_Y1)
+    _block_rect(blocked, _H40_WEST_X0, _H40_WEST_X1, _H40_WEST_Y0, _H40_WEST_Y1)
+    return OccupancyGrid(
+        blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+    )
+

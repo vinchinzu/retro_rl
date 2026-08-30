@@ -15,6 +15,7 @@ from super_metroid.combat.enemies import (
     Intent,
     choose,
 )
+from super_metroid.ram import FACING_LEFT
 
 SHAFT_ICE = Intent(engage=frozenset({ATOMIC_ID, COVERN_ID}))
 # Shelf takeoff ~(1082, 1878). Stairs Covern (1048, 1928) is out.
@@ -23,6 +24,13 @@ SHELF_COVERN_XY = (1129, 1818)
 SHELF_HOLE_FRAMES = 56
 SHELF_COVERN_ICE = Intent(engage=frozenset({COVERN_ID}))
 OVERLAY_SKIP_FLOOR_Y = 1960
+# 1675→1543 conversion. Takes 02–05 use no X; overlay must not steal landing.
+SHAFT_ICE_SKIP_Y = (1480, 1720)
+# 1130→1019 slope-run and bounce air. Tape uses no X. Planted 1083 wall
+# seat may Ice the overlapping Atomic; leftover (1045, 1066) p48 is air.
+SLOPE_1130_ICE_SKIP_Y = (960, 1148)
+WALL_1083_ICE_X = 1056
+WALL_1083_ICE_Y = (1076, 1088)
 SHAFT_RANGE_DX = 180
 SHAFT_RANGE_DY = 96
 SHAFT_FIRE_RANGE_PX = 80
@@ -35,6 +43,16 @@ def _in_range(samus_x: int, samus_y: int, enemy: Enemy) -> bool:
     return (
         abs(int(enemy.x) - int(samus_x)) <= SHAFT_RANGE_DX
         and abs(int(enemy.y) - int(samus_y)) <= SHAFT_RANGE_DY
+    )
+
+
+def _planted_wall_1083(samus_x: int, samus_y: int, velocity_y: int) -> bool:
+    """Grounded 1083 wall seat. Bounce air and the 1130 dash are out."""
+    y_lo, y_hi = WALL_1083_ICE_Y
+    return (
+        int(velocity_y) == 0
+        and int(samus_x) <= WALL_1083_ICE_X
+        and y_lo <= int(samus_y) <= y_hi
     )
 
 
@@ -51,8 +69,21 @@ def ice_keepaway_action(
     """Charge-release Ice at a nearby live Atomic. Skip in the pit 3-shot."""
     if int(samus_y) >= OVERLAY_SKIP_FLOOR_Y:
         return None
+    skip_lo, skip_hi = SHAFT_ICE_SKIP_Y
+    if skip_lo <= int(samus_y) <= skip_hi and abs(int(velocity_y)) > 1:
+        return None
+    planted_wall = _planted_wall_1083(samus_x, samus_y, velocity_y)
+    slope_lo, slope_hi = SLOPE_1130_ICE_SKIP_Y
+    if slope_lo <= int(samus_y) <= slope_hi and not planted_wall:
+        return None
+    # Overlap at (1045, 1083) with dx=0 faces RIGHT after the bounce
+    # turn and never charges. Climb faces LEFT; Ice only from that seat.
+    if planted_wall and (
+        int(movement_type) == 14 or int(facing) != FACING_LEFT
+    ):
+        return None
     nearby = tuple(e for e in enemies if _in_range(samus_x, samus_y, e))
-    return choose(
+    choice = choose(
         int(samus_x),
         int(samus_y),
         int(facing),
@@ -62,8 +93,11 @@ def ice_keepaway_action(
         charge=int(charge),
         velocity_y=int(velocity_y),
         fire_range_px=SHAFT_FIRE_RANGE_PX,
-        frozen_wait_gap=SHAFT_FROZEN_WAIT,
-    ).buttons
+        frozen_wait_gap=None if planted_wall else SHAFT_FROZEN_WAIT,
+    )
+    if planted_wall and choice.target is not None and int(choice.target.freeze_timer) > 0:
+        return None
+    return choice.buttons
 
 
 def shelf_covern_ice_action(
@@ -112,6 +146,10 @@ __all__ = [
     "SHAFT_FIRE_RANGE_PX",
     "SHAFT_FROZEN_WAIT",
     "OVERLAY_SKIP_FLOOR_Y",
+    "SHAFT_ICE_SKIP_Y",
+    "SLOPE_1130_ICE_SKIP_Y",
+    "WALL_1083_ICE_X",
+    "WALL_1083_ICE_Y",
     "SHAFT_ICE",
     "SHELF_COVERN_ICE",
     "SHELF_COVERN_XY",

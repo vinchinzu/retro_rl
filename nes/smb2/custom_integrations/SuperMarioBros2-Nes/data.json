@@ -1,0 +1,28 @@
+{
+  "info": {
+    "player_x": {
+      "address": 40,
+      "type": "|u1"
+    },
+    "player_x_page": {
+      "address": 20,
+      "type": "|u1"
+    },
+    "level": {
+      "address": 1329,
+      "type": "|u1"
+    },
+    "world": {
+      "address": 1589,
+      "type": "|u1"
+    },
+    "lives": {
+      "address": 1261,
+      "type": "|u1"
+    },
+    "transition": {
+      "address": 1260,
+      "type": "|u1"
+    }
+  }
+}

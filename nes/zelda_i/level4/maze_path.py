@@ -24,6 +24,7 @@ from zelda_i.level4.dungeon import (
     MAZE_31_EAST_Y,
     MAZE_31_EAST_Y_TOL,
     ROOM_40_SPEC,
+    ROOM_ITEM_SMALL_KEY,
     ROOM_L4_COMPASS_62,
     ROOM_L4_EAST_31,
     ROOM_L4_EAST_32,
@@ -61,7 +62,7 @@ MAZE_50_TO_NORTH: tuple[str, ...] = (
     ("DOWN",) * 4 + ("LEFT",) * 6 + ("UP",) * 8 + ("RIGHT",) * 2
     + ("UP",) * 3 + ("LEFT",) + ("UP",) * 4
 )
-MAZE_50_WAYPOINTS: tuple[tuple[int, int], ...] = (
+ROOM_50_TO_40_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (160, 181), (112, 181), (112, 120), (128, 100), (120, 72), (120, 56),
 )
 
@@ -75,10 +76,6 @@ MAZE_40_KEY_HOLD = 6
 KEY_40_PATH_ANCHOR = (136, 165)
 MAZE_40_TO_KEY: tuple[str, ...] = (
     ("UP",) * 2 + ("RIGHT",) * 5 + ("UP",) * 4 + ("LEFT",) * 5
-)
-KEY_40_HUNT: tuple[tuple[int, int], ...] = (
-    (136, 117), (120, 117), KEY_40_PICKUP_XY, (128, 117),
-    (112, 117), (136, 125), (120, 109),
 )
 
 WAIT_SCROLL = (4, 6, 7)
@@ -98,17 +95,13 @@ def _path(tokens: tuple[str, ...], hold: int) -> Any:
     return field(default_factory=lambda: HoldTokenPath(tokens, hold))
 
 
-def _walk_toward(snap: ZeldaSnapshot, tx: int, ty: int) -> str:
-    return axis_dir(
-        (int(snap.link_x), int(snap.link_y)), (tx, ty), y_first=False, tol=4
-    ) or "UP"
-
-
-def _key40_hunt_dir(snap: ZeldaSnapshot, phase_frames: int) -> str:
-    tx, ty = KEY_40_HUNT[min(phase_frames // 120, len(KEY_40_HUNT) - 1)]
-    if abs(snap.link_x - tx) > 5 or abs(snap.link_y - ty) > 5:
-        return _walk_toward(snap, tx, ty)
-    return ("LEFT", "UP", "RIGHT", "DOWN")[(phase_frames // 8) % 4]
+def _small_key_xy(snap: ZeldaSnapshot) -> tuple[int, int] | None:
+    for obj in snap.objects:
+        if obj.slot == 0:
+            continue
+        if obj.type_id == ROOM_ITEM_SMALL_KEY and obj.x and obj.y:
+            return (int(obj.x), int(obj.y))
+    return None
 
 
 @dataclass
@@ -355,7 +348,7 @@ class Level4North40Controller(MazeHop):
             return _act("UP", "push_up_north")
 
         if self.phase is North40Phase.WAYPOINTS:
-            goals = MAZE_50_WAYPOINTS[:-1]
+            goals = ROOM_50_TO_40_WAYPOINTS[:-1]
             if self.path_index < len(goals):
                 gx, gy = goals[self.path_index]
                 if abs(xy[0] - gx) <= 4 and abs(xy[1] - gy) <= 4:
@@ -386,7 +379,7 @@ class Level4North40Controller(MazeHop):
     def report(self) -> dict[str, Any]:
         return self.report_base(
             "level4_north_0x40",
-            waypoints=[list(w) for w in MAZE_50_WAYPOINTS],
+            waypoints=[list(w) for w in ROOM_50_TO_40_WAYPOINTS],
             maze_path=list(MAZE_50_TO_NORTH), hold=MAZE_50_HOLD,
             long_up=MAZE_50_LONG_UP, samples=list(self.samples),
         )
@@ -400,18 +393,20 @@ class Key40Phase(Enum):
     FIGHT = auto()
     ALIGN = auto()
     PATH = auto()
-    HUNT = auto()
     DONE = auto()
     FAILED = auto()
 
 
 @dataclass
 class Level4Key40Controller(MazeHop):
-    """Clear 0x40 then ``MAZE_40_TO_KEY`` hold6; ALIGN to KEY_40_PATH_ANCHOR first."""
+    """Clear 0x40, exact y-first ALIGN to KEY_40_PATH_ANCHOR, then hold6 PATH."""
 
     max_frames: int = 25000
     phase: Key40Phase = Key40Phase.FIGHT
     keys_before: int | None = None
+    path_start: tuple[int, int] | None = None
+    clear_handoff: dict[str, Any] | None = None
+    live_key_xy: tuple[int, int] | None = None
     play_room: int | None = ROOM_L4_ZOLS_40
     arrive_note: str = "key_collected"
     maze: HoldTokenPath = _path(MAZE_40_TO_KEY, MAZE_40_KEY_HOLD)
@@ -433,14 +428,12 @@ class Level4Key40Controller(MazeHop):
             and len(ROOM_40_SPEC.live_enemies(snap)) == 0
         )
 
-    def _hunt(self, snap: ZeldaSnapshot) -> FrameAction:
-        if self.phase_frames >= 1200:
-            return self._fail("key_hunt_timeout")
-        return _act(_key40_hunt_dir(snap, self.phase_frames), "key_hunt")
-
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.keys_before is None and snap.screen == ROOM_L4_ZOLS_40:
             self.keys_before = snap.keys
+        found = _small_key_xy(snap)
+        if found is not None:
+            self.live_key_xy = found
         return super().step(snap)
 
     def policy(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction:
@@ -450,37 +443,53 @@ class Level4Key40Controller(MazeHop):
                 not live
                 and self._clear.max_live_enemies >= ROOM_40_SPEC.expected_enemy_count
             ):
+                self.clear_handoff = {
+                    "live_enemies": 0,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "keys": int(snap.keys),
+                }
                 self._set_phase(Key40Phase.ALIGN, "room_cleared")
+                self._sample(snap, "room_cleared")
             else:
                 return self._clear.step(snap)
 
         if self.phase is Key40Phase.ALIGN:
-            ax, ay = KEY_40_PATH_ANCHOR
-            if abs(snap.link_x - ax) <= 6 and abs(snap.link_y - ay) <= 6:
-                self._set_phase(Key40Phase.PATH, "aligned_path_anchor")
-            elif self.phase_frames >= 900:
-                self._set_phase(Key40Phase.PATH, "align_timeout")
-            else:
-                d = _walk_toward(snap, ax, ay)
-                return _act(d, f"align_{d}")
+            d = axis_dir(xy, KEY_40_PATH_ANCHOR, y_first=True, tol=0)
+            if d is None:
+                self.path_start = xy
+                self._set_phase(Key40Phase.PATH, "aligned_exact_path_anchor")
+                self._sample(snap, "anchor_exact")
+                return _idle("anchor_exact")
+            if self._stall >= STALL_LIMIT:
+                return self._stall_fail(snap, "align_stuck", xy)
+            return _act(d, f"align_{d}")
 
         if self.phase is Key40Phase.PATH:
             act = self.hold(self.maze, "maze40")
             if act is None:
-                self._set_phase(Key40Phase.HUNT, "path_done")
-            else:
-                return act
-
-        if self.phase is Key40Phase.HUNT:
-            return self._hunt(snap)
+                self._sample(snap, "path_done_no_key")
+                return self._fail("path_done_no_key")
+            return act
         return _idle("idle")
 
     def report(self) -> dict[str, Any]:
         return self.report_base(
-            "level4_key_0x40", keys_before=self.keys_before,
-            maze_path=list(MAZE_40_TO_KEY), hold=MAZE_40_KEY_HOLD,
+            "level4_key_0x40",
+            keys_before=self.keys_before,
+            maze_path=list(MAZE_40_TO_KEY),
+            hold=MAZE_40_KEY_HOLD,
             path_anchor=list(KEY_40_PATH_ANCHOR),
-            pickup_xy=list(KEY_40_PICKUP_XY), clear=self._clear.report(),
+            pickup_xy=list(KEY_40_PICKUP_XY),
+            alignment="exact_xy_before_open_loop",
+            path_start=list(self.path_start) if self.path_start is not None else None,
+            samples=list(self.samples),
+            clear_handoff=(
+                dict(self.clear_handoff) if self.clear_handoff else None
+            ),
+            live_key_xy=(
+                list(self.live_key_xy) if self.live_key_xy is not None else None
+            ),
         )
 
 
