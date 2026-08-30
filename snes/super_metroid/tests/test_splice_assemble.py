@@ -193,9 +193,18 @@ def _assert_bank_untouched(bank: Path, existed: bool, payload: bytes | None) -> 
         assert not bank.exists()
 
 
+class _FakeEm:
+    def __init__(self) -> None:
+        self.states: list[tuple[Any, ...]] = []
+
+    def set_state(self, *args: Any, **kwargs: Any) -> None:
+        self.states.append(args)
+
+
 class _FakeEnv:
     def __init__(self) -> None:
         self.loads: list[tuple[str, tuple[Any, ...]]] = []
+        self.em = _FakeEm()
 
     def load(self, *args: Any, **kwargs: Any) -> None:
         self.loads.append(("load", args))
@@ -325,6 +334,25 @@ def test_profile_mismatch_fails_closed() -> None:
     _assert_bank_untouched(bank, existed, payload)
 
 
+def test_same_id_other_profile_does_not_block_assemble() -> None:
+    """Scaffold incumbent tape:a0 still assembles when a clean tape:a0 offer exists."""
+    manifest = RouteManifest.from_dict(_tiny_manifest())
+    clean = _cand("ceres_elev", "tape:a0", profile="clean", join_succ="landing")
+    sel = select(manifest, [clean], profile="scaffold")
+    assert sel.selected_map()["ceres_elev"] == "tape:a0"
+    calls: list[Any] = []
+    assembly = assemble(
+        "tiny",
+        sel,
+        manifest=manifest,
+        play_hops=_play_recorder(calls),
+        session=_FakeSession(),
+    )
+    assert assembly.selected_map()["ceres_elev"] == "tape:a0"
+    assert assembly.hop_ids == ("ceres_elev", "landing")
+    assert len(calls) == 1
+
+
 def test_assemble_rejects_mismatched_candidate_mapping() -> None:
     manifest = RouteManifest.from_dict(_tiny_manifest())
     clean = _cand("ceres_elev", "tape:clean", profile="clean", join_succ="landing")
@@ -425,7 +453,7 @@ def test_mid_run_load_fails_closed() -> None:
 
     def hop_factory(edge: Any, offer: CandidateOffer) -> Any:
         def play(sess: Any) -> None:
-            sess.env.load("room.state")
+            sess.env.em.set_state(b"room.state")
 
         return SimpleNamespace(hop_id=edge.task_id, play=play)
 
