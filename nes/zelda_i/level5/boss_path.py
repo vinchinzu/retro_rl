@@ -46,6 +46,7 @@ from zelda_i.level5.path import (
     bomb_east_from_65,
     cellar_to_64,
     exit_whistle_04,
+    level5_room66_west_aisle_north_step,
     select_b_item_menu,
     take_block_stairs_06,
     walk_axis,
@@ -319,6 +320,20 @@ def path_05_to_24(env, assist, total: list[int], hops: list[dict]) -> dict:
             room = 0x66
 
     if room == 0x66:
+        for _ in range(500):
+            snap = read_snapshot(env.get_ram())
+            act = level5_room66_west_aisle_north_step(snap)
+            if act.reason == "66_north_bank":
+                break
+            _step(env, assist, total, act.action)
+        snap = read_snapshot(env.get_ram())
+        hops.append(
+            {
+                "hop": "66_west_aisle_north",
+                "ok": snap.link_y <= 117,
+                "xy": [snap.link_x, snap.link_y],
+            }
+        )
         spec = replace(
             ROOM_66_SPEC,
             spec_id="level5_whistle_66_gibdos",

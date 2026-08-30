@@ -15,7 +15,7 @@ from super_metroid.routes.controller_common import (
     wait_ordinary_room,
     walljump_once,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.double_gate import (
     dc_hop_to_gate_zone,

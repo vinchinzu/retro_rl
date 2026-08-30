@@ -212,7 +212,8 @@ def project_hop(edge: RouteEdge, offer: CandidateOffer) -> AssemblyHop:
     """SpineHop-like row whose play never loads a room state."""
 
     def play(session: Any) -> None:
-        # Adapters (tape / Skill / policy) land in later PRs. Projection only.
+        # Remaining tape adapters stay stubs. Gravity collect binds in
+        # ``ranges.range_hop_factory``.
         _ = session
         _ = offer
         return None

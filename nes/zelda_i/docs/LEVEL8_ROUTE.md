@@ -1,8 +1,13 @@
 # Level 8 — The Lion (route notes)
 
 Status: **PARTIAL** — assisted OW bush path green; shop OW path **green**
-(rr-ccx); natural 60R farm + buy + burn→entrance **not** closed. Residual:
-rupee farm → natural buy → fire→stairs on 0x6D.
+(rr-ccx). The cumulative Red-Candle route still needs the measured post-L7
+leave, exact burn tile, and live entry. The 60R shop path is fallback-only.
+
+Wave A now has a fail-closed cumulative seam in `level8/{entry,dungeon,hops,spine}.py`.
+This is implementation structure, not new route evidence. The public chapter
+targets are `level8-entry`, `level8-magic-key`, and `level8`; all three remain
+red until their natural predecessor and exact live endpoints are supplied.
 
 Planning sources:
 
@@ -52,7 +57,8 @@ Hop table + controller: `level8.overworld.LEVEL8_BUSH_HOPS`,
 `OverworldToLevel8Controller` (maze waypoints =
 `overworld.graph.LEVEL2_5C_MAZE_WAYPOINTS`).
 
-Isolated `probe_level8_entry.py` pruned. Durable runner (no L8 SpineHop yet):
+Isolated `probe_level8_entry.py` pruned. The durable runner does not attach
+the new L8 seam to the shared continuous spine yet:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
@@ -62,7 +68,12 @@ Mid-path fixtures used during recon: `OW_5B`, `OW_5C`, `OW_5D`, `OW_6A`,
 `OW_6B`, `OW_6C` (0x6C is a **side pocket** UP-only to 0x5C — **not** on the
 bush route).
 
-### Required item — Blue Candle
+### Fallback item — Blue Candle
+
+The cumulative mainline does **not** require this shop. It inherits the
+naturally earned Red Candle (`ADDR_CANDLE == 2`) from Level 7. The Blue Candle
+shop/farm is retained only as a disabled, route-ineligible fallback for an
+unexpected Candle-0 handoff; normally that mismatch fails the L7 contract.
 
 | Field | Value |
 |-------|--------|
@@ -105,7 +116,8 @@ Hop table + controller: `level8.overworld.CANDLE_SHOP_HOPS`,
 `OverworldToCandleShopController` (door_x=`CANDLE_SHOP_CAVE_X`).
 
 Isolated `probe_level8_entry.py` pruned. Shop hops live on
-`OverworldToCandleShopController`. Durable runner (no L8 SpineHop yet):
+`OverworldToCandleShopController`. The durable runner does not attach the new
+L8 seam to the shared continuous spine yet:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
@@ -145,8 +157,14 @@ Constants: `CANDLE_BUY_X/Y`, `CANDLE_SHOP_PRICE`, pedestals
 - Shop OW + cave path **assisted green** (`recordings/l8_shop_path.json`);
   natural 60R + buy still residual.
 
-**Blocker for green enter:** natural candle (farm→buy) + verified mouth open
+**Historical recon blocker:** natural candle (farm→buy) + verified mouth open
 on 0x6D → `Level8Entrance.state` + entry room id.
+
+For the cumulative route, replace “natural candle” above with the measured
+post-L7 Red Candle handoff. The old start-based controller remains recon-only.
+Its historical burn-budget-on-`0x6D` result is not entry success; the canonical
+`BurnLevel8BushController` fails whenever its budget expires without live L8
+play, even if Link is still controllable on `0x6D`.
 
 ## Interior (source → live)
 
@@ -184,8 +202,26 @@ Items optional for credits (source). TF bit **`0x80`**.
 | Path | Role |
 |------|------|
 | `level8/overworld.py` | Bush + **shop** hops, burn controller, `OverworldToCandleShopController` |
+| `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn |
+| `level8/dungeon.py` | Route-ineligible chapter/topology specs and exact stop predicates; no invented room IDs |
+| `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
+| `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine` |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |
+
+### Wave A handoff contract
+
+The integrator must provide all of the following before the default seam can
+move: settled post-L7 OW screen/x/y, exact keys/bombs/rupees/hearts/B-slot,
+Whistle/Food/Rod/Bow/arrows, Candle 2, full health, TF exactly `0x7F`, and a
+live-derived hop table ending at `0x6D`. The bush burn additionally needs an
+observed Link tile, facing, push direction, and natural `ADDR_CANDLE_USED`
+transition. The entry room, Magical Key room, boss room, Triforce room, and
+post-fanfare leave remain `None`; walkthrough grid positions are hypotheses.
+
+Fixture work may fill controller behavior while keeping
+`route_eligible=false`. Only cumulative recomposition from the natural L7
+predecessor may promote the handoff/topology/endpoint contracts.
 
 ## Evidence
 
@@ -203,12 +239,11 @@ Items optional for credits (source). TF bit **`0x80`**.
 
 ## Next
 
-1. **60R farm policy** on `RUPEE_FARM_SCREENS_SKETCH` (or pre-path) → natural
-   buy → `CandleOwned` state (no inventory poke). Isolated
-   `probe_level8_entry.py` pruned.
-2. From candle-owned state: burn east-channel bush on **0x6D** →
+1. Receive the measured natural post-L7 leave/inventory and derive its hop
+   table through live `0x5C` geometry to **0x6D**.
+2. From Red-Candle state: burn the exact live-confirmed bush tile on **0x6D** →
    `Level8Entrance` + entry room id.
-3. Tune fire spawn / bush tile aim if poke burn still fails (engine accepts use
-   via `0x0513` but stairs not observed).
-4. Isolated pure room segments after graph exists.
-5. Do not promote Clean until candle + path are natural-entry backed.
+3. Decode the interior graph offline, then live-confirm entry → Magical Key →
+   boss/shard rooms without promoting source room IDs.
+4. Keep the 60R Blue Candle farm/shop as fallback-only, outside `L8_THROUGH`.
+5. Do not promote Clean; Wave A fixture evidence remains route-ineligible.

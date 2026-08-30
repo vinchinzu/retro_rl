@@ -1,356 +1,320 @@
 # rr-kw8t Main Shaft finish and diagnosis plan
 
-Static audit written 2026-08-29. This pass did not boot the ROM, run a probe,
-or run tests. Findings below are therefore split into confirmed static defects
-and runtime hypotheses. The first execution step is to build a red-capable,
-bounded feedback loop; no controller change should be called a fix before that
-loop reproduces and then clears the exact miss.
+Static audit refreshed 2026-08-30. This pass did not boot the ROM, run a
+probe, run tests, or change controller code. It inspected the current
+uncommitted controller, the latest exact-red dual report, and successful human
+takes 02–05. Runtime claims below remain hypotheses until the existing probe
+reproduces them with a bounded decision trace.
 
-## Scope and invariant
+## Outcome and current gate
 
-Finish the powered Wrecked Ship Main Shaft hop from the existing natural
-predecessor pin to ordinary Attic:
+Finish the powered Wrecked Ship Main Shaft hop from its natural predecessor to
+ordinary Attic:
 
 ```text
 post_ws_basement_to_main.state
-  -> grate_seat                 GREEN x2
-  -> west_super at y~1675       GREEN x2, natural entry
-  -> planted 1543 stairs        RED, first diagnostic target
-  -> mid_climb at y~680         RED
-  -> attic_seat
-  -> Attic room 0xCA52          full-hop GREEN only here
-  -> prove the next Sync seam
+  -> grate_seat                         GREEN x2
+  -> west_super                         GREEN x2, natural entry
+  -> mid_climb (1101, 651) p9           GREEN x2, natural west_super
+  -> clear the 572 ceiling              RED, first target
+  -> clear/traverse the y=523 ledge      not encoded robustly
+  -> upper platforms / attic_seat        not proved
+  -> Attic 0xCA52 gs=8                   full-hop GREEN only here
+  -> prove the exact successor Sync
 ```
 
-Preserve the already-green lower route. Do not retune the pit, grate departure,
-or west-super phase while diagnosing the 1675-to-1543 conversion. Start from
-`scratch/post_ws_main_west_super.state` for iteration, then return to
-`scratch/post_ws_basement_to_main.state` for natural-entry proof. An airborne
-leftover is evidence, never a planted phase pin.
+The living failure is no longer the 1675→1543 conversion described by the
+older version of this plan. That seam and the remainder of the lower shaft
+through the planted 651 seat are dual-green. Do not retune the pit, grate,
+west-super, 1543, 1130, 1019, 827, or 651 approach while fixing the upper
+shaft.
 
-The relevant controller files already have uncommitted worktree edits. Review
-and preserve those edits before implementing this plan; do not replace them
-from `HEAD`.
+Iterate from
+`custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_mid_climb.state`,
+then recompose from `post_ws_basement_to_main.state`. Neither phase pin is hop
+GREEN.
 
-## What is actually failing
+The relevant route files are already part of a large uncommitted move from
+`routes/kpdr/k6/` to `routes/kpdr/wrecked_ship/`. Preserve those edits. Keep
+the fix in the existing geometry/action/shaft composer; do not create another
+probe or sibling controller.
 
-The current route is not failing because the first jump lacks height. It starts
-near `(1060, 1675)`, reaches `(1171, 1503) p84`, and therefore rises above the
-1543 stair height. It fails to turn that airborne progress into a stable stair
-landing. At timeout it is around `(1154, 1561) p76`, overlapping an Atomic at
-`(1155, 1561)`, with all four Atomics still at 250 HP and freeze timer 0.
+## Evidence already present
 
-The dedicated probe records only minimum y and the final enemy snapshot. It
-cannot currently answer when stair contact occurred, which controller owned
-the landing frames, what target the ice overlay selected, whether a shot had a
-valid line, or whether the run repeated one deterministic cycle for most of its
-3,600-frame budget.
+The latest report
+`custom_integrations/SuperMetroid-Snes/scratch/ws_main_to_attic_dual.json` is
+an exact deterministic RED from the mid-climb pin:
 
-## Ranked findings
+| Fact | Observation |
+|------|-------------|
+| Both runs | **5,369f**, same final state |
+| Final | Main Shaft `0xCAF6`, `(1234,587)` p3, planted |
+| Progress | minimum y **572** at `(1164,572)` p26; not Attic |
+| Beam | charge **53** at timeout |
+| Upper enemies | Atomics `0xE9FF` at `(1221,588)` and `(1209,588)`, both 50 HP |
+| PLM result | no recorded proof that the upper shot blocks opened |
 
-### P0 — controller geometry contradicts every successful human take
+Successful take 02 reaches the same wall at `(1243,587)`, uses alternating
+`UP+X` / `UP` taps, observes three upper `0xD074` / `0xD080` PLM spawns,
+walks left to `(1231,587)`, and jumps. It then lands near `(1204,523)`,
+walks left while firing several short horizontal bursts, and produces more
+shot-block PLM transitions before climbing from the left side. Takes 04 and 05
+also produce three upper-wall PLM spawns before leaving the wall.
 
-This is a confirmed static mismatch and the leading causal hypothesis.
+The compact human-tape PLM pixel coordinates predate the corrected `$1C87`
+decoder and must not be copied as live coordinates. The current shared decoder
+correctly divides the byte offset by two. Re-capture or derive the actual
+upper-block coordinates with the corrected decoder.
 
-`SHAFT_HOPS` tells the controller to launch right from the 1675 ledge with
-`RIGHT+B+A`, then launch left from an x window of `1120..1180` at the 1543
-stairs. Successful human takes 02–05 use a materially different route:
+## Confirmed static defects
 
-| Take | First launch | Stable traversal / next launch |
-|------|--------------|--------------------------------|
-| 02 | `(1062,1675)`: A, then RIGHT+A | run to about x1252 at y1547; B+A, then B+LEFT+A |
-| 03 | `(1061,1675)`: RIGHT+A | launch left near x1259 at y1547 |
-| 04 | `(1076,1632)`: RIGHT+A | launch left near x1259 at y1547 |
-| 05 | `(1067,1675)`: A, then RIGHT+A | launch left near x1259 at y1547 |
+### P0 — the upper shot action never owns a release cadence
 
-The human route does not turn left around x1150. It crosses the stair shelf to
-the far right before the next launch. The current guessed window turns at the
-same place where the moving Atomic can intersect Samus. The human first launch
-also omits B, while the generic shaft action holds B throughout.
+`_slope_651_action` returns `shoot_up_action()` continuously while
+`ceiling_open` is false. That helper is always `("UP", "X")`. The knockback
+branch independently does the same thing. Unlike the lower grate and shared
+ceiling-door controllers, neither branch uses beam charge or a local shot
+cycle to release X.
 
-Do not tune more jump height. Reconstruct the successful seat, traversal, and
-takeoff from the tapes and make the controller reproduce those observable
-states.
+This directly matches the exact-red artifact: the controller plants at the
+right wall, never latches clearance, consumes the 3,600-frame climb budget,
+and exits still holding charge 53. The first fix experiment is a tape-derived
+tap/release cadence scoped to this wall, not a larger frame budget.
 
-### P0 — the ice overlay can steal the frames needed to land
+### P0 — one boolean is weaker than the observed clearance contract
 
-This is a high-confidence runtime hypothesis, not yet a reproduced cause.
+`ceiling_open` becomes true on the first new member of
+`{0xD074, 0xD078, 0xD080}` seen while Samus is anywhere in the broad 651 band.
+That loses both position and count. Successful takes break three blocks at the
+upper wall before the first jump, and then break several more while traversing
+the y=523 ledge.
 
-In the shaft, any non-`None` result from `ice_keepaway_action` replaces
-`climb_action` for that frame. That includes an empty tuple used as an ice-wait
-decision. Target selection is nearest-enemy distance rather than phase intent
-or line of fire. Near the recorded peak, the fixed Covern around `(1160,1468)`
-can be nearer than the Atomic. The generic shot-seat predicate checks
-horizontal distance but not vertical alignment, and the aiming rule fires
-horizontally when a target is only about 35 pixels above Samus. At the final
-Atomic overlap, it can also charge/release horizontally without an escape
-action. The zero HP/freeze change in the saved red artifact is consistent with
-a non-progressing overlay loop.
+A single family-ID spawn is therefore neither necessary proof that the right
+upper block changed nor sufficient proof that the route is clear. Replace the
+boolean with phase-local, position-qualified evidence. At minimum record the
+spawned slot, ID, corrected block position, and the number/set of upper-wall
+blocks cleared. Do not jump merely because an unrelated family ID appeared.
 
-Successful take 02 uses no X input during this immediate shaft conversion.
-Avoidance through the tape-derived far-right stair traversal is therefore the
-first policy to try. Do not make “ice the Atomic at overlap” the default plan.
-If combat is later necessary, invoke it only from a stable grounded seat,
-select a phase-specific enemy slot, require an actual shot line, and define an
-escape action for live overlap.
+### P0 — the blocker is mislabeled in the residual
 
-### P0 — PLM pixel coordinates are decoded at twice the true position
+The two moving enemies at the failed wall are Atomics (`0xE9FF`), not Coverns
+(`0xEA3F`). The latest report places them at `(1221,588)` and `(1209,588)`
+with 50 HP. The human upper-wall shot window has the corresponding Atomics
+farther left and/or below the vertical firing lane and still at 250 HP.
 
-This is a confirmed measurement bug. Both `plm.snapshot_plms` and the private
-PLM reader in `scripts/probe/ws_main.py` treat `$1C87` as a block-cell index.
-It is a byte offset into two-byte level data. The game divides it by two before
-dividing by room width; spawn code multiplies `(y * width + x)` by two before
-storing it. See the source-level routines in the
-[Super Metroid bank $84 disassembly](https://github.com/InsaneFirebat/sm_disassembly/blob/main/src/bank_84.asm#L135-L156).
+Correct the diagnosis before selecting a combat policy. The existing 651
+overlay skip means movement owns this seam; generic Covern keepaway is not the
+fix. The phase difference is relevant, but the missing X-release cycle must be
+fixed and observed before enemy handling is added.
 
-The correct conversion is:
+### P1 — knockback can hide the event that unlocks the route
 
-```text
-cell = plm_block_index // 2
-bx = cell % room_width_blocks
-by = cell // room_width_blocks
-px = bx * 16 + 8
-py = by * 16 + 8
-```
+`climb_until` checks `is_knockback` before `_update_lip_hit`. At the 587
+wall, the knockback branch can shoot continuously and `continue`, skipping
+PLM sampling for that frame. A transient shot-block spawn can therefore occur
+without updating `ceiling_open`, especially while an Atomic repeatedly
+contacts Samus.
 
-Current tests encode the wrong interpretation, so they must be corrected rather
-than treated as evidence. This bug makes PLM proximity, screenshots, and
-“near Samus” diagnostics misleading. It does not directly explain the present
-1543 failure: the existing lip-hit latch keys on PLM ID appearance rather than
-the derived coordinates, and successful take 02 does not fire during the
-1675-to-1543 conversion.
+PLM/event observation must occur before early controller branches, or the
+upper shot sequence must retain its own last snapshot across knockback. One
+route state must own shot cadence, observed block transitions, and recovery.
 
-### P1 — “PLM state” currently conflates three different evidence levels
+### P1 — the y=523 successor is absent from the current policy
 
-The code exposes low-WRAM active PLM slots; `red_diag.py` and the gate recon say
-PLM state is blocked; the collision helper says live bank-$7F clipdata is not
-mapped. Resolve this wording rather than making a blanket claim:
+Opening the first ceiling is not the end of the upper-shaft problem. Human
+take 02 lands at y=523 and crosses left with short `LEFT+X` bursts that
+produce additional shot-block PLMs. The current special 651 controller
+releases ownership after a grounded y=523 landing, after which generic hop
+selection has no contract for clearing that row.
 
-1. Active PLM slot ID, instruction pointer, and byte-offset position in low
-   WRAM can be source-validated.
-2. Live level/BTS collision data in bank `$7F` is not currently available
-   through the existing navigation snapshot.
-3. A semantic claim such as “this breakable brick is open” still needs a
-   position-specific PLM transition, dynamic collision proof, or visual /
-   past-obstacle proof.
+Without an explicit `upper_523` transition, a fix can green the first jump and
+immediately fail on the next obstacle. Treat `587 wall -> planted 523 -> left
+block run -> upper takeoff` as one seam unless a naturally held y=523 seat can
+be proved usable by both sides.
 
-Correct the active-slot coordinates first. Only investigate breakable-brick or
-dynamic collision state if the tape-matched landing still fails. There is no
-current positive evidence that a breakable brick blocks the first stair seam.
+### P1 — the current red artifact is deterministic but not diagnostic
 
-### P1 — progress and acceptance are too coarse
+The dual report proves repeatability, but it saves only the final state and
+minimum y. It does not show button ownership, X press/release edges, charge,
+projectile flight, coordinate-qualified PLM transitions, or the first Atomic
+interception. The 3,600-frame timeout turns a short deadlock into a 5,369-frame
+report.
 
-`mid_climb` only accepts the much higher y~680 band. The failed seam at y1543
-has no stable predicate, so minimum y is being used as a proxy for progress.
-That violates the hard-room rule that a phase handoff must include usable
-position, pose, and velocity.
+The existing probe should stop on the first repeated planted-wall cycle and
+save a short ring buffer. Do not diagnose future reds from final screenshots
+alone.
 
-Add a private diagnostic predicate for `stairs_1543`, derived from the human
-tapes. Require Main Shaft room, an x/y stair band, a planted/grounded pose, and
-near-zero vertical velocity. Keep the public six-phase route contract unless a
-new public phase is needed by a second consumer. Never save or resume from the
-current `(1154,1561) p76` airborne overlap as if it were green.
+## Ranked runtime hypotheses
 
-### P1 — high-WRAM fields in navigation reports are untrustworthy
+Test these in order, one variable at a time:
 
-The route correctly checks Phantoon using the bank-$7E helper, but generic
-navigation snapshots can show garbage or zero for high WRAM event/boss fields,
-and the final report derives `boss` from that snapshot. This can make a good
-entry look bad or a bad entry look good in diagnostics.
+1. **Missing X release is the immediate cause.** If the wall uses the human
+   tap/release rhythm, projectiles and upper PLM transitions will appear and
+   the controller will leave `(1234,587)`.
+2. **The first spawn causes a premature jump.** If clearance requires the
+   observed upper block set rather than one family ID, the jump will stop
+   bonking at y=572 and plant the y=523 ledge.
+3. **Natural bot enemy phase blocks an otherwise-correct shot cycle.** If
+   Atomics are the remaining cause, correct taps will damage/freeze them or
+   fail to reach the expected upper blocks while the trace shows projectile
+   interception. Waiting for a clear lane or removing a named Atomic will
+   change that result.
+4. **Knockback loses the successful PLM event.** If so, the trace will show an
+   upper PLM spawn during a frame where the knockback branch bypasses the
+   latch; moving observation ahead of action dispatch will retain it.
+5. **The first ceiling greens but y=523 is the next independent blocker.** If
+   so, the controller will plant y=523 and then cycle without the horizontal
+   block transitions present in takes 02–05.
 
-For this probe, either omit high-WRAM boss/event claims or read `$7E:D82B`
-through the trusted helper and label it separately. Do not use raw
-`env.get_ram()` offsets above the core's reliable range.
-
-### P2 — secondary consistency and lifecycle defects
-
-- Covern metadata declares 300 max HP while all recorded shaft traces and test
-  fixtures show 80. Reconcile it before using HP to infer target progress.
-- `lip_hit` and previous PLM IDs are initialized inside each `climb_until`
-  call, so phase boundaries can forget a lower-shaft block transition. This is
-  not the present red seam because natural `west_super` is already green, but
-  it can make direct and composed runs diverge. Preserve phase state in one
-  route context or re-establish it from trustworthy observations after the
-  Main Shaft blocker is cleared.
-- The 3,600-frame budget lacks a repeated-state/cycle classifier, allowing a
-  deterministic deadlock to consume the full budget without new evidence.
+Do not start with a new jump window, wider geometry, or more timeout. Those do
+not falsify the leading hypotheses.
 
 ## Execution plan
 
-### 1. Build the red-capable feedback loop before changing behavior
+### 1. Tighten the existing red loop
 
-Extend the existing Main Shaft probe rather than adding another sibling probe.
-Use a short circular trace around the first failed conversion. Per decision,
-capture:
+Extend `scripts/probe/ws_main_climb.py`; do not add another probe. From the
+natural mid-climb pin, retain roughly the last 240 frames and emit events for:
 
-- frame, room, x/y/subpixels, velocity, momentum, pose, facing, movement type;
-- classified region, current hop/window, chosen buttons, and decision reason;
-- selected enemy slot/species/x/y/HP/freeze plus target-relative dx/dy;
-- beam charge, projectile count, and active-PLM additions/removals;
-- events `launch_1675`, `stairs_contact`, `stairs_planted`,
-  `enemy_interrupted`, `relaunch`, and `repeated_cycle`.
+- stable 651 plant, 587 wall contact, and y=523 plant;
+- action owner/reason and buttons, especially X press and release edges;
+- beam charge plus projectile slot/type/position;
+- Atomics by slot, x/y, HP, freeze, and overlap with Samus/projectiles;
+- PLM additions/ID changes with corrected block coordinates;
+- `upper_block_1..N`, `wall_clear`, `jump_587`, `land_523`, and repeated
+  cycle.
 
-Stop and save at the first stable 1543 seat or at the first classified repeated
-cycle. Keep only the last roughly 180–300 frames plus event summaries. A red
-artifact must identify the first divergence, not merely the final timeout.
+Stop RED after a bounded planted-wall cycle with no new projectile or
+upper-block event; stop GREEN for the first experiment only at a planted y=523
+seat. Preserve the full public `attic_seat` predicate for the phase result.
 
-Mine takes 02–05 into a compact fixture of stable seats, takeoff frames, peaks,
-and input runs for the shaft above y1675. Compare the bot trace against take 02
-at these transitions. Treat `stairs_planted` as the immediate assertion and
-`mid_climb` y~680 as the phase outcome.
+The first future run must reproduce the current exact miss before behavior
+changes. If it does not, stop and identify the changed source state rather than
+tuning a different failure.
 
-This audit intentionally did not run the future loop. When execution begins,
-first reproduce the existing miss once from the natural west-super pin with
-the new trace enabled. If it does not reproduce, stop and explain the changed
-precondition instead of tuning against a different failure.
+### 2. Give the wall a local tap/release shot state
 
-### 2. Repair observability before trusting PLM conclusions
+Use a counter that begins on stable right-wall contact, not global session
+frame. Reproduce the observed rhythm: short `UP+X` bursts separated by `UP`
+release frames. The action must make charge fall and a projectile leave before
+starting another burst.
 
-In one isolated change:
+Apply the same state through brief knockback so contact cannot reset it to an
+eternal hold. Keep PLM observation active on every frame. Do not mix enemy
+policy into this experiment.
 
-1. Divide the PLM block byte offset by two in the shared decoder and the
-   duplicated Wrecked Ship probe reader.
-2. Replace the test fixture that canonizes the wrong conversion with examples
-   containing odd/even cell positions and a real captured Wrecked Ship slot.
-3. Add a source comment naming `$1C87` as a byte offset into two-byte level
-   data.
-4. Distinguish active-slot telemetry from unavailable bank-$7F collision data
-   in diagnostic output/docs.
-5. Remove or replace the generic `boss` field in this probe with a trusted
-   bank-$7E read.
+Success for this step is coordinate-qualified upper-block transitions and a
+controlled departure from the wall; minimum y alone is not success.
 
-Do not change the controller in the same experiment. Reproduce the red once
-with corrected telemetry so subsequent evidence has valid coordinates.
+### 3. Replace `ceiling_open` with an upper-clearance contract
 
-### 3. Replace the guessed first stair conversion with the human route
+From corrected live telemetry and takes 02–05, identify the three upper-wall
+block positions. Track a small set/count of those positions within the current
+climb context. Only allow the left takeoff when the required set is clear.
 
-Make one behavior change at a time:
+Keep lower `lip_hit` state separate from upper clearance; they are different
+obstacles and should not share a semantic latch. Ignore family-ID spawns
+outside the upper-wall coordinate band. If live PLMs expire before the third
+event, retain the observed cleared-position set for the phase.
 
-1. Reproduce the human first launch: A/RIGHT+A without forcing B for the entire
-   arc.
-2. During committed flight and landing, keep movement ownership in the shaft
-   controller; do not let generic ice targeting preempt the landing.
-3. Require a planted 1543 stair state, then traverse right toward the
-   tape-derived x~1252–1259 takeoff.
-4. Launch left from that far-right window using the take-derived input. Delete
-   or replace the current guessed `1120..1180` window; do not widen both windows
-   until something happens.
+### 4. Handle Atomics only if the corrected shot contract still fails
 
-After each change, compare the same events to take 02. A useful result is a
-stable stair seat or a new, earlier, well-classified divergence. A smaller
-minimum y by itself is not progress.
+First try the correct shot cadence with no new combat. If a bounded trace
+shows repeated projectile interception, compare these isolated experiments:
 
-Only if tape-derived avoidance still fails should the next isolated experiment
-be combat. Pre-clear a named Atomic from a stable seat, validate line of fire,
-and require an HP decrease or freeze-timer increase. If neither changes within
-a short charge/release budget, relinquish combat ownership and escape; never
-wait indefinitely at overlap.
+1. wait at the stable 651 seat until both upper Atomics leave the shot/takeoff
+   corridor;
+2. from a stable seat, target the specific blocking Atomic and require HP or
+   freeze change before returning ownership to movement;
+3. prefer killing over freezing if a frozen Atomic becomes a solid obstacle in
+   the only passage.
 
-### 4. Derive the rest of the shaft instead of extending guessed hops
+Each experiment needs a short exit condition. Never wait or charge indefinitely
+at `(1234,587)`. Do not re-enable the broad generic ice overlay across the
+whole 651 arc; it would steal the already-green slope run.
 
-Once `stairs_1543` is stable, extract each next grounded seat and takeoff from
-the successful tapes through y~680. For each seam:
+### 5. Encode the y=523 block run from tape evidence
 
-1. Define a private stable-seat predicate from multiple successful takes.
-2. Implement only the next seat-to-seat transition.
-3. Reproduce from the natural prior seat, not an airborne minimum-y dump.
-4. Record exact exit x/y/pose/velocity and the first divergence on red.
-5. Move upward only after the seam is repeatable.
+After the 587 jump plants near `(1204,523)`, add a private stable-seat
+predicate and reproduce the leftward tap-fire traverse. Qualify each required
+block transition by position. The human sequence reaches the left side around
+x1095–1077 before the next committed jump.
 
-Keep orchestration in the existing Main Shaft composer. Do not create a family
-of sibling controller modules or let a source file grow past the repo's soft
-limit; remove obsolete guessed geometry when the tape-derived policy replaces
-it.
+Keep this in the existing Main Shaft composer. If the landing cannot start the
+traverse twice from the exact held exit, keep the wall jump and ledge traversal
+as one change. Do not publish a y=523 phase pin as hop GREEN.
 
-### 5. Finish Attic and prove the successor seam
+### 6. Derive the final upper platforms, then use the existing Attic door
 
-After the natural `west_super -> mid_climb` phase is green:
+Mine multiple successful takes for stable seats and departures above y=523.
+Take 02 gives the rough ladder:
 
-1. Prove `mid_climb -> attic_seat` with a planted, usable Attic-side seat.
-2. Prove `attic_seat -> attic_door` exits Main Shaft into ordinary Attic
-   `0xCA52`, game state 8.
-3. Dual the complete Main Shaft hop from
-   `post_ws_basement_to_main.state`; phase pins are acceleration only.
-4. Start the next Attic-to-Sync hop from the exact Main Shaft exit twice. This
-   is the successor proof required before promoting the hop.
-5. Update the residual, bead, evidence, and status only to the highest gate
-   actually cleared. Do not change `DEFAULT_CONTINUOUS_TIP` or claim Gravity
-   from a Main Shaft-only result.
+```text
+y523 left takeoff
+  -> y443 plant
+  -> y363 plant / right launch
+  -> y171 plant / left launch
+  -> top seat around (1123,91)
+  -> shared attic_door_action
+  -> Attic 0xCA52 gs=8
+```
 
-## Future verification ladder (not run during this audit)
+For each transition, require room, x/y, planted pose, and near-zero vertical
+velocity. Remove superseded guessed hop geometry as the tape-derived
+transitions land. Do not add controller modules or grow a parallel route.
 
-Run the narrowest layer that can falsify each change when implementation
-begins:
+### 7. Recompose in increasing scope
 
-1. ROM-free unit checks for PLM conversion, stable-seat predicates, target
-   priority/line-of-fire, and action ownership.
-2. One diagnostic run: natural west-super pin to stable 1543 stairs.
-3. Repeat and dual: natural west-super pin to public `mid_climb` y~680.
-4. Phase-local upper-shaft iteration from the first naturally captured planted
-   seat, followed by natural-entry recomposition.
-5. Full Main Shaft dual from `post_ws_basement_to_main.state` to Attic.
-6. Successor Attic-to-Sync dual from the exact full-hop exit.
+After the local upper seam is repeatable:
 
-For each ROM run, record source hash, start observation, target predicate, frame
-count, end observation, and artifact paths. On a red, save the earliest stable
-divergence and the bounded trace; do not merely increase the frame budget.
+1. dual `mid_climb -> attic_seat` from the natural mid-climb pin;
+2. dual the complete Main Shaft hop from `post_ws_basement_to_main.state` to
+   ordinary Attic `0xCA52`;
+3. start the exact Attic successor from both full-hop exits and prove Sync;
+4. update the residual/bead only to the highest gate actually cleared;
+5. later run the Gravity milestone power-on dual. Main Shaft alone does not
+   change the living tip or prove Gravity.
+
+## Future verification ladder
+
+No verification was run during this planning pass. When implementation starts,
+use the narrowest falsifier for each change:
+
+1. contract checks for local shot cadence, upper-block qualification, and
+   latch persistence through knockback;
+2. one traced mid-climb-pin run to coordinate-qualified wall clearance;
+3. repeat/dual to planted y=523 and then to `attic_seat`;
+4. full natural Main Shaft dual to Attic;
+5. successor Sync dual from the exact full-hop exits;
+6. Gravity milestone power-on dual only after the local chain is complete.
+
+Every ROM artifact should record source state/hash, start observation, target
+predicate, frames, end observation, block events, and trace path. On RED, save
+the earliest classified divergence instead of increasing the budget.
 
 ## Acceptance criteria
 
-- The diagnostic loop reproduces the original miss and identifies the first
-  loss of progress with controller reason and enemy/PLM context.
-- PLM coordinates use the source-correct byte-offset conversion; no breakable
-  brick claim relies on the old doubled coordinates.
-- The bot plants the 1543 stairs in a tape-supported state without ending in a
-  live-enemy overlap.
-- Natural `west_super -> mid_climb` reaches the existing y~680 contract twice.
-- The complete natural Main Shaft hop reaches Attic `0xCA52` twice from
+- The bounded trace reproduces the planted `(1234,587)` failure and identifies
+  its first missing release, projectile, or block event.
+- The upper-wall controller visibly presses and releases X; it cannot time out
+  with one continuous charge hold.
+- Upper clearance is based on the required corrected block positions, not one
+  unqualified PLM family ID.
+- Atomics and Coverns are named by their actual RAM IDs in evidence and policy.
+- The exact 587 departure plants y=523 and the successor block traverse starts
+  from that held state twice.
+- `mid_climb -> attic_seat` clears twice from the natural mid-climb pin.
+- The complete hop reaches ordinary Attic `0xCA52`, gs=8 twice from
   `post_ws_basement_to_main.state`.
-- The exact Attic exit starts the Sync successor successfully twice.
-- Lower green phases remain unchanged and no intermediate phase pin is called
-  hop-green.
-
-## Process audit
-
-### Keep
-
-- Natural-predecessor pins, dual confirmation, and exact held exits.
-- Separate phase green versus full-hop green, with explicit non-claims.
-- Successful human tapes with frame-by-frame state, enemies, PLMs, projectiles,
-  and inputs.
-- The rule that a usable contact needs position, pose, and velocity—not only a
-  height record.
-- One living residual and one living tip.
-
-### Change
-
-- Mine successful tapes before writing geometry for the next red seam. The
-  lower departure was data-derived; the upper `SHAFT_HOPS` list was not.
-- Make the first red reproduction and its exact symptom the unit of work.
-  Minimum y and final screenshots are supporting evidence, not a feedback loop.
-- Log action ownership and decision reason whenever overlays can preempt route
-  movement.
-- Test contracts and transitions, not only the controller's current button
-  tuple or source-code strings.
-- Source-validate WRAM semantics before encoding them in fixtures. A passing
-  fixture can preserve a decoding bug.
-- After three identical misses, stop widening geometry or adding combat. Save
-  the earliest stable seat and compare against the successful tape.
-- Prefer an observed avoidance route over an invented enemy interaction. The
-  tape shows whether combat is actually part of the seam.
-
-### Decision rule for the current red
-
-The next implementation should begin with observability plus the tape-derived
-far-right stair traversal. PLM coordinate repair is required for trustworthy
-diagnostics, but breakable-brick investigation is gated behind a failure of the
-corrected human trajectory. Enemy freezing is a fallback experiment, not the
-current default.
+- Both exact Attic exits start the successor successfully.
+- Lower green phases remain unchanged, no intermediate pin is called hop
+  GREEN, and no Main Shaft-only result changes the living tip.
 
 ## Non-claims for this planning pass
 
 - No emulator, probe, replay, or test was run.
-- No controller or WRAM code was changed.
-- No phase or hop was promoted.
-- No bead was claimed, closed, exported, or committed.
-- The runtime cause is ranked, not declared proven.
+- No controller, artifact, residual, STATUS, bead, or route wiring was changed.
+- No phase, hop, Gravity rung, or living tip was promoted.
+- Existing uncommitted Wrecked Ship edits were preserved.
+- The static defects are confirmed; their runtime ordering remains the ranked
+  hypothesis list above until the bounded loop is executed.

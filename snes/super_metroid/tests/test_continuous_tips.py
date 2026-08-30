@@ -78,9 +78,10 @@ def test_continuous_tips_chain_ends_at_default() -> None:
         "moat",
         "ws",
         "phantoon",
+        "gravity",
     ]
     # Default tip is the one living STATUS tip (Phantoon). Prefix stems stay
-    # on the CLI chain as CI history, not extra products.
+    # on the CLI chain as CI history, not extra products. Gravity is scratch.
     assert DEFAULT_CONTINUOUS_TIP == "phantoon"
     assert DEFAULT_CONTINUOUS_TIP in ids
     assert ids.index("speed") < ids.index("wave")
@@ -89,7 +90,8 @@ def test_continuous_tips_chain_ends_at_default() -> None:
     assert ids.index("alpha_pb") < ids.index("moat")
     assert ids.index("moat") < ids.index("ws")
     assert ids.index("ws") < ids.index("phantoon")
-    assert ids[-1] == "phantoon"
+    assert ids.index("phantoon") < ids.index("gravity")
+    assert ids[-1] == "gravity"
 
 
 def test_continuous_tips_align_with_tip_specs() -> None:
@@ -137,6 +139,8 @@ def test_get_continuous_tip_aliases() -> None:
     assert get_continuous_tip("west_ocean").tip_id == "moat"
     assert get_continuous_tip("phan").tip_id == "phantoon"
     assert get_continuous_tip("k6_phantoon").tip_id == "phantoon"
+    assert get_continuous_tip("gravity_suit").tip_id == "gravity"
+    assert get_continuous_tip("k6_gravity").tip_id == "gravity"
 
 
 def test_default_tip_room_timing_path() -> None:
@@ -303,6 +307,7 @@ def test_unified_tip_specs_cover_full_chain() -> None:
         "moat",
         "ws",
         "phantoon",
+        "gravity",
     )
     assert tuple(s.tip_id for s in SUPER_TIP_SPECS) == expected_super
     # Unified table includes early + Super+.
@@ -429,6 +434,23 @@ def test_unified_tip_specs_cover_full_chain() -> None:
     ]
     assert get_continuous_tip("phan").tip_id == "phantoon"
     assert get_continuous_tip("k6_phantoon").tip_id == "phantoon"
+    assert DEFAULT_CONTINUOUS_TIP == "phantoon"
+    assert SUPER_TIP_BY_ID["gravity"].parent_tip_id == "phantoon"
+    assert SUPER_TIP_BY_ID["gravity"].final_room == 0xCE40
+    assert SUPER_TIP_BY_ID["gravity"].success_outcome == "gravity_collected"
+    assert [h.split_id for h in SUPER_TIP_BY_ID["gravity"].hops] == [
+        "ws_basement_to_main",
+        "ws_main_to_attic",
+        "attic_to_west_ocean",
+        "west_ocean_to_pancakes",
+        "pancakes_to_homing_geemer",
+        "homing_geemer_to_bowling",
+        "bowling_to_gravity",
+        "gravity_collect",
+    ]
+    assert get_continuous_tip("gravity_suit").tip_id == "gravity"
+    assert get_continuous_tip("k6_gravity").tip_id == "gravity"
+    assert get_continuous_tip("grav").tip_id == "gravity"
     assert DEFAULT_CONTINUOUS_TIP == "phantoon"
 
 

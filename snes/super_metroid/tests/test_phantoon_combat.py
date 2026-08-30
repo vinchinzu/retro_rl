@@ -27,7 +27,7 @@ from super_metroid.combat.phantoon import (
 )
 from super_metroid.combat.protocol import wrap_phantoon_as_boss_strategy
 from super_metroid.ram import GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.phantoon_fight import (
+from super_metroid.routes.kpdr.wrecked_ship.phantoon_fight import (
     phantoon_boss_bit_set,
     play_phantoon_room_fight,
     require_phantoon_defeated,

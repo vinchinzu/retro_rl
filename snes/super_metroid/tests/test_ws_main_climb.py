@@ -12,20 +12,24 @@ from super_metroid.combat.enemies import Enemy, list_enemies
 from super_metroid.hop_glance import LeaveMiss
 from super_metroid.leave_specs import WS_MAIN_GRATE_SEAT
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.ws_main_actions import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_actions import (
     attic_door_action,
     climb_action,
+    wall_up_shot_action,
 )
-from super_metroid.routes.kpdr.k6.ws_main_climb import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_climb import (
     play_ws_main_to_attic,
     ws_main_attic_settled,
 )
-from super_metroid.routes.kpdr.k6.ws_main_geometry import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import (
     FIRST_JUMP_LAND_X,
     FIRST_JUMP_LAND_Y,
     GRATE_LAND_X,
     GRATE_LAND_Y,
     SHAFT_HOPS,
+    SLOPE_651_TAKEOFF,
+    SLOPE_827_TAKEOFF,
+    SLOPE_1019_TAKEOFF,
     SLOPE_1130_TAKEOFF,
     STAIRS_1543_TAKEOFF,
     WS_MAIN_ATTIC_DOOR_X,
@@ -37,6 +41,9 @@ from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     at_ws_main_mid_climb,
     at_ws_main_morph_drop,
     at_ws_main_pit,
+    at_ws_main_slope_651,
+    at_ws_main_slope_827,
+    at_ws_main_slope_1019,
     at_ws_main_slope_1130,
     at_ws_main_stairs_1543,
     at_ws_main_west_super_band,
@@ -44,17 +51,19 @@ from super_metroid.routes.kpdr.k6.ws_main_geometry import (
     classify_ws_main_phase,
     ws_main_phase_index,
 )
-from super_metroid.routes.kpdr.k6.ws_main_ice import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_ice import (
     ATOMIC_ID,
     ice_keepaway_action,
 )
-from super_metroid.routes.kpdr.k6.ws_main_shaft import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_shaft import (
     SAVE_COLUMN_WJ,
     at_ws_main_save_alcove,
     at_ws_main_save_column_wj,
     climb_until,
+    note_upper_wall,
     save_alcove_jump,
     save_column_walljump,
+    upper_wall_open,
 )
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_MAIN
 from super_metroid.routes.skills.basic_moves import shoot_up_action
@@ -175,6 +184,10 @@ def test_classifier_regions_and_phases() -> None:
     mid = _state(samus_x=1152, samus_y=680, pose=1)
     assert at_ws_main_mid_climb(mid)
     assert classify_ws_main_phase(mid) == "mid_climb"
+    planted_640 = _state(samus_x=1131, samus_y=640, pose=2)
+    assert at_ws_main_mid_climb(planted_640)
+    air_640 = _state(samus_x=1117, samus_y=640, pose=47, velocity_y=0)
+    assert not at_ws_main_mid_climb(air_640)
 
     seat = _state(samus_x=1135, samus_y=80, pose=1)
     assert classify_ws_main_phase(seat) == "attic_seat"
@@ -464,12 +477,216 @@ def test_slope_1130_dashes_left_not_jump_from_plant() -> None:
     )
     assert peak == ("B", "RIGHT", "A")
     land = climb_action(1098, 1019, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
-    assert "RIGHT" in land
-    assert "LEFT" not in land
+    assert land == ("RIGHT", "B")
+    assert "A" not in land
     assert climb_action(1152, 1131, 2, FACING_LEFT, region=ShaftRegion.SHAFT) == (
         "LEFT",
         "B",
     )
+
+
+def test_slope_1019_dashes_right_not_jump_from_plant() -> None:
+    """Takes 02–05 plant (1098, 1019) then B+RIGHT to wall (1243, 907)."""
+    hop = next(h for h in SHAFT_HOPS if h.y == 1019)
+    assert hop.takeoff.x_range == SLOPE_1019_TAKEOFF.x_range
+    assert hop.takeoff.x_range == (1240, 1246)
+    assert hop.side == "LEFT"
+    assert hop.x_hi >= 1243
+    assert at_ws_main_slope_1019(1098, 1019, 9)
+    assert at_ws_main_slope_1019(1228, 907, 9)
+    assert at_ws_main_slope_1019(1243, 907, 9)
+    assert not at_ws_main_slope_1019(1205, 827, 10)
+    assert not at_ws_main_slope_1019(1187, 817, 48, velocity_y=0)
+
+    plant = climb_action(1098, 1019, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert plant == ("RIGHT", "B")
+    assert "A" not in plant
+    mid = climb_action(1180, 936, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert mid == ("RIGHT", "B")
+    assert "A" not in mid
+    turn = climb_action(1243, 907, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert turn == ("LEFT",)
+    assert "A" not in turn
+    bounce = climb_action(
+        1243, 890, 47, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert bounce == ("A",)
+    assert "LEFT" not in bounce
+    assert "RIGHT" not in bounce
+    drift = climb_action(
+        1230, 825, 82, FACING_LEFT, velocity_y=4, region=ShaftRegion.SHAFT
+    )
+    assert drift == ("B", "LEFT")
+    assert "A" not in drift
+    wall_rise = climb_action(
+        1243, 830, 47, FACING_LEFT, velocity_y=4, region=ShaftRegion.SHAFT
+    )
+    assert "A" in wall_rise
+    peak = climb_action(
+        1226, 816, 82, FACING_LEFT, velocity_y=0, region=ShaftRegion.SHAFT
+    )
+    assert peak == ("B", "LEFT")
+    assert "A" not in peak
+    leftover = climb_action(
+        1187, 817, 48, FACING_RIGHT, velocity_y=0, region=ShaftRegion.SHAFT
+    )
+    assert leftover == ("LEFT",)
+    assert "RIGHT" not in leftover
+    land = climb_action(1205, 827, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert land == ("LEFT", "B")
+    assert "A" not in land
+    land165 = climb_action(1220, 827, 165, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert land165 == ("LEFT", "B")
+    assert "A" not in land165
+
+
+def test_slope_827_dashes_left_not_jump_from_plant() -> None:
+    """Tape take02 plants (1205, 827) p10 then B+LEFT to (1061, 763)."""
+    hop = next(h for h in SHAFT_HOPS if h.y == 827)
+    assert hop.takeoff.x_range == SLOPE_827_TAKEOFF.x_range
+    assert hop.side == "RIGHT"
+    assert at_ws_main_slope_827(1205, 827, 10)
+    assert at_ws_main_slope_827(1220, 827, 165)
+    assert at_ws_main_slope_827(1061, 763, 10)
+    plant = climb_action(1205, 827, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert plant == ("LEFT", "B")
+    assert "A" not in plant
+    mid = climb_action(1148, 792, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert mid == ("LEFT", "B")
+    assert "A" not in mid
+
+
+def test_slope_651_dashes_right_not_jump_from_plant() -> None:
+    """Tape take02 plants (1098, 651) p9 then B+RIGHT to wall (1243, 587)."""
+    hop = next(h for h in SHAFT_HOPS if h.y == 651)
+    assert hop.takeoff.x_range == SLOPE_651_TAKEOFF.x_range
+    assert hop.takeoff.x_range == (1228, 1234)
+    assert hop.side == "LEFT"
+    assert hop.x_hi >= 1243
+    assert at_ws_main_slope_651(1098, 651, 9)
+    assert at_ws_main_slope_651(1101, 651, 9)
+    assert at_ws_main_slope_651(1243, 587, 9)
+    assert at_ws_main_slope_651(1144, 627, 164)
+    assert not at_ws_main_slope_651(1061, 752, 77, velocity_y=0)
+
+    plant = climb_action(1101, 651, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert plant == ("RIGHT", "B")
+    assert "A" not in plant
+    mid = climb_action(1180, 610, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert mid == ("RIGHT", "B")
+    assert "A" not in mid
+    skip = climb_action(
+        1131, 640, 83, FACING_RIGHT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert skip == ("RIGHT", "B")
+    assert "A" not in skip
+    wall = climb_action(1243, 587, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert wall == shoot_up_action()
+    assert wall_up_shot_action(0) == shoot_up_action()
+    assert wall_up_shot_action(5) == ("UP",)
+    assert "X" not in wall_up_shot_action(5)
+    assert wall_up_shot_action(0, charge=CHARGE_FULL) == ("UP",)
+    release = climb_action(
+        1243,
+        587,
+        9,
+        FACING_RIGHT,
+        region=ShaftRegion.SHAFT,
+        wall_shot_frame=5,
+    )
+    assert release == ("UP",)
+    assert "X" not in release
+    charged = climb_action(
+        1243,
+        587,
+        9,
+        FACING_RIGHT,
+        region=ShaftRegion.SHAFT,
+        charge=CHARGE_FULL,
+    )
+    assert charged == ("UP",)
+    opened = climb_action(
+        1243, 587, 9, FACING_RIGHT, region=ShaftRegion.SHAFT, ceiling_open=True
+    )
+    assert opened == ("LEFT",)
+    assert "A" not in opened
+    takeoff = climb_action(
+        1231, 587, 10, FACING_LEFT, region=ShaftRegion.SHAFT, ceiling_open=True
+    )
+    assert takeoff == ("LEFT", "A")
+    aiming = climb_action(
+        1231, 587, 4, FACING_LEFT, region=ShaftRegion.SHAFT, ceiling_open=True
+    )
+    assert aiming == ("LEFT",)
+    assert "A" not in aiming
+    closed = climb_action(1231, 587, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert closed == shoot_up_action()
+    bounce = climb_action(
+        1231, 570, 26, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert bounce == ("LEFT", "A")
+    clear = climb_action(
+        1210, 560, 26, FACING_LEFT, velocity_y=5, region=ShaftRegion.SHAFT
+    )
+    assert "A" in clear
+    drift = climb_action(
+        1210, 510, 82, FACING_LEFT, velocity_y=4, region=ShaftRegion.SHAFT
+    )
+    assert drift == ("B", "LEFT")
+    assert "A" not in drift
+    coast = climb_action(1202, 587, 9, FACING_RIGHT, region=ShaftRegion.SHAFT)
+    assert coast == ("RIGHT",)
+    assert "B" not in coast
+    assert "A" not in coast
+    leftover = climb_action(
+        1061, 752, 77, FACING_LEFT, velocity_y=0, region=ShaftRegion.SHAFT
+    )
+    # 827 still owns that miss still. 651 must not spin-jump RIGHT from it.
+    assert "RIGHT" not in leftover
+    ledge = climb_action(1204, 523, 10, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert ledge == ("LEFT", "X")
+    ledge_gap = climb_action(
+        1204,
+        523,
+        10,
+        FACING_LEFT,
+        region=ShaftRegion.SHAFT,
+        wall_shot_frame=5,
+    )
+    assert ledge_gap == ("LEFT",)
+    assert "X" not in ledge_gap
+    takeoff_523 = climb_action(
+        1077, 523, 10, FACING_LEFT, region=ShaftRegion.SHAFT
+    )
+    assert takeoff_523 == ("UP",)
+    assert "X" not in takeoff_523
+    assert "A" not in takeoff_523
+    gun_523 = climb_action(1077, 523, 4, FACING_LEFT, region=ShaftRegion.SHAFT)
+    assert gun_523 == ("UP", "X")
+    gun_gap = climb_action(
+        1077,
+        523,
+        4,
+        FACING_LEFT,
+        region=ShaftRegion.SHAFT,
+        wall_shot_frame=5,
+    )
+    assert gun_gap == ("UP", "A")
+    air_523 = climb_action(
+        1077,
+        500,
+        22,
+        FACING_LEFT,
+        velocity_y=5,
+        region=ShaftRegion.SHAFT,
+        wall_shot_frame=5,
+    )
+    assert air_523 == ("UP", "A")
+    jam_523 = climb_action(
+        1079, 499, 144, FACING_RIGHT, region=ShaftRegion.SHAFT
+    )
+    assert jam_523 == ("UP", "A")
+    assert "B" not in jam_523
 
 
 def test_save_alcove_jumps_left() -> None:
@@ -555,11 +772,110 @@ def test_climb_until_overlay_save_and_lip() -> None:
     assert "LEFT" in wall_btns
     assert "A" in wall_btns
 
+    wall_1019 = _Session(
+        _state(samus_x=1243, samus_y=907, pose=137, facing=FACING_RIGHT)
+    )
+    climb_until(wall_1019, "test", _stop_after_first(wall_1019))
+    assert wall_1019.actions[0][1] == "test_slope_1019_wall"
+    wall_1019_btns = set(pressed_snes_buttons(wall_1019.actions[0][0]))
+    assert wall_1019_btns == {"A"}
+
+    wall_523 = _Session(
+        _state(samus_x=1077, samus_y=523, pose=138, facing=FACING_LEFT)
+    )
+    climb_until(wall_523, "test", _stop_after_first(wall_523))
+    assert wall_523.actions[0][1] == "test_slope_523_wall"
+    assert set(pressed_snes_buttons(wall_523.actions[0][0])) == {"LEFT", "A"}
+
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    base = 0x0F78
+    ram[base] = ATOMIC_ID & 0xFF
+    ram[base + 1] = ATOMIC_ID >> 8
+    ram[base + 0x02] = 1084 & 0xFF
+    ram[base + 0x03] = 1084 >> 8
+    ram[base + 0x06] = 514 & 0xFF
+    ram[base + 0x07] = 514 >> 8
+    ram[base + 0x14] = 250
+    blocked_523 = _Session(
+        _state(samus_x=1077, samus_y=523, pose=138, facing=FACING_LEFT)
+    )
+    blocked_523.env = type("E", (), {"get_ram": lambda self: ram})()
+    climb_until(blocked_523, "test", _stop_after_first(blocked_523))
+    assert blocked_523.actions[0][1] == "test_slope_523_ice"
+    assert "A" not in set(pressed_snes_buttons(blocked_523.actions[0][0]))
+
+    wall_651 = _Session(
+        _state(samus_x=1243, samus_y=587, pose=137, facing=FACING_RIGHT)
+    )
+    climb_until(wall_651, "test", _stop_after_first(wall_651))
+    assert wall_651.actions[0][1] == "test_slope_651_shot"
+    wall_651_btns = set(pressed_snes_buttons(wall_651.actions[0][0]))
+    assert wall_651_btns == {"UP", "X"}
+
+    wall_cycle = _Session(
+        _state(samus_x=1243, samus_y=587, pose=137, facing=FACING_RIGHT)
+    )
+    climb_until(wall_cycle, "test", lambda st: wall_cycle.frame >= 12)
+    cycle_btns = [set(pressed_snes_buttons(a)) for a, _ in wall_cycle.actions]
+    assert {"UP", "X"} in cycle_btns
+    assert {"UP"} in cycle_btns
+
+
+def test_knockback_latches_upper_wall_after_three_spawns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
+
+    n = {"i": 0}
+
+    def _observe(sess, prev, hit):
+        del sess, prev, hit
+        n["i"] += 1
+        rows = (
+            {"i": 1, "id": 0xD074, "px": 1240, "py": 568},
+            {"i": 2, "id": 0xD080, "px": 1240, "py": 552},
+            {"i": 3, "id": 0xD080, "px": 1240, "py": 536},
+        )
+        if n["i"] <= 3:
+            return False, (), (rows[n["i"] - 1],)
+        return False, (), ()
+
+    monkeypatch.setattr(mod, "_observe_shot_blocks", _observe)
+    session = _Session(
+        _state(samus_x=1243, samus_y=587, pose=137, facing=FACING_RIGHT)
+    )
+    climb_until(session, "test", lambda st: session.frame >= 4)
+    reasons = [r for _, r in session.actions]
+    assert reasons[0] == "test_slope_651_shot"
+    assert "test_slope_651_wall" in reasons
+    wall = next(
+        a for a, r in session.actions if r == "test_slope_651_wall"
+    )
+    assert set(pressed_snes_buttons(wall)) == {"LEFT", "A"}
+
+
+def test_upper_wall_needs_three_near_spawns() -> None:
+    far = {"i": 1, "id": 0xD080, "px": 904, "py": 1112}
+    near_a = {"i": 2, "id": 0xD074, "px": 1240, "py": 568}
+    near_b = {"i": 3, "id": 0xD080, "px": 1240, "py": 552}
+    near_c = {"i": 4, "id": 0xD080, "px": 1240, "py": 536}
+    cleared = note_upper_wall(set(), (far,), 1243, 587)
+    assert cleared == set()
+    assert not upper_wall_open(cleared)
+    cleared = note_upper_wall(cleared, (near_a,), 1243, 587)
+    assert not upper_wall_open(cleared)
+    cleared = note_upper_wall(cleared, (near_b,), 1243, 587)
+    assert not upper_wall_open(cleared)
+    cleared = note_upper_wall(cleared, (near_c,), 1243, 587)
+    assert upper_wall_open(cleared)
+    grate = note_upper_wall(set(), (near_a,), 1223, 1860)
+    assert grate == set()
+
 
 def test_take02_slope_owns_moving_aim_pose(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
 
     session = _Session(
         _state(
@@ -574,8 +890,8 @@ def test_take02_slope_owns_moving_aim_pose(
 
     monkeypatch.setattr(
         mod,
-        "_update_lip_hit",
-        lambda sess, prev, hit: (False, prev),
+        "_observe_shot_blocks",
+        lambda sess, prev, hit: (False, prev, ()),
     )
     monkeypatch.setattr(
         mod,
@@ -590,14 +906,14 @@ def test_take02_slope_owns_moving_aim_pose(
 def test_latched_take02_suppresses_save_column_and_ice_keeps_morph_drop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
 
     save_column_calls: list[str] = []
     ice_calls: list[tuple[int, int]] = []
     monkeypatch.setattr(
         mod,
-        "_update_lip_hit",
-        lambda sess, prev, hit: (True, prev),
+        "_observe_shot_blocks",
+        lambda sess, prev, hit: (True, prev, ()),
     )
     monkeypatch.setattr(
         mod,
@@ -642,7 +958,7 @@ def test_latched_take02_suppresses_save_column_and_ice_keeps_morph_drop(
 
 
 def test_take02_drop_handoff_matches_tape_rle() -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
 
     actions = [
         mod._take02_drop_handoff_action(frame)
@@ -670,7 +986,7 @@ def test_take02_drop_handoff_matches_tape_rle() -> None:
 
 
 def test_play_shots_climbs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     session = _Session(_state())
     seen: dict[str, object] = {}
@@ -718,7 +1034,7 @@ def test_play_shots_climbs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_grate_seat_phase_waits_for_usable_handoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     session = _Session(_state())
     done_fns: list[object] = []
@@ -746,7 +1062,7 @@ def test_grate_seat_phase_waits_for_usable_handoff(
 def test_natural_grate_seat_settles_momentum_before_west_super(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     session = _Session(_state())
     climbs: list[tuple[str, int]] = []
@@ -785,7 +1101,7 @@ def test_natural_grate_seat_settles_momentum_before_west_super(
 
 
 def test_phased_play_stop_at_pit_shot(monkeypatch: pytest.MonkeyPatch) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_main_climb as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     session = _Session(_state())
     seen: list[str] = []
@@ -848,7 +1164,7 @@ def test_never_uses_l_as_hop_side() -> None:
 
 
 def test_ice_overlay() -> None:
-    from super_metroid.routes.kpdr.k6.ws_main_ice import (
+    from super_metroid.routes.kpdr.wrecked_ship.ws_main_ice import (
         COVERN_ID,
         shelf_covern_ice_action,
     )
@@ -873,6 +1189,25 @@ def test_ice_overlay() -> None:
     assert ice_keepaway_action(
         1045, 1066, FACING_RIGHT, (wall_atomic,), velocity_y=5
     ) is None
+    atomic_827 = Enemy(0, ATOMIC_ID, 1188, 822, 250, 0)
+    assert ice_keepaway_action(1098, 1019, FACING_RIGHT, (atomic_827,)) is None
+    assert ice_keepaway_action(1243, 907, FACING_RIGHT, (atomic_827,)) is None
+    assert ice_keepaway_action(
+        1187, 817, FACING_RIGHT, (atomic_827,), velocity_y=0
+    ) is None
+    atomic_651 = Enemy(0, ATOMIC_ID, 1176, 680, 80, 0)
+    assert ice_keepaway_action(1101, 651, FACING_RIGHT, (atomic_651,)) is None
+    assert ice_keepaway_action(1243, 587, FACING_RIGHT, (atomic_651,)) is None
+    overlap_523 = Enemy(0, ATOMIC_ID, 1084, 514, 250, 0)
+    bounce_ice = ice_keepaway_action(1077, 523, FACING_LEFT, (overlap_523,))
+    assert bounce_ice is not None
+    assert "A" not in bounce_ice
+    take02_far = Enemy(0, ATOMIC_ID, 1164, 525, 150, 0)
+    assert ice_keepaway_action(1077, 523, FACING_LEFT, (take02_far,)) is None
+    assert ice_keepaway_action(1204, 523, FACING_LEFT, (overlap_523,)) is None
+    frozen_523 = Enemy(0, ATOMIC_ID, 1084, 514, 250, 80)
+    frozen_ice = ice_keepaway_action(1077, 523, FACING_LEFT, (frozen_523,))
+    assert frozen_ice is not None
     frozen_wall = Enemy(0, ATOMIC_ID, 1046, 1081, 250, 80)
     assert ice_keepaway_action(1050, 1083, FACING_LEFT, (frozen_wall,)) is None
     shot = ice_keepaway_action(1152, 1163, FACING_LEFT, (blob,))

@@ -20,12 +20,12 @@ from super_metroid.combat.enemies import (
     list_enemies,
 )
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT
-from super_metroid.routes.kpdr.k6.ws_basement_ice import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_basement_ice import (
     BASEMENT_ICE,
     ice_keepaway_action as basement_ice_keepaway,
     workrobot_avoid_action,
 )
-from super_metroid.routes.kpdr.k6.ws_main_ice import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_ice import (
     SHAFT_ICE,
     ice_keepaway_action as shaft_ice_keepaway,
 )

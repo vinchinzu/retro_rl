@@ -223,6 +223,8 @@ def _play_named_chain(chain: str):
             + hops_for_tip("ws")
             + hops_for_tip("phantoon")
         )
+    elif chain == "phantoon-to-gravity":
+        hops = hops_for_tip("gravity")
     else:
         raise KeyError(chain)
 
@@ -298,6 +300,13 @@ def _run_pure(
             "elevator-to-kihunter",
             "kihunter-to-moat",
             "ws-to-phantoon",
+            "phantoon-to-gravity",
+            "gravity-collect",
+            "attic-to-west-ocean",
+            "west-ocean-to-pancakes",
+            "pancakes-to-homing-geemer",
+            "homing-geemer-to-bowling",
+            "bowling-to-gravity",
         }
         boot_settle = 0 if segment in zero_settle_segments else 5
         boot_from_state(env, source, settle_frames=boot_settle)
@@ -572,6 +581,7 @@ def main() -> None:
             "moat-to-ws",
             "ws-to-phantoon",
             "ice-to-phantoon",
+            "phantoon-to-gravity",
         ),
         help=(
             "Named hop chain (alpha_pb, alpha_pb+moat, moat from Alpha PB leave, "

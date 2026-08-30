@@ -897,6 +897,29 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertIn(("CLEAR_ROCKS", "nw"), seen)
         self.assertNotEqual(result.status, TaskStatus.FAILURE)
 
+    def test_stale_west_gate_walks_into_yard_not_idle(self) -> None:
+        from retro_harness import TaskStatus, WorldState
+
+        from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+        from harvest.planner.d2_work import D2FarmClearTactic, D2FarmOutcome
+        from harvest.tasks.farm_clear_quota import farm_map_loaded, yard_load_action
+        from harvest.tasks.nav import make_action
+
+        ram = _farm_ram(player=(1, 28))
+        ram[ADDR_INPUT_LOCK] = 1
+        _set_tile(ram, 1, 28, 0xFF)
+        self.assertFalse(farm_map_loaded(ram))
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        tactic = D2FarmClearTactic(section="stumps", chunk="se", include_spa=False)
+        tactic.reset(world)
+        result = tactic.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(tactic.farm_status.outcome, D2FarmOutcome.TEMPORARILY_UNOBSERVABLE)
+        self.assertEqual(tactic.farm_status.reason, "stale_farm_map")
+        self.assertIsNotNone(result.action)
+        self.assertTrue((result.action.action == yard_load_action(ram)).all())
+        self.assertFalse((result.action.action == make_action()).all())
+
     def test_leftover_exec_still_exports_spa_retry(self) -> None:
         from retro_harness import TaskStatus
 

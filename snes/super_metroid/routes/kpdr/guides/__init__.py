@@ -7,7 +7,7 @@ Modules
 -------
 * ``early`` — Parlor Alcatraz, Big Pink Charge, GHZ
 * ``spazer`` — early Spazer climb/collect/top-drop
-* ``norfair_k4`` — Cathedral → Bubble climb + post-Speed return
+* ``norfair`` — Cathedral → Bubble climb + post-Speed return
 * ``wave`` — Bubble → Single → Double → Wave
 * ``ice_moat`` — Ice branch, Moat, West Ocean stubs
 
@@ -57,7 +57,7 @@ from super_metroid.routes.kpdr.guides.ice_moat import (
     GUIDE_WEST_OCEAN,
     GUIDE_WS_ENTRANCE,
 )
-from super_metroid.routes.kpdr.guides.norfair_k4 import (
+from super_metroid.routes.kpdr.guides.norfair import (
     GUIDE_BAT_CAVE,
     GUIDE_BAT_CAVE_RETURN,
     GUIDE_BUBBLE,
@@ -235,7 +235,7 @@ __all__ = [
     "GUIDE_BELOW_SPAZER_EARLY",
     "GUIDE_SPAZER_ROOM",
     "GUIDE_BELOW_SPAZER_TOP_DROP",
-    # norfair_k4
+    # norfair
     "GUIDE_CATHEDRAL_ENTRANCE",
     "GUIDE_CATHEDRAL",
     "GUIDE_RISING_TIDE",

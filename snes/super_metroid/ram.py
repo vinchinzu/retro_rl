@@ -92,6 +92,7 @@ MORPH_BALL_MASK = 0x0004
 BOMBS_MASK = 0x1000
 VARIA_MASK = 0x0001
 HI_JUMP_MASK = 0x0100
+GRAVITY_MASK = 0x0020
 # Event 0x0E is set when Mother Brain dies and the escape door sequence starts.
 EVENT_MOTHER_BRAIN_DEFEATED = 0x0E
 AREA_NAMES = (
@@ -228,6 +229,10 @@ class SuperMetroidState:
     @property
     def hi_jump(self) -> bool:
         return bool(self.collected_items & HI_JUMP_MASK)
+
+    @property
+    def gravity(self) -> bool:
+        return bool(self.collected_items & GRAVITY_MASK)
 
     @property
     def area_name(self) -> str:

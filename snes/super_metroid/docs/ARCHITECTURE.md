@@ -42,12 +42,14 @@ legacy/*                                  frozen vision/RL remnants
 ### Where a new file goes
 
 Hop ≠ fight. Ticket names (`k4` / `k5` / `k6`) stay in comments and
-residuals. Split a source file before 1000 LOC; merge into the owner
-instead of a new sibling. Frame-identical moves.
+residuals. Area packages: `ceres/`, `gauntlet/`, `ice/`, `norfair/`,
+`red_tower/`, `spazer/`, `wave/`, `wrecked_ship/`. Split a source file
+before 1000 LOC; merge into the owner instead of a new sibling.
+Frame-identical moves.
 
 | New code | Put it here | Not here |
 |----------|-------------|----------|
-| Movement hop | existing `routes/kpdr/` owner (merge if under 1k) | `combat/`, a barrel re-export, a new file per door |
+| Movement hop | existing `routes/kpdr/<area>/` owner (merge if under 1k) | `combat/`, a `k5/`/`k6/` ticket folder, a barrel re-export |
 | Boss fight policy | `combat/<boss>.py` (`BossStrategy` / named `play_*_fight`) | `routes/kpdr/` (hop is a thin `require_room` → combat adapter) |
 | Reusable movement | `routes/skills/` | copy-paste pose sets / walljump loops into a hop |
 | Overlay (room enemies) | `combat/enemies/` | a per-room enemy module |
@@ -55,7 +57,7 @@ instead of a new sibling. Frame-identical moves.
 | Practice overlay polyline | `routes/kpdr/guides/` | a hop file |
 | `ROOM_*` constants | `routes/kpdr/room_ids.py` | a second hex copy in `combat/` |
 
-Gold-standard **boss hop** already on the spine: `k6/phantoon_fight.py` and
+Gold-standard **boss hop** already on the spine: `wrecked_ship/phantoon_fight.py` and
 `to_kraid.play_kraid_entry_to_varia` (require room → `combat.*` → leave
 check). Do not grow a per-frame HP loop in a hop.
 

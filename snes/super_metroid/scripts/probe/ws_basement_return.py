@@ -37,7 +37,7 @@ from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
 from super_metroid.combat.enemies import list_enemies
 from super_metroid.combat.enemies.workrobot import stall_reason
-from super_metroid.routes.kpdr.k6.ws_basement_return import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_basement_return import (
     play_ws_basement_to_main,
     ws_basement_main_settled,
 )

@@ -26,7 +26,7 @@ from super_metroid.routes.kpdr.ice.geometry import (
     ACID_SNAKE_SETTLE_FRAMES,
     ACID_TO_SNAKE_RLE,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE_ACID, ROOM_ICE_SNAKE
 from super_metroid.routes.rle import play_script
 from super_metroid.routes.runtime import ControllerSession

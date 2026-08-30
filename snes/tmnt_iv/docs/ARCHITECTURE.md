@@ -15,7 +15,7 @@ script.
 | `policy.py` | Dispatcher (`tick`); pizza/hazard import seam |
 | `tactics/` | Stage- and boss-specific `next(state)` |
 | `grind_knobs.py` | Overlay knobs (Alleycat/Sewer bands are not grindable) |
-| `run/` | Wave-chain segment, stage bridge, Clean suite |
+| `run/` | One trial interface (`run_trial`); spec tables; bridge |
 | `lab/` | Slash research adapters (KEEP ≠ production) |
 | `local_grind/` | Knob-search agent |
 | `scripts/` | Thin CLIs over `run/` / `lab/` / continuous recorder |
@@ -27,7 +27,9 @@ combat tree → stall escape. `HazardAvoid` is not in that order.
 
 ## Overlap rules
 
-- One table, one loop: `StageSpec`, `CleanProbeSpec`, `BridgeSpec`.
+- One trial loop (`run/trial.py` `run_trial`). Spec tables:
+  `StageSpec`, `CleanProbeSpec`, `BridgeSpec`. Do not clone a fourth
+  emulator loop.
 - Slash production is `tactics/slash.py` (spin dodge adx **52**). Lab
   patterns stay in `lab/` until a stage suite and a continuous dry-run
   both hold.
@@ -36,11 +38,11 @@ combat tree → stall escape. `HazardAvoid` is not in that order.
 ## Tests
 
 ROM-free tests cover **finish**, **time**, and **damage** — not file
-layout. Spec tables (`StageSpec`, `CleanProbeSpec`, `BridgeSpec`) are
-the loop contract. Do not add tests that require a cloned CLI or PNG
-dump. Hygiene only forbids the old clone names
-(`run_stageN_segment.py`, `probe_stageN_clean.py`,
-`run_stageN_bridge.py`).
+layout. The trial result (`TrialResult`) is the loop contract; spec
+tables (`StageSpec`, `CleanProbeSpec`, `BridgeSpec`) choose entries.
+Do not add tests that require a cloned CLI or PNG dump. Hygiene only
+forbids the old clone names (`run_stageN_segment.py`,
+`probe_stageN_clean.py`, `run_stageN_bridge.py`).
 
 ## Artifacts
 

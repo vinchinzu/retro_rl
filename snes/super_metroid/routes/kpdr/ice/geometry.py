@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from super_metroid.ram import SuperMetroidState
-from super_metroid.routes.kpdr.k4_common import _LEDGE_POSES, _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _LEDGE_POSES, _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUSINESS,
     ROOM_ICE_ACID,

@@ -11,6 +11,7 @@ from zelda_i.level5.dungeon import (
 )
 from zelda_i.level5.path import (
     level5_east_key_step,
+    level5_room66_west_aisle_north_step,
     level5_west65_step,
 )
 from zelda_i.ram import (
@@ -42,6 +43,30 @@ def _ram(
     ram[ADDR_LINK_Y] = y
     ram[ADDR_KEYS] = keys
     return ram
+
+
+def test_room66_west_aisle_prefights_north_of_river() -> None:
+    """TF suffix leftover (32,141) UP; (79,165)/(152,189) still south."""
+    hole = level5_room66_west_aisle_north_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=141))
+    )
+    assert hole.reason == "66_west_aisle_up"
+    south = level5_room66_west_aisle_north_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=79, y=165))
+    )
+    assert south.reason == "66_west_aisle_up"
+    se = level5_room66_west_aisle_north_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=152, y=189))
+    )
+    assert se.reason == "66_west_aisle_up"
+    bank = level5_room66_west_aisle_north_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=101))
+    )
+    assert bank.reason == "66_west_aisle_x"
+    parked = level5_room66_west_aisle_north_step(
+        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=48, y=101))
+    )
+    assert parked.reason == "66_north_bank"
 
 
 def test_east_key_route_returns_south_from_cleared_66() -> None:

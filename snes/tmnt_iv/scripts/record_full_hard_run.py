@@ -32,31 +32,25 @@ import numpy as np
 from retro_harness.env import make_env, reset_obs
 from retro_harness.video import VideoCaptureConfig, VideoRecorder
 from retro_harness.segment_runner import configure_headless
-from tmnt_iv.assist import apply_form2_iframe_hold
-from tmnt_iv.observe import HpDelta
+from tmnt_iv.observe import living_hp
 from tmnt_iv.paths import GAME, GAME_DIR, default_full_run_paths
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import parse_game_state
-from tmnt_iv.run.freeze import FREEZE_ABORT_FRAMES as _FREEZE_ABORT_FRAMES, FreezeWatch
-from tmnt_iv.run.loop import (
-    freeze_is_armed,
-    guard_hard_route,
-    guard_lives,
-    is_gameplay_active,
-    log_progress,
-    mark_gameplay_start,
-    record_active_hp,
-    record_stage_split,
-    select_full_run_action,
-)
+from tmnt_iv.run.freeze import FREEZE_ABORT_FRAMES as _FREEZE_ABORT_FRAMES
 from tmnt_iv.run.metrics import (
     CreditsTracker,
     FINAL_CREDITS_EVENT as _FINAL_CREDITS_EVENT,
     FINAL_SCENE_SETTLE_FRAMES as _FINAL_SCENE_SETTLE_FRAMES,
-    METRIC_HOLD_FRAMES,
     RunMetrics,
 )
 from tmnt_iv.run.report import finalize_full_run
+from tmnt_iv.run.trial import (
+    TrialContract,
+    TrialEntry,
+    TrialLimits,
+    TrialObjective,
+    run_trial,
+)
 from tmnt_iv.run.video import (
     full_run_video_config,
     open_full_run_capture,
@@ -90,24 +84,71 @@ def run_full_hard(
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     policy = Stage1Policy()
-    metrics = RunMetrics()
+    overlay = RunMetrics()
     credits = CreditsTracker()
-    hp = HpDelta(count_zero=True)
-    freeze = FreezeWatch()
     capture: VideoRecorder | None = None
     succeeded = False
+    first_video = True
+    prev_overlay_hp: int | None = None
     obs, _info = reset_obs(env)
     fps = float(env.em.get_screen_rate())
     audio_rate = int(env.em.get_audio_rate())
     height, width = obs.shape[:2]
-    pending_audio: np.ndarray | None = None
-    started = False
-    previous_lives: int | None = None
-    last_stage = -1
-    split_stages: set[int] = set()
-    hard_confirmed = False
-    frame = 0
-    final_state = parse_game_state(env.get_ram(), frame=0)
+    allowed: set[str] = set()
+    if emergency_hp:
+        allowed.add("player_hp")
+    if iframe_hold:
+        allowed.add("player_iframes")
+    contract = TrialContract(
+        name="clean" if not allowed else "assisted",
+        emergency_hp=emergency_hp,
+        iframe_hold=iframe_hold,
+        fail_on_life_loss=True,
+        allow_continue=False,
+        allowed_write_keys=frozenset(allowed),
+    )
+
+    def _is_live(state: Any) -> bool:
+        menu = int(state.extras.get("menu", -1))
+        return (
+            menu == 6
+            and state.player_x > 0
+            and state.stage <= 9
+            and living_hp(state.health)
+        )
+
+    def on_frame(ctx: Any) -> None:
+        nonlocal first_video, obs, prev_overlay_hp
+        if ctx.obs is not None:
+            obs = ctx.obs
+        credits.update(ctx.state, frame=ctx.frame, metrics=overlay)
+        health = ctx.state.health
+        if living_hp(health):
+            if prev_overlay_hp is not None and health < prev_overlay_hp:
+                overlay.total_damage_taken += prev_overlay_hp - health
+                overlay.min_health_seen = (
+                    health
+                    if overlay.min_health_seen is None
+                    else min(overlay.min_health_seen, health)
+                )
+            prev_overlay_hp = health
+        overlay.health_guard_interventions = sum(
+            1 for write in getattr(ctx.env, "writes", ()) if write.get("key") == "player_hp"
+        )
+        if capture is None:
+            return
+        audio = None
+        if not first_video:
+            getter = getattr(getattr(ctx.env, "em", None), "get_audio", None)
+            if callable(getter):
+                audio = np.asarray(getter(), dtype=np.int16)
+        first_video = False
+        capture.write(
+            _render_frame(obs, frame=ctx.frame, fps=fps, metrics=overlay),
+            action=ctx.action,
+            audio=audio,
+            frame_index=ctx.frame,
+        )
 
     try:
         if not dry_run:
@@ -118,119 +159,49 @@ def run_full_hard(
                 config=capture_config,
                 audio_rate=audio_rate,
             )
-
-        for frame in range(0, max_frames + 1):
-            state = parse_game_state(env.get_ram(), frame=frame)
-            menu = int(state.extras.get("menu", -1))
-            event = int(state.extras.get("event", -1))
-            active = is_gameplay_active(state, metrics)
-            # Natural drops only; after emergency heal re-seed meter.prev.
-            state = record_active_hp(
-                env,
-                state,
-                frame=frame,
-                active=active,
-                emergency_hp=emergency_hp,
-                hp=hp,
-                metrics=metrics,
+        result = run_trial(
+            TrialEntry(
+                kind="power_on",
+                state_name="NONE",
+                is_live=_is_live,
+                entry_state_prefix=entry_state_prefix,
+            ),
+            TrialObjective(kind="credits"),
+            contract,
+            TrialLimits(max_frames=max_frames),
+            env=env,
+            policy=policy,
+            on_frame=on_frame,
+        )
+        if not result.success:
+            reason = (
+                result.failure.get("reason")
+                if result.failure
+                else result.outcome
             )
-            final_state = state
-            # Form-2 demutation bypasses HP; hold iframe=1 in the finale arena.
-            if iframe_hold and active and apply_form2_iframe_hold(
-                env, stage=state.stage, event=event
-            ):
-                metrics.final_boss_iframe_guard_frames += 1
-
-            if active and not started:
-                started = True
-                previous_lives = mark_gameplay_start(
-                    state, hp=hp, metrics=metrics
-                )
-            if started and metrics.credits_start_frame is None:
-                hard_ok, last_stage = guard_hard_route(
-                    env, state, frame=frame, menu=menu, last_stage=last_stage
-                )
-                hard_confirmed = hard_confirmed or hard_ok
-            if (
-                started
-                and previous_lives is not None
-                and metrics.credits_start_frame is None
-            ):
-                previous_lives = guard_lives(
-                    state,
-                    frame=frame,
-                    previous_lives=previous_lives,
-                    metrics=metrics,
-                )
-            if active:
-                record_stage_split(
-                    env,
-                    state,
-                    frame=frame,
-                    fps=fps,
-                    metrics=metrics,
-                    policy=policy,
-                    hp=hp,
-                    split_stages=split_stages,
-                    entry_state_prefix=entry_state_prefix,
-                )
-
-            credits.update(state, frame=frame, metrics=metrics)
-            action, reason = select_full_run_action(
-                frame=frame,
-                state=state,
-                policy=policy,
-                metrics=metrics,
-                started=started,
-            )
-            metrics.action_reasons[reason] += 1
-            if capture is not None:
-                capture.write(
-                    _render_frame(
-                        obs, frame=frame, fps=fps, metrics=metrics
-                    ),
-                    action=action,
-                    audio=pending_audio,
-                    frame_index=frame,
-                )
-
-            complete = metrics.credits_complete_frame
-            if complete is not None and frame >= complete + METRIC_HOLD_FRAMES:
-                succeeded = True
-                break
-
-            freeze.tick(
-                armed=freeze_is_armed(
-                    state, started=started, metrics=metrics
-                ),
-                state=state,
-                frame=frame,
-                reason=reason,
-                damage=metrics.total_damage_taken,
-                obs=obs,
-                env=env,
-            )
-            log_progress(
-                state, frame=frame, event=event, metrics=metrics, reason=reason
-            )
-            obs, _reward, _terminated, _truncated, _step_info = env.step(
-                action
-            )
-            pending_audio = np.asarray(env.em.get_audio(), dtype=np.int16)
-        else:
-            raise RuntimeError(f"run exceeded {max_frames} frames")
-
+            raise RuntimeError(str(reason))
+        succeeded = True
+        metrics = result.to_metrics()
+        overlay.credits_complete_frame = metrics.credits_complete_frame
+        overlay.total_damage_taken = metrics.total_damage_taken
+        overlay.min_health_seen = metrics.min_health_seen
+        overlay.health_guard_interventions = metrics.health_guard_interventions
+        final_state = parse_game_state(env.get_ram(), frame=result.total_frames)
         video_path: Path | None = None
         if capture is not None:
             video_path = capture.close()
             capture = None
+        stage_writes = sum(1 for w in result.ram_writes if w["key"] == "stage")
+        lives_writes = sum(
+            1 for w in result.ram_writes if w["key"] in {"lives", "player_lives"}
+        )
         return finalize_full_run(
             metrics=metrics,
             fps=fps,
             audio_rate=audio_rate,
             width=width,
             height=height,
-            frame=frame,
+            frame=result.total_frames,
             final_state=final_state,
             capture_config=capture_config,
             emergency_hp=emergency_hp,
@@ -240,7 +211,12 @@ def run_full_hard(
             dry_run=dry_run,
             video_path=video_path,
             report_path=report_path,
-            hard_confirmed=hard_confirmed,
+            hard_confirmed=result.hard_confirmed,
+            save_state_loads=result.state_loads_after_launch,
+            stage_writes=stage_writes,
+            lives_writes=lives_writes,
+            forbidden_a_special_uses=result.a_special_uses,
+            post_boot_start_presses=result.post_boot_start_presses,
         )
     finally:
         if capture is not None:

@@ -22,8 +22,6 @@ from retro_harness.segment_runner import (
     snapshot_state,
     write_json_report,
 )
-from tmnt_iv.assist import EMERGENCY_HP_RESTORE
-from tmnt_iv.observe import policy_input
 from tmnt_iv.paths import (
     GAME,
     GAME_DIR,
@@ -40,6 +38,14 @@ from tmnt_iv.paths import (
 )
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import parse_game_state
+from tmnt_iv.run.trial import (
+    CLEAN_CONTRACT,
+    DEV_CONTRACT,
+    TrialEntry,
+    TrialLimits,
+    TrialObjective,
+    run_trial,
+)
 
 WalkKind = Literal["right", "idle"]
 
@@ -152,14 +158,6 @@ def _walk_until_enemies(
     return obs, state
 
 
-def _maybe_heal(env: Any, state: GameState) -> GameState:
-    """Top up Leo when corridor DPS drains him (dev resume helper)."""
-    if 0 < state.health < 28 and state.health <= 0x60:
-        env.set_value("player_hp", EMERGENCY_HP_RESTORE)
-        return parse_game_state(env.get_ram(), frame=state.frame)
-    return state
-
-
 def run_stage_segment(
     spec: StageSpec,
     *,
@@ -197,10 +195,6 @@ def run_stage_segment(
     )
     shots: list[str] = []
     saved_states: list[str] = []
-    outcome = SegmentOutcome.TIMEOUT
-    obs: Any = None
-    final_state: GameState | None = None
-    start_snap: dict[str, Any] = {}
     last_cleared = 0
     boss_saved = False
     try:
@@ -210,11 +204,7 @@ def run_stage_segment(
             walked, state = _walk_until_enemies(env, state, walk=spec.walk)
             if walked is not None:
                 obs = walked
-        start_stage = state.stage
-        state = with_stage_progress(state, start_stage=start_stage)
-        tracker.begin(state)
         start_snap = snapshot_state(state)
-        final_state = state
         maybe_save_png(
             obs,
             out / f"{tag}_0000_start.png",
@@ -222,31 +212,24 @@ def run_stage_segment(
             bag=shots,
         )
 
-        for frame_i in range(1, frames + 1):
-            if heal:
-                state = _maybe_heal(env, state)
-            action, reason = policy_input(policy, state)
-            tracker.note_reason(reason)
-            obs, _reward, _term, _trunc, _info = env.step(action)
-            state = with_stage_progress(
-                parse_game_state(env.get_ram(), frame=frame_i),
-                start_stage=start_stage,
-            )
-            final_state = state
-            stop = tracker.update(state)
-
+        def on_frame(ctx: Any) -> None:
+            nonlocal last_cleared, boss_saved, obs
+            if ctx.obs is not None:
+                obs = ctx.obs
+            cur = ctx.state
+            frame_i = ctx.frame
             if (
                 spec.snapshot_boss_on_sight
                 and save_wave_states
                 and not boss_saved
-                and state.boss_active
-                and state.mode is GameMode.PLAYING
-                and state.lives > 0
-                and 40 <= state.health <= 0x60
+                and cur.boss_active
+                and cur.mode is GameMode.PLAYING
+                and cur.lives > 0
+                and 40 <= cur.health <= 0x60
             ):
-                path = save_state(env, GAME_DIR, GAME, "Boss")
+                path = save_state(ctx.env, GAME_DIR, GAME, "Boss")
                 saved_states.append(path.name)
-                before = save_state(env, GAME_DIR, GAME, "Stage1_BeforeBoss")
+                before = save_state(ctx.env, GAME_DIR, GAME, "Stage1_BeforeBoss")
                 saved_states.append(before.name)
                 boss_saved = True
                 maybe_save_png(
@@ -255,7 +238,6 @@ def run_stage_segment(
                     enabled=screenshots,
                     bag=shots,
                 )
-
             if tracker.waves_cleared > last_cleared:
                 last_cleared = tracker.waves_cleared
                 wave = tracker.waves[-1]
@@ -267,22 +249,33 @@ def run_stage_segment(
                 )
                 healthy = (
                     save_wave_states
-                    and state.mode is GameMode.PLAYING
-                    and spec.save_hp_min <= state.health <= 0x60
+                    and cur.mode is GameMode.PLAYING
+                    and spec.save_hp_min <= cur.health <= 0x60
                 )
-                if healthy and (not spec.require_lives or state.lives > 0):
-                    progress = int(state.extras.get("progress_x", state.camera_x))
+                if healthy and (not spec.require_lives or cur.lives > 0):
+                    progress = int(cur.extras.get("progress_x", cur.camera_x))
                     name = f"Stage{spec.number}_Clear_w{wave.index}_cam{progress}"
-                    path = save_state(env, GAME_DIR, GAME, name)
+                    path = save_state(ctx.env, GAME_DIR, GAME, name)
                     saved_states.append(path.name)
 
-            if stop is not None:
-                outcome = stop
-                break
+        result = run_trial(
+            TrialEntry(kind="state", state_name=chosen),
+            TrialObjective(kind="wave_chain", tracker=tracker),
+            DEV_CONTRACT if heal else CLEAN_CONTRACT,
+            TrialLimits(max_frames=frames),
+            env=env,
+            policy=policy,
+            on_frame=on_frame,
+        )
+        final_state = parse_game_state(env.get_ram(), frame=result.total_frames)
+        final_state = with_stage_progress(final_state, start_stage=state.stage)
+        if result.outcome == "cleared":
+            outcome = SegmentOutcome.SUCCESS
+        elif result.outcome in {"ko", "player_dead", "life_loss", "game_over"}:
+            outcome = SegmentOutcome.DEATH
         else:
             outcome = SegmentOutcome.TIMEOUT
 
-        assert final_state is not None
         end_tag = "end"
         if outcome is SegmentOutcome.SUCCESS and tracker.boss_reached:
             end_tag = "boss"
@@ -322,6 +315,8 @@ def run_stage_segment(
         )
         report_path = write_json_report(out / f"{tag}_segment.json", report)
         report["report_path"] = str(report_path)
+        report["emergency_hp_writes"] = result.emergency_hp_writes
+        report["ram_writes"] = result.ram_writes
         return report
     finally:
         env.close()

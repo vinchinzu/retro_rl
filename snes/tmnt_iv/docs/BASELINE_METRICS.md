@@ -4,6 +4,11 @@ Recorded from continuous power-on dry-run (low-assist).
 Source: `recordings/tmnt_iv_full_hard_dry_run.json`  
 Date: 2026-07-25 (sub-hour Raphael route).
 
+The file currently sitting at that path is **not** the published table
+below. It contains **210,082f / 5,801 damage**. The table remains the
+historical 206,718 / 4,667 snapshot; it is not rewritten as if it were
+the current file, and this is not a new official baseline.
+
 ## Headline
 
 | Metric | Value |

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from super_metroid.hop_glance import grade_final
 from super_metroid.leave_specs import WS_MAIN_GRATE_SEAT
-from super_metroid.routes.kpdr.k6.ws_main_departure import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_main_departure import (
     ALCOVE_LEFT_A_X,
     LIVING_POLICY,
     SLOPE_LEFT_A,

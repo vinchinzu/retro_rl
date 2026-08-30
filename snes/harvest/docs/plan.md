@@ -36,8 +36,32 @@ skills, not a frozen tape.
 `harvest.planner.d2_work` composes the D2 skills after the live grape and seed
 purchase. Crop targets are eight planted and watered tiles. Debris completion
 is exhaustive, ordered weeds → fences → stones → large rocks → stumps; numeric
-leftover quotas are not completion. The next proof is a natural power-on run,
-not `Y1_After_Buy_Potato` evidence.
+leftover quotas are not completion. The next rung proof is a natural power-on run,
+not `Y1_After_Buy_Potato` evidence. Farm→spa from `Y1_D2_Wood_Progress` is
+live-green; smash the remaining SE stumps from the spa-return pin.
+
+### D2 live blocker: SE stump 6-hit after spa
+
+Farm→spa from `Y1_D2_Wood_Progress` is closed. Do not fourth leftover
+`--section stumps` from that pin or a 400k `--section all`.
+
+- leftover_exec does not debris-stall during spa; `D2FarmClearTactic` skips
+  motion/goal watchdogs on spa children.
+- Live west-gate dump: `(0,24)=0xA1` is the gate wall (LEFT+B pins at x=22,
+  no map change); `(1,26)=0xA8` open face into `(0,26)=0xC0` trigger;
+  `(1,27)=0xFF`. House column x=8 is A0 y=24–25 then A8 y=26.
+- `_FARM_WEST_EXIT` is `(40,424)` `is_exit` left. Pinch `force_run` DOWN
+  the house column to `(136,424)`, then west on y=26. Not y=24 `(8,392)`
+  and not y=27 `(72,440)`.
+- `hot_spring_probe --no-drain --save-end-state Y1_D2_Wood_SpaReturn`
+  GREEN: 0x10 soak 4→100 in 3989f, returned to farm. Pin `(24,448)` tile
+  `(1,28)`, 18:12, stam 100, 5 SE stumps. Player tile is `0xFF`.
+- Leftover from that pin: red 1 idled on `stale_farm_map` (now
+  `yard_load_action` toward `(25,28)`). Red 2 reached stump `(34,42)`,
+  4 axe hits, then 24k debris stall. Do not third.
+
+Diagnose the 6-hit stall from `Y1_D2_Leftover_Checkpoint`. A successful
+SE chunk is still not a whole-farm or natural-entry D2 claim.
 
 **Already closed (do not re-open as bottleneck):**
 
@@ -77,7 +101,8 @@ Clean (`rr-zmss`). Keep the bush issue scoped to later repeat-forage days.
 - Extract coop feed/collect/ship (`rr-rbk`); cow mono extract (bead).
 - Hot-spring stamina gate in day plan (`rr-pzw`) — evening leftover insert
   wired; D2 night grape-corridor farm→spa→farm GREEN 2026-08-21
-  + full restore is wired; live pin still needs a spa soak proof.
+  + full restore is wired; Wood_Progress farm→spa soak 4→100 GREEN
+  2026-08-30 (`Y1_D2_Wood_SpaReturn`).
 - Festival/Sunday/rain ordering (`rr-1vc` / Gate C).
 - Gift delivery (carry egg to NPC); summer/fall crop rotations.
 - M4 natural-entry summer from `Y1_Summer_D1_Morning`.

@@ -70,6 +70,7 @@ __all__ = [
     "MOAT_ONLY_HOPS",
     "WS_ONLY_HOPS",
     "PHANTOON_ONLY_HOPS",
+    "GRAVITY_ONLY_HOPS",
 ]
 
 
@@ -100,6 +101,7 @@ ALPHA_PB_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("alpha_pb")
 MOAT_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("moat")
 WS_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("ws")
 PHANTOON_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("phantoon")
+GRAVITY_ONLY_HOPS: tuple[SpineHop, ...] = _hops_for_tip("gravity")
 
 _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "red_tower": RED_TOWER_HOPS,
@@ -119,6 +121,7 @@ _HOPS_BY_TIP: dict[str, tuple[SpineHop, ...]] = {
     "moat": MOAT_ONLY_HOPS,
     "ws": WS_ONLY_HOPS,
     "phantoon": PHANTOON_ONLY_HOPS,
+    "gravity": GRAVITY_ONLY_HOPS,
 }
 
 
