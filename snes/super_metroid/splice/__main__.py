@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight, cards, prepare (no emulator)."""
+"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade (no emulator)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,12 @@ ensure_import_paths(root=_ROOT)
 
 from super_metroid.human_tape.product_chain import DEFAULT_BOARD, DEFAULT_TASK  # noqa: E402
 from super_metroid.splice.cards import format_cards, generate_cards  # noqa: E402
-from super_metroid.splice.errors import PrepareError, PreflightError, SchemaError  # noqa: E402
+from super_metroid.splice.errors import (  # noqa: E402
+    GradeError,
+    PrepareError,
+    PreflightError,
+    SchemaError,
+)
 from super_metroid.splice.manifest import load_manifest, manifest_from_product_chain  # noqa: E402
 from super_metroid.splice.preflight import (  # noqa: E402
     format_preflight_summary,
@@ -35,8 +40,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m super_metroid.splice",
         description=(
             "Planning/verification over tips.play_hops. "
-            "Artifact digest preflight, read-only task cards, and fail-closed "
-            "prepare (no emulator)."
+            "Artifact digest preflight, read-only task cards, fail-closed "
+            "prepare, and grade (refuses to boot without a runner hook)."
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -102,10 +107,25 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit nonzero if the task cannot be prepared",
     )
+    grd = sub.add_parser(
+        "grade",
+        help="Replay+Join grade (refuses to boot without a runner hook)",
+    )
+    grd.add_argument("task_id")
+    grd.add_argument("candidate")
+    grd.add_argument("--manifest", type=Path, help="Route-manifest JSON (skip board adapter)")
+    grd.add_argument(
+        "--profile",
+        default="scaffold",
+        choices=INTERVENTION_PROFILES,
+        help="Planner selection profile (default: scaffold)",
+    )
     return parser
 
 
-def _print_error(exc: PreflightError | SchemaError | PrepareError, *, as_json: bool) -> None:
+def _print_error(
+    exc: PreflightError | SchemaError | PrepareError | GradeError, *, as_json: bool
+) -> None:
     if as_json:
         print(json.dumps(exc.to_dict(), indent=2))
         return
@@ -186,6 +206,17 @@ def _run_prepare(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_grade(args: argparse.Namespace) -> int:
+    # Dry planner: never boots. A runner hook is required to replay.
+    err = GradeError(
+        "grade refuses to boot without a runner hook",
+        code="grade.runner",
+        details={"task_id": args.task_id, "candidate": args.candidate},
+    )
+    _print_error(err, as_json=True)
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -195,6 +226,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_cards(args)
     if args.cmd == "prepare":
         return _run_prepare(args)
+    if args.cmd == "grade":
+        return _run_grade(args)
     parser.print_help()
     return 2
 
