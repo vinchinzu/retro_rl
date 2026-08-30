@@ -442,7 +442,23 @@ def test_first_uncovered_edge_missing_enter_pin(tmp_path: Path) -> None:
     assert edge is not None
     assert edge["room_id"] == 0x96BA
     assert "missing_enter_pin" in edge["reasons"]
+    assert edge.get("enter_pin") is None
     assert report.hops[0].enter_pin_digest == hashlib.sha256(b"ceres-pin").hexdigest()
+    climb = next(h for h in report.hops if h.room_id == 0x96BA)
+    assert climb.enter_pin is None
+    assert climb.enter_pin_digest is None
+    assert not any("enter_pin" in label for label in report.selected_missing)
+    strict_report = run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+        strict=True,
+    )
+    assert strict_report.first_uncovered_edge is not None
+    assert strict_report.first_uncovered_edge["room_id"] == 0x96BA
 
 
 def test_gravity_path_human_oracle_only(tmp_path: Path) -> None:
@@ -486,6 +502,7 @@ def test_gravity_path_human_oracle_only(tmp_path: Path) -> None:
     assert "gravity_path_human" in summary
     dumped = json.dumps(report.to_dict())
     assert "oracle_only" in dumped
+    assert not any("gravity_path_human is treated as a route tape" in f for f in report.stale_docs)
 
 
 def test_impossible_inventory_without_dump(tmp_path: Path) -> None:
@@ -536,3 +553,228 @@ def test_impossible_inventory_without_dump(tmp_path: Path) -> None:
     assert row.from_items == "0x0004"
     assert row.to_items == "0x0000"
     assert row.lost_bits == "0x0004"
+
+
+def test_unlabelled_pin_is_not_enter_pin(tmp_path: Path) -> None:
+    task, segs = _task(tmp_path)
+    pin = segs / "s1" / "anon.state"
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_bytes(b"anon")
+    _write_seg(
+        segs,
+        1,
+        power_on=True,
+        start="power_on",
+        end_room="0x96BA",
+        end_items="0x0000",
+        hops=[
+            {
+                "index": 0,
+                "start_index": 0,
+                "frame": 0,
+                "room": "0x96BA",
+                "room_id": 0x96BA,
+                "name": "The Climb",
+                "items": "0x0000",
+                "end_frame": 40,
+                "dwell": 41,
+            }
+        ],
+        anchors=[
+            {
+                "kind": "boot",
+                "frame": 0,
+                "path": str(pin),
+            }
+        ],
+    )
+    report = run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+    )
+    assert report.hops[0].enter_pin is None
+    assert report.first_uncovered_edge is not None
+    assert report.first_uncovered_edge["room_id"] == 0x96BA
+    assert not any("enter_pin" in label for label in report.selected_missing)
+
+
+def test_named_same_room_pin_missing_file_is_selected(tmp_path: Path) -> None:
+    task, segs = _task(tmp_path)
+    missing_pin = segs / "s1" / "gone.state"
+    _write_seg(
+        segs,
+        1,
+        power_on=True,
+        start="power_on",
+        end_room="0x96BA",
+        end_items="0x0000",
+        hops=[
+            {
+                "index": 0,
+                "start_index": 0,
+                "frame": 0,
+                "room": "0x96BA",
+                "room_id": 0x96BA,
+                "name": "The Climb",
+                "items": "0x0000",
+                "end_frame": 40,
+                "dwell": 41,
+            }
+        ],
+        anchors=[
+            {
+                "kind": "room_enter",
+                "frame": 0,
+                "room": "0x96BA",
+                "room_id": 0x96BA,
+                "path": str(missing_pin),
+            }
+        ],
+    )
+    report = run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+    )
+    assert any("enter_pin" in label for label in report.selected_missing)
+    with pytest.raises(PreflightError):
+        run_preflight(
+            task,
+            include_live=False,
+            policy_dir=tmp_path / "policies",
+            bank_path=tmp_path / "no-bank.json",
+            rom_path=tmp_path / "no.rom",
+            repo_root=tmp_path,
+            strict=True,
+        )
+
+
+def test_empty_hops_summary_does_not_claim_coverage(tmp_path: Path) -> None:
+    task, _segs = _task(tmp_path)
+    report = run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+    )
+    assert report.hops == ()
+    summary = format_preflight_summary(report)
+    assert "no hops inventoried" in summary
+    assert "all hops digest-resolvable" not in summary
+
+
+def test_missing_start_state_is_not_power_on(tmp_path: Path) -> None:
+    task, segs = _task(tmp_path)
+    sdir = segs / "s1"
+    sdir.mkdir(parents=True)
+    hops = [
+        {
+            "index": 0,
+            "start_index": 0,
+            "frame": 0,
+            "room": "0xDF45",
+            "room_id": CERES_ELEVATOR_ROOM,
+            "name": "Ceres Elevator",
+            "items": "0x0000",
+            "end_frame": 10,
+            "dwell": 11,
+        }
+    ]
+    (sdir / "join.json").write_text(
+        json.dumps(
+            {
+                "power_on": False,
+                "frame_count": 11,
+                "end_fingerprint": {
+                    "frame": 10,
+                    "room": "0xDF45",
+                    "items": "0x0000",
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (sdir / "tape.json").write_text(
+        json.dumps({"name": "s1", "frame_count": 11, "frames": []}) + "\n",
+        encoding="utf-8",
+    )
+    (sdir / "extract.json").write_text(
+        json.dumps({"room_hops": hops}) + "\n", encoding="utf-8"
+    )
+    (sdir / "anchors.json").write_text(
+        json.dumps({"anchors": [], "anchors_dir": str(sdir)}) + "\n",
+        encoding="utf-8",
+    )
+    report = run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+    )
+    assert report.segments
+    assert report.segments[0].state.path != "power_on"
+    assert report.segments[0].state.exists is False
+
+
+def test_write_board_paths_are_not_host_absolute(tmp_path: Path) -> None:
+    task, segs = _task(tmp_path)
+    pin = segs / "s1" / "ceres.state"
+    pin.parent.mkdir(parents=True, exist_ok=True)
+    pin.write_bytes(b"pin")
+    _write_seg(
+        segs,
+        1,
+        power_on=True,
+        start="power_on",
+        end_room="0xDF45",
+        end_items="0x0000",
+        hops=[
+            {
+                "index": 0,
+                "start_index": 0,
+                "frame": 0,
+                "room": "0xDF45",
+                "room_id": CERES_ELEVATOR_ROOM,
+                "name": "Ceres Elevator",
+                "items": "0x0000",
+                "end_frame": 10,
+                "dwell": 11,
+            }
+        ],
+        anchors=[
+            {
+                "kind": "boot",
+                "frame": 0,
+                "room": "0xDF45",
+                "room_id": CERES_ELEVATOR_ROOM,
+                "path": str(pin.resolve()),
+            }
+        ],
+    )
+    out = tmp_path / "board.json"
+    run_preflight(
+        task,
+        include_live=False,
+        policy_dir=tmp_path / "policies",
+        bank_path=tmp_path / "no-bank.json",
+        rom_path=tmp_path / "no.rom",
+        repo_root=tmp_path,
+        write=True,
+        out=out,
+    )
+    written = json.loads(out.read_text(encoding="utf-8"))
+    hop = written["hops"][0]
+    assert not str(hop["tape"]).startswith("/")
+    assert not str(hop["anchor_path"]).startswith("/")
