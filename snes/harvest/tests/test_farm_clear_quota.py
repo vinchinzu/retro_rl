@@ -239,6 +239,30 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertIn("quota_met", reason)
         self.assertIn("no-op", reason)
 
+    def test_capped_empty_stump_chunk_is_loaded_map_noop(self) -> None:
+        ram = _make_farm_ram(player_tile=(40, 40), tool=int(Tool.AXE))
+        _place_stump(ram, 4, 20)
+        world = _world(ram)
+        se = (32, 32, 63, 63)
+        task = _quota_task(
+            quota={"stumps": 10000},
+            farm_bounds=se,
+            priority=[DebrisType.STUMP],
+        )
+        task.reset(world)
+        self.assertEqual(task.clearer.quota_start_counts.stumps, 0)
+        self.assertEqual(task.clearer.cleared_count, 0)
+        self.assertTrue(farm_map_loaded(ram))
+        self.assertTrue(
+            quota_satisfied(ram, task.quota, clearer=task.clearer, bounds=se)
+        )
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        reason = result.reason or ""
+        self.assertIn("quota_met", reason)
+        self.assertIn("no-op", reason)
+        self.assertEqual(count_debris(ram).stumps, 1)
+
     def test_capped_empty_quota_rejected_when_farm_unloaded(self) -> None:
         ram = _make_farm_ram(player_tile=(40, 40), tool=int(Tool.HAMMER))
         _place_large_rock(ram, 12, 12)

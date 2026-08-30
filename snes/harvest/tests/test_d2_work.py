@@ -209,6 +209,37 @@ class D2LeftoverOrderTests(unittest.TestCase):
                 remaining_phases=("CLEAR_STUMPS",),
             )
         )
+        self.assertFalse(
+            needs_spa_before_next_smash(
+                "CLEAR_STUMPS",
+                low,
+                include_spa=True,
+                remaining_phases=(),
+            )
+        )
+        from harvest.planner.d2_work import leftover_chain_decision
+        from retro_harness import TaskStatus
+
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_STUMPS",
+                TaskStatus.SUCCESS,
+                "quota met",
+                low,
+                (),
+            ),
+            "continue",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_STUMPS",
+                TaskStatus.SUCCESS,
+                "quota met",
+                low,
+                ("CLEAR_STUMPS",),
+            ),
+            "insert_spa",
+        )
 
 
 class D2PostShopComposeTests(unittest.TestCase):
@@ -574,6 +605,20 @@ def _place_large_rock(ram, tx, ty, *, damage=False):
         _set_tile(ram, tx + dx, ty + dy, tid)
 
 
+def _place_stump(ram, tx, ty):
+    for (dx, dy), tid in zip(((0, 0), (1, 0), (0, 1), (1, 1)), (0x09, 0x0A, 0x0B, 0x0C)):
+        _set_tile(ram, tx + dx, ty + dy, tid)
+
+
+def _clear_2x2(ram, tx, ty):
+    for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+        _set_tile(ram, tx + dx, ty + dy, 0xA1)
+
+
+# Wood_Progress leftover: 5 stumps, last live chunks (ne empty).
+_LAST_STUMPS = ((4, 20), (12, 8), (20, 24), (8, 48), (52, 44))
+
+
 def _plant_eight_wet(ram):
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_geometry import plot_tiles
@@ -675,6 +720,23 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         self.assertFalse(confirm_d2_complete(None, done))
         self.assertFalse(confirm_d2_complete(observe_d2_farm(weed, _SHIP_OK), done))
 
+        last = _farm_ram(hour=18)
+        _plant_eight_wet(last)
+        last[field_spec("shipping_money_raw").address] = 1
+        _place_stump(last, 52, 44)
+        leftover = observe_d2_farm(last)
+        self.assertTrue(leftover.shipped_before_17)
+        self.assertEqual(leftover.stumps, 1)
+        self.assertEqual(leftover.stumps_by_chunk, (0, 0, 0, 1))
+        self.assertFalse(leftover.is_complete)
+
+        for tx, ty in _LAST_STUMPS:
+            _place_stump(last, tx, ty)
+        five = observe_d2_farm(last)
+        self.assertEqual(five.stumps, 5)
+        self.assertEqual(five.stumps_by_chunk, (3, 0, 1, 1))
+        self.assertFalse(five.is_complete)
+
 
 class D2NextSpecTests(unittest.TestCase):
     def test_empty_rock_chunk_is_omitted(self) -> None:
@@ -718,6 +780,67 @@ class D2NextSpecTests(unittest.TestCase):
         self.assertEqual(spec.phase, "ENSURE_HAMMER")
         spec = next_d2_spec(full_status, section="rocks", last_phase="ENSURE_HAMMER")
         self.assertEqual(spec.phase, "CLEAR_ROCKS")
+
+    def test_empty_stump_chunk_is_omitted(self) -> None:
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        ram = _farm_ram()
+        _place_stump(ram, 52, 44)
+        status = observe_d2_farm(ram)
+        spec = next_d2_spec(status, section="stumps", last_phase="ENSURE_AXE")
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.phase, "CLEAR_STUMPS")
+        self.assertEqual(spec.params["chunk"], "se")
+
+        empty_se = _farm_ram()
+        _place_stump(empty_se, 4, 20)
+        empty_status = observe_d2_farm(empty_se)
+        skipped = next_d2_spec(
+            empty_status, section="stumps", chunk="se", last_phase="ENSURE_AXE"
+        )
+        self.assertIsNone(skipped)
+        nw = next_d2_spec(
+            empty_status, section="stumps", chunk="nw", last_phase="ENSURE_AXE"
+        )
+        self.assertEqual(nw.phase, "CLEAR_STUMPS")
+        self.assertEqual(nw.params["chunk"], "nw")
+
+    def test_five_remaining_stumps_select_only_live_chunks(self) -> None:
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        for tx, ty in _LAST_STUMPS:
+            _place_stump(ram, tx, ty)
+        status = observe_d2_farm(ram, _SHIP_OK)
+        self.assertFalse(status.is_complete)
+        self.assertEqual(status.stumps_by_chunk, (3, 0, 1, 1))
+
+        first = next_d2_spec(status, last_phase="ENSURE_AXE")
+        self.assertEqual(first.phase, "CLEAR_STUMPS")
+        self.assertEqual(first.params["chunk"], "nw")
+        skipped_ne = next_d2_spec(
+            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw",)
+        )
+        self.assertEqual(skipped_ne.phase, "CLEAR_STUMPS")
+        self.assertEqual(skipped_ne.params["chunk"], "sw")
+        last = next_d2_spec(
+            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw", "sw")
+        )
+        self.assertEqual(last.phase, "CLEAR_STUMPS")
+        self.assertEqual(last.params["chunk"], "se")
+        none = next_d2_spec(
+            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw", "sw", "se")
+        )
+        self.assertIsNone(none)
+        se_only = next_d2_spec(
+            status, section="stumps", chunk="se", last_phase="ENSURE_AXE"
+        )
+        self.assertEqual(se_only.params["chunk"], "se")
+        ne_only = next_d2_spec(
+            status, section="stumps", chunk="ne", last_phase="ENSURE_AXE"
+        )
+        self.assertIsNone(ne_only)
 
 
 class D2FarmClearTacticTests(unittest.TestCase):
@@ -789,6 +912,185 @@ class D2FarmClearTacticTests(unittest.TestCase):
             ),
             "spa_retry",
         )
+
+    def test_skips_empty_stump_chunks_and_clears_last_live(self) -> None:
+        from unittest.mock import patch
+
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram()
+        _place_stump(ram, 52, 44)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        seen = []
+
+        class Instant:
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, _world):
+                return TaskResult(status=TaskStatus.SUCCESS, reason="ok")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append((spec.phase, (spec.params or {}).get("chunk")))
+            if spec.phase == "CLEAR_STUMPS" and spec.params.get("chunk") != "se":
+                return None
+            return Instant()
+
+        tactic = D2FarmClearTactic(section="stumps", chunk="all", include_spa=False)
+        tactic.reset(world)
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(16):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+        self.assertNotIn(("CLEAR_STUMPS", "nw"), seen)
+        self.assertNotIn(("CLEAR_STUMPS", "ne"), seen)
+        self.assertNotIn(("CLEAR_STUMPS", "sw"), seen)
+        self.assertIn(("CLEAR_STUMPS", "se"), seen)
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+
+    def test_last_stump_success_settles_complete_without_spa(self) -> None:
+        from unittest.mock import patch
+
+        from harvest.core.ram_catalog import field_spec
+        from harvest.core.tile_catalog import ADDR_STAMINA
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram(stamina=100)
+        _plant_eight_wet(ram)
+        ram[field_spec("shipping_money_raw").address] = 1
+        _place_stump(ram, 52, 44)
+        seen = []
+
+        class Instant:
+            def __init__(self, spec) -> None:
+                self.spec = spec
+
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, world):
+                if self.spec.phase == "CLEAR_STUMPS":
+                    _clear_2x2(world.ram, 52, 44)
+                    world.ram[ADDR_STAMINA] = 8
+                return TaskResult(status=TaskStatus.SUCCESS, reason="quota met")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append((spec.phase, (spec.params or {}).get("chunk")))
+            return Instant(spec)
+
+        tactic = D2FarmClearTactic(
+            section="all", chunk="all", include_spa=True, evidence=_SHIP_OK
+        )
+        tactic.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        result = None
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(20):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+        self.assertEqual([phase for phase, _chunk in seen], ["ENSURE_AXE", "CLEAR_STUMPS"])
+        self.assertEqual(seen[-1], ("CLEAR_STUMPS", "se"))
+        self.assertNotIn("HOT_SPRING_STAMINA", [phase for phase, _ in seen])
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertTrue(tactic.farm_status.is_complete)
+        self.assertEqual(tactic.farm_status.stumps, 0)
+
+    def test_se_stump_chunk_success_is_not_whole_farm_complete(self) -> None:
+        from unittest.mock import patch
+
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        for tx, ty in _LAST_STUMPS:
+            _place_stump(ram, tx, ty)
+        seen = []
+
+        class Instant:
+            def __init__(self, spec) -> None:
+                self.spec = spec
+
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, world):
+                if self.spec.phase == "CLEAR_STUMPS":
+                    _clear_2x2(world.ram, 52, 44)
+                return TaskResult(status=TaskStatus.SUCCESS, reason="quota met")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append((spec.phase, (spec.params or {}).get("chunk")))
+            return Instant(spec)
+
+        tactic = D2FarmClearTactic(section="stumps", chunk="se", include_spa=False)
+        tactic.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        result = None
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(16):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn(("CLEAR_STUMPS", "se"), seen)
+        self.assertNotIn(("CLEAR_STUMPS", "nw"), seen)
+        farm = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(farm.stumps, 4)
+        self.assertFalse(farm.is_complete)
+
+    def test_mid_stump_chunks_still_spa_when_more_remain(self) -> None:
+        from unittest.mock import patch
+
+        from harvest.core.tile_catalog import ADDR_STAMINA
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram(stamina=100)
+        _place_stump(ram, 4, 20)
+        _place_stump(ram, 52, 44)
+        seen = []
+
+        class Instant:
+            def __init__(self, spec) -> None:
+                self.spec = spec
+
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, world):
+                if self.spec.phase == "CLEAR_STUMPS" and self.spec.params.get("chunk") == "nw":
+                    _clear_2x2(world.ram, 4, 20)
+                    world.ram[ADDR_STAMINA] = 8
+                return TaskResult(status=TaskStatus.SUCCESS, reason="quota met")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append((spec.phase, (spec.params or {}).get("chunk")))
+            return Instant(spec)
+
+        tactic = D2FarmClearTactic(section="stumps", chunk="all", include_spa=True)
+        tactic.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(12):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+                if ("HOT_SPRING_STAMINA", None) in seen:
+                    break
+        self.assertIn(("CLEAR_STUMPS", "nw"), seen)
+        self.assertIn(("HOT_SPRING_STAMINA", None), seen)
+        self.assertNotIn(("CLEAR_STUMPS", "se"), seen)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
 
 
 class D2RunnerFlagTests(unittest.TestCase):
