@@ -8,6 +8,7 @@ from zelda_i.level6.occupancy import (
     l6_play_dest_success,
     occupancy_new_miss,
 )
+from zelda_i.level6.path import Level6North68Controller
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOMBS,
@@ -43,6 +44,54 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_ARROWS] = fields.get("arrows", 0)
     ram[ADDR_COLLIDING_TILE] = fields.get("tile", 118)
     return ram
+
+
+def test_north68_peels_south_from_0x78_statue_pocket() -> None:
+    """West-clear leftover (104,149): DOWN to y=189, RIGHT to x=144, then UP."""
+    ctl = Level6North68Controller()
+    snap = read_snapshot(_ram(screen=0x78, x=104, y=149))
+    reasons = [ctl.step(snap).reason for _ in range(8)]
+    assert reasons[0] == "peel_south_statue"
+    mid = Level6North68Controller()
+    v2 = read_snapshot(_ram(screen=0x78, x=104, y=158))
+    assert mid.step(v2).reason == "peel_south_statue"
+    # v3 leftover: CLIP_CLEAR_Y is not far enough; keep DOWN past the statue.
+    south = Level6North68Controller()
+    cleared = read_snapshot(_ram(screen=0x78, x=104, y=173))
+    assert south.step(cleared).reason == "peel_south_statue"
+    boxed = Level6North68Controller()
+    boxed.walker.last_dir = None
+    for x in range(40, 217):
+        for y in range(77, 174):
+            boxed.walker.grid.blocked.add((x, y))
+    boxed_snap = read_snapshot(_ram(screen=0x78, x=104, y=173))
+    assert boxed.step(boxed_snap).reason == "peel_south_statue"
+    mouth = Level6North68Controller()
+    at_mouth = read_snapshot(_ram(screen=0x78, x=104, y=189))
+    assert mouth.step(at_mouth).reason == "peel_east_door"
+    almost = Level6North68Controller()
+    at_119 = read_snapshot(_ram(screen=0x78, x=119, y=189))
+    assert almost.step(at_119).reason == "peel_east_door"
+    # v4 leftover: do not occupancy-UP the door column. RIGHT to x=144.
+    aligned = Level6North68Controller()
+    at_door = read_snapshot(_ram(screen=0x78, x=120, y=189))
+    assert aligned.step(at_door).reason == "peel_east_aisle"
+    mid_col = Level6North68Controller()
+    at_mid = read_snapshot(_ram(screen=0x78, x=120, y=149))
+    assert mid_col.step(at_mid).reason == "peel_east_aisle"
+    almost_aisle = Level6North68Controller()
+    at_143 = read_snapshot(_ram(screen=0x78, x=143, y=149))
+    assert almost_aisle.step(at_143).reason == "peel_east_aisle"
+    east = Level6North68Controller()
+    hist = read_snapshot(_ram(screen=0x78, x=144, y=141))
+    first = east.step(hist)
+    assert first.reason == "north_path"
+    assert first.reason not in (
+        "peel_south_statue",
+        "peel_east_door",
+        "peel_east_aisle",
+        "north_stand",
+    )
 
 
 def test_l6_play_dest_success() -> None:

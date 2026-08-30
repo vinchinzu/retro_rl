@@ -10,17 +10,72 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — L5 entry recovered (2026-08-30)
+## Immediate — L6 compass recovered (2026-08-30)
 
-`--through level5-entry` is **1/1** (`l5_entry_recompose`, play `0x76`
-`(120,205)`, TF=`0x0F`, keys=4). L4 leftover mode 18 room `0x03`
-`(120,149)` settled 283f onto island `0x45`, then `POST_L4_TO_LEVEL5_HOPS`
-(not old At4A) 5,282f. Do not retouch 0x40, maze-west, or L5 entry.
-Next: `--through level5-clear66` from this leftover. Living residual:
-`docs/tasks/rr-tne2-residual.md`. Do not STATUS-promote.
+Power-on Survival `--through level6-compass` is **1/1** (`l6_compass_recompose`,
+169,403f, play `0x68` `(120,205)`, TF=`0x1F`, keys=4, hop 315f). West-pocket
+peel DOWN to y=189, RIGHT to historical x=144, occupancy UP (21 miss-blocks
+on x=144). Do not retouch 0x40, maze-west, L5, or the 0x78 peel. Next:
+recompose the L6 body from this leftover — `--through level6-clear68`. Living
+residual: `docs/tasks/rr-tne2-residual.md`. Do not STATUS-promote.
 
-Keys still 4 vs historical 5. Deficit already at L4 `0x40`
-(`keys_before` 4 vs 5). Do not hide it with a key top-up.
+Keys still 4 vs historical 5. Do not hide it with a key top-up.
+
+### L6 blocker plan
+
+Work only from the recovered power-on prefix. The historical compass green
+started from cleared `0x78` `(144,141)` and is geometry evidence, not the
+current predecessor. Run one hypothesis at a time, stop at the first red, and
+inspect the final PNG plus coordinate/reason samples before changing policy.
+
+1. **Recover `0x78` north from the west statue pocket.** **Done** —
+   `l6_compass_recompose` 1/1 play `0x68` `(120,205)` hop 315f. Preserve
+   v1–v4 failed beliefs in the residual. Do not retouch the 0x78 peel. Do
+   not retry x=120 UP.
+2. **Recompose the existing L6 body from the new predecessor.** After the
+   compass gate is green, advance successive power-on `--through` boundaries
+   through `level6-clear3a`; do not assume the historical `(144,141)` prefix
+   or retune a later room from a checkpoint. Preserve the actual key count at
+   every boundary and stop at the first insufficient spend rather than adding
+   a key top-up.
+3. **Make every dedicated post-`0x3A` target cumulative.** In
+   `level6/spine_suffix.py`, each dedicated target must start from the real
+   non-dedicated predecessor, `level6-clear3a`. Compose these exact prefixes:
+
+   | through | required stages after `clear3A` |
+   |---------|----------------------------------|
+   | `level6-stairs3a-warp` | stairs-position assist / warp |
+   | `level6-cellar08` | warp → cellar `0x08` crossing |
+   | `level6-south1d` | warp → cellar → south `0x1D` |
+   | `level6-west2d` | warp → cellar → south `0x1D` → west `0x2D` |
+   | `level6-north2c` | warp → cellar → south `0x1D` → west `0x2D` → north `0x2C` |
+   | `level6-gohma` | the full prefix above → wooden-arrow assist → Gohma |
+
+   The authorized `(208,93)` position pair occurs exactly once in `0x3A`;
+   the cellar exits from its right ladder. The arrow assist occurs exactly
+   once in play `0x1C`, requires the naturally earned Bow, and grants only
+   wooden arrows plus B-slot selection. Merge both assists into the whole-run
+   audit instead of relying only on nested controller reports.
+4. **Add the natural L6 finish.** Gohma body-gone in `0x1C` is not a dungeon
+   endpoint. Continue with a dedicated post-boss controller that observes and
+   collects the natural heart container, walks north into `0x0C`, and collects
+   the shard without writing room, door, item, or Triforce state. Expose a
+   canonical `--through level6` stop whose success requires the `0x20`
+   Triforce bit (and the prior `0x1F` bits), the natural heart-container
+   increase, and the expected fanfare/room endpoint.
+5. **Make the continuous-session claim measurable.** The spine currently
+   hardcodes `mid_run_state_load=false` even though the Level 4 boss fallback
+   can call `env.em.set_state()`. Instrument the emulator boundary with a real
+   post-boot state-load counter, report the count, and fail the spine when it
+   is nonzero. In continuous mode, make the Level 4 fallback fail closed
+   instead of restoring trial states. No L6 green or final endpoint is
+   promotable until the measured count is zero.
+6. **Close only on a fresh power-on endpoint.** Final evidence is one
+   continuous Survival session through `level6`: no state load, deaths 0,
+   progression/capacity writes 0, exactly one disclosed position assist,
+   exactly one disclosed wooden-arrow assist, natural heart and TF `0x20`,
+   and no key top-up. Keep `rr-tne2` open and do not STATUS-promote before
+   that endpoint.
 
 ## Next pass — Survival spine from power-on (2026-08-15)
 
