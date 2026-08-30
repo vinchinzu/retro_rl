@@ -56,6 +56,8 @@ NORTH_DOOR_X = 120
 NORTH_DOOR_Y = 93
 NORTH_BAND_Y = 109
 NORTH_DOOR_X_TOL = 4
+# Historical west-clear leftover. Center x=120 UP is the middle statue row.
+HISTORICAL_AISLE_X = 144
 NORTH_68_MAX_FRAMES = 4000
 # West mouth x=32 boxes cardinals; clip inland before the push stand.
 WEST_CLIP_X = 48
@@ -190,6 +192,35 @@ class Level6North68Controller:
                 )
             return self._emit(snap, FrameAction(nes_action("UP"), "north_push"))
 
+        # 0x78 leftover (104,149): occupancy UP misses the west statue.
+        # v1 stood (104,149). v2 (104,158) still between the west pair.
+        # v3 CLIP_CLEAR_Y=173 then replan stood (104,173), 56 misses.
+        # v4: DOWN to y=189, RIGHT to x=120, occupancy UP leftover
+        # (120,149) — center-column UP is the middle statue row.
+        # v5: from x>=120, RIGHT to historical x=144, then occupancy UP.
+        # Do not re-probe boxed cells mid-peel. Do not retry x=120 UP.
+        if (
+            snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
+            and snap.link_x < HISTORICAL_AISLE_X
+            and snap.link_y >= 141
+        ):
+            self.peeled = True
+            self.walker.last_dir = None
+            if snap.link_x < NORTH_DOOR_X and snap.link_y < SOUTH_MOUTH_Y:
+                if self.frames <= 8 or self.frames % 60 == 0:
+                    self.notes.append(f"peel_south_{xy[0]}_{xy[1]}")
+                return self._emit(
+                    snap, FrameAction(nes_action("DOWN"), "peel_south_statue")
+                )
+            reason = (
+                "peel_east_aisle"
+                if snap.link_x >= NORTH_DOOR_X
+                else "peel_east_door"
+            )
+            if self.frames <= 8 or self.frames % 60 == 0:
+                self.notes.append(f"{reason}_{xy[0]}_{xy[1]}")
+            return self._emit(snap, FrameAction(nes_action("RIGHT"), reason))
+
         if not self.use_occupancy:
             if self.clip_left_up and snap.link_y > CLIP_CLEAR_Y:
                 if self.frames <= 8 or self.frames % 60 == 0:
@@ -249,10 +280,14 @@ class Level6North68Controller:
                 if not self.use_occupancy and self.aisle_x is not None
                 else "hold UP @ x≈120"
                 if not self.use_occupancy
-                else "occupancy BFS + UP @ x≈120 on north band"
+                else (
+                    f"0x78 west-pocket DOWN to y={SOUTH_MOUTH_Y} "
+                    f"RIGHT to x={HISTORICAL_AISLE_X} then occupancy UP"
+                )
             ),
             "aisle_x": self.aisle_x,
             "clip_left_up": self.clip_left_up,
+            "peeled": self.peeled,
             "spec_id": self.spec_id,
             "source_room": self.source_room,
             "dest_room": self.dest_room,
