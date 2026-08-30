@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from super_metroid.splice.assemble import Assembly, assemble, project_hop
 from super_metroid.splice.cards import assembly_table, generate_cards
+from super_metroid.splice.credits import (
+    CreditsPlan,
+    CreditsReport,
+    assemble_credits,
+    credits_chain,
+)
 from super_metroid.splice.errors import (
     AssembleError,
     GradeError,
@@ -64,6 +70,8 @@ __all__ = [
     "CandidateArtifact",
     "CandidateOffer",
     "CorePreflight",
+    "CreditsPlan",
+    "CreditsReport",
     "EntryFingerprint",
     "FORBIDDEN_HOT_FILES",
     "GradeError",
@@ -92,8 +100,10 @@ __all__ = [
     "TaskCard",
     "assemble",
     "assemble_attic_to_gravity",
+    "assemble_credits",
     "assembly_table",
     "attic_to_gravity_range",
+    "credits_chain",
     "file_digest",
     "format_preflight_summary",
     "generate_cards",
