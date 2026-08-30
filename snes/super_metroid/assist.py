@@ -11,6 +11,7 @@ from super_metroid.combat.enemies.scan import ENEMY_BASE, ENEMY_STRIDE, enemies_
 from super_metroid.combat.enemies.species import ATOMIC_ID
 from super_metroid.ram import (
     GameplayPhase,
+    SNES_WRAM_BANK,
     SuperMetroidState,
     parse_env_state,
     write_wram_u16,
@@ -156,8 +157,7 @@ class UnlimitedAmmoAssist:
                 counter.top_ups += 1
 
 
-# Attic (Wrecked Ship) gray-door kill-all is the first ordinary-enemy pilot.
-# Live species is not ROM-verified here; unknown ids in this room fail closed.
+# Live Attic species is not ROM-verified here; unknown ids fail closed.
 ATTIC_ROOM_ID = 0xCA52
 ATTIC_PILOT_ENEMY_ID = ATOMIC_ID
 _CLAMP_HP = 1
@@ -167,7 +167,7 @@ _OFF_ENEMY_PHASE = 0x30  # AI var 0
 
 
 def attic_ordinary_enemy_allowlist() -> tuple[ScaffoldAllowlistEntry, ...]:
-    """Development-only Attic pilot. Placeholder species; fail closed if unseen."""
+    """Attic 0xCA52 placeholder species; unknown live ids fail closed."""
     return (
         ScaffoldAllowlistEntry(
             room_id=ATTIC_ROOM_ID,
@@ -176,8 +176,44 @@ def attic_ordinary_enemy_allowlist() -> tuple[ScaffoldAllowlistEntry, ...]:
     )
 
 
+def _memory_from(source: object) -> Any | None:
+    mem = getattr(source, "memory", None)
+    if mem is not None:
+        return mem
+    data = getattr(source, "data", None)
+    if data is not None:
+        return getattr(data, "memory", None)
+    return None
+
+
+def _ram_from_blocks(blocks: Any) -> Any | None:
+    if blocks is None:
+        return None
+    for key in (0, SNES_WRAM_BANK):
+        try:
+            block = blocks[key]
+        except Exception:  # noqa: BLE001
+            continue
+        if block is None:
+            continue
+        try:
+            _ = block[ENEMY_BASE]
+        except Exception:  # noqa: BLE001
+            continue
+        return block
+    values = getattr(blocks, "values", None)
+    if callable(values):
+        for block in values():
+            try:
+                _ = block[ENEMY_BASE]
+            except Exception:  # noqa: BLE001
+                continue
+            return block
+    return None
+
+
 def _resolve_ram(source: object) -> Any | None:
-    """env.get_ram(), a ``.ram`` buffer, or an indexable WRAM snapshot."""
+    # Production apply(env.data, state) exposes memory.blocks, not get_ram().
     get_ram = getattr(source, "get_ram", None)
     if callable(get_ram):
         try:
@@ -187,6 +223,9 @@ def _resolve_ram(source: object) -> Any | None:
         if ram is not None:
             return ram
     ram = getattr(source, "ram", None)
+    if ram is not None:
+        return ram
+    ram = _ram_from_blocks(getattr(_memory_from(source), "blocks", None))
     if ram is not None:
         return ram
     try:
@@ -206,20 +245,31 @@ def _slot_u16(ram: Any, slot: int, offset: int) -> int | None:
 
 def _write_slot_hp(source: object, ram: Any, slot: int, hp: int) -> bool:
     addr = ENEMY_BASE + slot * ENEMY_STRIDE + _OFF_ENEMY_HP
-    data = getattr(source, "data", source)
-    assign = getattr(getattr(data, "memory", None), "assign", None)
+    wrote = False
+    mem = _memory_from(source)
+    assign = getattr(mem, "assign", None)
     if callable(assign):
         try:
-            write_wram_u16(source, addr, hp)
-            return True
+            assign(addr, "<u2", hp & 0xFFFF)
+            wrote = True
         except Exception:  # noqa: BLE001
             pass
-    try:
-        ram[addr] = hp & 0xFF
-        ram[addr + 1] = (hp >> 8) & 0xFF
-        return True
-    except Exception:  # noqa: BLE001
-        return False
+    if not wrote:
+        data = getattr(source, "data", None)
+        if data is not None:
+            try:
+                write_wram_u16(source, addr, hp)
+                wrote = True
+            except Exception:  # noqa: BLE001
+                pass
+    if ram is not None:
+        try:
+            ram[addr] = hp & 0xFF
+            ram[addr + 1] = (hp >> 8) & 0xFF
+            wrote = True
+        except Exception:  # noqa: BLE001
+            pass
+    return wrote
 
 
 def _index_allowlist(
@@ -279,10 +329,11 @@ class ScaffoldHpClamp:
         return None
 
     def _forget_absent(self, room_id: int, live: set[tuple[int, int]]) -> None:
+        room = int(room_id)
         stale = [
             key
             for key in self._clamped
-            if key[0] == int(room_id) and (key[1], key[2]) not in live
+            if key[0] != room or (key[1], key[2]) not in live
         ]
         for key in stale:
             self._clamped.discard(key)
@@ -291,6 +342,9 @@ class ScaffoldHpClamp:
         if not self.enabled:
             return
         if state.phase is not GameplayPhase.ORDINARY_GAMEPLAY:
+            room = int(state.room_id)
+            for key in [k for k in self._clamped if k[0] != room]:
+                self._clamped.discard(key)
             self.telemetry.suspended_phase_frames[f"hp_clamp:{state.phase.value}"] += 1
             return
         ram = _resolve_ram(source)
@@ -402,9 +456,15 @@ class UnlimitedResourcesAssist(UnlimitedAmmoAssist):
 
     def report(self) -> dict[str, object]:
         scaffold = bool(self.hp_clamp.enabled)
+        if scaffold:
+            reported: AssistProfile = "scaffold"
+        elif self.unlimited_energy or self.enabled:
+            reported = "survival"
+        else:
+            reported = "clean"
         return {
             "enabled": self.enabled or self.unlimited_energy or scaffold,
-            "profile": "scaffold" if scaffold else self.profile,
+            "profile": reported,
             "development_only": scaffold,
             "unlimited_energy_enabled": self.unlimited_energy,
             "unlimited_ammo_enabled": self.enabled,

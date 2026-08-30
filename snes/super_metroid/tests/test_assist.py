@@ -13,7 +13,7 @@ from super_metroid.assist import (
     attic_ordinary_enemy_allowlist,
 )
 from super_metroid.combat.enemies.scan import ENEMY_BASE, ENEMY_STRIDE
-from super_metroid.ram import GameplayPhase, parse_state
+from super_metroid.ram import SNES_WRAM_BANK, GameplayPhase, parse_state
 
 # Synthetic ordinary-enemy id for RAM-buffer tests. Not a live Attic header.
 _SYNTHETIC_ENEMY_ID = 0xBEEF
@@ -32,6 +32,35 @@ class FakeData:
 
     def get_ram(self):
         return self.ram
+
+
+class _RetroMemory:
+    """env.data.memory stand-in: assign + blocks, no get_ram."""
+
+    def __init__(self, ram: np.ndarray) -> None:
+        self._ram = ram
+        self.blocks = {SNES_WRAM_BANK: ram}
+        self.assigns: list[tuple[int, str, int]] = []
+
+    def assign(self, addr: int, dtype: str, value: int) -> None:
+        self.assigns.append((int(addr), str(dtype), int(value)))
+        addr = int(addr)
+        if dtype == "<u2":
+            self._ram[addr] = int(value) & 0xFF
+            self._ram[addr + 1] = (int(value) >> 8) & 0xFF
+        else:
+            self._ram[addr] = int(value) & 0xFF
+
+
+class RetroData:
+    """Looks like live env.data: set_value + memory.assign, no get_ram / .ram."""
+
+    def __init__(self, ram: np.ndarray) -> None:
+        self.writes: list[tuple[str, int]] = []
+        self.memory = _RetroMemory(ram)
+
+    def set_value(self, key: str, value: int) -> None:
+        self.writes.append((key, value))
 
 
 def _u16(ram: np.ndarray, addr: int, value: int) -> None:
@@ -663,3 +692,58 @@ def test_attach_env_runs_survival_refill_and_clamp() -> None:
     assert _slot_hp(ram, 0) == 1
     assert len(assist.telemetry.hp_clamp_writes) == 1
     assert assist.telemetry.progression_writes == 0
+
+
+def test_apply_env_data_without_get_ram_clamps_via_memory_assign() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    data = RetroData(ram)
+    assist = UnlimitedResourcesAssist(scaffold_allowlist=(_attic(),))
+    assist.apply(data, _ordinary_attic(health=40, max_health=99))
+
+    assert _slot_hp(ram, 0) == 1
+    assert data.memory.assigns == [
+        (ENEMY_BASE + _OFF_HP, "<u2", 1),
+    ]
+    assert ("enemy0_hp", 1) not in data.writes
+    assert len(assist.telemetry.hp_clamp_writes) == 1
+    assert assist.telemetry.energy.writes == 1
+
+
+def test_clamp_reclamps_after_leaving_and_reentering_room() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    assist.apply(data, _ordinary_attic(frame=1))
+    assert _slot_hp(ram, 0) == 1
+    assert len(assist.telemetry.hp_clamp_writes) == 1
+
+    other = replace(
+        _state(),
+        frame=2,
+        phase=GameplayPhase.ORDINARY_GAMEPLAY,
+        room_id=0x93FE,
+    )
+    assist.apply(data, other)
+
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist.apply(data, _ordinary_attic(frame=3))
+    assert _slot_hp(ram, 0) == 1
+    assert len(assist.telemetry.hp_clamp_writes) == 2
+    assert [row.old for row in assist.telemetry.hp_clamp_writes] == [250, 250]
+
+
+def test_report_profile_follows_actual_writes_not_constructor() -> None:
+    mixed = UnlimitedResourcesAssist(profile="clean")
+    assert mixed.unlimited_energy is True
+    assert mixed.enabled is True
+    assert mixed.hp_clamp.enabled is False
+    assert mixed.report()["profile"] == "survival"
+
+    clean = UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)
+    assert clean.report()["profile"] == "clean"
+    assert clean.report()["development_only"] is False
+
+    scaffold = UnlimitedResourcesAssist(scaffold_allowlist=(_attic(),))
+    assert scaffold.report()["profile"] == "scaffold"
+    assert scaffold.report()["development_only"] is True
