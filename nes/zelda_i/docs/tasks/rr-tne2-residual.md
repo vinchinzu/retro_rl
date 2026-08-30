@@ -1,51 +1,86 @@
 # Residual — rr-tne2 L6 Survival handoff
 
-**Status:** L5 entry recovered from leftover L4 TF (`--through level5-entry`
-1/1, play `0x76` `(120,205)`, TF `0x0F`). Bead `rr-tne2` stays open. Do not
-STATUS-promote or claim Level 5 / Level 6 complete.
+**Status:** Recovered power-on tip is L6 compass `0x68`. `--through
+level6-compass` 1/1. Next is Zol clear / compass bit (`level6-clear68`).
+Bead `rr-tne2` stays open. Do not STATUS-promote.
 
-## Recovered — L5 entry from L4 leftover
+## Recovered — power-on through L5 TF, L6 west, and compass enter
 
-`--through level5-entry` from mode 18 room `0x03` `(120,149)`. Existing
-`PostL4TriforceSettleController` + `POST_L4_TO_LEVEL5_HOPS` (not old At4A).
-Did not retouch maze-west or 0x40. Did not edit L5 overworld policy.
+Did not retouch maze-west or 0x40. L5 TF suffix leftover 0x66 needed a
+west-aisle prefight (same occupancy as the first 0x66 clear).
+
+| through | tag | frames | leftover | keys |
+|---------|-----|--------|----------|------|
+| level5-entry | l5_entry_recompose | 116,491 | play `0x76` (120,205) | 4 |
+| level5-clear66 | l5_clear66_recompose | 117,649 | play `0x66` (40,159) | 4→5 |
+| level5-east77 | l5_east77_recompose | 125,560 | play `0x77` (136,165) | 6 |
+| level5-whistle | l5_whistle_recompose | 145,760 | mode 9 `0x04` (135,141) | 5 |
+| level5 | l5_tf_recompose | 159,070 | mode 18 `0x14` (120,149) TF `0x1F` | 4 |
+| level6-entry | l6_entry_recompose | 164,891 | play `0x79` (120,205) | 4 |
+| level6-east-key | l6_east_key_recompose | — | play `0x7a` | 5 |
+| level6-west | l6_west_recompose | 169,088 | play `0x78` (104,149) | 4 |
+| level6-compass | l6_compass_recompose | 169,403 | play `0x68` (120,205) | 4 |
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level5-entry --no-video --trials 1 \
-  --tag l5_entry_recompose
+  --through level6-compass --no-video --trials 1 \
+  --tag l6_compass_recompose
 ```
 
-`l5_entry_recompose` **1/1**, 116,491f, play `0x76` `(120,205)`, TF=`0x0F`,
-keys=4, bombs=13, bow=1, map=`0x0A`, health `0x55` lo==hi. settle_l4_tf
-283f (`post_l4_ow_ready` island `0x45`). enter_level5 5,282f: hops
-`0x55…0x1B`, pocket DOWN then already-free, hills_ups=3 then door `0x0B`,
-entered L5. `mid_run_state_load=false`, deaths 0, progression/capacity
-writes 0. Glance empty. PNG: `recordings/l5_entry_recompose_final.png`
-(L5 south mouth, 3 Zols live). `status_claim=false`.
+`l6_compass_recompose` **1/1**, 169,403f, hop `level6_north_0x68` 315f,
+play `0x68` `(120,205)`, TF=`0x1F`, keys=4, bombs=8, bow=1, health `0x66`
+lo==hi. `mid_run_state_load=false`, deaths 0, progression/capacity writes 0.
+`status_claim=false`. PNG: Link on the south mouth of compass room; Zols
+live; north door visible. Glance: room `0x68`, mode 5, south-door band,
+TF bits, owned keys/bombs, hearts lo==hi.
 
-Historical `l5_entry_continuous_v1` was 134,393f keys=5 hop 5,138f. This
-tape is the recovered L4 prefix (110,926f keys=4) plus 5,565f settle+path.
+Policy: west-pocket DOWN to y=189, RIGHT to historical x=144, occupancy UP
+(21 miss-blocks on the x=144 statue column: `miss_f61_UP_144_187` …
+`miss_f79_UP_144_162`, `arrived_68`). Historical green was occupancy from
+`(144,141)` 221f / 8 miss-blocks; this peel starts from west leftover
+`(104,149)` and does not retry x=120 UP.
+
+`l6_west_recompose` **1/1**, 169,088f, play `0x78` `(104,149)`, TF=`0x1F`,
+keys=4. `l5_tf_recompose` **1/1**, 159,070f, TF `0x0F→0x1F`.
+
+## Dated — compass 0x78 UP (`level6_north_0x68`)
+
+West-clear leftover this prefix is `(104,149)` (west statue pocket), not
+historical `(144,141)`. v1–v4 failed; v5 greens.
+
+| trial | leftover | wrong belief |
+|-------|----------|----------------|
+| 1 | `(104,149)` stand 4000f | occupancy UP from west-clear leftover (first miss UP) |
+| 2 | `(104,158)` stand 4000f | y≤157 is south of the west statue |
+| 3 | `(104,173)` stand 4000f, 56 misses | CLIP_CLEAR_Y is south of the SW statue (RIGHT still boxed) |
+| 4 | `(120,149)` north_path 4000f, 12 misses | x=120 then occupancy UP threads the north door |
+| 5 | play `0x68` `(120,205)` **1/1** | RIGHT to x=144 then occupancy UP |
+
+Do not retouch the 0x78 peel. Do not retry x=120 UP.
+
+## Next sitting — `--through level6-clear68`
+
+Recompose the L6 body from this leftover (plan step 2). First checkbox is
+Zol clear + `ADDR_COMPASS|0x20` in `0x68`. One `--through level6-clear68`
+`--no-video --trials 1`. Stop at the first red. Do not retouch 0x40,
+maze-west, L5, or the compass peel. Do not skip to Gohma.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-clear68 --no-video --trials 1 \
+  --tag l6_clear68_recompose
+```
 
 ## Key deficit (still open; do not top-up)
 
-L4-entry keys 3 vs historical 4; L4 TF and L5 entry ended keys=4 vs
-historical 5. Deficit is already at L4 `0x40` (`keys_before` 4 vs 5).
-Bow splice KEY-LEFT spends the 0x23 key then `SPINE_L1_KEY_RETOPUP` writes
-0→1 at `backtrack44`; L2 still pokes keys 0→2, so that L1 spend is not
-the live L4 gap. Do not hide it with another key top-up.
+Ended L6 compass keys=4 vs historical 5. Gap already at L4 `0x40`
+(`keys_before` 4 vs 5). Do not hide it with a key top-up.
 
-## Next knob — L5 0x66 from this leftover
+## L6 defects already audited (Gohma / TF `0x20`)
 
-`--through level5-clear66` from play `0x76` `(120,205)`. Historical green
-is occupancy `l5_clear66_continuous_v2` leftover `(32,101)` keys 5→6.
-This leftover has keys=4. Do not retouch maze-west, 0x40, or L5 entry.
-
-## L6 defects already audited
-
-Even after L4/L5-entry greens, current `--through level6-gohma` cannot
-finish L6:
+Even after L6-west greens, current `--through level6-gohma` cannot finish L6:
 
 - Dedicated composition skips stairs `0x3A`, cellar `0x08`, south `0x1D`,
   and west `0x2D`; `_gohma_stages()` starts NORTH2C from the wrong predecessor.
@@ -53,8 +88,6 @@ finish L6:
   body is gone in `0x1C`; add natural heart pickup, north into `0x0C`, and TF.
 - `level4/boss_combat.py` has an `em.set_state()` fallback while the spine
   hardcodes `mid_run_state_load=false`. Fail closed and measure state loads.
-- Arrow assist telemetry is not merged into the whole-run inventory audit.
-  Add an L6 endpoint validator.
 
 Required chain:
 
@@ -67,4 +100,4 @@ Required chain:
 - Did not close `rr-tne2` or reach Gohma / TF `0x20`.
 - Did not poke doors, TF, bow, Rod, Map, Whistle, or capacity.
 - Did not retouch maze-west or 0x40.
-- Did not push or commit.
+- Did not push. This sitting’s L6 files are the peel + residual.
