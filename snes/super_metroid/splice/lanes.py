@@ -14,7 +14,7 @@ from typing import Any, Mapping, Sequence
 
 from super_metroid.splice.schema import RouteEdge, RouteManifest, rel_path
 
-# Plan § Phase 3 item-seam ranges. s28 is Plasma→GT only when not superseded.
+# s28 belongs to Plasma→GT only when not marked superseded.
 _SEAM_RE = re.compile(r"(?:^|/)s(\d{1,2})(?:/|$)", re.IGNORECASE)
 _LATE_SEG_MIN = 33
 _LATE_TAPES = ("g4_tourian_human", "g4_tourian_human_bb", "g4_tourian_human_mb")

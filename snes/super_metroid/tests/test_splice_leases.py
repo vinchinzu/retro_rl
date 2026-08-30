@@ -6,12 +6,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from super_metroid.hop_id import make_hop_key
 from super_metroid.leave_specs import LeaveSpec
 from super_metroid.splice.cards import generate_cards
 from super_metroid.splice.lanes import ITEM_SEAM_LANES, inventory_from_manifest
 from super_metroid.splice.leases import (
     Lease,
+    LeaseError,
     grant_lease,
     lease_for_lane,
     lease_from_card,
@@ -291,6 +294,42 @@ def test_expired_lease_does_not_block_owner() -> None:
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
     result = grant_lease(new, (old,), now=now)
     assert result.granted
+
+
+def test_blank_owner_paths_rejected() -> None:
+    blank = Lease(
+        task_id="blank",
+        card_revision=1,
+        branch="w/blank",
+        owner_paths=("", "  "),
+        expiry=None,
+        artifact_dir="snes/super_metroid/recordings/splice/lanes/blank/",
+    )
+    with pytest.raises(LeaseError, match="owner_paths"):
+        grant_lease(blank)
+    mixed = Lease(
+        task_id="mixed",
+        card_revision=1,
+        branch="w/mixed",
+        owner_paths=("", "  ", "snes/super_metroid/routes/kpdr/seams/mixed"),
+        expiry=None,
+        artifact_dir="snes/super_metroid/recordings/splice/lanes/mixed/",
+    )
+    result = grant_lease(mixed)
+    assert result.granted
+    assert result.lease is not None
+    assert result.lease.owner_paths == ("snes/super_metroid/routes/kpdr/seams/mixed",)
+    other = Lease(
+        task_id="other",
+        card_revision=1,
+        branch="w/other",
+        owner_paths=("snes/super_metroid/routes/kpdr/seams/mixed",),
+        expiry=None,
+        artifact_dir="snes/super_metroid/recordings/splice/lanes/other/",
+    )
+    blocked = grant_lease(other, (result.lease,))
+    assert not blocked.granted
+    assert "owner_paths" in blocked.reason
 
 
 def test_shared_card_owner_package_rejected() -> None:

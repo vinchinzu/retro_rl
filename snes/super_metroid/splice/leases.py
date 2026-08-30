@@ -8,7 +8,7 @@ bank.json.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
@@ -42,6 +42,19 @@ def _norm_path(path: str | None) -> str:
     rel = rel_path(path) if path else None
     text = (rel or str(path or "")).replace("\\", "/").strip()
     return text.rstrip("/")
+
+
+def _clean_owner_paths(paths: Sequence[str]) -> tuple[str, ...]:
+    """Drop empty/whitespace paths. Never restore the raw token."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in paths:
+        norm = _norm_path(raw)
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        out.append(norm)
+    return tuple(out)
 
 
 def paths_overlap(left: str, right: str) -> bool:
@@ -95,7 +108,7 @@ class Lease:
         }
 
 
-def _require_lease_fields(lease: Lease) -> None:
+def _require_lease_fields(lease: Lease) -> Lease:
     if not str(lease.task_id).strip():
         raise LeaseError("task_id required", code="lease.task_id")
     if int(lease.card_revision) < 1:
@@ -104,8 +117,12 @@ def _require_lease_fields(lease: Lease) -> None:
         raise LeaseError("branch required", code="lease.branch")
     if not _norm_path(lease.artifact_dir):
         raise LeaseError("artifact_dir required", code="lease.artifact")
-    if not lease.owner_paths:
+    owners = _clean_owner_paths(lease.owner_paths)
+    if not owners:
         raise LeaseError("owner_paths required", code="lease.owner")
+    if owners != lease.owner_paths:
+        return replace(lease, owner_paths=owners)
+    return lease
 
 
 def is_active(lease: Lease, *, now: datetime | None = None) -> bool:
@@ -151,7 +168,7 @@ def grant_lease(
     now: datetime | None = None,
 ) -> GrantResult:
     """Grant when owner paths and artifact dirs are disjoint from active leases."""
-    _require_lease_fields(request)
+    request = _require_lease_fields(request)
     clock = now or datetime.now(timezone.utc)
     for other in existing:
         if not is_active(other, now=clock):
@@ -213,7 +230,7 @@ def lease_from_card(
         task_id=card.task_id,
         card_revision=int(card.revision),
         branch=str(branch),
-        owner_paths=tuple(_norm_path(p) or p for p in owned if p),
+        owner_paths=_clean_owner_paths(owned),
         expiry=expiry,
         artifact_dir=rel_path(art) or art,
         lane_id=lane_id,
