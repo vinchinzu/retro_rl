@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
-from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_env_state
+from super_metroid.combat.enemies.scan import ENEMY_BASE, ENEMY_STRIDE, enemies_from_ram
+from super_metroid.combat.enemies.species import ATOMIC_ID
+from super_metroid.ram import (
+    GameplayPhase,
+    SNES_WRAM_BANK,
+    SuperMetroidState,
+    parse_env_state,
+    write_wram_u16,
+)
 
 # always: restore whenever current < capacity (product continuous default).
 # at_zero: practice handicap — ammo tops up only at 0; energy tops up at 0 **or**
@@ -15,6 +24,7 @@ from super_metroid.ram import GameplayPhase, SuperMetroidState, parse_env_state
 # tick), so a pure-zero energy policy never fires. Death phase still never
 # revives a completed transition.
 RefillWhen = Literal["always", "at_zero"]
+AssistProfile = Literal["clean", "survival", "scaffold"]
 
 # Energy floor for at_zero practice (inclusive). Ammo still waits for exact 0.
 # 40 covers GT / acid 40-damage chips before death phase steals the frame.
@@ -23,6 +33,27 @@ AT_ZERO_ENERGY_FLOOR = 40
 
 class _RetroData(Protocol):
     def set_value(self, key: str, value: int) -> None: ...
+
+
+@dataclass(frozen=True)
+class ScaffoldAllowlistEntry:
+    """One eligible (room, species) clamp target. Unknown pairs are never written."""
+
+    room_id: int
+    enemy_id: int
+    spawn_state: int | None = None
+    phase: int | None = None
+
+
+@dataclass(frozen=True)
+class HpClampWrite:
+    frame: int
+    room_id: int
+    slot: int
+    enemy_id: int
+    old: int
+    new: int
+    reason: str
 
 
 @dataclass
@@ -49,6 +80,9 @@ class AssistTelemetry:
     capacity_writes: int = 0
     maximum_single_frame_damage: int = 0
     deaths: int = 0
+    hp_clamp_writes: list[HpClampWrite] = field(default_factory=list)
+    hp_clamp_counts_by_room: Counter[str] = field(default_factory=Counter)
+    hp_clamp_counts_by_entity: Counter[str] = field(default_factory=Counter)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -60,6 +94,9 @@ class AssistTelemetry:
             "maximum_single_frame_damage": self.maximum_single_frame_damage,
             "deaths": self.deaths,
             "top_ups_total": self.top_ups_total(),
+            "hp_clamp_writes": [asdict(row) for row in self.hp_clamp_writes],
+            "hp_clamp_counts_by_room": dict(self.hp_clamp_counts_by_room),
+            "hp_clamp_counts_by_entity": dict(self.hp_clamp_counts_by_entity),
         }
 
     def top_ups_total(self) -> int:
@@ -120,6 +157,236 @@ class UnlimitedAmmoAssist:
                 counter.top_ups += 1
 
 
+# Live Attic species is not ROM-verified here; unknown ids fail closed.
+ATTIC_ROOM_ID = 0xCA52
+ATTIC_PILOT_ENEMY_ID = ATOMIC_ID
+_CLAMP_HP = 1
+_OFF_ENEMY_HP = 0x14
+_OFF_ENEMY_SPAWN = 0x1A  # instruction list
+_OFF_ENEMY_PHASE = 0x30  # AI var 0
+
+
+def attic_ordinary_enemy_allowlist() -> tuple[ScaffoldAllowlistEntry, ...]:
+    """Attic 0xCA52 placeholder species; unknown live ids fail closed."""
+    return (
+        ScaffoldAllowlistEntry(
+            room_id=ATTIC_ROOM_ID,
+            enemy_id=ATTIC_PILOT_ENEMY_ID,
+        ),
+    )
+
+
+def _memory_from(source: object) -> Any | None:
+    mem = getattr(source, "memory", None)
+    if mem is not None:
+        return mem
+    data = getattr(source, "data", None)
+    if data is not None:
+        return getattr(data, "memory", None)
+    return None
+
+
+def _ram_from_blocks(blocks: Any) -> Any | None:
+    if blocks is None:
+        return None
+    for key in (0, SNES_WRAM_BANK):
+        try:
+            block = blocks[key]
+        except Exception:  # noqa: BLE001
+            continue
+        if block is None:
+            continue
+        try:
+            _ = block[ENEMY_BASE]
+        except Exception:  # noqa: BLE001
+            continue
+        return block
+    values = getattr(blocks, "values", None)
+    if callable(values):
+        for block in values():
+            try:
+                _ = block[ENEMY_BASE]
+            except Exception:  # noqa: BLE001
+                continue
+            return block
+    return None
+
+
+def _resolve_ram(source: object) -> Any | None:
+    # Production apply(env.data, state) exposes memory.blocks, not get_ram().
+    get_ram = getattr(source, "get_ram", None)
+    if callable(get_ram):
+        try:
+            ram = get_ram()
+        except Exception:  # noqa: BLE001
+            ram = None
+        if ram is not None:
+            return ram
+    ram = getattr(source, "ram", None)
+    if ram is not None:
+        return ram
+    ram = _ram_from_blocks(getattr(_memory_from(source), "blocks", None))
+    if ram is not None:
+        return ram
+    try:
+        _ = source[0]  # type: ignore[index]
+    except Exception:  # noqa: BLE001
+        return None
+    return source
+
+
+def _slot_u16(ram: Any, slot: int, offset: int) -> int | None:
+    addr = ENEMY_BASE + slot * ENEMY_STRIDE + offset
+    try:
+        return int(ram[addr]) | (int(ram[addr + 1]) << 8)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _write_slot_hp(source: object, ram: Any, slot: int, hp: int) -> bool:
+    addr = ENEMY_BASE + slot * ENEMY_STRIDE + _OFF_ENEMY_HP
+    wrote = False
+    mem = _memory_from(source)
+    assign = getattr(mem, "assign", None)
+    if callable(assign):
+        try:
+            assign(addr, "<u2", hp & 0xFFFF)
+            wrote = True
+        except Exception:  # noqa: BLE001
+            pass
+    if not wrote:
+        data = getattr(source, "data", None)
+        if data is not None:
+            try:
+                write_wram_u16(source, addr, hp)
+                wrote = True
+            except Exception:  # noqa: BLE001
+                pass
+    if ram is not None:
+        try:
+            ram[addr] = hp & 0xFF
+            ram[addr + 1] = (hp >> 8) & 0xFF
+            wrote = True
+        except Exception:  # noqa: BLE001
+            pass
+    return wrote
+
+
+def _index_allowlist(
+    entries: Sequence[ScaffoldAllowlistEntry],
+) -> dict[tuple[int, int], tuple[ScaffoldAllowlistEntry, ...]]:
+    grouped: dict[tuple[int, int], list[ScaffoldAllowlistEntry]] = {}
+    for entry in entries:
+        grouped.setdefault((int(entry.room_id), int(entry.enemy_id)), []).append(entry)
+    return {key: tuple(rows) for key, rows in grouped.items()}
+
+
+class ScaffoldHpClamp:
+    """Allowlisted live-enemy HP→1 poke. Development-only; never STATUS/Finish."""
+
+    def __init__(
+        self,
+        *,
+        enabled: bool = False,
+        allowlist: Sequence[ScaffoldAllowlistEntry] = (),
+        telemetry: AssistTelemetry | None = None,
+    ) -> None:
+        self.enabled = enabled
+        self.allowlist = tuple(allowlist)
+        self.telemetry = telemetry if telemetry is not None else AssistTelemetry()
+        self._index = _index_allowlist(self.allowlist)
+        self._clamped: set[tuple[int, int, int, int]] = set()
+
+    def report(self) -> dict[str, object]:
+        return {
+            "enabled": self.enabled,
+            "allowlist": [asdict(entry) for entry in self.allowlist],
+            "writes": [asdict(row) for row in self.telemetry.hp_clamp_writes],
+            "counts_by_room": dict(self.telemetry.hp_clamp_counts_by_room),
+            "counts_by_entity": dict(self.telemetry.hp_clamp_counts_by_entity),
+        }
+
+    def _match(
+        self,
+        room_id: int,
+        enemy_id: int,
+        spawn_state: int | None,
+        phase: int | None,
+    ) -> ScaffoldAllowlistEntry | None:
+        rows = self._index.get((int(room_id), int(enemy_id)))
+        if not rows:
+            return None
+        for row in rows:
+            if row.spawn_state is not None and (
+                spawn_state is None or int(row.spawn_state) != int(spawn_state)
+            ):
+                continue
+            if row.phase is not None and (
+                phase is None or int(row.phase) != int(phase)
+            ):
+                continue
+            return row
+        return None
+
+    def _forget_absent(self, room_id: int, live: set[tuple[int, int]]) -> None:
+        room = int(room_id)
+        stale = [
+            key
+            for key in self._clamped
+            if key[0] != room or (key[1], key[2]) not in live
+        ]
+        for key in stale:
+            self._clamped.discard(key)
+
+    def apply(self, source: object, state: SuperMetroidState) -> None:
+        if not self.enabled:
+            return
+        if state.phase is not GameplayPhase.ORDINARY_GAMEPLAY:
+            room = int(state.room_id)
+            for key in [k for k in self._clamped if k[0] != room]:
+                self._clamped.discard(key)
+            self.telemetry.suspended_phase_frames[f"hp_clamp:{state.phase.value}"] += 1
+            return
+        ram = _resolve_ram(source)
+        if ram is None:
+            return
+        enemies = enemies_from_ram(ram)
+        live = {(int(enemy.slot), int(enemy.enemy_id)) for enemy in enemies}
+        self._forget_absent(int(state.room_id), live)
+        if not self._index:
+            return
+        for enemy in enemies:
+            spawn_state = _slot_u16(ram, enemy.slot, _OFF_ENEMY_SPAWN)
+            phase = _slot_u16(ram, enemy.slot, _OFF_ENEMY_PHASE)
+            row = self._match(int(state.room_id), int(enemy.enemy_id), spawn_state, phase)
+            if row is None:
+                continue
+            phase_key = int(row.phase) if row.phase is not None else 0
+            key = (int(state.room_id), int(enemy.slot), int(enemy.enemy_id), phase_key)
+            hp = int(enemy.hp)
+            if hp <= _CLAMP_HP:
+                if hp == _CLAMP_HP:
+                    self._clamped.add(key)
+                continue
+            if key in self._clamped:
+                continue
+            if not _write_slot_hp(source, ram, enemy.slot, _CLAMP_HP):
+                continue
+            self._clamped.add(key)
+            write = HpClampWrite(
+                frame=int(state.frame),
+                room_id=int(state.room_id),
+                slot=int(enemy.slot),
+                enemy_id=int(enemy.enemy_id),
+                old=hp,
+                new=_CLAMP_HP,
+                reason="scaffold_hp_clamp",
+            )
+            self.telemetry.hp_clamp_writes.append(write)
+            self.telemetry.hp_clamp_counts_by_room[f"0x{int(state.room_id):04X}"] += 1
+            self.telemetry.hp_clamp_counts_by_entity[f"0x{int(enemy.enemy_id):04X}"] += 1
+
+
 # Energy-drain scripted sequences (refill softlocks progression).
 # Big Boy latch: pose $E8 (232), mov $15/$1B (21/27); early stick via $7FFF HP.
 # Mother Brain rainbow: pose $54 (84) + mov $0A (10); stun poses $E9/$EB (233/235).
@@ -160,23 +427,59 @@ class UnlimitedResourcesAssist(UnlimitedAmmoAssist):
         unlimited_energy: bool = True,
         unlimited_ammo: bool = True,
         refill_when: RefillWhen = "always",
+        profile: AssistProfile = "survival",
+        hp_clamp: ScaffoldHpClamp | None = None,
+        scaffold_allowlist: Sequence[ScaffoldAllowlistEntry] | None = None,
     ) -> None:
         super().__init__(enabled=unlimited_ammo, refill_when=refill_when)
         self.unlimited_energy = unlimited_energy
+        self.profile: AssistProfile = profile
         self._effective_health: int | None = None
         self._previous_phase: GameplayPhase | None = None
         self._energy_drain_hold = 0
+        if hp_clamp is not None:
+            self.hp_clamp = hp_clamp
+            self.hp_clamp.telemetry = self.telemetry
+        else:
+            enable_clamp = profile == "scaffold" or scaffold_allowlist is not None
+            if scaffold_allowlist is not None:
+                entries = tuple(scaffold_allowlist)
+            elif enable_clamp:
+                entries = attic_ordinary_enemy_allowlist()
+            else:
+                entries = ()
+            self.hp_clamp = ScaffoldHpClamp(
+                enabled=enable_clamp,
+                allowlist=entries,
+                telemetry=self.telemetry,
+            )
 
     def report(self) -> dict[str, object]:
+        scaffold = bool(self.hp_clamp.enabled)
+        if scaffold:
+            reported: AssistProfile = "scaffold"
+        elif self.unlimited_energy or self.enabled:
+            reported = "survival"
+        else:
+            reported = "clean"
         return {
-            "enabled": self.enabled or self.unlimited_energy,
+            "enabled": self.enabled or self.unlimited_energy or scaffold,
+            "profile": reported,
+            "development_only": scaffold,
             "unlimited_energy_enabled": self.unlimited_energy,
             "unlimited_ammo_enabled": self.enabled,
             "refill_when": self.refill_when,
+            "hp_clamp": self.hp_clamp.report(),
             **self.telemetry.to_dict(),
         }
 
-    def apply(self, data: _RetroData, state: SuperMetroidState) -> None:
+    def apply(
+        self,
+        data: _RetroData,
+        state: SuperMetroidState,
+        *,
+        ram: object | None = None,
+    ) -> None:
         if (
             state.phase is GameplayPhase.DEATH_OR_GAME_OVER
             and self._previous_phase is not GameplayPhase.DEATH_OR_GAME_OVER
@@ -244,6 +547,7 @@ class UnlimitedResourcesAssist(UnlimitedAmmoAssist):
                 self.telemetry.suspended_phase_frames[state.phase.value] += 1
 
         super().apply(data, state)
+        self.hp_clamp.apply(ram if ram is not None else data, state)
 
     def attach_env(self, env) -> None:
         """Refill inside ``env.step`` so a headed HUD sees topped-up health.
@@ -258,9 +562,9 @@ class UnlimitedResourcesAssist(UnlimitedAmmoAssist):
             st = parse_env_state(env, mode="nav")
             data = getattr(env, "data", env)
             try:
-                self.apply(data, st)
+                self.apply(data, st, ram=env)
             except Exception:  # noqa: BLE001
-                self.apply(env, st)
+                self.apply(env, st, ram=env)
             return out
 
         env.step = step  # type: ignore[method-assign]
