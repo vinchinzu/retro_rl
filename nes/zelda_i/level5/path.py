@@ -104,6 +104,26 @@ def level5_east_key_step(snap: ZeldaSnapshot) -> FrameAction:
     )
 
 
+ROOM66_NORTH_BANK_Y = 101
+ROOM66_WEST_AISLE_X = 48
+
+
+def level5_room66_west_aisle_north_step(snap: ZeldaSnapshot) -> FrameAction:
+    """West bomb-hole (32,141): UP to north bank. y=141 RIGHT is the river.
+
+    TF suffix fight chased south Gibdos; leftover (79,165) then (152,189)
+    with 1 Gibdo north. Historical fight leftover (46,101) is this aisle.
+    """
+    if snap.level != LEVEL_5 or snap.screen != ROOM_L5_GIBDO_66:
+        return FrameAction(nes_idle_action(), "66_aisle_wait")
+    if snap.link_y > ROOM66_NORTH_BANK_Y + 2:
+        return FrameAction(nes_action("UP"), "66_west_aisle_up")
+    if abs(snap.link_x - ROOM66_WEST_AISLE_X) > 4:
+        btn = "LEFT" if snap.link_x > ROOM66_WEST_AISLE_X else "RIGHT"
+        return FrameAction(nes_action(btn), "66_west_aisle_x")
+    return FrameAction(nes_idle_action(), "66_north_bank")
+
+
 NORTH_DOOR_X = 120
 WEST_LEAVE_EAST_X = 140
 

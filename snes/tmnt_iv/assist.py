@@ -51,15 +51,22 @@ def assist_integrity(
     metrics: AssistCounters,
     *,
     require_clean_assists: bool = False,
+    state_loads: int | None = None,
+    stage_writes: int | None = None,
+    lives_writes: int | None = None,
 ) -> dict[str, bool]:
-    """Boolean integrity flags for continuous assist counters."""
+    """Boolean integrity flags for continuous assist counters.
+
+    Load / stage / lives zeros come from the trial audit log. Missing
+    counts fail closed (not proven True).
+    """
     flags = {
         "emergency_hp_zero": metrics.health_guard_interventions == 0,
         "iframe_guard_zero": metrics.final_boss_iframe_guard_frames == 0,
         "life_losses_zero": metrics.life_losses == 0,
-        "state_loads_zero": True,
-        "stage_writes_zero": True,
-        "lives_writes_zero": True,
+        "state_loads_zero": state_loads == 0 if state_loads is not None else False,
+        "stage_writes_zero": stage_writes == 0 if stage_writes is not None else False,
+        "lives_writes_zero": lives_writes == 0 if lives_writes is not None else False,
     }
     if require_clean_assists:
         flags["clean_assists_zero"] = (

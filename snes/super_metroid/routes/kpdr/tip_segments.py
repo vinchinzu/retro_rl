@@ -349,7 +349,7 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         source_policy=(
             "accepted Ice continuous + pure-green Ice return + K5 reverse "
             "tunnels + Red climb + Caterpillar descent + first Alpha PB "
-            "(rr-dbu.8; routes/kpdr/ice/ + routes/kpdr/k5/)"
+            "(rr-dbu.8; routes/kpdr/ice/ + routes/kpdr/red_tower/)"
         ),
         timing_source="alpha_pb",
         entry_condition_key="natural_alpha_pb_entry",
@@ -376,7 +376,7 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
         source_policy=(
             "accepted Ice continuous + K5 Alpha PB pure stack (rr-dbu.8) + "
             "K6 Alpha PB escape / Caterpillar climb / elevator / Kihunter "
-            "RLE + Moat spark (rr-dbu.9; routes/kpdr/k6/ + moat.py)"
+            "RLE + Moat spark (rr-dbu.9; routes/kpdr/wrecked_ship/ + moat.py)"
         ),
         timing_source="moat",
         entry_condition_key="natural_west_ocean_entry",
@@ -430,7 +430,7 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
             "accepted Ice continuous + K5 Alpha PB + K6 Moat/WS spark "
             "(rr-p2bw scratch) + unpowered Entrance→Main (rr-ahjo) + "
             "Main→basement (rr-4btp) + Basement→room (rr-cjpp) + "
-            "wiki doppler fight (rr-asyg; routes/kpdr/k6/phantoon_fight.py) + "
+            "wiki doppler fight (rr-asyg; routes/kpdr/wrecked_ship/phantoon_fight.py) + "
             "loot + left-door exit to basement"
         ),
         timing_source="phantoon",
@@ -447,6 +447,34 @@ POST_SUPERS_TIP_SEGMENTS: tuple[TipSegment, ...] = (
             "charge+missiles / Ice-on X-Factor stay research."
         ),
         aliases=("phan", "k6_phantoon"),
+        supports_checkpoint=True,
+    ),
+    TipSegment(
+        tip_id="gravity",
+        parent_tip_id="phantoon",
+        graph_id="speed",
+        kind="gravity",
+        success_outcome="gravity_collected",
+        route_label="gravity",
+        source_policy=(
+            "scratch --to gravity: powered Basement→Main (rr-kw8t hop 1 dual-green) "
+            "+ Main Shaft climb (residual RED) + s23 Attic/West Ocean/Pancakes/"
+            "Homing Geemer/Bowling tapes + controller:gravity_collect (132f). "
+            "Not STATUS; DEFAULT_CONTINUOUS_TIP stays phantoon"
+        ),
+        timing_source="gravity",
+        entry_condition_key="natural_gravity_entry",
+        ordinary_condition_key="post_gravity_ordinary",
+        require_hi_jump=True,
+        require_varia=True,
+        display_name="Power-on → Gravity Suit (KPDR K6 scratch)",
+        description=(
+            "Phantoon leave through powered Basement→Main, Main Shaft climb, "
+            "Attic gray door, West Ocean → Pancakes → Homing Geemer → Bowling, "
+            "and natural Gravity PLM collect (s23 tape stop-on-bit). Scratch "
+            "compose; Main Shaft residual still RED; not STATUS-promoted."
+        ),
+        aliases=("gravity_suit", "grav", "k6_gravity"),
         supports_checkpoint=True,
     ),
 )

@@ -12,11 +12,11 @@ from super_metroid.combat.enemies import Enemy, list_enemies
 from super_metroid.combat.enemies.workrobot import stall_reason
 from super_metroid.hop_glance import LeaveMiss
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
-from super_metroid.routes.kpdr.k6.ws_basement_ice import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_basement_ice import (
     ice_keepaway_action,
     workrobot_avoid_action,
 )
-from super_metroid.routes.kpdr.k6.ws_basement_return import (
+from super_metroid.routes.kpdr.wrecked_ship.ws_basement_return import (
     ATOMIC_ID,
     WORKROBOT_ID,
     WS_BASEMENT_HATCH_X_MAX,
@@ -267,7 +267,7 @@ def test_list_enemies_reads_freeze_timer() -> None:
 
 
 def test_run_to_hatch_does_not_spin_left_in_band() -> None:
-    from super_metroid.routes.kpdr.k6 import ws_basement_return as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_basement_return as mod
 
     src = inspect.getsource(mod._run_to_hatch)
     assert "hatch_mount_action" in src
@@ -353,7 +353,7 @@ def test_requires_boss_bit() -> None:
 
 
 def test_morph_bombs_are_x_not_a() -> None:
-    from super_metroid.routes.kpdr.k6 import ws_basement_return as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_basement_return as mod
 
     bomb_src = inspect.getsource(mod._bomb_tunnel_left)
     assert 'hold(session, 3, "X"' in bomb_src
@@ -361,7 +361,7 @@ def test_morph_bombs_are_x_not_a() -> None:
 
 
 def test_play_drops_bombs_runs_jumps(monkeypatch: pytest.MonkeyPatch) -> None:
-    from super_metroid.routes.kpdr.k6 import ws_basement_return as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_basement_return as mod
 
     session = _Session(_state())
     seen: dict[str, object] = {}

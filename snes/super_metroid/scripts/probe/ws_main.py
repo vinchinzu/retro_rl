@@ -32,8 +32,12 @@ from super_metroid.plm import plm_block_pixels
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
-from super_metroid.routes.kpdr.k6 import ws_main as ws
-from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_SAVE
+from super_metroid.routes.kpdr.wrecked_ship import ws_main as ws
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_WS_ATTIC,
+    ROOM_WS_ENTRANCE,
+    ROOM_WS_SAVE,
+)
 
 SCRATCH = GAME_DIR / "scratch"
 DEFAULT_SOURCE = SCRATCH / "post_ws_entrance_to_main.state"
@@ -113,7 +117,7 @@ def _enemies(env: Any, n: int = 8) -> list[dict[str, Any]]:
     return rows
 
 
-def _plms(env: Any, n: int = 24) -> dict[str, Any]:
+def _plms(env: Any, n: int = 40) -> dict[str, Any]:
     """Best-effort PLM ID + block index (diagnostic; not a validated open-state)."""
     ram = env.get_ram()
     width = int(ram[0x07A5]) | (int(ram[0x07A6]) << 8)
@@ -216,7 +220,7 @@ def _halt_reason(st: Any, *, start_y: int, idle_done: bool) -> str | None:
         return "attic_0xCA52"
     if room == ROOM_WS_SAVE:
         return "save_0xCE8A"
-    if room == ws.ROOM_WS_ENTRANCE:
+    if room == ROOM_WS_ENTRANCE:
         return "back_entrance_0xCA08"
     if room == ws.ROOM_WS_BASEMENT:
         return "basement_0xCC6F"

@@ -19,6 +19,7 @@ from super_metroid.splice import (
 )
 from super_metroid.splice.errors import PreflightError
 from super_metroid.splice.ranges import (
+    CONTROLLER_TASKS,
     GRAVITY_GOAL,
     GRAVITY_TASK_ID,
     HOMING_GEEMER_ROOM,
@@ -132,6 +133,8 @@ def test_gravity_range_alias_and_task_order(tmp_path: Path) -> None:
     assert all(edge.task_id != "main_shaft" for edge in plan.manifest.edges)
     assert plan.tape_tasks == (ATTIC_TASK_ID, BOWLING_TASK_ID)
     assert plan.placeholder_tasks == PLACEHOLDER_TASKS
+    assert plan.controller_tasks == CONTROLLER_TASKS
+    assert GRAVITY_TASK_ID not in PLACEHOLDER_TASKS
 
 
 def test_placeholders_and_s23_tape_candidates(tmp_path: Path) -> None:
@@ -140,6 +143,8 @@ def test_placeholders_and_s23_tape_candidates(tmp_path: Path) -> None:
     selected = plan.selection.selected_map()
     assert selected[ATTIC_TASK_ID].startswith("tape:")
     assert selected[BOWLING_TASK_ID].startswith("tape:")
+    assert selected[GRAVITY_TASK_ID] == "controller:gravity_collect"
+    assert plan.selection.previous_map()[GRAVITY_TASK_ID] == PLACEHOLDER_KIND_ID
     for task in PLACEHOLDER_TASKS:
         assert selected[task] == PLACEHOLDER_KIND_ID
     by_id = {edge.task_id: edge for edge in plan.manifest.edges}
@@ -152,6 +157,23 @@ def test_placeholders_and_s23_tape_candidates(tmp_path: Path) -> None:
     assert by_id[GRAVITY_TASK_ID].goal == GRAVITY_GOAL
     assert "bowling:entry" not in selected
     assert by_id[ATTIC_TASK_ID].predecessor_room_id == MAIN_SHAFT_ROOM
+
+
+def test_gravity_controller_beats_placeholder_and_rollback(tmp_path: Path) -> None:
+    from super_metroid.splice import rollback
+    from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import COLLECT_FRAMES
+
+    sdir = _write_s23(tmp_path)
+    plan = attic_to_gravity_range(sdir)
+    selected = plan.selection.selected_map()
+    assert selected[GRAVITY_TASK_ID] == "controller:gravity_collect"
+    offer = plan.selection.offer_for(GRAVITY_TASK_ID, "controller:gravity_collect")
+    assert offer is not None
+    assert offer.artifact.frame_count == COLLECT_FRAMES
+    assert offer.artifact.parent_candidate_id == "tape:s23_gravity"
+    restored = rollback(plan.selection, GRAVITY_TASK_ID)
+    assert restored.selected_map()[GRAVITY_TASK_ID] == PLACEHOLDER_KIND_ID
+    assert restored.previous_map()[GRAVITY_TASK_ID] == "controller:gravity_collect"
 
 
 def test_hp_clamp_attic_gray_door_not_global(tmp_path: Path) -> None:

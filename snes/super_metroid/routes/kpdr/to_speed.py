@@ -26,7 +26,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import (
     ITEM_SPEED,
     ROOM_BAT_CAVE,

@@ -234,6 +234,28 @@ def needs_shed_door_step_off(ram) -> bool:
     return not farm_map_loaded(ram)
 
 
+YARD_LOAD_TILE = (25, 28)
+
+
+def yard_load_action(ram):
+    """Run toward (25,28) a1 until the farm viewport loads.
+
+    Shed-door stale is west of that tile; west-gate FF (spa return) is east.
+    Do not reuse shed_door_step_off_actions (always left) from the west gate.
+    """
+    from harvest.tasks.nav import TILE_SIZE, get_pos_from_ram, make_action
+
+    pos = get_pos_from_ram(ram)
+    tx, ty = YARD_LOAD_TILE
+    dx = tx * TILE_SIZE + 8 - pos.x
+    dy = ty * TILE_SIZE + 8 - pos.y
+    if abs(dx) >= abs(dy):
+        direction = "right" if dx > 0 else "left"
+    else:
+        direction = "down" if dy > 0 else "up"
+    return make_action(**{direction: True, "b": True})
+
+
 def quota_satisfied(
     ram,
     quota: Mapping[str, Any] | ClearQuota | None,
@@ -293,6 +315,7 @@ __all__ = [
     "count_debris",
     "farm_map_loaded",
     "needs_shed_door_step_off",
+    "yard_load_action",
     "quota_counts_met",
     "quota_satisfied",
     "unmet_debris_types",

@@ -23,7 +23,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_SINGLE_CHAMBER
 from super_metroid.routes.kpdr.wave.geometry import (
     DTS_DOOR_FRAMES,

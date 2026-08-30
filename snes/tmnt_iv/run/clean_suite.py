@@ -17,14 +17,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from retro_harness.actions import buttons, idle_action
-from retro_harness.env import make_env, reset_obs
-from retro_harness.segment_runner import configure_headless
 from tmnt_iv.menus import boot_to_stage1_script
-from tmnt_iv.observe import HpDelta, living_hp, policy_input
-from tmnt_iv.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from tmnt_iv.policy import Stage1Policy
-from tmnt_iv.ram import parse_game_state
+from tmnt_iv.paths import RECORDINGS_DIR
+from tmnt_iv.run.trial import (
+    CLEAN_CONTRACT,
+    TrialEntry,
+    TrialLimits,
+    TrialObjective,
+    TrialResult,
+    run_trial,
+)
 
 ExtraEntry = Literal["power_on", "from_stage1_clear", "from_stage2_clear"]
 
@@ -196,21 +198,86 @@ def _filter_pizza(
     return real
 
 
-def _hit_row(
-    spec: CleanProbeSpec, state: Any, *, frame: int, hit: int
-) -> dict[str, Any]:
-    row: dict[str, Any] = {
-        "frame": frame,
-        "hit": hit,
-        "hp": state.health,
-        "player_x": state.player_x,
-        "boss": state.boss_active,
+def _error_row(label: str, exc: BaseException) -> dict[str, Any]:
+    return {
+        "state": label,
+        "heal_mode": "none",
+        "assist": "none",
+        "outcome": "error",
+        "success": False,
+        "error": str(exc),
+        "emergency_hp_writes": 0,
+        "iframe_writes": 0,
+        "state_loads_after_launch": 0,
+        "ram_writes": [],
+        "life_losses": 0,
     }
-    if spec.hit_progress:
-        row["progress"] = int(state.extras.get("progress_x", 0))
-    if spec.hit_hazards:
-        row["hazards"] = bool(state.extras.get("hazards"))
-    return row
+
+
+def _hits_for_spec(spec: CleanProbeSpec, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for hit in hits:
+        row = dict(hit)
+        if not spec.hit_progress:
+            row.pop("progress", None)
+        if not spec.hit_hazards:
+            row.pop("hazards", None)
+        rows.append(row)
+    return rows
+
+
+def _result_to_clean_report(
+    spec: CleanProbeSpec,
+    result: TrialResult,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    pizza = result.pizza_heals
+    real_pizza = _filter_pizza(
+        pizza,
+        outcome=result.outcome,
+        play_frames=result.frames,
+        drop_respawn=spec.filter_respawn_pizza,
+    )
+    outcome = result.outcome
+    if outcome == "forbidden_action":
+        outcome = "forbidden_a"
+    report: dict[str, Any] = {
+        "state": label,
+        "heal_mode": result.heal_mode,
+        "assist": result.assist,
+        "outcome": outcome,
+        "success": result.success and outcome == "stage_advance",
+        "frames": result.frames,
+        "total_frames": result.total_frames,
+        "start_hp": result.start_hp,
+        "end_hp": result.end_hp,
+        "min_hp": result.min_hp,
+        "damage_taken": result.damage_taken,
+        "wave_damage": result.wave_damage,
+        "boss_damage": result.boss_damage,
+        "max_hit": result.max_hit,
+        "pizza_heals": real_pizza if spec.filter_respawn_pizza else pizza,
+        "pizza_heal_count": len(real_pizza),
+        spec.boss_entry_hp_key: result.boss_entry_hp,
+        "lives": result.lives,
+        "start_lives": result.start_lives,
+        "end_lives": result.end_lives,
+        "life_losses": result.life_losses,
+        "event": hex(result.end_event),
+        "top_reasons": result.top_reasons,
+        "hits": _hits_for_spec(spec, result.hits),
+        "emergency_hp_writes": result.emergency_hp_writes,
+        "iframe_writes": result.iframe_writes,
+        "state_loads_after_launch": result.state_loads_after_launch,
+        "ram_writes": result.ram_writes,
+        "integrity": result.integrity,
+        "failure": result.failure,
+        "contract_violations": result.contract_violations,
+    }
+    if spec.include_end_stage:
+        report["end_stage"] = result.end_stage
+    return report
 
 
 def run_clean_probe(
@@ -224,7 +291,6 @@ def run_clean_probe(
     from_stage2_clear: bool = False,
 ) -> dict[str, Any]:
     """Fight with zero HP assists until stage advance / death / timeout."""
-    configure_headless()
     name = spec.default_state if state_name is None else state_name
     frames = spec.default_max_frames if max_frames is None else max_frames
     stop_gt = spec.stop_stage_gt if stop_stage_gt is None else stop_stage_gt
@@ -234,151 +300,24 @@ def run_clean_probe(
         from_stage2_clear=from_stage2_clear,
     )
     start_label = extra_start if extra_start is not None else name
-    env = make_env(GAME, start_label, GAME_DIR, render_mode="rgb_array")
-    policy = Stage1Policy()
-    reset_obs(env)
-
-    boot_actions = (
-        [fa.action for fa in boot_to_stage1_script()] if power_on else []
-    )
-    boot_i = 0
-    in_play = not waiting
-    play_frame0 = 0
-
-    start = parse_game_state(env.get_ram(), frame=0)
-    meter = HpDelta.start(start.health)
-    if spec.lives_fallback is not None:
-        prev_lives = start.lives if start.lives > 0 else spec.lives_fallback
-    else:
-        prev_lives = start.lives
-    pizza_heals: list[dict[str, Any]] = []
-    hits: list[dict[str, Any]] = []
-    reasons: dict[str, int] = {}
-    final = start
-    outcome = "timeout"
-    boss_entry_hp: int | None = None
-    try:
-        for frame in range(1, frames + 1):
-            state = parse_game_state(env.get_ram(), frame=frame)
-            final = state
-
-            if waiting and not in_play:
-                if spec.is_live(state):
-                    in_play = True
-                    play_frame0 = frame
-                    meter = HpDelta.start(state.health)
-                    prev_lives = state.lives
-                    policy = Stage1Policy()
-                elif boot_i < len(boot_actions):
-                    env.step(boot_actions[boot_i])
-                    boot_i += 1
-                    continue
-                elif power_on:
-                    env.step(
-                        buttons("START") if frame % 40 == 0 else idle_action()
-                    )
-                    continue
-                else:
-                    action, _reason = policy_input(policy, state)
-                    env.step(action)
-                    continue
-
-            # Pizza heals go UP; HpDelta only tracks drops.
-            if (
-                living_hp(state.health)
-                and meter.prev is not None
-                and state.health > meter.prev
-            ):
-                pizza_heals.append(
-                    {
-                        "frame": frame - play_frame0,
-                        "from_hp": meter.prev,
-                        "to_hp": state.health,
-                        "player_x": state.player_x,
-                    }
-                )
-            hit = meter.note(state.health)
-            if hit:
-                hits.append(
-                    _hit_row(
-                        spec,
-                        state,
-                        frame=frame - play_frame0,
-                        hit=hit,
-                    )
-                )
-
-            if (
-                state.boss_active
-                and boss_entry_hp is None
-                and living_hp(state.health)
-            ):
-                boss_entry_hp = state.health
-
-            if spec.detect_game_over and (
-                state.mode.name in {"GAME_OVER", "TITLE"} or state.player_dead
-            ):
-                outcome = "life_loss"
-                break
-            if state.lives < prev_lives:
-                outcome = "life_loss"
-                break
-            prev_lives = state.lives
-            if state.stage > stop_gt:
-                if (not spec.strict_advance) or (
-                    state.mode.name == "PLAYING" and living_hp(state.health)
-                ):
-                    outcome = "stage_advance"
-                    break
-
-            action, reason = policy_input(policy, state)
-            reasons[reason] = reasons.get(reason, 0) + 1
-            if action[8]:
-                outcome = "forbidden_a"
-                break
-            env.step(action)
-        else:
-            outcome = "timeout"
-    finally:
-        env.close()
-
-    play_frames = final.frame - play_frame0 if play_frame0 else final.frame
-    real_pizza = _filter_pizza(
-        pizza_heals,
-        outcome=outcome,
-        play_frames=play_frames,
-        drop_respawn=spec.filter_respawn_pizza,
-    )
-    report: dict[str, Any] = {
-        "state": extra_label if extra_label is not None else name,
-        "heal_mode": "none",
-        "assist": "pizza_only",
-        "outcome": outcome,
-        "success": outcome == "stage_advance",
-        "frames": play_frames,
-        "total_frames": final.frame,
-        "start_hp": start.health if not waiting else 80,
-        "end_hp": final.health,
-        "min_hp": meter.min_hp,
-        "damage_taken": meter.damage,
-        "wave_damage": sum(h["hit"] for h in hits if not h["boss"]),
-        "boss_damage": sum(h["hit"] for h in hits if h["boss"]),
-        "max_hit": meter.max_hit,
-        "pizza_heals": real_pizza if spec.filter_respawn_pizza else pizza_heals,
-        "pizza_heal_count": len(real_pizza),
-        spec.boss_entry_hp_key: boss_entry_hp,
-        "lives": f"{prev_lives}->{final.lives}",
-        "boss_hp": (
-            f"{int(start.extras.get('boss_hp', 0))}"
-            f"->{int(final.extras.get('boss_hp', 0))}"
+    label = extra_label if extra_label is not None else name
+    boot = [fa.action for fa in boot_to_stage1_script()] if power_on else None
+    result = run_trial(
+        TrialEntry(
+            kind="power_on" if power_on else "state",
+            state_name=start_label,
+            is_live=spec.is_live if waiting or power_on else spec.is_live,
+            boot_actions=boot,
         ),
-        "event": hex(int(final.extras.get("event", -1))),
-        "top_reasons": sorted(reasons.items(), key=lambda kv: -kv[1])[:16],
-        "hits": hits,
-    }
-    if spec.include_end_stage:
-        report["end_stage"] = final.stage
-    return report
+        TrialObjective(
+            kind="stage_advance",
+            stop_stage_gt=stop_gt,
+            strict_advance=spec.strict_advance,
+        ),
+        CLEAN_CONTRACT,
+        TrialLimits(max_frames=frames),
+    )
+    return _result_to_clean_report(spec, result, label=label)
 
 
 def _print_suite_row(
@@ -407,17 +346,15 @@ def run_suite(
         try:
             report = run_clean_probe(spec, state_name=name, max_frames=frames)
         except Exception as exc:  # noqa: BLE001 — suite continues
-            report = {
-                "state": name,
-                "outcome": "error",
-                "success": False,
-                "error": str(exc),
-            }
+            report = _error_row(name, exc)
         results.append(report)
         _print_suite_row(spec, name, report)
-    extra = run_clean_probe(
-        spec, max_frames=frames + 4000, **{spec.extra_entry: True}
-    )
+    try:
+        extra = run_clean_probe(
+            spec, max_frames=frames + 4000, **{spec.extra_entry: True}
+        )
+    except Exception as exc:  # noqa: BLE001 — extra-entry must not abort
+        extra = _error_row(spec.extra_label, exc)
     results.append(extra)
     _print_suite_row(spec, spec.extra_label, extra)
     ok = sum(1 for r in results if r.get("success"))

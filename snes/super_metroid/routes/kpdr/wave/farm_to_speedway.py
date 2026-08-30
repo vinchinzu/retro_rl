@@ -27,7 +27,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_FROG_SPEEDWAY, ROOM_UPPER_NORFAIR_FARM
 from super_metroid.routes.kpdr.wave.geometry import (
     FTS_DOOR_FRAMES,

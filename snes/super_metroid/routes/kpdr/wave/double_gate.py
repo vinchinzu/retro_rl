@@ -12,7 +12,7 @@ from super_metroid.routes.controller_common import (
     select_weapon,
     unmorph,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.geometry import (
     DC_GATE_OPEN_SEAT_X,

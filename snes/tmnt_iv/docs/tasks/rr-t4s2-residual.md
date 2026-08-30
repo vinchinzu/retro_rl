@@ -1,24 +1,25 @@
 # Residual — rr-t4s2 Alleycat Clean 0x5E pack
 
-**Status:** REACH improved; CKPT / BRIDGE / suite still RED. Do not STATUS.
-BOSS + LATE were already green — re-check them after this pack tactic
-before claiming 3/4.
+**Status:** suite **2/4** (LATE+Boss2 `stage_advance`). Stage2 and
+stage1_clear still KO. Do not STATUS.
 
-## Stage2 heal=none (dirty tree + AlleycatPackTactics)
+## Scratch `probe_clean --stage 2 --suite` (2026-08-30)
 
-| Policy | Outcome | Frames | Min HP | Max hit | Notes |
-|--------|---------|--------|--------|---------|-------|
-| before pack tactic | life_loss | ~4456 | 2 | 12 | died on 0x68/0x76; never saw 0x5E |
-| pack tactic KEEP | life_loss | ~5405 | 8 | 24 | **REACH** 0x5E at HP 80; first kick 24→12 |
-| suite-of-record (2026-08-02) | life_loss | 5825 | 20 | 24 | pizza then 0x5E pile at ~21.6k |
+| Entry | Outcome | Frames | Min HP | Max hit | Notes |
+|-------|---------|--------|--------|---------|-------|
+| Stage2 | ko | 5035 | 8 | 24 | 24@x=193, 12@175, 24@179, 12@164 |
+| LATE | stage_advance | 4234 | 37 | 12 | fade HP 37→80 is the game, not pizza |
+| Boss2 | stage_advance | 4093 | 23 | 12 | same fade restore 79→80 |
+| stage1_clear | ko | 4532 | 8 | 24 | pizza then 24@x=176 and 24@x=153 |
 
-Pizza-only. No emergency HP.
+Pizza-only. No emergency HP. Last-life LATE/Boss2 (`lives=0`) are not
+the Clean gate.
 
 ## What shipped
 
 - `snes/tmnt_iv/tactics/alleycat.py` — stage-1 pack overrides (no B, no A)
 - Hooked in `Stage1Policy.tick` after `PizzaSeek`
-- Tests: `snes/tmnt_iv/tests/test_alleycat_tactics.py`
+- Tests: `snes/tmnt_iv/tests/test_tactics.py` (pack right-exit + kicker)
 
 KEEP geometry:
 
@@ -29,18 +30,19 @@ KEEP geometry:
 - Dense Y only on **0x5E** sandwich/overlap. Dense Y on 0x60 sandwich
   froze opening wave at x=113.
 
-## Burned this sitting (do not re-open)
+## Burned (do not re-open)
 
 - Dense Y on all sandwiches
 - Wall-only releft (stuck mashing Y at x=113)
 - Hold-and-poke at adx≤80 vs left 0x5E clump (24-dmg came back earlier)
 - LEFT+Y close into left 0x5E clump (two 24s)
 - Pack jump-hop / 0x5E jump-slash / global min_range (older playbook)
+- TTC / hy≥180 sewer hop (never reached Rat King)
+- Treating 0x0B fade HP restore as unlabeled pizza
 
 ## Exact next action
 
-Residual 24-dmg while `alley_releft` into a **left** 0x5E clump
-(~progress 21423 / player_x=164 / enemies at x≈69–96). Need a way off
-the right shoulder that is not walk-through, not 80px hold, not LEFT+Y.
-Then CKPT `stage_advance`, BRIDGE, suite. Pizza-only. Do not clobber
+Stage2 still dies on 24s at x≈193 then x=164. `alley_right_exit` is
+necessary but not sufficient. Wave dumpster DOWN stays; skip dumpster
+on Metalhead and on 0x0B fade. Pizza-only. Do not clobber
 `tmnt_iv_full_hard_*`.

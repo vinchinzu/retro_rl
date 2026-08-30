@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from super_metroid.paths import GAME_DIR
-from super_metroid.routes.kpdr.k5.red_ice_climb import (
+from super_metroid.routes.kpdr.red_tower.red_ice_climb import (
     BOTTOM_FLOOR,
     LOWER_RIPPER_1,
     LOWER_RIPPER_2,
@@ -36,34 +36,34 @@ from super_metroid.routes.kpdr.k5.red_ice_climb import (
     checkpoint_supported,
     read_rippers,
 )
-from super_metroid.routes.kpdr.k5.red_ice_r1_to_r2 import (
+from super_metroid.routes.kpdr.red_tower.red_ice_r1_to_r2 import (
     POLICY_ID as R12_POLICY,
     RedIceRipper12EdgeRunner,
 )
-from super_metroid.routes.kpdr.k5.red_ice_r2_to_r3 import (
+from super_metroid.routes.kpdr.red_tower.red_ice_r2_to_r3 import (
     POLICY_ID as R23_POLICY,
     RedIceRipper23EdgeRunner,
 )
-from super_metroid.routes.kpdr.k5.red_ice_r3_to_r4 import (
+from super_metroid.routes.kpdr.red_tower.red_ice_r3_to_r4 import (
     POLICY_ID as R34_POLICY,
     RedIceRipper34EdgeRunner,
 )
-from super_metroid.routes.kpdr.k5.red_ice_r4_to_tunnel import (
+from super_metroid.routes.kpdr.red_tower.red_ice_r4_to_tunnel import (
     POLICY_ID as R4TUN_POLICY,
     RedIceRipper4TunnelEdgeRunner,
 )
-from super_metroid.routes.kpdr.k5.red_ice_thin_to_ur1 import (
+from super_metroid.routes.kpdr.red_tower.red_ice_thin_to_ur1 import (
     POLICY_ID as THINUR1_POLICY,
     RedIceThinToUr1EdgeRunner,
 )
-from super_metroid.routes.kpdr.k5.red_ice_upper_hops import (
+from super_metroid.routes.kpdr.red_tower.red_ice_upper_hops import (
     POLICY_ID_UR12 as UR12_POLICY,
     POLICY_ID_UR34 as UR34_POLICY,
     RedIceUpperRipperHopRunner,
     UR12,
     UR34,
 )
-from super_metroid.routes.kpdr.k5.red_ice_ur3_to_hellway import (
+from super_metroid.routes.kpdr.red_tower.red_ice_ur3_to_hellway import (
     POLICY_ID as UR3HW_POLICY,
     RedIceUr3ToHellwayRunner,
 )

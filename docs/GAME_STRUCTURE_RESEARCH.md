@@ -108,7 +108,7 @@ holds).
 ### Super Metroid
 
 - **Shape:** flat package + domain folders. Continuous product is
-  `routes` (kpdr area subdirs `k5/k6/wave/ice/ceres/...`). Combat ~22 py
+  `routes` (kpdr area subdirs `ceres/gauntlet/ice/norfair/red_tower/spazer/wave/wrecked_ship`). Combat ~22 py
   / 7588 after Phantoon leftover recipes were deleted. Scripts probes
   dropped from 36 py / ~20k LOC to 21 py / ~10k (A/B loop `kpdr.py` plus
   residual/boss benches).

@@ -9,7 +9,9 @@ from tmnt_iv.stages import is_sewer
 
 _SEWER_SPIKE_CHARS: frozenset[int] = frozenset({0x1C, 0x2C})
 # A/B: adx 56 → 1 residual 16-dmg hit (wider bands added more spikes).
+# TTC + hy≥180 never jumped the live 0x1C column (scratch: 6 hops, four 16s).
 _SEWER_SPIKE_ADX = 56
+_JUMP_AIR_FRAMES = 28
 # Wrecking-ball / ceiling hazard band (Stage 1 Big Apple).
 # Ceiling 0x36 hitbox is wide (~30px). Bands are tight enough to dodge −24
 # without hijacking combat for thousands of frames (wide bands caused Clean
@@ -21,19 +23,27 @@ _HAZARD_CEILING_CLEAR_ADX = 40
 class SewerSpikeAvoid:
     """Dodge Sewer Surfin' hanging spike props (char 0x1C / 0x2C).
 
-    These are HP-0 props exposed via ``extras["hazards"]`` (−16). Surfboard
-    Y is lane depth (py stays ~192 through B), but A/B still found
-    jump-right when adx ≤ 56 cuts empty-band spikes 3→1 (timing/hitbox).
-    LEFT thrash regressed to 4 spikes. Mid-pack: only when the spike is
-    as close as the nearest Foot.
+    HP-0 props in ``extras["hazards"]`` (−16). Board Y is lane depth
+    (py stays ~192 through B); do not gate on dropped hy. Distance
+    ``adx ≤ 56`` plus an air-frame lock so the hop is not mashed 432
+    times. Foot-closer gate stays. LEFT thrash and dumpster stay off.
     """
+
+    def __init__(self) -> None:
+        self._air_frames = 0
+
+    def reset(self) -> None:
+        """Clear the hop lock."""
+        self._air_frames = 0
 
     def next(self, state: GameState) -> FrameAction | None:
         """Return jump-right past a near spike column, or ``None``."""
         if state.mode is not GameMode.PLAYING or not is_sewer(state):
+            self.reset()
             return None
         # Rat King: keep the long poke; spikes are a wave problem.
         if state.boss_active:
+            self.reset()
             return None
         hazards = state.extras.get("hazards") or ()
         spikes = [
@@ -42,6 +52,10 @@ class SewerSpikeAvoid:
             if int(h[2]) in _SEWER_SPIKE_CHARS
         ]
         if not spikes:
+            self.reset()
+            return None
+        if self._air_frames > 0:
+            self._air_frames -= 1
             return None
         hx, _hy, _ch = min(spikes, key=lambda t: abs(t[0] - state.player_x))
         adx = abs(hx - state.player_x)
@@ -55,6 +69,7 @@ class SewerSpikeAvoid:
             enemy_adx = abs(nearest.x - state.player_x)
             if enemy_adx + 8 < adx:
                 return None
+        self._air_frames = _JUMP_AIR_FRAMES
         return FrameAction(action=buttons("B", "RIGHT"), reason="sewer_spike_jump")
 
 

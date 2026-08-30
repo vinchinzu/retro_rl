@@ -31,12 +31,12 @@ uv run pytest tmnt_iv/tests -q
 
 ## Immediate goal
 
-**Bronze / Clean** unassisted full run (maturity stays M8). Parallel
-assisted Raphael speed+damage (`rr-iprz`): next is **`rr-iprz.5`
-Starbase stall** — recover Fast ≤23,072f / 863 and Boss9 6,300f / 144
-without restoring the Diag rail loop (24,645f). Not Slash. Alleycat
-Clean suite is 2/4 (BOSS+LATE). Do **not** re-open Stage 1 hazard
-jump-dodge, global pizza seek, sewer dumpster thrash, or Slash spin=40.
+**Bronze / Clean** unassisted full run (maturity stays M8). `run_trial`
+is the loop. Alleycat suite **2/4** (LATE+Boss2). Next Clean: Stage2 /
+stage1_clear 0x5E 24-dmg (`rr-1bmx`). Sewer LiveHard reaches Rat King at
+10 HP then KO (`rr-t4s3`). Parallel Raph speed (`rr-iprz.5`). Do **not**
+re-open Stage 1 hazard jump-dodge, global pizza seek, sewer dumpster
+thrash, TTC/hy≥180 spike hop, or Slash spin=40.
 
 ## Traps
 
@@ -56,5 +56,8 @@ jump-dodge, global pizza seek, sewer dumpster thrash, or Slash spin=40.
 | Mid-run knob w/o full dry-run | Route desync |
 | Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |
 | Clone `run_stageN_segment.py` | Add a `StageSpec` / `CleanProbeSpec` / `BridgeSpec` |
+| Clone a fourth emulator loop | `run/trial.py` `run_trial` is the loop |
+| TTC / hy≥180 sewer hop | 6 jumps, four 16s, never reached RK. Keep `adx≤56` + air-frame lock |
+| Fail 0x0B fade HP as unlabeled pizza | Metalhead already dead; LATE/Boss2 were `stage_advance` |
 
 RAM: `docs/ram_map.md`. Ready work: `bd ready -l tmnt_iv`.

@@ -29,6 +29,7 @@ from harvest.tasks.farm_clear_quota import (
     count_debris,
     farm_map_loaded,
     needs_shed_door_step_off,
+    yard_load_action,
     quota_counts_met,
     quota_satisfied,
     unmet_debris_types,
@@ -343,6 +344,15 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         nxt = task.clearer._handle_scanning(ram)
         self.assertIsNone(nxt)
         self.assertGreaterEqual(len(task.clearer.action_queue), 16)
+
+    def test_yard_load_action_west_gate_runs_right(self) -> None:
+        from harvest.tasks.nav import make_action
+
+        west = _make_farm_ram(player_tile=(1, 28))
+        _set_tile(west, 1, 28, 0xFF)
+        self.assertTrue((yard_load_action(west) == make_action(right=True, b=True)).all())
+        east = _make_farm_ram(player_tile=(40, 28))
+        self.assertTrue((yard_load_action(east) == make_action(left=True, b=True)).all())
 
     def test_quota_scan_stops_rocks_once_boulder_count_met(self) -> None:
         ram = _make_farm_ram()

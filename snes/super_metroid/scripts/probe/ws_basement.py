@@ -32,7 +32,7 @@ from super_metroid.plm import plm_block_pixels
 from super_metroid.ram import parse_env_state
 from super_metroid.room_timer import format_segment_time
 from super_metroid.routes.controller_common import MORPH_POSES, is_morph
-from super_metroid.routes.kpdr.k6 import ws_basement as ws
+from super_metroid.routes.kpdr.wrecked_ship import ws_basement as ws
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_MAP
 
 SCRATCH = GAME_DIR / "scratch"

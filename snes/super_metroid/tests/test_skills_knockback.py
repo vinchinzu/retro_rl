@@ -301,11 +301,11 @@ def test_super_door_pressure_frame_selects_weapon(
 
 
 def test_k4_modules_import_knockback_skills() -> None:
-    from super_metroid.routes.kpdr import k4_cathedral, k4_rising_tide
+    from super_metroid.routes.kpdr.norfair import cathedral, rising_tide
     from super_metroid.routes.kpdr.wave import bubble_to_single
 
-    src_c = open(k4_cathedral.__file__, encoding="utf-8").read()
-    src_r = open(k4_rising_tide.__file__, encoding="utf-8").read()
+    src_c = open(cathedral.__file__, encoding="utf-8").read()
+    src_r = open(rising_tide.__file__, encoding="utf-8").read()
     src_w = open(bubble_to_single.__file__, encoding="utf-8").read()
     assert "escape_knockback_spin" in src_c
     assert "super_door_pressure_frame" in src_c

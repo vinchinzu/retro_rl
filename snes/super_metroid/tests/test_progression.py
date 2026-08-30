@@ -610,6 +610,14 @@ def test_super_plus_continuous_door_edges_come_from_spine() -> None:
         "speed_return_to_bubble",  # multi-room reverse; not a single door
         "ice_business_to_warehouse",  # replays kraid-tip business_to_warehouse
         "phantoon_fight",  # in-room; boss bit, no door
+        # Gravity scratch: only Basement→Main emits a product door.
+        "ws_main_to_attic",
+        "attic_to_west_ocean",
+        "west_ocean_to_pancakes",
+        "pancakes_to_homing_geemer",
+        "homing_geemer_to_bowling",
+        "bowling_to_gravity",
+        "gravity_collect",
     }
 
     by_id = {edge.edge_id: edge for edge in SPEED_GRAPH.edges}

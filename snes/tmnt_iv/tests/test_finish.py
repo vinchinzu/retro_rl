@@ -266,13 +266,101 @@ def test_combat_stall_escape_never_presses_a() -> None:
     assert actions[-1].action[A] == 0
 
 
-def test_sewer_jumps_near_spike_columns() -> None:
-    state = replace(
-        playing(player_x=200, player_y=192, stage=2),
-        extras={"hazards": ((230, 202, 0x1C),)},
+def test_alleycat_living_stall_uses_dumpster_not_hop_left() -> None:
+    state = playing(
+        player_x=109,
+        player_y=192,
+        stage=1,
+        enemies=(enemy(180, 192, kind=0x60),),
     )
-    action = Stage1Policy().tick(state).action
-    assert action is not None
-    assert action.reason == "sewer_spike_jump"
-    assert action.action[A] == 0
-    assert action.action[B] == 1
+    policy = Stage1Policy()
+    actions = [policy.tick(state).action for _ in range(241)]
+    assert actions[-1] is not None
+    assert actions[-1].reason == "stall_down"
+    assert actions[-1].action[A] == 0
+    assert actions[-1].action[6] == 0
+
+
+def test_alleycat_fade_does_not_dumpster() -> None:
+    policy = Stage1Policy()
+    reasons: list[str] = []
+    for frame in range(1, 80):
+        tick = policy.tick(
+            playing(
+                player_x=135,
+                player_y=186,
+                camera_x=frame * 2,
+                frame=frame,
+                stage=1,
+                extras={"event": 0x0B},
+            )
+        )
+        assert tick.action is not None
+        reasons.append(tick.action.reason)
+        assert tick.action.action[A] == 0
+    assert not any(r.startswith("stall_") for r in reasons)
+
+
+def test_metalhead_stall_does_not_use_dumpster() -> None:
+    state = playing(
+        player_x=91,
+        player_y=192,
+        stage=1,
+        boss_active=True,
+        enemies=(enemy(120, 192, 96, kind=0x46),),
+    )
+    policy = Stage1Policy()
+    actions = [policy.tick(state).action for _ in range(241)]
+    assert actions[-1] is not None
+    assert actions[-1].reason == "combat_stall_escape"
+    assert not str(actions[-1].reason).startswith("stall_")
+    assert actions[-1].action[A] == 0
+
+
+def test_sewer_jumps_near_spike_columns_with_air_lock() -> None:
+    def sewer(*, hazards, extras=None, **kwargs):
+        payload = {"hazards": hazards, "anim": 0}
+        if extras:
+            payload.update(extras)
+        return replace(
+            playing(player_x=200, player_y=192, stage=2, **kwargs),
+            extras=payload,
+        )
+
+    # hy is board-lane depth, not drop anim — still hop at adx 30.
+    retracted = Stage1Policy().tick(sewer(hazards=((230, 80, 0x1C),))).action
+    assert retracted is not None
+    assert retracted.reason == "sewer_spike_jump"
+    assert retracted.action[B] == 1
+    assert retracted.action[A] == 0
+
+    far = Stage1Policy().tick(sewer(hazards=((280, 202, 0x1C),))).action
+    assert far is not None
+    assert far.reason != "sewer_spike_jump"
+
+    hopper = Stage1Policy()
+    hop = hopper.tick(sewer(hazards=((230, 202, 0x1C),))).action
+    assert hop is not None
+    assert hop.reason == "sewer_spike_jump"
+    locked = hopper.tick(sewer(hazards=((229, 202, 0x1C),))).action
+    assert locked is not None
+    assert locked.reason != "sewer_spike_jump"
+
+    foot = Stage1Policy().tick(
+        sewer(
+            hazards=((230, 202, 0x1C),),
+            enemies=(enemy(210, 192, kind=0x60),),
+        )
+    ).action
+    assert foot is not None
+    assert foot.reason != "sewer_spike_jump"
+
+    rat = Stage1Policy().tick(
+        sewer(
+            hazards=((230, 202, 0x1C),),
+            boss_active=True,
+            enemies=(enemy(180, 192, 96, kind=0x4A),),
+        )
+    ).action
+    assert rat is not None
+    assert rat.reason != "sewer_spike_jump"

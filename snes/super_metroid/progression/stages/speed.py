@@ -222,6 +222,7 @@ EDGES = (
         "moat",
         "ws",
         "phantoon",
+        "gravity",
     )
     + _BRANCH_EDGES
 )

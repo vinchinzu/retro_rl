@@ -17,8 +17,108 @@ from tmnt_iv.assist import (
     FORM2_IFRAME_VALUE,
     assist_integrity,
 )
-from tmnt_iv.paths import GAME, ROMS_DIR
+from tmnt_iv.paths import GAME, RECORDINGS_DIR, ROMS_DIR
 from tmnt_iv.run.metrics import HARD_VALUE, RunMetrics, format_duration, metrics_dict
+
+BASELINE_INDEX_NAME = "baseline_index.json"
+BASELINE_INDEX_SCHEMA = {
+    "schema_version": 1,
+    "baselines": {},
+}
+
+
+def _git_short() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return "nogit"
+    digest = (result.stdout or "").strip()
+    return digest or "nogit"
+
+
+def immutable_artifact_stem(*, contract: str, digest: str) -> str:
+    """Date + short git + contract + digest; used for scratch evidence."""
+    date = datetime.now().strftime("%Y%m%d")
+    return f"{date}_{_git_short()}_{contract}_{digest[:8]}"
+
+
+def scratch_report_path(*, contract: str, payload: bytes | str = b"") -> Path:
+    """Scratch JSON path under recordings/. Does not overwrite named baselines."""
+    raw = payload.encode("utf-8") if isinstance(payload, str) else payload
+    digest = hashlib.sha256(raw).hexdigest()
+    stem = immutable_artifact_stem(contract=contract, digest=digest)
+    return RECORDINGS_DIR / f"scratch_{stem}.json"
+
+
+def baseline_index_path() -> Path:
+    """Gitignored index that points STATUS/BASELINE names at a digest."""
+    return RECORDINGS_DIR / BASELINE_INDEX_NAME
+
+
+def load_baseline_index(path: Path | None = None) -> dict[str, Any]:
+    """Load ``recordings/baseline_index.json``, or an empty schema-1 index."""
+    target = path if path is not None else baseline_index_path()
+    if not target.is_file():
+        return {"schema_version": 1, "baselines": {}}
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return {"schema_version": 1, "baselines": {}}
+    payload.setdefault("schema_version", 1)
+    payload.setdefault("baselines", {})
+    return payload
+
+
+def promote_baseline(
+    *,
+    name: str,
+    digest: str,
+    path: Path,
+    contract: str | None = None,
+    frames: int | None = None,
+    damage: int | None = None,
+) -> dict[str, Any]:
+    """Return an updated index row. Does not write STATUS or the index file."""
+    index = load_baseline_index()
+    row: dict[str, Any] = {
+        "digest": digest,
+        "path": str(path),
+    }
+    if contract is not None:
+        row["contract"] = contract
+    if frames is not None:
+        row["frames"] = frames
+    if damage is not None:
+        row["damage"] = damage
+    index.setdefault("baselines", {})[name] = row
+    return index
+
+
+def audit_run_fields(
+    *,
+    save_state_loads: int = 0,
+    stage_writes: int = 0,
+    lives_writes: int = 0,
+    forbidden_a_special_uses: int = 0,
+    post_boot_start_presses: int = 0,
+) -> dict[str, int]:
+    """Full-run manifest counters derived from the trial audit log."""
+    return {
+        "save_state_loads": int(save_state_loads),
+        "stage_writes": int(stage_writes),
+        "lives_writes": int(lives_writes),
+        "forbidden_a_special_uses": int(forbidden_a_special_uses),
+        "post_boot_start_presses": int(post_boot_start_presses),
+    }
+
+
+def clean_audit_ok(fields: dict[str, int]) -> bool:
+    """True when Clean forbids (loads / stage / lives / A / START) are all zero."""
+    return all(int(fields.get(key, 0) or 0) == 0 for key in audit_run_fields())
 
 
 def rom_sha256() -> tuple[str, str]:
@@ -88,6 +188,11 @@ def build_full_run_report(
     dry_run: bool,
     video_path: Path | None,
     integrity_flags: dict[str, bool],
+    save_state_loads: int = 0,
+    stage_writes: int = 0,
+    lives_writes: int = 0,
+    forbidden_a_special_uses: int = 0,
+    post_boot_start_presses: int = 0,
 ) -> dict[str, Any]:
     """Assemble the schema-1 full-run JSON payload."""
     class_name = intervention_class(
@@ -99,6 +204,13 @@ def build_full_run_report(
         command += " --clean"
     if dry_run:
         command += " --dry-run"
+    audit = audit_run_fields(
+        save_state_loads=save_state_loads,
+        stage_writes=stage_writes,
+        lives_writes=lives_writes,
+        forbidden_a_special_uses=forbidden_a_special_uses,
+        post_boot_start_presses=post_boot_start_presses,
+    )
     report: dict[str, Any] = {
         "schema_version": 1,
         "status": "success",
@@ -110,9 +222,9 @@ def build_full_run_report(
             "continuous_emulator_session": True,
             "power_on_start": True,
             "start_state": "NONE",
-            "save_state_loads": 0,
-            "stage_writes": 0,
-            "lives_writes": 0,
+            "save_state_loads": audit["save_state_loads"],
+            "stage_writes": audit["stage_writes"],
+            "lives_writes": audit["lives_writes"],
             "native_audio": not dry_run,
             "assisted": not clean_mode,
             "intervention_class": class_name,
@@ -126,8 +238,8 @@ def build_full_run_report(
                 "super_shredder_form2_iframe_value": FORM2_IFRAME_VALUE,
                 "require_clean_assists": require_clean_assists,
             },
-            "forbidden_a_special_uses": 0,
-            "post_boot_start_presses": 0,
+            "forbidden_a_special_uses": audit["forbidden_a_special_uses"],
+            "post_boot_start_presses": audit["post_boot_start_presses"],
         },
         "metrics": metrics_dict(metrics, fps=fps),
         "integrity": integrity_flags,
@@ -193,20 +305,39 @@ def finalize_full_run(
     video_path: Path | None,
     report_path: Path,
     hard_confirmed: bool,
+    save_state_loads: int = 0,
+    stage_writes: int = 0,
+    lives_writes: int = 0,
+    forbidden_a_special_uses: int = 0,
+    post_boot_start_presses: int = 0,
 ) -> dict[str, Any]:
     """Validate, build, write, and print the success report."""
     assert_run_complete(metrics, hard_confirmed=hard_confirmed)
     integrity_flags = assist_integrity(
-        metrics, require_clean_assists=require_clean_assists
+        metrics,
+        require_clean_assists=require_clean_assists,
+        state_loads=save_state_loads,
+        stage_writes=stage_writes,
+        lives_writes=lives_writes,
     )
     clean_ok = (not require_clean_assists) or bool(
         integrity_flags.get("clean_assists_zero", False)
     )
-    if require_clean_assists and not clean_ok:
+    audit = audit_run_fields(
+        save_state_loads=save_state_loads,
+        stage_writes=stage_writes,
+        lives_writes=lives_writes,
+        forbidden_a_special_uses=forbidden_a_special_uses,
+        post_boot_start_presses=post_boot_start_presses,
+    )
+    if require_clean_assists and (not clean_ok or not clean_audit_ok(audit)):
         raise RuntimeError(
             "clean integrity failed: "
             f"e-heals={metrics.health_guard_interventions} "
-            f"iframe_frames={metrics.final_boss_iframe_guard_frames}"
+            f"iframe_frames={metrics.final_boss_iframe_guard_frames} "
+            f"loads={save_state_loads} stage_writes={stage_writes} "
+            f"lives_writes={lives_writes} a={forbidden_a_special_uses} "
+            f"start={post_boot_start_presses}"
         )
     class_name = intervention_class(
         emergency_hp=emergency_hp, iframe_hold=iframe_hold
@@ -227,6 +358,11 @@ def finalize_full_run(
         dry_run=dry_run,
         video_path=video_path,
         integrity_flags=integrity_flags,
+        save_state_loads=save_state_loads,
+        stage_writes=stage_writes,
+        lives_writes=lives_writes,
+        forbidden_a_special_uses=forbidden_a_special_uses,
+        post_boot_start_presses=post_boot_start_presses,
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(

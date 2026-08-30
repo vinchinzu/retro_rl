@@ -62,6 +62,9 @@ def test_clean_integrity_requires_zero_assists_and_zero_lives_lost() -> None:
     assert ok is True
     assert flags["clean_assists_zero"]
     assert flags["life_losses_zero"]
+    assert flags["state_loads_zero"] is not True
+    assert flags["stage_writes_zero"] is not True
+    assert flags["lives_writes_zero"] is not True
 
     ok_hp, hp_flags = evaluate_clean_integrity(RunMetrics(health_guard_interventions=1))
     assert ok_hp is False
@@ -79,6 +82,15 @@ def test_clean_integrity_requires_zero_assists_and_zero_lives_lost() -> None:
     )
     assert "clean_assists_zero" not in assisted
     assert assisted["life_losses_zero"] is True
+    proven = assist_integrity(
+        RunMetrics(),
+        state_loads=0,
+        stage_writes=0,
+        lives_writes=0,
+    )
+    assert proven["state_loads_zero"] is True
+    assert proven["stage_writes_zero"] is True
+    assert proven["lives_writes_zero"] is True
 
 
 def test_clean_stems_never_overwrite_assisted() -> None:

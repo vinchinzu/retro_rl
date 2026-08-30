@@ -87,6 +87,15 @@ class AlleycatPackTactics:
         # the opening 0x60 wave at x=113.
         if wrong_side and has_5e and in_range and state.player_x < _RIGHT_WALL_X:
             return self._poke(dense=True)
+        # Left 0x5E clump, player on the right shoulder (REACH x=164 /
+        # enemies 69–96): generic releft walks through the kick. Exit
+        # right until the hold line, then plant — never LEFT through.
+        if has_5e and _left_5e_clump(state, living):
+            if state.player_x < _PACK_HOLD_X:
+                return FrameAction(
+                    action=buttons("RIGHT"), reason="alley_right_exit"
+                )
+            return self._poke(dense=True)
         if wrong_side:
             return FrameAction(action=buttons("LEFT"), reason="alley_releft")
 
@@ -184,3 +193,13 @@ def _right_kicker(state: GameState, enemy: EnemyState) -> bool:
         return False
     dx = enemy.x - state.player_x
     return 0 < dx <= _KICK_RIGHT_ADX and abs(enemy.y - state.player_y) <= _Y_BAND
+
+
+def _left_5e_clump(state: GameState, living: list[EnemyState]) -> bool:
+    """True when every 0x5E is on the left and none is a right-side kicker."""
+    pack = [e for e in living if e.kind == 0x5E]
+    if not pack:
+        return False
+    if any(_right_kicker(state, e) for e in pack):
+        return False
+    return all(e.x <= state.player_x for e in pack)

@@ -36,6 +36,7 @@ ADDR_EVENT = 0x0070
 ADDR_STAGE = 0x0082
 ADDR_TIMER = 0x0096
 ADDR_LIVES = 0x1AA0
+ADDR_DIFFICULTY = 0x1FEE
 
 # Progress / scroll heuristic (increases while advancing). Player and
 # enemy X/Y stay screen-space during Stage 1 locks — combat zeros
@@ -271,6 +272,7 @@ def parse_game_state(ram: np.ndarray, frame: int = 0) -> GameState:
             "menu": menu,
             "event": event,
             "timer": read_u8(ram, ADDR_TIMER),
+            "difficulty": read_u8(ram, ADDR_DIFFICULTY),
             "char_id": read_u8(ram, PLAYER_BASE + OFF_CHAR),
             "anim": read_u8(ram, PLAYER_BASE + OFF_ANIM),
             "iframes": read_u8(ram, PLAYER_BASE + OFF_IFRAMES),

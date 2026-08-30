@@ -66,7 +66,7 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure varia-to-kraid \
 # Scaffold next pure hop (dry-run checklist; --write to emit files)
 uv run python snes/super_metroid/scripts/scaffold_tip.py \
   --segment business_to_frog_save --from-room 0xA7DE --to-room 0xB167 \
-  --module k4_cathedral --card-id SM-K4-BUBBLE-01 --dry-run
+  --module norfair/cathedral --card-id SM-K4-BUBBLE-01 --dry-run
 
 # YouTube reference VOD (default Kentroid KPDR; data under refs/yt_reference/, gitignored)
 uv run python snes/super_metroid/scripts/tools/yt_ref.py list

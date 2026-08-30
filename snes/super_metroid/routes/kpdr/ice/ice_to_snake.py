@@ -19,7 +19,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.k4_common import _STANDING_POSES
+from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE, ROOM_ICE_SNAKE
 from super_metroid.routes.kpdr.ice.geometry import (
     ICE_BEAM_MASK,

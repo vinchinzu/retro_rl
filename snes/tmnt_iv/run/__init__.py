@@ -1,1 +1,1 @@
-"""Orchestration: wave-chain segment, stage bridge, Clean suite, full-run helpers."""
+"""Orchestration: one trial loop, spec tables, bridge, full-run helpers."""

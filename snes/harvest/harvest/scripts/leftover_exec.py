@@ -60,6 +60,28 @@ def _is_spa_phase(spec) -> bool:
     return phase == "HOT_SPRING_STAMINA" or kind == "hot_spring"
 
 
+def _task_phase_key(task) -> tuple:
+    spec = getattr(task, "_spec", None)
+    phase = str(getattr(spec, "phase", "") or getattr(task, "name", "") or "")
+    params = getattr(spec, "params", None) or {}
+    return (phase, params.get("chunk"))
+
+
+def _task_is_spa(task) -> bool:
+    spec = getattr(task, "_spec", None)
+    if spec is not None and _is_spa_phase(spec):
+        return True
+    child = getattr(task, "current_task", None)
+    return str(getattr(child, "name", "") or "") == "hot_spring_stamina"
+
+
+def leftover_stall_should_abort(task, frame: int, last_progress: int, stall_frames: int) -> bool:
+    """Debris stall is a smash watchdog. Spa does not change counts."""
+    if _task_is_spa(task):
+        return False
+    return _should_abort_stall(frame, last_progress, stall_frames)
+
+
 def _phase_timeout(spec, remaining: int) -> int:
     """timeout<=0 or spa spends remaining; other estimates cap."""
     params = spec.params or {}
@@ -101,6 +123,7 @@ def run_leftover_task(
     last_key = _debris_key(env.get_ram())
     last_progress = start_frame
     last_checkpoint = start_frame
+    last_phase_key = _task_phase_key(task)
     while frame <= start_frame + timeout:
         budget = headed_emu_repeat(env)
         stopped = False
@@ -122,6 +145,10 @@ def run_leftover_task(
                 )
             obs, _reward, _term, _trunc, _info = env.step(action)
             frame += 1
+            phase_key = _task_phase_key(task)
+            if phase_key != last_phase_key:
+                last_phase_key = phase_key
+                last_progress = frame
             poll = (
                 frame % 60 == 0
                 or (
@@ -147,7 +174,9 @@ def run_leftover_task(
                         f"debris={list(key)} -> {saved}"
                     )
                     last_checkpoint = frame
-                if _should_abort_stall(frame, last_progress, stall_frames):
+                if leftover_stall_should_abort(
+                    task, frame, last_progress, stall_frames
+                ):
                     if checkpoint_state:
                         save_emulator_state(env, checkpoint_state)
                     print(

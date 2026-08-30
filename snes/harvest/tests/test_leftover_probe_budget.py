@@ -21,6 +21,8 @@ from harvest.scripts.leftover_exec import (
     _phase_timeout,
     _phase_timeout_result,
     leftover_chain_decision,
+    leftover_stall_should_abort,
+    _task_phase_key,
 )
 
 
@@ -90,6 +92,31 @@ class LeftoverBudgetResultTests(unittest.TestCase):
             reason="no debris progress 24000f (last_progress=1000)",
         )
         self.assertIs(_phase_timeout_result(stall, 80_000), stall)
+
+    def test_spa_child_does_not_count_as_debris_stall(self) -> None:
+        spa = SimpleNamespace(
+            _spec=SimpleNamespace(phase="HOT_SPRING_STAMINA", kind="hot_spring", params={}),
+            current_task=SimpleNamespace(name="hot_spring_stamina"),
+            name="d2_farm_clear",
+        )
+        smash = SimpleNamespace(
+            _spec=SimpleNamespace(
+                phase="CLEAR_STUMPS", kind="clear_field", params={"chunk": "se"}
+            ),
+            current_task=SimpleNamespace(name="farm_clear"),
+            name="d2_farm_clear",
+        )
+        idle = SimpleNamespace(
+            _spec=None,
+            current_task=None,
+            name="d2_farm_clear",
+        )
+        self.assertFalse(leftover_stall_should_abort(spa, 24_000, 0, 24_000))
+        self.assertTrue(leftover_stall_should_abort(smash, 24_000, 0, 24_000))
+        self.assertTrue(leftover_stall_should_abort(idle, 24_000, 0, 24_000))
+        self.assertEqual(_task_phase_key(spa), ("HOT_SPRING_STAMINA", None))
+        self.assertEqual(_task_phase_key(smash), ("CLEAR_STUMPS", "se"))
+        self.assertNotEqual(_task_phase_key(spa), _task_phase_key(smash))
 
     def test_spa_failure_aborts_not_spa_retry(self) -> None:
         self.assertEqual(
