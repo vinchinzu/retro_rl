@@ -3,16 +3,84 @@ from __future__ import annotations
 from dataclasses import replace
 import numpy as np
 
-from super_metroid.assist import UnlimitedAmmoAssist, UnlimitedResourcesAssist
+from super_metroid.assist import (
+    ATTIC_PILOT_ENEMY_ID,
+    ATTIC_ROOM_ID,
+    ScaffoldAllowlistEntry,
+    ScaffoldHpClamp,
+    UnlimitedAmmoAssist,
+    UnlimitedResourcesAssist,
+    attic_ordinary_enemy_allowlist,
+)
+from super_metroid.combat.enemies.scan import ENEMY_BASE, ENEMY_STRIDE
 from super_metroid.ram import GameplayPhase, parse_state
+
+# Synthetic ordinary-enemy id for RAM-buffer tests. Not a live Attic header.
+_SYNTHETIC_ENEMY_ID = 0xBEEF
+_OFF_HP = 0x14
+_OFF_SPAWN = 0x1A
+_OFF_PHASE = 0x30
 
 
 class FakeData:
-    def __init__(self) -> None:
+    def __init__(self, ram: np.ndarray | None = None) -> None:
         self.writes: list[tuple[str, int]] = []
+        self.ram = ram
 
     def set_value(self, key: str, value: int) -> None:
         self.writes.append((key, value))
+
+    def get_ram(self):
+        return self.ram
+
+
+def _u16(ram: np.ndarray, addr: int, value: int) -> None:
+    ram[addr] = value & 0xFF
+    ram[addr + 1] = (value >> 8) & 0xFF
+
+
+def _poke_enemy(
+    ram: np.ndarray,
+    slot: int,
+    *,
+    enemy_id: int,
+    hp: int,
+    x: int = 100,
+    y: int = 120,
+    spawn_state: int = 0,
+    phase: int = 0,
+) -> None:
+    base = ENEMY_BASE + slot * ENEMY_STRIDE
+    _u16(ram, base, enemy_id)
+    _u16(ram, base + 0x02, x)
+    _u16(ram, base + 0x06, y)
+    _u16(ram, base + _OFF_HP, hp)
+    _u16(ram, base + _OFF_SPAWN, spawn_state)
+    _u16(ram, base + _OFF_PHASE, phase)
+
+
+def _slot_hp(ram: np.ndarray, slot: int) -> int:
+    addr = ENEMY_BASE + slot * ENEMY_STRIDE + _OFF_HP
+    return int(ram[addr]) | (int(ram[addr + 1]) << 8)
+
+
+def _attic(enemy_id: int = _SYNTHETIC_ENEMY_ID, **kwargs) -> ScaffoldAllowlistEntry:
+    return ScaffoldAllowlistEntry(room_id=ATTIC_ROOM_ID, enemy_id=enemy_id, **kwargs)
+
+
+def _scaffold(*, allowlist, ram: np.ndarray | None = None) -> tuple[UnlimitedResourcesAssist, FakeData]:
+    assist = UnlimitedResourcesAssist(scaffold_allowlist=allowlist)
+    return assist, FakeData(ram)
+
+
+def _ordinary_attic(**kwargs):
+    return replace(
+        _state(),
+        frame=kwargs.pop("frame", 10),
+        phase=GameplayPhase.ORDINARY_GAMEPLAY,
+        room_id=ATTIC_ROOM_ID,
+        **kwargs,
+    )
 
 
 def _state():
@@ -388,3 +456,210 @@ def test_attach_env_refills_inside_env_step() -> None:
     finally:
         assist_mod.parse_env_state = orig_parse
     assert env.data.writes == [("health", 99)]
+
+
+def test_survival_default_does_not_clamp_live_enemies() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist = UnlimitedResourcesAssist()
+    data = FakeData(ram)
+    assist.apply(data, _ordinary_attic(health=99, max_health=99))
+
+    assert _slot_hp(ram, 0) == 250
+    assert assist.hp_clamp.enabled is False
+    assert assist.telemetry.hp_clamp_writes == []
+    assert assist.report()["profile"] == "survival"
+    assert assist.report()["development_only"] is False
+
+
+def test_empty_allowlist_writes_no_hp() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist, data = _scaffold(allowlist=(), ram=ram)
+    assist.apply(data, _ordinary_attic())
+
+    assert _slot_hp(ram, 0) == 250
+    assert assist.hp_clamp.enabled is True
+    assert assist.telemetry.hp_clamp_writes == []
+
+
+def test_unknown_species_in_attic_fail_closed() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist = UnlimitedResourcesAssist(profile="scaffold")
+    data = FakeData(ram)
+    assist.apply(data, _ordinary_attic())
+
+    assert _slot_hp(ram, 0) == 250
+    assert assist.telemetry.hp_clamp_writes == []
+    factory = attic_ordinary_enemy_allowlist()
+    assert factory[0].room_id == ATTIC_ROOM_ID
+    assert factory[0].enemy_id == ATTIC_PILOT_ENEMY_ID
+
+
+def test_clamp_live_allowlisted_enemy_hp_to_one_not_zero() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    assist.apply(data, _ordinary_attic(frame=7, health=40, max_health=99))
+
+    assert _slot_hp(ram, 0) == 1
+    assert ("enemy0_hp", 0) not in data.writes
+    assert ("enemy0_hp", 1) not in data.writes
+    writes = assist.telemetry.hp_clamp_writes
+    assert len(writes) == 1
+    assert writes[0].old == 250
+    assert writes[0].new == 1
+    assert writes[0].slot == 0
+    assert writes[0].enemy_id == _SYNTHETIC_ENEMY_ID
+    assert writes[0].room_id == ATTIC_ROOM_ID
+    assert writes[0].reason == "scaffold_hp_clamp"
+    assert assist.telemetry.hp_clamp_counts_by_room == {"0xCA52": 1}
+    assert assist.telemetry.hp_clamp_counts_by_entity == {"0xBEEF": 1}
+    assert assist.telemetry.progression_writes == 0
+    assert assist.telemetry.capacity_writes == 0
+    report = assist.report()
+    assert report["profile"] == "scaffold"
+    assert report["development_only"] is True
+    assert report["hp_clamp"]["writes"][0]["new"] == 1
+
+
+def test_clamp_once_per_phase_and_skips_hp_already_one() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    state = _ordinary_attic(frame=1)
+    assist.apply(data, state)
+    _u16(ram, ENEMY_BASE + _OFF_HP, 80)
+    assist.apply(data, replace(state, frame=2))
+
+    assert _slot_hp(ram, 0) == 80
+    assert len(assist.telemetry.hp_clamp_writes) == 1
+
+    ram2 = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram2, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=1)
+    assist2, data2 = _scaffold(allowlist=(_attic(),), ram=ram2)
+    assist2.apply(data2, _ordinary_attic())
+    assert _slot_hp(ram2, 0) == 1
+    assert assist2.telemetry.hp_clamp_writes == []
+
+
+def test_clamp_skips_dead_and_off_map() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=0)
+    _poke_enemy(ram, 1, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250, x=0xFE00)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    assist.apply(data, _ordinary_attic())
+
+    assert _slot_hp(ram, 0) == 0
+    assert _slot_hp(ram, 1) == 250
+    assert assist.telemetry.hp_clamp_writes == []
+
+
+def test_clamp_scans_all_slots() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=90)
+    _poke_enemy(ram, 31, enemy_id=_SYNTHETIC_ENEMY_ID, hp=40)
+    _poke_enemy(ram, 2, enemy_id=0x1111, hp=99)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    assist.apply(data, _ordinary_attic())
+
+    assert _slot_hp(ram, 0) == 1
+    assert _slot_hp(ram, 31) == 1
+    assert _slot_hp(ram, 2) == 99
+    assert len(assist.telemetry.hp_clamp_writes) == 2
+    slots = {row.slot for row in assist.telemetry.hp_clamp_writes}
+    assert slots == {0, 31}
+
+
+def test_clamp_suspends_outside_ordinary_gameplay() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    assist, data = _scaffold(allowlist=(_attic(),), ram=ram)
+    state = replace(
+        _state(),
+        phase=GameplayPhase.ROOM_TRANSITION,
+        room_id=ATTIC_ROOM_ID,
+        missiles=1,
+        max_missiles=5,
+    )
+    assist.apply(data, state)
+
+    assert _slot_hp(ram, 0) == 250
+    assert assist.telemetry.hp_clamp_writes == []
+    assert assist.telemetry.suspended_phase_frames["hp_clamp:room_transition"] == 1
+
+
+def test_clamp_spawn_state_mismatch_fail_closed() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250, spawn_state=0)
+    allow = (_attic(spawn_state=0x1234),)
+    assist, data = _scaffold(allowlist=allow, ram=ram)
+    assist.apply(data, _ordinary_attic())
+    assert _slot_hp(ram, 0) == 250
+
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250, spawn_state=0x1234)
+    assist.apply(data, _ordinary_attic(frame=2))
+    assert _slot_hp(ram, 0) == 1
+    assert len(assist.telemetry.hp_clamp_writes) == 1
+
+
+def test_clamp_new_phase_reclamps_once() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=500, phase=1)
+    allow = (
+        _attic(phase=1),
+        _attic(phase=2),
+    )
+    assist, data = _scaffold(allowlist=allow, ram=ram)
+    assist.apply(data, _ordinary_attic(frame=1))
+    assert _slot_hp(ram, 0) == 1
+
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=500, phase=2)
+    assist.apply(data, _ordinary_attic(frame=2))
+    assert _slot_hp(ram, 0) == 1
+    assert [row.old for row in assist.telemetry.hp_clamp_writes] == [500, 500]
+    assert assist.telemetry.hp_clamp_counts_by_entity["0xBEEF"] == 2
+
+
+def test_disabled_clamp_controller_writes_nothing() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=250)
+    clamp = ScaffoldHpClamp(enabled=False, allowlist=(_attic(),))
+    clamp.apply(FakeData(ram), _ordinary_attic())
+    assert _slot_hp(ram, 0) == 250
+    assert clamp.telemetry.hp_clamp_writes == []
+
+
+def test_attach_env_runs_survival_refill_and_clamp() -> None:
+    ram = np.zeros(0x2000, dtype=np.uint8)
+    _poke_enemy(ram, 0, enemy_id=_SYNTHETIC_ENEMY_ID, hp=180)
+
+    class Env:
+        def __init__(self):
+            self.data = FakeData(ram)
+            self.ram = ram
+
+        def step(self, action):
+            del action
+            return None
+
+        def get_ram(self):
+            return self.ram
+
+    env = Env()
+    assist = UnlimitedResourcesAssist(scaffold_allowlist=(_attic(),))
+    low = _ordinary_attic(health=10, max_health=99)
+    from super_metroid import assist as assist_mod
+
+    orig_parse = assist_mod.parse_env_state
+    assist_mod.parse_env_state = lambda *args, **kwargs: low  # type: ignore[assignment]
+    try:
+        assist.attach_env(env)
+        env.step(None)
+    finally:
+        assist_mod.parse_env_state = orig_parse
+    assert env.data.writes == [("health", 99)]
+    assert _slot_hp(ram, 0) == 1
+    assert len(assist.telemetry.hp_clamp_writes) == 1
+    assert assist.telemetry.progression_writes == 0
