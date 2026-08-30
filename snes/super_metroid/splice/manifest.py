@@ -1,4 +1,4 @@
-"""Route-manifest load/save and product-chain board adapter.
+"""Route-manifest load and product-chain board adapter.
 
 Hop order comes from the board (or a loaded manifest). Optional TipSpec hop
 ids label edges by index; they do not reorder. Does not write bank.json.
@@ -12,11 +12,11 @@ from typing import Any, Mapping, Sequence
 
 from super_metroid.hop_id import make_hop_key, parse_items_value, parse_room_id
 from super_metroid.leave_specs import LeaveSpec
+from super_metroid.paths import GAME_DIR
 from super_metroid.splice.errors import SchemaError
-from super_metroid.splice.preflight import file_digest
+from super_metroid.splice.preflight import _resolve_on_disk, file_digest
 from super_metroid.splice.schema import (
     CANDIDATE_KINDS,
-    Capacities,
     EntryContract,
     EntryFingerprint,
     LeaveSpecRef,
@@ -45,8 +45,37 @@ def load_manifest(path: Path | str) -> RouteManifest:
 
 
 def dest_leave_spec(*, hop: str, room_id: int) -> LeaveSpec:
-    """Wide dest-room glance when no named LeaveSpec is bound yet."""
+    """Wide dest-room glance when no named LeaveSpec is bound."""
     return LeaveSpec(hop=hop, room=int(room_id), x=_WIDE, y=_WIDE, pose_class="any")
+
+
+def _board_file(path: Any) -> tuple[str | None, str | None]:
+    if path is None or str(path).strip() == "":
+        return None, None
+    resolved = _resolve_on_disk(path)
+    if resolved is not None:
+        return rel_path(resolved), file_digest(resolved)
+    raw = Path(str(path).strip())
+    if not raw.is_absolute():
+        return rel_path(GAME_DIR / raw), None
+    return rel_path(raw), None
+
+
+def _opt_int(value: Any, *, field: str, index: int, default: int | None = None) -> int | None:
+    if value in (None, ""):
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SchemaError(
+            f"board hop {index} {field} is not int",
+            code="schema.budget",
+        ) from exc
+
+
+def _has_tape(hop: Mapping[str, Any]) -> bool:
+    tape = hop.get("tape")
+    return tape is not None and str(tape).strip() != ""
 
 
 def _board_hops(board: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -64,8 +93,10 @@ def _board_hops(board: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 
 
 def _kinds_for(hop: Mapping[str, Any]) -> tuple[str, ...]:
-    kinds: list[str] = ["tape", "controller"]
-    if hop.get("policy_id"):
+    kinds: list[str] = ["controller"]
+    if _has_tape(hop):
+        kinds.append("tape")
+    if str(hop.get("policy_id") or "").strip():
         kinds.append("reactive_policy")
     if str(hop.get("mode") or "") == "combat":
         kinds.append("boss")
@@ -78,11 +109,8 @@ def _selected_for(hop: Mapping[str, Any], allowed: Sequence[str]) -> dict[str, s
     policy = str(hop.get("policy_id") or "").strip()
     if policy and "reactive_policy" in allowed_set:
         selected["survival"] = f"reactive_policy:{policy}"
-    tape_kind = "tape" if "tape" in allowed_set else (allowed[0] if allowed else "")
-    if tape_kind:
-        selected.setdefault("scaffold", f"{tape_kind}:board")
-        selected.setdefault("clean", f"{tape_kind}:board")
-        selected.setdefault("survival", f"{tape_kind}:board")
+    if _has_tape(hop) and "tape" in allowed_set:
+        selected["scaffold"] = "tape:board"
     return selected
 
 
@@ -136,21 +164,12 @@ def manifest_from_board(
         used.add(task_id)
         leave_room = int(nxt) if nxt is not None else int(room)
         leave = dest_leave_spec(hop=hop_key, room_id=leave_room)
-        pin = rel_path(hop.get("anchor_path"))
-        tape = rel_path(hop.get("tape"))
-        dwell = hop.get("dwell")
-        try:
-            max_frames = max(int(dwell), 1) if dwell not in (None, "") else 10_000
-        except (TypeError, ValueError) as exc:
-            raise SchemaError(
-                f"board hop {i} dwell is not int",
-                code="schema.budget",
-            ) from exc
-        start = hop.get("start_index", hop.get("frame"))
-        try:
-            frame_start = int(start) if start not in (None, "") else None
-        except (TypeError, ValueError):
-            frame_start = None
+        pin_path, pin_digest = _board_file(hop.get("anchor_path"))
+        tape_path, tape_digest = _board_file(hop.get("tape"))
+        dwell = _opt_int(hop.get("dwell"), field="dwell", index=i)
+        max_frames = max(int(dwell), 1) if dwell is not None else 10_000
+        start = hop["start_index"] if "start_index" in hop else hop.get("frame")
+        frame_start = _opt_int(start, field="start_index", index=i)
         frame_end = None if frame_start is None else frame_start + max_frames - 1
         allowed = _kinds_for(hop)
         notes = hop.get("notes") or ()
@@ -162,8 +181,8 @@ def manifest_from_board(
                 items=items,
                 prior_room_id=pred,
             ),
-            state_path=pin,
-            state_digest=file_digest(hop.get("anchor_path")) if hop.get("anchor_path") else None,
+            state_path=pin_path,
+            state_digest=pin_digest,
         )
         edges.append(
             RouteEdge.from_dict(
@@ -188,10 +207,9 @@ def manifest_from_board(
                     "hop_index": hop.get("hop_index", i),
                     "frame_start": frame_start,
                     "frame_end": frame_end,
-                    "tape_path": tape,
-                    "tape_digest": file_digest(hop.get("tape")) if hop.get("tape") else None,
+                    "tape_path": tape_path,
+                    "tape_digest": tape_digest,
                     "source_notes": [str(n) for n in notes],
-                    "capacities": Capacities().to_dict(),
                 }
             )
         )
