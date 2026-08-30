@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble, range (no emulator)."""
+"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble, range, credits (no emulator)."""
 
 from __future__ import annotations
 
@@ -34,6 +34,11 @@ from super_metroid.splice.preflight import (  # noqa: E402
     run_preflight,
 )
 from super_metroid.splice.prepare import prepare  # noqa: E402
+from super_metroid.splice.credits import (  # noqa: E402
+    assemble_credits,
+    credits_chain,
+    format_credits,
+)
 from super_metroid.splice.ranges import (  # noqa: E402
     assemble_attic_to_gravity,
     attic_to_gravity_range,
@@ -48,7 +53,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Planning/verification over tips.play_hops. "
             "Artifact digest preflight, read-only task cards, fail-closed "
-            "prepare, grade, assemble, and the Attic→Gravity Scaffold range "
+            "prepare, grade, assemble, the Attic→Gravity Scaffold range, "
+            "and the development-only Scaffold credits chain "
             "(refuses to boot without a session factory)."
         ),
     )
@@ -151,6 +157,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Assemble Attic→Gravity Scaffold (refuses to boot without a session factory)",
     )
     asr.add_argument("--segment", type=Path, help="s23 directory (fail closed if missing)")
+    crd = sub.add_parser(
+        "credits",
+        help=(
+            "Scaffold credits chain (development-only). "
+            "Default --dry refuses to boot without a session factory"
+        ),
+    )
+    crd.add_argument("--segment", type=Path, help="s23 directory (fail closed if missing)")
+    crd.add_argument("--json", action="store_true", help="Print JSON plan/report only")
+    crd.add_argument(
+        "--dry",
+        action="store_true",
+        help="Print the chain plan; refuse to boot (default)",
+    )
+    crd.add_argument(
+        "--boot",
+        action="store_true",
+        help="Assemble live (requires an explicit session factory; tests never pass this)",
+    )
     return parser
 
 
@@ -280,6 +305,32 @@ def _run_assemble_range(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_credits(args: argparse.Namespace) -> int:
+    # Default dry: print the plan and refuse to boot. --boot still needs a
+    # session factory (planning module, not a second runner).
+    want_boot = bool(args.boot) and not bool(args.dry)
+    try:
+        if want_boot:
+            # Still refuses without a session factory; CLI does not invent a ROM boot.
+            report = assemble_credits(args.segment)
+            if args.json:
+                print(json.dumps(report.to_dict(), indent=2))
+            else:
+                print(format_credits(report.plan))
+            return 0
+        else:
+            plan = credits_chain(args.segment)
+            if args.json:
+                print(json.dumps(plan.to_dict(), indent=2))
+            else:
+                print(format_credits(plan))
+            return 0
+    except (PreflightError, AssembleError, SchemaError) as exc:
+        _print_error(exc, as_json=True)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -297,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_range(args)
     if args.cmd == "assemble-range":
         return _run_assemble_range(args)
+    if args.cmd == "credits":
+        return _run_credits(args)
     parser.print_help()
     return 2
 
