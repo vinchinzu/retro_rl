@@ -19,12 +19,19 @@ from water_refill_helpers import (
 
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
+    ADDR_MAP,
     ADDR_TILEMAP,
     DebrisType,
     FENCE,
+    MAP_WIDTH,
     STONE,
 )
 from retro_harness import TaskStatus
+
+
+def _fill_farm_map(ram, tile_id: int) -> None:
+    for i in range(MAP_WIDTH * MAP_WIDTH):
+        ram[ADDR_MAP + i] = tile_id
 
 
 class FenceLocalDropTests(unittest.TestCase):
@@ -652,6 +659,140 @@ class LeftoverPondDumpTests(unittest.TestCase):
         self.assertTrue(path)
         self.assertLessEqual(len(path), VIEWPORT_HOP_TILES)
         self.assertTrue(set(stump).isdisjoint(path))
+
+
+class FenceClearTerminationTests(unittest.TestCase):
+    """Global termination: timeout, carry retries, input lock, loaded-map."""
+
+    def _pond_dump_world(self, *, tile_id: int = 0xA1, player=(15, 29)):
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        _fill_farm_map(ram, tile_id)
+        _set_player_tile(ram, player)
+        return SimpleNamespace(ram=ram, info={}, obs=None)
+
+    def _pond_dump_task(self, world, **kwargs):
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        params = dict(max_fences=None, pond_dump=True, corridor_only=False)
+        params.update(kwargs)
+        task = FenceClearLoopTask(**params)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        return task
+
+    def test_build_fence_clear_passes_timeout(self) -> None:
+        import numpy as np
+        from harvest.planner.day_phase_registry import (
+            TaskBuildContext,
+            _build_fence_clear,
+        )
+        from harvest.planner.day_phase_types import PhaseSpec
+        from retro_harness import WorldState
+
+        spec = PhaseSpec("CLEAR_FENCES", "fence_clear", {"timeout": 12345})
+        world = WorldState(frame=0, ram=np.zeros(16, dtype=np.uint8), info={}, obs=None)
+        task = _build_fence_clear(TaskBuildContext(), spec, world)
+        self.assertEqual(task.timeout, 12345)
+
+    def test_pond_dump_carry_timeout_is_bounded(self) -> None:
+        from harvest.tasks.fence_flow import ACTION_CARRYING_BIT, ADDR_PLAYER_STATE
+        from retro_harness import TaskResult
+
+        world = self._pond_dump_world(player=(18, 20))
+        world.ram[ADDR_PLAYER_STATE] = ACTION_CARRYING_BIT
+        task = self._pond_dump_task(world, max_steps_per_fence=10, max_failures=20)
+        task._state = "navigate"
+        task._current = SimpleNamespace(tile=(18, 21), tile_id=0x05)
+        task._approach_tile = (18, 20)
+        task._navigator.update(world.ram)
+        task._pond_carry.step = lambda w: TaskResult(
+            status=TaskStatus.RUNNING, reason="stub carry"
+        )
+
+        keep_carrying = 0
+        result = None
+        for _ in range(80):
+            result = task.step(world)
+            if result.reason == "pond_dump keep carrying":
+                keep_carrying += 1
+            if result.status != TaskStatus.RUNNING:
+                break
+            if result.reason != "pond_dump keep carrying" and (
+                (18, 21) in task._skip_tiles
+                or task._state in ("scan", "local_drop")
+                or "retry cap" in (result.reason or "")
+            ):
+                break
+        self.assertIsNotNone(result)
+        self.assertLessEqual(keep_carrying, task.max_pond_carry_retries)
+        self.assertNotEqual(result.reason, "pond_dump keep carrying")
+        self.assertTrue(
+            (18, 21) in task._skip_tiles
+            or result.status == TaskStatus.FAILURE
+            or task._state == "local_drop",
+            msg=f"state={task._state} reason={result.reason} skip={task._skip_tiles}",
+        )
+
+    def test_input_lock_ab_is_bounded(self) -> None:
+        world = self._pond_dump_world()
+        world.ram[ADDR_INPUT_LOCK] = 0
+        task = self._pond_dump_task(world, max_failures=20)
+        task._state = "navigate"
+        task._current = SimpleNamespace(tile=(15, 31), tile_id=FENCE)
+        task._approach_tile = (15, 30)
+        task._navigator.update(world.ram)
+
+        ab_presses = 0
+        result = None
+        for _ in range(40):
+            result = task.step(world)
+            if result.reason == "input_lock":
+                ab_presses += 1
+                continue
+            break
+        self.assertIsNotNone(result)
+        self.assertGreater(ab_presses, 0)
+        self.assertLessEqual(ab_presses, task.max_input_lock_presses)
+        self.assertNotEqual(result.reason, "input_lock")
+
+    def test_pond_dump_stale_farm_map_is_not_success(self) -> None:
+        world = self._pond_dump_world(tile_id=0xFF, player=(26, 30))
+        task = self._pond_dump_task(world)
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("stale_farm_map", result.reason)
+
+    def test_pond_dump_loaded_farm_zero_is_success(self) -> None:
+        world = self._pond_dump_world(tile_id=0xA1, player=(15, 29))
+        task = self._pond_dump_task(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("loaded-farm zero", result.reason)
+
+    def test_skip_tiles_survive_other_dump_success(self) -> None:
+        world = self._pond_dump_world()
+        task = self._pond_dump_task(world)
+        task._current = SimpleNamespace(tile=(10, 31), tile_id=FENCE)
+        skipped = task._skip_current("stuck on A")
+        self.assertEqual(skipped.status, TaskStatus.RUNNING)
+        self.assertIn((10, 31), task._skip_tiles)
+        task._current = SimpleNamespace(tile=(20, 31), tile_id=FENCE)
+        dumped = task._finish_pond_carry(world)
+        self.assertEqual(dumped.status, TaskStatus.RUNNING)
+        self.assertIn((10, 31), task._skip_tiles)
+
+    def test_corridor_only_open_gap_is_success(self) -> None:
+        from harvest.tasks.fence_flow import FenceClearLoopTask
+
+        world = self._pond_dump_world(tile_id=0xA1, player=(15, 32))
+        task = FenceClearLoopTask(max_fences=1, corridor_only=True)
+        task._toss_task = SimpleNamespace(frames=[])
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(result.reason, "corridor already open")
 
 
 if __name__ == "__main__":

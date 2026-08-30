@@ -106,7 +106,7 @@ def _video_report(recorder: VideoRecorder, **extra: object) -> dict[str, object]
     }
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_Inside_House")
     p.add_argument(
@@ -201,6 +201,15 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--stop-after-d2-clear",
+        action="store_true",
+        help=(
+            "Stay on Spring D2 until D2FarmStatus.is_complete (plant, water, "
+            "ship, zero debris). Hour 18 is not a work cutoff. Use with "
+            "--power-on or a D2 morning --state."
+        ),
+    )
+    p.add_argument(
         "--video",
         type=Path,
         default=None,
@@ -218,7 +227,7 @@ def _parse_args() -> argparse.Namespace:
         default=3,
         help="Integer nearest-neighbor output scale for --video (default: 3)",
     )
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
 def _world(env, frame: int = 0) -> WorldState:
@@ -237,7 +246,37 @@ def _date_fields(ram) -> dict[str, int]:
     }
 
 
+def _d2_clear_status(task: object, ram):
+    from harvest.planner.d2_work import observe_d2_farm
+
+    journal: list = list(getattr(task, "_last_day_phase_results", ()) or ())
+    current: object | None = task
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        journal.extend(getattr(current, "journal", ()) or ())
+        journal.extend(getattr(current, "phase_results", ()) or ())
+        current = getattr(current, "current_task", None)
+    return observe_d2_farm(ram, journal)
+
+
+def _d2_counts(ram) -> dict:
+    from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+    from harvest.tasks.crop_skills import count_ring_planted, count_ring_wet
+    from harvest.tasks.farm_clear_quota import count_debris
+
+    row = count_debris(ram).as_dict()
+    row["planted"] = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER)
+    row["wet"] = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER)
+    return row
+
+
 def _build_task(args: argparse.Namespace, start_season: int) -> object:
+    extra: dict = {}
+    if getattr(args, "stop_after_d2_clear", False):
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+
+        extra["policy"] = DayPlannerPolicy(include_end_day=False)
     if args.day_plan:
         if (
             args.days is not None
@@ -260,6 +299,7 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
             until_season=0,
             until_day=30,
             max_days=40,
+            **extra,
         )
 
     target_days = args.days
@@ -288,6 +328,7 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
             kwargs.pop("target_days", None)
             kwargs["max_days"] = max(kwargs.get("until_day", 30) + 5, 4)
 
+    kwargs.update(extra)
     return MultiDayPlannerTask(**kwargs)
 
 
@@ -502,6 +543,10 @@ def main() -> int:
         raise SystemExit("--stop-after-d2-shipping needs --power-on or a D2 morning --state")
     if args.stop_after_d2_shipping and args.day_plan:
         raise SystemExit("--stop-after-d2-shipping uses the live multi-day planner")
+    if args.stop_after_d2_clear and args.power_on is False and args.state is None:
+        raise SystemExit("--stop-after-d2-clear needs --power-on or a D2 morning --state")
+    if args.stop_after_d2_clear and args.day_plan:
+        raise SystemExit("--stop-after-d2-clear uses the live multi-day planner")
 
     if args.end_of_spring:
         overnights_budget = 32
@@ -749,6 +794,8 @@ def main() -> int:
         reason = "budget"
         terminal = False
         d2_checkpoint_evidence: dict[str, object] | None = None
+        d2_prev_status = None
+        d2_start_counts = _d2_counts(world.ram) if args.stop_after_d2_clear else None
         weed_checkpoint_saved: Path | None = None
         # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
@@ -790,6 +837,16 @@ def main() -> int:
                     terminal = True
                     break
 
+            if args.stop_after_d2_clear:
+                from harvest.planner.d2_work import confirm_d2_complete
+
+                d2_status = _d2_clear_status(task, world.ram)
+                if confirm_d2_complete(d2_prev_status, d2_status):
+                    reason = "d2 farm clear complete"
+                    terminal = True
+                    break
+                d2_prev_status = d2_status
+
             if current != last_logged_day:
                 print(
                     f"[RUN] day change S{last_logged_day[0]}D{last_logged_day[1]} "
@@ -799,6 +856,14 @@ def main() -> int:
                 last_logged_day = current
 
             if result.status == TaskStatus.SUCCESS:
+                if args.stop_after_d2_clear:
+                    d2_status = _d2_clear_status(task, world.ram)
+                    if d2_status is not None and d2_status.is_complete:
+                        reason = "d2 farm clear complete"
+                    else:
+                        reason = result.reason or "planner finished before d2 farm clear"
+                    terminal = True
+                    break
                 reason = result.reason or "success"
                 terminal = True
                 break
@@ -807,7 +872,7 @@ def main() -> int:
                 terminal = True
                 break
 
-            if args.day_plan and _goal_reached(
+            if args.day_plan and not args.stop_after_d2_clear and _goal_reached(
                 start=start_key,
                 end=current,
                 days_completed=getattr(task, "_days_completed", None),
@@ -854,12 +919,17 @@ def main() -> int:
         morning_ok = morning_scene_ready(scene, end_fields["hour"]) or (
             scene.is_normal_map and int(read_ram_value(world.ram, "input_lock")) == 1
         )
+        d2_end_counts = None
         if args.stop_after_d2_shipping:
             d2_checkpoint_evidence = (
                 d2_checkpoint_evidence
                 or _d2_spine_checkpoint_evidence(task, world)
             )
             success = bool(terminal and d2_checkpoint_evidence["ready"])
+        elif args.stop_after_d2_clear:
+            d2_status = d2_prev_status or _d2_clear_status(task, world.ram)
+            d2_end_counts = _d2_counts(world.ram)
+            success = bool(terminal and d2_status is not None and d2_status.is_complete)
         else:
             success = bool(goal and advanced and morning_ok)
 
@@ -932,7 +1002,16 @@ def main() -> int:
                 and money_ok
                 and end_key > (0, 30)
             ),
-            "reason": (reason if success and args.stop_after_d2_shipping else "goal reached")
+            "d2_farm": (
+                {"start": d2_start_counts, "end": d2_end_counts}
+                if args.stop_after_d2_clear
+                else None
+            ),
+            "reason": (
+                reason
+                if success and (args.stop_after_d2_shipping or args.stop_after_d2_clear)
+                else "goal reached"
+            )
             if success
             else reason,
             "terminal": terminal,

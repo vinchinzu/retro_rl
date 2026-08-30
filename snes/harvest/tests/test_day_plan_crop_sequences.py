@@ -276,48 +276,18 @@ class DayPlanSequenceCropTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
         names = [phase.phase for phase in plan._schedule.active]
-        self.assertEqual(
-            names[:5],
-            [
-                "BUY_SEEDS",
-                "ENSURE_CROP_SEEDS",
-                "CLEAR_PLOT",
-                "NAV_CROP",
-                "CROP_ESTABLISH",
-            ],
-        )
-        self.assertIn("CROP_WATER", names)
+        self.assertEqual(names[:2], ["BUY_SEEDS", "D2_FARM_CLEAR"])
         self.assertNotIn("CLEAR_FIELD", names)
-        self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CLEAR_PLOT"))
-        self.assertLess(names.index("CLEAR_PLOT"), names.index("CROP_ESTABLISH"))
-        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
-        self.assertLess(names.index("CROP_WATER"), names.index("CLEAR_BUSHES"))
-        self.assertLess(names.index("CLEAR_BUSHES"), names.index("CLEAR_FENCES"))
-        self.assertLess(names.index("CLEAR_FENCES"), names.index("CLEAR_STONES"))
-        self.assertLess(names.index("CLEAR_STONES"), names.index("ENSURE_HAMMER"))
-        self.assertLess(names.index("ENSURE_HAMMER"), names.index("CLEAR_ROCKS"))
-        self.assertLess(names.index("CLEAR_ROCKS"), names.index("ENSURE_AXE"))
-        self.assertLess(names.index("ENSURE_AXE"), names.index("CLEAR_STUMPS"))
-        fences = next(p for p in plan._schedule.active if p.phase == "CLEAR_FENCES")
-        self.assertFalse(fences.params.get("corridor_only"))
-        self.assertIsNone(fences.params.get("max_fences"))
-        stones = next(p for p in plan._schedule.active if p.phase == "CLEAR_STONES")
-        self.assertIsNone(stones.params.get("max_fences"))
-        self.assertEqual(stones.params.get("debris_types"), ["stone"])
-        rocks = next(p for p in plan._schedule.active if p.phase == "CLEAR_ROCKS")
-        self.assertEqual(rocks.params.get("handoff"), "quota")
-        self.assertEqual(rocks.params.get("quota"), {"large_rocks": 10_000})
-        stumps = next(p for p in plan._schedule.active if p.phase == "CLEAR_STUMPS")
-        self.assertEqual(stumps.params.get("handoff"), "quota")
-        self.assertEqual(stumps.params.get("quota"), {"stumps": 10_000})
-        self.assertEqual(names.count("CLEAR_STONES"), 4)
-        self.assertEqual(names.count("CLEAR_ROCKS"), 4)
-        self.assertEqual(names.count("CLEAR_STUMPS"), 4)
-        self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
-        clear = next(p for p in plan._schedule.active if p.phase == "CLEAR_PLOT")
-        self.assertEqual(clear.params.get("farm_bounds"), (3, 14, 28, 30))
+        self.assertEqual(names.count("CLEAR_STONES"), 0)
+        self.assertEqual(names.count("CLEAR_ROCKS"), 0)
+        self.assertEqual(names.count("CLEAR_STUMPS"), 0)
+        farm = next(p for p in plan._schedule.active if p.phase == "D2_FARM_CLEAR")
+        self.assertEqual(farm.failure_policy, "required")
+        self.assertEqual(plan.phase_text, "D2_FARM_CLEAR")
         from harvest.planner.d2_work import d2_post_shop_work_phases
+        from harvest.planner.day_phase_types import PhaseKind
 
+        self.assertEqual(farm.kind, PhaseKind.CLEAR_FIELD)
         catalog = {
             spec.phase: spec.failure_policy for spec in d2_post_shop_work_phases()
         }

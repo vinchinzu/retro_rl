@@ -245,8 +245,11 @@ def quota_satisfied(
 
     Honest path: ``FarmClearTask.reset`` snapshots ``quota_start_counts``,
     then start-minus-now via ``count_debris`` (one target per 2×2 TL).
-    Requested counts cap at what the pin spawned. ``cleared_by_kind`` is
-    only a fallback if no snapshot exists.
+    Requested counts cap at what the pin spawned. A capped-empty quota
+    (pin spawned none of the requested debris) is a no-op when the farm
+    map is loaded, even if ``cleared_count`` is 0. Viewport-unload zeros
+    stay False. ``cleared_by_kind`` is only a fallback if no snapshot
+    exists.
     """
     want = (
         quota
@@ -264,10 +267,11 @@ def quota_satisfied(
             scan_bounds = getattr(clearer, "farm_bounds", None)
         if not quota_counts_met(start, count_debris(ram, scan_bounds), want):
             return False
-        # Viewport unload at the shed door drops RAM counts without a swing.
-        if int(getattr(clearer, "cleared_count", 0) or 0) <= 0:
-            return False
-        return True
+        if int(getattr(clearer, "cleared_count", 0) or 0) > 0:
+            return True
+        # Non-empty effective quota still needs a swing so shed-door unload
+        # cannot fake a wipe. Capped-empty is an honest no-op.
+        return capped_quota(want, start).is_empty()
     got = getattr(clearer, "cleared_by_kind", None)
     if isinstance(got, Mapping):
         return DebrisCounts(
