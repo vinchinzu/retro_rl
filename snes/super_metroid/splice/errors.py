@@ -52,3 +52,16 @@ class SchemaError(SpliceError):
         details: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code=code, details=details)
+
+
+class PrepareError(SpliceError):
+    """Task cannot be prepared: missing or mismatched digest, fingerprint, or artifact."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "prepare.invalid",
+        details: Mapping[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code=code, details=details)

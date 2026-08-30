@@ -8,7 +8,7 @@ uncovered route edge. Does not boot an emulator.
 from __future__ import annotations
 
 from super_metroid.splice.cards import assembly_table, generate_cards
-from super_metroid.splice.errors import PreflightError, SchemaError, SpliceError
+from super_metroid.splice.errors import PrepareError, PreflightError, SchemaError, SpliceError
 from super_metroid.splice.manifest import load_manifest, manifest_from_board
 from super_metroid.splice.preflight import (
     ArtifactRef,
@@ -23,6 +23,7 @@ from super_metroid.splice.preflight import (
     repo_relative,
     run_preflight,
 )
+from super_metroid.splice.prepare import PreparedTask, prepare
 from super_metroid.splice.schema import (
     CANDIDATE_KINDS,
     FORBIDDEN_HOT_FILES,
@@ -50,6 +51,8 @@ __all__ = [
     "JoinPredicate",
     "LeaveSpecRef",
     "NON_CLAIMS",
+    "PreparedTask",
+    "PrepareError",
     "PreflightError",
     "PreflightReport",
     "RomPreflight",
@@ -65,6 +68,7 @@ __all__ = [
     "generate_cards",
     "load_manifest",
     "manifest_from_board",
+    "prepare",
     "repo_relative",
     "run_preflight",
 ]
