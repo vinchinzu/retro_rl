@@ -205,9 +205,10 @@ WS_BASEMENT_TO_MAIN = _spec(
 WS_MAIN_TO_ATTIC = _spec(
     "ws_main_to_attic", ROOM_WS_ATTIC, (1050, 1220), (100, 220), "door"
 )
-# s23 tape leaves (wide bands; not Main Shaft GREEN). pose any: door/morph/idle.
+# Natural Attic left door settles on the far-right West Ocean spawn. The old
+# x<=80 band described the opposite room edge and could not grade this seam.
 ATTIC_TO_WEST_OCEAN = _spec(
-    "attic_to_west_ocean", ROOM_WEST_OCEAN, (1, 80), (100, 180), "any"
+    "attic_to_west_ocean", ROOM_WEST_OCEAN, (1980, 2030), (100, 180), "door"
 )
 WEST_OCEAN_TO_PANCAKES = _spec(
     "west_ocean_to_pancakes", ROOM_PANCAKES, (1, 80), (100, 180), "any"
