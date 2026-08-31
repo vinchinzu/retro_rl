@@ -14,10 +14,12 @@ One living residual: `docs/tasks/rr-tne2-residual.md`.
 
 Power-on Survival recovered stairs09 → rod → exit75 → south09 → south19 →
 clear29. Tip is play `0x29` `(184,144)` rod=1 keys=3 TF=`0x1F` bombs=8 Bow=1
-health `0x66` `lo==hi`. `--through level6-south29` is **BLOCKED 3/3** this
-sitting from that leftover. Do not retry LEFT at y=144, DOWN clip to y=181,
-occupancy-DOWN, or the prior-sitting `(55,133)` RIGHT+DOWN clip. Do not
-retouch 0x40, maze-west, L5, stairs09, or the cellar walk.
+health `0x66` `lo==hi`. `--through level6-south29` is **BLOCKED 4/4** from
+that leftover. Trial 4 proved DOWN reaches `(184,165)`, but the first LEFT
+there also hits the center block (`miss_f19_LEFT_184_165`). Do not retry LEFT
+at y=144 or y=165, DOWN clip to y=181, occupancy-DOWN, or the prior-sitting
+`(55,133)` RIGHT+DOWN clip. Do not retouch 0x40, maze-west, L5, stairs09, or
+the cellar walk.
 
 Keys are 3 here versus historical 4. Do not top up.
 
@@ -42,10 +44,11 @@ do not update `STATUS.md` or overwrite Clean M5.
   or rerun an unchanged policy. Three serial reds on the same checkbox means
   mark that checkbox blocked and stop the sitting.
 
-The next south29 trial is the parked clip: DOWN at x=184 until `y>=165`
-(measured east box, tile 244), then LEFT on y=165 to x=120, then DOWN. Do
-not occupancy-DOWN (2px-step false miss). Optional cheaper path: make
-clear29 leave west of x=64 so the old west clip can run.
+The parked y=165 clip is disproved: DOWN reached the measured east box, then
+LEFT missed immediately and the UP guard halted safely. The next geometry
+task is the cheaper open path: shape `clear29` to leave west of x=64, then
+form a new south-door hypothesis from that live leftover. Do not rerun the
+current `SOUTH29_SPEC` or assume the old west RIGHT+DOWN clip is authorized.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
@@ -88,7 +91,7 @@ not permission to claim the old run or force its coordinates.
 | 20 | `level6-south09` | Occupancy to the south door and descend. | play `0x19` north mouth; keys=4 |
 | 21 | `level6-south19` | Take the natural south key door. | dark play `0x29`; keys 4→3 |
 | 22 | `level6-clear29` | Clear five Wizzrobes and collect the natural key. | cleared `0x29`, historical `(55,133)`; keys 3→4 |
-| 23 | `level6-south29` | Recovered leftover is east `(184,144)`. Parked: clip-DOWN to y=165 then LEFT to x=120 then DOWN. Do not retry LEFT y=144, clip-DOWN to 181, occupancy-DOWN, or west RIGHT+DOWN. | play `0x39` `(120,93)`; east door sealed |
+| 23 | `level6-south29` | Recovered leftover is east `(184,144)`. BLOCKED 4/4: LEFT is solid at y=144 and y=165; DOWN boxes at y=165; occupancy-DOWN false-misses. Next shape clear29 west of x=64, then form a new policy. | play `0x39` `(120,93)`; east door sealed |
 | 24 | `level6-settle39` | Idle for the five-Vire census. | play `0x39`, five type `0x12` live |
 | 25 | `level6-clear39` | Clear the Vires with occupancy patrol. | cleared `0x39`, historical `(136,173)` |
 | 26 | `level6-east39` | RIGHT+UP clip to y=141, then cardinal RIGHT. | play `0x3A` `(16,141)`; keys=4 |
