@@ -14,6 +14,7 @@ from super_metroid.hop_glance import (
     raise_leave_miss,
 )
 from super_metroid.leave_specs import (
+    ATTIC_TO_WEST_OCEAN,
     PHANTOON_LEAVE,
     RED_TO_HELLWAY,
     WS_BASEMENT_TO_MAIN,
@@ -25,6 +26,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_HELLWAY,
     ROOM_PHANTOON,
     ROOM_RED_TOWER,
+    ROOM_WEST_OCEAN,
     ROOM_WS_BASEMENT,
     ROOM_WS_MAIN,
 )
@@ -76,6 +78,24 @@ def test_xy_outside_door_band_is_a_glance_miss() -> None:
     final = {"room": "0xCAF6", "xy": [57, 139], "pose": 9, "gs": 8, "dt": 0, "health": 299}
     misses = grade_final(final, WS_ENTRANCE_TO_MAIN)
     assert any(m.startswith("x=") for m in misses)
+
+
+def test_attic_leave_glances_far_right_west_ocean_spawn() -> None:
+    final = {
+        "room": hex(ROOM_WEST_OCEAN),
+        "xy": [2008, 128],
+        "pose": 82,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    assert grade_final(final, ATTIC_TO_WEST_OCEAN) == []
+
+    opposite_edge = dict(final, xy=[49, 139])
+    assert any(
+        miss.startswith("x=")
+        for miss in grade_final(opposite_edge, ATTIC_TO_WEST_OCEAN)
+    )
 
 
 def test_hellway_door_slot_fire_is_not_a_leave() -> None:
