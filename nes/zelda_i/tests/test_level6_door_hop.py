@@ -131,15 +131,24 @@ def test_west2d_align_y_then_left() -> None:
     assert list(west.action) == list(nes_action("LEFT"))
 
 
-def test_south29_west_leftover_occupancy_south_not_east_clip() -> None:
-    """clear29 west leftover (56,157): DOWN-first aisle, not east-box LEFT or RIGHT+DOWN."""
+def test_south29_west_leftover_left_to_47_then_down() -> None:
+    """(56,157) LEFT to sand x=47, then DOWN to y=181, not UP@48 or LEFT-to-40."""
     leftover = _snap(screen=SOUTH29_SPEC.room, x=56, y=157)
     first = Level6DoorHopController(SOUTH29_SPEC).step(leftover)
-    assert first.reason == "south_path"
-    assert list(first.action) == list(nes_action("DOWN"))
-    assert list(first.action) != list(nes_action("LEFT"))
+    assert first.reason == "west_left_peel"
+    assert list(first.action) == list(nes_action("LEFT"))
     assert list(first.action) != list(nes_action("UP"))
-    assert list(first.action) != list(nes_action("RIGHT", "DOWN"))
+    assert list(first.action) != list(nes_action("DOWN"))
+    sand = Level6DoorHopController(SOUTH29_SPEC).step(
+        _snap(screen=SOUTH29_SPEC.room, x=47, y=157)
+    )
+    assert list(sand.action) == list(nes_action("DOWN"))
+    assert list(sand.action) != list(nes_action("LEFT"))
+    assert list(sand.action) != list(nes_action("UP"))
+    band = Level6DoorHopController(SOUTH29_SPEC).step(
+        _snap(screen=SOUTH29_SPEC.room, x=47, y=181)
+    )
+    assert list(band.action) == list(nes_action("RIGHT"))
     door = Level6DoorHopController(SOUTH29_SPEC).step(
         _snap(screen=SOUTH29_SPEC.room, x=120, y=189)
     )
