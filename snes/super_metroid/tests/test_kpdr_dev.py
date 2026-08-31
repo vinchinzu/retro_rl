@@ -7,7 +7,7 @@ from dataclasses import replace
 import numpy as np
 
 from super_metroid.ram import parse_state
-from super_metroid.routes.kpdr.warehouse_stack import resolve_warehouse_entry_mode
+from super_metroid.routes.kpdr.kraid.warehouse_stack import resolve_warehouse_entry_mode
 
 
 def test_warehouse_entry_mode() -> None:

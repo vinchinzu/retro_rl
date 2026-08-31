@@ -16,10 +16,6 @@ from super_metroid.routes.controller_common import (
     select_weapon,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import (
-    _ELEVATOR_Y,
-    _STANDING_POSES,
-)
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUBBLE,
     ROOM_BUSINESS,
@@ -28,8 +24,11 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_UPPER_NORFAIR_FARM,
 )
 from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.skills.geometry import STANDING_POSES
 
 _MAX_SCAFFOLD_FRAMES = 240
+# Business Center elevator platform height after Warehouse arrival.
+_ELEVATOR_Y = 680
 _FLOOR_Y_MIN = 1405
 _FROG_SPEEDWAY_DOOR_FRAMES = 400
 _FROG_SPEEDWAY_SETTLE_FRAMES = 320
@@ -98,7 +97,7 @@ def play_business_to_frog_save(session: ControllerSession) -> SuperMetroidState:
         if (
             state.samus_y >= _FLOOR_Y_MIN
             and state.velocity_y == 0
-            and state.pose in _STANDING_POSES
+            and state.pose in STANDING_POSES
         ):
             break
         buttons = ("LEFT", "B") if (frame // 70) % 2 == 0 else ("RIGHT", "B")

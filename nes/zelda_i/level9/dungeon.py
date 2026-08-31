@@ -1,9 +1,8 @@
 """Level 9 natural-spine endpoint specs and stop predicates.
 
-This module intentionally contains no navigation or combat policy.  The
-natural Level 9 topology is not decoded yet, so only RAM-observable chapter
-boundaries are named here.  Existing backward-recon fixtures are not evidence
-for any of the natural-prefix predicates.
+Navigation stays out of this module.  First-quest Magical Key topology is a
+labeled hypothesis until RAM observes each room; recon fixtures are not
+natural-prefix evidence.
 """
 
 from __future__ import annotations
@@ -23,20 +22,89 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 LEVEL9 = 9
 FULL_TRIFORCE = 0xFF
 ROOM_LEVEL9_ENTRY = 0x76
+ROOM_OLD_MAN_TF = 0x66
+ROOM_SILVER_ARROWS_HYP = 0x10
+ROOM_SUFFIX_JOIN = 0x41
 ROOM_FINAL_PATRA = 0x52
+ROOM_KEESE_CORRIDOR = 0x62
+ROOM_RED_RING_HYP = 0x07
 SILVER_ARROWS = 2
 MAGICAL_SWORD = 3
+
+# Magical Key minimum (Red Ring excluded). Cellars 0x60/0x70/0x75/0x67/0x77.
+L9_SELECTED_PREFIX_ROOMS: tuple[int, ...] = (
+    0x76, 0x66, 0x65, 0x55, 0x60, 0x14, 0x15, 0x16, 0x06, 0x05,
+    0x70, 0x63, 0x62, 0x61, 0x75, 0x20, 0x10,
+)
+L9_SELECTED_JOIN_ROOMS: tuple[int, ...] = (
+    0x10, 0x20, 0x61, 0x51, 0x41, 0x31, 0x30, 0x67, 0x04, 0x03, 0x77, 0x52,
+)
+
+MISSING_POST_L8_LEFTOVER = "post_l8_ow_leftover_unmeasured"
+MISSING_SPECTACLE_BOMB = (
+    "spectacle_rock_0x05_bomb_entrance_unverified_from_post_l8"
+)
+MISSING_OLD_MAN_GATE = "old_man_room_0x66_full_tf_gate_unobserved"
+MISSING_SILVER_ARROW_ROOM = "silver_arrow_room_0x10_unobserved"
+MISSING_51_NORTH_WALK = "0x51_north_dest_walk_unverified_statue_diamond"
+TRIFORCE_NOT_FULL = "triforce_not_0xff"
+BOMBS_NOT_NATURAL = "bombs_not_natural"
 
 
 @dataclass(frozen=True)
 class Level9EndpointSpec:
-    """Public chapter boundary without implying a route to that boundary."""
+    """Public chapter boundary without implying a live walk to that boundary."""
 
     through: str
     stop: str
     evidence: str
     description: str
-    predicate: Callable[[ZeldaSnapshot], bool] | None
+    predicate: Callable[..., bool] | None
+
+
+@dataclass(frozen=True)
+class PostLevel8Handoff:
+    """Measured L8 leave required before natural L9 overworld may move."""
+
+    screen: int | None = None
+    link_x: int | None = None
+    link_y: int | None = None
+    keys: int | None = None
+    bombs: int | None = None
+    rupees: int | None = None
+    heart_containers: int | None = None
+    selected_item: int | None = None
+    magic_key: int | None = None
+    bow: int | None = None
+    arrows: int | None = None
+    xy_tolerance: int = 4
+    evidence: str = "hypothesis"
+    verified: bool = False
+    route_eligible: bool = False
+
+    def complete(self) -> bool:
+        measured = (
+            self.screen, self.link_x, self.link_y, self.keys, self.bombs,
+            self.rupees, self.heart_containers, self.selected_item,
+            self.magic_key, self.bow, self.arrows,
+        )
+        return self.verified and all(value is not None for value in measured)
+
+    def mismatch(self, snap: ZeldaSnapshot) -> str | None:
+        if snap.triforce != FULL_TRIFORCE:
+            return TRIFORCE_NOT_FULL
+        if snap.bombs < 1:
+            return BOMBS_NOT_NATURAL
+        if not self.complete():
+            return MISSING_POST_L8_LEFTOVER
+        if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
+            return "post_l8_not_settled_overworld"
+        if snap.screen != self.screen:
+            return "post_l8_screen_mismatch"
+        return None
+
+
+UNMEASURED_POST_L8_HANDOFF = PostLevel8Handoff()
 
 
 def level9_entry_snapshot_stop(snap: ZeldaSnapshot) -> bool:
@@ -47,11 +115,12 @@ def level9_entry_snapshot_stop(snap: ZeldaSnapshot) -> bool:
         and snap.mode == PLAY_MODE
         and not snap.transitioning
         and snap.triforce == FULL_TRIFORCE
+        and snap.bombs > 0
     )
 
 
 def level9_entry_stop(snap: ZeldaSnapshot, *, magic_key: bool) -> bool:
-    """Natural L9 entry contract after the Old Man full-Triforce gate."""
+    """Play 0x76, TF 0xFF, Magic Key, natural/declared bombs. No RAM writes."""
     return level9_entry_snapshot_stop(snap) and magic_key
 
 
@@ -60,7 +129,7 @@ def level9_silver_arrows_stop(
     *,
     room: int | None,
 ) -> bool:
-    """Exact Silver Arrow endpoint after topology selects its live room."""
+    """ADDR_ARROWS==2, Bow owned, TF 0xFF, in the selected Silver Arrow room."""
     return (
         room is not None
         and snap.level == LEVEL9
@@ -74,7 +143,7 @@ def level9_silver_arrows_stop(
 
 
 def level9_live_patra_stop(snap: ZeldaSnapshot) -> bool:
-    """Exact natural-prefix join expected by the proven ending policies."""
+    """Live uncleared Patra 0x52; natural prefix, not a fixture census rewrite."""
     return (
         snap.level == LEVEL9
         and snap.mode == PLAY_MODE
@@ -90,30 +159,30 @@ def level9_live_patra_stop(snap: ZeldaSnapshot) -> bool:
     )
 
 
-def level9_credits_stop(snap: ZeldaSnapshot) -> bool:
-    """The accepted ending update loop: rolling credits or final page."""
-    return credits_rolling(snap) or final_ending_screen(snap)
+def level9_credits_stop(snap: ZeldaSnapshot, *, deaths: int = 0) -> bool:
+    """Credits/final page, deaths 0. Writes are a controller-report contract."""
+    return deaths == 0 and (credits_rolling(snap) or final_ending_screen(snap))
 
 
 L9_ENTRY_ENDPOINT = Level9EndpointSpec(
     through="level9-entry",
     stop="level9_entry_0x76",
     evidence="hypothesis",
-    description="natural bomb entrance and full-Triforce gate into room 0x76",
+    description="post-L8 leftover, Spectacle Rock 0x05 bomb, Old Man 0x66, play 0x76",
     predicate=level9_entry_snapshot_stop,
 )
 L9_SILVER_ARROWS_ENDPOINT = Level9EndpointSpec(
     through="level9-silver-arrows",
     stop="level9_silver_arrows",
     evidence="hypothesis",
-    description="natural Silver Arrows acquisition in an undecoded live room",
+    description="natural Silver Arrows in hypothesized room 0x10 (ADDR_ARROWS==2)",
     predicate=None,
 )
 L9_PATRA_ENDPOINT = Level9EndpointSpec(
     through="level9-patra",
     stop="level9_live_patra_0x52",
     evidence="hypothesis",
-    description="natural join into live uncleared final Patra room 0x52",
+    description="natural join 0x41 suffix into live uncleared Patra 0x52",
     predicate=level9_live_patra_stop,
 )
 L9_CREDITS_ENDPOINT = Level9EndpointSpec(
@@ -131,18 +200,37 @@ L9_ENDPOINTS = (
     L9_CREDITS_ENDPOINT,
 )
 
+L9_PUBLIC_THROUGH: tuple[str, ...] = tuple(spec.through for spec in L9_ENDPOINTS)
+
 __all__ = [
+    "BOMBS_NOT_NATURAL",
     "FULL_TRIFORCE",
     "L9_CREDITS_ENDPOINT",
     "L9_ENDPOINTS",
     "L9_ENTRY_ENDPOINT",
     "L9_PATRA_ENDPOINT",
+    "L9_PUBLIC_THROUGH",
+    "L9_SELECTED_JOIN_ROOMS",
+    "L9_SELECTED_PREFIX_ROOMS",
     "L9_SILVER_ARROWS_ENDPOINT",
     "LEVEL9",
     "MAGICAL_SWORD",
+    "MISSING_51_NORTH_WALK",
+    "MISSING_OLD_MAN_GATE",
+    "MISSING_POST_L8_LEFTOVER",
+    "MISSING_SILVER_ARROW_ROOM",
+    "MISSING_SPECTACLE_BOMB",
+    "PostLevel8Handoff",
     "ROOM_FINAL_PATRA",
+    "ROOM_KEESE_CORRIDOR",
     "ROOM_LEVEL9_ENTRY",
+    "ROOM_OLD_MAN_TF",
+    "ROOM_RED_RING_HYP",
+    "ROOM_SILVER_ARROWS_HYP",
+    "ROOM_SUFFIX_JOIN",
     "SILVER_ARROWS",
+    "TRIFORCE_NOT_FULL",
+    "UNMEASURED_POST_L8_HANDOFF",
     "Level9EndpointSpec",
     "level9_credits_stop",
     "level9_entry_stop",

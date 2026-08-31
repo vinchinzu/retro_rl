@@ -18,11 +18,6 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import (
-    _ELEVATOR_Y,
-    _LEDGE_POSES,
-    _STANDING_POSES,
-)
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUSINESS,
     ROOM_CATHEDRAL,
@@ -31,6 +26,7 @@ from super_metroid.routes.kpdr.rooms import (
 )
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.door import super_door_pressure_frame
+from super_metroid.routes.skills.geometry import LEDGE_POSES, STANDING_POSES
 from super_metroid.routes.skills.knockback import (
     escape_knockback_spin,
     is_knockback,
@@ -43,10 +39,12 @@ _CATHEDRAL_DOOR_Y_MAX = 900
 _CATHEDRAL_DOOR_BAND_FRAMES = 500
 _CATHEDRAL_DOOR_FRAMES = 400
 _CATHEDRAL_SETTLE_FRAMES = 320
+# Business Center elevator platform height after Warehouse arrival.
+_ELEVATOR_Y = 680
 # Grounded poses only for the Cathedral door ledge (exclude knockback 137/138).
-# Same set as norfair.common._LEDGE_POSES; local alias preserves historical names.
-_CATHEDRAL_LEDGE_POSES = _LEDGE_POSES
-_CATH_LEDGE_POSES = _LEDGE_POSES
+# Same set as skills.geometry.LEDGE_POSES; local alias preserves historical names.
+_CATHEDRAL_LEDGE_POSES = LEDGE_POSES
+_CATH_LEDGE_POSES = LEDGE_POSES
 # Cathedral Entrance is 3×2 screens; right red Super door is block [47, 7].
 # Upper left lip is a dead-end (solid at x≈91); KPDR path bombs through the
 # left morph-tunnel floor, crosses the bottom, climbs mid platforms (x≈560–680
@@ -167,7 +165,7 @@ def _cath_entrance_land(session: ControllerSession, label: str) -> None:
     """Standing land on left blue lip (entry settle only)."""
     for _ in range(40):
         state = hold(session, 1, reason=f"{label}_land")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
 

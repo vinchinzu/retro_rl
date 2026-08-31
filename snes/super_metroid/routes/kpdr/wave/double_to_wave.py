@@ -15,7 +15,7 @@ from super_metroid.routes.controller_common import (
     wait_ordinary_room,
     walljump_once,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.double_gate import (
     dc_hop_to_gate_zone,
@@ -296,7 +296,7 @@ def _wave_collect_plm(session: ControllerSession, label: str) -> SuperMetroidSta
     select_weapon(session, 0)
     for _ in range(30):
         state = hold(session, 1, reason=f"{label}_stand")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
         if state.pose in (137, 138, 39, 40):
             hold(session, 1, "UP", reason=f"{label}_unmorph")
@@ -337,7 +337,7 @@ def _wave_collect_plm(session: ControllerSession, label: str) -> SuperMetroidSta
     unmorph(session)
     for _ in range(40):
         state = hold(session, 1, reason=f"{label}_post_stand")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
     return session.state
 

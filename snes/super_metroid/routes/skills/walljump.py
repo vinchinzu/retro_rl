@@ -17,7 +17,8 @@ Pulse primitives live in :mod:`controller_common`
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Protocol
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
@@ -36,6 +37,98 @@ from super_metroid.routes.skills.knockback import is_knockback
 
 if TYPE_CHECKING:
     from super_metroid.routes.runtime import ControllerSession
+
+
+@dataclass(frozen=True)
+class PreciseWallJumpTiming:
+    """A position-sensitive wall jump with an explicit jump-release edge.
+
+    Unlike :class:`WallJumpTiming`, this recipe separates the approach from
+    the actual wall-jump input: coast, press into the wall, turn away with A
+    released, then press away+A.  Consumers supply live contact and success
+    predicates so a mistimed pulse cannot be reported as ``canPreciseWallJump``.
+    """
+
+    into: str
+    away: str
+    coast_frames: int = 0
+    into_frames: int = 0
+    release_frames: int = 2
+    jump_frames: int = 0
+    coast_buttons: tuple[str, ...] = ("A",)
+    approach_buttons: tuple[str, ...] = ("A",)
+    jump_buttons: tuple[str, ...] = ("A",)
+
+
+def precise_walljump_once(
+    session: ControllerSession,
+    timing: PreciseWallJumpTiming,
+    *,
+    start_when: Callable[[SuperMetroidState], bool] | None = None,
+    contact_when: Callable[[SuperMetroidState], bool] | None = None,
+    success_when: Callable[[SuperMetroidState], bool] | None = None,
+    landing_buttons: Sequence[str] = (),
+    landing_timeout: int = 0,
+    reason: str = "precise_wj",
+) -> SuperMetroidState:
+    """Perform one precise wall jump and prove contact plus its outcome.
+
+    ``start_when`` guards the narrow entry geometry. ``contact_when`` must be
+    observed during the pulse, and ``success_when`` must match by the end of
+    the bounded landing window. Omitting a predicate omits only that proof;
+    it does not change the emitted input sequence.
+    """
+    if start_when is not None and not start_when(session.state):
+        raise RuntimeError(
+            f"{reason} outside start window: {session.state}"
+        )
+
+    state = session.state
+    contact_seen = contact_when is None
+
+    def _phase(
+        frames: int,
+        names: tuple[str, ...],
+        label: str,
+    ) -> bool:
+        nonlocal state, contact_seen
+        for _ in range(frames):
+            state = hold(session, 1, *names, reason=f"{reason}_{label}")
+            if contact_when is not None and contact_when(state):
+                contact_seen = True
+            if success_when is not None and success_when(state):
+                return True
+        return False
+
+    phases = (
+        (timing.coast_frames, timing.coast_buttons, "coast"),
+        (
+            timing.into_frames,
+            (timing.into, *timing.approach_buttons),
+            "contact",
+        ),
+        (timing.release_frames, (timing.away,), "release"),
+        (
+            timing.jump_frames,
+            (timing.away, *timing.jump_buttons),
+            "jump",
+        ),
+    )
+    success = success_when is None
+    for frames, names, label in phases:
+        if _phase(frames, names, label):
+            success = True
+            break
+
+    if not contact_seen:
+        raise RuntimeError(f"{reason} missed wall contact: {state}")
+
+    if success_when is not None and not success:
+        settle = tuple(landing_buttons)
+        success = _phase(landing_timeout, settle, "land")
+    if success_when is not None and not success:
+        raise RuntimeError(f"{reason} missed outcome: {state}")
+    return state
 
 
 class WallJumpPolicy(Protocol):
@@ -489,9 +582,11 @@ bubble_damage_boost_hold = damage_boost_hold
 
 __all__ = [
     "POSE_WALL_LATCH",
+    "PreciseWallJumpTiming",
     "WallJumpTiming",
     "is_wall_latch",
     "is_knockback",
+    "precise_walljump_once",
     "wall_approach_band",
     "wait_wall_ready",
     "wait_wall_latch",

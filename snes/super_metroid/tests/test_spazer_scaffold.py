@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from super_metroid.ram import GameplayPhase, SuperMetroidState
-from super_metroid.routes.kpdr import red_stack
-from super_metroid.routes.kpdr.below_spazer_west import play_below_spazer_floor_to_west
+from super_metroid.routes.kpdr.red_tower import red_stack
+from super_metroid.routes.kpdr.red_tower.below_spazer_west import play_below_spazer_floor_to_west
 from super_metroid.routes.kpdr.rooms import ROOM_BELOW_SPAZER
 from super_metroid.routes.kpdr.spazer.geometry import (
     SOLID_TOP_X_MIN,

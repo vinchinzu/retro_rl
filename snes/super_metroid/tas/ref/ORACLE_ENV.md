@@ -1,8 +1,44 @@
 # TAS Oracle environment — Super Metroid
 
-**Status:** Phase 1 **partial** (2026-08-08, intro-aware)  
+**Status:** Phase 1 **partial** (BizHawk libsnes SEGV). Native **lsnes 100%** path added 2026-08-31.  
 **Plan:** [`docs/TAS_BSNES_ORACLE.md`](../../docs/TAS_BSNES_ORACLE.md) · beads `rr-wbsr`, `rr-3vfm`  
 **Tooling:** [`tas/oracle/`](../oracle/)
+
+## Native 100% movie (preferred)
+
+TASVideos [#4010M](https://tasvideos.org/4010M) is **lsnes rr2-β23**, core `bsnes v085 (Compatibility core)`, not BizHawk.
+
+| Item | Value |
+|------|--------|
+| Movie | `tas/ref/sniq_100_4010M.lsmv` (byte-identical to TASVideos download) |
+| Frames | 222 788 |
+| `systemid` | `lsnes-rr1` (rr2 movies still write this) |
+| `coreversion` | `bsnes v085 (Compatibility core)` |
+| ROM SHA256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
+| ROM SHA1 | `DA957F0D63D14CB441D215462904C4FA8519C613` |
+| lsnes | `~/.local/opt/lsnes-rr2-beta23/lsnes-bsnes.exe` (32-bit PE from TASVideos 7z) |
+| Wine | `~/.local/opt/wine` (Kron4ek 10.0 amd64-wow64) or system wine |
+| Prefix | `~/.local/share/lsnes-wine` |
+| Wrapper | `tas/oracle/run_lsnes_100.sh` |
+
+`sniq_100p.bk2` is a **TASConverter** BizHawk copy of the same inputs. Use the LSMV + lsnes for bit-exact authoring-core replay.
+
+### Verified lsnes replay (2026-08-31)
+
+`run_lsnes_100.sh` + Wine 10.0 wow64 + `lsnes-bsnes.exe` (rr2-β23):
+
+| Milestone | Frame | Notes |
+|----------:|------:|-------|
+| `post_load` | 0 | 222 788f, readonly |
+| Intro `gs=30` | 0–10 961 | Title / Ceres arrival |
+| Ceres Elev `0xDF45` | **10 962** | area=6, energy=99 |
+| first_control `gs=8` | **11 182** | pose 0 @ (128,0) — matches harness any% first_control |
+| Falling Tile `0xDF8D` | 17 881 | |
+| Magnet / hall chain | 19 339–23 915 | `0xDFD7` → `0xE021` → `0xE06B` |
+| Ceres Ridley `0xE0B5` | **37 269** | energy 99→25 (real fight) |
+| f45 663+ | still Ceres | elev e=99, then Falling, **second Ridley f62639 e=99** — restart-shaped; **not** Landing |
+
+Six unique Ceres rooms, items 0, **no Zebes by f70k**. Through first control + first Ridley this is native-core sync. After Ridley is **unverified**. Plan: [`docs/tasks/LSNES_100_PLAN.md`](../../docs/tasks/LSNES_100_PLAN.md).
 
 ## Intro length (do not misread early frames)
 

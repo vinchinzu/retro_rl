@@ -17,7 +17,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUBBLE,
     ROOM_RISING_TIDE,
@@ -40,7 +40,7 @@ def _rising_land_and_arm(session: ControllerSession, label: str) -> None:
     """Entry settle on left lip + beam select (no cross inputs)."""
     for _ in range(40):
         state = hold(session, 1, reason=f"{label}_land")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
     unmorph(session)
     select_weapon(session, 0)
@@ -93,7 +93,7 @@ def _rising_cross_to_bubble(session: ControllerSession, label: str) -> None:
                     hold(session, 1, "LEFT", "B", reason=f"{label}_under_back")
                 elif (
                     state.velocity_y == 0
-                    and state.pose in _STANDING_POSES
+                    and state.pose in STANDING_POSES
                 ):
                     for _ in range(14):
                         hold(session, 1, "A", reason=f"{label}_door_charge")
@@ -122,7 +122,7 @@ def _rising_cross_to_bubble(session: ControllerSession, label: str) -> None:
         if (
             state.velocity_y == 0
             and state.samus_y > 150
-            and state.pose in _STANDING_POSES
+            and state.pose in STANDING_POSES
         ):
             for _ in range(12):
                 hold(session, 1, "A", reason=f"{label}_charge")

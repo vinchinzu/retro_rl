@@ -4,7 +4,7 @@ Skills take :class:`~super_metroid.routes.runtime.ControllerSession` plus a
 **policy** object (or explicit kwargs). Room geometry lives in
 :mod:`super_metroid.routes.skills.policies`, not in skill bodies.
 
-Product hops compose skills — e.g. :mod:`super_metroid.routes.kpdr.to_bat_cave`.
+Product hops compose skills — e.g. :mod:`super_metroid.routes.kpdr.norfair.to_bat_cave`.
 
 Map Rando tech builders (Basic/Medium room-opt primitives) live in
 :mod:`super_metroid.routes.skills.basic_moves` and the registry
@@ -41,6 +41,7 @@ from super_metroid.routes.skills.geometry import (
     STAND_PIN,
     STANDING_POSES,
     POSE_KNOCKBACK,
+    LEDGE_POSES,
     POSE_STAND_LEFT,
     POSE_STAND_RIGHT,
     FACE_LEFT_POSES,
@@ -91,10 +92,12 @@ from super_metroid.routes.skills.runway import (
     walk_brake_to_x,
 )
 from super_metroid.routes.skills.walljump import (
+    PreciseWallJumpTiming,
     consecutive_walljumps,
     damage_boost_hold,
     double_walljump,
     period_walljump_climb,
+    precise_walljump_once,
     wait_wall_latch,
     wait_wall_ready,
     wall_approach_band,
@@ -190,6 +193,7 @@ __all__ = [
     "STAND_PIN",
     "STANDING_POSES",
     "POSE_KNOCKBACK",
+    "LEDGE_POSES",
     "POSE_STAND_LEFT",
     "POSE_STAND_RIGHT",
     "FACE_LEFT_POSES",
@@ -237,6 +241,8 @@ __all__ = [
     "wall_approach_band",
     "wait_wall_ready",
     "wait_wall_latch",
+    "PreciseWallJumpTiming",
+    "precise_walljump_once",
     "walljump_approach_coast",
     "walljump_once",
     "consecutive_walljumps",

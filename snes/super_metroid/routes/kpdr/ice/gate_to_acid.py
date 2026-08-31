@@ -20,7 +20,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE_ACID, ROOM_ICE_GATE
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import (
@@ -82,7 +82,7 @@ def play_ice_gate_to_acid(session: ControllerSession) -> SuperMetroidState:
         x = int(state.samus_x)
         y = int(state.samus_y)
         pose = int(state.pose)
-        grounded = int(state.velocity_y) == 0 and pose in _STANDING_POSES | frozenset(
+        grounded = int(state.velocity_y) == 0 and pose in STANDING_POSES | frozenset(
             {37, 38, 9, 10, 1, 2}
         )
 
@@ -150,7 +150,7 @@ def play_ice_gate_to_acid(session: ControllerSession) -> SuperMetroidState:
         st = hold(session, 1, reason=f"{label}_stand")
         if (
             int(st.velocity_y) == 0
-            and int(st.pose) in _STANDING_POSES
+            and int(st.pose) in STANDING_POSES
             and int(st.door_transition) == 0
         ):
             return st

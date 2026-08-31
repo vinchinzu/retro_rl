@@ -23,8 +23,9 @@ from super_metroid.routes.kpdr.spazer.geometry import (
     on_super_door_approach,
     solid_ish_top,
 )
-from super_metroid.routes.kpdr.spazer.helpers import break_lag, play_script
+from super_metroid.routes.kpdr.spazer.helpers import play_script
 from super_metroid.routes.kpdr.spazer.scripts import TOP_DOOR_APPROACH_RLE
+from super_metroid.routes.rle import break_rle_lag
 from super_metroid.routes.runtime import ControllerSession
 
 
@@ -39,7 +40,7 @@ def approach_super_door_from_top(session: ControllerSession) -> SuperMetroidStat
         return session.state
     # Clear pre-RLE lag only; mid-script lag is intentional.
     if is_lag_pose(session.state):
-        break_lag(session)
+        break_rle_lag(session)
 
     if int(session.state.samus_x) < DOOR_X_MIN:
         play_script(
@@ -75,11 +76,11 @@ def play_below_spazer_to_spazer(
     """
     require_room(session, ROOM_BELOW_SPAZER, "below_spazer_to_spazer")
     unmorph(session)
-    break_lag(session)
+    break_rle_lag(session)
 
     if not (on_solid_top(session.state) or on_super_door_approach(session.state)):
         play_below_spazer_climb(session)
-        break_lag(session)
+        break_rle_lag(session)
         if not solid_ish_top(session.state):
             raise TimeoutError(
                 "below_spazer_to_spazer: climb failed solid top "

@@ -18,7 +18,7 @@ from super_metroid.routes.kpdr.spazer.geometry import (
     is_lag_pose,
     is_true_ground_pose,
 )
-from super_metroid.routes.kpdr.spazer.helpers import break_lag, try_select_weapon
+from super_metroid.routes.kpdr.spazer.helpers import try_select_weapon
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.geometry import POSE_KNOCKBACK
 

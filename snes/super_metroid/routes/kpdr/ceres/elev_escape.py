@@ -1,9 +1,9 @@
 """Ceres elevator shaft climb after Falling → ship leave (WRAM-reactive).
 
-Inbound settle waits for ordinary control (gs==8) at the bottom remap
-(y≈651). Mid-transition y≈139 / gs 9/11 is not a high entry and is not
-leave. Climb is kinematic takeoff windows (shared ``PlatformHop``), then
-right-wall KB → LEFT+A → pad walk through x≈145 until gs 32.
+Inbound settle waits for ordinary control (gs==8). A spin jump through the
+previous door preserves a y≈628 fast phase: release-edged wall jump directly to
+y=475, dodge the first debris cycle, then chain the upper ledges. Misses fall
+back to the checkpoint climb. Ship handoff remains right-wall KB → LEFT+A.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from pathlib import Path
 from retro_harness.actions import buttons, idle_action
 from retro_harness.env import write_state_bytes
 from super_metroid.ram import GS_CERES_LEAVE, GS_DEAD, GS_ORDINARY
-from super_metroid.routes.controller_common import POSE_WALL_LATCH
+from super_metroid.routes.controller_common import POSE_WALL_LATCH, is_wall_latch
 from super_metroid.routes.kpdr.ceres.geometry import (
     CERES_ELEV_HOPS,
     _CERES_ARM_PUMP_PERIOD,
@@ -37,6 +37,10 @@ from super_metroid.routes.skills.geometry import (
     STAND_LOCOMOTION_POSES,
 )
 from super_metroid.routes.skills.knockback import is_knockback
+from super_metroid.routes.skills.walljump import (
+    PreciseWallJumpTiming,
+    precise_walljump_once,
+)
 from super_metroid.takeoff import (
     PlatformHop,
     TakeoffWindow,
@@ -50,6 +54,15 @@ from super_metroid.takeoff import (
 
 _SHAFT_RELEASE = 2
 _SHAFT_BUDGET = 1_400
+_CERES_FAST_DEBRIS_DODGE = 13
+_CERES_FAST_ENTRY_WALLJUMP = PreciseWallJumpTiming(
+    into="RIGHT",
+    away="LEFT",
+    coast_frames=10,
+    into_frames=12,
+    release_frames=2,
+    jump_frames=36,
+)
 
 
 @dataclass
@@ -266,10 +279,10 @@ def _ceres_seat_ledge(session: RouteSession) -> None:
 
 
 def _ceres_reactive_elev_climb(session: RouteSession) -> None:
-    """Elev after Falling → ship leave. WRAM-reactive bottom→ledge→shaft.
+    """Elev after Falling → ship leave. Fast wall jump, safe fallback.
 
-    Door transition remaps to the bottom floor (y≈651). Mid-transition coords
-    can still read y≈139 from Falling — that is not a high-entry path.
+    The predecessor's late door jump remaps to y≈628 with its spin phase intact.
+    A walk-in remaps to the bottom floor (y≈651); mid-transition y≈139 is stale.
     """
     session.wait_until(
         lambda s: s.room_id == ROOM_CERES_ELEVATOR,
@@ -287,6 +300,15 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         ):
             break
         session.step(buttons("LEFT"), "ceres_elev_entry")
+
+    if _ceres_try_fast_elev_climb(session):
+        _ceres_elev_top_to_ship(session)
+        if (
+            session.state.room_id == ROOM_CERES_ELEVATOR
+            and not _ceres_elev_leaving(session.state)
+        ):
+            _ceres_elev_top_to_ship(session)
+        return
 
     _ceres_seat_ledge(session)
     if _ceres_elev_leaving(session.state) or _ceres_elev_ship_band(session.state):
@@ -349,6 +371,54 @@ def _ceres_at_checkpoint(state, target_y: int, *, slack: int = 18) -> bool:
             or int(state.pose) in POSE_KNOCKBACK
         )
     )
+
+
+def _ceres_fast_entry_window(state) -> bool:
+    """Natural door-jump phase from which the y=475 wall jump is repeatable."""
+    return (
+        int(state.room_id) == ROOM_CERES_ELEVATOR
+        and int(state.game_state) == GS_ORDINARY
+        and 210 <= int(state.samus_x) <= 220
+        and 624 <= int(state.samus_y) <= 641
+        and int(state.pose) in SPIN_POSES
+    )
+
+
+def _ceres_try_fast_elev_climb(session: RouteSession) -> bool:
+    """Wall jump to y=475, phase-dodge debris, and chain to the top seat."""
+    if not _ceres_fast_entry_window(session.state):
+        return False
+    try:
+        precise_walljump_once(
+            session,
+            _CERES_FAST_ENTRY_WALLJUMP,
+            start_when=_ceres_fast_entry_window,
+            contact_when=is_wall_latch,
+            success_when=lambda st: _ceres_at_checkpoint(st, 475),
+            landing_timeout=48,
+            reason="ceres_elev_precise_wj",
+        )
+    except RuntimeError:
+        _trace_point(session, "fast_walljump_miss")
+        return False
+
+    # Moving left for exactly this phase window both seats x≈146 and lets the
+    # first large debris piece cross below. Idle/right launches collide at y=363.
+    for _ in range(_CERES_FAST_DEBRIS_DODGE):
+        session.step(buttons("LEFT"), "ceres_elev_fast_debris_dodge")
+    if is_knockback(session.state):
+        _trace_point(session, "fast_debris_collision")
+        return False
+    if not _ceres_checkpoint_hop(
+        session,
+        side="RIGHT",
+        runup=4,
+        target_y=363,
+    ):
+        _trace_point(session, "fast_checkpoint_363_miss")
+        return False
+    _trace_point(session, "fast_checkpoint_363")
+    return _ceres_checkpoint_shaft(session)
 
 
 def _ceres_checkpoint_hop(
@@ -609,6 +679,8 @@ __all__ = [
     "_ceres_elev_ship_band",
     "_ceres_elev_leaving",
     "_ceres_elev_top_seat",
+    "_ceres_fast_entry_window",
+    "_ceres_try_fast_elev_climb",
     "_ceres_on_elev_ledge",
     "_ceres_seat_ledge",
     "_ceres_reactive_elev_climb",

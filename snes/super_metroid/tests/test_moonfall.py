@@ -14,14 +14,14 @@ from super_metroid.ram import (
     GameplayPhase,
     parse_state,
 )
-from super_metroid.routes.kpdr.climb_descent import (
+from super_metroid.routes.kpdr.crateria.climb_descent import (
     CLIMB_MOONFALL_ON_CLEAN,
     ClimbMoonfallTrack,
     LIP_X,
     climb_moonfall_action,
     climb_moonfall_enabled,
 )
-from super_metroid.routes.kpdr.parlor_descent import (
+from super_metroid.routes.kpdr.crateria.parlor_descent import (
     LEDGE_X,
     LIP_X as PARLOR_LIP_X,
     SHAFT_LIP_X,

@@ -78,4 +78,4 @@ Claim one child before coding. Prefer Phase 1 (rr-wbsr) then Phase 2 (rr-l8zj).
 
 ## One-line next action
 
-Clear libsnes `PPU::render_line` SEGV (Wine Windows BizHawk preferred) → `LUA_SCRIPT=long_count.lua MAX_FRAMES=60000` verify past intro (~8–12k elev) to Landing/morph GREEN → claim `rr-l8zj`.
+Native **lsnes** 100% (#4010M), not the YouTube encode and not BizHawk SEGV: follow [`LSNES_100_PLAN.md`](LSNES_100_PLAN.md). Rechecked through Ceres Ridley f37269; next is post-Ridley desync (second Ridley @f62639) then Landing GREEN.

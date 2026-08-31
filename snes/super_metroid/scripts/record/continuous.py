@@ -5,7 +5,7 @@ One CLI for every milestone — do not add ``start_to_*.py`` scripts. Tips are
 functions in ``routes/continuous.py`` registered in ``routes/catalog.py``.
 
 Video uses the shared :class:`retro_harness.video.VideoRecorder` (audio,
-1080p60 YouTube pad + button sidebars, start gate). Opening credits are
+1080p60 YouTube pad + stream overlay, start gate). Opening credits are
 dropped by default (``--video-start after_credits``). Metroid presets live
 in ``super_metroid.video``.
 
@@ -14,7 +14,7 @@ in ``super_metroid.video``.
 uv run python snes/super_metroid/scripts/record/continuous.py --no-video
 uv run python snes/super_metroid/scripts/record/continuous.py --to frog --no-video
 
-# Showcase: skip Nintendo/title, 1080p60 sidebars
+# Showcase: skip Nintendo/title, 1080p60 stream overlay
 uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --hq
 
 # List tips
@@ -166,7 +166,7 @@ def main() -> None:
     parser.add_argument(
         "--native-video",
         action="store_true",
-        help="2x gameplay + 16px footer instead of 1080p60 YouTube sidebars",
+        help="2x gameplay + 16px footer instead of 1080p60 YouTube overlay",
     )
     parser.add_argument(
         "--video-start-frame",

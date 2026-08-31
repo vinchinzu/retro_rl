@@ -19,7 +19,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.business_climb import (
+from super_metroid.routes.kpdr.norfair.business_climb import (
     _business_high_jump_platforms,
     _maybe_dump_climb_state,
 )

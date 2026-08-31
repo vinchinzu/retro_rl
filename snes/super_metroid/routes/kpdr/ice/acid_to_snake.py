@@ -26,7 +26,7 @@ from super_metroid.routes.kpdr.ice.geometry import (
     ACID_SNAKE_SETTLE_FRAMES,
     ACID_TO_SNAKE_RLE,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE_ACID, ROOM_ICE_SNAKE
 from super_metroid.routes.rle import play_script
 from super_metroid.routes.runtime import ControllerSession
@@ -152,7 +152,7 @@ def play_ice_acid_to_snake(session: ControllerSession) -> SuperMetroidState:
         st = hold(session, 1, reason=f"{label}_stand")
         if (
             int(st.velocity_y) == 0
-            and int(st.pose) in _STANDING_POSES
+            and int(st.pose) in STANDING_POSES
             and int(st.door_transition) == 0
         ):
             return st

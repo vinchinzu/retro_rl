@@ -33,8 +33,8 @@ from super_metroid.hop_glance import final_from_state
 from super_metroid.paths import GAME_DIR, RECORDINGS_DIR, SCRATCH_STATE_DIR
 from super_metroid.ram import parse_env_state, probe_pin
 from super_metroid.room_timer import format_segment_time
-from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
-from super_metroid.routes.kpdr.alcatraz_escape import (
+from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
+from super_metroid.routes.kpdr.crateria.alcatraz_escape import (
     SHAFT_LIP_Y,
     at_alcatraz_rollout,
     at_left_wall_base,

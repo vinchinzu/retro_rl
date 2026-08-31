@@ -1,13 +1,25 @@
-"""Reactive Alpha Power Bomb room escape to Caterpillar."""
+"""Alpha PB escape and K6 approach tapes to Moat."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room, select_weapon, wait_ordinary_room
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_ALPHA_PB,
+    ROOM_CATERPILLAR,
+    ROOM_CRATERIA_KIHUNTER,
+    ROOM_MOAT,
+    ROOM_RED_BRINSTAR_ELEVATOR,
+)
+from super_metroid.routes.rle import load_rle_json, play_rle_room_exit
 from super_metroid.routes.runtime import ControllerSession
 
-ROOM_ALPHA_PB = 0xA3AE
-ROOM_CATERPILLAR = 0xA322
+_DATA = Path(__file__).resolve().parents[1] / "data"
+_CATERPILLAR_RLE = load_rle_json(_DATA / "caterpillar_to_elevator_human_rle.json")
+_ELEVATOR_RLE = load_rle_json(_DATA / "elevator_to_kihunter_human_rle.json")
+_KIHUNTER_RLE = load_rle_json(_DATA / "kihunter_to_moat_human_rle.json")
 
 _ESCAPE_BUDGET = 2200
 _PROGRESS_WINDOW = 42
@@ -92,4 +104,46 @@ def play_alpha_pb_to_caterpillar(session: ControllerSession) -> SuperMetroidStat
     )
 
 
-__all__ = ["ROOM_ALPHA_PB", "ROOM_CATERPILLAR", "play_alpha_pb_to_caterpillar"]
+def play_caterpillar_to_elevator(session: ControllerSession) -> SuperMetroidState:
+    """Replay the dual-green climb from the natural Alpha PB return seat."""
+    return play_rle_room_exit(
+        session,
+        from_room=ROOM_CATERPILLAR,
+        to_room=ROOM_RED_BRINSTAR_ELEVATOR,
+        script=_CATERPILLAR_RLE,
+        label="caterpillar_to_elevator",
+        settle_frames=260,
+    )
+
+
+def play_elevator_to_kihunter(session: ControllerSession) -> SuperMetroidState:
+    """Ride up, traverse the connector, and settle in Kihunter."""
+    return play_rle_room_exit(
+        session,
+        from_room=ROOM_RED_BRINSTAR_ELEVATOR,
+        to_room=ROOM_CRATERIA_KIHUNTER,
+        script=_ELEVATOR_RLE,
+        label="elevator_to_kihunter",
+    )
+
+
+def play_kihunter_to_moat(session: ControllerSession) -> SuperMetroidState:
+    """Traverse Kihunter from its natural elevator entry and settle in Moat."""
+    return play_rle_room_exit(
+        session,
+        from_room=ROOM_CRATERIA_KIHUNTER,
+        to_room=ROOM_MOAT,
+        script=_KIHUNTER_RLE,
+        label="kihunter_to_moat",
+        settle_frames=260,
+    )
+
+
+__all__ = [
+    "ROOM_ALPHA_PB",
+    "ROOM_CATERPILLAR",
+    "play_alpha_pb_to_caterpillar",
+    "play_caterpillar_to_elevator",
+    "play_elevator_to_kihunter",
+    "play_kihunter_to_moat",
+]

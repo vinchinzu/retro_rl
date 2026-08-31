@@ -5,7 +5,7 @@ One recorder surface for continuous / showcase MP4s:
 - nearest-neighbor scale, x264 quality knobs (``crf`` / ``preset`` / ``fps``)
 - optional stereo s16le audio mux from ``env.em.get_audio()``
 - optional bottom footer with frame clock + pressed buttons
-- ``layout="youtube"``: 1920x1080 pad + Twitch-style button sidebars
+- ``layout="youtube"``: 1920x1080 pad + left stream stack (timer, pad, cam)
 - optional start gate (skip until frame N, or until a room id latches)
 
 Game packages should only supply presets (paths, room ids, default cutoffs),
@@ -30,7 +30,7 @@ from retro_harness.video_layout import (
     YOUTUBE_HEIGHT,
     YOUTUBE_WIDTH,
     compose_youtube_frame,
-    fit_integer_scale,
+    youtube_gameplay_scale,
 )
 
 FOOTER_HEIGHT = 16
@@ -59,7 +59,7 @@ class VideoCaptureConfig:
     start_frame: int | None = None
     start_room_id: int | None = None
     # ``native`` = source * scale (+ optional footer). ``youtube`` = 16:9
-    # canvas with Twitch-style button sidebars (YouTube 60 fps ladder).
+    # canvas with a left stream stack (YouTube 60 fps ladder).
     layout: str = "native"
     canvas_width: int | None = None
     canvas_height: int | None = None
@@ -99,8 +99,9 @@ class VideoCaptureConfig:
     def youtube(cls, **overrides: Any) -> VideoCaptureConfig:
         """1080p60 padded capture so YouTube keeps 60 fps.
 
-        Gameplay is integer NN-scaled into 1920x1080 with controller
-        sidebars. ``scale=0`` auto-fits the canvas. No 16 px footer and
+        Gameplay is integer NN-scaled into a square playfield on a
+        1920x1080 canvas; timer, controller, and cam sit in the left
+        stack. ``scale=0`` auto-fits the square. No 16 px footer and
         no intro card — those are opt-in on the native layout.
         """
         base: dict[str, Any] = dict(
@@ -368,7 +369,7 @@ class FrameVideoWriter:
         self.frames = 0
         self.frames_written = 0  # alias used by showcase / golf callers
         if layout == "youtube":
-            self.scale = scale or fit_integer_scale(
+            self.scale = scale or youtube_gameplay_scale(
                 width, height, self.canvas_width, self.canvas_height
             )
             self._pipe_width = self.canvas_width

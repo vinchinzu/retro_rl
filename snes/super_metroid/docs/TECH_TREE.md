@@ -95,7 +95,7 @@ on, restore off so later seeds stay valid). A/B:
 
 | Tech | Status | Bot surface |
 |------|--------|-------------|
-| `canPreciseWallJump` | green | `walljump_once` + tight timing |
+| `canPreciseWallJump` | green | `precise_walljump_once`: start/contact/release/outcome gates |
 | `canConsecutiveWallJump` | green | `consecutive_walljumps` |
 | `canHorizontalShinespark` | green | `activate_shinespark` |
 | `canShinechargeMovement` | green | `charge_until_boost` |

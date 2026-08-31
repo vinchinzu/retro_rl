@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from retro_harness.actions import buttons, idle_action
+from super_metroid.ram import GS_ORDINARY
 from super_metroid.routes.kpdr.ceres.arm_pump import (
     _ceres_arm_pump_step,
     _ceres_clear_knockback,
     _ceres_enemy_near,
 )
 from super_metroid.routes.skills.knockback import is_knockback
-from super_metroid.routes.kpdr.ceres.geometry import _CERES_MAGNET_EXIT_Y
+from super_metroid.routes.kpdr.ceres.geometry import (
+    _CERES_FALLING_DOOR_JUMP_X,
+    _CERES_MAGNET_EXIT_Y,
+)
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
@@ -162,8 +166,9 @@ def _ceres_reactive_magnet_escape(session: RouteSession) -> None:
 def _ceres_reactive_falling(session: RouteSession) -> None:
     """Falling Tile reverse → elev door. WRAM: room, x progress, KB, enemy0.
 
-    Falling→elev remaps to **high** elev (y≈139). Prefer steady LEFT (product
-    walk) — arm-pump + long i-frame thrash desyncs elev entry momentum.
+    A late spin jump through the west door preserves the y=628 entry phase
+    needed by the elevator's precise wall jump. Earlier jumps remap one debris
+    tick out of phase; walking through settles on the slow bottom floor.
     """
     if session.state.room_id != ROOM_CERES_FALLING:
         raise RuntimeError(f"expected Falling after magnet: {session.state}")
@@ -205,9 +210,22 @@ def _ceres_reactive_falling(session: RouteSession) -> None:
             stagnant = 0
             last_x = int(session.state.samus_x)
             continue
-        # Steady LEFT (matches product falling leave pose/speed better than pump).
-        session.step(buttons("LEFT"), "ceres_falling_walk")
+        names = falling_door_action(st)
+        session.step(
+            buttons(*names),
+            "ceres_falling_door_jump" if "A" in names else "ceres_falling_walk",
+        )
     raise TimeoutError(f"falling missed elev: {session.state}")
+
+
+def falling_door_action(state) -> tuple[str, ...]:
+    """Preserve the useful jump phase through Falling's west door."""
+    if (
+        int(state.game_state) == GS_ORDINARY
+        and int(state.samus_x) <= _CERES_FALLING_DOOR_JUMP_X
+    ):
+        return ("LEFT", "B", "A")
+    return ("LEFT",)
 
 
 __all__ = [
@@ -215,4 +233,5 @@ __all__ = [
     "_ceres_magnet_step",
     "_ceres_reactive_magnet_escape",
     "_ceres_reactive_falling",
+    "falling_door_action",
 ]

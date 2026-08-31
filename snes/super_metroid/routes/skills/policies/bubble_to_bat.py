@@ -1,7 +1,7 @@
 """Bubble Mountain → Bat Cave hop policy (geometry + budgets + WJ timings).
 
 Room-agnostic skills read these attributes; they must not hardcode Bubble
-geometry. Product compose lives in :mod:`super_metroid.routes.kpdr.to_bat_cave`.
+geometry. Product compose lives in :mod:`super_metroid.routes.kpdr.norfair.to_bat_cave`.
 
 No controller imports — safe for all skill layers.
 """

@@ -4,8 +4,11 @@ Clear leftover (112,173); live left 0x68 (96,144). South-face UP until
 that object's y drops ≥8px. Then wait for NE 0x68 (x>=184) — slot11 jumps
 96,131→208,96. South-face that object and UP. v14 1/1: NE 0x68 does **not**
 y-move; UP from (208,114) onto tile 0x71 at (208,93) is mode 9 room 0x75.
-Decorative NE hole (192,97) / SW floor (48,172) are not this warp. Do not
-occupancy. Do not grant ADDR_ROD. Halt y>=181.
+Recompose leftover (56,109): cardinal DOWN at x=56/64/48 boxes y=157 tile
+118. RIGHT on the north band to EAST_CLEAR_X, DOWN east of x=96 to
+CLIP_CLEAR_Y, then LEFT to south-face x=96. Do not west-aisle. Decorative
+NE hole (192,97) / SW floor (48,172) are not this warp. Do not occupancy.
+Do not grant ADDR_ROD. Halt y>=181.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from zelda_i.level6.occupancy import l6_leftover
 from zelda_i.level6.overworld import LEVEL6, LEVEL6_ROD_WIZZ_ROOM
 from zelda_i.level6.path import (
     BLOCK_OBJECT_TYPE,
+    CLIP_CLEAR_Y,
     PUSH_ALIGN_TOL,
     PUSH_38_MAX_HOLD,
     PUSH_MOVED_PX,
@@ -32,6 +36,7 @@ from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyWalker
 
 __all__ = [
+    "EAST_CLEAR_X",
     "STAIRS_09_MAX_FRAMES",
     "Stairs09Phase",
     "Level6Stairs09Controller",
@@ -45,6 +50,8 @@ STAIRS_09_SOUTH_HALT_Y = 181
 STAIRS_09_IDLE_MIN = 240
 # v13: left 0x68 y-moves then slot11 jumps 96,131 → 208,96 (~16f later).
 NE_BLOCK_X_MIN = 184
+# Past the left diamond / left 0x68 at x=96. DOWN west of this is tile 118.
+EAST_CLEAR_X = 112
 
 
 def ne_block_0x68(snap: ZeldaSnapshot) -> ZeldaObject | None:
@@ -204,6 +211,19 @@ class Level6Stairs09Controller:
         if abs(xy[0] - tx) <= PUSH_ALIGN_TOL and abs(xy[1] - ty) <= PUSH_ALIGN_TOL:
             return None
         self.walker.last_dir = None
+        # NW leftover (56,109): RIGHT on y=109 to EAST_CLEAR_X, DOWN east of
+        # x=96 to CLIP_CLEAR_Y, then LEFT to south-face. DOWN at x=48/56/64
+        # boxes y=157 tile 118. Historical (112,173) is already south-clear.
+        # NE dest (tx>=184) keeps y-then-x; do not send it through y=173.
+        if tx < NE_BLOCK_X_MIN and xy[1] < CLIP_CLEAR_Y:
+            if xy[0] < EAST_CLEAR_X and xy[1] < ty - PUSH_ALIGN_TOL:
+                return self._emit(
+                    snap, FrameAction(nes_action("RIGHT"), f"{tag}_east_x")
+                )
+            if xy[0] >= EAST_CLEAR_X:
+                return self._emit(
+                    snap, FrameAction(nes_action("DOWN"), f"{tag}_east_y")
+                )
         if xy[1] < ty - PUSH_ALIGN_TOL:
             return self._emit(snap, FrameAction(nes_action("DOWN"), f"{tag}_y"))
         if abs(xy[0] - tx) > PUSH_ALIGN_TOL:
@@ -362,8 +382,9 @@ class Level6Stairs09Controller:
             "notes": list(self.notes),
             "samples": list(self.samples),
             "policy": (
-                "axis south-face left 0x68 until y-move, then NE 0x68 "
-                "(208,96) south-face UP (object may not y-move; tile 0x71 warps)"
+                "east-of-block RIGHT to x>=112 then DOWN to y>=173 then axis "
+                "south-face left 0x68 until y-move, then NE 0x68 (208,96) "
+                "south-face UP (object may not y-move; tile 0x71 warps)"
             ),
             "idle_frames": int(self.idle_frames),
             "idle_min": STAIRS_09_IDLE_MIN,

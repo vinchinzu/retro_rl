@@ -14,10 +14,19 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level9.dungeon import (
+    BOMBS_NOT_NATURAL,
     FULL_TRIFORCE,
     LEVEL9,
     MAGICAL_SWORD,
+    MISSING_OLD_MAN_GATE,
+    MISSING_POST_L8_LEFTOVER,
+    MISSING_SILVER_ARROW_ROOM,
+    MISSING_SPECTACLE_BOMB,
+    MISSING_51_NORTH_WALK,
+    PostLevel8Handoff,
     SILVER_ARROWS,
+    TRIFORCE_NOT_FULL,
+    UNMEASURED_POST_L8_HANDOFF,
     level9_credits_stop,
     level9_live_patra_stop,
 )
@@ -40,19 +49,31 @@ from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
 
 @dataclass
 class NaturalRouteUnavailableController:
-    """One-frame fail-closed marker for a not-yet-decoded natural chapter."""
+    """One-frame fail-closed marker. Refuses without TF 0xFF / bombs; never writes."""
 
     chapter: str
     reason: str
+    require_bombs: bool = False
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF
     max_frames: int = 1
     frames: int = 0
     success: bool = False
     failed: bool = False
+    blocked_reason: str = ""
 
-    def step(self, _snap: ZeldaSnapshot) -> FrameAction:
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.failed = True
-        return FrameAction(nes_idle_action(), self.reason)
+        if snap.triforce != FULL_TRIFORCE:
+            reason = TRIFORCE_NOT_FULL
+        elif self.require_bombs and snap.bombs < 1:
+            reason = BOMBS_NOT_NATURAL
+        elif self.chapter == "level9_post_l8_overworld":
+            reason = self.handoff.mismatch(snap) or self.reason
+        else:
+            reason = self.reason
+        self.blocked_reason = reason
+        return FrameAction(nes_idle_action(), reason)
 
     def report(self) -> dict[str, object]:
         return {
@@ -62,9 +83,58 @@ class NaturalRouteUnavailableController:
             "success": False,
             "failed": self.failed,
             "frames": self.frames,
-            "reason": self.reason,
+            "reason": self.blocked_reason or self.reason,
+            "missing_evidence": self.reason,
             "controller_memory_writes": 0,
+            "progression_writes": 0,
+            "capacity_writes": 0,
+            "inventory_writes": 0,
+            "triforce_writes": 0,
+            "bomb_capacity_writes": 0,
+            "room_writes": 0,
+            "door_writes": 0,
         }
+
+
+def make_post_l8_overworld_controller(
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+) -> NaturalRouteUnavailableController:
+    return NaturalRouteUnavailableController(
+        "level9_post_l8_overworld",
+        MISSING_POST_L8_LEFTOVER,
+        require_bombs=True,
+        handoff=handoff,
+    )
+
+
+def make_spectacle_rock_bomb_controller() -> NaturalRouteUnavailableController:
+    return NaturalRouteUnavailableController(
+        "level9_spectacle_rock_bomb",
+        MISSING_SPECTACLE_BOMB,
+        require_bombs=True,
+    )
+
+
+def make_old_man_tf_gate_controller() -> NaturalRouteUnavailableController:
+    return NaturalRouteUnavailableController(
+        "level9_old_man_tf_gate",
+        MISSING_OLD_MAN_GATE,
+        require_bombs=True,
+    )
+
+
+def make_silver_arrows_unavailable_controller() -> NaturalRouteUnavailableController:
+    return NaturalRouteUnavailableController(
+        "level9_natural_silver_arrows",
+        MISSING_SILVER_ARROW_ROOM,
+    )
+
+
+def make_patra_join_unavailable_controller() -> NaturalRouteUnavailableController:
+    return NaturalRouteUnavailableController(
+        "level9_natural_patra_join",
+        MISSING_51_NORTH_WALK,
+    )
 
 
 @dataclass
@@ -99,6 +169,10 @@ class _NaturalEndingController:
             "fixture_loaded": False,
             "route_eligible": False,
             "controller_memory_writes": 0,
+            "progression_writes": 0,
+            "capacity_writes": 0,
+            "inventory_writes": 0,
+            "selected_item_writes": 0,
         }
 
 
@@ -392,4 +466,9 @@ __all__ = [
     "NaturalRescueZeldaController",
     "NaturalRouteUnavailableController",
     "NaturalSelectSilverArrowsController",
+    "make_old_man_tf_gate_controller",
+    "make_patra_join_unavailable_controller",
+    "make_post_l8_overworld_controller",
+    "make_silver_arrows_unavailable_controller",
+    "make_spectacle_rock_bomb_controller",
 ]

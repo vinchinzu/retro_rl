@@ -32,6 +32,7 @@ from zelda_i.level6.hops import (
     fight_hop,
     ok6,
     one_hop,
+    rod_cellar_ok,
     settle_fight,
     stairs_or_play,
 )
@@ -131,7 +132,7 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             "level6-rod",
             "level6_rod_0x75",
             make_rod_75_controller,
-            ok6(rod=True, **tf1f),
+            rod_cellar_ok,
         ),
         one_hop(
             "level6-exit75",

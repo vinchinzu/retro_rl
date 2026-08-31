@@ -18,7 +18,13 @@ from super_metroid.routes.kpdr.wrecked_ship.ws_main_actions import (
     wall_up_shot_action,
 )
 from super_metroid.routes.kpdr.wrecked_ship.ws_main_climb import (
+    SAVE_COLUMN_WJ,
+    climb_until,
+    note_upper_wall,
     play_ws_main_to_attic,
+    save_alcove_jump,
+    save_column_walljump,
+    upper_wall_open,
     ws_main_attic_settled,
 )
 from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import (
@@ -41,6 +47,8 @@ from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import (
     at_ws_main_mid_climb,
     at_ws_main_morph_drop,
     at_ws_main_pit,
+    at_ws_main_save_alcove,
+    at_ws_main_save_column_wj,
     at_ws_main_slope_651,
     at_ws_main_slope_827,
     at_ws_main_slope_1019,
@@ -54,16 +62,6 @@ from super_metroid.routes.kpdr.wrecked_ship.ws_main_geometry import (
 from super_metroid.routes.kpdr.wrecked_ship.ws_main_ice import (
     ATOMIC_ID,
     ice_keepaway_action,
-)
-from super_metroid.routes.kpdr.wrecked_ship.ws_main_shaft import (
-    SAVE_COLUMN_WJ,
-    at_ws_main_save_alcove,
-    at_ws_main_save_column_wj,
-    climb_until,
-    note_upper_wall,
-    save_alcove_jump,
-    save_column_walljump,
-    upper_wall_open,
 )
 from super_metroid.routes.kpdr.room_ids import ROOM_WS_ATTIC, ROOM_WS_MAIN
 from super_metroid.routes.skills.basic_moves import shoot_up_action
@@ -824,7 +822,7 @@ def test_climb_until_overlay_save_and_lip() -> None:
 def test_knockback_latches_upper_wall_after_three_spawns(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     n = {"i": 0}
 
@@ -875,7 +873,7 @@ def test_upper_wall_needs_three_near_spawns() -> None:
 def test_take02_slope_owns_moving_aim_pose(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     session = _Session(
         _state(
@@ -906,7 +904,7 @@ def test_take02_slope_owns_moving_aim_pose(
 def test_latched_take02_suppresses_save_column_and_ice_keeps_morph_drop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     save_column_calls: list[str] = []
     ice_calls: list[tuple[int, int]] = []
@@ -958,7 +956,7 @@ def test_latched_take02_suppresses_save_column_and_ice_keeps_morph_drop(
 
 
 def test_take02_drop_handoff_matches_tape_rle() -> None:
-    from super_metroid.routes.kpdr.wrecked_ship import ws_main_shaft as mod
+    from super_metroid.routes.kpdr.wrecked_ship import ws_main_climb as mod
 
     actions = [
         mod._take02_drop_handoff_action(frame)

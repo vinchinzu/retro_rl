@@ -19,7 +19,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE, ROOM_ICE_SNAKE
 from super_metroid.routes.kpdr.ice.geometry import (
     ICE_BEAM_MASK,
@@ -54,7 +54,7 @@ def play_ice_to_snake(session: ControllerSession) -> SuperMetroidState:
         if state.pose in (137, 138, 39, 40):
             hold(session, 1, "UP", reason=f"{label}_unmorph")
             continue
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
     for frame in range(ICE_LEAVE_FRAMES):

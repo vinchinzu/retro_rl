@@ -53,7 +53,7 @@ from super_metroid.ram import (  # noqa: E402
     reset_parse_counts,
 )
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS, get_segment  # noqa: E402
-from super_metroid.routes.kpdr.to_bat_cave import (  # noqa: E402
+from super_metroid.routes.kpdr.norfair.to_bat_cave import (  # noqa: E402
     BubblePhaseStop,
     play_bubble_climb_from_handoff,
     play_bubble_from_top_door,

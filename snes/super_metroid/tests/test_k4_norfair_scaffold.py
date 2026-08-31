@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from super_metroid.routes.kpdr import to_bat_cave
+from super_metroid.routes.kpdr.norfair import to_bat_cave
 from super_metroid.routes.kpdr.rooms import ROOM_BAT_CAVE, ROOM_BUBBLE
 
 

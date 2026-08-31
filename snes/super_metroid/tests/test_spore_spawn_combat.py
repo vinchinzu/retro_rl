@@ -213,7 +213,7 @@ def test_floor_bounce_requires_spore_room_and_full_hp() -> None:
 
 def test_floor_bounce_reports_defeat_when_hp_hits_zero() -> None:
     from super_metroid.combat.spore_spawn import play_spore_spawn_floor_bounce
-    from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
+    from super_metroid.routes.kpdr.brinstar.spore_spawn import SporeSpawnEvidence
 
     session = _Session(
         _state(samus_x=100, samus_y=720, enemy0_spritemap=0xEF3D),

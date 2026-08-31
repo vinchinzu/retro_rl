@@ -25,7 +25,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.red_tower.geometry import (
     EAST_GLASS_DOOR_X,
     EAST_TO_GLASS_FRAMES,
@@ -56,7 +56,7 @@ def play_east_to_glass(session: ControllerSession) -> SuperMetroidState:
         if state.pose in _MORPH | _CROUCH:
             hold(session, 1, "UP", reason=f"{label}_uncrouch")
             continue
-        if int(state.velocity_y) == 0 and state.pose in _STANDING_POSES | frozenset(
+        if int(state.velocity_y) == 0 and state.pose in STANDING_POSES | frozenset(
             {1, 2, 9, 10, 12, 25, 75, 77, 81}
         ):
             break

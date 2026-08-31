@@ -151,13 +151,24 @@ snes/super_metroid/tas/oracle/
   import_oracle.py         # normalize → pins.json / extract_run adapter
 ```
 
-### Phase 3 — lsnes any% oracle (parallel track)
+### Phase 3 — lsnes oracle (100% native first, any% parallel)
 
-**Done when:** `sniq_any_3653M.lsmv` has the same artifact shape under `recordings/tas_oracle/sniq_any_lsnes/`.
+**Preferred 100%:** TASVideos [#4010M](https://tasvideos.org/4010M) is **lsnes rr2-β23** / bsnes v085. Wrapper:
 
-1. Install lsnes (or document BizHawk import of any% if a verified conversion exists — prefer **native lsnes** for bit-exact).  
-2. Same dump contract as Phase 2 (adapt memory domain names).  
-3. Compare early Ceres pins to harness first_control (~11 182) for residual boot research only.
+```bash
+./snes/super_metroid/tas/oracle/run_lsnes_100.sh \
+  snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes
+```
+
+Lua: `tas/oracle/lsnes_dump_sm.lua`. Env: `tas/ref/ORACLE_ENV.md`.
+
+**Done when:** `sniq_100_4010M.lsmv` (and later `sniq_any_3653M.lsmv`) dump under `recordings/tas_oracle/sniq_100_lsnes/` / `sniq_any_lsnes/` with the same artifact shape as Phase 2 (pins/meta/timeline).
+
+1. [x] Vendor + parse native LSMV (`tas/lsmv.py`, 222 788f, ROM SHA256 match).  
+2. [x] Install lsnes rr2-β23 (`lsnes-bsnes.exe`) + wow64 Wine; `run_lsnes_100.sh`.  
+3. [x] Ceres elev `0xDF45` @ **10962**, first_control @ **11182**, Ridley `0xE0B5` @ **37269** (energy 99→25).  
+4. [ ] GREEN: Landing `0x91F8` / morph (not reached by f70k).  
+5. Compare early Ceres pins to harness first_control (~11 182) for residual boot research only.
 
 ### Phase 4 — Harness consumers (truth boards)
 

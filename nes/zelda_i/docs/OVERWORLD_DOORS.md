@@ -42,6 +42,28 @@ Recon table below is the live door map; dungeon geometry lives in
 Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough path
 (`…→0x3C`); L3–L9 still need emulator confirmation of door tile + entry room.
 
+### Leave → next-mouth stitch
+
+Shared leftover packet: `zelda_i.overworld.stitch.OverworldHandoff` (L8
+`PostLevel7Handoff` shape). Full table, dead beliefs, and owner fill-in:
+[tasks/ow-handoff.md](tasks/ow-handoff.md). `verified=False` /
+`route_eligible=False` until the dungeon owner measures the leave. Do not
+treat this as spine-green.
+
+| From | Leave (screen, x/y, mode, TF, items) | To mouth | Enter items | Status |
+|------|--------------------------------------|----------|-------------|--------|
+| L1 | **`0x37`** ~(112,125) mode 5, TF `0x01` | L2 **`0x3C`** | wooden sword; TF1 | **verified** leave + mouth |
+| L2 | **`0x3C`** ~(112,125) mode 5, TF `0x03` | L3 **`0x74`** | wooden sword | **verified** leave + mouth |
+| L3 | **`0x74`** ~(128,125) mode 5, TF `0x07`, raft=1 | L4 **`0x45`** via dock `0x55` | **Raft** | **verified** leave + mouth |
+| L4 | **`0x45`** island settle (284f); x/y **not packed**, TF `0x0F` | L5 **`0x0B`** | none | **live** leave; mouth verified |
+| L5 | **`0x0B`** settle (510f); x/y **not packed**, TF `0x1F`, Whistle earned | L6 **`0x22`** | none | **live** leave; mouth **verified** |
+| L6 | **UNMEASURED** — do **not** assume `0x22`. Spine tip is play `0x09` (56,109) TF `0x1F` (not a leave) | L7 pond **`0x42`** (source); live approach `0x53` (224,173) LEFT-inland-before-DOWN; bait shop `0x34` source | **Whistle**; Bait inside | leave **UNMEASURED**; mouth hypothesis |
+| L7 | **UNMEASURED** (expect TF `0x7F`, Candle 2) | L8 bush **`0x6D`** from `0x5D` south x≈48 | **Candle 2** | leave **UNMEASURED**; bush live; burn unsolved |
+| L8 | **UNMEASURED** (expect TF `0xFF`, Magic Key, bombs) | L9 Spectacle Rock **`0x05`** bomb | bombs; TF `0xFF`; Magic Key | leave **UNMEASURED**; mouth source/fixture-live |
+
+White sword (5 HC), Magical sword grave `0x21` (12 HC), Bracelet Armos `0x24`
+are later OW shortcuts. **Do not grant.**
+
 ---
 
 ## Key overworld capabilities (non-dungeon)

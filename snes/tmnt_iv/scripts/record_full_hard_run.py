@@ -5,7 +5,7 @@ never loads a save state, never writes stage/lives/boss RAM, and never presses
 the HP-draining special. Damage is measured from natural HP drops.
 
 Video uses the shared :class:`retro_harness.video.VideoRecorder` (1080p60
-YouTube pad + button sidebars by default). ``--native-video`` is the 16px
+YouTube pad + stream overlay by default). ``--native-video`` is the 16px
 footer escape hatch.
 
 Assists (disclosed, minimized vs the old every-hit restore-to-96; **default ON**):
@@ -256,7 +256,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--native-video",
         action="store_true",
-        help="Nx gameplay + 16px footer instead of 1080p60 YouTube sidebars",
+        help="Nx gameplay + 16px footer instead of 1080p60 YouTube overlay",
     )
     parser.add_argument(
         "--hq",

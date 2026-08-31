@@ -209,6 +209,11 @@ def add_video_args(
         action="store_true",
         help="Higher quality encode (scale=3, crf=15, preset=slow)",
     )
+    parser.add_argument(
+        "--youtube",
+        action="store_true",
+        help="1080p60 YouTube pad + NES stream overlay (keeps 60 fps)",
+    )
     return parser
 
 
@@ -231,7 +236,13 @@ def resolve_video(
     path = default_path if args.video == "AUTO" else Path(args.video)
     audio = not getattr(args, "no_audio", False)
     footer = not getattr(args, "no_footer", False)
-    if getattr(args, "hq", False):
+    if getattr(args, "youtube", False):
+        yt: dict[str, Any] = dict(audio=audio, footer=False, buttons="nes")
+        if getattr(args, "hq", False):
+            yt["crf"] = 15
+            yt["preset"] = "slow"
+        config = VideoCaptureConfig.youtube(**yt)
+    elif getattr(args, "hq", False):
         config = VideoCaptureConfig.high_quality(audio=audio, footer=footer)
     else:
         config = VideoCaptureConfig(audio=audio, footer=footer)

@@ -118,10 +118,10 @@ BUILDER_SKILLS: tuple[BuilderSkill, ...] = (
     ),
     BuilderSkill(
         tech="canPreciseWallJump",
-        callable_path="super_metroid.routes.skills.walljump.walljump_once",
+        callable_path="super_metroid.routes.skills.walljump.precise_walljump_once",
         difficulty="Medium",
         status="green",
-        summary="Tight-timing wall-jump (same pulse, tight policy)",
+        summary="Release-edged wall-jump with contact and outcome gates",
     ),
     BuilderSkill(
         tech="canConsecutiveWallJump",

@@ -56,7 +56,7 @@ from super_metroid.routes.kpdr.ice.geometry import (
     on_snake_top,
     on_snake_tunnel_band,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_ICE, ROOM_ICE_SNAKE
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import (
@@ -64,7 +64,7 @@ from super_metroid.routes.skills.knockback import (
     is_knockback,
 )
 
-_LEDGE = _STANDING_POSES | frozenset({1, 2, 9, 10, 37, 38})
+_LEDGE = STANDING_POSES | frozenset({1, 2, 9, 10, 37, 38})
 
 
 def _settle_ground(session: ControllerSession, label: str, *, max_frames: int = 40) -> None:
@@ -624,7 +624,7 @@ def _ice_collect_plm(session: ControllerSession, label: str) -> SuperMetroidStat
         select_weapon(session, 0)
     for _ in range(30):
         st = hold(session, 1, reason=f"{label}_stand")
-        if int(st.velocity_y) == 0 and int(st.pose) in _STANDING_POSES:
+        if int(st.velocity_y) == 0 and int(st.pose) in STANDING_POSES:
             break
 
     for frame in range(SNAKE_ICE_COLLECT_FRAMES):
@@ -663,7 +663,7 @@ def _ice_collect_plm(session: ControllerSession, label: str) -> SuperMetroidStat
     unmorph(session)
     for _ in range(40):
         st = hold(session, 1, reason=f"{label}_post_stand")
-        if int(st.velocity_y) == 0 and int(st.pose) in _STANDING_POSES:
+        if int(st.velocity_y) == 0 and int(st.pose) in STANDING_POSES:
             break
     return session.state
 

@@ -9,14 +9,17 @@ import numpy as np
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
 from super_metroid.routes.kpdr.ceres.elev_escape import (
+    _CERES_FAST_ENTRY_WALLJUMP,
     CeresShaftClimb,
     _ceres_at_checkpoint,
     _ceres_elev_leaving,
     _ceres_elev_ship_band,
     _ceres_elev_top_seat,
+    _ceres_fast_entry_window,
     climb_ceres_shaft_action,
     ship_pad_action,
 )
+from super_metroid.routes.kpdr.ceres.magnet import falling_door_action
 from super_metroid.routes.kpdr.ceres.geometry import (
     CERES_ELEV_HOPS,
     _CERES_ELEV_BOTTOM_Y,
@@ -192,3 +195,24 @@ def test_checkpoint_requires_ground_or_knockback_pose() -> None:
     assert not _ceres_at_checkpoint(airborne_apex, 475)
     debris_knockback = _state(samus_y=475, pose=137, velocity_y=0)
     assert _ceres_at_checkpoint(debris_knockback, 475)
+
+
+def test_falling_door_jump_uses_exact_late_window() -> None:
+    assert falling_door_action(_state(samus_x=30)) == ("LEFT", "B", "A")
+    assert falling_door_action(_state(samus_x=31)) == ("LEFT",)
+    assert falling_door_action(_state(samus_x=30, game_state=11)) == ("LEFT",)
+
+
+def test_fast_entry_requires_preserved_spin_phase() -> None:
+    fast = _state(samus_x=216, samus_y=628, pose=26, velocity_y=4)
+    assert _ceres_fast_entry_window(fast)
+    assert not _ceres_fast_entry_window(replace(fast, samus_y=651, pose=10))
+    assert not _ceres_fast_entry_window(replace(fast, samus_y=620))
+
+
+def test_ceres_precise_walljump_has_release_edge() -> None:
+    timing = _CERES_FAST_ENTRY_WALLJUMP
+    assert timing.into == "RIGHT"
+    assert timing.away == "LEFT"
+    assert timing.release_frames == 2
+    assert timing.coast_frames + timing.into_frames == 22

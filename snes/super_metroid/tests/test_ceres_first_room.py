@@ -13,11 +13,11 @@ import pytest
 
 from super_metroid.emulator_validation import ROM_AVAILABLE
 from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
-from super_metroid.routes.kpdr.ceres.first_room_fixture import (
-    CeresFirstRoomFixture,
+from super_metroid.routes.kpdr.ceres.room_tape import (
+    CeresRoomTape,
     button_names_to_mask,
-    get_ceres_first_room_tape,
-    validate_ceres_first_room,
+    get_ceres_room_tape,
+    validate_ceres_room_tape,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
@@ -58,16 +58,16 @@ class TestCeresFirstRoomTape:
     """Test real tape extraction (offline, no ROM needed)."""
 
     def test_get_tape_returns_fixture(self) -> None:
-        """get_ceres_first_room_tape returns a CeresFirstRoomFixture."""
-        fixture = get_ceres_first_room_tape()
+        """get_ceres_room_tape("first") returns a CeresRoomTape."""
+        fixture = get_ceres_room_tape("first")
 
-        assert isinstance(fixture, CeresFirstRoomFixture)
+        assert isinstance(fixture, CeresRoomTape)
         assert fixture.from_room_id == ROOM_CERES_ELEVATOR
         assert fixture.to_room_id == ROOM_CERES_FALLING
 
     def test_tape_has_real_source(self) -> None:
         """Tape source is documented (not greedy search)."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert "outbound" in fixture.tape_source.lower()
         assert "greedy" not in fixture.tape_source.lower()
@@ -75,14 +75,14 @@ class TestCeresFirstRoomTape:
 
     def test_tape_produces_input_sequence(self) -> None:
         """Tape has non-empty input sequence."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert len(fixture.inputs) > 0
         assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
 
     def test_tape_starts_with_right_a(self) -> None:
         """Tape starts with RIGHT+A (jump start) for 24 frames."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         # First 24 frames should be RIGHT+A = 0x180
         assert fixture.inputs[0].buttons == 0x180
@@ -94,7 +94,7 @@ class TestCeresFirstRoomTape:
         Raw spans: RIGHT+A 24, RIGHT 120, LEFT 120, RIGHT+B 240 (arm-pump), idle 60
         Total: 564 frames
         """
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert fixture.frames == 564
         assert len(fixture.inputs) == 564
@@ -105,7 +105,7 @@ class TestCeresFirstRoomTape:
         Frames 264-503 (240 frames after RIGHT+A 24, RIGHT 120, LEFT 120)
         must match the ActionSpans returned by _arm_pump_dash_spans("RIGHT", 240, ...).
         """
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         # Get expected arm-pump expansion from the actual helper
         arm_pump_spans = _arm_pump_dash_spans("RIGHT", 240, "test")
@@ -133,7 +133,7 @@ class TestCeresFirstRoomTape:
 
     def test_tape_ends_with_idle(self) -> None:
         """Tape ends with 60 frames of idle (all buttons released)."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         # Last 60 frames should be idle (0x000)
         idle_start = 24 + 120 + 120 + 240
@@ -141,7 +141,7 @@ class TestCeresFirstRoomTape:
 
     def test_tape_not_emulator_validated(self) -> None:
         """Tape does not claim emulator validation by default."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert not fixture.emulator_validated
         assert not fixture.emulator_success
@@ -149,20 +149,20 @@ class TestCeresFirstRoomTape:
 
     def test_tape_not_room_clear_without_emu(self) -> None:
         """Tape never claims room_clear without emulator validation."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert not fixture.room_clear
 
     def test_fixture_frames_property(self) -> None:
         """Fixture has frames property (tape length)."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         assert fixture.frames == len(fixture.inputs)
         assert fixture.frames > 0
 
     def test_fixture_to_dict_serializable(self) -> None:
         """Fixture can be serialized to dict (smedit-tas-1 compatible)."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
         data = fixture.to_dict()
 
         assert isinstance(data, dict)
@@ -182,12 +182,12 @@ class TestCeresFirstRoomValidation:
 
     def test_validate_requires_rom_or_start_state(self) -> None:
         """Validate raises if ROM or start state unavailable."""
-        fixture = get_ceres_first_room_tape()
+        fixture = get_ceres_room_tape("first")
 
         if not ROM_AVAILABLE or not self._has_start_state():
             # Should raise when prerequisites missing
             with pytest.raises((FileNotFoundError, ValueError)):
-                validate_ceres_first_room(fixture)
+                validate_ceres_room_tape(fixture, "first")
 
     @pytest.mark.skipif(
         not ROM_AVAILABLE,
@@ -201,22 +201,22 @@ class TestCeresFirstRoomValidation:
         if not self._has_start_state():
             pytest.skip("SM_CERES_ELEV_STATE not set or file missing")
 
-        fixture = get_ceres_first_room_tape()
-        validated = validate_ceres_first_room(fixture)
+        fixture = get_ceres_room_tape("first")
+        validated = validate_ceres_room_tape(fixture, "first")
 
         assert validated.emulator_validated
         # Don't assert success/room_clear here - that depends on tape quality
 
 
-class TestCeresFirstRoomFixture:
-    """Test CeresFirstRoomFixture data structure."""
+class TestCeresRoomTape:
+    """Test CeresRoomTape data structure."""
 
     def test_room_clear_requires_emulator_success(self) -> None:
         """room_clear is False unless emulator_validated and emulator_success."""
         from super_metroid.physics_sim import FrameInput
 
         # Not validated
-        fixture = CeresFirstRoomFixture(
+        fixture = CeresRoomTape(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
             inputs=(FrameInput(0),),
@@ -226,7 +226,7 @@ class TestCeresFirstRoomFixture:
         assert not fixture.room_clear
 
         # Validated but failed
-        fixture_failed = CeresFirstRoomFixture(
+        fixture_failed = CeresRoomTape(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
             inputs=(FrameInput(0),),
@@ -237,7 +237,7 @@ class TestCeresFirstRoomFixture:
         assert not fixture_failed.room_clear
 
         # Validated and succeeded
-        fixture_success = CeresFirstRoomFixture(
+        fixture_success = CeresRoomTape(
             from_room_id=ROOM_CERES_ELEVATOR,
             to_room_id=ROOM_CERES_FALLING,
             inputs=(FrameInput(0),),

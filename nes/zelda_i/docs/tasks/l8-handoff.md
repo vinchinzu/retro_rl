@@ -1,0 +1,95 @@
+# L8 Wave A handoff — Lion
+
+Did not STATUS-promote. Did not claim spine-green. Did not poke candle/doors/TF/magic key.
+
+## chapter id and evidence label
+
+- `rr-6o7.1` L8-A Red-Candle bush entry + topology: **hypothesis** (canonical seam fail-closed). Isolated 0x6D burn is **fixture-live**, `route_eligible=false`. Live trial **blocked** (no ROM, no `Level8BushOW`/`OW_6D`, no `l8_*.png`/`l8_bush_recon.json` in this worktree).
+- `rr-6o7.2` L8-B Magical Key + L8-C four-head Gleeok factories: **hypothesis**. Room IDs unobserved. Controllers idle-fail.
+
+## predecessor
+
+Measured post-L7 leave is **UNMEASURED**. `PostLevel7Handoff.verified=false`. Controllers must not move without `handoff.complete()` except isolated bush recon on 0x6D.
+
+Expected predecessor (L7 leave, not yet supplied): overworld play, TF `0x7F`, Candle 2, full hearts, deaths 0. Screen/x/y/keys/bombs/rupees/B-slot/Whistle/Food/Rod/Bow/arrows unknown.
+
+Bush screen facts (prior assisted recon, not this sitting): enter 0x6D only from 0x5D south @ x≈48; walkable left corridor x≈32–56 + mid sand y≈88–96 east to x≈144; only open exit without candle is UP @ x≈48 → 0x5D.
+
+## required inventory (Candle 2, TF 0x7F, Bow)
+
+- Candle 2 (natural Red Candle from L7). Do not put the 60R Blue Candle shop on the mainline.
+- TF exactly `0x7F`.
+- Bow + wooden arrows from the cumulative route (L8 blue Gohma needs 3 shots). No L6 wooden-arrow poke. No L6 room `0x1C` check.
+- Magical Key is the selected L8 investment (L9 key bottleneck). Book/Map/Compass omitted.
+
+## internal stages
+
+Public through (unchanged): `level8-entry` → `level8-magic-key` → `level8`.
+
+- `level8-entry`: `level8_post_l7_to_bush`, `level8_select_red_candle` (pause/input only), `level8_burn_bush_enter`.
+- `level8-magic-key`: `level8_north_manhandla_bomb`, `level8_darknut_key_up`, `level8_blue_gohma`, `level8_magic_key_stairs`.
+- `level8`: `level8_return_passage`, `level8_four_head_gleeok`, `level8_heart_shard_leave`.
+
+Hypothesis Magic-Key walk (grid labels only; RAM ids `None`):
+
+```
+entry --UP--> north_manhandla --BOMB UP--> darknut_key
+  --KEY UP--> shutter_darknuts --KEY UP--> blue_darknuts
+  --BOMB UP--> map_manhandla --KEY UP--> blue_gohma
+  --RIGHT--> magic_key_stairs
+```
+
+Hypothesis Gleeok suffix:
+
+```
+blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
+  --STAIRS--> pols_west --BOMB UP--> gleeok --UP--> triforce
+```
+
+## endpoint predicates
+
+- `level8-entry` / `level8_entry_live`: observed L8 entry room, play mode, TF `0x7F`, Candle 2, natural burn/transition (`ADDR_CANDLE_USED` then mode-16 mouth). Fails while `topology.entry_room` is None.
+- `level8-magic-key` / `level8_magic_key_natural`: `ADDR_MAGIC_KEY` increases naturally, TF still `0x7F`, at RAM-observed magic-key room. Ledger records incoming/outgoing keys and bombs.
+- `level8` / `level8_triforce_0x80`: TF `0x7F→0xFF` (bit `0x80`), Magic Key owned, one natural heart-container increase, full hearts. Settled post-fanfare leave is `UNOBSERVED_LEVEL8_CLEAR`. Deaths 0 / zero state loads are runner contracts, not yet measurable.
+
+Burn-budget exhaust while still on 0x6D is **failure**, never success. Canonical `BurnLevel8BushController` also refuses an unverified aim.
+
+## inventory deltas
+
+| Gate | TF | Candle | Magic Key | Hearts | Keys/bombs |
+|------|----|--------|-----------|--------|------------|
+| entry | stay `0x7F` | stay 2 | 0 | unchanged | recorded, not invented |
+| magic-key | stay `0x7F` | 2 | 0→1 natural | unchanged | exact before/after recorded |
+| level8 | `0x7F→0xFF` | 2 | owned | containers +1, full | recorded; Magical Key removes later key spend |
+
+Blue Candle shop remains `BLUE_CANDLE_FALLBACK_ENABLED=False`. `ADDR_SELECTED_ITEM` is never written in the L8 lane modules (pause cycle only).
+
+## dead beliefs (especially burn tile)
+
+- **(136, 93) face/push RIGHT** never opened a mouth (historical dense walkable burns). Not an executable target.
+- Exhausting the burn budget on 0x6D is not entry success (frozen `overworld.py` still has that false positive; canonical path does not use it).
+- Four-head Gleeok body type is **not** assumed `0x45` (L4=`0x43`, L6=`0x44`, L8=`None` until live).
+- Walkthrough grid hex is not a dungeon room ID.
+- Book of Magic is not on the minimum full-clear route.
+
+One new hypothesis (fixture-live, `verified=false`, `route_eligible=false`): stand **(144, 93)** at the sampled east walkable limit, face **RIGHT**, push **UP** (mouths are mode-16 UP). Formed from documented walkable raster, not from PNGs (absent here). No live trial this sitting.
+
+## fixture provenance route_eligible=false
+
+`Level8BushOW` / `OW_6D` / `l8_walkable.png` / `l8_bush_6d.png` / `l8_bush_recon.json` are cited prior evidence, **not present** in this worktree. Isolated `IsolatedBushReconController` may step on 0x6D without a complete L7 handoff; it still fails closed without candle, without B-slot candle, or when the burn budget expires on 0x6D. Nothing here is route-eligible or spine-green.
+
+## files changed
+
+- `nes/zelda_i/level8/dungeon.py` — hypothesis door graph, ledger, fail-closed stops
+- `nes/zelda_i/level8/path.py` — Magic-Key / blue-Gohma / four-head Gleeok blockers
+- `nes/zelda_i/level8/hops.py` — named chapter factories; public through names unchanged
+- `nes/zelda_i/level8/bush.py` — isolated 0x6D recon (not wired into `L8_THROUGH`)
+- `nes/zelda_i/docs/LEVEL8_ROUTE.md`
+- `nes/zelda_i/tests/test_level8_entry.py`
+- `nes/zelda_i/docs/tasks/l8-handoff.md` (this file)
+
+Not written: `level8/overworld.py` (frozen), `level8/entry.py` (499, no new knob), `spine/survival.py`, RAM/assist, L6/L7/L9, `STATUS.md`, `.beads`. `QT_QPA_PLATFORM=offscreen uv run pytest nes/zelda_i/tests/test_level8*.py nes/zelda_i/tests/test_hygiene_architecture.py -q` → 28 passed.
+
+## stitch notes for L9: TF 0xFF, Magic Key, heart +1, post-fanfare OW leftover UNMEASURED
+
+When L8 later clears, L9 should inherit: TF exactly `0xFF`, Magical Key owned, Bow + arrows, Candle 2, one extra heart container vs L7 leave, full hearts, deaths 0, **post-fanfare overworld leftover UNMEASURED** (do not invent screen/x/y). L9 must not assume L8 leftover `0x6D`. Do not grant Magic Key. Do not skip L8 Magical Key on the cumulative path: it is the L9 key-bottleneck investment.

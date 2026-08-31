@@ -10,11 +10,18 @@ See ``docs/LEVEL7_ROUTE.md``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_idle_action
+from zelda_i.overworld.common import (
+    EDGE_EAST_X,
+    EDGE_NORTH_Y,
+    EDGE_SOUTH_Y,
+    EDGE_WEST_X,
+)
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.ram import (
@@ -25,6 +32,7 @@ from zelda_i.ram import (
     ZeldaSnapshot,
     read_u8,
 )
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 from zelda_i.anchors import (
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
@@ -76,10 +84,19 @@ LEVEL7_POND_FROM_SHOP_HOPS: tuple[ScreenHop, ...] = (
 LEVEL7_POND_HOPS: tuple[ScreenHop, ...] = LEVEL7_POND_APPROACH_HOPS + (
     ScreenHop(0x53, "LEFT", align_y=141),
     # 0x53 west: central y≈141 is tree-blocked; lower gap is y≈189.
+    # v9 leftover (224,173): align_y-first DOWN is blocked (hop10_ay).
     ScreenHop(0x52, "LEFT", align_y=189),
     ScreenHop(SCREEN_LEVEL7_POND_HYP, "UP", align_x=112),
 )
 LEVEL7_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(0x77, LEVEL7_POND_HOPS)
+
+# 0x53 east-edge vertical travel is the v9 miss.  Leave the east column
+# (x>192) before descending to the hypothesized west gap, then LEFT to 0x52.
+POND_53_INLAND_X = 192
+POND_53_WEST_GAP_Y = 189
+POND_53_Y_TOL = 4
+POND_53_SEED_BLOCKED: frozenset[tuple[int, int]] = frozenset({(224, 174)})
+_POND_53_HOP_INDEX = 10
 
 
 class Level7NavPhase(Enum):
@@ -88,22 +105,70 @@ class Level7NavPhase(Enum):
     FAILED = auto()
 
 
+def pond_53_to_52_action(
+    snap: ZeldaSnapshot,
+    *,
+    walker: OccupancyWalker,
+    swing,
+) -> FrameAction | None:
+    """LEFT inland from the east edge before descending toward 0x52.
+
+    v9 live miss: ``hop10_ay`` DOWN from ``(224,173)`` never left 0x53.
+    l7_dnp_pond_53 leftover ``(176,205)``: once inland and at/below the
+    hypothesized gap, push LEFT instead of occupancy-UP back to y=189.
+    Occupancy miss → block cell → replan; no path → stand.
+    """
+    xy = (int(snap.link_x), int(snap.link_y))
+    walker.observe(xy)
+    if snap.link_x > POND_53_INLAND_X:
+        return swing("LEFT", "53_inland_left")
+    if snap.link_y >= POND_53_WEST_GAP_Y - POND_53_Y_TOL:
+        return None
+    direction = walker.next_dir(xy)
+    if direction is None:
+        return FrameAction(nes_idle_action(), "53_no_path_stand")
+    reason = (
+        "53_descend_west_gap"
+        if direction in {"DOWN", "UP"}
+        else "53_left_west_gap"
+    )
+    return swing(direction, reason)
+
+
 @dataclass
 class OverworldToLevel7PondController(OverworldPathController):
     """Walk from the start screen to the Demon pond on screen ``0x42``.
 
-    This controller deliberately stops at the pond.  Whistle selection, pond
-    drain, and dungeon entry belong to the next route boundary so a missing
-    entry capability cannot silently turn a geometry result into an entry
-    claim.
+    Geometry-only: Whistle is not required.  Drain/entry is a later chapter.
     """
 
     phase: Level7NavPhase = Level7NavPhase.HOP
     hops: tuple[ScreenHop, ...] = LEVEL7_POND_HOPS
     require_sword: bool = True
+    _pond53_walk: OccupancyWalker | None = field(
+        default=None, init=False, repr=False
+    )
+
+    @property
+    def failed(self) -> bool:
+        return self.phase is Level7NavPhase.FAILED
 
     def end_screen(self) -> int:
         return self.hops[-1].target
+
+    def _pond53_walker(self) -> OccupancyWalker:
+        if self._pond53_walk is None:
+            self._pond53_walk = OccupancyWalker(
+                grid=OccupancyGrid(
+                    blocked=set(POND_53_SEED_BLOCKED),
+                    xmin=EDGE_WEST_X,
+                    xmax=EDGE_EAST_X,
+                    ymin=EDGE_NORTH_Y,
+                    ymax=EDGE_SOUTH_Y,
+                ),
+                goal=(EDGE_WEST_X + 4, POND_53_WEST_GAP_Y),
+            )
+        return self._pond53_walk
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
@@ -119,6 +184,10 @@ class OverworldToLevel7PondController(OverworldPathController):
             if snap.link_x < 40:
                 return self._swing("RIGHT", "64_north_ax")
             return self._swing("UP", "64_north")
+        if hop.target == 0x52 and snap.screen == 0x53:
+            return pond_53_to_52_action(
+                snap, walker=self._pond53_walker(), swing=self._swing
+            )
         return None
 
 
@@ -208,6 +277,12 @@ def planning_report() -> dict[str, Any]:
         "pond_hops_from_start": [
             {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_POND_HOPS
         ],
+        "pond_53_micro": {
+            "inland_x": POND_53_INLAND_X,
+            "west_gap_y": POND_53_WEST_GAP_Y,
+            "seed_blocked": [list(c) for c in sorted(POND_53_SEED_BLOCKED)],
+            "evidence": "fixture-live leftover 0x53 (224,173) hop10_ay",
+        },
         "live": {
             "pond_screen": None,
             "entry_room": None,

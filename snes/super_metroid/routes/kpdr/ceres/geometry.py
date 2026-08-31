@@ -27,6 +27,9 @@ _CERES_ELEV_TOP_X = 211  # product right-wall contact (pose 137)
 _CERES_ELEV_LEDGE_Y = 571  # mid shaft ledge after bottom LEFT+A
 _CERES_ELEV_LEDGE_POSE = 2
 _CERES_ELEV_BOTTOM_Y = 640  # bottom floor band after door remap
+# Falling x at which a spin jump survives the west-door remap.  x<=28 enters
+# one debris tick too early; x=30/31 produces the repeatable y=628 fast phase.
+_CERES_FALLING_DOOR_JUMP_X = 30
 
 
 # 571/475/363 seats from the pin. Jump windows are incoming speed, not
@@ -81,6 +84,7 @@ __all__ = [
     "_CERES_ELEV_LEDGE_Y",
     "_CERES_ELEV_LEDGE_POSE",
     "_CERES_ELEV_BOTTOM_Y",
+    "_CERES_FALLING_DOOR_JUMP_X",
     "CERES_ELEV_HOPS",
     "_CERES_MAGNET_EXIT_Y",
     "_CERES_SCI_DOOR_Y",

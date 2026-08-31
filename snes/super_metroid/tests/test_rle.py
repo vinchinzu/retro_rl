@@ -102,16 +102,14 @@ def test_spazer_helpers_play_script_is_shared() -> None:
 
 def test_k4_wave_loads_gate_open_from_data() -> None:
     """Wave product path loads gate-open RLE from data/*.json (rr-7sn.1 + .2)."""
-    from super_metroid.routes.kpdr.wave import scripts as wave_scripts
-
-    assert wave_scripts.HUMAN_GATE_OPEN_RLE == _KNOWN_GATE_OPEN
-    # Must resolve under data/ (not an inlined paste-only constant).
-    assert wave_scripts._GATE_OPEN_RLE_PATH.name == "double_chamber_gate_open_rle.json"
-    assert wave_scripts._GATE_OPEN_RLE_PATH.is_file()
-    # Gate RLE lives in wave.scripts only — not inlined on the hop modules.
     from super_metroid.routes.kpdr.wave import double_gate
 
-    assert not hasattr(double_gate, "_HUMAN_GATE_OPEN_RLE")
+    assert double_gate._HUMAN_GATE_OPEN_RLE == _KNOWN_GATE_OPEN
+    # Must resolve under data/ (not an inlined paste-only constant).
+    path = double_gate._DATA / "double_chamber_gate_open_rle.json"
+    assert path.name == "double_chamber_gate_open_rle.json"
+    assert path.is_file()
+    assert load_rle_json(path) == _KNOWN_GATE_OPEN
 
 
 def test_play_snes12_frames_exported() -> None:

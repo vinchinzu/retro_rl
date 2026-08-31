@@ -1,12 +1,14 @@
 # Level 7 — The Demon (route notes)
 
-**Status:** PARTIAL assisted overworld approach plus a fail-closed cumulative
-module seam. The live controller reaches `0x53`; the `0x53→0x52→0x42` pond
-suffix is not yet green. There is no pond checkpoint, entry room, or Clean
-segment. **Whistle** from Level 5 gates pond entry; **Bait/Food** is a separate
-mid-dungeon hungry-Goriya gate.
+**Status:** Wave A **fixture-live** for the start-based `0x53→0x52` pond micro
+only. `0x52→0x42` pond, drain, entry room, and all dungeon rooms remain
+**hypothesis**. Cumulative spine chapters stay fail-closed
+(`route_eligible=false`). There is no pond checkpoint, L7 entry room, or Clean
+segment. **Whistle** from Level 5 gates pond drain; **Bait/Food** is a separate
+natural 60R shop buy (never `ADDR_FOOD` / rupee write).
 
-**Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach).
+**Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
+(Wave A recon). Do not STATUS-promote.
 
 Planning sources:
 
@@ -56,29 +58,35 @@ but is not). Equip Whistle on B, use once → water drains → stairs into L7.
 |----------|------------------------------|-----------------|-------|
 | L7 pond / entrance | D×2 L×2 U | **`0x42`** | no |
 
-The executable pond controller skips the unverified shop detour. Its live
-prefix is:
+The executable pond controller skips the unverified shop detour. Geometry-only
+(no Whistle required). Its live prefix is:
 
 ```text
-0x77→0x78→0x68→0x58→0x57→0x56→0x55→0x65→0x64→0x54→0x53
+0x77→0x78→0x68→0x58→0x57→0x56→0x55→0x65→0x64→0x54→0x53→0x52
 ```
 
-Live geometry through `0x53` (Survival, `PostSwordStart`):
+Live geometry (Survival, `PostSwordStart`, `--no-video`):
 
 - `0x65→0x64` arrives on the east ledge around `(232,109)`; go DOWN to the
   open band, LEFT to the north gap around `x≈48`, then UP to `0x54`.
 - `0x54→0x53` is LEFT around `y≈141`.
-- Last failure: on `0x53` at `(224,173)`, direct DOWN toward the hypothesized
-  lower west gap `y≈189` remains blocked. The next micro should move LEFT
-  inland before descending, then attempt LEFT into `0x52`.
+- **Dead belief:** on `0x53` at `(224,173)`, `hop10_ay` DOWN toward `y≈189` is
+  blocked (`l7_dnp_pond_assisted_v9`).
+- **0x53 micro (fixture-live):** LEFT inland from the east edge (`x>192`)
+  before descending, then LEFT at/below `y≈189` into `0x52`. Occupancy miss →
+  block cell → replan; no path → stand.
+- **Next leftover:** play `0x52` `(112,181)`, hop `0x42` UP. `hop11_ax` then
+  `unstick_wait` — north gap on `0x52` is not `x=112`. Pond `0x42` is still
+  unobserved.
 
-Evidence: `recordings/l7_dnp_pond_assisted_v9.json` and
-`recordings/l7_dnp_pond_assisted_v9_final.png`. It reports zero deaths and
-`progression_writes=capacity_writes=0`; `success=false`, so no checkpoint was
-saved and this is not a route claim.
+Evidence: `recordings/l7_dnp_pond_53.json` and `_final.png` (this sitting);
+prior miss `recordings/l7_dnp_pond_assisted_v9.json`. Zero deaths;
+`progression_writes=capacity_writes=0`; `success=false`; `route_eligible=false`.
 
-**Controller:** `level7.overworld.OverworldToLevel7PondController`. Isolated
-`probe_level7_entry.py` pruned. Whistle is a pond-entry gate.
+**Controller:** `level7.overworld.OverworldToLevel7PondController` (recon from
+start). Spine uses `PostLevel6Handoff` in `level7.entry` and refuses to move
+until the measured L6 leftover exists. Isolated `probe_level7_entry.py` pruned.
+Whistle is a pond-**drain** gate, not a geometry-walk gate.
 
 ### Live recon goals
 
@@ -93,9 +101,14 @@ saved and this is not a route claim.
 
 ## Interior (source speed route)
 
-Room IDs **unknown**. Key themes: bomb walls, key shortage, Digdogger
-re-spawns, hungry Goriya, “tip of the nose” staircase, Red Candle, forced
-Digdogger before boss, Aquamentus.
+RAM room IDs **unknown**. Offline graph: `level7/graph.py` (source ids
+`0x7xx`, every `ram_id=None`, `evidence=hypothesis`). Prefer bomb walls over
+the fifth lock; Hungry Goriya is a Food gate; Red Candle is `ADDR_CANDLE`
+1→2 naturally. Key/bomb ledger is in `LEVEL7_KEY_BOMB_LEDGER`.
+
+Key themes: bomb walls, key shortage, Digdogger re-spawns, hungry Goriya,
+“tip of the nose” staircase, Red Candle, forced Digdogger before boss,
+Aquamentus.
 
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
@@ -141,11 +154,15 @@ Digdogger before boss, Aquamentus.
 | `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | hypothesis blocker |
 | `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | hypothesis blocker |
 
-Factories in `level7/hops.py` always return fresh controllers. The current
-controllers in `level7/path.py` press no direction and fail after one frame
-with `evidence=hypothesis` and `route_eligible=false`. This is intentional:
-the old start-based pond walk is not a substitute for the measured post-L6
-leftover, and source room ids cannot become executable stop predicates.
+Factories in `level7/hops.py` always return fresh controllers. Post-L6
+overworld and Bait purchase refuse to move until a measured leftover / shop
+geometry exists (`PostLevel6Handoff.verified=false`, shop cave xy `None`).
+Hungry Goriya fails closed without Food. Red Candle fails closed until the
+item room is observed and `ADDR_CANDLE` becomes 2 naturally. The start-based
+pond walk is recon-only and is not a substitute for the measured post-L6
+leftover. Source room ids cannot become executable stop predicates. Do not
+hardcode OW `0x22` as the L6 leave. The live L6 residual play `0x09`
+`(56,109)` TF `0x1F` Rod=0 is **not** an L7 start.
 
 Promote a blocker only with a chapter handoff containing the exact natural
 predecessor, live room/screen transitions, item and key/bomb deltas, and the
@@ -199,16 +216,20 @@ until the integrator imports its public seam into the shared spine:
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 ```
 
-Modules: `zelda_i/level7/{dungeon,path,hops,spine}.py`. The historical pond
-walk remains `level7.overworld.OverworldToLevel7PondController`; it begins at
-the start screen and therefore remains recon-only. Whistle is required to
-drain the pond.
+Modules: `zelda_i/level7/{dungeon,graph,entry,path,hops,overworld,spine}.py`.
+The historical pond walk remains `level7.overworld.OverworldToLevel7PondController`;
+it begins at the start screen and therefore remains recon-only. Whistle is
+required to drain the pond. Spine attachment is the integrator's file.
 
 ---
 
 ## Evidence
 
-- Live assisted partial through overworld `0x53`:
-  `recordings/l7_dnp_pond_assisted_v9.json`.
-- Final `0x53` frame: `recordings/l7_dnp_pond_assisted_v9_final.png`.
-- Pond `0x42`, drain, and dungeon entry remain source-only.
+- **Hypothesis:** first-quest room/door/stair graph (`level7/graph.py`); Bait
+  shop `0x34`; pond `0x42`; all stop room ids; post-L6 leftover.
+- **Fixture-live:** start-based `0x53→0x52` inland-left micro,
+  `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
+- Prior 0x53 miss: `recordings/l7_dnp_pond_assisted_v9.json` `(224,173)`
+  `hop10_ay`.
+- Pond `0x42`, drain, dungeon entry, Red Candle, and shard remain source-only.
+- `route_eligible=false` on every fixture. Did not STATUS-promote.
