@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "hop": "west_ocean_to_pancakes",
+  "time": "2026-08-30T19:21:34-05:00",
+  "runs": [
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_attic_to_west_ocean.state",
+      "frames": 1476,
+      "final": {
+        "room": "0x9461",
+        "xy": [39, 139],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    },
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_attic_to_west_ocean.state",
+      "frames": 1476,
+      "final": {
+        "room": "0x9461",
+        "xy": [39, 139],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    }
+  ],
+  "frames": [1476, 1476],
+  "dual_exact": true,
+  "glance_misses": []
+}
