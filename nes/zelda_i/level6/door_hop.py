@@ -39,6 +39,8 @@ EAST_DOOR_X, EAST_DOOR_Y, EAST_DOOR_TOL = 208, 141, 4
 WEST_DOOR_X, WEST_DOOR_Y, WEST_SPAWN_XMIN = 32, 141, 16
 NORTH_DOOR_X, NORTH_DOOR_Y, EAST_SPAWN_XMAX = 120, 93, 232
 NORTH_HALT_Y, CLIP_Y, DOOR_TOL = 109, 141, 4
+# Live DOWN at x=184 boxed here (tile 244). clip_side=below stops at y>=box.
+SOUTH29_EAST_BOX_Y = 165
 DOOR_HOP_MAX_FRAMES, SAMPLE_PERIOD = 4000, 12
 SOUTH09_MAX_FRAMES = SOUTH19_MAX_FRAMES = SOUTH29_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 EAST29_MAX_FRAMES = EAST39_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
@@ -51,7 +53,8 @@ __all__ = [
     "EAST_SPAWN_XMAX", "NORTH2C_MAX_FRAMES", "NORTH2C_SPEC", "NORTH_DOOR_X",
     "NORTH_DOOR_Y", "NORTH_HALT_Y", "SOUTH09_MAX_FRAMES", "SOUTH09_SPEC",
     "SOUTH18_MAX_FRAMES", "SOUTH18_SPEC", "SOUTH19_MAX_FRAMES", "SOUTH19_SPEC",
-    "SOUTH1D_MAX_FRAMES", "SOUTH1D_SPEC", "SOUTH29_MAX_FRAMES", "SOUTH29_SPEC",
+    "SOUTH1D_MAX_FRAMES", "SOUTH1D_SPEC", "SOUTH29_EAST_BOX_Y",
+    "SOUTH29_MAX_FRAMES", "SOUTH29_SPEC",
     "SOUTH_BAND_Y", "SOUTH_DOOR_TOL", "SOUTH_DOOR_X", "SOUTH_DOOR_Y",
     "WEST19_MAX_FRAMES", "WEST19_SPEC", "WEST2D_MAX_FRAMES", "WEST2D_SPEC",
     "WEST_DOOR_X", "WEST_DOOR_Y", "WEST_SPAWN_XMIN", "DoorHopSpec",
@@ -113,10 +116,10 @@ SOUTH19_SPEC = DoorHopSpec(
 )
 SOUTH29_SPEC = DoorHopSpec(
     "level6_south_0x29", LEVEL6_DARK_29_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
-    "DOWN", "RIGHT+DOWN clip off (55,133), occupancy x=120 @ y=141, then DOWN",
-    clip_y=CLIP_Y, clip_buttons=("RIGHT", "DOWN"), clip_side="below",
-    clip_reason="south_clip", south_band=True, south_face=True, align="x",
-    align_at=CLIP_Y, forbid_up=True,
+    "DOWN",
+    "DOWN x=184 until y>=165 (east box), LEFT on y=165 to x=120, then DOWN; no occupancy-DOWN",
+    clip_y=SOUTH29_EAST_BOX_Y + DOOR_TOL, clip_buttons=("DOWN",), clip_side="below",
+    clip_reason="south_peel", south_band=True, align="x", forbid_up=True,
 )
 EAST29_SPEC = DoorHopSpec(
     "level6_east_0x29", LEVEL6_DARK_29_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),

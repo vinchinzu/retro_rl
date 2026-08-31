@@ -10,27 +10,16 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — finish L6 from the recovered compass boundary (2026-08-30)
+## Immediate — finish L6 from recovered clear `0x29` (2026-08-31)
 
-Power-on Survival `--through level6-compass` is **1/1** on
-`l6_compass_recompose`: 169,403f, hop `level6_north_0x68` 315f, play `0x68`
-`(120,205)`, TF=`0x1F`, keys=4, bombs=8, Bow=1, health `0x66` with `lo==hi`.
-This boundary is carried by commit `ccbc058c`. The report has deaths 0,
-`mid_run_state_load=false`, and progression/capacity writes 0. The final PNG
-shows Link at the south mouth, live Zols, and the north door.
-`--through level6-compass` is therefore the only current predecessor;
-historical later greens are route hypotheses until recomposed from this exact
-power-on boundary.
+Power-on Survival recovered stairs09 → rod → exit75 → south09 → south19 →
+clear29. Tip is play `0x29` `(184,144)` rod=1 keys=3 TF=`0x1F` bombs=8 Bow=1
+health `0x66` `lo==hi`. `--through level6-south29` is **BLOCKED 3/3** this
+sitting from that leftover. Do not retry LEFT at y=144, DOWN clip to y=181,
+occupancy-DOWN, or the prior-sitting `(55,133)` RIGHT+DOWN clip. Do not
+retouch 0x40, maze-west, L5, stairs09, or the cellar walk.
 
-The verified `0x78` peel is DOWN to y=189, RIGHT to x=144, then occupancy UP
-(21 miss-blocks on the x=144 statue column). The v4 `(120,149)` leftover was
-the door column on the middle statue row, not proof that x=120 UP works. Do not
-retry it, and do not retouch 0x40, maze-west, L5, or the `0x78` peel.
-
-Keys are 4 here versus 5 on the historical prefix. This is a measured route
-input, not a reason to top up: `0x58` should supply one natural key, the `0x19`
-and `0x29` route spends/gain should leave 4 at `0x3A`, and KEY-UP `0x2C`
-should leave 3 at Gohma. Stop at the first mismatch instead of masking it.
+Keys are 3 here versus historical 4. Do not top up.
 
 Living residual: `docs/tasks/rr-tne2-residual.md`. Bead `rr-tne2` stays open
 until the fresh power-on L6 endpoint passes. This is Survival evidence only;
@@ -53,14 +42,21 @@ do not update `STATUS.md` or overwrite Clean M5.
   or rerun an unchanged policy. Three serial reds on the same checkbox means
   mark that checkbox blocked and stop the sitting.
 
-The next and only command is:
+The next south29 trial is the parked clip: DOWN at x=184 until `y>=165`
+(measured east box, tile 244), then LEFT on y=165 to x=120, then DOWN. Do
+not occupancy-DOWN (2px-step false miss). Optional cheaper path: make
+clear29 leave west of x=64 so the old west clip can run.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear68 --no-video --trials 1 \
-  --tag l6_clear68_recompose
+  --through level6-south29 --no-video --trials 1 \
+  --tag l6_south29_recompose
 ```
+
+Parallel L7/L8/L9/OW lanes are fixture-live only
+(`docs/tasks/{l7,l8,l9,ow}-handoff.md`); do not attach them until L6 leave is
+measured.
 
 ### Phase 1 — recompose the existing body through clear `0x3A`
 
@@ -92,7 +88,7 @@ not permission to claim the old run or force its coordinates.
 | 20 | `level6-south09` | Occupancy to the south door and descend. | play `0x19` north mouth; keys=4 |
 | 21 | `level6-south19` | Take the natural south key door. | dark play `0x29`; keys 4→3 |
 | 22 | `level6-clear29` | Clear five Wizzrobes and collect the natural key. | cleared `0x29`, historical `(55,133)`; keys 3→4 |
-| 23 | `level6-south29` | Use the verified RIGHT+DOWN peel, x-align at y=141, then descend. | play `0x39` `(120,93)`; do not retry sealed east `0x29` |
+| 23 | `level6-south29` | Recovered leftover is east `(184,144)`. Parked: clip-DOWN to y=165 then LEFT to x=120 then DOWN. Do not retry LEFT y=144, clip-DOWN to 181, occupancy-DOWN, or west RIGHT+DOWN. | play `0x39` `(120,93)`; east door sealed |
 | 24 | `level6-settle39` | Idle for the five-Vire census. | play `0x39`, five type `0x12` live |
 | 25 | `level6-clear39` | Clear the Vires with occupancy patrol. | cleared `0x39`, historical `(136,173)` |
 | 26 | `level6-east39` | RIGHT+UP clip to y=141, then cardinal RIGHT. | play `0x3A` `(16,141)`; keys=4 |
