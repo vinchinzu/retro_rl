@@ -16,6 +16,8 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
+Tip is play `0x29` `(184,144)` rod=1 keys=3; `level6-clear29` 1/1.
+`level6-south29` BLOCKED 3/3. Next: clip-DOWN to y=165 then LEFT.
 
 ## Commands
 
