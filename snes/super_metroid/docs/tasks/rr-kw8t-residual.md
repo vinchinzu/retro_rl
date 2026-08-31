@@ -1,11 +1,12 @@
 ## Residual — rr-kw8t Gravity on the Phantoon tip
 
 **Continue (rr-kw8t):** Main Shaft hop 2, Attic→West Ocean, West
-Ocean→Pancakes, and Pancakes→Homing Geemer are complete. Do not reopen the
-grate, west-super, mid-climb, upper-ladder, Attic door, Attic kill-all,
-West Ocean maze, or Pancakes. The next boundary is Homing Geemer→Bowling
-from `scratch/post_pancakes_to_homing_geemer.state`. The leave is
-`0x968F` `(39,139) p11` gs=8 dt=0; human Homing Geemer entry is p9.
+Ocean→Pancakes, Pancakes→Homing Geemer, and Homing Geemer→Bowling are
+complete. Do not reopen the grate, west-super, mid-climb, upper-ladder,
+Attic door, Attic kill-all, West Ocean maze, Pancakes, or Homing Geemer.
+The next boundary is Bowling→Gravity from
+`scratch/post_homing_geemer_to_bowling.state`. The leave is `0xC98E`
+`(39,395) p9` gs=8 dt=0, matching the human Bowling entry.
 
 **Closed miss:** the 523→443 handoff now latches only after the real
 block-clearing jump, then uses the take02 RIGHT+A drift. The upper ladder is
@@ -40,12 +41,18 @@ gs=11 (human door is 122f; 120f generic idle was RED). It is dual-exact
 **549f** ×2 at `0x968F` `(39,139) p11` gs=8 dt=0. Report:
 `scratch/pancakes_to_homing_geemer_dual.json`; pin out:
 `scratch/post_pancakes_to_homing_geemer.state`.
+Homing Geemer→Bowling keeps the s23 98f body and waits through dest gs=11
+(human door is 186f; 180f idle was RED at `(39,395)`). Glance y is the
+mid-left Bowling spawn, not y~139. It is dual-exact **282f** ×2 at
+`0xC98E` `(39,395) p9` gs=8 dt=0. Report:
+`scratch/homing_geemer_to_bowling_dual.json`; pin out:
+`scratch/post_homing_geemer_to_bowling.state`.
 Phase dumps are named scratch pins.
 
-**Pin in:** `scratch/post_pancakes_to_homing_geemer.state` (`0x968F`
-`(39,139) p11` gs=8 dt=0)
-**Goal:** Bowling Alley `0xC98E` gs=8 dt=0.
-**Living checkbox:** `homing_geemer_to_bowling`.
+**Pin in:** `scratch/post_homing_geemer_to_bowling.state` (`0xC98E`
+`(39,395) p9` gs=8 dt=0)
+**Goal:** Gravity Suit Room `0xCE40` gs=8 dt=0.
+**Living checkbox:** `bowling_to_gravity`.
 Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 
 ### Already green (do not re-prove)
@@ -62,6 +69,7 @@ Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 | Hop 3 Attic → West Ocean | **2,618f** ×2 | `0x93FE` (2008,139) p2 gs=8; 8 kills, 0 required left |
 | Hop 4 West Ocean → Pancakes | **1,476f** ×2 | `0x9461` (39,139) p9 gs=8 dt=0 |
 | Hop 5 Pancakes → Homing Geemer | **549f** ×2 | `0x968F` (39,139) p11 gs=8 dt=0 |
+| Hop 6 Homing Geemer → Bowling | **282f** ×2 | `0xC98E` (39,395) p9 gs=8 dt=0 |
 
 Observable `(1189, 1883) p2` and take04 `~(1195, 1883)` are not that pin.
 
@@ -132,16 +140,16 @@ to 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 
 ### Next — one seam
 
-Play `homing_geemer_to_bowling` from the natural
-`post_pancakes_to_homing_geemer.state` pin. Keep all earlier rooms closed.
-The leave is p11; human Homing Geemer entry is p9 with `B+RIGHT`. The s23
-98f body already ends in transition (settle 180).
+Play `bowling_to_gravity` from the natural
+`post_homing_geemer_to_bowling.state` pin. Keep all earlier rooms closed.
+The pin matches the human Bowling entry `(39,395) p9`. s23 bowling is
+5,015f; gravity_path_v2 is 2,852f.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/kpdr.py pure homing-geemer-to-bowling \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_pancakes_to_homing_geemer.state \
-  --expect-room 0x968F --no-red-diag
+  snes/super_metroid/scripts/probe/kpdr.py pure bowling-to-gravity \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_homing_geemer_to_bowling.state \
+  --expect-room 0xC98E --no-red-diag
 ```
 
 ### Non-claims
@@ -166,5 +174,5 @@ QT_QPA_PLATFORM=offscreen uv run python \
 - Did not treat leftover `(1117, 640) p47` overlapping Atomic as mid_climb green
 - Did not treat pocket `(1177, 1883)` or land `(1189, 1883)` as fire-slope green
 - Did not treat take04 alcove as the living handoff
-- Did not treat Pancakes→Homing Geemer as composed Gravity evidence
+- Did not treat Homing Geemer→Bowling as composed Gravity evidence
 - Did not power-on / Phantoon-leave `--to gravity`

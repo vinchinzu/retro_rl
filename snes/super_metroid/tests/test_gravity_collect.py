@@ -9,7 +9,10 @@ from super_metroid.combat.enemies import Enemy
 from super_metroid.ram import GRAVITY_MASK
 from super_metroid.routes.catalog import DEFAULT_CONTINUOUS_TIP, get_continuous_tip
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
+from super_metroid.hop_glance import grade_final
+from super_metroid.leave_specs import HOMING_GEEMER_TO_BOWLING
 from super_metroid.routes.kpdr.room_ids import (
+    ROOM_BOWLING,
     ROOM_GRAVITY,
     ROOM_HOMING_GEEMER,
     ROOM_PANCAKES,
@@ -23,6 +26,8 @@ from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
     CANDIDATE_ID,
     COLLECT_FRAMES,
     GRAVITY_HOP_BODY,
+    HOMING_GEEMER_BOWLING_SETTLE,
+    HOMING_GEEMER_HOP_BODY,
     PANCAKES_HOMING_GEEMER_SETTLE,
     PANCAKES_HOP_BODY,
     PARENT_TAPE_ID,
@@ -33,6 +38,7 @@ from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
     load_gravity_body,
     load_s23_body,
     play_gravity_collect,
+    play_homing_geemer_to_bowling,
     play_pancakes_to_homing_geemer,
     play_west_ocean_to_pancakes,
 )
@@ -202,6 +208,73 @@ def test_pancakes_wrong_room_fails_closed() -> None:
     session = _Session()
     with pytest.raises(RuntimeError, match="pancakes_to_homing_geemer"):
         play_pancakes_to_homing_geemer(session)
+
+
+def test_homing_geemer_s23_body_is_98_frames() -> None:
+    if not HOMING_GEEMER_HOP_BODY.is_file():
+        pytest.skip("s23 Homing Geemer hop body not on disk")
+    body = load_s23_body(HOMING_GEEMER_HOP_BODY)
+    assert len(body) == 98
+    assert HOMING_GEEMER_BOWLING_SETTLE > 180
+
+
+def test_homing_geemer_settle_covers_dest_door_transition() -> None:
+    if not HOMING_GEEMER_HOP_BODY.is_file():
+        pytest.skip("s23 Homing Geemer hop body not on disk")
+    body_len = len(load_s23_body(HOMING_GEEMER_HOP_BODY))
+    dest_settle_needed = 186
+
+    class HomingGeemerSession(_Session):
+        def __init__(self) -> None:
+            super().__init__()
+            self.state.room_id = ROOM_HOMING_GEEMER
+            self.state.samus_x = 39
+            self.state.samus_y = 139
+            self.state.pose = 11
+
+        def step(self, action, reason: str = ""):
+            del reason
+            self.actions.append(tuple(int(v) for v in action))
+            self.frame += 1
+            if self.frame >= body_len:
+                self.state.room_id = ROOM_BOWLING
+                self.state.samus_y = 395
+                self.state.pose = 9
+                self.state.game_state = 11
+                self.state.door_transition = 1
+            if self.frame - body_len >= dest_settle_needed:
+                self.state.game_state = 8
+                self.state.door_transition = 0
+            return self.state
+
+    session = HomingGeemerSession()
+    out = play_homing_geemer_to_bowling(session)
+
+    assert out.room_id == ROOM_BOWLING
+    assert out.game_state == 8
+    assert out.door_transition == 0
+    assert out.samus_y == 395
+    assert session.frame == body_len + dest_settle_needed
+
+
+def test_bowling_leave_spec_grades_mid_left_spawn() -> None:
+    final = {
+        "room": "0xC98E",
+        "xy": [39, 395],
+        "pose": 9,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+    }
+    assert grade_final(final, HOMING_GEEMER_TO_BOWLING) == []
+    too_high = dict(final, xy=[39, 139])
+    assert any("y=" in miss for miss in grade_final(too_high, HOMING_GEEMER_TO_BOWLING))
+
+
+def test_homing_geemer_wrong_room_fails_closed() -> None:
+    session = _Session()
+    with pytest.raises(RuntimeError, match="homing_geemer_to_bowling"):
+        play_homing_geemer_to_bowling(session)
 
 
 def test_gravity_collect_is_registered_scratch_tip() -> None:
