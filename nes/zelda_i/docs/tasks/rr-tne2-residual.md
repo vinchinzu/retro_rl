@@ -1,8 +1,8 @@
 # Residual — rr-tne2 L6 Survival handoff
 
-**Status:** Recovered power-on tip is L6 compass `0x68`. `--through
-level6-compass` 1/1. Next is Zol clear / compass bit (`level6-clear68`).
-Bead `rr-tne2` stays open. Do not STATUS-promote.
+**Status:** Recovered power-on tip is L6 `0x19` east mouth after the Gleeok
+suffix. `--through level6-room19` 1/1. Next is `level6-clear19`. Bead
+`rr-tne2` stays open. Do not STATUS-promote.
 
 ## Recovered — power-on through L5 TF, L6 west, and compass enter
 
@@ -20,6 +20,19 @@ west-aisle prefight (same occupancy as the first 0x66 clear).
 | level6-east-key | l6_east_key_recompose | — | play `0x7a` | 5 |
 | level6-west | l6_west_recompose | 169,088 | play `0x78` (104,149) | 4 |
 | level6-compass | l6_compass_recompose | 169,403 | play `0x68` (120,205) | 4 |
+| level6-clear68 | l6_clear68_recompose | 172,546 | cleared play `0x68` (120,133) | 4 |
+| level6-keese | l6_keese_recompose | 172,742 | play `0x58` (120,205) | 4 |
+| level6-clear58 | l6_clear58_recompose | 173,388 | cleared play `0x58` (77,109) | 4 |
+| level6-room48 | l6_room48_recompose | 173,598 | play `0x48` (120,205) | 4 |
+| level6-room38 | l6_room38_recompose | 173,859 | play `0x38` (120,189) | 4 |
+| level6-clear38 | l6_clear38_recompose | 177,444 | cleared play `0x38` (102,125) | 4 |
+| level6-room28 | l6_room28_recompose | 178,288 | play `0x28` (120,189) | 4 |
+| level6-clear28 | l6_clear28_recompose | 179,762 | cleared play `0x28` (120,181) | 4 |
+| level6-room18 | l6_room18_recompose | 180,039 | play `0x18` (120,189) | 4 |
+| level6-settle18 | l6_settle18_recompose | 180,551 | settled play `0x18` (120,189) | 4 |
+| level6-gleeok18 | l6_gleeok18_recompose | 183,766 | body-gone play `0x18` (121,133) | 4 |
+| level6-postgleeok18 | l6_postgleeok18_recompose | 183,958 | settled play `0x18` (121,133) | 4 |
+| level6-room19 | l6_room19_recompose | 184,238 | play `0x19` (16,141) | 4 |
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
@@ -59,18 +72,46 @@ historical `(144,141)`. v1–v4 failed; v5 greens.
 
 Do not retouch the 0x78 peel. Do not retry x=120 UP.
 
-## Next sitting — `--through level6-clear68`
+## Recovered — `--through level6-clear68`
 
-Recompose the L6 body from this leftover (plan step 2). First checkbox is
-Zol clear + `ADDR_COMPASS|0x20` in `0x68`. One `--through level6-clear68`
-`--no-video --trials 1`. Stop at the first red. Do not retouch 0x40,
-maze-west, L5, or the compass peel. Do not skip to Gohma.
+`l6_clear68_recompose` **1/1**, 172,546f. The five Zol/gels in `0x68` cleared
+and the natural Compass reward collected; final state is play L6 `0x68`
+`(120,133)`, TF=`0x1F`, keys=4, bombs=8, Bow=1, health=`0x66` with full
+hearts. The `level6_clear_0x68` controller completed in 3,143f with seven
+maximum live enemies and zero remaining. Final PNG agrees with the cleared
+room and north doorway. Deaths=0, post-reset state loads=0,
+progression/capacity writes=0, and `status_claim=false`.
+
+## Recovered — `--through level6-keese` through `level6-room19`
+
+Eleven fresh power-on Survival boundaries passed after clear `0x68`, all with
+deaths 0, post-reset state loads 0, progression/capacity writes 0, full
+`0x66` health, TF=`0x1F`, bombs=8, Bow=1, and `status_claim=false`. Final
+PNG/report evidence is under `recordings/l6_*_recompose.{json,final.png}`.
+
+- `level6-keese` reached `0x58` in 196f; eight Keese were live.
+- `level6-clear58` cleared all eight in 646f, but did **not** collect a key:
+  actual keys remain 4 (not the historical 5). Do not top up or assume a
+  drop.
+- `room48`, `room38`, `room28`, and `room18` all entered naturally. The
+  `0x38` seven-enemy clear took 3,585f; the `0x28` two-Wizzrobe clear took
+  1,474f.
+- The `0x18` census observed live `0x44` Gleeok plus `0x56`; Gleeok body-gone
+  passed in 3,215f, and post-Gleeok waited out the head/fireball residual.
+- `level6-room19` entered naturally from the east door in 280f at `(16,141)`.
+
+## Next sitting — `--through level6-clear19`
+
+Recompose the next L6 body boundary from the natural `0x19` entry: clear two
+Zols and two Like-Likes. Run exactly one fresh power-on `level6-clear19`
+trial with no video; stop at the first red. Do not retouch `0x40`, maze-west,
+L5, or the Compass peel. Do not skip to Gohma.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear68 --no-video --trials 1 \
-  --tag l6_clear68_recompose
+  --through level6-clear19 --no-video --trials 1 \
+  --tag l6_clear19_recompose
 ```
 
 ## Key deficit (still open; do not top-up)
