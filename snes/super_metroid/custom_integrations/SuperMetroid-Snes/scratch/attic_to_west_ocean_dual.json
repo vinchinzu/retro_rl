@@ -1,0 +1,57 @@
+{
+  "success": true,
+  "hop": "attic_to_west_ocean",
+  "time": "2026-08-31T00:05:17.096601+00:00",
+  "runs": [
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_to_attic.state",
+      "frames": 2618,
+      "final": {
+        "room": "0x93FE",
+        "xy": [
+          2008,
+          139
+        ],
+        "pose": 2,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 0
+      },
+      "attic_max_killed": 8,
+      "attic_last_required_remaining": 0,
+      "power_bombs": 5,
+      "max_power_bombs": 5,
+      "error": null
+    },
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_ws_main_to_attic.state",
+      "frames": 2618,
+      "final": {
+        "room": "0x93FE",
+        "xy": [
+          2008,
+          139
+        ],
+        "pose": 2,
+        "gs": 8,
+        "dt": 0,
+        "health": 299,
+        "boss": 0
+      },
+      "attic_max_killed": 8,
+      "attic_last_required_remaining": 0,
+      "power_bombs": 5,
+      "max_power_bombs": 5,
+      "error": null
+    }
+  ],
+  "frames": [
+    2618,
+    2618
+  ],
+  "dual_exact": true,
+  "glance_misses": []
+}
