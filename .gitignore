@@ -254,6 +254,12 @@ harvest/tasks/
 **/.bv/
 # Beads: track issues.jsonl + config.yaml + metadata; runtime DB/daemon
 # ignored via .beads/.gitignore (do not blanket-ignore the directory).
+.dolt/
+.beads-credential-key
+.beads/embeddeddolt/
+.beads/backup/
+.beads/dolt/
+.beads/proxieddb/
 
 # Third-party/reference source trees are cloned separately.
 harvest/HM-Decomp/

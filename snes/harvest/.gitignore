@@ -11,6 +11,8 @@ wheels/
 
 # bv (beads viewer) local config and caches
 .bv/
+# Nested beads leftover; repo-root .beads is the tracker
+.beads/
 
 # ROM files (copyright-protected)
 roms/

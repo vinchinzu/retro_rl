@@ -24,6 +24,7 @@ bd export -o .beads/issues.jsonl
   (no `.scratch/` issues, no GitHub Issues) unless the user asks.
 - Blocking edges are `bd dep add <blocked> <blocker>`.
 - Commit `.beads/issues.jsonl` with the matching code. Push only if asked.
+  Do not add `.beads/embeddeddolt/` or `.beads/backup/`.
 - Closing a bead is not a STATUS promote.
 
 ## When a skill says "publish to the issue tracker"
