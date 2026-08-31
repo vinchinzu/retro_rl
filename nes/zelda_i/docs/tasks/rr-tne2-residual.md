@@ -1,10 +1,14 @@
 # Residual — rr-tne2 L6 Survival handoff
 
-**Status:** Recovered power-on tip is cleared L6 `0x29` west leftover `(56,157)`
-after `--through level6-clear29` 1/1 (`l6_clear29_west_recompose`). Fresh
-`--through level6-south29` occupancy-DOWN from that leftover is **red 1/1**
-(`l6_south29_west_recompose`). East-leftover south29 remains **BLOCKED 4/4**.
-Bead `rr-tne2` stays open. Do not STATUS-promote.
+**Status:** Recovered power-on tip is cleared L6 dark wizz/key room
+(play `0x29`) leftover `(47,157)` tile 119. `--through level6-south29`
+from the west leftover is **BLOCKED 6/6** (prior 3 + this sitting 3).
+East leftover south29 remains **BLOCKED 4/4**. y=157 SW squeeze cannot
+leave. Bead `rr-tne2` stays open. Do not STATUS-promote.
+
+Walkthrough room (Zelda Dungeon L6 018): orange-sand moat around a green
+tile island, key in the center, north door from the Map room, south door
+into Vires (019). Live leftover hugs the **SW corner of that island**.
 
 ## Recovered prefix (unchanged through south19)
 
@@ -22,18 +26,17 @@ through south19 still 1/1.
 
 Census/inventory still match: TF `0x1F`, bombs=8, Bow=1, Rod=1, map `0x0A`,
 health `0x66` lo==hi, deaths/state-load/progression/capacity writes 0. Key
-deficit is still one versus historical; do not top up. East `0x29` sealed
-(`open_doorway_mask` 12). PNG shows Link west of the center block at the SW
-face. Do not rerun the east leftover `(184,144)`.
+deficit is still one versus historical; do not top up. East door of this
+room sealed (`open_doorway_mask` 12 = north+south). Do not rerun the east
+leftover `(184,144)`.
 
-## clear29 west leftover — 1/1
+## clear29 west leftover — 1/1 (unusable for south29)
 
-`--through level6-clear29 --tag l6_clear29_west_recompose` 1/1, hop 2,194f,
-end 206,889f. West-aisle patrol + LEFT peel; fight only x<64. Final play
-`0x29` `(56,157)` tile 244 at hop start of south29, keys=3, bombs=8, Bow=1,
-Rod=1, TF=`0x1F`, health `0x66` lo==hi, deaths/state-load/progression/capacity
-writes 0, `status_claim=false`. Occupancy 449 misses / 13 blocked during
-clear. Do not retouch this cleanup.
+`--through level6-clear29 --tag l6_clear29_west_recompose` 1/1, hop 2,194f.
+West-aisle patrol + LEFT peel; fight only x<64. Final play `0x29` `(56,157)`
+tile 244, keys=3. Occupancy 449 misses / 13 blocked during clear. South from
+this leftover is BLOCKED 6/6. Next sitting may reshape the leftover to
+y<=133 (historical `(55,133)`); do not chase patrol `(48,157)`.
 
 ## south29 — east leftover BLOCKED 4/4 (do not retry)
 
@@ -44,34 +47,43 @@ the prior-sitting RIGHT+DOWN clip from leftover `(55,133)`.
 | # | policy | leftover / reason | what it killed |
 |---|--------|-------------------|----------------|
 | prior | RIGHT+DOWN clip, occupancy x=120 @ y=141 | `(184,144)` `south_up_halt` 4000f misses 0 | clip assumed west leftover |
-| 1 | LEFT on y=144 to x=120 | `(184,141)` `south_up_halt`; `miss_f2_LEFT_184_142` then f3/f4 at `(184,141)` tile 117 misses 3 | LEFT is the center block (tile 244). Wall-slide 144→141 |
-| 2 | DOWN clip to south band y=181 | `(184,165)` `south_peel` 4000f tile 244 misses 0 | east aisle **does** walk 144→165 (~1px/f) then **boxes**. Clip never LEFT |
-| 3 | occupancy dest `(120,189)` | `(184,149)` `south_up_halt`; `miss_f3_DOWN_184_147` (2px step), `miss_f6_DOWN_184_149`, `miss_f7_LEFT_184_149` tile 116 misses 3 | occupancy false-misses the same DOWN the clip completed to 165 |
-| 4 | DOWN to measured box y=165, then LEFT | `(184,165)` `south_up_halt`; `miss_f19_LEFT_184_165`, tile 244, misses 1 | DOWN works 144→165; y=165 is **not** a west aisle and the first LEFT is solid |
+| 1 | LEFT on y=144 to x=120 | `(184,141)` `south_up_halt`; LEFT is the island (tile 244) | wall-slide 144→141 |
+| 2 | DOWN clip to south band y=181 | `(184,165)` `south_peel` 4000f tile 244 | east aisle walks 144→165 then boxes |
+| 3 | occupancy dest `(120,189)` | `(184,149)` `south_up_halt` | occupancy false-misses the DOWN the clip completed |
+| 4 | DOWN to measured box y=165, then LEFT | `(184,165)` `south_up_halt`; LEFT solid | y=165 is not a west aisle |
 
-## south29 — west leftover red 1/1 (do not retry this policy)
+## south29 — west leftover BLOCKED 6/6 (do not retry)
 
-Parked `SOUTH29_SPEC` is occupancy to `(120,189)` / never UP from leftover
-`(56,157)`. Live `--through level6-south29 --tag l6_south29_west_recompose`
-0/1, hop 4000f timeout, end 210,889f. Final still play `0x29` `(57,157)`,
-tile 119, keys=3, bombs=8, Bow=1, Rod=1, TF=`0x1F`, health `0x66` lo==hi,
-deaths/state-load/progression/capacity writes 0, `status_claim=false`.
+Walkthrough 018 is an orange-sand moat around a green island; live leftover
+hugs the **SW corner** (brown tile 244). LEFT unsticks into sand tile 119.
+The gap west of the island at y=157 is only x=41–47; occupancy xmin x=40
+is the **west wall**, not a northbound moat. Do not run another south29
+from `(56,157)` / `(47,157)` / `(40,157)`.
+
+Prior sitting (BLOCKED 3/3 from leftover `(56,157)`):
 
 | # | policy | leftover / reason | what it killed |
 |---|--------|-------------------|----------------|
-| west 1 | occupancy dest `(120,189)`, forbid UP | `(57,157)` `south_up_halt` 4000f; `miss_f2_DOWN_56_157`, `miss_f4_DOWN_56_157`, `miss_f6_RIGHT_59_157`, `miss_f7_DOWN_57_157` tile 119 misses 4 | leftover is the **SW face** of the center block. DOWN and RIGHT are solid. Occupancy then wanted UP around the block; `forbid_up` stood |
+| west 1 | occupancy dest `(120,189)`, forbid UP | `(57,157)` `south_up_halt` 4000f; DOWN/RIGHT solid, then occupancy wanted UP | SW face. `forbid_up` stood |
+| west 2 | UP-peel `clip_buttons=UP` along x=56 | `(56,157)` 4000f tile 244, misses 0, reason `west_up_peel` | **UP is also solid** at the leftover |
+| west 3 | LEFT-peel to x=48, x-align occupancy | `(47,157)` 4000f tile 119; `miss_f9_UP_48_157` | LEFT 56→47. UP at `(48,157)` is the island south face |
 
-Do not rerun occupancy-DOWN from `(56,157)`. Do not restore east-box LEFT,
-occupancy-DOWN from `(184,144)`, or the `(55,133)` RIGHT+DOWN clip. Next open
-geometry: peel **UP** the west aisle from `(56,157)` (the remaining live
-cardinal) and form a south-door policy from that measured north leftover.
+This sitting (BLOCKED 3/3; dest still play `0x39`; keys=3 rod=1 TF=`0x1F`
+health `0x66` lo==hi; deaths/state-load/progression/capacity 0):
+
+| # | policy / tag | leftover / reason | what it killed |
+|---|--------|-------------------|----------------|
+| west 4 | LEFT to x=40 then occupancy UP (`l6_south29_west_wall`) | `(40,157)` 4000f tile 244; `miss_f14_UP_40_157` / RIGHT@42 / DOWN@40 then `south_stand` | **x=40 is the west wall.** UP/RIGHT/DOWN all 244. Sand was x=41 tile 119 |
+| west 5 | LEFT to sand x=41 then occupancy DOWN (`l6_south29_west_sand`) | `(40,157)` 4000f tile 244; `miss_f13_DOWN_40_157` | DOWN at x=41 **slides 41→40** into the wall. y never moved |
+| west 6 | LEFT to sand x=47 then occupancy DOWN (`l6_south29_west_sand47`) | `(47,157)` 4000f tile 119; `miss_f9_DOWN_48_157` / LEFT@45 / DOWN@47 | **DOWN is solid at x=47–48.** Same leftover as west 3, other cardinal |
+
+Parked `SOUTH29_SPEC` is west 6. Do not restore west 1–5, east-box LEFT,
+occupancy-DOWN from `(184,144)`, or the `(55,133)` RIGHT+DOWN clip.
 
 ```bash
-# After changing only SOUTH29_SPEC to UP-peel from leftover (56,157):
-QT_QPA_PLATFORM=offscreen uv run python \
-  nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-south29 --no-video --trials 1 \
-  --tag l6_south29_west_up
+# Next sitting: reshape clear29 so leftover is not the y=157 SW squeeze.
+# Historical west leftover (55,133) is north of this block. Do not chase
+# patrol (48,157). Do not top up keys. Do not retry south29 from y=157.
 ```
 
 ## Key deficit (still open; do not top-up)
@@ -83,7 +95,7 @@ with a key top-up.
 
 ## Remaining L6 after south29 (not this sitting)
 
-Phase 1: south29 (west leftover red 1/1; east leftover BLOCKED 4/4) →
+Phase 1: south29 (west leftover BLOCKED 6/6; east leftover BLOCKED 4/4) →
 settle39 → clear39 → east39 → settle3a → clear3a.
 
 Phase 2: un-dedicate `stairs3a-warp` / `cellar08` / `south1d` / `west2d` /
@@ -99,15 +111,26 @@ Phase 4–5: measured `set_state` audit, then `--through level6`.
 Wave A handoffs: `docs/tasks/{l7,l8,l9,ow}-handoff.md`. Public `--through`
 names unchanged. Do not attach `continue_level7/8/9_spine` until L6 leave is
 measured. `route_eligible=false`. Post-dungeon OW leftovers remain
-UNMEASURED (do not assume L6 leave is OW `0x22`).
+UNMEASURED (do not treat this poke fixture as a measured fanfare leave).
+
+Operator-directed poke fixture `Level6ExitOverworld` (source `L6Probe_22`):
+OW play `0x22` `(120,221)` facing north, TF `0x3F`, Rod=1, Bow=1, Whistle=1,
+Food=0, Candle=1, sword=2, rupees=80, keys=3, bombs=8, hearts `0xAA` 11/11
+full. Loadout is `POST_L6_EXIT_LOADOUT`. Dead belief: standing `(112,125)`
+on `0x22` is the cave mouth (mode 16 → L6). Spine still fail-closed
+(`HYPOTHESIZED_POST_L6_EXIT.verified=false`). Next L7 hop from this
+fixture: walkthrough bait shop `0x34` (Armos top-middle, 60R), then pond.
 
 ## Non-claims
 
 - Did not STATUS-promote or overwrite Clean M5.
 - Did not close `rr-tne2` or reach Gohma / TF `0x20`.
-- Did not poke doors, TF, bow, Rod, Map, Whistle, or capacity.
+- L6 sitting did not poke doors, Map, or capacity. The L7 poke fixture
+  disclosed TF/Rod/Bow/Whistle/sword/rupee writes; Food stayed 0.
 - Did not retouch maze-west, 0x40, stairs09, or the cellar walk.
 - Did not retry west-aisle stairs09.
 - Did not retry the `(55,133)` RIGHT+DOWN clip or any east-leftover south29.
-- Did not rerun occupancy-DOWN from `(56,157)` after the red.
+- Did not run a fourth south29 from leftover `(56,157)` after the prior
+  sitting's 3 reds. This sitting added west 4–6 (wall / sand-41 / sand-47)
+  and halted at 3. Did not retry west 1–3 or any east-leftover south29.
 - Did not push.

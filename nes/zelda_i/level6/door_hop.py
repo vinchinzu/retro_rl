@@ -81,6 +81,8 @@ class DoorHopSpec:
     clip_buttons: tuple[str, ...] | None = None
     clip_side: str | None = None
     clip_reason: str = ""
+    clip_xmin: int | None = None
+    clip_xmax: int | None = None
     south_band: bool = False
     south_face: bool = False
     push_at_goal: bool = False
@@ -112,13 +114,20 @@ SOUTH19_SPEC = DoorHopSpec(
     "DOWN", "occupancy to (120,189) then DOWN; never UP; dest is RAM",
     south_band=True, forbid_up=True,
 )
-# West leftover (56,157) from clear29 west-aisle finish. Do not restore
-# the east-box y=165 LEFT (BLOCKED 4/4) or the (55,133) RIGHT+DOWN clip.
+# Island SW y=157 BLOCKED 6/6. Prior: DOWN/RIGHT/UP solid; UP-peel; UP@48.
+# This sitting: x=40 is west wall; sand x=41 DOWN slides to wall; DOWN@47
+# solid. Do not restore those, east-box LEFT, or (55,133) clip.
 SOUTH29_SPEC = DoorHopSpec(
     "level6_south_0x29", LEVEL6_DARK_29_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
     "DOWN",
-    "occupancy to (120,189) from west leftover (56,157); never UP; dest is RAM",
-    south_band=True, forbid_up=True,
+    "LEFT-peel off SW face to sand x=47, occupancy DOWN to y=181 "
+    "(not UP@48), south-band to (120,189); dest play 0x39",
+    dest_room=LEVEL6_DARK_39_ROOM,
+    south_band=True,
+    clip_y=CLIP_Y, clip_buttons=("LEFT",), clip_side="above",
+    clip_reason="west_left_peel", clip_xmin=48, clip_xmax=64,
+    align="y", align_at=SOUTH_BAND_Y,
+    north_halt_y=NORTH_HALT_Y, north_halt_reason="south_north_halt",
 )
 EAST29_SPEC = DoorHopSpec(
     "level6_east_0x29", LEVEL6_DARK_29_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),
@@ -336,6 +345,10 @@ class Level6DoorHopController(HopController):
     def _clip(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction | None:
         spec = self.spec
         if spec.clip_buttons is None or spec.clip_y is None:
+            return None
+        if spec.clip_xmin is not None and xy[0] < spec.clip_xmin:
+            return None
+        if spec.clip_xmax is not None and xy[0] > spec.clip_xmax:
             return None
         tol = spec.door_tol
         if spec.clip_side == "below":

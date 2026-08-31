@@ -13,14 +13,16 @@ One living residual: `docs/tasks/rr-tne2-residual.md`.
 ## Immediate — finish L6 from recovered west clear `0x29` (2026-08-31)
 
 Power-on Survival recovered stairs09 → rod → exit75 → south09 → south19 →
-clear29 west leftover. Tip is play `0x29` `(56,157)` rod=1 keys=3 TF=`0x1F`
-bombs=8 Bow=1 health `0x66` `lo==hi`. East-leftover `--through level6-south29`
-is **BLOCKED 4/4**. West-leftover occupancy-DOWN is **red 1/1**: DOWN and
-RIGHT at `(56,157)` are the SW face of the center block, then `south_up_halt`.
-Do not retry occupancy-DOWN from `(56,157)`, LEFT at y=144 or y=165, DOWN clip
-to y=181, occupancy-DOWN from `(184,144)`, or the prior-sitting `(55,133)`
-RIGHT+DOWN clip. Do not retouch 0x40, maze-west, L5, stairs09, clear29, or
-the cellar walk.
+clear29 west leftover. Tip is dark wizz/key room play `0x29` `(47,157)`
+tile 119 rod=1 keys=3 TF=`0x1F` bombs=8 Bow=1 health `0x66` `lo==hi`.
+East-leftover `--through level6-south29` is **BLOCKED 4/4**. West leftover
+is **BLOCKED 6/6**. Walkthrough 018: orange-sand moat around a green island;
+live leftover hugs the SW corner. At y=157 the sand west of the island is
+only x=41–47; occupancy xmin x=40 is the west wall (tile 244), not a
+northbound moat. DOWN is solid at x=47–48 and slides 41→40. Do not retry
+west 1–6, LEFT at y=144 or y=165, DOWN clip to y=181, occupancy-DOWN from
+`(184,144)`, or the `(55,133)` RIGHT+DOWN clip. Do not retouch 0x40,
+maze-west, L5, stairs09, or the cellar walk.
 
 Keys are 3 here versus historical 4. Do not top up.
 
@@ -45,18 +47,11 @@ do not update `STATUS.md` or overwrite Clean M5.
   or rerun an unchanged policy. Three serial reds on the same checkbox means
   mark that checkbox blocked and stop the sitting.
 
-The parked west occupancy-DOWN is disproved: leftover `(56,157)` cannot DOWN
-or RIGHT (SW face of the center block). Occupancy then wanted UP; `forbid_up`
-stood for 4000f at `(57,157)` tile 119. Next is UP the west aisle from that
-leftover, then a new south-door hypothesis from the measured north leftover.
-Do not rerun the current `SOUTH29_SPEC`.
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run python \
-  nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-south29 --no-video --trials 1 \
-  --tag l6_south29_west_up
-```
+West leftover south29 is **BLOCKED 6/6**. LEFT off the island works
+(56→47, tile 119); every cardinal from y=157 then boxes. Next sitting
+reshapes `clear29` so leftover is north of the SW block (historical
+`(55,133)` / y<=133), not another south29 from y=157. Do not rerun the
+current `SOUTH29_SPEC`.
 
 Parallel L7/L8/L9/OW lanes are fixture-live only
 (`docs/tasks/{l7,l8,l9,ow}-handoff.md`); do not attach them until L6 leave is
@@ -92,7 +87,7 @@ not permission to claim the old run or force its coordinates.
 | 20 | `level6-south09` | Occupancy to the south door and descend. | play `0x19` north mouth; keys=4 |
 | 21 | `level6-south19` | Take the natural south key door. | dark play `0x29`; keys 4→3 |
 | 22 | `level6-clear29` | Clear five Wizzrobes west of x=64 and collect the natural key. | cleared `0x29` `(56,157)` 1/1; keys 2→3 |
-| 23 | `level6-south29` | West leftover occupancy-DOWN red 1/1: DOWN/RIGHT solid at `(56,157)`, then `south_up_halt`. East leftover BLOCKED 4/4. Next UP from `(56,157)`. | play `0x39` `(120,93)`; east door sealed |
+| 23 | `level6-south29` | West leftover BLOCKED 6/6 (y=157 SW squeeze). East leftover BLOCKED 4/4. Reshape clear29 leftover before retrying. | play `0x39` `(120,93)`; east door sealed |
 | 24 | `level6-settle39` | Idle for the five-Vire census. | play `0x39`, five type `0x12` live |
 | 25 | `level6-clear39` | Clear the Vires with occupancy patrol. | cleared `0x39`, historical `(136,173)` |
 | 26 | `level6-east39` | RIGHT+UP clip to y=141, then cardinal RIGHT. | play `0x3A` `(16,141)`; keys=4 |
