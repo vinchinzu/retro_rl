@@ -1,0 +1,105 @@
+{
+  "frame": 2207,
+  "room": "0xC98E",
+  "xy": [453, 512],
+  "prev_y": 509,
+  "pose": 29,
+  "gs": 8,
+  "dt": 0,
+  "movement_type": 4,
+  "velocity_y": 0,
+  "vertical_direction": 0,
+  "ride_bot_id": "0xF0FF",
+  "ride_bot": {
+    "slot": 0,
+    "id": 61695,
+    "id_hex": "0xF0FF",
+    "xy": [485, 535],
+    "hp": 20
+  },
+  "enemies": [
+    {
+      "slot": 0,
+      "id": 61695,
+      "id_hex": "0xF0FF",
+      "xy": [485, 535],
+      "hp": 20
+    },
+    {
+      "slot": 1,
+      "id": 59647,
+      "id_hex": "0xE8FF",
+      "xy": [736, 624],
+      "hp": 800
+    },
+    {
+      "slot": 2,
+      "id": 59647,
+      "id_hex": "0xE8FF",
+      "xy": [884, 624],
+      "hp": 800
+    }
+  ],
+  "plms": [
+    {
+      "i": 35,
+      "id": 51272,
+      "id_hex": "0xC848",
+      "inst": 48871,
+      "inst_hex": "0xBEE7",
+      "block": 4226,
+      "bx": 1,
+      "by": 22,
+      "px": 24,
+      "py": 360
+    },
+    {
+      "i": 36,
+      "id": 61147,
+      "id_hex": "0xEEDB",
+      "inst": 57554,
+      "inst_hex": "0xE0D2",
+      "block": 7416,
+      "bx": 60,
+      "by": 38,
+      "px": 968,
+      "py": 616
+    },
+    {
+      "i": 37,
+      "id": 61307,
+      "id_hex": "0xEF7B",
+      "inst": 57279,
+      "inst_hex": "0xDFBF",
+      "block": 2278,
+      "bx": 83,
+      "by": 11,
+      "px": 1336,
+      "py": 184
+    },
+    {
+      "i": 38,
+      "id": 46851,
+      "id_hex": "0xB703",
+      "inst": 44938,
+      "inst_hex": "0xAF8A",
+      "block": 7810,
+      "bx": 65,
+      "by": 40,
+      "px": 1048,
+      "py": 648
+    },
+    {
+      "i": 39,
+      "id": 46851,
+      "id_hex": "0xB703",
+      "inst": 44938,
+      "inst_hex": "0xAF8A",
+      "block": 8702,
+      "bx": 31,
+      "by": 45,
+      "px": 504,
+      "py": 728
+    }
+  ]
+}

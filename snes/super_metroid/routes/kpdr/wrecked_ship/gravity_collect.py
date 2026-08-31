@@ -17,11 +17,13 @@ from typing import Sequence
 import numpy as np
 
 from super_metroid.combat.enemies import Enemy, Intent, choose, list_enemies
-from super_metroid.paths import GAME_DIR
+from super_metroid.paths import GAME_DIR, SCRATCH_STATE_DIR
+from super_metroid.plm import session_ram, snapshot_plms
 from super_metroid.ram import GRAVITY_MASK, SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
     hold,
+    is_morph,
     require_room,
     select_weapon,
     unmorph,
@@ -61,7 +63,15 @@ WEST_OCEAN_GUIDE_BODY = (
 PANCAKES_HOP_BODY = S23_HOPS / "hop_05_Pancakes_and_Wavers_Room.json"
 HOMING_GEEMER_HOP_BODY = S23_HOPS / "hop_06_Homing_Geemer_Room.json"
 BOWLING_HOP_BODY = S23_HOPS / "hop_07_Bowling_Alley.json"
+BOWLING_GUIDE_BODY = (
+    GAME_DIR
+    / "tasks"
+    / "gravity_path_v2"
+    / "gravity_path_v2_take01_hops"
+    / "hop_07_Bowling_Alley.json"
+)
 GRAVITY_HOP_BODY = S23_HOPS / "hop_08_Gravity_Suit_Room.json"
+BOWLING_DROP_JSON = SCRATCH_STATE_DIR / "bowling_drop_trigger.json"
 TAPE_BODY_FRAMES = 320
 COLLECT_FRAMES = 132
 CANDIDATE_ID = "controller:gravity_collect"
@@ -88,15 +98,28 @@ PANCAKES_HOMING_GEEMER_SETTLE = 240
 # s23 homing-geemer body ends in dest gs=11. Human Bowling settle is 186f;
 # the 180f idle is RED at (39,395).
 HOMING_GEEMER_BOWLING_SETTLE = 240
+# v2 bowling dwell is 2,852f and ends in dest gs=11. Live dest settle is
+# 120f at Gravity (216,130) p26. Chozo ride drops morph through the
+# mid→bottom screen at y=512; the ride bot is live 0xF0FF beside Samus.
+BOWLING_GRAVITY_SETTLE = 240
+BOWLING_FLOOR_Y = 512
+BOWLING_RIDE_BOT_ID = 0xF0FF
+LAST_BOWLING_DROP: dict[str, object] | None = None
 
 __all__ = [
     "ATTIC_HOP_BODY",
     "ATTIC_GUIDE_BODY",
+    "BOWLING_DROP_JSON",
+    "BOWLING_FLOOR_Y",
+    "BOWLING_GRAVITY_SETTLE",
+    "BOWLING_GUIDE_BODY",
     "BOWLING_HOP_BODY",
+    "BOWLING_RIDE_BOT_ID",
     "CANDIDATE_ID",
     "COLLECT_FRAMES",
     "GRAVITY_HOP_BODY",
     "HOMING_GEEMER_HOP_BODY",
+    "LAST_BOWLING_DROP",
     "PANCAKES_HOP_BODY",
     "PARENT_TAPE_ID",
     "TAPE_BODY_FRAMES",
@@ -107,6 +130,7 @@ __all__ = [
     "PANCAKES_HOMING_GEEMER_SETTLE",
     "HOMING_GEEMER_BOWLING_SETTLE",
     "attic_required_enemies",
+    "is_bowling_floor_drop",
     "load_gravity_body",
     "load_s23_body",
     "play_attic_to_west_ocean",
@@ -116,6 +140,7 @@ __all__ = [
     "play_pancakes_to_homing_geemer",
     "play_west_ocean_to_pancakes",
     "require_gravity_collected",
+    "snapshot_bowling_drop",
 ]
 
 
@@ -139,6 +164,69 @@ def _arrived(state: SuperMetroidState, dest_room: int) -> bool:
         int(state.room_id) == int(dest_room)
         and int(state.game_state) == 8
         and int(state.door_transition) == 0
+    )
+
+
+def is_bowling_floor_drop(state: SuperMetroidState, prev_y: int) -> bool:
+    """Morph crossing the mid→bottom screen while the Chozo ride lowers."""
+    if int(state.room_id) != ROOM_BOWLING:
+        return False
+    if not is_morph(int(state.pose)):
+        return False
+    y = int(state.samus_y)
+    return int(prev_y) < BOWLING_FLOOR_Y <= y
+
+
+def snapshot_bowling_drop(
+    session: ControllerSession, prev_y: int
+) -> dict[str, object]:
+    """Pose / kinematics + live enemies and PLMs at the floor-drop frame."""
+    state = session.state
+    ram = session_ram(session)
+    enemies = tuple(
+        {
+            "slot": int(enemy.slot),
+            "id": int(enemy.enemy_id),
+            "id_hex": f"0x{int(enemy.enemy_id):04X}",
+            "xy": [int(enemy.x), int(enemy.y)],
+            "hp": int(enemy.hp),
+        }
+        for enemy in (list_enemies(session) if ram is not None else ())
+    )
+    plms = tuple(
+        {
+            **row,
+            "id_hex": f"0x{int(row['id']):04X}",
+            "inst_hex": f"0x{int(row['inst']):04X}",
+        }
+        for row in (snapshot_plms(ram) if ram is not None else ())
+    )
+    ride_bot = next(
+        (row for row in enemies if int(row["id"]) == BOWLING_RIDE_BOT_ID),
+        None,
+    )
+    return {
+        "frame": int(session.frame),
+        "room": f"0x{int(state.room_id):04X}",
+        "xy": [int(state.samus_x), int(state.samus_y)],
+        "prev_y": int(prev_y),
+        "pose": int(state.pose),
+        "gs": int(getattr(state, "game_state", 8)),
+        "dt": int(getattr(state, "door_transition", 0)),
+        "movement_type": int(getattr(state, "movement_type", 0)),
+        "velocity_y": int(getattr(state, "velocity_y", 0)),
+        "vertical_direction": int(getattr(state, "vertical_direction", 0)),
+        "ride_bot_id": f"0x{BOWLING_RIDE_BOT_ID:04X}",
+        "ride_bot": ride_bot,
+        "enemies": enemies,
+        "plms": plms,
+    }
+
+
+def _write_bowling_drop(row: dict[str, object]) -> None:
+    BOWLING_DROP_JSON.parent.mkdir(parents=True, exist_ok=True)
+    BOWLING_DROP_JSON.write_text(
+        json.dumps(row, indent=2) + "\n", encoding="utf-8"
     )
 
 
@@ -342,13 +430,43 @@ def play_homing_geemer_to_bowling(session: ControllerSession) -> SuperMetroidSta
 
 
 def play_bowling_to_gravity(session: ControllerSession) -> SuperMetroidState:
-    return _play_s23_to_room(
-        session,
-        label="bowling_to_gravity",
-        start_room=ROOM_BOWLING,
-        dest_room=ROOM_GRAVITY,
-        body=load_s23_body(BOWLING_HOP_BODY),
-    )
+    """v2 2852f ends in dest gs=11; snapshot morph crossing y=512."""
+    global LAST_BOWLING_DROP
+    LAST_BOWLING_DROP = None
+    label = "bowling_to_gravity"
+    require_room(session, ROOM_BOWLING, label)
+    if _arrived(session.state, ROOM_GRAVITY):
+        return session.state
+    body = load_s23_body(BOWLING_GUIDE_BODY)
+    prev_y = int(session.state.samus_y)
+    for row in body:
+        if _arrived(session.state, ROOM_GRAVITY):
+            return session.state
+        session.step(np.array(row, dtype=np.int8), f"{label}_tape")
+        state = session.state
+        if LAST_BOWLING_DROP is None and is_bowling_floor_drop(state, prev_y):
+            LAST_BOWLING_DROP = snapshot_bowling_drop(session, prev_y)
+            if session_ram(session) is not None:
+                _write_bowling_drop(LAST_BOWLING_DROP)
+        prev_y = int(state.samus_y)
+    for _ in range(BOWLING_GRAVITY_SETTLE):
+        if _arrived(session.state, ROOM_GRAVITY):
+            return session.state
+        hold(session, 1, reason=f"{label}_settle")
+        state = session.state
+        if LAST_BOWLING_DROP is None and is_bowling_floor_drop(state, prev_y):
+            LAST_BOWLING_DROP = snapshot_bowling_drop(session, prev_y)
+            if session_ram(session) is not None:
+                _write_bowling_drop(LAST_BOWLING_DROP)
+        prev_y = int(state.samus_y)
+    state = session.state
+    if not _arrived(state, ROOM_GRAVITY):
+        raise TimeoutError(
+            f"{label}: expected 0x{ROOM_GRAVITY:04X} gs=8, "
+            f"got 0x{int(state.room_id):04X} gs={int(state.game_state)} "
+            f"dt={int(state.door_transition)} {state}"
+        )
+    return state
 
 
 def play_gravity_collect(

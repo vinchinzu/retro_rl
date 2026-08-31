@@ -1,0 +1,47 @@
+{
+  "success": true,
+  "hop": "bowling_to_gravity",
+  "time": "2026-08-30T21:15:00-05:00",
+  "runs": [
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_homing_geemer_to_bowling.state",
+      "frames": 2972,
+      "final": {
+        "room": "0xCE40",
+        "xy": [216, 130],
+        "pose": 26,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    },
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_homing_geemer_to_bowling.state",
+      "frames": 2972,
+      "final": {
+        "room": "0xCE40",
+        "xy": [216, 130],
+        "pose": 26,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    }
+  ],
+  "frames": [2972, 2972],
+  "dual_exact": true,
+  "glance_misses": [],
+  "bowling_drop": {
+    "frame": 2207,
+    "xy": [453, 512],
+    "prev_y": 509,
+    "pose": 29,
+    "movement_type": 4,
+    "ride_bot_id": "0xF0FF",
+    "ride_bot": {"slot": 0, "id": 61695, "xy": [485, 535], "hp": 20}
+  }
+}
