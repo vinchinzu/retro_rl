@@ -12,7 +12,6 @@ from zelda_i.level6.door_hop import (
     NORTH2C_SPEC,
     SOUTH18_SPEC,
     SOUTH1D_SPEC,
-    SOUTH29_EAST_BOX_Y,
     SOUTH29_SPEC,
     WEST19_SPEC,
     WEST2D_SPEC,
@@ -132,20 +131,16 @@ def test_west2d_align_y_then_left() -> None:
     assert list(west.action) == list(nes_action("LEFT"))
 
 
-def test_south29_east_leftover_peels_down_to_box_then_left() -> None:
-    """(184,144) LEFT is the center block; occupancy-DOWN false-misses 2px steps."""
-    leftover = _snap(screen=SOUTH29_SPEC.room, x=184, y=144)
+def test_south29_west_leftover_occupancy_south_not_east_clip() -> None:
+    """clear29 west leftover (56,157): DOWN-first aisle, not east-box LEFT or RIGHT+DOWN."""
+    leftover = _snap(screen=SOUTH29_SPEC.room, x=56, y=157)
     first = Level6DoorHopController(SOUTH29_SPEC).step(leftover)
-    assert first.reason == "south_peel"
+    assert first.reason == "south_path"
     assert list(first.action) == list(nes_action("DOWN"))
     assert list(first.action) != list(nes_action("LEFT"))
     assert list(first.action) != list(nes_action("UP"))
     assert list(first.action) != list(nes_action("RIGHT", "DOWN"))
-    boxed = Level6DoorHopController(SOUTH29_SPEC).step(
-        _snap(screen=SOUTH29_SPEC.room, x=184, y=SOUTH29_EAST_BOX_Y)
-    )
-    assert list(boxed.action) == list(nes_action("LEFT"))
     door = Level6DoorHopController(SOUTH29_SPEC).step(
-        _snap(screen=SOUTH29_SPEC.room, x=120, y=SOUTH29_EAST_BOX_Y)
+        _snap(screen=SOUTH29_SPEC.room, x=120, y=189)
     )
     assert list(door.action) == list(nes_action("DOWN"))

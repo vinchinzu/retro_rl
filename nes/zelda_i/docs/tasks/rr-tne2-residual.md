@@ -1,14 +1,15 @@
 # Residual — rr-tne2 L6 Survival handoff
 
-**Status:** Recovered power-on tip is still cleared L6 `0x29` leftover `(184,144)`
-after `--through level6-clear29` 1/1. `--through level6-south29` is **BLOCKED
-4/4** from this east leftover (plus the prior-sitting RIGHT+DOWN 0/1). Bead
-`rr-tne2` stays open. Do not STATUS-promote.
+**Status:** Recovered power-on tip is cleared L6 `0x29` west leftover `(56,157)`
+after `--through level6-clear29` 1/1 (`l6_clear29_west_recompose`). Fresh
+`--through level6-south29` occupancy-DOWN from that leftover is **red 1/1**
+(`l6_south29_west_recompose`). East-leftover south29 remains **BLOCKED 4/4**.
+Bead `rr-tne2` stays open. Do not STATUS-promote.
 
-## Recovered prefix (unchanged this sitting)
+## Recovered prefix (unchanged through south19)
 
 Prefix through skip-Map `0x09` clear was already 1/1. Stairs09 east-of-block
-through clear29 still 1/1 from the previous sitting.
+through south19 still 1/1.
 
 | through | tag | leftover | keys |
 |---------|-----|----------|------|
@@ -17,21 +18,28 @@ through clear29 still 1/1 from the previous sitting.
 | level6-exit75 | l6_exit75_recompose | play `0x09` `(192,141)` | 3 |
 | level6-south09 | l6_south09_recompose | play `0x19` `(120,77)` | 3 |
 | level6-south19 | l6_south19_recompose | dark play `0x29` `(120,77)` | 3→2 |
-| level6-clear29 | l6_clear29_recompose | play `0x29` `(184,144)` | 2→3 |
+| level6-clear29 | l6_clear29_west_recompose | play `0x29` `(56,157)` | 2→3 |
 
 Census/inventory still match: TF `0x1F`, bombs=8, Bow=1, Rod=1, map `0x0A`,
 health `0x66` lo==hi, deaths/state-load/progression/capacity writes 0. Key
 deficit is still one versus historical; do not top up. East `0x29` sealed
-(`open_doorway_mask` 12). Center block is immediately west of leftover; PNG
-shows Link east-center of dark `0x29`.
+(`open_doorway_mask` 12). PNG shows Link west of the center block at the SW
+face. Do not rerun the east leftover `(184,144)`.
 
-## south29 — BLOCKED 4/4
+## clear29 west leftover — 1/1
+
+`--through level6-clear29 --tag l6_clear29_west_recompose` 1/1, hop 2,194f,
+end 206,889f. West-aisle patrol + LEFT peel; fight only x<64. Final play
+`0x29` `(56,157)` tile 244 at hop start of south29, keys=3, bombs=8, Bow=1,
+Rod=1, TF=`0x1F`, health `0x66` lo==hi, deaths/state-load/progression/capacity
+writes 0, `status_claim=false`. Occupancy 449 misses / 13 blocked during
+clear. Do not retouch this cleanup.
+
+## south29 — east leftover BLOCKED 4/4 (do not retry)
 
 All four east-leftover trials `--through level6-south29 --tag l6_south29_recompose`
-0/1, hop 4000f timeout, end ~209,989f, leftover still play `0x29`, keys=3,
-rod=1, deaths/state-load/progression/capacity 0, `status_claim=false`. Do
-not retry any of these three, and do not retry the prior-sitting RIGHT+DOWN
-clip from leftover `(55,133)`.
+0/1 from leftover `(184,144)`. Do not retry any of these, and do not retry
+the prior-sitting RIGHT+DOWN clip from leftover `(55,133)`.
 
 | # | policy | leftover / reason | what it killed |
 |---|--------|-------------------|----------------|
@@ -41,24 +49,29 @@ clip from leftover `(55,133)`.
 | 3 | occupancy dest `(120,189)` | `(184,149)` `south_up_halt`; `miss_f3_DOWN_184_147` (2px step), `miss_f6_DOWN_184_149`, `miss_f7_LEFT_184_149` tile 116 misses 3 | occupancy false-misses the same DOWN the clip completed to 165 |
 | 4 | DOWN to measured box y=165, then LEFT | `(184,165)` `south_up_halt`; `miss_f19_LEFT_184_165`, tile 244, misses 1 | DOWN works 144→165; y=165 is **not** a west aisle and the first LEFT is solid |
 
-Trial 4 was the parked `SOUTH29_SPEC`; do not rerun it. Report
-`l6_south29_recompose.json` ended at frame 209,989 with play `0x29`
-`(184,165)`, health `0x66` lo==hi, keys=3, bombs=8, Bow=1, Rod=1, TF=`0x1F`,
+## south29 — west leftover red 1/1 (do not retry this policy)
+
+Parked `SOUTH29_SPEC` is occupancy to `(120,189)` / never UP from leftover
+`(56,157)`. Live `--through level6-south29 --tag l6_south29_west_recompose`
+0/1, hop 4000f timeout, end 210,889f. Final still play `0x29` `(57,157)`,
+tile 119, keys=3, bombs=8, Bow=1, Rod=1, TF=`0x1F`, health `0x66` lo==hi,
 deaths/state-load/progression/capacity writes 0, `status_claim=false`.
 
-Next open geometry task: change `clear29` combat cleanup so the natural clear
-leftover is west of x=64, then take one screenshot-first south-door trial from
-that measured predecessor. Do not assume or rerun the old `(55,133)`
-RIGHT+DOWN policy; form a fresh policy from the new PNG/RAM trace. Do not
-occupancy-DOWN (red 3), LEFT at y=144 (red 1), LEFT at y=165 (red 4), or clip
-DOWN toward y=181 (red 2).
+| # | policy | leftover / reason | what it killed |
+|---|--------|-------------------|----------------|
+| west 1 | occupancy dest `(120,189)`, forbid UP | `(57,157)` `south_up_halt` 4000f; `miss_f2_DOWN_56_157`, `miss_f4_DOWN_56_157`, `miss_f6_RIGHT_59_157`, `miss_f7_DOWN_57_157` tile 119 misses 4 | leftover is the **SW face** of the center block. DOWN and RIGHT are solid. Occupancy then wanted UP around the block; `forbid_up` stood |
+
+Do not rerun occupancy-DOWN from `(56,157)`. Do not restore east-box LEFT,
+occupancy-DOWN from `(184,144)`, or the `(55,133)` RIGHT+DOWN clip. Next open
+geometry: peel **UP** the west aisle from `(56,157)` (the remaining live
+cardinal) and form a south-door policy from that measured north leftover.
 
 ```bash
-# After changing only the clear29 cleanup policy to target x<64:
+# After changing only SOUTH29_SPEC to UP-peel from leftover (56,157):
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-clear29 --no-video --trials 1 \
-  --tag l6_clear29_west_recompose
+  --through level6-south29 --no-video --trials 1 \
+  --tag l6_south29_west_up
 ```
 
 ## Key deficit (still open; do not top-up)
@@ -70,8 +83,8 @@ with a key top-up.
 
 ## Remaining L6 after south29 (not this sitting)
 
-Phase 1: south29 (BLOCKED 3/3) → settle39 → clear39 → east39 → settle3a →
-clear3a.
+Phase 1: south29 (west leftover red 1/1; east leftover BLOCKED 4/4) →
+settle39 → clear39 → east39 → settle3a → clear3a.
 
 Phase 2: un-dedicate `stairs3a-warp` / `cellar08` / `south1d` / `west2d` /
 `north2c` so they compose from clear `0x3A`. Do not start Phase 2 until
@@ -95,7 +108,6 @@ UNMEASURED (do not assume L6 leave is OW `0x22`).
 - Did not poke doors, TF, bow, Rod, Map, Whistle, or capacity.
 - Did not retouch maze-west, 0x40, stairs09, or the cellar walk.
 - Did not retry west-aisle stairs09.
-- Did not retry the `(55,133)` RIGHT+DOWN clip.
-- Live-ran the parked y=165 clip exactly once; it failed at the first LEFT.
-- Did not rerun after that red.
+- Did not retry the `(55,133)` RIGHT+DOWN clip or any east-leftover south29.
+- Did not rerun occupancy-DOWN from `(56,157)` after the red.
 - Did not push.

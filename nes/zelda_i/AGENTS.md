@@ -16,9 +16,10 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Tip is play `0x29` `(184,144)` rod=1 keys=3; `level6-clear29` 1/1.
-`level6-south29` BLOCKED 4/4. The y=165 LEFT also hits the center block.
-Next: shape `clear29` to leave west of x=64; do not rerun the current hop.
+Tip is play `0x29` `(56,157)` rod=1 keys=3; `level6-clear29` west 1/1.
+East `level6-south29` BLOCKED 4/4. West occupancy-DOWN red 1/1 (DOWN/RIGHT
+solid at leftover, then `south_up_halt`). Next: UP from `(56,157)`; do not
+rerun occupancy-DOWN.
 
 ## Commands
 

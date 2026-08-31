@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zelda_i.level6.cellar08 import level6_cellar08_success, make_cellar08_controller
+from zelda_i.level6.clear29 import make_clear29_controller
 from zelda_i.level6.door_hop import (
     EAST29_SPEC,
     EAST39_SPEC,
@@ -148,6 +149,7 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             make_settle_29_controller,
             "level6_settle_0x29",
             ROOM_29_SPEC,
+            fight_factory=make_clear29_controller,
             **rod1f,
         ),
         door_row("level6-east29", EAST29_SPEC, dedicated=True),

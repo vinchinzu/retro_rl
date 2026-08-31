@@ -123,8 +123,11 @@ def ready(
     return ok
 
 
-def fight_stage(name: str, spec: DungeonRoomSpec) -> tuple[str, Any, int]:
-    return (name, GenericDungeonRoomController(spec=spec), spec.max_frames)
+def fight_stage(
+    name: str, spec: DungeonRoomSpec, factory: Callable[[], Any] | None = None
+) -> tuple[str, Any, int]:
+    ctl = factory() if factory is not None else GenericDungeonRoomController(spec=spec)
+    return (name, ctl, spec.max_frames)
 
 
 def _stages(hop: SpineHop) -> Stages:

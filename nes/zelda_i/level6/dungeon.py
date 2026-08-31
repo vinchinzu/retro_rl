@@ -476,20 +476,16 @@ register_room_spec(ROOM_09_SPEC)
 # Live census (clear29 v1): 3× blue 0x23 + 2× orange 0x24 + 0x59 shots.
 # Not Vire 0x12. Ignore 0x2b / Bubble 0x40 / 0x59. Do not grant candle.
 # RoomItemId 0x19 key on floor residual. Do not require stairs/Gohma.
+# East leftover (184,144) cannot LEFT (center tile 244). Patrol stays
+# west of x=64 so clear finishes in the west aisle.
+CLEAR29_WEST_X = 64
 _ROOM_29_PATROL: tuple[tuple[int, int], ...] = (
-    (120, 189),
-    (80, 189),
-    (80, 173),
-    (64, 141),
-    (80, 109),
-    (120, 109),
-    (160, 109),
-    (176, 141),
-    (160, 173),
-    (160, 189),
+    (48, 109),
+    (56, 133),
+    (48, 141),
     (48, 157),
-    (192, 157),
-    (120, 141),
+    (56, 173),
+    (48, 189),
 )
 
 ROOM_29_SPEC = DungeonRoomSpec(
@@ -695,6 +691,7 @@ __all__ = [
     "ROOM_L6_MAP", "ROOM_L6_ROD_WIZZ", "ROOM_L6_DARK_29", "ROOM_L6_DARK_39",
     "ROOM_79_SPEC", "ROOM_7A_SPEC", "ROOM_78_SPEC", "ROOM_68_SPEC",
     "ROOM_58_SPEC", "ROOM_38_SPEC", "ROOM_28_SPEC", "ROOM_19_SPEC",
+    "CLEAR29_WEST_X",
     "ROOM_09_SPEC", "ROOM_29_SPEC", "ROOM_39_SPEC", "ROOM_3A_SPEC",
     "ROOM_78_UP_DOOR_BIT", "LEVEL6_COMPASS_BIT", "LEVEL6_MAP_BIT",
     "Level6EastKeyController", "Level6WestWizzrobeController",
