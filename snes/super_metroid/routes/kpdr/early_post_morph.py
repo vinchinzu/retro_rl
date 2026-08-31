@@ -41,7 +41,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_SUPER,
 )
 from super_metroid.routes.kpdr.spine import SpineHop
-from super_metroid.routes.kpdr.super_collect import (
+from super_metroid.routes.kpdr.brinstar.super_collect import (
     SuperCollectEvidence,
     play_super_room_collect,
 )
@@ -51,7 +51,7 @@ from super_metroid.routes.runtime import (
     first_progress_event,
     split_for_transition,
 )
-from super_metroid.routes.kpdr.spore_spawn import (
+from super_metroid.routes.kpdr.brinstar.spore_spawn import (
     SporeSpawnEvidence,
     play_main_shaft_to_spore_spawn,
     play_parlor_to_main_shaft,

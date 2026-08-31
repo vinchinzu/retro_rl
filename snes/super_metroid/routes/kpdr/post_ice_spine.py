@@ -7,7 +7,7 @@ Business→Warehouse replay (edge already emitted on the Kraid tip).
 from __future__ import annotations
 
 from super_metroid.leave_specs import LEAVE_BY_HOP
-from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
+from super_metroid.routes.kpdr.norfair.business_climb import play_business_to_warehouse
 from super_metroid.routes.kpdr.ice import (
     play_ice_gate_to_business,
     play_ice_snake_to_tutorial,
@@ -53,8 +53,8 @@ from super_metroid.routes.kpdr.wrecked_ship.phantoon_fight import (
 from super_metroid.routes.kpdr.wrecked_ship.phantoon_leave import (
     require_phantoon_left,
 )
-from super_metroid.routes.kpdr.moat import play_moat_cross
-from super_metroid.routes.kpdr.west_ocean import play_west_ocean_over_ocean_spark
+from super_metroid.routes.kpdr.wrecked_ship.moat import play_moat_cross
+from super_metroid.routes.kpdr.wrecked_ship.west_ocean import play_west_ocean_over_ocean_spark
 from super_metroid.routes.kpdr.rooms import (
     ROOM_ALPHA_PB,
     ROOM_BAT,

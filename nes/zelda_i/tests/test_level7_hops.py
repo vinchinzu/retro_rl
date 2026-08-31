@@ -1,0 +1,220 @@
+"""Fail-closed L7 hops: PostLevel6Handoff, bait, Hungry Goriya, Red Candle."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import numpy as np
+
+from zelda_i.level7.entry import (
+    BAIT_COST,
+    BAIT_SHOP_SCREEN_HYP,
+    POST_L6_TRIFORCE,
+    UNMEASURED_POST_L6_HANDOFF,
+    PostLevel6Handoff,
+    make_bait_purchase_controller,
+    make_post_l6_overworld_controller,
+)
+from zelda_i.level7.hops import (
+    l7_hops,
+    make_entry_to_goriya_controller,
+    make_red_candle_controller,
+)
+from retro_harness.nes import nes_idle_action
+from zelda_i.ram import (
+    ADDR_ARROWS,
+    ADDR_BOMBS,
+    ADDR_BOW,
+    ADDR_CANDLE,
+    ADDR_FOOD,
+    ADDR_HEALTH,
+    ADDR_KEYS,
+    ADDR_LEVEL,
+    ADDR_LINK_X,
+    ADDR_LINK_Y,
+    ADDR_MODE,
+    ADDR_ROD,
+    ADDR_RUPEES,
+    ADDR_SCREEN,
+    ADDR_SELECTED_ITEM,
+    ADDR_SWORD,
+    ADDR_TRIFORCE,
+    ADDR_WHISTLE,
+    PLAY_MODE,
+    read_snapshot,
+)
+
+
+def _ram(**fields: int) -> np.ndarray:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
+    ram[ADDR_LEVEL] = fields.get("level", 0)
+    ram[ADDR_SCREEN] = fields.get("screen", 0x09)
+    ram[ADDR_LINK_X] = fields.get("x", 56)
+    ram[ADDR_LINK_Y] = fields.get("y", 109)
+    ram[ADDR_SWORD] = fields.get("sword", 1)
+    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
+    ram[ADDR_KEYS] = fields.get("keys", 3)
+    ram[ADDR_BOMBS] = fields.get("bombs", 8)
+    ram[ADDR_ARROWS] = fields.get("arrows", 1)
+    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
+    ram[ADDR_WHISTLE] = fields.get("whistle", 1)
+    ram[ADDR_FOOD] = fields.get("food", 0)
+    ram[ADDR_ROD] = fields.get("rod", 0)
+    ram[ADDR_BOW] = fields.get("bow", 1)
+    ram[ADDR_CANDLE] = fields.get("candle", 1)
+    ram[ADDR_RUPEES] = fields.get("rupees", 20)
+    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
+    return ram
+
+
+def _env(ram: np.ndarray) -> SimpleNamespace:
+    return SimpleNamespace(get_ram=lambda: ram)
+
+
+def test_unmeasured_post_l6_handoff_refuses_to_move() -> None:
+    ram = _ram()
+    ctl = make_post_l6_overworld_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert not ctl.success
+    assert act.reason == "post_l6_handoff_unmeasured"
+    assert list(act.action) == list(nes_idle_action())
+    assert UNMEASURED_POST_L6_HANDOFF.route_eligible is False
+    assert UNMEASURED_POST_L6_HANDOFF.verified is False
+    assert UNMEASURED_POST_L6_HANDOFF.screen is None
+    assert ctl.report()["route_eligible"] is False
+    assert ctl.report()["writes"] == 0
+
+
+def test_recovered_l6_prefix_is_not_an_l7_start() -> None:
+    """Play 0x09 (56,109) TF 0x1F Rod=0 is the L6 residual, not L7."""
+    ram = _ram(screen=0x09, x=56, y=109, triforce=0x1F, rod=0, bow=1)
+    fake = PostLevel6Handoff(
+        screen=0x09,
+        link_x=56,
+        link_y=109,
+        keys=3,
+        bombs=8,
+        rupees=20,
+        heart_containers=12,
+        selected_item=0,
+        whistle=1,
+        food=0,
+        rod=0,
+        bow=1,
+        arrows=1,
+        verified=True,
+        route_eligible=False,
+    )
+    assert fake.complete()
+    assert fake.mismatch(read_snapshot(ram), ram) == "post_l6_triforce_mismatch"
+    assert POST_L6_TRIFORCE == 0x3F
+
+
+def test_measured_handoff_without_hops_still_refuses() -> None:
+    ram = _ram(
+        screen=0x42,
+        x=120,
+        y=125,
+        triforce=POST_L6_TRIFORCE,
+        rod=1,
+        bow=1,
+        whistle=1,
+        rupees=60,
+    )
+    handoff = PostLevel6Handoff(
+        screen=0x42,
+        link_x=120,
+        link_y=125,
+        keys=3,
+        bombs=8,
+        rupees=60,
+        heart_containers=12,
+        selected_item=0,
+        whistle=1,
+        food=0,
+        rod=1,
+        bow=1,
+        arrows=1,
+        verified=True,
+        evidence="fixture-live",
+        route_eligible=False,
+    )
+    assert handoff.mismatch(read_snapshot(ram), ram) is None
+    ctl = make_post_l6_overworld_controller(handoff=handoff, hops=())
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert act.reason == "post_l6_path_unmeasured"
+    assert handoff.route_eligible is False
+
+
+def test_bait_plan_fails_closed_without_60r_or_shop_geometry() -> None:
+    assert BAIT_SHOP_SCREEN_HYP == 0x34
+    ram = _ram(rupees=20, food=0)
+    ctl = make_bait_purchase_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert act.reason == "bait_need_60_rupees"
+    assert ctl.report()["writes"] == 0
+    ram[ADDR_RUPEES] = BAIT_COST
+    ctl = make_bait_purchase_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "bait_shop_geometry_unobserved"
+
+
+def test_hungry_goriya_requires_food() -> None:
+    ram = _ram(level=7, screen=0x10, food=0)
+    ctl = make_entry_to_goriya_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert act.reason == "hungry_goriya_requires_food"
+    assert any("net_hyp" in note for note in ctl.notes)
+    ram[ADDR_FOOD] = 1
+    ctl = make_entry_to_goriya_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert "blocked_unverified" in act.reason
+
+
+def test_red_candle_does_not_write_and_fails_closed() -> None:
+    ram = _ram(level=7, candle=1)
+    ctl = make_red_candle_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert act.reason.startswith("red_candle_still_1")
+    assert ctl.report()["writes"] == 0
+    ram[ADDR_CANDLE] = 2
+    ctl = make_red_candle_controller()
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "red_candle_room_unobserved"
+
+
+def test_l7_hops_use_fail_closed_entry_chapter() -> None:
+    ram = _ram()
+    hops = l7_hops(_env(ram))
+    assert tuple(h.through for h in hops) == (
+        "level7-entry",
+        "level7-red-candle",
+        "level7",
+    )
+    stages_fn = hops[0].stages
+    assert callable(stages_fn)
+    stages = stages_fn()
+    assert [name for name, _c, _n in stages] == [
+        "level7_post_l6_overworld",
+        "level7_bait_purchase",
+        "level7_pond_drain_entry",
+    ]
+    post = stages[0][1]
+    post.bind_env(_env(ram))
+    post.step(read_snapshot(ram))
+    assert post.failed

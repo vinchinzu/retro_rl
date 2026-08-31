@@ -13,11 +13,11 @@ import pytest
 
 from super_metroid.emulator_validation import ROM_AVAILABLE
 from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
-from super_metroid.routes.kpdr.ceres.third_room_fixture import (
-    CeresThirdRoomFixture,
+from super_metroid.routes.kpdr.ceres.room_tape import (
+    CeresRoomTape,
     button_names_to_mask,
-    get_ceres_third_room_tape,
-    validate_ceres_third_room,
+    get_ceres_room_tape,
+    validate_ceres_room_tape,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_MAGNET,
@@ -63,16 +63,16 @@ class TestCeresThirdRoomTape:
     """Test real tape extraction (offline, no ROM needed)."""
 
     def test_get_tape_returns_fixture(self) -> None:
-        """get_ceres_third_room_tape returns a CeresThirdRoomFixture."""
-        fixture = get_ceres_third_room_tape()
+        """get_ceres_room_tape("third") returns a CeresRoomTape."""
+        fixture = get_ceres_room_tape("third")
 
-        assert isinstance(fixture, CeresThirdRoomFixture)
+        assert isinstance(fixture, CeresRoomTape)
         assert fixture.from_room_id == ROOM_CERES_MAGNET
         assert fixture.to_room_id == ROOM_CERES_SCIENTIST
 
     def test_tape_has_real_source(self) -> None:
         """Tape source is documented (not greedy search)."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert "outbound" in fixture.tape_source.lower()
         assert "greedy" not in fixture.tape_source.lower()
@@ -80,14 +80,14 @@ class TestCeresThirdRoomTape:
 
     def test_tape_produces_input_sequence(self) -> None:
         """Tape has non-empty input sequence."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert len(fixture.inputs) > 0
         assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
 
     def test_tape_starts_with_left(self) -> None:
         """Tape starts with LEFT for 120 frames."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         # First 120 frames should be LEFT = 0x40
         assert fixture.inputs[0].buttons == 0x40
@@ -101,7 +101,7 @@ class TestCeresThirdRoomTape:
 
         Total: 120 + 96 + 24 = 240 frames
         """
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert fixture.frames == 240
         assert len(fixture.inputs) == 240
@@ -112,7 +112,7 @@ class TestCeresThirdRoomTape:
         Frames 120-215 (96 frames after LEFT 120) must match the
         ActionSpans returned by _arm_pump_dash_spans("RIGHT", 96, ...).
         """
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         # Get expected arm-pump expansion from the actual helper
         arm_pump_spans = _arm_pump_dash_spans("RIGHT", 96, "test")
@@ -140,7 +140,7 @@ class TestCeresThirdRoomTape:
 
     def test_tape_ends_with_idle(self) -> None:
         """Tape ends with 24 frames of idle (all buttons released)."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         # Last 24 frames should be idle (0x000)
         idle_start = 120 + 96
@@ -148,7 +148,7 @@ class TestCeresThirdRoomTape:
 
     def test_tape_not_emulator_validated(self) -> None:
         """Tape does not claim emulator validation by default."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert not fixture.emulator_validated
         assert not fixture.emulator_success
@@ -156,20 +156,20 @@ class TestCeresThirdRoomTape:
 
     def test_tape_not_room_clear_without_emu(self) -> None:
         """Tape never claims room_clear without emulator validation."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert not fixture.room_clear
 
     def test_fixture_frames_property(self) -> None:
         """Fixture has frames property (tape length)."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         assert fixture.frames == len(fixture.inputs)
         assert fixture.frames > 0
 
     def test_fixture_to_dict_serializable(self) -> None:
         """Fixture can be serialized to dict (smedit-tas-1 compatible)."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
         data = fixture.to_dict()
 
         assert isinstance(data, dict)
@@ -189,12 +189,12 @@ class TestCeresThirdRoomValidation:
 
     def test_validate_requires_rom_or_start_state(self) -> None:
         """Validate raises if ROM or start state unavailable."""
-        fixture = get_ceres_third_room_tape()
+        fixture = get_ceres_room_tape("third")
 
         if not ROM_AVAILABLE or not self._has_start_state():
             # Should raise when prerequisites missing
             with pytest.raises((FileNotFoundError, ValueError)):
-                validate_ceres_third_room(fixture)
+                validate_ceres_room_tape(fixture, "third")
 
     @pytest.mark.skipif(
         not ROM_AVAILABLE,
@@ -208,21 +208,21 @@ class TestCeresThirdRoomValidation:
         if not self._has_start_state():
             pytest.skip("SM_CERES_MAGNET_STATE not set or file missing")
 
-        fixture = get_ceres_third_room_tape()
-        validated = validate_ceres_third_room(fixture)
+        fixture = get_ceres_room_tape("third")
+        validated = validate_ceres_room_tape(fixture, "third")
 
         assert validated.emulator_validated
 
 
-class TestCeresThirdRoomFixture:
-    """Test CeresThirdRoomFixture data structure."""
+class TestCeresRoomTape:
+    """Test CeresRoomTape data structure."""
 
     def test_room_clear_requires_emulator_success(self) -> None:
         """room_clear is False unless emulator_validated and emulator_success."""
         from super_metroid.physics_sim import FrameInput
 
         # Not validated
-        fixture = CeresThirdRoomFixture(
+        fixture = CeresRoomTape(
             from_room_id=ROOM_CERES_MAGNET,
             to_room_id=ROOM_CERES_SCIENTIST,
             inputs=(FrameInput(0),),
@@ -232,7 +232,7 @@ class TestCeresThirdRoomFixture:
         assert not fixture.room_clear
 
         # Validated but failed
-        fixture_failed = CeresThirdRoomFixture(
+        fixture_failed = CeresRoomTape(
             from_room_id=ROOM_CERES_MAGNET,
             to_room_id=ROOM_CERES_SCIENTIST,
             inputs=(FrameInput(0),),
@@ -243,7 +243,7 @@ class TestCeresThirdRoomFixture:
         assert not fixture_failed.room_clear
 
         # Validated and succeeded
-        fixture_success = CeresThirdRoomFixture(
+        fixture_success = CeresRoomTape(
             from_room_id=ROOM_CERES_MAGNET,
             to_room_id=ROOM_CERES_SCIENTIST,
             inputs=(FrameInput(0),),

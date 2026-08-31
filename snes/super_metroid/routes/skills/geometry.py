@@ -20,6 +20,7 @@ TRUE_GROUND = frozenset({1, 2, 9, 10})
 STAND_PIN = frozenset({1, 2, 9, 10, 25, 26, 27, 28})
 STANDING_POSES = frozenset({1, 2, 9, 10, 25, 26, 27, 28, 37, 38, 137, 138})
 POSE_KNOCKBACK = frozenset({137, 138})
+LEDGE_POSES = STANDING_POSES - POSE_KNOCKBACK
 POSE_STAND_LEFT = frozenset({2, 10})
 POSE_STAND_RIGHT = frozenset({1, 9})
 # Broader locomotion / air families (aim-up/down included). Facing for
@@ -373,6 +374,7 @@ __all__ = [
     "STAND_PIN",
     "STANDING_POSES",
     "POSE_KNOCKBACK",
+    "LEDGE_POSES",
     "POSE_STAND_LEFT",
     "POSE_STAND_RIGHT",
     "FACE_LEFT_POSES",

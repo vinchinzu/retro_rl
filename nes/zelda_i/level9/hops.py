@@ -1,8 +1,8 @@
 """Level 9 chapter factories and Survival ``SpineHop`` rows.
 
-The prefix rows are deliberately fail-closed while natural topology is
-undecoded.  The ending row is a write-free adapter around policies already
-proven from recon fixtures; it does not promote that old evidence.
+Prefix rows stay one-frame fail-closed: Magical Key topology is hypothesized,
+but live rooms, post-L8 leftover, and the 0x51 dest walk are unverified.
+The credits row is a write-free adapter; it must not load a fixture.
 """
 
 from __future__ import annotations
@@ -14,7 +14,15 @@ from zelda_i.level9.dungeon import (
     L9_CREDITS_ENDPOINT,
     L9_ENTRY_ENDPOINT,
     L9_PATRA_ENDPOINT,
+    L9_SELECTED_JOIN_ROOMS,
+    L9_SELECTED_PREFIX_ROOMS,
     L9_SILVER_ARROWS_ENDPOINT,
+    MISSING_51_NORTH_WALK,
+    MISSING_SILVER_ARROW_ROOM,
+    PostLevel8Handoff,
+    ROOM_SILVER_ARROWS_HYP,
+    ROOM_SUFFIX_JOIN,
+    UNMEASURED_POST_L8_HANDOFF,
     level9_credits_stop,
     level9_entry_stop,
     level9_live_patra_stop,
@@ -28,8 +36,12 @@ from zelda_i.level9.natural_path import (
     NaturalPatraToGanonController,
     NaturalPowerTriforceController,
     NaturalRescueZeldaController,
-    NaturalRouteUnavailableController,
     NaturalSelectSilverArrowsController,
+    make_old_man_tf_gate_controller,
+    make_patra_join_unavailable_controller,
+    make_post_l8_overworld_controller,
+    make_silver_arrows_unavailable_controller,
+    make_spectacle_rock_bomb_controller,
 )
 from zelda_i.ram import ADDR_MAGIC_KEY, read_u8
 from zelda_i.spine.hops import SpineHop
@@ -37,63 +49,83 @@ from zelda_i.spine.hops import SpineHop
 
 @dataclass(frozen=True)
 class Level9NaturalRouteSelection:
-    """Decoded route inputs required before natural prefix controllers exist."""
+    """Decoded Magical Key route. Live rooms still missing; not route-eligible."""
 
     topology_decoded: bool = False
     silver_arrow_room: int | None = None
     suffix_join_room: int | None = None
     requires_51_to_41: bool | None = None
+    prefix_rooms: tuple[int, ...] = ()
+    join_rooms: tuple[int, ...] = ()
+    red_ring_included: bool = False
     evidence: str = "hypothesis"
     route_eligible: bool = False
 
 
 UNSELECTED_NATURAL_ROUTE = Level9NaturalRouteSelection()
 
+# Hypothesis graph only. 0x51 dest walk is unverified; 0x62 is Keese, not Patra south.
+SELECTED_NATURAL_ROUTE = Level9NaturalRouteSelection(
+    topology_decoded=True,
+    silver_arrow_room=ROOM_SILVER_ARROWS_HYP,
+    suffix_join_room=ROOM_SUFFIX_JOIN,
+    requires_51_to_41=True,
+    prefix_rooms=L9_SELECTED_PREFIX_ROOMS,
+    join_rooms=L9_SELECTED_JOIN_ROOMS,
+    red_ring_included=False,
+    evidence="hypothesis",
+    route_eligible=False,
+)
 
-def _unavailable_stage(chapter: str, reason: str):
-    def stages():
-        controller = NaturalRouteUnavailableController(chapter, reason)
-        return ((chapter, controller, controller.max_frames),)
 
-    return stages
+def _stage(name: str, controller) -> tuple[str, Any, int]:
+    return (name, controller, controller.max_frames)
 
 
 def level9_entry_chapter(
-    route: Level9NaturalRouteSelection = UNSELECTED_NATURAL_ROUTE,
+    route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
+    *,
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
 ) -> tuple[tuple[str, Any, int], ...]:
-    reason = (
-        "natural_topology_not_decoded"
-        if not route.topology_decoded
-        else "natural_entry_controller_not_implemented"
+    """Post-L8 OW → Spectacle Rock bomb → Old Man TF gate. One-frame until live."""
+    del route
+    return (
+        _stage("level9_post_l8_overworld", make_post_l8_overworld_controller(handoff)),
+        _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller()),
+        _stage("level9_old_man_tf_gate", make_old_man_tf_gate_controller()),
     )
-    return _unavailable_stage("level9_natural_entry", reason)()
 
 
 def level9_silver_arrows_chapter(
-    route: Level9NaturalRouteSelection = UNSELECTED_NATURAL_ROUTE,
+    route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
 ) -> tuple[tuple[str, Any, int], ...]:
-    if not route.topology_decoded:
-        reason = "natural_topology_not_decoded"
-    elif route.silver_arrow_room is None:
-        reason = "silver_arrow_room_not_selected"
+    controller = make_silver_arrows_unavailable_controller()
+    if route.silver_arrow_room is None:
+        controller.reason = "silver_arrow_room_not_selected"
     else:
-        reason = "natural_silver_arrow_controller_not_implemented"
-    return _unavailable_stage("level9_natural_silver_arrows", reason)()
+        controller.reason = MISSING_SILVER_ARROW_ROOM
+    return (_stage("level9_natural_silver_arrows", controller),)
 
 
 def level9_patra_chapter(
-    route: Level9NaturalRouteSelection = UNSELECTED_NATURAL_ROUTE,
+    route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
 ) -> tuple[tuple[str, Any, int], ...]:
-    reason = (
-        "natural_suffix_join_not_selected"
-        if route.suffix_join_room is None
-        else "natural_join_controller_not_implemented"
-    )
-    return _unavailable_stage("level9_natural_patra_join", reason)()
+    controller = make_patra_join_unavailable_controller()
+    if route.suffix_join_room is None:
+        controller.reason = "natural_suffix_join_not_selected"
+    elif route.requires_51_to_41:
+        controller.reason = MISSING_51_NORTH_WALK
+    else:
+        controller.reason = "natural_join_controller_not_implemented"
+    return (_stage("level9_natural_patra_join", controller),)
 
 
 def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:
-    """Fresh write-free controllers from exact live Patra to credits."""
+    """Fresh write-free controllers from exact live Patra to credits.
+
+    Must not load a fixture or compose inventory. Ganon selects arrows only
+    through the pause-menu cursor; never ``ADDR_SELECTED_ITEM`` assign.
+    """
     select_arrows = NaturalSelectSilverArrowsController()
     patra = NaturalFinalPatraController()
     enter_ganon = NaturalPatraToGanonController()
@@ -117,14 +149,10 @@ def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:
 def l9_hops(
     env: Any | None,
     *,
-    route: Level9NaturalRouteSelection = UNSELECTED_NATURAL_ROUTE,
+    route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
 ) -> tuple[SpineHop, ...]:
-    """Return the four public L9 chapter rows.
-
-    ``route`` is descriptive until decoded room rows and controllers replace
-    the unavailable factories.  In particular, ``requires_51_to_41=None``
-    keeps rr-yxy6 conditional instead of selecting that recon leaf.
-    """
+    """Return the four public L9 chapter rows."""
 
     def entry_ok(snap, **_):
         magic_key = bool(
@@ -132,11 +160,19 @@ def l9_hops(
         )
         return level9_entry_stop(snap, magic_key=magic_key)
 
+    def credits_ok(snap, **_):
+        deaths = 0
+        if env is not None:
+            assist = getattr(env, "assist", None)
+            telemetry = getattr(assist, "telemetry", None)
+            deaths = int(getattr(telemetry, "deaths", 0) or 0)
+        return level9_credits_stop(snap, deaths=deaths)
+
     return (
         SpineHop(
             L9_ENTRY_ENDPOINT.through,
             L9_ENTRY_ENDPOINT.stop,
-            lambda: level9_entry_chapter(route),
+            lambda: level9_entry_chapter(route, handoff=handoff),
             entry_ok,
         ),
         SpineHop(
@@ -158,13 +194,14 @@ def l9_hops(
             L9_CREDITS_ENDPOINT.through,
             L9_CREDITS_ENDPOINT.stop,
             level9_credits_chapter,
-            lambda snap, **_: level9_credits_stop(snap),
+            credits_ok,
         ),
     )
 
 
 __all__ = [
     "Level9NaturalRouteSelection",
+    "SELECTED_NATURAL_ROUTE",
     "UNSELECTED_NATURAL_ROUTE",
     "level9_credits_chapter",
     "level9_entry_chapter",

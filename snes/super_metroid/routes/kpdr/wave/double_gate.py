@@ -5,6 +5,8 @@ Split from double_to_wave so no Wave multi-hop module exceeds ~500 lines.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
     hold,
@@ -12,7 +14,7 @@ from super_metroid.routes.controller_common import (
     select_weapon,
     unmorph,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.geometry import (
     DC_GATE_OPEN_SEAT_X,
@@ -21,10 +23,13 @@ from super_metroid.routes.kpdr.wave.geometry import (
     DC_GATE_SEAT_Y_MAX,
     DC_PAST_GATE_X,
 )
-from super_metroid.routes.kpdr.wave.scripts import HUMAN_GATE_OPEN_RLE
-from super_metroid.routes.rle import play_script
+from super_metroid.routes.rle import load_rle_json, play_script
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import escape_kb, is_knockback
+
+_DATA = Path(__file__).resolve().parents[1] / "data"
+# Canonical human open sequence (tape frames 4650–5200).
+_HUMAN_GATE_OPEN_RLE = load_rle_json(_DATA / "double_chamber_gate_open_rle.json")
 
 
 def dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
@@ -56,7 +61,7 @@ def dc_hop_to_gate_zone(session: ControllerSession, label: str) -> None:
 
     for _ in range(20):
         state = hold(session, 1, reason=f"{label}_top_stand")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
     # hop_run toward mid platforms
@@ -148,7 +153,7 @@ def _dc_wait_kamer_open_seat(session: ControllerSession, label: str) -> bool:
             state.velocity_y == 0
             and state.samus_y <= DC_GATE_OPEN_SEAT_Y
             and x_lo <= state.samus_x <= x_hi
-            and state.pose in _STANDING_POSES
+            and state.pose in STANDING_POSES
         )
         if seated:
             return True
@@ -284,7 +289,7 @@ def dc_open_blue_gate(session: ControllerSession, label: str) -> None:
 
         play_script(
             session,
-            HUMAN_GATE_OPEN_RLE,
+            _HUMAN_GATE_OPEN_RLE,
             reason=f"{label}_human_open",
             room_id=ROOM_DOUBLE_CHAMBER,
             stop_when=_rle_stop,

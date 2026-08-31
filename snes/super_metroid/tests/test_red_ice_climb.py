@@ -8,64 +8,50 @@ import numpy as np
 from super_metroid.paths import GAME_DIR
 from super_metroid.routes.kpdr.red_tower.red_ice_climb import (
     BOTTOM_FLOOR,
+    HELLWAY_SILL,
     LOWER_RIPPER_1,
     LOWER_RIPPER_2,
     LOWER_RIPPER_3,
     LOWER_RIPPER_4,
     MID_FLOOR,
+    POLICY_ID_R12 as R12_POLICY,
+    POLICY_ID_R23 as R23_POLICY,
+    POLICY_ID_R34 as R34_POLICY,
+    POLICY_ID_R4TUN as R4TUN_POLICY,
+    POLICY_ID_THINUR1 as THINUR1_POLICY,
+    POLICY_ID_UR12 as UR12_POLICY,
+    POLICY_ID_UR34 as UR34_POLICY,
+    POLICY_ID_UR3HW as UR3HW_POLICY,
     RIPPER_ID,
-    TUNNEL_FLOOR,
+    RedIceBottomEdgeRunner,
+    RedIceRipper12EdgeRunner,
+    RedIceRipper23EdgeRunner,
+    RedIceRipper34EdgeRunner,
+    RedIceRipper4TunnelEdgeRunner,
+    RedIceThinToUr1EdgeRunner,
+    RedIceUpperRipperHopRunner,
+    RedIceUr3ToHellwayRunner,
     THIN_SEAT,
+    TUNNEL_FLOOR,
+    UR12,
+    UR34,
     UPPER_RIPPER_1,
     UPPER_RIPPER_2,
     UPPER_RIPPER_3,
     UPPER_RIPPER_4,
-    HELLWAY_SILL,
-    RedIceBottomEdgeRunner,
     can_attach_bottom_edge,
+    can_attach_mid_floor_edge,
     can_attach_ripper1_edge,
     can_attach_ripper2_edge,
     can_attach_ripper3_edge,
     can_attach_ripper4_edge,
-    can_attach_tunnel_edge,
-    can_attach_mid_floor_edge,
     can_attach_thin_seat_edge,
+    can_attach_tunnel_edge,
     can_attach_upper_ripper1_edge,
     can_attach_upper_ripper2_edge,
     can_attach_upper_ripper3_edge,
     checkpoint_supported,
     read_rippers,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r1_to_r2 import (
-    POLICY_ID as R12_POLICY,
-    RedIceRipper12EdgeRunner,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r2_to_r3 import (
-    POLICY_ID as R23_POLICY,
-    RedIceRipper23EdgeRunner,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r3_to_r4 import (
-    POLICY_ID as R34_POLICY,
-    RedIceRipper34EdgeRunner,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r4_to_tunnel import (
-    POLICY_ID as R4TUN_POLICY,
-    RedIceRipper4TunnelEdgeRunner,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_thin_to_ur1 import (
-    POLICY_ID as THINUR1_POLICY,
-    RedIceThinToUr1EdgeRunner,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_upper_hops import (
-    POLICY_ID_UR12 as UR12_POLICY,
-    POLICY_ID_UR34 as UR34_POLICY,
-    RedIceUpperRipperHopRunner,
-    UR12,
-    UR34,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_ur3_to_hellway import (
-    POLICY_ID as UR3HW_POLICY,
-    RedIceUr3ToHellwayRunner,
 )
 
 

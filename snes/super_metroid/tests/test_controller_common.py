@@ -262,7 +262,7 @@ def test_alcatraz_walljump_releases_jump_before_press(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Alcatraz uses the game's turn-away, then jump input ordering."""
-    from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
+    from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
 
     calls: list[tuple[int, tuple[str, ...], str]] = []
 

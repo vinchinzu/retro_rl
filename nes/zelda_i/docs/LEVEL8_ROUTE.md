@@ -152,8 +152,11 @@ Constants: `CANDLE_BUY_X/Y`, `CANDLE_SHOP_PRICE`, pedestals
 - **Level8Entrance not created**: fire→stairs on 0x6D not confirmed after
   dense walkable burns (corridor + left column + enemy clear). Need further
   bush-tile targeting or natural candle path.
-- Default burn aim in controller: **(136, 93)** east channel (source “lone bush
-  blocking pathway”).
+- **Dead belief:** default burn aim **(136, 93)** face/push RIGHT never opened
+  a mouth. Isolated fixture-live hypothesis (`level8.bush`,
+  `route_eligible=false`): stand **(144, 93)** at the sampled east walkable
+  limit, face RIGHT, push **UP**. PNGs/JSON and `Level8BushOW` / `OW_6D` are
+  absent in this worktree, so the live 0x6D trial did not run.
 - Shop OW + cave path **assisted green** (`recordings/l8_shop_path.json`);
   natural 60R + buy still residual.
 
@@ -168,17 +171,38 @@ play, even if Link is still controllable on `0x6D`.
 
 ## Interior (source → live)
 
+Walkthrough grid labels live in `level8.dungeon.LEVEL8_HYPOTHESIS_ROOMS`.
+**Every `room_id` is `None` until RAM observes it.** Do not promote those
+labels into `DungeonRoomSpec` rows.
+
+Minimum Magical Key route (Book/Map/Compass omitted):
+
+```text
+entry --UP--> north_manhandla --BOMB UP--> darknut_key
+  --KEY UP--> shutter_darknuts --KEY UP--> blue_darknuts
+  --BOMB UP--> map_manhandla --KEY UP--> blue_gohma
+  --RIGHT--> magic_key_stairs
+```
+
+Four-head Gleeok suffix (after Magical Key):
+
+```text
+blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
+  --STAIRS--> pols_west --BOMB UP--> gleeok --UP--> triforce
+```
+
 | Room / feature | Enemies / notes | Live |
 |----------------|-----------------|------|
 | Entry | unknown | **not entered** |
-| Manhandla early | source | no |
-| Book of Magic (staircase) | `ADDR_BOOK=0x0661` | no |
-| Darknut / keys / Compass / Map | source | no |
-| Gohma side (arrow) | source | no |
+| Manhandla early | source; west of entry is Book detour | no |
+| Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
+| Darknut / keys / Compass / Map | Compass/Map omitted | no |
+| Gohma (blue, 3 arrows) | source type `0x34`; Bow+arrows from cumulative route; **no L6 poke** | no |
 | Magical Key (staircase) | `ADDR_MAGIC_KEY=0x0664` | no |
-| Boss Gleeok 4-head | Heart → TF | no |
+| Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
 
-Items optional for credits (source). TF bit **`0x80`**.
+Items optional for credits (source). TF bit **`0x80`**. Magical Key is the
+deliberate L9 key-bottleneck investment.
 
 ## Boss / Triforce
 
@@ -201,9 +225,11 @@ Items optional for credits (source). TF bit **`0x80`**.
 
 | Path | Role |
 |------|------|
-| `level8/overworld.py` | Bush + **shop** hops, burn controller, `OverworldToCandleShopController` |
+| `level8/overworld.py` | **Frozen.** Bush + shop hops; start-based burn false-positive stays recon-only |
 | `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn |
-| `level8/dungeon.py` | Route-ineligible chapter/topology specs and exact stop predicates; no invented room IDs |
+| `level8/bush.py` | Isolated 0x6D fixture-live burn recon; `route_eligible=false` |
+| `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; no invented room IDs |
+| `level8/path.py` | Fail-closed Magic-Key / blue-Gohma / four-head Gleeok policies |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
 | `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine` |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
@@ -241,9 +267,9 @@ predecessor may promote the handoff/topology/endpoint contracts.
 
 1. Receive the measured natural post-L7 leave/inventory and derive its hop
    table through live `0x5C` geometry to **0x6D**.
-2. From Red-Candle state: burn the exact live-confirmed bush tile on **0x6D** →
-   `Level8Entrance` + entry room id.
-3. Decode the interior graph offline, then live-confirm entry → Magical Key →
-   boss/shard rooms without promoting source room IDs.
+2. From Red-Candle state: one live trial of the (144, 93) RIGHT/UP hypothesis
+   on **0x6D** (halt 3 serial reds). Do not revive (136, 93).
+3. Live-confirm entry → Magical Key → Gleeok body type / shard rooms without
+   promoting source room IDs. Magical Key stays on the min route; Book stays off.
 4. Keep the 60R Blue Candle farm/shop as fallback-only, outside `L8_THROUGH`.
 5. Do not promote Clean; Wave A fixture evidence remains route-ineligible.

@@ -39,6 +39,10 @@ from super_metroid.tas.slice import (
 )
 
 REF = GAME_DIR / "tas" / "ref"
+REF_100_LSMV = REF / "sniq_100_4010M.lsmv"
+HUNDRED_LSMV_FRAMES = 222_788
+# Matches LSMV member rom.sha256 and local roms/SuperMetroid.sfc.
+SNIQ_100_ROM_SHA256 = "12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72"
 
 
 def test_pit_seed_first_jump_layout() -> None:
@@ -82,6 +86,23 @@ def test_parse_sniq_any_lsmv_summary() -> None:
     # Button field is BYsSudlrAXLR — raw length 12
     assert len(movie.raw_p1[0]) == 12
     assert movie.raw_p1[0][3] in "Ss"  # Start slot
+
+
+def test_parse_sniq_100_lsmv_4010() -> None:
+    """Native lsnes 100% #4010M parses to SNES-12 with authoring-core meta."""
+    if not REF_100_LSMV.exists():
+        pytest.skip("missing sniq 100% LSMV")
+    movie = parse_lsmv(REF_100_LSMV)
+    assert movie.num_frames == HUNDRED_LSMV_FRAMES
+    assert movie.meta.get("systemid") == "lsnes-rr1"
+    assert movie.meta.get("gametype") == "snes_ntsc"
+    assert movie.meta.get("coreversion") == "bsnes v085 (Compatibility core)"
+    assert movie.meta.get("rom.sha256") == SNIQ_100_ROM_SHA256
+    assert movie.summary()["first_nonzero_frame"] == 0
+    assert movie.frames[0][SNES_START] == 1
+    assert movie.frames[1][SNES_A] == 1
+    assert movie.raw_p1[0] == "...S........"
+    assert sum(1 for r in movie.resets if r) == 0
 
 
 def test_parse_sniq_100_bk2_summary() -> None:

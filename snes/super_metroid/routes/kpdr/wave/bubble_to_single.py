@@ -10,7 +10,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_BUBBLE, ROOM_SINGLE_CHAMBER
 from super_metroid.routes.kpdr.wave.geometry import (
     BSC_DOOR_PUSH_FRAMES,
@@ -35,7 +35,7 @@ def _top_walk_to_drop(session: ControllerSession, label: str) -> None:
     select_weapon(session, 0)
     for _ in range(30):
         state = hold(session, 1, reason=f"{label}_top_stand")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
     for frame in range(BSC_TOP_WALK_FRAMES):
@@ -129,7 +129,7 @@ def _nav_floor_to_door(session: ControllerSession, label: str) -> None:
 
         # Too high mid: drop further or hop toward right.
         if state.samus_y < BSC_FLOOR_Y:
-            if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+            if state.velocity_y == 0 and state.pose in STANDING_POSES:
                 # Mid platforms: human hops left once then runs right down.
                 # Prefer right progress once below top.
                 if state.samus_x < 360 and state.samus_y < 300:

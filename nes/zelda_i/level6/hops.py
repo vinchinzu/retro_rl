@@ -69,6 +69,7 @@ __all__ = [
     "fight_hop",
     "settle_fight",
     "stairs_or_play",
+    "rod_cellar_ok",
 ]
 
 
@@ -131,6 +132,15 @@ def stairs_or_play(snap: ZeldaSnapshot, *, not_screen: int, **_) -> bool:
     if snap.mode == PASSAGE_MODE:
         return True
     return play_ready(snap, level=LEVEL6, not_screen=not_screen, tf_eq=0x1F)
+
+
+def rod_cellar_ok(snap: ZeldaSnapshot, **_) -> bool:
+    """Rod pickup leftover is cellar mode 9 room 0x75, not play mode 5."""
+    if snap.level != LEVEL6 or snap.triforce != 0x1F or not snap.rod:
+        return False
+    if snap.mode == PASSAGE_MODE:
+        return True
+    return play_ready(snap, level=LEVEL6, rod=True, tf_eq=0x1F)
 
 
 def _gleeok18_ok(snap: ZeldaSnapshot, **_) -> bool:

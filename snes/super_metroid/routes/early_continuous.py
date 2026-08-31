@@ -51,13 +51,13 @@ from super_metroid.routes.runtime import (
 )
 from super_metroid.routes.tips import FinishCtx, TipSpec, play_tip, register_tips, run_tip
 from super_metroid.video import VideoCaptureConfig
-from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
+from super_metroid.routes.kpdr.brinstar.spore_spawn import SporeSpawnEvidence
 
 _THIS = Path(__file__)
 KPDR_PACKAGE_PATH = _THIS.parent / "kpdr"
-# Real controller body under kpdr/spore_spawn.py.
-SPORE_CONTROLLER_PATH = KPDR_PACKAGE_PATH / "spore_spawn.py"
-KPDR_SUPER_ROOM_PATH = KPDR_PACKAGE_PATH / "super_collect.py"
+# Real controller body under kpdr/brinstar/spore_spawn.py.
+SPORE_CONTROLLER_PATH = KPDR_PACKAGE_PATH / "brinstar" / "spore_spawn.py"
+KPDR_SUPER_ROOM_PATH = KPDR_PACKAGE_PATH / "brinstar" / "super_collect.py"
 # Historical CONTROLLER_PATH name → Super-collect implementation (shim deleted).
 CONTROLLER_PATH = KPDR_SUPER_ROOM_PATH
 CONTINUOUS_MODULE_PATH = _THIS.with_name("continuous.py")

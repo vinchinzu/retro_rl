@@ -16,17 +16,24 @@ from zelda_i.door_graph import (
     LEVEL_3_DOOR_GRAPH,
     LEVEL_4_DOOR_GRAPH,
     LEVEL_5_DOOR_GRAPH,
+    LEVEL_9_NATURAL_DOOR_GRAPH,
     L4_ENTRY,
     L4_TRIFORCE,
     L5_ENTRY,
     L5_TRIFORCE,
     L5_WHISTLE_ITEM,
+    L9_ENTRY,
+    L9_PATRA,
+    L9_ROOM_41,
+    L9_ROOM_51,
+    L9_ROOM_62,
     DoorDir,
     DungeonDoorGraph,
     GateKind,
     InventoryCaps,
     RoomExit,
     dirs_from_mask,
+    natural_route_requires_51_to_41,
 )
 from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
 
@@ -134,3 +141,24 @@ def test_level5_bfs_entry_reaches_tf_or_whistle_with_bombs() -> None:
     assert L5_WHISTLE_ITEM in LEVEL_5_DOOR_GRAPH.bfs_reachable(
         L5_ENTRY, whistle_caps
     )
+
+
+def test_level9_natural_graph_excludes_0x62_as_patra_south() -> None:
+    g = LEVEL_9_NATURAL_DOOR_GRAPH
+    assert g.exit_between(L9_ROOM_62, L9_PATRA) is None
+    assert g.exit_between(L9_PATRA, L9_ROOM_62) is None
+    assert L9_ENTRY in g.room_ids()
+    sealed_north = [
+        e for e in g.edges_from(L9_ROOM_62)
+        if e.direction is DoorDir.UP and e.gate is GateKind.SEALED
+    ]
+    assert sealed_north
+
+
+def test_level9_natural_graph_requires_51_to_41_on_selected_route() -> None:
+    assert natural_route_requires_51_to_41() is True
+    edge = LEVEL_9_NATURAL_DOOR_GRAPH.exit_between(
+        L9_ROOM_51, L9_ROOM_41, direction=DoorDir.UP
+    )
+    assert edge is not None
+    assert edge.verification == "planned"

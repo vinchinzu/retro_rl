@@ -23,7 +23,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_SINGLE_CHAMBER
 from super_metroid.routes.kpdr.wave.geometry import (
     DTS_DOOR_FRAMES,
@@ -69,7 +69,7 @@ def _ledge_left_and_hop(session: ControllerSession, label: str) -> None:
     select_weapon(session, 0)
     for _ in range(25):
         state = hold(session, 1, reason=f"{label}_ledge_stand")
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
     hopping = False

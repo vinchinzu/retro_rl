@@ -1,0 +1,238 @@
+"""Level 9 public seam: fail-closed hops, hypothesis graph, write-free credits."""
+
+from __future__ import annotations
+
+import inspect
+
+from zelda_i.door_graph import (
+    DoorDir,
+    InventoryCaps,
+    L9_ENTRY,
+    L9_PATRA,
+    L9_ROOM_41,
+    L9_ROOM_51,
+    L9_ROOM_62,
+    L9_SILVER_ARROWS,
+    LEVEL_9_NATURAL_DOOR_GRAPH,
+    natural_route_requires_51_to_41,
+)
+from zelda_i.level9.dungeon import (
+    BOMBS_NOT_NATURAL,
+    FULL_TRIFORCE,
+    L9_PUBLIC_THROUGH,
+    L9_SELECTED_JOIN_ROOMS,
+    MISSING_51_NORTH_WALK,
+    MISSING_POST_L8_LEFTOVER,
+    MISSING_SILVER_ARROW_ROOM,
+    ROOM_LEVEL9_ENTRY,
+    ROOM_SILVER_ARROWS_HYP,
+    TRIFORCE_NOT_FULL,
+    UNMEASURED_POST_L8_HANDOFF,
+    level9_credits_stop,
+    level9_entry_stop,
+    level9_silver_arrows_stop,
+)
+from zelda_i.level9.ganon import MODE_ENDING
+from zelda_i.level9.hops import (
+    SELECTED_NATURAL_ROUTE,
+    l9_hops,
+    level9_credits_chapter,
+    level9_entry_chapter,
+    level9_patra_chapter,
+    level9_silver_arrows_chapter,
+)
+from zelda_i.level9.natural_path import (
+    NaturalGanonController,
+    NaturalSelectSilverArrowsController,
+    make_post_l8_overworld_controller,
+)
+from zelda_i.level9.spine import L9_THROUGH
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+
+
+def _snap(**kwargs) -> ZeldaSnapshot:
+    fields = dict(
+        mode=PLAY_MODE,
+        level=9,
+        screen=ROOM_LEVEL9_ENTRY,
+        next_screen=ROOM_LEVEL9_ENTRY,
+        link_x=120,
+        link_y=189,
+        facing=0,
+        sword=3,
+        bombs=8,
+        rupees=0,
+        keys=0,
+        health=0xFF,
+        triforce=FULL_TRIFORCE,
+        compass=0,
+        dialog_timer=0,
+        colliding_tile=0,
+        room_item_id=0,
+        room_all_dead=0,
+        room_obj_count=0,
+        cur_opened_doors=0,
+        open_doorway_mask=0,
+        objects=(),
+        bow=1,
+        arrows=1,
+    )
+    fields.update(kwargs)
+    return ZeldaSnapshot(**fields)
+
+
+def test_public_through_names_are_exactly_four_chapters() -> None:
+    assert L9_THROUGH == L9_PUBLIC_THROUGH == (
+        "level9-entry",
+        "level9-silver-arrows",
+        "level9-patra",
+        "level9-credits",
+    )
+    hops = l9_hops(None)
+    assert tuple(h.through for h in hops) == L9_THROUGH
+
+
+def test_entry_stop_requires_tf_magic_key_and_bombs() -> None:
+    ok = _snap()
+    assert level9_entry_stop(ok, magic_key=True)
+    assert not level9_entry_stop(ok, magic_key=False)
+    assert not level9_entry_stop(_snap(triforce=0x7F), magic_key=True)
+    assert not level9_entry_stop(_snap(bombs=0), magic_key=True)
+    assert not level9_entry_stop(_snap(screen=0x66), magic_key=True)
+
+
+def test_silver_arrows_stop_uses_selected_room_0x10() -> None:
+    assert SELECTED_NATURAL_ROUTE.silver_arrow_room == ROOM_SILVER_ARROWS_HYP == 0x10
+    got = _snap(screen=0x10, arrows=2, bow=1)
+    assert level9_silver_arrows_stop(got, room=0x10)
+    assert not level9_silver_arrows_stop(got, room=None)
+    assert not level9_silver_arrows_stop(_snap(screen=0x10, arrows=1), room=0x10)
+    assert not level9_silver_arrows_stop(_snap(screen=0x10, arrows=2, triforce=0x7F), room=0x10)
+
+
+def test_prefix_hops_fail_closed_when_triforce_not_full() -> None:
+    snap = _snap(triforce=0x7F, level=0, screen=0x6D, bombs=8)
+    for chapter in (
+        level9_entry_chapter(),
+        level9_silver_arrows_chapter(),
+        level9_patra_chapter(),
+    ):
+        _name, controller, max_frames = chapter[0]
+        assert max_frames == 1
+        act = controller.step(snap)
+        assert controller.failed
+        assert act.reason == TRIFORCE_NOT_FULL
+        report = controller.report()
+        assert report["inventory_writes"] == 0
+        assert report["triforce_writes"] == 0
+        assert report["route_eligible"] is False
+
+
+def test_entry_refuses_without_natural_bombs_and_does_not_write_capacity() -> None:
+    ctl = make_post_l8_overworld_controller()
+    act = ctl.step(_snap(triforce=FULL_TRIFORCE, bombs=0, level=0, screen=0x6D))
+    assert act.reason == BOMBS_NOT_NATURAL
+    report = ctl.report()
+    assert report["bomb_capacity_writes"] == 0
+    assert report["capacity_writes"] == 0
+
+
+def test_entry_missing_evidence_is_unmeasured_post_l8_leftover() -> None:
+    assert not UNMEASURED_POST_L8_HANDOFF.complete()
+    ctl = make_post_l8_overworld_controller()
+    act = ctl.step(_snap(level=0, screen=0x6D, triforce=FULL_TRIFORCE, bombs=8))
+    assert act.reason == MISSING_POST_L8_LEFTOVER
+
+
+def test_silver_and_patra_missing_evidence_are_exact() -> None:
+    _n, silver, _ = level9_silver_arrows_chapter()[0]
+    silver.step(_snap())
+    assert silver.blocked_reason == MISSING_SILVER_ARROW_ROOM
+    _n, join, _ = level9_patra_chapter()[0]
+    join.step(_snap())
+    assert join.blocked_reason == MISSING_51_NORTH_WALK
+
+
+def test_credits_hop_does_not_write_inventory_or_load_fixture() -> None:
+    src = inspect.getsource(level9_credits_chapter)
+    assert "ReconFixture" not in src
+    assert "FULL_LOADOUT" not in src
+    assert "set_value" not in src
+    stages = level9_credits_chapter()
+    names = [name for name, _, _ in stages]
+    assert names[0] == "level9_select_silver_arrows"
+    assert names[-1] == "level9_wait_credits"
+    select = stages[0][1]
+    assert isinstance(select, NaturalSelectSilverArrowsController)
+    ganon = next(c for n, c, _ in stages if n == "level9_ganon")
+    assert isinstance(ganon, NaturalGanonController)
+    for _name, controller, _max in stages:
+        report = controller.report()
+        assert report["fixture_loaded"] is False
+        assert report["controller_memory_writes"] == 0
+        assert report["inventory_writes"] == 0
+        assert report["progression_writes"] == 0
+        assert report["capacity_writes"] == 0
+        assert report.get("selected_item_writes", 0) == 0
+
+
+def test_credits_stop_requires_deaths_zero() -> None:
+    rolling = _snap(mode=MODE_ENDING, is_updating_mode=1, submode=3)
+    assert level9_credits_stop(rolling, deaths=0)
+    assert not level9_credits_stop(rolling, deaths=1)
+    assert not level9_credits_stop(_snap(), deaths=0)
+
+
+def test_0x62_is_not_patra_south_on_natural_graph() -> None:
+    g = LEVEL_9_NATURAL_DOOR_GRAPH
+    assert g.exit_between(L9_ROOM_62, L9_PATRA) is None
+    assert g.exit_between(L9_PATRA, L9_ROOM_62) is None
+    assert L9_ROOM_62 not in L9_SELECTED_JOIN_ROOMS
+    north = [e for e in g.edges_from(L9_ROOM_62) if e.direction is DoorDir.UP]
+    assert north and all(not e.is_pathfinding for e in north)
+    west = g.exit_between(L9_ROOM_62, 0x61, direction=DoorDir.LEFT)
+    assert west is not None and west.verification == "observed"
+
+
+def test_0x51_to_0x41_required_because_selected_route_says_so() -> None:
+    assert natural_route_requires_51_to_41() is True
+    assert SELECTED_NATURAL_ROUTE.requires_51_to_41 is True
+    assert SELECTED_NATURAL_ROUTE.suffix_join_room == L9_ROOM_41
+    assert SELECTED_NATURAL_ROUTE.route_eligible is False
+    edge = LEVEL_9_NATURAL_DOOR_GRAPH.exit_between(
+        L9_ROOM_51, L9_ROOM_41, direction=DoorDir.UP
+    )
+    assert edge is not None
+    assert edge.verification == "planned"
+    assert "statue diamond" in edge.notes
+
+
+def test_magic_key_hypothesis_reaches_silver_arrows_and_patra() -> None:
+    caps = InventoryCaps(keys=99, bombs=16, can_clear=True)
+    g = LEVEL_9_NATURAL_DOOR_GRAPH
+    to_silver = g.bfs_path(L9_ENTRY, L9_SILVER_ARROWS, caps)
+    assert to_silver is not None
+    silver_rooms = [L9_ENTRY, *[e.target_room for e in to_silver]]
+    assert silver_rooms[-1] == L9_SILVER_ARROWS == 0x10
+    assert 0x07 not in silver_rooms
+    assert L9_PATRA not in silver_rooms
+    to_patra = g.bfs_path(L9_SILVER_ARROWS, L9_PATRA, caps)
+    assert to_patra is not None
+    join_rooms = [L9_SILVER_ARROWS, *[e.target_room for e in to_patra]]
+    assert join_rooms[-1] == L9_PATRA
+    assert L9_ROOM_51 in join_rooms
+    assert L9_ROOM_41 in join_rooms
+    assert L9_ROOM_62 not in join_rooms
+
+
+def test_patra_census_objects_are_body_and_eight_eyes() -> None:
+    body = ZeldaObject(slot=1, type_id=0x47, x=120, y=120, facing=0, hp=0xB0, state=0)
+    eyes = tuple(
+        ZeldaObject(slot=i, type_id=0x25, x=100, y=100, facing=0, hp=0x60, state=0)
+        for i in range(2, 10)
+    )
+    snap = _snap(screen=0x52, arrows=2, bow=1, objects=(body, *eyes))
+    from zelda_i.level9.dungeon import level9_live_patra_stop
+
+    assert level9_live_patra_stop(snap)
+    assert not level9_live_patra_stop(_snap(screen=0x52, arrows=2, objects=(body,)))

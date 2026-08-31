@@ -94,6 +94,9 @@ def test_builder_registry_resolves_callables() -> None:
     wj = builder_skill("canWallJump")
     assert wj is not None
     assert callable(wj.resolve())
+    precise_wj = builder_skill("canPreciseWallJump")
+    assert precise_wj is not None
+    assert precise_wj.resolve().__name__ == "precise_walljump_once"
     # Medium wrappers
     for name in ("canCrouchJump", "canDownGrab", "canSpeedyJump", "canStopOnADime"):
         skill = builder_skill(name)

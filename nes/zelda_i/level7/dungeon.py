@@ -1,8 +1,9 @@
 """Level 7 dungeon stop contracts.
 
-No Level 7 dungeon room has been observed live yet.  Keep room ids out of this
-module until RAM evidence exists; ``None`` therefore means "not verified" and
-every predicate fails closed.  Navigation and controller loops belong in
+No Level 7 dungeon room has been observed live yet.  Keep RAM room ids out of
+stop specs until play evidence exists; ``None`` means "not verified" and every
+predicate fails closed.  The hypothesized first-quest door/stair graph lives in
+``level7.graph`` (source ids ``0x7xx``, ``ram_id=None``).  Navigation belongs in
 ``path.py`` / purpose-named modules, not here.
 """
 

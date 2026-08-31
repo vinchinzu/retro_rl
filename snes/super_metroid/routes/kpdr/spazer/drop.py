@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import hold, require_room, unmorph
-from super_metroid.routes.kpdr.below_spazer_west import play_below_spazer_floor_to_west
+from super_metroid.routes.kpdr.red_tower.below_spazer_west import play_below_spazer_floor_to_west
 from super_metroid.routes.kpdr.rooms import ROOM_BELOW_SPAZER
 from super_metroid.routes.kpdr.spazer.geometry import (
     FLOOR_UNMORPH_POSES,
@@ -15,8 +15,9 @@ from super_metroid.routes.kpdr.spazer.geometry import (
     is_true_ground_pose,
     on_mid_or_floor,
 )
-from super_metroid.routes.kpdr.spazer.helpers import break_lag, play_script
+from super_metroid.routes.kpdr.spazer.helpers import play_script
 from super_metroid.routes.kpdr.spazer.scripts import TOP_MID_RLE
+from super_metroid.routes.rle import break_rle_lag
 from super_metroid.routes.runtime import ControllerSession
 
 
@@ -29,7 +30,7 @@ def _settle_floor_land(session: ControllerSession) -> SuperMetroidState:
             hold(session, 8, reason="spazer_top_mid_floor_stand")
             return session.state
         if is_lag_pose(session.state):
-            break_lag(session)
+            break_rle_lag(session)
             continue
         if int(session.state.pose) in FLOOR_UNMORPH_POSES:
             hold(session, 1, "UP", reason="spazer_top_mid_unmorph")
@@ -48,7 +49,7 @@ def play_spazer_top_to_mid(session: ControllerSession) -> SuperMetroidState:
     unmorph(session)
     if on_mid_or_floor(session.state):
         return session.state
-    break_lag(session)
+    break_rle_lag(session)
 
     def _stop(state: SuperMetroidState) -> bool:
         if int(state.samus_y) >= FLOOR_Y_MIN:

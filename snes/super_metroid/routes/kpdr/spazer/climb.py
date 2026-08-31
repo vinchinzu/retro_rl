@@ -33,11 +33,11 @@ from super_metroid.routes.kpdr.spazer.geometry import (
     standing_mid_seat,
 )
 from super_metroid.routes.kpdr.spazer.helpers import (
-    break_lag,
     play_script,
     try_select_weapon,
 )
 from super_metroid.routes.kpdr.spazer.scripts import FLOOR_MID_RLE
+from super_metroid.routes.rle import break_rle_lag
 from super_metroid.routes.runtime import ControllerSession
 
 
@@ -202,7 +202,7 @@ def _clear_floor_cacatac(session: ControllerSession) -> None:
         if not in_below_spazer(session.state):
             return
         if is_lag_pose(session.state):
-            break_lag(session, reason="spazer_cacatac_lag")
+            break_rle_lag(session, reason="spazer_cacatac_lag")
             continue
         x = int(session.state.samus_x)
         if x < FLOOR_LIP_X[0]:
@@ -251,7 +251,7 @@ def play_below_spazer_floor_to_mid(
         if mid_band(session.state) or on_solid_top(session.state):
             return session.state
         if is_lag_pose(session.state):
-            break_lag(session, reason="spazer_floor_mid_lag")
+            break_rle_lag(session, reason="spazer_floor_mid_lag")
             continue
         hold(session, 1, reason="spazer_floor_mid_settle")
     if not in_below_spazer(session.state):

@@ -24,7 +24,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.red_tower.geometry import (
     WH_EAST_DOOR_X,
     WH_TO_EAST_FRAMES,
@@ -53,7 +53,7 @@ def play_warehouse_to_east(session: ControllerSession) -> SuperMetroidState:
         if state.pose in _MORPH:
             hold(session, 1, "UP", reason=f"{label}_unmorph")
             continue
-        if int(state.velocity_y) == 0 and state.pose in _STANDING_POSES | frozenset(
+        if int(state.velocity_y) == 0 and state.pose in STANDING_POSES | frozenset(
             {25, 75, 77, 81}
         ):
             break

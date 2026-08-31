@@ -15,12 +15,38 @@ and exposes exactly four cumulative public targets:
 level9-entry → level9-silver-arrows → level9-patra → level9-credits
 ```
 
-`level9-entry`, `level9-silver-arrows`, and `level9-patra` deliberately attach
-one-frame fail-closed controllers.  The complete first-quest room graph,
-Silver Arrow room, and natural suffix join have not been decoded or observed,
-so those chapters cannot move Link or accidentally inherit fixture evidence.
-`door_graph/level9_exits.py` likewise exposes an empty natural graph rooted at
-entry `0x76`; the observed suffix remains a separate fixture-only graph.
+`level9-entry`, `level9-silver-arrows`, and `level9-patra` attach one-frame
+fail-closed controllers.  Magical Key topology is now a labeled **hypothesis**
+graph (ROM cellar dests + walkthrough + live suffix), not live natural-segment
+evidence.  Controllers refuse without TF `0xFF` / bombs and never write TF,
+bomb capacity, rooms, or doors.  Exact missing-evidence reasons:
+
+- `post_l8_ow_leftover_unmeasured`
+- `spectacle_rock_0x05_bomb_entrance_unverified_from_post_l8`
+- `old_man_room_0x66_full_tf_gate_unobserved`
+- `silver_arrow_room_0x10_unobserved`
+- `0x51_north_dest_walk_unverified_statue_diamond`
+
+`door_graph/level9_exits.py` keeps the observed fixture suffix separate from
+`LEVEL_9_NATURAL_DOOR_GRAPH` (`level_9_natural_hypothesis`).
+
+### Selected Magical Key route (hypothesis; route_eligible=false)
+
+Red Ring `0x07` excluded (Survival refill; not negligible). Join is the proven
+fixture suffix at `0x41`. `requires_51_to_41=True` — do not spend a sitting on
+the statue diamond until this prefix is live.
+
+```text
+0x76 → 0x66 Old Man TF gate → 0x65 bomb-N → 0x55 Lanmola
+  → cellar 0x60 → 0x14 → 0x15 → 0x16 skip Patra → 0x06 bomb-W → 0x05
+  → cellar 0x70 → 0x63 → 0x62 (8 Keese corridor, NOT Patra south)
+  → 0x61 Patra stairs → cellar 0x75 → 0x20 bomb-N → 0x10 Silver Arrows
+join: 0x10 → 0x20 → 0x61 → 0x51 → 0x41 → 0x31 bomb-W → 0x30
+  → cellar 0x67 → 0x04 bomb-W → 0x03 → cellar 0x77 left → 0x52
+```
+
+Dead beliefs: `0x62` is not a south neighbor of Patra `0x52` (ROM walls; live
+8 Keese W/E only). `0x13→0x03` remains a fake loader scroll.
 
 The `level9-credits` chapter is callable only after the exact live-Patra
 endpoint: room `0x52`, body `0x47`, eight eyes `0x25`, north closed, TF
@@ -31,10 +57,9 @@ zero direct inventory, room, door, progression, or capacity writes.  Ganon fails
 closed unless arrows are selected.  The adapter performs that selection with a
 bounded normal pause-menu cursor loop; it never assigns `ADDR_SELECTED_ITEM`.
 
-This is structural evidence only.  It does not promote the ending suffix,
-select a natural route, or make any `*ReconFixture` route-eligible.  The
-`0x51→0x41` work remains conditional: `requires_51_to_41=None` until decoded
-topology selects or excludes it.
+This is structural evidence only.  It does not promote the ending suffix or
+make any `*ReconFixture` route-eligible. Stitch still needs L8 TF `0xFF` +
+Magic Key + a measured post-L8 OW leftover.
 
 **Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
 `rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (room `0x62` disproved;

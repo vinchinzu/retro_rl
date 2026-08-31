@@ -26,7 +26,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_BUBBLE, ROOM_SINGLE_CHAMBER
 from super_metroid.routes.kpdr.wave.geometry import (
     STB_BUBBLE_SETTLE,
@@ -43,7 +43,7 @@ from super_metroid.routes.kpdr.wave.geometry import (
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.knockback import escape_kb, is_knockback
 
-_LEDGE = _STANDING_POSES | frozenset({1, 2, 9, 10, 37, 38})
+_LEDGE = STANDING_POSES | frozenset({1, 2, 9, 10, 37, 38})
 
 
 def _on_top(state: SuperMetroidState) -> bool:

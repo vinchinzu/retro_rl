@@ -76,10 +76,17 @@ from zelda_i.door_graph.level5_exits import (
 )
 from zelda_i.door_graph.level9_exits import (
     LEVEL_9_DOOR_GRAPH,
+    LEVEL_9_NATURAL_DOOR_GRAPH,
     level_9_door_graph,
+    level_9_natural_door_graph,
+    L9_ENTRY,
     L9_PATRA,
     L9_ROOM_41,
+    L9_ROOM_51,
+    L9_ROOM_62,
+    L9_SILVER_ARROWS,
     L9_ZELDA,
+    natural_route_requires_51_to_41,
 )
 
 __all__ = [
@@ -97,7 +104,9 @@ __all__ = [
     "LEVEL_5_DOOR_GRAPH",
     "level_5_door_graph",
     "LEVEL_9_DOOR_GRAPH",
+    "LEVEL_9_NATURAL_DOOR_GRAPH",
     "level_9_door_graph",
+    "level_9_natural_door_graph",
     "clone_graph",
     "copy_exit",
     "default_cap_for_gate",
@@ -142,7 +151,12 @@ __all__ = [
     "L5_ENTRY",
     "L5_TRIFORCE",
     "L5_WHISTLE_ITEM",
+    "L9_ENTRY",
     "L9_PATRA",
     "L9_ROOM_41",
+    "L9_ROOM_51",
+    "L9_ROOM_62",
+    "L9_SILVER_ARROWS",
     "L9_ZELDA",
+    "natural_route_requires_51_to_41",
 ]

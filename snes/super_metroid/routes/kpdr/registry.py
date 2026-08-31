@@ -11,8 +11,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz
-from super_metroid.routes.kpdr.pink_shaft import (
+from super_metroid.routes.kpdr.brinstar.pink_to_ghz import play_big_pink_to_ghz
+from super_metroid.routes.kpdr.brinstar.pink_shaft import (
     play_big_pink_bomb_to_walkway_edge,
     play_big_pink_clear_super_block,
     play_big_pink_crest_pocket,
@@ -21,25 +21,25 @@ from super_metroid.routes.kpdr.pink_shaft import (
     play_big_pink_morph_to_tunnel,
     play_big_pink_tunnel_west,
 )
-from super_metroid.routes.kpdr.ghz_to_red import (
+from super_metroid.routes.kpdr.brinstar.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
 )
-from super_metroid.routes.kpdr.business_climb import (
+from super_metroid.routes.kpdr.norfair.business_climb import (
     play_business_to_warehouse,
 )
-from super_metroid.routes.kpdr.collect_hijump import (
+from super_metroid.routes.kpdr.kraid.collect_hijump import (
     play_business_to_hj_shaft,
     play_hj_room_collect,
     play_hj_shaft_to_hj_room,
     play_warehouse_to_hijump,
 )
-from super_metroid.routes.kpdr.return_hijump import (
+from super_metroid.routes.kpdr.kraid.return_hijump import (
     play_hijump_to_warehouse,
     play_hj_room_to_shaft,
     play_hj_shaft_to_business,
 )
-from super_metroid.routes.kpdr.to_kraid import (
+from super_metroid.routes.kpdr.kraid.to_kraid import (
     play_baby_kraid_to_eye,
     play_eye_to_kraid,
     play_kihunter_to_baby_kraid,
@@ -49,13 +49,13 @@ from super_metroid.routes.kpdr.to_kraid import (
     play_warehouse_to_zeela_with_hijump,
     play_zeela_to_kihunter,
 )
-from super_metroid.routes.kpdr.from_kraid import (
+from super_metroid.routes.kpdr.kraid.from_kraid import (
     play_baby_to_kihunter_return,
     play_eye_to_baby_return,
     play_kihunter_to_zeela_return,
     play_zeela_to_warehouse_return,
 )
-from super_metroid.routes.kpdr.to_bat_cave import (
+from super_metroid.routes.kpdr.norfair.to_bat_cave import (
     play_bubble_to_bat_cave,
 )
 from super_metroid.routes.kpdr.ice import (
@@ -98,10 +98,10 @@ from super_metroid.routes.kpdr.wrecked_ship import (
     play_ws_main_to_attic,
     play_ws_main_to_basement,
 )
-from super_metroid.routes.kpdr.climb_descent import play_climb_to_pit_moonfall
-from super_metroid.routes.kpdr.moat import play_moat_cross
-from super_metroid.routes.kpdr.parlor_descent import play_parlor_to_climb_moonfall
-from super_metroid.routes.kpdr.west_ocean import (
+from super_metroid.routes.kpdr.crateria.climb_descent import play_climb_to_pit_moonfall
+from super_metroid.routes.kpdr.wrecked_ship.moat import play_moat_cross
+from super_metroid.routes.kpdr.crateria.parlor_descent import play_parlor_to_climb_moonfall
+from super_metroid.routes.kpdr.wrecked_ship.west_ocean import (
     play_west_ocean_edge_spark,
     play_west_ocean_over_ocean_spark,
 )
@@ -115,8 +115,8 @@ from super_metroid.routes.kpdr.norfair import (
     play_rising_tide_to_bubble,
     play_speedway_to_farm,
 )
-from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
-from super_metroid.routes.kpdr.to_speed import (
+from super_metroid.routes.kpdr.norfair.speed_return import play_speed_return_to_bubble
+from super_metroid.routes.kpdr.norfair.to_speed import (
     play_bat_cave_to_speed_hall,
     play_speed_hall_to_speed,
 )
@@ -132,17 +132,17 @@ from super_metroid.routes.kpdr.wave import (
     play_speedway_to_frog_save,
     play_wave_to_double_chamber,
 )
-from super_metroid.routes.kpdr.pb_door import (
+from super_metroid.routes.kpdr.brinstar.pb_door import (
     play_big_pink_enter_pb_door_from_sill,
     play_big_pink_enter_pb_door_from_top_ledge,
 )
-from super_metroid.routes.kpdr.pink_pb import (
+from super_metroid.routes.kpdr.brinstar.pink_pb import (
     play_pink_pb_break_maze_wall,
     play_pink_pb_from_left_zone,
     play_pink_pb_mid_maze_to_collect,
     play_pink_pb_morph_bomb_collect,
 )
-from super_metroid.routes.kpdr.red_stack import (
+from super_metroid.routes.kpdr.red_tower.red_stack import (
     play_bat_to_below_spazer,
     play_below_spazer_to_west,
     play_east_to_warehouse,
@@ -159,17 +159,17 @@ from super_metroid.routes.kpdr.spazer import (
     play_spazer_return_to_below,
     play_spazer_top_to_west,
 )
-from super_metroid.routes.kpdr.super_collect import (
+from super_metroid.routes.kpdr.brinstar.super_collect import (
     play_farming_to_big_pink,
     play_post_spore_supers,
     play_super_room_collect,
     play_super_room_to_farming,
 )
-from super_metroid.routes.kpdr.varia_return import (
+from super_metroid.routes.kpdr.kraid.varia_return import (
     play_kraid_to_eye_return,
     play_varia_to_kraid,
 )
-from super_metroid.routes.kpdr.warehouse_stack import (
+from super_metroid.routes.kpdr.kraid.warehouse_stack import (
     play_warehouse_to_business,
     play_warehouse_wall_to_lower_lip,
 )

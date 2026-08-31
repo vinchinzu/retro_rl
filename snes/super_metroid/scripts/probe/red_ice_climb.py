@@ -23,6 +23,7 @@ from super_metroid.paths import INTEGRATION_DIR  # noqa: E402
 from super_metroid.ram import parse_env_state  # noqa: E402
 from super_metroid.room_timer import format_segment_time  # noqa: E402
 from super_metroid.routes.kpdr.red_tower.red_ice_climb import (  # noqa: E402
+    HELLWAY_SILL,
     LOWER_RIPPER_1,
     LOWER_RIPPER_2,
     LOWER_RIPPER_3,
@@ -31,8 +32,20 @@ from super_metroid.routes.kpdr.red_tower.red_ice_climb import (  # noqa: E402
     LOW_RIPPER_4_Y,
     MID_FLOOR,
     POLICY_ID,
-    TUNNEL_FLOOR,
+    POLICY_ID_ICEHW as ICEHW_POLICY,
+    POLICY_ID_MIDTHIN as MIDTHIN_POLICY,
+    POLICY_ID_R12 as R12_POLICY,
+    POLICY_ID_R23 as R23_POLICY,
+    POLICY_ID_R34 as R34_POLICY,
+    POLICY_ID_R4TUN as R4TUN_POLICY,
+    POLICY_ID_THINUR1 as THINUR1_POLICY,
+    POLICY_ID_TUNMID as TUNMID_POLICY,
+    POLICY_ID_UR12 as UR12_POLICY,
+    POLICY_ID_UR23 as UR23_POLICY,
+    POLICY_ID_UR34 as UR34_POLICY,
+    POLICY_ID_UR3HW as UR3HW_POLICY,
     THIN_SEAT,
+    TUNNEL_FLOOR,
     UPPER_RIPPER_1,
     UPPER_RIPPER_1_Y,
     UPPER_RIPPER_2,
@@ -41,54 +54,21 @@ from super_metroid.routes.kpdr.red_tower.red_ice_climb import (  # noqa: E402
     UPPER_RIPPER_3_Y,
     UPPER_RIPPER_4,
     UPPER_RIPPER_4_Y,
-    HELLWAY_SILL,
     checkpoint_supported,
     play_bottom_to_ripper1,
-    ripper_at_height,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r1_to_r2 import (  # noqa: E402
-    POLICY_ID as R12_POLICY,
-    play_ripper1_to_ripper2,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r2_to_r3 import (  # noqa: E402
-    POLICY_ID as R23_POLICY,
-    play_ripper2_to_ripper3,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r3_to_r4 import (  # noqa: E402
-    POLICY_ID as R34_POLICY,
-    play_ripper3_to_ripper4,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_r4_to_tunnel import (  # noqa: E402
-    POLICY_ID as R4TUN_POLICY,
-    play_ripper4_to_tunnel,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_tunnel_to_mid import (  # noqa: E402
-    POLICY_ID as TUNMID_POLICY,
-    play_tunnel_to_mid_floor,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_mid_to_thin import (  # noqa: E402
-    POLICY_ID as MIDTHIN_POLICY,
+    play_ice_climb_to_hellway,
     play_mid_floor_to_thin_seat,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_thin_to_ur1 import (  # noqa: E402
-    POLICY_ID as THINUR1_POLICY,
+    play_ripper1_to_ripper2,
+    play_ripper2_to_ripper3,
+    play_ripper3_to_ripper4,
+    play_ripper4_to_tunnel,
     play_thin_seat_to_upper_ripper1,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_upper_hops import (  # noqa: E402
-    POLICY_ID_UR12 as UR12_POLICY,
-    POLICY_ID_UR23 as UR23_POLICY,
-    POLICY_ID_UR34 as UR34_POLICY,
+    play_tunnel_to_mid_floor,
     play_upper_ripper1_to_2,
     play_upper_ripper2_to_3,
     play_upper_ripper3_to_4,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_ur3_to_hellway import (  # noqa: E402
-    POLICY_ID as UR3HW_POLICY,
     play_upper_ripper3_to_hellway,
-)
-from super_metroid.routes.kpdr.red_tower.red_ice_to_hellway import (  # noqa: E402
-    POLICY_ID as ICEHW_POLICY,
-    play_ice_climb_to_hellway,
+    ripper_at_height,
 )
 
 DEFAULT_SOURCE = INTEGRATION_DIR / "scratch" / "post_ice_bat_to_red_pure.state"

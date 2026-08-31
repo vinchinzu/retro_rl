@@ -13,11 +13,11 @@ import pytest
 
 from super_metroid.emulator_validation import ROM_AVAILABLE
 from super_metroid.routes.kpdr.ceres.arm_pump import _arm_pump_dash_spans
-from super_metroid.routes.kpdr.ceres.second_room_fixture import (
-    CeresSecondRoomFixture,
+from super_metroid.routes.kpdr.ceres.room_tape import (
+    CeresRoomTape,
     button_names_to_mask,
-    get_ceres_second_room_tape,
-    validate_ceres_second_room,
+    get_ceres_room_tape,
+    validate_ceres_room_tape,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_FALLING,
@@ -68,16 +68,16 @@ class TestCeresSecondRoomTape:
     """Test real tape extraction (offline, no ROM needed)."""
 
     def test_get_tape_returns_fixture(self) -> None:
-        """get_ceres_second_room_tape returns a CeresSecondRoomFixture."""
-        fixture = get_ceres_second_room_tape()
+        """get_ceres_room_tape("second") returns a CeresRoomTape."""
+        fixture = get_ceres_room_tape("second")
 
-        assert isinstance(fixture, CeresSecondRoomFixture)
+        assert isinstance(fixture, CeresRoomTape)
         assert fixture.from_room_id == ROOM_CERES_FALLING
         assert fixture.to_room_id == ROOM_CERES_MAGNET
 
     def test_tape_has_real_source(self) -> None:
         """Tape source is documented (not greedy search)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert "outbound" in fixture.tape_source.lower()
         assert "greedy" not in fixture.tape_source.lower()
@@ -85,14 +85,14 @@ class TestCeresSecondRoomTape:
 
     def test_tape_produces_input_sequence(self) -> None:
         """Tape has non-empty input sequence."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert len(fixture.inputs) > 0
         assert all(hasattr(inp, "buttons") for inp in fixture.inputs)
 
     def test_tape_starts_with_right(self) -> None:
         """Tape starts with RIGHT for 24 frames."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # First 24 frames should be RIGHT = 0x80
         assert fixture.inputs[0].buttons == 0x80
@@ -108,7 +108,7 @@ class TestCeresSecondRoomTape:
 
         Total: 24 + 24 + 24 + 24 + 96 + 24 + 12 + 24 + 140 + 160 = 552 frames
         """
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert fixture.frames == 552
         assert len(fixture.inputs) == 552
@@ -119,7 +119,7 @@ class TestCeresSecondRoomTape:
         Frames 24-47 (24 frames after initial RIGHT 24) must match the
         ActionSpans returned by _arm_pump_dash_spans("RIGHT", 24, ...).
         """
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # Get expected arm-pump expansion from the actual helper
         arm_pump_spans = _arm_pump_dash_spans("RIGHT", 24, "test")
@@ -146,7 +146,7 @@ class TestCeresSecondRoomTape:
 
         This is span 9 at offset 24+24+24+24+96=192 frames.
         """
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # Get expected arm-pump expansion
         arm_pump_spans = _arm_pump_dash_spans("RIGHT", 24, "test")
@@ -173,14 +173,14 @@ class TestCeresSecondRoomTape:
         Room 2 stops before the LEFT 120 scientist approach, so the
         RIGHT+B 96 span is not included.
         """
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # Total should be 552, not 792 (which would include LEFT 120 + RIGHT+B 96 + idle 24)
         assert fixture.frames == 552
 
     def test_tape_right_b_a_span(self) -> None:
         """Tape contains RIGHT+B+A for 24 frames (span 3)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # RIGHT+B+A span starts at frame 48 (after RIGHT 24, RIGHT+B 24)
         # RIGHT+B+A = 0x181
@@ -193,7 +193,7 @@ class TestCeresSecondRoomTape:
 
     def test_tape_no_left_span(self) -> None:
         """Tape does NOT contain LEFT span (room 2 stops before scientist approach)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # LEFT = 0x40
         # Verify no LEFT inputs in the entire tape
@@ -201,7 +201,7 @@ class TestCeresSecondRoomTape:
 
     def test_tape_ends_with_right(self) -> None:
         """Tape ends with RIGHT 160 frames (span 13)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         # Last 160 frames should be RIGHT (0x80)
         right_start = 392  # 552 - 160
@@ -209,7 +209,7 @@ class TestCeresSecondRoomTape:
 
     def test_tape_not_emulator_validated(self) -> None:
         """Tape does not claim emulator validation by default."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert not fixture.emulator_validated
         assert not fixture.emulator_success
@@ -217,20 +217,20 @@ class TestCeresSecondRoomTape:
 
     def test_tape_not_room_clear_without_emu(self) -> None:
         """Tape never claims room_clear without emulator validation."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert not fixture.room_clear
 
     def test_fixture_frames_property(self) -> None:
         """Fixture has frames property (tape length)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         assert fixture.frames == len(fixture.inputs)
         assert fixture.frames > 0
 
     def test_fixture_to_dict_serializable(self) -> None:
         """Fixture can be serialized to dict (smedit-tas-1 compatible)."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
         data = fixture.to_dict()
 
         assert isinstance(data, dict)
@@ -250,12 +250,12 @@ class TestCeresSecondRoomValidation:
 
     def test_validate_requires_rom_or_start_state(self) -> None:
         """Validate raises if ROM or start state unavailable."""
-        fixture = get_ceres_second_room_tape()
+        fixture = get_ceres_room_tape("second")
 
         if not ROM_AVAILABLE or not self._has_start_state():
             # Should raise when prerequisites missing
             with pytest.raises((FileNotFoundError, ValueError)):
-                validate_ceres_second_room(fixture)
+                validate_ceres_room_tape(fixture, "second")
 
     @pytest.mark.skipif(
         not ROM_AVAILABLE,
@@ -269,21 +269,21 @@ class TestCeresSecondRoomValidation:
         if not self._has_start_state():
             pytest.skip("SM_CERES_FALLING_STATE not set or file missing")
 
-        fixture = get_ceres_second_room_tape()
-        validated = validate_ceres_second_room(fixture)
+        fixture = get_ceres_room_tape("second")
+        validated = validate_ceres_room_tape(fixture, "second")
 
         assert validated.emulator_validated
 
 
-class TestCeresSecondRoomFixture:
-    """Test CeresSecondRoomFixture data structure."""
+class TestCeresRoomTape:
+    """Test CeresRoomTape data structure."""
 
     def test_room_clear_requires_emulator_success(self) -> None:
         """room_clear is False unless emulator_validated and emulator_success."""
         from super_metroid.physics_sim import FrameInput
 
         # Not validated
-        fixture = CeresSecondRoomFixture(
+        fixture = CeresRoomTape(
             from_room_id=ROOM_CERES_FALLING,
             to_room_id=ROOM_CERES_MAGNET,
             inputs=(FrameInput(0),),
@@ -293,7 +293,7 @@ class TestCeresSecondRoomFixture:
         assert not fixture.room_clear
 
         # Validated but failed
-        fixture_failed = CeresSecondRoomFixture(
+        fixture_failed = CeresRoomTape(
             from_room_id=ROOM_CERES_FALLING,
             to_room_id=ROOM_CERES_MAGNET,
             inputs=(FrameInput(0),),
@@ -304,7 +304,7 @@ class TestCeresSecondRoomFixture:
         assert not fixture_failed.room_clear
 
         # Validated and succeeded
-        fixture_success = CeresSecondRoomFixture(
+        fixture_success = CeresRoomTape(
             from_room_id=ROOM_CERES_FALLING,
             to_room_id=ROOM_CERES_MAGNET,
             inputs=(FrameInput(0),),

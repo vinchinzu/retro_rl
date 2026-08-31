@@ -2,17 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from typing import Callable
 
-from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_idle_action
 from zelda_i.level8.dungeon import (
-    ENTRY_TO_MAGIC_KEY_SPEC,
-    MAGIC_KEY_TO_SHARD_SPEC,
     UNOBSERVED_LEVEL8_CLEAR,
     UNOBSERVED_LEVEL8_TOPOLOGY,
-    Level8ChapterSpec,
     Level8ClearEndpoint,
     Level8Topology,
     level8_clear_stop,
@@ -30,53 +24,36 @@ from zelda_i.level8.entry import (
     make_post_l7_to_bush_controller,
     make_select_red_candle_controller,
 )
+from zelda_i.level8.path import (
+    UnverifiedLevel8PathController,
+    make_blue_gohma_controller,
+    make_darknut_key_controller,
+    make_four_head_gleeok_controller,
+    make_gleeok_passage_controller,
+    make_magic_key_stairs_controller,
+    make_north_manhandla_controller,
+    make_shard_leave_controller,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_u8
 from zelda_i.spine.hops import SpineHop
 
-
-@dataclass
-class UnobservedLevel8ChapterController:
-    """Explicit placeholder: hypotheses cannot execute as route chapters."""
-
-    spec: Level8ChapterSpec
-    max_frames: int | None = None
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        if self.max_frames is None:
-            self.max_frames = self.spec.max_frames
-
-    def step(self, _snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.failed = True
-        reason = f"{self.spec.chapter_id}_not_live_observed"
-        if not self.notes:
-            self.notes.append(reason)
-        return FrameAction(nes_idle_action(), reason)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "chapter_id": self.spec.chapter_id,
-            "objective": self.spec.objective,
-            "evidence": self.spec.evidence,
-            "route_eligible": self.spec.route_eligible,
-            "notes": list(self.notes),
-        }
+Stage = tuple[str, object, int]
+ControllerFactory = Callable[[], object]
 
 
-def make_entry_to_magic_key_controller() -> UnobservedLevel8ChapterController:
-    return UnobservedLevel8ChapterController(ENTRY_TO_MAGIC_KEY_SPEC)
+def make_entry_to_magic_key_controller() -> UnverifiedLevel8PathController:
+    """Composite blocker kept for tests; chapters use named sub-stages."""
+    return make_north_manhandla_controller()
 
 
-def make_magic_key_to_shard_controller() -> UnobservedLevel8ChapterController:
-    return UnobservedLevel8ChapterController(MAGIC_KEY_TO_SHARD_SPEC)
+def make_magic_key_to_shard_controller() -> UnverifiedLevel8PathController:
+    return make_gleeok_passage_controller()
+
+
+def _stage(name: str, factory: ControllerFactory) -> Stage:
+    controller = factory()
+    return (name, controller, int(getattr(controller, "max_frames", 1)))
 
 
 def _entry_stages(
@@ -98,17 +75,26 @@ def _entry_stages(
     )
 
 
-def _magic_key_stages():
-    controller = make_entry_to_magic_key_controller()
+def _magic_key_stages(*, topology: Level8Topology):
     return (
-        (ENTRY_TO_MAGIC_KEY_SPEC.chapter_id, controller, int(controller.max_frames)),
+        _stage("level8_north_manhandla_bomb", make_north_manhandla_controller),
+        _stage("level8_darknut_key_up", make_darknut_key_controller),
+        _stage(
+            "level8_blue_gohma",
+            lambda: make_blue_gohma_controller(topology=topology),
+        ),
+        _stage("level8_magic_key_stairs", make_magic_key_stairs_controller),
     )
 
 
-def _clear_stages():
-    controller = make_magic_key_to_shard_controller()
+def _clear_stages(*, topology: Level8Topology):
     return (
-        (MAGIC_KEY_TO_SHARD_SPEC.chapter_id, controller, int(controller.max_frames)),
+        _stage("level8_return_passage", make_gleeok_passage_controller),
+        _stage(
+            "level8_four_head_gleeok",
+            lambda: make_four_head_gleeok_controller(topology=topology),
+        ),
+        _stage("level8_heart_shard_leave", make_shard_leave_controller),
     )
 
 
@@ -158,21 +144,22 @@ def l8_hops(
         SpineHop(
             "level8-magic-key",
             "level8_magic_key_natural",
-            _magic_key_stages,
+            lambda: _magic_key_stages(topology=topology),
             magic_key_ok,
         ),
         SpineHop(
             "level8",
             "level8_triforce_0x80",
-            _clear_stages,
+            lambda: _clear_stages(topology=topology),
             clear_ok,
         ),
     )
 
 
 __all__ = [
-    "UnobservedLevel8ChapterController",
     "l8_hops",
+    "make_blue_gohma_controller",
     "make_entry_to_magic_key_controller",
+    "make_four_head_gleeok_controller",
     "make_magic_key_to_shard_controller",
 ]

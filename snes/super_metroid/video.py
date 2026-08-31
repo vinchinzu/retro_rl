@@ -94,8 +94,8 @@ def continuous_video_config(
       - ``frame`` — skip until explicit ``start_frame``
 
     Product YouTube: ``after_credits`` + ``layout="youtube"`` (1080p60
-    sidebars). Never prepend intro cards. ``hq=True`` on youtube only
-    tightens CRF/preset — scale auto-fits 1920x1080. Native ``hq`` uses
+    stream overlay). Never prepend intro cards. ``hq=True`` on youtube only
+    tightens CRF/preset — scale auto-fits the square playfield. Native ``hq`` uses
     :meth:`VideoCaptureConfig.high_quality`.
     """
     if start not in ("power_on", "zebes", "after_credits", "frame"):

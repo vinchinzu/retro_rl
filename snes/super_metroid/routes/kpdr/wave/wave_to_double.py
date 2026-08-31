@@ -18,7 +18,7 @@ from super_metroid.routes.controller_common import (
     unmorph,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.norfair.common import _STANDING_POSES
+from super_metroid.routes.skills.geometry import STANDING_POSES
 from super_metroid.routes.kpdr.rooms import ROOM_DOUBLE_CHAMBER, ROOM_WAVE
 from super_metroid.routes.kpdr.wave.geometry import (
     WAVE_BEAM_MASK,
@@ -53,7 +53,7 @@ def play_wave_to_double_chamber(session: ControllerSession) -> SuperMetroidState
         if state.pose in (137, 138, 39, 40):
             hold(session, 1, "UP", reason=f"{label}_unmorph")
             continue
-        if state.velocity_y == 0 and state.pose in _STANDING_POSES:
+        if state.velocity_y == 0 and state.pose in STANDING_POSES:
             break
 
     for frame in range(WAVE_LEAVE_FRAMES):

@@ -8,14 +8,14 @@ Public facade: :mod:`super_metroid.routes.kpdr.spine`.
 from __future__ import annotations
 
 from super_metroid.ram import HI_JUMP_MASK, VARIA_MASK
-from super_metroid.routes.kpdr.pink_to_ghz import play_big_pink_to_ghz
-from super_metroid.routes.kpdr.pink_shaft import play_big_pink_into_main_shaft
-from super_metroid.routes.kpdr.to_bat_cave import play_bubble_to_bat_cave
-from super_metroid.routes.kpdr.to_speed import (
+from super_metroid.routes.kpdr.brinstar.pink_to_ghz import play_big_pink_to_ghz
+from super_metroid.routes.kpdr.brinstar.pink_shaft import play_big_pink_into_main_shaft
+from super_metroid.routes.kpdr.norfair.to_bat_cave import play_bubble_to_bat_cave
+from super_metroid.routes.kpdr.norfair.to_speed import (
     play_bat_cave_to_speed_hall,
     play_speed_hall_to_speed,
 )
-from super_metroid.routes.kpdr.speed_return import play_speed_return_to_bubble
+from super_metroid.routes.kpdr.norfair.speed_return import play_speed_return_to_bubble
 from super_metroid.routes.kpdr.wave import (
     play_bubble_to_farm,
     play_bubble_to_single_chamber,
@@ -35,12 +35,12 @@ from super_metroid.routes.kpdr.ice import (
     play_ice_snake_to_ice,
 )
 from super_metroid.routes.kpdr.post_ice_spine import POST_ICE_SPINE
-from super_metroid.routes.kpdr.ghz_to_red import (
+from super_metroid.routes.kpdr.brinstar.ghz_to_red import (
     play_ghz_to_noob,
     play_noob_to_red_tower,
 )
-from super_metroid.routes.kpdr.business_climb import play_business_to_warehouse
-from super_metroid.routes.kpdr.collect_hijump import (
+from super_metroid.routes.kpdr.norfair.business_climb import play_business_to_warehouse
+from super_metroid.routes.kpdr.kraid.collect_hijump import (
     play_business_to_hj_shaft,
     play_hj_room_collect,
     play_hj_shaft_to_hj_room,
@@ -52,11 +52,11 @@ from super_metroid.routes.kpdr.norfair import (
     play_cathedral_to_rising_tide,
     play_rising_tide_to_bubble,
 )
-from super_metroid.routes.kpdr.return_hijump import (
+from super_metroid.routes.kpdr.kraid.return_hijump import (
     play_hj_room_to_shaft,
     play_hj_shaft_to_business,
 )
-from super_metroid.routes.kpdr.to_kraid import (
+from super_metroid.routes.kpdr.kraid.to_kraid import (
     play_baby_kraid_to_eye,
     play_eye_to_kraid,
     play_kihunter_to_baby_kraid,
@@ -64,13 +64,13 @@ from super_metroid.routes.kpdr.to_kraid import (
     play_warehouse_to_zeela_with_hijump,
     play_zeela_to_kihunter,
 )
-from super_metroid.routes.kpdr.from_kraid import (
+from super_metroid.routes.kpdr.kraid.from_kraid import (
     play_baby_to_kihunter_return,
     play_eye_to_baby_return,
     play_kihunter_to_zeela_return,
     play_zeela_to_warehouse_return,
 )
-from super_metroid.routes.kpdr.red_stack import (
+from super_metroid.routes.kpdr.red_tower.red_stack import (
     play_bat_to_below_spazer,
     play_below_spazer_to_west,
     play_east_to_warehouse,
@@ -124,15 +124,15 @@ from super_metroid.routes.kpdr.spine_types import (
     _HJ_CAPS,
     _K4_CAPS,
 )
-from super_metroid.routes.kpdr.super_collect import (
+from super_metroid.routes.kpdr.brinstar.super_collect import (
     play_farming_to_big_pink,
     play_super_room_to_farming,
 )
-from super_metroid.routes.kpdr.varia_return import (
+from super_metroid.routes.kpdr.kraid.varia_return import (
     play_kraid_to_eye_return,
     play_varia_to_kraid,
 )
-from super_metroid.routes.kpdr.warehouse_stack import play_warehouse_to_business
+from super_metroid.routes.kpdr.kraid.warehouse_stack import play_warehouse_to_business
 from super_metroid.routes.runtime import RouteSession
 
 # Post-Speed Boost Blocks (Ice Gate floor → Acid); matches progression stage caps.

@@ -1,6 +1,6 @@
 """Named climb phases for Kraid return reverse hops (Kihunter / Zeela).
 
-Product hops in :mod:`super_metroid.routes.kpdr.from_kraid` compose these
+Product hops in :mod:`super_metroid.routes.kpdr.kraid.from_kraid` compose these
 phases. Geometry and frame budgets are frozen for pure-probe green; edit one
 named phase at a time — do not invent mid-loop lineage branches.
 """

@@ -22,7 +22,6 @@ Wave return (rr-vqv3 stack, Phase B reverse):
 Package layout
 --------------
 * ``geometry`` — room-prefixed bands + seats + ``WAVE_BEAM_MASK`` / predicates
-* ``scripts`` — human gate-open RLE loaded from ``data/*.json``
 * shared ``escape_kb`` — :func:`super_metroid.routes.skills.knockback.escape_kb`
 * ``bubble_to_single`` — K4.8
 * ``single_to_double`` — K4.9

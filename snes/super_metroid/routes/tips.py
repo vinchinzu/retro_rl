@@ -274,8 +274,8 @@ def _merge_tip_play_results(
         return base
 
     # Local imports: avoid tips ↔ early controller cycles at module load.
-    from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
-    from super_metroid.routes.kpdr.super_collect import SuperCollectEvidence
+    from super_metroid.routes.kpdr.brinstar.spore_spawn import SporeSpawnEvidence
+    from super_metroid.routes.kpdr.brinstar.super_collect import SuperCollectEvidence
 
     boss = base.boss
     super_collect = base.super_collect
@@ -341,7 +341,7 @@ def _spine_final_conditions(
     early_prefix: Callable[[SuperMetroidState], dict[str, bool]],
     extra: dict[str, bool] | None = None,
 ) -> dict[str, bool]:
-    from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
+    from super_metroid.routes.kpdr.brinstar.spore_spawn import SporeSpawnEvidence
 
     conditions = early_prefix(final)
     conditions.update(
@@ -395,8 +395,12 @@ def _kpdr_policy_sources() -> dict[str, object]:
             "continuous_route_module": hashed_policy_source(
                 _THIS.with_name("continuous.py")
             ),
-            "post_torizo_controller": hashed_policy_source(kpdr / "spore_spawn.py"),
-            "kpdr_super_room": hashed_policy_source(kpdr / "super_collect.py"),
+            "post_torizo_controller": hashed_policy_source(
+                kpdr / "brinstar" / "spore_spawn.py"
+            ),
+            "kpdr_super_room": hashed_policy_source(
+                kpdr / "brinstar" / "super_collect.py"
+            ),
             "kpdr_package": {
                 "path": str(kpdr.resolve()),
                 "note": "K1/K2 segment controllers under routes/kpdr/",
@@ -464,7 +468,7 @@ def run_tip(
 ) -> ContinuousRunReport:
     """Power-on once through a tip (assist + condition plugins on TipSpec)."""
     from super_metroid.routes.kpdr import SuperCollectEvidence
-    from super_metroid.routes.kpdr.spore_spawn import SporeSpawnEvidence
+    from super_metroid.routes.kpdr.brinstar.spore_spawn import SporeSpawnEvidence
 
     spec = get_tip(tip_id)
 

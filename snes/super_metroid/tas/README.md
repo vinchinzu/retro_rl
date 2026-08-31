@@ -106,6 +106,13 @@ uv run pytest snes/super_metroid/tests/test_tas_movies.py \
   snes/super_metroid/tests/test_tas_materialize.py -q
 ```
 
+```bash
+# Native lsnes rr2-β23 replay of #4010M (authoring core; not snes9x)
+MAX_FRAMES=60000 EARLY_EXIT=1 \
+  ./snes/super_metroid/tas/oracle/run_lsnes_100.sh \
+  snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes
+```
+
 Playbooks:
 
 - Harness hybrid (snes9x re-anchor / Landing→Parlor): [`docs/TAS_ADAPT.md`](../docs/TAS_ADAPT.md)

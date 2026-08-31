@@ -220,7 +220,7 @@ def play_landing_to_parlor(session: RouteSession) -> None:
 
 
 def play_parlor_to_climb(session: RouteSession) -> None:
-    from super_metroid.routes.kpdr.parlor_descent import (
+    from super_metroid.routes.kpdr.crateria.parlor_descent import (
         parlor_moonfall_enabled,
         play_parlor_to_climb_moonfall,
     )
@@ -232,7 +232,7 @@ def play_parlor_to_climb(session: RouteSession) -> None:
 
 
 def play_climb_to_pit(session: RouteSession) -> None:
-    from super_metroid.routes.kpdr.climb_descent import (
+    from super_metroid.routes.kpdr.crateria.climb_descent import (
         climb_moonfall_enabled,
         play_climb_to_pit_moonfall,
     )

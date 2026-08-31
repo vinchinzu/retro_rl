@@ -4,7 +4,7 @@ Spazer Room ``0xA447`` is on the continuous spine. Power-on reaches Below
 Spazer ``0xA408`` with **Charge** from K1 (``play_big_pink_to_ghz``).
 
 Mainline fuse:
-:func:`~super_metroid.routes.kpdr.red_stack.play_below_spazer_to_west` →
+:func:`~super_metroid.routes.kpdr.red_tower.red_stack.play_below_spazer_to_west` →
 :func:`play_spazer_detour` → West Tunnel ``0xCF54`` → Glass → East → Warehouse.
 
 **Always detour when Spazer is missing** (floor entry included). There is no
@@ -14,7 +14,7 @@ Package layout
 --------------
 * ``geometry`` — named bands + pure predicates
 * ``scripts`` — guide-shaped RLE tables
-* ``helpers`` — ``play_script`` / lag break
+* ``helpers`` — ``play_script`` / ground wait
 * ``climb`` — floor→mid→solid top
 * ``approach`` — solid top → Super door → Spazer Room
 * ``collect`` — pedestal + return handoff
@@ -22,7 +22,7 @@ Package layout
 * ``detour`` — product fuse
 
 West floor runner lives in
-:mod:`super_metroid.routes.kpdr.below_spazer_west` (no import cycle with
+:mod:`super_metroid.routes.kpdr.red_tower.below_spazer_west` (no import cycle with
 red_stack).
 """
 

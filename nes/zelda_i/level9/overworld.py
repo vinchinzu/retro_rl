@@ -156,8 +156,14 @@ def planning_report() -> dict[str, Any]:
             "rock_screen": SCREEN_LEVEL9_ROCK_HYP,
             "entry_room": ROOM_LEVEL9_ENTRY,
             "red_ring_room": None,
-            "silver_arrow_room": None,
+            "silver_arrow_room": 0x10,
+            "silver_arrow_evidence": "hypothesis",
             "ganon_room": ROOM_GANON,
+        },
+        "natural_entry": {
+            "post_l8_leftover": "unmeasured",
+            "start_based_rock_hops": "fixture-live; not the cumulative leave",
+            "route_eligible": False,
         },
         "docs": "nes/zelda_i/docs/LEVEL9_ROUTE.md",
     }

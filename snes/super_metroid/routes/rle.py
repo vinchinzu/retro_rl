@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from super_metroid.ram import SuperMetroidState
-from super_metroid.routes.controller_common import hold
+from super_metroid.routes.controller_common import hold, require_room, wait_ordinary_room
 from super_metroid.routes.runtime import ControllerSession
 from super_metroid.routes.skills.geometry import POSE_KNOCKBACK
 
@@ -28,7 +28,7 @@ def _is_rle_lag_pose(state: SuperMetroidState) -> bool:
     return int(state.pose) in _RLE_LAG_POSES
 
 
-def _break_rle_lag(
+def break_rle_lag(
     session: ControllerSession,
     *,
     reason: str = "rle_lag",
@@ -105,11 +105,26 @@ def play_script(
             if stop_when is not None and stop_when(session.state):
                 return session.state
             if on_lag == "break" and _is_rle_lag_pose(session.state):
-                _break_rle_lag(session, reason=f"{reason}_lag")
+                break_rle_lag(session, reason=f"{reason}_lag")
             state = hold(session, 1, *btns, reason=reason)
             if stop_when is not None and stop_when(session.state):
                 return session.state
     return state
+
+
+def play_rle_room_exit(
+    session: ControllerSession,
+    *,
+    from_room: int,
+    to_room: int,
+    script: RleScript,
+    label: str,
+    settle_frames: int = 300,
+) -> SuperMetroidState:
+    """Require ``from_room``, play open-loop RLE, settle in ``to_room``."""
+    require_room(session, from_room, label)
+    play_script(session, script, reason=f"{label}_body", room_id=from_room)
+    return wait_ordinary_room(session, to_room, settle_frames=settle_frames, label=label)
 
 
 def play_snes12_frames(
@@ -141,7 +156,9 @@ def play_snes12_frames(
 __all__ = [
     "RleScript",
     "StopWhen",
+    "break_rle_lag",
     "load_rle_json",
+    "play_rle_room_exit",
     "play_script",
     "play_snes12_frames",
 ]

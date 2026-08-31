@@ -11,7 +11,7 @@ import pytest
 from super_metroid.paths import SCRATCH_STATE_DIR, SHARED_ROM
 from super_metroid.ram import FACING_LEFT, GameplayPhase, parse_state
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
-from super_metroid.routes.kpdr.alcatraz_escape import (
+from super_metroid.routes.kpdr.crateria.alcatraz_escape import (
     ROLLOUT_MAX_X,
     ROLLOUT_MAX_Y,
     SHAFT_LIP_Y,
@@ -90,7 +90,7 @@ def test_rollout_is_morph_left_of_chimney() -> None:
 def test_base_approach_is_one_dash_jump_not_a_retry_ladder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
+    from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
 
     calls: list[tuple[int, tuple[str, ...], str]] = []
     session = _Session(_state())
@@ -122,7 +122,7 @@ def test_play_rejects_wrong_entry_seat() -> None:
 def test_instant_morph_is_single_down_while_holding_jump(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from super_metroid.routes.kpdr import alcatraz_escape as alcatraz
+    from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
 
     calls: list[tuple[int, tuple[str, ...], str]] = []
     session = _Session(

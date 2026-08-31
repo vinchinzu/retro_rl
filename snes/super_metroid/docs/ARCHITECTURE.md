@@ -42,10 +42,10 @@ legacy/*                                  frozen vision/RL remnants
 ### Where a new file goes
 
 Hop ≠ fight. Ticket names (`k4` / `k5` / `k6`) stay in comments and
-residuals. Area packages: `ceres/`, `gauntlet/`, `ice/`, `norfair/`,
-`red_tower/`, `spazer/`, `wave/`, `wrecked_ship/`. Split a source file
-before 1000 LOC; merge into the owner instead of a new sibling.
-Frame-identical moves.
+residuals. Area packages: `ceres/`, `gauntlet/`, `crateria/`, `brinstar/`,
+`ice/`, `norfair/`, `kraid/`, `red_tower/`, `spazer/`, `wave/`,
+`wrecked_ship/`. Soft max ~1000 LOC: merge into the owner instead of a
+new sibling. Frame-identical moves.
 
 | New code | Put it here | Not here |
 |----------|-------------|----------|
@@ -58,7 +58,7 @@ Frame-identical moves.
 | `ROOM_*` constants | `routes/kpdr/room_ids.py` | a second hex copy in `combat/` |
 
 Gold-standard **boss hop** already on the spine: `wrecked_ship/phantoon_fight.py` and
-`to_kraid.play_kraid_entry_to_varia` (require room → `combat.*` → leave
+`kraid.to_kraid.play_kraid_entry_to_varia` (require room → `combat.*` → leave
 check). Do not grow a per-frame HP loop in a hop.
 
 ### Runtime entrypoints
@@ -369,7 +369,7 @@ Grow shared helpers in layers:
 | Continuous graphs | `progression/stages/` | staged rooms/edges/milestones → `*GRAPH` via thin `data.py` |
 
 Bubble Mountain pilot: skills under `routes/skills/`; product hop
-`routes/kpdr/to_bat_cave.py` (`play_bubble_to_bat_cave`). Prefer **hop-named**
+`routes/kpdr/norfair/to_bat_cave.py` (`play_bubble_to_bat_cave`). Prefer **hop-named**
 product modules and **skill-named** libraries over room megamodules.
 
 Promote into `controller_common` / `skills` **after a second consumer** with

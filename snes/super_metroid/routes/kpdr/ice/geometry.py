@@ -10,7 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from super_metroid.ram import SuperMetroidState
-from super_metroid.routes.kpdr.norfair.common import _LEDGE_POSES, _STANDING_POSES
 from super_metroid.routes.kpdr.rooms import (
     ROOM_BUSINESS,
     ROOM_ICE_ACID,
@@ -19,6 +18,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ICE_TUTORIAL,
 )
 from super_metroid.routes.rle import RleScript, load_rle_json
+from super_metroid.routes.skills.geometry import LEDGE_POSES, STANDING_POSES
 
 # ---------------------------------------------------------------------------
 # Business Center (0xA7DE) — mid-shaft Super green LEFT → Ice Gate
@@ -36,10 +36,6 @@ ICE_SUPER_DOOR_X = 40
 # Mid-platform approach before Super lip (human dwell y≈1067 then climb).
 ICE_APPROACH_Y = (980, 1100)
 ICE_APPROACH_X = (90, 180)
-
-# Grounded poses for door ledge / elevator settle (exclude pure air spin only).
-LEDGE_POSES = _LEDGE_POSES
-STANDING_POSES = _STANDING_POSES
 
 # Frame budgets (one-knob pure; assist unlimited ammo).
 ELEVATOR_SETTLE_FRAMES = 600

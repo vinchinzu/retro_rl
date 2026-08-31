@@ -18,7 +18,7 @@ from super_metroid.routes.runtime import ControllerSession
 def play_spazer_detour(session: ControllerSession) -> SuperMetroidState:
     """Mainline K2.2: climb → Super door → collect → return → West.
 
-    Called by :func:`~super_metroid.routes.kpdr.red_stack.play_below_spazer_to_west`
+    Called by :func:`~super_metroid.routes.kpdr.red_tower.red_stack.play_below_spazer_to_west`
     on every continuous Below→West hop when Spazer is missing (always — no
     floor skip). Also pure-probeable as ``spazer-detour``.
 

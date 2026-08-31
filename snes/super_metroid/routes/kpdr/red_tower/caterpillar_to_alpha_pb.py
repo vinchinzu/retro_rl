@@ -9,7 +9,7 @@ from super_metroid.routes.controller_common import (
     select_weapon,
     wait_ordinary_room,
 )
-from super_metroid.routes.kpdr.alpha_pb import play_alpha_pb_collect
+from super_metroid.routes.kpdr.red_tower.alpha_pb import play_alpha_pb_collect
 from super_metroid.routes.runtime import ControllerSession
 
 ROOM_CATERPILLAR = 0xA322

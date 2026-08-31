@@ -94,9 +94,8 @@ Controller: `routes/kpdr/wrecked_ship/` geometry + overlay + play. Unpowered
 | `ws_main_geometry.py` | observable land band (`GRATE_LAND_*`) + region |
 | `ws_main_departure.py` | take02 LEFT+A vs take04 walk-right (data) |
 | `ws_main_actions.py` | one action per region |
-| `ws_main_shaft.py` | overlay loop |
 | `ws_main_ice.py` | ice overlay |
-| `ws_main_climb.py` | play |
+| `ws_main_climb.py` | play + overlay loop |
 
 | Phase | From | Held exit | Status |
 |-------|------|-----------|--------|

@@ -57,8 +57,13 @@ def test_catalog_full_slices_are_wired() -> None:
 def test_existing_sniq_slices_unchanged() -> None:
     assert "sniq_any_full" in SLICE_CATALOG
     assert "sniq_100_full" in SLICE_CATALOG
+    assert "sniq_100_lsmv_full" in SLICE_CATALOG
     assert SLICE_CATALOG["sniq_any_full"].kind == "lsmv"
     assert SLICE_CATALOG["sniq_100_full"].kind == "bk2"
+    assert SLICE_CATALOG["sniq_100_lsmv_full"].kind == "lsmv"
+    native = by_filename("sniq_100_4010M.lsmv")
+    assert native.emulator == "lsnes rr2-β23"
+    assert native.expected_frames == 222_788
 
 
 def _write_smv(path: Path, words: list[int]) -> None:
