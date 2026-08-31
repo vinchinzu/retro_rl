@@ -1,12 +1,12 @@
 ## Residual — rr-kw8t Gravity on the Phantoon tip
 
 **Continue (rr-kw8t):** Main Shaft hop 2, Attic→West Ocean, West
-Ocean→Pancakes, Pancakes→Homing Geemer, and Homing Geemer→Bowling are
-complete. Do not reopen the grate, west-super, mid-climb, upper-ladder,
-Attic door, Attic kill-all, West Ocean maze, Pancakes, or Homing Geemer.
-The next boundary is Bowling→Gravity from
-`scratch/post_homing_geemer_to_bowling.state`. The leave is `0xC98E`
-`(39,395) p9` gs=8 dt=0, matching the human Bowling entry.
+Ocean→Pancakes, Pancakes→Homing Geemer, Homing Geemer→Bowling, and
+Bowling→Gravity are complete. Do not reopen the grate, west-super,
+mid-climb, upper-ladder, Attic door, Attic kill-all, West Ocean maze,
+Pancakes, Homing Geemer, or Bowling. The next boundary is Gravity collect
+from `scratch/post_bowling_to_gravity.state`. The leave is `0xCE40`
+`(216,130) p26` gs=8 dt=0, matching the human Gravity entry.
 
 **Closed miss:** the 523→443 handoff now latches only after the real
 block-clearing jump, then uses the take02 RIGHT+A drift. The upper ladder is
@@ -47,12 +47,20 @@ mid-left Bowling spawn, not y~139. It is dual-exact **282f** ×2 at
 `0xC98E` `(39,395) p9` gs=8 dt=0. Report:
 `scratch/homing_geemer_to_bowling_dual.json`; pin out:
 `scratch/post_homing_geemer_to_bowling.state`.
+Bowling→Gravity follows the Gravity-v2 2,852f body (not s23 5,015f). Live
+stop is **2,972f** (2,852 body + 120 dest). Morph floor-drop RAM at f2207:
+`(453,512)` p29 mt=4, ride bot `0xF0FF` `(485,535)` hp=20; Workrobots
+`0xE8FF` stay at y=624. It is dual-exact **2,972f** ×2 at `0xCE40`
+`(216,130) p26` gs=8 dt=0. Report:
+`scratch/bowling_to_gravity_dual.json`; pin out:
+`scratch/post_bowling_to_gravity.state`. Drop:
+`scratch/bowling_drop_trigger.json`.
 Phase dumps are named scratch pins.
 
-**Pin in:** `scratch/post_homing_geemer_to_bowling.state` (`0xC98E`
-`(39,395) p9` gs=8 dt=0)
-**Goal:** Gravity Suit Room `0xCE40` gs=8 dt=0.
-**Living checkbox:** `bowling_to_gravity`.
+**Pin in:** `scratch/post_bowling_to_gravity.state` (`0xCE40`
+`(216,130) p26` gs=8 dt=0)
+**Goal:** Gravity Suit collected, items `0x3125`, still `0xCE40` gs=8 dt=0.
+**Living checkbox:** `gravity_collect`.
 Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 
 ### Already green (do not re-prove)
@@ -70,6 +78,7 @@ Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 | Hop 4 West Ocean → Pancakes | **1,476f** ×2 | `0x9461` (39,139) p9 gs=8 dt=0 |
 | Hop 5 Pancakes → Homing Geemer | **549f** ×2 | `0x968F` (39,139) p11 gs=8 dt=0 |
 | Hop 6 Homing Geemer → Bowling | **282f** ×2 | `0xC98E` (39,395) p9 gs=8 dt=0 |
+| Hop 7 Bowling → Gravity | **2,972f** ×2 | `0xCE40` (216,130) p26 gs=8 dt=0; ride bot 0xF0FF at floor-drop |
 
 Observable `(1189, 1883) p2` and take04 `~(1195, 1883)` are not that pin.
 
@@ -140,16 +149,17 @@ to 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 
 ### Next — one seam
 
-Play `bowling_to_gravity` from the natural
-`post_homing_geemer_to_bowling.state` pin. Keep all earlier rooms closed.
-The pin matches the human Bowling entry `(39,395) p9`. s23 bowling is
-5,015f; gravity_path_v2 is 2,852f.
+Play `gravity_collect` from the natural
+`post_bowling_to_gravity.state` pin. Keep all earlier rooms closed.
+The pin matches the human Gravity entry `(216,130) p26`. Collect is
+already 132f ×2 from the door-warp `f022887` pin at `(127,135) p46`;
+this sitting must still enter from the bowling leave.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/kpdr.py pure bowling-to-gravity \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_homing_geemer_to_bowling.state \
-  --expect-room 0xC98E --no-red-diag
+  snes/super_metroid/scripts/probe/kpdr.py pure gravity-collect \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_bowling_to_gravity.state \
+  --expect-room 0xCE40 --no-red-diag
 ```
 
 ### Non-claims
@@ -175,4 +185,6 @@ QT_QPA_PLATFORM=offscreen uv run python \
 - Did not treat pocket `(1177, 1883)` or land `(1189, 1883)` as fire-slope green
 - Did not treat take04 alcove as the living handoff
 - Did not treat Homing Geemer→Bowling as composed Gravity evidence
+- Did not treat Bowling→Gravity as composed Gravity evidence
+- Did not treat the `f022887` collect pin as this bowling leave
 - Did not power-on / Phantoon-leave `--to gravity`
