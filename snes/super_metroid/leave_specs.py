@@ -216,8 +216,9 @@ WEST_OCEAN_TO_PANCAKES = _spec(
 PANCAKES_TO_HOMING_GEEMER = _spec(
     "pancakes_to_homing_geemer", ROOM_HOMING_GEEMER, (1, 80), (100, 180), "any"
 )
+# Homing Geemer right door settles mid-left Bowling ~(39,395), not y~139.
 HOMING_GEEMER_TO_BOWLING = _spec(
-    "homing_geemer_to_bowling", ROOM_BOWLING, (1, 120), (100, 220), "any"
+    "homing_geemer_to_bowling", ROOM_BOWLING, (1, 80), (360, 430), "any"
 )
 BOWLING_TO_GRAVITY = _spec(
     "bowling_to_gravity", ROOM_GRAVITY, (80, 320), (80, 220), "any"
