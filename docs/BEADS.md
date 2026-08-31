@@ -25,9 +25,11 @@ bd export -o .beads/issues.jsonl  # then commit with the code
 4. Product evidence still lives under `<console>/<game>/docs/` (STATUS,
    pure-first, natural-entry). Closing a bead is not a STATUS promote.
 5. Commit `.beads/issues.jsonl` with the code that matches it.
+   Never commit the Dolt database (`.beads/embeddeddolt/`), `.beads/backup/`,
+   or daemon/runtime files — those are local-only and grow to ~100MB.
 6. Session end: close/update issues → `bd export -o .beads/issues.jsonl` →
    commit. Push only when the human asked for a push (do not force-push
-   beads/history).
+   beads/history). Do not `git add .beads/`.
 
 Prefix: `rr-`. Labels: game name (`super_metroid`, `smb`, …), kind
 (`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`). Super Metroid,
