@@ -2,8 +2,8 @@
 
 **Status:** Recovered power-on tip is still cleared L6 `0x29` leftover `(184,144)`
 after `--through level6-clear29` 1/1. `--through level6-south29` is **BLOCKED
-3/3** this sitting (plus the prior-sitting RIGHT+DOWN 0/1). Bead `rr-tne2`
-stays open. Do not STATUS-promote.
+4/4** from this east leftover (plus the prior-sitting RIGHT+DOWN 0/1). Bead
+`rr-tne2` stays open. Do not STATUS-promote.
 
 ## Recovered prefix (unchanged this sitting)
 
@@ -25,9 +25,9 @@ deficit is still one versus historical; do not top up. East `0x29` sealed
 (`open_doorway_mask` 12). Center block is immediately west of leftover; PNG
 shows Link east-center of dark `0x29`.
 
-## south29 — BLOCKED 3/3 this sitting
+## south29 — BLOCKED 4/4
 
-All three trials `--through level6-south29 --tag l6_south29_recompose`
+All four east-leftover trials `--through level6-south29 --tag l6_south29_recompose`
 0/1, hop 4000f timeout, end ~209,989f, leftover still play `0x29`, keys=3,
 rod=1, deaths/state-load/progression/capacity 0, `status_claim=false`. Do
 not retry any of these three, and do not retry the prior-sitting RIGHT+DOWN
@@ -39,20 +39,26 @@ clip from leftover `(55,133)`.
 | 1 | LEFT on y=144 to x=120 | `(184,141)` `south_up_halt`; `miss_f2_LEFT_184_142` then f3/f4 at `(184,141)` tile 117 misses 3 | LEFT is the center block (tile 244). Wall-slide 144→141 |
 | 2 | DOWN clip to south band y=181 | `(184,165)` `south_peel` 4000f tile 244 misses 0 | east aisle **does** walk 144→165 (~1px/f) then **boxes**. Clip never LEFT |
 | 3 | occupancy dest `(120,189)` | `(184,149)` `south_up_halt`; `miss_f3_DOWN_184_147` (2px step), `miss_f6_DOWN_184_149`, `miss_f7_LEFT_184_149` tile 116 misses 3 | occupancy false-misses the same DOWN the clip completed to 165 |
+| 4 | DOWN to measured box y=165, then LEFT | `(184,165)` `south_up_halt`; `miss_f19_LEFT_184_165`, tile 244, misses 1 | DOWN works 144→165; y=165 is **not** a west aisle and the first LEFT is solid |
 
-Parked (untested) next policy in `SOUTH29_SPEC`: clip DOWN at x=184 until
-`y>=SOUTH29_EAST_BOX_Y` (165), then `align="x"` LEFT on y=165 to x=120, then
-DOWN. That is red-2 geometry with a stop at the measured box. Do not
-occupancy-DOWN (red 3). Do not LEFT at y=144 (red 1). Do not clip-DOWN to
-181 (red 2). Optional cheaper path still open: make clear29 leave west of
-x=64 so the historical west clip can run; do not retouch clear29 without a
-new sitting.
+Trial 4 was the parked `SOUTH29_SPEC`; do not rerun it. Report
+`l6_south29_recompose.json` ended at frame 209,989 with play `0x29`
+`(184,165)`, health `0x66` lo==hi, keys=3, bombs=8, Bow=1, Rod=1, TF=`0x1F`,
+deaths/state-load/progression/capacity writes 0, `status_claim=false`.
+
+Next open geometry task: change `clear29` combat cleanup so the natural clear
+leftover is west of x=64, then take one screenshot-first south-door trial from
+that measured predecessor. Do not assume or rerun the old `(55,133)`
+RIGHT+DOWN policy; form a fresh policy from the new PNG/RAM trace. Do not
+occupancy-DOWN (red 3), LEFT at y=144 (red 1), LEFT at y=165 (red 4), or clip
+DOWN toward y=181 (red 2).
 
 ```bash
+# After changing only the clear29 cleanup policy to target x<64:
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-south29 --no-video --trials 1 \
-  --tag l6_south29_recompose
+  --through level6-clear29 --no-video --trials 1 \
+  --tag l6_clear29_west_recompose
 ```
 
 ## Key deficit (still open; do not top-up)
@@ -90,5 +96,6 @@ UNMEASURED (do not assume L6 leave is OW `0x22`).
 - Did not retouch maze-west, 0x40, stairs09, or the cellar walk.
 - Did not retry west-aisle stairs09.
 - Did not retry the `(55,133)` RIGHT+DOWN clip.
-- Did not live-run the parked y=165 clip this sitting (3-red halt).
+- Live-ran the parked y=165 clip exactly once; it failed at the first LEFT.
+- Did not rerun after that red.
 - Did not push.
