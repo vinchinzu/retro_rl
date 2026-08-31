@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from retro_harness.controls import pressed_snes_buttons
 from super_metroid.combat.enemies import Enemy
 from super_metroid.ram import GRAVITY_MASK
 from super_metroid.routes.catalog import DEFAULT_CONTINUOUS_TIP, get_continuous_tip
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
-from super_metroid.routes.kpdr.room_ids import ROOM_GRAVITY
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_GRAVITY,
+    ROOM_PANCAKES,
+    ROOM_WEST_OCEAN,
+)
 from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
     ATTIC_ATOMIC_ID,
     ATTIC_GUIDE_BODY,
@@ -19,9 +24,12 @@ from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
     GRAVITY_HOP_BODY,
     PARENT_TAPE_ID,
     TAPE_BODY_FRAMES,
+    WEST_OCEAN_ENTRY_RUN_FRAMES,
+    WEST_OCEAN_GUIDE_BODY,
     attic_required_enemies,
     load_gravity_body,
     play_gravity_collect,
+    play_west_ocean_to_pancakes,
 )
 
 
@@ -99,6 +107,44 @@ def test_attic_guide_is_the_newer_power_bomb_human_take() -> None:
     assert len(body) == 2_713
     assert any(row[2] for row in body)  # SELECT cycles to Power Bombs.
     assert any(row[9] for row in body)  # X places the bomb / fires beams.
+
+
+def test_west_ocean_guide_is_the_newer_gravity_human_take() -> None:
+    if not WEST_OCEAN_GUIDE_BODY.is_file():
+        pytest.skip("gravity_path_v2 West Ocean body not on disk")
+    body = load_gravity_body(WEST_OCEAN_GUIDE_BODY)
+    assert len(body) == 1_353
+
+
+def test_west_ocean_natural_entry_restores_run_momentum() -> None:
+    class WestOceanSession(_Session):
+        def __init__(self) -> None:
+            super().__init__()
+            self.state.room_id = ROOM_WEST_OCEAN
+
+        def step(self, action, reason: str = ""):
+            del reason
+            self.actions.append(tuple(int(v) for v in action))
+            self.frame += 1
+            if self.frame == WEST_OCEAN_ENTRY_RUN_FRAMES + 1:
+                self.state.room_id = ROOM_PANCAKES
+            return self.state
+
+    session = WestOceanSession()
+    out = play_west_ocean_to_pancakes(session)
+
+    assert out.room_id == ROOM_PANCAKES
+    assert session.frame == WEST_OCEAN_ENTRY_RUN_FRAMES + 1
+    assert all(
+        tuple(pressed_snes_buttons(action)) == ("B", "LEFT")
+        for action in session.actions[:WEST_OCEAN_ENTRY_RUN_FRAMES]
+    )
+
+
+def test_west_ocean_wrong_room_fails_closed() -> None:
+    session = _Session()
+    with pytest.raises(RuntimeError, match="west_ocean_to_pancakes"):
+        play_west_ocean_to_pancakes(session)
 
 
 def test_gravity_collect_is_registered_scratch_tip() -> None:

@@ -2,7 +2,7 @@
 
 Attic uses the newer human Gravity take as choreography: one Power Bomb at
 the right entry, then a reactive aimed-beam sweep through every gray-door
-enemy before leaving left. Later transit hops replay settled s23 bodies and
+enemy before leaving left. Later transit hops use settled human bodies and
 stop on dest-room gs=8.
 ``play_gravity_collect`` stops when ``GRAVITY_MASK`` is set (320f tape,
 collect+settle at 132f; the remaining 188f are morph idle).
@@ -51,6 +51,13 @@ ATTIC_GUIDE_BODY = (
     / "hop_03_Attic.json"
 )
 WEST_OCEAN_HOP_BODY = S23_HOPS / "hop_04_West_Ocean.json"
+WEST_OCEAN_GUIDE_BODY = (
+    GAME_DIR
+    / "tasks"
+    / "gravity_path_v2"
+    / "gravity_path_v2_take01_hops"
+    / "hop_04_West_Ocean.json"
+)
 PANCAKES_HOP_BODY = S23_HOPS / "hop_05_Pancakes_and_Wavers_Room.json"
 HOMING_GEEMER_HOP_BODY = S23_HOPS / "hop_06_Homing_Geemer_Room.json"
 BOWLING_HOP_BODY = S23_HOPS / "hop_07_Bowling_Alley.json"
@@ -73,6 +80,8 @@ ATTIC_INTENT = Intent(engage=ATTIC_REQUIRED_ENEMY_IDS)
 ATTIC_COMBAT_BUDGET = 4_200
 ATTIC_POWER_BOMB_FUSE = 130
 ATTIC_WEST_OCEAN_SETTLE = 420
+WEST_OCEAN_ENTRY_RUN_FRAMES = 8
+WEST_OCEAN_PANCAKES_SETTLE = 240
 
 __all__ = [
     "ATTIC_HOP_BODY",
@@ -86,6 +95,9 @@ __all__ = [
     "PARENT_TAPE_ID",
     "TAPE_BODY_FRAMES",
     "WEST_OCEAN_HOP_BODY",
+    "WEST_OCEAN_GUIDE_BODY",
+    "WEST_OCEAN_ENTRY_RUN_FRAMES",
+    "WEST_OCEAN_PANCAKES_SETTLE",
     "attic_required_enemies",
     "load_gravity_body",
     "load_s23_body",
@@ -269,12 +281,31 @@ def play_attic_to_west_ocean(session: ControllerSession) -> SuperMetroidState:
 
 
 def play_west_ocean_to_pancakes(session: ControllerSession) -> SuperMetroidState:
+    """Restore the human entry momentum, then follow the Gravity-v2 maze body.
+
+    The human anchor starts at the same far-right door seat with run momentum,
+    while the natural Attic leave is settled and grounded.  Eight ``B+LEFT``
+    frames reproduce that handoff without changing the body's total duration.
+    """
+    label = "west_ocean_to_pancakes"
+    require_room(session, ROOM_WEST_OCEAN, label)
+    if _arrived(session.state, ROOM_PANCAKES):
+        return session.state
+    hold(
+        session,
+        WEST_OCEAN_ENTRY_RUN_FRAMES,
+        "LEFT",
+        "B",
+        reason=f"{label}_entry_run",
+    )
+    body = load_s23_body(WEST_OCEAN_GUIDE_BODY)
     return _play_s23_to_room(
         session,
-        label="west_ocean_to_pancakes",
+        label=label,
         start_room=ROOM_WEST_OCEAN,
         dest_room=ROOM_PANCAKES,
-        body=load_s23_body(WEST_OCEAN_HOP_BODY),
+        body=body[WEST_OCEAN_ENTRY_RUN_FRAMES:],
+        settle=WEST_OCEAN_PANCAKES_SETTLE,
     )
 
 
