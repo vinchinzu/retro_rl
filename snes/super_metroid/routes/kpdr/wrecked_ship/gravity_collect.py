@@ -82,6 +82,9 @@ ATTIC_POWER_BOMB_FUSE = 130
 ATTIC_WEST_OCEAN_SETTLE = 420
 WEST_OCEAN_ENTRY_RUN_FRAMES = 8
 WEST_OCEAN_PANCAKES_SETTLE = 240
+# s23 pancakes body crosses the right door and stops in dest gs=11.
+# Human Homing Geemer settle is 122f; the 120f generic idle is RED.
+PANCAKES_HOMING_GEEMER_SETTLE = 240
 
 __all__ = [
     "ATTIC_HOP_BODY",
@@ -98,6 +101,7 @@ __all__ = [
     "WEST_OCEAN_GUIDE_BODY",
     "WEST_OCEAN_ENTRY_RUN_FRAMES",
     "WEST_OCEAN_PANCAKES_SETTLE",
+    "PANCAKES_HOMING_GEEMER_SETTLE",
     "attic_required_enemies",
     "load_gravity_body",
     "load_s23_body",
@@ -310,12 +314,14 @@ def play_west_ocean_to_pancakes(session: ControllerSession) -> SuperMetroidState
 
 
 def play_pancakes_to_homing_geemer(session: ControllerSession) -> SuperMetroidState:
+    """s23 416f ends in dest gs=11; idle until Homing Geemer gs=8."""
     return _play_s23_to_room(
         session,
         label="pancakes_to_homing_geemer",
         start_room=ROOM_PANCAKES,
         dest_room=ROOM_HOMING_GEEMER,
         body=load_s23_body(PANCAKES_HOP_BODY),
+        settle=PANCAKES_HOMING_GEEMER_SETTLE,
     )
 
 

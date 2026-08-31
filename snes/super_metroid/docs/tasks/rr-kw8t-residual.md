@@ -1,12 +1,11 @@
 ## Residual — rr-kw8t Gravity on the Phantoon tip
 
-**Continue (rr-kw8t):** Main Shaft hop 2, Attic→West Ocean, and West
-Ocean→Pancakes are complete. Do not reopen the grate, west-super, mid-climb,
-upper-ladder, Attic door, Attic kill-all, or West Ocean maze. The next
-boundary is Pancakes→Homing Geemer from
-`scratch/post_west_ocean_to_pancakes.state`. The inherited body reaches
-Homing Geemer deterministically, but its 120f generic settle is RED at
-`0x968F` `(39,139) p11` gs=11 dt=1 after 536f.
+**Continue (rr-kw8t):** Main Shaft hop 2, Attic→West Ocean, West
+Ocean→Pancakes, and Pancakes→Homing Geemer are complete. Do not reopen the
+grate, west-super, mid-climb, upper-ladder, Attic door, Attic kill-all,
+West Ocean maze, or Pancakes. The next boundary is Homing Geemer→Bowling
+from `scratch/post_pancakes_to_homing_geemer.state`. The leave is
+`0x968F` `(39,139) p11` gs=8 dt=0; human Homing Geemer entry is p9.
 
 **Closed miss:** the 523→443 handoff now latches only after the real
 block-clearing jump, then uses the take02 RIGHT+A drift. The upper ladder is
@@ -36,12 +35,17 @@ West Ocean→Pancakes restores the human anchor's missing entry momentum with
 **1,476f** ×2 at `0x9461` `(39,139) p9` gs=8 dt=0. Report:
 `scratch/west_ocean_to_pancakes_dual.json`; pin out:
 `scratch/post_west_ocean_to_pancakes.state`.
+Pancakes→Homing Geemer keeps the s23 416f body and waits through dest
+gs=11 (human door is 122f; 120f generic idle was RED). It is dual-exact
+**549f** ×2 at `0x968F` `(39,139) p11` gs=8 dt=0. Report:
+`scratch/pancakes_to_homing_geemer_dual.json`; pin out:
+`scratch/post_pancakes_to_homing_geemer.state`.
 Phase dumps are named scratch pins.
 
-**Pin in:** `scratch/post_west_ocean_to_pancakes.state` (`0x9461`
-`(39,139) p9` gs=8 dt=0)
-**Goal:** Homing Geemer `0x968F` gs=8 dt=0.
-**Living checkbox:** `pancakes_to_homing_geemer` (**RED settle**).
+**Pin in:** `scratch/post_pancakes_to_homing_geemer.state` (`0x968F`
+`(39,139) p11` gs=8 dt=0)
+**Goal:** Bowling Alley `0xC98E` gs=8 dt=0.
+**Living checkbox:** `homing_geemer_to_bowling`.
 Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 
 ### Already green (do not re-prove)
@@ -57,6 +61,7 @@ Natural Attic entry remains `scratch/post_ws_main_to_attic.state`.
 | Hop 2 Main Shaft → Attic | **2,745f** ×2 | `0xCA52` (1133,203) p1 gs=8 |
 | Hop 3 Attic → West Ocean | **2,618f** ×2 | `0x93FE` (2008,139) p2 gs=8; 8 kills, 0 required left |
 | Hop 4 West Ocean → Pancakes | **1,476f** ×2 | `0x9461` (39,139) p9 gs=8 dt=0 |
+| Hop 5 Pancakes → Homing Geemer | **549f** ×2 | `0x968F` (39,139) p11 gs=8 dt=0 |
 
 Observable `(1189, 1883) p2` and take04 `~(1195, 1883)` are not that pin.
 
@@ -127,16 +132,16 @@ to 1156, committed A, RIGHT+A at y~1920, land (1208,1875) p9, walk to
 
 ### Next — one seam
 
-Settle `play_pancakes_to_homing_geemer` from the natural
-`post_west_ocean_to_pancakes.state` pin. The current s23 body already crosses
-the right door; the live miss is only destination settle (`gs=11`, `dt=1`),
-not Pancakes geometry. Keep all earlier rooms closed.
+Play `homing_geemer_to_bowling` from the natural
+`post_pancakes_to_homing_geemer.state` pin. Keep all earlier rooms closed.
+The leave is p11; human Homing Geemer entry is p9 with `B+RIGHT`. The s23
+98f body already ends in transition (settle 180).
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
-  snes/super_metroid/scripts/probe/kpdr.py pure pancakes-to-homing-geemer \
-  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_west_ocean_to_pancakes.state \
-  --expect-room 0x9461 --no-red-diag
+  snes/super_metroid/scripts/probe/kpdr.py pure homing-geemer-to-bowling \
+  --source snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_pancakes_to_homing_geemer.state \
+  --expect-room 0x968F --no-red-diag
 ```
 
 ### Non-claims
@@ -161,5 +166,5 @@ QT_QPA_PLATFORM=offscreen uv run python \
 - Did not treat leftover `(1117, 640) p47` overlapping Atomic as mid_climb green
 - Did not treat pocket `(1177, 1883)` or land `(1189, 1883)` as fire-slope green
 - Did not treat take04 alcove as the living handoff
-- Did not treat the RED Pancakes→Homing Geemer settle as composed Gravity evidence
+- Did not treat Pancakes→Homing Geemer as composed Gravity evidence
 - Did not power-on / Phantoon-leave `--to gravity`
