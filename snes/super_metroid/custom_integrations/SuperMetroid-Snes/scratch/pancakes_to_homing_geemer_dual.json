@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "hop": "pancakes_to_homing_geemer",
+  "time": "2026-08-30T20:33:39-05:00",
+  "runs": [
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_west_ocean_to_pancakes.state",
+      "frames": 549,
+      "final": {
+        "room": "0x968F",
+        "xy": [39, 139],
+        "pose": 11,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    },
+    {
+      "success": true,
+      "source": "snes/super_metroid/custom_integrations/SuperMetroid-Snes/scratch/post_west_ocean_to_pancakes.state",
+      "frames": 549,
+      "final": {
+        "room": "0x968F",
+        "xy": [39, 139],
+        "pose": 11,
+        "gs": 8,
+        "dt": 0,
+        "health": 299
+      },
+      "error": null
+    }
+  ],
+  "frames": [549, 549],
+  "dual_exact": true,
+  "glance_misses": []
+}

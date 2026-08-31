@@ -11,6 +11,7 @@ from super_metroid.routes.catalog import DEFAULT_CONTINUOUS_TIP, get_continuous_
 from super_metroid.routes.kpdr.registry import KPDR_SEGMENTS
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_GRAVITY,
+    ROOM_HOMING_GEEMER,
     ROOM_PANCAKES,
     ROOM_WEST_OCEAN,
 )
@@ -22,13 +23,17 @@ from super_metroid.routes.kpdr.wrecked_ship.gravity_collect import (
     CANDIDATE_ID,
     COLLECT_FRAMES,
     GRAVITY_HOP_BODY,
+    PANCAKES_HOMING_GEEMER_SETTLE,
+    PANCAKES_HOP_BODY,
     PARENT_TAPE_ID,
     TAPE_BODY_FRAMES,
     WEST_OCEAN_ENTRY_RUN_FRAMES,
     WEST_OCEAN_GUIDE_BODY,
     attic_required_enemies,
     load_gravity_body,
+    load_s23_body,
     play_gravity_collect,
+    play_pancakes_to_homing_geemer,
     play_west_ocean_to_pancakes,
 )
 
@@ -145,6 +150,58 @@ def test_west_ocean_wrong_room_fails_closed() -> None:
     session = _Session()
     with pytest.raises(RuntimeError, match="west_ocean_to_pancakes"):
         play_west_ocean_to_pancakes(session)
+
+
+def test_pancakes_s23_body_is_416_frames() -> None:
+    if not PANCAKES_HOP_BODY.is_file():
+        pytest.skip("s23 Pancakes hop body not on disk")
+    body = load_s23_body(PANCAKES_HOP_BODY)
+    assert len(body) == 416
+    assert PANCAKES_HOMING_GEEMER_SETTLE > 120
+
+
+def test_pancakes_settle_covers_dest_door_transition() -> None:
+    if not PANCAKES_HOP_BODY.is_file():
+        pytest.skip("s23 Pancakes hop body not on disk")
+    body_len = len(load_s23_body(PANCAKES_HOP_BODY))
+    dest_settle_needed = 122
+
+    class PancakesSession(_Session):
+        def __init__(self) -> None:
+            super().__init__()
+            self.state.room_id = ROOM_PANCAKES
+            self.state.samus_x = 39
+            self.state.samus_y = 139
+            self.state.pose = 9
+
+        def step(self, action, reason: str = ""):
+            del reason
+            self.actions.append(tuple(int(v) for v in action))
+            self.frame += 1
+            if self.frame >= body_len:
+                self.state.room_id = ROOM_HOMING_GEEMER
+                self.state.pose = 11
+                self.state.game_state = 11
+                self.state.door_transition = 1
+            if self.frame - body_len >= dest_settle_needed:
+                self.state.game_state = 8
+                self.state.door_transition = 0
+                self.state.pose = 9
+            return self.state
+
+    session = PancakesSession()
+    out = play_pancakes_to_homing_geemer(session)
+
+    assert out.room_id == ROOM_HOMING_GEEMER
+    assert out.game_state == 8
+    assert out.door_transition == 0
+    assert session.frame == body_len + dest_settle_needed
+
+
+def test_pancakes_wrong_room_fails_closed() -> None:
+    session = _Session()
+    with pytest.raises(RuntimeError, match="pancakes_to_homing_geemer"):
+        play_pancakes_to_homing_geemer(session)
 
 
 def test_gravity_collect_is_registered_scratch_tip() -> None:
