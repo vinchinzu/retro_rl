@@ -5,16 +5,22 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from retro_harness.nes import nes_action
+from zelda_i.dungeon.engine import DungeonPhase
 from zelda_i.dungeon.ids import (
     KEESE_OBJECT_TYPE,
     LIKE_LIKE_OBJECT_TYPE,
     ZOL_OBJECT_TYPE,
 )
+from zelda_i.level6.clear29 import Level6Clear29Controller
 from zelda_i.level6.dungeon import (
+    CLEAR29_WEST_X,
     LEVEL6_COMPASS_BIT,
+    ROOM_29_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
     ROOM_L6_COMPASS,
+    ROOM_L6_DARK_29,
     ROOM_L6_EAST_KEY,
     ROOM_L6_ENTRY,
     ROOM_L6_HARD_38,
@@ -132,3 +138,38 @@ def test_west_key_door_controller_from_east_edge() -> None:
         _ram(room=ROOM_L6_WEST_WIZZROBE, x=224, y=141, keys=0)
     ))
     assert arrived.success
+
+
+def _29_ram(*, x: int, y: int, enemy_x: int, enemy_y: int) -> np.ndarray:
+    ram = _ram(room=ROOM_L6_DARK_29, x=x, y=y, wizzrobes=1, hp=64)
+    ram[ADDR_LINK_X + 1] = enemy_x
+    ram[ADDR_LINK_Y + 1] = enemy_y
+    return ram
+
+
+def _clear29_fight(*, x: int, y: int, enemy_x: int, enemy_y: int):
+    ctl = Level6Clear29Controller()
+    ctl.phase = DungeonPhase.FIGHT
+    ctl.combat_frames = 24
+    snap = read_snapshot(_29_ram(x=x, y=y, enemy_x=enemy_x, enemy_y=enemy_y))
+    return ctl.step(snap)
+
+
+def test_clear29_patrol_stays_west_of_center_block() -> None:
+    assert CLEAR29_WEST_X == 64
+    assert all(px < CLEAR29_WEST_X for px, _ in ROOM_29_SPEC.combat.patrol)
+
+
+def test_clear29_peels_left_from_north_mouth_not_east() -> None:
+    """(120,109) LEFT is the north band; RIGHT chases into leftover (184,144)."""
+    act = _clear29_fight(x=120, y=109, enemy_x=184, enemy_y=144)
+    assert act.reason == "west_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_clear29_does_not_chase_east_from_west_aisle() -> None:
+    act = _clear29_fight(x=48, y=141, enemy_x=184, enemy_y=144)
+    assert list(act.action) != list(nes_action("RIGHT"))
+    assert act.reason in ("combat_patrol", "combat_wait", "combat_engage")

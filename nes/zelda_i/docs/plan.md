@@ -10,15 +10,16 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — finish L6 from recovered clear `0x29` (2026-08-31)
+## Immediate — finish L6 from recovered west clear `0x29` (2026-08-31)
 
 Power-on Survival recovered stairs09 → rod → exit75 → south09 → south19 →
-clear29. Tip is play `0x29` `(184,144)` rod=1 keys=3 TF=`0x1F` bombs=8 Bow=1
-health `0x66` `lo==hi`. `--through level6-south29` is **BLOCKED 4/4** from
-that leftover. Trial 4 proved DOWN reaches `(184,165)`, but the first LEFT
-there also hits the center block (`miss_f19_LEFT_184_165`). Do not retry LEFT
-at y=144 or y=165, DOWN clip to y=181, occupancy-DOWN, or the prior-sitting
-`(55,133)` RIGHT+DOWN clip. Do not retouch 0x40, maze-west, L5, stairs09, or
+clear29 west leftover. Tip is play `0x29` `(56,157)` rod=1 keys=3 TF=`0x1F`
+bombs=8 Bow=1 health `0x66` `lo==hi`. East-leftover `--through level6-south29`
+is **BLOCKED 4/4**. West-leftover occupancy-DOWN is **red 1/1**: DOWN and
+RIGHT at `(56,157)` are the SW face of the center block, then `south_up_halt`.
+Do not retry occupancy-DOWN from `(56,157)`, LEFT at y=144 or y=165, DOWN clip
+to y=181, occupancy-DOWN from `(184,144)`, or the prior-sitting `(55,133)`
+RIGHT+DOWN clip. Do not retouch 0x40, maze-west, L5, stairs09, clear29, or
 the cellar walk.
 
 Keys are 3 here versus historical 4. Do not top up.
@@ -44,17 +45,17 @@ do not update `STATUS.md` or overwrite Clean M5.
   or rerun an unchanged policy. Three serial reds on the same checkbox means
   mark that checkbox blocked and stop the sitting.
 
-The parked y=165 clip is disproved: DOWN reached the measured east box, then
-LEFT missed immediately and the UP guard halted safely. The next geometry
-task is the cheaper open path: shape `clear29` to leave west of x=64, then
-form a new south-door hypothesis from that live leftover. Do not rerun the
-current `SOUTH29_SPEC` or assume the old west RIGHT+DOWN clip is authorized.
+The parked west occupancy-DOWN is disproved: leftover `(56,157)` cannot DOWN
+or RIGHT (SW face of the center block). Occupancy then wanted UP; `forbid_up`
+stood for 4000f at `(57,157)` tile 119. Next is UP the west aisle from that
+leftover, then a new south-door hypothesis from the measured north leftover.
+Do not rerun the current `SOUTH29_SPEC`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
   --through level6-south29 --no-video --trials 1 \
-  --tag l6_south29_recompose
+  --tag l6_south29_west_up
 ```
 
 Parallel L7/L8/L9/OW lanes are fixture-live only
@@ -90,8 +91,8 @@ not permission to claim the old run or force its coordinates.
 | 19 | `level6-exit75` | Leave by the verified east-column drop and west spit. | play `0x09` `(192,141)`; Rod=1 |
 | 20 | `level6-south09` | Occupancy to the south door and descend. | play `0x19` north mouth; keys=4 |
 | 21 | `level6-south19` | Take the natural south key door. | dark play `0x29`; keys 4→3 |
-| 22 | `level6-clear29` | Clear five Wizzrobes and collect the natural key. | cleared `0x29`, historical `(55,133)`; keys 3→4 |
-| 23 | `level6-south29` | Recovered leftover is east `(184,144)`. BLOCKED 4/4: LEFT is solid at y=144 and y=165; DOWN boxes at y=165; occupancy-DOWN false-misses. Next shape clear29 west of x=64, then form a new policy. | play `0x39` `(120,93)`; east door sealed |
+| 22 | `level6-clear29` | Clear five Wizzrobes west of x=64 and collect the natural key. | cleared `0x29` `(56,157)` 1/1; keys 2→3 |
+| 23 | `level6-south29` | West leftover occupancy-DOWN red 1/1: DOWN/RIGHT solid at `(56,157)`, then `south_up_halt`. East leftover BLOCKED 4/4. Next UP from `(56,157)`. | play `0x39` `(120,93)`; east door sealed |
 | 24 | `level6-settle39` | Idle for the five-Vire census. | play `0x39`, five type `0x12` live |
 | 25 | `level6-clear39` | Clear the Vires with occupancy patrol. | cleared `0x39`, historical `(136,173)` |
 | 26 | `level6-east39` | RIGHT+UP clip to y=141, then cardinal RIGHT. | play `0x3A` `(16,141)`; keys=4 |
