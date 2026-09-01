@@ -6,7 +6,7 @@ CheckWarp is tile 0x71 at (208, 93). After the live center push, peel south
 of y=149, RIGHT to x=208, UP the east column onto 0x71. Do not retry
 occupancy at y=149. Do not restore stairs3a* names. Do not poke x/y.
 
-Do not write 10→room, door, inventory, Triforce, capacity, facing, mode, or
+Do not write room, door, inventory, Triforce, capacity, facing, mode, or
 load state. Dest is RAM. Do not invent/fight Gohma. Do not poke bow/arrows.
 """
 

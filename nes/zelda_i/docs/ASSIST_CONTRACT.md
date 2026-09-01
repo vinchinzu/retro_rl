@@ -90,10 +90,11 @@ when Link exits at `x>=0x80`. The corrected controller keeps this same
 authorized target, crosses the tunnel floor to the right ladder at `x=192`,
 and reached play `0x1D` 1/1. No second position target or write was added.
 
-The implementation is `zelda_i.assist.poke_link_position`. Removal is
-`rr-17co`: walk onto tile `0x71` at `(208,93)` via the south-band east
-column. Do not retry occupancy at y=149 (ne71 v1–v3). Spine path must
-reach `position_writes=0` before `rr-tne2` closes.
+The implementation is `zelda_i.assist.poke_link_position`. `rr-17co`
+walked onto tile `0x71` at `(208,93)` via the south-band east column
+(`l6_stairs3a_southband` 1/1, hop 290f). Do not retry occupancy at y=149
+(ne71 v1–v3). Warp and cellar08 report `position_writes=0`. `--through
+level6` is still red at Gohma occupancy, so `rr-tne2` stays open.
 
 This exception does not authorize walking the east door unarmed or fighting
 Gohma without bow+arrows.

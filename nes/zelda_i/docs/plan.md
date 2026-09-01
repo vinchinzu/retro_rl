@@ -10,26 +10,27 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — delete the 0x3A position write, then Phase 4 (2026-09-01)
+## Immediate — Gohma after walked CheckWarp, then Phase 4 (2026-09-01)
 
-Power-on Survival is **1/1 through `--through level6`**: fanfare `0x0C`
-`(120,149)` TF `0x1F→0x3F`, hc 7→8 health `0x77`, keys=2 bombs=8 Bow=1
-Rod=1, one 0x3A position write, one wooden-arrow grant. Heart / north0c /
-shard hops are green. This is Survival evidence only; do not update
-`STATUS.md` or overwrite Clean M5. Keys stay 2. Do not top up.
+South-band CheckWarp is **1/1** (`l6_stairs3a_southband` hop 290f, mode 9
+cellar `0x08` `(208,93)`, `position_writes=0`). Cellar08 is **1/1** play
+`0x1D` `(96,157)` rupees=43. `--through level6` is **red** at Gohma
+occupancy_stand `(120,189)` tile 118 after inland y=165. Heart / north0c /
+shard hops stay green on the poked-warp tape only. Survival evidence;
+do not update `STATUS.md` or overwrite Clean M5. Keys stay 2. Do not top up.
 
 Close `rr-tne2` only after:
 
-1. `rr-17co` CheckWarp walk-on: `position_writes=0` on the same cellar
-   `0x08` dest. Locked geometry is south-band east-column, not occupancy
-   at y=149 (ne71 v1–v3 halted `(158|144|136,149)`).
+1. `rr-17co`: `--through level6` 1/1 with `position_writes=0` (warp dest
+   is already cellar `0x08`; Gohma occupancy after the walk is the red).
 2. Phase 4 (`rr-ibkf`): measured `AuditedEnv` post-reset `set_state` count
    is 0, and L4 Gleeok TF-exit has a continuous no-restore path.
 3. One `--through level6` acceptance trial.
 
-Arrow shop splice is `rr-wabn`. The wooden-arrow grant may stay disclosed
-until that splice greens. Do not farm arrows before the 80R buy;
-`ADDR_ARROWS` is item type, rupees are ammo.
+Arrow shop splice is `rr-wabn`. Live merchant is OW `0x4A` (80R arrows).
+Dedicated `--through level1-arrows` red on farm (9→10R). Wooden-arrow
+grant may stay until that splice greens. `ADDR_ARROWS` is item type,
+rupees are ammo.
 
 Living residual: `docs/tasks/rr-tne2-residual.md`.
 
@@ -180,15 +181,15 @@ One controller, dest glance `STAIRS3A_DEST` (mode 9 cellar `0x08`):
 3. RIGHT to east column x=208. Fail on play `0x3B` (east door is y=141).
 4. UP to south-face of NE 0x68 `(208,96)`, then UP onto `0x71` `(208,93)`.
 
-`position_writes=0`. Cellar08 B-side cross stays. Fail publishes leftover.
-Fold `stairs3a.py` + `stairs3a_warp.py` after green; drop `poke_link_position`
-from the spine path.
+Walk is **1/1** hop 290f, dest mode 9 `(208,93)`, `position_writes=0`.
+Cellar08 B-side cross **1/1**. `--through level6` red at Gohma occupancy.
+Fold `stairs3a.py` + `stairs3a_warp.py` after that compose greens.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs3a-warp --no-video --trials 1 \
-  --tag l6_stairs3a_southband
+  --through level6-gohma --no-video --trials 1 \
+  --tag l6_gohma_after_walk
 ```
 
 ### Arrow shop splice (`rr-wabn`)
@@ -199,11 +200,11 @@ Survival splice; do not exit L6. Window: after `level1-bow-pickup`, before
 Gohma.
 
 Live shop `0x5E` is Shield/Key/Candle, no arrows. Gathering hyp `0x6B` is
-not live. Record rupees on the next leftover (current L6 reports omit them),
-farm Octoroks to ≥80 if short, probe a merchant until `ADDR_ARROWS` 0→1.
-`CandleShop5E` buy geometry is the template. Wire like the bow detour;
-`--through level1-arrows` stop on arrows=1. `poke_wooden_arrows` already
-skips when wooden. Clean M5 skips. Do not poke rupees.
+not live. Live 80R merchant is OW `0x4A` (Shield 130 / Bombs 20 / Arrows 80).
+Scratch recon buy got `ADDR_ARROWS` 0→1. Dedicated `--through level1-arrows`
+red on farm (leftover `(63,173)` rupees 9→10). Do not splice into default
+L6. `poke_wooden_arrows` already skips when wooden. Clean M5 skips. Do not
+poke rupees on the spine.
 
 ### Phase 4 — replace the claimed no-load flag with measured evidence
 
