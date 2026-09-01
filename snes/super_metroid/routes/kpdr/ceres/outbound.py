@@ -12,7 +12,12 @@ from super_metroid.routes.kpdr.ceres.arm_pump import (
     _ceres_wait_ordinary,
 )
 from super_metroid.routes.skills.knockback import is_knockback
-from super_metroid.routes.kpdr.ceres.elev_escape import _ceres_reactive_elev_climb
+from super_metroid.routes.kpdr.ceres.magnet import (
+    CERES_ELEV_MAX_FRAMES,
+    _ceres_reactive_elev_climb,
+    play_ceres_falling_to_elev,
+    play_ceres_magnet_to_falling,
+)
 from super_metroid.routes.kpdr.ceres.geometry import (
     CERES_FALLING_EXIT_HOP,
     CERES_FALLING_FLOOR_HOP,
@@ -28,10 +33,6 @@ from super_metroid.routes.kpdr.ceres.geometry import (
     _CERES_MAGNET_MID_Y,
     _CERES_MAGNET_OUT_DOOR_X,
     _CERES_MAGNET_TOP_Y,
-)
-from super_metroid.routes.kpdr.ceres.magnet import (
-    play_ceres_falling_to_elev,
-    play_ceres_magnet_to_falling,
 )
 from super_metroid.routes.kpdr.ceres.scientist import (
     CeresScientistCross,
@@ -350,7 +351,7 @@ def ceres_falling_magnet_feet_action(
     state,
     track: CeresFallingTrack,
 ) -> tuple[tuple[str, ...], CeresFallingTrack]:
-    """One-frame Falling Tile → Magnet policy (ROM-free)."""
+    """One-frame Falling Tile → Magnet policy."""
     room = int(state.room_id)
     gs = int(state.game_state)
     x = int(state.samus_x)
@@ -843,6 +844,13 @@ def play_ceres_escape_to_landing(session: RouteSession) -> None:
         session.step(idle_action(), "zebes_ship_final_settle")
     else:
         raise TimeoutError(f"Zebes ship never reached final settle: {session.state}")
+    start = session.info.get("ceres_elev_start")
+    if start is not None:
+        used = int(session.frame) - int(start)
+        if used > CERES_ELEV_MAX_FRAMES:
+            raise TimeoutError(
+                f"ceres elev_to_landing {used}f exceeded {CERES_ELEV_MAX_FRAMES}f"
+            )
 
 
 __all__ = [

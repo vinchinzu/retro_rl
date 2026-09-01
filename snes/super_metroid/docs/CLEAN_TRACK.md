@@ -2,7 +2,7 @@
 
 Parallel workstream for **Bronze / Clean** continuous tips: **no energy
 refill, no ammo refill**, zero resource writes. Orthogonal to the primary
-**Bronze / Resource-assisted** KPDR spine (current tip: Bat Cave).
+**Bronze / Resource-assisted** KPDR spine (current tip: Phantoon).
 
 Benchmark labels: [BENCHMARK_SPEC.md](../../../docs/BENCHMARK_SPEC.md).
 Assisted contract (primary path): [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
@@ -11,15 +11,14 @@ Clean work: `bd ready -l super_metroid` (do not demote assisted greens).
 
 ## Why this exists now
 
-The assisted spine is past mid-game (Bat Cave / K4.4 primary; Frog Save side
-tip). Early-game controllers (Morph → two-Missile detour → Bombs → **Bomb
-Torizo** → Parlor) are mature and hash-pinned. Clean is a **privilege-reduction**
-lane on that already-green prefix — not a second full-route rewrite.
+The assisted spine is at Phantoon (K6). Ice/Wave/Speed are prefix CI. Clean
+is a **privilege-reduction** lane on the already-green Morph → Bombs prefix —
+not a second full-route rewrite.
 
 | Fact | Assisted (primary) | Clean (this track) |
 |------|--------------------|--------------------|
 | Intervention | Resource-assisted (energy + ammo) | **Clean** (no resource writes) |
-| Program tip | Speed Booster (`--to speed`) | ★ Target: Bomb Torizo exit (`--to bombs`) |
+| Program tip | Phantoon (`--to phantoon`) | Bombs Clean green; next parked: Spore (`--to spore --clean`) |
 | Maturity gate | M5 → M8 assisted full clear | Parallel; does **not** move M5/M8 |
 | STATUS primary | Assisted only | Secondary section when green |
 
@@ -31,13 +30,13 @@ lane on that already-green prefix — not a second full-route rewrite.
    stem (e.g. `bombs_clean.json`). Never overwrite
    `<tip_id>.json` / `.mp4` that are assisted baselines.
 3. **STATUS primary tip stays assisted.** Clean greens go under a **Clean
-   track** section. Do not re-label Bat Cave / Frog Save / Varia / Business as Clean.
+   track** section. Do not re-label Phantoon / Ice / Wave as Clean.
 4. **Shared controllers.** Prefer the same `play_*` / policy segments. Assist
    is applied only in the session layer (`assist.py` / `run_*`). Fork a
    controller only when ammo/health economy forces a one-knob fix, and keep
    the assisted path calling the same code with assist enabled.
-5. **Clean failure ≠ assisted demotion.** A RED clean bombs run never unmarks
-   assisted continuous greens or rolls back the Bat Cave tip.
+5. **Clean failure ≠ assisted demotion.** A RED clean run never unmarks
+   assisted continuous greens or rolls back the Phantoon tip.
 6. **No progression privilege.** Clean still forbids item/capacity/boss/door
    writes — same forbidden list as [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
 7. **Serialize STATUS / continuous defaults.** Clean infra may touch

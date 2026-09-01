@@ -126,20 +126,7 @@ harvest/runtime/rom_tools.py     - Save state parsing, VRAM/ROM inspection
 harvest/scripts/    - boot_probe, run_to_day2
 tasks/              - Recorded action sequences (JSON + end states)
 custom_integrations/  # stable-retro game data + save states
-tests/              - Unit + integration tests (see Testing below)
-```
-
-## Testing
-
-```bash
-# All harvest tests (fast, no ROM needed for unit tests)
-uv run python -m unittest discover -s tests -v
-
-# Specific test modules
-uv run python -m unittest tests.test_day_plan_sequences -v
-uv run python -m unittest tests.test_coop_task -v
-
-# ROM-backed checks are covered by targeted test modules when local ROM/states exist.
+tests/              - tests
 ```
 
 ## RAM Discovery

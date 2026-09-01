@@ -60,6 +60,7 @@ LEVEL6_GOHMA_WING_1D_ROOM = 0x1D  # cellar 0x08 B-side leftover (96,157)
 LEVEL6_GOHMA_WING_2D_ROOM = 0x2D  # DOWN of 0x1D; leftover (120,77); west open
 LEVEL6_GOHMA_WING_2C_ROOM = 0x2C  # LEFT of 0x2D; N=key, E=open; not Gohma
 LEVEL6_GOHMA_ROOM = 0x1C  # KEY-UP of 0x2C; ROM N=shutter S=key item=heart; TF 0x0C north
+LEVEL6_TF_ROOM = 0x0C  # north shutter of 0x1C; shard bit 0x20
 LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22

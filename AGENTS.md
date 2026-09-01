@@ -38,10 +38,9 @@ Short import names (`import alttp`, `import smb`). Pytest path includes
 - Prefer nearest local `AGENTS.md`; add one there instead of growing this file.
 - **Soft max ~1000 LOC per source file.** Merge into the **Composer** or
   delete; no sibling extract.
-- Shared-helper changes → update closest tests + describing docs. After
-  `docs/manifests/*.yaml` edits: `uv run python docs/generate_game_matrix.py`.
-- Narrowest relevant tests; include `uv run pytest tests/test_docs.py -q`
-  when touching docs or manifests.
+- Shared-helper changes → ROM eval (`docs/TEST_TIERS.md`) + describing docs.
+  After `docs/manifests/*.yaml` edits: `uv run python docs/generate_game_matrix.py`.
+- Docs/manifests: `uv run pytest tests/test_docs.py -q`.
 - Natural-entry: segment not route-ready until it clears from the real
   predecessor state.
 
@@ -55,7 +54,7 @@ Start with `bd ready`; claim one issue; `bd export -o .beads/issues.jsonl` + com
 ## Landing the plane
 
 1. Update beads for remaining work; close finished issues honestly
-2. Run narrowest tests for files you changed
+2. Run ROM eval for files you changed (`docs/TEST_TIERS.md`)
 3. `bd export -o .beads/issues.jsonl` and commit code + that file together
 4. Push only if requested; hand off with `bd ready` + one-line next action
 
@@ -73,10 +72,7 @@ Env is prepared by the startup update script (`./setup.sh` + `uv sync
 - **No emulator ROMs in cloud.** Anything that boots `stable-retro` (game
   `selftest`, `./play`, `-m rom`/`rom_smoke`, most `snes/super_metroid` route
   tests) needs legally-supplied ROMs under gitignored `roms/` and will raise
-  `No romfiles found`. The non-ROM tiers still exercise real planning, route-
-  graph, RAM-map, replay, and PPO-wrapper logic. For a ROM-free smoke of core
-  solver logic, use the `retro_harness.adventure` planner (e.g.
-  `inventory_aware_path`).
+  `No romfiles found`. Cloud pytest is not ROM eval.
 - **Expected fresh-clone failures (data, not env):** `tests/test_docs.py`
   manifest/link checks and many `snes/super_metroid` tests fail because they
   read gitignored artifacts — `**/recordings/`, `*human*` route data under

@@ -294,7 +294,7 @@ def run_clean_probe(
     name = spec.default_state if state_name is None else state_name
     frames = spec.default_max_frames if max_frames is None else max_frames
     stop_gt = spec.stop_stage_gt if stop_stage_gt is None else stop_stage_gt
-    waiting, extra_start, extra_label = _entry_flags(
+    _waiting, extra_start, extra_label = _entry_flags(
         power_on=power_on,
         from_stage1_clear=from_stage1_clear,
         from_stage2_clear=from_stage2_clear,
@@ -306,7 +306,7 @@ def run_clean_probe(
         TrialEntry(
             kind="power_on" if power_on else "state",
             state_name=start_label,
-            is_live=spec.is_live if waiting or power_on else spec.is_live,
+            is_live=spec.is_live,
             boot_actions=boot,
         ),
         TrialObjective(

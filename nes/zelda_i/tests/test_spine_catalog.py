@@ -11,6 +11,9 @@ from zelda_i.screen_glance import (
     CELLAR08_LEAVE,
     CLEAR_3A,
     GOHMA_LEAVE,
+    HEART_LEAVE,
+    LEVEL6_LEAVE,
+    NORTH0C_LEAVE,
     NORTH2C_LEAVE,
     SOUTH1D_LEAVE,
     STAIRS3A_DEST,
@@ -25,6 +28,9 @@ LEAVE_SPECS = (
     WEST2D_LEAVE,
     NORTH2C_LEAVE,
     GOHMA_LEAVE,
+    HEART_LEAVE,
+    NORTH0C_LEAVE,
+    LEVEL6_LEAVE,
     BOW22_LEAVE,
     BOW_CELLAR_LEAVE,
     BOW_PICKUP_LEAVE,
@@ -60,6 +66,11 @@ def test_leave_spec_hops_unique_and_on_spine() -> None:
 def test_spine_run_gohma_report_stop() -> None:
     run = SpineRun(through="level6-gohma", success=True, boot_frames=199)
     assert run.report()["stop"] == L6_STOPS["level6-gohma"]
+
+
+def test_spine_run_level6_report_stop() -> None:
+    run = SpineRun(through="level6", success=True, boot_frames=199)
+    assert run.report()["stop"] == L6_STOPS["level6"]
 
 
 def test_boot_policy_file_slot_and_quest() -> None:

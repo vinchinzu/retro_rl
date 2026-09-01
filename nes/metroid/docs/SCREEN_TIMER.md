@@ -40,7 +40,6 @@ tanks) is stored when available.
 ## How to run
 
 ```bash
-# Import / logic smoke (no ROM)
 uv run python metroid/scripts/probe_screen_timer.py self-check
 
 # Offline fixture → durable JSON under metroid/
@@ -92,7 +91,6 @@ report = timer.report(source="my_run")
 ```
 
 Core module: `metroid/screen_timer.py`.
-Tests: `metroid/tests/test_screen_timer.py` (no ROM).
 
 Does **not** alter morph/first-missiles controllers or route graphs. Wire
 `observe()` from your own probe/run loop when you want live hop timing.

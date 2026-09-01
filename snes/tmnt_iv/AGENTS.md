@@ -26,7 +26,7 @@ uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
 # Segment / bridge: run_segment --stage N / run_bridge --to {2,3}
 # Raph grind states (char 8): capture_raph_states
 # Local knob agent: run_local_grind_agent --focus slash --max-trials 2
-uv run pytest tmnt_iv/tests -q
+uv run pytest tmnt_iv/tests -q -m rom
 ```
 
 ## Immediate goal

@@ -30,6 +30,14 @@ from zelda_i.level6.dungeon import (
 )
 from zelda_i.level6.east3a import level6_east3a_success, make_east3a_controller
 from zelda_i.level6.exit75 import make_exit75_controller
+from zelda_i.level6.finish import (
+    level6_heart_success,
+    level6_north0c_success,
+    level6_success,
+    make_heart_controller,
+    make_north0c_controller,
+    make_shard_controller,
+)
 from zelda_i.level6.gohma import level6_gohma_success, make_gohma_controller
 from zelda_i.level6.hops import (
     door_row,
@@ -101,6 +109,21 @@ def _gohma_stages():
         *_north2c_stages(),
         ("level6_gohma_0x1c", ctl, ctl.max_frames),
     )
+
+
+def _heart_stages():
+    ctl = make_heart_controller()
+    return (*_gohma_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+
+
+def _north0c_stages():
+    ctl = make_north0c_controller()
+    return (*_heart_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+
+
+def _level6_stages():
+    ctl = make_shard_controller()
+    return (*_north0c_stages(), (ctl.spec_id, ctl, ctl.max_frames))
 
 
 def _door_success(spec):
@@ -231,6 +254,27 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             "level6_gohma_0x1c",
             _gohma_stages,
             level6_gohma_success,
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6-heart",
+            "level6_heart_0x1c",
+            _heart_stages,
+            level6_heart_success,
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6-north0c",
+            "level6_north_0x0c",
+            _north0c_stages,
+            level6_north0c_success,
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6",
+            "level6_triforce_0x20",
+            _level6_stages,
+            level6_success,
             dedicated=True,
         ),
         one_hop(

@@ -1,39 +1,30 @@
-# Test and CI Tiers
+# Tests
 
-The repository has four fail-closed test tiers. A green tier only makes the
-claim named below; it does not silently promote a shared subsystem's maturity.
+A test boots a legally supplied ROM (or a named save state of it) and
+evaluates on the live emulator: load, play, assert RAM / leave / goal.
+Without that, the pytest is worthless. Do not close a bead on it. Do
+not STATUS from it.
 
-| Tier | Command | Claim |
+New emulator tests carry `@pytest.mark.rom`. A short bounded
+representative may also carry `@pytest.mark.rom_smoke`.
+
+```bash
+uv run pytest <path> -m rom
+RETRO_RL_RUN_ROM_SMOKE=1 uv run pytest -m rom_smoke
+```
+
+Bare `uv run pytest` deselects `@pytest.mark.rom`. CI has no copyrighted
+ROMs; that job is import/docs hygiene.
+
+| Gate | Command | Claim |
 |------|---------|-------|
-| Core | `uv run pytest` | Shared harness, graph, platformer/offline, and docs tests pass without ML extras or ROMs |
-| ML extra | `uv sync --frozen --extra ml` then `uv run pytest retro_harness/fighters/tests retro_harness/platformer/tests -m "not rom"` | Optional Gymnasium/Torch/Stable-Baselines imports and offline training components collect and pass |
-| All-game no-ROM | `RETRO_RL_TEST_TIER=game-no-rom uv run pytest snes nes -m "not rom and not ml"` | Every collected game-owned unit/offline test passes; real integrations remain skipped or deselected |
-| Real-ROM smoke | `RETRO_RL_RUN_ROM_SMOKE=1 uv run pytest -m rom_smoke` | The selected local smoke matrix boots and steps real integrations |
+| Core | `uv run pytest` | Shared harness, graph, platformer/offline, and docs tests collect without ML extras or ROMs |
+| ML extra | `uv sync --frozen --extra ml` then `uv run pytest retro_harness/fighters/tests retro_harness/platformer/tests -m "not rom"` | Optional Gymnasium/Torch/Stable-Baselines imports collect |
+| All-game no-ROM | `RETRO_RL_TEST_TIER=game-no-rom uv run pytest snes nes -m "not rom and not ml"` | Game-owned unit/offline tests collect; real integrations stay skipped |
+| Real-ROM smoke | `RETRO_RL_RUN_ROM_SMOKE=1 uv run pytest -m rom_smoke` | Selected local smoke matrix boots and steps real integrations |
 
-The CI workflow runs the first three tiers. The ROM smoke job is opt-in because
-copyrighted ROMs and save states are never stored in CI. New tests that call a
-real emulator must carry `@pytest.mark.rom`; a short, bounded representative
-may additionally carry `@pytest.mark.rom_smoke`.
+CI runs the first three. ROM smoke is local.
 
-Game directories are excluded from bare `pytest` deliberately: many retain the
-same test module names and collectively form a much larger gate. The all-game
-job discovers both `snes/` and `nes/` explicitly with importlib isolation, so a
-new game suite is included automatically rather than relying on a hand-written
-slug list.
-
-## Shared subsystem maturity
-
-Passing unit tests proves at most **fake-tested** maturity. Planner, benchmark,
-pool, contract, and solver work must report the highest evidenced rung:
-
-1. scaffolded
-2. fake-tested
-3. real-ROM tested
-4. first real-game consumer
-5. second independent consumer
-6. publication-ready
-
-A bead for shared infrastructure must not be closed as “complete” beyond its
-evidenced rung. A first consumer is required for a reusable capability claim;
-a second independent consumer is required before the interface is treated as
-stable shared infrastructure.
+Game directories are excluded from bare `pytest` because many share test
+module names. The all-game job discovers `snes/` and `nes/` with
+importlib isolation.

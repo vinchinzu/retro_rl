@@ -33,7 +33,6 @@ Documented in `docs/ram_map.md`. Highlights:
    (`python -m tmnt_iv.scripts.run_segment --stage N`).
 4. **Clean proof per stage** (heal=none, multi-entry) before removing
    assists — add a `CleanProbeSpec` in `run/clean_suite.py`, not a copied loop.
-   Tests stay ROM-free and protect finish / time / damage, not file layout.
 5. Continuous validation:
    `uv run python -m tmnt_iv.scripts.record_full_hard_run`.
 

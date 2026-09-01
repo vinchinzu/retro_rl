@@ -19,7 +19,7 @@ best_video: nes/smb/recordings/fullgame_replays/smb_warp_any_percent_poweron.mp4
 assist_contract: null
 status_doc: nes/smb/docs/STATUS.md
 plan_doc: nes/smb/docs/plan.md
-last_verified: 2026-07-28
+last_verified: 2026-08-05
 blocker: null
 notes: >-
   M8 Clean power-on any% warp: boot 350f + settle 16 + smb_1_1_to_ending.json

@@ -209,8 +209,9 @@ DEVELOPMENT_LADDER, game AGENTS/ADRs, ARCHITECTURE, TOOLSET.
 | **Halt-3 / replace trajectory** | both session skills; HARD_ROOM_SPLITS | Same dual repeated; source file grows `if`s |
 | **CONTEXT.md language** | SM/Harvest CONTEXT; domain.md “proceed silently” if absent | Agents invent “Gate B” / “Ice as living tip” |
 
-Ticket size SM already names: “one hop, or both rooms of a failed seam;
-prefer 30–90 min” ([snes/super_metroid/docs/plan.md](../snes/super_metroid/docs/plan.md)
+Ticket size SM already names: one hop, or drop the split (merge rooms /
+shrink checkbox / write the miss); prefer 30–90 min
+([snes/super_metroid/docs/plan.md](../snes/super_metroid/docs/plan.md)
 Strategy). Harvest equivalent: one spine bead, one living residual.
 
 ## 5. Do not generate tons of files / rewrite chunks

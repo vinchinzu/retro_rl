@@ -25,7 +25,8 @@ Pin, checkbox, and probe CLI:
 2. Run once from the pin the residual names. Run a second time only to
    compare against TAS or another skill (`settled_gs8` hop clock), never
    to prove determinism.
-3. Overwrite `scratch/<hop>_run.json` only. After a red: keep the
+3. Overwrite `scratch/<hop>/<hop>_run.json` only. Watch MP4s in
+   `recordings/<area>/` (`RECORDINGS_DIR`). After a red: keep the
    controller. After **three of the same miss class**: dump a phase pin at
    the last held seat, or **replace** the takeoff (one trajectory).
 4. Overwrite the **living** residual
@@ -45,7 +46,8 @@ Pin, checkbox, and probe CLI:
    is one run.
 8. Do not edit `STATUS.md` or `DEFAULT_CONTINUOUS_TIP`.
 9. Leave must **Sync** to the next room (doorway pause / a few frames ok).
-   If it will not join, **both rooms are one change**. Re-pin the next hop.
+   If it will not **Join**: one multi-room Skill, a smaller checkbox, or
+   write the miss and end the Sitting. Drop the split, not Gravity.
    Glance a phase checkbox against the **phase** LeaveSpec (`hop_glance`);
    dest-room spec only on the hop's leave checkbox. Not an MP4.
 

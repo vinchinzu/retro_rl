@@ -37,12 +37,11 @@ combat tree → stall escape. `HazardAvoid` is not in that order.
 
 ## Tests
 
-ROM-free tests cover **finish**, **time**, and **damage** — not file
-layout. The trial result (`TrialResult`) is the loop contract; spec
-tables (`StageSpec`, `CleanProbeSpec`, `BridgeSpec`) choose entries.
-Do not add tests that require a cloned CLI or PNG dump. Hygiene only
-forbids the old clone names (`run_stageN_segment.py`,
-`probe_stageN_clean.py`, `run_stageN_bridge.py`).
+The trial result (`TrialResult`) is the loop contract; spec tables
+(`StageSpec`, `CleanProbeSpec`, `BridgeSpec`) choose entries. Do not add
+tests that require a cloned CLI or PNG dump. Hygiene only forbids the
+old clone names (`run_stageN_segment.py`, `probe_stageN_clean.py`,
+`run_stageN_bridge.py`).
 
 ## Artifacts
 
