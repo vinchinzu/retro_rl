@@ -12,7 +12,12 @@ from zelda_i.dungeon.ids import (
     LIKE_LIKE_OBJECT_TYPE,
     ZOL_OBJECT_TYPE,
 )
-from zelda_i.level6.clear29 import Level6Clear29Controller
+from zelda_i.level6.clear29 import (
+    CLEAR29_COMBAT_Y,
+    CLEAR29_HANDOFF_Y,
+    Level6Clear29Controller,
+    clear29_handoff_ok,
+)
 from zelda_i.level6.dungeon import (
     CLEAR29_WEST_X,
     LEVEL6_COMPASS_BIT,
@@ -51,7 +56,9 @@ from zelda_i.ram import (
     ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
+    ADDR_ROD,
     ADDR_SCREEN,
+    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
@@ -155,12 +162,23 @@ def _clear29_fight(*, x: int, y: int, enemy_x: int, enemy_y: int):
     return ctl.step(snap)
 
 
-def test_clear29_patrol_stays_west_of_center_block() -> None:
+def test_clear29_patrol_omits_sw_trap() -> None:
     assert CLEAR29_WEST_X == 64
-    assert all(px < CLEAR29_WEST_X for px, _ in ROOM_29_SPEC.combat.patrol)
+    assert CLEAR29_HANDOFF_Y == 133
+    assert CLEAR29_COMBAT_Y == 141
+    assert (48, 157) not in ROOM_29_SPEC.combat.patrol
+    assert (56, 133) in ROOM_29_SPEC.combat.patrol
 
 
-def test_clear29_peels_left_from_north_mouth_not_east() -> None:
+def test_clear29_downs_inland_from_north_mouth() -> None:
+    """Red 3: LEFT at (120,77) is the door channel. DOWN to y=109 first."""
+    act = _clear29_fight(x=120, y=77, enemy_x=184, enemy_y=144)
+    assert act.reason == "north_inland"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("LEFT"))
+
+
+def test_clear29_peels_left_from_north_band_not_east() -> None:
     """(120,109) LEFT is the north band; RIGHT chases into leftover (184,144)."""
     act = _clear29_fight(x=120, y=109, enemy_x=184, enemy_y=144)
     assert act.reason == "west_peel"
@@ -169,7 +187,62 @@ def test_clear29_peels_left_from_north_mouth_not_east() -> None:
     assert list(act.action) != list(nes_action("DOWN"))
 
 
-def test_clear29_does_not_chase_east_from_west_aisle() -> None:
-    act = _clear29_fight(x=48, y=141, enemy_x=184, enemy_y=144)
-    assert list(act.action) != list(nes_action("RIGHT"))
-    assert act.reason in ("combat_patrol", "combat_wait", "combat_engage")
+def test_clear29_may_chase_east_from_west_aisle() -> None:
+    """West-only chase left two wizzrobes live for 15000f (reds 1–2)."""
+    act = _clear29_fight(x=48, y=133, enemy_x=184, enemy_y=144)
+    assert act.reason != "west_peel"
+    assert list(act.action) != list(nes_action("LEFT"))
+
+
+def test_clear29_does_not_walk_south_of_combat_band() -> None:
+    """At y=141 hold/slash south; y=157 still peels UP. Do not chase the trap."""
+    act = _clear29_fight(x=56, y=141, enemy_x=48, enemy_y=157)
+    assert act.reason in ("south_hold", "south_hold_slash")
+    assert list(act.action) != list(nes_action("UP"))
+
+
+def test_clear29_peels_north_from_sw_trap() -> None:
+    act = _clear29_fight(x=48, y=157, enemy_x=48, enemy_y=173)
+    assert act.reason == "north_handoff"
+    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def _cleared_29(*, x: int, y: int):
+    ctl = Level6Clear29Controller()
+    ctl.phase = DungeonPhase.FIGHT
+    ctl.max_live_enemies = 5
+    snap = read_snapshot(_ram(room=ROOM_L6_DARK_29, x=x, y=y, wizzrobes=0))
+    return ctl, ctl.step(snap)
+
+
+def test_clear29_rejects_sw_trap_as_success() -> None:
+    """Minimized repro: (56,157) with five dead must not be reason=done."""
+    ctl, act = _cleared_29(x=56, y=157)
+    assert not ctl.success
+    assert act.reason != "done"
+    assert act.reason == "north_handoff"
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_clear29_accepts_historical_handoff() -> None:
+    ctl, act = _cleared_29(x=55, y=133)
+    assert ctl.success
+    assert act.reason == "done"
+
+
+def test_clear29_accepts_live_north_inland_handoff() -> None:
+    """l6_clear29_north_inland leftover (63,133): x<64 y<=133."""
+    ctl, act = _cleared_29(x=63, y=133)
+    assert ctl.success
+    assert act.reason == "done"
+
+
+def test_clear29_spine_success_requires_handoff_pose() -> None:
+    ram = _ram(room=ROOM_L6_DARK_29, x=55, y=133)
+    ram[ADDR_ROD] = 1
+    ram[ADDR_TRIFORCE] = 0x1F
+    assert clear29_handoff_ok(read_snapshot(ram))
+    ram[ADDR_LINK_X] = 56
+    ram[ADDR_LINK_Y] = 157
+    assert not clear29_handoff_ok(read_snapshot(ram))
