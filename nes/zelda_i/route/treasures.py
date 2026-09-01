@@ -260,7 +260,7 @@ OW_GATES: tuple[OwGate, ...] = (
         cost_rupees=80,
         live=LIVE_LATER,
         gates="Gohma with bow; Survival still grants ADDR_ARROWS=1",
-        notes="buy 80R after L1 bow, before Gohma; 0x5E has no arrows; 0x6B hyp not live; do not farm ownership",
+        notes="live OW 0x4A 80R arrows; 0x5E has no arrows; 0x6B hyp not live; dedicated --through level1-arrows farm still red; do not farm ownership",
     ),
     OwGate(
         name="bait",

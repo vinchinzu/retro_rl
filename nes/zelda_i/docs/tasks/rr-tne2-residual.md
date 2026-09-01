@@ -1,14 +1,14 @@
 # Residual — rr-tne2 L6 power-on recompose to TF 0x20
 
-**Status:** power-on Survival spine is **1/1** through `--through level6`
-(fanfare `0x0C` TF `0x3F`). Bead `rr-tne2` stays open. Do not STATUS-promote.
-Do not close. Do not push.
+**Status:** CheckWarp walk is **1/1** (`position_writes=0`). Cellar08 is
+**1/1**. `--through level6` is **red** at Gohma occupancy_stand. Bead
+`rr-tne2` stays open. `rr-17co` stays open. Do not STATUS-promote. Do not
+close. Do not push.
 
-Sitting 2026-09-01: claimed `rr-17co` (south-band east-column CheckWarp).
-One policy, one `--through level6-stairs3a-warp` trial, stop at first red.
-`rr-wabn` first checkbox in parallel: leftover already has rupees; reports
-still omit them; probe an 80R merchant. Do not splice arrows into default
-`--through level6`. Wooden-arrow grant may stay. Then Phase 4 `rr-ibkf`.
+Sitting 2026-09-01 claimed `rr-17co`. South-band east-column greened the
+warp. Compose stopped at Gohma. `rr-wabn` found live shop `0x4A`; dedicated
+`--through level1-arrows` red on the 80R farm. Wooden-arrow grant still
+on Gohma. Then Phase 4 `rr-ibkf`.
 
 ## Green from power-on (2026-09-01)
 
@@ -18,12 +18,13 @@ still omit them; probe an 80R merchant. Do not splice arrows into default
 | level6-north0c | play `0x0C` `(120,205)` keys=2 | `cur_opened_doors` already had UP; cardinal UP; hop 209f |
 | level6 | fanfare `0x0C` `(120,149)` TF `0x3F` | occupancy onto shard; hop 43f; mode 18 |
 
-Prefix through Gohma still 1/1 (hop 54f, arrows 0→1). Glance: TF `0x1F→0x3F`,
-rod=1, Bow=1, bombs=8, keys=2, health `0x77` lo==hi, accepted_containers=8.
-Deaths 0 / claimed state-load 0 / progression / capacity writes 0. One 0x3A
-position write. One wooden-arrow grant. Compose is power-on spine (no
-`--from-state`). **Keys stay 2 — do not top up.** `status_claim=false`.
-L6 reports omitted rupees; record them on the next leftover.
+Prefix through Gohma was 1/1 on the **poked** warp (hop 54f, arrows 0→1).
+Glance then: TF `0x1F→0x3F`, rod=1, Bow=1, bombs=8, keys=2, health `0x77`
+lo==hi, accepted_containers=8. Deaths 0 / claimed state-load 0 /
+progression / capacity writes 0. One wooden-arrow grant. Compose is
+power-on spine (no `--from-state`). **Keys stay 2 — do not top up.**
+`status_claim=false`. Leftover and `spine_final_fields` now record rupees
+(this tape 43R).
 
 Heart / shutter / shard hops stay dedicated SpineHops after Gohma
 (`level6-heart`, `level6-north0c`, canonical `level6`). `triforce_writes=0`.
@@ -55,9 +56,21 @@ Replacement hop, **one module**, dest glance `STAIRS3A_DEST` (mode 9 cellar
 5. UP onto tile `0x71` at `(208,93)`. Hold until mode 9.
 
 Do not restore through-names `stairs3a` / `-71` / `-ne` / `-ne71`. Do not
-idle the center hole. `position_writes` must be 0. Cellar08 B-side cross is
-unchanged. Fail publishes leftover. Three serial reds on this checkbox
-blocks.
+idle the center hole. Fail publishes leftover. Three serial reds on this
+checkbox blocks.
+
+Walk is **1/1** (`l6_stairs3a_southband`): hop 290f, mode 9 cellar `0x08`
+`(208,93)` tile `0x71`, notes `center_pushed` / `south_band_112_181` /
+`east_column_208_181` / `warped_9_08_208_93`. `position_writes=0`.
+Cellar08 **1/1** (`l6_cellar08_southband`): hop 465f, play `0x1D`
+`(96,157)` keys=3 bombs=8 rupees=43. `--through level6`
+(`l6_southband_finish`) **red** at `level6_gohma_0x1c` 20000f timeout.
+north2c leftover `(120,205)` keys 3→2 still greened. Gohma: poke arrows
+0→1, inland to y=165 by f32 (9 misses), then knockback to `(120,189)`
+tile 118 and `occupancy_stand` from f80 (27 misses, no `arrow_shot`).
+Type `0x34` same as the 54f poked-warp kill. HUD B ended on bombs.
+Do not retry south-band. Do not occupancy at y=149. Fold `stairs3a.py`
+after `--through level6` is 1/1.
 
 ## Arrow splice (plan)
 
@@ -68,22 +81,26 @@ Bow is already on the L1 Survival splice. Do not exit L6 to fetch arrows.
 Window: after `level1-bow-pickup`, before Gohma.
 
 `0x5E` is live Shield 160 / Key 100 / Candle 60, **no arrows**. Gathering
-hyp `0x6B` (start right×3, up, right) is not live. First checkbox: record
-rupees on a leftover, farm Octoroks to ≥80 if short, probe a merchant until
-`ADDR_ARROWS` 0→1. `CandleShop5E` buy geometry is the template (settle, UP
-stairs, touch pedestal, DOWN exit). Do not poke rupees.
+hyp `0x6B` is not live. Live 80R merchant is OW **`0x4A`** (K-5): Magical
+Shield 130 / Bombs 20 / Arrows 80. Cave mouth mode 16 `(176,77)`. Spawn
+mode 11 `(112,213)`. Buy: settle, UP stairs, RIGHT on y=165 to x=152, UP
+touch `(152,157)`. y=149 walks through mid bombs. Scratch recon poke 200R
+got `ADDR_ARROWS` 0→1. Do not poke rupees on the spine.
 
-Wire like the bow detour. `--through level1-arrows` stop on arrows=1.
-`poke_wooden_arrows` already skips when arrows are wooden. Clean M5 skips.
+`--through level1-arrows` is dedicated (not in `level1_survival_tf_stages`).
+**Red** `l1_arrows`: farm timeout leftover play `0x4A` `(63,173)` bow=1
+arrows=0 rupees 9→10 in 37665f. L1 exit leftover was 6R. Do not splice
+into default L6. `poke_wooden_arrows` still on Gohma. Clean M5 skips.
 
 ## Next sitting
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
-  --through level6-stairs3a-warp --no-video --trials 1 \
-  --tag l6_stairs3a_southband
+  --through level6-gohma --no-video --trials 1 \
+  --tag l6_gohma_after_walk
 ```
 
-One policy: south-band east-column, not occupancy at y=149. Stop at the
-first red. No STATUS/push.
+One policy: Gohma inland after the walked warp. Occupancy boxed
+`(120,189)` tile 118 after reaching y=165. Do not retry south-band. Do
+not occupancy at y=149. Stop at the first red. No STATUS/push.

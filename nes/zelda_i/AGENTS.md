@@ -16,11 +16,11 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Power-on spine is **1/1 through `--through level6`** (fanfare `0x0C`
-`(120,149)` TF `0x1F→0x3F`, hc 7→8 health `0x77`, rod=1 keys=2 bombs=8
-Bow=1 arrows=1). Heart 31f, north shutter 209f, shard 43f. Bead stays
-open. Next sitting is CheckWarp walk-on (`rr-17co`): delete the 0x3A
-position write. Do not retry LEFT/occupancy at y=149. Do not STATUS.
+CheckWarp walk is **1/1** (`position_writes=0`, cellar `0x08` `(208,93)`).
+Cellar08 1/1 play `0x1D` `(96,157)`. `--through level6` **red** at Gohma
+occupancy_stand `(120,189)` tile 118. Bead stays open. Next sitting is
+Gohma inland after the walked warp (`rr-17co`). Do not retry south-band
+or y=149 occupancy. Do not STATUS.
 
 ## Commands
 
