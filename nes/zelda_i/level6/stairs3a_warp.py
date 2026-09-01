@@ -1,10 +1,14 @@
 """Level 6 0x3A stairs via one disclosed Link-position write.
 
-Walk-on from clear3a leftover is BLOCKED (stairs3a / -71 / -ne / -ne71 /
--neclip / -neunder, 3 reds each). Operator exception: one (x, y) write
-onto the 0x09 analog warp ``(208, 93)`` after the live center 0x68 push.
-Do not write room, door, inventory, Triforce, capacity, facing, mode, or
-load state. Dest is RAM. Do not invent/fight Gohma. Do not poke bow/arrows.
+Walk-on at y=149 is BLOCKED (ne71 v1 LEFT 158,149; v2 UP 144,149; v3 UP
+136,149). Center hole after the push is decorative tile 119 / 0x77. Real
+CheckWarp is tile 0x71 at (208, 93). Removal (rr-17co): after the live
+center push, peel south of y=149, RIGHT to x=208, UP the east column onto
+0x71. Do not retry occupancy at y=149. Do not restore stairs3a* names.
+
+This module still pokes (208, 93) until that hop greens. Do not write
+room, door, inventory, Triforce, capacity, facing, mode, or load state.
+Dest is RAM. Do not invent/fight Gohma. Do not poke bow/arrows.
 """
 
 from __future__ import annotations

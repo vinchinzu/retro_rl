@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.level6.occupancy import (
+    l6_leftover,
     l6_play_dest_success,
     occupancy_new_miss,
 )
@@ -20,6 +21,7 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_ROD,
+    ADDR_RUPEES,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
     PASSAGE_MODE,
@@ -136,6 +138,13 @@ def test_occupancy_new_miss_2px_up() -> None:
     walker.last_xy = (96, 157)
     assert occupancy_new_miss(walker, (96, 155)) == "UP"
     assert walker.misses == 1
+
+
+def test_l6_leftover_records_rupees() -> None:
+    ram = _ram()
+    ram[ADDR_RUPEES] = 42
+    leftover = l6_leftover(read_snapshot(ram))
+    assert leftover["rupees"] == 42
 
     first = OccupancyWalker()
     first.last_dir = "UP"

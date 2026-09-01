@@ -624,7 +624,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29
 | Stop | `--through level6-clear3a` play-ready empty `0x3A` |
 | Leftover | `(144,141)`; hop 1,857f tape 219,649f; center 0x68 unpushed |
 | Track | **assisted Survival** |
-| Notes | Stairs use the disclosed Survival position assist. Bow=0 arrows=0. Do not poke `ADDR_ARROWS`. |
+| Notes | Stairs currently use the disclosed Survival position assist. Removal is `rr-17co` (south-band east-column onto `0x71`, not occupancy at y=149). |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1
@@ -703,7 +703,35 @@ not the route.
 | Leftover | `(120,189)`; hop 54f; pulses=1; heart on floor; north shutter still black (`l6_gohma_recompose`) |
 | Integrity | one position write (0x3A warp), one arrow grant, deaths/state loads/progression/capacity writes 0 |
 
-Heart + north shutter `0x0C` TF `0x20` has no spine hop.
+### Heart `0x1C` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | Gohma leftover play `0x1C` `(120,189)`, body gone, hc 7, TF `0x1F` |
+| Path | occupancy UP onto room-center heart `(120,141)` |
+| Stop | `--through level6-heart` hc 7→8 health `0x77` lo==hi; TF still `0x1F` |
+| Leftover | `(120,149)`; hop 31f; item still `0x1A` at stop (`l6_heart_recompose`) |
+| Integrity | no TF/door poke; 10 occupancy misses (2px UP) then collected |
+
+### North shutter `0x1C` → play `0x0C` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | heart leftover play `0x1C` `(120,149)` |
+| Path | north RAM bit already set (`cur_opened_doors=0x0C`); cardinal x-align UP |
+| Stop | `--through level6-north0c` play `0x0C` `(120,205)`; keys stay 2 |
+| Leftover | hop 209f; TF still `0x1F` (`l6_north0c_recompose`) |
+| Notes | PNG shutter can still look black; RAM bit is the leave |
+
+### Shard `0x0C` TF `0x20` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | north0c leftover play `0x0C` `(120,205)` |
+| Path | occupancy UP onto the center shard `(120,141)` |
+| Stop | `--through level6` fanfare mode 18, TF `0x1F→0x3F` |
+| Leftover | `(120,149)`; hop 43f; tape 212,543f (`l6_tf_recompose`) |
+| Integrity | `triforce_writes=0`; `status_claim=false` |
 
 ### Post-east-key graph (live recon)
 
@@ -755,7 +783,7 @@ rows on `scripts/run_survival_spine.py`.
 - Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1 with the disclosed position assist
 - `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
 - Gohma kill — **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF still `0x1F` (`l6_gohma_recompose`)
-- Heart → north `0x0C` Triforce shard 6 (`triforce & 0x20`) — residual; no spine hop
+- Heart → north `0x0C` Triforce shard 6 — **live** 1/1 fanfare `(120,149)` TF `0x3F` (`l6_tf_recompose`)
 
 ## Boss / Triforce
 
@@ -847,7 +875,7 @@ Not claimed live as pure segments:
 19. South `0x1D` → play `0x2D` — **live** 1/1 leftover `(120,77)` keys=3
 20. `0x2D` west → `0x2C` KEY-UP → Gohma `0x1C` enter — **live** 1/1 leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
 21. Gohma kill — **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF=`0x1F` (`l6_gohma_recompose`)
-22. Heart → north `0x0C` TF `0x20` — residual; no spine hop
+22. Heart → north `0x0C` TF `0x20` — **live** 1/1 fanfare `(120,149)` TF `0x3F` (`l6_tf_recompose`). Position write and wooden-arrow grant still disclosed.
 
 ## Not claimed
 
@@ -855,4 +883,5 @@ Not claimed live as pure segments:
 - Clean east/west wizzrobe combat (beams kill without assist)
 - Full walk hop table from `0x77` / post-L1 (post-L5 `0x0B` → `0x79` is live)
 - Bracelet warp live
-- Gohma kill / triforce bit live (Gohma `0x1C` enter is live; bow=0 arrows=0)
+- Clean Gohma / natural arrows (Survival still grants wooden arrows; shop splice planned)
+- CheckWarp walk-on of 0x3A stairs (`rr-17co`; south-band, not y=149 occupancy)

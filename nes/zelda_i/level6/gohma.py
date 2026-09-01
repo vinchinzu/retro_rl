@@ -1,9 +1,9 @@
 """Level 6 Gohma 0x1C: poke wooden arrows, shoot the open eye.
 
-Leftover is north2c play 0x1C ``(120,205)``. Bow must already be earned
-(L1 Survival splice). Operator exception: ``ADDR_ARROWS=1`` + B-slot 2.
-Do not write ``ADDR_BOW``. Do not poke doors/keys. Isolated BFS banned.
-Enter-stop was unarmed; this hop is the kill. TF ``0x20`` is next.
+Leftover is north2c play 0x1C ``(120,205)``. Bow is earned on the L1
+Survival splice. Operator exception: ``ADDR_ARROWS=1`` + B-slot 2 until
+the 80R shop splice. Do not write ``ADDR_BOW``. Do not poke doors/keys.
+Isolated BFS banned. Heart / north 0x0C / TF 0x20 are later SpineHops.
 """
 
 from __future__ import annotations

@@ -389,7 +389,7 @@ def leftover_from_snapshot(snap: Any) -> dict[str, Any]:
     tile = getattr(snap, "colliding_tile", getattr(snap, "tile", None))
     if tile is not None:
         leftover["tile"] = int(tile)
-    for key in ("rod", "bow", "arrows", "map"):
+    for key in ("rod", "bow", "arrows", "map", "rupees"):
         if hasattr(snap, key):
             leftover[key] = int(getattr(snap, key) or 0)
     return leftover

@@ -90,7 +90,10 @@ when Link exits at `x>=0x80`. The corrected controller keeps this same
 authorized target, crosses the tunnel floor to the right ladder at `x=192`,
 and reached play `0x1D` 1/1. No second position target or write was added.
 
-The implementation is `zelda_i.assist.poke_link_position`.
+The implementation is `zelda_i.assist.poke_link_position`. Removal is
+`rr-17co`: walk onto tile `0x71` at `(208,93)` via the south-band east
+column. Do not retry occupancy at y=149 (ne71 v1–v3). Spine path must
+reach `position_writes=0` before `rr-tne2` closes.
 
 This exception does not authorize walking the east door unarmed or fighting
 Gohma without bow+arrows.
@@ -112,7 +115,10 @@ Allowed fields only:
 The implementation is `zelda_i.assist.poke_wooden_arrows`. List the write in
 the Gohma controller `inventory_assist`. `progression_writes` and
 `capacity_writes` stay 0. `bow_writes` stay 0. Natural 80R shop buy replaces
-this on the later resource pass.
+this (`ADDR_ARROWS` is type, not ammo; do not farm ownership). Bow is already
+on the L1 Survival splice; splice the buy after `level1-bow-pickup`, before
+Gohma. Live `0x5E` has no arrows. The helper already skips when arrows are
+wooden.
 
 This exception does not authorize speculative top-ups on every frame. Apply it
 immediately before a known bomb-consuming stage, preserve all other inventory,
