@@ -36,15 +36,29 @@ _CERES_ELEV_TOP_Y = 171  # s10 land / right-wall KB band
 _CERES_ELEV_TOP_X = 211  # product right-wall contact (pose 137)
 _CERES_ELEV_LEDGE_Y = 571  # mid-shaft ledge; not a product recovery seat
 _CERES_ELEV_BOTTOM_Y = 640  # bottom floor band after a missed door jump
-# Falling west door (TAS lsnes sniq_100): hop the y≈139 ledge, spin LEFT,
-# jump x≈37, air-turn pose 25 at x≲28. Floor remap y=651 is a missed WJ.
+# Falling west door (TAS lsnes sniq_100). x=45 is the Ceres door enemy
+# $E23F (`CERES_DOOR_ID`), shut for ~16f after the ledge: walking into it is
+# pose-138 / movement-type-21, which zeroes momentum and parks the jump on
+# the y=108 ceiling. Crouch it out east of x=45 instead, then run LEFT and
+# jump at x<=33 so the leave is the 4th air frame — pose 26 rising vy=4 at
+# y≈121, elev (216, 633) against TAS (216, 632). min_momentum is 1, not 2:
+# ground momentum caps at 2.75 and halves once on the second air frame, so
+# momentum_x reads 1 from there on however long the runway is. Floor remap
+# y=651 is still a missed WJ.
 _CERES_FALLING_DOOR_LEDGE_Y = 139
-_CERES_FALLING_DOOR_TURN_X = 28
-_CERES_FALLING_DOOR_JUMP_X = 40
+_CERES_FALLING_DOOR_JUMP_X = 33
+# $E23F shutter wait, same shape as _CERES_MAGNET_DOOR_STEAM_FRAMES.
+_CERES_FALLING_DOOR_SHUTTER_FRAMES = 10
+CERES_FALLING_DOOR_HOP = PlatformHop(
+    _CERES_FALLING_DOOR_LEDGE_Y,
+    16,
+    70,
+    TakeoffWindow((16, _CERES_FALLING_DOOR_JUMP_X), "LEFT", min_momentum=1),
+)
 # Reverse Falling: run off y=139 onto y=187, hop x≈347 onto y=171, run
 # LEFT, turn RIGHT at x≤314 leftover LEFT mx, 1f p25, B-only fall (no X),
 # LEFT+B+A on p83/p80. Do not hold A into the y≈110 ceiling. RIGHT on the
-# hit frame is p84 knock RIGHT. Door is pose 25 at (26,120) mx=2.
+# hit frame is p84 knock RIGHT. Door leave is pose 26 rising at (19,121).
 _CERES_FALLING_REV_FLOOR_Y = 187
 _CERES_FALLING_REV_SHELF_Y = 171
 _CERES_FALLING_REV_TILE_X = 300
@@ -170,8 +184,9 @@ __all__ = [
     "_CERES_ELEV_LEDGE_Y",
     "_CERES_ELEV_BOTTOM_Y",
     "_CERES_FALLING_DOOR_LEDGE_Y",
-    "_CERES_FALLING_DOOR_TURN_X",
     "_CERES_FALLING_DOOR_JUMP_X",
+    "_CERES_FALLING_DOOR_SHUTTER_FRAMES",
+    "CERES_FALLING_DOOR_HOP",
     "_CERES_FALLING_REV_FLOOR_Y",
     "_CERES_FALLING_REV_SHELF_Y",
     "_CERES_FALLING_REV_TILE_X",

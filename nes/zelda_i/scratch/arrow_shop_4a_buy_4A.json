@@ -1,0 +1,239 @@
+{
+  "recon": true,
+  "recon_rupee_poke": "memory.assign",
+  "start": {
+    "mode": 5,
+    "level": 0,
+    "screen": 74,
+    "x": 112,
+    "y": 61,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 13,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 13,
+        "x": 96,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 13,
+        "x": 112,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 13,
+        "x": 144,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 13,
+        "x": 160,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 13,
+        "x": 192,
+        "y": 173,
+        "hp": 0
+      }
+    ]
+  },
+  "before_enter": {
+    "mode": 5,
+    "level": 0,
+    "screen": 74,
+    "x": 112,
+    "y": 61,
+    "rupees": 200,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 13,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 13,
+        "x": 96,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 13,
+        "x": 112,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 13,
+        "x": 144,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 13,
+        "x": 160,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 13,
+        "x": 192,
+        "y": 173,
+        "hp": 0
+      }
+    ]
+  },
+  "entered": {
+    "mode": 11,
+    "level": 0,
+    "screen": 74,
+    "x": 176,
+    "y": 93,
+    "rupees": 200,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 36,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 13,
+        "x": 108,
+        "y": 127,
+        "hp": 16
+      },
+      {
+        "slot": 2,
+        "type": 13,
+        "x": 51,
+        "y": 122,
+        "hp": 16
+      },
+      {
+        "slot": 3,
+        "type": 13,
+        "x": 157,
+        "y": 171,
+        "hp": 16
+      },
+      {
+        "slot": 4,
+        "type": 13,
+        "x": 177,
+        "y": 163,
+        "hp": 16
+      },
+      {
+        "slot": 5,
+        "type": 13,
+        "x": 180,
+        "y": 166,
+        "hp": 16
+      },
+      {
+        "slot": 6,
+        "type": 13,
+        "x": 208,
+        "y": 144,
+        "hp": 16
+      }
+    ]
+  },
+  "cave_png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_4a_BFS_4A_cave.png",
+  "buys": [
+    {
+      "pedestal": "left",
+      "aim_x": 72,
+      "arrows": 0,
+      "rupees": 200,
+      "bombs": 0,
+      "keys": 0,
+      "candle": 0,
+      "shield": 0,
+      "xy": [
+        112,
+        212
+      ],
+      "mode": 11,
+      "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_4a_BFS_4A_left.png"
+    },
+    {
+      "pedestal": "mid",
+      "aim_x": 120,
+      "arrows": 0,
+      "rupees": 200,
+      "bombs": 4,
+      "keys": 0,
+      "candle": 0,
+      "shield": 0,
+      "xy": [
+        120,
+        149
+      ],
+      "mode": 11,
+      "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_4a_BFS_4A_mid.png"
+    },
+    {
+      "pedestal": "right",
+      "aim_x": 152,
+      "arrows": 0,
+      "rupees": 199,
+      "bombs": 4,
+      "keys": 0,
+      "candle": 0,
+      "shield": 0,
+      "xy": [
+        123,
+        149
+      ],
+      "mode": 11,
+      "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_4a_BFS_4A_right.png"
+    }
+  ],
+  "arrows_0_to_1": false
+}

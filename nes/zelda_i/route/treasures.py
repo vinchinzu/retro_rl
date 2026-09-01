@@ -10,7 +10,9 @@ level1`` / ``level2+`` splice ``clear23_key`` → bow detour →
 ``backtrack44``. ``--through level1-bow-pickup`` is **1/1** play
 ``0x23`` ``ADDR_BOW=1``. ``--through level2-entry`` is **1/1** play
 ``0x7d`` ``(120,205)`` TF=``0x01`` bow=1 (``l1_bow_splice_l2_entry_v14``).
-Clean M5 does not run the detour. Arrows still 0.
+Clean M5 does not run the detour. Arrows still 0 on the default spine.
+Live 80R merchant is OW ``0x4A`` (K-5; Shield 130 / Bombs 20 / Arrows 80).
+Dedicated ``--through level1-arrows``; not spliced into ``level1`` / L6.
 """
 
 from __future__ import annotations

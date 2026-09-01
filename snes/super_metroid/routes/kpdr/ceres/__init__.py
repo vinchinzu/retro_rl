@@ -10,7 +10,7 @@ Package layout
   (Ceres 1 moonfall + Ceres 2 magnet-feet + Ceres 3 jump-before-ledge)
 * ``spine`` — CERES_SPINE / CERES_DOOR_EDGES / CERES_MILESTONES / boot /
   TAS comparison clocks. Morph composes this prefix.
-* ``data/`` — living pins (first-control + hop leaves). Pin table in plan.md.
+* ``data/`` — first-control pin only. Leftover hop seats are gone.
 
 Takeoff types live in ``super_metroid.takeoff``. Knockback lives in
 ``routes.skills.knockback``. Import those from the owning module.

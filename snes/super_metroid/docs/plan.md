@@ -76,6 +76,48 @@ work that starts from archived room pins, changes a room already on the spine,
 or attempts a tape-backed continuous chain. Its scaffold track is development
 evidence, not the Survival living tip.
 
+### Ceres TAS-speed elevator (parallel Chip)
+
+Not Gravity. Not a second tip. Play from
+`routes/kpdr/ceres/data/ceres_first_control.state` only. Leftover magnet /
+falling seats are gone.
+
+Elevator is one TAS wall-jump: entry → 475 → 363 → 267 → 171. Miss raises.
+Hard fail over 2500f (`CERES_ELEV_MAX_FRAMES`). No 571 checkpoint recover.
+TAS `elev_to_landing` is **2246f**. A 3349f station that remapped y=651 as
+success was a gaslight.
+
+Falling leave now lands **(216, 633) pose 26 vd=1 vy=4 inv=6** against TAS
+**(216, 632) pose 25 vy=+4 inv=36**. x=45 was never debris: it is the Ceres
+door enemy `$E23F` (`CERES_DOOR_ID`), shut for ~16f after the ledge. Walking
+it is pose 138 / movement type 21 — momentum 0 and a y=108 ceiling bonk, in
+the air as much as on the ground. The door policy crouches it out east of
+x=45, then runs LEFT and jumps at `_CERES_FALLING_DOOR_JUMP_X = 33` so the
+leave is the 4th air frame. Door leave WRAM is frozen into the elev dest:
+dest y is Falling y + 512.
+
+`_ceres_fast_entry_window` still reads False on one clause, `momentum_x >=
+2`, and that clause is unreachable from this door. Measured off
+`ceres_first_control.state`: ground momentum tops out at 2.75 ($0B46/$0B48)
+however long the runway, and halves once to 1.375 on the second airborne
+frame, so `momentum_x` reads 1 from air frame 2 on. The band needs elev y <=
+641, i.e. Falling y <= 129, which the rise only reaches on air frame 3.
+Eight takeoffs — spin, A-tap, aim, shoot, UP, L-pump, and turnaround jumps
+carrying momentum 4.375 — all halve the same way. The two clauses cannot
+both hold; what replaces `momentum_x >= 2` is a call to make, not a band to
+quietly widen.
+
+`_ceres_entry_to_475` does not climb from the new entry either: run with the
+window relaxed to `momentum_x >= 1`, entries at elev y 620/624/633/637 all
+end at y=683 on the elevator floor instead of 475. Its spans need their own
+sitting.
+
+```bash
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
+```
+
+Do not STATUS. Do not change `DEFAULT_CONTINUOUS_TIP`.
+
 ---
 
 ## Next rungs
@@ -99,8 +141,8 @@ Tapes are guidelines. Continuous tips only after natural doorway entry.
 
 ### Parked (not spine)
 
-- Prefix Chip/slop under Sync. Morph is **24,187f**; Ceres still has dwell
-  leftovers. Do not freeze Gravity for a prettier Ice/Ceres spine.
+- Prefix Chip/slop under Sync. Morph is **24,187f**. Ceres TAS-speed
+  elevator is the parallel Chip above; do not freeze Gravity for it.
 - Planner STATUS for prefix CI `--to moat` (`rr-g3nj`) and Ice dual
   (`rr-ucl9`). Not a second living tip.
 - TAS/oracle, 100% board ([routes/TRACK_100.md](routes/TRACK_100.md)).

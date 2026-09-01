@@ -18,12 +18,54 @@ from zelda_i.spine.survival import (
     BOOT_POLICY,
     SPINE_BOMB_RETOPUP,
     SPINE_L1_KEY_RETOPUP,
+    SPINE_THROUGH,
     SpineRun,
     merge_inventory_assist,
+    spine_final_fields,
     topup_owned_bombs,
     topup_owned_inventory,
     validate_l5_endpoint,
 )
+
+
+def test_spine_final_fields_records_rupees() -> None:
+    """L6 leftover already records rupees; spine reports must too. No inventory poke."""
+    snap = SimpleNamespace(
+        mode=5,
+        level=6,
+        screen=0x0C,
+        link_x=120,
+        link_y=149,
+        keys=2,
+        bombs=8,
+        rupees=42,
+        health=0x77,
+        triforce=0x3F,
+        map=0x0A,
+        rod=1,
+        bow=1,
+        arrows=1,
+    )
+    fields = spine_final_fields(snap)
+    assert fields["rupees"] == 42
+    assert fields["bombs"] == 8
+    assert fields["arrows"] == 1
+
+
+def test_level1_arrows_is_dedicated_not_on_default_tf() -> None:
+    from zelda_i.level1.arrow_shop import level1_arrows_stages
+    from zelda_i.level1.bow_pickup import level1_survival_tf_stages
+
+    assert "level1-arrows" in SPINE_THROUGH
+    tf_names = [name for name, _, _ in level1_survival_tf_stages()]
+    assert "level1_arrows" not in tf_names
+    arrow_names = [name for name, _, _ in level1_arrows_stages()]
+    assert "level1_bow_pickup" in arrow_names
+    assert "backtrack44" in arrow_names
+    assert "backtrack44" in SPINE_L1_KEY_RETOPUP
+    assert arrow_names[-1] == "level1_arrows"
+    run = SpineRun(through="level1-arrows", success=True, boot_frames=1)
+    assert run.report()["stop"] == "level1_arrows"
 
 
 def test_l1_bow_splice_restores_key_before_backtrack44() -> None:

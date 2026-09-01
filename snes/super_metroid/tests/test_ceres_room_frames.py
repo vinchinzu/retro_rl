@@ -8,7 +8,11 @@ from unittest.mock import Mock
 import numpy as np
 
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GS_ORDINARY, parse_state
-from super_metroid.routes.kpdr.ceres.geometry import _CERES_SCI_DOOR_Y
+from super_metroid.routes.kpdr.ceres.geometry import (
+    _CERES_FALLING_DOOR_JUMP_X,
+    _CERES_FALLING_DOOR_SHUTTER_FRAMES,
+    _CERES_SCI_DOOR_Y,
+)
 from super_metroid.routes.kpdr.ceres.scientist import (
     CeresScientistCross,
     scientist_on_entry_ledge,
@@ -21,6 +25,7 @@ from super_metroid.routes.kpdr.ceres.spine import (
     TAS_CLOCK_ROOM_FLIP,
     TAS_CLOCK_SETTLED_GS8,
     ceres_hops_vs_tas,
+    elev_to_landing_within_tas,
     load_tas_ceres_hops,
     tas_hop_clock,
 )
@@ -118,12 +123,8 @@ def test_tas_ceres_hops_expose_both_clocks() -> None:
     assert sci_rev["dwell_frames"] == 101
 
 
-def test_hops_vs_tas_measures_up_to_last_room() -> None:
-    tas = [
-        {"from": "0xDF8D", "to": "0xDF45", "frames": 281, "name": "falling_to_elev"},
-        {"from": "0xDF45", "to": "0x91F8", "frames": 2246, "name": "elev_to_landing"},
-    ]
-    visits = [
+def _last_room_visits() -> list[dict]:
+    return [
         {
             "room_id": 0xDF8D,
             "dest_room_id": 0xDF45,
@@ -134,19 +135,48 @@ def test_hops_vs_tas_measures_up_to_last_room() -> None:
             "exit_frame": 16456,
         }
     ]
+
+
+_LAST_ROOM_TAS = [
+    {"from": "0xDF8D", "to": "0xDF45", "frames": 281, "name": "falling_to_elev"},
+    {"from": "0xDF45", "to": "0x91F8", "frames": 2246, "name": "elev_to_landing"},
+]
+
+
+def test_hops_vs_tas_slow_last_room_is_a_miss() -> None:
+    """landing_frame synthesizes the hop. A +995 delta is not a TAS pass."""
     out = ceres_hops_vs_tas(
-        visits,
+        _last_room_visits(),
         landing_frame=19697,
         first_control_frame=10860,
-        tas_hops=tas,
+        tas_hops=_LAST_ROOM_TAS,
     )
     assert out["up_to_last_room"]["frames"] == 16456 - 10860
     assert out["last_room"]["frames"] == 19697 - 16456
     last = out["hops"][-1]
     assert last["name"] == "elev_to_landing"
     assert last["synthesized"] is True
-    assert last["delta_frames"] == (19697 - 16456) - 2246
+    assert last["delta_frames"] == 995
+    assert last["delta_frames"] > 0
     assert last["clock"] == TAS_CLOCK_SETTLED_GS8
+    assert not elev_to_landing_within_tas(out["hops"])
+
+
+def test_hops_vs_tas_last_room_reports_zero_delta_when_aligned() -> None:
+    landing_frame = 16456 + 2246
+    out = ceres_hops_vs_tas(
+        _last_room_visits(),
+        landing_frame=landing_frame,
+        first_control_frame=10860,
+        tas_hops=_LAST_ROOM_TAS,
+    )
+    last = out["hops"][-1]
+    assert last["delta_frames"] == 0
+    assert elev_to_landing_within_tas(out["hops"])
+    assert not elev_to_landing_within_tas([])
+    assert not elev_to_landing_within_tas(
+        [{"name": "elev_to_landing", "delta_frames": None}]
+    )
 
 
 def test_hops_vs_tas_labels_room_flip_mismatch() -> None:
@@ -456,13 +486,125 @@ def test_falling_dboost_holds_left_on_pose_80() -> None:
     assert track.boosted is True
 
 
-def test_falling_door_jumps_for_pose_25() -> None:
-    st = _falling_state(samus_x=37, samus_y=139, pose=10, momentum_x=2)
+def test_falling_door_crouches_out_the_shutter() -> None:
+    """$E23F is shut for the first frames; walking it is pose-138 knockback."""
+    st = _falling_state(
+        samus_x=50,
+        samus_y=144,
+        pose=10,
+        momentum_x=2,
+        invincibility_timer=36,
+    )
     names, track = ceres_falling_escape_action(
         st, CeresFallingEscapeTrack(phase="exit")
     )
-    assert "A" in names
+    assert names == ("DOWN",)
+    assert track.phase == "exit"
+
+
+def test_falling_door_runs_left_once_the_shutter_is_up() -> None:
+    st = _falling_state(
+        samus_x=50,
+        samus_y=139,
+        pose=10,
+        momentum_x=0,
+        invincibility_timer=22,
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES
+        ),
+    )
+    assert "A" not in names
     assert "LEFT" in names
+
+
+def test_falling_door_still_running_east_of_takeoff() -> None:
+    st = _falling_state(
+        samus_x=39,
+        samus_y=139,
+        pose=10,
+        momentum_x=1,
+        invincibility_timer=14,
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES
+        ),
+    )
+    assert "A" not in names
+    assert "LEFT" in names
+
+
+def test_falling_door_jumps_at_the_takeoff_x() -> None:
+    """x=33 mx=1 leaves on the 4th air frame at y≈121 (elev 633)."""
+    st = _falling_state(
+        samus_x=_CERES_FALLING_DOOR_JUMP_X,
+        samus_y=139,
+        pose=10,
+        momentum_x=1,
+        invincibility_timer=11,
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES
+        ),
+    )
+    assert names == ("LEFT", "B", "A")
+
+
+def test_falling_door_holds_a_through_the_ascent() -> None:
+    """momentum_x halves on air frame 2, so height is the only lever left."""
+    st = _falling_state(
+        samus_x=23,
+        samus_y=130,
+        pose=26,
+        momentum_x=1,
+        invincibility_timer=8,
+        vertical_direction=1,
+        velocity_y=4,
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES + 4
+        ),
+    )
+    assert names == ("LEFT", "B", "A")
+
+
+def test_falling_does_not_jump_standing() -> None:
+    st = _falling_state(
+        samus_x=37, samus_y=139, pose=1, momentum_x=0, speed_flag=0
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES
+        ),
+    )
+    assert "A" not in names
+    assert track.phase == "exit"
+
+
+def test_falling_does_not_jump_without_iframes() -> None:
+    st = _falling_state(
+        samus_x=_CERES_FALLING_DOOR_JUMP_X,
+        samus_y=139,
+        pose=10,
+        momentum_x=2,
+        invincibility_timer=0,
+    )
+    names, track = ceres_falling_escape_action(
+        st,
+        CeresFallingEscapeTrack(
+            phase="exit", held=_CERES_FALLING_DOOR_SHUTTER_FRAMES
+        ),
+    )
+    assert "A" not in names
 
 
 def test_falling_done_in_elev() -> None:
@@ -480,3 +622,24 @@ def test_falling_done_in_elev() -> None:
     )
     assert names == ()
     assert track.phase == "done"
+
+
+def test_falling_low_elev_entry_is_not_done() -> None:
+    """(216, 642) p25 mx=0 is the live miss. Do not hold A into y=651."""
+    st = _falling_state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=216,
+        samus_y=642,
+        pose=25,
+        vertical_direction=1,
+        velocity_y=4,
+        momentum_x=0,
+        speed_flag=0,
+        invincibility_timer=0,
+        game_state=GS_ORDINARY,
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="exit")
+    )
+    assert names == ()
+    assert track.phase != "done"

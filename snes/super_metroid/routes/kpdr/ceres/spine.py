@@ -208,6 +208,18 @@ def ceres_hops_vs_tas(
     }
 
 
+def elev_to_landing_within_tas(hops: Sequence[Mapping[str, Any]]) -> bool:
+    """True only when elev→landing exists and is at or under TAS.
+
+    Reaching Landing Site is not a pass. Missing the hop row is a miss.
+    """
+    for hop in hops:
+        if hop.get("name") == "elev_to_landing":
+            delta = hop.get("delta_frames")
+            return delta is not None and int(delta) <= 0
+    return False
+
+
 def _boot_spans() -> list[ActionSpan]:
     """Maintained open-loop boot prefix (product Morph dual GREEN @ 24,187f)."""
     spans = [
@@ -431,6 +443,7 @@ __all__ = [
     "load_tas_ceres_hops",
     "tas_hop_clock",
     "ceres_hops_vs_tas",
+    "elev_to_landing_within_tas",
     "DEFAULT_TAS_CLOCK",
     "TAS_CLOCK_ROOM_FLIP",
     "TAS_CLOCK_SETTLED_GS8",
@@ -506,6 +519,7 @@ def _play_station() -> None:
         hops = _hops_from(session, landing_frame=session.frame)
         report = {
             "success": _dest_gs8(session, ROOM_LANDING_SITE),
+            "tas_elev": elev_to_landing_within_tas(hops["hops"]),
             "pin": _report_pin(pin),
             "ridley": ridley,
             "landing": session.frame,
@@ -518,8 +532,8 @@ def _play_station() -> None:
             env.close()
     _write_json(out, report)
     print(
-        f"success={report['success']} ridley={report['ridley']} "
-        f"landing={report['landing']}"
+        f"success={report['success']} tas_elev={report['tas_elev']} "
+        f"ridley={report['ridley']} landing={report['landing']}"
     )
     _print_hops(report["hops"])
     print(f"report: {out}")
@@ -568,55 +582,16 @@ def _play_inbound() -> None:
     print(f"report: {out}")
 
 
-def _play_magnet() -> None:
-    """Scientist-leave pin → Falling → elev. JSON in ceres/data."""
-    from super_metroid.routes.kpdr.ceres.magnet import (
-        play_ceres_falling_to_elev,
-        play_ceres_magnet_to_falling,
-    )
-
-    pin = CERES_DATA_DIR / "post_ceres_scientist_magnet.state"
-    out = CERES_DATA_DIR / "ceres_magnet_to_falling.json"
-    env = None
-    try:
-        env, session = _boot_pin(pin)
-        play_ceres_magnet_to_falling(session)
-        play_ceres_falling_to_elev(session)
-        hops = _hops_from(session)
-        report = {
-            "success": _dest_gs8(session, ROOM_CERES_ELEVATOR),
-            "hop": "ceres_magnet_to_falling",
-            "pin": _report_pin(pin),
-            "frames": session.frame,
-            "inv": int(session.state.invincibility_timer),
-            "end": probe_pin(session.state),
-            "timing": format_segment_time(session.frame),
-            "hops": hops["hops"],
-        }
-    finally:
-        if env is not None:
-            env.close()
-    _write_json(out, report)
-    print(
-        f"success={report['success']} frames={report['frames']} "
-        f"inv={report['inv']}"
-    )
-    _print_hops(report["hops"])
-    print(f"report: {out}")
-
-
 if __name__ == "__main__":
     import sys
 
     mode = sys.argv[1] if len(sys.argv) > 1 else "station"
     if mode == "inbound":
         _play_inbound()
-    elif mode == "magnet":
-        _play_magnet()
     elif mode == "station":
         _play_station()
     else:
         sys.exit(
             "usage: python -m super_metroid.routes.kpdr.ceres.spine "
-            f"[station|inbound|magnet] (got {mode!r})"
+            f"[station|inbound] from first-control (got {mode!r})"
         )

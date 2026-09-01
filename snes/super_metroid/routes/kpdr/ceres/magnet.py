@@ -10,7 +10,7 @@ LEFT. Door: TAS jumps x≈37 y=139, air-turns pose 25 at x≲28.
 
 Elevator: one TAS wall-jump climb. Fast entry is x216 y624–641 spin.
 Missed wall jump is a hard fail. No checkpoint recovery. Shaft over
-2500f is a hard fail.
+2500f is a hang-cap fail, not a TAS pass.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from super_metroid.combat.enemies.species import enemy_overlaps, steam_jet_shown
 from super_metroid.ram import GS_CERES_LEAVE, GS_ORDINARY
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
 from super_metroid.routes.kpdr.ceres.geometry import (
+    CERES_FALLING_DOOR_HOP,
     CERES_FALLING_REV_FLOOR_HOP,
     CERES_MAGNET_HIGH_HOP,
     CERES_MAGNET_MID_ESCAPE_HOP,
@@ -33,9 +34,8 @@ from super_metroid.routes.kpdr.ceres.geometry import (
     _CERES_ELEV_SHIP_Y,
     _CERES_ELEV_TOP_X,
     _CERES_ELEV_TOP_Y,
-    _CERES_FALLING_DOOR_JUMP_X,
     _CERES_FALLING_DOOR_LEDGE_Y,
-    _CERES_FALLING_DOOR_TURN_X,
+    _CERES_FALLING_DOOR_SHUTTER_FRAMES,
     _CERES_FALLING_REV_FLOOR_Y,
     _CERES_FALLING_REV_SHELF_Y,
     _CERES_FALLING_REV_TILE_X,
@@ -112,14 +112,12 @@ def _ceres_magnet_reached_falling(state) -> bool:
 
 
 def _ceres_falling_reached_elev(state) -> bool:
-    return (
-        int(state.room_id) == ROOM_CERES_ELEVATOR
-        and int(state.game_state) == 8
-        and int(state.vertical_direction) == 1
-        and int(state.velocity_y) > 0
-        and int(state.momentum_x) >= 2
-        and int(state.invincibility_timer) > 0
-    )
+    """TAS dest gs=8: (216, 632) pose 25 mx=2 vy=+4 inv=36.
+
+    Same predicate as the elevator fast-entry window. y=651 / mx=0 / inv=0
+    is a missed door jump, not a leave.
+    """
+    return _ceres_fast_entry_window(state)
 
 
 def _ceres_grounded(state) -> bool:
@@ -342,6 +340,9 @@ def ceres_falling_escape_action(
     if _ceres_falling_reached_elev(state):
         return (), replace(track, phase="done")
     if room == ROOM_CERES_ELEVATOR:
+        # gs=8 without the TAS window is a miss. Do not hold A into y=651.
+        if gs == 8:
+            return (), replace(track, phase="exit")
         return ("A",), replace(track, phase="exit")
     if room == ROOM_CERES_FALLING and gs in (9, 11) and track.phase == "exit":
         return ("A",), replace(track, held=track.held + 1)
@@ -493,20 +494,31 @@ def ceres_falling_escape_action(
         names = _tas_l_pump("LEFT", track.pump_i, state)
         return names, replace(track, pump_i=track.pump_i + 1)
 
-    # Door: TAS jumps x≈37 y=139 p26, air-turns p25 at (26,120). Hold A
-    # through fade. Knockback on the ledge still jumps; do not run to x=23.
+    # Door: crouch out the $E23F shutter east of x=45, then run LEFT and
+    # jump at x<=33 so the leave is the 4th air frame — pose 26 rising vy=4
+    # at (19, 121), elev (216, 633) against TAS (216, 632). Walking the shut
+    # door is pose-138 knockback (momentum 0, y=108 ceiling); the old x≈50
+    # takeoff flew straight into it. Do not jump standing or on knockback.
+    door = CERES_FALLING_DOOR_HOP
     if gs in (9, 11):
         return ("A",), replace(track, phase="exit", held=held)
-    if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8 and (
-        x <= _CERES_FALLING_DOOR_JUMP_X or pose in (137, 138)
-    ):
-        return ("LEFT", "B", "A"), replace(track, phase="exit", held=1)
+    if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8:
+        if track.held < _CERES_FALLING_DOOR_SHUTTER_FRAMES:
+            return ("DOWN",), replace(track, held=held)
+        if (
+            door.ready(state)
+            and int(state.invincibility_timer) > 0
+            and pose not in (137, 138)
+        ):
+            return ("LEFT", "B", "A"), replace(track, phase="exit", held=held)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1, held=held)
     if not grounded:
-        if x <= _CERES_FALLING_DOOR_TURN_X:
-            return ("RIGHT", "B", "A"), replace(track, held=held)
+        # Height is the only lever left on the band: momentum_x halves once
+        # on the second air frame, so an air-turn only costs rise.
         return ("LEFT", "B", "A"), replace(track, held=held)
     names = _tas_l_pump("LEFT", track.pump_i, state)
-    return names, replace(track, pump_i=track.pump_i + 1)
+    return names, replace(track, pump_i=track.pump_i + 1, held=held)
 
 
 def play_ceres_falling_to_elev(
@@ -520,6 +532,12 @@ def play_ceres_falling_to_elev(
         st = session.state
         if _ceres_falling_reached_elev(st):
             return
+        if int(st.room_id) == ROOM_CERES_ELEVATOR and int(st.game_state) == 8:
+            raise TimeoutError(
+                f"falling leave missed TAS elev window: {st} "
+                f"phase={track.phase} contacted={track.contacted} "
+                f"boosted={track.boosted}"
+            )
         names, track = ceres_falling_escape_action(st, track)
         session.step(
             buttons(*names) if names else idle_action(),
@@ -545,9 +563,10 @@ _POSE_WALL_LATCH_LEFT = 131
 # 475→363: LEFT into the wall, RIGHT away; latch pose 131.
 _CERES_475_TO_363_INTO = "LEFT"
 _CERES_475_TO_363_AWAY = "RIGHT"
-# Hard fail. TAS elev_to_landing is 2246f. Anything over this is a missed WJ.
-CERES_ELEV_MAX_FRAMES = 2500
+# Hang cap. TAS elev_to_landing is CERES_ELEV_BENCH_FRAMES. Do not grow this
+# for checkpoint recover (that run was 3349f).
 CERES_ELEV_BENCH_FRAMES = 2246
+CERES_ELEV_MAX_FRAMES = 2500
 
 
 def _ceres_elev_ship_band(state) -> bool:
@@ -687,6 +706,7 @@ def _ceres_fast_entry_window(state) -> bool:
     """Natural door-jump phase from which the y=475 wall jump is repeatable.
 
     y=651 floor remap is a missed wall jump. Do not widen this band.
+    Falling leave uses this same predicate.
     """
     return (
         int(state.room_id) == ROOM_CERES_ELEVATOR
