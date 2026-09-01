@@ -1,36 +1,31 @@
 ---
 name: zelda-session
 description: >
-  Zelda I session gates: one spine bead, one knob, one living residual,
-  Survival vs Clean dual-track, halt after 3 reds, no STATUS from a pin.
-  Use when working in nes/zelda_i, starting a Survival hop, composing the
-  spine, or running /zelda-session.
+  Zelda I sitting gates: one spine bead, one living residual, halt after 3
+  reds, glance leave. Use when working in nes/zelda_i, starting a Survival
+  hop, composing the spine, or running /zelda-session.
 ---
 
 # Zelda session
 
-One bead. One change. Assisted greens are not Clean STATUS.
-Planner owns `docs/STATUS.md`.
+Survival greens are not Clean STATUS; planner owns `docs/STATUS.md`.
+Size: [CODING_STANDARDS.md](../../../CODING_STANDARDS.md) (~1000 LOC, merge or delete).
 
 ## Loop
 
 1. `bd ready -l zelda_i -l spine` — claim **exactly one**.
-2. Dual-track: Survival (`--infinite-life` / health refill) vs Clean.
-   Assisted greens are not Clean STATUS. Planner owns `docs/STATUS.md`.
-3. Overwrite ONE living residual: `nes/zelda_i/docs/tasks/rr-tne2-residual.md`.
-   Delete closed-hop residuals instead of stacking. Do not mint `_vN` /
-   window dumps. Overwrite one report JSON.
-4. Halt after 3 serial reds on the SAME checkbox → BLOCKED residual, stop.
-5. File ≥500 lines → split before a knob. File ≥800 → refuse the knob and
-   split first. Do not boil already-split `level4_*`.
-6. Do not edit `STATUS.md` or promote a pin/practice green as Clean M5.
-7. Glance leave with `zelda_i.screen_glance` (room hex, mode, x/y band, TF
-   bits, earned keys/bombs, hearts lo==hi). No MP4. `--no-video` on spine
-   CLIs.
-8. Occupancy/predict halt is **not** duplicated here. See
-   [predict-path](../predict-path/SKILL.md): occupancy miss → block that
-   cell → replan; no path → stand; do not probe a path OccupancyWalker can
-   close.
+   Done: that bead is `in_progress`.
+2. Overwrite the living residual named in [`nes/zelda_i/AGENTS.md`](../../../nes/zelda_i/AGENTS.md).
+   Done: that file holds this sitting's leftover.
+3. Halt after 3 serial reds on the same checkbox.
+   Done: residual BLOCKED; sitting stopped.
+4. Compose from the predecessor hop or dungeon enter. Leave proof:
+   `zelda_i.screen_glance` (room hex, mode, x/y band, TF bits, earned
+   keys/bombs, hearts lo==hi) + `--no-video`. Mid-dungeon save-state pins
+   are not leave proof.
+   Done: glance matches that leftover.
+
+Occupancy: [predict-path](../predict-path/SKILL.md) — miss → block that cell → replan; no path → stand.
 
 ## Skills
 
@@ -38,8 +33,3 @@ Planner owns `docs/STATUS.md`.
 |-----|-------|
 | Survival route work | `zelda-assisted-route` |
 | Occupancy / RAM-claim halt | `predict-path` |
-
-## Non-claims (every residual)
-
-Did not STATUS-promote. Did not overwrite Clean M5. Did not poke
-doors/keys/undiscovered items. Did not grant Map/Whistle.

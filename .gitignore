@@ -74,6 +74,7 @@ roms/
 **/saves/
 *.state
 *.state.*
+!snes/super_metroid/routes/kpdr/ceres/data/*.state
 *.sav
 *.save
 *.srm
@@ -98,6 +99,7 @@ roms/
 !snes/super_metroid/tas/**/*.lua
 !snes/super_metroid/tas/**/*.sh
 !snes/super_metroid/tas/README.md
+# run_verify_100.sh (BizHawk) drops these sidecars next to verify_movie_sync.lua
 snes/super_metroid/tas/oracle/oracle_flags.txt
 snes/super_metroid/tas/oracle/oracle_out_dir.txt
 # SMW TAS import/oracle tooling; source movies and generated replay evidence stay ignored.

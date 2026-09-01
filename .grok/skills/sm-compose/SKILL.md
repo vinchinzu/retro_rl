@@ -9,7 +9,7 @@ description: >
 
 # SM compose
 
-Hops must already be dual-green from natural pins. This card is wiring +
+Hops must already be green from natural pins. This card is wiring +
 power-on/pin compose, not a new controller.
 
 ## This turn
@@ -20,7 +20,7 @@ power-on/pin compose, not a new controller.
 3. Parent tip stays the previous `--to`. Do not append these hops onto an
    earlier tip that should still end at its published room.
 4. Compose from the named pin, then power-on if that is the bead.
-   Overwrite `scratch/<tip>_dual.json`. Never overwrite
+   Overwrite `scratch/<tip>_run.json`. Never overwrite
    `recordings/<tip>.json` on a red run.
 5. Glance the final dict: room, gs=8, items/beams, boss bit if a fight.
    `--no-video`.

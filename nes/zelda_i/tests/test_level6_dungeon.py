@@ -6,24 +6,18 @@ import numpy as np
 import pytest
 
 from retro_harness.nes import nes_action
-from zelda_i.dungeon.engine import DungeonPhase
+from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.ids import (
     KEESE_OBJECT_TYPE,
     LIKE_LIKE_OBJECT_TYPE,
     ZOL_OBJECT_TYPE,
 )
-from zelda_i.level6.clear29 import (
-    CLEAR29_COMBAT_Y,
-    CLEAR29_HANDOFF_Y,
-    Level6Clear29Controller,
-    clear29_handoff_ok,
-)
 from zelda_i.level6.dungeon import (
-    CLEAR29_WEST_X,
     LEVEL6_COMPASS_BIT,
     ROOM_29_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
+    clear29_handoff_ok,
     ROOM_L6_COMPASS,
     ROOM_L6_DARK_29,
     ROOM_L6_EAST_KEY,
@@ -155,7 +149,7 @@ def _29_ram(*, x: int, y: int, enemy_x: int, enemy_y: int) -> np.ndarray:
 
 
 def _clear29_fight(*, x: int, y: int, enemy_x: int, enemy_y: int):
-    ctl = Level6Clear29Controller()
+    ctl = GenericDungeonRoomController(ROOM_29_SPEC)
     ctl.phase = DungeonPhase.FIGHT
     ctl.combat_frames = 24
     snap = read_snapshot(_29_ram(x=x, y=y, enemy_x=enemy_x, enemy_y=enemy_y))
@@ -163,28 +157,36 @@ def _clear29_fight(*, x: int, y: int, enemy_x: int, enemy_y: int):
 
 
 def test_clear29_patrol_omits_sw_trap() -> None:
-    assert CLEAR29_WEST_X == 64
-    assert CLEAR29_HANDOFF_Y == 133
-    assert CLEAR29_COMBAT_Y == 141
+    assert ROOM_29_SPEC.reward.target == (120, 189)
+    assert ROOM_29_SPEC.combat.occupancy_bounds == (16, 216, 77, 141)
+    blocked = set(ROOM_29_SPEC.combat.occupancy_blocked)
     assert (48, 157) not in ROOM_29_SPEC.combat.patrol
-    assert (56, 133) in ROOM_29_SPEC.combat.patrol
+    assert (56, 133) not in ROOM_29_SPEC.combat.patrol
+    assert (120, 189) in ROOM_29_SPEC.combat.patrol
+    assert (63, 133) in blocked
+    assert (63, 132) in blocked
+    assert (56, 157) in blocked
+    assert (120, 141) not in blocked
+    assert (128, 125) in blocked
+    assert (120, 189) not in blocked
+    assert (80, 109) not in blocked
 
 
 def test_clear29_downs_inland_from_north_mouth() -> None:
     """Red 3: LEFT at (120,77) is the door channel. DOWN to y=109 first."""
     act = _clear29_fight(x=120, y=77, enemy_x=184, enemy_y=144)
-    assert act.reason == "north_inland"
-    assert list(act.action) == list(nes_action("DOWN"))
+    assert act.reason.startswith("leave_wall")
+    assert list(act.action) == list(nes_action("DOWN")) or list(act.action) == list(
+        nes_action("DOWN", "A")
+    )
     assert list(act.action) != list(nes_action("LEFT"))
 
 
-def test_clear29_peels_left_from_north_band_not_east() -> None:
-    """(120,109) LEFT is the north band; RIGHT chases into leftover (184,144)."""
+def test_clear29_north_band_is_inland() -> None:
+    """y=109 is inland; do not LEFT-peel the door channel."""
     act = _clear29_fight(x=120, y=109, enemy_x=184, enemy_y=144)
-    assert act.reason == "west_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("RIGHT"))
-    assert list(act.action) != list(nes_action("DOWN"))
+    assert act.reason != "west_peel"
+    assert list(act.action) != list(nes_action("LEFT"))
 
 
 def test_clear29_may_chase_east_from_west_aisle() -> None:
@@ -194,22 +196,39 @@ def test_clear29_may_chase_east_from_west_aisle() -> None:
     assert list(act.action) != list(nes_action("LEFT"))
 
 
-def test_clear29_does_not_walk_south_of_combat_band() -> None:
-    """At y=141 hold/slash south; y=157 still peels UP. Do not chase the trap."""
-    act = _clear29_fight(x=56, y=141, enemy_x=48, enemy_y=157)
-    assert act.reason in ("south_hold", "south_hold_slash")
-    assert list(act.action) != list(nes_action("UP"))
+def test_clear29_leftover_clips_right_down_to_waist() -> None:
+    """Cardinal RIGHT at y=109 boxed at x=96. RIGHT+DOWN is the open axis."""
+    ctl, act = _cleared_29(x=96, y=109)
+    assert not ctl.success
+    assert act.reason == "leftover_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
 
 
-def test_clear29_peels_north_from_sw_trap() -> None:
+def test_clear29_leftover_waist_goes_south() -> None:
+    ctl, act = _cleared_29(x=120, y=141)
+    assert act.reason == "leftover_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+    ctl, act = _cleared_29(x=176, y=141)
+    assert act.reason == "leftover_align"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+
+def test_clear29_leftover_peels_up_from_plus_interior() -> None:
+    """Inside the plus north of the waist: same RIGHT+DOWN clip."""
+    ctl, act = _cleared_29(x=104, y=131)
+    assert not ctl.success
+    assert act.reason == "leftover_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+
+
+def test_clear29_does_not_walk_deeper_into_sw_trap() -> None:
     act = _clear29_fight(x=48, y=157, enemy_x=48, enemy_y=173)
-    assert act.reason == "north_handoff"
-    assert list(act.action) == list(nes_action("UP"))
     assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("DOWN", "A"))
 
 
 def _cleared_29(*, x: int, y: int):
-    ctl = Level6Clear29Controller()
+    ctl = GenericDungeonRoomController(ROOM_29_SPEC)
     ctl.phase = DungeonPhase.FIGHT
     ctl.max_live_enemies = 5
     snap = read_snapshot(_ram(room=ROOM_L6_DARK_29, x=x, y=y, wizzrobes=0))
@@ -221,28 +240,67 @@ def test_clear29_rejects_sw_trap_as_success() -> None:
     ctl, act = _cleared_29(x=56, y=157)
     assert not ctl.success
     assert act.reason != "done"
-    assert act.reason == "north_handoff"
-    assert list(act.action) == list(nes_action("UP"))
 
 
-def test_clear29_accepts_historical_handoff() -> None:
-    ctl, act = _cleared_29(x=55, y=133)
+def test_clear29_rejects_island_face_as_success() -> None:
+    """(55,133) / (63,133) are tile 244. Leftover is the south door."""
+    for x, y in ((55, 133), (63, 133)):
+        ctl, act = _cleared_29(x=x, y=y)
+        assert not ctl.success
+        assert act.reason != "done"
+
+
+def test_clear29_accepts_south_door_leftover() -> None:
+    ctl, act = _cleared_29(x=120, y=189)
     assert ctl.success
     assert act.reason == "done"
 
 
-def test_clear29_accepts_live_north_inland_handoff() -> None:
-    """l6_clear29_north_inland leftover (63,133): x<64 y<=133."""
-    ctl, act = _cleared_29(x=63, y=133)
-    assert ctl.success
-    assert act.reason == "done"
+def test_clear29_plus_center_is_not_leftover() -> None:
+    """Waist (120,141) is not the spine leftover; south door is."""
+    ctl, act = _cleared_29(x=120, y=141)
+    assert not ctl.success
+    assert act.reason == "leftover_south"
+
+
+def test_clear29_leftover_walk_from_north_mouth() -> None:
+    ctl, act = _cleared_29(x=128, y=93)
+    assert not ctl.success
+    assert act.reason == "leftover_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+
+
+def test_clear29_plus_seed_paths_around_to_south_door() -> None:
+    """l6_south29_door2 boxed at (128,125). Seeded island must still path."""
+    from zelda_i.walk.physics import OccupancyGrid
+
+    bounds = ROOM_29_SPEC.combat.occupancy_bounds
+    assert bounds is not None
+    xmin, xmax, ymin, _ymax = bounds
+    grid = OccupancyGrid(
+        blocked=set(ROOM_29_SPEC.combat.occupancy_blocked),
+        xmin=xmin,
+        xmax=xmax,
+        ymin=ymin,
+        ymax=205,
+    )
+    assert grid.shortest_path((104, 116), (120, 189)) is not None
+    assert grid.shortest_path((128, 116), (120, 189)) is not None
+    assert grid.shortest_path((120, 77), (120, 189)) is not None
+    ctl, act = _cleared_29(x=128, y=125)
+    assert not ctl.success
+    assert act.reason == "leftover_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
 
 
 def test_clear29_spine_success_requires_handoff_pose() -> None:
-    ram = _ram(room=ROOM_L6_DARK_29, x=55, y=133)
+    ram = _ram(room=ROOM_L6_DARK_29, x=120, y=189)
     ram[ADDR_ROD] = 1
     ram[ADDR_TRIFORCE] = 0x1F
     assert clear29_handoff_ok(read_snapshot(ram))
+    ram[ADDR_LINK_X] = 63
+    ram[ADDR_LINK_Y] = 133
+    assert not clear29_handoff_ok(read_snapshot(ram))
     ram[ADDR_LINK_X] = 56
     ram[ADDR_LINK_Y] = 157
     assert not clear29_handoff_ok(read_snapshot(ram))

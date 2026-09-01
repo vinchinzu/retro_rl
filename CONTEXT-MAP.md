@@ -32,7 +32,7 @@ grill or design actually resolves terms.
 - **TMNT IV → program glossary**: First credits is **assisted** (emergency HP
   + form-2 iframe). **Clean** is pizza-only, a parallel track, not a new
   maturity gate. M8 stays. **Pizza** is play, not an Assist.
-- **Scratch → Tip**: Scratch duals may lead the living tip. Phantoon was
+- **Scratch → Tip**: Scratch runs may lead the living tip. Phantoon was
   scratch and is now the tip. Gravity is get-ahead until it is power-on on
   that tip. Rung green is power-on.
 - **Scratch ending → Natural campaign**: Year 3 probes do not satisfy Harvest

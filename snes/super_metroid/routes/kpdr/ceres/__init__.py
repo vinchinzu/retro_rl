@@ -2,15 +2,16 @@
 
 Package layout
 --------------
-* ``geometry`` — elev/magnet bands and hop *data* (``CERES_ELEV_HOPS``)
+* ``geometry`` — elev/magnet bands and hop data (PlatformHop tables)
 * ``arm_pump`` — classic L↔R pump + knockback recovery
-* ``magnet`` — Magnet Stairs + Falling Tile reverse
+* ``magnet`` — Magnet Stairs escape (steam d-boost) + Falling Tile reverse
 * ``scientist`` — Dead Scientist never-jump run (outbound RIGHT, reverse LEFT)
 * ``elev_escape`` — elev shaft climb → ship leave
 * ``outbound`` — play_ceres_outbound_to_ridley / play_ceres_escape_to_landing
   (Ceres 1 moonfall + Ceres 2 magnet-feet + Ceres 3 jump-before-ledge)
 * ``spine`` — CERES_SPINE / CERES_DOOR_EDGES / CERES_MILESTONES / boot /
   TAS comparison clocks. Morph composes this prefix.
+* ``data/`` — living pins (first-control + hop leaves). Pin table in plan.md.
 
 Takeoff types live in ``super_metroid.takeoff``. Knockback lives in
 ``routes.skills.knockback``. Import those from the owning module.

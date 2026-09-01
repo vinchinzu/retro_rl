@@ -1,16 +1,36 @@
-"""Ceres Magnet Stairs + Falling Tile reverse (WRAM-reactive escape)."""
+"""Ceres Magnet Stairs escape + Falling Tile reverse.
+
+Magnet: hop east steam, jump 347 at x≈74, air-turn RIGHT onto 267, run
+RIGHT, jump 219 then 139. L-every-other while running. Wait on 267 when
+the jet spritemap is idle.
+
+Falling reverse: run off 139 onto 187, hop 347 onto 171, turn RIGHT at
+x≤314 leftover LEFT mx, 1f p25, B-only fall, LEFT+B+A so pose 80 rides
+LEFT. Do not hold A from x≈318 (ceiling). Do not add X (p47).
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
+from typing import Literal
+
 from retro_harness.actions import buttons, idle_action
-from super_metroid.routes.kpdr.ceres.arm_pump import (
-    _ceres_arm_pump_step,
-    _ceres_clear_knockback,
-    _ceres_enemy_near,
-)
-from super_metroid.routes.skills.knockback import is_knockback
 from super_metroid.routes.kpdr.ceres.geometry import (
-    _CERES_MAGNET_EXIT_Y,
+    CERES_FALLING_REV_FLOOR_HOP,
+    CERES_MAGNET_HIGH_HOP,
+    CERES_MAGNET_MID_ESCAPE_HOP,
+    CERES_MAGNET_STEAM_HOP,
+    _CERES_FALLING_DOOR_JUMP_X,
+    _CERES_FALLING_DOOR_LEDGE_Y,
+    _CERES_FALLING_DOOR_TURN_X,
+    _CERES_FALLING_REV_FLOOR_Y,
+    _CERES_FALLING_REV_SHELF_Y,
+    _CERES_FALLING_REV_TILE_X,
+    _CERES_FALLING_REV_TURN_X,
+    _CERES_MAGNET_BOT_Y,
+    _CERES_MAGNET_DOOR_STEAM_FRAMES,
+    _CERES_MAGNET_SHELF_Y,
+    _CERES_MAGNET_TOP_Y,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
@@ -19,35 +39,62 @@ from super_metroid.routes.kpdr.room_ids import (
 )
 from super_metroid.routes.runtime import RouteSession
 
+
+CeresMagnetEscapePhase = Literal[
+    "door",
+    "slope",
+    "shelf_hop",
+    "shelf",
+    "steam_hop",
+    "mid_hop",
+    "exit",
+    "done",
+]
+CeresFallingEscapePhase = Literal[
+    "door",
+    "run_off",
+    "floor_hop",
+    "shelf",
+    "dboost",
+    "slope",
+    "exit",
+    "done",
+]
+_POSE_DBOOST = 80
+
+
+@dataclass(frozen=True)
+class CeresMagnetEscapeTrack:
+    """One-frame Magnet→Falling track. ROM-free tests drive this."""
+
+    phase: CeresMagnetEscapePhase = "door"
+    held: int = 0
+    pump_i: int = 0
+    contacted: bool = False
+    steam_shown: bool = True
+
+
+@dataclass(frozen=True)
+class CeresFallingEscapeTrack:
+    """One-frame Falling→elev track. ROM-free tests drive this."""
+
+    phase: CeresFallingEscapePhase = "door"
+    held: int = 0
+    pump_i: int = 0
+    contacted: bool = False
+    boosted: bool = False
+
+
 def _ceres_magnet_reached_falling(state) -> bool:
     return int(state.room_id) == ROOM_CERES_FALLING and int(state.game_state) == 8
 
 
-def _ceres_magnet_step(
-    session: RouteSession,
-    names: tuple[str, ...],
-    reason: str,
-) -> bool:
-    """One magnet frame. Returns True if Falling ordinary reached."""
-    st = session.state
-    if _ceres_magnet_reached_falling(st):
-        return True
-    if int(st.room_id) == ROOM_CERES_FALLING and int(st.game_state) in (9, 11):
-        session.step(buttons("LEFT"), "ceres_magnet_exit_trans")
-        return _ceres_magnet_reached_falling(session.state)
-    if int(st.room_id) != ROOM_CERES_MAGNET:
-        return False
-    if is_knockback(st):
-        # Full spin-escape — single LEFT never leaves pose 137/138.
-        _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
-        return _ceres_magnet_reached_falling(session.state)
-    # Abort RIGHT only on the east door lip (Scientist). Stair chain briefly
-    # visits x~150–180 mid-climb — do not cut that short.
-    if "RIGHT" in names and int(st.samus_x) > 220:
-        session.step(buttons("LEFT", "A"), "ceres_magnet_abort_east")
-        return False
-    session.step(buttons(*names) if names else idle_action(), reason)
-    return _ceres_magnet_reached_falling(session.state)
+def _ceres_falling_reached_elev(state) -> bool:
+    return int(state.room_id) == ROOM_CERES_ELEVATOR and int(state.game_state) == 8
+
+
+def _ceres_grounded(state) -> bool:
+    return int(state.vertical_direction) == 0 and abs(int(state.velocity_y)) <= 1
 
 
 def _ceres_planted_near(state, y: int, *, slack: int = 5) -> bool:
@@ -55,404 +102,423 @@ def _ceres_planted_near(state, y: int, *, slack: int = 5) -> bool:
     return (
         int(state.game_state) == 8
         and abs(int(state.samus_y) - y) <= slack
-        and int(state.vertical_direction) == 0
-        and abs(int(state.velocity_y)) <= 1
+        and _ceres_grounded(state)
     )
 
 
-def _ceres_magnet_dboost_escape(session: RouteSession) -> bool:
-    """Sniq-shaped Magnet→Falling carry, including the y=278 steam boost.
+def _tas_l_pump(direction: str, i: int, state) -> tuple[str, ...]:
+    """TAS magnet run: dir+B, L on odd frames, only once already running.
 
-    The steam contact at x≈129 y≈243 starts a 95f invincibility window. The
-    fast line reaches the west door 89 ordinary frames later, leaving 6f
-    frozen through the transition for Falling's first steam at (440, 168).
+    Not L↔R period-2. Not a force-pump while accelerating.
     """
+    running = int(state.speed_flag) != 0 or abs(int(state.momentum_x)) >= 1
+    if running and i % 2 == 1:
+        return (direction, "B", "L")
+    return (direction, "B")
 
-    def step(names: tuple[str, ...], reason: str) -> None:
-        session.step(buttons(*names) if names else idle_action(), reason)
 
-    # Run down the entry slope to the x≈85/y347 takeoff.
-    for i in range(90):
-        st = session.state
-        if int(st.samus_y) <= 352 and int(st.samus_x) <= 92:
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_magnet_dboost_approach", force_pump=True
+def _steam_kb(state) -> bool:
+    """Ceres steam knockback is mt=10 / timer, not Zebes pose 137/138."""
+    return int(state.knockback_timer) > 0 or int(state.movement_type) == 10
+
+
+def ceres_magnet_escape_action(
+    state,
+    track: CeresMagnetEscapeTrack,
+) -> tuple[tuple[str, ...], CeresMagnetEscapeTrack]:
+    """One-frame Magnet Stairs → Falling policy (ROM-free)."""
+    room = int(state.room_id)
+    gs = int(state.game_state)
+    x = int(state.samus_x)
+    y = int(state.samus_y)
+    bot = CERES_MAGNET_HIGH_HOP
+    steam = CERES_MAGNET_STEAM_HOP
+    mid = CERES_MAGNET_MID_ESCAPE_HOP
+
+    if _ceres_magnet_reached_falling(state):
+        return (), replace(track, phase="done")
+    if room == ROOM_CERES_FALLING:
+        return ("LEFT",), replace(track, phase="exit")
+    if gs != 8:
+        return ("LEFT",), replace(track, phase="door", held=track.held + 1)
+    if room != ROOM_CERES_MAGNET:
+        return ("LEFT", "B"), replace(track, phase="exit")
+
+    kb = _steam_kb(state)
+    grounded = _ceres_grounded(state)
+
+    planted_347 = grounded and abs(y - _CERES_MAGNET_BOT_Y) <= 8
+
+    if track.phase in ("door", "slope"):
+        if kb:
+            return ("LEFT", "B", "A"), replace(track, phase="slope")
+        if track.phase == "door" and track.held < _CERES_MAGNET_DOOR_STEAM_FRAMES:
+            return ("LEFT", "B", "A"), replace(
+                track, phase="door", held=track.held + 1
+            )
+        if planted_347 and (bot.ready(state) or x <= 70):
+            return ("LEFT", "B", "A"), replace(track, phase="shelf_hop", held=1)
+        # Door hop shifts subpixel vs TAS; start L on the other phase so
+        # the 347 east corner is not the magnet-stop tile.
+        pump_i = 1 if track.phase == "door" else track.pump_i
+        names = _tas_l_pump("LEFT", pump_i, state)
+        return names, replace(track, phase="slope", pump_i=pump_i + 1)
+
+    if track.phase == "shelf_hop":
+        if grounded and steam.covers_y(y):
+            names = _tas_l_pump("RIGHT", 0, state)
+            return names, replace(track, phase="shelf", pump_i=1, held=0)
+        if grounded and abs(y - _CERES_MAGNET_BOT_Y) <= 8:
+            names = ("B", "A") if bot.ready(state) else ("LEFT", "B", "A")
+            return names, replace(track, held=track.held + 1)
+        if not grounded:
+            held = track.held + 1
+            # 267 underside is x≳65 y=332. Reach the shaft (x≲60), then
+            # RIGHT onto 267. Release A near y=267 so we plant, not fly over.
+            if x <= 66:
+                if y <= 275:
+                    return ("RIGHT", "B"), replace(track, held=held)
+                return ("RIGHT", "A"), replace(track, held=held)
+            if held <= 3:
+                return ("LEFT", "B", "A"), replace(track, held=held)
+            return ("A",), replace(track, held=held)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, phase="slope", pump_i=track.pump_i + 1)
+
+    if track.phase == "shelf":
+        if grounded and steam.covers_y(y) and 60 <= x <= 140:
+            if steam.ready(state) and (track.steam_shown or track.held >= 24):
+                return ("RIGHT", "B", "A"), replace(track, phase="steam_hop", held=1)
+            if not track.steam_shown:
+                direction = "LEFT" if x >= 122 else "RIGHT"
+                names = _tas_l_pump(direction, track.pump_i, state)
+                return names, replace(
+                    track, pump_i=track.pump_i + 1, held=track.held + 1
+                )
+        if grounded and steam.ready(state):
+            return ("RIGHT", "B", "A"), replace(track, phase="steam_hop", held=1)
+        names = _tas_l_pump("RIGHT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1)
+
+    if track.phase == "steam_hop":
+        if grounded and mid.covers_y(y):
+            if x < 188:
+                names = _tas_l_pump("RIGHT", track.pump_i, state)
+                return names, replace(track, pump_i=track.pump_i + 1, held=0)
+            return ("LEFT", "B", "A"), replace(track, phase="mid_hop", held=1)
+        if grounded and y <= _CERES_MAGNET_TOP_Y + 8:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(track, phase="exit", pump_i=1, held=0)
+        contacted = track.contacted or kb
+        if kb:
+            return ("RIGHT", "B", "A"), replace(
+                track, contacted=True, held=track.held + 1
+            )
+        if not grounded:
+            held = track.held + 1
+            if y <= 225 and x >= 160:
+                return ("RIGHT", "B"), replace(
+                    track, held=held, contacted=contacted
+                )
+            return ("RIGHT", "B", "A"), replace(
+                track, held=held, contacted=contacted
+            )
+        names = _tas_l_pump("RIGHT", track.pump_i, state)
+        return names, replace(
+            track, phase="shelf", pump_i=track.pump_i + 1, contacted=contacted
         )
-    else:
-        return False
 
-    # TAS f12491-12511: low, nearly vertical hop onto y=267.
-    shelf_hop = (
-        ("B", "A"),
-        ("RIGHT", "B", "A"),
-        ("B", "A"),
-        ("B", "A"),
-        *(("A",),) * 12,
-        ("RIGHT", "A"),
-        ("RIGHT", "A"),
-        ("LEFT", "RIGHT", "B", "A"),
-        ("RIGHT", "B", "A"),
-        ("RIGHT", "B", "A"),
-    )
-    for names in shelf_hop:
-        step(names, "ceres_magnet_dboost_shelf_hop")
-    for i in range(35):
-        if _ceres_planted_near(session.state, 267, slack=8):
-            break
-        _ceres_arm_pump_step(
-            session, "RIGHT", i, "ceres_magnet_dboost_shelf_land", force_pump=True
-        )
-    if not _ceres_planted_near(session.state, 267, slack=8):
-        return False
+    if track.phase == "mid_hop":
+        if grounded and y <= _CERES_MAGNET_TOP_Y + 8:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(track, phase="exit", pump_i=1, held=0)
+        if grounded and mid.covers_y(y) and x < 188:
+            names = _tas_l_pump("RIGHT", track.pump_i, state)
+            return names, replace(
+                track, phase="steam_hop", pump_i=track.pump_i + 1, held=0
+            )
+        if grounded:
+            return ("LEFT", "B", "A"), replace(track, held=track.held + 1)
+        if y <= 150:
+            return ("LEFT", "B"), replace(track, held=track.held + 1)
+        if y <= 180:
+            return ("LEFT", "B", "A"), replace(track, held=track.held + 1)
+        return ("A",), replace(track, held=track.held + 1)
 
-    # Meet live $E1FF slot 4 at (120,278) from its right side. The contact
-    # pushes right; carrying A through movement types 10/25 preserves 5.5px/f.
-    for i in range(50):
-        if int(session.state.samus_x) >= 108:
-            break
-        _ceres_arm_pump_step(
-            session, "RIGHT", i, "ceres_magnet_dboost_runup", force_pump=True
-        )
-    for names in (
-        ("RIGHT", "B", "A"),
-        ("RIGHT", "B", "A"),
-        ("A",),
-        ("LEFT", "B", "A"),
-        ("B", "A", "L"),
-        ("RIGHT", "B", "A"),
-        ("B", "A"),
-        ("B", "A"),
-    ):
-        step(names, "ceres_magnet_steam_setup")
-    contacted = int(session.state.knockback_timer) > 0
-    for _ in range(36):
-        st = session.state
-        contacted = contacted or int(st.knockback_timer) > 0
-        if contacted and _ceres_planted_near(st, 219, slack=8):
-            break
-        step(("RIGHT", "B", "A"), "ceres_magnet_steam_dboost")
-    if not contacted or not _ceres_planted_near(session.state, 219, slack=8):
-        return False
+    # 139 west magnet-stop is pose 138 at x≈45. Hop the planted corner.
+    pose = int(state.pose)
+    if grounded and y <= _CERES_MAGNET_TOP_Y + 8 and pose in (137, 138):
+        return ("LEFT", "B", "A"), replace(track, phase="exit", held=track.held + 1)
+    names = _tas_l_pump("LEFT", track.pump_i, state)
+    return names, replace(track, phase="exit", pump_i=track.pump_i + 1)
 
-    # Convert the d-boost land into the y=139 exit shelf, then sprint west.
-    for names in (
-        ("RIGHT", "B", "A"),
-        ("RIGHT", "A"),
-        ("RIGHT", "A"),
-        *(("A",),) * 6,
-        ("LEFT", "A"),
-        ("A",),
-        ("A",),
-        ("LEFT", "A"),
-        ("LEFT", "A"),
-        ("LEFT", "A"),
-    ):
-        step(names, "ceres_magnet_dboost_top_hop")
-    for _ in range(32):
-        if _ceres_planted_near(session.state, 139, slack=8):
-            break
-        step(("LEFT", "B"), "ceres_magnet_dboost_top_land")
-    if not _ceres_planted_near(session.state, 139, slack=8):
-        return False
 
-    for i in range(100):
-        st = session.state
-        if int(st.game_state) in (9, 11) or int(st.room_id) == ROOM_CERES_FALLING:
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_magnet_dboost_exit", force_pump=True
-        )
-    for _ in range(180):
-        if _ceres_magnet_reached_falling(session.state):
+def _magnet_steam_shown(session: RouteSession) -> bool:
+    """True when a 267-height jet is on the live spritemap cycle."""
+    from super_metroid.combat.enemies import list_enemies
+    from super_metroid.combat.enemies.species import steam_jet_shown
+
+    for enemy in list_enemies(session):
+        if not steam_jet_shown(enemy):
+            continue
+        if abs(int(enemy.y) - _CERES_MAGNET_SHELF_Y) <= 40:
             return True
-        step(("LEFT",), "ceres_magnet_dboost_door")
+        if abs(int(enemy.x) - 62) <= 16 and abs(int(enemy.y) - 304) <= 16:
+            return True
     return False
 
 
-def _ceres_reactive_magnet_escape(session: RouteSession) -> None:
-    """Magnet Stairs escape — WRAM-gated climb + left exit.
-
-    Reverse arm-pump plants mid/high Magnet. Geometry: seat left (~x37),
-    stair chain RIGHT+A then LEFT+A to exit height (~y139), arm-pump left into
-    Falling. Every frame aborts on Falling ordinary or east-door x; not a
-    blind full-escape restore.
-    """
-    # LEFT through door settle (idle can drop off upper ledges).
-    for _ in range(220):
-        st = session.state
-        if st.room_id == ROOM_CERES_MAGNET and st.game_state == 8:
-            break
-        if _ceres_magnet_reached_falling(st):
-            return
-        session.step(buttons("LEFT"), "ceres_magnet_door")
-    else:
-        raise TimeoutError(f"ceres magnet ordinary missed: {session.state}")
-
-    if is_knockback(session.state):
-        _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
-
-    if int(session.state.samus_y) > _CERES_MAGNET_EXIT_Y:
-        # The continuous route reaches this room on a different steam phase
-        # than Sniq. Lift immediately over the shown (136,404) jet; beginning
-        # the hop at x≈216 clears it, whereas beginning at x≈210 is too late.
-        for _ in range(6):
-            session.step(
-                buttons("LEFT", "B", "A"),
-                "ceres_magnet_entry_steam_hop",
-            )
-
-    # If already on exit band, skip climb and run out.
-    if int(session.state.samus_y) <= _CERES_MAGNET_EXIT_Y:
-        for i in range(360):
-            st = session.state
-            if _ceres_magnet_reached_falling(st):
-                return
-            if st.room_id != ROOM_CERES_MAGNET and st.room_id != ROOM_CERES_FALLING:
-                break
-            if is_knockback(st):
-                _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
-                continue
-            if _ceres_enemy_near(st, dx=40, dy=30):
-                session.step(buttons("LEFT", "A"), "ceres_magnet_exit_hop")
-            else:
-                _ceres_arm_pump_step(
-                    session, "LEFT", i, "ceres_magnet_exit", force_pump=True
-                )
-        if session.state.room_id != ROOM_CERES_FALLING:
-            raise TimeoutError(f"ceres magnet high-exit missed Falling: {session.state}")
-        return
-
-    # Arm-pump through the scientist-door slope to the y=347 takeoff. Jumping
-    # earlier at x~110 overshoots the east door back into Scientist.
-    for approach_i in range(280):
+def play_ceres_magnet_to_falling(
+    session: RouteSession, *, max_frames: int = 500
+) -> None:
+    """Magnet Stairs escape. One trajectory. Raises if Falling gs=8 misses."""
+    track = CeresMagnetEscapeTrack()
+    for _ in range(max_frames):
         st = session.state
         if _ceres_magnet_reached_falling(st):
             return
-        if int(st.room_id) != ROOM_CERES_MAGNET:
-            break
-        if int(st.samus_y) <= _CERES_MAGNET_EXIT_Y:
-            break
-        if int(st.samus_x) <= 75:
-            break
-        _ceres_arm_pump_step(
-            session,
-            "LEFT",
-            approach_i,
-            "ceres_magnet_to_seat",
-            force_pump=True,
-        )
-        if _ceres_magnet_reached_falling(session.state):
-            return
-
-    # Three short kinetic hops follow the reverse TAS geometry instead of one
-    # held-A arc: bottom y=347 -> y=267 shelf -> y=219 shelf -> y=139 exit.
-    # Each release is landing-gated so the product handoff, not a restored TAS
-    # state, owns the timing.
-    def climb_span(names: tuple[str, ...], frames: int, reason: str) -> bool:
-        for _ in range(frames):
-            if _ceres_magnet_step(session, names, reason):
-                return True
-        return False
-
-    def wait_for_shelf(y_lo: int, y_hi: int, *, direction: str, timeout: int) -> bool:
-        for _ in range(timeout):
-            st = session.state
-            if _ceres_magnet_reached_falling(st):
-                return True
-            if int(st.room_id) != ROOM_CERES_MAGNET:
-                return False
-            if int(st.movement_type) == 1 and y_lo <= int(st.samus_y) <= y_hi:
-                return False
-            if _ceres_magnet_step(
-                session,
-                (direction, "B"),
-                "ceres_magnet_climb_release",
-            ):
-                return True
-        return False
-
-    if int(session.state.samus_y) > _CERES_MAGNET_EXIT_Y:
-        if climb_span(("B", "A"), 9, "ceres_magnet_bottom_jump"):
-            return
-        if climb_span(("RIGHT", "B", "A"), 12, "ceres_magnet_bottom_jump"):
-            return
-        if wait_for_shelf(250, 275, direction="RIGHT", timeout=60):
-            return
-
-    for i in range(80):
-        st = session.state
-        if int(st.samus_x) >= 112:
-            break
-        _ceres_arm_pump_step(
-            session, "RIGHT", i, "ceres_magnet_mid_run", force_pump=True
-        )
-
-    if int(session.state.samus_y) > 230:
-        if climb_span(("RIGHT", "B", "A"), 1, "ceres_magnet_mid_jump"):
-            return
-        if climb_span(("B", "A"), 10, "ceres_magnet_mid_jump"):
-            return
-        if wait_for_shelf(205, 230, direction="RIGHT", timeout=60):
-            return
-
-    for i in range(80):
-        st = session.state
-        if int(st.samus_y) <= 230 and int(st.samus_x) >= 191:
-            break
-        _ceres_arm_pump_step(
-            session, "RIGHT", i, "ceres_magnet_top_run", force_pump=True
-        )
-
-    if int(session.state.samus_y) > _CERES_MAGNET_EXIT_Y:
-        if climb_span(("RIGHT", "B", "A"), 1, "ceres_magnet_top_jump"):
-            return
-        if climb_span(("B", "A"), 2, "ceres_magnet_top_jump"):
-            return
-        if climb_span(("LEFT", "B", "A"), 18, "ceres_magnet_top_jump"):
-            return
-        if wait_for_shelf(120, _CERES_MAGNET_EXIT_Y, direction="LEFT", timeout=80):
-            return
-
-    # Exit left until Falling.  Do not repeatedly A-pulse at the west door:
-    # enemy0 is near that lip, and the old proximity branch held pose 167 for
-    # ~55f after the door was already opening.  Knockback remains reactive.
-    for i in range(400):
-        st = session.state
-        if _ceres_magnet_reached_falling(st):
-            return
-        if st.room_id != ROOM_CERES_MAGNET and st.room_id != ROOM_CERES_FALLING:
-            break
-        if st.game_state in (9, 11) and st.room_id == ROOM_CERES_FALLING:
-            session.step(buttons("LEFT"), "ceres_magnet_exit_trans")
-            continue
-        if is_knockback(st):
-            _ceres_clear_knockback(session, "LEFT", reason="ceres_magnet")
-            continue
-        # Mid platform: need height still — hop up rather than wall-walk.
-        if int(st.samus_y) > _CERES_MAGNET_EXIT_Y:
-            session.step(buttons("LEFT", "A"), "ceres_magnet_up_hop")
-            continue
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_magnet_exit", force_pump=True
-        )
-
-    if session.state.room_id != ROOM_CERES_FALLING:
-        raise TimeoutError(f"ceres magnet exit missed Falling: {session.state}")
-
-
-def _ceres_reactive_falling(session: RouteSession) -> None:
-    """Falling Tile reverse → elev door. TAS magnet-feet then pose-25 door.
-
-    Sniq 100% lsnes (gs=8 f12792→door f12908): hop y=187 onto y=171, run
-    left, air-turn, then LEFT spin and a RIGHT+A face so the door is pose 25
-    at y=120. That is the elev wall-jump phase. Walking the floor remaps to
-    y=651 and is not a fallback.
-    """
-    if session.state.room_id != ROOM_CERES_FALLING:
-        raise RuntimeError(f"expected Falling after magnet: {session.state}")
-    session.wait_until(
-        lambda s: s.room_id == ROOM_CERES_FALLING and s.game_state == 8,
-        timeout=120,
-        reason="ceres_falling_door",
-    )
-    def step(names: tuple[str, ...], reason: str) -> None:
+        track = replace(track, steam_shown=_magnet_steam_shown(session))
+        names, track = ceres_magnet_escape_action(st, track)
+        reason = f"ceres_magnet_{track.phase}"
         session.step(buttons(*names) if names else idle_action(), reason)
-
-    # The current continuous predecessor reaches Falling without Sniq's 6f
-    # invincibility carry. A two-frame running hop clears slot 4 at (440,168)
-    # without waiting for its debris phase.
-    for _ in range(2):
-        step(("LEFT", "B", "A"), "ceres_falling_entry_steam_hop")
-
-    # Run to this product pin's measured short-hop point. Its incoming
-    # subpixels launch 7px later than Sniq's x=357 tape state.
-    for i in range(90):
-        st = session.state
-        if int(st.samus_x) <= 350 and int(st.samus_y) >= 180:
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_falling_phase_run", force_pump=True
-        )
-    for names in (("LEFT", "B", "A"), ("B", "A"), ("B", "DOWN", "A")):
-        step(names, "ceres_falling_shelf_hop")
-    for i in range(28):
-        if _ceres_planted_near(session.state, 171, slack=8):
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_falling_shelf_land", force_pump=True
-        )
-    if not _ceres_planted_near(session.state, 171, slack=8):
-        raise TimeoutError(f"falling missed y171 shelf: {session.state}")
-
-    for i in range(70):
-        if int(session.state.samus_x) <= 305:
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_falling_shelf_run", force_pump=True
-        )
-
-    # Advance three frames before the turn so the live $E1FF debris catches
-    # the rising spin instead of the ground pose.  This keeps movement type
-    # 10→25 through the full 5.75px/f arc and plants near x=98 with 60 i-frames.
-    for i in range(2):
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_falling_steam_phase", force_pump=True
-        )
-    step(("LEFT", "B"), "ceres_falling_steam_phase")
-    for names in (("RIGHT", "B"), ("RIGHT", "B", "A"), ("B", "A", "X")):
-        step(names, "ceres_falling_steam_setup")
-    contacted = int(session.state.knockback_timer) > 0
-    contact_i = 0
-    for _ in range(65):
-        st = session.state
-        if not contacted and int(st.knockback_timer) > 0:
-            contacted = True
-            contact_i = 0
-        if int(st.samus_x) <= 82 and int(st.vertical_direction) == 0:
-            break
-        # Sniq's second X is 9f after contact, left-facing during the boost.
-        names = (
-            ("LEFT", "B", "A", "X")
-            if contacted and contact_i == 9
-            else ("LEFT", "B", "A")
-        )
-        step(names, "ceres_falling_steam_dboost")
-        if contacted:
-            contact_i += 1
-    if not contacted:
-        raise TimeoutError(f"falling missed real steam d-boost: {session.state}")
-
-    # Carry the real steam d-boost to the west slope.  Jumping immediately
-    # from this plant keeps the upward arc alive through the elevator door.
-    for i in range(110):
-        st = session.state
-        if int(st.samus_x) <= 83:
-            break
-        _ceres_arm_pump_step(
-            session, "LEFT", i, "ceres_falling_slope_run", force_pump=True
-        )
-
-    # Seat against the overlay, then face back into the room only after
-    # crossing x=28.  This resumes at y≈633 in a rising pose-25 spin.
-    for _ in range(14):
-        step(("LEFT", "B"), "ceres_falling_door_approach")
-    for _ in range(40):
-        if int(session.state.game_state) in (9, 11):
-            break
-        direction = "RIGHT" if int(session.state.samus_x) <= 28 else "LEFT"
-        step((direction, "B", "A"), "ceres_falling_door_jump")
-    for _ in range(210):
-        if int(session.state.room_id) == ROOM_CERES_ELEVATOR:
+        if track.phase == "done" or _ceres_magnet_reached_falling(session.state):
             return
-        names = ("A",) if int(session.state.game_state) in (9, 11) else ("RIGHT", "B", "A")
-        step(names, "ceres_falling_door_trans")
-    raise TimeoutError(f"falling missed elev: {session.state}")
+        if track.phase == "shelf_hop" and track.held > 50:
+            raise TimeoutError(
+                f"ceres magnet 347 hop stalled: {session.state}"
+            )
+        if track.phase == "steam_hop" and track.held > 60:
+            raise TimeoutError(
+                f"ceres magnet missed 219 from 267: {session.state}"
+            )
+        if track.phase == "mid_hop" and track.held > 55:
+            raise TimeoutError(
+                f"ceres magnet 219 hop stalled: {session.state}"
+            )
+    raise TimeoutError(
+        f"ceres magnet escape missed Falling after {max_frames}f: "
+        f"{session.state} phase={track.phase} inv={int(session.state.invincibility_timer)}"
+    )
+
+
+def ceres_falling_escape_action(
+    state,
+    track: CeresFallingEscapeTrack,
+) -> tuple[tuple[str, ...], CeresFallingEscapeTrack]:
+    """One-frame Falling Tile → elev policy (ROM-free)."""
+    room = int(state.room_id)
+    gs = int(state.game_state)
+    x = int(state.samus_x)
+    y = int(state.samus_y)
+    pose = int(state.pose)
+    floor = CERES_FALLING_REV_FLOOR_HOP
+
+    if _ceres_falling_reached_elev(state):
+        return (), replace(track, phase="done")
+    if room == ROOM_CERES_ELEVATOR:
+        return ("A",), replace(track, phase="exit")
+    if gs != 8:
+        return ("LEFT",), replace(track, phase="door", held=track.held + 1)
+    if room != ROOM_CERES_FALLING:
+        return ("LEFT", "B"), replace(track, phase="exit")
+
+    kb = _steam_kb(state)
+    grounded = _ceres_grounded(state)
+    contacted = track.contacted or kb
+    boosted = track.boosted or pose == _POSE_DBOOST
+    held = track.held + 1
+
+    if track.phase == "door":
+        if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8:
+            if int(state.invincibility_timer) < 6 and track.held < 2:
+                return ("LEFT", "B", "A"), replace(
+                    track, phase="door", held=held
+                )
+            return _tas_l_pump("LEFT", 0, state), replace(
+                track, phase="run_off", pump_i=1, held=0
+            )
+        return ("LEFT", "B"), replace(track, phase="run_off", pump_i=1, held=0)
+
+    planted_187 = _ceres_planted_near(state, _CERES_FALLING_REV_FLOOR_Y, slack=8)
+    planted_171 = _ceres_planted_near(state, _CERES_FALLING_REV_SHELF_Y, slack=8)
+
+    if track.phase == "run_off":
+        if planted_187:
+            if floor.ready(state) or 342 <= x <= 352:
+                return ("LEFT", "B", "A"), replace(
+                    track, phase="floor_hop", held=1
+                )
+            names = _tas_l_pump("LEFT", track.pump_i, state)
+            return names, replace(track, pump_i=track.pump_i + 1)
+        if planted_171:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(track, phase="shelf", pump_i=1, held=0)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1)
+
+    if track.phase == "floor_hop":
+        if planted_171:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(track, phase="shelf", pump_i=1, held=0)
+        if not grounded:
+            # TAS unspins (p24) then plants 165. Air: B+A, then B+DOWN+A.
+            if held == 2:
+                return ("B", "A"), replace(track, held=held)
+            if held == 3:
+                return ("B", "DOWN", "A"), replace(track, held=held)
+            return ("LEFT", "B"), replace(track, held=held)
+        if planted_187:
+            if 342 <= x <= 352:
+                return ("LEFT", "B", "A"), replace(track, held=1)
+            names = _tas_l_pump("LEFT", track.pump_i, state)
+            return names, replace(track, pump_i=track.pump_i + 1)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, phase="run_off", pump_i=track.pump_i + 1)
+
+    if track.phase == "shelf":
+        if kb:
+            return ("LEFT", "A"), replace(
+                track, phase="dboost", contacted=True, held=1
+            )
+        # TAS: p38, 1f p25, 1f B+A+X, LEFT+A on the hit. Do not RIGHT at 294.
+        if planted_171 and x <= _CERES_FALLING_REV_TURN_X:
+            if x <= _CERES_FALLING_REV_TILE_X:
+                return ("LEFT", "A"), replace(track, phase="dboost", held=1)
+            return ("RIGHT",), replace(track, phase="dboost", held=1)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1)
+
+    if track.phase == "dboost":
+        if kb:
+            return ("LEFT", "B", "A"), replace(
+                track, contacted=True, boosted=True, held=held
+            )
+        if pose in (_POSE_DBOOST, 83, 84) or (boosted and not grounded):
+            return ("LEFT", "B", "A"), replace(
+                track, contacted=contacted, boosted=True, held=held
+            )
+        if contacted and not grounded and y < _CERES_FALLING_REV_SHELF_Y:
+            return ("LEFT", "B", "A"), replace(
+                track, contacted=True, boosted=True, held=held
+            )
+        if boosted and grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(
+                track,
+                phase="exit",
+                pump_i=1,
+                held=0,
+                contacted=contacted,
+                boosted=True,
+            )
+        if boosted and planted_171 and x <= 90:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(
+                track,
+                phase="slope",
+                pump_i=1,
+                held=0,
+                contacted=contacted,
+                boosted=True,
+            )
+        if not contacted and planted_171:
+            # RIGHT at 294 while facing left is p84. Stay facing right; no X.
+            if x <= _CERES_FALLING_REV_TILE_X:
+                return ("B", "A"), replace(track, held=held)
+            if held <= 2:
+                return ("RIGHT", "B", "A"), replace(track, held=held)
+            return ("B", "A"), replace(track, held=held)
+        if not contacted and not grounded:
+            # X-unspin is p47. LEFT before contact air-turns p25 → p84.
+            # Release A at y<=165 so the 294 jet is met near TAS y=162.
+            if y <= 110:
+                return ("LEFT",), replace(track, held=held)
+            if y <= 165:
+                return ("B",), replace(track, held=held)
+            return ("B", "A"), replace(track, held=held)
+        if planted_171:
+            names = _tas_l_pump("LEFT", track.pump_i, state)
+            return names, replace(
+                track,
+                phase="slope",
+                pump_i=track.pump_i + 1,
+                contacted=contacted,
+                boosted=boosted,
+            )
+        if not grounded:
+            return ("LEFT", "B"), replace(
+                track, contacted=contacted, boosted=boosted, held=held
+            )
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(
+            track,
+            phase="slope",
+            pump_i=track.pump_i + 1,
+            contacted=contacted,
+            boosted=boosted,
+        )
+
+    if track.phase == "slope":
+        if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8:
+            names = _tas_l_pump("LEFT", 0, state)
+            return names, replace(track, phase="exit", pump_i=1, held=0)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1)
+
+    # Door: TAS jumps x≈37 y=139 p26, air-turns p25 at (26,120).
+    if gs in (9, 11):
+        return ("A",), replace(track, phase="exit", held=held)
+    if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8 and (
+        x <= _CERES_FALLING_DOOR_JUMP_X or pose in (137, 138)
+    ):
+        return ("LEFT", "B", "A"), replace(track, phase="exit", held=1)
+    if not grounded:
+        if x <= _CERES_FALLING_DOOR_TURN_X:
+            return ("RIGHT", "B", "A"), replace(track, held=held)
+        return ("LEFT", "B", "A"), replace(track, held=held)
+    names = _tas_l_pump("LEFT", track.pump_i, state)
+    return names, replace(track, pump_i=track.pump_i + 1)
+
+
+def play_ceres_falling_to_elev(
+    session: RouteSession, *, max_frames: int = 500
+) -> None:
+    """Falling Tile reverse. Raises if elev gs=8 misses."""
+    if int(session.state.room_id) not in (ROOM_CERES_FALLING, ROOM_CERES_ELEVATOR):
+        raise RuntimeError(f"expected Falling after magnet: {session.state}")
+    track = CeresFallingEscapeTrack()
+    for _ in range(max_frames):
+        st = session.state
+        if _ceres_falling_reached_elev(st):
+            return
+        names, track = ceres_falling_escape_action(st, track)
+        session.step(
+            buttons(*names) if names else idle_action(),
+            f"ceres_falling_{track.phase}",
+        )
+        if track.phase == "done" or _ceres_falling_reached_elev(session.state):
+            return
+        if track.phase == "dboost" and track.held > 70:
+            raise TimeoutError(
+                f"falling d-boost stalled: {session.state} "
+                f"contacted={track.contacted} boosted={track.boosted}"
+            )
+        if track.phase == "floor_hop" and track.held > 40:
+            raise TimeoutError(f"falling missed y171 shelf: {session.state}")
+    raise TimeoutError(
+        f"falling missed elev after {max_frames}f: {session.state} "
+        f"phase={track.phase} contacted={track.contacted} "
+        f"boosted={track.boosted}"
+    )
 
 
 __all__ = [
+    "CeresFallingEscapeTrack",
+    "CeresMagnetEscapeTrack",
+    "_ceres_falling_reached_elev",
     "_ceres_magnet_reached_falling",
-    "_ceres_magnet_step",
-    "_ceres_reactive_magnet_escape",
-    "_ceres_reactive_falling",
+    "ceres_falling_escape_action",
+    "ceres_magnet_escape_action",
+    "play_ceres_falling_to_elev",
+    "play_ceres_magnet_to_falling",
 ]

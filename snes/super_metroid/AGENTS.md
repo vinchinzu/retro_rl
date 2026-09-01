@@ -15,7 +15,7 @@ spine bead is in_progress means continue the residual.
 - Natural ending/credits required; final boss alone is not a clear.
 - Clean track: [`docs/CLEAN_TRACK.md`](docs/CLEAN_TRACK.md);
   `*_clean` stems only — never overwrite assisted baselines.
-- Dual-track: spine continuous vs room practice. Practice greens are
+- Two tracks: spine continuous vs room practice. Practice greens are
   not continuous evidence. Planner owns STATUS.
 
 ## Immediate goal
@@ -41,8 +41,10 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure gravity-collect \
 bd ready -l super_metroid -l spine
 ```
 
-`--no-video` on duals. Leave proof is RAM + dual JSON
-(`super_metroid.hop_glance`), not an MP4. Dual CLI is the residual.
+`--no-video` on every run. Leave proof is RAM + the run JSON
+(`super_metroid.hop_glance`), not an MP4. The residual owns one probe CLI and
+one run — run it twice only to compare against TAS (`settled_gs8` hop clock)
+or another skill (the A/B loop), never to prove determinism.
 
 ## Layout
 
@@ -68,12 +70,12 @@ New-file table:
 - High WRAM (`$7E:D820+`): `read_bank7e_wram` / `write_wram_u8` — raw
   `get_ram()[0xD820]` is open-bus garbage.
 - Named anchors in `SuperMetroid-Snes/`; probe noise only in `scratch/`.
-  Overwrite `scratch/<hop>_dual.json`.
-- Dual-track / door-warp / boss probes are practice, not continuous evidence.
+  Overwrite `scratch/<hop>_run.json` (one per hop; do not stack `_vN`).
+- Practice / door-warp / boss probes are practice, not continuous evidence.
 - Morph bombs are **X** while morph (not A).
 - Hop `side` is D-pad `LEFT`/`RIGHT`. Shoulders are `L`/`R`.
 - Phase dumps are named scratch pins; leftover still is the next boot when
-  the residual says so. RED dual keeps the controller.
+  the residual says so. A RED run keeps the controller.
 - RNG (`$05E5`): boot writes `$0061` after clearing WRAM — do not re-power-on
   for a new seed. Pin first Ceres/Zebes `gs=8` and `ram.set_rng`. Empty rooms
   only unless the door is re-entered. [docs/RNG.md](docs/RNG.md).

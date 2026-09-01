@@ -30,8 +30,8 @@ from super_metroid.routes.kpdr.ceres.geometry import (
     _CERES_MAGNET_TOP_Y,
 )
 from super_metroid.routes.kpdr.ceres.magnet import (
-    _ceres_reactive_falling,
-    _ceres_reactive_magnet_escape,
+    play_ceres_falling_to_elev,
+    play_ceres_magnet_to_falling,
 )
 from super_metroid.routes.kpdr.ceres.scientist import (
     CeresScientistCross,
@@ -75,6 +75,7 @@ CeresFirstPhase = Literal[
 FALLING_SETTLE = 180
 # PJBoy $0A1F: 2 jump, 3 spin, 6 fall, 23 used-item / gun-jump.
 _AIR_MT = frozenset({2, 3, 6, 23})
+
 
 def _expand_button_spans(
     spans: tuple[tuple[tuple[str, ...], int], ...],
@@ -269,19 +270,12 @@ def play_ceres_first_room_moonfall(
         )
 
     if session.state.room_id != ROOM_CERES_FALLING or session.state.game_state == 11:
-        wait_until = getattr(session, "wait_until", None)
-        if wait_until is not None:
-            wait_until(
-                lambda s: s.room_id == ROOM_CERES_FALLING and s.game_state == 8,
-                timeout=FALLING_SETTLE,
-                reason="ceres_first_falling_settle",
-            )
-        else:
-            for _ in range(FALLING_SETTLE):
-                st = session.state
-                if int(st.room_id) == ROOM_CERES_FALLING and int(st.game_state) == 8:
-                    break
-                session.step(idle_action(), "ceres_first_falling_settle")
+        _ceres_wait_ordinary(
+            session,
+            ROOM_CERES_FALLING,
+            reason="ceres_first_falling_settle",
+            timeout=FALLING_SETTLE,
+        )
     if restore_moonwalk:
         set_moonwalk(env, False)
         session.state = parse_state(env.get_ram(), frame=session.frame)
@@ -461,70 +455,68 @@ def ceres_falling_magnet_feet_action(
     )
 
 
+def _play_track(
+    session,
+    *,
+    src: int,
+    dest: int,
+    track,
+    action,
+    door_kb,
+    tag: str,
+    missed: str,
+    max_frames: int,
+) -> None:
+    if int(session.state.room_id) == dest and int(session.state.game_state) == 8:
+        return
+    if int(session.state.room_id) != src or int(session.state.game_state) != 8:
+        _ceres_wait_ordinary(
+            session, src, reason=f"{tag}_ordinary", timeout=FALLING_SETTLE
+        )
+    for _ in range(max_frames):
+        st = session.state
+        if int(st.room_id) == dest and int(st.game_state) == 8:
+            return
+        if is_knockback(st):
+            if door_kb(st):
+                session.step(buttons("RIGHT"), f"{tag}_door_kb")
+                continue
+            _ceres_clear_knockback(session, "RIGHT", reason=f"{tag}_out")
+            continue
+        names, track = action(st, track)
+        session.step(
+            buttons(*names) if names else idle_action(),
+            f"{tag}_{track.phase}",
+        )
+        if track.phase == "done":
+            break
+    else:
+        raise TimeoutError(
+            f"{missed} after {max_frames}f: {session.state} phase={track.phase}"
+        )
+    if session.state.room_id != dest or session.state.game_state == 11:
+        _ceres_wait_ordinary(
+            session, dest, reason=f"{tag}_settle", timeout=FALLING_SETTLE
+        )
+
+
 def play_ceres_falling_to_magnet(
     session: ControllerSession,
     *,
     max_frames: int = 700,
 ) -> None:
     """Wiki Ceres 2 magnet-feet hop. Waits dest gs=8."""
-    if int(session.state.room_id) == ROOM_CERES_MAGNET and int(
-        session.state.game_state
-    ) == 8:
-        return
-    wait_until = getattr(session, "wait_until", None)
-    if int(session.state.room_id) != ROOM_CERES_FALLING or int(
-        session.state.game_state
-    ) != 8:
-        if wait_until is not None:
-            wait_until(
-                lambda s: s.room_id == ROOM_CERES_FALLING and s.game_state == 8,
-                timeout=FALLING_SETTLE,
-                reason="ceres_falling_ordinary",
-            )
-        else:
-            for _ in range(FALLING_SETTLE):
-                st = session.state
-                if int(st.room_id) == ROOM_CERES_FALLING and int(st.game_state) == 8:
-                    break
-                session.step(idle_action(), "ceres_falling_ordinary")
-
-    track = CeresFallingTrack()
-    for _ in range(max_frames):
-        st = session.state
-        if int(st.room_id) == ROOM_CERES_MAGNET and int(st.game_state) == 8:
-            return
-        if is_knockback(st):
-            if int(st.samus_x) >= 400:
-                session.step(buttons("RIGHT"), "ceres_falling_door_kb")
-                continue
-            _ceres_clear_knockback(session, "RIGHT", reason="ceres_falling_out")
-            continue
-        names, track = ceres_falling_magnet_feet_action(st, track)
-        session.step(
-            buttons(*names) if names else idle_action(),
-            f"ceres_falling_{track.phase}",
-        )
-        if track.phase == "done":
-            break
-    else:
-        raise TimeoutError(
-            f"ceres falling magnet-feet missed Magnet after {max_frames}f: "
-            f"{session.state} phase={track.phase}"
-        )
-
-    if session.state.room_id != ROOM_CERES_MAGNET or session.state.game_state == 11:
-        if wait_until is not None:
-            wait_until(
-                lambda s: s.room_id == ROOM_CERES_MAGNET and s.game_state == 8,
-                timeout=FALLING_SETTLE,
-                reason="ceres_falling_magnet_settle",
-            )
-        else:
-            for _ in range(FALLING_SETTLE):
-                st = session.state
-                if int(st.room_id) == ROOM_CERES_MAGNET and int(st.game_state) == 8:
-                    break
-                session.step(idle_action(), "ceres_falling_magnet_settle")
+    _play_track(
+        session,
+        src=ROOM_CERES_FALLING,
+        dest=ROOM_CERES_MAGNET,
+        track=CeresFallingTrack(),
+        action=ceres_falling_magnet_feet_action,
+        door_kb=lambda s: int(s.samus_x) >= 400,
+        tag="ceres_falling",
+        missed="ceres falling magnet-feet missed Magnet",
+        max_frames=max_frames,
+    )
 
 
 CeresMagnetPhase = Literal[
@@ -667,64 +659,17 @@ def play_ceres_magnet_to_scientist(
     max_frames: int = 700,
 ) -> None:
     """Wiki Ceres 3 jump-before-ledge. Waits dest gs=8."""
-    if int(session.state.room_id) == ROOM_CERES_SCIENTIST and int(
-        session.state.game_state
-    ) == 8:
-        return
-    wait_until = getattr(session, "wait_until", None)
-    if int(session.state.room_id) != ROOM_CERES_MAGNET or int(
-        session.state.game_state
-    ) != 8:
-        if wait_until is not None:
-            wait_until(
-                lambda s: s.room_id == ROOM_CERES_MAGNET and s.game_state == 8,
-                timeout=FALLING_SETTLE,
-                reason="ceres_magnet_ordinary",
-            )
-        else:
-            for _ in range(FALLING_SETTLE):
-                st = session.state
-                if int(st.room_id) == ROOM_CERES_MAGNET and int(st.game_state) == 8:
-                    break
-                session.step(idle_action(), "ceres_magnet_ordinary")
-
-    track = CeresMagnetTrack()
-    for _ in range(max_frames):
-        st = session.state
-        if int(st.room_id) == ROOM_CERES_SCIENTIST and int(st.game_state) == 8:
-            return
-        if is_knockback(st):
-            if int(st.samus_y) >= _CERES_MAGNET_DOOR_Y - 20:
-                session.step(buttons("RIGHT"), "ceres_magnet_door_kb")
-                continue
-            _ceres_clear_knockback(session, "RIGHT", reason="ceres_magnet_out")
-            continue
-        names, track = ceres_magnet_to_scientist_action(st, track)
-        session.step(
-            buttons(*names) if names else idle_action(),
-            f"ceres_magnet_{track.phase}",
-        )
-        if track.phase == "done":
-            break
-    else:
-        raise TimeoutError(
-            f"ceres magnet stairs missed Scientist after {max_frames}f: "
-            f"{session.state} phase={track.phase}"
-        )
-
-    if session.state.room_id != ROOM_CERES_SCIENTIST or session.state.game_state == 11:
-        if wait_until is not None:
-            wait_until(
-                lambda s: s.room_id == ROOM_CERES_SCIENTIST and s.game_state == 8,
-                timeout=FALLING_SETTLE,
-                reason="ceres_magnet_scientist_settle",
-            )
-        else:
-            for _ in range(FALLING_SETTLE):
-                st = session.state
-                if int(st.room_id) == ROOM_CERES_SCIENTIST and int(st.game_state) == 8:
-                    break
-                session.step(idle_action(), "ceres_magnet_scientist_settle")
+    _play_track(
+        session,
+        src=ROOM_CERES_MAGNET,
+        dest=ROOM_CERES_SCIENTIST,
+        track=CeresMagnetTrack(),
+        action=ceres_magnet_to_scientist_action,
+        door_kb=lambda s: int(s.samus_y) >= _CERES_MAGNET_DOOR_Y - 20,
+        tag="ceres_magnet",
+        missed="ceres magnet stairs missed Scientist",
+        max_frames=max_frames,
+    )
 
 
 def play_ceres_to_ridley_door(session: RouteSession) -> None:
@@ -869,19 +814,17 @@ def play_ceres_flat_to_scientist(session: RouteSession) -> None:
 def play_ceres_escape_to_landing(session: RouteSession) -> None:
     """Ceres reverse + elev → Zebes Landing (arm-pump + WRAM-reactive).
 
-    Speed every reverse room with classic L↔R. When a faster prefix shifts
-    entry kinematics, re-solve magnet / falling / elev from room, y, pose,
-    knockback, and enemy0 — never restore product open-loop budgets.
+    Magnet escape is TAS 347→267→steam→219→139.
+    Falling / elev still re-solve from room, y, pose, knockback.
     Ridley exit is still the product LEFT+A (not tuned). Reverse Ceres 5
-    (Flat) and reverse Ceres 4 (Scientist) never jump; Magnet climb stays
-    WRAM-reactive.
+    (Flat) and reverse Ceres 4 (Scientist) never jump.
     """
     # Leave Ridley left (jump clear of platform). Not tuned this sitting.
     session.span(ActionSpan(("LEFT", "A"), 24, "ceres_ridley_exit"))
     play_ceres_flat_to_scientist(session)
     play_ceres_scientist_to_magnet(session)
-    _ceres_reactive_magnet_escape(session)
-    _ceres_reactive_falling(session)
+    play_ceres_magnet_to_falling(session)
+    play_ceres_falling_to_elev(session)
     _ceres_reactive_elev_climb(session)
 
     session.wait_until(

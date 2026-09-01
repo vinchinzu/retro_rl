@@ -12,16 +12,19 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from retro_harness.actions import buttons, idle_action
-from super_metroid.paths import GAME_DIR
+from super_metroid.paths import GAME_DIR, ROOM_TIMINGS_DIR
+from super_metroid.ram import probe_pin
+from super_metroid.routes.kpdr.ceres.geometry import CERES_DATA_DIR
 from super_metroid.progression.types import (
     DoorEdge,
     ProgressCondition,
     ProgressionMilestone,
 )
-from super_metroid.room_timer import format_segment_time
+from super_metroid.room_timer import RoomTimer, format_segment_time
 from super_metroid.routes.kpdr.ceres.outbound import (
     play_ceres_escape_to_landing,
     play_ceres_outbound_to_ridley,
+    play_ceres_to_ridley_door,
 )
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
@@ -435,3 +438,185 @@ __all__ = [
     "_BOOT_MENU_MASH_FRAMES",
     "_BOOT_MAX_FRAMES",
 ]
+
+
+def _boot_pin(pin: Path) -> tuple[Any, RouteSession]:
+    from super_metroid.assist import UnlimitedResourcesAssist
+    from super_metroid.dev.common import boot_from_state, make_dev_env
+    from super_metroid.progression import MORPH_GRAPH
+
+    env = make_dev_env()
+    assist = UnlimitedResourcesAssist()
+    assist.attach_env(env)
+    boot_from_state(env, pin, settle_frames=0)
+    session = RouteSession(
+        env, writer=None, assist=assist, graph=MORPH_GRAPH, room_timer=RoomTimer()
+    )
+    return env, session
+
+
+def _write_json(path: Path, report: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2) + "\n")
+
+
+def _print_hops(hops: Sequence[Mapping[str, Any]]) -> None:
+    for hop in hops:
+        delta = hop.get("delta_frames")
+        name = str(hop.get("name") or f"{hop['from']}>{hop['to']}")
+        if delta is None:
+            print(f"{name} our={hop['our_frames']}")
+        else:
+            print(
+                f"{name:22s} our={hop['our_frames']:4d} "
+                f"tas={hop.get('tas_frames')} d={delta:+d}"
+            )
+
+
+def _report_pin(pin: Path) -> str:
+    try:
+        return str(pin.resolve().relative_to(GAME_DIR))
+    except ValueError:
+        return pin.name
+
+
+def _hops_from(session: RouteSession, **kwargs: Any) -> dict[str, Any]:
+    visits = session.room_timer.visits if session.room_timer is not None else []
+    return ceres_hops_vs_tas(
+        [visit.to_dict() for visit in visits],
+        first_control_frame=0,
+        **kwargs,
+    )
+
+
+def _dest_gs8(session: RouteSession, room_id: int) -> bool:
+    return int(session.state.room_id) == room_id and int(session.state.game_state) == 8
+
+
+def _play_station() -> None:
+    """First-control → landing. One run. JSON in ceres/data."""
+    pin = CERES_DATA_DIR / "ceres_first_control.state"
+    out = CERES_DATA_DIR / "ceres_station_now.json"
+    env = None
+    try:
+        env, session = _boot_pin(pin)
+        play_ceres_outbound_to_ridley(session)
+        ridley = session.frame
+        play_ceres_escape_to_landing(session)
+        hops = _hops_from(session, landing_frame=session.frame)
+        report = {
+            "success": _dest_gs8(session, ROOM_LANDING_SITE),
+            "pin": _report_pin(pin),
+            "ridley": ridley,
+            "landing": session.frame,
+            "timing": format_segment_time(session.frame),
+            "hops": hops["hops"],
+            "end": probe_pin(session.state),
+        }
+    finally:
+        if env is not None:
+            env.close()
+    _write_json(out, report)
+    print(
+        f"success={report['success']} ridley={report['ridley']} "
+        f"landing={report['landing']}"
+    )
+    _print_hops(report["hops"])
+    print(f"report: {out}")
+
+
+def _play_inbound() -> None:
+    """First-control → Ridley door vs TAS. recordings/room_timings."""
+    pin = CERES_DATA_DIR / "ceres_first_control.state"
+    out = ROOM_TIMINGS_DIR / "ceres_vs_tas.json"
+    env = None
+    try:
+        env, session = _boot_pin(pin)
+        start = probe_pin(session.state)
+        play_ceres_to_ridley_door(session)
+        hops = _hops_from(session)["hops"]
+        product = sum(int(hop["our_frames"]) for hop in hops)
+        tas = sum(
+            int(hop["tas_frames"]) for hop in hops if hop.get("tas_frames") is not None
+        )
+        first = {
+            "success": _dest_gs8(session, ROOM_CERES_RIDLEY),
+            "frames": session.frame,
+            "timing": format_segment_time(session.frame),
+            "start": start,
+            "end": probe_pin(session.state),
+            "product_hop_frames": product,
+            "tas_hop_frames": tas,
+            "delta_frames": product - tas,
+            "hops": hops,
+        }
+    finally:
+        if env is not None:
+            env.close()
+    report = {
+        "kind": "super_metroid_ceres_vs_tas",
+        "success": first["success"],
+        "pin": _report_pin(pin),
+        "runs": [first],
+    }
+    _write_json(out, report)
+    print(
+        f"success={first['success']} product={first['product_hop_frames']}f "
+        f"tas={first['tas_hop_frames']}f d={first['delta_frames']:+d}"
+    )
+    _print_hops(first["hops"])
+    print(f"report: {out}")
+
+
+def _play_magnet() -> None:
+    """Scientist-leave pin → Falling → elev. JSON in ceres/data."""
+    from super_metroid.routes.kpdr.ceres.magnet import (
+        play_ceres_falling_to_elev,
+        play_ceres_magnet_to_falling,
+    )
+
+    pin = CERES_DATA_DIR / "post_ceres_scientist_magnet.state"
+    out = CERES_DATA_DIR / "ceres_magnet_to_falling.json"
+    env = None
+    try:
+        env, session = _boot_pin(pin)
+        play_ceres_magnet_to_falling(session)
+        play_ceres_falling_to_elev(session)
+        hops = _hops_from(session)
+        report = {
+            "success": _dest_gs8(session, ROOM_CERES_ELEVATOR),
+            "hop": "ceres_magnet_to_falling",
+            "pin": _report_pin(pin),
+            "frames": session.frame,
+            "inv": int(session.state.invincibility_timer),
+            "end": probe_pin(session.state),
+            "timing": format_segment_time(session.frame),
+            "hops": hops["hops"],
+        }
+    finally:
+        if env is not None:
+            env.close()
+    _write_json(out, report)
+    print(
+        f"success={report['success']} frames={report['frames']} "
+        f"inv={report['inv']}"
+    )
+    _print_hops(report["hops"])
+    print(f"report: {out}")
+
+
+if __name__ == "__main__":
+    import sys
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else "station"
+    if mode == "inbound":
+        _play_inbound()
+    elif mode == "magnet":
+        _play_magnet()
+    elif mode == "station":
+        _play_station()
+    else:
+        sys.exit(
+            "usage: python -m super_metroid.routes.kpdr.ceres.spine "
+            f"[station|inbound|magnet] (got {mode!r})"
+        )

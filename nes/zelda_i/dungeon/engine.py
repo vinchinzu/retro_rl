@@ -19,7 +19,7 @@ from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
 from zelda_i.dungeon import ids as _ids
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
-from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
@@ -94,6 +94,7 @@ class CombatTuning:
     split_y: int | None = None  # same-side patrol vertices (0x23 water)
     occupancy_patrol: bool = False  # 1px predict; miss → block + BFS
     occupancy_bounds: tuple[int, int, int, int] | None = None
+    occupancy_blocked: tuple[tuple[int, int], ...] = ()
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -315,12 +316,32 @@ class GenericDungeonRoomController:
                 self.notes.append(note)
 
     def _make_walker(self) -> OccupancyWalker:
-        bounds = self.spec.combat.occupancy_bounds
+        tuning = self.spec.combat
+        blocked = set(tuning.occupancy_blocked)
+        bounds = tuning.occupancy_bounds
         if bounds is None:
-            return OccupancyWalker()
+            if not blocked:
+                return OccupancyWalker()
+            return OccupancyWalker(grid=OccupancyGrid(blocked=blocked))
         xmin, xmax, ymin, ymax = bounds
         return OccupancyWalker(
-            grid=OccupancyGrid(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+            grid=OccupancyGrid(
+                blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+            )
+        )
+
+    def _relax_leftover_bounds(self) -> None:
+        """Fresh leftover grid: spec seed only. Combat misses boxed the north door."""
+        tuning = self.spec.combat
+        blocked = set(tuning.occupancy_blocked)
+        xmin, xmax, ymin, ymax = DEFAULT_BOUNDS
+        if tuning.occupancy_bounds is not None:
+            xmin, xmax, ymin, _fight_ymax = tuning.occupancy_bounds
+            ymax = DEFAULT_BOUNDS[3]
+        self.walker = OccupancyWalker(
+            grid=OccupancyGrid(
+                blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+            )
         )
 
     def __post_init__(self) -> None:
@@ -435,13 +456,11 @@ class GenericDungeonRoomController:
         self, xy: tuple[int, int], dest: tuple[int, int]
     ) -> str | None:
         dest_i = (int(dest[0]), int(dest[1]))
-        bounds = self.spec.combat.occupancy_bounds
-        if bounds is not None:
-            xmin, xmax, ymin, ymax = bounds
-            dest_i = (
-                min(max(dest_i[0], xmin), xmax),
-                min(max(dest_i[1], ymin), ymax),
-            )
+        grid = self.walker.grid
+        dest_i = (
+            min(max(dest_i[0], grid.xmin), grid.xmax),
+            min(max(dest_i[1], grid.ymin), grid.ymax),
+        )
         if self.walker.goal != dest_i:
             self.walker.goal = dest_i
             self.walker.path = None
@@ -636,6 +655,33 @@ class GenericDungeonRoomController:
                 )
         return FrameAction(nes_idle_action(), "reward_wait")
 
+    def _finish_clear_leftover(self, snap: ZeldaSnapshot) -> FrameAction:
+        target = self.spec.reward.target
+        if target is None:
+            return self._collect_reward(snap)
+        x, y = int(snap.link_x), int(snap.link_y)
+        tx, ty = target
+        if abs(x - tx) <= 2 and abs(y - ty) <= 2:
+            self.success = True
+            self._set_phase(DungeonPhase.DONE, "leftover")
+            return FrameAction(nes_idle_action(), "done")
+        waypoints = self.spec.reward.waypoints
+        if waypoints:
+            # First waypoint is the waist elbow. Cardinals cannot round the
+            # plus from the north (live RIGHT @ y=109 boxed at x=96).
+            _elbow_x, waist_y = waypoints[0]
+            if y < waist_y - 2:
+                return FrameAction(nes_action("RIGHT", "DOWN"), "leftover_clip")
+            if abs(x - tx) > 2:
+                horiz = "LEFT" if x > tx else "RIGHT"
+                return FrameAction(nes_action(horiz), "leftover_align")
+            if y < ty - 2:
+                return FrameAction(nes_action("DOWN"), "leftover_south")
+            return FrameAction(nes_action("DOWN"), "leftover_push")
+        if y < _AVOID_WALL_Y[0]:
+            return FrameAction(nes_action("DOWN"), "leftover_inland")
+        return self._collect_reward(snap)
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
@@ -738,6 +784,10 @@ class GenericDungeonRoomController:
             ):
                 self.clear_signal_seen = True
                 if self.spec.reward.kind is RewardKind.CLEAR_ONLY:
+                    if self.spec.reward.target is not None:
+                        self._set_phase(DungeonPhase.COLLECT_REWARD, "room_cleared")
+                        self._relax_leftover_bounds()
+                        return self._finish_clear_leftover(snap)
                     self.success = True
                     self._set_phase(DungeonPhase.DONE, "room_cleared")
                     return FrameAction(nes_idle_action(), "done")
@@ -746,6 +796,8 @@ class GenericDungeonRoomController:
             return self._combat(snap, live)
 
         if self.phase is DungeonPhase.COLLECT_REWARD:
+            if self.spec.reward.kind is RewardKind.CLEAR_ONLY:
+                return self._finish_clear_leftover(snap)
             return self._collect_reward(snap)
 
         if self.phase is DungeonPhase.DONE:

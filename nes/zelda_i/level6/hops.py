@@ -171,12 +171,21 @@ def one_hop(through, stop, factory, success, *, dedicated=False, name=None):
     return SpineHop(through, stop, stages, success, dedicated=dedicated)
 
 
-def door_row(through: str, spec: DoorHopSpec, *, dedicated: bool = False) -> SpineHop:
+def door_row(
+    through: str,
+    spec: DoorHopSpec,
+    *,
+    dedicated: bool = False,
+    success=None,
+) -> SpineHop:
+    pred = success if success is not None else (
+        lambda snap, s=spec, **_: door_hop_success(s, snap)
+    )
     return SpineHop(
         through,
         spec.spec_id,
         lambda s=spec: door_hop_stages(s),
-        lambda snap, s=spec, **_: door_hop_success(s, snap),
+        pred,
         dedicated=dedicated,
     )
 

@@ -31,9 +31,11 @@ they *are* the loop.
 _Avoid_: minting `start_to_*.py`, a 13-file extract, calling this **Speed**
 
 **A/B loop**:
-Load a pin, play two **Skills** or **Tapes**, compare RAM/video. **Speed**
-must go through it. **Gut** must not rewrite it.
-_Avoid_: a new probe CLI as the compare tool, TAS concat as the compare
+Load a pin, play two **Skills**, compare RAM/video. **Speed** must go through
+it. **Gut** must not rewrite it. A TAS clock is a Speed report, not a second
+body.
+_Avoid_: a new probe CLI as the compare tool, TAS concat as the compare,
+playing a **Tape** as the second body
 
 **Speed**:
 Button-press / RTA work through the **A/B loop**. May run in the same week as
@@ -57,7 +59,7 @@ _Avoid_: item poke, boss flags, door warp as arrival, Gravity bit, G4 flags
 **Clean**:
 Zero energy and ammo writes. Parallel track. Not the first-credits fail line.
 _Avoid_: claiming Clean greens as the program tip, disabling Survival on the
-default continuous CLI
+default continuous CLI, dual clean, “no cheats” as a third class
 
 **Tip**:
 The one living power-on product. Today that is **Phantoon**. Ice, Wave, Speed,
@@ -67,21 +69,24 @@ _Avoid_: Ice as the living tip, a zoo of equally published tips, pin-bench as
 the tip, practice greens as the tip
 
 **Scratch**:
-Power-on or pin duals that may lead the tip. Not the living tip. Not Finish.
+Power-on or pin runs that may lead the tip. Not the living tip. Not Finish.
 _Avoid_: treating get-ahead as rung green, a second published tip beside
 Phantoon
 
 **Skill**:
-A composable, rewritable controller with a stable API. The campaign is a
-skillset. A **Tape** is only a guideline until a skill exists.
-_Avoid_: multi-minute open-loop movie as the route, TAS concat, timing stitch
-as playback
+A RAM-driven controller with a stable API. The campaign is a skillset. A
+**Tape** is a guideline until this exists; different RNG is this Skill's job,
+not a second run.
+_Avoid_: open-loop script as the Skill, multi-minute movie as the route, TAS
+concat, timing stitch as playback, dual-exact as robustness proof
 
 **Tape**:
 A human or TAS recording used as a guideline to build a **Skill**. Once
-processed, it is not source of truth and may be trashed.
+processed, it is not source of truth and may be trashed. The TAS clock names
+a Speed gap; it is not playback.
 _Avoid_: keeping the mega-tape as gold, full-tape open-loop as pin recovery,
-TAS concat onto the tip
+TAS concat onto the tip, sitting second run of the TAS, treating the TAS
+clock as a green gate
 
 **Noob route**:
 First path keeps convenience majors already on the late tapes (Grapple, Plasma,
@@ -93,8 +98,8 @@ rows, Golden Torizo / all tanks / maps as first-path rungs
 **Slop**:
 Rooms already on a green power-on tip that still need a skill rewrite. Green
 tip is not “those rooms are done.”
-_Avoid_: freezing the Phantoon prefix because the dual is green, shipping a
-leave that the next skill cannot **Sync**
+_Avoid_: freezing the Phantoon prefix because the prefix run is green, shipping
+a leave that the next skill cannot **Sync**
 
 **Sitting**:
 One agent session on the living checkbox. It ends when that checkbox greens
@@ -108,22 +113,24 @@ _Avoid_: movie splice as the runner, waiting on a pretty Ice spine before
 Gravity
 
 **Sync**:
-The leave must tie cleanly to the next room. A doorway pause and a few lost
-frames are allowed. If the seam will not join, both rooms are one change.
-Re-pin the next hop. If Red Tower drops twenty fake jumps and Hellway cannot
-be joined, the rewrite did not land.
-_Avoid_: hope the tail survives, frame-append across a new leave, full-tape
-open-loop to invent the next pin, treating a few door frames as a fail
+The leave must **Join** the next **Skill**. A leftover still is the next pin
+only when that continuation is reliable. Item-to-item is an honest zero. If
+the leftover will not continue, both rooms are one change. Re-pin the next
+hop.
+_Avoid_: authored standing pause as the proof pin, hope the tail survives,
+frame-append across a new leave, full-tape open-loop to invent the next pin,
+treating a few door frames as a fail
 
-**Milestone dual**:
-Power-on dual to the living tip at a major milestone (Gravity, a new living
+**Milestone run**:
+One power-on run to the living tip at a major milestone (Gravity, a new living
 tip, credits) and before **Publish**. Not after every Chip.
-_Avoid_: 54-minute dual on every slop hop, skipping the dual when the living
-tip itself moved
+_Avoid_: 54-minute run on every slop hop, skipping the run when the living
+tip itself moved, exact frame match as a green stamp, dual-exact, dual-green
+as the sitting bar, a second emulator run of the TAS
 
 **Publish**:
 A watchable power-on tape to the living tip after 20–30 working sessions with
-material progress. Not a calendar week. Not STATUS. Material = a dual-green
+material progress. Not a calendar week. Not STATUS. Material = a green
 bead on the living tip or the next compose.
 _Avoid_: a weekly clock with no progress, highlight cuts, pin benches as the
 upload, waiting on a STATUS promote to publish, counting Harvest or Clean or

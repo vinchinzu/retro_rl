@@ -35,7 +35,8 @@ Print a three-row table: **before** / **after** / **Δ**. Negative Δ is faster.
 3. **Capture the enter pin.** Natural predecessor, not a door-warp.
 4. **Bench BEFORE** the current product body from that pin. Save the JSON.
 5. **Implement** a RAM-driven policy (seat → window → exit). Unit-test
-   actions without the emulator. Split before 500 lines.
+   actions without the emulator. Keep the module under ~1000 LOC
+   ([CODING_STANDARDS.md](../../../CODING_STANDARDS.md)).
 6. **Bench AFTER** from the **same pin**. Overwrite `scratch/<hop>_bench.json`
    (not `_vN` / `_window_*`). If it is not faster and successful, do not
    wire it. Three red windows on the same checkbox → BLOCKED, stop.
@@ -48,14 +49,17 @@ Print a three-row table: **before** / **after** / **Δ**. Negative Δ is faster.
 
 ## Probe shape
 
-Mirror `snes/super_metroid/scripts/probe/ceres_ridley_combat.py`:
+Mirror a surviving room probe such as
+`snes/super_metroid/scripts/probe/ws_main.py` (`bench` / `dump` / `pure`
+subcommands):
 
 ```bash
-# capture | dump | strategy --policy <name> | bench
-uv run python snes/super_metroid/scripts/probe/<room>_combat.py bench
+uv run python snes/super_metroid/scripts/probe/<room>.py bench
 ```
 
-`bench` must reload the pin between policies.
+`bench` must reload the enter pin before each policy. A boss hop that runs
+inside the station spine is benched through the spine CLI instead
+(`python -m super_metroid.routes.kpdr.ceres.spine station`).
 
 ## Ceres Ridley (worked example)
 
@@ -64,14 +68,15 @@ hits. Shooting 100 times is slower.
 https://wiki.supermetroid.run/Ridley#Ceres_Station
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py capture
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py dump --frames 400
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py bench
+# The fight runs inside the full-station play; hops report vs TAS.
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
+uv run pytest snes/super_metroid/tests/test_ceres_ridley_combat.py -q
 ```
 
-Controller: `combat/ceres_ridley.py`. Product flag:
-`routes/kpdr/ceres/outbound.py` `CERES_RIDLEY_POLICY`. Pin-bench numbers live
-in `docs/plan.md` § Ceres Ridley fight — do not copy them here.
+Controller: `combat/ceres_ridley.py` (`CeresRidleyStrategy`; product default
+is `fresh_fifth_jump`, no route flag). Same-pin fight bench is
+`routes/kpdr/ceres/data/ceres_ridley_bench.json`; the numbers live in
+`docs/plan.md` § Ceres Ridley fight — do not copy them here.
 
 Traps: energy assist is already off on Ceres; do not leave the wall on hit
 count alone (weak hits do not cross 30); countdown is not HP-zero.
@@ -79,5 +84,5 @@ count alone (weak hits do not cross 30); countdown is not HP-zero.
 ## Tests
 
 Unit-test seat / action / "don't fire at 0 ammo" / countdown-stop without the
-emulator. Emulator proof is the bench JSON (`success`, frames, seconds, clock,
-same `state` path on both rows).
+emulator. Emulator proof is the bench JSON (`success`, frames, seconds, clock),
+with the before and after runs loading the same enter pin.

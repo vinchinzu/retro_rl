@@ -139,29 +139,36 @@ def test_l6_south29_63_133_up_and_left_up_are_tile_244() -> None:
     ram = _ram(screen=0x29, x=63, y=133, sword=1)
     ram[ADDR_LEVEL] = 6
     act = Level6DoorHopController(SOUTH29_SPEC).step(read_snapshot(ram))
-    assert act.reason == "south_clip"
-    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
     assert list(act.action) != list(nes_action("UP"))
     assert list(act.action) != list(nes_action("LEFT", "UP"))
+    live = _ram(screen=0x29, x=120, y=189, sword=1)
+    live[ADDR_LEVEL] = 6
+    live_act = Level6DoorHopController(SOUTH29_SPEC).step(read_snapshot(live))
+    assert list(live_act.action) == list(nes_action("DOWN"))
+    assert list(live_act.action) != list(nes_action("UP"))
+    assert list(live_act.action) != list(nes_action("LEFT", "UP"))
+    assert list(live_act.action) != list(nes_action("RIGHT", "DOWN"))
 
 
 def test_l6_clear29_120_77_left_is_door_channel() -> None:
     """Red 3 leftover (120,77): LEFT stays in the north door; DOWN inland."""
-    from zelda_i.level6.clear29 import Level6Clear29Controller
-    from zelda_i.dungeon.engine import DungeonPhase
+    from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
     from zelda_i.dungeon.ids import WIZZROBE_ORANGE_OBJECT_TYPE
+    from zelda_i.level6.dungeon import ROOM_29_SPEC
     from zelda_i.ram import ADDR_OBJ_HP, ADDR_OBJ_TYPE, ADDR_LEVEL
 
     ram = _ram(screen=0x29, x=120, y=77, sword=1)
     ram[ADDR_LEVEL] = 6
     ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_OBJECT_TYPE
     ram[ADDR_OBJ_HP + 1] = 64
-    ctl = Level6Clear29Controller()
+    ctl = GenericDungeonRoomController(ROOM_29_SPEC)
     ctl.phase = DungeonPhase.FIGHT
     ctl.combat_frames = 24
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "north_inland"
-    assert list(act.action) == list(nes_action("DOWN"))
+    assert act.reason.startswith("leave_wall")
+    assert list(act.action) == list(nes_action("DOWN")) or list(act.action) == list(
+        nes_action("DOWN", "A")
+    )
     assert list(act.action) != list(nes_action("LEFT"))
 
 

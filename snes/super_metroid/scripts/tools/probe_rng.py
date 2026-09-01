@@ -112,7 +112,9 @@ def probe_boot(*, max_frames: int, mash_frames: int) -> dict[str, Any]:
                 )
 
             if rng != prev_rng:
-                n = rng1_rolls_between(prev_rng, rng)
+                # A single menu-mash frame can burn dozens of rolls; the
+                # default limit=16 would mis-tag those as non-formula writes.
+                n = rng1_rolls_between(prev_rng, rng, limit=1024)
                 if first_roll_frame is None and prev_rng == RNG_BOOT_SEED:
                     first_roll_frame = frame
                     events.append(

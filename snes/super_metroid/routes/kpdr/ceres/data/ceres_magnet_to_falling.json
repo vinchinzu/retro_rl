@@ -1,0 +1,80 @@
+{
+  "success": true,
+  "hop": "ceres_magnet_to_falling",
+  "pin": "routes/kpdr/ceres/data/post_ceres_scientist_magnet.state",
+  "frames": 783,
+  "inv": 0,
+  "end": {
+    "room": "0xDF45",
+    "roomId": 57157,
+    "pose": 25,
+    "x": 216,
+    "y": 642,
+    "x_sub": 47616,
+    "y_sub": 23551,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY",
+    "frame": 783,
+    "velocity_x": 0,
+    "velocity_y": 4,
+    "momentum_x": 0,
+    "speed_counter": 0,
+    "speed_boosting": false,
+    "facing": 8,
+    "movement_type": 3,
+    "shinespark_timer": 0,
+    "moonwalk": 0,
+    "door_def_ptr": "0xAB58",
+    "collected_items": "0x0000"
+  },
+  "timing": {
+    "frames": 783,
+    "seconds": 13.029,
+    "clock": "00:13.05",
+    "ntsc_fps": 60.0988
+  },
+  "hops": [
+    {
+      "name": "magnet_escape",
+      "from": "0xDFD7",
+      "to": "0xDF8D",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 427,
+      "our_dwell_frames": 239,
+      "our_transition_frames": 188,
+      "tas_frames": 331,
+      "tas_dwell_frames": 167,
+      "tas_transition_frames": 164,
+      "delta_frames": 96,
+      "delta_dwell_frames": 72,
+      "delta_transition_frames": 24,
+      "tas_source_frames": {
+        "source_gs8": 12461,
+        "dest_gs8": 12792,
+        "door_gs9": 12628
+      }
+    },
+    {
+      "name": "falling_to_elev",
+      "from": "0xDF8D",
+      "to": "0xDF45",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 355,
+      "our_dwell_frames": 188,
+      "our_transition_frames": 167,
+      "tas_frames": 281,
+      "tas_dwell_frames": 116,
+      "tas_transition_frames": 165,
+      "delta_frames": 74,
+      "delta_dwell_frames": 72,
+      "delta_transition_frames": 2,
+      "tas_source_frames": {
+        "source_gs8": 12792,
+        "dest_gs8": 13073,
+        "door_gs9": 12908
+      }
+    }
+  ]
+}

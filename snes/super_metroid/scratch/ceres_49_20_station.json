@@ -1,0 +1,374 @@
+{
+  "schema": "sm_tas_ceres_hops_v2",
+  "source": "49_20_smv_snes9x_143_v17",
+  "movie": "/home/v/Downloads/49'20.smv",
+  "core": "Snes9x 1.43-rr v17 (WIP1 timing, Wine)",
+  "status": "plan_only",
+  "notes": "Native power-on replay, no doorway pins. Movie ends Ceres-success gs=32 at elev pad (141,75) energy 24; no Landing 0x91F8. room_flip is gs=11 room-id change; settled_gs8 is dest first gs=8 minus source first gs=8. Never mix the two clocks. Do not STATUS.",
+  "clocks": {
+    "room_flip": "gs=11 room-id change",
+    "settled_gs8": "dest gs=8 minus source gs=8"
+  },
+  "first_control_frame": 8475,
+  "first_control": {
+    "frame": 8475,
+    "kind": "first_control",
+    "room": "0xDF45",
+    "gs": 8,
+    "pose": 0,
+    "x": 128,
+    "y": 0,
+    "x_sub": 0,
+    "y_sub": 0,
+    "energy": 99,
+    "rng": 4445,
+    "door": 0
+  },
+  "movie_end": {
+    "frame": 14982,
+    "kind": "movie_end",
+    "room": "0xDF45",
+    "gs": 32,
+    "pose": 2,
+    "x": 141,
+    "y": 75,
+    "x_sub": 49152,
+    "y_sub": 65535,
+    "energy": 24,
+    "rng": 33755,
+    "door": 0
+  },
+  "landing": null,
+  "hops": [
+    {
+      "from": "0xDF45",
+      "to": "0xDF8D",
+      "name": "elev_to_falling",
+      "synced": true,
+      "enter": 8259,
+      "frames": 525,
+      "room_flip": {
+        "source_enter": 8259,
+        "dest_enter": 8784,
+        "frames": 525,
+        "seconds": 8.736,
+        "clock": "00:08.75",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "a9dcb6eb43eae2f60107363a0e6d3980ea69f30b324942bd8a2bd32ac56b511a",
+      "dest_gs8_event": {
+        "frame": 8903,
+        "kind": "gs8",
+        "room": "0xDF8D",
+        "gs": 8,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 61440,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 60473,
+        "door": 0
+      },
+      "settled_gs8": {
+        "source_gs8": 8475,
+        "dest_gs8": 8903,
+        "frames": 428,
+        "seconds": 7.122,
+        "clock": "00:07.13",
+        "ntsc_fps": 60.0988,
+        "dest_pose": {
+          "pose": 9,
+          "x": 39,
+          "y": 139,
+          "x_sub": 61440,
+          "y_sub": 65535,
+          "energy": 99,
+          "rng": 60473
+        }
+      }
+    },
+    {
+      "from": "0xDF8D",
+      "to": "0xDFD7",
+      "name": "falling_to_magnet",
+      "synced": true,
+      "enter": 8784,
+      "frames": 282,
+      "room_flip": {
+        "source_enter": 8784,
+        "dest_enter": 9066,
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "fc81a546dc33b33e2440a5220fb90dd896e2d75b28ef50520a316d32e601f3d8",
+      "dest_gs8_event": {
+        "frame": 9185,
+        "kind": "gs8",
+        "room": "0xDFD7",
+        "gs": 8,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 18944,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 21802,
+        "door": 0
+      },
+      "settled_gs8": {
+        "source_gs8": 8903,
+        "dest_gs8": 9185,
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988,
+        "dest_pose": {
+          "pose": 9,
+          "x": 39,
+          "y": 139,
+          "x_sub": 18944,
+          "y_sub": 65535,
+          "energy": 99,
+          "rng": 21802
+        }
+      }
+    },
+    {
+      "from": "0xDFD7",
+      "to": "0xE021",
+      "name": "magnet_to_scientist",
+      "synced": true,
+      "enter": 9066,
+      "frames": 345,
+      "room_flip": {
+        "source_enter": 9066,
+        "dest_enter": 9411,
+        "frames": 345,
+        "seconds": 5.741,
+        "clock": "00:05.75",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "dc665a4ba82d735b14add43b795add3df9fa32a40acc0d29c9c1ebec6ad9e126",
+      "dest_gs8_event": {
+        "frame": 9531,
+        "kind": "gs8",
+        "room": "0xE021",
+        "gs": 8,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 53248,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 4358,
+        "door": 0
+      },
+      "settled_gs8": {
+        "source_gs8": 9185,
+        "dest_gs8": 9531,
+        "frames": 346,
+        "seconds": 5.757,
+        "clock": "00:05.77",
+        "ntsc_fps": 60.0988,
+        "dest_pose": {
+          "pose": 17,
+          "x": 39,
+          "y": 139,
+          "x_sub": 53248,
+          "y_sub": 65535,
+          "energy": 99,
+          "rng": 4358
+        }
+      }
+    },
+    {
+      "from": "0xE021",
+      "to": "0xE06B",
+      "name": "scientist_to_flat",
+      "synced": true,
+      "enter": 9411,
+      "frames": 265,
+      "room_flip": {
+        "source_enter": 9411,
+        "dest_enter": 9676,
+        "frames": 265,
+        "seconds": 4.409,
+        "clock": "00:04.42",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "62f4018d8eda68bf15e5e7eac71a1f0ed831635d151f93be3905965f01097c3b",
+      "dest_gs8_event": {
+        "frame": 9795,
+        "kind": "gs8",
+        "room": "0xE06B",
+        "gs": 8,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 14848,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 25896,
+        "door": 0
+      },
+      "settled_gs8": {
+        "source_gs8": 9531,
+        "dest_gs8": 9795,
+        "frames": 264,
+        "seconds": 4.393,
+        "clock": "00:04.40",
+        "ntsc_fps": 60.0988,
+        "dest_pose": {
+          "pose": 17,
+          "x": 39,
+          "y": 139,
+          "x_sub": 14848,
+          "y_sub": 65535,
+          "energy": 99,
+          "rng": 25896
+        }
+      }
+    },
+    {
+      "from": "0xE06B",
+      "to": "0xE0B5",
+      "name": "flat_to_ridley",
+      "synced": true,
+      "enter": 9676,
+      "frames": 259,
+      "room_flip": {
+        "source_enter": 9676,
+        "dest_enter": 9935,
+        "frames": 259,
+        "seconds": 4.31,
+        "clock": "00:04.32",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "86b8e65d6dd56a53bc9f7a42f7ffbff7e039f045a91f2fdd62bc0a730e1cedd3",
+      "dest_gs8_event": {
+        "frame": 10119,
+        "kind": "gs8",
+        "room": "0xE0B5",
+        "gs": 8,
+        "pose": 26,
+        "x": 39,
+        "y": 130,
+        "x_sub": 64000,
+        "y_sub": 23551,
+        "energy": 99,
+        "rng": 39284,
+        "door": 0
+      },
+      "settled_gs8": {
+        "source_gs8": 9795,
+        "dest_gs8": 10119,
+        "frames": 324,
+        "seconds": 5.391,
+        "clock": "00:05.40",
+        "ntsc_fps": 60.0988,
+        "dest_pose": {
+          "pose": 26,
+          "x": 39,
+          "y": 130,
+          "x_sub": 64000,
+          "y_sub": 23551,
+          "energy": 99,
+          "rng": 39284
+        }
+      }
+    },
+    {
+      "from": "0xE0B5",
+      "to": "0xE06B",
+      "name": "ridley_fight",
+      "synced": true,
+      "enter": 9935,
+      "frames": 1840,
+      "room_flip": {
+        "source_enter": 9935,
+        "dest_enter": 11775,
+        "frames": 1840,
+        "seconds": 30.616,
+        "clock": "00:30.67",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "21f5a32d06d95bbefa29f329c3a575a420597cba8af1ed7562ca74aecfcf3ccd",
+      "dest_gs8_event": null
+    },
+    {
+      "from": "0xE06B",
+      "to": "0xE021",
+      "name": "flat_escape",
+      "synced": true,
+      "enter": 11775,
+      "frames": 258,
+      "room_flip": {
+        "source_enter": 11775,
+        "dest_enter": 12033,
+        "frames": 258,
+        "seconds": 4.293,
+        "clock": "00:04.30",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "ba116bd4589573e70f5807c8dfb8abcd3e9b45fad698da469f63ea1d0f80380c",
+      "dest_gs8_event": null
+    },
+    {
+      "from": "0xE021",
+      "to": "0xDFD7",
+      "name": "scientist_escape",
+      "synced": true,
+      "enter": 12033,
+      "frames": 263,
+      "room_flip": {
+        "source_enter": 12033,
+        "dest_enter": 12296,
+        "frames": 263,
+        "seconds": 4.376,
+        "clock": "00:04.38",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "0078a8eb523e7b3c52ca29902baddabb675892a94bc91912df5ca9a4f1e82f40",
+      "dest_gs8_event": null
+    },
+    {
+      "from": "0xDFD7",
+      "to": "0xDF8D",
+      "name": "magnet_escape",
+      "synced": true,
+      "enter": 12296,
+      "frames": 326,
+      "room_flip": {
+        "source_enter": 12296,
+        "dest_enter": 12622,
+        "frames": 326,
+        "seconds": 5.424,
+        "clock": "00:05.43",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "a666724d407cc5b459c7063fbdfae595d0fe8dc268744ea4d4c6e195f86fa691",
+      "dest_gs8_event": null
+    },
+    {
+      "from": "0xDF8D",
+      "to": "0xDF45",
+      "name": "falling_to_elev",
+      "synced": true,
+      "enter": 12622,
+      "frames": 293,
+      "room_flip": {
+        "source_enter": 12622,
+        "dest_enter": 12915,
+        "frames": 293,
+        "seconds": 4.875,
+        "clock": "00:04.88",
+        "ntsc_fps": 60.0988
+      },
+      "wram_sha256_at_flip": "7e5e453d0b4f235e563a9957f5945aa61644c11e497ee4de3813771581eb19c4",
+      "dest_gs8_event": null
+    }
+  ]
+}

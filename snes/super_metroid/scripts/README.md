@@ -57,8 +57,10 @@ uv run python snes/super_metroid/scripts/export/path_room_board.py
 # Room timing (emulator frames; stock ROM — see docs/ROOM_TIMER.md)
 uv run python snes/super_metroid/scripts/probe/room_timer.py self-check
 uv run python snes/super_metroid/scripts/probe/room_timer.py offline -i samples.json
-# Main Ceres vs native TAS + full first-control→elevator-exit clock, dual run
-uv run python snes/super_metroid/scripts/probe/ceres.py
+# Ceres play CLI (station default; one run; hops vs TAS on settled_gs8)
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine inbound
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine magnet
 
 # RNG seed ($05E5): offline advance, or live power-on → first Ceres gs=8
 uv run python snes/super_metroid/scripts/tools/probe_rng.py --advance 5 --seed 0x5705
