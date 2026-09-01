@@ -21,6 +21,10 @@ from zelda_i.level1.bow_cellar import (
     level1_bow_cellar_stages,
     level1_bow_cellar_success,
 )
+from zelda_i.level1.arrow_shop import (
+    level1_arrows_stages,
+    level1_arrows_success,
+)
 from zelda_i.level1.bow_pickup import (
     level1_bow_pickup_stages,
     level1_bow_pickup_success,
@@ -71,6 +75,7 @@ SPINE_THROUGH: tuple[str, ...] = (
     "level1-bow",
     "level1-bow-cellar",
     "level1-bow-pickup",
+    "level1-arrows",
     "level2-entry",
     "level2",
     "level3",
@@ -116,6 +121,13 @@ _BOW_HOPS = (
         level1_bow_pickup_success,
         dedicated=True,
     ),
+    SpineHop(
+        "level1-arrows",
+        "level1_arrows",
+        level1_arrows_stages,
+        level1_arrows_success,
+        dedicated=True,
+    ),
 )
 
 
@@ -141,6 +153,7 @@ def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
         "y": snap.link_y,
         "keys": snap.keys,
         "bombs": snap.bombs,
+        "rupees": int(getattr(snap, "rupees", 0)),
         "health": snap.health,
         "triforce": snap.triforce,
         "map": snap.map,
@@ -212,6 +225,7 @@ class SpineRun:
                 "level1-bow": "level1_bow_0x22",
                 "level1-bow-cellar": "level1_bow_cellar",
                 "level1-bow-pickup": "level1_bow_pickup",
+                "level1-arrows": "level1_arrows",
                 "level2-entry": "level2_entry",
                 "level2": "level2_triforce_0x02",
                 "level3": "level3_triforce_0x04",
@@ -397,7 +411,14 @@ def run_survival_spine(
         return run
 
     hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
-    if through in ("level1-bow", "level1-bow-cellar", "level1-bow-pickup"):
+    if through in (
+        "level1-bow",
+        "level1-bow-cellar",
+        "level1-bow-pickup",
+        "level1-arrows",
+    ):
+        if through == "level1-arrows":
+            hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
         attach_hops(env, run, _BOW_HOPS, through=through, run_stages=_run_stages, **hop_kw)
         return run
 

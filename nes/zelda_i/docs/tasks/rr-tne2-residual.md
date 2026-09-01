@@ -4,9 +4,11 @@
 (fanfare `0x0C` TF `0x3F`). Bead `rr-tne2` stays open. Do not STATUS-promote.
 Do not close. Do not push.
 
-Next sitting is **CheckWarp walk-on** (`rr-17co`): delete the one 0x3A
-position write. Do not retry LEFT/occupancy at y=149. Then Phase 4
-`AuditedEnv` (`rr-ibkf`). Arrow shop splice is `rr-wabn`, not this hop.
+Sitting 2026-09-01: claimed `rr-17co` (south-band east-column CheckWarp).
+One policy, one `--through level6-stairs3a-warp` trial, stop at first red.
+`rr-wabn` first checkbox in parallel: leftover already has rupees; reports
+still omit them; probe an 80R merchant. Do not splice arrows into default
+`--through level6`. Wooden-arrow grant may stay. Then Phase 4 `rr-ibkf`.
 
 ## Green from power-on (2026-09-01)
 

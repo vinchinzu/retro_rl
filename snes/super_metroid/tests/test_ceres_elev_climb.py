@@ -72,7 +72,8 @@ def test_inbound_door_transition_is_not_leaving() -> None:
     assert not _ceres_elev_leaving(fade)
 
 
-def test_ceres_success_is_leaving() -> None:
+def test_elev_leave_is_gs32_or_landing_room() -> None:
+    """Leave detector only. Reaching landing is not a TAS pass."""
     assert _ceres_elev_leaving(_state(game_state=32, samus_y=75))
     assert _ceres_elev_leaving(_state(game_state=8, room_id=0x91F8))
 
@@ -154,7 +155,10 @@ def test_left_wall_latch_is_contact() -> None:
 
 
 def test_elev_to_landing_is_tas_wj_speed() -> None:
-    """Missed WJ is a hard fail. Do not edit the hops JSON. No checkpoint recover."""
+    """TAS target is 2246f. Do not edit the hops JSON. No checkpoint recover.
+
+    MAX_FRAMES is a hang cap, not the pass. BENCH is the TAS target.
+    """
     raw = json.loads(_TAS_CERES_HOPS.read_text())
     assert raw["schema"] == "sm_tas_ceres_hops_v2"
     assert raw["source"] == "lsnes_oracle"
@@ -173,6 +177,6 @@ def test_elev_to_landing_is_tas_wj_speed() -> None:
     assert not hasattr(magnet, "_ceres_seat_ledge")
     assert _CERES_475_TO_363_INTO == "LEFT"
     assert _CERES_475_TO_363_AWAY == "RIGHT"
-    assert CERES_ELEV_MAX_FRAMES == 2500
     assert CERES_ELEV_BENCH_FRAMES == tas_frames
-    assert CERES_ELEV_MAX_FRAMES > tas_frames
+    # 3349f was the y571 checkpoint recover. Do not grow the hang cap to it.
+    assert CERES_ELEV_MAX_FRAMES < 3349

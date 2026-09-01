@@ -1,4 +1,4 @@
-"""Unit tests for the Level 6 0x3A one-shot Link-position warp."""
+"""Unit tests for the Level 6 0x3A south-band CheckWarp walk."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ import numpy as np
 
 from zelda_i.level6.path import BLOCK_OBJECT_TYPE
 from zelda_i.level6.stairs3a_warp import (
-    WARP_XY,
+    EAST_COLUMN_X,
+    SOUTH_BAND_Y,
+    Stairs3AWarpPhase,
     level6_stairs3a_warp_success,
     make_stairs_3a_warp_controller,
 )
@@ -24,6 +26,7 @@ from zelda_i.ram import (
     ADDR_MODE,
     ADDR_OBJ_TYPE,
     ADDR_ROD,
+    ADDR_RUPEES,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
     PLAY_MODE,
@@ -43,6 +46,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_BOMBS] = fields.get("bombs", 8)
     ram[ADDR_COLLIDING_TILE] = fields.get("tile", 0)
     ram[ADDR_ROD] = fields.get("rod", 1)
+    ram[ADDR_RUPEES] = fields.get("rupees", 0)
     return ram
 
 
@@ -65,8 +69,16 @@ def _env_with_mem(mem: object) -> SimpleNamespace:
     return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
 
 
-def test_leftover_still_clips_then_poke_after_push() -> None:
-    from retro_harness.nes import nes_action, nes_idle_action
+def _arm_pushed(ctl, ram: np.ndarray) -> None:
+    _plant_block(ram, 11, 112, 136)
+    ctl.inner.block_slot = 11
+    ctl.inner.block_x0 = 112
+    ctl.inner.block_y0 = 144
+    ctl.inner.phase = ctl.inner.phase.__class__.PUSH
+
+
+def test_leftover_clips_then_peel_south_after_push() -> None:
+    from retro_harness.nes import nes_action
 
     leftover = _ram(level=6, screen=0x3A, x=144, y=141, keys=4, tile=118)
     leftover[ADDR_BOW] = 0
@@ -86,22 +98,62 @@ def test_leftover_still_clips_then_poke_after_push() -> None:
     assert mem.calls == []
 
     pushed = _ram(level=6, screen=0x3A, x=112, y=160, keys=4, tile=116)
-    pushed[ADDR_ROD] = 1
-    _plant_block(pushed, 11, 112, 136)
-    ctl.inner.block_slot = 11
-    ctl.inner.block_x0 = 112
-    ctl.inner.block_y0 = 144
-    ctl.inner.phase = ctl.inner.phase.__class__.PUSH
+    _arm_pushed(ctl, pushed)
     act = ctl.step(read_snapshot(pushed))
-    assert act.reason == "position_write"
-    assert list(act.action) == list(nes_idle_action())
-    assert mem.calls == [
-        (ADDR_LINK_X, "|u1", WARP_XY[0]),
-        (ADDR_LINK_Y, "|u1", WARP_XY[1]),
-    ]
-    assert ctl.position_assist is not None
-    assert ctl.position_assist["position_writes"] == 1
-    assert ctl.position_assist["progression_writes"] == 0
+    assert act.reason == "peel_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert mem.calls == []
+    assert ctl.position_assist["position_writes"] == 0
+    assert ctl.phase is Stairs3AWarpPhase.PEEL
+
+    band = _ram(level=6, screen=0x3A, x=112, y=SOUTH_BAND_Y, keys=4)
+    _plant_block(band, 11, 112, 136)
+    act = ctl.step(read_snapshot(band))
+    assert act.reason == "east_column"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert mem.calls == []
+
+    door_y = _ram(level=6, screen=0x3A, x=112, y=189, keys=4)
+    _plant_block(door_y, 11, 112, 136)
+    act = ctl.step(read_snapshot(door_y))
+    assert act.reason == "east_column"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+    column = _ram(level=6, screen=0x3A, x=EAST_COLUMN_X, y=189, keys=4)
+    _plant_block(column, 11, 112, 136)
+    act = ctl.step(read_snapshot(column))
+    assert act.reason == "column_up"
+    assert list(act.action) == list(nes_action("UP"))
+    assert mem.calls == []
+    assert ctl.position_assist["position_writes"] == 0
+
+
+def test_east_column_south_holds_up() -> None:
+    from retro_harness.nes import nes_action
+
+    ctl = make_stairs_3a_warp_controller()
+    ctl.phase = Stairs3AWarpPhase.EAST
+    ram = _ram(level=6, screen=0x3A, x=EAST_COLUMN_X, y=189)
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "column_up"
+    assert list(act.action) == list(nes_action("UP"))
+    assert not ctl.failed
+
+
+def test_screen_3b_fails_closed() -> None:
+    ram = _ram(level=6, screen=0x3B, x=16, y=141, rupees=17)
+    ctl = make_stairs_3a_warp_controller()
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert not ctl.success
+    assert "east_room_0x3b" in act.reason or "east_room_0x3b" in ctl.notes
+    leftover = ctl.leftover
+    assert leftover
+    assert leftover["screen"] == 0x3B
+    assert leftover["x"] == 16
+    assert leftover["y"] == 141
+    assert leftover["rupees"] == 17
 
 
 def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
@@ -122,16 +174,19 @@ def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
     assert not level6_stairs3a_warp_success(read_snapshot(east))
 
 
-def test_no_env_fails_closed_without_writing() -> None:
+def test_no_env_walks_without_writing() -> None:
+    from retro_harness.nes import nes_action
+
     leftover = _ram(level=6, screen=0x3A, x=112, y=160, keys=4)
     leftover[ADDR_ROD] = 1
-    _plant_block(leftover, 11, 112, 136)
     ctl = make_stairs_3a_warp_controller()
-    ctl.inner.block_slot = 11
-    ctl.inner.block_x0 = 112
-    ctl.inner.block_y0 = 144
-    ctl.inner.phase = ctl.inner.phase.__class__.PUSH
+    _arm_pushed(ctl, leftover)
     act = ctl.step(read_snapshot(leftover))
-    assert ctl.failed
-    assert act.reason == "no_env_for_position_write"
-    assert ctl.position_assist is None
+    assert not ctl.failed
+    assert act.reason == "peel_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert ctl.position_assist["position_writes"] == 0
+    assert ctl.leftover
+    assert ctl.leftover["x"] == 112
+    assert ctl.leftover["y"] == 160
+    assert "rupees" in ctl.leftover

@@ -83,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
             f"trial{trial}: ok={payload['ok']} failed={payload.get('failed_stage')} "
             f"tf={payload['final']['triforce']} room=0x{payload['final']['room']:02x} "
             f"keys={payload['final']['keys']} bombs={payload['final']['bombs']} "
+            f"rupees={payload['final']['rupees']} "
             f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
     n_ok = sum(1 for row in results if row.get("ok"))

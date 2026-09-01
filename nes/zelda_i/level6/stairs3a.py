@@ -344,6 +344,7 @@ class Level6Stairs3AController:
                 )
 
         if self.phase is Stairs3APhase.ON_HOLE:
+            # Warp peels south; this idle is not the CheckWarp walk.
             self.walker.last_dir = None
             hx = int(self.block_x0 or xy[0])
             hy = int(self.block_y0 or xy[1])

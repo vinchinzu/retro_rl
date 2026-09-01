@@ -1,0 +1,456 @@
+[
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 119,
+    "x": 64,
+    "y": 150,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 38,
+    "objects": [],
+    "state": "PostSwordStart",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_PostSwordStart.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 55,
+    "x": 112,
+    "y": 125,
+    "rupees": 6,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 1,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 8,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      }
+    ],
+    "state": "Level1ExitOverworld",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_Level1ExitOverworld.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 74,
+    "x": 112,
+    "y": 61,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 13,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 13,
+        "x": 96,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 13,
+        "x": 112,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 13,
+        "x": 144,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 13,
+        "x": 160,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 13,
+        "x": 192,
+        "y": 173,
+        "hp": 0
+      }
+    ],
+    "state": "BFS_4A",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_BFS_4A.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 74,
+    "x": 0,
+    "y": 149,
+    "rupees": 7,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 1,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 13,
+        "x": 192,
+        "y": 109,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 13,
+        "x": 192,
+        "y": 173,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 13,
+        "x": 208,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 13,
+        "x": 80,
+        "y": 93,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 13,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 13,
+        "x": 128,
+        "y": 125,
+        "hp": 0
+      }
+    ],
+    "state": "At4A",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_At4A.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 75,
+    "x": 200,
+    "y": 61,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 4,
+        "x": 143,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 4,
+        "x": 128,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 4,
+        "x": 161,
+        "y": 173,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 4,
+        "x": 208,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 4,
+        "x": 160,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 4,
+        "x": 192,
+        "y": 109,
+        "hp": 0
+      },
+      {
+        "slot": 11,
+        "type": 100,
+        "x": 176,
+        "y": 96,
+        "hp": 0
+      }
+    ],
+    "state": "BFS_4B",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_BFS_4B.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 107,
+    "x": 48,
+    "y": 61,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 3,
+        "x": 192,
+        "y": 91,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 10,
+        "x": 151,
+        "y": 93,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 4,
+        "x": 160,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 10,
+        "x": 192,
+        "y": 106,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 4,
+        "x": 48,
+        "y": 164,
+        "hp": 0
+      },
+      {
+        "slot": 6,
+        "type": 4,
+        "x": 16,
+        "y": 141,
+        "hp": 0
+      },
+      {
+        "slot": 11,
+        "type": 100,
+        "x": 128,
+        "y": 160,
+        "hp": 0
+      }
+    ],
+    "state": "BFS_6B",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_BFS_6B.png"
+  },
+  {
+    "mode": 5,
+    "level": 0,
+    "screen": 94,
+    "x": 0,
+    "y": 141,
+    "rupees": 8,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 4,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 1,
+    "tile": 0,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 3,
+        "x": 80,
+        "y": 189,
+        "hp": 0
+      },
+      {
+        "slot": 2,
+        "type": 3,
+        "x": 128,
+        "y": 125,
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": 3,
+        "x": 128,
+        "y": 157,
+        "hp": 0
+      },
+      {
+        "slot": 4,
+        "type": 3,
+        "x": 160,
+        "y": 125,
+        "hp": 0
+      },
+      {
+        "slot": 5,
+        "type": 3,
+        "x": 160,
+        "y": 157,
+        "hp": 0
+      }
+    ],
+    "state": "BFS_5E",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_BFS_5E.png"
+  },
+  {
+    "mode": 11,
+    "level": 0,
+    "screen": 94,
+    "x": 112,
+    "y": 93,
+    "rupees": 0,
+    "sword": 1,
+    "bow": 0,
+    "arrows": 0,
+    "bombs": 0,
+    "keys": 0,
+    "candle": 0,
+    "shield": 0,
+    "triforce": 0,
+    "tile": 36,
+    "objects": [
+      {
+        "slot": 1,
+        "type": 3,
+        "x": 176,
+        "y": 125,
+        "hp": 48
+      },
+      {
+        "slot": 2,
+        "type": 3,
+        "x": 160,
+        "y": 141,
+        "hp": 48
+      },
+      {
+        "slot": 3,
+        "type": 3,
+        "x": 176,
+        "y": 125,
+        "hp": 48
+      },
+      {
+        "slot": 4,
+        "type": 3,
+        "x": 208,
+        "y": 173,
+        "hp": 48
+      },
+      {
+        "slot": 5,
+        "type": 3,
+        "x": 208,
+        "y": 141,
+        "hp": 48
+      },
+      {
+        "slot": 8,
+        "type": 91,
+        "x": 160,
+        "y": 141,
+        "hp": 192
+      },
+      {
+        "slot": 9,
+        "type": 91,
+        "x": 176,
+        "y": 205,
+        "hp": 192
+      },
+      {
+        "slot": 10,
+        "type": 91,
+        "x": 62,
+        "y": 141,
+        "hp": 192
+      },
+      {
+        "slot": 11,
+        "type": 91,
+        "x": 174,
+        "y": 125,
+        "hp": 192
+      }
+    ],
+    "state": "CandleShop5E",
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/arrow_shop_dump_CandleShop5E.png"
+  }
+]
