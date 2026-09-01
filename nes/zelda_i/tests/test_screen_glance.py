@@ -15,6 +15,7 @@ from zelda_i.screen_glance import (
     CELLAR08_LEAVE,
     CLEAR_3A,
     LeaveSpec,
+    GOHMA_LEAVE,
     NORTH2C_LEAVE,
     SOUTH1D_LEAVE,
     STAIRS3A_DEST,
@@ -28,6 +29,7 @@ from zelda_i.screen_glance import (
 
 _LEAVE_SPECS = (
     CLEAR_3A, CELLAR08_LEAVE, SOUTH1D_LEAVE, WEST2D_LEAVE, NORTH2C_LEAVE,
+    GOHMA_LEAVE,
     BOW22_LEAVE, BOW_CELLAR_LEAVE, BOW_PICKUP_LEAVE, STAIRS3A_DEST,
 )
 

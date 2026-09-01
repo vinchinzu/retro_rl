@@ -16,11 +16,12 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Tip is dark `0x39` north mouth `(120,93)` rod=1 keys=3 after
-`--through level6-south29` **1/1** (`l6_south29_clip`, power-on). 0x29
-leftover is south door `(120,189)` via RIGHT+DOWN clip to the waist. Do not
-leftover on tile 244 at y=133. Do not retry east `(184,144)` or west y=157.
-Next sitting: `--through level6-settle39`.
+Power-on spine is **1/1 through `--through level6-gohma`** (play `0x1C`
+`(120,189)` body gone, rod=1 keys=2 bombs=8 Bow=1 arrows=1 TF=`0x1F`).
+west2d/north2c are cardinal y-align LEFT and x-align KEY-UP. Gohma hop
+54f, one wooden-arrow grant (`arrow_poke_writes=1_from=0`). Keys are **2**
+after the 0x2C spend — no top-up. Next sitting: heart in `0x1C` then north
+shutter `0x0C` TF `0x20` (no spine hop yet).
 
 ## Commands
 

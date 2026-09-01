@@ -802,12 +802,12 @@ disclosed `(208,93)` position assist enters cellar `0x08`; the decoded A/B
 pair is `0x3A`/`0x1D`. Crossing the tunnel floor to the right ladder is now
 **1/1** on the same power-on tape: play `0x1D` `(96,157)`, 220,280f
 (`l6_cellar08_continuous`). Open-south `0x1D` → play `0x2D` `(120,77)` is
-**1/1** (`l6_south1d_continuous`, 220,538f hop 258f). Open-west `0x2D` →
-play `0x2C` `(224,141)` is **1/1** (`l6_west2d_continuous`, 220,887f hop
-349f, keys stay 4). `0x2C` KEY-UP → play `0x1C` Gohma is **1/1**
-(`l6_north2c_continuous`, 221,280f hop 393f, keys 4→3 leftover
-`(120,205)`). Bow=0 arrows=0. Gohma / TF `0x20` remain; Gohma needs an
-arrow, so do not poke `ADDR_ARROWS`. Do not close `rr-tne2`.
+**1/1**. Power-on recompose: open-west `0x2D` → play `0x2C` `(224,141)` is
+**1/1** (`l6_west2d_recompose`, hop 335f, keys stay 3, cardinal y-align).
+`0x2C` KEY-UP → play `0x1C` Gohma enter is **1/1** (`l6_north2c_cardinal`,
+hop 308f, keys 3→2). Gohma kill is **1/1** (`l6_gohma_recompose`, 212,260f
+hop 54f, wooden arrows 0→1, leftover `(120,189)` body gone, TF still
+`0x1F`). Heart / north `0x0C` TF `0x20` remain. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \

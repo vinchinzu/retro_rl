@@ -127,11 +127,16 @@ EAST29_SPEC = DoorHopSpec(
     clip_y=CLIP_Y, clip_buttons=("RIGHT", "DOWN"), clip_side="below",
     clip_reason="east_clip", push_at_goal=True, align="y",
 )
+# Power-on compose leaves the clear39 leftover north of the waist at
+# (95,109), not the (136,173) the mid-dungeon pin used. Occupancy grades
+# every cardinal as a miss during spawn latency and boxes in place, so use
+# a cardinal clip: hold DOWN to the y=141 waist, then cardinal RIGHT into
+# the kill-door. No key spend.
 EAST39_SPEC = DoorHopSpec(
     "level6_east_0x39", LEVEL6_DARK_39_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),
-    "RIGHT", "RIGHT+UP clip off (136,173), cardinal RIGHT on y=141; dest is RAM",
-    clip_y=CLIP_Y, clip_buttons=("RIGHT", "UP"), clip_side="above",
-    clip_reason="east_clip", push_at_goal=True, cardinal_hold=True,
+    "RIGHT", "cardinal DOWN to y=141 waist, then RIGHT to east door; dest is RAM",
+    clip_y=CLIP_Y, clip_buttons=("DOWN",), clip_side="below",
+    clip_reason="east_descend", push_at_goal=True, cardinal_hold=True,
 )
 WEST19_SPEC = DoorHopSpec(
     "level6_west_0x19", LEVEL6_MAP_ROOM, (WEST_DOOR_X, WEST_DOOR_Y), "LEFT",
@@ -167,24 +172,33 @@ SOUTH1D_SPEC = DoorHopSpec(
     forbid_up=True, forbid_up_reason="south_north_halt",
     stand_reason="occupancy_stand", track_keys=True, fail_ow=True, key_from="1d",
 )
+# Power-on leftover is north-mouth (120,77). Occupancy y-align LEFT
+# false-misses the waist (2px DOWN, then wizzrobe knockback) and stands
+# at (80,141) until it drifts to the SW pocket (32,189). Cardinal y-align
+# then LEFT, same class as EAST39_SPEC. Keys stay 3 (no top-up).
 WEST2D_SPEC = DoorHopSpec(
     "level6_west_0x2d", LEVEL6_GOHMA_WING_2D_ROOM, (WEST_DOOR_X, WEST_DOOR_Y),
     "LEFT",
-    "y=141 first from leftover (120,77), occupancy to (32,141), LEFT; dest "
-    "play 0x2c; keys stay 4; west is open; fail 0x1D/Gohma 0x1C",
+    "cardinal UP/DOWN to y=141 from leftover (120,77), then LEFT to west "
+    "door; dest play 0x2c; keys stay 3; west is open; fail 0x1D/Gohma 0x1C",
     dest_room=LEVEL6_GOHMA_WING_2C_ROOM, wait_modes=WAIT_SCROLL_B,
     grid_xmin=WEST_SPAWN_XMIN, push_at_goal=True, align="y",
+    cardinal_hold=True,
     forbid_up=True, forbid_up_y=NORTH_HALT_Y, forbid_up_reason="north_back_halt",
     stand_reason="occupancy_stand", fail_backtrack=LEVEL6_GOHMA_WING_1D_ROOM,
     track_keys=True, fail_ow=True, key_from="2d",
 )
+# Power-on leftover is east-mouth (224,141). Occupancy LEFT false-misses
+# the waist, then BFS wants DOWN and south_open_halt stands while
+# wizzrobes shuffle x. Cardinal x-align then UP. Keys 3→2 (no top-up).
 NORTH2C_SPEC = DoorHopSpec(
     "level6_north_0x2c", LEVEL6_GOHMA_WING_2C_ROOM, (NORTH_DOOR_X, NORTH_DOOR_Y),
     "UP",
-    "x-align leftover (224,141) occupancy KEY-UP (120,93); dest play 0x1c; "
-    "keys 4->3; fail 0x2D / south 0x3C; do not fight Gohma",
+    "cardinal LEFT/RIGHT to x=120 from leftover (224,141), then KEY-UP; dest "
+    "play 0x1c; keys 3->2; fail 0x2D / south 0x3C; do not fight Gohma",
     dest_room=LEVEL6_GOHMA_ROOM, wait_modes=WAIT_SCROLL_B,
     grid_xmax=EAST_SPAWN_XMAX, push_at_goal=True, align="x",
+    cardinal_hold=True,
     forbid_down=True, stand_reason="occupancy_stand",
     fail_backtrack=LEVEL6_GOHMA_WING_2D_ROOM, track_keys=True, fail_ow=True,
     key_from="2c",
@@ -408,6 +422,12 @@ class Level6DoorHopController(HopController):
             return FrameAction(nes_action("UP"), "north_push")
         if spec.cardinal_hold:
             self.walker.last_dir = None
+            if spec.align == "y" and abs(xy[1] - gy) > tol:
+                vert = "DOWN" if xy[1] < gy else "UP"
+                return FrameAction(nes_action(vert), f"{tag}_align")
+            if spec.align == "x" and abs(xy[0] - gx) > tol:
+                horiz = "LEFT" if xy[0] > gx else "RIGHT"
+                return FrameAction(nes_action(horiz), f"{tag}_align")
             return FrameAction(nes_action(spec.hold_dir), f"{tag}_hold")
         return None
 

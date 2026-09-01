@@ -57,43 +57,55 @@ CELLAR08_LEAVE = LeaveSpec(
     x=(88, 112),
     y=(149, 165),
     triforce_bits=0x1F,
-    keys=4,
+    keys=3,
     bombs=8,
     hearts_lo_eq_hi=False,
 )
 
-# Live leftover: l6_south1d_continuous play 0x2D (120,77).
+# Live leftover: power-on play 0x2D (120,77); keys stay 3.
 SOUTH1D_LEAVE = LeaveSpec(
     hop="level6-south1d",
     room=0x2D,
     x=(112, 128),
     y=(69, 93),
     triforce_bits=0x1F,
-    keys=4,
+    keys=3,
     bombs=8,
     hearts_lo_eq_hi=False,
 )
 
-# Live leftover: l6_west2d_continuous play 0x2C (224,141); keys stay 4.
+# Live leftover: l6_west2d_recompose play 0x2C (224,141); keys stay 3.
 WEST2D_LEAVE = LeaveSpec(
     hop="level6-west2d",
     room=0x2C,
     x=(208, 232),
     y=(133, 149),
     triforce_bits=0x1F,
-    keys=4,
+    keys=3,
     bombs=8,
     hearts_lo_eq_hi=False,
 )
 
-# Live leftover: l6_north2c_continuous play 0x1C (120,205); keys 4→3.
+# Live leftover: l6_north2c_cardinal play 0x1C (120,205); keys 3→2.
 NORTH2C_LEAVE = LeaveSpec(
     hop="level6-north2c",
     room=0x1C,
     x=(112, 128),
     y=(189, 221),
     triforce_bits=0x1F,
-    keys=3,
+    keys=2,
+    bombs=8,
+    hearts_lo_eq_hi=False,
+)
+
+# Live leftover: l6_gohma_recompose play 0x1C (120,189); body gone; arrows 0→1.
+GOHMA_LEAVE = LeaveSpec(
+    hop="level6-gohma",
+    room=0x1C,
+    x=(112, 128),
+    y=(173, 197),
+    triforce_bits=0x1F,
+    keys=2,
     bombs=8,
     hearts_lo_eq_hi=False,
 )
@@ -418,18 +430,23 @@ def cellar08_glance(controller: Any) -> GlanceLeftover:
 
 
 def south1d_glance(controller: Any) -> GlanceLeftover:
-    """Live 0x1D south leftover play 0x2D (120,77)."""
+    """Live 0x1D south leftover play 0x2D (120,77); keys stay 3."""
     return grade_controller(controller, SOUTH1D_LEAVE)
 
 
 def west2d_glance(controller: Any) -> GlanceLeftover:
-    """Live 0x2D west leftover play 0x2C (224,141)."""
+    """Live 0x2D west leftover play 0x2C (224,141); keys stay 3."""
     return grade_controller(controller, WEST2D_LEAVE)
 
 
 def north2c_glance(controller: Any) -> GlanceLeftover:
-    """Predicted 0x2C KEY-UP leftover play 0x1C south mouth; keys 4→3."""
+    """Live 0x2C KEY-UP leftover play 0x1C south mouth; keys 3→2."""
     return grade_controller(controller, NORTH2C_LEAVE)
+
+
+def gohma_glance(controller: Any) -> GlanceLeftover:
+    """Live Gohma-kill leftover play 0x1C (120,189); TF still 0x1F."""
+    return grade_controller(controller, GOHMA_LEAVE)
 
 
 def east3a_glance(controller: Any) -> GlanceLeftover:
