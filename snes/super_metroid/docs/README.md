@@ -27,5 +27,6 @@ only ([ASSIST_CONTRACT.md](ASSIST_CONTRACT.md)). Language:
 | **[routes/TRACK_100.md](routes/TRACK_100.md)** | Early Spazer / 100% notes |
 | [SOURCE_STATES.md](SOURCE_STATES.md) | Continuous-like pure entry states |
 | [ram_map.md](ram_map.md) | WRAM addresses |
+| [RNG.md](RNG.md) | `$05E5` roll timing, boot seed, skip-intro poke |
 | [ROOM_TIMER.md](ROOM_TIMER.md) | Stock room timing |
 | `bd ready -l super_metroid -l spine` | Ready / in-flight work |

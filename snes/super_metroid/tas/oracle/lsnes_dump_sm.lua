@@ -5,6 +5,7 @@
 --
 -- Flags (oracle_flags.txt next to this script, or in cwd / out_dir):
 --   out_dir=...  early_exit=1  max_frames=60000  series_stride=0
+--   playback_speed=turbo  (use 1 for the native-speed sync diagnostic)
 
 local ADDR_ROOM_ID = 0x079B
 local ADDR_AREA_INDEX = 0x079F
@@ -15,8 +16,40 @@ local ADDR_HEALTH = 0x09C2
 local ADDR_MAX_HEALTH = 0x09C4
 local ADDR_MAX_MISSILES = 0x09C8
 local ADDR_SAMUS_POSE = 0x0A1C
+local ADDR_SAMUS_FACING = 0x0A1E
+local ADDR_MOVEMENT_TYPE = 0x0A1F
 local ADDR_SAMUS_X = 0x0AF6
+local ADDR_SAMUS_X_SUB = 0x0AF8
 local ADDR_SAMUS_Y = 0x0AFA
+local ADDR_SAMUS_Y_SUB = 0x0AFC
+local ADDR_VELOCITY_Y_SUB = 0x0B2C
+local ADDR_VELOCITY_Y = 0x0B2E
+local ADDR_VERTICAL_DIRECTION = 0x0B36
+local ADDR_SPEED_FLAG = 0x0B3C
+local ADDR_SPEED_COUNTER = 0x0B3E
+local ADDR_VELOCITY_X = 0x0B42
+local ADDR_VELOCITY_X_SUB = 0x0B44
+local ADDR_MOMENTUM_X = 0x0B46
+local ADDR_MOMENTUM_X_SUB = 0x0B48
+local ADDR_TIMER_TYPE = 0x0943
+local ADDR_TIMER_FRAMES = 0x0945
+local ADDR_TIMER_SECONDS = 0x0946
+local ADDR_TIMER_MINUTES = 0x0947
+local ADDR_INVINCIBILITY_TIMER = 0x18A8
+local ADDR_KNOCKBACK_TIMER = 0x18AA
+
+local ENEMY_BASE = 0x0F78
+local ENEMY_STRIDE = 0x40
+local ENEMY_SLOTS = 32
+local ADDR_SAMUS_PROJ_TYPE = 0x0C04
+local ADDR_SAMUS_PROJ_X = 0x0C18
+local ADDR_SAMUS_PROJ_Y = 0x0C4A
+local SAMUS_PROJ_SLOTS = 10
+local ADDR_ENEMY_PROJ_ID = 0x1997
+local ADDR_ENEMY_PROJ_X = 0x1A4B
+local ADDR_ENEMY_PROJ_Y = 0x1A93
+local ADDR_ENEMY_PROJ_ILIST = 0x1B47
+local ENEMY_PROJ_SLOTS = 18
 
 local MORPH_MASK = 0x0004
 local BOMBS_MASK = 0x1000
@@ -97,6 +130,7 @@ table.insert(flag_paths, "oracle_flags.txt")
 local early_exit = true
 local max_frames = 60000
 local series_stride = 0
+local playback_speed = "turbo"
 local rom_path = "C:/lsnes/SuperMetroid.sfc"
 local movie_path = "C:/lsnes/sniq_100_4010M.lsmv"
 
@@ -115,6 +149,8 @@ local function apply_flags(path)
       max_frames = tonumber(v) or max_frames
     elseif k == "series_stride" then
       series_stride = tonumber(v) or 0
+    elseif k == "playback_speed" and v ~= "" then
+      playback_speed = v
     elseif k == "rom" and v ~= "" then
       rom_path = v
     elseif k == "movie" and v ~= "" then
@@ -144,8 +180,10 @@ local log_fh = io.open(out_dir .. "/dump_log.txt", "w")
 local events_fh = io.open(out_dir .. "/events.jsonl", "w")
 local timeline_fh = io.open(out_dir .. "/room_timeline.csv", "w")
 local series_fh = nil
+local entities_fh = nil
 if series_stride > 0 then
   series_fh = io.open(out_dir .. "/series.jsonl", "w")
+  entities_fh = io.open(out_dir .. "/entities.jsonl", "w")
 end
 if timeline_fh then
   timeline_fh:write("frame,kind,room_id,area,game_state,items,beams,energy,pose,x,y\n")
@@ -208,7 +246,7 @@ local green = false
 local finished = false
 local kicked = false
 local vma_logged = false
-local movie_ready = false
+local movie_ready = movie and movie.framecount and movie.framecount() >= 1000 or false
 
 local function snapshot()
   return {
@@ -221,9 +259,78 @@ local function snapshot()
     max_energy = ru16(ADDR_MAX_HEALTH),
     max_missiles = ru16(ADDR_MAX_MISSILES),
     pose = ru16(ADDR_SAMUS_POSE),
+    facing = ru8(ADDR_SAMUS_FACING),
+    movement_type = ru8(ADDR_MOVEMENT_TYPE),
     x = ru16(ADDR_SAMUS_X),
+    x_sub = ru16(ADDR_SAMUS_X_SUB),
     y = ru16(ADDR_SAMUS_Y),
+    y_sub = ru16(ADDR_SAMUS_Y_SUB),
+    velocity_y = ru16(ADDR_VELOCITY_Y),
+    velocity_y_sub = ru16(ADDR_VELOCITY_Y_SUB),
+    vertical_direction = ru16(ADDR_VERTICAL_DIRECTION),
+    speed_flag = ru16(ADDR_SPEED_FLAG),
+    speed_counter = math.floor(ru16(ADDR_SPEED_COUNTER) / 256),
+    velocity_x = ru16(ADDR_VELOCITY_X),
+    velocity_x_sub = ru16(ADDR_VELOCITY_X_SUB),
+    momentum_x = ru16(ADDR_MOMENTUM_X),
+    momentum_x_sub = ru16(ADDR_MOMENTUM_X_SUB),
+    timer_type = ru8(ADDR_TIMER_TYPE),
+    timer_frames = ru8(ADDR_TIMER_FRAMES),
+    timer_seconds = ru8(ADDR_TIMER_SECONDS),
+    timer_minutes = ru8(ADDR_TIMER_MINUTES),
+    invincibility_timer = ru16(ADDR_INVINCIBILITY_TIMER),
+    knockback_timer = ru16(ADDR_KNOCKBACK_TIMER),
   }
+end
+
+local function live_projectiles()
+  local rows = {}
+  for slot = 0, SAMUS_PROJ_SLOTS - 1 do
+    local kind = ru16(ADDR_SAMUS_PROJ_TYPE + slot * 2)
+    if kind ~= 0 then
+      table.insert(rows, {
+        slot = slot,
+        kind = kind,
+        x = ru16(ADDR_SAMUS_PROJ_X + slot * 2),
+        y = ru16(ADDR_SAMUS_PROJ_Y + slot * 2),
+      })
+    end
+  end
+  return rows
+end
+
+local function write_ceres_entities(f)
+  if not entities_fh then
+    return
+  end
+  for slot = 0, ENEMY_SLOTS - 1 do
+    local base = ENEMY_BASE + slot * ENEMY_STRIDE
+    local enemy_id = ru16(base)
+    local hp = ru16(base + 0x14)
+    local x = ru16(base + 0x02)
+    local y = ru16(base + 0x06)
+    if enemy_id ~= 0 and hp > 0 and x < 0xFE00 and y < 0xFE00 then
+      entities_fh:write(string.format(
+        '{"frame":%d,"kind":"enemy","slot":%d,"id":%d,"x":%d,"y":%d,"x_radius":%d,"y_radius":%d,"extra":%d,"hp":%d,"spritemap":%d}\n',
+        f, slot, enemy_id, x, y, ru16(base + 0x0A), ru16(base + 0x0C),
+        ru16(base + 0x10), hp, ru16(base + 0x16)
+      ))
+    end
+  end
+  -- Ceres dust / debris is bank-$86 enemy-projectile state, not an enemy
+  -- slot. Without this table $9734/$9742 pieces are invisible to the oracle.
+  for slot = 0, ENEMY_PROJ_SLOTS - 1 do
+    local proj_id = ru16(ADDR_ENEMY_PROJ_ID + slot * 2)
+    local x = ru16(ADDR_ENEMY_PROJ_X + slot * 2)
+    local y = ru16(ADDR_ENEMY_PROJ_Y + slot * 2)
+    if proj_id ~= 0 and x < 0xFE00 and y < 0xFE00 then
+      entities_fh:write(string.format(
+        '{"frame":%d,"kind":"enemy_projectile","slot":%d,"id":%d,"x":%d,"y":%d,"ilist":%d}\n',
+        f, slot, proj_id, x, y,
+        ru16(ADDR_ENEMY_PROJ_ILIST + slot * 2)
+      ))
+    end
+  end
 end
 
 local function csv_row(kind, s)
@@ -292,6 +399,7 @@ local function finish(status, reason)
   if events_fh then events_fh:close(); events_fh = nil end
   if timeline_fh then timeline_fh:close(); timeline_fh = nil end
   if series_fh then series_fh:close(); series_fh = nil end
+  if entities_fh then entities_fh:close(); entities_fh = nil end
   exec("quit-emulator")
 end
 
@@ -345,7 +453,7 @@ function on_post_load(name, is_state)
     log("WARN movie.framecount too small — load may have missed the LSMV")
   end
   exec("enable-sound off")
-  exec("set-speed turbo")
+  exec("set-speed " .. playback_speed)
   exec("clear-pause-on-end")
 end
 
@@ -391,11 +499,20 @@ local function tick()
   local area_ok = s.area >= 0 and s.area <= 6
   local room_ok = s.room_id ~= 0 and s.room_id ~= 0xFFFF
 
+  local projectiles = live_projectiles()
   if series_fh and series_stride > 0 and f % series_stride == 0 then
     series_fh:write(string.format(
-      '{"frame":%d,"room_id":%d,"area":%d,"gs":%d,"pose":%d,"x":%d,"y":%d,"items":%d,"beams":%d,"energy":%d}\n',
-      f, s.room_id, s.area, s.game_state, s.pose, s.x, s.y, s.items, s.beams, s.energy
+      '{"frame":%d,"room_id":%d,"area":%d,"gs":%d,"pose":%d,"facing":%d,"movement_type":%d,"x":%d,"x_sub":%d,"y":%d,"y_sub":%d,"velocity_x":%d,"velocity_x_sub":%d,"momentum_x":%d,"momentum_x_sub":%d,"velocity_y":%d,"velocity_y_sub":%d,"vertical_direction":%d,"speed_flag":%d,"speed_counter":%d,"invincibility_timer":%d,"knockback_timer":%d,"timer_type":%d,"timer_frames":%d,"timer_seconds":%d,"timer_minutes":%d,"projectiles":%d,"items":%d,"beams":%d,"energy":%d}\n',
+      f, s.room_id, s.area, s.game_state, s.pose, s.facing, s.movement_type,
+      s.x, s.x_sub, s.y, s.y_sub, s.velocity_x, s.velocity_x_sub,
+      s.momentum_x, s.momentum_x_sub, s.velocity_y, s.velocity_y_sub,
+      s.vertical_direction, s.speed_flag, s.speed_counter,
+      s.invincibility_timer, s.knockback_timer, s.timer_type, s.timer_frames,
+      s.timer_seconds, s.timer_minutes, #projectiles, s.items, s.beams, s.energy
     ))
+    if s.area == 6 then
+      write_ceres_entities(f)
+    end
   end
 
   if first_control_frame == nil and s.game_state == 8 and room_ok and area_ok then
@@ -549,10 +666,10 @@ function on_idle()
   end
   kicked = true
   exec("enable-sound off")
-  exec("set-speed turbo")
+  exec("set-speed " .. playback_speed)
   exec("clear-pause-on-end")
-  exec("pause-emulator")
-  log("unpaused turbo")
+  exec("unpause-emulator")
+  log("unpaused speed=" .. playback_speed)
 end
 
 function on_quit()
@@ -567,6 +684,7 @@ end
 
 log("lsnes_dump_sm.lua start out_dir=" .. out_dir)
 log("early_exit=" .. tostring(early_exit) .. " max_frames=" .. tostring(max_frames))
+log("playback_speed=" .. playback_speed)
 if movie and movie.framecount then
   log("movie.framecount=" .. tostring(movie.framecount()))
 end

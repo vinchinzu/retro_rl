@@ -1,0 +1,172 @@
+{
+  "schema": "sm_tas_ceres_hops_v2",
+  "source": "lsnes_oracle",
+  "movie": "sniq_100_4010M",
+  "core": "bsnes v085 (Compatibility core)",
+  "first_control_frame": 8538,
+  "first_pad_frame": 8639,
+  "landing_frame": 15198,
+  "station_frames": 6660,
+  "status": "plan_only",
+  "notes": "Native lsnes dump through Landing. Not a product tape. Do not STATUS. room_flip is gs=11 room-id change (enter-to-enter). settled_gs8 is dest first gs=8 minus source first gs=8; elev uses pad y=72 at 8639, not ride gs=8 at 8538. Never compare 344 room-flip with 345 settled.",
+  "clocks": {
+    "room_flip": "gs=11 room-id change; hop.enter / hop.frames",
+    "settled_gs8": "dest gs=8 minus source gs=8 (elev pad y=72)"
+  },
+  "hops": [
+    {
+      "from": "0xDF45",
+      "to": "0xDF8D",
+      "name": "elev_to_falling",
+      "enter": 8319,
+      "frames": 513,
+      "room_flip": {"source_enter": 8319, "dest_enter": 8832, "frames": 513},
+      "settled_gs8": {
+        "source_gs8": 8639,
+        "dest_gs8": 8950,
+        "door_gs9": 8789,
+        "frames": 311,
+        "dwell_frames": 150,
+        "transition_frames": 161
+      }
+    },
+    {
+      "from": "0xDF8D",
+      "to": "0xDFD7",
+      "name": "falling_to_magnet",
+      "enter": 8832,
+      "frames": 282,
+      "room_flip": {"source_enter": 8832, "dest_enter": 9114, "frames": 282},
+      "settled_gs8": {
+        "source_gs8": 8950,
+        "dest_gs8": 9232,
+        "door_gs9": 9071,
+        "frames": 282,
+        "dwell_frames": 121,
+        "transition_frames": 161
+      }
+    },
+    {
+      "from": "0xDFD7",
+      "to": "0xE021",
+      "name": "magnet_to_scientist",
+      "enter": 9114,
+      "frames": 344,
+      "room_flip": {"source_enter": 9114, "dest_enter": 9458, "frames": 344},
+      "settled_gs8": {
+        "source_gs8": 9232,
+        "dest_gs8": 9577,
+        "door_gs9": 9415,
+        "frames": 345,
+        "dwell_frames": 183,
+        "transition_frames": 162
+      }
+    },
+    {
+      "from": "0xE021",
+      "to": "0xE06B",
+      "name": "scientist_to_flat",
+      "enter": 9458,
+      "frames": 265,
+      "room_flip": {"source_enter": 9458, "dest_enter": 9723, "frames": 265},
+      "settled_gs8": {
+        "source_gs8": 9577,
+        "dest_gs8": 9841,
+        "door_gs9": 9680,
+        "frames": 264,
+        "dwell_frames": 103,
+        "transition_frames": 161
+      }
+    },
+    {
+      "from": "0xE06B",
+      "to": "0xE0B5",
+      "name": "flat_to_ridley",
+      "enter": 9723,
+      "frames": 256,
+      "room_flip": {"source_enter": 9723, "dest_enter": 9979, "frames": 256},
+      "settled_gs8": {
+        "source_gs8": 9841,
+        "dest_gs8": 10162,
+        "door_gs9": 9936,
+        "frames": 321,
+        "dwell_frames": 95,
+        "transition_frames": 226
+      }
+    },
+    {"from": "0xE0B5", "to": "0xE06B", "enter": 9979, "frames": 1842, "name": "ridley_fight"},
+    {
+      "from": "0xE06B",
+      "to": "0xE021",
+      "name": "flat_escape",
+      "enter": 11821,
+      "frames": 258,
+      "room_flip": {"source_enter": 11821, "dest_enter": 12079, "frames": 258},
+      "settled_gs8": {
+        "source_gs8": 11939,
+        "dest_gs8": 12198,
+        "door_gs9": 12036,
+        "frames": 259,
+        "dwell_frames": 97,
+        "transition_frames": 162
+      }
+    },
+    {
+      "from": "0xE021",
+      "to": "0xDFD7",
+      "name": "scientist_escape",
+      "enter": 12079,
+      "frames": 263,
+      "room_flip": {"source_enter": 12079, "dest_enter": 12342, "frames": 263},
+      "settled_gs8": {
+        "source_gs8": 12198,
+        "dest_gs8": 12461,
+        "door_gs9": 12299,
+        "frames": 263,
+        "dwell_frames": 101,
+        "transition_frames": 162
+      }
+    },
+    {
+      "from": "0xDFD7",
+      "to": "0xDF8D",
+      "name": "magnet_escape",
+      "enter": 12342,
+      "frames": 329,
+      "room_flip": {"source_enter": 12342, "dest_enter": 12671, "frames": 329},
+      "settled_gs8": {
+        "source_gs8": 12461,
+        "dest_gs8": 12792,
+        "door_gs9": 12628,
+        "frames": 331,
+        "dwell_frames": 167,
+        "transition_frames": 164
+      }
+    },
+    {
+      "from": "0xDF8D",
+      "to": "0xDF45",
+      "name": "falling_to_elev",
+      "enter": 12671,
+      "frames": 281,
+      "room_flip": {"source_enter": 12671, "dest_enter": 12952, "frames": 281},
+      "settled_gs8": {
+        "source_gs8": 12792,
+        "dest_gs8": 13073,
+        "door_gs9": 12908,
+        "frames": 281,
+        "dwell_frames": 116,
+        "transition_frames": 165
+      }
+    },
+    {"from": "0xDF45", "to": "0x91F8", "enter": 12952, "frames": 2246, "name": "elev_to_landing"}
+  ],
+  "elev_wj": {
+    "fast_entry": {"frame": 13073, "x": 216, "y": 632, "pose": 25},
+    "plant_475": {"frame": 13118, "x": 163, "y": 475, "pose": 165},
+    "left_latch_131": {"frame": 13140, "x": 155, "y": 404, "pose": 131},
+    "plant_363": {"frame": 13149, "x": 156, "y": 363, "pose": 164},
+    "plant_to_plant_frames": 31,
+    "policy": "PreciseWallJumpTiming into=LEFT away=RIGHT; contact pose 131 or 132"
+  }
+}

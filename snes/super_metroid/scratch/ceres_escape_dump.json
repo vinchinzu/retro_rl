@@ -1,0 +1,454 @@
+{
+  "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_ridley_flat.state",
+  "capture": null,
+  "before": {
+    "success": true,
+    "frames": 293,
+    "seconds": 4.875,
+    "clock": "00:04.88",
+    "end": {
+      "room": "0xE021",
+      "roomId": 57377,
+      "pose": 18,
+      "x": 472,
+      "y": 139,
+      "x_sub": 32768,
+      "y_sub": 65535,
+      "door_transition": 0,
+      "phase": "ORDINARY_GAMEPLAY",
+      "frame": 293,
+      "velocity_x": 0,
+      "velocity_y": 0,
+      "momentum_x": 2,
+      "speed_counter": 0,
+      "speed_boosting": false,
+      "facing": 4,
+      "movement_type": 1,
+      "shinespark_timer": 0,
+      "moonwalk": 0,
+      "door_def_ptr": "0xABA0",
+      "collected_items": "0x0000"
+    },
+    "reasons": {
+      "ceres_reverse_arm_pump": 286,
+      "ceres_reverse_arm_pump_kb_run": 6,
+      "ceres_reverse_arm_pump_kb_spin": 1,
+      "ceres_sci_rev": 119,
+      "ceres_sci_rev_fade": 162
+    },
+    "magnet_join": {
+      "success": true,
+      "frames": 281,
+      "end": {
+        "room": "0xDFD7",
+        "roomId": 57303,
+        "pose": 16,
+        "x": 216,
+        "y": 395,
+        "x_sub": 7168,
+        "y_sub": 65535,
+        "door_transition": 0,
+        "phase": "ORDINARY_GAMEPLAY",
+        "frame": 574,
+        "velocity_x": 0,
+        "velocity_y": 0,
+        "momentum_x": 2,
+        "speed_counter": 0,
+        "speed_boosting": false,
+        "facing": 4,
+        "movement_type": 1,
+        "shinespark_timer": 0,
+        "moonwalk": 0,
+        "door_def_ptr": "0xAB88",
+        "collected_items": "0x0000"
+      }
+    }
+  },
+  "tas_gs8": 259,
+  "tas_dwell": 97,
+  "dual": {
+    "success": true,
+    "dual_exact": true,
+    "hop": "ceres_flat_to_scientist",
+    "pin": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_ridley_flat.state",
+    "leave": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_flat_scientist.state",
+    "frames": [
+      292,
+      292
+    ],
+    "timing": {
+      "frames": 292,
+      "seconds": 4.859,
+      "clock": "00:04.87",
+      "ntsc_fps": 60.0988
+    },
+    "hop_glance_misses": [],
+    "runs": [
+      {
+        "frames": 292,
+        "final": {
+          "room": 57377,
+          "x": 472,
+          "y": 139,
+          "pose": 18,
+          "gs": 8,
+          "dt": 0,
+          "health": null
+        },
+        "misses": [],
+        "reasons": {
+          "ceres_flat": 130,
+          "ceres_flat_fade": 162,
+          "ceres_sci_rev": 119,
+          "ceres_sci_rev_fade": 162
+        },
+        "magnet_join": {
+          "success": true,
+          "frames": 281,
+          "end": {
+            "room": "0xDFD7",
+            "roomId": 57303,
+            "pose": 16,
+            "x": 216,
+            "y": 395,
+            "x_sub": 17408,
+            "y_sub": 65535,
+            "door_transition": 0,
+            "phase": "ORDINARY_GAMEPLAY",
+            "frame": 573,
+            "velocity_x": 0,
+            "velocity_y": 0,
+            "momentum_x": 2,
+            "speed_counter": 0,
+            "speed_boosting": false,
+            "facing": 4,
+            "movement_type": 1,
+            "shinespark_timer": 0,
+            "moonwalk": 0,
+            "door_def_ptr": "0xAB88",
+            "collected_items": "0x0000"
+          }
+        }
+      },
+      {
+        "frames": 292,
+        "final": {
+          "room": 57377,
+          "x": 472,
+          "y": 139,
+          "pose": 18,
+          "gs": 8,
+          "dt": 0,
+          "health": null
+        },
+        "misses": [],
+        "reasons": {
+          "ceres_flat": 130,
+          "ceres_flat_fade": 162,
+          "ceres_sci_rev": 119,
+          "ceres_sci_rev_fade": 162
+        },
+        "magnet_join": {
+          "success": true,
+          "frames": 281,
+          "end": {
+            "room": "0xDFD7",
+            "roomId": 57303,
+            "pose": 16,
+            "x": 216,
+            "y": 395,
+            "x_sub": 17408,
+            "y_sub": 65535,
+            "door_transition": 0,
+            "phase": "ORDINARY_GAMEPLAY",
+            "frame": 573,
+            "velocity_x": 0,
+            "velocity_y": 0,
+            "momentum_x": 2,
+            "speed_counter": 0,
+            "speed_boosting": false,
+            "facing": 4,
+            "movement_type": 1,
+            "shinespark_timer": 0,
+            "moonwalk": 0,
+            "door_def_ptr": "0xAB88",
+            "collected_items": "0x0000"
+          }
+        }
+      }
+    ]
+  },
+  "scientist": {
+    "state": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_flat_scientist.state",
+    "before": {
+      "success": true,
+      "frames": 284,
+      "seconds": 4.726,
+      "clock": "00:04.73",
+      "end": {
+        "room": "0xDFD7",
+        "roomId": 57303,
+        "pose": 16,
+        "x": 216,
+        "y": 395,
+        "x_sub": 29696,
+        "y_sub": 65535,
+        "door_transition": 0,
+        "phase": "ORDINARY_GAMEPLAY",
+        "frame": 284,
+        "velocity_x": 0,
+        "velocity_y": 0,
+        "momentum_x": 1,
+        "speed_counter": 0,
+        "speed_boosting": false,
+        "facing": 4,
+        "movement_type": 1,
+        "shinespark_timer": 0,
+        "moonwalk": 0,
+        "door_def_ptr": "0xAB88",
+        "collected_items": "0x0000"
+      },
+      "reasons": {
+        "ceres_reverse_arm_pump": 277,
+        "ceres_reverse_arm_pump_kb_run": 6,
+        "ceres_reverse_arm_pump_kb_spin": 1,
+        "ceres_magnet_to_seat": 62,
+        "ceres_magnet_bottom_jump": 21,
+        "ceres_magnet_climb_release": 98,
+        "ceres_magnet_mid_jump": 11,
+        "ceres_magnet_abort_east": 22,
+        "ceres_magnet_top_run": 71
+      },
+      "falling_join": {
+        "success": false,
+        "frames": 285,
+        "error": "ceres magnet exit missed Falling: SuperMetroidState(frame=569, game_state=11, phase=<GameplayPhase.ROOM_TRANSITION: 'room_transition'>, room_id=57377, area_index=6, door_transition=1, transition_direction=0, samus_x=65522, samus_y=139, velocity_x=0, velocity_y=0, pose=15, health=19, max_health=99, reserve_health=0, max_reserve_health=0, missiles=0, max_missiles=0, super_missiles=0, max_super_missiles=0, power_bombs=0, max_power_bombs=0, selected_item=0, equipped_items=0, collected_items=0, equipped_beams=0, collected_beams=0, timer_type=6, escape_timer_frames=145, escape_timer_seconds=80, escape_timer_minutes=0, num_enemies=7, enemies_killed=0, enemy0_x=32, enemy0_y=127, enemy0_hp=40, enemy0_spritemap=64019, event_flags=(255, 0, 255, 0, 255, 0, 255, 0), boss_bits=(255, 0, 255, 0, 255, 0, 255, 0), door_def_ptr=43900, samus_x_sub=11264, samus_y_sub=65535, velocity_x_sub=32768, velocity_y_sub=0, momentum_x=1, momentum_x_sub=32768, speed_counter=0, speed_flag=1, vertical_direction=0, facing=8, movement_type=1, shinespark_timer=0, moonwalk=0)",
+        "end": {
+          "room": "0xE021",
+          "roomId": 57377,
+          "pose": 15,
+          "x": 65522,
+          "y": 139,
+          "x_sub": 11264,
+          "y_sub": 65535,
+          "door_transition": 1,
+          "phase": "ROOM_TRANSITION",
+          "frame": 569,
+          "velocity_x": 0,
+          "velocity_y": 0,
+          "momentum_x": 1,
+          "speed_counter": 0,
+          "speed_boosting": false,
+          "facing": 8,
+          "movement_type": 1,
+          "shinespark_timer": 0,
+          "moonwalk": 0,
+          "door_def_ptr": "0xAB7C",
+          "collected_items": "0x0000"
+        }
+      }
+    },
+    "tas_gs8": 263,
+    "tas_dwell": 101,
+    "dual": {
+      "success": true,
+      "dual_exact": true,
+      "hop": "ceres_scientist_to_magnet",
+      "pin": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_flat_scientist.state",
+      "leave": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_scientist_magnet.state",
+      "frames": [
+        281,
+        281
+      ],
+      "timing": {
+        "frames": 281,
+        "seconds": 4.676,
+        "clock": "00:04.68",
+        "ntsc_fps": 60.0988
+      },
+      "hop_glance_misses": [],
+      "runs": [
+        {
+          "frames": 281,
+          "final": {
+            "room": 57303,
+            "x": 216,
+            "y": 395,
+            "pose": 16,
+            "gs": 8,
+            "dt": 0,
+            "health": null
+          },
+          "misses": [],
+          "reasons": {
+            "ceres_sci_rev": 119,
+            "ceres_sci_rev_fade": 162,
+            "ceres_magnet_to_seat": 55,
+            "ceres_magnet_bottom_jump": 21,
+            "ceres_magnet_climb_release": 35,
+            "ceres_magnet_mid_run": 19,
+            "ceres_magnet_mid_jump": 11,
+            "ceres_magnet_top_run": 10,
+            "ceres_magnet_top_jump": 21,
+            "ceres_magnet_exit": 106,
+            "ceres_magnet_exit_trans": 129
+          },
+          "falling_join": {
+            "success": true,
+            "frames": 407,
+            "end": {
+              "room": "0xDF8D",
+              "roomId": 57229,
+              "pose": 16,
+              "x": 472,
+              "y": 139,
+              "x_sub": 49152,
+              "y_sub": 65535,
+              "door_transition": 0,
+              "phase": "ORDINARY_GAMEPLAY",
+              "frame": 688,
+              "velocity_x": 0,
+              "velocity_y": 0,
+              "momentum_x": 2,
+              "speed_counter": 0,
+              "speed_boosting": false,
+              "facing": 4,
+              "movement_type": 1,
+              "shinespark_timer": 0,
+              "moonwalk": 0,
+              "door_def_ptr": "0xAB70",
+              "collected_items": "0x0000"
+            }
+          }
+        },
+        {
+          "frames": 281,
+          "final": {
+            "room": 57303,
+            "x": 216,
+            "y": 395,
+            "pose": 16,
+            "gs": 8,
+            "dt": 0,
+            "health": null
+          },
+          "misses": [],
+          "reasons": {
+            "ceres_sci_rev": 119,
+            "ceres_sci_rev_fade": 162,
+            "ceres_magnet_to_seat": 55,
+            "ceres_magnet_bottom_jump": 21,
+            "ceres_magnet_climb_release": 35,
+            "ceres_magnet_mid_run": 19,
+            "ceres_magnet_mid_jump": 11,
+            "ceres_magnet_top_run": 10,
+            "ceres_magnet_top_jump": 21,
+            "ceres_magnet_exit": 106,
+            "ceres_magnet_exit_trans": 129
+          },
+          "falling_join": {
+            "success": true,
+            "frames": 407,
+            "end": {
+              "room": "0xDF8D",
+              "roomId": 57229,
+              "pose": 16,
+              "x": 472,
+              "y": 139,
+              "x_sub": 49152,
+              "y_sub": 65535,
+              "door_transition": 0,
+              "phase": "ORDINARY_GAMEPLAY",
+              "frame": 688,
+              "velocity_x": 0,
+              "velocity_y": 0,
+              "momentum_x": 2,
+              "speed_counter": 0,
+              "speed_boosting": false,
+              "facing": 4,
+              "movement_type": 1,
+              "shinespark_timer": 0,
+              "moonwalk": 0,
+              "door_def_ptr": "0xAB70",
+              "collected_items": "0x0000"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "magnet_escape": {
+    "success": true,
+    "dual_exact": true,
+    "hop": "ceres_magnet_to_falling",
+    "pin": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_scientist_magnet.state",
+    "leave": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_magnet_falling.state",
+    "frames": [
+      407,
+      407
+    ],
+    "timing": {
+      "frames": 407,
+      "seconds": 6.772,
+      "clock": "00:06.78",
+      "ntsc_fps": 60.0988
+    },
+    "tas_gs8": 331,
+    "runs": [
+      {
+        "success": true,
+        "frames": 407,
+        "end": {
+          "room": "0xDF8D",
+          "roomId": 57229,
+          "pose": 16,
+          "x": 472,
+          "y": 139,
+          "x_sub": 49152,
+          "y_sub": 65535,
+          "door_transition": 0,
+          "phase": "ORDINARY_GAMEPLAY",
+          "frame": 688,
+          "velocity_x": 0,
+          "velocity_y": 0,
+          "momentum_x": 2,
+          "speed_counter": 0,
+          "speed_boosting": false,
+          "facing": 4,
+          "movement_type": 1,
+          "shinespark_timer": 0,
+          "moonwalk": 0,
+          "door_def_ptr": "0xAB70",
+          "collected_items": "0x0000"
+        }
+      },
+      {
+        "success": true,
+        "frames": 407,
+        "end": {
+          "room": "0xDF8D",
+          "roomId": 57229,
+          "pose": 16,
+          "x": 472,
+          "y": 139,
+          "x_sub": 49152,
+          "y_sub": 65535,
+          "door_transition": 0,
+          "phase": "ORDINARY_GAMEPLAY",
+          "frame": 688,
+          "velocity_x": 0,
+          "velocity_y": 0,
+          "momentum_x": 2,
+          "speed_counter": 0,
+          "speed_boosting": false,
+          "facing": 4,
+          "movement_type": 1,
+          "shinespark_timer": 0,
+          "moonwalk": 0,
+          "door_def_ptr": "0xAB70",
+          "collected_items": "0x0000"
+        }
+      }
+    ]
+  }
+}

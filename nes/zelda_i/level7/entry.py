@@ -13,20 +13,35 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
-from zelda_i.anchors import SCREEN_LEVEL7_BAIT_SHOP_HYP, TF_BIT_L6
+from zelda_i.anchors import (
+    SCREEN_LEVEL6_ENTRANCE,
+    SCREEN_LEVEL7_BAIT_SHOP_HYP,
+    TF_BIT_L6,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.ram import (
     ADDR_ARROWS,
+    ADDR_BOMBS,
+    ADDR_BOOMERANG,
     ADDR_BOW,
     ADDR_CANDLE,
     ADDR_FOOD,
+    ADDR_HEALTH,
+    ADDR_HEART_PARTIAL,
+    ADDR_KEYS,
+    ADDR_LADDER,
+    ADDR_MAGIC_BOOMERANG,
+    ADDR_RAFT,
     ADDR_ROD,
     ADDR_RUPEES,
     ADDR_SELECTED_ITEM,
+    ADDR_SWORD,
+    ADDR_TRIFORCE,
     ADDR_WHISTLE,
     PLAY_MODE,
     ZeldaSnapshot,
+    health_byte_for_containers,
     read_u8,
 )
 
@@ -36,6 +51,35 @@ BAIT_COST = 60
 BAIT_SHOP_SCREEN_HYP = SCREEN_LEVEL7_BAIT_SHOP_HYP  # 0x34
 APPROACH_MAX_FRAMES = 40_000
 BAIT_MAX_FRAMES = 1
+# Live Level5Complete leftover selected=5 with whistle=1.
+B_ITEM_WHISTLE = 5
+# Walkthrough L7 start is 11 hearts; White Sword qualifies, Magical does not.
+POST_L6_HEART_CONTAINERS = 11
+POST_L6_EXIT_STATE = "Level6ExitOverworld"
+POST_L6_EXIT_SOURCE_STATE = "L6Probe_22"
+# Live L6Probe_22 leftover. (112,125) is the cave mouth (mode 16 → L6).
+POST_L6_EXIT_X = 120
+POST_L6_EXIT_Y = 221
+# Food stays 0 so the bait buy is still a natural 60R purchase.
+POST_L6_EXIT_LOADOUT: tuple[tuple[str, int, int], ...] = (
+    ("white_sword", ADDR_SWORD, 2),
+    ("bombs", ADDR_BOMBS, 8),
+    ("wooden_arrows", ADDR_ARROWS, 1),
+    ("bow", ADDR_BOW, 1),
+    ("blue_candle", ADDR_CANDLE, CANDLE_BLUE),
+    ("whistle", ADDR_WHISTLE, 1),
+    ("magic_rod", ADDR_ROD, 1),
+    ("raft", ADDR_RAFT, 1),
+    ("ladder", ADDR_LADDER, 1),
+    ("rupees", ADDR_RUPEES, 80),
+    ("keys", ADDR_KEYS, 3),
+    ("health_11_full", ADDR_HEALTH, health_byte_for_containers(POST_L6_HEART_CONTAINERS)),
+    ("heart_partial", ADDR_HEART_PARTIAL, 0xFF),
+    ("triforce_l1_to_l6", ADDR_TRIFORCE, POST_L6_TRIFORCE),
+    ("wood_boomerang", ADDR_BOOMERANG, 1),
+    ("magic_boomerang", ADDR_MAGIC_BOOMERANG, 1),
+    ("selected_whistle", ADDR_SELECTED_ITEM, B_ITEM_WHISTLE),
+)
 
 
 @dataclass(frozen=True)
@@ -123,8 +167,49 @@ class PostLevel6Handoff:
 
 UNMEASURED_POST_L6_HANDOFF = PostLevel6Handoff()
 
+# Poke-fixture packet for Level6ExitOverworld. verified stays false so spine
+# chapters still refuse; L6 fanfare leftover remains unmeasured.
+HYPOTHESIZED_POST_L6_EXIT = PostLevel6Handoff(
+    screen=SCREEN_LEVEL6_ENTRANCE,
+    link_x=POST_L6_EXIT_X,
+    link_y=POST_L6_EXIT_Y,
+    keys=3,
+    bombs=8,
+    rupees=80,
+    heart_containers=POST_L6_HEART_CONTAINERS,
+    selected_item=B_ITEM_WHISTLE,
+    whistle=1,
+    food=0,
+    rod=1,
+    bow=1,
+    arrows=1,
+    candle=CANDLE_BLUE,
+    evidence="hypothesis-poke-fixture",
+    verified=False,
+    route_eligible=False,
+)
+
 # Live L6 residual is play 0x09 (56,109) TF 0x1F Rod=0 — not an L7 start.
 CURRENT_L6_PREFIX_IS_NOT_L7_START = True
+
+
+def apply_post_l6_exit_pokes(env: Any) -> list[dict[str, Any]]:
+    """Write the disclosed post-L6 exit loadout. Fixture only; not a route claim."""
+    ram = env.get_ram()
+    writes: list[dict[str, Any]] = []
+    for name, address, value in POST_L6_EXIT_LOADOUT:
+        before = int(ram[address])
+        env.unwrapped.data.memory.assign(int(address), "|u1", int(value) & 0xFF)
+        writes.append(
+            {
+                "field": name,
+                "address": int(address),
+                "address_hex": f"0x{int(address):04X}",
+                "from": before,
+                "to": int(value),
+            }
+        )
+    return writes
 
 
 class ApproachPhase(Enum):
@@ -286,8 +371,16 @@ __all__ = [
     "APPROACH_MAX_FRAMES",
     "BAIT_COST",
     "BAIT_SHOP_SCREEN_HYP",
+    "B_ITEM_WHISTLE",
     "CANDLE_BLUE",
     "CURRENT_L6_PREFIX_IS_NOT_L7_START",
+    "HYPOTHESIZED_POST_L6_EXIT",
+    "POST_L6_EXIT_LOADOUT",
+    "POST_L6_EXIT_SOURCE_STATE",
+    "POST_L6_EXIT_STATE",
+    "POST_L6_EXIT_X",
+    "POST_L6_EXIT_Y",
+    "POST_L6_HEART_CONTAINERS",
     "POST_L6_TRIFORCE",
     "UNMEASURED_POST_L6_HANDOFF",
     "UNVERIFIED_BAIT_PLAN",
@@ -295,6 +388,7 @@ __all__ = [
     "NaturalBaitPurchaseController",
     "PostLevel6Handoff",
     "PostLevel6OverworldController",
+    "apply_post_l6_exit_pokes",
     "make_bait_purchase_controller",
     "make_post_l6_overworld_controller",
 ]

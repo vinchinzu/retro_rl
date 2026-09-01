@@ -5,7 +5,6 @@ from __future__ import annotations
 from super_metroid.routes.kpdr.early_spine import (
     _BOOT_MAX_FRAMES,
     _BOOT_MENU_MASH_FRAMES,
-    _BOOT_STYLE,
     _CERES_ARM_PUMP_PERIOD,
     _arm_pump_dash_spans,
     _boot_spans,
@@ -45,9 +44,9 @@ def test_legacy_boot_spans_still_sum_to_product_baseline() -> None:
     assert total == 10_860
 
 
-def test_product_boot_default_is_legacy_until_elev_residual() -> None:
-    """rr-14u: do not enable TAS boot on product morph until elev re-pin."""
-    assert _BOOT_STYLE == "legacy"
+def test_product_boot_is_open_loop_spans() -> None:
+    """Product boot is the maintained open-loop mash, not TAS-boot fallback."""
+    assert play_boot_to_ceres is not play_boot_to_ceres_tas
     assert _BOOT_MENU_MASH_FRAMES == 400
     assert _BOOT_MAX_FRAMES >= 10_000
     assert callable(play_boot_to_ceres_tas)

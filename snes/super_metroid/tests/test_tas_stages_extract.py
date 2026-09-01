@@ -10,6 +10,10 @@ import pytest
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
+    ROOM_CERES_FLAT,
+    ROOM_CERES_MAGNET,
+    ROOM_CERES_RIDLEY,
+    ROOM_CERES_SCIENTIST,
     ROOM_ICE,
     ROOM_ICE_ACID,
     ROOM_ICE_SNAKE,
@@ -266,6 +270,116 @@ def test_extract_run_any_full_if_present() -> None:
     assert board["annotate_summary"].get("first_control_frame") in (11182, None) or (
         board["annotate_summary"].get("first_control_frame") == 11182
     )
+
+
+def test_extract_run_lsnes_oracle_without_trace(tmp_path: Path) -> None:
+    """events.jsonl + proof.json (no trace/summary) stays source=lsnes_oracle."""
+    oracle = tmp_path / "sniq_100_lsnes"
+    oracle.mkdir()
+    # Ceres elev → falling → … → Ridley → reverse escape → landing.
+    path = [
+        (8319, ROOM_CERES_ELEVATOR),
+        (8832, ROOM_CERES_FALLING),
+        (9114, ROOM_CERES_MAGNET),
+        (9458, ROOM_CERES_SCIENTIST),
+        (9723, ROOM_CERES_FLAT),
+        (9979, ROOM_CERES_RIDLEY),
+        (11821, ROOM_CERES_FLAT),
+        (12079, ROOM_CERES_SCIENTIST),
+        (12342, ROOM_CERES_MAGNET),
+        (12671, ROOM_CERES_FALLING),
+        (12952, ROOM_CERES_ELEVATOR),
+        (15198, ROOM_LANDING_SITE),
+    ]
+    events: list[dict] = [
+        {"frame": 0, "kind": "start"},
+        {
+            "frame": 8538,
+            "kind": "control",
+            "room_id": ROOM_CERES_ELEVATOR,
+            "pose": 0,
+            "x": 128,
+            "y": 0,
+        },
+    ]
+    for frame, room_id in path:
+        events.append(
+            {
+                "frame": frame,
+                "kind": "room_enter",
+                "room_id": room_id,
+                "pose": 0,
+                "x": 0,
+                "y": 0,
+                "energy": 99,
+            }
+        )
+    events.append({"frame": 15198, "kind": "green", "landing_frame": 15198})
+    (oracle / "events.jsonl").write_text(
+        "\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8"
+    )
+    (oracle / "proof.json").write_text(
+        json.dumps(
+            {
+                "status": "GREEN",
+                "source": "lsnes_oracle",
+                "landing_frame": 15198,
+                "first_control_frame": 8538,
+                "unique_rooms": 7,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    board = extract_run(oracle)
+    assert board["source"] == "lsnes_oracle"
+    hops = board["hops"]
+    assert len(hops) == 12
+    assert hops[0]["from_room"] == ROOM_CERES_ELEVATOR
+    assert hops[0]["to_room"] == ROOM_CERES_FALLING
+    assert hops[5]["from_room"] == ROOM_CERES_RIDLEY
+    assert hops[5]["to_room"] == ROOM_CERES_FLAT
+    assert hops[-2]["from_room"] == ROOM_CERES_ELEVATOR
+    assert hops[-2]["to_room"] == ROOM_LANDING_SITE
+    assert hops[-1]["from_room"] == ROOM_LANDING_SITE
+    assert hops[-1]["to_room"] is None
+    assert all(h["usable"] is True for h in hops)
+    assert board["summary"]["usable_hops"] == 12
+    assert board["summary"]["desync_hops"] == 0
+    assert board["summary"]["post_desync_thrash_hops"] == 0
+    assert not any(h["desync_in_hop"] or h["death_in_hop"] for h in hops)
+    assert not any(
+        h["notes"] in ("desync_in_hop", "post_desync_thrash", "death") for h in hops
+    )
+    ann = board["annotate_summary"]
+    assert ann["first_control_frame"] == 8538
+    assert ann["landing_frame"] == 15198
+    assert ann["unique_rooms"] == 7
+    assert ann["status"] == "GREEN"
+
+
+def test_committed_ceres_lsnes_hops_table() -> None:
+    """Oracle hop table is plan_only reference, not a product tape."""
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "tas"
+        / "bodies"
+        / "sniq_100_ceres_lsnes_hops.json"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["schema"] == "sm_tas_ceres_hops_v2"
+    assert payload["source"] == "lsnes_oracle"
+    assert payload["status"] == "plan_only"
+    assert payload["first_control_frame"] == 8538
+    assert payload["first_pad_frame"] == 8639
+    assert payload["landing_frame"] == 15198
+    assert payload["station_frames"] == 15198 - 8538
+    hops = payload["hops"]
+    assert hops[0]["from"] == "0xDF45"
+    assert hops[-1]["to"] == "0x91F8"
+    assert hops[-1]["frames"] == 2246
+    assert payload["elev_wj"]["policy"].startswith("PreciseWallJumpTiming")
 
 
 def test_write_board_roundtrip(tmp_path: Path) -> None:

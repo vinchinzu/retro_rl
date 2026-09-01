@@ -1,0 +1,240 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-08-31T16:01:15.695221+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "field": "white_sword",
+        "from": 1,
+        "to": 2
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "field": "bombs",
+        "from": 0,
+        "to": 8
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "field": "wooden_arrows",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "field": "bow",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1627,
+        "address_hex": "0x065B",
+        "field": "blue_candle",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1628,
+        "address_hex": "0x065C",
+        "field": "whistle",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1631,
+        "address_hex": "0x065F",
+        "field": "magic_rod",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1632,
+        "address_hex": "0x0660",
+        "field": "raft",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "field": "ladder",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "field": "rupees",
+        "from": 0,
+        "to": 80
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "field": "keys",
+        "from": 0,
+        "to": 3
+      },
+      {
+        "address": 1647,
+        "address_hex": "0x066F",
+        "field": "health_11_full",
+        "from": 47,
+        "to": 170
+      },
+      {
+        "address": 1648,
+        "address_hex": "0x0670",
+        "field": "heart_partial",
+        "from": 255,
+        "to": 255
+      },
+      {
+        "address": 1649,
+        "address_hex": "0x0671",
+        "field": "triforce_l1_to_l6",
+        "from": 0,
+        "to": 63
+      },
+      {
+        "address": 1652,
+        "address_hex": "0x0674",
+        "field": "wood_boomerang",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1653,
+        "address_hex": "0x0675",
+        "field": "magic_boomerang",
+        "from": 0,
+        "to": 1
+      },
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "field": "selected_whistle",
+        "from": 0,
+        "to": 5
+      }
+    ],
+    "notes": "Inventory poke on live L6Probe_22 leftover (120,221). Do not stand (112,125): that is the cave mouth (mode 16\u2192L6). Food left 0 for natural 60R bait. Not a measured fanfare leave.",
+    "phase": "post_l6_exit_poke_fixture",
+    "route_eligible": false,
+    "source_state": "L6Probe_22",
+    "status_claim": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "compact": {
+      "bombs": 8,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 170,
+      "is_updating_mode": 1,
+      "keys": 3,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 34,
+      "objects": [
+        {
+          "hp": 64,
+          "slot": 1,
+          "state": 0,
+          "type_id": 2,
+          "type_name": "unknown_object_0x02",
+          "x": 48,
+          "y": 109
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 34,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 80,
+      "submode": 0,
+      "triforce": 63,
+      "x": 120,
+      "y": 221
+    },
+    "leftover": {
+      "arrows": 1,
+      "bombs": 8,
+      "bow": 1,
+      "candle": 1,
+      "facing": 8,
+      "food": 0,
+      "health": 170,
+      "health_is_full": true,
+      "heart_containers": 11,
+      "heart_partial": 255,
+      "keys": 3,
+      "ladder": 1,
+      "level": 0,
+      "mode": 5,
+      "raft": 1,
+      "rod": 1,
+      "rupees": 80,
+      "screen": 34,
+      "selected_item": 5,
+      "sword": 2,
+      "triforce": 63,
+      "whistle": 1,
+      "x": 120,
+      "y": 221
+    },
+    "ok": true,
+    "png": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/recordings/l6_exit_overworld_poke_final.png",
+    "source_before": {
+      "bombs": 0,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 47,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 34,
+      "objects": [
+        {
+          "hp": 64,
+          "slot": 1,
+          "state": 0,
+          "type_id": 2,
+          "type_name": "unknown_object_0x02",
+          "x": 48,
+          "y": 109
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 34,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 221
+    },
+    "state": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6ExitOverworld.state"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/L6Probe_22.state",
+  "source_state_sha256": "4fa910901a663a828b82b7264f6dab1d9329fe0e8261109d1bce1fcf1b042ff0",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6ExitOverworld.state",
+  "state_sha256": "610cf0246daf413d039477b8bd3dc0cbe044deb58a0d232b19fd6cf4a6063e3d"
+}

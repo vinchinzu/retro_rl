@@ -9,9 +9,17 @@ import numpy as np
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
 from super_metroid.routes.kpdr.ceres.elev_escape import (
+    _CERES_363_HIGH_X_IDLE,
+    _CERES_475_DEBRIS_IDLE,
+    _CERES_475_TO_363_WALLJUMP,
     _CERES_FAST_ENTRY_WALLJUMP,
     CeresShaftClimb,
+    _ceres_363_phase_idle,
+    _ceres_475_phase_idle,
+    _ceres_any_wall_latch,
     _ceres_at_checkpoint,
+    _ceres_elev_entry_action,
+    _ceres_planted_at,
     _ceres_elev_leaving,
     _ceres_elev_ship_band,
     _ceres_elev_top_seat,
@@ -19,7 +27,7 @@ from super_metroid.routes.kpdr.ceres.elev_escape import (
     climb_ceres_shaft_action,
     ship_pad_action,
 )
-from super_metroid.routes.kpdr.ceres.magnet import falling_door_action
+
 from super_metroid.routes.kpdr.ceres.geometry import (
     CERES_ELEV_HOPS,
     _CERES_ELEV_BOTTOM_Y,
@@ -195,19 +203,28 @@ def test_checkpoint_requires_ground_or_knockback_pose() -> None:
     assert not _ceres_at_checkpoint(airborne_apex, 475)
     debris_knockback = _state(samus_y=475, pose=137, velocity_y=0)
     assert _ceres_at_checkpoint(debris_knockback, 475)
-
-
-def test_falling_door_jump_uses_exact_late_window() -> None:
-    assert falling_door_action(_state(samus_x=30)) == ("LEFT", "B", "A")
-    assert falling_door_action(_state(samus_x=31)) == ("LEFT",)
-    assert falling_door_action(_state(samus_x=30, game_state=11)) == ("LEFT",)
+    assert not _ceres_planted_at(debris_knockback, 475)
+    land = _state(samus_y=475, pose=10, velocity_y=0)
+    assert _ceres_planted_at(land, 475)
 
 
 def test_fast_entry_requires_preserved_spin_phase() -> None:
     fast = _state(samus_x=216, samus_y=628, pose=26, velocity_y=4)
     assert _ceres_fast_entry_window(fast)
+    assert _ceres_fast_entry_window(replace(fast, samus_y=632, pose=25))
     assert not _ceres_fast_entry_window(replace(fast, samus_y=651, pose=10))
     assert not _ceres_fast_entry_window(replace(fast, samus_y=620))
+
+
+def test_elev_entry_keeps_fast_spin_window() -> None:
+    fast = _state(samus_x=216, samus_y=628, pose=26, velocity_y=4)
+    assert _ceres_elev_entry_action(fast) is None
+    floor = _state(samus_x=216, samus_y=651, pose=10)
+    assert _ceres_elev_entry_action(floor) is None
+    door = _state(samus_x=216, samus_y=139, pose=26, game_state=11)
+    assert _ceres_elev_entry_action(door) == ("LEFT",)
+    stale = _state(samus_x=216, samus_y=139, pose=26, game_state=8)
+    assert _ceres_elev_entry_action(stale) == ()
 
 
 def test_ceres_precise_walljump_has_release_edge() -> None:
@@ -216,3 +233,42 @@ def test_ceres_precise_walljump_has_release_edge() -> None:
     assert timing.away == "LEFT"
     assert timing.release_frames == 2
     assert timing.coast_frames + timing.into_frames == 22
+
+
+def test_low_x_475_does_not_idle() -> None:
+    """Steam burns are absorbed; idle 0–28 used to dump 475→363 to y=651."""
+    assert _ceres_475_phase_idle(123) == 0
+    assert _CERES_475_DEBRIS_IDLE == 0
+    assert _ceres_475_phase_idle(163) == 0
+
+
+def test_high_x_363_does_not_idle() -> None:
+    """Same as 475: no debris wait. D-boost holds A through pose 137."""
+    assert _ceres_363_phase_idle(180) == 0
+    assert _CERES_363_HIGH_X_IDLE == 0
+    assert _ceres_363_phase_idle(156) == 0
+
+
+def test_475_to_363_is_left_walljump() -> None:
+    """TAS plants 475 at x=163 facing left; RIGHT runup dumps the well."""
+    timing = _CERES_475_TO_363_WALLJUMP
+    assert timing.into == "LEFT"
+    assert timing.away == "RIGHT"
+    assert timing.coast_frames == 0
+    assert timing.release_frames == 2
+    plant = _state(samus_x=163, samus_y=475, pose=167, velocity_y=0)
+    assert _ceres_planted_at(plant, 475)
+    climb = CeresShaftClimb(last_ground_y=475)
+    first = climb.action(plant)
+    assert "A" not in first
+    assert first == ("LEFT",)
+
+
+def test_left_wall_latch_is_contact() -> None:
+    assert _ceres_any_wall_latch(_state(pose=131, samus_x=155, samus_y=404))
+    assert _ceres_any_wall_latch(_state(pose=POSE_WALL_LATCH, samus_x=211, samus_y=600))
+    assert not _ceres_any_wall_latch(_state(pose=25, samus_x=155, samus_y=404))
+    climb = CeresShaftClimb(side="LEFT")
+    act = climb.action(_state(pose=131, samus_x=155, samus_y=404, velocity_y=-3))
+    assert act == ()
+    assert climb.releasing

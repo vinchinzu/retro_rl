@@ -51,6 +51,120 @@ def test_sword_pickup_at_x120_walks_up() -> None:
     assert list(act.action) == list(nes_action("UP"))
 
 
+def test_bait_24_sw_16_189_down_is_mountain() -> None:
+    """l7_bait_33up leftover 0x24 (16,189): DOWN is south mountain; UP to y=141."""
+    from zelda_i.level7.overworld import OverworldToBaitShopController
+
+    ctl = OverworldToBaitShopController()
+    hop = ctl.hops[-1]
+    snap = read_snapshot(_ram(screen=0x24, x=16, y=189, sword=1))
+    act = ctl._extra_hop_action(snap, hop)
+    assert not ctl.failed
+    assert act is not None
+    assert "24_east_band" in act.reason
+    assert "DOWN" not in act.reason
+
+
+def test_bait_24_se_208_189_down_is_mountain() -> None:
+    """l7_bait_24se leftover 0x24 (208,189): DOWN is SE mountain; UP to y=141."""
+    from zelda_i.level7.overworld import OverworldToBaitShopController
+
+    ctl = OverworldToBaitShopController()
+    hop = ctl.hops[-1]
+    snap = read_snapshot(_ram(screen=0x24, x=208, y=189, sword=1))
+    act = ctl._extra_hop_action(snap, hop)
+    assert not ctl.failed
+    assert act is not None
+    assert "24_east_band" in act.reason
+    assert "DOWN" not in act.reason
+    assert hop.target == 0x25
+    assert hop.direction == "RIGHT"
+
+
+def test_bait_25_arrival_0_141_is_west_mouth_not_shop() -> None:
+    """l7_bait_25 leftover 0x25 (0,141): west mouth. Do not LEFT back to 0x24."""
+    from zelda_i.level7.overworld import OverworldToBaitShopController
+
+    ctl = OverworldToBaitShopController()
+    assert ctl.hops[-1].target == 0x25
+    assert ctl.end_screen() == 0x25
+    ctl.hop_index = len(ctl.hops)
+    snap = read_snapshot(_ram(screen=0x25, x=0, y=141, sword=1))
+    act = ctl.step(snap)
+    assert ctl.success
+    assert not ctl.failed
+    assert act.reason == "done"
+
+
+def test_bait_33_east_208_141_is_mountain_not_0x34() -> None:
+    """l7_bait_32ax leftover 0x33 (208,141): RIGHT is east mountain, not 0x34."""
+    from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
+
+    hop = POST_L6_TO_BAIT_HOPS[2]
+    assert hop.target == 0x23
+    assert hop.direction == "UP"
+    assert 0x34 not in {h.target for h in POST_L6_TO_BAIT_HOPS[:3]}
+
+
+def test_bait_32_north_120_61_does_not_hold_down() -> None:
+    """0x32 (120,61): off_north DOWN is the east wall of the x=112 corridor."""
+    from zelda_i.level7.overworld import OverworldToBaitShopController
+
+    ctl = OverworldToBaitShopController()
+    hop = ctl.hops[1]
+    snap = read_snapshot(_ram(screen=0x32, x=120, y=61, sword=1))
+    act = ctl._extra_hop_action(snap, hop)
+    assert act is not None
+    assert "32_north_ax" in act.reason
+    assert "DOWN" not in act.reason
+
+
+def test_l6_exit_112_125_is_cave_mouth_not_leave() -> None:
+    """Standing (112,125) on 0x22 starts dungeon enter (mode 16 → L6)."""
+    from zelda_i.level7.overworld import OverworldToBaitShopController, at_l6_cave_mouth
+
+    snap = read_snapshot(_ram(screen=0x22, x=112, y=125, sword=1))
+    assert at_l6_cave_mouth(snap)
+    ctl = OverworldToBaitShopController()
+    act = ctl.step(snap)
+    assert ctl.failed
+    assert act.reason == "l6_cave_mouth"
+
+
+def test_l6_south29_63_133_up_and_left_up_are_tile_244() -> None:
+    """Reds 1–2: UP slides 63→64; LEFT+UP walks 63→56; y stays 133 tile 244."""
+    from zelda_i.level6.door_hop import SOUTH29_SPEC, Level6DoorHopController
+    from zelda_i.ram import ADDR_LEVEL
+
+    ram = _ram(screen=0x29, x=63, y=133, sword=1)
+    ram[ADDR_LEVEL] = 6
+    act = Level6DoorHopController(SOUTH29_SPEC).step(read_snapshot(ram))
+    assert act.reason == "south_clip"
+    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("LEFT", "UP"))
+
+
+def test_l6_clear29_120_77_left_is_door_channel() -> None:
+    """Red 3 leftover (120,77): LEFT stays in the north door; DOWN inland."""
+    from zelda_i.level6.clear29 import Level6Clear29Controller
+    from zelda_i.dungeon.engine import DungeonPhase
+    from zelda_i.dungeon.ids import WIZZROBE_ORANGE_OBJECT_TYPE
+    from zelda_i.ram import ADDR_OBJ_HP, ADDR_OBJ_TYPE, ADDR_LEVEL
+
+    ram = _ram(screen=0x29, x=120, y=77, sword=1)
+    ram[ADDR_LEVEL] = 6
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    ctl = Level6Clear29Controller()
+    ctl.phase = DungeonPhase.FIGHT
+    ctl.combat_frames = 24
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "north_inland"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("LEFT"))
+
+
 def test_l2_prefix_never_enters_79() -> None:
     """L2 prefix is 37→38→48→58→59→49→4A. 0x79 is a rocky dead-end."""
     assert LEVEL2_PATH_SCREENS == (0x37, 0x38, 0x48, 0x58, 0x59, 0x49, 0x4A)

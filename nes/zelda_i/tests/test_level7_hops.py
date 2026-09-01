@@ -6,9 +6,16 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from zelda_i.anchors import SCREEN_LEVEL6_ENTRANCE
 from zelda_i.level7.entry import (
     BAIT_COST,
     BAIT_SHOP_SCREEN_HYP,
+    B_ITEM_WHISTLE,
+    HYPOTHESIZED_POST_L6_EXIT,
+    POST_L6_EXIT_LOADOUT,
+    POST_L6_EXIT_X,
+    POST_L6_EXIT_Y,
+    POST_L6_HEART_CONTAINERS,
     POST_L6_TRIFORCE,
     UNMEASURED_POST_L6_HANDOFF,
     PostLevel6Handoff,
@@ -41,6 +48,7 @@ from zelda_i.ram import (
     ADDR_TRIFORCE,
     ADDR_WHISTLE,
     PLAY_MODE,
+    health_byte_for_containers,
     read_snapshot,
 )
 
@@ -70,6 +78,32 @@ def _ram(**fields: int) -> np.ndarray:
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
     return SimpleNamespace(get_ram=lambda: ram)
+
+
+def test_post_l6_exit_loadout_is_l7_ready_without_food() -> None:
+    by_addr = {addr: value for _name, addr, value in POST_L6_EXIT_LOADOUT}
+    assert ADDR_FOOD not in by_addr
+    assert by_addr[ADDR_TRIFORCE] == POST_L6_TRIFORCE
+    assert by_addr[ADDR_WHISTLE] == 1
+    assert by_addr[ADDR_ROD] == 1
+    assert by_addr[ADDR_BOW] == 1
+    assert by_addr[ADDR_ARROWS] == 1
+    assert by_addr[ADDR_CANDLE] == 1
+    assert by_addr[ADDR_RUPEES] >= BAIT_COST
+    assert by_addr[ADDR_HEALTH] == health_byte_for_containers(POST_L6_HEART_CONTAINERS)
+    assert POST_L6_EXIT_X == 120
+    assert POST_L6_EXIT_Y == 221
+    assert ADDR_LINK_X not in by_addr
+    assert ADDR_LINK_Y not in by_addr
+    assert HYPOTHESIZED_POST_L6_EXIT.screen == SCREEN_LEVEL6_ENTRANCE
+    assert HYPOTHESIZED_POST_L6_EXIT.food == 0
+    assert HYPOTHESIZED_POST_L6_EXIT.selected_item == B_ITEM_WHISTLE
+    assert HYPOTHESIZED_POST_L6_EXIT.verified is False
+    assert HYPOTHESIZED_POST_L6_EXIT.route_eligible is False
+    assert HYPOTHESIZED_POST_L6_EXIT.complete() is False
+    # Spine still refuses even though the bait hop table exists.
+    ctl = make_post_l6_overworld_controller()
+    assert ctl.hops == ()
 
 
 def test_unmeasured_post_l6_handoff_refuses_to_move() -> None:

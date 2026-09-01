@@ -1,0 +1,118 @@
+{
+  "rows": [
+    {
+      "name": "idle",
+      "frames": 360,
+      "end": {
+        "f": 360,
+        "x": 208,
+        "y": 171,
+        "pose": 1,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "vd0": 45,
+      "max_abs_vy": 5,
+      "first_ground_y80": {
+        "f": 68,
+        "x": 208,
+        "y": 171,
+        "pose": 166,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "ground_ys": [
+        171
+      ],
+      "skipped_267": true,
+      "door": false,
+      "y651": null
+    },
+    {
+      "name": "freeze12",
+      "frames": 360,
+      "end": {
+        "f": 360,
+        "x": 165,
+        "y": 171,
+        "pose": 2,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "vd0": 45,
+      "max_abs_vy": 5,
+      "first_ground_y80": {
+        "f": 68,
+        "x": 165,
+        "y": 171,
+        "pose": 167,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "ground_ys": [
+        171
+      ],
+      "skipped_267": true,
+      "door": false,
+      "y651": null
+    },
+    {
+      "name": "freeze8",
+      "frames": 360,
+      "end": {
+        "f": 360,
+        "x": 165,
+        "y": 171,
+        "pose": 2,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "vd0": 45,
+      "max_abs_vy": 5,
+      "first_ground_y80": {
+        "f": 68,
+        "x": 165,
+        "y": 171,
+        "pose": 167,
+        "vd": 0,
+        "vy": 0,
+        "mt": 0,
+        "air": false,
+        "gs": 8,
+        "room": "0xDF45",
+        "in": []
+      },
+      "ground_ys": [
+        171
+      ],
+      "skipped_267": true,
+      "door": false,
+      "y651": null
+    }
+  ]
+}

@@ -98,6 +98,8 @@ do not blind-restore product open-loop. Speed every section; re-pin tails.
 |-----------|-------:|---------:|----------:|-------|
 | Product morph (pre arm-pump) | 27,074 | — | — | `morph.json` |
 | Arm-pump morph dual GREEN | **26,824** | **−250** | **−4.2 s** | ridley 16,181; landing 21,548 |
+| **Reactive Ceres main dual GREEN** | **24,475** | **−2,349** vs 26,824 | **−39.1 s** | ridley 14,399; landing 19,199 |
+| **TAS-close Ceres morph dual GREEN** | **24,187** | **−288** vs 24,475 | **−4.8 s** | ridley 14,113; landing 18,912; Ceres 1 **−2f vs TAS** |
 | TAS boot → ridley (probe) | 13,671 | **−2,510** vs 16,181 | **−41.8 s** | Outbound holds after settle |
 | TAS boot full morph dual | **27,494** ×2 | **+670** vs product | **+11.1 s** | Elev GREEN; BB elev + morph reseed cost |
 
@@ -108,17 +110,19 @@ Public RTA: [wiki Ridley § Ceres Station](https://wiki.supermetroid.run/Ridley#
 | Policy | Frames | Seconds | Clock | Hits | Notes |
 |--------|-------:|--------:|------:|-----:|-------|
 | wait (left-door idle) | 3,212 | 53.445 | 00:53.53 | 8 | Previous product (`ceres_ridley_natural_countdown`) |
-| **tail_tank** | **1,936** | **32.214** | **00:32.27** | 5–6 | Right wall; first hit f606; countdown same pin |
-| Δ | **−1,276** | **−21.232** | −00:21.27 | | Same `ceres_ridley_enter.state` |
+| tail_tank (nudge-left 5th) | 1,936 | 32.214 | 00:32.27 | 5 | Right wall; 5th hit f1302 |
+| tail_tank (hold-A 5th) | 1,666 | 27.721 | 00:27.77 | 5 | Hits 610/706/802/905/**1066**; elev fast WJ joined |
+| **fresh_fifth_jump** | **1,611** | **26.806** | **00:26.85** | 5 | Product; hits …/**1018**; A-release spin. Elev 571-chain joins |
+| Δ vs hold-A | **−55** | **−0.915** | −00:00.92 | | TAS 5th hit is x=235 y=77 at 994f |
 
-**Tail-tank is product** (flag removed). Same-pin fight bench is still
-`scratch/ceres_ridley_bench.json`. Elev hop from the tail-tank leave pin
-(`0xDF45:0xDF8D->0x91F8:0x0000`, `ceres_elev_enter.state`) is the open
-card: takeoff windows live in ``takeoff.PlatformHop`` (shared, every room),
-not a Ceres-only hop type and not frame hillclimb. Pin seats 571 / 475 /
-363; live climb still no ship.
-KPDR Ceres Station goal is **1:35** from first elev control. Do not
-STATUS-promote from the pin bench. Skill:
+**fresh_fifth_jump is product.** Same-pin fight bench is still
+`scratch/ceres_ridley_bench.json`. The y=628 WJ still misses: the body
+at (224,639)/(232,631) is Ceres-door overlay ``$E23F`` (touch = RTL, no
+knockback), not steam. Steam is ``$E1FF``; hide/show is ``$0F88`` bit 2
+and x/y stay put (64/64 idle grades). 571-chain no longer idles at 475/363
+— land-pose 166 hops immediately and coasts the land. Takeoff windows live
+in ``takeoff.PlatformHop``. KPDR Ceres Station goal is **1:35** from first
+elev control. Do not STATUS-promote from the pin bench. Skill:
 `routes/kpdr/early_spine.py` elev hop. Residual:
 `docs/plan.md` § Ceres arm-pump.
 
@@ -139,40 +143,189 @@ STATUS-promote from the pin bench. Skill:
 
 | Fact | Detail |
 |------|--------|
-| Arm-pump morph dual | GREEN **26,824f** ×2 (legacy boot + arm-pump escape) |
-| TAS morph dual | GREEN **27,494f** ×2 (probe; elev + landing OK) |
+| TAS-close Ceres morph dual | GREEN **24,187f** ×2 (open-loop boot + sole Ceres policy; Ceres 1 **309 vs TAS 311**) |
+| TAS morph dual | GREEN **27,494f** ×2 (probe; slower — not a fallback) |
 | Falling→elev | Mid-trans y≈139 fake; **gs=8 → bottom y≈651** — do not LEFT-walk on ghost y |
 | Elev top | x211 y171 pose 137 → LEFT+A → ship pad |
-| Product boot | `_BOOT_STYLE = "legacy"` — do **not** flip to `tas` until TAS ≤ 26,824 |
+| Product boot | open-loop `_boot_spans`; `play_boot_to_ceres_tas` is probe-only |
 
 ### STATUS / next
 
 - **Shipped:** tail-tank Ceres Ridley on the spine; elev platform-hop body
   (center 475 land; ship leave still open). BB elev parity
   retry + reactive board, morph seed pad-return reseed; falling timeout 700f.
-- **Product stays legacy 26,824.** TAS path dual-green but **+670f** from BB elev
-  seed misses + morph reseed — reclaim before `_BOOT_STYLE = "tas"` / STATUS promote.
-- **Follow-on:** first-try BB elev under TAS boot (`$0E16` phase) so morph seed
-  hits product tape without reseed.
+- **Product is 24,187.** TAS-boot probe remains slower and is not a fallback.
+  Ceres 1 beats TAS settled_gs8 by 2f (309 vs 311). First-control inbound is
+  **1606f** ×2 (+83 vs TAS 1523). Ridley same-pin **1611f** ×2 (was 1666).
+  Full station from first-control: countdown **3255f**, Ceres leave **5364f /
+  01:29.40** (was 5419 / 01:30.32), landing **8052f** ×2 / **02:14.20**
+  (was 8107 / 02:15.12). Elev leftover is still the 571 chain: pose-25 window
+  is reached, y=628 WJ misses the ``$E23F`` door overlay.
+- **Follow-on:** TAS WJ is still the leftover vs 2246f elev_to_landing
+  (**3239 / +993**). Pin is falling (vy=+4 at y=637); LEFT-into dumps the
+  pit. Absorb shown steam (``$E1FF``, bit 2 clear) as a d-boost; do not idle
+  debris. Ceres 2 exit-hop/steam, Ceres 3 jump-1, Ceres 4 x=467 stall. Do not
+  STATUS-promote from the pin bench.
 
 ### Reproduce
 
 ```bash
 uv run python snes/super_metroid/scripts/record/continuous.py --to morph --no-video
-# TAS probe: set early_spine._BOOT_STYLE = "tas" then same CLI
+# TAS boot probe only: play_boot_to_ceres_tas (not product)
 # TAS movies: uv run python -m super_metroid.tas.fetch_refs
 ```
 
 ### TAS 100% reference foundation (2026-08-07) — not STATUS
 
-Power-on Sniq 100% (`sniq_100_full`, 222 789f) annotated under harness: first
-control **11 183** @ Ceres elev; **106** room_enter / **18** desync / **5**
-deaths; **never leaves Ceres** (items/beams stay `0x0000`). Same desync class
-as any%. Artifacts (gitignored): `recordings/tas_import/sniq_100_full/` +
-`extraction_board.json`. Tooling: `tas/stages.py` (RoomStageSpec),
-`tas/extract_hops.py` (skills/graph board). Follow-ons: `rr-ni19` seed
-materialize, `rr-d7mq` skill pure probes. **Product tip remains Wave; Ice pure
-`rr-5cf` is still P0.** Playbook: [`TAS_ADAPT.md`](TAS_ADAPT.md).
+The old snes9x annotation is research-only Ceres thrash. Native lsnes now
+replays Sniq 100% #4010M on its authoring bsnes v085 core and reaches Landing
+GREEN at f15198. The compact reference is
+`tas/bodies/sniq_100_ceres_lsnes_hops.json`; the gitignored full oracle is
+`recordings/tas_oracle/sniq_100_lsnes/`. This is comparison evidence, never
+STATUS or an open-loop product body. See
+[`tasks/LSNES_100_PLAN.md`](tasks/LSNES_100_PLAN.md).
+
+### Inbound Ceres TAS alignment audit / plan — 2026-08-31
+
+**Scope:** first settled Ceres elevator control → settled Ridley door, no
+fight and no reverse. The result is now also composed through the promoted
+continuous Morph prefix; Gravity and boot style remain out of scope.
+
+Current main-line inbound is `play_ceres_to_ridley_door`: Ceres 1 moonfall,
+Ceres 2 magnet-feet, Ceres 3 jump-before-ledge, Ceres 4 no-jump run, then Flat.
+The old room-1/2/3 tape and its switch are deleted; this reactive chain is the
+only main policy. Natural-predecessor baseline from
+`scratch/ceres_first_control.state` is **1606f** ×2 to Ridley `(39,139) p17`
+(was 1626f). Maintained comparison:
+`recordings/room_timings/ceres_vs_tas.json` on `settled_gs8`.
+
+| Hop (`gs=8` → `gs=8`) | Product | TAS | Δ | First residual |
+|---------------------------|--------:|----:|--:|----------------|
+| Elevator → Falling | 309 | 311 | −2 | Hold; already aligned |
+| Falling → Magnet | 301 | 282 | +19 | Magnet-feet plants y=171; leftover is exit-hop + door steam |
+| Magnet → Scientist | 377 | 345 | +32 | Jump-2 holds A like TAS; remaining dwell is jump-1/stairs |
+| Scientist → Flat | 279 | 264 | +15 | Jump removed; leftover is the x=467 east-ledge stall |
+| Flat → Ridley | 340 | 321 | +19 | Dwell versus fixed door fade |
+| **Total** | **1606** | **1523** | **+83** | Ceres 3 leftover, then Ceres 2 exit / Ceres 4 |
+
+#### 1. Make the comparison clock authoritative — done
+
+`tas/bodies/sniq_100_ceres_lsnes_hops.json` is `sm_tas_ceres_hops_v2` with
+both `room_flip` and `settled_gs8` (source frames kept). Default comparator
+clock is `settled_gs8`. Selecting `room_flip` against RoomTimer totals sets
+`clock_mismatch`. Elev pad is 8639, not ride gs=8 at 8538. Maintained
+`scripts/probe/ceres.py` owns the dual comparison and full-station clock proof.
+
+#### 2. Build a frame-aligned TAS/product trace, then extract skills
+
+- Join the already parsed LSMV SNES-12 input stream to the native oracle by
+  movie frame. Extend the oracle series/checkpoint schema with x/y subpixels,
+  x/y velocity, momentum/speed counter, facing, movement type, game state,
+  door transition, knockback/damage state, and RNG where available. Keep raw
+  L+R exactly as authored.
+- Record the same minimal fields and applied buttons from a product room probe.
+  Align traces by semantic landmarks rather than absolute indices: settled
+  entry, jump press/release, ledge leave, apex, landing, hit/knockback, door
+  leave, room flip, and destination settle.
+- Extend extraction beyond the current arm-pump/mockball button detectors.
+  Ceres needs candidates for run-off, short spin jump, air turn, controlled
+  drop, pre-ledge jump, hit/knockback recovery, and door-speed carry. Each
+  candidate must include its input window, entry/exit kinematics, landmark
+  frames, room geometry reference, and confidence/evidence source.
+- Do not automatically turn a pose cluster into a reusable skill. Promote a
+  helper under `routes/skills/` only when the trace identifies a parameterized
+  mechanic with a second consumer; otherwise keep the policy in
+  `routes/kpdr/ceres/`.
+
+#### 3. Tune Ceres 3 from the real Ceres 2 leave — steam tank gone, −8f
+
+- Pin `scratch/post_ceres_falling_magnet.state` `(39,139) p9 mom=2`: **377f**
+  ×2 to Scientist `(39,139) p9` from first-control (was 382f). Fade 162f
+  matches TAS 162f; remaining **+32f is dwell**. Leave pin
+  `scratch/post_ceres_magnet_scientist.state`.
+- Wired knobs: jump-2 window later (`y≥255 x≤135`, TAS ~124,262); 1f LEFT
+  then 15f A then DOWN+A (TAS jump-2); 1f `LEFT+B+X` at x~177 then RIGHT.
+  Magnet-room pose 137 is gone. Jump-1 idle-coast was tried and rejected
+  (pose-41 139-ledge plant, 444f).
+- Still open on this room: +32f dwell. Do not reintroduce L/R on the stairs.
+  Jump-1 TAS idle-coast needs a different gate than "no buttons at y=139".
+
+#### 4. Tune Ceres 4 from the real Ceres 3 leave — jump gone, −22f
+
+- Pin `scratch/post_ceres_magnet_scientist.state` `(39,139) p9`: **279f** ×2
+  to Flat `(39,139) p17`. Fade 161f matches TAS 161f; remaining **+15f is
+  dwell** (118 vs 103). Inbound from `ceres_first_control.state` is
+  **1627f** ×2; elev/falling/magnet/flat unchanged. Leave pin
+  `scratch/post_ceres_scientist_flat.state`. Flat still joins (341f).
+- Wired knob: never jump. TAS dwell (f9577–9680) never presses A; RIGHT+B+L/R
+  walks the entry lip, the y=187 pit, and the right stairs. The old floor
+  takeoff (x 350–410 spin jump) caught x=467 pose 137 and cost ~20f. A on the
+  alcove still bonks. `RIGHT+B` on this pin does **not** catch the entry lip
+  (TAS holds B from gs=8).
+- Still open on this room: east-ledge stall at x=467 (pose 207, ~14f, no KB
+  under L/R pump). TAS runs 457→492 in 7f. Do not reintroduce the pit jump.
+  Then inspect Flat→Ridley's +20f; do not fold Flat tuning into Scientist.
+
+#### 5. Reconcile main-line ownership after alignment — done
+
+- Deleted the policy toggle, old outbound room tape, obsolete fixture, and
+  open-loop reverse escape body. `CERES_SPINE` has one reactive Ceres policy.
+- Promoted continuous Morph at **24,187f** ×2 exact with zero state loads,
+  progression writes, or capacity writes (`recordings/morph.json` and
+  `morph_dual.json`). Previous published Morph was 24,475f.
+- Full first-control → elevator exit is **5,520f / 01:32.00** ×2 exact;
+  displayed countdown is **00:38.26**. Landing final settle is **8,207f /
+  02:16.78**. Evidence is in the maintained Ceres timing report.
+
+### Reverse Ceres TAS alignment — 2026-08-31
+
+**Scope:** reverse Ceres 5 (Flat) and reverse Ceres 4 (Scientist) from the
+product Ridley-leave pin. Ridley fight not tuned. Gravity, boot-style,
+`DEFAULT_CONTINUOUS_TIP`, `recordings/morph.json`, reverse Magnet Stairs
+policy, and STATUS are out of scope.
+
+Sniq 100% lsnes never presses A in reverse Flat (gs=8 f11939–12036) or
+reverse Scientist (f12198–12299): LEFT+B+L/R, same never-jump as inbound
+Ceres 4. Product stuck-jump on those corridors is leftover versus TAS.
+
+| Hop (`gs=8` → `gs=8`) | before | after | TAS | Δ vs TAS |
+|---------------------------|-------:|------:|----:|---------:|
+| Flat → Scientist | 293 | **292** | 259 | +33 |
+| Scientist → Magnet | 284 | **281** | 263 | +18 |
+| Magnet → Falling | 599 | **407** | 331 | +76 |
+
+Seconds @ 60.0988. Dual-exact. Fade already matched (162 vs 162 both rooms).
+Did not STATUS.
+
+Pin in: product tail-tank leave → Flat gs=8
+`scratch/post_ceres_ridley_flat.state` `(472,119) p82` airborne (TAS
+grounded `(472,139) p18`). Reverse Flat leave
+`scratch/post_ceres_flat_scientist.state` `(472,139) p18`. Reverse
+Scientist leave `scratch/post_ceres_scientist_magnet.state` `(216,395)
+p16`. Reverse Magnet leave `scratch/post_ceres_magnet_falling.state`
+`(472,139) p16 mom=2`; dedicated dual is **407f** ×2. The successor still
+composes through Falling/elevator to Landing (252f to elev, 919f to Ceres
+leave, 3110f to Landing from the Falling pin). Inbound Ceres 4 still **279f**.
+
+Flat/Scientist knobs: never jump. TAS dwell never presses A. Classic L↔R pump
+stays on (dropping L/R at mom=0 lost 1–3f and inbound Ceres 4 went
+279→281). Ridley exit stays product LEFT+A 24f.
+
+Rejected: TAS Ridley-exit copy (skipped); dropping B/L/R on the door lip
+(slower).
+
+Reverse Magnet fix: the old policy dropped the Scientist-door run to plain
+LEFT (88f to x=43), coasted into the west wall for a knockback before jumping,
+then repeatedly pressed A at the west exit because enemy0 was nearby. It now
+arm-pumps to x≈55, takes off immediately, uses three landing-gated hops, and
+runs through the open door. This removes 192f without changing the predecessor
+duals; `scratch/ceres_magnet_to_falling_dual.json` is the practice evidence.
+
+Still open: reverse Flat leftover is the airborne Ridley-exit entry
+(+33f dwell 130 vs 97). Reverse Scientist leftover is the x=45 west-ledge
+stall (pose 208, ~14f, inbound x=467 analog). TAS runs the west lip without
+that freeze. Reverse Magnet remains +76f: the product kinetic state cannot
+replay the TAS lower-slope jump window, so the reactive climb is still longer.
 
 ---
 
@@ -340,7 +493,7 @@ Practice greens ≠ continuous evidence and **not** product next-work
 
 ### CLEAN (parallel)
 
-- [x] Morph Clean continuous green (was 27,074f; assisted tip now 26,824f — clean re-verify open)
+- [x] Morph Clean continuous green (26,824f prefix); assisted tip now 24,187f
 - [ ] ★ Bombs / Torizo Clean (`SM-CLEAN-BOMBS`)
 - [ ] Later Clean tips only after bombs green
 - Never mutate default CLI assists or demote assisted baselines

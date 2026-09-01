@@ -13,6 +13,8 @@ from super_metroid.combat.enemies.scan import (
 )
 from super_metroid.combat.enemies.species import (
     ATOMIC_ID,
+    CERES_DOOR_ID,
+    CERES_STEAM_ID,
     COVERN_ID,
     WORKROBOT_ID,
     Stance,
@@ -25,6 +27,8 @@ from super_metroid.combat.enemies.stance import (
 
 __all__ = [
     "ATOMIC_ID",
+    "CERES_DOOR_ID",
+    "CERES_STEAM_ID",
     "COVERN_ID",
     "WORKROBOT_ID",
     "Choice",

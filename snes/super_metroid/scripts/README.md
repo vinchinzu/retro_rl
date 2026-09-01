@@ -13,6 +13,7 @@
 | `export/practice_repertoire.py` | Rebuild practice-hack preset menu catalog JSON |
 | `import_legacy_assets.py` | Pull legacy map assets |
 | `tools/yt_ref.py` | YouTube KPDR ref VOD: fetch / chunk button+frame extract (gitignored `refs/yt_reference/`) |
+| `tools/probe_rng.py` | `$05E5` dump (power-on → first Ceres control) or offline `rng1` advance ([docs/RNG.md](../docs/RNG.md)) |
 
 Invoke from repo root, e.g.:
 
@@ -56,6 +57,12 @@ uv run python snes/super_metroid/scripts/export/path_room_board.py
 # Room timing (emulator frames; stock ROM — see docs/ROOM_TIMER.md)
 uv run python snes/super_metroid/scripts/probe/room_timer.py self-check
 uv run python snes/super_metroid/scripts/probe/room_timer.py offline -i samples.json
+# Main Ceres vs native TAS + full first-control→elevator-exit clock, dual run
+uv run python snes/super_metroid/scripts/probe/ceres.py
+
+# RNG seed ($05E5): offline advance, or live power-on → first Ceres gs=8
+uv run python snes/super_metroid/scripts/tools/probe_rng.py --advance 5 --seed 0x5705
+uv run python snes/super_metroid/scripts/tools/probe_rng.py
 
 # Pure probe: nav-mode RAM + pin on RED; source catalog suggest
 uv run python snes/super_metroid/scripts/probe/kpdr.py suggest-source --room 0xA6E2 --segment varia-to-kraid

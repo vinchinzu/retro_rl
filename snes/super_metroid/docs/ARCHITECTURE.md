@@ -32,7 +32,7 @@ policy.py + policies/**                   JSON raw-button PolicySegments
         │
 progression/                              RoomNode / DoorEdge / milestones / graphs
 ram.py + door_kinematics.py + takeoff.py + assist.py
-                                          state parse, door/in-room kinematics, assists
+                                          state parse, $05E5 rng1/set_rng, door/in-room kinematics, assists
         │
 rooms/*                                   isolated practice (EntryContract, queue)
 dev/*                                     door-warp topology (developmentOnly)
@@ -70,6 +70,7 @@ check). Do not grow a per-frame HP loop in a hop.
 | `routes/catalog.py` | `ContinuousTip`, split tuples, `NamedRoute` |
 | `scripts/record/continuous.py` | One CLI for all continuous tips (`--to`) |
 | `scripts/probe/` | A/B loop (`kpdr.py`); Gravity `ws_main_climb`; Alcatraz WIP |
+| `scripts/tools/probe_rng.py` | `$05E5` boot dump / offline `rng1` advance ([RNG.md](RNG.md)) |
 | `scripts/export/` | Path board, KPDR tracker, room queue, graphs |
 | `scripts/room/run_problem.py` | Isolated room practice bootstrap/run |
 

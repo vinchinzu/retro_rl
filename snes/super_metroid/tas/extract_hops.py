@@ -1,7 +1,8 @@
 """Room-hop inventory + skills/graph extraction board from TAS annotate.
 
 Offline (no emulator). Reads ``trace.json`` / ``pins.json`` / ``summary.json``
-under ``recordings/tas_import/<run_id>/`` and emits:
+under ``recordings/tas_import/<run_id>/``, or oracle ``events.jsonl`` +
+``proof.json`` under ``recordings/tas_oracle/<run_id>/``, and emits:
 
 * hop inventory (from_room → to_room, frames, items, pose tech)
 * skill candidates (Layer 1) mapped to ``routes/skills/`` modules
@@ -12,6 +13,8 @@ under ``recordings/tas_import/<run_id>/`` and emits:
 uv run python -m super_metroid.tas.extract_hops \\
   snes/super_metroid/recordings/tas_import/sniq_100_full \\
   --out snes/super_metroid/recordings/tas_import/sniq_100_full/extraction_board.json
+uv run python -m super_metroid.tas.extract_hops \\
+  snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes
 ```
 
 Does **not** STATUS-promote or auto-wire continuous tip.
@@ -231,25 +234,65 @@ def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        obj = json.loads(line)
+        if isinstance(obj, dict):
+            rows.append(obj)
+    return rows
+
+
 def load_annotate_dir(run_dir: Path | str) -> dict[str, Any]:
-    """Load trace/summary/pins from an annotate output directory."""
+    """Load annotate JSON or an lsnes/bsnes oracle dump.
+
+    Annotate dirs: ``trace.json`` / ``summary.json`` / ``pins.json``.
+    Oracle dirs: ``events.jsonl`` + ``proof.json`` (trace/summary optional).
+    """
     root = Path(run_dir)
     out: dict[str, Any] = {"dir": str(root)}
-    for name in ("summary", "trace", "pins"):
+    for name in ("summary", "trace", "pins", "proof"):
         p = root / f"{name}.json"
         if p.is_file():
             out[name] = _load_json(p)
-    if "trace" not in out and "summary" not in out:
-        raise FileNotFoundError(f"no trace.json or summary.json under {root}")
+    events_path = root / "events.jsonl"
+    if events_path.is_file():
+        out["events"] = _load_jsonl(events_path)
+    if not any(k in out for k in ("trace", "summary", "events", "proof")):
+        raise FileNotFoundError(
+            f"no trace.json, summary.json, events.jsonl, or proof.json under {root}"
+        )
     return out
 
 
 def _events(data: Mapping[str, Any]) -> list[dict[str, Any]]:
     if "trace" in data and isinstance(data["trace"], Mapping):
         return list(data["trace"].get("events") or [])
+    raw_events = data.get("events")
+    if isinstance(raw_events, list):
+        return [e for e in raw_events if isinstance(e, dict)]
     if "pins" in data:
         return list(data["pins"] or [])
     return []
+
+
+def _board_source(data: Mapping[str, Any], *, root: Path) -> str:
+    """Annotate/trace source, else proof.source, else lsnes_oracle for oracle dumps."""
+    summary = data.get("summary") if isinstance(data.get("summary"), Mapping) else {}
+    if summary.get("source"):
+        return str(summary["source"])
+    trace = data.get("trace") if isinstance(data.get("trace"), Mapping) else {}
+    if trace.get("source"):
+        return str(trace["source"])
+    proof = data.get("proof") if isinstance(data.get("proof"), Mapping) else {}
+    if proof.get("source"):
+        return str(proof["source"])
+    if "events" in data or "proof" in data:
+        return "lsnes_oracle"
+    return root.name
 
 
 def build_hops(
@@ -712,7 +755,8 @@ def extract_run(run_dir: Path | str) -> dict[str, Any]:
     if not events and "pins" in data:
         events = list(data["pins"])
     summary = data.get("summary") or {}
-    source = str(summary.get("source") or data.get("trace", {}).get("source") or root.name)
+    proof = data.get("proof") if isinstance(data.get("proof"), Mapping) else {}
+    source = _board_source(data, root=root)
     run_id = root.name
     hops = build_hops(events, run_id=run_id)
     pins = data.get("pins") or [
@@ -750,6 +794,11 @@ def extract_run(run_dir: Path | str) -> dict[str, Any]:
         board["annotate_summary"]["first_control_frame"] = ann.get(
             "first_control_frame"
         )
+    if proof:
+        ann_out = board.setdefault("annotate_summary", {})
+        for k in ("first_control_frame", "landing_frame", "unique_rooms", "status"):
+            if k in proof and (k not in ann_out or ann_out.get(k) is None):
+                ann_out[k] = proof.get(k)
     return board
 
 
@@ -801,7 +850,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         nargs="?",
         default=None,
-        help="Annotate output dir (trace.json / pins.json)",
+        help="Annotate dir (trace.json / pins.json) or oracle dir (events.jsonl + proof.json)",
     )
     p.add_argument(
         "--out",

@@ -98,6 +98,7 @@ from super_metroid.routes.kpdr.wrecked_ship import (
     play_ws_main_to_attic,
     play_ws_main_to_basement,
 )
+from super_metroid.routes.kpdr.ceres.outbound import play_ceres_first_room_moonfall
 from super_metroid.routes.kpdr.crateria.climb_descent import play_climb_to_pit_moonfall
 from super_metroid.routes.kpdr.wrecked_ship.moat import play_moat_cross
 from super_metroid.routes.kpdr.crateria.parlor_descent import play_parlor_to_climb_moonfall
@@ -327,6 +328,7 @@ KPDR_SEGMENTS: dict[str, SegmentFn] = {
     # Early Morph moonfall (A/B; not KPDR tracker rows).
     "climb_to_pit_moonfall": play_climb_to_pit_moonfall,
     "parlor_to_climb_moonfall": play_parlor_to_climb_moonfall,
+    "ceres_elev_to_falling_moonfall": play_ceres_first_room_moonfall,
 }
 
 

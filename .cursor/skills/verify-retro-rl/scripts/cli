@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Capture one user-facing command into an evidence directory.
+# Usage: cli --out DIR -- <command>...
+set -euo pipefail
+
+OUT=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --out)
+      OUT="${2:?cli: --out requires a directory}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -h|--help)
+      echo "Usage: cli --out DIR -- <command>..." >&2
+      exit 2
+      ;;
+    *)
+      echo "cli: unknown argument: $1" >&2
+      echo "Usage: cli --out DIR -- <command>..." >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$OUT" ]]; then
+  echo "cli: --out DIR is required" >&2
+  exit 2
+fi
+if [[ $# -lt 1 ]]; then
+  echo "cli: missing command after --" >&2
+  exit 2
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$ROOT" || ! -f "$ROOT/pyproject.toml" ]]; then
+  ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+fi
+
+mkdir -p "$OUT"
+printf '%s\n' "$*" >"$OUT/command.txt"
+printf '%s\n' "$ROOT" >"$OUT/cwd.txt"
+{
+  echo "QT_QPA_PLATFORM=${QT_QPA_PLATFORM-}"
+  echo "DISPLAY=${DISPLAY-}"
+  echo "PWD=$ROOT"
+} >"$OUT/env.txt"
+
+set +e
+(
+  cd "$ROOT"
+  "$@"
+) >"$OUT/stdout.txt" 2>"$OUT/stderr.txt"
+ec=$?
+set -e
+printf '%s\n' "$ec" >"$OUT/exit.txt"
+echo "evidence=$OUT exit=$ec"
+exit 0

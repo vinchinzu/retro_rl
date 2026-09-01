@@ -16,6 +16,10 @@ from super_metroid.combat.enemies.scan import Enemy
 ATOMIC_ID = 0xE9FF
 WORKROBOT_ID = 0xE8FF
 COVERN_ID = 0xEA3F
+CERES_STEAM_ID = 0xE1FF
+CERES_DOOR_ID = 0xE23F
+# PJBoy $0F88 bit 2: steam hide instruction sets this (no Samus reaction).
+STEAM_HIDDEN_BIT = 0x04
 
 
 class Contact(Enum):
@@ -97,6 +101,26 @@ _TABLE: dict[int, Species] = {
         freezable=True,
         solid_gap=24,
     ),
+    CERES_STEAM_ID: Species(
+        CERES_STEAM_ID,
+        "Ceres steam",
+        max_hp=32767,
+        live_contact=Contact.KNOCKBACK,
+        frozen_contact=Contact.NONE,
+        default_stance=Stance.ABSORB,
+        freezable=False,
+        solid_gap=16,
+    ),
+    CERES_DOOR_ID: Species(
+        CERES_DOOR_ID,
+        "Ceres door",
+        max_hp=40,
+        live_contact=Contact.SOLID,
+        frozen_contact=Contact.SOLID,
+        default_stance=Stance.AVOID,
+        freezable=False,
+        solid_gap=32,
+    ),
 }
 
 
@@ -121,13 +145,44 @@ def is_solid(enemy: Enemy) -> bool:
     return species_of(int(enemy.enemy_id)).is_solid(int(enemy.freeze_timer))
 
 
+def steam_is_burning(enemy: Enemy) -> bool:
+    """True when Ceres steam ($E1FF) is shown and can knockback.
+
+    Hide instruction ``$A6:F11D`` sets ``$0F88`` bit 2 (intangible). Show
+    ``$A6:F135`` clears it. x/y stay put; only the bit/spritemap cycle.
+    """
+    if int(enemy.enemy_id) != CERES_STEAM_ID:
+        return False
+    return (int(enemy.extra_props) & STEAM_HIDDEN_BIT) == 0
+
+
+def enemy_overlaps(
+    enemy: Enemy,
+    x: int,
+    y: int,
+    *,
+    samus_r: int = 8,
+) -> bool:
+    """Axis-aligned overlap using the slot radii (steam 8×8, door 8×32)."""
+    xr = int(enemy.x_radius) if int(enemy.x_radius) else 8
+    yr = int(enemy.y_radius) if int(enemy.y_radius) else 8
+    return abs(int(enemy.x) - int(x)) <= xr + samus_r and abs(
+        int(enemy.y) - int(y)
+    ) <= yr + samus_r
+
+
 __all__ = [
     "ATOMIC_ID",
     "COVERN_ID",
+    "CERES_DOOR_ID",
+    "CERES_STEAM_ID",
+    "STEAM_HIDDEN_BIT",
     "WORKROBOT_ID",
     "Contact",
     "Species",
     "Stance",
+    "enemy_overlaps",
     "is_solid",
     "species_of",
+    "steam_is_burning",
 ]

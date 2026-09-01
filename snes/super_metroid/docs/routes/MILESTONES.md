@@ -25,7 +25,7 @@ Verified tip: [STATUS.md](../STATUS.md). Spine export:
 
 | | ID | Epic | Milestone | Room | Frames / score | CLI / card |
 |--:|----|------|-----------|------|----------------|------------|
-| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | **26824** | `morph` |
+| ✅ | `M-MORPH` | K0 | Continuous → Morph | `0x9E9F` | **24187** | `morph` |
 | ✅ | `M-BOMBS` | K0 | Continuous → Bombs/Torizo | `0x9804` | 47132 | `bombs` |
 | ✅ | `M-SPORE` | K0 | Continuous → Spore exit | `0x9DC7` | 73216 | `spore` |
 | ✅ | `M-SUPERS` | K0 | Continuous → Spore Supers | `0x9B5B` | 73251 | `supers` |
@@ -109,4 +109,3 @@ Process: [`CLEAN_TRACK.md`](../CLEAN_TRACK.md). Infra landed — `--clean` uses
 4. Dual-track room practice is parallel only — never continuous evidence.
 
 Regenerate tracker summary: `uv run python snes/super_metroid/scripts/export/kpdr_tracker.py`.
-

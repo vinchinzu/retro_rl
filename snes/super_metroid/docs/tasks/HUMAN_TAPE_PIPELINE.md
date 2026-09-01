@@ -173,7 +173,7 @@ board row
 **Subpixel / door / enemy RNG** are not edited out of tapes. The adapter
 starts from exact live RAM (subpixels, velocity, door kinematics, enemy
 phase) and pulse-searches onto the compiled trajectory. Door bands live in
-`door_kinematics`.
+`door_kinematics`. `$05E5` roll timing / skip-boot poke: [RNG.md](../RNG.md).
 
 ```bash
 uv run python snes/super_metroid/scripts/tools/build_product_chain_board.py --summary

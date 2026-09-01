@@ -1,11 +1,12 @@
 # Level 7 — The Demon (route notes)
 
 **Status:** Wave A **fixture-live** for the start-based `0x53→0x52` pond micro
-only. `0x52→0x42` pond, drain, entry room, and all dungeon rooms remain
-**hypothesis**. Cumulative spine chapters stay fail-closed
-(`route_eligible=false`). There is no pond checkpoint, L7 entry room, or Clean
-segment. **Whistle** from Level 5 gates pond drain; **Bait/Food** is a separate
-natural 60R shop buy (never `ADDR_FOOD` / rupee write).
+and the post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`. Pond `0x42`, drain,
+entry room, and all dungeon rooms remain **hypothesis**. Cumulative spine
+chapters stay fail-closed (`route_eligible=false`). There is no pond
+checkpoint, L7 entry room, or Clean segment. **Whistle** from Level 5 gates
+pond drain; **Bait/Food** is a separate natural 60R shop buy (never
+`ADDR_FOOD` / rupee write).
 
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
 (Wave A recon). Do not STATUS-promote.
@@ -49,6 +50,40 @@ for staircase → special shop → **Bait 60R**.
 |----------|------------------------|-----------------|-------|
 | Bait Armos / special shop | U L×3 U×3 | **`0x34`** | no |
 
+Post-L6 poke fixture `Level6ExitOverworld` (not a measured fanfare leave):
+play `0x22` `(120,221)` TF `0x3F` Food=0 80R. Load
+`--from-state Level6ExitOverworld`. Spine chapters still refuse
+(`verified=false`). Controller: `OverworldToBaitShopController`.
+
+Fixture-live prefix (`l7_bait_25`, Survival, `route_eligible=false`):
+
+```text
+0x22 → 0x32 → 0x33 → 0x23 → 0x24 → 0x25
+```
+
+- `0x22` leftover `(120,221)` DOWN (south mouth). **Dead:** `(112,125)` is
+  the cave mouth (mode 16 → L6).
+- `0x32` north `(120,61)`: LEFT to x=112 then DOWN. **Dead:** `off_north`
+  DOWN at x=120 (`l7_bait_from_l6`, tile 216).
+- `0x32→0x33` RIGHT at y=141 (live L6 reverse).
+- `0x33` `(208,141)` UP at x=208 to `0x23`. **Dead:** RIGHT at y=141 into
+  `0x34` (east mountain, `l7_bait_32ax`).
+- `0x23→0x24` RIGHT at y=141 (live L6 reverse).
+- **0x24→0x25 RIGHT @ y=141 (fixture-live, `l7_bait_25` 1/1 1,438f).** L6
+  reverse of `0x24→0x23` LEFT @ y=141. SE leftover `(208,189)` UPs to the
+  band then RIGHT. South wall is mountain.
+- **Dead on 0x24:** DOWN at `(16,189)` (`l7_bait_33up`), `(160,189)`
+  (`l7_bait_24belt`, north-ladder x, tile 208), `(208,189)`
+  (`l7_bait_24se`, SE, tile 206). Occupancy xmin=14 west pocket `(0,141)`;
+  occupancy SW box `(25,181)`. Do not retry those.
+- **Next leftover:** play `0x25` `(0,141)` west mouth. PNG shows a south
+  ladder in the SW. Next sitting: inland RIGHT off x=0, then DOWN toward
+  `0x35`. Do not LEFT back to `0x24`.
+
+Armos tap (top-row middle on `0x34`), 60R Food, and pond `0x42` are not this
+sitting. Food stayed 0; rupees 80→81 on the walk. Zero deaths;
+`progression_writes=capacity_writes=0`.
+
 ### Whistle pond (source)
 
 From bait shop screen: **down×2, left×2, up** → pond (looks like fairy pond
@@ -83,9 +118,10 @@ Evidence: `recordings/l7_dnp_pond_53.json` and `_final.png` (this sitting);
 prior miss `recordings/l7_dnp_pond_assisted_v9.json`. Zero deaths;
 `progression_writes=capacity_writes=0`; `success=false`; `route_eligible=false`.
 
-**Controller:** `level7.overworld.OverworldToLevel7PondController` (recon from
-start). Spine uses `PostLevel6Handoff` in `level7.entry` and refuses to move
-until the measured L6 leftover exists. Isolated `probe_level7_entry.py` pruned.
+**Controller:** `level7.overworld.OverworldToBaitShopController` (post-L6
+fixture) and `OverworldToLevel7PondController` (start-based pond recon).
+Spine uses `PostLevel6Handoff` in `level7.entry` and refuses to move until
+the measured L6 leftover exists. Isolated `probe_level7_entry.py` pruned.
 Whistle is a pond-**drain** gate, not a geometry-walk gate.
 
 ### Live recon goals
@@ -199,6 +235,7 @@ is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 
 | State | When |
 |-------|------|
+| `Level6ExitOverworld` | Poke fixture: OW `0x22` `(120,221)` TF `0x3F`, Food=0, 80R. Not a measured fanfare leave. |
 | `OW_L7Pond` | Pond screen mapped (Whistle optional) |
 | `OW_L7BaitShop` | Armos shop screen |
 | `Level7Entrance` | `level==7`, play, entry room |
@@ -229,6 +266,9 @@ required to drain the pond. Spine attachment is the integrator's file.
   shop `0x34`; pond `0x42`; all stop room ids; post-L6 leftover.
 - **Fixture-live:** start-based `0x53→0x52` inland-left micro,
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
+- **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,
+  leftover play `0x25` `(0,141)`, `recordings/l7_bait_from_l6_l7_bait_25.json`.
+  `0x24→0x25` RIGHT @ y=141. DOWN at x=16 / 160 / 208 on 0x24 is mountain.
 - Prior 0x53 miss: `recordings/l7_dnp_pond_assisted_v9.json` `(224,173)`
   `hop10_ay`.
 - Pond `0x42`, drain, dungeon entry, Red Candle, and shard remain source-only.

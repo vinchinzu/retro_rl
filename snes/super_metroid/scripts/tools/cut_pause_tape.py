@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Cut pause-menu freeze (+ trailing idle) from a guided_human take.
 
-Pause freezes SM world/RNG — safe to drop for RTA and open-loop reseam.
+Pause freezes enemy AI (not ``$05E5`` — see docs/RNG.md). Safe to drop for
+RTA movement reseam; not later-drop/Phantoon matching.
 
 ```bash
 # Dry-run: show spans only
