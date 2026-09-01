@@ -100,7 +100,15 @@ def test_top_seat_is_s10_not_raw_y() -> None:
 
 
 def test_fast_entry_requires_preserved_spin_phase() -> None:
-    fast = _state(samus_x=216, samus_y=628, pose=26, velocity_y=4)
+    fast = _state(
+        samus_x=216,
+        samus_y=628,
+        pose=26,
+        velocity_y=4,
+        vertical_direction=1,
+        momentum_x=2,
+        invincibility_timer=5,
+    )
     assert _ceres_fast_entry_window(fast)
     assert _ceres_fast_entry_window(replace(fast, samus_y=632, pose=25))
     assert not _ceres_fast_entry_window(replace(fast, samus_y=651, pose=10))
@@ -108,7 +116,15 @@ def test_fast_entry_requires_preserved_spin_phase() -> None:
 
 
 def test_elev_entry_keeps_fast_spin_window() -> None:
-    fast = _state(samus_x=216, samus_y=628, pose=26, velocity_y=4)
+    fast = _state(
+        samus_x=216,
+        samus_y=628,
+        pose=26,
+        velocity_y=4,
+        vertical_direction=1,
+        momentum_x=2,
+        invincibility_timer=5,
+    )
     assert _ceres_elev_entry_action(fast) is None
     floor = _state(samus_x=216, samus_y=651, pose=10)
     assert _ceres_elev_entry_action(floor) is None
