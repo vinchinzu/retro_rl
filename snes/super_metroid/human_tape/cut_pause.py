@@ -1,8 +1,10 @@
 """Cut freeze-time (pause menu / trailing idle) from a guided_human tape.
 
-Super Metroid **pause freezes the world** (enemies/RNG do not advance), so
-removing ``pause_or_inventory`` spans is open-loop-safe for hop-replay — unlike
-mid-traversal idle cuts that skip live enemy ticks.
+Super Metroid **pause freezes enemy AI** (extra ``$80:8111`` rolls stop).
+``$05E5`` still ticks once per main-loop frame ([docs/RNG.md](../docs/RNG.md)).
+Dropping ``pause_or_inventory`` spans is open-loop-safe for **movement**
+hop-replay — unlike mid-traversal idle cuts that skip live enemy ticks.
+Not drop/Phantoon-safe vs a never-paused run.
 
 Typical improve loop::
 

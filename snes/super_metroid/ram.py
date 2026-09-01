@@ -75,10 +75,47 @@ ADDR_ENEMY0_SPRITEMAP = 0x0F8E
 ADDR_DOOR_DEF_PTR = 0x078D
 ADDR_INVINCIBILITY_TIMER = 0x18A8
 ADDR_KNOCKBACK_TIMER = 0x18AA
+# PRNG seed ($80:8111). Boot writes $0061 after clearing bank $7E — not
+# uninitialized WRAM. Main loop rolls once per iteration at $82:894F.
+# Docs: docs/RNG.md.
+ADDR_RNG = 0x05E5
+RNG_BOOT_SEED = 0x0061
 
 # Facing nibble values (0A1E).
 FACING_LEFT = 0x04
 FACING_RIGHT = 0x08
+
+
+def rng1(seed: int) -> int:
+    """One Super Metroid ``$80:8111`` step. See ``docs/RNG.md``."""
+    seed &= 0xFFFF
+    result = (seed & 0xFF) * 5
+    hi = ((seed >> 8) & 0xFF) * 5 & 0xFF
+    result = result + (hi << 8) + 0x100
+    return ((result >> 16) + result + 0x11) & 0xFFFF
+
+
+def rng1_advance(seed: int, steps: int) -> int:
+    """Apply :func:`rng1` ``steps`` times (``steps=0`` is identity)."""
+    if steps < 0:
+        raise ValueError("steps must be >= 0")
+    out = seed & 0xFFFF
+    for _ in range(steps):
+        out = rng1(out)
+    return out
+
+
+def rng1_rolls_between(prev: int, cur: int, *, limit: int = 16) -> int:
+    """How many ``rng1`` steps from ``prev`` to ``cur``, or ``-1`` if none."""
+    seed = prev & 0xFFFF
+    want = cur & 0xFFFF
+    if seed == want:
+        return 0
+    for n in range(1, limit + 1):
+        seed = rng1(seed)
+        if seed == want:
+            return n
+    return -1
 
 # Game-state enum ($0998). Controllers use these — do not re-encode in rooms.
 GS_ORDINARY = 8
@@ -213,6 +250,10 @@ class SuperMetroidState:
     shinespark_timer: int = 0
     # $09E4 Special Setting Mode; 1 = moonwalk on (required for moonfall).
     moonwalk: int = 0
+    # Contact carry across doors. Ceres steam d-boost routing depends on both:
+    # timers freeze during door transitions, so a predecessor room owns them.
+    invincibility_timer: int = 0
+    knockback_timer: int = 0
 
     @property
     def morph_ball(self) -> bool:
@@ -314,6 +355,8 @@ class SuperMetroidState:
             "shinespark_timer": self.shinespark_timer,
             "moonwalk": self.moonwalk,
             "moonwalk_enabled": self.moonwalk_enabled,
+            "invincibility_timer": self.invincibility_timer,
+            "knockback_timer": self.knockback_timer,
             "pose": self.pose,
             "door_transition": self.door_transition,
             "transition_direction": self.transition_direction,
@@ -416,6 +459,7 @@ def peek_wram(env: Any, addresses: dict[str, int]) -> dict[str, int]:
         ADDR_KNOCKBACK_TIMER,
         ADDR_DOOR_DEF_PTR,
         ADDR_MOONWALK,
+        ADDR_RNG,
     }
     out: dict[str, int] = {}
     for name, address in addresses.items():
@@ -451,6 +495,15 @@ def write_wram_u16(env: Any, address: int, value: int) -> None:
     """Write one little-endian WRAM word."""
     mapped = SNES_WRAM_BANK + address if address >= 0x2000 else address
     env.data.memory.assign(mapped, "<u2", value & 0xFFFF)
+
+
+def set_rng(env: Any, seed: int) -> None:
+    """Poke ``$05E5``. Future rolls only — does not re-init spawned enemies.
+
+    Empty Ceres elevator / Landing Site: equivalent to a different boot wait.
+    Enemy rooms: poke then re-enter the door. See ``docs/RNG.md``.
+    """
+    write_wram_u16(env, ADDR_RNG, seed & 0xFFFF)
 
 
 def set_moonwalk(env: Any, enabled: bool = True) -> bool:
@@ -520,6 +573,8 @@ def parse_state(ram: np.ndarray, *, frame: int = 0) -> SuperMetroidState:
         movement_type=_u8(ram, ADDR_MOVEMENT_TYPE),
         shinespark_timer=_u16(ram, ADDR_SHINESPARK_TIMER),
         moonwalk=_u16(ram, ADDR_MOONWALK),
+        invincibility_timer=_u16(ram, ADDR_INVINCIBILITY_TIMER),
+        knockback_timer=_u16(ram, ADDR_KNOCKBACK_TIMER),
         pose=_u16(ram, ADDR_SAMUS_POSE),
         health=_u16(ram, ADDR_HEALTH),
         max_health=_u16(ram, ADDR_MAX_HEALTH),

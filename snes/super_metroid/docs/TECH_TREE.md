@@ -85,6 +85,7 @@ labels stay Hard / Very Hard; `PROJECT_CORE_TECHS` promotes the builders.
 |------|-----------|--------|-------------|
 | `canMoonwalk` | Hard | partial | `ram.set_moonwalk` (`$09E4`) + `skills/moonfall.moonwalk_buttons` |
 | `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`; Climb warp-pin **503f** vs seed 895f (`kpdr/climb_descent`); Parlor handoff **1067f** vs seed 1095f (`kpdr/parlor_descent`). Both `*_MOONFALL_ON_CLEAN` still False |
+| `ledge_grab` | — | partial | `basic_moves.ledge_grab` — spin then shoulder **L** (aim-down; **R** allowed) with A released to snap onto a lip ([Hitbox Manipulation](https://wiki.supermetroid.run/Hitbox_Manipulation)). Not `canDownGrab` (D-pad DOWN). Live proof: parlor mid-ledge from the post-Torizo pin (`play_parlor_mid_ledge_grab`). Product Alcatraz chimney still gun-jumps (WJ seat). Climb later. |
 
 Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). Climb
 `0x96BA` and Parlor `0x92FD` first descents on the Morph path (clean poke

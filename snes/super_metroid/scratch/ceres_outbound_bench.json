@@ -1,0 +1,140 @@
+{
+  "success": true,
+  "frames": 1607,
+  "timing": {
+    "frames": 1607,
+    "seconds": 26.739,
+    "clock": "00:26.78",
+    "ntsc_fps": 60.0988
+  },
+  "end": {
+    "room": "0xE0B5",
+    "roomId": 57525,
+    "pose": 17,
+    "x": 39,
+    "y": 139,
+    "x_sub": 59392,
+    "y_sub": 65535,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY",
+    "frame": 1607,
+    "velocity_x": 0,
+    "velocity_y": 0,
+    "momentum_x": 2,
+    "speed_counter": 0,
+    "speed_boosting": false,
+    "facing": 8,
+    "movement_type": 1,
+    "shinespark_timer": 0,
+    "moonwalk": 0,
+    "door_def_ptr": "0xABAC",
+    "collected_items": "0x0000"
+  },
+  "hops": [
+    {
+      "name": "elev_to_falling",
+      "from": "0xDF45",
+      "to": "0xDF8D",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 309,
+      "our_dwell_frames": 148,
+      "our_transition_frames": 161,
+      "tas_frames": 311,
+      "tas_dwell_frames": 150,
+      "tas_transition_frames": 161,
+      "delta_frames": -2,
+      "delta_dwell_frames": -2,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 8639,
+        "dest_gs8": 8950,
+        "door_gs9": 8789
+      }
+    },
+    {
+      "name": "falling_to_magnet",
+      "from": "0xDF8D",
+      "to": "0xDFD7",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 301,
+      "our_dwell_frames": 140,
+      "our_transition_frames": 161,
+      "tas_frames": 282,
+      "tas_dwell_frames": 121,
+      "tas_transition_frames": 161,
+      "delta_frames": 19,
+      "delta_dwell_frames": 19,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 8950,
+        "dest_gs8": 9232,
+        "door_gs9": 9071
+      }
+    },
+    {
+      "name": "magnet_to_scientist",
+      "from": "0xDFD7",
+      "to": "0xE021",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 377,
+      "our_dwell_frames": 215,
+      "our_transition_frames": 162,
+      "tas_frames": 345,
+      "tas_dwell_frames": 183,
+      "tas_transition_frames": 162,
+      "delta_frames": 32,
+      "delta_dwell_frames": 32,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9232,
+        "dest_gs8": 9577,
+        "door_gs9": 9415
+      }
+    },
+    {
+      "name": "scientist_to_flat",
+      "from": "0xE021",
+      "to": "0xE06B",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 279,
+      "our_dwell_frames": 118,
+      "our_transition_frames": 161,
+      "tas_frames": 264,
+      "tas_dwell_frames": 103,
+      "tas_transition_frames": 161,
+      "delta_frames": 15,
+      "delta_dwell_frames": 15,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9577,
+        "dest_gs8": 9841,
+        "door_gs9": 9680
+      }
+    },
+    {
+      "name": "flat_to_ridley",
+      "from": "0xE06B",
+      "to": "0xE0B5",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 340,
+      "our_dwell_frames": 114,
+      "our_transition_frames": 226,
+      "tas_frames": 321,
+      "tas_dwell_frames": 95,
+      "tas_transition_frames": 226,
+      "delta_frames": 19,
+      "delta_dwell_frames": 19,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9841,
+        "dest_gs8": 10162,
+        "door_gs9": 9936
+      }
+    }
+  ]
+}

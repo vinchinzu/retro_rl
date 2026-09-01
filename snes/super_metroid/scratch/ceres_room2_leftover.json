@@ -1,0 +1,661 @@
+{
+  "room1_frames": 310,
+  "room2_frames": 315,
+  "first_div": [
+    {
+      "rel": 0,
+      "tas": {
+        "x": 39,
+        "y": 139,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 311,
+        "reason": "ceres_falling_ledge",
+        "x": 44,
+        "y": 139,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": 5,
+      "dy": 0
+    },
+    {
+      "rel": 1,
+      "tas": {
+        "x": 44,
+        "y": 139,
+        "pose": 15,
+        "gs": 8
+      },
+      "live": {
+        "f": 312,
+        "reason": "ceres_falling_ledge",
+        "x": 49,
+        "y": 139,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": 5,
+      "dy": 0
+    },
+    {
+      "rel": 3,
+      "tas": {
+        "x": 54,
+        "y": 139,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 314,
+        "reason": "ceres_falling_ledge",
+        "x": 57,
+        "y": 140,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": 3,
+      "dy": 1
+    },
+    {
+      "rel": 5,
+      "tas": {
+        "x": 63,
+        "y": 145,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 316,
+        "reason": "ceres_falling_ledge",
+        "x": 63,
+        "y": 146,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": 0,
+      "dy": 1
+    },
+    {
+      "rel": 7,
+      "tas": {
+        "x": 71,
+        "y": 153,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 318,
+        "reason": "ceres_falling_ledge",
+        "x": 70,
+        "y": 154,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -1,
+      "dy": 1
+    },
+    {
+      "rel": 9,
+      "tas": {
+        "x": 79,
+        "y": 161,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 320,
+        "reason": "ceres_falling_ledge",
+        "x": 77,
+        "y": 160,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -2,
+      "dy": -1
+    },
+    {
+      "rel": 11,
+      "tas": {
+        "x": 87,
+        "y": 170,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 322,
+        "reason": "ceres_falling_ledge",
+        "x": 84,
+        "y": 167,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -3,
+      "dy": -3
+    },
+    {
+      "rel": 13,
+      "tas": {
+        "x": 97,
+        "y": 179,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 324,
+        "reason": "ceres_falling_ledge",
+        "x": 92,
+        "y": 175,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -5,
+      "dy": -4
+    },
+    {
+      "rel": 15,
+      "tas": {
+        "x": 106,
+        "y": 187,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 326,
+        "reason": "ceres_falling_ledge",
+        "x": 99,
+        "y": 182,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -7,
+      "dy": -5
+    },
+    {
+      "rel": 16,
+      "tas": {
+        "x": 112,
+        "y": 187,
+        "pose": 9,
+        "gs": 8
+      },
+      "live": {
+        "f": 327,
+        "reason": "ceres_falling_ledge",
+        "x": 103,
+        "y": 187,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -9,
+      "dy": 0
+    },
+    {
+      "rel": 17,
+      "tas": {
+        "x": 117,
+        "y": 187,
+        "pose": 17,
+        "gs": 8
+      },
+      "live": {
+        "f": 328,
+        "reason": "ceres_falling_ledge",
+        "x": 106,
+        "y": 187,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -11,
+      "dy": 0
+    },
+    {
+      "rel": 18,
+      "tas": {
+        "x": 123,
+        "y": 187,
+        "pose": 9,
+        "gs": 8
+      },
+      "live": {
+        "f": 329,
+        "reason": "ceres_falling_ledge",
+        "x": 111,
+        "y": 187,
+        "pose": 9,
+        "gs": 8,
+        "room": "0xDF8D",
+        "mt": 1
+      },
+      "dx": -12,
+      "dy": 0
+    }
+  ],
+  "div_count": 116,
+  "live_sel": [
+    {
+      "f": 338,
+      "reason": "ceres_falling_floor_hop",
+      "x": 154,
+      "y": 187,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 339,
+      "reason": "ceres_falling_floor_hop",
+      "x": 157,
+      "y": 183,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 340,
+      "reason": "ceres_falling_floor_hop",
+      "x": 160,
+      "y": 178,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 341,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 164,
+      "y": 178,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 342,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 167,
+      "y": 178,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 343,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 171,
+      "y": 178,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 344,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 174,
+      "y": 179,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 345,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 177,
+      "y": 179,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 346,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 181,
+      "y": 179,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 347,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 184,
+      "y": 180,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 348,
+      "reason": "ceres_falling_magnet_feet",
+      "x": 187,
+      "y": 171,
+      "pose": 166,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 0
+    },
+    {
+      "f": 388,
+      "reason": "ceres_falling_exit_hop",
+      "x": 328,
+      "y": 171,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 389,
+      "reason": "ceres_falling_exit_hop",
+      "x": 331,
+      "y": 167,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 390,
+      "reason": "ceres_falling_exit_hop",
+      "x": 334,
+      "y": 162,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 391,
+      "reason": "ceres_falling_exit_hop",
+      "x": 338,
+      "y": 157,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 392,
+      "reason": "ceres_falling_exit_hop",
+      "x": 341,
+      "y": 157,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 393,
+      "reason": "ceres_falling_exit_hop",
+      "x": 344,
+      "y": 157,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 394,
+      "reason": "ceres_falling_exit_hop",
+      "x": 348,
+      "y": 158,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 395,
+      "reason": "ceres_falling_exit_hop",
+      "x": 351,
+      "y": 158,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 396,
+      "reason": "ceres_falling_exit_hop",
+      "x": 355,
+      "y": 158,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 397,
+      "reason": "ceres_falling_exit_hop",
+      "x": 358,
+      "y": 159,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 398,
+      "reason": "ceres_falling_exit_hop",
+      "x": 361,
+      "y": 159,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 399,
+      "reason": "ceres_falling_exit_hop",
+      "x": 365,
+      "y": 160,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 400,
+      "reason": "ceres_falling_exit_hop",
+      "x": 368,
+      "y": 161,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 401,
+      "reason": "ceres_falling_exit_hop",
+      "x": 371,
+      "y": 162,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 402,
+      "reason": "ceres_falling_exit_hop",
+      "x": 375,
+      "y": 163,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 403,
+      "reason": "ceres_falling_exit_hop",
+      "x": 378,
+      "y": 164,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 404,
+      "reason": "ceres_falling_exit_hop",
+      "x": 382,
+      "y": 166,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 405,
+      "reason": "ceres_falling_exit_hop",
+      "x": 385,
+      "y": 167,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 406,
+      "reason": "ceres_falling_exit_hop",
+      "x": 388,
+      "y": 169,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 407,
+      "reason": "ceres_falling_exit_hop",
+      "x": 392,
+      "y": 170,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 408,
+      "reason": "ceres_falling_exit_hop",
+      "x": 395,
+      "y": 172,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 409,
+      "reason": "ceres_falling_exit_hop",
+      "x": 398,
+      "y": 174,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 410,
+      "reason": "ceres_falling_exit_hop",
+      "x": 402,
+      "y": 176,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 411,
+      "reason": "ceres_falling_exit_hop",
+      "x": 405,
+      "y": 178,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 412,
+      "reason": "ceres_falling_exit_hop",
+      "x": 409,
+      "y": 180,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 413,
+      "reason": "ceres_falling_exit_hop",
+      "x": 412,
+      "y": 182,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 414,
+      "reason": "ceres_falling_exit_hop",
+      "x": 415,
+      "y": 185,
+      "pose": 25,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 3
+    },
+    {
+      "f": 415,
+      "reason": "ceres_falling_exit_hop",
+      "x": 419,
+      "y": 176,
+      "pose": 166,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 0
+    },
+    {
+      "f": 441,
+      "reason": "ceres_falling_door_kb",
+      "x": 467,
+      "y": 139,
+      "pose": 137,
+      "gs": 8,
+      "room": "0xDF8D",
+      "mt": 21
+    }
+  ]
+}

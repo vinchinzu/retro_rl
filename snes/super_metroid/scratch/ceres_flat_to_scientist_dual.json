@@ -1,0 +1,112 @@
+{
+  "success": true,
+  "dual_exact": true,
+  "hop": "ceres_flat_to_scientist",
+  "pin": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_ridley_flat.state",
+  "leave": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/post_ceres_flat_scientist.state",
+  "frames": [
+    292,
+    292
+  ],
+  "timing": {
+    "frames": 292,
+    "seconds": 4.859,
+    "clock": "00:04.87",
+    "ntsc_fps": 60.0988
+  },
+  "hop_glance_misses": [],
+  "runs": [
+    {
+      "frames": 292,
+      "final": {
+        "room": 57377,
+        "x": 472,
+        "y": 139,
+        "pose": 18,
+        "gs": 8,
+        "dt": 0,
+        "health": null
+      },
+      "misses": [],
+      "reasons": {
+        "ceres_flat": 130,
+        "ceres_flat_fade": 162,
+        "ceres_sci_rev": 119,
+        "ceres_sci_rev_fade": 162
+      },
+      "magnet_join": {
+        "success": true,
+        "frames": 281,
+        "end": {
+          "room": "0xDFD7",
+          "roomId": 57303,
+          "pose": 16,
+          "x": 216,
+          "y": 395,
+          "x_sub": 17408,
+          "y_sub": 65535,
+          "door_transition": 0,
+          "phase": "ORDINARY_GAMEPLAY",
+          "frame": 573,
+          "velocity_x": 0,
+          "velocity_y": 0,
+          "momentum_x": 2,
+          "speed_counter": 0,
+          "speed_boosting": false,
+          "facing": 4,
+          "movement_type": 1,
+          "shinespark_timer": 0,
+          "moonwalk": 0,
+          "door_def_ptr": "0xAB88",
+          "collected_items": "0x0000"
+        }
+      }
+    },
+    {
+      "frames": 292,
+      "final": {
+        "room": 57377,
+        "x": 472,
+        "y": 139,
+        "pose": 18,
+        "gs": 8,
+        "dt": 0,
+        "health": null
+      },
+      "misses": [],
+      "reasons": {
+        "ceres_flat": 130,
+        "ceres_flat_fade": 162,
+        "ceres_sci_rev": 119,
+        "ceres_sci_rev_fade": 162
+      },
+      "magnet_join": {
+        "success": true,
+        "frames": 281,
+        "end": {
+          "room": "0xDFD7",
+          "roomId": 57303,
+          "pose": 16,
+          "x": 216,
+          "y": 395,
+          "x_sub": 17408,
+          "y_sub": 65535,
+          "door_transition": 0,
+          "phase": "ORDINARY_GAMEPLAY",
+          "frame": 573,
+          "velocity_x": 0,
+          "velocity_y": 0,
+          "momentum_x": 2,
+          "speed_counter": 0,
+          "speed_boosting": false,
+          "facing": 4,
+          "movement_type": 1,
+          "shinespark_timer": 0,
+          "moonwalk": 0,
+          "door_def_ptr": "0xAB88",
+          "collected_items": "0x0000"
+        }
+      }
+    }
+  ]
+}

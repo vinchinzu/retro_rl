@@ -37,6 +37,9 @@ from super_metroid.ram import GameplayPhase, SuperMetroidState, phase_for_game_s
 
 # Game state 8 is ordinary controllable gameplay (see docs/ram_map.md).
 _ORDINARY_GAME_STATE = 8
+# Zebes landing cinematic (gs=5/6 @ 0x91F8) is Ceres leave, not a boot/reset.
+# Treating it as BOOT_OR_MENU drops the last Ceres elevator visit.
+_ZEBES_LANDING_ROOM_ID = 0x91F8
 # SNES NTSC master clock used on plan.md improvement tables.
 NTSC_FPS = 60.0988
 
@@ -262,6 +265,14 @@ def _snap_to_hop(snap: TimingSnapshot) -> HopFrame[int]:
     }
 
     if phase is GameplayPhase.BOOT_OR_MENU:
+        # Zebes landing cinematic (gs=6, sometimes 5) is Ceres leave, not reset.
+        if snap.room_id == _ZEBES_LANDING_ROOM_ID:
+            return HopFrame(
+                frame=snap.frame,
+                location=snap.room_id,
+                status="transition",
+                leave_meta=leave_meta,
+            )
         return HopFrame(
             frame=snap.frame,
             location=snap.room_id,

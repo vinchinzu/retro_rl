@@ -1,24 +1,7 @@
-"""Early continuous spine — Ceres/Morph power-on as :class:`SpineHop` orchestration.
+"""Morph spine: Ceres prefix + Landing→Morph seeds.
 
-**Model (same as Super+):** ordered :class:`~super_metroid.routes.kpdr.spine.SpineHop`
-rows on :data:`MORPH_SPINE` are registered as the morph TipSpec ``hops`` and run
-via :func:`~super_metroid.routes.tips.play_hops`. Hash-pinned room seeds and
-open-loop Ceres frame budgets are **unchanged** — only the composition surface
-matches post-Supers.
-
-**Graph edges / milestones** for ``MORPH_GRAPH`` live here as the morph-stage
-source of truth (imported by ``progression/stages/morph``). Multi-room Ceres bulk
-policies still span several DoorEdges per play hop; intermediate edges stay
-hand-authored beside the play spine (same verification story as Super+ product
-doors vs pure-only reverse edges).
-
-Ceres reactive room policy (arm-pump, magnet, elev climb) lives in
-:mod:`super_metroid.routes.kpdr.ceres`. Public ``play_ceres_*`` names are
-re-exported here so continuous / morph imports stay stable.
-
-Bombs / Spore / Supers orchestration lives in
-:mod:`super_metroid.routes.kpdr.early_post_morph` (same SpineHop model; policy
-JSON / boss controllers unchanged; pre-Supers DoorEdges remain in ``progression/stages/``).
+Ceres boot / outbound / escape live in :mod:`super_metroid.routes.kpdr.ceres.spine`.
+This module composes that prefix with hash-pinned Crateria seeds.
 """
 
 from __future__ import annotations
@@ -42,14 +25,18 @@ from super_metroid.routes.kpdr.ceres import (
     play_ceres_escape_to_landing,
     play_ceres_outbound_to_ridley,
 )
+from super_metroid.routes.kpdr.ceres.spine import (
+    CERES_DOOR_EDGES,
+    CERES_MILESTONES,
+    CERES_SPINE,
+    _BOOT_MAX_FRAMES,
+    _BOOT_MENU_MASH_FRAMES,
+    _boot_spans,
+    play_boot_to_ceres,
+    play_boot_to_ceres_tas,
+)
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_BLUE_BRINSTAR_ELEVATOR,
-    ROOM_CERES_ELEVATOR,
-    ROOM_CERES_FALLING,
-    ROOM_CERES_FLAT,
-    ROOM_CERES_MAGNET,
-    ROOM_CERES_RIDLEY,
-    ROOM_CERES_SCIENTIST,
     ROOM_CLIMB,
     ROOM_CONSTRUCTION,
     ROOM_LANDING_SITE,
@@ -75,91 +62,11 @@ __all__ = [
     "play_boot_to_ceres",
     "play_boot_to_ceres_tas",
     "_boot_spans",
-    "_BOOT_STYLE",
     "_BOOT_MENU_MASH_FRAMES",
     "_BOOT_MAX_FRAMES",
     "_CERES_ARM_PUMP_PERIOD",
     "_arm_pump_dash_spans",
 ]
-
-
-# ---------------------------------------------------------------------------
-# Boot — power-on mash into first Ceres control (TAS-inspired, WRAM-gated)
-# ---------------------------------------------------------------------------
-
-# Sniq any% #3653M: first B+RIGHT ~8639f; libretro hits gs=8 elev @ ~8479f with
-# START/A period-1 then A-every-other (−2163f / −36.0s vs legacy first gs=8).
-# Product default stays **legacy** until escape elev is re-pinned (rr-14u).
-# Flip to "tas" only for probes — see docs/plan.md improvement tables.
-_BOOT_STYLE: str = "legacy"  # "legacy" | "tas"
-_BOOT_MENU_MASH_FRAMES = 400
-_BOOT_MAX_FRAMES = 12_000
-
-
-def _boot_spans() -> list[ActionSpan]:
-    """Legacy open-loop boot (product morph dual GREEN @ 26,824f)."""
-    spans = [
-        ActionSpan((), 2100, "boot_title_wait"),
-        ActionSpan(("A",), 10, "boot_title_confirm"),
-        ActionSpan((), 120, "boot_file_menu_wait"),
-        ActionSpan(("A",), 10, "boot_file_confirm"),
-        ActionSpan((), 300, "boot_prologue_wait"),
-        ActionSpan(("A",), 10, "boot_prologue_confirm"),
-        ActionSpan((), 30, "boot_prologue_settle"),
-    ]
-    for _ in range(69):
-        spans.append(ActionSpan(("A",), 10, "boot_intro_mash"))
-        spans.append(ActionSpan((), 110, "boot_intro_wait"))
-    return spans
-
-
-def play_boot_to_ceres_tas(session: RouteSession) -> None:
-    """TAS-style boot → settled Ceres elev pad (probe / residual rr-14u).
-
-    START/A mash then A-every-other; stop on ``elev & gs==8``; wait y≥60 settle.
-    Saves ~2.1k f to first control vs legacy — escape elev still desyncs.
-    """
-    reached = False
-    for i in range(_BOOT_MAX_FRAMES):
-        st = session.state
-        if st.room_id == ROOM_CERES_ELEVATOR and st.game_state == 8:
-            reached = True
-            break
-        if i < _BOOT_MENU_MASH_FRAMES:
-            name = "START" if (i % 2) == 0 else "A"
-            session.step(buttons(name), "boot_menu_mash")
-        elif (i % 2) == 0:
-            session.step(buttons("A"), "boot_cutscene_mash")
-        else:
-            session.step(idle_action(), "boot_cutscene_wait")
-    if not reached:
-        raise RuntimeError(
-            f"TAS boot missed Ceres control after {_BOOT_MAX_FRAMES}f: {session.state}"
-        )
-    session.wait_until(
-        lambda s: s.room_id == ROOM_CERES_ELEVATOR
-        and s.game_state == 8
-        and int(s.samus_y) >= 60
-        and abs(int(s.velocity_y)) <= 1,
-        timeout=200,
-        reason="boot_elev_settle",
-    )
-    for _ in range(4):
-        session.step(idle_action(), "boot_elev_plant")
-
-
-def play_boot_to_ceres(session: RouteSession) -> None:
-    """Power-on → first controllable Ceres elevator frame.
-
-    Default **legacy** open-loop (morph dual green). Set ``_BOOT_STYLE = "tas"``
-    only when probing residual rr-14u (escape elev re-pin).
-    """
-    if _BOOT_STYLE == "tas":
-        play_boot_to_ceres_tas(session)
-        return
-    session.spans(_boot_spans())
-    if not (session.state.room_id == ROOM_CERES_ELEVATOR and session.state.game_state == 8):
-        raise RuntimeError(f"boot missed first Ceres control: {session.state}")
 
 
 # ---------------------------------------------------------------------------
@@ -295,12 +202,11 @@ def play_elevator_to_morph_room(session: RouteSession) -> None:
             return True
         return False
 
-    # Product path first (legacy dual-green @ 26,824f).
-    if _try_seed(1, reseat=False):
+    # Faster Ceres shifts $0E16 phase. Try both parities on the pad before
+    # the WRAM board; do not burn a reseat+replay when parity 0 is enough.
+    if _try_seed(0, reseat=False):
         return
-    # TAS boot: elev-flag phase miss — one alternate parity, then WRAM board.
-    # Avoid burning 2× seed length when reactive is the reliable residual.
-    if _try_seed(0, reseat=True):
+    if _try_seed(1, reseat=False):
         return
     _play_bb_elev_reactive(session)
 
@@ -429,45 +335,10 @@ def play_morph_ball_collect(session: RouteSession) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Morph play spine (orchestration; seeds/spans unchanged)
+# Morph play spine = Ceres prefix + Landing→Morph seeds
 # ---------------------------------------------------------------------------
 
-# Power-on has no real source room; use Ceres elevator as graph anchor for both
-# ends of the boot hop (milestone split only).
-MORPH_SPINE: tuple[SpineHop, ...] = (
-    SpineHop(
-        "first_ceres_control",
-        play_boot_to_ceres,
-        ROOM_CERES_ELEVATOR,
-        ROOM_CERES_ELEVATOR,
-        "Ceres Elevator",
-        "morph",
-        use_transition_split=False,
-        # Bulk multi-room policies below; intermediate DoorEdges stay hand list.
-    ),
-    SpineHop(
-        "ridley_countdown",
-        play_ceres_outbound_to_ridley,
-        ROOM_CERES_ELEVATOR,
-        ROOM_CERES_RIDLEY,
-        "Ceres Ridley",
-        "morph",
-        use_transition_split=False,
-        policy_id="ceres_outbound",
-    ),
-    SpineHop(
-        "zebes_landing",
-        play_ceres_escape_to_landing,
-        ROOM_CERES_RIDLEY,
-        ROOM_LANDING_SITE,
-        "Landing Site",
-        "morph",
-        use_transition_split=False,
-        policy_id="ceres_escape",
-    ),
-    # Seed hops: historical morph reports only record milestone splits, not
-    # per-door transition splits (elevator transitions are also noisy). Door
-    # meta still emits product edges for join checks via continuous_edges_*.
+MORPH_SPINE: tuple[SpineHop, ...] = CERES_SPINE + (
     SpineHop(
         "landing_to_parlor",
         play_landing_to_parlor,
@@ -545,108 +416,7 @@ MORPH_SPINE: tuple[SpineHop, ...] = (
 # Graph tables (morph stage source of truth for progression/stages/morph.py)
 # ---------------------------------------------------------------------------
 
-MORPH_DOOR_EDGES: tuple[DoorEdge, ...] = (
-    # Ceres outbound bulk (play hop ridley_countdown spans all of these).
-    DoorEdge(
-        "ceres_elevator_to_falling",
-        ROOM_CERES_ELEVATOR,
-        ROOM_CERES_FALLING,
-        "right",
-        "left",
-        policy_id="ceres_outbound",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_falling_to_magnet",
-        ROOM_CERES_FALLING,
-        ROOM_CERES_MAGNET,
-        "right",
-        "left",
-        policy_id="ceres_outbound",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_magnet_to_scientist",
-        ROOM_CERES_MAGNET,
-        ROOM_CERES_SCIENTIST,
-        "bottom_right",
-        "left",
-        policy_id="ceres_outbound",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_scientist_to_flat",
-        ROOM_CERES_SCIENTIST,
-        ROOM_CERES_FLAT,
-        "right",
-        "left",
-        policy_id="ceres_outbound",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_flat_to_ridley",
-        ROOM_CERES_FLAT,
-        ROOM_CERES_RIDLEY,
-        "right",
-        "left",
-        policy_id="ceres_outbound",
-        verification="continuous",
-    ),
-    # Ceres escape bulk (play hop zebes_landing).
-    DoorEdge(
-        "ceres_ridley_to_flat",
-        ROOM_CERES_RIDLEY,
-        ROOM_CERES_FLAT,
-        "left",
-        "right",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_flat_to_scientist",
-        ROOM_CERES_FLAT,
-        ROOM_CERES_SCIENTIST,
-        "left",
-        "right",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_scientist_to_magnet",
-        ROOM_CERES_SCIENTIST,
-        ROOM_CERES_MAGNET,
-        "left",
-        "bottom_right",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_magnet_to_falling",
-        ROOM_CERES_MAGNET,
-        ROOM_CERES_FALLING,
-        "upper_left",
-        "right",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_falling_to_elevator",
-        ROOM_CERES_FALLING,
-        ROOM_CERES_ELEVATOR,
-        "left",
-        "bottom",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
-    DoorEdge(
-        "ceres_to_landing",
-        ROOM_CERES_ELEVATOR,
-        ROOM_LANDING_SITE,
-        "elevator",
-        "ship",
-        policy_id="ceres_escape",
-        verification="continuous",
-    ),
+MORPH_DOOR_EDGES: tuple[DoorEdge, ...] = CERES_DOOR_EDGES + (
     # Seed hops — also emitted from MORPH_SPINE door meta (see continuous_edges).
     DoorEdge(
         "landing_to_parlor",
@@ -706,28 +476,7 @@ MORPH_DOOR_EDGES: tuple[DoorEdge, ...] = (
     ),
 )
 
-MORPH_MILESTONES: tuple[ProgressionMilestone, ...] = (
-    ProgressionMilestone(
-        "first_ceres_control",
-        "First controllable Ceres frame",
-        ProgressCondition(room_id=ROOM_CERES_ELEVATOR, game_states=frozenset({8})),
-        timeout_frames=12_000,
-        policy_id="power_on_boot",
-    ),
-    ProgressionMilestone(
-        "ridley_countdown",
-        "Natural Ceres countdown",
-        ProgressCondition(room_id=ROOM_CERES_RIDLEY, game_states=frozenset({8})),
-        timeout_frames=7_000,
-        policy_id="ceres_ridley_tail_tank",
-    ),
-    ProgressionMilestone(
-        "zebes_landing",
-        "Zebes Landing Site control",
-        ProgressCondition(room_id=ROOM_LANDING_SITE, game_states=frozenset({8})),
-        timeout_frames=8_000,
-        policy_id="ceres_escape",
-    ),
+MORPH_MILESTONES: tuple[ProgressionMilestone, ...] = CERES_MILESTONES + (
     ProgressionMilestone(
         "morph_ball",
         "Morph Ball collected naturally",

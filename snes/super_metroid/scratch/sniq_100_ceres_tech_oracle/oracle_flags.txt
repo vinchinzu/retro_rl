@@ -1,0 +1,5 @@
+out_dir=Z:\home\v\01_projects\11_games\retro_rl\snes\super_metroid\scratch\sniq_100_ceres_tech_oracle
+early_exit=1
+max_frames=15250
+series_stride=1
+playback_speed=turbo

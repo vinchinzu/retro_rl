@@ -12,6 +12,7 @@ OUT_DIR_RAW="${1:-${SM_ROOT}/recordings/tas_oracle/sniq_100_lsnes}"
 EARLY_EXIT="${EARLY_EXIT:-1}"
 MAX_FRAMES="${MAX_FRAMES:-60000}"
 SERIES_STRIDE="${SERIES_STRIDE:-0}"
+PLAYBACK_SPEED="${PLAYBACK_SPEED:-turbo}"
 
 LSNES_EXE="${LSNES:-${HOME}/.local/opt/lsnes-rr2-beta23/lsnes-bsnes.exe}"
 WINE_BIN="${WINE:-${HOME}/.local/opt/wine/bin/wine}"
@@ -88,6 +89,7 @@ LUA_WIN="C:\\lsnes\\lsnes_dump_sm.lua"
   echo "early_exit=${EARLY_EXIT}"
   echo "max_frames=${MAX_FRAMES}"
   echo "series_stride=${SERIES_STRIDE}"
+  echo "playback_speed=${PLAYBACK_SPEED}"
   echo "rom=C:/lsnes/SuperMetroid.sfc"
   echo "movie=C:/lsnes/sniq_100_4010M.lsmv"
 } > "${STAGE}/oracle_flags.txt"
@@ -98,6 +100,7 @@ printf '%s\n' "${OUT_WIN}" > "${STAGE}/oracle_out_dir.txt"
   echo "early_exit=${EARLY_EXIT}"
   echo "max_frames=${MAX_FRAMES}"
   echo "series_stride=${SERIES_STRIDE}"
+  echo "playback_speed=${PLAYBACK_SPEED}"
 } > "${ORACLE_DIR}/oracle_flags.txt"
 cp "${ORACLE_DIR}/oracle_flags.txt" "${OUT_DIR}/oracle_flags.txt"
 printf '%s\n' "${OUT_WIN}" > "${ORACLE_DIR}/oracle_out_dir.txt"
@@ -125,6 +128,7 @@ meta = {
     "early_exit": "${EARLY_EXIT}",
     "max_frames": int("${MAX_FRAMES}"),
     "series_stride": int("${SERIES_STRIDE}"),
+    "playback_speed": "${PLAYBACK_SPEED}",
 }
 Path(r"""${OUT_DIR}""" + "/meta_launch.json").write_text(json.dumps(meta, indent=2) + "\n")
 print(json.dumps(meta, indent=2))
@@ -133,7 +137,14 @@ PY
 echo "Launching lsnes 100% #4010M → ${OUT_DIR}"
 echo "  ROM SHA256 ${rom_sha256}"
 echo "  early_exit=${EARLY_EXIT} max_frames=${MAX_FRAMES}"
+echo "  playback_speed=${PLAYBACK_SPEED}"
 
 cd "$(dirname "${LSNES_EXE}")"
-# Forward slashes: Windows `--flag=C:\...` can split on the drive colon.
-exec "${WINE_BIN}" "${LSNES_EXE}" --lua="C:/lsnes/lsnes_dump_sm.lua"
+# Boot the ROM and movie together.  This is lsnes' native startup path: it
+# constructs the core with the movie's settings and RTC before the first
+# emulated frame.  Loading a blank ROM first and replacing its movie later is
+# not equivalent for a frame-perfect TAS.
+exec "${WINE_BIN}" "${LSNES_EXE}" \
+  --rom-a="C:/lsnes/SuperMetroid.sfc" \
+  --lua="C:/lsnes/lsnes_dump_sm.lua" \
+  "C:/lsnes/sniq_100_4010M.lsmv"

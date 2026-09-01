@@ -115,6 +115,26 @@ def test_chain_of_two_hops() -> None:
     assert visits[1].sequence_index == 1
 
 
+def test_ceres_leave_to_landing_records_last_room() -> None:
+    """Zebes landing cinematic is Ceres leave, not a boot reset."""
+    elev, landing = 0xDF45, 0x91F8
+    for cine_gs in (6, 5):
+        samples = [
+            _ordinary(0, elev, area=6),
+            TimingSnapshot(frame=10, room_id=elev, game_state=32, area_index=6),
+            TimingSnapshot(frame=20, room_id=landing, game_state=cine_gs, area_index=0),
+            _ordinary(80, landing, area=0),
+        ]
+        visits = RoomTimer().observe_many(samples)
+        assert len(visits) == 1, cine_gs
+        visit = visits[0]
+        assert visit.room_id == elev
+        assert visit.dest_room_id == landing
+        assert visit.leave_frame == 10
+        assert visit.exit_frame == 80
+        assert visit.room_frames == 80
+
+
 def test_boot_and_menu_ignored_until_settled() -> None:
     samples = [
         TimingSnapshot(frame=0, room_id=0, game_state=1, phase=GameplayPhase.BOOT_OR_MENU),

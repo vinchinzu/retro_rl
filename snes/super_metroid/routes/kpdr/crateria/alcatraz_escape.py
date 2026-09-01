@@ -13,6 +13,10 @@ from super_metroid.ram import GameplayPhase
 from super_metroid.routes.controller_common import MORPH_POSES, POSE_WALL_LATCH
 from super_metroid.routes.kpdr.room_ids import ROOM_PARLOR
 from super_metroid.routes.runtime import ControllerSession, hold
+from super_metroid.routes.skills.basic_moves import (
+    ledge_grab_action,
+    ledge_grab_buttons,
+)
 
 _GROUNDED_POSES = frozenset({1, 2, 5, 6, 7, 8, 9, 10})
 _PROBE_MORPH_POSES = MORPH_POSES | frozenset({165, 166, 167})
@@ -24,6 +28,9 @@ ROLLOUT_MAX_X = 760
 ROLLOUT_MAX_Y = 230
 _LEFT_WALL_BASE = ((795, 820), (535, 550))
 _MID_LEDGE = ((820, 838), (450, 470))
+# Directly above the lip (wiki). Too far right (x≈870) unsins into the gap.
+_MID_GRAB_X = (_MID_LEDGE[0][0] - 2, _MID_LEDGE[0][1] + 10)
+_MID_GRAB_Y_MAX = _MID_LEDGE[1][1] + 8
 _LOWER_WJ_BAND = ((795, 815), (350, 375))
 
 
@@ -44,6 +51,36 @@ def at_mid_ledge(state) -> bool:
         and x_range[0] <= int(state.samus_x) <= x_range[1]
         and y_range[0] <= int(state.samus_y) <= y_range[1]
         and int(state.pose) in _GROUNDED_POSES
+    )
+
+
+def over_mid_ledge(state) -> bool:
+    """Air, past the lip — the L/R unspin window, not a grounded seat."""
+    return (
+        int(state.room_id) == ROOM_PARLOR
+        and _MID_GRAB_X[0] <= int(state.samus_x) <= _MID_GRAB_X[1]
+        and int(state.samus_y) <= _MID_GRAB_Y_MAX
+        and int(state.pose) not in _GROUNDED_POSES
+    )
+
+
+# Aim-down / gun-jump / land poses seen on the mid-ledge snap (not spin).
+_LIP_LAND_POSES = _GROUNDED_POSES | frozenset(
+    {81, 82, 108, 163, 164, 165, 166, 167, 229}
+)
+
+
+def _mid_ledge_landed(state) -> bool:
+    if at_mid_ledge(state):
+        return True
+    x, y = int(state.samus_x), int(state.samus_y)
+    on_lip = (
+        _MID_LEDGE[0][0] - 4 <= x <= _MID_LEDGE[0][1] + 12
+        and _MID_LEDGE[1][0] - 4 <= y <= _MID_LEDGE[1][1] + 4
+        and int(state.pose) in _LIP_LAND_POSES
+    )
+    return on_lip or (
+        y <= 470 and int(state.pose) in _GROUNDED_POSES
     )
 
 
@@ -167,6 +204,39 @@ def _land_left_wall_base(session: ControllerSession) -> int:
     return session.frame
 
 
+def _pulse_toward_mid_ledge(
+    session: ControllerSession,
+    direction: str,
+    frames: int,
+    *,
+    air_reason: str,
+    grabbed: bool = False,
+) -> bool:
+    """Spin toward the lip; one L tap once over it (wiki: press angle once)."""
+    for _ in range(frames):
+        if _mid_ledge_landed(session.state):
+            return grabbed
+        over = over_mid_ledge(session.state)
+        if over and not grabbed:
+            hold(
+                session,
+                1,
+                *ledge_grab_buttons(direction),
+                reason="alcatraz_ledge_grab",
+            )
+            grabbed = True
+        elif over:
+            hold(session, 1, direction, reason="alcatraz_ledge_coast")
+        else:
+            hold(
+                session,
+                1,
+                *ledge_grab_action(direction, over_ledge=False),
+                reason=air_reason,
+            )
+    return grabbed
+
+
 def _reach_mid_ledge(session: ControllerSession) -> int:
     hold(session, 2, "RIGHT", reason="alcatraz_ledge_face")
     for _ in range(3):
@@ -187,6 +257,46 @@ def _reach_mid_ledge(session: ControllerSession) -> int:
         x_range=_MID_LEDGE[0],
         y_range=_MID_LEDGE[1],
     )
+    return session.frame
+
+
+def play_parlor_mid_ledge_grab(session: ControllerSession) -> int:
+    """Spin + one L tap onto the Alcatraz mid ledge (skill proof).
+
+    Product chimney WJ stays on :func:`_reach_mid_ledge` (gun-jump seat).
+    """
+    hold(session, 2, "RIGHT", reason="alcatraz_ledge_face")
+    grabbed = False
+    for _ in range(3):
+        grabbed = _pulse_toward_mid_ledge(
+            session, "RIGHT", 40, air_reason="alcatraz_ledge_cross", grabbed=grabbed
+        )
+        if _mid_ledge_landed(session.state):
+            break
+        hold(session, 2, "LEFT", reason="alcatraz_ledge_turn")
+        grabbed = _pulse_toward_mid_ledge(
+            session, "LEFT", 28, air_reason="alcatraz_ledge_latch", grabbed=grabbed
+        )
+        if _mid_ledge_landed(session.state):
+            break
+    for _ in range(16):
+        if _mid_ledge_landed(session.state):
+            break
+        over = over_mid_ledge(session.state)
+        if over and not grabbed:
+            hold(
+                session,
+                1,
+                *ledge_grab_buttons("LEFT"),
+                reason="alcatraz_ledge_grab",
+            )
+            grabbed = True
+        else:
+            hold(session, 1, reason="alcatraz_ledge_settle")
+    if not grabbed:
+        raise RuntimeError(
+            f"parlor mid-ledge grab never unsinned: {session.state}"
+        )
     return session.frame
 
 
@@ -297,5 +407,7 @@ __all__ = [
     "at_left_wall_base",
     "at_mid_ledge",
     "at_shaft_lip",
+    "over_mid_ledge",
     "play_alcatraz_escape",
+    "play_parlor_mid_ledge_grab",
 ]

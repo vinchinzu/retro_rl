@@ -107,8 +107,8 @@
     "exit_x": 759,
     "exit_y": 185
   },
-  "video": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/recordings/alcatraz_escape.mp4",
-  "encodedFrames": 526,
-  "elapsedSec": 1.09,
+  "video": null,
+  "encodedFrames": 0,
+  "elapsedSec": 0.54,
   "shot": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/alcatraz_escape_leave.png"
 }

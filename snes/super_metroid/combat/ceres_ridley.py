@@ -7,8 +7,8 @@ Samus energy drops **below 30**. Optimal is five first-frame **tail** hits:
 
 1. Run to the right wall as Ridley appears (tail tip is the fat hitbox).
 2. After the third hit he hovers — jump to keep eating the tail.
-3. After the fourth hit, nudge slightly left so the tail stays on-screen
-   for the fifth hit when i-frames expire.
+3. After the fourth hit he hovers high — stay on the right wall and jump
+   (TAS fifth hit is x=235 y=77). Nudging left misses the tail.
 4. Done when ``timer_type == 3`` (Ceres escape) and health < 30.
 
 Shooting him 100 times also ends the fight and is strictly slower.
@@ -59,6 +59,9 @@ class CeresRidleyStrategy:
     door_x: int = DOOR_X
     max_fight_frames: int = 6_000
     jump_hold_frames: int = JUMP_HOLD_FRAMES
+    # True: release A after hit 4, then spin-jump to y≈77 (product 1611f).
+    # False: hold A (1666f). Elev 571-chain debris idles join the faster pin.
+    fresh_fifth_jump: bool = True
 
 
 @dataclass
@@ -170,13 +173,28 @@ def fight_ceres_ridley_action(
             return ("LEFT", "B")
         return ()
 
-    names = []
-    if x > strategy.nudge_x:
-        names.append("LEFT")
-    elif x < strategy.nudge_x - 8:
+    # Fifth hit: Ridley hovers high. TAS is x=235 y=77 after a FRESH
+    # spin jump (A released on the 4th-hit landing). Holding A through
+    # the land never re-jumps. Elev 571-chain debris idles join this pin.
+    names: list[str] = []
+    if x < strategy.wall_x_min:
         names.append("RIGHT")
-    if frames_since_hit < strategy.jump_hold_frames or invuln == 0:
+    elif x > strategy.wall_x_max:
+        names.append("LEFT")
+    if not strategy.fresh_fifth_jump:
         names.append("A")
+        return tuple(names)
+    air = int(state.movement_type) in (2, 3, 6, 23) or int(
+        state.vertical_direction
+    ) in (1, 2)
+    if air:
+        names.append("A")
+        return tuple(names)
+    if invuln > 55 and frames_since_hit < 50:
+        return tuple(names)
+    if "RIGHT" not in names and "LEFT" not in names:
+        names.append("RIGHT")
+    names.extend(("B", "A"))
     return tuple(names)
 
 

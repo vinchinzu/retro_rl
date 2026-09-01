@@ -27,6 +27,7 @@ Addresses are WRAM offsets.
 | Speed-booster counter | `0x0B3E` hi byte | Source-confirmed | Echo / blue-suit charge (0–4+); `speed_boosting` when ≥4 |
 | Speed-check flag | `0x0B3C u16` | Source-confirmed | Gates temp→permanent blue suit conversion |
 | Vertical direction | `0x0B36 u16` | Source-confirmed | 0 ground, 1 up, 2 down. Moonfall keeps this at 0 while airborne (uncapped fall). |
+| PRNG seed | `0x05E5 u16` | Source-confirmed | `$80:8111`. Boot writes `$0061` after clearing `$7E` (not power-on WRAM). Main loop rolls once per iteration at `$82:894F`. Poke via `ram.set_rng`; empty Ceres/Landing only unless the door is re-entered. [RNG.md](RNG.md) |
 | Moonwalk option | `0x09E4 u16` | Source-confirmed | Special Setting Mode copy. 0 = off (new-file default), 1 = on. Required for moonwalk / moonfall. PJBoy RAM map. Poke via `ram.set_moonwalk`; not a progression write. |
 | Facing / movement type | `0x0A1E u8` / `0x0A1F u8` | Source-confirmed | Facing 4=left, 8=right |
 | Shine-spark timer | `0x0A68 u16` | Source-confirmed | Shared with crystal flash |

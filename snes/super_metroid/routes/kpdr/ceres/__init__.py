@@ -5,10 +5,12 @@ Package layout
 * ``geometry`` — elev/magnet bands and hop *data* (``CERES_ELEV_HOPS``)
 * ``arm_pump`` — classic L↔R pump + knockback recovery
 * ``magnet`` — Magnet Stairs + Falling Tile reverse
-* ``scientist`` — Dead Scientist Room left-alcove walk-off + pit takeoff
+* ``scientist`` — Dead Scientist never-jump run (outbound RIGHT, reverse LEFT)
 * ``elev_escape`` — elev shaft climb → ship leave
 * ``outbound`` — play_ceres_outbound_to_ridley / play_ceres_escape_to_landing
-* ``room_tape`` — rooms 1–3 as slices of the product outbound prefix
+  (Ceres 1 moonfall + Ceres 2 magnet-feet + Ceres 3 jump-before-ledge)
+* ``spine`` — CERES_SPINE / CERES_DOOR_EDGES / CERES_MILESTONES / boot /
+  TAS comparison clocks. Morph composes this prefix.
 
 Takeoff types live in ``super_metroid.takeoff``. Knockback lives in
 ``routes.skills.knockback``. Import those from the owning module.
@@ -26,6 +28,15 @@ from super_metroid.routes.kpdr.ceres.outbound import (
     play_ceres_outbound_to_ridley,
     play_ceres_to_ridley_door,
 )
+from super_metroid.routes.kpdr.ceres.spine import (
+    CERES_DOOR_EDGES,
+    CERES_MILESTONES,
+    CERES_SCIENTIST_MAX_FRAMES,
+    CERES_SPINE,
+    ceres_hops_vs_tas,
+    play_boot_to_ceres,
+    play_boot_to_ceres_tas,
+)
 
 __all__ = [
     "_CERES_ARM_PUMP_PERIOD",
@@ -33,4 +44,11 @@ __all__ = [
     "play_ceres_to_ridley_door",
     "play_ceres_outbound_to_ridley",
     "play_ceres_escape_to_landing",
+    "CERES_SPINE",
+    "CERES_DOOR_EDGES",
+    "CERES_MILESTONES",
+    "CERES_SCIENTIST_MAX_FRAMES",
+    "ceres_hops_vs_tas",
+    "play_boot_to_ceres",
+    "play_boot_to_ceres_tas",
 ]

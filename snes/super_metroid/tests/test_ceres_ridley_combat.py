@@ -69,13 +69,28 @@ def test_after_third_hit_jumps() -> None:
     assert "A" in action
 
 
-def test_after_fourth_hit_nudges_and_jumps() -> None:
+def test_after_fourth_hit_stays_on_wall_and_jumps() -> None:
     state = _state(samus_x=WALL_X_MIN)
     action = fight_ceres_ridley_action(state, hits_taken=4, frames_since_hit=0)
-    assert "LEFT" in action
+    assert "LEFT" not in action
     assert "A" in action
-    parked = _state(samus_x=NUDGE_X)
-    assert "A" in fight_ceres_ridley_action(parked, hits_taken=4, frames_since_hit=0)
+    left = _state(samus_x=NUDGE_X)
+    action = fight_ceres_ridley_action(left, hits_taken=4, frames_since_hit=0)
+    assert "RIGHT" in action
+    assert "A" in action
+
+
+def test_fresh_fifth_jump_releases_a_then_spin_jumps() -> None:
+    strat = CeresRidleyStrategy(fresh_fifth_jump=True)
+    state = _state(samus_x=WALL_X_MIN)
+    held = fight_ceres_ridley_action(
+        state, hits_taken=4, frames_since_hit=10, invuln=80, strategy=strat
+    )
+    assert "A" not in held
+    takeoff = fight_ceres_ridley_action(
+        state, hits_taken=4, frames_since_hit=50, invuln=40, strategy=strat
+    )
+    assert takeoff == ("RIGHT", "B", "A")
 
 
 def test_low_energy_runs_to_left_door() -> None:
@@ -141,6 +156,7 @@ def test_product_outbound_is_tail_tank() -> None:
     from super_metroid.combat.ceres_ridley import CeresRidleyStrategy
 
     assert CeresRidleyStrategy().policy == "tail_tank"
+    assert CeresRidleyStrategy().fresh_fifth_jump is True
 
 
 def test_fight_terminal_and_product_raise() -> None:

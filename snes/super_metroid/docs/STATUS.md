@@ -68,7 +68,7 @@ Work: `bd ready -l super_metroid -l spine`.
 
 | Tip | CLI | Frames | Notes |
 |-----|-----|-------:|-------|
-| Morph | `morph` | **26,824** | K0; Ceres arm-pump + elev top (was 27,074) |
+| Morph | `morph` | **24,187** | K0; TAS-close Ceres spine, dual-exact (`morph.json`, `morph_dual.json`; was 24,475) |
 | Bombs / Torizo | `bombs` | 47,132 | K0 |
 | Spore exit | `spore` | 73,216 | K0 |
 | Spore Supers | `supers` | 73,251 | K0 |
@@ -119,7 +119,7 @@ Secondary only — does **not** change the program gate above.
 
 | Fact | Value |
 |------|-------|
-| Morph on clean bombs path | **26,824f** (split; matches assisted morph tip) |
+| Morph on clean bombs path | **26,824f** (split; older than assisted 24,187 tip) |
 | Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06) — parlor `0x92FD`, items `0x1004` |
 | Clean integrity | 0 energy/ammo writes; 0 loads/progression/capacity; dual reverify |
 | Residual | purged (clean bombs dual GREEN; see CLEAN_TRACK) |

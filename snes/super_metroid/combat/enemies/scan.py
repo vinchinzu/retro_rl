@@ -26,6 +26,9 @@ class Enemy(NamedTuple):
     y: int
     hp: int
     freeze_timer: int
+    extra_props: int = 0
+    x_radius: int = 0
+    y_radius: int = 0
 
 
 def _u16(ram: Any, addr: int) -> int:
@@ -75,6 +78,9 @@ def enemies_from_ram(ram: Any) -> tuple[Enemy, ...]:
                 y=y,
                 hp=hp,
                 freeze_timer=_u16(ram, base + 0x26),
+                extra_props=_u16(ram, base + 0x10),
+                x_radius=_u16(ram, base + 0x0A),
+                y_radius=_u16(ram, base + 0x0C),
             )
         )
     return tuple(out)

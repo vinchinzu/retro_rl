@@ -74,3 +74,6 @@ New-file table:
 - Hop `side` is D-pad `LEFT`/`RIGHT`. Shoulders are `L`/`R`.
 - Phase dumps are named scratch pins; leftover still is the next boot when
   the residual says so. RED dual keeps the controller.
+- RNG (`$05E5`): boot writes `$0061` after clearing WRAM — do not re-power-on
+  for a new seed. Pin first Ceres/Zebes `gs=8` and `ram.set_rng`. Empty rooms
+  only unless the door is re-entered. [docs/RNG.md](docs/RNG.md).

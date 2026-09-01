@@ -4,7 +4,7 @@ YouTube / the TASVideos encode is not the oracle. Tooling is: **same emulator as
 
 Publication: [TASVideos #4010M](https://tasvideos.org/4010M) · Sniq SM 100% · **lsnes rr2-β23** · core `bsnes v085 (Compatibility core)`.
 
-## Recheck (2026-08-31)
+## Recheck (2026-08-31, corrected native boot)
 
 | Claim | Result |
 |-------|--------|
@@ -13,28 +13,44 @@ Publication: [TASVideos #4010M](https://tasvideos.org/4010M) · Sniq SM 100% · 
 | Parse to SNES-12 (`tas/lsmv.py`) | **222 788f**, Start/A mash, no resets. Tests: `test_parse_sniq_100_lsmv_4010` |
 | Replay under **snes9x** harness | documented **dead-end** (Ceres thrash, items `0`) |
 | Replay under BizHawk `sniq_100p.bk2` | converter copy; Linux libsnes **SEGV** |
-| Replay under **lsnes-bsnes.exe** + Wine wow64 | **movie loads** 222 788f readonly |
-| First Ceres elev `0xDF45` | **f10962** energy 99 |
-| first_control `gs=8` pose 0 @(128,0) | **f11182** (matches harness any% first_control) |
-| Ceres Ridley `0xE0B5` | **f37269**, energy **99→25** (fight, not garbage RAM) |
-| Landing `0x91F8` / morph / Zebes | **not reached by f70000** — still the six Ceres rooms only |
+| Replay under **lsnes-bsnes.exe** + Wine wow64 | **GREEN** with the movie present before core boot; 222 788f readonly |
+| First Ceres elev `0xDF45` | **f8319** energy 99 |
+| first_control `gs=8` pose 0 @(128,0) | **f8538** |
+| Ceres Ridley `0xE0B5` | **f9979**, energy **99→24** during the fight |
+| Linear escape | `E06B` f11821 → `E021` f12079 → `DFD7` f12342 → `DF8D` f12671 → `DF45` f12952 |
+| Landing `0x91F8` / Zebes | **GREEN f15198**, energy 99, area 0 |
 | Encode / “watch the video” | **out of scope** |
 
-Artifacts (gitignored): `recordings/tas_oracle/sniq_100_lsnes_ceres/` (to first elev) and `…/sniq_100_lsnes/` (70k soak). `dump_log.txt` / `room_timeline.csv` are the truth files; `proof.json` currently has illegal `\h` escapes from Wine `Z:\` paths — dump Lua must JSON-escape.
+Authoritative artifact (gitignored): `recordings/tas_oracle/sniq_100_lsnes/`.
+`proof.json` and every `events.jsonl` row parse. `proof.json` reports
+`status=GREEN`, `landing_frame=15198`, seven unique rooms, six Ceres rooms,
+and one Zebes room. `series.jsonl` contains per-frame RAM through Landing.
 
-**Post-Ridley is unverified.** f45663 elev with energy 99, then Falling again, then Ridley **again** at f62639 with energy 99, looks like a Ceres restart, not Zebes. Do not treat the 70k soak as a full-movie sync.
+### Root cause
+
+The old wrapper booted an empty ROM/movie first, then issued asynchronous
+`load-rom` / `load-movie` / `load-readonly` commands from Lua. That is not the
+lsnes publication startup path and was already visibly desynced at first
+control. The old f11182/f37269/70k observations are invalid sync evidence.
+
+Correct startup passes the LSMV as the positional movie and the ROM as
+`--rom-a=...`, so lsnes constructs the core with the movie settings and RTC
+before frame zero. (`--rom=...` hits an rr2-β23 single-file type-check bug;
+`--load=...` is documented but is not consumed as the startup movie by this
+build.) Lua now sees `movie.framecount=222788` at startup and only dumps RAM.
 
 ## Goal
 
-One command produces a **native-core** dump `recordings/tas_oracle/sniq_100_lsnes/` that `extract_hops` can read: rooms past Ceres, item/beam gains, Landing/morph GREEN. Button parse is already done.
+One command produces a **native-core** dump `recordings/tas_oracle/sniq_100_lsnes/`: rooms past Ceres, item/beam gains, Landing/morph GREEN. Button parse, Landing GREEN, and `extract_hops` ingestion are done.
 
 ## Do next (in order)
 
-1. **Fix dump JSON** — escape `\` in Lua `proof.json` / `events.jsonl`. Sidecar is unreadable until this.
-2. **Diagnose post-Ridley** (one change): after f37269, did we desync? Suspects: `load-rom`+`load-movie`+`load-readonly` stack, turbo, Wine. Compare a **no-turbo** soak to f45000 against the 70k log. Halt at first unexpected room (second Ridley @99 is the miss class).
-3. **Landing GREEN** — `0x91F8` or morph bit, then early-exit. Only after (2) is clean.
-4. **Import** — oracle dir → `pins.json` / `extract_hops` with `source=lsnes_oracle`. Prefer this over `sniq_100_full` thrash boards.
-5. Optional later: any% `sniq_any_3653M.lsmv` same wrapper.
+1. **Import** — done. `tas/extract_hops.py` accepts `events.jsonl` + `proof.json`
+   without `trace.json` / `summary.json`; `source=lsnes_oracle`. Fixture:
+   `test_extract_run_lsnes_oracle_without_trace`. Real dump: 12 hops, 12 usable,
+   0 desync/thrash. Compact hop table: `tas/bodies/sniq_100_ceres_lsnes_hops.json`.
+2. Optional later: continue the same native replay to morph/item gains, or run
+   any% `sniq_any_3653M.lsmv` through a parameterized wrapper.
 
 ## Do not
 
@@ -51,9 +67,13 @@ One command produces a **native-core** dump `recordings/tas_oracle/sniq_100_lsne
 uv run pytest snes/super_metroid/tests/test_tas_movies.py::test_parse_sniq_100_lsmv_4010 \
   snes/super_metroid/tests/test_tas_catalog.py::test_existing_sniq_slices_unchanged -q
 
-# Native replay (lsnes rr2-β23 via Wine). Intro is ~11k frames.
-MAX_FRAMES=15000 EARLY_EXIT=1 \
+# Native replay (lsnes rr2-β23 via Wine). Landing is f15198.
+MAX_FRAMES=20000 EARLY_EXIT=1 SERIES_STRIDE=1 \
   ./snes/super_metroid/tas/oracle/run_lsnes_100.sh \
+  snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes
+
+# Offline extract (no emulator)
+uv run python -m super_metroid.tas.extract_hops \
   snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes
 ```
 
@@ -61,4 +81,7 @@ Env: `tas/ref/ORACLE_ENV.md`. Wrapper: `tas/oracle/run_lsnes_100.sh`. Lua: `tas/
 
 ## Done when
 
-`proof.json` parses, status=GREEN (Landing or morph), unique rooms include Zebes, `extract_hops` on that dir is usable. Continuous tip stays product pure.
+Completed: `proof.json` parses, status=GREEN at Landing, unique rooms include
+Zebes, and `extract_hops` emits a usable board (`source=lsnes_oracle`, 12/12
+usable Ceres+Landing hops, no desync/thrash). Continuous tip stays product
+pure. Optional: dump past Landing for item/beam gains.

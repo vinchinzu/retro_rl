@@ -19,7 +19,9 @@ from super_metroid.routes.kpdr.crateria.alcatraz_escape import (
     at_left_wall_base,
     at_mid_ledge,
     at_shaft_lip,
+    over_mid_ledge,
     play_alcatraz_escape,
+    play_parlor_mid_ledge_grab,
 )
 from super_metroid.routes.kpdr.room_ids import ROOM_PARLOR
 
@@ -66,6 +68,12 @@ def test_left_wall_base_and_mid_ledge_bands() -> None:
     assert not at_left_wall_base(_state(samus_x=805, samus_y=545, pose=26))
     assert at_mid_ledge(_state(samus_x=828, samus_y=459, pose=2))
     assert not at_mid_ledge(_state(samus_x=968, samus_y=651, pose=2))
+    spinning = _state(samus_x=828, samus_y=455, pose=25)
+    assert over_mid_ledge(spinning)
+    assert over_mid_ledge(_state(samus_x=835, samus_y=459, pose=26))
+    assert not over_mid_ledge(_state(samus_x=869, samus_y=471, pose=26))
+    assert not over_mid_ledge(_state(samus_x=828, samus_y=459, pose=2))
+    assert not over_mid_ledge(_state(samus_x=805, samus_y=545, pose=25))
 
 
 def test_shaft_lip_is_morph_hole_height() -> None:
@@ -113,6 +121,44 @@ def test_base_approach_is_one_dash_jump_not_a_retry_ladder(
     assert calls[1] == (30, ("LEFT", "B"), "alcatraz_base_run")
 
 
+def test_mid_ledge_unsins_with_l_not_a(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
+
+    calls: list[tuple[int, tuple[str, ...], str]] = []
+    session = _Session(_state(samus_x=805, samus_y=545, pose=2))
+
+    def _hold(sess: Any, frames: int, *buttons: str, reason: str = "") -> Any:
+        calls.append((frames, buttons, reason))
+        sess.frame += frames
+        if reason == "alcatraz_ledge_cross":
+            sess.state = replace(
+                sess.state, samus_x=828, samus_y=455, pose=25, frame=sess.frame
+            )
+        elif reason == "alcatraz_ledge_grab":
+            sess.state = replace(
+                sess.state, samus_x=828, samus_y=459, pose=2, frame=sess.frame
+            )
+        elif reason == "alcatraz_ledge_settle":
+            sess.state = replace(
+                sess.state, samus_x=828, samus_y=459, pose=2, frame=sess.frame
+            )
+        else:
+            sess.state = replace(sess.state, frame=sess.frame)
+        return sess.state
+
+    monkeypatch.setattr(alcatraz, "hold", _hold)
+    monkeypatch.setattr(alcatraz, "_unmorph_probe_pose", lambda _s: None)
+    alcatraz.play_parlor_mid_ledge_grab(session)
+    grabs = [c for c in calls if c[2] == "alcatraz_ledge_grab"]
+    assert grabs
+    assert all("L" in c[1] and "A" not in c[1] and "DOWN" not in c[1] for c in grabs)
+    crosses = [c for c in calls if c[2] == "alcatraz_ledge_cross"]
+    assert crosses
+    assert all("B" in c[1] and "A" in c[1] for c in crosses)
+
+
 def test_play_rejects_wrong_entry_seat() -> None:
     session = _Session(_state(samus_x=900, samus_y=651, pose=2))
     with pytest.raises(RuntimeError, match="natural entry"):
@@ -148,6 +194,37 @@ def test_instant_morph_is_single_down_while_holding_jump(
     downs = [c for c in calls if "DOWN" in c[1]]
     assert downs == [(1, ("DOWN", "A"), "alcatraz_instant_morph")]
     assert at_alcatraz_rollout(session.state)
+
+
+@pytest.mark.skipif(not SHARED_ROM.is_file(), reason="vanilla ROM not present")
+@pytest.mark.skipif(not _PIN.is_file(), reason="post_torizo_parlor_continuous.state missing")
+def test_parlor_mid_ledge_grab_unsins_from_base() -> None:
+    from super_metroid.assist import UnlimitedResourcesAssist
+    from super_metroid.combat.probe import ProbeSession, open_state_env
+    from super_metroid.routes.kpdr.crateria import alcatraz_escape as alcatraz
+    from super_metroid.routes.runtime import hold as real_hold
+
+    env, _resolved = open_state_env(_PIN, settle=5)
+    try:
+        session = ProbeSession(env, UnlimitedResourcesAssist())
+        grabs: list[tuple[int, tuple[str, ...]]] = []
+
+        def _hold(sess, frames: int, *buttons: str, reason: str = ""):
+            if reason == "alcatraz_ledge_grab":
+                grabs.append((frames, buttons))
+            return real_hold(sess, frames, *buttons, reason=reason)
+
+        alcatraz.hold = _hold
+        alcatraz._land_left_wall_base(session)
+        play_parlor_mid_ledge_grab(session)
+        assert grabs
+        assert all("L" in btns and "A" not in btns and "DOWN" not in btns for _, btns in grabs)
+        st = session.state
+        assert int(st.room_id) == ROOM_PARLOR
+        assert int(st.samus_y) <= 478
+        assert 818 <= int(st.samus_x) <= 860
+    finally:
+        env.close()
 
 
 @pytest.mark.skipif(not SHARED_ROM.is_file(), reason="vanilla ROM not present")

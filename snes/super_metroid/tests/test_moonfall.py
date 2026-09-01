@@ -14,6 +14,15 @@ from super_metroid.ram import (
     GameplayPhase,
     parse_state,
 )
+from super_metroid.routes.kpdr.ceres.outbound import (
+    CERES_FIRST_TAS_PAD,
+    CeresFallingTrack,
+    CeresFirstMoonfallTrack,
+    CeresMagnetTrack,
+    ceres_falling_magnet_feet_action,
+    ceres_first_moonfall_action,
+    ceres_magnet_to_scientist_action,
+)
 from super_metroid.routes.kpdr.crateria.climb_descent import (
     CLIMB_MOONFALL_ON_CLEAN,
     ClimbMoonfallTrack,
@@ -30,9 +39,18 @@ from super_metroid.routes.kpdr.crateria.parlor_descent import (
     parlor_moonfall_action,
     parlor_moonfall_enabled,
 )
-from super_metroid.routes.kpdr.room_ids import ROOM_CLIMB, ROOM_PARLOR, ROOM_PIT
+from super_metroid.routes.kpdr.room_ids import (
+    ROOM_CERES_ELEVATOR,
+    ROOM_CERES_FALLING,
+    ROOM_CERES_MAGNET,
+    ROOM_CERES_SCIENTIST,
+    ROOM_CLIMB,
+    ROOM_PARLOR,
+    ROOM_PIT,
+)
 from super_metroid.routes.skills.moonfall import (
     MOVEMENT_FALLING,
+    MOVEMENT_JUMPING,
     MOVEMENT_MOONWALKING,
     initiate_moonfall,
     is_moonfalling,
@@ -325,3 +343,360 @@ def test_parlor_clean_moonfall_flag_off_until_probe_green() -> None:
         pass
 
     assert parlor_moonfall_enabled(_Off()) is False  # type: ignore[arg-type]
+
+
+def test_ceres_first_waits_for_pad_then_hops() -> None:
+    elev = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=128,
+        samus_y=20,
+        pose=0,
+        movement_type=0,
+    )
+    names, track = ceres_first_moonfall_action(elev, CeresFirstMoonfallTrack("ride"))
+    assert names == ()
+    assert track.phase == "ride"
+    pad = replace(elev, samus_y=72)
+    names, track = ceres_first_moonfall_action(pad, CeresFirstMoonfallTrack("ride"))
+    assert names == ("B", "RIGHT")
+    assert track.phase == "hop"
+    assert track.held == 1
+    names, track = ceres_first_moonfall_action(pad, CeresFirstMoonfallTrack("hop", held=1))
+    assert names == ("B", "Y", "RIGHT", "A")
+    assert track.phase == "hop"
+
+
+def test_ceres_first_air_turns_at_tas_seat() -> None:
+    spinning = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=142,
+        samus_y=79,
+        pose=25,
+        movement_type=MOVEMENT_JUMPING,
+        vertical_direction=1,
+    )
+    assert len(CERES_FIRST_TAS_PAD) == 150
+    assert CERES_FIRST_TAS_PAD[12] == ("B", "LEFT")
+    names, track = ceres_first_moonfall_action(
+        spinning, CeresFirstMoonfallTrack("hop", held=12)
+    )
+    assert names == ("B", "LEFT")
+    assert track.phase == "air_turn"
+    names, track = ceres_first_moonfall_action(
+        spinning, CeresFirstMoonfallTrack("air_turn", held=13)
+    )
+    assert "L" in names and "B" in names
+    assert track.phase == "moon_arm"
+    names, track = ceres_first_moonfall_action(
+        spinning, CeresFirstMoonfallTrack("moon_arm", held=15)
+    )
+    assert names[0] == "B" and "RIGHT" in names and "X" in names
+    names, track = ceres_first_moonfall_action(
+        spinning, CeresFirstMoonfallTrack("moon_arm", held=16)
+    )
+    assert names[0] == "B" and "RIGHT" in names and "A" in names
+
+
+def test_ceres_first_weaves_then_exits_falling() -> None:
+    falling = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=160,
+        samus_y=200,
+        pose=25,
+        movement_type=MOVEMENT_FALLING,
+        vertical_direction=0,
+        velocity_y=8,
+    )
+    names, track = ceres_first_moonfall_action(
+        falling, CeresFirstMoonfallTrack("fall", held=40)
+    )
+    assert track.phase == "fall"
+    assert names == ()
+    near_first_platform = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=150,
+        samus_y=80,
+        pose=25,
+        movement_type=MOVEMENT_FALLING,
+        vertical_direction=0,
+        velocity_y=8,
+    )
+    names, track = ceres_first_moonfall_action(
+        near_first_platform, CeresFirstMoonfallTrack("fall", held=25)
+    )
+    assert "RIGHT" in names
+    floor = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=187,
+        samus_y=651,
+        pose=9,
+        movement_type=0,
+    )
+    names, track = ceres_first_moonfall_action(
+        floor, CeresFirstMoonfallTrack("fall", held=len(CERES_FIRST_TAS_PAD))
+    )
+    assert track.phase == "land"
+    assert "RIGHT" in names
+    dest = _state(
+        room_id=ROOM_CERES_FALLING,
+        game_state=8,
+        samus_x=40,
+        samus_y=139,
+        pose=17,
+    )
+    names, track = ceres_first_moonfall_action(dest, CeresFirstMoonfallTrack("exit"))
+    assert track.phase == "done"
+    assert names == ()
+
+
+def test_ceres_first_idles_door_fade() -> None:
+    door = _state(
+        room_id=ROOM_CERES_ELEVATOR,
+        game_state=9,
+        samus_x=237,
+        samus_y=651,
+        pose=17,
+        movement_type=1,
+    )
+    names, track = ceres_first_moonfall_action(door, CeresFirstMoonfallTrack("land", held=4))
+    assert names == ()
+    assert track.phase == "exit"
+    fade = replace(door, game_state=11, room_id=ROOM_CERES_FALLING, samus_x=39, samus_y=139)
+    names, track = ceres_first_moonfall_action(fade, CeresFirstMoonfallTrack("exit"))
+    assert names == ()
+    assert track.phase == "exit"
+
+
+def test_ceres_falling_runs_off_entry_then_hops_floor() -> None:
+    ledge = _state(
+        room_id=ROOM_CERES_FALLING,
+        facing=FACING_RIGHT,
+        samus_x=39,
+        samus_y=139,
+        pose=17,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_falling_magnet_feet_action(ledge, CeresFallingTrack())
+    assert names == ("RIGHT", "B", "L")
+    assert "A" not in names
+    names, track = ceres_falling_magnet_feet_action(ledge, track)
+    assert names == ("RIGHT", "B", "L")
+    floor = replace(ledge, samus_x=155, samus_y=187, pose=9, momentum_x=2)
+    names, track = ceres_falling_magnet_feet_action(floor, CeresFallingTrack())
+    assert names == ("RIGHT", "B", "A")
+    assert "LEFT" not in names
+    assert track.phase == "floor_hop"
+    air = replace(
+        floor,
+        samus_x=166,
+        samus_y=183,
+        pose=25,
+        movement_type=MOVEMENT_JUMPING,
+        vertical_direction=1,
+    )
+    names, track = ceres_falling_magnet_feet_action(
+        air, CeresFallingTrack(phase="floor_hop", floor_hopped=True, hop_held=1)
+    )
+    assert names == ("B", "A")
+    names, track = ceres_falling_magnet_feet_action(
+        air, CeresFallingTrack(phase="floor_hop", floor_hopped=True, hop_held=2)
+    )
+    assert names == ("LEFT", "RIGHT", "B", "A")
+    assert track.phase == "floor_hop"
+    names, track = ceres_falling_magnet_feet_action(
+        replace(air, samus_y=178),
+        CeresFallingTrack(phase="floor_hop", floor_hopped=True, hop_held=3),
+    )
+    assert names[0] == "RIGHT"
+    assert "B" in names
+    assert "X" not in names
+    assert track.phase == "magnet_feet"
+
+
+def test_ceres_falling_exit_hop_then_magnet_done() -> None:
+    plat = _state(
+        room_id=ROOM_CERES_FALLING,
+        facing=FACING_RIGHT,
+        samus_x=330,
+        samus_y=171,
+        pose=9,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_falling_magnet_feet_action(
+        plat, CeresFallingTrack(floor_hopped=True)
+    )
+    assert names == ("RIGHT", "B", "A")
+    assert track.phase == "exit_hop"
+    dest = _state(
+        room_id=ROOM_CERES_MAGNET,
+        game_state=8,
+        samus_x=39,
+        samus_y=139,
+        pose=9,
+    )
+    names, track = ceres_falling_magnet_feet_action(dest, CeresFallingTrack(phase="exit"))
+    assert names == ()
+    assert track.phase == "done"
+
+
+def test_ceres_magnet_jumps_top_ledge_no_shoulder() -> None:
+    seat = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_RIGHT,
+        samus_x=39,
+        samus_y=139,
+        pose=9,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_magnet_to_scientist_action(seat, CeresMagnetTrack())
+    assert names[0] == "RIGHT"
+    assert "B" in names
+    assert "A" not in names
+    assert "L" in names or "R" in names
+    lip = replace(seat, samus_x=133, pose=9)
+    names, track = ceres_magnet_to_scientist_action(lip, CeresMagnetTrack())
+    assert names == ("RIGHT", "B", "A")
+    assert track.phase == "jump1"
+
+
+def test_ceres_magnet_jumps_mid_slope_then_scientist_done() -> None:
+    slope = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_LEFT,
+        samus_x=131,
+        samus_y=255,
+        pose=10,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        slope, CeresMagnetTrack(phase="mid")
+    )
+    assert names == ("LEFT", "B", "A")
+    assert track.phase == "jump2"
+    dest = _state(
+        room_id=ROOM_CERES_SCIENTIST,
+        game_state=8,
+        samus_x=39,
+        samus_y=139,
+        pose=9,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        dest, CeresMagnetTrack(phase="exit")
+    )
+    assert names == ()
+    assert track.phase == "done"
+
+
+def test_ceres_magnet_jump1_releases_after_short_spin() -> None:
+    air = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_RIGHT,
+        samus_x=150,
+        samus_y=139,
+        pose=25,
+        movement_type=MOVEMENT_JUMPING,
+        vertical_direction=1,
+        momentum_x=2,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        air, CeresMagnetTrack(phase="jump1", hop_held=3)
+    )
+    assert names == ("DOWN",)
+    assert "A" not in names
+    assert track.phase == "drop1"
+
+
+def test_ceres_magnet_early_slope_does_not_jump2() -> None:
+    early = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_LEFT,
+        samus_x=151,
+        samus_y=235,
+        pose=10,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        early, CeresMagnetTrack(phase="mid")
+    )
+    assert "A" not in names
+    assert names == ("LEFT", "B")
+    assert track.phase == "mid"
+
+
+def test_ceres_magnet_jump2_releases_to_a_only() -> None:
+    falling = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_LEFT,
+        samus_x=118,
+        samus_y=268,
+        pose=26,
+        movement_type=MOVEMENT_JUMPING,
+        vertical_direction=2,
+        momentum_x=2,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        falling, CeresMagnetTrack(phase="jump2", hop_held=3)
+    )
+    assert names == ("LEFT",)
+    assert "A" not in names
+    assert track.phase == "drop2"
+    held = replace(falling, samus_y=245, vertical_direction=1)
+    names, track = ceres_magnet_to_scientist_action(
+        held, CeresMagnetTrack(phase="drop2", hop_held=4)
+    )
+    assert names == ("A",)
+    names, track = ceres_magnet_to_scientist_action(
+        held, CeresMagnetTrack(phase="drop2", hop_held=19)
+    )
+    assert names == ("DOWN", "A")
+
+
+def test_ceres_magnet_shoots_door_steam() -> None:
+    steam = _state(
+        room_id=ROOM_CERES_MAGNET,
+        facing=FACING_RIGHT,
+        samus_x=177,
+        samus_y=395,
+        pose=9,
+        movement_type=1,
+        momentum_x=2,
+        speed_flag=1,
+        enemy0_hp=20,
+        enemy0_x=211,
+        enemy0_y=395,
+    )
+    names, track = ceres_magnet_to_scientist_action(steam, CeresMagnetTrack(phase="bot"))
+    assert names == ("LEFT", "B", "X")
+    assert track.steam_shot is True
+    resume, track = ceres_magnet_to_scientist_action(
+        steam, CeresMagnetTrack(phase="exit", steam_shot=True)
+    )
+    assert resume == ("RIGHT", "B")
+    assert "X" not in resume
+
+
+def test_ceres_magnet_idles_fade() -> None:
+    fade = _state(
+        room_id=ROOM_CERES_MAGNET,
+        game_state=11,
+        facing=FACING_RIGHT,
+        samus_x=236,
+        samus_y=395,
+        pose=9,
+        movement_type=1,
+    )
+    names, track = ceres_magnet_to_scientist_action(
+        fade, CeresMagnetTrack(phase="bot")
+    )
+    assert names == ()
+    assert track.phase == "exit"

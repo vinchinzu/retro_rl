@@ -13,14 +13,15 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 - **chapter id:** `rr-8t4.1` / `level7-entry`
 - **evidence label:** mixed. Offline graph + Bait/post-L6 interface =
   **hypothesis**. Start-based `0x53→0x52` inland-left micro =
+  **fixture-live**. Post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25` =
   **fixture-live**. Pond `0x42`, drain, and entry room still **hypothesis**.
   Stop at fixture-live; integrator owns natural-segment / spine-green.
 
 - **exact predecessor:** not L7-ready. Current Survival tip is L6 residual
   play `0x09` `(56,109)` mode 5, keys=3, bombs=8, Bow=1, Rod=0, TF=`0x1F`.
-  Do not treat this as an L7 start. Expected L6 leave (unmeasured): overworld
-  play, TF `0x3F`, Whistle, Rod, Bow; Food likely 0; Candle 1 (blue). Do not
-  hardcode OW `0x22`.
+  Do not treat this as an L7 start. Poke fixture `Level6ExitOverworld` is
+  play `0x22` `(120,221)` TF `0x3F` Food=0; `verified=false`. Expected L6
+  leave (unmeasured) is still the fanfare leftover, not this poke.
 
 - **required inventory/capabilities:** TF `0x3F`, Whistle ≥1, Rod ≥1, Bow ≥1,
   sword. Food 0 until natural 60R Bait at shop hyp `0x34`. Candle remains 1
@@ -35,7 +36,8 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   3. `level7_pond_drain_entry` — `make_pond_entry_controller()`
      (still unverified; drain needs naturally selected Whistle)
 
-  Recon-only (not a spine stage): `OverworldToLevel7PondController` from
+  Recon-only (not a spine stage): `OverworldToBaitShopController` from
+  `Level6ExitOverworld`; `OverworldToLevel7PondController` from
   `PostSwordStart` (no Whistle).
 
 - **exact endpoint predicate:** `level7_entry_stop` — live L7 play in the
@@ -51,16 +53,27 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   - Dead: `hop10_ay` DOWN from `0x53` `(224,173)` (v9). Inland-left first.
   - Dead: start-`0x77` pond walk as the spine post-L6 path.
   - Dead: OW `0x22` as proven L6 leave; live L6 prefix `0x09` as L7 start.
-  - First missed RAM this sitting after `0x53→0x52`: play `0x52` `(112,181)`
-    hop `0x42` UP (`hop11_ax` then `unstick_wait`). North gap is not x=112.
+  - Dead: `(112,125)` on `0x22` is the leave (cave mouth, mode 16 → L6).
+  - Dead: `0x32` `(120,61)` `off_north` DOWN (`l7_bait_from_l6`). Corridor is x=112.
+  - Dead: `0x33` RIGHT @ y=141 → `0x34` (`l7_bait_32ax` leftover `(208,141)`).
+  - Dead: `0x24` DOWN at `(16,189)` (`l7_bait_33up`), `(160,189)`
+    (`l7_bait_24belt`, north-ladder x), `(208,189)` (`l7_bait_24se` SE).
+  - Dead: occupancy xmin=14 west pocket `(0,141)`; SW occupancy box `(25,181)`.
+  - Dead: `0x24↓0x34` (south wall sealed at x=16 / 160 / 208).
+  - First leftover this sitting: play `0x25` `(0,141)` west mouth
+    (`l7_bait_25` 1/1). Next sitting: inland RIGHT off x=0, then DOWN toward
+    `0x35`. Do not LEFT back to `0x24`. Do not retry DOWN at x=16 / 160 / 208.
 
-- **fixture provenance:** `PostSwordStart` Survival `--no-video`.
-  `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`,
-  `success=false`, `route_eligible=false`. Prior miss v9 `0x53` `(224,173)`.
+- **fixture provenance:** `Level6ExitOverworld` Survival. Prefix 1/1 through
+  `0x25`. `0x24→0x25` RIGHT @ y=141.
+  `recordings/l7_bait_from_l6_l7_bait_25.json` leftover play `0x25`
+  `(0,141)`, `success=true`, `route_eligible=false`. Pond recon remains
+  `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 
-- **files changed / public target:** `nes/zelda_i/level7/{dungeon,graph,entry,overworld,path,hops}.py`,
-  `nes/zelda_i/docs/LEVEL7_ROUTE.md`, `nes/zelda_i/tests/test_level7_{overworld,dungeon,hops}.py`,
-  `nes/zelda_i/docs/tasks/l7-handoff.md`, gitignored `recordings/l7_dnp_pond_53.json`.
+- **files changed / public target:** `nes/zelda_i/level7/overworld.py`,
+  `nes/zelda_i/docs/LEVEL7_ROUTE.md`, `nes/zelda_i/tests/test_level7_overworld.py`,
+  `nes/zelda_i/tests/test_leftover_traps.py`, `nes/zelda_i/docs/tasks/l7-handoff.md`,
+  gitignored `recordings/l7_bait_from_l6_l7_bait_25.json`.
   Public target: **`level7-entry`**.
 
 ---

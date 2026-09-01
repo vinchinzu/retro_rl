@@ -35,6 +35,8 @@ from zelda_i.ram import (
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 from zelda_i.anchors import (
+    SCREEN_BRACELET_ARMOS,
+    SCREEN_LEVEL6_ENTRANCE,
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
     SCREEN_LEVEL7_POND_HYP,
     TF_BIT_L7 as LEVEL7_TRIFORCE_BIT,
@@ -81,6 +83,42 @@ LEVEL7_POND_FROM_SHOP_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_LEVEL7_POND_HYP, "UP"),
 )
 
+# Post-L6 leftover play 0x22 (120,221) → Armos bait shop 0x34.
+# 0x22↓0x32 and 0x32→0x33 @ y=141 reverse the live L6 door walk.
+# Dead: 0x33 RIGHT @ y=141 → 0x34 (l7_bait_32ax leftover (208,141) east mountain).
+# Live L6 reverse: 0x33↑0x23 @ x=208, 0x23→0x24 @ y=141.
+# 0x24 south sand east is live through (208,189). DOWN at 16/160/208 is mountain.
+# Fixture-live: 0x24→0x25 RIGHT @ y=141 (l7_bait_25 leftover 0x25 (0,141)).
+# Shop 0x34 stays unobserved. Next: inland off the west mouth, then DOWN.
+POST_L6_TO_BAIT_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x32, "DOWN", align_x=112),
+    ScreenHop(0x33, "RIGHT", align_y=141),
+    ScreenHop(0x23, "UP", align_x=208),
+    ScreenHop(SCREEN_BRACELET_ARMOS, "RIGHT", align_y=141),
+    ScreenHop(0x25, "RIGHT", align_y=141),
+)
+POST_L6_TO_BAIT_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    SCREEN_LEVEL6_ENTRANCE, POST_L6_TO_BAIT_HOPS
+)
+BAIT_APPROACH_MAX_FRAMES = 15_000
+# Dead belief: (112,125) on 0x22 is the L6 leave. Mode 16 → dungeon.
+L6_CAVE_MOUTH_X = 112
+L6_CAVE_MOUTH_Y = 125
+L6_CAVE_MOUTH_TOL = 16
+# Live L6 0x32↑0x22 is align_x=112. Fixture leftover arrived 0x32 (120,61):
+# recover_off_edge DOWN at x=120 is the east wall of that corridor (tile 216).
+BAIT_32_CORRIDOR_X = 112
+BAIT_32_NORTH_Y = 80
+# l7_bait_33up leftover 0x24 (16,189): DOWN is south mountain, not 0x34.
+# l7_bait_24east leftover (0,141): occupancy xmin=14 trapped the west edge.
+# l7_bait_24sand leftover (25,181): occupancy boxed in the SW mountain corner.
+# l7_bait_24belt leftover (160,189): DOWN at the north-ladder x is mountain.
+# l7_bait_24se leftover (208,189): DOWN at the SE mouth is mountain (tile 206).
+# Live L6 0x24→0x23 is LEFT @ y=141; 0x25 is that band reversed. Never DOWN
+# at y=189.
+BAIT_24_EAST_Y = 141
+BAIT_24_Y_TOL = 4
+
 LEVEL7_POND_HOPS: tuple[ScreenHop, ...] = LEVEL7_POND_APPROACH_HOPS + (
     ScreenHop(0x53, "LEFT", align_y=141),
     # 0x53 west: central y≈141 is tree-blocked; lower gap is y≈189.
@@ -103,6 +141,49 @@ class Level7NavPhase(Enum):
     HOP = auto()
     DONE = auto()
     FAILED = auto()
+
+
+def bait_32_north_action(snap: ZeldaSnapshot, *, swing) -> FrameAction | None:
+    """Leave the 0x32 north mouth via the live x=112 corridor, then DOWN.
+
+    l7_bait_from_l6 leftover (120,61): off_north DOWN never left the cell.
+    """
+    if snap.screen != 0x32 or snap.link_y >= BAIT_32_NORTH_Y:
+        return None
+    if abs(snap.link_x - BAIT_32_CORRIDOR_X) > 5:
+        btn = "LEFT" if snap.link_x > BAIT_32_CORRIDOR_X else "RIGHT"
+        return swing(btn, "32_north_ax")
+    return swing("DOWN", "32_north_down")
+
+
+def bait_24_east_action(snap: ZeldaSnapshot, *, swing) -> FrameAction | None:
+    """Live y=141 band RIGHT toward 0x25. Never DOWN at the south wall.
+
+    l7_bait_33up leftover (16,189): DOWN is south mountain.
+    l7_bait_24east leftover (0,141): occupancy xmin=14 trapped the west edge.
+    l7_bait_24sand leftover (25,181): occupancy boxed in the SW corner.
+    l7_bait_24belt leftover (160,189): DOWN at the north-ladder x is mountain.
+    l7_bait_24se leftover (208,189): DOWN is SE mountain. UP to the band.
+    """
+    if snap.screen != SCREEN_BRACELET_ARMOS:
+        return None
+    if snap.link_x < EDGE_WEST_X:
+        return swing("RIGHT", "24_west_inland")
+    if snap.link_y > BAIT_24_EAST_Y + BAIT_24_Y_TOL:
+        return swing("UP", "24_east_band")
+    if snap.link_y < BAIT_24_EAST_Y - BAIT_24_Y_TOL:
+        return swing("DOWN", "24_east_band")
+    return None
+
+
+def at_l6_cave_mouth(snap: ZeldaSnapshot) -> bool:
+    """True on the 0x22 dungeon mouth that starts mode-16 L6 enter."""
+    return (
+        snap.level == 0
+        and snap.screen == SCREEN_LEVEL6_ENTRANCE
+        and abs(snap.link_x - L6_CAVE_MOUTH_X) <= L6_CAVE_MOUTH_TOL
+        and abs(snap.link_y - L6_CAVE_MOUTH_Y) <= L6_CAVE_MOUTH_TOL
+    )
 
 
 def pond_53_to_52_action(
@@ -191,6 +272,69 @@ class OverworldToLevel7PondController(OverworldPathController):
         return None
 
 
+@dataclass
+class OverworldToBaitShopController(OverworldPathController):
+    """Fixture-live walk: post-L6 south leftover through ``0x25``.
+
+    ``0x24`` south is mountain. Shop ``0x34`` is still unobserved. Spine
+    chapters stay fail-closed (``verified=false``). Do not enter the 0x22 cave
+    mouth.
+    """
+
+    phase: Level7NavPhase = Level7NavPhase.HOP
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS
+    require_sword: bool = True
+    max_frames: int = BAIT_APPROACH_MAX_FRAMES
+    evidence: str = "hypothesis"
+    route_eligible: bool = False
+
+    @property
+    def failed(self) -> bool:
+        return self.phase is Level7NavPhase.FAILED
+
+    def end_screen(self) -> int:
+        return self.hops[-1].target
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        if hop.target == 0x33:
+            return bait_32_north_action(snap, swing=self._swing)
+        if hop.target == 0x25:
+            return bait_24_east_action(snap, swing=self._swing)
+        return None
+
+    def _refuse(self, reason: str) -> FrameAction:
+        self.success = False
+        return self._fail(reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.level == 6:
+            return self._refuse("l6_dungeon_enter")
+        if at_l6_cave_mouth(snap):
+            return self._refuse("l6_cave_mouth")
+        if snap.mode == 16 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
+            return self._refuse("l6_cave_mouth_enter")
+        if snap.in_cave:
+            return self._refuse("unexpected_cave")
+        return super().step(snap)
+
+    def report(self) -> dict[str, Any]:
+        out = super().report()
+        out.update(
+            {
+                "evidence": self.evidence,
+                "route_eligible": self.route_eligible,
+                "failed": self.failed,
+                "end_screen": hex(self.end_screen()),
+                "writes": 0,
+            }
+        )
+        return out
+
+
 def has_whistle(ram) -> bool:
     return bool(read_u8(ram, ADDR_WHISTLE))
 
@@ -270,6 +414,9 @@ def planning_report() -> dict[str, Any]:
         "bait_shop_hops_from_start": [
             {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_BAIT_SHOP_HOPS
         ],
+        "bait_shop_hops_from_post_l6": [
+            {"target": hex(h.target), "dir": h.direction} for h in POST_L6_TO_BAIT_HOPS
+        ],
         "pond_hops_from_shop": [
             {"target": hex(h.target), "dir": h.direction}
             for h in LEVEL7_POND_FROM_SHOP_HOPS
@@ -282,6 +429,11 @@ def planning_report() -> dict[str, Any]:
             "west_gap_y": POND_53_WEST_GAP_Y,
             "seed_blocked": [list(c) for c in sorted(POND_53_SEED_BLOCKED)],
             "evidence": "fixture-live leftover 0x53 (224,173) hop10_ay",
+        },
+        "bait_24_micro": {
+            "east_y": BAIT_24_EAST_Y,
+            "next_hop": hex(0x25),
+            "evidence": "fixture-live 0x24→0x25 RIGHT @ y=141 leftover 0x25 (0,141)",
         },
         "live": {
             "pond_screen": None,

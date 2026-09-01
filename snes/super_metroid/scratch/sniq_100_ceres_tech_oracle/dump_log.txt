@@ -1,0 +1,41 @@
+[0] lsnes_dump_sm.lua start out_dir=Z:\home\v\01_projects\11_games\retro_rl\snes\super_metroid\scratch\sniq_100_ceres_tech_oracle
+[0] early_exit=true max_frames=15250
+[0] playback_speed=turbo
+[0] movie.framecount=222788
+[1] unpaused speed=turbo
+[60] vma_count=14
+[60] vma[0] APURAM base=0x0 size=65536
+[60] vma[1] VRAM base=0x10000 size=65536
+[60] vma[2] OAM base=0x20000 size=544
+[60] vma[3] CGRAM base=0x21000 size=512
+[60] vma[4] WRAM base=0x7E0000 size=131072
+[60] vma[5] BUS base=0x1000000 size=16777216
+[60] vma[6] SRAM base=0x10000000 size=8192
+[60] vma[7] ROM base=0x80000000 size=3145728
+[60] vma[8] PTRTABLE base=0x100000000 size=1048576
+[60] vma[9] CPU_STATE base=0x101000000 size=152088
+[60] vma[10] PPU_STATE base=0x102000000 size=414352
+[60] vma[11] SMP_STATE base=0x103000000 size=131208
+[60] vma[12] DSP_STATE base=0x104000000 size=17984
+[60] vma[13] LSNESMMIO base=0xFFFFFFFF00000000 size=32
+[5000] heartbeat rooms=0 zebes=0 ceres=0 items=0x0000 area=0 room=0x0000 gs=30
+[8319] FIRST Ceres elev 0xDF45
+[8319] room_enter room=0xDF45 area=Ceres(6) items=0x0000 energy=99 pose=0 xy=(128,72) unique=1 zebes=0 ceres=1
+[8538] first_control room=0xDF45 area=6 items=0x0000 energy=99
+[8832] room_enter room=0xDF8D area=Ceres(6) items=0x0000 energy=99 pose=17 xy=(238,651) unique=2 zebes=0 ceres=2
+[9114] room_enter room=0xDFD7 area=Ceres(6) items=0x0000 energy=99 pose=9 xy=(492,139) unique=3 zebes=0 ceres=3
+[9458] room_enter room=0xE021 area=Ceres(6) items=0x0000 energy=99 pose=9 xy=(236,395) unique=4 zebes=0 ceres=4
+[9723] room_enter room=0xE06B area=Ceres(6) items=0x0000 energy=99 pose=17 xy=(492,139) unique=5 zebes=0 ceres=5
+[9979] room_enter room=0xE0B5 area=Ceres(6) items=0x0000 energy=99 pose=9 xy=(492,139) unique=6 zebes=0 ceres=6
+[10000] heartbeat rooms=6 zebes=0 ceres=6 items=0x0000 area=6 room=0xE0B5 gs=11
+[11821] room_enter room=0xE06B area=Ceres(6) items=0x0000 energy=24 pose=18 xy=(20,139) unique=6 zebes=0 ceres=6
+[12079] room_enter room=0xE021 area=Ceres(6) items=0x0000 energy=24 pose=18 xy=(20,139) unique=6 zebes=0 ceres=6
+[12342] room_enter room=0xDFD7 area=Ceres(6) items=0x0000 energy=24 pose=18 xy=(20,139) unique=6 zebes=0 ceres=6
+[12671] room_enter room=0xDF8D area=Ceres(6) items=0x0000 energy=24 pose=18 xy=(20,139) unique=6 zebes=0 ceres=6
+[12952] room_enter room=0xDF45 area=Ceres(6) items=0x0000 energy=24 pose=25 xy=(26,120) unique=6 zebes=0 ceres=6
+[15000] heartbeat rooms=6 zebes=0 ceres=6 items=0x0000 area=6 room=0xDF45 gs=34
+[15198] LANDING 0x91F8
+[15198] room_enter room=0x91F8 area=Crateria(0) items=0x0000 energy=99 pose=0 xy=(1152,128) unique=7 zebes=1 ceres=6
+[15198] GREEN native-core milestone
+[15198] proof written status=GREEN
+[15198] proof written status=GREEN

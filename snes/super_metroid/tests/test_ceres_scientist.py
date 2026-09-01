@@ -9,7 +9,6 @@ import numpy as np
 
 from super_metroid.ram import FACING_RIGHT, GS_ORDINARY, parse_state
 from super_metroid.routes.kpdr.ceres.geometry import (
-    CERES_SCIENTIST_FLOOR_HOP,
     _CERES_SCI_DOOR_Y,
     _CERES_SCI_FLOOR_Y,
 )
@@ -23,6 +22,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_RIDLEY,
     ROOM_CERES_SCIENTIST,
 )
+from super_metroid.takeoff import shoulder_pump_button
 
 
 def _state(**overrides):
@@ -42,12 +42,12 @@ def _state(**overrides):
     return replace(base, **values)
 
 
-def test_entry_ledge_never_jumps() -> None:
+def test_entry_ledge_runs_without_jump() -> None:
     st = _state(samus_x=39, samus_y=_CERES_SCI_DOOR_Y)
     assert scientist_on_entry_ledge(st)
     act = CeresScientistCross().action(st)
+    assert act == ("RIGHT", "B", shoulder_pump_button(0))
     assert "A" not in act
-    assert act[0] == "RIGHT"
 
 
 def test_door_settle_does_not_jump() -> None:
@@ -57,34 +57,31 @@ def test_door_settle_does_not_jump() -> None:
     assert "A" not in act
 
 
-def test_floor_takeoff_jumps_in_window() -> None:
-    hop = CERES_SCIENTIST_FLOOR_HOP
-    mid = (hop.takeoff.x_range[0] + hop.takeoff.x_range[1]) // 2
+def test_floor_never_jumps() -> None:
     ready = _state(
-        samus_x=mid,
+        samus_x=380,
         samus_y=_CERES_SCI_FLOOR_Y,
         facing=FACING_RIGHT,
         momentum_x=2,
         samus_x_sub=100,
     )
-    assert hop.covers_y(_CERES_SCI_FLOOR_Y)
-    assert hop.ready(ready)
     act = CeresScientistCross().action(ready)
-    assert "A" in act
-    assert "RIGHT" in act
-
-
-def test_floor_cold_does_not_jump() -> None:
-    cold = _state(
-        samus_x=300,
-        samus_y=_CERES_SCI_FLOOR_Y,
-        momentum_x=0,
-        speed_flag=0,
-        samus_x_sub=0,
-    )
-    assert not CERES_SCIENTIST_FLOOR_HOP.ready(cold)
-    act = CeresScientistCross().action(cold)
     assert "A" not in act
+    assert "RIGHT" in act
+    assert "B" in act
+
+
+def test_arm_pump_alternates() -> None:
+    cross = CeresScientistCross()
+    st = _state(samus_x=200, samus_y=_CERES_SCI_FLOOR_Y)
+    first = cross.action(st)
+    second = cross.action(st)
+    assert first == ("RIGHT", "B", "L")
+    assert second == ("RIGHT", "B", "L")
+    third = cross.action(st)
+    fourth = cross.action(st)
+    assert third == ("RIGHT", "B", "R")
+    assert fourth == ("RIGHT", "B", "R")
 
 
 def test_play_is_noop_when_already_in_flat() -> None:
@@ -105,4 +102,36 @@ def test_play_is_noop_when_already_in_ridley() -> None:
     session = Mock()
     session.state = _state(room_id=ROOM_CERES_RIDLEY, samus_x=39)
     play_ceres_scientist_to_flat(session)
+    session.step.assert_not_called()
+
+
+def test_reverse_never_jumps() -> None:
+    st = _state(samus_x=472, samus_y=_CERES_SCI_DOOR_Y)
+    act = CeresScientistCross("LEFT").action(st)
+    assert act == ("LEFT", "B", shoulder_pump_button(0))
+    assert "A" not in act
+
+
+def test_reverse_floor_never_jumps() -> None:
+    st = _state(samus_x=250, samus_y=_CERES_SCI_FLOOR_Y)
+    act = CeresScientistCross("LEFT").action(st)
+    assert "A" not in act
+    assert "LEFT" in act
+    assert "B" in act
+
+
+def test_reverse_rejects_bad_direction() -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        CeresScientistCross("UP")
+
+
+def test_reverse_is_noop_when_already_in_magnet() -> None:
+    from super_metroid.routes.kpdr.ceres.scientist import play_ceres_scientist_to_magnet
+    from super_metroid.routes.kpdr.room_ids import ROOM_CERES_MAGNET
+
+    session = Mock()
+    session.state = _state(room_id=ROOM_CERES_MAGNET, samus_x=216, game_state=GS_ORDINARY)
+    play_ceres_scientist_to_magnet(session)
     session.step.assert_not_called()

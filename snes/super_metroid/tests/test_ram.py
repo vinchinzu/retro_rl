@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import sys
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from super_metroid.ram import (
     ADDR_AREA_INDEX,
@@ -13,6 +18,7 @@ from super_metroid.ram import (
     ADDR_MAX_MISSILES,
     ADDR_MISSILES,
     ADDR_MOONWALK,
+    ADDR_RNG,
     ADDR_ROOM_ID,
     ADDR_SAMUS_X,
     ADDR_SAMUS_Y,
@@ -20,9 +26,13 @@ from super_metroid.ram import (
     BOMBS_MASK,
     HI_JUMP_MASK,
     MORPH_BALL_MASK,
+    RNG_BOOT_SEED,
     VARIA_MASK,
     parse_state,
     phase_for_game_state,
+    rng1,
+    rng1_advance,
+    rng1_rolls_between,
 )
 
 
@@ -98,3 +108,31 @@ def test_source_defined_game_state_phases() -> None:
     assert phase_for_game_state(14) is GameplayPhase.PAUSE_OR_INVENTORY
     assert phase_for_game_state(19) is GameplayPhase.DEATH_OR_GAME_OVER
     assert phase_for_game_state(39) is GameplayPhase.ENDING_OR_CREDITS
+
+
+def test_rng1_boot_seed_and_ceres_control() -> None:
+    assert ADDR_RNG == 0x05E5
+    assert RNG_BOOT_SEED == 0x0061
+    assert rng1(0x0061) == 0x02F6
+    assert rng1_advance(0x0061, 0) == 0x0061
+    assert rng1_advance(0x0061, 1) == 0x02F6
+    assert rng1_advance(0x0061, 3152) == 0x5705
+    assert rng1_advance(0x0061, 7712) == 0x5705
+    assert rng1_rolls_between(0x0061, 0x02F6) == 1
+    assert rng1_rolls_between(0x0061, 0x0061) == 0
+    assert rng1_rolls_between(0x0061, 0xFFFF) == -1
+    with pytest.raises(ValueError):
+        rng1_advance(0x0061, -1)
+
+
+def test_probe_rng_advance_cli(capsys: pytest.CaptureFixture[str]) -> None:
+    tools = Path(__file__).resolve().parents[1] / "scripts" / "tools"
+    sys.path.insert(0, str(tools))
+    import probe_rng  # noqa: E402
+
+    assert probe_rng.main(["--advance", "1", "--seed", "0x0061"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["kind"] == "advance"
+    assert out["final"] == "0x02F6"
+    assert out["values"] == ["0x0061", "0x02F6"]
+
