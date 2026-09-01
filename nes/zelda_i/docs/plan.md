@@ -14,15 +14,16 @@ One living residual: `docs/tasks/rr-tne2-residual.md`.
 
 South-band CheckWarp is **1/1** (`l6_stairs3a_southband` hop 290f, mode 9
 cellar `0x08` `(208,93)`, `position_writes=0`). Cellar08 is **1/1** play
-`0x1D` `(96,157)` rupees=43. `--through level6` is **red** at Gohma
-occupancy_stand `(120,189)` tile 118 after inland y=165. Heart / north0c /
-shard hops stay green on the poked-warp tape only. Survival evidence;
-do not update `STATUS.md` or overwrite Clean M5. Keys stay 2. Do not top up.
+`0x1D` `(96,157)` rupees=43. `--through level6-gohma` after the walk is
+**red** 2/2 (v1 north shutter `(115,93)` 599 pulses; v2 stand `(136,164)`
+43R spent, ghp=32). Heart / north0c / shard hops stay green on the
+poked-warp tape only. Survival evidence; do not update `STATUS.md` or
+overwrite Clean M5. Keys stay 2. Do not top up.
 
 Close `rr-tne2` only after:
 
 1. `rr-17co`: `--through level6` 1/1 with `position_writes=0` (warp dest
-   is already cellar `0x08`; Gohma occupancy after the walk is the red).
+   is already cellar `0x08`; Gohma after the walk is the red).
 2. Phase 4 (`rr-ibkf`): measured `AuditedEnv` post-reset `set_state` count
    is 0, and L4 Gleeok TF-exit has a continuous no-restore path.
 3. One `--through level6` acceptance trial.
@@ -182,14 +183,16 @@ One controller, dest glance `STAIRS3A_DEST` (mode 9 cellar `0x08`):
 4. UP to south-face of NE 0x68 `(208,96)`, then UP onto `0x71` `(208,93)`.
 
 Walk is **1/1** hop 290f, dest mode 9 `(208,93)`, `position_writes=0`.
-Cellar08 B-side cross **1/1**. `--through level6` red at Gohma occupancy.
-Fold `stairs3a.py` + `stairs3a_warp.py` after that compose greens.
+Cellar08 B-side cross **1/1**. `--through level6-gohma` after the walk
+red 2/2 (occupancy boxed; then cardinal walked through the body; then
+y=165 spray spent 43R). Fold `stairs3a.py` + `stairs3a_warp.py` after
+`--through level6` greens.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
   --through level6-gohma --no-video --trials 1 \
-  --tag l6_gohma_after_walk
+  --tag l6_gohma_spawn_shot
 ```
 
 ### Arrow shop splice (`rr-wabn`)
