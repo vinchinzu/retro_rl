@@ -10,23 +10,19 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — finish L6 from recovered south29 leftover `0x39` (2026-08-31)
+## Immediate — Phase 4 audit, then close `rr-tne2` (2026-09-01)
 
-Power-on Survival recovered stairs09 → rod → exit75 → south09 → south19
-→ clear29 → south29. `--through level6-south29 --tag l6_south29_right_down`
-**1/1** leftover play `0x39` `(120,93)` hop 282f. Tip is dark `0x39`
-north mouth `(120,93)` rod=1 keys=3 TF=`0x1F` bombs=8 Bow=1 health `0x66`
-`lo==hi`. East-leftover south29 is **BLOCKED 4/4**. West leftover south29
-is **BLOCKED 6/6** (y=157 SW squeeze). Do not retry west 1–6, LEFT at
-y=77 / y=144 / y=165, west-only chase, occupancy-DOWN from `(184,144)`,
-south29 from y=157, cardinal UP @ y=133, or LEFT+UP @ y=133. Do not
-retouch 0x40, maze-west, L5, stairs09, or the cellar walk.
+Power-on Survival is **1/1 through `--through level6`**: fanfare `0x0C`
+`(120,149)` TF `0x1F→0x3F`, hc 7→8 health `0x77`, keys=2 bombs=8 Bow=1
+Rod=1, one 0x3A position write, one wooden-arrow grant. Heart / north0c /
+shard hops are green. Bead `rr-tne2` stays open until Phase 4 measures
+post-reset `env.em.set_state()` as 0 and L4 Gleeok TF-exit has a
+continuous no-restore path. This is Survival evidence only; do not update
+`STATUS.md` or overwrite Clean M5.
 
-Keys are 3 here versus historical 4. Do not top up.
+Keys are 2 here versus historical 3. Do not top up.
 
-Living residual: `docs/tasks/rr-tne2-residual.md`. Bead `rr-tne2` stays open
-until the fresh power-on L6 endpoint passes. This is Survival evidence only;
-do not update `STATUS.md` or overwrite Clean M5.
+Living residual: `docs/tasks/rr-tne2-residual.md`.
 
 ### Session rule for every remaining checkbox
 
@@ -45,14 +41,9 @@ do not update `STATUS.md` or overwrite Clean M5.
   or rerun an unchanged policy. Three serial reds on the same checkbox means
   mark that checkbox blocked and stop the sitting.
 
-south29 is **1/1** leftover `(120,93)`. North peels from `(63,133)` died
-(UP slid 63→64; LEFT+UP y stuck on tile 244). RIGHT+DOWN along that face
-matched historical v4. Next sitting: `--through level6-settle39`. Do not
-restore north peels. Do not rerun south29 from y=157.
-
 Parallel L7/L8/L9/OW lanes are fixture-live only
-(`docs/tasks/{l7,l8,l9,ow}-handoff.md`); do not attach them until L6 leave is
-measured.
+(`docs/tasks/{l7,l8,l9,ow}-handoff.md`); do not attach them until Phase 4
+closes L6 leave.
 
 ### Phase 1 — recompose the existing body through clear `0x3A`
 

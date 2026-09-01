@@ -12,8 +12,7 @@ Platformer harness with play/autosplit/replay. Docs: `docs/STATUS.md`,
 # Refresh best times from split log
 ./run_bot.sh refresh-best
 
-# Unit tests (no ROM required for pure logic)
-uv run python -m pytest tests/ -q
+uv run python -m pytest tests/ -q -m rom
 ```
 
 ROM: `roms/DonkeyKongCountry.sfc` → symlink into

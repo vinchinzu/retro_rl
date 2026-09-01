@@ -7,12 +7,13 @@ from dataclasses import replace
 
 import numpy as np
 
-import super_metroid.routes.kpdr.ceres.elev_escape as elev_escape
+import super_metroid.routes.kpdr.ceres.magnet as magnet
 from super_metroid.paths import GAME_DIR
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GameplayPhase, parse_state
 from super_metroid.routes.controller_common import POSE_WALL_LATCH
-from super_metroid.routes.kpdr.ceres.elev_escape import (
+from super_metroid.routes.kpdr.ceres.magnet import (
     CERES_ELEV_BENCH_FRAMES,
+    CERES_ELEV_MAX_FRAMES,
     _CERES_475_TO_363_AWAY,
     _CERES_475_TO_363_INTO,
     _ceres_any_wall_latch,
@@ -111,8 +112,12 @@ def test_fast_entry_requires_preserved_spin_phase() -> None:
     )
     assert _ceres_fast_entry_window(fast)
     assert _ceres_fast_entry_window(replace(fast, samus_y=632, pose=25))
+    assert not _ceres_fast_entry_window(replace(fast, samus_y=651, pose=26))
     assert not _ceres_fast_entry_window(replace(fast, samus_y=651, pose=10))
     assert not _ceres_fast_entry_window(replace(fast, samus_y=620))
+    assert not _ceres_fast_entry_window(replace(fast, velocity_y=-1))
+    assert not _ceres_fast_entry_window(replace(fast, momentum_x=1))
+    assert not _ceres_fast_entry_window(replace(fast, invincibility_timer=0))
 
 
 def test_elev_entry_keeps_fast_spin_window() -> None:
@@ -149,7 +154,7 @@ def test_left_wall_latch_is_contact() -> None:
 
 
 def test_elev_to_landing_is_tas_wj_speed() -> None:
-    """Red until Sniq TAS WJ lands at 2246f. Do not edit the hops JSON."""
+    """Missed WJ is a hard fail. Do not edit the hops JSON. No checkpoint recover."""
     raw = json.loads(_TAS_CERES_HOPS.read_text())
     assert raw["schema"] == "sm_tas_ceres_hops_v2"
     assert raw["source"] == "lsnes_oracle"
@@ -163,8 +168,11 @@ def test_elev_to_landing_is_tas_wj_speed() -> None:
     fast = wj["fast_entry"]
     assert fast["pose"] == 25
     assert (fast["x"], fast["y"]) == (216, 632)
-    assert not hasattr(elev_escape, "CeresShaftClimb")
-    assert not hasattr(elev_escape, "_ceres_checkpoint_shaft")
+    assert not hasattr(magnet, "CeresShaftClimb")
+    assert not hasattr(magnet, "_ceres_checkpoint_shaft")
+    assert not hasattr(magnet, "_ceres_seat_ledge")
     assert _CERES_475_TO_363_INTO == "LEFT"
     assert _CERES_475_TO_363_AWAY == "RIGHT"
+    assert CERES_ELEV_MAX_FRAMES == 2500
     assert CERES_ELEV_BENCH_FRAMES == tas_frames
+    assert CERES_ELEV_MAX_FRAMES > tas_frames

@@ -90,7 +90,14 @@ class AlleycatPackTactics:
         # Left 0x5E clump, player on the right shoulder (REACH x=164 /
         # enemies 69–96): generic releft walks through the kick. Exit
         # right until the hold line, then plant — never LEFT through.
+        # Once the right wall pins the player (x >= _RIGHT_WALL_X) the plant
+        # pokes empty air facing the wall while the clump kicks from behind
+        # (Stage2 ko ~5,035f / 72 dmg). Turn to face the clump instead.
         if has_5e and _left_5e_clump(state, living):
+            if state.player_x >= _RIGHT_WALL_X:
+                return FrameAction(
+                    action=buttons("LEFT"), reason="alley_releft"
+                )
             if state.player_x < _PACK_HOLD_X:
                 return FrameAction(
                     action=buttons("RIGHT"), reason="alley_right_exit"

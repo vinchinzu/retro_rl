@@ -55,7 +55,9 @@ or another skill (the A/B loop), never to prove determinism.
 | `combat/` | Boss fight policies after natural entry; hops are thin adapters |
 | `routes/skills/` | Reusable movement Skills (walljump, moonfall, shinespark, poses) |
 | `tas/` | Sniq movies + harness replay (`docs/TAS_ADAPT.md`) |
-| `custom_integrations/SuperMetroid-Snes/` | Anchors; probes → `scratch/` |
+| `recordings/` | Watch MP4s in `recordings/<area>/` (`RECORDINGS_DIR`) |
+| `scratch/` | Hop JSON + phase pins in `scratch/<hop>/` |
+| `custom_integrations/SuperMetroid-Snes/` | Named anchors |
 
 Hop ≠ fight. Soft max ~1000 LOC: merge into the **Composer**
 (`tips.play_hops`) or delete ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)).
@@ -69,8 +71,9 @@ New-file table:
 - Door-warp settle: wait for **game state 8**; state 11 can last 50–100+f.
 - High WRAM (`$7E:D820+`): `read_bank7e_wram` / `write_wram_u8` — raw
   `get_ram()[0xD820]` is open-bus garbage.
-- Named anchors in `SuperMetroid-Snes/`; probe noise only in `scratch/`.
-  Overwrite `scratch/<hop>_run.json` (one per hop; do not stack `_vN`).
+- Named anchors in `SuperMetroid-Snes/`. Hop JSON + phase pins in
+  `scratch/<hop>/` (one run JSON per hop; do not stack `_vN`). Watch MP4s in
+  `recordings/<area>/` (`RECORDINGS_DIR`).
 - Practice / door-warp / boss probes are practice, not continuous evidence.
 - Morph bombs are **X** while morph (not A).
 - Hop `side` is D-pad `LEFT`/`RIGHT`. Shoulders are `L`/`R`.

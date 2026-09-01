@@ -16,12 +16,10 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Power-on spine is **1/1 through `--through level6-gohma`** (play `0x1C`
-`(120,189)` body gone, rod=1 keys=2 bombs=8 Bow=1 arrows=1 TF=`0x1F`).
-west2d/north2c are cardinal y-align LEFT and x-align KEY-UP. Gohma hop
-54f, one wooden-arrow grant (`arrow_poke_writes=1_from=0`). Keys are **2**
-after the 0x2C spend — no top-up. Next sitting: heart in `0x1C` then north
-shutter `0x0C` TF `0x20` (no spine hop yet).
+Power-on spine is **1/1 through `--through level6`** (fanfare `0x0C`
+`(120,149)` TF `0x1F→0x3F`, hc 7→8 health `0x77`, rod=1 keys=2 bombs=8
+Bow=1 arrows=1). Heart 31f, north shutter 209f, shard 43f. Bead stays
+open for Phase 4 (measured `AuditedEnv` state-load count). Do not STATUS.
 
 ## Commands
 
@@ -36,6 +34,9 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south1d
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-west2d --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-gohma --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-heart --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north0c --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6 --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-cellar --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-pickup --no-video --trials 1

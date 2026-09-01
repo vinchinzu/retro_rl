@@ -110,6 +110,41 @@ GOHMA_LEAVE = LeaveSpec(
     hearts_lo_eq_hi=False,
 )
 
+# Live leftover: l6_heart_recompose play 0x1C (120,149); hc 7→8 health 0x77.
+HEART_LEAVE = LeaveSpec(
+    hop="level6-heart",
+    room=0x1C,
+    x=(112, 128),
+    y=(141, 157),
+    triforce_bits=0x1F,
+    keys=2,
+    bombs=8,
+)
+
+# Live leftover: l6_north0c_recompose play 0x0C (120,205); TF still 0x1F.
+NORTH0C_LEAVE = LeaveSpec(
+    hop="level6-north0c",
+    room=0x0C,
+    x=(112, 128),
+    y=(189, 221),
+    triforce_bits=0x1F,
+    keys=2,
+    bombs=8,
+)
+
+# Live leftover: l6_tf_recompose fanfare 0x0C (120,149); TF 0x1F→0x3F.
+LEVEL6_LEAVE = LeaveSpec(
+    hop="level6",
+    room=0x0C,
+    x=(112, 128),
+    y=(141, 157),
+    mode=FANFARE_MODE,
+    triforce_bits=0x3F,
+    keys=2,
+    bombs=8,
+    allow_fanfare=True,
+)
+
 # Live leftover: l1_bow22_x112_v2 play 0x22 (224,141); keys 1→0. ADDR_BOW=0.
 BOW22_LEAVE = LeaveSpec(
     hop="level1-bow",
@@ -447,6 +482,21 @@ def north2c_glance(controller: Any) -> GlanceLeftover:
 def gohma_glance(controller: Any) -> GlanceLeftover:
     """Live Gohma-kill leftover play 0x1C (120,189); TF still 0x1F."""
     return grade_controller(controller, GOHMA_LEAVE)
+
+
+def heart_glance(controller: Any) -> GlanceLeftover:
+    """Live heart leftover play 0x1C (120,149); hc 7→8, TF still 0x1F."""
+    return grade_controller(controller, HEART_LEAVE)
+
+
+def north0c_glance(controller: Any) -> GlanceLeftover:
+    """Live north-shutter leftover play 0x0C (120,205); TF still 0x1F."""
+    return grade_controller(controller, NORTH0C_LEAVE)
+
+
+def level6_glance(controller: Any) -> GlanceLeftover:
+    """Live L6 shard leftover fanfare 0x0C (120,149); TF 0x3F."""
+    return grade_controller(controller, LEVEL6_LEAVE)
 
 
 def east3a_glance(controller: Any) -> GlanceLeftover:

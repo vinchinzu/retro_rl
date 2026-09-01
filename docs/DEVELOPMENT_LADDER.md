@@ -148,11 +148,9 @@ titles and skill quality.
 M0–M8 measure **one title’s completion engineering**. L0–L4 measure **shared
 solver capability**. Both ladders matter; do not collapse them.
 
-Shared infrastructure uses a separate evidence ladder: scaffolded →
-fake-tested → real-ROM tested → first real-game consumer → second independent
-consumer → publication-ready. Test-tier definitions and closure rules live in
-[TEST_TIERS.md](TEST_TIERS.md); a green unit suite alone never implies a real
-consumer or publication-ready capability.
+Shared infrastructure is unproven until ROM eval exists. Then:
+real-ROM tested → first real-game consumer → second independent consumer →
+publication-ready. [TEST_TIERS.md](TEST_TIERS.md).
 
 ## Active near-term focus
 

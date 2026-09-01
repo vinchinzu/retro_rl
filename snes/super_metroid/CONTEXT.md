@@ -102,9 +102,11 @@ _Avoid_: freezing the Phantoon prefix because the prefix run is green, shipping
 a leave that the next skill cannot **Sync**
 
 **Sitting**:
-One agent session on the living checkbox. It ends when that checkbox greens
-or the human/context dies.
-_Avoid_: three red windows as the sitting-end, treating a sitting as a hop restart
+One agent session on the living checkbox. It ends when that checkbox greens,
+the leftover will not **Join** and the miss is written for the next sitting,
+or the human/context dies. Drop the split, not the epic.
+_Avoid_: grinding a standing-pause pin, treating a sitting as a hop restart,
+closing Gravity to polish prefix slop
 
 **Chip**:
 One room at a time: TAS or human **Tape** as guideline → **Skill** on the tip.
@@ -115,8 +117,8 @@ Gravity
 **Sync**:
 The leave must **Join** the next **Skill**. A leftover still is the next pin
 only when that continuation is reliable. Item-to-item is an honest zero. If
-the leftover will not continue, both rooms are one change. Re-pin the next
-hop.
+the leftover will not continue: make the rooms one **Skill**, shrink the
+checkbox, or write the miss and end the **Sitting**.
 _Avoid_: authored standing pause as the proof pin, hope the tail survives,
 frame-append across a new leave, full-tape open-loop to invent the next pin,
 treating a few door frames as a fail

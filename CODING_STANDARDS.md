@@ -63,7 +63,7 @@ Soft max **~1000 LOC** per source file. Crossing 1k means merge into the
 A sibling extract to beat the bar (`foo_2.py`, a 13-file mixin) is a
 violation even when every file is under 1k.
 
-Tests for the **Skill** still pass after the fold. A Gut sitting does not
+ROM eval for the **Skill** still passes after the fold. A Gut sitting does not
 add a package, a new tick, or a probe CLI.
 
 ## Sitting
@@ -71,7 +71,7 @@ add a package, a new tick, or a probe CLI.
 - **Campaign:** one package (`routes/kpdr/`, `harvest/tasks/`, `combat`).
 - **Agent:** one source file, or one named cluster.
 - **Done:** that file is gone or lives in the owner under ~1000 LOC; no new
-  sibling; no second **Composer**; tests for the touched **Skill** pass.
+  sibling; no second **Composer**; ROM eval for the touched **Skill** passes.
 - **Non-claims:** did not edit `STATUS.md`; did not change the living **Tip**
   / rung; did not overwrite a published recording on a red run.
 

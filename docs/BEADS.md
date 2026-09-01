@@ -44,7 +44,7 @@ Game process still applies (e.g. Super Metroid pure-first in
 ## Landing the plane (session end)
 
 1. File or update beads for remaining work
-2. Run the narrowest tests for files you changed
+2. Run ROM eval for files you changed (`docs/TEST_TIERS.md`)
 3. Close finished issues; leave in_progress honest
 4. `bd export -o .beads/issues.jsonl` and commit code + that file together
 5. Push only if the user requested it

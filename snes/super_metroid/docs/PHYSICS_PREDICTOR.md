@@ -129,18 +129,16 @@ Complete prediction result:
 
 ## Predictor Backends
 
-### StubPredictor (testing)
+### StubPredictor (search scaffold)
 
-Deterministic fake physics for offline tests:
+Intentionally simplified. Not accurate Super Metroid physics. Not ground
+truth.
 
-- **Intentionally simplified:** Not accurate Super Metroid physics
 - **Physics model:** Direct pixel-per-frame movement (`x += vx`, `y += vy`)
   - B jump sets `vy = -5`, then `y += vy` (e.g., 200 - 5 = 195)
   - LEFT/RIGHT sets `vx = ±2`, then `x += vx`
   - Simple ground collision at y=200
 - **Not MiniStep:** Golden fixtures reflect StubPredictor behavior, not MiniStep/sm_rev
-- **Use for:** Protocol contract tests, CLI smoke tests, route planning unit
-  tests without ROM
 
 ```python
 from super_metroid.physics_sim import StubPredictor, SimState, FrameInput
@@ -337,28 +335,13 @@ the fastest option.
 - **Transport:** Subprocess stdin/stdout (HTTP may be added)
 - **sm_rev availability:** Not yet published; design allows graceful skip
 - **Environment:** `SM_REV_PATH` env var or `sm_rev` in PATH
-- **Fallback:** Tests use `StubPredictor` by default (no ROM required)
+- **Fallback:** `StubPredictor` for search speed only, not ground truth
 
 ### When sm_rev is Available
 
 1. Set `SM_REV_PATH` to sm_rev binary location
 2. Use `--predictor sm_rev` in CLI
 3. Or: `load_predictor("sm_rev")` in code
-
-## Testing
-
-Pure offline tests with `StubPredictor` — no ROM required:
-
-```bash
-uv run pytest snes/super_metroid/tests/test_physics_sim.py -v
-```
-
-Tests validate:
-
-- Protocol contract
-- Data structure serialization (JSON round-trip)
-- StubPredictor determinism
-- SmRevClient graceful unavailable handling
 
 ## Design Notes
 
@@ -376,14 +359,12 @@ Use predictor for candidate filtering, emulator for validation.
 ### Why Separate from Emulator?
 
 1. **Speed:** Specialized physics kernel can skip non-physics state
-2. **Portability:** Can run on different platforms / no ROM required for some
-   use cases
+2. **Portability:** Can run on different platforms
 3. **Isolation:** Planning code doesn't depend on emulator setup
-4. **Testing:** Stub predictor allows offline tests without ROM
 
 ### Accuracy vs Speed
 
-- **StubPredictor:** Fast, deterministic, not accurate — for tests only
+- **StubPredictor:** Fast, deterministic, not accurate — search scaffold only
 - **SmRevClient:** Accurate Super Metroid physics, fast kernel — for
   planning
 - **Full Emulator:** Gold standard, but expensive — for validation

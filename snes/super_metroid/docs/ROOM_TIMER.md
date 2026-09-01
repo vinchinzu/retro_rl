@@ -30,7 +30,6 @@ and transition direction are stored for route analysis.
 ## How to run
 
 ```bash
-# Import / logic smoke (no ROM)
 uv run python snes/super_metroid/scripts/probe/room_timer.py self-check
 
 # Offline fixture → durable JSON under super_metroid/
@@ -87,7 +86,6 @@ report = timer.report(source="my_run")
 ```
 
 Core module: `super_metroid/room_timer.py`.
-Tests: `super_metroid/tests/test_room_timer.py` (no ROM).
 
 **Fold-up (item / boss / segment PBs)** and hop skill bank (optimize one room
 without full-run resync): [RUN_TIMING_AND_SKILL_BANK.md](RUN_TIMING_AND_SKILL_BANK.md).

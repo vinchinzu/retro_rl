@@ -2,8 +2,9 @@
 
 The next skill must take the new leave cleanly. A leftover still is that
 pin only when continuation is reliable. An authored standing pause is not
-a proof pin. If the leftover will not continue, the two rooms are one
-change, not two beads. Re-pin the next hop. If Red Tower loses twenty fake
-jumps and Hellway cannot be joined, the rewrite did not land. Sync is the
-flexibility: get back on track. It is not hope, and it is not a mega-tape
-to invent the next pin.
+a proof pin. If the leftover will not continue, drop the split: one
+multi-room Skill, a smaller checkbox, or a written miss for the next
+sitting. Do not invent a pause pin to keep two beads. If Red Tower loses
+twenty fake jumps and Hellway cannot be joined, the rewrite did not land.
+Sync is getting back on track, not hope and not a mega-tape to invent
+the next pin.

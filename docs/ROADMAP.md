@@ -105,8 +105,9 @@ Highest leverage — **solver flagship triangle first**, then parallel genre tru
    - **Play spine** (`retro_harness.play_spine`) for fast human demos + run
      manifests every session.
 2. **Super Metroid → M6 → continuous toward ending** — Verified continuous tip
-   is power-on → Varia (M5). Pure reverse + K4 + boss pipeline. L1 substrate for
-   `sm_rando` / SMZ3 and the planner.
+   is power-on → Phantoon (M5, 195,336f). Next compose is Gravity on that tip.
+   Prefix Ice/Wave/Speed stay CI. L1 substrate for `sm_rando` / SMZ3 and the
+   planner.
 3. **ALTTP (Zelda 3) → solid route graph (M3–M5+)** — Opening route exists;
    deepen dungeon/overworld skills and capability edges for `alttp_rando` /
    SMZ3 Z3 side.

@@ -1,47 +1,43 @@
-# Residual — rr-tne2 L6 power-on recompose to Gohma wing
+# Residual — rr-tne2 L6 power-on recompose to TF 0x20
 
-**Status:** power-on Survival spine is **1/1** through `--through level6-gohma`
-(play `0x1C` body gone). Bead `rr-tne2` stays open until TF `0x20`. Do not
-STATUS-promote.
+**Status:** power-on Survival spine is **1/1** through `--through level6`
+(fanfare `0x0C` TF `0x3F`). Bead `rr-tne2` stays open for Phase 4
+(measured `AuditedEnv` post-reset state-load count + L4 Gleeok continuous
+mode). Do not STATUS-promote. Do not close.
 
 ## Green from power-on this sitting (2026-09-01)
 
 | through | leftover | notes |
 |---------|----------|-------|
-| level6-west2d | play `0x2C` `(224,141)` keys=3 | cardinal y-align then LEFT; hop 335f; 0 misses |
-| level6-north2c | play `0x1C` `(120,205)` keys 3→2 | cardinal x-align then KEY-UP; hop 308f; 0 misses |
-| level6-gohma | play `0x1C` `(120,189)` keys=2 | wooden arrows 0→1; body gone hop 54f; pulses=1 |
+| level6-heart | play `0x1C` `(120,149)` health `0x77` | occupancy UP; hop 31f; hc 7→8; item still `0x1A` at stop |
+| level6-north0c | play `0x0C` `(120,205)` keys=2 | `cur_opened_doors` already had UP; cardinal x-align UP; hop 209f |
+| level6 | fanfare `0x0C` `(120,149)` TF `0x3F` | occupancy onto shard; hop 43f; mode 18 |
 
-Prefix through cellar08/south1d still 1/1 (keys=3). Glance: TF=`0x1F`,
-rod=1, Bow=1, bombs=8, health `0x66` lo==hi. Deaths / state loads /
-progression / capacity writes 0. One 0x3A position write. Compose is
-power-on spine (no `--from-state`). **Keys are 2 here, not historical 3 —
-do not top up.**
+Prefix through Gohma still 1/1 (hop 54f, arrows 0→1). Glance: TF `0x1F→0x3F`,
+rod=1, Bow=1, bombs=8, keys=2, health `0x77` lo==hi, accepted_containers=8.
+Deaths 0 / claimed state-load 0 / progression / capacity writes 0. One 0x3A
+position write. One wooden-arrow grant. Compose is power-on spine (no
+`--from-state`). **Keys stay 2 — do not top up.** `status_claim=false`.
 
-## What was wrong with west2d / north2c occupancy
+## Heart / shutter / shard (wired hops, 1/1)
 
-Power-on leftover for west2d is north-mouth `(120,77)`. Occupancy y-align
-LEFT false-misses the waist (2px DOWN, then wizzrobe knockback), stands at
-`(80,141)`, and drifts to the SW pocket `(32,189)` tile 221
-(`survival_spine.json` through north2c, 66 misses).
+`--through level6-heart` 1/1 (`l6_heart_recompose`, 212,291f hop 31f).
+Occupancy from Gohma leftover `(120,189)` to center `(120,141)` collected
+at `(120,149)`. 10 occupancy misses (2px UP). PNG still showed the sprite;
+RAM hc 7→8 and assist accepted 8 with 0 clamps.
 
-Power-on leftover for north2c is east-mouth `(224,141)`. Occupancy LEFT
-false-misses, BFS wants DOWN, `south_open_halt` stands, wizzrobes shuffle x
-along y=141. Leftover `(71,141)` keys still 3 (`l6_north2c_recompose`).
+`--through level6-north0c` 1/1 (`l6_north0c_recompose`, 212,500f hop 209f).
+North RAM bit was already set (`cur_opened_doors=0x0C`); visual shutter was
+still black on the heart leftover. Cardinal UP entered play `0x0C` south
+mouth. TF still `0x1F`.
 
-**Fix:** `WEST2D_SPEC` / `NORTH2C_SPEC` now `cardinal_hold` + `align` y/x.
-`Level6DoorHopController._hold` cardinal-aligns then holds the door
-button. Same class as `EAST39_SPEC`. Tests:
-`test_west2d_align_y_then_left`, `test_north2c_align_x_then_up`.
-
-## Gohma kill (wired hop, 1/1)
-
-`--through level6-gohma` 1/1 (`l6_gohma_recompose`, 212,260f hop 54f).
-One wooden-arrow grant (`arrow_poke_writes=1_from=0`), B-slot 2, Bow
-untouched. PNG: Gohma sparkle + heart on floor, north shutter black.
-Enter-stop leftover was unarmed; this hop is the kill. TF still `0x1F`.
+`--through level6` 1/1 (`l6_tf_recompose`, 212,543f hop 43f). Occupancy UP
+onto the center shard. Fanfare mode 18, TF `0x3F`, leftover `(120,149)`.
+`triforce_writes=0`.
 
 ## Next sitting
 
-Heart in `0x1C` then north shutter `0x0C` TF `0x20`. No spine hop exists
-for that yet. Do not poke TF/doors. No STATUS/close/push.
+Phase 4: wrap the spine env with `retro_harness.audit.AuditedEnv` so
+`mid_run_state_load` is a measured count, and give L4 Gleeok TF-exit an
+explicit continuous mode (no `set_state` restore loop). Then one
+`--through level6` acceptance trial can close `rr-tne2`. No STATUS/push.

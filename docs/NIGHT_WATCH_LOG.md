@@ -1,5 +1,9 @@
 # Night Watch Log
 
+**Frozen 2026-08-10.** Session log, not the live board. Super Metroid living
+tip is Phantoon; next is Gravity (`rr-kw8t`). See each game's `STATUS.md`
+and `bd ready`.
+
 Overnight watcher: hourly lane managers for beads (separate game lanes).
 Session start: 2026-08-09 ~21:00 CDT.
 
