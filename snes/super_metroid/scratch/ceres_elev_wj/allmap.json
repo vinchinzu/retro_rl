@@ -1,0 +1,758 @@
+{
+ "room": "0xDF45",
+ "name": "Ceres Elevator",
+ "source": {
+  "editor": "/home/v/01_projects/11_games/snes_editor/super_metroid_rl/super_metroid_editor/export/sm_nav/rooms/room_DF45.json",
+  "rom_slope_table": "$94:8B2B shape 1 (verified identical in editor rom.sfc)",
+  "not_used": "sm-json-data/region/ceres/main/Ceres Elevator Room.json (nodes only)"
+ },
+ "size_px": [
+  256,
+  768
+ ],
+ "spin": {
+  "xr": 5,
+  "yr": 12
+ },
+ "stand": {
+  "yr": 21,
+  "y": "floor_top - 21"
+ },
+ "wj_reach_px": 8,
+ "slope": {
+  "shape": 1,
+  "unflipped_bts": "0x01 right 8px, inner face 216",
+  "xflip_bts": "0x41 left 8px, inner face 40",
+  "live_pin": {
+   "right_rest_x": "211.255",
+   "left_rest_x": 45,
+   "xr": 5
+  }
+ },
+ "shaft": {
+  "left_face": 40,
+  "right_face": 216
+ },
+ "ledges": [
+  {
+   "floor_top": 96,
+   "stand_y": 75,
+   "x0": 96,
+   "x1": 159,
+   "row": 6,
+   "name": "ship_pad"
+  },
+  {
+   "floor_top": 192,
+   "stand_y": 171,
+   "x0": 40,
+   "x1": 95,
+   "row": 12,
+   "name": "171_left"
+  },
+  {
+   "floor_top": 192,
+   "stand_y": 171,
+   "x0": 160,
+   "x1": 215,
+   "row": 12,
+   "name": "171_right"
+  },
+  {
+   "floor_top": 288,
+   "stand_y": 267,
+   "x0": 96,
+   "x1": 159,
+   "row": 18,
+   "name": "267"
+  },
+  {
+   "floor_top": 384,
+   "stand_y": 363,
+   "x0": 160,
+   "x1": 215,
+   "row": 24,
+   "name": "363"
+  },
+  {
+   "floor_top": 400,
+   "stand_y": 379,
+   "x0": 40,
+   "x1": 95,
+   "row": 25,
+   "name": "379_left"
+  },
+  {
+   "floor_top": 496,
+   "stand_y": 475,
+   "x0": 96,
+   "x1": 159,
+   "row": 31,
+   "name": "475"
+  },
+  {
+   "floor_top": 592,
+   "stand_y": 571,
+   "x0": 40,
+   "x1": 111,
+   "row": 37,
+   "name": "571"
+  },
+  {
+   "floor_top": 672,
+   "stand_y": 651,
+   "x0": 192,
+   "x1": 239,
+   "row": 42,
+   "name": "bottom_672"
+  },
+  {
+   "floor_top": 688,
+   "stand_y": 667,
+   "x0": 160,
+   "x1": 191,
+   "row": 43,
+   "name": "bottom_688"
+  },
+  {
+   "floor_top": 704,
+   "stand_y": 683,
+   "x0": 40,
+   "x1": 159,
+   "row": 44,
+   "name": "pit"
+  }
+ ],
+ "faces": [
+  {
+   "face_x": 40,
+   "y0": 0,
+   "y1": 191,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    45,
+    53
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 96,
+   "y1": 111,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    165,
+    173
+   ]
+  },
+  {
+   "face_x": 144,
+   "y0": 112,
+   "y1": 127,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    149,
+    157
+   ]
+  },
+  {
+   "face_x": 96,
+   "y0": 192,
+   "y1": 207,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    101,
+    109
+   ]
+  },
+  {
+   "face_x": 40,
+   "y0": 208,
+   "y1": 399,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    45,
+    53
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 288,
+   "y1": 303,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    165,
+    173
+   ]
+  },
+  {
+   "face_x": 96,
+   "y0": 400,
+   "y1": 415,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    101,
+    109
+   ]
+  },
+  {
+   "face_x": 40,
+   "y0": 416,
+   "y1": 591,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    45,
+    53
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 496,
+   "y1": 511,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    165,
+    173
+   ]
+  },
+  {
+   "face_x": 112,
+   "y0": 592,
+   "y1": 607,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    117,
+    125
+   ]
+  },
+  {
+   "face_x": 40,
+   "y0": 608,
+   "y1": 703,
+   "side": "left",
+   "kick": "RIGHT",
+   "wj_x": [
+    45,
+    53
+   ]
+  },
+  {
+   "face_x": 216,
+   "y0": 0,
+   "y1": 191,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    203,
+    211
+   ]
+  },
+  {
+   "face_x": 96,
+   "y0": 96,
+   "y1": 111,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    83,
+    91
+   ]
+  },
+  {
+   "face_x": 112,
+   "y0": 112,
+   "y1": 127,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    99,
+    107
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 192,
+   "y1": 207,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    147,
+    155
+   ]
+  },
+  {
+   "face_x": 216,
+   "y0": 208,
+   "y1": 383,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    203,
+    211
+   ]
+  },
+  {
+   "face_x": 96,
+   "y0": 288,
+   "y1": 303,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    83,
+    91
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 384,
+   "y1": 399,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    147,
+    155
+   ]
+  },
+  {
+   "face_x": 216,
+   "y0": 400,
+   "y1": 607,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    203,
+    211
+   ]
+  },
+  {
+   "face_x": 96,
+   "y0": 496,
+   "y1": 511,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    83,
+    91
+   ]
+  },
+  {
+   "face_x": 240,
+   "y0": 608,
+   "y1": 671,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    227,
+    235
+   ]
+  },
+  {
+   "face_x": 192,
+   "y0": 672,
+   "y1": 687,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    179,
+    187
+   ]
+  },
+  {
+   "face_x": 160,
+   "y0": 688,
+   "y1": 703,
+   "side": "right",
+   "kick": "LEFT",
+   "wj_x": [
+    147,
+    155
+   ]
+  }
+ ],
+ "chimneys": [
+  {
+   "y0": 0,
+   "y1": 95,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 128,
+   "y1": 191,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 192,
+   "y1": 207,
+   "left_face": 96,
+   "right_face": 160,
+   "air": 64
+  },
+  {
+   "y0": 208,
+   "y1": 287,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 304,
+   "y1": 383,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 384,
+   "y1": 399,
+   "left_face": 40,
+   "right_face": 160,
+   "air": 120
+  },
+  {
+   "y0": 400,
+   "y1": 415,
+   "left_face": 96,
+   "right_face": 216,
+   "air": 120
+  },
+  {
+   "y0": 416,
+   "y1": 495,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 512,
+   "y1": 591,
+   "left_face": 40,
+   "right_face": 216,
+   "air": 176
+  },
+  {
+   "y0": 592,
+   "y1": 607,
+   "left_face": 112,
+   "right_face": 216,
+   "air": 104
+  },
+  {
+   "y0": 608,
+   "y1": 671,
+   "left_face": 40,
+   "right_face": 240,
+   "air": 200
+  },
+  {
+   "y0": 672,
+   "y1": 687,
+   "left_face": 40,
+   "right_face": 192,
+   "air": 152
+  },
+  {
+   "y0": 688,
+   "y1": 703,
+   "left_face": 40,
+   "right_face": 160,
+   "air": 120
+  }
+ ],
+ "door": [
+  {
+   "destRoomId": 57229,
+   "destRoomIdHex": "0xDF8D",
+   "destRoomHandle": "fallingTileRoom",
+   "direction": "Right",
+   "isElevator": false,
+   "doorCapColor": null,
+   "requiredAbility": null,
+   "screenX": 0,
+   "screenY": 0,
+   "sourceBlockX": 15,
+   "sourceBlockY": 39
+  }
+ ],
+ "plms": [],
+ "enemies": [
+  {
+   "id": "0xE23F",
+   "name": "Ceres Door FX",
+   "x": 232,
+   "y": 631
+  },
+  {
+   "id": "0xE23F",
+   "name": "Ceres Door FX",
+   "x": 224,
+   "y": 639
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 94,
+   "y": 108
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 162,
+   "y": 108
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 158,
+   "y": 200
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 98,
+   "y": 200
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 94,
+   "y": 296
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 162,
+   "y": 296
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 158,
+   "y": 392
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 98,
+   "y": 408
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 94,
+   "y": 504
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 162,
+   "y": 504
+  },
+  {
+   "id": "0xE1FF",
+   "name": "Ceres Smoke/Steam",
+   "x": 114,
+   "y": 600
+  }
+ ],
+ "chain_hints": {
+  "after_475": "box x=96-159 y=496-511; kick LEFT off 96 (wj 83-91) or RIGHT off 160 (wj 165-173)",
+  "tas_404_chimney": "y=400-415 air 96..216; TAS latch (155,404) is in this gap, not a tight 8px shaft",
+  "363_left_face": "y=384-399 right-wall face 160 (kick LEFT, wj 147-155) \u2014 120px chimney from left face 40",
+  "entry_wj": "y=608+ right slope is gone (door); the 475 WJ is off face 216 at y<=607"
+ },
+ "self_check_failures": [],
+ "wjmap_compare": {
+  "wjmap": "/home/v/01_projects/11_games/retro_rl/snes/super_metroid/scratch/ceres_elev_wj/wjmap.json",
+  "tp": 787,
+  "fp": 1257,
+  "fn": 4,
+  "n_disagree_rows": 122,
+  "disagree_head": [
+   {
+    "y": 168,
+    "away": "LEFT",
+    "extra": [
+     32,
+     212,
+     216,
+     220,
+     224,
+     228
+    ],
+    "missing": []
+   },
+   {
+    "y": 168,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     52,
+     224,
+     228
+    ],
+    "missing": []
+   },
+   {
+    "y": 176,
+    "away": "LEFT",
+    "extra": [
+     32,
+     212,
+     216,
+     220,
+     224,
+     228
+    ],
+    "missing": []
+   },
+   {
+    "y": 176,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     52,
+     224,
+     228
+    ],
+    "missing": []
+   },
+   {
+    "y": 184,
+    "away": "LEFT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     48,
+     52,
+     56,
+     60
+    ],
+    "missing": []
+   },
+   {
+    "y": 184,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     48,
+     52,
+     56,
+     60
+    ],
+    "missing": []
+   },
+   {
+    "y": 192,
+    "away": "LEFT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     48,
+     52,
+     56,
+     60
+    ],
+    "missing": []
+   },
+   {
+    "y": 192,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     48,
+     52,
+     56,
+     60
+    ],
+    "missing": []
+   },
+   {
+    "y": 200,
+    "away": "LEFT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     84,
+     88,
+     156,
+     160
+    ],
+    "missing": []
+   },
+   {
+    "y": 200,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     96,
+     100,
+     108,
+     168
+    ],
+    "missing": []
+   },
+   {
+    "y": 208,
+    "away": "LEFT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     84,
+     88,
+     156,
+     160
+    ],
+    "missing": []
+   },
+   {
+    "y": 208,
+    "away": "RIGHT",
+    "extra": [
+     32,
+     36,
+     40,
+     44,
+     96,
+     100,
+     108,
+     168
+    ],
+    "missing": []
+   }
+  ]
+ }
+}

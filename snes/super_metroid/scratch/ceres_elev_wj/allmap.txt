@@ -1,0 +1,119 @@
+Ceres Elevator 0xDF45 all-map  (editor clip+BTS, live-checked)
+source: /home/v/01_projects/11_games/snes_editor/super_metroid_rl/super_metroid_editor/export/sm_nav/rooms/room_DF45.json
+sm-json-data was not used (no collision in that file).
+
+Shaft walls: left face x=40 (BTS 0x41)  right face x=216 (BTS 0x01)
+Spin xr=5 → rest x=45 / 211.  Standing yr=21 → stand_y = floor_top-21.
+
+Ledges (product seats in names):
+  ship_pad         floor= 96 stand_y= 75 x= 96-159 tile_row=6
+  171_left         floor=192 stand_y=171 x= 40- 95 tile_row=12
+  171_right        floor=192 stand_y=171 x=160-215 tile_row=12
+  267              floor=288 stand_y=267 x= 96-159 tile_row=18
+  363              floor=384 stand_y=363 x=160-215 tile_row=24
+  379_left         floor=400 stand_y=379 x= 40- 95 tile_row=25
+  475              floor=496 stand_y=475 x= 96-159 tile_row=31
+  571              floor=592 stand_y=571 x= 40-111 tile_row=37
+  bottom_672       floor=672 stand_y=651 x=192-239 tile_row=42
+  bottom_688       floor=688 stand_y=667 x=160-191 tile_row=43
+  pit              floor=704 stand_y=683 x= 40-159 tile_row=44
+
+Wall faces (kick away from the solid):
+  left  face_x= 40 y=  0-191 kick RIGHT wj_x=45-53
+  left  face_x=160 y= 96-111 kick RIGHT wj_x=165-173
+  left  face_x=144 y=112-127 kick RIGHT wj_x=149-157
+  left  face_x= 96 y=192-207 kick RIGHT wj_x=101-109
+  left  face_x= 40 y=208-399 kick RIGHT wj_x=45-53
+  left  face_x=160 y=288-303 kick RIGHT wj_x=165-173
+  left  face_x= 96 y=400-415 kick RIGHT wj_x=101-109
+  left  face_x= 40 y=416-591 kick RIGHT wj_x=45-53
+  left  face_x=160 y=496-511 kick RIGHT wj_x=165-173
+  left  face_x=112 y=592-607 kick RIGHT wj_x=117-125
+  left  face_x= 40 y=608-703 kick RIGHT wj_x=45-53
+  right face_x=216 y=  0-191 kick LEFT  wj_x=203-211
+  right face_x= 96 y= 96-111 kick LEFT  wj_x=83-91
+  right face_x=112 y=112-127 kick LEFT  wj_x=99-107
+  right face_x=160 y=192-207 kick LEFT  wj_x=147-155
+  right face_x=216 y=208-383 kick LEFT  wj_x=203-211
+  right face_x= 96 y=288-303 kick LEFT  wj_x=83-91
+  right face_x=160 y=384-399 kick LEFT  wj_x=147-155
+  right face_x=216 y=400-607 kick LEFT  wj_x=203-211
+  right face_x= 96 y=496-511 kick LEFT  wj_x=83-91
+  right face_x=240 y=608-671 kick LEFT  wj_x=227-235
+  right face_x=192 y=672-687 kick LEFT  wj_x=179-187
+  right face_x=160 y=688-703 kick LEFT  wj_x=147-155
+
+Chain hints (329f TAS gap):
+  after_475: box x=96-159 y=496-511; kick LEFT off 96 (wj 83-91) or RIGHT off 160 (wj 165-173)
+  tas_404_chimney: y=400-415 air 96..216; TAS latch (155,404) is in this gap, not a tight 8px shaft
+  363_left_face: y=384-399 right-wall face 160 (kick LEFT, wj 147-155) — 120px chimney from left face 40
+  entry_wj: y=608+ right slope is gone (door); the 475 WJ is off face 216 at y<=607
+
+Chimneys (innermost left_face → right_face):
+  y=  0- 95   40..216  air=176px
+  y=128-191   40..216  air=176px
+  y=192-207   96..160  air=64px
+  y=208-287   40..216  air=176px
+  y=304-383   40..216  air=176px
+  y=384-399   40..160  air=120px
+  y=400-415   96..216  air=120px
+  y=416-495   40..216  air=176px
+  y=512-591   40..216  air=176px
+  y=592-607  112..216  air=104px
+  y=608-671   40..240  air=200px
+  y=672-687   40..192  air=152px
+  y=688-703   40..160  air=120px
+
+Block map  (. air  / slope  # solid  D door)
+ 0 y=  0- 15 stand=-21 ##/........../##
+ 1 y= 16- 31 stand= -5 ##/........../##
+ 2 y= 32- 47 stand= 11 ##/........../##
+ 3 y= 48- 63 stand= 27 ##/........../##
+ 4 y= 64- 79 stand= 43 ##/........../##
+ 5 y= 80- 95 stand= 59 ##/........../##
+ 6 y= 96-111 stand= 75 ##/...####.../##
+ 7 y=112-127 stand= 91 ##/....##..../##
+ 8 y=128-143 stand=107 ##/........../##
+ 9 y=144-159 stand=123 ##/........../##
+10 y=160-175 stand=139 ##/........../##
+11 y=176-191 stand=155 ##/........../##
+12 y=192-207 stand=171 ######....######
+13 y=208-223 stand=187 ##/........../##
+14 y=224-239 stand=203 ##/........../##
+15 y=240-255 stand=219 ##/........../##
+16 y=256-271 stand=235 ##/........../##
+17 y=272-287 stand=251 ##/........../##
+18 y=288-303 stand=267 ##/...####.../##
+19 y=304-319 stand=283 ##/........../##
+20 y=320-335 stand=299 ##/........../##
+21 y=336-351 stand=315 ##/........../##
+22 y=352-367 stand=331 ##/........../##
+23 y=368-383 stand=347 ##/........../##
+24 y=384-399 stand=363 ##/.......######
+25 y=400-415 stand=379 ######......./##
+26 y=416-431 stand=395 ##/........../##
+27 y=432-447 stand=411 ##/........../##
+28 y=448-463 stand=427 ##/........../##
+29 y=464-479 stand=443 ##/........../##
+30 y=480-495 stand=459 ##/........../##
+31 y=496-511 stand=475 ##/...####.../##
+32 y=512-527 stand=491 ##/........../##
+33 y=528-543 stand=507 ##/........../##
+34 y=544-559 stand=523 ##/........../##
+35 y=560-575 stand=539 ##/........../##
+36 y=576-591 stand=555 ##/........../##
+37 y=592-607 stand=571 #######....../##
+38 y=608-623 stand=587 ##/............D
+39 y=624-639 stand=603 ##/............D
+40 y=640-655 stand=619 ##/............D
+41 y=656-671 stand=635 ##/............D
+42 y=672-687 stand=651 ##/.........####
+43 y=688-703 stand=667 ##/.......######
+44 y=704-719 stand=683 ################
+45 y=720-735 stand=699 ################
+46 y=736-751 stand=715 ################
+47 y=752-767 stand=731 ################
+
+wjmap compare tp=787 fp=1257 fn=4 disagree_rows=122
+
+self-check: all live pins match occupancy.
