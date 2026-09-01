@@ -16,6 +16,7 @@ from zelda_i.level6.door_hop import (
     WEST19_SPEC,
     WEST2D_SPEC,
     door_hop_stages,
+    door_hop_success,
     inland29_success,
 )
 from zelda_i.level6.dungeon import (
@@ -68,21 +69,42 @@ from zelda_i.spine.hops import SpineHop
 __all__ = ["l6_suffix_hops"]
 
 
-def _gohma_stages():
-    ctl = make_gohma_controller()
-    return (
-        *door_hop_stages(NORTH2C_SPEC),
-        ("level6_gohma_0x1c", ctl, ctl.max_frames),
-    )
-
-
-def _cellar08_stages():
+def _warp_cellar_stages():
+    """clear 0x3A → position-warp → cross cellar 0x08 to play 0x1D."""
     warp = make_stairs_3a_warp_controller()
     cellar = make_cellar08_controller()
     return (
         ("level6_stairs_0x3a_warp", warp, warp.max_frames),
         ("level6_cellar_0x08", cellar, cellar.max_frames),
     )
+
+
+def _cellar08_stages():
+    return _warp_cellar_stages()
+
+
+def _south1d_stages():
+    return (*_warp_cellar_stages(), *door_hop_stages(SOUTH1D_SPEC))
+
+
+def _west2d_stages():
+    return (*_south1d_stages(), *door_hop_stages(WEST2D_SPEC))
+
+
+def _north2c_stages():
+    return (*_west2d_stages(), *door_hop_stages(NORTH2C_SPEC))
+
+
+def _gohma_stages():
+    ctl = make_gohma_controller()
+    return (
+        *_north2c_stages(),
+        ("level6_gohma_0x1c", ctl, ctl.max_frames),
+    )
+
+
+def _door_success(spec):
+    return lambda snap, s=spec, **_: door_hop_success(s, snap)
 
 
 def l6_suffix_hops() -> tuple[SpineHop, ...]:
@@ -183,9 +205,27 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             level6_cellar08_success,
             dedicated=True,
         ),
-        door_row("level6-south1d", SOUTH1D_SPEC, dedicated=True),
-        door_row("level6-west2d", WEST2D_SPEC, dedicated=True),
-        door_row("level6-north2c", NORTH2C_SPEC, dedicated=True),
+        SpineHop(
+            "level6-south1d",
+            SOUTH1D_SPEC.spec_id,
+            _south1d_stages,
+            _door_success(SOUTH1D_SPEC),
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6-west2d",
+            WEST2D_SPEC.spec_id,
+            _west2d_stages,
+            _door_success(WEST2D_SPEC),
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6-north2c",
+            NORTH2C_SPEC.spec_id,
+            _north2c_stages,
+            _door_success(NORTH2C_SPEC),
+            dedicated=True,
+        ),
         SpineHop(
             "level6-gohma",
             "level6_gohma_0x1c",

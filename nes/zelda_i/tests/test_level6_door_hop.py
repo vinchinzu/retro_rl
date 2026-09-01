@@ -8,6 +8,7 @@ import pytest
 from retro_harness.nes import nes_action
 from zelda_i.level6.door_hop import (
     DoorHopSpec,
+    EAST39_SPEC,
     INLAND29_SPEC,
     Level6DoorHopController,
     NORTH2C_SPEC,
@@ -124,13 +125,49 @@ def test_south1d_leftover_not_up_then_down_at_goal() -> None:
 
 
 def test_west2d_align_y_then_left() -> None:
+    """North leftover holds DOWN; waist LEFT; SW pocket (32,189) holds UP."""
     leftover = _snap(screen=WEST2D_SPEC.room, x=120, y=77)
     first = Level6DoorHopController(WEST2D_SPEC).step(leftover)
+    assert list(first.action) == list(nes_action("DOWN"))
     assert list(first.action) != list(nes_action("LEFT"))
     west = Level6DoorHopController(WEST2D_SPEC).step(
         _snap(screen=WEST2D_SPEC.room, x=120, y=141)
     )
     assert list(west.action) == list(nes_action("LEFT"))
+    door = Level6DoorHopController(WEST2D_SPEC).step(
+        _snap(screen=WEST2D_SPEC.room, x=32, y=141)
+    )
+    assert list(door.action) == list(nes_action("LEFT"))
+    # Occupancy boxed here on the power-on tape; cardinal UP re-acquires y=141.
+    pocket = Level6DoorHopController(WEST2D_SPEC).step(
+        _snap(screen=WEST2D_SPEC.room, x=32, y=189)
+    )
+    assert list(pocket.action) == list(nes_action("UP"))
+    assert WEST2D_SPEC.cardinal_hold is True
+    assert WEST2D_SPEC.align == "y"
+
+
+def test_north2c_align_x_then_up() -> None:
+    """East leftover holds LEFT; column UP; waist leftover (71,141) holds RIGHT."""
+    leftover = _snap(screen=NORTH2C_SPEC.room, x=224, y=141)
+    first = Level6DoorHopController(NORTH2C_SPEC).step(leftover)
+    assert list(first.action) == list(nes_action("LEFT"))
+    assert list(first.action) != list(nes_action("UP"))
+    column = Level6DoorHopController(NORTH2C_SPEC).step(
+        _snap(screen=NORTH2C_SPEC.room, x=120, y=141)
+    )
+    assert list(column.action) == list(nes_action("UP"))
+    door = Level6DoorHopController(NORTH2C_SPEC).step(
+        _snap(screen=NORTH2C_SPEC.room, x=120, y=93)
+    )
+    assert list(door.action) == list(nes_action("UP"))
+    # Occupancy south_open_halt boxed here on the power-on tape.
+    shuffled = Level6DoorHopController(NORTH2C_SPEC).step(
+        _snap(screen=NORTH2C_SPEC.room, x=71, y=141)
+    )
+    assert list(shuffled.action) == list(nes_action("RIGHT"))
+    assert NORTH2C_SPEC.cardinal_hold is True
+    assert NORTH2C_SPEC.align == "x"
 
 
 def test_south29_live_leftover_goes_down() -> None:
@@ -150,6 +187,24 @@ def test_south29_live_leftover_goes_down() -> None:
     assert list(trap.action) != list(nes_action("UP"))
     assert list(trap.action) != list(nes_action("LEFT", "UP"))
     assert trap.reason != "south_clip"
+
+
+def test_east39_north_band_leftover_drops_to_waist_then_right() -> None:
+    """Power-on leftover (95,109) holds DOWN to y=141, not RIGHT into the wall."""
+    assert EAST39_SPEC.clip_buttons == ("DOWN",)
+    leftover = _snap(screen=EAST39_SPEC.room, x=95, y=109)
+    first = Level6DoorHopController(EAST39_SPEC).step(leftover)
+    assert list(first.action) == list(nes_action("DOWN"))
+    assert list(first.action) != list(nes_action("RIGHT"))
+    # Once on the waist the cardinal hold carries RIGHT toward the door.
+    waist = Level6DoorHopController(EAST39_SPEC).step(
+        _snap(screen=EAST39_SPEC.room, x=120, y=141)
+    )
+    assert list(waist.action) == list(nes_action("RIGHT"))
+    door = Level6DoorHopController(EAST39_SPEC).step(
+        _snap(screen=EAST39_SPEC.room, x=208, y=141)
+    )
+    assert list(door.action) == list(nes_action("RIGHT"))
 
 
 def test_inland29_south_mouth_clips_left_up() -> None:

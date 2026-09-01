@@ -596,13 +596,14 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29
 
 | Field | Live |
 |-------|------|
-| Start | Survival leftover play `0x39` `(136,173)` |
-| Path | RIGHT+UP clip, then cardinal RIGHT on y=141 |
+| Start | Survival leftover play `0x39` `(95,109)` (power-on; was `(136,173)` on the pin) |
+| Path | cardinal **DOWN** to the y=141 waist, then cardinal RIGHT into the kill-door |
 | Stop | `--through level6-east39` play-ready dest (RAM `0x3A`) rod=1 |
-| Leftover | `(16,141)` west mouth of `0x3A`; keys=4 (no spend) |
-| v1 | occupancy boxed leftover tile 118 4-cardinal |
-| v2 | clip to y=141 then occupancy RIGHT boxed `(176,141)` |
-| v3 | **1/1** hop 320f, 217,632f |
+| Leftover | `(16,141)` west mouth of `0x3A`; keys=3 (no spend) |
+| pin v1–v3 | RIGHT+UP clip off `(136,173)` — mid-dungeon pin only |
+| power-on v1 | old RIGHT+UP clip never fired; `cardinal_hold` RIGHT boxed NE wall y=109 |
+| power-on v2 | occupancy retry boxed all 4 cardinals in spawn latency at `(95,109)` |
+| power-on v3 | **1/1** hop 353f — DOWN clip to y=141 then RIGHT |
 | Track | **assisted Survival** |
 
 ### Settle 0x3A — **1/1**
@@ -649,7 +650,7 @@ position target or second write was needed.
 
 | Field | Live |
 |-------|------|
-| Start | cellar B-side play `0x1D` `(96,157)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| Start | cellar B-side play `0x1D` `(96,157)`, rod=1, keys=3, bombs=8, TF=`0x1F` |
 | ROM doors | `0x1D` N/W/E=wall, S=**open**; dest `0x2D` N=open W=**open** |
 | Path | occupancy to `(120,189)` then DOWN; `x=96` DOWN misses south wall and replans |
 | Stop | exact play `0x2D` `(120,77)`; reject `0x1D` / `0x2C` / Gohma `0x1C` |
@@ -662,31 +663,47 @@ ROM doors continue `0x2D LEFT → 0x2C KEY-UP → 0x1C` Gohma.
 
 | Field | Live |
 |-------|------|
-| Start | south1d leftover play `0x2D` `(120,77)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| Start | south1d leftover play `0x2D` `(120,77)`, rod=1, keys=3, bombs=8, TF=`0x1F` |
 | ROM doors | `0x2D` N/W=**open**, S/E=wall; dest `0x2C` N=**key** E=open |
-| Path | occupancy y=141 then LEFT; leftover y=77 is occupancy ymin (no north halt) |
+| Path | cardinal UP/DOWN to y=141, then LEFT into the open west door |
 | Stop | exact play `0x2C` `(224,141)`; reject `0x2D` / `0x1D` / Gohma `0x1C` |
-| Evidence | `l6_west2d_continuous` 1/1, 220,887f total; west hop 349f; keys stay 4 |
+| pin | occupancy y-align LEFT; hop 349f keys stay 4 (`l6_west2d_continuous`) |
+| power-on v1 | occupancy boxed `(80,141)` (2px DOWN misses + wizzrobe knockback), drifted SW `(32,189)` tile 221 |
+| power-on v2 | **1/1** hop 335f — cardinal y-align then LEFT; keys stay 3; 0 occupancy misses (`l6_west2d_recompose`) |
 | Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
 
 PNG leftover is east mouth, north door keyed, south open, west wall.
-KEY-UP `0x2C` → `0x1C` is now live. Do not poke bow/arrows.
 
 ### `0x2C` KEY-UP → play `0x1C` Gohma — **1/1**
 
 | Field | Live |
 |-------|------|
-| Start | west2d leftover play `0x2C` `(224,141)`, rod=1, keys=4, bombs=8, TF=`0x1F` |
+| Start | west2d leftover play `0x2C` `(224,141)`, rod=1, keys=3, bombs=8, TF=`0x1F` |
 | ROM doors | `0x2C` N=**key** S=open W=wall E=open; dest `0x1C` S=**key** N=shutter item=heart |
-| Path | occupancy x-align LEFT from east mouth (grid xmax=232), KEY-UP `(120,93)` |
-| Stop | exact play `0x1C` `(120,205)`; keys 4→3; reject `0x2C` / `0x2D` / south `0x3C` |
-| Evidence | `l6_north2c_continuous` 1/1, 221,280f total; hop 393f; 22 LEFT misses |
+| Path | cardinal LEFT/RIGHT to x=120, then KEY-UP |
+| Stop | exact play `0x1C` `(120,205)`; keys 3→2; reject `0x2C` / `0x2D` / south `0x3C` |
+| pin | occupancy x-align KEY-UP; hop 393f keys 4→3 (`l6_north2c_continuous`) |
+| power-on v1 | occupancy LEFT false-miss then `south_open_halt` at `(147,141)`; leftover `(71,141)` keys=3 (`l6_north2c_recompose`) |
+| power-on v2 | **1/1** hop 308f — cardinal x-align then KEY-UP; keys 3→2; 0 occupancy misses (`l6_north2c_cardinal`) |
 | Integrity | one position write, deaths/state loads/progression/capacity writes all 0 |
 
 PNG leftover is Gohma on screen, Link in the south mouth, north shutter
-black. Enter-stop only. Bow=0 arrows=0 — do not fight; do not poke bow.
+black. Enter-stop only. Bow=1 arrows=0 — Gohma hop grants wooden arrows.
 `0x0C` north of Gohma is TF `0x20` after the kill. `0x2C` south is `0x3C`,
 not the route.
+
+### Gohma `0x1C` kill — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | north2c leftover play `0x1C` `(120,205)`, rod=1, keys=2, Bow=1, arrows=0, TF=`0x1F` |
+| Assist | one wooden-arrow grant `ADDR_ARROWS` 0→1 + B-slot 2; do not write Bow |
+| Path | poke, occupancy inland, x-align, UP+B until body gone |
+| Stop | `--through level6-gohma` play `0x1C`, body absent, Bow=1 arrows=1, TF still `0x1F` |
+| Leftover | `(120,189)`; hop 54f; pulses=1; heart on floor; north shutter still black (`l6_gohma_recompose`) |
+| Integrity | one position write (0x3A warp), one arrow grant, deaths/state loads/progression/capacity writes 0 |
+
+Heart + north shutter `0x0C` TF `0x20` has no spine hop.
 
 ### Post-east-key graph (live recon)
 
@@ -736,8 +753,9 @@ rows on `scripts/run_survival_spine.py`.
 - East `0x39` → play `0x3A` — **live** `--through level6-east39` v3 leftover `(16,141)` keys 4
 - Clear `0x3A` — **live** `--through level6-clear3a` leftover `(144,141)`; center 0x68 unpushed
 - Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1 with the disclosed position assist
-- `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 4→3; fight residual (bow=0 arrows=0)
-- Heart → Triforce shard 6 (`triforce & 0x20`)
+- `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
+- Gohma kill — **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF still `0x1F` (`l6_gohma_recompose`)
+- Heart → north `0x0C` Triforce shard 6 (`triforce & 0x20`) — residual; no spine hop
 
 ## Boss / Triforce
 
@@ -798,7 +816,7 @@ Isolated interior pins (`L6Room_7a`, `Level6EastKey`, `L6Room_79_keys1`, `L6Room
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
-- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-north2c --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-gohma --no-video --trials 1`
 - Isolated L6 segment CLIs pruned. Prefix hops:
   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-entry --no-video --trials 1`
   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east-key --no-video --trials 1`
@@ -826,9 +844,10 @@ Not claimed live as pure segments:
 16. East `0x39` → play `0x3A` — **live** v3 leftover `(16,141)` keys 4
 17. Clear `0x3A` 3× Like-Like + 4 wizzrobes — **live** v1 leftover `(144,141)`; center 0x68 unpushed
 18. Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1; disclosed position assist
-19. South `0x1D` → play `0x2D` — **live** 1/1 leftover `(120,77)` keys=4
-20. `0x2D` west → `0x2C` KEY-UP → Gohma `0x1C` enter — **live** 1/1 leftover `(120,205)` keys 4→3
-21. Gohma kill → Heart → TF `0x20` — residual; bow=0 arrows=0, do not poke
+19. South `0x1D` → play `0x2D` — **live** 1/1 leftover `(120,77)` keys=3
+20. `0x2D` west → `0x2C` KEY-UP → Gohma `0x1C` enter — **live** 1/1 leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
+21. Gohma kill — **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF=`0x1F` (`l6_gohma_recompose`)
+22. Heart → north `0x0C` TF `0x20` — residual; no spine hop
 
 ## Not claimed
 
