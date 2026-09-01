@@ -1,9 +1,11 @@
-"""Level 6 Gohma 0x1C: poke wooden arrows, shoot the open eye.
+"""Level 6 Gohma 0x1C: poke wooden arrows, hold y=165, shoot the open eye.
 
 Leftover is north2c play 0x1C ``(120,205)``. Bow is earned on the L1
 Survival splice. Operator exception: ``ADDR_ARROWS=1`` + B-slot 2 until
-the 80R shop splice. Do not write ``ADDR_BOW``. Do not poke doors/keys.
-Isolated BFS banned. Heart / north 0x0C / TF 0x20 are later SpineHops.
+the 80R shop splice. Cardinal to ``(120,165)``, then UP+B. Do not hold UP
+on cooldown (walked-warp v1 leftover ``(115,93)`` shot through the body).
+Do not write ``ADDR_BOW``. Do not poke doors/keys. Isolated BFS banned.
+Heart / north 0x0C / TF 0x20 are later SpineHops.
 """
 
 from __future__ import annotations
@@ -20,12 +22,16 @@ from zelda_i.dungeon.ids import (
     GOHMA_OBJECT_TYPE,
     MANHANDLA_PROJECTILE_TYPE,
 )
-from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.hop_controller import (
+    CELLAR_MODE,
+    HopController,
+    WAIT_SCROLL_B,
+    axis_dir,
+)
 from zelda_i.level6.door_hop import NORTH2C_SPEC, SOUTH1D_SPEC, WEST2D_SPEC, door_hop_stages
-from zelda_i.level6.occupancy import occupancy_new_miss, record_l6_walk
+from zelda_i.level6.occupancy import record_l6_walk
 from zelda_i.level6.overworld import LEVEL6, LEVEL6_GOHMA_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyWalker
 
 __all__ = [
     "ALIGN_X_TOL",
@@ -43,6 +49,7 @@ GOHMA_MAX_FRAMES = 20000
 GOHMA_STAND_X = 120
 GOHMA_STAND_Y = 165
 ALIGN_X_TOL = 8
+STAND_Y_TOL = 4
 SHOT_COOLDOWN = 20
 GOHMA_TYPES = frozenset({GOHMA_OBJECT_TYPE, GOHMA_BLUE_OBJECT_TYPE})
 _PROJECTILES = frozenset({FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE})
@@ -70,7 +77,7 @@ def _projectiles(snap: ZeldaSnapshot) -> list:
 
 @dataclass
 class Level6GohmaController(HopController):
-    """Poke wooden arrows, occupancy inland, x-align, UP+B until Gohma gone."""
+    """Poke wooden arrows, hold y=165 south of Gohma, x-align, UP+B."""
 
     spec_id: str = "level6_gohma_0x1c"
     room: int = LEVEL6_GOHMA_ROOM
@@ -86,7 +93,6 @@ class Level6GohmaController(HopController):
     leftover: dict[str, Any] = field(default_factory=dict)
     inventory_assist: dict[str, Any] | None = None
     env: Any | None = None
-    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
     arrow_pulses: int = 0
 
     def bind_env(self, env: Any) -> None:
@@ -112,7 +118,7 @@ class Level6GohmaController(HopController):
             reason=action.reason,
             frames=self.frames,
             period=SAMPLE_PERIOD,
-            misses=self.walker.misses,
+            misses=0,
             force=force,
         )
         if force or self.frames <= 2 or self.frames % 250 == 0:
@@ -135,7 +141,8 @@ class Level6GohmaController(HopController):
                     "types": types,
                     "bow": int(snap.bow),
                     "arrows": int(snap.arrows),
-                    "misses": self.walker.misses,
+                    "rupees": int(snap.rupees),
+                    "misses": 0,
                 }
             )
         return action
@@ -186,14 +193,22 @@ class Level6GohmaController(HopController):
         if not bodies:
             return FrameAction(nes_idle_action(), "wait_body")
 
-        if snap.link_y > self.stand_y + 4:
-            xy = (int(snap.link_x), int(snap.link_y))
-            occupancy_new_miss(self.walker, xy, allow_first=True)
-            dest = (self.stand_x, self.stand_y)
-            direction = self.walker.next_dir(xy, dest)
-            if direction is None:
-                return FrameAction(nes_idle_action(), "occupancy_stand")
-            return FrameAction(nes_action(direction), "inland_path")
+        # Walked-warp v1: hold-UP on cooldown walked to the north shutter
+        # (115,93) and 599 UP+B pulses spent rupees shooting the wall.
+        if abs(int(snap.link_y) - self.stand_y) > STAND_Y_TOL:
+            direction = axis_dir(
+                (int(snap.link_x), int(snap.link_y)),
+                (self.stand_x, self.stand_y),
+                y_first=True,
+            )
+            if direction is not None:
+                if direction == "UP":
+                    reason = "inland_up"
+                elif direction == "DOWN":
+                    reason = "inland_down"
+                else:
+                    reason = "inland_align"
+                return FrameAction(nes_action(direction), reason)
 
         body = bodies[0]
         balls = _projectiles(snap)
@@ -211,7 +226,7 @@ class Level6GohmaController(HopController):
             face = "RIGHT" if dx > 0 else "LEFT"
             return FrameAction(nes_action(face), "align_x")
         if self.cooldown > 0:
-            return FrameAction(nes_action("UP"), "face_up")
+            return FrameAction(nes_idle_action(), "shot_wait")
         self.cooldown = SHOT_COOLDOWN
         self.arrow_pulses += 1
         return FrameAction(nes_action("UP", "B"), "arrow_shot")
@@ -230,7 +245,7 @@ class Level6GohmaController(HopController):
             "samples": list(self.samples),
             "leftover": dict(self.leftover),
             "inventory_assist": self.inventory_assist,
-            "policy": "poke ADDR_ARROWS=1 B=2; occupancy to (120,165); UP+B",
+            "policy": "poke ADDR_ARROWS=1 B=2; hold (120,165); UP+B then idle",
             "saw_gohma": self.saw_gohma,
             "arrow_pulses": self.arrow_pulses,
             "spec_id": self.spec_id,

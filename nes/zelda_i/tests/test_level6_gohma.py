@@ -6,7 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.dungeon.ids import GOHMA_OBJECT_TYPE
+from retro_harness.nes import nes_action
+from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
 from zelda_i.level6.gohma import (
     level6_gohma_success,
     make_gohma_controller,
@@ -46,8 +47,15 @@ def _ram(**fields: int) -> np.ndarray:
     return ram
 
 
-def _plant_gohma(ram: np.ndarray, *, x: int = 120, y: int = 109, hp: int = 16) -> None:
-    ram[ADDR_OBJ_TYPE + 1] = GOHMA_OBJECT_TYPE
+def _plant_gohma(
+    ram: np.ndarray,
+    *,
+    x: int = 120,
+    y: int = 109,
+    hp: int = 16,
+    type_id: int = GOHMA_OBJECT_TYPE,
+) -> None:
+    ram[ADDR_OBJ_TYPE + 1] = type_id
     ram[ADDR_OBJ_HP + 1] = hp
     ram[ADDR_LINK_X + 1] = x
     ram[ADDR_LINK_Y + 1] = y
@@ -105,3 +113,78 @@ def test_gohma_success_needs_body_gone_and_arrows() -> None:
     assert level6_gohma_success(read_snapshot(ram))
     ram[ADDR_ARROWS] = 0
     assert not level6_gohma_success(read_snapshot(ram))
+
+
+def test_inland_from_south_mouth_is_cardinal_up() -> None:
+    ram = _ram(x=120, y=205, bow=1, arrows=1)
+    _plant_gohma(ram, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    ctl.bind_env(_env_with_mem(_AssignMem()))
+    poke = ctl.step(read_snapshot(ram))
+    assert poke.reason == "arrow_poke"
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert action.reason == "inland_up"
+    assert action.reason not in ("occupancy_stand", "inland_path")
+    assert list(action.action) == list(nes_action("UP"))
+
+
+def test_inland_from_knockback_y189_is_cardinal_up() -> None:
+    ram = _ram(x=120, y=189, bow=1, arrows=1)
+    _plant_gohma(ram, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert action.reason == "inland_up"
+    assert action.reason not in ("occupancy_stand", "inland_path")
+    assert list(action.action) == list(nes_action("UP"))
+
+
+def test_stand_x_aligned_shoots_up_b() -> None:
+    ram = _ram(x=120, y=165, bow=1, arrows=1)
+    _plant_gohma(ram, x=120, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    ctl.bind_env(_env_with_mem(_AssignMem()))
+    poke = ctl.step(read_snapshot(ram))
+    assert poke.reason == "arrow_poke"
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert action.reason == "arrow_shot"
+    assert list(action.action) == list(nes_action("UP", "B"))
+
+
+def test_stand_gohma_off_x_aligns() -> None:
+    ram = _ram(x=120, y=165, bow=1, arrows=1)
+    _plant_gohma(ram, x=160, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert action.reason == "align_x"
+    assert list(action.action) == list(nes_action("RIGHT"))
+
+
+def test_north_shutter_retreats_to_stand() -> None:
+    ram = _ram(x=115, y=93, bow=1, arrows=1)
+    _plant_gohma(ram, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert action.reason == "inland_down"
+    assert list(action.action) == list(nes_action("DOWN"))
+
+
+def test_shot_cooldown_idles_instead_of_walking_north() -> None:
+    from retro_harness.nes import nes_idle_action
+
+    ram = _ram(x=120, y=165, bow=1, arrows=1)
+    _plant_gohma(ram, x=120, type_id=GOHMA_BLUE_OBJECT_TYPE)
+    ctl = make_gohma_controller()
+    ctl.bind_env(_env_with_mem(_AssignMem()))
+    poke = ctl.step(read_snapshot(ram))
+    assert poke.reason == "arrow_poke"
+    shot = ctl.step(read_snapshot(ram))
+    assert shot.reason == "arrow_shot"
+    wait = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert wait.reason == "shot_wait"
+    assert list(wait.action) == list(nes_idle_action())
