@@ -69,8 +69,8 @@ one-frame policies in `level*_path.py`.
 
 ## Stop cleanly
 
-Update the living residual (`nes/zelda_i/docs/tasks/rr-tne2-residual.md`) and
-the active bead. Do not refresh an AGENTS Next scoreboard. Do not
+Update the living residual named in `nes/zelda_i/AGENTS.md` and the active
+bead. Do not refresh an AGENTS Next scoreboard. Do not
 STATUS-promote. Run the narrow tests. Export is
 `bd export -o .beads/issues.jsonl` (there is no `bd sync`). Do not push
 unless requested.

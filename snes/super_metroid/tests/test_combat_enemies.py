@@ -25,6 +25,7 @@ from super_metroid.combat.enemies.species import (
     STEAM_HIDDEN_BIT,
     enemy_overlaps,
     steam_is_burning,
+    steam_jet_shown,
 )
 from super_metroid.ram import FACING_LEFT, FACING_RIGHT
 from super_metroid.routes.kpdr.wrecked_ship.ws_basement_ice import (
@@ -124,12 +125,15 @@ def test_list_enemies_reads_extra_props_and_radii() -> None:
     ram[base + 0x10] = STEAM_HIDDEN_BIT
     ram[base + 0x14] = 0xFF
     ram[base + 0x15] = 0x7F
+    ram[base + 0x16] = 0x4C
+    ram[base + 0x17] = 0xF1
     found = list_enemies(ram)
     assert len(found) == 1
     assert found[0].enemy_id == CERES_STEAM_ID
     assert found[0].extra_props == STEAM_HIDDEN_BIT
     assert found[0].x_radius == 8
     assert found[0].y_radius == 8
+    assert found[0].spritemap == 0xF14C
     assert not steam_is_burning(found[0])
 
 
@@ -144,9 +148,26 @@ def test_ceres_steam_burn_is_hidden_bit_not_xy() -> None:
     assert not steam_is_burning(hidden)
     assert steam_is_burning(shown)
     assert not steam_is_burning(door)
-    # Idle claim: x/y stay put; burn is the bit. Door overlay occupies the WJ.
+    jet = hidden._replace(spritemap=0xF14C)
+    assert not steam_is_burning(jet)
+    # Idle claim: x/y stay put; burn is bit 2. Door overlay occupies the WJ.
     assert enemy_overlaps(door, 216, 637, samus_r=16)
     assert not enemy_overlaps(shown, 216, 637, samus_r=8)
+
+
+def test_ceres_steam_jet_shown_is_spritemap_not_hidden_bit() -> None:
+    idle = _enemy(CERES_STEAM_ID, 94, 504, hp=32767)._replace(spritemap=0xF142)
+    live = idle._replace(spritemap=0xF14C)
+    hidden_live = live._replace(extra_props=STEAM_HIDDEN_BIT)
+    burning_idle = idle._replace(extra_props=0)
+    door = _enemy(CERES_DOOR_ID, 232, 631, hp=40)._replace(spritemap=0xF14C)
+    assert not steam_jet_shown(idle)
+    assert steam_jet_shown(live)
+    assert steam_jet_shown(hidden_live)
+    assert not steam_jet_shown(burning_idle)
+    assert not steam_jet_shown(door)
+    assert not steam_is_burning(hidden_live)
+    assert steam_is_burning(burning_idle)
 
 
 def test_ceres_steam_default_stance_is_absorb() -> None:

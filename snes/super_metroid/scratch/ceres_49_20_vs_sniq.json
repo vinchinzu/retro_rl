@@ -1,0 +1,1292 @@
+{
+  "schema": "sm_tas_ceres_hops_compare_v1",
+  "status": "plan_only",
+  "do_not": [
+    "STATUS",
+    "DEFAULT_CONTINUOUS_TIP",
+    "wire routes/kpdr/ceres from this sitting",
+    "overwrite recordings/<tip>.json",
+    "re-emulate either TAS",
+    "mix room_flip with settled_gs8",
+    "treat WRAM sha256 as a harness pin"
+  ],
+  "sources": {
+    "a_49_20": {
+      "path": "snes/super_metroid/scratch/ceres_49_20_station.json",
+      "schema": "sm_tas_ceres_hops_v2",
+      "core": "Snes9x 1.43-rr v17 (WIP1 timing, Wine)",
+      "movie": "/home/v/Downloads/49'20.smv",
+      "first_control_frame": 8475,
+      "first_control": {
+        "frame": 8475,
+        "kind": "first_control",
+        "room": "0xDF45",
+        "gs": 8,
+        "pose": 0,
+        "x": 128,
+        "y": 0,
+        "x_sub": 0,
+        "y_sub": 0,
+        "energy": 99,
+        "rng": 4445,
+        "door": 0
+      },
+      "movie_end": {
+        "frame": 14982,
+        "kind": "movie_end",
+        "room": "0xDF45",
+        "gs": 32,
+        "pose": 2,
+        "x": 141,
+        "y": 75,
+        "x_sub": 49152,
+        "y_sub": 65535,
+        "energy": 24,
+        "rng": 33755,
+        "door": 0
+      },
+      "landing": null,
+      "moonwalk_09E4": 0,
+      "moonwalk_evidence": "wram_f008475_control.bin $09E4=0"
+    },
+    "b_sniq": {
+      "path": "snes/super_metroid/tas/bodies/sniq_100_ceres_lsnes_hops.json",
+      "schema": "sm_tas_ceres_hops_v2",
+      "core": "bsnes v085 (Compatibility core)",
+      "movie": "sniq_100_4010M",
+      "first_control_frame": 8538,
+      "first_pad_frame": 8639,
+      "landing_frame": 15198,
+      "station_frames": 6660,
+      "series_for_dest_gs8": "snes/super_metroid/recordings/tas_oracle/sniq_100_lsnes/"
+    }
+  },
+  "clocks": {
+    "room_flip": "gs=11 room-id change; hop.enter / hop.frames",
+    "settled_gs8": "dest first gs=8 minus source first gs=8. Never mix with room_flip.",
+    "ntsc_fps": 60.0988,
+    "timer": "super_metroid.room_timer.format_segment_time",
+    "delta_sign": "negative frames = 49'20 faster than Sniq"
+  },
+  "notes": "Native 1.43 49'20 hops vs Sniq 100% lsnes hops. Same two clocks, no re-emulate. After Ceres 1, room_flip is the same door-idle movie on Falling->Magnet, Scientist->Flat, Flat escape, and Scientist escape. Magnet->Scientist is +1f with pose 17 vs 9 leave. Ceres 1 is 2008 ledge-drop (moonwalk off) vs Sniq moonfall; do not compare 428 vs 311. Ridley both end energy 24, 1840 vs 1842. Magnet escape -3f, Falling->elev +12f. 49'20 stops gs=32 pad pose 2 @(141,75) energy 24. Escape dest gs=8 was not in events.jsonl (Lua keyed first gs=8 per room id); not invented. WRAM hashes are 1.43 bank $7E fingerprints.",
+  "room_flip": [
+    {
+      "name": "elev_to_falling",
+      "from": "0xDF45",
+      "to": "0xDF8D",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 525,
+        "seconds": 8.736,
+        "clock": "00:08.75",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 513,
+        "seconds": 8.536,
+        "clock": "00:08.55",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 12,
+        "seconds": 0.2,
+        "clock": "00:00.20",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "class": "different_strat",
+      "why": "49'20 moonwalk $09E4=0, dest gs=8 pose 9 @(39,139); Sniq moonfall, dest gs=8 pose 17 @(39,139) mx=2. Dest enter pose 9 @(236,651) vs pose 17 @(238,651). 49'20 settled source_gs8 is ride y=0 f8475, not pad y=72.",
+      "a_source_enter": 8259,
+      "a_dest_enter": 8784,
+      "b_source_enter": 8319,
+      "b_dest_enter": 8832,
+      "source_note": "49'20 source_enter is gs=31 cinematic f8259 y=72, not first_control f8475. Sniq source_enter is gs=11/elev f8319."
+    },
+    {
+      "name": "falling_to_magnet",
+      "from": "0xDF8D",
+      "to": "0xDFD7",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "class": "same_door_movie",
+      "why": "room_flip 282=282 and settled_gs8 282=282. Dest enter both pose 9 @(492,139). Dest gs=8 both pose 9 @(39,139). Fade gs11->gs8 119 vs 118. Subpixel differs (x_sub 18944 vs 7423). Frame equality is door idle structure, not a harness pin.",
+      "a_source_enter": 8784,
+      "a_dest_enter": 9066,
+      "b_source_enter": 8832,
+      "b_dest_enter": 9114
+    },
+    {
+      "name": "magnet_to_scientist",
+      "from": "0xDFD7",
+      "to": "0xE021",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 345,
+        "seconds": 5.741,
+        "clock": "00:05.75",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 344,
+        "seconds": 5.724,
+        "clock": "00:05.73",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 1,
+        "seconds": 0.017,
+        "clock": "00:00.02",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "class": "same_door_idle_different_leave_pose",
+      "why": "room_flip 345 vs 344, settled 346 vs 345, dest_enter-source_gs8 both 226. Dest enter pose 17 @(240,395) vs pose 9 @(236,395). Dest gs=8 pose 17 @(39,139) vs pose 9 @(39,139) mx=2. Same door idle, different leave pose.",
+      "a_source_enter": 9066,
+      "a_dest_enter": 9411,
+      "b_source_enter": 9114,
+      "b_dest_enter": 9458
+    },
+    {
+      "name": "scientist_to_flat",
+      "from": "0xE021",
+      "to": "0xE06B",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 265,
+        "seconds": 4.409,
+        "clock": "00:04.42",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 265,
+        "seconds": 4.409,
+        "clock": "00:04.42",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "class": "same_door_movie",
+      "why": "room_flip 265=265, settled 264=264. Dest enter pose 17 @(493,139) vs (492,139). Dest gs=8 both pose 17 @(39,139). Subpixel 14848 vs 45056.",
+      "a_source_enter": 9411,
+      "a_dest_enter": 9676,
+      "b_source_enter": 9458,
+      "b_dest_enter": 9723
+    },
+    {
+      "name": "flat_to_ridley",
+      "from": "0xE06B",
+      "to": "0xE0B5",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 259,
+        "seconds": 4.31,
+        "clock": "00:04.32",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 256,
+        "seconds": 4.26,
+        "clock": "00:04.27",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 3,
+        "seconds": 0.05,
+        "clock": "00:00.05",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "class": "different_strat",
+      "why": "room_flip 259 vs 256, settled 324 vs 321. 49'20 dest enter pose 26 @(484,130) spin-in; dest gs=8 pose 26 @(39,130). Sniq dest enter pose 9 @(492,139); dest gs=8 pose 9 @(39,139) mx=2. Airborne Ridley enter vs run-in.",
+      "a_source_enter": 9676,
+      "a_dest_enter": 9935,
+      "b_source_enter": 9723,
+      "b_dest_enter": 9979
+    },
+    {
+      "name": "ridley_fight",
+      "from": "0xE0B5",
+      "to": "0xE06B",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 1840,
+        "seconds": 30.616,
+        "clock": "00:30.67",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 1842,
+        "seconds": 30.65,
+        "clock": "00:30.70",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": -2,
+        "seconds": -0.033,
+        "clock": "-00:00.03",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_faster"
+      },
+      "class": "same_fight",
+      "why": "room_flip 1840 vs 1842. Both leave Ridley at energy 24 (49'20 dest enter f11775 and movie_end; Sniq series min gs=8 energy 24 at f11156, dest enter energy 24). Handoff 99->25 was wrong against the dumps. Both <30 tail-tank.",
+      "a_source_enter": 9935,
+      "a_dest_enter": 11775,
+      "b_source_enter": 9979,
+      "b_dest_enter": null
+    },
+    {
+      "name": "flat_escape",
+      "from": "0xE06B",
+      "to": "0xE021",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 258,
+        "seconds": 4.293,
+        "clock": "00:04.30",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 258,
+        "seconds": 4.293,
+        "clock": "00:04.30",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "class": "same_door_movie",
+      "why": "room_flip 258=258. Dest enter both pose 18 @(19 or 20,139) energy 24. 49'20 has no dest gs=8 (Lua first-gs8-per-room). Do not invent door_gs9.",
+      "a_source_enter": 11775,
+      "a_dest_enter": 12033,
+      "b_source_enter": 11821,
+      "b_dest_enter": 12079
+    },
+    {
+      "name": "scientist_escape",
+      "from": "0xE021",
+      "to": "0xDFD7",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 263,
+        "seconds": 4.376,
+        "clock": "00:04.38",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 263,
+        "seconds": 4.376,
+        "clock": "00:04.38",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "class": "same_door_movie",
+      "why": "room_flip 263=263. Dest enter both pose 18 @(20,139) energy 24. 49'20 dest gs=8 missing.",
+      "a_source_enter": 12033,
+      "a_dest_enter": 12296,
+      "b_source_enter": 12079,
+      "b_dest_enter": 12342
+    },
+    {
+      "name": "magnet_escape",
+      "from": "0xDFD7",
+      "to": "0xDF8D",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 326,
+        "seconds": 5.424,
+        "clock": "00:05.43",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 329,
+        "seconds": 5.474,
+        "clock": "00:05.48",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": -3,
+        "seconds": -0.05,
+        "clock": "-00:00.05",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_faster"
+      },
+      "class": "same_door_movie_3f",
+      "why": "room_flip 326 vs 329 (-3f). Dest enter both pose 18 @(20,139) energy 24. Without dest gs=8 do not claim a different steam path. Likely 3f less dwell.",
+      "a_source_enter": 12296,
+      "a_dest_enter": 12622,
+      "b_source_enter": 12342,
+      "b_dest_enter": 12671
+    },
+    {
+      "name": "falling_to_elev",
+      "from": "0xDF8D",
+      "to": "0xDF45",
+      "clock": "room_flip",
+      "a_49_20": {
+        "frames": 293,
+        "seconds": 4.875,
+        "clock": "00:04.88",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 281,
+        "seconds": 4.676,
+        "clock": "00:04.68",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 12,
+        "seconds": 0.2,
+        "clock": "00:00.20",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "class": "same_leave_pose_slower_dwell",
+      "why": "room_flip 293 vs 281 (+12f). Dest enter pose 25 @(28,121) vs @(26,120) energy 24. Same spin leave, 12f extra in-room. Sniq dest gs=8 pose 25 @(216,632) mx=2 vy=4 inv=36. 49'20 heartbeat f13000 still gs=11 pose 25 @(216,633) during fade. 49'20 dest gs=8 missing.",
+      "a_source_enter": 12622,
+      "a_dest_enter": 12915,
+      "b_source_enter": 12671,
+      "b_dest_enter": 12952
+    },
+    {
+      "name": "elev_to_landing",
+      "from": "0xDF45",
+      "to": "0x91F8",
+      "clock": "room_flip",
+      "a_49_20": null,
+      "b_sniq": {
+        "frames": 2246,
+        "seconds": 37.372,
+        "clock": "00:37.43",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": null,
+      "class": "sniq_only",
+      "why": "49'20 movie ends gs=32 Ceres-success pose 2 @(141,75) energy 24. No Landing 0x91F8. Sniq room_flip 2246f to Landing f15198 energy 99. Do not mix gs=32 pad with Landing settle.",
+      "a_source_enter": null,
+      "a_dest_enter": null,
+      "b_source_enter": 12952,
+      "b_dest_enter": null
+    }
+  ],
+  "settled_gs8": [
+    {
+      "name": "elev_to_falling",
+      "clock": "settled_gs8",
+      "a_49_20": {
+        "frames": 428,
+        "seconds": 7.122,
+        "clock": "00:07.13",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 311,
+        "seconds": 5.175,
+        "clock": "00:05.18",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 117,
+        "seconds": 1.947,
+        "clock": "00:01.95",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "a_source_gs8": 8475,
+      "a_dest_gs8": 8903,
+      "b_source_gs8": 8639,
+      "b_dest_gs8": 8950,
+      "a_gs11_to_gs8": {
+        "frames": 119,
+        "seconds": 1.98,
+        "clock": "00:01.98",
+        "ntsc_fps": 60.0988
+      },
+      "b_gs11_to_gs8": {
+        "frames": 118,
+        "seconds": 1.963,
+        "clock": "00:01.97",
+        "ntsc_fps": 60.0988
+      },
+      "a_source_gs8_to_dest_enter": {
+        "frames": 309,
+        "seconds": 5.142,
+        "clock": "00:05.15",
+        "ntsc_fps": 60.0988
+      },
+      "b_source_gs8_to_dest_enter": {
+        "frames": 193,
+        "seconds": 3.211,
+        "clock": "00:03.22",
+        "ntsc_fps": 60.0988
+      },
+      "b_dwell_frames": 150,
+      "b_transition_frames": 161,
+      "source_mismatch": true,
+      "source_note": "49'20 source_gs8 is first control ride y=0 f8475. Sniq source_gs8 is pad y=72 f8639. Do not treat 428 vs 311 as a strat delta."
+    },
+    {
+      "name": "falling_to_magnet",
+      "clock": "settled_gs8",
+      "a_49_20": {
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 282,
+        "seconds": 4.692,
+        "clock": "00:04.70",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "a_source_gs8": 8903,
+      "a_dest_gs8": 9185,
+      "b_source_gs8": 8950,
+      "b_dest_gs8": 9232,
+      "a_gs11_to_gs8": {
+        "frames": 119,
+        "seconds": 1.98,
+        "clock": "00:01.98",
+        "ntsc_fps": 60.0988
+      },
+      "b_gs11_to_gs8": {
+        "frames": 118,
+        "seconds": 1.963,
+        "clock": "00:01.97",
+        "ntsc_fps": 60.0988
+      },
+      "a_source_gs8_to_dest_enter": {
+        "frames": 163,
+        "seconds": 2.712,
+        "clock": "00:02.72",
+        "ntsc_fps": 60.0988
+      },
+      "b_source_gs8_to_dest_enter": {
+        "frames": 164,
+        "seconds": 2.729,
+        "clock": "00:02.73",
+        "ntsc_fps": 60.0988
+      },
+      "b_dwell_frames": 121,
+      "b_transition_frames": 161,
+      "source_mismatch": false
+    },
+    {
+      "name": "magnet_to_scientist",
+      "clock": "settled_gs8",
+      "a_49_20": {
+        "frames": 346,
+        "seconds": 5.757,
+        "clock": "00:05.77",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 345,
+        "seconds": 5.741,
+        "clock": "00:05.75",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 1,
+        "seconds": 0.017,
+        "clock": "00:00.02",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "a_source_gs8": 9185,
+      "a_dest_gs8": 9531,
+      "b_source_gs8": 9232,
+      "b_dest_gs8": 9577,
+      "a_gs11_to_gs8": {
+        "frames": 120,
+        "seconds": 1.997,
+        "clock": "00:02.00",
+        "ntsc_fps": 60.0988
+      },
+      "b_gs11_to_gs8": {
+        "frames": 119,
+        "seconds": 1.98,
+        "clock": "00:01.98",
+        "ntsc_fps": 60.0988
+      },
+      "a_source_gs8_to_dest_enter": {
+        "frames": 226,
+        "seconds": 3.76,
+        "clock": "00:03.77",
+        "ntsc_fps": 60.0988
+      },
+      "b_source_gs8_to_dest_enter": {
+        "frames": 226,
+        "seconds": 3.76,
+        "clock": "00:03.77",
+        "ntsc_fps": 60.0988
+      },
+      "b_dwell_frames": 183,
+      "b_transition_frames": 162,
+      "source_mismatch": false
+    },
+    {
+      "name": "scientist_to_flat",
+      "clock": "settled_gs8",
+      "a_49_20": {
+        "frames": 264,
+        "seconds": 4.393,
+        "clock": "00:04.40",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 264,
+        "seconds": 4.393,
+        "clock": "00:04.40",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 0,
+        "seconds": 0.0,
+        "clock": "00:00.00",
+        "ntsc_fps": 60.0988,
+        "sign": "equal"
+      },
+      "a_source_gs8": 9531,
+      "a_dest_gs8": 9795,
+      "b_source_gs8": 9577,
+      "b_dest_gs8": 9841,
+      "a_gs11_to_gs8": {
+        "frames": 119,
+        "seconds": 1.98,
+        "clock": "00:01.98",
+        "ntsc_fps": 60.0988
+      },
+      "b_gs11_to_gs8": {
+        "frames": 118,
+        "seconds": 1.963,
+        "clock": "00:01.97",
+        "ntsc_fps": 60.0988
+      },
+      "a_source_gs8_to_dest_enter": {
+        "frames": 145,
+        "seconds": 2.413,
+        "clock": "00:02.42",
+        "ntsc_fps": 60.0988
+      },
+      "b_source_gs8_to_dest_enter": {
+        "frames": 146,
+        "seconds": 2.429,
+        "clock": "00:02.43",
+        "ntsc_fps": 60.0988
+      },
+      "b_dwell_frames": 103,
+      "b_transition_frames": 161,
+      "source_mismatch": false
+    },
+    {
+      "name": "flat_to_ridley",
+      "clock": "settled_gs8",
+      "a_49_20": {
+        "frames": 324,
+        "seconds": 5.391,
+        "clock": "00:05.40",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 321,
+        "seconds": 5.341,
+        "clock": "00:05.35",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 3,
+        "seconds": 0.05,
+        "clock": "00:00.05",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      },
+      "a_source_gs8": 9795,
+      "a_dest_gs8": 10119,
+      "b_source_gs8": 9841,
+      "b_dest_gs8": 10162,
+      "a_gs11_to_gs8": {
+        "frames": 184,
+        "seconds": 3.062,
+        "clock": "00:03.07",
+        "ntsc_fps": 60.0988
+      },
+      "b_gs11_to_gs8": {
+        "frames": 183,
+        "seconds": 3.045,
+        "clock": "00:03.05",
+        "ntsc_fps": 60.0988
+      },
+      "a_source_gs8_to_dest_enter": {
+        "frames": 140,
+        "seconds": 2.329,
+        "clock": "00:02.33",
+        "ntsc_fps": 60.0988
+      },
+      "b_source_gs8_to_dest_enter": {
+        "frames": 138,
+        "seconds": 2.296,
+        "clock": "00:02.30",
+        "ntsc_fps": 60.0988
+      },
+      "b_dwell_frames": 95,
+      "b_transition_frames": 226,
+      "source_mismatch": false
+    }
+  ],
+  "settled_gs8_missing_on_49_20": [
+    "ridley_fight",
+    "flat_escape",
+    "scientist_escape",
+    "magnet_escape",
+    "falling_to_elev"
+  ],
+  "dest_poses": [
+    {
+      "name": "elev_to_falling",
+      "a_dest_gs8": {
+        "frame": 8903,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 61440,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 60473,
+        "gs": 8,
+        "room": "0xDF8D"
+      },
+      "b_dest_gs8": {
+        "frame": 8950,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 28671,
+        "y_sub": 65535,
+        "energy": 99,
+        "gs": 8,
+        "room_id": 57229,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xDF8D"
+      },
+      "a_dest_enter": {
+        "frame": 8784,
+        "pose": 9,
+        "x": 236,
+        "y": 651,
+        "x_sub": 61440,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 33056,
+        "gs": 11,
+        "room": "0xDF8D"
+      },
+      "b_dest_enter": {
+        "frame": 8832,
+        "pose": 17,
+        "x": 238,
+        "y": 651,
+        "energy": 99,
+        "room_id": 57229,
+        "room": "0xDF8D"
+      },
+      "a_wram_sha256_at_flip": "a9dcb6eb43eae2f60107363a0e6d3980ea69f30b324942bd8a2bd32ac56b511a"
+    },
+    {
+      "name": "falling_to_magnet",
+      "a_dest_gs8": {
+        "frame": 9185,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 18944,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 21802,
+        "gs": 8,
+        "room": "0xDFD7"
+      },
+      "b_dest_gs8": {
+        "frame": 9232,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 7423,
+        "y_sub": 65535,
+        "energy": 99,
+        "gs": 8,
+        "room_id": 57303,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xDFD7"
+      },
+      "a_dest_enter": {
+        "frame": 9066,
+        "pose": 9,
+        "x": 492,
+        "y": 139,
+        "x_sub": 18944,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 33668,
+        "gs": 11,
+        "room": "0xDFD7"
+      },
+      "b_dest_enter": {
+        "frame": 9114,
+        "pose": 9,
+        "x": 492,
+        "y": 139,
+        "energy": 99,
+        "room_id": 57303,
+        "room": "0xDFD7"
+      },
+      "a_wram_sha256_at_flip": "fc81a546dc33b33e2440a5220fb90dd896e2d75b28ef50520a316d32e601f3d8"
+    },
+    {
+      "name": "magnet_to_scientist",
+      "a_dest_gs8": {
+        "frame": 9531,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 53248,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 4358,
+        "gs": 8,
+        "room": "0xE021"
+      },
+      "b_dest_gs8": {
+        "frame": 9577,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 0,
+        "y_sub": 65535,
+        "energy": 99,
+        "gs": 8,
+        "room_id": 57377,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xE021"
+      },
+      "a_dest_enter": {
+        "frame": 9411,
+        "pose": 17,
+        "x": 240,
+        "y": 395,
+        "x_sub": 53248,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 21576,
+        "gs": 11,
+        "room": "0xE021"
+      },
+      "b_dest_enter": {
+        "frame": 9458,
+        "pose": 9,
+        "x": 236,
+        "y": 395,
+        "energy": 99,
+        "room_id": 57377,
+        "room": "0xE021"
+      },
+      "a_wram_sha256_at_flip": "dc665a4ba82d735b14add43b795add3df9fa32a40acc0d29c9c1ebec6ad9e126"
+    },
+    {
+      "name": "scientist_to_flat",
+      "a_dest_gs8": {
+        "frame": 9795,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 14848,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 25896,
+        "gs": 8,
+        "room": "0xE06B"
+      },
+      "b_dest_gs8": {
+        "frame": 9841,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "x_sub": 45056,
+        "y_sub": 65535,
+        "energy": 99,
+        "gs": 8,
+        "room_id": 57451,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xE06B"
+      },
+      "a_dest_enter": {
+        "frame": 9676,
+        "pose": 17,
+        "x": 493,
+        "y": 139,
+        "x_sub": 14848,
+        "y_sub": 65535,
+        "energy": 99,
+        "rng": 62371,
+        "gs": 11,
+        "room": "0xE06B"
+      },
+      "b_dest_enter": {
+        "frame": 9723,
+        "pose": 17,
+        "x": 492,
+        "y": 139,
+        "energy": 99,
+        "room_id": 57451,
+        "room": "0xE06B"
+      },
+      "a_wram_sha256_at_flip": "62f4018d8eda68bf15e5e7eac71a1f0ed831635d151f93be3905965f01097c3b"
+    },
+    {
+      "name": "flat_to_ridley",
+      "a_dest_gs8": {
+        "frame": 10119,
+        "pose": 26,
+        "x": 39,
+        "y": 130,
+        "x_sub": 64000,
+        "y_sub": 23551,
+        "energy": 99,
+        "rng": 39284,
+        "gs": 8,
+        "room": "0xE0B5"
+      },
+      "b_dest_gs8": {
+        "frame": 10162,
+        "pose": 9,
+        "x": 39,
+        "y": 139,
+        "x_sub": 0,
+        "y_sub": 65535,
+        "energy": 99,
+        "gs": 8,
+        "room_id": 57525,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xE0B5"
+      },
+      "a_dest_enter": {
+        "frame": 9935,
+        "pose": 26,
+        "x": 484,
+        "y": 130,
+        "x_sub": 64000,
+        "y_sub": 23551,
+        "energy": 99,
+        "rng": 34743,
+        "gs": 11,
+        "room": "0xE0B5"
+      },
+      "b_dest_enter": {
+        "frame": 9979,
+        "pose": 9,
+        "x": 492,
+        "y": 139,
+        "energy": 99,
+        "room_id": 57525,
+        "room": "0xE0B5"
+      },
+      "a_wram_sha256_at_flip": "86b8e65d6dd56a53bc9f7a42f7ffbff7e039f045a91f2fdd62bc0a730e1cedd3"
+    },
+    {
+      "name": "ridley_fight",
+      "a_dest_gs8": null,
+      "b_dest_gs8": null,
+      "a_dest_enter": {
+        "frame": 11775,
+        "pose": 18,
+        "x": 19,
+        "y": 139,
+        "x_sub": 45056,
+        "y_sub": 65535,
+        "energy": 24,
+        "rng": 46939,
+        "gs": 11,
+        "room": "0xE06B"
+      },
+      "b_dest_enter": {
+        "frame": 9979,
+        "pose": 9,
+        "x": 492,
+        "y": 139,
+        "energy": 99,
+        "room_id": 57525,
+        "room": "0xE0B5"
+      },
+      "a_wram_sha256_at_flip": "21f5a32d06d95bbefa29f329c3a575a420597cba8af1ed7562ca74aecfcf3ccd"
+    },
+    {
+      "name": "flat_escape",
+      "a_dest_gs8": null,
+      "b_dest_gs8": {
+        "frame": 12198,
+        "pose": 18,
+        "x": 472,
+        "y": 139,
+        "x_sub": 0,
+        "y_sub": 65535,
+        "energy": 24,
+        "gs": 8,
+        "room_id": 57377,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xE021"
+      },
+      "a_dest_enter": {
+        "frame": 12033,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "x_sub": 0,
+        "y_sub": 65535,
+        "energy": 24,
+        "rng": 22988,
+        "gs": 11,
+        "room": "0xE021"
+      },
+      "b_dest_enter": {
+        "frame": 12079,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "energy": 24,
+        "room_id": 57377,
+        "room": "0xE021"
+      },
+      "a_wram_sha256_at_flip": "ba116bd4589573e70f5807c8dfb8abcd3e9b45fad698da469f63ea1d0f80380c"
+    },
+    {
+      "name": "scientist_escape",
+      "a_dest_gs8": null,
+      "b_dest_gs8": {
+        "frame": 12461,
+        "pose": 18,
+        "x": 216,
+        "y": 395,
+        "x_sub": 4864,
+        "y_sub": 65535,
+        "energy": 24,
+        "gs": 8,
+        "room_id": 57303,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 0,
+        "movement_type": 1,
+        "room": "0xDFD7"
+      },
+      "a_dest_enter": {
+        "frame": 12296,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "x_sub": 6400,
+        "y_sub": 65535,
+        "energy": 24,
+        "rng": 63180,
+        "gs": 11,
+        "room": "0xDFD7"
+      },
+      "b_dest_enter": {
+        "frame": 12342,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "energy": 24,
+        "room_id": 57303,
+        "room": "0xDFD7"
+      },
+      "a_wram_sha256_at_flip": "0078a8eb523e7b3c52ca29902baddabb675892a94bc91912df5ca9a4f1e82f40"
+    },
+    {
+      "name": "magnet_escape",
+      "a_dest_gs8": null,
+      "b_dest_gs8": {
+        "frame": 12792,
+        "pose": 18,
+        "x": 472,
+        "y": 139,
+        "x_sub": 20480,
+        "y_sub": 65535,
+        "energy": 24,
+        "gs": 8,
+        "room_id": 57229,
+        "momentum_x": 2,
+        "velocity_y": 0,
+        "invincibility_timer": 6,
+        "movement_type": 1,
+        "room": "0xDF8D"
+      },
+      "a_dest_enter": {
+        "frame": 12622,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "x_sub": 0,
+        "y_sub": 65535,
+        "energy": 24,
+        "rng": 23498,
+        "gs": 11,
+        "room": "0xDF8D"
+      },
+      "b_dest_enter": {
+        "frame": 12671,
+        "pose": 18,
+        "x": 20,
+        "y": 139,
+        "energy": 24,
+        "room_id": 57229,
+        "room": "0xDF8D"
+      },
+      "a_wram_sha256_at_flip": "a666724d407cc5b459c7063fbdfae595d0fe8dc268744ea4d4c6e195f86fa691"
+    },
+    {
+      "name": "falling_to_elev",
+      "a_dest_gs8": null,
+      "b_dest_gs8": {
+        "frame": 13073,
+        "pose": 25,
+        "x": 216,
+        "y": 632,
+        "x_sub": 44800,
+        "y_sub": 27647,
+        "energy": 24,
+        "gs": 8,
+        "room_id": 57157,
+        "momentum_x": 2,
+        "velocity_y": 4,
+        "invincibility_timer": 36,
+        "movement_type": 3,
+        "room": "0xDF45"
+      },
+      "a_dest_enter": {
+        "frame": 12915,
+        "pose": 25,
+        "x": 28,
+        "y": 121,
+        "x_sub": 768,
+        "y_sub": 7167,
+        "energy": 24,
+        "rng": 45817,
+        "gs": 11,
+        "room": "0xDF45"
+      },
+      "b_dest_enter": {
+        "frame": 12952,
+        "pose": 25,
+        "x": 26,
+        "y": 120,
+        "energy": 24,
+        "room_id": 57157,
+        "room": "0xDF45"
+      },
+      "a_wram_sha256_at_flip": "7e5e453d0b4f235e563a9957f5945aa61644c11e497ee4de3813771581eb19c4"
+    },
+    {
+      "name": "elev_to_landing",
+      "a_dest_gs8": null,
+      "b_dest_gs8": null,
+      "a_dest_enter": null,
+      "b_dest_enter": {
+        "frame": 12952,
+        "pose": 25,
+        "x": 26,
+        "y": 120,
+        "energy": 24,
+        "room_id": 57157,
+        "room": "0xDF45"
+      },
+      "a_wram_sha256_at_flip": null
+    }
+  ],
+  "room_flip_shared_total": {
+    "a_49_20": {
+      "frames": 4656,
+      "seconds": 77.472,
+      "clock": "01:17.60",
+      "ntsc_fps": 60.0988
+    },
+    "b_sniq": {
+      "frames": 4633,
+      "seconds": 77.09,
+      "clock": "01:17.22",
+      "ntsc_fps": 60.0988
+    },
+    "delta_49_20_minus_sniq": {
+      "frames": 23,
+      "seconds": 0.383,
+      "clock": "00:00.38",
+      "ntsc_fps": 60.0988,
+      "sign": "49_20_slower"
+    },
+    "without_ceres_1": {
+      "a_49_20": {
+        "frames": 4131,
+        "seconds": 68.737,
+        "clock": "01:08.85",
+        "ntsc_fps": 60.0988
+      },
+      "b_sniq": {
+        "frames": 4120,
+        "seconds": 68.554,
+        "clock": "01:08.67",
+        "ntsc_fps": 60.0988
+      },
+      "delta_49_20_minus_sniq": {
+        "frames": 11,
+        "seconds": 0.183,
+        "clock": "00:00.18",
+        "ntsc_fps": 60.0988,
+        "sign": "49_20_slower"
+      }
+    }
+  },
+  "skill_candidates": [
+    {
+      "name": "Ceres 1 2008 ledge-drop",
+      "hop": "elev_to_falling",
+      "home": "routes/kpdr/ceres/outbound.py",
+      "not_home": "routes/skills/moonfall.py",
+      "propose": "Moonwalk-off first-room drop. Product already moonfalls via routes/skills/moonfall.py (require_moonwalk_on). Do not wire this. No second consumer, so it stays Ceres-local if ever written.",
+      "wire": false
+    },
+    {
+      "name": "Ceres 2 magnet-feet / door-speed carry",
+      "hop": "falling_to_magnet",
+      "home": "routes/kpdr/ceres/outbound.py",
+      "propose": "49'20 is the same 282f door movie as Sniq, dest gs=8 pose 9 @(39,139). TAS target confirmed. No new skill. Product leftover is dwell, not the clock.",
+      "wire": false
+    },
+    {
+      "name": "Ceres 3 leave pose 9 mx=2",
+      "hop": "magnet_to_scientist",
+      "home": "routes/kpdr/ceres/outbound.py",
+      "propose": "Sniq dest gs=8 pose 9 @(39,139) mx=2. 49'20 pose 17 at the same xy, +1f. Leave-window check on the existing jump-before-ledge body, not a new module.",
+      "wire": false
+    },
+    {
+      "name": "Dead Scientist never-jump run",
+      "hop": "scientist_to_flat",
+      "home": "routes/kpdr/ceres/scientist.py",
+      "propose": "Exact 265/264 match. Dest gs=8 both pose 17 @(39,139). Already the product policy.",
+      "wire": false
+    },
+    {
+      "name": "Flat run-in to Ridley",
+      "hop": "flat_to_ridley",
+      "home": "routes/kpdr/ceres/outbound.py",
+      "propose": "Do not copy 49'20 spin-in pose 26 y=130. Sniq run-in pose 9 y=139 is 3f faster.",
+      "wire": false
+    },
+    {
+      "name": "Ceres Ridley tail-tank",
+      "hop": "ridley_fight",
+      "home": "combat/ceres_ridley.py",
+      "propose": "Both TAS ~1840f to energy 24. Public wiki policy already lives here. 49'20 is not a new fight.",
+      "wire": false
+    },
+    {
+      "name": "Escape door movies (Flat, Scientist)",
+      "hop": [
+        "flat_escape",
+        "scientist_escape"
+      ],
+      "home": "routes/kpdr/ceres/scientist.py",
+      "propose": "258=258 and 263=263 dest enter pose 18. Already reverse scientist/flat.",
+      "wire": false
+    },
+    {
+      "name": "Magnet escape 3f tighter door",
+      "hop": "magnet_escape",
+      "home": "routes/kpdr/ceres/magnet.py",
+      "propose": "49'20 room_flip 326 vs Sniq 329, dest enter pose 18 both. Second TAS reference. Need dest gs=8 before calling it a different steam path. Stay in magnet.py.",
+      "wire": false
+    },
+    {
+      "name": "Falling reverse tile boost",
+      "hop": "falling_to_elev",
+      "home": "routes/kpdr/ceres/magnet.py",
+      "propose": "49'20 is +12f vs Sniq. Keep Sniq (26,120) p25 mx=2 as the leave target. Do not copy 49'20.",
+      "wire": false
+    },
+    {
+      "name": "Elev WJ + ship pad leave",
+      "hop": "elev_to_landing",
+      "home": "routes/kpdr/ceres/elev_escape.py",
+      "layer1": "routes/skills/walljump.py",
+      "propose": "49'20 proves Ceres-success pad pose 2 @(141,75) energy 24, no Landing clock. geometry already has ship pad bands. Product leftover is the WJ, not a new skill.",
+      "wire": false
+    }
+  ],
+  "layer1_new_skills": [],
+  "non_claims": [
+    "Did not STATUS-promote.",
+    "Did not change DEFAULT_CONTINUOUS_TIP.",
+    "Did not overwrite recordings/<tip>.json.",
+    "Did not wire routes/kpdr/ceres.",
+    "Did not re-emulate 1.43 or lsnes.",
+    "Did not invent 49'20 escape door_gs9 or dest gs=8.",
+    "Living spine bead is still Gravity / Phantoon (rr-kw8t)."
+  ]
+}

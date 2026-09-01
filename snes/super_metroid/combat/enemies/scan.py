@@ -29,6 +29,7 @@ class Enemy(NamedTuple):
     extra_props: int = 0
     x_radius: int = 0
     y_radius: int = 0
+    spritemap: int = 0
 
 
 def _u16(ram: Any, addr: int) -> int:
@@ -81,6 +82,7 @@ def enemies_from_ram(ram: Any) -> tuple[Enemy, ...]:
                 extra_props=_u16(ram, base + 0x10),
                 x_radius=_u16(ram, base + 0x0A),
                 y_radius=_u16(ram, base + 0x0C),
+                spritemap=_u16(ram, base + 0x16),
             )
         )
     return tuple(out)

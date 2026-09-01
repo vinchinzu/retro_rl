@@ -1,16 +1,16 @@
 # Ceres Ridley — probe commands
 
-Public policy lives in `combat/ceres_ridley.py` and
+Public policy lives in `combat/ceres_ridley.py` (`CeresRidleyStrategy`) and
 https://wiki.supermetroid.run/Ridley#Ceres_Station.
-Pin-bench table lives in `docs/plan.md`.
+Pin-bench table lives in `docs/plan.md` § Ceres Ridley fight.
 
 ```bash
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py capture
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py dump --frames 400
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py strategy --policy wait
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py strategy --policy tail_tank
-uv run python snes/super_metroid/scripts/probe/ceres_ridley_combat.py bench
+# The Ridley fight runs inside the full-station play (hops report vs TAS).
+PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
+
+# Policy unit tests (no emulator): wait / tail_tank / fresh_fifth_jump.
+uv run pytest snes/super_metroid/tests/test_ceres_ridley_combat.py -q
 ```
 
-Enter pin: `custom_integrations/SuperMetroid-Snes/scratch/ceres_ridley_enter.state`.
-Bench JSON: `scratch/ceres_ridley_bench.json`.
+Product default is `fresh_fifth_jump` (no route flag).
+Same-pin fight bench: `routes/kpdr/ceres/data/ceres_ridley_bench.json`.

@@ -6,6 +6,8 @@ Do not re-encode these thresholds inline in controllers.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from super_metroid.takeoff import DEFAULT_PUMP_PERIOD, PlatformHop, TakeoffWindow
 from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
@@ -32,16 +34,28 @@ _CERES_ELEV_SHIP_Y = 80  # grounded ship pad band (product leave ~x145 y75 pose 
 _CERES_ELEV_SHIP_X = 145  # product pad center before gs=32 Ceres-success
 _CERES_ELEV_TOP_Y = 171  # s10 land / right-wall KB band
 _CERES_ELEV_TOP_X = 211  # product right-wall contact (pose 137)
-_CERES_ELEV_LEDGE_Y = 571  # mid shaft ledge after bottom LEFT+A
-_CERES_ELEV_LEDGE_POSE = 2
 _CERES_ELEV_BOTTOM_Y = 640  # bottom floor band after door remap
-# Falling west door (TAS lsnes sniq_100): hop the y≈139 ledge, spin LEFT at
-# x≲50, turn to pose 25 (right spin) at x≲45. Floor jump at x=30 remaps
-# facing left (pose 26) and misses the y=632 wall-jump plant.
+# Falling west door (TAS lsnes sniq_100): hop the y≈139 ledge, spin LEFT,
+# turn to pose 25 at x≲28. Floor jump remaps facing left (pose 26) and
+# misses the y=632 wall-jump plant. TAS door is p25 (26,120) mx=2.
 _CERES_FALLING_DOOR_LEDGE_Y = 139
-_CERES_FALLING_DOOR_SPIN_X = 50
-_CERES_FALLING_DOOR_TURN_X = 45
-_CERES_FALLING_DOOR_JUMP_X = 30
+_CERES_FALLING_DOOR_TURN_X = 28
+_CERES_FALLING_DOOR_JUMP_X = 40
+# Reverse Falling: run off y=139 onto y=187, hop x≈347 onto y=171, run
+# LEFT, turn RIGHT at x≤314 leftover LEFT mx, 1f p25, B-only fall (no X),
+# LEFT+B+A on p83/p80. Do not hold A into the y≈110 ceiling. RIGHT on the
+# hit frame is p84 knock RIGHT. Door is pose 25 at (26,120) mx=2.
+_CERES_FALLING_REV_FLOOR_Y = 187
+_CERES_FALLING_REV_SHELF_Y = 171
+_CERES_FALLING_REV_TILE_X = 300
+# 1f p38 + 1f p25 + fall (no X) before 294 contact. 312+X is p47 overshoot.
+_CERES_FALLING_REV_TURN_X = 314
+CERES_FALLING_REV_FLOOR_HOP = PlatformHop(
+    _CERES_FALLING_REV_FLOOR_Y,
+    330,
+    380,
+    TakeoffWindow((342, 352), "LEFT", min_momentum=1),
+)
 # Outbound Falling Tile (wiki Ceres 2 / Sniq 100% lsnes): run off the y=139
 # entry, short-hop the y=187 floor at x≈145–162 with LEFT+RIGHT+A so magnet
 # feet plant y=171, L-pump the shelf, then jump at x≈326–337 into the right door.
@@ -61,27 +75,24 @@ CERES_FALLING_EXIT_HOP = PlatformHop(
     360,
     TakeoffWindow((320, 345), "RIGHT", min_momentum=1),
 )
-_CERES_SPIN_RIGHT = frozenset({25, 27})
-_CERES_SPIN_LEFT = frozenset({26, 28})
-
-
-# 571/475/363 seats from the pin. Jump windows are incoming speed, not
-# frame counts — subpixel + momentum decide height/distance.
-# Shared type: ``takeoff.PlatformHop`` (every room, not a Ceres-only hop).
-CERES_ELEV_HOPS: tuple[PlatformHop, ...] = (
-    PlatformHop(571, 40, 130, TakeoffWindow((70, 110), "RIGHT", min_momentum=1)),
-    PlatformHop(475, 90, 180, TakeoffWindow((118, 158), "RIGHT", min_momentum=1)),
-    PlatformHop(363, 150, 220, TakeoffWindow((165, 205), "LEFT", min_momentum=1)),
-)
 # Magnet escape: leave door height ~y139; outbound mid ~y395.
-_CERES_MAGNET_EXIT_Y = 200  # y at/below this → high enough for left exit
+CERES_DATA_DIR = Path(__file__).resolve().parent / "data"
+# Stair-top magnet-stop plants x≈85 y=347 mx=0. Jump window is HIGH_HOP (70, 78).
+_CERES_MAGNET_STOP_X = 92
+# East steam burns on this pin; wait before the door hop.
+_CERES_MAGNET_DOOR_STEAM_FRAMES = 6
 # Outbound Magnet Stairs (wiki Ceres 3 / Sniq 100% lsnes): from the west
 # door (39, 139) run RIGHT, jump the y=139 ledge at x≈126–140, air-turn
 # LEFT onto y=219 (~x192, not magnet-feet 219), run LEFT, jump the slope
 # around y=255 x≈131, land y=347, RIGHT to the east door ~(236, 395).
 # https://wiki.supermetroid.run/KPDR_Room_Strategies#Ceres_3
+# Reverse (Sniq 100% lsnes magnet_escape): no east-door jump. Run 395
+# stairs onto 347, jump x≈68–82 LEFT then air-turn RIGHT onto 267. Run
+# RIGHT, jump x≈112–128, steam d-boost to 219, jump to 139. Do not jump
+# x≤50 (west magnet-stop) or x≥85 from 347 (267 underside).
 _CERES_MAGNET_TOP_Y = 139
 _CERES_MAGNET_MID_Y = 219
+_CERES_MAGNET_SHELF_Y = 267
 _CERES_MAGNET_SLOPE_Y = 255
 _CERES_MAGNET_BOT_Y = 347
 _CERES_MAGNET_DOOR_Y = 395
@@ -97,6 +108,24 @@ CERES_MAGNET_MID_HOP = PlatformHop(
     110,
     145,
     TakeoffWindow((120, 138), "LEFT", min_momentum=1),
+)
+CERES_MAGNET_HIGH_HOP = PlatformHop(
+    _CERES_MAGNET_BOT_Y,
+    40,
+    _CERES_MAGNET_STOP_X,
+    TakeoffWindow((70, 78), "LEFT", min_momentum=1),
+)
+CERES_MAGNET_STEAM_HOP = PlatformHop(
+    _CERES_MAGNET_SHELF_Y,
+    60,
+    140,
+    TakeoffWindow((112, 128), "RIGHT", min_momentum=1),
+)
+CERES_MAGNET_MID_ESCAPE_HOP = PlatformHop(
+    _CERES_MAGNET_MID_Y,
+    170,
+    210,
+    TakeoffWindow((180, 200), "RIGHT", min_momentum=0),
 )
 
 # Dead Scientist Room 0xE021: raised door alcoves (y≈139) over a pit (y≈187).
@@ -138,31 +167,36 @@ __all__ = [
     "_CERES_ELEV_SHIP_X",
     "_CERES_ELEV_TOP_Y",
     "_CERES_ELEV_TOP_X",
-    "_CERES_ELEV_LEDGE_Y",
-    "_CERES_ELEV_LEDGE_POSE",
     "_CERES_ELEV_BOTTOM_Y",
     "_CERES_FALLING_DOOR_LEDGE_Y",
-    "_CERES_FALLING_DOOR_SPIN_X",
     "_CERES_FALLING_DOOR_TURN_X",
     "_CERES_FALLING_DOOR_JUMP_X",
+    "_CERES_FALLING_REV_FLOOR_Y",
+    "_CERES_FALLING_REV_SHELF_Y",
+    "_CERES_FALLING_REV_TILE_X",
+    "_CERES_FALLING_REV_TURN_X",
+    "CERES_FALLING_REV_FLOOR_HOP",
     "_CERES_FALLING_OUT_ENTRY_Y",
     "_CERES_FALLING_OUT_FLOOR_Y",
     "_CERES_FALLING_OUT_PLAT_Y",
     "_CERES_FALLING_OUT_DOOR_X",
     "CERES_FALLING_FLOOR_HOP",
     "CERES_FALLING_EXIT_HOP",
-    "_CERES_SPIN_RIGHT",
-    "_CERES_SPIN_LEFT",
-    "CERES_ELEV_HOPS",
-    "_CERES_MAGNET_EXIT_Y",
     "_CERES_MAGNET_TOP_Y",
     "_CERES_MAGNET_MID_Y",
+    "_CERES_MAGNET_SHELF_Y",
     "_CERES_MAGNET_SLOPE_Y",
     "_CERES_MAGNET_BOT_Y",
     "_CERES_MAGNET_DOOR_Y",
     "_CERES_MAGNET_OUT_DOOR_X",
+    "CERES_DATA_DIR",
     "CERES_MAGNET_TOP_HOP",
     "CERES_MAGNET_MID_HOP",
+    "CERES_MAGNET_HIGH_HOP",
+    "CERES_MAGNET_STEAM_HOP",
+    "CERES_MAGNET_MID_ESCAPE_HOP",
+    "_CERES_MAGNET_STOP_X",
+    "_CERES_MAGNET_DOOR_STEAM_FRAMES",
     "_CERES_SCI_DOOR_Y",
     "_CERES_SCI_FLOOR_Y",
     "_CERES_SCI_ENTRY_LEDGE_X",

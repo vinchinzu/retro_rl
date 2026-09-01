@@ -9,12 +9,12 @@ description: >
 
 # SM room grid
 
-Showcase clip. Not a spine dual. Tiles are `KPDR_SEGMENTS` from catalog
+Showcase clip. Not spine evidence. Tiles are `KPDR_SEGMENTS` from catalog
 pins in `super_metroid.demo.room_grid.DEFAULT_TILES`.
 
 ## This turn
 
-1. **Do not dual. Do not STATUS.** Output is
+1. **Not a bench. Do not STATUS.** Output is
    `recordings/room_grid.mp4` (gitignored). A tile RED is still a clip.
 2. **Inventory first.**
    ```bash

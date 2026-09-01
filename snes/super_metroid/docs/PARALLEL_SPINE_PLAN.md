@@ -328,8 +328,8 @@ For Speed, A/B from identical entry digests and compare:
 
 The coordinator integrates passing candidates in route order in batches of at
 most three adjacent changes, then runs the narrowest prefix/suffix compose.
-Run a full milestone dual at Gravity, new living tips, credits, and before
-Publish—not after each isolated Chip.
+Run a full power-on milestone run at Gravity, new living tips, credits, and
+before Publish—not after each isolated Chip.
 
 **Done:** all selected rooms have reactive Skills, the ten-way wave stitches
 into one continuous Survival chain, and the old candidate remains selectable
@@ -342,7 +342,7 @@ the same route manifest selects a candidate that greens with resource refill
 alone. Later remove resource writes under the existing Clean track. Never
 change evidence labels in place; produce a new assembly report per profile.
 
-**Done:** power-on → credits is dual-green under Survival and eligible for the
+**Done:** power-on → credits is green under Survival and eligible for the
 normal STATUS/Finish process; Clean remains independent.
 
 ## Promotion gates

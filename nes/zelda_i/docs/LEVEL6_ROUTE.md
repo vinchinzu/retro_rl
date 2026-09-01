@@ -129,11 +129,11 @@ Controller: `level6.overworld.Level6WestKeyDoorController`.
 
 | Field | Live |
 |-------|------|
-| Start | `Level6Entrance` (0x79) or `L6Room_7a` |
+| Start | `Level6Entrance` (0x79). Isolated interior pins dropped. |
 | Specs | `level6.dungeon.ROOM_79_SPEC` / `ROOM_7A_SPEC` |
 | Combat | `Level6EastKeyController` (GenericDungeonRoomController + backstep) |
 | Stop | `level6_room_7a_key_success` — keys≥1, no live 0x24 |
-| Checkpoint | `Level6EastKey.state` — room **0x7a**, keys **1**, xy≈(120,141) |
+| Checkpoint | dropped. Survival compose is `run_survival_spine.py --through …` from power-on (CLI has no `--from-state`) |
 | Runner | `scripts/run_survival_spine.py --through level6-east-key --no-video --trials 1` |
 | Track | **assisted pure** (Survival health writes; Clean dies to beams) |
 
@@ -150,16 +150,16 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level6-east-key --no-video --trials 1
 ```
 
-### West wizzrobes pure (Level6EastKey → 0x78 clear) — **assisted 2/2**
+### West wizzrobes pure (0x7a leftover → 0x78 clear) — **assisted 2/2**
 
 | Field | Live |
 |-------|------|
-| Start | `Level6EastKey` (0x7a keys≥1) or `L6Room_79_keys1` |
+| Start | Isolated interior pins dropped. Survival compose is `run_survival_spine.py --through …` from power-on (CLI has no `--from-state`) |
 | Path | free LEFT → 0x79 → key LEFT (fire-bypass) → 0x78 |
 | Spec | `level6.dungeon.ROOM_78_SPEC` |
 | Combat | `Level6WestWizzrobeController` (same backstep as east) |
 | Stop | `level6_room_78_clear_success` — room 0x78, no live 0x24 |
-| Checkpoint | `Level6WestWizzrobes.state` — room **0x78**, cleared |
+| Checkpoint | dropped |
 | Runner | `scripts/run_survival_spine.py --through level6-west --no-video --trials 1` |
 | Track | **assisted pure** |
 | Post-clear | `doors=0x01` (RIGHT), `mask=0x09` (R+U) — **UP → 0x68** |
@@ -541,36 +541,32 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south09
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south19 --no-video --trials 1
 ```
 
-### Clear dark 0x29 — **1/1**
+### Clear dark 0x29 — **1/1** (power-on)
 
 | Field | Live |
 |-------|------|
-| Start | Survival leftover play `0x29` `(120,77)` rod=1 keys=3 |
+| Start | Survival leftover play `0x29` `(120,77)` rod=1 |
 | Census | 3× blue `0x23` + 2× orange `0x24` + `0x59` shots (not Vire `0x12`) |
-| Path | idle 160f then occupancy-patrol |
-| Stop | `--through level6-clear29` play-ready empty `0x29` |
-| Leftover | `(55,133)`; keys 3→4 (floor `0x19`); Bubble residual |
-| v1 | timeout 15000f max_live=0 (Vire spec) |
-| v2 | **1/1** hop 1,406f, 215,534f |
+| Path | occupancy-patrol; leftover clips RIGHT+DOWN to y=141, then DOWN to `(120,189)` |
+| Stop | `--through level6-clear29` south door leftover |
+| Leftover | `(120,189)`. Cardinal RIGHT @ y=109 boxed. |
+| v | **1/1** hop 1,411f (`l6_south29_clip`) |
 | Track | **assisted Survival** |
-| Notes | Do not grant candle. East PNG mouth sealed after clear (mask 12). Do not poke `ADDR_ARROWS`. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-clear29 --no-video --trials 1
 ```
 
-### South 0x29 → play 0x39 — **1/1**
+### South 0x29 → play 0x39 — **1/1** (power-on)
 
 | Field | Live |
 |-------|------|
-| Start | Survival leftover play `0x29` `(55,133)` rod=1 keys=4 |
-| Path | RIGHT+DOWN clip to y=141, occupancy x=120, DOWN |
+| Start | Survival leftover play `0x29` `(120,189)` |
+| Path | hold DOWN (SOUTH19-shaped) |
 | Stop | `--through level6-south29` play-ready dest (RAM `0x39`) rod=1 |
-| Leftover | `(120,93)` north mouth of dark `0x39`; keys=4 bombs=8 TF=`0x1F` |
-| v1–v3 | pocket `(64,181)` tile 116 (occupancy DOWN @ x=64) |
-| v4 | **1/1** hop 288f, 215,822f |
+| Leftover | play `0x39` `(120,93)` keys=3 |
+| v | **1/1** hop 199f (`l6_south29_clip`) |
 | Track | **assisted Survival** |
-| Notes | East of 0x29 sealed. Do not poke `ADDR_ARROWS`. |
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-south29 --no-video --trials 1
@@ -733,9 +729,9 @@ rows on `scripts/run_survival_spine.py`.
 - Cellar return → play `0x09` — **live** `--through level6-exit75` v3 leftover `(192,141)` rod=1 bow=0 arrows=0
 - South `0x09` → play `0x19` — **live** `--through level6-south09` v1 leftover `(120,77)` rod=1; 0x19 already cleared
 - South `0x19` KEY-DOWN → play `0x29` — **live** `--through level6-south19` v1 leftover dark `(120,77)` keys 4→3
-- Clear `0x29` — **live** `--through level6-clear29` v2 leftover `(55,133)` keys 3→4; census 3×`0x23`+2×`0x24` (not Vire)
+- Clear `0x29` — leftover south door `(120,189)` via RIGHT+DOWN clip; **live** `l6_south29_clip` 1,411f
 - East `0x29` — **red** PNG mouth sealed (mask 12)
-- South `0x29` → play `0x39` — **live** `--through level6-south29` v4 leftover `(120,93)`
+- South `0x29` → play `0x39` `(120,93)` — **live** `l6_south29_clip` 199f from power-on
 - Clear `0x39` 5× Vire — **live** `--through level6-clear39` leftover `(136,173)`
 - East `0x39` → play `0x3A` — **live** `--through level6-east39` v3 leftover `(16,141)` keys 4
 - Clear `0x3A` — **live** `--through level6-clear3a` leftover `(144,141)`; center 0x68 unpushed
@@ -757,11 +753,8 @@ rows on `scripts/run_survival_spine.py`.
 |-------|------------|
 | `Level6Entrance.state` | Assisted enter from OW `0x22`; room-ready `0x79` |
 | `L6Probe_22.state` | OW door screen (dev) |
-| `L6Room_7a.state` | East key room after wall-first RIGHT (enemies live) |
-| `Level6EastKey.state` | Assisted pure: 0x7a cleared + keys 0→1 |
-| `L6Room_79_keys1.state` | 0x79 with keys≥1 after free return from 0x7a |
-| `L6Room_78.state` / `Level6WestWizzrobes.state` | West wizzrobe room enter / cleared |
-| `L6Cleared78.state` | 0x78 clear dev fixture |
+
+Isolated interior pins (`L6Room_7a`, `Level6EastKey`, `L6Room_79_keys1`, `L6Room_78` / `Level6WestWizzrobes`, `L6Cleared78`) were dropped. Room `0x29` is validated from dungeon enter / power-on spine, not from isolated interior states. Survival compose is `run_survival_spine.py --through …` from power-on (CLI has no `--from-state`).
 
 ## Evidence
 

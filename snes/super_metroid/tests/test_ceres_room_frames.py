@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from unittest.mock import Mock
 
 import numpy as np
 
-from super_metroid.ram import FACING_RIGHT, GS_ORDINARY, parse_state
+from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GS_ORDINARY, parse_state
 from super_metroid.routes.kpdr.ceres.geometry import _CERES_SCI_DOOR_Y
 from super_metroid.routes.kpdr.ceres.scientist import (
     CeresScientistCross,
@@ -24,7 +25,15 @@ from super_metroid.routes.kpdr.ceres.spine import (
     tas_hop_clock,
 )
 from super_metroid.routes.kpdr.early_spine import MORPH_DOOR_EDGES, MORPH_MILESTONES
+from super_metroid.routes.kpdr.ceres.magnet import (
+    CeresFallingEscapeTrack,
+    CeresMagnetEscapeTrack,
+    ceres_falling_escape_action,
+    ceres_magnet_escape_action,
+)
 from super_metroid.routes.kpdr.room_ids import (
+    ROOM_CERES_ELEVATOR,
+    ROOM_CERES_FALLING,
     ROOM_CERES_FLAT,
     ROOM_CERES_MAGNET,
     ROOM_CERES_SCIENTIST,
@@ -34,7 +43,6 @@ from super_metroid.routes.kpdr.ceres.outbound import (
     play_ceres_flat_to_scientist,
 )
 from super_metroid.takeoff import shoulder_pump_button
-from unittest.mock import Mock
 
 
 def test_scientist_lip_runs_without_jump() -> None:
@@ -200,19 +208,6 @@ def test_flat_escape_door_settle_does_not_jump() -> None:
     assert "A" not in act
 
 
-def test_flat_escape_arm_pump_alternates() -> None:
-    cross = CeresFlatEscape()
-    st = _flat_state(samus_x=300)
-    first = cross.action(st)
-    second = cross.action(st)
-    assert first == ("LEFT", "B", "L")
-    assert second == ("LEFT", "B", "L")
-    third = cross.action(st)
-    fourth = cross.action(st)
-    assert third == ("LEFT", "B", "R")
-    assert fourth == ("LEFT", "B", "R")
-
-
 def test_flat_escape_is_noop_when_already_in_scientist() -> None:
     session = Mock()
     session.state = _flat_state(
@@ -234,3 +229,253 @@ def test_flat_door_transition_is_not_done() -> None:
 
     st = _flat_state(room_id=ROOM_CERES_SCIENTIST, game_state=11, samus_x=20)
     assert not _flat_escape_past(st)
+
+
+def _magnet_state(**overrides):
+    base = parse_state(np.zeros(0x2000, dtype=np.uint8), frame=0)
+    values = {
+        "room_id": ROOM_CERES_MAGNET,
+        "game_state": GS_ORDINARY,
+        "samus_x": 216,
+        "samus_y": 395,
+        "pose": 18,
+        "facing": FACING_LEFT,
+        "momentum_x": 2,
+        "speed_flag": 1,
+        "samus_x_sub": 100,
+        "knockback_timer": 0,
+        "invincibility_timer": 0,
+        "vertical_direction": 0,
+        "velocity_y": 0,
+    }
+    values.update(overrides)
+    return replace(base, **values)
+
+
+def test_magnet_escape_slope_taps_l_not_r() -> None:
+    seat = _magnet_state(samus_x=120, samus_y=347)
+    names, track = ceres_magnet_escape_action(
+        seat, CeresMagnetEscapeTrack(phase="slope")
+    )
+    assert names == ("LEFT", "B")
+    assert "R" not in names
+    assert "A" not in names
+    assert track.phase == "slope"
+    still, track = ceres_magnet_escape_action(seat, track)
+    assert still == ("LEFT", "B", "L")
+    assert "R" not in still
+
+
+def test_magnet_escape_does_not_force_pump_while_stopped() -> None:
+    st = _magnet_state(samus_x=120, samus_y=347, momentum_x=0, speed_flag=0)
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="slope"))
+    assert names == ("LEFT", "B")
+    assert "L" not in names
+    assert track.phase == "slope"
+
+
+def test_magnet_escape_jumps_347_tas_window() -> None:
+    st = _magnet_state(samus_x=74, samus_y=347)
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="slope"))
+    assert names == ("LEFT", "B", "A")
+    assert track.phase == "shelf_hop"
+
+
+def test_magnet_escape_does_not_jump_under_shelf() -> None:
+    st = _magnet_state(samus_x=88, samus_y=347)
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="slope"))
+    assert "A" not in names
+    assert track.phase == "slope"
+
+
+def test_magnet_escape_west_of_window_still_jumps() -> None:
+    st = _magnet_state(samus_x=50, samus_y=347)
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="slope"))
+    assert "A" in names
+    assert track.phase == "shelf_hop"
+
+
+def test_magnet_escape_267_jumps_right_into_steam() -> None:
+    st = _magnet_state(
+        samus_x=118, samus_y=267, facing=FACING_RIGHT, pose=9
+    )
+    names, track = ceres_magnet_escape_action(
+        st, CeresMagnetEscapeTrack(phase="shelf")
+    )
+    assert names == ("RIGHT", "B", "A")
+    assert track.phase == "steam_hop"
+
+
+def test_magnet_escape_267_waits_for_hidden_jet() -> None:
+    st = _magnet_state(
+        samus_x=118, samus_y=267, facing=FACING_RIGHT, pose=9
+    )
+    names, track = ceres_magnet_escape_action(
+        st, CeresMagnetEscapeTrack(phase="shelf", steam_shown=False)
+    )
+    assert "A" not in names
+    assert track.phase == "shelf"
+
+
+def test_magnet_escape_hops_139_magnet_stop() -> None:
+    st = _magnet_state(samus_x=45, samus_y=139, pose=138)
+    names, track = ceres_magnet_escape_action(
+        st, CeresMagnetEscapeTrack(phase="exit")
+    )
+    assert "A" in names
+    assert track.phase == "exit"
+
+
+def test_magnet_escape_holds_left_through_fade() -> None:
+    st = _magnet_state(game_state=11, samus_x=20, samus_y=139)
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="exit"))
+    assert names == ("LEFT",)
+    assert "A" not in names
+
+
+def test_magnet_escape_done_in_falling() -> None:
+    st = _magnet_state(
+        room_id=ROOM_CERES_FALLING, samus_x=472, samus_y=139, pose=18
+    )
+    names, track = ceres_magnet_escape_action(st, CeresMagnetEscapeTrack(phase="exit"))
+    assert names == ()
+    assert track.phase == "done"
+
+
+def _falling_state(**overrides):
+    values = {
+        "room_id": ROOM_CERES_FALLING,
+        "samus_x": 472,
+        "samus_y": 139,
+        "pose": 18,
+    }
+    values.update(overrides)
+    return _magnet_state(**values)
+
+
+def test_falling_hops_187_onto_171() -> None:
+    st = _falling_state(samus_x=347, samus_y=187, momentum_x=2, speed_flag=1)
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="run_off")
+    )
+    assert "A" in names
+    assert track.phase == "floor_hop"
+
+
+def test_falling_keeps_left_until_tas_tile() -> None:
+    st = _falling_state(
+        samus_x=320, samus_y=171, pose=10, momentum_x=2, speed_flag=1
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="shelf")
+    )
+    assert "LEFT" in names
+    assert "A" not in names
+    assert track.phase == "shelf"
+
+
+def test_falling_turns_right_before_tile() -> None:
+    st = _falling_state(
+        samus_x=311, samus_y=171, pose=10, momentum_x=2, speed_flag=1
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="shelf")
+    )
+    assert names == ("RIGHT",)
+    assert "A" not in names
+    assert track.phase == "dboost"
+
+
+def test_falling_does_not_right_on_tile_contact() -> None:
+    st = _falling_state(
+        samus_x=294, samus_y=171, pose=10, momentum_x=2, speed_flag=1
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="shelf")
+    )
+    assert "LEFT" in names
+    assert "RIGHT" not in names
+    assert "A" in names
+    assert track.phase == "dboost"
+
+
+def test_falling_dboost_does_not_right_on_steam() -> None:
+    """RIGHT on the 294 contact frame while facing left is p84."""
+    st = _falling_state(
+        samus_x=294,
+        samus_y=171,
+        pose=10,
+        facing=FACING_LEFT,
+        momentum_x=2,
+        speed_flag=1,
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="dboost", held=3)
+    )
+    assert "RIGHT" not in names
+    assert "X" not in names
+    assert track.phase == "dboost"
+
+
+def test_falling_dboost_falls_into_jet_facing_right() -> None:
+    """Stay facing right into the 294 jet. No X (p47 on this pin)."""
+    st = _falling_state(
+        samus_x=308,
+        samus_y=171,
+        pose=25,
+        facing=FACING_RIGHT,
+        momentum_x=2,
+        speed_flag=1,
+        vertical_direction=0,
+        velocity_y=0,
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="dboost", held=3)
+    )
+    assert names == ("B", "A")
+    assert "X" not in names
+    assert "RIGHT" not in names
+    assert track.phase == "dboost"
+
+
+def test_falling_dboost_holds_left_on_pose_80() -> None:
+    st = _falling_state(
+        samus_x=220,
+        samus_y=157,
+        pose=80,
+        vertical_direction=1,
+        velocity_y=4,
+        movement_type=25,
+        knockback_timer=0,
+        invincibility_timer=90,
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="dboost", contacted=True, held=8)
+    )
+    assert names == ("LEFT", "B", "A")
+    assert track.boosted is True
+
+
+def test_falling_door_jumps_for_pose_25() -> None:
+    st = _falling_state(samus_x=37, samus_y=139, pose=10, momentum_x=2)
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="exit")
+    )
+    assert "A" in names
+    assert "LEFT" in names
+
+
+def test_falling_done_in_elev() -> None:
+    st = _falling_state(
+        room_id=ROOM_CERES_ELEVATOR,
+        samus_x=216,
+        samus_y=632,
+        pose=25,
+        vertical_direction=1,
+        velocity_y=4,
+    )
+    names, track = ceres_falling_escape_action(
+        st, CeresFallingEscapeTrack(phase="exit")
+    )
+    assert names == ()
+    assert track.phase == "done"

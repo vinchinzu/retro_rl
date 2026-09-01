@@ -16,10 +16,11 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Tip is dark `0x39` north mouth `(120,93)` rod=1 keys=3 after south29
-**1/1** (`l6_south29_right_down`). East south29 BLOCKED 4/4. West south29
-BLOCKED 6/6 (y=157). Do not rerun those, west-only chase, LEFT at y=77,
-or UP/LEFT+UP at y=133. Next sitting: `--through level6-settle39`.
+Tip is dark `0x39` north mouth `(120,93)` rod=1 keys=3 after
+`--through level6-south29` **1/1** (`l6_south29_clip`, power-on). 0x29
+leftover is south door `(120,189)` via RIGHT+DOWN clip to the waist. Do not
+leftover on tile 244 at y=133. Do not retry east `(184,144)` or west y=157.
+Next sitting: `--through level6-settle39`.
 
 ## Commands
 
@@ -64,9 +65,9 @@ not an MP4. Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 | `level*/overworld.py` | Hop tables + thin `overworld.path` subclasses |
 | `runner.py` | Script env/assist/report helpers |
 
-Split a file **before 500 lines**; refuse a new knob on a file **≥800**.
-Do not boil already-split `level4/`. Named pins stay named. Probe PNG /
-window JSON go gitignored scratch — not an AGENTS novel.
+Size: [CODING_STANDARDS.md](../../CODING_STANDARDS.md) (~1000 LOC, merge
+or delete). Named pins stay named. Probe PNG / window JSON go gitignored
+scratch — not an AGENTS novel.
 
 ## Traps (burned once)
 

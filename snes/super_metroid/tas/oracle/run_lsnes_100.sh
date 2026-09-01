@@ -80,31 +80,26 @@ cp -f "${ROM}" "${STAGE}/SuperMetroid.sfc"
 cp -f "${MOVIE}" "${STAGE}/sniq_100_4010M.lsmv"
 cp -f "${LUA}" "${STAGE}/lsnes_dump_sm.lua"
 OUT_WIN="$(winpath "${OUT_DIR}")"
-MOVIE_WIN="C:\\lsnes\\sniq_100_4010M.lsmv"
-ROM_WIN="C:\\lsnes\\SuperMetroid.sfc"
-LUA_WIN="C:\\lsnes\\lsnes_dump_sm.lua"
-# Lua resolves oracle_flags.txt next to the script (now C:\lsnes).
-{
-  echo "out_dir=${OUT_WIN}"
-  echo "early_exit=${EARLY_EXIT}"
-  echo "max_frames=${MAX_FRAMES}"
-  echo "series_stride=${SERIES_STRIDE}"
-  echo "playback_speed=${PLAYBACK_SPEED}"
-  echo "rom=C:/lsnes/SuperMetroid.sfc"
-  echo "movie=C:/lsnes/sniq_100_4010M.lsmv"
-} > "${STAGE}/oracle_flags.txt"
-printf '%s\n' "${OUT_WIN}" > "${STAGE}/oracle_out_dir.txt"
 
-{
-  echo "out_dir=${OUT_WIN}"
-  echo "early_exit=${EARLY_EXIT}"
-  echo "max_frames=${MAX_FRAMES}"
-  echo "series_stride=${SERIES_STRIDE}"
-  echo "playback_speed=${PLAYBACK_SPEED}"
-} > "${ORACLE_DIR}/oracle_flags.txt"
-cp "${ORACLE_DIR}/oracle_flags.txt" "${OUT_DIR}/oracle_flags.txt"
-printf '%s\n' "${OUT_WIN}" > "${ORACLE_DIR}/oracle_out_dir.txt"
-printf '%s\n' "${OUT_WIN}" > "${OUT_DIR}/out_dir.txt"
+# One canonical flags file. The Lua reads it from next to the script
+# (C:\lsnes) on startup and again from out_dir before the first frame, so the
+# two copies must be byte-identical or the second read silently overrides the
+# first. rom/movie are the staged C:\lsnes copies (argv paths get shell/Wine
+# mangled; a flags-file value does not).
+write_flags() {
+  {
+    echo "out_dir=${OUT_WIN}"
+    echo "early_exit=${EARLY_EXIT}"
+    echo "max_frames=${MAX_FRAMES}"
+    echo "series_stride=${SERIES_STRIDE}"
+    echo "playback_speed=${PLAYBACK_SPEED}"
+    echo "rom=C:/lsnes/SuperMetroid.sfc"
+    echo "movie=C:/lsnes/sniq_100_4010M.lsmv"
+  } > "$1"
+}
+write_flags "${STAGE}/oracle_flags.txt"
+write_flags "${OUT_DIR}/oracle_flags.txt"
+printf '%s\n' "${OUT_WIN}" > "${STAGE}/oracle_out_dir.txt"
 
 python3 - <<PY
 import json

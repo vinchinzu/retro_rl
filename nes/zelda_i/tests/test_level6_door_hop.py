@@ -8,6 +8,7 @@ import pytest
 from retro_harness.nes import nes_action
 from zelda_i.level6.door_hop import (
     DoorHopSpec,
+    INLAND29_SPEC,
     Level6DoorHopController,
     NORTH2C_SPEC,
     SOUTH18_SPEC,
@@ -16,6 +17,7 @@ from zelda_i.level6.door_hop import (
     WEST19_SPEC,
     WEST2D_SPEC,
     door_hop_success,
+    inland29_success,
 )
 from zelda_i.ram import (
     ADDR_LEVEL,
@@ -131,20 +133,37 @@ def test_west2d_align_y_then_left() -> None:
     assert list(west.action) == list(nes_action("LEFT"))
 
 
-def test_south29_live_leftover_clips_right_down() -> None:
-    """(63,133) RIGHT+DOWN along tile 244. UP/LEFT+UP dated (reds 1–2)."""
-    leftover = _snap(screen=SOUTH29_SPEC.room, x=63, y=133)
+def test_south29_live_leftover_goes_down() -> None:
+    """Waist leftover (120,141) occupancies DOWN. Not RIGHT+DOWN clip."""
+    leftover = _snap(screen=SOUTH29_SPEC.room, x=120, y=141)
     first = Level6DoorHopController(SOUTH29_SPEC).step(leftover)
-    assert first.reason == "south_clip"
-    assert list(first.action) == list(nes_action("RIGHT", "DOWN"))
-    assert list(first.action) != list(nes_action("UP"))
-    assert list(first.action) != list(nes_action("LEFT", "UP"))
-    assert list(first.action) != list(nes_action("DOWN"))
-    aligned = Level6DoorHopController(SOUTH29_SPEC).step(
-        _snap(screen=SOUTH29_SPEC.room, x=120, y=141)
-    )
-    assert list(aligned.action) == list(nes_action("DOWN"))
+    assert list(first.action) == list(nes_action("DOWN"))
+    assert list(first.action) != list(nes_action("RIGHT", "DOWN"))
+    assert SOUTH29_SPEC.clip_buttons is None
     door = Level6DoorHopController(SOUTH29_SPEC).step(
         _snap(screen=SOUTH29_SPEC.room, x=120, y=189)
     )
     assert list(door.action) == list(nes_action("DOWN"))
+    trap = Level6DoorHopController(SOUTH29_SPEC).step(
+        _snap(screen=SOUTH29_SPEC.room, x=63, y=133)
+    )
+    assert list(trap.action) != list(nes_action("UP"))
+    assert list(trap.action) != list(nes_action("LEFT", "UP"))
+    assert trap.reason != "south_clip"
+
+
+def test_inland29_south_mouth_clips_left_up() -> None:
+    leftover = _snap(screen=INLAND29_SPEC.room, x=120, y=205)
+    first = Level6DoorHopController(INLAND29_SPEC).step(leftover)
+    assert first.reason == "inland_clip"
+    assert list(first.action) == list(nes_action("LEFT", "UP"))
+    assert list(first.action) != list(nes_action("UP"))
+    door = Level6DoorHopController(INLAND29_SPEC).step(
+        _snap(screen=INLAND29_SPEC.room, x=120, y=93)
+    )
+    assert list(door.action) == list(nes_action("UP"))
+    dest = _snap(screen=0x19, x=120, y=205)
+    assert inland29_success(dest)
+    assert not inland29_success(leftover)
+    back = _snap(screen=0x39, x=120, y=93)
+    assert not inland29_success(back)

@@ -149,11 +149,24 @@ def steam_is_burning(enemy: Enemy) -> bool:
     """True when Ceres steam ($E1FF) is shown and can knockback.
 
     Hide instruction ``$A6:F11D`` sets ``$0F88`` bit 2 (intangible). Show
-    ``$A6:F135`` clears it. x/y stay put; only the bit/spritemap cycle.
+    ``$A6:F135`` clears it. x/y stay put; burn is bit 2 clear only.
     """
     if int(enemy.enemy_id) != CERES_STEAM_ID:
         return False
     return (int(enemy.extra_props) & STEAM_HIDDEN_BIT) == 0
+
+
+STEAM_IDLE_SPRITEMAPS = frozenset({0, 0xF142, 0x804F})
+
+
+def steam_jet_shown(enemy: Enemy) -> bool:
+    """True when Ceres steam is on a live spritemap, not idle/hidden maps.
+
+    Knockback uses steam_is_burning (bit 2). Wait uses the spritemap cycle.
+    """
+    if int(enemy.enemy_id) != CERES_STEAM_ID:
+        return False
+    return int(enemy.spritemap) not in STEAM_IDLE_SPRITEMAPS
 
 
 def enemy_overlaps(
@@ -177,6 +190,7 @@ __all__ = [
     "CERES_DOOR_ID",
     "CERES_STEAM_ID",
     "STEAM_HIDDEN_BIT",
+    "STEAM_IDLE_SPRITEMAPS",
     "WORKROBOT_ID",
     "Contact",
     "Species",
@@ -185,4 +199,5 @@ __all__ = [
     "is_solid",
     "species_of",
     "steam_is_burning",
+    "steam_jet_shown",
 ]

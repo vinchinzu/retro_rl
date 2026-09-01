@@ -62,7 +62,8 @@ from zelda_i.level6.wizzrobe import (
     make_east_key_controller,
     make_west_wizzrobe_controller,
 )
-from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.spine.hops import play_ready
 
 # Re-export for runners / docs.
 ROOM_L6_ENTRY = LEVEL6_ENTRY_ROOM  # 0x79
@@ -84,7 +85,12 @@ LEVEL6_MAP_BIT = 1 << (LEVEL6 - 1)
 _OCC_BOUNDS = (16, 216, 77, 205)
 
 
-def _occ(patrol: tuple[tuple[int, int], ...]) -> CombatTuning:
+def _occ(
+    patrol: tuple[tuple[int, int], ...],
+    *,
+    occupancy_bounds: tuple[int, int, int, int] = _OCC_BOUNDS,
+    occupancy_blocked: tuple[tuple[int, int], ...] = (),
+) -> CombatTuning:
     return CombatTuning(
         patrol=patrol,
         engage_distance=48,
@@ -94,7 +100,8 @@ def _occ(patrol: tuple[tuple[int, int], ...]) -> CombatTuning:
         engage_attack_period=6,
         engage_attack_hold=3,
         occupancy_patrol=True,
-        occupancy_bounds=_OCC_BOUNDS,
+        occupancy_bounds=occupancy_bounds,
+        occupancy_blocked=occupancy_blocked,
         inland_dash=24,
         avoid_walls=True,
     )
@@ -476,9 +483,8 @@ register_room_spec(ROOM_09_SPEC)
 # Live census (clear29 v1): 3× blue 0x23 + 2× orange 0x24 + 0x59 shots.
 # Not Vire 0x12. Ignore 0x2b / Bubble 0x40 / 0x59. Do not grant candle.
 # RoomItemId 0x19 key on floor residual. Do not require stairs/Gohma.
-# Historical full-room patrol minus (48,157), the island SW trap
-# (south29 BLOCKED 6/6). Leftover contract is x<64 and y<=133.
-CLEAR29_WEST_X = 64
+# Leftover is the south door. (120,141) is the plus, not a handoff.
+_ROOM_29_LEFTOVER = (120, 189)
 _ROOM_29_PATROL: tuple[tuple[int, int], ...] = (
     (120, 189),
     (80, 189),
@@ -491,8 +497,12 @@ _ROOM_29_PATROL: tuple[tuple[int, int], ...] = (
     (160, 173),
     (160, 189),
     (192, 157),
-    (120, 141),
-    (56, 133),
+)
+# Island minus the y=141 waist (SOUTH29 v4 walked x=120 @ y=141 then DOWN).
+_ROOM_29_BLOCKED: tuple[tuple[int, int], ...] = tuple(
+    (x, y)
+    for x in range(48, 153)
+    for y in (*range(117, 141), *range(142, 158))
 )
 
 ROOM_29_SPEC = DungeonRoomSpec(
@@ -503,8 +513,17 @@ ROOM_29_SPEC = DungeonRoomSpec(
     enemy_types=(WIZZROBE_ORANGE_TYPE, WIZZROBE_BLUE_OBJECT_TYPE),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_29_PATROL),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    combat=_occ(
+        _ROOM_29_PATROL,
+        occupancy_bounds=(16, 216, 77, 141),
+        occupancy_blocked=_ROOM_29_BLOCKED,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.CLEAR_ONLY,
+        settle_all_dead=0,
+        target=_ROOM_29_LEFTOVER,
+        waypoints=((120, 141),),
+    ),
     room_item_id=0x19,
     exit_routes=(
         DoorRoute("UP", ((120, 141), (120, 93))),
@@ -517,6 +536,24 @@ ROOM_29_SPEC = DungeonRoomSpec(
 )
 
 register_room_spec(ROOM_29_SPEC)
+
+
+def clear29_handoff_ok(snap: ZeldaSnapshot, **_: object) -> bool:
+    """Spine stop: cleared 0x29 at the south door leftover (120,189)."""
+    target = ROOM_29_SPEC.reward.target
+    if target is None:
+        return False
+    return play_ready(
+        snap,
+        level=LEVEL6,
+        screen=LEVEL6_DARK_29_ROOM,
+        spec=ROOM_29_SPEC,
+        rod=True,
+        tf_eq=0x1F,
+    ) and abs(int(snap.link_x) - target[0]) <= 2 and abs(
+        int(snap.link_y) - target[1]
+    ) <= 2
+
 
 # South of 0x29: dark leftover north mouth (120,93). Live census (settle39 v1):
 # 5× Vire 0x12 HP64. Ignore 0x2b / Bubble 0x40 / split 0x1c HP0. Do not
@@ -698,8 +735,8 @@ __all__ = [
     "ROOM_L6_MAP", "ROOM_L6_ROD_WIZZ", "ROOM_L6_DARK_29", "ROOM_L6_DARK_39",
     "ROOM_79_SPEC", "ROOM_7A_SPEC", "ROOM_78_SPEC", "ROOM_68_SPEC",
     "ROOM_58_SPEC", "ROOM_38_SPEC", "ROOM_28_SPEC", "ROOM_19_SPEC",
-    "CLEAR29_WEST_X",
     "ROOM_09_SPEC", "ROOM_29_SPEC", "ROOM_39_SPEC", "ROOM_3A_SPEC",
+    "clear29_handoff_ok",
     "ROOM_78_UP_DOOR_BIT", "LEVEL6_COMPASS_BIT", "LEVEL6_MAP_BIT",
     "Level6EastKeyController", "Level6WestWizzrobeController",
     "make_east_key_controller", "make_west_wizzrobe_controller",

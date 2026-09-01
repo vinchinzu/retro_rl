@@ -48,8 +48,9 @@ _TAG = {"DOWN": "south", "RIGHT": "east", "LEFT": "west", "UP": "north"}
 __all__ = [
     "CLIP_Y", "DOOR_HOP_MAX_FRAMES", "EAST29_MAX_FRAMES", "EAST39_MAX_FRAMES",
     "EAST29_SPEC", "EAST39_SPEC", "EAST_DOOR_TOL", "EAST_DOOR_X", "EAST_DOOR_Y",
-    "EAST_SPAWN_XMAX", "NORTH2C_MAX_FRAMES", "NORTH2C_SPEC", "NORTH_DOOR_X",
-    "NORTH_DOOR_Y", "NORTH_HALT_Y", "SOUTH09_MAX_FRAMES", "SOUTH09_SPEC",
+    "EAST_SPAWN_XMAX", "INLAND29_SPEC", "NORTH2C_MAX_FRAMES", "NORTH2C_SPEC",
+    "NORTH_DOOR_X", "NORTH_DOOR_Y", "NORTH_HALT_Y", "SOUTH09_MAX_FRAMES",
+    "SOUTH09_SPEC",
     "SOUTH18_MAX_FRAMES", "SOUTH18_SPEC", "SOUTH19_MAX_FRAMES", "SOUTH19_SPEC",
     "SOUTH1D_MAX_FRAMES", "SOUTH1D_SPEC",
     "SOUTH29_MAX_FRAMES", "SOUTH29_SPEC",
@@ -57,6 +58,7 @@ __all__ = [
     "WEST19_MAX_FRAMES", "WEST19_SPEC", "WEST2D_MAX_FRAMES", "WEST2D_SPEC",
     "WEST_DOOR_X", "WEST_DOOR_Y", "WEST_SPAWN_XMIN", "DoorHopSpec",
     "Level6DoorHopController", "door_hop_stages", "door_hop_success",
+    "inland29_success",
 ]
 
 
@@ -112,17 +114,12 @@ SOUTH19_SPEC = DoorHopSpec(
     "DOWN", "occupancy to (120,189) then DOWN; never UP; dest is RAM",
     south_band=True, forbid_up=True,
 )
-# Live leftover (63,133) is ON tile 244 (west-arm north face). North peels
-# dated: cardinal UP slid 63→64 (red 1); LEFT+UP walked 63→56, y never
-# moved (red 2). RIGHT+DOWN is the remaining open axis (v4 from 55,133).
-# Do not restore north peels. Do not retry y=157.
+# Waist leftover (120,141). Occupancy DOWN like SOUTH19. Do not clip
+# RIGHT+DOWN; that was the (63,133) tile-244 face. Do not retry y=157.
 SOUTH29_SPEC = DoorHopSpec(
     "level6_south_0x29", LEVEL6_DARK_29_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
-    "DOWN", "RIGHT+DOWN along tile-244 north face, occupancy x=120 @ y=141, DOWN",
-    dest_room=LEVEL6_DARK_39_ROOM,
-    clip_y=CLIP_Y, clip_buttons=("RIGHT", "DOWN"), clip_side="below",
-    clip_reason="south_clip", south_band=True, south_face=True, align="x",
-    align_at=CLIP_Y, forbid_up=True,
+    "DOWN", "occupancy to (120,189) then DOWN; never UP; dest 0x39",
+    dest_room=LEVEL6_DARK_39_ROOM, south_band=True, forbid_up=True,
 )
 EAST29_SPEC = DoorHopSpec(
     "level6_east_0x29", LEVEL6_DARK_29_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),
@@ -192,6 +189,25 @@ NORTH2C_SPEC = DoorHopSpec(
     fail_backtrack=LEVEL6_GOHMA_WING_2D_ROOM, track_keys=True, fail_ow=True,
     key_from="2c",
 )
+# Second visit: south mouth (120,205) → north. LEFT+UP off y>141 (tile 244
+# at (120,157)). Dest is RAM; fail backtrack 0x39. Reclear-if-live gone.
+INLAND29_SPEC = DoorHopSpec(
+    "level6_inland_0x29", LEVEL6_DARK_29_ROOM, (NORTH_DOOR_X, NORTH_DOOR_Y),
+    "UP", "LEFT+UP clip off y>141, occupancy to (120,93); dest is RAM",
+    wait_modes=WAIT_SCROLL_B,
+    clip_y=CLIP_Y, clip_buttons=("LEFT", "UP"), clip_side="above",
+    clip_reason="inland_clip", fail_backtrack=LEVEL6_DARK_39_ROOM, fail_ow=True,
+)
+
+
+def inland29_success(snap: ZeldaSnapshot, **_: object) -> bool:
+    """Play-ready L6 room other than 0x29/0x39. Dest is RAM."""
+    return l6_play_dest_success(
+        snap,
+        not_room=LEVEL6_DARK_29_ROOM,
+        passage_ok=False,
+        forbid=(LEVEL6_DARK_39_ROOM,),
+    )
 
 
 def _walker(spec: DoorHopSpec) -> OccupancyWalker:
