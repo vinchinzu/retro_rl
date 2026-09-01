@@ -476,16 +476,23 @@ register_room_spec(ROOM_09_SPEC)
 # Live census (clear29 v1): 3× blue 0x23 + 2× orange 0x24 + 0x59 shots.
 # Not Vire 0x12. Ignore 0x2b / Bubble 0x40 / 0x59. Do not grant candle.
 # RoomItemId 0x19 key on floor residual. Do not require stairs/Gohma.
-# East leftover (184,144) cannot LEFT (center tile 244). Patrol stays
-# west of x=64 so clear finishes in the west aisle.
+# Historical full-room patrol minus (48,157), the island SW trap
+# (south29 BLOCKED 6/6). Leftover contract is x<64 and y<=133.
 CLEAR29_WEST_X = 64
 _ROOM_29_PATROL: tuple[tuple[int, int], ...] = (
-    (48, 109),
+    (120, 189),
+    (80, 189),
+    (80, 173),
+    (64, 141),
+    (80, 109),
+    (120, 109),
+    (160, 109),
+    (176, 141),
+    (160, 173),
+    (160, 189),
+    (192, 157),
+    (120, 141),
     (56, 133),
-    (48, 141),
-    (48, 157),
-    (56, 173),
-    (48, 189),
 )
 
 ROOM_29_SPEC = DungeonRoomSpec(

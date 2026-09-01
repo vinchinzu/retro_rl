@@ -81,8 +81,6 @@ class DoorHopSpec:
     clip_buttons: tuple[str, ...] | None = None
     clip_side: str | None = None
     clip_reason: str = ""
-    clip_xmin: int | None = None
-    clip_xmax: int | None = None
     south_band: bool = False
     south_face: bool = False
     push_at_goal: bool = False
@@ -114,20 +112,17 @@ SOUTH19_SPEC = DoorHopSpec(
     "DOWN", "occupancy to (120,189) then DOWN; never UP; dest is RAM",
     south_band=True, forbid_up=True,
 )
-# Island SW y=157 BLOCKED 6/6. Prior: DOWN/RIGHT/UP solid; UP-peel; UP@48.
-# This sitting: x=40 is west wall; sand x=41 DOWN slides to wall; DOWN@47
-# solid. Do not restore those, east-box LEFT, or (55,133) clip.
+# Live leftover (63,133) is ON tile 244 (west-arm north face). North peels
+# dated: cardinal UP slid 63→64 (red 1); LEFT+UP walked 63→56, y never
+# moved (red 2). RIGHT+DOWN is the remaining open axis (v4 from 55,133).
+# Do not restore north peels. Do not retry y=157.
 SOUTH29_SPEC = DoorHopSpec(
     "level6_south_0x29", LEVEL6_DARK_29_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
-    "DOWN",
-    "LEFT-peel off SW face to sand x=47, occupancy DOWN to y=181 "
-    "(not UP@48), south-band to (120,189); dest play 0x39",
+    "DOWN", "RIGHT+DOWN along tile-244 north face, occupancy x=120 @ y=141, DOWN",
     dest_room=LEVEL6_DARK_39_ROOM,
-    south_band=True,
-    clip_y=CLIP_Y, clip_buttons=("LEFT",), clip_side="above",
-    clip_reason="west_left_peel", clip_xmin=48, clip_xmax=64,
-    align="y", align_at=SOUTH_BAND_Y,
-    north_halt_y=NORTH_HALT_Y, north_halt_reason="south_north_halt",
+    clip_y=CLIP_Y, clip_buttons=("RIGHT", "DOWN"), clip_side="below",
+    clip_reason="south_clip", south_band=True, south_face=True, align="x",
+    align_at=CLIP_Y, forbid_up=True,
 )
 EAST29_SPEC = DoorHopSpec(
     "level6_east_0x29", LEVEL6_DARK_29_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),
@@ -345,10 +340,6 @@ class Level6DoorHopController(HopController):
     def _clip(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction | None:
         spec = self.spec
         if spec.clip_buttons is None or spec.clip_y is None:
-            return None
-        if spec.clip_xmin is not None and xy[0] < spec.clip_xmin:
-            return None
-        if spec.clip_xmax is not None and xy[0] > spec.clip_xmax:
             return None
         tol = spec.door_tol
         if spec.clip_side == "below":

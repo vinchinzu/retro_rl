@@ -191,7 +191,14 @@ def fight_hop(through, stop, spec, **kw) -> SpineHop:
 
 
 def settle_fight(
-    through, stop, settle_factory, settle_name, spec, fight_factory=None, **kw
+    through,
+    stop,
+    settle_factory,
+    settle_name,
+    spec,
+    fight_factory=None,
+    success=None,
+    **kw,
 ) -> SpineHop:
     def stages():
         return (
@@ -199,7 +206,10 @@ def settle_fight(
             fight_stage(stop, spec, factory=fight_factory),
         )
 
-    return SpineHop(through, stop, stages, ok6(screen=spec.room_id, spec=spec, **kw))
+    pred = success if success is not None else ok6(
+        screen=spec.room_id, spec=spec, **kw
+    )
+    return SpineHop(through, stop, stages, pred)
 
 
 def _entry_ok(env):

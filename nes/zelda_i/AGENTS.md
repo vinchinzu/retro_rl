@@ -16,11 +16,10 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-Tip is dark wizz/key room play `0x29` `(47,157)` tile 119 rod=1 keys=3.
-East `level6-south29` BLOCKED 4/4. West leftover BLOCKED 6/6: y=157 SW
-squeeze cannot UP/DOWN/RIGHT; x=40 is the west wall; sand x=41–47 cannot
-DOWN. Do not rerun those six. Next sitting: reshape `clear29` leftover to
-historical y<=133 (north of the SW block), not another south29 from y=157.
+Tip is dark `0x39` north mouth `(120,93)` rod=1 keys=3 after south29
+**1/1** (`l6_south29_right_down`). East south29 BLOCKED 4/4. West south29
+BLOCKED 6/6 (y=157). Do not rerun those, west-only chase, LEFT at y=77,
+or UP/LEFT+UP at y=133. Next sitting: `--through level6-settle39`.
 
 ## Commands
 
