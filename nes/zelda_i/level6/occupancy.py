@@ -20,7 +20,7 @@ __all__ = [
 
 
 def l6_leftover(snap: ZeldaSnapshot) -> dict[str, int]:
-    """x/y/mode/screen/tile/rod/bow/arrows/keys/bombs/triforce from a snap."""
+    """x/y/mode/screen/tile/rod/bow/arrows/keys/bombs/rupees/triforce from a snap."""
     return {
         "x": int(snap.link_x),
         "y": int(snap.link_y),
@@ -32,6 +32,7 @@ def l6_leftover(snap: ZeldaSnapshot) -> dict[str, int]:
         "arrows": int(snap.arrows),
         "keys": int(snap.keys),
         "bombs": int(snap.bombs),
+        "rupees": int(snap.rupees),
         "triforce": int(snap.triforce),
     }
 

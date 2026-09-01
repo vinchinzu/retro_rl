@@ -19,7 +19,8 @@ Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual
 Power-on spine is **1/1 through `--through level6`** (fanfare `0x0C`
 `(120,149)` TF `0x1F→0x3F`, hc 7→8 health `0x77`, rod=1 keys=2 bombs=8
 Bow=1 arrows=1). Heart 31f, north shutter 209f, shard 43f. Bead stays
-open for Phase 4 (measured `AuditedEnv` state-load count). Do not STATUS.
+open. Next sitting is CheckWarp walk-on (`rr-17co`): delete the 0x3A
+position write. Do not retry LEFT/occupancy at y=149. Do not STATUS.
 
 ## Commands
 

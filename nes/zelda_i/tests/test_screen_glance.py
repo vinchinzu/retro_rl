@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -27,6 +28,7 @@ from zelda_i.screen_glance import (
     grade_final,
     grade_report,
     grade_stage_report,
+    leftover_from_snapshot,
     parse_room,
 )
 
@@ -155,3 +157,25 @@ def test_leave_spec_midband_leftover_glances(spec: LeaveSpec) -> None:
     assert graded.misses == []
     if not spec.hearts_lo_eq_hi:
         assert "health" not in leftover
+
+
+def test_leftover_from_snapshot_records_rupees() -> None:
+    leftover = leftover_from_snapshot(
+        SimpleNamespace(
+            link_x=120,
+            link_y=149,
+            screen=0x0C,
+            mode=18,
+            keys=2,
+            bombs=8,
+            triforce=0x3F,
+            health=0x77,
+            rupees=42,
+            arrows=1,
+            bow=1,
+            rod=1,
+            map=0x0A,
+        )
+    )
+    assert leftover["rupees"] == 42
+    assert leftover["arrows"] == 1
