@@ -473,6 +473,7 @@ def test_falling_done_in_elev() -> None:
         pose=25,
         vertical_direction=1,
         velocity_y=4,
+        invincibility_timer=36,
     )
     names, track = ceres_falling_escape_action(
         st, CeresFallingEscapeTrack(phase="exit")

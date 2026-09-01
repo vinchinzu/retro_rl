@@ -65,7 +65,7 @@ _POSE_DBOOST = 80
 
 @dataclass(frozen=True)
 class CeresMagnetEscapeTrack:
-    """One-frame Magnet→Falling track. ROM-free tests drive this."""
+    """One-frame Magnet→Falling policy state."""
 
     phase: CeresMagnetEscapePhase = "door"
     held: int = 0
@@ -76,7 +76,7 @@ class CeresMagnetEscapeTrack:
 
 @dataclass(frozen=True)
 class CeresFallingEscapeTrack:
-    """One-frame Falling→elev track. ROM-free tests drive this."""
+    """One-frame Falling→elev policy state."""
 
     phase: CeresFallingEscapePhase = "door"
     held: int = 0
@@ -90,7 +90,14 @@ def _ceres_magnet_reached_falling(state) -> bool:
 
 
 def _ceres_falling_reached_elev(state) -> bool:
-    return int(state.room_id) == ROOM_CERES_ELEVATOR and int(state.game_state) == 8
+    return (
+        int(state.room_id) == ROOM_CERES_ELEVATOR
+        and int(state.game_state) == 8
+        and int(state.vertical_direction) == 1
+        and int(state.velocity_y) > 0
+        and int(state.momentum_x) >= 2
+        and int(state.invincibility_timer) > 0
+    )
 
 
 def _ceres_grounded(state) -> bool:
@@ -126,7 +133,7 @@ def ceres_magnet_escape_action(
     state,
     track: CeresMagnetEscapeTrack,
 ) -> tuple[tuple[str, ...], CeresMagnetEscapeTrack]:
-    """One-frame Magnet Stairs → Falling policy (ROM-free)."""
+    """One-frame Magnet Stairs → Falling policy."""
     room = int(state.room_id)
     gs = int(state.game_state)
     x = int(state.samus_x)
@@ -305,7 +312,7 @@ def ceres_falling_escape_action(
     state,
     track: CeresFallingEscapeTrack,
 ) -> tuple[tuple[str, ...], CeresFallingEscapeTrack]:
-    """One-frame Falling Tile → elev policy (ROM-free)."""
+    """One-frame Falling Tile → elev policy."""
     room = int(state.room_id)
     gs = int(state.game_state)
     x = int(state.samus_x)
@@ -317,6 +324,8 @@ def ceres_falling_escape_action(
         return (), replace(track, phase="done")
     if room == ROOM_CERES_ELEVATOR:
         return ("A",), replace(track, phase="exit")
+    if room == ROOM_CERES_FALLING and gs in (9, 11) and track.phase == "exit":
+        return ("A",), replace(track, held=track.held + 1)
     if gs != 8:
         return ("LEFT",), replace(track, phase="door", held=track.held + 1)
     if room != ROOM_CERES_FALLING:
@@ -465,13 +474,17 @@ def ceres_falling_escape_action(
         names = _tas_l_pump("LEFT", track.pump_i, state)
         return names, replace(track, pump_i=track.pump_i + 1)
 
-    # Door: TAS jumps x≈37 y=139 p26, air-turns p25 at (26,120).
-    if gs in (9, 11):
-        return ("A",), replace(track, phase="exit", held=held)
-    if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8 and (
-        x <= _CERES_FALLING_DOOR_JUMP_X or pose in (137, 138)
-    ):
-        return ("LEFT", "B", "A"), replace(track, phase="exit", held=1)
+    # Door: clear the product-only knockback, rebuild TAS mx=2 deeper in the
+    # doorway with A released, then jump and air-turn before the transition.
+    if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8:
+        if pose not in (137, 138) and (
+            x <= _CERES_FALLING_DOOR_JUMP_X
+            and int(state.momentum_x) >= 1
+            and int(state.invincibility_timer) > 0
+        ):
+            return ("LEFT", "B", "A"), replace(track, held=1)
+        names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, pump_i=track.pump_i + 1, held=0)
     if not grounded:
         if x <= _CERES_FALLING_DOOR_TURN_X:
             return ("RIGHT", "B", "A"), replace(track, held=held)

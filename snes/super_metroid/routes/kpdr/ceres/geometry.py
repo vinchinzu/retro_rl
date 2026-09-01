@@ -34,13 +34,15 @@ _CERES_ELEV_SHIP_Y = 80  # grounded ship pad band (product leave ~x145 y75 pose 
 _CERES_ELEV_SHIP_X = 145  # product pad center before gs=32 Ceres-success
 _CERES_ELEV_TOP_Y = 171  # s10 land / right-wall KB band
 _CERES_ELEV_TOP_X = 211  # product right-wall contact (pose 137)
+_CERES_ELEV_LEDGE_Y = 571  # mid-shaft ledge after a bottom LEFT+A recovery
 _CERES_ELEV_BOTTOM_Y = 640  # bottom floor band after door remap
-# Falling west door (TAS lsnes sniq_100): hop the y≈139 ledge, spin LEFT,
-# turn to pose 25 at x≲28. Floor jump remaps facing left (pose 26) and
-# misses the y=632 wall-jump plant. TAS door is p25 (26,120) mx=2.
+# Falling west door (TAS lsnes sniq_100): hop the y≈139 ledge and turn to
+# pose 25 at x≲28. The reactive route takes a debris knockback that the TAS
+# does not, so it releases A, rebuilds mx=2, and jumps farther inside.
+# A floor transition remaps at y=651; a live jump must still be rising.
 _CERES_FALLING_DOOR_LEDGE_Y = 139
 _CERES_FALLING_DOOR_TURN_X = 28
-_CERES_FALLING_DOOR_JUMP_X = 40
+_CERES_FALLING_DOOR_JUMP_X = 23
 # Reverse Falling: run off y=139 onto y=187, hop x≈347 onto y=171, run
 # LEFT, turn RIGHT at x≤314 leftover LEFT mx, 1f p25, B-only fall (no X),
 # LEFT+B+A on p83/p80. Do not hold A into the y≈110 ceiling. RIGHT on the
@@ -167,6 +169,7 @@ __all__ = [
     "_CERES_ELEV_SHIP_X",
     "_CERES_ELEV_TOP_Y",
     "_CERES_ELEV_TOP_X",
+    "_CERES_ELEV_LEDGE_Y",
     "_CERES_ELEV_BOTTOM_Y",
     "_CERES_FALLING_DOOR_LEDGE_Y",
     "_CERES_FALLING_DOOR_TURN_X",
