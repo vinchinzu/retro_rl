@@ -51,11 +51,44 @@ Planning-only may document dev pokes of whistle/food — **never** Clean STATUS.
 ### Bait shop (source)
 
 From start: **up, left×3, up×3** → Armos field; tap **top-row middle** Armos
-for staircase → special shop → **Bait 60R**.
+for staircase → special shop → **Bait 60R**. `U L×3 U×3` from start `0x77`
+walks `0x67 → 0x66 → 0x65 → 0x64 → 0x54 → 0x44 → 0x34` — i.e. **the shop
+screen `0x34` is entered walking NORTH from `0x44`**, and the staircase is
+revealed by the top-row-middle Armos *on `0x34` itself*.
+
+External overworld grid (nesmaps Q1 / GameFAQs; cols A–P, rows 1–8):
+L6 = **C3 = `0x22`** ✓live; Power Bracelet Armos = **E3 = `0x24`**
+(tap top-right statue); cheap Bait shop = **E4 = `0x34`**, directly south of
+`0x24`. Pond / L7 entrance from shop: `D×2 L×2 U` = `0x34→0x44→0x54→0x53→
+0x52→0x42`.
 
 | Landmark | Source hops from start | Hypothesized id | Live? |
 |----------|------------------------|-----------------|-------|
-| Bait Armos / special shop | U L×3 U×3 | **`0x34`** | no |
+| Bait Armos / special shop | U L×3 U×3 (arrive `0x34` from `0x44`, north) | **`0x34`** | no |
+
+**2026-09-02 Phase 1 recon — the fixture prefix over-shot into a dead pocket.**
+Screens `0x33` / `0x23` / `0x24` / `0x25` are a mountain-bounded desert pocket:
+every south edge tested is solid mountain and there is **no walkable
+`{0x24,0x33} → row-4` transition**. The shop `0x34` is only reachable from the
+south (`0x44 ↑ 0x34`). Concretely established this sitting
+(`scratch/sweep_25_armos.py`, `scratch/probe_24_to_shop.py`,
+`scratch/probe_33_south_to_shop.py`, `--from-state Level6ExitOverworld`):
+
+- `0x25` south edge = solid mountain (x=128 walled). Its **only** non-backtrack
+  exit is a *hidden* north passage at **x≈208 → `0x15`** (mountain path, wrong
+  way), revealed after bumping the rightmost `0x25` Armos. The prior handoff's
+  "`0x25 → DOWN → 0x35 → 0x34`" plan is **impossible** — retire it.
+- `0x24` south edge = solid mountain at every x in {40,72,104,128,152,184,216};
+  the 10-Armos sweep revealed **no** staircase toward `0x34`. (`0x24`'s Armos
+  staircase, top-right statue, is the Power *Bracelet*, not the shop.)
+- `0x33` south edge = solid mountain at x∈{120,160,208}; `0x33→0x34` RIGHT
+  still walled. The `0x33` Armos block y=141 horizontal travel — detour above
+  or below the statue rows.
+- **Recommended next route (untested):** from L6 `0x22`, `0x22 ↓ 0x32 ↓ 0x42`
+  (pond screen) `→ 0x43 → 0x44 ↑ 0x34`. This reaches the shop from the source
+  direction *and* passes through the pond `0x42` for free. The `0x32↔0x42`
+  south link and `0x42→0x43→0x44` chain are unverified. The whole
+  `0x23/0x24/0x25` detour is then unnecessary — do not keep extending it.
 
 **Measured post-L6 leave (2026-09-02):** `--through level6-exit` **1/1**
 (`l6_exit_ow.json`) — the shard fanfare auto-warps Link to OW **`0x22`
@@ -89,13 +122,16 @@ Fixture-live prefix (`l7_bait_25`, Survival, `route_eligible=false`):
 - **0x24→0x25 RIGHT @ y=141 (fixture-live, `l7_bait_25` 1/1 1,438f).** L6
   reverse of `0x24→0x23` LEFT @ y=141. SE leftover `(208,189)` UPs to the
   band then RIGHT. South wall is mountain.
-- **Dead on 0x24:** DOWN at `(16,189)` (`l7_bait_33up`), `(160,189)`
-  (`l7_bait_24belt`, north-ladder x, tile 208), `(208,189)`
-  (`l7_bait_24se`, SE, tile 206). Occupancy xmin=14 west pocket `(0,141)`;
-  occupancy SW box `(25,181)`. Do not retry those.
-- **Next leftover:** play `0x25` `(0,141)` west mouth. PNG shows a south
-  ladder in the SW. Next sitting: inland RIGHT off x=0, then DOWN toward
-  `0x35`. Do not LEFT back to `0x24`.
+- **Dead on 0x24:** south edge is solid mountain at every x tried
+  ({16,40,72,104,128,152,160,184,208,216}). The `0x24` 10-Armos sweep reveals
+  no shop staircase (top-right statue = Power Bracelet). Occupancy xmin=14 west
+  pocket `(0,141)`; occupancy SW box `(25,181)`.
+- **`0x25` is a dead pocket** — see the Phase 1 recon block above. Its south is
+  walled; its only hidden exit (north x≈208 → `0x15`) goes the wrong way. The
+  `0x22→…→0x25` prefix is fixture-live geometry but a dead end for Bait.
+- **Next sitting:** abandon the `0x23/0x24/0x25` detour. Recon
+  `0x22 ↓ 0x32 ↓ 0x42 → 0x43 → 0x44 ↑ 0x34` instead (shop from the south, per
+  source; passes the pond `0x42`).
 
 Armos tap (top-row middle on `0x34`), 60R Food, and pond `0x42` are not this
 sitting. Food stayed 0; rupees 80→81 on the walk. Zero deaths;
@@ -329,7 +365,13 @@ required to drain the pond. To make `level7-entry` green from here: live-recon
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 - **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,
   leftover play `0x25` `(0,141)`, `recordings/l7_bait_from_l6_l7_bait_25.json`.
-  `0x24→0x25` RIGHT @ y=141. DOWN at x=16 / 160 / 208 on 0x24 is mountain.
+  `0x24→0x25` RIGHT @ y=141.
+- **Recon (2026-09-02, dead-pocket):** `0x33`/`0x23`/`0x24`/`0x25` have no
+  south exit; `0x25` only hidden exit is north x≈208→`0x15`. Bait shop `0x34`
+  (E4) is entered from the south (`0x44 ↑ 0x34`). Scripts:
+  `scratch/sweep_25_armos.py`, `scratch/probe_24_to_shop.py`,
+  `scratch/probe_33_south_to_shop.py`. Screens
+  `recordings/l7_25enter2_*`, `l7_24probe_*`, `l7_33s_*`.
 - Prior 0x53 miss: `recordings/l7_dnp_pond_assisted_v9.json` `(224,173)`
   `hop10_ay`.
 - Pond `0x42`, drain, dungeon entry, Red Candle, and shard remain source-only.

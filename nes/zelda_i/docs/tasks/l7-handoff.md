@@ -76,9 +76,21 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   - Dead: `0x24↓0x34` (south wall sealed at x=16 / 160 / 208).
   - Current leftover (Phase 1, continuous power-on): play `0x25` `(0,141)`
     west mouth, `level7_post_l6_overworld` **green** through it
-    (`l7p1_entry_v2.json`). Next: live-recon `0x25 (0,141) → bait shop
-    `0x34``; inland RIGHT off x=0, then DOWN toward `0x35`. Do not LEFT back
-    to `0x24`. Do not retry DOWN at x=16 / 160 / 208 on `0x24`.
+    (`l7p1_entry_v2.json`).
+  - **2026-09-02 recon (`scratch/{sweep_25_armos,probe_24_to_shop,
+    probe_33_south_to_shop}.py`, `--from-state Level6ExitOverworld`):**
+    `0x33`/`0x23`/`0x24`/`0x25` are a mountain-bounded desert pocket with **no
+    south exit** — `0x25` south walled (only hidden exit north x≈208→`0x15`,
+    wrong way); `0x24` south walled at every x, 10-Armos sweep reveals no shop
+    stair (top-right = Bracelet); `0x33` south walled at x∈{120,160,208},
+    `0x33→0x34` RIGHT still walled. External grid confirms L6=C3=`0x22`,
+    Bracelet=E3=`0x24`, Bait shop=E4=`0x34`. Source `U L×3 U×3` enters `0x34`
+    walking **north from `0x44`**; the shop stair is the top-row-middle Armos
+    *on `0x34`*.
+  - **Retire** the `0x25→0x35→0x34` plan (impossible) and the whole
+    `0x23/0x24/0x25` detour. **Next: recon `0x22 ↓ 0x32 ↓ 0x42 → 0x43 → 0x44
+    ↑ 0x34`** (shop from the south; passes pond `0x42`). `0x32↔0x42` and
+    `0x42→0x43→0x44` unverified.
 
 - **fixture provenance:** Phase 1 is a **continuous power-on** tape, not a
   save-state fixture. `--through level7-entry` (`recordings/l7p1_entry_v2.json`)
