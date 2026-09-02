@@ -87,10 +87,17 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
     Bracelet=E3=`0x24`, Bait shop=E4=`0x34`. Source `U L×3 U×3` enters `0x34`
     walking **north from `0x44`**; the shop stair is the top-row-middle Armos
     *on `0x34`*.
-  - **Retire** the `0x25→0x35→0x34` plan (impossible) and the whole
-    `0x23/0x24/0x25` detour. **Next: recon `0x22 ↓ 0x32 ↓ 0x42 → 0x43 → 0x44
-    ↑ 0x34`** (shop from the south; passes pond `0x42`). `0x32↔0x42` and
-    `0x42→0x43→0x44` unverified.
+  - `0x32` south edge also solid (x∈{56,80,96,192}); `0x32` exits are only
+    NORTH→`0x22` and EAST→`0x33`. **The whole `0x22/0x32/0x33/0x23/0x24/0x25`
+    region is a mountain-locked pocket** — no southward route to the row-4/5
+    band with pond `0x42` / shop `0x34`.
+  - **Retire** the `0x25→0x35→0x34` plan and the `0x23/0x24/0x25` detour
+    entirely. The shop `0x34` and pond `0x42` are both entered walking north
+    out of the **western forest band** (`LEVEL7_POND_APPROACH_HOPS`
+    territory, reached from *start*): `…0x64→0x54→0x44↑0x34`,
+    `…0x54→0x53→0x52→0x42↑`. Route-owner decision: buy Bait before L6, or
+    loop the post-L6 pocket exit north/west around the mountains, or take a
+    longer post-L6 leg. The spine's `0x22→…→0x25` "green" walk is a dead spur.
 
 - **fixture provenance:** Phase 1 is a **continuous power-on** tape, not a
   save-state fixture. `--through level7-entry` (`recordings/l7p1_entry_v2.json`)
