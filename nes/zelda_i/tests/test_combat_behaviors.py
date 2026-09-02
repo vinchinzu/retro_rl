@@ -9,6 +9,7 @@ from zelda_i.dungeon.behaviors import (
     DIGDOGGER_TYPE,
     FIREBALL_TYPE,
     GIBDO_TYPE,
+    GORIYA_BOOMERANG_TYPE,
     GORIYA_TYPE,
     KEESE_TYPE,
     POLS_VOICE_TYPE,
@@ -67,6 +68,7 @@ def test_kind_for_type_catalog() -> None:
     assert kind_for_type(DIGDOGGER_TYPE) is EnemyKind.DIGDOGGER
     assert kind_for_type(DIGDOGGER_SHRUNK_TYPE) is EnemyKind.DIGDOGGER
     assert kind_for_type(FIREBALL_TYPE) is EnemyKind.PROJECTILE
+    assert kind_for_type(GORIYA_BOOMERANG_TYPE) is EnemyKind.PROJECTILE
     assert kind_for_type(0x00) is EnemyKind.UNKNOWN
 
 

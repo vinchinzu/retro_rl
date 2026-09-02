@@ -7,17 +7,25 @@ Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
 whistle=1 (poked), food=0, TF=0, keys=0, bombs=0, 3 HC. Not the L6-leave
 packet. Do not start at Hungry Goriya. Do not poke Food/Whistle/doors/TF.
 
-**This sitting leftover:** first live door from `Level7Entrance` is green
-(north OPEN, 251f). Dest `$EB=0x69` `(120,205)` south mouth, mode 5, deaths=0,
-`progression_writes=capacity_writes=0`. Object `0x05` goriya (not Moldorm
-`0x41`) — dead: N path is Moldorms. Graph N-path room `0x701` name
-`entry_north_goriya` ram_id=`0x69` `fixture-live` `route_eligible=false`.
-Live `0x69` exits: south backtrack to entry; east present/shut
-(`KILL_CLEAR`, dest `None`); **no north exit** (sealed wall — do not walk
-UP). Policy: `north_door_79_step` / `EntryNorthDoorController`. Do not poke
-the shut east door. Hungry Goriya still needs Food. Pond `missing_evidence`
-remains natural-whistle drain from the L6 leave (`rr-8t4.4`).
-`preferred_path(ENTRY, MAP)` is None until `0x69` east dest is live.
+**This sitting leftover:** `0x69` east BLOCKED after 3 serial reds. North hop
+stays green (251f, dest `$EB=0x69` `(120,205)`). v3 killed the goriyas
+(`0x05` gone, bombs 0→4, `room_all_dead` ticking) but
+`cur_opened_doors` stayed 0 (`east_opened_frame=None`). Final PNG: Link on
+east water tile `(128,141)` tile 181, heart drop on the west water tile,
+south mouth open (backtrack), east still black/shut, north sealed.
+Occupancy stood in the water aiming `(192,141)`. Timeout 4000f, deaths=0,
+`progression_writes=capacity_writes=0`. Graph `0x69` RIGHT is now KEY
+(dead: kill-clear), dest still `None`. Do not poke. Do not walk UP.
+Hungry Goriya still needs Food.
+
+**Next sitting:** `0x69` east looks like a key door (keys=0 on this pin).
+Go around the two center water tiles; do not path y=141 through them.
+`Room69EastController` is not spine-green. Do not start Hungry Goriya.
+
+Reds on this checkbox:
+1. v1 occupancy-chase boxed west wall `(32,149)`, 38 misses, door still shut
+2. v2 inland `leave_wall` boxed NW `(56,109)`, 100 misses, `0x05` still live
+3. v3 greedy fight cleared `0x05`; door bit never set; water trap `(128,141)`
 
 ---
 

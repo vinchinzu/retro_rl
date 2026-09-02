@@ -1,10 +1,10 @@
 """Level 7 one-frame path policies.
 
 ``north_door_79_step`` / ``EntryNorthDoorController`` walk ``0x79`` south
-mouth to live north dest ``0x69``.  Unobserved stages stay fail-closed
-blockers.  A source hypothesis must never press a direction in the
-cumulative spine, silently consume a timeout budget, or become
-route-eligible.
+mouth to live north dest ``0x69``.  ``room69_east_step`` /
+``Room69EastController`` is BLOCKED: goriyas die but the east RAM bit
+never sets (not kill-clear; pin keys=0).  Do not put it on the spine.
+Unobserved stages stay fail-closed blockers.
 """
 
 from __future__ import annotations
@@ -15,20 +15,51 @@ from typing import Any, Protocol
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM
-from zelda_i.dungeon.hop_controller import HopController
+from zelda_i.combat import nearest_enemy, should_swing_at
+from zelda_i.door_graph.core import DoorDir
+from zelda_i.dungeon.behaviors import (
+    GORIYA_BLUE_TYPE,
+    GORIYA_TYPE,
+    EnemyKind,
+    engagement_hint,
+    is_projectile,
+    live_among,
+)
+from zelda_i.dungeon.engine import AliveRule
+from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
 from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, MOLDORMS, ledger_notes
-from zelda_i.ram import ADDR_CANDLE, ADDR_FOOD, PLAY_MODE, ZeldaSnapshot, read_u8
+from zelda_i.ram import (
+    ADDR_CANDLE,
+    ADDR_FOOD,
+    PLAY_MODE,
+    ZeldaObject,
+    ZeldaSnapshot,
+    read_u8,
+)
 from zelda_i.walk.physics import OccupancyWalker
 
 LEVEL7 = 7
 ENTRY_SCREEN = SCREEN_LEVEL7_ENTRY_ROOM  # 0x79
+ROOM_69 = 0x69
 NORTH_DOOR_X = 120
 NORTH_DOOR_Y = 93
 SOUTH_MOUTH_Y = 205
 NORTH_X_TOL = 4
 DOOR_Y_TOL = 4
 NORTH_DOOR = (NORTH_DOOR_X, NORTH_DOOR_Y)
+EAST_DOOR_X = 208
+EAST_DOOR_Y = 141
+EAST_DOOR = (EAST_DOOR_X, EAST_DOOR_Y)
+EAST_WAIT = (192, 141)
 ENTRY_NORTH_MAX_FRAMES = 4000
+ROOM69_EAST_MAX_FRAMES = 4000
+_SWING_PERIOD = 8
+_SWING_HOLD = 4
+_GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
+_OPP = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+# Same inland box as dungeon.engine avoid_walls. West door column is x=32.
+_INLAND_X = (56, 200)
+_INLAND_Y = (109, 173)
 
 
 def north_of_entry_ram_id() -> int | None:
@@ -199,6 +230,269 @@ class EntryNorthDoorController(HopController):
         }
 
 
+def _combatants(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    return tuple(obj for obj in snap.objects if 1 <= obj.slot <= 12)
+
+
+def live_goriyas(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    """HP-live Goriya slots (blue 0x05 / red 0x06). Boomerang 0x5C is excluded."""
+    return tuple(
+        obj
+        for obj in live_among(_combatants(snap), AliveRule.TYPE_AND_HP)
+        if (int(obj.type_id) & 0xFF) in _GORIYA_TYPES
+    )
+
+
+def _projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    return tuple(obj for obj in _combatants(snap) if is_projectile(obj))
+
+
+def _occupancy_step(
+    walker: OccupancyWalker, xy: tuple[int, int], goal: tuple[int, int]
+) -> FrameAction:
+    walker.observe(xy)
+    grid = walker.grid
+    dest = (
+        min(max(int(goal[0]), grid.xmin), grid.xmax),
+        min(max(int(goal[1]), grid.ymin), grid.ymax),
+    )
+    if walker.goal != dest:
+        walker.goal = dest
+        walker.path = None
+    direction = walker.next_dir(xy, dest)
+    if direction is None:
+        return FrameAction(nes_idle_action(), "occupancy_stand")
+    return FrameAction(nes_action(direction), f"occ_{direction.lower()}")
+
+
+def _leave_wall(
+    snap: ZeldaSnapshot,
+    walker: OccupancyWalker | None,
+    *,
+    allow_east_column: bool = False,
+) -> FrameAction | None:
+    """Step toward the playable interior. Do not occupancy-chase the west wall."""
+    x, y = int(snap.link_x), int(snap.link_y)
+    if x < _INLAND_X[0]:
+        direction = "RIGHT"
+    elif x > _INLAND_X[1] and not allow_east_column:
+        direction = "LEFT"
+    elif y < _INLAND_Y[0]:
+        direction = "DOWN"
+    elif y > _INLAND_Y[1]:
+        direction = "UP"
+    else:
+        return None
+    if walker is not None:
+        walker.last_dir = None
+    return FrameAction(nes_action(direction), "leave_wall")
+
+
+def _east_push(snap: ZeldaSnapshot, walker: OccupancyWalker | None) -> FrameAction:
+    if walker is not None:
+        walker.last_dir = None
+    return dungeon_align_then_push(
+        snap,
+        push_dir="RIGHT",
+        target_y=EAST_DOOR_Y,
+        y_tol=DOOR_Y_TOL,
+        door_plane=EAST_DOOR_X,
+        reason="east",
+    )
+
+
+def _goriya_fight(
+    snap: ZeldaSnapshot,
+    target: ZeldaObject,
+    *,
+    walker: OccupancyWalker | None,
+    frames: int,
+) -> FrameAction:
+    hint = engagement_hint(
+        EnemyKind.GORIYA, snap, target, projectiles=_projectiles(snap)
+    )
+    if should_swing_at(
+        snap.link_x, snap.link_y, hint.face, (target,), hint=hint
+    ):
+        if walker is not None:
+            walker.last_dir = None
+        if frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action(hint.face, "A"), "goriya_slash")
+        return FrameAction(nes_action(hint.face), "goriya_face")
+    leave = _leave_wall(snap, walker)
+    if leave is not None:
+        return leave
+    if walker is not None:
+        walker.last_dir = None
+    if hint.retreat:
+        return FrameAction(nes_action(_OPP[hint.face]), "goriya_retreat")
+    return FrameAction(nes_action(hint.face), "goriya_chase")
+
+
+def room69_east_step(
+    snap: ZeldaSnapshot,
+    *,
+    walker: OccupancyWalker | None = None,
+    dest: int | None = None,
+    east_open: bool = False,
+    saw_goriya: bool = False,
+    frames: int = 0,
+) -> FrameAction:
+    """One frame of 0x69 kill-clear → east door. Occupancy miss → block → replan."""
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("RIGHT"), "east_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "east_arrived")
+    if snap.screen != ROOM_69:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    live = live_goriyas(snap)
+    if live:
+        target = nearest_enemy(snap.link_x, snap.link_y, live)
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        return _goriya_fight(snap, target, walker=walker, frames=frames)
+
+    if not saw_goriya and not east_open:
+        if walker is not None:
+            walker.last_dir = None
+        return FrameAction(nes_idle_action(), "spawn_wait")
+
+    xy = (int(snap.link_x), int(snap.link_y))
+    leave = _leave_wall(snap, walker, allow_east_column=east_open)
+    if leave is not None:
+        return leave
+    if east_open and abs(xy[1] - EAST_DOOR_Y) <= DOOR_Y_TOL and xy[0] >= EAST_DOOR_X - 8:
+        return _east_push(snap, walker)
+    if walker is None:
+        if not east_open:
+            if abs(xy[1] - EAST_WAIT[1]) > DOOR_Y_TOL:
+                btn = "UP" if xy[1] > EAST_WAIT[1] else "DOWN"
+                return FrameAction(nes_action(btn), "east_wait_align_y")
+            if abs(xy[0] - EAST_WAIT[0]) > NORTH_X_TOL:
+                btn = "LEFT" if xy[0] > EAST_WAIT[0] else "RIGHT"
+                return FrameAction(nes_action(btn), "east_wait_align_x")
+            return FrameAction(nes_idle_action(), "east_wait")
+        return _east_push(snap, None)
+    goal = EAST_DOOR if east_open else EAST_WAIT
+    action = _occupancy_step(walker, xy, goal)
+    if (
+        action.reason == "occupancy_stand"
+        and not east_open
+        and abs(xy[0] - EAST_WAIT[0]) <= NORTH_X_TOL
+        and abs(xy[1] - EAST_WAIT[1]) <= DOOR_Y_TOL
+    ):
+        return FrameAction(nes_idle_action(), "east_wait")
+    return action
+
+
+@dataclass(kw_only=True)
+class Room69EastController(HopController):
+    """0x69 south mouth: kill-clear goriyas, then walk the earned east door."""
+
+    spec_id: str = "level7_room69_east"
+    max_frames: int = ROOM69_EAST_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x69"
+    walker: OccupancyWalker = field(
+        default_factory=lambda: OccupancyWalker(goal=EAST_DOOR)
+    )
+    dest: int | None = None
+    saw_goriya: bool = False
+    east_opened_frame: int | None = None
+    obj_types: list[int] = field(default_factory=list)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_misses={self.walker.misses}"
+            f"_saw={int(self.saw_goriya)}_east_f={self.east_opened_frame}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.walker.last_dir = None
+        if snap.link_y >= 189:
+            return self.mark_fail("south_backtrack")
+        return FrameAction(nes_action("RIGHT"), "east_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        live = live_goriyas(snap)
+        if live:
+            self.saw_goriya = True
+        types = sorted(
+            {
+                int(obj.type_id) & 0xFF
+                for obj in _combatants(snap)
+                if (int(obj.type_id) & 0xFF) not in (0, 0xFF)
+            }
+        )
+        if types and types != self.obj_types:
+            self.obj_types = types
+            self._note("obj_types:" + ",".join(f"0x{t:02x}" for t in types))
+        east_open = bool(snap.cur_opened_doors & DoorDir.RIGHT)
+        if east_open and self.east_opened_frame is None:
+            self.east_opened_frame = self.frames
+            self._note(
+                f"east_opened_f{self.frames}_doors={snap.cur_opened_doors}"
+                f"_dead={snap.room_all_dead}"
+            )
+            self.walker.path = None
+        action = room69_east_step(
+            snap,
+            walker=self.walker,
+            dest=self.dest,
+            east_open=east_open,
+            saw_goriya=self.saw_goriya,
+            frames=self.frames,
+        )
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ENTRY_SCREEN:
+                return self.mark_fail("south_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "misses": self.walker.misses,
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "saw_goriya": self.saw_goriya,
+            "east_opened_frame": self.east_opened_frame,
+            "obj_types": list(self.obj_types),
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "RIGHT",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -293,17 +587,25 @@ class RedCandlePickupController:
 
 
 __all__ = [
+    "EAST_DOOR",
+    "EAST_DOOR_X",
+    "EAST_DOOR_Y",
+    "EAST_WAIT",
     "ENTRY_SCREEN",
     "NORTH_DOOR",
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
+    "ROOM_69",
     "SOUTH_MOUTH_Y",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
     "Level7PathController",
     "RedCandlePickupController",
+    "Room69EastController",
     "UnverifiedLevel7PathController",
+    "live_goriyas",
     "north_door_79_step",
     "north_of_entry_ram_id",
+    "room69_east_step",
     "unverified_path_controller",
 ]
