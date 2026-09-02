@@ -131,7 +131,7 @@ def test_entry_exits_match_live_png() -> None:
     assert DoorDir.UP not in dest_exits  # live 0x69 north is a sealed wall
     dest_east = dest_exits[DoorDir.RIGHT]
     assert dest_east.target_room is None
-    assert dest_east.gate is GateKind.KILL_CLEAR
+    assert dest_east.gate is GateKind.KEY
     assert not dest_east.is_pathfinding
 
 

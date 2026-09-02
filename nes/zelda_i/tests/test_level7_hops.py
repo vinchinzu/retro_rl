@@ -27,12 +27,17 @@ from zelda_i.level7.hops import (
     make_pond_entry_controller,
     make_red_candle_controller,
 )
+from zelda_i.door_graph.core import DoorDir
 from zelda_i.level7.path import (
+    EAST_DOOR_X,
+    EAST_DOOR_Y,
     NORTH_DOOR_X,
     NORTH_DOOR_Y,
     SOUTH_MOUTH_Y,
     EntryNorthDoorController,
+    Room69EastController,
     north_door_79_step,
+    room69_east_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
@@ -42,6 +47,7 @@ from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_BOW,
     ADDR_CANDLE,
+    ADDR_CUR_OPENED_DOORS,
     ADDR_FOOD,
     ADDR_HEALTH,
     ADDR_KEYS,
@@ -81,6 +87,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_CANDLE] = fields.get("candle", 1)
     ram[ADDR_RUPEES] = fields.get("rupees", 20)
     ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
+    ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
     return ram
 
 
@@ -393,6 +400,45 @@ def test_north_door_79_step_south_mouth_and_door_x() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x79"
+
+
+def test_room69_east_south_mouth_stands_until_spawn() -> None:
+    mouth = read_snapshot(_ram(level=7, screen=0x69, x=NORTH_DOOR_X, y=SOUTH_MOUTH_Y))
+    act = room69_east_step(mouth)
+    assert list(act.action) == list(nes_idle_action())
+    assert act.reason == "spawn_wait"
+    ctl = Room69EastController()
+    act = ctl.step(mouth)
+    assert not ctl.success and not ctl.failed
+    assert act.reason == "spawn_wait"
+
+
+def test_room69_east_door_band_pushes_when_open() -> None:
+    snap = read_snapshot(
+        _ram(
+            level=7,
+            screen=0x69,
+            x=EAST_DOOR_X,
+            y=EAST_DOOR_Y,
+            doors=int(DoorDir.RIGHT),
+        )
+    )
+    act = room69_east_step(snap, east_open=True, saw_goriya=True)
+    assert act.reason == "east_push"
+    ctl = Room69EastController()
+    ctl.saw_goriya = True
+    act = ctl.step(snap)
+    assert not ctl.success and not ctl.failed
+    assert act.reason == "east_push"
+    assert ctl.east_opened_frame == 1
+
+
+def test_room69_east_arrived_leaves_0x69() -> None:
+    dest = read_snapshot(_ram(level=7, screen=0x68, x=16, y=EAST_DOOR_Y))
+    ctl = Room69EastController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x69"
 
 
 def test_hungry_goriya_requires_food() -> None:

@@ -206,8 +206,8 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(
                 DoorDir.RIGHT,
                 None,
-                GateKind.KILL_CLEAR,
-                notes="live PNG: east present/shut; dest RAM unobserved",
+                GateKind.KEY,
+                notes="dead kill-clear: 0x05 gone, doors=0; keys=0; dest unobserved",
                 verification="probe_geometry",
             ),
         ),
