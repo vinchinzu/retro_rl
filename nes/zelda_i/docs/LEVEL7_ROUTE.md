@@ -84,11 +84,23 @@ south (`0x44 ↑ 0x34`). Concretely established this sitting
 - `0x33` south edge = solid mountain at x∈{120,160,208}; `0x33→0x34` RIGHT
   still walled. The `0x33` Armos block y=141 horizontal travel — detour above
   or below the statue rows.
-- **Recommended next route (untested):** from L6 `0x22`, `0x22 ↓ 0x32 ↓ 0x42`
-  (pond screen) `→ 0x43 → 0x44 ↑ 0x34`. This reaches the shop from the source
-  direction *and* passes through the pond `0x42` for free. The `0x32↔0x42`
-  south link and `0x42→0x43→0x44` chain are unverified. The whole
-  `0x23/0x24/0x25` detour is then unnecessary — do not keep extending it.
+- **`0x32` has no south exit either** (`scratch/probe_32_pond_to_shop.py`):
+  its south edge is solid mountain at x∈{56,80,96,192}; its only exits are
+  NORTH (x≈120 → `0x22`, back to L6) and EAST (y≈141 → `0x33`, the fixture
+  link). So the entire `0x22 / 0x32 / 0x33 / 0x23 / 0x24 / 0x25` region is a
+  **mountain-locked pocket** whose only outlets are `0x22`'s own edges, the
+  north-wall gaps on `0x33`/`0x23`/`0x24`, and the hidden `0x25→0x15` passage.
+  There is **no direct southward route from L6 to the row-4/5 band** that
+  holds the pond `0x42` (E5-ish) and shop `0x34` (E4).
+- **Strategic implication for the route owner:** the shop `0x34` and pond
+  `0x42` are both entered walking north out of the western forest band
+  (`…0x64→0x54→0x44↑0x34`; `…0x54→0x53→0x52→0x42↑`). That band is the
+  `LEVEL7_POND_APPROACH_HOPS` territory, reached from **start**, not from L6.
+  Options: (a) buy Bait *before* L6 on the way through, then L6, then approach
+  the pond from the west; (b) from the post-L6 pocket, exit NORTH and loop
+  west/south around the mountains to the forest band; (c) accept a longer
+  post-L6 overworld leg. The `0x22→…→0x25` fixture prefix is a dead spur —
+  the spine currently walks it "green" but it makes no progress toward Bait.
 
 **Measured post-L6 leave (2026-09-02):** `--through level6-exit` **1/1**
 (`l6_exit_ow.json`) — the shard fanfare auto-warps Link to OW **`0x22`
