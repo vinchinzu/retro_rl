@@ -21,6 +21,7 @@ from zelda_i.anchors import (
     SCREEN_LEVEL6_ENTRANCE,
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
 )
+from zelda_i.dungeon.ops import poke_food
 from zelda_i.level7.overworld import (
     POST_L6_TO_BAIT_HOPS,
     at_l6_cave_mouth,
@@ -269,6 +270,79 @@ class NaturalBaitPurchaseController:
         }
 
 
+SURVIVAL_BAIT_FOOD = 1
+
+
+@dataclass
+class SurvivalBaitPurchaseController:
+    """Survival-only Bait stand-in: disclose one ``ADDR_FOOD`` write, then pass.
+
+    The natural L6 -> bait-shop overworld route is a mountain-locked pocket and
+    still unmapped (bead ``rr-8t4.4``).  The Clean path keeps
+    ``NaturalBaitPurchaseController`` fail-closed.  This Survival controller sets
+    the owned Food byte (``$065D``) so ``level7-entry`` / L7-B can run, mirroring
+    the disclosed rupee-count top-up (``SPINE_L7_RUPEE_RETOPUP``).  It never
+    writes rupees, Whistle, a door, or a Triforce bit, and stays
+    ``route_eligible=False``.
+    """
+
+    plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
+    max_frames: int = BAIT_MAX_FRAMES
+    frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    inventory_assist: dict[str, Any] | None = None
+    _env: Any = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def _fail(self, reason: str) -> FrameAction:
+        self.failed = True
+        if not self.notes:
+            self.notes.append(reason)
+        return FrameAction(nes_idle_action(), reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        self.frames += 1
+        if self._env is None:
+            return self._fail("survival_bait_env_not_bound")
+        food = int(read_u8(self._env.get_ram(), ADDR_FOOD))
+        if food < SURVIVAL_BAIT_FOOD:
+            self.inventory_assist = poke_food(self._env, from_food=food)
+            if int(self.inventory_assist.get("progression_writes") or 0):
+                return self._fail("survival_bait_progression_write")
+            if int(self.inventory_assist.get("food_writes") or 0) != 1:
+                return self._fail("survival_bait_food_write_failed")
+            food = int(read_u8(self._env.get_ram(), ADDR_FOOD))
+        if food < SURVIVAL_BAIT_FOOD:
+            return self._fail("survival_bait_food_not_set")
+        self.success = True
+        self.notes.append(f"survival_bait_food_set={food}")
+        return FrameAction(nes_idle_action(), "survival_bait_food_fixture")
+
+    def report(self) -> dict[str, Any]:
+        writes = int((self.inventory_assist or {}).get("food_writes") or 0)
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "spec_id": "level7_bait_purchase",
+            "track": "survival_fixture",
+            "shop_screen": hex(self.plan.shop_screen),
+            "cost": self.plan.cost,
+            "evidence": "survival-fixture",
+            "route_eligible": False,
+            "writes": writes,
+            "inventory_assist": self.inventory_assist,
+            "progression_writes": 0,
+            "capacity_writes": 0,
+            "notes": list(self.notes),
+        }
+
+
 def make_post_l6_overworld_controller(
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
@@ -283,6 +357,12 @@ def make_bait_purchase_controller(
     return NaturalBaitPurchaseController(plan=plan)
 
 
+def make_survival_bait_purchase_controller(
+    *, plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
+) -> SurvivalBaitPurchaseController:
+    return SurvivalBaitPurchaseController(plan=plan)
+
+
 __all__ = [
     "APPROACH_MAX_FRAMES",
     "BAIT_COST",
@@ -291,6 +371,7 @@ __all__ = [
     "MEASURED_POST_L6_EXIT",
     "POST_L6_EXIT_STATE",
     "POST_L6_TRIFORCE",
+    "SURVIVAL_BAIT_FOOD",
     "UNMEASURED_HANDOFF",
     "UNVERIFIED_BAIT_PLAN",
     "ApproachPhase",
@@ -298,6 +379,8 @@ __all__ = [
     "NaturalBaitPurchaseController",
     "OverworldHandoff",
     "PostLevel6OverworldController",
+    "SurvivalBaitPurchaseController",
     "make_bait_purchase_controller",
     "make_post_l6_overworld_controller",
+    "make_survival_bait_purchase_controller",
 ]

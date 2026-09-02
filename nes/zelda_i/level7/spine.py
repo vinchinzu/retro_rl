@@ -5,12 +5,14 @@ suffix is driven to ``level6-exit`` (the measured post-fanfare OW return, screen
 ``0x22`` ``(112,125)`` TF ``0x3F``) and L7 continues from there with
 ``MEASURED_POST_L6_EXIT`` (a shared ``OverworldHandoff``) as the handoff.
 
-``MEASURED_POST_L6_EXIT.verified`` is ``False`` (``selected_item`` not captured
-that run + the 42R->60R Bait gap), so the post-L6 controller refuses every
-frame and ``--through level7-entry`` runs the whole continuous tape, then stops
-fail-closed at ``level7_post_l6_overworld`` (``handoff_unmeasured``).  The
-fixture-live ``0x22 -> 0x25`` bait prefix is already wired; it starts walking
-the moment the handoff verifies.
+``MEASURED_POST_L6_EXIT.verified`` is ``True`` since Phase 1, so the post-L6
+controller walks the fixture-live ``0x22 -> 0x25`` bait prefix green on a
+continuous power-on.  The Bait stage then runs the disclosed Survival
+``SurvivalBaitPurchaseController`` (one ``ADDR_FOOD`` write, see
+``docs/ASSIST_CONTRACT.md``) in place of the natural 60R buy — the natural
+L6 -> shop overworld route is a mountain-locked pocket, tracked in bead
+``rr-8t4.4``.  ``level7_pond_drain_entry`` and everything past it still fail
+closed (pond ``0x42`` / drain / entry room unobserved).
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ def continue_level7_spine(
     attach_hops(
         env,
         run,
-        l7_hops(env, handoff=MEASURED_POST_L6_EXIT),
+        l7_hops(env, handoff=MEASURED_POST_L6_EXIT, survival=True),
         through=through,
         run_stages=run_stages,
         room_timer=room_timer,

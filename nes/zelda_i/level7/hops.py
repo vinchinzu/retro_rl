@@ -20,6 +20,7 @@ from zelda_i.level7.entry import (
     BaitPurchasePlan,
     make_bait_purchase_controller,
     make_post_l6_overworld_controller,
+    make_survival_bait_purchase_controller,
 )
 from zelda_i.level7.graph import ledger_notes
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
@@ -99,10 +100,20 @@ def level7_entry_chapter_stages(
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
     post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
     bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
+    survival: bool = False,
 ) -> tuple[Stage, ...]:
-    """Fresh post-L6 OW -> Bait -> Whistle pond -> observed L7 entry."""
+    """Fresh post-L6 OW -> Bait -> Whistle pond -> observed L7 entry.
+
+    ``survival=True`` swaps the fail-closed natural Bait buy for the disclosed
+    ``SurvivalBaitPurchaseController`` (one ``ADDR_FOOD`` write); Clean keeps the
+    natural buy.
+    """
     post = make_post_l6_overworld_controller(handoff=handoff, hops=post_l6_hops)
-    bait = make_bait_purchase_controller(plan=bait_plan)
+    bait = (
+        make_survival_bait_purchase_controller(plan=bait_plan)
+        if survival
+        else make_bait_purchase_controller(plan=bait_plan)
+    )
     pond = make_pond_entry_controller()
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
@@ -173,12 +184,20 @@ def l7_hops(
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
     post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
     bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
+    survival: bool = False,
 ) -> tuple[SpineHop, ...]:
-    """Build fresh L7 chapter rows.  Defaults stay non-executable."""
+    """Build fresh L7 chapter rows.  Defaults stay non-executable.
+
+    ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
+    for the disclosed ``ADDR_FOOD`` fixture; every other stage stays fail-closed.
+    """
 
     def _entry_stages() -> tuple[Stage, ...]:
         return level7_entry_chapter_stages(
-            handoff=handoff, post_l6_hops=post_l6_hops, bait_plan=bait_plan
+            handoff=handoff,
+            post_l6_hops=post_l6_hops,
+            bait_plan=bait_plan,
+            survival=survival,
         )
 
     incoming = read_snapshot(env.get_ram())

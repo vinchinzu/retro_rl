@@ -12,11 +12,15 @@ from zelda_i.level7.entry import (
     BAIT_SHOP_SCREEN_HYP,
     MEASURED_POST_L6_EXIT,
     POST_L6_TRIFORCE,
+    NaturalBaitPurchaseController,
+    SurvivalBaitPurchaseController,
     make_bait_purchase_controller,
     make_post_l6_overworld_controller,
+    make_survival_bait_purchase_controller,
 )
 from zelda_i.level7.hops import (
     l7_hops,
+    level7_entry_chapter_stages,
     make_entry_to_goriya_controller,
     make_red_candle_controller,
 )
@@ -72,6 +76,27 @@ def _ram(**fields: int) -> np.ndarray:
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
     return SimpleNamespace(get_ram=lambda: ram)
+
+
+class _WriteThroughMem:
+    """``memory.assign`` mock that writes back into the RAM array."""
+
+    def __init__(self, ram: np.ndarray) -> None:
+        self._ram = ram
+        self.calls: list[tuple[int, int]] = []
+
+    def assign(self, addr: int, _fmt: str, val: int) -> None:
+        self.calls.append((int(addr), int(val)))
+        self._ram[int(addr)] = int(val) & 0xFF
+
+
+def _poke_env(ram: np.ndarray) -> tuple[SimpleNamespace, _WriteThroughMem]:
+    mem = _WriteThroughMem(ram)
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=SimpleNamespace(memory=mem)),
+    )
+    return env, mem
 
 
 def _measured_leave_ram() -> np.ndarray:
@@ -229,6 +254,79 @@ def test_bait_plan_fails_closed_without_60r_or_shop_geometry() -> None:
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "bait_shop_geometry_unobserved"
+
+
+def test_survival_bait_controller_pokes_food_and_succeeds() -> None:
+    ram = _ram(food=0, rupees=42)
+    env, mem = _poke_env(ram)
+    ctl = make_survival_bait_purchase_controller()
+    ctl.bind_env(env)
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.success and not ctl.failed
+    assert act.reason == "survival_bait_food_fixture"
+    assert ram[ADDR_FOOD] == 1
+    # The ONLY write is ADDR_FOOD -> 1. No rupee / selected / door / TF write.
+    assert mem.calls == [(ADDR_FOOD, 1)]
+    report = ctl.report()
+    assert report["writes"] == 1
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+    assert report["route_eligible"] is False
+    assert report["spec_id"] == "level7_bait_purchase"
+    assert ram[ADDR_RUPEES] == 42  # untouched
+
+
+def test_survival_bait_controller_no_write_when_food_already_owned() -> None:
+    ram = _ram(food=1)
+    env, mem = _poke_env(ram)
+    ctl = make_survival_bait_purchase_controller()
+    ctl.bind_env(env)
+    ctl.step(read_snapshot(ram))
+    assert ctl.success and not ctl.failed
+    assert mem.calls == []
+    assert ctl.report()["writes"] == 0
+
+
+def test_survival_bait_controller_fails_closed_without_env() -> None:
+    ctl = make_survival_bait_purchase_controller()
+    act = ctl.step(read_snapshot(_ram()))
+    assert ctl.failed and not ctl.success
+    assert act.reason == "survival_bait_env_not_bound"
+
+
+def test_natural_bait_stays_fail_closed_and_survival_is_opt_in() -> None:
+    clean = level7_entry_chapter_stages()
+    survival = level7_entry_chapter_stages(survival=True)
+    assert isinstance(clean[1][1], NaturalBaitPurchaseController)
+    assert isinstance(survival[1][1], SurvivalBaitPurchaseController)
+    # Stage names are identical either way.
+    assert [n for n, _c, _f in clean] == [n for n, _c, _f in survival]
+
+
+def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
+    ram = _ram()
+    stages = l7_hops(_env(ram), survival=True)[0].stages()
+    names = [n for n, _c, _f in stages]
+    assert names == [
+        "level7_post_l6_overworld",
+        "level7_bait_purchase",
+        "level7_pond_drain_entry",
+    ]
+    assert isinstance(stages[1][1], SurvivalBaitPurchaseController)
+    # pond stage still fail-closed (unverified path controller)
+    pond = stages[2][1]
+    assert not isinstance(pond, SurvivalBaitPurchaseController)
+    pond.step(read_snapshot(ram))
+    assert pond.failed
+
+
+def test_continue_level7_spine_uses_the_survival_bait_fixture() -> None:
+    import inspect
+
+    from zelda_i.level7 import spine
+
+    src = inspect.getsource(spine.continue_level7_spine)
+    assert "survival=True" in src
 
 
 def test_hungry_goriya_requires_food() -> None:

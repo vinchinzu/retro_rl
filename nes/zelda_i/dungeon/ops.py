@@ -39,6 +39,7 @@ from zelda_i.dungeon.ids import (
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOMBS,
+    ADDR_FOOD,
     ADDR_KEYS,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -382,6 +383,57 @@ def poke_link_position(
         "door_writes": 0,
         "inventory_writes": 0,
         "triforce_writes": 0,
+        "state_load": False,
+        "mid_run_state_load": False,
+    }
+
+
+def poke_food(
+    env: Any,
+    *,
+    from_food: int,
+    n: int = 1,
+) -> dict[str, Any]:
+    """Write ``ADDR_FOOD`` (``$065D``) to ``1``. Not Clean.
+
+    Survival Bait-shop fixture (see ``docs/ASSIST_CONTRACT.md``). The natural
+    L6 -> bait-shop overworld route is a mountain-locked pocket and still
+    unmapped (bead ``rr-8t4.4``), so the Survival spine sets the owned Food
+    byte in place of the natural 60R buy so L7-B can run. Food is a consumable
+    gate item (spent at the Hungry Goriya), **not** an owned count, so it is
+    disclosed separately from ``apply_owned_inventory``. Grants no other item,
+    no capacity, no progression or door bit. Clean keeps the natural buy.
+    """
+    del n  # Food is a 0/1 owned flag; only value 1 is ever written.
+    writes: list[dict[str, Any]] = []
+    notes: list[str] = []
+    assigned = 0
+    want = 1
+    if int(from_food) < want:
+        msg = mem_write(env, ADDR_FOOD, want)
+        notes.append(msg)
+        if msg.startswith("memory."):
+            assigned += 1
+        writes.append(
+            {
+                "field": "food",
+                "address": ADDR_FOOD,
+                "from": int(from_food),
+                "to": want,
+            }
+        )
+    return {
+        "writes": writes,
+        "notes": notes,
+        "poke_food": want if assigned else 0,
+        "food_writes": 1 if assigned else 0,
+        "addresses": [ADDR_FOOD],
+        "progression_writes": 0,
+        "capacity_writes": 0,
+        "door_writes": 0,
+        "inventory_writes": 0,
+        "triforce_writes": 0,
+        "bow_writes": 0,
         "state_load": False,
         "mid_run_state_load": False,
     }
@@ -820,7 +872,7 @@ __all__ = [
     "OWNED_INVENTORY_FIELDS", "PUSH_FRAMES", "SETTLE_FRAMES", "WOODEN_ARROWS",
     "apply_owned_inventory", "bomb_stand", "ensure_bomb", "exit_door",
     "fight_clear", "goto", "idle", "live_killables", "mem_write", "objs",
-    "poke_bombs", "poke_keys", "poke_link_position", "poke_rupees",
+    "poke_bombs", "poke_food", "poke_keys", "poke_link_position", "poke_rupees",
     "poke_wooden_arrows",
     "push_dir", "room_fields",
 ]
