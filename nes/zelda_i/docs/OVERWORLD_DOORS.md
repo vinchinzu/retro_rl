@@ -22,7 +22,7 @@ Recon table below is the live door map; dungeon geometry lives in
 | 4 | Snake | **`0x45`** | **`0x71`** | **live** raft dock `0x55` → island `0x45` (rr-0fx) | **Raft** (`0x0660`) | `0x08` | Stepladder | [LEVEL4_ROUTE.md](LEVEL4_ROUTE.md) |
 | 5 | Lizard | **`0x0B`** | **`0x76`** | **verified** assisted Lost Hills `0x1B` ↑×4; `Level5Entrance.state` | none to enter | `0x10` | Whistle | [LEVEL5_ROUTE.md](LEVEL5_ROUTE.md) |
 | 6 | Dragon | **`0x22`** | **`0x79`** | **verified** assisted; east `0x7a` key room; `Level6Entrance.state` | none required | `0x20` | Magical Rod | [LEVEL6_ROUTE.md](LEVEL6_ROUTE.md) |
-| 7 | Demon | `0x42` | TBD | source: whistle pond; bait shop `0x34` | **Whistle** + **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
+| 7 | Demon | **`0x42`** | **`0x79`** | **live** pond drain (recon whistle poke; `Level7Entrance` pin). Bait shop `0x34` still source. Not natural-entry. | **Whistle** to drain; **Bait** inside | `0x40` | Red Candle | [LEVEL7_ROUTE.md](LEVEL7_ROUTE.md) |
 | 8 | Lion | **`0x6D`** | TBD | **verified bush OW** assisted (`Level8BushOW`); candle→burn→enter **PARTIAL** (rr-q8a) | **Candle** (`0x065B`) | `0x80` | Book / Magic Key | [LEVEL8_ROUTE.md](LEVEL8_ROUTE.md) |
 | 9 | Death Mountain | `0x05` | TBD | source bomb-rock hyp | bombs; full TF `0xFF` inside | — | Red Ring, Silver Arrows | [LEVEL9_ROUTE.md](LEVEL9_ROUTE.md) |
 

@@ -1,7 +1,7 @@
 # L7 Wave A handoff (copy for integrator)
 
-Did not STATUS-promote. Did not edit `STATUS.md` / `.beads`. Did not write
-shared spine. `route_eligible=false` on every fixture.
+Did not STATUS-promote. Did not edit `STATUS.md`. `route_eligible=false`
+on every fixture. Shared spine still fail-closed at `level7_pond_drain_entry`.
 
 Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 `level7`.
@@ -15,10 +15,11 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   **hypothesis**. Start-based `0x53→0x52` inland-left micro =
   **fixture-live**. Post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25` =
   **fixture-live**. Pond `0x42` overworld screen **reached 2/2 geometry-only**
-  (`OverworldToLevel7PondController` from `PostSwordStart`,
-  `l7_pond_from_start_l7_pond_v7/v8`); drain + interior entry room still
-  **hypothesis**.
-  Stop at fixture-live; integrator owns natural-segment / spine-green.
+  (`OverworldToLevel7PondController` from `PostSwordStart`). Recon drain
+  with an `ADDR_WHISTLE` poke enters L7 play **`0x79` `(120,205)`**
+  (`Level7Entrance` pin). Natural drain from the L6 leave is still
+  unobserved (`rr-8t4.4`). Stop at fixture-live; integrator owns
+  natural-segment / spine-green.
 
 - **exact predecessor (updated 2026-09-02, Phase 1):** the L6 fanfare leave is
   **measured and verified** — OW `0x22` `(112,125)` TF `0x3F` keys 2 bombs 8
@@ -50,18 +51,19 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
      `bait_shop_geometry_unobserved` (shop `0x34` geometry / cave xy / buy
      policy all still unobserved). Disclosed in `docs/ASSIST_CONTRACT.md`.
   3. `level7_pond_drain_entry` — `make_pond_entry_controller()`
-     (still unverified; the pond `0x42` screen is now reached geometry-only via
-     `OverworldToLevel7PondController`, but the Whistle drain + first interior
-     room are unobserved — that is the next `rr-8t4.2` step)
+     (still fail-closed on the spine). Recon drain from `OW_L7Pond` with a
+     disclosed `ADDR_WHISTLE` poke is **green** (`drain_v2`, L7 play `0x79`
+     `(120,205)`). A natural-whistle controller from the L6 leave is `rr-8t4.4`.
 
   Recon-only (not a spine stage): `OverworldToBaitShopController` from
   `Level6ExitOverworld`; `OverworldToLevel7PondController` from
   `PostSwordStart` (no Whistle).
 
-- **exact endpoint predicate:** `level7_entry_stop` — live L7 play in the
-  observed entry room, TF `0x3F`, Whistle and Food owned, `route_eligible`
-  and `evidence` in `{natural-segment, spine-green}`. Room id is still
-  `None` so the predicate fails closed.
+- **exact endpoint predicate:** `level7_entry_stop` — live L7 play in
+  **`0x79`**, TF `0x3F`, Whistle and Food owned, `route_eligible` and
+  `evidence` in `{natural-segment, spine-green}`. Room id is live
+  (`fixture-live`) but evidence is not in that set, so the predicate
+  still fails closed.
 
 - **expected inventory deltas:** Food 0→1. No TF change. Keys/bombs unchanged
   on OW. Candle stays 0 (Blue Candle not on the mainline; Red Candle is the L7
@@ -112,13 +114,29 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
     the Survival spine sets Food directly (`SurvivalBaitPurchaseController`,
     disclosed in `docs/ASSIST_CONTRACT.md`).
 
-- **L7 start pin — BLOCKED.** A `Level7Entrance` save-state cannot be built
-  yet: the `Level6ExitOverworld` precedent poked inventory onto a *live* OW
-  leftover, but **no L7 room has been observed live** (`level7/dungeon.py`
-  room ids all `None`), so there is no state to anchor. The pin folds into
-  `rr-8t4.2` (L7-B) first-room recon — its first observed room *is* the L7
-  start. Closest current checkpoint: the continuous-tape leftover at
-  `level7_pond_drain_entry` (post-Bait OW `0x25`, Food 1).
+- **L7 start pin — captured (recon).** `Level7Entrance.state`: L7 play
+  **`0x79` `(120,205)`** south mouth, whistle=1 (poked), food=0, TF=0,
+  3 HC. Drain recipe: `OW_L7Pond` → poke `$065C` + B-slot 5 → 12×B →
+  idle ~240f → walk dry bed; stairs `(96,132)` tile 114. Harness:
+  `scratch/probe_l7_pond_drain.py`. `LEVEL7_ENTRY_STOP.screen=0x79`
+  `evidence=fixture-live` `route_eligible=false` — spine still fail-closed.
+  Not natural-entry (PostSwordStart + whistle poke, no L5/L6 TF). Natural
+  whistle-carrying pond leftover is still blocked by the `0x22` mountain
+  pocket (`rr-8t4.4`) and the missing post-L5 OW checkpoint.
+
+- **Why the pond leftover had whistle=0 (not a failed L5 pickup).** The
+  geometry walk is `PostSwordStart` → `LEVEL7_POND_HOPS` (`0x77→…→0x42`).
+  It never enters L5, so `$065C` stays 0 and TF stays 0. On the Survival
+  spine the Recorder **is** earned: `attach_level5_whistle_suffix` /
+  `--through level5-whistle` 1/1, and `--through level6-exit`
+  (`l7p1_l6exit.json` `final.whistle=1`, `MEASURED_POST_L6_EXIT`). There is
+  no `Level5ExitOverworld`; whistle-owning pins are L5-interior
+  (`Level5WhistleFrom77` cellar `0x04`). Post-L5 OW settle is Lost Hills
+  `0x0B`, then L6. Post-L6 fanfare dumps Link in the `0x22` mountain
+  pocket with Whistle 1 but **no south path** to pond `0x42`. So: pickup
+  works; the pond walk that exists does not go through L5; the tape that
+  owns Whistle cannot walk to the pond. Natural leftover = leave L5 to
+  OW and take the west-forest hops to `0x42` **before** L6.
 
 - **fixture provenance:** Phase 1 is a **continuous power-on** tape, not a
   save-state fixture. `--through level7-entry` (`recordings/l7p1_foodfix.json`)
@@ -126,6 +144,7 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   green `0x22→0x25` → `level7_bait_purchase` green (Survival Food fixture) →
   fail-closed at `level7_pond_drain_entry`. `set_state=0`, `deaths=0`. Pond
   recon remains `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
+  Entry pin: `Level7Entrance` / `OW_L7Pond` (`l7_pond_drain_drain_v2.json`).
 
 - **files changed (Phase 1) / public target:** `level7/entry.py` (verified
   handoff + `_left_mouth` latch + `SurvivalBaitPurchaseController`),
@@ -145,8 +164,10 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 ## L7-B — entry through Red Candle
 
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
-- **evidence label:** **hypothesis** (fail-closed factories; graph only)
-- **predecessor:** L7-A endpoint (unobserved entry room, TF `0x3F`, Food owned)
+- **evidence label:** **fixture-live entry pin**; interior past `0x79` still hypothesis
+- **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
+  is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
+  Hungry Goriya still needs Food; isolate with a Food poke or wait for `rr-8t4.4`.
 - **required:** Food ≥1 (Hungry Goriya), Whistle, bombs for wall skips, keys
   for three locks (skip fifth via bombs)
 - **stages / factories:**

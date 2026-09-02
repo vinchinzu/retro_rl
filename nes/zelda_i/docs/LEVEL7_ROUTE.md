@@ -14,21 +14,22 @@ natural L6→shop overworld route is a mountain-locked pocket (bead `rr-8t4.4`).
 The disclosed rupee **count** top-up (42→60R, `SPINE_L7_RUPEE_RETOPUP`) still
 fires before the stage and represents the cost paid. **Clean** keeps
 `NaturalBaitPurchaseController` fail-closed. See `docs/ASSIST_CONTRACT.md`.
-The spine then fails closed at `level7_pond_drain_entry` (pond `0x42`, drain,
-entry room all unobserved).
+The spine then fails closed at `level7_pond_drain_entry` (natural Whistle
+drain from the L6 leave is still unobserved; the Survival bait prefix is a
+dead spur into the `0x22` mountain pocket, bead `rr-8t4.4`).
 
-The **Demon pond `0x42` overworld screen is now reached 2/2** (geometry-only,
-no Whistle) by `OverworldToLevel7PondController` from `PostSwordStart`
-(`l7_pond_from_start_l7_pond_v7/v8.json`; cracks the `rr-dnp` `0x64→0x54` and
-`0x53→0x52` walls plus the `0x52→0x42` boulder field). The pond **drain**, the
-**interior entry room**, the bait shop `0x34` geometry, and all dungeon rooms
-remain **hypothesis**. Cumulative spine chapters stay fail-closed
-(`route_eligible=false`). There is no pond checkpoint, L7 entry room, or Clean
-segment. **Whistle** from Level 5 gates pond drain.
+The **Demon pond `0x42` overworld screen is reached 2/2** (geometry-only)
+by `OverworldToLevel7PondController` from `PostSwordStart`. A **recon
+`ADDR_WHISTLE` poke** on that leftover drains the pond and enters L7:
+play **`0x79` `(120,205)`** south mouth (`Level7Entrance` pin,
+`scratch/probe_l7_pond_drain.py` drain_v2, 825f from `OW_L7Pond`). Stairs
+trigger at pond `(96,132)` tile 114. **Not natural-entry** — TF=0, Food=0,
+Whistle poked. The bait shop `0x34` and all rooms past entry stay
+hypothesis. Spine chapters stay fail-closed (`route_eligible=false`).
 
-**Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
-(Wave A recon + Phase 1 Food fixture), `rr-8t4.4` (natural L6→shop OW route).
-Do not STATUS-promote.
+**Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach),
+`rr-8t4.1` (Wave A + Food fixture), `rr-8t4.2` (L7-B; entry pin captured),
+`rr-8t4.4` (natural L6→shop OW route). Do not STATUS-promote.
 
 Planning sources:
 
@@ -200,8 +201,11 @@ Live geometry (Survival, `PostSwordStart`):
 Evidence: `recordings/l7_pond_from_start_l7_pond_v7.json` / `_v8.json` (2/2)
 and `l7_pond_v7_final.png` (the drained-pending Demon pond, blue water, Link
 `(128,221)`). Zero deaths; `progression_writes=capacity_writes=0`;
-`route_eligible=false`. **Drain + interior entry room still need Whistle** —
-next step for `rr-8t4.2`.
+`route_eligible=false`. **Drain + interior (recon, 2026-09-02):** poke
+`ADDR_WHISTLE` + B-slot 5 on `OW_L7Pond`, blow, walk the dry bed. Stairs
+at `(96,132)` tile 114 → mode 16 → L7 play **`0x79` `(120,205)`**. Pin
+`Level7Entrance` (development_only). Natural whistle-carrying drain from
+the L6 leave is still `rr-8t4.4` / post-L5 OW.
 
 **Controllers:** the spine uses `level7.entry.PostLevel6OverworldController`
 (shared `OverworldHandoff` gate + fixture-live `POST_L6_TO_BAIT_HOPS`), which
@@ -213,19 +217,21 @@ geometry-walk gate.
 
 ### Live recon goals
 
-1. Reach pond screen without Whistle (map pond geometry only).
-2. Save `OW_L7Pond` if pond screen confirmed.
-3. With real Whistle: drain, enter, confirm `level == 7`, entry room.
-4. Save `Level7Entrance` + `recordings/l7_*_recon.json`.
+1. Reach pond screen without Whistle (map pond geometry only). **done**
+2. Save `OW_L7Pond` if pond screen confirmed. **done** (geometry, whistle=0)
+3. Drain + enter, confirm `level == 7`, entry room. **done recon** (`0x79`)
+4. Save `Level7Entrance`. **done** (whistle-poke pin; not natural-entry)
 
-**Do not** poke Whistle / Food for Clean claims.
+**Do not** poke Whistle / Food for Clean claims. The entry pin is labeled
+`development_only` / `natural_entry=false`.
 
 ---
 
 ## Interior (source speed route)
 
-RAM room IDs **unknown**. Offline graph: `level7/graph.py` (source ids
-`0x7xx`, every `ram_id=None`, `evidence=hypothesis`). Prefer bomb walls over
+RAM room IDs: **entry `0x79` live** (south mouth `(120,205)`). Offline graph:
+`level7/graph.py` (source ids `0x7xx`; only ENTRY has `ram_id=0x79`,
+`evidence=fixture-live`). Prefer bomb walls over
 the fifth lock; Hungry Goriya is a Food gate; Red Candle is `ADDR_CANDLE`
 1→2 naturally. Key/bomb ledger is in `LEVEL7_KEY_BOMB_LEDGER`.
 
@@ -235,7 +241,7 @@ Aquamentus.
 
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
-| Entry | RIGHT | into dungeon body |
+| Entry | play `0x79` `(120,205)` south mouth **(live)** | north + east doors; water tiles |
 | N path | Moldorms | bombs reward optional |
 | R | Goriya clear → Old Man | “THERE’S A SECRET IN THE TIP OF THE NOSE” |
 | R | Digdogger | Whistle → multi-mini; optional skip |
@@ -328,10 +334,10 @@ The stop predicates additionally require:
 - `level7`: exact observed settled leave, TF `0x7F`, Candle `2`, Whistle
   retained, one natural heart-container increase, and full hearts.
 
-The stop specs intentionally carry no room ids yet, use
-`evidence=hypothesis`, and set `route_eligible=false`, so all three fail
-closed. A room id alone is insufficient: public success accepts only an exact
-stop promoted to `natural-segment` or `spine-green` evidence.
+`LEVEL7_ENTRY_STOP.screen` is live `0x79` with `evidence=fixture-live`;
+Red Candle and complete stay `None` / `hypothesis`. All three fail closed
+(`route_eligible=false`; public success accepts only `natural-segment` or
+`spine-green`). A room id alone is insufficient.
 
 ## Boss / Triforce evidence still needed
 
@@ -350,9 +356,9 @@ is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 | State | When |
 |-------|------|
 | `Level6ExitOverworld` | Save-state name still used by `scratch/run_bait_from_l6_exit.py` recon. The old `(120,221)` / 80R poke loadout and `HYPOTHESIZED_POST_L6_EXIT` packet were **deleted** — superseded by the measured `--through level6-exit` return `0x22` `(112,125)` (`MEASURED_POST_L6_EXIT`, an `OverworldHandoff`). |
-| `OW_L7Pond` | Pond screen mapped (Whistle optional) |
+| `OW_L7Pond` | **live** pond `0x42` `(128,221)` from PostSwordStart; whistle=0 |
 | `OW_L7BaitShop` | Armos shop screen |
-| `Level7Entrance` | `level==7`, play, entry room |
+| `Level7Entrance` | **live recon pin** `level==7` play `0x79` `(120,205)`; whistle poked |
 | `Level7RedCandle` | after Red Candle |
 | `Level7Complete` | `triforce & 0x40` |
 

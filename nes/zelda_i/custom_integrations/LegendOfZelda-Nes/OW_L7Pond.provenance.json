@@ -1,0 +1,43 @@
+{
+  "acceptance_warning": "Development pin. Geometry leftover on Demon pond 0x42 from PostSwordStart; whistle=0. Not natural-entry. Do not STATUS-promote.",
+  "captured_at": "2026-09-02T19:14:16.902241+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "poke": null,
+  "request": {
+    "route_eligible": false,
+    "segment": "OW_L7Pond",
+    "tag": "drain_v2",
+    "via": "PostSwordStart OverworldToLevel7PondController geometry walk (whistle=0)",
+    "whistle_poke": false
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "food": 0,
+    "health": 34,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 5,
+    "rod": 0,
+    "room": 66,
+    "rupees": 0,
+    "screen": 66,
+    "selected_item": 0,
+    "sword": 1,
+    "tile": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 128,
+    "xy": [
+      128,
+      221
+    ],
+    "y": 221
+  },
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/OW_L7Pond.state",
+  "state_sha256": "da41c1963a1a1bf9eb7959d59a70737fd21ba411e28368d559ede0d4aa611d4f"
+}
