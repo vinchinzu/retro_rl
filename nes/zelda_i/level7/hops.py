@@ -1,8 +1,9 @@
 """Level 7 chapter factories and Survival ``SpineHop`` rows.
 
 The public surface has three chapters.  Internal stage names provide precise
-handoffs without exposing room-level ``--through`` targets.  Post-L6 leftover
-and shop geometry remain unmeasured, so those factories stay fail-closed.
+handoffs without exposing room-level ``--through`` targets.  The post-L6
+handoff stays ``verified=False`` and shop geometry is unmeasured, so every
+factory here fails closed.
 """
 
 from __future__ import annotations
@@ -15,14 +16,13 @@ from zelda_i.level7.dungeon import (
     level7_red_candle_stop,
 )
 from zelda_i.level7.entry import (
-    UNMEASURED_POST_L6_HANDOFF,
     UNVERIFIED_BAIT_PLAN,
     BaitPurchasePlan,
-    PostLevel6Handoff,
-    make_bait_purchase_controller as _make_bait,
-    make_post_l6_overworld_controller as _make_post_l6,
+    make_bait_purchase_controller,
+    make_post_l6_overworld_controller,
 )
 from zelda_i.level7.graph import ledger_notes
+from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.level7.path import (
     HungryGoriyaGateController,
     Level7PathController,
@@ -30,6 +30,7 @@ from zelda_i.level7.path import (
     unverified_path_controller,
 )
 from zelda_i.overworld.graph import ScreenHop
+from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from zelda_i.ram import (
     ADDR_CANDLE,
     ADDR_FOOD,
@@ -42,20 +43,6 @@ from zelda_i.spine.hops import SpineHop
 
 Stage = tuple[str, Level7PathController, int]
 ControllerFactory = Callable[[], Level7PathController]
-
-
-def make_post_l6_overworld_controller(
-    *,
-    handoff: PostLevel6Handoff = UNMEASURED_POST_L6_HANDOFF,
-    hops: tuple[ScreenHop, ...] = (),
-) -> Level7PathController:
-    return _make_post_l6(handoff=handoff, hops=hops)
-
-
-def make_bait_purchase_controller(
-    *, plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
-) -> Level7PathController:
-    return _make_bait(plan=plan)
 
 
 def make_pond_entry_controller() -> Level7PathController:
@@ -107,12 +94,20 @@ def _stage(name: str, factory: ControllerFactory) -> Stage:
     return (name, controller, controller.max_frames)
 
 
-def level7_entry_chapter_stages() -> tuple[Stage, ...]:
+def level7_entry_chapter_stages(
+    *,
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
+    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
+    bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
+) -> tuple[Stage, ...]:
     """Fresh post-L6 OW -> Bait -> Whistle pond -> observed L7 entry."""
+    post = make_post_l6_overworld_controller(handoff=handoff, hops=post_l6_hops)
+    bait = make_bait_purchase_controller(plan=bait_plan)
+    pond = make_pond_entry_controller()
     return (
-        _stage("level7_post_l6_overworld", make_post_l6_overworld_controller),
-        _stage("level7_bait_purchase", make_bait_purchase_controller),
-        _stage("level7_pond_drain_entry", make_pond_entry_controller),
+        ("level7_post_l6_overworld", post, post.max_frames),
+        ("level7_bait_purchase", bait, bait.max_frames),
+        ("level7_pond_drain_entry", pond, pond.max_frames),
     )
 
 
@@ -175,22 +170,15 @@ def _complete_success(env, incoming_heart_containers: int):
 def l7_hops(
     env,
     *,
-    handoff: PostLevel6Handoff = UNMEASURED_POST_L6_HANDOFF,
-    post_l6_hops: tuple[ScreenHop, ...] = (),
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
+    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
     bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
 ) -> tuple[SpineHop, ...]:
     """Build fresh L7 chapter rows.  Defaults stay non-executable."""
 
     def _entry_stages() -> tuple[Stage, ...]:
-        post = make_post_l6_overworld_controller(
-            handoff=handoff, hops=post_l6_hops
-        )
-        bait = make_bait_purchase_controller(plan=bait_plan)
-        pond = make_pond_entry_controller()
-        return (
-            ("level7_post_l6_overworld", post, post.max_frames),
-            ("level7_bait_purchase", bait, bait.max_frames),
-            ("level7_pond_drain_entry", pond, pond.max_frames),
+        return level7_entry_chapter_stages(
+            handoff=handoff, post_l6_hops=post_l6_hops, bait_plan=bait_plan
         )
 
     incoming = read_snapshot(env.get_ram())
@@ -230,5 +218,5 @@ __all__ = [
     "make_post_l6_overworld_controller",
     "make_red_candle_controller",
     "make_tip_stairs_controller",
-    "UNMEASURED_POST_L6_HANDOFF",
+    "UNMEASURED_HANDOFF",
 ]

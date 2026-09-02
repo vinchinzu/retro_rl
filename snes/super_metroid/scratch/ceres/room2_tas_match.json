@@ -1,0 +1,104 @@
+{
+  "tas_window": [
+    8950,
+    8980
+  ],
+  "clock": "settled_gs8 leftover vs oracle after each TAS input",
+  "runs": [
+    {
+      "label": "leftover17_mw_on",
+      "leftover": {
+        "f": 310,
+        "room": 57229,
+        "gs": 8,
+        "pose": 17,
+        "x": 39,
+        "y": 139,
+        "mt": 1,
+        "vd": 0,
+        "btn": [],
+        "phase": "leftover",
+        "xs": 61440,
+        "ys": 65535,
+        "mx": 2,
+        "mxs": 49152,
+        "vx": 1,
+        "vxs": 12288,
+        "sf": 1,
+        "mw": 1,
+        "held": null,
+        "invert_l": null
+      },
+      "matched": 0,
+      "missed": 30,
+      "first_miss": {
+        "i": 0,
+        "tas_f": 8951,
+        "btn": [
+          "B",
+          "RIGHT"
+        ],
+        "our": {
+          "room": 57229,
+          "gs": 8,
+          "pose": 9,
+          "x": 44,
+          "y": 139,
+          "x_sub": 61440,
+          "y_sub": 65535,
+          "mx": 2,
+          "mx_sub": 49152,
+          "vx": 1,
+          "vy": 0,
+          "vd": 0,
+          "mt": 1,
+          "facing": 8,
+          "speed_flag": 1,
+          "moonwalk": 1
+        },
+        "tas": {
+          "pose": 15,
+          "x": 44,
+          "y": 139,
+          "gs": 8
+        },
+        "miss": "pose our=9 tas=15"
+      },
+      "head": [
+        {
+          "i": 0,
+          "tas_f": 8951,
+          "btn": [
+            "B",
+            "RIGHT"
+          ],
+          "our": {
+            "room": 57229,
+            "gs": 8,
+            "pose": 9,
+            "x": 44,
+            "y": 139,
+            "x_sub": 61440,
+            "y_sub": 65535,
+            "mx": 2,
+            "mx_sub": 49152,
+            "vx": 1,
+            "vy": 0,
+            "vd": 0,
+            "mt": 1,
+            "facing": 8,
+            "speed_flag": 1,
+            "moonwalk": 1
+          },
+          "tas": {
+            "pose": 15,
+            "x": 44,
+            "y": 139,
+            "gs": 8
+          },
+          "miss": "pose our=9 tas=15"
+        }
+      ]
+    }
+  ]
+}

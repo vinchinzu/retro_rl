@@ -16,12 +16,15 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
 [`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-CheckWarp walk re-validated **1/1** (`position_writes=0`, cellar `0x08`
-`(208,93)`). No `poke_link_position` on the warp/Gohma path.
-`--through level6-gohma` column shot **red** 1/1: `l6_gohma_column_shot`
-leftover `(120,204)` tile 118, 1 pulse at f2 gx=128, rupees stayed 43,
-ghp stayed 32. Mouth UP+B does not fire. Bead stays open. Next is inland
-of y=205 before B. Do not occupancy. Do not STATUS.
+CheckWarp walk **1/1** (`position_writes=0`, cellar `0x08` `(208,93)`).
+Gohma reactive kill **GREEN 2026-09-02**: `--through level6-gohma` **1/1**
+(one arrow, keys 2, TF `0x1F`). Root cause of every prior red was Link
+firing the arrow **sideways** — `UP+B` in one frame off a strafe does not
+flip facing; policy now emits a `face_up` frame first, then fires on the
+eye-open rising edge (RAM `0x03C7` leaves `0xC0`). Fast iteration:
+`scripts/gohma_lab.py --pin` / `--tag X`. `--through level6` **1/1**
+(TF `0x1F→0x3F`, `set_state=0`, `deaths=0`). Close of `rr-tne2` / `rr-17co`
+is the planner's call (Phase-4 AuditedEnv sign-off). Do not STATUS.
 
 ## Commands
 

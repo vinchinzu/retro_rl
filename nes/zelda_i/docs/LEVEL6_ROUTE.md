@@ -733,6 +733,22 @@ not the route.
 | Leftover | `(120,149)`; hop 43f; tape 212,543f (`l6_tf_recompose`) |
 | Integrity | `triforce_writes=0`; `status_claim=false` |
 
+### Exit `0x0C` → overworld `0x22` — **1/1**
+
+| Field | Live |
+|-------|------|
+| Start | shard fanfare, room `0x0C` mode 18, TF `0x3F` |
+| Policy | idle 598f through fanfare + engine warp; **no walking**, no RAM write (`Level6ExitController`) |
+| Stop | `--through level6-exit` OW `0x22` mode 5, not transitioning, TF `0x3F` |
+| Leftover | **`0x22` `(112,125)`** — the Dragon mouth tile; keys 2, bombs 8, rupees 42, Rod 1, Bow 1, arrows 1, 8 HC full; tape 213,420f (`l6_exit_ow`) |
+| Integrity | `set_state=0`, `deaths=0`, progression/capacity writes 0 |
+| Notes | Post-Triforce engine return is always the dungeon-entrance tile (cf. L1 `0x37` ~(112,125), L2 `0x3C` ~(112,125)). `(112,125)` is **not** the "mode 16 → dungeon" trap — that only fires on a fresh UP into the mouth. **Aligns with the L7 bait/pond route's `0x22` screen assumption**; the L7 fixture's `(120,221)` south-edge position is superseded by this measurement. |
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level6-exit --no-video --trials 1
+```
+
 ### Post-east-key graph (live recon)
 
 Isolated `probe_level6_past_east_key.py` pruned. Graph dests are SpineHop
@@ -784,6 +800,7 @@ rows on `scripts/run_survival_spine.py`.
 - `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
 - Gohma kill — poked-warp **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF still `0x1F` (`l6_gohma_recompose`); walked-warp red v4 mouth shot `(120,204)` gx=128 rupees stayed 43 (`l6_gohma_column_shot`)
 - Heart → north `0x0C` Triforce shard 6 — **live** 1/1 fanfare `(120,149)` TF `0x3F` (`l6_tf_recompose`)
+- Exit → overworld — **live** 1/1 engine warp to OW `0x22` `(112,125)` mode 5 TF `0x3F` (`l6_exit_ow`)
 
 ## Boss / Triforce
 
@@ -844,7 +861,9 @@ Isolated interior pins (`L6Room_7a`, `Level6EastKey`, `L6Room_79_keys1`, `L6Room
 - `recordings/l6_rod_continuous_v{1,2,5,6,7,8,9,10,11,12,13,14}_final.png` — west statue / south pit / east-column clips; ADDR_ROD still 0 until v15
 - `recordings/l6_stairs09_continuous_v{1,2,3,4,5,6,7,8,9,10,11,12,13,14}_final.png`
 - `recordings/l6_entrance_live.png`, `l6_ow_22.png`, `l6_room_7a.png`, `l6_0x6a.png`
+- `recordings/l6_exit_ow.json` + `_final.png` — post-fanfare engine return OW `0x22` `(112,125)` TF `0x3F` 1/1
 - Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-gohma --no-video --trials 1`
+- Spine: `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-exit --no-video --trials 1`
 - Isolated L6 segment CLIs pruned. Prefix hops:
   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-entry --no-video --trials 1`
   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through level6-east-key --no-video --trials 1`

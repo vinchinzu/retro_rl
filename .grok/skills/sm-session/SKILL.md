@@ -2,56 +2,28 @@
 name: sm-session
 description: >
   Super Metroid session gates: one spine bead, residual owns pin/checkbox/CLI,
-  one run per check, Gravity continues from residual. Use when working in
+  one run per check. Never halt. Use when working in
   snes/super_metroid, starting a hop, composing a tip, or running /sm-session.
 ---
 
 # SM session
 
-One bead. One change. Practice greens are not continuous evidence.
 Planner owns `docs/STATUS.md`. Language: `snes/super_metroid/CONTEXT.md`.
-
-Living tip is **Phantoon**. Next rung is **Gravity** (`rr-kw8t`). Ice is
-prefix CI. Tapes are tools. Survival energy+ammo only.
-
-Pin, checkbox, and probe CLI:
-`snes/super_metroid/docs/tasks/rr-kw8t-residual.md`.
+Never halt. After a red, keep the controller and change one knob.
 
 ## Loop
 
-1. `bd ready -l super_metroid -l spine` — claim **exactly one**. Immediate:
-   `rr-kw8t` Gravity on the Phantoon tip. Empty ready while that bead
-   is in_progress: continue the residual.
-2. Run once from the pin the residual names. Run a second time only to
-   compare against TAS or another skill (`settled_gs8` hop clock), never
-   to prove determinism.
-3. Overwrite `scratch/<hop>/<hop>_run.json` only. Watch MP4s in
-   `recordings/<area>/` (`RECORDINGS_DIR`). After a red: keep the
-   controller. After **three of the same miss class**: dump a phase pin at
-   the last held seat, or **replace** the takeoff (one trajectory).
-4. Overwrite the **living** residual
-   (`snes/super_metroid/docs/tasks/rr-kw8t-residual.md`).
-   Delete closed-hop residuals instead of stacking them.
-5. Soft max ~1000 LOC: merge into the **Composer** or delete. No sibling
+1. Run once from the pin the residual names. Proof is leftover RAM on that
+   run. Run a second time only to compare against TAS or another skill
+   (`settled_gs8` hop clock), never to prove determinism.
+2. Overwrite the **living** residual
+3. Soft max ~1000 LOC: merge into the **Composer** or delete. No sibling
    extract (`CODING_STANDARDS.md`). Gut sittings use `/gut-package`.
-6. Gravity epic (`rr-1xc2`) **continues** from the residual. Three reds do
-   not restart the hop or re-run dest Attic. Three of the same miss class →
-   new trajectory or dump pin
-   (`snes/super_metroid/docs/tasks/HARD_ROOM_SPLITS.md`). Stop repeating
-   the same run.
-7. User says watch / headed / autopilot: open a window **first**.
+4. User says watch / headed / autopilot: open a window **first**.
    `--headed` is `retro_harness.headed`.
    `uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> --source <pin> --headed`
    `./play <pin> --headed --assist-full`. The residual's dedicated probe
    is one run.
-8. Do not edit `STATUS.md` or `DEFAULT_CONTINUOUS_TIP`.
-9. Leave must **Sync** to the next room (doorway pause / a few frames ok).
-   If it will not **Join**: one multi-room Skill, a smaller checkbox, or
-   write the miss and end the Sitting. Drop the split, not Gravity.
-   Glance a phase checkbox against the **phase** LeaveSpec (`hop_glance`);
-   dest-room spec only on the hop's leave checkbox. Not an MP4.
-
-Prefix slop Chip is parallel only under Sync. It is not a second tip.
 
 ## Skills
 

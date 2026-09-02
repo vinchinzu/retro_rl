@@ -1,0 +1,738 @@
+[
+ {
+  "params": {
+   "rise": 16,
+   "release": 0,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": false,
+  "contact_x": 211,
+  "apex": 539,
+  "seat": [
+   109,
+   683
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 1,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": false,
+  "contact_x": 211,
+  "apex": 574,
+  "seat": [
+   157,
+   667
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   156,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 3,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   156,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 4,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   156,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 5,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 475,
+  "seat": [
+   157,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 6,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 475,
+  "seat": [
+   158,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 7,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 476,
+  "seat": [
+   160,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 8,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 477,
+  "seat": [
+   161,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 6,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 508,
+  "seat": [
+   165,
+   667
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 7,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 504,
+  "seat": [
+   165,
+   667
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 8,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 500,
+  "seat": [
+   165,
+   667
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 9,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 496,
+  "seat": [
+   165,
+   667
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 10,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 492,
+  "seat": [
+   184,
+   552
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 11,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 489,
+  "seat": [
+   184,
+   550
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 12,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 486,
+  "seat": [
+   184,
+   547
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 13,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 483,
+  "seat": [
+   184,
+   545
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 14,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 480,
+  "seat": [
+   184,
+   544
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 15,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 477,
+  "seat": [
+   161,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   156,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 17,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 471,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 18,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 469,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 19,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 466,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 20,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 464,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 21,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 461,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 22,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 459,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 23,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 457,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 24,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 455,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 25,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 454,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 26,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 452,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 27,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 450,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 28,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 449,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 29,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 447,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 30,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 446,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 1,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 478,
+  "seat": [
+   184,
+   537
+  ],
+  "ok": false
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 2,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 477,
+  "seat": [
+   164,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 3,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 476,
+  "seat": [
+   162,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 4,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 475,
+  "seat": [
+   161,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 5,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 475,
+  "seat": [
+   160,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 6,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   158,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 7,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   157,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 8,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   156,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 9,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   154,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 10,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   153,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 11,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   151,
+   475
+  ],
+  "ok": true
+ },
+ {
+  "params": {
+   "rise": 16,
+   "release": 2,
+   "kick": 12,
+   "ride": 34
+  },
+  "latched": true,
+  "contact_x": 211,
+  "apex": 474,
+  "seat": [
+   150,
+   475
+  ],
+  "ok": true
+ }
+]

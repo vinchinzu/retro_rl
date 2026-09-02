@@ -1,9 +1,11 @@
 # Level 7 — The Demon (route notes)
 
 **Status:** Wave A **fixture-live** for the start-based `0x53→0x52` pond micro
-and the post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`. Pond `0x42`, drain,
-entry room, and all dungeon rooms remain **hypothesis**. Cumulative spine
-chapters stay fail-closed (`route_eligible=false`). There is no pond
+and the post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`. The **L6 leave is
+measured** (2026-09-02): `--through level6-exit` 1/1 → OW `0x22` `(112,125)` TF
+`0x3F` — the bait/pond route's `0x22` screen assumption holds. Pond `0x42`,
+drain, entry room, and all dungeon rooms remain **hypothesis**. Cumulative
+spine chapters stay fail-closed (`route_eligible=false`). There is no pond
 checkpoint, L7 entry room, or Clean segment. **Whistle** from Level 5 gates
 pond drain; **Bait/Food** is a separate natural 60R shop buy (never
 `ADDR_FOOD` / rupee write).
@@ -50,10 +52,17 @@ for staircase → special shop → **Bait 60R**.
 |----------|------------------------|-----------------|-------|
 | Bait Armos / special shop | U L×3 U×3 | **`0x34`** | no |
 
-Post-L6 poke fixture `Level6ExitOverworld` (not a measured fanfare leave):
-play `0x22` `(120,221)` TF `0x3F` Food=0 80R. Load
-`--from-state Level6ExitOverworld`. Spine chapters still refuse
-(`verified=false`). Controller: `OverworldToBaitShopController`.
+**Measured post-L6 leave (2026-09-02):** `--through level6-exit` **1/1**
+(`l6_exit_ow.json`) — the shard fanfare auto-warps Link to OW **`0x22`
+`(112,125)`** mode 5, TF `0x3F`, keys 2 bombs 8 rupees 42 Rod 1 Bow 1
+arrows 1, 8 HC full. Screen `0x22` **confirms** the bait/pond route
+assumption. The old poke fixture `Level6ExitOverworld` (play `0x22`
+`(120,221)` TF `0x3F` Food=0 80R, White Sword, blue candle, keys 3) was a
+*hand-built recon poke*, not a fanfare — its `(120,221)` position and
+White-Sword/candle/rupee/keys loadout are superseded by the real
+`(112,125)` return with the spine's actual inventory. Packet:
+`MEASURED_POST_L6_EXIT` in `level7/entry.py` (`verified=False` until the L7
+owner attaches). Controller: `OverworldToBaitShopController`.
 
 Fixture-live prefix (`l7_bait_25`, Survival, `route_eligible=false`):
 
@@ -61,8 +70,11 @@ Fixture-live prefix (`l7_bait_25`, Survival, `route_eligible=false`):
 0x22 → 0x32 → 0x33 → 0x23 → 0x24 → 0x25
 ```
 
-- `0x22` leftover `(120,221)` DOWN (south mouth). **Dead:** `(112,125)` is
-  the cave mouth (mode 16 → L6).
+- **Real fanfare return is `0x22` `(112,125)`** (the mouth tile, upper-centre).
+  First move is DOWN toward `0x32` — away from the mouth, so re-entry is not a
+  risk. `(112,125)` is only a "mode 16 → L6" trap on a fresh UP into it, not on
+  emerging. The old fixture's `(120,221)` south-edge start is superseded but the
+  hop chain below is unchanged (straight DOWN the x≈112 corridor to `0x32`).
 - `0x32` north `(120,61)`: LEFT to x=112 then DOWN. **Dead:** `off_north`
   DOWN at x=120 (`l7_bait_from_l6`, tile 216).
 - `0x32→0x33` RIGHT at y=141 (live L6 reverse).
@@ -118,11 +130,13 @@ Evidence: `recordings/l7_dnp_pond_53.json` and `_final.png` (this sitting);
 prior miss `recordings/l7_dnp_pond_assisted_v9.json`. Zero deaths;
 `progression_writes=capacity_writes=0`; `success=false`; `route_eligible=false`.
 
-**Controller:** `level7.overworld.OverworldToBaitShopController` (post-L6
-fixture) and `OverworldToLevel7PondController` (start-based pond recon).
-Spine uses `PostLevel6Handoff` in `level7.entry` and refuses to move until
-the measured L6 leftover exists. Isolated `probe_level7_entry.py` pruned.
-Whistle is a pond-**drain** gate, not a geometry-walk gate.
+**Controllers:** the spine uses `level7.entry.PostLevel6OverworldController`
+(shared `OverworldHandoff` gate + fixture-live `POST_L6_TO_BAIT_HOPS`), which
+refuses every frame until the handoff verifies. `OverworldToBaitShopController`
+(ungated post-L6 fixture) and `OverworldToLevel7PondController` (start-based
+pond recon) in `level7.overworld` stay recon-only. Isolated
+`probe_level7_entry.py` pruned. Whistle is a pond-**drain** gate, not a
+geometry-walk gate.
 
 ### Live recon goals
 
@@ -182,23 +196,46 @@ Aquamentus.
 
 ## Cumulative chapter seam
 
+**Wired into the main spine (2026-09-02).** `zelda_i.spine.survival` now
+imports `continue_level7_spine`; `L7_THROUGH` is appended to `SPINE_THROUGH`.
+For an L7 `--through` target the L6 suffix is driven to `level6-exit` (the
+measured OW `0x22` `(112,125)` return) and L7 continues from screen `0x22`
+with `MEASURED_POST_L6_EXIT` as the handoff.
+
+`MEASURED_POST_L6_EXIT` is the **shared `zelda_i.overworld.stitch.OverworldHandoff`**
+packet (no L7-local `PostLevel6Handoff` type any more), `verified=False`
+(`selected_item` not captured that run + the 42R→60R Bait gap). The spine
+controller (`PostLevel6OverworldController`) carries the fixture-live bait
+prefix `POST_L6_TO_BAIT_HOPS` (`0x22→0x32→0x33→0x23→0x24→0x25`) as its default
+hops, but the handoff gate refuses every frame while `verified=False`, so
+`--through level7-entry` runs the full continuous power-on tape through the L6
+fanfare exit and then stops at `level7_post_l6_overworld` (reason
+`handoff_unmeasured`). The moment the handoff verifies, the controller walks
+`0x22→0x25` and then fails closed at the `0x25` west mouth (no observed route
+to the pond `0x42`). The `0x77`-start pond walk and the ungated
+`OverworldToBaitShopController` stay recon-only.
+
 `level7/spine.py` exposes only the three plan-level targets:
 
 | `--through` | Internal chapter stages | Current evidence |
 |-------------|-------------------------|------------------|
-| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | hypothesis blocker |
-| `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | hypothesis blocker |
-| `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | hypothesis blocker |
+| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | wired; fails closed at `level7_post_l6_overworld` |
+| `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | wired; fails closed |
+| `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | wired; fails closed |
 
 Factories in `level7/hops.py` always return fresh controllers. Post-L6
-overworld and Bait purchase refuse to move until a measured leftover / shop
-geometry exists (`PostLevel6Handoff.verified=false`, shop cave xy `None`).
-Hungry Goriya fails closed without Food. Red Candle fails closed until the
-item room is observed and `ADDR_CANDLE` becomes 2 naturally. The start-based
-pond walk is recon-only and is not a substitute for the measured post-L6
-leftover. Source room ids cannot become executable stop predicates. Do not
-hardcode OW `0x22` as the L6 leave. The live L6 residual play `0x09`
-`(56,109)` TF `0x1F` Rod=0 is **not** an L7 start.
+overworld and Bait purchase refuse to move until the handoff verifies and
+shop geometry exists (`OverworldHandoff.verified=false`, shop cave xy
+`None`). **The L6 leave is measured** — `MEASURED_POST_L6_EXIT`, OW `0x22`
+`(112,125)` TF `0x3F` (`--through level6-exit` 1/1) — but the L7 owner must
+still re-measure with `selected_item` captured, flip `verified=True`, and
+close the 42R→60R Bait gap with a **documented Survival rupee top-up**
+(mirroring the existing bomb/key top-ups; a natural OW farm is a separate
+bead). Hungry Goriya fails closed without Food. Red Candle fails closed until
+the item room is observed and `ADDR_CANDLE` becomes 2 naturally. The
+start-based pond walk is recon-only. Source room ids cannot become executable
+stop predicates. The live L6 residual play `0x09` `(56,109)` TF `0x1F`
+Rod=0 is **not** an L7 start.
 
 Promote a blocker only with a chapter handoff containing the exact natural
 predecessor, live room/screen transitions, item and key/bomb deltas, and the
@@ -235,7 +272,7 @@ is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 
 | State | When |
 |-------|------|
-| `Level6ExitOverworld` | Poke fixture: OW `0x22` `(120,221)` TF `0x3F`, Food=0, 80R. Not a measured fanfare leave. |
+| `Level6ExitOverworld` | Save-state name still used by `scratch/run_bait_from_l6_exit.py` recon. The old `(120,221)` / 80R poke loadout and `HYPOTHESIZED_POST_L6_EXIT` packet were **deleted** — superseded by the measured `--through level6-exit` return `0x22` `(112,125)` (`MEASURED_POST_L6_EXIT`, an `OverworldHandoff`). |
 | `OW_L7Pond` | Pond screen mapped (Whistle optional) |
 | `OW_L7BaitShop` | Armos shop screen |
 | `Level7Entrance` | `level==7`, play, entry room |
@@ -246,24 +283,34 @@ is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 
 ## Scaffold / probe
 
-Isolated `probe_level7_entry.py` pruned. The durable runner does not attach L7
-until the integrator imports its public seam into the shared spine:
+Isolated `probe_level7_entry.py` pruned. The L7 seam is now attached in
+`zelda_i.spine.survival` (`continue_level7_spine` after the L6 suffix):
 
 ```bash
-uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py \
+  --through level7-entry --no-video --trials 1
 ```
+
+runs the continuous power-on tape through the measured L6 fanfare exit and
+stops fail-closed at `level7_post_l6_overworld`.
 
 Modules: `zelda_i/level7/{dungeon,graph,entry,path,hops,overworld,spine}.py`.
 The historical pond walk remains `level7.overworld.OverworldToLevel7PondController`;
 it begins at the start screen and therefore remains recon-only. Whistle is
-required to drain the pond. Spine attachment is the integrator's file.
+required to drain the pond. To make `level7-entry` green: capture
+`selected_item` on a fresh `--through level6-exit`, flip
+`MEASURED_POST_L6_EXIT.verified=True`, reconcile the 42R→60R Bait economy,
+and supply observed OW hops `0x22 → … → pond 0x42` plus the drain/entry room.
 
 ---
 
 ## Evidence
 
 - **Hypothesis:** first-quest room/door/stair graph (`level7/graph.py`); Bait
-  shop `0x34`; pond `0x42`; all stop room ids; post-L6 leftover.
+  shop `0x34`; pond `0x42`; all stop room ids.
+- **Measured:** post-L6 fanfare leave OW `0x22` `(112,125)` TF `0x3F`
+  (`recordings/l6_exit_ow.json`, `--through level6-exit` 1/1). Screen matches
+  the bait/pond route; position corrects the fixture.
 - **Fixture-live:** start-based `0x53→0x52` inland-left micro,
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 - **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,

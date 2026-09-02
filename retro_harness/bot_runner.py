@@ -31,10 +31,12 @@ class BotRunner:
         self.action_size = action_size
         self._frame = 0
         self._initialized = False
+        self._world = None
 
     def __call__(self, obs, info) -> np.ndarray | None:
         """Called by PlaySession each frame. Returns action or None."""
         world = self._build_world(obs, info)
+        self._world = world
         if not self._initialized:
             self.task.reset(world)
             self._initialized = True
@@ -65,11 +67,23 @@ class BotRunner:
 
     def on_human_takeover(self) -> None:
         """Mission state stays hot while a human is driving."""
-        return None
+        hook = getattr(self.task, "on_human_takeover", None)
+        if callable(hook):
+            hook()
 
     def on_autopilot_resume(self) -> None:
-        """Resume without resetting the task tree."""
-        return None
+        """Resume without resetting the task tree.
+
+        Prefers ``task.on_autopilot_resume()``. Else duck-types
+        ``task.resume_after_hotswap(world)`` when a world has been stepped.
+        """
+        hook = getattr(self.task, "on_autopilot_resume", None)
+        if callable(hook):
+            hook()
+            return
+        resume = getattr(self.task, "resume_after_hotswap", None)
+        if callable(resume) and self._world is not None:
+            resume(self._world)
 
     def _build_world(self, obs, info):
         ram = info.get("ram", np.array([], dtype=np.uint8))

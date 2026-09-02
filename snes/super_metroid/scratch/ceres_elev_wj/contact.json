@@ -1,0 +1,177 @@
+[
+ {
+  "x": 196,
+  "xsub": 0,
+  "held_x": 196,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 197,
+  "xsub": 0,
+  "held_x": 197,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 198,
+  "xsub": 0,
+  "held_x": 198,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 199,
+  "xsub": 0,
+  "held_x": 199,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 200,
+  "xsub": 0,
+  "held_x": 200,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 201,
+  "xsub": 0,
+  "held_x": 201,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 202,
+  "xsub": 0,
+  "held_x": 202,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 203,
+  "xsub": 0,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 204,
+  "xsub": 0,
+  "held_x": 204,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 205,
+  "xsub": 0,
+  "held_x": 205,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 206,
+  "xsub": 0,
+  "held_x": 206,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 207,
+  "xsub": 0,
+  "held_x": 207,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 208,
+  "xsub": 0,
+  "held_x": 208,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 209,
+  "xsub": 0,
+  "held_x": 209,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 210,
+  "xsub": 0,
+  "held_x": 210,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 211,
+  "xsub": 0,
+  "held_x": 211,
+  "latched": true,
+  "apex": 536
+ },
+ {
+  "x": 212,
+  "xsub": 0,
+  "held_x": 212,
+  "latched": false,
+  "apex": 570
+ },
+ {
+  "x": 213,
+  "xsub": 0,
+  "held_x": 213,
+  "latched": false,
+  "apex": 570
+ },
+ {
+  "x": 214,
+  "xsub": 0,
+  "held_x": 214,
+  "latched": false,
+  "apex": 570
+ },
+ {
+  "x": 215,
+  "xsub": 0,
+  "held_x": 215,
+  "latched": false,
+  "apex": 570
+ },
+ {
+  "x": 203,
+  "xsub": 0,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 203,
+  "xsub": 64,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 203,
+  "xsub": 128,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 203,
+  "xsub": 192,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ },
+ {
+  "x": 203,
+  "xsub": 255,
+  "held_x": 203,
+  "latched": false,
+  "apex": 574
+ }
+]

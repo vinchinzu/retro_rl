@@ -82,7 +82,7 @@ def test_level_config_runs_dir():
 
 def test_bk2_to_env_default():
     config = get_level_config("winkys")
-    assert config.bk2_to_env == [11 - i for i in range(12)]
+    assert config.bk2_to_env is None
     assert config.selftest_expect_death is True
 
 

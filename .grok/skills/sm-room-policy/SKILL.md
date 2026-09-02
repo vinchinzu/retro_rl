@@ -34,12 +34,11 @@ Print a three-row table: **before** / **after** / **Δ**. Negative Δ is faster.
    fight if the wiki says take damage / skip / wait.
 3. **Capture the enter pin.** Natural predecessor, not a door-warp.
 4. **Bench BEFORE** the current product body from that pin. Save the JSON.
-5. **Implement** a RAM-driven policy (seat → window → exit). Unit-test
-   actions without the emulator. Keep the module under ~1000 LOC
-   ([CODING_STANDARDS.md](../../../CODING_STANDARDS.md)).
+5. **Implement** a RAM-driven policy (seat → window → exit). Keep the module
+   under ~1000 LOC ([CODING_STANDARDS.md](../../../CODING_STANDARDS.md)).
 6. **Bench AFTER** from the **same pin**. Overwrite `scratch/<hop>_bench.json`
    (not `_vN` / `_window_*`). If it is not faster and successful, do not
-   wire it. Three red windows on the same checkbox → BLOCKED, stop.
+   wire it. Never halt (`sm-session`).
 7. **Wire** the winner only after the **next hop** still clears from the
    new leave pin (faster fights change Ceres elev debris phase). Glance
    the leave with `hop_glance` — not an MP4. Re-record the continuous tip
@@ -70,7 +69,6 @@ https://wiki.supermetroid.run/Ridley#Ceres_Station
 ```bash
 # The fight runs inside the full-station play; hops report vs TAS.
 PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
-uv run pytest snes/super_metroid/tests/test_ceres_ridley_combat.py -q
 ```
 
 Controller: `combat/ceres_ridley.py` (`CeresRidleyStrategy`; product default
@@ -81,8 +79,7 @@ is `fresh_fifth_jump`, no route flag). Same-pin fight bench is
 Traps: energy assist is already off on Ceres; do not leave the wall on hit
 count alone (weak hits do not cross 30); countdown is not HP-zero.
 
-## Tests
+## Proof
 
-Unit-test seat / action / "don't fire at 0 ammo" / countdown-stop without the
-emulator. Emulator proof is the bench JSON (`success`, frames, seconds, clock),
-with the before and after runs loading the same enter pin.
+Same-pin bench JSON (`success`, frames, seconds, clock). Both before and
+after load the enter pin.

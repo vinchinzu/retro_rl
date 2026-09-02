@@ -39,6 +39,13 @@ UNTHROTTLED_FROM = 8.0
 TURBO_PREVIEW_INTERVAL = 8
 
 
+def configure_headless() -> None:
+    """Dummy SDL for probe CLIs. Games may pop extra env keys after this."""
+    os.environ.setdefault("HEADLESS", "1")
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
+
 def configure_headed() -> None:
     """Drop dummy/HEADLESS drivers and pick a real SDL video backend."""
     os.environ.pop("HEADLESS", None)
@@ -305,3 +312,211 @@ def idle_headed(
         pygame_mod.quit()
     except Exception:  # noqa: BLE001
         pass
+
+
+def display_set_mode(pygame, size: tuple[int, int], *, caption: str | None = None):
+    """Open a window with vsync off; fall back from Wayland to X11."""
+
+    def _open():
+        try:
+            return pygame.display.set_mode(size, vsync=0)
+        except TypeError:
+            return pygame.display.set_mode(size)
+
+    try:
+        screen = _open()
+    except pygame.error:
+        if os.environ.get("SDL_VIDEODRIVER") == "wayland" and os.environ.get("DISPLAY"):
+            pygame.display.quit()
+            os.environ["SDL_VIDEODRIVER"] = "x11"
+            pygame.display.init()
+            screen = _open()
+        else:
+            raise
+    if caption:
+        pygame.display.set_caption(caption)
+    return screen
+
+
+def fast_env_step(env, action, *, update_obs: bool):
+    """Step stable-retro; skip the per-frame info dict and optional blit obs."""
+    for player, player_action in enumerate(env.action_to_array(action)):
+        if env.movie:
+            for button_idx in range(env.num_buttons):
+                env.movie.set_key(button_idx, player_action[button_idx], player)
+        env.em.set_button_mask(player_action, player)
+    if env.movie:
+        env.movie.step()
+    env.em.step()
+    env.data.update_ram()
+    if update_obs:
+        return env._update_obs()
+    return None
+
+
+def gym_env_step(env, action, obs, *, update_obs: bool):
+    """Gym-shaped ``(obs, reward, terminated, truncated, info)`` around :func:`fast_env_step`."""
+    if env.img is None and env.ram is None:
+        raise RuntimeError("Please call env.reset() before stepping")
+    new_obs = fast_env_step(env, action, update_obs=update_obs)
+    if update_obs and new_obs is not None:
+        obs = new_obs
+    try:
+        terminated = bool(env.data.is_done())
+    except Exception:
+        terminated = False
+    return obs, 0.0, terminated, False, {}
+
+
+def preview_interval(speed: float) -> int:
+    """How often to blit when high-speed autoplay skips most presents."""
+    if speed <= 4.0:
+        return 1
+    if speed <= 8.0:
+        return 30
+    if speed <= 32.0:
+        return 45
+    return 60
+
+
+class WatchDisplay:
+    """Probe-side pygame window: [ ] speed, TAB turbo, ESC/close.
+
+    Unlike :func:`attach_headed`, this does not wrap ``env.step``. Probes
+    that step the emulator themselves call :meth:`present` after each
+    batch. Default speed is 4x (frame-repeat); hop probes that need 1:1
+    should use :func:`attach_headed`.
+    """
+
+    def __init__(
+        self,
+        *,
+        scale: int = 3,
+        title: str = "BOT",
+        speed: float = 4.0,
+    ) -> None:
+        self.scale = max(1, int(scale))
+        self.title = title
+        self.speed_idx = default_speed_index(speed)
+        self.speed = float(SPEED_LEVELS[self.speed_idx])
+        self.closed = False
+        self._pg = None
+        self._screen = None
+        self._obs = None
+        self._next_present = 0.0
+
+    def start(self, obs) -> bool:
+        import numpy as np
+
+        configure_headed()
+        import pygame
+
+        pygame.init()
+        self._pg = pygame
+        arr = np.asarray(obs)
+        if arr.ndim < 2:
+            raise ValueError(f"expected image obs, got shape={arr.shape}")
+        h, w = int(arr.shape[0]), int(arr.shape[1])
+        caption = f"{self.title}  {self.speed:g}x  [ ] speed  TAB turbo  ESC quit"
+        try:
+            self._screen = display_set_mode(
+                pygame, (w * self.scale, h * self.scale), caption=caption
+            )
+        except pygame.error as exc:
+            print(f"[WATCH] display failed: {exc}", flush=True)
+            self.closed = True
+            return False
+        print(
+            f"[WATCH] {self.title} {self.speed:g}x  "
+            "[ ] = speed down/up | TAB = turbo | ESC = quit",
+            flush=True,
+        )
+        return self.present(obs, emu_frame=0)
+
+    def pump(self) -> bool:
+        if self.closed or self._pg is None:
+            return False
+        pygame = self._pg
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.closed = True
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.closed = True
+                elif event.key in (pygame.K_LEFTBRACKET, pygame.K_COMMA, pygame.K_MINUS):
+                    self._nudge_speed(-1)
+                elif event.key in (
+                    pygame.K_RIGHTBRACKET,
+                    pygame.K_PERIOD,
+                    pygame.K_EQUALS,
+                    pygame.K_PLUS,
+                ):
+                    self._nudge_speed(1)
+        return not self.closed
+
+    def tab_held(self) -> bool:
+        if self._pg is None or self.closed:
+            return False
+        return bool(self._pg.key.get_pressed()[self._pg.K_TAB])
+
+    def emu_repeat(self) -> int:
+        repeat, _tick, _skip = bot_speed_timing(
+            self.speed, turbo=self.tab_held(), bot=True
+        )
+        return repeat
+
+    def present(self, obs, *, emu_frame: int) -> bool:
+        if not self.pump():
+            return False
+        self._obs = obs
+        pygame = self._pg
+        _repeat, tick_fps, skip = bot_speed_timing(
+            self.speed, turbo=self.tab_held(), bot=True
+        )
+        should_blit = (not skip) or (int(emu_frame) % TURBO_PREVIEW_INTERVAL == 0)
+        if should_blit and obs is not None:
+            self._blit(obs)
+        elif self._screen is not None:
+            pygame.event.pump()
+        pace_present(tick_fps, self)
+        return not self.closed
+
+    def close(self) -> None:
+        self.closed = True
+        if self._pg is not None:
+            try:
+                self._pg.quit()
+            except Exception:
+                pass
+            self._pg = None
+            self._screen = None
+
+    def _nudge_speed(self, delta: int) -> None:
+        self.speed_idx = max(0, min(len(SPEED_LEVELS) - 1, self.speed_idx + delta))
+        self.speed = float(SPEED_LEVELS[self.speed_idx])
+        print(f"[SPEED] {self.speed:g}x", flush=True)
+        if self._pg is not None:
+            self._pg.display.set_caption(
+                f"{self.title}  {self.speed:g}x  [ ] speed  TAB turbo  ESC quit"
+            )
+
+    def _blit(self, obs) -> None:
+        import numpy as np
+
+        pygame = self._pg
+        screen = self._screen
+        if pygame is None or screen is None:
+            return
+        arr = np.asarray(obs)
+        if arr.ndim != 3 or arr.shape[-1] < 3:
+            return
+        frame = arr[..., :3]
+        h, w = frame.shape[0], frame.shape[1]
+        surf = pygame.surfarray.make_surface(np.transpose(frame, (1, 0, 2)))
+        size = (w * self.scale, h * self.scale)
+        if screen.get_size() != size:
+            screen = display_set_mode(pygame, size)
+            self._screen = screen
+        scaled = pygame.transform.scale(surf, size)
+        screen.blit(scaled, (0, 0))
+        pygame.display.flip()

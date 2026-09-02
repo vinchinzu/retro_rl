@@ -390,6 +390,7 @@ snes/super_metroid/docs/tasks/logs/
 nes/zelda_i/scratch/**/*_window*.json
 nes/zelda_i/scratch/**/*_v[0-9]*.json
 nes/zelda_i/scratch/**/*.png
+nes/zelda_i/scratch/gohma_eye/
 # Harvest probe window dumps (named recordings stay; **/recordings/ already ignores the dir)
 snes/harvest/recordings/**/*_window*.json
 # Human inspect tape from Y1_D2_Stones_Frontier (idle prefix trimmed).

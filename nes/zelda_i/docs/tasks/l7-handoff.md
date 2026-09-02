@@ -17,11 +17,14 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   **fixture-live**. Pond `0x42`, drain, and entry room still **hypothesis**.
   Stop at fixture-live; integrator owns natural-segment / spine-green.
 
-- **exact predecessor:** not L7-ready. Current Survival tip is L6 residual
-  play `0x09` `(56,109)` mode 5, keys=3, bombs=8, Bow=1, Rod=0, TF=`0x1F`.
-  Do not treat this as an L7 start. Poke fixture `Level6ExitOverworld` is
-  play `0x22` `(120,221)` TF `0x3F` Food=0; `verified=false`. Expected L6
-  leave (unmeasured) is still the fanfare leftover, not this poke.
+- **exact predecessor (updated 2026-09-02):** the L6 fanfare leave is
+  **measured** — OW `0x22` `(112,125)` TF `0x3F` keys 2 bombs 8 rupees 42,
+  8 HC full (`--through level6-exit` 1/1). Carried as
+  `MEASURED_POST_L6_EXIT`, a shared `zelda_i.overworld.stitch.OverworldHandoff`
+  (`verified=false`: `selected_item` not captured that run + the 42R→60R Bait
+  gap). The deleted `(120,221)` / 80R / White-Sword poke loadout was never a
+  fanfare. The live L6 interior residual play `0x09` `(56,109)` Rod=0 is not
+  an L7 start.
 
 - **required inventory/capabilities:** TF `0x3F`, Whistle ≥1, Rod ≥1, Bow ≥1,
   sword. Food 0 until natural 60R Bait at shop hyp `0x34`. Candle remains 1
@@ -29,7 +32,9 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 
 - **ordered internal stage names and controller factories:**
   1. `level7_post_l6_overworld` — `make_post_l6_overworld_controller(handoff, hops)`
-     (`PostLevel6Handoff`; default `UNMEASURED_POST_L6_HANDOFF` refuses to move)
+     (`OverworldHandoff` gate + default `hops=POST_L6_TO_BAIT_HOPS`; refuses
+     every frame with `handoff_unmeasured` until `verified=True`, then walks
+     `0x22→0x25` and fails closed at the west mouth)
   2. `level7_bait_purchase` — `make_bait_purchase_controller(plan)`
      (60R, shop `0x34`, no Food/rupee write; fails `bait_need_60_rupees` /
      `bait_shop_geometry_unobserved`)

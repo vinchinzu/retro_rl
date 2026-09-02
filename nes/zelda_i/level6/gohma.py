@@ -1,13 +1,28 @@
-"""Level 6 Gohma 0x1C: poke wooden arrows, shoot the spawn-open eye.
+"""Level 6 Gohma 0x1C: poke wooden arrows, climb the column, loose one
+arrow into the open eye.
 
 Leftover is north2c play 0x1C ``(120,205)``. Bow is earned on the L1
 Survival splice. Operator exception: ``ADDR_ARROWS=1`` + B-slot 2 until
-the 80R shop splice. One UP+B while ``|gx-x|<=8`` (spawn gx~128). Do
-not walk to y=165 first (v3 f29 gx=141 dx=21, ghp stayed 32). Do not
-align_x (v2 f144 spray). Do not hold UP on cooldown (v1 leftover
-``(115,93)``). Do not occupancy. Do not write ``ADDR_BOW``. Do not poke
-doors/keys. Isolated BFS banned. Heart / north 0x0C / TF ``0x20`` are
-later SpineHops.
+the 80R shop splice.
+
+The rr-17co CheckWarp walk-on enters this room +223 global frames later
+than the old position poke, so the RNG phase differs and Gohma no longer
+parks on the x=120 column — it strafes x 128..160, bobs y 112..144 at
+x=128, then drifts left, on a ~260f cycle. A fixed column / mouth shot
+misses (v1-v4 all red). The kill is reactive:
+
+1. climb UP off door tile 118 onto the ``STAND_Y`` firing line (LEFT/RIGHT
+   do nothing wedged in the doorway);
+2. lightly lead ``body.x`` and step LEFT/RIGHT to stay within ``FIRE_TOL``;
+3. on the rising edge of an eye-open window (RAM ``0x03C7`` just left the
+   ``0xC0`` blink), turn to face NORTH, then loose UP+B the next frame.
+
+The face-NORTH frame matters: UP+B straight off a sideways strafe looses
+the arrow sideways — that (not aim or timing) is why v1-v4 and the first
+reactive passes never dropped ``ghp``.
+
+Do not write ``ADDR_BOW``. Do not poke doors/keys. Keys stay 2. Isolated
+BFS banned. Heart / north 0x0C / TF ``0x20`` are later SpineHops.
 """
 
 from __future__ import annotations
@@ -30,9 +45,11 @@ from zelda_i.level6.overworld import LEVEL6, LEVEL6_GOHMA_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 __all__ = [
-    "COLUMN_DX",
     "GOHMA_MAX_FRAMES",
     "SPAWN_WINDOW",
+    "EYE_ADDR",
+    "EYE_SHUT",
+    "STAND_Y",
     "Level6GohmaController",
     "gohma_live",
     "level6_gohma_stages",
@@ -40,14 +57,45 @@ __all__ = [
     "make_gohma_controller",
 ]
 
-# Spawn-window hop. Occupancy poked-warp kill was 54f / 1 pulse; do not spray.
-GOHMA_MAX_FRAMES = 120
-COLUMN_DX = 8
-SHOT_COOLDOWN = 20
+# Reactive hop: climb the column, track the strafing body, fire on the
+# rising edge of each eye-open window. Not a 120f spawn hop.
+GOHMA_MAX_FRAMES = 1400
 SPAWN_WINDOW = 54
+
+# Gohma's eye: RAM 0x03C7 reads 0xC0 for the ~17f closed blink and a lower
+# value (0x70 / 0x60 / 0x58 ...) while open, on a ~65f cycle. An arrow only
+# damages Gohma if it arrives while the eye is open. Firing on any fixed
+# multiple of the cycle aliases straight onto the closed blink (v1-v4 and the
+# first reactive pass: 20+ arrows, 0 connects), so fire only in the first
+# EYE_EDGE_WINDOW frames after the eye opens — the arrow (flight ~17f from
+# STAND_Y) then arrives well inside the same open window.
+EYE_ADDR = 0x03C7
+EYE_SHUT = 0xC0
+EYE_EDGE_WINDOW = 16
+FACE_NORTH = 0x08  # ADDR_LINK_FACING: 0x08 N / 0x04 S / 0x02 W / 0x01 E
+SHOT_COOLDOWN = 30  # < eye period: at most one live arrow per open window
+STUCK_FRAMES = 260  # no fire this long -> take the next aligned shot, gated or not
+
+# Gohma also lobs its own downward type-0x56 projectile most frames; it is
+# not Link's arrow, so this fight never gates firing on "arrow on screen".
+
+# Firing column. Recompose killed from y~168 at dx=8, so the hit box is
+# forgiving; stand just below Gohma's y<=144 vertical bob and re-climb after
+# contact knockback (recompose took knockback to y=189 and still connected).
+STAND_Y = 162
+STAND_Y_TOL = 8
+ALIGN_TOL = 5    # start strafing again past this
+FIRE_TOL = 8     # commit to the fire sequence within this (recompose hit dx=8)
+ARROW_SPEED = 2.8  # px/frame up the column (recompose y~168 fire -> kill ~18f)
+LEAD_CLAMP = 12
+LINK_X_MIN, LINK_X_MAX = 40, 216
+
 GOHMA_TYPES = frozenset({GOHMA_OBJECT_TYPE, GOHMA_BLUE_OBJECT_TYPE})
 _SKIP_TYPES = frozenset({0, 0xFF})
 GOHMA_WAIT = tuple(sorted(set(WAIT_SCROLL_B) | {CELLAR_MODE}))
+
+# A per-frame WRAM dump for retuning this fight lives in
+# ``nes/zelda_i/scripts/gohma_lab.py --dump`` (gitignored scratch), not here.
 
 
 def gohma_live(snap: ZeldaSnapshot) -> list:
@@ -61,7 +109,7 @@ def gohma_live(snap: ZeldaSnapshot) -> list:
 
 @dataclass
 class Level6GohmaController(HopController):
-    """Poke wooden arrows, one UP+B while gx is still in column, idle."""
+    """Poke wooden arrows, climb the column, fire on each eye-open edge."""
 
     spec_id: str = "level6_gohma_0x1c"
     room: int = LEVEL6_GOHMA_ROOM
@@ -76,6 +124,10 @@ class Level6GohmaController(HopController):
     inventory_assist: dict[str, Any] | None = None
     env: Any | None = None
     arrow_pulses: int = 0
+    gx_hist: list[int] = field(default_factory=list)
+    eye_open_since: int = -1  # frames since 0x03C7 left the blink; -1 = shut now
+    last_fire: int = 0
+    connect_frame: int | None = None
 
     def bind_env(self, env: Any) -> None:
         self.env = env
@@ -95,6 +147,8 @@ class Level6GohmaController(HopController):
     ) -> FrameAction:
         bodies = gohma_live(snap)
         body = bodies[0] if bodies else None
+        if self.saw_gohma and body is None and self.connect_frame is None:
+            self.connect_frame = self.frames
         self.leftover = record_l6_walk(
             self.samples,
             snap,
@@ -120,6 +174,8 @@ class Level6GohmaController(HopController):
                     "gy": None if body is None else int(body.y),
                     "ghp": None if body is None else int(body.hp),
                     "gst": None if body is None else int(body.state),
+                    "eye": self._eye_byte(),
+                    "eye_since": self.eye_open_since,
                     "n": len(bodies),
                     "types": types,
                     "bow": int(snap.bow),
@@ -136,6 +192,27 @@ class Level6GohmaController(HopController):
             self.saw_gohma = True
             return False
         return self.saw_gohma
+
+    def _eye_byte(self) -> int | None:
+        if self.env is None:
+            return None
+        try:
+            return int(self.env.get_ram()[EYE_ADDR])
+        except Exception:  # pragma: no cover - defensive
+            return None
+
+    def _track_eye(self) -> None:
+        byte = self._eye_byte()
+        if byte is None or byte == EYE_SHUT:
+            self.eye_open_since = -1
+        elif self.eye_open_since < 0:
+            self.eye_open_since = 0
+        else:
+            self.eye_open_since = min(9999, self.eye_open_since + 1)
+
+    def _eye_fresh_open(self) -> bool:
+        """Eye left the blink within EYE_EDGE_WINDOW frames (arrow will land)."""
+        return 0 <= self.eye_open_since <= EYE_EDGE_WINDOW
 
     def _poke(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if self.poked:
@@ -176,24 +253,62 @@ class Level6GohmaController(HopController):
         if not bodies:
             return FrameAction(nes_idle_action(), "wait_body")
 
-        # One pulse then idle. v1 hold-UP walked through the body; v2 spray
-        # after align_x spent 43R at the closed eye; v3 waited for y=165
-        # and shot at gx=141.
-        if self.arrow_pulses >= 1:
-            if self.cooldown > 0:
-                return FrameAction(nes_idle_action(), "shot_wait")
-            return FrameAction(nes_idle_action(), "spawn_wait")
+        self._track_eye()
 
         body = bodies[0]
-        dx = abs(int(body.x) - int(snap.link_x))
-        if dx > COLUMN_DX:
-            return FrameAction(nes_idle_action(), "column_wait")
+        gx = int(body.x)
+        self.gx_hist.append(gx)
+        del self.gx_hist[:-8]
+        gvx = (
+            (self.gx_hist[-1] - self.gx_hist[0]) / (len(self.gx_hist) - 1)
+            if len(self.gx_hist) >= 4
+            else 0.0
+        )
 
+        ly = int(snap.link_y)
+
+        # 1. climb the column onto the firing line. LEFT/RIGHT do nothing
+        #    wedged in the south doorway, so climb straight up (recompose
+        #    walked column x~120 the whole way and still hit at dx=8).
+        if ly > STAND_Y + STAND_Y_TOL:
+            return FrameAction(nes_action("UP"), "climb")
+
+        # 2. lightly lead the strafing body; hit box is ~+-8 so a rough
+        #    column is enough during the vertical bob (gvx ~ 0) and the sweep.
+        flight = max(1.0, (ly - int(body.y)) / ARROW_SPEED)
+        lead = int(round(gvx * flight))
+        lead = max(-LEAD_CLAMP, min(LEAD_CLAMP, lead))
+        target_x = max(LINK_X_MIN, min(LINK_X_MAX, gx + lead))
+        dx = target_x - int(snap.link_x)
+
+        # 3. fire on the rising edge of an eye-open window (or force a shot if
+        #    nothing has connected for STUCK_FRAMES). Commit as soon as we are
+        #    within FIRE_TOL so a 1px body drift doesn't kick us back to
+        #    strafing and flip Link's facing mid-sequence.
+        if int(snap.rupees) <= 0:
+            return self.mark_fail("out_of_ammo")
+        forced = self.frames - self.last_fire >= STUCK_FRAMES
+        ready = self.cooldown <= 0 and (self._eye_fresh_open() or forced)
+        if ready and abs(dx) <= FIRE_TOL:
+            # UP+B in one frame from a sideways strafe looses the arrow
+            # sideways (facing does not flip in time — that is why every
+            # earlier pass missed). Face NORTH first, fire next frame.
+            if int(snap.facing) != FACE_NORTH:
+                return FrameAction(nes_action("UP"), "face_up")
+            self.cooldown = SHOT_COOLDOWN
+            self.last_fire = self.frames
+            self.arrow_pulses += 1
+            return FrameAction(nes_action("UP", "B"), "arrow_shot")
+
+        if abs(dx) > ALIGN_TOL:
+            return FrameAction(
+                nes_action("RIGHT" if dx > 0 else "LEFT"), "strafe"
+            )
+        if ly < STAND_Y - STAND_Y_TOL:
+            return FrameAction(nes_action("DOWN"), "settle")
         if self.cooldown > 0:
-            return FrameAction(nes_idle_action(), "shot_wait")
-        self.cooldown = SHOT_COOLDOWN
-        self.arrow_pulses += 1
-        return FrameAction(nes_action("UP", "B"), "arrow_shot")
+            return FrameAction(nes_idle_action(), "cooldown")
+        return FrameAction(nes_idle_action(), "eye_wait")
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.cooldown > 0:
@@ -209,9 +324,10 @@ class Level6GohmaController(HopController):
             "samples": list(self.samples),
             "leftover": dict(self.leftover),
             "inventory_assist": self.inventory_assist,
-            "policy": "poke ADDR_ARROWS=1 B=2; one UP+B while |gx-x|<=8; idle",
+            "policy": "poke arrows; climb to STAND_Y; face N; UP+B on the eye edge",
             "saw_gohma": self.saw_gohma,
             "arrow_pulses": self.arrow_pulses,
+            "connect_frame": self.connect_frame,
             "spec_id": self.spec_id,
             "room": self.room,
             "body_type": GOHMA_OBJECT_TYPE,

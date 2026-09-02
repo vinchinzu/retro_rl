@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from retro_harness.glance import GlanceLeftover, in_band, parse_int
+
 from harvest.core.game_clock import (
     ClockTime,
     ClockTimeline,
@@ -49,10 +51,9 @@ HopSpec = LeaveSpec
 
 def parse_tilemap(value: Any) -> int:
     """Accept ``0x1C``, ``'0x1c'``, or int."""
-    if isinstance(value, int) and not isinstance(value, bool):
-        return value
-    text = str(value).strip().lower()
-    return int(text, 16) if text.startswith("0x") else int(text)
+    if isinstance(value, bool):
+        raise TypeError("tilemap must be an int, not bool")
+    return parse_int(value)
 
 
 def glance_bench(before: int | None, after: int | None) -> dict:
@@ -171,13 +172,6 @@ def _clock_frozen(row: Mapping[str, Any]) -> str | None:
     clocks = {(m.clock.hour, m.clock.minute) for m in timeline.samples}
     return None if len(clocks) > 1 else f"clock frozen {timeline.samples[0].clock}"
 
-def _in_band(value: int, band: int | tuple[int, int] | None) -> bool:
-    if band is None:
-        return True
-    lo, hi = band if isinstance(band, tuple) else (band, band)
-    return int(lo) <= value <= int(hi)
-
-
 def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     """Human-readable miss reasons (empty = glance pass)."""
     misses: list[str] = []
@@ -198,9 +192,9 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     elif clock is not None:
         if spec.clock is not None and clock != spec.clock:
             misses.append(f"clock {clock} != {spec.clock}")
-        if not _in_band(clock.hour, spec.hour):
+        if not in_band(clock.hour, spec.hour):
             misses.append(f"hour={clock.hour} not in {spec.hour}")
-        if not _in_band(clock.minute, spec.minute):
+        if not in_band(clock.minute, spec.minute):
             misses.append(f"minute={clock.minute} not in {spec.minute}")
     frozen = _clock_frozen(row) if spec.clock_must_advance else None
     if frozen:
@@ -339,15 +333,6 @@ def leftover_from_snapshot(snap: Mapping[str, Any] | None) -> dict[str, Any]:
         if key in row and row[key] is not None:
             leftover[key] = row[key]
     return leftover
-
-
-@dataclass(frozen=True)
-class GlanceLeftover:
-    """Stand leftover. ``leftover`` is present even when ``misses`` is not empty."""
-
-    ok: bool
-    leftover: dict[str, Any]
-    misses: list[str]
 
 
 def grade_leftover(final: Mapping[str, Any], spec: LeaveSpec) -> GlanceLeftover:

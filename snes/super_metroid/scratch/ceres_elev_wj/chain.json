@@ -1,0 +1,970 @@
+[
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   163,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 18,
+  "latch": null,
+  "apex": 407,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 20,
+  "latch": null,
+  "apex": 402,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 22,
+  "latch": null,
+  "apex": 396,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "LEFT",
+  "ride": 24,
+  "latch": null,
+  "apex": 391,
+  "seat": [
+   163,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 18,
+  "latch": null,
+  "apex": 407,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 20,
+  "latch": null,
+  "apex": 402,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 22,
+  "latch": null,
+  "apex": 396,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "LEFT",
+  "ride": 24,
+  "latch": null,
+  "apex": 391,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 18,
+  "latch": null,
+  "apex": 407,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 20,
+  "latch": null,
+  "apex": 402,
+  "seat": [
+   211,
+   651
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 22,
+  "latch": null,
+  "apex": 387,
+  "seat": [
+   131,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "LEFT",
+  "ride": 24,
+  "latch": null,
+  "apex": 379,
+  "seat": [
+   126,
+   475
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 4,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   175,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 6,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   173,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 8,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 10,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 12,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 14,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 16,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 18,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 20,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 22,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "LEFT",
+  "ride": 24,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   174,
+   667
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   129,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   127,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   126,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   125,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   125,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   125,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   125,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 18,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   127,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 20,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   133,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 22,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   138,
+   475
+  ]
+ },
+ {
+  "launch_x": 150,
+  "into": "RIGHT",
+  "ride": 24,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   144,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   139,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   138,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   136,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   135,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   135,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   135,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   135,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 18,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   138,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 20,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   143,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 22,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   149,
+   475
+  ]
+ },
+ {
+  "launch_x": 156,
+  "into": "RIGHT",
+  "ride": 24,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   154,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 4,
+  "latch": null,
+  "apex": 461,
+  "seat": [
+   147,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 6,
+  "latch": null,
+  "apex": 452,
+  "seat": [
+   145,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 8,
+  "latch": null,
+  "apex": 444,
+  "seat": [
+   144,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 10,
+  "latch": null,
+  "apex": 436,
+  "seat": [
+   143,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 12,
+  "latch": null,
+  "apex": 428,
+  "seat": [
+   143,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 14,
+  "latch": null,
+  "apex": 421,
+  "seat": [
+   143,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 16,
+  "latch": null,
+  "apex": 414,
+  "seat": [
+   143,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 18,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   145,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 20,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   151,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 22,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   156,
+   475
+  ]
+ },
+ {
+  "launch_x": 162,
+  "into": "RIGHT",
+  "ride": 24,
+  "latch": null,
+  "apex": 412,
+  "seat": [
+   162,
+   475
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 4,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   172,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 6,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   175,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 8,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   178,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 10,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   180,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 12,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   183,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 14,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   186,
+   667
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 16,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   189,
+   651
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 18,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   191,
+   651
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 20,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   194,
+   651
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 22,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   197,
+   651
+  ]
+ },
+ {
+  "launch_x": 168,
+  "into": "RIGHT",
+  "ride": 24,
+  "latch": null,
+  "apex": 479,
+  "seat": [
+   200,
+   651
+  ]
+ }
+]

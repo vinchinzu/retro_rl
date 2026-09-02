@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Optional, Sequence
 
+from retro_harness.hop_timer import format_segment_time as _format_segment_time
+
 from harvest.core.ram_catalog import read_ram_value
 from harvest.maps.map_config import get_map_name
 
@@ -62,16 +64,7 @@ def clock_from_mapping(row: Mapping) -> Optional[ClockTime]:
 
 def format_segment_time(frames: int | None) -> dict:
     """Frame split used by corridor benches. 60 fps is the play clock."""
-    if frames is None:
-        return {"frames": None, "seconds": None, "clock": None}
-    n = max(0, int(frames))
-    seconds = n / SEGMENT_FPS
-    minutes = int(seconds // 60)
-    return {
-        "frames": n,
-        "seconds": round(seconds, 3),
-        "clock": f"{minutes:02d}:{seconds % 60:05.2f}",
-    }
+    return _format_segment_time(frames, fps=SEGMENT_FPS)
 
 
 def compare_frame_benches(before: int | None, after: int | None) -> dict:

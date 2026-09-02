@@ -134,9 +134,9 @@ class LevelConfig:
         default_factory=dict
     )
 
-    # BK2 button mapping (BK2 hardware order → env logical order)
-    # Default: SNES standard reversed mapping
-    bk2_to_env: list[int] = field(default_factory=lambda: [11 - i for i in range(12)])
+    # BK2 button mapping (BK2 char-index → env logical order).
+    # None = read the LogKey (SNES default). NES packs pass a 9-button map.
+    bk2_to_env: list[int] | None = None
 
     @property
     def game_dir(self) -> Path:

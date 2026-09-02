@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 
+from retro_harness.audit import AuditCapabilities, AuditedEnv
 from retro_harness.env import make_env, reset_obs
 from retro_harness.segment_runner import configure_headless, save_rgb_png, write_json_report
 from zelda_i.assist import UnlimitedHealthAssist
@@ -53,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
         assist = UnlimitedHealthAssist(enabled=True)
         try:
             obs, _ = reset_obs(env)
+            env = AuditedEnv(
+                env,
+                capabilities=AuditCapabilities.all("zelda_i.survival_spine"),
+            )
             tap.attach(env, obs)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
             run = run_survival_spine(
@@ -61,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
                 assist=assist,
                 through=args.through,
             )
+            run.apply_state_audit(int(env.audit().mid_run_loads or 0))
             snap = read_snapshot(env.get_ram())
             screenshot = RECORDINGS_DIR / f"{tag}_final.png"
             save_rgb_png(run.obs, screenshot)
@@ -84,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             f"tf={payload['final']['triforce']} room=0x{payload['final']['room']:02x} "
             f"keys={payload['final']['keys']} bombs={payload['final']['bombs']} "
             f"rupees={payload['final']['rupees']} "
+            f"set_state={payload.get('set_state_count')} "
             f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
     n_ok = sum(1 for row in results if row.get("ok"))

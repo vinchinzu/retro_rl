@@ -25,22 +25,27 @@ from zelda_i.level6.overworld import (
     LEVEL6_GOHMA_WING_2C_ROOM,
     LEVEL6_TF_ROOM,
     LEVEL6_TRIFORCE_BIT,
+    SCREEN_LEVEL6_ENTRANCE,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyWalker
 
 __all__ = [
     "DOOR_NORTH",
+    "EXIT_MAX_FRAMES",
     "FANFARE_MODE",
     "FINISH_MAX_FRAMES",
     "HEART_XY",
     "SHARD_XY",
+    "Level6ExitController",
     "Level6HeartController",
     "Level6North0cController",
     "Level6ShardController",
+    "level6_exit_success",
     "level6_heart_success",
     "level6_north0c_success",
     "level6_success",
+    "make_exit_controller",
     "make_heart_controller",
     "make_north0c_controller",
     "make_shard_controller",
@@ -50,6 +55,7 @@ __all__ = [
 FANFARE_MODE = 18
 DOOR_NORTH = 0x08
 FINISH_MAX_FRAMES = 4000
+EXIT_MAX_FRAMES = 2500
 SAMPLE_PERIOD = 16
 HEART_XY = (120, 141)
 SHARD_XY = (120, 141)
@@ -252,6 +258,53 @@ class Level6ShardController(_FinishHop):
         return self._path(snap, SHARD_XY)
 
 
+@dataclass
+class Level6ExitController(_FinishHop):
+    """Idle through the shard fanfare until the engine returns Link to the
+    overworld.
+
+    Zelda 1 auto-warps out of a dungeon after a Triforce piece — back onto the
+    dungeon's overworld entrance tile (L1 → OW ``0x37`` ~(112,125), L4 →
+    island ``0x45``). This stage only measures where L6 lands; it never walks.
+    Measured (`--through level6-exit` 1/1): OW ``0x22`` ``(112,125)``, mode 5,
+    TF ``0x3F`` — the Dragon mouth tile, which the L7 bait/pond route depends
+    on. ``(112,125)`` is not the "mode 16 → dungeon" trap: that only fires on
+    a fresh UP into the mouth, not on emerging onto it.
+    """
+
+    spec_id: str = "level6_exit_ow"
+    room: int = LEVEL6_TF_ROOM
+    done_reason: str = "ow_return"
+    max_frames: int = EXIT_MAX_FRAMES
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"ow_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_tf=0x{snap.triforce:02x}"
+        )
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == 0
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen == SCREEN_LEVEL6_ENTRANCE
+            and int(snap.triforce) == LEAVING_TF
+        )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        # The fanfare return is automatic; hold still. Only fail if Link ends
+        # up back in an L6 play room other than the shard room 0x0C.
+        if (
+            snap.level == LEVEL6
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen != self.room
+        ):
+            return self.mark_fail(f"l6_play_0x{snap.screen:02x}_no_ow_return")
+        return FrameAction(nes_idle_action(), f"wait_return_mode_{snap.mode}")
+
+
 def make_heart_controller() -> Level6HeartController:
     return Level6HeartController()
 
@@ -262,6 +315,10 @@ def make_north0c_controller() -> Level6North0cController:
 
 def make_shard_controller() -> Level6ShardController:
     return Level6ShardController()
+
+
+def make_exit_controller() -> Level6ExitController:
+    return Level6ExitController()
 
 
 def _play_1c(snap: ZeldaSnapshot) -> bool:
@@ -301,5 +358,17 @@ def level6_success(snap: ZeldaSnapshot) -> bool:
     if snap.screen != LEVEL6_TF_ROOM:
         return False
     if snap.mode not in (PLAY_MODE, FANFARE_MODE):
+        return False
+    return snap.heart_containers >= POST_HEART_CONTAINERS
+
+
+def level6_exit_success(snap: ZeldaSnapshot) -> bool:
+    """Post-fanfare engine return: OW play on the Dragon entrance screen 0x22
+    with the full L6 clear bits (TF 0x3F) and the heart kept."""
+    if snap.level != 0 or int(snap.triforce) != LEAVING_TF:
+        return False
+    if snap.mode != PLAY_MODE or snap.transitioning:
+        return False
+    if snap.screen != SCREEN_LEVEL6_ENTRANCE:
         return False
     return snap.heart_containers >= POST_HEART_CONTAINERS

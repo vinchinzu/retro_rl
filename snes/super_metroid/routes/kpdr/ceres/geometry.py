@@ -24,18 +24,46 @@ _CERES_ARM_PUMP_PERIOD = DEFAULT_PUMP_PERIOD
 # Falling→elev mid-transition can still show y≈139; gs=8 remaps to bottom ~651.
 # Outbound first room (wiki Ceres 1 / Sniq 100% lsnes): pad y=72, short
 # RIGHT hop, air-turn pose 25→26 at ~x142 y79, land y=75 (pose 229), spinning
-# moonfall. Weave idles past 171/267; floor door ~(238, 651) pose 17.
+# moonfall. Weave idles past 171/267. Extra L at p17 x=205 is not TAS 8782
+# B+RIGHT at (206, p17); skip once. Last-floor L on p17 carries leftover
+# pose 17 at (39, 139). That pose-17 is held-aim; TAS leftover 17 + B+RIGHT
+# is pose 15 at x=44, ours is still pose 9.
 _CERES_FIRST_PAD_Y = 72
 _CERES_FIRST_TURN_X = 142
 _CERES_FIRST_TURN_Y = 76
 _CERES_FIRST_FLOOR_Y = 640
 _CERES_FIRST_DOOR_X = 230
+# First inverted pulse (p17 + tape L). Do not L-every-p17 after 214.
+_CERES_FIRST_INVERT_L_X = 205
+_CERES_FIRST_INVERT_L_X_END = 214
+# gs=9 through last gs=11 (Sniq 100% lsnes f8789–8949). B+RIGHT+R is the
+# last fade frame; an L-pulse on the lip triggers 1px early (237 not 238).
+_CERES_FIRST_DOOR_FADE = 161
 _CERES_ELEV_SHIP_Y = 80  # grounded ship pad band (product leave ~x145 y75 pose 2/10)
 _CERES_ELEV_SHIP_X = 145  # product pad center before gs=32 Ceres-success
 _CERES_ELEV_TOP_Y = 171  # s10 land / right-wall KB band
-_CERES_ELEV_TOP_X = 211  # product right-wall contact (pose 137)
+_CERES_ELEV_TOP_X = 211  # shaft right wall; the entry wall jump kicks off it
 _CERES_ELEV_LEDGE_Y = 571  # mid-shaft ledge; not a product recovery seat
 _CERES_ELEV_BOTTOM_Y = 640  # bottom floor band after a missed door jump
+# Shaft climb from the Falling-door entry (measured off ceres_first_control
+# in scratch/ceres_elev_wj). The entry arrives four air frames into a spin
+# jump, so the entry rise alone tops out at y=608 and the y=475 ledge is only
+# reachable by riding the `_CERES_ELEV_TOP_X` right wall and kicking off it. Sniq's own
+# elev_wj tape replays to the right places from this entry but never latches:
+# it releases A for a single frame and stable-retro needs two.
+#
+# Above 475 the rungs are ordinary ground spin jumps between ledges, not wall
+# jumps — a full ground spin jump rises 111px and the gaps are 112/96/96.
+# Each launch x is the middle of its measured band; outside the band the jump
+# clips a ledge lip and drops back down the shaft.
+_CERES_ELEV_ENTRY_RISE_FRAMES = 16  # RIGHT+A up the wall before the kick
+_CERES_ELEV_WJ_RELEASE_FRAMES = 2  # LEFT without A; 1f reads as a jump cut
+_CERES_ELEV_WJ_KICK_FRAMES = 8
+_CERES_ELEV_WJ_RIDE_FRAMES = 34  # pose 132 / movement type 20 carries to 474
+_CERES_ELEV_475_LAUNCH_X = 137  # band 130-144, RIGHT onto 363
+_CERES_ELEV_363_LAUNCH_X = 191  # band 185-211, LEFT onto 267
+_CERES_ELEV_267_LAUNCH_X = 144  # band 132-156, LEFT onto 171
+_CERES_ELEV_171_LAUNCH_X = 48  # band 41-55, RIGHT onto the ship pad (gs 32)
 # Falling west door (TAS lsnes sniq_100). x=45 is the Ceres door enemy
 # $E23F (`CERES_DOOR_ID`), shut for ~16f after the ledge: walking into it is
 # pose-138 / movement-type-21, which zeroes momentum and parks the jump on
@@ -177,12 +205,23 @@ __all__ = [
     "_CERES_FIRST_TURN_Y",
     "_CERES_FIRST_FLOOR_Y",
     "_CERES_FIRST_DOOR_X",
+    "_CERES_FIRST_INVERT_L_X",
+    "_CERES_FIRST_INVERT_L_X_END",
+    "_CERES_FIRST_DOOR_FADE",
     "_CERES_ELEV_SHIP_Y",
     "_CERES_ELEV_SHIP_X",
     "_CERES_ELEV_TOP_Y",
     "_CERES_ELEV_TOP_X",
     "_CERES_ELEV_LEDGE_Y",
     "_CERES_ELEV_BOTTOM_Y",
+    "_CERES_ELEV_ENTRY_RISE_FRAMES",
+    "_CERES_ELEV_WJ_RELEASE_FRAMES",
+    "_CERES_ELEV_WJ_KICK_FRAMES",
+    "_CERES_ELEV_WJ_RIDE_FRAMES",
+    "_CERES_ELEV_475_LAUNCH_X",
+    "_CERES_ELEV_363_LAUNCH_X",
+    "_CERES_ELEV_267_LAUNCH_X",
+    "_CERES_ELEV_171_LAUNCH_X",
     "_CERES_FALLING_DOOR_LEDGE_Y",
     "_CERES_FALLING_DOOR_JUMP_X",
     "_CERES_FALLING_DOOR_SHUTTER_FRAMES",

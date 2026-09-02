@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from retro_harness.hop_timer import HopFrame, HopTimer, OpenHop
+from retro_harness.hop_timer import (
+    HopFrame,
+    HopTimer,
+    OpenHop,
+    format_segment_time,
+)
 
 
 @dataclass(frozen=True)
@@ -151,3 +156,15 @@ def test_finalize_session_end() -> None:
     t.finalize(frame=50)
     assert t._open is None
     assert any(d.reason == "session_end" for d in t.discontinuities)
+
+
+def test_format_segment_time_play_clock() -> None:
+    clock = format_segment_time(1016)
+    assert clock["frames"] == 1016
+    assert clock["seconds"] == 16.933
+    assert clock["clock"] == "00:16.93"
+    assert format_segment_time(None) == {
+        "frames": None,
+        "seconds": None,
+        "clock": None,
+    }

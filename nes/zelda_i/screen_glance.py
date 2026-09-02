@@ -10,9 +10,17 @@ is non-empty. Dest RAM success stays a separate predicate.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Mapping
 
+from retro_harness.glance import (
+    GlanceLeftover,
+    band_miss,
+    grade_report as _grade_report,
+    parse_int,
+    pick as _pick,
+    xy_of,
+)
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 
 FANFARE_MODE = 18
@@ -191,47 +199,17 @@ STAIRS3A_DEST = LeaveSpec(
 )
 
 
-@dataclass
-class GlanceLeftover:
-    """Glance result. leftover is present even when misses is non-empty."""
-
-    ok: bool
-    leftover: dict[str, Any] = field(default_factory=dict)
-    misses: list[str] = field(default_factory=list)
-
-
 def parse_room(value: Any) -> int:
     """Accept ``0x3A``, ``'0x3a'``, or int."""
-    return _as_int(value)
+    return parse_int(value)
 
 
 def _as_int(value: Any, default: int = 0) -> int:
-    if value is None:
-        return default
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    text = str(value).strip().lower()
-    if text.startswith("0x"):
-        return int(text, 16)
-    return int(text)
-
-
-def _pick(final: Mapping[str, Any], *keys: str) -> Any:
-    for key in keys:
-        if key in final and final[key] is not None:
-            return final[key]
-    return None
+    return parse_int(value, default=default)
 
 
 def _xy(final: Mapping[str, Any]) -> tuple[int, int]:
-    if "xy" in final and final["xy"] is not None:
-        pair = list(final["xy"])
-        return int(pair[0]), int(pair[1])
-    x = _pick(final, "x", "link_x")
-    y = _pick(final, "y", "link_y")
-    return int(x), int(y)
+    return xy_of(final, x_keys=("x", "link_x"), y_keys=("y", "link_y"))
 
 
 def _hearts_lo_nibble(health: int) -> int:
@@ -249,10 +227,12 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     if room != spec.room:
         misses.append(f"room 0x{room:02X} != 0x{spec.room:02X}")
     x, y = _xy(final)
-    if not (spec.x[0] <= x <= spec.x[1]):
-        misses.append(f"x={x} not in [{spec.x[0]}, {spec.x[1]}]")
-    if not (spec.y[0] <= y <= spec.y[1]):
-        misses.append(f"y={y} not in [{spec.y[0]}, {spec.y[1]}]")
+    x_miss = band_miss("x", x, spec.x)
+    if x_miss:
+        misses.append(x_miss)
+    y_miss = band_miss("y", y, spec.y)
+    if y_miss:
+        misses.append(y_miss)
     mode = _as_int(_pick(final, "mode"), default=-1)
     if mode == CAVE_MODE and not spec.allow_cave:
         misses.append(f"mode={mode} cave (allow_cave=False)")
@@ -312,29 +292,11 @@ def _with_run_fields(
 
 def grade_report(report: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     """Grade a dual/probe JSON. Both runs must glance-pass when present."""
-    misses: list[str] = []
-    if report.get("success") is False:
-        misses.append("success is false")
-    runs = list(report.get("runs") or ())
-    if not runs:
-        final = report.get("final")
-        if not isinstance(final, Mapping):
-            return misses + ["missing final"]
-        return misses + grade_final(final, spec)
-    for i, run in enumerate(runs, start=1):
-        if not isinstance(run, Mapping):
-            misses.append(f"run {i} not an object")
-            continue
-        if run.get("success") is False:
-            misses.append(f"run {i} success is false")
-        final = run.get("final")
-        if not isinstance(final, Mapping):
-            misses.append(f"run {i} missing final")
-            continue
-        final = _with_run_fields(final, run)
-        for reason in grade_final(final, spec):
-            misses.append(f"run {i}: {reason}")
-    return misses
+    return _grade_report(
+        report,
+        lambda final: grade_final(final, spec),
+        prepare_final=_with_run_fields,
+    )
 
 
 def leftover_from_mapping(raw: Mapping[str, Any]) -> dict[str, Any]:

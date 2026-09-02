@@ -31,9 +31,11 @@ from zelda_i.level6.dungeon import (
 from zelda_i.level6.east3a import level6_east3a_success, make_east3a_controller
 from zelda_i.level6.exit75 import make_exit75_controller
 from zelda_i.level6.finish import (
+    level6_exit_success,
     level6_heart_success,
     level6_north0c_success,
     level6_success,
+    make_exit_controller,
     make_heart_controller,
     make_north0c_controller,
     make_shard_controller,
@@ -124,6 +126,11 @@ def _north0c_stages():
 def _level6_stages():
     ctl = make_shard_controller()
     return (*_north0c_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+
+
+def _exit_stages():
+    ctl = make_exit_controller()
+    return (*_level6_stages(), (ctl.spec_id, ctl, ctl.max_frames))
 
 
 def _door_success(spec):
@@ -275,6 +282,13 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             "level6_triforce_0x20",
             _level6_stages,
             level6_success,
+            dedicated=True,
+        ),
+        SpineHop(
+            "level6-exit",
+            "level6_exit_ow",
+            _exit_stages,
+            level6_exit_success,
             dedicated=True,
         ),
         one_hop(

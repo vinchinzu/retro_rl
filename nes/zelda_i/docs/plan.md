@@ -10,17 +10,39 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — Gohma after walked CheckWarp (2026-09-02)
+## Immediate — reactive Gohma kill (2026-09-02)
 
-South-band CheckWarp re-validated **1/1** on `l6_gohma_column_shot` (hop
-290f, mode 9 cellar `0x08` `(208,93)`, `position_writes=0`,
-`set_state_count=0`). Warp/Gohma modules do not call `poke_link_position`.
-Cellar08 is **1/1** play `0x1D` `(96,157)` rupees=43. `--through
-level6-gohma` after the walk is **red** 4/4. v4 column mouth shot 1 pulse
-f2 gx=128 leftover `(120,204)` tile 118, rupees stayed 43, ghp stayed 32.
-Mouth UP+B does not fire. Heart / north0c / shard hops stay green on the
-poked-warp tape only. Survival evidence; do not update `STATUS.md` or
-overwrite Clean M5. Keys stay 2. Do not top up.
+South-band CheckWarp **1/1** (`position_writes=0`, cellar `0x08` `(208,93)`).
+Cellar08 / south1d / west2d / north2c all **1/1**. Gohma reactive kill
+**GREEN 2026-09-02**: `--through level6-gohma` **1/1** (one arrow, keys 2,
+TF `0x1F`, `set_state=0`).
+
+Every prior red (v1–v4 + 3 reactive passes) had the same root cause: Link
+fired the arrow **sideways**. `nes_action("UP","B")` in one frame off a
+sideways strafe does not flip Link's facing, so the arrow left E/W and
+never reached Gohma — `ghp` never moved. Policy now emits a bare `UP`
+(`face_up`) frame, then `UP+B`, and fires only on the **rising edge** of an
+eye-open window (RAM `0x03C7` leaving the `0xC0` blink; a fixed cadence
+aliases onto the ~65f blink). `nes/zelda_i/level6/gohma.py` rewritten,
+`test_level6_gohma.py` 10/10. Full diagnosis: `docs/tasks/rr-tne2-residual.md`.
+Survival evidence; do not update `STATUS.md` or overwrite Clean M5. Keys
+stay 2. Do not top up.
+
+Fast iteration (user-approved): `scripts/gohma_lab.py --pin` builds
+`GohmaEntryLive.state` from a real power-on `--through level6-north2c`;
+`--tag X` runs only the fight (~15s). Re-pin after upstream changes;
+re-validate full power-on every ~10 iterations.
+
+**L6 exit measured (2026-09-02):** `--through level6-exit` **1/1**
+(`l6_exit_ow.json`). The shard fanfare auto-warps Link to OW **`0x22`
+`(112,125)`** mode 5, TF `0x3F`, keys 2 bombs 8 rupees 42 Rod 1 Bow 1
+arrows 1, 8 HC full, `set_state=0`. `Level6ExitController` idles 598f
+through fanfare → warp; no walk, no RAM write. Screen `0x22` **aligns
+with the L7 bait/pond route**; the L7 fixture's `(120,221)` south-edge
+start is superseded by the real `(112,125)` mouth-tile return (matches L1
+`0x37` ~(112,125)). Packet `MEASURED_POST_L6_EXIT` in `level7/entry.py`
+(`verified=False`; L7 owner attaches + reconciles the White-Sword / candle
+/ keys / rupee loadout gap for the Bait buy). Does not close `rr-tne2`.
 
 Phase 4 (`rr-ibkf`) **1/1**: `--through level4` `l4_gleeok_continuous`
 110926f, `set_state_count=0`, natural UP `room_change to=0x03`,
@@ -42,8 +64,10 @@ Living residual: `docs/tasks/rr-tne2-residual.md`.
 
 ### Session rule for every remaining checkbox
 
-- Start a new power-on Survival run from the real predecessor chain; never
-  tune a later room from a loaded checkpoint.
+- A level-start pin captured from a real power-on run (e.g.
+  `GohmaEntryLive.state`) is OK for iteration; re-pin after upstream changes
+  and re-validate full power-on every ~10 iterations. Isolated BFS states
+  and poked-teleport tapes stay banned.
 - Run exactly one new `--through` target with `--no-video --trials 1`. Stop at
   the first red. Inspect the final PNG, RAM glance, and controller
   coordinate/reason samples before changing one policy.

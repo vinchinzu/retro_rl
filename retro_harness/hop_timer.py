@@ -21,6 +21,26 @@ VisitT = TypeVar("VisitT")
 DiscT = TypeVar("DiscT")
 SnapT = TypeVar("SnapT")
 
+DEFAULT_SEGMENT_FPS = 60.0
+
+
+def format_segment_time(
+    frames: int | None,
+    *,
+    fps: float = DEFAULT_SEGMENT_FPS,
+) -> dict[str, Any]:
+    """Frames + seconds + ``MM:SS.ss`` clock. Games may overwrite ``clock``."""
+    if frames is None:
+        return {"frames": None, "seconds": None, "clock": None}
+    n = max(0, int(frames))
+    seconds = n / float(fps)
+    minutes = int(seconds // 60)
+    return {
+        "frames": n,
+        "seconds": round(seconds, 3),
+        "clock": f"{minutes:02d}:{seconds % 60:05.2f}",
+    }
+
 
 class BaseDiscontinuityReason(str, Enum):
     """Shared discontinuity labels; games may extend with their own Enum."""
@@ -395,9 +415,11 @@ def rank_by_field(
 
 __all__ = [
     "BaseDiscontinuityReason",
+    "DEFAULT_SEGMENT_FPS",
     "HopFrame",
     "HopTimer",
     "OpenHop",
+    "format_segment_time",
     "rank_by_field",
     "snapshots_from_json_mapping",
 ]
