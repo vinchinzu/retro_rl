@@ -698,9 +698,9 @@ not the route.
 |-------|------|
 | Start | north2c leftover play `0x1C` `(120,205)`, rod=1, keys=2, Bow=1, arrows=0, TF=`0x1F` |
 | Assist | one wooden-arrow grant `ADDR_ARROWS` 0→1 + B-slot 2; do not write Bow |
-| Path | poke, cardinal to `(120,165)`, UP+B, idle on cooldown (do not hold UP) |
+| Path | poke, one UP+B while `|gx-x|<=8`; idle (do not hold UP / align_x / y=165) |
 | Stop | `--through level6-gohma` play `0x1C`, body absent, Bow=1 arrows=1, TF still `0x1F` |
-| Leftover | poked-warp **1/1** `(120,189)` hop 54f 1 pulse (`l6_gohma_recompose`); walked-warp **red** v1 `(115,93)` 599 pulses (`l6_gohma_after_walk`); v2 `(136,164)` 43R→0 ghp=32 (`l6_gohma_stand165`) |
+| Leftover | poked-warp **1/1** `(120,189)` hop 54f 1 pulse (`l6_gohma_recompose`); walked-warp **red** v4 `(120,204)` tile 118 1 pulse f2 gx=128 rupees stayed 43 (`l6_gohma_column_shot`) |
 | Integrity | `position_writes=0` on the walk tape; one arrow grant; deaths/state loads/progression/capacity writes 0 |
 
 ### Heart `0x1C` — **1/1**
@@ -782,7 +782,7 @@ rows on `scripts/run_survival_spine.py`.
 - Clear `0x3A` — **live** `--through level6-clear3a` leftover `(144,141)`; center 0x68 unpushed
 - Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1 south-band walk, `position_writes=0`
 - `0x1D` south → `0x2D` west → `0x2C` KEY-UP → **Gohma `0x1C` enter** — **live** leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
-- Gohma kill — poked-warp **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF still `0x1F` (`l6_gohma_recompose`); walked-warp red (see hop table)
+- Gohma kill — poked-warp **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF still `0x1F` (`l6_gohma_recompose`); walked-warp red v4 mouth shot `(120,204)` gx=128 rupees stayed 43 (`l6_gohma_column_shot`)
 - Heart → north `0x0C` Triforce shard 6 — **live** 1/1 fanfare `(120,149)` TF `0x3F` (`l6_tf_recompose`)
 
 ## Boss / Triforce
@@ -874,8 +874,8 @@ Not claimed live as pure segments:
 18. Center-block stairs → cellar `0x08` B-side → play `0x1D` — **live** 1/1 south-band walk, `position_writes=0`
 19. South `0x1D` → play `0x2D` — **live** 1/1 leftover `(120,77)` keys=3
 20. `0x2D` west → `0x2C` KEY-UP → Gohma `0x1C` enter — **live** 1/1 leftover `(120,205)` keys 3→2 (`l6_north2c_cardinal`)
-21. Gohma kill — **live** 1/1 leftover `(120,189)` body gone Bow=1 arrows=1 TF=`0x1F` (`l6_gohma_recompose`)
-22. Heart → north `0x0C` TF `0x20` — **live** 1/1 on the poked-warp tape (`l6_tf_recompose`). Walked warp reds Gohma occupancy. Wooden-arrow grant still disclosed.
+21. Gohma kill — poked-warp **live** 1/1 leftover `(120,189)` body gone (`l6_gohma_recompose`); walked-warp red v4 mouth shot `(120,204)` gx=128 rupees stayed 43 (`l6_gohma_column_shot`)
+22. Heart → north `0x0C` TF `0x20` — **live** 1/1 on the poked-warp tape (`l6_tf_recompose`). Walked warp reds Gohma column. Wooden-arrow grant still disclosed.
 
 ## Not claimed
 
