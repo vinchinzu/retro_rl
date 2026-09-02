@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.door_graph.core import GateKind, InventoryCaps
+from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM
 from zelda_i.level7.dungeon import (
     LEVEL7_COMPLETE_STOP,
     LEVEL7_ENTRY_STOP,
@@ -61,13 +62,15 @@ def test_public_through_targets_are_exactly_three_chapters() -> None:
     assert set(L7_STOPS) == set(L7_THROUGH)
 
 
-def test_stop_specs_fail_closed_without_live_rooms() -> None:
-    snap = read_snapshot(_ram())
-    assert LEVEL7_ENTRY_STOP.screen is None
+def test_entry_room_is_live_but_stop_stays_fail_closed() -> None:
+    snap = read_snapshot(_ram(screen=SCREEN_LEVEL7_ENTRY_ROOM, x=120, y=205))
+    assert LEVEL7_ENTRY_STOP.screen == SCREEN_LEVEL7_ENTRY_ROOM
+    assert LEVEL7_ENTRY_STOP.observed
+    assert LEVEL7_ENTRY_STOP.evidence == "fixture-live"
+    assert not LEVEL7_ENTRY_STOP.route_eligible
     assert LEVEL7_RED_CANDLE_STOP.screen is None
     assert LEVEL7_COMPLETE_STOP.level is None
-    assert LEVEL7_ENTRY_STOP.evidence == "hypothesis"
-    assert not LEVEL7_ENTRY_STOP.route_eligible
+    # Spine evidence set is {natural-segment, spine-green}; fixture-live is not in it.
     assert not level7_entry_stop(snap, whistle=1, food=1)
     assert not level7_red_candle_stop(snap, candle=2, whistle=1, food=0)
     assert not level7_complete_stop(
@@ -75,10 +78,15 @@ def test_stop_specs_fail_closed_without_live_rooms() -> None:
     )
 
 
-def test_hypothesis_graph_has_no_ram_ids() -> None:
-    assert not ram_ids_observed()
-    assert all(room.ram_id is None for room in LEVEL7_ROOMS)
-    assert all(room.evidence == EVIDENCE for room in LEVEL7_ROOMS)
+def test_hypothesis_graph_only_entry_has_ram_id() -> None:
+    assert ram_ids_observed()
+    entry = next(room for room in LEVEL7_ROOMS if room.source_id == ENTRY)
+    assert entry.ram_id == SCREEN_LEVEL7_ENTRY_ROOM
+    assert entry.evidence == "fixture-live"
+    assert not entry.route_eligible
+    others = [room for room in LEVEL7_ROOMS if room.source_id != ENTRY]
+    assert all(room.ram_id is None for room in others)
+    assert all(room.evidence == EVIDENCE for room in others)
     assert all(room.route_eligible is ROUTE_ELIGIBLE for room in LEVEL7_ROOMS)
     assert all(room.source_id > 0x7F for room in LEVEL7_ROOMS)
     assert LEVEL7_HYPOTHESIS_GRAPH.level == 7

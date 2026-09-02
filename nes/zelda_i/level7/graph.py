@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM
 from zelda_i.door_graph.core import (
     DoorDir,
     DungeonDoorGraph,
@@ -73,7 +74,13 @@ class Level7RoomHyp:
 
 
 LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
-    Level7RoomHyp(ENTRY, "entry", role="public_level7_entry"),
+    Level7RoomHyp(
+        ENTRY,
+        "entry",
+        ram_id=SCREEN_LEVEL7_ENTRY_ROOM,
+        role="public_level7_entry",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(MOLDORMS, "moldorms", role="bombs_optional"),
     Level7RoomHyp(KEESE, "keese_dark"),
     Level7RoomHyp(GORIYA_HINT, "goriya_hint"),

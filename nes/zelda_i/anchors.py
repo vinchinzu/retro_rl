@@ -61,7 +61,8 @@ SCREEN_LEVEL5_ENTRY_ROOM = 0x76
 SCREEN_LEVEL5_TF_ROOM = 0x14  # Digdogger north; TF bit 0x10
 SCREEN_LEVEL6_ENTRANCE = 0x22  # Dragon — live
 SCREEN_LEVEL6_ENTRY_ROOM = 0x79
-SCREEN_LEVEL7_ENTRANCE = 0x42  # Demon pond (source)
+SCREEN_LEVEL7_ENTRANCE = 0x42  # Demon pond — live (rr-dnp / rr-8t4.2)
+SCREEN_LEVEL7_ENTRY_ROOM = 0x79  # live drain_v2; south mouth (120,205)
 SCREEN_LEVEL7_BAIT_SHOP = 0x34
 SCREEN_LEVEL8_BUSH = 0x6D  # Lion bush — live; needs candle
 SCREEN_LEVEL8_ENTRANCE = 0x6D
@@ -114,11 +115,15 @@ ENTRANCES: dict[int, EntranceAnchor] = {
     7: EntranceAnchor(
         level=7,
         door_screen=SCREEN_LEVEL7_ENTRANCE,
-        entry_room=None,
-        verified=False,
+        entry_room=SCREEN_LEVEL7_ENTRY_ROOM,
+        verified=True,
         approach_screen=SCREEN_LEVEL7_BAIT_SHOP,
         label="demon",
-        notes="Whistle pond drain (source)",
+        notes=(
+            "Pond 0x42 live; drain + L7 play 0x79 (120,205) from a recon "
+            "ADDR_WHISTLE poke on PostSwordStart leftover (Level7Entrance pin). "
+            "Not natural-entry; bait shop 0x34 still source."
+        ),
     ),
     8: EntranceAnchor(
         level=8,
@@ -152,7 +157,8 @@ LATER_SCREEN_LABELS: dict[int, str] = {
     SCREEN_LEVEL5_ENTRANCE: "level5_entrance_lizard_live",
     SCREEN_LEVEL6_ENTRANCE: "level6_entrance_dragon_live",
     SCREEN_LEVEL7_BAIT_SHOP: "bait_shop_armos_source",
-    SCREEN_LEVEL7_ENTRANCE: "level7_entrance_demon_pond_source",
+    SCREEN_LEVEL7_ENTRANCE: "level7_entrance_demon_pond_live",
+    SCREEN_LEVEL7_ENTRY_ROOM: "level7_entry_room_0x79_live",
     SCREEN_LEVEL8_ENTRANCE: "level8_entrance_lion_bush_live",
     SCREEN_LEVEL9_ENTRANCE: "level9_entrance_bomb_rock_source",
     SCREEN_CANDLE_SHOP: "candle_shop_5e_live",
@@ -205,6 +211,7 @@ __all__ = [
     "SCREEN_LEVEL7_BAIT_SHOP",
     "SCREEN_LEVEL7_BAIT_SHOP_HYP",
     "SCREEN_LEVEL7_ENTRANCE",
+    "SCREEN_LEVEL7_ENTRY_ROOM",
     "SCREEN_LEVEL7_POND_HYP",
     "SCREEN_LEVEL8_BUSH",
     "SCREEN_LEVEL8_ENTRANCE",

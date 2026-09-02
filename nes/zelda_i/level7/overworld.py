@@ -38,6 +38,7 @@ from zelda_i.anchors import (
     SCREEN_BRACELET_ARMOS,
     SCREEN_LEVEL6_ENTRANCE,
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
+    SCREEN_LEVEL7_ENTRY_ROOM,
     SCREEN_LEVEL7_POND_HYP,
     TF_BIT_L7 as LEVEL7_TRIFORCE_BIT,
 )
@@ -431,9 +432,12 @@ def planning_report() -> dict[str, Any]:
             "evidence": "fixture-live 0x24→0x25 RIGHT @ y=141 leftover 0x25 (0,141)",
         },
         "live": {
-            "pond_screen": None,
-            "entry_room": None,
+            "pond_screen": hex(SCREEN_LEVEL7_POND_HYP),
+            "entry_room": hex(SCREEN_LEVEL7_ENTRY_ROOM),
+            "entry_xy": [120, 205],
+            "pond_stairs_xy": [96, 132],
             "boss_room": None,
+            "evidence": "fixture-live Level7Entrance pin (whistle poke recon)",
         },
         "docs": "nes/zelda_i/docs/LEVEL7_ROUTE.md",
     }

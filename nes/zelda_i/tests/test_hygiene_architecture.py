@@ -139,6 +139,8 @@ def test_anchors_are_single_source() -> None:
     assert ENTRANCES[3].verified
     assert ENTRANCES[4].verified  # rr-0fx live entry
     assert ENTRANCES[4].entry_room == 0x71
+    assert ENTRANCES[7].verified  # pond drain + L7 play 0x79 (recon whistle poke)
+    assert ENTRANCES[7].entry_room == 0x79
     assert LN_L3 == SCREEN_LEVEL3_ENTRANCE
 
 
