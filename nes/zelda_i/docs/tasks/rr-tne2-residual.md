@@ -74,6 +74,51 @@ Green stages through `level6_exit_ow` (598f) → `level7_post_l6_overworld`
 fails closed in 1f (`handoff_unmeasured`, `evidence=measured-level6-exit-1of1`,
 `writes=0`). Identical outcome to the pre-refactor baseline.
 
+### L7 Phase 1 — handoff verified + bait prefix green — 2026-09-02
+
+**Item 1 (keystone).** Re-measured `--through level6-exit`
+(`l7p1_l6exit.json`, 2/2 with `l6_exit_ow.json`, byte-identical). `spine_final_fields`
+now takes `ram` and captures the B-slot / Whistle / Food / Candle bytes:
+measured `selected_item=2` (arrows, from the Gohma kill), `whistle=1`,
+`food=0`, `candle=0`, 8 HC full. `MEASURED_POST_L6_EXIT.verified=True`,
+`evidence="measured-level6-exit-2of2"`, `route_eligible` still `False`.
+
+The measured leave stands **on** the `0x22` mouth tile `(112,125)`, so
+`PostLevel6OverworldController._reentry_refusal` was refusing on frame 1
+(`l6_cave_mouth`). Fixed with a `_left_mouth` latch: the position refusal
+(now `l6_cave_mouth_reentry`) only arms after Link has stepped off the
+mouth once. `mode==16` cave-enter and `level==6` refusals are unchanged.
+
+**Item 2.** `SPINE_L7_RUPEE_RETOPUP` = `{"level7_bait_purchase"}`. New
+`poke_rupees` / `apply_owned_inventory(rupees=)` / `topup_owned_rupees`;
+`rupees` added to `OWNED_INVENTORY_FIELDS` and threaded as `rupee_retopup`
+through `_run_stages`. Tops the owned count 42→60 before the Bait stage.
+Logged in `ASSIST_CONTRACT.md`. `progression_writes=capacity_writes=0`.
+
+Power-on `--through level7-entry` (`l7p1_entry_v2.json`, `set_state=0`,
+`deaths=0`):
+
+- `level6_exit_ow` green (598f) → `level7_post_l6_overworld` **green**
+  (1577f): walks `hop_0_32 → hop_1_33 → hop_2_23 → hop_3_24 → hop_4_25 →
+  path_complete`, phase DONE, `stuck=0`, `writes=0`. First continuous
+  power-on walk of the bait prefix from the *measured* leave.
+- rupee top-up fires (42→60, one `rupees` write).
+- fails closed at `level7_bait_purchase` → **`bait_shop_geometry_unobserved`**
+  (was `bait_need_60_rupees`). Final: room `0x25` `(0,141)` TF `0x3F`
+  keys 2 bombs 8 rupees 60.
+
+Tests: 413 pass (`tests/`, minus the 2 pre-existing `test_level2_spine`
+fails + 2 pre-existing collection errors in `test_level3_spine` /
+`test_level6_overworld`). `test_level7_hops` rewritten for the verified
+handoff + mouth latch; `test_dungeon_ops` gains rupee-topup coverage.
+
+**Next (Phase 1 item 5, segment 1):** live recon `0x25 (0,141)` → bait
+shop `0x34`, observe the Armos-staircase shop geometry, fill
+`BaitPurchasePlan.shop_cave_xy` / `shop_geometry_verified`. Then pond
+`0x42` drain + entry room. Still deferred: `stitch.inland_then_descend`
+in the `0x53` pond micro (item 3); move the `0x77`-start pond recon
+controller out of `overworld.py` (item 4).
+
 ## The Gohma kill — SOLVED 2026-09-02
 
 **Root cause of every red (v1–v4 + 3 reactive passes): Link fired the arrow

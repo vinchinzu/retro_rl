@@ -352,16 +352,35 @@ MOUTH_STITCHES: tuple[MouthStitch, ...] = (
     MouthStitch(
         6,
         7,
-        UNMEASURED_HANDOFF,
+        _pose(
+            screen=SCREEN_LEVEL6_ENTRANCE,
+            x=112,
+            y=125,
+            tf=0x3F,
+            evidence="measured",
+            keys=2,
+            bombs=8,
+            rupees=42,
+            heart_containers=8,
+            selected_item=2,
+            whistle=1,
+            food=0,
+            rod=1,
+            bow=1,
+            arrows=1,
+            candle=0,
+        ),
         SCREEN_LEVEL7_ENTRANCE,
         ("whistle",),
-        "UNMEASURED",
-        "Post-L6 fanfare OW leftover UNMEASURED — do not assume 0x22. "
-        "Current spine tip is L6 play 0x09 (56,109) TF=0x1F keys=3 bombs=8 "
-        "Bow=1 Rod=0, not a leave. Pond source 0x42; bait shop source 0x34; "
-        "live approach leftover 0x53 (224,173) LEFT-inland-before-DOWN. "
-        f"Bait shop screen 0x{SCREEN_LEVEL7_BAIT_SHOP:02X} TBD live. "
-        "Food required inside, not to drain the pond.",
+        "measured leave / mouth+pond hypothesis",
+        "Post-L6 fanfare leave MEASURED + verified: OW 0x22 (112,125) mode 5 "
+        "TF 0x3F, keys 2 bombs 8 rupees 42, selected_item 2, Whistle 1 Food 0 "
+        "Candle 0, 8 HC full (--through level6-exit 2/2). Carried as "
+        "level7.entry.MEASURED_POST_L6_EXIT (verified=True). The post-L6 "
+        "controller walks the bait prefix 0x22->0x25 green; the pond 0x42, "
+        f"bait shop 0x{SCREEN_LEVEL7_BAIT_SHOP:02X} geometry, and drain remain "
+        "hypothesis. 0x53 (224,173) LEFT-inland-before-DOWN. Food is the "
+        "Hungry-Goriya gate inside, not a pond-drain gate.",
     ),
     MouthStitch(
         7,

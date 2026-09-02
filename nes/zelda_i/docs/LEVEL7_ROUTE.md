@@ -1,14 +1,19 @@
 # Level 7 — The Demon (route notes)
 
-**Status:** Wave A **fixture-live** for the start-based `0x53→0x52` pond micro
-and the post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`. The **L6 leave is
-measured** (2026-09-02): `--through level6-exit` 1/1 → OW `0x22` `(112,125)` TF
-`0x3F` — the bait/pond route's `0x22` screen assumption holds. Pond `0x42`,
-drain, entry room, and all dungeon rooms remain **hypothesis**. Cumulative
-spine chapters stay fail-closed (`route_eligible=false`). There is no pond
-checkpoint, L7 entry room, or Clean segment. **Whistle** from Level 5 gates
-pond drain; **Bait/Food** is a separate natural 60R shop buy (never
-`ADDR_FOOD` / rupee write).
+**Status:** Phase 1 (2026-09-02). The **L6 leave is measured and verified**:
+`--through level6-exit` 2/2 → OW `0x22` `(112,125)` TF `0x3F`, keys 2 bombs 8
+rupees 42, `selected_item=2` (arrows), Whistle 1, Food 0, Candle 0, 8 HC full.
+`MEASURED_POST_L6_EXIT.verified=True`. On a continuous power-on
+`--through level7-entry` the post-L6 controller now **walks the bait prefix
+green** (`0x22→0x32→0x33→0x23→0x24→0x25`, 1577f, `writes=0`) and fails closed
+at `level7_bait_purchase` → `bait_shop_geometry_unobserved`. The Survival
+rupee top-up (42→60R, `SPINE_L7_RUPEE_RETOPUP`) fires before that stage.
+Pond `0x42`, drain, entry room, the bait shop `0x34` geometry, and all
+dungeon rooms remain **hypothesis**. Cumulative spine chapters stay
+fail-closed (`route_eligible=false`). There is no pond checkpoint, L7 entry
+room, or Clean segment. **Whistle** from Level 5 gates pond drain;
+**Bait/Food** is a natural 60R shop buy (never `ADDR_FOOD` write; the rupee
+**count** top-up to the shop cost is the disclosed Survival shortcut).
 
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
 (Wave A recon). Do not STATUS-promote.
@@ -203,35 +208,37 @@ measured OW `0x22` `(112,125)` return) and L7 continues from screen `0x22`
 with `MEASURED_POST_L6_EXIT` as the handoff.
 
 `MEASURED_POST_L6_EXIT` is the **shared `zelda_i.overworld.stitch.OverworldHandoff`**
-packet (no L7-local `PostLevel6Handoff` type any more), `verified=False`
-(`selected_item` not captured that run + the 42R→60R Bait gap). The spine
-controller (`PostLevel6OverworldController`) carries the fixture-live bait
-prefix `POST_L6_TO_BAIT_HOPS` (`0x22→0x32→0x33→0x23→0x24→0x25`) as its default
-hops, but the handoff gate refuses every frame while `verified=False`, so
-`--through level7-entry` runs the full continuous power-on tape through the L6
-fanfare exit and then stops at `level7_post_l6_overworld` (reason
-`handoff_unmeasured`). The moment the handoff verifies, the controller walks
-`0x22→0x25` and then fails closed at the `0x25` west mouth (no observed route
-to the pond `0x42`). The `0x77`-start pond walk and the ungated
-`OverworldToBaitShopController` stay recon-only.
+packet (no L7-local `PostLevel6Handoff` type any more), **`verified=True`**
+(2026-09-02: `--through level6-exit` measured 2/2 with `selected_item=2`
+captured; `route_eligible` still `False`). The spine controller
+(`PostLevel6OverworldController`) carries the fixture-live bait prefix
+`POST_L6_TO_BAIT_HOPS` (`0x22→0x32→0x33→0x23→0x24→0x25`) as its default hops.
+The measured leave stands on the `0x22` mouth tile, so the controller's
+re-entry refusal only arms after Link steps off it (`_left_mouth` latch).
+On `--through level7-entry` the controller now **walks `0x22→0x25` green**
+(`level7_post_l6_overworld`, 1577f) and then fails closed at
+`level7_bait_purchase` → `bait_shop_geometry_unobserved` (no observed shop
+`0x34` geometry; the pond `0x42` route past `0x25` is also unobserved). The
+`0x77`-start pond walk and the ungated `OverworldToBaitShopController` stay
+recon-only.
 
 `level7/spine.py` exposes only the three plan-level targets:
 
 | `--through` | Internal chapter stages | Current evidence |
 |-------------|-------------------------|------------------|
-| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | wired; fails closed at `level7_post_l6_overworld` |
+| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | wired; `level7_post_l6_overworld` **green**; fails closed at `level7_bait_purchase` (`bait_shop_geometry_unobserved`) |
 | `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | wired; fails closed |
 | `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | wired; fails closed |
 
-Factories in `level7/hops.py` always return fresh controllers. Post-L6
-overworld and Bait purchase refuse to move until the handoff verifies and
-shop geometry exists (`OverworldHandoff.verified=false`, shop cave xy
-`None`). **The L6 leave is measured** — `MEASURED_POST_L6_EXIT`, OW `0x22`
-`(112,125)` TF `0x3F` (`--through level6-exit` 1/1) — but the L7 owner must
-still re-measure with `selected_item` captured, flip `verified=True`, and
-close the 42R→60R Bait gap with a **documented Survival rupee top-up**
-(mirroring the existing bomb/key top-ups; a natural OW farm is a separate
-bead). Hungry Goriya fails closed without Food. Red Candle fails closed until
+Factories in `level7/hops.py` always return fresh controllers. **The L6 leave
+is measured and `verified=True`** — `MEASURED_POST_L6_EXIT`, OW `0x22`
+`(112,125)` TF `0x3F`, `selected_item=2` (`--through level6-exit` 2/2). The
+post-L6 controller walks `0x22→0x25` green; **Bait purchase** still refuses
+until shop geometry exists (`shop_cave_xy=None` → `bait_shop_geometry_unobserved`).
+The 42R→60R Bait gap is closed by `SPINE_L7_RUPEE_RETOPUP` (documented
+Survival rupee-count top-up, mirroring the bomb/key top-ups; a natural OW
+farm is a separate bead). Hungry Goriya fails closed without Food. Red
+Candle fails closed until
 the item room is observed and `ADDR_CANDLE` becomes 2 naturally. The
 start-based pond walk is recon-only. Source room ids cannot become executable
 stop predicates. The live L6 residual play `0x09` `(56,109)` TF `0x1F`
@@ -291,16 +298,17 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
   --through level7-entry --no-video --trials 1
 ```
 
-runs the continuous power-on tape through the measured L6 fanfare exit and
-stops fail-closed at `level7_post_l6_overworld`.
+runs the continuous power-on tape through the measured L6 fanfare exit, walks
+`0x22→0x25` green, and stops fail-closed at `level7_bait_purchase`
+(`bait_shop_geometry_unobserved`).
 
 Modules: `zelda_i/level7/{dungeon,graph,entry,path,hops,overworld,spine}.py`.
 The historical pond walk remains `level7.overworld.OverworldToLevel7PondController`;
 it begins at the start screen and therefore remains recon-only. Whistle is
-required to drain the pond. To make `level7-entry` green: capture
-`selected_item` on a fresh `--through level6-exit`, flip
-`MEASURED_POST_L6_EXIT.verified=True`, reconcile the 42R→60R Bait economy,
-and supply observed OW hops `0x22 → … → pond 0x42` plus the drain/entry room.
+required to drain the pond. To make `level7-entry` green from here: live-recon
+`0x25 (0,141) → bait shop 0x34`, fill `BaitPurchasePlan.shop_cave_xy` /
+`shop_geometry_verified` and the shop buy policy, then supply observed OW hops
+`0x34 → pond 0x42` plus the Whistle drain and the entry room.
 
 ---
 
@@ -308,9 +316,15 @@ and supply observed OW hops `0x22 → … → pond 0x42` plus the drain/entry ro
 
 - **Hypothesis:** first-quest room/door/stair graph (`level7/graph.py`); Bait
   shop `0x34`; pond `0x42`; all stop room ids.
-- **Measured:** post-L6 fanfare leave OW `0x22` `(112,125)` TF `0x3F`
-  (`recordings/l6_exit_ow.json`, `--through level6-exit` 1/1). Screen matches
-  the bait/pond route; position corrects the fixture.
+- **Measured + verified:** post-L6 fanfare leave OW `0x22` `(112,125)` TF
+  `0x3F`, keys 2 bombs 8 rupees 42, `selected_item=2`, Whistle 1 Food 0
+  Candle 0, 8 HC full (`recordings/l6_exit_ow.json` +
+  `recordings/l7p1_l6exit.json`, `--through level6-exit` 2/2 byte-identical).
+  `MEASURED_POST_L6_EXIT.verified=True`.
+- **Spine-green (continuous power-on):** `level7_post_l6_overworld` walks the
+  bait prefix `0x22→0x32→0x33→0x23→0x24→0x25` in 1577f, `writes=0`, from the
+  measured leave (`recordings/l7p1_entry_v2.json`, `--through level7-entry`).
+  `route_eligible=false` (endpoint `0x25` is not the L7 entry).
 - **Fixture-live:** start-based `0x53→0x52` inland-left micro,
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 - **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,

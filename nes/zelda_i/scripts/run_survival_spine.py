@@ -67,13 +67,14 @@ def main(argv: list[str] | None = None) -> int:
                 through=args.through,
             )
             run.apply_state_audit(int(env.audit().mid_run_loads or 0))
-            snap = read_snapshot(env.get_ram())
+            final_ram = env.get_ram()
+            snap = read_snapshot(final_ram)
             screenshot = RECORDINGS_DIR / f"{tag}_final.png"
             save_rgb_png(run.obs, screenshot)
             payload = {
                 **run.report(),
                 "trial": trial,
-                "final": spine_final_fields(snap),
+                "final": spine_final_fields(snap, final_ram),
                 "screenshot": str(screenshot),
                 "assist": assist.report(),
                 "video": tap.close(),
