@@ -17,10 +17,14 @@ fires before the stage and represents the cost paid. **Clean** keeps
 The spine then fails closed at `level7_pond_drain_entry` (pond `0x42`, drain,
 entry room all unobserved).
 
-Pond `0x42`, drain, entry room, the bait shop `0x34` geometry, and all
-dungeon rooms remain **hypothesis**. Cumulative spine chapters stay
-fail-closed (`route_eligible=false`). There is no pond checkpoint, L7 entry
-room, or Clean segment. **Whistle** from Level 5 gates pond drain.
+The **Demon pond `0x42` overworld screen is now reached 2/2** (geometry-only,
+no Whistle) by `OverworldToLevel7PondController` from `PostSwordStart`
+(`l7_pond_from_start_l7_pond_v7/v8.json`; cracks the `rr-dnp` `0x64→0x54` and
+`0x53→0x52` walls plus the `0x52→0x42` boulder field). The pond **drain**, the
+**interior entry room**, the bait shop `0x34` geometry, and all dungeon rooms
+remain **hypothesis**. Cumulative spine chapters stay fail-closed
+(`route_eligible=false`). There is no pond checkpoint, L7 entry room, or Clean
+segment. **Whistle** from Level 5 gates pond drain.
 
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
 (Wave A recon + Phase 1 Food fixture), `rr-8t4.4` (natural L6→shop OW route).
@@ -167,29 +171,37 @@ but is not). Equip Whistle on B, use once → water drains → stairs into L7.
 | L7 pond / entrance | D×2 L×2 U | **`0x42`** | no |
 
 The executable pond controller skips the unverified shop detour. Geometry-only
-(no Whistle required). Its live prefix is:
+(no Whistle required). **2026-09-02: the full pond approach is green** —
+`OverworldToLevel7PondController` from `PostSwordStart` reaches the Demon pond
+`0x42` **2/2** (`l7_pond_from_start_l7_pond_v7/v8.json`, 3530f, `phase=DONE`,
+leftover play `0x42` `(128,221)`; zero deaths / progression / capacity writes;
+`route_eligible=false`). The whole hop chain:
 
 ```text
-0x77→0x78→0x68→0x58→0x57→0x56→0x55→0x65→0x64→0x54→0x53→0x52
+0x77→0x78→0x68→0x58→0x57→0x56→0x55→0x65→0x64→0x54→0x53→0x52→0x42
 ```
 
-Live geometry (Survival, `PostSwordStart`, `--no-video`):
+Live geometry (Survival, `PostSwordStart`):
 
-- `0x65→0x64` arrives on the east ledge around `(232,109)`; go DOWN to the
-  open band, LEFT to the north gap around `x≈48`, then UP to `0x54`.
+- `0x65→0x64` arrives on the east ledge around `(232,109)`; DOWN to the open
+  band, LEFT to the north gap at **`x≈60`** (`BAIT_64_GAP_X`;
+  `scratch/probe_64_north_to_54.py` — `x≤40` stalls at `y≈93`), then UP to
+  `0x54`. *(This was the long-standing `rr-dnp` v10 wall.)*
 - `0x54→0x53` is LEFT around `y≈141`.
-- **Dead belief:** on `0x53` at `(224,173)`, `hop10_ay` DOWN toward `y≈189` is
-  blocked (`l7_dnp_pond_assisted_v9`).
-- **0x53 micro (fixture-live):** LEFT inland from the east edge (`x>192`)
-  before descending, then LEFT at/below `y≈189` into `0x52`. Occupancy miss →
-  block cell → replan; no path → stand.
-- **Next leftover:** play `0x52` `(112,181)`, hop `0x42` UP. `hop11_ax` then
-  `unstick_wait` — north gap on `0x52` is not `x=112`. Pond `0x42` is still
-  unobserved.
+- **0x53→0x52 (solved):** LEFT inland from the east edge (`x>192`) before
+  descending, then LEFT at/below `y≈189` into `0x52` (`pond_53_to_52_action`).
+  *(Long-standing `rr-dnp` v9 wall.)*
+- **0x52→0x42 (solved):** `0x52` is a boulder field. Climb the open west
+  column `x≈48` from the bottom corridor to the mid-band `y≈120`, traverse
+  RIGHT to `x≈132`, then UP funnels Link through the wall gap (`~x128`) into
+  the `x≈112` north gap to `0x42` (`POND_52_*`;
+  `scratch/probe_52_wall.py` — the gap is not at `x=112`).
 
-Evidence: `recordings/l7_dnp_pond_53.json` and `_final.png` (this sitting);
-prior miss `recordings/l7_dnp_pond_assisted_v9.json`. Zero deaths;
-`progression_writes=capacity_writes=0`; `success=false`; `route_eligible=false`.
+Evidence: `recordings/l7_pond_from_start_l7_pond_v7.json` / `_v8.json` (2/2)
+and `l7_pond_v7_final.png` (the drained-pending Demon pond, blue water, Link
+`(128,221)`). Zero deaths; `progression_writes=capacity_writes=0`;
+`route_eligible=false`. **Drain + interior entry room still need Whistle** —
+next step for `rr-8t4.2`.
 
 **Controllers:** the spine uses `level7.entry.PostLevel6OverworldController`
 (shared `OverworldHandoff` gate + fixture-live `POST_L6_TO_BAIT_HOPS`), which
