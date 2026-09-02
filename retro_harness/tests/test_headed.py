@@ -8,6 +8,7 @@ from pathlib import Path
 
 from retro_harness.headed import (
     HEADED_FLAG_HELP,
+    WatchDisplay,
     add_headed_flag,
     bot_speed_timing,
     configure_headed,
@@ -85,3 +86,10 @@ def test_tab_turbo_unthrottles() -> None:
 
 def test_headed_emu_repeat_is_one_without_window() -> None:
     assert headed_emu_repeat(object()) == 1
+
+
+def test_watch_display_defaults_to_4x_without_opening_a_window() -> None:
+    watch = WatchDisplay(title="probe")
+    assert watch.speed == 4.0
+    assert watch.title == "probe"
+    assert watch.closed is False

@@ -46,9 +46,9 @@ boss. `UnlimitedResourcesAssist(unlimited_energy=False, unlimited_ammo=False)`.
 4. Count shots by **`missiles` decreasing**, not by pressing `X` (spin/crouch
    eats the input).
 5. Do not start a 20k-frame run until that window chips HP.
-6. Three red windows on the same seat/vuln hypothesis → BLOCKED, stop.
-   Overwrite `scratch/<boss>_noassist.json` — do not mint `_window_vN`.
-   Glance HP delta + leave pose with `hop_glance`; no MP4.
+6. Never halt (`sm-session`). Overwrite `scratch/<boss>_noassist.json` —
+   do not mint `_window_vN`. Glance HP delta + leave pose with `hop_glance`;
+   no MP4.
 
 ## Geometry rules that keep showing up
 
@@ -75,8 +75,7 @@ Keep the assisted continuous controller untouched until this policy is green
 on the natural enter pin with **zero** resource writes. Then swap the fight
 body and re-verify the assisted tip.
 
-## Tests
+## Proof
 
-Unit-test seat / mouth-open / "don't fire at 0 ammo" without the emulator.
-Emulator proof is the probe report (`success`, `final.enemy0_hp`,
-`assist.energy_writes == 0`, `assist.missile_writes == 0`).
+Probe report (`success`, `final.enemy0_hp`, `assist.energy_writes == 0`,
+`assist.missile_writes == 0`).

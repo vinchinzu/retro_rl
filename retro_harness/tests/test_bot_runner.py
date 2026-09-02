@@ -95,6 +95,24 @@ class TestBotRunner:
         assert runner._frame == 0
         assert runner._initialized is False
 
+    def test_resume_after_hotswap_duck_type(self):
+        class ResumeTask(FakeTask):
+            def __init__(self):
+                super().__init__(steps_to_success=9)
+                self.resumed = []
+
+            def resume_after_hotswap(self, world):
+                self.resumed.append(world)
+
+        task = ResumeTask()
+        runner = BotRunner(task)
+        obs = np.zeros((1, 1, 3), dtype=np.uint8)
+        info = {"ram": np.zeros(16, dtype=np.uint8)}
+        runner(obs, info)
+        runner.on_autopilot_resume()
+        assert len(task.resumed) == 1
+        assert task.resumed[0].ram is info["ram"]
+
     def test_with_ram_schema(self):
         schema = RAMSchema({"health": (0x10, "u8")})
         task = FakeTask(steps_to_success=5)

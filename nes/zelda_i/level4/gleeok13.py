@@ -167,10 +167,17 @@ def level4_gleeok13_success(snap: ZeldaSnapshot) -> bool:
 
 
 def run_level4_tf_suffix(env, *, assist, frame_base: int):
-    """South-stand Gleeok → HC → TF 0x08 from play-ready 0x13. Env-stepping."""
+    """South-stand Gleeok → HC → TF 0x08 from play-ready 0x13. Env-stepping.
+
+    Spine path is continuous: one natural UP exit, no emulator restore.
+    Isolated lab may call ``make_gleeok_fight_controller()`` without
+    ``continuous_mode`` to keep the restore-loop search.
+    """
     from zelda_i.level4.boss_combat import make_gleeok_fight_controller
 
-    ctl = make_gleeok_fight_controller(tag="survival_spine_l4")
+    ctl = make_gleeok_fight_controller(
+        tag="survival_spine_l4", continuous_mode=True
+    )
     total = [int(frame_base)]
     result = ctl.run(env, assist, total)
     ok = bool(result.get("ok") and result.get("tf08"))

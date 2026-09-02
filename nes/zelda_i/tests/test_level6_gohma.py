@@ -1,4 +1,4 @@
-"""Unit tests for Level 6 Gohma 0x1C (no emulator)."""
+"""Unit tests for Level 6 Gohma 0x1C reactive kill (no emulator)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,13 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
 from zelda_i.level6.gohma import (
+    EYE_ADDR,
+    EYE_SHUT,
+    FACE_NORTH,
+    STAND_Y,
     level6_gohma_success,
     make_gohma_controller,
 )
@@ -18,13 +22,16 @@ from zelda_i.ram import (
     ADDR_BOW,
     ADDR_KEYS,
     ADDR_LEVEL,
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     ADDR_ROD,
+    ADDR_RUPEES,
     ADDR_SCREEN,
+    ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
@@ -32,27 +39,30 @@ from zelda_i.ram import (
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
+    ram = np.zeros(0x1000, dtype=np.uint8)
     ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
     ram[ADDR_LEVEL] = fields.get("level", 6)
     ram[ADDR_SCREEN] = fields.get("screen", 0x1C)
     ram[ADDR_LINK_X] = fields.get("x", 120)
     ram[ADDR_LINK_Y] = fields.get("y", 205)
+    ram[ADDR_LINK_FACING] = fields.get("facing", FACE_NORTH)
     ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 3)
+    ram[ADDR_KEYS] = fields.get("keys", 2)
     ram[ADDR_BOMBS] = fields.get("bombs", 8)
     ram[ADDR_ROD] = fields.get("rod", 1)
     ram[ADDR_BOW] = fields.get("bow", 1)
     ram[ADDR_ARROWS] = fields.get("arrows", 1)
+    ram[ADDR_RUPEES] = fields.get("rupees", 43)
+    ram[EYE_ADDR] = fields.get("eye", EYE_SHUT)
     return ram
 
 
 def _plant_gohma(
     ram: np.ndarray,
     *,
-    x: int = 120,
-    y: int = 109,
-    hp: int = 16,
+    x: int = 128,
+    y: int = 112,
+    hp: int = 32,
     type_id: int = GOHMA_OBJECT_TYPE,
 ) -> None:
     ram[ADDR_OBJ_TYPE + 1] = type_id
@@ -69,43 +79,46 @@ class _AssignMem:
         self.calls.append((addr, fmt, val))
 
 
-def _env_with_mem(mem: object) -> SimpleNamespace:
-    data = SimpleNamespace(memory=mem)
-    return SimpleNamespace(unwrapped=SimpleNamespace(data=data))
+def _env(ram: np.ndarray, mem: object | None = None) -> SimpleNamespace:
+    mem = mem if mem is not None else _AssignMem()
+    return SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=SimpleNamespace(memory=mem)),
+    )
+
+
+def _bound(ram: np.ndarray, mem: object | None = None):
+    ctl = make_gohma_controller()
+    ctl.bind_env(_env(ram, mem))
+    return ctl
 
 
 def test_unarmed_no_bow_fails() -> None:
     ram = _ram(bow=0, arrows=0)
     _plant_gohma(ram)
-    ctl = make_gohma_controller()
+    ctl = _bound(ram)
     ctl.step(read_snapshot(ram))
     assert ctl.failed
 
 
 def test_poke_writes_arrows_and_b_not_bow() -> None:
-    from zelda_i.ram import ADDR_ARROWS as ARROWS
-    from zelda_i.ram import ADDR_SELECTED_ITEM
-
     ram = _ram(bow=1, arrows=0)
     _plant_gohma(ram)
     mem = _AssignMem()
-    ctl = make_gohma_controller()
-    ctl.bind_env(_env_with_mem(mem))
+    ctl = _bound(ram, mem)
     ctl.step(read_snapshot(ram))
     assert not ctl.failed
     addrs = [addr for addr, _fmt, _val in mem.calls]
-    assert ARROWS in addrs
+    assert ADDR_ARROWS in addrs
     assert ADDR_SELECTED_ITEM in addrs
-    from zelda_i.ram import ADDR_BOW as BOW
-
-    assert BOW not in addrs
+    assert ADDR_BOW not in addrs
     assert ctl.inventory_assist is not None
     assert ctl.inventory_assist["progression_writes"] == 0
     assert ctl.inventory_assist["bow_writes"] == 0
 
 
 def test_gohma_success_needs_body_gone_and_arrows() -> None:
-    ram = _ram(x=120, y=205, bow=1, arrows=1)
+    ram = _ram(x=120, y=165, bow=1, arrows=1)
     _plant_gohma(ram)
     assert not level6_gohma_success(read_snapshot(ram))
     ram[ADDR_OBJ_TYPE + 1] = 0
@@ -115,98 +128,83 @@ def test_gohma_success_needs_body_gone_and_arrows() -> None:
     assert not level6_gohma_success(read_snapshot(ram))
 
 
-def test_south_mouth_column_shoots_same_frame_as_poke() -> None:
-    ram = _ram(x=120, y=205, bow=1, arrows=1)
-    _plant_gohma(ram, x=128, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
-    ctl.bind_env(_env_with_mem(_AssignMem()))
+def test_doorway_climbs_straight_up() -> None:
+    ram = _ram(x=120, y=205, arrows=1)
+    _plant_gohma(ram, x=150)
+    ctl = _bound(ram)
     action = ctl.step(read_snapshot(ram))
     assert not ctl.failed
-    assert action.reason == "arrow_shot"
-    assert action.reason not in ("inland_up", "occupancy_stand", "inland_path")
-    assert list(action.action) == list(nes_action("UP", "B"))
-    assert ctl.inventory_assist is not None
-    assert ctl.arrow_pulses == 1
+    assert action.reason == "climb"
+    assert list(action.action) == list(nes_action("UP"))
 
 
-def test_knockback_y189_still_shoots_in_column() -> None:
-    ram = _ram(x=120, y=189, bow=1, arrows=1)
-    _plant_gohma(ram, x=128, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
+def test_on_line_strafes_toward_body() -> None:
+    ram = _ram(x=120, y=STAND_Y, arrows=1)
+    _plant_gohma(ram, x=160)  # far right
+    ctl = _bound(ram)
     action = ctl.step(read_snapshot(ram))
     assert not ctl.failed
-    assert action.reason == "arrow_shot"
-    assert action.reason not in ("inland_up", "occupancy_stand")
-    assert list(action.action) == list(nes_action("UP", "B"))
+    assert action.reason == "strafe"
+    assert list(action.action) == list(nes_action("RIGHT"))
 
 
-def test_spawn_gx128_dx8_shoots() -> None:
-    ram = _ram(x=120, y=205, bow=1, arrows=1)
-    _plant_gohma(ram, x=128, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
+def test_shut_eye_waits_when_aligned() -> None:
+    ram = _ram(x=128, y=STAND_Y, arrows=1, eye=EYE_SHUT)
+    _plant_gohma(ram, x=128)
+    ctl = _bound(ram)
     action = ctl.step(read_snapshot(ram))
     assert not ctl.failed
-    assert action.reason == "arrow_shot"
-    assert list(action.action) == list(nes_action("UP", "B"))
-
-
-def test_v3_gx141_does_not_shoot_or_align() -> None:
-    from retro_harness.nes import nes_idle_action
-
-    ram = _ram(x=120, y=169, bow=1, arrows=1)
-    _plant_gohma(ram, x=141, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
-    action = ctl.step(read_snapshot(ram))
-    assert not ctl.failed
-    assert action.reason == "column_wait"
-    assert action.reason not in ("align_x", "arrow_shot", "inland_up")
+    assert action.reason == "eye_wait"
     assert list(action.action) == list(nes_idle_action())
     assert ctl.arrow_pulses == 0
 
 
-def test_north_shutter_one_pulse_does_not_hold_up() -> None:
-    from retro_harness.nes import nes_idle_action
+def test_open_eye_edge_faces_north_then_fires() -> None:
+    ram = _ram(x=128, y=STAND_Y, arrows=1, eye=0x70, facing=0x02)
+    _plant_gohma(ram, x=128)
+    ctl = _bound(ram)
+    turn = ctl.step(read_snapshot(ram))
+    assert turn.reason == "face_up"
+    assert list(turn.action) == list(nes_action("UP"))
+    assert ctl.arrow_pulses == 0
 
-    ram = _ram(x=115, y=93, bow=1, arrows=1)
-    _plant_gohma(ram, x=120, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
+    ram[ADDR_LINK_FACING] = FACE_NORTH
     shot = ctl.step(read_snapshot(ram))
-    assert shot.reason == "arrow_shot"
-    wait = ctl.step(read_snapshot(ram))
     assert not ctl.failed
-    assert wait.reason == "shot_wait"
-    assert wait.reason not in ("inland_down", "inland_up")
-    assert list(wait.action) == list(nes_idle_action())
-
-
-def test_shot_cooldown_idles_instead_of_walking_north() -> None:
-    from retro_harness.nes import nes_idle_action
-
-    ram = _ram(x=120, y=165, bow=1, arrows=1)
-    _plant_gohma(ram, x=120, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
-    ctl.bind_env(_env_with_mem(_AssignMem()))
-    shot = ctl.step(read_snapshot(ram))
     assert shot.reason == "arrow_shot"
-    wait = ctl.step(read_snapshot(ram))
-    assert not ctl.failed
-    assert wait.reason == "shot_wait"
-    assert list(wait.action) == list(nes_idle_action())
-
-
-def test_one_pulse_idles_after_cooldown_no_spray() -> None:
-    from retro_harness.nes import nes_idle_action
-
-    ram = _ram(x=120, y=165, bow=1, arrows=1)
-    _plant_gohma(ram, x=120, type_id=GOHMA_BLUE_OBJECT_TYPE)
-    ctl = make_gohma_controller()
-    ctl.bind_env(_env_with_mem(_AssignMem()))
-    shot = ctl.step(read_snapshot(ram))
-    assert shot.reason == "arrow_shot"
-    ctl.cooldown = 0
-    idle = ctl.step(read_snapshot(ram))
-    assert not ctl.failed
-    assert idle.reason == "spawn_wait"
-    assert idle.reason != "arrow_shot"
-    assert list(idle.action) == list(nes_idle_action())
+    assert list(shot.action) == list(nes_action("UP", "B"))
     assert ctl.arrow_pulses == 1
+
+
+def test_one_shot_then_cooldown_no_spray() -> None:
+    ram = _ram(x=128, y=STAND_Y, arrows=1, eye=0x70, facing=FACE_NORTH)
+    _plant_gohma(ram, x=128)
+    ctl = _bound(ram)
+    shot = ctl.step(read_snapshot(ram))
+    assert shot.reason == "arrow_shot"
+    nxt = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert nxt.reason == "cooldown"
+    assert list(nxt.action) == list(nes_idle_action())
+    assert ctl.arrow_pulses == 1
+
+
+def test_out_of_ammo_fails_when_aligned_on_open_eye() -> None:
+    ram = _ram(x=128, y=STAND_Y, arrows=1, rupees=0, eye=0x70, facing=FACE_NORTH)
+    _plant_gohma(ram, x=128)
+    ctl = _bound(ram)
+    action = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert action.reason in ("out_of_ammo",)
+
+
+def test_static_open_eye_fires_once_not_every_frame() -> None:
+    """One shot on the first rising edge, then no re-fire while the eye
+    stays statically open (no new edge, cooldown then eye_wait)."""
+    ram = _ram(x=128, y=STAND_Y, arrows=1, eye=0x70, facing=FACE_NORTH)
+    _plant_gohma(ram, x=128)
+    ctl = _bound(ram)
+    reasons = [ctl.step(read_snapshot(ram)).reason for _ in range(80)]
+    assert reasons.count("arrow_shot") == 1
+    assert ctl.arrow_pulses == 1
+    assert reasons[-1] in ("eye_wait", "cooldown")

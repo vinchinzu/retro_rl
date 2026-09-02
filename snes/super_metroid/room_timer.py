@@ -30,6 +30,7 @@ from retro_harness.hop_timer import (
     HopFrame,
     HopTimer,
     OpenHop,
+    format_segment_time as _format_segment_time,
     rank_by_field,
     snapshots_from_json_mapping,
 )
@@ -49,12 +50,10 @@ def format_segment_time(frames: int) -> dict[str, object]:
     from super_metroid.human_tape.kpdr_splits import fmt_tracker
 
     n = max(0, int(frames))
-    return {
-        "frames": n,
-        "seconds": round(n / NTSC_FPS, 3),
-        "clock": fmt_tracker(n),
-        "ntsc_fps": NTSC_FPS,
-    }
+    timing = _format_segment_time(n, fps=NTSC_FPS)
+    timing["clock"] = fmt_tracker(n)
+    timing["ntsc_fps"] = NTSC_FPS
+    return timing
 
 
 class DiscontinuityReason(str, Enum):

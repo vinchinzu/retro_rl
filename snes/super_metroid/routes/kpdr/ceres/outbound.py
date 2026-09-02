@@ -26,7 +26,10 @@ from super_metroid.routes.kpdr.ceres.geometry import (
     _CERES_FALLING_OUT_DOOR_X,
     _CERES_FALLING_OUT_FLOOR_Y,
     _CERES_FALLING_OUT_PLAT_Y,
+    _CERES_FIRST_DOOR_FADE,
     _CERES_FIRST_DOOR_X,
+    _CERES_FIRST_INVERT_L_X,
+    _CERES_FIRST_INVERT_L_X_END,
     _CERES_FIRST_PAD_Y,
     _CERES_MAGNET_BOT_Y,
     _CERES_MAGNET_DOOR_Y,
@@ -149,11 +152,57 @@ def _ceres_first_tas_phase(held: int) -> CeresFirstPhase:
     return "fall"
 
 
+def _ceres_first_door_fade(fade_i: int) -> tuple[str, ...]:
+    """TAS f8789–8949: B+RIGHT on gs=9, idle, B+RIGHT+R on last gs=11."""
+    if fade_i <= 0:
+        return ("RIGHT", "B")
+    if fade_i == _CERES_FIRST_DOOR_FADE - 1:
+        return ("RIGHT", "B", "R")
+    return ()
+
+
+def _ceres_first_door_run(state) -> tuple[str, ...] | None:
+    """Last-floor L on pose 17. R aims leftover 15; B+RIGHT from p17 dumps 9."""
+    if int(state.samus_y) < 650 or int(state.samus_x) < _CERES_FIRST_DOOR_X:
+        return None
+    if int(state.pose) == 17:
+        return ("B", "RIGHT", "L")
+    return None
+
+
+def _ceres_first_floor_pad(
+    state,
+    names: tuple[str, ...],
+    track: "CeresFirstMoonfallTrack",
+    held: int,
+) -> tuple[tuple[str, ...], "CeresFirstMoonfallTrack", int]:
+    """Skip extra L at p17 x=205. TAS 8782 is B+RIGHT at (206, p17)."""
+    nxt = held + 1
+    if (
+        not track.invert_l
+        and int(state.samus_y) >= 650
+        and int(state.pose) == 17
+        and _CERES_FIRST_INVERT_L_X
+        <= int(state.samus_x)
+        < _CERES_FIRST_INVERT_L_X_END
+        and "L" in names
+        and nxt < len(CERES_FIRST_TAS_PAD)
+    ):
+        names = CERES_FIRST_TAS_PAD[nxt]
+        track = replace(track, invert_l=True)
+        nxt = nxt + 1
+    lip = _ceres_first_door_run(state)
+    if lip is not None:
+        return lip, track, nxt
+    return names, track, nxt
+
+
 @dataclass(frozen=True)
 class CeresFirstMoonfallTrack:
     phase: CeresFirstPhase = "ride"
     held: int = 0
     pump_i: int = 0
+    invert_l: bool = False
 
 
 def _ceres_first_airborne(state) -> bool:
@@ -180,9 +229,12 @@ def ceres_first_moonfall_action(
 
     if room == ROOM_CERES_FALLING and int(state.game_state) == 8:
         return (), replace(track, phase="done", held=0)
-    # TAS idles the fade (gs 9 then 11). Holding B+RIGHT does not shorten it.
+    # TAS: B+RIGHT on gs=9, idle the fade, B+RIGHT+R on last gs=11 (f8949).
     if int(state.game_state) in (9, 10, 11):
-        return (), replace(track, phase="exit", held=held + 1)
+        fade_i = held if phase == "exit" else 0
+        return _ceres_first_door_fade(fade_i), replace(
+            track, phase="exit", held=fade_i + 1
+        )
     if room != ROOM_CERES_ELEVATOR and phase != "exit":
         return ("RIGHT", "B"), replace(track, phase="exit", held=0)
 
@@ -200,8 +252,10 @@ def ceres_first_moonfall_action(
             return ("RIGHT", "B"), replace(track, phase="exit", held=0)
         if held < len(CERES_FIRST_TAS_PAD):
             names = CERES_FIRST_TAS_PAD[held]
-            nxt = held + 1
-            return names, replace(track, phase=_ceres_first_tas_phase(held), held=nxt)
+            names, track, nxt = _ceres_first_floor_pad(state, names, track, held)
+            return names, replace(
+                track, phase=_ceres_first_tas_phase(held), held=nxt
+            )
         if grounded and y >= 650 and x >= 175:
             return ("RIGHT", "B"), replace(track, phase="land", held=0, pump_i=0)
         if y >= 640:
@@ -216,10 +270,6 @@ def ceres_first_moonfall_action(
         if y > 655:
             return ("RIGHT", "A"), replace(track, held=held + 1)
         pump = shoulder_pump_button(track.pump_i)
-        if x >= _CERES_FIRST_DOOR_X:
-            return ("RIGHT", "B", pump), replace(
-                track, phase="exit", held=0, pump_i=track.pump_i + 1
-            )
         return ("RIGHT", "B", pump), replace(
             track, held=held + 1, pump_i=track.pump_i + 1
         )

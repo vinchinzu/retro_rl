@@ -32,13 +32,3 @@ class GolfBotRunner(BotRunner):
         if callable(status_fn):
             return status_fn()
         return super().mission_status()
-
-    def on_human_takeover(self) -> None:
-        hook = getattr(self.task, "on_human_takeover", None)
-        if callable(hook):
-            hook()
-
-    def on_autopilot_resume(self) -> None:
-        hook = getattr(self.task, "on_autopilot_resume", None)
-        if callable(hook):
-            hook()

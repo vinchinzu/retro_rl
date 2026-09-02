@@ -21,19 +21,19 @@ door-warp. Session gates: `sm-session`.
    Room-prefixed geometry. RLE as JSON under `routes/kpdr/data/`.
    In-room jumps: `takeoff.TakeoffWindow` / `PlatformHop` — hop `side` is
    D-pad `LEFT`/`RIGHT`.
-4. **Unit-test** seat / action / wrong-room without the emulator.
-5. **Run** from the pin. Overwrite `scratch/<hop>_run.json`. A second run is
-   only for a TAS/skill comparison (`settled_gs8`), not determinism.
-6. **Glance** `hop_glance.grade_report` against the leave spec (room, gs=8,
+4. **Run** from the pin. Overwrite `scratch/<hop>_run.json`. Proof is leftover
+   RAM on that run. A second run is only for a TAS/skill comparison
+   (`settled_gs8`), not determinism.
+5. **Glance** `hop_glance.grade_report` against the leave spec (room, gs=8,
    pose class, xy band). A human still is enough; do not record an MP4.
-7. **Pin out** written once. Do not clobber an older named pin.
+6. **Pin out** written once. Do not clobber an older named pin.
 
 Wire only after green **and** the next hop still enters from pin out.
 Do not STATUS-promote.
 
 ## Hard in-room climbs
 
-3 serial PARTIALs of the same miss class → dump a named phase pin from the
+Never halt (`sm-session`). Same miss class: dump a named phase pin from the
 natural path and iterate from that handoff, or replace the trajectory
 (`snes/super_metroid/docs/tasks/HARD_ROOM_SPLITS.md`). Intermediate dumps
 are not hop GREEN. Glance the phase seat with `hop_glance` against the

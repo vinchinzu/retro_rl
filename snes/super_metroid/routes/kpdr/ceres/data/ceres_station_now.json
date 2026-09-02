@@ -1,0 +1,257 @@
+{
+  "success": true,
+  "tas_elev": false,
+  "pin": "routes/kpdr/ceres/data/ceres_first_control.state",
+  "ridley": 3255,
+  "landing": 7876,
+  "timing": {
+    "frames": 7876,
+    "seconds": 131.051,
+    "clock": "02:11.27",
+    "ntsc_fps": 60.0988
+  },
+  "hops": [
+    {
+      "name": "elev_to_falling",
+      "from": "0xDF45",
+      "to": "0xDF8D",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 310,
+      "our_dwell_frames": 149,
+      "our_transition_frames": 161,
+      "tas_frames": 311,
+      "tas_dwell_frames": 150,
+      "tas_transition_frames": 161,
+      "delta_frames": -1,
+      "delta_dwell_frames": -1,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 8639,
+        "dest_gs8": 8950,
+        "door_gs9": 8789
+      }
+    },
+    {
+      "name": "falling_to_magnet",
+      "from": "0xDF8D",
+      "to": "0xDFD7",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 301,
+      "our_dwell_frames": 140,
+      "our_transition_frames": 161,
+      "tas_frames": 282,
+      "tas_dwell_frames": 121,
+      "tas_transition_frames": 161,
+      "delta_frames": 19,
+      "delta_dwell_frames": 19,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 8950,
+        "dest_gs8": 9232,
+        "door_gs9": 9071
+      }
+    },
+    {
+      "name": "magnet_to_scientist",
+      "from": "0xDFD7",
+      "to": "0xE021",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 377,
+      "our_dwell_frames": 215,
+      "our_transition_frames": 162,
+      "tas_frames": 345,
+      "tas_dwell_frames": 183,
+      "tas_transition_frames": 162,
+      "delta_frames": 32,
+      "delta_dwell_frames": 32,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9232,
+        "dest_gs8": 9577,
+        "door_gs9": 9415
+      }
+    },
+    {
+      "name": "scientist_to_flat",
+      "from": "0xE021",
+      "to": "0xE06B",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 279,
+      "our_dwell_frames": 118,
+      "our_transition_frames": 161,
+      "tas_frames": 264,
+      "tas_dwell_frames": 103,
+      "tas_transition_frames": 161,
+      "delta_frames": 15,
+      "delta_dwell_frames": 15,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9577,
+        "dest_gs8": 9841,
+        "door_gs9": 9680
+      }
+    },
+    {
+      "name": "flat_to_ridley",
+      "from": "0xE06B",
+      "to": "0xE0B5",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 340,
+      "our_dwell_frames": 114,
+      "our_transition_frames": 226,
+      "tas_frames": 321,
+      "tas_dwell_frames": 95,
+      "tas_transition_frames": 226,
+      "delta_frames": 19,
+      "delta_dwell_frames": 19,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 9841,
+        "dest_gs8": 10162,
+        "door_gs9": 9936
+      }
+    },
+    {
+      "name": "ridley_fight",
+      "from": "0xE0B5",
+      "to": "0xE06B",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 1854,
+      "our_dwell_frames": 1688,
+      "our_transition_frames": 166,
+      "tas_frames": 1842,
+      "tas_dwell_frames": null,
+      "tas_transition_frames": null,
+      "delta_frames": 12,
+      "delta_dwell_frames": null,
+      "delta_transition_frames": null,
+      "tas_source_frames": {
+        "fallback": "room_flip_frames"
+      }
+    },
+    {
+      "name": "flat_escape",
+      "from": "0xE06B",
+      "to": "0xE021",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 292,
+      "our_dwell_frames": 130,
+      "our_transition_frames": 162,
+      "tas_frames": 259,
+      "tas_dwell_frames": 97,
+      "tas_transition_frames": 162,
+      "delta_frames": 33,
+      "delta_dwell_frames": 33,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 11939,
+        "dest_gs8": 12198,
+        "door_gs9": 12036
+      }
+    },
+    {
+      "name": "scientist_escape",
+      "from": "0xE021",
+      "to": "0xDFD7",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 281,
+      "our_dwell_frames": 119,
+      "our_transition_frames": 162,
+      "tas_frames": 263,
+      "tas_dwell_frames": 101,
+      "tas_transition_frames": 162,
+      "delta_frames": 18,
+      "delta_dwell_frames": 18,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 12198,
+        "dest_gs8": 12461,
+        "door_gs9": 12299
+      }
+    },
+    {
+      "name": "magnet_escape",
+      "from": "0xDFD7",
+      "to": "0xDF8D",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 428,
+      "our_dwell_frames": 240,
+      "our_transition_frames": 188,
+      "tas_frames": 331,
+      "tas_dwell_frames": 167,
+      "tas_transition_frames": 164,
+      "delta_frames": 97,
+      "delta_dwell_frames": 73,
+      "delta_transition_frames": 24,
+      "tas_source_frames": {
+        "source_gs8": 12461,
+        "dest_gs8": 12792,
+        "door_gs9": 12628
+      }
+    },
+    {
+      "name": "falling_to_elev",
+      "from": "0xDF8D",
+      "to": "0xDF45",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 343,
+      "our_dwell_frames": 178,
+      "our_transition_frames": 165,
+      "tas_frames": 281,
+      "tas_dwell_frames": 116,
+      "tas_transition_frames": 165,
+      "delta_frames": 62,
+      "delta_dwell_frames": 62,
+      "delta_transition_frames": 0,
+      "tas_source_frames": {
+        "source_gs8": 12792,
+        "dest_gs8": 13073,
+        "door_gs9": 12908
+      }
+    },
+    {
+      "name": "elev_to_landing",
+      "from": "0xDF45",
+      "to": "0x91F8",
+      "clock": "settled_gs8",
+      "our_clock": "settled_gs8",
+      "our_frames": 3071,
+      "tas_frames": 2246,
+      "delta_frames": 825,
+      "synthesized": true
+    }
+  ],
+  "end": {
+    "room": "0x91F8",
+    "roomId": 37368,
+    "pose": 0,
+    "x": 1153,
+    "y": 1088,
+    "x_sub": 0,
+    "y_sub": 32768,
+    "door_transition": 0,
+    "phase": "ORDINARY_GAMEPLAY",
+    "frame": 7876,
+    "velocity_x": 0,
+    "velocity_y": 0,
+    "momentum_x": 0,
+    "speed_counter": 0,
+    "speed_boosting": false,
+    "facing": 0,
+    "movement_type": 0,
+    "shinespark_timer": 0,
+    "moonwalk": 0,
+    "door_def_ptr": "0x88FE",
+    "collected_items": "0x0000"
+  }
+}

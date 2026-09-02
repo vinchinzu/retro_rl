@@ -11,6 +11,7 @@ from super_metroid.ram import FACING_LEFT, FACING_RIGHT, GS_ORDINARY, parse_stat
 from super_metroid.routes.kpdr.ceres.geometry import (
     _CERES_FALLING_DOOR_JUMP_X,
     _CERES_FALLING_DOOR_SHUTTER_FRAMES,
+    _CERES_FIRST_DOOR_FADE,
     _CERES_SCI_DOOR_Y,
 )
 from super_metroid.routes.kpdr.ceres.scientist import (
@@ -44,7 +45,10 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_SCIENTIST,
 )
 from super_metroid.routes.kpdr.ceres.outbound import (
+    CERES_FIRST_TAS_PAD,
+    CeresFirstMoonfallTrack,
     CeresFlatEscape,
+    ceres_first_moonfall_action,
     play_ceres_flat_to_scientist,
 )
 from super_metroid.takeoff import shoulder_pump_button
@@ -643,3 +647,111 @@ def test_falling_low_elev_entry_is_not_done() -> None:
     )
     assert names == ()
     assert track.phase != "done"
+
+
+def _elev_floor(**overrides):
+    values = {
+        "room_id": ROOM_CERES_ELEVATOR,
+        "game_state": GS_ORDINARY,
+        "samus_x": 205,
+        "samus_y": 651,
+        "pose": 17,
+        "facing": FACING_RIGHT,
+        "movement_type": 1,
+        "momentum_x": 2,
+        "speed_flag": 1,
+        "samus_x_sub": 45056,
+    }
+    values.update(overrides)
+    return replace(parse_state(np.zeros(0x2000, dtype=np.uint8), frame=0), **values)
+
+
+def test_ceres_first_pad_ends_with_tas_8787_l() -> None:
+    assert len(CERES_FIRST_TAS_PAD) == 150
+    assert CERES_FIRST_TAS_PAD[141] == ("B", "RIGHT", "L")
+    assert CERES_FIRST_TAS_PAD[142] == ("B", "RIGHT", "L")
+    assert CERES_FIRST_TAS_PAD[143] == ("B", "RIGHT")
+    assert CERES_FIRST_TAS_PAD[148] == ("B", "RIGHT", "L")
+    assert CERES_FIRST_TAS_PAD[149] == ("B", "RIGHT")
+
+
+def test_ceres_first_keeps_l_at_203() -> None:
+    st = _elev_floor(samus_x=203, samus_x_sub=4096)
+    names, track = ceres_first_moonfall_action(
+        st, CeresFirstMoonfallTrack("fall", held=141)
+    )
+    assert names == ("B", "RIGHT", "L")
+    assert track.invert_l is False
+    assert track.held == 142
+
+
+def test_ceres_first_skips_extra_l_at_pose_17_x205() -> None:
+    """TAS 8782 is B+RIGHT at (206, p17). Extra L inverts the 228 pulse."""
+    st = _elev_floor(samus_x=205)
+    names, track = ceres_first_moonfall_action(
+        st, CeresFirstMoonfallTrack("fall", held=142)
+    )
+    assert names == ("B", "RIGHT")
+    assert "L" not in names
+    assert track.invert_l is True
+    assert track.held == 144
+    later = replace(st, samus_x=209)
+    names, track = ceres_first_moonfall_action(later, track)
+    assert names == ("B", "RIGHT", "L")
+    assert track.held == 145
+
+
+def test_ceres_first_l_at_228_after_skip() -> None:
+    st = _elev_floor(samus_x=228, samus_x_sub=8192)
+    names, track = ceres_first_moonfall_action(
+        st, CeresFirstMoonfallTrack("fall", held=148, invert_l=True)
+    )
+    assert names == ("B", "RIGHT", "L")
+    assert track.held == 149
+    at_233 = replace(st, samus_x=233, pose=9, samus_x_sub=0)
+    names, track = ceres_first_moonfall_action(at_233, track)
+    assert names == ("B", "RIGHT")
+    assert "R" not in names
+    assert "L" not in names
+
+
+def test_ceres_first_last_floor_l_on_pose_17() -> None:
+    st = _elev_floor(samus_x=234, pose=17, samus_x_sub=0)
+    names, track = ceres_first_moonfall_action(
+        st, CeresFirstMoonfallTrack("fall", held=149, invert_l=True)
+    )
+    assert names == ("B", "RIGHT", "L")
+    assert "R" not in names
+
+
+def test_ceres_first_does_not_l_every_p17_after_214() -> None:
+    st = _elev_floor(samus_x=218)
+    names, track = ceres_first_moonfall_action(
+        st, CeresFirstMoonfallTrack("fall", held=145, invert_l=True)
+    )
+    assert names == ("B", "RIGHT")
+    assert "L" not in names
+
+
+def test_ceres_first_fade_b_right_then_idle_then_last_r() -> None:
+    door = _elev_floor(game_state=9, samus_x=237, pose=17)
+    names, track = ceres_first_moonfall_action(
+        door, CeresFirstMoonfallTrack("land", held=4)
+    )
+    assert names == ("RIGHT", "B")
+    assert track.phase == "exit"
+    fade = replace(
+        door,
+        game_state=11,
+        room_id=ROOM_CERES_FALLING,
+        samus_x=39,
+        samus_y=139,
+    )
+    names, track = ceres_first_moonfall_action(
+        fade, CeresFirstMoonfallTrack("exit", held=1)
+    )
+    assert names == ()
+    names, track = ceres_first_moonfall_action(
+        fade, CeresFirstMoonfallTrack("exit", held=_CERES_FIRST_DOOR_FADE - 1)
+    )
+    assert names == ("RIGHT", "B", "R")

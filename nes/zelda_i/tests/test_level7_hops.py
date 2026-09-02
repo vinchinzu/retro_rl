@@ -1,4 +1,4 @@
-"""Fail-closed L7 hops: PostLevel6Handoff, bait, Hungry Goriya, Red Candle."""
+"""Fail-closed L7 hops: OverworldHandoff gate, bait, Hungry Goriya, Red Candle."""
 
 from __future__ import annotations
 
@@ -10,15 +10,8 @@ from zelda_i.anchors import SCREEN_LEVEL6_ENTRANCE
 from zelda_i.level7.entry import (
     BAIT_COST,
     BAIT_SHOP_SCREEN_HYP,
-    B_ITEM_WHISTLE,
-    HYPOTHESIZED_POST_L6_EXIT,
-    POST_L6_EXIT_LOADOUT,
-    POST_L6_EXIT_X,
-    POST_L6_EXIT_Y,
-    POST_L6_HEART_CONTAINERS,
+    MEASURED_POST_L6_EXIT,
     POST_L6_TRIFORCE,
-    UNMEASURED_POST_L6_HANDOFF,
-    PostLevel6Handoff,
     make_bait_purchase_controller,
     make_post_l6_overworld_controller,
 )
@@ -27,6 +20,8 @@ from zelda_i.level7.hops import (
     make_entry_to_goriya_controller,
     make_red_candle_controller,
 )
+from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
+from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from retro_harness.nes import nes_idle_action
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -48,7 +43,6 @@ from zelda_i.ram import (
     ADDR_TRIFORCE,
     ADDR_WHISTLE,
     PLAY_MODE,
-    health_byte_for_containers,
     read_snapshot,
 )
 
@@ -80,55 +74,57 @@ def _env(ram: np.ndarray) -> SimpleNamespace:
     return SimpleNamespace(get_ram=lambda: ram)
 
 
-def test_post_l6_exit_loadout_is_l7_ready_without_food() -> None:
-    by_addr = {addr: value for _name, addr, value in POST_L6_EXIT_LOADOUT}
-    assert ADDR_FOOD not in by_addr
-    assert by_addr[ADDR_TRIFORCE] == POST_L6_TRIFORCE
-    assert by_addr[ADDR_WHISTLE] == 1
-    assert by_addr[ADDR_ROD] == 1
-    assert by_addr[ADDR_BOW] == 1
-    assert by_addr[ADDR_ARROWS] == 1
-    assert by_addr[ADDR_CANDLE] == 1
-    assert by_addr[ADDR_RUPEES] >= BAIT_COST
-    assert by_addr[ADDR_HEALTH] == health_byte_for_containers(POST_L6_HEART_CONTAINERS)
-    assert POST_L6_EXIT_X == 120
-    assert POST_L6_EXIT_Y == 221
-    assert ADDR_LINK_X not in by_addr
-    assert ADDR_LINK_Y not in by_addr
-    assert HYPOTHESIZED_POST_L6_EXIT.screen == SCREEN_LEVEL6_ENTRANCE
-    assert HYPOTHESIZED_POST_L6_EXIT.food == 0
-    assert HYPOTHESIZED_POST_L6_EXIT.selected_item == B_ITEM_WHISTLE
-    assert HYPOTHESIZED_POST_L6_EXIT.verified is False
-    assert HYPOTHESIZED_POST_L6_EXIT.route_eligible is False
-    assert HYPOTHESIZED_POST_L6_EXIT.complete() is False
-    # Spine still refuses even though the bait hop table exists.
+def test_measured_post_l6_exit_is_an_unverified_shared_handoff() -> None:
+    h = MEASURED_POST_L6_EXIT
+    assert isinstance(h, OverworldHandoff)
+    assert h.screen == SCREEN_LEVEL6_ENTRANCE
+    assert (h.link_x, h.link_y) == (112, 125)
+    assert h.triforce == POST_L6_TRIFORCE == 0x3F
+    assert h.food == 0
+    assert h.selected_item is None  # not captured this run
+    assert h.verified is False
+    assert h.route_eligible is False
+    assert h.complete() is False
+    # The fixture-live bait prefix is wired in even while the handoff refuses.
     ctl = make_post_l6_overworld_controller()
-    assert ctl.hops == ()
+    assert ctl.hops == POST_L6_TO_BAIT_HOPS
 
 
-def test_unmeasured_post_l6_handoff_refuses_to_move() -> None:
+def test_unmeasured_handoff_refuses_to_move() -> None:
     ram = _ram()
     ctl = make_post_l6_overworld_controller()
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed
     assert not ctl.success
-    assert act.reason == "post_l6_handoff_unmeasured"
+    assert act.reason == "handoff_unmeasured"
     assert list(act.action) == list(nes_idle_action())
-    assert UNMEASURED_POST_L6_HANDOFF.route_eligible is False
-    assert UNMEASURED_POST_L6_HANDOFF.verified is False
-    assert UNMEASURED_POST_L6_HANDOFF.screen is None
+    assert UNMEASURED_HANDOFF.route_eligible is False
+    assert UNMEASURED_HANDOFF.verified is False
+    assert UNMEASURED_HANDOFF.screen is None
     assert ctl.report()["route_eligible"] is False
     assert ctl.report()["writes"] == 0
+
+
+def test_measured_exit_still_refuses_until_verified() -> None:
+    """MEASURED_POST_L6_EXIT.verified is False -> handoff_unmeasured, 1 frame."""
+    ram = _ram(screen=SCREEN_LEVEL6_ENTRANCE, x=112, y=125, triforce=0x3F, rod=1)
+    ctl = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert act.reason == "handoff_unmeasured"
 
 
 def test_recovered_l6_prefix_is_not_an_l7_start() -> None:
     """Play 0x09 (56,109) TF 0x1F Rod=0 is the L6 residual, not L7."""
     ram = _ram(screen=0x09, x=56, y=109, triforce=0x1F, rod=0, bow=1)
-    fake = PostLevel6Handoff(
+    fake = OverworldHandoff(
         screen=0x09,
         link_x=56,
         link_y=109,
+        mode=PLAY_MODE,
+        triforce=POST_L6_TRIFORCE,
         keys=3,
         bombs=8,
         rupees=20,
@@ -139,15 +135,16 @@ def test_recovered_l6_prefix_is_not_an_l7_start() -> None:
         rod=0,
         bow=1,
         arrows=1,
+        candle=1,
         verified=True,
         route_eligible=False,
     )
     assert fake.complete()
-    assert fake.mismatch(read_snapshot(ram), ram) == "post_l6_triforce_mismatch"
+    assert fake.mismatch(read_snapshot(ram), ram) == "handoff_triforce_mismatch"
     assert POST_L6_TRIFORCE == 0x3F
 
 
-def test_measured_handoff_without_hops_still_refuses() -> None:
+def test_verified_handoff_without_hops_still_refuses() -> None:
     ram = _ram(
         screen=0x42,
         x=120,
@@ -158,10 +155,12 @@ def test_measured_handoff_without_hops_still_refuses() -> None:
         whistle=1,
         rupees=60,
     )
-    handoff = PostLevel6Handoff(
+    handoff = OverworldHandoff(
         screen=0x42,
         link_x=120,
         link_y=125,
+        mode=PLAY_MODE,
+        triforce=POST_L6_TRIFORCE,
         keys=3,
         bombs=8,
         rupees=60,
@@ -172,6 +171,7 @@ def test_measured_handoff_without_hops_still_refuses() -> None:
         rod=1,
         bow=1,
         arrows=1,
+        candle=1,
         verified=True,
         evidence="fixture-live",
         route_eligible=False,

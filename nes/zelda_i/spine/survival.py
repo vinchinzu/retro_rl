@@ -58,6 +58,7 @@ from zelda_i.level5.spine import (
     validate_l5_endpoint,
 )
 from zelda_i.level6.spine import L6_STOPS, L6_THROUGH, continue_level6_spine
+from zelda_i.level7.spine import L7_STOPS, L7_THROUGH, continue_level7_spine
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops
@@ -79,7 +80,7 @@ SPINE_THROUGH: tuple[str, ...] = (
     "level2-entry",
     "level2",
     "level3",
-) + _L4_THROUGH + L5_THROUGH + L6_THROUGH
+) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -181,6 +182,15 @@ class SpineRun:
     bombs: dict[str, Any] | None = None
     inventory_assist: dict[str, Any] | None = None
     position_assist: dict[str, Any] | None = None
+    set_state_count: int | None = None
+
+    def apply_state_audit(self, count: int) -> None:
+        """Record measured post-reset ``env.em.set_state`` calls. Fail if any."""
+        self.set_state_count = int(count)
+        if self.set_state_count:
+            self.success = False
+            if self.failed_stage is None:
+                self.failed_stage = "mid_run_state_load"
 
     def _position_assist_from_stages(self) -> dict[str, Any] | None:
         """Prefer an explicit field; else take it from a stage controller report."""
@@ -202,7 +212,12 @@ class SpineRun:
             "through": self.through,
             "continuous_emulator_session": True,
             "tape_kind": "continuous_survival_spine",
-            "mid_run_state_load": False,
+            "set_state_count": self.set_state_count,
+            "mid_run_state_load": (
+                None
+                if self.set_state_count is None
+                else bool(self.set_state_count)
+            ),
             "seamed": False,
             "status_claim": False,
             "boot_policy": dict(BOOT_POLICY),
@@ -232,6 +247,7 @@ class SpineRun:
                 **L4_STOPS,
                 **L5_STOPS,
                 **L6_STOPS,
+                **L7_STOPS,
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -545,7 +561,18 @@ def run_survival_spine(
     )
     if not run.success or through in L5_THROUGH:
         return run
+    # For an L7 target, drive the L6 suffix to the measured post-fanfare OW
+    # return (``level6-exit``); L7 then continues from screen 0x22.
     continue_level6_spine(
+        env,
+        run,
+        through="level6-exit" if through in L7_THROUGH else through,
+        run_stages=_run_stages,
+        **hop_kw,
+    )
+    if not run.success or through in L6_THROUGH:
+        return run
+    continue_level7_spine(
         env,
         run,
         through=through,

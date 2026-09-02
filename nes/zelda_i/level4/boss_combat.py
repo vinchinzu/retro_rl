@@ -166,7 +166,16 @@ class Level4GleeokFightController:
     notes: list[str] = field(default_factory=list)
     log: list[dict[str, Any]] = field(default_factory=list)
     fight_report: dict[str, Any] = field(default_factory=dict)
+    continuous_mode: bool = False
+    state_restores: int = 0
     _approached: bool = field(default=False, repr=False)
+
+    def _restore_state(self, env: Any, state: Any) -> None:
+        """Lab retry primitive; forbidden by construction on the spine."""
+        if self.continuous_mode:
+            raise RuntimeError("continuous_mode forbids emulator state restore")
+        env.em.set_state(state)
+        self.state_restores += 1
 
     def report(self) -> dict[str, Any]:
         return {
@@ -182,6 +191,8 @@ class Level4GleeokFightController:
             "segment": "level4_gleeok_fight_tf",
             "policy": "south_stand",
             "stand_dy": self.stand_dy,
+            "continuous_mode": self.continuous_mode,
+            "state_restores": self.state_restores,
             "target_room": f"0x{ROOM_L4_GLEEOK_13:02x}",
             "tf_room": f"0x{ROOM_L4_TRIFORCE:02x}",
             "tf_bit": f"0x{TF_BIT_L4:02x}",
@@ -526,10 +537,25 @@ class Level4GleeokFightController:
                     phase = "tf_collect"
                     continue
 
+                if self.continuous_mode:
+                    final = room_fields(
+                        read_snapshot(env.get_ram()), env.get_ram()
+                    )
+                    result = {
+                        "ok": False,
+                        "error": "no_tf_exit",
+                        "frames": frame,
+                        "notes": list(self.notes),
+                        "final": final,
+                        "log": self.log[-30:],
+                    }
+                    self.fight_report = result
+                    return result
+
                 st = env.em.get_state()
                 ok_exit = False
                 for ax, ay in UP_APPROACHES:
-                    env.em.set_state(st)
+                    self._restore_state(env, st)
                     pr2 = exit_door(
                         env,
                         assist,
@@ -610,9 +636,9 @@ class Level4GleeokFightController:
 
 
 def make_gleeok_fight_controller(
-    *, tag: str = "l4_gleeok"
+    *, tag: str = "l4_gleeok", continuous_mode: bool = False
 ) -> Level4GleeokFightController:
-    return Level4GleeokFightController(tag=tag)
+    return Level4GleeokFightController(tag=tag, continuous_mode=continuous_mode)
 
 
 __all__ = [

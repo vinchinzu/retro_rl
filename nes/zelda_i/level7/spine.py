@@ -1,7 +1,21 @@
-"""Public Level 7 Survival-spine seam."""
+"""Public Level 7 Survival-spine seam.
+
+Wired into ``zelda_i.spine.survival``: for an L7 ``--through`` target the L6
+suffix is driven to ``level6-exit`` (the measured post-fanfare OW return, screen
+``0x22`` ``(112,125)`` TF ``0x3F``) and L7 continues from there with
+``MEASURED_POST_L6_EXIT`` (a shared ``OverworldHandoff``) as the handoff.
+
+``MEASURED_POST_L6_EXIT.verified`` is ``False`` (``selected_item`` not captured
+that run + the 42R->60R Bait gap), so the post-L6 controller refuses every
+frame and ``--through level7-entry`` runs the whole continuous tape, then stops
+fail-closed at ``level7_post_l6_overworld`` (``handoff_unmeasured``).  The
+fixture-live ``0x22 -> 0x25`` bait prefix is already wired; it starts walking
+the moment the handoff verifies.
+"""
 
 from __future__ import annotations
 
+from zelda_i.level7.entry import MEASURED_POST_L6_EXIT
 from zelda_i.level7.hops import l7_hops
 from zelda_i.spine.hops import attach_hops
 
@@ -27,13 +41,13 @@ def continue_level7_spine(
     assist=None,
     on_frame=None,
 ) -> None:
-    """Attach L7 after the natural L6 endpoint; current hypotheses fail closed."""
+    """Attach L7 after the measured L6 fanfare exit; hypotheses fail closed."""
     if through not in L7_THROUGH:
         raise ValueError(f"unknown Level 7 through target: {through!r}")
     attach_hops(
         env,
         run,
-        l7_hops(env),
+        l7_hops(env, handoff=MEASURED_POST_L6_EXIT),
         through=through,
         run_stages=run_stages,
         room_timer=room_timer,

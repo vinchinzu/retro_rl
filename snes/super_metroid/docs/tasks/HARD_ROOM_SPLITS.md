@@ -1,7 +1,7 @@
 # Hard-room splits — process ideas for future geometry
 
-Session halt lives in `.grok/skills/sm-pure-hop/`. This page is the phase
-ladder only — do not farm window/period knobs past three serial PARTIALs.
+Never halt (`.grok/skills/sm-session/`). This page is the phase ladder only.
+Same miss class: dump a phase pin or replace the trajectory, then keep going.
 
 Reusable playbook when a pure hop stays **PARTIAL** across serial one-knob
 cards (same acceptance checkbox red). First consumer: Bubble → Bat (continuous tip **done** 122304f; techniques in [`BUBBLE_TECHNIQUES.md`](BUBBLE_TECHNIQUES.md)).
@@ -20,7 +20,7 @@ Open a hard-room triage (planner) when **any** of:
 4. Executors keep retuning the same constant class (period, y-window, charge
    frames) without a new trajectory hypothesis.
 
-Do **not** farm more window/period knobs past the stagnation budget.
+Dump a phase pin or replace the trajectory; never halt.
 
 ## Phase ladder (in-room acceptance)
 

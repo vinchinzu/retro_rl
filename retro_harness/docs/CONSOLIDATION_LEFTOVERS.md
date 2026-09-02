@@ -68,6 +68,8 @@ Live architecture: [TOOLSET.md](TOOLSET.md). Hygiene board: [docs/REPO_HYGIENE.m
 2. **`editor/gui_emulator_panel.py`**  
    **partial** — split recording mixin + pure `emulator_loop` / `transcribe` helpers (panel now ~770 LOC). Remaining: Qt session/bridge lifecycle + HUD still panel-local; PlaySession still owns pygame I/O (shares turbo preview helper only).
 
+   **2026-09-01:** leftover glance (`retro_harness.glance`), BK2 LogKey (`retro_harness.bk2`), `format_segment_time` (`hop_timer`), and `WatchDisplay` (`headed`) promoted. Game `LeaveSpec` tables stay local. Harvest HUD stays in `harvest.runtime.watch_display`.
+
 3. **`adventure` capability aliases are Metroid-shaped**  
    Fine for Metroid-family graphs; do not grow Zelda item aliases into the same map without namespacing.
 

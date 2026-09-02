@@ -226,3 +226,57 @@ def test_validate_l5_endpoint_requires_continuous_session() -> None:
             "assist": {"progression_writes": 0, "capacity_writes": 0},
         }
     )
+
+
+def test_spine_run_unmeasured_set_state_is_unknown() -> None:
+    run = SpineRun(through="level4", success=True, boot_frames=1)
+    report = run.report()
+    assert report["set_state_count"] is None
+    assert report["mid_run_state_load"] is None
+    assert report["ok"] is True
+
+
+def test_spine_run_measured_zero_set_state_is_not_a_load() -> None:
+    run = SpineRun(through="level4", success=True, boot_frames=1)
+    run.apply_state_audit(0)
+    report = run.report()
+    assert report["set_state_count"] == 0
+    assert report["mid_run_state_load"] is False
+    assert report["ok"] is True
+
+
+def test_survival_spine_cli_wraps_audited_env() -> None:
+    import inspect
+
+    from zelda_i.scripts import run_survival_spine as cli
+
+    src = inspect.getsource(cli.main)
+    assert "AuditedEnv" in src
+    assert "apply_state_audit" in src
+    assert "zelda_i.survival_spine" in src
+
+
+def test_level7_seam_is_wired_into_the_spine() -> None:
+    import inspect
+
+    from zelda_i.level7.spine import L7_THROUGH
+    from zelda_i.spine import survival
+
+    for target in L7_THROUGH:
+        assert target in SPINE_THROUGH
+        run = SpineRun(through=target, success=True, boot_frames=1)
+        assert run.report()["stop"] is not None
+    # L7 targets drive the L6 suffix to level6-exit, then continue into L7.
+    src = inspect.getsource(survival.run_survival_spine)
+    assert "continue_level7_spine" in src
+    assert '"level6-exit" if through in L7_THROUGH else through' in src
+
+
+def test_spine_run_measured_set_state_fails_the_run() -> None:
+    run = SpineRun(through="level4", success=True, boot_frames=1)
+    run.apply_state_audit(2)
+    report = run.report()
+    assert report["set_state_count"] == 2
+    assert report["mid_run_state_load"] is True
+    assert report["ok"] is False
+    assert report["failed_stage"] == "mid_run_state_load"

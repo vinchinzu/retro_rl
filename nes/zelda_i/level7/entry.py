@@ -1,8 +1,12 @@
 """Fail-closed post-L6 overworld handoff and natural Bait plan.
 
-The start-``0x77`` pond walk stays recon-only.  Spine chapters refuse to move
-until a measured leftover is supplied.  Do not treat OW ``0x22`` or the live
-L6 prefix ``0x09`` as the L7 start.
+The measured L6 fanfare leave is carried as the shared
+``zelda_i.overworld.stitch.OverworldHandoff`` packet (``verified=False`` until
+the L7 owner re-measures it with ``selected_item`` captured).  The spine
+controller walks the fixture-live ``0x22 → 0x25`` bait prefix but only after the
+handoff verifies; every hypothesis past ``0x25`` fails closed.  The natural Bait
+buy refuses until shop geometry is live and Link already holds 60 rupees (no
+``ADDR_FOOD`` / rupee write, ever).
 """
 
 from __future__ import annotations
@@ -16,200 +20,64 @@ from retro_harness.nes import nes_idle_action
 from zelda_i.anchors import (
     SCREEN_LEVEL6_ENTRANCE,
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
-    TF_BIT_L6,
+)
+from zelda_i.level7.overworld import (
+    POST_L6_TO_BAIT_HOPS,
+    at_l6_cave_mouth,
+    bait_24_east_action,
+    bait_32_north_action,
 )
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.stitch import (
+    CUMULATIVE_TF,
+    UNMEASURED_HANDOFF,
+    OverworldHandoff,
+)
 from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOMBS,
-    ADDR_BOOMERANG,
-    ADDR_BOW,
-    ADDR_CANDLE,
     ADDR_FOOD,
-    ADDR_HEALTH,
-    ADDR_HEART_PARTIAL,
-    ADDR_KEYS,
-    ADDR_LADDER,
-    ADDR_MAGIC_BOOMERANG,
-    ADDR_RAFT,
-    ADDR_ROD,
     ADDR_RUPEES,
-    ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    ADDR_WHISTLE,
     PLAY_MODE,
     ZeldaSnapshot,
-    health_byte_for_containers,
     read_u8,
 )
 
-POST_L6_TRIFORCE = 0x3F
-CANDLE_BLUE = 1
+POST_L6_TRIFORCE = CUMULATIVE_TF[6]  # 0x3F
 BAIT_COST = 60
 BAIT_SHOP_SCREEN_HYP = SCREEN_LEVEL7_BAIT_SHOP_HYP  # 0x34
 APPROACH_MAX_FRAMES = 40_000
 BAIT_MAX_FRAMES = 1
-# Live Level5Complete leftover selected=5 with whistle=1.
-B_ITEM_WHISTLE = 5
-# Walkthrough L7 start is 11 hearts; White Sword qualifies, Magical does not.
-POST_L6_HEART_CONTAINERS = 11
+# Save-state name for the bait-walk recon script (scratch/run_bait_from_l6_exit).
 POST_L6_EXIT_STATE = "Level6ExitOverworld"
-POST_L6_EXIT_SOURCE_STATE = "L6Probe_22"
-# Live L6Probe_22 leftover. (112,125) is the cave mouth (mode 16 → L6).
-POST_L6_EXIT_X = 120
-POST_L6_EXIT_Y = 221
-# Food stays 0 so the bait buy is still a natural 60R purchase.
-POST_L6_EXIT_LOADOUT: tuple[tuple[str, int, int], ...] = (
-    ("white_sword", ADDR_SWORD, 2),
-    ("bombs", ADDR_BOMBS, 8),
-    ("wooden_arrows", ADDR_ARROWS, 1),
-    ("bow", ADDR_BOW, 1),
-    ("blue_candle", ADDR_CANDLE, CANDLE_BLUE),
-    ("whistle", ADDR_WHISTLE, 1),
-    ("magic_rod", ADDR_ROD, 1),
-    ("raft", ADDR_RAFT, 1),
-    ("ladder", ADDR_LADDER, 1),
-    ("rupees", ADDR_RUPEES, 80),
-    ("keys", ADDR_KEYS, 3),
-    ("health_11_full", ADDR_HEALTH, health_byte_for_containers(POST_L6_HEART_CONTAINERS)),
-    ("heart_partial", ADDR_HEART_PARTIAL, 0xFF),
-    ("triforce_l1_to_l6", ADDR_TRIFORCE, POST_L6_TRIFORCE),
-    ("wood_boomerang", ADDR_BOOMERANG, 1),
-    ("magic_boomerang", ADDR_MAGIC_BOOMERANG, 1),
-    ("selected_whistle", ADDR_SELECTED_ITEM, B_ITEM_WHISTLE),
-)
 
-
-@dataclass(frozen=True)
-class PostLevel6Handoff:
-    """Measured L6 leave required before L7 chapters may move.
-
-    Every nullable value is part of the eventual handoff packet.  ``verified``
-    stays false until the L6 owner reports the settled post-fanfare leftover.
-    """
-
-    screen: int | None = None
-    link_x: int | None = None
-    link_y: int | None = None
-    keys: int | None = None
-    bombs: int | None = None
-    rupees: int | None = None
-    heart_containers: int | None = None
-    selected_item: int | None = None
-    whistle: int | None = None
-    food: int | None = None
-    rod: int | None = None
-    bow: int | None = None
-    arrows: int | None = None
-    candle: int = CANDLE_BLUE
-    xy_tolerance: int = 4
-    evidence: str = "hypothesis"
-    verified: bool = False
-    route_eligible: bool = False
-
-    def complete(self) -> bool:
-        measured = (
-            self.screen,
-            self.link_x,
-            self.link_y,
-            self.keys,
-            self.bombs,
-            self.rupees,
-            self.heart_containers,
-            self.selected_item,
-            self.whistle,
-            self.food,
-            self.rod,
-            self.bow,
-            self.arrows,
-        )
-        return self.verified and all(value is not None for value in measured)
-
-    def mismatch(self, snap: ZeldaSnapshot, ram: Any) -> str | None:
-        if not self.complete():
-            return "post_l6_handoff_unmeasured"
-        if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
-            return "post_l6_not_settled_overworld"
-        if snap.screen != self.screen:
-            return "post_l6_screen_mismatch"
-        if abs(snap.link_x - int(self.link_x)) > self.xy_tolerance:
-            return "post_l6_x_mismatch"
-        if abs(snap.link_y - int(self.link_y)) > self.xy_tolerance:
-            return "post_l6_y_mismatch"
-        if snap.triforce != POST_L6_TRIFORCE or not (snap.triforce & TF_BIT_L6):
-            return "post_l6_triforce_mismatch"
-        if not snap.health_is_full or snap.heart_containers != self.heart_containers:
-            return "post_l6_health_mismatch"
-        for label, actual, expected in (
-            ("keys", snap.keys, self.keys),
-            ("bombs", snap.bombs, self.bombs),
-            ("rupees", snap.rupees, self.rupees),
-            ("selected_item", read_u8(ram, ADDR_SELECTED_ITEM), self.selected_item),
-            ("whistle", read_u8(ram, ADDR_WHISTLE), self.whistle),
-            ("food", read_u8(ram, ADDR_FOOD), self.food),
-            ("rod", read_u8(ram, ADDR_ROD), self.rod),
-            ("bow", read_u8(ram, ADDR_BOW), self.bow),
-            ("arrows", read_u8(ram, ADDR_ARROWS), self.arrows),
-            ("candle", read_u8(ram, ADDR_CANDLE), self.candle),
-        ):
-            if int(actual) != int(expected):
-                return f"post_l6_{label}_mismatch"
-        if int(read_u8(ram, ADDR_WHISTLE)) < 1:
-            return "post_l6_whistle_required"
-        if int(read_u8(ram, ADDR_ROD)) < 1:
-            return "post_l6_rod_required"
-        if int(read_u8(ram, ADDR_BOW)) < 1:
-            return "post_l6_bow_required"
-        return None
-
-
-UNMEASURED_POST_L6_HANDOFF = PostLevel6Handoff()
-
-# Poke-fixture packet for Level6ExitOverworld. verified stays false so spine
-# chapters still refuse; L6 fanfare leftover remains unmeasured.
-HYPOTHESIZED_POST_L6_EXIT = PostLevel6Handoff(
+# Measured post-L6 fanfare engine return: ``--through level6-exit`` 1/1
+# (recordings/l6_exit_ow.json).  The shard fanfare auto-warps Link to OW 0x22 at
+# the Dragon mouth tile (112,125), mode 5, not transitioning.  Screen 0x22
+# confirms the bait/pond route; the position corrects the old poke fixture's
+# (120,221).  ``verified`` stays False: the L7 owner must re-measure with
+# ``selected_item`` captured and reconcile the 42R -> 60R Bait gap (a documented
+# Survival rupee top-up, mirroring the bomb/key top-ups).
+MEASURED_POST_L6_EXIT = OverworldHandoff(
     screen=SCREEN_LEVEL6_ENTRANCE,
-    link_x=POST_L6_EXIT_X,
-    link_y=POST_L6_EXIT_Y,
-    keys=3,
+    link_x=112,
+    link_y=125,
+    mode=PLAY_MODE,
+    triforce=POST_L6_TRIFORCE,
+    keys=2,
     bombs=8,
-    rupees=80,
-    heart_containers=POST_L6_HEART_CONTAINERS,
-    selected_item=B_ITEM_WHISTLE,
+    rupees=42,
+    heart_containers=8,
+    selected_item=None,  # not captured by spine_final_fields this run
     whistle=1,
     food=0,
     rod=1,
     bow=1,
     arrows=1,
-    candle=CANDLE_BLUE,
-    evidence="hypothesis-poke-fixture",
+    candle=0,
+    evidence="measured-level6-exit-1of1",
     verified=False,
     route_eligible=False,
 )
-
-# Live L6 residual is play 0x09 (56,109) TF 0x1F Rod=0 — not an L7 start.
-CURRENT_L6_PREFIX_IS_NOT_L7_START = True
-
-
-def apply_post_l6_exit_pokes(env: Any) -> list[dict[str, Any]]:
-    """Write the disclosed post-L6 exit loadout. Fixture only; not a route claim."""
-    ram = env.get_ram()
-    writes: list[dict[str, Any]] = []
-    for name, address, value in POST_L6_EXIT_LOADOUT:
-        before = int(ram[address])
-        env.unwrapped.data.memory.assign(int(address), "|u1", int(value) & 0xFF)
-        writes.append(
-            {
-                "field": name,
-                "address": int(address),
-                "address_hex": f"0x{int(address):04X}",
-                "from": before,
-                "to": int(value),
-            }
-        )
-    return writes
 
 
 class ApproachPhase(Enum):
@@ -220,10 +88,17 @@ class ApproachPhase(Enum):
 
 @dataclass
 class PostLevel6OverworldController(OverworldPathController):
-    """Measured L6 leave → bait/pond approach.  Empty hops fail closed."""
+    """Measured L6 leave -> fixture-live bait prefix.  Fails closed at 0x25.
 
-    handoff: PostLevel6Handoff = UNMEASURED_POST_L6_HANDOFF
-    hops: tuple[ScreenHop, ...] = ()
+    Refuses every frame until the shared ``OverworldHandoff`` verifies.  Once it
+    does, walks ``POST_L6_TO_BAIT_HOPS`` (``0x22 -> 0x32 -> 0x33 -> 0x23 ->
+    0x24 -> 0x25``, fixture-live 1/1) and then fails closed — there is no
+    observed route past the ``0x25`` west mouth, and the bait shop ``0x34`` and
+    pond ``0x42`` are still source hypotheses.
+    """
+
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS
     phase: ApproachPhase = ApproachPhase.HOP
     max_frames: int = APPROACH_MAX_FRAMES
     require_sword: bool = True
@@ -246,13 +121,35 @@ class PostLevel6OverworldController(OverworldPathController):
         return self._fail_now("post_l6_path_exhausted_unmeasured")
 
     def _extra_hop_action(
-        self, _snap: ZeldaSnapshot, _hop: ScreenHop
+        self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
+        if hop.target == 0x33:
+            act = bait_32_north_action(snap, swing=self._swing)
+            if act is not None:
+                return act
+        if hop.target == 0x25:
+            act = bait_24_east_action(snap, swing=self._swing)
+            if act is not None:
+                return act
         if self.stuck > self.stuck_threshold:
             return FrameAction(nes_idle_action(), "post_l6_path_stuck_wait")
         return None
 
+    def _reentry_refusal(self, snap: ZeldaSnapshot) -> str | None:
+        """Never walk back into the L6 dungeon mouth."""
+        if snap.level == 6:
+            return "l6_dungeon_enter"
+        if at_l6_cave_mouth(snap):
+            return "l6_cave_mouth"
+        if snap.mode == 16 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
+            return "l6_cave_mouth_enter"
+        if snap.in_cave:
+            return "unexpected_cave"
+        return None
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed:
+            return FrameAction(nes_idle_action(), "failed")
         if not self._handoff_checked:
             if self._env is None:
                 return self._fail_now("entry_controller_env_not_bound")
@@ -263,6 +160,9 @@ class PostLevel6OverworldController(OverworldPathController):
                 return self._fail_now("post_l6_path_unmeasured")
             self._handoff_checked = True
             self.notes.append("post_l6_handoff_accepted")
+        reentry = self._reentry_refusal(snap)
+        if reentry is not None:
+            return self._fail_now(reentry)
         return super().step(snap)
 
     def report(self) -> dict[str, Any]:
@@ -355,8 +255,8 @@ class NaturalBaitPurchaseController:
 
 def make_post_l6_overworld_controller(
     *,
-    handoff: PostLevel6Handoff = UNMEASURED_POST_L6_HANDOFF,
-    hops: tuple[ScreenHop, ...] = (),
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
 ) -> PostLevel6OverworldController:
     return PostLevel6OverworldController(handoff=handoff, hops=hops)
 
@@ -370,25 +270,18 @@ def make_bait_purchase_controller(
 __all__ = [
     "APPROACH_MAX_FRAMES",
     "BAIT_COST",
+    "BAIT_MAX_FRAMES",
     "BAIT_SHOP_SCREEN_HYP",
-    "B_ITEM_WHISTLE",
-    "CANDLE_BLUE",
-    "CURRENT_L6_PREFIX_IS_NOT_L7_START",
-    "HYPOTHESIZED_POST_L6_EXIT",
-    "POST_L6_EXIT_LOADOUT",
-    "POST_L6_EXIT_SOURCE_STATE",
+    "MEASURED_POST_L6_EXIT",
     "POST_L6_EXIT_STATE",
-    "POST_L6_EXIT_X",
-    "POST_L6_EXIT_Y",
-    "POST_L6_HEART_CONTAINERS",
     "POST_L6_TRIFORCE",
-    "UNMEASURED_POST_L6_HANDOFF",
+    "UNMEASURED_HANDOFF",
     "UNVERIFIED_BAIT_PLAN",
+    "ApproachPhase",
     "BaitPurchasePlan",
     "NaturalBaitPurchaseController",
-    "PostLevel6Handoff",
+    "OverworldHandoff",
     "PostLevel6OverworldController",
-    "apply_post_l6_exit_pokes",
     "make_bait_purchase_controller",
     "make_post_l6_overworld_controller",
 ]

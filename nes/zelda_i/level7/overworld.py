@@ -47,18 +47,6 @@ LEVEL7 = 7
 # Source / Data Crystal style: candle 1=blue, 2=red (confirm live).
 CANDLE_RED_PLANNED = 2
 
-# Source-only bait-shop arithmetic.  It is not used by the executable pond
-# controller because live 0x67 is a sealed tree pocket (LEVEL3_ROUTE).
-LEVEL7_BAIT_SHOP_HOPS: tuple[ScreenHop, ...] = (
-    ScreenHop(0x67, "UP"),
-    ScreenHop(0x66, "LEFT"),
-    ScreenHop(0x65, "LEFT"),
-    ScreenHop(0x64, "LEFT"),
-    ScreenHop(0x54, "UP"),
-    ScreenHop(0x44, "UP"),
-    ScreenHop(SCREEN_LEVEL7_BAIT_SHOP_HYP, "UP"),
-)
-
 # Executable pond approach: reuse the live west-forest path through 0x55,
 # join 0x64, then use the source pond suffix directly from 0x54.  Mapping the
 # pond does not require the optional bait-shop detour.
@@ -72,15 +60,6 @@ LEVEL7_POND_APPROACH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x65, "DOWN", align_x=112),
     ScreenHop(0x64, "LEFT", align_y=141),
     ScreenHop(0x54, "UP"),
-)
-
-# From bait shop screen to pond (source).
-LEVEL7_POND_FROM_SHOP_HOPS: tuple[ScreenHop, ...] = (
-    ScreenHop(0x44, "DOWN"),
-    ScreenHop(0x54, "DOWN"),
-    ScreenHop(0x53, "LEFT"),
-    ScreenHop(0x52, "LEFT"),
-    ScreenHop(SCREEN_LEVEL7_POND_HYP, "UP"),
 )
 
 # Post-L6 leftover play 0x22 (120,221) → Armos bait shop 0x34.
@@ -411,15 +390,8 @@ def planning_report() -> dict[str, Any]:
             "bait_shop": hex(SCREEN_LEVEL7_BAIT_SHOP_HYP),
             "pond": hex(SCREEN_LEVEL7_POND_HYP),
         },
-        "bait_shop_hops_from_start": [
-            {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_BAIT_SHOP_HOPS
-        ],
         "bait_shop_hops_from_post_l6": [
             {"target": hex(h.target), "dir": h.direction} for h in POST_L6_TO_BAIT_HOPS
-        ],
-        "pond_hops_from_shop": [
-            {"target": hex(h.target), "dir": h.direction}
-            for h in LEVEL7_POND_FROM_SHOP_HOPS
         ],
         "pond_hops_from_start": [
             {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_POND_HOPS

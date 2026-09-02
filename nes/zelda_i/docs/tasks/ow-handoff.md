@@ -21,7 +21,7 @@ keeps its local dataclass; L7/L9 should consume this shared packet.
 | L3 | **`0x74`** ~(128,125) mode 5, TF `0x07`, raft=1 | L4 **`0x45`** via dock `0x55` | Raft | **verified** leave + mouth |
 | L4 | **`0x45`** island settle 284f; x/y **not packed**, TF `0x0F` | L5 **`0x0B`** | none | **live** leave; mouth verified |
 | L5 | **`0x0B`** settle 510f; x/y **not packed**, TF `0x1F`, Whistle earned | L6 **`0x22`** | none | **live** leave; mouth **verified** (`0x22`) |
-| L6 | **UNMEASURED** — do **not** assume `0x22`. Current spine tip is L6 **play `0x09` (56,109)** TF=`0x1F` keys=3 bombs=8 Bow=1 Rod=0 — **not** a post-fanfare leave | L7 pond source **`0x42`**; bait shop source **`0x34`**; live approach through **`0x53` (224,173)** LEFT-inland-before-DOWN | **Whistle** to drain; **Bait** inside (Hungry Goriya) | leave **UNMEASURED**; mouth **hypothesis**; 0x53 leftover **live fail** |
+| L6 | **`0x22` `(112,125)`** mode 5, TF `0x3F`, keys 2 bombs 8 rupees 42 Rod 1 Bow 1 arrows 1, 8 HC full — **measured** post-fanfare engine return (`--through level6-exit` 1/1, `l6_exit_ow.json`). `(112,125)` = the Dragon mouth tile; matches L1/L2/L3 pattern. | L7 pond source **`0x42`**; bait shop source **`0x34`**; live approach through **`0x53` (224,173)** LEFT-inland-before-DOWN | **Whistle** to drain; **Bait** inside (Hungry Goriya) | leave **measured**; mouth **hypothesis**; 0x53 leftover **live fail** |
 | L7 | **UNMEASURED** (expect TF `0x7F`, Candle 2, Whistle retained) | L8 bush **`0x6D`** from **`0x5D` south x≈48** | **Candle 2** (from L7). Blue Candle shop `0x5E` is fallback-only | leave **UNMEASURED**; bush screen **verified**; burn **unsolved** |
 | L8 | **UNMEASURED** (expect TF `0xFF`, Magic Key, bombs) | L9 Spectacle Rock **`0x05`** bomb left rock | bombs; TF `0xFF`; Magic Key | leave **UNMEASURED**; mouth **source / fixture-live** (entry room `0x76`); not natural post-L8 |
 
@@ -45,14 +45,15 @@ Later OW shortcuts (needed, **do not grant**):
 - L1–L3 post-fanfare OW poses and mouths (`0x37`, `0x3C`, `0x74`).
 - L4 island mouth `0x45` / dock `0x55`; L4 settle onto `0x45`.
 - L5 mouth `0x0B` / Lost Hills `0x1B`; L5 settle onto `0x0B`.
-- L6 entrance **`0x22`** verified (`l6_entry_continuous_v2`).
+- L6 entrance **`0x22`** verified (`l6_entry_continuous_v2`); L6 **exit**
+  `0x22` `(112,125)` measured (`--through level6-exit`, `l6_exit_ow.json`).
 - L7 pond **approach leftover** `0x53` (224,173) — live fail, not pond.
 - L8 bush pocket **`0x6D`** (enter only from `0x5D` south @ x≈48). Blue Candle shop `0x5E` live; not on the Red-Candle mainline.
 - L9 Spectacle Rock **`0x05`** reached via authentic OW scroll + bomb in fixture recon; entry room `0x76`. Fixture inventory. `route_eligible=false`.
 
 **Source / hypothesis / UNMEASURED:**
 
-- Post-L6 / post-L7 / post-L8 fanfare leftovers.
+- Post-L7 / post-L8 fanfare leftovers. (Post-L6 **measured** — see table.)
 - L7 pond `0x42` drain geometry and entry room.
 - L7 bait shop `0x34` Armos (top-middle staircase) — **TBD live**.
 - L8 bush burn tile / facing / `ADDR_CANDLE_USED` → mode-16 mouth.
@@ -88,9 +89,15 @@ Did not add a knob to `graph.py` (already 530). Did not grow `path.py`.
 
 ## Dead beliefs
 
-- Post-L6 leftover is OW **`0x22`**. Historical L6 **entrance** is 0x22;
-  post-fanfare leave is **UNMEASURED**. Overnight-spine “first L7 hop from
-  0x22” is dead until L6 measures it.
+- ~~Post-L6 leftover is OW `0x22` but UNMEASURED~~ — **measured 2026-09-02**:
+  `--through level6-exit` 1/1 returns Link to **`0x22` `(112,125)`** mode 5
+  TF `0x3F`. The screen `0x22` assumption was right; the position is the
+  Dragon mouth tile, **not** the `(120,221)` south edge the L7 fixture
+  guessed. "First L7 hop from `0x22`" is now unblocked.
+- **`(112,125)` on `0x22` is NOT a dead spot.** It is the real fanfare
+  return (same as L1 `0x37` ~(112,125)). The "mode 16 → dungeon" trap only
+  fires on a fresh UP into the mouth, not on emerging onto it; the bait
+  prefix's first move (DOWN → `0x32`) walks away from it.
 - Current L6 play **`0x09` (56,109)** is the post-L6 leave. It is the
   interior Survival tip (`rr-tne2`). Not a fanfare leftover.
 - Direct **DOWN** from `0x53` (224,173) toward y≈189 reaches `0x52`. Live
@@ -147,8 +154,8 @@ clears from the real predecessor.
 
 | Owner | Measure | Then |
 |-------|---------|------|
-| **L6** | Post-TF-`0x20` fanfare OW leftover. Do **not** retune from play `0x09` (56,109). Do **not** assume screen `0x22`. | Hand the packet to L7. |
-| **L7** | Consume L6 packet. Do not start from `0x77`. Pond controller owns drain/entry. Use `inland_then_descend` on 0x53; do not copy start-based pond hops as the cumulative path. After shard, measure post-L7 leave (expect TF `0x7F`, Candle 2, Food consumed). | Hand the packet to L8. Map bait shop `0x34` if still TBD. |
+| **L6** | Post-TF-`0x20` fanfare OW leftover **measured**: `0x22` `(112,125)` mode 5 TF `0x3F` keys 2 bombs 8 rupees 42 Rod 1 Bow 1 arrows 1, 8 HC full (`--through level6-exit`, `l6_exit_ow.json`). Packet = `MEASURED_POST_L6_EXIT` in `level7/entry.py` (`verified=False` until L7 owner attaches). | Hand the packet to L7. |
+| **L7** | Seam **wired** (`continue_level7_spine` in `spine/survival.py`): `--through level7-entry` runs power-on → measured L6 fanfare exit → fails closed at `level7_post_l6_overworld`. `MEASURED_POST_L6_EXIT` is the handoff (`verified=False`). To go green: capture `selected_item`, flip `verified=True`, close the 42R→60R Bait gap, supply observed OW hops `0x22 → pond 0x42` + drain/entry room. Do not start from `0x77`. Use `inland_then_descend` on 0x53. After shard, measure post-L7 leave (expect TF `0x7F`, Candle 2, Food consumed). | Hand the packet to L8. Map bait shop `0x34` if still TBD. |
 | **L8** | Consume L7 packet into `PostLevel7Handoff` (copy fields; keep local type). Reach `0x6D` from that leftover through live `0x5C`. Solve burn tile. After shard, measure post-L8 leave (expect TF `0xFF`, Magic Key). | Hand the packet to L9. |
 | **L9** | Consume L8 packet. Walk to `0x05`, bomb left rock with natural bombs, settle room `0x76` with TF `0xFF`. Fixture `*ReconFixture` stays `route_eligible=false` until recomposed. | |
 

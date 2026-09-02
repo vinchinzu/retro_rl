@@ -1,8 +1,7 @@
-"""Extract action sequences from bk2 recordings with correct button mapping.
+"""Extract action sequences from bk2 recordings.
 
-BK2 files are zip archives containing an 'Input Log.txt'. The SNES button
-order in BK2 is reversed from the env logical order. This module handles
-the conversion and maps raw buttons to the closest action in a given table.
+SNES movies go through :func:`retro_harness.bk2.parse_bk2` (LogKey, then
+legacy reverse). Explicit ``bk2_to_env`` maps stay for NES 9-button files.
 """
 
 from __future__ import annotations
@@ -11,35 +10,33 @@ import json
 import zipfile
 from pathlib import Path
 
+from retro_harness.bk2 import LEGACY_BK2_TO_ENV, parse_bk2
 from retro_harness.platformer.actions import (
     NUM_BUTTONS,
     DEFAULT_PLATFORMER_ACTIONS,
     buttons_to_action_index,
 )
 
-# Default BK2-to-ENV mapping: SNES standard reversed
-# BK2 hardware:  [R, L, X, A, Right, Left, Down, Up, Start, Select, Y, B]
-# ENV logical:   [B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R]
-DEFAULT_BK2_TO_ENV = [11 - i for i in range(12)]
+# Fallback when a caller still passes no LogKey and no map (legacy reverse).
+DEFAULT_BK2_TO_ENV = list(LEGACY_BK2_TO_ENV)
 
 
 def extract_raw_actions_from_bk2(
     bk2_path: Path,
     bk2_to_env: list[int] | None = None,
 ) -> list[list[int]]:
-    """Extract raw 12-element button arrays from a bk2 file.
+    """Extract raw button arrays from a bk2 file.
 
-    Args:
-        bk2_path: Path to the .bk2 recording file.
-        bk2_to_env: Button index mapping. Defaults to SNES standard.
-
-    Returns:
-        List of frames, each a 12-element button array in env order.
+    ``bk2_to_env is None`` (the SNES default) reads the LogKey, then falls
+    back to the legacy reversed hardware order. Pass an explicit map for
+    NES 9-button movies that are not SNES-12 LogKey.
     """
-    mapping = bk2_to_env or DEFAULT_BK2_TO_ENV
     bk2_path = Path(bk2_path)
-    raw_frames: list[list[int]] = []
+    if bk2_to_env is None:
+        return parse_bk2(bk2_path).frames
 
+    mapping = bk2_to_env
+    raw_frames: list[list[int]] = []
     with zipfile.ZipFile(bk2_path, "r") as zf:
         with zf.open("Input Log.txt") as f:
             lines = f.read().decode("utf-8").splitlines()
@@ -53,18 +50,18 @@ def extract_raw_actions_from_bk2(
         if len(groups) < 2:
             continue
 
-        # P1 buttons are in group index 1 (12 chars)
         p1_chars = groups[1] if len(groups) > 1 else ""
-        if len(p1_chars) < NUM_BUTTONS:
+        width = min(len(mapping), len(p1_chars))
+        if width == 0:
             continue
 
         env_action = [0] * NUM_BUTTONS
-        for bk2_idx in range(NUM_BUTTONS):
-            char = p1_chars[bk2_idx]
-            pressed = char != "."
+        for bk2_idx in range(width):
+            if p1_chars[bk2_idx] == ".":
+                continue
             env_idx = mapping[bk2_idx]
-            env_action[env_idx] = 1 if pressed else 0
-
+            if 0 <= env_idx < NUM_BUTTONS:
+                env_action[env_idx] = 1
         raw_frames.append(env_action)
 
     return raw_frames

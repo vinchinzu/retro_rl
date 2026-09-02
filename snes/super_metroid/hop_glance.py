@@ -9,6 +9,13 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from retro_harness.glance import (
+    LeaveMiss as _HarnessLeaveMiss,
+    band_miss,
+    grade_report as _grade_report,
+    parse_int,
+    xy_of,
+)
 from super_metroid.leave_specs import LeaveSpec
 from super_metroid.routes.controller_common import MORPH_POSES
 
@@ -34,12 +41,8 @@ _POSE_CLASS = {
 }
 
 
-class LeaveMiss(RuntimeError):
-    """Hop leave failed. Next agent boots ``.leftover`` (the still), not the pin."""
-
-    hop_id: str
-    leftover: dict[str, Any]
-    misses: list[str]
+class LeaveMiss(_HarnessLeaveMiss):
+    """SM leftover miss with room-label wording."""
 
     def __init__(
         self,
@@ -50,24 +53,19 @@ class LeaveMiss(RuntimeError):
         room_label: str | None = None,
         to_room: int | None = None,
     ) -> None:
-        self.hop_id = hop_id
-        self.leftover = dict(leftover)
-        self.misses = list(misses)
         super().__init__(
-            _leave_miss_message(
-                hop_id, self.leftover, self.misses, room_label=room_label, to_room=to_room
-            )
+            hop_id,
+            leftover,
+            misses,
+            message=_leave_miss_message(
+                hop_id, leftover, misses, room_label=room_label, to_room=to_room
+            ),
         )
 
 
 def parse_room(value: Any) -> int:
     """Accept ``0xCD13``, ``'0xcd13'``, or int."""
-    if isinstance(value, int):
-        return value
-    text = str(value).strip().lower()
-    if text.startswith("0x"):
-        return int(text, 16)
-    return int(text)
+    return parse_int(value)
 
 
 def pose_class(pose: int) -> str:
@@ -80,13 +78,6 @@ def pose_class(pose: int) -> str:
     if p in AIR_POSES:
         return "air"
     return "other"
-
-
-def _xy(final: Mapping[str, Any]) -> tuple[int, int]:
-    if "xy" in final and final["xy"] is not None:
-        pair = list(final["xy"])
-        return int(pair[0]), int(pair[1])
-    return int(final["x"]), int(final["y"])
 
 
 def _int_attr(state: Any, *names: str, default: int = 0) -> int:
@@ -170,7 +161,7 @@ def _leave_miss_message(
         label = room_label or hop_id
         bits.append(f"expected {label} 0x{to_room:04X}, got 0x{got:04X}")
     try:
-        x, y = _xy(leftover)
+        x, y = xy_of(leftover)
         xy_text = f"[{x}, {y}]"
     except (KeyError, TypeError, ValueError):
         xy_text = str(leftover.get("xy"))
@@ -188,11 +179,13 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     room = parse_room(final.get("room", final.get("room_id", 0)))
     if room != spec.room:
         misses.append(f"room 0x{room:04X} != 0x{spec.room:04X}")
-    x, y = _xy(final)
-    if not (spec.x[0] <= x <= spec.x[1]):
-        misses.append(f"x={x} not in [{spec.x[0]}, {spec.x[1]}]")
-    if not (spec.y[0] <= y <= spec.y[1]):
-        misses.append(f"y={y} not in [{spec.y[0]}, {spec.y[1]}]")
+    x, y = xy_of(final)
+    x_miss = band_miss("x", x, spec.x)
+    if x_miss:
+        misses.append(x_miss)
+    y_miss = band_miss("y", y, spec.y)
+    if y_miss:
+        misses.append(y_miss)
     pose = int(final.get("pose", -1))
     allowed = _POSE_CLASS.get(spec.pose_class)
     if allowed is not None and pose not in allowed:
@@ -219,28 +212,18 @@ def grade_final(final: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
 
 def grade_report(report: Mapping[str, Any], spec: LeaveSpec) -> list[str]:
     """Grade a dual/probe JSON. Both runs must glance-pass when present."""
-    misses: list[str] = []
-    if report.get("success") is False:
-        misses.append("success is false")
-    runs = list(report.get("runs") or ())
-    if not runs:
-        final = report.get("final")
-        if not isinstance(final, Mapping):
-            return misses + ["missing final"]
-        return misses + grade_final(final, spec)
-    for i, run in enumerate(runs, start=1):
-        if not isinstance(run, Mapping):
-            misses.append(f"run {i} not an object")
-            continue
-        if run.get("success") is False:
-            misses.append(f"run {i} success is false")
-        final = run.get("final")
-        if not isinstance(final, Mapping):
-            misses.append(f"run {i} missing final")
-            continue
+
+    def prepare_final(
+        final: Mapping[str, Any], run: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
         if spec.boss_bit is not None and "boss" not in final and "boss" in run:
-            final = dict(final)
-            final["boss"] = run["boss"]
-        for reason in grade_final(final, spec):
-            misses.append(f"run {i}: {reason}")
-    return misses
+            merged = dict(final)
+            merged["boss"] = run["boss"]
+            return merged
+        return final
+
+    return _grade_report(
+        report,
+        lambda final: grade_final(final, spec),
+        prepare_final=prepare_final,
+    )

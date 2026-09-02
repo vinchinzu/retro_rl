@@ -27,6 +27,11 @@ game/ RAM + maps + policy
 | Point-and-click cursor | `retro_harness.cursor` |
 | Video capture + showcase footer | `retro_harness.video` |
 | Human task JSON + trace analysis | `retro_harness.task_recording` |
+| Leftover glance (still dict, dual-run JSON) | `retro_harness.glance` |
+| Hop settle/leave timer | `retro_harness.hop_timer` |
+| Approx residual lattice R(τ) | `retro_harness.residual` |
+| Next-frame claim grammar | `retro_harness.predict` |
+| BizHawk BK2 LogKey parser | `retro_harness.bk2` |
 | Route guide polyline overlay | `retro_harness.path_overlay` |
 | Platformer optimization | `retro_harness.platformer` |
 | Fighting-game env / PPO | `retro_harness.fighters` |
@@ -52,6 +57,14 @@ specific submodule for new imports.
 - `env` owns integration/state paths, `GameSpec`, and shared ROM zip setup.
 - `ram_state` owns typed readers, schemas, watchers, normalized `GameState`,
   and differential RAM discovery.
+- `glance` owns leftover still grading: `parse_int`, xy/int bands,
+  dual-run `grade_report`. Game `LeaveSpec` tables and field names stay local.
+- `hop_timer` owns settle → leave → complete bookkeeping and
+  `format_segment_time` (60 fps play clock; games may overwrite `clock`).
+- `bk2` owns BizHawk LogKey parsing. `platformer.bk2_extract` maps frames onto
+  an action table; NES packs still pass an explicit 9-button `bk2_to_env`.
+- `headed` owns `--headed`, speed/TAB, `WatchDisplay`, and `fast_env_step`.
+  Game HUD callbacks stay local.
 - `bot_runner` owns Task autopilot wrappers **and** minimal behavior-tree
   nodes / stuck detection used by scripted clears.
 - `video` owns ffmpeg capture, button footers, and footer-driven
