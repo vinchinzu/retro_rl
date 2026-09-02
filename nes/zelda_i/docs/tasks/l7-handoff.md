@@ -1,3 +1,26 @@
+# L7 sitting leftover (rr-8t4.2, 2026-09-02)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
+`in_progress`. Residual is this file, not `rr-tne2-residual.md`.
+
+**Pin:** `Level7Entrance` — L7 play `0x79` `(120,205)` south mouth, mode 5,
+whistle=1 (poked), food=0, TF=0, keys=0, bombs=0, 3 HC. Not the L6-leave
+packet. Do not start at Hungry Goriya. Do not poke Food/Whistle/doors/TF.
+
+**This sitting leftover:** first live door from `Level7Entrance` is green
+(north OPEN, 251f). Dest `$EB=0x69` `(120,205)` south mouth, mode 5, deaths=0,
+`progression_writes=capacity_writes=0`. Object `0x05` goriya (not Moldorm
+`0x41`) — dead: N path is Moldorms. Graph N-path room `0x701` name
+`entry_north_goriya` ram_id=`0x69` `fixture-live` `route_eligible=false`.
+Live `0x69` exits: south backtrack to entry; east present/shut
+(`KILL_CLEAR`, dest `None`); **no north exit** (sealed wall — do not walk
+UP). Policy: `north_door_79_step` / `EntryNorthDoorController`. Do not poke
+the shut east door. Hungry Goriya still needs Food. Pond `missing_evidence`
+remains natural-whistle drain from the L6 leave (`rr-8t4.4`).
+`preferred_path(ENTRY, MAP)` is None until `0x69` east dest is live.
+
+---
+
 # L7 Wave A handoff (copy for integrator)
 
 Did not STATUS-promote. Did not edit `STATUS.md`. `route_eligible=false`
@@ -164,24 +187,27 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 ## L7-B — entry through Red Candle
 
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
-- **evidence label:** **fixture-live entry pin**; interior past `0x79` still hypothesis
+- **evidence label:** **fixture-live entry pin + north dest `0x69`**; rooms past `0x69` still hypothesis
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
   Hungry Goriya still needs Food; isolate with a Food poke or wait for `rr-8t4.4`.
 - **required:** Food ≥1 (Hungry Goriya), Whistle, bombs for wall skips, keys
   for three locks (skip fifth via bombs)
 - **stages / factories:**
-  1. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
+  1. `level7_entry_first_door` — `make_entry_first_door_controller()`
+     (live north OPEN → `$EB=0x69`; `route_eligible=false`)
+  2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
-  2. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
-  3. `level7_red_candle_pickup` — `make_red_candle_controller()`
+  3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
+  4. `level7_red_candle_pickup` — `make_red_candle_controller()`
      (`ADDR_CANDLE` 1→2 natural; room unobserved)
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
 - **expected deltas:** Food 1→0 at Hungry Goriya; Candle 1→2 at cellar.
   Ledger hyp net (dungeon): keys +1+1−1−1+1−1, bombs several −1 wall skips.
   Prefer bomb north of Map over locked east (fifth lock).
-- **dead beliefs:** fifth lock required; source RAM room ids as stop specs.
+- **dead beliefs:** fifth lock required; source RAM room ids as stop specs;
+  N path is Moldorms (live dest `0x69` is goriya `0x05`).
 - **fixture:** none. `route_eligible=false`.
 - **public target:** **`level7-red-candle`**.
 
