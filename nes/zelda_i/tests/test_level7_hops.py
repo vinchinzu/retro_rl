@@ -74,18 +74,41 @@ def _env(ram: np.ndarray) -> SimpleNamespace:
     return SimpleNamespace(get_ram=lambda: ram)
 
 
-def test_measured_post_l6_exit_is_an_unverified_shared_handoff() -> None:
+def _measured_leave_ram() -> np.ndarray:
+    """RAM matching MEASURED_POST_L6_EXIT byte-for-byte (l7p1_l6exit.json)."""
+    return _ram(
+        screen=SCREEN_LEVEL6_ENTRANCE,
+        x=112,
+        y=125,
+        triforce=0x3F,
+        keys=2,
+        bombs=8,
+        arrows=1,
+        health=0x77,  # 8 containers, full
+        whistle=1,
+        food=0,
+        rod=1,
+        bow=1,
+        candle=0,
+        rupees=42,
+        selected=2,
+    )
+
+
+def test_measured_post_l6_exit_is_a_verified_shared_handoff() -> None:
     h = MEASURED_POST_L6_EXIT
     assert isinstance(h, OverworldHandoff)
     assert h.screen == SCREEN_LEVEL6_ENTRANCE
     assert (h.link_x, h.link_y) == (112, 125)
     assert h.triforce == POST_L6_TRIFORCE == 0x3F
     assert h.food == 0
-    assert h.selected_item is None  # not captured this run
-    assert h.verified is False
-    assert h.route_eligible is False
-    assert h.complete() is False
-    # The fixture-live bait prefix is wired in even while the handoff refuses.
+    assert h.selected_item == 2  # arrows, from the Gohma kill
+    assert h.verified is True
+    assert h.route_eligible is False  # pond/shop route past 0x25 still unobserved
+    assert h.complete() is True
+    ram = _measured_leave_ram()
+    assert h.mismatch(read_snapshot(ram), ram) is None
+    # The fixture-live bait prefix is wired in as the default hops.
     ctl = make_post_l6_overworld_controller()
     assert ctl.hops == POST_L6_TO_BAIT_HOPS
 
@@ -106,14 +129,21 @@ def test_unmeasured_handoff_refuses_to_move() -> None:
     assert ctl.report()["writes"] == 0
 
 
-def test_measured_exit_still_refuses_until_verified() -> None:
-    """MEASURED_POST_L6_EXIT.verified is False -> handoff_unmeasured, 1 frame."""
-    ram = _ram(screen=SCREEN_LEVEL6_ENTRANCE, x=112, y=125, triforce=0x3F, rod=1)
+def test_measured_exit_verifies_and_does_not_refuse_on_the_mouth_tile() -> None:
+    """The measured leave stands on the 0x22 mouth tile; re-entry refusal only
+    arms after Link steps off it, so frame 1 walks (does not fail closed)."""
+    ram = _measured_leave_ram()
     ctl = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert act.reason != "l6_cave_mouth"
+    assert "post_l6_handoff_accepted" in ctl.notes
+    # Once off the mouth, walking back onto it is refused.
+    ctl._left_mouth = True
+    act = ctl.step(read_snapshot(ram))
     assert ctl.failed
-    assert act.reason == "handoff_unmeasured"
+    assert act.reason == "l6_cave_mouth_reentry"
 
 
 def test_recovered_l6_prefix_is_not_an_l7_start() -> None:

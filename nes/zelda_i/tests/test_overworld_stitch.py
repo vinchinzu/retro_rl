@@ -157,9 +157,12 @@ def test_mouth_table_l1_leave_through_l9_enter() -> None:
     assert by_to[6].mouth_screen == 0x22
     assert by_to[6].status == "verified"
     assert by_to[7].mouth_screen == 0x42
-    assert by_to[7].status == "UNMEASURED"
-    assert "UNMEASURED" in by_to[7].notes
+    # L6->L7 leave is measured + verified (Phase 1); mouth/pond still hypothesis.
+    assert by_to[7].status == "measured leave / mouth+pond hypothesis"
+    assert "MEASURED" in by_to[7].notes
     assert "0x22" in by_to[7].notes
+    assert by_to[7].leave.verified is False  # doc row, not the live packet
+    assert by_to[7].leave.evidence == "measured"
     assert by_to[7].enter_items == ("whistle",)
     assert by_to[8].mouth_screen == 0x6D
     assert "candle2" in by_to[8].enter_items

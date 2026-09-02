@@ -40,7 +40,7 @@ telemetry block in the run report.
 The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 `zelda_i.route.chain.run_controller_stage` / probe loops—not scattered policy writes.
 
-### Owned inventory counts (bombs / keys) — Survival route-development shortcut
+### Owned inventory counts (bombs / keys / rupees) — Survival route-development shortcut
 
 Opened 2026-08-15 so the continuous spine can open L2 bomb walls (power-on
 entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass. Expanded
@@ -49,6 +49,11 @@ bomb gates through the assisted full-game clear while route experience and
 reusable skills are still being built and refactored.
 The spine applies this at L2 entry, again before `SPINE_BOMB_RETOPUP`
 stages, and at the natural L3 Raft boundary before the bomb-heavy boss suffix.
+Extended 2026-09-02 to the **rupee count** for the L7 Bait buy
+(`SPINE_L7_RUPEE_RETOPUP`, applied before `level7_bait_purchase`): the measured
+post-L6 leave carries 42R and Bait costs 60R, so the owned rupee count is
+topped to 60 — mirroring the bomb/key top-ups. A natural overworld rupee farm
+is a separate bead.
 **Not Clean.** Strip or replace with farms during the later resource pass; do
 not treat a top-up tape as natural inventory.
 
@@ -58,10 +63,11 @@ Allowed fields only:
 |-------|--------------------|------|
 | bombs | `$0658` / `bombs` | Count top-up at a verified route bomb gate, through the assisted full-game clear. Never write `max_bombs` (`$067C`). |
 | keys | `$066E` / `keys` | Count top-up of the already-used key item. |
+| rupees | `$066D` / `rupees` | Count top-up to a verified shop cost (L7 Bait 60R). Never grants an item. |
 | selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
 
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
-/ `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
+/ `poke_keys` / `poke_rupees`). `progression_writes` and `capacity_writes` stay 0.
 
 ### One-room Link position — L6 0x3A stairs (operator exception, 2026-08-25)
 

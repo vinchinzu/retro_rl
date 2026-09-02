@@ -50,13 +50,20 @@ BAIT_MAX_FRAMES = 1
 # Save-state name for the bait-walk recon script (scratch/run_bait_from_l6_exit).
 POST_L6_EXIT_STATE = "Level6ExitOverworld"
 
-# Measured post-L6 fanfare engine return: ``--through level6-exit`` 1/1
-# (recordings/l6_exit_ow.json).  The shard fanfare auto-warps Link to OW 0x22 at
-# the Dragon mouth tile (112,125), mode 5, not transitioning.  Screen 0x22
-# confirms the bait/pond route; the position corrects the old poke fixture's
-# (120,221).  ``verified`` stays False: the L7 owner must re-measure with
-# ``selected_item`` captured and reconcile the 42R -> 60R Bait gap (a documented
-# Survival rupee top-up, mirroring the bomb/key top-ups).
+# Measured post-L6 fanfare engine return: ``--through level6-exit`` 2/2
+# (recordings/l6_exit_ow.json 2026-09-02, recordings/l7p1_l6exit.json 2026-09-02).
+# The shard fanfare auto-warps Link to OW 0x22 at the Dragon mouth tile
+# (112,125), mode 5, not transitioning.  Both runs agree byte-for-byte on every
+# measured field; the second run additionally captured the B-slot / Whistle /
+# Food / Candle bytes (``spine_final_fields`` now takes ``ram``).
+#
+# ``verified=True``: every field below is the live settled RAM at the frame
+# ``level7_post_l6_overworld`` begins.  ``route_eligible`` stays False — the
+# post-L6 controller may now walk the fixture-live 0x22->0x25 prefix, but the
+# pond 0x42 / bait shop 0x34 route past it is still unobserved.  The 42R -> 60R
+# Bait gap is closed downstream by a documented Survival rupee top-up
+# (``SPINE_L7_RUPEE_RETOPUP``), mirroring the bomb/key top-ups; a natural OW
+# farm is a separate bead.
 MEASURED_POST_L6_EXIT = OverworldHandoff(
     screen=SCREEN_LEVEL6_ENTRANCE,
     link_x=112,
@@ -67,15 +74,15 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
     bombs=8,
     rupees=42,
     heart_containers=8,
-    selected_item=None,  # not captured by spine_final_fields this run
+    selected_item=2,  # arrows still selected from the Gohma kill
     whistle=1,
     food=0,
     rod=1,
     bow=1,
     arrows=1,
     candle=0,
-    evidence="measured-level6-exit-1of1",
-    verified=False,
+    evidence="measured-level6-exit-2of2",
+    verified=True,
     route_eligible=False,
 )
 
@@ -104,6 +111,9 @@ class PostLevel6OverworldController(OverworldPathController):
     require_sword: bool = True
     _env: Any = field(default=None, init=False, repr=False)
     _handoff_checked: bool = field(default=False, init=False, repr=False)
+    # The measured L6 leave *is* the 0x22 cave-mouth tile (112,125).  Re-entry
+    # refusal only arms once Link has stepped off it (first hop is DOWN, away).
+    _left_mouth: bool = field(default=False, init=False, repr=False)
 
     @property
     def failed(self) -> bool:
@@ -136,15 +146,21 @@ class PostLevel6OverworldController(OverworldPathController):
         return None
 
     def _reentry_refusal(self, snap: ZeldaSnapshot) -> str | None:
-        """Never walk back into the L6 dungeon mouth."""
+        """Never walk back into the L6 dungeon mouth.
+
+        The measured leave stands *on* the mouth tile, so the position check
+        only arms after Link has stepped off it once (``_left_mouth``).
+        """
         if snap.level == 6:
             return "l6_dungeon_enter"
-        if at_l6_cave_mouth(snap):
-            return "l6_cave_mouth"
         if snap.mode == 16 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
             return "l6_cave_mouth_enter"
         if snap.in_cave:
             return "unexpected_cave"
+        if not at_l6_cave_mouth(snap):
+            self._left_mouth = True
+        elif self._left_mouth:
+            return "l6_cave_mouth_reentry"
         return None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:

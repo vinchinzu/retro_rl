@@ -60,7 +60,16 @@ from zelda_i.level5.spine import (
 from zelda_i.level6.spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level7.spine import L7_STOPS, L7_THROUGH, continue_level7_spine
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import (
+    ADDR_CANDLE,
+    ADDR_FOOD,
+    ADDR_SELECTED_ITEM,
+    ADDR_WHISTLE,
+    PLAY_MODE,
+    ZeldaSnapshot,
+    read_snapshot,
+    read_u8,
+)
 from zelda_i.spine.hops import SpineHop, attach_hops
 
 BOOT_POLICY = {
@@ -144,9 +153,14 @@ def level2_entry_stages():
     )
 
 
-def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
-    """End-of-run snapshot. Includes bombs so the farm bead can measure inventory."""
-    return {
+def spine_final_fields(snap: ZeldaSnapshot, ram: Any = None) -> dict[str, Any]:
+    """End-of-run snapshot. Includes bombs so the farm bead can measure inventory.
+
+    Pass ``ram`` to also capture the B-slot / Whistle / Food / Candle bytes and
+    the container count — the fields an ``OverworldHandoff`` leave packet needs
+    that ``ZeldaSnapshot`` does not carry.
+    """
+    fields = {
         "mode": snap.mode,
         "level": snap.level,
         "room": snap.screen,
@@ -162,6 +176,18 @@ def spine_final_fields(snap: ZeldaSnapshot) -> dict[str, Any]:
         "bow": int(getattr(snap, "bow", 0)),
         "arrows": int(getattr(snap, "arrows", 0)),
     }
+    if ram is not None:
+        fields.update(
+            {
+                "selected_item": read_u8(ram, ADDR_SELECTED_ITEM),
+                "whistle": read_u8(ram, ADDR_WHISTLE),
+                "food": read_u8(ram, ADDR_FOOD),
+                "candle": read_u8(ram, ADDR_CANDLE),
+                "heart_containers": snap.heart_containers,
+                "health_full": bool(snap.health_is_full),
+            }
+        )
+    return fields
 
 
 @dataclass
@@ -296,6 +322,20 @@ def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> No
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
 
+# The L7 Bait buy costs 60R; the measured post-L6 leave carries 42R. Top the
+# owned rupee count up to 60 before the Bait stage (ASSIST_CONTRACT shortcut;
+# a natural OW farm is bead rr-doua-style follow-up). Not Clean. No item grant.
+SPINE_L7_BAIT_RUPEES = 60
+
+
+def topup_owned_rupees(
+    env, run: SpineRun, *, rupees: int = SPINE_L7_BAIT_RUPEES
+) -> None:
+    """Documented Survival rupee count top-up for the L7 Bait buy. Not Clean."""
+    extra = apply_owned_inventory(env, rupees=rupees, select_bomb=False)
+    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
+
+
 def _record_bombs_out(env, run: SpineRun) -> None:
     end = read_snapshot(env.get_ram())
     run.bombs = spine_bomb_report(
@@ -315,6 +355,7 @@ def _run_stages(
     room_timer=None,
     retopup: frozenset[str] = frozenset(),
     key_retopup: frozenset[str] = frozenset(),
+    rupee_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
@@ -323,6 +364,8 @@ def _run_stages(
             topup_owned_inventory(env, run)
         if name in key_retopup:
             topup_owned_keys(env, run)
+        if name in rupee_retopup:
+            topup_owned_rupees(env, run)
         obs, stage = run_controller_stage(
             env,
             run.obs,

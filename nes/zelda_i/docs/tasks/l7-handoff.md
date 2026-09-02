@@ -17,14 +17,15 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   **fixture-live**. Pond `0x42`, drain, and entry room still **hypothesis**.
   Stop at fixture-live; integrator owns natural-segment / spine-green.
 
-- **exact predecessor (updated 2026-09-02):** the L6 fanfare leave is
-  **measured** — OW `0x22` `(112,125)` TF `0x3F` keys 2 bombs 8 rupees 42,
-  8 HC full (`--through level6-exit` 1/1). Carried as
-  `MEASURED_POST_L6_EXIT`, a shared `zelda_i.overworld.stitch.OverworldHandoff`
-  (`verified=false`: `selected_item` not captured that run + the 42R→60R Bait
-  gap). The deleted `(120,221)` / 80R / White-Sword poke loadout was never a
-  fanfare. The live L6 interior residual play `0x09` `(56,109)` Rod=0 is not
-  an L7 start.
+- **exact predecessor (updated 2026-09-02, Phase 1):** the L6 fanfare leave is
+  **measured and verified** — OW `0x22` `(112,125)` TF `0x3F` keys 2 bombs 8
+  rupees 42, `selected_item=2` (arrows), Whistle 1 Food 0 Candle 0, 8 HC full
+  (`--through level6-exit` 2/2, `l6_exit_ow.json` + `l7p1_l6exit.json`,
+  byte-identical). Carried as `MEASURED_POST_L6_EXIT`, a shared
+  `zelda_i.overworld.stitch.OverworldHandoff`, **`verified=True`**
+  (`route_eligible=false`). The deleted `(120,221)` / 80R / White-Sword poke
+  loadout was never a fanfare. The live L6 interior residual play `0x09`
+  `(56,109)` Rod=0 is not an L7 start.
 
 - **required inventory/capabilities:** TF `0x3F`, Whistle ≥1, Rod ≥1, Bow ≥1,
   sword. Food 0 until natural 60R Bait at shop hyp `0x34`. Candle remains 1
@@ -32,12 +33,16 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 
 - **ordered internal stage names and controller factories:**
   1. `level7_post_l6_overworld` — `make_post_l6_overworld_controller(handoff, hops)`
-     (`OverworldHandoff` gate + default `hops=POST_L6_TO_BAIT_HOPS`; refuses
-     every frame with `handoff_unmeasured` until `verified=True`, then walks
-     `0x22→0x25` and fails closed at the west mouth)
+     (`OverworldHandoff` gate + default `hops=POST_L6_TO_BAIT_HOPS`). Handoff
+     `verified=True` since Phase 1, so it **walks `0x22→0x25` green**
+     (`path_complete`, phase DONE, 1577f, `writes=0`) on a continuous power-on.
+     The `_left_mouth` latch keeps the `0x22` mouth-tile spawn from tripping
+     the re-entry refusal on frame 1.
   2. `level7_bait_purchase` — `make_bait_purchase_controller(plan)`
-     (60R, shop `0x34`, no Food/rupee write; fails `bait_need_60_rupees` /
-     `bait_shop_geometry_unobserved`)
+     (60R, shop `0x34`, no Food/`ADDR_FOOD`/rupee-grant write). `SPINE_L7_RUPEE_RETOPUP`
+     tops the owned rupee **count** 42→60 before this stage; it then fails
+     closed at `bait_shop_geometry_unobserved` (shop `0x34` geometry / cave
+     xy / buy policy all still unobserved).
   3. `level7_pond_drain_entry` — `make_pond_entry_controller()`
      (still unverified; drain needs naturally selected Whistle)
 
@@ -51,35 +56,45 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   `None` so the predicate fails closed.
 
 - **expected inventory deltas:** Food 0→1 (natural 60R buy). No TF change.
-  Keys/bombs unchanged on OW. Candle stays 1. No `ADDR_FOOD` / rupee /
-  Whistle / door / TF writes.
+  Keys/bombs unchanged on OW. Candle stays 0 (Blue Candle not on the
+  mainline; Red Candle is the L7 dungeon item). Disclosed Survival write:
+  rupee **count** 42→60 before `level7_bait_purchase` (`SPINE_L7_RUPEE_RETOPUP`).
+  No `ADDR_FOOD` / rupee-grant / Whistle / door / TF writes.
 
 - **known dead beliefs / first missed RAM claim:**
   - Dead: `hop10_ay` DOWN from `0x53` `(224,173)` (v9). Inland-left first.
   - Dead: start-`0x77` pond walk as the spine post-L6 path.
   - Dead: OW `0x22` as proven L6 leave; live L6 prefix `0x09` as L7 start.
-  - Dead: `(112,125)` on `0x22` is the leave (cave mouth, mode 16 → L6).
+  - Dead: `(112,125)` on `0x22` is a dead spot — it *is* the measured leave
+    (the mouth tile). Re-entry only fires on a fresh UP into it / mode 16;
+    the `_left_mouth` latch handles the spawn-on-mouth case.
   - Dead: `0x32` `(120,61)` `off_north` DOWN (`l7_bait_from_l6`). Corridor is x=112.
   - Dead: `0x33` RIGHT @ y=141 → `0x34` (`l7_bait_32ax` leftover `(208,141)`).
   - Dead: `0x24` DOWN at `(16,189)` (`l7_bait_33up`), `(160,189)`
     (`l7_bait_24belt`, north-ladder x), `(208,189)` (`l7_bait_24se` SE).
   - Dead: occupancy xmin=14 west pocket `(0,141)`; SW occupancy box `(25,181)`.
   - Dead: `0x24↓0x34` (south wall sealed at x=16 / 160 / 208).
-  - First leftover this sitting: play `0x25` `(0,141)` west mouth
-    (`l7_bait_25` 1/1). Next sitting: inland RIGHT off x=0, then DOWN toward
-    `0x35`. Do not LEFT back to `0x24`. Do not retry DOWN at x=16 / 160 / 208.
+  - Current leftover (Phase 1, continuous power-on): play `0x25` `(0,141)`
+    west mouth, `level7_post_l6_overworld` **green** through it
+    (`l7p1_entry_v2.json`). Next: live-recon `0x25 (0,141) → bait shop
+    `0x34``; inland RIGHT off x=0, then DOWN toward `0x35`. Do not LEFT back
+    to `0x24`. Do not retry DOWN at x=16 / 160 / 208 on `0x24`.
 
-- **fixture provenance:** `Level6ExitOverworld` Survival. Prefix 1/1 through
-  `0x25`. `0x24→0x25` RIGHT @ y=141.
-  `recordings/l7_bait_from_l6_l7_bait_25.json` leftover play `0x25`
-  `(0,141)`, `success=true`, `route_eligible=false`. Pond recon remains
-  `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
+- **fixture provenance:** Phase 1 is a **continuous power-on** tape, not a
+  save-state fixture. `--through level7-entry` (`recordings/l7p1_entry_v2.json`)
+  drives power-on → measured L6 fanfare exit → `level7_post_l6_overworld`
+  green `0x22→0x25` → fail-closed at `level7_bait_purchase`
+  (`bait_shop_geometry_unobserved`). `set_state=0`, `deaths=0`. Pond recon
+  remains `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 
-- **files changed / public target:** `nes/zelda_i/level7/overworld.py`,
-  `nes/zelda_i/docs/LEVEL7_ROUTE.md`, `nes/zelda_i/tests/test_level7_overworld.py`,
-  `nes/zelda_i/tests/test_leftover_traps.py`, `nes/zelda_i/docs/tasks/l7-handoff.md`,
-  gitignored `recordings/l7_bait_from_l6_l7_bait_25.json`.
-  Public target: **`level7-entry`**.
+- **files changed (Phase 1) / public target:** `level7/entry.py` (verified
+  handoff + `_left_mouth` latch), `level7/spine.py` (`SPINE_L7_RUPEE_RETOPUP`),
+  `spine/survival.py` (`spine_final_fields(ram)`, `topup_owned_rupees`,
+  `rupee_retopup`), `dungeon/ops.py` (`poke_rupees`, `apply_owned_inventory(rupees=)`),
+  `scripts/run_survival_spine.py`, `tests/test_level7_hops.py`,
+  `tests/test_dungeon_ops.py`, `docs/{LEVEL7_ROUTE,ASSIST_CONTRACT}.md`,
+  `docs/tasks/{l7-handoff,ow-handoff,rr-tne2-residual}.md`.
+  Public target: **`level7-entry`** (green through `level7_post_l6_overworld`).
 
 ---
 
