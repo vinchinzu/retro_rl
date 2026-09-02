@@ -11,8 +11,9 @@ continuous power-on.  The Bait stage then runs the disclosed Survival
 ``SurvivalBaitPurchaseController`` (one ``ADDR_FOOD`` write, see
 ``docs/ASSIST_CONTRACT.md``) in place of the natural 60R buy — the natural
 L6 -> shop overworld route is a mountain-locked pocket, tracked in bead
-``rr-8t4.4``.  ``level7_pond_drain_entry`` and everything past it still fail
-closed (pond ``0x42`` / drain / entry room unobserved).
+``rr-8t4.4``.  ``level7_pond_drain_entry`` still fails closed (natural-whistle
+drain from the L6 leave is unobserved; entry room ``0x79`` is observed).
+Interior stages past entry stay fail-closed.
 """
 
 from __future__ import annotations

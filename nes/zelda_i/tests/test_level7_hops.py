@@ -21,8 +21,18 @@ from zelda_i.level7.entry import (
 from zelda_i.level7.hops import (
     l7_hops,
     level7_entry_chapter_stages,
+    level7_red_candle_chapter_stages,
+    make_entry_first_door_controller,
     make_entry_to_goriya_controller,
+    make_pond_entry_controller,
     make_red_candle_controller,
+)
+from zelda_i.level7.path import (
+    NORTH_DOOR_X,
+    NORTH_DOOR_Y,
+    SOUTH_MOUTH_Y,
+    EntryNorthDoorController,
+    north_door_79_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
@@ -327,6 +337,62 @@ def test_continue_level7_spine_uses_the_survival_bait_fixture() -> None:
 
     src = inspect.getsource(spine.continue_level7_spine)
     assert "survival=True" in src
+
+
+def test_hops_docstring_matches_live_facts() -> None:
+    from zelda_i.level7 import hops as hops_mod
+
+    doc = hops_mod.__doc__ or ""
+    assert "verified=False" not in doc
+    assert "every factory here fails closed" not in doc
+    assert "MEASURED_POST_L6_EXIT" in doc
+    assert "0x79" in doc
+    assert "rr-8t4.4" in doc
+
+
+def test_pond_missing_evidence_is_natural_whistle_drain() -> None:
+    ctl = make_pond_entry_controller()
+    missing = str(ctl.report()["missing_evidence"])
+    assert "natural-whistle" in missing
+    assert "rr-8t4.4" in missing
+    assert "observed entry room" not in missing
+    assert "live pond screen" not in missing
+
+
+def test_red_candle_chapter_starts_at_entry_first_door() -> None:
+    stages = level7_red_candle_chapter_stages()
+    names = [name for name, _c, _f in stages]
+    assert names == [
+        "level7_entry_first_door",
+        "level7_entry_to_hungry_goriya",
+        "level7_tip_of_nose_stairs",
+        "level7_red_candle_pickup",
+    ]
+    first = stages[0][1]
+    assert isinstance(first, EntryNorthDoorController)
+    assert first.stage_id == make_entry_first_door_controller().stage_id
+    report = first.report()
+    assert report["route_eligible"] is False
+    assert report["dest_screen"] == 0x69
+    assert report["door"] == "UP"
+
+
+def test_north_door_79_step_south_mouth_and_door_x() -> None:
+    mouth = read_snapshot(_ram(level=7, screen=0x79, x=NORTH_DOOR_X, y=SOUTH_MOUTH_Y))
+    act = north_door_79_step(mouth)
+    assert list(act.action) != list(nes_idle_action())
+    assert act.reason == "north_leave_mouth"
+    door = read_snapshot(_ram(level=7, screen=0x79, x=NORTH_DOOR_X, y=NORTH_DOOR_Y))
+    act = north_door_79_step(door)
+    assert act.reason == "north_push"
+    off = read_snapshot(_ram(level=7, screen=0x79, x=NORTH_DOOR_X + 8, y=NORTH_DOOR_Y))
+    act = north_door_79_step(off)
+    assert act.reason == "north_align_x"
+    dest = read_snapshot(_ram(level=7, screen=0x69, x=NORTH_DOOR_X, y=SOUTH_MOUTH_Y))
+    ctl = EntryNorthDoorController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x79"
 
 
 def test_hungry_goriya_requires_food() -> None:

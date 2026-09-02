@@ -229,9 +229,10 @@ geometry-walk gate.
 
 ## Interior (source speed route)
 
-RAM room IDs: **entry `0x79` live** (south mouth `(120,205)`). Offline graph:
-`level7/graph.py` (source ids `0x7xx`; only ENTRY has `ram_id=0x79`,
-`evidence=fixture-live`). Prefer bomb walls over
+RAM room IDs: **entry `0x79` live** (south mouth `(120,205)`); **north dest
+`0x69` live** (south mouth `(120,205)`, goriya `0x05` — not Moldorms). Offline
+graph: `level7/graph.py` (source ids `0x7xx`; ENTRY + N-path `0x701` have
+`ram_id`, `evidence=fixture-live`). Prefer bomb walls over
 the fifth lock; Hungry Goriya is a Food gate; Red Candle is `ADDR_CANDLE`
 1→2 naturally. Key/bomb ledger is in `LEVEL7_KEY_BOMB_LEDGER`.
 
@@ -242,7 +243,7 @@ Aquamentus.
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
 | Entry | play `0x79` `(120,205)` south mouth **(live)** | north + east doors; water tiles |
-| N path | Moldorms | bombs reward optional |
+| N path | dest `0x69` **(live)**; source said Moldorms | live goriya `0x05`; east shut; no 2nd open door |
 | R | Goriya clear → Old Man | “THERE’S A SECRET IN THE TIP OF THE NOSE” |
 | R | Digdogger | Whistle → multi-mini; optional skip |
 | R | Stalfos **key** | then backtrack left ×4 |

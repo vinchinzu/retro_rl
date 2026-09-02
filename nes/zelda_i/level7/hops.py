@@ -1,9 +1,12 @@
 """Level 7 chapter factories and Survival ``SpineHop`` rows.
 
 The public surface has three chapters.  Internal stage names provide precise
-handoffs without exposing room-level ``--through`` targets.  The post-L6
-handoff stays ``verified=False`` and shop geometry is unmeasured, so every
-factory here fails closed.
+handoffs without exposing room-level ``--through`` targets.
+
+``MEASURED_POST_L6_EXIT.verified`` is True and the Survival bait stage is
+green.  Pond drain on the spine stays fail-closed: missing a natural-whistle
+drain from the L6 leave (bead ``rr-8t4.4``).  Do not wire the recon
+``ADDR_WHISTLE`` poke onto the spine.  Entry room ``0x79`` is observed.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from zelda_i.level7.entry import (
 from zelda_i.level7.graph import ledger_notes
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.level7.path import (
+    EntryNorthDoorController,
     HungryGoriyaGateController,
     Level7PathController,
     RedCandlePickupController,
@@ -49,8 +53,12 @@ ControllerFactory = Callable[[], Level7PathController]
 def make_pond_entry_controller() -> Level7PathController:
     return unverified_path_controller(
         "level7_pond_drain_entry",
-        "live pond screen, normal Whistle selection/drain, and observed entry room",
+        "natural-whistle drain from the L6 leave (rr-8t4.4)",
     )
+
+
+def make_entry_first_door_controller() -> Level7PathController:
+    return EntryNorthDoorController()
 
 
 def make_entry_to_goriya_controller() -> Level7PathController:
@@ -123,8 +131,9 @@ def level7_entry_chapter_stages(
 
 
 def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
-    """Fresh entry -> Hungry Goriya -> tip stairs -> natural Red Candle."""
+    """Fresh entry first-door -> Hungry Goriya -> tip stairs -> natural Red Candle."""
     return (
+        _stage("level7_entry_first_door", make_entry_first_door_controller),
         _stage("level7_entry_to_hungry_goriya", make_entry_to_goriya_controller),
         _stage("level7_tip_of_nose_stairs", make_tip_stairs_controller),
         _stage("level7_red_candle_pickup", make_red_candle_controller),
@@ -189,7 +198,9 @@ def l7_hops(
     """Build fresh L7 chapter rows.  Defaults stay non-executable.
 
     ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
-    for the disclosed ``ADDR_FOOD`` fixture; every other stage stays fail-closed.
+    for the disclosed ``ADDR_FOOD`` fixture.  ``level7_entry_first_door`` is
+    a live ``0x79`` north walker; pond drain, Hungry Goriya, tip stairs,
+    candle, and bosses stay fail-closed.
     """
 
     def _entry_stages() -> tuple[Stage, ...]:
@@ -230,6 +241,7 @@ __all__ = [
     "level7_red_candle_chapter_stages",
     "make_aquamentus_heart_controller",
     "make_bait_purchase_controller",
+    "make_entry_first_door_controller",
     "make_entry_to_goriya_controller",
     "make_forced_digdogger_controller",
     "make_level7_shard_leave_controller",

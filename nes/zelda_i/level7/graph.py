@@ -2,8 +2,8 @@
 
 Every room is a walkthrough hypothesis.  Source ids live in ``0x7xx`` so they
 cannot be mistaken for live RAM ``$EB`` values (0x00–0x7F).  ``ram_id`` stays
-None until a room is observed in play.  Do not copy these ids into stop
-predicates.
+None until a room is observed in play (ENTRY ``0x79``, N-path dest ``0x69``).
+Do not copy these ids into stop predicates.
 """
 
 from __future__ import annotations
@@ -81,7 +81,13 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="public_level7_entry",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(MOLDORMS, "moldorms", role="bombs_optional"),
+    Level7RoomHyp(
+        MOLDORMS,
+        "entry_north_goriya",
+        ram_id=0x69,
+        role="goriya_0x05",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(KEESE, "keese_dark"),
     Level7RoomHyp(GORIYA_HINT, "goriya_hint"),
     Level7RoomHyp(OLD_MAN_NOSE, "old_man_tip_of_nose"),
@@ -155,17 +161,18 @@ LEVEL7_KEY_BOMB_LEDGER: tuple[Level7LedgerRow, ...] = (
 
 def _e(
     direction: DoorDir,
-    target: int,
+    target: int | None,
     gate: GateKind = GateKind.OPEN,
     *,
     notes: str = "",
+    verification: str = _HYP,
 ) -> RoomExit:
     return RoomExit(
         direction,
         target,
         gate,
         notes=notes or _HYP,
-        verification=_HYP,
+        verification=verification,
     )
 
 
@@ -180,13 +187,31 @@ def _back(src_dir: DoorDir, src: int) -> RoomExit:
 def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
     """Source topology.  Prefer BOMB over MAP_EAST_LOCK / WEST_LOCK_SKIP."""
     return {
-        ENTRY: (_open(DoorDir.RIGHT, MOLDORMS, "entry right into body"),),
+        ENTRY: (
+            _e(
+                DoorDir.UP,
+                MOLDORMS,
+                notes="live dest $EB=0x69 goriya 0x05; dead: N path is Moldorms",
+                verification="fixture-live",
+            ),
+            _e(
+                DoorDir.RIGHT,
+                None,
+                notes="live PNG: east door present/shut; dest RAM unobserved",
+                verification="probe_geometry",
+            ),
+        ),
         MOLDORMS: (
-            _back(DoorDir.RIGHT, ENTRY),
-            _open(DoorDir.UP, KEESE),
+            _back(DoorDir.UP, ENTRY),
+            _e(
+                DoorDir.RIGHT,
+                None,
+                GateKind.KILL_CLEAR,
+                notes="live PNG: east present/shut; dest RAM unobserved",
+                verification="probe_geometry",
+            ),
         ),
         KEESE: (
-            _back(DoorDir.UP, MOLDORMS),
             _open(DoorDir.RIGHT, GORIYA_HINT),
             _open(DoorDir.LEFT, GORIYA_BOMB_HUB, "west after stalfos-key return"),
             _e(DoorDir.UP, COMPASS, GateKind.BOMB, notes="optional dark bomb"),
@@ -360,11 +385,13 @@ __all__ = [
     "FIFTH_LOCK_SKIPS",
     "FOOD_GATES",
     "HUNGRY_GORIYA",
+    "KEESE",
     "LEVEL7_HYPOTHESIS_GRAPH",
     "LEVEL7_KEY_BOMB_LEDGER",
     "LEVEL7_ROOMS",
     "MAP",
     "MAP_EAST_LOCK",
+    "MOLDORMS",
     "RED_CANDLE_CELLAR",
     "ROUTE_ELIGIBLE",
     "TRIFORCE",
