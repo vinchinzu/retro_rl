@@ -14,7 +14,10 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 - **evidence label:** mixed. Offline graph + Bait/post-L6 interface =
   **hypothesis**. Start-based `0x53→0x52` inland-left micro =
   **fixture-live**. Post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25` =
-  **fixture-live**. Pond `0x42`, drain, and entry room still **hypothesis**.
+  **fixture-live**. Pond `0x42` overworld screen **reached 2/2 geometry-only**
+  (`OverworldToLevel7PondController` from `PostSwordStart`,
+  `l7_pond_from_start_l7_pond_v7/v8`); drain + interior entry room still
+  **hypothesis**.
   Stop at fixture-live; integrator owns natural-segment / spine-green.
 
 - **exact predecessor (updated 2026-09-02, Phase 1):** the L6 fanfare leave is
@@ -47,7 +50,9 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
      `bait_shop_geometry_unobserved` (shop `0x34` geometry / cave xy / buy
      policy all still unobserved). Disclosed in `docs/ASSIST_CONTRACT.md`.
   3. `level7_pond_drain_entry` — `make_pond_entry_controller()`
-     (still unverified; drain needs naturally selected Whistle)
+     (still unverified; the pond `0x42` screen is now reached geometry-only via
+     `OverworldToLevel7PondController`, but the Whistle drain + first interior
+     room are unobserved — that is the next `rr-8t4.2` step)
 
   Recon-only (not a spine stage): `OverworldToBaitShopController` from
   `Level6ExitOverworld`; `OverworldToLevel7PondController` from

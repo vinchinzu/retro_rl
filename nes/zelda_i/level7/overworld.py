@@ -97,6 +97,14 @@ BAIT_32_NORTH_Y = 80
 # at y=189.
 BAIT_24_EAST_Y = 141
 BAIT_24_Y_TOL = 4
+# 0x64 north gap to 0x54 (probe_64_north_to_54): open column at x≈60.
+BAIT_64_GAP_X = 60
+# 0x52 boulder field (probe_52_wall): climb the open west column x≈48 to the
+# mid-band y≈120, traverse RIGHT to x≈132, then UP funnels Link through the
+# boulder-wall gap (~x128) into the x≈112 north gap to the pond 0x42.
+POND_52_CLIMB_X = 48
+POND_52_GAP_X = 132
+POND_52_MIDBAND_Y = 122
 
 LEVEL7_POND_HOPS: tuple[ScreenHop, ...] = LEVEL7_POND_APPROACH_HOPS + (
     ScreenHop(0x53, "LEFT", align_y=141),
@@ -234,20 +242,35 @@ class OverworldToLevel7PondController(OverworldPathController):
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
         # 0x65→0x64 arrives on the east ledge at ~(232,109).  UP is blocked
-        # there: descend to the open middle band, cross to the visible left
-        # north gap at x≈48, then climb.  x≈120 is under the central tree isle.
+        # there: descend to the open middle band, cross to the north gap and
+        # climb.  probe_64_north_to_54: x≈60 is a clean open column to 0x54;
+        # x≤40 stalls at y≈93; x≈120 is under the central tree isle.
         if hop.target == 0x54 and snap.screen == 0x64:
-            if snap.link_x > 180 and snap.link_y < 132:
+            if snap.link_x > BAIT_64_GAP_X + 6 and snap.link_y < 116:
                 return self._swing("DOWN", "64_east_ledge_down")
-            if snap.link_x > 56:
+            if snap.link_x > BAIT_64_GAP_X + 6:
                 return self._swing("LEFT", "64_cross_to_north")
-            if snap.link_x < 40:
+            if snap.link_x < BAIT_64_GAP_X - 6:
                 return self._swing("RIGHT", "64_north_ax")
             return self._swing("UP", "64_north")
         if hop.target == 0x52 and snap.screen == 0x53:
             return pond_53_to_52_action(
                 snap, walker=self._pond53_walker(), swing=self._swing
             )
+        if hop.target == SCREEN_LEVEL7_POND_HYP and snap.screen == 0x52:
+            # 0x52 rock field (probe_52_wall): climb the open west column x≈48
+            # from the bottom corridor to the mid-band y≈120, traverse RIGHT to
+            # x≈132, then a UP push funnels Link through the boulder-wall gap
+            # (~x128) into the x≈112 north gap to pond 0x42.
+            if snap.link_y > POND_52_MIDBAND_Y:
+                if snap.link_x > POND_52_CLIMB_X + 6:
+                    return self._swing("LEFT", "52_to_climb_column")
+                if snap.link_x < POND_52_CLIMB_X - 6:
+                    return self._swing("RIGHT", "52_climb_ax")
+                return self._swing("UP", "52_climb")
+            if snap.link_x < POND_52_GAP_X - 4:
+                return self._swing("RIGHT", "52_traverse_midband")
+            return self._swing("UP", "52_gap_up")
         return None
 
 
