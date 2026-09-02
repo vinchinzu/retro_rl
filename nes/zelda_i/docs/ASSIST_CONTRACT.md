@@ -94,7 +94,8 @@ The implementation is `zelda_i.assist.poke_link_position`. `rr-17co`
 walked onto tile `0x71` at `(208,93)` via the south-band east column
 (`l6_stairs3a_southband` 1/1, hop 290f). Do not retry occupancy at y=149
 (ne71 v1–v3). Warp and cellar08 report `position_writes=0`. `--through
-level6` is still red at Gohma occupancy, so `rr-tne2` stays open.
+level6-gohma` is still red at the column mouth shot, so `rr-tne2` stays
+open.
 
 This exception does not authorize walking the east door unarmed or fighting
 Gohma without bow+arrows.

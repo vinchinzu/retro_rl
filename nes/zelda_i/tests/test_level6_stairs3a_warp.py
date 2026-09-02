@@ -174,6 +174,18 @@ def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
     assert not level6_stairs3a_warp_success(read_snapshot(east))
 
 
+def test_warp_and_gohma_do_not_call_poke_link_position() -> None:
+    import inspect
+
+    from zelda_i.level6 import gohma, stairs3a, stairs3a_warp
+
+    for module in (stairs3a_warp, stairs3a, gohma):
+        src = inspect.getsource(module)
+        assert "poke_link_position" not in src
+        assert "mem_write" not in src
+        assert "memory.assign" not in src
+
+
 def test_no_env_walks_without_writing() -> None:
     from retro_harness.nes import nes_action
 

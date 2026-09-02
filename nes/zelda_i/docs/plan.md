@@ -10,23 +10,28 @@ Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 One living residual: `docs/tasks/rr-tne2-residual.md`.
 
-## Immediate — Gohma after walked CheckWarp, then Phase 4 (2026-09-01)
+## Immediate — Gohma after walked CheckWarp (2026-09-02)
 
-South-band CheckWarp is **1/1** (`l6_stairs3a_southband` hop 290f, mode 9
-cellar `0x08` `(208,93)`, `position_writes=0`). Cellar08 is **1/1** play
-`0x1D` `(96,157)` rupees=43. `--through level6-gohma` after the walk is
-**red** 2/2 (v1 north shutter `(115,93)` 599 pulses; v2 stand `(136,164)`
-43R spent, ghp=32). Heart / north0c / shard hops stay green on the
+South-band CheckWarp re-validated **1/1** on `l6_gohma_column_shot` (hop
+290f, mode 9 cellar `0x08` `(208,93)`, `position_writes=0`,
+`set_state_count=0`). Warp/Gohma modules do not call `poke_link_position`.
+Cellar08 is **1/1** play `0x1D` `(96,157)` rupees=43. `--through
+level6-gohma` after the walk is **red** 4/4. v4 column mouth shot 1 pulse
+f2 gx=128 leftover `(120,204)` tile 118, rupees stayed 43, ghp stayed 32.
+Mouth UP+B does not fire. Heart / north0c / shard hops stay green on the
 poked-warp tape only. Survival evidence; do not update `STATUS.md` or
 overwrite Clean M5. Keys stay 2. Do not top up.
+
+Phase 4 (`rr-ibkf`) **1/1**: `--through level4` `l4_gleeok_continuous`
+110926f, `set_state_count=0`, natural UP `room_change to=0x03`,
+`state_restores=0`. Spine wraps `AuditedEnv`; unmeasured
+`mid_run_state_load` is null.
 
 Close `rr-tne2` only after:
 
 1. `rr-17co`: `--through level6` 1/1 with `position_writes=0` (warp dest
    is already cellar `0x08`; Gohma after the walk is the red).
-2. Phase 4 (`rr-ibkf`): measured `AuditedEnv` post-reset `set_state` count
-   is 0, and L4 Gleeok TF-exit has a continuous no-restore path.
-3. One `--through level6` acceptance trial.
+2. One `--through level6` acceptance trial (Phase 4 already green).
 
 Arrow shop splice is `rr-wabn`. Live merchant is OW `0x4A` (80R arrows).
 Dedicated `--through level1-arrows` red on farm (9→10R). Wooden-arrow
@@ -184,15 +189,16 @@ One controller, dest glance `STAIRS3A_DEST` (mode 9 cellar `0x08`):
 
 Walk is **1/1** hop 290f, dest mode 9 `(208,93)`, `position_writes=0`.
 Cellar08 B-side cross **1/1**. `--through level6-gohma` after the walk
-red 2/2 (occupancy boxed; then cardinal walked through the body; then
-y=165 spray spent 43R). Fold `stairs3a.py` + `stairs3a_warp.py` after
-`--through level6` greens.
+red 4/4. v4 column mouth (`l6_gohma_column_shot`) 1 pulse f2 gx=128
+leftover `(120,204)` tile 118, rupees stayed 43. Door eats the spawn
+shot. Fold `stairs3a.py` + `stairs3a_warp.py` after `--through level6`
+greens.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python \
   nes/zelda_i/scripts/run_survival_spine.py \
   --through level6-gohma --no-video --trials 1 \
-  --tag l6_gohma_spawn_shot
+  --tag l6_gohma_inland_column
 ```
 
 ### Arrow shop splice (`rr-wabn`)
@@ -211,20 +217,13 @@ poke rupees on the spine.
 
 ### Phase 4 — replace the claimed no-load flag with measured evidence
 
-Before the final endpoint trial, wrap the spine environment at construction
-with the existing `retro_harness.audit.AuditedEnv` boundary so every
-post-reset `env.em.set_state()` is counted. Report the integer count as well
-as the compatibility boolean; derive `mid_run_state_load` from the measured
-count instead of hardcoding `false`, and fail the run if the count is nonzero.
-
-The Level 4 Gleeok TF-exit fallback currently snapshots and tries multiple
-approaches with `env.em.set_state()`. Give that controller an explicit
-continuous mode, pass it from the Survival spine, and fail closed after the
-natural exit attempt instead of entering the restore loop. Isolated lab use
-may retain its search behavior, but no continuous-spine path may call it.
-
-This audit work is a prerequisite for the final `level6` green even if all L6
-controllers themselves report success.
+**1/1** `l4_gleeok_continuous`. Spine CLI wraps `AuditedEnv` after reset.
+`set_state_count` is the measured post-reset `env.em.set_state()` count;
+`mid_run_state_load` is derived from it (null if unmeasured). Nonzero
+fails the run. L4 Gleeok TF-exit spine path is `continuous_mode=True`:
+one natural UP, fail closed, no restore. Isolated
+`make_gleeok_fight_controller()` still defaults to the lab restore
+search.
 
 ### Phase 5 — final power-on acceptance and bead close
 
@@ -852,9 +851,11 @@ pair is `0x3A`/`0x1D`. Crossing the tunnel floor to the right ladder is now
 **1/1**. Power-on recompose: open-west `0x2D` → play `0x2C` `(224,141)` is
 **1/1** (`l6_west2d_recompose`, hop 335f, keys stay 3, cardinal y-align).
 `0x2C` KEY-UP → play `0x1C` Gohma enter is **1/1** (`l6_north2c_cardinal`,
-hop 308f, keys 3→2). Gohma kill is **1/1** (`l6_gohma_recompose`, 212,260f
-hop 54f, wooden arrows 0→1, leftover `(120,189)` body gone, TF still
-`0x1F`). Heart / north `0x0C` TF `0x20` remain. Do not close `rr-tne2`.
+hop 308f, keys 3→2). Gohma kill is **1/1** on the poked warp
+(`l6_gohma_recompose`, hop 54f leftover `(120,189)` body gone) and **red**
+after the walked warp (`l6_gohma_column_shot`, 1 pulse f2 gx=128 rupees
+stayed 43 leftover `(120,204)`).
+Heart / north `0x0C` TF `0x20` remain. Do not close `rr-tne2`.
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_survival_spine.py \
