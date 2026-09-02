@@ -5,18 +5,26 @@
 rupees 42, `selected_item=2` (arrows), Whistle 1, Food 0, Candle 0, 8 HC full.
 `MEASURED_POST_L6_EXIT.verified=True`. On a continuous power-on
 `--through level7-entry` the post-L6 controller now **walks the bait prefix
-green** (`0x22→0x32→0x33→0x23→0x24→0x25`, 1577f, `writes=0`) and fails closed
-at `level7_bait_purchase` → `bait_shop_geometry_unobserved`. The Survival
-rupee top-up (42→60R, `SPINE_L7_RUPEE_RETOPUP`) fires before that stage.
+green** (`0x22→0x32→0x33→0x23→0x24→0x25`, 1577f, `writes=0`).
+
+At `level7_bait_purchase` the Survival spine now runs
+`SurvivalBaitPurchaseController` (`l7_hops(survival=True)`): one disclosed
+`ADDR_FOOD` write (`$065D` → 1) in place of the natural 60R buy, since the
+natural L6→shop overworld route is a mountain-locked pocket (bead `rr-8t4.4`).
+The disclosed rupee **count** top-up (42→60R, `SPINE_L7_RUPEE_RETOPUP`) still
+fires before the stage and represents the cost paid. **Clean** keeps
+`NaturalBaitPurchaseController` fail-closed. See `docs/ASSIST_CONTRACT.md`.
+The spine then fails closed at `level7_pond_drain_entry` (pond `0x42`, drain,
+entry room all unobserved).
+
 Pond `0x42`, drain, entry room, the bait shop `0x34` geometry, and all
 dungeon rooms remain **hypothesis**. Cumulative spine chapters stay
 fail-closed (`route_eligible=false`). There is no pond checkpoint, L7 entry
-room, or Clean segment. **Whistle** from Level 5 gates pond drain;
-**Bait/Food** is a natural 60R shop buy (never `ADDR_FOOD` write; the rupee
-**count** top-up to the shop cost is the disclosed Survival shortcut).
+room, or Clean segment. **Whistle** from Level 5 gates pond drain.
 
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach), `rr-8t4.1`
-(Wave A recon). Do not STATUS-promote.
+(Wave A recon + Phase 1 Food fixture), `rr-8t4.4` (natural L6→shop OW route).
+Do not STATUS-promote.
 
 Planning sources:
 
@@ -264,9 +272,10 @@ captured; `route_eligible` still `False`). The spine controller
 The measured leave stands on the `0x22` mouth tile, so the controller's
 re-entry refusal only arms after Link steps off it (`_left_mouth` latch).
 On `--through level7-entry` the controller now **walks `0x22→0x25` green**
-(`level7_post_l6_overworld`, 1577f) and then fails closed at
-`level7_bait_purchase` → `bait_shop_geometry_unobserved` (no observed shop
-`0x34` geometry; the pond `0x42` route past `0x25` is also unobserved). The
+(`level7_post_l6_overworld`, 1577f). `level7_bait_purchase` then runs the
+Survival `SurvivalBaitPurchaseController` (one disclosed `ADDR_FOOD` write,
+`rr-8t4.4`) and passes; the spine fails closed at the next stage,
+`level7_pond_drain_entry` (pond `0x42` / drain / entry room unobserved). The
 `0x77`-start pond walk and the ungated `OverworldToBaitShopController` stay
 recon-only.
 
@@ -274,19 +283,20 @@ recon-only.
 
 | `--through` | Internal chapter stages | Current evidence |
 |-------------|-------------------------|------------------|
-| `level7-entry` | post-L6 overworld; natural Bait purchase; pond drain/entry | wired; `level7_post_l6_overworld` **green**; fails closed at `level7_bait_purchase` (`bait_shop_geometry_unobserved`) |
+| `level7-entry` | post-L6 overworld; Bait (Survival Food fixture / Clean natural); pond drain/entry | wired; `level7_post_l6_overworld` + `level7_bait_purchase` (Survival) **green**; fails closed at `level7_pond_drain_entry` |
 | `level7-red-candle` | entry to Hungry Goriya; tip-of-nose stairs; Red Candle pickup | wired; fails closed |
 | `level7` | forced Digdogger; Aquamentus/heart; shard/settled leave | wired; fails closed |
 
 Factories in `level7/hops.py` always return fresh controllers. **The L6 leave
 is measured and `verified=True`** — `MEASURED_POST_L6_EXIT`, OW `0x22`
 `(112,125)` TF `0x3F`, `selected_item=2` (`--through level6-exit` 2/2). The
-post-L6 controller walks `0x22→0x25` green; **Bait purchase** still refuses
-until shop geometry exists (`shop_cave_xy=None` → `bait_shop_geometry_unobserved`).
-The 42R→60R Bait gap is closed by `SPINE_L7_RUPEE_RETOPUP` (documented
-Survival rupee-count top-up, mirroring the bomb/key top-ups; a natural OW
-farm is a separate bead). Hungry Goriya fails closed without Food. Red
-Candle fails closed until
+post-L6 controller walks `0x22→0x25` green. On the **Survival** spine
+`level7_bait_purchase` runs `SurvivalBaitPurchaseController` — one disclosed
+`ADDR_FOOD` write (bead `rr-8t4.4`; the natural L6→shop route is a
+mountain-locked pocket) — plus the `SPINE_L7_RUPEE_RETOPUP` 42→60R count
+top-up for the cost paid. **Clean** keeps `NaturalBaitPurchaseController`
+fail-closed (`shop_cave_xy=None` → `bait_shop_geometry_unobserved`). Hungry
+Goriya fails closed without Food. Red Candle fails closed until
 the item room is observed and `ADDR_CANDLE` becomes 2 naturally. The
 start-based pond walk is recon-only. Source room ids cannot become executable
 stop predicates. The live L6 residual play `0x09` `(56,109)` TF `0x1F`

@@ -38,11 +38,14 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
      (`path_complete`, phase DONE, 1577f, `writes=0`) on a continuous power-on.
      The `_left_mouth` latch keeps the `0x22` mouth-tile spawn from tripping
      the re-entry refusal on frame 1.
-  2. `level7_bait_purchase` — `make_bait_purchase_controller(plan)`
-     (60R, shop `0x34`, no Food/`ADDR_FOOD`/rupee-grant write). `SPINE_L7_RUPEE_RETOPUP`
-     tops the owned rupee **count** 42→60 before this stage; it then fails
-     closed at `bait_shop_geometry_unobserved` (shop `0x34` geometry / cave
-     xy / buy policy all still unobserved).
+  2. `level7_bait_purchase` — **Survival:** `make_survival_bait_purchase_controller`
+     (`l7_hops(survival=True)`) — one disclosed `ADDR_FOOD` write (`$065D`→1)
+     in place of the natural 60R buy, since the natural L6→shop OW route is a
+     mountain-locked pocket (bead `rr-8t4.4`); `SPINE_L7_RUPEE_RETOPUP` still
+     tops the owned rupee **count** 42→60 for the cost paid; passes green.
+     **Clean:** `make_bait_purchase_controller` still fails closed at
+     `bait_shop_geometry_unobserved` (shop `0x34` geometry / cave xy / buy
+     policy all still unobserved). Disclosed in `docs/ASSIST_CONTRACT.md`.
   3. `level7_pond_drain_entry` — `make_pond_entry_controller()`
      (still unverified; drain needs naturally selected Whistle)
 
@@ -55,11 +58,13 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
   and `evidence` in `{natural-segment, spine-green}`. Room id is still
   `None` so the predicate fails closed.
 
-- **expected inventory deltas:** Food 0→1 (natural 60R buy). No TF change.
-  Keys/bombs unchanged on OW. Candle stays 0 (Blue Candle not on the
-  mainline; Red Candle is the L7 dungeon item). Disclosed Survival write:
-  rupee **count** 42→60 before `level7_bait_purchase` (`SPINE_L7_RUPEE_RETOPUP`).
-  No `ADDR_FOOD` / rupee-grant / Whistle / door / TF writes.
+- **expected inventory deltas:** Food 0→1. No TF change. Keys/bombs unchanged
+  on OW. Candle stays 0 (Blue Candle not on the mainline; Red Candle is the L7
+  dungeon item). Disclosed **Survival** writes at `level7_bait_purchase`:
+  rupee **count** 42→60 (`SPINE_L7_RUPEE_RETOPUP`) + one `ADDR_FOOD`→1
+  (`SurvivalBaitPurchaseController`, bead `rr-8t4.4`). No rupee-grant /
+  Whistle / door / TF writes. Clean does the Food gain via a natural buy
+  (still fail-closed until `rr-8t4.4`).
 
 - **known dead beliefs / first missed RAM claim:**
   - Dead: `hop10_ay` DOWN from `0x53` `(224,173)` (v9). Inland-left first.
@@ -98,22 +103,37 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
     `…0x54→0x53→0x52→0x42↑`. Route-owner decision: buy Bait before L6, or
     loop the post-L6 pocket exit north/west around the mountains, or take a
     longer post-L6 leg. The spine's `0x22→…→0x25` "green" walk is a dead spur.
+    **Tracked as bead `rr-8t4.4`** (natural L6→shop OW route). Until it lands,
+    the Survival spine sets Food directly (`SurvivalBaitPurchaseController`,
+    disclosed in `docs/ASSIST_CONTRACT.md`).
+
+- **L7 start pin — BLOCKED.** A `Level7Entrance` save-state cannot be built
+  yet: the `Level6ExitOverworld` precedent poked inventory onto a *live* OW
+  leftover, but **no L7 room has been observed live** (`level7/dungeon.py`
+  room ids all `None`), so there is no state to anchor. The pin folds into
+  `rr-8t4.2` (L7-B) first-room recon — its first observed room *is* the L7
+  start. Closest current checkpoint: the continuous-tape leftover at
+  `level7_pond_drain_entry` (post-Bait OW `0x25`, Food 1).
 
 - **fixture provenance:** Phase 1 is a **continuous power-on** tape, not a
-  save-state fixture. `--through level7-entry` (`recordings/l7p1_entry_v2.json`)
+  save-state fixture. `--through level7-entry` (`recordings/l7p1_foodfix.json`)
   drives power-on → measured L6 fanfare exit → `level7_post_l6_overworld`
-  green `0x22→0x25` → fail-closed at `level7_bait_purchase`
-  (`bait_shop_geometry_unobserved`). `set_state=0`, `deaths=0`. Pond recon
-  remains `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
+  green `0x22→0x25` → `level7_bait_purchase` green (Survival Food fixture) →
+  fail-closed at `level7_pond_drain_entry`. `set_state=0`, `deaths=0`. Pond
+  recon remains `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 
 - **files changed (Phase 1) / public target:** `level7/entry.py` (verified
-  handoff + `_left_mouth` latch), `level7/spine.py` (`SPINE_L7_RUPEE_RETOPUP`),
+  handoff + `_left_mouth` latch + `SurvivalBaitPurchaseController`),
+  `level7/hops.py` (`survival=` swap), `level7/spine.py`
+  (`SPINE_L7_RUPEE_RETOPUP`, `l7_hops(survival=True)`),
   `spine/survival.py` (`spine_final_fields(ram)`, `topup_owned_rupees`,
-  `rupee_retopup`), `dungeon/ops.py` (`poke_rupees`, `apply_owned_inventory(rupees=)`),
+  `rupee_retopup`), `dungeon/ops.py` (`poke_rupees`, `poke_food`,
+  `apply_owned_inventory(rupees=)`), `assist.py` (`poke_food` re-export),
   `scripts/run_survival_spine.py`, `tests/test_level7_hops.py`,
   `tests/test_dungeon_ops.py`, `docs/{LEVEL7_ROUTE,ASSIST_CONTRACT}.md`,
   `docs/tasks/{l7-handoff,ow-handoff,rr-tne2-residual}.md`.
-  Public target: **`level7-entry`** (green through `level7_post_l6_overworld`).
+  Public target: **`level7-entry`** (green through `level7_bait_purchase` on
+  the Survival spine).
 
 ---
 

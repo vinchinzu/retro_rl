@@ -13,10 +13,47 @@ from zelda_i.dungeon.ops import (
     OWNED_INVENTORY_FIELDS,
     apply_owned_inventory,
     poke_bombs,
+    poke_food,
     poke_keys,
     poke_rupees,
 )
+from zelda_i.ram import ADDR_FOOD
 from zelda_i.ram import ADDR_SELECTED_ITEM as RAM_SELECTED
+
+
+class _AssignMem:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, str, int]] = []
+
+    def assign(self, addr: int, fmt: str, val: int) -> None:
+        self.calls.append((int(addr), fmt, int(val)))
+
+
+def _env_with_mem(mem: object) -> SimpleNamespace:
+    return SimpleNamespace(unwrapped=SimpleNamespace(data=SimpleNamespace(memory=mem)))
+
+
+def test_poke_food_writes_only_the_food_byte() -> None:
+    mem = _AssignMem()
+    report = poke_food(_env_with_mem(mem), from_food=0)
+    assert mem.calls == [(ADDR_FOOD, "|u1", 1)]
+    assert report["food_writes"] == 1
+    assert report["poke_food"] == 1
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+    assert report["inventory_writes"] == 0
+    assert report["bow_writes"] == 0
+    assert report["state_load"] is False
+    assert [w["field"] for w in report["writes"]] == ["food"]
+
+
+def test_poke_food_skips_when_already_owned() -> None:
+    mem = _AssignMem()
+    report = poke_food(_env_with_mem(mem), from_food=1)
+    assert mem.calls == []
+    assert report["food_writes"] == 0
+    assert report["poke_food"] == 0
+    assert report["writes"] == []
 
 
 def test_b_item_slot_is_bombs_1_arrows_2() -> None:

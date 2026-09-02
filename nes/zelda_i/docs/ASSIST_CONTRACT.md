@@ -69,6 +69,35 @@ Allowed fields only:
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
 / `poke_keys` / `poke_rupees`). `progression_writes` and `capacity_writes` stay 0.
 
+### Bait / Food byte at the L7 shop (operator exception, 2026-09-02)
+
+The natural L6 → bait-shop overworld route is a **mountain-locked desert
+pocket** (`0x22/0x32/0x33/0x23/0x24/0x25`) with no southward outlet to the
+row-4/5 band that holds pond `0x42` and shop `0x34`; the shop and pond are
+only reached walking north out of the western forest band from *start*. Mapping
+that route is its own campaign (bead `rr-8t4.4`). Until it lands, the Survival
+spine's Bait stage (`level7_bait_purchase`) runs
+`SurvivalBaitPurchaseController`: one disclosed write of the owned **Food**
+byte in place of the natural 60R buy, so `level7-entry` and L7-B can run.
+**Not Clean** — Clean keeps `NaturalBaitPurchaseController` fail-closed.
+
+Food is a **consumable gate item** (spent feeding the Hungry Goriya in L7-B),
+not an owned resource count, so it is disclosed here separately from the
+bomb/key/rupee top-ups and is **not** written through `apply_owned_inventory`.
+
+Allowed fields only:
+
+| Field | Address / data key | Rule |
+|-------|--------------------|------|
+| food | `$065D` / `ADDR_FOOD` | Once, at `level7_bait_purchase` on the Survival spine, set to `1` if still 0. Never a rupee, Whistle, door, or TF write. |
+
+The implementation is `zelda_i.dungeon.ops.poke_food`, wired into
+`SurvivalBaitPurchaseController`. List the write in the stage
+`inventory_assist` / `report()["writes"]`. `progression_writes` and
+`capacity_writes` stay 0. The disclosed rupee **count** top-up
+(`SPINE_L7_RUPEE_RETOPUP`, 42→60) still fires before the stage and represents
+the cost paid. A natural buy from a mapped route replaces both.
+
 ### One-room Link position — L6 0x3A stairs (operator exception, 2026-08-25)
 
 Walk-on of the cleared 0x3A stairs is BLOCKED after six 3-red hops. One
@@ -135,8 +164,9 @@ and record the before/after count and semantic stage name.
 Do **not** grant an item Link has not found on this session: sword upgrade,
 boomerang / magical boomerang, bow, candle, whistle, raft,
 stepladder, book, ring, bracelet, letter, potion, rod, magic key, map,
-compass, or triforce bits. Wooden arrows at Gohma `0x1C` are the exception
-above; silver arrows stay forbidden.
+compass, or triforce bits. Wooden arrows at Gohma `0x1C` and the Food byte at
+`level7_bait_purchase` are the disclosed exceptions above; silver arrows stay
+forbidden.
 
 ## Forbidden writes
 
