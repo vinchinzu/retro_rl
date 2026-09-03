@@ -34,13 +34,20 @@ sets; the old controller waited on that bit. Fixed with the `east_route_step`
 waypoint micro (rise `y=109`, RIGHT `x=204`, DOWN `y=141`, push `x=208`).
 
 **Next sitting: `0x6B` (`GORIYA_HINT`).** Entered at `(16,141)` west mouth,
-mode 5, one live goriya `0x05`, still Candle 0 / Food 0. Source topology:
-RIGHT → `DIGDOGGER_1`, UP → `OLD_MAN_NOSE` (`KILL_CLEAR`, tip of the nose).
-The Red Candle is further east/south past `MAP` / `WEST_LOCK_SKIP` /
-`CANDLE_PUSH` — the candle question (`ADDR_CANDLE` 1→2 natural, room
-unobserved) is still `rr-8t4.4` / the natural spine. Do not poke
-`ADDR_CANDLE`. The `0x6A` traverse never needed light — Keese are sprites,
-the wall outline is enough to route the top band blind.
+mode 5, **six** live goriya `0x05` (they read HP=0 for ~1 frame on spawn —
+use a `saw_goriya` latch like `Room69EastController`). Still Candle 0 /
+Food 0. Recon (`scratch/sweep_l7_room6b.py`, `recordings/sweep6b_*.png`):
+the room is **lit**, green, with a **central X of diamond blocks** that
+walls the `y=141` centre band (tile `0xB1` at `x=96`). All four doors read
+OPEN (N/S/E/W notches, no shut graphics). The `y≈93` top band and `y≈109`
+are clear across to `x≈208`; clearing the six goriyas took ~1,374f with the
+shared goriya micro, `deaths=0`. Onward route not yet walked to a live
+dest — source topology: RIGHT → `DIGDOGGER_1`, UP → `OLD_MAN_NOSE`
+(`KILL_CLEAR` dead-end). The Red Candle is further on past `MAP` /
+`WEST_LOCK_SKIP` / `CANDLE_PUSH`; the candle pickup (`ADDR_CANDLE` 1→2
+natural, room unobserved) is still `rr-8t4.4` / the natural spine. Do not
+poke `ADDR_CANDLE`. The `0x6A` traverse never needed light — Keese are
+sprites, the wall outline is enough to route the top band blind.
 
 Dead on this checkbox:
 1. v1 `room_6a_east_step` blind `y=141` push: walled at `x=48` tile `0xB1`,
