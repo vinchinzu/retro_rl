@@ -49,6 +49,7 @@ from zelda_i.overworld.common import (
     unstick_wiggle,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk.physics import OccupancyWalker
 
 DOOR_X = 120
 DOOR_Y = 141
@@ -421,6 +422,7 @@ class Level2Enter6fKeyController(L2NavBase):
     max_frames: int = ENTER_6F_KEY_MAX_FRAMES
     door_phase: str = "band"
     _last_dir: str = "RIGHT"
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
 
     def on_arrive(self, snap: ZeldaSnapshot) -> str:
         del snap
@@ -445,6 +447,24 @@ class Level2Enter6fKeyController(L2NavBase):
             if y > 160:
                 return FrameAction(nes_action("UP"), "north_door_y")
             self.door_phase = "push"
+        # Live spine sat at (72, 181) then (112, 181): greedy vertical band
+        # moves walk UP into the diamonds (rr fixed at 178b49e9, regressed by
+        # the level2/ package split). Until aligned to the y≈113 band, use
+        # occupancy: block the predicted cell on a miss and BFS-replan.
+        if self.door_phase == "band" and not (
+            abs(y - self.band_y) <= 4 and 90 <= x <= 160
+        ):
+            xy = (int(x), int(y))
+            dest = (120, self.band_y)
+            self.walker.observe(xy)
+            if self.walker.goal != dest:
+                self.walker.goal = dest
+                self.walker.path = None
+            direction = self.walker.next_dir(xy, dest)
+            if direction is None:
+                self.walker.last_dir = None
+                return FrameAction(nes_idle_action(), "band_wait")
+            return FrameAction(nes_action(direction), "band_occ")
         action, next_phase = diamond_east_phase(
             snap,
             phase=self.door_phase,
