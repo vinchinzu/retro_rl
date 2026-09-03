@@ -152,7 +152,16 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         evidence="fixture-live",
     ),
     Level7RoomHyp(COMPASS, "compass_stalfos"),
-    Level7RoomHyp(GORIYA_BUBBLE, "goriya_keese_bubble"),
+    Level7RoomHyp(
+        GORIYA_BUBBLE,
+        "goriya_keese_bubble",
+        ram_id=0x49,
+        role="live: goriya 0x05 + keese 0x1b + bubble residual 0x2b; entry "
+        "(120,205) S mouth; kill-clear opens the UP door bit but a full-width "
+        "water moat (~y120) gates the UP path — needs the Stepladder; L/R "
+        "walled; DOWN -> 0x59",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(DIGDOGGER_2, "digdogger_skip"),
     Level7RoomHyp(MOLDORM_KEY_OPT, "moldorm_key_optional"),
     Level7RoomHyp(GORIYA_PRE_HUNGRY, "goriya_pre_hungry"),
@@ -403,12 +412,39 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
         GORIYA_COMPASS: (
             _back(DoorDir.RIGHT, DODONGOS_UPGRADE),
             _e(DoorDir.RIGHT, COMPASS, GateKind.KILL_CLEAR),
-            _open(DoorDir.UP, GORIYA_BUBBLE),
+            _e(
+                DoorDir.UP,
+                GORIYA_BUBBLE,
+                GateKind.KILL_CLEAR,
+                notes=(
+                    "live dest $EB=0x49 2/2; goriya 0x05/0x06 kill-clear sets "
+                    "cur_opened_doors bit 3 (UP). Naive clear boxes Link at "
+                    "(48,125) — perimeter waypoint micro: rise y~100, west "
+                    "x~44, rise y~64, cross x=120, push UP (frame 2329)"
+                ),
+                verification="fixture-live",
+            ),
         ),
         COMPASS: (_back(DoorDir.RIGHT, GORIYA_COMPASS),),
         GORIYA_BUBBLE: (
-            _back(DoorDir.UP, GORIYA_COMPASS),
-            _e(DoorDir.UP, DIGDOGGER_2, GateKind.KILL_CLEAR),
+            _e(
+                DoorDir.DOWN,
+                GORIYA_COMPASS,
+                GateKind.OPEN,
+                notes="live: 0x49 DOWN -> 0x59 (backtrack), 1/1",
+                verification="fixture-live",
+            ),
+            _e(
+                DoorDir.UP,
+                DIGDOGGER_2,
+                GateKind.KILL_CLEAR,
+                notes=(
+                    "live 0x49: kill-clear opens the UP door bit, but a "
+                    "full-width water moat (~y120, tile 0xF4) walls the UP "
+                    "path — the Stepladder is required to cross. L/R walled. "
+                    "Dest DIGDOGGER_2 unobserved (recon fixture has no ladder)"
+                ),
+            ),
         ),
         DIGDOGGER_2: (
             _back(DoorDir.UP, GORIYA_BUBBLE),

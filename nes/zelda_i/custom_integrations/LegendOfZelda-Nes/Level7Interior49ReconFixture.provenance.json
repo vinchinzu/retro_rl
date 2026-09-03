@@ -1,0 +1,166 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T20:56:14.532431+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior59ReconFixture: 0x59 goriya 0x05/0x06 cleared + perimeter waypoint route to the UP door -> 0x49 (GORIYA_BUBBLE). No set_state, no Candle/Food/TF/door/key/bomb writes.",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_interior_49_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "food": 1,
+      "keys": 4,
+      "mode": 5,
+      "obj_types": [
+        "0x05:goriya_blue_or_residual",
+        "0x1b:keese",
+        "0x2b:invuln_mover_residual",
+        "0x5c:boomerang_projectile"
+      ],
+      "open_doorway_mask": 0,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "screen": "0x49",
+      "xy": [
+        120,
+        205
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 73,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 128,
+          "y": 108
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 112,
+          "y": 109
+        },
+        {
+          "hp": 80,
+          "slot": 3,
+          "state": 128,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 80,
+          "slot": 4,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 128,
+          "y": 187
+        },
+        {
+          "hp": 80,
+          "slot": 5,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 201,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 207,
+          "y": 110
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 178,
+          "y": 95
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 48,
+          "y": 123
+        },
+        {
+          "hp": 144,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 128,
+          "y": 151
+        },
+        {
+          "hp": 144,
+          "slot": 11,
+          "state": 48,
+          "type_id": 92,
+          "type_name": "boomerang_projectile",
+          "x": 164,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 73,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 8,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior59ReconFixture.state",
+  "source_state_sha256": "3e59c0505f7fd4aea5f80d441f295811149fa5e05acc671984ada0fa38e6d248",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior49ReconFixture.state",
+  "state_sha256": "7b8823698f7bb85a57ece4a2c781b128622323e369d5a09feeced622d59c8d94"
+}
