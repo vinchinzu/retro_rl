@@ -42,16 +42,20 @@ from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
+    CANDLE_PUSH,
     DIGDOGGER_1,
     DIGDOGGER_2,
     DODONGOS_UPGRADE,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
+    GORIYA_POST_RUPEE,
     GORIYA_PRE_HUNGRY,
+    HIDDEN_RUPEES,
     HUNGRY_GORIYA,
     OLD_MAN_NOSE,
     ROPES_KEY,
     STALFOS_KEY,
+    WEST_LOCK_SKIP,
     GORIYA_HINT,
     KEESE,
     LEVEL7_ROOM_BY_ID,
@@ -2000,6 +2004,169 @@ class Room38UpController(HopController):
         }
 
 
+ROOM_18 = 0x18
+ROOM_08 = 0x08
+ROOM_09 = 0x09
+ROOM_19 = 0x19
+ROOM_1A = 0x1A
+ROOM_09_SOUTH_Y = 189
+ROOM_09_SOUTH_X = 120
+ROOM09_DOWN_MAX_FRAMES = 8000
+
+
+def north_of_room18_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x18`` (HIDDEN_RUPEES)."""
+    return LEVEL7_ROOM_BY_ID[HIDDEN_RUPEES].ram_id
+
+
+def east_of_room08_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x08`` (GORIYA_POST_RUPEE)."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_POST_RUPEE].ram_id
+
+
+def south_of_room09_ram_id() -> int | None:
+    """Live ``$EB`` of the room south of ``0x09`` (WEST_LOCK_SKIP)."""
+    return LEVEL7_ROOM_BY_ID[WEST_LOCK_SKIP].ram_id
+
+
+def east_of_room19_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x19`` (CANDLE_PUSH)."""
+    return LEVEL7_ROOM_BY_ID[CANDLE_PUSH].ram_id
+
+
+# 0x18 MAP north BOMB wall -> $EB=0x08 (HIDDEN_RUPEES). Stand (120,93)
+# face UP. 2/2 (recordings/18_bn_v2/v3.json). Skip MAP_EAST_LOCK.
+L7_ROOM18_NORTH_BOMB = Level7BombWall(
+    room=ROOM_18, stand=(120, 93), face="UP", opens_to=0x08
+)
+# 0x08 diamond-cross east BOMB wall -> $EB=0x09. South-band then east
+# column to (208,141) face RIGHT. 2/2 (08_be_v2/v3.json).
+L7_ROOM08_EAST_BOMB = Level7BombWall(
+    room=ROOM_08, stand=(208, 141), face="RIGHT", opens_to=0x09
+)
+L7_ROOM08_EAST_APPROACH = ((200, 189), (200, 141), (208, 141))
+# 0x19 diamond floor east BOMB wall -> $EB=0x1A. South-around
+# (96,141)->(96,189)->(208,189)->(208,141) face RIGHT. 2/2 (19_be_v5/v6).
+L7_ROOM19_EAST_BOMB = Level7BombWall(
+    room=ROOM_19, stand=(208, 141), face="RIGHT", opens_to=0x1A
+)
+L7_ROOM19_EAST_APPROACH = ((96, 141), (96, 189), (208, 189), (208, 141))
+
+
+def room_09_down_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+    saw_goriya: bool = False,
+    frames: int = 0,
+) -> FrameAction:
+    """One frame of 0x09 kill-clear → south shutter.
+
+    Dead: south is OPEN on spawn. The shutter walks only after the goriya
+    0x05/0x06 clear; ``cur_opened_doors`` stays LEFT. Drop to ``y=189``
+    (west of the statue row), align ``x=120``, push DOWN.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("DOWN"), "down09_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "down09_arrived")
+    if snap.screen != ROOM_09:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    live = live_goriyas(snap)
+    if live:
+        target = nearest_enemy(snap.link_x, snap.link_y, live)
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        return _goriya_fight(snap, target, frames=frames)
+    if not saw_goriya:
+        return FrameAction(nes_idle_action(), "spawn_wait")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y < ROOM_09_SOUTH_Y - DOOR_Y_TOL:
+        return FrameAction(nes_action("DOWN"), "down09_drop")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="DOWN",
+        target_x=ROOM_09_SOUTH_X,
+        x_tol=NORTH_X_TOL,
+        reason="down09",
+    )
+
+
+@dataclass(kw_only=True)
+class Room09DownController(HopController):
+    """0x09 (GORIYA_POST_RUPEE) west mouth: kill-clear, south shutter
+    to live dest 0x19 (WEST_LOCK_SKIP).  2/2 (09_down_v2/v3).
+    Recon-wired only.
+    """
+
+    spec_id: str = "level7_room09_down"
+    max_frames: int = ROOM09_DOWN_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x09_south"
+    dest: int | None = field(default_factory=south_of_room09_ram_id)
+    saw_goriya: bool = False
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_18, ROOM_08, ROOM_09}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("DOWN"), "down09_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if live_goriyas(snap):
+            self.saw_goriya = True
+        action = room_09_down_step(
+            snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
+        )
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ROOM_08:
+                return self.mark_fail("west_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "DOWN",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -2119,6 +2286,11 @@ __all__ = [
     "ROOM_6C",
     "SOUTH_MOUTH_Y",
     "L7_ROOM69_WEST_BOMB",
+    "L7_ROOM18_NORTH_BOMB",
+    "L7_ROOM08_EAST_BOMB",
+    "L7_ROOM08_EAST_APPROACH",
+    "L7_ROOM19_EAST_BOMB",
+    "L7_ROOM19_EAST_APPROACH",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
     "Level7BombWall",
@@ -2134,6 +2306,7 @@ __all__ = [
     "Room49UpController",
     "Room39LeftController",
     "Room38UpController",
+    "Room09DownController",
     "Room58EastController",
     "Room58NorthController",
     "Room59UpController",
@@ -2148,6 +2321,10 @@ __all__ = [
     "south_of_room68_ram_id",
     "north_of_room58_ram_id",
     "north_of_room38_ram_id",
+    "north_of_room18_ram_id",
+    "east_of_room08_ram_id",
+    "south_of_room09_ram_id",
+    "east_of_room19_ram_id",
     "west_of_room39_ram_id",
     "north_of_room49_ram_id",
     "north_of_room59_ram_id",
@@ -2155,6 +2332,7 @@ __all__ = [
     "room_49_up_step",
     "room_39_left_step",
     "room_38_up_step",
+    "room_09_down_step",
     "room_6a_east_step",
     "room_6b_east_step",
     "room_6b_north_step",

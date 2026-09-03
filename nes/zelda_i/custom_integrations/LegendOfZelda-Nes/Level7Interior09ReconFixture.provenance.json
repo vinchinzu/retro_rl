@@ -1,0 +1,134 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T22:21:04.888654+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior08ReconFixture: 0x08 bomb-east stand [208, 141] face RIGHT -> 0x09. No Candle/Food/TF/door/key writes.",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_interior_09_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 5,
+      "candle": 0,
+      "colliding_tile": 0,
+      "cur_opened_doors": 2,
+      "food": 0,
+      "keys": 3,
+      "ladder": 1,
+      "mode": 5,
+      "obj_types": [
+        "0x05:goriya_blue_or_residual",
+        "0x06:goriya"
+      ],
+      "open_doorway_mask": 0,
+      "room_all_dead": 0,
+      "room_item_id": 15,
+      "room_item_name": "unknown_room_item_0x0f",
+      "screen": "0x09",
+      "screen_int": 9,
+      "selected": 1,
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        32,
+        141
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 5,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "is_updating_mode": 0,
+      "keys": 3,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 9,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 160,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 6,
+          "type_name": "goriya",
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 6,
+          "type_name": "goriya",
+          "x": 192,
+          "y": 173
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 208,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 6,
+          "type_name": "goriya",
+          "x": 80,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 80,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 9,
+      "room_all_dead": 0,
+      "room_item_id": 15,
+      "room_item_name": "unknown_room_item_0x0f",
+      "room_obj_count": 6,
+      "rupees": 5,
+      "submode": 0,
+      "triforce": 0,
+      "x": 32,
+      "y": 141
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a06954-80ee-7890-a70a-2a6b4b32c0dd/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior08ReconFixture.state",
+  "source_state_sha256": "90881288033e4f45f21ef9f556fc8b45c24de8d896f03068bd467ed8ead68849",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a06954-80ee-7890-a70a-2a6b4b32c0dd/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior09ReconFixture.state",
+  "state_sha256": "141d3f428d9645725fb4d60db6f09d99b5f23c40f00ffaec4399d5891bf343c1"
+}

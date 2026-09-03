@@ -1,0 +1,164 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T22:22:47.702409+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior09ReconFixture: 0x09 DOWN door -> 0x19. No set_state, no Candle/Food/TF/door/key/bomb writes.",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_interior_19_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 8,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "food": 0,
+      "keys": 3,
+      "mode": 5,
+      "obj_types": [
+        "0x05:goriya_blue_or_residual",
+        "0x5c:boomerang_projectile"
+      ],
+      "open_doorway_mask": 0,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "screen": "0x19",
+      "xy": [
+        120,
+        93
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 8,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 3,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 25,
+      "objects": [
+        {
+          "hp": 80,
+          "slot": 1,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 139,
+          "y": 157
+        },
+        {
+          "hp": 80,
+          "slot": 2,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 151,
+          "y": 125
+        },
+        {
+          "hp": 80,
+          "slot": 3,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 160,
+          "y": 165
+        },
+        {
+          "hp": 80,
+          "slot": 4,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 73,
+          "y": 125
+        },
+        {
+          "hp": 80,
+          "slot": 5,
+          "state": 128,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 96,
+          "y": 149
+        },
+        {
+          "hp": 80,
+          "slot": 6,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 96,
+          "y": 146
+        },
+        {
+          "hp": 144,
+          "slot": 8,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 72,
+          "y": 125
+        },
+        {
+          "hp": 144,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 136,
+          "y": 157
+        },
+        {
+          "hp": 144,
+          "slot": 10,
+          "state": 83,
+          "type_id": 92,
+          "type_name": "boomerang_projectile",
+          "x": 96,
+          "y": 93
+        },
+        {
+          "hp": 144,
+          "slot": 11,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 96,
+          "y": 143
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 25,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 6,
+      "rupees": 5,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a06954-80ee-7890-a70a-2a6b4b32c0dd/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior09ReconFixture.state",
+  "source_state_sha256": "141d3f428d9645725fb4d60db6f09d99b5f23c40f00ffaec4399d5891bf343c1",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a06954-80ee-7890-a70a-2a6b4b32c0dd/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior19ReconFixture.state",
+  "state_sha256": "3d44bf63e90252984829abc6ffff7e69e42489cea51047ba1050af4dd8fbd264"
+}
