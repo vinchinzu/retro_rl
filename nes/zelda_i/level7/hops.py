@@ -36,6 +36,8 @@ from zelda_i.level7.path import (
     L7_ROOM19_EAST_BOMB,
     L7_ROOM1A_EAST_APPROACH,
     L7_ROOM1A_EAST_BOMB,
+    L7_ROOM0C_EAST_APPROACH,
+    L7_ROOM0C_EAST_BOMB,
     L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
     HungryGoriyaGateController,
@@ -279,6 +281,19 @@ def make_room1a_east_bomb_controller() -> BombWallController:
     )
 
 
+def make_room0c_east_bomb_controller() -> BombWallController:
+    """0x0C DODONGOS_BOSS_PATH east BOMB wall → live 0x0D TIP_OF_NOSE (2/2).
+
+    East-around the y=141 tile-181 mass.  Recon-wired only.
+    """
+    return BombWallController(
+        wall=L7_ROOM0C_EAST_BOMB,
+        level=7,
+        approach_waypoints=L7_ROOM0C_EAST_APPROACH,
+        approach_tol=4,
+    )
+
+
 def make_entry_to_goriya_controller() -> Level7PathController:
     return HungryGoriyaGateController()
 
@@ -510,6 +525,7 @@ __all__ = [
     "make_room09_down_controller",
     "make_room19_east_bomb_controller",
     "make_room1a_east_bomb_controller",
+    "make_room0c_east_bomb_controller",
     "make_room1a_candle_controller",
     "make_room4a_return_controller",
     "make_room1b_key_east_controller",

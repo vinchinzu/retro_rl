@@ -24,6 +24,7 @@ from zelda_i.level7.graph import (
     DIGDOGGER_2,
     DODONGOS_BOSS_PATH,
     DODONGOS_UPGRADE,
+    TIP_OF_NOSE,
     ENTRY,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
@@ -157,6 +158,7 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         GORIYA_PRE_DIG: 0x1B,
         FORCED_DIGDOGGER: 0x1C,
         DODONGOS_BOSS_PATH: 0x0C,
+        TIP_OF_NOSE: 0x0D,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
@@ -339,6 +341,16 @@ def test_map_bomb_north_chain_is_fixture_live() -> None:
     boss_path = next(r for r in LEVEL7_ROOMS if r.source_id == DODONGOS_BOSS_PATH)
     assert boss_path.ram_id == 0x0C
     assert not boss_path.route_eligible
+    nose_e = {
+        e.direction: e
+        for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(DODONGOS_BOSS_PATH)
+    }[DoorDir.RIGHT]
+    assert nose_e.target_room == TIP_OF_NOSE
+    assert nose_e.gate is GateKind.BOMB
+    assert nose_e.verification == "fixture-live"
+    nose = next(r for r in LEVEL7_ROOMS if r.source_id == TIP_OF_NOSE)
+    assert nose.ram_id == 0x0D
+    assert not nose.route_eligible
     to_tf = preferred_path(KEESE, TRIFORCE, caps)
     assert to_tf is not None
     assert any(exit_.gate is GateKind.BOMB for exit_ in to_tf)

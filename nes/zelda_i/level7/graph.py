@@ -280,7 +280,16 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "KILL-CLEAR north of forced Digdogger 0x1C",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(TIP_OF_NOSE, "tip_of_nose_wallmasters", role="block_stairs"),
+    Level7RoomHyp(
+        TIP_OF_NOSE,
+        "tip_of_nose_wallmasters",
+        ram_id=0x0D,
+        role="live: wallmaster 0x27 + bubbles 0x2b + 0x68 at (192,144); "
+        "entry (32,141) W mouth; west mouth is a grab trap. Kill 5 "
+        "wallmasters then push mid-right 0x68 RIGHT (wiki; push still "
+        "unobserved this sitting)",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(NOSE_CELLAR, "nose_cellar"),
     Level7RoomHyp(PRE_BOSS, "pre_boss"),
     Level7RoomHyp(AQUAMENTUS, "aquamentus", role="heart_plus_1"),
@@ -750,7 +759,18 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
         ),
         DODONGOS_BOSS_PATH: (
             _back(DoorDir.UP, FORCED_DIGDOGGER),
-            _e(DoorDir.RIGHT, TIP_OF_NOSE, GateKind.BOMB),
+            _e(
+                DoorDir.RIGHT,
+                TIP_OF_NOSE,
+                GateKind.BOMB,
+                notes=(
+                    "live dest $EB=0x0D 2/2; east-around the y=141 tile-181 "
+                    "mass (120,165)->(200,165)->(200,141)->(208,141) face "
+                    "RIGHT; bombs 7->6. Dead: y=141 centre RIGHT. Dest "
+                    "wallmaster 0x27 + 0x68 (32,141) W mouth"
+                ),
+                verification="fixture-live",
+            ),
         ),
         TIP_OF_NOSE: (
             _open(DoorDir.LEFT, DODONGOS_BOSS_PATH),
