@@ -38,6 +38,7 @@ from zelda_i.level7.path import (
     Room6BEastController,
     Room6BNorthController,
     Room6CEastController,
+    Room58EastController,
     Room68NorthController,
     Room69EastController,
     unverified_path_controller,
@@ -112,6 +113,14 @@ def make_room68_north_controller() -> Level7PathController:
     Reached via make_room69_west_bomb_controller.  Recon-wired only.
     """
     return Room68NorthController()
+
+
+def make_room58_east_controller() -> Level7PathController:
+    """0x58 (DODONGOS_UPGRADE) → OPEN east door to live 0x59 GORIYA_COMPASS (2/2).
+
+    3x invulnerable 0x31 roamers are dodged.  Recon-wired only.
+    """
+    return Room58EastController()
 
 
 def make_room69_west_bomb_controller() -> BombWallController:
@@ -316,6 +325,7 @@ __all__ = [
     "make_room6b_east_controller",
     "make_room6b_north_controller",
     "make_room6c_east_controller",
+    "make_room58_east_controller",
     "make_room68_north_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",

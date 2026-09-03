@@ -42,6 +42,7 @@ from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_pus
 from zelda_i.level7.graph import (
     DIGDOGGER_1,
     DODONGOS_UPGRADE,
+    GORIYA_COMPASS,
     OLD_MAN_NOSE,
     STALFOS_KEY,
     GORIYA_HINT,
@@ -132,6 +133,17 @@ ROOM_68 = 0x68
 ROOM_68_NORTH_X = 120
 ROOM_68_TOP_BAND_Y = 93
 ROOM68_NORTH_MAX_FRAMES = 4000
+# 0x58 (DODONGOS_UPGRADE): dark, 3x invulnerable roamers 0x31 (hp 240) —
+# dodge, do NOT try to kill.  Link spawns bottom (120,205).  The EAST door
+# to live $EB=0x59 (GORIYA_COMPASS) is OPEN (keys unchanged).  A central
+# structure walls the y=141 band west of x~129, so the route climbs the
+# east-open column: (120,165) → (200,165) → (200,141) → push RIGHT.
+# 2/2 byte-identical (recordings/58_east_v2/v3.json).
+ROOM_58 = 0x58
+ROOM_58_EAST_COLUMN_X = 200
+ROOM_58_MID_Y = 165
+ROOM_58_DOOR_Y = 141
+ROOM58_EAST_MAX_FRAMES = 4000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -174,6 +186,11 @@ def east_of_room6c_ram_id() -> int | None:
 def north_of_room68_ram_id() -> int | None:
     """Live ``$EB`` of the room north of ``0x68`` (DODONGOS_UPGRADE), or None."""
     return LEVEL7_ROOM_BY_ID[DODONGOS_UPGRADE].ram_id
+
+
+def east_of_room58_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x58`` (GORIYA_COMPASS), or None."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_COMPASS].ram_id
 
 
 class Level7PathController(Protocol):
@@ -1100,6 +1117,97 @@ class Room68NorthController(HopController):
         }
 
 
+@dataclass(kw_only=True)
+class Room58EastController(HopController):
+    """0x58 (DODONGOS_UPGRADE) → OPEN east door to live dest 0x59.
+
+    3x invulnerable 0x31 roamers are dodged (assist soaks chip damage).
+    Waypoint micro up the east-open column: (120,165) → (200,165) →
+    (200,141) → push RIGHT.  Recon-wired only.
+    """
+
+    spec_id: str = "level7_room58_east"
+    max_frames: int = ROOM58_EAST_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x58"
+    dest: int | None = field(default_factory=east_of_room58_ram_id)
+    _phase: str = "climb"
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_phase={self._phase}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("RIGHT"), "east58_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_58:
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+        x, y = int(snap.link_x), int(snap.link_y)
+        if self._phase == "climb":
+            if y > ROOM_58_MID_Y + DOOR_Y_TOL:
+                return FrameAction(nes_action("UP"), "east58_climb")
+            self._phase = "cross"
+        if self._phase == "cross":
+            if x < ROOM_58_EAST_COLUMN_X - NORTH_X_TOL:
+                if abs(y - ROOM_58_MID_Y) > DOOR_Y_TOL:
+                    return FrameAction(
+                        nes_action("UP" if y > ROOM_58_MID_Y else "DOWN"),
+                        "east58_cross_y",
+                    )
+                return FrameAction(nes_action("RIGHT"), "east58_cross_x")
+            self._phase = "drop"
+        if self._phase == "drop":
+            if abs(y - ROOM_58_DOOR_Y) > DOOR_Y_TOL:
+                return FrameAction(
+                    nes_action("UP" if y > ROOM_58_DOOR_Y else "DOWN"), "east58_drop"
+                )
+            self._phase = "push"
+        return dungeon_align_then_push(
+            snap,
+            push_dir="RIGHT",
+            target_y=ROOM_58_DOOR_Y,
+            y_tol=DOOR_Y_TOL,
+            door_plane=224,
+            reason="east58",
+        )
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "RIGHT",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -1210,6 +1318,7 @@ __all__ = [
     "ROOM_6B",
     "ROOM_6B_EAST_PLANE",
     "ROOM_6B_WEST_MOUTH",
+    "ROOM_58",
     "ROOM_68",
     "ROOM_6C",
     "SOUTH_MOUTH_Y",
@@ -1225,12 +1334,14 @@ __all__ = [
     "Room6BNorthController",
     "Room6CEastController",
     "Room68NorthController",
+    "Room58EastController",
     "UnverifiedLevel7PathController",
     "east_of_room69_ram_id",
     "east_of_room6a_ram_id",
     "east_of_room6b_ram_id",
     "east_of_room6c_ram_id",
     "north_of_room6b_ram_id",
+    "east_of_room58_ram_id",
     "north_of_room68_ram_id",
     "east_route_step",
     "room_6a_east_step",

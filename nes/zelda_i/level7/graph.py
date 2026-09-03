@@ -143,7 +143,14 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         evidence="fixture-live",
     ),
     Level7RoomHyp(BOMB_UPGRADE, "bomb_upgrade_16", role="optional_capacity"),
-    Level7RoomHyp(GORIYA_COMPASS, "goriya_to_compass"),
+    Level7RoomHyp(
+        GORIYA_COMPASS,
+        "goriya_to_compass",
+        ram_id=0x59,
+        role="live: goriya 0x05 + 0x06; OPEN west door from 0x58; UP door "
+        "opens after kill-clear (cur_opened_doors bit 1)",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(COMPASS, "compass_stalfos"),
     Level7RoomHyp(GORIYA_BUBBLE, "goriya_keese_bubble"),
     Level7RoomHyp(DIGDOGGER_2, "digdogger_skip"),
@@ -372,9 +379,25 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
         ),
         ROPES_KEY: (_back(DoorDir.DOWN, KEESE_TRAPS),),
         DODONGOS_UPGRADE: (
-            _back(DoorDir.UP, KEESE_TRAPS),
-            _e(DoorDir.UP, BOMB_UPGRADE, GateKind.KEY),
-            _open(DoorDir.RIGHT, GORIYA_COMPASS),
+            _e(
+                DoorDir.DOWN,
+                KEESE_TRAPS,
+                GateKind.OPEN,
+                notes="live: 0x58 DOWN -> 0x68 (backtrack)",
+                verification="fixture-live",
+            ),
+            _e(DoorDir.UP, BOMB_UPGRADE, GateKind.KEY, notes="north x=120 channel; keys 4->3"),
+            _e(
+                DoorDir.RIGHT,
+                GORIYA_COMPASS,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x59 goriya 0x05/0x06 2/2; OPEN door, keys "
+                    "unchanged. Route: up the east-open column, x=200, drop "
+                    "y=141, push RIGHT. 3x invuln 0x31 (hp240) roam — dodge"
+                ),
+                verification="fixture-live",
+            ),
         ),
         BOMB_UPGRADE: (_back(DoorDir.UP, DODONGOS_UPGRADE),),
         GORIYA_COMPASS: (
