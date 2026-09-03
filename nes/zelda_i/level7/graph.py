@@ -86,7 +86,7 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         MOLDORMS,
         "entry_north_goriya",
         ram_id=0x69,
-        role="goriya_0x05",
+        role="goriya_0x05_then_cleared_forever; live == source GORIYA_BOMB_HUB",
         evidence="fixture-live",
     ),
     Level7RoomHyp(
@@ -103,7 +103,14 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="goriya_0x05",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(OLD_MAN_NOSE, "old_man_tip_of_nose"),
+    Level7RoomHyp(
+        OLD_MAN_NOSE,
+        "old_man_tip_of_nose",
+        ram_id=0x5B,
+        role="live: bubble 0x40 + statue 0x50, dead-end (N/E/W/S walled); "
+        "the north spur off 0x6B, NOT on the candle mainline",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(
         DIGDOGGER_1,
         "digdogger_optional",
@@ -111,9 +118,21 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="digdogger_0x38_plus_statue_0x55",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(STALFOS_KEY, "stalfos_key", role="key_plus_1"),
+    Level7RoomHyp(
+        STALFOS_KEY,
+        "stalfos_key",
+        ram_id=0x6D,
+        role="key_plus_1; live: stalfos 0x2a + small_key 0x19, dead-end",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(GORIYA_BOMB_HUB, "goriya_bomb_hub", role="prefer_bomb_walls"),
-    Level7RoomHyp(KEESE_TRAPS, "keese_traps"),
+    Level7RoomHyp(
+        KEESE_TRAPS,
+        "keese_traps",
+        ram_id=0x68,
+        role="live: reached via 0x69 west bomb wall; interior census pending",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(ROPES_KEY, "ropes_key", role="key_plus_1"),
     Level7RoomHyp(DODONGOS_UPGRADE, "dodongos_upgrade_path"),
     Level7RoomHyp(BOMB_UPGRADE, "bomb_upgrade_16", role="optional_capacity"),
@@ -231,6 +250,25 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 ),
                 verification="fixture-live",
             ),
+            _e(
+                DoorDir.LEFT,
+                KEESE_TRAPS,
+                GateKind.BOMB,
+                notes=(
+                    "live: 0x69 west BOMB wall -> $EB=0x68; stand ~(44,141) "
+                    "face LEFT; cur_opened_doors LEFT bit sets 2/2. This is "
+                    "the candle-path branch (source GORIYA_BOMB_HUB LEFT). "
+                    "0x69 has NO north exit (x-sweep 104..156 solid at y=93)"
+                ),
+                verification="fixture-live",
+            ),
+            _e(
+                DoorDir.DOWN,
+                ENTRY,
+                GateKind.OPEN,
+                notes="live: 0x69 DOWN -> 0x79 entry (backtrack)",
+                verification="fixture-live",
+            ),
         ),
         KEESE: (
             _e(
@@ -269,17 +307,37 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 OLD_MAN_NOSE,
                 GateKind.KILL_CLEAR,
                 notes=(
-                    "tip of the nose; dead: straight centre UP push blocked "
-                    "2/2 at (128,93) on the y=93 band even after goriya clear"
+                    "live dest $EB=0x5B (bubble 0x40 + 0x50) 2/2; the north "
+                    "door notch is at x~118 on the y=93 band (NOT x=128 — "
+                    "that is solid). Opens after the six 0x6B goriya clear. "
+                    "0x5B is a dead-end spur, not the candle mainline"
                 ),
+                verification="fixture-live",
             ),
         ),
         OLD_MAN_NOSE: (_back(DoorDir.UP, GORIYA_HINT),),
         DIGDOGGER_1: (
             _back(DoorDir.RIGHT, GORIYA_HINT),
-            _open(DoorDir.RIGHT, STALFOS_KEY, notes="whistle split; skippable"),
+            _e(
+                DoorDir.RIGHT,
+                STALFOS_KEY,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x6D stalfos 0x2a + small_key 0x19 2/2; "
+                    "ride y=141, bump the digdogger, RIGHT through the door"
+                ),
+                verification="fixture-live",
+            ),
         ),
-        STALFOS_KEY: (_back(DoorDir.RIGHT, DIGDOGGER_1),),
+        STALFOS_KEY: (
+            _e(
+                DoorDir.LEFT,
+                DIGDOGGER_1,
+                GateKind.OPEN,
+                notes="live: 0x6D is a dead-end, only LEFT -> 0x6C 2/2",
+                verification="fixture-live",
+            ),
+        ),
         GORIYA_BOMB_HUB: (
             _open(DoorDir.RIGHT, KEESE),
             _e(DoorDir.LEFT, KEESE_TRAPS, GateKind.BOMB, notes="prefer bomb west"),
