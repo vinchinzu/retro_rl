@@ -48,6 +48,7 @@ All screen/room ids are **source-hypothesized** unless marked **(live)**.
 |-----|-----|-------------|
 | **Whistle / Recorder** | `ADDR_WHISTLE` (`0x065C`) ≠ 0 | Drain pond → entrance; Digdogger shrink |
 | **Bait / Food** | `ADDR_FOOD` (`0x065D`) ≠ 0 | Hungry Goriya gate (mid-dungeon) |
+| **Stepladder** | `ADDR_LADDER` (`0x0663`) ≠ 0 | `0x49` full-width water moat (tile `0xF4` ~y120); L4 item, required to reach DIGDOGGER_2 |
 | Bombs | `ADDR_BOMBS` | Many secret walls; bomb-skip locked doors |
 | Sword | `ADDR_SWORD` | Combat (Magical Sword ideal later) |
 | Keys | `ADDR_KEYS` | Only **4 keys** for **5 locks** in dungeon (source) — bomb-skip or pre-carry |

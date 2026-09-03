@@ -20,10 +20,12 @@ from zelda_i.level7.dungeon import (
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
     DIGDOGGER_1,
+    DIGDOGGER_2,
     DODONGOS_UPGRADE,
     ENTRY,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
+    GORIYA_PRE_HUNGRY,
     KEESE_TRAPS,
     OLD_MAN_NOSE,
     ROPES_KEY,
@@ -136,6 +138,10 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         BOMB_UPGRADE: 0x48,
         GORIYA_COMPASS: 0x59,
         GORIYA_BUBBLE: 0x49,
+        DIGDOGGER_2: 0x39,
+        GORIYA_PRE_HUNGRY: 0x38,
+        HUNGRY_GORIYA: 0x28,
+        MAP: 0x18,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)

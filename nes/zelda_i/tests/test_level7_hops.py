@@ -32,6 +32,9 @@ from zelda_i.level7.hops import (
     make_red_candle_controller,
     make_room58_north_controller,
     make_room68_down_controller,
+    make_room38_up_controller,
+    make_room39_left_controller,
+    make_room49_up_controller,
 )
 from zelda_i.level7.path import (
     EAST_APPROACH_X,
@@ -57,12 +60,18 @@ from zelda_i.level7.path import (
     Room6AEastController,
     Room58NorthController,
     Room68DownController,
+    Room38UpController,
+    Room39LeftController,
+    Room49UpController,
     Room69EastController,
     north_door_79_step,
     room69_east_step,
     room_58_north_step,
     room_68_down_step,
     room_6a_east_step,
+    room_38_up_step,
+    room_39_left_step,
+    room_49_up_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
@@ -676,3 +685,89 @@ def test_room_58_north_arrived_leaves_0x58() -> None:
     assert report["route_eligible"] is False
     assert report["dest_screen"] == 0x48
     assert report["door"] == "UP"
+
+
+def test_room_49_up_south_mouth_stands_until_spawn() -> None:
+    mouth = read_snapshot(_ram(level=7, screen=0x49, x=120, y=SOUTH_MOUTH_Y))
+    assert room_49_up_step(mouth).reason == "spawn_wait"
+    ctl = Room49UpController()
+    act = ctl.step(mouth)
+    assert not ctl.success and not ctl.failed
+    assert act.reason == "spawn_wait"
+
+
+def test_room_49_up_aligns_x_then_pushes_north() -> None:
+    """Stepladder moat: never strafe on water; align on land, then hold UP."""
+    water = read_snapshot(_ram(level=7, screen=0x49, x=64, y=117))
+    assert room_49_up_step(water, saw_goriya=True).reason == "up49_cross"
+    south = read_snapshot(_ram(level=7, screen=0x49, x=80, y=180))
+    assert room_49_up_step(south, saw_goriya=True).reason == "up49_south_align"
+    off = read_snapshot(_ram(level=7, screen=0x49, x=196, y=109))
+    assert room_49_up_step(off, saw_goriya=True).reason == "up49_align_x"
+    door = read_snapshot(_ram(level=7, screen=0x49, x=120, y=93))
+    assert room_49_up_step(door, saw_goriya=True).reason == "up49_push"
+    ctl = Room49UpController()
+    ctl.saw_goriya = True
+    act = ctl.step(door)
+    assert not ctl.success and not ctl.failed
+    assert act.reason == "up49_push"
+
+
+def test_room_49_up_arrived_leaves_0x49() -> None:
+    dest = read_snapshot(_ram(level=7, screen=0x39, x=120, y=SOUTH_MOUTH_Y))
+    ctl = Room49UpController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x49_north"
+    report = ctl.report()
+    assert report["route_eligible"] is False
+    assert report["evidence"] == "fixture-live"
+    assert report["dest_screen"] == 0x39
+    assert report["door"] == "UP"
+    factory = make_room49_up_controller()
+    assert factory.report()["dest_screen"] == 0x39
+    assert "level7_room49_up" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+
+
+def test_room_39_left_rises_centre_column_not_sw_statue() -> None:
+    """SW statue boxes (48,189): stay x=120 until y=141, then LEFT."""
+    mouth = read_snapshot(_ram(level=7, screen=0x39, x=120, y=SOUTH_MOUTH_Y))
+    assert room_39_left_step(mouth).reason == "left39_rise"
+    sw = read_snapshot(_ram(level=7, screen=0x39, x=48, y=189))
+    assert room_39_left_step(sw).reason == "left39_center"
+    door = read_snapshot(_ram(level=7, screen=0x39, x=16, y=141))
+    assert room_39_left_step(door).reason == "left39_push"
+    dest = read_snapshot(_ram(level=7, screen=0x38, x=208, y=141))
+    ctl = Room39LeftController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x39_west"
+    assert ctl.report()["dest_screen"] == 0x38
+    assert ctl.report()["route_eligible"] is False
+    assert make_room39_left_controller().report()["dest_screen"] == 0x38
+    assert "level7_room39_left" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+
+
+def test_room_38_up_uses_east_pocket_not_centre_diamonds() -> None:
+    """y=149 diamond row blocks centre UP; recollect x=208 then rise."""
+    mid = read_snapshot(_ram(level=7, screen=0x38, x=110, y=149))
+    assert room_38_up_step(mid, saw_goriya=True).reason == "up38_pocket"
+    pocket = read_snapshot(_ram(level=7, screen=0x38, x=208, y=149))
+    assert room_38_up_step(pocket, saw_goriya=True).reason == "up38_rise"
+    door = read_snapshot(_ram(level=7, screen=0x38, x=120, y=93))
+    assert room_38_up_step(door, saw_goriya=True).reason == "up38_push"
+    dest = read_snapshot(_ram(level=7, screen=0x28, x=120, y=SOUTH_MOUTH_Y))
+    ctl = Room38UpController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x38_north"
+    assert ctl.report()["dest_screen"] == 0x28
+    assert ctl.report()["route_eligible"] is False
+    assert make_room38_up_controller().report()["dest_screen"] == 0x28
+    assert "level7_room38_up" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]

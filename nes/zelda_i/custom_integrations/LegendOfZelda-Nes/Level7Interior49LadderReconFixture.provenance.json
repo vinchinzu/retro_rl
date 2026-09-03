@@ -1,0 +1,180 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T21:49:10.925246+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "before": 0,
+        "field": "ladder",
+        "from": 0,
+        "name": "ladder_for_0x49_moat",
+        "to": 1
+      }
+    ],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior49ReconFixture. Disclosed ADDR_LADDER $0663 0->1 so the 0x49 full-width water moat is walkable. The Stepladder is an L4 item the real Survival route already earned; this recon pin never carried L4 inventory.",
+      "No Candle/Food/Whistle/TF/door/max_bombs/room/health writes.",
+      "UnlimitedHealthAssist settle aid only; deaths=0, progression_writes=0, capacity_writes=0."
+    ],
+    "phase": "level7_interior_49_ladder_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "fixture_writes": [
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "before": 0,
+        "field": "ladder",
+        "from": 0,
+        "name": "ladder_for_0x49_moat",
+        "to": 1
+      }
+    ],
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "food": 1,
+      "keys": 4,
+      "ladder": 1,
+      "mode": 5,
+      "screen": "0x49",
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        120,
+        205
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 73,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 132,
+          "y": 93
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 93,
+          "y": 109
+        },
+        {
+          "hp": 80,
+          "slot": 3,
+          "state": 128,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 80,
+          "slot": 4,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 135,
+          "y": 189
+        },
+        {
+          "hp": 80,
+          "slot": 5,
+          "state": 128,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 197,
+          "y": 120
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 186,
+          "y": 103
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 48,
+          "y": 135
+        },
+        {
+          "hp": 144,
+          "slot": 10,
+          "state": 16,
+          "type_id": 92,
+          "type_name": "boomerang_projectile",
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 144,
+          "slot": 11,
+          "state": 66,
+          "type_id": 92,
+          "type_name": "boomerang_projectile",
+          "x": 175,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 73,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 8,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0693b-0f22-7862-9dcd-2d842750bdd4/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior49ReconFixture.state",
+  "source_state_sha256": "7b8823698f7bb85a57ece4a2c781b128622323e369d5a09feeced622d59c8d94",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0693b-0f22-7862-9dcd-2d842750bdd4/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior49LadderReconFixture.state",
+  "state_sha256": "b0ce44d486ff835584671b18a8ac506c631be21443da296d8b651f77dd404352"
+}
