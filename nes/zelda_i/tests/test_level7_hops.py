@@ -34,11 +34,17 @@ from zelda_i.level7.path import (
     EAST_DOOR_Y,
     NORTH_DOOR_X,
     NORTH_DOOR_Y,
+    ROOM_6A_DOOR_Y,
+    ROOM_6A_EAST_COLUMN_X,
+    ROOM_6A_EAST_PLANE,
+    ROOM_6A_TOP_BAND_Y,
     SOUTH_MOUTH_Y,
     EntryNorthDoorController,
+    Room6AEastController,
     Room69EastController,
     north_door_79_step,
     room69_east_step,
+    room_6a_east_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
@@ -443,6 +449,44 @@ def test_room69_east_arrived_leaves_0x69() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x69"
+
+
+def test_room_6a_east_crosses_the_top_band_not_the_centre_row() -> None:
+    """0x6A centre band walls at x=48: rise to y=93 and cross the top."""
+    mouth = read_snapshot(_ram(level=7, screen=0x6A, x=16, y=ROOM_6A_DOOR_Y))
+    assert room_6a_east_step(mouth).reason == "east6a_leave_mouth"
+    west = read_snapshot(_ram(level=7, screen=0x6A, x=48, y=ROOM_6A_DOOR_Y))
+    assert room_6a_east_step(west).reason == "east6a_rise"
+    band = read_snapshot(_ram(level=7, screen=0x6A, x=48, y=ROOM_6A_TOP_BAND_Y))
+    assert room_6a_east_step(band).reason == "east6a_cross"
+    column = read_snapshot(
+        _ram(level=7, screen=0x6A, x=ROOM_6A_EAST_COLUMN_X, y=ROOM_6A_TOP_BAND_Y)
+    )
+    assert room_6a_east_step(column).reason == "east6a_drop_y"
+    door = read_snapshot(
+        _ram(level=7, screen=0x6A, x=ROOM_6A_EAST_PLANE, y=ROOM_6A_DOOR_Y)
+    )
+    assert room_6a_east_step(door).reason == "east6a_push"
+
+
+def test_room_6a_east_needs_no_candle_and_no_door_bit() -> None:
+    """The room is unlit and the east exit is OPEN: movement waits on neither."""
+    snap = read_snapshot(_ram(level=7, screen=0x6A, x=ROOM_6A_EAST_PLANE, y=ROOM_6A_DOOR_Y))
+    ctl = Room6AEastController()
+    act = ctl.step(snap)
+    assert not ctl.success and not ctl.failed
+    assert act.reason == "east6a_push"
+
+
+def test_room_6a_east_arrived_leaves_0x6a() -> None:
+    dest = read_snapshot(_ram(level=7, screen=0x6B, x=16, y=ROOM_6A_DOOR_Y))
+    ctl = Room6AEastController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x6a"
+    report = ctl.report()
+    assert report["route_eligible"] is False
+    assert report["evidence"] == "fixture-live"
 
 
 def test_hungry_goriya_requires_food() -> None:

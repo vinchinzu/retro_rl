@@ -1,4 +1,4 @@
-# L7 sitting leftover (rr-8t4.2, 2026-09-02)
+# L7 sitting leftover (rr-8t4.2, 2026-09-03)
 
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
 `in_progress`. Residual is this file, not `rr-tne2-residual.md`.
@@ -7,46 +7,50 @@ Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
 whistle=1 (poked), food=0, TF=0, keys=0, bombs=0, 3 HC. Not the L6-leave
 packet. Do not start at Hungry Goriya. Do not poke Food/Whistle/doors/TF.
 
-**This sitting leftover — `0x69` east is GREEN 2/2.** `0x79` north → `0x69`
-goriya clear → east → **live dest `0x6A` `(16,141)` west mouth**, mode 5,
-3,809f, `deaths=0`, `progression_writes=capacity_writes=0`, byte-identical
-leftover on both trials (`recordings/l7_room69_east_room69_east_v5/v6.json`,
-`scratch/probe_l7_room69_east.py`). Graph: `KEESE` promoted to
-`ram_id=0x6A` `evidence=fixture-live`; `MOLDORMS` RIGHT is now
-`GateKind.OPEN` → `KEESE`.
+**This sitting leftover — `0x6A` east is GREEN 2/2.** `0x79` north → `0x69`
+goriya clear → east → `0x6A` traverse → east → **live dest `0x6B`
+`(16,141)` west mouth**, mode 5, 4,291f total (`Room6AEastController` 482f),
+`deaths=0`, `progression_writes=capacity_writes=0`, byte-identical leftover
+on both trials (`recordings/l7_room6a_east_room6a_east_v2/v3.json`,
+`scratch/probe_l7_room6a_east.py`). `0x6B` carries a live goriya `0x05` —
+it is the `GORIYA_HINT` room. Graph: `GORIYA_HINT` promoted to
+`ram_id=0x6B` `evidence=fixture-live`; `KEESE` RIGHT is now
+`GateKind.OPEN` → `GORIYA_HINT` `verification=fixture-live`.
 
-**Root cause of the three prior reds.** The east exit is an **OPEN doorway**
-— black passage on the spawn frame, before any kill — so
-`cur_opened_doors & RIGHT` never sets, exactly like the already-green `0x79`
-north door. `Room69EastController` waited on that bit and clamped Link to
-`x ≤ 200`, so it stood at `(192,141)` forever. It was never a key door and
-never a kill-clear; keys=0 was a red herring.
+**`0x6A` layout (from `scratch/sweep_l7_room6a.py` blind y-scan).** The room
+is unlit (Candle 0) but not sealed: the `y=141` centre band is walled at
+`x=48` (tile `0xB1`), and the **top of the room is an open horizontal
+corridor** — a scan crossed `y=93` from `x=40` to `x=208`.
+`room_6a_east_step` / `Room6AEastController` mirror the `0x69` east route:
+rise the west column to `y=93`, cross RIGHT, drop the east column
+(`x=200`) to `y=141`, push RIGHT through the OPEN doorway (plane `x=224`,
+Link transitions at `x=240`). Keese `0x1b` never block the doorway; assist
+soaks the chip damage (`accepted_containers=3`, no kills needed).
 
-**Second cause (v4).** With the bit gate removed, the OccupancyWalker still
-boxed Link in at `(128,141)`: `WALK_SPEED=1`, so four graded misses on one
-cell block all four neighbours and BFS returns "no path → stand". Direction
-changes cost a turn frame that grades as a miss, so a replan loop blocks
-N/S/E/W in ~60 frames. The post-clear traverse is now a **deterministic
-waypoint micro** (`east_route_step`), not occupancy: rise to the clear
-`y=109` band, RIGHT to `x=204`, DOWN to `y=141`, push RIGHT through the door
-plane `x=208`. Every waypoint was reached live mid-fight in v3/v4.
+**Prior sitting — `0x69` east GREEN 2/2** (`recordings/l7_room69_east_v5/v6`).
+`KEESE` (`0x6A`) `MOLDORMS` RIGHT `GateKind.OPEN`. Root cause of its three
+reds: the east exit is an OPEN doorway so `cur_opened_doors & RIGHT` never
+sets; the old controller waited on that bit. Fixed with the `east_route_step`
+waypoint micro (rise `y=109`, RIGHT `x=204`, DOWN `y=141`, push `x=208`).
 
-**Next sitting: `0x6A` is a DARK room** (`room69_east_v6_final.png` — black
-playfield, only the wall outline drawn) with a live keese `0x1b`. The pin
-carries **Candle 0**, so the room cannot be lit. That is the Red Candle
-motivation arriving early. Options: walk `0x6A` blind on the `y=141` band
-the entry mouth already sits on, or pick the pin's candle question up with
-`rr-8t4.4` / the natural spine (post-L6 packet has Candle 0 too — Blue
-Candle is not on the mainline). Do not poke `ADDR_CANDLE`.
+**Next sitting: `0x6B` (`GORIYA_HINT`).** Entered at `(16,141)` west mouth,
+mode 5, one live goriya `0x05`, still Candle 0 / Food 0. Source topology:
+RIGHT → `DIGDOGGER_1`, UP → `OLD_MAN_NOSE` (`KILL_CLEAR`, tip of the nose).
+The Red Candle is further east/south past `MAP` / `WEST_LOCK_SKIP` /
+`CANDLE_PUSH` — the candle question (`ADDR_CANDLE` 1→2 natural, room
+unobserved) is still `rr-8t4.4` / the natural spine. Do not poke
+`ADDR_CANDLE`. The `0x6A` traverse never needed light — Keese are sprites,
+the wall outline is enough to route the top band blind.
 
 Dead on this checkbox:
-1. v1 occupancy-chase boxed west wall `(32,149)`, 38 misses
-2. v2 inland `leave_wall` boxed NW `(56,109)`, 100 misses
-3. v3 greedy fight cleared `0x05`; door bit never set (it never will)
-4. v4 bit gate removed, occupancy still stood at `(128,141)`, 18 misses
-5. Dead belief: `0x69` RIGHT is `GateKind.KEY`. It is `OPEN`.
-6. Dead belief: `cur_opened_doors` is a usable "is the door walkable" test
-   in L7. Both live L7 doorways walk with the byte at 0.
+1. v1 `room_6a_east_step` blind `y=141` push: walled at `x=48` tile `0xB1`,
+   Link free in `y` `113..170` but pinned in `x` (`east6a_approach` forever).
+   The centre band is not the corridor — the top `y≈93` band is.
+2. Dead belief: `0x6A` east is a KEY / KILL_CLEAR door. It is `OPEN`; the
+   `cur_opened_doors` RIGHT bit stays 0 like both earlier L7 doorways.
+3. Dead belief: the KEESE room must be lit to cross. It does not.
+4. Prior checkbox (`0x69` east): `cur_opened_doors` is not a walkability
+   test in L7; per-pixel occupancy boxes Link in after four graded misses.
 
 ---
 
@@ -216,8 +220,8 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
 ## L7-B — entry through Red Candle
 
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
-- **evidence label:** **fixture-live entry pin + `0x79→0x69→0x6A` prefix**;
-  rooms past `0x6A` still hypothesis
+- **evidence label:** **fixture-live entry pin + `0x79→0x69→0x6A→0x6B`
+  prefix**; rooms past `0x6B` still hypothesis
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
   Hungry Goriya still needs Food; isolate with a Food poke or wait for `rr-8t4.4`.
@@ -229,6 +233,11 @@ Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
      `Room69EastController` then clears the `0x69` goriyas and walks the
      **OPEN** east doorway to live `$EB=0x6A` `(16,141)` (2/2, 3,809f,
      `writes=0`); not yet a spine stage.
+  1b. `level7_room6a_east` — `Room6AEastController` walks the unlit `0x6A`
+     KEESE room west mouth → **OPEN** east doorway to live `$EB=0x6B`
+     `(16,141)` (2/2, 482f, `writes=0`, `deaths=0`). Waypoint micro: rise
+     `y=93`, cross, drop `x=200`→`y=141`, push `x=224`. Not yet a spine
+     stage; no `make_*` factory yet.
   2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
   3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
