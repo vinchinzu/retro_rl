@@ -40,6 +40,9 @@ from zelda_i.level7.path import (
     Room6CEastController,
     Room58EastController,
     Room58NorthController,
+    Room38UpController,
+    Room39LeftController,
+    Room49UpController,
     Room59UpController,
     Room68DownController,
     Room68NorthController,
@@ -146,11 +149,31 @@ def make_room58_north_controller() -> Level7PathController:
 def make_room59_up_controller() -> Level7PathController:
     """0x59 (GORIYA_COMPASS) west mouth: kill-clear goriya 0x05/0x06 -> perimeter
     waypoint micro around the central mass -> UP door to live 0x49 GORIYA_BUBBLE
-    (2/2).  0x49's forward (UP) path is then moat-gated behind the Stepladder;
-    the recon fixture chain has no ladder, so DIGDOGGER_2 onward stays
-    unobserved.  Recon-wired only.
+    (2/2).  Recon-wired only.
     """
     return Room59UpController()
+
+
+def make_room49_up_controller() -> Level7PathController:
+    """0x49 (GORIYA_BUBBLE) south mouth: kill-clear goriya 0x05 -> UP across
+    the water moat at x=120 (Stepladder) to live 0x39 DIGDOGGER_2 (2/2).
+    Requires ADDR_LADDER=1 on the recon fixture.  Recon-wired only.
+    """
+    return Room49UpController()
+
+
+def make_room39_left_controller() -> Level7PathController:
+    """0x39 (DIGDOGGER_2) south mouth → OPEN west door to live 0x38
+    GORIYA_PRE_HUNGRY (2/2).  Skips the Digdogger fight.  Recon-wired only.
+    """
+    return Room39LeftController()
+
+
+def make_room38_up_controller() -> Level7PathController:
+    """0x38 (GORIYA_PRE_HUNGRY) east mouth: kill-clear, rise east pocket
+    x=208, KEY-UP to live 0x28 HUNGRY_GORIYA (2/2).  Recon-wired only.
+    """
+    return Room38UpController()
 
 
 def make_room69_west_bomb_controller() -> BombWallController:
@@ -394,6 +417,9 @@ __all__ = [
     "make_room6c_east_controller",
     "make_room58_east_controller",
     "make_room58_north_controller",
+    "make_room38_up_controller",
+    "make_room39_left_controller",
+    "make_room49_up_controller",
     "make_room59_up_controller",
     "make_room68_down_controller",
     "make_room68_north_controller",

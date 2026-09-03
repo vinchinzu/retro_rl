@@ -1,0 +1,123 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T21:49:47.536076+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior49LadderReconFixture: 0x49 goriya clear + ladder-moat UP at x=120 -> 0x39. No set_state, no Candle/Food/TF/door/key/bomb writes.",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_interior_39_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "colliding_tile": 0,
+      "cur_opened_doors": 0,
+      "food": 1,
+      "keys": 4,
+      "ladder": 1,
+      "mode": 5,
+      "obj_types": [
+        "0x38:unknown_object_0x38",
+        "0x55:fireball_or_statue_projectile"
+      ],
+      "open_doorway_mask": 0,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "screen": "0x39",
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        120,
+        205
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 57,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type_id": 56,
+          "type_name": "unknown_object_0x38",
+          "x": 92,
+          "y": 144
+        },
+        {
+          "hp": 192,
+          "slot": 8,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 40,
+          "y": 192
+        },
+        {
+          "hp": 192,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 32,
+          "y": 188
+        },
+        {
+          "hp": 192,
+          "slot": 10,
+          "state": 16,
+          "type_id": 85,
+          "type_name": "fireball_or_statue_projectile",
+          "x": 183,
+          "y": 122
+        },
+        {
+          "hp": 192,
+          "slot": 11,
+          "state": 16,
+          "type_id": 85,
+          "type_name": "fireball_or_statue_projectile",
+          "x": 109,
+          "y": 188
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 57,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 1,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0693b-0f22-7862-9dcd-2d842750bdd4/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior49LadderReconFixture.state",
+  "source_state_sha256": "b0ce44d486ff835584671b18a8ac506c631be21443da296d8b651f77dd404352",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0693b-0f22-7862-9dcd-2d842750bdd4/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior39ReconFixture.state",
+  "state_sha256": "f18e800b3ae66e0c4426b274efede59c720827752cfa0f3ba7d888077dd45ec1"
+}

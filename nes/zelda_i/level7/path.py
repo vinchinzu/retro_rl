@@ -32,6 +32,7 @@ from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon.behaviors import (
     GORIYA_BLUE_TYPE,
     GORIYA_TYPE,
+    KEESE_TYPE,
     EnemyKind,
     engagement_hint,
     is_projectile,
@@ -42,9 +43,12 @@ from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_pus
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
     DIGDOGGER_1,
+    DIGDOGGER_2,
     DODONGOS_UPGRADE,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
+    GORIYA_PRE_HUNGRY,
+    HUNGRY_GORIYA,
     OLD_MAN_NOSE,
     ROPES_KEY,
     STALFOS_KEY,
@@ -188,6 +192,32 @@ ROOM_59_WEST_COLUMN_X = 44
 ROOM_59_NORTH_X = 120
 ROOM_59_NORTH_PLANE_Y = 93
 ROOM59_UP_MAX_FRAMES = 5000
+# 0x49 (GORIYA_BUBBLE): entry (120,205) S mouth. Kill-clear goriya 0x05 then
+# walk UP across the full-width water moat (~y120, tile 0xF4) at x=120.
+# Stepladder required (recon fixture pokes ADDR_LADDER). Dest live $EB=0x39
+# (DIGDOGGER_2: digdogger 0x38 + statue 0x55). 2/2 (49_up_v1/v2).
+ROOM_49 = 0x49
+ROOM_49_NORTH_X = 120
+ROOM_49_NORTH_PLANE_Y = 93
+ROOM_49_NORTH_BAND_Y = 109  # land north of the moat (walkable east-west)
+ROOM_49_MOAT_SOUTH_Y = 133  # first solid row without the Stepladder
+ROOM49_UP_MAX_FRAMES = 7000
+# 0x39 (DIGDOGGER_2): entry (120,205) S mouth. LEFT door is OPEN on spawn —
+# skip the 0x38 fight. Rise the centre column to y=141, hold LEFT. Dest live
+# $EB=0x38 (GORIYA_PRE_HUNGRY). 2/2 (39_left_v2/v3). Do not hug SW statue.
+ROOM_39 = 0x39
+ROOM_39_DOOR_Y = 141
+ROOM_39_WEST_PLANE = 16
+ROOM39_LEFT_MAX_FRAMES = 4000
+# 0x38 (GORIYA_PRE_HUNGRY): entry (208,141) E mouth, diamond floor. The y=149
+# interior row blocks UP at x=120/104/88/200. Rise the east mouth pocket
+# x=208 to y=93, cross to x=120, KEY-UP (keys 4->3) to live $EB=0x28.
+# 2/2 (38_up_v6/v7). Compass room_item 0x0f stays uncollected.
+ROOM_38 = 0x38
+ROOM_38_EAST_POCKET_X = 208
+ROOM_38_NORTH_X = 120
+ROOM_38_TOP_BAND_Y = 93
+ROOM38_UP_MAX_FRAMES = 8000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -240,6 +270,22 @@ def east_of_room58_ram_id() -> int | None:
 def north_of_room59_ram_id() -> int | None:
     """Live ``$EB`` of the room north of ``0x59`` (GORIYA_BUBBLE), or None."""
     return LEVEL7_ROOM_BY_ID[GORIYA_BUBBLE].ram_id
+
+
+def north_of_room49_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x49`` (DIGDOGGER_2), or None."""
+    return LEVEL7_ROOM_BY_ID[DIGDOGGER_2].ram_id
+
+
+def west_of_room39_ram_id() -> int | None:
+    """Live ``$EB`` of the room west of ``0x39`` (GORIYA_PRE_HUNGRY), or None."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_PRE_HUNGRY].ram_id
+
+
+def north_of_room38_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x38`` (HUNGRY_GORIYA), or None."""
+    return LEVEL7_ROOM_BY_ID[HUNGRY_GORIYA].ram_id
+
 
 
 def south_of_room68_ram_id() -> int | None:
@@ -426,6 +472,16 @@ def live_goriyas(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         for obj in live_among(_combatants(snap), AliveRule.TYPE_AND_HP)
         if (int(obj.type_id) & 0xFF) in _GORIYA_TYPES
     )
+
+
+def live_keese(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    """Type-live Keese. HP stays 0 while alive — never TYPE_AND_HP."""
+    return tuple(
+        obj
+        for obj in live_among(_combatants(snap), AliveRule.TYPE)
+        if (int(obj.type_id) & 0xFF) == KEESE_TYPE
+    )
+
 
 
 def _projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
@@ -1567,6 +1623,383 @@ class Room58NorthController(HopController):
         }
 
 
+def room_49_up_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+    saw_goriya: bool = False,
+    frames: int = 0,
+) -> FrameAction:
+    """One frame of 0x49 kill-clear → north door across the water moat.
+
+    The Stepladder lets Link walk UP at ``x=120`` through tile ``0xF4``.
+    The north exit is OPEN-like (``cur_opened_doors`` stays 0); goriya
+    clear is still required so they do not box the south mouth.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("UP"), "up49_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "up49_arrived")
+    if snap.screen != ROOM_49:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    live = live_goriyas(snap)
+    if live:
+        target = nearest_enemy(snap.link_x, snap.link_y, live)
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        return _goriya_fight(snap, target, frames=frames)
+    if not saw_goriya:
+        return FrameAction(nes_idle_action(), "spawn_wait")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    keese = live_keese(snap)
+    if keese:
+        target = nearest_enemy(x, y, keese)
+        if target is not None:
+            hint = engagement_hint(
+                EnemyKind.KEESE, snap, target, projectiles=_projectiles(snap)
+            )
+            if should_swing_at(x, y, hint.face, (target,), hint=hint):
+                if frames % _SWING_PERIOD < _SWING_HOLD:
+                    return FrameAction(nes_action(hint.face, "A"), "keese_slash")
+                return FrameAction(nes_action(hint.face), "keese_face")
+        # Never chase keese onto the water — 49_ctl_v3 pinned at (64,117).
+        on_water = ROOM_49_NORTH_BAND_Y < y <= ROOM_49_MOAT_SOUTH_Y
+        if on_water:
+            return FrameAction(nes_action("UP"), "keese_off_water")
+
+    # Stepladder crosses the moat on the facing axis only — do not strafe
+    # on the water. Align x on south land, hold UP across, then align north.
+    if y > ROOM_49_NORTH_BAND_Y + DOOR_Y_TOL:
+        if y > ROOM_49_MOAT_SOUTH_Y and abs(x - ROOM_49_NORTH_X) > NORTH_X_TOL:
+            btn = "LEFT" if x > ROOM_49_NORTH_X else "RIGHT"
+            return FrameAction(nes_action(btn), "up49_south_align")
+        btn = "UP"
+        if keese and frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action(btn, "A"), "up49_cross_slash")
+        return FrameAction(nes_action(btn), "up49_cross")
+    if keese:
+        # North land, keese still up: face them but stay off the water.
+        target = nearest_enemy(x, y, keese)
+        if target is not None and int(target.y) <= ROOM_49_NORTH_BAND_Y + DOOR_Y_TOL:
+            hint = engagement_hint(
+                EnemyKind.KEESE, snap, target, projectiles=_projectiles(snap)
+            )
+            return FrameAction(nes_action(hint.face), "keese_chase_land")
+        if abs(x - ROOM_49_NORTH_X) > NORTH_X_TOL:
+            btn = "LEFT" if x > ROOM_49_NORTH_X else "RIGHT"
+            return FrameAction(nes_action(btn), "keese_wait_align")
+        return FrameAction(nes_action("UP", "A"), "keese_door_slash")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="UP",
+        target_x=ROOM_49_NORTH_X,
+        x_tol=NORTH_X_TOL,
+        reason="up49",
+    )
+
+
+@dataclass(kw_only=True)
+class Room49UpController(HopController):
+    """0x49 (GORIYA_BUBBLE) south mouth: kill-clear goriya 0x05, then UP
+    across the water moat at x=120 (Stepladder) to live dest 0x39.
+
+    2/2 byte-identical (recordings/49_up_v1/v2.json).  Recon-wired only.
+    Requires ADDR_LADDER=1 on the recon fixture.
+    """
+
+    spec_id: str = "level7_room49_up"
+    max_frames: int = ROOM49_UP_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x49_north"
+    dest: int | None = field(default_factory=north_of_room49_ram_id)
+    saw_goriya: bool = False
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59, ROOM_49}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("UP"), "up49_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_49:
+            if snap.screen in {ROOM_59, ENTRY_SCREEN}:
+                return self.mark_fail("south_backtrack")
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+
+        if live_goriyas(snap):
+            self.saw_goriya = True
+        action = room_49_up_step(
+            snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
+        )
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen in {ROOM_59, ENTRY_SCREEN}:
+                return self.mark_fail("south_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "UP",
+        }
+
+
+def room_39_left_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+) -> FrameAction:
+    """One frame of 0x39 south mouth → OPEN west door (skip Digdogger).
+
+    Stay on the centre column until ``y=141`` — the SW statue boxes
+    ``(48,189)``. Then hold LEFT on the door row.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("LEFT"), "left39_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "left39_arrived")
+    if snap.screen != ROOM_39:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y > ROOM_39_DOOR_Y + DOOR_Y_TOL:
+        if abs(x - NORTH_DOOR_X) > NORTH_X_TOL:
+            btn = "LEFT" if x > NORTH_DOOR_X else "RIGHT"
+            return FrameAction(nes_action(btn), "left39_center")
+        return FrameAction(nes_action("UP"), "left39_rise")
+    if y < ROOM_39_DOOR_Y - DOOR_Y_TOL:
+        return FrameAction(nes_action("DOWN"), "left39_drop")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="LEFT",
+        target_y=ROOM_39_DOOR_Y,
+        y_tol=DOOR_Y_TOL,
+        door_plane=ROOM_39_WEST_PLANE,
+        reason="left39",
+    )
+
+
+@dataclass(kw_only=True)
+class Room39LeftController(HopController):
+    """0x39 (DIGDOGGER_2) south mouth → OPEN west door to live dest 0x38.
+
+    Skips the Digdogger fight.  2/2 (recordings/39_left_v2/v3.json).
+    Recon-wired only.
+    """
+
+    spec_id: str = "level7_room39_left"
+    max_frames: int = ROOM39_LEFT_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x39_west"
+    dest: int | None = field(default_factory=west_of_room39_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_49, ROOM_39}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("LEFT"), "left39_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = room_39_left_step(snap, dest=self.dest)
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ROOM_49:
+                return self.mark_fail("south_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "LEFT",
+        }
+
+
+def room_38_up_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+    saw_goriya: bool = False,
+    frames: int = 0,
+) -> FrameAction:
+    """One frame of 0x38 kill-clear → east-pocket rise → KEY north door.
+
+    Interior ``y=149`` is a diamond wall (UP blocked at x=120/104/88/200).
+    Recollect the east mouth pocket ``x=208``, rise to ``y=93``, cross to
+    ``x=120``, push UP. The key consume is natural.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("UP"), "up38_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "up38_arrived")
+    if snap.screen != ROOM_38:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    live = live_goriyas(snap)
+    if live:
+        target = nearest_enemy(snap.link_x, snap.link_y, live)
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        return _goriya_fight(snap, target, frames=frames)
+    if not saw_goriya:
+        return FrameAction(nes_idle_action(), "spawn_wait")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y > ROOM_38_TOP_BAND_Y + 12 and x < ROOM_38_EAST_POCKET_X - NORTH_X_TOL:
+        return FrameAction(nes_action("RIGHT"), "up38_pocket")
+    if y > ROOM_38_TOP_BAND_Y + DOOR_Y_TOL:
+        return FrameAction(nes_action("UP"), "up38_rise")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="UP",
+        target_x=ROOM_38_NORTH_X,
+        x_tol=NORTH_X_TOL,
+        reason="up38",
+    )
+
+
+@dataclass(kw_only=True)
+class Room38UpController(HopController):
+    """0x38 (GORIYA_PRE_HUNGRY) east mouth: kill-clear, east-pocket rise,
+    KEY-UP to live dest 0x28 (HUNGRY_GORIYA).  2/2 (38_up_v6/v7).
+    Recon-wired only.
+    """
+
+    spec_id: str = "level7_room38_up"
+    max_frames: int = ROOM38_UP_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x38_north"
+    dest: int | None = field(default_factory=north_of_room38_ram_id)
+    saw_goriya: bool = False
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_49, ROOM_39, ROOM_38}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("UP"), "up38_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if live_goriyas(snap):
+            self.saw_goriya = True
+        action = room_38_up_step(
+            snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
+        )
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ROOM_39:
+                return self.mark_fail("east_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "UP",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -1677,6 +2110,9 @@ __all__ = [
     "ROOM_6B",
     "ROOM_6B_EAST_PLANE",
     "ROOM_6B_WEST_MOUTH",
+    "ROOM_49",
+    "ROOM_39",
+    "ROOM_38",
     "ROOM_58",
     "ROOM_59",
     "ROOM_68",
@@ -1695,6 +2131,9 @@ __all__ = [
     "Room6CEastController",
     "Room68NorthController",
     "Room68DownController",
+    "Room49UpController",
+    "Room39LeftController",
+    "Room38UpController",
     "Room58EastController",
     "Room58NorthController",
     "Room59UpController",
@@ -1708,8 +2147,14 @@ __all__ = [
     "north_of_room68_ram_id",
     "south_of_room68_ram_id",
     "north_of_room58_ram_id",
+    "north_of_room38_ram_id",
+    "west_of_room39_ram_id",
+    "north_of_room49_ram_id",
     "north_of_room59_ram_id",
     "east_route_step",
+    "room_49_up_step",
+    "room_39_left_step",
+    "room_38_up_step",
     "room_6a_east_step",
     "room_6b_east_step",
     "room_6b_north_step",

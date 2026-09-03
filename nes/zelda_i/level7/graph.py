@@ -172,16 +172,45 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "goriya_keese_bubble",
         ram_id=0x49,
         role="live: goriya 0x05 + keese 0x1b + bubble residual 0x2b; entry "
-        "(120,205) S mouth; kill-clear opens the UP door bit but a full-width "
-        "water moat (~y120) gates the UP path — needs the Stepladder; L/R "
-        "walled; DOWN -> 0x59",
+        "(120,205) S mouth; L/R walled; DOWN -> 0x59; UP across the water "
+        "moat needs the Stepladder and lands $EB=0x39",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(DIGDOGGER_2, "digdogger_skip"),
+    Level7RoomHyp(
+        DIGDOGGER_2,
+        "digdogger_skip",
+        ram_id=0x39,
+        role="live: digdogger 0x38 + statue 0x55; entry (120,205) S mouth; "
+        "LEFT door OPEN on spawn (skip the fight) -> $EB=0x38; whistle=1",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(MOLDORM_KEY_OPT, "moldorm_key_optional"),
-    Level7RoomHyp(GORIYA_PRE_HUNGRY, "goriya_pre_hungry"),
-    Level7RoomHyp(HUNGRY_GORIYA, "hungry_goriya", role="requires_food"),
-    Level7RoomHyp(MAP, "map"),
+    Level7RoomHyp(
+        GORIYA_PRE_HUNGRY,
+        "goriya_pre_hungry",
+        ram_id=0x38,
+        role="live: goriya 0x05+0x06, diamond floor, compass room_item 0x0f "
+        "uncollected; entry (208,141) E mouth; KEY-UP (keys 4->3) after "
+        "rising the east pocket x=208 (interior y=149 is a diamond wall)",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        HUNGRY_GORIYA,
+        "hungry_goriya",
+        ram_id=0x28,
+        role="live: GRUMBLE GRUMBLE NPC 0x36 + bubble 0x40; entry (120,205) "
+        "S mouth; natural bait feed Food 1->0 then UP -> $EB=0x18",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        MAP,
+        "map",
+        ram_id=0x18,
+        role="live: dark; map room_item 0x17; goriya 0x05 + keese 0x1b + "
+        "bubble 0x2b; entry (120,189) from hungry UP; bomb-north still "
+        "unobserved (skip locked east)",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(MAP_EAST_LOCK, "map_east_fifth_lock", role="skip_lock"),
     Level7RoomHyp(HIDDEN_RUPEES, "hidden_rupees_off_map"),
     Level7RoomHyp(GORIYA_POST_RUPEE, "goriya_post_rupee"),
@@ -477,26 +506,61 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 DIGDOGGER_2,
                 GateKind.KILL_CLEAR,
                 notes=(
-                    "live 0x49: kill-clear opens the UP door bit, but a "
-                    "full-width water moat (~y120, tile 0xF4) walls the UP "
-                    "path — the Stepladder is required to cross. L/R walled. "
-                    "Dest DIGDOGGER_2 unobserved (recon fixture has no ladder)"
+                    "live dest $EB=0x39 2/2; kill-clear goriya 0x05 then walk "
+                    "UP at x=120 across the full-width water moat (~y120, tile "
+                    "0xF4). Stepladder required (ADDR_LADDER). Doors bit stays "
+                    "0 (OPEN-like). Dest: digdogger 0x38 + statue 0x55, "
+                    "(120,205) S mouth"
                 ),
+                verification="fixture-live",
             ),
         ),
         DIGDOGGER_2: (
             _back(DoorDir.UP, GORIYA_BUBBLE),
-            _open(DoorDir.LEFT, GORIYA_PRE_HUNGRY),
+            _e(
+                DoorDir.LEFT,
+                GORIYA_PRE_HUNGRY,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x38 2/2; skip Digdogger (LEFT already OPEN). "
+                    "South mouth (120,205) -> x=120 UP to y=141 -> LEFT. Do not "
+                    "hug the SW statue (boxes at (48,189)). Dest: goriya 0x05/0x06, "
+                    "(208,141) E mouth"
+                ),
+                verification="fixture-live",
+            ),
             _e(DoorDir.RIGHT, MOLDORM_KEY_OPT, GateKind.BOMB, notes="optional key"),
         ),
         MOLDORM_KEY_OPT: (_open(DoorDir.LEFT, DIGDOGGER_2),),
         GORIYA_PRE_HUNGRY: (
             _back(DoorDir.LEFT, DIGDOGGER_2),
-            _e(DoorDir.UP, HUNGRY_GORIYA, GateKind.KEY),
+            _e(
+                DoorDir.UP,
+                HUNGRY_GORIYA,
+                GateKind.KEY,
+                notes=(
+                    "live dest $EB=0x28 2/2; KEY consume keys 4->3. Interior "
+                    "y=149 diamond row blocks UP at x=120/104/88/200 — rise "
+                    "the east mouth pocket x=208 to y=93, cross to x=120, "
+                    "push UP. Dest: GRUMBLE GRUMBLE (120,205) S mouth"
+                ),
+                verification="fixture-live",
+            ),
         ),
         HUNGRY_GORIYA: (
             _back(DoorDir.UP, GORIYA_PRE_HUNGRY),
-            _open(DoorDir.UP, MAP, notes="requires_food"),
+            _e(
+                DoorDir.UP,
+                MAP,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x18 2/2 after natural Food 1->0. Equip "
+                    "already-owned Bait (B-slot 6), walk to (120,141), tap B. "
+                    "NPC 0x36 despawns; north door opens. Dest: dark map room "
+                    "room_item 0x17, goriya+keese"
+                ),
+                verification="fixture-live",
+            ),
         ),
         MAP: (
             _back(DoorDir.UP, HUNGRY_GORIYA),
