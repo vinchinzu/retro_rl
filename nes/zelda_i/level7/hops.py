@@ -34,6 +34,8 @@ from zelda_i.level7.path import (
     L7_ROOM18_NORTH_BOMB,
     L7_ROOM19_EAST_APPROACH,
     L7_ROOM19_EAST_BOMB,
+    L7_ROOM1A_EAST_APPROACH,
+    L7_ROOM1A_EAST_BOMB,
     L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
     HungryGoriyaGateController,
@@ -45,6 +47,8 @@ from zelda_i.level7.path import (
     Room6CEastController,
     Room09DownController,
     Room1ACandleController,
+    Room4AReturnController,
+    Room1BKeyEastController,
     Room58EastController,
     Room58NorthController,
     Room38UpController,
@@ -231,16 +235,46 @@ def make_room1a_candle_controller() -> Level7PathController:
     return Room1ACandleController()
 
 
+def make_room4a_return_controller() -> Level7PathController:
+    """0x4A west-ladder stairs return → live play 0x1A CANDLE_PUSH (2/2).
+
+    Dead: walk off the candle pad at y=141 (tile 243).  Recon-wired only.
+    """
+    return Room4AReturnController()
+
+
+def make_room1b_key_east_controller() -> Level7PathController:
+    """0x1B GORIYA_PRE_DIG KEY-east → live 0x1C FORCED_DIGDOGGER (2/2).
+
+    y=141 RIGHT, natural key 3→2.  Recon-wired only.
+    """
+    return Room1BKeyEastController()
+
+
 def make_room19_east_bomb_controller() -> BombWallController:
     """0x19 WEST_LOCK_SKIP east BOMB wall → live 0x1A CANDLE_PUSH (2/2).
 
     South-around the diamond floor to stand (208,141) face RIGHT.
-    Recon-wired only.  0x1A left-block stairs still unobserved.
+    Recon-wired only.
     """
     return BombWallController(
         wall=L7_ROOM19_EAST_BOMB,
         level=7,
         approach_waypoints=L7_ROOM19_EAST_APPROACH,
+        approach_tol=4,
+    )
+
+
+def make_room1a_east_bomb_controller() -> BombWallController:
+    """0x1A CANDLE_PUSH east BOMB wall → live 0x1B GORIYA_PRE_DIG (2/2).
+
+    South-around from cellar-return leftover (96,157) to (208,141) face RIGHT.
+    Recon-wired only.
+    """
+    return BombWallController(
+        wall=L7_ROOM1A_EAST_BOMB,
+        level=7,
+        approach_waypoints=L7_ROOM1A_EAST_APPROACH,
         approach_tol=4,
     )
 
@@ -475,7 +509,10 @@ __all__ = [
     "make_room08_east_bomb_controller",
     "make_room09_down_controller",
     "make_room19_east_bomb_controller",
+    "make_room1a_east_bomb_controller",
     "make_room1a_candle_controller",
+    "make_room4a_return_controller",
+    "make_room1b_key_east_controller",
     "make_room6a_east_controller",
     "make_room6b_east_controller",
     "make_room6b_north_controller",

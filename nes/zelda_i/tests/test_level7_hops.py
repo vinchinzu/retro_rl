@@ -36,7 +36,10 @@ from zelda_i.level7.hops import (
     make_room09_down_controller,
     make_room18_north_bomb_controller,
     make_room19_east_bomb_controller,
+    make_room1a_east_bomb_controller,
     make_room1a_candle_controller,
+    make_room4a_return_controller,
+    make_room1b_key_east_controller,
     make_room38_up_controller,
     make_room39_left_controller,
     make_room49_up_controller,
@@ -68,8 +71,11 @@ from zelda_i.level7.path import (
     L7_ROOM08_EAST_BOMB,
     L7_ROOM18_NORTH_BOMB,
     L7_ROOM19_EAST_BOMB,
+    L7_ROOM1A_EAST_BOMB,
     Room09DownController,
     Room1ACandleController,
+    Room4AReturnController,
+    Room1BKeyEastController,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -83,6 +89,8 @@ from zelda_i.level7.path import (
     room_38_up_step,
     room_39_left_step,
     room_49_up_step,
+    room_4a_return_step,
+    room_1b_key_east_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
@@ -820,10 +828,15 @@ def test_map_bomb_chain_factories_are_recon_only() -> None:
     e19 = make_room19_east_bomb_controller()
     assert e19.wall is L7_ROOM19_EAST_BOMB
     assert e19.to_room == 0x1A
+    e1a = make_room1a_east_bomb_controller()
+    assert e1a.wall is L7_ROOM1A_EAST_BOMB
+    assert e1a.to_room == 0x1B
+    assert e1a.approach_waypoints[0] == (96, 189)
     names = [name for name, _c, _f in level7_red_candle_chapter_stages()]
     assert "level7_room18_north_bomb" not in names
     assert "level7_room08_east_bomb" not in names
     assert "level7_room19_east_bomb" not in names
+    assert "level7_room1a_east_bomb" not in names
 
 
 def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:
@@ -843,4 +856,49 @@ def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:
     ]
     assert "level7_red_candle_pickup" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+
+
+def test_room_4a_return_step_east_drop_then_west_ladder() -> None:
+    """Pad RIGHT, east LEFT+DOWN, floor LEFT, west-ladder UP. Not on chapter."""
+    pad = read_snapshot(_ram(level=7, screen=0x4A, x=136, y=141, mode=9, candle=2))
+    assert room_4a_return_step(pad).reason == "cellar_to_east"
+    east = read_snapshot(_ram(level=7, screen=0x4A, x=192, y=141, mode=9, candle=2))
+    assert room_4a_return_step(east).reason == "cellar_east_drop"
+    floor = read_snapshot(_ram(level=7, screen=0x4A, x=100, y=189, mode=9, candle=2))
+    assert room_4a_return_step(floor).reason == "cellar_floor_west"
+    west = read_snapshot(_ram(level=7, screen=0x4A, x=48, y=189, mode=9, candle=2))
+    assert room_4a_return_step(west).reason == "cellar_west_climb"
+    climb = read_snapshot(_ram(level=7, screen=0x4A, x=48, y=120, mode=9, candle=2))
+    assert room_4a_return_step(climb).reason == "cellar_west_up"
+    dest = read_snapshot(_ram(level=7, screen=0x1A, x=96, y=157, candle=2))
+    ctl = Room4AReturnController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x4a_stairs"
+    factory = make_room4a_return_controller()
+    assert factory.report()["dest_screen"] == 0x1A
+    assert factory.report()["route_eligible"] is False
+    assert "level7_room4a_return" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+    assert "level7_room4a_return" not in [
+        name for name, _c, _f in level7_complete_chapter_stages()
+    ]
+
+
+def test_room_1b_key_east_is_recon_only_and_arrives_on_0x1c() -> None:
+    """y=141 RIGHT spends a key; dest 0x1C. Not on the chapter chain."""
+    mouth = read_snapshot(_ram(level=7, screen=0x1B, x=32, y=141, candle=2))
+    assert room_1b_key_east_step(mouth).reason == "keyeast_approach"
+    dest = read_snapshot(_ram(level=7, screen=0x1C, x=16, y=141, candle=2))
+    ctl = Room1BKeyEastController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x1b_east"
+    factory = make_room1b_key_east_controller()
+    assert factory.report()["dest_screen"] == 0x1C
+    assert factory.report()["route_eligible"] is False
+    assert "level7_room1b_key_east" not in [
+        name for name, _c, _f in level7_complete_chapter_stages()
     ]

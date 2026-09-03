@@ -39,16 +39,22 @@ from zelda_i.dungeon.behaviors import (
     live_among,
 )
 from zelda_i.dungeon.engine import AliveRule
-from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
+from zelda_i.dungeon.hop_controller import (
+    HopController,
+    WAIT_SCROLL_B,
+    dungeon_align_then_push,
+)
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
     CANDLE_PUSH,
     DIGDOGGER_1,
+    FORCED_DIGDOGGER,
     DIGDOGGER_2,
     DODONGOS_UPGRADE,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
     GORIYA_POST_RUPEE,
+    GORIYA_PRE_DIG,
     GORIYA_PRE_HUNGRY,
     HIDDEN_RUPEES,
     HUNGRY_GORIYA,
@@ -2054,6 +2060,20 @@ L7_ROOM19_EAST_BOMB = Level7BombWall(
 L7_ROOM19_EAST_APPROACH = ((96, 141), (96, 189), (208, 189), (208, 141))
 
 
+def east_of_room1a_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x1A`` (GORIYA_PRE_DIG)."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_PRE_DIG].ram_id
+
+
+# 0x1A CANDLE_PUSH east BOMB wall -> $EB=0x1B. South-around from the
+# cellar-return leftover (96,157): (96,189)->(208,189)->(208,141) face
+# RIGHT. 2/2 (1a_be_v1/v2).
+L7_ROOM1A_EAST_BOMB = Level7BombWall(
+    room=ROOM_1A, stand=(208, 141), face="RIGHT", opens_to=0x1B
+)
+L7_ROOM1A_EAST_APPROACH = ((96, 189), (208, 189), (208, 141))
+
+
 def room_09_down_step(
     snap: ZeldaSnapshot,
     *,
@@ -2408,6 +2428,175 @@ class RedCandlePickupController:
         }
 
 
+ROOM_4A_WEST_X = 48
+ROOM_4A_EAST_COL = 176
+ROOM_4A_FLOOR_Y = 189
+ROOM_4A_ALIGN = 4
+ROOM4A_RETURN_MAX_FRAMES = 4000
+
+
+def play_of_room4a_ram_id() -> int | None:
+    """Live ``$EB`` of CANDLE_PUSH after the 0x4A west-ladder stairs return."""
+    return LEVEL7_ROOM_BY_ID[CANDLE_PUSH].ram_id
+
+
+def room_4a_return_step(snap: ZeldaSnapshot) -> FrameAction:
+    """One-frame 0x4A stairs return: east drop, floor west, west-ladder UP.
+
+    Dead: walk off the candle pad at y=141 (tile 243) as the return.
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y >= ROOM_4A_FLOOR_Y - ROOM_4A_ALIGN:
+        if abs(x - ROOM_4A_WEST_X) > ROOM_4A_ALIGN:
+            btn = "LEFT" if x > ROOM_4A_WEST_X else "RIGHT"
+            return FrameAction(nes_action(btn), "cellar_floor_west")
+        return FrameAction(nes_action("UP"), "cellar_west_climb")
+    if abs(x - ROOM_4A_WEST_X) <= 8:
+        return FrameAction(nes_action("UP"), "cellar_west_up")
+    if x < ROOM_4A_EAST_COL - ROOM_4A_ALIGN:
+        return FrameAction(nes_action("RIGHT"), "cellar_to_east")
+    return FrameAction(nes_action("LEFT", "DOWN"), "cellar_east_drop")
+
+
+@dataclass(kw_only=True)
+class Room4AReturnController(HopController):
+    """0x4A cellar leftover → west-ladder stairs → live play ``0x1A``.
+
+    2/2 (4a_ret_v7/v8).  Recon-wired only.  ``route_eligible=false``.
+    """
+
+    spec_id: str = "level7_room4a_return"
+    max_frames: int = ROOM4A_RETURN_MAX_FRAMES
+    require_level: int = LEVEL7
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "left_0x4a_stairs"
+    dest: int | None = field(default_factory=play_of_room4a_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            self.dest is not None
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen == self.dest
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_4A and snap.mode != 9:
+            if self.dest is not None and snap.screen == self.dest:
+                return FrameAction(nes_idle_action(), "wait_dest")
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+        return room_4a_return_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "STAIRS",
+        }
+
+
+ROOM_1B = 0x1B
+ROOM_1C = 0x1C
+ROOM1B_KEY_EAST_MAX_FRAMES = 4000
+
+
+def east_of_room1b_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x1B`` (FORCED_DIGDOGGER)."""
+    return LEVEL7_ROOM_BY_ID[FORCED_DIGDOGGER].ram_id
+
+
+def room_1b_key_east_step(snap: ZeldaSnapshot) -> FrameAction:
+    """One-frame 0x1B y=141 KEY-RIGHT. Goriyas are tanked, not cleared."""
+    x, y = int(snap.link_x), int(snap.link_y)
+    if abs(y - EAST_DOOR_Y) > DOOR_Y_TOL:
+        return FrameAction(
+            nes_action("UP" if y > EAST_DOOR_Y else "DOWN"), "keyeast_align_y"
+        )
+    if x < EAST_DOOR_X - 2:
+        return FrameAction(nes_action("RIGHT"), "keyeast_approach")
+    return FrameAction(nes_action("RIGHT"), "keyeast_push")
+
+
+@dataclass(kw_only=True)
+class Room1BKeyEastController(HopController):
+    """0x1B GORIYA_PRE_DIG KEY-east → live play ``0x1C`` (FORCED_DIGDOGGER).
+
+    2/2 (1b_ke_v2/v3).  Recon-wired only.  Natural key spend 3→2.
+    """
+
+    spec_id: str = "level7_room1b_key_east"
+    max_frames: int = ROOM1B_KEY_EAST_MAX_FRAMES
+    require_level: int = LEVEL7
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "left_0x1b_east"
+    dest: int | None = field(default_factory=east_of_room1b_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            self.dest is not None
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen == self.dest
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("RIGHT"), "keyeast_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_1B:
+            if self.dest is not None and snap.screen == self.dest:
+                return FrameAction(nes_idle_action(), "wait_dest")
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+        return room_1b_key_east_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "RIGHT",
+        }
+
+
 __all__ = [
     "EAST_APPROACH_X",
     "EAST_BAND_Y",
@@ -2439,6 +2628,8 @@ __all__ = [
     "L7_ROOM08_EAST_APPROACH",
     "L7_ROOM19_EAST_BOMB",
     "L7_ROOM19_EAST_APPROACH",
+    "L7_ROOM1A_EAST_BOMB",
+    "L7_ROOM1A_EAST_APPROACH",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
     "Level7BombWall",
@@ -2456,6 +2647,8 @@ __all__ = [
     "Room38UpController",
     "Room09DownController",
     "Room1ACandleController",
+    "Room4AReturnController",
+    "Room1BKeyEastController",
     "Room58EastController",
     "Room58NorthController",
     "Room59UpController",
@@ -2474,7 +2667,12 @@ __all__ = [
     "east_of_room08_ram_id",
     "south_of_room09_ram_id",
     "east_of_room19_ram_id",
+    "east_of_room1a_ram_id",
     "cellar_of_room1a_ram_id",
+    "play_of_room4a_ram_id",
+    "room_4a_return_step",
+    "east_of_room1b_ram_id",
+    "room_1b_key_east_step",
     "west_of_room39_ram_id",
     "north_of_room49_ram_id",
     "north_of_room59_ram_id",

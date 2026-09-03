@@ -22,11 +22,14 @@ from zelda_i.level7.graph import (
     CANDLE_PUSH,
     DIGDOGGER_1,
     DIGDOGGER_2,
+    DODONGOS_BOSS_PATH,
     DODONGOS_UPGRADE,
     ENTRY,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
     GORIYA_POST_RUPEE,
+    GORIYA_PRE_DIG,
+    FORCED_DIGDOGGER,
     GORIYA_PRE_HUNGRY,
     HIDDEN_RUPEES,
     KEESE_TRAPS,
@@ -151,6 +154,9 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         WEST_LOCK_SKIP: 0x19,
         CANDLE_PUSH: 0x1A,
         RED_CANDLE_CELLAR: 0x4A,
+        GORIYA_PRE_DIG: 0x1B,
+        FORCED_DIGDOGGER: 0x1C,
+        DODONGOS_BOSS_PATH: 0x0C,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
@@ -297,6 +303,42 @@ def test_map_bomb_north_chain_is_fixture_live() -> None:
     cellar = next(r for r in LEVEL7_ROOMS if r.source_id == RED_CANDLE_CELLAR)
     assert cellar.ram_id == 0x4A
     assert not cellar.route_eligible
+    back = {
+        e.direction: e
+        for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(RED_CANDLE_CELLAR)
+    }[DoorDir.UP]
+    assert back.target_room == CANDLE_PUSH
+    assert back.gate is GateKind.OPEN
+    assert back.verification == "fixture-live"
+    pre_dig = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(CANDLE_PUSH)
+    }[DoorDir.RIGHT]
+    assert pre_dig.target_room == GORIYA_PRE_DIG
+    assert pre_dig.gate is GateKind.BOMB
+    assert pre_dig.verification == "fixture-live"
+    gpd = next(r for r in LEVEL7_ROOMS if r.source_id == GORIYA_PRE_DIG)
+    assert gpd.ram_id == 0x1B
+    assert not gpd.route_eligible
+    key_e = {
+        e.direction: e
+        for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(GORIYA_PRE_DIG)
+    }[DoorDir.RIGHT]
+    assert key_e.target_room == FORCED_DIGDOGGER
+    assert key_e.gate is GateKind.KEY
+    assert key_e.verification == "fixture-live"
+    forced = next(r for r in LEVEL7_ROOMS if r.source_id == FORCED_DIGDOGGER)
+    assert forced.ram_id == 0x1C
+    assert not forced.route_eligible
+    north = {
+        e.direction: e
+        for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(FORCED_DIGDOGGER)
+    }[DoorDir.UP]
+    assert north.target_room == DODONGOS_BOSS_PATH
+    assert north.gate is GateKind.KILL_CLEAR
+    assert north.verification == "fixture-live"
+    boss_path = next(r for r in LEVEL7_ROOMS if r.source_id == DODONGOS_BOSS_PATH)
+    assert boss_path.ram_id == 0x0C
+    assert not boss_path.route_eligible
     to_tf = preferred_path(KEESE, TRIFORCE, caps)
     assert to_tf is not None
     assert any(exit_.gate is GateKind.BOMB for exit_ in to_tf)
