@@ -109,7 +109,7 @@ def _sample(
             "doors": int(snap.cur_opened_doors),
             "mask": int(snap.open_doorway_mask),
             "dead": int(snap.room_all_dead),
-            "misses": getattr(ctl, "walker", None) and ctl.walker.misses,
+            "misses": getattr(getattr(ctl, "walker", None), "misses", None),
         }
     )
 
@@ -241,7 +241,7 @@ def main() -> None:
         print(
             f"success={payload['success']} frames={total} "
             f"leftover={leftover} dest={east.dest} "
-            f"failed={payload.get('failed')} misses={east.walker.misses} "
+            f"failed={payload.get('failed')} "
             f"east_opened={east.east_opened_frame} objs={east.obj_types}"
         )
         for line in north.notes[-8:] + east.notes[-16:]:

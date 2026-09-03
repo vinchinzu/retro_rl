@@ -80,21 +80,15 @@ def test_entry_room_is_live_but_stop_stays_fail_closed() -> None:
     )
 
 
-def test_hypothesis_graph_entry_and_north_dest_have_ram_id() -> None:
+def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
     assert ram_ids_observed()
-    entry = next(room for room in LEVEL7_ROOMS if room.source_id == ENTRY)
-    assert entry.ram_id == SCREEN_LEVEL7_ENTRY_ROOM
-    assert entry.evidence == "fixture-live"
-    assert not entry.route_eligible
-    north = next(room for room in LEVEL7_ROOMS if room.source_id == MOLDORMS)
-    assert north.ram_id == 0x69
-    assert north.evidence == "fixture-live"
-    assert not north.route_eligible
-    others = [
-        room
-        for room in LEVEL7_ROOMS
-        if room.source_id not in {ENTRY, MOLDORMS}
-    ]
+    live = {ENTRY: SCREEN_LEVEL7_ENTRY_ROOM, MOLDORMS: 0x69, KEESE: 0x6A}
+    for source_id, ram_id in live.items():
+        room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
+        assert room.ram_id == ram_id
+        assert room.evidence == "fixture-live"
+        assert not room.route_eligible
+    others = [room for room in LEVEL7_ROOMS if room.source_id not in live]
     assert all(room.ram_id is None for room in others)
     assert all(room.evidence == EVIDENCE for room in others)
     assert all(room.route_eligible is ROUTE_ELIGIBLE for room in LEVEL7_ROOMS)
@@ -130,16 +124,20 @@ def test_entry_exits_match_live_png() -> None:
     dest_exits = {e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(MOLDORMS)}
     assert DoorDir.UP not in dest_exits  # live 0x69 north is a sealed wall
     dest_east = dest_exits[DoorDir.RIGHT]
-    assert dest_east.target_room is None
-    assert dest_east.gate is GateKind.KEY
-    assert not dest_east.is_pathfinding
+    assert dest_east.target_room == KEESE
+    assert dest_east.gate is GateKind.OPEN  # walked live; the doors bit never sets
+    assert dest_east.verification == "fixture-live"
+    assert dest_east.is_pathfinding
+    keese = next(room for room in LEVEL7_ROOMS if room.source_id == KEESE)
+    assert keese.ram_id == 0x6A
 
 
 def test_preferred_path_uses_bomb_skip_and_food_gate() -> None:
     caps = InventoryCaps(keys=4, bombs=8, can_clear=True)
-    # Live 0x69 east dest is unobserved, so ENTRY is disconnected from the
-    # hyp interior. Interior bomb/food/fifth-lock routing still holds from KEESE.
-    assert preferred_path(ENTRY, MAP, caps) is None
+    # ENTRY reaches the hyp interior through the live 0x79 -> 0x69 -> 0x6A prefix.
+    from_entry = preferred_path(ENTRY, MAP, caps)
+    assert from_entry is not None
+    assert [exit_.target_room for exit_ in from_entry][:2] == [MOLDORMS, KEESE]
     to_map = preferred_path(KEESE, MAP, caps)
     assert to_map is not None
     assert path_requires_food(to_map)
