@@ -1,0 +1,346 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T19:05:41.309173+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1629,
+        "address_hex": "0x065D",
+        "before": 0,
+        "from": 0,
+        "name": "food_for_hungry_goriya",
+        "to": 1
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "before": 0,
+        "from": 0,
+        "name": "bombs_for_wall_skips",
+        "to": 8
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "before": 0,
+        "from": 0,
+        "name": "keys_for_pre_fifth_lock",
+        "to": 4
+      }
+    ],
+    "natural_entry": false,
+    "notes": [
+      "WALKED the fixture-live 0x79->0x69->0x6A->0x6B chain from Level7Entrance (EntryNorthDoorController, Room69EastController, Room6AEastController); no set_state / teleport.",
+      "Six 0x6B goriya 0x05 cleared with the shared goriya micro.",
+      "Traverse ran under the standard UnlimitedHealthAssist (traversal aid, same as the 2/2 green room walks); deaths=0, progression_writes=0, capacity_writes=0. Not a fixture write.",
+      "Bomb target is min(preferred 8, existing max-bomb capacity); ADDR_MAX_BOMBS is read, never written.",
+      "Keys are disclosed pre-fifth-lock recon resource.",
+      "No Candle, Whistle, Triforce, room/screen, door, health, or heart-capacity writes."
+    ],
+    "phase": "level7_interior_recon_resources",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "assist": {
+      "accepted_containers": 3,
+      "capacity_writes": 0,
+      "class": "survival",
+      "container_clamps": 0,
+      "damage_by_location": {
+        "L7:0x69": 5,
+        "L7:0x6b": 6
+      },
+      "damage_events": 11,
+      "damage_samples": [
+        {
+          "amount": 1,
+          "frame": 323,
+          "level": 7,
+          "link_x": 136,
+          "link_y": 173,
+          "location": "L7:0x69",
+          "screen": 105,
+          "screen_hex": "0x69"
+        },
+        {
+          "amount": 1,
+          "frame": 518,
+          "level": 7,
+          "link_x": 50,
+          "link_y": 165,
+          "location": "L7:0x69",
+          "screen": 105,
+          "screen_hex": "0x69"
+        },
+        {
+          "amount": 1,
+          "frame": 790,
+          "level": 7,
+          "link_x": 110,
+          "link_y": 93,
+          "location": "L7:0x69",
+          "screen": 105,
+          "screen_hex": "0x69"
+        },
+        {
+          "amount": 1,
+          "frame": 862,
+          "level": 7,
+          "link_x": 56,
+          "link_y": 109,
+          "location": "L7:0x69",
+          "screen": 105,
+          "screen_hex": "0x69"
+        },
+        {
+          "amount": 1,
+          "frame": 934,
+          "level": 7,
+          "link_x": 48,
+          "link_y": 125,
+          "location": "L7:0x69",
+          "screen": 105,
+          "screen_hex": "0x69"
+        },
+        {
+          "amount": 1,
+          "frame": 2997,
+          "level": 7,
+          "link_x": 46,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        },
+        {
+          "amount": 1,
+          "frame": 3083,
+          "level": 7,
+          "link_x": 52,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        },
+        {
+          "amount": 1,
+          "frame": 3168,
+          "level": 7,
+          "link_x": 42,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        },
+        {
+          "amount": 1,
+          "frame": 3646,
+          "level": 7,
+          "link_x": 153,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        },
+        {
+          "amount": 1,
+          "frame": 3756,
+          "level": 7,
+          "link_x": 136,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        },
+        {
+          "amount": 1,
+          "frame": 3844,
+          "level": 7,
+          "link_x": 142,
+          "link_y": 109,
+          "location": "L7:0x6b",
+          "screen": 107,
+          "screen_hex": "0x6b"
+        }
+      ],
+      "deaths": 0,
+      "enabled": true,
+      "health": {
+        "first_active_frame": 323,
+        "restored": 11,
+        "writes": 18
+      },
+      "kind": "unlimited_health",
+      "maximum_single_frame_damage": 1,
+      "progression_writes": 0,
+      "suspended_phase_frames": {
+        "menu_or_boot": 97,
+        "transition": 488
+      },
+      "total_damage": 11
+    },
+    "chain_reached_6b_frame": 2761,
+    "fixture_state": "Level7InteriorReconFixture",
+    "fixture_writes": [
+      {
+        "address": 1629,
+        "address_hex": "0x065D",
+        "before": 0,
+        "from": 0,
+        "name": "food_for_hungry_goriya",
+        "to": 1
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "before": 0,
+        "from": 0,
+        "name": "bombs_for_wall_skips",
+        "to": 8
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "before": 0,
+        "from": 0,
+        "name": "keys_for_pre_fifth_lock",
+        "to": 4
+      }
+    ],
+    "goriya_clear_frame": 4135,
+    "inventory": {
+      "bombs": 8,
+      "candle": 0,
+      "food": 1,
+      "keys": 4,
+      "max_bombs": 8,
+      "whistle": 1
+    },
+    "ok": true,
+    "protected_unchanged": {
+      "candle": true,
+      "level": true,
+      "mode": true,
+      "screen": true,
+      "triforce": true,
+      "whistle": true
+    },
+    "source_state": "Level7Entrance",
+    "state": {
+      "bombs": 8,
+      "cur_opened_doors": 8,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 107,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 0,
+          "state": 0,
+          "type_id": 6,
+          "type_name": "goriya",
+          "x": 136,
+          "y": 109
+        },
+        {
+          "hp": 128,
+          "slot": 1,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 144,
+          "y": 255
+        },
+        {
+          "hp": 128,
+          "slot": 2,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 195,
+          "y": 109
+        },
+        {
+          "hp": 128,
+          "slot": 3,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 32,
+          "y": 255
+        },
+        {
+          "hp": 128,
+          "slot": 6,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 136,
+          "y": 255
+        },
+        {
+          "hp": 144,
+          "slot": 8,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 160,
+          "y": 101
+        },
+        {
+          "hp": 144,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 144,
+          "y": 170
+        },
+        {
+          "hp": 144,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 144,
+          "y": 139
+        },
+        {
+          "hp": 144,
+          "slot": 11,
+          "state": 53,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 144,
+          "y": 129
+        }
+      ],
+      "open_doorway_mask": 3,
+      "room": 107,
+      "room_all_dead": 42,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 6,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 136,
+      "y": 109
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Entrance.state",
+  "source_state_sha256": "82e5a43b0673c8318f00347b50027b405654d489606d235cfd687b20b3a98fc8",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7InteriorReconFixture.state",
+  "state_sha256": "be810cc05dc342c14a40f9f099a0c5243a753b64fe84407f94499542a2bf9359"
+}

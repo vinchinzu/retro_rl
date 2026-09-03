@@ -40,6 +40,7 @@ from zelda_i.dungeon.behaviors import (
 from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
 from zelda_i.level7.graph import (
+    DIGDOGGER_1,
     GORIYA_HINT,
     KEESE,
     LEVEL7_ROOM_BY_ID,
@@ -89,6 +90,21 @@ ROOM_6A_EAST_COLUMN_X = 200
 ROOM_6A_EAST_PLANE = 224
 ROOM_6A_MOUTH_X = 32
 ROOM6A_EAST_MAX_FRAMES = 4000
+# 0x6B GORIYA_HINT: entered at the west mouth (16,141) from 0x6A.  A central X
+# of diamond blocks walls the y=141 centre band at x~96; the y=109 band is
+# clear x=32..208.  The east dest is live $EB=0x6C (DIGDOGGER_1) — an OPEN
+# doorway at y=141 on the east side.  The traverse (after the six goriya 0x05
+# are cleared, upstream) rides the y=109 band east past the central X, drops
+# the east column to the door row, and pushes RIGHT.  2/2 byte-identical
+# (recordings/6b_right_v1.json / 6b_right_v2.json, 283f).
+ROOM_6B = 0x6B
+ROOM_6B_WEST_MOUTH = (16, 141)
+ROOM_6B_DOOR_Y = 141
+ROOM_6B_MID_BAND_Y = 109
+ROOM_6B_EAST_COLUMN_X = 200
+ROOM_6B_EAST_PLANE = 224
+ROOM_6B_MOUTH_X = 32
+ROOM6B_EAST_MAX_FRAMES = 4000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -111,6 +127,11 @@ def east_of_room69_ram_id() -> int | None:
 def east_of_room6a_ram_id() -> int | None:
     """Live ``$EB`` of the room east of ``0x6A``, or None until observed."""
     return LEVEL7_ROOM_BY_ID[GORIYA_HINT].ram_id
+
+
+def east_of_room6b_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x6B``, or None until observed."""
+    return LEVEL7_ROOM_BY_ID[DIGDOGGER_1].ram_id
 
 
 class Level7PathController(Protocol):
@@ -598,6 +619,122 @@ class Room6AEastController(HopController):
         }
 
 
+def room_6b_east_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+) -> FrameAction:
+    """One frame of 0x6B (GORIYA_HINT) west mouth → live east dest 0x6C.
+
+    Assumes the six goriya ``0x05`` are already cleared upstream (the recon
+    fixture / a prior kill-clear).  A central X of diamond blocks walls the
+    ``y=141`` centre band at ``x~96``; the ``y=109`` band is clear
+    ``x=32..208``.  So the traverse rides the ``y=109`` band east past the
+    central X, drops the east column to the door row, then pushes the OPEN
+    east doorway (plane ``x=224``).
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("RIGHT"), "east6b_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "east6b_arrived")
+    if snap.screen != ROOM_6B:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if x < ROOM_6B_MOUTH_X:
+        return FrameAction(nes_action("RIGHT"), "east6b_leave_mouth")
+    # Ride the y=109 mid band east until on the east drop column.
+    if x < ROOM_6B_EAST_COLUMN_X - NORTH_X_TOL:
+        if abs(y - ROOM_6B_MID_BAND_Y) > DOOR_Y_TOL:
+            btn = "UP" if y > ROOM_6B_MID_BAND_Y else "DOWN"
+            return FrameAction(nes_action(btn), "east6b_band_y")
+        return FrameAction(nes_action("RIGHT"), "east6b_cross")
+    # On the east column: drop to the door row, then push the OPEN doorway.
+    if abs(y - ROOM_6B_DOOR_Y) > DOOR_Y_TOL:
+        btn = "UP" if y > ROOM_6B_DOOR_Y else "DOWN"
+        return FrameAction(nes_action(btn), "east6b_drop_y")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="RIGHT",
+        target_y=ROOM_6B_DOOR_Y,
+        y_tol=DOOR_Y_TOL,
+        door_plane=ROOM_6B_EAST_PLANE,
+        reason="east6b",
+    )
+
+
+@dataclass(kw_only=True)
+class Room6BEastController(HopController):
+    """0x6B west mouth → OPEN east doorway to live dest 0x6C (DIGDOGGER_1).
+
+    Goriyas are assumed cleared upstream.  Waypoint micro: ride the ``y=109``
+    band east past the central X of diamond blocks, drop the east column to
+    ``y=141``, push RIGHT through the OPEN east doorway.
+    """
+
+    spec_id: str = "level7_room6b_east"
+    max_frames: int = ROOM6B_EAST_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x6b"
+    dest: int | None = field(default_factory=east_of_room6b_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen == ROOM_6A:
+            return self.mark_fail("west_backtrack")
+        return FrameAction(nes_action("RIGHT"), "east6b_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = room_6b_east_step(snap, dest=self.dest)
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ROOM_6A:
+                return self.mark_fail("west_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "RIGHT",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -705,6 +842,9 @@ __all__ = [
     "ROOM_6A",
     "ROOM_6A_EAST_PLANE",
     "ROOM_6A_WEST_MOUTH",
+    "ROOM_6B",
+    "ROOM_6B_EAST_PLANE",
+    "ROOM_6B_WEST_MOUTH",
     "SOUTH_MOUTH_Y",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
@@ -712,11 +852,14 @@ __all__ = [
     "RedCandlePickupController",
     "Room69EastController",
     "Room6AEastController",
+    "Room6BEastController",
     "UnverifiedLevel7PathController",
     "east_of_room69_ram_id",
     "east_of_room6a_ram_id",
+    "east_of_room6b_ram_id",
     "east_route_step",
     "room_6a_east_step",
+    "room_6b_east_step",
     "live_goriyas",
     "north_door_79_step",
     "north_of_entry_ram_id",
