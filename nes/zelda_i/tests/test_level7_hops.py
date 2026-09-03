@@ -20,10 +20,14 @@ from zelda_i.level7.entry import (
 )
 from zelda_i.level7.hops import (
     l7_hops,
+    level7_complete_chapter_stages,
     level7_entry_chapter_stages,
     level7_red_candle_chapter_stages,
+    make_aquamentus_heart_controller,
     make_entry_first_door_controller,
     make_entry_to_goriya_controller,
+    make_forced_digdogger_controller,
+    make_level7_shard_leave_controller,
     make_pond_entry_controller,
     make_red_candle_controller,
 )
@@ -518,6 +522,58 @@ def test_red_candle_does_not_write_and_fails_closed() -> None:
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "red_candle_room_unobserved"
+
+
+def test_complete_chapter_factories_fail_closed_and_do_not_invent_leave() -> None:
+    """L7-C stages stay unverified. Screen None; handoff verified stays False."""
+    stages = level7_complete_chapter_stages()
+    names = [name for name, _c, _f in stages]
+    assert names == [
+        "level7_forced_digdogger",
+        "level7_aquamentus_heart",
+        "level7_shard_and_settled_leave",
+    ]
+    ram = _ram(level=7, screen=0x10, candle=2, whistle=1, food=0, triforce=0x3F)
+    snap = read_snapshot(ram)
+    forced = make_forced_digdogger_controller()
+    aqua = make_aquamentus_heart_controller()
+    leave = make_level7_shard_leave_controller()
+    for ctl, needle in (
+        (forced, "Whistle B-slot 5"),
+        (aqua, "Level1AquamentusController"),
+        (leave, "MEASURED_POST_L7_EXIT"),
+    ):
+        report = ctl.report()
+        assert report["route_eligible"] is False
+        assert report["evidence"] == "hypothesis"
+        assert needle in str(report["missing_evidence"])
+        act = ctl.step(snap)
+        assert ctl.failed and not ctl.success
+        assert act.reason == "blocked_unverified"
+    assert UNMEASURED_HANDOFF.verified is False
+    assert UNMEASURED_HANDOFF.screen is None
+    assert UNMEASURED_HANDOFF.complete() is False
+    # L6 packet is the schema template; L7 has no filled packet yet.
+    h = MEASURED_POST_L6_EXIT
+    for name in (
+        "screen",
+        "link_x",
+        "link_y",
+        "mode",
+        "triforce",
+        "keys",
+        "bombs",
+        "rupees",
+        "heart_containers",
+        "selected_item",
+        "whistle",
+        "food",
+        "rod",
+        "bow",
+        "arrows",
+        "candle",
+    ):
+        assert getattr(h, name) is not None
 
 
 def test_l7_hops_use_fail_closed_entry_chapter() -> None:

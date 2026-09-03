@@ -45,8 +45,15 @@ LEVEL7_ENTRY_STOP = Level7StopSpec(
     "level7_entry", LEVEL7, SCREEN_LEVEL7_ENTRY_ROOM, evidence="fixture-live"
 )
 LEVEL7_RED_CANDLE_STOP = Level7StopSpec("level7_red_candle", LEVEL7, None)
-# The settled post-fanfare level/screen is part of the L7 -> L8 handoff and is
-# not known yet, so both fields remain closed.
+# Settled post-fanfare OW leftover is UNMEASURED. Both level and screen stay
+# None so ``level7_complete_stop`` fails closed. Do not invent an OW leave
+# screen. A future MEASURED_POST_L7_EXIT copies MEASURED_POST_L6_EXIT's
+# OverworldHandoff fields from a real fanfare leftover (handoff_from_ram):
+# screen, link_x/y, mode, triforce (0x7F), candle (2), whistle, food (0),
+# keys, bombs, rupees, selected_item, heart_containers (incoming+1),
+# hearts lo==hi (ADDR_HEALTH) + ADDR_HEART_PARTIAL, rod, bow, arrows.
+# verified stays False until that leftover is measured 2/2. L8 keeps
+# PostLevel7Handoff.verified=False until then. See docs/tasks/l7c-prep-2026-09-03.md.
 LEVEL7_COMPLETE_STOP = Level7StopSpec("level7_complete", None, None)
 
 # There are intentionally no executable DungeonRoomSpec rows yet.  Add one
@@ -109,7 +116,11 @@ def level7_complete_stop(
     incoming_heart_containers: int | None,
     spec: Level7StopSpec = LEVEL7_COMPLETE_STOP,
 ) -> bool:
-    """Settled L7 leave with shard, one natural heart, and full health."""
+    """Settled L7 leave with shard, one natural heart, and full health.
+
+    Fail-closed while ``LEVEL7_COMPLETE_STOP.screen`` is None (unmeasured OW
+    leave). Filling TF ``0x7F``, Candle 2, Whistle, and HC+1 is not enough.
+    """
     return bool(
         incoming_heart_containers is not None
         and _at_exact_stop(snap, spec)
