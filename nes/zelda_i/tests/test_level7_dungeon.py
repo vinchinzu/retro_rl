@@ -19,13 +19,16 @@ from zelda_i.level7.dungeon import (
 )
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
+    CANDLE_PUSH,
     DIGDOGGER_1,
     DIGDOGGER_2,
     DODONGOS_UPGRADE,
     ENTRY,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
+    GORIYA_POST_RUPEE,
     GORIYA_PRE_HUNGRY,
+    HIDDEN_RUPEES,
     KEESE_TRAPS,
     OLD_MAN_NOSE,
     ROPES_KEY,
@@ -40,6 +43,7 @@ from zelda_i.level7.graph import (
     MAP_EAST_LOCK,
     MOLDORMS,
     RED_CANDLE_CELLAR,
+    WEST_LOCK_SKIP,
     ROUTE_ELIGIBLE,
     TRIFORCE,
     path_requires_food,
@@ -142,6 +146,10 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         GORIYA_PRE_HUNGRY: 0x38,
         HUNGRY_GORIYA: 0x28,
         MAP: 0x18,
+        HIDDEN_RUPEES: 0x08,
+        GORIYA_POST_RUPEE: 0x09,
+        WEST_LOCK_SKIP: 0x19,
+        CANDLE_PUSH: 0x1A,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
@@ -237,6 +245,49 @@ def test_preferred_path_uses_bomb_skip_and_food_gate() -> None:
     assert to_candle is not None
     assert not path_uses_fifth_lock(to_candle)
     assert all(exit_.target_room != MAP_EAST_LOCK for exit_ in to_candle)
+
+
+def test_map_bomb_north_chain_is_fixture_live() -> None:
+    """0x18 bomb-N 0x08 bomb-E 0x09 kill-S 0x19 bomb-E 0x1A."""
+    caps = InventoryCaps(keys=4, bombs=8, can_clear=True)
+    north = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(MAP)
+    }[DoorDir.UP]
+    assert north.target_room == HIDDEN_RUPEES
+    assert north.gate is GateKind.BOMB
+    assert north.verification == "fixture-live"
+    rupees = next(r for r in LEVEL7_ROOMS if r.source_id == HIDDEN_RUPEES)
+    assert rupees.ram_id == 0x08
+
+    east = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(HIDDEN_RUPEES)
+    }[DoorDir.RIGHT]
+    assert east.target_room == GORIYA_POST_RUPEE
+    assert east.gate is GateKind.BOMB
+    assert east.verification == "fixture-live"
+    post = next(r for r in LEVEL7_ROOMS if r.source_id == GORIYA_POST_RUPEE)
+    assert post.ram_id == 0x09
+
+    down = {
+        e.direction: e
+        for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(GORIYA_POST_RUPEE)
+    }[DoorDir.DOWN]
+    assert down.target_room == WEST_LOCK_SKIP
+    assert down.gate is GateKind.KILL_CLEAR
+    assert down.verification == "fixture-live"
+    skip = next(r for r in LEVEL7_ROOMS if r.source_id == WEST_LOCK_SKIP)
+    assert skip.ram_id == 0x19
+    assert not skip.route_eligible
+
+    candle_e = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(WEST_LOCK_SKIP)
+    }[DoorDir.RIGHT]
+    assert candle_e.target_room == CANDLE_PUSH
+    assert candle_e.gate is GateKind.BOMB
+    assert candle_e.verification == "fixture-live"
+    push = next(r for r in LEVEL7_ROOMS if r.source_id == CANDLE_PUSH)
+    assert push.ram_id == 0x1A
+    assert not push.route_eligible
     to_tf = preferred_path(KEESE, TRIFORCE, caps)
     assert to_tf is not None
     assert any(exit_.gate is GateKind.BOMB for exit_ in to_tf)

@@ -32,6 +32,10 @@ from zelda_i.level7.hops import (
     make_red_candle_controller,
     make_room58_north_controller,
     make_room68_down_controller,
+    make_room08_east_bomb_controller,
+    make_room09_down_controller,
+    make_room18_north_bomb_controller,
+    make_room19_east_bomb_controller,
     make_room38_up_controller,
     make_room39_left_controller,
     make_room49_up_controller,
@@ -60,6 +64,10 @@ from zelda_i.level7.path import (
     Room6AEastController,
     Room58NorthController,
     Room68DownController,
+    L7_ROOM08_EAST_BOMB,
+    L7_ROOM18_NORTH_BOMB,
+    L7_ROOM19_EAST_BOMB,
+    Room09DownController,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -69,6 +77,7 @@ from zelda_i.level7.path import (
     room_58_north_step,
     room_68_down_step,
     room_6a_east_step,
+    room_09_down_step,
     room_38_up_step,
     room_39_left_step,
     room_49_up_step,
@@ -771,3 +780,45 @@ def test_room_38_up_uses_east_pocket_not_centre_diamonds() -> None:
     assert "level7_room38_up" not in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
+
+
+def test_room_09_down_drops_then_pushes_after_clear() -> None:
+    """0x09 south shutter: kill-clear, y=189, x=120, DOWN. Not OPEN on spawn."""
+    mouth = read_snapshot(_ram(level=7, screen=0x09, x=32, y=141))
+    assert room_09_down_step(mouth).reason == "spawn_wait"
+    drop = read_snapshot(_ram(level=7, screen=0x09, x=32, y=141))
+    assert room_09_down_step(drop, saw_goriya=True).reason == "down09_drop"
+    south = read_snapshot(_ram(level=7, screen=0x09, x=32, y=189))
+    assert room_09_down_step(south, saw_goriya=True).reason == "down09_align_x"
+    door = read_snapshot(_ram(level=7, screen=0x09, x=120, y=189))
+    assert room_09_down_step(door, saw_goriya=True).reason == "down09_push"
+    dest = read_snapshot(_ram(level=7, screen=0x19, x=120, y=93))
+    ctl = Room09DownController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x09_south"
+    assert ctl.report()["dest_screen"] == 0x19
+    assert ctl.report()["route_eligible"] is False
+    assert make_room09_down_controller().report()["dest_screen"] == 0x19
+    assert "level7_room09_down" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+
+
+def test_map_bomb_chain_factories_are_recon_only() -> None:
+    """0x18/0x08/0x19 bomb walls + 0x09 down stay off the chapter chain."""
+    n18 = make_room18_north_bomb_controller()
+    assert n18.wall is L7_ROOM18_NORTH_BOMB
+    assert n18.to_room == 0x08
+    assert n18.stand == (120, 93)
+    e08 = make_room08_east_bomb_controller()
+    assert e08.wall is L7_ROOM08_EAST_BOMB
+    assert e08.to_room == 0x09
+    assert e08.approach_waypoints[0] == (200, 189)
+    e19 = make_room19_east_bomb_controller()
+    assert e19.wall is L7_ROOM19_EAST_BOMB
+    assert e19.to_room == 0x1A
+    names = [name for name, _c, _f in level7_red_candle_chapter_stages()]
+    assert "level7_room18_north_bomb" not in names
+    assert "level7_room08_east_bomb" not in names
+    assert "level7_room19_east_bomb" not in names

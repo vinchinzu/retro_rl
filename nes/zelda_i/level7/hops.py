@@ -29,6 +29,11 @@ from zelda_i.level7.graph import ledger_notes
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.dungeon.bomb_wall import BombWallController
 from zelda_i.level7.path import (
+    L7_ROOM08_EAST_APPROACH,
+    L7_ROOM08_EAST_BOMB,
+    L7_ROOM18_NORTH_BOMB,
+    L7_ROOM19_EAST_APPROACH,
+    L7_ROOM19_EAST_BOMB,
     L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
     HungryGoriyaGateController,
@@ -38,6 +43,7 @@ from zelda_i.level7.path import (
     Room6BEastController,
     Room6BNorthController,
     Room6CEastController,
+    Room09DownController,
     Room58EastController,
     Room58NorthController,
     Room38UpController,
@@ -183,6 +189,50 @@ def make_room69_west_bomb_controller() -> BombWallController:
     bomb selected on B.  Recon-wired only (interior of 0x68 unobserved).
     """
     return BombWallController(wall=L7_ROOM69_WEST_BOMB, level=7)
+
+
+def make_room18_north_bomb_controller() -> BombWallController:
+    """0x18 MAP north BOMB wall → live 0x08 HIDDEN_RUPEES (2/2).
+
+    Stand (120,93) face UP.  Needs bombs + bomb on B.  Recon-wired only.
+    """
+    return BombWallController(wall=L7_ROOM18_NORTH_BOMB, level=7)
+
+
+def make_room08_east_bomb_controller() -> BombWallController:
+    """0x08 HIDDEN_RUPEES east BOMB wall → live 0x09 GORIYA_POST_RUPEE (2/2).
+
+    South-band around the diamond cross, stand (208,141) face RIGHT.
+    Recon-wired only.
+    """
+    return BombWallController(
+        wall=L7_ROOM08_EAST_BOMB,
+        level=7,
+        approach_waypoints=L7_ROOM08_EAST_APPROACH,
+        approach_tol=4,
+    )
+
+
+def make_room09_down_controller() -> Level7PathController:
+    """0x09 GORIYA_POST_RUPEE kill-clear → south shutter to live 0x19 (2/2).
+
+    Dead: south is OPEN on spawn.  Recon-wired only.
+    """
+    return Room09DownController()
+
+
+def make_room19_east_bomb_controller() -> BombWallController:
+    """0x19 WEST_LOCK_SKIP east BOMB wall → live 0x1A CANDLE_PUSH (2/2).
+
+    South-around the diamond floor to stand (208,141) face RIGHT.
+    Recon-wired only.  0x1A left-block stairs still unobserved.
+    """
+    return BombWallController(
+        wall=L7_ROOM19_EAST_BOMB,
+        level=7,
+        approach_waypoints=L7_ROOM19_EAST_APPROACH,
+        approach_tol=4,
+    )
 
 
 def make_entry_to_goriya_controller() -> Level7PathController:
@@ -411,6 +461,10 @@ __all__ = [
     "make_red_candle_controller",
     "make_room69_east_controller",
     "make_room69_west_bomb_controller",
+    "make_room18_north_bomb_controller",
+    "make_room08_east_bomb_controller",
+    "make_room09_down_controller",
+    "make_room19_east_bomb_controller",
     "make_room6a_east_controller",
     "make_room6b_east_controller",
     "make_room6b_north_controller",

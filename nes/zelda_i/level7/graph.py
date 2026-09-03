@@ -207,16 +207,45 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "map",
         ram_id=0x18,
         role="live: dark; map room_item 0x17; goriya 0x05 + keese 0x1b + "
-        "bubble 0x2b; entry (120,189) from hungry UP; bomb-north still "
-        "unobserved (skip locked east)",
+        "bubble 0x2b; entry (120,189) from hungry UP; bomb-north stand "
+        "(120,93) face UP -> $EB=0x08 (skip locked east)",
         evidence="fixture-live",
     ),
     Level7RoomHyp(MAP_EAST_LOCK, "map_east_fifth_lock", role="skip_lock"),
-    Level7RoomHyp(HIDDEN_RUPEES, "hidden_rupees_off_map"),
-    Level7RoomHyp(GORIYA_POST_RUPEE, "goriya_post_rupee"),
+    Level7RoomHyp(
+        HIDDEN_RUPEES,
+        "hidden_rupees_off_map",
+        ram_id=0x08,
+        role="live: diamond cross; 0x35 cluster; entry (120,189) S mouth "
+        "from 0x18 bomb-north; bomb-east stand (208,141) -> $EB=0x09",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        GORIYA_POST_RUPEE,
+        "goriya_post_rupee",
+        ram_id=0x09,
+        role="live: goriya 0x05+0x06, room_item 0x0f, water north; entry "
+        "(32,141) W mouth; south shutter is KILL_CLEAR (doors bit stays "
+        "LEFT) then DOWN -> $EB=0x19; skip optional east key",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(GORIYA_KEY, "goriya_key", role="key_plus_1"),
-    Level7RoomHyp(WEST_LOCK_SKIP, "west_lock_skip", role="skip_lock"),
-    Level7RoomHyp(CANDLE_PUSH, "candle_block_push"),
+    Level7RoomHyp(
+        WEST_LOCK_SKIP,
+        "west_lock_skip",
+        ram_id=0x19,
+        role="live: diamond floor, goriya 0x05; entry (120,93) N mouth; "
+        "KEY-west skip; bomb-east stand (208,141) via south band -> $EB=0x1A",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        CANDLE_PUSH,
+        "candle_block_push",
+        ram_id=0x1A,
+        role="live: 4-diamond plus + 0x68 at (96,144); entry (32,141) W "
+        "mouth; left-block stairs to Red Candle cellar still unobserved",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(RED_CANDLE_CELLAR, "red_candle_cellar", role="public_level7_red_candle"),
     Level7RoomHyp(GORIYA_PRE_DIG, "goriya_pre_forced_dig"),
     Level7RoomHyp(FORCED_DIGDOGGER, "forced_digdogger"),
@@ -565,23 +594,61 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
         MAP: (
             _back(DoorDir.UP, HUNGRY_GORIYA),
             _e(DoorDir.RIGHT, MAP_EAST_LOCK, GateKind.KEY, notes="fifth lock; skip"),
-            _e(DoorDir.UP, HIDDEN_RUPEES, GateKind.BOMB, notes="off-map bomb north"),
+            _e(
+                DoorDir.UP,
+                HIDDEN_RUPEES,
+                GateKind.BOMB,
+                notes=(
+                    "live dest $EB=0x08 2/2; stand (120,93) face UP; "
+                    "cur_opened_doors UP bit sets; bombs 7->6"
+                ),
+                verification="fixture-live",
+            ),
         ),
         MAP_EAST_LOCK: (_back(DoorDir.RIGHT, MAP),),
         HIDDEN_RUPEES: (
             _open(DoorDir.DOWN, MAP),
-            _e(DoorDir.RIGHT, GORIYA_POST_RUPEE, GateKind.BOMB),
+            _e(
+                DoorDir.RIGHT,
+                GORIYA_POST_RUPEE,
+                GateKind.BOMB,
+                notes=(
+                    "live dest $EB=0x09 2/2; south-band x=200 then east "
+                    "column to stand (208,141) face RIGHT; bombs 6->5"
+                ),
+                verification="fixture-live",
+            ),
         ),
         GORIYA_POST_RUPEE: (
             _open(DoorDir.LEFT, HIDDEN_RUPEES),
             _e(DoorDir.RIGHT, GORIYA_KEY, GateKind.KILL_CLEAR),
-            _open(DoorDir.DOWN, WEST_LOCK_SKIP),
+            _e(
+                DoorDir.DOWN,
+                WEST_LOCK_SKIP,
+                GateKind.KILL_CLEAR,
+                notes=(
+                    "live dest $EB=0x19 2/2; south shutter opens after "
+                    "goriya 0x05/0x06 clear (doors bit stays LEFT). Dead: "
+                    "DOWN is OPEN without the kill"
+                ),
+                verification="fixture-live",
+            ),
         ),
         GORIYA_KEY: (_back(DoorDir.RIGHT, GORIYA_POST_RUPEE),),
         WEST_LOCK_SKIP: (
             _open(DoorDir.UP, GORIYA_POST_RUPEE),
             _e(DoorDir.LEFT, GORIYA_PRE_HUNGRY, GateKind.KEY, notes="fifth-lock sibling; skip"),
-            _e(DoorDir.RIGHT, CANDLE_PUSH, GateKind.BOMB, notes="bomb east to candle"),
+            _e(
+                DoorDir.RIGHT,
+                CANDLE_PUSH,
+                GateKind.BOMB,
+                notes=(
+                    "live dest $EB=0x1A 2/2; south-around diamonds "
+                    "(96,141)->(96,189)->(208,189)->(208,141) face RIGHT; "
+                    "bombs 8->7 (goriya drops topped 5->8 in 0x09)"
+                ),
+                verification="fixture-live",
+            ),
         ),
         CANDLE_PUSH: (
             _open(DoorDir.LEFT, WEST_LOCK_SKIP),
@@ -678,6 +745,8 @@ __all__ = [
     "EVIDENCE",
     "FIFTH_LOCK_SKIPS",
     "FOOD_GATES",
+    "GORIYA_POST_RUPEE",
+    "HIDDEN_RUPEES",
     "HUNGRY_GORIYA",
     "KEESE",
     "LEVEL7_HYPOTHESIS_GRAPH",
@@ -689,6 +758,7 @@ __all__ = [
     "RED_CANDLE_CELLAR",
     "ROUTE_ELIGIBLE",
     "TRIFORCE",
+    "WEST_LOCK_SKIP",
     "Level7LedgerRow",
     "Level7RoomHyp",
     "ledger_notes",
