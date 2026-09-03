@@ -175,6 +175,33 @@ SEGMENTS: tuple[SegmentEntry, ...] = (
         predecessor="l9_room_0x51_to_0x41",
         status_eligible=False,
     ),
+    SegmentEntry(
+        segment_id="l8_room_0x7e",
+        isolated_clean=True,
+        assisted_green=False,
+        natural_entry=False,
+        blocker="mid_run_state_load",
+        predecessor="Level8BushWithCandleFixture",
+        status_eligible=False,
+    ),
+    SegmentEntry(
+        segment_id="l9_rock_hops_0x77_to_0x27",
+        isolated_clean=True,
+        assisted_green=False,
+        natural_entry=False,
+        blocker="mid_run_state_load",
+        predecessor="Level9OverworldReconFixture",
+        status_eligible=False,
+    ),
+    SegmentEntry(
+        segment_id="l9_rock_hops_0x27_to_spectacle_rock",
+        isolated_clean=False,
+        assisted_green=False,
+        natural_entry=False,
+        blocker="mid_run_state_load",
+        predecessor="Level9RockHopsPartialReconFixture",
+        status_eligible=False,
+    ),
 )
 
 # L1 Clean M5 family — only these may return True from status_claim_allowed.

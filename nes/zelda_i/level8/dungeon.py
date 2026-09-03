@@ -41,6 +41,18 @@ class Level8Topology:
 
 
 UNOBSERVED_LEVEL8_TOPOLOGY = Level8Topology()
+
+# Fixture-only live recon (rr-6o7.1): entry room observed as screen 0x7E,
+# Link facing UP at (120, 205), via nes/zelda_i/scratch/level8_bush_burn_sweep.py
+# + capture_level8_entrance_fixture.py from Level8BushWithCandleFixture (not
+# the natural post-L7 walk). See Level8EntranceReconFixture.provenance.json.
+# ``route_eligible`` stays False: this is fixture-derived evidence, not a
+# natural-entry / route promotion.
+LIVE_RECON_LEVEL8_TOPOLOGY = Level8Topology(
+    entry_room=0x7E,
+    evidence="live_recon_fixture",
+    route_eligible=False,
+)
 LEVEL8_ROOM_SPECS: tuple[DungeonRoomSpec, ...] = ()
 
 
@@ -72,7 +84,12 @@ class Level8HypothesisExit:
 # GameFAQs / Zelda Dungeon first-quest lion shape. Columns A=0 … E=4,
 # rows 1=0 … 8=7.  Entrance is D8.  Hex room IDs remain unobserved.
 LEVEL8_HYPOTHESIS_ROOMS: tuple[Level8HypothesisRoom, ...] = (
-    Level8HypothesisRoom("entry", 3, 7, "south_mouth", True, True),
+    # room_id + evidence: live fixture recon (rr-6o7.1), not a route claim.
+    # See LIVE_RECON_LEVEL8_TOPOLOGY / Level8EntranceReconFixture.provenance.json.
+    Level8HypothesisRoom(
+        "entry", 3, 7, "south_mouth", True, True,
+        room_id=0x7E, evidence="live_recon_fixture",
+    ),
     Level8HypothesisRoom("east_key", 4, 7, "optional_key", omitted=True),
     Level8HypothesisRoom("west_manhandla", 2, 7, "manhandla", omitted=True),
     Level8HypothesisRoom(
@@ -167,7 +184,17 @@ def hypothesis_room(name: str) -> Level8HypothesisRoom:
 
 
 def hypothesis_room_ids_unobserved() -> bool:
-    return all(room.room_id is None for room in LEVEL8_HYPOTHESIS_ROOMS)
+    """True when no room carries a RAM id without disclosed live evidence.
+
+    rr-6o7.1 disclosed exactly one live-recon room id (the "entry" row, via
+    fixture-only OW 0x6D burn recon).  A room_id is only ever legitimate
+    here when it is paired with ``evidence="live_recon_fixture"`` -- an
+    undisclosed/hypothesis room_id is still what this guards against.
+    """
+    return all(
+        room.room_id is None or room.evidence == "live_recon_fixture"
+        for room in LEVEL8_HYPOTHESIS_ROOMS
+    )
 
 
 @dataclass(frozen=True)

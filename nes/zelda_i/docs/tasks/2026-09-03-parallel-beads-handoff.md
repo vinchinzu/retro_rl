@@ -81,6 +81,44 @@ None of the three in-flight agents were told to touch `bd`, `git commit`, or
 when you resume, that's expected; review and commit it deliberately rather
 than assuming it's final.
 
+## Session ended: rate-limited, not just credit-tight
+
+All three in-flight agents (`a308ea821c6e25734` rr-6o7.1,
+`a87e5fc212dc3439e` rr-sz8.5, `aeac3d19a6bbe0f07` rr-8t4.5) were **terminated
+early by a 429 session-limit error** (resets 12:10pm America/Chicago), mid
+final-verification-pass, right after making real edits. Their in-flight
+edits were committed as-is by the orchestrator in a follow-up commit
+**WITHOUT running tests** (also per explicit instruction, to conserve the
+remaining budget) — treat everything in that commit as **untested and
+unverified**, not "done":
+
+- `nes/zelda_i/level8/dungeon.py`, `nes/zelda_i/tests/test_level8_entry.py`
+  — rr-6o7.1 agent's follow-up edits after landing
+  `Level8EntranceReconFixture` (see above) — likely wiring the observed
+  room 0x7E into `Level8Topology`/hypothesis rooms, but cut off before its
+  own "run the full test suite" verification pass completed.
+- `nes/zelda_i/level9/overworld.py`, `nes/zelda_i/tests/test_level9.py` —
+  touched by both the L8 and L9 agents at different points this session;
+  diff carefully, don't assume single-authorship.
+- `nes/zelda_i/route/natural_entry.py` — both L8 and L9 agents were told to
+  add a `SegmentEntry` row here; the L9 agent's last visible action before
+  being cut off was literally "Now let's update route/natural_entry.py with
+  the new SegmentEntry" — so this file may be **mid-edit / incomplete**.
+  Check it renders as valid Python and has no duplicate/half-written rows
+  before trusting it.
+- `nes/zelda_i/scratch/probe_34_bait_shop.py` + `probe_34_poke.json` (new,
+  untracked) — the rr-8t4.5 agent's 0x34 Bait-shop geometry recon. It never
+  reached wiring `BaitPurchasePlan`/`NaturalBaitPurchaseController` (neither
+  `nes/zelda_i/level7/entry.py` nor `BaitPurchasePlan` show as changed) —
+  so whatever geometry these probe files contain is **raw recon output,
+  not yet validated or wired**. Read `probe_34_poke.json` before trusting
+  any coordinate in it.
+
+**Next session, before doing anything else:** run the full
+`uv run pytest nes/zelda_i/tests -q` (this session explicitly skipped it to
+save budget) and diff each file above against its pre-session version to
+understand what's real vs. half-finished.
+
 ## What every agent was told (ground rules, still apply)
 
 - Never poke rupees/inventory/progression in a natural-track controller —
