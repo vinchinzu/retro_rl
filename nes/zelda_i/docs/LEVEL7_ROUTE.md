@@ -230,11 +230,20 @@ geometry-walk gate.
 ## Interior (source speed route)
 
 RAM room IDs: **entry `0x79` live** (south mouth `(120,205)`); **north dest
-`0x69` live** (south mouth `(120,205)`, goriya `0x05` — not Moldorms). Offline
-graph: `level7/graph.py` (source ids `0x7xx`; ENTRY + N-path `0x701` have
-`ram_id`, `evidence=fixture-live`). Prefer bomb walls over
+`0x69` live** (south mouth `(120,205)`, goriya `0x05` — not Moldorms);
+**east of `0x69` = `0x6A` live** (west mouth `(16,141)`, keese `0x1b`, and
+the room is **dark**, matching the source `keese_dark` node). Offline
+graph: `level7/graph.py` (source ids `0x7xx`; ENTRY, N-path `0x701` and
+`KEESE 0x702` have `ram_id`, `evidence=fixture-live`). Prefer bomb walls over
 the fifth lock; Hungry Goriya is a Food gate; Red Candle is `ADDR_CANDLE`
 1→2 naturally. Key/bomb ledger is in `LEVEL7_KEY_BOMB_LEDGER`.
+
+**`cur_opened_doors` is not a walkability test in L7.** Both live doorways
+(`0x79` north, `0x69` east) are `GateKind.OPEN`: black passage on the spawn
+frame, byte stays `0` forever. Gating a push on the RIGHT bit is what kept
+`0x69` east red for three sittings. In-room traverses use deterministic
+waypoints, not the per-pixel occupancy grid — `WALK_SPEED=1`, so four graded
+misses on one cell block all four neighbours and BFS stands forever.
 
 Key themes: bomb walls, key shortage, Digdogger re-spawns, hungry Goriya,
 “tip of the nose” staircase, Red Candle, forced Digdogger before boss,
@@ -243,7 +252,8 @@ Aquamentus.
 | Step | Action (source) | Notes |
 |------|-----------------|-------|
 | Entry | play `0x79` `(120,205)` south mouth **(live)** | north + east doors; water tiles |
-| N path | dest `0x69` **(live)**; source said Moldorms | live goriya `0x05`; east shut; no 2nd open door |
+| N path | dest `0x69` **(live)**; source said Moldorms | live goriya `0x05`; east is an OPEN doorway |
+| R | dest `0x6A` **(live)**, keese `0x1b`, **dark room** | Candle 0 on the pin: unlit |
 | R | Goriya clear → Old Man | “THERE’S A SECRET IN THE TIP OF THE NOSE” |
 | R | Digdogger | Whistle → multi-mini; optional skip |
 | R | Stalfos **key** | then backtrack left ×4 |
@@ -402,6 +412,12 @@ required to drain the pond. To make `level7-entry` green from here: live-recon
   bait prefix `0x22→0x32→0x33→0x23→0x24→0x25` in 1577f, `writes=0`, from the
   measured leave (`recordings/l7p1_entry_v2.json`, `--through level7-entry`).
   `route_eligible=false` (endpoint `0x25` is not the L7 entry).
+- **Fixture-live (2026-09-02):** L7 interior prefix `0x79 → 0x69 → 0x6A`
+  **2/2** from the `Level7Entrance` pin — north door 251f, `0x69` goriya
+  clear + OPEN east doorway, leftover play `0x6A` `(16,141)` west mouth,
+  3,809f, `deaths=0`, `progression_writes=capacity_writes=0`, byte-identical
+  on both trials (`recordings/l7_room69_east_room69_east_v5.json` / `_v6.json`,
+  `scratch/probe_l7_room69_east.py`). `route_eligible=false`.
 - **Fixture-live:** start-based `0x53→0x52` inland-left micro,
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 - **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,

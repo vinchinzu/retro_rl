@@ -2,7 +2,8 @@
 
 Every room is a walkthrough hypothesis.  Source ids live in ``0x7xx`` so they
 cannot be mistaken for live RAM ``$EB`` values (0x00–0x7F).  ``ram_id`` stays
-None until a room is observed in play (ENTRY ``0x79``, N-path dest ``0x69``).
+None until a room is observed in play (ENTRY ``0x79``, N-path dest ``0x69``,
+its east dest ``0x6A``).
 Do not copy these ids into stop predicates.
 """
 
@@ -88,7 +89,13 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="goriya_0x05",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(KEESE, "keese_dark"),
+    Level7RoomHyp(
+        KEESE,
+        "keese_dark",
+        ram_id=0x6A,
+        role="keese_0x1b",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(GORIYA_HINT, "goriya_hint"),
     Level7RoomHyp(OLD_MAN_NOSE, "old_man_tip_of_nose"),
     Level7RoomHyp(DIGDOGGER_1, "digdogger_optional"),
@@ -205,10 +212,12 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
             _back(DoorDir.UP, ENTRY),
             _e(
                 DoorDir.RIGHT,
-                None,
-                GateKind.KEY,
-                notes="dead kill-clear: 0x05 gone, doors=0; keys=0; dest unobserved",
-                verification="probe_geometry",
+                KEESE,
+                notes=(
+                    "live dest $EB=0x6A keese 0x1b; OPEN doorway — "
+                    "dead: KEY/KILL_CLEAR, doors bit never sets"
+                ),
+                verification="fixture-live",
             ),
         ),
         KEESE: (

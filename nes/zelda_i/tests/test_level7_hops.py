@@ -27,8 +27,9 @@ from zelda_i.level7.hops import (
     make_pond_entry_controller,
     make_red_candle_controller,
 )
-from zelda_i.door_graph.core import DoorDir
 from zelda_i.level7.path import (
+    EAST_APPROACH_X,
+    EAST_BAND_Y,
     EAST_DOOR_X,
     EAST_DOOR_Y,
     NORTH_DOOR_X,
@@ -413,28 +414,31 @@ def test_room69_east_south_mouth_stands_until_spawn() -> None:
     assert act.reason == "spawn_wait"
 
 
-def test_room69_east_door_band_pushes_when_open() -> None:
-    snap = read_snapshot(
-        _ram(
-            level=7,
-            screen=0x69,
-            x=EAST_DOOR_X,
-            y=EAST_DOOR_Y,
-            doors=int(DoorDir.RIGHT),
-        )
-    )
-    act = room69_east_step(snap, east_open=True, saw_goriya=True)
+def test_room69_east_door_band_pushes_without_door_bit() -> None:
+    """0x69 east is an OPEN doorway: never wait on ``cur_opened_doors``."""
+    snap = read_snapshot(_ram(level=7, screen=0x69, x=EAST_DOOR_X, y=EAST_DOOR_Y))
+    act = room69_east_step(snap, saw_goriya=True)
     assert act.reason == "east_push"
     ctl = Room69EastController()
     ctl.saw_goriya = True
     act = ctl.step(snap)
     assert not ctl.success and not ctl.failed
     assert act.reason == "east_push"
-    assert ctl.east_opened_frame == 1
+    assert ctl.east_opened_frame is None
+
+
+def test_room69_east_crosses_on_the_north_band_not_the_centre_row() -> None:
+    """The 0x69 centre row is walled: rise to y=109 before heading east."""
+    snap = read_snapshot(_ram(level=7, screen=0x69, x=120, y=EAST_DOOR_Y))
+    assert room69_east_step(snap, saw_goriya=True).reason == "east_band_y"
+    band = read_snapshot(_ram(level=7, screen=0x69, x=120, y=EAST_BAND_Y))
+    assert room69_east_step(band, saw_goriya=True).reason == "east_band_x"
+    column = read_snapshot(_ram(level=7, screen=0x69, x=EAST_APPROACH_X, y=EAST_BAND_Y))
+    assert room69_east_step(column, saw_goriya=True).reason == "east_door_y"
 
 
 def test_room69_east_arrived_leaves_0x69() -> None:
-    dest = read_snapshot(_ram(level=7, screen=0x68, x=16, y=EAST_DOOR_Y))
+    dest = read_snapshot(_ram(level=7, screen=0x6A, x=16, y=EAST_DOOR_Y))
     ctl = Room69EastController()
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
