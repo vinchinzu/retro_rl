@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 
+from retro_harness.nes import nes_action
 from zelda_i.door_graph import (
     DoorDir,
     InventoryCaps,
@@ -46,9 +47,20 @@ from zelda_i.level9.natural_path import (
     NaturalSelectSilverArrowsController,
     make_post_l8_overworld_controller,
 )
-from zelda_i.level9.overworld import LEVEL9_ROCK_HOPS
+from zelda_i.level9.overworld import (
+    B_ITEM_BOMBS,
+    LEVEL9_ROCK_HOPS,
+    FixtureEntryPhase,
+    Level9FixtureEntryController,
+)
 from zelda_i.level9.spine import L9_THROUGH
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.ram import (
+    ADDR_MAGIC_KEY,
+    ADDR_SELECTED_ITEM,
+    PLAY_MODE,
+    ZeldaObject,
+    ZeldaSnapshot,
+)
 
 
 def _snap(**kwargs) -> ZeldaSnapshot:
@@ -97,6 +109,94 @@ def test_fixture_rock_path_aligns_for_0x78_north_mouth() -> None:
     north_68 = next(hop for hop in LEVEL9_ROCK_HOPS if hop.target == 0x68)
     assert north_68.direction == "UP"
     assert north_68.align_x == 48
+
+
+class _FixtureEnv:
+    def __init__(self, selected: int = 2) -> None:
+        self.ram = [0] * 0x800
+        self.ram[ADDR_SELECTED_ITEM] = selected
+        self.ram[ADDR_MAGIC_KEY] = 1
+
+    def get_ram(self):
+        return self.ram
+
+
+def _fixture_controller(
+    phase: FixtureEntryPhase, *, selected: int = 2
+) -> Level9FixtureEntryController:
+    controller = Level9FixtureEntryController(phase=phase)
+    controller.bind_env(_FixtureEnv(selected))
+    controller._start_checked = True
+    controller.bombs_before = 16
+    controller.selected_before = selected
+    return controller
+
+
+def test_fixture_route_uses_verified_0x27_and_0x17_waypoints() -> None:
+    drop = _fixture_controller(FixtureEntryPhase.DROP_27)
+    assert drop.step(_snap(level=0, screen=0x27, link_x=240, link_y=101)).action == nes_action("DOWN")
+    align = _fixture_controller(FixtureEntryPhase.DROP_27)
+    assert align.step(_snap(level=0, screen=0x27, link_x=240, link_y=133)).action == nes_action("LEFT")
+    mouth = _fixture_controller(FixtureEntryPhase.ALIGN_27_X)
+    assert mouth.step(_snap(level=0, screen=0x27, link_x=144, link_y=133)).action == nes_action("UP")
+
+    climb = _fixture_controller(FixtureEntryPhase.CLIMB_17)
+    assert climb.step(_snap(level=0, screen=0x17, link_x=144, link_y=221)).action == nes_action("UP")
+    raft = _fixture_controller(FixtureEntryPhase.ALIGN_17_X)
+    assert raft.step(_snap(level=0, screen=0x17, link_x=64, link_y=133)).action == nes_action("UP")
+
+
+def test_fixture_0x58_rejects_the_blocked_loose_x104_lane() -> None:
+    controller = _fixture_controller(FixtureEntryPhase.ALIGN_58_X)
+    action = controller.step(_snap(level=0, screen=0x58, link_x=104, link_y=157))
+    assert action.action == nes_action("RIGHT")
+    assert controller.phase is FixtureEntryPhase.ALIGN_58_X
+
+
+def test_fixture_0x38_uses_bridge_before_west_alignment() -> None:
+    climb = _fixture_controller(FixtureEntryPhase.INLAND_38)
+    assert climb.step(_snap(level=0, screen=0x38, link_x=128, link_y=189)).action == nes_action("UP")
+    reenter = _fixture_controller(FixtureEntryPhase.ALIGN_38_X)
+    assert reenter.step(_snap(level=0, screen=0x38, link_x=112, link_y=205)).action == nes_action("UP")
+    bridge = _fixture_controller(FixtureEntryPhase.ALIGN_38_X)
+    assert bridge.step(_snap(level=0, screen=0x38, link_x=112, link_y=141)).action == nes_action("LEFT")
+    blocked = _fixture_controller(FixtureEntryPhase.NORTH_38)
+    action = blocked.step(_snap(level=0, screen=0x38, link_x=48, link_y=133))
+    assert action.reason == "known_blocked_0x38_x48_y133_replan"
+    assert blocked.failed
+
+
+def test_fixture_left_rock_prediction_is_top_gap_then_one_bomb() -> None:
+    top = _fixture_controller(FixtureEntryPhase.ROCK_TOP_Y, selected=B_ITEM_BOMBS)
+    assert top.step(_snap(level=0, screen=0x05, link_x=240, link_y=141)).action == nes_action("UP")
+    gap = _fixture_controller(FixtureEntryPhase.ROCK_GAP_X, selected=B_ITEM_BOMBS)
+    assert gap.step(_snap(level=0, screen=0x05, link_x=240, link_y=93)).action == nes_action("LEFT")
+    south = _fixture_controller(FixtureEntryPhase.ROCK_BOTTOM_Y, selected=B_ITEM_BOMBS)
+    assert south.step(_snap(level=0, screen=0x05, link_x=120, link_y=93)).action == nes_action("DOWN")
+    left = _fixture_controller(FixtureEntryPhase.ROCK_LEFT_X, selected=B_ITEM_BOMBS)
+    assert left.step(_snap(level=0, screen=0x05, link_x=120, link_y=173)).action == nes_action("LEFT")
+
+    fire = _fixture_controller(FixtureEntryPhase.ROCK_FACE_UP, selected=B_ITEM_BOMBS)
+    stand = _snap(level=0, screen=0x05, link_x=72, link_y=173, bombs=16)
+    assert fire.step(stand).action == nes_action("UP")
+    assert fire.step(stand).action == nes_action("B")
+    assert fire.b_presses == 1
+
+
+def test_fixture_bomb_selection_is_pause_input_and_never_a_ram_write() -> None:
+    controller = _fixture_controller(FixtureEntryPhase.PAUSE_OPEN, selected=2)
+    assert controller.step(_snap(level=0, screen=0x05, bombs=16)).action == nes_action("START")
+    source = inspect.getsource(Level9FixtureEntryController)
+    assert "set_value" not in source
+    assert "ADDR_SELECTED_ITEM] =" not in source
+    report = controller.report()
+    assert report["fixture_only"] is True
+    assert report["natural_entry"] is False
+    assert report["route_eligible"] is False
+    assert report["position_writes"] == 0
+    assert report["selected_item_writes"] == 0
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
 
 
 def test_entry_stop_requires_tf_magic_key_and_bombs() -> None:
