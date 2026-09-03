@@ -18,6 +18,7 @@ from zelda_i.level7.dungeon import (
 from zelda_i.level7.graph import (
     ENTRY,
     EVIDENCE,
+    GORIYA_HINT,
     HUNGRY_GORIYA,
     KEESE,
     LEVEL7_HYPOTHESIS_GRAPH,
@@ -82,7 +83,12 @@ def test_entry_room_is_live_but_stop_stays_fail_closed() -> None:
 
 def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
     assert ram_ids_observed()
-    live = {ENTRY: SCREEN_LEVEL7_ENTRY_ROOM, MOLDORMS: 0x69, KEESE: 0x6A}
+    live = {
+        ENTRY: SCREEN_LEVEL7_ENTRY_ROOM,
+        MOLDORMS: 0x69,
+        KEESE: 0x6A,
+        GORIYA_HINT: 0x6B,
+    }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
         assert room.ram_id == ram_id
@@ -130,6 +136,15 @@ def test_entry_exits_match_live_png() -> None:
     assert dest_east.is_pathfinding
     keese = next(room for room in LEVEL7_ROOMS if room.source_id == KEESE)
     assert keese.ram_id == 0x6A
+
+    keese_exits = {e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(KEESE)}
+    keese_east = keese_exits[DoorDir.RIGHT]
+    assert keese_east.target_room == GORIYA_HINT
+    assert keese_east.gate is GateKind.OPEN  # walked live; unlit, doors bit 0
+    assert keese_east.verification == "fixture-live"
+    assert keese_east.is_pathfinding
+    hint = next(room for room in LEVEL7_ROOMS if room.source_id == GORIYA_HINT)
+    assert hint.ram_id == 0x6B
 
 
 def test_preferred_path_uses_bomb_skip_and_food_gate() -> None:

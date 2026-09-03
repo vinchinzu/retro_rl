@@ -3,7 +3,7 @@
 Every room is a walkthrough hypothesis.  Source ids live in ``0x7xx`` so they
 cannot be mistaken for live RAM ``$EB`` values (0x00–0x7F).  ``ram_id`` stays
 None until a room is observed in play (ENTRY ``0x79``, N-path dest ``0x69``,
-its east dest ``0x6A``).
+its east dest ``0x6A``, then ``0x6A`` east dest ``0x6B``).
 Do not copy these ids into stop predicates.
 """
 
@@ -96,7 +96,13 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="keese_0x1b",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(GORIYA_HINT, "goriya_hint"),
+    Level7RoomHyp(
+        GORIYA_HINT,
+        "goriya_hint",
+        ram_id=0x6B,
+        role="goriya_0x05",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(OLD_MAN_NOSE, "old_man_tip_of_nose"),
     Level7RoomHyp(DIGDOGGER_1, "digdogger_optional"),
     Level7RoomHyp(STALFOS_KEY, "stalfos_key", role="key_plus_1"),
@@ -221,7 +227,15 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
             ),
         ),
         KEESE: (
-            _open(DoorDir.RIGHT, GORIYA_HINT),
+            _e(
+                DoorDir.RIGHT,
+                GORIYA_HINT,
+                notes=(
+                    "live dest $EB=0x6B goriya 0x05; OPEN doorway — y=141 "
+                    "centre band walls at x=48, cross the y=93 top corridor"
+                ),
+                verification="fixture-live",
+            ),
             _open(DoorDir.LEFT, GORIYA_BOMB_HUB, "west after stalfos-key return"),
             _e(DoorDir.UP, COMPASS, GateKind.BOMB, notes="optional dark bomb"),
         ),

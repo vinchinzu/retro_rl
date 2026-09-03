@@ -8,6 +8,14 @@ doorway, which is an **OPEN** gate (black passage on the spawn frame) —
 north door.  The post-clear traverse is a deterministic waypoint micro,
 not occupancy: the ``0x69`` centre row is walled at ``y=141`` and a
 per-pixel grid boxes Link in after four graded misses on one cell.
+
+``room_6a_east_step`` / ``Room6AEastController`` walk the unlit ``0x6A``
+KEESE room (entry pin carries Candle 0) from the west mouth to live east
+dest ``0x6B``.  Its ``y=141`` centre band is walled at ``x=48``; the top
+of the room is an open corridor, so the traverse rises the west column to
+``y=93``, crosses, drops the east column to the door row and pushes the
+OPEN east doorway.  Keese never block the doorway.
+
 Unobserved stages stay fail-closed blockers.
 """
 
@@ -32,6 +40,7 @@ from zelda_i.dungeon.behaviors import (
 from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
 from zelda_i.level7.graph import (
+    GORIYA_HINT,
     KEESE,
     LEVEL7_ROOM_BY_ID,
     MOLDORMS,
@@ -65,6 +74,21 @@ EAST_BAND_Y = 109
 EAST_APPROACH_X = 204
 ENTRY_NORTH_MAX_FRAMES = 4000
 ROOM69_EAST_MAX_FRAMES = 6000
+# 0x6A KEESE dark room: west mouth spawn is (16,141). The y=141 centre band
+# is walled just past the door corridor (x=48, tile 0xB1), but the top of the
+# room is an open horizontal corridor — a blind y-scan crossed y=93 from x=40
+# to x=208. Candle 0 on the entry pin keeps the room unlit, so the traverse
+# is a deterministic waypoint micro on that top band, mirroring the 0x69 east
+# route: rise the west column to y=93, cross to the east column, drop to the
+# door row, push RIGHT through the OPEN east doorway.
+ROOM_6A = 0x6A
+ROOM_6A_WEST_MOUTH = (16, 141)
+ROOM_6A_DOOR_Y = 141
+ROOM_6A_TOP_BAND_Y = 93
+ROOM_6A_EAST_COLUMN_X = 200
+ROOM_6A_EAST_PLANE = 224
+ROOM_6A_MOUTH_X = 32
+ROOM6A_EAST_MAX_FRAMES = 4000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -82,6 +106,11 @@ def north_of_entry_ram_id() -> int | None:
 def east_of_room69_ram_id() -> int | None:
     """Live ``$EB`` of the room east of ``0x69``, or None until observed."""
     return LEVEL7_ROOM_BY_ID[KEESE].ram_id
+
+
+def east_of_room6a_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x6A``, or None until observed."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_HINT].ram_id
 
 
 class Level7PathController(Protocol):
@@ -460,6 +489,115 @@ class Room69EastController(HopController):
         }
 
 
+def room_6a_east_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+) -> FrameAction:
+    """One frame of 0x6A (KEESE dark room) west mouth → east door.
+
+    The room is unlit (entry pin carries Candle 0) and the east exit is an
+    OPEN doorway, so nothing waits on light or a door bit. The spawn mouth
+    and the east door share the ``y=141`` band, so the traverse is a blind
+    straight push on that band; a Keese knock only bumps ``y`` off it and
+    the align step steers back. Keese never block the doorway.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("RIGHT"), "east6a_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "east6a_arrived")
+    if snap.screen != ROOM_6A:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if x < ROOM_6A_MOUTH_X:
+        return FrameAction(nes_action("RIGHT"), "east6a_leave_mouth")
+    # Rise the west column while still west of the east drop point.
+    if x < ROOM_6A_EAST_COLUMN_X - NORTH_X_TOL:
+        if y > ROOM_6A_TOP_BAND_Y + DOOR_Y_TOL:
+            return FrameAction(nes_action("UP"), "east6a_rise")
+        return FrameAction(nes_action("RIGHT"), "east6a_cross")
+    # On the east column: drop to the door row, then push the OPEN doorway.
+    if abs(y - ROOM_6A_DOOR_Y) > DOOR_Y_TOL:
+        btn = "UP" if y > ROOM_6A_DOOR_Y else "DOWN"
+        return FrameAction(nes_action(btn), "east6a_drop_y")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="RIGHT",
+        target_y=ROOM_6A_DOOR_Y,
+        y_tol=DOOR_Y_TOL,
+        door_plane=ROOM_6A_EAST_PLANE,
+        reason="east6a",
+    )
+
+
+@dataclass(kw_only=True)
+class Room6AEastController(HopController):
+    """0x6A west mouth: blind y=141 push through the OPEN east doorway."""
+
+    spec_id: str = "level7_room6a_east"
+    max_frames: int = ROOM6A_EAST_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x6a"
+    dest: int | None = field(default_factory=east_of_room6a_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen == ROOM_69:
+            return self.mark_fail("west_backtrack")
+        return FrameAction(nes_action("RIGHT"), "east6a_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = room_6a_east_step(snap, dest=self.dest)
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == ROOM_69:
+                return self.mark_fail("west_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "RIGHT",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -564,15 +702,21 @@ __all__ = [
     "NORTH_DOOR_X",
     "NORTH_DOOR_Y",
     "ROOM_69",
+    "ROOM_6A",
+    "ROOM_6A_EAST_PLANE",
+    "ROOM_6A_WEST_MOUTH",
     "SOUTH_MOUTH_Y",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
     "Level7PathController",
     "RedCandlePickupController",
     "Room69EastController",
+    "Room6AEastController",
     "UnverifiedLevel7PathController",
     "east_of_room69_ram_id",
+    "east_of_room6a_ram_id",
     "east_route_step",
+    "room_6a_east_step",
     "live_goriyas",
     "north_door_79_step",
     "north_of_entry_ram_id",
