@@ -41,12 +41,32 @@ ARROWS_SILVER_PLANNED = 2
 
 LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x78, "RIGHT"),
-    ScreenHop(0x68, "UP"),
-    ScreenHop(0x58, "UP"),
-    ScreenHop(0x48, "UP"),
-    ScreenHop(0x38, "UP"),
-    ScreenHop(0x28, "UP"),
-    ScreenHop(0x27, "LEFT"),
+    # Fixture-live 2026-09-03: the unaligned north push stalls at
+    # 0x78 (16,109).  The north mouth is the established x=48 column.
+    ScreenHop(0x68, "UP", align_x=48),
+    # Fixture-live 2026-09-03 (rr-sz8.5): unaligned UP stalls; a
+    # column sweep from Level9OverworldReconFixture found the 0x68
+    # north mouth at x=48 (reproduced twice, independent runs).
+    ScreenHop(0x58, "UP", align_x=48),
+    # Fixture-live 2026-09-03 (rr-sz8.5): 0x58 north mouth at x=112.
+    ScreenHop(0x48, "UP", align_x=112),
+    # Fixture-live 2026-09-03 (rr-sz8.5): 0x48 north mouth at x=128.
+    ScreenHop(0x38, "UP", align_x=128),
+    # Fixture-live 2026-09-03 (rr-sz8.5): 0x38 north mouth at x=48.
+    ScreenHop(0x28, "UP", align_x=48),
+    # Fixture-live 2026-09-03 (rr-sz8.5): 0x28 west mouth at y=102.
+    ScreenHop(0x27, "LEFT", align_y=102),
+    # UNVERIFIED / live-blocked 2026-09-03 (rr-sz8.5): a full-width
+    # column sweep (x=8..248) off 0x27 pushing UP into 0x17 found no
+    # gap -- the entire north edge is solid.  The alternate direct
+    # climb 0x28 UP -> 0x18 was swept the same way and is also fully
+    # blocked.  Placing bombs against the wall at several x positions
+    # consumed bombs (16 -> 13) with no terrain change and no
+    # breakthrough, so this is not a bombable wall either.  This hop
+    # (and 0x07/0x06/SCREEN_LEVEL9_ROCK_HYP below) remain hypothesis;
+    # the real route from 0x27 onward is still unmapped.  See
+    # Level9RockHopsPartialReconFixture (checkpoint at 0x27) for a
+    # session that wants to continue this without re-walking hops 0-6.
     ScreenHop(0x17, "UP"),
     ScreenHop(0x07, "UP"),
     ScreenHop(0x06, "LEFT"),

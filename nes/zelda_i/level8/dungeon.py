@@ -1,10 +1,14 @@
 """Level 8 chapter specs, hypothesis door graph, and exact stop predicates.
 
-No L8 dungeon room has been observed live.  Walkthrough grid labels are
-hypothesis only: they must not become ``DungeonRoomSpec`` registrations,
-executable room IDs, or route-eligible claims.  Magical Key is the selected
-investment for the L9 key bottleneck; Book/Map/Compass stay omitted until live
-topology proves a cheaper detour.
+One L8 room (the entry, screen 0x7E) has been observed live via isolated
+fixture recon (rr-6o7.1: OW 0x6D bush burn from a fixture-only stand, not a
+natural walk) -- see ``LIVE_RECON_LEVEL8_TOPOLOGY`` and the "entry" row of
+``LEVEL8_HYPOTHESIS_ROOMS``, both ``evidence="live_recon_fixture"`` and
+``route_eligible=False``.  Every other room remains unobserved.  Walkthrough
+grid labels stay hypothesis only: they must not become ``DungeonRoomSpec``
+registrations, executable room IDs, or route-eligible claims.  Magical Key is
+the selected investment for the L9 key bottleneck; Book/Map/Compass stay
+omitted until live topology proves a cheaper detour.
 """
 
 from __future__ import annotations

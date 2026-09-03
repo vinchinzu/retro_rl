@@ -1,4 +1,8 @@
-# Residual — rr-tne2 L6 power-on recompose to TF 0x20
+# Residual — rr-tne2 L6 power-on recompose to TF 0x20 (closed, historical)
+
+**`rr-tne2` is closed.** This file is historical — kept for evidence, not a
+live target. Current living residual: `docs/tasks/l7-handoff.md` (`rr-8t4.2`,
+dest `0x6B` GORIYA_HINT).
 
 **Status:** Gohma reactive kill **GREEN** 2026-09-02.
 - `--through level6-gohma` **1/1** (play `0x1C`, body gone, TF `0x1F`,

@@ -41,7 +41,9 @@ from zelda_i.overworld.graph import (
     is_5c_maze_hop,
     path_screens_from_hops,
 )
+from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.rupee_farm import RupeeFarmController
 from zelda_i.ram import (
     ADDR_CANDLE,
     PLAY_MODE,
@@ -325,6 +327,46 @@ class OverworldToCandleShopController(OverworldPathController):
         base["buy_frames"] = self.buy_frames
         base["candle_value"] = self.candle_value
         return base
+
+
+def _candle_value(snap: ZeldaSnapshot) -> int:
+    return int(snap.candle)
+
+
+def make_candle_shop_buy_controller(
+    *, farm: RupeeFarmController | None = None
+) -> CaveShopBuyController:
+    """0x5E Blue Candle cave buy on the generic engine (rr-ps7.2).
+
+    **Sketch — buy step only, not yet spliced onto the live hop table.**
+    ``OverworldToCandleShopController`` above still owns the full hop-navigate
+    + maze + burn-adjacent-pedestal path to the ``CandleShop5E`` cave mouth
+    (that navigation is level-8-specific and out of scope for this bead);
+    this factory wires only the parameterized post-cave-entry buy machine —
+    dialog idle, stairs UP, lateral walk to the right pedestal (avoiding the
+    adjacent mid Key 100R pedestal at the same y), touch until ``ADDR_CANDLE``
+    0->1 — with the same no-rupee-poke cost check as the arrow shop (calls
+    ``farm`` if short of ``CANDLE_SHOP_PRICE``; fails closed with no farm).
+
+    Live-validated buy mechanics (rr-ps7.2, ``CandleShop5E`` fixture,
+    rupees seeded to price before entry — farming from inside a cave is not
+    possible, so validating the buy step alone requires starting funded):
+    candle 0->1, rupees drop by 60, mode stays cave (11), no rupee/candle
+    poke inside the controller step.
+    """
+    return CaveShopBuyController(
+        require_sword=False,
+        shop_screen=SCREEN_CANDLE_SHOP,
+        cave_x=CANDLE_SHOP_CAVE_X,
+        cave_y=CANDLE_SHOP_CAVE_Y,
+        buy_x=CANDLE_BUY_X,
+        buy_y=CANDLE_BUY_Y,
+        price=CANDLE_SHOP_PRICE,
+        success_getter=_candle_value,
+        success_addr=ADDR_CANDLE,
+        success_note="candle_bought",
+        farm=farm,
+    )
 
 
 @dataclass
@@ -625,6 +667,7 @@ __all__ = [
     "SEGMENT_MAX_FRAMES",
     "OverworldToLevel8Controller",
     "OverworldToCandleShopController",
+    "make_candle_shop_buy_controller",
     "Level8NavPhase",
     "CandleShopNavPhase",
     "has_candle",

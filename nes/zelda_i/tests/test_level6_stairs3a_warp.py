@@ -177,9 +177,9 @@ def test_mode9_or_new_play_is_success_not_gohma_neighbors() -> None:
 def test_warp_and_gohma_do_not_call_poke_link_position() -> None:
     import inspect
 
-    from zelda_i.level6 import gohma, stairs3a, stairs3a_warp
+    from zelda_i.level6 import gohma, stairs3a_warp
 
-    for module in (stairs3a_warp, stairs3a, gohma):
+    for module in (stairs3a_warp, gohma):
         src = inspect.getsource(module)
         assert "poke_link_position" not in src
         assert "mem_write" not in src

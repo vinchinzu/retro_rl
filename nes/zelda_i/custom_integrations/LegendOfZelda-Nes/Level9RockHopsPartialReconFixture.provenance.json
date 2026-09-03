@@ -1,0 +1,118 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T14:17:32.574097+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.5",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "known_blocked": {
+      "alt_0x28_up_0x18": "solid wall full width, bombing did not open it",
+      "hop7_as_specified": "0x27 UP -> 0x17: solid wall full width, bombing did not open it"
+    },
+    "phase": "level9_rock_hops_live_walk_partial",
+    "route_eligible": false,
+    "segment": "Level9RockHopsPartialReconFixture",
+    "track": "recon_fixture",
+    "via": "Live emulator walk of LEVEL9_ROCK_HOPS[0:7] (hops 0-6: 0x77->0x78->0x68->0x58->0x48->0x38->0x28->0x27) driven by an ad hoc align+push OverworldPathController-style script from Level9OverworldReconFixture. Hops 0-6 are live-confirmed and reliably reproducible. Hop 7 (0x27 UP -> 0x17, as specified in LEVEL9_ROCK_HOPS) and the alternate direct climb (0x28 UP -> 0x18) were both swept across their full screen width (x in 8..248, generous push budgets) and found fully blocked by impassable terrain; placing bombs against the wall at several x positions consumed bombs (16 -> 13) with no terrain change and no breakthrough. The remaining LEVEL9_ROCK_HOPS entries (7-10), the Spectacle Rock bomb, and the Old Man TF gate remain genuinely unexercised; this checkpoint is the live boundary of what is currently walkable from LEVEL9_ROCK_HOPS starting at SCREEN_START. Saved at hop6 arrival for a future session to continue mapping the real route north/around from here without re-walking hops 0-6."
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "frame": 3553,
+    "note": "Live-walked, not RAM-poked (aside from the source fixture's inventory pokes).",
+    "ok": true,
+    "state": {
+      "bombs": 16,
+      "cur_opened_doors": 1,
+      "facing": 2,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 39,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 160,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 32,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 80,
+          "y": 125
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 112,
+          "y": 125
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 26,
+          "type_name": "unknown_object_0x1a",
+          "x": 160,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 11,
+          "state": 0,
+          "type_id": 99,
+          "type_name": "unknown_object_0x63",
+          "x": 224,
+          "y": 80
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 39,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 6,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 240,
+      "y": 101
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9OverworldReconFixture.state",
+  "source_state_sha256": "054ae5e91f23bbdc57cd4ac7481d75d0e88336db6e1a4b384348d5d9fd890230",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9RockHopsPartialReconFixture.state",
+  "state_sha256": "de30c85ea534c7e9422680b0f5332219cece55bee2e0378979a5b5c68c508c4c"
+}

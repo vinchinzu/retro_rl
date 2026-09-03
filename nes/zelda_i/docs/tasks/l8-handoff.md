@@ -2,6 +2,44 @@
 
 Did not STATUS-promote. Did not claim spine-green. Did not poke candle/doors/TF/magic key.
 
+## Fixture-live sitting — 2026-09-03
+
+The newly available `Level8BushWithCandleFixture` is a disclosed poked start,
+not a predecessor checkpoint (`natural_entry=false`, `route_eligible=false`).
+Three screenshot-first trials observed Red-Candle use but no mode-16 mouth and
+therefore hit the sitting halt:
+
+1. `(144,93)`, face RIGHT, push UP: no mouth after the 800-frame burn budget.
+2. `(144,93)`, face RIGHT, push RIGHT: no mouth after one resolved fire/push
+   window.
+3. target `(128,93)`, face RIGHT, push RIGHT: no mouth; controller finished at
+   `(132,93)` while realigning, so this is a destination diagnostic for the
+   x≈128 region rather than proof of an exact x=128 fire pose.
+
+Evidence: `recordings/l8_entry_luna_attempt{1,2,3}.json` plus their initial,
+sample, and final PNGs. Attempt 3 used Survival refill and reported deaths 0,
+`progression_writes=0`, and `capacity_writes=0`. Do not repeat these policies
+unchanged. The broad position-poke sweep in scratch is not route evidence and
+must not replace the predict-one/act-one loop.
+
+Offline ROM decode corrects the old walkthrough-grid placeholders, but remains
+static hypothesis until a live entry observes RAM:
+
+```text
+entry 0x7E -> N 0x6E -> bomb-N 0x5E -> shutter-N 0x4E
+  -> key-N 0x3E -> bomb-N 0x2E -> key-N blue Gohma 0x1E
+  -> east 0x1F (Magical Key branch)
+
+return 0x3E -> east 0x3F -> cellar 0x2F left -> 0x4C
+  -> bomb-N four-head Gleeok 0x3C -> shutter-N shard 0x2C
+```
+
+Static LevelInfo anchors: entry `0x7E`, Triforce room `0x2C`, prior TF mask
+`0x7F`, cellars `0x2F/0x0F/0x6F`, boss `0x3C`. Static room data says boss
+item `0x1A` and shard item `0x1B`; the four-head body type is still not live.
+Do not register `DungeonRoomSpec` rows or make the canonical controllers move
+from these values alone.
+
 ## chapter id and evidence label
 
 - `rr-6o7.1` L8-A Red-Candle bush entry + topology: **hypothesis** (canonical seam fail-closed). Isolated 0x6D burn is **fixture-live**, `route_eligible=false`. Live trial **blocked** (no ROM, no `Level8BushOW`/`OW_6D`, no `l8_*.png`/`l8_bush_recon.json` in this worktree).
