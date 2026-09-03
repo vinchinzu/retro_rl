@@ -36,6 +36,7 @@ from zelda_i.level7.hops import (
     make_room09_down_controller,
     make_room18_north_bomb_controller,
     make_room19_east_bomb_controller,
+    make_room1a_candle_controller,
     make_room38_up_controller,
     make_room39_left_controller,
     make_room49_up_controller,
@@ -68,6 +69,7 @@ from zelda_i.level7.path import (
     L7_ROOM18_NORTH_BOMB,
     L7_ROOM19_EAST_BOMB,
     Room09DownController,
+    Room1ACandleController,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -822,3 +824,23 @@ def test_map_bomb_chain_factories_are_recon_only() -> None:
     assert "level7_room18_north_bomb" not in names
     assert "level7_room08_east_bomb" not in names
     assert "level7_room19_east_bomb" not in names
+
+
+def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:
+    """Natural ADDR_CANDLE 0→2; not on the executable chapter chain."""
+    mouth = read_snapshot(_ram(level=7, screen=0x1A, x=32, y=141))
+    assert Room1ACandleController().step(mouth).reason == "spawn_wait"
+    dest = read_snapshot(_ram(level=7, screen=0x4A, x=135, y=141, mode=9, candle=2))
+    ctl = Room1ACandleController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "red_candle_natural"
+    factory = make_room1a_candle_controller()
+    assert factory.report()["dest_screen"] == 0x4A
+    assert factory.report()["route_eligible"] is False
+    assert "level7_room1a_candle" not in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]
+    assert "level7_red_candle_pickup" in [
+        name for name, _c, _f in level7_red_candle_chapter_stages()
+    ]

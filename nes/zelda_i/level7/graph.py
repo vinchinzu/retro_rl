@@ -243,10 +243,18 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "candle_block_push",
         ram_id=0x1A,
         role="live: 4-diamond plus + 0x68 at (96,144); entry (32,141) W "
-        "mouth; left-block stairs to Red Candle cellar still unobserved",
+        "mouth; kill-clear (NE goriya) then 0x68 UP (96,144)->(96,128); "
+        "stairs at (128,141) -> cellar $EB=0x4A mode 9",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(RED_CANDLE_CELLAR, "red_candle_cellar", role="public_level7_red_candle"),
+    Level7RoomHyp(
+        RED_CANDLE_CELLAR,
+        "red_candle_cellar",
+        ram_id=0x4A,
+        role="live: mode 9 two-ladder item cellar; Red Candle on the center "
+        "pad; ADDR_CANDLE 0->2 NATURAL at ~(135,141); keese 0x1b",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(GORIYA_PRE_DIG, "goriya_pre_forced_dig"),
     Level7RoomHyp(FORCED_DIGDOGGER, "forced_digdogger"),
     Level7RoomHyp(DODONGOS_BOSS_PATH, "dodongos_boss_path"),
@@ -652,7 +660,17 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
         ),
         CANDLE_PUSH: (
             _open(DoorDir.LEFT, WEST_LOCK_SKIP),
-            _open(DoorDir.DOWN, RED_CANDLE_CELLAR, notes="stairs after left block push"),
+            _e(
+                DoorDir.DOWN,
+                RED_CANDLE_CELLAR,
+                notes=(
+                    "live dest $EB=0x4A mode 9 2/2 after 0x68 UP "
+                    "(96,144)->(96,128) then (128/136,141) tile 0x71. "
+                    "Dead: push while a goriya still lives. ADDR_CANDLE "
+                    "0->2 walking onto the center pad from the east ladder"
+                ),
+                verification="fixture-live",
+            ),
             _e(DoorDir.RIGHT, GORIYA_PRE_DIG, GateKind.BOMB),
         ),
         RED_CANDLE_CELLAR: (

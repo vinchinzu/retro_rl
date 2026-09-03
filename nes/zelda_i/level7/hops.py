@@ -44,6 +44,7 @@ from zelda_i.level7.path import (
     Room6BNorthController,
     Room6CEastController,
     Room09DownController,
+    Room1ACandleController,
     Room58EastController,
     Room58NorthController,
     Room38UpController,
@@ -219,6 +220,15 @@ def make_room09_down_controller() -> Level7PathController:
     Dead: south is OPEN on spawn.  Recon-wired only.
     """
     return Room09DownController()
+
+
+def make_room1a_candle_controller() -> Level7PathController:
+    """0x1A kill-clear, 0x68 UP, stairs to cellar 0x4A, natural Red Candle (2/2).
+
+    ADDR_CANDLE 0→2 by walking onto the pad.  Recon-wired only.  Chapter
+    ``RedCandlePickupController`` stays fail-closed.
+    """
+    return Room1ACandleController()
 
 
 def make_room19_east_bomb_controller() -> BombWallController:
@@ -465,6 +475,7 @@ __all__ = [
     "make_room08_east_bomb_controller",
     "make_room09_down_controller",
     "make_room19_east_bomb_controller",
+    "make_room1a_candle_controller",
     "make_room6a_east_controller",
     "make_room6b_east_controller",
     "make_room6b_north_controller",

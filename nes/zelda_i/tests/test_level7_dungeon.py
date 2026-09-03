@@ -150,6 +150,7 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         GORIYA_POST_RUPEE: 0x09,
         WEST_LOCK_SKIP: 0x19,
         CANDLE_PUSH: 0x1A,
+        RED_CANDLE_CELLAR: 0x4A,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
@@ -288,6 +289,14 @@ def test_map_bomb_north_chain_is_fixture_live() -> None:
     push = next(r for r in LEVEL7_ROOMS if r.source_id == CANDLE_PUSH)
     assert push.ram_id == 0x1A
     assert not push.route_eligible
+    stairs = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(CANDLE_PUSH)
+    }[DoorDir.DOWN]
+    assert stairs.target_room == RED_CANDLE_CELLAR
+    assert stairs.verification == "fixture-live"
+    cellar = next(r for r in LEVEL7_ROOMS if r.source_id == RED_CANDLE_CELLAR)
+    assert cellar.ram_id == 0x4A
+    assert not cellar.route_eligible
     to_tf = preferred_path(KEESE, TRIFORCE, caps)
     assert to_tf is not None
     assert any(exit_.gate is GateKind.BOMB for exit_ in to_tf)

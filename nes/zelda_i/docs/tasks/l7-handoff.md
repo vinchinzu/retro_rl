@@ -3,6 +3,44 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — 0x1A block push + Red Candle cellar (rr-8t4.2)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs. `route_eligible=false`.
+Not on `level7_red_candle_chapter_stages`. Chapter
+`RedCandlePickupController` stays fail-closed.
+
+**Pin was** `Level7Interior1AReconFixture` — L7 play `0x1A` `(32,141)`.
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 0x1A kill-clear (NE goriya too) then 0x68 UP `(96,144)→(96,128)` then `(136,141)` stairs | cellar **`$EB=0x4A` mode 9** `(128,141)` | drop floor, east ladder `(176,141)`, LEFT onto pad; **ADDR_CANDLE 0→2 NATURAL** at `(135,141)` | **2/2** (`1a_push_v16` / `v18`) |
+
+Dead beliefs dated:
+- Dead: L5 south-face UP while a goriya still lives NE of the plus
+  (`room_all_dead=0`, block never moves). After the last 0x05 at
+  `(160,100)` dies, `room_all_dead` goes nonzero and the L5 recipe
+  `(96,162)` UP slides the block.
+- Dead (this sitting): walk off the candle pad at y=141 to return
+  upstairs (tile 243). Leftover stays cellar `0x4A` `(135,141)` mode 9
+  candle 2. Return UP is a later hop.
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room1ACandleController`
+- `level7/hops.py`: `make_room1a_candle_controller`
+- `level7/graph.py`: `RED_CANDLE_CELLAR ram_id=0x4A evidence=fixture-live`;
+  `CANDLE_PUSH` DOWN `verification=fixture-live`
+- tests live-prefix += `RED_CANDLE_CELLAR: 0x4A`
+
+New dest fixture: `Level7Interior4AReconFixture` (cellar leftover
+candle=2). Stairs return to 0x1A still unobserved.
+
+# L7 sitting leftover (rr-8t4.2, 2026-09-03 archive)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
 ## 2026-09-03 — MAP 0x18 bomb-north through CANDLE_PUSH 0x1A (rr-8t4.2)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs. `route_eligible=false`
@@ -324,26 +362,13 @@ New fixtures (gitignored `.state` + provenance JSON):
 
 ## Onward toward Red Candle — resume point
 
-**Pin:** `Level7Interior1AReconFixture` — L7 play **`0x1A` (CANDLE_PUSH)**
-`(32,141)` west mouth, mode 5, 4-diamond plus + pushable `0x68` at
-`(96,144)`, goriya `0x05`/`0x06`, keys **3** / bombs **7** / Food **0** /
-Candle **0** / Whistle 1 / Ladder 1 / TF 0. `route_eligible=false`.
+**Pin:** `Level7Interior4AReconFixture` — L7 cellar **`$EB=0x4A` mode 9**
+`(135,141)` (or `(136,141)`), **Candle 2 NATURAL**, keys 3, bombs 8,
+Food 0, Whistle 1, Ladder 1, TF 0, keese `0x1b`. `route_eligible=false`.
 
-Source next: **push the left `0x68`**, stairs DOWN → `RED_CANDLE_CELLAR`.
-**`ADDR_CANDLE` 0→2 must be NATURAL at the cellar — never poked.** Blue
-Candle was never bought; Red Candle pickup should set the byte.
-
-Tried this sitting and failed to move the block (halt, no pokes):
-- West face `(80,146)` push RIGHT / LEFT (LEFT exits to `0x19`)
-- South face `(96,162)` push UP (L5 `(96,144)→(96,128)` recipe) — block
-  stays put even after goriya clear (`room_all_dead` stays 0; `0x05`
-  residual + `0x5c` boomerang)
-- East-face approaches boxed by the plus diamonds (NE/SE/SW)
-Next: enter the plus-center `(120,141)` on a diagonal gap, or confirm
-whether `room_all_dead` must flip before `0x68` will slide. Do **not**
-poke `ADDR_CANDLE` / the block / doors.
-
-Do **not** poke `ADDR_CANDLE`. Do not STATUS.
+L7-B Red Candle pickup is **2/2 fixture-live**. Next (not this sitting):
+stairs return UP to `0x1A` (pad does not walk off at y=141; tile 243).
+Then L7-C forced Digdogger. Do **not** poke `ADDR_CANDLE`. Do not STATUS.
 
 Fixture chain to regenerate `.state` files (all gitignored): parent
 `Level7InteriorReconFixture` (`build_level7_interior_recon_fixture.py`) →
@@ -360,7 +385,8 @@ Fixture chain to regenerate `.state` files (all gitignored): parent
 → `Level7Interior08ReconFixture` (`probe_l7_room18_bomb_north.py --save-fixture`)
 → `Level7Interior09ReconFixture` (`probe_l7_room08_onward.py --save-fixture`)
 → `Level7Interior19ReconFixture` (`probe_l7_candle_chain.py --save-fixture` 0x09 DOWN)
-→ `Level7Interior1AReconFixture` (`probe_l7_room08_onward.py --room 0x19 --save-fixture`).
+→ `Level7Interior1AReconFixture` (`probe_l7_room08_onward.py --room 0x19 --save-fixture`)
+→ `Level7Interior4AReconFixture` (`probe_l7_candle_push.py --push UP --save-fixture`).
 Optional dest pins: `Level7Interior78ReconFixture` (`probe_l7_room68_down.py
 --save-fixture`), `Level7Interior48ReconFixture` (`probe_l7_room58_north.py
 --save-fixture`).
@@ -610,9 +636,10 @@ New dest fixtures (disclosed writes: none; `development_only` /
   `0x79→0x69→0x6A→0x6B→0x6C→0x6D` + `0x6B`→`0x5B` spur + branch
   `0x69`─bomb→`0x68`─UP→`0x58`─EAST→`0x59`─UP→`0x49`─UP(ladder)→`0x39`─LEFT→
   `0x38`─KEY-UP→`0x28`(Hungry Goriya, Food 1→0)─UP→`0x18`(MAP)─bomb-N→
-  `0x08`─bomb-E→`0x09`─KILL-S→`0x19`─bomb-E→`0x1A`(CANDLE_PUSH); side rooms
-  `0x68` DOWN `0x78` and `0x58` KEY-UP `0x48`. `0x1A` left-block stairs /
-  Red Candle cellar still hypothesis.
+  `0x08`─bomb-E→`0x09`─KILL-S→`0x19`─bomb-E→`0x1A`(CANDLE_PUSH)─stairs→
+  `0x4A` Red Candle cellar (ADDR_CANDLE 0→2 NATURAL); side rooms
+  `0x68` DOWN `0x78` and `0x58` KEY-UP `0x48`. Cellar return to 0x1A
+  still unobserved.
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
   Hungry Goriya still needs Food; isolate with the recon fixture or `rr-8t4.4`.
@@ -700,8 +727,12 @@ New dest fixtures (disclosed writes: none; `development_only` /
   1q. `level7_room09_down` — `make_room09_down_controller()` **(new, 2/2)**
      0x09 kill-clear + south shutter → live `$EB=0x19`. Recon-wired only.
   1r. `level7_room19_east_bomb` — `make_room19_east_bomb_controller()`
-     **(new, 2/2)** 0x19 south-around bomb-RIGHT → live `$EB=0x1A`.
-     Recon-wired only. 0x1A stairs still unobserved.
+     **(2/2)** 0x19 south-around bomb-RIGHT → live `$EB=0x1A`.
+     Recon-wired only.
+  1s. `level7_room1a_candle` — `make_room1a_candle_controller()`
+     **(new, 2/2)** 0x1A kill-clear + 0x68 UP + stairs → cellar `$EB=0x4A`
+     mode 9, ADDR_CANDLE 0→2 NATURAL. Recon-wired only. Chapter
+     `RedCandlePickupController` stays fail-closed.
   2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
   3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
@@ -712,11 +743,11 @@ New dest fixtures (disclosed writes: none; `development_only` /
   red_candle_pickup`. Stages 1a–1n are recon-wired only.
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
-- **resume point:** from `Level7Interior1AReconFixture` (CANDLE_PUSH
-  `0x1A` `(32,141)`, keys 3, bombs 7, Food 0, Candle 0, Ladder 1). Push
-  left `0x68` `(96,144)`, stairs to Red Candle cellar. See the
-  "2026-09-03 — MAP 0x18 bomb-north" sitting above.
-- **expected deltas:** Food 1→0 at Hungry Goriya; Candle 1→2 at cellar.
+- **resume point:** from `Level7Interior4AReconFixture` (cellar `0x4A`
+  mode 9 `(135,141)`, Candle 2 NATURAL). Stairs return to 0x1A still
+  unobserved. See the "0x1A block push + Red Candle cellar" sitting.
+- **expected deltas:** Food 1→0 at Hungry Goriya; Candle **0→2** at cellar
+  (Blue Candle was never bought).
   Ledger hyp net (dungeon): keys +1+1−1−1+1−1, bombs several −1 wall skips.
   Prefer bomb north of Map over locked east (fifth lock).
 - **dead beliefs:** fifth lock required; source RAM room ids as stop specs;
@@ -730,7 +761,8 @@ New dest fixtures (disclosed writes: none; `development_only` /
   `0x6A`" (`0x6A` has no north exit — the branch is `0x69` **west** bomb →
   `0x68`); `0x49` UP without Stepladder; strafe on the `0x49` moat;
   `0x38` centre-column UP (y=149 diamond wall — east pocket x=208);
-  `0x09` DOWN is OPEN without kill-clear; `0x19` east drop from y=93.
+  `0x09` DOWN is OPEN without kill-clear; `0x19` east drop from y=93;
+  `0x68` UP while a goriya still lives (`room_all_dead=0`).
 - **fixture:** `Level7InteriorReconFixture` (recon only). `route_eligible=false`.
 - **public target:** **`level7-red-candle`**.
 
