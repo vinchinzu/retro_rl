@@ -104,7 +104,13 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         evidence="fixture-live",
     ),
     Level7RoomHyp(OLD_MAN_NOSE, "old_man_tip_of_nose"),
-    Level7RoomHyp(DIGDOGGER_1, "digdogger_optional"),
+    Level7RoomHyp(
+        DIGDOGGER_1,
+        "digdogger_optional",
+        ram_id=0x6C,
+        role="digdogger_0x38_plus_statue_0x55",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(STALFOS_KEY, "stalfos_key", role="key_plus_1"),
     Level7RoomHyp(GORIYA_BOMB_HUB, "goriya_bomb_hub", role="prefer_bomb_walls"),
     Level7RoomHyp(KEESE_TRAPS, "keese_traps"),
@@ -240,9 +246,33 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(DoorDir.UP, COMPASS, GateKind.BOMB, notes="optional dark bomb"),
         ),
         GORIYA_HINT: (
-            _back(DoorDir.RIGHT, KEESE),
-            _open(DoorDir.RIGHT, DIGDOGGER_1),
-            _e(DoorDir.UP, OLD_MAN_NOSE, GateKind.KILL_CLEAR, notes="tip of the nose"),
+            _e(
+                DoorDir.LEFT,
+                KEESE,
+                GateKind.OPEN,
+                notes="backtrack; live 0x6B LEFT->0x6A (224,141) OPEN 2/2",
+                verification="fixture-live",
+            ),
+            _e(
+                DoorDir.RIGHT,
+                DIGDOGGER_1,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x6C digdogger 0x38 + statue 0x55; OPEN "
+                    "doorway — ride y=109 east, drop east column to y=141, "
+                    "push RIGHT; skippable whistle-split spur"
+                ),
+                verification="fixture-live",
+            ),
+            _e(
+                DoorDir.UP,
+                OLD_MAN_NOSE,
+                GateKind.KILL_CLEAR,
+                notes=(
+                    "tip of the nose; dead: straight centre UP push blocked "
+                    "2/2 at (128,93) on the y=93 band even after goriya clear"
+                ),
+            ),
         ),
         OLD_MAN_NOSE: (_back(DoorDir.UP, GORIYA_HINT),),
         DIGDOGGER_1: (

@@ -32,6 +32,9 @@ from zelda_i.level7.path import (
     HungryGoriyaGateController,
     Level7PathController,
     RedCandlePickupController,
+    Room6AEastController,
+    Room6BEastController,
+    Room69EastController,
     unverified_path_controller,
 )
 from zelda_i.overworld.graph import ScreenHop
@@ -59,6 +62,26 @@ def make_pond_entry_controller() -> Level7PathController:
 
 def make_entry_first_door_controller() -> Level7PathController:
     return EntryNorthDoorController()
+
+
+def make_room69_east_controller() -> Level7PathController:
+    """0x69 goriya kill-clear → OPEN east doorway to live $EB=0x6A (2/2)."""
+    return Room69EastController()
+
+
+def make_room6a_east_controller() -> Level7PathController:
+    """0x6A dark KEESE room west mouth → OPEN east doorway to live 0x6B (2/2)."""
+    return Room6AEastController()
+
+
+def make_room6b_east_controller() -> Level7PathController:
+    """0x6B GORIYA_HINT west mouth → OPEN east doorway to live 0x6C (2/2).
+
+    Assumes the six 0x6B goriya 0x05 are cleared upstream (recon fixture or a
+    prior kill-clear stage).  Not yet on the executable chapter chain — the
+    0x6B goriya-clear and Hungry Goriya rooms past it are still fail-closed.
+    """
+    return Room6BEastController()
 
 
 def make_entry_to_goriya_controller() -> Level7PathController:
@@ -248,6 +271,9 @@ __all__ = [
     "make_pond_entry_controller",
     "make_post_l6_overworld_controller",
     "make_red_candle_controller",
+    "make_room69_east_controller",
+    "make_room6a_east_controller",
+    "make_room6b_east_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",
 ]

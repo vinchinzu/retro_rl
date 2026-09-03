@@ -16,6 +16,7 @@ from zelda_i.level7.dungeon import (
     level7_red_candle_stop,
 )
 from zelda_i.level7.graph import (
+    DIGDOGGER_1,
     ENTRY,
     EVIDENCE,
     GORIYA_HINT,
@@ -88,6 +89,7 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         MOLDORMS: 0x69,
         KEESE: 0x6A,
         GORIYA_HINT: 0x6B,
+        DIGDOGGER_1: 0x6C,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)
