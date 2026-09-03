@@ -49,10 +49,51 @@ expected L9 `0x76`; do not move north into the Old Man room in the same
 trial.  Record bomb/selection deltas and require deaths 0,
 `progression_writes=0`, `capacity_writes=0`.
 
-No packaged Level 9 waypoint controller was landed in this sitting.  The
-natural-entry controllers remain correctly fail-closed, and the existing
-fixture-live interior/credits suffix must not be presented as a continuous
-run from this poked overworld start.
+At that handoff point no packaged Level 9 waypoint controller had landed.  The
+follow-up below adds a fixture-only replay controller; the natural-entry
+controllers remain correctly fail-closed, and the existing fixture-live
+interior/credits suffix must not be presented as a continuous run from this
+poked overworld start.
+
+### Full-fixture replay blocked at `0x38` — 2026-09-03
+
+Three fresh Survival trials replayed from the disclosed
+`Level9OverworldReconFixture`; the three-red session gate is now reached, so
+do not rerun an unchanged policy.  The controller and evidence runner are
+`level9.overworld.Level9FixtureEntryController` and
+`scratch/probe_level9_fixture_entry.py`.  Both remain explicitly
+`fixture_only=true`, `natural_entry=false`, `route_eligible=false`; the
+canonical `level9-entry` seam is unchanged and fail-closed.
+
+| Trial | New prediction | RAM-graded result |
+|-------|----------------|-------------------|
+| `l9_fixture_entry_left_rock_v1` | Replay the handoff's loose `0x58` bush waypoint, then continue to `0x05`. | occupancy miss halted at `0x58 (104,149)`, phase `NORTH_58`; bombs 16, selected item 2, B presses 0 |
+| `l9_fixture_entry_left_rock_v2` | Block the loose cell and require exact x≈112 before pushing north. | exact x=112 cleared `0x58`; next miss at `0x38 (112,205)` while trying west below the visible bridge |
+| `l9_fixture_entry_left_rock_v3` | Block `(112,205)` and climb to the screenshot-visible y≈141 bridge before crossing west to x≈48. | bridge crossing succeeded; UP then halted at `0x38 (48,133)` after 180 unchanged frames, tile `0x95` |
+
+Final v3 RAM: overworld level 0, play mode 5, screen `0x38`, `(48,133)`,
+facing up, TF `0xFF`, Magic Key 1, keys 9, bombs 16/16, selected item 2
+(Silver Arrows), Raft 1, health `0xFF` / partial `0xFF`.  Survival telemetry:
+deaths 0, damage 0, `progression_writes=0`, `capacity_writes=0`, accepted
+containers 16.  Runtime controller writes were all zero, including position,
+inventory/B-slot, room, door, object, progression, and capacity.  Because the
+run never reached `0x05`, bomb delta is 0 and selected-item delta is 0; the
+left Spectacle Rock bomb and predicted dungeon room `0x76` remain unexercised.
+
+Evidence:
+
+- `recordings/l9_fixture_entry_left_rock_v1.json` and `_final.png`
+- `recordings/l9_fixture_entry_left_rock_v2.json` and `_final.png`
+- `recordings/l9_fixture_entry_left_rock_v3.json` and `_final.png`
+- v3 settled/transition PNGs named in the JSON `screenshots` list
+
+Next boundary: treat `0x38 (48,133)` as blocked, inspect the v3 final PNG and
+replan the `0x38→0x28` north mouth offline before another live act.  Do not
+repeat UP at x=48 from this bridge cell.  After that route reaches settled
+`0x05`, resume the unchanged screenshot-derived rock hypothesis: pause-select
+bombs, approach below the left rock via the top corridor and center gap, place
+exactly one bomb, then stop at the first settled dungeon room without walking
+north into `0x66`.
 
 ## Earlier route design handoff
 

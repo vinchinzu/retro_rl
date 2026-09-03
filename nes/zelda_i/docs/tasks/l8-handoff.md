@@ -48,13 +48,49 @@ All completed runs reported deaths 0, `progression_writes=0`, and
 pause input changed the selected B item from Candle to bombs; there was no
 RAM selection write.
 
-### Exact resume point
+### North-shutter result: predicted `0x4E` confirmed
 
-Replay the guarded chain through the key pickup, then align `x≈120` and take
-the already-open north shutter from `0x5E`.  The static prediction is room
-`0x4E`; stop at the first settled destination and census it before combat or
-key use.  That trial was in flight when the user requested an immediate
-file handoff, so it has no result and must not be claimed.
+One guarded replay from `Level8InteriorReconFixture` confirmed the next hop:
+
+```text
+0x7E -> clear 0x6E -> bomb-N 0x5E -> clear/pick up key
+  -> open shutter N -> settled 0x4E (120,205)
+```
+
+The prediction was recorded before the final act as play `0x5E`,
+`x=120±4`, open north shutter, then UP to expected play `0x4E` with keys and
+bombs unchanged.  It passed at frame 2,322; a 120-frame input-free census
+ended at frame 2,442.  Final inventory was keys `10`, bombs `7` / capacity
+`8`, Magical Sword `3`, Bow `1`, wooden arrows `1`, Red Candle `2`, Magic
+Key `0`, TF `0x7F`, and three hearts full (`health=0x22`).  The final room
+had item id `0x0F`, door bytes `cur_opened_doors=0`,
+`open_doorway_mask=0`, and eight live occupants:
+
+- 2× `0x2B`, HP 240 (invulnerable mover residuals)
+- 1× `0x0C`, HP 128
+- 2× `0x0B`, HP 64 (Darknuts)
+- 3× `0x30`, HP 112 (Gibdos)
+
+No combat or key/bomb use occurred in `0x4E`.  Runtime integrity was deaths
+`0`, direct RAM/controller writes `0`, state loads after start `0`,
+`progression_writes=0`, and `capacity_writes=0`.  Survival restored 14 filled
+heart units across 10 damage events (13 refill writes; `0x6E`: 6 units,
+`0x5E`: 8 units).  Bomb selection remained normal pause input (`4→1`), not
+a selection write.  This is still `natural_entry=false` and
+`route_eligible=false`.
+
+Evidence:
+
+- `scratch/probe_l8_5e_north.py`
+- `recordings/l8_5e_north_fixture_20260903_v1.json`
+- `recordings/l8_5e_north_20260903_v1_first_settled_destination_f2322_L8_s4e_m5.png`
+- `recordings/l8_5e_north_20260903_v1_final_census_f2442_L8_s4e_m5.png`
+
+Next boundary: from this replayed `0x4E` arrival, test only the north key door
+to predicted `0x3E`, stopping at its first settled destination.  Do not clear
+the mixed `0x4E` census unless live input proves the key door is unavailable;
+on that miss, stop and replan.  Do not rerun the now-confirmed `0x5E→0x4E`
+policy unchanged.
 
 The early HP-zero `0x0C` census was pre-activation state, not an empty room;
 idle settling produced five HP-128 blue Darknuts.  Keep the first-departure
