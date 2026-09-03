@@ -130,19 +130,34 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         KEESE_TRAPS,
         "keese_traps",
         ram_id=0x68,
-        role="live: reached via 0x69 west bomb wall; interior census pending",
+        role="live: 4 blade traps 0x49 (corners) + 4 keese 0x1b; "
+        "OPEN N/S + bombed E; W shut",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(ROPES_KEY, "ropes_key", role="key_plus_1"),
+    Level7RoomHyp(
+        ROPES_KEY,
+        "ropes_key",
+        ram_id=0x78,
+        role="live: ropes 0x28 + small_key 0x19 on the floor; dead-end "
+        "(only UP back to 0x68); key not auto-picked",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(
         DODONGOS_UPGRADE,
         "dodongos_upgrade_path",
         ram_id=0x58,
-        role="live: dodongo-family 0x31, room_item_id 0x0f, dark; Link spawns "
-        "bottom (120,205); east exit not yet resolved (locked/kill-gated?)",
+        role="live: 3x invuln 0x31 (hp 240), room_item_id 0x0f, dark; Link "
+        "spawns bottom (120,205); OPEN east -> 0x59; KEY north -> 0x48",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(BOMB_UPGRADE, "bomb_upgrade_16", role="optional_capacity"),
+    Level7RoomHyp(
+        BOMB_UPGRADE,
+        "bomb_upgrade_16",
+        ram_id=0x48,
+        role="live: bubble 0x40 + 0x4f; old-man 'I BET YOU'D LIKE TO HAVE "
+        "-100' bomb-capacity dead-end; do not write max_bombs",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(
         GORIYA_COMPASS,
         "goriya_to_compass",
@@ -374,7 +389,18 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 notes="live: 0x68 east is the bombed 0x69 wall (backtrack)",
                 verification="fixture-live",
             ),
-            _open(DoorDir.DOWN, ROPES_KEY, notes="source; 0x68 has 4 blade traps 0x49"),
+            _e(
+                DoorDir.DOWN,
+                ROPES_KEY,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x78 ropes 0x28 + small_key 0x19 2/2; "
+                    "peel x=160, drop y=141, align x=120, push DOWN; blade "
+                    "traps 0x49 in corners — do not occupancy-walk (knockback "
+                    "poisons the grid)"
+                ),
+                verification="fixture-live",
+            ),
             _e(
                 DoorDir.UP,
                 DODONGOS_UPGRADE,
@@ -395,7 +421,19 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 notes="live: 0x58 DOWN -> 0x68 (backtrack)",
                 verification="fixture-live",
             ),
-            _e(DoorDir.UP, BOMB_UPGRADE, GateKind.KEY, notes="north x=120 channel; keys 4->3"),
+            _e(
+                DoorDir.UP,
+                BOMB_UPGRADE,
+                GateKind.KEY,
+                notes=(
+                    "live dest $EB=0x48 2/2; KEY door keys 4->3. Central "
+                    "2-block mass walls x=120 around y=141 — east-around "
+                    "(120,165)->(160,165)->y=93, align x=120, push UP. "
+                    "Dodge 3x invuln 0x31. 0x48 is a 100-rupee bomb-capacity "
+                    "old-man dead-end; do not write max_bombs"
+                ),
+                verification="fixture-live",
+            ),
             _e(
                 DoorDir.RIGHT,
                 GORIYA_COMPASS,

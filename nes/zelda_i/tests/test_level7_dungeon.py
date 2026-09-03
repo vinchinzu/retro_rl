@@ -18,6 +18,7 @@ from zelda_i.level7.dungeon import (
     level7_red_candle_stop,
 )
 from zelda_i.level7.graph import (
+    BOMB_UPGRADE,
     DIGDOGGER_1,
     DODONGOS_UPGRADE,
     ENTRY,
@@ -25,6 +26,7 @@ from zelda_i.level7.graph import (
     GORIYA_COMPASS,
     KEESE_TRAPS,
     OLD_MAN_NOSE,
+    ROPES_KEY,
     STALFOS_KEY,
     EVIDENCE,
     GORIYA_HINT,
@@ -129,7 +131,9 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         OLD_MAN_NOSE: 0x5B,
         STALFOS_KEY: 0x6D,
         KEESE_TRAPS: 0x68,
+        ROPES_KEY: 0x78,
         DODONGOS_UPGRADE: 0x58,
+        BOMB_UPGRADE: 0x48,
         GORIYA_COMPASS: 0x59,
         GORIYA_BUBBLE: 0x49,
     }
@@ -180,6 +184,28 @@ def test_entry_exits_match_live_png() -> None:
     assert dest_east.is_pathfinding
     keese = next(room for room in LEVEL7_ROOMS if room.source_id == KEESE)
     assert keese.ram_id == 0x6A
+
+
+def test_keese_traps_side_exits_are_fixture_live() -> None:
+    """0x68 DOWN -> 0x78 ROPES_KEY; 0x58 UP KEY -> 0x48 BOMB_UPGRADE."""
+    down = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(KEESE_TRAPS)
+    }[DoorDir.DOWN]
+    assert down.target_room == ROPES_KEY
+    assert down.gate is GateKind.OPEN
+    assert down.verification == "fixture-live"
+    ropes = next(r for r in LEVEL7_ROOMS if r.source_id == ROPES_KEY)
+    assert ropes.ram_id == 0x78
+
+    north = {
+        e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(DODONGOS_UPGRADE)
+    }[DoorDir.UP]
+    assert north.target_room == BOMB_UPGRADE
+    assert north.gate is GateKind.KEY
+    assert north.verification == "fixture-live"
+    bomb = next(r for r in LEVEL7_ROOMS if r.source_id == BOMB_UPGRADE)
+    assert bomb.ram_id == 0x48
+    assert not bomb.route_eligible
 
     keese_exits = {e.direction: e for e in LEVEL7_HYPOTHESIS_GRAPH.edges_from(KEESE)}
     keese_east = keese_exits[DoorDir.RIGHT]
