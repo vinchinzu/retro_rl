@@ -39,6 +39,7 @@ from zelda_i.level7.path import (
     Room6BNorthController,
     Room6CEastController,
     Room58EastController,
+    Room59UpController,
     Room68NorthController,
     Room69EastController,
     unverified_path_controller,
@@ -121,6 +122,16 @@ def make_room58_east_controller() -> Level7PathController:
     3x invulnerable 0x31 roamers are dodged.  Recon-wired only.
     """
     return Room58EastController()
+
+
+def make_room59_up_controller() -> Level7PathController:
+    """0x59 (GORIYA_COMPASS) west mouth: kill-clear goriya 0x05/0x06 -> perimeter
+    waypoint micro around the central mass -> UP door to live 0x49 GORIYA_BUBBLE
+    (2/2).  0x49's forward (UP) path is then moat-gated behind the Stepladder;
+    the recon fixture chain has no ladder, so DIGDOGGER_2 onward stays
+    unobserved.  Recon-wired only.
+    """
+    return Room59UpController()
 
 
 def make_room69_west_bomb_controller() -> BombWallController:
@@ -326,6 +337,7 @@ __all__ = [
     "make_room6b_north_controller",
     "make_room6c_east_controller",
     "make_room58_east_controller",
+    "make_room59_up_controller",
     "make_room68_north_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",

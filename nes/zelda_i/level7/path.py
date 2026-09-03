@@ -42,6 +42,7 @@ from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_pus
 from zelda_i.level7.graph import (
     DIGDOGGER_1,
     DODONGOS_UPGRADE,
+    GORIYA_BUBBLE,
     GORIYA_COMPASS,
     OLD_MAN_NOSE,
     STALFOS_KEY,
@@ -144,6 +145,23 @@ ROOM_58_EAST_COLUMN_X = 200
 ROOM_58_MID_Y = 165
 ROOM_58_DOOR_Y = 141
 ROOM58_EAST_MAX_FRAMES = 4000
+# 0x59 (GORIYA_COMPASS): lit; goriya 0x05 + 0x06 + boomerang 0x5c.  Entry
+# (16,141) W mouth.  The kill-clear opens the UP door bit (cur_opened_doors
+# bit 3 = UP) but the naive clear boxes Link at (48,125).  A central mass
+# fills ~x100..190 / y118..165; the route is a perimeter waypoint micro:
+# rise the west side to the y~100 open band, go west to x~44, rise to the
+# y~64 top band, cross to x=120, push UP.  Dest is live $EB=0x49
+# (GORIYA_BUBBLE — goriya 0x05 + keese 0x1b + bubble residual 0x2b, entry
+# (120,205) S mouth).  2/2 byte-identical (recordings/59_up_v2/v3.json,
+# arrived frame 2329).  RIGHT (KILL_CLEAR) -> COMPASS stays a hyp dead-end.
+ROOM_59 = 0x59
+ROOM_59_WEST_MOUTH = (16, 141)
+ROOM_59_MID_BAND_Y = 100
+ROOM_59_TOP_BAND_Y = 93
+ROOM_59_WEST_COLUMN_X = 44
+ROOM_59_NORTH_X = 120
+ROOM_59_NORTH_PLANE_Y = 93
+ROOM59_UP_MAX_FRAMES = 5000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -191,6 +209,11 @@ def north_of_room68_ram_id() -> int | None:
 def east_of_room58_ram_id() -> int | None:
     """Live ``$EB`` of the room east of ``0x58`` (GORIYA_COMPASS), or None."""
     return LEVEL7_ROOM_BY_ID[GORIYA_COMPASS].ram_id
+
+
+def north_of_room59_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x59`` (GORIYA_BUBBLE), or None."""
+    return LEVEL7_ROOM_BY_ID[GORIYA_BUBBLE].ram_id
 
 
 class Level7PathController(Protocol):
@@ -1208,6 +1231,113 @@ class Room58EastController(HopController):
         }
 
 
+@dataclass(kw_only=True)
+class Room59UpController(HopController):
+    """0x59 (GORIYA_COMPASS) west mouth: kill-clear the goriya 0x05/0x06,
+    then the perimeter waypoint micro around the central mass to the UP door
+    -> live dest 0x49 (GORIYA_BUBBLE).
+
+    The kill-clear sets ``cur_opened_doors`` bit 3 (UP) but boxes Link at
+    ``(48,125)``.  Phases: rise to the ``y~100`` open west band, go west to
+    ``x~44``, rise to the ``y~64`` top band, cross to ``x=120``, push UP.
+    2/2 byte-identical (recordings/59_up_v2/v3.json).  Recon-wired only.
+    """
+
+    spec_id: str = "level7_room59_up"
+    max_frames: int = ROOM59_UP_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x59_north"
+    dest: int | None = field(default_factory=north_of_room59_ram_id)
+    saw_goriya: bool = False
+    _phase: str = "clear"
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_phase={self._phase}_saw={int(self.saw_goriya)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("UP"), "up59_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_59:
+            if snap.screen in {ROOM_58, ENTRY_SCREEN}:
+                return self.mark_fail("west_backtrack")
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+
+        live = live_goriyas(snap)
+        if live:
+            self.saw_goriya = True
+            target = nearest_enemy(snap.link_x, snap.link_y, live)
+            if target is None:
+                return FrameAction(nes_idle_action(), "goriya_missing")
+            return _goriya_fight(snap, target, frames=self.frames)
+        if not self.saw_goriya:
+            return FrameAction(nes_idle_action(), "spawn_wait")
+
+        x, y = int(snap.link_x), int(snap.link_y)
+        if self._phase == "clear":
+            self._phase = "rise1"
+        if self._phase == "rise1":
+            if y > ROOM_59_MID_BAND_Y + DOOR_Y_TOL:
+                return FrameAction(nes_action("UP"), "up59_rise1")
+            self._phase = "west"
+        if self._phase == "west":
+            if x > ROOM_59_WEST_COLUMN_X + NORTH_X_TOL:
+                return FrameAction(nes_action("LEFT"), "up59_west")
+            self._phase = "rise2"
+        if self._phase == "rise2":
+            if y > ROOM_59_TOP_BAND_Y + DOOR_Y_TOL:
+                return FrameAction(nes_action("UP"), "up59_rise2")
+            self._phase = "cross"
+        if self._phase == "cross":
+            if abs(x - ROOM_59_NORTH_X) > NORTH_X_TOL:
+                btn = "LEFT" if x > ROOM_59_NORTH_X else "RIGHT"
+                return FrameAction(nes_action(btn), "up59_cross")
+            self._phase = "push"
+        return dungeon_align_then_push(
+            snap,
+            push_dir="UP",
+            target_x=ROOM_59_NORTH_X,
+            x_tol=NORTH_X_TOL,
+            reason="up59",
+        )
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "UP",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -1319,6 +1449,7 @@ __all__ = [
     "ROOM_6B_EAST_PLANE",
     "ROOM_6B_WEST_MOUTH",
     "ROOM_58",
+    "ROOM_59",
     "ROOM_68",
     "ROOM_6C",
     "SOUTH_MOUTH_Y",
@@ -1335,6 +1466,7 @@ __all__ = [
     "Room6CEastController",
     "Room68NorthController",
     "Room58EastController",
+    "Room59UpController",
     "UnverifiedLevel7PathController",
     "east_of_room69_ram_id",
     "east_of_room6a_ram_id",
@@ -1343,6 +1475,7 @@ __all__ = [
     "north_of_room6b_ram_id",
     "east_of_room58_ram_id",
     "north_of_room68_ram_id",
+    "north_of_room59_ram_id",
     "east_route_step",
     "room_6a_east_step",
     "room_6b_east_step",

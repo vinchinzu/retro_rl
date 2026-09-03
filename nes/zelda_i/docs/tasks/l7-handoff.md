@@ -168,27 +168,85 @@ Wired: `level7/path.py` `Room58EastController` (`level7_room58_east`),
 + `DODONGOS_UPGRADE` RIGHT→`GORIYA_COMPASS` and DOWN→`KEESE_TRAPS`
 `fixture-live`; test live-prefix += `GORIYA_COMPASS:0x59`.
 
+## 2026-09-05 (cont. 3) — `0x59`→`0x49` (GORIYA_BUBBLE); **LADDER blocker**
+
+**`0x59` UP → live `$EB=0x49` (GORIYA_BUBBLE)** — **2/2 byte-identical**
+(`59_up_v2/v3.json`, arrived frame 2329; `59_ctl_v3/v4` = the wired
+`Room59UpController` 2/2, arrived frame 1618). From
+`Level7Interior59ReconFixture`: kill-clear the goriya `0x05`/`0x06` (sets
+`cur_opened_doors` bit 3 = **UP**, `open_doorway_mask`→10; boxes Link at
+`(48,125)`). The route around the central mass (fills ~`x100..190` /
+`y118..165`) is a **perimeter waypoint micro**: rise the west side to the
+`y~100` open band → west to `x~44` → rise to the `y~93` top band → cross
+east to `x=120` → push UP (pre-push `(118,93)`). `0x49` `(120,205)` S
+mouth, mode 5, census **goriya `0x05` + keese `0x1b` + bubble residual
+`0x2b`** (+ transient boomerang `0x5c`). keys 4 / bombs 7 / Food 1
+unchanged, `deaths=0`, `progression/capacity writes=0`.
+
+New disclosed recon fixture **`Level7Interior49ReconFixture`** — settled
+`0x49` `(120,205)`, keys 4 / bombs 7 / Food 1. **No fixture writes at all**
+(counts already fine); `development_only`/`fixture_only`/
+`route_eligible:false`/`natural_entry:false`.
+
+**`0x49` (GORIYA_BUBBLE) is fully mapped — and the mainline is BLOCKED here
+without the Stepladder.**
+- Exactly two doors: **DOWN → `0x59`** (back, 1/1) and **UP → DIGDOGGER_2**
+  (source). LEFT and RIGHT are **walled 2/2** (Link pins at `x=32` / `x=208`
+  on `y=141`).
+- The UP door **bit opens** on the goriya kill-clear, but a **full-width
+  horizontal water moat** (~`y120`, colliding tile **`0xF4`**) walls the
+  entire room — fine x-sweep `x=16..224` step 4, **every column blocked at
+  `y=133`**, no land bridge anywhere.
+- **Diagnostic (one-off, no fixture saved):** poking `ADDR_LADDER 0x0663`
+  →1 lets Link walk straight north across the moat to the `x=120` door
+  threshold (tile 118) and into the top half. **The moat is a Stepladder
+  gate.**
+- The recon-fixture chain descends from the `Level7Entrance` poke pin
+  (Whistle poked, Food/TF/keys/bombs minimal) and **carries no Ladder**
+  (`ADDR_LADDER`=0). The disclosed-write budget is Food/bombs/keys *count*
+  top-ups only — a Ladder poke is a **capability write, out of scope**.
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room59UpController` / `room` consts `ROOM_59*`,
+  `north_of_room59_ram_id()`. Phases clear→rise1→west→rise2→cross→push,
+  mirrors `Room58EastController`.
+- `level7/hops.py`: `make_room59_up_controller`.
+- `level7/graph.py`: `GORIYA_BUBBLE ram_id=0x49 evidence=fixture-live`;
+  `GORIYA_COMPASS` UP→`GORIYA_BUBBLE` `KILL_CLEAR` `verification=fixture-live`;
+  `GORIYA_BUBBLE` DOWN→`GORIYA_COMPASS` `fixture-live`, UP→`DIGDOGGER_2`
+  annotated with the moat/Ladder note (dest still hypothesis).
+- `tests/test_level7_dungeon.py`: live-prefix += `GORIYA_BUBBLE:0x49`.
+
 ## Onward toward Red Candle — resume point
 
-**Next sitting starts here — `0x59` (GORIYA_COMPASS).** From
-`Level7Interior59ReconFixture`: clear the goriya `0x05`/`0x06` (shared
-goriya micro — they die and set `cur_opened_doors` bit 1 = the UP door;
-`59_up_v1` cleared them, `room_all_dead`→54, `mask`→10). Then map the
-route to the **UP door** (the goriya clear leaves Link boxed at `(48,125)`
-— `0x59` has a central obstacle; the UP door is x≈120 north but the naïve
-`_to_band` couldn't reach it). Source: `0x59` UP → GORIYA_BUBBLE
-(mainline), RIGHT (KILL_CLEAR) → COMPASS (dead-end pickup). Then the
-source candle chain: `GORIYA_BUBBLE → DIGDOGGER_2 → GORIYA_PRE_HUNGRY →
-HUNGRY_GORIYA (KEY, consumes Food) → MAP → HIDDEN_RUPEES (BOMB) →
-GORIYA_POST_RUPEE → WEST_LOCK_SKIP → CANDLE_PUSH (BOMB) → RED_CANDLE_CELLAR`.
-All rooms past `0x59` are **hypothesis**. `0x59` fixture: keys 4 / bombs 7
-/ Food 1. Do **not** poke `ADDR_CANDLE`.
+**BLOCKED at `0x49` (GORIYA_BUBBLE) pending a Ladder decision.** The
+candle mainline (`GORIYA_BUBBLE → DIGDOGGER_2 → GORIYA_PRE_HUNGRY →
+HUNGRY_GORIYA → MAP → … → CANDLE_PUSH → RED_CANDLE_CELLAR`) is gated by
+the `0x49` water moat, which needs the **Stepladder** (an L4 item Link
+carries in a real run but the recon-fixture chain does not). Options for
+the orchestrator:
+1. Allow a **disclosed `ADDR_LADDER`→1 poke** in a `Level7Interior49*` (or
+   earlier) recon fixture — analogous to the already-disclosed Whistle/Food
+   pokes on this chain — then continue the room-by-room recon from `0x49`
+   UP.
+2. Rebuild the recon chain from a fuller predecessor that already owns the
+   Ladder (a real post-L4/L6 loadout).
+3. Accept the L7-B recon stops at `0x49` until a natural-entry tape exists.
+
+Also add **Stepladder** to `LEVEL7_ROUTE.md` required capabilities (it was
+omitted from the L7 gate list).
+
+If continuing from `0x49` (with a Ladder): push UP through the moat
+(`x=120`, door plane `y≈93`), then recon `DIGDOGGER_2` and onward. All
+rooms past `0x49` are **hypothesis**. `0x49` fixture: keys 4 / bombs 7 /
+Food 1. Do **not** poke `ADDR_CANDLE`.
 
 Fixture chain to regenerate `.state` files (all gitignored): parent
 `Level7InteriorReconFixture` (`build_level7_interior_recon_fixture.py`) →
 `Level7Interior68ReconFixture` (`probe_l7_room68_onward.py --save-fixture`)
 → `Level7Interior58ReconFixture` (`probe_l7_room58_onward.py --save-fixture`)
-→ `Level7Interior59ReconFixture` (`probe_l7_room58_east.py --save-fixture`).
+→ `Level7Interior59ReconFixture` (`probe_l7_room58_east.py --save-fixture`)
+→ `Level7Interior49ReconFixture` (`probe_l7_room59_up.py --save-fixture`).
 
 Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
 `0x58` north x=120 channel → `0x48` BOMB_UPGRADE (key-gated).
