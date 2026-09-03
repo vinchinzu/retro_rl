@@ -2,6 +2,65 @@
 
 Did not STATUS-promote. Did not claim spine-green. Did not poke candle/doors/TF/magic key.
 
+## Fixture-live continuation — 2026-09-03
+
+This section supersedes the older sitting boundary below.  It remains
+development-only: every run starts from a disclosed poked fixture and is
+`natural_entry=false`, `route_eligible=false`.
+
+### Poked interior start
+
+`Level8InteriorReconFixture` was derived from
+`Level8EntranceReconFixture` at settled L8 room `0x7E`, TF `0x7F`.  The
+builder is `scratch/build_level8_interior_recon_fixture.py`; its provenance
+records every write.  It grants only recon resources: Magical Sword `1→3`,
+bombs `0→8` (within the existing capacity of 8), Bow `0→1`, wooden arrows
+`0→1`, rupees `0→255`, and keys `0→9`.  It does **not** write Magic Key,
+Triforce, room/screen, door flags, health, or heart capacity.
+
+### Live boundary chain
+
+Luna sub-agent probes established this serial chain:
+
+```text
+0x7E --UP--> 0x6E Manhandla
+  --clear, sword only--> cleared 0x6E
+  --one bomb north, 8→7--> 0x5E
+  --clear 5 blue Darknuts 0x0C--> cleared 0x5E
+  --center key pickup--> keys 9→10
+```
+
+- `0x7E→0x6E` settled at `(120,205)`; census observed Manhandla type
+  `0x3C`.  `recordings/l8_7e_to_6e_up_trial_20260903_v2.json`.
+- The input-only Manhandla clear stayed in `0x6E`; bombs remained 8.
+  `recordings/l8_6e_manhandla_clear_20260903.json`.
+- Bomb-UP from `(120,105)` spent exactly one bomb and settled `0x5E` at
+  `(120,189)`.  `recordings/l8_6e_to_5e_bomb_north_20260903.json`.
+- After two settle frames, `0x5E` spawned five blue Darknuts (`0x0C`, HP
+  128 each).  The guarded sword-only clear left bombs at 7 and opened the
+  north shutter (`open_doorway_mask=0x04`).
+  `recordings/l8_5e_spawn_clear_key_20260903_v2.json`.
+- The natural center item `0x19` raised keys `9→10` at `(120,133)`.
+  `recordings/l8_5e_key_pickup_center_20260903.json`.
+
+All completed runs reported deaths 0, `progression_writes=0`, and
+`capacity_writes=0`.  Survival refill was the only runtime assist.  Normal
+pause input changed the selected B item from Candle to bombs; there was no
+RAM selection write.
+
+### Exact resume point
+
+Replay the guarded chain through the key pickup, then align `x≈120` and take
+the already-open north shutter from `0x5E`.  The static prediction is room
+`0x4E`; stop at the first settled destination and census it before combat or
+key use.  That trial was in flight when the user requested an immediate
+file handoff, so it has no result and must not be claimed.
+
+The early HP-zero `0x0C` census was pre-activation state, not an empty room;
+idle settling produced five HP-128 blue Darknuts.  Keep the first-departure
+guard around generic combat helpers: an unguarded attempt walked back
+through the open south door.
+
 ## Fixture-live sitting — 2026-09-03
 
 The newly available `Level8BushWithCandleFixture` is a disclosed poked start,

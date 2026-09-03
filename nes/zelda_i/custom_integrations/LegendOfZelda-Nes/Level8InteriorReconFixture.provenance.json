@@ -1,0 +1,169 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T14:33:59.448466+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "before": 1,
+        "from": 1,
+        "name": "magical_sword",
+        "to": 3
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "before": 0,
+        "from": 0,
+        "name": "bombs_for_recon",
+        "to": 8
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "before": 0,
+        "from": 0,
+        "name": "bow_for_recon",
+        "to": 1
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "before": 0,
+        "from": 0,
+        "name": "wooden_arrows_for_recon",
+        "to": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "before": 0,
+        "from": 0,
+        "name": "rupees_for_recon",
+        "to": 255
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "before": 0,
+        "from": 0,
+        "name": "keys_for_pre_magic_key_doors",
+        "to": 9
+      }
+    ],
+    "natural_entry": false,
+    "notes": [
+      "Derived from the fixture-only Level8EntranceReconFixture.",
+      "Bomb target is min(preferred 8, existing max-bomb capacity).",
+      "Keys are a disclosed pre-Magical-Key recon resource; Magic Key is untouched.",
+      "No Magic Key, triforce, room, door flags, health, or heart capacity writes."
+    ],
+    "phase": "level8_interior_recon_resources",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "fixture_state": "Level8InteriorReconFixture",
+    "fixture_writes": [
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "before": 1,
+        "from": 1,
+        "name": "magical_sword",
+        "to": 3
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "before": 0,
+        "from": 0,
+        "name": "bombs_for_recon",
+        "to": 8
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "before": 0,
+        "from": 0,
+        "name": "bow_for_recon",
+        "to": 1
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "before": 0,
+        "from": 0,
+        "name": "wooden_arrows_for_recon",
+        "to": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "before": 0,
+        "from": 0,
+        "name": "rupees_for_recon",
+        "to": 255
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "before": 0,
+        "from": 0,
+        "name": "keys_for_pre_magic_key_doors",
+        "to": 9
+      }
+    ],
+    "inventory": {
+      "arrows": 1,
+      "bombs": 8,
+      "bow": 1,
+      "keys": 9,
+      "max_bombs": 8,
+      "rupees": 255,
+      "sword": 3
+    },
+    "ok": true,
+    "protected_unchanged": {
+      "level": true,
+      "mode": true,
+      "screen": true,
+      "triforce": true
+    },
+    "source_state": "Level8EntranceReconFixture",
+    "state": {
+      "bombs": 8,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 47,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 109,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "room": 126,
+      "room_all_dead": 30,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 3,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 127,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8EntranceReconFixture.state",
+  "source_state_sha256": "edd013a4ffa402cfa08995bdafd14bcc1c8f79847050c7c0f64b13dcbb7d5ca5",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8InteriorReconFixture.state",
+  "state_sha256": "c2273b0563cb450ae9f976dd168470d8c15feeae7732a72f66fd759e13c8de59"
+}
