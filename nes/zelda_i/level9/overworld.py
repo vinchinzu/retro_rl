@@ -72,6 +72,8 @@ LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x06, "LEFT"),
     ScreenHop(SCREEN_LEVEL9_ROCK_HYP, "LEFT"),
 )
+
+
 def has_full_triforce(ram) -> bool:
     return read_u8(ram, ADDR_TRIFORCE) == FULL_TRIFORCE
 
