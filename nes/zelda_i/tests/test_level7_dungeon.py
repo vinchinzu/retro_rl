@@ -18,6 +18,9 @@ from zelda_i.level7.dungeon import (
 from zelda_i.level7.graph import (
     DIGDOGGER_1,
     ENTRY,
+    KEESE_TRAPS,
+    OLD_MAN_NOSE,
+    STALFOS_KEY,
     EVIDENCE,
     GORIYA_HINT,
     HUNGRY_GORIYA,
@@ -90,6 +93,9 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         KEESE: 0x6A,
         GORIYA_HINT: 0x6B,
         DIGDOGGER_1: 0x6C,
+        OLD_MAN_NOSE: 0x5B,
+        STALFOS_KEY: 0x6D,
+        KEESE_TRAPS: 0x68,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)

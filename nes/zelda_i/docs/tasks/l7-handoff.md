@@ -63,38 +63,83 @@ chapter chain):**
 - `tests/test_level7_dungeon.py`: live-prefix test extended with
   `DIGDOGGER_1: 0x6C`.
 
+## 2026-09-05 — EAST mainline extended: `0x6C`→`0x6D`, `0x6B`→`0x5B`, `0x69` west bomb
+
+**Row-6 corridor is `0x69 – 0x6A – 0x6B – 0x6C – 0x6D` (W→E, OPEN doors).**
+`0x6D` is the east **dead-end** (STALFOS_KEY). The candle mainline branches
+**west of `0x6A`**: `0x69` has a **BOMB wall on its west side → `0x68`**.
+(The earlier "LEFT + bomb-UP through `0x6A`" belief is dead — `0x6A` has NO
+north exit; the `0x6A` top wall *is* the `y=93` band. `0x69` is the source
+`GORIYA_BOMB_HUB`.)
+
+Verified this sitting (all from `Level7InteriorReconFixture`, `deaths=0`,
+`progression/capacity writes=0`, `route_eligible=false`):
+
+| walk | dest `$EB` | entry | census / reward | evidence |
+|------|-----------|-------|-----------------|----------|
+| `0x6B` RIGHT | `0x6C` | `(16,141)` W mouth | digdogger `0x38` + statue `0x55` | **2/2** (`6b_right_v1/v2`) |
+| `0x6C` RIGHT | `0x6D` | `(16,141)` W mouth | stalfos `0x2a`, reward `room_item_id 0x19` small_key | **2/2** (`6c_right_v1/v2`) |
+| `0x6B` UP (x≈118, y=93) | `0x5B` | `(120,205)` S mouth | bubble `0x40` + statue `0x50` | **2/2** (`6b_north_dest_v1/v2`, frame 189) |
+| `0x69` LEFT **bomb** (stand ~`(44,141)` face LEFT) | `0x68` | mid-transition `(188,141)` | interior unobserved; `cur_opened_doors` LEFT bit sets | **2/2** (`69_branch_v2/v3`) |
+
+Dead-ends confirmed 2/2:
+- `0x6D` (STALFOS_KEY): RIGHT/UP/DOWN blocked, only LEFT → `0x6C` (`6d_v1/v2`).
+  *(Walking over the key in `0x6D` bumped recon `keys` 4→5 — natural pickup.)*
+- `0x5B` (OLD_MAN_NOSE): N/E/W/S all walled at `y=141` from the south entry
+  (`5b_v1`); the "secret in the tip of the nose" hint room, NOT the mainline.
+- `0x69` NORTH: precise x-sweep `104..156` on the `y=93` band — all solid,
+  no notch (`69_branch_v2/v3`).
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room6BNorthController` / `room_6b_north_step`
+  (`level7_room6b_north`), `Room6CEastController` / `room_6c_east_step`
+  (`level7_room6c_east`), `Level7BombWall` + `L7_ROOM69_WEST_BOMB`
+  (`room=0x69 stand=(44,141) face=LEFT opens_to=0x68`),
+  `north_of_room6b_ram_id()` / `east_of_room6c_ram_id()`.
+- `level7/hops.py`: `make_room6b_north_controller`,
+  `make_room6c_east_controller`, `make_room69_west_bomb_controller`
+  (returns `dungeon.bomb_wall.BombWallController(wall=L7_ROOM69_WEST_BOMB,
+  level=7)`).
+- `level7/graph.py`: `OLD_MAN_NOSE ram_id=0x5B`, `STALFOS_KEY ram_id=0x6D`,
+  `KEESE_TRAPS ram_id=0x68`, all `evidence=fixture-live`; `MOLDORMS`
+  (== `GORIYA_BOMB_HUB`) gains LEFT-bomb→`KEESE_TRAPS` and DOWN→`ENTRY`
+  exits; `DIGDOGGER_1` RIGHT→`STALFOS_KEY` and `GORIYA_HINT` UP→`OLD_MAN_NOSE`
+  promoted `fixture-live`.
+- `tests/test_level7_dungeon.py`: live-prefix test + `OLD_MAN_NOSE:0x5B`,
+  `STALFOS_KEY:0x6D`, `KEESE_TRAPS:0x68`.
+
 ## Onward toward Red Candle — resume point
 
-The BFS `preferred_path(GORIYA_HINT → RED_CANDLE_CELLAR)` mainline does
-**not** go through `0x6C`; it goes `0x6B` **LEFT → `0x6A`**, then a **BOMB
-gate UP** out of `0x6A` toward the compass/stalfos cluster, then
-`…→ GORIYA_PRE_HUNGRY → HUNGRY_GORIYA (KEY, needs Food) → MAP →
-HIDDEN_RUPEES (BOMB) → GORIYA_POST_RUPEE → WEST_LOCK_SKIP → CANDLE_PUSH
-(BOMB) → RED_CANDLE_CELLAR`. All rooms past `0x6C`/`0x6A` are still
-**hypothesis**.
-
 **Next sitting starts here:** from `Level7InteriorReconFixture`, walk
-`0x6B` LEFT → `0x6A`, then recon the `0x6A` **north bomb-wall** (bomb stand
-x, target y, `opens_to` room id). `dungeon/bomb_wall.py`
-`BombWallController` is the reusable driver — it needs a `BombWallLike`
-geometry object once the north wall is measured. The fixture already
-carries 8 bombs + 4 keys + Food 1 for the whole downstream chain. Do
-**not** poke `ADDR_CANDLE`.
+`0x6B` LEFT → `0x6A` LEFT → `0x69` (`_west_traverse` in
+`scratch/probe_l7_room69_branch.py` — the Room6AEastController mirror:
+off-mouth → rise east col y=93 → cross LEFT → drop west col y=141 → push),
+then drive `make_room69_west_bomb_controller()` (or replay the bomb at
+`(44,141)` face LEFT) into **`0x68`**. Then recon `0x68` (KEESE_TRAPS):
+`$EB`, entry xy, census, exits — source says `0x68` UP → DODONGOS_UPGRADE
+(`0x58`) and DOWN → ROPES_KEY. From there the source candle chain is
+`…→ GORIYA_COMPASS → GORIYA_BUBBLE → DIGDOGGER_2 → GORIYA_PRE_HUNGRY →
+HUNGRY_GORIYA (KEY, consumes Food) → MAP → HIDDEN_RUPEES (BOMB) →
+GORIYA_POST_RUPEE → WEST_LOCK_SKIP → CANDLE_PUSH (BOMB) → RED_CANDLE_CELLAR`.
+All rooms past `0x68` are still **hypothesis**. Fixture carries 8 bombs +
+4 keys + Food 1. Do **not** poke `ADDR_CANDLE`.
 
-Alternative unverified: `0x6C` (`DIGDOGGER_1`) RIGHT → `STALFOS_KEY`
-(source), and `0x6B` UP retried off-centre / after a true KILL_CLEAR
-sentinel for `OLD_MAN_NOSE`.
+Note: `0x69`'s goriyas do **not** respawn (census on re-entry = only statue
+`0x55`); `_west_traverse` needs no combat.
 
-## Dead beliefs (this sitting)
+## Dead beliefs
 
-1. Dead: `0x6B` UP at centre-x on the `y=93` band reaches `OLD_MAN_NOSE`.
-   Blocked 2/2 at `(128,93)` even after the goriya clear.
-2. Dead (carried): `0x6B` RIGHT → `DIGDOGGER_1` is the Red-Candle mainline.
-   It is a skippable whistle-split spur; the mainline is LEFT + bomb-UP
-   through `0x6A`.
-3. The `sweep_l7_room6b.py` "all four doors OPEN" read: RIGHT and LEFT
-   confirmed OPEN 2/2; UP is not walkable from centre; DOWN (toward entry
-   `0x6A`/`0x79` side) not separately re-probed this sitting.
+1. Dead: `0x6B` UP at centre-x (x=128) reaches `OLD_MAN_NOSE` — the notch
+   is at **x≈118**; centre-x is solid (blocked 2/2 at `(128,93)`).
+2. Dead: `0x6C` (`DIGDOGGER_1`) is a "skippable spur" off the mainline —
+   the room **is** on the mainline (only the digdogger *fight* is
+   whistle-skippable); it leads to the STALFOS_KEY dead-end.
+3. Dead: the candle mainline is "LEFT + bomb-UP through `0x6A`". `0x6A` has
+   no north exit. The branch is the **`0x69` west bomb wall → `0x68`**.
+4. Dead: `0x6A` north has a bombable wall (9 bomb attempts x=64..192 on the
+   `y=93` band, which is the north wall — nothing opened; those attempts
+   also mis-positioned Link, but the `0x69` west-bomb branch is now the
+   confirmed route, so `0x6A`-north is retired).
 
 ## Prior sittings (still standing)
 
@@ -275,9 +320,9 @@ sentinel for `OLD_MAN_NOSE`.
 ## L7-B — entry through Red Candle
 
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
-- **evidence label:** **fixture-live entry pin + `0x79→0x69→0x6A→0x6B→0x6C`
-  prefix** (plus `0x6B` LEFT↔`0x6A` backtrack); rooms past `0x6C`/`0x6A`-north
-  still hypothesis
+- **evidence label:** **fixture-live entry pin + row-6 corridor
+  `0x79→0x69→0x6A→0x6B→0x6C→0x6D`** + `0x6B`→`0x5B` spur + `0x69` west
+  bomb→`0x68` branch; rooms past `0x68` (candle chain) still hypothesis
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
   Hungry Goriya still needs Food; isolate with the recon fixture or `rr-8t4.4`.
@@ -303,13 +348,25 @@ sentinel for `OLD_MAN_NOSE`.
      `writes=0`, `deaths=0`). Waypoint: rise `y=93`, cross, drop
      `x=200`→`y=141`, push `x=224`. Not a spine stage.
   1c. `level7_room6b_east` — `Room6BEastController` /
-     `make_room6b_east_controller()` **(new, 2026-09-04, 2/2)** walks `0x6B`
-     west mouth → OPEN east doorway to live `$EB=0x6C` (`DIGDOGGER_1`,
-     `(16,141)`, 283f). Waypoint: ride `y=109` band east past the central X,
-     drop `x=200`→`y=141`, push `x=224`. **Assumes `0x6B` goriya cleared
-     upstream** (fixture or a not-yet-built kill-clear stage). Not a spine
-     stage; `0x6C` is the skippable whistle-split spur, not the Candle
-     mainline.
+     `make_room6b_east_controller()` (2/2) walks `0x6B` west mouth → OPEN
+     east doorway to live `$EB=0x6C` (`DIGDOGGER_1`, `(16,141)`, 283f).
+     Ride `y=109` east past the central X, drop `x=200`→`y=141`, push
+     `x=224`. **Assumes `0x6B` goriya cleared upstream.**
+  1d. `level7_room6c_east` — `Room6CEastController` /
+     `make_room6c_east_controller()` **(new 2026-09-05, 2/2)** walks `0x6C`
+     west mouth → east door to live `$EB=0x6D` (`STALFOS_KEY`: stalfos
+     `0x2a` + small_key `0x19`, a **dead-end**). Ride `y=141`; a digdogger
+     bump nudges Link through.
+  1e. `level7_room6b_north` — `Room6BNorthController` /
+     `make_room6b_north_controller()` **(new 2026-09-05, 2/2)** walks `0x6B`
+     west mouth → OPEN north notch at **x≈118** → live `$EB=0x5B`
+     (`OLD_MAN_NOSE`: bubble `0x40` + `0x50`, a **dead-end** hint spur).
+  1f. `level7_room69_west_bomb` — `make_room69_west_bomb_controller()`
+     **(new 2026-09-05, 2/2)** = `dungeon.bomb_wall.BombWallController(wall=
+     L7_ROOM69_WEST_BOMB, level=7)`: `0x69` west BOMB wall (stand
+     `(44,141)` face LEFT) → live `$EB=0x68` (`KEESE_TRAPS`, interior
+     unobserved). **This is the candle-path branch.** Needs bombs + bomb on
+     B. Not a spine stage.
   2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
   3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
@@ -317,24 +374,27 @@ sentinel for `OLD_MAN_NOSE`.
      (`ADDR_CANDLE` 1→2 natural; room unobserved)
   Executable chapter chain (`level7_red_candle_chapter_stages`) is unchanged:
   `entry_first_door → entry_to_hungry_goriya (fail-closed) → tip_stairs →
-  red_candle_pickup`. Stages 1a/1b/1c are recon-wired only.
+  red_candle_pickup`. Stages 1a–1f are recon-wired only.
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
 - **resume point:** from `Level7InteriorReconFixture`, `0x6B` LEFT → `0x6A`
-  (2/2), then recon the `0x6A` **north bomb-wall** geometry and drive it
-  with `dungeon/bomb_wall.py` `BombWallController`. Mainline is LEFT+bomb-UP
-  through `0x6A`, NOT `0x6C`.
+  LEFT → `0x69` (west-traverse = Room6AEastController mirror), then
+  `make_room69_west_bomb_controller()` into **`0x68`**, then recon `0x68`
+  (KEESE_TRAPS) and the source candle chain past it. See the
+  "2026-09-05 — EAST mainline extended" section above.
 - **expected deltas:** Food 1→0 at Hungry Goriya; Candle 1→2 at cellar.
   Ledger hyp net (dungeon): keys +1+1−1−1+1−1, bombs several −1 wall skips.
   Prefer bomb north of Map over locked east (fifth lock).
 - **dead beliefs:** fifth lock required; source RAM room ids as stop specs;
   N path is Moldorms (live dest `0x69` is goriya `0x05`); `0x69`/`0x6A`/`0x6B`
   east are key/kill-clear doors (all OPEN — `cur_opened_doors` stays 0 on
-  every live L7 doorway); per-pixel occupancy is safe for a short in-room
-  traverse (four graded misses on one cell box Link in — use waypoints);
-  `0x6B` UP at centre-x reaches `OLD_MAN_NOSE` (blocked 2/2 at `(128,93)`);
-  `0x6B` RIGHT → `DIGDOGGER_1` is the Candle mainline (it is a skippable
-  spur).
+  every live L7 doorway, but a **bombed** door DOES set the bit — `0x69`
+  west); per-pixel occupancy boxes Link in — use waypoints; `0x6B` UP at
+  centre-x (x=128) reaches `OLD_MAN_NOSE` (notch is x≈118); `0x6C`/`0x6D`
+  are on the mainline as far as the STALFOS_KEY dead-end (`0x6C` fight is
+  whistle-skippable, room is not); candle mainline is "bomb-UP through
+  `0x6A`" (`0x6A` has no north exit — the branch is `0x69` **west** bomb →
+  `0x68`).
 - **fixture:** `Level7InteriorReconFixture` (recon only). `route_eligible=false`.
 - **public target:** **`level7-red-candle`**.
 

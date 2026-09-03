@@ -27,13 +27,17 @@ from zelda_i.level7.entry import (
 )
 from zelda_i.level7.graph import ledger_notes
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
+from zelda_i.dungeon.bomb_wall import BombWallController
 from zelda_i.level7.path import (
+    L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
     HungryGoriyaGateController,
     Level7PathController,
     RedCandlePickupController,
     Room6AEastController,
     Room6BEastController,
+    Room6BNorthController,
+    Room6CEastController,
     Room69EastController,
     unverified_path_controller,
 )
@@ -82,6 +86,32 @@ def make_room6b_east_controller() -> Level7PathController:
     0x6B goriya-clear and Hungry Goriya rooms past it are still fail-closed.
     """
     return Room6BEastController()
+
+
+def make_room6b_north_controller() -> Level7PathController:
+    """0x6B west mouth → OPEN north notch (x~118) to live 0x5B (2/2).
+
+    Dead-end spur (OLD_MAN_NOSE, bubble 0x40 + 0x50).  Goriyas assumed
+    cleared upstream.  Recon-wired only.
+    """
+    return Room6BNorthController()
+
+
+def make_room6c_east_controller() -> Level7PathController:
+    """0x6C (DIGDOGGER_1) west mouth → east door to live 0x6D STALFOS_KEY (2/2).
+
+    0x6D is a dead-end (stalfos 0x2a + small_key 0x19).  Recon-wired only.
+    """
+    return Room6CEastController()
+
+
+def make_room69_west_bomb_controller() -> BombWallController:
+    """0x69 west BOMB wall → live 0x68 (source GORIYA_BOMB_HUB → KEESE_TRAPS).
+
+    The candle-path branch after the Stalfos-key dead-end.  Needs bombs +
+    bomb selected on B.  Recon-wired only (interior of 0x68 unobserved).
+    """
+    return BombWallController(wall=L7_ROOM69_WEST_BOMB, level=7)
 
 
 def make_entry_to_goriya_controller() -> Level7PathController:
@@ -272,8 +302,11 @@ __all__ = [
     "make_post_l6_overworld_controller",
     "make_red_candle_controller",
     "make_room69_east_controller",
+    "make_room69_west_bomb_controller",
     "make_room6a_east_controller",
     "make_room6b_east_controller",
+    "make_room6b_north_controller",
+    "make_room6c_east_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",
 ]
