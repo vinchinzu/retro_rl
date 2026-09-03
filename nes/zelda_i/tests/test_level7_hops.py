@@ -37,6 +37,7 @@ from zelda_i.level7.hops import (
     make_room18_north_bomb_controller,
     make_room19_east_bomb_controller,
     make_room1a_east_bomb_controller,
+    make_room0c_east_bomb_controller,
     make_room1a_candle_controller,
     make_room4a_return_controller,
     make_room1b_key_east_controller,
@@ -72,6 +73,7 @@ from zelda_i.level7.path import (
     L7_ROOM18_NORTH_BOMB,
     L7_ROOM19_EAST_BOMB,
     L7_ROOM1A_EAST_BOMB,
+    L7_ROOM0C_EAST_BOMB,
     Room09DownController,
     Room1ACandleController,
     Room4AReturnController,
@@ -832,11 +834,16 @@ def test_map_bomb_chain_factories_are_recon_only() -> None:
     assert e1a.wall is L7_ROOM1A_EAST_BOMB
     assert e1a.to_room == 0x1B
     assert e1a.approach_waypoints[0] == (96, 189)
+    e0c = make_room0c_east_bomb_controller()
+    assert e0c.wall is L7_ROOM0C_EAST_BOMB
+    assert e0c.to_room == 0x0D
+    assert e0c.approach_waypoints[0] == (120, 165)
     names = [name for name, _c, _f in level7_red_candle_chapter_stages()]
     assert "level7_room18_north_bomb" not in names
     assert "level7_room08_east_bomb" not in names
     assert "level7_room19_east_bomb" not in names
     assert "level7_room1a_east_bomb" not in names
+    assert "level7_room0c_east_bomb" not in names
 
 
 def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:

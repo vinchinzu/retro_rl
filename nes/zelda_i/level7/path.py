@@ -48,7 +48,9 @@ from zelda_i.level7.graph import (
     BOMB_UPGRADE,
     CANDLE_PUSH,
     DIGDOGGER_1,
+    DODONGOS_BOSS_PATH,
     FORCED_DIGDOGGER,
+    TIP_OF_NOSE,
     DIGDOGGER_2,
     DODONGOS_UPGRADE,
     GORIYA_BUBBLE,
@@ -2074,6 +2076,24 @@ L7_ROOM1A_EAST_BOMB = Level7BombWall(
 L7_ROOM1A_EAST_APPROACH = ((96, 189), (208, 189), (208, 141))
 
 
+ROOM_0C = 0x0C
+ROOM_0D = 0x0D
+
+
+def east_of_room0c_ram_id() -> int | None:
+    """Live ``$EB`` of the room east of ``0x0C`` (TIP_OF_NOSE)."""
+    return LEVEL7_ROOM_BY_ID[TIP_OF_NOSE].ram_id
+
+
+# 0x0C DODONGOS_BOSS_PATH east BOMB wall -> $EB=0x0D. East-around the
+# y=141 tile-181 mass: (120,165)->(200,165)->(200,141)->(208,141) face
+# RIGHT. 2/2 (0c_be_v2/v3). Dead: y=141 centre RIGHT.
+L7_ROOM0C_EAST_BOMB = Level7BombWall(
+    room=ROOM_0C, stand=(208, 141), face="RIGHT", opens_to=0x0D
+)
+L7_ROOM0C_EAST_APPROACH = ((120, 165), (200, 165), (200, 141), (208, 141))
+
+
 def room_09_down_step(
     snap: ZeldaSnapshot,
     *,
@@ -2630,6 +2650,9 @@ __all__ = [
     "L7_ROOM19_EAST_APPROACH",
     "L7_ROOM1A_EAST_BOMB",
     "L7_ROOM1A_EAST_APPROACH",
+    "L7_ROOM0C_EAST_BOMB",
+    "L7_ROOM0C_EAST_APPROACH",
+    "east_of_room0c_ram_id",
     "EntryNorthDoorController",
     "HungryGoriyaGateController",
     "Level7BombWall",

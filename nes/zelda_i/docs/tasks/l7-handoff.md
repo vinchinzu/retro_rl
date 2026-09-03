@@ -3,6 +3,53 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0C bomb-east to TIP_OF_NOSE 0x0D (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
+`route_eligible=false`. Chapter factories stay fail-closed.
+`PostLevel7Handoff.verified` stays false. No invented OW leave.
+
+**Pin was** `Level7Interior0CReconFixture` — L7 play `0x0C` `(120,205)`
+S mouth, Candle 2, TF 0, keys 2, bombs 7, selected 5, 3× `0x31`.
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 0x0C bomb-E east-around `(120,165)→(200,165)→(200,141)→(208,141)` RIGHT | play **`$EB=0x0D`** `(32,141)` W mouth | wallmaster `0x27` + bubbles `0x2b` + `0x68` at `(192,144)`; bombs 7→6 | **2/2** (`0c_be_v2`/`v3`) |
+
+Dead beliefs dated:
+- Dead: 0x0C y=141 centre RIGHT — boxed `(128,141)` tile 181 (`0c_be_v1`).
+- Dead (so far): RIGHT-push the `0x68` from its west face `(176,144)` while
+  `room_all_dead=0` (block never moves). Wiki: kill **5 wallmasters** then
+  push the mid-right block RIGHT. West mouth `x=32` is a grab trap →
+  entrance `0x79`. Plus-corner `0x27` at `(128/160,125/157)` never move and
+  take no sword/bomb damage (spawn markers). South face of the `0x68` is
+  diamond-walled (tile 179 at `(192,181)` / `(184,181)`).
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `L7_ROOM0C_EAST_BOMB` / `L7_ROOM0C_EAST_APPROACH`
+- `level7/hops.py`: `make_room0c_east_bomb_controller`
+- `level7/graph.py`: `TIP_OF_NOSE ram_id=0x0D`; `DODONGOS_BOSS_PATH`
+  RIGHT-bomb `verification=fixture-live`
+- tests live-prefix += `TIP_OF_NOSE: 0x0D`
+
+New dest fixture: `Level7Interior0DReconFixture` (west mouth; grabby).
+Optional interior pin `Level7Interior0DInteriorReconFixture` `(176,141)`.
+
+**Leftover glance:** L7 play **`0x0D` mode 5** `(32,141)` W mouth,
+Candle **2**, TF **0**, keys 2, bombs 6, selected 1 (bombs), whistle 1,
+food 0, ladder 1, 3 hearts. Wallmasters + `0x68`. `route_eligible=false`.
+
+Next: from interior leftover, spawn/kill 5 wallmasters (stay off walls),
+then RIGHT-push `0x68` `(192,144)` for stairs. Wooden sword only (rod=0
+on this recon pin). Do not hug x=32 / x=208.
+
+# L7 sitting leftover (rr-8t4.3, 2026-09-03 archive)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
 ## 2026-09-03 — L7-C cellar return through forced Digdogger (rr-8t4.3)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
@@ -828,9 +875,10 @@ New dest fixtures (disclosed writes: none; `development_only` /
 ## L7-C — Red Candle through shard leave
 
 - **chapter id:** `rr-8t4` clear / `level7`
-- **evidence label:** **fixture-live** through DODONGOS_BOSS_PATH `0x0C`
+- **evidence label:** **fixture-live** through TIP_OF_NOSE `0x0D`
   (cellar return `0x4A→0x1A` bomb-E `0x1B` KEY-E `0x1C` whistle+kill N
-  `0x0C`). Tip-of-nose / Aquamentus / shard / OW leave still **hypothesis**.
+  `0x0C` bomb-E `0x0D`). Nose-cellar / Aquamentus / shard / OW leave
+  still **hypothesis**.
 - **predecessor:** L7-B cellar `Level7Interior4AReconFixture` (Candle 2,
   Food 0, Whistle 1). Recon TF is 0 (poke-loadout chain), not the L6
   packet `0x3F`.
@@ -848,11 +896,13 @@ New dest fixtures (disclosed writes: none; `development_only` /
 - **expected deltas:** TF `0x3F→0x7F` (`0x40`), heart containers +1, full
   hearts, deaths 0. Post-fanfare OW leftover **UNMEASURED**.
 - **dead beliefs:** walk off candle pad y=141 as stairs return; 0x0C
-  y=141 centre RIGHT (tile 181 at x=128). Boss type Aquamentus still
-  hypothesized (verify).
-- **fixture:** `Level7Interior0CReconFixture` leftover play `0x0C`
-  `(120,205)` Candle 2. `route_eligible=false`.
-- **resume point:** 0x0C bomb-east (east-around) → TIP_OF_NOSE.
+  y=141 centre RIGHT (tile 181 at x=128); 0x0D west mouth is safe (grab
+  trap); 0x0D `0x68` RIGHT-pushes while wallmasters live. Boss type
+  Aquamentus still hypothesized (verify).
+- **fixture:** `Level7Interior0DReconFixture` leftover play `0x0D`
+  `(32,141)` Candle 2. `route_eligible=false`.
+- **resume point:** 0x0D kill 5 wallmasters (off-wall) then RIGHT-push
+  mid-right `0x68` `(192,144)` → stairs cellar.
 - **public target:** **`level7`**.
 
 ---
