@@ -60,6 +60,8 @@ _DEST_6B_ROOMS = (L3_ENTRY, L3_WEST_KEY, L3_NORTH_ZOLS, L3_DARKNUTS)
 
 __all__ = [
     "dest_6b_room_plan",
+    "level3_dest_6b_stages",
+    "level3_dest_6b_success",
     "l3_hops",
 ]
 
@@ -92,6 +94,23 @@ def _dest_6b_stages():
             NORTH_CHAIN_SPINE_MAX_FRAMES,
         ),
     )
+
+
+def level3_dest_6b_stages():
+    """Public alias for the L3 dest-0x5b stage list (0x7c west key → 0x6b north).
+
+    The ``l3-dest-6b`` :class:`SpineHop` calls :func:`_dest_6b_stages` directly;
+    this wrapper is the stable public entry point used by tooling and tests.
+    """
+    return _dest_6b_stages()
+
+
+# L3 dest-0x5b spine stop: play mode in a cleared 0x5b Darknuts room. The
+# ``l3-dest-6b`` hop encodes this inline via ``ready(..., spec=ROOM_5B_SPEC)``;
+# this is the same predicate exposed as a named callable.
+level3_dest_6b_success = ready(
+    level=LEVEL3, screen=ROOM_L3_DARKNUTS, spec=ROOM_5B_SPEC
+)
 
 
 def _raft_hop(through: str, stop: str, pred, name: str, max_frames: int) -> SpineHop:

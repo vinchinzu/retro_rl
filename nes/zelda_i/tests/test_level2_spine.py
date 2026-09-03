@@ -49,11 +49,11 @@ def test_backtrack_7d_recenters_live_timeout_pose() -> None:
     """survival_spine_l2_boom timed out in 0x6c at (128, 133) with ALIGN_TOL=6."""
     ctl = Level2BacktrackTo7dController()
     act = ctl.step(_snap(room=0x6C, x=128, y=133))
-    assert act.reason == "align_door_y"
+    assert act.reason == "door_align_y"
     act = ctl.step(_snap(room=0x6C, x=136, y=136))
-    assert act.reason == "align_door_y"
+    assert act.reason == "door_align_y"
     act = ctl.step(_snap(room=0x6C, x=136, y=141))
-    assert act.reason == "push_door"
+    assert act.reason == "door_push"
 
 
 def test_enter_6f_fails_without_keys() -> None:
