@@ -98,11 +98,16 @@ The implementation is `zelda_i.dungeon.ops.poke_food`, wired into
 (`SPINE_L7_RUPEE_RETOPUP`, 42→60) still fires before the stage and represents
 the cost paid. A natural buy from a mapped route replaces both.
 
-### One-room Link position — L6 0x3A stairs (operator exception, 2026-08-25)
+### One-room Link position — L6 0x3A stairs (retired, superseded 2026-09-03)
 
-Walk-on of the cleared 0x3A stairs is BLOCKED after six 3-red hops. One
-disclosed **Link-position** write is allowed so the same power-on session can
-leave 0x3A and continue L6. **Not Clean.** Dest is still RAM.
+**Retired.** `rr-tne2` (L6 Gohma) is closed. The natural south-band east-column
+walk-on (`rr-17co`, `l6_stairs3a_southband` 1/1, `position_writes=0`)
+superseded this poke; it is no longer used or authorized. Kept below for
+historical record only.
+
+Walk-on of the cleared 0x3A stairs was BLOCKED after six 3-red hops. One
+disclosed **Link-position** write was allowed so the same power-on session
+could leave 0x3A and continue L6. **Not Clean.** Dest was still RAM.
 
 Allowed fields only:
 
@@ -125,15 +130,13 @@ when Link exits at `x>=0x80`. The corrected controller keeps this same
 authorized target, crosses the tunnel floor to the right ladder at `x=192`,
 and reached play `0x1D` 1/1. No second position target or write was added.
 
-The implementation is `zelda_i.assist.poke_link_position`. `rr-17co`
+The implementation was `zelda_i.assist.poke_link_position`. `rr-17co`
 walked onto tile `0x71` at `(208,93)` via the south-band east column
-(`l6_stairs3a_southband` 1/1, hop 290f). Do not retry occupancy at y=149
-(ne71 v1–v3). Warp and cellar08 report `position_writes=0`. `--through
-level6-gohma` is still red at the column mouth shot, so `rr-tne2` stays
-open.
-
-This exception does not authorize walking the east door unarmed or fighting
-Gohma without bow+arrows.
+(`l6_stairs3a_southband` 1/1, hop 290f) with no retry of occupancy at y=149
+(ne71 v1–v3), and both the warp and cellar08 reported `position_writes=0`.
+`--through level6-gohma` subsequently went green and `rr-tne2` closed, so
+this position exception is retired — do not re-enable
+`poke_link_position` on the spine.
 
 ### Wooden arrows at L6 Gohma (operator exception, 2026-08-28)
 
@@ -173,7 +176,7 @@ forbidden.
 - undiscovered inventory items (see table above)
 - triforce / dungeon completion bits
 - room, screen, door, object, or map state
-- Link position, facing, or mode (except the one 0x3A `ADDR_LINK_X`/`ADDR_LINK_Y` pair above)
+- Link position, facing, or mode (the one 0x3A `ADDR_LINK_X`/`ADDR_LINK_Y` pair above is retired — see that section)
 - heart **containers** (high nibble of `ADDR_HEALTH`)
 - bomb **capacity** (`ADDR_MAX_BOMBS`)
 - timers / dialog counters
@@ -219,8 +222,8 @@ work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
 - no state loads after power-on (for natural-entry claims)
 - natural inventory / triforce acquisition
 - no progression or capacity writes
-- natural room and boss advancement (except the one disclosed 0x3A
-  Link-position write; room/door/inventory/TF still natural)
+- natural room and boss advancement (the one disclosed 0x3A Link-position
+  write is retired, see that section; room/door/inventory/TF still natural)
 
 ## Dual track (Clean vs assisted)
 

@@ -61,13 +61,11 @@ Dead on this checkbox:
 
 ---
 
-# L7 Wave A handoff (copy for integrator)
+## L7 chapter handoff (integrator reference)
 
-Did not STATUS-promote. Did not edit `STATUS.md`. `route_eligible=false`
-on every fixture. Shared spine still fail-closed at `level7_pond_drain_entry`.
-
-Public `--through` targets unchanged: `level7-entry`, `level7-red-candle`,
-`level7`.
+`route_eligible=false` on every fixture. Shared spine still fail-closed at
+`level7_pond_drain_entry`. Public `--through` targets unchanged:
+`level7-entry`, `level7-red-candle`, `level7`.
 
 ---
 

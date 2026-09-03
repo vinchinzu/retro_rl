@@ -46,6 +46,7 @@ from zelda_i.level9.natural_path import (
     NaturalSelectSilverArrowsController,
     make_post_l8_overworld_controller,
 )
+from zelda_i.level9.overworld import LEVEL9_ROCK_HOPS
 from zelda_i.level9.spine import L9_THROUGH
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
@@ -90,6 +91,12 @@ def test_public_through_names_are_exactly_four_chapters() -> None:
     )
     hops = l9_hops(None)
     assert tuple(h.through for h in hops) == L9_THROUGH
+
+
+def test_fixture_rock_path_aligns_for_0x78_north_mouth() -> None:
+    north_68 = next(hop for hop in LEVEL9_ROCK_HOPS if hop.target == 0x68)
+    assert north_68.direction == "UP"
+    assert north_68.align_x == 48
 
 
 def test_entry_stop_requires_tf_magic_key_and_bombs() -> None:

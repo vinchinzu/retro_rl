@@ -130,6 +130,8 @@ class ZeldaSnapshot:
     rod: int = 0  # ADDR_ROD; default 0 so older constructors still work
     bow: int = 0  # ADDR_BOW
     arrows: int = 0  # ADDR_ARROWS; wooden=1 silver=2
+    candle: int = 0  # ADDR_CANDLE; blue=1 red=2
+    food: int = 0  # ADDR_FOOD (meat)
 
     @property
     def overworld(self) -> bool:
@@ -244,6 +246,8 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         rod=read_u8(ram, ADDR_ROD),
         bow=read_u8(ram, ADDR_BOW),
         arrows=read_u8(ram, ADDR_ARROWS),
+        candle=read_u8(ram, ADDR_CANDLE),
+        food=read_u8(ram, ADDR_FOOD),
     )
 
 

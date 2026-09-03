@@ -8,9 +8,17 @@ route graph.
 
 Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
-One living residual: `docs/tasks/rr-tne2-residual.md`.
+One living residual: `docs/tasks/l7-handoff.md` (`rr-8t4.2`, dest `0x6B`
+GORIYA_HINT). `docs/tasks/rr-tne2-residual.md` is historical — `rr-tne2`
+(L6 Gohma) is closed.
 
-## Immediate — reactive Gohma kill (2026-09-02)
+## Historical — reactive Gohma kill (`rr-tne2`, closed) (2026-09-02)
+
+**Historical.** `rr-tne2` is closed; the L6 Gohma fight is done and this
+section (including the Phase 1–5 plan below, the `level6-clear3a` row
+included) is kept for evidence only, not a live target. Current living
+residual is `docs/tasks/l7-handoff.md` (`rr-8t4.2`, dest `0x6B`
+GORIYA_HINT).
 
 South-band CheckWarp **1/1** (`position_writes=0`, cellar `0x08` `(208,93)`).
 Cellar08 / south1d / west2d / north2c all **1/1**. Gohma reactive kill
@@ -60,7 +68,8 @@ Dedicated `--through level1-arrows` red on farm (9→10R). Wooden-arrow
 grant may stay until that splice greens. `ADDR_ARROWS` is item type,
 rupees are ammo.
 
-Living residual: `docs/tasks/rr-tne2-residual.md`.
+Historical residual (`rr-tne2`, closed): `docs/tasks/rr-tne2-residual.md`.
+Current living residual: `docs/tasks/l7-handoff.md` (`rr-8t4.2`).
 
 ### Session rule for every remaining checkbox
 
@@ -85,7 +94,11 @@ Parallel L7/L8/L9/OW lanes are fixture-live only
 (`docs/tasks/{l7,l8,l9,ow}-handoff.md`); do not attach them until Phase 4
 closes L6 leave.
 
-### Phase 1 — recompose the existing body through clear `0x3A`
+### Phase 1 — recompose the existing body through clear `0x3A` (historical, `rr-tne2` closed)
+
+**Historical.** This table, including the `level6-clear3a` row, documents
+the closed `rr-tne2` L6 recompose plan; it is not the live target. See
+`docs/tasks/l7-handoff.md` (`rr-8t4.2`) for the current living residual.
 
 Advance in the order below. Each row is a separate fresh power-on checkbox;
 do not batch past a red. “Expected leave” is historical geometry to verify,
@@ -1145,7 +1158,9 @@ Hitbox-gated sword + faster boot landed (not a STATUS promote):
   dialog idle 180f.
 
 Residual room-by-room combat polish only if a clear regresses under hitbox gate.
-See `docs/tasks/rr-tne2-residual.md` / `bd ready -l zelda_i -l spine`.
+See `docs/tasks/l7-handoff.md` (current living residual) / `bd ready -l
+zelda_i -l spine`. `docs/tasks/rr-tne2-residual.md` is historical (`rr-tne2`
+closed).
 
 ## Notes
 

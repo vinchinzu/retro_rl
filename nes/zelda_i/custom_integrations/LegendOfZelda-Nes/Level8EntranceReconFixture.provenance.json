@@ -1,0 +1,100 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T14:20:35.752845+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.1",
+    "burn_recipe": {
+      "facing": "RIGHT",
+      "notes": [
+        "sourced from a 5856-trial live sweep, nes/zelda_i/logs/level8_bush_burn_sweep.json",
+        "sweep also confirmed the same entry room from (120,93)/(128,93) RIGHT,",
+        "(184,93)/(192,93)/(200,93) LEFT, and (160,77) DOWN \u2014 all converge on 0x7E",
+        "entry does NOT complete on UP alone after mode16; continuing the SAME",
+        "push_direction used to fire is what carries Link through into level 8",
+        "(BurnLevel8BushController's ENTER phase always sends UP \u2014 flagged, not changed)"
+      ],
+      "push_direction": "RIGHT",
+      "stand_xy": [
+        136,
+        93
+      ]
+    },
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address_hex": [
+          "0x0070",
+          "0x0084"
+        ],
+        "addresses": [
+          112,
+          132
+        ],
+        "name": "teleport_to_burn_stand",
+        "note": "not a walked position; teleport from Stage-1 fixture stand",
+        "values": [
+          136,
+          93
+        ]
+      }
+    ],
+    "natural_entry": false,
+    "phase": "level8_first_live_interior_entry",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "candle_used_after_fire": true,
+    "cur_opened_doors": 0,
+    "entry_room": 126,
+    "entry_room_hex": "0x7e",
+    "objects": [
+      {
+        "facing": 8,
+        "hp": 0,
+        "slot": 0,
+        "state": 0,
+        "type_id": 0,
+        "x": 120,
+        "y": 205
+      }
+    ],
+    "ok": true,
+    "open_doorway_mask": 0,
+    "reached_frame_after_push": 111,
+    "room_all_dead": 0,
+    "room_item_id": 3,
+    "room_obj_count": 3,
+    "state": {
+      "bombs": 0,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 47,
+      "is_updating_mode": 0,
+      "keys": 0,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 109,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "room": 126,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 3,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 127,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8BushWithCandleFixture.state",
+  "source_state_sha256": "001a267b2cc954d0b09e14bcf89f7b3a215d7ea98bc6e57ed8fe327de0d594ef",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8EntranceReconFixture.state",
+  "state_sha256": "edd013a4ffa402cfa08995bdafd14bcc1c8f79847050c7c0f64b13dcbb7d5ca5"
+}

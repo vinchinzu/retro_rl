@@ -140,6 +140,37 @@ class BushBurnTarget:
 # belief in docs; the canonical controller receives no executable target.
 UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 
+# Fixture-only live recon (rr-6o7.1): nes/zelda_i/scratch/level8_bush_burn_sweep.py
+# ran a 5856-trial live sweep from Level8BushWithCandleFixture (candle
+# owned+selected, triforce 0x7F, Link teleported to a documented-standable OW
+# 0x6D tile -- NOT the measured natural post-L7 walk, so this is fixture-live,
+# not route evidence). Firing the Red Candle at (136, 93) facing RIGHT and
+# continuing RIGHT reproducibly transitions mode 5 -> 16 -> ... -> 5 with
+# level==8, landing at live screen 0x7E, (120, 205), facing UP. The same
+# entry room was reproduced from (120, 93)/(128, 93) facing+push RIGHT,
+# (184, 93)/(192, 93)/(200, 93) facing+push LEFT, and (160, 77) facing+push
+# DOWN -- one secret tile, several approach angles. Captured as
+# Level8EntranceReconFixture (see nes/zelda_i/scratch/capture_level8_entrance_fixture.py
+# and its .provenance.json). NOTE for a future natural-entry attempt:
+# BurnLevel8BushController's ENTER phase always sends UP after mode==16; the
+# live sweep found that UP alone does *not* complete the transition here --
+# continuing the same push_direction used to fire is what carries Link
+# through. That controller is out of scope for this bead and was not
+# changed; flagging it here so the real post-L7 attempt does not repeat the
+# same dead end. Evidence is fixture-live: verified=True (it reliably
+# reproduces), but route_eligible stays False since the real predecessor is
+# still the unmeasured PostLevel7Handoff, not a natural walk.
+LIVE_RECON_BUSH_BURN_TARGET = BushBurnTarget(
+    link_x=136,
+    link_y=93,
+    facing="RIGHT",
+    push_direction="RIGHT",
+    tolerance=4,
+    evidence="live_recon_fixture",
+    verified=True,
+    route_eligible=False,
+)
+
 
 class ApproachPhase(Enum):
     HOP = auto()

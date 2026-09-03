@@ -1,0 +1,131 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T14:02:10.679441+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.1",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1627,
+        "address_hex": "0x065B",
+        "name": "red_candle",
+        "value": 2
+      },
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "name": "selected_item_candle",
+        "value": 4
+      },
+      {
+        "address": 1649,
+        "address_hex": "0x0671",
+        "name": "triforce_post_l7",
+        "value": 127
+      },
+      {
+        "address": 112,
+        "address_hex": "0x0070",
+        "name": "stand_x_safe_central_0x6d",
+        "value": 48
+      },
+      {
+        "address": 132,
+        "address_hex": "0x0084",
+        "name": "stand_y_safe_central_0x6d",
+        "value": 90
+      }
+    ],
+    "notes": [
+      "Stage-1 fixture for rr-6o7.1: candle+selected+triforce+stand",
+      "position poked directly, not walked (documented-walkable tile)",
+      "search loop must never write ADDR_SELECTED_ITEM/inventory itself"
+    ],
+    "phase": "level8_bush_ow_candle_ready",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "candle": 2,
+    "ok": true,
+    "selected_item": 4,
+    "state": {
+      "bombs": 0,
+      "cur_opened_doors": 8,
+      "facing": 4,
+      "health": 47,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 109,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 0,
+          "y": 151
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 35,
+          "y": 125
+        },
+        {
+          "hp": 32,
+          "slot": 3,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 234,
+          "y": 157
+        },
+        {
+          "hp": 32,
+          "slot": 4,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 15,
+          "y": 189
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "state": 0,
+          "type_id": 100,
+          "type_name": "unknown_object_0x64",
+          "x": 160,
+          "y": 96
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 109,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 4,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 127,
+      "x": 48,
+      "y": 93
+    },
+    "triforce": "0x7f"
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8BushOW.state",
+  "source_state_sha256": "9a4141fd153245b3979509753b752315251068c9bbd2d7e2a0c3a122d33960d6",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8BushWithCandleFixture.state",
+  "state_sha256": "001a267b2cc954d0b09e14bcf89f7b3a215d7ea98bc6e57ed8fe327de0d594ef"
+}

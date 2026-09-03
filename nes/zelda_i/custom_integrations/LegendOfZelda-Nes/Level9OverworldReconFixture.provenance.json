@@ -1,0 +1,225 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T14:02:04.230889+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.5",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1622,
+        "address_hex": "0x0656",
+        "from": 0,
+        "name": "selected_item_silver_arrows",
+        "to": 2
+      },
+      {
+        "address": 1623,
+        "address_hex": "0x0657",
+        "from": 1,
+        "name": "magical_sword",
+        "to": 3
+      },
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "from": 0,
+        "name": "bombs",
+        "to": 16
+      },
+      {
+        "address": 1625,
+        "address_hex": "0x0659",
+        "from": 0,
+        "name": "silver_arrows",
+        "to": 2
+      },
+      {
+        "address": 1626,
+        "address_hex": "0x065A",
+        "from": 0,
+        "name": "bow",
+        "to": 1
+      },
+      {
+        "address": 1627,
+        "address_hex": "0x065B",
+        "from": 0,
+        "name": "red_candle",
+        "to": 2
+      },
+      {
+        "address": 1628,
+        "address_hex": "0x065C",
+        "from": 0,
+        "name": "whistle",
+        "to": 1
+      },
+      {
+        "address": 1629,
+        "address_hex": "0x065D",
+        "from": 0,
+        "name": "food",
+        "to": 1
+      },
+      {
+        "address": 1630,
+        "address_hex": "0x065E",
+        "from": 0,
+        "name": "red_potion",
+        "to": 2
+      },
+      {
+        "address": 1631,
+        "address_hex": "0x065F",
+        "from": 0,
+        "name": "magic_rod",
+        "to": 1
+      },
+      {
+        "address": 1632,
+        "address_hex": "0x0660",
+        "from": 0,
+        "name": "raft",
+        "to": 1
+      },
+      {
+        "address": 1633,
+        "address_hex": "0x0661",
+        "from": 0,
+        "name": "book",
+        "to": 1
+      },
+      {
+        "address": 1634,
+        "address_hex": "0x0662",
+        "from": 0,
+        "name": "red_ring",
+        "to": 2
+      },
+      {
+        "address": 1635,
+        "address_hex": "0x0663",
+        "from": 0,
+        "name": "ladder",
+        "to": 1
+      },
+      {
+        "address": 1636,
+        "address_hex": "0x0664",
+        "from": 0,
+        "name": "magic_key",
+        "to": 1
+      },
+      {
+        "address": 1637,
+        "address_hex": "0x0665",
+        "from": 0,
+        "name": "bracelet",
+        "to": 1
+      },
+      {
+        "address": 1638,
+        "address_hex": "0x0666",
+        "from": 0,
+        "name": "letter",
+        "to": 1
+      },
+      {
+        "address": 1645,
+        "address_hex": "0x066D",
+        "from": 6,
+        "name": "rupees",
+        "to": 255
+      },
+      {
+        "address": 1646,
+        "address_hex": "0x066E",
+        "from": 0,
+        "name": "keys",
+        "to": 9
+      },
+      {
+        "address": 1647,
+        "address_hex": "0x066F",
+        "from": 32,
+        "name": "health_16_full",
+        "to": 255
+      },
+      {
+        "address": 1649,
+        "address_hex": "0x0671",
+        "from": 0,
+        "name": "triforce_all_8",
+        "to": 255
+      },
+      {
+        "address": 1652,
+        "address_hex": "0x0674",
+        "from": 0,
+        "name": "wood_boomerang",
+        "to": 1
+      },
+      {
+        "address": 1653,
+        "address_hex": "0x0675",
+        "from": 0,
+        "name": "magic_boomerang",
+        "to": 1
+      },
+      {
+        "address": 1654,
+        "address_hex": "0x0676",
+        "from": 0,
+        "name": "magic_shield",
+        "to": 1
+      },
+      {
+        "address": 1660,
+        "address_hex": "0x067C",
+        "from": 8,
+        "name": "max_bombs",
+        "to": 16
+      }
+    ],
+    "phase": "level9_overworld_recon_fixture",
+    "route_eligible": false,
+    "segment": "Level9OverworldReconFixture",
+    "track": "recon_fixture",
+    "via": "OW_77 (live power-on-derived OW checkpoint at SCREEN_START 0x77, mode 5, wooden sword) + FULL_LOADOUT poke table (stair_session.py house style) to grant full first-quest inventory (incl. Magical Sword, TF 0xFF, bombs) for isolated Spectacle Rock approach recon. Never poked rooms/doors."
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "frame": 0,
+    "ok": true,
+    "state": {
+      "bombs": 16,
+      "cur_opened_doors": 1,
+      "facing": 2,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 119,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "room": 119,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 209,
+      "y": 133
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/OW_77.state",
+  "source_state_sha256": "64a33a61bbb6cbc7d29b447117ff55be6d350b61360229861918e4b3df81e27f",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9OverworldReconFixture.state",
+  "state_sha256": "054ae5e91f23bbdc57cd4ac7481d75d0e88336db6e1a4b384348d5d9fd890230"
+}

@@ -1,7 +1,9 @@
 # Overnight Survival spine — historical BLOCKED log
 
 This file is a **historical BLOCKED log**, not the overnight hop queue.
-Living residual and current hop: [`rr-tne2-residual.md`](rr-tne2-residual.md).
+Living residual and current hop: [`l7-handoff.md`](l7-handoff.md)
+(`rr-8t4.2`, dest `0x6B` GORIYA_HINT). `rr-tne2-residual.md` is historical —
+`rr-tne2` (L6 Gohma) is closed.
 Catalog cleanup removed walk-on stairs3a* / exit-ow from `L6_THROUGH`.
 Do not restore those through-names. Unchecked `stairs3a-ne71` (and other
 walk-on stairs) are **superseded** — off the spine.
@@ -9,7 +11,8 @@ walk-on stairs) are **superseded** — off the spine.
 Do not STATUS. Do not overwrite Clean M5. `--no-video` on hop trials.
 Encode **one** watchable MP4 only after L9 credits greens.
 
-**Bead:** `rr-tne2` (open until L6 TF `0x20`).
+**Bead:** `rr-tne2` — **closed** (L6 TF `0x20` reached). Current living
+bead is `rr-8t4.2` (dest `0x6B` GORIYA_HINT); see `l7-handoff.md`.
 
 **Lock:** if `overnight-lock.json` has `status=running`, do not start a
 second `run_survival_spine`. Spine to L6 is ~220k frames (~60 min).
@@ -45,7 +48,9 @@ stairs3a-ne71 was a sibling; it is **superseded** (walk-on stairs off
 
 ## Tip (historical — 2026-08-25 stairs halt)
 
-Living hop is [`rr-tne2-residual.md`](rr-tne2-residual.md) (east3a dest).
+Living hop at the time of this halt was `rr-tne2-residual.md` (east3a dest);
+`rr-tne2` is now closed and that file is historical. Current living residual:
+[`l7-handoff.md`](l7-handoff.md) (`rr-8t4.2`, dest `0x6B` GORIYA_HINT).
 Walk-on stairs3a* through-names stay off `L6_THROUGH`.
 
 **Leave predecessor (real):** `--through level6-clear3a` 1/1
@@ -140,7 +145,9 @@ keys, Map, Whistle, TF bits, rupees, undiscovered items.
 
 ## Historical worker hop (stairs3a-ne71 — superseded)
 
-Living hop is [`rr-tne2-residual.md`](rr-tne2-residual.md) (east3a dest).
+Living hop at the time was `rr-tne2-residual.md` (east3a dest); `rr-tne2` is
+now closed and that file is historical. Current living residual:
+[`l7-handoff.md`](l7-handoff.md) (`rr-8t4.2`, dest `0x6B` GORIYA_HINT).
 `level6-stairs3a-ne71` is **superseded** — walk-on stairs off `L6_THROUGH`;
 do not restore that through-name.
 
@@ -215,8 +222,9 @@ stairs push is **forbidden**. Coordinate clip only after a live miss.
 
 ## Hop queue (historical labels — living dest is the residual)
 
-Names below are **historical queue labels**. Living dest hop:
-[`rr-tne2-residual.md`](rr-tne2-residual.md). Walk-on stairs3a* / exit-ow
+Names below are **historical queue labels**. `rr-tne2` is closed; living
+dest hop is now [`l7-handoff.md`](l7-handoff.md) (`rr-8t4.2`, dest `0x6B`
+GORIYA_HINT), not `rr-tne2-residual.md`. Walk-on stairs3a* / exit-ow
 are **off** `L6_THROUGH`; do not restore those through-names. None of
 L7/L8/L9 OW modules are spine-green. Do not claim `level7_overworld.py` /
 `level8_overworld.py` / `level9_*` as continuous Survival.
@@ -224,7 +232,7 @@ L7/L8/L9 OW modules are spine-green. Do not claim `level7_overworld.py` /
 Forbidden on every hop: doors, keys, undiscovered items, Map, Whistle,
 bow/arrows grants, TF pokes.
 
-### A. Finish L6 TF `0x20` (`rr-tne2`)
+### A. Finish L6 TF `0x20` (`rr-tne2`, closed)
 
 | # | `--through` | Leftover start | Stop predicate | One-change checkbox |
 |---|-------------|----------------|----------------|---------------------|
@@ -280,10 +288,11 @@ Leave toward `0x79` **abandoned**. #1b stairs3a-71 **BLOCKED** (RIGHT on
 119 at x=184). #1c stairs3a-ne **BLOCKED** (UP on 119 at x=160). #1d
 stairs3a-ne71 **superseded** (walk-on stairs off `L6_THROUGH`; do not
 restore). Do not stairs3a-ne v4. Do not invent/fight Gohma. Do not poke.
-#14 unarmed → bow detour **after dest**. Living dest:
-[`rr-tne2-residual.md`](rr-tne2-residual.md).
+#14 unarmed → bow detour **after dest**. `rr-tne2` is closed; current living
+dest: [`l7-handoff.md`](l7-handoff.md) (`rr-8t4.2`, dest `0x6B`
+GORIYA_HINT).
 
-### B. L7 TF `0x40` (child bead after `rr-tne2` closes)
+### B. L7 TF `0x40` (`rr-tne2` closed — this is the active lane; see `l7-handoff.md` / `rr-8t4.2`)
 
 Whistle **owned** (L5). Need **Bait 60R** (Hungry Goriya). Pond drain
 `0x42` (source). Scaffold: `level7_overworld.py`,
