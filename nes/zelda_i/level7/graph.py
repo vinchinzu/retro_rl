@@ -252,12 +252,34 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "red_candle_cellar",
         ram_id=0x4A,
         role="live: mode 9 two-ladder item cellar; Red Candle on the center "
-        "pad; ADDR_CANDLE 0->2 NATURAL at ~(135,141); keese 0x1b",
+        "pad; ADDR_CANDLE 0->2 NATURAL at ~(135,141); keese 0x1b; stairs "
+        "return west-ladder UP -> play 0x1A (96,157)",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(GORIYA_PRE_DIG, "goriya_pre_forced_dig"),
-    Level7RoomHyp(FORCED_DIGDOGGER, "forced_digdogger"),
-    Level7RoomHyp(DODONGOS_BOSS_PATH, "dodongos_boss_path"),
+    Level7RoomHyp(
+        GORIYA_PRE_DIG,
+        "goriya_pre_forced_dig",
+        ram_id=0x1B,
+        role="live: goriya 0x05, open floor, entry (32,141) W mouth; "
+        "KEY-east (diamond lock); bombs 8->7 from 0x1A east bomb",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        FORCED_DIGDOGGER,
+        "forced_digdogger",
+        ram_id=0x1C,
+        role="live: digdogger 0x38 at (208,141), entry (16,141) W mouth; "
+        "KEY-east from 0x1B (keys 3->2); north door KILL_CLEAR after shrink",
+        evidence="fixture-live",
+    ),
+    Level7RoomHyp(
+        DODONGOS_BOSS_PATH,
+        "dodongos_boss_path",
+        ram_id=0x0C,
+        role="live: 3x 0x31 (dodongo-family), entry (120,205) S mouth; "
+        "KILL-CLEAR north of forced Digdogger 0x1C",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(TIP_OF_NOSE, "tip_of_nose_wallmasters", role="block_stairs"),
     Level7RoomHyp(NOSE_CELLAR, "nose_cellar"),
     Level7RoomHyp(PRE_BOSS, "pre_boss"),
@@ -671,18 +693,60 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 ),
                 verification="fixture-live",
             ),
-            _e(DoorDir.RIGHT, GORIYA_PRE_DIG, GateKind.BOMB),
+            _e(
+                DoorDir.RIGHT,
+                GORIYA_PRE_DIG,
+                GateKind.BOMB,
+                notes=(
+                    "live dest $EB=0x1B 2/2; south-around "
+                    "(96,189)->(208,189)->(208,141) face RIGHT; "
+                    "bombs 8->7; dest goriya 0x05 (32,141) W mouth"
+                ),
+                verification="fixture-live",
+            ),
         ),
         RED_CANDLE_CELLAR: (
-            _open(DoorDir.UP, CANDLE_PUSH, notes="stairs return"),
+            _e(
+                DoorDir.UP,
+                CANDLE_PUSH,
+                notes=(
+                    "live dest $EB=0x1A play 2/2 (4a_ret_v7/v8). Dead: walk "
+                    "off the pad at y=141 (tile 243) as the return. Recipe: "
+                    "RIGHT y=141 to east column x~192, LEFT+DOWN drop to "
+                    "floor y=189, LEFT x=48, UP west ladder (tile 111) until "
+                    "stairs. Leftover play (96,157) candle 2"
+                ),
+                verification="fixture-live",
+            ),
         ),
         GORIYA_PRE_DIG: (
             _open(DoorDir.LEFT, CANDLE_PUSH),
-            _e(DoorDir.RIGHT, FORCED_DIGDOGGER, GateKind.KEY),
+            _e(
+                DoorDir.RIGHT,
+                FORCED_DIGDOGGER,
+                GateKind.KEY,
+                notes=(
+                    "live dest $EB=0x1C 2/2; y=141 RIGHT spends a key "
+                    "(3->2); dest digdogger 0x38 (16,141) W mouth. "
+                    "Do not skip this fight (north is KILL_CLEAR)"
+                ),
+                verification="fixture-live",
+            ),
         ),
         FORCED_DIGDOGGER: (
             _back(DoorDir.RIGHT, GORIYA_PRE_DIG),
-            _e(DoorDir.UP, DODONGOS_BOSS_PATH, GateKind.KILL_CLEAR, notes="must kill"),
+            _e(
+                DoorDir.UP,
+                DODONGOS_BOSS_PATH,
+                GateKind.KILL_CLEAR,
+                notes=(
+                    "live dest $EB=0x0C 2/2 (1c_wh_v3/v4); pause-select "
+                    "recorder=5 (no ADDR_SELECTED_ITEM poke), 12xB shrinks "
+                    "0x38 HP240 -> 3x 0x18 HP128, sword-kill, north. Dest "
+                    "3x 0x31 (120,205) S mouth"
+                ),
+                verification="fixture-live",
+            ),
         ),
         DODONGOS_BOSS_PATH: (
             _back(DoorDir.UP, FORCED_DIGDOGGER),

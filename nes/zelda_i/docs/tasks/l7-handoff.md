@@ -1,3 +1,60 @@
+# L7 sitting leftover (rr-8t4.3, 2026-09-03)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
+## 2026-09-03 — L7-C cellar return through forced Digdogger (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
+`route_eligible=false`. L7-C chapter stages stay fail-closed.
+`PostLevel7Handoff.verified` stays false. No invented OW leave screen.
+
+**Pin was** `Level7Interior4AReconFixture` — L7 cellar `$EB=0x4A` mode 9
+`(136,141)`, Candle 2 NATURAL, keys 3, bombs 8, food 0, whistle 1,
+ladder 1, TF 0, keese `0x1b`.
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 0x4A west-ladder stairs return | play **`$EB=0x1A` mode 5** `(96,157)` | RIGHT y=141 to east column, LEFT+DOWN drop, LEFT x=48, UP tile 111 | **2/2** (`4a_ret_v7`/`v8`; `Room4AReturnController` `4a_ctl_v1`/`v2` 557f) |
+| 0x1A bomb-E south-around `(208,141)` RIGHT | **`$EB=0x1B`** `(32,141)` W mouth | goriya `0x05`; bombs 8→7 | **2/2** (`1a_be_v1`/`v2`) |
+| 0x1B KEY-E y=141 RIGHT | **`$EB=0x1C`** `(16,141)` W mouth | digdogger `0x38` HP 240 + statue `0x55`; keys 3→2 NATURAL | **2/2** (`1b_ke_v2`/`v3`) |
+| 0x1C Whistle shrink + sword + KILL-CLEAR N | **`$EB=0x0C`** `(120,205)` S mouth | pause-select recorder=5 (seen 1→4→5, no `$0656` poke), 12×B 0x38→3×0x18 HP128, sword; dest 3× `0x31` | **2/2** (`1c_wh_v3`/`v4`; fixture `v5`) |
+
+Dead beliefs dated:
+- Dead: walk off the candle pad at y=141 as the stairs return (tile 243).
+  Cardinal UP from the pad is also stuck. Return is east-column LEFT+DOWN
+  then west-ladder UP `(48,93)`.
+- Dead: 0x0C y=141 centre RIGHT reaches the east bomb wall — boxed at
+  `(128,141)` tile 181 (`0c_be_v1`). East-around like 0x58 is next.
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room4AReturnController` / `room_4a_return_step`,
+  `L7_ROOM1A_EAST_BOMB`, `Room1BKeyEastController` / `room_1b_key_east_step`
+- `level7/hops.py`: `make_room4a_return_controller`,
+  `make_room1a_east_bomb_controller`, `make_room1b_key_east_controller`
+- `level7/graph.py`: `CANDLE_PUSH` RIGHT-bomb `verification=fixture-live`;
+  `GORIYA_PRE_DIG ram_id=0x1B`; `FORCED_DIGDOGGER ram_id=0x1C`;
+  `DODONGOS_BOSS_PATH ram_id=0x0C`; matching KEY / KILL_CLEAR exits
+  `verification=fixture-live`. `RED_CANDLE_CELLAR` UP now fixture-live.
+- tests live-prefix += `GORIYA_PRE_DIG:0x1B`, `FORCED_DIGDOGGER:0x1C`,
+  `DODONGOS_BOSS_PATH:0x0C`
+
+0x1C fight is **probe-2/2** (no HopController yet; pause-select is
+env-scripted like L5 `select_b_item_menu`). Chapter
+`make_forced_digdogger_controller` stays fail-closed.
+
+New dest fixtures (gitignored `.state` + provenance JSON):
+`Level7Interior1AReturnedReconFixture`, `Level7Interior1BReconFixture`,
+`Level7Interior1CReconFixture`, `Level7Interior0CReconFixture`.
+
+**Leftover glance:** L7 play **`0x0C` mode 5** `(120,205)` S mouth,
+Candle **2**, TF **0**, keys 2, bombs 7, selected 5 (recorder), whistle 1,
+food 0, ladder 1, 3× `0x31`. `route_eligible=false`.
+
+Next: 0x0C bomb-east (east-around the y=141 tile-181 mass) → TIP_OF_NOSE.
+
 # L7 sitting leftover (rr-8t4.2, 2026-09-03)
 
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.2` stays
@@ -743,9 +800,9 @@ New dest fixtures (disclosed writes: none; `development_only` /
   red_candle_pickup`. Stages 1a–1n are recon-wired only.
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
-- **resume point:** from `Level7Interior4AReconFixture` (cellar `0x4A`
-  mode 9 `(135,141)`, Candle 2 NATURAL). Stairs return to 0x1A still
-  unobserved. See the "0x1A block push + Red Candle cellar" sitting.
+- **resume point:** L7-C took the cellar return. Leftover is now
+  `Level7Interior0CReconFixture` play `0x0C` `(120,205)` Candle 2.
+  See the rr-8t4.3 sitting at the top of this file.
 - **expected deltas:** Food 1→0 at Hungry Goriya; Candle **0→2** at cellar
   (Blue Candle was never bought).
   Ledger hyp net (dungeon): keys +1+1−1−1+1−1, bombs several −1 wall skips.
@@ -771,20 +828,31 @@ New dest fixtures (disclosed writes: none; `development_only` /
 ## L7-C — Red Candle through shard leave
 
 - **chapter id:** `rr-8t4` clear / `level7`
-- **evidence label:** **hypothesis**
-- **predecessor:** L7-B (Candle 2, Food 0, TF `0x3F`, Whistle owned)
+- **evidence label:** **fixture-live** through DODONGOS_BOSS_PATH `0x0C`
+  (cellar return `0x4A→0x1A` bomb-E `0x1B` KEY-E `0x1C` whistle+kill N
+  `0x0C`). Tip-of-nose / Aquamentus / shard / OW leave still **hypothesis**.
+- **predecessor:** L7-B cellar `Level7Interior4AReconFixture` (Candle 2,
+  Food 0, Whistle 1). Recon TF is 0 (poke-loadout chain), not the L6
+  packet `0x3F`.
 - **required:** Whistle (forced Digdogger), Candle 2, incoming heart
   container count recorded
 - **stages / factories:**
   1. `level7_forced_digdogger` — `make_forced_digdogger_controller()`
+     (still fail-closed). Recon-wired: `make_room4a_return_controller`
+     2/2, `make_room1a_east_bomb_controller` 2/2,
+     `make_room1b_key_east_controller` 2/2. 0x1C fight is probe-2/2 only.
   2. `level7_aquamentus_heart` — `make_aquamentus_heart_controller()`
   3. `level7_shard_and_settled_leave` — `make_level7_shard_leave_controller()`
 - **endpoint:** `level7_complete_stop` — TF `0x7F`, Candle 2, Whistle ≥1,
   hearts +1 and full, measured settled OW leave. Leave screen `None` → fail closed.
 - **expected deltas:** TF `0x3F→0x7F` (`0x40`), heart containers +1, full
   hearts, deaths 0. Post-fanfare OW leftover **UNMEASURED**.
-- **dead beliefs:** none live. Boss type Aquamentus hypothesized (verify).
-- **fixture:** none. `route_eligible=false`.
+- **dead beliefs:** walk off candle pad y=141 as stairs return; 0x0C
+  y=141 centre RIGHT (tile 181 at x=128). Boss type Aquamentus still
+  hypothesized (verify).
+- **fixture:** `Level7Interior0CReconFixture` leftover play `0x0C`
+  `(120,205)` Candle 2. `route_eligible=false`.
+- **resume point:** 0x0C bomb-east (east-around) → TIP_OF_NOSE.
 - **public target:** **`level7`**.
 
 ---
