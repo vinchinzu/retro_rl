@@ -10,6 +10,8 @@ from zelda_i.level7.dungeon import (
     LEVEL7_COMPLETE_STOP,
     LEVEL7_ENTRY_STOP,
     LEVEL7_RED_CANDLE_STOP,
+    RED_CANDLE,
+    TF_AFTER_LEVEL7,
     TF_BEFORE_LEVEL7,
     level7_complete_stop,
     level7_entry_stop,
@@ -85,6 +87,34 @@ def test_entry_room_is_live_but_stop_stays_fail_closed() -> None:
     assert not level7_red_candle_stop(snap, candle=2, whistle=1, food=0)
     assert not level7_complete_stop(
         snap, candle=2, whistle=1, incoming_heart_containers=12
+    )
+
+
+def test_complete_stop_fails_closed_when_leave_screen_is_none() -> None:
+    """TF 0x7F + Candle 2 + HC+1 + full hearts is not a leave without a screen."""
+    # 9 containers full: hi=8 lo=8 → 0x88. Dummy OW pose is not a measured leave.
+    ram = _ram(
+        level=0,
+        screen=0x00,
+        x=112,
+        y=125,
+        triforce=TF_AFTER_LEVEL7,
+        health=0x88,
+    )
+    snap = read_snapshot(ram)
+    assert TF_AFTER_LEVEL7 == 0x7F
+    assert RED_CANDLE == 2
+    assert LEVEL7_COMPLETE_STOP.screen is None
+    assert LEVEL7_COMPLETE_STOP.level is None
+    assert LEVEL7_COMPLETE_STOP.evidence == "hypothesis"
+    assert not LEVEL7_COMPLETE_STOP.route_eligible
+    assert snap.heart_containers == 9
+    assert snap.health_is_full
+    assert not level7_complete_stop(
+        snap, candle=RED_CANDLE, whistle=1, incoming_heart_containers=8
+    )
+    assert not level7_complete_stop(
+        snap, candle=RED_CANDLE, whistle=1, incoming_heart_containers=None
     )
 
 

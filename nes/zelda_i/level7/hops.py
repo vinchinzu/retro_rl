@@ -160,23 +160,55 @@ def make_red_candle_controller() -> Level7PathController:
 
 
 def make_forced_digdogger_controller() -> Level7PathController:
+    """Fail-closed until the live post-Candle walk and forced Digdogger census.
+
+    Graph hyp (source ids, not RAM): return CANDLE_PUSH, bomb-east
+    GORIYA_PRE_DIG, key-east FORCED_DIGDOGGER (must kill). Whistle shrinks
+    type ``0x38`` → ``0x18``. Recipe: ``level5.whistle_path.select_b_item_menu``
+    want=5 (``level5.boss_path.WHISTLE_B_SLOT``, recorder), then 12×B as in
+    ``level5.boss_path.fight_digdogger``. Do not poke ``ADDR_SELECTED_ITEM``.
+    Do not invent a live ``$EB`` for this room.
+    """
     return unverified_path_controller(
         "level7_forced_digdogger",
-        "live post-Candle route and forced Digdogger room census",
+        "live post-Candle route and forced Digdogger room census "
+        "(Whistle B-slot 5 shrink; no invented $EB)",
     )
 
 
 def make_aquamentus_heart_controller() -> Level7PathController:
+    """Fail-closed until live boss room, natural defeat, and one HC pickup.
+
+    Reuse ``zelda_i.level1.finish.Level1AquamentusController`` combat
+    (ALIGN/FACE/ATTACK/DODGE/COLLECT_HEART). Do not copy a second engine.
+    Skip L1 ROUTE_ENTRY (0x45 waypoints / enter UP): L7 graph enters from
+    the west (PRE_BOSS bomb-east). Parameterize room_id once live ``$EB``
+    is observed — do not assume L1 ``0x35``. Remeasure stance and heart
+    tile; verify type ``0x3D`` + fireballs ``0x55``. Sword-only
+    (Survival ``tank_hits=True``).
+    """
     return unverified_path_controller(
         "level7_aquamentus_heart",
-        "live boss room, natural defeat, and one heart-container pickup",
+        "live boss room, natural defeat, and one heart-container pickup "
+        "(reuse Level1AquamentusController; no invented $EB)",
     )
 
 
 def make_level7_shard_leave_controller() -> Level7PathController:
+    """Fail-closed until live shard room and settled post-fanfare OW leftover.
+
+    Graph hyp: heart then east TRIFORCE, then idle through fanfare (same
+    shape as ``Level6ExitController`` — do not walk the warp). Fill
+    MEASURED_POST_L7_EXIT from that leftover via
+    ``overworld.stitch.handoff_from_ram`` using the MEASURED_POST_L6_EXIT
+    field list. Screen/x/y stay None until measured. ``verified`` stays
+    False. Do not invent the leave screen. L8 keeps
+    ``PostLevel7Handoff.verified=False`` until this packet is real.
+    """
     return unverified_path_controller(
         "level7_shard_and_settled_leave",
-        "live shard room and exact settled post-fanfare overworld handoff",
+        "live shard room and exact settled post-fanfare overworld handoff "
+        "(MEASURED_POST_L7_EXIT screen still None; verified stays False)",
     )
 
 
@@ -223,7 +255,12 @@ def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
 
 
 def level7_complete_chapter_stages() -> tuple[Stage, ...]:
-    """Fresh Red Candle boundary -> bosses -> heart -> shard -> settled leave."""
+    """Fresh Red Candle boundary -> bosses -> heart -> shard -> settled leave.
+
+    All three factories are fail-closed blockers. Do not mark route_eligible.
+    Public leftover contract is in ``level7.dungeon.LEVEL7_COMPLETE_STOP``
+    and ``docs/tasks/l7c-prep-2026-09-03.md``.
+    """
     return (
         _stage("level7_forced_digdogger", make_forced_digdogger_controller),
         _stage("level7_aquamentus_heart", make_aquamentus_heart_controller),
