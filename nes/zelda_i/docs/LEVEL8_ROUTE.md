@@ -268,7 +268,7 @@ predecessor may promote the handoff/topology/endpoint contracts.
 1. Receive the measured natural post-L7 leave/inventory and derive its hop
    table through live `0x5C` geometry to **0x6D**.
 2. From Red-Candle state: one live trial of the (144, 93) RIGHT/UP hypothesis
-   on **0x6D** (halt 3 serial reds). Do not revive (136, 93).
+   on **0x6D**. Do not revive (136, 93).
 3. Live-confirm entry → Magical Key → Gleeok body type / shard rooms without
    promoting source room IDs. Magical Key stays on the min route; Book stays off.
 4. Keep the 60R Blue Candle farm/shop as fallback-only, outside `L8_THROUGH`.
