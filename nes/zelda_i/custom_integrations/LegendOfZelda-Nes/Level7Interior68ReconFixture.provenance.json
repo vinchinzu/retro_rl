@@ -1,0 +1,156 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T20:35:25.851472+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "fixture_only": true,
+    "fixture_writes": [
+      {
+        "address": 1624,
+        "address_hex": "0x0658",
+        "name": "bombs_topup_for_recon",
+        "note": "poke_bombs(8) before the 0x69 west bomb; count only, no max_bombs write"
+      }
+    ],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7InteriorReconFixture by WALKING 0x6B LEFT -> 0x6A LEFT -> 0x69 then bombing the 0x69 west wall -> 0x68 (KEESE_TRAPS). No set_state/teleport.",
+      "Traverse under UnlimitedHealthAssist (traversal aid). Food 1 / keys 4 / bombs 8 carried from the parent fixture.",
+      "No Candle/Whistle/TF/door/room/health/heart-capacity writes."
+    ],
+    "phase": "level7_interior_68_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "cur_opened_doors": 1,
+      "food": 1,
+      "keys": 4,
+      "mode": 5,
+      "obj_types": [
+        "0x1b:keese",
+        "0x49:blade_trap"
+      ],
+      "open_doorway_mask": 13,
+      "room_all_dead": 0,
+      "room_item_id": 0,
+      "room_item_name": "unknown_room_item_0x00",
+      "screen": "0x68",
+      "screen_int": 104,
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        208,
+        93
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 1,
+      "facing": 2,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 104,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 1,
+          "type_id": 73,
+          "type_name": "blade_trap",
+          "x": 74,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 73,
+          "type_name": "blade_trap",
+          "x": 32,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 2,
+          "type_id": 73,
+          "type_name": "blade_trap",
+          "x": 208,
+          "y": 104
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 2,
+          "type_id": 73,
+          "type_name": "blade_trap",
+          "x": 208,
+          "y": 188
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 55,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 137,
+          "y": 100
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 88,
+          "y": 181
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 136,
+          "y": 93
+        }
+      ],
+      "open_doorway_mask": 13,
+      "room": 104,
+      "room_all_dead": 0,
+      "room_item_id": 0,
+      "room_item_name": "unknown_room_item_0x00",
+      "room_obj_count": 8,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 208,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7InteriorReconFixture.state",
+  "source_state_sha256": "be810cc05dc342c14a40f9f099a0c5243a753b64fe84407f94499542a2bf9359",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior68ReconFixture.state",
+  "state_sha256": "0fee60cace6ebb13d0615ce090abee4e75ef77e3f405ebb7f976d5a005b8d824"
+}

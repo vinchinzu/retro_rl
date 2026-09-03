@@ -38,6 +38,7 @@ from zelda_i.level7.path import (
     Room6BEastController,
     Room6BNorthController,
     Room6CEastController,
+    Room68NorthController,
     Room69EastController,
     unverified_path_controller,
 )
@@ -103,6 +104,14 @@ def make_room6c_east_controller() -> Level7PathController:
     0x6D is a dead-end (stalfos 0x2a + small_key 0x19).  Recon-wired only.
     """
     return Room6CEastController()
+
+
+def make_room68_north_controller() -> Level7PathController:
+    """0x68 (KEESE_TRAPS) → OPEN north door to live 0x58 DODONGOS_UPGRADE (2/2).
+
+    Reached via make_room69_west_bomb_controller.  Recon-wired only.
+    """
+    return Room68NorthController()
 
 
 def make_room69_west_bomb_controller() -> BombWallController:
@@ -307,6 +316,7 @@ __all__ = [
     "make_room6b_east_controller",
     "make_room6b_north_controller",
     "make_room6c_east_controller",
+    "make_room68_north_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",
 ]
