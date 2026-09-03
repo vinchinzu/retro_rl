@@ -276,7 +276,18 @@ def test_hypothesis_graph_has_no_ram_room_ids() -> None:
     assert "book_stairs" not in MAGIC_KEY_ROUTE
     assert GLEEOK_ROUTE[-2] == "gleeok"
     assert GLEEOK_ROUTE[-1] == "triforce"
-    assert all(room.room_id is None for room in LEVEL8_HYPOTHESIS_ROOMS)
+    # rr-6o7.1: exactly one disclosed live-recon room id (the entry, via
+    # fixture-only OW 0x6D burn) -- every other hypothesis room stays
+    # unobserved, and the disclosed one never claims route_eligible.
+    disclosed = [room for room in LEVEL8_HYPOTHESIS_ROOMS if room.room_id is not None]
+    assert [room.name for room in disclosed] == ["entry"]
+    assert disclosed[0].room_id == 0x7E
+    assert disclosed[0].evidence == "live_recon_fixture"
+    assert all(
+        room.room_id is None
+        for room in LEVEL8_HYPOTHESIS_ROOMS
+        if room.name != "entry"
+    )
     assert all(not room.route_eligible for room in (UNOBSERVED_LEVEL8_TOPOLOGY,))
 
 
