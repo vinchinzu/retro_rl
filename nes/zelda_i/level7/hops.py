@@ -39,7 +39,9 @@ from zelda_i.level7.path import (
     Room6BNorthController,
     Room6CEastController,
     Room58EastController,
+    Room58NorthController,
     Room59UpController,
+    Room68DownController,
     Room68NorthController,
     Room69EastController,
     unverified_path_controller,
@@ -122,6 +124,23 @@ def make_room58_east_controller() -> Level7PathController:
     3x invulnerable 0x31 roamers are dodged.  Recon-wired only.
     """
     return Room58EastController()
+
+
+def make_room68_down_controller() -> Level7PathController:
+    """0x68 (KEESE_TRAPS) → OPEN south door to live 0x78 ROPES_KEY (2/2).
+
+    Dead-end (ropes 0x28 + floor key 0x19).  Recon-wired only.
+    """
+    return Room68DownController()
+
+
+def make_room58_north_controller() -> Level7PathController:
+    """0x58 (DODONGOS_UPGRADE) → KEY north door to live 0x48 BOMB_UPGRADE (2/2).
+
+    Dead-end old-man 100-rupee bomb-capacity room.  Do not write max_bombs.
+    Recon-wired only.
+    """
+    return Room58NorthController()
 
 
 def make_room59_up_controller() -> Level7PathController:
@@ -374,7 +393,9 @@ __all__ = [
     "make_room6b_north_controller",
     "make_room6c_east_controller",
     "make_room58_east_controller",
+    "make_room58_north_controller",
     "make_room59_up_controller",
+    "make_room68_down_controller",
     "make_room68_north_controller",
     "make_tip_stairs_controller",
     "UNMEASURED_HANDOFF",

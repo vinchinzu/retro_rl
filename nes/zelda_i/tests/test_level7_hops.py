@@ -30,6 +30,8 @@ from zelda_i.level7.hops import (
     make_level7_shard_leave_controller,
     make_pond_entry_controller,
     make_red_candle_controller,
+    make_room58_north_controller,
+    make_room68_down_controller,
 )
 from zelda_i.level7.path import (
     EAST_APPROACH_X,
@@ -42,12 +44,24 @@ from zelda_i.level7.path import (
     ROOM_6A_EAST_COLUMN_X,
     ROOM_6A_EAST_PLANE,
     ROOM_6A_TOP_BAND_Y,
+    ROOM_58_NORTH_EAST_X,
+    ROOM_58_NORTH_MID_Y,
+    ROOM_58_NORTH_TOP_Y,
+    ROOM_58_NORTH_X,
+    ROOM_68_MID_Y,
+    ROOM_68_SAFE_X,
+    ROOM_68_SOUTH_X,
+    ROOM_68_TRAP_ROW_Y,
     SOUTH_MOUTH_Y,
     EntryNorthDoorController,
     Room6AEastController,
+    Room58NorthController,
+    Room68DownController,
     Room69EastController,
     north_door_79_step,
     room69_east_step,
+    room_58_north_step,
+    room_68_down_step,
     room_6a_east_step,
 )
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
@@ -596,3 +610,69 @@ def test_l7_hops_use_fail_closed_entry_chapter() -> None:
     post.bind_env(_env(ram))
     post.step(read_snapshot(ram))
     assert post.failed
+
+
+def test_room_68_down_peels_then_drops_then_pushes() -> None:
+    """0x68 south: off the east trap column, between trap rows, then DOWN."""
+    ne = read_snapshot(_ram(level=7, screen=0x68, x=208, y=93))
+    assert room_68_down_step(ne).reason == "south68_peel"
+    safe = read_snapshot(_ram(level=7, screen=0x68, x=ROOM_68_SAFE_X, y=93))
+    assert room_68_down_step(safe).reason == "south68_drop"
+    mid = read_snapshot(
+        _ram(level=7, screen=0x68, x=ROOM_68_SAFE_X, y=ROOM_68_MID_Y)
+    )
+    assert room_68_down_step(mid).reason == "south68_align_x"
+    door = read_snapshot(
+        _ram(level=7, screen=0x68, x=ROOM_68_SOUTH_X, y=ROOM_68_MID_Y)
+    )
+    assert room_68_down_step(door).reason == "south68_push"
+    trap = read_snapshot(
+        _ram(level=7, screen=0x68, x=80, y=ROOM_68_TRAP_ROW_Y)
+    )
+    assert room_68_down_step(trap).reason == "south68_off_trap"
+
+
+def test_room_68_down_arrived_leaves_0x68() -> None:
+    dest = read_snapshot(_ram(level=7, screen=0x78, x=120, y=77))
+    ctl = Room68DownController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x68_south"
+    report = make_room68_down_controller().report()
+    assert report["route_eligible"] is False
+    assert report["dest_screen"] == 0x78
+    assert report["door"] == "DOWN"
+
+
+def test_room_58_north_east_around_then_push() -> None:
+    """0x58 north: climb, east around the central mass, then x=120 UP."""
+    mouth = read_snapshot(_ram(level=7, screen=0x58, x=120, y=205))
+    assert room_58_north_step(mouth).reason == "north58_climb"
+    mid = read_snapshot(
+        _ram(level=7, screen=0x58, x=120, y=ROOM_58_NORTH_MID_Y)
+    )
+    assert room_58_north_step(mid).reason == "north58_east"
+    east = read_snapshot(
+        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_EAST_X, y=ROOM_58_NORTH_MID_Y)
+    )
+    assert room_58_north_step(east).reason == "north58_rise"
+    top = read_snapshot(
+        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_EAST_X, y=ROOM_58_NORTH_TOP_Y)
+    )
+    assert room_58_north_step(top).reason == "north58_align_x"
+    door = read_snapshot(
+        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_X, y=ROOM_58_NORTH_TOP_Y)
+    )
+    assert room_58_north_step(door).reason == "north58_push"
+
+
+def test_room_58_north_arrived_leaves_0x58() -> None:
+    dest = read_snapshot(_ram(level=7, screen=0x48, x=120, y=205))
+    ctl = Room58NorthController()
+    act = ctl.step(dest)
+    assert ctl.success and not ctl.failed
+    assert act.reason == "left_0x58_north"
+    report = make_room58_north_controller().report()
+    assert report["route_eligible"] is False
+    assert report["dest_screen"] == 0x48
+    assert report["door"] == "UP"

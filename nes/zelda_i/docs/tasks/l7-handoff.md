@@ -247,9 +247,52 @@ Fixture chain to regenerate `.state` files (all gitignored): parent
 → `Level7Interior58ReconFixture` (`probe_l7_room58_onward.py --save-fixture`)
 → `Level7Interior59ReconFixture` (`probe_l7_room58_east.py --save-fixture`)
 → `Level7Interior49ReconFixture` (`probe_l7_room59_up.py --save-fixture`).
+Optional dest pins: `Level7Interior78ReconFixture` (`probe_l7_room68_down.py
+--save-fixture`), `Level7Interior48ReconFixture` (`probe_l7_room58_north.py
+--save-fixture`).
 
-Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
-`0x58` north x=120 channel → `0x48` BOMB_UPGRADE (key-gated).
+## 2026-09-03 — L7-B side rooms: `0x68` DOWN + `0x58` north
+
+Did not walk `0x49` UP. Did not poke `ADDR_LADDER` / `ADDR_CANDLE` /
+`ADDR_MAX_BOMBS`. Candle-mainline narrative above is unchanged.
+
+| walk | dest `$EB` | entry | census / reward | evidence |
+|------|-----------|-------|-----------------|----------|
+| `0x68` DOWN | `0x78` ROPES_KEY | `(120,77)` N mouth | ropes `0x28` + floor `small_key 0x19`; keys 4 (not picked); dead-end | **2/2** (`68_down_v3/v4`, `68_ctl_v1/v2` frame 297/298) |
+| `0x58` UP KEY | `0x48` BOMB_UPGRADE | `(120,205)` S mouth | bubble `0x40` + `0x4f`; old-man "I BET YOU'D LIKE TO HAVE -100"; keys 4→3; `max_bombs` stays 8 | **2/2** (`58_north_v2/v3`, `58_ctl_v1/v2` frame 337/338) |
+
+`0x68` DOWN: blade traps `0x49` in the four corners. OccupancyWalker
+poisoned the grid on knockback (v2 stood `(174,149)`, 12 misses). Waypoint
+micro: peel west to `x=160` (off the east trap column), drop `y=141`
+(between trap rows `y~93`/`y~189`), align `x=120`, push DOWN. If knocked
+onto the `y~189` trap row off-x, rise first.
+
+`0x58` north: 3× invuln `0x31` (hp 240) — dodge, do not kill. A central
+2-block mass walls the `x=120` column around `y=141`. OccupancyWalker to
+`(120,93)` boxed at `(122,165)` (25 misses). East-around: climb `y=165`,
+RIGHT `x=160`, UP `y=93`, align `x=120`, push the KEY door (natural key
+spend). `0x48` is a **dead-end** 100-rupee bomb-capacity old-man room;
+do **not** write `max_bombs` (`capacity_writes=0`).
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room68DownController` / `room_68_down_step`
+  (`level7_room68_down`), `Room58NorthController` / `room_58_north_step`
+  (`level7_room58_north`), `south_of_room68_ram_id()` /
+  `north_of_room58_ram_id()`.
+- `level7/hops.py`: `make_room68_down_controller`,
+  `make_room58_north_controller`.
+- `level7/graph.py`: `ROPES_KEY ram_id=0x78`, `BOMB_UPGRADE ram_id=0x48`,
+  both `evidence=fixture-live`; `KEESE_TRAPS` DOWN and `DODONGOS_UPGRADE`
+  UP KEY `verification=fixture-live`.
+- `tests/test_level7_dungeon.py`: live-prefix += `ROPES_KEY:0x78`,
+  `BOMB_UPGRADE:0x48`.
+
+New dest fixtures (disclosed writes: none; `development_only` /
+`fixture_only` / `route_eligible:false` / `natural_entry:false`):
+- `Level7Interior78ReconFixture` — settled `0x78` `(120,77)`, keys 4 /
+  bombs 7 / Food 1 / `max_bombs` 8.
+- `Level7Interior48ReconFixture` — settled `0x48` `(120,205)`, keys 3 /
+  bombs 7 / Food 1 / `max_bombs` 8.
 
 ## Dead beliefs
 
@@ -264,6 +307,11 @@ Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
    `y=93` band, which is the north wall — nothing opened; those attempts
    also mis-positioned Link, but the `0x69` west-bomb branch is now the
    confirmed route, so `0x6A`-north is retired).
+5. Dead: OccupancyWalker to the `0x68` south / `0x58` north door — blade
+   traps and `0x31` knockback poison the grid (stood `(174,149)` / boxed
+   `(122,165)`). Waypoint micros. Also dead: `0x58` north is a straight
+   `x=120` walk from the south mouth — a central 2-block mass walls that
+   column around `y=141`; east-around first.
 
 ## Prior sittings (still standing)
 
@@ -446,7 +494,8 @@ Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
 - **evidence label:** **fixture-live** row-6 corridor
   `0x79→0x69→0x6A→0x6B→0x6C→0x6D` + `0x6B`→`0x5B` spur + branch
-  `0x69`─bomb→`0x68`─UP→`0x58`─EAST→`0x59`; rooms past `0x59` (candle chain)
+  `0x69`─bomb→`0x68`─UP→`0x58`─EAST→`0x59` + side rooms `0x68` DOWN
+  `0x78` and `0x58` KEY-UP `0x48`; rooms past `0x59` (candle chain)
   still hypothesis
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
@@ -503,6 +552,16 @@ Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
      door → live `$EB=0x59` (`GORIYA_COMPASS`: goriya `0x05`/`0x06`).
      Dodges the 3× invuln `0x31`. Not a spine stage. Recon resumes at
      `0x59` (its UP door → GORIYA_BUBBLE, mainline).
+  1i. `level7_room68_down` — `Room68DownController` /
+     `make_room68_down_controller()` **(new 2026-09-03, 2/2)** walks `0x68`
+     OPEN south door → live `$EB=0x78` (`ROPES_KEY`: ropes `0x28` + floor
+     `small_key 0x19`, a **dead-end**). Peel `x=160`, drop `y=141`, push
+     DOWN. Not a spine stage.
+  1j. `level7_room58_north` — `Room58NorthController` /
+     `make_room58_north_controller()` **(new 2026-09-03, 2/2)** east-arounds
+     the `0x58` central mass, KEY north door (keys 4→3) → live `$EB=0x48`
+     (`BOMB_UPGRADE`: bubble `0x40` + `0x4f`, 100-rupee old-man
+     bomb-capacity **dead-end**). Do not write `max_bombs`. Not a spine stage.
   2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
   3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
@@ -510,7 +569,7 @@ Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
      (`ADDR_CANDLE` 1→2 natural; room unobserved)
   Executable chapter chain (`level7_red_candle_chapter_stages`) is unchanged:
   `entry_first_door → entry_to_hungry_goriya (fail-closed) → tip_stairs →
-  red_candle_pickup`. Stages 1a–1h are recon-wired only.
+  red_candle_pickup`. Stages 1a–1j are recon-wired only.
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
 - **resume point:** from `Level7InteriorReconFixture`, `0x6B` LEFT → `0x6A`
