@@ -1,0 +1,103 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T20:37:53.887029+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior68ReconFixture by WALKING 0x68 UP -> 0x58 (DODONGOS_UPGRADE). No set_state.",
+      "Chain from Level7InteriorReconFixture: 0x6B L 0x6A L 0x69, bomb west -> 0x68, UP -> 0x58.",
+      "UnlimitedHealthAssist traversal aid. Food 1 / keys 4 / bombs ~7 carried. No progression/Candle/TF/door writes."
+    ],
+    "phase": "level7_interior_58_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "food": 1,
+      "keys": 4,
+      "mode": 5,
+      "obj_types": [
+        "0x31:unknown_object_0x31"
+      ],
+      "open_doorway_mask": 0,
+      "room_all_dead": 0,
+      "room_item_id": 15,
+      "room_item_name": "unknown_room_item_0x0f",
+      "screen": "0x58",
+      "screen_int": 88,
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        120,
+        205
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 4,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 88,
+      "objects": [
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type_id": 49,
+          "type_name": "unknown_object_0x31",
+          "x": 105,
+          "y": 93
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 49,
+          "type_name": "unknown_object_0x31",
+          "x": 152,
+          "y": 93
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 49,
+          "type_name": "unknown_object_0x31",
+          "x": 128,
+          "y": 149
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 88,
+      "room_all_dead": 0,
+      "room_item_id": 15,
+      "room_item_name": "unknown_room_item_0x0f",
+      "room_obj_count": 3,
+      "rupees": 0,
+      "submode": 0,
+      "triforce": 0,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior68ReconFixture.state",
+  "source_state_sha256": "0fee60cace6ebb13d0615ce090abee4e75ef77e3f405ebb7f976d5a005b8d824",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior58ReconFixture.state",
+  "state_sha256": "22e1de65ea603dd2fd9bc5c4fefe87aa6ce66ef5b34a423f619a605fcfd37fdd"
+}

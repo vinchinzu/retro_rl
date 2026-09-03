@@ -41,6 +41,7 @@ from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
 from zelda_i.level7.graph import (
     DIGDOGGER_1,
+    DODONGOS_UPGRADE,
     OLD_MAN_NOSE,
     STALFOS_KEY,
     GORIYA_HINT,
@@ -123,6 +124,14 @@ ROOM_6C = 0x6C
 ROOM_6C_DOOR_Y = 141
 ROOM_6C_EAST_PLANE = 224
 ROOM6C_EAST_MAX_FRAMES = 4000
+# 0x68 (KEESE_TRAPS): dark, 4 blade traps 0x49 (corners) + 4 keese 0x1b.
+# Reached via the 0x69 west bomb wall (Link enters ~(208,93) NE).  The north
+# door to live $EB=0x58 (DODONGOS_UPGRADE) is OPEN — align x=120 on the top,
+# push UP.  2/2 byte-identical (recordings/68_up_v1/v2.json).
+ROOM_68 = 0x68
+ROOM_68_NORTH_X = 120
+ROOM_68_TOP_BAND_Y = 93
+ROOM68_NORTH_MAX_FRAMES = 4000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
@@ -160,6 +169,11 @@ def north_of_room6b_ram_id() -> int | None:
 def east_of_room6c_ram_id() -> int | None:
     """Live ``$EB`` of the room east of ``0x6C`` (STALFOS_KEY), or None."""
     return LEVEL7_ROOM_BY_ID[STALFOS_KEY].ram_id
+
+
+def north_of_room68_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x68`` (DODONGOS_UPGRADE), or None."""
+    return LEVEL7_ROOM_BY_ID[DODONGOS_UPGRADE].ram_id
 
 
 class Level7PathController(Protocol):
@@ -993,6 +1007,99 @@ class Room6CEastController(HopController):
         }
 
 
+def room_68_north_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+) -> FrameAction:
+    """One frame of 0x68 (KEESE_TRAPS) → OPEN north door → live dest 0x58.
+
+    Link enters ~(208,93) from the 0x69 west bomb wall.  Route: ride the
+    top band west to ``x=120``, push UP.  Blade traps 0x49 / keese only chip;
+    assist soaks it.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("UP"), "north68_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "north68_arrived")
+    if snap.screen != ROOM_68:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y > ROOM_68_TOP_BAND_Y + DOOR_Y_TOL and abs(x - ROOM_68_NORTH_X) > NORTH_X_TOL:
+        return FrameAction(nes_action("UP"), "north68_rise")
+    if abs(x - ROOM_68_NORTH_X) > NORTH_X_TOL:
+        btn = "LEFT" if x > ROOM_68_NORTH_X else "RIGHT"
+        return FrameAction(nes_action(btn), "north68_align_x")
+    return FrameAction(nes_action("UP"), "north68_push")
+
+
+@dataclass(kw_only=True)
+class Room68NorthController(HopController):
+    """0x68 KEESE_TRAPS → OPEN north door to live dest 0x58 (DODONGOS_UPGRADE).
+
+    Recon-wired only.  Reached via the 0x69 west bomb wall.
+    """
+
+    spec_id: str = "level7_room68_north"
+    max_frames: int = ROOM68_NORTH_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x68_north"
+    dest: int | None = field(default_factory=north_of_room68_ram_id)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("UP"), "north68_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = room_68_north_step(snap, dest=self.dest)
+        if action.reason.startswith("unexpected_room"):
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "UP",
+        }
+
+
 @dataclass
 class HungryGoriyaGateController:
     """Food is a RAM gate; the room itself is still unobserved."""
@@ -1103,6 +1210,7 @@ __all__ = [
     "ROOM_6B",
     "ROOM_6B_EAST_PLANE",
     "ROOM_6B_WEST_MOUTH",
+    "ROOM_68",
     "ROOM_6C",
     "SOUTH_MOUTH_Y",
     "L7_ROOM69_WEST_BOMB",
@@ -1116,17 +1224,20 @@ __all__ = [
     "Room6BEastController",
     "Room6BNorthController",
     "Room6CEastController",
+    "Room68NorthController",
     "UnverifiedLevel7PathController",
     "east_of_room69_ram_id",
     "east_of_room6a_ram_id",
     "east_of_room6b_ram_id",
     "east_of_room6c_ram_id",
     "north_of_room6b_ram_id",
+    "north_of_room68_ram_id",
     "east_route_step",
     "room_6a_east_step",
     "room_6b_east_step",
     "room_6b_north_step",
     "room_6c_east_step",
+    "room_68_north_step",
     "live_goriyas",
     "north_door_79_step",
     "north_of_entry_ram_id",

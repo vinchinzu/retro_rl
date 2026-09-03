@@ -134,7 +134,14 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         evidence="fixture-live",
     ),
     Level7RoomHyp(ROPES_KEY, "ropes_key", role="key_plus_1"),
-    Level7RoomHyp(DODONGOS_UPGRADE, "dodongos_upgrade_path"),
+    Level7RoomHyp(
+        DODONGOS_UPGRADE,
+        "dodongos_upgrade_path",
+        ram_id=0x58,
+        role="live: dodongo-family 0x31, room_item_id 0x0f, dark; Link spawns "
+        "bottom (120,205); east exit not yet resolved (locked/kill-gated?)",
+        evidence="fixture-live",
+    ),
     Level7RoomHyp(BOMB_UPGRADE, "bomb_upgrade_16", role="optional_capacity"),
     Level7RoomHyp(GORIYA_COMPASS, "goriya_to_compass"),
     Level7RoomHyp(COMPASS, "compass_stalfos"),
@@ -344,9 +351,24 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(DoorDir.UP, DODONGOS_UPGRADE, GateKind.BOMB, notes="optional bomb north"),
         ),
         KEESE_TRAPS: (
-            _open(DoorDir.RIGHT, GORIYA_BOMB_HUB),
-            _open(DoorDir.DOWN, ROPES_KEY),
-            _open(DoorDir.UP, DODONGOS_UPGRADE),
+            _e(
+                DoorDir.RIGHT,
+                GORIYA_BOMB_HUB,
+                GateKind.BOMB,
+                notes="live: 0x68 east is the bombed 0x69 wall (backtrack)",
+                verification="fixture-live",
+            ),
+            _open(DoorDir.DOWN, ROPES_KEY, notes="source; 0x68 has 4 blade traps 0x49"),
+            _e(
+                DoorDir.UP,
+                DODONGOS_UPGRADE,
+                GateKind.OPEN,
+                notes=(
+                    "live dest $EB=0x58 (dodongo 0x31) 2/2; align x=120, push "
+                    "UP; 0x68 is dark w/ 4 blade traps 0x49 + 4 keese 0x1b"
+                ),
+                verification="fixture-live",
+            ),
         ),
         ROPES_KEY: (_back(DoorDir.DOWN, KEESE_TRAPS),),
         DODONGOS_UPGRADE: (

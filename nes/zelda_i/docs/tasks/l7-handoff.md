@@ -108,24 +108,67 @@ Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
 - `tests/test_level7_dungeon.py`: live-prefix test + `OLD_MAN_NOSE:0x5B`,
   `STALFOS_KEY:0x6D`, `KEESE_TRAPS:0x68`.
 
+## 2026-09-05 (cont.) — branch chain `0x69`→`0x68`→`0x58`; two more recon fixtures
+
+Continuing the branch. All from the recon-fixture chain, `deaths=0`,
+`route_eligible=false`:
+
+| walk | dest `$EB` | census / notes | evidence |
+|------|-----------|----------------|----------|
+| `0x69` west **bomb** → `0x68` | `0x68` KEESE_TRAPS | dark; **4 blade traps `0x49`** (corners) + 4 keese `0x1b`; `open_doorway_mask=13` | **2/2** (`69_branch_v2/v3`) |
+| `0x68` **UP** (align x=120) → `0x58` | `0x58` DODONGOS_UPGRADE | dodongo-family `0x31`, `room_item_id 0x0f`, dark; Link spawns bottom `(120,205)` | **2/2** (`68_up_v1/v2`) |
+
+New disclosed recon fixtures (both `development_only`/`fixture_only`/
+`route_eligible:false`/`natural_entry:false`, provenance records the WALK
+chain; only a `poke_bombs(8)` count top-up before the `0x69` bomb, no
+`max_bombs`/Candle/TF/door/health/capacity writes):
+- **`Level7Interior68ReconFixture`** — settled 0x68 `~(208,93)`, keys 4,
+  bombs 7, Food 1.
+- **`Level7Interior58ReconFixture`** — settled 0x58 `(120,205)`, keys 4,
+  bombs 7, Food 1.
+
+**`0x58` layout (blind y-band sweep, `58_map_v1`):** dark, dodongo `0x31`.
+North of `y≈88` is a **narrow x=120 corridor** (the door channel toward
+`0x48`). `y=93` clear x=32..179; `y=109..189` open on the **east half**
+(x≈92/116 → 208), west half walled. **No RIGHT transition on any band** —
+Link reaches x=208 everywhere but does not cross. `cur_opened_doors`
+flipped to `8` (RIGHT) and `keys` 4→3 during the sweep → there is a
+**locked/kill-gated EAST door** (mainline → GORIYA_COMPASS) that needs the
+dodongo `0x31` killed and/or a key. `0x58` also reaches **`0x48`** (bubble
+`0x40` + `0x4f`, key-gated — the optional BOMB_UPGRADE `0x48`, NOT
+mainline; the earlier probes' "LEFT→0x48" was really the north x=120
+channel + knockback).
+
+Wired: `level7/path.py` `Room68NorthController` / `room_68_north_step`
+(`level7_room68_north`), `north_of_room68_ram_id()`, `ROOM_68*` consts;
+`level7/hops.py` `make_room68_north_controller`; `level7/graph.py`
+`DODONGOS_UPGRADE ram_id=0x58` + `KEESE_TRAPS` UP→`DODONGOS_UPGRADE`
+`fixture-live`; test live-prefix += `DODONGOS_UPGRADE:0x58`.
+
 ## Onward toward Red Candle — resume point
 
-**Next sitting starts here:** from `Level7InteriorReconFixture`, walk
-`0x6B` LEFT → `0x6A` LEFT → `0x69` (`_west_traverse` in
-`scratch/probe_l7_room69_branch.py` — the Room6AEastController mirror:
-off-mouth → rise east col y=93 → cross LEFT → drop west col y=141 → push),
-then drive `make_room69_west_bomb_controller()` (or replay the bomb at
-`(44,141)` face LEFT) into **`0x68`**. Then recon `0x68` (KEESE_TRAPS):
-`$EB`, entry xy, census, exits — source says `0x68` UP → DODONGOS_UPGRADE
-(`0x58`) and DOWN → ROPES_KEY. From there the source candle chain is
-`…→ GORIYA_COMPASS → GORIYA_BUBBLE → DIGDOGGER_2 → GORIYA_PRE_HUNGRY →
-HUNGRY_GORIYA (KEY, consumes Food) → MAP → HIDDEN_RUPEES (BOMB) →
-GORIYA_POST_RUPEE → WEST_LOCK_SKIP → CANDLE_PUSH (BOMB) → RED_CANDLE_CELLAR`.
-All rooms past `0x68` are still **hypothesis**. Fixture carries 8 bombs +
-4 keys + Food 1. Do **not** poke `ADDR_CANDLE`.
+**Next sitting starts here — `0x58` (DODONGOS_UPGRADE).** From
+`Level7Interior58ReconFixture`: the room's **EAST door is the mainline** to
+GORIYA_COMPASS but it's gated. Kill the dodongo `0x31` (`room_all_dead` →
+sentinel), re-check the east edge on the `y≈125/141` band; if still shut,
+try a bomb on the east wall (`GORIYA_COMPASS` is `_open` in source, so most
+likely KILL_CLEAR). `room_item_id 0x0f` in `0x58` is an uncollected reward
+(map? compass?) — grab + identify. Then recon `0x59`/`GORIYA_COMPASS` and
+the source candle chain past it: `…→ GORIYA_BUBBLE → DIGDOGGER_2 →
+GORIYA_PRE_HUNGRY → HUNGRY_GORIYA (KEY, consumes Food) → MAP →
+HIDDEN_RUPEES (BOMB) → GORIYA_POST_RUPEE → WEST_LOCK_SKIP → CANDLE_PUSH
+(BOMB) → RED_CANDLE_CELLAR`. All rooms past `0x58` are **hypothesis**.
+The `0x58` fixture carries keys 4 / bombs 7 / Food 1. Do **not** poke
+`ADDR_CANDLE`.
 
-Note: `0x69`'s goriyas do **not** respawn (census on re-entry = only statue
-`0x55`); `_west_traverse` needs no combat.
+Reaching `0x58` fresh from `Level7InteriorReconFixture` costs two dark-room
+west traverses + a bomb — prefer starting from `Level7Interior58ReconFixture`.
+`_west_traverse` (in `scratch/probe_l7_room68_onward.py`) = the
+Room6AEastController mirror: off-mouth → rise east col y=93 → cross LEFT →
+drop west col y=141 → push. `0x69` goriyas do **not** respawn.
+
+Optional dead-ends still unconfirmed 2/2: `0x68` DOWN → ROPES_KEY;
+`0x58` UP/LEFT → `0x48` BOMB_UPGRADE (key-gated).
 
 ## Dead beliefs
 
@@ -320,9 +363,10 @@ Note: `0x69`'s goriyas do **not** respawn (census on re-entry = only statue
 ## L7-B — entry through Red Candle
 
 - **chapter id:** `rr-8t4.2` / `level7-red-candle`
-- **evidence label:** **fixture-live entry pin + row-6 corridor
-  `0x79→0x69→0x6A→0x6B→0x6C→0x6D`** + `0x6B`→`0x5B` spur + `0x69` west
-  bomb→`0x68` branch; rooms past `0x68` (candle chain) still hypothesis
+- **evidence label:** **fixture-live** row-6 corridor
+  `0x79→0x69→0x6A→0x6B→0x6C→0x6D` + `0x6B`→`0x5B` spur + branch
+  `0x69`─bomb→`0x68`─UP→`0x58`; rooms past `0x58` (candle chain) still
+  hypothesis
 - **predecessor:** `Level7Entrance` pin — L7 play `0x79` `(120,205)`. Inventory
   is the poke loadout (Whistle 1, Food 0, TF 0), **not** the L6-leave packet.
   Hungry Goriya still needs Food; isolate with the recon fixture or `rr-8t4.4`.
@@ -364,9 +408,15 @@ Note: `0x69`'s goriyas do **not** respawn (census on re-entry = only statue
   1f. `level7_room69_west_bomb` — `make_room69_west_bomb_controller()`
      **(new 2026-09-05, 2/2)** = `dungeon.bomb_wall.BombWallController(wall=
      L7_ROOM69_WEST_BOMB, level=7)`: `0x69` west BOMB wall (stand
-     `(44,141)` face LEFT) → live `$EB=0x68` (`KEESE_TRAPS`, interior
-     unobserved). **This is the candle-path branch.** Needs bombs + bomb on
-     B. Not a spine stage.
+     `(44,141)` face LEFT) → live `$EB=0x68` (`KEESE_TRAPS`: dark, 4 blade
+     traps `0x49` + 4 keese). **This is the candle-path branch.** Needs
+     bombs + bomb on B. Not a spine stage.
+  1g. `level7_room68_north` — `Room68NorthController` /
+     `make_room68_north_controller()` **(new 2026-09-05, 2/2)** walks `0x68`
+     (align x=120 on top band) → OPEN north door → live `$EB=0x58`
+     (`DODONGOS_UPGRADE`: dodongo `0x31`, `room_item_id 0x0f`). Not a spine
+     stage. `0x58`'s east door (→ GORIYA_COMPASS mainline) is gated —
+     recon resumes there.
   2. `level7_entry_to_hungry_goriya` — `make_entry_to_goriya_controller()`
      (fails `hungry_goriya_requires_food` if Food=0; else room unobserved)
   3. `level7_tip_of_nose_stairs` — `make_tip_stairs_controller()` (blocker + ledger notes)
@@ -374,7 +424,7 @@ Note: `0x69`'s goriyas do **not** respawn (census on re-entry = only statue
      (`ADDR_CANDLE` 1→2 natural; room unobserved)
   Executable chapter chain (`level7_red_candle_chapter_stages`) is unchanged:
   `entry_first_door → entry_to_hungry_goriya (fail-closed) → tip_stairs →
-  red_candle_pickup`. Stages 1a–1f are recon-wired only.
+  red_candle_pickup`. Stages 1a–1g are recon-wired only.
 - **endpoint:** `level7_red_candle_stop` — Candle==2, TF `0x3F`, Whistle
   retained, Food==0, exact live room. Room id `None` → fail closed.
 - **resume point:** from `Level7InteriorReconFixture`, `0x6B` LEFT → `0x6A`
