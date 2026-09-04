@@ -26,6 +26,7 @@ from zelda_i.level8.dungeon import (
     GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     GLEEOK_ROUTE,
     LEVEL8_HYPOTHESIS_ROOMS,
+    LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_ROOM_RECON,
     LEVEL8_ROOM_SPECS,
@@ -413,13 +414,16 @@ def test_level8_interior_0x3e_recon_is_fixture_only_not_route_eligible() -> None
     # route eligible, never a DungeonRoomSpec, never on L8_THROUGH.
     from zelda_i.level8.spine import L8_THROUGH
 
-    assert LEVEL8_INTERIOR_ROOM_RECON == (LEVEL8_INTERIOR_0X3E_RECON,)
+    assert LEVEL8_INTERIOR_ROOM_RECON == (
+        LEVEL8_INTERIOR_0X3E_RECON,
+        LEVEL8_INTERIOR_0X2E_RECON,
+    )
     r = LEVEL8_INTERIOR_0X3E_RECON
     assert r.room_id == 0x3E
     assert r.entered_from == 0x4E and r.entry_gate == "north_key_door"
     assert (r.keys_in, r.keys_out) == (10, 9)  # one natural key spent
     assert (r.bombs_in, r.bombs_out) == (7, 7)  # no bombs used
-    assert r.census == ((0x0C, 128, 6),)  # 6 blue Darknuts
+    assert r.census == ((0x0C, 128, 6),)  # 6 x type 0x0C HP128 (unregistered)
     assert r.room_item_id == 0x03
     assert r.evidence == "live_recon_fixture"
     assert r.route_eligible is False

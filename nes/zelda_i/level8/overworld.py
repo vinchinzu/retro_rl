@@ -41,6 +41,7 @@ from zelda_i.overworld.graph import (
     is_5c_maze_hop,
     path_screens_from_hops,
 )
+from zelda_i.level8.dungeon import LIVE_RECON_LEVEL8_TOPOLOGY
 from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.rupee_farm import RupeeFarmController
@@ -64,8 +65,10 @@ from zelda_i.anchors import (
 
 LEVEL_8 = 8
 SCREEN_LEVEL8_BUSH_PLANNED = SCREEN_LEVEL8_BUSH  # alias
-# Unknown until live dungeon settle (mode 16→5, level==8) after burn.
-SCREEN_LEVEL8_ENTRY_ROOM: int | None = None
+# Live-observed 0x7E via fixture-only burn recon (rr-6o7.1), never a route
+# claim.  Re-exported from the topology record so the two modules cannot drift
+# apart again -- level8.dungeon owns this fact.
+SCREEN_LEVEL8_ENTRY_ROOM: int | None = LIVE_RECON_LEVEL8_TOPOLOGY.entry_room
 
 ADDR_CANDLE_ITEM = ADDR_CANDLE  # 0x065B
 
