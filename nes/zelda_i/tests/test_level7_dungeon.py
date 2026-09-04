@@ -18,13 +18,16 @@ from zelda_i.level7.dungeon import (
     level7_red_candle_stop,
 )
 from zelda_i.level7.graph import (
+    AQUAMENTUS,
     BOMB_UPGRADE,
     CANDLE_PUSH,
     DIGDOGGER_1,
     DIGDOGGER_2,
     DODONGOS_BOSS_PATH,
     DODONGOS_UPGRADE,
+    PRE_BOSS,
     TIP_OF_NOSE,
+    TRIFORCE,
     ENTRY,
     GORIYA_BUBBLE,
     GORIYA_COMPASS,
@@ -159,6 +162,9 @@ def test_hypothesis_graph_live_prefix_has_ram_ids() -> None:
         FORCED_DIGDOGGER: 0x1C,
         DODONGOS_BOSS_PATH: 0x0C,
         TIP_OF_NOSE: 0x0D,
+        PRE_BOSS: 0x29,
+        AQUAMENTUS: 0x2A,
+        TRIFORCE: 0x2B,
     }
     for source_id, ram_id in live.items():
         room = next(r for r in LEVEL7_ROOMS if r.source_id == source_id)

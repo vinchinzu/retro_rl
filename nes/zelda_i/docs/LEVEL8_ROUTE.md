@@ -394,6 +394,22 @@ map still on the floor. RAM doors `0x0C` (UP+DOWN). Not Gleeok `0x3C`.
 Pin `Level8Interior2ESouthReconFixture`. Do not start the fight. Do not
 chain a second DOWN into `0x3E`. Next gate is hyp DOWN toward `0x3E`.
 
+### Fixture-live 0x2E south door → cleared 0x3E (rr-6o7.2)
+
+From `Level8Interior2ESouthReconFixture`. Occupancy still banned (1px-grade
+false-misses 2px dungeon steps). Cardinal DOWN along already-aligned
+x=120; statues at ~x=96 and x=144 y~141, center aisle passes between
+them. I1/I2/I3 2/2 (probe `l8_2e_south`, 255 controller frames / 315 with
+census): first settled play **`0x3E` `(120,93)`** north mouth, keys 8→8,
+bombs 6→6, MK 1, TF `0x7F`. Arrival census empty (already cleared inbound).
+Walking x=120 picked up map `0x17` (`ADDR_MAP` 0→`0x80`); incidental, not
+a detour. Arrival RAM doors `0x0C` (UP+DOWN); idle later raises RIGHT
+(`0x0D`) as the already-cleared east shutter. Not Gleeok `0x3C`, not
+cellar `0x0F`. `make_gleeok_passage_controller` stays fail-closed. Not on
+`L8_THROUGH`. Pin `Level8Interior3ESouthReconFixture`. Do not start the
+fight. Do not chain RIGHT into passage_east. Next gate is hyp RIGHT toward
+`0x3F`.
+
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
 **type `0x0C`, HP 128**, appearing 5× in `0x5E`, 1× in `0x4E` and 6× in `0x3E`,

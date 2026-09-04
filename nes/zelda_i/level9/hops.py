@@ -2,6 +2,8 @@
 
 Prefix rows stay one-frame fail-closed: Magical Key topology is hypothesized,
 but live rooms, post-L8 leftover, and the 0x51 dest walk are unverified.
+Fixture-live dest hops 0x76 UP → 0x66 and 0x66 LEFT → 0x65 live in
+``level9.prefix``; they do not green these factories.
 The credits row is a write-free adapter; it must not load a fixture.
 """
 

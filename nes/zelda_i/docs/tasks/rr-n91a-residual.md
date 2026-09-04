@@ -1,109 +1,79 @@
-# Residual — rr-n91a L7-C 0x0D ROM stair-list (2026-09-04)
+# Residual — rr-n91a L7-C 0x7B B→A dest 0x29 (2026-09-04)
 
-Did not STATUS. Did not poke. Did not touch `level8/**`, `AGENTS.md`, or
-Agent A's `rr-6o7.2` leftover. Live 2/2 deferred (Agent A holds the
-emulator). ROM-only leave.
+Did not STATUS. Did not poke doors/TF/position. Did not touch `level8/**`,
+`AGENTS.md`, harvest, or parent `rr-8t4.3` (still in_progress). Spine
+`make_tip_stairs_controller` / `make_aquamentus_heart_controller` /
+`make_level7_shard_leave_controller` stay fail-closed.
 
-## Verified
+## Glance (pin start)
 
-- Local ROM `nes/zelda_i/roms/Legend of Zelda, The.nes` iNES header
-  `4E45531A…`. Scratch `scratch/dump_l7_stairs.py` reads PRG only.
-- L9 stairway list at DC `0x19C10` is still `60 70 72 75 67 77 00 4F`
-  (calibrates the +52 offset from ZeldaHacks LevelInfo).
-- L6 cellar `0x08` AttrA=`0x3A` AttrB=`0x1D` matches live cellar08.
-- L9 cellar `0x77` AttrA=`0x52` AttrB=`0x03` matches live Patra dests.
-- L7 LevelInfo (PRG `0x199E4`): entrance `0x79` (live), tf_room `0x2B`,
-  boss `0x2A`, stairway +52 = PRG `0x19A18` / iNES `0x19A28`.
+`Level7Interior0DNoseCellarReconFixture`: L7 mode **9** cellar **`$EB=0x7B`**
+`(192,93)` tile 111, keys 2, bombs 6, candle 2, TF 0. 4× keese 0x1B hp=0.
+`route_eligible=false`. Existing disclosed poke is in fixture provenance;
+no new position pokes.
 
-## ROM claims (not live)
+## RAM claim (written before first live trial)
 
-First-quest L7 stairway list PRG **`0x19A18`** / iNES **`0x19A28`**:
+From this pin, floor-cross left, first settled play `$EB` is **0x29**
+(ROM AttrA). Miss if dest is 0x0D (CheckSubroom AttrB / UP on the source
+ladder). Never UP at `x>=$80`.
 
-```
-7B 4A FF FF FF FF FF FF
-```
+## Dest 0x29 — live 2/2
 
-`LevelInfo_CellarRoomIdArray` (first 6) = **`0x7B`, `0x4A`**. `0xFF` unused.
+Policy: DOWN the east/source column, floor LEFT to `x=48`, UP left ladder.
+Never UP on the right/source ladder. OccupancyWalker banned. Inverse of
+`cellar_cross_dir` (L6 A→B east then UP).
 
-UW L7–9 block PRG `0x18A00` (AttrA @ +room, AttrB @ +128+room):
+| tag | dest | pose | controller frames | total frames |
+|-----|------|------|-------------------|--------------|
+| `20260904_C1` | play **0x29** | `(96,157)` | 396 | 856 |
+| `20260904_C2` | play **0x29** | `(96,157)` | 396 | 856 |
 
-| Cellar | AttrA (left, x<$80) | AttrB (right, x>=$80) | Kind |
-|--------|---------------------|-----------------------|------|
-| **`0x7B`** | **play `0x29`** | **play `0x0D`** | tunnel |
-| `0x4A` | play `0x1A` | play `0x1A` | treasure (live Red Candle) |
+Reports: `recordings/l7_7b_cellar_cross_20260904_C1.json`,
+`recordings/l7_7b_cellar_cross_20260904_C2.json`.
+Pin: `Level7Interior29PreBossReconFixture`. Goriya 0x05/0x06 in 0x29.
+`progression_writes=0` `capacity_writes=0` `deaths=0` `position_poke=0`.
 
-CheckWarps from play `0x0D` hits cellar `0x7B` (AttrB). InitMode9 from
-`0x0D` spawns the **right** ladder `x=$C0`. CheckSubroom UP at `Y<$40`
-and `X>=$80` returns to `0x0D`. Forward dest is the **left** ladder
-`x=$30` → play **`0x29`**.
+C1 first miss: `pit_tile_250` at west floor `(48,189)` — false L8 y=141
+trap. Policy now only fails 250 at the y=141 ledge, not the west ladder.
 
-Play-room doors (N/S/W/E, secret=AttrE&7):
+## Suffix (C1, after dest 0x29)
 
-| Room | N | S | W | E | secret |
-|------|---|---|---|---|--------|
-| `0x0D` | wall | wall | bomb | wall | **block_stairs (5)** |
-| `0x29` | wall | wall | wall | bomb | none |
-| `0x2A` | wall | wall | bomb | shutter | foes_item |
-| `0x2B` | wall | wall | open | wall | none |
-
-`0x0D` has no cardinal exit except the live west bomb back to `0x0C`.
-The only forward gate is the secret staircase into `0x7B`.
-
-`0x29` E-bomb pairs with `0x2A` W-bomb (LevelInfo boss). `0x2A` E-shutter
-then `0x2B` W-open (tf_room).
-
-Table: `level7/stairs.py`. Tests: `tests/test_level7_stairs.py` (ROM-byte
-lock when the local ROM is present).
-
-**NOSE_CELLAR predecessor (ROM-only):** play **`0x0D`** (AttrB). Far side
-**`0x29`**. `NOSE_CELLAR.ram_id` stays `None` (no walk-on).
-
-## Assumed
-
-- aldonunez CheckWarps / InitMode9 / CheckSubroom comments match this
-  cart (calibrated on live L6 `0x08` and L9 `0x77`).
-- Walkthrough "tip of the nose → stairs → bomb into Aquamentus" is the
-  same 0x0D → 0x7B → 0x29 → 0x2A chain. Walkthroughs are not proof.
-
-## Dead beliefs
-
-- **Dead: 0x0D is not a cellar predecessor.** ROM AttrB of `0x7B` is
-  `0x0D`. The 4+ failed south-face vectors are walk-on geometry, not a
-  wrong-room proof.
-- **Dead: the `(204,88)` poke's 0x7B passage is a return-only dead end
-  with no far side.** AttrA=`0x29` ≠ AttrB=`0x0D`. The poke spawned on
-  the right/B ladder (`source=0x0D`) and UP at x=192 is CheckSubroom
-  AttrB → `0x0D`. Floor y≈189 UP cannot CheckSubroom (`Y<$40` required);
-  the far side is the **left** ladder `x=$30`. Same miss as L6 cellar08
-  climbing the source ladder.
-- **Dead: some other L7 play room CheckWarps into 0x7B.** Only `0x0D`
-  and `0x29` are endpoints. No other UW room has AttrA/B = `0x0D`.
-
-Not dead: the 0x0D south-face squeeze. ROM says the stairs are real
-(`secret=5`); it does not make `(192,160)` reachable.
-
-## Plan
-
-Do **not** brute-force the squeeze this sitting. Next:
-
-1. From `Level7Interior0DNoseCellarReconFixture` (or a fresh disclosed
-   poke, still `route_eligible=false`): cellar-cross 0x7B like L6
-   cellar08 — DOWN to floor, LEFT to `x=$30`, UP left ladder — dest
-   claim play **`0x29`**. One trial only, and only if the emulator is
-   free.
-2. TAS south-face squeeze is a **later** sitting.
-3. Do not take a heavier `$EB` stand-in this sitting.
-
-## Leftover
-
-Unchanged pin `Level7Interior0DClearedReconFixture`: L7 play **`0x0D`**
-mode 5 `(63,149)`, `room_all_dead=1`, `0x68` at the NE plug.
-`route_eligible=false`. Glance not re-taken (no emulator).
+- **0x29 bomb-E → 0x2A** 1/1. Survival bomb-count top-up 6→8 at the
+  verified gate (`apply_owned_inventory`, never `max_bombs`). Used 8→7.
+  Dest play **0x2A** `(32,141)` west mouth. Pin
+  `Level7Interior2AAquamentusReconFixture`.
+- **0x2A Aquamentus** 1/1. Reused `Level1AquamentusController`
+  ALIGN/FACE/ATTACK/DODGE/COLLECT_HEART, `tank_hits=True`, room aliased
+  from live `$EB=0x2A` (not L1 0x35). Type **0x3D** at entry. Fireballs
+  0x55 not on the west-mouth census (spawn hp=0); one damage event in
+  0x2A while tanking. Sword-only. HC **3→4**. Leftover `(120,141)`.
+- **0x2A E-shutter → 0x2B** 1/1. Play **0x2B** `(16,141)` west mouth.
+  Pin `Level7Interior2BTriforceReconFixture`. Diamond floor; DOWN at
+  x=16 does not move. South-around `(32,141)→(32,189)→(120,189)→(128,141)`
+  collects the shard. Fanfare mode 18, then OW.
+- **OW leftover (fixture-lineage, 1/1, not Survival):** play **0x42**
+  `(96,93)` mode 5, TF **0x40**, candle 2, whistle 1, keys 2, bombs 7,
+  HC 4. Pin started at TF 0 so this is **not** the Survival `0x7F`
+  packet. `MEASURED_POST_L7_EXIT.verified` stays False.
+  `PostLevel7Handoff.verified` untouched.
 
 ## Rooms live / selected min
 
-L7 remaining selected suffix (ROM, not live): cellar `0x7B` → play `0x29` →
-boss `0x2A` → tf `0x2B` = **0/4**. Prefix is live through TIP_OF_NOSE `0x0D`.
-Do not invent a full-dungeon % until the live room list is counted.
+L7 remaining selected suffix: cellar `0x7B` → play `0x29` → boss `0x2A`
+→ tf `0x2B` = **4/4 fixture-live** (dest 0x29 is 2/2; 0x2A/0x2B/OW are
+1/1 from C1). Prefix is live through TIP_OF_NOSE `0x0D`. `NOSE_CELLAR.ram_id`
+stays None (no 0x0D walk-on). Graph ram_ids: PRE_BOSS `0x29`, AQUAMENTUS
+`0x2A`, TRIFORCE `0x2B`, evidence `fixture-live`, `route_eligible=false`.
 
-L8 selected min-through **9/13 = 69%**. L9 selected MK min **10/28 = 36%**.
+## Not done / leftover
+
+- **0x0D south-face squeeze / walk-on of cellar 0x7B is still OPEN.**
+  0x0D is not dead. Parent `rr-8t4.3` keeps that TAS.
+- Spine factories stay fail-closed. Do not wire the poke-spawned cellar
+  cross onto `level7-red-candle` / `level7_complete`.
+- Survival OW leave packet (TF `0x7F`, 8+1 HC) is unmeasured. Do not
+  fill `MEASURED_POST_L7_EXIT` from the TF-0 recon pin.
+
+Next leftover: 0x0D walk-on (parent), or Survival-lineage shard leave
+once the poke-fixture TF=0 is no longer the start.

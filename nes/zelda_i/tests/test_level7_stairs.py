@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from zelda_i.level7.graph import NOSE_CELLAR, PRE_BOSS, TIP_OF_NOSE, LEVEL7_ROOMS
+from zelda_i.level7.graph import (
+    AQUAMENTUS,
+    LEVEL7_ROOMS,
+    NOSE_CELLAR,
+    PRE_BOSS,
+    TIP_OF_NOSE,
+    TRIFORCE,
+)
 from zelda_i.level7.stairs import (
     AQUAMENTUS_ROM,
     CANDLE_CELLAR_ROM,
@@ -89,7 +96,29 @@ def test_graph_does_not_promote_unwalked_rom_ids() -> None:
     by_id = {room.source_id: room for room in LEVEL7_ROOMS}
     assert by_id[TIP_OF_NOSE].ram_id == 0x0D
     assert by_id[NOSE_CELLAR].ram_id is None
-    assert by_id[PRE_BOSS].ram_id is None
+    assert by_id[PRE_BOSS].ram_id == 0x29
+    assert by_id[AQUAMENTUS].ram_id == 0x2A
+    assert by_id[TRIFORCE].ram_id == 0x2B
+    assert by_id[PRE_BOSS].evidence == "fixture-live"
+    assert by_id[PRE_BOSS].route_eligible is False
+
+
+def test_cellar_module_locks_rom_attr_endpoints() -> None:
+    from zelda_i.level7.cellar import (
+        CELLAR_ROOM,
+        DEST_ROOM,
+        EAST_X,
+        SOURCE_ROOM,
+        WEST_X,
+    )
+
+    assert CELLAR_ROOM == NOSE_CELLAR_ROM == 0x7B
+    assert DEST_ROOM == PRE_BOSS_ROM == 0x29
+    assert SOURCE_ROOM == TIP_OF_NOSE_ROM == 0x0D
+    assert WEST_X == CELLAR_LADDER_LEFT_X == 0x30
+    assert EAST_X == CELLAR_LADDER_RIGHT_X == 0xC0
+    assert spawn_ladder_for_source(CELLAR_ROOM, SOURCE_ROOM) == "right"
+    assert cellar_dest_for(CELLAR_ROOM, side="left") == DEST_ROOM
 
 
 @pytest.mark.skipif(not _ROM.is_file(), reason="local Zelda I ROM not present")

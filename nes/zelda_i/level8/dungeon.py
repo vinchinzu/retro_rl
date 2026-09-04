@@ -342,6 +342,32 @@ LEVEL8_INTERIOR_0X2E_SOUTH_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_1e_south_fixture_20260904_H3",
 )
 
+# rr-6o7.2: ONE south gate from play 0x2E leftover (120,77) after the
+# 0x1E south return.  Cardinal DOWN along already-aligned x=120.  Occupancy
+# still banned (1px-grade false-misses 2px dungeon steps).  I1/I2/I3 2/2,
+# 255 controller frames: first settled play 0x3E (120,93) north mouth,
+# keys 8→8, bombs 6→6, MK 1, TF 0x7F.  Arrival census empty (0x0C bodies
+# already dead).  Walking x=120 picked up map 0x17 (ADDR_MAP 0→0x80);
+# incidental, not a detour.  Arrival doors 0x0C (UP+DOWN); idle later
+# raises RIGHT (0x0D) as the already-cleared east shutter.  Not appended
+# to LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
+# L8_THROUGH.  Do not start Gleeok.  Do not chain RIGHT into 0x3F.
+LEVEL8_INTERIOR_0X3E_SOUTH_RECON = Level8InteriorRoomRecon(
+    room_id=0x3E,
+    entered_from=0x2E,
+    entry_direction="DOWN",
+    entry_gate="south_open_door",
+    entry_pose=(120, 93),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x03,
+    census=(),  # already cleared inbound; map pickup was in origin 0x2E
+    fixture="Level8Interior3ESouthReconFixture",
+    recording_tag="l8_2e_south_fixture_20260904_I3",
+)
+
 
 @dataclass(frozen=True)
 class Level8HypothesisRoom:
@@ -637,6 +663,7 @@ __all__ = [
     "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X2E_SOUTH_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
+    "LEVEL8_INTERIOR_0X3E_SOUTH_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",
     "Level8InteriorRoomRecon",

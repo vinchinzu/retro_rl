@@ -200,16 +200,26 @@ def _e(
 
 
 def _natural_exits() -> dict[int, tuple[RoomExit, ...]]:
-    """Magical Key hypothesis 0x76 → Silver 0x10 → join 0x41. Unobserved = planned."""
+    """Magical Key 0x76 → Silver 0x10 → join 0x41. Fixture-live dest hops marked observed."""
     hyp = _HYP
     obs = "observed; route_eligible=false"
     return {
         L9_ENTRY: (
-            _e(DoorDir.UP, L9_OLD_MAN_TF, notes=f"{hyp}; 12 Keese optional", verification="planned"),
+            _e(
+                DoorDir.UP,
+                L9_OLD_MAN_TF,
+                notes=f"{obs}; dest 2/2 leftover (120,205) hold UP",
+                verification="observed",
+            ),
         ),
         L9_OLD_MAN_TF: (
             _e(DoorDir.DOWN, L9_ENTRY, notes=hyp, verification="planned"),
-            _e(DoorDir.LEFT, 0x65, notes=f"{hyp}; Magical Key path west", verification="planned"),
+            _e(
+                DoorDir.LEFT,
+                0x65,
+                notes=f"{obs}; dest 1/1 leftover (120,205) LEFT after west shutter census",
+                verification="observed",
+            ),
         ),
         0x65: (
             _e(DoorDir.RIGHT, L9_OLD_MAN_TF, notes=hyp, verification="planned"),

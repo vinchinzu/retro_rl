@@ -30,7 +30,12 @@ bomb capacity, rooms, or doors.  Exact missing-evidence reasons:
 `door_graph/level9_exits.py` keeps the observed fixture suffix separate from
 `LEVEL_9_NATURAL_DOOR_GRAPH` (`level_9_natural_hypothesis`).
 
-### Selected Magical Key route (hypothesis; route_eligible=false)
+### Selected Magical Key route (ZD §10.2 cut; hypothesis; route_eligible=false)
+
+This is Zelda Dungeon **§10.2**, not §10.3, and not the full PNG red line.
+Survival refill instead of Red Potion / Red Ring. Skip Compass + Map-Patra.
+Hex IDs are RAM `$EB`; the wiki never names them. Wiki locked-door-UP after
+the Red Ring backtrack is taken here on the **first visit**.
 
 Red Ring `0x07` excluded (Survival refill; not negligible). Join is the proven
 fixture suffix at `0x41`. `requires_51_to_41=True` — do not spend a sitting on
@@ -47,6 +52,13 @@ join: 0x10 → 0x20 → 0x61 → 0x51 → 0x41 → 0x31 bomb-W → 0x30
 
 Dead beliefs: `0x62` is not a south neighbor of Patra `0x52` (ROM walls; live
 8 Keese W/E only). `0x13→0x03` remains a fake loader scroll.
+
+Fixture-live dest hops (`rr-sz8.6`, `route_eligible=false`): play `0x76`
+leftover `(120,205)` hold UP → `0x66` **2/2** P1/P2 251 controller frames;
+play `0x66` leftover `(120,205)` after west-shutter census (`doors=10`)
+hold LEFT → `0x65` **2/2** W1/W2 `(224,141)`. Pin
+`Level9Interior65WestReconFixture`. Natural old-man factory stays
+fail-closed. Do not batch the rest of the prefix.
 
 The `level9-credits` chapter is callable only after the exact live-Patra
 endpoint: room `0x52`, body `0x47`, eight eyes `0x25`, north closed, TF
@@ -592,29 +604,53 @@ bomb-entry notes (controller TBD).
 
 ---
 
-## Interior (source summary)
+## Interior (ZD §10.2 Magical Key, CUT)
 
-Two routes: **with Magical Key** (ZD §10.2) vs **without** (§10.3). Prefer
-Magical Key path for automation (fewer key bottlenecks). Room IDs **unknown**.
+This is **Zelda Dungeon §10.2**, not §10.3, and not the full PNG red line.
+The in-repo selected path is a **cut** of 10.2: Survival refill instead of
+Red Potion / Red Ring, and skip Compass + Map-Patra. Hex IDs are **ours
+from RAM `$EB`**; the wiki never names them.
 
-### Magical Key path (condensed source)
+Two wiki routes exist: **with Magical Key** (§10.2, selected) vs **without**
+(§10.3, not this sitting). Prefer Magical Key for automation.
 
-| Phase | Action | Notes |
-|-------|--------|-------|
-| Entry | UP | 12 Keese optional |
-| Old Man | full TF check | pass only if `triforce == 0xFF` |
-| LEFT / bomb N | Lanmola | head hits; push left block → stairs |
-| Underground | tunnel | |
-| Like-Likes | protect Magical Shield | key RIGHT |
-| Patra #1 | **skippable** | orbiting eyes; leave DOWN |
-| Patra #2 | kill for **Map** | bomb walls continue |
-| Wizzrobe / blocks | clear, push left block | stairs → **Red Ring** |
-| Backtrack | Magical Key doors | Old Man bomb hint LEFT |
-| Stairs chain | more Wizzrobes / Patra | |
-| Item | stairs → **Silver Arrows** | required for Ganon |
-| Final Patra | clear → door UP | live as room `0x52`; see below |
-| **Ganon** | stun then Silver Arrow | see below |
-| Zelda | princess room | ending sequence |
+### Wiki 10.2 → repo `$EB`
+
+| Wiki 10.2 | Repo `$EB` |
+|-----------|------------|
+| 10.1: bomb left Spectacle Rock; potion one screen left | OW `0x05` left rock; potion **skipped** (Survival refill) |
+| Entrance UP → Old Man full-TF gate → LEFT → bomb north → Lanmola → left-block stairs | `0x76` → `0x66` → `0x65` bomb-N → `0x55` → cellar `0x60` |
+| Like-Likes, key RIGHT, skip first Patra | `0x14` → `0x15` → `0x16` skip Patra |
+| Locked door UP from first Patra ("GO TO THE NEXT ROOM"), bomb LEFT, stairs → Silver Arrows | `0x16` → `0x06` bomb-W → `0x05` → cellar `0x70` → `0x63` → `0x62` → `0x61` → cellar `0x75` → `0x20` bomb-N → `0x10` |
+| Like-Likes UP, blade-traps UP, bomb LEFT, stairs, cellar, last Patra, UP Ganon | `0x51` → `0x41` → `0x31` bomb-W → `0x30` → cellar `0x67` → `0x04` → `0x03` → cellar `0x77` left → `0x52` → `0x42` → `0x32` |
+
+Wiki does the locked-door-UP only after the Red Ring backtrack. **We take it
+on the first visit.**
+
+### Cut from the PNG red path (do not walk)
+
+- Compass (south of `0x15`)
+- First-Patra DOWN → gels → Map Patra ("PATRA - HAS THE MAP") → bomb north → Red Ring (potion icon, `0x07`)
+- Red Potion before entry
+
+### Wiki was wrong live (do not follow the map here)
+
+- `0x62` is not south of Patra `0x52` (both walls; live 8 Keese)
+- `0x51` north is the right predecessor of `0x41`, but the dest walk is **NO** (statue diamond) — bead `rr-yxy6`; do not spend this sitting on it
+- `0x13` → `0x03` is a fake loader scroll
+
+Selected rooms already in `level9/dungeon.py`:
+`L9_SELECTED_PREFIX_ROOMS` = `0x76 0x66 0x65 0x55 0x60 0x14 0x15 0x16 0x06 0x05 0x70 0x63 0x62 0x61 0x75 0x20 0x10`;
+`L9_SELECTED_JOIN_ROOMS` = `0x10 0x20 0x61 0x51 0x41 0x31 0x30 0x67 0x04 0x03 0x77 0x52`;
+plus Ganon `0x42` / Zelda `0x32`. Red Ring `0x07` **out**.
+
+ROM L7–9 door bytes (iNES `0x18A10` / `0x18A90`), not dest-hop proof:
+
+| Room | N | S | W | E |
+|------|---|---|---|---|
+| `0x76` entry | **open (0)** | open (0) | wall (1) | wall (1) |
+| `0x66` Old Man | shutter (7) | open (0) | **shutter (7)** | wall (1) |
+| `0x65` | bomb (4) | wall (1) | open (0) | open (0) |
 
 ### Final Patra (live 2/2)
 
@@ -745,6 +781,11 @@ development-only and not a natural-entry checkpoint.
 # Isolated segment CLI pruned. Durable runner:
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 # Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
+
+# Fixture-live 0x76 north dest hop (rr-sz8.6). Glance leftover first.
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/probe_l9_76_north.py \
+    --from-state Level9EntranceReconFixture --tag 20260904_P1 \
+    --infinite-life --no-video
 ```
 
 Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
@@ -755,7 +796,8 @@ Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
 
 ## Evidence boundary
 
-- Live: Spectacle Rock `0x05`; entrance `0x76`; final Patra `0x52` body/eye
+- Live: Spectacle Rock `0x05`; entrance `0x76`; fixture-live dest `0x76` UP
+  → `0x66` **2/2** and `0x66` LEFT → `0x65` **1/1** (`rr-sz8.6`); final Patra `0x52` body/eye
   types and HP; natural Patra clear + north-door bit; Ganon `0x42`; Zelda
   `0x32`; combat states; credits and final-screen stops.
 - Fixture-only in both tracks: full inventory and room-loader composition.

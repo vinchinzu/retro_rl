@@ -296,22 +296,32 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         NOSE_CELLAR,
         "nose_cellar",
         role="ROM cellar 0x7B tunnel AttrA=0x29 AttrB=0x0D; poke-observed "
-        "mode 9 from 0x0D (return/B ladder x=$C0). ram_id unpromoted",
+        "mode 9 from 0x0D (B ladder x=$C0). B→A cross live dest 0x29. "
+        "ram_id unpromoted (no 0x0D walk-on)",
     ),
     Level7RoomHyp(
         PRE_BOSS,
         "pre_boss",
-        role="ROM play 0x29 = cellar 0x7B AttrA; E bomb -> 0x2A. Unobserved live",
+        ram_id=0x29,
+        role="live: cellar 0x7B AttrA dest (96,157) 2/2; goriya 0x05/0x06; "
+        "E bomb -> 0x2A",
+        evidence="fixture-live",
     ),
     Level7RoomHyp(
         AQUAMENTUS,
         "aquamentus",
-        role="heart_plus_1; ROM LevelInfo boss=0x2A W-bomb E-shutter",
+        ram_id=0x2A,
+        role="live: type 0x3D W mouth (32,141); sword-only HC 3→4; "
+        "E shutter -> 0x2B",
+        evidence="fixture-live",
     ),
     Level7RoomHyp(
         TRIFORCE,
         "triforce_shard_7",
-        role="public_level7; ROM LevelInfo tf_room=0x2B W-open",
+        ram_id=0x2B,
+        role="live: diamond floor, W mouth (16,141); south-around to shard. "
+        "OW leftover 0x42 (96,93) TF 0x40 on this recon pin (not Survival 0x7F)",
+        evidence="fixture-live",
     ),
 )
 

@@ -17,6 +17,7 @@ from zelda_i.level8.dungeon import (
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X2E_SOUTH_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
+    LEVEL8_INTERIOR_0X3E_SOUTH_RECON,
     LEVEL8_INTERIOR_ROOM_RECON,
     LEVEL8_ROOM_SPECS,
     Level8InteriorRoomRecon,
@@ -197,3 +198,28 @@ def test_0x2e_south_return_is_live_not_on_inbound_chain() -> None:
     assert SOUTH_DEST != 0x3C
     # Distinct leftover from the inbound bomb-north pin (120,189).
     assert r.entry_pose != LEVEL8_INTERIOR_0X2E_RECON.entry_pose
+
+
+def test_0x3e_south_return_is_live_not_on_inbound_chain() -> None:
+    from zelda_i.level8.path import SOUTH_2E_DEST, SOUTH_2E_DEST_POSE
+    from zelda_i.level8.spine import L8_THROUGH
+
+    # probe_l8_2e_south I1/I2/I3 2/2, 255 controller frames. Not Gleeok 0x3C.
+    r = LEVEL8_INTERIOR_0X3E_SOUTH_RECON
+    assert r.room_id == SOUTH_2E_DEST == 0x3E
+    assert r.entered_from == 0x2E
+    assert r.entry_direction == "DOWN"
+    assert r.entry_gate == "south_open_door"
+    assert r.entry_pose == SOUTH_2E_DEST_POSE == (120, 93)
+    assert (r.keys_in, r.keys_out) == (8, 8)
+    assert (r.bombs_in, r.bombs_out) == (6, 6)
+    assert r.census == ()
+    assert r.room_item_id == 0x03
+    assert r.fixture == "Level8Interior3ESouthReconFixture"
+    assert r.route_eligible is False
+    assert r not in LEVEL8_INTERIOR_ROOM_RECON
+    assert "level8-interior-0x3e-south" not in L8_THROUGH
+    assert SOUTH_2E_DEST != 0x3C
+    assert SOUTH_2E_DEST != 0x0F
+    # Distinct leftover from the inbound key-north pin (120,205).
+    assert r.entry_pose != LEVEL8_INTERIOR_0X3E_RECON.entry_pose
