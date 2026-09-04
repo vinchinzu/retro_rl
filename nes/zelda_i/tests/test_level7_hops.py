@@ -84,6 +84,8 @@ from zelda_i.level7.path import (
     ROOM_0D_BLOCK,
     ROOM_0D_BLOCK_STAND,
     ROOM_0D_BLOCK_AFTER_RIGHT,
+    ROOM_0D_BLOCK_CELL_AFTER_RIGHT,
+    ROOM_0D_STAIR_CELL,
     ROOM_0D_NORTH_ARM,
     ROOM_0D_STAIR_WARP_HYP,
     Room38UpController,
@@ -881,18 +883,25 @@ def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
     ]
 
 
-def test_room_0d_block_16px_right_parks_on_ne_hole() -> None:
-    """16px RIGHT from (192,144) snaps 0x68 to (208,96). Stairs unobserved."""
+def test_room_0d_block_16px_right_reveals_the_ne_staircase() -> None:
+    """16px RIGHT from (192,144) puts the block at (208,144) and stairs at (208,96).
+
+    ``ROOM_0D_BLOCK_AFTER_RIGHT`` is the *RAM-observed* 0x68 x/y after the
+    push and is an artifact: the object is repointed to the revealed
+    staircase. The tile map's block quad is ``ROOM_0D_BLOCK_CELL_AFTER_RIGHT``.
+    """
     assert ROOM_0D_BLOCK == (192, 144)
     assert ROOM_0D_BLOCK_STAND == (176, 144)
-    assert ROOM_0D_BLOCK_AFTER_RIGHT == (208, 96)
-    assert ROOM_0D_BLOCK_AFTER_RIGHT[0] - ROOM_0D_BLOCK[0] == 16
-    # Race UP the stand column reaches the north-arm east edge during the
-    # 32f slide; the hole is still tile 179. L6-shaped (208,93) is not dest.
+    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT == (208, 144)
+    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT[0] - ROOM_0D_BLOCK[0] == 16
+    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT[1] == ROOM_0D_BLOCK[1]
+    assert ROOM_0D_BLOCK_AFTER_RIGHT == ROOM_0D_STAIR_CELL == (208, 96)
+    # (176,117) is boxed because the whole y=112 cell row is solid, not
+    # because of any snap; the live route goes x=32 UP then the y=96 row.
     assert ROOM_0D_NORTH_ARM == (176, 117)
     assert ROOM_0D_NORTH_ARM[0] == ROOM_0D_BLOCK_STAND[0]
     assert ROOM_0D_STAIR_WARP_HYP == (208, 93)
-    assert ROOM_0D_STAIR_WARP_HYP[0] == ROOM_0D_BLOCK_AFTER_RIGHT[0]
+    assert ROOM_0D_STAIR_WARP_HYP[0] == ROOM_0D_STAIR_CELL[0]
 
 
 def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:

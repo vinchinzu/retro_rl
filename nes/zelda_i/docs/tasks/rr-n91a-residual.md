@@ -1,3 +1,181 @@
+# Residual — rr-8t4.3 L7-C 0x0D walk-on **SOLVED** (2026-09-04)
+
+Did not STATUS. Did not touch `docs/STATUS.md`, `level8/**`, L9, or harvest.
+Did not `git push` or `git add -A`. No position pokes anywhere
+(`position_writes=0`), no door/key/Triforce/Map/Whistle/candle/bomb/HC/mode/
+facing writes, no state loads mid-run. OccupancyWalker still banned in 0x0D
+(unit-tested). `MEASURED_POST_L7_EXIT.verified` stays **False**.
+`make_aquamentus_heart_controller` / `make_level7_shard_leave_controller`
+stay fail-closed; only `make_tip_stairs_controller` was flipped, on 2/2.
+
+## What cracked it
+
+The blocker was never the terrain — it was the measuring instrument plus a
+stale guard.
+
+1. **`$049E` `colliding_tile` is direction-sensitive**: it reports the tile
+   Link is walking *into*, so every prior tile "sweep" of 0x0D was a lead,
+   not a map. The room's real collision map is in **cart WRAM at `$6530`**,
+   column-major, 32 cols x 22 rows of 8x8 tiles (stride 22);
+   `env.get_ram()` index `0x800` is `$6000`. New read-only reader:
+   `zelda_i.dungeon.tilemap` (`ascii_room`, `stair_cells`, `door_cells`,
+   `link_cell`). Independently cross-checked against a 16x16 block
+   classification of the rendered frame before it was trusted.
+2. **`INLAND_X = (64, 192)`** in `scratch/probe_l7_room0d_push.py` — a
+   wallmaster-grab guard carried over from the *uncleared* recon — excluded
+   **both** of the room's only two corridors. The pin is cleared
+   (`room_all_dead=4`, no wallmasters), so the guard was pure loss.
+
+Measured map of play 0x0D (16x16 cells; `.` floor, `#` solid, `S` stairs,
+`B` the pushable `0x68`; west door at `(16,144)` is outside the interior):
+
+```
+        x=  32  48  64  80  96 112 128 144 160 176 192 208
+ y= 96       .   .   .   .   .   .   .   .   .   .   .   S   <- stairs (post-push)
+ y=112       .   #   #   #   #   #   #   #   #   #   #   .
+ y=128       .   .   .   .   .   .   .   .   .   .   #   .
+ y=144       .   .   .   .   .   .   .   .   .   .   B   .
+ y=160       .   .   .   .   .   .   .   .   .   .   #   .
+ y=176       .   #   #   #   #   #   #   #   #   #   #   .
+ y=192       .   .   .   .   .   .   .   .   .   .   .   .
+```
+
+It is a **ring**. `x=32` (west) and `x=208` (east) are the only crossings of
+the `y=112` / `y=176` solid bands. Link's stored `y` is 11px above the cell
+row his feet collide with (`y=93/109/125/141/157/173/189` -> cell rows
+`96/112/128/144/160/176/192`), which is why UP from `(144,141)` parks at
+`y=117` and not `y=125`.
+
+## Glance (pin start, all trials)
+
+`Level7Interior0DClearedReconFixture`: L7 play **`$EB=0x0D` mode 5**
+`(63,149)` tile 118, doors=2 (west), `room_all_dead=4`, keys 2, bombs 6,
+candle 2, whistle 1, ladder 1, TF 0, 3 HC. `0x68` `(192,144)`.
+`stair_cells()` **empty**. `door_cells()` = `[(16,144)]`.
+
+## RAM claims (written before the first live trial)
+
+Committed in `scratch/probe_l7_room0d_ring.py`'s docstring and mirrored in
+`level7.stairs0d.RAM_CLAIM` before any run.
+
+| id | claim | miss condition |
+|----|-------|----------------|
+| R1 | UP to `y=125`, LEFT to `x=32` along the `y=128` row | LEFT pins at `x>34` |
+| R2 | UP the `x=32` column to `y=93` | UP pins at `y>=101` |
+| R3 | pre-push `stair_cells()` is empty | stairs already present |
+| R4 | RIGHT push puts the block quad at `(208,144)` and stairs at `(208,96)`; the "(208,96) block" is a RAM artifact | tile map shows the block quad at `(208,96)` |
+| R5 | RIGHT along the `y=96` row onto `(208,93)` enters cellar 0x7B mode 9 | Link stands at `(208,93)` in play 0x0D with no mode change |
+
+## Trials
+
+Probe `scratch/probe_l7_room0d_ring.py` (raw legs), then
+`scratch/probe_l7_room0d_stairs0d.py` (the shipped controller).
+
+| tag | leg / dest `$EB`/mode/xy | frames | PNG | vs claim |
+|-----|--------------------------|--------|-----|----------|
+| `0d_ring_v1` push | block RAM `(208,96)`, **tile map quad `(208,144)`**, `stair_cells()` -> `[(208,96)]` | 182 | `0d_ring_v1_pushed.png` | **HIT** R3+R4 |
+| `0d_ring_v1` west_column | play 0x0D `(32,125)` | 311 | `0d_ring_v1_west_column.png` | **HIT** R1 |
+| `0d_ring_v1` north_column | play 0x0D `(32,93)` | 335 | `0d_ring_v1_north_column.png` | **HIT** R2 |
+| `0d_ring_v1` east_top_row | **cellar `0x7B` mode 16 -> 9** `(208,93)`, settle `(192,93)` | 466 / 706 | `0d_ring_v1_cellar.png` | **HIT** R5 |
+| `0d_ring_v2` | same, bit-identical | 466 / 706 | `0d_ring_v2_cellar.png` | **HIT** — probe **2/2** |
+| `20260904_S1` first cut | `Level7Stairs0DController` FAILED `phase_push_stalled_64_145`, play 0x0D `(64,145)` | 701 | none retained (tag re-used by the fixed re-run) | **MISS** — see dead belief 4 |
+| `20260904_S3` | **cellar `0x7B` mode 9**, settle `(192,93)` | 458 ctl | `20260904_S3_dest.png` | **HIT** R5 |
+| `20260904_S4` | **cellar `0x7B` mode 9**, settle `(192,93)` | 458 ctl | `20260904_S4_dest.png` | **HIT** — controller **2/2** |
+| `20260904_S5` chain | walk-on then the existing 2/2 `0x7B` B->A cross: play **`0x29`** `(96,157)` | 458 + 370 | `20260904_S5_cross.png` | **HIT** — no poke in the lineage |
+| `20260904_S6` | **cellar `0x7B` mode 9**, fixture saved | 458 ctl | `20260904_S6_dest.png` | **HIT** |
+| `20260904_S7` | **cellar `0x7B` mode 9**, settle `(192,93)` | 458 ctl | `20260904_S7_dest.png` | **HIT** — final code |
+| `20260904_S8` | **cellar `0x7B` mode 9**, settle `(192,93)` | 458 ctl | `20260904_S8_dest.png` | **HIT** — final code **2/2** |
+
+Every trial: `progression_writes=0` `capacity_writes=0` `deaths=0`
+`position_writes=0`. Reports `recordings/0d_ring_v1.json`,
+`0d_ring_v2.json`, `20260904_S1..S8.json`.
+
+`20260904_S1` is the only MISS and it is a controller bug, not geometry —
+it was fixed and then re-proved 2/2 (`S3`/`S4`), and once more (`S7`/`S8`)
+after the last edit, so the shipped code is the code that ran green.
+
+## Resolved discrepancy — "the block snaps to (208,96)"
+
+**It does not.** The tile map across the push shows cols 26-27 / rows 4-5
+going `74 76 / 75 77` -> `70 72 / 71 73` (a staircase at `(208,96)`) while
+the block quad moves `(192,144)` -> `(208,144)`, a clean 16px RIGHT slide.
+The `0x68` object's RAM `x`/`y` (`$7B`/`$8F`) is **repointed to the revealed
+stairs** once the slide completes, which is what earlier sittings read.
+`level7.path.ROOM_0D_BLOCK_AFTER_RIGHT` keeps the RAM-observed `(208,96)`
+and is now documented as the artifact; `ROOM_0D_BLOCK_CELL_AFTER_RIGHT`
+`(208,144)` and `ROOM_0D_STAIR_CELL` `(208,96)` are the tile-map truth.
+(`room_all_dead` also reads garbage in this room post-push — 4/174/35/103
+across one run — so do not gate on it after the push.)
+
+## New dead beliefs
+
+- Dead: `$049E` sweeps map a room. They are direction-sensitive; use
+  `zelda_i.dungeon.tilemap` (`$6530`). The 2026-09-03 tilesweep note that
+  "the y~101-115 band is solid across the whole room width" is right about
+  `x=48..192` and **wrong at `x=32` and `x=208`**, which are floor.
+- Dead: `x=192` is a column. Static blocks at `(192,128)` and `(192,160)`
+  sandwich the pushable; the residual's "(192,133) plug tile 179" is just
+  the static block at `(192,128)`. RIGHT-push-then-climb-east can never
+  work — the pushed block seals `(208,144)` too.
+- Dead: `x=32` is a wallmaster grab column. That was the **uncleared** recon
+  (`INLAND_X`); from the cleared pin it is the main corridor. The real
+  hazard there is the **west door at `(16,144)`** — travel west on the
+  `y=128` row, not the `y=141` door row, or Link exits to 0x79.
+- Dead (controller shape): a per-frame "align y, else press RIGHT" priority
+  loop. Zelda re-snaps Link's `y` on horizontal movement, so it oscillates
+  and never advances (`20260904_S1`: 700 frames, x 63 -> 64). Every leg must
+  hold **one** cardinal until its own predicate, with a stall guard.
+- Dead: the `(96,141)`/`(144,141)`/`(176,141)` "north-arm" and "plus-corner"
+  model of this room. There is no plus and there are no statues in the
+  cleared pin — the `_0D_STATUE_XY` cells are just floor. The five earlier
+  MISS pins (`(144,117)`, `(176,117)`, `(144,157)`, `(96,157)`, `(64,157)`)
+  are all simply the `y=112` / `y=176` solid bands, and all of them are
+  reproduced exactly by the tile map.
+
+## Landed
+
+- `zelda_i/dungeon/tilemap.py` — read-only `$6530` room tile map reader
+  (generalises to every room in the game). Never writes.
+  Tests `tests/test_dungeon_tilemap.py` (9).
+- `zelda_i/level7/stairs0d.py` — `Level7Stairs0DController`, single-cardinal
+  phase machine `PUSH_UP -> PUSH_EAST -> PUSH_ALIGN -> PUSH_HOLD ->
+  PEEL_WEST -> NORTH_ROW -> WEST_COLUMN -> NORTH_COLUMN -> EAST_TOP`, with a
+  west-door guard and a per-leg stall guard. Dest is RAM (mode 9, `0x7B`).
+  Tests `tests/test_level7_stairs0d.py` (13 cases). `level7/path.py` not grown
+  (only comments/constants corrected).
+- `make_tip_stairs_controller` **flipped** from fail-closed to
+  `make_stairs0d_controller()` (2/2). `route_eligible` stays False,
+  `evidence="fixture-live"`.
+- Graph: `NOSE_CELLAR.ram_id` promoted `None -> 0x7B`, `evidence`
+  `fixture-live`, `route_eligible=False`.
+- Fixture `Level7Interior0DStairsWalkOnCellarFixture` — mode 9 cellar `0x7B`
+  `(192,93)`, walk-on lineage, no position pokes. It supersedes the
+  poke-derived `Level7Interior0DNoseCellarReconFixture` as the start of the
+  `0x7B -> 0x29` cross (same pose, proved live in `20260904_S5`).
+- Probes `scratch/probe_l7_room0d_ring.py`,
+  `scratch/probe_l7_room0d_stairs0d.py`.
+- Suite green: **698 passed** (`QT_QPA_PLATFORM=offscreen uv run pytest
+  nes/zelda_i/tests -q`), up from 676.
+
+## Not done / leftover
+
+- L7-C prefix now runs `0x0C -> 0x0D -> 0x7B -> 0x29 -> 0x2A -> 0x2B` with
+  **no position poke anywhere**, but only as fixture-lineage; the Survival
+  `--through level7` chain is still blocked upstream (bait/pond,
+  `rr-8t4.4`). Do not mark `route_eligible`.
+- `make_aquamentus_heart_controller` / `make_level7_shard_leave_controller`
+  stay fail-closed. `MEASURED_POST_L7_EXIT.verified` stays False.
+- Not attempted: LEFT/UP/DOWN pushes of the `0x68` (RIGHT works, so the
+  alternatives were not needed); the south ring (`y=192` row then the east
+  column) is implemented in `probe_l7_room0d_ring.py --ring south` but was
+  never run — after a RIGHT push the block seals `(208,144)`, so that ring
+  needs a LEFT push.
+- The `$6530` reader is only calibrated on L7 `0x0D` and the L7 `0x29`
+  leftover; other rooms/levels are unverified (overworld untried).
+
+Next leftover: Survival-lineage L7 (bait/pond `rr-8t4.4`), or apply the tile
+map to the remaining unmapped rooms instead of `$049E` sweeps.
+
 # Residual — rr-n91a / rr-8t4.3 L7-C 0x0D walk-on (2026-09-04)
 
 Did not STATUS. Did not poke doors/TF/position. Did not touch `level8/**`,

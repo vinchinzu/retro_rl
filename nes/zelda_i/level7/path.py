@@ -2623,15 +2623,22 @@ ROOM0D_CLEAR_MAX_FRAMES = 18000
 # 0x68 west-face stand. A 16px RIGHT slide is autonomous once it starts
 # (1px/2f at y=144) and the 16th pixel snaps the object to (208,96) on
 # the NE stair hole. Stairs dest $EB still unobserved (0d_push_v20/v22).
-# x=176 UP from the stand reaches the north-arm east edge (176,117) in
-# ~24f, while the block is still on y=144 (0d_race_v1/v2). RIGHT+UP
-# from that cell is tile 179 even before the snap. L6-shaped CheckWarp
-# (208,93) is tile 0x75 under the parked 0x68 and does not mode-9
-# (0d_poke_v2). East pocket cannot reach x=200 (tile 177 at 192,141).
+# SOLVED 2026-09-04 (rr-8t4.3): the walk-on lives in `level7.stairs0d`.
+# 0x0D is a ring; x=32 and x=208 are the only crossings of the y=112 /
+# y=176 solid bands, and x=192 is never a corridor (static blocks at
+# (192,128)/(192,160) sandwich the pushable). ROOM_0D_NORTH_ARM (176,117)
+# is boxed because the whole y=112 band is solid, not because of a snap.
 ROOM_0D_BLOCK = (192, 144)
 ROOM_0D_BLOCK_STAND = (176, 144)
+# RAM-observed value of the 0x68 object after the RIGHT push. It is an
+# artifact: the tile map shows the block quad at (208,144) and the freshly
+# revealed staircase at (208,96), and the object's x/y is repointed to the
+# stairs. `ROOM_0D_BLOCK_CELL_AFTER_RIGHT` is the real post-push cell.
 ROOM_0D_BLOCK_AFTER_RIGHT = (208, 96)
+ROOM_0D_BLOCK_CELL_AFTER_RIGHT = (208, 144)
+ROOM_0D_STAIR_CELL = (208, 96)
 ROOM_0D_NORTH_ARM = (176, 117)
+# Live 2/2: stepping onto (208,93) after the push enters cellar 0x7B mode 9.
 ROOM_0D_STAIR_WARP_HYP = (208, 93)
 # Plus-corner 0x27 park here until they peel to the west wall one-at-a-time.
 _0D_STATUE_XY = frozenset({(128, 125), (128, 157), (160, 125), (160, 157)})
@@ -2667,9 +2674,9 @@ class Room0DClearController(HopController):
     Plus-corner 0x27 peel to the west wall one-at-a-time (not statues).
     Nudge x≈52 y=117, slash LEFT at x=48, peel inland after each kill.
     2/2 room_all_dead (0d_wm_v10 / 0d_cleared).  Recon-wired only.
-    16px RIGHT on 0x68 (192,144) snaps it to (208,96) on the NE stair
-    hole. x=176 UP reaches (176,117) during the slide; the hole is
-    still tile 179. Dest $EB unobserved.
+    The stairs walk-on that follows is `level7.stairs0d` (live 2/2):
+    16px RIGHT on the 0x68 (192,144) reveals the staircase at the
+    (208,96) cell, then the ring walk x=32 UP / y=96 east reaches it.
     """
 
     spec_id: str = "level7_room0d_clear"
@@ -2852,6 +2859,8 @@ __all__ = [
     "ROOM_0D_BLOCK",
     "ROOM_0D_BLOCK_STAND",
     "ROOM_0D_BLOCK_AFTER_RIGHT",
+    "ROOM_0D_BLOCK_CELL_AFTER_RIGHT",
+    "ROOM_0D_STAIR_CELL",
     "ROOM_0D_NORTH_ARM",
     "ROOM_0D_STAIR_WARP_HYP",
     "Room58EastController",

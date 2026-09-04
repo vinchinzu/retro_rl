@@ -3,6 +3,35 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-04 — 0x0D walk-on **SOLVED**; the NO-GO below is OVERTURNED
+
+Everything in this file dated 2026-09-03 or earlier about `0x0D` being
+unreachable is **dead**, including the "NO-GO as reachable" verdict and the
+"north pocket with no walk-on route" reading. Full evidence tables:
+`docs/tasks/rr-n91a-residual.md` (top section).
+
+Short version: `$049E` `colliding_tile` is direction-sensitive and never
+mapped this room. The real collision map is cart WRAM `$6530` (reader:
+`zelda_i.dungeon.tilemap`). `0x0D` is a **ring**: `x=32` and `x=208` are the
+only crossings of the `y=112` / `y=176` solid bands, and every earlier probe
+excluded both via the stale `INLAND_X = (64, 192)` wallmaster guard from the
+*uncleared* recon. `x=192` is never a corridor (static blocks at
+`(192,128)` / `(192,160)` sandwich the pushable), so the "(192,133) plug" was
+just the static block above it.
+
+Live route (`zelda_i.level7.stairs0d`, **2/2**, `position_writes=0`): verified
+16px RIGHT push -> block to the `(208,144)` cell and a staircase appears at
+`(208,96)` -> west along the `y=128` row (never the `y=141` west-door row) ->
+UP the `x=32` column -> east along the `y=96` row onto `(208,93)` -> cellar
+**`0x7B` mode 9**, right/B ladder `(192,93)`. Chained straight into the
+existing 2/2 `0x7B` B->A cross to play `0x29` `(96,157)` in `20260904_S5`.
+
+The "block snaps to (208,96)" belief is a RAM-read artifact: the `0x68`
+object's x/y is repointed to the revealed stairs; the block itself moves one
+tile RIGHT. `NOSE_CELLAR.ram_id` is now `0x7B` (`fixture-live`,
+`route_eligible=false`); `make_tip_stairs_controller` is no longer
+fail-closed. Fixture `Level7Interior0DStairsWalkOnCellarFixture`.
+
 ## 2026-09-04 — 0x0D north-corridor UP from y=141 MISS
 
 Agent L7. Did not STATUS. Did not poke. Did not retry DOWN-to-y=165 or

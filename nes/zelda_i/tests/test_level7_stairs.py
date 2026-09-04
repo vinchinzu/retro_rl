@@ -92,10 +92,13 @@ def test_levelinfo_boss_hallway_ids() -> None:
     assert NOSE_CELLAR_ROM == 0x7B
 
 
-def test_graph_does_not_promote_unwalked_rom_ids() -> None:
+def test_graph_promotes_only_walked_rom_ids() -> None:
+    """NOSE_CELLAR 0x7B is promoted: the 0x0D walk-on is live 2/2."""
     by_id = {room.source_id: room for room in LEVEL7_ROOMS}
     assert by_id[TIP_OF_NOSE].ram_id == 0x0D
-    assert by_id[NOSE_CELLAR].ram_id is None
+    assert by_id[NOSE_CELLAR].ram_id == 0x7B
+    assert by_id[NOSE_CELLAR].evidence == "fixture-live"
+    assert by_id[NOSE_CELLAR].route_eligible is False
     assert by_id[PRE_BOSS].ram_id == 0x29
     assert by_id[AQUAMENTUS].ram_id == 0x2A
     assert by_id[TRIFORCE].ram_id == 0x2B
