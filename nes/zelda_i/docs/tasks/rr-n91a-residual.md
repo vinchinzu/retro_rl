@@ -99,3 +99,11 @@ Do **not** brute-force the squeeze this sitting. Next:
 Unchanged pin `Level7Interior0DClearedReconFixture`: L7 play **`0x0D`**
 mode 5 `(63,149)`, `room_all_dead=1`, `0x68` at the NE plug.
 `route_eligible=false`. Glance not re-taken (no emulator).
+
+## Rooms live / selected min
+
+L7 remaining selected suffix (ROM, not live): cellar `0x7B` → play `0x29` →
+boss `0x2A` → tf `0x2B` = **0/4**. Prefix is live through TIP_OF_NOSE `0x0D`.
+Do not invent a full-dungeon % until the live room list is counted.
+
+L8 selected min-through **9/13 = 69%**. L9 selected MK min **10/28 = 36%**.

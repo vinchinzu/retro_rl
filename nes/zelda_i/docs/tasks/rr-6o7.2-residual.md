@@ -53,6 +53,17 @@ Keys 8→8, bombs 6→6 unless a new gate spends one.
 3. `rr-6o7.3`: heart, TF `0x80`, post-L8 OW leave.
 4. Power-on still blocked on `rr-8t4.3` then `rr-6o7.1`.
 
+## Rooms live / selected min
+
+L8 selected min-through (MK chapter + Gleeok suffix, Book/Map/Compass omitted):
+`0x7E 0x6E 0x5E 0x4E 0x3E 0x2E 0x1E 0x1F 0x0F` + `passage_east pols_west gleeok 0x3C triforce` = **13**.
+Live unique: those nine (MK 9/9 including cellar). Unvisited: 4.
+**L8 9/13 = 69%.** Leftover is a revisit of live `0x2E`.
+
+L9 selected Magical Key min (Red Ring `0x07` out, plus Ganon/Zelda): **28**.
+Live dest hops: `0x41 0x31 0x30 0x67 0x04 0x03 0x77 0x52 0x42 0x32` = 10.
+Poked `0x76` settle only. **L9 10/28 = 36%** (11/28 = 39% if counting poked `0x76`).
+
 ## Integrity
 
 deaths 0, progression_writes 0, capacity_writes 0. Survival refill only.
