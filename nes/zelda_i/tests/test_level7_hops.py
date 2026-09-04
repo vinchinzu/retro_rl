@@ -438,8 +438,18 @@ def test_red_candle_chapter_starts_at_entry_first_door() -> None:
     names = [name for name, _c, _f in stages]
     assert names == [
         "level7_entry_first_door",
+        "level7_room69_west_bomb",
+        "level7_room68_north",
+        "level7_room58_east",
+        "level7_room59_up",
+        "level7_room49_up",
+        "level7_room39_left",
+        "level7_room38_up",
         "level7_entry_to_hungry_goriya",
-        "level7_tip_of_nose_stairs",
+        "level7_room18_north_bomb",
+        "level7_room08_east_bomb",
+        "level7_room09_down",
+        "level7_room19_east_bomb",
         "level7_red_candle_pickup",
     ]
     first = stages[0][1]
@@ -550,57 +560,50 @@ def test_room_6a_east_arrived_leaves_0x6a() -> None:
 
 
 def test_hungry_goriya_requires_food() -> None:
-    ram = _ram(level=7, screen=0x10, food=0)
+    ram = _ram(level=7, screen=0x28, food=0)
     ctl = make_entry_to_goriya_controller()
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed
     assert act.reason == "hungry_goriya_requires_food"
-    assert any("net_hyp" in note for note in ctl.notes)
     ram[ADDR_FOOD] = 1
     ctl = make_entry_to_goriya_controller()
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
-    assert ctl.failed
-    assert "blocked_unverified" in act.reason
+    assert not ctl.failed
+    assert ctl.report()["route_eligible"] is False
 
 
-def test_red_candle_does_not_write_and_fails_closed() -> None:
-    ram = _ram(level=7, candle=1)
+def test_red_candle_factory_is_the_live_1a_push() -> None:
     ctl = make_red_candle_controller()
-    ctl.bind_env(_env(ram))
-    act = ctl.step(read_snapshot(ram))
-    assert ctl.failed
-    assert act.reason.startswith("red_candle_still_1")
-    assert ctl.report()["writes"] == 0
-    ram[ADDR_CANDLE] = 2
-    ctl = make_red_candle_controller()
-    ctl.bind_env(_env(ram))
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "red_candle_room_unobserved"
+    assert isinstance(ctl, Room1ACandleController)
+    assert ctl.report()["route_eligible"] is False
+    assert ctl.report()["dest_screen"] == 0x4A
 
 
-def test_complete_chapter_factories_fail_closed_and_do_not_invent_leave() -> None:
-    """L7-C stages stay unverified. Screen None; handoff verified stays False."""
+def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
+    """L7-C stages are fixture-live. Screen None; handoff verified stays False."""
+    from zelda_i.level7.digdogger import Level7ForcedDigdoggerController
+    from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
+
     stages = level7_complete_chapter_stages()
     names = [name for name, _c, _f in stages]
     assert names == [
+        "level7_room4a_return",
+        "level7_room1a_east_bomb",
+        "level7_room1b_key_east",
         "level7_forced_digdogger",
+        "level7_room0c_east_bomb",
+        "level7_room0d_clear",
+        "level7_tip_of_nose_stairs",
+        "level7_nose_cellar_cross",
+        "level7_room29_east_bomb",
         "level7_aquamentus_heart",
         "level7_shard_and_settled_leave",
     ]
-    ram = _ram(level=7, screen=0x10, candle=2, whistle=1, food=0, triforce=0x3F)
-    snap = read_snapshot(ram)
     forced = make_forced_digdogger_controller()
-    report = forced.report()
-    assert report["route_eligible"] is False
-    assert report["evidence"] == "hypothesis"
-    assert "Whistle B-slot 5" in str(report["missing_evidence"])
-    act = forced.step(snap)
-    assert forced.failed and not forced.success
-    assert act.reason == "blocked_unverified"
-    # Aquamentus/heart and shard/leave are live 2/2 (rr-8t4.3, 20260904_W3-W6)
-    # but neither is route-eligible and neither fills the leave packet.
+    assert isinstance(forced, Level7ForcedDigdoggerController)
+    assert forced.report()["route_eligible"] is False
     for ctl in (
         make_aquamentus_heart_controller(),
         make_level7_shard_leave_controller(),
@@ -613,6 +616,9 @@ def test_complete_chapter_factories_fail_closed_and_do_not_invent_leave() -> Non
         ]
         is False
     )
+    assert MEASURED_POST_L7_EXIT.verified is False
+    assert MEASURED_POST_L7_EXIT.screen is None
+    assert MEASURED_POST_L7_EXIT.complete() is False
     assert UNMEASURED_HANDOFF.verified is False
     assert UNMEASURED_HANDOFF.screen is None
     assert UNMEASURED_HANDOFF.complete() is False
@@ -766,7 +772,7 @@ def test_room_49_up_arrived_leaves_0x49() -> None:
     assert report["door"] == "UP"
     factory = make_room49_up_controller()
     assert factory.report()["dest_screen"] == 0x39
-    assert "level7_room49_up" not in [
+    assert "level7_room49_up" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
 
@@ -787,7 +793,7 @@ def test_room_39_left_rises_centre_column_not_sw_statue() -> None:
     assert ctl.report()["dest_screen"] == 0x38
     assert ctl.report()["route_eligible"] is False
     assert make_room39_left_controller().report()["dest_screen"] == 0x38
-    assert "level7_room39_left" not in [
+    assert "level7_room39_left" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
 
@@ -808,7 +814,7 @@ def test_room_38_up_uses_east_pocket_not_centre_diamonds() -> None:
     assert ctl.report()["dest_screen"] == 0x28
     assert ctl.report()["route_eligible"] is False
     assert make_room38_up_controller().report()["dest_screen"] == 0x28
-    assert "level7_room38_up" not in [
+    assert "level7_room38_up" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
 
@@ -831,13 +837,13 @@ def test_room_09_down_drops_then_pushes_after_clear() -> None:
     assert ctl.report()["dest_screen"] == 0x19
     assert ctl.report()["route_eligible"] is False
     assert make_room09_down_controller().report()["dest_screen"] == 0x19
-    assert "level7_room09_down" not in [
+    assert "level7_room09_down" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
 
 
-def test_map_bomb_chain_factories_are_recon_only() -> None:
-    """0x18/0x08/0x19 bomb walls + 0x09 down stay off the chapter chain."""
+def test_map_bomb_chain_factories_are_on_the_candle_chapter() -> None:
+    """0x18/0x08/0x19 bomb walls sit on the live candle mainline."""
     n18 = make_room18_north_bomb_controller()
     assert n18.wall is L7_ROOM18_NORTH_BOMB
     assert n18.to_room == 0x08
@@ -858,11 +864,12 @@ def test_map_bomb_chain_factories_are_recon_only() -> None:
     assert e0c.to_room == 0x0D
     assert e0c.approach_waypoints[0] == (120, 165)
     names = [name for name, _c, _f in level7_red_candle_chapter_stages()]
-    assert "level7_room18_north_bomb" not in names
-    assert "level7_room08_east_bomb" not in names
-    assert "level7_room19_east_bomb" not in names
-    assert "level7_room1a_east_bomb" not in names
-    assert "level7_room0c_east_bomb" not in names
+    assert "level7_room18_north_bomb" in names
+    assert "level7_room08_east_bomb" in names
+    assert "level7_room19_east_bomb" in names
+    complete = [name for name, _c, _f in level7_complete_chapter_stages()]
+    assert "level7_room1a_east_bomb" in complete
+    assert "level7_room0c_east_bomb" in complete
 
 
 def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
@@ -884,8 +891,9 @@ def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
     assert factory.report()["dest_screen"] == 0x0D
     assert factory.report()["route_eligible"] is False
     names = [name for name, _c, _f in level7_complete_chapter_stages()]
-    assert "level7_room0d_clear" not in names
-    assert "level7_tip_of_nose_stairs" in [
+    assert "level7_room0d_clear" in names
+    assert "level7_tip_of_nose_stairs" in names
+    assert "level7_tip_of_nose_stairs" not in [
         n for n, _c, _f in level7_red_candle_chapter_stages()
     ]
 
@@ -911,8 +919,8 @@ def test_room_0d_block_16px_right_reveals_the_ne_staircase() -> None:
     assert ROOM_0D_STAIR_WARP_HYP[0] == ROOM_0D_STAIR_CELL[0]
 
 
-def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:
-    """Natural ADDR_CANDLE 0→2; not on the executable chapter chain."""
+def test_room_1a_candle_is_the_chapter_pickup_and_arrives_on_candle_2() -> None:
+    """Natural ADDR_CANDLE 0→2; wired as level7_red_candle_pickup."""
     mouth = read_snapshot(_ram(level=7, screen=0x1A, x=32, y=141))
     assert Room1ACandleController().step(mouth).reason == "spawn_wait"
     dest = read_snapshot(_ram(level=7, screen=0x4A, x=135, y=141, mode=9, candle=2))
@@ -923,12 +931,10 @@ def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:
     factory = make_room1a_candle_controller()
     assert factory.report()["dest_screen"] == 0x4A
     assert factory.report()["route_eligible"] is False
-    assert "level7_room1a_candle" not in [
-        name for name, _c, _f in level7_red_candle_chapter_stages()
-    ]
     assert "level7_red_candle_pickup" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
+    assert isinstance(make_red_candle_controller(), Room1ACandleController)
 
 
 def test_room_4a_return_step_east_drop_then_west_ladder() -> None:
@@ -954,7 +960,7 @@ def test_room_4a_return_step_east_drop_then_west_ladder() -> None:
     assert "level7_room4a_return" not in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
-    assert "level7_room4a_return" not in [
+    assert "level7_room4a_return" in [
         name for name, _c, _f in level7_complete_chapter_stages()
     ]
 
@@ -971,6 +977,6 @@ def test_room_1b_key_east_is_recon_only_and_arrives_on_0x1c() -> None:
     factory = make_room1b_key_east_controller()
     assert factory.report()["dest_screen"] == 0x1C
     assert factory.report()["route_eligible"] is False
-    assert "level7_room1b_key_east" not in [
+    assert "level7_room1b_key_east" in [
         name for name, _c, _f in level7_complete_chapter_stages()
     ]

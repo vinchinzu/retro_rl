@@ -10,6 +10,7 @@ from zelda_i.level7.dungeon import (
     LEVEL7_COMPLETE_STOP,
     LEVEL7_ENTRY_STOP,
     LEVEL7_RED_CANDLE_STOP,
+    MEASURED_POST_L7_EXIT,
     RED_CANDLE,
     TF_AFTER_LEVEL7,
     TF_BEFORE_LEVEL7,
@@ -124,6 +125,10 @@ def test_complete_stop_fails_closed_when_leave_screen_is_none() -> None:
     assert LEVEL7_COMPLETE_STOP.level is None
     assert LEVEL7_COMPLETE_STOP.evidence == "hypothesis"
     assert not LEVEL7_COMPLETE_STOP.route_eligible
+    assert MEASURED_POST_L7_EXIT.verified is False
+    assert MEASURED_POST_L7_EXIT.screen is None
+    assert MEASURED_POST_L7_EXIT.complete() is False
+    assert MEASURED_POST_L7_EXIT.route_eligible is False
     assert snap.heart_containers == 9
     assert snap.health_is_full
     assert not level7_complete_stop(

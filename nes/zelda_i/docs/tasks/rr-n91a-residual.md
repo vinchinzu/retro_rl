@@ -1,3 +1,60 @@
+# Residual — rr-8t4.3 L7 chapters follow live room order (2026-09-04)
+
+Did not STATUS. Did not push. Pond drain still fail-closed, so
+`--through level7` still dies at OW `0x25`. `route_eligible=false`.
+`MEASURED_POST_L7_EXIT` is now a real unfilled `OverworldHandoff`
+(`verified=False`, screen None) — do not copy the TF-0 leftover `0x42` TF
+`0x40`.
+
+## What landed
+
+Deleted the duplicate fail-closed twins:
+
+- `HungryGoriyaGateController` (1-frame stub that failed even with Food)
+- `RedCandlePickupController` (claimed the candle room was unobserved)
+
+Wired the live factories onto the three public chapters, in leftover order.
+
+**`level7-red-candle`:** `0x79` first door → west bomb `0x69→0x68` → `0x58`
+→ `0x59` → `0x49` → `0x39` → `0x38` → Hungry feed `0x28→0x18` → MAP bombs
+→ `0x1A`/`0x4A` natural candle.
+
+**`level7` complete:** `0x4A` return → `0x1A` bomb-E → `0x1B` KEY-E →
+Digdogger `0x1C→0x0C` → `0x0D` clear → stairs0d → cellar `0x7B→0x29` →
+`0x29` bomb-E → Aquamentus heart → shard leave.
+
+New modules (ROM 2/2 on recon pins, `position_writes=0`):
+
+- `level7/hungry.py` — pause-select Bait slot 6, Food 1→0 natural, UP
+  `0x18`. Pin `Level7Interior28ReconFixture`, 524f both trials.
+- `level7/digdogger.py` — pause-select recorder slot 5, 12×B shrink
+  `0x38→0x18`, sword, north `0x0C`. Pin `Level7Interior1CReconFixture`,
+  1811f both trials. Dest `(120,205)`.
+- `level7/pre_boss.py` — `BombWallController` for `0x29` east bomb
+  (probe geometry). No new phase machine. No bomb writes.
+
+`make_entry_to_goriya_controller` / `make_red_candle_controller` /
+`make_forced_digdogger_controller` return those live controllers.
+Tip-of-nose stairs moved off the candle chapter onto complete, after
+`0x0D` clear.
+
+Suite **745 passed**. Pond (`rr-8t4.1` / `rr-8t4.4`) is still the Survival
+serial tip.
+
+## Not done / next
+
+- Natural whistle pond drain from the L6 leave (`0x22` pocket cannot
+  reach `0x42`/`0x34`). First `--through` fail.
+- Survival leave packet TF `0x3F→0x7F` (`rr-fiz9`). Do not fill
+  `MEASURED_POST_L7_EXIT` from the TF-0 pin.
+- `level7/path.py` is still ~2800 LOC (Room* dump). Protocol + bomb walls
+  stayed; Hungry/Candle stubs deleted. Split remaining Room* when a second
+  consumer needs it.
+- Spurs stay off-chapter: `0x6A–0x6D` east, `0x6B` north, `0x68` south,
+  `0x58` KEY-north bomb-upgrade.
+
+---
+
 # Residual — rr-8t4.3 L7 tail live 0x0D → OW **2/2** (2026-09-04, wrap)
 
 Did not STATUS. Did not push. Did not `git add -A`. No pokes: `position_writes=0`,

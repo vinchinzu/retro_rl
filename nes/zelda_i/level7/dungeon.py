@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM, TF_BIT_L6, TF_BIT_L7
 from zelda_i.dungeon.engine import DungeonRoomSpec
+from zelda_i.overworld.stitch import OverworldHandoff
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 LEVEL7 = 7
@@ -47,16 +48,18 @@ LEVEL7_ENTRY_STOP = Level7StopSpec(
 LEVEL7_RED_CANDLE_STOP = Level7StopSpec("level7_red_candle", LEVEL7, None)
 # Settled post-fanfare OW leftover is UNMEASURED. Both level and screen stay
 # None so ``level7_complete_stop`` fails closed. Do not invent an OW leave
-# screen. A future MEASURED_POST_L7_EXIT copies MEASURED_POST_L6_EXIT's
-# OverworldHandoff fields from a real fanfare leftover (handoff_from_ram):
-# screen, link_x/y, mode, triforce (0x7F), candle (2), whistle, food (0),
-# keys, bombs, rupees, selected_item, heart_containers (incoming+1),
-# hearts lo==hi (ADDR_HEALTH) + ADDR_HEART_PARTIAL, rod, bow, arrows.
-# verified stays False until that leftover is measured 2/2. L8 keeps
-# PostLevel7Handoff.verified=False until then. See docs/tasks/l7c-prep-2026-09-03.md.
-# rr-n91a fixture-lineage fanfare leftover (not Survival): OW 0x42 (96,93)
-# TF 0x40 (pin started at TF 0). Do not fill MEASURED_POST_L7_EXIT from that.
+# screen. Fill ``MEASURED_POST_L7_EXIT`` via ``handoff_from_ram`` from a real
+# Survival fanfare leftover (TF 0x7F, candle 2, whistle, food 0, HC
+# incoming+1, hearts lo==hi). ``verified`` stays False until that leftover
+# is measured 2/2. L8 keeps ``PostLevel7Handoff.verified=False`` until then.
+# Fixture-lineage leftover OW 0x42 (96,93) TF 0x40 (pin started at TF 0) is
+# not that packet — do not copy it in.
 LEVEL7_COMPLETE_STOP = Level7StopSpec("level7_complete", None, None)
+MEASURED_POST_L7_EXIT = OverworldHandoff(
+    evidence="unmeasured-level7-exit",
+    verified=False,
+    route_eligible=False,
+)
 
 # There are intentionally no executable DungeonRoomSpec rows yet.  Add one
 # only after its room id, entry geometry, enemy census, and reward are live.
@@ -140,6 +143,7 @@ __all__ = [
     "LEVEL7_ENTRY_STOP",
     "LEVEL7_RED_CANDLE_STOP",
     "LEVEL7_ROOM_SPECS",
+    "MEASURED_POST_L7_EXIT",
     "RED_CANDLE",
     "TF_AFTER_LEVEL7",
     "TF_BEFORE_LEVEL7",
