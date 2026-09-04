@@ -295,9 +295,11 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
     Level7RoomHyp(
         NOSE_CELLAR,
         "nose_cellar",
-        role="ROM cellar 0x7B tunnel AttrA=0x29 AttrB=0x0D; poke-observed "
-        "mode 9 from 0x0D (B ladder x=$C0). B→A cross live dest 0x29. "
-        "ram_id unpromoted (no 0x0D walk-on)",
+        ram_id=0x7B,
+        role="ROM cellar 0x7B tunnel AttrA=0x29 AttrB=0x0D; live walk-on "
+        "from 0x0D 2/2 (level7.stairs0d, B ladder x=$C0, spawn (192,93)). "
+        "B→A cross live dest 0x29",
+        evidence="fixture-live",
     ),
     Level7RoomHyp(
         PRE_BOSS,
@@ -808,9 +810,10 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 NOSE_CELLAR,
                 notes=(
                     "kill 5 wallmasters (room_all_dead=1 2/2); 16px RIGHT "
-                    "on 0x68 (192,144) snaps to (208,96) on the NE stair "
-                    "hole. ROM CheckWarps: cellar 0x7B AttrB; InitMode9 "
-                    "spawns right ladder x=$C0. Walk-on still unobserved"
+                    "on 0x68 (192,144) reveals the staircase at the "
+                    "(208,96) cell; ring walk x=32 UP then y=96 east "
+                    "steps on. ROM CheckWarps: cellar 0x7B AttrB; "
+                    "InitMode9 spawns right ladder x=$C0. Live 2/2"
                 ),
             ),
         ),

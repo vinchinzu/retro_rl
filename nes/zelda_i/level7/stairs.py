@@ -11,7 +11,8 @@ AttrA -> left ladder ``x=$30``, else right ``x=$C0``. CheckSubroom: ``Y<$40``
 and UP; ``X<$80`` -> AttrA else AttrB.
 
 ROM-claimed. Fixture-live dest play 0x29 from the 0x7B B-side spawn
-(rr-n91a 2026-09-04, 2/2). Walk-on from play 0x0D is still unobserved.
+(rr-n91a 2026-09-04, 2/2). The walk-on from play 0x0D is live 2/2 as well
+(rr-8t4.3 2026-09-04): see ``zelda_i.level7.stairs0d``.
 """
 
 from __future__ import annotations

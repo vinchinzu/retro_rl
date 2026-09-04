@@ -25,8 +25,9 @@ fail-closed. `L8_THROUGH` not greened. True `--through level8` stays
 blocked on `rr-8t4.3` / `rr-6o7.1`. Do not STATUS.
 
 Parallel leftovers (not this AGENTS residual): L7 dest `0x29` 2/2,
-suffix 4/4 fixture-live (`rr-n91a` closed; **0x0D walk-on still open**
-on `rr-8t4.3`, pin `Level7Interior0DClearedReconFixture` `(63,149)`).
+suffix 4/4 fixture-live (`rr-n91a` closed). **0x0D walk-on SOLVED**
+2026-09-04 (`rr-8t4.3`): `level7.stairs0d` 2/2, `position_writes=0`,
+`NOSE_CELLAR.ram_id=0x7B`; still `route_eligible=false`.
 L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2 (`rr-sz8.6`; pin
 `Level9Interior65WestReconFixture`).
 
@@ -75,6 +76,10 @@ not an MP4. Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
 | `level*/path.py`, `level*/spine.py` | Path controllers + dest spine tables |
 | `level*/overworld.py` | Hop tables + thin `overworld.path` subclasses |
 | `runner.py` | Script env/assist/report helpers |
+
+Map a room from the cart-WRAM `$6530` tile map
+(`dungeon/tilemap.py`), never from `$049E` `colliding_tile` sweeps —
+`$049E` is the tile Link walks *into*, so it is direction-sensitive.
 
 Size: [CODING_STANDARDS.md](../../CODING_STANDARDS.md) (~1000 LOC, merge
 or delete). Named pins stay named. Probe PNG / window JSON go gitignored

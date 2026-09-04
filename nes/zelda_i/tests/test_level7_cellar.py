@@ -259,11 +259,22 @@ def test_factory_report_is_fixture_live_not_route_eligible() -> None:
 
 
 def test_hops_factory_is_the_live_cross_not_the_spine_tip() -> None:
+    """0x0D->0x7B and 0x7B->0x29 are two different live hops.
+
+    ``make_tip_stairs_controller`` is the walk-on INTO cellar 0x7B
+    (`level7.stairs0d`, live 2/2); the cross OUT of it to play 0x29 stays
+    ``Level7NoseCellarCrossController``. The boss/leave factories stay
+    fail-closed.
+    """
+    from zelda_i.level7.stairs0d import Level7Stairs0DController
+
     live = hops_make_nose_cellar_cross()
     assert isinstance(live, Level7NoseCellarCrossController)
     spine = make_tip_stairs_controller()
-    assert isinstance(spine, UnverifiedLevel7PathController)
+    assert isinstance(spine, Level7Stairs0DController)
     assert not isinstance(spine, Level7NoseCellarCrossController)
+    assert spine.report()["dest_screen"] == 0x7B
+    assert spine.report()["route_eligible"] is False
     aqua = make_aquamentus_heart_controller()
     leave = make_level7_shard_leave_controller()
     assert isinstance(aqua, UnverifiedLevel7PathController)

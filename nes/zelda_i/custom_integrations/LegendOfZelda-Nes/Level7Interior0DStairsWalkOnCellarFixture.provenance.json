@@ -1,0 +1,113 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T19:28:29.245822+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.3",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior0DClearedReconFixture: live Level7Stairs0DController walk-on of the 0x0D hidden staircase; no position/door/TF writes (position_writes=0).",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_tip_of_nose_stairs",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "blocks": [],
+      "bombs": 6,
+      "candle": 2,
+      "capacity_writes": 0,
+      "cell": [
+        192,
+        96
+      ],
+      "colliding_tile": 111,
+      "deaths": 0,
+      "keys": 2,
+      "level": 7,
+      "mode": 9,
+      "position_writes": 0,
+      "progression_writes": 0,
+      "screen": "0x7b",
+      "stair_cells": [],
+      "triforce": 0,
+      "xy": [
+        192,
+        93
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 2,
+      "level": 7,
+      "mode": 9,
+      "mode_name": "dungeon_underworld_passage",
+      "next_room": 13,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 66,
+          "y": 123
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 62,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 144,
+          "y": 188
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 177,
+          "y": 188
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 123,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 0,
+      "rupees": 5,
+      "submode": 9,
+      "triforce": 0,
+      "x": 192,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DClearedReconFixture.state",
+  "source_state_sha256": "73c381b04a6d015a78caae1a6175d4292f56b8cf4237bc74d507b965faa06430",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DStairsWalkOnCellarFixture.state",
+  "state_sha256": "acd5f2a05a08e55f26212a6da7e73a80bf4a4fb688edada3a442ab2ec99f2ade"
+}

@@ -7,8 +7,11 @@ Pass --push to run the verified 0x68 RIGHT push first.
     QT_QPA_PLATFORM=offscreen PYTHONPATH=.:nes:snes uv run python \
         nes/zelda_i/scratch/probe_l7_room0d_tilesweep.py [--push]
 
-Finding (2026-09-03): the y~101-115 band is solid + non-bombable across the
-whole room width; the NE staircase pocket has no walk-on route.
+SUPERSEDED (2026-09-04). `$049E` is direction-sensitive, so this sweep is a
+lead and not a map; read `zelda_i.dungeon.tilemap` (cart WRAM `$6530`)
+instead. Its 2026-09-03 finding was wrong at the edges: the y=112 band is
+solid only for x=48..192 — `x=32` and `x=208` are floor and are the room's
+two corridors. The walk-on is live 2/2 in `zelda_i.level7.stairs0d`.
 """
 
 import sys

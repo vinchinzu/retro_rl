@@ -64,6 +64,7 @@ from zelda_i.level7.path import (
     Room69EastController,
     unverified_path_controller,
 )
+from zelda_i.level7.stairs0d import make_stairs0d_controller
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from zelda_i.ram import (
@@ -306,12 +307,14 @@ def make_entry_to_goriya_controller() -> Level7PathController:
 
 
 def make_tip_stairs_controller() -> Level7PathController:
-    """Fail-closed on the spine: 0x0D walk-on of cellar 0x7B is still unobserved."""
-    return unverified_path_controller(
-        "level7_tip_of_nose_stairs",
-        "live tip-of-nose room, push tile, and stairs endpoint",
-        notes=ledger_notes(),
-    )
+    """Live 0x0D walk-on of cellar 0x7B (rr-8t4.3, fixture-live 2/2).
+
+    RIGHT push of the 0x68 at (192,144) reveals the staircase at the
+    (208,96) cell, then the ring walk (west off the door row, UP the
+    x=32 column, east along the y=96 row) steps onto it. Dest is RAM:
+    mode 9, screen 0x7B. ``position_writes`` stays 0.
+    """
+    return make_stairs0d_controller()
 
 
 def make_red_candle_controller() -> Level7PathController:
