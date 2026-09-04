@@ -3,6 +3,67 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0D block −48 snap is REAL (matches L9 room30/03); walk-on NO-GO (rr-8t4.3)
+
+Follow-up to the sitting below, per coordinator: diff the `0x68` push
+physics against a known-good push room. No pokes advanced state (position
+pokes for tile recon only). `route_eligible=false`.
+
+### Root cause of the `(192,144)→(208,96)` −48px y-snap: **real in-game
+behaviour, NOT a bug in our code.**
+
+- It is LoZ's "secret staircase block" relocation. **`level9/stairs.py`
+  has this exact mechanic solved and route-eligible in two rooms:**
+  - `room30_stairs_step` / `room30_block_secret_open` — after the push the
+    block sits at `x >= 0xC0, y <= 0x70`; Link then stands **exactly at
+    `(0xD0,0x60) = (208,96)`** → CheckWarps → cellar. `ROOM30_BLOCK_REST =
+    (0x60,0x90)` i.e. the block starts at the mirror of our `(192,144)`.
+  - `room03_stairs_step` — block pushed UP to `y <= 0x80`, Link walks a
+    "slot" at **`ROOM03_SLOT_Y = 133`** (the same y as `0x0D`'s plug) to a
+    normal floor stand `(128,141)`.
+- Frame trace of our push: block slides smoothly E 1px/2f `(193,144)…
+  (207,144)`, then **one frame** → `(208,96)`, `state 0→2`. That single-
+  frame teleport at push-completion IS the ROM's reveal routine parking
+  the block. Stair tiles `0x70-0x73` genuinely appear at x≈196-208
+  y≈96-100. Object x/y read straight from RAM `$007B`/`$008F` — no sim
+  layer, no walker prediction.
+- Room `0x1A`'s `0x68` in the same fixture lineage does a normal one-tile
+  push → no global block corruption.
+
+### Go / no-go on the `0x0D` walk-on: **NO-GO as reachable.**
+
+In L9 room30/03 the reveal opens a walkable slot/column to the warp cell.
+In `0x0D` it does not:
+- **RIGHT push** (the only reachable block face): plug at `(192,133)` tile
+  `0xB3` stays solid — not bombable (3 bombs, `0d_ne_v1`), stays solid for
+  the whole 32f slide (`0d_race192_v1`). The x=192 and x=208 columns stay
+  sealed post-push (`0d_ecol_RIGHT`).
+- **UP push** (L9's recipe): **cannot be executed.** The block's south
+  face stand `(192,160)` is unreachable — the x176-188 diamond mass
+  (tiles `0xB0-0xB3`, solid for a moving Link at y≈157 even though a point-
+  poke at y=156 reads floor) walls the y≈156 corridor
+  (`0d_pushUP_v2/v3/v4`, Link pins at `(176,157)` tile `0xB1` every time);
+  from the east pocket `(192,141)` the block at `(192,144)` blocks
+  southward travel; the bottom strip (y184-188) + the x=192 column south
+  of the block are isolated. Any nudge relocates the block to `(208,96)`.
+- Graph: `NOSE_CELLAR`'s only entrance is UP from `TIP_OF_NOSE` — so this
+  IS on the critical path, not optional.
+
+### Recommendation (not a code fix)
+
+1. The `0x0D` south-face approach may be a **1px-tight vanilla squeeze** at
+   y≈156 — worth a frame-perfect / TAS attempt to stand `(192,160)` and
+   UP-push (L9 room03 recipe). If the block then parks like L9 and opens
+   the plug/slot at y=133, the walk-on is live.
+2. Otherwise: **integrator call** on a disclosed one-write recon fixture
+   (position poke to `(208,93)`, `route_eligible=false`, `fixture_only`,
+   write logged) purely to unblock NOSE_CELLAR→PRE_BOSS→AQUAMENTUS→shard→
+   OW-leave recon, with the `0x0D` walk-on flagged as an open blocker.
+
+Reused knowledge, no lib change: `level9/stairs.py` `room30_stairs_step` /
+`room03_stairs_step` are the template if the south-face approach is cracked.
+New scratch flags: `probe_l7_room0d_ne.py --push-dir UP|RIGHT --e-column`.
+
 ## 2026-09-03 — L7-C 0x0D NE staircase pocket is fully sealed; NOSE_CELLAR = 0x7b (rr-8t4.3)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder. No state-

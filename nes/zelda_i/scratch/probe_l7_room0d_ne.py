@@ -91,9 +91,10 @@ def _glance(env) -> dict:
     }
 
 
-def _reach(env, a, tx, ty, f, budget=400, tol=2):
+def _reach(env, a, tx, ty, f, budget=600, tol=2):
     last = None
     stuck = 0
+    axis = 0  # 0 = y-first, 1 = x-first (flip when stuck)
     for _ in range(budget):
         s = _s(env)
         if int(s.screen) != ROOM:
@@ -105,12 +106,19 @@ def _reach(env, a, tx, ty, f, budget=400, tol=2):
             return f, True, [x, y]
         if (x, y) == last:
             stuck += 1
-            if stuck >= 40:
+            if stuck in (12, 24, 36):
+                axis ^= 1  # try the other axis
+            if stuck >= 60:
                 return f, False, [x, y]
         else:
             stuck = 0
             last = (x, y)
-        if abs(y - ty) > tol:
+        want_y = abs(y - ty) > tol
+        want_x = abs(x - tx) > tol
+        if want_y and want_x:
+            btn = ("UP" if y > ty else "DOWN") if axis == 0 else (
+                "LEFT" if x > tx else "RIGHT")
+        elif want_y:
             btn = "UP" if y > ty else "DOWN"
         else:
             btn = "LEFT" if x > tx else "RIGHT"
@@ -120,20 +128,73 @@ def _reach(env, a, tx, ty, f, budget=400, tol=2):
     return f, False, [int(e.link_x), int(e.link_y)]
 
 
-def _push_right(env, a, f):
-    """Reuse the verified 16px RIGHT push of the 0x68 at (192,144)."""
+_FACE_STAND = {
+    "RIGHT": lambda bx, by: (bx - 16, by),
+    "LEFT": lambda bx, by: (bx + 16, by),
+    "UP": lambda bx, by: (bx, by + 16),
+    "DOWN": lambda bx, by: (bx, by - 16),
+}
+
+
+def _hold(env, a, btn, n, f, stop_screen=True):
+    for _ in range(n):
+        s = _s(env)
+        if stop_screen and (int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM):
+            return f
+        _step(env, a, btn, f)
+        f += 1
+    return f
+
+
+def _push_right(env, a, f, face="RIGHT"):
+    """Push the 0x68 at (192,144) in ``face`` and let the slide settle."""
     bl = _blocks(_s(env))
     if not bl:
         return f, False
     bx, by = bl[0]["x"], bl[0]["y"]
-    for wx, wy in ((160, 141), (176, 144), (bx - 16, by)):
-        f, ok, xy = _reach(env, a, wx, wy, f)
-    # align y to block
+    sx, sy = _FACE_STAND[face](bx, by)
+    if face in ("RIGHT", "LEFT"):
+        pre = ((160, 141), (sx, by), (sx, by))
+        align_axis = "y"
+        for wx, wy in pre:
+            f, ok, xy = _reach(env, a, wx, wy, f)
+            print("  push approach", [wx, wy], ok, xy,
+                  "tile", int(_s(env).colliding_tile))
+    else:
+        # precision squeeze: the y~152-164 corridor east past the x176-188
+        # diamond mass (mass bottom ~y148, lower band top ~y164 -> ~16px gap,
+        # Link must sit at y~156). Then rise the x=192 column to (192,160).
+        f, ok, xy = _reach(env, a, 150, 152, f)
+        print("  pu pre-squeeze", ok, xy)
+        for _ in range(160):
+            s = _s(env)
+            if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                break
+            x, y = int(s.link_x), int(s.link_y)
+            if x >= sx - 2:
+                break
+            if y < 154:
+                btn = ("DOWN", "RIGHT")
+            elif y > 158:
+                btn = ("UP", "RIGHT")
+            else:
+                btn = "RIGHT"
+            _step(env, a, btn, f)
+            f += 1
+        print("  pu squeeze end", _glance(env)["xy"], "tile", int(_s(env).colliding_tile))
+        f, ok, xy = _reach(env, a, sx, sy, f)
+        print("  pu at south face", ok, xy, "tile", int(_s(env).colliding_tile))
+        align_axis = "x"
     for _ in range(30):
         s = _s(env)
-        if abs(int(s.link_y) - by) <= 1:
-            break
-        _step(env, a, "DOWN" if int(s.link_y) < by else "UP", f)
+        if align_axis == "y":
+            if abs(int(s.link_y) - by) <= 1:
+                break
+            _step(env, a, "DOWN" if int(s.link_y) < by else "UP", f)
+        else:
+            if abs(int(s.link_x) - bx) <= 1:
+                break
+            _step(env, a, "RIGHT" if int(s.link_x) < bx else "LEFT", f)
         f += 1
     started = False
     for _ in range(120):
@@ -145,15 +206,15 @@ def _push_right(env, a, f):
         cby = cb[0]["y"] if cb else by
         if not started and (cbx != bx or cby != by):
             started = True
-        if started and (abs(cbx - bx) >= 16 or cby != by):
+        if started and (abs(cbx - bx) >= 16 or abs(cby - by) >= 16):
             break
-        _step(env, a, None if started else "RIGHT", f)
+        _step(env, a, None if started else face, f)
         f += 1
     for _ in range(24):
         cb = _blocks(_s(env))
         if not cb:
             break
-        if abs(cb[0]["x"] - bx) >= 16 and cb[0]["y"] != by:
+        if abs(cb[0]["x"] - bx) >= 16 or abs(cb[0]["y"] - by) >= 16:
             break
         _step(env, a, None, f)
         f += 1
@@ -185,6 +246,9 @@ def main() -> None:
     ap.add_argument("--tag", default="0d_ne_v1")
     ap.add_argument("--from-state", default="Level7Interior0DClearedReconFixture")
     ap.add_argument("--push", action="store_true")
+    ap.add_argument("--push-dir", default="RIGHT", choices=["RIGHT", "UP", "DOWN", "LEFT"])
+    ap.add_argument("--e-column", action="store_true",
+                    help="after push: SE corner then climb x=208 UP to (208,96)")
     ap.add_argument("--bomb-col", default="192",
                     help="comma x list for the bomb-UP column climb")
     ap.add_argument("--bomb-y", default="141,125,109",
@@ -250,10 +314,40 @@ def main() -> None:
             print("AFTER RACE", out["after_race"])
             save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_race.png")
         if args.push:
-            f, _ = _push_right(env, a, f)
+            f, _ = _push_right(env, a, f, face=args.push_dir)
             out["after_push"] = _glance(env)
             print("AFTER PUSH", out["after_push"])
             save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_pushed.png")
+
+        if args.e_column and int(_s(env).mode) not in CELLAR_MODES:
+            # L9 room30/03 recipe: after the block secret opens, the east-wall
+            # column becomes walkable; climb x=208 from y=189 to stand exactly
+            # at (208,96) = (0xD0,0x60) -> CheckWarps.
+            for wx, wy in ((192, 165), (200, 189), (208, 189), (208, 165),
+                           (208, 141), (208, 125), (208, 109), (208, 96)):
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    break
+                f, ok, xy = _reach(env, a, wx, wy, f, budget=320, tol=1)
+                g = _glance(env)
+                print("ECOL WP", [wx, wy], ok, xy, "tile", g["colliding_tile"],
+                      "mode", g["mode"], "screen", g["screen"])
+                save_rgb_png(
+                    env.render(), RECORDINGS_DIR / f"{args.tag}_ecol_{wx}_{wy}.png"
+                )
+                if ok and wy <= 100:
+                    for btn in ("UP", None, "RIGHT", None, "UP", None, None):
+                        _step(env, a, btn, f)
+                        f += 1
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            print("ECOL CELLAR", btn, _glance(env))
+                            break
+                    for _ in range(40):
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            break
+                        _step(env, a, None, f)
+                        f += 1
+            out["after_ecol"] = _glance(env)
+            print("AFTER ECOL", out["after_ecol"])
 
         cols = [int(v) for v in args.bomb_col.split(",") if v.strip()]
         rows = [int(v) for v in args.bomb_y.split(",") if v.strip()]
