@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import unittest
 
+from retro_harness import WorldState
+
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
-from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_ORDER
+from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_BOUNDS, FARM_CHUNK_ORDER
 from harvest.planner.d2_work import (
     D2_TARGETS,
     bush_clear_phase,
@@ -240,6 +242,26 @@ class D2LeftoverOrderTests(unittest.TestCase):
             ),
             "insert_spa",
         )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_BUSHES",
+                TaskStatus.FAILURE,
+                "partial_clear cleared=503 remaining=1 lift_only",
+                Stamina(current=100, maximum=100),
+                ("CLEAR_FENCES",),
+            ),
+            "continue",
+        )
+        self.assertEqual(
+            leftover_chain_decision(
+                "CLEAR_ROCKS",
+                TaskStatus.FAILURE,
+                "field_clear cleared=0 lift_only",
+                Stamina(current=100, maximum=100),
+                ("CLEAR_STUMPS",),
+            ),
+            "continue",
+        )
 
 
 class D2PostShopComposeTests(unittest.TestCase):
@@ -270,7 +292,7 @@ class D2PostShopComposeTests(unittest.TestCase):
         import numpy as np
         from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
         from harvest.tasks.fence_flow import FenceClearLoopTask
-        from retro_harness import WorldState
+        from retro_harness import TaskStatus, WorldState
 
         ram = np.zeros(0x20000, dtype=np.uint8)
         world = WorldState(frame=0, ram=ram, info={}, obs=None)
@@ -559,10 +581,21 @@ class LeftoverStallAbortTests(unittest.TestCase):
         save.assert_not_called()
 
 
-_SHIP_OK = [{"phase": "WAIT_FARM_SHIPPING", "status": "success"}]
+_SHIP_OK = [{
+    "phase": "MOUNTAIN_BERRY",
+    "status": "success",
+    "shipping_deposit": {
+        "season": 0,
+        "day": 2,
+        "hour": 12,
+        "minute": 34,
+        "shipping_money_before": 0,
+        "shipping_money_after": 30,
+    },
+}]
 
 
-def _farm_ram(*, stamina=100, lock=1, hour=12, player=(10, 10)):
+def _farm_ram(*, stamina=100, lock=1, season=0, day=2, hour=12, player=(10, 10)):
     import numpy as np
     from harvest.core.ram_catalog import field_spec
     from harvest.core.tile_catalog import (
@@ -582,7 +615,8 @@ def _farm_ram(*, stamina=100, lock=1, hour=12, player=(10, 10)):
     ram[ADDR_STAMINA] = stamina
     ram[field_spec("max_stamina").address] = 100
     ram[field_spec("hour").address] = hour
-    ram[field_spec("day").address] = 2
+    ram[field_spec("season").address] = season
+    ram[field_spec("day").address] = day
     for i in range(MAP_WIDTH * MAP_WIDTH):
         ram[ADDR_MAP + i] = 0xA1
     px, py = player[0] * TILE_SIZE + 8, player[1] * TILE_SIZE + 8
@@ -648,7 +682,11 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         self.assertTrue(status.hands_clear)
         self.assertTrue(status.farm_map_loaded)
         self.assertFalse(status.animating)
+        self.assertTrue(status.input_stable)
+        self.assertTrue(status.settled)
         self.assertTrue(status.shipped_before_17)
+        self.assertEqual(status.trees_or_stumps, 0)
+        self.assertIn("trees_or_stumps", status.to_record())
 
         dry = _farm_ram()
         from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
@@ -664,6 +702,13 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         _plant_eight_wet(weed)
         _set_tile(weed, 20, 20, 0x03)
         self.assertFalse(observe_d2_farm(weed, _SHIP_OK).is_complete)
+
+        small = _farm_ram()
+        _plant_eight_wet(small)
+        _set_tile(small, 30, 30, 0x06)
+        small_status = observe_d2_farm(small, _SHIP_OK)
+        self.assertEqual(small_status.small_rocks, 1)
+        self.assertFalse(small_status.is_complete)
 
         dmg = _farm_ram()
         _plant_eight_wet(dmg)
@@ -712,8 +757,13 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         from harvest.core.ram_catalog import field_spec
 
         late[field_spec("shipping_money_raw").address] = 1
-        self.assertTrue(observe_d2_farm(late).shipped_before_17)
-        self.assertTrue(observe_d2_farm(late).is_complete)
+        self.assertFalse(observe_d2_farm(late).shipped_before_17)
+        self.assertTrue(observe_d2_farm(late, _SHIP_OK).shipped_before_17)
+        self.assertTrue(observe_d2_farm(late, _SHIP_OK).is_complete)
+
+        wrong_date = _farm_ram(day=3)
+        _plant_eight_wet(wrong_date)
+        self.assertFalse(observe_d2_farm(wrong_date, _SHIP_OK).is_complete)
 
         done = observe_d2_farm(ram, _SHIP_OK)
         self.assertTrue(confirm_d2_complete(done, done))
@@ -724,7 +774,7 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         _plant_eight_wet(last)
         last[field_spec("shipping_money_raw").address] = 1
         _place_stump(last, 52, 44)
-        leftover = observe_d2_farm(last)
+        leftover = observe_d2_farm(last, _SHIP_OK)
         self.assertTrue(leftover.shipped_before_17)
         self.assertEqual(leftover.stumps, 1)
         self.assertEqual(leftover.stumps_by_chunk, (0, 0, 0, 1))
@@ -737,8 +787,89 @@ class D2ObserveTruthTableTests(unittest.TestCase):
         self.assertEqual(five.stumps_by_chunk, (3, 0, 1, 1))
         self.assertFalse(five.is_complete)
 
+    def test_deposit_requires_timestamped_d2_event_before_five(self) -> None:
+        from harvest.planner.d2_work import observe_d2_farm
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        late_deposit = [{
+            "shipping_deposit": {
+                "season": 0,
+                "day": 2,
+                "hour": 17,
+                "minute": 0,
+                "shipping_money_before": 0,
+                "shipping_money_after": 30,
+            }
+        }]
+        wrong_day = [{
+            "shipping_deposit": {
+                **_SHIP_OK[0]["shipping_deposit"],
+                "day": 3,
+            }
+        }]
+        self.assertFalse(observe_d2_farm(ram, late_deposit).shipped_before_17)
+        self.assertFalse(observe_d2_farm(ram, wrong_day).shipped_before_17)
+
+
+class D2ShippingJournalTests(unittest.TestCase):
+    def test_mountain_berry_phase_records_timestamped_bin_deposit(self) -> None:
+        from harvest.planner.day_phase_types import PhaseSpec
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+
+        class ShippedGrape:
+            shipped_count = 1
+            harvested_count = 0
+            _shipping_before = 0
+            _shipping_after = 30
+
+        ram = _farm_ram(hour=12)
+        plan = DayPlanTask(phase_sequence=[])
+        plan._current_task = ShippedGrape()
+        plan._record_phase_result(
+            PhaseSpec("MOUNTAIN_BERRY", "mountain_berry"),
+            "success",
+            world=WorldState(frame=0, ram=ram, info={}, obs=None),
+        )
+        deposit = plan.phase_results[0]["shipping_deposit"]
+        self.assertEqual(deposit["day"], 2)
+        self.assertEqual(deposit["hour"], 12)
+        self.assertEqual(deposit["shipping_money_after"], 30)
+
+    def test_d2_tactic_receives_prior_deposit_evidence_from_day_plan(self) -> None:
+        from harvest.planner.d2_work import D2FarmClearTactic, d2_farm_clear_phase
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+
+        ram = _farm_ram()
+        _plant_eight_wet(ram)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        plan = DayPlanTask(phase_sequence=[d2_farm_clear_phase()])
+        plan.reset(world)
+        plan._phase_results.append(dict(_SHIP_OK[0]))
+
+        plan.step(world)
+
+        self.assertIsInstance(plan._current_task, D2FarmClearTactic)
+        self.assertEqual(plan._current_task.journal, _SHIP_OK)
+        self.assertTrue(plan._current_task.farm_status.is_complete)
+
 
 class D2NextSpecTests(unittest.TestCase):
+    def test_shop_miss_does_not_loop_pocket_or_plant(self) -> None:
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        ram = _farm_ram()
+        _set_tile(ram, 13, 28, 0x03)
+        _set_tile(ram, 40, 40, 0x03)
+        status = observe_d2_farm(ram)
+        self.assertTrue(status.pocket_needs_clear)
+        self.assertEqual(status.potato_seeds, 0)
+        self.assertEqual(next_d2_spec(status).phase, "CLEAR_PLOT")
+        self.assertEqual(
+            next_d2_spec(status, last_phase="CLEAR_PLOT").phase,
+            "CLEAR_BUSHES",
+        )
+
     def test_empty_rock_chunk_is_omitted(self) -> None:
         from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
 
@@ -920,6 +1051,34 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertTrue((result.action.action == yard_load_action(ram)).all())
         self.assertFalse((result.action.action == make_action()).all())
 
+    def test_unobservable_map_still_steps_an_active_child(self) -> None:
+        """ENSURE_HAMMER in the shed must run; yard idle froze the fetch."""
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.core.tile_catalog import ADDR_TILEMAP
+        from harvest.planner.d2_work import D2FarmClearTactic, D2FarmOutcome
+
+        ram = _farm_ram(player=(9, 12))
+        ram[ADDR_TILEMAP] = 0x26
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        tactic = D2FarmClearTactic(section="rocks", chunk="nw", include_spa=False)
+        tactic.reset(world)
+
+        class Fetch:
+            name = "ensure_tool"
+            calls = 0
+
+            def step(self, _world):
+                self.calls += 1
+                return TaskResult(status=TaskStatus.RUNNING, reason="picking hammer")
+
+        child = Fetch()
+        tactic._child = child
+        result = tactic.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(child.calls, 1)
+        self.assertEqual(tactic.farm_status.outcome, D2FarmOutcome.TEMPORARILY_UNOBSERVABLE)
+
     def test_leftover_exec_still_exports_spa_retry(self) -> None:
         from retro_harness import TaskStatus
 
@@ -1025,6 +1184,140 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertTrue(tactic.farm_status.is_complete)
         self.assertEqual(tactic.farm_status.stumps, 0)
 
+    def test_stationary_six_hit_stump_clear_outlives_motion_window(self) -> None:
+        """Planted axe work is progress, not a 360-frame navigation stall."""
+        from unittest.mock import patch
+
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.core.tile_catalog import DebrisType
+        from harvest.planner.d2_work import D2FarmClearTactic
+        from harvest.tasks.farm_clear_task import FarmClearTask
+        from harvest.tasks.farm_clearer import Target
+        from harvest.tasks.nav import Point
+
+        ram = _farm_ram(player=(51, 44))
+        _place_stump(ram, 52, 44)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        child = FarmClearTask(fetch_tools=False, handoff="quota", quota={"stumps": EXHAUSTIVE})
+        reset_child = child.reset
+
+        def reset_at_stump(active_world):
+            reset_child(active_world)
+            child.clearer.state = "clearing"
+            child.clearer.current_phase = DebrisType.STUMP
+            child.clearer.current_target = Target(
+                (52, 44), Point(52 * 16 + 8, 44 * 16 + 8), DebrisType.STUMP, 0x09
+            )
+            child.clearer.approach_tile = (51, 44)
+
+        def stationary_six_hit_step(active_world):
+            child._step_count += 1
+            child.clearer.target_hits = min(6, child._step_count // 61)
+            if child.clearer.target_hits < 6:
+                return TaskResult(status=TaskStatus.RUNNING)
+            _clear_2x2(active_world.ram, 52, 44)
+            return TaskResult(status=TaskStatus.SUCCESS, reason="sixth axe hit destroyed stump")
+
+        child.reset = reset_at_stump
+        child.step = stationary_six_hit_step
+
+        class Instant:
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, _world):
+                return TaskResult(status=TaskStatus.SUCCESS, reason="ready")
+
+        def fake_build(_ctx, spec, _world):
+            return child if spec.phase == "CLEAR_STUMPS" else Instant()
+
+        tactic = D2FarmClearTactic(section="stumps", chunk="se", include_spa=False)
+        tactic.reset(world)
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            result = None
+            for frame in range(400):
+                world = WorldState(frame=frame, ram=ram, info={}, obs=None)
+                result = tactic.step(world)
+                if result.status != TaskStatus.RUNNING:
+                    break
+
+        self.assertGreater(child._step_count, 360)
+        self.assertEqual(child.clearer.target_hits, 6)
+        progress = dict(child.progress_snapshot().details)
+        self.assertEqual(progress["clearing_phase"], "STUMP")
+        self.assertEqual(progress["target"], (52, 44))
+        self.assertEqual(progress["hits"], 6)
+        self.assertEqual(progress["approach_position"], (824, 712))
+        self.assertEqual(tactic.farm_status.stumps, 0)
+        self.assertEqual(tactic._skip, set())
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertFalse(any(row["status"] == TaskStatus.BLOCKED.value for row in tactic.journal))
+
+    def test_navigation_stall_is_recorded_without_skipping_required_chunk(self) -> None:
+        from retro_harness import TaskStatus, WorldState
+
+        from harvest.core.task_progress import ProgressSnapshot
+        from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
+
+        ram = _farm_ram(player=(51, 44))
+        _place_stump(ram, 52, 44)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+
+        class StuckNav:
+            name = "farm_clear"
+
+            def progress_snapshot(self):
+                return ProgressSnapshot(
+                    task_name=self.name,
+                    phase_text="navigating",
+                    details=(("target", (52, 44)), ("approach", (51, 44))),
+                )
+
+        tactic = D2FarmClearTactic(section="stumps", chunk="se", include_spa=False)
+        tactic.reset(world)
+        tactic._child = StuckNav()
+        tactic._spec = stump_clear_phase(
+            farm_bounds=FARM_CHUNK_BOUNDS["se"], chunk="se"
+        )
+        status = observe_d2_farm(ram)
+        tactic._step = 0
+        self.assertIsNone(tactic._watchdogs(world, status))
+        tactic._step = 360
+        result = tactic._watchdogs(world, status)
+
+        self.assertEqual(result.status, TaskStatus.BLOCKED)
+        self.assertEqual(tactic._skip, set())
+        self.assertEqual(tactic.journal[-1]["chunk"], "se")
+        self.assertEqual(tactic.journal[-1]["watchdog"], "navigation_motion_stall")
+
+    def test_clock_hour_does_not_reset_goal_stall(self) -> None:
+        from harvest.core.ram_catalog import field_spec
+        from harvest.core.task_progress import GOAL_STALL_FRAMES
+        from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
+
+        ram = _farm_ram(player=(51, 44), hour=18)
+        _place_stump(ram, 52, 44)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        tactic = D2FarmClearTactic(section="stumps", chunk="se", include_spa=False)
+        tactic.reset(world)
+        status = observe_d2_farm(ram)
+        tactic._step = 0
+        self.assertIsNone(tactic._watchdogs(world, status))
+        hour_addr = field_spec("hour").address
+        ram[hour_addr] = 19
+        from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET
+
+        if hour_addr + LIVE_RAM_WRAM_OFFSET < len(ram):
+            ram[hour_addr + LIVE_RAM_WRAM_OFFSET] = 19
+        later = observe_d2_farm(ram)
+        self.assertEqual(later.hour, 19)
+        self.assertEqual(later.stumps, status.stumps)
+        tactic._step = GOAL_STALL_FRAMES
+        result = tactic._watchdogs(world, later)
+        self.assertIsNotNone(result)
+        self.assertIn("goal stall", result.reason)
+
     def test_se_stump_chunk_success_is_not_whole_farm_complete(self) -> None:
         from unittest.mock import patch
 
@@ -1116,6 +1409,37 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
 
 
+class D2DaytimeClearPhaseTests(unittest.TestCase):
+    def test_d2_morning_uses_farm_clear_tactic_not_quota_field(self) -> None:
+        from harvest.planner.day_plan_phases import _daytime_clear_phase
+
+        d2 = _daytime_clear_phase(0, 2)
+        self.assertEqual(d2.phase, "D2_FARM_CLEAR")
+        self.assertEqual(d2.failure_policy, "required")
+        other = _daytime_clear_phase(0, 3)
+        self.assertEqual(other.phase, "CLEAR_FIELD")
+
+    def test_stop_after_d2_clear_does_not_idle_when_debris_remains(self) -> None:
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.planner.d2_work import D2FarmClearTactic
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+        from harvest.planner.multi_day_planner import MultiDayPlannerTask
+
+        ram = _farm_ram()
+        _place_stump(ram, 52, 44)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        planner = MultiDayPlannerTask(policy=DayPlannerPolicy(include_end_day=False))
+        planner.reset(world)
+        planner._phase = "plan_day"
+        planner._current_task = object()
+        result = planner._handle_result(
+            world, TaskResult(status=TaskStatus.SUCCESS, reason="day plan complete")
+        )
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsInstance(planner._current_task, D2FarmClearTactic)
+
+
 class D2RunnerFlagTests(unittest.TestCase):
     def test_argparse_has_stop_after_d2_clear(self) -> None:
         from harvest.scripts.run_to_day2 import _parse_args
@@ -1126,6 +1450,26 @@ class D2RunnerFlagTests(unittest.TestCase):
         shipping = _parse_args(["--stop-after-d2-shipping"])
         self.assertTrue(shipping.stop_after_d2_shipping)
         self.assertFalse(getattr(shipping, "stop_after_d2_clear", False))
+
+    def test_power_on_d2_clear_defaults_a_progress_sidecar(self) -> None:
+        from harvest.scripts.run_to_day2 import _checkpoint_dir, _parse_args, _progress_sidecar_path
+
+        args = _parse_args(
+            [
+                "--power-on",
+                "--stop-after-d2-clear",
+                "--checkpoint-on-progress",
+                "--out",
+                "recordings/power_on_d2_farm_clear.json",
+            ]
+        )
+        sidecar = _progress_sidecar_path(args)
+        self.assertIsNotNone(sidecar)
+        self.assertTrue(str(sidecar).endswith("power_on_d2_farm_clear.progress.json"))
+        self.assertTrue(args.checkpoint_on_progress)
+        self.assertIsNotNone(_checkpoint_dir(args))
+        off = _parse_args(["--power-on", "--progress-sidecar-every", "0"])
+        self.assertIsNone(_progress_sidecar_path(off))
 
 
 if __name__ == "__main__":

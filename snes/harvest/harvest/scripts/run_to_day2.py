@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 import time
 from pathlib import Path
 
@@ -34,16 +35,28 @@ from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 
 ensure_monorepo_on_path()
 
-from retro_harness import TaskStatus, WorldState
+from retro_harness import AuditCapabilities, AuditedEnv, TaskStatus, WorldState
 from retro_harness.video import VideoCaptureConfig, VideoRecorder
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
+from harvest.core.task_progress import RunProgressSidecar, format_run_progress_line
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
 from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.nav import make_action
 from harvest.tasks.town_day1_handoff import TownDay1HandoffTask
+
+_STOP = {"sig": None}
+
+
+def _request_stop(signum, _frame) -> None:
+    _STOP["sig"] = int(signum)
+
+
+def _install_stop_handler() -> None:
+    signal.signal(signal.SIGINT, _request_stop)
+    signal.signal(signal.SIGTERM, _request_stop)
 
 
 def _configure_headless() -> None:
@@ -169,6 +182,29 @@ def _parse_args(argv=None) -> argparse.Namespace:
         help="Print progress every N frames (0 disables)",
     )
     p.add_argument(
+        "--progress-sidecar",
+        type=Path,
+        default=None,
+        help="Atomic live JSON sidecar. Default: <out>.progress.json for --power-on/--stop-after-d2-clear",
+    )
+    p.add_argument(
+        "--progress-sidecar-every",
+        type=int,
+        default=None,
+        help="Write the sidecar every N frames (default: --progress-every; 0 disables)",
+    )
+    p.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        default=None,
+        help="Directory for optional safe progress pins (gzip save states)",
+    )
+    p.add_argument(
+        "--checkpoint-on-progress",
+        action="store_true",
+        help="Save a resume-safe pin when D2 phase/debris/crops change and input is stable",
+    )
+    p.add_argument(
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "run_to_day2.json",
@@ -243,6 +279,30 @@ def _date_fields(ram) -> dict[str, int]:
         "tilemap": int(read_ram_value(ram, "tilemap")),
         "money": int(read_ram_value(ram, "money")),
         "stamina": int(read_ram_value(ram, "stamina")),
+    }
+
+
+def _clean_run_report(
+    env: AuditedEnv,
+    *,
+    initial_state_loads: int,
+    source_state: Path | None,
+    source_state_sha256: str | None,
+) -> dict[str, object]:
+    """Serialize observed intervention counters for this exact runner attempt."""
+    audit = env.audit()
+    return {
+        "intervention_class": "Clean",
+        "initial_state_loads": int(initial_state_loads),
+        "mid_run_state_loads": audit.mid_run_loads,
+        "ram_writes": audit.ram_writes,
+        "assists": dict(audit.assists or {}),
+        "audit_capabilities": (
+            audit.capabilities.to_record() if audit.capabilities is not None else None
+        ),
+        "infinite_stamina": False,
+        "source_state": str(source_state) if source_state else None,
+        "source_state_sha256": source_state_sha256,
     }
 
 
@@ -526,13 +586,41 @@ def _active_farm_clear_task(task: object) -> object | None:
     return None
 
 
-def _save_emulator_state(env, state_name: str) -> Path:
+def _write_state(env, path: Path) -> Path:
     import gzip
 
-    out_state = GAME_DIR / f"{state_name}.state"
-    with gzip.open(out_state, "wb", compresslevel=9) as handle:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    with gzip.open(tmp, "wb", compresslevel=9) as handle:
         handle.write(env.em.get_state())
-    return out_state
+    os.replace(tmp, path)
+    return path
+
+
+def _save_emulator_state(env, state_name: str) -> Path:
+    return _write_state(env, GAME_DIR / f"{state_name}.state")
+
+
+def _progress_sidecar_path(args: argparse.Namespace) -> Path | None:
+    every = args.progress_sidecar_every
+    if every is None:
+        every = args.progress_every
+    if every == 0:
+        return None
+    if args.progress_sidecar is not None:
+        return args.progress_sidecar
+    if args.stop_after_d2_clear or args.power_on:
+        return args.out.with_name(args.out.stem + ".progress.json")
+    return None
+
+
+def _checkpoint_dir(args: argparse.Namespace) -> Path | None:
+    if args.checkpoint_dir is not None:
+        return args.checkpoint_dir
+    if args.checkpoint_on_progress:
+        return PROJECT_DIR / "recordings" / "d2_progress_checkpoints"
+    return None
 
 
 def main() -> int:
@@ -564,9 +652,31 @@ def main() -> int:
 
     source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
     source_state_sha256 = _file_sha256(source_state) if source_state else None
-    env = make_harvest_env(state=None if args.power_on else args.state, render_mode="rgb_array")
+    env = AuditedEnv(
+        make_harvest_env(
+            state=None if args.power_on else args.state, render_mode="rgb_array"
+        ),
+        capabilities=AuditCapabilities.all("harvest.run_to_day2"),
+    )
     video: VideoRecorder | None = None
     t0 = time.monotonic()
+    sidecar_path = _progress_sidecar_path(args)
+    checkpoint_dir = _checkpoint_dir(args)
+    sidecar_every = (
+        args.progress_sidecar_every
+        if args.progress_sidecar_every is not None
+        else args.progress_every
+    )
+    sidecar = (
+        RunProgressSidecar(
+            sidecar_path,
+            checkpoint_dir=checkpoint_dir,
+            checkpoint_on_progress=bool(args.checkpoint_on_progress or checkpoint_dir),
+        )
+        if sidecar_path is not None
+        else None
+    )
+    _install_stop_handler()
     try:
         obs = env.reset()
         if isinstance(obs, tuple):
@@ -601,15 +711,12 @@ def main() -> int:
                         "success": False,
                         "reason": bootstrap.reason or bootstrap.status.value,
                         "mid_run_state_load": False,
-                        "clean_run": {
-                            "intervention_class": "Clean",
-                            "initial_state_loads": 0,
-                            "mid_run_state_loads": 0,
-                            "ram_writes": 0,
-                            "infinite_stamina": False,
-                            "source_state": None,
-                            "source_state_sha256": None,
-                        },
+                        "clean_run": _clean_run_report(
+                            env,
+                            initial_state_loads=0,
+                            source_state=None,
+                            source_state_sha256=None,
+                        ),
                     }
                     args.out.parent.mkdir(parents=True, exist_ok=True)
                     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -635,15 +742,12 @@ def main() -> int:
                     "success": False,
                     "reason": "power-on frame budget exhausted",
                     "mid_run_state_load": False,
-                    "clean_run": {
-                        "intervention_class": "Clean",
-                        "initial_state_loads": 0,
-                        "mid_run_state_loads": 0,
-                        "ram_writes": 0,
-                        "infinite_stamina": False,
-                        "source_state": None,
-                        "source_state_sha256": None,
-                    },
+                    "clean_run": _clean_run_report(
+                        env,
+                        initial_state_loads=0,
+                        source_state=None,
+                        source_state_sha256=None,
+                    ),
                 }
                 args.out.parent.mkdir(parents=True, exist_ok=True)
                 args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -721,15 +825,12 @@ def main() -> int:
                         "success": False,
                         "reason": f"d1_handoff: {hr.reason or hr.status.value}",
                         "mid_run_state_load": False,
-                        "clean_run": {
-                            "intervention_class": "Clean",
-                            "initial_state_loads": 0 if args.power_on else 1,
-                            "mid_run_state_loads": 0,
-                            "ram_writes": 0,
-                            "infinite_stamina": False,
-                            "source_state": str(source_state) if source_state else None,
-                            "source_state_sha256": source_state_sha256,
-                        },
+                        "clean_run": _clean_run_report(
+                            env,
+                            initial_state_loads=0 if args.power_on else 1,
+                            source_state=source_state,
+                            source_state_sha256=source_state_sha256,
+                        ),
                     }
                     args.out.parent.mkdir(parents=True, exist_ok=True)
                     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -740,6 +841,14 @@ def main() -> int:
                 if video is not None:
                     video.write(_rgb_frame(step[0]))
                 frames += 1
+                if sidecar is not None and sidecar_every and frames % sidecar_every == 0:
+                    sidecar.write(
+                        frame=frames,
+                        planner_frames=0,
+                        wall_seconds=time.monotonic() - t0,
+                        ram=world.ram,
+                        task=handoff,
+                    )
             else:
                 world = _world(env, frames)
                 d1_handoff_report = handoff.summary(world)
@@ -755,15 +864,12 @@ def main() -> int:
                     "success": False,
                     "reason": "d1 handoff frame budget exhausted",
                     "mid_run_state_load": False,
-                    "clean_run": {
-                        "intervention_class": "Clean",
-                        "initial_state_loads": 0 if args.power_on else 1,
-                        "mid_run_state_loads": 0,
-                        "ram_writes": 0,
-                        "infinite_stamina": False,
-                        "source_state": str(source_state) if source_state else None,
-                        "source_state_sha256": source_state_sha256,
-                    },
+                    "clean_run": _clean_run_report(
+                        env,
+                        initial_state_loads=0 if args.power_on else 1,
+                        source_state=source_state,
+                        source_state_sha256=source_state_sha256,
+                    ),
                 }
                 args.out.parent.mkdir(parents=True, exist_ok=True)
                 args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -803,6 +909,24 @@ def main() -> int:
             int(read_ram_value(world.ram, "season")),
             int(read_ram_value(world.ram, "day")),
         )
+
+        def _sidecar_write(active_task, active_world, *, d2_status=None):
+            if sidecar is None:
+                return None
+            return sidecar.write(
+                frame=frames,
+                planner_frames=frames - planner_start_frame,
+                wall_seconds=time.monotonic() - t0,
+                ram=active_world.ram,
+                task=active_task,
+                d2_status=d2_status,
+                save_state=(
+                    (lambda path: _write_state(env, path))
+                    if sidecar.checkpoint_on_progress
+                    else None
+                ),
+            )
+
         while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
             result = task.step(world)
@@ -858,15 +982,20 @@ def main() -> int:
             if result.status == TaskStatus.SUCCESS:
                 if args.stop_after_d2_clear:
                     d2_status = _d2_clear_status(task, world.ram)
-                    if d2_status is not None and d2_status.is_complete:
+                    from harvest.planner.d2_work import confirm_d2_complete
+
+                    if confirm_d2_complete(d2_prev_status, d2_status):
                         reason = "d2 farm clear complete"
-                    else:
-                        reason = result.reason or "planner finished before d2 farm clear"
+                        terminal = True
+                        break
+                    # The task may finish on the first settled observation;
+                    # advance one neutral frame so the terminal contract is
+                    # witnessed twice, not merely asserted from one sample.
+                    d2_prev_status = d2_status
+                else:
+                    reason = result.reason or "success"
                     terminal = True
                     break
-                reason = result.reason or "success"
-                terminal = True
-                break
             if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
                 reason = result.reason or result.status.value
                 terminal = True
@@ -882,17 +1011,36 @@ def main() -> int:
                 terminal = True
                 break
 
-            if args.progress_every and frames % args.progress_every == 0:
-                phase = getattr(task, "phase_text", "?")
-                progress = getattr(task, "progress_text", "")
-                hour = int(read_ram_value(world.ram, "hour"))
-                minute = int(read_ram_value(world.ram, "minute"))
-                money = int(read_ram_value(world.ram, "money"))
-                print(
-                    f"[RUN] f={frames} date=S{season}D{day} "
-                    f"{hour:02d}:{minute:02d} ${money} phase={phase} {progress}",
-                    flush=True,
+            stop_sig = _STOP["sig"]
+            sample = bool(
+                (args.progress_every and frames % args.progress_every == 0)
+                or (sidecar is not None and sidecar_every and frames % sidecar_every == 0)
+                or stop_sig is not None
+            )
+            if sample:
+                record = _sidecar_write(
+                    task,
+                    world,
+                    d2_status=d2_prev_status if args.stop_after_d2_clear else None,
                 )
+                if args.progress_every and frames % args.progress_every == 0:
+                    if record is not None:
+                        print(format_run_progress_line(record), flush=True)
+                    else:
+                        phase = getattr(task, "phase_text", "?")
+                        progress = getattr(task, "progress_text", "")
+                        hour = int(read_ram_value(world.ram, "hour"))
+                        minute = int(read_ram_value(world.ram, "minute"))
+                        money = int(read_ram_value(world.ram, "money"))
+                        print(
+                            f"[RUN] f={frames} date=S{season}D{day} "
+                            f"{hour:02d}:{minute:02d} ${money} phase={phase} {progress}",
+                            flush=True,
+                        )
+            if stop_sig is not None:
+                reason = f"interrupted by signal {stop_sig}"
+                terminal = True
+                break
 
             action = (
                 result.action.action
@@ -904,6 +1052,11 @@ def main() -> int:
                 video.write(_rgb_frame(step[0]))
 
         world = _world(env, frames)
+        _sidecar_write(
+            task,
+            world,
+            d2_status=d2_prev_status if args.stop_after_d2_clear else None,
+        )
         scene = classify_scene_from_ram(world.ram)
         end_fields = _date_fields(world.ram)
         end_key = (end_fields["season"], end_fields["day"])
@@ -920,6 +1073,8 @@ def main() -> int:
             scene.is_normal_map and int(read_ram_value(world.ram, "input_lock")) == 1
         )
         d2_end_counts = None
+        d2_final_status = None
+        d2_two_settled_observations = False
         if args.stop_after_d2_shipping:
             d2_checkpoint_evidence = (
                 d2_checkpoint_evidence
@@ -929,7 +1084,18 @@ def main() -> int:
         elif args.stop_after_d2_clear:
             d2_status = d2_prev_status or _d2_clear_status(task, world.ram)
             d2_end_counts = _d2_counts(world.ram)
-            success = bool(terminal and d2_status is not None and d2_status.is_complete)
+            d2_final_status = d2_status.to_record() if d2_status is not None else None
+            from harvest.planner.d2_work import confirm_d2_complete
+
+            d2_two_settled_observations = bool(
+                confirm_d2_complete(d2_prev_status, _d2_clear_status(task, world.ram))
+            )
+            success = bool(
+                terminal
+                and d2_status is not None
+                and d2_status.is_complete
+                and d2_two_settled_observations
+            )
         else:
             success = bool(goal and advanced and morning_ok)
 
@@ -1003,7 +1169,12 @@ def main() -> int:
                 and end_key > (0, 30)
             ),
             "d2_farm": (
-                {"start": d2_start_counts, "end": d2_end_counts}
+                {
+                    "start": d2_start_counts,
+                    "end": d2_end_counts,
+                    "final_status": d2_final_status,
+                    "two_consecutive_settled_observations": d2_two_settled_observations,
+                }
                 if args.stop_after_d2_clear
                 else None
             ),
@@ -1015,16 +1186,14 @@ def main() -> int:
             if success
             else reason,
             "terminal": terminal,
+            "progress_sidecar": str(sidecar_path) if sidecar_path is not None else None,
             "mid_run_state_load": False,
-            "clean_run": {
-                "intervention_class": "Clean",
-                "initial_state_loads": 0 if args.power_on else 1,
-                "mid_run_state_loads": 0,
-                "ram_writes": 0,
-                "infinite_stamina": False,
-                "source_state": str(source_state) if source_state else None,
-                "source_state_sha256": source_state_sha256,
-            },
+            "clean_run": _clean_run_report(
+                env,
+                initial_state_loads=0 if args.power_on else 1,
+                source_state=source_state,
+                source_state_sha256=source_state_sha256,
+            ),
             "video": video_result,
         }
         args.out.parent.mkdir(parents=True, exist_ok=True)

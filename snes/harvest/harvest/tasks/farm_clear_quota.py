@@ -194,14 +194,17 @@ def unmet_debris_types(
 
 
 def farm_map_loaded(ram) -> bool:
-    """False on shed-door 0xFF / viewport unload (counts look like a wipe).
+    """False off the farm, on shed-door 0xFF, or viewport unload.
 
-    Standing on a8 next to the door still unloads distant metatiles to 0xFF,
-    so a player-tile check is not enough.
+    Shed ``0x26`` has a real metatile map, so an FF-stale check alone treats
+    it as a wiped farm and CLEAR_ROCKS no-ops. Standing on a8 next to the
+    door still unloads distant farm metatiles to 0xFF.
     """
-    from harvest.core.tile_catalog import ADDR_MAP, MAP_WIDTH
+    from harvest.core.tile_catalog import ADDR_MAP, ADDR_TILEMAP, MAP_WIDTH
     from harvest.tasks.nav import get_pos_from_ram, get_tile_at, TILE_SIZE
 
+    if ADDR_TILEMAP < len(ram) and int(ram[ADDR_TILEMAP]) != 0x00:
+        return False
     pos = get_pos_from_ram(ram)
     tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
     if int(get_tile_at(ram, *tile)) in STALE_TILE_IDS:

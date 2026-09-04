@@ -574,6 +574,15 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertIsInstance(task._nav, MultiMapNavTask)
         self.assertEqual(task._nav.waypoints, ROUTES["farm_south_to_west_gate"])
 
+    def test_farm_exit_uses_south_route_from_shipping_bin(self) -> None:
+        """Live grape return is tile (8,28), not south of the y=31 fence."""
+        from harvest.planner.tasks.inventory_exit import FarmExitTask
+
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        task = FarmExitTask(timeout=10_000)
+        task.reset(world)
+        self.assertEqual(task._nav.waypoints, ROUTES["farm_south_to_west_gate"])
+
     def test_berry_ship_fails_closed_without_shipping_money_delta(self) -> None:
         from harvest.tasks.berry_ship import BerryShipTask
 

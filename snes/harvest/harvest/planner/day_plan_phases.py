@@ -116,6 +116,15 @@ from harvest.planner.day_phase_catalog import (
 )
 
 
+def _daytime_clear_phase(season: int | None, day: int | None) -> PhaseSpec:
+    """D2 uses the exhaustive tactic; other days keep quota CLEAR_FIELD."""
+    if int(season or 0) == 0 and int(day or 0) == 2:
+        from harvest.planner.d2_work import d2_farm_clear_phase
+
+        return d2_farm_clear_phase()
+    return CLEAR_FIELD_PHASE
+
+
 def build_day_phases(
     state_name: Optional[str] = None,
     *,
@@ -268,7 +277,7 @@ def build_day_phases(
         # Shop hop used to starve morning CLEAR. After a real buy we are back
         # on the farm with time left — clear before go-home.
         if seed_buy_phases and has_debris and policy.include_field_clear:
-            phases.append(CLEAR_FIELD_PHASE)
+            phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
         # Keep-alive farm: still buy seeds early so plant/water is not starved.
         phases.extend(seed_buy_phases)
@@ -283,7 +292,7 @@ def build_day_phases(
         and not berry_before_clear
     )
     if day_clear:
-        phases.append(CLEAR_FIELD_PHASE)
+        phases.append(_daytime_clear_phase(season, day))
 
     if policy.include_cows and has_cows and not late_day and not buy_cow_first:
         phases.extend(COW_PHASES)
@@ -329,7 +338,7 @@ def build_day_phases(
     # 3b. Deferred field clear after keep-alive water (rr-3v9) — day path only
     # when crops claimed the morning (not empty berry days).
     if defer_field_clear and not berry_before_clear:
-        phases.append(CLEAR_FIELD_PHASE)
+        phases.append(_daytime_clear_phase(season, day))
 
     # 4. Early money route after animals/crops (or skipped if already first).
     if not late_day and not berry_before_clear:
@@ -412,7 +421,7 @@ def build_outdoor_day_phases(
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
         if seed_buy_phases and has_debris and policy.include_field_clear:
-            phases.append(CLEAR_FIELD_PHASE)
+            phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
         phases.extend(seed_buy_phases)
 
@@ -424,7 +433,7 @@ def build_outdoor_day_phases(
         and not berry_before_clear
     )
     if day_clear:
-        phases.append(CLEAR_FIELD_PHASE)
+        phases.append(_daytime_clear_phase(season, day))
 
     if policy.include_harvest and has_harvest and not late_day:
         phases.append(NAV_CROP_PHASE)
@@ -442,7 +451,7 @@ def build_outdoor_day_phases(
     )
 
     if defer_field_clear and not berry_before_clear:
-        phases.append(CLEAR_FIELD_PHASE)
+        phases.append(_daytime_clear_phase(season, day))
 
     # Berries after crop work when keep-alive / harvest claimed the morning.
     if not late_day and not berry_before_clear:

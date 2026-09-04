@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import fields, is_dataclass
+from enum import Enum
 from pathlib import Path
 
 from harvest.paths import PROJECT_DIR, ensure_monorepo_on_path
@@ -255,6 +257,31 @@ def _try_snapshot(ram) -> dict:
         return {}
 
 
+def _json_report_value(value):
+    """Convert nested task observations to JSON-safe diagnostic evidence."""
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return {
+            field.name: _json_report_value(getattr(value, field.name))
+            for field in fields(value)
+        }
+    if isinstance(value, dict):
+        return {str(key): _json_report_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_report_value(item) for item in value]
+    return value
+
+
+def _terminal_payload(result, farm) -> dict:
+    """Keep the task result and complete observed farm status in one report."""
+    return {
+        "terminal_status": result.status.value if result is not None else "none",
+        "terminal_reason": str(result.reason or "") if result is not None else "",
+        "farm_status": _json_report_value(farm) if farm is not None else {},
+    }
+
+
 def _emit(
     path: Path, *, ram, section: str, ok: bool, done: bool | None = None, **fields
 ) -> None:
@@ -305,6 +332,7 @@ def main() -> int:
                     section=args.section,
                     ok=False,
                     journal=journal,
+                    **_terminal_payload(result, None),
                 )
                 return 1
 
@@ -346,24 +374,14 @@ def main() -> int:
         )
         journal.extend(tactic.journal)
         farm = tactic.farm_status or observe_d2_farm(ram, tactic.journal)
-        ok = result is not None and result.status == TaskStatus.SUCCESS
-        _emit(
-            args.out,
-            ram=ram,
-            section=args.section,
-            ok=False,
-            start=start,
-            journal=journal,
-            farm_status=farm.outcome.value if farm is not None else "",
-            partial=True,
-        )
 
         end = _snapshot(ram)
         cleared = DebrisCounts(**start["debris"]).cleared_since(
             DebrisCounts(**end["debris"])
         )
         end_counts = count_debris(ram, scan_bounds)
-        ok = ok and _section_complete(args.section, start_counts, end_counts)
+        task_succeeded = result is not None and result.status == TaskStatus.SUCCESS
+        ok = task_succeeded and _section_complete(args.section, start_counts, end_counts)
         whole_farm = args.chunk == "all"
         required_empty = list(smash_done_empty(args.section) if whole_farm else ())
         saved = None
@@ -392,12 +410,20 @@ def main() -> int:
             chunk=args.chunk,
             frames=frame,
             time=format_segment_time(frame),
+            partial=not ok,
+            **_terminal_payload(result, farm),
             **extra,
         )
         print_leftover_table(start, end, cleared.as_dict(), wanted, frame)
         return 0 if ok else 1
     except KeyboardInterrupt:
-        extra = {"journal": journal, "reason": "headed window closed"}
+        extra = {
+            "journal": journal,
+            "reason": "headed window closed",
+            "terminal_status": "interrupted",
+            "terminal_reason": "headed window closed",
+            "farm_status": {},
+        }
         if start is not None:
             extra["start"] = start
         _emit(args.out, ram=ram, section=args.section, ok=False, **extra)

@@ -174,6 +174,30 @@ class MultiDayPlannerTask(Task):
     def _build_sleep_task(self) -> GoToSleepTask:
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
+    def _continue_d2_clear(self, world: WorldState) -> TaskResult | None:
+        """Keep --stop-after-d2-clear from idling after an unfinished day plan."""
+        from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
+
+        if isinstance(self._current_task, D2FarmClearTactic):
+            return None
+        status = observe_d2_farm(world.ram, self._last_day_phase_results)
+        if not status.farm_map_loaded or status.is_complete:
+            return None
+        self._activate("plan_day", self._build_d2_clear_task(), world)
+        assert self._current_task is not None
+        return self._current_task.step(world)
+
+    def _build_d2_clear_task(self):
+        from harvest.planner.d2_work import D2FarmClearTactic, d2_farm_clear_phase
+        from harvest.planner.day_phase_registry import TaskBuildContext
+
+        tactic = D2FarmClearTactic.from_spec(
+            TaskBuildContext(policy=self.policy),
+            d2_farm_clear_phase(),
+        )
+        tactic.set_evidence(self._last_day_phase_results)
+        return tactic
+
     def _build_farm_shipping_wait_task(self) -> FarmShippingWaitTask:
         return FarmShippingWaitTask(
             name="wait_farm_shipping",
@@ -540,6 +564,9 @@ class MultiDayPlannerTask(Task):
                     "staying on farm for 5pm ShippingScene (Day09 path)"
                 )
             elif not self.policy.include_end_day:
+                continued = self._continue_d2_clear(world)
+                if continued is not None:
+                    return continued
                 return TaskResult(
                     status=TaskStatus.SUCCESS,
                     reason=result.reason or "day work complete",
