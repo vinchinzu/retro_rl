@@ -3,6 +3,113 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0D: Step-1 south-face squeeze re-tried & NO-GO; Step-2 poke cellar is a DEAD END back to 0x0D (rr-8t4.3)
+
+MAIN tree, branch `main`. No capability pokes. One disclosed position
+poke (`ADDR_LINK_X/Y` -> `(204,88)`) for the Step-2 recon fixture only,
+logged with before/from/to. `route_eligible=false` everywhere. Chapter
+factories fail-closed. `PostLevel7Handoff.verified` untouched. No graph
+`ram_id` promotion. No spine edits. Tests 500/500.
+
+### Step 1 (TAS south-face UP-push): NO-GO, reconfirmed from 4 fresh vectors
+
+New tool `scratch/probe_l7_room0d_squeeze.py` (`--sweep --squeeze
+--around-east --wiggle --from-east`). Pin `Level7Interior0DClearedReconFixture`.
+
+- Full poke-read tile sweep y=136..189: the x176-188 diamond mass is
+  y≈101..135 then a **GAP y136..158 that point-pokes as floor**, then the
+  south wall y≈166..180, then the bottom door strip y≈182..188.
+- **That y136..158 "floor" is not walkable by a moving Link.** Every
+  approach to the block's south-face stand `(192,160)` pins Link at
+  **`(176,155..157)` tile 178/119**:
+  - west corridor east-hug at y=156 → pin.
+  - east pocket `(192,141)` straight DOWN x=192 → `(176,157)`.
+  - around the block's east side, DOWN x=204 / x=200 / x=196 then LEFT →
+    `(176,157)` every column (Link slides west off x≥196).
+  - sub-pixel diagonal wiggle (RIGHT+DOWN / DOWN+RIGHT alternation) at the
+    pin → nets `(176,155)`, zero eastward progress.
+- The UP push cannot be executed. `level9/stairs.py` `room03`/`room30`
+  recipe stays the template if the pin is ever cracked; it was not.
+
+### Step 2 (disclosed one-poke recon fixture): reaches 0x7b mode 9 but it is a DEAD END
+
+New tools `scratch/probe_l7_room0d_cellarpoke.py` (`--scan`, `--poke X Y`,
+`--save`) and `scratch/probe_l7_nosecellar_tail.py`
+(`--sweep --manual --topsweep --cellar`).
+
+- Without the RIGHT push, **no poke pixel trips CheckWarps** (stairs not
+  revealed) — `(208,93)` from the task spec stays room 0x0D mode 5
+  (`0d_pokewarp_v1`). The task's assumed `(208,93)` no-push recipe is dead.
+- **With** the real `0x68` RIGHT push (block parks `(208,96)` state 2,
+  reveals stair tiles `0x70-0x73` at x≈192-208 y≈93-100), a single poke to
+  **`(204,88)`** + a couple idle frames → mode 16 → settles **screen
+  `0x7b` mode 9** (`mode_name` "dungeon_underworld_passage"), census
+  **4× keese `0x1b`**, `room_item_id=3`. **Reproduced 2/2** (`0d_cp_scan`,
+  `0d_cp_p1`). Live `$EB` for NOSE_CELLAR-as-reached = **`0x7b`**.
+  Bombs/keys/candle unchanged (6/2/2). Saved
+  `Level7Interior0DNoseCellarReconFixture` (provenance:
+  `route_eligible:false`, `fixture_only`, `development_only`, the one poke
+  logged, DEAD-END flagged).
+- **The 0x7b passage is wired back to 0x0D, not forward.**
+  `provenance.state.next_room = 13` (0x0D). The room only loads after a
+  ~400-frame idle; then Link walks a narrow x=192 top channel (y≈63-93)
+  and the bottom floor strip (y≈189, reached via the right x≈200 vertical
+  corridor). Walking **UP** the top channel at **any x** (topsweep x=32..208,
+  8 separate envs) → mode-10 stairs-exit → **room `0x0D` at `(96,157)`**.
+  The bottom strip has no UP transition at any column (swept x=208..16).
+  The keese never activate (hp=0), `room_all_dead` never resolves.
+- Conclusion: `(204,88)` lands Link on the **return** stair leg. The
+  **forward** NOSE_CELLAR staircase is the tile the parked `0x68` sits ON
+  — sealed by the RIGHT push, exactly as the 2026-09-03 sitting below
+  established. Only the unsolved south-face UP push clears the forward
+  stair.
+
+### Downstream L7-C tail: NOT reached
+
+`NOSE_CELLAR → PRE_BOSS → AQUAMENTUS → TRIFORCE → OW-leave` all remain
+unobserved. `MEASURED_POST_L7_EXIT` in `level7/entry.py` **NOT filled** —
+no genuine evidence. `Level1AquamentusController` reuse **not attempted**
+(never reached a live boss room). No `level1/finish.py` change.
+
+### Dead beliefs burned (2026-09-03)
+
+- Dead: the y≈136..158 poke-read "floor" gap under the x176-188 diamond
+  mass is walkable by a moving Link — pins at `(176,155..157)` from the
+  west corridor, the east pocket, around-east x196-204, and diagonal
+  wiggle (`probe_l7_room0d_squeeze.py`).
+- Dead: going around the `0x68` east side (x196-204) DOWN then LEFT to
+  reach `(192,160)` — Link slides to `(176,157)` every column.
+- Dead: the task-spec `(208,93)` no-push position poke reaches a cellar —
+  it stays room 0x0D mode 5 (stairs not revealed without the push).
+- Dead: the `0x7b` cellar reached by the `(204,88)` poke leads to
+  PRE_BOSS — it is `next_room=0x0D`; UP from the top channel (every x)
+  exits mode-10 back to `0x0D (96,157)`. It is a return-only passage as
+  reached; the forward leg is under the parked block.
+- Dead: the `0x7b` cellar is navigable immediately on arrival — it needs
+  a ~400f idle to finish loading; before that Link is frozen except UP
+  and poking him around causes hurt/death (mode 8/17).
+
+### Resume point
+
+The `0x0D` → forward-NOSE_CELLAR walk-on is still the OPEN BLOCKER and is
+now the ONLY path: the position-poke stand-in provably lands on the
+return leg, so it cannot unblock the downstream recon. Next options:
+1. Crack the south-face `(192,160)` UP push (frame-perfect; the y156
+   corridor pin at `(176,157)` is the wall — needs a mechanic we don't
+   have, or proof it is vanilla-impossible and the ROM predecessor of
+   NOSE_CELLAR is a *different* room's staircase).
+2. Re-derive NOSE_CELLAR's real predecessor from L7 ROM stair-list data
+   (mirror of `level9/stairs.py` `LEVEL9_STAIR_PAIRS`) — 0x0D may not be
+   it, or 0x0D's stair may be a within-room shortcut (exit `(96,157)`
+   supports that reading).
+3. Integrator: a heavier disclosed stand-in (e.g. poke `$EB`/`next_room`)
+   is the only way to unblock PRE_BOSS recon, and is out of scope here.
+
+Fixture `Level7Interior0DClearedReconFixture` unchanged. New fixture
+`Level7Interior0DNoseCellarReconFixture` saved (DEAD-END, recon only).
+New scratch: `probe_l7_room0d_squeeze.py`, `probe_l7_room0d_cellarpoke.py`,
+`probe_l7_nosecellar_tail.py`.
+
 ## 2026-09-03 — L7-C 0x0D block −48 snap is REAL (matches L9 room30/03); walk-on NO-GO (rr-8t4.3)
 
 Follow-up to the sitting below, per coordinator: diff the `0x68` push
