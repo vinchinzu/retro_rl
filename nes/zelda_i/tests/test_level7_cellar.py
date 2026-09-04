@@ -2,8 +2,9 @@
 
 No emulator. Fake snapshots at the right-ladder spawn (192,93) must emit
 DOWN, never UP (CheckSubroom AttrB → play 0x0D). Floor LEFT to x=48, then
-UP the west ladder. OccupancyWalker is banned. Spine tip-stairs factory
-stays fail-closed. RAM claim dest is play 0x29.
+UP the west ladder. OccupancyWalker is banned. Spine tip-stairs is the
+walk-on INTO cellar 0x7B (`level7.stairs0d`, live 2/2). RAM claim dest is
+play 0x29.
 """
 
 from __future__ import annotations
@@ -34,7 +35,6 @@ from zelda_i.level7.hops import (
     make_nose_cellar_cross_controller as hops_make_nose_cellar_cross,
     make_tip_stairs_controller,
 )
-from zelda_i.level7.path import UnverifiedLevel7PathController
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_CANDLE,
@@ -263,8 +263,8 @@ def test_hops_factory_is_the_live_cross_not_the_spine_tip() -> None:
 
     ``make_tip_stairs_controller`` is the walk-on INTO cellar 0x7B
     (`level7.stairs0d`, live 2/2); the cross OUT of it to play 0x29 stays
-    ``Level7NoseCellarCrossController``. The boss/leave factories stay
-    fail-closed.
+    ``Level7NoseCellarCrossController``. The boss/leave factories are live
+    2/2 as of rr-8t4.3 (`20260904_W3`-`W6`) but stay ``route_eligible=false``.
     """
     from zelda_i.level7.stairs0d import Level7Stairs0DController
 
@@ -275,10 +275,15 @@ def test_hops_factory_is_the_live_cross_not_the_spine_tip() -> None:
     assert not isinstance(spine, Level7NoseCellarCrossController)
     assert spine.report()["dest_screen"] == 0x7B
     assert spine.report()["route_eligible"] is False
+    from zelda_i.level7.aquamentus import Level7AquamentusHeartController
+    from zelda_i.level7.shard import Level7ShardLeaveController
+
     aqua = make_aquamentus_heart_controller()
     leave = make_level7_shard_leave_controller()
-    assert isinstance(aqua, UnverifiedLevel7PathController)
-    assert isinstance(leave, UnverifiedLevel7PathController)
+    assert isinstance(aqua, Level7AquamentusHeartController)
+    assert isinstance(leave, Level7ShardLeaveController)
+    assert aqua.report()["route_eligible"] is False
+    assert leave.report()["route_eligible"] is False
 
 
 def test_no_occupancy_walker_import() -> None:

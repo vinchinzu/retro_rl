@@ -12,10 +12,18 @@ If dest 0x29 is live, optionally continue the suffix (bomb-E 0x2A,
 Aquamentus, E-shutter 0x2B, idle fanfare). Survival bomb top-up only at
 the verified bomb gate. Chapter factories stay fail-closed.
 
+``--walk-on`` starts one room earlier, on the cleared play ``0x0D`` pin, and
+takes the live staircase walk-on into the cellar first, so the whole tail
+(``0x0D -> 0x7B -> 0x29 -> 0x2A -> 0x2B -> OW``) runs poke-free in one lineage.
+
     QT_QPA_PLATFORM=offscreen uv run python \
         nes/zelda_i/scratch/probe_l7_7b_cellar_cross.py \
         --from-state Level7Interior0DNoseCellarReconFixture \
         --tag 20260904_C1 --infinite-life --no-video
+
+    QT_QPA_PLATFORM=offscreen uv run python \
+        nes/zelda_i/scratch/probe_l7_7b_cellar_cross.py \
+        --walk-on --tag 20260904_W1 --infinite-life --no-video
 """
 
 from __future__ import annotations
@@ -27,18 +35,12 @@ from enum import Enum
 from typing import Any
 
 from retro_harness.env import make_env, reset_obs, save_state, state_path
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.dungeon.bomb_wall import BombWallController
 from zelda_i.dungeon.ids import object_name
 from zelda_i.dungeon.ops import apply_owned_inventory
 from zelda_i.dungeon.trace import compact_snapshot, write_state_provenance
-from zelda_i.level1.finish import (
-    AQUAMENTUS_MAX_FRAMES,
-    AquamentusPhase,
-    Level1AquamentusController,
-    ROOM_AQUAMENTUS,
-)
 from zelda_i.level7.cellar import (
     CELLAR_ROOM,
     DEST_ROOM,
@@ -49,7 +51,10 @@ from zelda_i.level7.cellar import (
     SPAWN_XY,
     make_nose_cellar_cross_controller,
 )
-from zelda_i.level7.stairs import AQUAMENTUS_ROM, TRIFORCE_ROM
+from zelda_i.level7.aquamentus import make_level7_aquamentus_heart_controller
+from zelda_i.level7.shard import make_level7_shard_leave_controller
+from zelda_i.level7.stairs import AQUAMENTUS_ROM
+from zelda_i.level7.stairs0d import make_stairs0d_controller
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import (
     ADDR_BOMBS,
@@ -71,6 +76,10 @@ from zelda_i.screen_glance import leftover_from_snapshot
 
 LEVEL7 = 7
 FROM = "Level7Interior0DNoseCellarReconFixture"
+# --walk-on lineage: the cleared 0x0D play pin, no cellar poke anywhere.
+WALK_ON_FROM = "Level7Interior0DClearedReconFixture"
+TIP_ROOM = 0x0D
+SOURCE_STATE = FROM
 DEATH_MODE = 17
 FANFARE_MODE = 18
 CENSUS_IDLE = 60
@@ -173,6 +182,16 @@ def _glance(env: Any) -> dict[str, Any]:
     return result
 
 
+def _walk_on_pin_ok(start: dict[str, Any]) -> bool:
+    """Cleared play 0x0D pin: the walk-on's own start, not the cellar."""
+    return (
+        start["level"] == LEVEL7
+        and start["mode"] == PLAY_MODE
+        and int(start["screen"]) == TIP_ROOM
+        and int(start["inventory"]["candle"]) == 2
+    )
+
+
 def _pin_ok(start: dict[str, Any]) -> bool:
     inv, (x, y) = start["inventory"], start["xy"]
     return (
@@ -182,12 +201,6 @@ def _pin_ok(start: dict[str, Any]) -> bool:
         and abs(int(x) - SPAWN_XY[0]) <= 12
         and inv["candle"] == 2
     )
-
-
-def _alias_aqua(snap: ZeldaSnapshot, live_room: int) -> ZeldaSnapshot:
-    if snap.screen == live_room:
-        return replace(snap, screen=ROOM_AQUAMENTUS)
-    return snap
 
 
 @dataclass
@@ -304,10 +317,10 @@ def _save_fixture(
 ) -> dict[str, Any]:
     after = read_snapshot(raw_env.get_ram())
     path = save_state(raw_env, GAME_DIR, GAME, fixture_name)
-    source_path = state_path(GAME_DIR, GAME, FROM)
+    source_path = state_path(GAME_DIR, GAME, SOURCE_STATE)
     result = {
         "ok": True,
-        "source_state": FROM,
+        "source_state": SOURCE_STATE,
         "fixture_state": fixture_name,
         "state": compact_snapshot(after),
         "census": census,
@@ -400,27 +413,13 @@ def _run_suffix(env: ObservedEnv, assist: Any, payload: dict[str, Any]) -> None:
         payload["suffix_halt"] = "aqua_not_0x2a"
         return
 
-    aqua = Level1AquamentusController(
-        phase=AquamentusPhase.ALIGN, tank_hits=True
+    aqua = make_level7_aquamentus_heart_controller()
+    last = _drive(
+        env, assist, aqua, phase="aquamentus_0x2a", limit=aqua.max_frames
     )
-    last = ""
-    for _ in range(AQUAMENTUS_MAX_FRAMES):
-        snap = read_snapshot(env.get_ram())
-        if snap.mode == DEATH_MODE:
-            raise ProbeStop("death")
-        aliased = _alias_aqua(snap, AQUAMENTUS_ROM)
-        act = aqua.step(aliased)
-        last = str(act.reason)
-        env.set_reason("aquamentus_0x2a", act.reason)
-        env.step(act.action)
-        assist.apply_env(env, frame=env.frame)
-        if aqua.success or aqua.phase is AquamentusPhase.FAILED:
-            break
     payload["aquamentus"] = {
         **aqua.report(),
         "last_reason": last,
-        "live_room": f"0x{AQUAMENTUS_ROM:02X}",
-        "aliased_l1_room": f"0x{ROOM_AQUAMENTUS:02X}",
         "glance": _glance(env),
     }
     env.save_shot("after_aquamentus")
@@ -436,97 +435,37 @@ def _run_suffix(env: ObservedEnv, assist: Any, payload: dict[str, Any]) -> None:
         "plus_one": hc_after == hc_before + 1,
     }
 
-    last = "push_east_shutter"
-    for _ in range(1200):
-        snap = read_snapshot(env.get_ram())
-        if snap.mode == DEATH_MODE:
-            raise ProbeStop("death")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen == TRIFORCE_ROM
-        ):
-            last = "arrived_0x2b"
-            break
-        env.set_reason("east_shutter_0x2a", last)
-        env.step(nes_action("RIGHT"))
-        assist.apply_env(env, frame=env.frame)
+    shard = make_level7_shard_leave_controller()
+    last = _drive(
+        env, assist, shard, phase="shard_leave", limit=shard.max_frames
+    )
     tf_glance = _glance(env)
     payload["triforce_room"] = {
-        "arrived": int(tf_glance["screen"]) == TRIFORCE_ROM,
+        "arrived": "arrived_0x2b" in shard.notes,
         "glance": tf_glance,
         "last_reason": last,
     }
+    payload["shard_leave"] = {**shard.report(), "last_reason": last}
     env.save_shot("after_shutter")
-    if int(tf_glance["screen"]) != TRIFORCE_ROM:
-        payload["suffix_halt"] = "tf_room_red"
+    if not shard.success:
+        payload["suffix_halt"] = "shard_leave_red"
+        payload["post_l7_exit"] = {
+            "measured": False,
+            "verified": False,
+            "leftover": None,
+            "last_reason": last,
+            "note": "shard leave halted; nothing measured.",
+        }
         return
-    payload["saved_fixture_0x2b"] = _save_fixture(
-        env.env,
-        fixture_name="Level7Interior2BTriforceReconFixture",
-        census=tf_glance,
-        dest_eb=f"0x{TRIFORCE_ROM:02X}",
-        note="0x2A E-shutter dest play 0x2B TF. route_eligible=false.",
-    )
-
-    # Diamond floor: y=141 centre is blocked (C1 shutter leftover (16,141)).
-    # RIGHT off the west mouth first (DOWN at x=16 does not move), then
-    # south-around like L1 TF: (32,141) -> (32,189) -> (120,189) -> (128,141).
-    tf_waypoints = ((32, 141), (32, 189), (120, 189), (128, 141))
-    wp_i = 0
-    last = "tf_south_around"
-    ow = None
-    for _ in range(3600):
-        snap = read_snapshot(env.get_ram())
-        if snap.mode == DEATH_MODE:
-            raise ProbeStop("death")
-        if snap.triforce & TF_BIT_L7:
-            last = "tf_bit_set"
-        if snap.mode == FANFARE_MODE:
-            last = "fanfare"
-            env.set_reason("tf_fanfare", last)
-            env.step(nes_idle_action())
-            assist.apply_env(env, frame=env.frame)
-            continue
-        if (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-        ):
-            ow = _glance(env)
-            last = "ow_return"
-            break
-        if snap.transitioning or snap.mode != PLAY_MODE:
-            env.set_reason("tf_fanfare", f"wait_mode_{snap.mode}")
-            env.step(nes_idle_action())
-            assist.apply_env(env, frame=env.frame)
-            continue
-        if wp_i < len(tf_waypoints):
-            tx, ty = tf_waypoints[wp_i]
-            dx, dy = tx - int(snap.link_x), ty - int(snap.link_y)
-            if abs(dx) <= 3 and abs(dy) <= 3:
-                wp_i += 1
-                last = f"tf_wp_{wp_i}"
-                env.step(nes_idle_action())
-            elif abs(dy) > 3:
-                last = "tf_align_y"
-                env.step(nes_action("DOWN" if dy > 0 else "UP"))
-            else:
-                last = "tf_align_x"
-                env.step(nes_action("RIGHT" if dx > 0 else "LEFT"))
-        else:
-            last = "idle_fanfare"
-            env.step(nes_idle_action())
-        env.set_reason("tf_collect", last)
-        assist.apply_env(env, frame=env.frame)
     payload["post_l7_exit"] = {
-        "measured": ow is not None,
+        "measured": True,
         "verified": False,
-        "leftover": ow,
+        "leftover": _glance(env),
         "last_reason": last,
         "note": (
             "MEASURED_POST_L7_EXIT.verified stays False until a filled "
-            "packet is committed from a real leftover. Not invented."
+            "packet is committed from a real Survival leftover (this pin "
+            "starts at TF 0). Not invented."
         ),
     }
     env.save_shot("final_suffix")
@@ -542,6 +481,14 @@ def main() -> int:
     parser.add_argument("--no-video", action="store_true", default=False)
     parser.add_argument("--save-fixture", default=None)
     parser.add_argument(
+        "--walk-on",
+        action="store_true",
+        help=(
+            "Start on the cleared play 0x0D pin and take the live staircase "
+            f"walk-on into cellar 0x7B first (default state {WALK_ON_FROM})."
+        ),
+    )
+    parser.add_argument(
         "--continue-suffix",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -550,6 +497,10 @@ def main() -> int:
     args = parser.parse_args()
     if not args.infinite_life:
         raise SystemExit("this fixture route probe requires --infinite-life")
+    if args.walk_on and args.from_state == FROM:
+        args.from_state = WALK_ON_FROM
+    global SOURCE_STATE
+    SOURCE_STATE = args.from_state
 
     configure_headless()
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -559,6 +510,7 @@ def main() -> int:
         "trial": "0x7b_b_to_a_cellar_cross",
         "bead": "rr-n91a",
         "from_state": args.from_state,
+        "walk_on": bool(args.walk_on),
         "fixture_only": True,
         "natural_entry": False,
         "route_eligible": False,
@@ -591,13 +543,34 @@ def main() -> int:
         payload["start"] = start
         env._sample(read_snapshot(env.get_ram()), "fixture_start")
         env.save_shot("start")
-        if not _pin_ok(start):
-            raise ProbeStop("pin_mismatch")
-        if int(start["tile"]) == PIT_TILE:
-            raise ProbeStop("start_on_pit_tile_250")
+        if args.walk_on:
+            if not _walk_on_pin_ok(start):
+                raise ProbeStop("walk_on_pin_mismatch")
+        else:
+            if not _pin_ok(start):
+                raise ProbeStop("pin_mismatch")
+            if int(start["tile"]) == PIT_TILE:
+                raise ProbeStop("start_on_pit_tile_250")
 
         assist.apply_env(env, frame=0)
-        inv0 = start["inventory"]
+        if args.walk_on:
+            walk = make_stairs0d_controller()
+            last_reason = _drive(
+                env, assist, walk, phase="tip_stairs_0x0d", limit=walk.max_frames
+            )
+            payload["walk_on"] = {
+                "from_state": args.from_state,
+                "success": bool(walk.success),
+                "failed": bool(walk.failed),
+                "frames": int(walk.frames),
+                "notes": [str(n) for n in walk.notes],
+                "last_reason": last_reason,
+                "glance": _glance(env),
+            }
+            env.save_shot("after_walk_on")
+            if not walk.success:
+                raise ProbeStop("walk_on_red")
+        inv0 = _glance(env)["inventory"] if args.walk_on else start["inventory"]
         keys_in, bombs_in = int(inv0["keys"]), int(inv0["bombs"])
         candle_in = int(inv0["candle"])
         tf_in = int(inv0["triforce"])
@@ -608,6 +581,8 @@ def main() -> int:
             assist.apply_env(env, frame=env.frame)
         payload["after_load"] = _glance(env)
         env.save_shot("after_load")
+        if args.walk_on and not _pin_ok(payload["after_load"]):
+            raise ProbeStop("walk_on_settle_not_cellar_pin")
 
         ctl = make_nose_cellar_cross_controller(dest=DEST_ROOM)
         last_reason = _drive(

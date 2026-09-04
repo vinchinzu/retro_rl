@@ -1,6 +1,6 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-09-04T16:55:29.005045+00:00",
+  "captured_at": "2026-09-04T20:32:29.738906+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
@@ -49,7 +49,7 @@
           "type_name": "goriya_blue_or_residual",
           "xy": [
             160,
-            123
+            109
           ]
         },
         {
@@ -59,8 +59,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            137,
-            189
+            153,
+            173
           ]
         },
         {
@@ -70,8 +70,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            208,
-            167
+            192,
+            152
           ]
         },
         {
@@ -81,7 +81,7 @@
           "type_hex": "0x05",
           "type_name": "goriya_blue_or_residual",
           "xy": [
-            51,
+            64,
             173
           ]
         },
@@ -92,8 +92,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            160,
-            105
+            155,
+            109
           ]
         },
         {
@@ -103,8 +103,8 @@
           "type_hex": "0x05",
           "type_name": "goriya_blue_or_residual",
           "xy": [
-            158,
-            189
+            160,
+            173
           ]
         },
         {
@@ -114,8 +114,8 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            74,
-            189
+            137,
+            173
           ]
         },
         {
@@ -125,7 +125,7 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            136,
+            89,
             173
           ]
         },
@@ -136,8 +136,8 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            160,
-            112
+            125,
+            109
           ]
         },
         {
@@ -175,7 +175,7 @@
           "type_name": "goriya_blue_or_residual",
           "xy": [
             160,
-            123
+            109
           ]
         },
         {
@@ -185,8 +185,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            137,
-            189
+            153,
+            173
           ]
         },
         {
@@ -196,8 +196,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            208,
-            167
+            192,
+            152
           ]
         },
         {
@@ -207,7 +207,7 @@
           "type_hex": "0x05",
           "type_name": "goriya_blue_or_residual",
           "xy": [
-            51,
+            64,
             173
           ]
         },
@@ -218,8 +218,8 @@
           "type_hex": "0x06",
           "type_name": "goriya",
           "xy": [
-            160,
-            105
+            155,
+            109
           ]
         },
         {
@@ -229,8 +229,8 @@
           "type_hex": "0x05",
           "type_name": "goriya_blue_or_residual",
           "xy": [
-            158,
-            189
+            160,
+            173
           ]
         },
         {
@@ -240,8 +240,8 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            74,
-            189
+            137,
+            173
           ]
         },
         {
@@ -251,7 +251,7 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            136,
+            89,
             173
           ]
         },
@@ -262,8 +262,8 @@
           "type_hex": "0x5C",
           "type_name": "boomerang_projectile",
           "xy": [
-            160,
-            112
+            125,
+            109
           ]
         },
         {
@@ -289,7 +289,7 @@
     "fixture_state": "Level7Interior29PreBossReconFixture",
     "fixture_writes": [],
     "ok": true,
-    "source_state": "Level7Interior0DNoseCellarReconFixture",
+    "source_state": "Level7Interior0DClearedReconFixture",
     "state": {
       "bombs": 6,
       "cur_opened_doors": 0,
@@ -309,7 +309,7 @@
           "type_id": 5,
           "type_name": "goriya_blue_or_residual",
           "x": 160,
-          "y": 123
+          "y": 109
         },
         {
           "hp": 48,
@@ -317,8 +317,8 @@
           "state": 0,
           "type_id": 6,
           "type_name": "goriya",
-          "x": 137,
-          "y": 189
+          "x": 153,
+          "y": 173
         },
         {
           "hp": 48,
@@ -326,8 +326,8 @@
           "state": 0,
           "type_id": 6,
           "type_name": "goriya",
-          "x": 208,
-          "y": 167
+          "x": 192,
+          "y": 152
         },
         {
           "hp": 80,
@@ -335,7 +335,7 @@
           "state": 128,
           "type_id": 5,
           "type_name": "goriya_blue_or_residual",
-          "x": 51,
+          "x": 64,
           "y": 173
         },
         {
@@ -344,8 +344,8 @@
           "state": 0,
           "type_id": 6,
           "type_name": "goriya",
-          "x": 160,
-          "y": 105
+          "x": 155,
+          "y": 109
         },
         {
           "hp": 80,
@@ -353,35 +353,35 @@
           "state": 128,
           "type_id": 5,
           "type_name": "goriya_blue_or_residual",
-          "x": 158,
-          "y": 189
+          "x": 160,
+          "y": 173
         },
         {
           "hp": 144,
           "slot": 8,
-          "state": 48,
+          "state": 20,
           "type_id": 92,
           "type_name": "boomerang_projectile",
-          "x": 74,
-          "y": 189
+          "x": 137,
+          "y": 173
         },
         {
           "hp": 144,
           "slot": 9,
-          "state": 49,
+          "state": 20,
           "type_id": 92,
           "type_name": "boomerang_projectile",
-          "x": 136,
+          "x": 89,
           "y": 173
         },
         {
           "hp": 144,
           "slot": 10,
-          "state": 80,
+          "state": 22,
           "type_id": 92,
           "type_name": "boomerang_projectile",
-          "x": 160,
-          "y": 112
+          "x": 125,
+          "y": 109
         },
         {
           "hp": 176,
@@ -406,8 +406,8 @@
       "y": 157
     }
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DNoseCellarReconFixture.state",
-  "source_state_sha256": "7fe9f68c4f5bb930fafa8868d1c0307d61445e23fae2fbf2290cb7ddc6bd2a0f",
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DClearedReconFixture.state",
+  "source_state_sha256": "73c381b04a6d015a78caae1a6175d4292f56b8cf4237bc74d507b965faa06430",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior29PreBossReconFixture.state",
-  "state_sha256": "c8fcc451640b495445c37b10edc25cedad47fa53019a70926aa21cc28c18b55c"
+  "state_sha256": "d5d0b366d74e7a10cfbcbf5893a0769b898dc24d822afd2b222bb69fff2ea242"
 }
