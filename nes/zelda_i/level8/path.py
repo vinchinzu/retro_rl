@@ -1,9 +1,12 @@
-"""Fail-closed one-frame policies for unobserved Level 8 interior stages.
+"""Level 8 interior one-frame policies.
 
-Hypothesis rooms cannot press a direction on the cumulative spine.  Blue Gohma
-requires naturally owned Bow + wooden arrows and never pokes L6's one-time
-arrow grant or L6 room 0x1C.  Four-head Gleeok waits for a live object type;
-0x45 is not assumed.
+North-column factories (`make_north_manhandla_controller`,
+`make_darknut_key_controller`) are fixture-live in `level8.north_column`.
+Hypothesis rooms past 0x1E cannot press a direction on the cumulative spine.
+The 0x1E body is live type 0x33 HP96 (`LEVEL8_INTERIOR_0X1E_RECON`); colour
+is not asserted.  Blue Gohma still requires naturally owned Bow + wooden
+arrows and never pokes L6's one-time arrow grant or L6 room 0x1C.  Four-head
+Gleeok waits for a live object type; 0x45 is not assumed.
 """
 
 from __future__ import annotations
@@ -22,6 +25,12 @@ from zelda_i.level8.dungeon import (
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ChapterSpec,
     Level8Topology,
+)
+from zelda_i.level8.north_column import (
+    Level8DarknutKeyController,
+    Level8NorthManhandlaController,
+    make_darknut_key_controller as _make_darknut_key_controller,
+    make_north_manhandla_controller as _make_north_manhandla_controller,
 )
 from zelda_i.ram import ZeldaSnapshot
 
@@ -79,7 +88,11 @@ def unverified_path_controller(
 
 @dataclass
 class Level8BlueGohmaController:
-    """Fail closed until topology is live and Bow/arrows arrived naturally."""
+    """Fail closed until a live kill measures type/arrows.
+
+    0x1E live census (`LEVEL8_INTERIOR_0X1E_RECON`) is one body type 0x33
+    HP96.  Colour is not asserted here.
+    """
 
     topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY
     max_frames: int = 1
@@ -163,20 +176,12 @@ class Level8FourHeadGleeokController:
         return FrameAction(nes_idle_action(), reason)
 
 
-def make_north_manhandla_controller() -> UnverifiedLevel8PathController:
-    return unverified_path_controller(
-        "level8_north_manhandla_bomb",
-        "live entry room, north Manhandla census, and bomb-north stand",
-        spec=ENTRY_TO_MAGIC_KEY_SPEC,
-    )
+def make_north_manhandla_controller() -> Level8NorthManhandlaController:
+    return _make_north_manhandla_controller()
 
 
-def make_darknut_key_controller() -> UnverifiedLevel8PathController:
-    return unverified_path_controller(
-        "level8_darknut_key_up",
-        "live darknut key rooms and KEY-UP shutter without invented room IDs",
-        spec=ENTRY_TO_MAGIC_KEY_SPEC,
-    )
+def make_darknut_key_controller() -> Level8DarknutKeyController:
+    return _make_darknut_key_controller()
 
 
 def make_blue_gohma_controller(
@@ -217,7 +222,9 @@ def make_shard_leave_controller() -> UnverifiedLevel8PathController:
 
 __all__ = [
     "Level8BlueGohmaController",
+    "Level8DarknutKeyController",
     "Level8FourHeadGleeokController",
+    "Level8NorthManhandlaController",
     "UnverifiedLevel8PathController",
     "make_blue_gohma_controller",
     "make_darknut_key_controller",

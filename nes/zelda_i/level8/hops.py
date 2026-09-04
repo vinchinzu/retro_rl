@@ -25,6 +25,7 @@ from zelda_i.level8.entry import (
     make_select_red_candle_controller,
 )
 from zelda_i.level8.path import (
+    Level8NorthManhandlaController,
     UnverifiedLevel8PathController,
     make_blue_gohma_controller,
     make_darknut_key_controller,
@@ -42,8 +43,8 @@ Stage = tuple[str, object, int]
 ControllerFactory = Callable[[], object]
 
 
-def make_entry_to_magic_key_controller() -> UnverifiedLevel8PathController:
-    """Composite blocker kept for tests; chapters use named sub-stages."""
+def make_entry_to_magic_key_controller() -> Level8NorthManhandlaController:
+    """First magic-key sub-stage; chapters still use named sub-stages."""
     return make_north_manhandla_controller()
 
 

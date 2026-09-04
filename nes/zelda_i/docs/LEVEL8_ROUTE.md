@@ -350,6 +350,19 @@ arrival census: 2× `0x16` pols_voice HP160, 2× `0x0C` HP128, 2× `0x0B`
 darknut HP64, centre stairs sprite `0x68` at ~(96,144) (not population),
 `room_item_id=0x03`, Magic Key still 0. Not on `L8_THROUGH`.
 
+### Fixture-live 0x1F stairs → Magical Key cellar 0x0F (rr-6o7.2)
+
+From `Level8Interior1FReconFixture` (fixture-only, `natural_entry=false`,
+`route_eligible=false`). E1 no-clear south-face UP on the west `0x68` was
+hitstun-blocked (same as L7 0x1A). Sword-clear of the mixed census, then
+the west `0x68` `(96,144)` slides DOWN to `(96,160)` and the vacated gap
+walks onto the centre stairs `(128,141)`. 2/2 byte-identical (probe
+`l8_1f_magic_key` E2/E3, 9074 frames): natural `ADDR_MAGIC_KEY` 0→1 in
+mode-9 cellar `$EB=0x0F` leftover `(136,141)`, keys 8→8, bombs 6→6, TF
+`0x7F`. Two-ladder cellar (west/east ladders, pit); y=141 LEFT/RIGHT is
+tile 250, so the L1 DOWN-first return was **not** taken. `topology.magic_key_room`
+stays unset. Not on `L8_THROUGH`.
+
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
 **type `0x0C`, HP 128**, appearing 5× in `0x5E`, 1× in `0x4E` and 6× in `0x3E`,
@@ -389,7 +402,7 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 | Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
 | Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
 | Gohma (blue, 3 arrows) | live `0x1E` type **`0x33` HP96** (ids: L6 red; colour not asserted). 3 connecting wooden arrows, 9 shots loosed. East kill-clear → `0x1F`. **no L6 poke** | **fixture-live** (`route_eligible=false`) |
-| Magical Key (staircase) | live `0x1F` has a centre stairs sprite (`0x68` ~(96,144)); `ADDR_MAGIC_KEY` still 0 | **fixture-live arrival only** |
+| Magical Key (staircase) | live cellar `$EB=0x0F` mode 9 `(136,141)`; `ADDR_MAGIC_KEY` 0→1 natural. Two-ladder; return deferred | **fixture-live** (`route_eligible=false`) |
 | Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
 
 Items optional for credits (source). TF bit **`0x80`**. Magical Key is the
@@ -420,7 +433,8 @@ start.
 | `Level8InteriorReconFixture` | `Level8EntranceReconFixture` + disclosed recon resources (sword 3, bombs 8, bow 1, arrows 1, rupees 255, keys 9); Magic Key / TF / rooms / doors untouched |
 | `Level8Interior3EReconFixture` | L8 play `0x3E` `(120,205)`, keys 9, bombs 7, 6× `0x0C` HP128 alive |
 | `Level8Interior1EReconFixture` | L8 play `0x1E` `(120,205)`, keys 8, bombs 6, one body type `0x33` HP96 |
-| `Level8Interior1FReconFixture` | End of the fixture-live chain: L8 play `0x1F` `(16,141)`, keys 8, bombs 6, rupees 246, Magic Key 0; mixed 0x16/0x0C/0x0B plus centre stairs |
+| `Level8Interior1FReconFixture` | L8 play `0x1F` `(16,141)`, keys 8, bombs 6, rupees 246, Magic Key 0; mixed 0x16/0x0C/0x0B plus centre stairs |
+| `Level8InteriorMKReconFixture` | Magical Key pad leftover: L8 mode-9 cellar `0x0F` `(136,141)`, keys 8, bombs 6, rupees 247, Magic Key **1** |
 | `Level8Entrance` (canonical route state) | **still not created** — needs the measured post-L7 leave, not a poked stand |
 
 ## Scaffold modules
@@ -437,6 +451,7 @@ start.
 | `scratch/level8_bush_burn_sweep.py` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
 | `scratch/capture_level8_entrance_fixture.py` | Reproduces the `(136,93)` RIGHT/RIGHT burn into live `0x7E` |
 | `scratch/probe_l8_5e_north.py` / `probe_l8_4e_north.py` | The `0x7E→0x4E` and `0x4E→0x3E` fixture replays |
+| `scratch/probe_l8_1f_magic_key.py` | The `0x1F` stairs → Magical Key cellar `0x0F` fixture replay |
 | `scratch/probe_l7_exit_to_l8_bush.py` | L7-pond → `0x6D` geometry lane |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |

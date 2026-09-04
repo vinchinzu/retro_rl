@@ -249,11 +249,46 @@ LEVEL8_INTERIOR_0X1F_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_1e_gohma_fixture_20260904_D1b",
 )
 
+# rr-6o7.2: ONE guarded boundary past 0x1F, taken from the settled-0x1F
+# continuation pin (Level8Interior1FReconFixture).  Sword-clear the mixed
+# 0x1F census (E1 no-clear 0x68 push was hitstun-blocked), then the west
+# 0x68 at (96,144) slides DOWN off the diamond and the vacated gap walks
+# onto the centre stairs (128,141).
+#
+# 2/2 byte-identical (probe l8_1f_magic_key E2/E3, 9074 frames each; all
+# payload keys identical except E2-only saved_fixture and screenshot
+# paths).  Live RAM: ADDR_MAGIC_KEY 0→1 in mode-9 cellar $EB=0x0F leftover
+# (136,141), keys 8→8, bombs 6→6, TF 0x7F, deaths 0, progression_writes 0,
+# capacity_writes 0, direct runtime writes 0.  Assist = Survival health
+# refill only (7 writes, max single-frame damage 2, all in 0x1F).
+#
+# Cellar is a two-ladder passage (west/east ladders, pit).  y=141 LEFT/RIGHT
+# is tile 250; the L1 DOWN-first west-ladder return is the next boundary
+# and was not taken.  topology.magic_key_room stays unset; not on
+# L8_THROUGH; DungeonRoomSpec still empty.  Four HP-0 keese residuals are
+# not census rows.  room_item_id 0x0B is unregistered.
+LEVEL8_INTERIOR_0X0F_RECON = Level8InteriorRoomRecon(
+    room_id=0x0F,
+    entered_from=0x1F,
+    entry_direction="STAIRS",
+    entry_gate="center_0x68_west_block_slide",
+    entry_pose=(128, 141),  # first settled warp pose; leftover is (136,141)
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x0B,  # unknown_room_item_0x0b; Magical Key was ADDR 0→1
+    census=(),  # no live population; 4× 0x1B keese HP0 residual
+    fixture="Level8InteriorMKReconFixture",
+    recording_tag="l8_1f_magic_key_fixture_20260904_E2",
+)
+
 LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
     LEVEL8_INTERIOR_0X1F_RECON,
+    LEVEL8_INTERIOR_0X0F_RECON,
 )
 
 
@@ -544,6 +579,7 @@ __all__ = [
     "LEVEL8",
     "LEVEL8_HYPOTHESIS_EXITS",
     "LEVEL8_HYPOTHESIS_ROOMS",
+    "LEVEL8_INTERIOR_0X0F_RECON",
     "LEVEL8_INTERIOR_0X1E_RECON",
     "LEVEL8_INTERIOR_0X1F_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",

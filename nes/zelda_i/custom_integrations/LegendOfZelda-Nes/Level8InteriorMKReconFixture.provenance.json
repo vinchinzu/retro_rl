@@ -1,0 +1,198 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T14:52:36.580898+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Continuation pin: Level8Interior1FReconFixture is the settled 0x1F frame of probe_l8_1e_gohma, itself a fixture-only chain from Level8InteriorReconFixture.",
+      "Walk to the centre 0x68 in play 0x1F, push UP, enter the Magical Key cellar, pick up ADDR_MAGIC_KEY naturally.",
+      "No RAM poke. First attempt did not clear the mixed 0x1F census.",
+      "Cellar $EB observed as: 0x0F.",
+      "Leftover is cellar leftover.",
+      "Not route eligible; not on L8_THROUGH; topology.magic_key_room stays unset."
+    ],
+    "phase": "level8_interior_magic_key_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs_unchanged": 6,
+    "cellar_eb": "0x0F",
+    "census": {
+      "arrows": 1,
+      "blocks_0x68": [],
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 2,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "book": 0,
+        "bow": 1,
+        "candle": 2,
+        "compass": 0,
+        "food": 0,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 8,
+        "magic_key": 1,
+        "map": 0,
+        "max_bombs": 8,
+        "rupees": 247,
+        "selected_item": 2,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 8,
+      "level": 8,
+      "live_objects": [],
+      "map": 0,
+      "mode": 9,
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 15,
+      "room_all_dead": 0,
+      "room_item_hex": "0x0B",
+      "room_item_id": 11,
+      "room_obj_count": 0,
+      "rupees": 247,
+      "screen": 15,
+      "screen_hex": "0x0F",
+      "tile": 36,
+      "triforce": 127,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            102,
+            131
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            186,
+            158
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            184,
+            181
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            153,
+            113
+          ]
+        }
+      ],
+      "x": 136,
+      "xy": [
+        136,
+        141
+      ],
+      "y": 141
+    },
+    "fixture_state": "Level8InteriorMKReconFixture",
+    "fixture_writes": [],
+    "keys_unchanged": 8,
+    "leftover": "cellar leftover",
+    "magic_key": 1,
+    "ok": true,
+    "returned_to_play": false,
+    "source_state": "Level8Interior1FReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 0,
+      "facing": 2,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 8,
+      "level": 8,
+      "mode": 9,
+      "mode_name": "dungeon_underworld_passage",
+      "next_room": 31,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 102,
+          "y": 131
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 186,
+          "y": 158
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 184,
+          "y": 181
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 153,
+          "y": 113
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 15,
+      "room_all_dead": 0,
+      "room_item_id": 11,
+      "room_item_name": "unknown_room_item_0x0b",
+      "room_obj_count": 0,
+      "rupees": 247,
+      "submode": 9,
+      "triforce": 127,
+      "x": 136,
+      "y": 141
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior1FReconFixture.state",
+  "source_state_sha256": "ae95a19e6cde90e087b7365968c7cc42409e12d7d015634c56761d82b0c21565",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8InteriorMKReconFixture.state",
+  "state_sha256": "25bcb2819ddfa244cf4907be1443819ef6b041ff21e45e73eee8caba41f86091"
+}

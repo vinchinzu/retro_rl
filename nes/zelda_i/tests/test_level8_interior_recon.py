@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
+    LEVEL8_INTERIOR_0X0F_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
     LEVEL8_INTERIOR_0X1F_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
@@ -27,23 +28,27 @@ def test_interior_recon_chain_is_ordered_south_to_north_then_east() -> None:
         LEVEL8_INTERIOR_0X2E_RECON,
         LEVEL8_INTERIOR_0X1E_RECON,
         LEVEL8_INTERIOR_0X1F_RECON,
+        LEVEL8_INTERIOR_0X0F_RECON,
     )
     rooms = [row.room_id for row in LEVEL8_INTERIOR_ROOM_RECON]
-    assert rooms == [0x3E, 0x2E, 0x1E, 0x1F]
+    assert rooms == [0x3E, 0x2E, 0x1E, 0x1F, 0x0F]
     # Each row is entered from the row before it (0x4E is the 0x3E predecessor
     # and predates this table).
     assert LEVEL8_INTERIOR_0X3E_RECON.entered_from == 0x4E
     assert LEVEL8_INTERIOR_0X2E_RECON.entered_from == 0x3E
     assert LEVEL8_INTERIOR_0X1E_RECON.entered_from == 0x2E
     assert LEVEL8_INTERIOR_0X1F_RECON.entered_from == 0x1E
+    assert LEVEL8_INTERIOR_0X0F_RECON.entered_from == 0x1F
     # North-column prefix: high nibble -1, low nibble E, entered UP.
-    for row in LEVEL8_INTERIOR_ROOM_RECON[:-1]:
+    for row in LEVEL8_INTERIOR_ROOM_RECON[:3]:
         assert row.room_id & 0x0F == 0x0E
         assert row.entered_from - row.room_id == 0x10
         assert row.entry_direction == "UP"
     east = LEVEL8_INTERIOR_0X1F_RECON
     assert east.room_id == 0x1E + 1
     assert east.entry_direction == "RIGHT"
+    cellar = LEVEL8_INTERIOR_0X0F_RECON
+    assert cellar.entry_direction == "STAIRS"
 
 
 def test_interior_recon_rows_are_never_route_eligible() -> None:
@@ -120,3 +125,19 @@ def test_0x1f_recon_matches_the_live_east_kill_clear_sitting() -> None:
     # rr-gw0x: three connecting wooden arrows (HP 96→64→32→0). Colour is not
     # asserted — RAM type was 0x33, never 0x34. 9 shots loosed, 6 misses.
     assert BLUE_GOHMA_ARROWS_REQUIRED == 3
+
+
+def test_0x0f_recon_matches_the_live_magic_key_cellar_sitting() -> None:
+    # probe_l8_1f_magic_key.py E2/E3, 2/2 byte-identical, 9074 frames each.
+    r = LEVEL8_INTERIOR_0X0F_RECON
+    assert r.room_id == 0x0F
+    assert r.entered_from == 0x1F
+    assert r.entry_gate == "center_0x68_west_block_slide"
+    assert r.entry_direction == "STAIRS"
+    assert r.entry_pose == (128, 141)  # first settled warp; leftover (136,141)
+    assert (r.keys_in, r.keys_out) == (8, 8)
+    assert (r.bombs_in, r.bombs_out) == (6, 6)
+    assert r.census == ()
+    assert r.room_item_id == 0x0B
+    assert r.fixture == "Level8InteriorMKReconFixture"
+    assert r.route_eligible is False
