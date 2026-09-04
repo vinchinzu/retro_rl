@@ -3,17 +3,27 @@
 The three public stops are chapters, not room-by-room CLI targets.  Wave A
 defaults fail closed until the L7 handoff, bush burn, and interior topology
 have live evidence.
+
+Wired into ``zelda_i.spine.survival``: for an L8 ``--through`` target the L7
+suffix is driven to its own last stop (``level7``) and L8 continues from there
+with ``UNMEASURED_POST_L7_HANDOFF``, so the entry chapter stops on
+``post_l7_handoff_unmeasured`` until rr-8t4.3 measures the real L7 leave.
+Reaching the seam is not the same as greening it.
 """
 
 from __future__ import annotations
 
+from typing import Any
+
 from zelda_i.level8.dungeon import (
+    LIVE_RECON_LEVEL8_TOPOLOGY,
     UNOBSERVED_LEVEL8_CLEAR,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ClearEndpoint,
     Level8Topology,
 )
 from zelda_i.level8.entry import (
+    LIVE_RECON_BUSH_BURN_TARGET,
     UNMEASURED_POST_L7_HANDOFF,
     UNVERIFIED_BUSH_BURN_TARGET,
     BushBurnTarget,
@@ -26,6 +36,7 @@ from zelda_i.spine.hops import attach_hops
 __all__ = [
     "L8_STOPS",
     "L8_THROUGH",
+    "LIVE_RECON_L8_OVERRIDES",
     "continue_level8_spine",
 ]
 
@@ -38,6 +49,18 @@ L8_STOPS: dict[str, str] = {
     "level8-entry": "level8_entry_live",
     "level8-magic-key": "level8_magic_key_natural",
     "level8": "level8_triforce_0x80",
+}
+
+# Disclosed fixture-live recon (rr-6o7.1), for an explicit opt-in caller only:
+# ``continue_level8_spine(..., **LIVE_RECON_L8_OVERRIDES)`` or
+# ``run_survival_spine(..., level8_overrides=LIVE_RECON_L8_OVERRIDES)``.  The
+# default spine passes none of it.  Both constants keep ``route_eligible=False``
+# (fixture stand, not a natural post-L7 walk), so ``level8_entry_stop`` still
+# refuses and no L8 stop can green off this bundle; it only lets a recon caller
+# replay the observed burn aim and entry room instead of the empty defaults.
+LIVE_RECON_L8_OVERRIDES: dict[str, Any] = {
+    "burn_target": LIVE_RECON_BUSH_BURN_TARGET,
+    "topology": LIVE_RECON_LEVEL8_TOPOLOGY,
 }
 
 

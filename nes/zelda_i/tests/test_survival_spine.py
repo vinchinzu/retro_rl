@@ -266,10 +266,10 @@ def test_level7_seam_is_wired_into_the_spine() -> None:
         assert target in SPINE_THROUGH
         run = SpineRun(through=target, success=True, boot_frames=1)
         assert run.report()["stop"] is not None
-    # L7 targets drive the L6 suffix to level6-exit, then continue into L7.
+    # L7/L8 targets drive the L6 suffix to level6-exit, then continue into L7.
     src = inspect.getsource(survival.run_survival_spine)
     assert "continue_level7_spine" in src
-    assert '"level6-exit" if through in L7_THROUGH else through' in src
+    assert '"level6-exit" if through in L7_THROUGH + L8_THROUGH else through' in src
 
 
 def test_spine_run_measured_set_state_fails_the_run() -> None:
