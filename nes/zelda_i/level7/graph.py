@@ -287,8 +287,9 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         role="live: 5x wallmaster 0x27 (plus-corners peel to west wall "
         "one-at-a-time) + bubbles 0x2b + 0x68 at (192,144); entry (32,141) "
         "W mouth is a grab trap (x=32 any y). Kill 5 then room_all_dead=1 "
-        "2/2 (0d_wm_v10/0d_cleared). RIGHT-push slides 0x68 to (208,96); "
-        "stairs still unobserved",
+        "2/2 (0d_wm_v10/0d_cleared). RIGHT-push slides 0x68 to (208,96) "
+        "on the NE hole; x=176 UP reaches (176,117) during the 32f slide "
+        "but RIGHT+UP is tile 179. Stairs dest still unobserved",
         evidence="fixture-live",
     ),
     Level7RoomHyp(NOSE_CELLAR, "nose_cellar"),
@@ -779,9 +780,10 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 DoorDir.DOWN,
                 NOSE_CELLAR,
                 notes=(
-                    "kill 5 wallmasters (room_all_dead=1 2/2); RIGHT-push "
-                    "0x68 (192,144) slides to (208,96). Stairs dest $EB "
-                    "still unobserved"
+                    "kill 5 wallmasters (room_all_dead=1 2/2); 16px RIGHT "
+                    "on 0x68 (192,144) snaps to (208,96) on the NE stair "
+                    "hole. Race UP x=176 reaches (176,117) before the snap; "
+                    "hole stays tile 179. Dest $EB still unobserved"
                 ),
             ),
         ),
