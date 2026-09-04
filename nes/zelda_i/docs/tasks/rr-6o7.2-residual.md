@@ -4,6 +4,48 @@
 power-on `--through level8-magic-key`, still blocked on `rr-8t4.3` and
 `rr-6o7.1`. Fixture-live only. Do not STATUS. Do not push unless asked.
 
+## 2026-09-04 audit sitting (no live hops; suite 676 passed)
+
+Bug eval of `level8/**` + spine rows. Four findings, all fixed, each with a
+regression test. No live run, no new hop claim, no re-walk of `0x3E`→OW.
+
+1. `level8/triforce.py` `Level8Shard2CController.arrived` greened on **any**
+   state already carrying TF `0x80`, with no room/mode check — a post-shard
+   pin (`Level8PostShardOWReconFixture`, TF `0xFF`) reported a zero-input
+   `success` with `evidence="fixture-live"`. Now `tf_in` latches on the first
+   stepped frame and a pre-set bit fails `l8_shard_already_taken`; success is
+   a rising edge (or fanfare). Reported as `tf_in`.
+2. `level8/gleeok.py` success disjunct `item_gone = room_item_id != 0x1A`
+   could green the fight with no heart container (F6/F7 evidence says the id
+   *stays* `0x1A` after the pickup, so it never fired live). Now it needs the
+   watched falling edge (`saw_heart_item`).
+3. `level8/hops.py` `magic_key_ok` never passed `magic_key_before`, so the
+   chapter stop degraded to "owns a Magical Key". Added a `SpineHop.before`
+   hook that latches `ADDR_MAGIC_KEY` at the top of the chapter; the stop now
+   needs 0→1.
+4. `level8/gleeok_entry.py` `RAM_CLAIM` (published as the stage `policy`)
+   claimed the bomb stand `(120,105)`; the executed `BOMB_NORTH_STAND` is
+   `(120,93)` (`(120,105)` is 0x3E's stand and overshoots the 0x4C alcove).
+   String corrected.
+
+Verified clean: `GLEEOK_FOUR_HEAD_OBJECT_TYPE == 0x45` everywhere; no L8 code
+or doc revives the refuted `(144,93)` aim (`bush.py` keeps it only as
+`REFUTED_BUSH_AIM`); every measured budget is inside its `max_frames`.
+
+New: `level8/suffix.py` — the ordered Gleeok-suffix composition
+(`LEVEL8_SUFFIX_GATES`, eight rows: the seven live gates plus the mode-9
+`0x2F` no-input settle that separates the K3/K4 stairs arrival `(208,141)`
+from the P1/P2 cross pin `(192,93)`). It is inert: `suffix_stages` returns
+`()` for every lineage that is not both `route_eligible` and
+`natural_predecessor`, and the only exported lineage
+(`FIXTURE_LINEAGE_LEVEL8_SUFFIX`) is neither, so `_clear_stages` still yields
+the fail-closed `level8_return_passage` row.
+`make_gleeok_passage_controller` unchanged. `L8_THROUGH` not greened;
+`--through level8` still stops at `level8_entry_live`. Even a composable
+lineage cannot green it — `level8_clear_stop` still needs a complete
+`Level8ClearEndpoint`, and the fixture-lineage OW pin may not fill one
+(`tests/test_level8_suffix.py`).
+
 ## Frontier pin
 
 `Level8PostShardOWReconFixture` — **fixture-lineage**, not Survival-true

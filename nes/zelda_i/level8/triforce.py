@@ -205,7 +205,13 @@ def shard_2c_step(snap: ZeldaSnapshot) -> FrameAction:
 
 @dataclass(kw_only=True)
 class Level8Shard2CController(HopController):
-    """Play 0x2C south mouth → walk onto 0x1B. Fanfare or TF bit is success."""
+    """Play 0x2C south mouth → walk onto 0x1B. Fanfare or a TF rising edge.
+
+    ``tf_in`` latches the shard bit on the first stepped frame: a state that
+    already carries TF ``0x80`` (any post-shard pin, e.g. the fixture-lineage
+    ``Level8PostShardOWReconFixture``) fails closed instead of reporting a
+    zero-input success.
+    """
 
     spec_id: str = "level8_shard_2c"
     max_frames: int = SHARD_MAX_FRAMES
@@ -215,8 +221,11 @@ class Level8Shard2CController(HopController):
     route_eligible: bool = False
     leftover: dict[str, Any] = field(default_factory=dict)
     writes: int = 0
+    tf_in: int | None = field(default=None, init=False)
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if self.tf_in is None or int(self.tf_in) & TF_BIT_L8:
+            return False
         if snap.mode == FANFARE_MODE:
             return True
         return bool(int(snap.triforce) & TF_BIT_L8)
@@ -235,6 +244,10 @@ class Level8Shard2CController(HopController):
         return action
 
     def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self.tf_in is None:
+            self.tf_in = int(snap.triforce)
+            if int(self.tf_in) & TF_BIT_L8:
+                return self.mark_fail("l8_shard_already_taken")
         blocked = HopController.guard(self, snap)
         if blocked is not None:
             return blocked
@@ -267,6 +280,7 @@ class Level8Shard2CController(HopController):
             "route_eligible": False,
             "natural_entry": False,
             "writes": int(self.writes),
+            "tf_in": self.tf_in,
             "leftover": dict(self.leftover),
         }
 

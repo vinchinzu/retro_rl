@@ -17,6 +17,7 @@ import numpy as np
 from zelda_i.level8.dungeon import (
     LIVE_RECON_LEVEL8_TOPOLOGY,
     UNOBSERVED_LEVEL8_TOPOLOGY,
+    Level8Topology,
 )
 from zelda_i.level8.entry import (
     LIVE_RECON_BUSH_BURN_TARGET,
@@ -219,3 +220,43 @@ def test_default_spine_call_passes_no_recon() -> None:
 
     param = signature(run_survival_spine).parameters["level8_overrides"]
     assert param.default is None
+
+
+def test_magic_key_stop_needs_a_0_to_1_rise_not_an_owned_key() -> None:
+    """A pin that already carries MK=1 must not satisfy the MK chapter.
+
+    Uses a hand-built route-eligible topology that exists only here: the
+    tree's own topologies both keep ``route_eligible=False``, so this is the
+    stop's *second* gate, not a way to green anything.
+    """
+    topology = Level8Topology(
+        entry_room=RECON_ENTRY_ROOM,
+        magic_key_room=0x1F,
+        evidence="test_only",
+        route_eligible=True,
+    )
+    ram = _ram(screen=0x1F, magic_key=1)
+    env, run = _env(ram), _run()
+    hop = [h for h in l8_hops(env, topology=topology) if h.through == "level8-magic-key"]
+    assert len(hop) == 1
+    hop = hop[0]
+
+    # Chapter entered with the key already owned: no natural acquisition.
+    hop.before(env, run)
+    assert hop.success(read_snapshot(ram)) is False
+
+    # Chapter entered with MK 0, key acquired during the stages: greens.
+    zero = _ram(screen=0x1F, magic_key=0)
+    env2 = _env(zero)
+    hop2 = [
+        h for h in l8_hops(env2, topology=topology)
+        if h.through == "level8-magic-key"
+    ][0]
+    hop2.before(env2, _run())
+    zero[ADDR_MAGIC_KEY] = 1
+    assert hop2.success(read_snapshot(zero)) is True
+
+
+def test_magic_key_hop_captures_the_key_before_its_stages() -> None:
+    hop = [h for h in l8_hops(_env(_ram())) if h.through == "level8-magic-key"][0]
+    assert hop.before is not None

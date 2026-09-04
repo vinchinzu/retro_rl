@@ -136,3 +136,23 @@ def test_shard_from_south_mouth_walks_up() -> None:
     assert act.reason == "shard_approach"
     act = shard_2c_step(read_snapshot(_ram(screen=NORTH_3C_DEST, x=120, y=141)))
     assert list(act.action) == UP
+
+
+def test_shard_refuses_a_state_that_already_holds_tf_0x80() -> None:
+    """Post-shard pins (TF 0xFF) must not report a zero-input success."""
+    ctl = make_shard_2c_controller()
+    ram = _ram(screen=NORTH_3C_DEST, x=120, y=205, triforce=0xFF)
+    act = _step(ctl, ram)
+    assert ctl.failed is True and ctl.success is False
+    assert "l8_shard_already_taken" in ctl.notes
+    assert list(act.action) == IDLE
+    assert ctl.report()["tf_in"] == 0xFF
+
+
+def test_shard_greens_on_the_tf_rising_edge() -> None:
+    ctl = make_shard_2c_controller()
+    _step(ctl, _ram(screen=NORTH_3C_DEST, x=120, y=205))
+    assert not ctl.success and not ctl.failed
+    act = _step(ctl, _ram(screen=NORTH_3C_DEST, x=120, y=141, triforce=0xFF))
+    assert ctl.success is True and not ctl.failed
+    assert act.reason == "tf_0x80"

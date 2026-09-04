@@ -83,6 +83,7 @@ class Level8FourHeadGleeokController:
     writes: int = 0
     saw_0x45: bool = False
     saw_0x46: bool = False
+    saw_heart_item: bool = False
     body_gone: bool = False
     hc_in: int | None = None
     hc_out: int | None = None
@@ -150,6 +151,8 @@ class Level8FourHeadGleeokController:
             return self._fail(snap, f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
         if self.hc_in is None:
             self.hc_in = int(snap.heart_containers)
+        if int(snap.room_item_id) == HEART_ITEM:
+            self.saw_heart_item = True
 
         bodies = gleeok_4head_live(snap)
         if bodies:
@@ -161,7 +164,10 @@ class Level8FourHeadGleeokController:
             self.body_gone = True
             self.hc_out = int(snap.heart_containers)
             got_heart = self.hc_out > int(self.hc_in)
-            item_gone = int(snap.room_item_id) != HEART_ITEM
+            # F6/F7: room_item_id stays 0x1A after the pickup, so the id is
+            # only pickup evidence on a falling edge we actually watched.  A
+            # bare ``!= 0x1A`` greens a room that never held the container.
+            item_gone = self.saw_heart_item and int(snap.room_item_id) != HEART_ITEM
             if got_heart or item_gone:
                 self.success = True
                 self.notes.append(
@@ -219,6 +225,7 @@ class Level8FourHeadGleeokController:
             "evidence": "fixture-live",
             "saw_0x45": self.saw_0x45,
             "saw_0x46": self.saw_0x46,
+            "saw_heart_item": self.saw_heart_item,
             "body_gone": self.body_gone,
             "hc_in": self.hc_in,
             "hc_out": self.hc_out,
