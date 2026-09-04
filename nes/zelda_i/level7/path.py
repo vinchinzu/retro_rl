@@ -33,8 +33,10 @@ from zelda_i.dungeon.behaviors import (
     GORIYA_BLUE_TYPE,
     GORIYA_TYPE,
     KEESE_TYPE,
+    WALLMASTER_TYPE,
     EnemyKind,
     engagement_hint,
+    is_off_wall,
     is_projectile,
     live_among,
 )
@@ -2617,6 +2619,164 @@ class Room1BKeyEastController(HopController):
         }
 
 
+ROOM0D_CLEAR_MAX_FRAMES = 18000
+# Plus-corner 0x27 park here until they peel to the west wall one-at-a-time.
+_0D_STATUE_XY = frozenset({(128, 125), (128, 157), (160, 125), (160, 157)})
+_0D_NUDGE = (52, 117)
+_0D_HOME = (96, 141)
+
+
+def _0d_spawners(snap: ZeldaSnapshot) -> tuple[tuple[ZeldaObject, ...], tuple[ZeldaObject, ...]]:
+    live: list[ZeldaObject] = []
+    parked: list[ZeldaObject] = []
+    for obj in snap.objects:
+        if not (1 <= int(obj.slot) <= 12):
+            continue
+        if (int(obj.type_id) & 0xFF) != WALLMASTER_TYPE or int(obj.hp) <= 0:
+            continue
+        xy = (int(obj.x), int(obj.y))
+        if xy in _0D_STATUE_XY:
+            continue
+        in_floor = 12 <= int(obj.x) <= 200 and 80 <= int(obj.y) <= 200
+        if int(obj.state) != 0 and in_floor:
+            live.append(obj)
+        elif is_off_wall(obj):
+            live.append(obj)
+        else:
+            parked.append(obj)
+    return tuple(live), tuple(parked)
+
+
+@dataclass(kw_only=True)
+class Room0DClearController(HopController):
+    """0x0D TIP_OF_NOSE: spawn/kill 5 wallmasters.  x=32 any y grabs.
+
+    Plus-corner 0x27 peel to the west wall one-at-a-time (not statues).
+    Nudge x≈52 y=117, slash LEFT at x=48, peel inland after each kill.
+    2/2 room_all_dead (0d_wm_v10 / 0d_cleared).  Recon-wired only.
+    RIGHT-push of 0x68 (192,144) slides it to (208,96); stairs still unobserved.
+    """
+
+    spec_id: str = "level7_room0d_clear"
+    max_frames: int = ROOM0D_CLEAR_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x0d_cleared"
+    dest: int | None = ROOM_0D
+    _phase: str = "to_nudge"
+    _phase_n: int = 0
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.screen == ROOM_0D
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and int(snap.room_all_dead) != 0
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"cleared_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_dead={snap.room_all_dead}_phase={self._phase}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("RIGHT"), "clear0d_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_0D:
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+        return room_0d_clear_step(snap, self)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "CLEAR",
+        }
+
+
+def room_0d_clear_step(snap: ZeldaSnapshot, ctl: Room0DClearController) -> FrameAction:
+    """One frame of 0x0D wallmaster clear.  Stay off x=32 / x=208."""
+    x, y = int(snap.link_x), int(snap.link_y)
+    live, parked = _0d_spawners(snap)
+    incoming = tuple(o for o in parked if int(o.state) != 0)
+    if x < 44:
+        ctl._phase = "retreat"
+        ctl._phase_n = 0
+        return FrameAction(nes_action("RIGHT"), "clear0d_grab_peel")
+    if live:
+        ctl._phase = "fight"
+        tgt = nearest_enemy(snap.link_x, snap.link_y, live)
+        if tgt is None:
+            return FrameAction(nes_idle_action(), "wm_missing")
+        stand_x = max(48, int(tgt.x) + 18)
+        if x < 48:
+            return FrameAction(nes_action("RIGHT"), "clear0d_fight_peel")
+        if abs(y - int(tgt.y)) > 10:
+            return FrameAction(
+                nes_action("DOWN" if y < int(tgt.y) else "UP"), "clear0d_fight_y"
+            )
+        if abs(x - stand_x) > 3:
+            return FrameAction(
+                nes_action("RIGHT" if x < stand_x else "LEFT"), "clear0d_fight_x"
+            )
+        face = "LEFT" if int(tgt.x) < x else "RIGHT"
+        if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action(face, "A"), "clear0d_slash")
+        return FrameAction(nes_action(face), "clear0d_face")
+    if incoming or ctl._phase == "retreat":
+        ctl._phase = "retreat"
+        ctl._phase_n += 1
+        if abs(x - _0D_HOME[0]) > 4:
+            btn = "RIGHT" if x < _0D_HOME[0] else "LEFT"
+            return FrameAction(nes_action(btn), "clear0d_home_x")
+        if abs(y - _0D_HOME[1]) > 4:
+            return FrameAction(
+                nes_action("UP" if y > _0D_HOME[1] else "DOWN"), "clear0d_home_y"
+            )
+        if ctl._phase_n >= 40:
+            ctl._phase = "to_nudge"
+            ctl._phase_n = 0
+        return FrameAction(nes_idle_action(), "clear0d_home")
+    if ctl._phase == "nudge":
+        ctl._phase_n += 1
+        if x > 42:
+            return FrameAction(nes_action("LEFT"), "clear0d_nudge")
+        if ctl._phase_n >= 72 or x <= 40:
+            ctl._phase = "retreat"
+            ctl._phase_n = 0
+            return FrameAction(nes_action("RIGHT"), "clear0d_nudge_done")
+        if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action("LEFT", "A"), "clear0d_nudge_slash")
+        return FrameAction(nes_action("LEFT"), "clear0d_nudge_face")
+    tx, ty = _0D_NUDGE
+    if abs(x - tx) <= 6 and abs(y - ty) <= 6:
+        ctl._phase = "nudge"
+        ctl._phase_n = 0
+        return FrameAction(nes_action("LEFT"), "clear0d_nudge_start")
+    if abs(y - ty) > 4:
+        return FrameAction(
+            nes_action("UP" if y > ty else "DOWN"), "clear0d_to_nudge_y"
+        )
+    return FrameAction(
+        nes_action("LEFT" if x > tx else "RIGHT"), "clear0d_to_nudge_x"
+    )
+
+
 __all__ = [
     "EAST_APPROACH_X",
     "EAST_BAND_Y",
@@ -2672,6 +2832,8 @@ __all__ = [
     "Room1ACandleController",
     "Room4AReturnController",
     "Room1BKeyEastController",
+    "Room0DClearController",
+    "room_0d_clear_step",
     "Room58EastController",
     "Room58NorthController",
     "Room59UpController",

@@ -38,6 +38,7 @@ from zelda_i.level7.hops import (
     make_room19_east_bomb_controller,
     make_room1a_east_bomb_controller,
     make_room0c_east_bomb_controller,
+    make_room0d_clear_controller,
     make_room1a_candle_controller,
     make_room4a_return_controller,
     make_room1b_key_east_controller,
@@ -78,6 +79,8 @@ from zelda_i.level7.path import (
     Room1ACandleController,
     Room4AReturnController,
     Room1BKeyEastController,
+    Room0DClearController,
+    room_0d_clear_step,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -111,6 +114,7 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_ROD,
+    ADDR_ROOM_ALL_DEAD,
     ADDR_RUPEES,
     ADDR_SCREEN,
     ADDR_SELECTED_ITEM,
@@ -143,6 +147,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_RUPEES] = fields.get("rupees", 20)
     ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
     ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
+    ram[ADDR_ROOM_ALL_DEAD] = fields.get("room_all_dead", 0)
     return ram
 
 
@@ -844,6 +849,31 @@ def test_map_bomb_chain_factories_are_recon_only() -> None:
     assert "level7_room19_east_bomb" not in names
     assert "level7_room1a_east_bomb" not in names
     assert "level7_room0c_east_bomb" not in names
+
+
+def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
+    """0x0D wallmaster clear: x<44 RIGHT; room_all_dead arrives. Recon-only."""
+    grab = read_snapshot(_ram(level=7, screen=0x0D, x=32, y=141))
+    assert room_0d_clear_step(grab, Room0DClearController()).reason == (
+        "clear0d_grab_peel"
+    )
+    inland = read_snapshot(_ram(level=7, screen=0x0D, x=96, y=141))
+    assert room_0d_clear_step(inland, Room0DClearController()).reason == (
+        "clear0d_to_nudge_y"
+    )
+    dead = read_snapshot(_ram(level=7, screen=0x0D, x=96, y=141, room_all_dead=1))
+    done = Room0DClearController()
+    act = done.step(dead)
+    assert done.success and not done.failed
+    assert act.reason == "left_0x0d_cleared"
+    factory = make_room0d_clear_controller()
+    assert factory.report()["dest_screen"] == 0x0D
+    assert factory.report()["route_eligible"] is False
+    names = [name for name, _c, _f in level7_complete_chapter_stages()]
+    assert "level7_room0d_clear" not in names
+    assert "level7_tip_of_nose_stairs" in [
+        n for n, _c, _f in level7_red_candle_chapter_stages()
+    ]
 
 
 def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:

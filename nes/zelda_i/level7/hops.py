@@ -51,6 +51,7 @@ from zelda_i.level7.path import (
     Room1ACandleController,
     Room4AReturnController,
     Room1BKeyEastController,
+    Room0DClearController,
     Room58EastController,
     Room58NorthController,
     Room38UpController,
@@ -294,6 +295,11 @@ def make_room0c_east_bomb_controller() -> BombWallController:
     )
 
 
+def make_room0d_clear_controller() -> Room0DClearController:
+    """0x0D TIP_OF_NOSE kill 5 wallmasters.  2/2 room_all_dead.  Recon-wired only."""
+    return Room0DClearController()
+
+
 def make_entry_to_goriya_controller() -> Level7PathController:
     return HungryGoriyaGateController()
 
@@ -526,6 +532,7 @@ __all__ = [
     "make_room19_east_bomb_controller",
     "make_room1a_east_bomb_controller",
     "make_room0c_east_bomb_controller",
+    "make_room0d_clear_controller",
     "make_room1a_candle_controller",
     "make_room4a_return_controller",
     "make_room1b_key_east_controller",

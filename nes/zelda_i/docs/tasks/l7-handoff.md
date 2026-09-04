@@ -3,6 +3,61 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0D kill 5 wallmasters (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
+`route_eligible=false`. Chapter factories stay fail-closed.
+`PostLevel7Handoff.verified` stays false. No invented OW leave.
+
+**Pin was** `Level7Interior0DInteriorReconFixture` — L7 play `0x0D`
+`(176,141)`, Candle 2, TF 0, keys 2, bombs 6, whistle 1, food 0, ladder 1,
+wooden sword (Rod=0).
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 0x0D kill 5 wallmasters (nudge x≈52 y=117, slash LEFT at x=48, peel inland) | play **`$EB=0x0D`** `room_all_dead=1` `(63,149)` | plus-corner `0x27` peel to west wall one-at-a-time (not statues); x=32 any y grabs; bubbles shove | **2/2** (`0d_wm_v10` / `0d_cleared`) |
+
+RIGHT-push `0x68` `(192,144)` after clear **slides the block to `(208,96)`**
+(state=2). Stairs dest `$EB` / mode **unobserved** (y=117 diamond bar walls
+the north half; vacated tile is not stairs). Aquamentus / shard / OW leave
+not reached.
+
+Dead beliefs dated:
+- Dead: plus-corner `0x27` are invuln statues — they are the 5 spawners;
+  they sit until a predecessor dies, then peel to the west/south wall.
+- Dead: skip parked `x<=16` spawners (that's the live hand).
+- Dead: inland-only patrol at x≥64 spawns them (need a west-wall nudge
+  x≈42–52).
+- Dead: y=141 centre / east-pocket UP reaches the north band (tile 179
+  at y=117 across x=64..192).
+
+Wired (fixture-live, `route_eligible=false`, NOT on the executable chain):
+- `level7/path.py`: `Room0DClearController` / `room_0d_clear_step`
+- `level7/hops.py`: `make_room0d_clear_controller`
+- `level7/graph.py`: `TIP_OF_NOSE` role updated (5 killable 0x27;
+  push dest still unobserved)
+- tests: `test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead`
+
+New dest fixture: `Level7Interior0DClearedReconFixture` (gitignored
+`.state`) — play `0x0D` `(63,149)` `room_all_dead=1`, `0x68` still at
+`(192,144)`, Candle 2, TF 0. `route_eligible=false`.
+
+**Leftover glance:** L7 play **`0x0D` mode 5** `(63,149)`,
+`room_all_dead=1`, Candle **2**, TF **0**, keys 2, bombs 6, whistle 1,
+food 0, ladder 1, 3 hearts. Block `0x68` `(192,144)`.
+`route_eligible=false`.
+
+Next: from cleared leftover, get stairs without overshooting the `0x68`
+to `(208,96)`. Then NOSE_CELLAR far-side → PRE_BOSS bomb-east →
+AQUAMENTUS. Stay off x=32/208. Do not poke TF.
+
+# L7 sitting leftover (rr-8t4.3, 2026-09-03 archive)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
 ## 2026-09-03 — L7-C 0x0C bomb-east to TIP_OF_NOSE 0x0D (rr-8t4.3)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
@@ -876,9 +931,9 @@ New dest fixtures (disclosed writes: none; `development_only` /
 
 - **chapter id:** `rr-8t4` clear / `level7`
 - **evidence label:** **fixture-live** through TIP_OF_NOSE `0x0D`
-  (cellar return `0x4A→0x1A` bomb-E `0x1B` KEY-E `0x1C` whistle+kill N
-  `0x0C` bomb-E `0x0D`). Nose-cellar / Aquamentus / shard / OW leave
-  still **hypothesis**.
+  kill-5 `room_all_dead=1` (cellar return `0x4A→0x1A` bomb-E `0x1B`
+  KEY-E `0x1C` whistle+kill N `0x0C` bomb-E `0x0D` kill-5). Nose-cellar
+  / Aquamentus / shard / OW leave still **hypothesis**.
 - **predecessor:** L7-B cellar `Level7Interior4AReconFixture` (Candle 2,
   Food 0, Whistle 1). Recon TF is 0 (poke-loadout chain), not the L6
   packet `0x3F`.
@@ -897,12 +952,13 @@ New dest fixtures (disclosed writes: none; `development_only` /
   hearts, deaths 0. Post-fanfare OW leftover **UNMEASURED**.
 - **dead beliefs:** walk off candle pad y=141 as stairs return; 0x0C
   y=141 centre RIGHT (tile 181 at x=128); 0x0D west mouth is safe (grab
-  trap); 0x0D `0x68` RIGHT-pushes while wallmasters live. Boss type
+  trap); 0x0D `0x68` RIGHT-pushes while wallmasters live; plus-corner
+  `0x27` are invuln statues (they are the 5 spawners). Boss type
   Aquamentus still hypothesized (verify).
-- **fixture:** `Level7Interior0DReconFixture` leftover play `0x0D`
-  `(32,141)` Candle 2. `route_eligible=false`.
-- **resume point:** 0x0D kill 5 wallmasters (off-wall) then RIGHT-push
-  mid-right `0x68` `(192,144)` → stairs cellar.
+- **fixture:** `Level7Interior0DClearedReconFixture` leftover play `0x0D`
+  `(63,149)` `room_all_dead=1` Candle 2. `route_eligible=false`.
+- **resume point:** from cleared leftover, stairs off the `0x68` without
+  sliding it to `(208,96)`. Then NOSE_CELLAR / PRE_BOSS / AQUAMENTUS.
 - **public target:** **`level7`**.
 
 ---
