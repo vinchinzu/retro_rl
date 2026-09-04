@@ -262,11 +262,13 @@ LEVEL8_INTERIOR_0X1F_RECON = Level8InteriorRoomRecon(
 # capacity_writes 0, direct runtime writes 0.  Assist = Survival health
 # refill only (7 writes, max single-frame damage 2, all in 0x1F).
 #
-# Cellar is a two-ladder passage (west/east ladders, pit).  y=141 LEFT/RIGHT
-# is tile 250; the L1 DOWN-first west-ladder return is the next boundary
-# and was not taken.  topology.magic_key_room stays unset; not on
-# L8_THROUGH; DungeonRoomSpec still empty.  Four HP-0 keese residuals are
-# not census rows.  room_item_id 0x0B is unregistered.
+# Cellar is a two-ladder passage (west/east ladders, pit).  F1 cardinal
+# DOWN at the pad did not move (south brick).  F2 LEFT+DOWN at x=160 y=141
+# is pit tile 250.  Return 2/2 F3/F4, 588 frames: RIGHT to east x=176,
+# LEFT+DOWN, floor LEFT, UP (48,93) -> play 0x1F leftover (96,157).
+# topology.magic_key_room stays unset; not on L8_THROUGH; DungeonRoomSpec
+# still empty.  Four HP-0 keese residuals are not census rows.
+# room_item_id 0x0B is unregistered.
 LEVEL8_INTERIOR_0X0F_RECON = Level8InteriorRoomRecon(
     room_id=0x0F,
     entered_from=0x1F,
