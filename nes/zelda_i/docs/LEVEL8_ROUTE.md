@@ -1,13 +1,24 @@
 # Level 8 — The Lion (route notes)
 
 Status: **PARTIAL** — assisted OW bush path green; shop OW path **green**
-(rr-ccx). The cumulative Red-Candle route still needs the measured post-L7
-leave, exact burn tile, and live entry. The 60R shop path is fallback-only.
+(rr-ccx). The bush burn recipe and the first L8 interior rooms are now
+**fixture-live** (`natural_entry=false`, `route_eligible=false`). The
+cumulative Red-Candle route still needs **the measured post-L7 leave**
+(rr-8t4.3, unmeasured), so no L8 chapter may green. The 60R shop path is
+fallback-only.
 
-Wave A now has a fail-closed cumulative seam in `level8/{entry,dungeon,hops,spine}.py`.
-This is implementation structure, not new route evidence. The public chapter
+Wave A has a fail-closed cumulative seam in `level8/{entry,dungeon,hops,spine}.py`.
+This is implementation structure, not route evidence. The public chapter
 targets are `level8-entry`, `level8-magic-key`, and `level8`; all three remain
 red until their natural predecessor and exact live endpoints are supplied.
+
+**Provenance vocabulary used below.** *fixture-live* = observed in RAM/PNG on
+a real emulator run that started from a **disclosed development checkpoint**
+(poked inventory / poked stand), never from a natural walk; every such claim
+carries `natural_entry=false` and `route_eligible=false`. *source* =
+walkthrough only. *assisted* = live but under the Survival assist contract
+from the power-on start screen. Nothing on this page is a Clean claim and
+nothing here promotes `STATUS.md`.
 
 Planning sources:
 
@@ -25,20 +36,87 @@ stay labeled. **No Clean STATUS claims.**
 | Claim | Source | Live |
 |-------|--------|------|
 | Bush pocket screen | walkthrough path decode | **`0x6D`** (assisted) |
-| Mouth under lone bush | walkthrough | **not opened** this bead |
-| Entry room id | — | **unknown** (no enter) |
+| Mouth under lone bush | walkthrough | **opened** — mode 5→16 (fixture-live, rr-6o7.1) |
+| Entry room id | — | **`0x7E`**, Link `(120,205)` facing UP (fixture-live) |
 | Triforce bit | walkthrough | `0x80` (source) |
+
+The entry-room row is `LIVE_RECON_LEVEL8_TOPOLOGY` in `level8/dungeon.py`
+(`evidence="live_recon_fixture"`, `route_eligible=False`) and
+`Level8EntranceReconFixture.provenance.json`
+(`natural_entry=false`, `development_only=true`). It is **not** a route claim:
+the burn was fired from a poked stand on a poked-candle fixture, not from the
+still-unmeasured natural post-L7 leave.
 
 Dead-end geometry (live, `OW_6D` / `Level8BushOW`):
 
 - Enter **0x6D** only from **0x5D south @ x≈48**.
-- Walkable (assisted recon): left corridor **x≈32–56** + mid sand channel
-  **y≈88–96** east to **x≈144** (see `recordings/l8_walkable.png`).
+- **Walked** corridor (assisted recon): left column **x≈32–56** + mid sand
+  channel **y≈88–96** east to **x≈144** (see `recordings/l8_walkable.png`).
+- **Standable** area is much larger: the 2026-09-03 teleport-and-settle probe
+  kept **732** tiles out of a 32×23 sampled grid
+  (`logs/level8_6d_walkable_positions.json`). Standable is **not** reachable —
+  it only says Link stops drifting on that tile, not that he can walk there.
+  The `(136,93)` burn aim sits inside the *walked* channel; the `x≥184` mouth
+  stands do not, and have never been walked to.
 - Only open screen exit found without candle: **UP @ x≈48 → 0x5D**.
 - Raster + UP pushes without candle: **no** mode-16 mouth (expected).
 
 Evidence: `recordings/l8_bush_recon.json`, `l8_bush_6d.png`,
 `custom_integrations/.../Level8BushOW.state`, `OW_6D.state`.
+
+### Bush burn recipe (fixture-live, rr-6o7.1 / rr-u9js)
+
+**Corrected 2026-09-04. The old "(144,93) face RIGHT push UP" hypothesis and
+the old "(136,93) RIGHT is a dead aim" claim are both REFUTED — do not revive
+either.** The refutation is a 5856-trial live sweep,
+`logs/level8_bush_burn_sweep.json` (732 standable OW-`0x6D` tiles × 8
+facing/push pairs, run from `Level8BushWithCandleFixture`: Candle 2 + B-slot 4
++ TF `0x7F` poked, Link teleported to each tile).
+
+Outcomes: 5846 `no_effect`, 3 `link_death`, **7 `mouth_mode16`**. Every mouth
+stand fires *and pushes in the same direction*:
+
+| Stand `(x,y)` on `0x6D` | Facing | Push | Sweep outcome |
+|--------------------------|--------|------|---------------|
+| `(120, 93)` | RIGHT | RIGHT | mode-16 mouth |
+| `(128, 93)` | RIGHT | RIGHT | mode-16 mouth |
+| **`(136, 93)`** | **RIGHT** | **RIGHT** | mode-16 mouth (the recorded aim) |
+| `(160, 77)` | DOWN | DOWN | mode-16 mouth |
+| `(184, 93)` | LEFT | LEFT | mode-16 mouth |
+| `(192, 93)` | LEFT | LEFT | mode-16 mouth |
+| `(200, 93)` | LEFT | LEFT | mode-16 mouth |
+
+`(144, 93)` **is** in the swept tile set and was tried all 8 ways with the
+candle actually used — all eight are `no_effect`. One secret tile, several
+approach angles; `(144,93)` is not one of them.
+
+Caveat: the swept stands are teleport-and-settle *standable*, not walked. Only
+`(120/128/136, 93)` lie inside the walked sand channel, so **`(136,93)` is the
+only aim a natural approach can currently use**; the LEFT and DOWN stands are
+recon curiosities until someone walks there.
+
+Two separate facts, kept apart on purpose:
+
+- **Mouth open (mode 16)** — established by the sweep, 7 stands above.
+  `entry_room` is `null` on all seven sweep rows: the sweep itself never
+  carried Link into level 8.
+- **Entry room `0x7E`** — established by `capture_level8_entrance_fixture.py`
+  replaying **`(136,93)` facing RIGHT, push RIGHT** only, reaching live
+  `level==8`, `mode==5`, screen `0x7E` at `(120,205)` 111 frames after the
+  push. The other six stands have **not** been carried through to a room id.
+
+**Entry does not complete on UP.** After the mouth appears, keep sending the
+same `push_direction` you fired with; pushing UP leaves Link on `0x6D`
+(rr-i6hq). `level8/entry.py` `BurnLevel8BushController` now sends
+`target.push_direction` in its ENTER phase (source-only reading of the current
+file, not re-run live here).
+
+Recorded as `level8.entry.LIVE_RECON_BUSH_BURN_TARGET`
+(`link_x=136, link_y=93, facing="RIGHT", push_direction="RIGHT", tolerance=4,
+evidence="live_recon_fixture", verified=True, route_eligible=False`). It is
+**not** a spine default: `continue_level8_spine` still defaults to
+`UNVERIFIED_BUSH_BURN_TARGET`; the recon aim only arrives through the explicit
+opt-in bundle `level8.spine.LIVE_RECON_L8_OVERRIDES`.
 
 ### Verified walk (assisted) — start → bush 0x6D
 
@@ -70,13 +148,23 @@ Not the natural post-L7 leave (still unmeasured). From the disclosed
   E→ 0x59 → 0x5A → 0x5B → 0x5C [maze] → 0x5D S→ 0x6D
 ```
 
-`Level7PondToLevel8BushController` (`level8.overworld`), 2/2 byte-identical
+Hop table + controller: `level8.overworld.L7_POND_TO_LEVEL8_BUSH_HOPS`
+(9 reversed pond hops, then `LEVEL8_BUSH_HOPS[3:]` from `0x59`) driven by
+`Level7PondToLevel8BushController` — a subclass of `OverworldToLevel8Controller`
+with `burn_bush=False`, `enter_dungeon=False`, `route_eligible=False`,
+`evidence="fixture-live-prefix"`. 2/2 byte-identical
 (`probe_l7_exit_to_l8_bush.py --from-state OW_L7Pond`, frames 4980,
 settled 0x6D `(48,61)`). Natural `Level7Entrance` exit refills the pool
-and fails closed (Link cannot walk around it — `probe s42` reachability).
+and fails closed (Link cannot walk around it — `probe s42` reachability);
+that dead pose is pinned as `POND_42_REFILLED_DEAD_POSE = (112, 93)`.
 
-Isolated `probe_level8_entry.py` pruned. The durable runner does not attach
-the new L8 seam to the shared continuous spine yet:
+Isolated `probe_level8_entry.py` pruned. The L8 seam **is** attached to the
+shared continuous spine now (source-only reading of `spine/survival.py`, not
+re-run live here): `SPINE_THROUGH` includes `L8_THROUGH`, and after a
+successful `level7` suffix `run_survival_spine` calls `continue_level8_spine`.
+Reaching the seam is not greening it — the default `handoff` is
+`UNMEASURED_POST_L7_HANDOFF`, so `level8-entry` fails on
+`post_l7_handoff_unmeasured` until rr-8t4.3 measures the real L7 leave:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
@@ -134,8 +222,8 @@ Hop table + controller: `level8.overworld.CANDLE_SHOP_HOPS`,
 `OverworldToCandleShopController` (door_x=`CANDLE_SHOP_CAVE_X`).
 
 Isolated `probe_level8_entry.py` pruned. Shop hops live on
-`OverworldToCandleShopController`. The durable runner does not attach the new
-L8 seam to the shared continuous spine yet:
+`OverworldToCandleShopController`. The shop lane is deliberately **outside**
+`L8_THROUGH` — it is not attached to the continuous spine:
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
@@ -167,33 +255,101 @@ Constants: `CANDLE_BUY_X/Y`, `CANDLE_SHOP_PRICE`, pedestals
 - Inventory poke (`poke_candle_for_recon`: candle + selected=4 + clear used)
   shows candle on HUD B-slot (`recordings/l8_pos4.png`).
 - Pressing B with candle selected sets **`0x0513=1`** (engine accepts use).
-- **Level8Entrance not created**: fire→stairs on 0x6D not confirmed after
-  dense walkable burns (corridor + left column + enemy clear). Need further
-  bush-tile targeting or natural candle path.
-- **Dead belief:** default burn aim **(136, 93)** face/push RIGHT never opened
-  a mouth. Isolated fixture-live hypothesis (`level8.bush`,
-  `route_eligible=false`): stand **(144, 93)** at the sampled east walkable
-  limit, face RIGHT, push **UP**. PNGs/JSON and `Level8BushOW` / `OW_6D` are
-  absent in this worktree, so the live 0x6D trial did not run.
+- **Superseded 2026-09-04 (rr-u9js).** The old bullets here said the mouth was
+  never opened, that **(136,93)** face/push RIGHT was a *dead aim*, and that
+  the live hypothesis was **(144,93)** face RIGHT push **UP**. All three are
+  wrong. `logs/level8_bush_burn_sweep.json` opens the mode-16 mouth at
+  `(120/128/136,93)` facing+push RIGHT, `(184/192/200,93)` LEFT and
+  `(160,77)` DOWN, and shows `(144,93)` `no_effect` on all 8 facing/push
+  combinations with the candle used. See **Bush burn recipe (fixture-live)**
+  above for the corrected table.
+- The old failure was a *targeting* failure, not a candle failure: the dense
+  walkable burns swept tiles that do not front the secret mouth.
+- `Level8BushOW.state` / `OW_6D.state` are present in this worktree, and the
+  candle-ready stage state `Level8BushWithCandleFixture.state` was built on top
+  of them (poked Candle 2 + B-slot 4 + TF `0x7F` + stand `(48,90)`).
 - Shop OW + cave path **assisted green** (`recordings/l8_shop_path.json`);
   natural 60R + buy still residual.
 
-**Historical recon blocker:** natural candle (farm→buy) + verified mouth open
-on 0x6D → `Level8Entrance.state` + entry room id.
+**Remaining recon blocker:** the natural Red-Candle handoff. The bush burn no
+longer blocks anything — its aim, mouth and entry room are fixture-live. What
+is still missing is the **measured post-L7 leave** (rr-8t4.3): the settled OW
+screen/x/y and exact inventory Link actually has when the L7 fanfare returns
+him to the overworld. Until that lands, every L8 claim on this page stays
+`natural_entry=false` / `route_eligible=false`.
 
-For the cumulative route, replace “natural candle” above with the measured
-post-L7 Red Candle handoff. The old start-based controller remains recon-only.
-Its historical burn-budget-on-`0x6D` result is not entry success; the canonical
-`BurnLevel8BushController` fails whenever its budget expires without live L8
-play, even if Link is still controllable on `0x6D`.
+The old start-based controller remains recon-only. A burn-budget expiry on
+`0x6D` is not entry success; the canonical `BurnLevel8BushController` fails
+whenever its budget expires without live L8 play, even if Link is still
+controllable on `0x6D`.
 
 ## Interior (source → live)
 
 Walkthrough grid labels live in `level8.dungeon.LEVEL8_HYPOTHESIS_ROOMS`.
-**Every `room_id` is `None` until RAM observes it.** Do not promote those
-labels into `DungeonRoomSpec` rows.
+**Every `room_id` is `None` until RAM observes it** — `entry` is now the one
+exception (`0x7E`, `evidence="live_recon_fixture"`). Do not promote any of
+these labels into `DungeonRoomSpec` rows; `LEVEL8_ROOM_SPECS` is still empty.
 
-Minimum Magical Key route (Book/Map/Compass omitted):
+### Fixture-live interior chain 0x7E → 0x3E (rr-6o7.1 / rr-6o7.2)
+
+`natural_entry=false`, `route_eligible=false`, **not** on `L8_THROUGH`. The
+run starts from `Level8InteriorReconFixture`, which is
+`Level8EntranceReconFixture` plus *disclosed* recon resources poked in
+(`sword→3`, `bombs→8`, `bow→1`, `arrows→1`, `rupees→255`, `keys→9`; Magic Key,
+Triforce, room and door flags untouched). So the room ids, gates and censuses
+below are live RAM, but the *resources* used to reach them are not earned.
+
+```text
+0x7E --free UP--> 0x6E --clear, BOMB N--> 0x5E --clear, key, shutter UP--> 0x4E
+  --north KEY door UP--> 0x3E   (stop; 2/2 byte-identical, 2918 frames)
+```
+
+Name collision warning: dungeon room `0x5E` below is **not** the Blue Candle
+shop overworld screen `0x5E` above. Dungeon rooms here are `level==8`.
+
+| Room | Gate in | Live census on arrival | `room_item_id` | Cost |
+|------|---------|------------------------|----------------|------|
+| `0x7E` entry | candle mouth (OW `0x6D`) | none live; `room_all_dead` set | `0x03` | — |
+| `0x6E` | open north doorway, no key | 5× `0x3C` manhandla HP64 (+ `0x56` projectiles) | `0x0F` | sword-only clear |
+| `0x5E` | **bomb** the `0x6E` north wall from stand `(120,105)` | 5× `0x0C` HP128 (+ `0x55` statue fireballs) | `0x19` small_key | bombs 8→7; clear, then natural key pickup at `(120,141)` keys 9→10 |
+| `0x4E` | open shutter UP from `0x5E` at `x=120±4` | 2× `0x2B` HP240, 1× `0x0C` HP128, 2× `0x0B` darknut HP64, 3× `0x30` gibdo HP112 — **not cleared** | `0x0F` | — |
+| `0x3E` | **north KEY door** UP from `0x4E` | 6× `0x0C` HP128, `room_all_dead=0`, `open_doorway_mask=4` | `0x03` | keys 10→9 |
+
+Every settle above is `mode 5` with Link at `(120,205)` facing UP.
+Integrity on the recorded pair: deaths 0, `progression_writes` 0,
+`capacity_writes` 0, `direct_ram_writes` 0, `state_loads_after_start` 0; the
+B-slot change before the bomb was a **natural pause-menu selection**
+(`ram_selection_write: false`, cursor seen `4,4,4,4,4,4,1`).
+
+Recorded as `level8.dungeon.LEVEL8_INTERIOR_0X3E_RECON`
+(`Level8InteriorRoomRecon`, `evidence="live_recon_fixture"`,
+`route_eligible=False`) and `LEVEL8_INTERIOR_ROOM_RECON`. Evidence:
+`recordings/l8_5e_north_fixture_20260903_v1.json`,
+`recordings/l8_4e_north_fixture_B1.json` / `_B2.json`, the
+`l8_5e_north_B*_*.png` frame captures, and the fixtures
+`Level8InteriorReconFixture` / `Level8Interior3EReconFixture` with their
+`.provenance.json`.
+
+A `0x3E →` north continuation is in flight in the rr-6o7.2 lane. This page
+stops at `0x3E`; extend the table above only from committed evidence.
+
+**Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
+print it as `unknown_object_0x0c`. What the evidence establishes is
+**type `0x0C`, HP 128**, appearing 5× in `0x5E`, 1× in `0x4E` and 6× in `0x3E`,
+alongside the registered `0x0B` `darknut` at HP 64 in the same `0x4E` room.
+The **blue** colour is a walkthrough correlation, not a registered claim; do
+not write "blue Darknut" as if RAM said so.
+
+Mapping the live chain onto the hypothesis grid (`0x7E`=`entry`,
+`0x6E`≈`north_manhandla`, `0x5E`≈`darknut_key`, `0x4E`≈`shutter_darknuts`,
+`0x3E`≈`blue_darknuts`) is **plausible but unverified** — the grid names stay
+hypotheses and no `room_id` beyond `entry` has been written into the table.
+The **gates do not line up**: the source min route below spends a key going
+`darknut_key → shutter_darknuts`, but live `0x5E → 0x4E` is a free open
+shutter, and the live key spend is one door later (`0x4E → 0x3E`). Treat the
+source gate list as a sketch, not a key budget.
+
+Minimum Magical Key route (Book/Map/Compass omitted, source):
 
 ```text
 entry --UP--> north_manhandla --BOMB UP--> darknut_key
@@ -211,10 +367,10 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 
 | Room / feature | Enemies / notes | Live |
 |----------------|-----------------|------|
-| Entry | unknown | **not entered** |
-| Manhandla early | source; west of entry is Book detour | no |
+| Entry | live: room `0x7E`, `(120,205)`, item `0x03`, no live objects | **fixture-live** (`route_eligible=false`) |
+| Manhandla early | live `0x6E` north of entry: 5× `0x3C` HP64, sword-only clear. West of entry is the source Book detour, unvisited | **fixture-live** (`0x6E` only) |
 | Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
-| Darknut / keys / Compass / Map | Compass/Map omitted | no |
+| Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
 | Gohma (blue, 3 arrows) | source type `0x34`; Bow+arrows from cumulative route; **no L6 poke** | no |
 | Magical Key (staircase) | `ADDR_MAGIC_KEY=0x0664` | no |
 | Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
@@ -229,6 +385,11 @@ deliberate L9 key-bottleneck investment.
 
 ## Checkpoints
 
+All L8 recon fixtures below carry `development_only: true`,
+`natural_entry: false`, `route_eligible: false` and the standard
+`acceptance_warning` in their `.provenance.json`. None may be used as a route
+start.
+
 | State | Provenance |
 |-------|------------|
 | `Level8BushOW` / `OW_6D` | Assisted settle on bush screen; **no candle** |
@@ -237,19 +398,27 @@ deliberate L9 key-bottleneck investment.
 | `BFS_5E` / `OW_5E` | Live OW on shop screen (west edge entry y≈141) |
 | `CandleShop5E` | Cave on **0x5E** mode 11 (0R; buy residual) |
 | `CandleOwned` | **not created** (natural buy residual) |
-| `Level8Entrance` | **not created** (candle→burn residual) |
+| `Level8BushWithCandleFixture` | Stage 1 of the burn recon: from `Level8BushOW`, pokes Candle 2 + B-slot 4 + TF `0x7F` + stand `(48,90)` on `0x6D` (settles `(48,93)`) |
+| `Level8EntranceReconFixture` | **First live L8 interior.** Burn `(136,93)` RIGHT/RIGHT from the above; L8 play `0x7E` `(120,205)`, mode 5, TF `0x7F`. Replaces the old “`Level8Entrance` not created” row |
+| `Level8InteriorReconFixture` | `Level8EntranceReconFixture` + disclosed recon resources (sword 3, bombs 8, bow 1, arrows 1, rupees 255, keys 9); Magic Key / TF / rooms / doors untouched |
+| `Level8Interior3EReconFixture` | End of the fixture-live chain: L8 play `0x3E` `(120,205)`, keys 9, bombs 7, 6× `0x0C` HP128 alive |
+| `Level8Entrance` (canonical route state) | **still not created** — needs the measured post-L7 leave, not a poked stand |
 
 ## Scaffold modules
 
 | Path | Role |
 |------|------|
-| `level8/overworld.py` | **Frozen.** Bush + shop hops; start-based burn false-positive stays recon-only |
-| `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn |
+| `level8/overworld.py` | **Live, not frozen.** Bush + shop hops, `L7_POND_TO_LEVEL8_BUSH_HOPS` and `Level7PondToLevel8BushController` (rr-6o7.4, 2/2 to `0x6D`). Start-based burn false-positive stays recon-only |
+| `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn; holds `LIVE_RECON_BUSH_BURN_TARGET` |
 | `level8/bush.py` | Isolated 0x6D fixture-live burn recon; `route_eligible=false` |
-| `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; no invented room IDs |
+| `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; `LIVE_RECON_LEVEL8_TOPOLOGY` (entry `0x7E`) and `LEVEL8_INTERIOR_0X3E_RECON`; `LEVEL8_ROOM_SPECS` still empty |
 | `level8/path.py` | Fail-closed Magic-Key / blue-Gohma / four-head Gleeok policies |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
-| `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine` |
+| `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine`, opt-in `LIVE_RECON_L8_OVERRIDES` |
+| `scratch/level8_bush_burn_sweep.py` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
+| `scratch/capture_level8_entrance_fixture.py` | Reproduces the `(136,93)` RIGHT/RIGHT burn into live `0x7E` |
+| `scratch/probe_l8_5e_north.py` / `probe_l8_4e_north.py` | The `0x7E→0x4E` and `0x4E→0x3E` fixture replays |
+| `scratch/probe_l7_exit_to_l8_bush.py` | L7-pond → `0x6D` geometry lane |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |
 
@@ -258,10 +427,12 @@ deliberate L9 key-bottleneck investment.
 The integrator must provide all of the following before the default seam can
 move: settled post-L7 OW screen/x/y, exact keys/bombs/rupees/hearts/B-slot,
 Whistle/Food/Rod/Bow/arrows, Candle 2, full health, TF exactly `0x7F`, and a
-live-derived hop table ending at `0x6D`. The bush burn additionally needs an
-observed Link tile, facing, push direction, and natural `ADDR_CANDLE_USED`
-transition. The entry room, Magical Key room, boss room, Triforce room, and
-post-fanfare leave remain `None`; walkthrough grid positions are hypotheses.
+live-derived hop table ending at `0x6D`. The bush burn's tile / facing / push
+are now supplied (`LIVE_RECON_BUSH_BURN_TARGET`, fixture-live), but the
+**natural `ADDR_CANDLE_USED` transition from a walked pose** is still owed.
+The Magical Key room, boss room, Triforce room and post-fanfare leave remain
+`None`; the entry room is fixture-live `0x7E`, not a promoted route anchor;
+walkthrough grid positions are hypotheses.
 
 Fixture work may fill controller behavior while keeping
 `route_eligible=false`. Only cumulative recomposition from the natural L7
@@ -281,13 +452,37 @@ predecessor may promote the handoff/topology/endpoint contracts.
 - `recordings/l8_buy_ok_repro.png` — recon buy @ (152,149) with poked 80R
 - `recordings/l8_*_exits.json` — pocket maps (0x6B/0x6C/0x5C)
 
+Fixture-live evidence added 2026-09-03/04 (all `route_eligible=false`):
+
+- `logs/level8_bush_burn_sweep.json` — **5856-trial** live burn sweep on OW
+  `0x6D`; 7 mode-16 mouth stands, `(144,93)` `no_effect` ×8
+- `logs/level8_6d_walkable_positions.json` — the 732 teleport-standable tiles
+  the sweep iterated (standable, not walked)
+- `custom_integrations/.../Level8EntranceReconFixture.provenance.json` — the
+  `(136,93)` RIGHT/RIGHT recipe and the first live L8 interior (`0x7E`)
+- `custom_integrations/.../Level8BushWithCandleFixture.provenance.json`,
+  `Level8InteriorReconFixture.provenance.json`,
+  `Level8Interior3EReconFixture.provenance.json` — the disclosed poke lists
+- `recordings/l8_5e_north_fixture_20260903_v1.json` — `0x7E → 0x4E` chain
+- `recordings/l8_4e_north_fixture_B1.json` / `_B2.json` — the same chain plus
+  the `0x4E → 0x3E` north key door, 2/2 byte-identical, 2918 frames
+- `recordings/l8_5e_north_B1_*.png` — per-transition frames, including
+  `..._first_settled_destination_f2322_L8_s4e_m5.png` (`0x4E`) and
+  `..._key_north_pushed_f2768_L8_s3e_m5.png` (`0x3E`)
+
 ## Next
 
-1. Receive the measured natural post-L7 leave/inventory and derive its hop
-   table through live `0x5C` geometry to **0x6D**.
-2. From Red-Candle state: one live trial of the (144, 93) RIGHT/UP hypothesis
-   on **0x6D**. Do not revive (136, 93).
-3. Live-confirm entry → Magical Key → Gleeok body type / shard rooms without
-   promoting source room IDs. Magical Key stays on the min route; Book stays off.
+1. **Blocker.** Receive the measured natural post-L7 leave/inventory
+   (rr-8t4.3) and derive its hop table through live `0x5C` geometry to
+   **`0x6D`**. Nothing else can un-red an L8 chapter.
+2. From a naturally-earned Red-Candle state on `0x6D`: replay the recorded
+   burn — stand **`(136, 93)`**, face **RIGHT**, push **RIGHT**, and keep
+   pushing **RIGHT** through the mouth (do **not** switch to UP). Then confirm
+   live `0x7E` from a *walked* pose. `(144, 93)` is refuted; do not revive it.
+3. Re-walk `0x7E → 0x6E → 0x5E → 0x4E → 0x3E` on naturally earned bombs/keys
+   (the recorded chain runs on disclosed recon resources), then continue past
+   `0x3E` toward Magical Key → Gleeok / shard rooms without promoting source
+   room IDs. Magical Key stays on the min route; Book stays off.
 4. Keep the 60R Blue Candle farm/shop as fallback-only, outside `L8_THROUGH`.
-5. Do not promote Clean; Wave A fixture evidence remains route-ineligible.
+5. Do not promote Clean and do not touch `STATUS.md`; all L8 fixture evidence
+   remains `natural_entry=false` / `route_eligible=false`.
