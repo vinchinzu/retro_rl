@@ -59,6 +59,7 @@ from zelda_i.level5.spine import (
 )
 from zelda_i.level6.spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level7.spine import L7_STOPS, L7_THROUGH, continue_level7_spine
+from zelda_i.level8.spine import L8_STOPS, L8_THROUGH, continue_level8_spine
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import (
     ADDR_CANDLE,
@@ -89,7 +90,7 @@ SPINE_THROUGH: tuple[str, ...] = (
     "level2-entry",
     "level2",
     "level3",
-) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH
+) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH + L8_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -274,6 +275,7 @@ class SpineRun:
                 **L5_STOPS,
                 **L6_STOPS,
                 **L7_STOPS,
+                **L8_STOPS,
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -442,8 +444,15 @@ def run_survival_spine(
     on_frame=None,
     room_timer=None,
     through: str = "level1",
+    level8_overrides: dict[str, Any] | None = None,
 ) -> SpineRun:
-    """Power-on → requested dungeon stop. One env. No state reload."""
+    """Power-on → requested dungeon stop. One env. No state reload.
+
+    ``level8_overrides`` is the explicit opt-in path for the disclosed L8 recon
+    packets (``zelda_i.level8.spine.LIVE_RECON_L8_OVERRIDES``); it is forwarded
+    verbatim to ``continue_level8_spine``. The default run supplies none of it,
+    so L8 keeps the unmeasured handoff and the unobserved topology.
+    """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
     if assist is None:
@@ -604,22 +613,38 @@ def run_survival_spine(
     )
     if not run.success or through in L5_THROUGH:
         return run
-    # For an L7 target, drive the L6 suffix to the measured post-fanfare OW
-    # return (``level6-exit``); L7 then continues from screen 0x22.
+    # For an L7 or L8 target, drive the L6 suffix to the measured post-fanfare
+    # OW return (``level6-exit``); L7 then continues from screen 0x22.
     continue_level6_spine(
         env,
         run,
-        through="level6-exit" if through in L7_THROUGH else through,
+        through=(
+            "level6-exit" if through in L7_THROUGH + L8_THROUGH else through
+        ),
         run_stages=_run_stages,
         **hop_kw,
     )
     if not run.success or through in L6_THROUGH:
         return run
+    # For an L8 target, drive the L7 suffix to its own last stop (``level7``);
+    # L8 then continues from the post-L7 overworld with the handoff packet.
     continue_level7_spine(
+        env,
+        run,
+        through="level7" if through in L8_THROUGH else through,
+        run_stages=_run_stages,
+        **hop_kw,
+    )
+    if not run.success or through in L7_THROUGH:
+        return run
+    # Reachable, not green: with UNMEASURED_POST_L7_HANDOFF the entry chapter
+    # fails on ``post_l7_handoff_unmeasured`` (rr-8t4.3 owns the measurement).
+    continue_level8_spine(
         env,
         run,
         through=through,
         run_stages=_run_stages,
         **hop_kw,
+        **(level8_overrides or {}),
     )
     return run
