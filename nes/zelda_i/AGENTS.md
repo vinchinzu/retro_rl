@@ -14,22 +14,19 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 ## Immediate goal
 
-Bead `rr-6o7.2` (`in_progress`; power-on still blocked). Living residual:
-[`docs/tasks/rr-6o7.2-residual.md`](docs/tasks/rr-6o7.2-residual.md).
-Frontier pin `Level8PostShardOWReconFixture`: OW `$EB=0x6D` `(96,93)`
-mode 5, MK 1, TF **`0xFF`**, hc 4, bombs 5. Fixture-lineage, not a
-Survival-true post-L8 leave. L8 selected min-through is 13/13 rooms
-fixture-live, including Gleeok `0x3C` body type **`0x45` HP160** (kill
-2/2 F6/F7) and TF `0x2C`. `make_gleeok_passage_controller` stays
-fail-closed. `L8_THROUGH` not greened. True `--through level8` stays
-blocked on `rr-8t4.3` / `rr-6o7.1`. Do not STATUS.
+Bead `rr-8t4.1` (`in_progress`). Living residual:
+[`docs/tasks/rr-8t4.1-residual.md`](docs/tasks/rr-8t4.1-residual.md).
+Pond drain controller is wired (`level7/pond.py`); Survival still dies
+walking post-L6 to pond `0x42`. Frontier leftover OW `0x13` `(240,189)`
+on greened `0x22→0x32→0x33→0x23→0x24→0x14→0x13`. `0x22` west is mountain.
+Do not start from `PostSwordStart` / `OW_L7Pond` (whistle=0). Do not fill
+`MEASURED_POST_L7_EXIT` from the TF-0 pin. Do not STATUS.
 
 Parallel leftovers (not this AGENTS residual): L7 dest `0x29` 2/2,
 suffix 4/4 fixture-live (`rr-n91a` closed). **0x0D walk-on SOLVED**
-2026-09-04 (`rr-8t4.3`): `level7.stairs0d` 2/2, `position_writes=0`,
-`NOSE_CELLAR.ram_id=0x7B`; still `route_eligible=false`.
-L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2 (`rr-sz8.6`; pin
-`Level9Interior65WestReconFixture`).
+(`rr-8t4.3`): `level7.stairs0d` 2/2, `route_eligible=false`. L8-B
+`rr-6o7.2` stays fixture-lineage (`Level8PostShardOWReconFixture`).
+L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2 (`rr-sz8.6`).
 
 ## Commands
 

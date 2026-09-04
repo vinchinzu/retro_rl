@@ -14,7 +14,16 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import nearest_enemy
 from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B
+from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, RED_CANDLE_CELLAR
+from zelda_i.level7.path import (
+    DOOR_Y_TOL,
+    NORTH_X_TOL,
+    ROOM_1A,
+    _goriya_fight,
+    live_goriyas,
+)
 from zelda_i.level7.stairs import (
     CELLAR_LADDER_LEFT_X,
     CELLAR_LADDER_RIGHT_X,
@@ -46,6 +55,9 @@ __all__ = [
     "make_nose_cellar_cross_controller",
     "nose_cellar_cross_step",
     "nose_cellar_cross_success",
+    "ROOM1A_CANDLE_MAX_FRAMES",
+    "Room1ACandleController",
+    "cellar_of_room1a_ram_id",
 ]
 
 LEVEL7 = 7
@@ -247,3 +259,149 @@ def make_nose_cellar_cross_controller(
 ) -> Level7NoseCellarCrossController:
     """Cross cellar 0x7B from the 0x0D B-side spawn. Do not climb source UP."""
     return Level7NoseCellarCrossController(dest=dest)
+
+
+ROOM_4A = 0x4A
+ROOM1A_CANDLE_MAX_FRAMES = 16000
+PUSHABLE_BLOCK = 0x68
+
+
+def cellar_of_room1a_ram_id() -> int | None:
+    """Live ``$EB`` of the Red Candle cellar off ``0x1A``."""
+    return LEVEL7_ROOM_BY_ID[RED_CANDLE_CELLAR].ram_id
+
+
+def _pushable_block_y(snap: ZeldaSnapshot) -> int | None:
+    for obj in snap.objects:
+        if 1 <= int(obj.slot) <= 12 and int(obj.type_id) == PUSHABLE_BLOCK:
+            return int(obj.y)
+    return None
+
+
+@dataclass(kw_only=True)
+class Room1ACandleController(HopController):
+    """0x1A: kill-clear (incl. NE goriya), push 0x68 UP, stairs to cellar
+    ``0x4A``, walk onto Red Candle.  ADDR_CANDLE 0→2 NATURAL.
+
+    Dead: L5 south-face UP while a goriya still lives NE of the plus
+    (``room_all_dead`` stays 0, block does not slide).  2/2 (1a_push_v16/v18).
+    Recon-wired only.  Pad leftover is cellar ``0x4A`` ``(135,141)`` mode 9.
+    """
+
+    spec_id: str = "level7_room1a_candle"
+    max_frames: int = ROOM1A_CANDLE_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "red_candle_natural"
+    dest: int | None = field(default_factory=cellar_of_room1a_ram_id)
+    saw_goriya: bool = False
+    _phase: str = "clear"
+    _hunt_i: int = 0
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return int(snap.candle) >= 2
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"candle_{snap.candle}_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_phase={self._phase}_c={snap.candle}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("RIGHT"), "candle_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if int(snap.candle) >= 2:
+            return self.mark_done(snap)
+        if snap.mode == CELLAR_MODE or snap.screen == ROOM_4A:
+            return self._cellar(snap)
+        if snap.screen != ROOM_1A:
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+
+        live = live_goriyas(snap)
+        if live:
+            self.saw_goriya = True
+            if self._phase == "clear" and self.frames > 2800:
+                self._phase = "hunt"
+            if self._phase == "hunt":
+                return self._hunt(snap, live)
+            target = nearest_enemy(snap.link_x, snap.link_y, live)
+            if target is None:
+                return FrameAction(nes_idle_action(), "goriya_missing")
+            return _goriya_fight(snap, target, frames=self.frames)
+        if not self.saw_goriya:
+            return FrameAction(nes_idle_action(), "spawn_wait")
+
+        by = _pushable_block_y(snap)
+        x, y = int(snap.link_x), int(snap.link_y)
+        if by is None or by > 132:
+            if y < 189 - DOOR_Y_TOL and x < 150:
+                return FrameAction(nes_action("DOWN"), "candle_south")
+            if abs(x - 96) > NORTH_X_TOL:
+                return FrameAction(
+                    nes_action("LEFT" if x > 96 else "RIGHT"), "candle_stand_x"
+                )
+            if y > 162:
+                return FrameAction(nes_action("UP"), "candle_stand_y")
+            return FrameAction(nes_action("UP"), "candle_push")
+        if abs(x - 136) > 6 or abs(y - 141) > 6:
+            if abs(y - 141) > DOOR_Y_TOL:
+                return FrameAction(
+                    nes_action("UP" if y > 141 else "DOWN"), "candle_stairs_y"
+                )
+            return FrameAction(
+                nes_action("RIGHT" if x < 136 else "LEFT"), "candle_stairs_x"
+            )
+        return FrameAction(nes_action("RIGHT"), "candle_stairs_push")
+
+    def _hunt(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
+        wps = ((32, 189), (192, 189), (192, 93), (160, 93))
+        if self._hunt_i >= len(wps):
+            target = nearest_enemy(snap.link_x, snap.link_y, live)
+            if target is None:
+                return FrameAction(nes_idle_action(), "goriya_missing")
+            return _goriya_fight(snap, target, frames=self.frames)
+        tx, ty = wps[self._hunt_i]
+        x, y = int(snap.link_x), int(snap.link_y)
+        if abs(x - tx) <= 4 and abs(y - ty) <= 4:
+            self._hunt_i += 1
+            return FrameAction(nes_idle_action(), "candle_hunt_next")
+        if abs(y - ty) > 4:
+            return FrameAction(
+                nes_action("UP" if y > ty else "DOWN"), "candle_hunt_y"
+            )
+        return FrameAction(
+            nes_action("LEFT" if x > tx else "RIGHT"), "candle_hunt_x"
+        )
+
+    def _cellar(self, snap: ZeldaSnapshot) -> FrameAction:
+        x, y = int(snap.link_x), int(snap.link_y)
+        if y < 180:
+            return FrameAction(nes_action("DOWN"), "cellar_drop")
+        if x < 172:
+            return FrameAction(nes_action("RIGHT"), "cellar_east")
+        if y > 145:
+            return FrameAction(nes_action("UP"), "cellar_climb")
+        if x > 124:
+            return FrameAction(nes_action("LEFT"), "cellar_candle")
+        return FrameAction(nes_idle_action(), "cellar_idle")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "STAIRS",
+        }
