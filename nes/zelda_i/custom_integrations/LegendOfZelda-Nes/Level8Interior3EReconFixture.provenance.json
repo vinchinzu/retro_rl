@@ -1,0 +1,246 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T03:01:05.757971+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Guarded replay from Level8InteriorReconFixture: reuse the confirmed 0x7E -> clear 0x6E -> bomb-N 0x5E -> clear/key -> shutter-N 0x4E policy, then ONE natural north key door 0x4E -> 0x3E.",
+      "No RAM poke. Only inventory delta is the natural key spend 10->9 at the north door.",
+      "0x4E mixed census was NOT cleared.",
+      "Not route eligible; not on L8_THROUGH."
+    ],
+    "phase": "level8_interior_0x3e_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "census": {
+      "arrows": 1,
+      "bombs": 7,
+      "bow": 1,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 7,
+        "bow": 1,
+        "candle": 2,
+        "food": 0,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 9,
+        "magic_key": 0,
+        "max_bombs": 8,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 9,
+      "level": 8,
+      "live_objects": [
+        {
+          "hp": 128,
+          "slot": 1,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            128,
+            166
+          ]
+        },
+        {
+          "hp": 128,
+          "slot": 2,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            112,
+            132
+          ]
+        },
+        {
+          "hp": 128,
+          "slot": 3,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            192,
+            100
+          ]
+        },
+        {
+          "hp": 128,
+          "slot": 4,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            112,
+            168
+          ]
+        },
+        {
+          "hp": 128,
+          "slot": 5,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            171,
+            189
+          ]
+        },
+        {
+          "hp": 128,
+          "slot": 6,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            96,
+            161
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 5,
+      "open_doorway_mask": 4,
+      "rod": 0,
+      "room": 62,
+      "room_all_dead": 0,
+      "room_item_hex": "0x03",
+      "room_item_id": 3,
+      "room_obj_count": 6,
+      "rupees": 255,
+      "screen": 62,
+      "screen_hex": "0x3E",
+      "tile": 0,
+      "triforce": 127,
+      "x": 120,
+      "xy": [
+        120,
+        205
+      ],
+      "y": 205
+    },
+    "fixture_state": "Level8Interior3EReconFixture",
+    "fixture_writes": [],
+    "natural_key_spend": {
+      "keys_after": 9,
+      "keys_before": 10
+    },
+    "ok": true,
+    "source_state": "Level8InteriorReconFixture",
+    "state": {
+      "bombs": 7,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 62,
+      "objects": [
+        {
+          "hp": 128,
+          "slot": 1,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 128,
+          "y": 166
+        },
+        {
+          "hp": 128,
+          "slot": 2,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 112,
+          "y": 132
+        },
+        {
+          "hp": 128,
+          "slot": 3,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 192,
+          "y": 100
+        },
+        {
+          "hp": 128,
+          "slot": 4,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 112,
+          "y": 168
+        },
+        {
+          "hp": 128,
+          "slot": 5,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 171,
+          "y": 189
+        },
+        {
+          "hp": 128,
+          "slot": 6,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 96,
+          "y": 161
+        },
+        {
+          "hp": 192,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 110,
+          "y": 190
+        },
+        {
+          "hp": 192,
+          "slot": 11,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 132,
+          "y": 190
+        }
+      ],
+      "open_doorway_mask": 4,
+      "room": 62,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 6,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 127,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8InteriorReconFixture.state",
+  "source_state_sha256": "c2273b0563cb450ae9f976dd168470d8c15feeae7732a72f66fd759e13c8de59",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior3EReconFixture.state",
+  "state_sha256": "d5cbf0561f455fe9eb83cff7394042f95329b62ae80404f6d9f6dae1e80eb17a"
+}

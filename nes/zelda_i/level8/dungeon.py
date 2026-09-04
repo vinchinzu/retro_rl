@@ -57,6 +57,60 @@ LEVEL8_ROOM_SPECS: tuple[DungeonRoomSpec, ...] = ()
 
 
 @dataclass(frozen=True)
+class Level8InteriorRoomRecon:
+    """A single interior room observed live from a disclosed fixture replay.
+
+    Development recon only: ``route_eligible`` is always False and these rows
+    are never attached to ``L8_THROUGH`` or promoted to ``DungeonRoomSpec``.
+    They only record what RAM showed, with a 2/2 byte-identical recording.
+    """
+
+    room_id: int
+    entered_from: int
+    entry_direction: str
+    entry_gate: str
+    entry_pose: tuple[int, int]
+    keys_in: int
+    keys_out: int
+    bombs_in: int
+    bombs_out: int
+    room_item_id: int
+    census: tuple[tuple[int, int, int], ...]  # (type_id, hp, count)
+    evidence: str = "live_recon_fixture"
+    route_eligible: bool = False
+    fixture: str = ""
+    recording_tag: str = ""
+
+
+# rr-6o7.2 groundwork: ONE guarded replay past the confirmed 0x4E arrival.
+# From Level8InteriorReconFixture, reuse the confirmed 0x7E -> clear 0x6E ->
+# bomb-N 0x5E -> clear/center-key -> shutter-N 0x4E policy unchanged, then take
+# the north KEY door from 0x4E.  2/2 byte-identical (probe l8_4e_north B1/B2,
+# frames 2918): one natural key spent (10 -> 9), bombs unchanged, settled play
+# room 0x3E at (120,205), deaths 0, progression_writes 0, capacity_writes 0.
+# The mixed 0x4E census was NOT cleared.  Not route eligible; not on L8_THROUGH.
+LEVEL8_INTERIOR_0X3E_RECON = Level8InteriorRoomRecon(
+    room_id=0x3E,
+    entered_from=0x4E,
+    entry_direction="UP",
+    entry_gate="north_key_door",
+    entry_pose=(120, 205),
+    keys_in=10,
+    keys_out=9,
+    bombs_in=7,
+    bombs_out=7,
+    room_item_id=0x03,
+    census=((0x0C, 128, 6),),  # 6 blue Darknuts, room_all_dead=0
+    fixture="Level8Interior3EReconFixture",
+    recording_tag="l8_4e_north_fixture_B1",
+)
+
+LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
+    LEVEL8_INTERIOR_0X3E_RECON,
+)
+
+
+@dataclass(frozen=True)
 class Level8HypothesisRoom:
     """Walkthrough node. ``room_id`` stays None until RAM observes it."""
 
@@ -343,7 +397,10 @@ __all__ = [
     "LEVEL8",
     "LEVEL8_HYPOTHESIS_EXITS",
     "LEVEL8_HYPOTHESIS_ROOMS",
+    "LEVEL8_INTERIOR_0X3E_RECON",
+    "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",
+    "Level8InteriorRoomRecon",
     "Level8ChapterSpec",
     "Level8ClearEndpoint",
     "Level8HypothesisExit",

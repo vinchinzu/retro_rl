@@ -19,6 +19,8 @@ from zelda_i.level8.dungeon import (
     GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     GLEEOK_ROUTE,
     LEVEL8_HYPOTHESIS_ROOMS,
+    LEVEL8_INTERIOR_0X3E_RECON,
+    LEVEL8_INTERIOR_ROOM_RECON,
     LEVEL8_ROOM_SPECS,
     MAGIC_KEY_ROUTE,
     OMITTED_OPTIONAL_ROOMS,
@@ -289,6 +291,28 @@ def test_hypothesis_graph_has_no_ram_room_ids() -> None:
         if room.name != "entry"
     )
     assert all(not room.route_eligible for room in (UNOBSERVED_LEVEL8_TOPOLOGY,))
+
+
+def test_level8_interior_0x3e_recon_is_fixture_only_not_route_eligible() -> None:
+    # rr-6o7.2 groundwork: ONE guarded replay past 0x4E via the north key door.
+    # 2/2 byte-identical (probe l8_4e_north B1/B2). Recon record only -- never
+    # route eligible, never a DungeonRoomSpec, never on L8_THROUGH.
+    from zelda_i.level8.spine import L8_THROUGH
+
+    assert LEVEL8_INTERIOR_ROOM_RECON == (LEVEL8_INTERIOR_0X3E_RECON,)
+    r = LEVEL8_INTERIOR_0X3E_RECON
+    assert r.room_id == 0x3E
+    assert r.entered_from == 0x4E and r.entry_gate == "north_key_door"
+    assert (r.keys_in, r.keys_out) == (10, 9)  # one natural key spent
+    assert (r.bombs_in, r.bombs_out) == (7, 7)  # no bombs used
+    assert r.census == ((0x0C, 128, 6),)  # 6 blue Darknuts
+    assert r.room_item_id == 0x03
+    assert r.evidence == "live_recon_fixture"
+    assert r.route_eligible is False
+    assert r.fixture == "Level8Interior3EReconFixture"
+    assert LEVEL8_ROOM_SPECS == ()  # still no canonical rows
+    assert "level8-interior-0x3e" not in L8_THROUGH
+    assert hypothesis_room_ids_unobserved()  # hypothesis graph untouched
 
 
 def test_public_gate_predicates_fail_closed() -> None:
