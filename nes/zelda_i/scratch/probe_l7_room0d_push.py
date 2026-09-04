@@ -40,7 +40,7 @@ from zelda_i.ram import (
 from zelda_i.runner import make_assist
 
 ROOM = 0x0D
-CELLAR_MODES = {9, 10, 11}
+CELLAR_MODES = {9, 10, 11, 16}
 WALLMASTER = 0x27
 # Plus-corner 0x27 never move / take no sword (statues, not the 5 spawners).
 STATUE_XY = frozenset({(128, 125), (128, 157), (160, 125), (160, 157)})
@@ -180,7 +180,7 @@ def _glance(env) -> dict:
     }
 
 
-def _reach(env, a, tx, ty, f, budget=360):
+def _reach(env, a, tx, ty, f, budget=360, tol=3):
     last = None
     stuck = 0
     for _ in range(budget):
@@ -190,7 +190,7 @@ def _reach(env, a, tx, ty, f, budget=360):
         if int(s.mode) in CELLAR_MODES:
             return f, True, [int(s.link_x), int(s.link_y)]
         x, y = int(s.link_x), int(s.link_y)
-        if abs(x - tx) <= 3 and abs(y - ty) <= 3:
+        if abs(x - tx) <= tol and abs(y - ty) <= tol:
             return f, True, [x, y]
         xy = (x, y)
         if xy == last:
@@ -200,7 +200,7 @@ def _reach(env, a, tx, ty, f, budget=360):
         else:
             stuck = 0
             last = xy
-        if abs(y - ty) > 3:
+        if abs(y - ty) > tol:
             btn = "UP" if y > ty else "DOWN"
         else:
             btn = "LEFT" if x > tx else "RIGHT"
@@ -266,9 +266,16 @@ def main() -> None:
     ap.add_argument("--clear", action="store_true")
     ap.add_argument("--map", action="store_true")
     ap.add_argument("--stairs", action="store_true")
+    ap.add_argument("--bomb-stair", action="store_true")
     ap.add_argument("--occ", action="store_true")
     ap.add_argument("--clip", default="")
     ap.add_argument("--bomb-center", action="store_true")
+    ap.add_argument("--ne", action="store_true")
+    ap.add_argument("--dump-tiles", action="store_true")
+    ap.add_argument("--race", action="store_true")
+    ap.add_argument("--east-col", action="store_true")
+    ap.add_argument("--poke-warp", action="store_true")
+    ap.add_argument("--north-band", action="store_true")
     ap.add_argument("--save-fixture", default="")
     args = ap.parse_args()
     configure_headless()
@@ -358,21 +365,16 @@ def main() -> None:
             print("MAP END", out["end_map"])
             save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_map.png")
         if args.stairs:
-            # Plus-center north to y=127, then east along that band.
+            # CheckWarps: x multiple of 16, y = 16k+13 (93/109/125/141).
+            # Plus-center and door-row first; NE hole is blocked by the
+            # parked 0x68 at (208,96).
             targets = (
-                (152, 141),
-                (152, 127),
-                (176, 127),
-                (192, 127),
-                (200, 127),
-                (200, 117),
-                (200, 109),
-                (200, 96),
-                (192, 117),
-                (176, 117),
+                (176, 141),
+                (192, 141),
+                (192, 136),
             )
             for ti, (tx, ty) in enumerate(targets):
-                f, ok, xy = _reach(env, a, tx, ty, f, budget=500)
+                f, ok, xy = _reach(env, a, tx, ty, f, budget=500, tol=0)
                 s = _s(env)
                 rec = {
                     "target": [tx, ty],
@@ -391,14 +393,74 @@ def main() -> None:
                     out["cellar"] = _glance(env)
                     print("CELLAR", out["cellar"])
                     break
-                for _ in range(20):
+                idle = 60 if (xy[0] % 16 == 0) else 20
+                for _ in range(idle):
                     _step(env, a, None, f)
                     f += 1
                     if int(_s(env).mode) in CELLAR_MODES:
                         out["cellar"] = _glance(env)
-                        print("CELLAR", out["cellar"])
+                        print("CELLAR IDLE", _glance(env))
                         break
                 if out.get("cellar"):
+                    break
+                # Door-clip toward the visible NE hole.
+                if ok and tx >= 176:
+                    for i in range(24):
+                        _step(env, a, ("RIGHT", "UP"), f)
+                        f += 1
+                        ss = _s(env)
+                        if int(ss.mode) in CELLAR_MODES:
+                            out["cellar"] = _glance(env)
+                            print("CELLAR CLIP", _glance(env))
+                            break
+                        if i % 8 == 0:
+                            print("CLIP RU", _glance(env)["xy"],
+                                  "tile", int(ss.colliding_tile))
+                    if out.get("cellar"):
+                        break
+                    save_rgb_png(
+                        env.render(),
+                        RECORDINGS_DIR / f"{args.tag}_clip_{ti}.png",
+                    )
+        if args.bomb_stair:
+            # From post-push NE pocket: bomb the wall between (176,125) and
+            # the visible stair hole.
+            spots = (
+                ((176, 125), "RIGHT"),
+                ((176, 117), "RIGHT"),
+                ((192, 136), "UP"),
+                ((192, 141), "RIGHT"),
+            )
+            for (tx, ty), face in spots:
+                f, ok, xy = _reach(env, a, tx, ty, f, budget=400, tol=2)
+                print("BOMB SPOT", [tx, ty], face, ok, xy)
+                for _ in range(8):
+                    _step(env, a, face, f)
+                    f += 1
+                ensure_bomb(env)
+                env.step(nes_action("B"))
+                a.apply_env(env, frame=f)
+                f += 1
+                retreat = {"RIGHT": "LEFT", "LEFT": "RIGHT", "UP": "DOWN", "DOWN": "UP"}
+                for _ in range(12):
+                    _step(env, a, retreat[face], f)
+                    f += 1
+                for _ in range(90):
+                    _step(env, a, None, f)
+                    f += 1
+                print("AFTER BOMB", face, _glance(env))
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_bomb_{face}_{xy[0]}_{xy[1]}.png",
+                )
+                f, ok2, xy2 = _reach(env, a, tx + (16 if face == "RIGHT" else 0),
+                                     ty - (16 if face == "UP" else 0),
+                                     f, budget=200, tol=2)
+                print("POST BOMB WALK", ok2, xy2, "mode", int(_s(env).mode),
+                      "screen", f"0x{int(_s(env).screen):02x}")
+                if int(_s(env).mode) in CELLAR_MODES:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR", out["cellar"])
                     break
         if args.clear:
             for _ in range(120):
@@ -618,7 +680,7 @@ def main() -> None:
                       int(_s(env).colliding_tile))
             else:
                 if face == "UP":
-                    approach = ((32, 189), (184, 189), (184, 162), stand)
+                    approach = ((96, 141), (176, 141), (176, 157), (184, 157), stand)
                 elif face == "RIGHT":
                     approach = ((160, 141), (176, 144), stand)
                 elif face == "DOWN":
@@ -663,48 +725,108 @@ def main() -> None:
                               int(_s(env).colliding_tile), "blocks", bys)
             ox, oy = int(pick["x"]), int(pick["y"])
             moved = False
-            for i in range(80):
+            started = False
+            for i in range(120):
                 s = _s(env)
                 if int(s.mode) in CELLAR_MODES:
                     break
                 if int(s.screen) != ROOM:
                     break
                 bys = _blocks(s)
-                if bys and (
-                    abs(int(bys[0]["x"]) - ox) >= 16
-                    or abs(int(bys[0]["y"]) - oy) >= 16
-                ):
-                    print("MOVED", bys, "f", f, "link", _glance(env)["xy"])
+                bx = int(bys[0]["x"]) if bys else ox
+                byy = int(bys[0]["y"]) if bys else oy
+                dxb, dyb = bx - ox, byy - oy
+                if i < 40 or dxb or dyb:
+                    print(
+                        "PUSH", i, "link", _glance(env)["xy"],
+                        "block", [bx, byy], "d", [dxb, dyb],
+                    )
+                # One tile is 16px. Release as soon as the slide starts so
+                # Link does not walk with the block into a second push.
+                if (not started) and (dxb != 0 or dyb != 0):
+                    started = True
+                    print("STARTED", [bx, byy], "f", f)
+                    if args.race:
+                        print("RACE BREAK", [bx, byy], "link", _glance(env)["xy"])
+                        break
+                if started and abs(dxb) >= 16 and dyb == 0:
+                    print("TILE", [bx, byy], "f", f, "link", _glance(env)["xy"])
                     moved = True
                     break
-                _step(env, a, face, f)
+                if started and dyb != 0:
+                    print("Y SLIDE", [bx, byy], "f", f)
+                    moved = True
+                    break
+                btn = None if started else face
+                _step(env, a, btn, f)
                 f += 1
-                if i % 20 == 0:
-                    print("PUSHING", _glance(env)["xy"], "blocks", bys)
+            # Let a started slide finish without more RIGHT.
+            # --race peels UP the x=176 column during the 32f slide.
+            if not args.race:
+                for _ in range(24):
+                    bys = _blocks(_s(env))
+                    if not bys:
+                        break
+                    bx, byy = int(bys[0]["x"]), int(bys[0]["y"])
+                    if abs(bx - ox) >= 16 and byy == oy:
+                        moved = True
+                        print("SETTLED", [bx, byy])
+                        break
+                    _step(env, a, None, f)
+                    f += 1
             out["after_push"] = _glance(env)
             print("AFTER PUSH", out["after_push"], "moved", moved)
             save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_pushed.png")
-            for tx, ty in (
+            # CheckWarps UW: X multiple of $10, y often $10k+$D (141).
+            # Stairs are visible NE after the 16px slide (block parks 208,96).
+            hunt_targets = () if args.race else (
+                (192, 141),
+                (192, 136),
+                (192, 125),
+                (200, 141),
+                (200, 125),
+                (200, 109),
+                (176, 125),
+                (176, 117),
+                (208, 141),
                 (ox, oy),
-                (ox, 141),
-                (ox - 16, oy),
-                (176, 144),
-                (176, 141),
-            ):
+            )
+            for tx, ty in hunt_targets:
                 if int(_s(env).mode) in CELLAR_MODES:
                     break
                 if int(_s(env).screen) != ROOM:
                     break
-                f, _, xy = _reach(env, a, tx, ty, f, budget=200)
+                f, ok, xy = _reach(env, a, tx, ty, f, budget=240, tol=0)
                 rec = {
                     "target": [tx, ty],
+                    "ok": ok,
                     "xy": xy,
+                    "tile": int(_s(env).colliding_tile),
                     "mode": int(_s(env).mode),
                     "screen": f"0x{int(_s(env).screen):02x}",
                 }
                 print("STAIR HUNT", rec)
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_hunt_{tx}_{ty}.png",
+                )
                 if int(_s(env).mode) in CELLAR_MODES:
                     break
+                if ok and xy[0] % 16 == 0:
+                    for _ in range(40):
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            print("CELLAR IDLE", _glance(env))
+                            break
+                        _step(env, a, None, f)
+                        f += 1
+                for btn in (None, "UP", "DOWN", "LEFT", "RIGHT"):
+                    if int(_s(env).mode) in CELLAR_MODES:
+                        break
+                    _step(env, a, btn, f)
+                    f += 1
+                    if int(_s(env).mode) in CELLAR_MODES:
+                        print("CELLAR NUDGE", btn, _glance(env))
+                        break
             if int(_s(env).mode) in CELLAR_MODES:
                 out["cellar"] = _glance(env)
                 print("CELLAR", out["cellar"])
@@ -719,6 +841,425 @@ def main() -> None:
                     f += 1
                 out["cellar_settled"] = _glance(env)
                 print("CELLAR SETTLED", out["cellar_settled"])
+
+        if args.race and int(_s(env).mode) not in CELLAR_MODES:
+            # After a just-started RIGHT slide, run UP the x=176 column
+            # toward the NE hole before slot11 snaps to (208,96).
+            print("RACE START", _glance(env)["xy"], "block", _blocks(_s(env)))
+            for i in range(80):
+                s = _s(env)
+                if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR RACE", out["cellar"])
+                    break
+                x, y = int(s.link_x), int(s.link_y)
+                btn: str | tuple[str, ...]
+                # North-arm east edge is (176,117). RIGHT+UP toward
+                # CheckWarp (208,93) while the 0x68 is still on y=144.
+                if y > 125:
+                    btn = "UP"
+                elif x < 208:
+                    btn = ("RIGHT", "UP")
+                else:
+                    btn = "UP"
+                _step(env, a, btn, f)
+                f += 1
+                if i % 4 == 0:
+                    print(
+                        "RACE", i, _glance(env)["xy"],
+                        "tile", int(_s(env).colliding_tile),
+                        "block", _blocks(_s(env)),
+                        "mode", int(s.mode),
+                    )
+            save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_race.png")
+            out["after_race"] = _glance(env)
+            print("AFTER RACE", out["after_race"])
+
+        if args.ne and int(_s(env).mode) not in CELLAR_MODES:
+            # North-arm east edge sits one tile west of the visible hole.
+            for wx, wy in ((160, 141), (160, 117), (176, 117)):
+                f, ok, xy = _reach(env, a, wx, wy, f, budget=500, tol=1)
+                print(
+                    "NE WP", [wx, wy], ok, xy,
+                    "tile", int(_s(env).colliding_tile),
+                    "mode", int(_s(env).mode),
+                )
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    break
+            out["ne_stand"] = _glance(env)
+            print("NE STAND", out["ne_stand"])
+            save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_ne_stand.png")
+            holds: tuple[tuple[str | tuple[str, ...], int], ...] = (
+                ("RIGHT", 48),
+                ("UP", 48),
+                (("RIGHT", "UP"), 48),
+                (("RIGHT", "DOWN"), 24),
+                ("DOWN", 16),
+            )
+            for hi, (hbtn, n) in enumerate(holds):
+                if int(_s(env).mode) in CELLAR_MODES:
+                    break
+                f, ok, xy = _reach(env, a, 176, 117, f, budget=240, tol=1)
+                print("NE RESET", hi, ok, xy, "tile", int(_s(env).colliding_tile))
+                last = None
+                for i in range(n):
+                    s = _s(env)
+                    if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                        out["cellar"] = _glance(env)
+                        print("CELLAR NE", hbtn, out["cellar"])
+                        break
+                    xy = [int(s.link_x), int(s.link_y)]
+                    tile = int(s.colliding_tile)
+                    if xy != last or i % 8 == 0:
+                        print("NE HOLD", hbtn, i, xy, "tile", tile)
+                        last = xy
+                    _step(env, a, hbtn, f)
+                    f += 1
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_ne_{hi}.png",
+                )
+                if out.get("cellar"):
+                    break
+            if int(_s(env).mode) not in CELLAR_MODES:
+                for tx, ty in ((176, 109), (176, 93), (160, 93), (192, 117)):
+                    if int(_s(env).mode) in CELLAR_MODES:
+                        break
+                    f, ok, xy = _reach(env, a, tx, ty, f, budget=240, tol=0)
+                    rec = {
+                        "target": [tx, ty],
+                        "ok": ok,
+                        "xy": xy,
+                        "tile": int(_s(env).colliding_tile),
+                        "mode": int(_s(env).mode),
+                    }
+                    print("NE POSE", rec)
+                    save_rgb_png(
+                        env.render(),
+                        RECORDINGS_DIR / f"{args.tag}_pose_{tx}_{ty}.png",
+                    )
+                    if ok:
+                        for _ in range(40):
+                            if int(_s(env).mode) in CELLAR_MODES:
+                                out["cellar"] = _glance(env)
+                                print("CELLAR POSE", out["cellar"])
+                                break
+                            _step(env, a, None, f)
+                            f += 1
+                    if out.get("cellar"):
+                        break
+            out["after_ne"] = _glance(env)
+            print("AFTER NE", out["after_ne"])
+
+        if args.north_band and int(_s(env).mode) not in CELLAR_MODES:
+            # Plus north-arm center, then UP onto the y=93 band the
+            # bubbles patrol, then RIGHT toward CheckWarp (208,93).
+            for wx, wy in ((160, 141), (160, 117), (144, 117), (128, 117)):
+                f, ok, xy = _reach(env, a, wx, wy, f, budget=400, tol=1)
+                print(
+                    "NB WP", [wx, wy], ok, xy,
+                    "tile", int(_s(env).colliding_tile),
+                )
+            f, ok, xy = _reach(env, a, 160, 117, f, budget=240, tol=1)
+            print("NB ARM", ok, xy, "tile", int(_s(env).colliding_tile))
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_nb_arm.png"
+            )
+            last = None
+            for i in range(80):
+                s = _s(env)
+                if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR NB UP", out["cellar"])
+                    break
+                y = int(s.link_y)
+                x = int(s.link_x)
+                if y <= 93:
+                    break
+                _step(env, a, "UP", f)
+                f += 1
+                xy = [x, y]
+                if xy != last or i % 8 == 0:
+                    print("NB UP", i, xy, "tile", int(s.colliding_tile))
+                    last = xy
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_nb_up.png"
+            )
+            for cx in (128, 144, 160, 176):
+                if int(_s(env).mode) in CELLAR_MODES:
+                    break
+                f, ok, xy = _reach(env, a, cx, 117, f, budget=200, tol=1)
+                print("NB CLIP STAND", cx, ok, xy, "tile", int(_s(env).colliding_tile))
+                for clip in (("UP", "RIGHT"), ("UP", "LEFT"), ("RIGHT", "UP")):
+                    for i in range(12):
+                        s = _s(env)
+                        if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                            out["cellar"] = _glance(env)
+                            print("CELLAR CLIP", clip, out["cellar"])
+                            break
+                        _step(env, a, clip, f)
+                        f += 1
+                        if i % 4 == 0:
+                            print(
+                                "NB CLIP", cx, clip, i,
+                                _glance(env)["xy"],
+                                "tile", int(s.colliding_tile),
+                            )
+                    if out.get("cellar"):
+                        break
+                    f, ok, xy = _reach(env, a, cx, 117, f, budget=80, tol=1)
+                if out.get("cellar"):
+                    break
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_nb_clip.png"
+            )
+            last = None
+            for i in range(160):
+                s = _s(env)
+                if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR NB", out["cellar"])
+                    break
+                x, y = int(s.link_x), int(s.link_y)
+                if x >= 208 and y <= 93:
+                    _step(env, a, None, f)
+                elif y > 93:
+                    _step(env, a, "UP", f)
+                else:
+                    _step(env, a, "RIGHT", f)
+                f += 1
+                xy = [x, y]
+                if xy != last or i % 8 == 0:
+                    print(
+                        "NB RIGHT", i, xy,
+                        "tile", int(s.colliding_tile),
+                        "mode", int(s.mode),
+                    )
+                    last = xy
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_nb_right.png"
+            )
+            out["after_north_band"] = _glance(env)
+            print("AFTER NB", out["after_north_band"])
+
+        if args.east_col and int(_s(env).mode) not in CELLAR_MODES:
+            # L6 pattern: east column x=208 UP onto (208,93). After
+            # room_all_dead the east wall is not a wallmaster grab.
+            for wx, wy in ((176, 141), (192, 141), (200, 141), (208, 141)):
+                f, ok, xy = _reach(env, a, wx, wy, f, budget=400, tol=1)
+                print(
+                    "EC WP", [wx, wy], ok, xy,
+                    "tile", int(_s(env).colliding_tile),
+                    "screen", f"0x{int(_s(env).screen):02x}",
+                    "mode", int(_s(env).mode),
+                )
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_ec_{wx}_{wy}.png",
+                )
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR EC", out["cellar"])
+                    break
+            if int(_s(env).mode) not in CELLAR_MODES and int(_s(env).screen) == ROOM:
+                for i in range(120):
+                    s = _s(env)
+                    if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                        out["cellar"] = _glance(env)
+                        print("CELLAR EC UP", out["cellar"])
+                        break
+                    x, y = int(s.link_x), int(s.link_y)
+                    if x < 208:
+                        btn: str | tuple[str, ...] = "RIGHT"
+                    else:
+                        btn = "UP"
+                    _step(env, a, btn, f)
+                    f += 1
+                    if i % 8 == 0:
+                        print(
+                            "EC UP", i, [x, y],
+                            "tile", int(s.colliding_tile),
+                            "mode", int(s.mode),
+                        )
+                save_rgb_png(
+                    env.render(), RECORDINGS_DIR / f"{args.tag}_ec_up.png"
+                )
+            out["after_east_col"] = _glance(env)
+            print("AFTER EC", out["after_east_col"])
+
+        if args.poke_warp and int(_s(env).mode) not in CELLAR_MODES:
+            from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y
+
+            mem = env.unwrapped.data.memory
+            poses = (
+                (192, 93),
+                (176, 93),
+                (192, 96),
+                (208, 85),
+                (216, 85),
+                (224, 85),
+                (192, 85),
+                (208, 93),
+            )
+            for px, py in poses:
+                if int(_s(env).mode) in CELLAR_MODES:
+                    break
+                mem.assign(int(ADDR_LINK_X), "|u1", int(px) & 0xFF)
+                mem.assign(int(ADDR_LINK_Y), "|u1", int(py) & 0xFF)
+                env.step(nes_idle_action())
+                print("POKE AT", [px, py], _glance(env)["xy"],
+                      "tile", int(_s(env).colliding_tile),
+                      "mode", int(_s(env).mode),
+                      "screen", f"0x{int(_s(env).screen):02x}")
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_poke_{px}_{py}.png",
+                )
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR POKE AT", out["cellar"])
+                    break
+                for btn in ("LEFT", "RIGHT", "UP", "DOWN", "RIGHT", "UP"):
+                    _step(env, a, btn, f)
+                    f += 1
+                    ss = _s(env)
+                    print(
+                        "POKE STEP", [px, py], btn,
+                        _glance(env)["xy"],
+                        "tile", int(ss.colliding_tile),
+                        "mode", int(ss.mode),
+                        "screen", f"0x{int(ss.screen):02x}",
+                    )
+                    if int(ss.mode) in CELLAR_MODES or int(ss.screen) != ROOM:
+                        out["cellar"] = _glance(env)
+                        print("CELLAR POKE STEP", out["cellar"])
+                        break
+                if out.get("cellar"):
+                    break
+            print("POKE", _glance(env))
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_poke.png"
+            )
+            # CheckWarps wants a step onto the pixel, not an idle spawn.
+            for btn in ("LEFT", "RIGHT", "UP", "RIGHT", "UP"):
+                _step(env, a, btn, f)
+                f += 1
+                print("POKE STEP", btn, _glance(env))
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR POKE STEP", out["cellar"])
+                    break
+            for i in range(120):
+                s = _s(env)
+                if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                    out["cellar"] = _glance(env)
+                    print("CELLAR POKE", out["cellar"])
+                    break
+                x, y = int(s.link_x), int(s.link_y)
+                if x < 208:
+                    btn = "RIGHT"
+                elif y > 93:
+                    btn = "UP"
+                else:
+                    btn = "UP"
+                _step(env, a, btn, f)
+                f += 1
+                if i % 10 == 0:
+                    print("POKE HOLD", i, _glance(env))
+            out["after_poke"] = _glance(env)
+            print("AFTER POKE", out["after_poke"])
+            save_rgb_png(
+                env.render(), RECORDINGS_DIR / f"{args.tag}_poke_settled.png"
+            )
+
+        if args.dump_tiles and int(_s(env).mode) not in CELLAR_MODES:
+            from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y
+
+            hits = []
+            ne = []
+            mem = env.unwrapped.data.memory
+            for y in range(0x4D, 0x90, 1):
+                row = []
+                for x in range(0xB0, 0xE1, 1):
+                    mem.assign(int(ADDR_LINK_X), "|u1", int(x) & 0xFF)
+                    mem.assign(int(ADDR_LINK_Y), "|u1", int(y) & 0xFF)
+                    env.step(nes_idle_action())
+                    s = _s(env)
+                    rec = {
+                        "x": int(s.link_x),
+                        "y": int(s.link_y),
+                        "tile": int(s.colliding_tile),
+                        "mode": int(s.mode),
+                        "screen": f"0x{int(s.screen):02x}",
+                    }
+                    row.append(rec)
+                    if (
+                        0x70 <= int(s.colliding_tile) <= 0x73
+                        or int(s.mode) in CELLAR_MODES
+                        or int(s.screen) != ROOM
+                    ):
+                        hits.append(rec)
+                        print("TILE HIT", rec)
+                    if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                        out["cellar"] = _glance(env)
+                        print("CELLAR DUMP", out["cellar"])
+                        break
+                ne.append(row)
+                if out.get("cellar"):
+                    break
+                if y in (93, 96, 101, 109, 117) or y % 8 == 0:
+                    print(
+                        "NE ROW", y,
+                        [(r["x"], r["tile"]) for r in row if r["x"] % 8 == 0 or r["x"] in (192, 200, 208)],
+                    )
+            out["ne_dump"] = [
+                {"x": r["x"], "y": r["y"], "tile": r["tile"]}
+                for row in ne for r in row
+                if r["tile"] not in (116, 117, 118, 119, 176, 177, 178, 179)
+            ]
+            print("NE UNUSUAL", out["ne_dump"][:40], "n", len(out["ne_dump"]))
+            if out.get("cellar"):
+                save_rgb_png(
+                    env.render(),
+                    RECORDINGS_DIR / f"{args.tag}_dump_cellar.png",
+                )
+            # keep the coarse dump below for the rest of the room
+            for y in range(0x4D, 0xDE, 8):
+                if out.get("cellar"):
+                    break
+                for x in range(0x20, 0xE1, 8):
+                    mem.assign(int(ADDR_LINK_X), "|u1", int(x) & 0xFF)
+                    mem.assign(int(ADDR_LINK_Y), "|u1", int(y) & 0xFF)
+                    env.step(nes_idle_action())
+                    s = _s(env)
+                    tile = int(s.colliding_tile)
+                    rec = {
+                        "x": int(s.link_x),
+                        "y": int(s.link_y),
+                        "tile": tile,
+                        "mode": int(s.mode),
+                        "screen": f"0x{int(s.screen):02x}",
+                    }
+                    interesting = (
+                        0x70 <= tile <= 0x76
+                        or tile == 0x24
+                        or int(s.mode) in CELLAR_MODES
+                        or int(s.screen) != ROOM
+                    )
+                    if interesting:
+                        hits.append(rec)
+                        print("TILE HIT", rec)
+                    if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                        out["cellar"] = _glance(env)
+                        print("CELLAR DUMP", out["cellar"])
+                        save_rgb_png(
+                            env.render(),
+                            RECORDINGS_DIR / f"{args.tag}_dump_cellar.png",
+                        )
+                        break
+            out["tile_hits"] = hits
+            print("TILE HITS", hits)
+            save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_dump.png")
 
         end = _glance(env)
         end["deaths"] = int(a.telemetry.deaths)

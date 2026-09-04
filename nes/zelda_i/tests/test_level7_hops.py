@@ -81,6 +81,11 @@ from zelda_i.level7.path import (
     Room1BKeyEastController,
     Room0DClearController,
     room_0d_clear_step,
+    ROOM_0D_BLOCK,
+    ROOM_0D_BLOCK_STAND,
+    ROOM_0D_BLOCK_AFTER_RIGHT,
+    ROOM_0D_NORTH_ARM,
+    ROOM_0D_STAIR_WARP_HYP,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -874,6 +879,20 @@ def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
     assert "level7_tip_of_nose_stairs" in [
         n for n, _c, _f in level7_red_candle_chapter_stages()
     ]
+
+
+def test_room_0d_block_16px_right_parks_on_ne_hole() -> None:
+    """16px RIGHT from (192,144) snaps 0x68 to (208,96). Stairs unobserved."""
+    assert ROOM_0D_BLOCK == (192, 144)
+    assert ROOM_0D_BLOCK_STAND == (176, 144)
+    assert ROOM_0D_BLOCK_AFTER_RIGHT == (208, 96)
+    assert ROOM_0D_BLOCK_AFTER_RIGHT[0] - ROOM_0D_BLOCK[0] == 16
+    # Race UP the stand column reaches the north-arm east edge during the
+    # 32f slide; the hole is still tile 179. L6-shaped (208,93) is not dest.
+    assert ROOM_0D_NORTH_ARM == (176, 117)
+    assert ROOM_0D_NORTH_ARM[0] == ROOM_0D_BLOCK_STAND[0]
+    assert ROOM_0D_STAIR_WARP_HYP == (208, 93)
+    assert ROOM_0D_STAIR_WARP_HYP[0] == ROOM_0D_BLOCK_AFTER_RIGHT[0]
 
 
 def test_room_1a_candle_is_recon_only_and_arrives_on_candle_2() -> None:

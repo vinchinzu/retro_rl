@@ -3,6 +3,105 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0D NE hole unwalkable during 16px slide (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
+`route_eligible=false`. Chapter factories stay fail-closed.
+`PostLevel7Handoff.verified` stays false. No invented OW leave.
+
+**Pin was** `Level7Interior0DClearedReconFixture` — L7 play `0x0D`
+`(63,149)`, `room_all_dead=1`, Candle 2, TF 0, keys 2, bombs 6,
+`0x68` at `(192,144)`.
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 16px RIGHT, release on start, race UP x=176 | north-arm **`(176,117)`** while block still y=144 | ~24f to the hole's west cell; snap still `(208,96)` at ~32f | **2/2** (`0d_race_v1` / `0d_race_v2`) |
+| RIGHT+UP / clips from `(176,117)` during uncovered window | still `(176,117)` tile 179 | hole not walkable even before the 0x68 parks | `0d_race_v2` / `0d_nb_v2` |
+| east pocket RIGHT toward x=208 | boxed `(192,141)` tile 177 | L6 east-column UP is not this room | `0d_ec_v1` |
+
+Stairs dest `$EB` / mode **still unobserved**. Stair graphic is visible
+NE; the `0x68` parks on it. L6-shaped CheckWarp `(208,93)` is tile
+`0x75` under the parked block and does not mode-9 (`0d_poke_v2`;
+position poke is recon only, not a walk-on). `(192,93)` holding UP
+flashes tile `0x71` and still stays play `0x0D`. Do not treat dump
+mode-16 screen `0x7b` as cellar (offscreen sweep, not reproduced).
+
+Dead beliefs dated:
+- Dead: vacated `(192,144)` is the stair tile.
+- Dead: racing the 32f slide into the NE hole from `(176,117)` —
+  RIGHT+UP is tile 179 while the block is still at `(205,144)`.
+- Dead: L6 east-column `(208,93)` tile `0x71` is this room's warp —
+  `(208,93)` is tile `0x75` / 119 with the 0x68 parked.
+- Dead: north-arm center UP reaches the y=93 band (tile 179 at y=117
+  across x=128..176).
+
+Leftover stays the **cleared** pin (block unpushed). Do not leave a
+post-push state with the `0x68` covering the hole. Do not commit
+`Level7InteriorNoseCellarReconFixture` (still play `0x0D`, not cellar).
+
+**Leftover glance:** L7 play **`0x0D` mode 5** `(63,149)`,
+`room_all_dead=1`, Candle **2**, TF **0**, keys 2, bombs 6, whistle 1,
+food 0, ladder 1, 3 hearts. Block `0x68` `(192,144)`.
+`route_eligible=false`.
+
+Next: another walk-on onto the NE hole (not L6 east-column, not
+north-arm UP). Then NOSE_CELLAR far-side → PRE_BOSS.
+
+# L7 sitting leftover (rr-8t4.3, 2026-09-03 archive)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
+## 2026-09-03 — L7-C 0x0D 16px RIGHT slide (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
+`route_eligible=false`. Chapter factories stay fail-closed.
+`PostLevel7Handoff.verified` stays false. No invented OW leave.
+
+**Pin was** `Level7Interior0DClearedReconFixture` — L7 play `0x0D`
+`(63,149)`, `room_all_dead=1`, Candle 2, TF 0, keys 2, bombs 6,
+`0x68` at `(192,144)`.
+
+Verified (`deaths=0`, `progression/capacity writes=0`):
+
+| walk | dest | notes | evidence |
+|------|------|-------|----------|
+| 0x0D 16px RIGHT on `0x68` (stand 176,144, release on start) | block **`(208,96)`** state=2 | autonomous 1px/2f along y=144 through x=207; 16th pixel snaps north onto the NE stair hole | **2/2** (`0d_push_v20` / `0d_push_v22`) |
+
+Stairs dest `$EB` / mode **still unobserved**. Stair graphic is visible
+in the NE after the slide; the `0x68` parks on it. CheckWarps idles at
+`(192,141)` / `(176,125)` / `(144,141)` do not warp. East pocket north
+limit y=133 at x=192; north-of-plus east limit x=176 (tile 176/177).
+Bombs on those walls do not open. UP/LEFT faces of the block are
+unreachable (south/east diamond). Aquamentus / shard / OW leave not
+reached.
+
+Dead beliefs dated:
+- Dead: holding RIGHT is what sends the block to `(208,96)` — release
+  on the first 1px and it still completes the 16px slide and snaps.
+- Dead: vacated `(192,144)` / `(192,141)` is the stair tile
+  (CheckWarps x=192 y=141 tile 177, no mode 9).
+- Dead: y=117 diamond bar is the only north wall — east pocket can
+  reach y=136 at x=192; the stair hole still sits behind x=176 / y=133.
+
+Leftover stays the **cleared** pin (block unpushed). Do not leave a
+post-push state with the `0x68` covering the hole.
+
+**Leftover glance:** L7 play **`0x0D` mode 5** `(63,149)`,
+`room_all_dead=1`, Candle **2**, TF **0**, keys 2, bombs 6, whistle 1,
+food 0, ladder 1, 3 hearts. Block `0x68` `(192,144)`.
+`route_eligible=false`.
+
+Next: enter the NE stair hole without parking the `0x68` on it, or
+find another warp pose. Then NOSE_CELLAR far-side → PRE_BOSS.
+
+# L7 sitting leftover (rr-8t4.3, 2026-09-03 archive)
+
+Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
+`in_progress`. Residual is this file. Did not `bd export` / push.
+
 ## 2026-09-03 — L7-C 0x0D kill 5 wallmasters (rr-8t4.3)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.
@@ -953,12 +1052,14 @@ New dest fixtures (disclosed writes: none; `development_only` /
 - **dead beliefs:** walk off candle pad y=141 as stairs return; 0x0C
   y=141 centre RIGHT (tile 181 at x=128); 0x0D west mouth is safe (grab
   trap); 0x0D `0x68` RIGHT-pushes while wallmasters live; plus-corner
-  `0x27` are invuln statues (they are the 5 spawners). Boss type
-  Aquamentus still hypothesized (verify).
+  `0x27` are invuln statues (they are the 5 spawners); holding RIGHT is
+  what sends the block to `(208,96)` (release-on-start still snaps);
+  vacated `(192,141)` is the stair tile. Boss type Aquamentus still
+  hypothesized (verify).
 - **fixture:** `Level7Interior0DClearedReconFixture` leftover play `0x0D`
   `(63,149)` `room_all_dead=1` Candle 2. `route_eligible=false`.
-- **resume point:** from cleared leftover, stairs off the `0x68` without
-  sliding it to `(208,96)`. Then NOSE_CELLAR / PRE_BOSS / AQUAMENTUS.
+- **resume point:** enter the NE stair hole without parking the `0x68`
+  on it. Then NOSE_CELLAR / PRE_BOSS / AQUAMENTUS.
 - **public target:** **`level7`**.
 
 ---
