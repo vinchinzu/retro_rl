@@ -146,10 +146,14 @@ UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 # 0x6D tile -- NOT the measured natural post-L7 walk, so this is fixture-live,
 # not route evidence). Firing the Red Candle at (136, 93) facing RIGHT and
 # continuing RIGHT reproducibly transitions mode 5 -> 16 -> ... -> 5 with
-# level==8, landing at live screen 0x7E, (120, 205), facing UP. The same
-# entry room was reproduced from (120, 93)/(128, 93) facing+push RIGHT,
-# (184, 93)/(192, 93)/(200, 93) facing+push LEFT, and (160, 77) facing+push
-# DOWN -- one secret tile, several approach angles. Captured as
+# level==8, landing at live screen 0x7E, (120, 205), facing UP. Six other
+# stands -- (120, 93)/(128, 93) facing+push RIGHT, (184, 93)/(192, 93)/
+# (200, 93) facing+push LEFT, and (160, 77) facing+push DOWN -- opened the
+# mode-16 mouth only: entry_room is null on every one of them, so a shared
+# secret tile is an inference, NOT a reproduced entry. (136, 93) RIGHT/RIGHT
+# is the sole stand ever carried into a room id, and the only one of the
+# three RIGHT stands inside the walked sand channel, so it is also the only
+# aim a natural approach can use. Captured as
 # Level8EntranceReconFixture (see nes/zelda_i/scratch/capture_level8_entrance_fixture.py
 # and its .provenance.json). The sweep never reached level 8 by pushing UP
 # after mode==16 (entry_room is null on all seven mouth stands); the fixture

@@ -100,7 +100,10 @@ LEVEL8_INTERIOR_0X3E_RECON = Level8InteriorRoomRecon(
     bombs_in=7,
     bombs_out=7,
     room_item_id=0x03,
-    census=((0x0C, 128, 6),),  # 6 blue Darknuts, room_all_dead=0
+    # 6 x type 0x0C HP128, room_all_dead=0.  0x0C is unregistered in
+    # dungeon/ids.py (0x0B HP64 is the registered "darknut"); "blue" is a
+    # walkthrough correlation, not an observation, so it stays out of the id.
+    census=((0x0C, 128, 6),),
     fixture="Level8Interior3EReconFixture",
     recording_tag="l8_4e_north_fixture_B1",
 )
