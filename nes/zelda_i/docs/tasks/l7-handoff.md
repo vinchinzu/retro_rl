@@ -3,6 +3,98 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-03 — L7-C 0x0D NE staircase pocket is fully sealed; NOSE_CELLAR = 0x7b (rr-8t4.3)
+
+Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder. No state-
+advancing `ADDR_LINK_X/Y` writes (position pokes used for tile recon only,
+disclosed below). `route_eligible=false`. Chapter factories stay fail-
+closed. `PostLevel7Handoff.verified` stays false. No invented OW leave.
+
+**Pin was** `Level7Interior0DClearedReconFixture` — L7 play `0x0D`
+`(63,149)` `room_all_dead=1`, Candle 2, TF 0, keys 2, bombs 6, whistle 1,
+ladder 1, `0x68` at `(192,144)`.
+
+### New recon (all `deaths=0`, `progression/capacity writes=0`)
+
+**NOSE_CELLAR destination observed: `$EB=0x7b` mode 9 (cellar), census
+4× keese `0x1b`.** Reproduced 2× (`0d_nap_v1`, plus the sweep_0d poke run).
+This retires the dead belief "do not treat dump mode-16 screen `0x7b` as
+cellar" — it IS the cellar, but the transition was reached by a **position
+poke to `(208,93)`**, NOT a walk-on. Not promotable. `NOSE_CELLAR.ram_id`
+stays `None`.
+
+**The `0x0D` staircase tiles are real and revealed by the RIGHT push.**
+Fine tile sweep (`sweep_0d.py`, poke-read of `colliding_tile`, 2px grid):
+- Stair tiles `0x70-0x73` appear at **x≈196-208, y≈96-100** ONLY after the
+  `0x68` RIGHT push (absent on the cleared/un-pushed fixture).
+- The push still snaps `0x68` `(192,144)→(208,96)` (16px E slide then a
+  −48 y snap), block `state=2`. Reconfirmed 2/2 (`0d_nap_v1/v2`).
+
+**The staircase pocket is geometrically sealed — exhaustively confirmed.**
+- A **full-width solid band at y≈101–115** spans x≈32–188 (tiles
+  `0xB0-0xB3` diamond = **never bombable**). Present before AND after the
+  push; the push does not change it.
+- Above the band (y≤99): open floor corridor x≈32–204 that connects to the
+  staircase at its east end.
+- Below the band: open floor; plus an isolated `0xB0-0xB3` mass at
+  x≈176–188 / y≈117–135.
+- The **x≈192–204 sub-column is floor from y≈97 down to y≈131** (it would
+  be the walk-up path onto the staircase) but it is walled off:
+  west neighbour x≈188 is diamond `0xB0-0xB3` for y≈117–131, and a
+  **1-tile diamond plug at (192,133)** seals it from the reachable
+  `(192,136–141)` east pocket. The plug is tile `0xB3` — bombs at
+  `(192,136)`/`(192,135)` facing UP do **not** open it (`0d_ne_v1`,
+  3 bombs).
+
+### Dead beliefs burned (2026-09-03)
+
+- Dead: the `y≈101–117` band has a walkable notch anywhere — swept x=32→204
+  at 2px, every column solid through the band (`sweep_0d`, cleared + pushed).
+- Dead: the west wall (x≈44–48) is a vertical corridor to the top band —
+  `0x2b` residuals patrol x=32 y≈93–123 but Link pins at `(48,117)` tile
+  `0xB3` (`0d_wn_v1`). The residuals are stuck ABOVE the band, not proof of
+  a corridor.
+- Dead: bombing the `(192,133)` plug from the south opens the x=192 column
+  (`0d_ne_v1`, tile stays `0xB3`).
+- Dead: racing UP the **x=192** column during the 32f block slide —
+  `(192,133)` tile `0xB3` solid for the whole slide (`0d_race192_v1`).
+  (x=176 race was already dead.)
+- Dead: `--bomb-stair` reach targeting (`0d_bs_v1`) — `_reach` cannot hit
+  `(192,136)` reliably, wasted 4 bombs; use the `0d_ne_v1` `_bomb_up` path.
+
+### Assessment / options for next session
+
+The block-push-reveals-staircase mechanic as MODELLED leaves the staircase
+in a pocket with **no walk-on route** (non-bombable diamond geometry on
+every side). Either:
+1. The `0x68` RIGHT-push physics in the harness are wrong (the −48 y snap
+   to `(208,96)` is not vanilla one-tile block behaviour) — the real game
+   may move the block one tile to `(208,144)` and open the x=192 column /
+   drop a staircase in the reachable area. Worth diffing block-push
+   handling vs a known-good L1/L5/L9 push room.
+2. NOSE_CELLAR (`0x7b`) is entered from a **different room's** staircase,
+   not `0x0D`'s — check `0x1D` / `0x1C` / neighbours for a down-stair.
+3. Integrator call: allow a disclosed one-write position-poke recon
+   fixture at `(208,93)` purely to unblock the NOSE_CELLAR → PRE_BOSS →
+   AQUAMENTUS → shard → OW-leave recon downstream, clearly
+   `route_eligible=false` / `fixture_only=true`, with the `0x0D` walk-on
+   left as an open blocker.
+
+`Level7Interior0DClearedReconFixture` is unchanged (block un-pushed).
+No new fixture saved (would have covered the hole or required a
+forbidden poke).
+
+**Leftover glance:** L7 play **`0x0D` mode 5** `(63,149)`,
+`room_all_dead=1`, Candle **2**, TF **0**, keys 2, bombs 6, whistle 1,
+food 0, ladder 1, 3 hearts. Block `0x68` `(192,144)`.
+`route_eligible=false`.
+
+**Resume point:** the `0x0D` → NOSE_CELLAR walk-on is an OPEN BLOCKER.
+Try option 1 (block-push physics diff) or option 2 (alt entry room)
+before another walk-on sweep of `0x0D`. Dest is `$EB=0x7b` mode 9 (keese).
+Then NOSE_CELLAR far-side → PRE_BOSS bomb-E → AQUAMENTUS (verify census
+`0x3D`+`0x55` live) → shard `0x40` → measure settled OW leave.
+
 ## 2026-09-03 — L7-C 0x0D NE hole unwalkable during 16px slide (rr-8t4.3)
 
 Did not poke `ADDR_CANDLE` / TF / doors / max_bombs / ladder.

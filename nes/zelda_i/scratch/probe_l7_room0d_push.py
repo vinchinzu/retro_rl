@@ -276,6 +276,10 @@ def main() -> None:
     ap.add_argument("--east-col", action="store_true")
     ap.add_argument("--poke-warp", action="store_true")
     ap.add_argument("--north-band", action="store_true")
+    ap.add_argument("--north-after-push", action="store_true")
+    ap.add_argument("--west-north", action="store_true")
+    ap.add_argument("--wn-push", action="store_true")
+    ap.add_argument("--wn-bomb", action="store_true")
     ap.add_argument("--save-fixture", default="")
     args = ap.parse_args()
     configure_headless()
@@ -291,6 +295,84 @@ def main() -> None:
         print("START", out["start"])
         save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_start.png")
         f = 0
+        if args.west_north:
+            # West wall corridor: 0x2b residuals patrol x=32 y~93-123, so the
+            # west column may connect the south floor to the y=93 top band and
+            # the NE staircase (tiles 0x70-0x73 at x~192 y<=101).
+            wp = [
+                (48, 141), (44, 125), (44, 109), (44, 101), (44, 93),
+                (64, 93), (96, 93), (128, 93), (160, 93), (176, 93),
+                (184, 93), (192, 93),
+            ]
+            hops = []
+            for tx, ty in wp:
+                if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                    break
+                f, ok, xy = _reach(env, a, tx, ty, f, budget=400, tol=1)
+                rec = {
+                    "target": [tx, ty], "ok": ok, "xy": xy,
+                    "tile": int(_s(env).colliding_tile),
+                    "mode": int(_s(env).mode),
+                    "screen": f"0x{int(_s(env).screen):02x}",
+                }
+                print("WN WP", rec)
+                hops.append(rec)
+                save_rgb_png(
+                    env.render(), RECORDINGS_DIR / f"{args.tag}_wn_{tx}_{ty}.png"
+                )
+                if args.wn_push and ok and abs(xy[0] - 192) <= 3 and xy[1] <= 96:
+                    # at the west face of the (192,144) block? no — try pushing
+                    # RIGHT here in case the staircase needs the block pushed
+                    # from the top band.
+                    for _ in range(20):
+                        _step(env, a, "RIGHT", f)
+                        f += 1
+                if args.wn_bomb and ok and xy[1] >= 105 and xy[1] <= 130:
+                    for _ in range(8):
+                        _step(env, a, "UP", f)
+                        f += 1
+                    ensure_bomb(env)
+                    env.step(nes_action("B"))
+                    a.apply_env(env, frame=f)
+                    f += 1
+                    for _ in range(8):
+                        _step(env, a, "DOWN", f)
+                        f += 1
+                    for _ in range(90):
+                        _step(env, a, None, f)
+                        f += 1
+                    print("WN BOMB AFTER", [tx, ty], _glance(env)["xy"])
+                    f, ok, xy = _reach(env, a, tx, ty - 16, f, budget=200, tol=2)
+                    print("WN BOMB WALK", ok, xy, "mode", int(_s(env).mode))
+                if ok and abs(xy[0] - tx) <= 2 and abs(xy[1] - ty) <= 2 and ty <= 96:
+                    for btn in ("UP", "RIGHT", None, "UP", None):
+                        _step(env, a, btn, f)
+                        f += 1
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            print("WN CELLAR", [tx, ty], btn, _glance(env))
+                            break
+                    for _ in range(30):
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            break
+                        _step(env, a, None, f)
+                        f += 1
+                if int(_s(env).mode) in CELLAR_MODES:
+                    break
+            out["wn_hops"] = hops
+            if int(_s(env).mode) in CELLAR_MODES:
+                out["cellar"] = _glance(env)
+                print("WN CELLAR REACHED", out["cellar"])
+                for _ in range(240):
+                    s = _s(env)
+                    if int(s.mode) == PLAY_MODE and int(s.screen) != ROOM:
+                        break
+                    _step(env, a, None, f)
+                    f += 1
+                out["cellar_settled"] = _glance(env)
+                print("WN CELLAR SETTLED", out["cellar_settled"])
+            out["after_wn"] = _glance(env)
+            print("AFTER WN", out["after_wn"])
+            save_rgb_png(env.render(), RECORDINGS_DIR / f"{args.tag}_wn_final.png")
         if args.map:
             # East pocket (176,141) is boxed north at y=117 tile 179.
             # Cut west through the plus gap at y=141 first.
@@ -841,6 +923,119 @@ def main() -> None:
                     f += 1
                 out["cellar_settled"] = _glance(env)
                 print("CELLAR SETTLED", out["cellar_settled"])
+
+            if (
+                args.north_after_push
+                and int(_s(env).mode) not in CELLAR_MODES
+                and int(_s(env).screen) == ROOM
+            ):
+                from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y
+
+                mem = env.unwrapped.data.memory
+                print("NAP BLOCK", _blocks(_s(env)))
+                # 1) fine tile sweep of the N / NE quadrant post-push, via
+                #    position poke (recon only) to spot a new stair tile or
+                #    a walkable notch the RIGHT push may have opened.
+                sweep: list[dict] = []
+                for py in range(0x55, 0x86, 4) if not args.race else ():
+                    row = []
+                    for px in range(0x80, 0xC1, 8):
+                        mem.assign(int(ADDR_LINK_X), "|u1", int(px) & 0xFF)
+                        mem.assign(int(ADDR_LINK_Y), "|u1", int(py) & 0xFF)
+                        env.step(nes_idle_action())
+                        ss = _s(env)
+                        row.append((int(ss.link_x), int(ss.link_y),
+                                    int(ss.colliding_tile), int(ss.mode),
+                                    f"0x{int(ss.screen):02x}"))
+                        if int(ss.mode) in CELLAR_MODES or int(ss.screen) != ROOM:
+                            out["cellar"] = _glance(env)
+                            print("CELLAR SWEEP", out["cellar"])
+                            break
+                    print("NAP ROW", py, row)
+                    sweep.append(row)
+                    if out.get("cellar"):
+                        break
+                out["nap_sweep"] = sweep
+                # restore Link to a safe floor cell before real walking
+                if not out.get("cellar"):
+                    mem.assign(int(ADDR_LINK_X), "|u1", 176)
+                    mem.assign(int(ADDR_LINK_Y), "|u1", 141)
+                    env.step(nes_idle_action())
+                # 2) real walk-in attempts on the y=93 band, west->east, and
+                #    the x=176-184 gap UP.
+                nap_route = (
+                    (176, 141), (176, 125), (176, 117), (180, 117),
+                    (176, 109), (176, 101), (176, 93),
+                    (184, 93), (192, 93), (200, 93),
+                )
+                for tx, ty in nap_route:
+                    if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                        break
+                    f, ok, xy = _reach(env, a, tx, ty, f, budget=300, tol=1)
+                    rec = {
+                        "target": [tx, ty], "ok": ok, "xy": xy,
+                        "tile": int(_s(env).colliding_tile),
+                        "mode": int(_s(env).mode),
+                        "screen": f"0x{int(_s(env).screen):02x}",
+                    }
+                    print("NAP WP", rec)
+                    save_rgb_png(
+                        env.render(),
+                        RECORDINGS_DIR / f"{args.tag}_nap_{tx}_{ty}.png",
+                    )
+                    if int(_s(env).mode) in CELLAR_MODES:
+                        break
+                    # at each y=93 cell, press UP then RIGHT then idle
+                    if ok and ty <= 96:
+                        for btn in ("UP", "UP", "RIGHT", None, "UP", None):
+                            _step(env, a, btn, f)
+                            f += 1
+                            if int(_s(env).mode) in CELLAR_MODES:
+                                print("NAP CELLAR", [tx, ty], btn, _glance(env))
+                                break
+                        for _ in range(30):
+                            if int(_s(env).mode) in CELLAR_MODES:
+                                break
+                            _step(env, a, None, f)
+                            f += 1
+                    if int(_s(env).mode) in CELLAR_MODES:
+                        break
+                # 3) straight-UP pushes from the y=101/109 rows at x=192/184
+                if int(_s(env).mode) not in CELLAR_MODES:
+                    for sx, sy in ((192, 109), (184, 109), (192, 101), (200, 109)):
+                        if int(_s(env).mode) in CELLAR_MODES or int(_s(env).screen) != ROOM:
+                            break
+                        f, ok, xy = _reach(env, a, sx, sy, f, budget=260, tol=1)
+                        print("NAP UPPUSH STAND", [sx, sy], ok, xy,
+                              "tile", int(_s(env).colliding_tile))
+                        for i in range(24):
+                            s = _s(env)
+                            if int(s.mode) in CELLAR_MODES or int(s.screen) != ROOM:
+                                break
+                            _step(env, a, "UP", f)
+                            f += 1
+                            if i % 6 == 0:
+                                print("NAP UPPUSH", [sx, sy], i, _glance(env)["xy"],
+                                      "tile", int(s.colliding_tile))
+                        save_rgb_png(
+                            env.render(),
+                            RECORDINGS_DIR / f"{args.tag}_nap_up_{sx}_{sy}.png",
+                        )
+                        if int(_s(env).mode) in CELLAR_MODES:
+                            break
+                if int(_s(env).mode) in CELLAR_MODES:
+                    out["cellar"] = _glance(env)
+                    print("NAP CELLAR FINAL", out["cellar"])
+                    for _ in range(200):
+                        s = _s(env)
+                        if int(s.mode) == PLAY_MODE and int(s.screen) != ROOM:
+                            break
+                        _step(env, a, None, f)
+                        f += 1
+                    out["cellar_settled"] = _glance(env)
+                    print("NAP CELLAR SETTLED", out["cellar_settled"])
+                out["after_north_after_push"] = _glance(env)
+                print("AFTER NAP", out["after_north_after_push"])
 
         if args.race and int(_s(env).mode) not in CELLAR_MODES:
             # After a just-started RIGHT slide, run UP the x=176 column
