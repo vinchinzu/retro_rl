@@ -2,6 +2,130 @@
 
 Did not STATUS-promote. Did not claim spine-green. Did not poke candle/doors/TF/magic key.
 
+## Sitting — 2026-09-03 (L7→L8 seam + L8 0x4E→0x3E)
+
+Development-only. `natural_entry=false`, `route_eligible=false` throughout.
+No STATUS promotion, no handoff `verified=true`, no push.
+
+### Track A — L7-pond → OW 0x6D, 2/2 byte-identical (rr-6o7.4)
+
+The old `L7_POND_TO_LEVEL8_BUSH_HOPS` reverse-waypoint (OccupancyWalker)
+approach never crossed 0x52 (flooded occupancy misses). Rebuilt
+`Level7PondToLevel8BushController._extra_hop_action` from the **live**
+per-screen point lists of `OverworldToLevel7PondController` (the forward
+`0x77→…→0x42` pond walk), reversed screen by screen:
+
+```
+0x42 (OW_L7Pond south shore, 112,221) --DOWN--> 0x52
+  0x52 boulder field: (128,61) top -> DOWN to the y~85 corridor -> LEFT to
+    the x~48 sand column -> DOWN to y~189 bottom -> RIGHT east edge
+0x52 --RIGHT--> 0x53   (0,189) west -> RIGHT -> x~192 pillar UP to y~141 -> RIGHT
+0x53 --RIGHT--> 0x54   (0,141) west -> RIGHT to x~64 -> DOWN
+0x54 --DOWN--> 0x64    (64,61) north -> DOWN the x~64 column to y~141 -> RIGHT
+0x64 --RIGHT--> 0x65   (0,141) west -> RIGHT along the y~141 river ford to
+                        x~112 -> UP  (north gap is x~112, NOT the west bank)
+0x65 --UP--> 0x55      (112,221) south -> UP the x~112 sand spit to y~133 -> RIGHT
+0x55 --RIGHT--> 0x56   (0,133) west -> RIGHT along y~133 to x~224 -> DOWN to
+                        y~157 -> RIGHT
+0x56 --RIGHT--> 0x57   straight RIGHT at y~157
+0x57 --RIGHT--> 0x58   straight RIGHT at y~157
+0x58 --RIGHT--> 0x59   join the already-live LEVEL8_BUSH_HOPS corridor
+0x59 → 0x5A → 0x5B → 0x5C (maze) → 0x5D → 0x6D
+  0x5B: added a local climb that holds x~16 (the inherited "y>100 -> UP"
+        corridor climb pins Link on the x=0 wall at a y~100 snag).
+```
+
+Evidence: `probe_l7_exit_to_l8_bush.py --from-state OW_L7Pond`, tags
+`A18`/`A19` — **2/2 byte-identical**: `success=True`, `frames=4980`,
+identical transition-frame list, settled **OW 0x6D `(48,61)` tile `0x00`**
+($EB=0x6D), `deaths=0`, `progression_writes=0`, `capacity_writes=0`.
+Bombs `0→4` from natural Octorok drops along the corridor (pickup, not a
+poke). `route_eligible=false`, `natural_entry=false`,
+`evidence="fixture-live-prefix"`, hop-engine seam unchanged (no new
+sibling dispatcher). `overworld.py` now 931 lines.
+
+**Refilled pond handled:** the natural `Level7Entrance` exit refills the
+pool and strands Link in the `y~85–100` top strip of `0x42` — probe
+`s42` reachability sweep: **nothing south of y~107 is reachable**, Link
+cannot walk around the pool. Controller keeps that fail-closed
+(`42_refilled_pond_straight_down_dead`, now fires anywhere in the strip).
+The 2/2 route starts from the disclosed `OW_L7Pond` south-shore pose
+(the route-review-recommended start), where `DOWN` scrolls straight to
+`0x52` below the pool.
+
+0x6D census (settled from the route, idle): Link at `(48,61)` (arrival
+from 0x5D south @ x≈48; only candle-free exit is back UP@x≈48 → 0x5D).
+Objects: 4× `0x04` HP32 (red Octoroks) + 1× `0x5B` HP192 + 1× `0x64`
+HP240 — the last two are almost certainly transition residuals (same
+pattern as the 0x4E `0x2B` HP240 residuals), not live enemies.
+
+Did **not** attempt the Red-Candle burn / L8 entry (rr-6o7.1, still
+fail-closed).
+
+### Track B — L8 0x4E → 0x3E north key door, 2/2 (rr-6o7.2 groundwork)
+
+`probe_l8_4e_north.py` from `Level8InteriorReconFixture`: reused the
+confirmed `0x7E → clear 0x6E → bomb-N 0x5E → clear 5 blue Darknuts /
+center key (9→10) → shutter-N → settled 0x4E (120,205)` policy
+**unchanged**, then ONE attempt at the **north key door** from `0x4E`.
+The mixed `0x4E` census was **not** cleared (first-departure guards kept
+around the generic combat helpers).
+
+**2/2 byte-identical** (tags `B1`/`B2`, `frames=2918`):
+
+- north door is a **locked key door** — one natural key spent, **keys
+  10 → 9**; **bombs 7 → 7** (unchanged, no bombs)
+- settled play room **`0x3E`** at `(120,205)`, `$EB=0x3E`, facing DOWN,
+  `cur_opened_doors=4` / `open_doorway_mask=4` (south, the door Link
+  came through)
+- `0x3E` census: **6× type `0x0C` HP 128** (blue Darknuts),
+  `room_item_id=0x03`, `room_obj_count=6`, `room_all_dead=0`
+- `deaths=0`, `progression_writes=0`, `capacity_writes=0`, no combat or
+  further key/bomb use in `0x3E`
+- Survival refilled 17 filled units across 12 damage events
+  (`0x6e`:6, `0x5e`:8, `0x4e`:3 — all pre-door, from the mixed census
+  while aligning to the door). Bomb selection stayed normal pause input.
+
+Resume point: **`Level8Interior3EReconFixture`** (`.state` gitignored per
+repo convention; `.provenance.json` committed). Disclosed writes: **NONE**
+— the only inventory delta vs `Level8InteriorReconFixture` is the natural
+key spend `10→9` at the north door. Loads at L8 `0x3E (120,205)`, keys 9,
+bombs 7, TF `0x7F`, Candle 2, 6 blue Darknuts.
+
+Recon wiring: `level8/dungeon.py` `Level8InteriorRoomRecon` +
+`LEVEL8_INTERIOR_0X3E_RECON` (evidence `live_recon_fixture`,
+`route_eligible=False`). **Not** a `DungeonRoomSpec`, **not** on
+`L8_THROUGH`; `LEVEL8_HYPOTHESIS_ROOMS` room_ids untouched
+(`hypothesis_room_ids_unobserved()` still true). Live-prefix test:
+`test_level8_interior_0x3e_recon_is_fixture_only_not_route_eligible`.
+
+### Dead beliefs burned — 2026-09-03
+
+- **Reverse pond route via OccupancyWalker waypoints** — never crossed
+  0x52; the walker's grid modelled every cell blocked (263 misses).
+  Replaced with deterministic reversed forward-trace handlers.
+- **0x42→0x52 north gap at x≈128** — wedges Link on the boulder wall;
+  the gap is **x≈112** and must be x-aligned on the 0x42 south shore
+  first.
+- **0x52 y≈93 corridor descends anywhere** — it is a horizontal
+  dead-end; the only descent is the **x≈48 column** off the **y≈85**
+  corridor (not y≈93, not x≈32).
+- **0x65 north exit to 0x55 on the west bank (x≈40–64)** — a false
+  reading from staging Link on the wrong bank; the live forward trace
+  crosses **straight at x≈112** (river ford at y≈136–144, then UP).
+- **`POND_42_REFILLED_DEAD_POSE` is a single (112,93) point** — the
+  strand is the whole `y≈85–100` strip; Link now lands at `(96,93)`
+  from the natural exit and the guard fires strip-wide.
+- **0x4E north door is an open shutter** (hypothesis-chain label
+  "shutter-N" then "key-N") — it is a **locked key door**; one key is
+  spent 0x4E→0x3E.
+- **`Level7Entrance` can route around the refilled pool** — reachability
+  sweep proves it cannot; that start is fail-closed, not a route.
+
+Still open / not attempted this sitting: 0x6D Red-Candle burn + L8 entry
+(rr-6o7.1); 0x3E onward (clear 6 blue Darknuts, bomb-N toward 0x2E);
+four-head Gleeok body type; measured post-L7 fanfare leave.
+
 ## Fixture-live continuation — 2026-09-03
 
 This section supersedes the older sitting boundary below.  It remains
