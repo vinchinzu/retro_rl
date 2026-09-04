@@ -15,7 +15,9 @@ from typing import Callable
 
 from zelda_i.level7.aquamentus import make_level7_aquamentus_heart_controller
 from zelda_i.level7.cellar import make_nose_cellar_cross_controller
+from zelda_i.level7.digdogger import make_level7_forced_digdogger_controller
 from zelda_i.level7.dungeon import (
+    MEASURED_POST_L7_EXIT,
     level7_complete_stop,
     level7_entry_stop,
     level7_red_candle_stop,
@@ -27,7 +29,7 @@ from zelda_i.level7.entry import (
     make_post_l6_overworld_controller,
     make_survival_bait_purchase_controller,
 )
-from zelda_i.level7.graph import ledger_notes
+from zelda_i.level7.hungry import make_level7_hungry_goriya_controller
 from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 from zelda_i.dungeon.bomb_wall import BombWallController
 from zelda_i.level7.path import (
@@ -42,9 +44,7 @@ from zelda_i.level7.path import (
     L7_ROOM0C_EAST_BOMB,
     L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
-    HungryGoriyaGateController,
     Level7PathController,
-    RedCandlePickupController,
     Room6AEastController,
     Room6BEastController,
     Room6BNorthController,
@@ -65,6 +65,7 @@ from zelda_i.level7.path import (
     Room69EastController,
     unverified_path_controller,
 )
+from zelda_i.level7.pre_boss import make_room29_east_bomb_controller as make_room29_east_bomb_controller_impl
 from zelda_i.level7.shard import (
     make_level7_shard_leave_controller as make_level7_shard_leave_controller_impl,
 )
@@ -238,8 +239,8 @@ def make_room09_down_controller() -> Level7PathController:
 def make_room1a_candle_controller() -> Level7PathController:
     """0x1A kill-clear, 0x68 UP, stairs to cellar 0x4A, natural Red Candle (2/2).
 
-    ADDR_CANDLE 0→2 by walking onto the pad.  Recon-wired only.  Chapter
-    ``RedCandlePickupController`` stays fail-closed.
+    ADDR_CANDLE 0→2 by walking onto the pad.  Wired as
+    ``level7_red_candle_pickup``.
     """
     return Room1ACandleController()
 
@@ -307,7 +308,8 @@ def make_room0d_clear_controller() -> Room0DClearController:
 
 
 def make_entry_to_goriya_controller() -> Level7PathController:
-    return HungryGoriyaGateController()
+    """Live 0x28 feed (pause-select Bait slot 6) then UP to MAP 0x18 (2/2)."""
+    return make_level7_hungry_goriya_controller()
 
 
 def make_tip_stairs_controller() -> Level7PathController:
@@ -322,24 +324,22 @@ def make_tip_stairs_controller() -> Level7PathController:
 
 
 def make_red_candle_controller() -> Level7PathController:
-    return RedCandlePickupController()
+    """Live 0x1A push + cellar 0x4A natural Red Candle (ADDR_CANDLE 0→2)."""
+    return Room1ACandleController()
 
 
 def make_forced_digdogger_controller() -> Level7PathController:
-    """Fail-closed until the live post-Candle walk and forced Digdogger census.
+    """Live 0x1C whistle-shrink 0x38→0x18, sword, KILL-CLEAR north 0x0C (2/2).
 
-    Graph hyp (source ids, not RAM): return CANDLE_PUSH, bomb-east
-    GORIYA_PRE_DIG, key-east FORCED_DIGDOGGER (must kill). Whistle shrinks
-    type ``0x38`` → ``0x18``. Recipe: ``level5.whistle_path.select_b_item_menu``
-    want=5 (``level5.boss_path.WHISTLE_B_SLOT``, recorder), then 12×B as in
-    ``level5.boss_path.fight_digdogger``. Do not poke ``ADDR_SELECTED_ITEM``.
-    Do not invent a live ``$EB`` for this room.
+    Pause-select recorder B-slot 5 (cycle past Red Candle=4). No
+    ``ADDR_SELECTED_ITEM`` poke. Stand ``(120,141)``.
     """
-    return unverified_path_controller(
-        "level7_forced_digdogger",
-        "live post-Candle route and forced Digdogger room census "
-        "(Whistle B-slot 5 shrink; no invented $EB)",
-    )
+    return make_level7_forced_digdogger_controller()
+
+
+def make_room29_east_bomb_controller() -> BombWallController:
+    """0x29 PRE_BOSS east BOMB wall → live 0x2A (probe geometry)."""
+    return make_room29_east_bomb_controller_impl()
 
 
 def make_aquamentus_heart_controller() -> Level7PathController:
@@ -408,28 +408,47 @@ def level7_entry_chapter_stages(
 
 
 def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
-    """Fresh entry first-door -> Hungry Goriya -> tip stairs -> natural Red Candle."""
+    """0x79 first door → west candle mainline → Hungry feed → MAP bombs → 0x4A.
+
+    Tip-of-nose stairs is near-boss (complete chapter), not between Hungry
+    and Candle. Pond drain is still the Survival serial fail on the entry
+    hop. Stages stay ``route_eligible=false``.
+    """
     return (
         _stage("level7_entry_first_door", make_entry_first_door_controller),
+        _stage("level7_room69_west_bomb", make_room69_west_bomb_controller),
+        _stage("level7_room68_north", make_room68_north_controller),
+        _stage("level7_room58_east", make_room58_east_controller),
+        _stage("level7_room59_up", make_room59_up_controller),
+        _stage("level7_room49_up", make_room49_up_controller),
+        _stage("level7_room39_left", make_room39_left_controller),
+        _stage("level7_room38_up", make_room38_up_controller),
         _stage("level7_entry_to_hungry_goriya", make_entry_to_goriya_controller),
-        _stage("level7_tip_of_nose_stairs", make_tip_stairs_controller),
+        _stage("level7_room18_north_bomb", make_room18_north_bomb_controller),
+        _stage("level7_room08_east_bomb", make_room08_east_bomb_controller),
+        _stage("level7_room09_down", make_room09_down_controller),
+        _stage("level7_room19_east_bomb", make_room19_east_bomb_controller),
         _stage("level7_red_candle_pickup", make_red_candle_controller),
     )
 
 
 def level7_complete_chapter_stages() -> tuple[Stage, ...]:
-    """Fresh Red Candle boundary -> bosses -> heart -> shard -> settled leave.
+    """Candle return → Digdogger → 0x0D stairs → cellar → 0x2A heart → shard.
 
-    ``level7_forced_digdogger`` is still a fail-closed blocker, so the chapter
-    cannot run end to end. The Aquamentus/heart and shard/leave stages are
-    live 2/2 (rr-8t4.3, ``20260904_W3``-``W6``) but stay
-    ``route_eligible=false``: their lineage is the cleared 0x0D recon pin, not
-    a Survival power-on. Public leftover contract is in
-    ``level7.dungeon.LEVEL7_COMPLETE_STOP`` and
-    ``docs/tasks/l7c-prep-2026-09-03.md``.
+    Pond drain still blocks Survival ``--through level7``. Interior stages
+    are fixture-live (``route_eligible=false``). ``MEASURED_POST_L7_EXIT``
+    stays unfilled (``verified=False``); do not copy the TF-0 leftover.
     """
     return (
+        _stage("level7_room4a_return", make_room4a_return_controller),
+        _stage("level7_room1a_east_bomb", make_room1a_east_bomb_controller),
+        _stage("level7_room1b_key_east", make_room1b_key_east_controller),
         _stage("level7_forced_digdogger", make_forced_digdogger_controller),
+        _stage("level7_room0c_east_bomb", make_room0c_east_bomb_controller),
+        _stage("level7_room0d_clear", make_room0d_clear_controller),
+        _stage("level7_tip_of_nose_stairs", make_tip_stairs_controller),
+        _stage("level7_nose_cellar_cross", make_nose_cellar_cross_controller),
+        _stage("level7_room29_east_bomb", make_room29_east_bomb_controller),
         _stage("level7_aquamentus_heart", make_aquamentus_heart_controller),
         _stage("level7_shard_and_settled_leave", make_level7_shard_leave_controller),
     )
@@ -484,10 +503,10 @@ def l7_hops(
     """Build fresh L7 chapter rows.  Defaults stay non-executable.
 
     ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
-    for the disclosed ``ADDR_FOOD`` fixture.  ``level7_entry_first_door`` is
-    a live ``0x79`` north walker; pond drain, Hungry Goriya, candle, and
-    forced Digdogger stay fail-closed. Tip stairs, Aquamentus/heart, and
-    shard/leave are fixture-live (``route_eligible=false``).
+    for the disclosed ``ADDR_FOOD`` fixture.  Pond drain stays fail-closed.
+    Interior chapters now follow the live room order (Hungry/candle/Digdogger
+    included) with ``route_eligible=false``. ``MEASURED_POST_L7_EXIT`` stays
+    unfilled.
     """
 
     def _entry_stages() -> tuple[Stage, ...]:
@@ -545,6 +564,7 @@ __all__ = [
     "make_room1a_east_bomb_controller",
     "make_room0c_east_bomb_controller",
     "make_room0d_clear_controller",
+    "make_room29_east_bomb_controller",
     "make_room1a_candle_controller",
     "make_room4a_return_controller",
     "make_room1b_key_east_controller",
@@ -561,5 +581,6 @@ __all__ = [
     "make_room68_down_controller",
     "make_room68_north_controller",
     "make_tip_stairs_controller",
+    "MEASURED_POST_L7_EXIT",
     "UNMEASURED_HANDOFF",
 ]

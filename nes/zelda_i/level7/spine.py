@@ -13,7 +13,7 @@ continuous power-on.  The Bait stage then runs the disclosed Survival
 L6 -> shop overworld route is a mountain-locked pocket, tracked in bead
 ``rr-8t4.4``.  ``level7_pond_drain_entry`` still fails closed (natural-whistle
 drain from the L6 leave is unobserved; entry room ``0x79`` is observed).
-Interior stages past entry stay fail-closed.
+Interior chapters follow the live room order but stay ``route_eligible=false``.
 """
 
 from __future__ import annotations
