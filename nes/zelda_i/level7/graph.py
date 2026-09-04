@@ -288,14 +288,31 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "one-at-a-time) + bubbles 0x2b + 0x68 at (192,144); entry (32,141) "
         "W mouth is a grab trap (x=32 any y). Kill 5 then room_all_dead=1 "
         "2/2 (0d_wm_v10/0d_cleared). RIGHT-push slides 0x68 to (208,96) "
-        "on the NE hole; x=176 UP reaches (176,117) during the 32f slide "
-        "but RIGHT+UP is tile 179. Stairs dest still unobserved",
+        "on the NE hole. ROM: AttrE secret=block_stairs; CheckWarps dest "
+        "is cellar 0x7B AttrB; far side play 0x29. Walk-on unobserved",
         evidence="fixture-live",
     ),
-    Level7RoomHyp(NOSE_CELLAR, "nose_cellar"),
-    Level7RoomHyp(PRE_BOSS, "pre_boss"),
-    Level7RoomHyp(AQUAMENTUS, "aquamentus", role="heart_plus_1"),
-    Level7RoomHyp(TRIFORCE, "triforce_shard_7", role="public_level7"),
+    Level7RoomHyp(
+        NOSE_CELLAR,
+        "nose_cellar",
+        role="ROM cellar 0x7B tunnel AttrA=0x29 AttrB=0x0D; poke-observed "
+        "mode 9 from 0x0D (return/B ladder x=$C0). ram_id unpromoted",
+    ),
+    Level7RoomHyp(
+        PRE_BOSS,
+        "pre_boss",
+        role="ROM play 0x29 = cellar 0x7B AttrA; E bomb -> 0x2A. Unobserved live",
+    ),
+    Level7RoomHyp(
+        AQUAMENTUS,
+        "aquamentus",
+        role="heart_plus_1; ROM LevelInfo boss=0x2A W-bomb E-shutter",
+    ),
+    Level7RoomHyp(
+        TRIFORCE,
+        "triforce_shard_7",
+        role="public_level7; ROM LevelInfo tf_room=0x2B W-open",
+    ),
 )
 
 LEVEL7_ROOM_BY_ID: dict[int, Level7RoomHyp] = {r.source_id: r for r in LEVEL7_ROOMS}
@@ -782,22 +799,39 @@ def _l7_exits() -> dict[int, tuple[RoomExit, ...]]:
                 notes=(
                     "kill 5 wallmasters (room_all_dead=1 2/2); 16px RIGHT "
                     "on 0x68 (192,144) snaps to (208,96) on the NE stair "
-                    "hole. Race UP x=176 reaches (176,117) before the snap; "
-                    "hole stays tile 179. Dest $EB still unobserved"
+                    "hole. ROM CheckWarps: cellar 0x7B AttrB; InitMode9 "
+                    "spawns right ladder x=$C0. Walk-on still unobserved"
                 ),
             ),
         ),
         NOSE_CELLAR: (
-            _open(DoorDir.UP, TIP_OF_NOSE, notes="stairs"),
-            _open(DoorDir.RIGHT, PRE_BOSS, notes="stairs far side"),
+            _open(
+                DoorDir.UP,
+                TIP_OF_NOSE,
+                notes="ROM CheckSubroom X>=$80 AttrB -> play 0x0D",
+            ),
+            _open(
+                DoorDir.RIGHT,
+                PRE_BOSS,
+                notes="ROM: cellar 0x7B left/AttrA ladder x=$30 -> play 0x29",
+            ),
         ),
         PRE_BOSS: (
-            _open(DoorDir.LEFT, NOSE_CELLAR, notes="stairs"),
-            _e(DoorDir.RIGHT, AQUAMENTUS, GateKind.BOMB),
+            _open(DoorDir.LEFT, NOSE_CELLAR, notes="ROM 0x29 stairs -> cellar 0x7B"),
+            _e(
+                DoorDir.RIGHT,
+                AQUAMENTUS,
+                GateKind.BOMB,
+                notes="ROM 0x29 E bomb / 0x2A W bomb",
+            ),
         ),
         AQUAMENTUS: (
             _back(DoorDir.RIGHT, PRE_BOSS),
-            _open(DoorDir.RIGHT, TRIFORCE, notes="heart then east shard"),
+            _open(
+                DoorDir.RIGHT,
+                TRIFORCE,
+                notes="ROM 0x2A E shutter then 0x2B W open after heart",
+            ),
         ),
         TRIFORCE: (_back(DoorDir.RIGHT, AQUAMENTUS),),
     }

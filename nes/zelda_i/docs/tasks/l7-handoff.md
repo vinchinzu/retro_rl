@@ -3,6 +3,21 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-04 — rr-n91a ROM stair-list: 0x0D IS the predecessor; far side is play 0x29
+
+Agent B, parallel with rr-6o7.2. Did not poke. Did not take the emulator.
+Did not STATUS. Living residual: `docs/tasks/rr-n91a-residual.md`.
+
+L7 stairway list PRG `0x19A18` / iNES `0x19A28`: `7B 4A FF FF FF FF FF FF`.
+Cellar `0x7B` AttrA=`0x29` AttrB=`0x0D` (tunnel). Cellar `0x4A` AttrA=AttrB=`0x1A`
+(live candle, calibrates). CheckWarps from play `0x0D` → cellar `0x7B` right
+ladder; left ladder is play `0x29` (ROM PRE_BOSS; LevelInfo boss `0x2A`,
+tf `0x2B`). `0x0D` AttrE secret=block_stairs. Table: `level7/stairs.py`.
+
+**0x0D is not a dead belief.** The poke's "0x7B is return-only" is dead:
+AttrA≠AttrB; the recon climbed the source/B ladder. Walk-on squeeze still
+open. No live 2/2 this sitting.
+
 ## 2026-09-03 — L7-C 0x0D: Step-1 south-face squeeze re-tried & NO-GO; Step-2 poke cellar is a DEAD END back to 0x0D (rr-8t4.3)
 
 MAIN tree, branch `main`. No capability pokes. One disclosed position
