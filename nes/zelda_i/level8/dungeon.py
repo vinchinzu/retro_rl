@@ -25,11 +25,11 @@ TF_AFTER_LEVEL8 = 0xFF
 # Four-head Gleeok body type is unknown.  L4 is 0x43 and L6 is 0x44; do not
 # treat the absent 0x45 as the L8 body.
 GLEEOK_FOUR_HEAD_OBJECT_TYPE: int | None = None
-# Walkthrough figure, not a live measurement.  rr-6o7.2 recon settled the
-# hypothesis "blue_gohma" room as 0x1E and RAM shows ONE body of type 0x33
-# HP 96 there -- dungeon/ids.py registers 0x33 as the L6 "gohma_red" body, not
-# 0x34 -- so the arrow count stays an unverified walkthrough number until a
-# live kill measures it.  See LEVEL8_INTERIOR_0X1E_RECON.
+# Live 0x1E kill (rr-gw0x, probe_l8_1e_gohma D1b/D2).  Body type is 0x33
+# (ids.py "gohma_red", L6 0x1C) at HP 96; colour is not asserted.  Three
+# connecting wooden arrows dropped HP 96→64→32→0.  The probe loosed 9 shots
+# (rupees 255→246; 6 misses).  This constant is the connect count, not the
+# loosed-shot count.  See LEVEL8_INTERIOR_0X1E_RECON / 0X1F_RECON.
 BLUE_GOHMA_ARROWS_REQUIRED = 3
 
 
@@ -202,10 +202,58 @@ LEVEL8_INTERIOR_0X1E_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_2e_north_fixture_20260904_C1",
 )
 
+# rr-6o7.2 / rr-gw0x: ONE guarded boundary past 0x1E, taken from the settled
+# 0x1E continuation pin (Level8Interior1EReconFixture).  Kill the one 0x33
+# HP96 body with the fixture's own wooden arrows on the L6 eye-open rising
+# edge (RAM 0x03C7 leaving 0xC0), then ONE east push.
+#
+# 2/2 byte-identical (probe l8_1e_gohma D1b/D2, 1731 frames each; graded
+# keys identical, only screenshot paths and the D2-only saved_fixture entry
+# differ).  Live RAM: three connecting arrows (HP 96→64→32→0), nine shots
+# loosed (rupees 255→246), then first settled play room 0x1F at (16,141),
+# keys 8→8, bombs 6→6, deaths 0, progression_writes 0, capacity_writes 0,
+# direct runtime writes 0.  Assist = Survival health refill only (7 writes,
+# max single-frame damage 1).  D1 killed the body the same way but halted
+# on open_doorway_mask staying 0x04; D1b gated on the doors-byte rising
+# edge instead.
+#
+# Gate evidence, in 0x1E: arrival cur_opened_doors/open_doorway_mask = 0x04
+# (the DOWN key door from 0x2E).  The kill raised cur_opened_doors 0x04→0x0D
+# (RIGHT bit 0x01) and PNG east went black with no key spent, so the east
+# gate is a kill-clear shutter -- hypothesis edge "blue_gohma ->
+# magic_key_stairs RIGHT kill_clear" holds for destination and gate kind.
+# open_doorway_mask stayed 0x04 and is not the shutter stop (L6 post-Gleeok
+# / L9 Patra).  Colour is not asserted: RAM type stayed 0x33, never 0x34.
+#
+# 0x1F census: 2× 0x16 pols_voice HP160, 2× 0x0C HP128, 2× 0x0B darknut
+# HP64 (room_obj_count=6, room_all_dead=0).  One 0x68 HP176 at (96,144) was
+# also live; it is the centre staircase sprite (PNG), not room population,
+# so it is not a census row.  room_item_id 0x03, Magic Key still 0.
+LEVEL8_INTERIOR_0X1F_RECON = Level8InteriorRoomRecon(
+    room_id=0x1F,
+    entered_from=0x1E,
+    entry_direction="RIGHT",
+    entry_gate="east_kill_clear_shutter",
+    entry_pose=(16, 141),  # west mouth of a RIGHT door
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x03,  # ids.room_item_name -> no_inventory_reward_observed
+    census=(
+        (0x16, 160, 2),  # pols_voice
+        (0x0C, 128, 2),  # unregistered; 0x0B is the registered darknut
+        (0x0B, 64, 2),  # darknut
+    ),
+    fixture="Level8Interior1FReconFixture",
+    recording_tag="l8_1e_gohma_fixture_20260904_D1b",
+)
+
 LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
+    LEVEL8_INTERIOR_0X1F_RECON,
 )
 
 
@@ -497,6 +545,7 @@ __all__ = [
     "LEVEL8_HYPOTHESIS_EXITS",
     "LEVEL8_HYPOTHESIS_ROOMS",
     "LEVEL8_INTERIOR_0X1E_RECON",
+    "LEVEL8_INTERIOR_0X1F_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",

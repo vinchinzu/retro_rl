@@ -330,8 +330,25 @@ Recorded as `level8.dungeon.LEVEL8_INTERIOR_0X3E_RECON`
 `Level8InteriorReconFixture` / `Level8Interior3EReconFixture` with their
 `.provenance.json`.
 
-A `0x3E →` north continuation is in flight in the rr-6o7.2 lane. This page
-stops at `0x3E`; extend the table above only from committed evidence.
+A `0x3E →` north continuation is recorded in `LEVEL8_INTERIOR_ROOM_RECON`
+(`0x3E` bomb-north → `0x2E` → north key door → `0x1E`). This page's table
+above still stops at `0x3E`; the next live-recon paragraph is the 0x1E kill.
+
+### Fixture-live 0x1E kill → 0x1F (rr-gw0x)
+
+From `Level8Interior1EReconFixture` (fixture-only, `natural_entry=false`,
+`route_eligible=false`). Kill the one 0x1E body — RAM type `0x33` HP96,
+ids.py `gohma_red`; **no colour asserted**, never `0x34` — on the L6
+eye-open rising edge (`RAM 0x03C7` leaving `0xC0`). 2/2 byte-identical
+(probe `l8_1e_gohma` D1b/D2, 1731 frames): three connecting wooden arrows
+(HP 96→64→32→0), nine shots loosed (rupees 255→246), then ONE east
+kill-clear shutter → first settled L8 play `0x1F` `(16,141)`, keys 8→8,
+bombs 6→6. `cur_opened_doors` rose `0x04→0x0D` (RIGHT bit); PNG east went
+black; `open_doorway_mask` stayed `0x04` and is not the shutter stop.
+`BLUE_GOHMA_ARROWS_REQUIRED = 3` is now the live connect count. 0x1F
+arrival census: 2× `0x16` pols_voice HP160, 2× `0x0C` HP128, 2× `0x0B`
+darknut HP64, centre stairs sprite `0x68` at ~(96,144) (not population),
+`room_item_id=0x03`, Magic Key still 0. Not on `L8_THROUGH`.
 
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
@@ -371,8 +388,8 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 | Manhandla early | live `0x6E` north of entry: 5× `0x3C` HP64, sword-only clear. West of entry is the source Book detour, unvisited | **fixture-live** (`0x6E` only) |
 | Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
 | Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
-| Gohma (blue, 3 arrows) | source type `0x34`; Bow+arrows from cumulative route; **no L6 poke** | no |
-| Magical Key (staircase) | `ADDR_MAGIC_KEY=0x0664` | no |
+| Gohma (blue, 3 arrows) | live `0x1E` type **`0x33` HP96** (ids: L6 red; colour not asserted). 3 connecting wooden arrows, 9 shots loosed. East kill-clear → `0x1F`. **no L6 poke** | **fixture-live** (`route_eligible=false`) |
+| Magical Key (staircase) | live `0x1F` has a centre stairs sprite (`0x68` ~(96,144)); `ADDR_MAGIC_KEY` still 0 | **fixture-live arrival only** |
 | Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
 
 Items optional for credits (source). TF bit **`0x80`**. Magical Key is the
@@ -401,7 +418,9 @@ start.
 | `Level8BushWithCandleFixture` | Stage 1 of the burn recon: from `Level8BushOW`, pokes Candle 2 + B-slot 4 + TF `0x7F` + stand `(48,90)` on `0x6D` (settles `(48,93)`) |
 | `Level8EntranceReconFixture` | **First live L8 interior.** Burn `(136,93)` RIGHT/RIGHT from the above; L8 play `0x7E` `(120,205)`, mode 5, TF `0x7F`. Replaces the old “`Level8Entrance` not created” row |
 | `Level8InteriorReconFixture` | `Level8EntranceReconFixture` + disclosed recon resources (sword 3, bombs 8, bow 1, arrows 1, rupees 255, keys 9); Magic Key / TF / rooms / doors untouched |
-| `Level8Interior3EReconFixture` | End of the fixture-live chain: L8 play `0x3E` `(120,205)`, keys 9, bombs 7, 6× `0x0C` HP128 alive |
+| `Level8Interior3EReconFixture` | L8 play `0x3E` `(120,205)`, keys 9, bombs 7, 6× `0x0C` HP128 alive |
+| `Level8Interior1EReconFixture` | L8 play `0x1E` `(120,205)`, keys 8, bombs 6, one body type `0x33` HP96 |
+| `Level8Interior1FReconFixture` | End of the fixture-live chain: L8 play `0x1F` `(16,141)`, keys 8, bombs 6, rupees 246, Magic Key 0; mixed 0x16/0x0C/0x0B plus centre stairs |
 | `Level8Entrance` (canonical route state) | **still not created** — needs the measured post-L7 leave, not a poked stand |
 
 ## Scaffold modules
