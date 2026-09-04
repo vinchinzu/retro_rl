@@ -275,8 +275,9 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             rich_names.index("MOUNTAIN_BERRY"),
             rich_names.index("BUY_SEEDS"),
         )
-        self.assertIn("CLEAR_FIELD", rich_names)
-        self.assertLess(rich_names.index("BUY_SEEDS"), rich_names.index("CLEAR_FIELD"))
+        self.assertIn("D2_FARM_CLEAR", rich_names)
+        self.assertNotIn("CLEAR_FIELD", rich_names)
+        self.assertLess(rich_names.index("BUY_SEEDS"), rich_names.index("D2_FARM_CLEAR"))
 
         poor = build_day_phases(
             None,

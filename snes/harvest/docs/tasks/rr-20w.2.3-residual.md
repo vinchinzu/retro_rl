@@ -1,56 +1,61 @@
 ## Residual — rr-20w.2.3 D2 field clearing
 
-**Status:** IN PROGRESS. Farm→spa from `Y1_D2_Wood_Progress` is live-green.
-Leftover SE stumps from `Y1_D2_Wood_SpaReturn` is **two live reds** (different
-causes). Do not third that leftover command. No `--video`. No STATUS.
+**Status:** IN PROGRESS. Sidecar works. Power-on leftover smash is not
+video-ready. Do not launch another 17-minute `--power-on` until the two
+hops below are green from a pin. No `--video`. No STATUS.
 
 ### Verified this session
 
-- Live dump `Y1_D2_Wood_Progress`: farm `0x00`, `(11,25)` / `(190,400)`,
-  18:02, stamina **4/100**, axe+hoe, **5 stumps all SE**
-  `(34,42) (42,44) (36,51) (60,55) (42,58)`. Rocks/weeds/stones/fences 0.
-- West-gate tile dump from that pin:
-  - `(0,24)=0xA1` gate wall (LEFT+B pins at x=22, no map change)
-  - y=25 x=0–6 `0xA6` pond
-  - `(1,26)=0xA8` open face; `(0,26)=0xC0` trigger (not farm-walkable)
-  - `(1,27)=(1,28)=0xFF`; house column x=8 is A0 y=24–25 then A8 y=26
-- Leftover `--section stumps --chunk se` from Wood_Progress, 3 reds (halt):
-  1. leftover_exec debris stall aborted spa at 24k
-  2. D2 tactic motion/goal watchdog aborted spa at 24k
-  3. y=24 west-run BFS push-faced `(0,24)` at `(22,384)`
-- Spa-only live from Wood_Progress:
-  1. `(8,392)` `force_run` LEFT: 20k still on farm at `(22,392)` tile `(1,24)`
-  2. DOWN to `(136,424)` without `force_run`: 20k at `(144,392)` (house body)
-  3. `force_run` DOWN house column to `(136,424)`, west on y=26 A8 → C0:
-     GREEN 3989f. Maps `0x00→0x0C→0x10→0x0C→0x00`. Soak 4→100 on 0x10.
-     Saved `Y1_D2_Wood_SpaReturn`.
-- Glance `Y1_D2_Wood_SpaReturn`: farm `0x00`, `(1,28)` / `(24,448)`, 18:12,
-  stam **100/100**, 5 stumps. Player tile `(1,28)=0xFF` so
-  `farm_map_loaded` is false.
-- Leftover `--section stumps --chunk se` from SpaReturn (do not third):
-  1. 24k idle, never moved, journal empty, `stale_farm_map`. Fixed:
-     `yard_load_action` toward `(25,28)` on that reason.
-  2. Yard walk GREEN. ENSURE_AXE. Reached stump `(34,42)` from `(33,42)`,
-     4 axe hits, stam 100→90, then 24k debris stall. Stumps still 5.
-     End `(33,42)` / `(536,679)`. Checkpoint `Y1_D2_Leftover_Checkpoint`.
-- Unit: leftover stall skips spa; D2 tactic skips spa-child watchdogs and
-  walks off west-gate FF; `_FARM_WEST_EXIT` `(40,424)` `is_exit` left
-  radius 6; pinch `(136,424)` `force_run` down then `(72,424)` left.
-  d2_work 998 LOC. No STATUS. No natural-entry D2 claim.
+- Motion watchdog: planted 6-hit axe is not a 360f nav stall.
+  Leftover SE stumps 5→0 in 3382f (`Y1_D2_Leftover_Checkpoint`) and 3899f
+  (`Y1_D2_Wood_SpaReturn`). Reports:
+  `recordings/d2_stumps_se_after_watchdog_fix.json`,
+  `recordings/d2_wood_spa_return_stumps_after_watchdog_fix.json`.
+- `run_to_day2` now writes an atomic sidecar (`<out>.progress.json`),
+  SIGTERM/SIGINT terminal JSON, and optional `--checkpoint-on-progress`
+  pins under `recordings/d2_progress_checkpoints/`.
+- Latest power-on (`recordings/power_on_d2_farm_clear.json`, 322165f /
+  1036s, Clean): grape shipped; shop skipped; leftover reached
+  **weeds/fences/stones 0**, **rocks 51→43**, **stumps 38**, stam 4;
+  then **spa `route_mountain` pixel_stuck (661,185) replans=4**.
+  Checkpoint: `recordings/d2_progress_checkpoints/latest.state`
+  (and `progress_f322000.state`).
+
+### Agent-stopping failures (do not rediscover by soaking)
+
+Each of these aborted a continuous power-on. Fixes already in the dirty
+tree are marked landed. Remaining reds need a **pin hop**, not another
+full D1→D2 soak.
+
+| Failure | Symptom | Landed? | Next probe |
+|---|---|---|---|
+| Silent 576k / no JSON | killed run, ptrace blocked | sidecar + interrupt report | inspect `.progress.json` |
+| Clock hour reset 24k goal stall | hour tick looked like progress | hour removed from goal key | — |
+| Day-plan SUCCESS idle | shop skipped, optional CLEAR_FIELD failed, `include_end_day=False` spun | planner continues `D2FarmClearTactic` | — |
+| D2 plan used quota `CLEAR_FIELD` | 13/777 lift then skip | D2 daytime phase is `D2_FARM_CLEAR` | — |
+| `CLEAR_PLOT` forever | 0 seeds, pocket still dirty, never leftover | after one `CLEAR_PLOT`, smash if `potato_seeds==0` | — |
+| `partial_clear remaining=1` | bushes 506→1 then required abort | `leftover_chain_decision` continues | last-weed still can 24k-stall |
+| Shed map = empty farm | `0x26` scanned as wipe; `CLEAR_ROCKS nw` no-op | `farm_map_loaded` requires tilemap `0x00` | — |
+| Unobs skips child | `ENSURE_HAMMER` froze in shed 24k | step child even off-farm | — |
+| **Shop `NAV_FARM_EXIT` timeout** | after grape, 12-wp south lane from north of y=31 fence; 10k timeout; BUY_SEEDS deferred; money stays $300 | south-lane threshold y≥27 (still red) | **`harvest-route` + `harvest-shop` from bin/shed-south pin** |
+| **Spa `route_mountain` pixel_stuck** | stam 4, rocks 43, stumps 38, pos (661,185) / tile (41,11) | child now steps; route still red | **`harvest-route` from `latest.state`** — do not 300k `--power-on` |
 
 ### Exact next action
 
-Do not fourth leftover from `Y1_D2_Wood_Progress`. Do not third leftover
-`--section stumps --chunk se` from `Y1_D2_Wood_SpaReturn`. Diagnose the
-6-hit stall at stump `(34,42)` from checkpoint
-`Y1_D2_Leftover_Checkpoint` (or a headed watch of one swing). Do not
-400k `--section all`. Do not start from `Y1_D2_Morning_After_D1`.
-Do not STATUS.
+Do **not** relaunch `--power-on`. Green one hop:
+
+1. Spa: from `recordings/d2_progress_checkpoints/latest.state` (or
+   `Y1_D2_Wood_SpaReturn` if that pin is cleaner), farm→spa with stam 4
+   at SE/NE farm. `route_mountain` pixel_stuck at (661,185) is the live
+   miss. Use `harvest-route`.
+2. Only after spa-from-rocks is green: shop `NAV_FARM_EXIT` after grape
+   bin (not `Y1_D2_Morning_After_D1`). Use `harvest-shop` + `harvest-route`.
+
+Then one power-on with sidecar. Do not STATUS.
 
 ### Non-claims
 
 - No STATUS promotion
-- No natural power-on Day 2 farm-clear
+- No natural power-on Day 2 farm-clear (shop + 8 wet potatoes + last 43
+  rocks / 38 stumps still open)
 - No D2 movie / `--video`
-- 5 SE stumps remain (not live-cleared)
-- `--stop-after-d2-clear` is unit-wired, not live-green

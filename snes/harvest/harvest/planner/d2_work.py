@@ -58,6 +58,8 @@ D2_TARGETS = {
     "plant": 8,
     "water": 8,
 }
+D2_SEASON = 0  # Spring in the Harvest Moon RAM calendar.
+D2_DAY = 2
 
 D2_LEFTOVER_PHASE_NAMES = (
     "HOT_SPRING_STAMINA",
@@ -78,9 +80,6 @@ _EMPTY_SKIP = {
     "CLEAR_STUMPS": "stumps",
 }
 _SPA_RETRY_PHASES = frozenset({"CLEAR_ROCKS", "CLEAR_STUMPS"})
-_SHIP_OK = frozenset({"success", "SUCCESS"})
-
-
 class D2FarmOutcome(StrEnum):
     COMPLETE = "complete"
     WORK_REMAINING = "work_remaining"
@@ -90,13 +89,16 @@ class D2FarmOutcome(StrEnum):
 
 @dataclass(frozen=True)
 class D2FarmStatus:
+    season: int
+    day: int
     planted: int
     wet: int
     weeds: int
     fences: int
     stones: int
+    small_rocks: int
     large_rocks: int
-    stumps: int
+    trees_or_stumps: int
     damaged_boulder: bool
     stamina: Stamina
     hands_clear: bool
@@ -104,10 +106,14 @@ class D2FarmStatus:
     animating: bool
     shipped_before_17: bool
     hour: int
+    minute: int
     tilemap: int
+    input_stable: bool
+    settled: bool
     outcome: D2FarmOutcome
     reason: str = ""
     pocket_needs_clear: bool = False
+    potato_seeds: int = 0
     stones_by_chunk: tuple[int, ...] = ()
     rocks_by_chunk: tuple[int, ...] = ()
     stumps_by_chunk: tuple[int, ...] = ()
@@ -115,6 +121,43 @@ class D2FarmStatus:
     @property
     def is_complete(self) -> bool:
         return self.outcome == D2FarmOutcome.COMPLETE
+
+    @property
+    def stumps(self) -> int:
+        """Compatibility alias; ``trees_or_stumps`` is the final contract name."""
+        return self.trees_or_stumps
+
+    def to_record(self) -> dict[str, object]:
+        """Serialize every terminal clause for a final D2 evidence report."""
+        return {
+            "season": self.season,
+            "day": self.day,
+            "planted": self.planted,
+            "wet": self.wet,
+            "weeds": self.weeds,
+            "fences": self.fences,
+            "stones": self.stones,
+            "small_rocks": self.small_rocks,
+            "large_rocks": self.large_rocks,
+            "trees_or_stumps": self.trees_or_stumps,
+            "damaged_boulder": self.damaged_boulder,
+            "hands_clear": self.hands_clear,
+            "farm_map_loaded": self.farm_map_loaded,
+            "animating": self.animating,
+            "input_stable": self.input_stable,
+            "settled": self.settled,
+            "shipped_before_17": self.shipped_before_17,
+            "hour": self.hour,
+            "minute": self.minute,
+            "tilemap": self.tilemap,
+            "outcome": self.outcome.value,
+            "reason": self.reason,
+            "pocket_needs_clear": self.pocket_needs_clear,
+            "potato_seeds": self.potato_seeds,
+            "stones_by_chunk": list(self.stones_by_chunk),
+            "rocks_by_chunk": list(self.rocks_by_chunk),
+            "trees_or_stumps_by_chunk": list(self.stumps_by_chunk),
+        }
 
 
 def _required_clear(
@@ -433,26 +476,30 @@ def leftover_chain_decision(
         return "continue"
     if should_spa_retry(phase, reason, stamina, include_spa=include_spa):
         return "spa_retry"
+    if "partial_clear" in str(reason or ""):
+        return "continue"
+    if "field_clear cleared=0" in str(reason or ""):
+        return "continue"
     return "abort"
 
 
 def _shipped_before_17(ram, journal) -> bool:
-    """True on 5pm ship evidence, not merely hour>=17 or grape+shop."""
+    """True only for an explicit Spring D2 bin-deposit event before 17:00."""
     for row in journal or ():
         if not isinstance(row, dict):
             continue
-        if row.get("kind") == "harvest_ship_5pm_credit":
+        deposit = row.get("shipping_deposit")
+        if not isinstance(deposit, dict):
+            continue
+        if (
+            int(deposit.get("season", -1)) == D2_SEASON
+            and int(deposit.get("day", -1)) == D2_DAY
+            and (int(deposit.get("hour", 24)), int(deposit.get("minute", 60))) < (17, 0)
+            and int(deposit.get("shipping_money_after", 0))
+            > int(deposit.get("shipping_money_before", 0))
+        ):
             return True
-        phase, status = str(row.get("phase") or ""), str(row.get("status") or "")
-        if phase == "WAIT_FARM_SHIPPING" and status in _SHIP_OK:
-            return True
-    from harvest.core.ram_catalog import read_ram_value
-    from harvest.core.shipping_credit import SHIPPING_SCENE_HOUR, shipping_scene_needs_dismiss
-
-    hour = int(read_ram_value(ram, "hour") or 0)
-    if hour < SHIPPING_SCENE_HOUR or shipping_scene_needs_dismiss(ram):
-        return False
-    return int(read_ram_value(ram, "shipping_money_raw") or 0) > 0
+    return False
 
 
 def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
@@ -469,14 +516,18 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
     lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
     animating = lock != 1
     tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+    season = int(read_ram_value(ram, "season") or 0)
+    day = int(read_ram_value(ram, "day") or 0)
     hour = int(read_ram_value(ram, "hour") or 0)
+    minute = int(read_ram_value(ram, "minute") or 0)
     stam = Stamina.from_ram(ram)
     planted = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER) if loaded else 0
     wet = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER) if loaded else 0
+    potato_seeds = int(read_ram_value(ram, "potato_seeds") or 0)
     hands = hands_are_clear(ram)
     shipped = _shipped_before_17(ram, journal)
 
-    weeds = fences = stones = large_rocks = stumps = 0
+    weeds = fences = stones = small_rocks = large_rocks = stumps = 0
     pocket = False
     damaged = False
     by_s = [0, 0, 0, 0]
@@ -499,6 +550,8 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
                 by_s[idx[chunk_of_tile(tx, ty)]] += 1
                 if x0 <= tx <= x1 and y0 <= ty <= y1:
                     pocket = True
+            elif key == "small_rocks":
+                small_rocks += 1
             elif key == "large_rocks":
                 large_rocks += 1
                 by_r[idx[chunk_of_tile(tx, ty)]] += 1
@@ -508,30 +561,39 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
             if int(target.tile_id) in LARGE_ROCK_DAMAGE_TILES:
                 damaged = True
 
-    if not loaded or animating:
+    input_stable = lock == 1
+    settled = loaded and input_stable and not animating
+    if not loaded or not input_stable:
         outcome, why = D2FarmOutcome.TEMPORARILY_UNOBSERVABLE, (
-            "animating" if animating else "stale_farm_map"
+            "stale_farm_map" if not loaded else "input_unstable"
         )
     elif (
-        planted >= D2_TARGETS["plant"]
+        season == D2_SEASON
+        and day == D2_DAY
+        and planted >= D2_TARGETS["plant"]
         and wet >= D2_TARGETS["water"]
-        and weeds == fences == stones == large_rocks == stumps == 0
+        and weeds == fences == stones == small_rocks == large_rocks == stumps == 0
         and not damaged
         and hands
         and shipped
+        and input_stable
+        and settled
     ):
         outcome, why = D2FarmOutcome.COMPLETE, ""
     else:
         outcome, why = D2FarmOutcome.WORK_REMAINING, "work_remaining"
 
     return D2FarmStatus(
+        season=season,
+        day=day,
         planted=planted,
         wet=wet,
         weeds=weeds,
         fences=fences,
         stones=stones,
+        small_rocks=small_rocks,
         large_rocks=large_rocks,
-        stumps=stumps,
+        trees_or_stumps=stumps,
         damaged_boulder=damaged,
         stamina=stam,
         hands_clear=hands,
@@ -539,10 +601,14 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
         animating=animating,
         shipped_before_17=shipped,
         hour=hour,
+        minute=minute,
         tilemap=tilemap,
+        input_stable=input_stable,
+        settled=settled,
         outcome=outcome,
         reason=why,
         pocket_needs_clear=pocket,
+        potato_seeds=potato_seeds,
         stones_by_chunk=tuple(by_s),
         rocks_by_chunk=tuple(by_r),
         stumps_by_chunk=tuple(by_u),
@@ -555,6 +621,8 @@ def confirm_d2_complete(previous, current) -> bool:
         and current is not None
         and previous.outcome == D2FarmOutcome.COMPLETE
         and current.outcome == D2FarmOutcome.COMPLETE
+        and previous.settled
+        and current.settled
     )
 
 
@@ -603,11 +671,11 @@ def next_d2_spec(
         return None
     smash = resolve_chunks(chunk)
     if section == "all":
-        if status.pocket_needs_clear:
+        if status.pocket_needs_clear and last_phase != "CLEAR_PLOT":
             return pocket_clear_phase()
-        if status.planted < D2_TARGETS["plant"]:
+        if status.planted < D2_TARGETS["plant"] and status.potato_seeds > 0:
             return _crop_next(last_phase)
-        if status.wet < D2_TARGETS["water"]:
+        if status.planted >= D2_TARGETS["plant"] and status.wet < D2_TARGETS["water"]:
             return _water_next(last_phase)
     if section in {"all", "bushes"} and status.weeds > 0:
         return bush_clear_phase()
@@ -794,6 +862,10 @@ class D2FarmClearTactic:
     def current_task(self):
         return self._child
 
+    def set_evidence(self, evidence: Sequence[dict]) -> None:
+        """Seed prior same-day facts needed by the terminal contract."""
+        self.journal = [dict(row) for row in evidence]
+
     @property
     def step_count(self) -> int:
         return self._step
@@ -848,27 +920,67 @@ class D2FarmClearTactic:
     def _blocked(self, prefix: str, st: D2FarmStatus | None = None) -> TaskResult:
         return TaskResult(status=TaskStatus.BLOCKED, reason=self._snap(prefix, st))
 
-    def _watchdogs(self, world: WorldState, status: D2FarmStatus) -> TaskResult | None:
-        from harvest.core.carry import backpack_tool, selected_tool
+    def _navigation_motion_key(self, world: WorldState):
+        """Return a liveness key only while the active child is navigating.
+
+        Farm clearing intentionally stays planted for six axe/hammer hits.
+        Its position and approach remain constant while that work is making
+        semantic progress, so treating every child as a navigation task aborts
+        a legitimate multi-hit sequence after six seconds.
+        """
+        from harvest.core.task_progress import task_progress_snapshot
         from harvest.tasks.nav import get_pos_from_ram
 
+        child = self._child
+        if child is None:
+            return None
+        snapshot = task_progress_snapshot(child)
+        phase = (snapshot.phase_text if snapshot is not None else "").lower()
+        name = str(getattr(child, "name", "")).lower()
+        is_navigation = phase in {"navigate", "navigating", "navigation"}
+        is_navigation = is_navigation or name == "nav" or name.startswith("nav_")
+        if not is_navigation:
+            return None
+
+        details = dict(snapshot.details) if snapshot is not None else {}
+        pos = get_pos_from_ram(world.ram)
+        return (
+            (pos.x, pos.y),
+            details.get("target", getattr(child, "_target_tile", None)),
+            details.get("approach", getattr(child, "_approach_tile", None)),
+        )
+
+    def _record_navigation_stall(self, status: D2FarmStatus) -> TaskResult:
+        """Stop a required phase visibly; it must never become a skipped chunk."""
+        spec = self._spec
+        chunk = (spec.params or {}).get("chunk") if spec is not None else None
+        reason = self._snap("navigation motion stall", status)
+        self.journal.append({
+            "phase": spec.phase if spec is not None else "",
+            "status": TaskStatus.BLOCKED.value,
+            "reason": reason,
+            "chunk": chunk,
+            "watchdog": "navigation_motion_stall",
+            "debris_before": _debris_row(status),
+            "debris_after": _debris_row(status),
+        })
+        return TaskResult(status=TaskStatus.BLOCKED, reason=reason)
+
+    def _watchdogs(self, world: WorldState, status: D2FarmStatus) -> TaskResult | None:
+        from harvest.core.carry import backpack_tool, selected_tool
+
         if self._child is not None and getattr(self._child, "name", "") != "hot_spring_stamina":
-            pos = get_pos_from_ram(world.ram)
-            motion = (
-                (pos.x, pos.y),
-                getattr(self._child, "_target_tile", None),
-                getattr(self._child, "_approach_tile", None),
-            )
-            if motion != self._motion_key:
+            motion = self._navigation_motion_key(world)
+            if motion is None:
+                # A cleared/stationary tool sequence is not a movement stall.
+                self._motion_key, self._motion_at = "", self._step
+            elif motion != self._motion_key:
                 self._motion_key, self._motion_at = motion, self._step
             elif self._step - self._motion_at >= MOTION_STALL_FRAMES:
-                chunk = (self._spec.params or {}).get("chunk") if self._spec else None
-                if chunk:
-                    self._skip.add(str(chunk))
-                self._child = self._spec = self._motion_key = None
+                return self._record_navigation_stall(status)
         goal = (
             status.weeds, status.fences, status.stones, status.large_rocks, status.stumps,
-            status.planted, status.wet, status.stamina.current, status.hour,
+            status.planted, status.wet, status.stamina.current,
             int(selected_tool(world.ram)), int(backpack_tool(world.ram)),
         )
         if goal != self._goal_key:
@@ -930,9 +1042,20 @@ class D2FarmClearTactic:
         key = (last, chunk)
         self._fails[key] = self._fails.get(key, 0) + 1
         if chunk and self._fails[key] >= 2:
-            self._skip.add(str(chunk))
-            self._spec = None
-            return self._idle("postpone")
+            reason = (
+                f"required chunk failed {self._fails[key]} times: "
+                f"{last} chunk={chunk}; {result.reason or result.status.value}"
+            )
+            self.journal.append({
+                "phase": last,
+                "status": TaskStatus.BLOCKED.value,
+                "reason": reason,
+                "chunk": chunk,
+                "watchdog": "required_chunk_failure",
+                "debris_before": _debris_row(status),
+                "debris_after": _debris_row(status),
+            })
+            return self._blocked(reason, status)
         return self._blocked(f"blocked: {result.reason or result.status.value}", status)
 
     def _queue_next(self, spec: PhaseSpec) -> TaskResult:
@@ -974,15 +1097,17 @@ class D2FarmClearTactic:
         stall = self._watchdogs(world, status)
         if stall is not None:
             return stall
+        if self._child is not None:
+            # Shed/spa fetches must keep stepping; yard idle is only for
+            # choosing the next farm child while the map is unloaded.
+            result = self._child.step(world)
+            return result if result.status == TaskStatus.RUNNING else self._after(result, world)
         if status.outcome == D2FarmOutcome.TEMPORARILY_UNOBSERVABLE:
             self._unobs += 1
             if self._unobs >= GOAL_STALL_FRAMES:
                 return self._blocked("stale_farm_map", status)
             return self._idle(status.reason or "temporarily_unobservable", world.ram)
         self._unobs = 0
-        if self._child is not None:
-            result = self._child.step(world)
-            return result if result.status == TaskStatus.RUNNING else self._after(result, world)
         return self._select(world, status)
 
 

@@ -289,6 +289,11 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertNotEqual(result.status, TaskStatus.SUCCESS)
         self.assertNotIn("quota_met", result.reason or "")
 
+    def test_shed_interior_is_not_a_loaded_farm_map(self) -> None:
+        ram = _make_farm_ram(player_tile=(26, 29), tool=int(Tool.HAMMER))
+        ram[ADDR_TILEMAP] = 0x26
+        self.assertFalse(farm_map_loaded(ram))
+
     def test_quota_not_met_on_shed_door_unload(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=int(Tool.HAMMER))
         for tx, ty in ((12, 10), (16, 10), (20, 10), (24, 10)):

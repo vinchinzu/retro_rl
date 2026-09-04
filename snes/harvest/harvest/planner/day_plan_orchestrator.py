@@ -178,6 +178,7 @@ class DayPlanTask(Task):
         spec: PhaseSpec | None,
         status: str,
         reason: str = "",
+        world: WorldState | None = None,
     ) -> None:
         if spec is None:
             return
@@ -196,6 +197,25 @@ class DayPlanTask(Task):
                 row["harvested_count"] = int(getattr(task, "harvested_count", 0))
             except Exception:
                 pass
+        # D2 completion must prove the bin deposit itself, rather than infer
+        # it later from a 5pm dialog or money RAM.  MountainGrapeShipTask
+        # retains the before/after accumulator values until this row is made.
+        if (
+            world is not None
+            and spec.phase == "MOUNTAIN_BERRY"
+            and status == "success"
+            and int(getattr(task, "shipped_count", 0) or 0) > 0
+        ):
+            from harvest.core.ram_catalog import read_ram_value
+
+            row["shipping_deposit"] = {
+                "season": int(read_ram_value(world.ram, "season") or 0),
+                "day": int(read_ram_value(world.ram, "day") or 0),
+                "hour": int(read_ram_value(world.ram, "hour") or 0),
+                "minute": int(read_ram_value(world.ram, "minute") or 0),
+                "shipping_money_before": int(getattr(task, "_shipping_before", 0)),
+                "shipping_money_after": int(getattr(task, "_shipping_after", 0)),
+            }
         self._phase_results.append(row)
 
     @property
@@ -313,7 +333,7 @@ class DayPlanTask(Task):
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> {reason}")
-        self._record_phase_result(current, "success", reason)
+        self._record_phase_result(current, "success", reason, world)
         if current is not None and current.phase == "BUY_SEEDS":
             self._splice_plant_after_shop(world)
         if current is not None and current.phase in GO_HOME_TRIGGER_PHASES:
@@ -328,7 +348,7 @@ class DayPlanTask(Task):
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> no_work ({reason})")
-        self._record_phase_result(current, "no_work", reason)
+        self._record_phase_result(current, "no_work", reason, world)
         self._phase_index += 1
         self._current_task = None
         self._skip_map_lock = False
@@ -603,6 +623,10 @@ class DayPlanTask(Task):
                 print(f"[DAY_PLAN] Phase {spec.phase} unavailable: {reason}")
                 return self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
             task.reset(world)
+            if spec.phase == "D2_FARM_CLEAR":
+                set_evidence = getattr(task, "set_evidence", None)
+                if callable(set_evidence):
+                    set_evidence(self._phase_results)
             self._current_task = task
             self._skip_map_lock = (
                 isinstance(spec.kind, PhaseKind) and spec.kind in SKIP_MAP_LOCK_KINDS

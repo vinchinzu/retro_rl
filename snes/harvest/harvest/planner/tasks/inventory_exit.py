@@ -604,11 +604,10 @@ class FarmExitTask(Task):
     def reset(self, world: WorldState) -> None:
         self._dismiss_frames = 0
         pos = get_pos_from_ram(world.ram)
-        if pos.y >= 32 * 16:
-            # Post-berry return: use the known clear south lane and cross the
-            # long fence only after reaching its west end. Generic straight
-            # NavTask can spend its full budget trying to walk north through
-            # the fence from the shipping bin.
+        # Shipping bin is tile y=28 (pixel ~456). y>=32*16 only matched after
+        # already walking south of the y=31 fence, so post-berry NAV_FARM_EXIT
+        # from the bin used one waypoint and hugged the house wall at (3,28).
+        if pos.y >= 27 * 16:
             waypoints = list(ROUTES["farm_south_to_west_gate"])
         else:
             waypoints = [

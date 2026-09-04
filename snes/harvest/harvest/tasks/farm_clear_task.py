@@ -194,14 +194,23 @@ class FarmClearTask(Task):
 
     def progress_snapshot(self) -> ProgressSnapshot:
         target = self._clearer.current_target
+        approach = self._clearer.approach_tile
+        approach_position = (
+            (approach[0] * TILE_SIZE + TILE_SIZE // 2,
+             approach[1] * TILE_SIZE + TILE_SIZE // 2)
+            if approach is not None
+            else None
+        )
+        clearing_phase = self._clearer.current_phase
         details = (
             ("cleared", self._clearer.cleared_count),
             ("failed", len(self._clearer.failed_tiles)),
             ("state", self._clearer.state),
-            (
-                "target",
-                target.tile if target is not None else None,
-            ),
+            ("clearing_phase", clearing_phase.name if clearing_phase else None),
+            ("target", target.tile if target is not None else None),
+            ("hits", int(self._clearer.target_hits)),
+            ("approach", approach),
+            ("approach_position", approach_position),
             ("stamina_exhausted", self._clearer.stamina_exhausted),
         )
         return ProgressSnapshot(
