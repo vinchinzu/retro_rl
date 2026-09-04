@@ -105,8 +105,54 @@ LEVEL8_INTERIOR_0X3E_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_4e_north_fixture_B1",
 )
 
+# rr-6o7.2: ONE guarded boundary past 0x3E.  Same probe start
+# (Level8InteriorReconFixture) and the same confirmed 0x7E -> clear 0x6E ->
+# bomb-N 0x5E -> clear/center-key -> shutter-N 0x4E -> key-N 0x3E policy
+# replayed unchanged, then the 0x3E census cleared with the sword only and ONE
+# bomb placed at the north wall from (120,105) facing UP.
+#
+# 2/2 byte-identical (probe l8_3e_north A2/A3, 4788 frames each; 32 payload
+# keys compared, only the screenshot paths and the A3-only saved_fixture entry
+# differ).  Live RAM: first settled play room 0x2E at (120,189), keys 9 -> 9,
+# bombs 7 -> 6 (exactly one natural bomb), deaths 0, progression_writes 0,
+# capacity_writes 0, direct runtime writes 0.  Assist = Survival health refill
+# only (26 health writes, max single-frame damage 2).
+#
+# Gate evidence, in 0x3E: arrival cur_opened_doors/open_doorway_mask = 0x04
+# (the DOWN key door we came through).  Clearing the six 0x0C bodies raised
+# only the RIGHT bit (0x04 -> 0x05) -- i.e. the 0x3E clear opens an EAST
+# shutter, never the north.  The UP bit (doors 0x0D, mask 0x0C) appeared only
+# after the bomb blast, so the north gate of 0x3E is a bomb wall, matching the
+# hypothesis edge "blue_darknuts -> map_manhandla UP bomb".  0x3E is an open
+# floor with two statue blocks on the mid row (x~96 and x~144 at y~141) that
+# wedge a naive stand walk; the bomb stand must be approached along the clear
+# north band (y=109).
+#
+# 0x2E census names Manhandla from dungeon/ids.py (0x3C).  Its four heads plus
+# body occupy five slots at HP 64.  Four transient 0x56 projectile residuals
+# (HP 240) were also live in the settled census; they are projectile state,
+# not room population, so they are not recorded as census rows.  Development
+# recon only: not route eligible, no DungeonRoomSpec, not on L8_THROUGH, and
+# the hypothesis graph keeps room_id=None for every non-entry node.
+LEVEL8_INTERIOR_0X2E_RECON = Level8InteriorRoomRecon(
+    room_id=0x2E,
+    entered_from=0x3E,
+    entry_direction="UP",
+    entry_gate="north_bomb_wall",
+    entry_pose=(120, 189),
+    keys_in=9,
+    keys_out=9,
+    bombs_in=7,
+    bombs_out=6,
+    room_item_id=0x17,  # ids.room_item_name -> dungeon_map_walkthrough_correlated
+    census=((0x3C, 64, 5),),  # one Manhandla (body + 4 heads), room_all_dead=0
+    fixture="Level8Interior2EReconFixture",
+    recording_tag="l8_3e_north_fixture_20260904_A2",
+)
+
 LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
     LEVEL8_INTERIOR_0X3E_RECON,
+    LEVEL8_INTERIOR_0X2E_RECON,
 )
 
 
@@ -397,6 +443,7 @@ __all__ = [
     "LEVEL8",
     "LEVEL8_HYPOTHESIS_EXITS",
     "LEVEL8_HYPOTHESIS_ROOMS",
+    "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",
