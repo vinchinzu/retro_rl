@@ -141,3 +141,12 @@ def test_0x0f_recon_matches_the_live_magic_key_cellar_sitting() -> None:
     assert r.room_item_id == 0x0B
     assert r.fixture == "Level8InteriorMKReconFixture"
     assert r.route_eligible is False
+
+
+def test_0x0f_cellar_return_dest_is_live_play_0x1f() -> None:
+    from zelda_i.level8.cellar import CELLAR_RETURN_DEST, CELLAR_RETURN_POSE
+
+    # probe_l8_0f_cellar_return F3/F4, 2/2, 588 frames. Not Gleeok 0x3C.
+    assert CELLAR_RETURN_DEST == 0x1F
+    assert CELLAR_RETURN_POSE == (96, 157)
+    assert CELLAR_RETURN_DEST != 0x3C

@@ -359,9 +359,13 @@ the west `0x68` `(96,144)` slides DOWN to `(96,160)` and the vacated gap
 walks onto the centre stairs `(128,141)`. 2/2 byte-identical (probe
 `l8_1f_magic_key` E2/E3, 9074 frames): natural `ADDR_MAGIC_KEY` 0→1 in
 mode-9 cellar `$EB=0x0F` leftover `(136,141)`, keys 8→8, bombs 6→6, TF
-`0x7F`. Two-ladder cellar (west/east ladders, pit); y=141 LEFT/RIGHT is
-tile 250, so the L1 DOWN-first return was **not** taken. `topology.magic_key_room`
-stays unset. Not on `L8_THROUGH`.
+`0x7F`. Two-ladder cellar (west/east ladders, pit). F1 cardinal DOWN at
+the pad did not move (south brick). F2 LEFT+DOWN at `(160,141)` is pit
+tile 250. Return 2/2 (probe `l8_0f_cellar_return` F3/F4, 588 frames):
+RIGHT to east `x=176`, LEFT+DOWN, floor LEFT, UP `(48,93)` -> first
+settled play **`0x1F` `(96,157)`**, keys 8→8, bombs 6→6, MK 1, TF `0x7F`.
+Not Gleeok `0x3C`. `topology.magic_key_room` stays unset. Not on
+`L8_THROUGH`. Pin `Level8Interior1FReturnedReconFixture`.
 
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
@@ -402,7 +406,7 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 | Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
 | Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
 | Gohma (blue, 3 arrows) | live `0x1E` type **`0x33` HP96** (ids: L6 red; colour not asserted). 3 connecting wooden arrows, 9 shots loosed. East kill-clear → `0x1F`. **no L6 poke** | **fixture-live** (`route_eligible=false`) |
-| Magical Key (staircase) | live cellar `$EB=0x0F` mode 9 `(136,141)`; `ADDR_MAGIC_KEY` 0→1 natural. Two-ladder; return deferred | **fixture-live** (`route_eligible=false`) |
+| Magical Key (staircase) | live cellar `$EB=0x0F` MK 0→1; return 2/2 play `0x1F` `(96,157)`. Not `0x3C` | **fixture-live** (`route_eligible=false`) |
 | Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
 
 Items optional for credits (source). TF bit **`0x80`**. Magical Key is the

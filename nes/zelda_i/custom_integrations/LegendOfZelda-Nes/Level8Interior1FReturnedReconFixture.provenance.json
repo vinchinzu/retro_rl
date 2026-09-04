@@ -1,0 +1,136 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T15:39:09.117295+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "two-ladder return, dest $EB live, do not assume 0x3C, not on L8_THROUGH"
+    ],
+    "phase": "level8_interior_0x0f_cellar_return",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "census": {
+      "arrows": 1,
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "bow": 1,
+        "candle": 2,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 8,
+        "magic_key": 1,
+        "rupees": 247,
+        "selected_item": 2,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 8,
+      "level": 8,
+      "live_objects": [
+        {
+          "hp": 176,
+          "slot": 11,
+          "type": 104,
+          "type_hex": "0x68",
+          "type_name": "unknown_object_0x68",
+          "xy": [
+            96,
+            144
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 5,
+      "next_screen_hex": "0x1F",
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 31,
+      "room_item_hex": "0x03",
+      "rupees": 247,
+      "screen": 31,
+      "screen_hex": "0x1F",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 127,
+      "typed_objects": [
+        {
+          "hp": 176,
+          "slot": 11,
+          "type": 104,
+          "type_hex": "0x68",
+          "type_name": "unknown_object_0x68",
+          "xy": [
+            96,
+            144
+          ]
+        }
+      ],
+      "x": 96,
+      "xy": [
+        96,
+        157
+      ],
+      "y": 157
+    },
+    "dest_eb": "0x1F",
+    "fixture_state": "Level8Interior1FReturnedReconFixture",
+    "fixture_writes": [],
+    "keys": 8,
+    "magic_key": 1,
+    "ok": true,
+    "source_state": "Level8InteriorMKReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 8,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 31,
+      "objects": [
+        {
+          "hp": 176,
+          "slot": 11,
+          "state": 0,
+          "type_id": 104,
+          "type_name": "unknown_object_0x68",
+          "x": 96,
+          "y": 144
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 31,
+      "room_all_dead": 60,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 0,
+      "rupees": 247,
+      "submode": 0,
+      "triforce": 127,
+      "x": 96,
+      "y": 157
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8InteriorMKReconFixture.state",
+  "source_state_sha256": "25bcb2819ddfa244cf4907be1443819ef6b041ff21e45e73eee8caba41f86091",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior1FReturnedReconFixture.state",
+  "state_sha256": "2e4bd5e61adad3adce1726fdd87e67df58fb4cb04a6875ed76ba9afd0ee3593f"
+}
