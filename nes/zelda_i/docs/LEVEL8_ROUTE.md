@@ -410,6 +410,99 @@ cellar `0x0F`. `make_gleeok_passage_controller` stays fail-closed. Not on
 fight. Do not chain RIGHT into passage_east. Next gate is hyp RIGHT toward
 `0x3F`.
 
+### Fixture-live 0x3E east shutter → cleared 0x3F (rr-6o7.2)
+
+From `Level8Interior3ESouthReconFixture`. Occupancy still banned
+(1px-grade false-misses 2px dungeon steps). Idle until the RIGHT door
+bit (arrival doors `0x0C`, idle raises `0x0D` as the already-cleared
+east shutter), stay on the north band (y≈93–109) past the x=144 statue,
+y-align to the east mouth, RIGHT push. J1/J2 2/2 (probe `l8_3e_east`,
+328 controller frames / 388 with census): first settled play **`0x3F`
+`(32,141)`** west mouth, keys 8→8, bombs 6→6, MK 1, TF `0x7F`. Arrival
+census empty. `room_item_id=0x00`. Arrival RAM doors `0x02` (LEFT). Not
+Gleeok `0x3C`, not cellar `0x0F`. `make_gleeok_passage_controller` stays
+fail-closed. Not on `L8_THROUGH`. Pin
+`Level8Interior3FEastReconFixture`. Do not start the fight. Do not chain
+STAIRS into cellar `0x2F`. Next gate is hyp STAIRS toward cellar `0x2F`.
+
+### Fixture-live 0x3F stairs → cellar 0x2F (rr-6o7.2)
+
+From `Level8Interior3FEastReconFixture`. Occupancy still banned. Visual
+stairs at ~(192,141) are tile `0x77` (K1/K2 timeout; same decorative
+hole as L6 0x3A). Live CheckWarp is tile `0x71` at `(193,141)`. x-first
+RIGHT along y=141 toward `(208,93)` crosses it and idles. K3/K4 2/2
+(probe `l8_3f_stairs`, 585 controller frames / 645 with census): first
+settled **mode 9 cellar `$EB=0x2F` `(208,141)`** tile `0x71`, keys 8→8,
+bombs 6→6, MK 1, TF `0x7F`. `position_writes=0`. Not Gleeok `0x3C`, not
+MK cellar `0x0F`. `make_gleeok_passage_controller` stays fail-closed.
+Not on `L8_THROUGH`. First mode-9 frame is unloaded (black HUD, 0x3F
+residuals). After ~100f idle the two-ladder cellar paints; leftover
+settles `(192,93)` tile `0x6F` on the east/source ladder (S1/S2). Pin
+`Level8Interior2FCellarReconFixture` is that **settled** leftover.
+
+### Fixture-live 0x2F cellar-cross → play 0x4C (rr-6o7.2)
+
+From settled `Level8Interior2FCellarReconFixture`. Occupancy still
+banned. DOWN the east/source ladder, floor LEFT to x=48, UP west.
+Never UP on the east ladder (returns play `0x3F`). P1/P2 2/2 (probe
+`l8_2f_cross`, 356 controller frames / 476 with load+census): first
+settled play **`0x4C` `(112,125)`** by the centre stairs, keys 8→8,
+bombs 6→6, MK 1, TF `0x7F`. Arrival census empty; `room_item_id=0x19`
+small key still on the floor. Enemies spawn after idle — pin at
+arrival. Not Gleeok `0x3C`, not source `0x3F`.
+`make_gleeok_passage_controller` stays fail-closed. Not on
+`L8_THROUGH`. Pin `Level8Interior4CWestReconFixture`. Do not start the
+fight. Do not bomb-N toward hyp `0x3C`. Next gate is hyp bomb-N
+`0x3C`.
+
+### Fixture-live 0x4C bomb-N → Gleeok 0x3C (rr-6o7.2, census only)
+
+From `Level8Interior4CWestReconFixture`. Occupancy still banned. Spawn
+pocket is diamond-locked N/S; RIGHT is the centre stairs (N1/N2 miss).
+N3 LEFT at y=117 to `(64,117)`, N4 DOWN to `(64,157)`, N5/N6 east
+column x=176 then north wall `(120,93)`. N7/N8 2/2 (probe
+`l8_4c_north`, 1037 controller frames / 1127 with census): first
+settled play **`0x3C` `(120,189)`** south mouth, bombs 6→5, keys 8→8,
+MK 1, TF `0x7F`. Arrival census empty; `room_item_id=0x1A` heart
+container. After 90f idle: **one body type `0x45` HP160 at `(124,111)`**
+plus `0x56` fireball residual. **Census only — do not fight.**
+`GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45` is live RAM (not a ROM assumption);
+`assumed_0x45` stays False. `make_gleeok_passage_controller` stays
+fail-closed. Not on `L8_THROUGH`. Arrival pin
+`Level8Interior3CNorthReconFixture`.
+
+### Fixture-live 0x3C four-head Gleeok south-stand (rr-5eb2)
+
+From `Level8Interior3CNorthReconFixture` play `0x3C` `(120,189)`. Clone
+L6 `gleeok18` south-stand (`STAND_DY=22`, bare UP then UP+A, fireball
+dodge manhattan ≤14). Body sensor type **`0x45`**. OccupancyWalker
+banned. F1/F2 body-gone f5029, then missed HC (mid-room and `(48,157)`
+stood 4px short). F5dump room-treasure slot 19 (`$83/$97`) = `(32,192)`.
+F6/F7 2/2 byte-identical (probe `l8_3c_gleeok`, 5124 controller / 5184
+with census): type `0x45` absent, hc 3→4 (`health` `0x22`→`0x33`),
+leftover play **`0x3C` `(32,181)`** tile 118, doors `12` (UP+DOWN; north
+shutter RAM-open), keys 8, bombs 5, MK 1, TF `0x7F`. `room_item_id`
+stays `0x1A` after pickup. `saw_0x46` mid-fight. ghp samples at 250f
+still read 160 until type-gone. Deaths 0, `progression_writes=0`
+`capacity_writes=0`, no HP poke. Pin
+`Level8Interior3CKillReconFixture`. Not on `L8_THROUGH`.
+
+### Fixture-live 0x3C north shutter → TF 0x2C (rr-6o7.2)
+
+From `Level8Interior3CKillReconFixture` play `0x3C` `(32,181)`. Do not
+DOWN (south bomb hole `0x4C`). OccupancyWalker banned. T1 boxed west-wall
+UP `(32,133)` tile 179. T2/T3 2/2 (probe `l8_3c_north`, 296 controller
+/ 356 with census): first settled play **`0x2C` `(120,205)`** south
+mouth, `room_item_id=0x1B` triforce, doors 0, keys 8, bombs 5, MK 1, TF
+still `0x7F`, hc 4. ROM 0x2C matched live; lock is the trial.
+`assumed_0x2c=False`. Pin `Level8Interior2CTriforceReconFixture`.
+
+Same probe T5/T6: UP x=120 onto the shard (43f), fanfare mode 18, idle
+to OW **`0x6D` `(96,93)`** mode 5, TF **`0xFF`**. OW leftover is
+**fixture-lineage**, not a Survival-true post-L8 handoff (this pin is
+not Survival-from-L7). Pin `Level8PostShardOWReconFixture`.
+`make_gleeok_passage_controller` stays fail-closed. Not on `L8_THROUGH`.
+
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
 **type `0x0C`, HP 128**, appearing 5× in `0x5E`, 1× in `0x4E` and 6× in `0x3E`,
@@ -450,15 +543,15 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 | Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
 | Gohma (blue, 3 arrows) | live `0x1E` type **`0x33` HP96** (ids: L6 red; colour not asserted). 3 connecting wooden arrows, 9 shots loosed. East kill-clear → `0x1F`. **no L6 poke** | **fixture-live** (`route_eligible=false`) |
 | Magical Key (staircase) | live cellar `$EB=0x0F` MK 0→1; return 2/2 play `0x1F` `(96,157)`. West door 2/2 back to cleared `0x1E` `(208,141)`. Not `0x3C` | **fixture-live** (`route_eligible=false`) |
-| Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
+| Boss Gleeok 4-head | Heart → TF; live body `0x45` kill in `0x3C`; north shutter → live TF room **`0x2C`**, shard `0x1B`, TF `0xFF` | **fixture-live kill+shard** (`route_eligible=false`) |
 
 Items optional for credits (source). TF bit **`0x80`**. Magical Key is the
 deliberate L9 key-bottleneck investment.
 
 ## Boss / Triforce
 
-- Boss: **Gleeok (4 heads)** — source only.
-- `ADDR_TRIFORCE & 0x80` after shard 8 — source only.
+- Boss: **Gleeok (4 heads)** — fixture-live type `0x45` kill in `0x3C`.
+- `ADDR_TRIFORCE == 0xFF` after shard 8 — fixture-lineage OW `0x6D` `(96,93)`, not Survival-true leave.
 
 ## Checkpoints
 
@@ -484,6 +577,14 @@ start.
 | `Level8InteriorMKReconFixture` | Magical Key pad leftover: L8 mode-9 cellar `0x0F` `(136,141)`, keys 8, bombs 6, rupees 247, Magic Key **1** |
 | `Level8Interior1FReturnedReconFixture` | Cellar return leftover: L8 play `0x1F` `(96,157)`, MK 1, keys 8, bombs 6 |
 | `Level8Interior1EWestReconFixture` | West-gate leftover: L8 play `0x1E` `(208,141)` east mouth, MK 1, keys 8, bombs 6; Gohma already dead |
+| `Level8Interior3ESouthReconFixture` | South-gate leftover: L8 play `0x3E` `(120,93)` north mouth, MK 1, keys 8, bombs 6; east shutter still metal at arrival |
+| `Level8Interior3FEastReconFixture` | East-gate leftover: L8 play `0x3F` `(32,141)` west mouth, MK 1, keys 8, bombs 6; stairs on the raised east platform, do not walk on |
+| `Level8Interior2FCellarReconFixture` | Settled mode-9 cellar `0x2F` `(192,93)` tile `0x6F` east ladder, MK 1, keys 8, bombs 6; two ladders + pit + 4 keese HP0 |
+| `Level8Interior4CWestReconFixture` | Cellar-cross leftover: L8 play `0x4C` `(112,125)`, MK 1, keys 8, bombs 6; `room_item` `0x19` key on floor; do not bomb-N |
+| `Level8Interior3CNorthReconFixture` | Bomb-N leftover: L8 play `0x3C` `(120,189)` south mouth, MK 1, keys 8, bombs 5; Gleeok `0x45` HP160 after idle; fight pin |
+| `Level8Interior3CKillReconFixture` | Post-kill leftover: L8 play `0x3C` `(32,181)`, MK 1, keys 8, bombs 5, hc 4; body `0x45` gone; north shutter RAM-open |
+| `Level8Interior2CTriforceReconFixture` | TF-room leftover: L8 play `0x2C` `(120,205)` south mouth, `room_item` `0x1B`, TF still `0x7F` |
+| `Level8PostShardOWReconFixture` | Fixture-lineage OW `0x6D` `(96,93)` after shard; TF `0xFF`; **not** Survival-true post-L8 leave |
 | `Level8Entrance` (canonical route state) | **still not created** — needs the measured post-L7 leave, not a poked stand |
 
 ## Scaffold modules
@@ -494,7 +595,9 @@ start.
 | `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn; holds `LIVE_RECON_BUSH_BURN_TARGET` |
 | `level8/bush.py` | Isolated 0x6D fixture-live burn recon; `route_eligible=false` |
 | `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; `LIVE_RECON_LEVEL8_TOPOLOGY` (entry `0x7E`) and `LEVEL8_INTERIOR_0X3E_RECON`; `LEVEL8_ROOM_SPECS` still empty |
-| `level8/path.py` | Fixture-live 0x1F west door; fail-closed Magic-Key / Gleeok-passage / four-head Gleeok factories |
+| `level8/gleeok.py` | Four-head south-stand fight in `0x3C` (live type `0x45`); heart `(32,192)` |
+| `level8/triforce.py` | `0x3C` north shutter dest hop (live `0x2C`) + shard walk-on |
+| `level8/path.py` | Fixture-live 0x1F west, 0x1E/0x2E south, 0x3E east doors; four-head wraps `level8.gleeok`; Gleeok-passage still fail-closed |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
 | `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine`, opt-in `LIVE_RECON_L8_OVERRIDES` |
 | `scratch/level8_bush_burn_sweep.py` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
@@ -503,6 +606,13 @@ start.
 | `scratch/probe_l8_1f_magic_key.py` | The `0x1F` stairs → Magical Key cellar `0x0F` fixture replay |
 | `scratch/probe_l8_0f_cellar_return.py` | Two-ladder return `0x0F` → play `0x1F` |
 | `scratch/probe_l8_1f_west.py` | Play `0x1F` west door → cleared `0x1E` |
+| `scratch/probe_l8_3e_east.py` | Play `0x3E` east shutter → cleared `0x3F` |
+| `scratch/probe_l8_3f_stairs.py` | Play `0x3F` stairs walk-on → cellar `0x2F` |
+| `scratch/probe_l8_2f_settle.py` | Idle-settle unloaded mode-9 `0x2F` (~400f) |
+| `scratch/probe_l8_2f_cross.py` | Settled `0x2F` east-ladder cross → play `0x4C` |
+| `scratch/probe_l8_4c_north.py` | Play `0x4C` bomb-N → Gleeok `0x3C` (census pin) |
+| `scratch/probe_l8_3c_gleeok.py` | Play `0x3C` south-stand `0x45` kill + heart `(32,192)` |
+| `scratch/probe_l8_3c_north.py` | Play `0x3C` north shutter → TF `0x2C` + shard → OW `0x6D` |
 | `scratch/probe_l7_exit_to_l8_bush.py` | L7-pond → `0x6D` geometry lane |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |

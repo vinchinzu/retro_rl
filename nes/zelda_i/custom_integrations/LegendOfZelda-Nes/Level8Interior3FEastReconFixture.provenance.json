@@ -1,0 +1,265 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T17:22:24.436231+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "east door from play 0x3E leftover, dest $EB live, do not assume 0x3F/0x3C, one gate, not on L8_THROUGH, do not chain STAIRS"
+    ],
+    "phase": "level8_interior_0x3e_east_gate",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "census": {
+      "arrows": 1,
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "bow": 1,
+        "candle": 2,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 8,
+        "magic_key": 1,
+        "map": 128,
+        "rupees": 247,
+        "selected_item": 2,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 8,
+      "level": 8,
+      "live_objects": [],
+      "map": 128,
+      "mode": 5,
+      "next_screen_hex": "0x3F",
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 63,
+      "room_item_hex": "0x00",
+      "rupees": 247,
+      "screen": 63,
+      "screen_hex": "0x3F",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 127,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 43,
+          "type_hex": "0x2B",
+          "type_name": "invuln_mover_residual",
+          "xy": [
+            160,
+            125
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 43,
+          "type_hex": "0x2B",
+          "type_name": "invuln_mover_residual",
+          "xy": [
+            160,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 12,
+          "type_hex": "0x0C",
+          "type_name": "unknown_object_0x0c",
+          "xy": [
+            208,
+            141
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 11,
+          "type_hex": "0x0B",
+          "type_name": "darknut",
+          "xy": [
+            80,
+            93
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "type": 11,
+          "type_hex": "0x0B",
+          "type_name": "darknut",
+          "xy": [
+            80,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "type": 48,
+          "type_hex": "0x30",
+          "type_name": "gibdo",
+          "xy": [
+            128,
+            125
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "type": 48,
+          "type_hex": "0x30",
+          "type_name": "gibdo",
+          "xy": [
+            128,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "type": 48,
+          "type_hex": "0x30",
+          "type_name": "gibdo",
+          "xy": [
+            160,
+            125
+          ]
+        }
+      ],
+      "x": 32,
+      "xy": [
+        32,
+        141
+      ],
+      "y": 141
+    },
+    "dest_eb": "0x3F",
+    "fixture_state": "Level8Interior3FEastReconFixture",
+    "fixture_writes": [],
+    "keys": 8,
+    "magic_key": 1,
+    "ok": true,
+    "source_state": "Level8Interior3ESouthReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 8,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 63,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 160,
+          "y": 125
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 160,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 12,
+          "type_name": "unknown_object_0x0c",
+          "x": 208,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 11,
+          "type_name": "darknut",
+          "x": 80,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 11,
+          "type_name": "darknut",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 48,
+          "type_name": "gibdo",
+          "x": 128,
+          "y": 125
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 48,
+          "type_name": "gibdo",
+          "x": 128,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 48,
+          "type_name": "gibdo",
+          "x": 160,
+          "y": 125
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 63,
+      "room_all_dead": 0,
+      "room_item_id": 0,
+      "room_item_name": "unknown_room_item_0x00",
+      "room_obj_count": 8,
+      "rupees": 247,
+      "submode": 0,
+      "triforce": 127,
+      "x": 32,
+      "y": 141
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior3ESouthReconFixture.state",
+  "source_state_sha256": "f0d2100272c7f54adfa902e0988d0dd01f5da758b4f092280afef6b40581f0c7",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior3FEastReconFixture.state",
+  "state_sha256": "53a4375a393617a6adbca37e84e4f869317ee10522c2443c112149d68a69039f"
+}

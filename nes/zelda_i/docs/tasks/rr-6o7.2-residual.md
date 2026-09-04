@@ -1,4 +1,4 @@
-# Residual — rr-6o7.2 L8-B Magical Key (play 0x3E after 0x2E south gate)
+# Residual — rr-6o7.2 L8-B Magical Key (OW 0x6D after L8 shard, fixture-lineage)
 
 **Spine bead:** `rr-6o7.2` (`in_progress`). Do not close it. Acceptance is
 power-on `--through level8-magic-key`, still blocked on `rr-8t4.3` and
@@ -6,62 +6,61 @@ power-on `--through level8-magic-key`, still blocked on `rr-8t4.3` and
 
 ## Frontier pin
 
-`Level8Interior3ESouthReconFixture` — L8 play `$EB=0x3E` `(120,93)`,
-mode 5, keys 8, bombs 6, Magic Key **1**, TF `0x7F`, bow 1, arrows 1,
-rupees 247, Magical Sword 3, Candle 2, B = arrows. `ADDR_MAP=0x80`
-(L8 map picked up incidentally walking the 0x2E aisle; not a detour).
-`room_item_id=0x03`. Arrival census empty (0x0C bodies already dead).
-`cur_opened_doors=12` (UP+DOWN), `open_doorway_mask=0`. North mouth of
-cleared 0x3E. Idle later raises RIGHT (`doors 13=0x0D`, mask `0x0C`) as
-the already-cleared east shutter — pin at arrival, not after idle.
+`Level8PostShardOWReconFixture` — **fixture-lineage**, not Survival-true
+post-L8 leave (this pin is not Survival-from-L7). OW play `$EB=0x6D`
+`(96,93)` mode 5, keys 8, bombs **5**, Magic Key **1**, TF **`0xFF`**,
+bow 1, arrows 1, rupees 247, Magical Sword 3, Candle 2, B = bombs,
+hc **4** (`health=0x33`). L8 bush screen, south of the bush.
 
-2/2 byte-identical hop: probe `l8_2e_south` I1/I2 (I3 save), 255
-controller frames (315 with census). Dest is play **0x3E**, not Gleeok
-`0x3C`, not cellar `0x0F`.
+Dest hop 2/2: probe `l8_3c_north` T2/T3, 296 controller / 356 census,
+play **`0x2C` `(120,205)`**, `room_item=0x1B`. Shard+OW 2/2: T5/T6, 43
+shard frames, 936 env, TF `0x7F|0x80=0xFF`. `position_writes=0`.
+`tf_poke=False`.
+
+Also pinned: `Level8Interior2CTriforceReconFixture` (pre-shard TF room).
 
 ## How we got here
 
-From `Level8Interior2ESouthReconFixture` play `0x2E` `(120,77)`.
+From `Level8Interior3CKillReconFixture` play `0x3C` `(32,181)`. Do not
+DOWN (`0x4C`). OccupancyWalker not used.
 
-- OccupancyWalker not used live: 1px-grade already false-missed 2px
-  dungeon steps on the west hop.
-- I1/I2/I3: cardinal DOWN along already-aligned x=120. Policy in
-  `level8/path.py` `south_2e_step`. Statues at ~x=96 and x=144 y~141;
-  center x=120 passed between them. Map 0x17 on the aisle was walked
-  over (`ADDR_MAP` 0→0x80); recorded, not a detour.
+- T1: UP west-wall boxed `(32,133)` tile 179.
+- T2 dest=None / T3 dest `0x2C`: `NORTH_BAND_Y=141` x-align then UP
+  center aisle. Live dest **`0x2C`**.
+- T4: shard pickup, 400f fanfare idle still mode 18.
+- T5/T6: `OW_IDLE=2500`, OW `0x6D` `(96,93)`.
 
-`make_magic_key_stairs_controller` and `make_gleeok_passage_controller`
-stay fail-closed. `topology.magic_key_room` unset. `L8_THROUGH` not greened.
-Factory `make_south_2e_controller` dest=`0x3E`, `route_eligible=False`.
+Policy in `level8/triforce.py`. Factories `make_north_3c_controller`
+(dest live `0x2C`) and `make_shard_2c_controller`.
+`route_eligible=False`. `assumed_0x2c=False`.
+`make_gleeok_passage_controller` stays fail-closed. Not on `L8_THROUGH`.
+
+### Prior leftover (0x3C post-kill, now predecessor)
+
+`Level8Interior3CKillReconFixture` — L8 play `$EB=0x3C` `(32,181)`,
+keys 8, bombs 5, MK 1, TF `0x7F`, hc 4, body `0x45` gone, doors 12.
 
 ## Next live boundary
 
-From play `0x3E` `(120,93)` continue the Gleeok suffix. One gate. Do not
-start the Gleeok fight. Do not poke MK / TF / doors / Gleeok HP.
-
-Hypothesis (not live): RIGHT from cleared 0x3E into passage_east (hyp
-`0x3F`), STAIRS cellar 0x2F to hyp 0x4C, bomb-N hyp 0x3C. Record `$EB`.
-`GLEEOK_FOUR_HEAD_OBJECT_TYPE` stays None. ROM `0x45` is not a live type.
-
-PNG of arrival: north mouth, two mid-row statue blocks, east shutter
-still metal at arrival; after idle the east doorway is black/open.
-Prefer the RIGHT bit that idle raises. Do not chain into Gleeok.
-
-Keys 8→8, bombs 6→6 unless a new gate spends one.
+Measured Survival-true post-L8 OW leave still needs the L7→L8 power-on
+predecessors (`rr-8t4.3`, `rr-6o7.1`). Do not treat
+`Level8PostShardOWReconFixture` as that handoff. Do not poke MK / TF /
+doors / position.
 
 ## Remaining L8
 
-1. This leftover: 0x3E east / passage_east (hyp 0x3F), one gate per sitting.
-2. `rr-5eb2`: live Gleeok census, then the written south-stand model.
-3. `rr-6o7.3`: heart, TF `0x80`, post-L8 OW leave.
-4. Power-on still blocked on `rr-8t4.3` then `rr-6o7.1`.
+1. Power-on `--through level8` still blocked on `rr-8t4.3` then
+   `rr-6o7.1` then composing this suffix.
+2. `rr-6o7.3`: Survival-true post-L8 OW leave (this leftover is
+   fixture-lineage only).
 
 ## Rooms live / selected min
 
 L8 selected min-through (MK chapter + Gleeok suffix, Book/Map/Compass omitted):
-`0x7E 0x6E 0x5E 0x4E 0x3E 0x2E 0x1E 0x1F 0x0F` + `passage_east pols_west gleeok 0x3C triforce` = **13**.
-Live unique: those nine (MK 9/9 including cellar). Unvisited: 4.
-**L8 9/13 = 69%.** Leftover is a revisit of live `0x3E`.
+`0x7E 0x6E 0x5E 0x4E 0x3E 0x2E 0x1E 0x1F 0x0F` + `passage_east pols_west gleeok 0x3C triforce 0x2C` = **13**.
+Live unique: those nine plus `0x3F` `0x2F` `0x4C` `0x3C` **`0x2C`**.
+Unvisited play: **0**. **L8 13/13 rooms visited including TF.** Leftover
+is fixture-lineage OW `0x6D`.
 
 L9 selected Magical Key min (Red Ring `0x07` out, plus Ganon/Zelda): **28**.
 Live dest hops: `0x41 0x31 0x30 0x67 0x04 0x03 0x77 0x52 0x42 0x32` = 10.
@@ -73,5 +72,5 @@ on `rr-8t4.3`. Survival OW leave (TF `0x7F`) unmeasured.
 
 ## Integrity
 
-deaths 0, progression_writes 0, capacity_writes 0. Survival refill only.
-Leave proof is RAM + `zelda_i.screen_glance`.
+deaths 0, progression_writes 0, capacity_writes 0, position_writes 0,
+tf_poke 0.

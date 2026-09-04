@@ -450,3 +450,33 @@ stay fail-closed. Policy: `level7/cellar.py`. Probe:
 `scratch/probe_l7_7b_cellar_cross.py`. Residual:
 `docs/tasks/rr-n91a-residual.md`.
 
+### 2026-09-04 sitting — 0x0D walk-on south-of-gap / south-strip MISS
+
+Pin `Level7Interior0DClearedReconFixture` play `0x0D` `(63,149)`. Zero
+position pokes. DOWN from the pin pins **`(64,157)` tile 178** (SW diamond):
+y=161-164 south-of-gap band never entered; y=189 (L9 room30 south-strip)
+unreachable (ROM 0x0D south is WALL). No UP-push, no dest fixture, no
+spine flip. `NOSE_CELLAR.ram_id` stays None. Probe flags:
+`scratch/probe_l7_room0d_squeeze.py --south-of-gap` / `--south-strip`.
+PNGs: `recordings/l7_0d_walkon_20260904_start.png`,
+`recordings/20260904_sog_sog_after_down.png`.
+
+### 2026-09-04 sitting — 0x0D walk-on Trial A/B MISS
+
+y=141 gap **HIT** `(94,141)` 27f. DOWN from there to lure `(96,165)` **MISS**
+`(96,157)` tile 178. After RIGHT push, plug `(192,133)` LEFT+UP → `(191,133)`,
+RIGHT+UP no move; still boxed y≥133. No dest fixture. Probe
+`--trial-a` / `--trial-b`.
+
+### 2026-09-04 sitting — 0x0D plus-corner x=144 DOWN MISS
+
+y=141 to `(144,141)` **HIT**. DOWN between statues x=128/160 **MISS**
+`(144,157)` tile 178 (x held 144). No south-face, no dest fixture. Probe
+`--plus-corner`.
+
+### 2026-09-04 sitting — 0x0D north-corridor UP MISS
+
+`(144,141)` UP **MISS** `(144,117)` tile 179. Fallback x=176 UP **MISS**
+`(176,117)` tile 179. y≤99 not entered. No push-then-walk-on. Probe
+`--north-up`.
+

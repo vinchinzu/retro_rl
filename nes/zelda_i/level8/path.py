@@ -14,11 +14,17 @@ South gate from play 0x2E leftover (120,77) is DOWN along x=120 into first
 settled dest 0x3E (120,93) north mouth. Occupancy still banned. Statues
 in 0x2E sit ~x=96 and x=144 at y~141; center x=120 passes between them.
 Map 0x17 is incidental (ADDR_MAP 0→0x80 on the aisle; not a detour).
+East gate from play 0x3E leftover (120,93) idles until the RIGHT door bit
+(arrival doors 0x0C, idle raises 0x0D), stays on the north band (y≈93-109)
+past the x=144 statue, y-aligns to the east mouth, then RIGHT push. Dest
+is live 0x3F (32,141) west mouth. Occupancy still banned. Do not chain
+STAIRS into cellar 0x2F.
 Hypothesis rooms past 0x1E cannot press a direction on the cumulative spine.
 The 0x1E body is live type 0x33 HP96 (`LEVEL8_INTERIOR_0X1E_RECON`); colour
 is not asserted.  Blue Gohma still requires naturally owned Bow + wooden
 arrows and never pokes L6's one-time arrow grant or L6 room 0x1C.  Four-head
-Gleeok waits for a live object type; 0x45 is not assumed.
+Gleeok live body is type 0x45 (idle census + fight pin); south-stand
+in ``level8.gleeok``. 0x45 is RAM, not a ROM assumption.
 """
 
 from __future__ import annotations
@@ -35,11 +41,14 @@ from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
     ENTRY_TO_MAGIC_KEY_SPEC,
-    GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     MAGIC_KEY_TO_SHARD_SPEC,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ChapterSpec,
     Level8Topology,
+)
+from zelda_i.level8.gleeok import (
+    Level8FourHeadGleeokController,
+    make_four_head_gleeok_controller as _make_four_head_gleeok_controller,
 )
 from zelda_i.level8.north_column import (
     Level8DarknutKeyController,
@@ -68,11 +77,21 @@ SOUTH_2E_ORIGIN_POSE = SOUTH_DEST_POSE  # (120, 77) north mouth
 SOUTH_2E_DEST_HYP = 0x3E  # confirmed live I1/I2/I3; not 0x3C / 0x0F
 SOUTH_2E_DEST = 0x3E  # live $EB from 0x2E south; north mouth
 SOUTH_2E_DEST_POSE = (120, 93)  # live I1/I2/I3 arrival
+EAST_DOOR = DOOR_TARGETS["RIGHT"]  # (208, 141)
+EAST_3E_ORIGIN = SOUTH_2E_DEST  # 0x3E
+EAST_3E_ORIGIN_POSE = SOUTH_2E_DEST_POSE  # (120, 93) north mouth
+EAST_3E_DEST_HYP = 0x3F  # confirmed live J1/J2; not 0x3C / 0x0F
+EAST_3E_DEST = 0x3F  # live $EB from 0x3E east; west mouth
+EAST_3E_DEST_POSE = (32, 141)  # live J1 arrival
+EAST_RIGHT_BIT = 0x01  # DoorDir.RIGHT; idle raises doors 12→13
+EAST_STATUE_CLEAR_X = 176  # past mid-row statue ~x=144; do not y-align earlier
+EAST_NORTH_BAND_Y = 109  # stay north of statue row y~141
 GLEEOK_HYP = 0x3C
 _DOOR_TOL = 4
 _SAMPLE_PERIOD = 12
 _WEST_MAX_FRAMES = 4000
 _SOUTH_MAX_FRAMES = 4000
+_EAST_MAX_FRAMES = 4000
 
 
 def west_1f_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -111,6 +130,27 @@ def south_2e_step(snap: ZeldaSnapshot) -> FrameAction:
     if y < gy - _DOOR_TOL:
         return FrameAction(nes_action("DOWN"), "south_approach")
     return FrameAction(nes_action("DOWN"), "south_push")
+
+
+def east_3e_step(snap: ZeldaSnapshot) -> FrameAction:
+    """Idle until RIGHT bit, north-band RIGHT past statues, y-align, push.
+
+    Do not walk the statue row at y=141 RIGHT into x=144. Occupancy banned.
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    gx, gy = EAST_DOOR
+    if not (int(snap.cur_opened_doors) & EAST_RIGHT_BIT):
+        return FrameAction(nes_idle_action(), "east_wait_right_bit")
+    if x < EAST_STATUE_CLEAR_X:
+        if y > EAST_NORTH_BAND_Y:
+            return FrameAction(nes_action("UP"), "east_north_band")
+        return FrameAction(nes_action("RIGHT"), "east_approach")
+    if abs(y - gy) > _DOOR_TOL:
+        btn = "UP" if y > gy else "DOWN"
+        return FrameAction(nes_action(btn), "east_align")
+    if x < gx - _DOOR_TOL:
+        return FrameAction(nes_action("RIGHT"), "east_approach")
+    return FrameAction(nes_action("RIGHT"), "east_push")
 
 
 def _west_leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
@@ -394,6 +434,95 @@ def make_south_2e_controller(
     return Level8South2EController(dest=dest)
 
 
+@dataclass(kw_only=True)
+class Level8East3EController(HopController):
+    """0x3E leftover → east door RIGHT. Dest is RAM; fail 0x0F / 0x3C."""
+
+    spec_id: str = "level8_east_3e"
+    max_frames: int = _EAST_MAX_FRAMES
+    require_level: int = 8
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "left_0x3e_east"
+    dest: int | None = None
+    route_eligible: bool = False
+    leftover: dict[str, Any] = field(default_factory=dict)
+    writes: int = 0
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            return False
+        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return snap.screen != EAST_3E_ORIGIN
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        return FrameAction(nes_action("RIGHT"), "east_scroll")
+
+    def emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
+            self.leftover = _west_leftover(snap)
+        return action
+
+    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        blocked = HopController.guard(self, snap)
+        if blocked is not None:
+            return blocked
+        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
+            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
+        if snap.screen == GLEEOK_HYP:
+            return self.mark_fail("gleeok_0x3c")
+        if (
+            snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen != EAST_3E_ORIGIN
+            and self.dest is not None
+            and snap.screen != self.dest
+        ):
+            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
+        return None
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != EAST_3E_ORIGIN:
+            return FrameAction(nes_action("RIGHT"), "east_settle")
+        return east_3e_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "natural_entry": False,
+            "writes": int(self.writes),
+            "door": "RIGHT",
+            "leftover": dict(self.leftover),
+        }
+
+
+def make_east_3e_controller(
+    *, dest: int | None = EAST_3E_DEST
+) -> Level8East3EController:
+    return Level8East3EController(dest=dest)
+
+
 # L6 red Gohma is 0x33; L8 source is blue 0x34.  Red is accepted only as a
 # live-type observation, never as an L6 room check.
 _GOHMA_TYPES = frozenset({GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE})
@@ -493,49 +622,6 @@ class Level8BlueGohmaController:
         return FrameAction(nes_idle_action(), reason)
 
 
-@dataclass
-class Level8FourHeadGleeokController:
-    """Fail closed until a live L8 Gleeok body type is observed."""
-
-    topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY
-    observed_body_type: int | None = GLEEOK_FOUR_HEAD_OBJECT_TYPE
-    max_frames: int = 1
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    writes: int = 0
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "spec_id": "level8_four_head_gleeok",
-            "observed_body_type": self.observed_body_type,
-            "assumed_0x45": False,
-            "writes": self.writes,
-            "route_eligible": False,
-            "notes": list(self.notes),
-        }
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.failed = True
-        if self.observed_body_type == 0x45:
-            reason = "l8_gleeok_refuses_assumed_0x45"
-        elif self.observed_body_type is None:
-            reason = "l8_gleeok_object_type_unobserved"
-        elif not self.topology.route_eligible or self.topology.boss_room is None:
-            reason = "l8_gleeok_topology_unobserved"
-        else:
-            reason = "l8_gleeok_room_unobserved"
-        if not self.notes:
-            self.notes.append(reason)
-        _ = snap
-        return FrameAction(nes_idle_action(), reason)
-
-
 def make_north_manhandla_controller() -> Level8NorthManhandlaController:
     return _make_north_manhandla_controller()
 
@@ -569,7 +655,7 @@ def make_gleeok_passage_controller() -> UnverifiedLevel8PathController:
 def make_four_head_gleeok_controller(
     *, topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY
 ) -> Level8FourHeadGleeokController:
-    return Level8FourHeadGleeokController(topology=topology)
+    return _make_four_head_gleeok_controller(topology=topology)
 
 
 def make_shard_leave_controller() -> UnverifiedLevel8PathController:
@@ -587,12 +673,22 @@ __all__ = [
     "Level8DarknutKeyController",
     "Level8FourHeadGleeokController",
     "Level8NorthManhandlaController",
+    "Level8East3EController",
     "Level8South1EController",
     "Level8South2EController",
     "Level8West1FController",
     "UnverifiedLevel8PathController",
     "WEST_DOOR",
     "STAIRS_WEST_X",
+    "EAST_3E_DEST",
+    "EAST_3E_DEST_HYP",
+    "EAST_3E_DEST_POSE",
+    "EAST_3E_ORIGIN",
+    "EAST_3E_ORIGIN_POSE",
+    "EAST_DOOR",
+    "EAST_NORTH_BAND_Y",
+    "EAST_RIGHT_BIT",
+    "EAST_STATUE_CLEAR_X",
     "SOUTH_2E_DEST",
     "SOUTH_2E_DEST_HYP",
     "SOUTH_2E_DEST_POSE",
@@ -608,11 +704,13 @@ __all__ = [
     "WEST_GRID_XMIN",
     "WEST_ORIGIN",
     "WEST_ORIGIN_POSE",
+    "east_3e_step",
     "south_1e_step",
     "south_2e_step",
     "west_1f_step",
     "make_blue_gohma_controller",
     "make_darknut_key_controller",
+    "make_east_3e_controller",
     "make_four_head_gleeok_controller",
     "make_gleeok_passage_controller",
     "make_magic_key_stairs_controller",

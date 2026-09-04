@@ -14,22 +14,21 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 ## Immediate goal
 
-Bead `rr-6o7.2` (L8-B Magical Key; fixture-live). Living residual:
+Bead `rr-6o7.2` (`in_progress`; power-on still blocked). Living residual:
 [`docs/tasks/rr-6o7.2-residual.md`](docs/tasks/rr-6o7.2-residual.md).
-Frontier pin `Level8Interior3ESouthReconFixture`: L8 play `$EB=0x3E`
-`(120,93)`, keys 8, bombs 6, Magic Key **1**, TF `0x7F`. South 0x2E→0x3E
-2/2 I1/I2, 255 controller frames (cardinal DOWN x=120; incidental map
-pickup). Dest is `0x3E`, not Gleeok `0x3C`. Next: one Gleeok-suffix gate
-from this leftover (hyp RIGHT, passage_east). Do not start the fight.
-Gleeok model: `docs/tasks/rr-5eb2-gleeok-model.md` (ROM `0x45`; not live).
-True `--through level8` stays blocked on `rr-8t4.3` / `rr-6o7.1`. Do not
-STATUS.
+Frontier pin `Level8PostShardOWReconFixture`: OW `$EB=0x6D` `(96,93)`
+mode 5, MK 1, TF **`0xFF`**, hc 4, bombs 5. Fixture-lineage, not a
+Survival-true post-L8 leave. L8 selected min-through is 13/13 rooms
+fixture-live, including Gleeok `0x3C` body type **`0x45` HP160** (kill
+2/2 F6/F7) and TF `0x2C`. `make_gleeok_passage_controller` stays
+fail-closed. `L8_THROUGH` not greened. True `--through level8` stays
+blocked on `rr-8t4.3` / `rr-6o7.1`. Do not STATUS.
 
 Parallel leftovers (not this AGENTS residual): L7 dest `0x29` 2/2,
-suffix 4/4 fixture-live (`rr-n91a` closed; 0x0D walk-on still on
-`rr-8t4.3`). L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2
-(`rr-sz8.6`; pin `Level9Interior65WestReconFixture`; next bomb-N hyp
-`0x55`).
+suffix 4/4 fixture-live (`rr-n91a` closed; **0x0D walk-on still open**
+on `rr-8t4.3`, pin `Level7Interior0DClearedReconFixture` `(63,149)`).
+L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2 (`rr-sz8.6`; pin
+`Level9Interior65WestReconFixture`).
 
 ## Commands
 

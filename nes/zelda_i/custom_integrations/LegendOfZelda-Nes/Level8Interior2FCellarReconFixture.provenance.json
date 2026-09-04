@@ -1,0 +1,185 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T17:46:41.543831+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "settled mode-9 cellar 0x2F after 600f idle, not the first unloaded mode-9 frame, not on L8_THROUGH"
+    ],
+    "phase": "level8_interior_0x2f_cellar_settled",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "census": {
+      "arrows": 1,
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "bow": 1,
+        "candle": 2,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 8,
+        "magic_key": 1,
+        "map": 128,
+        "rupees": 247,
+        "selected_item": 2,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 8,
+      "level": 8,
+      "live_objects": [],
+      "map": 128,
+      "mode": 9,
+      "next_screen_hex": "0x3F",
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 47,
+      "room_item_hex": "0x03",
+      "rupees": 247,
+      "screen": 47,
+      "screen_hex": "0x2F",
+      "tile": 111,
+      "transitioning": false,
+      "triforce": 127,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            153,
+            161
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            54,
+            174
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            151,
+            164
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            62,
+            131
+          ]
+        }
+      ],
+      "x": 192,
+      "xy": [
+        192,
+        93
+      ],
+      "y": 93
+    },
+    "dest_eb": "0x2F",
+    "fixture_state": "Level8Interior2FCellarReconFixture",
+    "fixture_writes": [],
+    "keys": 8,
+    "magic_key": 1,
+    "ok": true,
+    "source_state": "Level8Interior2FCellarReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 8,
+      "level": 8,
+      "mode": 9,
+      "mode_name": "dungeon_underworld_passage",
+      "next_room": 63,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 153,
+          "y": 161
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 54,
+          "y": 174
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 151,
+          "y": 164
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 62,
+          "y": 131
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 47,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 0,
+      "rupees": 247,
+      "submode": 9,
+      "triforce": 127,
+      "x": 192,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior2FCellarReconFixture.state",
+  "source_state_sha256": "5bcd69ea4fa2f57e951d517673afdcf8c670646ceaa3a8c780cb38550fe5522b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior2FCellarReconFixture.state",
+  "state_sha256": "5bcd69ea4fa2f57e951d517673afdcf8c670646ceaa3a8c780cb38550fe5522b"
+}
