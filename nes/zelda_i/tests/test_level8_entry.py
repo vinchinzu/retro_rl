@@ -26,6 +26,7 @@ from zelda_i.level8.dungeon import (
     GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     GLEEOK_ROUTE,
     LEVEL8_HYPOTHESIS_ROOMS,
+    LEVEL8_INTERIOR_0X0F_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
     LEVEL8_INTERIOR_0X1F_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
@@ -88,6 +89,7 @@ _WRITE_MODULES = (
     "dungeon.py",
     "entry.py",
     "hops.py",
+    "north_column.py",
     "path.py",
     "spine.py",
 )
@@ -421,6 +423,7 @@ def test_level8_interior_0x3e_recon_is_fixture_only_not_route_eligible() -> None
         LEVEL8_INTERIOR_0X2E_RECON,
         LEVEL8_INTERIOR_0X1E_RECON,
         LEVEL8_INTERIOR_0X1F_RECON,
+        LEVEL8_INTERIOR_0X0F_RECON,
     )
     r = LEVEL8_INTERIOR_0X3E_RECON
     assert r.room_id == 0x3E

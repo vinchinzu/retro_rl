@@ -14,17 +14,16 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 ## Immediate goal
 
-Bead `rr-tne2` (L6 Survival compose → stairs/Gohma/TF `0x20`). Living residual:
-[`docs/tasks/rr-tne2-residual.md`](docs/tasks/rr-tne2-residual.md).
-CheckWarp walk **1/1** (`position_writes=0`, cellar `0x08` `(208,93)`).
-Gohma reactive kill **GREEN 2026-09-02**: `--through level6-gohma` **1/1**
-(one arrow, keys 2, TF `0x1F`). Root cause of every prior red was Link
-firing the arrow **sideways** — `UP+B` in one frame off a strafe does not
-flip facing; policy now emits a `face_up` frame first, then fires on the
-eye-open rising edge (RAM `0x03C7` leaves `0xC0`). Fast iteration:
-`scripts/gohma_lab.py --pin` / `--tag X`. `--through level6` **1/1**
-(TF `0x1F→0x3F`, `set_state=0`, `deaths=0`). Close of `rr-tne2` / `rr-17co`
-is the planner's call (Phase-4 AuditedEnv sign-off). Do not STATUS.
+Bead `rr-6o7.2` (L8-B Magical Key; fixture-live). Living residual:
+[`docs/tasks/rr-6o7.2-residual.md`](docs/tasks/rr-6o7.2-residual.md).
+Frontier pin `Level8InteriorMKReconFixture`: L8 mode-9 cellar `$EB=0x0F`
+`(136,141)`, keys 8, bombs 6, Magic Key **1**, TF `0x7F`. Natural
+`ADDR_MAGIC_KEY` 0→1 this sitting (2/2 E2/E3, 9074 frames). Next live
+boundary: two-ladder return (DOWN-first, not y=141) toward hypothesized
+Gleeok `0x3C`. Do not start the Gleeok fight. Gleeok model:
+`docs/tasks/rr-5eb2-gleeok-model.md` (ROM claims `0x45`; **do not** assume
+it live). True `--through level8` power-on stays blocked on `rr-8t4.3` /
+`rr-6o7.1`. Do not STATUS.
 
 ## Commands
 
