@@ -12,6 +12,7 @@ from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
     LEVEL8_INTERIOR_0X0F_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
+    LEVEL8_INTERIOR_0X1E_WEST_RECON,
     LEVEL8_INTERIOR_0X1F_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
@@ -150,3 +151,24 @@ def test_0x0f_cellar_return_dest_is_live_play_0x1f() -> None:
     assert CELLAR_RETURN_DEST == 0x1F
     assert CELLAR_RETURN_POSE == (96, 157)
     assert CELLAR_RETURN_DEST != 0x3C
+
+
+def test_0x1e_west_return_is_live_not_on_inbound_chain() -> None:
+    from zelda_i.level8.path import WEST_DEST, WEST_DEST_POSE
+    from zelda_i.level8.spine import L8_THROUGH
+
+    # probe_l8_1f_west G2/G3 2/2, 275 controller frames. Not Gleeok 0x3C.
+    r = LEVEL8_INTERIOR_0X1E_WEST_RECON
+    assert r.room_id == WEST_DEST == 0x1E
+    assert r.entered_from == 0x1F
+    assert r.entry_direction == "LEFT"
+    assert r.entry_gate == "west_open_door"
+    assert r.entry_pose == WEST_DEST_POSE == (208, 141)
+    assert (r.keys_in, r.keys_out) == (8, 8)
+    assert (r.bombs_in, r.bombs_out) == (6, 6)
+    assert r.census == ()
+    assert r.fixture == "Level8Interior1EWestReconFixture"
+    assert r.route_eligible is False
+    assert r not in LEVEL8_INTERIOR_ROOM_RECON
+    assert "level8-interior-0x1e-west" not in L8_THROUGH
+    assert WEST_DEST != 0x3C

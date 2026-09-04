@@ -16,13 +16,14 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 Bead `rr-6o7.2` (L8-B Magical Key; fixture-live). Living residual:
 [`docs/tasks/rr-6o7.2-residual.md`](docs/tasks/rr-6o7.2-residual.md).
-Frontier pin `Level8Interior1FReturnedReconFixture`: L8 play `$EB=0x1F`
-`(96,157)`, keys 8, bombs 6, Magic Key **1**, TF `0x7F`. Cellar return
-2/2 F3/F4, 588 frames (east-drop, not pad DOWN). Dest is `0x1F`, not
-Gleeok `0x3C`. Next: one Gleeok-suffix gate from this leftover. Do not
-start the fight. Gleeok model: `docs/tasks/rr-5eb2-gleeok-model.md`
-(ROM `0x45`; not live). True `--through level8` stays blocked on
-`rr-8t4.3` / `rr-6o7.1`. Do not STATUS.
+Frontier pin `Level8Interior1EWestReconFixture`: L8 play `$EB=0x1E`
+`(208,141)`, keys 8, bombs 6, Magic Key **1**, TF `0x7F`. West gate 2/2
+G2/G3, 275 controller frames (cardinal LEFT, not occupancy). Dest is
+`0x1E`, not Gleeok `0x3C`. Next: one Gleeok-suffix gate from this
+leftover (hyp DOWN). Do not start the fight. Gleeok model:
+`docs/tasks/rr-5eb2-gleeok-model.md` (ROM `0x45`; not live). True
+`--through level8` stays blocked on `rr-8t4.3` / `rr-6o7.1`. Do not
+STATUS.
 
 ## Commands
 

@@ -367,6 +367,19 @@ settled play **`0x1F` `(96,157)`**, keys 8→8, bombs 6→6, MK 1, TF `0x7F`.
 Not Gleeok `0x3C`. `topology.magic_key_room` stays unset. Not on
 `L8_THROUGH`. Pin `Level8Interior1FReturnedReconFixture`.
 
+### Fixture-live 0x1F west door → cleared 0x1E (rr-6o7.2)
+
+From `Level8Interior1FReturnedReconFixture`. G1 OccupancyWalker 1px LEFT
+grade false-missed 2px dungeon steps and boxed at `(88,157)` tile 118
+(walkable floor); west door still open. Cardinal LEFT past `0x68` (`x<=80`),
+y-align, LEFT push. G2/G3 2/2 (probe `l8_1f_west`, 275 controller frames /
+335 with census): first settled play **`0x1E` `(208,141)`** east mouth,
+keys 8→8, bombs 6→6, MK 1, TF `0x7F`. Arrival census empty (Gohma already
+dead). `0x55` statue fireballs spawn after idle — pin at arrival, not after
+knockback. Not Gleeok `0x3C`. `make_gleeok_passage_controller` stays
+fail-closed. Not on `L8_THROUGH`. Pin `Level8Interior1EWestReconFixture`.
+Do not start the fight. Next gate is hyp DOWN toward `0x2E`.
+
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is
 **type `0x0C`, HP 128**, appearing 5× in `0x5E`, 1× in `0x4E` and 6× in `0x3E`,
@@ -406,7 +419,7 @@ blue_gohma --DOWN×2--> blue_darknuts --KILL RIGHT--> passage_east
 | Book of Magic (staircase) | `ADDR_BOOK=0x0661` | **omitted** on min route |
 | Darknut / keys / Compass / Map | live `0x5E` (5× `0x0C`, small key `0x19`), `0x4E` (mixed), `0x3E` (6× `0x0C`); Compass/Map omitted | **fixture-live** through `0x3E` |
 | Gohma (blue, 3 arrows) | live `0x1E` type **`0x33` HP96** (ids: L6 red; colour not asserted). 3 connecting wooden arrows, 9 shots loosed. East kill-clear → `0x1F`. **no L6 poke** | **fixture-live** (`route_eligible=false`) |
-| Magical Key (staircase) | live cellar `$EB=0x0F` MK 0→1; return 2/2 play `0x1F` `(96,157)`. Not `0x3C` | **fixture-live** (`route_eligible=false`) |
+| Magical Key (staircase) | live cellar `$EB=0x0F` MK 0→1; return 2/2 play `0x1F` `(96,157)`. West door 2/2 back to cleared `0x1E` `(208,141)`. Not `0x3C` | **fixture-live** (`route_eligible=false`) |
 | Boss Gleeok 4-head | Heart → TF; body type **unobserved** (not assumed `0x45`) | no |
 
 Items optional for credits (source). TF bit **`0x80`**. Magical Key is the
@@ -439,6 +452,8 @@ start.
 | `Level8Interior1EReconFixture` | L8 play `0x1E` `(120,205)`, keys 8, bombs 6, one body type `0x33` HP96 |
 | `Level8Interior1FReconFixture` | L8 play `0x1F` `(16,141)`, keys 8, bombs 6, rupees 246, Magic Key 0; mixed 0x16/0x0C/0x0B plus centre stairs |
 | `Level8InteriorMKReconFixture` | Magical Key pad leftover: L8 mode-9 cellar `0x0F` `(136,141)`, keys 8, bombs 6, rupees 247, Magic Key **1** |
+| `Level8Interior1FReturnedReconFixture` | Cellar return leftover: L8 play `0x1F` `(96,157)`, MK 1, keys 8, bombs 6 |
+| `Level8Interior1EWestReconFixture` | West-gate leftover: L8 play `0x1E` `(208,141)` east mouth, MK 1, keys 8, bombs 6; Gohma already dead |
 | `Level8Entrance` (canonical route state) | **still not created** — needs the measured post-L7 leave, not a poked stand |
 
 ## Scaffold modules
@@ -449,13 +464,15 @@ start.
 | `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn; holds `LIVE_RECON_BUSH_BURN_TARGET` |
 | `level8/bush.py` | Isolated 0x6D fixture-live burn recon; `route_eligible=false` |
 | `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; `LIVE_RECON_LEVEL8_TOPOLOGY` (entry `0x7E`) and `LEVEL8_INTERIOR_0X3E_RECON`; `LEVEL8_ROOM_SPECS` still empty |
-| `level8/path.py` | Fail-closed Magic-Key / blue-Gohma / four-head Gleeok policies |
+| `level8/path.py` | Fixture-live 0x1F west door; fail-closed Magic-Key / Gleeok-passage / four-head Gleeok factories |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
 | `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine`, opt-in `LIVE_RECON_L8_OVERRIDES` |
 | `scratch/level8_bush_burn_sweep.py` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
 | `scratch/capture_level8_entrance_fixture.py` | Reproduces the `(136,93)` RIGHT/RIGHT burn into live `0x7E` |
 | `scratch/probe_l8_5e_north.py` / `probe_l8_4e_north.py` | The `0x7E→0x4E` and `0x4E→0x3E` fixture replays |
 | `scratch/probe_l8_1f_magic_key.py` | The `0x1F` stairs → Magical Key cellar `0x0F` fixture replay |
+| `scratch/probe_l8_0f_cellar_return.py` | Two-ladder return `0x0F` → play `0x1F` |
+| `scratch/probe_l8_1f_west.py` | Play `0x1F` west door → cleared `0x1E` |
 | `scratch/probe_l7_exit_to_l8_bush.py` | L7-pond → `0x6D` geometry lane |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |
