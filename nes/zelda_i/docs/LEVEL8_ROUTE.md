@@ -57,6 +57,24 @@ Hop table + controller: `level8.overworld.LEVEL8_BUSH_HOPS`,
 `OverworldToLevel8Controller` (maze waypoints =
 `overworld.graph.LEVEL2_5C_MAZE_WAYPOINTS`).
 
+### Fixture-live L7-pond → bush 0x6D (rr-6o7.4, `route_eligible=false`)
+
+Not the natural post-L7 leave (still unmeasured). From the disclosed
+`OW_L7Pond` south-shore pose, the reverse of the live forward pond walk:
+
+```text
+0x42 S→ 0x52 (boulder field: y~85 corridor, x~48 column, y~189 bottom)
+  E→ 0x53 (x~192 pillar to y~141) E→ 0x54 (x~64) S→ 0x64 (x~64 column to y~141)
+  E→ 0x65 (y~141 river ford to x~112) U→ 0x55 (x~112 spit to y~133)
+  E→ 0x56 (y~133 row, step to y~157 at x~224) E→ 0x57 E→ 0x58
+  E→ 0x59 → 0x5A → 0x5B → 0x5C [maze] → 0x5D S→ 0x6D
+```
+
+`Level7PondToLevel8BushController` (`level8.overworld`), 2/2 byte-identical
+(`probe_l7_exit_to_l8_bush.py --from-state OW_L7Pond`, frames 4980,
+settled 0x6D `(48,61)`). Natural `Level7Entrance` exit refills the pool
+and fails closed (Link cannot walk around it — `probe s42` reachability).
+
 Isolated `probe_level8_entry.py` pruned. The durable runner does not attach
 the new L8 seam to the shared continuous spine yet:
 
