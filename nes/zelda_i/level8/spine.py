@@ -30,6 +30,10 @@ from zelda_i.level8.entry import (
     PostLevel7Handoff,
 )
 from zelda_i.level8.hops import l8_hops
+from zelda_i.level8.suffix import (
+    FIXTURE_LINEAGE_LEVEL8_SUFFIX,
+    Level8SuffixLineage,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.spine.hops import attach_hops
 
@@ -78,8 +82,14 @@ def continue_level8_spine(
     burn_target: BushBurnTarget = UNVERIFIED_BUSH_BURN_TARGET,
     topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY,
     clear_endpoint: Level8ClearEndpoint = UNOBSERVED_LEVEL8_CLEAR,
+    suffix: Level8SuffixLineage = FIXTURE_LINEAGE_LEVEL8_SUFFIX,
 ) -> None:
-    """Attach the L8 chapter rows after a naturally completed Level 7."""
+    """Attach the L8 chapter rows after a naturally completed Level 7.
+
+    ``suffix`` is the rr-6o7.3 composition gate (``level8.suffix``).  The
+    default lineage is fixture-only, so the clear chapter keeps its
+    fail-closed ``level8_return_passage`` row.
+    """
     if through not in L8_THROUGH:
         raise ValueError(f"unknown Level 8 through target: {through!r}")
     attach_hops(
@@ -92,6 +102,7 @@ def continue_level8_spine(
             burn_target=burn_target,
             topology=topology,
             clear_endpoint=clear_endpoint,
+            suffix=suffix,
         ),
         through=through,
         run_stages=run_stages,

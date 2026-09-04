@@ -35,6 +35,12 @@ from zelda_i.level8.path import (
     make_north_manhandla_controller,
     make_shard_leave_controller,
 )
+from zelda_i.level8.suffix import (
+    FIXTURE_LINEAGE_LEVEL8_SUFFIX,
+    Level8SuffixLineage,
+    make_cellar_2f_settle_controller,
+    suffix_stages,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_u8
 from zelda_i.spine.hops import SpineHop
@@ -88,7 +94,22 @@ def _magic_key_stages(*, topology: Level8Topology):
     )
 
 
-def _clear_stages(*, topology: Level8Topology):
+def _clear_stages(
+    *,
+    topology: Level8Topology,
+    suffix: Level8SuffixLineage = FIXTURE_LINEAGE_LEVEL8_SUFFIX,
+):
+    """Fail-closed clear chapter, or the ordered suffix once it composes.
+
+    ``suffix_stages`` is empty for every lineage the tree owns today (the
+    frontier pin is fixture-lineage), so the default rows are unchanged and
+    ``level8_return_passage`` still refuses on the first frame.  A composable
+    lineage swaps in ``level8.suffix.LEVEL8_SUFFIX_GATES``; even then
+    ``level8_clear_stop`` still needs a measured ``Level8ClearEndpoint``.
+    """
+    composed = suffix_stages(lineage=suffix)
+    if composed:
+        return composed
     return (
         _stage("level8_return_passage", make_gleeok_passage_controller),
         _stage(
@@ -107,6 +128,7 @@ def l8_hops(
     burn_target: BushBurnTarget = UNVERIFIED_BUSH_BURN_TARGET,
     topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY,
     clear_endpoint: Level8ClearEndpoint = UNOBSERVED_LEVEL8_CLEAR,
+    suffix: Level8SuffixLineage = FIXTURE_LINEAGE_LEVEL8_SUFFIX,
 ) -> tuple[SpineHop, ...]:
     """Build fresh L8 rows. Defaults are intentionally non-executable."""
 
@@ -117,11 +139,20 @@ def l8_hops(
             topology=topology,
         )
 
+    # ``level8_magic_key_stop`` degrades to "owns a Magical Key" without a
+    # before-count, so a pin that already carries MK=1 would satisfy the
+    # chapter.  Latch the count at the top of the chapter and require 0->1.
+    magic_key_before: dict[str, int] = {}
+
+    def capture_magic_key(hop_env, _run) -> None:
+        magic_key_before["value"] = int(read_u8(hop_env.get_ram(), ADDR_MAGIC_KEY))
+
     def magic_key_ok(snap: ZeldaSnapshot, **_) -> bool:
         return level8_magic_key_stop(
             snap,
             magic_key=read_u8(env.get_ram(), ADDR_MAGIC_KEY),
             topology=topology,
+            magic_key_before=magic_key_before.get("value"),
         )
 
     def clear_ok(snap: ZeldaSnapshot, **_) -> bool:
@@ -147,11 +178,12 @@ def l8_hops(
             "level8_magic_key_natural",
             lambda: _magic_key_stages(topology=topology),
             magic_key_ok,
+            before=capture_magic_key,
         ),
         SpineHop(
             "level8",
             "level8_triforce_0x80",
-            lambda: _clear_stages(topology=topology),
+            lambda: _clear_stages(topology=topology, suffix=suffix),
             clear_ok,
         ),
     )
@@ -159,6 +191,7 @@ def l8_hops(
 
 __all__ = [
     "l8_hops",
+    "make_cellar_2f_settle_controller",
     "make_blue_gohma_controller",
     "make_entry_to_magic_key_controller",
     "make_four_head_gleeok_controller",

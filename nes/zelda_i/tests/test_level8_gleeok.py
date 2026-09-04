@@ -134,3 +134,35 @@ def test_f3_stand_walks_south_onto_heart() -> None:
     assert ctl.body_gone and not ctl.success
     assert act.reason == "heart_y"
     assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_body_gone_without_a_watched_heart_item_does_not_green() -> None:
+    """``room_item_id != 0x1A`` alone is not heart-container evidence."""
+    ram = _ram(x=48, y=153, room_item=0x00)
+    ram[ADDR_OBJ_TYPE + 1] = 0x45
+    ram[ADDR_LINK_X + 1] = 124
+    ram[ADDR_LINK_Y + 1] = 111
+    ram[ADDR_OBJ_HP + 1] = 160
+    ctl = make_four_head_gleeok_controller()
+    _step(ctl, ram)
+    assert ctl.saw_heart_item is False
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    act = _step(ctl, ram)
+    assert ctl.body_gone and not ctl.success and not ctl.failed
+    assert act.reason == "heart_x"
+    assert ctl.report()["saw_heart_item"] is False
+
+
+def test_watched_heart_item_falling_edge_still_greens() -> None:
+    ram = _ram(x=32, y=190)
+    ram[ADDR_OBJ_TYPE + 1] = 0x45
+    ram[ADDR_LINK_X + 1] = 124
+    ram[ADDR_LINK_Y + 1] = 111
+    ram[ADDR_OBJ_HP + 1] = 160
+    ctl = make_four_head_gleeok_controller()
+    _step(ctl, ram)
+    assert ctl.saw_heart_item is True
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_ROOM_ITEM_ID] = 0x00
+    _step(ctl, ram)
+    assert ctl.success is True and not ctl.failed

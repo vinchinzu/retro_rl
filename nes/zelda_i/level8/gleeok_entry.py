@@ -56,9 +56,10 @@ _MAX_FRAMES = 8000
 
 RAM_CLAIM = (
     "From play 0x4C leftover (112,125), do not stand on the centre stairs. "
-    "Walk to a north-wall bomb stand (120,105) via (120,109), one bomb "
-    "facing UP, first settled play $EB is RAM (hyp 0x3C, NOT 0x2F, NOT "
-    "0x3F). Bombs 6->5, keys 8->8, MK 1, TF 0x7F. OccupancyWalker banned."
+    "Walk the diamond-maze perimeter to the north-wall bomb stand (120,93) "
+    "via (120,109), one bomb facing UP, first settled play $EB is RAM (hyp "
+    "0x3C, NOT 0x2F, NOT 0x3F). Bombs 6->5, keys 8->8, MK 1, TF 0x7F. "
+    "OccupancyWalker banned."
 )
 
 
