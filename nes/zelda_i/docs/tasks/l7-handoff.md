@@ -3,6 +3,108 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-04 — 0x0D north-corridor UP from y=141 MISS
+
+Agent L7. Did not STATUS. Did not poke. Did not retry DOWN-to-y=165 or
+plug clips. Spine factories fail-closed.
+
+Pin `Level7Interior0DClearedReconFixture` play **0x0D** `(63,149)`.
+
+**Claim:** `(144,141)` live → UP toward y≤99 between upper plus-corners
+`(128,125)`/`(160,125)`. Miss if pins y≥117.
+
+| tag | dest | pose | frames | grade |
+|-----|------|------|--------|-------|
+| `20260904_NU` `(144,141)` | play 0x0D | `(142,141)` | 63 | **HIT** live gap |
+| `20260904_NU` UP x=144 | play 0x0D | `(144,117)` tile **179** | 122 stuck | **MISS** y≥117 |
+| `20260904_NU176` `(176,141)` | play 0x0D | `(174,141)` | 87 | **HIT** west of block |
+| `20260904_NU176` UP x=176 | play 0x0D | `(176,117)` tile **179** | 146 stuck | **MISS** y≥117 |
+
+PNG `recordings/20260904_NU_nu_after_up_144.png`,
+`recordings/20260904_NU176_nu_after_up_176.png`. y≤99 not live. No
+RIGHT-push walk-on trial. Leftover unpushed `(63,149)`.
+`NOSE_CELLAR.ram_id` stays None. Living residual:
+`docs/tasks/rr-n91a-residual.md`.
+
+## 2026-09-04 — 0x0D plus-corner x=144 DOWN MISS
+
+Agent L7. Did not STATUS. Did not poke. Did not retry Trial B or dead
+DOWN-at-x=63 / DOWN-from-(96,141) / y=189. Spine factories fail-closed.
+
+Pin `Level7Interior0DClearedReconFixture` play **0x0D** `(63,149)`.
+
+**Claim:** `(96,141)` live → RIGHT `(144,141)` → DOWN between plus-corners
+(statues `(128,157)` / `(160,157)`) toward y=165. Miss if y≤157 or x
+slides off 144.
+
+| tag | dest | pose | frames | grade |
+|-----|------|------|--------|-------|
+| `20260904_PC` gap | play 0x0D | `(94,141)` | 27 | **HIT** y=141 |
+| `20260904_PC` col | play 0x0D | `(142,141)` tile 119 | 63 | **HIT** `(144,141)` |
+| `20260904_PC` DOWN | play 0x0D | `(144,157)` tile **178** | 117 stuck | **MISS** y≤157, x held 144 |
+
+PNG `recordings/20260904_PC_pc_after_down.png`. Leftover unpushed
+`(63,149)`. `NOSE_CELLAR.ram_id` stays None. Living residual:
+`docs/tasks/rr-n91a-residual.md`.
+
+## 2026-09-04 — 0x0D walk-on Trial A (y=141 lure) + Trial B (plug clip) MISS
+
+Agent L7. Did not STATUS. Did not poke. Spine factories stay fail-closed.
+Did not retry DOWN-at-x=63 or y=189.
+
+Pin `Level7Interior0DClearedReconFixture` play **0x0D** `(63,149)` tile 118.
+
+**Trial A claim:** `(63,149)` UP/RIGHT to `(96,141)` (never DOWN at x=63),
+DOWN to `(96,165)`, RIGHT y=162-165 to x=192, UP south face.
+
+| tag | dest | pose | frames | grade |
+|-----|------|------|--------|-------|
+| `20260904_A` at gap | play 0x0D | `(94,141)` tile 119 | 27 | **HIT** y=141 gap |
+| `20260904_A` lure | play 0x0D | `(96,157)` tile **178** | 81 stuck DOWN | **MISS** never `(96,165)` |
+
+PNG `recordings/20260904_A_a_96_165.png`. Stopped A. No UP-push.
+
+**Trial B claim:** after RIGHT push (block `(208,96)` state 2), from east
+pocket, one-frame LEFT+UP and RIGHT+UP at plug `(192,133)`.
+
+| tag | dest | pose | grade |
+|-----|------|------|-------|
+| `20260904_B` LEFT+UP | play 0x0D m5 | `(192,133)→(191,133)` tile 118 | still y=133 |
+| `20260904_B` RIGHT+UP | play 0x0D m5 | `(192,133)` tile 179 | no move |
+| grade | still play 0x0D | `(192,133)` | **MISS** boxed y≥133 |
+
+PNG `recordings/20260904_B_b_plug.png`. No dest fixture.
+`NOSE_CELLAR.ram_id` stays None. Living residual:
+`docs/tasks/rr-n91a-residual.md`.
+
+## 2026-09-04 — 0x0D walk-on: south-of-gap + south-strip MISS (rr-8t4.3)
+
+Agent L7, exclusive `level7/**` + probe/tests. Did not STATUS. Did not
+close `rr-8t4.3`. Did not poke doors/TF/position. Spine tip-stairs /
+aquamentus / shard-leave factories stay fail-closed. Cellar-cross dest
+0x29 left untouched (already 2/2 from poke pin).
+
+Pin `Level7Interior0DClearedReconFixture`: L7 play **0x0D** `(63,149)`
+tile 118, mode 5, doors=2 (LEFT), `room_all_dead=4`, Candle 2, TF 0,
+keys 2, bombs 6, whistle 1, ladder 1, `0x68` `(192,144)` state 0.
+PNG `recordings/l7_0d_walkon_20260904_start.png`.
+
+RAM claim before first live trial: DOWN to y=162 (band between unwalkable
+gap y136-158 and south wall y~166), then RIGHT along y=161-164 to x=192.
+
+| tag | dest | pose | frames | grade |
+|-----|------|------|--------|-------|
+| `20260904_sog` | still play **0x0D** | `(64,157)` tile **178** | 48 stuck DOWN | **MISS** y never entered 161-164 |
+| `20260904_ss` | still play **0x0D** | `(64,157)` tile **178** | 48 stuck DOWN | **MISS** y never reached 180/189 |
+
+No UP-push (south face unreachable). No west-above-band y<=99 retry
+(dead at `(48,117)`). No dest fixture. `NOSE_CELLAR.ram_id` stays None.
+
+New dead: DOWN from pin `(63,149)` does not reach the y=161-164 south-of-gap
+band — SW diamond tile 178 at `(64,157)`. New dead: L9 room30 y=189
+south-strip is unreachable from this pin (0x0D south WALL). Living residual:
+`docs/tasks/rr-n91a-residual.md`.
+
 ## 2026-09-04 — rr-n91a dest 0x29 2/2; suffix 0x2A/0x2B/OW from poke fixture
 
 Agent L7, exclusive `level7/**` + probe/tests. Did not STATUS. Did not

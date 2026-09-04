@@ -22,9 +22,10 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 LEVEL8 = 8
 TF_BEFORE_LEVEL8 = 0x7F
 TF_AFTER_LEVEL8 = 0xFF
-# Four-head Gleeok body type is unknown.  L4 is 0x43 and L6 is 0x44; do not
-# treat the absent 0x45 as the L8 body.
-GLEEOK_FOUR_HEAD_OBJECT_TYPE: int | None = None
+# Live N7/N8 idle census + fight pin: body type 0x45 HP160 at (124,111)
+# in play 0x3C.  RAM, not a ROM assumption.  Fight is south-stand in
+# level8/gleeok.py; route_eligible stays False.
+GLEEOK_FOUR_HEAD_OBJECT_TYPE: int = 0x45
 # Live 0x1E kill (rr-gw0x, probe_l8_1e_gohma D1b/D2).  Body type is 0x33
 # (ids.py "gohma_red", L6 0x1C) at HP 96; colour is not asserted.  Three
 # connecting wooden arrows dropped HP 96→64→32→0.  The probe loosed 9 shots
@@ -368,6 +369,161 @@ LEVEL8_INTERIOR_0X3E_SOUTH_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_2e_south_fixture_20260904_I3",
 )
 
+# rr-6o7.2: ONE east gate from play 0x3E leftover (120,93) after the
+# 0x2E south return. Idle until RIGHT bit (arrival doors 0x0C, idle
+# raises 0x0D), stay north of statues (y<=109 until x>=176), y-align
+# to the east mouth, RIGHT push. Occupancy still banned. J1/J2 2/2,
+# 328 controller frames: first settled play 0x3F (32,141) west mouth,
+# keys 8→8, bombs 6→6, MK 1, TF 0x7F. Arrival census empty. room_item
+# 0x00. Arrival doors 0x02 (LEFT). Not Gleeok 0x3C, not cellar 0x0F.
+# Do not chain STAIRS into cellar 0x2F. make_gleeok_passage_controller
+# stays fail-closed. Not appended to LEVEL8_INTERIOR_ROOM_RECON (that
+# tuple is the inbound chain). Not on L8_THROUGH.
+LEVEL8_INTERIOR_0X3F_EAST_RECON = Level8InteriorRoomRecon(
+    room_id=0x3F,
+    entered_from=0x3E,
+    entry_direction="RIGHT",
+    entry_gate="east_open_shutter",
+    entry_pose=(32, 141),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x00,
+    census=(),  # already cleared; HP-0 residuals are not census
+    fixture="Level8Interior3FEastReconFixture",
+    recording_tag="l8_3e_east_fixture_20260904_J2",
+)
+
+# rr-6o7.2: ONE stairs walk-on from play 0x3F leftover (32,141).
+# Occupancy still banned. Visual stairs at ~(192,141) are tile 0x77
+# (K1/K2 timeout; L6 0x3A decorative hole). Live CheckWarp is tile
+# 0x71 at (193,141). x-first RIGHT along y=141 toward (208,93) crosses
+# it and idles. K3/K4 2/2, 585 controller frames: first settled mode-9
+# cellar $EB=0x2F leftover (208,141) tile 0x71, keys 8→8, bombs 6→6,
+# MK 1, TF 0x7F. Not Gleeok 0x3C, not MK cellar 0x0F. Do not chain the
+# cellar-cross to hyp 0x4C. make_gleeok_passage_controller stays
+# fail-closed. Not appended to LEVEL8_INTERIOR_ROOM_RECON. Not on
+# L8_THROUGH. position_writes=0.
+LEVEL8_INTERIOR_0X2F_STAIRS_RECON = Level8InteriorRoomRecon(
+    room_id=0x2F,
+    entered_from=0x3F,
+    entry_direction="STAIRS",
+    entry_gate="tile_0x71_y141",
+    entry_pose=(192, 93),  # settled east-ladder mouth; first mode-9 was (208,141)
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x00,
+    census=(),  # 4x 0x1B keese HP0 residual; not population
+    fixture="Level8Interior2FCellarReconFixture",
+    recording_tag="l8_2f_settle_20260904_S2",
+)
+
+# rr-6o7.2: ONE cellar-cross from settled 0x2F (192,93) east/source
+# ladder. DOWN floor LEFT UP west. Never source UP (returns 0x3F).
+# Occupancy still banned. P1/P2 2/2, 356 controller frames: first
+# settled play 0x4C (112,125) by the centre stairs, keys 8→8, bombs
+# 6→6, MK 1, TF 0x7F. Arrival census empty (enemies spawn after idle).
+# room_item 0x19 small_key still on the floor. Not Gleeok 0x3C, not
+# source 0x3F. make_gleeok_passage_controller stays fail-closed. Not
+# on L8_THROUGH. position_writes=0. Do not bomb-N this sitting.
+LEVEL8_INTERIOR_0X4C_WEST_RECON = Level8InteriorRoomRecon(
+    room_id=0x4C,
+    entered_from=0x2F,
+    entry_direction="STAIRS",
+    entry_gate="west_ladder",
+    entry_pose=(112, 125),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x19,
+    census=(),  # pin at arrival; 0x3F-style bodies spawn after idle
+    fixture="Level8Interior4CWestReconFixture",
+    recording_tag="l8_2f_cross_fixture_20260904_P2",
+)
+
+# rr-6o7.2: ONE bomb-N from play 0x4C leftover (112,125). Occupancy
+# banned. N1/N2 centre-stairs; N3-N6 diamond-maze perimeter to north
+# wall (120,93); N7/N8 2/2, 1037 controller frames: first settled play
+# 0x3C (120,189) south mouth, bombs 6→5, keys 8→8, MK 1, TF 0x7F.
+# Arrival census empty. After 90f idle: 1× 0x45 HP160 at (124,111)
+# (four-head Gleeok body, live RAM not ROM-assumed) + 0x56 fireball
+# residual. room_item 0x1A heart container. Arrival pin for the fight
+# (level8/gleeok.py). make_gleeok_passage_controller stays fail-closed.
+# Not on L8_THROUGH. position_writes=0.
+LEVEL8_INTERIOR_0X3C_NORTH_RECON = Level8InteriorRoomRecon(
+    room_id=0x3C,
+    entered_from=0x4C,
+    entry_direction="UP",
+    entry_gate="north_bomb_wall",
+    entry_pose=(120, 189),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=5,
+    room_item_id=0x1A,
+    census=((0x45, 160, 1),),  # live body after idle; 0x56 is projectile
+    fixture="Level8Interior3CNorthReconFixture",
+    recording_tag="l8_4c_north_fixture_20260904_N8",
+)
+
+# rr-5eb2 / rr-6o7.2: south-stand 0x45 kill from the 0x3C south mouth.
+# Clone L6 gleeok18: inland y>173, stand (body.x, body.y+22), bare UP
+# then UP+A, fb dodge ≤14. OccupancyWalker banned. F1/F2 body-gone
+# f5029 then missed HC (mid-room / (48,157) heart_stand). F5dump
+# treasure slot 19 ($83/$97) = (32,192). F6/F7 2/2 byte-identical,
+# 5124 controller / 5184 with census: body type 0x45 absent, hc 3→4
+# (health 0x22→0x33), leftover play 0x3C (32,181) tile 118, doors 12
+# (UP+DOWN; north shutter RAM-open), MK 1, keys 8, bombs 5, TF 0x7F.
+# room_item_id stays 0x1A after pickup (id leftover). saw_0x46 mid-fight.
+# ghp samples 250f still read 160 until type-gone. No HP poke.
+# make_gleeok_passage_controller stays fail-closed. Not on L8_THROUGH.
+# Do not chain TF this leftover unless a later sitting takes the UP
+# shutter from this pin.
+LEVEL8_INTERIOR_0X3C_KILL_RECON = Level8InteriorRoomRecon(
+    room_id=0x3C,
+    entered_from=0x4C,
+    entry_direction="UP",
+    entry_gate="south_stand_0x45_heart",
+    entry_pose=(32, 181),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=5,
+    bombs_out=5,
+    room_item_id=0x1A,  # id leftover after hc 3→4; floor sprite gone
+    census=(),  # body 0x45 absent; 0x46/0x56 may linger then despawn
+    fixture="Level8Interior3CKillReconFixture",
+    recording_tag="l8_3c_gleeok_fixture_20260904_F7",
+)
+
+# rr-6o7.2: ONE dest hop UP from post-kill 0x3C (32,181). Occupancy
+# banned. T1 boxed west-wall UP (32,133) tile 179. T2/T3 2/2, 296
+# controller frames: first settled play **0x2C** (120,205) south mouth,
+# room_item 0x1B triforce, doors 0, keys 8, bombs 5, MK 1, TF still
+# 0x7F, hc 4. ROM 0x2C matched live; lock is the trial not the ROM.
+# Shard walk-on (same probe T5/T6): UP x=120, fanfare mode 18, OW
+# leftover 0x6D (96,93) TF 0xFF. OW packet is fixture-lineage, not a
+# Survival-true post-L8 handoff. make_gleeok_passage_controller stays
+# fail-closed. Not on L8_THROUGH. position_writes=0.
+LEVEL8_INTERIOR_0X2C_TF_RECON = Level8InteriorRoomRecon(
+    room_id=0x2C,
+    entered_from=0x3C,
+    entry_direction="UP",
+    entry_gate="north_shutter",
+    entry_pose=(120, 205),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=5,
+    bombs_out=5,
+    room_item_id=0x1B,
+    census=(),
+    fixture="Level8Interior2CTriforceReconFixture",
+    recording_tag="l8_3c_north_fixture_20260904_T3",
+)
+
 
 @dataclass(frozen=True)
 class Level8HypothesisRoom:
@@ -660,10 +816,16 @@ __all__ = [
     "LEVEL8_INTERIOR_0X1E_RECON",
     "LEVEL8_INTERIOR_0X1E_WEST_RECON",
     "LEVEL8_INTERIOR_0X1F_RECON",
+    "LEVEL8_INTERIOR_0X2F_STAIRS_RECON",
+    "LEVEL8_INTERIOR_0X3C_KILL_RECON",
+    "LEVEL8_INTERIOR_0X3C_NORTH_RECON",
+    "LEVEL8_INTERIOR_0X4C_WEST_RECON",
+    "LEVEL8_INTERIOR_0X2C_TF_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X2E_SOUTH_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
     "LEVEL8_INTERIOR_0X3E_SOUTH_RECON",
+    "LEVEL8_INTERIOR_0X3F_EAST_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",
     "Level8InteriorRoomRecon",

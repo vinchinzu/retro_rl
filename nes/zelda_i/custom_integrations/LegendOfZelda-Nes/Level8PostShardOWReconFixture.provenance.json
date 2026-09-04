@@ -1,0 +1,185 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T18:42:48.163191+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "north shutter from play 0x3C post-kill leftover, dest live 0x2C, shard 0x1B TF 0xFF, OW leftover is fixture-lineage not Survival-true post-L8 leave, not on L8_THROUGH, do not poke TF"
+    ],
+    "phase": "level8_interior_0x3c_north_gate",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 5,
+    "census": {
+      "arrows": 1,
+      "bombs": 5,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 51,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 5,
+        "bow": 1,
+        "candle": 2,
+        "health": 51,
+        "heart_containers": 4,
+        "keys": 8,
+        "magic_key": 1,
+        "map": 128,
+        "rupees": 247,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "keys": 8,
+      "level": 0,
+      "live_objects": [],
+      "map": 128,
+      "mode": 5,
+      "next_screen_hex": "0x2C",
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 109,
+      "room_item_hex": "0x1A",
+      "rupees": 247,
+      "screen": 109,
+      "screen_hex": "0x6D",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 255,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 4,
+          "type_hex": "0x04",
+          "type_name": "unknown_object_0x04",
+          "xy": [
+            124,
+            111
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 4,
+          "type_hex": "0x04",
+          "type_name": "unknown_object_0x04",
+          "xy": [
+            125,
+            114
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 4,
+          "type_hex": "0x04",
+          "type_name": "unknown_object_0x04",
+          "xy": [
+            125,
+            120
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 4,
+          "type_hex": "0x04",
+          "type_name": "unknown_object_0x04",
+          "xy": [
+            125,
+            129
+          ]
+        }
+      ],
+      "x": 96,
+      "xy": [
+        96,
+        93
+      ],
+      "y": 93
+    },
+    "dest_eb": "OW",
+    "fixture_state": "Level8PostShardOWReconFixture",
+    "fixture_writes": [],
+    "keys": 8,
+    "magic_key": 1,
+    "ok": true,
+    "source_state": "Level8Interior3CKillReconFixture",
+    "state": {
+      "bombs": 5,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 51,
+      "is_updating_mode": 0,
+      "keys": 8,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 44,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 124,
+          "y": 111
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 125,
+          "y": 114
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 125,
+          "y": 120
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 4,
+          "type_name": "unknown_object_0x04",
+          "x": 125,
+          "y": 129
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 109,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 4,
+      "rupees": 247,
+      "submode": 0,
+      "triforce": 255,
+      "x": 96,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior3CKillReconFixture.state",
+  "source_state_sha256": "6e00d5caf67308bb7d18acd05365c33bca84395fcb715a5e7990823c64ee8244",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8PostShardOWReconFixture.state",
+  "state_sha256": "66bc206cc7dc3e234f89dbbf1bce7ab8f1568b7bca40a96b734c4bbb898d459d"
+}

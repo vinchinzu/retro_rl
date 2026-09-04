@@ -506,15 +506,16 @@ def test_blue_gohma_factory_requires_natural_bow_and_does_not_poke() -> None:
 
 
 def test_four_head_gleeok_factory_does_not_assume_0x45() -> None:
-    assert GLEEOK_FOUR_HEAD_OBJECT_TYPE is None
+    # Live N7/N8 census: RAM type 0x45 HP160, not a ROM assumption.
+    assert GLEEOK_FOUR_HEAD_OBJECT_TYPE == 0x45
     ram = _ram(level=8)
     ctl = make_four_head_gleeok_controller()
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed
     assert not ctl.success
-    assert ctl.observed_body_type is None
+    assert ctl.observed_body_type == 0x45
     assert ctl.report()["assumed_0x45"] is False
-    assert "l8_gleeok_object_type_unobserved" in ctl.notes
+    assert "left_0x3c_to_0x6d" in ctl.notes
     assert list(act.action) == list(nes_idle_action())
 
 

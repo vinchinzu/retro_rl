@@ -1,0 +1,265 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T17:50:57.703577+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "cellar-cross from settled 0x2F east ladder, dest $EB live, do not assume 0x4C/0x3C, one gate, not on L8_THROUGH, never UP on the source ladder"
+    ],
+    "phase": "level8_interior_0x2f_cellar_cross",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 6,
+    "census": {
+      "arrows": 1,
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "bow": 1,
+        "candle": 2,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 8,
+        "magic_key": 1,
+        "map": 128,
+        "rupees": 247,
+        "selected_item": 2,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 8,
+      "level": 8,
+      "live_objects": [],
+      "map": 128,
+      "mode": 5,
+      "next_screen_hex": "0x3F",
+      "open_doorway_mask": 0,
+      "rod": 0,
+      "room": 76,
+      "room_item_hex": "0x19",
+      "rupees": 247,
+      "screen": 76,
+      "screen_hex": "0x4C",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 127,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            160,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            80,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            160,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            80,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            160,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            80,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            160,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "type": 22,
+          "type_hex": "0x16",
+          "type_name": "pols_voice",
+          "xy": [
+            80,
+            189
+          ]
+        }
+      ],
+      "x": 112,
+      "xy": [
+        112,
+        125
+      ],
+      "y": 125
+    },
+    "dest_eb": "0x4C",
+    "fixture_state": "Level8Interior4CWestReconFixture",
+    "fixture_writes": [],
+    "keys": 8,
+    "magic_key": 1,
+    "ok": true,
+    "source_state": "Level8Interior2FCellarReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 8,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 63,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 22,
+          "type_name": "pols_voice",
+          "x": 80,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 76,
+      "room_all_dead": 0,
+      "room_item_id": 25,
+      "room_item_name": "small_key",
+      "room_obj_count": 8,
+      "rupees": 247,
+      "submode": 0,
+      "triforce": 127,
+      "x": 112,
+      "y": 125
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior2FCellarReconFixture.state",
+  "source_state_sha256": "5bcd69ea4fa2f57e951d517673afdcf8c670646ceaa3a8c780cb38550fe5522b",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior4CWestReconFixture.state",
+  "state_sha256": "ae48cb81a37e098afb931c5b1fbaebcb1ad7ff83764f53caece845790c4b3824"
+}

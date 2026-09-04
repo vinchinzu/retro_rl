@@ -1,8 +1,11 @@
-# rr-5eb2 — L8 four-head Gleeok pre-fight model
+# rr-5eb2 — L8 four-head Gleeok model + live kill
 
-**Sitting: model only.** No live L8 Gleeok fight. No Gleeok-room fixture.
-`GLEEOK_FOUR_HEAD_OBJECT_TYPE` stays `None`. Do not close this bead until
-live body/head types and HP are recorded. Do not STATUS.
+**Sitting: live kill 2/2.** Body type **`0x45` HP160** at `(124,111)` in
+play `0x3C`. South-stand F6/F7 byte-identical, 5124 controller frames,
+body-gone f5029, hc 3→4, leftover `(32,181)`.
+`GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45` is live RAM, not a ROM assumption.
+`assumed_0x45` stays False. `route_eligible=false`. Not on `L8_THROUGH`.
+Do not close this bead (parent will close). Do not STATUS.
 
 Predict-path split is Verified / ROM claims / Assumed / Plan / Dead beliefs.
 Walkthroughs are not proof. L8 Gohma already broke a source assumption
@@ -16,18 +19,24 @@ and **rr-6o7.1** (natural bush entry) and **rr-6o7.2** (Magical Key, plus the
 return passage to the west Gleeok suffix). The first live fight cannot be a
 power-on claim this sitting. The model exists so that first live attempt —
 from a disclosed fixture, after Magical Key and the return passage — is not a
-blind grind. `Level8FourHeadGleeokController` stays idle-fail until a live
-body type is observed (`level8/path.py`). Hypothesis Gleeok room is still
-`room_id=None` (walkthrough grid col 1 row 3, feature `four_head_gleeok`).
+blind grind. `Level8FourHeadGleeokController` is the south-stand fight in
+`level8/gleeok.py`. Hypothesis Gleeok room is still `room_id=None`
+(walkthrough grid col 1 row 3, feature `four_head_gleeok`).
 
 ---
 
-## Verified (live RAM / L4 / L6)
+## Verified (live RAM / L4 / L6 / L8 census + kill)
 
-Live only. Not L8.
+Live only.
 
 | Fact | Evidence |
 |------|----------|
+| L8 four-head body type **`0x45`**, room **`0x3C`**, start HP **160**, pose **`(124, 111)`** | `l8_4c_north` N7/N8 idle census 90f; F6/F7 fight. `LEVEL8_INTERIOR_0X3C_NORTH_RECON`. Arrival census empty; body appears after idle. Fireball residual **`0x56`**. `GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45` is this live type |
+| L8 Gleeok room `room_item_id=0x1A` (heart container) | N7/N8 arrival; still `0x1A` after pickup (id leftover) |
+| L8 Gleeok fight pin **`(120, 189)`** south mouth, doors `4` (DOWN bomb hole) | `Level8Interior3CNorthReconFixture` |
+| L8 south-stand kills body: type `0x45` **absent** at f5029; `saw_0x46` mid-fight | probe `l8_3c_gleeok` F6/F7 2/2, 5124 ctl / 5184 census. Clone L6 `STAND_DY=22`, bare UP then UP+A, fb dodge ≤14. ghp samples at 250f still read 160 until type-gone |
+| L8 HC is room treasure slot 19 **`(32, 192)`**, not mid-room | F5dump `$83/$97`; F1–F4 PNG misses. Pickup hc 3→4 (`0x22`→`0x33`) |
+| L8 post-kill leftover **`(32, 181)`**, doors `12` (UP+DOWN), hc **4** | `Level8Interior3CKillReconFixture`; north shutter RAM-open; TF unclaimed |
 | L4 2-head body type **`0x43`**, room **`0x13`**, start HP **≈160** | `level4/boss_combat.py`; `LEVEL4_ROUTE.md`; dual-green from `Level4GleeokEnter` |
 | L4 detached head type **`0x46`** mid-fight; fireball residual **`0x56`** | same; south-stand on body, do not chase heads while body remains |
 | L4 bombs do **not** damage Gleeok | same |
@@ -40,7 +49,7 @@ Live only. Not L8.
 | L6 post-body: residual `0x46`/`0x56`; stop when body gone (heads optional) then census | `Level6PostGleeok18Controller` |
 | Shared sensors: body type is dungeon-specific; `0x46` and `0x56` are shared | `dungeon/gleeok.py` |
 | `ids.py`: `GLEEOK_OBJECT_TYPE=0x43`, `GLEEOK_3HEAD_OBJECT_TYPE=0x44`, `GLEEOK_HEAD_OBJECT_TYPE=0x46`; **no 4-head constant** | `dungeon/ids.py` |
-| L8 `GLEEOK_FOUR_HEAD_OBJECT_TYPE is None` on purpose | `level8/dungeon.py`; `test_four_head_gleeok_factory_does_not_assume_0x45` |
+| L8 `GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45` from live RAM; `assumed_0x45` False | `level8/dungeon.py`; `test_four_head_gleeok_factory_does_not_assume_0x45` |
 | L8 fixture has **Magical Sword `sword=3`** (disclosed poke on interior recon) | `Level8InteriorReconFixture` provenance |
 | L8 Gohma live type **`0x33` HP 96** in `0x1E` (not walkthrough `0x34`) | `LEVEL8_INTERIOR_0X1E_RECON` |
 
@@ -309,26 +318,20 @@ pokes.
 
 ---
 
-## Plan (next sitting — still not this one)
+## Plan (next sitting)
 
-1. After Magical Key + return passage, from a disclosed fixture, **idle
-   census** the hypothesized boss room. Record body type+HP **before**
-   swinging. If type is `0x45`, *then* it is legal to set
-   `GLEEOK_FOUR_HEAD_OBJECT_TYPE` from that census. If not, record the
-   disagreement (Gohma lesson) and parameterize from RAM.
-2. One guarded south-stand attempt, Survival refill only, 20000f fight
-   budget. 2/2 or budgeted failure with the RAM dump above.
-3. Keep `test_four_head_gleeok_factory_does_not_assume_0x45` intact until
-   the live type is written.
-4. Do not open a live L8 Gleeok fight without a room fixture **and** this
-   model's census step. No Gleeok-room fixture exists yet.
+1. From `Level8Interior3CKillReconFixture` play `0x3C` `(32,181)`, one
+   dest hop UP through the RAM-open north shutter to the TF room.
+   Do not poke TF. Heart already collected.
+2. Keep `route_eligible=false` / not on `L8_THROUGH` until power-on
+   predecessors exist. Parent closes rr-5eb2.
 
 ---
 
 ## Dead beliefs
 
-- **`0x45` is the live L8 body.** It is the ROM encoding. Live is unobserved.
-  `GLEEOK_FOUR_HEAD_OBJECT_TYPE = None` stays.
+- **`0x45` is only a ROM encoding.** Struck: live N7/N8 census + F6/F7
+  kill observed type `0x45` HP160. `GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45`.
 - **Walkthrough / Zelda Dungeon "4-head" proves object type or HP.** Source
   only (`DUNGEON_WALKTHROUGHS.md`, `LEVEL8_ROUTE.md`).
 - **Walkthrough blue Gohma `0x34` as a type-table lesson.** Live L8 `0x1E`
@@ -336,7 +339,7 @@ pokes.
   walkthrough was wrong). L6 boss room `0x1C` ROM AttrC is `0x34` while
   ids.py / fight comments call L6 `0x33`. ROM, walkthrough, and RAM are
   three channels. For L8 Gleeok, ROM and walkthrough agree on "4-head"
-  while **RAM has not spoken**.
+  while RAM had not spoken (now spoken: live `0x45`).
 - **Bombs damage Gleeok.** Mask `$FE`; L4 live no.
 - **Flying `$46` is a kill target.** Unkillable; chasing it while the body
   remains is the L4 failed policy.
@@ -384,5 +387,5 @@ pokes.
 
 ## This sitting did not
 
-Fight L8 Gleeok. Poke boss HP, room state, Triforce, or doors. Set
-`GLEEOK_FOUR_HEAD_OBJECT_TYPE`. Close rr-5eb2. STATUS. Push.
+Poke boss HP, room state, Triforce, or doors. Chain TF. Close rr-5eb2.
+STATUS. Push.
