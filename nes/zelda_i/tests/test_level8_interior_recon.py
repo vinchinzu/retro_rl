@@ -9,6 +9,7 @@ walkthrough hypothesis graph.
 from __future__ import annotations
 
 from zelda_i.level8.dungeon import (
+    LEVEL8_INTERIOR_0X1E_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_ROOM_RECON,
@@ -22,13 +23,15 @@ def test_interior_recon_chain_is_ordered_south_to_north() -> None:
     assert LEVEL8_INTERIOR_ROOM_RECON == (
         LEVEL8_INTERIOR_0X3E_RECON,
         LEVEL8_INTERIOR_0X2E_RECON,
+        LEVEL8_INTERIOR_0X1E_RECON,
     )
     rooms = [row.room_id for row in LEVEL8_INTERIOR_ROOM_RECON]
-    assert rooms == [0x3E, 0x2E]
+    assert rooms == [0x3E, 0x2E, 0x1E]
     # Each row is entered from the row before it (0x4E is the 0x3E predecessor
     # and predates this table).
     assert LEVEL8_INTERIOR_0X3E_RECON.entered_from == 0x4E
     assert LEVEL8_INTERIOR_0X2E_RECON.entered_from == 0x3E
+    assert LEVEL8_INTERIOR_0X1E_RECON.entered_from == 0x2E
     # Screen ids walk north one row per boundary: high nibble -1, low nibble E.
     for row in LEVEL8_INTERIOR_ROOM_RECON:
         assert row.room_id & 0x0F == 0x0E
@@ -75,3 +78,20 @@ def test_recon_key_and_bomb_ledger_is_continuous() -> None:
     for row in LEVEL8_INTERIOR_ROOM_RECON:
         assert row.keys_out <= row.keys_in
         assert row.bombs_out <= row.bombs_in
+
+
+def test_0x1e_recon_matches_the_live_north_key_door_sitting() -> None:
+    # probe_l8_2e_north.py C1/C2, 2/2 byte-identical, 2348 frames each.
+    r = LEVEL8_INTERIOR_0X1E_RECON
+    assert r.room_id == 0x1E
+    assert r.entered_from == 0x2E
+    assert r.entry_gate == "north_key_door"
+    assert r.entry_pose == (120, 205)  # a door lands on the south door tile
+    assert (r.keys_in, r.keys_out) == (9, 8)  # exactly one natural key
+    assert (r.bombs_in, r.bombs_out) == (6, 6)  # no bomb at a key door
+    # ONE body, observed type + HP only. dungeon/ids.py registers 0x33 as the
+    # L6 "gohma_red" body; the walkthrough calls this room a *blue* Gohma. The
+    # row records what RAM showed and asserts no colour.
+    assert r.census == ((0x33, 96, 1),)
+    assert r.room_item_id == 0x03
+    assert r.fixture == "Level8Interior1EReconFixture"

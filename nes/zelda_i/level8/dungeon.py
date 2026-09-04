@@ -25,6 +25,11 @@ TF_AFTER_LEVEL8 = 0xFF
 # Four-head Gleeok body type is unknown.  L4 is 0x43 and L6 is 0x44; do not
 # treat the absent 0x45 as the L8 body.
 GLEEOK_FOUR_HEAD_OBJECT_TYPE: int | None = None
+# Walkthrough figure, not a live measurement.  rr-6o7.2 recon settled the
+# hypothesis "blue_gohma" room as 0x1E and RAM shows ONE body of type 0x33
+# HP 96 there -- dungeon/ids.py registers 0x33 as the L6 "gohma_red" body, not
+# 0x34 -- so the arrow count stays an unverified walkthrough number until a
+# live kill measures it.  See LEVEL8_INTERIOR_0X1E_RECON.
 BLUE_GOHMA_ARROWS_REQUIRED = 3
 
 
@@ -153,9 +158,54 @@ LEVEL8_INTERIOR_0X2E_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_3e_north_fixture_20260904_A2",
 )
 
+# rr-6o7.2: ONE guarded boundary past 0x2E, taken from the settled-0x2E
+# continuation pin (Level8Interior2EReconFixture) rather than a full replay of
+# the 0x7E prefix; that pin is the saved frame of the same fixture-only chain.
+#
+# 2/2 byte-identical (probe l8_2e_north C1/C2, 2348 frames each; 21 payload
+# keys compared, only the screenshot paths and the C2-only saved_fixture entry
+# differ).  Live RAM: the one Manhandla in 0x2E cleared with the sword only
+# (1486 clear frames, room_all_dead 0 -> 126), then ONE north door spent
+# exactly one key -- first settled play room 0x1E at (120,205), keys 9 -> 8,
+# bombs 6 -> 6, deaths 0, progression_writes 0, capacity_writes 0, direct
+# runtime writes 0.  Assist = Survival health refill only (13 writes, max
+# single-frame damage 1, all of it in 0x2E).
+#
+# Gate evidence, in 0x2E: arrival and post-clear cur_opened_doors /
+# open_doorway_mask both 0x04 (the DOWN bomb hole from 0x3E).  The clear raised
+# NO new door bit, so the north gate is not a kill-clear shutter; the door
+# consumed a key on the push, so it is a key door -- the hypothesis edge
+# "map_manhandla -> blue_gohma UP key" is confirmed for both destination and
+# gate kind.  0x2E's room item (0x17, map) stays OMITTED: the north walk rides
+# the y=109 band ((88,109) -> (120,109) -> door tile (120,93)) instead of the
+# centre column, and ADDR_MAP is 0 before and after.
+#
+# 0x1E census: ONE body in slot 1, live type 0x33 HP 96 at (119,112).  RAM says
+# 0x33, which dungeon/ids.py registers as "gohma_red" (the L6 0x1C one-arrow
+# body); the walkthrough calls this room's boss a *blue* Gohma.  The observed
+# type + HP are recorded as-is and no colour is asserted here.  Two 0x55
+# (HP192) statue fireballs and one 0x56 (HP240) residual were also live; those
+# are projectile state, not room population, so they are not census rows.
+LEVEL8_INTERIOR_0X1E_RECON = Level8InteriorRoomRecon(
+    room_id=0x1E,
+    entered_from=0x2E,
+    entry_direction="UP",
+    entry_gate="north_key_door",
+    entry_pose=(120, 205),
+    keys_in=9,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x03,  # ids.room_item_name -> no_inventory_reward_observed
+    census=((0x33, 96, 1),),  # observed type + HP only; colour not asserted
+    fixture="Level8Interior1EReconFixture",
+    recording_tag="l8_2e_north_fixture_20260904_C1",
+)
+
 LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
+    LEVEL8_INTERIOR_0X1E_RECON,
 )
 
 
@@ -446,6 +496,7 @@ __all__ = [
     "LEVEL8",
     "LEVEL8_HYPOTHESIS_EXITS",
     "LEVEL8_HYPOTHESIS_ROOMS",
+    "LEVEL8_INTERIOR_0X1E_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
