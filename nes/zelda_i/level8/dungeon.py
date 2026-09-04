@@ -293,6 +293,30 @@ LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
     LEVEL8_INTERIOR_0X0F_RECON,
 )
 
+# rr-6o7.2: ONE west gate from play 0x1F leftover (96,157) after cellar
+# return.  Cardinal LEFT past 0x68, y-align, LEFT push.  G1 OccupancyWalker
+# 1px-grade boxed at (88,157) tile 118 (walkable floor).  G2/G3 2/2, 275
+# controller frames: first settled play 0x1E (208,141) east mouth, keys 8→8,
+# bombs 6→6, MK 1, TF 0x7F.  Arrival census empty (Gohma already dead);
+# 0x55 statue fireballs spawn after idle and are not census.  Not appended
+# to LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
+# L8_THROUGH.  Do not start Gleeok.
+LEVEL8_INTERIOR_0X1E_WEST_RECON = Level8InteriorRoomRecon(
+    room_id=0x1E,
+    entered_from=0x1F,
+    entry_direction="LEFT",
+    entry_gate="west_open_door",
+    entry_pose=(208, 141),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x03,
+    census=(),  # Gohma already dead; 0x55 fireballs are projectile residuals
+    fixture="Level8Interior1EWestReconFixture",
+    recording_tag="l8_1f_west_fixture_20260904_G3",
+)
+
 
 @dataclass(frozen=True)
 class Level8HypothesisRoom:
@@ -583,6 +607,7 @@ __all__ = [
     "LEVEL8_HYPOTHESIS_ROOMS",
     "LEVEL8_INTERIOR_0X0F_RECON",
     "LEVEL8_INTERIOR_0X1E_RECON",
+    "LEVEL8_INTERIOR_0X1E_WEST_RECON",
     "LEVEL8_INTERIOR_0X1F_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
