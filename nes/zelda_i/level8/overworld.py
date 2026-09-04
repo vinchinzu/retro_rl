@@ -29,7 +29,7 @@ credits). Boss Gleeok 4-head. Triforce bit ``0x80``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
@@ -43,6 +43,7 @@ from zelda_i.overworld.graph import (
 )
 from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 from zelda_i.overworld.rupee_farm import RupeeFarmController
 from zelda_i.ram import (
     ADDR_CANDLE,
@@ -56,6 +57,8 @@ from zelda_i.ram import (
 # --- Anchors ---
 from zelda_i.anchors import (
     SCREEN_CANDLE_SHOP,
+    SCREEN_LEVEL7_ENTRY_ROOM,
+    SCREEN_LEVEL7_POND_HYP,
     SCREEN_LEVEL8_BUSH,
     TF_BIT_L8 as TRIFORCE_BIT_L8,
 )
@@ -89,6 +92,42 @@ LEVEL8_BUSH_HOPS: tuple[ScreenHop, ...] = (
 LEVEL8_BUSH_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_START, LEVEL8_BUSH_HOPS
 )
+
+# Fixture-live L7 exit-area -> L8 geometry lane (rr-6o7.4).  The true
+# post-L7 fanfare leave is still unmeasured; this table starts only from the
+# disclosed Level7Entrance / OW_L7Pond fixtures.  Reverse the already-live
+# pond route to 0x58, then join the already-live L8 corridor at 0x59.
+L7_POND_TO_LEVEL8_BUSH_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x52, "DOWN", align_x=112),
+    ScreenHop(0x53, "RIGHT", align_y=189),
+    ScreenHop(0x54, "RIGHT", align_y=141),
+    ScreenHop(0x64, "DOWN", align_x=60),
+    ScreenHop(0x65, "RIGHT", align_y=141),
+    ScreenHop(0x55, "UP", align_x=112),
+    ScreenHop(0x56, "RIGHT", align_y=133),
+    ScreenHop(0x57, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x58, "RIGHT", y_band_lo=148, y_band_hi=162),
+) + LEVEL8_BUSH_HOPS[3:]
+L7_POND_TO_LEVEL8_BUSH_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    SCREEN_LEVEL7_POND_HYP, L7_POND_TO_LEVEL8_BUSH_HOPS
+)
+
+# Reverse waypoints for the two obstacle screens in the pond approach.  These
+# are the inverse of the live 0x53->0x52->0x42 walk, not new map claims.
+POND_52_REVERSE_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (132, 122),
+    (48, 122),
+    (48, 189),
+)
+POND_53_REVERSE_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (192, 189),
+    (192, 141),
+)
+# 2026-09-03 rr-6o7.4 first live miss: naturally exiting Level7Entrance
+# refills the pond and settles above it at (112,93).  Straight DOWN collides
+# with tile 0x8F; do not repeat that claim.  OW_L7Pond starts below the pool
+# and remains a distinct disclosed fixture start for the next sitting.
+POND_42_REFILLED_DEAD_POSE = (112, 93)
 
 # Shared maze geometry with L2 door path (east @y≈88 → channel → east @y≈128).
 LEVEL8_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = LEVEL2_5C_MAZE_WAYPOINTS
@@ -561,6 +600,198 @@ class OverworldToLevel8Controller(OverworldPathController):
         }
 
 
+def _fixture_overworld_walker(goal: tuple[int, int]) -> OccupancyWalker:
+    return OccupancyWalker(
+        grid=OccupancyGrid(xmin=0, xmax=240, ymin=61, ymax=221),
+        goal=goal,
+    )
+
+
+@dataclass
+class Level7PondToLevel8BushController(OverworldToLevel8Controller):
+    """Fixture-only natural L7 entrance exit / pond -> L8 bush geometry.
+
+    This is deliberately separate from ``PostLevel7ToBushController``: the
+    post-Triforce fanfare leave has not been measured.  Accepted starts are
+    only the disclosed L7 entry-room pin or its naturally reached pond screen.
+    The controller stops on settled overworld 0x6D and never burns the bush.
+    """
+
+    hops: tuple[ScreenHop, ...] = L7_POND_TO_LEVEL8_BUSH_HOPS
+    burn_bush: bool = False
+    enter_dungeon: bool = False
+    require_sword: bool = False
+    route_eligible: bool = False
+    evidence: str = "fixture-live-prefix"
+    _fixture_start_checked: bool = field(default=False, init=False, repr=False)
+    _pond52_index: int = field(default=0, init=False, repr=False)
+    _pond53_index: int = field(default=0, init=False, repr=False)
+    _pond52_walk: OccupancyWalker = field(
+        default_factory=lambda: _fixture_overworld_walker(
+            POND_52_REVERSE_WAYPOINTS[0]
+        ),
+        init=False,
+        repr=False,
+    )
+    _pond53_walk: OccupancyWalker = field(
+        default_factory=lambda: _fixture_overworld_walker(
+            POND_53_REVERSE_WAYPOINTS[0]
+        ),
+        init=False,
+        repr=False,
+    )
+
+    @property
+    def failed(self) -> bool:
+        return self.phase is Level8NavPhase.FAILED
+
+    def reset(self) -> None:
+        super().reset()
+        self._fixture_start_checked = False
+        self._pond52_index = 0
+        self._pond53_index = 0
+        self._pond52_walk = _fixture_overworld_walker(
+            POND_52_REVERSE_WAYPOINTS[0]
+        )
+        self._pond53_walk = _fixture_overworld_walker(
+            POND_53_REVERSE_WAYPOINTS[0]
+        )
+
+    def _fixture_fail(self, reason: str) -> FrameAction:
+        self.success = False
+        self._set_phase(Level8NavPhase.FAILED, reason)
+        return FrameAction(nes_idle_action(), reason)
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if snap.level == 7:
+            if snap.screen != SCREEN_LEVEL7_ENTRY_ROOM:
+                return self._fixture_fail("fixture_not_l7_entry_room")
+            return self._swing("DOWN", "l7_entrance_exit_down")
+        return super()._before_play(snap)
+
+    def _waypoint_action(
+        self,
+        snap: ZeldaSnapshot,
+        *,
+        points: tuple[tuple[int, int], ...],
+        index_name: str,
+        walker_name: str,
+        reason: str,
+    ) -> FrameAction | None:
+        index = int(getattr(self, index_name))
+        if index >= len(points):
+            return None
+        goal = points[index]
+        if abs(snap.link_x - goal[0]) <= 4 and abs(snap.link_y - goal[1]) <= 4:
+            index += 1
+            setattr(self, index_name, index)
+            if index >= len(points):
+                return None
+            goal = points[index]
+            setattr(self, walker_name, _fixture_overworld_walker(goal))
+        walker: OccupancyWalker = getattr(self, walker_name)
+        misses_before = walker.misses
+        xy = (int(snap.link_x), int(snap.link_y))
+        walker.observe(xy)
+        if walker.misses > misses_before:
+            self.notes.append(
+                f"{reason}_occupancy_miss_{snap.link_x}_{snap.link_y}"
+            )
+        direction = walker.next_dir(xy, goal)
+        if direction is None:
+            return FrameAction(nes_idle_action(), f"{reason}_no_path_stand")
+        return self._swing(direction, f"{reason}_wp{index}")
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        if (
+            snap.screen == SCREEN_LEVEL7_POND_HYP
+            and hop.target == 0x52
+            and abs(snap.link_x - POND_42_REFILLED_DEAD_POSE[0]) <= 4
+            and abs(snap.link_y - POND_42_REFILLED_DEAD_POSE[1]) <= 4
+        ):
+            return self._fixture_fail("42_refilled_pond_straight_down_dead")
+        if snap.screen == 0x52 and hop.target == 0x53:
+            return self._waypoint_action(
+                snap,
+                points=POND_52_REVERSE_WAYPOINTS,
+                index_name="_pond52_index",
+                walker_name="_pond52_walk",
+                reason="52_reverse",
+            )
+        if snap.screen == 0x53 and hop.target == 0x54:
+            return self._waypoint_action(
+                snap,
+                points=POND_53_REVERSE_WAYPOINTS,
+                index_name="_pond53_index",
+                walker_name="_pond53_walk",
+                reason="53_reverse",
+            )
+        return super()._extra_hop_action(snap, hop)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed:
+            return FrameAction(nes_idle_action(), "failed")
+        if not self._fixture_start_checked:
+            at_l7_entry = (
+                snap.level == 7
+                and snap.mode == PLAY_MODE
+                and snap.screen == SCREEN_LEVEL7_ENTRY_ROOM
+            )
+            at_pond = (
+                snap.level == 0
+                and snap.mode == PLAY_MODE
+                and snap.screen == SCREEN_LEVEL7_POND_HYP
+            )
+            if not (at_l7_entry or at_pond):
+                return self._fixture_fail("fixture_start_mismatch")
+            self._fixture_start_checked = True
+            self.notes.append(
+                "fixture_start_l7_entry" if at_l7_entry else "fixture_start_l7_pond"
+            )
+
+        if snap.mode == PLAY_MODE and not snap.transitioning:
+            if snap.level == 7:
+                if snap.screen != SCREEN_LEVEL7_ENTRY_ROOM:
+                    return self._fixture_fail("unexpected_l7_room")
+            elif snap.level == 0:
+                source = (
+                    SCREEN_LEVEL7_POND_HYP
+                    if self.hop_index == 0
+                    else self.hops[self.hop_index - 1].target
+                )
+                target = (
+                    self.hops[self.hop_index].target
+                    if self.hop_index < len(self.hops)
+                    else SCREEN_LEVEL8_BUSH
+                )
+                if snap.screen not in {source, target}:
+                    return self._fixture_fail(
+                        f"screen_prediction_miss_{source:02x}_{target:02x}_{snap.screen:02x}"
+                    )
+            else:
+                return self._fixture_fail(f"unexpected_level_{snap.level}")
+        return super().step(snap)
+
+    def report(self) -> dict[str, Any]:
+        out = super().report()
+        out.update(
+            {
+                "failed": self.failed,
+                "evidence": self.evidence,
+                "natural_entry": False,
+                "route_eligible": self.route_eligible,
+                "writes": 0,
+                "occupancy_misses": {
+                    "0x52": self._pond52_walk.misses,
+                    "0x53": self._pond53_walk.misses,
+                },
+            }
+        )
+        return out
+
+
 def has_candle(ram) -> bool:
     return read_u8(ram, ADDR_CANDLE) != 0
 
@@ -642,6 +873,11 @@ __all__ = [
     "LEVEL8_BUSH_HOPS_VIA_6B_EAST",
     "LEVEL8_BUSH_HOPS_VIA_58",
     "LEVEL8_5C_MAZE_WAYPOINTS",
+    "L7_POND_TO_LEVEL8_BUSH_HOPS",
+    "L7_POND_TO_LEVEL8_BUSH_SCREENS",
+    "POND_52_REVERSE_WAYPOINTS",
+    "POND_53_REVERSE_WAYPOINTS",
+    "POND_42_REFILLED_DEAD_POSE",
     "CANDLE_SHOP_PRICE_SOURCE",
     "CANDLE_SHOP_PRICE",
     "SCREEN_CANDLE_SHOP",
@@ -666,6 +902,7 @@ __all__ = [
     "DEFAULT_BUSH_Y",
     "SEGMENT_MAX_FRAMES",
     "OverworldToLevel8Controller",
+    "Level7PondToLevel8BushController",
     "OverworldToCandleShopController",
     "make_candle_shop_buy_controller",
     "Level8NavPhase",

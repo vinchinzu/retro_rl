@@ -159,7 +159,9 @@ def test_fixture_0x38_uses_bridge_before_west_alignment() -> None:
     reenter = _fixture_controller(FixtureEntryPhase.ALIGN_38_X)
     assert reenter.step(_snap(level=0, screen=0x38, link_x=112, link_y=205)).action == nes_action("UP")
     bridge = _fixture_controller(FixtureEntryPhase.ALIGN_38_X)
-    assert bridge.step(_snap(level=0, screen=0x38, link_x=112, link_y=141)).action == nes_action("LEFT")
+    assert bridge.step(_snap(level=0, screen=0x38, link_x=112, link_y=141)).action == nes_action("RIGHT")
+    central = _fixture_controller(FixtureEntryPhase.ALIGN_38_X)
+    assert central.step(_snap(level=0, screen=0x38, link_x=120, link_y=141)).reason == "screen38_north_0x28"
     blocked = _fixture_controller(FixtureEntryPhase.NORTH_38)
     action = blocked.step(_snap(level=0, screen=0x38, link_x=48, link_y=133))
     assert action.reason == "known_blocked_0x38_x48_y133_replan"

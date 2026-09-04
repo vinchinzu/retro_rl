@@ -59,10 +59,10 @@ LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x48, "UP", align_x=112),
     # Fixture-live 2026-09-03 (rr-sz8.5): 0x48 north mouth at x=128.
     ScreenHop(0x38, "UP", align_x=128),
-    # Earlier fixture handoff labeled x=48 live.  The later full replay v3
-    # crossed the y=141 bridge but halted on UP at (48,133), so this exact
-    # cell is now blocked pending an offline 0x38 north-mouth replan.
-    ScreenHop(0x28, "UP", align_x=48),
+    # v3 crossed the y=141 bridge but the west-edge x=48 north push halted at
+    # (48,133).  Offline screenshot geometry places the north mouth in the
+    # central sandy corridor; use x=120 for the next falsifiable trial.
+    ScreenHop(0x28, "UP", align_x=120),
     # Fixture-live 2026-09-03 (rr-sz8.5): 0x28 west mouth at y=102.
     ScreenHop(0x27, "LEFT", align_y=102),
     # Fixture-live 2026-09-03 (rr-sz8.5): the apparent full-width wall was
@@ -464,7 +464,7 @@ class Level9FixtureEntryController:
                     "UP" if snap.link_y > 141 else "DOWN",
                     "screen38_bridge_realign_y141",
                 )
-            action = self._axis(snap, axis="x", target=48, tolerance=4, reason="screen38_align_x48")
+            action = self._axis(snap, axis="x", target=120, tolerance=4, reason="screen38_align_x120")
             if action is not None:
                 return action
             self._set_phase(FixtureEntryPhase.NORTH_38, "screen38_north_lane")
