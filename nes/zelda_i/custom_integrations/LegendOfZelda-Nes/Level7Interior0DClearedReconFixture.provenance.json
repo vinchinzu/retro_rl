@@ -1,0 +1,209 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-03T23:54:34.926698+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-8t4.3",
+    "development_only": true,
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Derived from Level7Interior0DInteriorReconFixture: 0x0D kill 5 wallmasters, room_all_dead=1. No Candle/TF/door writes. Block 0x68 still at (192,144); stairs unobserved.",
+      "UnlimitedHealthAssist traversal aid only."
+    ],
+    "phase": "level7_tip_of_nose_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "blocks": [
+        {
+          "hp": 176,
+          "slot": 11,
+          "x": 192,
+          "y": 144
+        }
+      ],
+      "bombs": 6,
+      "candle": 2,
+      "capacity_writes": 0,
+      "colliding_tile": 118,
+      "cur_opened_doors": 2,
+      "deaths": 0,
+      "food": 0,
+      "keys": 2,
+      "ladder": 1,
+      "level": 7,
+      "mode": 5,
+      "obj_types": [
+        "0x2b:invuln_mover_residual",
+        "0x68:unknown_object_0x68"
+      ],
+      "objects": [
+        {
+          "facing": 4,
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type": "0x2b",
+          "xy": [
+            32,
+            105
+          ]
+        },
+        {
+          "facing": 4,
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type": "0x2b",
+          "xy": [
+            32,
+            120
+          ]
+        },
+        {
+          "facing": 1,
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type": "0x2b",
+          "xy": [
+            154,
+            93
+          ]
+        },
+        {
+          "facing": 0,
+          "hp": 176,
+          "slot": 11,
+          "state": 0,
+          "type": "0x68",
+          "xy": [
+            192,
+            144
+          ]
+        }
+      ],
+      "open_doorway_mask": 2,
+      "progression_writes": 0,
+      "room_all_dead": 1,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "screen": "0x0d",
+      "sword": 1,
+      "triforce": 0,
+      "whistle": 1,
+      "xy": [
+        63,
+        149
+      ]
+    },
+    "ok": true,
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 2,
+      "level": 7,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 13,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 0,
+          "state": 0,
+          "type_id": 5,
+          "type_name": "goriya_blue_or_residual",
+          "x": 63,
+          "y": 149
+        },
+        {
+          "hp": 240,
+          "slot": 1,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 32,
+          "y": 105
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 32,
+          "y": 120
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 154,
+          "y": 93
+        },
+        {
+          "hp": 128,
+          "slot": 5,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 28,
+          "y": 119
+        },
+        {
+          "hp": 128,
+          "slot": 6,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 15,
+          "y": 159
+        },
+        {
+          "hp": 128,
+          "slot": 8,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 32,
+          "y": 141
+        },
+        {
+          "hp": 176,
+          "slot": 11,
+          "state": 0,
+          "type_id": 104,
+          "type_name": "unknown_object_0x68",
+          "x": 192,
+          "y": 144
+        }
+      ],
+      "open_doorway_mask": 2,
+      "room": 13,
+      "room_all_dead": 1,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 8,
+      "rupees": 5,
+      "submode": 0,
+      "triforce": 0,
+      "x": 63,
+      "y": 149
+    }
+  },
+  "source_state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0699e-2a65-7a33-88dd-5d110d5f15fa/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DInteriorReconFixture.state",
+  "source_state_sha256": "fe9c016ff75b8b7892c3679dd56c68d0922405649f44e298a273acfba87a6bd8",
+  "state_path": "/home/v/.grok/worktrees/11-games-retro-rl/subagent-01a0699e-2a65-7a33-88dd-5d110d5f15fa/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DClearedReconFixture.state",
+  "state_sha256": "73c381b04a6d015a78caae1a6175d4292f56b8cf4237bc74d507b965faa06430"
+}
