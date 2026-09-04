@@ -9,7 +9,9 @@ walkthrough hypothesis graph.
 from __future__ import annotations
 
 from zelda_i.level8.dungeon import (
+    BLUE_GOHMA_ARROWS_REQUIRED,
     LEVEL8_INTERIOR_0X1E_RECON,
+    LEVEL8_INTERIOR_0X1F_RECON,
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_ROOM_RECON,
@@ -19,24 +21,29 @@ from zelda_i.level8.dungeon import (
 )
 
 
-def test_interior_recon_chain_is_ordered_south_to_north() -> None:
+def test_interior_recon_chain_is_ordered_south_to_north_then_east() -> None:
     assert LEVEL8_INTERIOR_ROOM_RECON == (
         LEVEL8_INTERIOR_0X3E_RECON,
         LEVEL8_INTERIOR_0X2E_RECON,
         LEVEL8_INTERIOR_0X1E_RECON,
+        LEVEL8_INTERIOR_0X1F_RECON,
     )
     rooms = [row.room_id for row in LEVEL8_INTERIOR_ROOM_RECON]
-    assert rooms == [0x3E, 0x2E, 0x1E]
+    assert rooms == [0x3E, 0x2E, 0x1E, 0x1F]
     # Each row is entered from the row before it (0x4E is the 0x3E predecessor
     # and predates this table).
     assert LEVEL8_INTERIOR_0X3E_RECON.entered_from == 0x4E
     assert LEVEL8_INTERIOR_0X2E_RECON.entered_from == 0x3E
     assert LEVEL8_INTERIOR_0X1E_RECON.entered_from == 0x2E
-    # Screen ids walk north one row per boundary: high nibble -1, low nibble E.
-    for row in LEVEL8_INTERIOR_ROOM_RECON:
+    assert LEVEL8_INTERIOR_0X1F_RECON.entered_from == 0x1E
+    # North-column prefix: high nibble -1, low nibble E, entered UP.
+    for row in LEVEL8_INTERIOR_ROOM_RECON[:-1]:
         assert row.room_id & 0x0F == 0x0E
         assert row.entered_from - row.room_id == 0x10
         assert row.entry_direction == "UP"
+    east = LEVEL8_INTERIOR_0X1F_RECON
+    assert east.room_id == 0x1E + 1
+    assert east.entry_direction == "RIGHT"
 
 
 def test_interior_recon_rows_are_never_route_eligible() -> None:
@@ -95,3 +102,21 @@ def test_0x1e_recon_matches_the_live_north_key_door_sitting() -> None:
     assert r.census == ((0x33, 96, 1),)
     assert r.room_item_id == 0x03
     assert r.fixture == "Level8Interior1EReconFixture"
+
+
+def test_0x1f_recon_matches_the_live_east_kill_clear_sitting() -> None:
+    # probe_l8_1e_gohma.py D1b/D2, 2/2 byte-identical, 1731 frames each.
+    r = LEVEL8_INTERIOR_0X1F_RECON
+    assert r.room_id == 0x1F
+    assert r.entered_from == 0x1E
+    assert r.entry_gate == "east_kill_clear_shutter"
+    assert r.entry_pose == (16, 141)  # west mouth of a RIGHT door
+    assert (r.keys_in, r.keys_out) == (8, 8)  # no key at a kill-clear shutter
+    assert (r.bombs_in, r.bombs_out) == (6, 6)  # no bomb
+    # Mixed 0x1F population; 0x68 stairs sprite is not a census row.
+    assert r.census == ((0x16, 160, 2), (0x0C, 128, 2), (0x0B, 64, 2))
+    assert r.room_item_id == 0x03
+    assert r.fixture == "Level8Interior1FReconFixture"
+    # rr-gw0x: three connecting wooden arrows (HP 96→64→32→0). Colour is not
+    # asserted — RAM type was 0x33, never 0x34. 9 shots loosed, 6 misses.
+    assert BLUE_GOHMA_ARROWS_REQUIRED == 3
