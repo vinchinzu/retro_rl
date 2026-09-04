@@ -378,7 +378,21 @@ keys 8→8, bombs 6→6, MK 1, TF `0x7F`. Arrival census empty (Gohma already
 dead). `0x55` statue fireballs spawn after idle — pin at arrival, not after
 knockback. Not Gleeok `0x3C`. `make_gleeok_passage_controller` stays
 fail-closed. Not on `L8_THROUGH`. Pin `Level8Interior1EWestReconFixture`.
-Do not start the fight. Next gate is hyp DOWN toward `0x2E`.
+Do not start the fight.
+
+### Fixture-live 0x1E south door → cleared 0x2E (rr-6o7.2)
+
+From `Level8Interior1EWestReconFixture`. Occupancy empty-grid BFS first
+dir is DOWN along x=208 into the SE statue; OccupancyWalker 1px-grade
+already false-missed 2px dungeon steps on the west hop, so occupancy was
+not used live. Cardinal x-align LEFT to 120, DOWN push. H2/H3 2/2 (probe
+`l8_1e_south`, 264 controller frames / 324 with census): first settled
+play **`0x2E` `(120,77)`** north mouth, keys 8→8, bombs 6→6, MK 1, TF
+`0x7F`. Arrival census empty (Manhandla already dead). `room_item_id=0x17`
+map still on the floor. RAM doors `0x0C` (UP+DOWN). Not Gleeok `0x3C`.
+`make_gleeok_passage_controller` stays fail-closed. Not on `L8_THROUGH`.
+Pin `Level8Interior2ESouthReconFixture`. Do not start the fight. Do not
+chain a second DOWN into `0x3E`. Next gate is hyp DOWN toward `0x3E`.
 
 **Object type `0x0C` is not registered** in `dungeon/ids.py` — live censuses
 print it as `unknown_object_0x0c`. What the evidence establishes is

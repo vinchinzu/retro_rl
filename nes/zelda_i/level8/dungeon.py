@@ -317,6 +317,31 @@ LEVEL8_INTERIOR_0X1E_WEST_RECON = Level8InteriorRoomRecon(
     recording_tag="l8_1f_west_fixture_20260904_G3",
 )
 
+# rr-6o7.2: ONE south gate from play 0x1E leftover (208,141) after the
+# west return.  Cardinal x-align to 120, DOWN push.  Occupancy BFS first
+# dir was DOWN along x=208 into the SE statue; 1px-grade also false-misses
+# 2px dungeon steps (west G1).  H2/H3 2/2, 264 controller frames: first
+# settled play 0x2E (120,77) north mouth, keys 8→8, bombs 6→6, MK 1,
+# TF 0x7F.  Arrival census empty (Manhandla already dead); room_item 0x17
+# map still on the floor, not picked up.  Not appended to
+# LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
+# L8_THROUGH.  Do not start Gleeok.  Do not chain DOWN into 0x3E.
+LEVEL8_INTERIOR_0X2E_SOUTH_RECON = Level8InteriorRoomRecon(
+    room_id=0x2E,
+    entered_from=0x1E,
+    entry_direction="DOWN",
+    entry_gate="south_open_door",
+    entry_pose=(120, 77),
+    keys_in=8,
+    keys_out=8,
+    bombs_in=6,
+    bombs_out=6,
+    room_item_id=0x17,
+    census=(),  # Manhandla already dead; map 0x17 is still on the floor
+    fixture="Level8Interior2ESouthReconFixture",
+    recording_tag="l8_1e_south_fixture_20260904_H3",
+)
+
 
 @dataclass(frozen=True)
 class Level8HypothesisRoom:
@@ -610,6 +635,7 @@ __all__ = [
     "LEVEL8_INTERIOR_0X1E_WEST_RECON",
     "LEVEL8_INTERIOR_0X1F_RECON",
     "LEVEL8_INTERIOR_0X2E_RECON",
+    "LEVEL8_INTERIOR_0X2E_SOUTH_RECON",
     "LEVEL8_INTERIOR_0X3E_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",

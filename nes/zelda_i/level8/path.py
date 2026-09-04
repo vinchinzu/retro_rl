@@ -3,8 +3,13 @@
 North-column factories (`make_north_manhandla_controller`,
 `make_darknut_key_controller`) are fixture-live in `level8.north_column`.
 West gate from play 0x1F leftover (96,157) is fixture-live cardinal LEFT
-into the first settled dest (hyp 0x1E); fail cellar 0x0F and Gleeok 0x3C.
+into the first settled dest (0x1E); fail cellar 0x0F and Gleeok 0x3C.
 G1 occupancy 1px-grade boxed at (88,157) tile 118; do not re-grade 2px steps.
+South gate from play 0x1E leftover (208,141) is cardinal x-align to 120
+then DOWN into first settled dest 0x2E (120,77) north mouth. Occupancy
+BFS closes empty-grid but first dir is DOWN along x=208 into the SE
+statue, and 1px-grade still false-misses 2px dungeon steps — occupancy
+not used live.
 Hypothesis rooms past 0x1E cannot press a direction on the cumulative spine.
 The 0x1E body is live type 0x33 HP96 (`LEVEL8_INTERIOR_0X1E_RECON`); colour
 is not asserted.  Blue Gohma still requires naturally owned Bow + wooden
@@ -49,10 +54,16 @@ WEST_GRID_XMIN = 16
 # West of 0x68 (96,144) before any UP. G1 occupancy 1px-grade boxed at
 # (88,157) tile 118 (walkable floor) after 2px LEFT steps.
 STAIRS_WEST_X = 80
+SOUTH_DOOR = DOOR_TARGETS["DOWN"]  # (120, 205)
+SOUTH_ORIGIN = WEST_DEST  # 0x1E
+SOUTH_ORIGIN_POSE = WEST_DEST_POSE  # (208, 141) east mouth
+SOUTH_DEST = 0x2E
+SOUTH_DEST_POSE = (120, 77)  # live H2/H3 arrival; north mouth (ymin band)
 GLEEOK_HYP = 0x3C
 _DOOR_TOL = 4
 _SAMPLE_PERIOD = 12
 _WEST_MAX_FRAMES = 4000
+_SOUTH_MAX_FRAMES = 4000
 
 
 def west_1f_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -67,6 +78,18 @@ def west_1f_step(snap: ZeldaSnapshot) -> FrameAction:
     if x > gx + _DOOR_TOL:
         return FrameAction(nes_action("LEFT"), "west_approach")
     return FrameAction(nes_action("LEFT"), "west_push")
+
+
+def south_1e_step(snap: ZeldaSnapshot) -> FrameAction:
+    """x-align to 120, then DOWN push. No occupancy, no sword, no UP."""
+    x, y = int(snap.link_x), int(snap.link_y)
+    gx, gy = SOUTH_DOOR
+    if abs(x - gx) > _DOOR_TOL:
+        btn = "LEFT" if x > gx else "RIGHT"
+        return FrameAction(nes_action(btn), "south_align")
+    if y < gy - _DOOR_TOL:
+        return FrameAction(nes_action("DOWN"), "south_approach")
+    return FrameAction(nes_action("DOWN"), "south_push")
 
 
 def _west_leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
@@ -170,6 +193,95 @@ def make_west_1f_controller(
     *, dest: int | None = WEST_DEST
 ) -> Level8West1FController:
     return Level8West1FController(dest=dest)
+
+
+@dataclass(kw_only=True)
+class Level8South1EController(HopController):
+    """0x1E leftover → south door DOWN. Dest is RAM; fail 0x0F / 0x3C."""
+
+    spec_id: str = "level8_south_1e"
+    max_frames: int = _SOUTH_MAX_FRAMES
+    require_level: int = 8
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "left_0x1e_south"
+    dest: int | None = None
+    route_eligible: bool = False
+    leftover: dict[str, Any] = field(default_factory=dict)
+    writes: int = 0
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            return False
+        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return snap.screen != SOUTH_ORIGIN
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        return FrameAction(nes_action("DOWN"), "south_scroll")
+
+    def emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
+            self.leftover = _west_leftover(snap)
+        return action
+
+    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        blocked = HopController.guard(self, snap)
+        if blocked is not None:
+            return blocked
+        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
+            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
+        if snap.screen == GLEEOK_HYP:
+            return self.mark_fail("gleeok_0x3c")
+        if (
+            snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen != SOUTH_ORIGIN
+            and self.dest is not None
+            and snap.screen != self.dest
+        ):
+            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
+        return None
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != SOUTH_ORIGIN:
+            return FrameAction(nes_action("DOWN"), "south_settle")
+        return south_1e_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "natural_entry": False,
+            "writes": int(self.writes),
+            "door": "DOWN",
+            "leftover": dict(self.leftover),
+        }
+
+
+def make_south_1e_controller(
+    *, dest: int | None = SOUTH_DEST
+) -> Level8South1EController:
+    return Level8South1EController(dest=dest)
 
 # L6 red Gohma is 0x33; L8 source is blue 0x34.  Red is accepted only as a
 # live-type observation, never as an L6 room check.
@@ -364,15 +476,22 @@ __all__ = [
     "Level8DarknutKeyController",
     "Level8FourHeadGleeokController",
     "Level8NorthManhandlaController",
+    "Level8South1EController",
     "Level8West1FController",
     "UnverifiedLevel8PathController",
     "WEST_DOOR",
     "STAIRS_WEST_X",
+    "SOUTH_DEST",
+    "SOUTH_DEST_POSE",
+    "SOUTH_DOOR",
+    "SOUTH_ORIGIN",
+    "SOUTH_ORIGIN_POSE",
     "WEST_DEST",
     "WEST_DEST_POSE",
     "WEST_GRID_XMIN",
     "WEST_ORIGIN",
     "WEST_ORIGIN_POSE",
+    "south_1e_step",
     "west_1f_step",
     "make_blue_gohma_controller",
     "make_darknut_key_controller",
@@ -381,6 +500,7 @@ __all__ = [
     "make_magic_key_stairs_controller",
     "make_north_manhandla_controller",
     "make_shard_leave_controller",
+    "make_south_1e_controller",
     "make_west_1f_controller",
     "unverified_path_controller",
 ]
