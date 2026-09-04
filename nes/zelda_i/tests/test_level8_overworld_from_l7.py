@@ -76,13 +76,26 @@ def test_level7_entrance_start_exits_naturally_down() -> None:
 
 
 def test_pond_start_begins_with_predicted_0x42_down_to_0x52() -> None:
+    # OW_L7Pond south-shore pose: DOWN scrolls straight to 0x52, bypassing the
+    # refilled pool (live probe l7_exit_to_l8_bush A18/A19: 2/2 to 0x6D).
     ctl = Level7PondToLevel8BushController()
-    snap = read_snapshot(_ram(screen=0x42, x=112, y=141))
+    snap = read_snapshot(_ram(screen=0x42, x=112, y=221))
     act = ctl.step(snap)
     assert not ctl.failed
     assert list(act.action) == list(nes_action("DOWN"))
     assert ctl.hops[ctl.hop_index].target == 0x52
     assert "fixture_start_l7_pond" in ctl.notes
+
+
+def test_refilled_pond_top_strip_fails_closed_anywhere() -> None:
+    # Natural Level7Entrance exit strands Link in the y~85-100 strip at any x.
+    ctl = Level7PondToLevel8BushController()
+    ctl._fixture_start_checked = True
+    snap = read_snapshot(_ram(screen=0x42, x=96, y=93))
+    act = ctl.step(snap)
+    assert ctl.failed and not ctl.success
+    assert list(act.action) == list(nes_idle_action())
+    assert "42_refilled_pond_straight_down_dead" in ctl.notes
 
 
 def test_unpredicted_screen_halts_without_input() -> None:
@@ -112,15 +125,34 @@ def test_natural_exit_refilled_pond_dead_pose_halts_without_retry() -> None:
     assert "42_refilled_pond_straight_down_dead" in ctl.notes
 
 
-def test_reverse_0x52_uses_predicted_waypoints_before_east_exit() -> None:
+def test_reverse_0x52_west_corridor_then_column_then_east() -> None:
     ctl = Level7PondToLevel8BushController()
     ctl.hop_index = 1
-    snap = read_snapshot(_ram(screen=0x52, x=112, y=61))
-    ctl._nav_snap = snap
-    act = ctl._extra_hop_action(snap, ctl.hops[1])
+    # On the y~85 corridor, east of the west column: head west.
+    top = read_snapshot(_ram(screen=0x52, x=112, y=88))
+    ctl._nav_snap = top
+    act = ctl._extra_hop_action(top, ctl.hops[1])
     assert act is not None
-    assert act.reason.startswith("52_reverse_wp0")
-    assert list(act.action) == list(nes_action("DOWN"))
+    assert act.reason == "52r_corridor_west"
+    assert list(act.action) == list(nes_action("LEFT"))
+    # Down in the bottom corridor: push east toward 0x53.
+    bottom = read_snapshot(_ram(screen=0x52, x=48, y=190))
+    ctl._nav_snap = bottom
+    act = ctl._extra_hop_action(bottom, ctl.hops[1])
+    assert act is not None
+    assert act.reason == "52r_bottom_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_reverse_0x64_crosses_east_on_the_y141_band() -> None:
+    ctl = Level7PondToLevel8BushController()
+    ctl.hop_index = 4
+    snap = read_snapshot(_ram(screen=0x64, x=180, y=141))
+    ctl._nav_snap = snap
+    act = ctl._extra_hop_action(snap, ctl.hops[4])
+    assert act is not None
+    assert act.reason == "64r_east_cross"
+    assert list(act.action) == list(nes_action("RIGHT"))
 
 
 def test_fixture_report_never_claims_route_eligibility_or_writes() -> None:
