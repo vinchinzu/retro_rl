@@ -136,8 +136,8 @@ class BushBurnTarget:
         )
 
 
-# The legacy recon aimed at (136, 93), but never opened the mouth.  Keep that
-# belief in docs; the canonical controller receives no executable target.
+# The canonical controller receives no executable target by default: a burn
+# only runs once someone hands it a verified BushBurnTarget.
 UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 
 # Fixture-only live recon (rr-6o7.1): nes/zelda_i/scratch/level8_bush_burn_sweep.py
@@ -151,13 +151,11 @@ UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 # (184, 93)/(192, 93)/(200, 93) facing+push LEFT, and (160, 77) facing+push
 # DOWN -- one secret tile, several approach angles. Captured as
 # Level8EntranceReconFixture (see nes/zelda_i/scratch/capture_level8_entrance_fixture.py
-# and its .provenance.json). NOTE for a future natural-entry attempt:
-# BurnLevel8BushController's ENTER phase always sends UP after mode==16; the
-# live sweep found that UP alone does *not* complete the transition here --
-# continuing the same push_direction used to fire is what carries Link
-# through. That controller is out of scope for this bead and was not
-# changed; flagging it here so the real post-L7 attempt does not repeat the
-# same dead end. Evidence is fixture-live: verified=True (it reliably
+# and its .provenance.json). The sweep never reached level 8 by pushing UP
+# after mode==16 (entry_room is null on all seven mouth stands); the fixture
+# reached it by continuing the same push_direction it fired with, so
+# BurnLevel8BushController's ENTER phase now sends target.push_direction
+# (rr-i6hq). Evidence is fixture-live: verified=True (it reliably
 # reproduces), but route_eligible stays False since the real predecessor is
 # still the unmeasured PostLevel7Handoff, not a natural walk.
 LIVE_RECON_BUSH_BURN_TARGET = BushBurnTarget(
@@ -458,17 +456,24 @@ class BurnLevel8BushController:
             return self._fail("burn_budget_exhausted_without_level8_entry")
         self.burn_frames += 1
 
+        # rr-i6hq: the mouth does not swallow Link on UP. logs/
+        # level8_bush_burn_sweep.json opened mode 16 at seven stands and logged
+        # entry_room=null on every one; Level8EntranceReconFixture only reached
+        # live L8 (0x7E, 111 frames past the push) by continuing the same
+        # push_direction used to fire.  complete() already constrains this to a
+        # cardinal, so UP is used here only when UP is the recorded push.
+        enter = nes_action(str(self.target.push_direction))
         if snap.mode == 16:
             if not self.candle_use_observed:
                 return self._fail("mouth_transition_without_candle_use")
             self._set_phase(BurnPhase.ENTER, "mouth_transition_observed")
-            return FrameAction(nes_action("UP"), "enter_level8")
+            return FrameAction(enter, "enter_level8")
         if self.phase is BurnPhase.ENTER and snap.transitioning:
-            return FrameAction(nes_action("UP"), "enter_level8_transition")
+            return FrameAction(enter, "enter_level8_transition")
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.screen != SCREEN_LEVEL8_BUSH:
             return self._fail("left_bush_screen_without_level8_entry")
         if self.phase is BurnPhase.ENTER:
-            return FrameAction(nes_action("UP"), "enter_level8")
+            return FrameAction(enter, "enter_level8")
 
         tx = int(self.target.link_x)
         ty = int(self.target.link_y)

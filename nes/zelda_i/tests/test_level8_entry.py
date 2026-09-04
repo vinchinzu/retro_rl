@@ -5,13 +5,20 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
-from retro_harness.nes import nes_idle_action
+from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.level8.bush import (
-    DEAD_BUSH_AIM,
-    HYPOTHESIS_BUSH_X,
+    MOUTH_STANDS,
+    REFUTED_BUSH_AIM,
+    REFUTED_PUSH,
+    VERIFIED_BUSH_AIM,
+    VERIFIED_BUSH_X,
+    VERIFIED_BUSH_Y,
+    VERIFIED_FACING,
+    VERIFIED_PUSH,
     IsolatedBushReconController,
     make_isolated_bush_recon_controller,
 )
@@ -108,6 +115,23 @@ def _env(ram: np.ndarray) -> SimpleNamespace:
     return SimpleNamespace(get_ram=lambda: ram)
 
 
+def _verified_target() -> BushBurnTarget:
+    """The swept-verified recipe, as a unit-test target (never route eligible).
+
+    Backing evidence: nes/zelda_i/logs/level8_bush_burn_sweep.json and
+    custom_integrations/LegendOfZelda-Nes/Level8EntranceReconFixture.provenance.json.
+    """
+    return BushBurnTarget(
+        link_x=VERIFIED_BUSH_X,
+        link_y=VERIFIED_BUSH_Y,
+        facing=VERIFIED_FACING,
+        push_direction=VERIFIED_PUSH,
+        verified=True,
+        route_eligible=False,
+        evidence="unit-test",
+    )
+
+
 def test_public_through_names_unchanged() -> None:
     assert L8_THROUGH == ("level8-entry", "level8-magic-key", "level8")
     assert L8_STOPS == {
@@ -183,16 +207,8 @@ def test_unverified_burn_target_does_not_move() -> None:
 
 
 def test_burn_budget_exhaust_on_0x6d_is_failure() -> None:
-    ram = _ram(x=HYPOTHESIS_BUSH_X, y=93, candle=2, selected=4)
-    target = BushBurnTarget(
-        link_x=HYPOTHESIS_BUSH_X,
-        link_y=93,
-        facing="RIGHT",
-        push_direction="UP",
-        verified=True,
-        route_eligible=False,
-        evidence="unit-test",
-    )
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    target = _verified_target()
     ctl = make_burn_level8_bush_controller(target=target)
     ctl.burn_budget = 6
     ctl.bind_env(_env(ram))
@@ -208,7 +224,7 @@ def test_burn_budget_exhaust_on_0x6d_is_failure() -> None:
 
 
 def test_isolated_recon_budget_exhaust_is_failure() -> None:
-    ram = _ram(x=HYPOTHESIS_BUSH_X, y=93, candle=2, selected=4)
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
     ctl = make_isolated_bush_recon_controller()
     ctl.burn_budget = 6
     ctl.bind_env(_env(ram))
@@ -223,7 +239,105 @@ def test_isolated_recon_budget_exhaust_is_failure() -> None:
     assert not ctl.route_eligible
     assert ctl.evidence == "fixture-live"
     assert "burn_budget_exhausted_without_level8_entry" in ctl.notes
-    assert DEAD_BUSH_AIM == (136, 93)
+
+
+def test_recon_default_is_the_swept_verified_recipe() -> None:
+    # nes/zelda_i/logs/level8_bush_burn_sweep.json (5856 trials) +
+    # Level8EntranceReconFixture.provenance.json: (136, 93) face RIGHT push
+    # RIGHT. (144, 93)/UP is the refuted aim, and is not a mouth stand.
+    ctl = make_isolated_bush_recon_controller()
+    assert (ctl.link_x, ctl.link_y) == VERIFIED_BUSH_AIM == (136, 93)
+    assert ctl.facing == VERIFIED_FACING == "RIGHT"
+    assert ctl.push_direction == VERIFIED_PUSH == "RIGHT"
+    assert REFUTED_BUSH_AIM == (144, 93)
+    assert REFUTED_PUSH == "UP"
+    assert REFUTED_BUSH_AIM not in {(x, y) for x, y, _f, _p in MOUTH_STANDS}
+    assert VERIFIED_BUSH_AIM in {(x, y) for x, y, _f, _p in MOUTH_STANDS}
+    # Every swept mouth stand fired and pushed the same direction.
+    assert all(facing == push for _x, _y, facing, push in MOUTH_STANDS)
+    assert ctl.report()["refuted_aim"] == [144, 93, "RIGHT", "UP"]
+    assert not ctl.route_eligible
+
+
+def _drive_to_mouth(ctl: Any, ram: np.ndarray) -> Any:
+    """Validate on 0x6D, observe candle use, then raise the mode-16 mouth."""
+    ctl.bind_env(_env(ram))
+    ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    ram[ADDR_CANDLE_USED] = 1
+    ctl.step(read_snapshot(ram))
+    assert ctl.candle_use_observed
+    ram[ADDR_MODE] = 16
+    return ctl.step(read_snapshot(ram))
+
+
+def test_right_push_target_drives_the_mouth_into_level8() -> None:
+    # rr-i6hq: mode 16 must be answered with the recorded push_direction. The
+    # sweep saw entry_room=null on all seven mouth stands (UP never completes);
+    # Level8EntranceReconFixture reached live L8 0x7E by continuing RIGHT.
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    ctl = make_burn_level8_bush_controller(target=_verified_target())
+    act = _drive_to_mouth(ctl, ram)
+    assert ctl.phase.name == "ENTER"
+    assert "mouth_transition_observed" in ctl.notes
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("UP"))
+    # The transition frames keep pushing RIGHT, never UP.
+    ram[ADDR_MODE] = 6
+    assert list(ctl.step(read_snapshot(ram)).action) == list(nes_action("RIGHT"))
+    # Live L8 landing, matching the fixture provenance (screen 0x7E).
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 8
+    ram[ADDR_SCREEN] = 0x7E
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert not ctl.failed
+    assert ctl.observed_entry_room == 0x7E
+    assert ctl.report()["route_eligible"] is False
+
+
+def test_isolated_recon_right_push_drives_the_mouth_into_level8() -> None:
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    ctl = make_isolated_bush_recon_controller()
+    act = _drive_to_mouth(ctl, ram)
+    assert ctl.phase.name == "ENTER"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 8
+    ram[ADDR_SCREEN] = 0x7E
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert ctl.observed_entry_room == 0x7E
+    assert ctl.report()["route_eligible"] is False
+    assert ctl.evidence == "fixture-live"
+
+
+def test_mouth_without_observed_candle_use_fails_closed() -> None:
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    ctl = make_burn_level8_bush_controller(target=_verified_target())
+    ctl.bind_env(_env(ram))
+    ctl.step(read_snapshot(ram))
+    ram[ADDR_MODE] = 16
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert not ctl.success
+    assert not ctl.candle_use_observed
+    assert "mouth_transition_without_candle_use" in ctl.notes
+    assert list(act.action) == list(nes_idle_action())
+
+
+def test_level8_without_observed_candle_use_fails_closed() -> None:
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    ctl = make_burn_level8_bush_controller(target=_verified_target())
+    ctl.bind_env(_env(ram))
+    ctl.step(read_snapshot(ram))
+    ram[ADDR_LEVEL] = 8
+    ram[ADDR_SCREEN] = 0x7E
+    ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert not ctl.success
+    assert ctl.observed_entry_room is None
+    assert "level8_entered_without_observed_candle_use" in ctl.notes
 
 
 def test_isolated_recon_without_candle_fails_closed() -> None:
