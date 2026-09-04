@@ -1,0 +1,302 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T13:48:41.892276+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-6o7.2",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "Guarded replay from Level8InteriorReconFixture: reuse the confirmed 0x7E -> clear 0x6E -> bomb-N 0x5E -> clear/key -> shutter-N 0x4E -> key-N 0x3E policy, then ONE north gate 0x3E -> 0x2E.",
+      "No RAM poke. Inventory deltas are the natural key spend 10->9 at the 0x4E north key door and the natural bomb spend 7->6 at 0x3E.",
+      "0x3E north gate observed as: bomb_north_wall.",
+      "Not route eligible; not on L8_THROUGH."
+    ],
+    "phase": "level8_interior_0x2e_recon",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "census": {
+      "arrows": 1,
+      "bombs": 6,
+      "bow": 1,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 34,
+      "inventory": {
+        "arrows": 1,
+        "bombs": 6,
+        "bow": 1,
+        "candle": 2,
+        "food": 0,
+        "health": 34,
+        "heart_containers": 3,
+        "keys": 9,
+        "magic_key": 0,
+        "max_bombs": 8,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 127
+      },
+      "keys": 9,
+      "level": 8,
+      "live_objects": [
+        {
+          "hp": 64,
+          "slot": 1,
+          "type": 60,
+          "type_hex": "0x3C",
+          "type_name": "manhandla",
+          "xy": [
+            182,
+            103
+          ]
+        },
+        {
+          "hp": 64,
+          "slot": 2,
+          "type": 60,
+          "type_hex": "0x3C",
+          "type_name": "manhandla",
+          "xy": [
+            182,
+            135
+          ]
+        },
+        {
+          "hp": 64,
+          "slot": 3,
+          "type": 60,
+          "type_hex": "0x3C",
+          "type_name": "manhandla",
+          "xy": [
+            166,
+            119
+          ]
+        },
+        {
+          "hp": 64,
+          "slot": 4,
+          "type": 60,
+          "type_hex": "0x3C",
+          "type_name": "manhandla",
+          "xy": [
+            198,
+            119
+          ]
+        },
+        {
+          "hp": 64,
+          "slot": 5,
+          "type": 60,
+          "type_hex": "0x3C",
+          "type_name": "manhandla",
+          "xy": [
+            182,
+            119
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 7,
+          "type": 86,
+          "type_hex": "0x56",
+          "type_name": "manhandla_projectile_residual",
+          "xy": [
+            211,
+            117
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 8,
+          "type": 86,
+          "type_hex": "0x56",
+          "type_name": "manhandla_projectile_residual",
+          "xy": [
+            170,
+            140
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 9,
+          "type": 86,
+          "type_hex": "0x56",
+          "type_name": "manhandla_projectile_residual",
+          "xy": [
+            129,
+            172
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "type": 86,
+          "type_hex": "0x56",
+          "type_name": "manhandla_projectile_residual",
+          "xy": [
+            166,
+            136
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 5,
+      "open_doorway_mask": 4,
+      "rod": 0,
+      "room": 46,
+      "room_all_dead": 0,
+      "room_item_hex": "0x17",
+      "room_item_id": 23,
+      "room_obj_count": 1,
+      "rupees": 255,
+      "screen": 46,
+      "screen_hex": "0x2E",
+      "tile": 36,
+      "triforce": 127,
+      "x": 120,
+      "xy": [
+        120,
+        189
+      ],
+      "y": 189
+    },
+    "fixture_state": "Level8Interior2EReconFixture",
+    "fixture_writes": [],
+    "gate": "bomb_north_wall",
+    "natural_bomb_spend": {
+      "bombs_after": 6,
+      "bombs_before": 7
+    },
+    "natural_key_spend": {
+      "keys_after": 9,
+      "keys_before": 10
+    },
+    "ok": true,
+    "source_state": "Level8InteriorReconFixture",
+    "state": {
+      "bombs": 6,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 34,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 8,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 46,
+      "objects": [
+        {
+          "hp": 64,
+          "slot": 1,
+          "state": 0,
+          "type_id": 60,
+          "type_name": "manhandla",
+          "x": 182,
+          "y": 103
+        },
+        {
+          "hp": 64,
+          "slot": 2,
+          "state": 0,
+          "type_id": 60,
+          "type_name": "manhandla",
+          "x": 182,
+          "y": 135
+        },
+        {
+          "hp": 64,
+          "slot": 3,
+          "state": 0,
+          "type_id": 60,
+          "type_name": "manhandla",
+          "x": 166,
+          "y": 119
+        },
+        {
+          "hp": 64,
+          "slot": 4,
+          "state": 0,
+          "type_id": 60,
+          "type_name": "manhandla",
+          "x": 198,
+          "y": 119
+        },
+        {
+          "hp": 64,
+          "slot": 5,
+          "state": 0,
+          "type_id": 60,
+          "type_name": "manhandla",
+          "x": 182,
+          "y": 119
+        },
+        {
+          "hp": 240,
+          "slot": 7,
+          "state": 16,
+          "type_id": 86,
+          "type_name": "manhandla_projectile_residual",
+          "x": 211,
+          "y": 117
+        },
+        {
+          "hp": 240,
+          "slot": 8,
+          "state": 16,
+          "type_id": 86,
+          "type_name": "manhandla_projectile_residual",
+          "x": 170,
+          "y": 140
+        },
+        {
+          "hp": 240,
+          "slot": 9,
+          "state": 16,
+          "type_id": 86,
+          "type_name": "manhandla_projectile_residual",
+          "x": 129,
+          "y": 172
+        },
+        {
+          "hp": 240,
+          "slot": 10,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 100,
+          "y": 189
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "state": 16,
+          "type_id": 86,
+          "type_name": "manhandla_projectile_residual",
+          "x": 166,
+          "y": 136
+        }
+      ],
+      "open_doorway_mask": 4,
+      "room": 46,
+      "room_all_dead": 0,
+      "room_item_id": 23,
+      "room_item_name": "dungeon_map_walkthrough_correlated",
+      "room_obj_count": 1,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 127,
+      "x": 120,
+      "y": 189
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8InteriorReconFixture.state",
+  "source_state_sha256": "c2273b0563cb450ae9f976dd168470d8c15feeae7732a72f66fd759e13c8de59",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8Interior2EReconFixture.state",
+  "state_sha256": "bf6200f0636eb62f8b021461a5667fcd5b596eb057ed0f084c9d19fcbfba153f"
+}
