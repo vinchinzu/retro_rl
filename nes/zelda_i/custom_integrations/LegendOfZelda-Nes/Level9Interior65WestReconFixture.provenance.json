@@ -1,0 +1,263 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-04T17:02:21.535678+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07"
+    ],
+    "phase": "level9_prefix_0x76_north_west",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x65",
+    "fixture_state": "Level9Interior65WestReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "arrows": 2,
+      "bombs": 15,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 2,
+      "health": 255,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 15,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "keys": 9,
+      "level": 9,
+      "live_objects": [],
+      "map": 0,
+      "mode": 5,
+      "next_screen_hex": "0x65",
+      "open_doorway_mask": 0,
+      "rod": 1,
+      "room": 101,
+      "room_item_hex": "0x03",
+      "rupees": 255,
+      "screen": 101,
+      "screen_hex": "0x65",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 255,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 43,
+          "type_hex": "0x2B",
+          "type_name": "invuln_mover_residual",
+          "xy": [
+            112,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 43,
+          "type_hex": "0x2B",
+          "type_name": "invuln_mover_residual",
+          "xy": [
+            160,
+            93
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 43,
+          "type_hex": "0x2B",
+          "type_name": "invuln_mover_residual",
+          "xy": [
+            160,
+            189
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            32,
+            141
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            48,
+            109
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "type": 36,
+          "type_hex": "0x24",
+          "type_name": "wizzrobe_orange",
+          "xy": [
+            48,
+            173
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            80,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "type": 36,
+          "type_hex": "0x24",
+          "type_name": "wizzrobe_orange",
+          "xy": [
+            112,
+            157
+          ]
+        }
+      ],
+      "x": 224,
+      "xy": [
+        224,
+        141
+      ],
+      "y": 141
+    },
+    "ok": true,
+    "source_state": "Level9EntranceReconFixture",
+    "state": {
+      "bombs": 15,
+      "cur_opened_doors": 0,
+      "facing": 2,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 101,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 112,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 160,
+          "y": 93
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 43,
+          "type_name": "invuln_mover_residual",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 32,
+          "y": 141
+        },
+        {
+          "hp": 0,
+          "slot": 5,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 0,
+          "slot": 6,
+          "state": 0,
+          "type_id": 36,
+          "type_name": "wizzrobe_orange",
+          "x": 48,
+          "y": 173
+        },
+        {
+          "hp": 0,
+          "slot": 7,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 80,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 8,
+          "state": 0,
+          "type_id": 36,
+          "type_name": "wizzrobe_orange",
+          "x": 112,
+          "y": 157
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 101,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 8,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 224,
+      "y": 141
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9EntranceReconFixture.state",
+  "source_state_sha256": "54cd17f8f7ef61865db311a03341f646678553689ad3035e85d9f7ca75c45dfe",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior65WestReconFixture.state",
+  "state_sha256": "dc4446b7df524a7eb67eded75e6a52a82f9e2b74e77d9bd00cce0c269abe2f27"
+}

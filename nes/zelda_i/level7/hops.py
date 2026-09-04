@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from zelda_i.level7.cellar import make_nose_cellar_cross_controller
 from zelda_i.level7.dungeon import (
     level7_complete_stop,
     level7_entry_stop,
@@ -305,6 +306,7 @@ def make_entry_to_goriya_controller() -> Level7PathController:
 
 
 def make_tip_stairs_controller() -> Level7PathController:
+    """Fail-closed on the spine: 0x0D walk-on of cellar 0x7B is still unobserved."""
     return unverified_path_controller(
         "level7_tip_of_nose_stairs",
         "live tip-of-nose room, push tile, and stairs endpoint",
@@ -521,6 +523,7 @@ __all__ = [
     "make_entry_to_goriya_controller",
     "make_forced_digdogger_controller",
     "make_level7_shard_leave_controller",
+    "make_nose_cellar_cross_controller",
     "make_pond_entry_controller",
     "make_post_l6_overworld_controller",
     "make_red_candle_controller",

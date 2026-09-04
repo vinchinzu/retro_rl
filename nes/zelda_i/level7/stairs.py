@@ -10,7 +10,8 @@ cellars those bytes are dest room ids, not door codes. InitMode9: source ==
 AttrA -> left ladder ``x=$30``, else right ``x=$C0``. CheckSubroom: ``Y<$40``
 and UP; ``X<$80`` -> AttrA else AttrB.
 
-ROM-claimed, not live until a walk-on confirms SCREEN after the stairs.
+ROM-claimed. Fixture-live dest play 0x29 from the 0x7B B-side spawn
+(rr-n91a 2026-09-04, 2/2). Walk-on from play 0x0D is still unobserved.
 """
 
 from __future__ import annotations

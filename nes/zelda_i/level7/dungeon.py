@@ -54,6 +54,8 @@ LEVEL7_RED_CANDLE_STOP = Level7StopSpec("level7_red_candle", LEVEL7, None)
 # hearts lo==hi (ADDR_HEALTH) + ADDR_HEART_PARTIAL, rod, bow, arrows.
 # verified stays False until that leftover is measured 2/2. L8 keeps
 # PostLevel7Handoff.verified=False until then. See docs/tasks/l7c-prep-2026-09-03.md.
+# rr-n91a fixture-lineage fanfare leftover (not Survival): OW 0x42 (96,93)
+# TF 0x40 (pin started at TF 0). Do not fill MEASURED_POST_L7_EXIT from that.
 LEVEL7_COMPLETE_STOP = Level7StopSpec("level7_complete", None, None)
 
 # There are intentionally no executable DungeonRoomSpec rows yet.  Add one

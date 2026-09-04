@@ -3,6 +3,25 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-04 — rr-n91a dest 0x29 2/2; suffix 0x2A/0x2B/OW from poke fixture
+
+Agent L7, exclusive `level7/**` + probe/tests. Did not STATUS. Did not
+close `rr-8t4.3`. Did not poke doors/TF/position. Spine tip-stairs /
+aquamentus / shard-leave factories stay fail-closed.
+
+Pin `Level7Interior0DNoseCellarReconFixture`: mode 9 `$EB=0x7B` `(192,93)`
+tile 111 keys 2 bombs 6 candle 2 TF 0. RAM claim before trial: floor-cross
+left → play **0x29**. Policy `level7/cellar.py` (DOWN, LEFT x=48, UP west;
+never source UP). Dest **2/2** C1/C2 play `0x29` `(96,157)` 396f.
+`Level7Interior29PreBossReconFixture`.
+
+C1 suffix: Survival bomb top-up 6→8 at 0x29 E-bomb → `0x2A` `(32,141)`;
+`Level1AquamentusController` ALIGN+ tank, type 0x3D, HC 3→4; E-shutter
+`0x2B` `(16,141)`; south-around shard; fanfare; OW `0x42` `(96,93)` TF
+`0x40` (fixture TF was 0 — not Survival 0x7F).
+`MEASURED_POST_L7_EXIT.verified` False. Suffix rooms **4/4 fixture-live**.
+0x0D walk-on still OPEN. Living residual: `docs/tasks/rr-n91a-residual.md`.
+
 ## 2026-09-04 — rr-n91a ROM stair-list: 0x0D IS the predecessor; far side is play 0x29
 
 Agent B, parallel with rr-6o7.2. Did not poke. Did not take the emulator.

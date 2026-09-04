@@ -434,3 +434,19 @@ required to drain the pond. To make `level7-entry` green from here: live-recon
   `hop10_ay`.
 - Pond `0x42`, drain, dungeon entry, Red Candle, and shard remain source-only.
 - `route_eligible=false` on every fixture. Did not STATUS-promote.
+
+### 2026-09-04 sitting (rr-n91a) — cellar 0x7B B→A dest play 0x29 2/2
+
+From `Level7Interior0DNoseCellarReconFixture` (already mode-9 0x7B right
+ladder `(192,93)`): DOWN to y=189, LEFT to x=48, UP left ladder. Never UP
+on the source ladder (that is the dead 0x0D return). Dest play **`0x29`
+`(96,157)` 2/2** (`20260904_C1`/`C2`, 396f). C1 continued the suffix:
+bomb-E → **`0x2A`** Aquamentus type `0x3D` (reuse `Level1AquamentusController`,
+`tank_hits=True`, HC 3→4) → E-shutter **`0x2B`** → south-around shard →
+fanfare → OW **`0x42` `(96,93)` TF `0x40`** on this TF-0 recon pin.
+`MEASURED_POST_L7_EXIT.verified` stays False (not Survival `0x7F`).
+`NOSE_CELLAR.ram_id` stays None. 0x0D walk-on still open. Spine factories
+stay fail-closed. Policy: `level7/cellar.py`. Probe:
+`scratch/probe_l7_7b_cellar_cross.py`. Residual:
+`docs/tasks/rr-n91a-residual.md`.
+
