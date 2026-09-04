@@ -4,6 +4,19 @@ The spine burn controller stays fail-closed on an unverified target.  This
 module may step on existing ``Level8BushOW`` / ``OW_6D`` fixtures without a
 PostLevel7Handoff.  Evidence is fixture-live and ``route_eligible=false``.
 Never write ``ADDR_SELECTED_ITEM``.
+
+Burn recipe (rr-u9js).  ``nes/zelda_i/logs/level8_bush_burn_sweep.json`` swept
+5856 live trials over 732 standable 0x6D tiles x 4 facings x 2 pushes.  A
+mode-16 mouth opened at exactly seven stands, all of them firing and pushing
+the *same* direction Link faces (see ``MOUTH_STANDS``).  The default here is
+(136, 93) face RIGHT / push RIGHT, which
+``nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level8EntranceReconFixture.provenance.json``
+reproduced into live L8 play -- screen 0x7E at (120, 205),
+``reached_frame_after_push`` 111.  The older (144, 93) face RIGHT / push UP
+hypothesis is refuted: all eight of its sweep trials burned the candle and saw
+no mouth (``outcome: no_effect``).  Entry also does NOT complete on UP after
+mode 16 -- continuing the push direction used to fire is what carries Link
+through (rr-i6hq).
 """
 
 from __future__ import annotations
@@ -32,17 +45,36 @@ WALKABLE_SAND_Y = (88, 96)
 WALKABLE_SAND_X_MAX = 144
 OPEN_EXIT_UP_X = 48
 
-# Dead belief: east-channel aim (136, 93) face RIGHT, push RIGHT.  Dense
-# walkable burns never opened a mode-16 mouth.
-DEAD_BUSH_AIM = (136, 93)
+# Every stand that opened the mode-16 mouth in the 5856-trial sweep
+# (logs/level8_bush_burn_sweep.json "near_misses"): one secret tile, several
+# approach angles, all converging on L8 entry room 0x7E.  Facing == push on
+# every one of them.
+MOUTH_STANDS = (
+    (120, 93, "RIGHT", "RIGHT"),
+    (128, 93, "RIGHT", "RIGHT"),
+    (136, 93, "RIGHT", "RIGHT"),
+    (160, 77, "DOWN", "DOWN"),
+    (184, 93, "LEFT", "LEFT"),
+    (192, 93, "LEFT", "LEFT"),
+    (200, 93, "LEFT", "LEFT"),
+)
 
-# One new hypothesis from the walkable raster: the lone bush is past the
-# sampled east limit, so stand at x≈144, y≈93, fire RIGHT, then push UP
-# (dungeon mouths are mode-16 UP, not a RIGHT screen exit).
-HYPOTHESIS_BUSH_X = 144
-HYPOTHESIS_BUSH_Y = 93
-HYPOTHESIS_FACING = "RIGHT"
-HYPOTHESIS_PUSH = "UP"
+# Swept-verified default: the one stand the entrance fixture actually replayed
+# into live L8 play (Level8EntranceReconFixture.provenance.json, entry room
+# 0x7E at (120, 205)).
+VERIFIED_BUSH_X = 136
+VERIFIED_BUSH_Y = 93
+VERIFIED_FACING = "RIGHT"
+VERIFIED_PUSH = "RIGHT"
+VERIFIED_BUSH_AIM = (VERIFIED_BUSH_X, VERIFIED_BUSH_Y)
+
+# Refuted belief (rr-u9js): stand past the sampled east limit at (144, 93),
+# fire RIGHT, then push UP because "dungeon mouths are mode-16 UP".  The sweep
+# burned the candle at (144, 93) on all four facings and both pushes and never
+# saw a mouth; (144, 93) is not a mouth stand at all.
+REFUTED_BUSH_AIM = (144, 93)
+REFUTED_FACING = "RIGHT"
+REFUTED_PUSH = "UP"
 
 
 class ReconBurnPhase(Enum):
@@ -57,10 +89,10 @@ class ReconBurnPhase(Enum):
 class IsolatedBushReconController:
     """Fixture-live 0x6D burn trial. Budget exhaust on 0x6D is failure."""
 
-    link_x: int = HYPOTHESIS_BUSH_X
-    link_y: int = HYPOTHESIS_BUSH_Y
-    facing: str = HYPOTHESIS_FACING
-    push_direction: str = HYPOTHESIS_PUSH
+    link_x: int = VERIFIED_BUSH_X
+    link_y: int = VERIFIED_BUSH_Y
+    facing: str = VERIFIED_FACING
+    push_direction: str = VERIFIED_PUSH
     tolerance: int = 4
     max_frames: int = BURN_MAX_FRAMES
     burn_budget: int = 800
@@ -120,8 +152,8 @@ class IsolatedBushReconController:
             if selected != B_ITEM_CANDLE:
                 return self._fail("bush_recon_candle_not_selected")
             self._validated = True
-            self.notes.append("fixture_live_bush_hypothesis_accepted")
-            self.notes.append("dead_belief_136_93_right_push")
+            self.notes.append("fixture_live_bush_recipe_accepted")
+            self.notes.append("refuted_aim_144_93_right_face_up_push")
 
         if snap.mode == 17:
             return self._fail("link_death")
@@ -136,17 +168,22 @@ class IsolatedBushReconController:
             return self._fail("burn_budget_exhausted_without_level8_entry")
         self.burn_frames += 1
 
+        # rr-i6hq: UP after mode 16 does not complete the transition here.  The
+        # sweep opened the mouth at seven stands and recorded entry_room=null on
+        # every one; the entrance fixture only reached live L8 by continuing the
+        # push direction it fired with.
+        enter = nes_action(self.push_direction)
         if snap.mode == 16:
             if not self.candle_use_observed:
                 return self._fail("mouth_transition_without_candle_use")
             self._set_phase(ReconBurnPhase.ENTER, "mouth_transition_observed")
-            return FrameAction(nes_action("UP"), "enter_level8")
+            return FrameAction(enter, "enter_level8")
         if self.phase is ReconBurnPhase.ENTER and snap.transitioning:
-            return FrameAction(nes_action("UP"), "enter_level8_transition")
+            return FrameAction(enter, "enter_level8_transition")
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.screen != SCREEN_LEVEL8_BUSH:
             return self._fail("left_bush_screen_without_level8_entry")
         if self.phase is ReconBurnPhase.ENTER:
-            return FrameAction(nes_action("UP"), "enter_level8")
+            return FrameAction(enter, "enter_level8")
 
         if abs(snap.link_x - self.link_x) > self.tolerance:
             return FrameAction(
@@ -174,7 +211,7 @@ class IsolatedBushReconController:
             "frames": self.frames,
             "burn": [self.burn_frames, self.burn_budget],
             "aim": [self.link_x, self.link_y, self.facing, self.push_direction],
-            "dead_belief": DEAD_BUSH_AIM,
+            "refuted_aim": [*REFUTED_BUSH_AIM, REFUTED_FACING, REFUTED_PUSH],
             "candle_use_observed": self.candle_use_observed,
             "observed_entry_room": self.observed_entry_room,
             "evidence": self.evidence,
@@ -191,13 +228,17 @@ def make_isolated_bush_recon_controller() -> IsolatedBushReconController:
 
 
 __all__ = [
-    "DEAD_BUSH_AIM",
-    "HYPOTHESIS_BUSH_X",
-    "HYPOTHESIS_BUSH_Y",
-    "HYPOTHESIS_FACING",
-    "HYPOTHESIS_PUSH",
-    "IsolatedBushReconController",
+    "MOUTH_STANDS",
     "OPEN_EXIT_UP_X",
+    "REFUTED_BUSH_AIM",
+    "REFUTED_FACING",
+    "REFUTED_PUSH",
+    "VERIFIED_BUSH_AIM",
+    "VERIFIED_BUSH_X",
+    "VERIFIED_BUSH_Y",
+    "VERIFIED_FACING",
+    "VERIFIED_PUSH",
+    "IsolatedBushReconController",
     "WALKABLE_LEFT_X",
     "WALKABLE_SAND_X_MAX",
     "WALKABLE_SAND_Y",
