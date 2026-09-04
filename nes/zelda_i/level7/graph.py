@@ -289,7 +289,8 @@ LEVEL7_ROOMS: tuple[Level7RoomHyp, ...] = (
         "W mouth is a grab trap (x=32 any y). Kill 5 then room_all_dead=1 "
         "2/2 (0d_wm_v10/0d_cleared). RIGHT-push slides 0x68 to (208,96) "
         "on the NE hole. ROM: AttrE secret=block_stairs; CheckWarps dest "
-        "is cellar 0x7B AttrB; far side play 0x29. Walk-on unobserved",
+        "is cellar 0x7B AttrB; far side play 0x29. Walk-on live 2/2 "
+        "(level7.stairs0d)",
         evidence="fixture-live",
     ),
     Level7RoomHyp(

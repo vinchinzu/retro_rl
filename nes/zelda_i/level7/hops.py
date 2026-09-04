@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from zelda_i.level7.aquamentus import make_level7_aquamentus_heart_controller
 from zelda_i.level7.cellar import make_nose_cellar_cross_controller
 from zelda_i.level7.dungeon import (
     level7_complete_stop,
@@ -63,6 +64,9 @@ from zelda_i.level7.path import (
     Room68NorthController,
     Room69EastController,
     unverified_path_controller,
+)
+from zelda_i.level7.shard import (
+    make_level7_shard_leave_controller as make_level7_shard_leave_controller_impl,
 )
 from zelda_i.level7.stairs0d import make_stairs0d_controller
 from zelda_i.overworld.graph import ScreenHop
@@ -339,39 +343,36 @@ def make_forced_digdogger_controller() -> Level7PathController:
 
 
 def make_aquamentus_heart_controller() -> Level7PathController:
-    """Fail-closed until live boss room, natural defeat, and one HC pickup.
+    """Live 0x2A kill plus the natural heart container (rr-8t4.3, 2/2).
 
-    Reuse ``zelda_i.level1.finish.Level1AquamentusController`` combat
-    (ALIGN/FACE/ATTACK/DODGE/COLLECT_HEART). Do not copy a second engine.
-    Skip L1 ROUTE_ENTRY (0x45 waypoints / enter UP): L7 graph enters from
-    the west (PRE_BOSS bomb-east). Parameterize room_id once live ``$EB``
-    is observed — do not assume L1 ``0x35``. Remeasure stance and heart
-    tile; verify type ``0x3D`` + fireballs ``0x55``. Sword-only
-    (Survival ``tank_hits=True``).
+    ``20260904_W3``/``W4`` on the walk-on lineage (cleared 0x0D pin ->
+    stairs -> cellar 0x7B -> 0x29 -> bomb-E), HC 3 -> 4 both runs, 398
+    controller frames each, ``position_writes=0``. Combat is the shared
+    ``level1.finish.Level1AquamentusController`` (ALIGN/FACE/ATTACK/DODGE,
+    ``tank_hits=True``) aliased onto live ``$EB=0x2A``, type ``0x3D``; only
+    the pickup is L7 code, because the container is not at L1's fixed
+    ``(192,141)`` cell — it was collected at ``(136,141)``
+    (``scratch/probe_l7_2a_heart.py``, ``20260904_H1``).
+    ``route_eligible`` stays false: the lineage is a recon pin, not Survival.
     """
-    return unverified_path_controller(
-        "level7_aquamentus_heart",
-        "live boss room, natural defeat, and one heart-container pickup "
-        "(reuse Level1AquamentusController; no invented $EB)",
-    )
+    return make_level7_aquamentus_heart_controller()
 
 
 def make_level7_shard_leave_controller() -> Level7PathController:
-    """Fail-closed until live shard room and settled post-fanfare OW leftover.
+    """Live 0x2A east shutter -> 0x2B shard -> idled fanfare -> OW (2/2).
 
-    Graph hyp: heart then east TRIFORCE, then idle through fanfare (same
-    shape as ``Level6ExitController`` — do not walk the warp). Fill
-    MEASURED_POST_L7_EXIT from that leftover via
-    ``overworld.stitch.handoff_from_ram`` using the MEASURED_POST_L6_EXIT
-    field list. Screen/x/y stay None until measured. ``verified`` stays
-    False. Do not invent the leave screen. L8 keeps
-    ``PostLevel7Handoff.verified=False`` until this packet is real.
+    ``20260904_W3``/``W4``: shard taken south-around the diamond floor, the
+    fanfare idled (never walked), OW leftover ``0x42`` ``(96,93)`` mode 5,
+    TF ``0x40``, HC 4, hearts full, ``position_writes=0``.
+
+    That leftover is **not** the Survival packet: the lineage pin starts at
+    TF 0, so the leave reads ``0x40`` and not ``0x7F``.
+    ``MEASURED_POST_L7_EXIT`` therefore stays unfilled with
+    ``verified=False``, ``LEVEL7_COMPLETE_STOP`` stays fail-closed, and L8
+    keeps ``PostLevel7Handoff.verified=False``. Fill them only from a real
+    power-on Survival run via ``overworld.stitch.handoff_from_ram``.
     """
-    return unverified_path_controller(
-        "level7_shard_and_settled_leave",
-        "live shard room and exact settled post-fanfare overworld handoff "
-        "(MEASURED_POST_L7_EXIT screen still None; verified stays False)",
-    )
+    return make_level7_shard_leave_controller_impl()
 
 
 def _stage(name: str, factory: ControllerFactory) -> Stage:
@@ -419,9 +420,13 @@ def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
 def level7_complete_chapter_stages() -> tuple[Stage, ...]:
     """Fresh Red Candle boundary -> bosses -> heart -> shard -> settled leave.
 
-    All three factories are fail-closed blockers. Do not mark route_eligible.
-    Public leftover contract is in ``level7.dungeon.LEVEL7_COMPLETE_STOP``
-    and ``docs/tasks/l7c-prep-2026-09-03.md``.
+    ``level7_forced_digdogger`` is still a fail-closed blocker, so the chapter
+    cannot run end to end. The Aquamentus/heart and shard/leave stages are
+    live 2/2 (rr-8t4.3, ``20260904_W3``-``W6``) but stay
+    ``route_eligible=false``: their lineage is the cleared 0x0D recon pin, not
+    a Survival power-on. Public leftover contract is in
+    ``level7.dungeon.LEVEL7_COMPLETE_STOP`` and
+    ``docs/tasks/l7c-prep-2026-09-03.md``.
     """
     return (
         _stage("level7_forced_digdogger", make_forced_digdogger_controller),
@@ -480,8 +485,9 @@ def l7_hops(
 
     ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
     for the disclosed ``ADDR_FOOD`` fixture.  ``level7_entry_first_door`` is
-    a live ``0x79`` north walker; pond drain, Hungry Goriya, tip stairs,
-    candle, and bosses stay fail-closed.
+    a live ``0x79`` north walker; pond drain, Hungry Goriya, candle, and
+    forced Digdogger stay fail-closed. Tip stairs, Aquamentus/heart, and
+    shard/leave are fixture-live (``route_eligible=false``).
     """
 
     def _entry_stages() -> tuple[Stage, ...]:

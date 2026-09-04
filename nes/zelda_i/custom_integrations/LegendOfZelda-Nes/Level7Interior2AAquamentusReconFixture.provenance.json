@@ -1,6 +1,6 @@
 {
   "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
-  "captured_at": "2026-09-04T16:55:29.266309+00:00",
+  "captured_at": "2026-09-04T20:32:30.139697+00:00",
   "development_only": true,
   "natural_entry": false,
   "request": {
@@ -79,7 +79,7 @@
     "fixture_state": "Level7Interior2AAquamentusReconFixture",
     "fixture_writes": [],
     "ok": true,
-    "source_state": "Level7Interior0DNoseCellarReconFixture",
+    "source_state": "Level7Interior0DClearedReconFixture",
     "state": {
       "bombs": 7,
       "cur_opened_doors": 2,
@@ -115,8 +115,8 @@
       "y": 141
     }
   },
-  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DNoseCellarReconFixture.state",
-  "source_state_sha256": "7fe9f68c4f5bb930fafa8868d1c0307d61445e23fae2fbf2290cb7ddc6bd2a0f",
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior0DClearedReconFixture.state",
+  "source_state_sha256": "73c381b04a6d015a78caae1a6175d4292f56b8cf4237bc74d507b965faa06430",
   "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level7Interior2AAquamentusReconFixture.state",
-  "state_sha256": "5f66362279e74a7d347635a15ed1ea1fa0888593117a56dc372aa409cb285799"
+  "state_sha256": "5a22aea2d50041a973b2ec55218aaa952186e2d743d652ac19268b45503d046a"
 }

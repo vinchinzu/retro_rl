@@ -592,20 +592,27 @@ def test_complete_chapter_factories_fail_closed_and_do_not_invent_leave() -> Non
     ram = _ram(level=7, screen=0x10, candle=2, whistle=1, food=0, triforce=0x3F)
     snap = read_snapshot(ram)
     forced = make_forced_digdogger_controller()
-    aqua = make_aquamentus_heart_controller()
-    leave = make_level7_shard_leave_controller()
-    for ctl, needle in (
-        (forced, "Whistle B-slot 5"),
-        (aqua, "Level1AquamentusController"),
-        (leave, "MEASURED_POST_L7_EXIT"),
+    report = forced.report()
+    assert report["route_eligible"] is False
+    assert report["evidence"] == "hypothesis"
+    assert "Whistle B-slot 5" in str(report["missing_evidence"])
+    act = forced.step(snap)
+    assert forced.failed and not forced.success
+    assert act.reason == "blocked_unverified"
+    # Aquamentus/heart and shard/leave are live 2/2 (rr-8t4.3, 20260904_W3-W6)
+    # but neither is route-eligible and neither fills the leave packet.
+    for ctl in (
+        make_aquamentus_heart_controller(),
+        make_level7_shard_leave_controller(),
     ):
-        report = ctl.report()
-        assert report["route_eligible"] is False
-        assert report["evidence"] == "hypothesis"
-        assert needle in str(report["missing_evidence"])
-        act = ctl.step(snap)
-        assert ctl.failed and not ctl.success
-        assert act.reason == "blocked_unverified"
+        assert ctl.report()["route_eligible"] is False
+        assert not ctl.success
+    assert (
+        make_level7_shard_leave_controller().report()[
+            "measured_post_l7_exit_verified"
+        ]
+        is False
+    )
     assert UNMEASURED_HANDOFF.verified is False
     assert UNMEASURED_HANDOFF.screen is None
     assert UNMEASURED_HANDOFF.complete() is False

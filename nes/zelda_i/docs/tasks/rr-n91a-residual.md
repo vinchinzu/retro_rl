@@ -1,3 +1,80 @@
+# Residual — rr-8t4.3 L7 tail live 0x0D → OW **2/2** (2026-09-04, wrap)
+
+Did not STATUS. Did not push. Did not `git add -A`. No pokes: `position_writes=0`,
+`progression_writes=0`, `capacity_writes=0`, `deaths=0` in all six trials.
+`MEASURED_POST_L7_EXIT.verified` still **False** and `LEVEL7_COMPLETE_STOP`
+still fail-closed (screen None) — the lineage pin starts at TF 0, so its leave
+reads TF `0x40`, not the Survival `0x7F`. `make_forced_digdogger_controller`
+stays fail-closed, so `--through level7` still cannot green. `rr-8t4.3` stays
+`in_progress`: acceptance is power-on `--through level7` 1/1 with TF `0x7F`.
+
+## What landed
+
+The whole L7 tail now runs poke-free in **one lineage** from the cleared play
+`0x0D` pin: walk-on → cellar `0x7B` → play `0x29` → bomb-E → `0x2A`
+Aquamentus + heart container → `0x2B` shard → idled fanfare → OW `0x42`.
+`scratch/probe_l7_7b_cellar_cross.py --walk-on` drives it (new flag; it
+prepends `level7.stairs0d` and re-checks the cellar pin after the settle).
+
+Two factories flipped off `unverified_path_controller`, each on 2/2 of the
+**shipped** code:
+
+- `make_aquamentus_heart_controller` → new `level7/aquamentus.py`.
+- `make_level7_shard_leave_controller` → new `level7/shard.py`.
+
+## The bug that cost the first two trials
+
+The L1 engine's `COLLECT_HEART` walks one fixed cell `(192,141)` and then
+idles. On the C1 lineage that collected; on the walk-on lineage the boss dies
+at `(190,128)` and Link idled at `(190,141)` for 5.5k frames with
+`heart_containers` still 3 (`W1`), then stalled at `(192,133)` against a wall
+when the first sweep tried to climb (`W2`).
+
+`scratch/probe_l7_2a_heart.py` (`20260904_H1`) settled it by dumping **all 13
+object slots** after the kill: the container is **not** an object slot — the
+only nonzero slot is the dead `0x3D` at `(190,128)` — `$00AB` holds room item
+`0x1A`, and the pickup fired at **`(136,141)`**, the room centre. C1 only
+worked because its walk happened to cross that cell. `HEART_CELL` is now the
+first sweep waypoint, the sweep skips a waypoint it cannot reach after 40
+stalled frames, and success is the **rising edge** of `heart_containers`
+captured on the controller's own first frame.
+
+## Trials (all `--walk-on`, from `Level7Interior0DClearedReconFixture`)
+
+| tag | walk-on | 0x29 | 0x2A heart | shard/leave | verdict |
+|-----|---------|------|-----------|-------------|---------|
+| `20260904_W1` | 461f | 2/2 pass | **MISS** idle at `(190,141)`, HC 3 | — | L1 fixed cell |
+| `20260904_W2` | 461f | pass | **MISS** stall `(192,133)` | — | sweep had no stall skip |
+| `20260904_H1` | (from `…2AAquamentusReconFixture`) | — | **HIT** HC 3→4 at `(136,141)` | — | slot dump |
+| `20260904_W3` | 461f | pass | HIT 398f HC 3→4 | OW `0x42` `(96,93)` | **HIT** |
+| `20260904_W4` | 461f | pass | HIT 398f HC 3→4 | OW `0x42` `(96,93)` | **HIT** — 2/2 |
+| `20260904_W5` | 461f | pass | HIT 398f | shard 943f, OW `0x42` | **HIT** shipped code |
+| `20260904_W6` | 461f | pass | HIT 398f | shard 943f, OW `0x42` | **HIT** — shipped 2/2 |
+
+`W3`–`W6` are bit-identical (3238/3239 total frames). Reports
+`recordings/l7_7b_cellar_cross_20260904_W1..W6.json`,
+`recordings/l7_2a_heart_20260904_H1.json`.
+
+## Leave glance (fixture-lineage, **not** the Survival packet)
+
+OW play `0x42` `(96,93)` mode 5, TF `0x40`, candle 2, whistle 1, keys 2,
+bombs 7, HC **4**, health `0x33` (lo==hi, full). Pin start was TF 0.
+Do **not** fill `MEASURED_POST_L7_EXIT` from this.
+
+## Not done / next
+
+- `make_forced_digdogger_controller` still fail-closed — the one L7 stage with
+  no live policy, and the reason `--through level7` stays red.
+- The Survival-lineage leave (TF `0x3F` → `0x7F`, HC incoming+1) is still
+  unmeasured. Same walk, real power-on lineage; then fill
+  `MEASURED_POST_L7_EXIT` and `LEVEL7_COMPLETE_STOP` (rr-fiz9).
+- The probe no longer re-saves `Level7Interior2BTriforceReconFixture` (the
+  shard leave is one controller now); the pin from C1 is still on disk.
+- New tests: `tests/test_level7_aquamentus.py`, `tests/test_level7_shard.py`.
+  Suite **716 passed**.
+
+---
+
 # Residual — rr-8t4.3 L7-C 0x0D walk-on **SOLVED** (2026-09-04)
 
 Did not STATUS. Did not touch `docs/STATUS.md`, `level8/**`, L9, or harvest.
