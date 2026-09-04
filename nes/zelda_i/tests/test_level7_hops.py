@@ -104,7 +104,7 @@ from zelda_i.level7.path import (
     room_4a_return_step,
     room_1b_key_east_step,
 )
-from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
+from zelda_i.level7.overworld import POST_L6_TO_POND_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from retro_harness.nes import nes_idle_action
 from zelda_i.ram import (
@@ -213,13 +213,12 @@ def test_measured_post_l6_exit_is_a_verified_shared_handoff() -> None:
     assert h.food == 0
     assert h.selected_item == 2  # arrows, from the Gohma kill
     assert h.verified is True
-    assert h.route_eligible is False  # pond/shop route past 0x25 still unobserved
+    assert h.route_eligible is False  # walk to pond 0x42 still unobserved
     assert h.complete() is True
     ram = _measured_leave_ram()
     assert h.mismatch(read_snapshot(ram), ram) is None
-    # The fixture-live bait prefix is wired in as the default hops.
     ctl = make_post_l6_overworld_controller()
-    assert ctl.hops == POST_L6_TO_BAIT_HOPS
+    assert ctl.hops == POST_L6_TO_POND_HOPS
 
 
 def test_unmeasured_handoff_refuses_to_move() -> None:
@@ -247,6 +246,7 @@ def test_measured_exit_verifies_and_does_not_refuse_on_the_mouth_tile() -> None:
     act = ctl.step(read_snapshot(ram))
     assert not ctl.failed
     assert act.reason != "l6_cave_mouth"
+    assert act.reason != "post_l6_path_unmeasured"
     assert "post_l6_handoff_accepted" in ctl.notes
     # Once off the mouth, walking back onto it is refused.
     ctl._left_mouth = True
@@ -397,11 +397,13 @@ def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
         "level7_pond_drain_entry",
     ]
     assert isinstance(stages[1][1], SurvivalBaitPurchaseController)
-    # pond stage still fail-closed (unverified path controller)
     pond = stages[2][1]
     assert not isinstance(pond, SurvivalBaitPurchaseController)
+    from zelda_i.level7.pond import Level7PondDrainController
+
+    assert isinstance(pond, Level7PondDrainController)
     pond.step(read_snapshot(ram))
-    assert pond.failed
+    assert pond.failed  # env not bound; drain still needs 0x42 + whistle
 
 
 def test_continue_level7_spine_uses_the_survival_bait_fixture() -> None:
@@ -422,15 +424,19 @@ def test_hops_docstring_matches_live_facts() -> None:
     assert "MEASURED_POST_L6_EXIT" in doc
     assert "0x79" in doc
     assert "rr-8t4.4" in doc
+    assert "rr-8t4.1" in doc
 
 
-def test_pond_missing_evidence_is_natural_whistle_drain() -> None:
+def test_pond_entry_factory_is_the_pause_select_drain() -> None:
+    from zelda_i.level7.pond import Level7PondDrainController
+
     ctl = make_pond_entry_controller()
-    missing = str(ctl.report()["missing_evidence"])
-    assert "natural-whistle" in missing
-    assert "rr-8t4.4" in missing
-    assert "observed entry room" not in missing
-    assert "live pond screen" not in missing
+    assert isinstance(ctl, Level7PondDrainController)
+    report = ctl.report()
+    assert report["writes"] == 0
+    assert report["route_eligible"] is False
+    assert report["dest"] == "0x79"
+    assert "missing_evidence" not in report
 
 
 def test_red_candle_chapter_starts_at_entry_first_door() -> None:

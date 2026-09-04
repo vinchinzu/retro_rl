@@ -46,6 +46,8 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import nearest_enemy
+from zelda_i.dungeon.behaviors import WALLMASTER_TYPE, is_off_wall
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.level7.stairs import NOSE_CELLAR_ROM, TIP_OF_NOSE_ROM
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
@@ -70,10 +72,19 @@ __all__ = [
     "WEST_COLUMN_X",
     "WEST_DOOR_GUARD_X",
     "Level7Stairs0DController",
+    "ROOM_0D_BLOCK",
+    "ROOM_0D_BLOCK_AFTER_RIGHT",
+    "ROOM_0D_BLOCK_CELL_AFTER_RIGHT",
+    "ROOM_0D_BLOCK_STAND",
+    "ROOM_0D_NORTH_ARM",
+    "ROOM_0D_STAIR_CELL",
+    "ROOM_0D_STAIR_WARP_HYP",
+    "Room0DClearController",
     "Stairs0DPhase",
     "level7_stairs0d_stages",
     "level7_stairs0d_success",
     "make_stairs0d_controller",
+    "room_0d_clear_step",
 ]
 
 LEVEL7 = 7
@@ -420,3 +431,188 @@ def level7_stairs0d_stages() -> tuple[tuple[str, Any, int], ...]:
     """One stage: 0x0D leftover -> live push -> ring walk -> cellar 0x7B."""
     ctl = make_stairs0d_controller()
     return (("level7_tip_of_nose_stairs", ctl, ctl.max_frames),)
+
+
+_SWING_PERIOD = 8
+_SWING_HOLD = 4
+ROOM_0D = ROOM
+
+ROOM0D_CLEAR_MAX_FRAMES = 18000
+# 0x68 west-face stand. A 16px RIGHT slide is autonomous once it starts
+# (1px/2f at y=144) and the 16th pixel snaps the object to (208,96) on
+# the NE stair hole. Stairs dest $EB still unobserved (0d_push_v20/v22).
+# SOLVED 2026-09-04 (rr-8t4.3): the walk-on lives in `level7.stairs0d`.
+# 0x0D is a ring; x=32 and x=208 are the only crossings of the y=112 /
+# y=176 solid bands, and x=192 is never a corridor (static blocks at
+# (192,128)/(192,160) sandwich the pushable). ROOM_0D_NORTH_ARM (176,117)
+# is boxed because the whole y=112 band is solid, not because of a snap.
+ROOM_0D_BLOCK = (192, 144)
+ROOM_0D_BLOCK_STAND = (176, 144)
+# RAM-observed value of the 0x68 object after the RIGHT push. It is an
+# artifact: the tile map shows the block quad at (208,144) and the freshly
+# revealed staircase at (208,96), and the object's x/y is repointed to the
+# stairs. `ROOM_0D_BLOCK_CELL_AFTER_RIGHT` is the real post-push cell.
+ROOM_0D_BLOCK_AFTER_RIGHT = (208, 96)
+ROOM_0D_BLOCK_CELL_AFTER_RIGHT = (208, 144)
+ROOM_0D_STAIR_CELL = (208, 96)
+ROOM_0D_NORTH_ARM = (176, 117)
+# Live 2/2: stepping onto (208,93) after the push enters cellar 0x7B mode 9.
+ROOM_0D_STAIR_WARP_HYP = (208, 93)
+# Plus-corner 0x27 park here until they peel to the west wall one-at-a-time.
+_0D_STATUE_XY = frozenset({(128, 125), (128, 157), (160, 125), (160, 157)})
+_0D_NUDGE = (52, 117)
+_0D_HOME = (96, 141)
+
+
+def _0d_spawners(snap: ZeldaSnapshot) -> tuple[tuple[ZeldaObject, ...], tuple[ZeldaObject, ...]]:
+    live: list[ZeldaObject] = []
+    parked: list[ZeldaObject] = []
+    for obj in snap.objects:
+        if not (1 <= int(obj.slot) <= 12):
+            continue
+        if (int(obj.type_id) & 0xFF) != WALLMASTER_TYPE or int(obj.hp) <= 0:
+            continue
+        xy = (int(obj.x), int(obj.y))
+        if xy in _0D_STATUE_XY:
+            continue
+        in_floor = 12 <= int(obj.x) <= 200 and 80 <= int(obj.y) <= 200
+        if int(obj.state) != 0 and in_floor:
+            live.append(obj)
+        elif is_off_wall(obj):
+            live.append(obj)
+        else:
+            parked.append(obj)
+    return tuple(live), tuple(parked)
+
+
+@dataclass(kw_only=True)
+class Room0DClearController(HopController):
+    """0x0D TIP_OF_NOSE: spawn/kill 5 wallmasters.  x=32 any y grabs.
+
+    Plus-corner 0x27 peel to the west wall one-at-a-time (not statues).
+    Nudge x≈52 y=117, slash LEFT at x=48, peel inland after each kill.
+    2/2 room_all_dead (0d_wm_v10 / 0d_cleared).  Recon-wired only.
+    The stairs walk-on that follows is `level7.stairs0d` (live 2/2):
+    16px RIGHT on the 0x68 (192,144) reveals the staircase at the
+    (208,96) cell, then the ring walk x=32 UP / y=96 east reaches it.
+    """
+
+    spec_id: str = "level7_room0d_clear"
+    max_frames: int = ROOM0D_CLEAR_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x0d_cleared"
+    dest: int | None = ROOM_0D
+    _phase: str = "to_nudge"
+    _phase_n: int = 0
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.screen == ROOM_0D
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and int(snap.room_all_dead) != 0
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"cleared_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_dead={snap.room_all_dead}_phase={self._phase}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("RIGHT"), "clear0d_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen != ROOM_0D:
+            return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
+        return room_0d_clear_step(snap, self)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "CLEAR",
+        }
+
+
+def room_0d_clear_step(snap: ZeldaSnapshot, ctl: Room0DClearController) -> FrameAction:
+    """One frame of 0x0D wallmaster clear.  Stay off x=32 / x=208."""
+    x, y = int(snap.link_x), int(snap.link_y)
+    live, parked = _0d_spawners(snap)
+    incoming = tuple(o for o in parked if int(o.state) != 0)
+    if x < 44:
+        ctl._phase = "retreat"
+        ctl._phase_n = 0
+        return FrameAction(nes_action("RIGHT"), "clear0d_grab_peel")
+    if live:
+        ctl._phase = "fight"
+        tgt = nearest_enemy(snap.link_x, snap.link_y, live)
+        if tgt is None:
+            return FrameAction(nes_idle_action(), "wm_missing")
+        stand_x = max(48, int(tgt.x) + 18)
+        if x < 48:
+            return FrameAction(nes_action("RIGHT"), "clear0d_fight_peel")
+        if abs(y - int(tgt.y)) > 10:
+            return FrameAction(
+                nes_action("DOWN" if y < int(tgt.y) else "UP"), "clear0d_fight_y"
+            )
+        if abs(x - stand_x) > 3:
+            return FrameAction(
+                nes_action("RIGHT" if x < stand_x else "LEFT"), "clear0d_fight_x"
+            )
+        face = "LEFT" if int(tgt.x) < x else "RIGHT"
+        if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action(face, "A"), "clear0d_slash")
+        return FrameAction(nes_action(face), "clear0d_face")
+    if incoming or ctl._phase == "retreat":
+        ctl._phase = "retreat"
+        ctl._phase_n += 1
+        if abs(x - _0D_HOME[0]) > 4:
+            btn = "RIGHT" if x < _0D_HOME[0] else "LEFT"
+            return FrameAction(nes_action(btn), "clear0d_home_x")
+        if abs(y - _0D_HOME[1]) > 4:
+            return FrameAction(
+                nes_action("UP" if y > _0D_HOME[1] else "DOWN"), "clear0d_home_y"
+            )
+        if ctl._phase_n >= 40:
+            ctl._phase = "to_nudge"
+            ctl._phase_n = 0
+        return FrameAction(nes_idle_action(), "clear0d_home")
+    if ctl._phase == "nudge":
+        ctl._phase_n += 1
+        if x > 42:
+            return FrameAction(nes_action("LEFT"), "clear0d_nudge")
+        if ctl._phase_n >= 72 or x <= 40:
+            ctl._phase = "retreat"
+            ctl._phase_n = 0
+            return FrameAction(nes_action("RIGHT"), "clear0d_nudge_done")
+        if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
+            return FrameAction(nes_action("LEFT", "A"), "clear0d_nudge_slash")
+        return FrameAction(nes_action("LEFT"), "clear0d_nudge_face")
+    tx, ty = _0D_NUDGE
+    if abs(x - tx) <= 6 and abs(y - ty) <= 6:
+        ctl._phase = "nudge"
+        ctl._phase_n = 0
+        return FrameAction(nes_action("LEFT"), "clear0d_nudge_start")
+    if abs(y - ty) > 4:
+        return FrameAction(
+            nes_action("UP" if y > ty else "DOWN"), "clear0d_to_nudge_y"
+        )
+    return FrameAction(
+        nes_action("LEFT" if x > tx else "RIGHT"), "clear0d_to_nudge_x"
+    )
+

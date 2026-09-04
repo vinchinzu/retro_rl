@@ -1,12 +1,12 @@
 """Fail-closed post-L6 overworld handoff and natural Bait plan.
 
 The measured L6 fanfare leave is carried as the shared
-``zelda_i.overworld.stitch.OverworldHandoff`` packet (``verified=False`` until
-the L7 owner re-measures it with ``selected_item`` captured).  The spine
-controller walks the fixture-live ``0x22 → 0x25`` bait prefix but only after the
-handoff verifies; every hypothesis past ``0x25`` fails closed.  The natural Bait
-buy refuses until shop geometry is live and Link already holds 60 rupees (no
-``ADDR_FOOD`` / rupee write, ever).
+``zelda_i.overworld.stitch.OverworldHandoff`` packet.  The spine controller
+walks ``POST_L6_TO_POND_HOPS`` (greened prefix from ``0x22`` toward pond
+``0x42``) after the handoff verifies.  ``POST_L6_TO_BAIT_HOPS`` is a dead
+mountain-pocket spur — kept for bait-micro tests, not the default.  The
+natural Bait buy refuses until shop geometry is live and Link already holds
+60 rupees (no ``ADDR_FOOD`` / rupee write, ever).
 """
 
 from __future__ import annotations
@@ -23,10 +23,15 @@ from zelda_i.anchors import (
 )
 from zelda_i.dungeon.ops import poke_food
 from zelda_i.level7.overworld import (
-    POST_L6_TO_BAIT_HOPS,
+    POST_L6_TO_POND_HOPS,
     at_l6_cave_mouth,
     bait_24_east_action,
     bait_32_north_action,
+    make_pond_22_walker,
+    make_pond_53_walker,
+    on_level7_pond_hyp,
+    pond_22_to_21_action,
+    pond_suffix_extra_hop_action,
 )
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
@@ -59,12 +64,10 @@ POST_L6_EXIT_STATE = "Level6ExitOverworld"
 # Food / Candle bytes (``spine_final_fields`` now takes ``ram``).
 #
 # ``verified=True``: every field below is the live settled RAM at the frame
-# ``level7_post_l6_overworld`` begins.  ``route_eligible`` stays False — the
-# post-L6 controller may now walk the fixture-live 0x22->0x25 prefix, but the
-# pond 0x42 / bait shop 0x34 route past it is still unobserved.  The 42R -> 60R
-# Bait gap is closed downstream by a documented Survival rupee top-up
-# (``SPINE_L7_RUPEE_RETOPUP``), mirroring the bomb/key top-ups; a natural OW
-# farm is a separate bead.
+# ``level7_post_l6_overworld`` begins.  ``route_eligible`` stays False until
+# the greened ``POST_L6_TO_POND_HOPS`` prefix reaches pond ``0x42``.  The
+# 42R -> 60R Bait gap is closed downstream by a documented Survival rupee
+# top-up (``SPINE_L7_RUPEE_RETOPUP``); a natural OW farm is a separate bead.
 MEASURED_POST_L6_EXIT = OverworldHandoff(
     screen=SCREEN_LEVEL6_ENTRANCE,
     link_x=112,
@@ -96,25 +99,26 @@ class ApproachPhase(Enum):
 
 @dataclass
 class PostLevel6OverworldController(OverworldPathController):
-    """Measured L6 leave -> fixture-live bait prefix.  Fails closed at 0x25.
+    """Measured L6 leave -> greened pond-prefix hops.  Success only on 0x42.
 
     Refuses every frame until the shared ``OverworldHandoff`` verifies.  Once it
-    does, walks ``POST_L6_TO_BAIT_HOPS`` (``0x22 -> 0x32 -> 0x33 -> 0x23 ->
-    0x24 -> 0x25``, fixture-live 1/1) and then fails closed — there is no
-    observed route past the ``0x25`` west mouth, and the bait shop ``0x34`` and
-    pond ``0x42`` are still source hypotheses.
+    does, walks ``POST_L6_TO_POND_HOPS``.  A partial table fails closed on the
+    last greened screen via ``_after_hops``; OW ``0x42`` mode 5 is SUCCESS.
+    Never walk UP into the 0x22 cave mouth (mode 16 → L6).
     """
 
     handoff: OverworldHandoff = UNMEASURED_HANDOFF
-    hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS
     phase: ApproachPhase = ApproachPhase.HOP
     max_frames: int = APPROACH_MAX_FRAMES
     require_sword: bool = True
     _env: Any = field(default=None, init=False, repr=False)
     _handoff_checked: bool = field(default=False, init=False, repr=False)
     # The measured L6 leave *is* the 0x22 cave-mouth tile (112,125).  Re-entry
-    # refusal only arms once Link has stepped off it (first hop is DOWN, away).
+    # refusal only arms once Link has stepped off it.
     _left_mouth: bool = field(default=False, init=False, repr=False)
+    _pond22_walk: Any = field(default=None, init=False, repr=False)
+    _pond53_walk: Any = field(default=None, init=False, repr=False)
 
     @property
     def failed(self) -> bool:
@@ -128,12 +132,49 @@ class PostLevel6OverworldController(OverworldPathController):
         return FrameAction(nes_idle_action(), reason)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
+        if on_level7_pond_hyp(snap):
+            return self._finish("post_l6_pond_0x42")
         return self._fail_now("post_l6_path_exhausted_unmeasured")
+
+    def _on_hop_advanced(
+        self, snap: ZeldaSnapshot, completed_hop: ScreenHop
+    ) -> FrameAction:
+        del completed_hop
+        if on_level7_pond_hyp(snap):
+            return self._finish("post_l6_pond_0x42")
+        if self.hop_index >= len(self.hops):
+            return self._after_hops(snap)
+        return FrameAction(nes_idle_action(), "hop_advance")
+
+    def _pond22_walker(self):
+        if self._pond22_walk is None:
+            self._pond22_walk = make_pond_22_walker()
+        return self._pond22_walk
+
+    def _pond53_walker(self):
+        if self._pond53_walk is None:
+            self._pond53_walk = make_pond_53_walker()
+        return self._pond53_walk
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
+        if hop.target == 0x21 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
+            act = pond_22_to_21_action(
+                snap, walker=self._pond22_walker(), swing=self._swing
+            )
+            if act is not None:
+                if act.reason == "22_no_path_stand":
+                    blocked = len(self._pond22_walker().grid.blocked)
+                    return self._fail_now(
+                        f"22_west_no_path_m{self._pond22_walker().misses}_b{blocked}"
+                    )
+                return act
+        extra = pond_suffix_extra_hop_action(
+            snap, hop, swing=self._swing, pond53_walker=self._pond53_walker()
+        )
+        if extra is not None:
+            return extra
         if hop.target == 0x33:
             act = bait_32_north_action(snap, swing=self._swing)
             if act is not None:
@@ -346,7 +387,7 @@ class SurvivalBaitPurchaseController:
 def make_post_l6_overworld_controller(
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
-    hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS,
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
 ) -> PostLevel6OverworldController:
     return PostLevel6OverworldController(handoff=handoff, hops=hops)
 
@@ -370,6 +411,7 @@ __all__ = [
     "BAIT_SHOP_SCREEN_HYP",
     "MEASURED_POST_L6_EXIT",
     "POST_L6_EXIT_STATE",
+    "POST_L6_TO_POND_HOPS",
     "POST_L6_TRIFORCE",
     "SURVIVAL_BAIT_FOOD",
     "UNMEASURED_HANDOFF",

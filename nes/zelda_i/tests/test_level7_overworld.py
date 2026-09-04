@@ -2,33 +2,58 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 
+from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import (
     SCREEN_BRACELET_ARMOS,
     SCREEN_LEVEL6_ENTRANCE,
+    SCREEN_LEVEL7_POND_HYP,
+    SCREEN_MAGICAL_SWORD_GRAVE,
+)
+from zelda_i.level7.entry import (
+    MEASURED_POST_L6_EXIT,
+    make_post_l6_overworld_controller,
 )
 from zelda_i.level7.overworld import (
     BAIT_32_CORRIDOR_X,
     LEVEL7_POND_HOPS,
     POND_53_INLAND_X,
     POND_53_WEST_GAP_Y,
+    POST_L6_22_WEST_HOP,
     POST_L6_TO_BAIT_HOPS,
     POST_L6_TO_BAIT_SCREENS,
+    POST_L6_TO_POND_HOPS,
+    POST_L6_TO_POND_SCREENS,
     OverworldToBaitShopController,
     OverworldToLevel7PondController,
     at_l6_cave_mouth,
     has_whistle,
+    make_pond_22_walker,
+    pond_22_to_21_action,
 )
 from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
+    ADDR_ARROWS,
+    ADDR_BOMBS,
+    ADDR_BOW,
+    ADDR_CANDLE,
+    ADDR_FOOD,
+    ADDR_HEALTH,
+    ADDR_KEYS,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
+    ADDR_ROD,
+    ADDR_RUPEES,
     ADDR_SCREEN,
+    ADDR_SELECTED_ITEM,
     ADDR_SWORD,
+    ADDR_TRIFORCE,
     ADDR_WHISTLE,
     PLAY_MODE,
     read_snapshot,
@@ -45,7 +70,43 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_LINK_Y] = fields.get("y", 173)
     ram[ADDR_SWORD] = fields.get("sword", 1)
     ram[ADDR_WHISTLE] = fields.get("whistle", 0)
+    ram[ADDR_TRIFORCE] = fields.get("triforce", 0)
+    ram[ADDR_KEYS] = fields.get("keys", 0)
+    ram[ADDR_BOMBS] = fields.get("bombs", 0)
+    ram[ADDR_ARROWS] = fields.get("arrows", 0)
+    ram[ADDR_HEALTH] = fields.get("health", 0x00)
+    ram[ADDR_FOOD] = fields.get("food", 0)
+    ram[ADDR_ROD] = fields.get("rod", 0)
+    ram[ADDR_BOW] = fields.get("bow", 0)
+    ram[ADDR_CANDLE] = fields.get("candle", 0)
+    ram[ADDR_RUPEES] = fields.get("rupees", 0)
+    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
     return ram
+
+
+def _env(ram: np.ndarray) -> SimpleNamespace:
+    return SimpleNamespace(get_ram=lambda: ram)
+
+
+def _measured_leave_ram() -> np.ndarray:
+    return _ram(
+        screen=SCREEN_LEVEL6_ENTRANCE,
+        x=112,
+        y=125,
+        triforce=0x3F,
+        keys=2,
+        bombs=8,
+        arrows=1,
+        health=0x77,
+        whistle=1,
+        food=0,
+        rod=1,
+        bow=1,
+        candle=0,
+        rupees=42,
+        selected=2,
+        sword=1,
+    )
 
 
 def test_pond_hops_are_contiguous_through_53_52_42() -> None:
@@ -221,3 +282,96 @@ def test_pond_geometry_does_not_require_whistle() -> None:
     act = ctl._extra_hop_action(read_snapshot(ram), ctl.hops[10])
     assert act is not None
     assert "53_inland_left" in act.reason
+
+
+def test_post_l6_to_pond_hops_are_contiguous_neighbors() -> None:
+    """Greened L6-reverse prefix to 0x24. 0x22 west→0x21 is dead mountain."""
+    screens = POST_L6_TO_POND_SCREENS
+    assert screens == (
+        SCREEN_LEVEL6_ENTRANCE,
+        0x32,
+        0x33,
+        0x23,
+        SCREEN_BRACELET_ARMOS,
+        0x14,
+        0x13,
+    )
+    for a, b in zip(screens, screens[1:]):
+        assert b in neighbor_screens(a).values(), f"{a:#x}->{b:#x}"
+    assert POST_L6_TO_POND_HOPS[0].direction == "DOWN"
+    assert POST_L6_TO_POND_HOPS[0].align_x == 112
+    assert POST_L6_TO_POND_HOPS[-1].target == 0x13
+    assert POST_L6_TO_POND_HOPS[-1].direction == "LEFT"
+    assert POST_L6_TO_POND_HOPS[-1].y_band == (165, 189)
+    assert 0x25 not in screens
+    assert POST_L6_22_WEST_HOP.target == SCREEN_MAGICAL_SWORD_GRAVE
+    assert POST_L6_22_WEST_HOP.direction == "LEFT"
+
+
+def test_default_post_l6_controller_does_not_end_at_0x25() -> None:
+    ctl = make_post_l6_overworld_controller()
+    assert ctl.hops == POST_L6_TO_POND_HOPS
+    assert ctl.hops != POST_L6_TO_BAIT_HOPS
+    if ctl.hops:
+        assert ctl.hops[-1].target != 0x25
+    ram = _measured_leave_ram()
+    live = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
+    live.bind_env(_env(ram))
+    act = live.step(read_snapshot(ram))
+    if not POST_L6_TO_POND_HOPS:
+        assert live.failed
+        assert act.reason == "post_l6_path_unmeasured"
+    else:
+        assert not live.failed
+
+
+def test_post_l6_cave_mouth_reentry_still_refused() -> None:
+    ram = _measured_leave_ram()
+    ctl = make_post_l6_overworld_controller(
+        handoff=MEASURED_POST_L6_EXIT, hops=(POST_L6_22_WEST_HOP,)
+    )
+    ctl.bind_env(_env(ram))
+    snap = read_snapshot(ram)
+    act = ctl.step(snap)
+    assert not ctl.failed
+    assert act.reason != "l6_cave_mouth"
+    assert act.reason == "22_leave_mouth"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert "post_l6_handoff_accepted" in ctl.notes
+    ctl._left_mouth = True
+    act = ctl.step(snap)
+    assert ctl.failed
+    assert act.reason == "l6_cave_mouth_reentry"
+    assert list(act.action) == list(nes_idle_action())
+
+
+def test_pond_22_cave_mouth_goes_down_not_up() -> None:
+    """Measured leave (112,125): first action is DOWN, never UP into L6."""
+    snap = read_snapshot(_ram(screen=0x22, x=112, y=125, sword=1))
+    assert at_l6_cave_mouth(snap)
+    walker = make_pond_22_walker()
+
+    def swing(direction: str, reason: str) -> FrameAction:
+        return FrameAction(nes_action(direction), reason)
+
+    act = pond_22_to_21_action(snap, walker=walker, swing=swing)
+    assert act is not None
+    assert act.reason == "22_leave_mouth"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert "UP" not in act.reason
+
+
+def test_after_hops_succeeds_on_pond_0x42() -> None:
+    ctl = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
+    snap = read_snapshot(
+        _ram(screen=SCREEN_LEVEL7_POND_HYP, x=128, y=160, sword=1, mode=PLAY_MODE)
+    )
+    act = ctl._after_hops(snap)
+    assert ctl.success
+    assert not ctl.failed
+    assert act.reason == "done"
+    inland = read_snapshot(_ram(screen=0x21, x=120, y=141, sword=1))
+    ctl2 = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
+    act2 = ctl2._after_hops(inland)
+    assert ctl2.failed
+    assert act2.reason == "post_l6_path_exhausted_unmeasured"

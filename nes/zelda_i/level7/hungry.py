@@ -22,6 +22,16 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import nearest_enemy
+from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
+from zelda_i.level7.graph import HUNGRY_GORIYA, LEVEL7_ROOM_BY_ID
+from zelda_i.level7.path import (
+    DOOR_Y_TOL,
+    ENTRY_SCREEN,
+    NORTH_X_TOL,
+    _goriya_fight,
+    live_goriyas,
+)
 from zelda_i.ram import (
     ADDR_FOOD,
     ADDR_SELECTED_ITEM,
@@ -39,7 +49,11 @@ __all__ = [
     "LEVEL7",
     "Level7HungryGoriyaController",
     "ROOM",
+    "ROOM_38",
+    "Room38UpController",
     "make_level7_hungry_goriya_controller",
+    "north_of_room38_ram_id",
+    "room_38_up_step",
 ]
 
 LEVEL7 = 7
@@ -248,3 +262,135 @@ class Level7HungryGoriyaController:
 def make_level7_hungry_goriya_controller() -> Level7HungryGoriyaController:
     """Fresh 0x28 feed-and-leave controller (never share instances)."""
     return Level7HungryGoriyaController()
+
+
+# 0x38 (GORIYA_PRE_HUNGRY): entry (208,141) E mouth, diamond floor. The y=149
+# interior row blocks UP at x=120/104/88/200. Rise the east mouth pocket
+# x=208 to y=93, cross to x=120, KEY-UP (keys 4->3) to live $EB=0x28.
+# 2/2 (38_up_v6/v7). Compass room_item 0x0f stays uncollected.
+ROOM_38 = 0x38
+ROOM_38_EAST_POCKET_X = 208
+ROOM_38_NORTH_X = 120
+ROOM_38_TOP_BAND_Y = 93
+ROOM38_UP_MAX_FRAMES = 8000
+
+
+def north_of_room38_ram_id() -> int | None:
+    """Live ``$EB`` of the room north of ``0x38`` (HUNGRY_GORIYA), or None."""
+    return LEVEL7_ROOM_BY_ID[HUNGRY_GORIYA].ram_id
+
+
+def room_38_up_step(
+    snap: ZeldaSnapshot,
+    *,
+    dest: int | None = None,
+    saw_goriya: bool = False,
+    frames: int = 0,
+) -> FrameAction:
+    """One frame of 0x38 kill-clear → east-pocket rise → KEY north door.
+
+    Interior ``y=149`` is a diamond wall (UP blocked at x=120/104/88/200).
+    Recollect the east mouth pocket ``x=208``, rise to ``y=93``, cross to
+    ``x=120``, push UP. The key consume is natural.
+    """
+    if snap.level != LEVEL7:
+        return FrameAction(nes_idle_action(), "wait_level7")
+    if snap.transitioning:
+        return FrameAction(nes_action("UP"), "up38_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if dest is not None and snap.screen == dest:
+        return FrameAction(nes_idle_action(), "up38_arrived")
+    if snap.screen != ROOM_38:
+        return FrameAction(nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}")
+
+    live = live_goriyas(snap)
+    if live:
+        target = nearest_enemy(snap.link_x, snap.link_y, live)
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        return _goriya_fight(snap, target, frames=frames)
+    if not saw_goriya:
+        return FrameAction(nes_idle_action(), "spawn_wait")
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y > ROOM_38_TOP_BAND_Y + 12 and x < ROOM_38_EAST_POCKET_X - NORTH_X_TOL:
+        return FrameAction(nes_action("RIGHT"), "up38_pocket")
+    if y > ROOM_38_TOP_BAND_Y + DOOR_Y_TOL:
+        return FrameAction(nes_action("UP"), "up38_rise")
+    return dungeon_align_then_push(
+        snap,
+        push_dir="UP",
+        target_x=ROOM_38_NORTH_X,
+        x_tol=NORTH_X_TOL,
+        reason="up38",
+    )
+
+
+@dataclass(kw_only=True)
+class Room38UpController(HopController):
+    """0x38 (GORIYA_PRE_HUNGRY) east mouth: kill-clear, east-pocket rise,
+    KEY-UP to live dest 0x28 (HUNGRY_GORIYA).  2/2 (38_up_v6/v7).
+    Recon-wired only.
+    """
+
+    spec_id: str = "level7_room38_up"
+    max_frames: int = ROOM38_UP_MAX_FRAMES
+    require_level: int = LEVEL7
+    done_reason: str = "left_0x38_north"
+    dest: int | None = field(default_factory=north_of_room38_ram_id)
+    saw_goriya: bool = False
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in {ENTRY_SCREEN, 0x49, 0x39, ROOM_38}
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_action("UP"), "up38_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if live_goriyas(snap):
+            self.saw_goriya = True
+        action = room_38_up_step(
+            snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
+        )
+        if action.reason.startswith("unexpected_room"):
+            if snap.screen == 0x39:
+                return self.mark_fail("east_backtrack")
+            return self.mark_fail(action.reason)
+        return action
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": "UP",
+        }

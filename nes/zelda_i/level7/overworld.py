@@ -40,6 +40,7 @@ from zelda_i.anchors import (
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
     SCREEN_LEVEL7_ENTRY_ROOM,
     SCREEN_LEVEL7_POND_HYP,
+    SCREEN_MAGICAL_SWORD_GRAVE,
     TF_BIT_L7 as LEVEL7_TRIFORCE_BIT,
 )
 
@@ -63,13 +64,10 @@ LEVEL7_POND_APPROACH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x54, "UP"),
 )
 
-# Post-L6 leftover play 0x22 (120,221) → Armos bait shop 0x34.
-# 0x22↓0x32 and 0x32→0x33 @ y=141 reverse the live L6 door walk.
-# Dead: 0x33 RIGHT @ y=141 → 0x34 (l7_bait_32ax leftover (208,141) east mountain).
-# Live L6 reverse: 0x33↑0x23 @ x=208, 0x23→0x24 @ y=141.
-# 0x24 south sand east is live through (208,189). DOWN at 16/160/208 is mountain.
-# Fixture-live: 0x24→0x25 RIGHT @ y=141 (l7_bait_25 leftover 0x25 (0,141)).
-# Shop 0x34 stays unobserved. Next: inland off the west mouth, then DOWN.
+# DEAD SPUR — do not use as PostLevel6OverworldController default.
+# 0x22↓0x32 is the L6 approach reverse into the mountain-locked pocket
+# 0x22/0x32/0x33/0x23/0x24/0x25. No south walk to shop 0x34 or pond 0x42.
+# Kept for bait-micro tests (bait_32_north_action, bait_24_east_action).
 POST_L6_TO_BAIT_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x32, "DOWN", align_x=112),
     ScreenHop(0x33, "RIGHT", align_y=141),
@@ -80,11 +78,47 @@ POST_L6_TO_BAIT_HOPS: tuple[ScreenHop, ...] = (
 POST_L6_TO_BAIT_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_LEVEL6_ENTRANCE, POST_L6_TO_BAIT_HOPS
 )
-BAIT_APPROACH_MAX_FRAMES = 15_000
 # Dead belief: (112,125) on 0x22 is the L6 leave. Mode 16 → dungeon.
 L6_CAVE_MOUTH_X = 112
 L6_CAVE_MOUTH_Y = 125
 L6_CAVE_MOUTH_TOL = 16
+# y=141 is the edge of the cave-mouth reentry box (125+16). Travel south of
+# it so Ghini knockback along the west wall cannot count as l6_cave_mouth.
+POND_22_WEST_Y = 157
+POND_22_WEST_GOAL: tuple[int, int] = (EDGE_WEST_X + 4, POND_22_WEST_Y)
+# Live miss l7_p22w7: 0x22 LEFT toward Magical Sword grave 0x21 is west
+# mountain. Leftover 0x22 (90,165) tile 38, occupancy 41 misses, west edge
+# unreachable. PNG: recordings/l7_p22w7_final.png. 0x22 is a boxed
+# mountain graveyard: north is the L6 cave (UP = mode 16), west mountain,
+# south corridor is the only walk-off (live L6 reverse 0x22↓0x32).
+# Dead: 0x22 south leftover (120,221) UP is tile 216 (east wall of x=112).
+# Dead: l7_p22w5 (97,141) is inside the cave-mouth reentry box (tol=16).
+POST_L6_22_WEST_HOP = ScreenHop(
+    SCREEN_MAGICAL_SWORD_GRAVE, "LEFT", align_y=POND_22_WEST_Y
+)
+# Greened prefix (not the dead 0x25 pocket): L6 reverse 0x22↓0x32→0x33↑0x23
+# →0x24 then 0x24 UP x=160 → 0x14 (l7_p24n) then 0x14 LEFT y=165-189 → 0x13
+# (l7_p14w 1/1, leftover 0x13 (240,189)). Do not RIGHT 0x24→0x25.
+# _after_hops succeeds only on pond 0x42.
+POST_L6_TO_POND_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x32, "DOWN", align_x=112),
+    ScreenHop(0x33, "RIGHT", align_y=141),
+    ScreenHop(0x23, "UP", align_x=208),
+    ScreenHop(SCREEN_BRACELET_ARMOS, "RIGHT", align_y=141),
+    ScreenHop(0x14, "UP", align_x=160),
+    ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
+)
+POST_L6_TO_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    SCREEN_LEVEL6_ENTRANCE, POST_L6_TO_POND_HOPS
+)
+BAIT_APPROACH_MAX_FRAMES = 15_000
+# l7_p22w5 leftover (97,141): occupancy knockback re-entered the mouth box
+# (tol=16). Block the cave opening so BFS sweeps the west rock instead.
+POND_22_CAVE_BLOCKED: frozenset[tuple[int, int]] = frozenset(
+    (x, y)
+    for x in range(L6_CAVE_MOUTH_X - 24, L6_CAVE_MOUTH_X + 25)
+    for y in range(EDGE_NORTH_Y, L6_CAVE_MOUTH_Y + 1)
+)
 # Live L6 0x32↑0x22 is align_x=112. Fixture leftover arrived 0x32 (120,61):
 # recover_off_edge DOWN at x=120 is the east wall of that corridor (tile 216).
 BAIT_32_CORRIDOR_X = 112
@@ -123,6 +157,45 @@ POND_53_WEST_GAP_Y = 189
 POND_53_Y_TOL = 4
 POND_53_SEED_BLOCKED: frozenset[tuple[int, int]] = frozenset({(224, 174)})
 _POND_53_HOP_INDEX = 10
+
+
+def pond_suffix_extra_hop_action(
+    snap: ZeldaSnapshot,
+    hop: ScreenHop,
+    *,
+    swing,
+    pond53_walker: OccupancyWalker,
+) -> FrameAction | None:
+    """Live 0x64 / 0x53 / 0x52 micros. Call only when those hops are in the table."""
+    # 0x65→0x64 arrives on the east ledge at ~(232,109).  UP is blocked
+    # there: descend to the open middle band, cross to the north gap and
+    # climb.  probe_64_north_to_54: x≈60 is a clean open column to 0x54;
+    # x≤40 stalls at y≈93; x≈120 is under the central tree isle.
+    if hop.target == 0x54 and snap.screen == 0x64:
+        if snap.link_x > BAIT_64_GAP_X + 6 and snap.link_y < 116:
+            return swing("DOWN", "64_east_ledge_down")
+        if snap.link_x > BAIT_64_GAP_X + 6:
+            return swing("LEFT", "64_cross_to_north")
+        if snap.link_x < BAIT_64_GAP_X - 6:
+            return swing("RIGHT", "64_north_ax")
+        return swing("UP", "64_north")
+    if hop.target == 0x52 and snap.screen == 0x53:
+        return pond_53_to_52_action(snap, walker=pond53_walker, swing=swing)
+    if hop.target == SCREEN_LEVEL7_POND_HYP and snap.screen == 0x52:
+        # 0x52 rock field (probe_52_wall): climb the open west column x≈48
+        # from the bottom corridor to the mid-band y≈120, traverse RIGHT to
+        # x≈132, then a UP push funnels Link through the boulder-wall gap
+        # (~x128) into the x≈112 north gap to pond 0x42.
+        if snap.link_y > POND_52_MIDBAND_Y:
+            if snap.link_x > POND_52_CLIMB_X + 6:
+                return swing("LEFT", "52_to_climb_column")
+            if snap.link_x < POND_52_CLIMB_X - 6:
+                return swing("RIGHT", "52_climb_ax")
+            return swing("UP", "52_climb")
+        if snap.link_x < POND_52_GAP_X - 4:
+            return swing("RIGHT", "52_traverse_midband")
+        return swing("UP", "52_gap_up")
+    return None
 
 
 class Level7NavPhase(Enum):
@@ -171,6 +244,75 @@ def at_l6_cave_mouth(snap: ZeldaSnapshot) -> bool:
         and snap.screen == SCREEN_LEVEL6_ENTRANCE
         and abs(snap.link_x - L6_CAVE_MOUTH_X) <= L6_CAVE_MOUTH_TOL
         and abs(snap.link_y - L6_CAVE_MOUTH_Y) <= L6_CAVE_MOUTH_TOL
+    )
+
+
+def pond_22_to_21_action(
+    snap: ZeldaSnapshot,
+    *,
+    walker: OccupancyWalker,
+    swing,
+) -> FrameAction | None:
+    """Leave the 0x22 cave mouth without UP, then occupancy-walk west to 0x21.
+
+    Measured leave (112,125) is the L6 mouth: UP is mode 16. Occupancy miss →
+    block cell → replan; no path → stand. At the west edge defer to hop LEFT.
+    """
+    if snap.screen != SCREEN_LEVEL6_ENTRANCE:
+        return None
+    if snap.link_x <= EDGE_WEST_X + 6:
+        return None
+    # Measured leave (112,125): UP is L6 enter. Step off the mouth first.
+    if at_l6_cave_mouth(snap) or (
+        abs(snap.link_x - L6_CAVE_MOUTH_X) <= L6_CAVE_MOUTH_TOL
+        and snap.link_y <= L6_CAVE_MOUTH_Y + 4
+    ):
+        return swing("DOWN", "22_leave_mouth")
+    # South leftover (120,221): UP at x=120 is tile 216 (east wall of the
+    # x=112 corridor). Climb the corridor to the west band before occupancy
+    # so swing-stalls cannot poison the only north cell.
+    if snap.link_y > POND_22_WEST_Y + 8:
+        if abs(snap.link_x - L6_CAVE_MOUTH_X) > 5:
+            btn = "LEFT" if snap.link_x > L6_CAVE_MOUTH_X else "RIGHT"
+            return swing(btn, "22_south_corridor_ax")
+        return swing("UP", "22_south_corridor_up")
+    xy = (int(snap.link_x), int(snap.link_y))
+    walker.observe(xy)
+    direction = walker.next_dir(xy)
+    if direction is None:
+        # Occupancy 1px/swing/knockback can drop the path before the west
+        # rock is actually mapped. Keep pushing LEFT until the grid is dense.
+        if walker.misses < 40:
+            return swing("LEFT", "22_west")
+        return FrameAction(nes_idle_action(), "22_no_path_stand")
+    if direction == "UP" and abs(snap.link_x - L6_CAVE_MOUTH_X) <= L6_CAVE_MOUTH_TOL:
+        return swing("LEFT", "22_avoid_cave_up")
+    return swing(direction, "22_west")
+
+
+def make_pond_22_walker() -> OccupancyWalker:
+    return OccupancyWalker(
+        grid=OccupancyGrid(
+            blocked=set(POND_22_CAVE_BLOCKED),
+            xmin=EDGE_WEST_X,
+            xmax=EDGE_EAST_X,
+            ymin=EDGE_NORTH_Y,
+            ymax=EDGE_SOUTH_Y,
+        ),
+        goal=POND_22_WEST_GOAL,
+    )
+
+
+def make_pond_53_walker() -> OccupancyWalker:
+    return OccupancyWalker(
+        grid=OccupancyGrid(
+            blocked=set(POND_53_SEED_BLOCKED),
+            xmin=EDGE_WEST_X,
+            xmax=EDGE_EAST_X,
+            ymin=EDGE_NORTH_Y,
+            ymax=EDGE_SOUTH_Y,
+        ),
+        goal=(EDGE_WEST_X + 4, POND_53_WEST_GAP_Y),
     )
 
 
@@ -227,52 +369,15 @@ class OverworldToLevel7PondController(OverworldPathController):
 
     def _pond53_walker(self) -> OccupancyWalker:
         if self._pond53_walk is None:
-            self._pond53_walk = OccupancyWalker(
-                grid=OccupancyGrid(
-                    blocked=set(POND_53_SEED_BLOCKED),
-                    xmin=EDGE_WEST_X,
-                    xmax=EDGE_EAST_X,
-                    ymin=EDGE_NORTH_Y,
-                    ymax=EDGE_SOUTH_Y,
-                ),
-                goal=(EDGE_WEST_X + 4, POND_53_WEST_GAP_Y),
-            )
+            self._pond53_walk = make_pond_53_walker()
         return self._pond53_walk
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
-        # 0x65→0x64 arrives on the east ledge at ~(232,109).  UP is blocked
-        # there: descend to the open middle band, cross to the north gap and
-        # climb.  probe_64_north_to_54: x≈60 is a clean open column to 0x54;
-        # x≤40 stalls at y≈93; x≈120 is under the central tree isle.
-        if hop.target == 0x54 and snap.screen == 0x64:
-            if snap.link_x > BAIT_64_GAP_X + 6 and snap.link_y < 116:
-                return self._swing("DOWN", "64_east_ledge_down")
-            if snap.link_x > BAIT_64_GAP_X + 6:
-                return self._swing("LEFT", "64_cross_to_north")
-            if snap.link_x < BAIT_64_GAP_X - 6:
-                return self._swing("RIGHT", "64_north_ax")
-            return self._swing("UP", "64_north")
-        if hop.target == 0x52 and snap.screen == 0x53:
-            return pond_53_to_52_action(
-                snap, walker=self._pond53_walker(), swing=self._swing
-            )
-        if hop.target == SCREEN_LEVEL7_POND_HYP and snap.screen == 0x52:
-            # 0x52 rock field (probe_52_wall): climb the open west column x≈48
-            # from the bottom corridor to the mid-band y≈120, traverse RIGHT to
-            # x≈132, then a UP push funnels Link through the boulder-wall gap
-            # (~x128) into the x≈112 north gap to pond 0x42.
-            if snap.link_y > POND_52_MIDBAND_Y:
-                if snap.link_x > POND_52_CLIMB_X + 6:
-                    return self._swing("LEFT", "52_to_climb_column")
-                if snap.link_x < POND_52_CLIMB_X - 6:
-                    return self._swing("RIGHT", "52_climb_ax")
-                return self._swing("UP", "52_climb")
-            if snap.link_x < POND_52_GAP_X - 4:
-                return self._swing("RIGHT", "52_traverse_midband")
-            return self._swing("UP", "52_gap_up")
-        return None
+        return pond_suffix_extra_hop_action(
+            snap, hop, swing=self._swing, pond53_walker=self._pond53_walker()
+        )
 
 
 @dataclass
@@ -416,6 +521,9 @@ def planning_report() -> dict[str, Any]:
         },
         "bait_shop_hops_from_post_l6": [
             {"target": hex(h.target), "dir": h.direction} for h in POST_L6_TO_BAIT_HOPS
+        ],
+        "pond_hops_from_post_l6": [
+            {"target": hex(h.target), "dir": h.direction} for h in POST_L6_TO_POND_HOPS
         ],
         "pond_hops_from_start": [
             {"target": hex(h.target), "dir": h.direction} for h in LEVEL7_POND_HOPS
