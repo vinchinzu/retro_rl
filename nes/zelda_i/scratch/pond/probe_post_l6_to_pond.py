@@ -1,6 +1,6 @@
 """Post-L6 0x22 west hop recon. One trial. Not a route claim.
 
-    QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/probe_post_l6_to_pond.py --no-video --tag l7_p22w
+    QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/pond/probe_post_l6_to_pond.py --no-video --tag l7_p22w
 
 Starts from Level6ExitOverworld (same 0x22 screen as the measured leave).
 Handoff is built from live RAM so geometry can run; production still gates

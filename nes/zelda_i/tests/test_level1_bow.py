@@ -14,33 +14,24 @@ from zelda_i.level1.bow import (
     level1_bow_success,
     make_bow22_controller,
 )
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOW,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 1,
+    "screen": 0x23,
+    "x": 114,
+    "y": 117,
+    "triforce": 0,
+    "keys": 1,
+    "bow": 0,
+    "arrows": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 1)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x23)
-    ram[ADDR_LINK_X] = fields.get("x", 114)
-    ram[ADDR_LINK_Y] = fields.get("y", 117)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0)
-    ram[ADDR_KEYS] = fields.get("keys", 1)
-    ram[ADDR_BOW] = fields.get("bow", 0)
-    ram[ADDR_ARROWS] = fields.get("arrows", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_bow22_occupancy_plus_stem_x112() -> None:

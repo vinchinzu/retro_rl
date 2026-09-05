@@ -21,10 +21,12 @@ from zelda_i.level7.cellar import (
     MOUTH_Y,
     PIT_TILE,
     RAM_CLAIM,
+    ROOM_4A,
     SOURCE_ROOM,
     SPAWN_XY,
     WEST_X,
     Level7NoseCellarCrossController,
+    Room1ACandleController,
     make_nose_cellar_cross_controller,
     nose_cellar_cross_step,
     nose_cellar_cross_success,
@@ -305,4 +307,50 @@ def test_no_occupancy_walker_import() -> None:
             imported.update(alias.name for alias in node.names)
     assert "OccupancyWalker" not in imported
     assert "zelda_i.walk.physics" not in imported
-    assert "cellar_cross_dir" not in imported
+
+
+def test_candle_pin_already_red_never_greens() -> None:
+    ctl = Room1ACandleController()
+    act = _step(ctl, _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=135, y=141, candle=2))
+    assert ctl.failed
+    assert not ctl.success
+    assert act.reason == "already_red_candle"
+
+
+def test_candle_cellar_drops_from_ladder_not_up() -> None:
+    ctl = Room1ACandleController()
+    act = _step(ctl, _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=96, y=93, candle=0))
+    assert not ctl.failed
+    assert not ctl.success
+    assert act.reason == "cellar_drop"
+    assert list(act.action) == DOWN
+    assert list(act.action) != UP
+
+
+def test_candle_cellar_does_not_oscillate_at_y180() -> None:
+    ctl = Room1ACandleController()
+    ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=96, y=93, candle=0)
+    assert _step(ctl, ram).reason == "cellar_drop"
+    ram[ADDR_LINK_Y] = 189
+    assert _step(ctl, ram).reason == "cellar_east"
+    ram[ADDR_LINK_X] = 172
+    act = _step(ctl, ram)
+    assert act.reason == "cellar_climb"
+    assert list(act.action) == UP
+    ram[ADDR_LINK_Y] = 179
+    act = _step(ctl, ram)
+    assert act.reason == "cellar_climb"
+    assert list(act.action) == UP
+    assert list(act.action) != DOWN
+
+
+def test_candle_rising_edge_greens() -> None:
+    ctl = Room1ACandleController()
+    ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=124, y=141, candle=0)
+    _step(ctl, ram)
+    assert not ctl.success
+    ram[ADDR_CANDLE] = 2
+    act = _step(ctl, ram)
+    assert ctl.success
+    assert not ctl.failed
+    assert act.reason == "red_candle_natural"

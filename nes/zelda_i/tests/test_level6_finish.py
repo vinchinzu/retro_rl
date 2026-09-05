@@ -27,39 +27,37 @@ from zelda_i.screen_glance import (
     grade_final,
 )
 from zelda_i.ram import (
-    ADDR_BOW,
     ADDR_CUR_OPENED_DOORS,
     ADDR_HEALTH,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_TYPE,
     ADDR_OPEN_DOORWAY_MASK,
-    ADDR_ROD,
     ADDR_ROOM_ITEM_ID,
-    ADDR_SCREEN,
     ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": 0x1C,
+    "x": 120,
+    "y": 189,
+    "triforce": 0x1F,
+    "rod": 1,
+    "bow": 1,
+    "health": 0x66,
+    "item": 0x1A,
+    "doors": 0,
+    "mask": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x1C)
-    ram[ADDR_LINK_X] = fields.get("x", 120)
-    ram[ADDR_LINK_Y] = fields.get("y", 189)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_ROD] = fields.get("rod", 1)
-    ram[ADDR_BOW] = fields.get("bow", 1)
-    ram[ADDR_HEALTH] = fields.get("health", 0x66)
-    ram[ADDR_ROOM_ITEM_ID] = fields.get("item", 0x1A)
-    ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
-    ram[ADDR_OPEN_DOORWAY_MASK] = fields.get("mask", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_heart_walks_up_from_south_mouth() -> None:

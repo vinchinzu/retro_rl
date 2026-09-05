@@ -7,6 +7,8 @@ write RAM.  The Gohma body in 0x1E is a dest, not a fight.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
@@ -108,8 +110,6 @@ def test_factories_are_live_policies_not_unverified() -> None:
 
 
 def test_spine_magic_key_stages_keep_gohma_fail_closed() -> None:
-    from types import SimpleNamespace
-
     hops = l8_hops(SimpleNamespace(get_ram=lambda: _ram()))
     stages = hops[1].stages()
     names = [name for name, _, _ in stages]
@@ -323,3 +323,20 @@ def test_unit_walk_records_semantic_reasons() -> None:
     assert "combat" in by_room["0x2e_live"] or "leave_wall" in by_room["0x2e_live"]
     assert "map_skip" in by_room["0x2e_skip"]
     assert by_room["0x1e"] == "arrived_0x1e"
+
+
+def test_candle_leftover_pause_selects_bombs_before_place() -> None:
+    """L8 leftover after the bush burn is candle=4. Isolated pins hid that."""
+    ram = _ram(screen=ROOM_MANHANDLA, x=120, y=105, bombs=8, selected=4)
+    ctl = make_north_manhandla_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    reasons: list[str] = []
+    for _ in range(20):
+        act = _step(ctl, ram)
+        reasons.append(act.reason)
+        if act.reason in {"place_bomb", "pause_open"}:
+            break
+    assert "pause_open" in reasons
+    assert "place_bomb" not in reasons
+    assert ctl._wall is not None
+    assert ctl._wall.select_item == 1

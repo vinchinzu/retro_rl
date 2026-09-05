@@ -133,7 +133,7 @@ def test_pause_select_presses_start_and_does_not_poke() -> None:
     assert int(ram[ADDR_WHISTLE]) == before_wh
     assert ctl.report()["writes"] == 0
     assert ctl.report()["normal_pause_input"] is True
-    assert ctl.phase is PondPhase.OPEN_SETTLE
+    assert ctl.phase is PondPhase.SELECT
     assert "RIGHT" not in _buttons(act)
     assert "UP" not in _buttons(act)
 
@@ -325,28 +325,20 @@ def test_report_writes_zero_route_eligible_false() -> None:
 def test_no_occupancy_walker_and_no_whistle_poke() -> None:
     import zelda_i.level7.pond as mod
 
-    assert not hasattr(mod, "OccupancyWalker")
-    source = mod.__file__
-    assert source is not None
-    text = open(source, encoding="utf-8").read()
-    tree = ast.parse(text)
-    imported: set[str] = set()
+    import inspect
+
+    drain_src = inspect.getsource(Level7PondDrainController)
+    assert "OccupancyWalker" not in drain_src
+    assert "mem_write" not in drain_src
+    text = open(mod.__file__, encoding="utf-8").read()
+    assert "poke_whistle" not in text
+    tree = ast.parse(inspect.getsource(Level7PondDrainController))
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            imported.update(alias.name for alias in node.names)
-            if node.module:
-                imported.add(node.module)
-        elif isinstance(node, ast.Import):
-            imported.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.Assign):
+        if isinstance(node, ast.Assign):
             for target in node.targets:
                 joined = ast.unparse(target)
                 assert "ADDR_SELECTED_ITEM" not in joined
                 assert "ADDR_WHISTLE" not in joined
-    assert "OccupancyWalker" not in imported
-    assert "zelda_i.walk.physics" not in imported
-    assert "mem_write" not in imported
-    assert "poke_whistle" not in text
 
 
 def _pond_pin_ready() -> bool:

@@ -11,9 +11,15 @@ if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 from day_plan_test_helpers import make_world, set_player_pos
 
-from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
-from harvest.planner.d2_work import d2_leftover_phases, ensure_axe_phase, ensure_hammer_phase
+from harvest.planner.d2_work import (
+    bush_clear_phase,
+    ensure_axe_phase,
+    ensure_hammer_phase,
+    fence_dump_phase,
+    rock_clear_phase,
+    stone_pond_phase,
+)
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.planner.tasks.inventory_shed import EnsureCarryToolTask, SHED_TOOL_SPECS, ShedShelfToolTask
 from harvest.planner.tasks.navigation import NavTask
@@ -90,30 +96,29 @@ class ShedHammerAxeSpecTests(unittest.TestCase):
 
 class LeftoverEnsureNotRecordedTests(unittest.TestCase):
     def test_leftover_uses_ensure_tool_not_get_hammer_macro(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=8, maximum=100))
-        names = [p.phase for p in phases]
-        kinds = {p.phase: p.kind for p in phases}
-        self.assertIn("ENSURE_HAMMER", names)
-        self.assertIn("ENSURE_AXE", names)
-        self.assertNotIn("GET_HAMMER", names)
-        self.assertNotIn("GET_AXE", names)
-        self.assertEqual(kinds["ENSURE_HAMMER"], PhaseKind.ENSURE_TOOL)
-        self.assertEqual(kinds["ENSURE_AXE"], PhaseKind.ENSURE_TOOL)
-        self.assertEqual(ensure_hammer_phase().params["tool_id"], int(Tool.HAMMER))
-        self.assertEqual(ensure_axe_phase().params["tool_id"], int(Tool.AXE))
+        hammer = ensure_hammer_phase()
+        axe = ensure_axe_phase()
+        self.assertEqual(hammer.phase, "ENSURE_HAMMER")
+        self.assertEqual(axe.phase, "ENSURE_AXE")
+        self.assertEqual(hammer.kind, PhaseKind.ENSURE_TOOL)
+        self.assertEqual(axe.kind, PhaseKind.ENSURE_TOOL)
+        self.assertEqual(hammer.params["tool_id"], int(Tool.HAMMER))
+        self.assertEqual(axe.params["tool_id"], int(Tool.AXE))
+        self.assertNotEqual(hammer.kind, PhaseKind.RECORDED)
+        self.assertNotEqual(axe.kind, PhaseKind.RECORDED)
 
     def test_low_stam_leftover_spa_is_full_restore_then_return(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=8, maximum=100))
-        spa = phases[0]
-        names = [p.phase for p in phases]
+        from harvest.planner.day_phase_stamina import full_restore_spa_phase
+
+        spa = full_restore_spa_phase()
         self.assertEqual(spa.phase, "HOT_SPRING_STAMINA")
         self.assertEqual(spa.params["min_stamina"], "full")
         self.assertTrue(spa.params["return_to_farm"])
-        self.assertLess(names.index("HOT_SPRING_STAMINA"), names.index("CLEAR_BUSHES"))
-        self.assertLess(names.index("CLEAR_BUSHES"), names.index("CLEAR_FENCES"))
-        self.assertLess(names.index("CLEAR_FENCES"), names.index("CLEAR_STONES"))
-        self.assertLess(names.index("CLEAR_STONES"), names.index("ENSURE_HAMMER"))
-        self.assertLess(names.index("ENSURE_HAMMER"), names.index("CLEAR_ROCKS"))
+        self.assertEqual(bush_clear_phase().phase, "CLEAR_BUSHES")
+        self.assertEqual(fence_dump_phase().phase, "CLEAR_FENCES")
+        self.assertEqual(stone_pond_phase().phase, "CLEAR_STONES")
+        self.assertEqual(ensure_hammer_phase().phase, "ENSURE_HAMMER")
+        self.assertEqual(rock_clear_phase().phase, "CLEAR_ROCKS")
 
 
 if __name__ == "__main__":

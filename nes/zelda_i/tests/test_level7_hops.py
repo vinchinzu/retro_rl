@@ -104,7 +104,7 @@ from zelda_i.level7.path import (
     room_4a_return_step,
     room_1b_key_east_step,
 )
-from zelda_i.level7.overworld import POST_L6_TO_POND_HOPS
+from zelda_i.level7.pond import POST_L6_TO_POND_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from retro_harness.nes import nes_idle_action
 from zelda_i.ram import (
@@ -116,6 +116,7 @@ from zelda_i.ram import (
     ADDR_FOOD,
     ADDR_HEALTH,
     ADDR_KEYS,
+    ADDR_LADDER,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -151,6 +152,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_ROD] = fields.get("rod", 0)
     ram[ADDR_BOW] = fields.get("bow", 1)
     ram[ADDR_CANDLE] = fields.get("candle", 1)
+    ram[ADDR_LADDER] = fields.get("ladder", 1)
     ram[ADDR_RUPEES] = fields.get("rupees", 20)
     ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
     ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
@@ -748,6 +750,17 @@ def test_room_49_up_south_mouth_stands_until_spawn() -> None:
     assert act.reason == "spawn_wait"
 
 
+def test_room_49_up_ladder_zero_never_crosses_the_moat() -> None:
+    water = read_snapshot(_ram(level=7, screen=0x49, x=64, y=117, ladder=0))
+    assert room_49_up_step(water, saw_goriya=True).reason == "moat_requires_ladder"
+    ctl = Room49UpController()
+    ctl.saw_goriya = True
+    act = ctl.step(water)
+    assert ctl.failed
+    assert not ctl.success
+    assert act.reason == "moat_requires_ladder"
+
+
 def test_room_49_up_aligns_x_then_pushes_north() -> None:
     """Stepladder moat: never strafe on water; align on land, then hold UP."""
     water = read_snapshot(_ram(level=7, screen=0x49, x=64, y=117))
@@ -926,13 +939,22 @@ def test_room_0d_block_16px_right_reveals_the_ne_staircase() -> None:
 
 
 def test_room_1a_candle_is_the_chapter_pickup_and_arrives_on_candle_2() -> None:
-    """Natural ADDR_CANDLE 0→2; wired as level7_red_candle_pickup."""
-    mouth = read_snapshot(_ram(level=7, screen=0x1A, x=32, y=141))
+    """Natural ADDR_CANDLE 0→2; a pin that already has 2 never greens."""
+    mouth = read_snapshot(_ram(level=7, screen=0x1A, x=32, y=141, candle=0))
     assert Room1ACandleController().step(mouth).reason == "spawn_wait"
-    dest = read_snapshot(_ram(level=7, screen=0x4A, x=135, y=141, mode=9, candle=2))
+    already = read_snapshot(
+        _ram(level=7, screen=0x4A, x=135, y=141, mode=9, candle=2)
+    )
     ctl = Room1ACandleController()
-    act = ctl.step(dest)
-    assert ctl.success and not ctl.failed
+    act = ctl.step(already)
+    assert ctl.failed and not ctl.success
+    assert act.reason == "already_red_candle"
+    rising = Room1ACandleController()
+    pad = _ram(level=7, screen=0x4A, x=124, y=141, mode=9, candle=0)
+    rising.step(read_snapshot(pad))
+    pad[ADDR_CANDLE] = 2
+    act = rising.step(read_snapshot(pad))
+    assert rising.success and not rising.failed
     assert act.reason == "red_candle_natural"
     factory = make_room1a_candle_controller()
     assert factory.report()["dest_screen"] == 0x4A

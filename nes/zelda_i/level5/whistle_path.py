@@ -21,6 +21,7 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.ids import DARKNUT_OBJECT_TYPE
+from zelda_i.dungeon.pause_select import PauseSelectController, PauseSelectPhase
 from zelda_i.level3.dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
 from zelda_i.level5.dungeon import LEVEL_5, ROOM_L5_GIBDO_66, ROOM_L5_WEST_65
 from zelda_i.level5.path import _step, walk_axis
@@ -87,30 +88,43 @@ def _cellar_walk_axis(env, assist, total: list[int], axis: str, target: int, max
 
 
 def select_b_item_menu(env, assist, total: list[int], want: int) -> dict:
-    """Pause-cycle B items. want=1 bombs, want=5 recorder. No RAM poke."""
+    """Pause-cycle B items. want=1 bombs, want=5 recorder. No RAM poke.
+
+    Drives the shared ``PauseSelectController`` frame-by-frame instead of
+    hand-rolling the START / idle / RIGHT / idle / START cycle timings.
+    """
     selected0 = int(read_u8(env.get_ram(), ADDR_SELECTED_ITEM))
     seen = [selected0]
     if selected0 == want:
         return {"used": False, "selected": selected0, "seen": seen}
-    _step(env, assist, total, nes_action("START"))
-    _ops().idle(env, assist, total, 20)
-    chosen = selected0
-    for _ in range(8):
-        _step(env, assist, total, nes_action("RIGHT"))
-        _ops().idle(env, assist, total, 8)
+    ctl = PauseSelectController(want=want)
+    ctl.bind_env(env)
+    menu_open = False
+    while not ctl.success and not ctl.failed:
+        opening = ctl.phase is PauseSelectPhase.CHECK
+        closing = ctl.phase is PauseSelectPhase.CLOSE
+        action = ctl.step(_rs(env.get_ram()))
+        _step(env, assist, total, action.action)
+        if opening:
+            menu_open = True
+        elif closing:
+            menu_open = False
         cur = int(read_u8(env.get_ram(), ADDR_SELECTED_ITEM))
-        seen.append(cur)
-        if cur == want:
-            chosen = cur
-            break
-    _step(env, assist, total, nes_action("START"))
-    _ops().idle(env, assist, total, 24)
+        if cur != seen[-1]:
+            seen.append(cur)
+    if ctl.failed and menu_open:
+        # Safety net: the shared controller fails closed, but callers here
+        # rely on the pause menu always being closed on return.
+        _step(env, assist, total, nes_action("START"))
+        _ops().idle(env, assist, total, 24)
     return {
         "used": True,
         "selected_before": selected0,
         "selected_after": int(read_u8(env.get_ram(), ADDR_SELECTED_ITEM)),
         "seen": seen,
-        "preferred": chosen,
+        "preferred": want if ctl.success else selected0,
+        "failed": ctl.failed,
+        "fail_reason": ctl.fail_reason,
     }
 
 

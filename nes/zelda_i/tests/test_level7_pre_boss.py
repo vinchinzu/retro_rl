@@ -43,6 +43,7 @@ def test_factory_returns_configured_bomb_wall_controller() -> None:
     assert ctl.approach_waypoints == L7_ROOM29_EAST_APPROACH
     assert ctl.approach_waypoints[0] == (96, 189)
     assert ctl.approach_tol == 4
+    assert ctl.select_item == 1
 
 
 def test_factory_never_shares_instances() -> None:

@@ -20,17 +20,8 @@ from zelda_i.level6.door_hop import (
     door_hop_success,
     inland29_success,
 )
-from zelda_i.ram import (
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 DEST_SPECS = (
     WEST19_SPEC,
@@ -46,43 +37,22 @@ def _ids(spec: DoorHopSpec) -> str:
     return spec.spec_id
 
 
-def _ram(
-    *,
-    screen: int,
-    x: int = 120,
-    y: int = 141,
-    mode: int = PLAY_MODE,
-    level: int = 6,
-    triforce: int = 0x1F,
-    rod: int = 1,
-) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_TRIFORCE] = triforce
-    ram[ADDR_ROD] = rod
-    return ram
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "x": 120,
+    "y": 141,
+    "triforce": 0x1F,
+    "rod": 1,
+}
 
 
-def _snap(
-    *,
-    screen: int,
-    x: int = 120,
-    y: int = 141,
-    mode: int = PLAY_MODE,
-    level: int = 6,
-    triforce: int = 0x1F,
-    rod: int = 1,
-):
-    return read_snapshot(
-        _ram(
-            screen=screen, x=x, y=y, mode=mode, level=level,
-            triforce=triforce, rod=rod,
-        )
-    )
+def _ram(*, screen: int, **fields: int) -> np.ndarray:
+    return make_ram(_DEFAULTS, screen=screen, **fields)
+
+
+def _snap(*, screen: int, **fields: int):
+    return read_snapshot(_ram(screen=screen, **fields))
 
 
 @pytest.mark.parametrize("spec", DEST_SPECS, ids=_ids)

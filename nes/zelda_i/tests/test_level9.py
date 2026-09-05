@@ -201,6 +201,21 @@ def test_fixture_bomb_selection_is_pause_input_and_never_a_ram_write() -> None:
     assert report["capacity_writes"] == 0
 
 
+def test_fixture_right_does_not_count_until_slot_changes() -> None:
+    from zelda_i.dungeon.pause_select import CURSOR_SETTLE_FRAMES, OPEN_SETTLE_FRAMES
+
+    controller = _fixture_controller(FixtureEntryPhase.PAUSE_OPEN, selected=2)
+    snap = _snap(level=0, screen=0x05, bombs=16)
+    assert controller.step(snap).reason == "pause_open"
+    for _ in range(OPEN_SETTLE_FRAMES):
+        controller.step(snap)
+    controller.step(snap)  # RIGHT, $0656 still arrows
+    assert controller.cursor_moves == 0
+    for _ in range(CURSOR_SETTLE_FRAMES):
+        controller.step(snap)
+    assert controller.cursor_moves == 0
+
+
 def test_entry_stop_requires_tf_magic_key_and_bombs() -> None:
     ok = _snap()
     assert level9_entry_stop(ok, magic_key=True)

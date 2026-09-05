@@ -80,11 +80,6 @@ def make_bomb_61_north_controller(
     )
 
 
-def make_room_61_clear_controller() -> GenericDungeonRoomController:
-    """Fight-only or entry+fight clear of 0x61 Vires."""
-    return GenericDungeonRoomController(ROOM_61_SPEC)
-
-
 def make_room_51_key_controller() -> GenericDungeonRoomController:
     """Clear 0x51 Keese + collect key (FIXED_INVENTORY keys)."""
     return GenericDungeonRoomController(ROOM_51_SPEC)
@@ -93,16 +88,6 @@ def make_room_51_key_controller() -> GenericDungeonRoomController:
 def make_room_50_clear_controller() -> GenericDungeonRoomController:
     """Clear 0x50 Vires (north exit → 0x40 after clear; rr-xc3x)."""
     return GenericDungeonRoomController(ROOM_50_SPEC)
-
-
-def make_room_62_clear_controller() -> GenericDungeonRoomController:
-    """Clear 0x62 Vires (compass maze; pickup / exits residual)."""
-    return GenericDungeonRoomController(ROOM_62_SPEC)
-
-
-def make_room_40_clear_controller() -> GenericDungeonRoomController:
-    """Clear 0x40 Zols+gels (key pickup residual)."""
-    return GenericDungeonRoomController(ROOM_40_SPEC)
 
 
 def make_room_31_clear_controller() -> GenericDungeonRoomController:
@@ -326,10 +311,6 @@ class Level4KeyRight62Controller:
             "target_room": f"0x{ROOM_L4_COMPASS_62:02x}",
             "clear": self._clear.report() if self._clear is not None else None,
         }
-
-
-def make_key_right_62_controller(*, clear_vires: bool = True) -> Level4KeyRight62Controller:
-    return Level4KeyRight62Controller(clear_vires=clear_vires)
 
 
 # --- 0x71 empty entry → UP → 0x61 (rr-zchy) ---

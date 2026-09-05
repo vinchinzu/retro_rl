@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.combat import in_sword_hitbox
 from zelda_i.dungeon.ids import object_name
 from zelda_i.level2.puzzles import BombWall, DOOR_RIGHT
@@ -491,6 +492,7 @@ def make_bomb_west_controller(
         wait_hold_face=True,
         max_frames=8000,
         stand_timeout=2500 if stand_timeout is None else stand_timeout,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -505,16 +507,6 @@ def bomb_west_approach_step(
     if abs(int(snap.link_x) - ax) > ALIGN_TOL or int(snap.link_y) < ay - 6:
         return walk_to_step(snap, ax, ay, y_first=True)
     return walk_to_step(snap, sx, sy, y_first=True)
-
-
-def pause_select_next_b_item_script() -> tuple[FrameAction, ...]:
-    frames: list[FrameAction] = [FrameAction(nes_action("START"), "pause_open")]
-    frames.extend(FrameAction(nes_idle_action(), "pause_settle") for _ in range(24))
-    frames.append(FrameAction(nes_action("RIGHT"), "pause_next_item"))
-    frames.extend(FrameAction(nes_idle_action(), "pause_cursor") for _ in range(8))
-    frames.append(FrameAction(nes_action("START"), "pause_close"))
-    frames.extend(FrameAction(nes_idle_action(), "pause_resume") for _ in range(24))
-    return tuple(frames)
 
 
 def room30_block_secret_open(snap: ZeldaSnapshot) -> bool:

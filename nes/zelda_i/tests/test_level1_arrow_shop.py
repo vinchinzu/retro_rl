@@ -15,32 +15,22 @@ from zelda_i.level1.arrow_shop import (
     level1_arrows_success,
     make_arrow_shop_controller,
 )
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_RUPEES,
-    ADDR_SCREEN,
-    ADDR_SWORD,
-    CAVE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import CAVE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "screen": ARROW_SHOP_SCREEN,
+    "x": 0,
+    "y": 149,
+    "sword": 1,
+    "rupees": 0,
+    "arrows": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", ARROW_SHOP_SCREEN)
-    ram[ADDR_LINK_X] = fields.get("x", 0)
-    ram[ADDR_LINK_Y] = fields.get("y", 149)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_RUPEES] = fields.get("rupees", 0)
-    ram[ADDR_ARROWS] = fields.get("arrows", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_arrows_success_is_inventory_only() -> None:

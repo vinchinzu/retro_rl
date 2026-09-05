@@ -25,12 +25,7 @@ from zelda_i.level6.spine import (
 )
 from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
-    ADDR_KEYS,
     ADDR_LADDER,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     ADDR_RAFT,
@@ -39,20 +34,23 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": 0x0B,
+    "x": 112,
+    "y": 125,
+    "triforce": 0x1F,
+    "raft": 1,
+    "ladder": 1,
+    "keys": 5,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x0B)
-    ram[ADDR_LINK_X] = fields.get("x", 112)
-    ram[ADDR_LINK_Y] = fields.get("y", 125)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_RAFT] = fields.get("raft", 1)
-    ram[ADDR_LADDER] = fields.get("ladder", 1)
-    ram[ADDR_KEYS] = fields.get("keys", 5)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_post_l5_path_is_contiguous_and_skips_lost_hills_south() -> None:

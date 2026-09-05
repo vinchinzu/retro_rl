@@ -294,15 +294,21 @@ class Room1ACandleController(HopController):
     done_reason: str = "red_candle_natural"
     dest: int | None = field(default_factory=cellar_of_room1a_ram_id)
     saw_goriya: bool = False
+    initial_candle: int | None = None
     _phase: str = "clear"
     _hunt_i: int = 0
+    _cellar_dropped: bool = False
 
     @property
     def stage_id(self) -> str:
         return self.spec_id
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
-        return int(snap.candle) >= 2
+        return (
+            self.initial_candle is not None
+            and self.initial_candle < 2
+            and int(snap.candle) >= 2
+        )
 
     def on_arrive(self, snap: ZeldaSnapshot) -> str:
         return f"candle_{snap.candle}_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
@@ -316,9 +322,14 @@ class Room1ACandleController(HopController):
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("RIGHT"), "candle_scroll")
 
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.initial_candle is None:
+            self.initial_candle = int(snap.candle)
+            if self.initial_candle >= 2:
+                return self.mark_fail("already_red_candle")
+        return super().step(snap)
+
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if int(snap.candle) >= 2:
-            return self.mark_done(snap)
         if snap.mode == CELLAR_MODE or snap.screen == ROOM_4A:
             return self._cellar(snap)
         if snap.screen != ROOM_1A:
@@ -382,8 +393,12 @@ class Room1ACandleController(HopController):
 
     def _cellar(self, snap: ZeldaSnapshot) -> FrameAction:
         x, y = int(snap.link_x), int(snap.link_y)
-        if y < 180:
-            return FrameAction(nes_action("DOWN"), "cellar_drop")
+        # Drop to the south band once. Never re-arm DOWN after that — the
+        # old `y < 180 → DOWN` / `y > 145 → UP` pair oscillated at y≈180.
+        if not self._cellar_dropped:
+            if y < 180:
+                return FrameAction(nes_action("DOWN"), "cellar_drop")
+            self._cellar_dropped = True
         if x < 172:
             return FrameAction(nes_action("RIGHT"), "cellar_east")
         if y > 145:

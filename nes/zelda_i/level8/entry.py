@@ -12,6 +12,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_LEVEL8_BUSH
+from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.ram import (
@@ -252,50 +253,46 @@ class PostLevel7ToBushController(OverworldPathController):
         return out
 
 
-class SelectPhase(Enum):
-    OPEN = auto()
-    OPEN_SETTLE = auto()
-    CYCLE = auto()
-    CURSOR_SETTLE = auto()
-    CLOSE = auto()
-    CLOSE_SETTLE = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
 @dataclass
 class SelectRedCandleController:
     """Select the already-owned Red Candle through the pause menu only."""
 
     max_frames: int = SELECT_MAX_FRAMES
-    phase: SelectPhase = SelectPhase.OPEN
     frames: int = 0
-    phase_frames: int = 0
-    cursor_moves: int = 0
     success: bool = False
     failed: bool = False
     notes: list[str] = field(default_factory=list)
     selected_before: int | None = None
     _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(
+            want=B_ITEM_CANDLE, name="candle", max_frames=self.max_frames
+        )
+
+    @property
+    def phase(self):
+        return self._select.phase
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
 
     def bind_env(self, env: Any) -> None:
         self._env = env
-
-    def _set_phase(self, phase: SelectPhase, note: str = "") -> None:
-        if phase is not self.phase:
-            self.phase = phase
-            self.phase_frames = 0
-            if note:
-                self.notes.append(note)
+        self._select.bind_env(env)
 
     def _fail(self, reason: str) -> FrameAction:
         self.failed = True
-        self._set_phase(SelectPhase.FAILED, reason)
+        self._select.failed = True
+        self._select.fail_reason = reason
+        if reason not in self.notes:
+            self.notes.append(reason)
         return FrameAction(nes_idle_action(), reason)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
-        self.phase_frames += 1
         if self.success:
             return FrameAction(nes_idle_action(), "done")
         if self.failed or self.frames >= self.max_frames:
@@ -316,47 +313,22 @@ class SelectRedCandleController:
                 return self._fail("select_candle_entry_contract_mismatch")
         if snap.mode == 17:
             return self._fail("link_death")
-        if self.phase is SelectPhase.OPEN:
-            if selected == B_ITEM_CANDLE:
-                self.success = True
-                self._set_phase(SelectPhase.DONE, "red_candle_already_selected")
-                return FrameAction(nes_idle_action(), "done")
-            self._set_phase(SelectPhase.OPEN_SETTLE, "pause_open")
-            return FrameAction(nes_action("START"), "pause_open")
-        if self.phase is SelectPhase.OPEN_SETTLE:
-            if self.phase_frames >= 20:
-                self._set_phase(SelectPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_settle")
-        if self.phase is SelectPhase.CYCLE:
-            if selected == B_ITEM_CANDLE:
-                self._set_phase(SelectPhase.CLOSE, "candle_cursor_selected")
-                return FrameAction(nes_idle_action(), "cursor_ready")
-            if self.cursor_moves >= 8:
-                return self._fail("candle_cursor_not_found")
-            self.cursor_moves += 1
-            self._set_phase(SelectPhase.CURSOR_SETTLE)
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is SelectPhase.CURSOR_SETTLE:
-            if self.phase_frames >= 8:
-                self._set_phase(SelectPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_cursor_settle")
-        if self.phase is SelectPhase.CLOSE:
-            self._set_phase(SelectPhase.CLOSE_SETTLE, "pause_close")
-            return FrameAction(nes_action("START"), "pause_close")
-        if self.phase is SelectPhase.CLOSE_SETTLE:
-            if self.phase_frames < 24:
-                return FrameAction(nes_idle_action(), "pause_resume")
+        action = self._select.drive(snap)
+        for note in self._select.notes:
+            if note not in self.notes:
+                self.notes.append(note)
+        if self._select.failed:
+            return self._fail(self._select.fail_reason or "select_candle_failed")
+        if action is None:
             if (
                 snap.level == 0
                 and snap.mode == PLAY_MODE
                 and snap.screen == SCREEN_LEVEL8_BUSH
-                and selected == B_ITEM_CANDLE
             ):
                 self.success = True
-                self._set_phase(SelectPhase.DONE, "red_candle_selected_naturally")
                 return FrameAction(nes_idle_action(), "done")
             return self._fail("pause_close_contract_mismatch")
-        return FrameAction(nes_idle_action(), "done")
+        return action
 
     def report(self) -> dict[str, Any]:
         return {

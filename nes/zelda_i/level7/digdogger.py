@@ -46,7 +46,8 @@ from zelda_i.level7.path import (
     ROOM_49,
     ROOM_69,
 )
-from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
+from zelda_i.dungeon.pause_select import B_SLOT_RECORDER, PauseSelectController
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 __all__ = [
     "DEST",
@@ -72,15 +73,11 @@ LEVEL7 = 7
 ROOM = 0x1C
 DEST = 0x0C
 DEATH_MODE = 17
-WHISTLE_B_SLOT = 5
+WHISTLE_B_SLOT = B_SLOT_RECORDER
 WHISTLE_STAND = (120, 141)
 NORTH_DOOR = (120, 93)
 ARRIVE_TOL = 3
 STAND_SETTLE_FRAMES = 8
-OPEN_SETTLE_FRAMES = 20
-CURSOR_SETTLE_FRAMES = 8
-CLOSE_SETTLE_FRAMES = 24
-MAX_CURSOR_MOVES = 8
 BLOW_PRESSES = 12
 BLOW_WAIT_FRAMES = 240
 BLOW_ATTEMPTS = 4
@@ -93,12 +90,7 @@ _SCROLL_MODES = (2, 3, 4, 6, 7, 10, 16)
 class DigdoggerPhase(Enum):
     WALK = auto()
     STAND_SETTLE = auto()
-    SELECT_OPEN = auto()
-    SELECT_OPEN_SETTLE = auto()
-    SELECT_CYCLE = auto()
-    SELECT_CURSOR_SETTLE = auto()
-    SELECT_CLOSE = auto()
-    SELECT_CLOSE_SETTLE = auto()
+    SELECT = auto()
     BLOW = auto()
     BLOW_WAIT = auto()
     SWORD = auto()
@@ -152,7 +144,6 @@ class Level7ForcedDigdoggerController:
     saw_large: bool = False
     shrunk: bool = False
     killed: bool = False
-    cursor_moves: int = 0
     blow_presses: int = 0
     blow_attempts: int = 0
     sword_frames: int = 0
@@ -161,9 +152,20 @@ class Level7ForcedDigdoggerController:
     leftover: dict[str, Any] | None = None
     notes: list[str] = field(default_factory=list)
     _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(
+            want=WHISTLE_B_SLOT, name="recorder"
+        )
 
     def bind_env(self, env: Any) -> None:
         self._env = env
+        self._select.bind_env(env)
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
 
     def _note(self, note: str) -> None:
         if note not in self.notes:
@@ -175,11 +177,6 @@ class Level7ForcedDigdoggerController:
             self.phase_frames = 0
             if note:
                 self._note(note)
-
-    def _selected(self) -> int | None:
-        if self._env is None:
-            return None
-        return read_u8(self._env.get_ram(), ADDR_SELECTED_ITEM)
 
     def _fail(self, reason: str) -> FrameAction:
         self.failed = True
@@ -228,59 +225,25 @@ class Level7ForcedDigdoggerController:
         self._set_phase(DigdoggerPhase.BLOW, note)
         return FrameAction(nes_action("B"), "whistle_blow")
 
-    def _after_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        selected = self._selected()
-        if selected is None:
-            return self._fail("digdogger_env_not_bound")
-        if self.selected_before is None:
-            self.selected_before = selected
-        if selected == WHISTLE_B_SLOT:
-            return self._begin_blow("recorder_already_selected")
-        self._set_phase(DigdoggerPhase.SELECT_OPEN_SETTLE, "pause_open")
-        return FrameAction(nes_action("START"), "pause_open")
-
-    def _select(self, snap: ZeldaSnapshot) -> FrameAction:
-        selected = self._selected()
-        if selected is None:
-            return self._fail("digdogger_env_not_bound")
-        if self.phase is DigdoggerPhase.SELECT_OPEN:
-            if selected == WHISTLE_B_SLOT:
-                return self._begin_blow("recorder_already_selected")
-            self._set_phase(DigdoggerPhase.SELECT_OPEN_SETTLE, "pause_open")
-            return FrameAction(nes_action("START"), "pause_open")
-        if self.phase is DigdoggerPhase.SELECT_OPEN_SETTLE:
-            if self.phase_frames >= OPEN_SETTLE_FRAMES:
-                self._set_phase(DigdoggerPhase.SELECT_CYCLE)
-            return FrameAction(nes_idle_action(), "pause_settle")
-        if self.phase is DigdoggerPhase.SELECT_CYCLE:
-            if selected == WHISTLE_B_SLOT:
-                self._set_phase(DigdoggerPhase.SELECT_CLOSE, "recorder_cursor_selected")
-                return FrameAction(nes_idle_action(), "cursor_ready")
-            if self.cursor_moves >= MAX_CURSOR_MOVES:
-                return self._fail("recorder_cursor_not_found")
-            self.cursor_moves += 1
-            self._set_phase(DigdoggerPhase.SELECT_CURSOR_SETTLE)
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is DigdoggerPhase.SELECT_CURSOR_SETTLE:
-            if self.phase_frames >= CURSOR_SETTLE_FRAMES:
-                self._set_phase(DigdoggerPhase.SELECT_CYCLE)
-            return FrameAction(nes_idle_action(), "pause_cursor_settle")
-        if self.phase is DigdoggerPhase.SELECT_CLOSE:
-            self._set_phase(DigdoggerPhase.SELECT_CLOSE_SETTLE, "pause_close")
-            return FrameAction(nes_action("START"), "pause_close")
-        if self.phase is DigdoggerPhase.SELECT_CLOSE_SETTLE:
-            if self.phase_frames < CLOSE_SETTLE_FRAMES:
-                return FrameAction(nes_idle_action(), "pause_resume")
+    def _run_select(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = self._select.drive(snap)
+        for note in self._select.notes:
+            self._note(note)
+        if self._select.failed:
+            return self._fail(self._select.fail_reason)
+        if action is None:
             if (
-                snap.level == LEVEL7
-                and snap.mode == PLAY_MODE
-                and int(snap.screen) == ROOM
-                and selected == WHISTLE_B_SLOT
+                snap.level != LEVEL7
+                or snap.mode != PLAY_MODE
+                or int(snap.screen) != ROOM
             ):
-                return self._begin_blow("recorder_selected_naturally")
-            return self._fail("pause_close_contract_mismatch")
-        return FrameAction(nes_idle_action(), "select")
+                return self._fail("pause_close_contract_mismatch")
+            return self._begin_blow("recorder_ready")
+        return action
+
+    def _after_stand(self, snap: ZeldaSnapshot) -> FrameAction:
+        self._set_phase(DigdoggerPhase.SELECT, "select_recorder")
+        return self._run_select(snap)
 
     def _sword(self, snap: ZeldaSnapshot) -> FrameAction:
         self.sword_frames += 1
@@ -364,15 +327,8 @@ class Level7ForcedDigdoggerController:
             if self.phase_frames >= STAND_SETTLE_FRAMES:
                 return self._after_stand(snap)
             return FrameAction(nes_idle_action(), "stand_settle")
-        if self.phase in (
-            DigdoggerPhase.SELECT_OPEN,
-            DigdoggerPhase.SELECT_OPEN_SETTLE,
-            DigdoggerPhase.SELECT_CYCLE,
-            DigdoggerPhase.SELECT_CURSOR_SETTLE,
-            DigdoggerPhase.SELECT_CLOSE,
-            DigdoggerPhase.SELECT_CLOSE_SETTLE,
-        ):
-            return self._select(snap)
+        if self.phase is DigdoggerPhase.SELECT:
+            return self._run_select(snap)
         if self.phase is DigdoggerPhase.BLOW:
             if _shrunk_live(snap):
                 self._set_phase(DigdoggerPhase.SWORD, "shrunk_during_blow")

@@ -387,17 +387,6 @@ def level3_room_7b_key_success(ram: np.ndarray) -> bool:
     )
 
 
-def level3_room_6b_zols_cleared(ram: np.ndarray) -> bool:
-    """0x6b with no live type-0x13 Zols (RoomAllDead not required)."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_NORTH_ZOLS
-        and snap.mode == PLAY_MODE
-        and not ROOM_6B_SPEC.live_enemies(snap)
-    )
-
-
 def level3_reached_5b(ram: np.ndarray) -> bool:
     """Isolated pure stop: play mode inside 0x5b (Darknut room)."""
     snap = read_snapshot(ram)
@@ -421,44 +410,11 @@ def level3_cleared_5b(ram: np.ndarray) -> bool:
     )
 
 
-def level3_room_4b_zols_cleared(ram: np.ndarray) -> bool:
-    """0x4b with no live type-0x13 Zols (RoomAllDead not required)."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_ZOL_KEY_4B
-        and snap.mode == PLAY_MODE
-        and not ROOM_4B_SPEC.live_enemies(snap)
-    )
-
-
 def level3_has_raft(ram: np.ndarray) -> bool:
     """ADDR_RAFT inventory bit set (assisted LIVE pickup in 0x0f passage)."""
     from zelda_i.ram import ADDR_RAFT, read_u8
 
     return bool(read_u8(ram, ADDR_RAFT))
-
-
-def level3_reached_boss_prep(ram: np.ndarray) -> bool:
-    """Play mode in room 0x5d (Manhandla prep east of bomb-shortcut 0x5c)."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_BOSS_PREP
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
-
-
-def level3_reached_boss(ram: np.ndarray) -> bool:
-    """Play mode in room 0x4d (Manhandla candidate north of 0x5d)."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL3
-        and snap.screen == ROOM_L3_BOSS
-        and snap.mode == PLAY_MODE
-        and not snap.transitioning
-    )
 
 
 def level3_manhandla_live(snap: ZeldaSnapshot) -> list:
@@ -470,21 +426,6 @@ def level3_manhandla_live(snap: ZeldaSnapshot) -> list:
         and o.type_id == MANHANDLA_OBJECT_TYPE
         and o.hp > 0
     ]
-
-
-def level3_boss_prep_killables(snap: ZeldaSnapshot) -> list:
-    """Killable enemies on 0x5d: Zol + Keese only (ignore invuln 0x2b)."""
-    out = []
-    for o in snap.objects:
-        if not (1 <= o.slot <= 10):
-            continue
-        if o.type_id == ZOL_OBJECT_TYPE and o.hp > 0:
-            out.append(o)
-        elif o.type_id == KEESE_OBJECT_TYPE:
-            # Keese often report HP 0 while still "alive" for type liveness
-            out.append(o)
-    return out
-
 
 
 # Register room specs (path controllers in level3_path / level3_raft_path).

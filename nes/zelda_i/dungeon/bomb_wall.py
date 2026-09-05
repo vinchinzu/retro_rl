@@ -17,6 +17,7 @@ from typing import Any, Callable, Protocol
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, DungeonRoomSpec, GenericDungeonRoomController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 BOMB_N_STAND_TOL = 4
@@ -43,6 +44,7 @@ class BombWallPhase(Enum):
     SOUTH_BAND = auto()
     TO_STAND = auto()
     FACE = auto()
+    SELECT = auto()
     PLACE = auto()
     WAIT = auto()
     PUSH = auto()
@@ -89,6 +91,9 @@ class BombWallController:
     wait_hold_face: bool = False
     # Fail if bomb count did not drop during WAIT (strict L2 6f/5f policy).
     require_bomb_consumed: bool = True
+    # Pause-select this B-slot before PLACE. None keeps L2/L3 poke-assisted
+    # behavior. L7 factories pass B_SLOT_BOMBS (never poke ``$0656``).
+    select_item: int | None = None
     stand_tol: int = BOMB_N_STAND_TOL
     stand_timeout: int = 2500
     push_timeout: int = 700
@@ -102,6 +107,13 @@ class BombWallController:
     bombs_before_place: int | None = None
     bombs_after_place: int | None = None
     clear_controller: GenericDungeonRoomController | None = None
+    _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController | None = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+        if self._select is not None:
+            self._select.bind_env(env)
 
     @property
     def stand(self) -> tuple[int, int]:
@@ -358,8 +370,28 @@ class BombWallController:
         if self.phase is BombWallPhase.FACE:
             if self.phase_frames < self.face_frames:
                 return FrameAction(nes_action(self.face), f"face_{self.face.lower()}")
-            self._set_phase(BombWallPhase.PLACE, "faced")
-            # fall through to place same frame for 6f/5f style; 1e places on FACE end
+            if self.select_item is not None:
+                self._set_phase(BombWallPhase.SELECT, "faced_select")
+            else:
+                self._set_phase(BombWallPhase.PLACE, "faced")
+                # fall through to place same frame for 6f/5f style; 1e places on FACE end
+
+        if self.phase is BombWallPhase.SELECT:
+            want = B_SLOT_BOMBS if self.select_item is None else int(self.select_item)
+            if self._env is None:
+                return self._fail("bombs_select_env_not_bound")
+            if self._select is None:
+                self._select = PauseSelectController(want=want, name="bombs")
+                self._select.bind_env(self._env)
+            driven = self._select.drive(snap)
+            self.notes.extend(
+                note for note in self._select.notes if note not in self.notes
+            )
+            if self._select.failed:
+                return self._fail(self._select.fail_reason or "bombs_not_selected")
+            if driven is not None:
+                return driven
+            self._set_phase(BombWallPhase.PLACE, "bombs_selected")
 
         if self.phase is BombWallPhase.PLACE:
             if snap.bombs <= 0:

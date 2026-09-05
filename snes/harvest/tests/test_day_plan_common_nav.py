@@ -575,13 +575,81 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(task._nav.waypoints, ROUTES["farm_south_to_west_gate"])
 
     def test_farm_exit_uses_south_route_from_shipping_bin(self) -> None:
-        """Live grape return is tile (8,28), not south of the y=31 fence."""
+        """Live grape return is tile (8,28), north of the y=31 fence.
+
+        farm_south_to_west_gate first-hops berry (55,60) and 10k-hugs.
+        Join the y=26 pinch, then west to the gate.
+        """
         from harvest.planner.tasks.inventory_exit import FarmExitTask
 
         world = make_transition_world(0x00, current_tile=(8, 28))
         task = FarmExitTask(timeout=10_000)
         task.reset(world)
-        self.assertEqual(task._nav.waypoints, ROUTES["farm_south_to_west_gate"])
+        hops = [wp.target_px for wp in task._nav.waypoints]
+        self.assertNotEqual(task._nav.waypoints, ROUTES["farm_south_to_west_gate"])
+        self.assertNotIn((888, 968), hops)
+        self.assertIn((136, 424), hops)
+        self.assertIn((72, 424), hops)
+        self.assertEqual(hops[-1], (40, 424))
+        self.assertTrue(task._nav.waypoints[-1].is_exit)
+        self.assertTrue(all(wp.tilemap == 0x00 for wp in task._nav.waypoints))
+
+    def test_farm_exit_from_bin_west_joins_pinch_row_before_sidestep(self) -> None:
+        """Power-on grape-return (7,27)/(115,432): do not sidestep on y=27.
+
+        run_left to (72,424) with dy==radius holds LEFT into (1,27)=FF.
+        Up onto y=26 at current x, then east to the pinch column.
+        """
+        from harvest.planner.tasks.inventory_exit import FarmExitTask
+
+        world = make_transition_world(0x00, current_tile=(7, 27))
+        set_player_pos(world.ram, 115, 432)
+        task = FarmExitTask(timeout=10_000)
+        task.reset(world)
+        hops = [wp.target_px for wp in task._nav.waypoints]
+        row_join = next(wp for wp in task._nav.waypoints if wp.target_px == (115, 424))
+        self.assertIn((115, 424), hops)
+        self.assertNotIn((136, 432), hops)
+        self.assertIn((136, 424), hops)
+        self.assertIn((72, 424), hops)
+        self.assertEqual(hops[-1], (40, 424))
+        self.assertLess(hops.index((115, 424)), hops.index((136, 424)))
+        self.assertLessEqual(row_join.radius, 6)
+        self.assertGreater(abs(432 - 424), row_join.radius)
+
+    def test_multi_nav_run_left_aligns_when_dy_equals_radius(self) -> None:
+        """(7,27) y=432 vs pinch-west y=424 r=8: 8>=8 must UP, not LEFT."""
+        task = MultiMapNavTask(
+            waypoints=[
+                Waypoint(
+                    tilemap=0x00,
+                    target_px=(72, 424),
+                    radius=8,
+                    run_direction="left",
+                )
+            ],
+            initial_settle_frames=0,
+        )
+        world = make_transition_world(0x00, current_tile=(7, 27))
+        set_player_pos(world.ram, 115, 432)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(result.action)
+        self.assertEqual(int(result.action.action[4]), 1)  # up
+        self.assertEqual(int(result.action.action[6]), 0)  # not left
+
+    def test_farm_exit_waits_have_lunch(self) -> None:
+        from harvest.planner.tasks.inventory_exit import FarmExitTask
+        from harvest.core.ram_catalog import field_spec
+
+        world = make_transition_world(0x00, current_tile=(7, 27))
+        world.ram[field_spec("hour").address] = 12
+        task = FarmExitTask(timeout=10_000)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("have lunch", result.reason or "")
 
     def test_berry_ship_fails_closed_without_shipping_money_delta(self) -> None:
         from harvest.tasks.berry_ship import BerryShipTask

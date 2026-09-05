@@ -10,42 +10,28 @@ from zelda_i.level6.occupancy import (
     occupancy_new_miss,
 )
 from zelda_i.level6.path import Level6North68Controller
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOMBS,
-    ADDR_BOW,
-    ADDR_COLLIDING_TILE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_RUPEES,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import ADDR_RUPEES, PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 from zelda_i.walk.physics import OccupancyWalker
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": 0x3A,
+    "x": 96,
+    "y": 157,
+    "triforce": 0x1F,
+    "keys": 4,
+    "bombs": 8,
+    "rod": 1,
+    "bow": 0,
+    "arrows": 0,
+    "tile": 118,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x3A)
-    ram[ADDR_LINK_X] = fields.get("x", 96)
-    ram[ADDR_LINK_Y] = fields.get("y", 157)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_ROD] = fields.get("rod", 1)
-    ram[ADDR_BOW] = fields.get("bow", 0)
-    ram[ADDR_ARROWS] = fields.get("arrows", 0)
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 118)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_north68_peels_south_from_0x78_statue_pocket() -> None:

@@ -84,6 +84,7 @@ class Level6RodController(HopController):
     settle_xy: tuple[int, int] | None = None
     stable_frames: int = 0
     climbed: bool = False
+    initial_rod: int | None = None
 
     def _rod(self, snap: ZeldaSnapshot) -> int:
         return int(snap.rod)
@@ -128,7 +129,18 @@ class Level6RodController(HopController):
         return super().mark_done(snap, note)
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
-        return bool(self._rod(snap))
+        return (
+            self.initial_rod is not None
+            and self.initial_rod == 0
+            and bool(self._rod(snap))
+        )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.initial_rod is None:
+            self.initial_rod = self._rod(snap)
+            if self.initial_rod:
+                return self.mark_fail("already_rod")
+        return super().step(snap)
 
     def on_arrive(self, snap: ZeldaSnapshot) -> str:
         return f"rod_{snap.mode}_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"

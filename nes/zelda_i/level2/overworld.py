@@ -325,17 +325,6 @@ def level2_path_prefix_success(ram: np.ndarray) -> bool:
     )
 
 
-def level2_screen_reached(ram: np.ndarray) -> bool:
-    snap = read_snapshot(ram)
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_LEVEL2
-        and snap.has_sword
-        and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
-    )
-
-
 def level2_entrance_success(ram: np.ndarray) -> bool:
     """Room-ready inside Moon entry: level 2, play mode, room 0x7d."""
     snap = read_snapshot(ram)

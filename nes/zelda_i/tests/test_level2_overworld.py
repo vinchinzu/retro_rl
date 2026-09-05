@@ -23,32 +23,23 @@ from zelda_i.overworld.graph import (
     neighbor_screens,
     node_id_for_screen,
 )
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    SCREEN_LEVEL1_ENTRANCE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, SCREEN_LEVEL1_ENTRANCE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": SCREEN_LEVEL1_ENTRANCE,
+    "x": 112,
+    "y": 125,
+    "health": 0x33,
+    "sword": 1,
+    "triforce": 0x01,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", SCREEN_LEVEL1_ENTRANCE)
-    ram[ADDR_LINK_X] = fields.get("x", 112)
-    ram[ADDR_LINK_Y] = fields.get("y", 125)
-    ram[ADDR_HEALTH] = fields.get("health", 0x33)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x01)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_level2_path_screens_chain() -> None:

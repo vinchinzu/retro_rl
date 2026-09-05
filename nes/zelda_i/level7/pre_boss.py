@@ -9,6 +9,7 @@ probe/spine's job.
 from __future__ import annotations
 
 from zelda_i.dungeon.bomb_wall import BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level7.cellar import DEST_ROOM
 from zelda_i.level7.path import Level7BombWall
 from zelda_i.level7.stairs import AQUAMENTUS_ROM
@@ -41,4 +42,5 @@ def make_room29_east_bomb_controller() -> BombWallController:
         level=LEVEL7,
         approach_waypoints=L7_ROOM29_EAST_APPROACH,
         approach_tol=4,
+        select_item=B_SLOT_BOMBS,
     )

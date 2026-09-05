@@ -110,3 +110,14 @@ def test_rod_cellar_ok_accepts_mode_9() -> None:
     snap = read_snapshot(ram)
     assert rod_cellar_ok(snap)
     assert not ok6(rod=True, tf_eq=0x1F)(snap)
+
+
+def test_rod_pickup_fails_closed_if_already_owned() -> None:
+    from zelda_i.level6.rod import make_rod_75_controller
+
+    ram = _ram(mode=PASSAGE_MODE, screen=0x75, x=48, y=93)
+    ram[ADDR_ROD] = 1
+    ctl = make_rod_75_controller()
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed and not ctl.success
+    assert act.reason == "already_rod"

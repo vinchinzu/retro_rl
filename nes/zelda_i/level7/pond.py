@@ -1,20 +1,18 @@
-"""Level 7 Demon pond: pause-select Recorder, whistle-drain, stairs into 0x79.
+"""Level 7 Demon pond: post-L6 walk, pause-select Recorder, drain into 0x79.
 
-Live recipe (``scratch/probe_l7_pond_drain.py`` drain_v2, ``LEVEL7_ROUTE.md``):
+Scratch probes live in ``scratch/pond/``. Drain recipe
+(``scratch/pond/probe_l7_pond_drain.py`` drain_v2, ``LEVEL7_ROUTE.md``):
 OW ``$EB=0x42`` south shore ``(128,221)`` → stand ``(128,189)`` → 12×B + idle
 ~240 for the song → stairs ``(96,132)`` tile 114 → L7 play ``0x79``
 ``(120,205)``.  Requires already-owned Whistle (``ADDR_WHISTLE`` / ``$065C``
 >= 1).  Never poke whistle or ``$0656`` selected_item.
 
-Pause-select B-slot 5 through the menu — START / idle 20 / RIGHT / idle 8 /
-START close / idle 24, same shape as ``level7.hungry`` / ``level7.digdogger``.
-Snapshot has no ``selected_item``; read ``ADDR_SELECTED_ITEM`` after
-``bind_env``.
+Pause-select B-slot 5 through ``dungeon.pause_select``. Snapshot has no
+``selected_item``; read ``ADDR_SELECTED_ITEM`` after ``bind_env``.
 
-OccupancyWalker is banned (overworld south shore sits outside dungeon bounds).
-Waypoint micro toward the live stairs cell; seek probe candidates if that
-cell does not trigger; halt on the first occupancy miss (do not batch).
-No RAM writes.  ``route_eligible=False``.
+Drain occupancy is waypoint-only (overworld south shore sits outside dungeon
+bounds). Halt on the first occupancy miss (do not batch). No RAM writes.
+``route_eligible=False``.
 """
 
 from __future__ import annotations
@@ -25,8 +23,26 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.anchors import SCREEN_LEVEL6_ENTRANCE
+from zelda_i.dungeon.pause_select import (
+    B_SLOT_RECORDER,
+    PauseSelectController,
+)
+from zelda_i.level7.overworld import (
+    POST_L6_TO_POND_HOPS,
+    at_l6_cave_mouth,
+    bait_24_east_action,
+    bait_32_north_action,
+    make_pond_22_walker,
+    make_pond_53_walker,
+    on_level7_pond_hyp,
+    pond_22_to_21_action,
+    pond_suffix_extra_hop_action,
+)
+from zelda_i.overworld.graph import ScreenHop
+from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from zelda_i.ram import (
-    ADDR_SELECTED_ITEM,
     ADDR_WHISTLE,
     PLAY_MODE,
     ZeldaSnapshot,
@@ -44,9 +60,13 @@ __all__ = [
     "STAIR_CANDIDATES",
     "STAIRS_XY",
     "WHISTLE_B_SLOT",
+    "ApproachPhase",
     "Level7PondDrainController",
+    "POST_L6_TO_POND_HOPS",
     "PondPhase",
+    "PostLevel6OverworldController",
     "make_pond_drain_controller",
+    "make_post_l6_overworld_controller",
 ]
 
 LEVEL7 = 7
@@ -58,7 +78,7 @@ SOUTH_SHORE = (128, 221)
 BLOW_STAND = (128, 189)
 STAIRS_XY = (96, 132)
 POND_STAIR_TILE = 114
-WHISTLE_B_SLOT = 5
+WHISTLE_B_SLOT = B_SLOT_RECORDER
 # drain_v2 first cell is STAIRS_XY; remaining cells copy probe STAIR_CANDIDATES.
 STAIR_CANDIDATES: tuple[tuple[int, int], ...] = (
     STAIRS_XY,
@@ -73,12 +93,8 @@ STAIR_CANDIDATES: tuple[tuple[int, int], ...] = (
     (120, 128),
 )
 POND_MAX_FRAMES = 8000
-SELECT_MAX_FRAMES = 240
+APPROACH_MAX_FRAMES = 40_000
 STAND_SETTLE_FRAMES = 8
-OPEN_SETTLE_FRAMES = 20
-CURSOR_SETTLE_FRAMES = 8
-CLOSE_SETTLE_FRAMES = 24
-MAX_CURSOR_MOVES = 8
 BLOW_PRESSES = 12
 BLOW_WAIT_FRAMES = 240
 ARRIVE_TOL = 3
@@ -88,12 +104,7 @@ WAIT_MODES = (2, 3, 4, 6, 7, 9, 10, 11, 16)
 
 
 class PondPhase(Enum):
-    OPEN = auto()
-    OPEN_SETTLE = auto()
-    CYCLE = auto()
-    CURSOR_SETTLE = auto()
-    CLOSE = auto()
-    CLOSE_SETTLE = auto()
+    SELECT = auto()
     WALK = auto()
     STAND_SETTLE = auto()
     BLOW = auto()
@@ -101,16 +112,6 @@ class PondPhase(Enum):
     STAIRS = auto()
     DONE = auto()
     FAILED = auto()
-
-
-_SELECT_PHASES = (
-    PondPhase.OPEN,
-    PondPhase.OPEN_SETTLE,
-    PondPhase.CYCLE,
-    PondPhase.CURSOR_SETTLE,
-    PondPhase.CLOSE,
-    PondPhase.CLOSE_SETTLE,
-)
 
 
 def _toward(
@@ -132,10 +133,9 @@ class Level7PondDrainController:
     """Drain live OW ``0x42`` with owned Whistle and enter play ``0x79``."""
 
     max_frames: int = POND_MAX_FRAMES
-    phase: PondPhase = PondPhase.OPEN
+    phase: PondPhase = PondPhase.SELECT
     frames: int = 0
     phase_frames: int = 0
-    cursor_moves: int = 0
     blow_presses: int = 0
     stair_index: int = 0
     success: bool = False
@@ -146,12 +146,23 @@ class Level7PondDrainController:
     leftover: dict[str, Any] | None = None
     notes: list[str] = field(default_factory=list)
     _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
     _stuck: int = field(default=0, init=False, repr=False)
     _dwell: int = field(default=0, init=False, repr=False)
     _last_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(
+            want=WHISTLE_B_SLOT, name="recorder"
+        )
+
     def bind_env(self, env: Any) -> None:
         self._env = env
+        self._select.bind_env(env)
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
 
     def _note(self, note: str) -> None:
         if note not in self.notes:
@@ -252,48 +263,18 @@ class Level7PondDrainController:
             return self._walk_stairs(snap)
         return FrameAction(nes_idle_action(), "done")
 
-    def _select(self, snap: ZeldaSnapshot, selected: int) -> FrameAction:
-        if self.frames >= SELECT_MAX_FRAMES:
-            return self._fail("select_recorder_timeout")
-        if self.phase is PondPhase.OPEN:
-            if selected == WHISTLE_B_SLOT:
-                self._set_phase(PondPhase.WALK, "recorder_already_selected")
-                return self._after_select(snap)
-            self._set_phase(PondPhase.OPEN_SETTLE, "pause_open")
-            return FrameAction(nes_action("START"), "pause_open")
-        if self.phase is PondPhase.OPEN_SETTLE:
-            if self.phase_frames >= OPEN_SETTLE_FRAMES:
-                self._set_phase(PondPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_settle")
-        if self.phase is PondPhase.CYCLE:
-            if selected == WHISTLE_B_SLOT:
-                self._set_phase(PondPhase.CLOSE, "recorder_cursor_selected")
-                return FrameAction(nes_idle_action(), "cursor_ready")
-            if self.cursor_moves >= MAX_CURSOR_MOVES:
-                return self._fail("recorder_cursor_not_found")
-            self.cursor_moves += 1
-            self._set_phase(PondPhase.CURSOR_SETTLE)
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is PondPhase.CURSOR_SETTLE:
-            if self.phase_frames >= CURSOR_SETTLE_FRAMES:
-                self._set_phase(PondPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_cursor_settle")
-        if self.phase is PondPhase.CLOSE:
-            self._set_phase(PondPhase.CLOSE_SETTLE, "pause_close")
-            return FrameAction(nes_action("START"), "pause_close")
-        if self.phase is PondPhase.CLOSE_SETTLE:
-            if self.phase_frames < CLOSE_SETTLE_FRAMES:
-                return FrameAction(nes_idle_action(), "pause_resume")
-            if (
-                snap.level == 0
-                and snap.mode == PLAY_MODE
-                and int(snap.screen) == POND_SCREEN
-                and selected == WHISTLE_B_SLOT
-            ):
-                self._set_phase(PondPhase.WALK, "recorder_selected_naturally")
-                return self._after_select(snap)
-            return self._fail("pause_close_contract_mismatch")
-        return FrameAction(nes_idle_action(), "select")
+    def _run_select(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        action = self._select.drive(snap)
+        for note in self._select.notes:
+            self._note(note)
+        if self._select.failed:
+            return self._fail(self._select.fail_reason)
+        if action is None:
+            if snap.level != 0 or int(snap.screen) != POND_SCREEN:
+                return self._fail("pause_close_contract_mismatch")
+            self._set_phase(PondPhase.WALK, "recorder_ready")
+            return self._after_select(snap)
+        return action
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -304,7 +285,6 @@ class Level7PondDrainController:
             return self._fail("pond_drain_env_not_bound")
         ram = self._env.get_ram()
         whistle = int(read_u8(ram, ADDR_WHISTLE))
-        selected = int(read_u8(ram, ADDR_SELECTED_ITEM))
         if self.screen_in is None:
             self.screen_in = int(snap.screen)
             self.level_in = int(snap.level)
@@ -342,8 +322,8 @@ class Level7PondDrainController:
                 return self._fail(
                     f"left_room_L{snap.level}_0x{snap.screen:02x}"
                 )
-        if self.phase in _SELECT_PHASES:
-            return self._select(snap, selected)
+        if self.phase is PondPhase.SELECT:
+            return self._run_select(snap)
         return self._after_select(snap)
 
     def report(self) -> dict[str, Any]:
@@ -376,3 +356,149 @@ class Level7PondDrainController:
 def make_pond_drain_controller() -> Level7PondDrainController:
     """Fresh 0x42 whistle-drain + 0x79 entry controller (never share instances)."""
     return Level7PondDrainController()
+
+
+class ApproachPhase(Enum):
+    HOP = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class PostLevel6OverworldController(OverworldPathController):
+    """Measured L6 leave -> greened pond-prefix hops.  Success only on 0x42.
+
+    Refuses every frame until the shared ``OverworldHandoff`` verifies.  Once it
+    does, walks ``POST_L6_TO_POND_HOPS``.  A partial table fails closed on the
+    last greened screen via ``_after_hops``; OW ``0x42`` mode 5 is SUCCESS.
+    Never walk UP into the 0x22 cave mouth (mode 16 → L6).
+    """
+
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS
+    phase: ApproachPhase = ApproachPhase.HOP
+    max_frames: int = APPROACH_MAX_FRAMES
+    require_sword: bool = True
+    _env: Any = field(default=None, init=False, repr=False)
+    _handoff_checked: bool = field(default=False, init=False, repr=False)
+    _left_mouth: bool = field(default=False, init=False, repr=False)
+    _pond22_walk: Any = field(default=None, init=False, repr=False)
+    _pond53_walk: Any = field(default=None, init=False, repr=False)
+
+    @property
+    def failed(self) -> bool:
+        return self.phase is ApproachPhase.FAILED
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def _fail_now(self, reason: str) -> FrameAction:
+        self._set_phase(ApproachPhase.FAILED, reason)
+        return FrameAction(nes_idle_action(), reason)
+
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if on_level7_pond_hyp(snap):
+            return self._finish("post_l6_pond_0x42")
+        return self._fail_now("post_l6_path_exhausted_unmeasured")
+
+    def _on_hop_advanced(
+        self, snap: ZeldaSnapshot, completed_hop: ScreenHop
+    ) -> FrameAction:
+        del completed_hop
+        if on_level7_pond_hyp(snap):
+            return self._finish("post_l6_pond_0x42")
+        if self.hop_index >= len(self.hops):
+            return self._after_hops(snap)
+        return FrameAction(nes_idle_action(), "hop_advance")
+
+    def _pond22_walker(self):
+        if self._pond22_walk is None:
+            self._pond22_walk = make_pond_22_walker()
+        return self._pond22_walk
+
+    def _pond53_walker(self):
+        if self._pond53_walk is None:
+            self._pond53_walk = make_pond_53_walker()
+        return self._pond53_walk
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        if hop.target == 0x21 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
+            act = pond_22_to_21_action(
+                snap, walker=self._pond22_walker(), swing=self._swing
+            )
+            if act is not None:
+                if act.reason == "22_no_path_stand":
+                    blocked = len(self._pond22_walker().grid.blocked)
+                    return self._fail_now(
+                        f"22_west_no_path_m{self._pond22_walker().misses}_b{blocked}"
+                    )
+                return act
+        extra = pond_suffix_extra_hop_action(
+            snap, hop, swing=self._swing, pond53_walker=self._pond53_walker()
+        )
+        if extra is not None:
+            return extra
+        if hop.target == 0x33:
+            act = bait_32_north_action(snap, swing=self._swing)
+            if act is not None:
+                return act
+        if hop.target == 0x25:
+            act = bait_24_east_action(snap, swing=self._swing)
+            if act is not None:
+                return act
+        if self.stuck > self.stuck_threshold:
+            return FrameAction(nes_idle_action(), "post_l6_path_stuck_wait")
+        return None
+
+    def _reentry_refusal(self, snap: ZeldaSnapshot) -> str | None:
+        if snap.level == 6:
+            return "l6_dungeon_enter"
+        if snap.mode == 16 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
+            return "l6_cave_mouth_enter"
+        if snap.in_cave:
+            return "unexpected_cave"
+        if not at_l6_cave_mouth(snap):
+            self._left_mouth = True
+        elif self._left_mouth:
+            return "l6_cave_mouth_reentry"
+        return None
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed:
+            return FrameAction(nes_idle_action(), "failed")
+        if not self._handoff_checked:
+            if self._env is None:
+                return self._fail_now("entry_controller_env_not_bound")
+            mismatch = self.handoff.mismatch(snap, self._env.get_ram())
+            if mismatch is not None:
+                return self._fail_now(mismatch)
+            if not self.hops:
+                return self._fail_now("post_l6_path_unmeasured")
+            self._handoff_checked = True
+            self.notes.append("post_l6_handoff_accepted")
+        reentry = self._reentry_refusal(snap)
+        if reentry is not None:
+            return self._fail_now(reentry)
+        return super().step(snap)
+
+    def report(self) -> dict[str, Any]:
+        out = super().report()
+        out.update(
+            {
+                "evidence": self.handoff.evidence,
+                "route_eligible": self.handoff.route_eligible,
+                "failed": self.failed,
+                "writes": 0,
+            }
+        )
+        return out
+
+
+def make_post_l6_overworld_controller(
+    *,
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
+    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
+) -> PostLevel6OverworldController:
+    return PostLevel6OverworldController(handoff=handoff, hops=hops)

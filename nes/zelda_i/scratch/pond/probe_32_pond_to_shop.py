@@ -7,7 +7,7 @@ Prefix walks to 0x32 with OverworldToBaitShopController; then a column-swept
 DOWN probe to 0x42, screenshots the pond, then chains RIGHT/RIGHT/UP.  Every
 screen change screenshotted; hard per-column give-up.
 
-    uv run python nes/zelda_i/scratch/probe_32_pond_to_shop.py --tag l7_32pond
+    uv run python nes/zelda_i/scratch/pond/probe_32_pond_to_shop.py --tag l7_32pond
 """
 
 from __future__ import annotations

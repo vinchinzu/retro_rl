@@ -12,7 +12,6 @@ natural Bait buy refuses until shop geometry is live and Link already holds
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
@@ -22,19 +21,12 @@ from zelda_i.anchors import (
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
 )
 from zelda_i.dungeon.ops import poke_food
-from zelda_i.level7.overworld import (
+from zelda_i.level7.pond import (
     POST_L6_TO_POND_HOPS,
-    at_l6_cave_mouth,
-    bait_24_east_action,
-    bait_32_north_action,
-    make_pond_22_walker,
-    make_pond_53_walker,
-    on_level7_pond_hyp,
-    pond_22_to_21_action,
-    pond_suffix_extra_hop_action,
+    ApproachPhase,
+    PostLevel6OverworldController,
+    make_post_l6_overworld_controller,
 )
-from zelda_i.overworld.graph import ScreenHop
-from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.stitch import (
     CUMULATIVE_TF,
     UNMEASURED_HANDOFF,
@@ -89,151 +81,6 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
     verified=True,
     route_eligible=False,
 )
-
-
-class ApproachPhase(Enum):
-    HOP = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class PostLevel6OverworldController(OverworldPathController):
-    """Measured L6 leave -> greened pond-prefix hops.  Success only on 0x42.
-
-    Refuses every frame until the shared ``OverworldHandoff`` verifies.  Once it
-    does, walks ``POST_L6_TO_POND_HOPS``.  A partial table fails closed on the
-    last greened screen via ``_after_hops``; OW ``0x42`` mode 5 is SUCCESS.
-    Never walk UP into the 0x22 cave mouth (mode 16 → L6).
-    """
-
-    handoff: OverworldHandoff = UNMEASURED_HANDOFF
-    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS
-    phase: ApproachPhase = ApproachPhase.HOP
-    max_frames: int = APPROACH_MAX_FRAMES
-    require_sword: bool = True
-    _env: Any = field(default=None, init=False, repr=False)
-    _handoff_checked: bool = field(default=False, init=False, repr=False)
-    # The measured L6 leave *is* the 0x22 cave-mouth tile (112,125).  Re-entry
-    # refusal only arms once Link has stepped off it.
-    _left_mouth: bool = field(default=False, init=False, repr=False)
-    _pond22_walk: Any = field(default=None, init=False, repr=False)
-    _pond53_walk: Any = field(default=None, init=False, repr=False)
-
-    @property
-    def failed(self) -> bool:
-        return self.phase is ApproachPhase.FAILED
-
-    def bind_env(self, env: Any) -> None:
-        self._env = env
-
-    def _fail_now(self, reason: str) -> FrameAction:
-        self._set_phase(ApproachPhase.FAILED, reason)
-        return FrameAction(nes_idle_action(), reason)
-
-    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
-        if on_level7_pond_hyp(snap):
-            return self._finish("post_l6_pond_0x42")
-        return self._fail_now("post_l6_path_exhausted_unmeasured")
-
-    def _on_hop_advanced(
-        self, snap: ZeldaSnapshot, completed_hop: ScreenHop
-    ) -> FrameAction:
-        del completed_hop
-        if on_level7_pond_hyp(snap):
-            return self._finish("post_l6_pond_0x42")
-        if self.hop_index >= len(self.hops):
-            return self._after_hops(snap)
-        return FrameAction(nes_idle_action(), "hop_advance")
-
-    def _pond22_walker(self):
-        if self._pond22_walk is None:
-            self._pond22_walk = make_pond_22_walker()
-        return self._pond22_walk
-
-    def _pond53_walker(self):
-        if self._pond53_walk is None:
-            self._pond53_walk = make_pond_53_walker()
-        return self._pond53_walk
-
-    def _extra_hop_action(
-        self, snap: ZeldaSnapshot, hop: ScreenHop
-    ) -> FrameAction | None:
-        if hop.target == 0x21 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
-            act = pond_22_to_21_action(
-                snap, walker=self._pond22_walker(), swing=self._swing
-            )
-            if act is not None:
-                if act.reason == "22_no_path_stand":
-                    blocked = len(self._pond22_walker().grid.blocked)
-                    return self._fail_now(
-                        f"22_west_no_path_m{self._pond22_walker().misses}_b{blocked}"
-                    )
-                return act
-        extra = pond_suffix_extra_hop_action(
-            snap, hop, swing=self._swing, pond53_walker=self._pond53_walker()
-        )
-        if extra is not None:
-            return extra
-        if hop.target == 0x33:
-            act = bait_32_north_action(snap, swing=self._swing)
-            if act is not None:
-                return act
-        if hop.target == 0x25:
-            act = bait_24_east_action(snap, swing=self._swing)
-            if act is not None:
-                return act
-        if self.stuck > self.stuck_threshold:
-            return FrameAction(nes_idle_action(), "post_l6_path_stuck_wait")
-        return None
-
-    def _reentry_refusal(self, snap: ZeldaSnapshot) -> str | None:
-        """Never walk back into the L6 dungeon mouth.
-
-        The measured leave stands *on* the mouth tile, so the position check
-        only arms after Link has stepped off it once (``_left_mouth``).
-        """
-        if snap.level == 6:
-            return "l6_dungeon_enter"
-        if snap.mode == 16 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
-            return "l6_cave_mouth_enter"
-        if snap.in_cave:
-            return "unexpected_cave"
-        if not at_l6_cave_mouth(snap):
-            self._left_mouth = True
-        elif self._left_mouth:
-            return "l6_cave_mouth_reentry"
-        return None
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        if self.failed:
-            return FrameAction(nes_idle_action(), "failed")
-        if not self._handoff_checked:
-            if self._env is None:
-                return self._fail_now("entry_controller_env_not_bound")
-            mismatch = self.handoff.mismatch(snap, self._env.get_ram())
-            if mismatch is not None:
-                return self._fail_now(mismatch)
-            if not self.hops:
-                return self._fail_now("post_l6_path_unmeasured")
-            self._handoff_checked = True
-            self.notes.append("post_l6_handoff_accepted")
-        reentry = self._reentry_refusal(snap)
-        if reentry is not None:
-            return self._fail_now(reentry)
-        return super().step(snap)
-
-    def report(self) -> dict[str, Any]:
-        out = super().report()
-        out.update(
-            {
-                "evidence": self.handoff.evidence,
-                "route_eligible": self.handoff.route_eligible,
-                "failed": self.failed,
-                "writes": 0,
-            }
-        )
-        return out
 
 
 @dataclass(frozen=True)
@@ -382,14 +229,6 @@ class SurvivalBaitPurchaseController:
             "capacity_writes": 0,
             "notes": list(self.notes),
         }
-
-
-def make_post_l6_overworld_controller(
-    *,
-    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
-    hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
-) -> PostLevel6OverworldController:
-    return PostLevel6OverworldController(handoff=handoff, hops=hops)
 
 
 def make_bait_purchase_controller(

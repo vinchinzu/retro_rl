@@ -25,36 +25,25 @@ from zelda_i.level1.bow_rejoin import (
     level1_bow_rejoin_success,
     make_bow_rejoin_controller,
 )
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOW,
-    ADDR_IS_UPDATING_MODE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PASSAGE_MODE,
+    "level": 1,
+    "screen": LEVEL1_BOW_CELLAR_ROOM,
+    "x": 128,
+    "y": 141,
+    "triforce": 0,
+    "keys": 0,
+    "bow": 0,
+    "arrows": 0,
+    "updating": 1,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PASSAGE_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 1)
-    ram[ADDR_SCREEN] = fields.get("screen", LEVEL1_BOW_CELLAR_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", 128)
-    ram[ADDR_LINK_Y] = fields.get("y", 141)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0)
-    ram[ADDR_KEYS] = fields.get("keys", 0)
-    ram[ADDR_BOW] = fields.get("bow", 0)
-    ram[ADDR_ARROWS] = fields.get("arrows", 0)
-    ram[ADDR_IS_UPDATING_MODE] = fields.get("updating", 1)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_bow_pickup_does_not_right_into_pit_at_y141() -> None:

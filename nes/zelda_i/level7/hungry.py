@@ -2,7 +2,7 @@
 
 Live room ``$EB=0x28``.  Equip already-owned Bait (B-slot 6) through the
 pause menu — START / idle 20 / RIGHT / idle 8 / START close / idle 24, same
-shape as ``level8.entry.SelectRedCandleController``.  Snapshot has no
+shape as ``dungeon.pause_select.PauseSelectController``.  Snapshot has no
 ``selected_item``; read ``ADDR_SELECTED_ITEM`` after ``bind_env``.  Do not
 poke selected-item or Food.
 
@@ -32,9 +32,9 @@ from zelda_i.level7.path import (
     _goriya_fight,
     live_goriyas,
 )
+from zelda_i.dungeon.pause_select import B_SLOT_BAIT, PauseSelectController
 from zelda_i.ram import (
     ADDR_FOOD,
-    ADDR_SELECTED_ITEM,
     PLAY_MODE,
     ZeldaSnapshot,
     read_u8,
@@ -60,41 +60,21 @@ LEVEL7 = 7
 DEATH_MODE = 17
 ROOM = 0x28
 DEST = 0x18
-FOOD_B_SLOT = 6
+FOOD_B_SLOT = B_SLOT_BAIT
 DOOR_X = 120
 FEED_Y = 141
 ALIGN = 4
 HUNGRY_MAX_FRAMES = 2400
-SELECT_MAX_FRAMES = 240
-OPEN_SETTLE_FRAMES = 20
-CURSOR_SETTLE_FRAMES = 8
-CLOSE_SETTLE_FRAMES = 24
-MAX_CURSOR_MOVES = 8
 B_PERIOD = 16
 B_WINDOW = 6
 WAIT_MODES = (2, 3, 4, 6, 7, 10, 16)
 
 
 class HungryPhase(Enum):
-    OPEN = auto()
-    OPEN_SETTLE = auto()
-    CYCLE = auto()
-    CURSOR_SETTLE = auto()
-    CLOSE = auto()
-    CLOSE_SETTLE = auto()
+    SELECT = auto()
     APPROACH = auto()
     DONE = auto()
     FAILED = auto()
-
-
-_SELECT_PHASES = (
-    HungryPhase.OPEN,
-    HungryPhase.OPEN_SETTLE,
-    HungryPhase.CYCLE,
-    HungryPhase.CURSOR_SETTLE,
-    HungryPhase.CLOSE,
-    HungryPhase.CLOSE_SETTLE,
-)
 
 
 @dataclass
@@ -102,10 +82,9 @@ class Level7HungryGoriyaController:
     """Feed the Hungry Goriya in live ``0x28`` and leave north to MAP ``0x18``."""
 
     max_frames: int = HUNGRY_MAX_FRAMES
-    phase: HungryPhase = HungryPhase.OPEN
+    phase: HungryPhase = HungryPhase.SELECT
     frames: int = 0
     phase_frames: int = 0
-    cursor_moves: int = 0
     success: bool = False
     failed: bool = False
     initial_food: int | None = None
@@ -113,9 +92,18 @@ class Level7HungryGoriyaController:
     food_consumed: bool = False
     notes: list[str] = field(default_factory=list)
     _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(want=FOOD_B_SLOT, name="bait")
 
     def bind_env(self, env: Any) -> None:
         self._env = env
+        self._select.bind_env(env)
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
 
     def _note(self, note: str) -> None:
         if note not in self.notes:
@@ -146,48 +134,22 @@ class Level7HungryGoriyaController:
             return FrameAction(nes_action("UP"), "hungry_feed_up")
         return FrameAction(nes_action("UP"), "hungry_exit_north")
 
-    def _select(self, snap: ZeldaSnapshot, selected: int) -> FrameAction:
-        if self.frames >= SELECT_MAX_FRAMES:
-            return self._fail("select_bait_timeout")
-        if self.phase is HungryPhase.OPEN:
-            if selected == FOOD_B_SLOT:
-                self._set_phase(HungryPhase.APPROACH, "bait_already_selected")
-                return self._approach(snap)
-            self._set_phase(HungryPhase.OPEN_SETTLE, "pause_open")
-            return FrameAction(nes_action("START"), "pause_open")
-        if self.phase is HungryPhase.OPEN_SETTLE:
-            if self.phase_frames >= OPEN_SETTLE_FRAMES:
-                self._set_phase(HungryPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_settle")
-        if self.phase is HungryPhase.CYCLE:
-            if selected == FOOD_B_SLOT:
-                self._set_phase(HungryPhase.CLOSE, "bait_cursor_selected")
-                return FrameAction(nes_idle_action(), "cursor_ready")
-            if self.cursor_moves >= MAX_CURSOR_MOVES:
-                return self._fail("bait_cursor_not_found")
-            self.cursor_moves += 1
-            self._set_phase(HungryPhase.CURSOR_SETTLE)
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is HungryPhase.CURSOR_SETTLE:
-            if self.phase_frames >= CURSOR_SETTLE_FRAMES:
-                self._set_phase(HungryPhase.CYCLE)
-            return FrameAction(nes_idle_action(), "pause_cursor_settle")
-        if self.phase is HungryPhase.CLOSE:
-            self._set_phase(HungryPhase.CLOSE_SETTLE, "pause_close")
-            return FrameAction(nes_action("START"), "pause_close")
-        if self.phase is HungryPhase.CLOSE_SETTLE:
-            if self.phase_frames < CLOSE_SETTLE_FRAMES:
-                return FrameAction(nes_idle_action(), "pause_resume")
+    def _run_select(self, snap: ZeldaSnapshot) -> FrameAction:
+        action = self._select.drive(snap)
+        for note in self._select.notes:
+            self._note(note)
+        if self._select.failed:
+            return self._fail(self._select.fail_reason)
+        if action is None:
             if (
-                snap.level == LEVEL7
-                and snap.mode == PLAY_MODE
-                and int(snap.screen) == ROOM
-                and selected == FOOD_B_SLOT
+                snap.level != LEVEL7
+                or snap.mode != PLAY_MODE
+                or int(snap.screen) != ROOM
             ):
-                self._set_phase(HungryPhase.APPROACH, "bait_selected_naturally")
-                return self._approach(snap)
-            return self._fail("pause_close_contract_mismatch")
-        return FrameAction(nes_idle_action(), "done")
+                return self._fail("pause_close_contract_mismatch")
+            self._set_phase(HungryPhase.APPROACH, "bait_ready")
+            return self._approach(snap)
+        return action
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -198,7 +160,6 @@ class Level7HungryGoriyaController:
             return self._fail("hungry_goriya_env_not_bound")
         ram = self._env.get_ram()
         food = int(read_u8(ram, ADDR_FOOD))
-        selected = int(read_u8(ram, ADDR_SELECTED_ITEM))
         if self.initial_food is None:
             self.initial_food = food
             self._note(f"food_in_{food}")
@@ -235,8 +196,8 @@ class Level7HungryGoriyaController:
                 return self._fail(
                     f"left_room_L{snap.level}_0x{snap.screen:02x}"
                 )
-        if self.phase in _SELECT_PHASES:
-            return self._select(snap, selected)
+        if self.phase is HungryPhase.SELECT:
+            return self._run_select(snap)
         return self._approach(snap)
 
     def report(self) -> dict[str, Any]:

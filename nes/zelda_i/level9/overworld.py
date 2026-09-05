@@ -23,6 +23,7 @@ from zelda_i.level9.ganon import (
     credits_rolling,
     final_ending_screen,
 )
+from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -197,7 +198,6 @@ class Level9FixtureEntryController:
     selected_after: int | None = None
     bombs_before: int | None = None
     bombs_after: int | None = None
-    cursor_moves: int = 0
     b_presses: int = 0
     rock_observe_frames: int = 0
     blast_wait_frames: int = 0
@@ -205,12 +205,21 @@ class Level9FixtureEntryController:
     blocked_cell: dict[str, int | str] | None = None
     last_snap: ZeldaSnapshot | None = field(default=None, repr=False)
     _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
     _start_checked: bool = field(default=False, init=False, repr=False)
     _last_pose: tuple[int, int, int] | None = field(default=None, init=False, repr=False)
     _stuck: int = field(default=0, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(want=B_ITEM_BOMBS, name="bombs")
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
+
     def bind_env(self, env: Any) -> None:
         self._env = env
+        self._select.bind_env(env)
 
     def _selected(self) -> int:
         assert self._env is not None
@@ -373,43 +382,31 @@ class Level9FixtureEntryController:
             return self._move(hold, f"{self.phase.name.lower()}_transition")
 
         # Pause selection deliberately reads the game's cursor result; it
-        # never assigns ADDR_SELECTED_ITEM.
+        # never assigns ADDR_SELECTED_ITEM. RIGHT only counts when $0656
+        # actually changes (shared PauseSelectController).
         if self.phase is FixtureEntryPhase.ROCK_OBSERVE:
             self.rock_observe_frames += 1
             if self.rock_observe_frames < 30:
                 return FrameAction(nes_idle_action(), "spectacle_rock_screenshot_hold")
             self._set_phase(FixtureEntryPhase.PAUSE_OPEN, "rock_screenshot_observed")
-        if self.phase is FixtureEntryPhase.PAUSE_OPEN:
-            if self._selected() == B_ITEM_BOMBS:
-                self.selected_after = B_ITEM_BOMBS
-                self._set_phase(FixtureEntryPhase.ROCK_TOP_Y, "bombs_already_selected")
-            else:
-                self._set_phase(FixtureEntryPhase.PAUSE_OPEN_WAIT, "pause_open")
-                return FrameAction(nes_action("START"), "pause_open")
-        if self.phase is FixtureEntryPhase.PAUSE_OPEN_WAIT:
-            if self.phase_frames < 40:
-                return FrameAction(nes_idle_action(), "pause_open_settle")
-            self._set_phase(FixtureEntryPhase.PAUSE_SELECT)
-        if self.phase is FixtureEntryPhase.PAUSE_SELECT:
-            if self._selected() == B_ITEM_BOMBS:
-                self.selected_after = B_ITEM_BOMBS
-                self._set_phase(FixtureEntryPhase.PAUSE_CLOSE_WAIT, "pause_close")
-                return FrameAction(nes_action("START"), "pause_close")
-            if self.cursor_moves >= 8:
-                return self._fail("bomb_cursor_not_found", snap)
-            self.cursor_moves += 1
-            self._set_phase(FixtureEntryPhase.PAUSE_CURSOR_WAIT)
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is FixtureEntryPhase.PAUSE_CURSOR_WAIT:
-            if self.phase_frames < 8:
-                return FrameAction(nes_idle_action(), "pause_cursor_settle")
-            self._set_phase(FixtureEntryPhase.PAUSE_SELECT)
-            return FrameAction(nes_idle_action(), "pause_cursor_observe")
-        if self.phase is FixtureEntryPhase.PAUSE_CLOSE_WAIT:
-            if self.phase_frames < 40:
-                return FrameAction(nes_idle_action(), "pause_resume")
-            if self._selected() != B_ITEM_BOMBS:
-                return self._fail("bomb_selection_lost", snap)
+        if self.phase in (
+            FixtureEntryPhase.PAUSE_OPEN,
+            FixtureEntryPhase.PAUSE_OPEN_WAIT,
+            FixtureEntryPhase.PAUSE_SELECT,
+            FixtureEntryPhase.PAUSE_CURSOR_WAIT,
+            FixtureEntryPhase.PAUSE_CLOSE_WAIT,
+        ):
+            driven = self._select.drive(snap)
+            for note in self._select.notes:
+                if note not in self.notes:
+                    self.notes.append(note)
+            if self._select.failed:
+                return self._fail(
+                    self._select.fail_reason or "pause_select_failed", snap
+                )
+            if driven is not None:
+                return driven
+            self.selected_after = B_ITEM_BOMBS
             self._set_phase(FixtureEntryPhase.ROCK_TOP_Y, "bombs_selected_by_pause")
 
         stuck = self._track_stuck(snap)

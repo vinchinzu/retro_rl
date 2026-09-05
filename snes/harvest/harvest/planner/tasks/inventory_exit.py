@@ -17,7 +17,7 @@ from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
 )
-from harvest.maps.map_config import ROUTES, Waypoint
+from harvest.maps.map_config import ROUTES, Waypoint, farm_exit_waypoints
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.planner.day_plan_status import (
@@ -604,12 +604,13 @@ class FarmExitTask(Task):
     def reset(self, world: WorldState) -> None:
         self._dismiss_frames = 0
         pos = get_pos_from_ram(world.ram)
-        # Shipping bin is tile y=28 (pixel ~456). y>=32*16 only matched after
-        # already walking south of the y=31 fence, so post-berry NAV_FARM_EXIT
-        # from the bin used one waypoint and hugged the house wall at (3,28).
-        if pos.y >= 27 * 16:
-            waypoints = list(ROUTES["farm_south_to_west_gate"])
-        else:
+        tilemap = (
+            int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else FARM_TILEMAP
+        )
+        # Bin y=28 is north of the y=31 fence. farm_south_to_west_gate first
+        # hop is berry (55,60) — 10k hug. Pinch via farm_exit_waypoints.
+        waypoints = farm_exit_waypoints(pos.x, pos.y, tilemap)
+        if not waypoints:
             waypoints = [
                 Waypoint(
                     tilemap=FARM_TILEMAP,
@@ -631,6 +632,20 @@ class FarmExitTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         shipping = shipping_scene_needs_dismiss(world.ram)
+        try:
+            hour = int(read_ram_value(world.ram, "hour") or 0)
+        except Exception:
+            hour = 0
+        # HaveLunch (12:00): d-pad is ignored while lock stays 1. Power-on
+        # grape-return sat at (7,27) through noon then 5pm shipping A-pulse.
+        if hour == 12 and not shipping and input_lock == 1:
+            self._dismiss_frames += 1
+            return dismiss_dialogue_result(
+                self._dismiss_frames,
+                buttons=("a",),
+                pulse_every=4,
+                reason="have lunch",
+            )
         if shipping or input_lock != 1:
             # Must pulse A (press/release). Frame 0 every step *holds* A and
             # ShippingSceneDialogue never sees an edge (bank_81 $096F=2).

@@ -12,21 +12,21 @@ from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_BOUNDS, FARM_C
 from harvest.planner.d2_work import (
     D2_TARGETS,
     bush_clear_phase,
-    d2_leftover_phases,
     d2_post_shop_work_phases,
     ensure_axe_phase,
     ensure_hammer_phase,
     fence_dump_phase,
     leftover_already_queued,
-    leftover_section_phases,
     needs_spa_before_next_smash,
+    next_d2_spec,
+    observe_d2_farm,
     pocket_water_phase,
     rock_clear_phase,
     should_spa_retry,
     stone_pond_phase,
     stump_clear_phase,
 )
-from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
+from harvest.planner.day_phase_types import PhaseKind
 from harvest.planner.day_plan_phases import pocket_plant_phases
 
 
@@ -97,49 +97,52 @@ class D2WholeFarmContractTests(unittest.TestCase):
 
 
 class D2LeftoverOrderTests(unittest.TestCase):
-    def test_low_stam_inserts_spa_before_hammer_work(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=8, maximum=100))
-        names = [p.phase for p in phases]
-        self.assertEqual(names[0], "HOT_SPRING_STAMINA")
-        self.assertLess(names.index("CLEAR_BUSHES"), names.index("CLEAR_FENCES"))
-        self.assertLess(names.index("CLEAR_FENCES"), names.index("CLEAR_STONES"))
-        self.assertLess(names.index("CLEAR_STONES"), names.index("ENSURE_HAMMER"))
-        self.assertLess(names.index("ENSURE_HAMMER"), names.index("CLEAR_ROCKS"))
-        self.assertLess(names.index("CLEAR_ROCKS"), names.index("ENSURE_AXE"))
-        self.assertLess(names.index("ENSURE_AXE"), names.index("CLEAR_STUMPS"))
-        self.assertNotIn("CLEAR_FIELD", names)
+    def test_low_stam_spas_before_rocks_not_before_bushes(self) -> None:
+        ram = _farm_ram(stamina=8)
+        _set_tile(ram, 40, 40, 0x03)
+        _place_large_rock(ram, 50, 50)
+        status = observe_d2_farm(ram)
+        self.assertEqual(next_d2_spec(status).phase, "CLEAR_BUSHES")
+        self.assertEqual(next_d2_spec(status, section="rocks").phase, "HOT_SPRING_STAMINA")
+        self.assertEqual(ensure_hammer_phase().phase, "ENSURE_HAMMER")
+        self.assertEqual(ensure_axe_phase().phase, "ENSURE_AXE")
+        self.assertNotEqual(
+            ensure_hammer_phase().params["tool_id"],
+            ensure_axe_phase().params["tool_id"],
+        )
 
     def test_full_stam_skips_spa_but_keeps_smash_order(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=100, maximum=100))
-        names = [p.phase for p in phases]
-        self.assertNotIn("HOT_SPRING_STAMINA", names)
-        self.assertEqual(
-            names,
-            [
-                "CLEAR_BUSHES",
-                "CLEAR_FENCES",
-                *["CLEAR_STONES"] * 4,
-                "ENSURE_HAMMER",
-                *["CLEAR_ROCKS"] * 4,
-                "ENSURE_AXE",
-                *["CLEAR_STUMPS"] * 4,
-            ],
-        )
-        stones = [p for p in phases if p.phase == "CLEAR_STONES"]
+        ram = _farm_ram(stamina=100)
+        _plant_eight_wet(ram)
+        _set_tile(ram, 40, 40, 0x03)
+        _set_tile(ram, 42, 42, 0x05)
+        _set_tile(ram, 8, 40, 0x04)
+        _place_large_rock(ram, 50, 50)
+        _place_stump(ram, 52, 44)
+        status = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(next_d2_spec(status).phase, "CLEAR_BUSHES")
+        self.assertEqual(next_d2_spec(status, section="rocks").phase, "ENSURE_HAMMER")
+        stones = [
+            stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
+            for name in FARM_CHUNK_ORDER
+        ]
         self.assertEqual([p.params["chunk"] for p in stones], list(FARM_CHUNK_ORDER))
-
-    def test_policy_can_drop_leftover(self) -> None:
-        phases = d2_leftover_phases(
-            stamina=Stamina(current=4, maximum=100),
-            policy=DayPlannerPolicy(include_field_clear=False),
+        self.assertEqual(
+            [p.phase for p in stones],
+            ["CLEAR_STONES"] * 4,
         )
-        self.assertEqual(phases, [])
 
     def test_hammer_and_axe_are_sequential_not_same_carry(self) -> None:
-        names = [p.phase for p in d2_leftover_phases()]
-        self.assertLess(names.index("CLEAR_ROCKS"), names.index("ENSURE_AXE"))
-        self.assertEqual(names.count("ENSURE_HAMMER"), 1)
-        self.assertEqual(names.count("ENSURE_AXE"), 1)
+        ram = _farm_ram(stamina=100)
+        _place_large_rock(ram, 50, 50)
+        _place_stump(ram, 52, 44)
+        status = observe_d2_farm(ram)
+        self.assertEqual(next_d2_spec(status, section="rocks").phase, "ENSURE_HAMMER")
+        self.assertEqual(
+            next_d2_spec(status, section="rocks", last_phase="ENSURE_HAMMER").phase,
+            "CLEAR_ROCKS",
+        )
+        self.assertEqual(next_d2_spec(status, section="stumps").phase, "ENSURE_AXE")
 
     def test_stamina_low_rocks_retry_inserts_spa(self) -> None:
         low = Stamina(current=8, maximum=100)
@@ -314,7 +317,7 @@ class D2PostShopComposeTests(unittest.TestCase):
         self.assertEqual(stones.debris_types[0].name, "STONE")
         self.assertIsNone(stones.farm_bounds)
 
-        sw = leftover_section_phases("stones", chunk="sw")[0]
+        sw = stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS["sw"], chunk="sw")
         sw_task = build_phase_task(TaskBuildContext(), sw, world)
         self.assertEqual(sw.params["chunk"], "sw")
         self.assertEqual(sw_task.farm_bounds, (0, 32, 31, 63))
@@ -975,6 +978,47 @@ class D2NextSpecTests(unittest.TestCase):
 
 
 class D2FarmClearTacticTests(unittest.TestCase):
+    def test_post_shop_plot_clear_advances_to_crop_while_pocket_stays_dirty(self) -> None:
+        """Broad-pocket weeds must not restart CLEAR_PLOT after seed/tool setup."""
+        from unittest.mock import patch
+
+        from retro_harness import TaskResult, TaskStatus, WorldState
+
+        from harvest.core.ram_catalog import field_spec
+        from harvest.planner.d2_work import D2FarmClearTactic
+
+        ram = _farm_ram(hour=18)
+        ram[field_spec("potato_seeds").address] = 1
+        for tile in ((12, 27), (13, 27), (14, 27)):
+            _set_tile(ram, *tile, 0x03)
+        _set_tile(ram, 20, 20, 0x03)
+        seen = []
+
+        class Instant:
+            def __init__(self, spec) -> None:
+                self.spec = spec
+
+            def reset(self, _world) -> None:
+                return None
+
+            def step(self, world):
+                if self.spec.phase == "CLEAR_PLOT":
+                    for tile in ((12, 27), (13, 27), (14, 27)):
+                        _set_tile(world.ram, *tile, 0xA1)
+                return TaskResult(status=TaskStatus.SUCCESS, reason="ok")
+
+        def fake_build(_ctx, spec, _world):
+            seen.append(spec.phase)
+            return Instant(spec)
+
+        tactic = D2FarmClearTactic()
+        tactic.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        with patch("harvest.planner.day_phase_registry.build_phase_task", fake_build):
+            for frame in range(3):
+                tactic.step(WorldState(frame=frame, ram=ram, info={}, obs=None))
+
+        self.assertEqual(seen, ["CLEAR_PLOT", "ENSURE_CROP_SEEDS", "NAV_CROP"])
+
     def test_complete_ram_succeeds_after_settle(self) -> None:
         from retro_harness import TaskStatus, WorldState
 

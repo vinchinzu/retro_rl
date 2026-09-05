@@ -14,33 +14,24 @@ from zelda_i.level6.cellar08 import (
     level6_cellar08_success,
     make_cellar08_controller,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": 9,
+    "level": 6,
+    "screen": CELLAR_08_ROOM,
+    "x": EAST_MOUTH[0],
+    "y": EAST_MOUTH[1],
+    "triforce": 0x1F,
+    "keys": 4,
+    "bombs": 8,
+    "rod": 1,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", 9)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", CELLAR_08_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", EAST_MOUTH[0])
-    ram[ADDR_LINK_Y] = fields.get("y", EAST_MOUTH[1])
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_ROD] = fields.get("rod", 1)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_warp_trigger_waits_for_engine_a_side_spawn() -> None:
