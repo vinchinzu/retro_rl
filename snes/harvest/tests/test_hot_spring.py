@@ -327,12 +327,106 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertEqual(spa[-1].target_px, (619, 201))
         self.assertEqual(spa[0].target_px, (137, 375))
 
-    def test_d2_night_farm_to_spa_uses_house_path(self) -> None:
-        """Y1_D2_Night_Farm ~(199,486) is north of south-field y=520."""
+    def test_north_west_rock_stand_force_runs_outside_house_paddock(self) -> None:
+        """Live D2 rock spa start (8,16) cannot walk across the y=17 wall."""
+        route = farm_to_spa_waypoints(131, 265, tilemap=0x00)
+        farm = [wp for wp in route if wp.tilemap == 0x00]
+
+        self.assertEqual(farm[0].target_px, (131, 265))
+        self.assertEqual(farm[1].target_px, (72, 265))
+        self.assertEqual(farm[1].run_direction, "left")
+        self.assertTrue(farm[1].force_run)
+        self.assertEqual(farm[2].target_px, (72, 424))
+        self.assertEqual(farm[2].run_direction, "down")
+        self.assertTrue(farm[2].force_run)
+        self.assertTrue(any(wp.is_exit for wp in farm))
+
+    def test_d2_night_farm_to_spa_uses_house_south_pinch(self) -> None:
+        """Y1_D2_Night_Farm ~(199,486) is north of south-field y=520.
+
+        Tile (12,30) is the bin/shed row. Rewinding to house (137,375) then
+        down the door column hugs the wall; join the y=26 pinch instead.
+        """
         route = farm_to_spa_waypoints(199, 486, tilemap=0x00)
-        self.assertEqual(route[0].target_px, (137, 375))
+        self.assertNotEqual(route[0].target_px, (137, 375))
         self.assertNotEqual(route[0].target_px, (136, 600))
+        self.assertNotIn((888, 968), [wp.target_px for wp in route])
+        farm_px = [wp.target_px for wp in route if wp.tilemap == 0x00]
+        self.assertIn((136, 424), farm_px)
+        self.assertIn((72, 424), farm_px)
         self.assertEqual(route[-1].target_px, (619, 201))
+
+    def test_leftover_rocks_farm_to_spa_sidesteps_join_column(self) -> None:
+        """Live spa pin (41,11)/(663,185): boulder at (40-41,12-13).
+
+        Due-south hop (663,272) is the pixel_stuck. West onto x=39 at y=11,
+        then south on the join column.
+        """
+        px, py = 663, 185
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        self.assertEqual(sliced[-1].target_px, (619, 201))
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+        self.assertNotIn((px, 272), farm_px)
+        self.assertIn((624, py), farm_px)
+        self.assertIn((624, 272), farm_px)
+        self.assertIn((624, 384), farm_px)
+        dx = abs(sliced[0].target_px[0] - px)
+        dy = abs(sliced[0].target_px[1] - py)
+        self.assertLessEqual(max(dx, dy), 7 * 16)
+        prev = (px, py)
+        for wp in sliced:
+            if wp.tilemap != 0x00:
+                break
+            gap = max(abs(wp.target_px[0] - prev[0]), abs(wp.target_px[1] - prev[1]))
+            if wp.run_direction is None and not wp.is_exit:
+                self.assertLessEqual(gap, 7 * 16, f"{prev} -> {wp.target_px}")
+            prev = wp.target_px
+
+    def test_upper_north_east_spa_route_avoids_remaining_stump(self) -> None:
+        """Live rock spa failure (38,8) is directly above stump (38,9)."""
+        px, py = 621, 132
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+
+        self.assertIn((37 * 16, py), farm_px)
+        self.assertIn((37 * 16, 272), farm_px)
+        self.assertNotIn((624, 272), farm_px)
+
+    def test_bin_row_spa_route_avoids_remaining_stump(self) -> None:
+        """Live rock spa failure (29,28) is boxed by stumps (18,28)/(38,28)."""
+        px, py = 470, 455
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+
+        self.assertIn((px, 24 * 16 + 8), farm_px)
+        self.assertIn((136, 392), farm_px)
+        self.assertIn((136, 424), farm_px)
+        self.assertNotIn((136, py), farm_px)
+        for wp in sliced:
+            if wp.tilemap != 0x00:
+                break
+            if wp.target_px == (px, py):
+                continue
+            tx, ty = wp.target_px[0] // 16, wp.target_px[1] // 16
+            self.assertFalse(tx in (18, 19) and ty in (28, 29), wp.target_px)
+
+    def test_ditch_north_spa_route_does_not_rewind_house(self) -> None:
+        """Live stump spa failure (13,23) must not first-hop house (8,23)."""
+        px, py = 208, 378
+        route = farm_to_spa_waypoints(px, py, tilemap=0x00)
+        sliced = slice_route_from_position(route, px, py, tilemap=0x00)
+        farm_px = [wp.target_px for wp in sliced if wp.tilemap == 0x00]
+
+        self.assertNotEqual(sliced[0].target_px, (137, 375))
+        self.assertIn((px, 22 * 16 + 8), farm_px)
+        self.assertIn((136, 22 * 16 + 8), farm_px)
+        self.assertIn((136, 392), farm_px)
+        self.assertIn((136, 424), farm_px)
+        self.assertIn((72, 424), farm_px)
+        self.assertNotIn((px, 24 * 16 + 8), farm_px)
 
     def test_after_rocks_farm_to_spa_prefixes_north_east(self) -> None:
         """Y1_D2_After_Rocks ~(633,223) must not first-hop house or barn A1."""
@@ -456,7 +550,8 @@ class HotSpringUnitTests(unittest.TestCase):
         # Live hug (1,27)/(30,432) is the FF wall, not the C0 trigger.
         self.assertGreater(abs(432 - exit_wp.target_px[1]), exit_wp.radius)
         night = farm_to_spa_waypoints(199, 486, tilemap=0x00)
-        self.assertEqual(night[0].target_px, (137, 375))
+        self.assertNotEqual(night[0].target_px, (137, 375))
+        self.assertIn((136, 424), [wp.target_px for wp in night])
 
 
 def _set_u16(ram: np.ndarray, addr: int, value: int) -> None:

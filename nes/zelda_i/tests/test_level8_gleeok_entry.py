@@ -39,6 +39,7 @@ from zelda_i.ram import (
     ADDR_MAGIC_KEY,
     ADDR_MODE,
     ADDR_SCREEN,
+    ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
     PASSAGE_MODE,
     PLAY_MODE,
@@ -63,6 +64,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
     ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
     ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
+    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 4)
     return ram
 
 
@@ -127,6 +129,22 @@ def test_dest_live_accepts_3c_rejects_2f_and_3f() -> None:
     assert list(act.action) == IDLE
     assert DEST_POSE == (120, 189)
     assert DEST == 0x3C
+
+
+def test_candle_leftover_pause_selects_bombs_before_place() -> None:
+    from types import SimpleNamespace
+
+    ram = _ram(x=BOMB_NORTH_STAND[0], y=BOMB_NORTH_STAND[1], bombs=6, selected=4)
+    ctl = make_bomb_north_4c_controller(dest=None)
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    reasons: list[str] = []
+    for _ in range(30):
+        act = _step(ctl, ram)
+        reasons.append(act.reason)
+        if act.reason in {"place_bomb", "pause_open"}:
+            break
+    assert "pause_open" in reasons
+    assert "place_bomb" not in reasons
 
 
 def test_factory_report_fixture_live_not_route_eligible() -> None:

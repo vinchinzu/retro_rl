@@ -70,13 +70,17 @@ from harvest.maps.farm_pond import (
     WEST_PLANT_POCKET_BOUNDS,
     WEST_POCKET_PLANT_CENTER,
 )
+from harvest.maps.farm_gate import (
+    farm_exit_waypoints,
+    farm_to_west_gate_waypoints,
+    farm_wp,
+)
 from harvest.maps.map_routes import (
     ROUTES,
     SEGMENTS,
     compose_routes,
     densify_waypoints,
     farm_to_spa_waypoints,
-    farm_to_west_gate_waypoints,
     path_coords_leaked,
     farm_coords_look_like_path,
     segment_waypoints,
@@ -550,5 +554,7 @@ __all__ = [
     "densify_waypoints",
     "farm_to_spa_waypoints",
     "farm_to_west_gate_waypoints",
+    "farm_exit_waypoints",
+    "farm_wp",
     "SOUTH_FIELD_MIN_Y_PX",
 ]

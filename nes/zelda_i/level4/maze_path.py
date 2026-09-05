@@ -316,10 +316,6 @@ class Level4Compass62Controller(MazeHop):
         )
 
 
-def make_compass_62_controller() -> Level4Compass62Controller:
-    return Level4Compass62Controller()
-
-
 class North40Phase(Enum):
     WAYPOINTS = auto()
     PUSH_UP = auto()

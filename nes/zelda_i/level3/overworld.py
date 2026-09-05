@@ -587,10 +587,6 @@ def level3_path_success(ram: np.ndarray) -> bool:
     )
 
 
-def level3_screen_reached(ram: np.ndarray) -> bool:
-    return level3_path_success(ram)
-
-
 def level3_entrance_success(ram: np.ndarray) -> bool:
     """Room-ready inside Manji entry: level 3, play mode, room 0x7c."""
     snap = read_snapshot(ram)

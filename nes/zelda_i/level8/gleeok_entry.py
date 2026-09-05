@@ -13,7 +13,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
-from zelda_i.level8.north_column import _PauseSelectBombs
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level8.passage import CELLAR_ROOM, SOURCE_ROOM
 from zelda_i.level8.path import GLEEOK_HYP
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
@@ -103,7 +103,6 @@ class Level8BombNorth4CController(HopController):
     leftover: dict[str, Any] = field(default_factory=dict)
     writes: int = 0
     _env: Any = field(default=None, init=False, repr=False)
-    _select: _PauseSelectBombs | None = field(default=None, init=False, repr=False)
     _wall: BombWallController | None = field(default=None, init=False, repr=False)
     _doors0: int | None = field(default=None, init=False)
     _bombs0: int | None = field(default=None, init=False)
@@ -114,6 +113,8 @@ class Level8BombNorth4CController(HopController):
 
     def bind_env(self, env: Any) -> None:
         self._env = env
+        if self._wall is not None:
+            self._wall.bind_env(env)
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
         if snap.mode != PLAY_MODE or snap.transitioning:
@@ -179,16 +180,6 @@ class Level8BombNorth4CController(HopController):
         if self._doors0 is None:
             self._doors0 = int(snap.cur_opened_doors)
             self._bombs0 = int(snap.bombs)
-        if self._env is not None:
-            if self._select is None:
-                self._select = _PauseSelectBombs()
-            select = self._select.step(self._env.get_ram())
-            if self._select.failed:
-                return self.mark_fail(
-                    self._select.notes[-1] if self._select.notes else "pause_select_failed"
-                )
-            if select is not None:
-                return select
         if snap.bombs <= 0:
             return self.mark_fail("no_bombs")
         if self._wall is None:
@@ -199,7 +190,10 @@ class Level8BombNorth4CController(HopController):
                 approach_waypoints=BOMB_NORTH_APPROACH_4C,
                 max_frames=self.max_frames,
                 require_bomb_consumed=True,
+                select_item=B_SLOT_BOMBS,
             )
+            if self._env is not None:
+                self._wall.bind_env(self._env)
         action = self._wall.step(snap)
         if self._wall.phase is BombWallPhase.FAILED:
             note = (

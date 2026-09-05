@@ -33,9 +33,9 @@ from zelda_i.level7.entry import (
     make_survival_bait_purchase_controller,
 )
 from zelda_i.level7.hungry import make_level7_hungry_goriya_controller
-from zelda_i.level7.overworld import POST_L6_TO_POND_HOPS
-from zelda_i.level7.pond import make_pond_drain_controller
+from zelda_i.level7.pond import POST_L6_TO_POND_HOPS, make_pond_drain_controller
 from zelda_i.dungeon.bomb_wall import BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level7.path import (
     L7_ROOM08_EAST_APPROACH,
     L7_ROOM08_EAST_BOMB,
@@ -204,7 +204,9 @@ def make_room69_west_bomb_controller() -> BombWallController:
     The candle-path branch after the Stalfos-key dead-end.  Needs bombs +
     bomb selected on B.  Recon-wired only (interior of 0x68 unobserved).
     """
-    return BombWallController(wall=L7_ROOM69_WEST_BOMB, level=7)
+    return BombWallController(
+        wall=L7_ROOM69_WEST_BOMB, level=7, select_item=B_SLOT_BOMBS
+    )
 
 
 def make_room18_north_bomb_controller() -> BombWallController:
@@ -212,7 +214,9 @@ def make_room18_north_bomb_controller() -> BombWallController:
 
     Stand (120,93) face UP.  Needs bombs + bomb on B.  Recon-wired only.
     """
-    return BombWallController(wall=L7_ROOM18_NORTH_BOMB, level=7)
+    return BombWallController(
+        wall=L7_ROOM18_NORTH_BOMB, level=7, select_item=B_SLOT_BOMBS
+    )
 
 
 def make_room08_east_bomb_controller() -> BombWallController:
@@ -226,6 +230,7 @@ def make_room08_east_bomb_controller() -> BombWallController:
         level=7,
         approach_waypoints=L7_ROOM08_EAST_APPROACH,
         approach_tol=4,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -273,6 +278,7 @@ def make_room19_east_bomb_controller() -> BombWallController:
         level=7,
         approach_waypoints=L7_ROOM19_EAST_APPROACH,
         approach_tol=4,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -287,6 +293,7 @@ def make_room1a_east_bomb_controller() -> BombWallController:
         level=7,
         approach_waypoints=L7_ROOM1A_EAST_APPROACH,
         approach_tol=4,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -300,6 +307,7 @@ def make_room0c_east_bomb_controller() -> BombWallController:
         level=7,
         approach_waypoints=L7_ROOM0C_EAST_APPROACH,
         approach_tol=4,
+        select_item=B_SLOT_BOMBS,
     )
 
 

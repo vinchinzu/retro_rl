@@ -6,11 +6,11 @@ OverworldToLevel7PondController from PostSwordStart.
 
     # first run (~1 min): walk 0x77→0x42, save OW_L7Pond, poke, drain, pin
     QT_QPA_PLATFORM=offscreen uv run python \
-        nes/zelda_i/scratch/probe_l7_pond_drain.py --tag drain_v1
+        nes/zelda_i/scratch/pond/probe_l7_pond_drain.py --tag drain_v1
 
     # iterate drain/stairs from the geometry leftover (~15 s)
     QT_QPA_PLATFORM=offscreen uv run python \
-        nes/zelda_i/scratch/probe_l7_pond_drain.py \
+        nes/zelda_i/scratch/pond/probe_l7_pond_drain.py \
         --from-state OW_L7Pond --tag drain_v2
 """
 

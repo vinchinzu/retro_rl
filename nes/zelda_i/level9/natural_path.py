@@ -43,6 +43,7 @@ from zelda_i.level9.ganon import (
     in_zelda_room,
 )
 from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
+from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.path import final_patra_to_ganon_step
 from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
 
@@ -208,17 +209,24 @@ class NaturalSelectSilverArrowsController(_NaturalEndingController):
     """Select naturally owned Silver Arrows through the pause menu only."""
 
     max_frames: int = 240
-    phase: str = "check"
-    wait_left: int = 0
-    cursor_moves: int = 0
     env: Any | None = field(default=None, repr=False)
+    _contract_checked: bool = False
+    _select: PauseSelectController = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(want=B_ITEM_ARROWS, name="arrows")
+
+    @property
+    def cursor_moves(self) -> int:
+        return self._select.cursor_moves
+
+    @property
+    def phase(self) -> str:
+        return self._select.phase.name.lower()
 
     def bind_env(self, env: Any) -> None:
         self.env = env
-
-    def _selected(self) -> int:
-        assert self.env is not None
-        return read_u8(self.env.get_ram(), ADDR_SELECTED_ITEM)
+        self._select.bind_env(env)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -227,42 +235,27 @@ class NaturalSelectSilverArrowsController(_NaturalEndingController):
             return self._fail("environment_not_bound")
         if snap.mode == 17:
             return self._fail("link_death")
-        if self.phase == "check":
+        if not self._contract_checked:
             if not level9_live_patra_stop(snap):
                 return self._fail("natural_live_patra_contract_miss")
-            if self._selected() == B_ITEM_ARROWS:
-                self.success = True
-                return self._action(nes_idle_action(), "silver_arrows_already_selected")
-            self.phase = "open_wait"
-            self.wait_left = 40
-            return self._action(nes_action("START"), "pause_open")
-        if self.wait_left > 0:
-            self.wait_left -= 1
-            return self._action(nes_idle_action(), f"{self.phase}_wait")
-        if self.phase == "open_wait":
-            self.phase = "select"
-        if self.phase == "select":
-            if self._selected() == B_ITEM_ARROWS:
-                self.phase = "close_wait"
-                self.wait_left = 40
-                return self._action(nes_action("START"), "pause_close")
-            if self.cursor_moves >= 8:
-                return self._fail("silver_arrow_cursor_not_found")
-            self.cursor_moves += 1
-            self.phase = "cursor_wait"
-            self.wait_left = 8
-            return self._action(nes_action("RIGHT"), "pause_next_item")
-        if self.phase == "cursor_wait":
-            self.phase = "select"
-            return self._action(nes_idle_action(), "pause_cursor_settled")
-        if self.phase == "close_wait":
-            if self._selected() != B_ITEM_ARROWS:
-                return self._fail("silver_arrow_selection_lost")
+            self._contract_checked = True
+        action = self._select.drive(snap)
+        for note in self._select.notes:
+            if note not in self.notes:
+                self.notes.append(note)
+        if self._select.failed:
+            return self._fail(self._select.fail_reason or "pause_select_failed")
+        if action is None:
             if not level9_live_patra_stop(snap):
                 return self._fail("patra_contract_lost_after_pause")
             self.success = True
-            return self._action(nes_idle_action(), "silver_arrows_selected")
-        return self._fail(f"unknown_phase_{self.phase}")
+            reason = (
+                "silver_arrows_already_selected"
+                if self._select.skipped
+                else "silver_arrows_selected"
+            )
+            return self._action(nes_idle_action(), reason)
+        return self._action(action.action, action.reason)
 
     def report(self) -> dict[str, object]:
         report = super().report()

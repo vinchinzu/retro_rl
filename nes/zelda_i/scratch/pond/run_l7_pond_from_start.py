@@ -1,6 +1,6 @@
 """Geometry-only walk PostSwordStart -> Demon pond 0x42. Not a route claim.
 
-    uv run python nes/zelda_i/scratch/run_l7_pond_from_start.py --tag l7_pond
+    uv run python nes/zelda_i/scratch/pond/run_l7_pond_from_start.py --tag l7_pond
 
 Whistle is NOT required for this pass (drain/entry is a later chapter); it maps
 the 0x53 -> 0x52 -> 0x42 overworld geometry that rr-dnp / rr-8t4.2 need.

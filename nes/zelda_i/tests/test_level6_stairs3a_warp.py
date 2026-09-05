@@ -16,38 +16,33 @@ from zelda_i.level6.stairs3a_warp import (
 )
 from zelda_i.ram import (
     ADDR_ARROWS,
-    ADDR_BOMBS,
     ADDR_BOW,
-    ADDR_COLLIDING_TILE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_TYPE,
     ADDR_ROD,
-    ADDR_RUPEES,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": 0x3A,
+    "x": 144,
+    "y": 141,
+    "triforce": 0x1F,
+    "keys": 4,
+    "bombs": 8,
+    "tile": 0,
+    "rod": 1,
+    "rupees": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x3A)
-    ram[ADDR_LINK_X] = fields.get("x", 144)
-    ram[ADDR_LINK_Y] = fields.get("y", 141)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 0)
-    ram[ADDR_ROD] = fields.get("rod", 1)
-    ram[ADDR_RUPEES] = fields.get("rupees", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _plant_block(ram: np.ndarray, slot: int, x: int, y: int) -> None:

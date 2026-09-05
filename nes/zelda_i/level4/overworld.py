@@ -89,11 +89,6 @@ def has_raft(ram) -> bool:
     return bool(read_u8(ram, ADDR_RAFT))
 
 
-def has_ladder(ram) -> bool:
-    """True when Stepladder inventory flag is set (L4 dungeon item)."""
-    return bool(read_u8(ram, ADDR_LADDER))
-
-
 def required_caps_for_entry() -> frozenset[str]:
     """Named capabilities required to *enter* L4."""
     return frozenset({"raft"})
@@ -133,11 +128,6 @@ def on_level4_island(snap: ZeldaSnapshot) -> bool:
     )
 
 
-def level4_dungeon_play(snap: ZeldaSnapshot) -> bool:
-    """True if snapshot is play mode inside level 4 (any room)."""
-    return snap.level == LEVEL4 and snap.mode == PLAY_MODE
-
-
 def level4_triforce_stop(snap: ZeldaSnapshot) -> bool:
     """Inventory stop: shard 4 bit set. Not a route-success claim by itself."""
     return bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
@@ -155,18 +145,6 @@ def level4_entry_stop(snap: ZeldaSnapshot) -> bool:
 def level4_overworld_stop(snap: ZeldaSnapshot) -> bool:
     """OW stop on island door screen (no dungeon enter)."""
     return on_level4_island(snap) and 40 < snap.link_y < 210
-
-
-def post_l3_overworld_ready(ram: np.ndarray) -> bool:
-    """OW play on Manji return screen with L3 triforce bit and raft."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_POST_L3_RETURN
-        and bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
-        and has_raft(ram)
-    )
 
 
 def level4_entrance_success(ram: np.ndarray) -> bool:

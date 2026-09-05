@@ -1,27 +1,14 @@
-"""Spring D2 work sections — composable PhaseSpecs for the shop splice.
+"""Spring D2 work — one D2_FARM_CLEAR Tactic after BUY_SEEDS.
 
-Product path is grape → shop → these sections → 5pm wait. Two carry
-slots: plant is hoe+seeds, water is can, field work is lift work then hammer
-then axe (never both).
-
-Section order after BUY_SEEDS::
-
-    ENSURE_CROP_SEEDS → CLEAR_PLOT (plot-ring lift)
-    → CROP_ESTABLISH (8-ring hoe + plant)
-    → ENSURE_WATERING_CAN → CROP_WATER (8 wet)
-    leftover (after plant+water, not 06:08 plan-time hour>=17):
-      spa? → CLEAR_BUSHES (all weeds, quota handoff) → CLEAR_FENCES
-      (all posts to pond) → CLEAR_STONES (all to pond, 4 farm chunks) →
-      ENSURE_HAMMER → spa? → CLEAR_ROCKS (all large 2×2, 4 chunks) →
-      ENSURE_AXE → spa? → CLEAR_STUMPS (all, 4 chunks)
-
-Quota handoffs must not use pocket ``plot_ring`` SUCCESS. Spa inserts when
-stamina cannot finish an 8-swing 2×2 (do not spa on D2 morning).
+Grape → shop → CLEAR_PLOT → plant 8 → water 8 → leftover smash
+(bushes → fences → stones → hammer/rocks → axe/stumps, spa on 2×2
+stamina). ``next_d2_spec`` is the live order; do not keep a parallel
+static leftover list. Quota handoff, not pocket ``plot_ring``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import StrEnum
 from typing import List, Optional, Sequence
 
@@ -129,35 +116,20 @@ class D2FarmStatus:
 
     def to_record(self) -> dict[str, object]:
         """Serialize every terminal clause for a final D2 evidence report."""
-        return {
-            "season": self.season,
-            "day": self.day,
-            "planted": self.planted,
-            "wet": self.wet,
-            "weeds": self.weeds,
-            "fences": self.fences,
-            "stones": self.stones,
-            "small_rocks": self.small_rocks,
-            "large_rocks": self.large_rocks,
-            "trees_or_stumps": self.trees_or_stumps,
-            "damaged_boulder": self.damaged_boulder,
-            "hands_clear": self.hands_clear,
-            "farm_map_loaded": self.farm_map_loaded,
-            "animating": self.animating,
-            "input_stable": self.input_stable,
-            "settled": self.settled,
-            "shipped_before_17": self.shipped_before_17,
-            "hour": self.hour,
-            "minute": self.minute,
-            "tilemap": self.tilemap,
-            "outcome": self.outcome.value,
-            "reason": self.reason,
-            "pocket_needs_clear": self.pocket_needs_clear,
-            "potato_seeds": self.potato_seeds,
-            "stones_by_chunk": list(self.stones_by_chunk),
-            "rocks_by_chunk": list(self.rocks_by_chunk),
-            "trees_or_stumps_by_chunk": list(self.stumps_by_chunk),
-        }
+        row: dict[str, object] = {}
+        for item in fields(self):
+            if item.name == "stamina":
+                continue
+            value = getattr(self, item.name)
+            if item.name == "outcome":
+                value = value.value
+            elif item.name == "stumps_by_chunk":
+                row["trees_or_stumps_by_chunk"] = list(value)
+                continue
+            elif isinstance(value, tuple):
+                value = list(value)
+            row[item.name] = value
+        return row
 
 
 def _required_clear(
@@ -365,25 +337,6 @@ def stump_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpe
     )
 
 
-def _chunked_smash(builder, chunks: Sequence[str]) -> List[PhaseSpec]:
-    return [
-        builder(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name) for name in chunks
-    ]
-
-
-def _maybe_spa(
-    stamina: Stamina | int | None,
-    *,
-    include_spa: bool,
-) -> List[PhaseSpec]:
-    if not include_spa:
-        return []
-    stam = coerce_stamina(stamina)
-    if stam is None or stam.can_finish_multi_hit():
-        return []
-    return [full_restore_spa_phase()]
-
-
 def should_spa_retry(
     phase: str,
     reason: str | None,
@@ -415,37 +368,6 @@ def needs_spa_before_next_smash(
     stam = coerce_stamina(stamina)
     return stam is not None and not stam.can_finish_multi_hit()
 
-
-def d2_leftover_phases(
-    *,
-    stamina: Stamina | int | None = None,
-    policy: Optional[DayPlannerPolicy] = None,
-    chunks: str | Sequence[str] | None = "all",
-) -> List[PhaseSpec]:
-    """Lift leftover after plant+water, then hammer/axe. Spa between smash.
-
-    Smash phases (stones / rocks / stumps) run one farm quadrant at a time
-    so a last-cell stall cannot eat the whole farm. Morning 06:08
-    ``build_day_phases`` must not attach this (hour<17). The shop splice /
-    CROP_WATER splice owns insertion so leftover still runs on a 6am plan.
-    """
-    policy = policy or DayPlannerPolicy()
-    if not policy.include_field_clear:
-        return []
-    include_spa = bool(getattr(policy, "include_spa", True))
-    smash = resolve_chunks(chunks)
-    phases: List[PhaseSpec] = []
-    phases.extend(_maybe_spa(stamina, include_spa=include_spa))
-    phases.append(bush_clear_phase())
-    phases.append(fence_dump_phase())
-    phases.extend(_chunked_smash(stone_pond_phase, smash))
-    phases.append(ensure_hammer_phase())
-    phases.extend(_maybe_spa(stamina, include_spa=include_spa))
-    phases.extend(_chunked_smash(rock_clear_phase, smash))
-    phases.append(ensure_axe_phase())
-    phases.extend(_maybe_spa(stamina, include_spa=include_spa))
-    phases.extend(_chunked_smash(stump_clear_phase, smash))
-    return phases
 
 def phase_already_clear(phase: str, counts) -> bool:
     """True when this leftover smash section has nothing left on the pin."""
@@ -664,6 +586,7 @@ def next_d2_spec(
     section: str = "all",
     chunk: str | Sequence[str] = "all",
     last_phase: str = "",
+    plot_attempted: bool = False,
     skip_chunks: Sequence[str] = (),
 ) -> PhaseSpec | None:
     """Next mandatory D2 child spec, or None when ready to verify."""
@@ -671,7 +594,11 @@ def next_d2_spec(
         return None
     smash = resolve_chunks(chunk)
     if section == "all":
-        if status.pocket_needs_clear and last_phase != "CLEAR_PLOT":
+        if (
+            status.pocket_needs_clear
+            and not plot_attempted
+            and last_phase != "CLEAR_PLOT"
+        ):
             return pocket_clear_phase()
         if status.planted < D2_TARGETS["plant"] and status.potato_seeds > 0:
             return _crop_next(last_phase)
@@ -700,44 +627,6 @@ def next_d2_spec(
             stump_clear_phase,
         )
     return None
-
-
-def leftover_section_phases(
-    section: str,
-    *,
-    stamina: Stamina | int | None = None,
-    include_spa: bool = True,
-    chunk: str | Sequence[str] | None = "all",
-) -> List[PhaseSpec]:
-    """One leftover section, optionally a single farm quadrant."""
-    if section == "all":
-        policy = DayPlannerPolicy(include_spa=include_spa)
-        return d2_leftover_phases(stamina=stamina, policy=policy, chunks=chunk)
-    smash = resolve_chunks(chunk)
-    phases: List[PhaseSpec] = []
-    stam = coerce_stamina(stamina)
-    if (
-        include_spa
-        and section in {"rocks", "stumps"}
-        and stam is not None
-        and not stam.can_finish_multi_hit()
-    ):
-        phases.append(full_restore_spa_phase())
-    if section == "bushes":
-        phases.append(bush_clear_phase())
-    elif section == "fences":
-        phases.append(fence_dump_phase())
-    elif section == "stones":
-        phases.extend(_chunked_smash(stone_pond_phase, smash))
-    elif section == "rocks":
-        phases.append(ensure_hammer_phase())
-        phases.extend(_chunked_smash(rock_clear_phase, smash))
-    elif section == "stumps":
-        phases.append(ensure_axe_phase())
-        phases.extend(_chunked_smash(stump_clear_phase, smash))
-    else:
-        raise ValueError(f"unknown leftover section {section!r}")
-    return phases
 
 
 def d2_farm_clear_phase() -> PhaseSpec:
@@ -835,6 +724,7 @@ class D2FarmClearTactic:
         self._prev = self._child = self._spec = self._retry = self._pending = None
         self._skip: set[str] = set()
         self._fails: dict[tuple, int] = {}
+        self._plot_attempted = False
         self._step = self._motion_at = self._goal_at = self._unobs = 0
         self._motion_key = self._goal_key = self._last_phase = ""
 
@@ -852,6 +742,7 @@ class D2FarmClearTactic:
         self._child = self._spec = self._retry = self._pending = self._prev = self.farm_status = None
         self._skip.clear()
         self._fails.clear()
+        self._plot_attempted = False
         self._step = self._unobs = 0
         self._motion_key = self._goal_key = self._last_phase = ""
 
@@ -895,18 +786,18 @@ class D2FarmClearTactic:
         return self.farm_status
 
     def _snap(self, prefix: str, st: D2FarmStatus | None = None) -> str:
-        st = st or self.farm_status
-        spec = self._spec
-        bits = [prefix]
+        st, spec, bits = st or self.farm_status, self._spec, [prefix]
         if spec is not None:
             bits.append(f"target={spec.phase}")
             chunk = (spec.params or {}).get("chunk")
             if chunk:
                 bits.append(f"chunk={chunk}")
         if st is not None:
-            bits.append(f"debris=w{st.weeds}/f{st.fences}/s{st.stones}/r{st.large_rocks}/u{st.stumps}")
-            bits.append(f"stamina={st.stamina.current}/{st.stamina.maximum}")
-            bits.append(f"carry_clear={st.hands_clear}")
+            bits += [
+                f"debris=w{st.weeds}/f{st.fences}/s{st.stones}/r{st.large_rocks}/u{st.stumps}",
+                f"stamina={st.stamina.current}/{st.stamina.maximum}",
+                f"carry_clear={st.hands_clear}",
+            ]
         return " ".join(bits)
 
     def _idle(self, reason: str, ram=None) -> TaskResult:
@@ -921,13 +812,7 @@ class D2FarmClearTactic:
         return TaskResult(status=TaskStatus.BLOCKED, reason=self._snap(prefix, st))
 
     def _navigation_motion_key(self, world: WorldState):
-        """Return a liveness key only while the active child is navigating.
-
-        Farm clearing intentionally stays planted for six axe/hammer hits.
-        Its position and approach remain constant while that work is making
-        semantic progress, so treating every child as a navigation task aborts
-        a legitimate multi-hit sequence after six seconds.
-        """
+        """Liveness key while navigating. Tool-swing stays planted on purpose."""
         from harvest.core.task_progress import task_progress_snapshot
         from harvest.tasks.nav import get_pos_from_ram
 
@@ -937,9 +822,9 @@ class D2FarmClearTactic:
         snapshot = task_progress_snapshot(child)
         phase = (snapshot.phase_text if snapshot is not None else "").lower()
         name = str(getattr(child, "name", "")).lower()
-        is_navigation = phase in {"navigate", "navigating", "navigation"}
-        is_navigation = is_navigation or name == "nav" or name.startswith("nav_")
-        if not is_navigation:
+        navigating = phase in {"navigate", "navigating", "navigation"}
+        navigating = navigating or name == "nav" or name.startswith("nav_")
+        if not navigating:
             return None
 
         details = dict(snapshot.details) if snapshot is not None else {}
@@ -1015,6 +900,8 @@ class D2FarmClearTactic:
         self._child = None
         last = spec.phase if spec is not None else ""
         self._last_phase = last
+        if last == "CLEAR_PLOT" and result.status == TaskStatus.SUCCESS:
+            self._plot_attempted = True
         if spec is not None and spec.phase == "HOT_SPRING_STAMINA":
             if result.status != TaskStatus.SUCCESS:
                 return self._blocked(f"spa failed: {result.reason or result.status.value}", status)
@@ -1077,7 +964,8 @@ class D2FarmClearTactic:
         pending, self._pending = self._pending, None
         spec = pending or next_d2_spec(
             status, include_spa=self.include_spa, section=self.section, chunk=self.chunk,
-            last_phase=self._last_phase, skip_chunks=tuple(self._skip),
+            last_phase=self._last_phase, plot_attempted=self._plot_attempted,
+            skip_chunks=tuple(self._skip),
         )
         if spec is None:
             self._prev = status
@@ -1114,10 +1002,9 @@ class D2FarmClearTactic:
 __all__ = [
     "D2_LEFTOVER_PHASE_NAMES", "D2_TARGETS", "D2FarmClearTactic", "D2FarmOutcome",
     "D2FarmStatus", "bush_clear_phase", "confirm_d2_complete", "d2_farm_clear_phase",
-    "d2_leftover_phases", "d2_post_shop_work_phases", "ensure_axe_phase",
-    "ensure_hammer_phase", "fence_dump_phase", "leftover_already_queued",
-    "leftover_chain_decision", "leftover_section_phases", "needs_spa_before_next_smash",
-    "next_d2_spec", "observe_d2_farm", "phase_already_clear", "pocket_clear_phase",
-    "pocket_water_phase", "rock_clear_phase", "should_spa_retry", "stone_pond_phase",
-    "stump_clear_phase",
+    "d2_post_shop_work_phases", "ensure_axe_phase", "ensure_hammer_phase",
+    "fence_dump_phase", "leftover_already_queued", "leftover_chain_decision",
+    "needs_spa_before_next_smash", "next_d2_spec", "observe_d2_farm",
+    "phase_already_clear", "pocket_clear_phase", "pocket_water_phase",
+    "rock_clear_phase", "should_spa_retry", "stone_pond_phase", "stump_clear_phase",
 ]

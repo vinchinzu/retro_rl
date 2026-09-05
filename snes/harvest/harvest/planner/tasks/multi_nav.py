@@ -360,9 +360,11 @@ class MultiMapNavTask(Task):
             dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
             if dismissed is not None:
                 return dismissed
-            # Walk toward first waypoint during settle to trigger tile loading
+            # Walk toward first waypoint during settle to trigger tile loading.
+            # dirs_toward(0,0) is LEFT — do not charge a wall when already in
+            # radius (leftover spa pin sat on the hop-0 stand facing a rock).
             wp = self._current_wp()
-            if wp:
+            if wp and not self._at_wp_target(wp):
                 cur = self._navigator.current_pos
                 primary, secondary = dirs_toward(
                     wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
@@ -558,14 +560,14 @@ class MultiMapNavTask(Task):
         if wp.run_direction:
             cur = self._navigator.current_pos
             d = wp.run_direction
-            if d in {"left", "right"} and abs(cur.y - wp.target_px[1]) > wp.radius:
+            if d in {"left", "right"} and abs(cur.y - wp.target_px[1]) >= wp.radius:
                 align = "down" if wp.target_px[1] > cur.y else "up"
                 safe = self._safe_walk_action(world.ram, align)
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(safe if safe is not None else make_action()),
                 )
-            if d in {"up", "down"} and abs(cur.x - wp.target_px[0]) > wp.radius:
+            if d in {"up", "down"} and abs(cur.x - wp.target_px[0]) >= wp.radius:
                 align = "right" if wp.target_px[0] > cur.x else "left"
                 safe = self._safe_walk_action(world.ram, align)
                 return TaskResult(

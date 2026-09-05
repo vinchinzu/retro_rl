@@ -10,7 +10,6 @@ geometry (``DOOR_TARGETS['UP']``).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
@@ -28,9 +27,10 @@ from zelda_i.dungeon.engine import (
 )
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ids import MANHANDLA_OBJECT_TYPE
-from zelda_i.dungeon.ops import B_ITEM_BOMB, DOOR_TARGETS
+from zelda_i.dungeon.ops import DOOR_TARGETS
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level8.dungeon import LEVEL8
-from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # Live recon rooms.  0x0C is unregistered in dungeon.ids (0x0B is "darknut");
 # colour is a walkthrough correlation, not an observation.
@@ -179,83 +179,6 @@ def _north_door(snap: ZeldaSnapshot, *, reason: str = "north_door") -> FrameActi
     return FrameAction(nes_action("UP"), f"{reason}_push")
 
 
-class _SelectPhase(Enum):
-    OPEN = auto()
-    OPEN_SETTLE = auto()
-    CYCLE = auto()
-    CURSOR_SETTLE = auto()
-    CLOSE = auto()
-    CLOSE_SETTLE = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class _PauseSelectBombs:
-    """Pause-cycle already-owned bombs onto B. No RAM poke."""
-
-    phase: _SelectPhase = _SelectPhase.OPEN
-    phase_frames: int = 0
-    cursor_moves: int = 0
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-
-    def step(self, ram: Any) -> FrameAction | None:
-        selected = int(read_u8(ram, ADDR_SELECTED_ITEM))
-        if self.phase is _SelectPhase.DONE:
-            return None
-        if self.phase is _SelectPhase.FAILED:
-            return FrameAction(nes_idle_action(), "pause_select_failed")
-        if self.phase is _SelectPhase.OPEN:
-            if selected == B_ITEM_BOMB:
-                self.phase = _SelectPhase.DONE
-                return None
-            self.phase = _SelectPhase.OPEN_SETTLE
-            self.phase_frames = 0
-            self.notes.append("pause_open")
-            return FrameAction(nes_action("START"), "pause_open")
-        self.phase_frames += 1
-        if self.phase is _SelectPhase.OPEN_SETTLE:
-            if self.phase_frames >= 20:
-                self.phase = _SelectPhase.CYCLE
-                self.phase_frames = 0
-            return FrameAction(nes_idle_action(), "pause_settle")
-        if self.phase is _SelectPhase.CYCLE:
-            if selected == B_ITEM_BOMB:
-                self.phase = _SelectPhase.CLOSE
-                self.phase_frames = 0
-                return FrameAction(nes_idle_action(), "cursor_ready")
-            if self.cursor_moves >= 8:
-                self.failed = True
-                self.phase = _SelectPhase.FAILED
-                self.notes.append("bomb_cursor_not_found")
-                return FrameAction(nes_idle_action(), "bomb_cursor_not_found")
-            self.cursor_moves += 1
-            self.phase = _SelectPhase.CURSOR_SETTLE
-            self.phase_frames = 0
-            return FrameAction(nes_action("RIGHT"), "pause_next_item")
-        if self.phase is _SelectPhase.CURSOR_SETTLE:
-            if self.phase_frames >= 8:
-                self.phase = _SelectPhase.CYCLE
-                self.phase_frames = 0
-            return FrameAction(nes_idle_action(), "pause_cursor_settle")
-        if self.phase is _SelectPhase.CLOSE:
-            self.phase = _SelectPhase.CLOSE_SETTLE
-            self.phase_frames = 0
-            return FrameAction(nes_action("START"), "pause_close")
-        if self.phase is _SelectPhase.CLOSE_SETTLE:
-            if self.phase_frames < 24:
-                return FrameAction(nes_idle_action(), "pause_resume")
-            if selected != B_ITEM_BOMB:
-                self.failed = True
-                self.phase = _SelectPhase.FAILED
-                self.notes.append("pause_close_bombs_unselected")
-                return FrameAction(nes_idle_action(), "pause_close_bombs_unselected")
-            self.phase = _SelectPhase.DONE
-            return None
-        return None
-
-
 @dataclass(kw_only=True)
 class _NorthColumnBase(HopController):
     """Shared L8 north-column guards: fixture-live, no writes, known rooms."""
@@ -271,13 +194,14 @@ class _NorthColumnBase(HopController):
     _traveled: bool = field(default=False, init=False)
     _clear: GenericDungeonRoomController | None = field(default=None, init=False, repr=False)
     _wall: BombWallController | None = field(default=None, init=False, repr=False)
-    _select: _PauseSelectBombs | None = field(default=None, init=False, repr=False)
     _map_wp: int = field(default=0, init=False)
     _key_wait: int = field(default=0, init=False)
     _keys_in: int | None = field(default=None, init=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
+        if self._wall is not None:
+            self._wall.bind_env(env)
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         del snap
@@ -293,7 +217,6 @@ class _NorthColumnBase(HopController):
             self._traveled = True
             self._clear = None
             self._wall = None
-            self._select = None
             self._map_wp = 0
             self._key_wait = 0
             self._keys_in = None
@@ -327,19 +250,6 @@ class _NorthColumnBase(HopController):
             return self.mark_fail(note)
         return action
 
-    def _maybe_select_bombs(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        del snap
-        if self._env is None:
-            return None
-        if self._select is None:
-            self._select = _PauseSelectBombs()
-        action = self._select.step(self._env.get_ram())
-        if self._select.failed:
-            return self.mark_fail(
-                self._select.notes[-1] if self._select.notes else "pause_select_failed"
-            )
-        return action
-
     def _bomb(
         self,
         snap: ZeldaSnapshot,
@@ -347,9 +257,6 @@ class _NorthColumnBase(HopController):
         *,
         approach: tuple[tuple[int, int], ...] = (),
     ) -> FrameAction:
-        select = self._maybe_select_bombs(snap)
-        if select is not None:
-            return select
         if snap.bombs <= 0:
             return self.mark_fail(f"no_bombs_0x{snap.screen:02x}")
         if self._wall is None:
@@ -358,7 +265,10 @@ class _NorthColumnBase(HopController):
                 level=LEVEL8,
                 approach_waypoints=approach,
                 max_frames=8000,
+                select_item=B_SLOT_BOMBS,
             )
+            if self._env is not None:
+                self._wall.bind_env(self._env)
         action = self._wall.step(snap)
         if self._wall.phase is BombWallPhase.FAILED:
             note = (

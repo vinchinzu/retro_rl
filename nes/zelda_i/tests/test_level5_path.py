@@ -14,16 +14,8 @@ from zelda_i.level5.path import (
     level5_room66_west_aisle_north_step,
     level5_west65_step,
 )
-from zelda_i.ram import (
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 
 def _ram(
@@ -35,14 +27,9 @@ def _ram(
     mode: int = PLAY_MODE,
     keys: int = 0,
 ) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = room
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_KEYS] = keys
-    return ram
+    return make_ram(
+        {}, level=level, screen=room, x=x, y=y, mode=mode, keys=keys
+    )
 
 
 def test_room66_west_aisle_prefights_north_of_river() -> None:

@@ -11,14 +11,28 @@ before pond `0x42`. Three agents + parent compose:
 
 ### Pond drain module (wired)
 
-`level7/pond.py` `Level7PondDrainController` / `make_pond_drain_controller`:
-pause-select recorder slot 5 (no `$0656` poke), 12×B, stairs `(96,132)`
-tile 114, dest play `0x79` `(120,205)`. `writes=0`,
-`route_eligible=False`. Unit 17/17. Live 2/2 drain skipped: no
-`0x42`+whistle=1 pin (`OW_L7Pond` is whistle=0). Do not poke Whistle.
+`level7/pond.py` owns drain + `PostLevel6OverworldController`. Scratch
+probes: `scratch/pond/`. Pause-select is `dungeon.pause_select` (shared with
+Hungry / Digdogger / L7 bomb walls). Recorder slot 5, no `$0656` poke, 12×B,
+stairs `(96,132)` tile 114, dest play `0x79` `(120,205)`. `writes=0`,
+`route_eligible=False`. Live 2/2 drain skipped: no `0x42`+whistle=1 pin
+(`OW_L7Pond` is whistle=0). Do not poke Whistle.
+
+Composition contract (this sitting): leftover B-slot is a hop input. Pond
+leaves recorder=5; first candle-chapter bomb wall (`0x69` west) pause-selects
+bombs. Hungry leftover bait=6 → MAP north bomb selects bombs. Digdogger
+leftover recorder=5 → `0x0C` east bomb selects bombs. Red Candle success is
+the 0→2 rising edge; a pin that already has candle 2 fails closed. Cellar
+`0x4A` drops south once then east/north — no y<180 DOWN vs climb oscillation.
+`0x49` moat fails closed if `ADDR_LADDER=0`.
 
 `make_pond_entry_controller` now returns that controller. Food poke +
 rupee top-up stay.
+
+Same leftover-B / unaccepted-RIGHT copies elsewhere in zelda_i were folded
+onto `dungeon.pause_select` (L8 candle select, L8/L9 bomb walls, L9 fixture
+and silver-arrow select). L6 rod pickup is a 0→1 rising edge. Next live
+boundary is still OW `0x13`.
 
 ### Post-L6 overworld (partial)
 
@@ -64,5 +78,5 @@ Do not fill `MEASURED_POST_L7_EXIT` from the TF-0 fixture leftover.
 ## Integrity
 
 deaths 0, progression_writes 0, capacity_writes 0, position_writes 0,
-whistle poke 0. Food poke allowed (Survival, disclosed). Unit: 163
-passed on the L7 hop/pond/interior modules.
+whistle poke 0. Food poke allowed (Survival, disclosed). Next live
+boundary remains `0x13` west/south toward pond `0x42`.

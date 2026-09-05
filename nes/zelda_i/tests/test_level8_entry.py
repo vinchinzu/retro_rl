@@ -366,6 +366,23 @@ def test_select_candle_never_writes_selected_item() -> None:
     assert ctl.report()["normal_pause_input"] is True
 
 
+def test_select_candle_right_does_not_count_unaccepted() -> None:
+    from zelda_i.dungeon.pause_select import CURSOR_SETTLE_FRAMES, OPEN_SETTLE_FRAMES
+
+    ram = _ram(selected=1)
+    ctl = make_select_red_candle_controller()
+    ctl.bind_env(_env(ram))
+    assert ctl.step(read_snapshot(ram)).reason == "pause_open"
+    for _ in range(OPEN_SETTLE_FRAMES):
+        ctl.step(read_snapshot(ram))
+    ctl.step(read_snapshot(ram))  # RIGHT, $0656 still bombs
+    assert ctl.cursor_moves == 0
+    for _ in range(CURSOR_SETTLE_FRAMES):
+        ctl.step(read_snapshot(ram))
+    assert ctl.cursor_moves == 0
+    assert int(ram[ADDR_SELECTED_ITEM]) == 1
+
+
 def test_selected_item_is_never_assigned_in_l8_lane() -> None:
     for name in _WRITE_MODULES:
         tree = ast.parse((_LEVEL8_DIR / name).read_text(encoding="utf-8"))

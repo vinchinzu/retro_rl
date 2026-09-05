@@ -151,19 +151,6 @@ level4_room_40_cleared = _cleared(ROOM_L4_ZOLS_40, "ROOM_40_SPEC")
 level4_room_40_key_success = _cleared(ROOM_L4_ZOLS_40, "ROOM_40_SPEC", keys=1)
 
 
-def level4_compass_collected(ram: np.ndarray) -> bool:
-    """L4 compass inventory bit set (ADDR_COMPASS & 0x08)."""
-    return bool(read_snapshot(ram).compass & LEVEL4_COMPASS_BIT)
-
-
-def level4_compass_route_success(ram: np.ndarray) -> bool:
-    """Compass bit set and back on 0x61 play-ready (maze return complete)."""
-    snap = read_snapshot(ram)
-    return bool(snap.compass & LEVEL4_COMPASS_BIT) and level4_room_ready(
-        snap, ROOM_L4_VIRES_61
-    )
-
-
 # --- Specs (assisted geometry; not Clean promote) ---
 ROOM_71_SPEC = DungeonRoomSpec(
     spec_id="level4_room71_entry",
@@ -660,24 +647,6 @@ level4_room_32_cleared = _cleared(ROOM_L4_EAST_32, "ROOM_32_SPEC")
 level4_room_12_cleared = _cleared(ROOM_L4_VIRES_12, "ROOM_12_SPEC")
 
 
-def level4_room_12_right_open(ram: np.ndarray) -> bool:
-    """0x12 cleared and RIGHT door bit set after block push (doors & 0x01)."""
-    return level4_room_12_cleared(ram) and bool(
-        read_snapshot(ram).cur_opened_doors & 0x01
-    )
-
-
-def level4_gleeok_enter_success(ram: np.ndarray) -> bool:
-    """Play-ready on Gleeok room 0x13 (boss may still be alive)."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL4
-        and snap.screen == ROOM_L4_GLEEOK_13
-        and snap.mode in (PLAY_MODE, 5)
-        and not snap.transitioning
-    )
-
-
 def level4_triforce_stop(snap: ZeldaSnapshot) -> bool:
     """Inventory fact: ADDR_TRIFORCE & 0x08 (not a route success claim alone)."""
     return bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
@@ -694,28 +663,6 @@ def level4_stepladder_success(ram: np.ndarray) -> bool:
     return _ladder_on(ram)
 
 
-def level4_post_ladder_success(ram: np.ndarray) -> bool:
-    """On 0x32 play with ADDR_LADDER set (exited stepladder basement)."""
-    snap = read_snapshot(ram)
-    return (
-        _ladder_on(ram)
-        and snap.level == LEVEL4
-        and snap.screen == ROOM_L4_EAST_32
-        and snap.mode in (PLAY_MODE, 5)
-    )
-
-
-def level4_west_31_success(ram: np.ndarray) -> bool:
-    """On 0x31 play with ADDR_LADDER (post-ladder backtrack west of 0x32)."""
-    snap = read_snapshot(ram)
-    return (
-        _ladder_on(ram)
-        and snap.level == LEVEL4
-        and snap.screen == ROOM_L4_EAST_31
-        and snap.mode in (PLAY_MODE, 5)
-    )
-
-
 KEY_30_NORTH_X = 120
 RIGHT_20_STAND = (208, 141)
 MAP_21_PICKUP_XY = (208, 181)
@@ -726,17 +673,6 @@ def level4_map_success(ram: np.ndarray) -> bool:
     from zelda_i.ram import ADDR_MAP, read_u8
 
     return bool(int(read_u8(ram, ADDR_MAP)) & LEVEL4_MAP_BIT)
-
-
-def level4_map_room_success(ram: np.ndarray) -> bool:
-    """Map bit set and play-ready on 0x21 (map room)."""
-    snap = read_snapshot(ram)
-    return (
-        level4_map_success(ram)
-        and snap.level == LEVEL4
-        and snap.screen == ROOM_L4_MAP_21
-        and snap.mode in (PLAY_MODE, 5)
-    )
 
 
 _IMPORT_NAMES = frozenset({

@@ -111,7 +111,7 @@ def test_pause_select_presses_start_and_does_not_poke() -> None:
     assert int(ram[ADDR_SELECTED_ITEM]) == before
     assert ctl.report()["writes"] == 0
     assert ctl.report()["normal_pause_input"] is True
-    assert ctl.phase is HungryPhase.OPEN_SETTLE
+    assert ctl.phase is HungryPhase.SELECT
     # Off-center spawn would walk RIGHT if we skipped pause; START wins.
     assert "RIGHT" not in _buttons(act)
 

@@ -34,9 +34,12 @@ from harvest.planner.d2_farm_chunks import (
     wanted_quota,
 )
 from harvest.planner.d2_work import (
-    d2_leftover_phases,
-    leftover_section_phases,
+    bush_clear_phase,
+    ensure_axe_phase,
+    ensure_hammer_phase,
+    fence_dump_phase,
     rock_clear_phase,
+    stone_pond_phase,
     stump_clear_phase,
 )
 from harvest.scripts.leftover_exec import leftover_chain_decision, phase_already_clear
@@ -72,6 +75,22 @@ def _place_large_rock(ram: np.ndarray, tx: int, ty: int) -> None:
     _set_tile(ram, tx + 1, ty, 0x0E)
     _set_tile(ram, tx, ty + 1, 0x0F)
     _set_tile(ram, tx + 1, ty + 1, 0x10)
+
+
+def _chunked(builder, chunks=FARM_CHUNK_ORDER):
+    return [builder(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name) for name in chunks]
+
+
+def _leftover_all():
+    return [
+        bush_clear_phase(),
+        fence_dump_phase(),
+        *_chunked(stone_pond_phase),
+        ensure_hammer_phase(),
+        *_chunked(rock_clear_phase),
+        ensure_axe_phase(),
+        *_chunked(stump_clear_phase),
+    ]
 
 
 def _make_farm_ram(*, player_tile=(10, 10), stamina=100, tool=int(Tool.HAMMER)):
@@ -153,16 +172,17 @@ class ChunkedCountIsolationTests(unittest.TestCase):
 
 class ChunkedPhaseChainTests(unittest.TestCase):
     def test_section_stones_is_four_bounded_phases(self) -> None:
-        phases = leftover_section_phases(
-            "stones", stamina=Stamina(current=100, maximum=100)
-        )
+        phases = _chunked(stone_pond_phase)
         self.assertEqual([p.phase for p in phases], ["CLEAR_STONES"] * 4)
         self.assertEqual([p.params["chunk"] for p in phases], list(FARM_CHUNK_ORDER))
         for spec, name in zip(phases, FARM_CHUNK_ORDER):
             self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS[name])
 
     def test_one_chunk_section_is_a_single_bounded_phase(self) -> None:
-        phases = leftover_section_phases("rocks", chunk="se")
+        phases = [
+            ensure_hammer_phase(),
+            rock_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS["se"], chunk="se"),
+        ]
         self.assertEqual(phases[0].phase, "ENSURE_HAMMER")
         rocks = [p for p in phases if p.phase == "CLEAR_ROCKS"]
         self.assertEqual(len(rocks), 1)
@@ -171,7 +191,7 @@ class ChunkedPhaseChainTests(unittest.TestCase):
         self.assertEqual(rocks[0].params["quota"], {"large_rocks": EXHAUSTIVE})
 
     def test_full_leftover_chains_four_smash_chunks_without_getting_stuck(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=100, maximum=100))
+        phases = _leftover_all()
         names = [p.phase for p in phases]
         self.assertEqual(names.count("CLEAR_STONES"), 4)
         self.assertEqual(names.count("CLEAR_ROCKS"), 4)
@@ -264,7 +284,7 @@ class FullChainEmptyTests(unittest.TestCase):
         self.assertEqual(count_debris(ram, FARM_CHUNK_BOUNDS["ne"]).stumps, 0)
         self.assertFalse(section_complete("stumps", start, start))
 
-        phases = leftover_section_phases("stumps")
+        phases = [ensure_axe_phase(), *_chunked(stump_clear_phase)]
         run = []
         skipped = []
         for spec in phases:
@@ -387,9 +407,7 @@ class LeftoverChainReadinessTests(unittest.TestCase):
     def test_partial_pin_skips_empty_chunks_and_keeps_se_boulder(self) -> None:
         ram = _make_farm_ram()
         _place_large_rock(ram, 60, 51)
-        phases = leftover_section_phases(
-            "all", stamina=Stamina(current=100, maximum=100)
-        )
+        phases = _leftover_all()
         run = []
         skipped = []
         for spec in phases:
@@ -436,7 +454,7 @@ class LeftoverChainReadinessTests(unittest.TestCase):
         self.assertEqual(wanted_quota("bushes").weeds, EXHAUSTIVE)
 
     def test_leftover_smash_is_required_so_a_day_plan_cannot_skip_a_stall(self) -> None:
-        phases = d2_leftover_phases(stamina=Stamina(current=100, maximum=100))
+        phases = _leftover_all()
         smash = [
             p
             for p in phases

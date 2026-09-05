@@ -814,6 +814,8 @@ def room_49_up_step(
         if y > ROOM_49_MOAT_SOUTH_Y and abs(x - ROOM_49_NORTH_X) > NORTH_X_TOL:
             btn = "LEFT" if x > ROOM_49_NORTH_X else "RIGHT"
             return FrameAction(nes_action(btn), "up49_south_align")
+        if int(snap.ladder) < 1:
+            return FrameAction(nes_idle_action(), "moat_requires_ladder")
         btn = "UP"
         if keese and frames % _SWING_PERIOD < _SWING_HOLD:
             return FrameAction(nes_action(btn, "A"), "up49_cross_slash")
@@ -894,6 +896,8 @@ class Room49UpController(HopController):
         action = room_49_up_step(
             snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
         )
+        if action.reason == "moat_requires_ladder":
+            return self.mark_fail("moat_requires_ladder")
         if action.reason.startswith("unexpected_room"):
             if snap.screen in {ROOM_59, ENTRY_SCREEN}:
                 return self.mark_fail("south_backtrack")

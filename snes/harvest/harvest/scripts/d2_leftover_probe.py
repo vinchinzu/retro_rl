@@ -54,7 +54,7 @@ from harvest.planner.d2_farm_chunks import (
     smash_done_empty,
     wanted_quota,
 )
-from harvest.planner.d2_work import D2FarmClearTactic, leftover_section_phases, observe_d2_farm
+from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
 from harvest.planner.day_phase_registry import TaskBuildContext
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.day_plan_tasks import ExitToFarmTask
@@ -62,8 +62,6 @@ from harvest.runtime.retro_setup import make_harvest_env
 from harvest.runtime.watch_display import configure_headless
 from harvest.scripts.leftover_exec import (
     _phase_timeout,
-    leftover_chain_decision,
-    phase_already_clear,
     print_leftover_table,
     run_leftover_task,
     save_emulator_state,
@@ -230,12 +228,6 @@ def _section_complete(
 ) -> bool:
     """True when this pass removes the bounded D2 quota from its own start."""
     return section_complete(section, start, end)
-
-
-def _phases_for(section: str, *, stamina: Stamina, include_spa: bool, chunk: str = "all"):
-    return leftover_section_phases(
-        section, stamina=stamina, include_spa=include_spa, chunk=chunk
-    )
 
 
 def _save_emulator_state(env, state_name: str) -> Path:

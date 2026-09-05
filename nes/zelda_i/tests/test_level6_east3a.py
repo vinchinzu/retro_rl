@@ -12,32 +12,24 @@ from zelda_i.level6.east3a import (
     level6_east3a_success,
     make_east3a_controller,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": 0x3A,
+    "x": DATED_SPIT[0],
+    "y": DATED_SPIT[1],
+    "triforce": 0x1F,
+    "keys": 4,
+    "bombs": 8,
+    "rod": 1,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x3A)
-    ram[ADDR_LINK_X] = fields.get("x", DATED_SPIT[0])
-    ram[ADDR_LINK_Y] = fields.get("y", DATED_SPIT[1])
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
+    return make_ram(_DEFAULTS, **fields)
     ram[ADDR_ROD] = fields.get("rod", 1)
     return ram
 
