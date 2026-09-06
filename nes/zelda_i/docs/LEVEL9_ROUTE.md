@@ -16,6 +16,28 @@ still a fail-closed `NaturalRouteUnavailableController`. First real build:
 `Level9PostL8OverworldController` for the `0x6D → 0x5D → … → 0x78 →
 LEVEL9_ROCK_HOPS → 0x05` walk (the `0x6D → 0x78` connector is unmapped).
 
+**2026-09-06 — first real power-on run of the L9 chain, past a spine-dispatch
+bug (`rr-mzxn`).** A genuine `--through level9-credits` power-on attempt had
+never reached past L6 before: `survival.py`'s L6/L7/L8 dispatch only remapped
+`through` for the *immediate* next level, so an L9 target either stranded
+Link inside the L6 dungeon or hit a predecessor's own `raise ValueError`
+guard. Fixed (one `_through_for_predecessor` helper, all three call sites) —
+see `rr-mzxn`. That also fixed a real L6 bug the fixture-only path never
+exercised: `INLAND29_SPEC`'s generic occupancy grid was too narrow for its
+own LEFT+UP clip, stranding the BFS walker at the west wall; restored the
+dedicated `Level6Inland29Controller`.
+
+With those fixed, power-on `--through level9-credits` reaches TF `0xFF` and
+`Level9PostL8OverworldController` for the first time. Two more never-live-
+tested bugs turned up and got fixed in that controller (screens `0x59` and
+`0x58` — both a bare y-threshold re-checked every frame, ping-ponging
+forever instead of converging; see commit `5587fa1b`). Power-on now crosses
+`0x6D → 0x5D → 0x5C → 0x5B → 0x5A → 0x59 → 0x58 → 0x48 → 0x38` in one run.
+Remaining, same class of bug, not yet fixed: `0x38 → 0x28` oscillates around
+`(120,136-141)` — see `rr-sz8.5` notes for the fast-iteration approach
+(`Level8OWLeaveLive` savestate; don't trust `dungeon.tilemap`'s ascii/tile
+readers for overworld screens, they read misleading uniform values there).
+
 ## Natural-spine seam (Wave A, implementation only)
 
 The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
