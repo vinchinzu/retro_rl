@@ -40,7 +40,9 @@ from zelda_i.level9.natural_path import (
     NaturalPowerTriforceController,
     NaturalRescueZeldaController,
     NaturalSelectSilverArrowsController,
+    NaturalSilverArrowsController,
     make_natural_patra_join_controller,
+    make_natural_silver_arrows_controller,
     make_old_man_tf_gate_controller,
     make_patra_join_unavailable_controller,
     make_post_l8_overworld_controller,
@@ -91,24 +93,24 @@ def level9_entry_chapter(
     *,
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Post-L8 OW → Spectacle Rock bomb → Old Man TF gate. One-frame until live."""
+    """Post-L8 OW → Spectacle Rock bomb → enter L9 room 0x76."""
     del route
     return (
         _stage("level9_post_l8_overworld", make_post_l8_overworld_controller(handoff)),
-        _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller()),
-        _stage("level9_old_man_tf_gate", make_old_man_tf_gate_controller()),
+        _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller(handoff)),
     )
 
 
 def level9_silver_arrows_chapter(
     route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
+    *,
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
 ) -> tuple[tuple[str, Any, int], ...]:
-    controller = make_silver_arrows_unavailable_controller()
     if route.silver_arrow_room is None:
+        controller = make_silver_arrows_unavailable_controller()
         controller.reason = "silver_arrow_room_not_selected"
-    else:
-        controller.reason = MISSING_SILVER_ARROW_ROOM
-    return (_stage("level9_natural_silver_arrows", controller),)
+        return (_stage("level9_natural_silver_arrows", controller),)
+    return (_stage("level9_natural_silver_arrows", make_natural_silver_arrows_controller(handoff=handoff)),)
 
 
 def level9_patra_chapter(
@@ -179,7 +181,7 @@ def l9_hops(
         SpineHop(
             L9_SILVER_ARROWS_ENDPOINT.through,
             L9_SILVER_ARROWS_ENDPOINT.stop,
-            lambda: level9_silver_arrows_chapter(route),
+            lambda: level9_silver_arrows_chapter(route, handoff=handoff),
             lambda snap, **_: level9_silver_arrows_stop(
                 snap,
                 room=route.silver_arrow_room,
@@ -202,6 +204,7 @@ def l9_hops(
 
 __all__ = [
     "Level9NaturalRouteSelection",
+    "NaturalSilverArrowsController",
     "SELECTED_NATURAL_ROUTE",
     "UNSELECTED_NATURAL_ROUTE",
     "level9_credits_chapter",
@@ -209,4 +212,5 @@ __all__ = [
     "level9_patra_chapter",
     "level9_silver_arrows_chapter",
     "l9_hops",
+    "make_natural_silver_arrows_controller",
 ]

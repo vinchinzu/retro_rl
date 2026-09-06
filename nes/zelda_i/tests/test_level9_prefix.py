@@ -255,15 +255,18 @@ def test_factory_report_fixture_live_not_route_eligible() -> None:
     assert not is_north_neighbor(0x76, 0x07)
 
 
-def test_natural_old_man_factory_stays_fail_closed() -> None:
+def test_natural_old_man_factory_wires_level9_north_76_controller() -> None:
     ctl = make_old_man_tf_gate_controller()
+    assert isinstance(ctl, Level9North76Controller)
+    assert ctl.dest == ROOM_OLD_MAN_TF == 0x66
     ram = _ram()
     before = ram.copy()
     act = ctl.step(read_snapshot(ram))
     assert np.array_equal(ram, before)
-    assert ctl.failed
-    assert act.reason == MISSING_OLD_MAN_GATE
-    assert ctl.max_frames == 1
+    assert not ctl.failed
+    assert list(act.action) == UP
+    assert act.reason == "north_76_push"
+    assert ctl.max_frames == 4000
 
 
 def test_west_66_south_mouth_aligns_y_then_left() -> None:
