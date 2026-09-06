@@ -1005,6 +1005,10 @@ class Level9Stairs61Controller(Level9StairsHopController):
     _pushed: bool = False
     _stage: int = 0
     _patra_cooldown: int = 0
+    _stuck_xy: tuple[int, int] | None = None
+    _stuck_frames: int = 0
+    _stuck_escape_frames: int = 0
+    _escape_dir: str = "UP"
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1024,6 +1028,33 @@ class Level9Stairs61Controller(Level9StairsHopController):
                 # landed 0 hits in 387f against the real power-on pin
                 # (L9Room61EntryReal) -- never checked the sword hitbox, same
                 # bug class fixed for stairs_05's Wizzrobes.
+                #
+                # Room 0x61's block/wall geometry (absent in 0x52) can pin
+                # Link against an obstacle while patra_action keeps re-issuing
+                # the same axis-align command every frame (RNG-dependent --
+                # a different eye/body trajectory than the one used to tune
+                # this can wedge Link somewhere the south-stand target can't
+                # reach directly). Detect a long no-progress stall and step
+                # toward the room's open center to break free before
+                # resuming the proven policy, rather than let it loop forever.
+                if self._stuck_escape_frames > 0:
+                    self._stuck_escape_frames -= 1
+                    return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
+                xy = (int(snap.link_x), int(snap.link_y))
+                if xy == self._stuck_xy:
+                    self._stuck_frames += 1
+                else:
+                    self._stuck_xy = xy
+                    self._stuck_frames = 0
+                if self._stuck_frames > 90:
+                    dx, dy = 120 - snap.link_x, 133 - snap.link_y
+                    if abs(dx) >= abs(dy):
+                        self._escape_dir = "RIGHT" if dx > 0 else "LEFT"
+                    else:
+                        self._escape_dir = "DOWN" if dy > 0 else "UP"
+                    self._stuck_escape_frames = 20
+                    self._stuck_frames = 0
+                    return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
                 action, reason, self._patra_cooldown = patra_action(
                     snap, cooldown=self._patra_cooldown,
                 )
