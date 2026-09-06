@@ -70,6 +70,58 @@ See `probe_l9_05_entry_sweep.py` for the reproducible sweep/evidence and
 tile, or a visual survey of `0x05` and its neighbors for the actual
 formation — not another guess at the current one's coordinates.
 
+**2026-09-06 (later still) — Spectacle Rock bomb geometry fixed via ROM
+archaeology, not a guess.** The aldonunez `zelda1-disassembly`
+`UpdateObject_JumpTable` shows `ObjType` `0x63`/`0x67` dispatch to
+`UpdateRockWall`, the overworld's real bombable-rock handler (checks a
+bomb's midpoint against the tile object's own midpoint via
+`CheckTileObjWeaponCollision`, replaces the tile on hit). Dumping live RAM
+objects on OW `0x05` after the real post-L8 walk
+(`probe_l9_05_objects.py`) finds exactly one such object: type `0x63` at
+`(80, 160)` — the two large piles are just background tiles; this one
+small object *is* the secret, anchored 8px off from where the controller
+stood (`x=72`). `probe_l9_05_rockwall_bomb.py` confirms a real pixel-diff
+hole opens bombing at `(88,178)`/facing UP; `probe_l9_05_rockwall_enter.py`
+sweeps entry columns from a post-blast savestate and finds `x=80` is the
+only one that crosses `level==9`, settling at the documented `(120,205)`
+room `0x76`. Fixed `Level9SpectacleRockBombController`'s two `x=72`
+targets → `x=80` (commit `38694ecc`). `probe_l9_05_rock_bomb.py` now runs
+the real controller class end to end to `DONE`/`success=True`.
+
+**Same session — power-on reaches genuinely into the L9 dungeon for the
+first time, then dies at `level9_stairs_05`.** With the rock-bomb fix,
+`--through level9-credits` clears `level9_post_l8_overworld` and
+`level9_spectacle_rock_bomb` power-on, then `level9_natural_silver_arrows`
+clears hops `0x76→0x66→0x65→0x55→cellar 0x60→0x14→0x15→0x16→0x06→0x05`
+(hops 0–8) before dying at hop 9 (`level9_stairs_05`, the block-push room
+after the `0x06` bomb-west). This is a genuine deterministic deadlock, not
+RNG variance — it reproduces byte-identical at `(98,149)` whether given
+the original 4000f budget or a bumped 12000f (commit `fe431b07`,
+bumped anyway since the room being hard was a reasonable prior; it just
+wasn't the actual cause). Root-caused in `repro_l9_05_stairs_from_pin.py`:
+the block-approach logic's exact-equality x check plus a
+`_push_attempts > 250` escape valve permanently loops between
+`recenter_y` and `clear_wizzrobe` once `link_x` incidentally lands on
+exactly 96 (an engine corner-slide side effect of pressing DOWN, not a
+deliberate x-correction), never once reaching `push_block_up`. Prototyped
+two fixes against a *real* power-on savestate
+(`L9Room05EntryReal`, pinned via `pin_l9_room05_entry.py` — runs the
+actual `run_survival_spine()` pipeline and aborts the instant Link
+settles in room `0x05`, so further iteration is seconds, not ~5 minutes):
+room `0x05` actually has **5** live Wizzrobes (`0x23`/`0x24`), not the 1–2
+assumed by the original policy. An always-fight variant
+(`experiment_l9_05_push_v3.py`, mirroring `Level9Stairs55Controller`'s
+proven Lanmola-clear-first pattern) landed **zero kills** in 12000f — the
+scripted chase-and-slash can't reliably hit these teleporting enemies as
+written. An ignore-them variant (`experiment_l9_05_push_v4.py`, correct
+x-alignment + one-time y-latch, relying on `UnlimitedHealthAssist`) shows
+Link repeatedly knocked back between `y≈93` and `y≈125`, never reaching
+the `y=165` stand-off row needed before the push — a genuinely difficult
+live encounter, not just a math bug. **Not fixed this session** —
+`Level9Stairs05Controller.policy()` is unchanged (still the buggy loop);
+whoever picks this up next has the real pin and three prototype scripts
+to iterate from directly. See `rr-sz8.6` notes.
+
 ## Natural-spine seam (Wave A, implementation only)
 
 The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
