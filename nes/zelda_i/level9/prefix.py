@@ -6,6 +6,8 @@ Natural-spine factories in ``natural_path`` stay fail-closed.
 
 from __future__ import annotations
 
+import os
+
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
@@ -82,6 +84,7 @@ RED_RING = ROOM_RED_RING_HYP  # 0x07
 _DOOR_TOL = 4
 _SAMPLE_PERIOD = 12
 _MAX_FRAMES = 4000
+_DEBUG_05 = bool(os.environ.get("L9_DEBUG_05"))
 
 def is_north_neighbor(origin: int, dest: int) -> bool:
     """Same column, one dungeon row north (``$EB - 0x10``)."""
@@ -889,6 +892,16 @@ class Level9Stairs05Controller(Level9StairsHopController):
             o for o in snap.objects
             if o.type_id in (0x23, 0x24) and o.hp > 0
         ]
+        if _DEBUG_05 and self.frames % 25 == 0:
+            print(
+                f"[stairs05 dbg] f{self.frames} xy=({snap.link_x},{snap.link_y}) "
+                f"mode={snap.mode} ium={snap.is_updating_mode} trans={snap.transitioning} "
+                f"health={snap.health:#x} sword={snap.sword} "
+                f"block={(block.x, block.y, block.type_id, block.slot, block.hp) if block else None} "
+                f"wizz={[(w.x, w.y, w.hp, w.state) for w in live_wizz]} "
+                f"objs={[(o.slot, o.type_id, o.x, o.y, o.hp, o.state) for o in snap.objects]}",
+                flush=True,
+            )
         if live_wizz:
             nearest = min(
                 live_wizz,
