@@ -266,10 +266,44 @@ def test_level7_seam_is_wired_into_the_spine() -> None:
         assert target in SPINE_THROUGH
         run = SpineRun(through=target, success=True, boot_frames=1)
         assert run.report()["stop"] is not None
-    # L7/L8 targets drive the L6 suffix to level6-exit, then continue into L7.
     src = inspect.getsource(survival.run_survival_spine)
     assert "continue_level7_spine" in src
-    assert '"level6-exit" if through in L7_THROUGH + L8_THROUGH else through' in src
+
+
+def test_through_for_predecessor_remaps_every_downstream_target() -> None:
+    """rr-mzxn regression guard.
+
+    Every L7/L8/L9 target must remap to the predecessor's own final stop
+    when driving an earlier level's ``continue_*_spine`` -- not just the
+    immediate next level. Missing L9 in the L6/L7 remap left Link stranded
+    inside the L6 dungeon (L6) or raised ``ValueError`` (L7, whose own
+    ``continue_level7_spine`` rejects any ``through`` outside L7_THROUGH).
+    """
+    from zelda_i.level6.spine import L6_THROUGH
+    from zelda_i.level7.spine import L7_THROUGH
+    from zelda_i.level8.spine import L8_THROUGH
+    from zelda_i.level9.spine import L9_THROUGH
+    from zelda_i.spine.survival import _through_for_predecessor
+
+    downstream_of_l6 = L7_THROUGH + L8_THROUGH + L9_THROUGH
+    for target in downstream_of_l6:
+        assert (
+            _through_for_predecessor(target, L6_THROUGH, "level6-exit")
+            == "level6-exit"
+        )
+    for target in L6_THROUGH:
+        assert _through_for_predecessor(target, L6_THROUGH, "level6-exit") == target
+
+    downstream_of_l7 = L8_THROUGH + L9_THROUGH
+    for target in downstream_of_l7:
+        assert _through_for_predecessor(target, L7_THROUGH, "level7") == "level7"
+    for target in L7_THROUGH:
+        assert _through_for_predecessor(target, L7_THROUGH, "level7") == target
+
+    for target in L9_THROUGH:
+        assert _through_for_predecessor(target, L8_THROUGH, "level8") == "level8"
+    for target in L8_THROUGH:
+        assert _through_for_predecessor(target, L8_THROUGH, "level8") == target
 
 
 def test_spine_run_measured_set_state_fails_the_run() -> None:

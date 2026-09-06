@@ -438,6 +438,28 @@ def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
     return ok
 
 
+def _through_for_predecessor(
+    through: str, own_through: tuple[str, ...], own_last_stop: str
+) -> str:
+    """Remap ``through`` for a predecessor level's ``continue_*_spine`` call.
+
+    Each ``continue_level{N}_spine`` only knows its own ``L{N}_THROUGH``
+    targets; a downstream target (anything past level N) must be remapped
+    to level N's own final stop, or the predecessor either raises (L7, L8:
+    ``if through not in L{N}_THROUGH: raise``) or -- worse -- silently runs
+    every one of its own hops to completion, including any completionist
+    tail past its real handoff point (L6: passing an unrecognized
+    downstream ``through`` straight through made ``attach_hops`` run L6's
+    entire row list, including the east3a/north39/inland29/west19/south18
+    tail *after* the real OW handoff, stranding Link inside the L6 dungeon
+    instead of on the overworld -- rr-mzxn).
+
+    A target already in ``own_through`` (an actual level-N target) passes
+    through unchanged so level N's own attach_hops loop still stops there.
+    """
+    return through if through in own_through else own_last_stop
+
+
 def run_survival_spine(
     env,
     obs: Any,
@@ -615,25 +637,25 @@ def run_survival_spine(
     )
     if not run.success or through in L5_THROUGH:
         return run
-    # For an L7 or L8 target, drive the L6 suffix to the measured post-fanfare
-    # OW return (``level6-exit``); L7 then continues from screen 0x22.
+    # For any target past L6 (L7, L8, or L9), drive the L6 suffix only to the
+    # measured post-fanfare OW return (``level6-exit``); L7 then continues
+    # from screen 0x22. See ``_through_for_predecessor`` (rr-mzxn).
     continue_level6_spine(
         env,
         run,
-        through=(
-            "level6-exit" if through in L7_THROUGH + L8_THROUGH else through
-        ),
+        through=_through_for_predecessor(through, L6_THROUGH, "level6-exit"),
         run_stages=_run_stages,
         **hop_kw,
     )
     if not run.success or through in L6_THROUGH:
         return run
-    # For an L8 target, drive the L7 suffix to its own last stop (``level7``);
-    # L8 then continues from the post-L7 overworld with the handoff packet.
+    # For any target past L7 (L8 or L9), drive the L7 suffix to its own last
+    # stop (``level7``); L8 then continues from the post-L7 overworld with
+    # the handoff packet. See ``_through_for_predecessor`` (rr-mzxn).
     continue_level7_spine(
         env,
         run,
-        through="level7" if through in L8_THROUGH else through,
+        through=_through_for_predecessor(through, L7_THROUGH, "level7"),
         run_stages=_run_stages,
         **hop_kw,
     )
@@ -641,10 +663,11 @@ def run_survival_spine(
         return run
     # L8 continues from MEASURED_POST_L7_HANDOFF. Default hops walk the
     # refilled-pond west ring then the reverse pond corridor to 0x6D.
+    # See ``_through_for_predecessor`` (rr-mzxn).
     continue_level8_spine(
         env,
         run,
-        through=through,
+        through=_through_for_predecessor(through, L8_THROUGH, "level8"),
         run_stages=_run_stages,
         **hop_kw,
         **(level8_overrides or {}),
