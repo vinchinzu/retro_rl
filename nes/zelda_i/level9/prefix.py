@@ -20,6 +20,7 @@ from zelda_i.dungeon.hop_controller import (
     WAIT_SCROLL_B,
     dungeon_align_then_push,
 )
+from zelda_i.combat import should_swing_at
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
@@ -865,17 +866,22 @@ class Level9Stairs05Controller(Level9StairsHopController):
     done_reason: str = "settled_cellar_0x70"
     origin: int = STAIRS_05_ORIGIN
     dest_hyp: int = STAIRS_05_DEST_HYP
-    # Power-on evidence (rr-sz8.6, 2026-09-06): a fixture/isolated re-drive from
-    # room entry clears in ~2000f, but the live blue/orange Wizzrobes (type
-    # 0x23/0x24) teleport unpredictably and a bad-RNG power-on run timed out at
-    # the base 4000f budget still mid-chase, well short of the push/stairs
-    # phase. Same class of issue as the L8 darknut rooms
-    # (see l8-fixture-vs-poweron-gaps memory) -- budget generously rather than
-    # re-tune the chase policy against one unlucky trial.
+    # Power-on evidence (rr-sz8.6, 2026-09-06): room 0x05 has 5 live blue/orange
+    # Wizzrobes (type 0x23/0x24). A blind chase-and-mash-A policy landed 0
+    # kills in 12000f (never actually checked the sword hitbox), and ignoring
+    # them entirely got Link knocked back to nearly the same spot forever
+    # (UnlimitedHealthAssist prevents death, not knockback). Fix: proper
+    # should_swing_at-gated combat (only swing when the hitbox actually
+    # overlaps) with a backstep-when-stuck-too-close fallback, ported from
+    # level6.wizzrobe.Level6EastKeyController -- verified live (fast-iteration
+    # pin L9Room05EntryReal) to clear all 5 in ~1700f, well inside budget.
     max_frames: int = 12_000
     _cleared: bool = False
     _pushed: bool = False
-    _push_attempts: int = 0
+    _wizz_prev_count: int = -1
+    _wizz_last_progress_frame: int = 0
+    _wizz_backstep_frames: int = 0
+    _recentered_push_y: bool = False
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -902,45 +908,60 @@ class Level9Stairs05Controller(Level9StairsHopController):
                 f"objs={[(o.slot, o.type_id, o.x, o.y, o.hp, o.state) for o in snap.objects]}",
                 flush=True,
             )
+
+        # Full-clear before touching the block: nothing left to knock Link
+        # off the push stand-off once this branch is done.
         if live_wizz:
+            n_live = len(live_wizz)
+            if self._wizz_prev_count < 0:
+                self._wizz_prev_count = n_live
+                self._wizz_last_progress_frame = self.frames
+            elif n_live < self._wizz_prev_count:
+                self._wizz_prev_count = n_live
+                self._wizz_last_progress_frame = self.frames
+                self._wizz_backstep_frames = 0
+
             nearest = min(
                 live_wizz,
                 key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
             )
             dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-            if dist <= 32:
+            stuck_close = (
+                dist < 16 and (self.frames - self._wizz_last_progress_frame) > 100
+            )
+            if stuck_close or self._wizz_backstep_frames > 0:
+                if self._wizz_backstep_frames <= 0:
+                    self._wizz_backstep_frames = 24
+                self._wizz_backstep_frames -= 1
+                if self._wizz_backstep_frames == 0:
+                    self._wizz_last_progress_frame = self.frames
                 dx = nearest.x - snap.link_x
                 dy = nearest.y - snap.link_y
-                if abs(dx) > abs(dy):
-                    d = "RIGHT" if dx > 0 else "LEFT"
+                if abs(dx) >= abs(dy):
+                    d = "LEFT" if dx >= 0 else "RIGHT"
                 else:
-                    d = "DOWN" if dy > 0 else "UP"
-                return FrameAction(
-                    nes_action(d, "A") if self.frames % 4 == 0 else nes_action(d),
-                    "wizzrobe_slash",
-                )
+                    d = "UP" if dy >= 0 else "DOWN"
+                return FrameAction(nes_action(d), "wizzrobe_backstep")
+
+            dx = nearest.x - snap.link_x
+            dy = nearest.y - snap.link_y
+            if abs(dx) > abs(dy):
+                direction = "RIGHT" if dx > 0 else "LEFT"
+            else:
+                direction = "DOWN" if dy > 0 else "UP"
+            if should_swing_at(snap.link_x, snap.link_y, direction, live_wizz):
+                return FrameAction(nes_action(direction, "A"), "wizzrobe_engage_slash")
+            return FrameAction(nes_action(direction), "wizzrobe_engage")
 
         if block is not None and block.y > STAIRS_05_PUSH_BLOCK_Y:
             self._pushed = False
-            if snap.link_y < 165 and snap.link_x != STAIRS_05_PUSH_X:
-                return FrameAction(nes_action("DOWN"), "recenter_y")
-            if snap.link_x > STAIRS_05_PUSH_X:
-                return FrameAction(nes_action("LEFT"), "align_push_x")
-            if snap.link_x < STAIRS_05_PUSH_X:
-                return FrameAction(nes_action("RIGHT"), "align_push_x")
-            self._push_attempts += 1
-            if self._push_attempts > 250 and live_wizz:
-                nearest = min(
-                    live_wizz,
-                    key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
-                )
-                dx = nearest.x - snap.link_x
-                dy = nearest.y - snap.link_y
-                d = "RIGHT" if abs(dx) > abs(dy) and dx > 0 else ("LEFT" if abs(dx) > abs(dy) else ("DOWN" if dy > 0 else "UP"))
-                return FrameAction(
-                    nes_action(d, "A") if self.frames % 6 == 0 else nes_action(d),
-                    "clear_wizzrobe",
-                )
+            if not self._recentered_push_y:
+                if snap.link_y < 165:
+                    return FrameAction(nes_action("DOWN"), "recenter_y")
+                self._recentered_push_y = True
+            if abs(snap.link_x - STAIRS_05_PUSH_X) > 4:
+                d = "LEFT" if snap.link_x > STAIRS_05_PUSH_X else "RIGHT"
+                return FrameAction(nes_action(d), "align_push_x")
             return FrameAction(nes_action("UP"), "push_block_up")
 
         self._pushed = True
