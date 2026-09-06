@@ -14,6 +14,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.dungeon.engine import DungeonPhase
 from zelda_i.level4.dungeon import (
     LEVEL4,
@@ -147,6 +148,7 @@ def make_bomb_11_east_controller() -> BombWallController:
     return BombWallController(
         wall=BombWall11East(),
         level=LEVEL4,
+        select_item=B_SLOT_BOMBS,
         approach_waypoints=(BOMB_11_EAST_STAND,),
         approach_tol=2,
         stand_tol=2,

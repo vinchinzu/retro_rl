@@ -35,7 +35,11 @@ __all__ = [
     "TF_ROOM_HYP",
     "Level8North3CController",
     "Level8Shard2CController",
+    "Level8OWLeaveController",
+    "OW_LEAVE_POSE",
+    "OW_LEAVE_SCREEN",
     "make_north_3c_controller",
+    "make_ow_leave_controller",
     "make_shard_2c_controller",
     "north_3c_step",
     "shard_2c_step",
@@ -59,6 +63,14 @@ FANFARE_MODE = 18
 CELLAR_FAIL = (0x0F, 0x2F)
 NORTH_3C_MAX_FRAMES = 4000
 SHARD_MAX_FRAMES = 4000
+# rr-6o7.3: after the shard fanfare Link is returned to OW `0x6D` `(96,93)`
+# mode 5, TF `0xFF` -- the measured power-on `--through level8` leave
+# (`level8_ow_leave_settle` stage: 567f to 30 consecutive OW-0x6D frames) and
+# the L9 predecessor pose.  Matches the old `Level8PostShardOWReconFixture`.
+OW_LEAVE_SCREEN = 0x6D
+OW_LEAVE_POSE = (96, 93)
+OW_LEAVE_SETTLE_FRAMES = 30
+OW_LEAVE_MAX_FRAMES = 3000
 _DOOR_TOL = 4
 _SAMPLE_PERIOD = 12
 RAM_CLAIM = (
@@ -287,3 +299,89 @@ class Level8Shard2CController(HopController):
 
 def make_shard_2c_controller() -> Level8Shard2CController:
     return Level8Shard2CController()
+
+
+@dataclass(kw_only=True)
+class Level8OWLeaveController(HopController):
+    """Idle the shard fanfare until Link settles on OW ``0x6D`` play.
+
+    The chapter epilogue: ``Level8Shard2CController`` stops at the fanfare
+    (mode 18), but ``level8_clear_stop`` needs the settled overworld leave.
+    Press nothing -- the fanfare and the dungeon->OW scroll run themselves.
+    Fails closed if Link settles on any OW screen other than ``0x6D``.
+    """
+
+    spec_id: str = "level8_ow_leave_settle"
+    max_frames: int = OW_LEAVE_MAX_FRAMES
+    require_level: int | None = None
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "settled_ow_0x6d"
+    route_eligible: bool = False
+    settle_frames: int = OW_LEAVE_SETTLE_FRAMES
+    leftover: dict[str, Any] = field(default_factory=dict)
+    writes: int = 0
+    _ow_since: int = field(default=0, init=False)
+
+    def _on_ow_6d(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == 0
+            and snap.screen == OW_LEAVE_SCREEN
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and bool(int(snap.triforce) & TF_BIT_L8)
+        )
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        self._ow_since = self._ow_since + 1 if self._on_ow_6d(snap) else 0
+        return self._ow_since >= self.settle_frames
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"ow_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_tf=0x{snap.triforce:02x}"
+        )
+
+    def emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
+            self.leftover = _leftover(snap)
+        return action
+
+    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        blocked = HopController.guard(self, snap)
+        if blocked is not None:
+            return blocked
+        if (
+            snap.level == 0
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen != OW_LEAVE_SCREEN
+        ):
+            return self.mark_fail(
+                f"l8_ow_leave_wrong_screen_0x{snap.screen:02x}"
+            )
+        if snap.level not in (0, 8):
+            return self.mark_fail(f"l8_ow_leave_wrong_level_{snap.level}")
+        return None
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return FrameAction(nes_idle_action(), f"ow_leave_wait_m{snap.mode}")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "natural_entry": False,
+            "writes": int(self.writes),
+            "leftover": dict(self.leftover),
+        }
+
+
+def make_ow_leave_controller() -> Level8OWLeaveController:
+    return Level8OWLeaveController()

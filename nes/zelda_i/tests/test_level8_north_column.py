@@ -29,8 +29,9 @@ from zelda_i.level8.north_column import (
     make_north_manhandla_controller,
 )
 from zelda_i.level8.path import (
-    Level8BlueGohmaController,
+    Level8BlueGohma1EController,
     Level8DarknutKeyController,
+    Level8MagicKeyStairsController,
     Level8NorthManhandlaController,
     UnverifiedLevel8PathController,
     make_blue_gohma_controller,
@@ -38,40 +39,33 @@ from zelda_i.level8.path import (
     make_north_manhandla_controller as path_make_manhandla,
 )
 from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
-    ADDR_ROOM_ITEM_ID,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": ROOM_ENTRY,
+    "x": 120,
+    "y": 205,
+    "triforce": 0x7F,
+    "sword": 3,
+    "health": 0xBB,
+    "keys": 9,
+    "bombs": 8,
+    "selected": 4,
+    "room_item": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", ROOM_ENTRY)
-    ram[ADDR_LINK_X] = fields.get("x", 120)
-    ram[ADDR_LINK_Y] = fields.get("y", 205)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_SWORD] = fields.get("sword", 3)
-    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
-    ram[ADDR_KEYS] = fields.get("keys", 9)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 4)
-    ram[ADDR_ROOM_ITEM_ID] = fields.get("room_item", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _put_obj(ram: np.ndarray, slot: int, type_id: int, hp: int, x: int, y: int) -> None:
@@ -109,16 +103,30 @@ def test_factories_are_live_policies_not_unverified() -> None:
     assert DARKNUT_KEY_ROOMS == frozenset({0x5E, 0x4E, 0x3E, 0x2E, 0x1E})
 
 
-def test_spine_magic_key_stages_keep_gohma_fail_closed() -> None:
+def test_spine_magic_key_stages_wire_the_live_gohma_kill() -> None:
     hops = l8_hops(SimpleNamespace(get_ram=lambda: _ram()))
     stages = hops[1].stages()
     names = [name for name, _, _ in stages]
-    assert names[:2] == ["level8_north_manhandla_bomb", "level8_darknut_key_up"]
+    assert names[:3] == [
+        "level8_north_manhandla_bomb",
+        "level8_darknut_key_up",
+        "level8_blue_gohma",
+    ]
     assert isinstance(stages[0][1], Level8NorthManhandlaController)
     assert isinstance(stages[1][1], Level8DarknutKeyController)
-    assert isinstance(stages[2][1], Level8BlueGohmaController)
+    # rr-6o7.2: the 0x1E arrow kill is promoted from probe_l8_1e_gohma.
+    assert isinstance(stages[2][1], Level8BlueGohma1EController)
+    assert not isinstance(stages[2][1], UnverifiedLevel8PathController)
+    assert stages[2][1].report()["route_eligible"] is False
     assert stages[0][2] >= 10_000
     assert stages[1][2] >= 10_000
+    # rr-6o7.2: level8_magic_key_stairs is now the live clear -> 0x68 slide ->
+    # cellar 0x0F key -> two-ladder return controller (spine-green from the
+    # power-on 0x1F frontier).
+    assert names[3] == "level8_magic_key_stairs"
+    assert isinstance(stages[3][1], Level8MagicKeyStairsController)
+    assert not isinstance(stages[3][1], UnverifiedLevel8PathController)
+    assert stages[3][1].report()["route_eligible"] is False
 
 
 def test_wrong_level_and_unknown_room_fail_closed() -> None:

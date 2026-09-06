@@ -10,8 +10,6 @@ and L1's fixed `(192,141)` cell does not collect it.
 
 from __future__ import annotations
 
-import numpy as np
-
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from zelda_i.level7.aquamentus import (
     HEART_CELL,
@@ -23,16 +21,14 @@ from zelda_i.level7.aquamentus import (
 )
 from zelda_i.level7.hops import make_aquamentus_heart_controller
 from zelda_i.level7.stairs import AQUAMENTUS_ROM
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 7,
+    "screen": AQUAMENTUS_ROM,
+}
 
 
 def _snap(
@@ -44,14 +40,17 @@ def _snap(
     mode: int = PLAY_MODE,
     level: int = 7,
 ):
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_HEALTH] = ((containers - 1) << 4) | (containers - 1)
-    return read_snapshot(ram)
+    return read_snapshot(
+        make_ram(
+            _DEFAULTS,
+            x=x,
+            y=y,
+            screen=screen,
+            mode=mode,
+            level=level,
+            health=((containers - 1) << 4) | (containers - 1),
+        )
+    )
 
 
 def _buttons(action) -> list[str]:

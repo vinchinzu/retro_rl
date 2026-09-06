@@ -9,6 +9,7 @@ North-around y=93 then LEFT; isolated MAP_21_SAMPLE_PATH is not this tape.
 from __future__ import annotations
 
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level4.dungeon import (
     BOMB_21_NORTH_FACE,
     BOMB_21_NORTH_STAND,
@@ -42,6 +43,7 @@ def make_bomb_21_north_controller() -> BombWallController:
     return BombWallController(
         wall=BombWall21North(),
         level=LEVEL4,
+        select_item=B_SLOT_BOMBS,
         approach_waypoints=ROOM_21_BOMB_WAYPOINTS,
         approach_tol=2,
         stand_tol=2,

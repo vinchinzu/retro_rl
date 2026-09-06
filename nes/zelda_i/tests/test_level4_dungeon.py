@@ -234,3 +234,50 @@ def test_level4_gleeok13_attaches_after_clear12() -> None:
     assert level4_gleeok13_success(read_snapshot(ram))
     ram[ADDR_SCREEN] = 0x12
     assert not level4_gleeok13_success(read_snapshot(ram))
+
+
+def test_l4_bomb_walls_pause_select_leftover_slot() -> None:
+    """L3 leftover is poke-assisted bombs; composition still pause-selects."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, B_SLOT_RECORDER
+    from zelda_i.level4.bomb11 import make_bomb_21_north_controller
+    from zelda_i.level4.clear12 import make_bomb_11_east_controller
+    from zelda_i.level4.key01 import make_bomb_11_north_controller
+    from zelda_i.level4.path import make_bomb_61_north_controller
+    from zelda_i.ram import PLAY_MODE, read_snapshot
+    from zelda_i.tests.ram_helpers import make_ram
+
+    factories = (
+        make_bomb_61_north_controller,
+        make_bomb_21_north_controller,
+        make_bomb_11_east_controller,
+        make_bomb_11_north_controller,
+    )
+    for factory in factories:
+        ctl = factory()
+        assert ctl.select_item == B_SLOT_BOMBS, factory.__name__
+        sx, sy = ctl.stand
+        ram = make_ram(
+            {},
+            mode=PLAY_MODE,
+            level=4,
+            screen=ctl.from_room,
+            x=sx,
+            y=sy,
+            bombs=8,
+            selected=B_SLOT_RECORDER,
+        )
+        ctl.bind_env(SimpleNamespace(get_ram=lambda ram=ram: ram))
+        reasons: list[str] = []
+        for _ in range(80):
+            before = ram.copy()
+            act = ctl.step(read_snapshot(ram))
+            assert np.array_equal(ram, before), "bomb wall must not write RAM"
+            reasons.append(act.reason)
+            if act.reason in {"place_bomb", "pause_open"}:
+                break
+        assert "pause_open" in reasons, (factory.__name__, reasons[-8:])
+        assert "place_bomb" not in reasons, factory.__name__

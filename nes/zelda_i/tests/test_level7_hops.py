@@ -108,56 +108,41 @@ from zelda_i.level7.pond import POST_L6_TO_POND_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from retro_harness.nes import nes_idle_action
 from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOMBS,
-    ADDR_BOW,
     ADDR_CANDLE,
-    ADDR_CUR_OPENED_DOORS,
     ADDR_FOOD,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LADDER,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_ROOM_ALL_DEAD,
     ADDR_RUPEES,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    ADDR_WHISTLE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": 0x09,
+    "x": 56,
+    "y": 109,
+    "sword": 1,
+    "triforce": 0x1F,
+    "keys": 3,
+    "bombs": 8,
+    "arrows": 1,
+    "health": 0xBB,
+    "whistle": 1,
+    "food": 0,
+    "rod": 0,
+    "bow": 1,
+    "candle": 1,
+    "ladder": 1,
+    "rupees": 20,
+    "selected": 0,
+    "doors": 0,
+    "room_all_dead": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x09)
-    ram[ADDR_LINK_X] = fields.get("x", 56)
-    ram[ADDR_LINK_Y] = fields.get("y", 109)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 3)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_ARROWS] = fields.get("arrows", 1)
-    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
-    ram[ADDR_WHISTLE] = fields.get("whistle", 1)
-    ram[ADDR_FOOD] = fields.get("food", 0)
-    ram[ADDR_ROD] = fields.get("rod", 0)
-    ram[ADDR_BOW] = fields.get("bow", 1)
-    ram[ADDR_CANDLE] = fields.get("candle", 1)
-    ram[ADDR_LADDER] = fields.get("ladder", 1)
-    ram[ADDR_RUPEES] = fields.get("rupees", 20)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
-    ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", 0)
-    ram[ADDR_ROOM_ALL_DEAD] = fields.get("room_all_dead", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -383,8 +368,8 @@ def test_survival_bait_controller_fails_closed_without_env() -> None:
 def test_natural_bait_stays_fail_closed_and_survival_is_opt_in() -> None:
     clean = level7_entry_chapter_stages()
     survival = level7_entry_chapter_stages(survival=True)
-    assert isinstance(clean[1][1], NaturalBaitPurchaseController)
-    assert isinstance(survival[1][1], SurvivalBaitPurchaseController)
+    assert isinstance(clean[3][1], NaturalBaitPurchaseController)
+    assert isinstance(survival[3][1], SurvivalBaitPurchaseController)
     # Stage names are identical either way.
     assert [n for n, _c, _f in clean] == [n for n, _c, _f in survival]
 
@@ -395,11 +380,13 @@ def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
     names = [n for n, _c, _f in stages]
     assert names == [
         "level7_post_l6_overworld",
+        "level7_recorder_warp",
+        "level7_pond_approach",
         "level7_bait_purchase",
         "level7_pond_drain_entry",
     ]
-    assert isinstance(stages[1][1], SurvivalBaitPurchaseController)
-    pond = stages[2][1]
+    assert isinstance(stages[3][1], SurvivalBaitPurchaseController)
+    pond = stages[4][1]
     assert not isinstance(pond, SurvivalBaitPurchaseController)
     from zelda_i.level7.pond import Level7PondDrainController
 
@@ -426,7 +413,6 @@ def test_hops_docstring_matches_live_facts() -> None:
     assert "MEASURED_POST_L6_EXIT" in doc
     assert "0x79" in doc
     assert "rr-8t4.4" in doc
-    assert "rr-8t4.1" in doc
 
 
 def test_pond_entry_factory_is_the_pause_select_drain() -> None:
@@ -590,7 +576,7 @@ def test_red_candle_factory_is_the_live_1a_push() -> None:
 
 
 def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
-    """L7-C stages are fixture-live. Screen None; handoff verified stays False."""
+    """L7-C stage factories stay fixture-live; the Survival packet is separate."""
     from zelda_i.level7.digdogger import Level7ForcedDigdoggerController
     from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
 
@@ -624,33 +610,37 @@ def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
         ]
         is False
     )
-    assert MEASURED_POST_L7_EXIT.verified is False
-    assert MEASURED_POST_L7_EXIT.screen is None
-    assert MEASURED_POST_L7_EXIT.complete() is False
+    assert MEASURED_POST_L7_EXIT.verified is True
+    assert MEASURED_POST_L7_EXIT.screen == 0x42
+    assert MEASURED_POST_L7_EXIT.bombs == 1
+    assert MEASURED_POST_L7_EXIT.rupees == 66
+    assert MEASURED_POST_L7_EXIT.heart_containers == 9
+    assert MEASURED_POST_L7_EXIT.complete() is True
+    assert MEASURED_POST_L7_EXIT.route_eligible is True
     assert UNMEASURED_HANDOFF.verified is False
     assert UNMEASURED_HANDOFF.screen is None
     assert UNMEASURED_HANDOFF.complete() is False
-    # L6 packet is the schema template; L7 has no filled packet yet.
-    h = MEASURED_POST_L6_EXIT
-    for name in (
-        "screen",
-        "link_x",
-        "link_y",
-        "mode",
-        "triforce",
-        "keys",
-        "bombs",
-        "rupees",
-        "heart_containers",
-        "selected_item",
-        "whistle",
-        "food",
-        "rod",
-        "bow",
-        "arrows",
-        "candle",
-    ):
-        assert getattr(h, name) is not None
+    # Both L6 and L7 packets are filled schemas.
+    for h in (MEASURED_POST_L6_EXIT, MEASURED_POST_L7_EXIT):
+        for name in (
+            "screen",
+            "link_x",
+            "link_y",
+            "mode",
+            "triforce",
+            "keys",
+            "bombs",
+            "rupees",
+            "heart_containers",
+            "selected_item",
+            "whistle",
+            "food",
+            "rod",
+            "bow",
+            "arrows",
+            "candle",
+        ):
+            assert getattr(h, name) is not None
 
 
 def test_l7_hops_use_fail_closed_entry_chapter() -> None:
@@ -666,6 +656,8 @@ def test_l7_hops_use_fail_closed_entry_chapter() -> None:
     stages = stages_fn()
     assert [name for name, _c, _n in stages] == [
         "level7_post_l6_overworld",
+        "level7_recorder_warp",
+        "level7_pond_approach",
         "level7_bait_purchase",
         "level7_pond_drain_entry",
     ]
@@ -823,6 +815,8 @@ def test_room_38_up_uses_east_pocket_not_centre_diamonds() -> None:
     assert room_38_up_step(mid, saw_goriya=True).reason == "up38_pocket"
     pocket = read_snapshot(_ram(level=7, screen=0x38, x=208, y=149))
     assert room_38_up_step(pocket, saw_goriya=True).reason == "up38_rise"
+    col144 = read_snapshot(_ram(level=7, screen=0x38, x=144, y=109))
+    assert room_38_up_step(col144, saw_goriya=True).reason == "up38_rise"
     door = read_snapshot(_ram(level=7, screen=0x38, x=120, y=93))
     assert room_38_up_step(door, saw_goriya=True).reason == "up38_push"
     dest = read_snapshot(_ram(level=7, screen=0x28, x=120, y=SOUTH_MOUTH_Y))

@@ -38,20 +38,27 @@ from zelda_i.level7.hops import (
     make_tip_stairs_controller,
 )
 from zelda_i.ram import (
-    ADDR_BOMBS,
     ADDR_CANDLE,
-    ADDR_COLLIDING_TILE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
     PASSAGE_MODE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PASSAGE_MODE,
+    "level": 7,
+    "screen": CELLAR_ROOM,
+    "x": SPAWN_XY[0],
+    "y": SPAWN_XY[1],
+    "tile": 36,
+    "keys": 2,
+    "bombs": 6,
+    "candle": 2,
+    "triforce": 0,
+}
 
 DOWN = list(nes_action("DOWN"))
 LEFT = list(nes_action("LEFT"))
@@ -61,18 +68,7 @@ IDLE = list(nes_idle_action())
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PASSAGE_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 7)
-    ram[ADDR_SCREEN] = fields.get("screen", CELLAR_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", SPAWN_XY[0])
-    ram[ADDR_LINK_Y] = fields.get("y", SPAWN_XY[1])
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 36)
-    ram[ADDR_KEYS] = fields.get("keys", 2)
-    ram[ADDR_BOMBS] = fields.get("bombs", 6)
-    ram[ADDR_CANDLE] = fields.get("candle", 2)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):

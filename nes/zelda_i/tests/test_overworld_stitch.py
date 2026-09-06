@@ -19,6 +19,7 @@ from zelda_i.overworld.stitch import (
     y_band_travel_hop,
 )
 from zelda_i.ram import (
+    ADDR_ARROWS,
     ADDR_BOMBS,
     ADDR_BOW,
     ADDR_CANDLE,
@@ -57,6 +58,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_FOOD] = fields.get("food", 0)
     ram[ADDR_ROD] = fields.get("rod", 0)
     ram[ADDR_BOW] = fields.get("bow", 0)
+    ram[ADDR_ARROWS] = fields.get("arrows", 0)
     ram[ADDR_CANDLE] = fields.get("candle", 0)
     ram[ADDR_SELECTED_ITEM] = fields.get("selected_item", 0)
     ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 0)
@@ -113,6 +115,66 @@ def test_complete_packet_keeps_route_ineligible() -> None:
     packet = _full_packet()
     assert packet.complete()
     assert packet.route_eligible is False
+
+
+def test_consumables_mismatch_allows_excess_but_forbids_deficit() -> None:
+    # Baseline: keys=3, bombs=8, rupees=20, heart_containers=5 (health 0x44)
+    packet = _full_packet(keys=3, bombs=8, rupees=20, heart_containers=5)
+    base_ram = _ram(
+        screen=0x42,
+        x=112,
+        y=125,
+        health=0x44,
+        keys=3,
+        bombs=8,
+        rupees=20,
+        whistle=1,
+        food=1,
+        rod=1,
+        bow=1,
+        arrows=1,
+        candle=CANDLE_RED,
+        triforce=0x3F,
+    )
+    assert packet.mismatch(read_snapshot(base_ram), base_ram) is None
+
+    # Having extra consumables (e.g. random drop) passes
+    excess_ram = _ram(
+        screen=0x42,
+        x=112,
+        y=125,
+        health=0x44,
+        keys=4,
+        bombs=8,
+        rupees=25,
+        whistle=1,
+        food=1,
+        rod=1,
+        bow=1,
+        arrows=1,
+        candle=CANDLE_RED,
+        triforce=0x3F,
+    )
+    assert packet.mismatch(read_snapshot(excess_ram), excess_ram) is None
+
+    # Having fewer consumables fails
+    fewer_keys_ram = _ram(
+        screen=0x42,
+        x=112,
+        y=125,
+        health=0x44,
+        keys=2,
+        bombs=8,
+        rupees=20,
+        whistle=1,
+        food=1,
+        rod=1,
+        bow=1,
+        arrows=1,
+        candle=CANDLE_RED,
+        triforce=0x3F,
+    )
+    assert packet.mismatch(read_snapshot(fewer_keys_ram), fewer_keys_ram) == "handoff_keys_mismatch"
 
 
 def test_tf_bits_are_one_through_ff() -> None:

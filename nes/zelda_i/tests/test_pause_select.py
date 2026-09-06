@@ -16,25 +16,16 @@ from zelda_i.dungeon.pause_select import (
     PauseSelectController,
     PauseSelectPhase,
 )
-from zelda_i.ram import (
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 
 def _ram(*, selected: int = 1, mode: int = PLAY_MODE) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_SCREEN] = 0x42
-    ram[ADDR_LINK_X] = 120
-    ram[ADDR_LINK_Y] = 141
-    ram[ADDR_SELECTED_ITEM] = selected
-    return ram
+    return make_ram(
+        {"screen": 0x42, "x": 120, "y": 141},
+        selected=selected,
+        mode=mode,
+    )
 
 
 def _bound(want: int = B_SLOT_RECORDER, **fields: int) -> tuple[

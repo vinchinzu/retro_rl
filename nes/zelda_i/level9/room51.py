@@ -43,7 +43,6 @@ from zelda_i.level9.stairs import (
     ROOM61_ROM_WEST,
     chase_sword_step,
     dest_report,
-    in_room_51,
     live_combat_objects,
     rom_door_name,
     stair_loader_for,
@@ -54,15 +53,13 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 from zelda_i.level9.stair_session import FIXTURE_SOURCE, _idle, _step
 from zelda_i.level9.stair_run import dump_room_tiles, materialize_stair_room
 
-BEAD = "rr-sz8.4"
+BEAD = "rr-yxy6"
 CLEAR_MAX_FRAMES = 2500
 DEST_PROBE_FRAMES = 1800
 ROOM51_SOUTH_Y = 189
 ROOM51_WEST_X = 48
 ROOM51_EAST_X = 208
 ROOM51_MID_Y = 141
-# Thread the statue diamond: center UP to y=133, west to x=104, UP past
-# the north vertex (live stick 120,117), then the north door band.
 ROOM51_THREAD_Y = 133
 ROOM51_THREAD_X = 144
 ROOM51_NORTH_BAND_Y = 93
@@ -74,6 +71,10 @@ _DOOR_STAND = {
     "LEFT": (ROOM51_WEST_X, ROOM51_MID_Y),
     "RIGHT": (ROOM51_EAST_X, ROOM51_MID_Y),
 }
+
+
+def in_room_51(snap: ZeldaSnapshot) -> bool:
+    return snap.mode == PLAY_MODE and snap.level == LEVEL9 and snap.screen == ROOM51
 
 
 def room51_rom_north_is_open() -> bool:
@@ -90,10 +91,11 @@ def room51_loader_avoids_41() -> bool:
     return stair_loader_for(ROOM51).from_room != ROOM41
 
 
-def room51_to_41_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Door-column UP through the 0x51 north open door → hypothesized 0x41.
+def room51_to_41_step(snap: ZeldaSnapshot, frame_i: int = 0) -> FrameAction:
+    """Thread the statue diamond UP through 0x51 north open door -> uncleared 0x41.
 
     No door poke on 0x41.
+    Waypoint path: (120, 205) -> y<=189 -> x<=96 -> y<=141 -> x>=128 -> y<=93 -> x<=120 -> UP.
     """
     if snap.level != LEVEL9:
         return FrameAction(nes_idle_action(), "wait_level9")
@@ -110,20 +112,32 @@ def room51_to_41_step(snap: ZeldaSnapshot) -> FrameAction:
         )
     x = int(snap.link_x)
     y = int(snap.link_y)
-    if y < ROOM51_THREAD_Y and abs(x - NORTH_DOOR_X) > 4:
-        return FrameAction(nes_action("DOWN"), "room51_drop_to_thread")
-    if y > ROOM51_THREAD_Y and abs(x - NORTH_DOOR_X) <= 8:
-        return FrameAction(nes_action("UP"), "room51_center_to_thread")
-    if y >= ROOM51_THREAD_Y and x > ROOM51_THREAD_X + 2:
-        return FrameAction(nes_action("LEFT"), "room51_to_thread_x")
-    if y >= ROOM51_THREAD_Y and x < ROOM51_THREAD_X - 2:
-        return FrameAction(nes_action("RIGHT"), "room51_to_thread_x")
-    if y > ROOM51_NORTH_BAND_Y and abs(x - ROOM51_THREAD_X) <= 4:
-        return FrameAction(nes_action("UP"), "room51_climb_thread")
-    if abs(x - NORTH_DOOR_X) > ROOM51_DOOR_X_TOL:
-        direction = "LEFT" if x > NORTH_DOOR_X else "RIGHT"
-        return FrameAction(nes_action(direction), "room51_align_x")
-    return FrameAction(nes_action("UP"), "room51_push_north")
+
+    if y > 189:
+        d = "UP"
+        reason = "room51_approach_south_aisle"
+    elif y >= 180 and x > 96:
+        d = "LEFT"
+        reason = "room51_nav_west_aisle"
+    elif x <= 96 and y > 141:
+        d = "UP"
+        reason = "room51_climb_west_aisle"
+    elif y in range(137, 146) and x < 128:
+        d = "RIGHT"
+        reason = "room51_cross_center_aisle"
+    elif x in range(124, 133) and y > 93:
+        d = "UP"
+        reason = "room51_climb_east_aisle"
+    elif y <= 95 and x > 120:
+        d = "LEFT"
+        reason = "room51_align_north_door"
+    else:
+        d = "UP"
+        reason = "room51_push_north"
+
+    btn = "A" if frame_i % 4 == 0 else ""
+    act = nes_action(d, btn) if btn else nes_action(d)
+    return FrameAction(act, reason)
 
 
 def _rom_door_row(
@@ -174,7 +188,7 @@ def _probe_room51_north(env: Any, *, total: list[int], assist: Any = None) -> di
             last_reason = "hold_up_scroll"
             _step(env, nes_action("UP"), assist=assist, total=total)
             continue
-        frame = room51_to_41_step(snap)
+        frame = room51_to_41_step(snap, frame_i=frame_i)
         last_reason = frame.reason
         if frame_i % 250 == 0:
             samples.append(
@@ -559,7 +573,9 @@ def dump_room_51(*, tag: str = "l9_room51_dump") -> dict[str, Any]:
                 "clear, or materialize 0x61 (south-open pred of 0x51). "
                 "Keep 0x40 out of this chain."
             )
-        report["ok"] = bool(loaded)
+        report["ok"] = bool(loaded and entered)
+        report_json = RECORDINGS_DIR / f"{tag}.json"
+        write_json_report(report_json, report)
         return report
     finally:
         env.close()

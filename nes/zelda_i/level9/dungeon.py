@@ -106,6 +106,29 @@ class PostLevel8Handoff:
 
 UNMEASURED_POST_L8_HANDOFF = PostLevel8Handoff()
 
+# rr-6o7.3: `--through level8` is power-on spine-green (`level8_ow_leave_settle`
+# stage).  The shard fanfare returns Link to OW `0x6D` `(96,93)` mode 5 with
+# TF `0xFF`, Magical Key 1, heart containers 10 (full), B = bombs.
+# Keys/bombs/rupees are recorded for `complete()` but `mismatch()` only gates
+# on screen / level / mode / TF / bombs>0 (rupee & drop pickups vary run to
+# run).  This is the natural L9 overworld predecessor.
+MEASURED_POST_L8_HANDOFF = PostLevel8Handoff(
+    screen=0x6D,
+    link_x=96,
+    link_y=93,
+    keys=1,
+    bombs=14,
+    rupees=56,
+    heart_containers=10,
+    selected_item=1,
+    magic_key=1,
+    bow=1,
+    arrows=1,
+    evidence="spine-green",
+    verified=True,
+    route_eligible=True,
+)
+
 
 def level9_entry_snapshot_stop(snap: ZeldaSnapshot) -> bool:
     """Snapshot-visible part of the natural L9 entry contract."""
@@ -230,6 +253,7 @@ __all__ = [
     "ROOM_SUFFIX_JOIN",
     "SILVER_ARROWS",
     "TRIFORCE_NOT_FULL",
+    "MEASURED_POST_L8_HANDOFF",
     "UNMEASURED_POST_L8_HANDOFF",
     "Level9EndpointSpec",
     "level9_credits_stop",

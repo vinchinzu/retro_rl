@@ -141,7 +141,12 @@ Combat notes:
 
 - Type **0x24**, HP starts 64 (wood sword chips); `AliveRule.TYPE_AND_HP`
 - Overlap at west door (~16,141) stalls kills — backstep when dist under 16 without progress
-- Key collect near center after clear (~136,141); FIXED_INVENTORY like L2 0x6c
+- Key collect at room center after clear **(120,141)** — measured, not the
+  old `~136,141` estimate; FIXED_INVENTORY like L2 0x6c. The reward also
+  carries `waypoints` (the combat patrol ring): the plain-target branch of
+  `_collect_reward` has no stuck-escape, so a post-combat backstep leftover
+  at `(64,93)` pressed DOWN into the block cell at `(64,112)` for the full
+  12,000-frame room timeout and never collected the key (live 2026-09-04).
 - Post-clear: `cur_opened_doors=0`, `open_doorway_mask=0` — no kill-doors open;
   LEFT still returns to **0x79**
 

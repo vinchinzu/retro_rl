@@ -30,22 +30,8 @@ from zelda_i.level8.path import (
     make_gleeok_passage_controller,
     make_magic_key_stairs_controller,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_COLLIDING_TILE,
-    ADDR_CUR_OPENED_DOORS,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 LEFT = list(nes_action("LEFT"))
 RIGHT = list(nes_action("RIGHT"))
@@ -58,20 +44,23 @@ DOORS_ARRIVAL = 0x0C
 DOORS_RIGHT_OPEN = 0x0D
 
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": EAST_3E_ORIGIN,
+    "x": EAST_3E_ORIGIN_POSE[0],
+    "y": EAST_3E_ORIGIN_POSE[1],
+    "tile": 0,
+    "keys": 8,
+    "bombs": 6,
+    "magic_key": 1,
+    "triforce": 0x7F,
+    "doors": DOORS_RIGHT_OPEN,
+}
+
+
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", EAST_3E_ORIGIN)
-    ram[ADDR_LINK_X] = fields.get("x", EAST_3E_ORIGIN_POSE[0])
-    ram[ADDR_LINK_Y] = fields.get("y", EAST_3E_ORIGIN_POSE[1])
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 0)
-    ram[ADDR_KEYS] = fields.get("keys", 8)
-    ram[ADDR_BOMBS] = fields.get("bombs", 6)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", DOORS_RIGHT_OPEN)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):
@@ -214,6 +203,8 @@ def test_gleeok_and_magic_key_factories_stay_unverified() -> None:
     gleeok = make_gleeok_passage_controller()
     assert isinstance(gleeok, UnverifiedLevel8PathController)
     assert not isinstance(gleeok, Level8East3EController)
+    # rr-6o7.2: magic_key_stairs is now live (see test_level8_cellar); it is
+    # not the 0x3E east controller and never an unverified stub.
     mk = make_magic_key_stairs_controller()
-    assert isinstance(mk, UnverifiedLevel8PathController)
+    assert not isinstance(mk, UnverifiedLevel8PathController)
     assert not isinstance(mk, Level8East3EController)

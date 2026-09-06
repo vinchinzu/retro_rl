@@ -41,6 +41,7 @@ from zelda_i.level8.suffix import (
     make_cellar_2f_settle_controller,
     suffix_stages,
 )
+from zelda_i.level8.overworld import L7_POND_TO_LEVEL8_BUSH_HOPS
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_u8
 from zelda_i.spine.hops import SpineHop
@@ -124,7 +125,7 @@ def l8_hops(
     env,
     *,
     handoff: PostLevel7Handoff = UNMEASURED_POST_L7_HANDOFF,
-    post_l7_hops: tuple[ScreenHop, ...] = (),
+    post_l7_hops: tuple[ScreenHop, ...] = L7_POND_TO_LEVEL8_BUSH_HOPS,
     burn_target: BushBurnTarget = UNVERIFIED_BUSH_BURN_TARGET,
     topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY,
     clear_endpoint: Level8ClearEndpoint = UNOBSERVED_LEVEL8_CLEAR,

@@ -34,8 +34,9 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 
 ## Hard rules
 
-1. **No new phase machine for bomb walls.** Configure `BombWallController` with a `BombWall`.
-1b. **No new pause-select phase machine.** Drive `PauseSelectController`. Leftover B-slot is a hop input.
+1. **No new bomb-wall or pause-select phase machine.** Configure
+   `BombWallController` with a `BombWall`. Drive `PauseSelectController`.
+   Leftover B-slot is a hop input (`select_item=`). L2/L3 omit it (poke-assisted).
 2. **`level*/dungeon.py` = specs + stop predicates only.** Path controllers and
    path timing (`*_MAX_FRAMES`, `SPAWN_SETTLE_FRAMES`, raft channel knobs) go in
    `*_path` / `level3.geometry` / boss modules / `level6.wizzrobe` — not the

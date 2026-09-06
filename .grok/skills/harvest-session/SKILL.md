@@ -16,10 +16,9 @@ One active bead at a time. Carry it to a checkable completion. Planner owns
 ## Loop
 
 1. `bd ready -l harvest -l spine` — claim **exactly one**. Immediate:
-   `rr-20w.2.3` D2 CLEAR_PLOT (P0). Water-refill `rr-3ae8` is on this filter
-   too — still claim one.
-2. Overwrite living residual `snes/harvest/docs/tasks/rr-20w.2.3-residual.md`.
-   Delete closed residuals instead of stacking them.
+   `rr-20w.2.4` D2 nav replan (P1) or water-refill `rr-3ae8`. Claim one.
+2. Overwrite the claimed bead's living residual under
+   `snes/harvest/docs/tasks/`. Delete closed residuals instead of stacking them.
 3. Overwrite one JSON report. Do not mint `_vN` or `_window_*`.
 4. File ~1000 LOC: merge into the **Composer** or delete. No sibling extract
    (`CODING_STANDARDS.md`). Gut sittings use `/gut-package`, not this loop.

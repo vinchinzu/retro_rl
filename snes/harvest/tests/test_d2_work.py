@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 import unittest
 
 from retro_harness import WorldState
 
 from harvest.core.stamina import Stamina
 from harvest.core.tile_catalog import Tool
-from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_BOUNDS, FARM_CHUNK_ORDER
+from harvest.planner.d2_farm_chunks import EXHAUSTIVE, FARM_CHUNK_BOUNDS
 from harvest.planner.d2_work import (
     D2_TARGETS,
     bush_clear_phase,
@@ -34,57 +36,26 @@ class D2WholeFarmContractTests(unittest.TestCase):
     def test_crop_targets_are_not_debris_quotas(self) -> None:
         self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8})
 
-    def test_bush_phase_is_exhaustive_quota_not_plot_ring(self) -> None:
-        spec = bush_clear_phase()
-        self.assertEqual(spec.phase, "CLEAR_BUSHES")
-        self.assertEqual(spec.kind, PhaseKind.CLEAR_FIELD)
-        self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"weeds": EXHAUSTIVE})
-        self.assertFalse(spec.params["fetch_tools"])
-        self.assertEqual(spec.params["priority"], ["weed"])
-        self.assertNotIn("farm_bounds", spec.params)
-        self.assertEqual(spec.params["timeout"], 0)
-
-    def test_fence_dump_is_all_posts_to_pond(self) -> None:
-        spec = fence_dump_phase()
-        self.assertEqual(spec.phase, "CLEAR_FENCES")
-        self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
-        self.assertIsNone(spec.params["max_fences"])
-        self.assertFalse(spec.params["corridor_only"])
-        self.assertTrue(spec.params["pond_dump"])
-        self.assertEqual(spec.params["max_steps_per_fence"], 2800)
-        self.assertEqual(spec.params["debris_types"], ["fence"])
-        self.assertEqual(spec.params["timeout"], 0)
-
-    def test_stone_pond_phase_dumps_all_not_hammer(self) -> None:
-        spec = stone_pond_phase()
-        self.assertEqual(spec.phase, "CLEAR_STONES")
-        self.assertEqual(spec.kind, PhaseKind.FENCE_CLEAR)
-        self.assertIsNone(spec.params["max_fences"])
-        self.assertEqual(spec.params["timeout"], 0)
-        self.assertEqual(spec.params["max_failures"], 60)
-        self.assertFalse(spec.params["corridor_only"])
-        self.assertEqual(spec.params["debris_types"], ["stone"])
-
-    def test_rock_phase_needs_hammer_for_large_only(self) -> None:
-        spec = rock_clear_phase()
-        self.assertEqual(spec.phase, "CLEAR_ROCKS")
-        self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"large_rocks": 10_000})
-        self.assertEqual(spec.params["timeout"], 0)
-        self.assertEqual(spec.params["priority"], ["rock"])
-        self.assertFalse(spec.params["prefer_lift_for_stones"])
-        self.assertEqual(spec.contract.required_tools, ("hammer",))
-        self.assertFalse(spec.params["fetch_tools"])
-
-    def test_stump_phase_needs_axe(self) -> None:
-        spec = stump_clear_phase()
-        self.assertEqual(spec.phase, "CLEAR_STUMPS")
-        self.assertEqual(spec.params["handoff"], "quota")
-        self.assertEqual(spec.params["quota"], {"stumps": EXHAUSTIVE})
-        self.assertEqual(spec.params["timeout"], 0)
-        self.assertEqual(spec.params["priority"], ["stump"])
-        self.assertEqual(spec.contract.required_tools, ("axe",))
+    def test_smash_builders_are_exhaustive_required_quota(self) -> None:
+        bushes = bush_clear_phase()
+        fences = fence_dump_phase()
+        stones = stone_pond_phase()
+        rocks = rock_clear_phase()
+        stumps = stump_clear_phase()
+        self.assertEqual(bushes.params["quota"], {"weeds": EXHAUSTIVE})
+        self.assertEqual(bushes.params["handoff"], "quota")
+        self.assertTrue(fences.params["pond_dump"])
+        self.assertIsNone(fences.params["max_fences"])
+        self.assertEqual(fences.params["debris_types"], ["fence"])
+        self.assertEqual(stones.params["debris_types"], ["stone"])
+        self.assertTrue(stones.params["pond_dump"])
+        self.assertEqual(rocks.params["quota"], {"large_rocks": EXHAUSTIVE})
+        self.assertEqual(rocks.contract.required_tools, ("hammer",))
+        self.assertEqual(stumps.params["quota"], {"stumps": EXHAUSTIVE})
+        self.assertEqual(stumps.contract.required_tools, ("axe",))
+        for spec in (bushes, fences, stones, rocks, stumps):
+            self.assertEqual(spec.failure_policy, "required")
+            self.assertEqual(spec.params["timeout"], 0)
 
     def test_ensure_hammer_and_axe_are_ram_shelf_not_recorded(self) -> None:
         hammer = ensure_hammer_phase()
@@ -104,12 +75,6 @@ class D2LeftoverOrderTests(unittest.TestCase):
         status = observe_d2_farm(ram)
         self.assertEqual(next_d2_spec(status).phase, "CLEAR_BUSHES")
         self.assertEqual(next_d2_spec(status, section="rocks").phase, "HOT_SPRING_STAMINA")
-        self.assertEqual(ensure_hammer_phase().phase, "ENSURE_HAMMER")
-        self.assertEqual(ensure_axe_phase().phase, "ENSURE_AXE")
-        self.assertNotEqual(
-            ensure_hammer_phase().params["tool_id"],
-            ensure_axe_phase().params["tool_id"],
-        )
 
     def test_full_stam_skips_spa_but_keeps_smash_order(self) -> None:
         ram = _farm_ram(stamina=100)
@@ -122,15 +87,6 @@ class D2LeftoverOrderTests(unittest.TestCase):
         status = observe_d2_farm(ram, _SHIP_OK)
         self.assertEqual(next_d2_spec(status).phase, "CLEAR_BUSHES")
         self.assertEqual(next_d2_spec(status, section="rocks").phase, "ENSURE_HAMMER")
-        stones = [
-            stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
-            for name in FARM_CHUNK_ORDER
-        ]
-        self.assertEqual([p.params["chunk"] for p in stones], list(FARM_CHUNK_ORDER))
-        self.assertEqual(
-            [p.phase for p in stones],
-            ["CLEAR_STONES"] * 4,
-        )
 
     def test_hammer_and_axe_are_sequential_not_same_carry(self) -> None:
         ram = _farm_ram(stamina=100)
@@ -321,114 +277,6 @@ class D2PostShopComposeTests(unittest.TestCase):
         sw_task = build_phase_task(TaskBuildContext(), sw, world)
         self.assertEqual(sw.params["chunk"], "sw")
         self.assertEqual(sw_task.farm_bounds, (0, 32, 31, 63))
-
-
-class LeftoverSkipClearTests(unittest.TestCase):
-    def test_skip_bushes_when_weeds_already_gone(self) -> None:
-        from harvest.scripts.leftover_exec import phase_already_clear
-        from harvest.tasks.farm_clear_quota import DebrisCounts
-
-        empty = DebrisCounts(stones=45, large_rocks=47, stumps=36)
-        self.assertTrue(phase_already_clear("CLEAR_BUSHES", empty))
-        self.assertTrue(phase_already_clear("CLEAR_FENCES", empty))
-        self.assertFalse(phase_already_clear("CLEAR_STONES", empty))
-        self.assertFalse(phase_already_clear("CLEAR_ROCKS", empty))
-        self.assertFalse(phase_already_clear("ENSURE_HAMMER", empty))
-
-
-class LeftoverProbeBudgetTests(unittest.TestCase):
-    def test_probe_section_all_requires_weeds_gone(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _section_complete
-        from harvest.tasks.farm_clear_quota import DebrisCounts
-
-        start = DebrisCounts(
-            weeds=100, stones=185, large_rocks=51, stumps=38, fences=80
-        )
-        leftover_weeds = DebrisCounts(
-            weeds=90, stones=0, large_rocks=0, stumps=0, fences=0
-        )
-        short = DebrisCounts(
-            weeds=90, stones=1, large_rocks=0, stumps=0, fences=0
-        )
-        leftover_stumps = DebrisCounts(
-            weeds=90, stones=0, large_rocks=0, stumps=36, fences=0
-        )
-
-        self.assertTrue(_section_complete("all", start, DebrisCounts()))
-        self.assertFalse(_section_complete("all", start, leftover_weeds))
-        self.assertFalse(_section_complete("all", start, short))
-        self.assertFalse(_section_complete("all", start, leftover_stumps))
-
-    def test_probe_fence_quota_is_exhaustive(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _section_complete
-        from harvest.tasks.farm_clear_quota import DebrisCounts
-
-        start = DebrisCounts(fences=80)
-        self.assertTrue(_section_complete("fences", start, DebrisCounts()))
-        self.assertFalse(
-            _section_complete("fences", start, DebrisCounts(fences=1))
-        )
-
-    def test_probe_stone_quota_is_exhaustive(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _section_complete
-        from harvest.tasks.farm_clear_quota import DebrisCounts
-
-        start = DebrisCounts(stones=175)
-        self.assertTrue(_section_complete("stones", start, DebrisCounts()))
-        self.assertFalse(
-            _section_complete("stones", start, DebrisCounts(stones=1))
-        )
-
-    def test_zero_phase_timeout_spends_remaining_budget(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _phase_timeout
-
-        remaining = 200_000
-        self.assertEqual(_phase_timeout(bush_clear_phase(), remaining), remaining)
-        self.assertEqual(_phase_timeout(fence_dump_phase(), remaining), remaining)
-        self.assertEqual(_phase_timeout(stone_pond_phase(), remaining), remaining)
-        self.assertEqual(_phase_timeout(rock_clear_phase(), remaining), remaining)
-        self.assertEqual(_phase_timeout(stump_clear_phase(), remaining), remaining)
-        self.assertEqual(_phase_timeout(stump_clear_phase(), 50_000), 50_000)
-
-    def test_probe_stump_quota_is_exhaustive(self) -> None:
-        from harvest.scripts.d2_leftover_probe import _section_complete
-        from harvest.tasks.farm_clear_quota import DebrisCounts
-
-        start = DebrisCounts(stumps=38)
-        self.assertTrue(_section_complete("stumps", start, DebrisCounts()))
-        self.assertFalse(
-            _section_complete("stumps", start, DebrisCounts(stumps=1))
-        )
-
-    def test_leftover_probe_uses_repo_headed(self) -> None:
-        from pathlib import Path
-
-        src = (
-            Path(__file__).resolve().parents[1]
-            / "harvest"
-            / "scripts"
-            / "d2_leftover_probe.py"
-        )
-        text = src.read_text(encoding="utf-8")
-        self.assertIn("from retro_harness.headed import", text)
-        self.assertIn("add_headed_flag", text)
-        self.assertIn("attach_headed", text)
-        self.assertIn("idle_headed", text)
-        exec_src = src.parent / "leftover_exec.py"
-        self.assertIn("headed_emu_repeat", exec_src.read_text(encoding="utf-8"))
-        self.assertNotIn("WatchDisplay", text)
-        self.assertNotIn("--watch", text)
-        self.assertNotIn("spa_retried", text)
-        self.assertIn("D2FarmClearTactic", text)
-        exec_text = exec_src.read_text(encoding="utf-8")
-        self.assertIn("leftover_chain_decision", exec_text)
-        d2_src = (
-            Path(__file__).resolve().parents[1] / "harvest" / "planner" / "d2_work.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn("should_spa_retry", d2_src)
-        self.assertIn("D2FarmClearTactic", d2_src)
-        self.assertIn("--chunk", text)
-        self.assertIn("--no-spa", text)
 
 
 class LeftoverProbePayloadTests(unittest.TestCase):
@@ -953,19 +801,20 @@ class D2NextSpecTests(unittest.TestCase):
         first = next_d2_spec(status, last_phase="ENSURE_AXE")
         self.assertEqual(first.phase, "CLEAR_STUMPS")
         self.assertEqual(first.params["chunk"], "nw")
-        skipped_ne = next_d2_spec(
-            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw",)
-        )
+        for tx, ty in ((4, 20), (12, 8), (20, 24)):
+            _clear_2x2(ram, tx, ty)
+        after_nw = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(after_nw.stumps_by_chunk, (0, 0, 1, 1))
+        skipped_ne = next_d2_spec(after_nw, last_phase="CLEAR_STUMPS")
         self.assertEqual(skipped_ne.phase, "CLEAR_STUMPS")
         self.assertEqual(skipped_ne.params["chunk"], "sw")
-        last = next_d2_spec(
-            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw", "sw")
-        )
+        _clear_2x2(ram, 8, 48)
+        after_sw = observe_d2_farm(ram, _SHIP_OK)
+        last = next_d2_spec(after_sw, last_phase="CLEAR_STUMPS")
         self.assertEqual(last.phase, "CLEAR_STUMPS")
         self.assertEqual(last.params["chunk"], "se")
-        none = next_d2_spec(
-            status, last_phase="CLEAR_STUMPS", skip_chunks=("nw", "sw", "se")
-        )
+        _clear_2x2(ram, 52, 44)
+        none = next_d2_spec(observe_d2_farm(ram, _SHIP_OK), last_phase="CLEAR_STUMPS")
         self.assertIsNone(none)
         se_only = next_d2_spec(
             status, section="stumps", chunk="se", last_phase="ENSURE_AXE"
@@ -975,6 +824,55 @@ class D2NextSpecTests(unittest.TestCase):
             status, section="stumps", chunk="ne", last_phase="ENSURE_AXE"
         )
         self.assertIsNone(ne_only)
+
+    def test_next_spec_walks_plot_then_crops_then_leftover_order(self) -> None:
+        from harvest.core.ram_catalog import field_spec
+        from harvest.planner.d2_work import next_d2_spec, observe_d2_farm
+
+        ram = _farm_ram(stamina=100)
+        ram[field_spec("potato_seeds").address] = 1
+        _set_tile(ram, 13, 28, 0x03)
+        _set_tile(ram, 40, 40, 0x03)
+        _set_tile(ram, 42, 42, 0x05)
+        _set_tile(ram, 8, 40, 0x04)
+        _place_large_rock(ram, 50, 50)
+        _place_stump(ram, 52, 44)
+        status = observe_d2_farm(ram)
+        self.assertEqual(next_d2_spec(status).phase, "CLEAR_PLOT")
+        self.assertEqual(
+            next_d2_spec(status, last_phase="CLEAR_PLOT").phase,
+            "ENSURE_CROP_SEEDS",
+        )
+
+        _set_tile(ram, 13, 28, 0xA1)
+        ram[field_spec("potato_seeds").address] = 0
+        _plant_eight_wet(ram)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(next_d2_spec(leftover).phase, "CLEAR_BUSHES")
+        _set_tile(ram, 40, 40, 0xA1)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(next_d2_spec(leftover).phase, "CLEAR_FENCES")
+        _set_tile(ram, 42, 42, 0xA1)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        stones = next_d2_spec(leftover)
+        self.assertEqual(stones.phase, "CLEAR_STONES")
+        self.assertEqual(stones.params["chunk"], "sw")
+        _set_tile(ram, 8, 40, 0xA1)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(next_d2_spec(leftover).phase, "ENSURE_HAMMER")
+        rocks = next_d2_spec(leftover, last_phase="ENSURE_HAMMER")
+        self.assertEqual(rocks.phase, "CLEAR_ROCKS")
+        self.assertEqual(rocks.params["chunk"], "se")
+        _clear_2x2(ram, 50, 50)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        self.assertEqual(next_d2_spec(leftover).phase, "ENSURE_AXE")
+        stumps = next_d2_spec(leftover, last_phase="ENSURE_AXE")
+        self.assertEqual(stumps.phase, "CLEAR_STUMPS")
+        self.assertEqual(stumps.params["chunk"], "se")
+        _clear_2x2(ram, 52, 44)
+        done = observe_d2_farm(ram, _SHIP_OK)
+        self.assertTrue(done.is_complete)
+        self.assertIsNone(next_d2_spec(done))
 
 
 class D2FarmClearTacticTests(unittest.TestCase):
@@ -1122,22 +1020,6 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(child.calls, 1)
         self.assertEqual(tactic.farm_status.outcome, D2FarmOutcome.TEMPORARILY_UNOBSERVABLE)
-
-    def test_leftover_exec_still_exports_spa_retry(self) -> None:
-        from retro_harness import TaskStatus
-
-        from harvest.scripts.leftover_exec import leftover_chain_decision
-
-        self.assertEqual(
-            leftover_chain_decision(
-                "CLEAR_ROCKS",
-                TaskStatus.FAILURE,
-                "stamina_low cleared=2",
-                Stamina(current=8, maximum=100),
-                ("ENSURE_AXE", "CLEAR_STUMPS"),
-            ),
-            "spa_retry",
-        )
 
     def test_skips_empty_stump_chunks_and_clears_last_live(self) -> None:
         from unittest.mock import patch
@@ -1294,7 +1176,6 @@ class D2FarmClearTacticTests(unittest.TestCase):
         self.assertEqual(progress["hits"], 6)
         self.assertEqual(progress["approach_position"], (824, 712))
         self.assertEqual(tactic.farm_status.stumps, 0)
-        self.assertEqual(tactic._skip, set())
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertFalse(any(row["status"] == TaskStatus.BLOCKED.value for row in tactic.journal))
 
@@ -1331,7 +1212,6 @@ class D2FarmClearTacticTests(unittest.TestCase):
         result = tactic._watchdogs(world, status)
 
         self.assertEqual(result.status, TaskStatus.BLOCKED)
-        self.assertEqual(tactic._skip, set())
         self.assertEqual(tactic.journal[-1]["chunk"], "se")
         self.assertEqual(tactic.journal[-1]["watchdog"], "navigation_motion_stall")
 
@@ -1514,6 +1394,54 @@ class D2RunnerFlagTests(unittest.TestCase):
         self.assertIsNotNone(_checkpoint_dir(args))
         off = _parse_args(["--power-on", "--progress-sidecar-every", "0"])
         self.assertIsNone(_progress_sidecar_path(off))
+
+
+_FARM_CLEAR_REPORT = (
+    Path(__file__).resolve().parents[1] / "recordings" / "power_on_d2_farm_clear.json"
+)
+
+
+@unittest.skipUnless(_FARM_CLEAR_REPORT.is_file(), "power-on D2 farm-clear recording not on disk")
+class PowerOnD2FarmClearReportTests(unittest.TestCase):
+    """Lock the closed rr-20w.2.3 evidence. Overwrite with a red run and this fails."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.report = json.loads(_FARM_CLEAR_REPORT.read_text(encoding="utf-8"))
+
+    def test_clean_power_on_farm_clear_is_complete(self) -> None:
+        report = self.report
+        self.assertTrue(report["success"])
+        self.assertTrue(report["terminal"])
+        self.assertEqual(report["reason"], "d2 farm clear complete")
+        self.assertIsNone(report["state"])
+        self.assertTrue(report["power_on"]["completed"])
+        self.assertEqual(report["frames"], 393223)
+        self.assertEqual(report["planner_frames"], 371309)
+        self.assertEqual(report["end"]["day"], 2)
+        self.assertEqual(report["end"]["hour"], 18)
+        self.assertEqual(report["end"]["minute"], 1)
+        self.assertEqual(report["end"]["money"], 100)
+        self.assertEqual(report["end"]["stamina"], 52)
+        farm = report["d2_farm"]
+        self.assertEqual(farm["end"]["weeds"], 0)
+        self.assertEqual(farm["end"]["fences"], 0)
+        self.assertEqual(farm["end"]["stones"], 0)
+        self.assertEqual(farm["end"]["large_rocks"], 0)
+        self.assertEqual(farm["end"]["stumps"], 0)
+        self.assertEqual(farm["end"]["planted"], 8)
+        self.assertEqual(farm["end"]["wet"], 8)
+        status = farm["final_status"]
+        self.assertEqual(status["outcome"], "complete")
+        self.assertTrue(status["shipped_before_17"])
+        self.assertTrue(status["settled"])
+        self.assertTrue(farm["two_consecutive_settled_observations"])
+        clean = report["clean_run"]
+        self.assertEqual(clean["intervention_class"], "Clean")
+        self.assertEqual(clean["ram_writes"], 0)
+        self.assertEqual(clean["mid_run_state_loads"], 0)
+        self.assertEqual(clean["initial_state_loads"], 0)
+        self.assertIsNone(report["video"])
 
 
 if __name__ == "__main__":

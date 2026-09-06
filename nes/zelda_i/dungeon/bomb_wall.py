@@ -92,7 +92,7 @@ class BombWallController:
     # Fail if bomb count did not drop during WAIT (strict L2 6f/5f policy).
     require_bomb_consumed: bool = True
     # Pause-select this B-slot before PLACE. None keeps L2/L3 poke-assisted
-    # behavior. L7 factories pass B_SLOT_BOMBS (never poke ``$0656``).
+    # behavior. L4+ factories pass B_SLOT_BOMBS (never poke ``$0656``).
     select_item: int | None = None
     stand_tol: int = BOMB_N_STAND_TOL
     stand_timeout: int = 2500

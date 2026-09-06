@@ -1,0 +1,66 @@
+{
+  "acceptance_warning": "ITERATION CHECKPOINT, NOT AN ACCEPTANCE ARTEFACT. Captured by loading Level6ExitOverworld.state (a hand-built recon fixture, keys 3 / 81R / health 170 -- NOT the measured spine leave, which is keys 2 / 42R / 8 HC full per MEASURED_POST_L6_EXIT), then walking + warping to the pond with zero pokes. The pond arrival and the Recorder warp are natural; the inventory lineage is the old fixture's. Use this pin to iterate the drain only. Power-on acceptance for rr-8t4.1 is the continuous spine run (scripts/run_survival_spine.py --through level7-entry), never this state.",
+  "captured_at": "2026-09-05T13:06:21.378424+00:00",
+  "development_only": false,
+  "natural_entry": true,
+  "request": {
+    "bead": "rr-8t4.1",
+    "fixture_lineage": "Level6ExitOverworld (hand-built recon poke fixture)",
+    "fixture_only": false,
+    "natural_entry": true,
+    "phase": "level7_pond_natural_arrival",
+    "route": {
+      "notes": [
+        "power-on-reachable: POST_L6_EXIT_STATE (Level6ExitOverworld, measured level6-exit fanfare leftover) -> POST_L6_TO_POND_HOPS[:4] walk to 0x24 -> PauseSelectController selects the naturally-owned Recorder (B-slot 5, no $0656 poke) -> 12xB facing DOWN, whirlwind cycle lands on L4 island door 0x45 -> join hop 0x45 DOWN align_x=128 -> 0x55 -> greened LEVEL7_POND_HOPS[7:] tail (0x65 DOWN align_x=128, 0x64 LEFT align_y=141, 0x54 UP, 0x53 LEFT align_y=141, 0x52 LEFT align_y=189, pond 0x42 UP align_x=112) -> pond 0x42 mode 5, not transitioning",
+        "recorder never blown again after the island 0x45 warp landing; the pond drain blow itself happens downstream via Level7PondDrainController, never inside this capture",
+        "supersedes OW_L7Pond (PostSwordStart geometry recon, whistle=0, AGENTS.md forbids starting the drain from it)",
+        "Inventory lineage warning: descends from Level6ExitOverworld, not from a live level6-exit fanfare. Only Whistle>=1 and the 0x42 (128,221) standpoint matter for the drain; do not read keys/rupees/health here as spine truth, and never fill MEASURED_POST_L7_EXIT from anything downstream of it."
+      ]
+    },
+    "route_eligible": false,
+    "track": "route_checkpoint",
+    "whistle_poke": false,
+    "writes": 0
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "bombs": 8,
+    "cur_opened_doors": 4,
+    "facing": 8,
+    "frames": 5003,
+    "health": 170,
+    "is_updating_mode": 1,
+    "keys": 3,
+    "level": 0,
+    "mode": 5,
+    "mode_name": "play",
+    "next_room": 66,
+    "objects": [
+      {
+        "hp": 32,
+        "slot": 1,
+        "state": 0,
+        "type_id": 4,
+        "type_name": "unknown_object_0x04",
+        "x": 128,
+        "y": 93
+      }
+    ],
+    "open_doorway_mask": 0,
+    "room": 66,
+    "room_all_dead": 0,
+    "room_item_id": 26,
+    "room_item_name": "heart_container",
+    "room_obj_count": 1,
+    "rupees": 81,
+    "submode": 0,
+    "triforce": 63,
+    "whistle": 1,
+    "x": 128,
+    "y": 221
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level6ExitOverworld.state",
+  "source_state_sha256": "610cf0246daf413d039477b8bd3dc0cbe044deb58a0d232b19fd6cf4a6063e3d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/OW_L7PondNatural.state",
+  "state_sha256": "b61b0c34c3ce35a0dafd31842d3e488d9ab5e3c3840151178d17dd44978a5950"
+}

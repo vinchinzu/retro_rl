@@ -15,13 +15,13 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
+from zelda_i.dungeon.behaviors import EnemyKind, engagement_hint
 from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B
 from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, RED_CANDLE_CELLAR
 from zelda_i.level7.path import (
     DOOR_Y_TOL,
     NORTH_X_TOL,
     ROOM_1A,
-    _goriya_fight,
     live_goriyas,
 )
 from zelda_i.level7.stairs import (
@@ -262,13 +262,30 @@ def make_nose_cellar_cross_controller(
 
 
 ROOM_4A = 0x4A
-ROOM1A_CANDLE_MAX_FRAMES = 16000
+ROOM1A_CANDLE_MAX_FRAMES = 40000
+# Frames of aggressive in-place clearing before switching to the perimeter
+# hunt.  The proven fixture recipe (probe_l7_candle_push --push UP) clears
+# five of six goriyas inside 3000 frames, then walks the perimeter for the
+# last (NE) one.  Slots 4/5 spawn at x=128 and descend into the sealed centre
+# cross if not killed early, so the clear must stay aggressive, never the
+# hitbox-gated `_goriya_fight` which lets them slip in.
+ROOM1A_CLEAR_FRAMES = 3200
 PUSHABLE_BLOCK = 0x68
 
 
 def cellar_of_room1a_ram_id() -> int | None:
     """Live ``$EB`` of the Red Candle cellar off ``0x1A``."""
     return LEVEL7_ROOM_BY_ID[RED_CANDLE_CELLAR].ram_id
+
+
+def _in_sealed_centre(obj: Any) -> bool:
+    """True for a goriya inside 0x1A's sealed diamond cross.
+
+    The cross cells ``(112,144)`` / ``(128,144)`` stair / ``(144,144)`` and the
+    ``x=128`` vertical arms only connect to the room through the stair tile, so
+    a goriya that walks in there can never be reached by Link's sword.
+    """
+    return 104 <= int(obj.x) <= 152 and 118 <= int(obj.y) <= 170
 
 
 def _pushable_block_y(snap: ZeldaSnapshot) -> int | None:
@@ -297,7 +314,10 @@ class Room1ACandleController(HopController):
     initial_candle: int | None = None
     _phase: str = "clear"
     _hunt_i: int = 0
+    _hunt_stuck: int = 0
+    _hunt_last_xy: tuple[int, int] | None = None
     _cellar_dropped: bool = False
+    _cellar_climbed: bool = False
 
     @property
     def stage_id(self) -> str:
@@ -338,29 +358,35 @@ class Room1ACandleController(HopController):
         live = live_goriyas(snap)
         if live:
             self.saw_goriya = True
-            if self._phase == "clear" and self.frames > 2800:
+            if self._phase == "clear" and self.frames > ROOM1A_CLEAR_FRAMES:
                 self._phase = "hunt"
             if self._phase == "hunt":
                 return self._hunt(snap, live)
-            target = nearest_enemy(snap.link_x, snap.link_y, live)
-            if target is None:
-                return FrameAction(nes_idle_action(), "goriya_missing")
-            return _goriya_fight(snap, target, frames=self.frames)
+            return self._aggressive_fight(snap, live)
         if not self.saw_goriya:
-            return FrameAction(nes_idle_action(), "spawn_wait")
+            # Proven recipe: drift toward the SW corner while the six goriyas
+            # spawn, then fight from there.  Idling here lets slots 4/5 descend
+            # into the sealed centre before Link can engage them.
+            return FrameAction(nes_action("DOWN"), "spawn_wait")
 
         by = _pushable_block_y(snap)
         x, y = int(snap.link_x), int(snap.link_y)
         if by is None or by > 132:
-            if y < 189 - DOOR_Y_TOL and x < 150:
-                return FrameAction(nes_action("DOWN"), "candle_south")
-            if abs(x - 96) > NORTH_X_TOL:
+            if abs(x - 96) <= NORTH_X_TOL and 136 <= y <= 189 + DOOR_Y_TOL:
+                if y > 162:
+                    return FrameAction(nes_action("UP"), "candle_stand_y")
+                return FrameAction(nes_action("UP"), "candle_push")
+            if y >= 189 - DOOR_Y_TOL:
                 return FrameAction(
                     nes_action("LEFT" if x > 96 else "RIGHT"), "candle_stand_x"
                 )
-            if y > 162:
-                return FrameAction(nes_action("UP"), "candle_stand_y")
-            return FrameAction(nes_action("UP"), "candle_push")
+            if x > 140:
+                if x < 176 - NORTH_X_TOL:
+                    return FrameAction(nes_action("RIGHT"), "candle_east_peel")
+                return FrameAction(nes_action("DOWN"), "candle_south")
+            if x > 80 + NORTH_X_TOL:
+                return FrameAction(nes_action("LEFT"), "candle_west_peel")
+            return FrameAction(nes_action("DOWN"), "candle_south")
         if abs(x - 136) > 6 or abs(y - 141) > 6:
             if abs(y - 141) > DOOR_Y_TOL:
                 return FrameAction(
@@ -371,18 +397,51 @@ class Room1ACandleController(HopController):
             )
         return FrameAction(nes_action("RIGHT"), "candle_stairs_push")
 
+    def _aggressive_fight(
+        self, snap: ZeldaSnapshot, live: tuple
+    ) -> FrameAction:
+        """Face the nearest goriya and swing on a fixed cadence.
+
+        This is the proven fixture recipe: no hitbox gate, no projectile
+        retreat.  Passivity is what lets slots 4/5 reach the sealed centre.
+
+        A goriya inside the sealed centre cross cannot be meleed, so it is
+        de-prioritised: chase it only when nothing reachable is left.
+        """
+        reachable = tuple(o for o in live if not _in_sealed_centre(o))
+        target = nearest_enemy(
+            snap.link_x, snap.link_y, reachable or live
+        )
+        if target is None:
+            return FrameAction(nes_idle_action(), "goriya_missing")
+        face = engagement_hint(EnemyKind.GORIYA, snap, target).face
+        if self.frames % 8 < 4:
+            return FrameAction(nes_action(face, "A"), "goriya_slash")
+        return FrameAction(nes_action(face), "goriya_face")
+
     def _hunt(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
         wps = ((32, 189), (192, 189), (192, 93), (160, 93))
         if self._hunt_i >= len(wps):
-            target = nearest_enemy(snap.link_x, snap.link_y, live)
-            if target is None:
-                return FrameAction(nes_idle_action(), "goriya_missing")
-            return _goriya_fight(snap, target, frames=self.frames)
+            return self._aggressive_fight(snap, live)
         tx, ty = wps[self._hunt_i]
         x, y = int(snap.link_x), int(snap.link_y)
         if abs(x - tx) <= 4 and abs(y - ty) <= 4:
             self._hunt_i += 1
+            self._hunt_stuck = 0
+            self._hunt_last_xy = None
             return FrameAction(nes_idle_action(), "candle_hunt_next")
+        # A waypoint leg that wedges on the centre diamond must not loop
+        # forever: give up on it after ~50 stalled frames and take the next.
+        if self._hunt_last_xy == (x, y):
+            self._hunt_stuck += 1
+            if self._hunt_stuck >= 50:
+                self._hunt_i += 1
+                self._hunt_stuck = 0
+                self._hunt_last_xy = None
+                return FrameAction(nes_idle_action(), "candle_hunt_skip")
+        else:
+            self._hunt_stuck = 0
+            self._hunt_last_xy = (x, y)
         if abs(y - ty) > 4:
             return FrameAction(
                 nes_action("UP" if y > ty else "DOWN"), "candle_hunt_y"
@@ -399,10 +458,12 @@ class Room1ACandleController(HopController):
             if y < 180:
                 return FrameAction(nes_action("DOWN"), "cellar_drop")
             self._cellar_dropped = True
-        if x < 172:
-            return FrameAction(nes_action("RIGHT"), "cellar_east")
-        if y > 145:
-            return FrameAction(nes_action("UP"), "cellar_climb")
+        if not self._cellar_climbed:
+            if x < 172:
+                return FrameAction(nes_action("RIGHT"), "cellar_east")
+            if y > 145:
+                return FrameAction(nes_action("UP"), "cellar_climb")
+            self._cellar_climbed = True
         if x > 124:
             return FrameAction(nes_action("LEFT"), "cellar_candle")
         return FrameAction(nes_idle_action(), "cellar_idle")

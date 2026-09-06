@@ -2,39 +2,37 @@
 
 from __future__ import annotations
 
-import numpy as np
-
+from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level8.overworld import (
     L7_POND_TO_LEVEL8_BUSH_HOPS,
     L7_POND_TO_LEVEL8_BUSH_SCREENS,
     POND_42_REFILLED_DEAD_POSE,
+    POND_42_SOUTH_SAND_Y,
+    POND_42_WEST_COL_X,
+    POND_5B_CLIMB_X,
     Level7PondToLevel8BushController,
+    pond_42_north_strip_action,
+    pond_reverse_to_l8_extra_hop_action,
 )
-from zelda_i.overworld.graph import neighbor_screens
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_SWORD,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.overworld.graph import ScreenHop, neighbor_screens
+
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": 0x42,
+    "x": 112,
+    "y": 141,
+    "sword": 1,
+    "health": 0x22,
+}
 
 
 def _ram(*, level: int = 0, screen: int = 0x42, x: int = 112, y: int = 141):
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = PLAY_MODE
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_SWORD] = 1
-    ram[ADDR_HEALTH] = 0x22
-    return ram
+    return make_ram(_DEFAULTS, level=level, screen=screen, x=x, y=y)
 
 
 def test_l7_pond_to_l8_bush_hops_are_contiguous_and_end_0x6d() -> None:
@@ -85,6 +83,51 @@ def test_pond_start_begins_with_predicted_0x42_down_to_0x52() -> None:
     assert list(act.action) == list(nes_action("DOWN"))
     assert ctl.hops[ctl.hop_index].target == 0x52
     assert "fixture_start_l7_pond" in ctl.notes
+
+
+def test_north_strip_walks_west_then_south_gap() -> None:
+    def swing(direction: str, reason: str) -> FrameAction:
+        return FrameAction(nes_action(direction), reason)
+
+    leftover = read_snapshot(_ram(screen=0x42, x=96, y=93))
+    act = pond_42_north_strip_action(leftover, swing=swing)
+    assert act is not None
+    assert act.reason == "42n_west_ax"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+    west = read_snapshot(_ram(screen=0x42, x=POND_42_WEST_COL_X, y=93))
+    act = pond_42_north_strip_action(west, swing=swing)
+    assert act.reason == "42n_west_down"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+    south = read_snapshot(
+        _ram(screen=0x42, x=POND_42_WEST_COL_X, y=POND_42_SOUTH_SAND_Y)
+    )
+    act = pond_42_north_strip_action(south, swing=swing)
+    assert act.reason == "42n_gap_ax"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+    gap = read_snapshot(_ram(screen=0x42, x=112, y=POND_42_SOUTH_SAND_Y))
+    act = pond_42_north_strip_action(gap, swing=swing)
+    assert act.reason == "42n_gap_down"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_5b_climb_holds_x16_not_tree_column_24() -> None:
+    def swing(direction: str, reason: str) -> FrameAction:
+        return FrameAction(nes_action(direction), reason)
+
+    hop = ScreenHop(0x5C, "RIGHT", y_band_lo=80, y_band_hi=95)
+    stuck = read_snapshot(_ram(screen=0x5B, x=24, y=165))
+    act = pond_reverse_to_l8_extra_hop_action(stuck, hop, swing=swing)
+    assert act is not None
+    assert act.reason == "5br_wall_ax"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+    col = read_snapshot(_ram(screen=0x5B, x=POND_5B_CLIMB_X, y=165))
+    act = pond_reverse_to_l8_extra_hop_action(col, hop, swing=swing)
+    assert act.reason == "5br_climb"
+    assert list(act.action) == list(nes_action("UP"))
 
 
 def test_refilled_pond_top_strip_fails_closed_anywhere() -> None:

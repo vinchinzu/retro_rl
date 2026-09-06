@@ -13,6 +13,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.dungeon.engine import (
     DungeonPhase,
     GenericDungeonRoomController,
@@ -69,6 +70,7 @@ def make_bomb_61_north_controller(
     return BombWallController(
         wall=BombWall61North(),
         level=LEVEL4,
+        select_item=B_SLOT_BOMBS,
         clear_spec=ROOM_61_SPEC if clear_vires else None,
         clear_when=_need_clear_61 if clear_vires else None,
         face_frames=6,

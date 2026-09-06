@@ -437,7 +437,7 @@ _SWING_PERIOD = 8
 _SWING_HOLD = 4
 ROOM_0D = ROOM
 
-ROOM0D_CLEAR_MAX_FRAMES = 18000
+ROOM0D_CLEAR_MAX_FRAMES = 30000
 # 0x68 west-face stand. A 16px RIGHT slide is autonomous once it starts
 # (1px/2f at y=144) and the 16th pixel snaps the object to (208,96) on
 # the NE stair hole. Stairs dest $EB still unobserved (0d_push_v20/v22).
@@ -477,8 +477,6 @@ def _0d_spawners(snap: ZeldaSnapshot) -> tuple[tuple[ZeldaObject, ...], tuple[Ze
             continue
         in_floor = 12 <= int(obj.x) <= 200 and 80 <= int(obj.y) <= 200
         if int(obj.state) != 0 and in_floor:
-            live.append(obj)
-        elif is_off_wall(obj):
             live.append(obj)
         else:
             parked.append(obj)

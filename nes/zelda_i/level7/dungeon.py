@@ -1,9 +1,8 @@
 """Level 7 dungeon stop contracts.
 
-Entry room ``0x79`` is live (``Level7Entrance`` pin, recon Whistle poke).
-Red Candle and leave rooms stay ``None``.  ``level7_entry_stop`` remains
-fail-closed: evidence is ``fixture-live``, not spine-green.  The hypothesized
-first-quest door/stair graph lives in ``level7.graph`` (source ids ``0x7xx``).
+Entry ``0x79``, Red Candle cellar ``0x4A``, and the post-fanfare OW leave
+``0x42`` are **spine-green** from power-on (Survival; Food is still the
+disclosed poke, ``rr-8t4.4``). Not a Clean claim. Graph: ``level7.graph``.
 Navigation belongs in ``path.py`` / purpose-named modules, not here.
 """
 
@@ -39,26 +38,70 @@ class Level7StopSpec:
         return self.level is not None and self.screen is not None
 
 
-# Entry room 0x79 is live (drain_v2, Level7Entrance pin) but the pin is a
-# recon Whistle poke on PostSwordStart — keep evidence off the spine set so
-# ``level7_entry_stop`` stays fail-closed until a natural L6-leave drain.
+# PROMOTED 2026-09-05 (rr-8t4.1). The condition this spec was waiting on --
+# "a natural L6-leave drain" -- is met: from power-on the spine walks the
+# post-L6 pocket to 0x24, warps out on the naturally-owned Recorder to the L4
+# island door 0x45 (``level7/warp.py``), rejoins the green pond chain at 0x55,
+# drains pond 0x42 and enters play 0x79 -- no Whistle poke anywhere. Live
+# **2/2 byte-identical** from power-on (``recordings/l7entry_warp_v4_t0.json``
+# / ``l7entry_warp_v5.json``, ``set_state=0``): warp 7 blows / 1982f, drain
+# 466f on stair candidate 0, leftover L7 0x79 (120,205), ``writes=0``.
+#
+# SURVIVAL SCOPE, NOT A CLEAN CLAIM. ``food >= 1`` here is still satisfied by
+# the disclosed ``ADDR_FOOD`` write in ``SurvivalBaitPurchaseController`` --
+# the natural 60R bait shop is bead ``rr-8t4.4`` and the L6->shop overworld
+# route is still unmapped. This flag makes the Survival spine green to 0x79;
+# it does not make L7 entry Clean, and ``docs/STATUS.md`` is the planner's.
 LEVEL7_ENTRY_STOP = Level7StopSpec(
-    "level7_entry", LEVEL7, SCREEN_LEVEL7_ENTRY_ROOM, evidence="fixture-live"
+    "level7_entry",
+    LEVEL7,
+    SCREEN_LEVEL7_ENTRY_ROOM,
+    evidence="spine-green",
+    route_eligible=True,
 )
-LEVEL7_RED_CANDLE_STOP = Level7StopSpec("level7_red_candle", LEVEL7, None)
-# Settled post-fanfare OW leftover is UNMEASURED. Both level and screen stay
-# None so ``level7_complete_stop`` fails closed. Do not invent an OW leave
-# screen. Fill ``MEASURED_POST_L7_EXIT`` via ``handoff_from_ram`` from a real
-# Survival fanfare leftover (TF 0x7F, candle 2, whistle, food 0, HC
-# incoming+1, hearts lo==hi). ``verified`` stays False until that leftover
-# is measured 2/2. L8 keeps ``PostLevel7Handoff.verified=False`` until then.
-# Fixture-lineage leftover OW 0x42 (96,93) TF 0x40 (pin started at TF 0) is
-# not that packet — do not copy it in.
-LEVEL7_COMPLETE_STOP = Level7StopSpec("level7_complete", None, None)
+# PROMOTED 2026-09-05. Natural Red Candle cellar 0x4A on the power-on
+# Survival tape (``--through level7``, 2/2).
+LEVEL7_RED_CANDLE_STOP = Level7StopSpec(
+    "level7_red_candle",
+    LEVEL7,
+    0x4A,
+    mode=9,
+    evidence="spine-green",
+    route_eligible=True,
+)
+LEVEL7_COMPLETE_STOP = Level7StopSpec(
+    "level7_complete",
+    0,
+    0x42,
+    mode=PLAY_MODE,
+    evidence="spine-green",
+    route_eligible=True,
+)
+# Power-on ``--through level7`` 2/2, set_state=0, byte-identical
+# (recordings/survival_spine.json + survival_spine_v2.json, 256779f).
+# Do not copy the TF-0 fixture leftover (bombs 6 / 44R / 4 HC / B=recorder).
+# Packet is route-eligible: L8 walked 0x42 -> 0x6D from this leftover
+# (power-on ``--through level8-entry`` 2/2).
 MEASURED_POST_L7_EXIT = OverworldHandoff(
-    evidence="unmeasured-level7-exit",
-    verified=False,
-    route_eligible=False,
+    screen=0x42,
+    link_x=96,
+    link_y=93,
+    mode=PLAY_MODE,
+    triforce=TF_AFTER_LEVEL7,
+    keys=1,
+    bombs=1,
+    rupees=66,
+    heart_containers=9,
+    selected_item=1,  # bombs leftover from the L7 bomb walls
+    whistle=1,
+    food=0,
+    rod=1,
+    bow=1,
+    arrows=1,
+    candle=RED_CANDLE,
+    evidence="measured-level7-exit-2of2",
+    verified=True,
+    route_eligible=True,
 )
 
 # There are intentionally no executable DungeonRoomSpec rows yet.  Add one
@@ -121,11 +164,7 @@ def level7_complete_stop(
     incoming_heart_containers: int | None,
     spec: Level7StopSpec = LEVEL7_COMPLETE_STOP,
 ) -> bool:
-    """Settled L7 leave with shard, one natural heart, and full health.
-
-    Fail-closed while ``LEVEL7_COMPLETE_STOP.screen`` is None (unmeasured OW
-    leave). Filling TF ``0x7F``, Candle 2, Whistle, and HC+1 is not enough.
-    """
+    """Settled L7 leave with shard, one natural heart, and full health."""
     return bool(
         incoming_heart_containers is not None
         and _at_exact_stop(snap, spec)

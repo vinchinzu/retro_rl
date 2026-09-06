@@ -26,21 +26,8 @@ from zelda_i.level8.triforce import (
     north_3c_step,
     shard_2c_step,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_CUR_OPENED_DOORS,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 UP = list(nes_action("UP"))
 RIGHT = list(nes_action("RIGHT"))
@@ -50,20 +37,23 @@ IDLE = list(nes_idle_action())
 DOORS_UP_DOWN = 12
 
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": NORTH_3C_ORIGIN,
+    "x": NORTH_3C_ORIGIN_POSE[0],
+    "y": NORTH_3C_ORIGIN_POSE[1],
+    "keys": 8,
+    "bombs": 5,
+    "magic_key": 1,
+    "triforce": 0x7F,
+    "health": 0x33,
+    "doors": DOORS_UP_DOWN,
+}
+
+
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", NORTH_3C_ORIGIN)
-    ram[ADDR_LINK_X] = fields.get("x", NORTH_3C_ORIGIN_POSE[0])
-    ram[ADDR_LINK_Y] = fields.get("y", NORTH_3C_ORIGIN_POSE[1])
-    ram[ADDR_KEYS] = fields.get("keys", 8)
-    ram[ADDR_BOMBS] = fields.get("bombs", 5)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_HEALTH] = fields.get("health", 0x33)
-    ram[ADDR_CUR_OPENED_DOORS] = fields.get("doors", DOORS_UP_DOWN)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):

@@ -1,0 +1,229 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-05T03:04:08.149817+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07",
+      "0x55 Lanmola clear + block-stairs to cellar 0x60 right ladder"
+    ],
+    "phase": "level9_prefix_0x55_stairs_to_cellar_0x60",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x60",
+    "fixture_state": "Level9Interior60CellarReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "arrows": 2,
+      "bombs": 14,
+      "bow": 1,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 255,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 14,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "keys": 9,
+      "level": 9,
+      "live_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            32,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            96,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            144,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            208,
+            157
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 9,
+      "next_screen_hex": "0x55",
+      "open_doorway_mask": 0,
+      "rod": 1,
+      "room": 96,
+      "room_item_hex": "0x03",
+      "rupees": 255,
+      "screen": 96,
+      "screen_hex": "0x60",
+      "tile": 111,
+      "transitioning": false,
+      "triforce": 255,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            32,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            96,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            144,
+            157
+          ]
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "type": 27,
+          "type_hex": "0x1B",
+          "type_name": "keese",
+          "xy": [
+            208,
+            157
+          ]
+        }
+      ],
+      "x": 192,
+      "xy": [
+        192,
+        93
+      ],
+      "y": 93
+    },
+    "ok": true,
+    "source_state": "Level9Interior55NorthReconFixture",
+    "state": {
+      "bombs": 14,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 9,
+      "mode_name": "dungeon_underworld_passage",
+      "next_room": 85,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 32,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 96,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 144,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 208,
+          "y": 157
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 96,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 0,
+      "rupees": 255,
+      "submode": 9,
+      "triforce": 255,
+      "x": 192,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior55NorthReconFixture.state",
+  "source_state_sha256": "4de7bc65f462cb99b382d1008b2f1e99db49446a73f8653935c38e6ff72f5a03",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior60CellarReconFixture.state",
+  "state_sha256": "7d969432bb524226b4c1d27620022f3d5202297e137f05cbab2bfd5b928beaaf"
+}

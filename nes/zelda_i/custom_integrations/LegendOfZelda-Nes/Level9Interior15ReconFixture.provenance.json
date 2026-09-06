@@ -1,0 +1,198 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-05T03:12:47.690312+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07",
+      "0x14 LikeLikes perimeter walk -> east key door to 0x15"
+    ],
+    "phase": "level9_prefix_0x14_east_to_0x15",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x15",
+    "fixture_state": "Level9Interior15ReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "arrows": 2,
+      "bombs": 14,
+      "bow": 1,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 255,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 14,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "keys": 9,
+      "level": 9,
+      "live_objects": [
+        {
+          "hp": 160,
+          "slot": 1,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            167,
+            93
+          ]
+        },
+        {
+          "hp": 160,
+          "slot": 2,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            35,
+            93
+          ]
+        },
+        {
+          "hp": 160,
+          "slot": 3,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            36,
+            189
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 5,
+      "next_screen_hex": "0x15",
+      "open_doorway_mask": 3,
+      "rod": 1,
+      "room": 21,
+      "room_item_hex": "0x0F",
+      "rupees": 255,
+      "screen": 21,
+      "screen_hex": "0x15",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 255,
+      "typed_objects": [
+        {
+          "hp": 160,
+          "slot": 1,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            167,
+            93
+          ]
+        },
+        {
+          "hp": 160,
+          "slot": 2,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            35,
+            93
+          ]
+        },
+        {
+          "hp": 160,
+          "slot": 3,
+          "type": 35,
+          "type_hex": "0x23",
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "xy": [
+            36,
+            189
+          ]
+        }
+      ],
+      "x": 16,
+      "xy": [
+        16,
+        141
+      ],
+      "y": 141
+    },
+    "ok": true,
+    "source_state": "Level9Interior14LikeLikeReconFixture",
+    "state": {
+      "bombs": 14,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 21,
+      "objects": [
+        {
+          "hp": 160,
+          "slot": 1,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 167,
+          "y": 93
+        },
+        {
+          "hp": 160,
+          "slot": 2,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 35,
+          "y": 93
+        },
+        {
+          "hp": 160,
+          "slot": 3,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 36,
+          "y": 189
+        }
+      ],
+      "open_doorway_mask": 3,
+      "room": 21,
+      "room_all_dead": 0,
+      "room_item_id": 15,
+      "room_item_name": "unknown_room_item_0x0f",
+      "room_obj_count": 3,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 16,
+      "y": 141
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior14LikeLikeReconFixture.state",
+  "source_state_sha256": "31ad2547e1d77675c189dbda6f734c159393255bc9bc2805f60d8f7b6fa6a84d",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior15ReconFixture.state",
+  "state_sha256": "effdc244e96b8746696acf6a09f184b63c02e66c6f22daa3b5c94cc5d5a54ddf"
+}

@@ -145,7 +145,16 @@ ROOM_79_SPEC = DungeonRoomSpec(
 )
 
 # East of entry: 5× type 0x24 + fixed RoomItemId small key (0x19).
-# Key pickup observed near center after clear (keys 0→1); target (136,141).
+# Key pickup live at room center (120,141) — matches the measured Survival
+# leftover (`l6_east_key_continuous_v1.json`, keys 5→6 at (120,141)); the old
+# (136,141) target was an unmeasured "~" estimate (LEVEL6_ROUTE.md) and sits
+# unreachable from a NW post-combat leftover: cart-WRAM tilemap shows a block
+# cell at (64,112)-(64,128) directly south of that leftover, and the plain
+# axis-priority `_collect_reward` path (no waypoints) has no stuck-escape, so
+# it presses DOWN into the block for the full 12000-frame room timeout
+# (root-caused live 2026-09-04). Waypoints reuse the proven-safe combat ring
+# so the 24-frame stuck-skip (`_collect_reward` waypoints branch) can route
+# around both corner-block pairs from any post-combat leftover.
 ROOM_7A_SPEC = DungeonRoomSpec(
     spec_id="level6_room7a_east_key",
     source_room=LEVEL6_ENTRY_ROOM,
@@ -169,7 +178,8 @@ ROOM_7A_SPEC = DungeonRoomSpec(
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        target=(136, 141),
+        target=(120, 141),
+        waypoints=_ROOM_7A_PATROL,
     ),
     room_item_id=0x19,
     exit_routes=(

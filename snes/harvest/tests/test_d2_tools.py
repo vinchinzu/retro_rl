@@ -13,12 +13,8 @@ from day_plan_test_helpers import make_world, set_player_pos
 
 from harvest.core.tile_catalog import Tool
 from harvest.planner.d2_work import (
-    bush_clear_phase,
     ensure_axe_phase,
     ensure_hammer_phase,
-    fence_dump_phase,
-    rock_clear_phase,
-    stone_pond_phase,
 )
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.planner.tasks.inventory_shed import EnsureCarryToolTask, SHED_TOOL_SPECS, ShedShelfToolTask
@@ -114,11 +110,6 @@ class LeftoverEnsureNotRecordedTests(unittest.TestCase):
         self.assertEqual(spa.phase, "HOT_SPRING_STAMINA")
         self.assertEqual(spa.params["min_stamina"], "full")
         self.assertTrue(spa.params["return_to_farm"])
-        self.assertEqual(bush_clear_phase().phase, "CLEAR_BUSHES")
-        self.assertEqual(fence_dump_phase().phase, "CLEAR_FENCES")
-        self.assertEqual(stone_pond_phase().phase, "CLEAR_STONES")
-        self.assertEqual(ensure_hammer_phase().phase, "ENSURE_HAMMER")
-        self.assertEqual(rock_clear_phase().phase, "CLEAR_ROCKS")
 
 
 if __name__ == "__main__":

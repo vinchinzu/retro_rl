@@ -16,11 +16,13 @@ import numpy as np
 
 from zelda_i.level8.dungeon import (
     LIVE_RECON_LEVEL8_TOPOLOGY,
+    MEASURED_LEVEL8_ENTRY_TOPOLOGY,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8Topology,
 )
 from zelda_i.level8.entry import (
     LIVE_RECON_BUSH_BURN_TARGET,
+    MEASURED_POST_L7_HANDOFF,
     UNMEASURED_POST_L7_HANDOFF,
     UNVERIFIED_BUSH_BURN_TARGET,
 )
@@ -31,50 +33,36 @@ from zelda_i.level8.spine import (
     LIVE_RECON_L8_OVERRIDES,
     continue_level8_spine,
 )
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOMBS,
-    ADDR_BOW,
-    ADDR_CANDLE,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import ADDR_MAGIC_KEY, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 from zelda_i.spine.survival import SPINE_THROUGH, SpineRun, run_survival_spine
 
 CANDLE_RED, B_ITEM_CANDLE = 2, 4
 RECON_ENTRY_ROOM = 0x7E
 
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": RECON_ENTRY_ROOM,
+    "x": 120,
+    "y": 205,
+    "triforce": 0x7F,
+    "sword": 3,
+    "health": 0xBB,
+    "keys": 4,
+    "bombs": 8,
+    "candle": CANDLE_RED,
+    "selected": B_ITEM_CANDLE,
+    "bow": 1,
+    "arrows": 1,
+    "magic_key": 0,
+}
+
+
 def _ram(**fields: int) -> np.ndarray:
     """Post-burn L8 entry RAM by default: the best case the stop may see."""
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", RECON_ENTRY_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", 120)
-    ram[ADDR_LINK_Y] = fields.get("y", 205)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_SWORD] = fields.get("sword", 3)
-    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_CANDLE] = fields.get("candle", CANDLE_RED)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", B_ITEM_CANDLE)
-    ram[ADDR_BOW] = fields.get("bow", 1)
-    ram[ADDR_ARROWS] = fields.get("arrows", 1)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -139,7 +127,7 @@ def test_through_level8_entry_is_not_an_unknown_spine_stop() -> None:
 
 
 def test_default_entry_chapter_refuses_on_unmeasured_handoff() -> None:
-    """First wired stage fails closed before any input, on defaults."""
+    """Spine seam uses the measured leave; 0x6D RAM is not the leftover pose."""
     ram = _ram(level=0, screen=0x6D, x=48, y=93)
     run = _run()
     stages = _StageRecorder(step=True)
@@ -148,11 +136,47 @@ def test_default_entry_chapter_refuses_on_unmeasured_handoff() -> None:
     )
     assert stages.names() == ["level8_post_l7_to_bush"]
     approach = stages.rows[0][1]
+    assert MEASURED_POST_L7_HANDOFF.complete()
     assert not UNMEASURED_POST_L7_HANDOFF.complete()
-    assert approach.handoff is UNMEASURED_POST_L7_HANDOFF
-    assert "post_l7_handoff_unmeasured" in approach.notes
+    assert approach.handoff is MEASURED_POST_L7_HANDOFF
+    assert "post_l7_screen_mismatch" in approach.notes
     assert run.success is False
     assert run.failed_stage == "level8_post_l7_to_bush"
+
+
+def test_measured_leave_accepts_and_walks_west_ring() -> None:
+    """Matching leftover RAM is accepted; first move is LEFT around the pond."""
+    ram = _ram(
+        level=0,
+        screen=0x42,
+        x=96,
+        y=93,
+        triforce=0x7F,
+        health=0x88,
+        keys=1,
+        bombs=1,
+        rupees=66,
+        selected=1,
+        whistle=1,
+        food=0,
+        rod=1,
+        bow=1,
+        arrows=1,
+        candle=CANDLE_RED,
+        sword=1,
+    )
+    run = _run()
+    stages = _StageRecorder(step=True)
+    continue_level8_spine(
+        _env(ram), run, through="level8-entry", run_stages=stages
+    )
+    approach = stages.rows[0][1]
+    assert approach.handoff is MEASURED_POST_L7_HANDOFF
+    assert "post_l7_handoff_accepted" in approach.notes
+    assert "post_l7_path_unmeasured" not in approach.notes
+    assert approach.hops[-1].target == 0x6D
+    assert approach.phase.name != "FAILED"
+    assert run.failed_stage != "level8_post_l7_to_bush"
 
 
 def test_entry_stop_refuses_even_with_recon_topology() -> None:
@@ -166,23 +190,42 @@ def test_entry_stop_refuses_even_with_recon_topology() -> None:
             assert hop.success(snap) is False
 
 
-def test_wired_chapter_cannot_green_even_if_every_stage_passes() -> None:
-    """Stages green + L8 RAM present still fails: the stop predicate refuses."""
-    for overrides in ({}, LIVE_RECON_L8_OVERRIDES):
-        run = _run()
-        continue_level8_spine(
-            _env(_ram()),
-            run,
-            through="level8-entry",
-            run_stages=_StageRecorder(ok=True),
-            **overrides,
-        )
-        assert run.success is False
-        assert run.failed_stage == L8_STOPS["level8-entry"]
+def test_measured_entry_topology_greens_on_0x7e_leftover() -> None:
+    env = _env(_ram())
+    snap = read_snapshot(env.get_ram())
+    assert MEASURED_LEVEL8_ENTRY_TOPOLOGY.route_eligible is True
+    assert MEASURED_LEVEL8_ENTRY_TOPOLOGY.entry_room == 0x7E
+    hops = l8_hops(env, topology=MEASURED_LEVEL8_ENTRY_TOPOLOGY)
+    entry = [h for h in hops if h.through == "level8-entry"][0]
+    assert entry.success(snap) is True
+
+
+def test_wired_chapter_fixture_topology_still_refuses() -> None:
+    run = _run()
+    continue_level8_spine(
+        _env(_ram()),
+        run,
+        through="level8-entry",
+        run_stages=_StageRecorder(ok=True),
+        **LIVE_RECON_L8_OVERRIDES,
+    )
+    assert run.success is False
+    assert run.failed_stage == L8_STOPS["level8-entry"]
+
+
+def test_wired_chapter_measured_topology_greens_when_stages_pass() -> None:
+    run = _run()
+    continue_level8_spine(
+        _env(_ram()),
+        run,
+        through="level8-entry",
+        run_stages=_StageRecorder(ok=True),
+    )
+    assert run.success is True
 
 
 def test_recon_overrides_are_an_explicit_opt_in_path() -> None:
-    """The disclosed constants reach the burn stage only when passed in."""
+    """Topology stays opt-in. The burn aim is the spine default after 0x6D."""
     assert LIVE_RECON_L8_OVERRIDES == {
         "burn_target": LIVE_RECON_BUSH_BURN_TARGET,
         "topology": LIVE_RECON_LEVEL8_TOPOLOGY,
@@ -207,7 +250,7 @@ def test_recon_overrides_are_an_explicit_opt_in_path() -> None:
     default_burn = dict(zip(default_rows.names(), default_rows.rows))
     recon_burn = dict(zip(recon_rows.names(), recon_rows.rows))
     assert default_burn["level8_burn_bush_enter"][1].target is (
-        UNVERIFIED_BUSH_BURN_TARGET
+        LIVE_RECON_BUSH_BURN_TARGET
     )
     assert recon_burn["level8_burn_bush_enter"][1].target is (
         LIVE_RECON_BUSH_BURN_TARGET

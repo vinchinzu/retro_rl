@@ -1,5 +1,10 @@
 # D2 farm-clear issues
 
+**Landed (`rr-20w.2.3`, Clean power-on):** `--stop-after-d2-clear`
+`recordings/power_on_d2_farm_clear.json`. Debris 0, 8 wet potatoes,
+`shipped_before_17`, leave pin `Y1_D2_PowerOn_FarmClear`. Do not STATUS-promote
+Gate B from this list. Leftover order lives in `next_d2_spec`.
+
 Facts for Spring D2 section work (`rr-20w.2`). Product path is
 **grape → shop → shed hoe+seeds → pocket `CLEAR_PLOT` → hoe/plant/water → evening leftover**,
 not a morning whole-farm wipe. Do not STATUS-promote Gate B from this list.

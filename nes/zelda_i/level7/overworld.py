@@ -36,6 +36,7 @@ from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 from zelda_i.anchors import (
     SCREEN_BRACELET_ARMOS,
+    SCREEN_LEVEL4_ENTRANCE,
     SCREEN_LEVEL6_ENTRANCE,
     SCREEN_LEVEL7_BAIT_SHOP_HYP,
     SCREEN_LEVEL7_ENTRY_ROOM,
@@ -99,7 +100,65 @@ POST_L6_22_WEST_HOP = ScreenHop(
 # Greened prefix (not the dead 0x25 pocket): L6 reverse 0x22↓0x32→0x33↑0x23
 # →0x24 then 0x24 UP x=160 → 0x14 (l7_p24n) then 0x14 LEFT y=165-189 → 0x13
 # (l7_p14w 1/1, leftover 0x13 (240,189)). Do not RIGHT 0x24→0x25.
-# _after_hops succeeds only on pond 0x42.
+# Next: 0x13 LEFT at the south sand (y=189, south of the Armos) toward 0x12
+# (l7_p13w 1/1, leftover 0x12 (240,189)). Do not DOWN at (240,189)
+# (south mountain). 0x12 LEFT y=165-189 is DEAD (l7_p12w timeout, leftover
+# 0x12 (16,181) tile 218 west wall). _after_hops succeeds only on pond 0x42.
+#
+# 2026-09-04 sitting (H1/H2 recon, rr-8t4.1 residual; scratch/pond/probe_*):
+#
+# H1 -- Recorder overworld warp is REAL (searched + confirmed live, contrary
+# to the "nothing happens" first read): blowing the already-owned Recorder
+# (B-slot 5, `dungeon.pause_select`) on any *non-entrance* overworld screen
+# triggers a whirlwind-carry cutscene (mode 5→6→7→4→5, Link auto-walks off
+# the screen edge with no player input) to the entrance of a *completed*
+# dungeon, cycling forward/backward through 1..6 by UP/DOWN facing
+# (`probe_recorder_warp_cycle.py`). Confirmed cycle from 0x24 facing DOWN:
+# 0x22(L6)→0x0B(L5)→0x45(L4)→0x74(L3)→0x3C(L2) (`rw_cycle_down2`, 4082f,
+# writes=0). It does **not** fire reliably from the dragon-mouth screen
+# 0x22 itself (`probe_recorder_warp.py`, 8 blows, zero change) -- entrance
+# screens appear to suppress it. Each destination is a dungeon *door*
+# screen, not the pond approach band, and advancing the cycle needs 1-3
+# blows per step once a screen's exit is boulder/mountain-blocked (e.g. it
+# stalls bouncing against 0x3C's east wall for several blows). **Not
+# adopted**: no observed destination lands on the green pond band, and the
+# per-blow advance is not perfectly deterministic. If a future sitting
+# finds a completed-dungeon entrance screen that is itself on
+# `LEVEL7_POND_APPROACH_HOPS`, this is worth revisiting.
+#
+# H2 -- 0x12's `$6530` tile map (`probe_dump_ow_tilemap.py`) shows a
+# non-mountain gap at tile-cols 6-7 (x=48-63) running the whole north edge.
+# **LIVE 2/2 byte-identical**: 0x12 UP at x=48 (tol 3) → screen 0x02
+# `(48,61)` mode 7, f=2424 total (`probe_12_north_gap.py --gap-x 48`,
+# `l7_12north_confirm1`/`confirm2`, writes=0). x=56 (one tile column over)
+# is DEAD (wall). Chasing this further west/south: `0x32` LEFT with a
+# y-band (128,183) plus the existing `bait_32_north_action` x=112 realign
+# (the arrival point (120,61) is one tile off the true x=112 gap column and
+# freezes DOWN forever otherwise -- this is the documented
+# `l7_bait_from_l6 leftover (120,61)` bug, previously only wired for
+# `hop.target == 0x33`) reaches **0x31** `(240,133)`; 0x31 DOWN
+# `align_x=120` reaches **0x41** `(120,61)` (`probe_32_west_hop.py`,
+# `hop_1_31`/`hop_2_41` notes). **DEAD end: 0x41 → 0x42 RIGHT** is a solid,
+# full-height wall (tile `0xc4-0xc7` for all 22 tile-rows of 0x41's east
+# edge, confirmed both by the `$6530` dump and a live 30,000-frame stuck
+# test parked at `(128,141)` with `--infinite-life`, never crossing).
+# 0x32's own south edge is independently reconfirmed here as 100% mountain
+# across all 32 columns (row21), matching the prior sweep-based "no south
+# exit" finding but now from a full tile-map read, not a sample sweep.
+# **Net result: the entire west-of-L6 column (0x12→0x02, and
+# 0x32→0x31→0x41) is now fully mapped and does not reach the pond band.**
+# H3 (the long way round via the L5→L6 approach reversed) was never needed:
+# **H1 IS the route** (2026-09-05, rr-8t4.1).  See `level7/warp.py` and
+# `WARP_JOIN_TO_POND_HOPS` below -- the warp cycle's L4 island door `0x45`
+# is one screen NORTH of `0x55`, which is already on the green
+# `LEVEL7_POND_APPROACH_HOPS`.  Post-L6 → pond `0x42` is live 2/2
+# (`scratch/pond/probe_recorder_warp_full_route.py`, tags `rw_full_route_t2`
+# / `_t3`, 4913f each, writes=0).  `0x74 → 0x64` UP is DEAD: `0x74`'s whole
+# north edge is mountain across all 32 tile columns (`$6530` dump plus a
+# live 10-column sweep, every candidate stuck at y=85).
+# POST_L6_TO_POND_HOPS below is kept as the *walk-only* prefix record; the
+# spine now walks only its first four hops (`POST_L6_TO_WARP_HOPS`) and
+# warps out of the pocket from `0x24`.
 POST_L6_TO_POND_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x32, "DOWN", align_x=112),
     ScreenHop(0x33, "RIGHT", align_y=141),
@@ -107,6 +166,7 @@ POST_L6_TO_POND_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_BRACELET_ARMOS, "RIGHT", align_y=141),
     ScreenHop(0x14, "UP", align_x=160),
     ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
+    ScreenHop(0x12, "LEFT", y_band_lo=165, y_band_hi=189),
 )
 POST_L6_TO_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_LEVEL6_ENTRANCE, POST_L6_TO_POND_HOPS
@@ -150,13 +210,39 @@ LEVEL7_POND_HOPS: tuple[ScreenHop, ...] = LEVEL7_POND_APPROACH_HOPS + (
 )
 LEVEL7_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(0x77, LEVEL7_POND_HOPS)
 
+# --- H1 Recorder-warp escape from the mountain-locked post-L6 pocket ---
+# The spine walks only the first four POST_L6_TO_POND_HOPS (0x22↓0x32→0x33
+# ↑0x23→0x24), then blows the owned Recorder on 0x24 -- a NON-entrance
+# screen; door screens suppress the warp -- facing DOWN until the cycle
+# lands on the L4 island door 0x45 (`level7.warp.RecorderWarpController`).
+WARP_LAUNCH_SCREEN = 0x24
+POST_L6_TO_WARP_HOPS: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS[:4]
+POST_L6_TO_WARP_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    SCREEN_LEVEL6_ENTRANCE, POST_L6_TO_WARP_HOPS
+)
+WARP_ISLAND_SCREEN = SCREEN_LEVEL4_ENTRANCE
+# The whirlwind drops Link on 0x45 at (128,141) -- the raft-dock column.
+# x=128 is a clear open corridor the full height of 0x55 (probe_55_dump.py,
+# 74f raw DOWN, no realign).  Do NOT reuse the stock LEVEL7_POND_HOPS
+# `ScreenHop(0x65, "DOWN", align_x=112)` here: 112 assumes the *east*
+# 0x56→0x55 arrival band and drags Link LEFT into the mid-screen house/tree
+# obstacle (tile cols 14-17, rows 8-11), which parked rw_full_route_t1 at
+# (128,103) for a full 30,000f budget.  Keep x=128 through 0x55→0x65.
+POND_55_DOCK_X = 128
+WARP_JOIN_TO_POND_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x55, "DOWN", align_x=POND_55_DOCK_X),
+    ScreenHop(0x65, "DOWN", align_x=POND_55_DOCK_X),
+) + LEVEL7_POND_HOPS[7:]
+WARP_JOIN_TO_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    WARP_ISLAND_SCREEN, WARP_JOIN_TO_POND_HOPS
+)
+
 # 0x53 east-edge vertical travel is the v9 miss.  Leave the east column
 # (x>192) before descending to the hypothesized west gap, then LEFT to 0x52.
 POND_53_INLAND_X = 192
 POND_53_WEST_GAP_Y = 189
 POND_53_Y_TOL = 4
 POND_53_SEED_BLOCKED: frozenset[tuple[int, int]] = frozenset({(224, 174)})
-_POND_53_HOP_INDEX = 10
 
 
 def pond_suffix_extra_hop_action(

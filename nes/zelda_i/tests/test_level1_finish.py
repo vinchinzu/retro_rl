@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
-
 from zelda_i.level1.finish import (
     ROOM_BOOMERANG_GORIYA,
     ROOM_TRIFORCE,
@@ -12,29 +10,20 @@ from zelda_i.level1.finish import (
     Level1TriforceController,
 )
 from zelda_i.combat import FACING_EAST
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_FACING,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 1,
+    "x": 112,
+    "y": 149,
+    "health": 0x20,
+}
 
 
-def _ram(*, room: int, x: int = 112, y: int = 149):
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = PLAY_MODE
-    ram[ADDR_LEVEL] = 1
-    ram[ADDR_SCREEN] = room
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_HEALTH] = 0x20
-    return ram
+def _ram(*, room: int, x: int = 112, y: int = 149, **fields: int):
+    return make_ram(_DEFAULTS, screen=room, x=x, y=y, **fields)
 
 
 def test_backtrack_controller_detects_room44() -> None:
@@ -50,8 +39,7 @@ def test_backtrack_controller_detects_room44() -> None:
 
 def test_triforce_controller_collects_shard_bit() -> None:
     controller = Level1TriforceController()
-    ram = _ram(room=ROOM_TRIFORCE, x=128, y=141)
-    ram[ADDR_TRIFORCE] = 1
+    ram = _ram(room=ROOM_TRIFORCE, x=128, y=141, triforce=1)
     action = controller.step(read_snapshot(ram))
     assert controller.success is True
     assert action.reason == "done"
@@ -77,8 +65,7 @@ def test_aquamentus_tank_hits_ignores_fireball() -> None:
         initial_health=0x2F,
         tank_hits=True,
     )
-    ram = _ram(room=0x35, x=184, y=140)
-    ram[ADDR_LINK_FACING] = FACING_EAST
+    ram = _ram(room=0x35, x=184, y=140, facing=FACING_EAST)
     _place_aquamentus(ram, x=200, y=140)
     _place_fireball(ram, x=192, y=140)
 

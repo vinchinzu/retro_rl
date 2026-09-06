@@ -61,29 +61,22 @@ from zelda_i.level7.graph import (
     ram_ids_observed,
 )
 from zelda_i.level7.spine import L7_STOPS, L7_THROUGH
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 7,
+    "screen": 0,
+    "x": 120,
+    "y": 141,
+    "triforce": TF_BEFORE_LEVEL7,
+    "health": 0xBB,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 7)
-    ram[ADDR_SCREEN] = fields.get("screen", 0)
-    ram[ADDR_LINK_X] = fields.get("x", 120)
-    ram[ADDR_LINK_Y] = fields.get("y", 141)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", TF_BEFORE_LEVEL7)
-    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_public_through_targets_are_exactly_three_chapters() -> None:
@@ -91,26 +84,59 @@ def test_public_through_targets_are_exactly_three_chapters() -> None:
     assert set(L7_STOPS) == set(L7_THROUGH)
 
 
-def test_entry_room_is_live_but_stop_stays_fail_closed() -> None:
+def test_entry_stop_is_spine_green_and_later_stops_stay_fail_closed() -> None:
+    """All three L7 stops are spine-green; predicates still gate on items/TF."""
     snap = read_snapshot(_ram(screen=SCREEN_LEVEL7_ENTRY_ROOM, x=120, y=205))
     assert LEVEL7_ENTRY_STOP.screen == SCREEN_LEVEL7_ENTRY_ROOM
     assert LEVEL7_ENTRY_STOP.observed
-    assert LEVEL7_ENTRY_STOP.evidence == "fixture-live"
-    assert not LEVEL7_ENTRY_STOP.route_eligible
-    assert LEVEL7_RED_CANDLE_STOP.screen is None
-    assert LEVEL7_COMPLETE_STOP.level is None
-    # Spine evidence set is {natural-segment, spine-green}; fixture-live is not in it.
-    assert not level7_entry_stop(snap, whistle=1, food=1)
+    assert LEVEL7_ENTRY_STOP.evidence == "spine-green"
+    assert LEVEL7_ENTRY_STOP.route_eligible
+    assert LEVEL7_RED_CANDLE_STOP.screen == 0x4A
+    assert LEVEL7_RED_CANDLE_STOP.observed
+    assert LEVEL7_RED_CANDLE_STOP.route_eligible
+    assert LEVEL7_COMPLETE_STOP.screen == 0x42
+    assert LEVEL7_COMPLETE_STOP.level == 0
+    assert LEVEL7_COMPLETE_STOP.observed
+    assert LEVEL7_COMPLETE_STOP.route_eligible
+    assert level7_entry_stop(snap, whistle=1, food=1)
+    # Still gated on the natural items and the exact incoming Triforce.
+    assert not level7_entry_stop(snap, whistle=0, food=1)
+    assert not level7_entry_stop(snap, whistle=1, food=0)
+    off_tf = read_snapshot(
+        _ram(screen=SCREEN_LEVEL7_ENTRY_ROOM, x=120, y=205, triforce=0x1F)
+    )
+    assert not level7_entry_stop(off_tf, whistle=1, food=1)
     assert not level7_red_candle_stop(snap, candle=2, whistle=1, food=0)
     assert not level7_complete_stop(
         snap, candle=2, whistle=1, incoming_heart_containers=12
     )
 
 
-def test_complete_stop_fails_closed_when_leave_screen_is_none() -> None:
-    """TF 0x7F + Candle 2 + HC+1 + full hearts is not a leave without a screen."""
-    # 9 containers full: hi=8 lo=8 → 0x88. Dummy OW pose is not a measured leave.
-    ram = _ram(
+def test_complete_stop_promoted_and_fails_closed_on_wrong_screen() -> None:
+    """TF 0x7F + Candle 2 + HC+1 + full hearts at OW 0x42 is verified leave."""
+    assert TF_AFTER_LEVEL7 == 0x7F
+    assert RED_CANDLE == 2
+    assert LEVEL7_COMPLETE_STOP.screen == 0x42
+    assert LEVEL7_COMPLETE_STOP.level == 0
+    assert LEVEL7_COMPLETE_STOP.evidence == "spine-green"
+    assert LEVEL7_COMPLETE_STOP.route_eligible
+    assert MEASURED_POST_L7_EXIT.verified is True
+    assert MEASURED_POST_L7_EXIT.screen == 0x42
+    assert MEASURED_POST_L7_EXIT.link_x == 96
+    assert MEASURED_POST_L7_EXIT.link_y == 93
+    assert MEASURED_POST_L7_EXIT.triforce == 0x7F
+    assert MEASURED_POST_L7_EXIT.keys == 1
+    assert MEASURED_POST_L7_EXIT.bombs == 1
+    assert MEASURED_POST_L7_EXIT.rupees == 66
+    assert MEASURED_POST_L7_EXIT.heart_containers == 9
+    assert MEASURED_POST_L7_EXIT.selected_item == 1
+    assert MEASURED_POST_L7_EXIT.arrows == 1
+    assert MEASURED_POST_L7_EXIT.candle == 2
+    assert MEASURED_POST_L7_EXIT.complete() is True
+    assert MEASURED_POST_L7_EXIT.route_eligible is True
+
+    # Dummy screen 0x00: fails closed
+    dummy_ram = _ram(
         level=0,
         screen=0x00,
         x=112,
@@ -118,24 +144,28 @@ def test_complete_stop_fails_closed_when_leave_screen_is_none() -> None:
         triforce=TF_AFTER_LEVEL7,
         health=0x88,
     )
-    snap = read_snapshot(ram)
-    assert TF_AFTER_LEVEL7 == 0x7F
-    assert RED_CANDLE == 2
-    assert LEVEL7_COMPLETE_STOP.screen is None
-    assert LEVEL7_COMPLETE_STOP.level is None
-    assert LEVEL7_COMPLETE_STOP.evidence == "hypothesis"
-    assert not LEVEL7_COMPLETE_STOP.route_eligible
-    assert MEASURED_POST_L7_EXIT.verified is False
-    assert MEASURED_POST_L7_EXIT.screen is None
-    assert MEASURED_POST_L7_EXIT.complete() is False
-    assert MEASURED_POST_L7_EXIT.route_eligible is False
-    assert snap.heart_containers == 9
-    assert snap.health_is_full
+    snap_dummy = read_snapshot(dummy_ram)
     assert not level7_complete_stop(
-        snap, candle=RED_CANDLE, whistle=1, incoming_heart_containers=8
+        snap_dummy, candle=RED_CANDLE, whistle=1, incoming_heart_containers=8
+    )
+
+    # Correct screen 0x42: passes
+    live_ram = _ram(
+        level=0,
+        screen=0x42,
+        x=96,
+        y=93,
+        triforce=TF_AFTER_LEVEL7,
+        health=0x88,
+    )
+    snap_live = read_snapshot(live_ram)
+    assert snap_live.heart_containers == 9
+    assert snap_live.health_is_full
+    assert level7_complete_stop(
+        snap_live, candle=RED_CANDLE, whistle=1, incoming_heart_containers=8
     )
     assert not level7_complete_stop(
-        snap, candle=RED_CANDLE, whistle=1, incoming_heart_containers=None
+        snap_live, candle=RED_CANDLE, whistle=1, incoming_heart_containers=None
     )
 
 

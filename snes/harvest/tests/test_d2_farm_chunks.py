@@ -35,14 +35,12 @@ from harvest.planner.d2_farm_chunks import (
 )
 from harvest.planner.d2_work import (
     bush_clear_phase,
-    ensure_axe_phase,
-    ensure_hammer_phase,
-    fence_dump_phase,
+    leftover_chain_decision,
+    next_d2_spec,
+    observe_d2_farm,
     rock_clear_phase,
-    stone_pond_phase,
     stump_clear_phase,
 )
-from harvest.scripts.leftover_exec import leftover_chain_decision, phase_already_clear
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.tasks.farm_clear_quota import DebrisCounts, count_debris
 from harvest.tasks.farm_clear_task import FarmClearTask
@@ -75,22 +73,6 @@ def _place_large_rock(ram: np.ndarray, tx: int, ty: int) -> None:
     _set_tile(ram, tx + 1, ty, 0x0E)
     _set_tile(ram, tx, ty + 1, 0x0F)
     _set_tile(ram, tx + 1, ty + 1, 0x10)
-
-
-def _chunked(builder, chunks=FARM_CHUNK_ORDER):
-    return [builder(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name) for name in chunks]
-
-
-def _leftover_all():
-    return [
-        bush_clear_phase(),
-        fence_dump_phase(),
-        *_chunked(stone_pond_phase),
-        ensure_hammer_phase(),
-        *_chunked(rock_clear_phase),
-        ensure_axe_phase(),
-        *_chunked(stump_clear_phase),
-    ]
 
 
 def _make_farm_ram(*, player_tile=(10, 10), stamina=100, tool=int(Tool.HAMMER)):
@@ -171,47 +153,41 @@ class ChunkedCountIsolationTests(unittest.TestCase):
 
 
 class ChunkedPhaseChainTests(unittest.TestCase):
-    def test_section_stones_is_four_bounded_phases(self) -> None:
-        phases = _chunked(stone_pond_phase)
-        self.assertEqual([p.phase for p in phases], ["CLEAR_STONES"] * 4)
-        self.assertEqual([p.params["chunk"] for p in phases], list(FARM_CHUNK_ORDER))
-        for spec, name in zip(phases, FARM_CHUNK_ORDER):
+    def test_next_spec_walks_live_stone_chunks_in_order(self) -> None:
+        ram = _make_farm_ram()
+        stones = {"nw": (11, 29), "ne": (40, 16), "sw": (12, 55), "se": (60, 51)}
+        for tile in stones.values():
+            _set_tile(ram, *tile, STONE)
+        seen = []
+        for _ in FARM_CHUNK_ORDER:
+            spec = next_d2_spec(observe_d2_farm(ram), section="stones")
+            self.assertIsNotNone(spec)
+            self.assertEqual(spec.phase, "CLEAR_STONES")
+            name = spec.params["chunk"]
+            seen.append(name)
             self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS[name])
+            _set_tile(ram, *stones[name], 0xA1)
+        self.assertEqual(seen, list(FARM_CHUNK_ORDER))
+        self.assertIsNone(next_d2_spec(observe_d2_farm(ram), section="stones"))
 
     def test_one_chunk_section_is_a_single_bounded_phase(self) -> None:
-        phases = [
-            ensure_hammer_phase(),
-            rock_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS["se"], chunk="se"),
-        ]
-        self.assertEqual(phases[0].phase, "ENSURE_HAMMER")
-        rocks = [p for p in phases if p.phase == "CLEAR_ROCKS"]
-        self.assertEqual(len(rocks), 1)
-        self.assertEqual(rocks[0].params["chunk"], "se")
-        self.assertEqual(rocks[0].params["farm_bounds"], FARM_CHUNK_BOUNDS["se"])
-        self.assertEqual(rocks[0].params["quota"], {"large_rocks": EXHAUSTIVE})
-
-    def test_full_leftover_chains_four_smash_chunks_without_getting_stuck(self) -> None:
-        phases = _leftover_all()
-        names = [p.phase for p in phases]
-        self.assertEqual(names.count("CLEAR_STONES"), 4)
-        self.assertEqual(names.count("CLEAR_ROCKS"), 4)
-        self.assertEqual(names.count("CLEAR_STUMPS"), 4)
-        last_stone = max(i for i, n in enumerate(names) if n == "CLEAR_STONES")
-        first_hammer = names.index("ENSURE_HAMMER")
-        last_rock = max(i for i, n in enumerate(names) if n == "CLEAR_ROCKS")
-        first_axe = names.index("ENSURE_AXE")
-        first_stump = names.index("CLEAR_STUMPS")
-        self.assertLess(last_stone, first_hammer)
-        self.assertLess(first_hammer, names.index("CLEAR_ROCKS"))
-        self.assertLess(last_rock, first_axe)
-        self.assertLess(first_axe, first_stump)
-        for spec in phases:
-            if spec.phase in {"CLEAR_STONES", "CLEAR_ROCKS", "CLEAR_STUMPS"}:
-                self.assertIn(spec.params["chunk"], FARM_CHUNK_ORDER)
-                self.assertEqual(
-                    spec.params["farm_bounds"],
-                    FARM_CHUNK_BOUNDS[spec.params["chunk"]],
-                )
+        ram = _make_farm_ram()
+        _place_large_rock(ram, 50, 50)
+        spec = next_d2_spec(
+            observe_d2_farm(ram), section="rocks", chunk="se", last_phase="ENSURE_HAMMER"
+        )
+        self.assertEqual(spec.phase, "CLEAR_ROCKS")
+        self.assertEqual(spec.params["chunk"], "se")
+        self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS["se"])
+        self.assertEqual(spec.params["quota"], {"large_rocks": EXHAUSTIVE})
+        self.assertIsNone(
+            next_d2_spec(
+                observe_d2_farm(ram),
+                section="rocks",
+                chunk="nw",
+                last_phase="ENSURE_HAMMER",
+            )
+        )
 
 
 class FullChainEmptyTests(unittest.TestCase):
@@ -284,35 +260,24 @@ class FullChainEmptyTests(unittest.TestCase):
         self.assertEqual(count_debris(ram, FARM_CHUNK_BOUNDS["ne"]).stumps, 0)
         self.assertFalse(section_complete("stumps", start, start))
 
-        phases = [ensure_axe_phase(), *_chunked(stump_clear_phase)]
-        run = []
-        skipped = []
-        for spec in phases:
-            counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
-            row = (spec.phase, (spec.params or {}).get("chunk"))
-            if phase_already_clear(spec.phase, counts):
-                skipped.append(row)
-            else:
-                run.append(row)
-        self.assertEqual(skipped, [("CLEAR_STUMPS", "ne")])
-        self.assertEqual(
-            run,
-            [
-                ("ENSURE_AXE", None),
-                ("CLEAR_STUMPS", "nw"),
-                ("CLEAR_STUMPS", "sw"),
-                ("CLEAR_STUMPS", "se"),
-            ],
-        )
-        se_bounds = FARM_CHUNK_BOUNDS["se"]
-        se_start = count_debris(ram, se_bounds)
-        sx, sy = 52, 44
-        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
-            _set_tile(ram, sx + dx, sy + dy, 0xA1)
-        se_end = count_debris(ram, se_bounds)
-        self.assertTrue(section_complete("stumps", se_start, se_end))
-        self.assertFalse(section_complete("stumps", start, count_debris(ram)))
-        self.assertFalse(smash_is_clear(count_debris(ram)))
+        status = observe_d2_farm(ram)
+        self.assertEqual(next_d2_spec(status, section="stumps").phase, "ENSURE_AXE")
+        seen = []
+        while True:
+            spec = next_d2_spec(observe_d2_farm(ram), section="stumps", last_phase="ENSURE_AXE")
+            if spec is None:
+                break
+            self.assertEqual(spec.phase, "CLEAR_STUMPS")
+            name = spec.params["chunk"]
+            seen.append(name)
+            x0, y0, x1, y1 = FARM_CHUNK_BOUNDS[name]
+            for tx, ty in last:
+                if x0 <= tx <= x1 and y0 <= ty <= y1:
+                    for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+                        _set_tile(ram, tx + dx, ty + dy, 0xA1)
+        self.assertEqual(seen, ["nw", "sw", "se"])
+        self.assertEqual(count_debris(ram).stumps, 0)
+        self.assertTrue(smash_is_clear(count_debris(ram)))
 
 
 class QuotaChunkDoesNotPocketApproachTests(unittest.TestCase):
@@ -407,76 +372,36 @@ class LeftoverChainReadinessTests(unittest.TestCase):
     def test_partial_pin_skips_empty_chunks_and_keeps_se_boulder(self) -> None:
         ram = _make_farm_ram()
         _place_large_rock(ram, 60, 51)
-        phases = _leftover_all()
-        run = []
-        skipped = []
-        for spec in phases:
-            counts = count_debris(ram, (spec.params or {}).get("farm_bounds"))
-            row = (spec.phase, (spec.params or {}).get("chunk"))
-            if phase_already_clear(spec.phase, counts):
-                skipped.append(row)
-            else:
-                run.append(row)
-        self.assertEqual(
-            skipped,
-            [
-                ("CLEAR_BUSHES", None),
-                ("CLEAR_FENCES", None),
-                ("CLEAR_STONES", "nw"),
-                ("CLEAR_STONES", "ne"),
-                ("CLEAR_STONES", "sw"),
-                ("CLEAR_STONES", "se"),
-                ("CLEAR_ROCKS", "nw"),
-                ("CLEAR_ROCKS", "ne"),
-                ("CLEAR_ROCKS", "sw"),
-                ("CLEAR_STUMPS", "nw"),
-                ("CLEAR_STUMPS", "ne"),
-                ("CLEAR_STUMPS", "sw"),
-                ("CLEAR_STUMPS", "se"),
-            ],
-        )
-        self.assertEqual(
-            run,
-            [
-                ("ENSURE_HAMMER", None),
-                ("CLEAR_ROCKS", "se"),
-                ("ENSURE_AXE", None),
-            ],
+        status = observe_d2_farm(ram)
+        self.assertEqual(next_d2_spec(status).phase, "ENSURE_HAMMER")
+        rocks = next_d2_spec(status, last_phase="ENSURE_HAMMER")
+        self.assertEqual(rocks.phase, "CLEAR_ROCKS")
+        self.assertEqual(rocks.params["chunk"], "se")
+        self.assertIsNone(
+            next_d2_spec(status, section="stumps", last_phase="ENSURE_AXE")
         )
 
     def test_section_all_green_requires_empty_weeds(self) -> None:
         from harvest.planner.d2_farm_chunks import smash_done_empty, wanted_quota
 
         self.assertIn("weeds", smash_done_empty("all"))
-        self.assertEqual(smash_done_empty("all"), ("weeds", "fences", "stones", "large_rocks", "stumps"))
+        self.assertEqual(
+            smash_done_empty("all"),
+            ("weeds", "fences", "stones", "large_rocks", "stumps"),
+        )
         self.assertEqual(smash_done_empty("bushes"), ("weeds",))
         self.assertEqual(wanted_quota("all").weeds, EXHAUSTIVE)
         self.assertEqual(wanted_quota("bushes").weeds, EXHAUSTIVE)
 
     def test_leftover_smash_is_required_so_a_day_plan_cannot_skip_a_stall(self) -> None:
-        phases = _leftover_all()
-        smash = [
-            p
-            for p in phases
-            if p.phase
-            in {"CLEAR_BUSHES", "CLEAR_FENCES", "CLEAR_STONES", "CLEAR_ROCKS", "CLEAR_STUMPS"}
-        ]
-        self.assertTrue(smash)
-        for spec in smash:
-            self.assertEqual(spec.failure_policy, "required")
-
-    def test_default_day_budgets_cover_multi_section_leftover(self) -> None:
-        from pathlib import Path
-
-        harvest_dir = Path(__file__).resolve().parents[1] / "harvest"
-        leftover_src = (harvest_dir / "scripts" / "d2_leftover_probe.py").read_text(
-            encoding="utf-8"
-        )
-        run_src = (harvest_dir / "scripts" / "run_to_day2.py").read_text(encoding="utf-8")
-        self.assertIn("default=2_000_000", leftover_src)
-        self.assertNotIn("default=400_000", leftover_src)
-        self.assertIn("2_000_000 * max(1, overnights_budget)", run_src)
-        self.assertNotIn("200_000 * max(1, overnights_budget)", run_src)
+        ram = _make_farm_ram()
+        _set_tile(ram, 40, 40, 0x03)
+        spec = next_d2_spec(observe_d2_farm(ram))
+        self.assertEqual(spec.phase, "CLEAR_BUSHES")
+        self.assertEqual(spec.failure_policy, "required")
+        self.assertEqual(bush_clear_phase().failure_policy, "required")
+        self.assertEqual(rock_clear_phase().failure_policy, "required")
+        self.assertEqual(stump_clear_phase().failure_policy, "required")
 
 
 if __name__ == "__main__":

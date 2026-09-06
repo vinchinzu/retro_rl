@@ -1,8 +1,11 @@
-"""L8 Gleeok-suffix composition stays inert. No emulator. No RAM writes.
+"""L8 Gleeok-suffix composition. No emulator. No RAM writes.
 
-These tests go red if someone composes the suffix, or greens ``L8_THROUGH``,
-without a natural predecessor (rr-8t4.3 / rr-6o7.1) and a measured
-``Level8ClearEndpoint``.
+rr-6o7.3: the suffix is now spine-green from the power-on Magical-Key
+frontier, so ``continue_level8_spine`` composes the ordered rows and greens
+``--through level8`` on the measured OW ``0x6D`` leave.  The bare ``l8_hops``
+default stays fail-closed (``FIXTURE_LINEAGE_LEVEL8_SUFFIX`` /
+``UNOBSERVED_LEVEL8_CLEAR``); these tests pin that split and the ordered
+chain.
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ import numpy as np
 from retro_harness.nes import nes_idle_action
 
 from zelda_i.level8.dungeon import (
+    MEASURED_LEVEL8_CLEAR,
     UNOBSERVED_LEVEL8_CLEAR,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ClearEndpoint,
@@ -25,6 +29,7 @@ from zelda_i.level8.spine import continue_level8_spine
 from zelda_i.level8.suffix import (
     CELLAR_2F_SETTLE_FRAMES,
     FIXTURE_LINEAGE_LEVEL8_SUFFIX,
+    NATURAL_LINEAGE_LEVEL8_SUFFIX,
     LEVEL8_SUFFIX_GATES,
     SUFFIX_PREREQUISITE_BEADS,
     Level8Cellar2FSettleController,
@@ -33,19 +38,8 @@ from zelda_i.level8.suffix import (
     suffix_blockers,
     suffix_stages,
 )
-from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 IDLE = list(nes_idle_action())
 # A composable lineage exists only in this test: nothing in the tree builds one.
@@ -54,17 +48,20 @@ _COMPOSED = Level8SuffixLineage(
 )
 
 
+_DEFAULTS = {
+    "mode": PASSAGE_MODE,
+    "level": 8,
+    "screen": CELLAR_ROOM,
+    "x": SPAWN_XY[0],
+    "y": SPAWN_XY[1],
+    "triforce": 0x7F,
+    "magic_key": 1,
+    "health": 0x33,
+}
+
+
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PASSAGE_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", CELLAR_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", SPAWN_XY[0])
-    ram[ADDR_LINK_Y] = fields.get("y", SPAWN_XY[1])
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_HEALTH] = fields.get("health", 0x33)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -94,7 +91,7 @@ def test_default_lineage_is_not_composable() -> None:
         "post_l7_handoff_unmeasured",
         "suffix_lineage_not_route_eligible",
     )
-    assert SUFFIX_PREREQUISITE_BEADS == ("rr-8t4.3", "rr-6o7.1")
+    assert SUFFIX_PREREQUISITE_BEADS == ("rr-6o7.1",)
 
 
 def test_half_a_lineage_still_refuses() -> None:
@@ -206,24 +203,27 @@ def _clear_hop(env, **kw):
     return hop
 
 
-def test_composed_suffix_still_cannot_green_through_level8() -> None:
-    """Post-shard RAM + every suffix row present must still fail the stop."""
+def test_composed_suffix_needs_the_measured_endpoint_to_green() -> None:
+    """A composable lineage alone still fails the stop without the endpoint.
+
+    ``l8_hops`` keeps ``clear_endpoint=UNOBSERVED_LEVEL8_CLEAR`` by default, so
+    even the fully composed rows cannot green until the caller supplies
+    ``MEASURED_LEVEL8_CLEAR`` (which ``continue_level8_spine`` now does).
+    """
     ram = _ram(level=0, mode=PLAY_MODE, screen=0x6D, triforce=0xFF)
     hop = _clear_hop(_env(ram), suffix=_COMPOSED)
     names = [name for name, _, _ in hop.stages()]
-    assert names[-1] == "level8_heart_shard_leave_2c"
+    assert names[-1] == "level8_ow_leave_settle"
     assert hop.success(read_snapshot(ram)) is False
 
 
-def test_default_spine_call_keeps_the_fail_closed_clear_chapter() -> None:
-    """The wired spine attaches the fail-closed rows, never the suffix."""
+def test_bare_hops_stay_fail_closed_but_the_spine_composes() -> None:
+    """``l8_hops()`` is fail-closed; ``continue_level8_spine`` composes.
+
+    This mirrors the topology / burn-target split: the bare API stays inert,
+    the wired spine path carries the measured/composable defaults.
+    """
     ram = _ram(level=0, mode=PLAY_MODE, screen=0x6D, triforce=0xFF)
-    run = SimpleNamespace(success=True, failed_stage=None)
-    rows = _StageRecorder(ok=True)
-    continue_level8_spine(_env(ram), run, through="level8", run_stages=rows)
-    # attach_hops stops at the entry chapter: the seam is still blocked.
-    assert run.success is False
-    assert run.failed_stage == "level8_entry_live"
 
     hop = _clear_hop(_env(ram))
     names = [name for name, _, _ in hop.stages()]
@@ -235,10 +235,25 @@ def test_default_spine_call_keeps_the_fail_closed_clear_chapter() -> None:
     assert "level8_return_passage_east_3e" not in names
     assert hop.success(read_snapshot(ram)) is False
 
+    # But the spine chapter row (built via l8_hops with the spine's defaults)
+    # runs the full ordered suffix, ending at the OW-leave settle.
+    spine_hop = _clear_hop(
+        _env(ram), suffix=NATURAL_LINEAGE_LEVEL8_SUFFIX, clear_endpoint=MEASURED_LEVEL8_CLEAR
+    )
+    spine_names = [name for name, _, _ in spine_hop.stages()]
+    assert spine_names[0] == "level8_return_passage_west_1f"
+    assert spine_names[-1] == "level8_ow_leave_settle"
+    assert "level8_four_head_gleeok" in spine_names
 
-def test_hop_rows_default_to_the_fixture_lineage() -> None:
+
+def test_hop_rows_default_split_bare_fixture_spine_natural() -> None:
     from inspect import signature
 
-    for fn in (l8_hops, continue_level8_spine):
-        param = signature(fn).parameters["suffix"]
-        assert param.default is FIXTURE_LINEAGE_LEVEL8_SUFFIX
+    assert (
+        signature(l8_hops).parameters["suffix"].default
+        is FIXTURE_LINEAGE_LEVEL8_SUFFIX
+    )
+    assert (
+        signature(continue_level8_spine).parameters["suffix"].default
+        is NATURAL_LINEAGE_LEVEL8_SUFFIX
+    )

@@ -161,4 +161,4 @@ def test_level9_natural_graph_requires_51_to_41_on_selected_route() -> None:
         L9_ROOM_51, L9_ROOM_41, direction=DoorDir.UP
     )
     assert edge is not None
-    assert edge.verification == "planned"
+    assert edge.verification == "observed"

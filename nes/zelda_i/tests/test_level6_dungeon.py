@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.ids import (
     KEESE_OBJECT_TYPE,
@@ -42,20 +42,23 @@ from zelda_i.level6.overworld import (
     WIZZROBE_ORANGE_TYPE,
 )
 from zelda_i.ram import (
-    ADDR_COMPASS,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
-    ADDR_ROD,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": ROOM_L6_ENTRY,
+    "x": 120,
+    "y": 205,
+    "keys": 0,
+}
 
 
 def _ram(
@@ -68,18 +71,56 @@ def _ram(
     keys: int = 0,
     wizzrobes: int = 0,
     hp: int = 64,
+    **fields: int,
 ) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = room
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_KEYS] = keys
+    ram = make_ram(
+        _DEFAULTS,
+        level=level,
+        screen=room,
+        x=x,
+        y=y,
+        mode=mode,
+        keys=keys,
+        **fields,
+    )
     for slot in range(1, wizzrobes + 1):
         ram[ADDR_OBJ_TYPE + slot] = WIZZROBE_ORANGE_TYPE
         ram[ADDR_OBJ_HP + slot] = hp
     return ram
+
+
+def test_room_7a_reward_waypoints_recover_from_blocked_leftover() -> None:
+    """Regression (live 2026-09-04): ``ROOM_7A_SPEC.reward`` had a plain
+    ``target=(136, 141)`` with no waypoints. Live power-on recon showed the
+    combat backstep policy can leave Link at (64, 93), with a cart-WRAM
+    tilemap block cell at (64, 112) directly south — the no-waypoints
+    ``_collect_reward`` branch has no stuck-escape, so it pressed DOWN into
+    the block for the full 12,000-frame room timeout and the key was never
+    collected. Waypoints (reused from the combat patrol ring, ending at the
+    verified pickup spot (120, 141)) give the existing 24-frame stuck-skip
+    a real route. This pins Link at that exact frozen leftover and asserts
+    the controller eventually gives up hunting rather than spinning the
+    same blocked direction forever.
+    """
+    assert ROOM_7A_SPEC.reward.waypoints
+    assert ROOM_7A_SPEC.reward.target == (120, 141)
+
+    controller = GenericDungeonRoomController(ROOM_7A_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 4
+    # Live-measured freeze position: north wall, directly above the (64,112)
+    # block. Static x/y (no walk physics here) stands in for "blocked".
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=64, y=93, keys=4, room_all_dead=24)
+    n = len(ROOM_7A_SPEC.reward.waypoints)
+    action = None
+    for _ in range(n * 30):
+        action = controller.step(read_snapshot(ram))
+        if action.reason == "collect_wait":
+            break
+    assert action is not None
+    assert action.reason == "collect_wait"
+    assert np.array_equal(action.action, nes_idle_action())
+    assert controller._collect_skips >= n
 
 
 def test_live_wizzrobes_type_and_hp() -> None:
@@ -106,10 +147,7 @@ def test_live_wizzrobes_type_and_hp() -> None:
     ids=["7a", "78", "68", "19", "09", "58", "38", "28"],
 )
 def test_clear_success(success_fn, room, extra, live_type, live_hp) -> None:
-    kwargs = {k: v for k, v in extra.items() if k != "compass"}
-    ram = _ram(room=room, **kwargs)
-    if "compass" in extra:
-        ram[ADDR_COMPASS] = extra["compass"]
+    ram = _ram(room=room, **extra)
     assert success_fn(ram)
     ram[ADDR_OBJ_TYPE + 1] = live_type
     ram[ADDR_OBJ_HP + 1] = live_hp
@@ -294,9 +332,7 @@ def test_clear29_plus_seed_paths_around_to_south_door() -> None:
 
 
 def test_clear29_spine_success_requires_handoff_pose() -> None:
-    ram = _ram(room=ROOM_L6_DARK_29, x=120, y=189)
-    ram[ADDR_ROD] = 1
-    ram[ADDR_TRIFORCE] = 0x1F
+    ram = _ram(room=ROOM_L6_DARK_29, x=120, y=189, rod=1, triforce=0x1F)
     assert clear29_handoff_ok(read_snapshot(ram))
     ram[ADDR_LINK_X] = 63
     ram[ADDR_LINK_Y] = 133

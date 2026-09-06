@@ -8,39 +8,28 @@ from retro_harness.nes import nes_action
 from zelda_i.level6.hops import ok6, rod_cellar_ok
 from zelda_i.level6.path import BLOCK_OBJECT_TYPE
 from zelda_i.level6.stairs09 import EAST_CLEAR_X, make_stairs_09_controller
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_OBJ_TYPE,
-    ADDR_ROD,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y, ADDR_OBJ_TYPE, PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 LEFT_BLOCK = (96, 144)
 NW_LEFTOVER = (56, 109)
 BOXED_WEST = (56, 157)
 HISTORICAL_SOUTH = (112, 173)
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 6,
+    "screen": 0x09,
+    "x": NW_LEFTOVER[0],
+    "y": NW_LEFTOVER[1],
+    "triforce": 0x1F,
+    "keys": 3,
+    "bombs": 8,
+}
+
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 6)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x09)
-    ram[ADDR_LINK_X] = fields.get("x", NW_LEFTOVER[0])
-    ram[ADDR_LINK_Y] = fields.get("y", NW_LEFTOVER[1])
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x1F)
-    ram[ADDR_KEYS] = fields.get("keys", 3)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _plant_left_block(ram: np.ndarray) -> None:
@@ -105,8 +94,7 @@ def test_boxed_west_face_is_dead_belief_not_west_aisle() -> None:
 
 
 def test_rod_cellar_ok_accepts_mode_9() -> None:
-    ram = _ram(mode=PASSAGE_MODE, screen=0x75, x=136, y=141)
-    ram[ADDR_ROD] = 1
+    ram = _ram(mode=PASSAGE_MODE, screen=0x75, x=136, y=141, rod=1)
     snap = read_snapshot(ram)
     assert rod_cellar_ok(snap)
     assert not ok6(rod=True, tf_eq=0x1F)(snap)
@@ -115,8 +103,7 @@ def test_rod_cellar_ok_accepts_mode_9() -> None:
 def test_rod_pickup_fails_closed_if_already_owned() -> None:
     from zelda_i.level6.rod import make_rod_75_controller
 
-    ram = _ram(mode=PASSAGE_MODE, screen=0x75, x=48, y=93)
-    ram[ADDR_ROD] = 1
+    ram = _ram(mode=PASSAGE_MODE, screen=0x75, x=48, y=93, rod=1)
     ctl = make_rod_75_controller()
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed and not ctl.success

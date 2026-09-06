@@ -20,21 +20,27 @@ from zelda_i.level1.path import (
 )
 from retro_harness.nes import nes_action
 from zelda_i.ram import (
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     ADDR_ROOM_ALL_DEAD,
-    ADDR_ROOM_ITEM_ID,
     ADDR_ROOM_OBJ_COUNT,
-    ADDR_SCREEN,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 1,
+    "screen": ROOM_ENTRANCE,
+    "x": 120,
+    "y": 205,
+    "health": 0x21,
+    "keys": 0,
+    "item": FIRST_KEY_ITEM_ID,
+}
 
 
 def _ram(
@@ -45,15 +51,7 @@ def _ram(
     y: int = 205,
     stalfos: int = 0,
 ) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = PLAY_MODE
-    ram[ADDR_LEVEL] = 1
-    ram[ADDR_SCREEN] = room
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_HEALTH] = 0x21
-    ram[ADDR_KEYS] = keys
-    ram[ADDR_ROOM_ITEM_ID] = FIRST_KEY_ITEM_ID
+    ram = make_ram(_DEFAULTS, screen=room, keys=keys, x=x, y=y)
     ram[ADDR_ROOM_OBJ_COUNT] = stalfos
     for slot in range(1, stalfos + 1):
         ram[ADDR_OBJ_TYPE + slot] = STALFOS_OBJECT_TYPE

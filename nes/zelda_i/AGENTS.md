@@ -14,19 +14,18 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 ## Immediate goal
 
-Bead `rr-8t4.1` (`in_progress`). Living residual:
-[`docs/tasks/rr-8t4.1-residual.md`](docs/tasks/rr-8t4.1-residual.md).
-Pond drain controller is wired (`level7/pond.py`); Survival still dies
-walking post-L6 to pond `0x42`. Frontier leftover OW `0x13` `(240,189)`
-on greened `0x22→0x32→0x33→0x23→0x24→0x14→0x13`. `0x22` west is mountain.
-Do not start from `PostSwordStart` / `OW_L7Pond` (whistle=0). Do not fill
-`MEASURED_POST_L7_EXIT` from the TF-0 pin. Do not STATUS.
+**L8 is fully spine-green from power-on** (2026-09-05): `--through level8`
+1/1, `set_state=0`, settled OW `0x6D` `(96,93)` TF `0xFF` MK 1 hc 10, deaths
+0. `rr-6o7.2` (Magical Key) and `rr-6o7.3` (Gleeok suffix → OW leave) both
+met acceptance — planner may STATUS/close. Residuals:
+[`rr-6o7.2`](docs/tasks/rr-6o7.2-residual.md) /
+[`rr-6o7.3`](docs/tasks/rr-6o7.3-residual.md).
 
-Parallel leftovers (not this AGENTS residual): L7 dest `0x29` 2/2,
-suffix 4/4 fixture-live (`rr-n91a` closed). **0x0D walk-on SOLVED**
-(`rr-8t4.3`): `level7.stairs0d` 2/2, `route_eligible=false`. L8-B
-`rr-6o7.2` stays fixture-lineage (`Level8PostShardOWReconFixture`).
-L9 §10.2 cut: `0x76`→`0x66` 2/2, `0x66`→`0x65` 2/2 (`rr-sz8.6`).
+Next frontier: **L9 natural entry + interior** (`rr-sz8` epic). The L9 seam
+is wired (`continue_level9_spine`, `MEASURED_POST_L8_HANDOFF`) but every
+natural chapter is fail-closed — see `rr-6o7.3-residual.md` "Frontier".
+Start with the `0x6D → Spectacle Rock 0x05` overworld walk. Do not STATUS.
+Food poke stays Survival (`rr-8t4.4`).
 
 ## Commands
 

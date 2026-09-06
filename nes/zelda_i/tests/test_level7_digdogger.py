@@ -18,10 +18,8 @@ from zelda_i.level7.digdogger import (
     make_level7_forced_digdogger_controller,
 )
 from zelda_i.ram import (
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     ADDR_SCREEN,
@@ -29,17 +27,20 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 7,
+    "screen": ROOM,
+    "x": 16,
+    "y": 141,
+    "selected": 4,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 7)
-    ram[ADDR_SCREEN] = fields.get("screen", ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", 16)
-    ram[ADDR_LINK_Y] = fields.get("y", 141)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 4)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _plant(

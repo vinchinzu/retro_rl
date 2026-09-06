@@ -135,8 +135,8 @@ def main() -> int:
                 "push_direction": PUSH,
                 "notes": [
                     "sourced from a 5856-trial live sweep, nes/zelda_i/logs/level8_bush_burn_sweep.json",
-                    "sweep also confirmed the same entry room from (120,93)/(128,93) RIGHT,",
-                    "(184,93)/(192,93)/(200,93) LEFT, and (160,77) DOWN — all converge on 0x7E",
+                    "sweep confirmed mode-16 mouth opened from (120,93)/(128,93) RIGHT, (184,93)/(192,93)/(200,93) LEFT, and (160,77) DOWN (entry_room null in sweep); only (136,93) RIGHT/RIGHT was live-walked into room 0x7E",
+                    "sweep header reports 732 standable positions; the trial grid contains 729 distinct coordinates due to 3 duplicate stand samples",
                     "entry does NOT complete on UP alone after mode16; continuing the SAME",
                     "push_direction used to fire is what carries Link through into level 8",
                     "(BurnLevel8BushController's ENTER phase always sends UP — flagged, not changed)",

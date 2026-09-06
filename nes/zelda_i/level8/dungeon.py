@@ -59,469 +59,41 @@ LIVE_RECON_LEVEL8_TOPOLOGY = Level8Topology(
     evidence="live_recon_fixture",
     route_eligible=False,
 )
+# Power-on `--through level8-entry` tag l8_entry_burn5: set_state=0,
+# leftover L8 play 0x7E (120,205) TF 0x7F candle 2, burn
+# observed_entry_room=0x7E. Same room as the fixture recon, now from
+# the measured post-L7 walk.
+# ``magic_key_room=0x1F``: the ``level8_magic_key_stairs`` stage is spine-green
+# from the power-on 0x1F frontier (rr-6o7.2) -- clear the diamond census, slide
+# the centre 0x68 south, drop the revealed stairs to cellar 0x0F, take the
+# Magical Key, two-ladder return.  Link settles back in play 0x1F (96,157)
+# carrying ADDR_MAGIC_KEY 0->1 (``level8.cellar.CELLAR_RETURN_DEST``).
+MEASURED_LEVEL8_ENTRY_TOPOLOGY = Level8Topology(
+    entry_room=0x7E,
+    magic_key_room=0x1F,
+    evidence="spine-green",
+    route_eligible=True,
+)
 LEVEL8_ROOM_SPECS: tuple[DungeonRoomSpec, ...] = ()
 
 
-@dataclass(frozen=True)
-class Level8InteriorRoomRecon:
-    """A single interior room observed live from a disclosed fixture replay.
-
-    Development recon only: ``route_eligible`` is always False and these rows
-    are never attached to ``L8_THROUGH`` or promoted to ``DungeonRoomSpec``.
-    They only record what RAM showed, with a 2/2 byte-identical recording.
-    """
-
-    room_id: int
-    entered_from: int
-    entry_direction: str
-    entry_gate: str
-    entry_pose: tuple[int, int]
-    keys_in: int
-    keys_out: int
-    bombs_in: int
-    bombs_out: int
-    room_item_id: int
-    census: tuple[tuple[int, int, int], ...]  # (type_id, hp, count)
-    evidence: str = "live_recon_fixture"
-    route_eligible: bool = False
-    fixture: str = ""
-    recording_tag: str = ""
-
-
-# rr-6o7.2 groundwork: ONE guarded replay past the confirmed 0x4E arrival.
-# From Level8InteriorReconFixture, reuse the confirmed 0x7E -> clear 0x6E ->
-# bomb-N 0x5E -> clear/center-key -> shutter-N 0x4E policy unchanged, then take
-# the north KEY door from 0x4E.  2/2 byte-identical (probe l8_4e_north B1/B2,
-# frames 2918): one natural key spent (10 -> 9), bombs unchanged, settled play
-# room 0x3E at (120,205), deaths 0, progression_writes 0, capacity_writes 0.
-# The mixed 0x4E census was NOT cleared.  Not route eligible; not on L8_THROUGH.
-LEVEL8_INTERIOR_0X3E_RECON = Level8InteriorRoomRecon(
-    room_id=0x3E,
-    entered_from=0x4E,
-    entry_direction="UP",
-    entry_gate="north_key_door",
-    entry_pose=(120, 205),
-    keys_in=10,
-    keys_out=9,
-    bombs_in=7,
-    bombs_out=7,
-    room_item_id=0x03,
-    # 6 x type 0x0C HP128, room_all_dead=0.  0x0C is unregistered in
-    # dungeon/ids.py (0x0B HP64 is the registered "darknut"); "blue" is a
-    # walkthrough correlation, not an observation, so it stays out of the id.
-    census=((0x0C, 128, 6),),
-    fixture="Level8Interior3EReconFixture",
-    recording_tag="l8_4e_north_fixture_B1",
-)
-
-# rr-6o7.2: ONE guarded boundary past 0x3E.  Same probe start
-# (Level8InteriorReconFixture) and the same confirmed 0x7E -> clear 0x6E ->
-# bomb-N 0x5E -> clear/center-key -> shutter-N 0x4E -> key-N 0x3E policy
-# replayed unchanged, then the 0x3E census cleared with the sword only and ONE
-# bomb placed at the north wall from (120,105) facing UP.
-#
-# 2/2 byte-identical (probe l8_3e_north A2/A3, 4788 frames each; 32 payload
-# keys compared, only the screenshot paths and the A3-only saved_fixture entry
-# differ).  Live RAM: first settled play room 0x2E at (120,189), keys 9 -> 9,
-# bombs 7 -> 6 (exactly one natural bomb), deaths 0, progression_writes 0,
-# capacity_writes 0, direct runtime writes 0.  Assist = Survival health refill
-# only (26 health writes, max single-frame damage 2).
-#
-# Gate evidence, in 0x3E: arrival cur_opened_doors/open_doorway_mask = 0x04
-# (the DOWN key door we came through).  Clearing the six 0x0C bodies raised
-# only the RIGHT bit (0x04 -> 0x05) -- i.e. the 0x3E clear opens an EAST
-# shutter, never the north.  The UP bit (doors 0x0D, mask 0x0C) appeared only
-# after the bomb blast, so the north gate of 0x3E is a bomb wall, matching the
-# hypothesis edge "blue_darknuts -> map_manhandla UP bomb".  0x3E is an open
-# floor with two statue blocks on the mid row (x~96 and x~144 at y~141) that
-# wedge a naive stand walk; the bomb stand must be approached along the clear
-# north band (y=109).
-#
-# 0x2E census names Manhandla from dungeon/ids.py (0x3C).  Its four heads plus
-# body occupy five slots at HP 64.  Four transient 0x56 projectile residuals
-# (HP 240) were also live in the settled census; they are projectile state,
-# not room population, so they are not recorded as census rows.  Development
-# recon only: not route eligible, no DungeonRoomSpec, not on L8_THROUGH, and
-# the hypothesis graph keeps room_id=None for every non-entry node.
-LEVEL8_INTERIOR_0X2E_RECON = Level8InteriorRoomRecon(
-    room_id=0x2E,
-    entered_from=0x3E,
-    entry_direction="UP",
-    entry_gate="north_bomb_wall",
-    entry_pose=(120, 189),
-    keys_in=9,
-    keys_out=9,
-    bombs_in=7,
-    bombs_out=6,
-    room_item_id=0x17,  # ids.room_item_name -> dungeon_map_walkthrough_correlated
-    census=((0x3C, 64, 5),),  # one Manhandla (body + 4 heads), room_all_dead=0
-    fixture="Level8Interior2EReconFixture",
-    recording_tag="l8_3e_north_fixture_20260904_A2",
-)
-
-# rr-6o7.2: ONE guarded boundary past 0x2E, taken from the settled-0x2E
-# continuation pin (Level8Interior2EReconFixture) rather than a full replay of
-# the 0x7E prefix; that pin is the saved frame of the same fixture-only chain.
-#
-# 2/2 byte-identical (probe l8_2e_north C1/C2, 2348 frames each; 21 payload
-# keys compared, only the screenshot paths and the C2-only saved_fixture entry
-# differ).  Live RAM: the one Manhandla in 0x2E cleared with the sword only
-# (1486 clear frames, room_all_dead 0 -> 126), then ONE north door spent
-# exactly one key -- first settled play room 0x1E at (120,205), keys 9 -> 8,
-# bombs 6 -> 6, deaths 0, progression_writes 0, capacity_writes 0, direct
-# runtime writes 0.  Assist = Survival health refill only (13 writes, max
-# single-frame damage 1, all of it in 0x2E).
-#
-# Gate evidence, in 0x2E: arrival and post-clear cur_opened_doors /
-# open_doorway_mask both 0x04 (the DOWN bomb hole from 0x3E).  The clear raised
-# NO new door bit, so the north gate is not a kill-clear shutter; the door
-# consumed a key on the push, so it is a key door -- the hypothesis edge
-# "map_manhandla -> blue_gohma UP key" is confirmed for both destination and
-# gate kind.  0x2E's room item (0x17, map) stays OMITTED: the north walk rides
-# the y=109 band ((88,109) -> (120,109) -> door tile (120,93)) instead of the
-# centre column, and ADDR_MAP is 0 before and after.
-#
-# 0x1E census: ONE body in slot 1, live type 0x33 HP 96 at (119,112).  RAM says
-# 0x33, which dungeon/ids.py registers as "gohma_red" (the L6 0x1C one-arrow
-# body); the walkthrough calls this room's boss a *blue* Gohma.  The observed
-# type + HP are recorded as-is and no colour is asserted here.  Two 0x55
-# (HP192) statue fireballs and one 0x56 (HP240) residual were also live; those
-# are projectile state, not room population, so they are not census rows.
-LEVEL8_INTERIOR_0X1E_RECON = Level8InteriorRoomRecon(
-    room_id=0x1E,
-    entered_from=0x2E,
-    entry_direction="UP",
-    entry_gate="north_key_door",
-    entry_pose=(120, 205),
-    keys_in=9,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x03,  # ids.room_item_name -> no_inventory_reward_observed
-    census=((0x33, 96, 1),),  # observed type + HP only; colour not asserted
-    fixture="Level8Interior1EReconFixture",
-    recording_tag="l8_2e_north_fixture_20260904_C1",
-)
-
-# rr-6o7.2 / rr-gw0x: ONE guarded boundary past 0x1E, taken from the settled
-# 0x1E continuation pin (Level8Interior1EReconFixture).  Kill the one 0x33
-# HP96 body with the fixture's own wooden arrows on the L6 eye-open rising
-# edge (RAM 0x03C7 leaving 0xC0), then ONE east push.
-#
-# 2/2 byte-identical (probe l8_1e_gohma D1b/D2, 1731 frames each; graded
-# keys identical, only screenshot paths and the D2-only saved_fixture entry
-# differ).  Live RAM: three connecting arrows (HP 96→64→32→0), nine shots
-# loosed (rupees 255→246), then first settled play room 0x1F at (16,141),
-# keys 8→8, bombs 6→6, deaths 0, progression_writes 0, capacity_writes 0,
-# direct runtime writes 0.  Assist = Survival health refill only (7 writes,
-# max single-frame damage 1).  D1 killed the body the same way but halted
-# on open_doorway_mask staying 0x04; D1b gated on the doors-byte rising
-# edge instead.
-#
-# Gate evidence, in 0x1E: arrival cur_opened_doors/open_doorway_mask = 0x04
-# (the DOWN key door from 0x2E).  The kill raised cur_opened_doors 0x04→0x0D
-# (RIGHT bit 0x01) and PNG east went black with no key spent, so the east
-# gate is a kill-clear shutter -- hypothesis edge "blue_gohma ->
-# magic_key_stairs RIGHT kill_clear" holds for destination and gate kind.
-# open_doorway_mask stayed 0x04 and is not the shutter stop (L6 post-Gleeok
-# / L9 Patra).  Colour is not asserted: RAM type stayed 0x33, never 0x34.
-#
-# 0x1F census: 2× 0x16 pols_voice HP160, 2× 0x0C HP128, 2× 0x0B darknut
-# HP64 (room_obj_count=6, room_all_dead=0).  One 0x68 HP176 at (96,144) was
-# also live; it is the centre staircase sprite (PNG), not room population,
-# so it is not a census row.  room_item_id 0x03, Magic Key still 0.
-LEVEL8_INTERIOR_0X1F_RECON = Level8InteriorRoomRecon(
-    room_id=0x1F,
-    entered_from=0x1E,
-    entry_direction="RIGHT",
-    entry_gate="east_kill_clear_shutter",
-    entry_pose=(16, 141),  # west mouth of a RIGHT door
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x03,  # ids.room_item_name -> no_inventory_reward_observed
-    census=(
-        (0x16, 160, 2),  # pols_voice
-        (0x0C, 128, 2),  # unregistered; 0x0B is the registered darknut
-        (0x0B, 64, 2),  # darknut
-    ),
-    fixture="Level8Interior1FReconFixture",
-    recording_tag="l8_1e_gohma_fixture_20260904_D1b",
-)
-
-# rr-6o7.2: ONE guarded boundary past 0x1F, taken from the settled-0x1F
-# continuation pin (Level8Interior1FReconFixture).  Sword-clear the mixed
-# 0x1F census (E1 no-clear 0x68 push was hitstun-blocked), then the west
-# 0x68 at (96,144) slides DOWN off the diamond and the vacated gap walks
-# onto the centre stairs (128,141).
-#
-# 2/2 byte-identical (probe l8_1f_magic_key E2/E3, 9074 frames each; all
-# payload keys identical except E2-only saved_fixture and screenshot
-# paths).  Live RAM: ADDR_MAGIC_KEY 0→1 in mode-9 cellar $EB=0x0F leftover
-# (136,141), keys 8→8, bombs 6→6, TF 0x7F, deaths 0, progression_writes 0,
-# capacity_writes 0, direct runtime writes 0.  Assist = Survival health
-# refill only (7 writes, max single-frame damage 2, all in 0x1F).
-#
-# Cellar is a two-ladder passage (west/east ladders, pit).  F1 cardinal
-# DOWN at the pad did not move (south brick).  F2 LEFT+DOWN at x=160 y=141
-# is pit tile 250.  Return 2/2 F3/F4, 588 frames: RIGHT to east x=176,
-# LEFT+DOWN, floor LEFT, UP (48,93) -> play 0x1F leftover (96,157).
-# topology.magic_key_room stays unset; not on L8_THROUGH; DungeonRoomSpec
-# still empty.  Four HP-0 keese residuals are not census rows.
-# room_item_id 0x0B is unregistered.
-LEVEL8_INTERIOR_0X0F_RECON = Level8InteriorRoomRecon(
-    room_id=0x0F,
-    entered_from=0x1F,
-    entry_direction="STAIRS",
-    entry_gate="center_0x68_west_block_slide",
-    entry_pose=(128, 141),  # first settled warp pose; leftover is (136,141)
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x0B,  # unknown_room_item_0x0b; Magical Key was ADDR 0→1
-    census=(),  # no live population; 4× 0x1B keese HP0 residual
-    fixture="Level8InteriorMKReconFixture",
-    recording_tag="l8_1f_magic_key_fixture_20260904_E2",
-)
-
-LEVEL8_INTERIOR_ROOM_RECON: tuple[Level8InteriorRoomRecon, ...] = (
-    LEVEL8_INTERIOR_0X3E_RECON,
-    LEVEL8_INTERIOR_0X2E_RECON,
-    LEVEL8_INTERIOR_0X1E_RECON,
-    LEVEL8_INTERIOR_0X1F_RECON,
+from zelda_i.level8.recon import (
     LEVEL8_INTERIOR_0X0F_RECON,
-)
-
-# rr-6o7.2: ONE west gate from play 0x1F leftover (96,157) after cellar
-# return.  Cardinal LEFT past 0x68, y-align, LEFT push.  G1 OccupancyWalker
-# 1px-grade boxed at (88,157) tile 118 (walkable floor).  G2/G3 2/2, 275
-# controller frames: first settled play 0x1E (208,141) east mouth, keys 8→8,
-# bombs 6→6, MK 1, TF 0x7F.  Arrival census empty (Gohma already dead);
-# 0x55 statue fireballs spawn after idle and are not census.  Not appended
-# to LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
-# L8_THROUGH.  Do not start Gleeok.
-LEVEL8_INTERIOR_0X1E_WEST_RECON = Level8InteriorRoomRecon(
-    room_id=0x1E,
-    entered_from=0x1F,
-    entry_direction="LEFT",
-    entry_gate="west_open_door",
-    entry_pose=(208, 141),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x03,
-    census=(),  # Gohma already dead; 0x55 fireballs are projectile residuals
-    fixture="Level8Interior1EWestReconFixture",
-    recording_tag="l8_1f_west_fixture_20260904_G3",
-)
-
-# rr-6o7.2: ONE south gate from play 0x1E leftover (208,141) after the
-# west return.  Cardinal x-align to 120, DOWN push.  Occupancy BFS first
-# dir was DOWN along x=208 into the SE statue; 1px-grade also false-misses
-# 2px dungeon steps (west G1).  H2/H3 2/2, 264 controller frames: first
-# settled play 0x2E (120,77) north mouth, keys 8→8, bombs 6→6, MK 1,
-# TF 0x7F.  Arrival census empty (Manhandla already dead); room_item 0x17
-# map still on the floor, not picked up.  Not appended to
-# LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
-# L8_THROUGH.  Do not start Gleeok.  Do not chain DOWN into 0x3E.
-LEVEL8_INTERIOR_0X2E_SOUTH_RECON = Level8InteriorRoomRecon(
-    room_id=0x2E,
-    entered_from=0x1E,
-    entry_direction="DOWN",
-    entry_gate="south_open_door",
-    entry_pose=(120, 77),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x17,
-    census=(),  # Manhandla already dead; map 0x17 is still on the floor
-    fixture="Level8Interior2ESouthReconFixture",
-    recording_tag="l8_1e_south_fixture_20260904_H3",
-)
-
-# rr-6o7.2: ONE south gate from play 0x2E leftover (120,77) after the
-# 0x1E south return.  Cardinal DOWN along already-aligned x=120.  Occupancy
-# still banned (1px-grade false-misses 2px dungeon steps).  I1/I2/I3 2/2,
-# 255 controller frames: first settled play 0x3E (120,93) north mouth,
-# keys 8→8, bombs 6→6, MK 1, TF 0x7F.  Arrival census empty (0x0C bodies
-# already dead).  Walking x=120 picked up map 0x17 (ADDR_MAP 0→0x80);
-# incidental, not a detour.  Arrival doors 0x0C (UP+DOWN); idle later
-# raises RIGHT (0x0D) as the already-cleared east shutter.  Not appended
-# to LEVEL8_INTERIOR_ROOM_RECON (that tuple is the inbound chain).  Not on
-# L8_THROUGH.  Do not start Gleeok.  Do not chain RIGHT into 0x3F.
-LEVEL8_INTERIOR_0X3E_SOUTH_RECON = Level8InteriorRoomRecon(
-    room_id=0x3E,
-    entered_from=0x2E,
-    entry_direction="DOWN",
-    entry_gate="south_open_door",
-    entry_pose=(120, 93),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x03,
-    census=(),  # already cleared inbound; map pickup was in origin 0x2E
-    fixture="Level8Interior3ESouthReconFixture",
-    recording_tag="l8_2e_south_fixture_20260904_I3",
-)
-
-# rr-6o7.2: ONE east gate from play 0x3E leftover (120,93) after the
-# 0x2E south return. Idle until RIGHT bit (arrival doors 0x0C, idle
-# raises 0x0D), stay north of statues (y<=109 until x>=176), y-align
-# to the east mouth, RIGHT push. Occupancy still banned. J1/J2 2/2,
-# 328 controller frames: first settled play 0x3F (32,141) west mouth,
-# keys 8→8, bombs 6→6, MK 1, TF 0x7F. Arrival census empty. room_item
-# 0x00. Arrival doors 0x02 (LEFT). Not Gleeok 0x3C, not cellar 0x0F.
-# Do not chain STAIRS into cellar 0x2F. make_gleeok_passage_controller
-# stays fail-closed. Not appended to LEVEL8_INTERIOR_ROOM_RECON (that
-# tuple is the inbound chain). Not on L8_THROUGH.
-LEVEL8_INTERIOR_0X3F_EAST_RECON = Level8InteriorRoomRecon(
-    room_id=0x3F,
-    entered_from=0x3E,
-    entry_direction="RIGHT",
-    entry_gate="east_open_shutter",
-    entry_pose=(32, 141),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x00,
-    census=(),  # already cleared; HP-0 residuals are not census
-    fixture="Level8Interior3FEastReconFixture",
-    recording_tag="l8_3e_east_fixture_20260904_J2",
-)
-
-# rr-6o7.2: ONE stairs walk-on from play 0x3F leftover (32,141).
-# Occupancy still banned. Visual stairs at ~(192,141) are tile 0x77
-# (K1/K2 timeout; L6 0x3A decorative hole). Live CheckWarp is tile
-# 0x71 at (193,141). x-first RIGHT along y=141 toward (208,93) crosses
-# it and idles. K3/K4 2/2, 585 controller frames: first settled mode-9
-# cellar $EB=0x2F leftover (208,141) tile 0x71, keys 8→8, bombs 6→6,
-# MK 1, TF 0x7F. Not Gleeok 0x3C, not MK cellar 0x0F. Do not chain the
-# cellar-cross to hyp 0x4C. make_gleeok_passage_controller stays
-# fail-closed. Not appended to LEVEL8_INTERIOR_ROOM_RECON. Not on
-# L8_THROUGH. position_writes=0.
-LEVEL8_INTERIOR_0X2F_STAIRS_RECON = Level8InteriorRoomRecon(
-    room_id=0x2F,
-    entered_from=0x3F,
-    entry_direction="STAIRS",
-    entry_gate="tile_0x71_y141",
-    entry_pose=(192, 93),  # settled east-ladder mouth; first mode-9 was (208,141)
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x00,
-    census=(),  # 4x 0x1B keese HP0 residual; not population
-    fixture="Level8Interior2FCellarReconFixture",
-    recording_tag="l8_2f_settle_20260904_S2",
-)
-
-# rr-6o7.2: ONE cellar-cross from settled 0x2F (192,93) east/source
-# ladder. DOWN floor LEFT UP west. Never source UP (returns 0x3F).
-# Occupancy still banned. P1/P2 2/2, 356 controller frames: first
-# settled play 0x4C (112,125) by the centre stairs, keys 8→8, bombs
-# 6→6, MK 1, TF 0x7F. Arrival census empty (enemies spawn after idle).
-# room_item 0x19 small_key still on the floor. Not Gleeok 0x3C, not
-# source 0x3F. make_gleeok_passage_controller stays fail-closed. Not
-# on L8_THROUGH. position_writes=0. Do not bomb-N this sitting.
-LEVEL8_INTERIOR_0X4C_WEST_RECON = Level8InteriorRoomRecon(
-    room_id=0x4C,
-    entered_from=0x2F,
-    entry_direction="STAIRS",
-    entry_gate="west_ladder",
-    entry_pose=(112, 125),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=6,
-    room_item_id=0x19,
-    census=(),  # pin at arrival; 0x3F-style bodies spawn after idle
-    fixture="Level8Interior4CWestReconFixture",
-    recording_tag="l8_2f_cross_fixture_20260904_P2",
-)
-
-# rr-6o7.2: ONE bomb-N from play 0x4C leftover (112,125). Occupancy
-# banned. N1/N2 centre-stairs; N3-N6 diamond-maze perimeter to north
-# wall (120,93); N7/N8 2/2, 1037 controller frames: first settled play
-# 0x3C (120,189) south mouth, bombs 6→5, keys 8→8, MK 1, TF 0x7F.
-# Arrival census empty. After 90f idle: 1× 0x45 HP160 at (124,111)
-# (four-head Gleeok body, live RAM not ROM-assumed) + 0x56 fireball
-# residual. room_item 0x1A heart container. Arrival pin for the fight
-# (level8/gleeok.py). make_gleeok_passage_controller stays fail-closed.
-# Not on L8_THROUGH. position_writes=0.
-LEVEL8_INTERIOR_0X3C_NORTH_RECON = Level8InteriorRoomRecon(
-    room_id=0x3C,
-    entered_from=0x4C,
-    entry_direction="UP",
-    entry_gate="north_bomb_wall",
-    entry_pose=(120, 189),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=6,
-    bombs_out=5,
-    room_item_id=0x1A,
-    census=((0x45, 160, 1),),  # live body after idle; 0x56 is projectile
-    fixture="Level8Interior3CNorthReconFixture",
-    recording_tag="l8_4c_north_fixture_20260904_N8",
-)
-
-# rr-5eb2 / rr-6o7.2: south-stand 0x45 kill from the 0x3C south mouth.
-# Clone L6 gleeok18: inland y>173, stand (body.x, body.y+22), bare UP
-# then UP+A, fb dodge ≤14. OccupancyWalker banned. F1/F2 body-gone
-# f5029 then missed HC (mid-room / (48,157) heart_stand). F5dump
-# treasure slot 19 ($83/$97) = (32,192). F6/F7 2/2 byte-identical,
-# 5124 controller / 5184 with census: body type 0x45 absent, hc 3→4
-# (health 0x22→0x33), leftover play 0x3C (32,181) tile 118, doors 12
-# (UP+DOWN; north shutter RAM-open), MK 1, keys 8, bombs 5, TF 0x7F.
-# room_item_id stays 0x1A after pickup (id leftover). saw_0x46 mid-fight.
-# ghp samples 250f still read 160 until type-gone. No HP poke.
-# make_gleeok_passage_controller stays fail-closed. Not on L8_THROUGH.
-# Do not chain TF this leftover unless a later sitting takes the UP
-# shutter from this pin.
-LEVEL8_INTERIOR_0X3C_KILL_RECON = Level8InteriorRoomRecon(
-    room_id=0x3C,
-    entered_from=0x4C,
-    entry_direction="UP",
-    entry_gate="south_stand_0x45_heart",
-    entry_pose=(32, 181),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=5,
-    bombs_out=5,
-    room_item_id=0x1A,  # id leftover after hc 3→4; floor sprite gone
-    census=(),  # body 0x45 absent; 0x46/0x56 may linger then despawn
-    fixture="Level8Interior3CKillReconFixture",
-    recording_tag="l8_3c_gleeok_fixture_20260904_F7",
-)
-
-# rr-6o7.2: ONE dest hop UP from post-kill 0x3C (32,181). Occupancy
-# banned. T1 boxed west-wall UP (32,133) tile 179. T2/T3 2/2, 296
-# controller frames: first settled play **0x2C** (120,205) south mouth,
-# room_item 0x1B triforce, doors 0, keys 8, bombs 5, MK 1, TF still
-# 0x7F, hc 4. ROM 0x2C matched live; lock is the trial not the ROM.
-# Shard walk-on (same probe T5/T6): UP x=120, fanfare mode 18, OW
-# leftover 0x6D (96,93) TF 0xFF. OW packet is fixture-lineage, not a
-# Survival-true post-L8 handoff. make_gleeok_passage_controller stays
-# fail-closed. Not on L8_THROUGH. position_writes=0.
-LEVEL8_INTERIOR_0X2C_TF_RECON = Level8InteriorRoomRecon(
-    room_id=0x2C,
-    entered_from=0x3C,
-    entry_direction="UP",
-    entry_gate="north_shutter",
-    entry_pose=(120, 205),
-    keys_in=8,
-    keys_out=8,
-    bombs_in=5,
-    bombs_out=5,
-    room_item_id=0x1B,
-    census=(),
-    fixture="Level8Interior2CTriforceReconFixture",
-    recording_tag="l8_3c_north_fixture_20260904_T3",
+    LEVEL8_INTERIOR_0X1E_RECON,
+    LEVEL8_INTERIOR_0X1E_WEST_RECON,
+    LEVEL8_INTERIOR_0X1F_RECON,
+    LEVEL8_INTERIOR_0X2C_TF_RECON,
+    LEVEL8_INTERIOR_0X2E_RECON,
+    LEVEL8_INTERIOR_0X2E_SOUTH_RECON,
+    LEVEL8_INTERIOR_0X2F_STAIRS_RECON,
+    LEVEL8_INTERIOR_0X3C_KILL_RECON,
+    LEVEL8_INTERIOR_0X3C_NORTH_RECON,
+    LEVEL8_INTERIOR_0X3E_RECON,
+    LEVEL8_INTERIOR_0X3E_SOUTH_RECON,
+    LEVEL8_INTERIOR_0X3F_EAST_RECON,
+    LEVEL8_INTERIOR_0X4C_WEST_RECON,
+    LEVEL8_INTERIOR_ROOM_RECON,
+    Level8InteriorRoomRecon,
 )
 
 
@@ -717,6 +289,21 @@ class Level8ClearEndpoint:
 
 UNOBSERVED_LEVEL8_CLEAR = Level8ClearEndpoint()
 
+# Power-on spine-green (rr-6o7.3, `scripts/level8_clear_lab.py` 2/2): after the
+# full Gleeok suffix (0x1F -> ... -> 0x3C Gleeok + heart -> 0x2C shard) the
+# shard fanfare returns Link to OW `0x6D` `(192,157)` mode 5, TF `0xFF`, MK 1,
+# heart containers 9 -> 10 (the four-head Gleeok heart), health full.  This is
+# the measured `--through level8` endpoint and the L9 predecessor pose.
+MEASURED_LEVEL8_CLEAR = Level8ClearEndpoint(
+    level=0,
+    screen=0x6D,
+    mode=5,
+    incoming_heart_containers=9,
+    outgoing_heart_containers=10,
+    evidence="spine-green",
+    route_eligible=True,
+)
+
 
 def level8_entry_stop(
     snap: ZeldaSnapshot,
@@ -828,6 +415,8 @@ __all__ = [
     "LEVEL8_INTERIOR_0X3F_EAST_RECON",
     "LEVEL8_INTERIOR_ROOM_RECON",
     "LEVEL8_ROOM_SPECS",
+    "LIVE_RECON_LEVEL8_TOPOLOGY",
+    "MEASURED_LEVEL8_ENTRY_TOPOLOGY",
     "Level8InteriorRoomRecon",
     "Level8ChapterSpec",
     "Level8ClearEndpoint",
@@ -836,6 +425,7 @@ __all__ = [
     "Level8Topology",
     "MAGIC_KEY_ROUTE",
     "MAGIC_KEY_TO_SHARD_SPEC",
+    "MEASURED_LEVEL8_CLEAR",
     "OMITTED_OPTIONAL_ROOMS",
     "TF_AFTER_LEVEL8",
     "TF_BEFORE_LEVEL8",

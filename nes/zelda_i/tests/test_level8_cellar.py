@@ -24,25 +24,26 @@ from zelda_i.level8.cellar import (
     magic_key_cellar_return_step,
     make_magic_key_cellar_return_controller,
 )
+from zelda_i.level8.magic_key import Level8MagicKeyStairsController
 from zelda_i.level8.path import (
     UnverifiedLevel8PathController,
     make_magic_key_stairs_controller,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_COLLIDING_TILE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PASSAGE_MODE,
+    "level": 8,
+    "screen": CELLAR_ROOM,
+    "x": PAD[0],
+    "y": PAD[1],
+    "tile": 36,
+    "keys": 8,
+    "bombs": 6,
+    "magic_key": 1,
+    "triforce": 0x7F,
+}
 
 LEFT = list(nes_action("LEFT"))
 RIGHT = list(nes_action("RIGHT"))
@@ -52,18 +53,7 @@ LEFT_DOWN = list(nes_action("LEFT", "DOWN"))
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PASSAGE_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", CELLAR_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", PAD[0])
-    ram[ADDR_LINK_Y] = fields.get("y", PAD[1])
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 36)
-    ram[ADDR_KEYS] = fields.get("keys", 8)
-    ram[ADDR_BOMBS] = fields.get("bombs", 6)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):
@@ -243,7 +233,82 @@ def test_west_column_at_y141_goes_up_never_strafe() -> None:
     _no_strafe(act)
 
 
-def test_magic_key_stairs_factory_stays_unverified() -> None:
+def test_magic_key_stairs_factory_is_live_controller() -> None:
+    # rr-6o7.2: promoted from the fail-closed stub to the live 0x1F clear ->
+    # 0x68 slide -> cellar 0x0F key -> two-ladder return controller.
     ctl = make_magic_key_stairs_controller()
-    assert isinstance(ctl, UnverifiedLevel8PathController)
+    assert isinstance(ctl, Level8MagicKeyStairsController)
+    assert not isinstance(ctl, UnverifiedLevel8PathController)
     assert not isinstance(ctl, Level8MagicKeyCellarReturnController)
+    assert ctl.report()["route_eligible"] is False
+    assert ctl.report()["writes"] == 0
+
+
+class _FakeEnv:
+    """Minimal env so the controller's ADDR_MAGIC_KEY reads resolve."""
+
+    def __init__(self, ram: np.ndarray) -> None:
+        self._ram = ram
+
+    def get_ram(self) -> np.ndarray:
+        return self._ram
+
+
+def _mk_ram(**fields: int) -> np.ndarray:
+    base = {
+        "mode": PLAY_MODE,
+        "level": 8,
+        "screen": 0x1F,
+        "x": 120,
+        "y": 141,
+        "tile": 0,
+        "keys": 1,
+        "bombs": 15,
+        "magic_key": 0,
+        "triforce": 0x7F,
+    }
+    return make_ram(base, **fields)
+
+
+def test_magic_key_stairs_fails_closed_off_room() -> None:
+    ctl = make_magic_key_stairs_controller()
+    ram = _mk_ram(screen=0x6D)
+    ctl.bind_env(_FakeEnv(ram))
+    before = ram.copy()
+    ctl.step(read_snapshot(ram))
+    assert np.array_equal(ram, before)
+    assert ctl.failed and not ctl.success
+    assert any("unexpected_room" in n for n in ctl.notes)
+
+
+def test_magic_key_stairs_push_routes_out_of_the_boxed_south_pose() -> None:
+    # power-on clear can leave Link south-east of the diamond (144,165);
+    # LEFT there is a wall.  The push route must head east/up, not LEFT.
+    ctl = make_magic_key_stairs_controller()
+    ram = _mk_ram(x=144, y=165)
+    ctl.bind_env(_FakeEnv(ram))
+    ctl.phase = "push"
+    ctl.block_xy0 = (96, 144)
+    act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert list(act.action) in (RIGHT, UP), act.reason
+    assert list(act.action) != LEFT
+
+
+def test_magic_key_stairs_cellar_pickup_loop_then_return_handoff() -> None:
+    ctl = make_magic_key_stairs_controller()
+    ram = _mk_ram(mode=PASSAGE_MODE, screen=CELLAR_ROOM, x=128, y=141, tile=113)
+    ctl.bind_env(_FakeEnv(ram))
+    ctl.phase = "cellar"
+    ctl.mk_before = 0
+    # before the key: first move is DOWN off the entry-stairs warp tile.
+    act = _step(ctl, ram)
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert not ctl.failed and not ctl.mk_gained
+
+    # key acquired mid-cellar -> hand off to the two-ladder return navigator.
+    ram2 = _mk_ram(mode=PASSAGE_MODE, screen=CELLAR_ROOM, x=141, y=141, tile=36, magic_key=1)
+    ctl.bind_env(_FakeEnv(ram2))
+    act = _step(ctl, ram2)
+    assert ctl.mk_gained
+    assert act.reason.startswith("cellar_")

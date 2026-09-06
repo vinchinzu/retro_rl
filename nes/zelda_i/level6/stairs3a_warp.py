@@ -46,6 +46,7 @@ __all__ = [
     "EAST_COLUMN_X",
     "Level6Stairs3AWarpController",
     "Stairs3AWarpPhase",
+    "is_center_block_pushed",
     "level6_stairs3a_warp_stages",
     "level6_stairs3a_warp_success",
     "make_stairs_3a_warp_controller",
@@ -75,17 +76,32 @@ _CENTER_XY = (120, 144)
 
 
 def center_block_0x68(snap: ZeldaSnapshot) -> ZeldaObject | None:
-    """0x68 closest to room center. Ignore Bubble 0x40 / invuln 0x2b."""
+    """0x68 near room center (112, 144). Exclude NE warp block at (208, 96)."""
+    cx, cy = _CENTER_XY
     blocks = [
-        obj for obj in snap.objects if int(obj.type_id) == BLOCK_OBJECT_TYPE
+        obj
+        for obj in snap.objects
+        if int(obj.type_id) == BLOCK_OBJECT_TYPE
+        and abs(int(obj.x) - cx) + abs(int(obj.y) - cy) <= 32
     ]
     if not blocks:
         return None
-    cx, cy = _CENTER_XY
     return min(
         blocks,
         key=lambda obj: abs(int(obj.x) - cx) + abs(int(obj.y) - cy),
     )
+
+
+def is_center_block_pushed(snap: ZeldaSnapshot) -> bool:
+    """True when 0x3A center block has moved, NE warp block exists, or mode 9."""
+    if snap.mode in (9, 16):
+        return True
+    if snap.colliding_tile == 0x71:
+        return True
+    for obj in snap.objects:
+        if int(obj.type_id) == BLOCK_OBJECT_TYPE and int(obj.x) >= 184:
+            return True
+    return False
 
 
 class _PushPhase(Enum):
@@ -143,6 +159,28 @@ class _PushController:
             snap, FrameAction(nes_idle_action(), note), force=True
         )
 
+    def _is_pushed(self, snap: ZeldaSnapshot) -> bool:
+        if is_center_block_pushed(snap):
+            return True
+        if self.block_slot is not None:
+            found = next(
+                (
+                    obj
+                    for obj in snap.objects
+                    if obj.slot == self.block_slot
+                    and int(obj.type_id) == BLOCK_OBJECT_TYPE
+                ),
+                None,
+            )
+            if found is not None:
+                if int(found.x) >= 184:
+                    return True
+                if self.block_x0 is not None and abs(int(found.x) - self.block_x0) >= 8:
+                    return True
+                if self.block_y0 is not None and abs(int(found.y) - self.block_y0) >= PUSH_MOVED_PX:
+                    return True
+        return False
+
     def _find_block(self, snap: ZeldaSnapshot) -> ZeldaObject | None:
         if self.block_slot is not None:
             found = next(
@@ -155,6 +193,8 @@ class _PushController:
                 None,
             )
             if found is not None:
+                if int(found.x) >= 184:
+                    return None
                 return found
         return center_block_0x68(snap)
 
@@ -289,8 +329,24 @@ class _PushController:
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
 
         if self.phase is _PushPhase.TO_PUSH:
+            if self._is_pushed(snap):
+                self.success = True
+                self.walker.last_dir = None
+                self.walker.path = None
+                self._set_phase(_PushPhase.ON_HOLE, "center_already_pushed")
+                return self._emit(
+                    snap, FrameAction(nes_idle_action(), "center_already_pushed")
+                )
             block = self._find_block(snap)
             if block is None:
+                if self._is_pushed(snap):
+                    self.success = True
+                    self.walker.last_dir = None
+                    self.walker.path = None
+                    self._set_phase(_PushPhase.ON_HOLE, "center_already_pushed")
+                    return self._emit(
+                        snap, FrameAction(nes_idle_action(), "center_already_pushed")
+                    )
                 if self.phase_frames >= WAIT_BLOCK_MAX:
                     return self._fail(snap, f"no_block_0x68_{xy[0]}_{xy[1]}")
                 self.walker.last_dir = None
@@ -307,55 +363,64 @@ class _PushController:
                 )
             else:
                 dest = south_face_stand(block)
-                # v1 leftover (144,141) tile 118 boxed 4-cardinal.
-                if self.walker.misses > 0:
-                    self.walker.last_dir = None
-                    if (
-                        xy[0] > dest[0] + PUSH_ALIGN_TOL
-                        and xy[1] < dest[1] - PUSH_ALIGN_TOL
-                    ):
-                        return self._emit(
-                            snap,
-                            FrameAction(nes_action("LEFT", "DOWN"), "stand_clip"),
-                        )
-                    if xy[1] < dest[1] - PUSH_ALIGN_TOL:
-                        return self._emit(
-                            snap, FrameAction(nes_action("DOWN"), "stand_y")
-                        )
-                    if abs(xy[0] - dest[0]) > PUSH_ALIGN_TOL:
-                        btn = "LEFT" if xy[0] > dest[0] else "RIGHT"
-                        return self._emit(
-                            snap, FrameAction(nes_action(btn), "stand_x")
-                        )
-                    btn = "UP" if xy[1] > dest[1] else "DOWN"
+                bx, by = int(block.x), int(block.y)
+                tx, ty = dest
+                # If north of the push stand, detour around the center block column.
+                if xy[1] < ty - PUSH_ALIGN_TOL:
+                    if bx - 16 <= xy[0] <= bx + 24:
+                        side_x = bx + 24 if xy[0] >= bx else bx - 24
+                        if abs(xy[0] - side_x) > PUSH_ALIGN_TOL:
+                            btn = "RIGHT" if xy[0] < side_x else "LEFT"
+                            return self._emit(
+                                snap, FrameAction(nes_action(btn), "stand_path")
+                            )
                     return self._emit(
-                        snap, FrameAction(nes_action(btn), "stand_y")
+                        snap, FrameAction(nes_action("DOWN"), "stand_path")
                     )
-                if dest != self.walker.goal:
-                    self.walker.path = None
-                    self.walker.goal = dest
-                direction = self.walker.next_dir(xy, dest)
-                if direction is None:
-                    self.walker.last_dir = None
-                    if self.frames <= 8 or self.frames % 60 == 0:
-                        self.notes.append(
-                            f"stand_f{self.frames}_{xy[0]}_{xy[1]}"
-                        )
+                # At or south of the push stand: align x to tx, then align y to ty.
+                if abs(xy[0] - tx) > PUSH_ALIGN_TOL:
+                    btn = "LEFT" if xy[0] > tx else "RIGHT"
                     return self._emit(
-                        snap, FrameAction(nes_idle_action(), "stand_wait")
+                        snap, FrameAction(nes_action(btn), "stand_path")
+                    )
+                if abs(xy[1] - ty) > PUSH_ALIGN_TOL:
+                    btn = "UP" if xy[1] > ty else "DOWN"
+                    return self._emit(
+                        snap, FrameAction(nes_action(btn), "stand_path")
                     )
                 return self._emit(
-                    snap, FrameAction(nes_action(direction), "stand_path")
+                    snap, FrameAction(nes_idle_action(), "stand_wait")
                 )
 
         if self.phase is _PushPhase.PUSH:
+            if self._is_pushed(snap):
+                self.success = True
+                self.walker.last_dir = None
+                self.walker.path = None
+                self._set_phase(_PushPhase.ON_HOLE, "center_pushed")
+                return self._emit(
+                    snap, FrameAction(nes_idle_action(), "center_pushed")
+                )
             block = self._find_block(snap)
             if block is None:
+                if self._is_pushed(snap):
+                    self.success = True
+                    self.walker.last_dir = None
+                    self.walker.path = None
+                    self._set_phase(_PushPhase.ON_HOLE, "center_pushed")
+                    return self._emit(
+                        snap, FrameAction(nes_idle_action(), "center_pushed")
+                    )
                 return self._fail(snap, f"lost_block_{xy[0]}_{xy[1]}")
             if self.block_y0 is None:
                 self.block_x0 = int(block.x)
                 self.block_y0 = int(block.y)
-            if int(block.y) <= int(self.block_y0) - PUSH_MOVED_PX:
+            if (
+                abs(int(block.y) - int(self.block_y0)) >= PUSH_MOVED_PX
+                or abs(int(block.x) - int(self.block_x0)) >= 8
+                or int(block.x) >= 184
+            ):
+                self.success = True
                 self.walker.last_dir = None
                 self.walker.path = None
                 self._set_phase(
@@ -505,17 +570,25 @@ class Level6Stairs3AWarpController(HopController):
                 f"left_0x{self.room:02x}_to_0x{snap.screen:02x}"
             )
         x, y = int(snap.link_x), int(snap.link_y)
-        if self.phase is not Stairs3AWarpPhase.NORTH:
-            if x >= EAST_DOOR_XMIN and y in range(133, 150):
-                return self.mark_fail(f"east_door_{x}_{y}")
 
         if self.phase is Stairs3AWarpPhase.PUSH:
+            if (
+                is_center_block_pushed(snap)
+                or self.inner.phase is _PushPhase.ON_HOLE
+                or self.inner.success
+            ):
+                self._set_phase(Stairs3AWarpPhase.PEEL, "center_pushed")
+                return FrameAction(nes_action("DOWN"), "peel_south")
             action = self.inner.step(snap)
             if self.inner.failed:
                 return self.mark_fail(
                     self.inner.notes[-1] if self.inner.notes else "push_fail"
                 )
-            if self.inner.phase is _PushPhase.ON_HOLE:
+            if (
+                self.inner.phase is _PushPhase.ON_HOLE
+                or self.inner.success
+                or is_center_block_pushed(snap)
+            ):
                 self._set_phase(Stairs3AWarpPhase.PEEL, "center_pushed")
                 return FrameAction(nes_action("DOWN"), "peel_south")
             return action

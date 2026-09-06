@@ -1,11 +1,17 @@
 # Level 8 — The Lion (route notes)
 
-Status: **PARTIAL** — assisted OW bush path green; shop OW path **green**
-(rr-ccx). The bush burn recipe and the first L8 interior rooms are now
-**fixture-live** (`natural_entry=false`, `route_eligible=false`). The
-cumulative Red-Candle route still needs **the measured post-L7 leave**
-(rr-8t4.3, unmeasured), so no L8 chapter may green. The 60R shop path is
-fallback-only.
+Status: **SPINE-GREEN FROM POWER-ON (2026-09-05).** `--through level8` 1/1,
+`set_state=0`, first quest: entry (`rr-6o7.1`), Magical Key (`rr-6o7.2`,
+power-on 2/2) and the four-head Gleeok suffix (`rr-6o7.3`) all pass.  Link
+settles OW `0x6D` `(96,93)` mode 5, TF `0xFF`, Magical Key 1, heart
+containers 10, deaths 0, progression/capacity writes 0.  Inventory assist is
+`SPINE_L8_RETOPUP` (bomb/key count top-up, ASSIST_CONTRACT) only.  See
+[`docs/tasks/rr-6o7.3-residual.md`](tasks/rr-6o7.3-residual.md).  The measured
+leave is `level9.dungeon.MEASURED_POST_L8_HANDOFF`.
+
+The sections below are the recon history that got here; most predate the
+power-on greens and keep their `fixture-live` / `route_eligible=false`
+labels.
 
 Wave A has a fail-closed cumulative seam in `level8/{entry,dungeon,hops,spine}.py`.
 This is implementation structure, not route evidence. The public chapter
@@ -53,7 +59,8 @@ Dead-end geometry (live, `OW_6D` / `Level8BushOW`):
 - **Walked** corridor (assisted recon): left column **x≈32–56** + mid sand
   channel **y≈88–96** east to **x≈144** (see `recordings/l8_walkable.png`).
 - **Standable** area is much larger: the 2026-09-03 teleport-and-settle probe
-  kept **732** tiles out of a 32×23 sampled grid
+  kept **732** tiles (729 distinct coordinates due to 3 duplicate stand samples)
+  out of a 32×23 sampled grid
   (`logs/level8_6d_walkable_positions.json`). Standable is **not** reachable —
   it only says Link stops drifting on that tile, not that he can walk there.
   The `(136,93)` burn aim sits inside the *walked* channel; the `x≥184` mouth
@@ -350,10 +357,20 @@ arrival census: 2× `0x16` pols_voice HP160, 2× `0x0C` HP128, 2× `0x0B`
 darknut HP64, centre stairs sprite `0x68` at ~(96,144) (not population),
 `room_item_id=0x03`, Magic Key still 0. Not on `L8_THROUGH`.
 
-### Fixture-live 0x1F stairs → Magical Key cellar 0x0F (rr-6o7.2)
+### Spine-green 0x1F stairs → Magical Key cellar 0x0F (rr-6o7.2, DONE)
 
-From `Level8Interior1FReconFixture` (fixture-only, `natural_entry=false`,
-`route_eligible=false`). E1 no-clear south-face UP on the west `0x68` was
+**2026-09-05: `level8_magic_key_stairs` is live and wired; `--through
+level8-magic-key` power-on 1/1** (`l8mk_poweron_v3`, `set_state=0`).  All 4
+magic-key stages spine-green.  `Level8MagicKeyStairsController` (clear the
+0x1F diamond census → route out via the open x=192 lane to the y=93 band →
+hold DOWN to slide the centre `0x68` south → centre stairs → cellar 0x0F
+DOWN→RIGHT→UP→LEFT pickup loop → two-ladder return) settles play `0x1F`
+`(96,157)` carrying `ADDR_MAGIC_KEY` 0→1, TF `0x7F`, 0 writes, 0 deaths.
+`MEASURED_LEVEL8_ENTRY_TOPOLOGY.magic_key_room = 0x1F`.  Iteration harness:
+`scripts/magic_key_lab.py`.
+
+Fixture-recon history (from `Level8Interior1FReconFixture`, `natural_entry=
+false`, `route_eligible=false`): E1 no-clear south-face UP on the west `0x68` was
 hitstun-blocked (same as L7 0x1A). Sword-clear of the mixed census, then
 the west `0x68` `(96,144)` slides DOWN to `(96,160)` and the vacated gap
 walks onto the centre stairs `(128,141)`. 2/2 byte-identical (probe
@@ -652,7 +669,7 @@ Fixture-live evidence added 2026-09-03/04 (all `route_eligible=false`):
 - `logs/level8_bush_burn_sweep.json` — **5856-trial** live burn sweep on OW
   `0x6D`; 7 mode-16 mouth stands, `(144,93)` `no_effect` ×8
 - `logs/level8_6d_walkable_positions.json` — the 732 teleport-standable tiles
-  the sweep iterated (standable, not walked)
+  the sweep iterated (729 distinct coordinates due to 3 duplicates; standable, not walked)
 - `custom_integrations/.../Level8EntranceReconFixture.provenance.json` — the
   `(136,93)` RIGHT/RIGHT recipe and the first live L8 interior (`0x7E`)
 - `custom_integrations/.../Level8BushWithCandleFixture.provenance.json`,
