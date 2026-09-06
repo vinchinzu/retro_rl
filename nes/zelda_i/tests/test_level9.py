@@ -487,6 +487,49 @@ def test_post_l8_overworld_screens_5a_59_58_navigation() -> None:
     assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=145)).action == nes_action("UP")
 
 
+def test_post_l8_overworld_screen_38_bridge_latch() -> None:
+    # rr-sz8.5 follow-on: the old "realign to exactly y=141" branch pressed
+    # DOWN whenever y<137, which re-fired on every later frame once the
+    # final UP commit had already overshot north past the hazard band
+    # (observed reaching y~105 before being walked back to ~134) -- undoing
+    # real progress instead of just a re-checked-threshold ping-pong.
+    ctl = Level9PostL8OverworldController(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+    ctl.hop_index = 8
+    assert ctl.hops[ctl.hop_index].target == 0x28
+
+    assert not ctl._cleared_38_bridge
+    assert ctl.step(_snap(level=0, screen=0x38, link_x=120, link_y=189)).action == nes_action("UP")
+    assert not ctl._cleared_38_bridge
+    assert ctl.step(_snap(level=0, screen=0x38, link_x=120, link_y=137)).action == nes_action("UP")
+    assert ctl._cleared_38_bridge
+    # Once cleared, a real UP overshoot to well below 141 must never see the
+    # old branch re-arm and press DOWN -- always UP from here.
+    assert ctl.step(_snap(level=0, screen=0x38, link_x=120, link_y=105)).action == nes_action("UP")
+    assert ctl.step(_snap(level=0, screen=0x38, link_x=120, link_y=133)).action == nes_action("UP")
+
+
+def test_post_l8_overworld_screen_27_gap_latch() -> None:
+    # Same latch bug as 0x38: the final "UP" commit routinely overshoots
+    # y<133, and the old "drop below mountain" branch re-fired on every
+    # later frame with y<133, walking Link back south and undoing the
+    # northward progress it just made.
+    ctl = Level9PostL8OverworldController(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+    ctl.hop_index = 10
+    assert ctl.hops[ctl.hop_index].target == 0x17
+
+    assert not ctl._cleared_27_gap
+    assert ctl.step(_snap(level=0, screen=0x27, link_x=144, link_y=101)).action == nes_action("DOWN")
+    assert not ctl._cleared_27_gap
+    assert ctl.step(_snap(level=0, screen=0x27, link_x=144, link_y=133)).action == nes_action("UP")
+    assert ctl._cleared_27_gap
+    # Once cleared, an overshoot to well below 133 must never re-arm the
+    # old DOWN-pressing branch -- always UP from here.
+    assert ctl.step(_snap(level=0, screen=0x27, link_x=144, link_y=101)).action == nes_action("UP")
+    assert ctl.step(_snap(level=0, screen=0x27, link_x=144, link_y=131)).action == nes_action("UP")
+
+
 def test_post_l8_overworld_controller_accepts_measured_handoff() -> None:
     ctl = make_post_l8_overworld_controller(MEASURED_POST_L8_HANDOFF)
     assert isinstance(ctl, Level9PostL8OverworldController)
