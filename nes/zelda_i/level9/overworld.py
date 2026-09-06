@@ -569,6 +569,13 @@ class Level9PostL8OverworldController(OverworldPathController):
     failed: bool = field(default=False, init=False, repr=False)
     blocked_reason: str = field(default="", init=False, repr=False)
     _env: Any = field(default=None, init=False, repr=False)
+    # rr-mzxn follow-on: 0x58's arrival band (y~141) has an obstacle blocking
+    # LEFT somewhere around x=155-224 that isn't present a few px south
+    # (y>=149, confirmed clear all the way to x=112). Re-checking a y
+    # threshold every frame ping-pongs once the walk is already past it (a
+    # single UP tap can dip back under almost any fixed threshold), so track
+    # "cleared" once instead of re-testing y forever.
+    _cleared_58_south_wall: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if not self.hops:
@@ -585,6 +592,7 @@ class Level9PostL8OverworldController(OverworldPathController):
         self._handoff_checked = False
         self.failed = False
         self.blocked_reason = ""
+        self._cleared_58_south_wall = False
 
     def _fail_now(self, reason: str) -> FrameAction:
         self.failed = True
@@ -657,11 +665,24 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("LEFT", "5a_walk_left_0x59")
 
         if snap.screen == 0x59 and hop.target == 0x58:
-            if snap.link_y < 155:
-                return self._swing("DOWN", "59_step_down_y155")
+            # rr-mzxn follow-on: 0x59 is a plain east-west pass-through at
+            # y=141 -- no vertical obstacle. The y<155 check used to fire
+            # here (misattributed from the *next* hop's align_y=155, which
+            # is where Link actually needs to descend), so DOWN was held
+            # forever against a real wall a few pixels south of the (240,141)
+            # arrival edge, never crossing into 0x58 at all.
             return self._swing("LEFT", "59_walk_left_0x58")
 
         if snap.screen == 0x58 and hop.target == 0x48:
+            # Arrival band y~141 has an obstacle blocking LEFT somewhere in
+            # x=155-224 (confirmed empirically); y>=149 is clear all the way
+            # to x=112, and x=112 is then a clear vertical corridor up to
+            # 0x48. Descend once (latched, not re-checked -- see
+            # ``_cleared_58_south_wall``) before the leftward x-align.
+            if not self._cleared_58_south_wall:
+                if snap.link_y < 149:
+                    return self._swing("DOWN", "58_step_down_clear_wall")
+                self._cleared_58_south_wall = True
             if snap.link_x > 112 + 4:
                 return self._swing("LEFT", "58_walk_left_x112")
             if snap.link_x < 112 - 4:
