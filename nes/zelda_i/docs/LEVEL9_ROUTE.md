@@ -33,10 +33,42 @@ tested bugs turned up and got fixed in that controller (screens `0x59` and
 `0x58` — both a bare y-threshold re-checked every frame, ping-ponging
 forever instead of converging; see commit `5587fa1b`). Power-on now crosses
 `0x6D → 0x5D → 0x5C → 0x5B → 0x5A → 0x59 → 0x58 → 0x48 → 0x38` in one run.
-Remaining, same class of bug, not yet fixed: `0x38 → 0x28` oscillates around
-`(120,136-141)` — see `rr-sz8.5` notes for the fast-iteration approach
-(`Level8OWLeaveLive` savestate; don't trust `dungeon.tilemap`'s ascii/tile
-readers for overworld screens, they read misleading uniform values there).
+
+**2026-09-06 (later) — `0x38` and `0x27` fixed; the full reverse OW walk is
+now power-on-verified end to end (0x6D → 0x05).** Both hops shared a bug
+deeper than a re-checked threshold: the "realign to N" branch pressed the
+*opposite* direction of the hop's final UP commit whenever position dipped
+under N, and that final UP commit routinely overshoots N by 30-80px in one
+continuous motion — so the realign branch kept firing on every later frame
+and walked Link back, undoing real progress instead of just ping-ponging
+near a boundary (probe evidence: `0x38` reached y=105 from y=133 before
+being walked back to y=134; `0x27` reached y=105 from y=131, same pattern).
+Fixed with a one-time latch per hop (`_cleared_38_bridge`, `_cleared_27_gap`),
+matching the `_cleared_58_south_wall` pattern: once the first sub-threshold
+read lands, never re-test position again, just keep committing to the final
+direction. See `probe_l9_38_bridge.py` and commit `e62f2154`. The full walk
+(`0x6D` → ... → `0x05`, Spectacle Rock) now completes in 6225 frames.
+
+**Important correction, same session:** the paragraph above (2026-09-05)
+claiming "live recon reached 0x05 ... and bombed the left rock to settle in
+room 0x76" does not hold up under a genuine natural walk. Driving
+`Level9SpectacleRockBombController` for real from `Level8OWLeaveLive` gets
+Link to the coded stand position, consumes exactly one bomb, but a
+before/after `save_rgb_png` pixel diff of the left rock-pile region shows
+**zero visual change** — same silhouette, same tiles. A second manual trial
+bombing the right pile (still fully intact in both screenshots) also did
+nothing. This isn't combat interference (health/damage telemetry never
+changes) — Link is standing at the base of ordinary, non-bombable Death
+Mountain terrain. So either `SCREEN_LEVEL9_ROCK_HYP` (OW `0x05`) is not
+actually the Spectacle Rock screen, or the real bombable formation is a
+visually distinct small boulder pair elsewhere on it that hasn't been
+found yet — not a coordinate-tuning problem on the current hypothesis.
+`Level9EntranceReconFixture` (the `0x76` fixture chapters build on) was
+evidently composed some other way, not from a genuine bomb-and-walk.
+See `probe_l9_05_entry_sweep.py` for the reproducible sweep/evidence and
+`rr-sz8.5` notes. Next step needs ROM overworld-map data for the real warp
+tile, or a visual survey of `0x05` and its neighbors for the actual
+formation — not another guess at the current one's coordinates.
 
 ## Natural-spine seam (Wave A, implementation only)
 
