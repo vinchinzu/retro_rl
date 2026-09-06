@@ -122,6 +122,52 @@ live encounter, not just a math bug. **Not fixed this session** —
 whoever picks this up next has the real pin and three prototype scripts
 to iterate from directly. See `rr-sz8.6` notes.
 
+**2026-09-06 (fork continuation) — stairs_05 fixed, chain now reaches
+`0x61` and `0x10` power-on; new statue-diamond blocker in `0x10`.**
+`Level9Stairs05Controller`'s Wizzrobe combat had the real bug: it mashed A
+on a period without ever checking the sword hitbox (0 kills observed).
+Replaced with `should_swing_at`-gated engage combat plus a
+backstep-when-stuck fallback (ported from `level6.wizzrobe`), full-clear
+before touching the block, and a one-time y-recenter latch instead of the
+re-checked `y<165` threshold. Verified against `L9Room05EntryReal`: all 5
+Wizzrobes dead, block pushed, settles cellar `0x70` (192,93) (commit
+`f3fb5eaa`).
+
+The same bug class (distance-gated mash-A, no hitbox check) was also in
+`Level9Stairs61Controller`'s Patra fight — fixed by reusing
+`patra.patra_action` (the policy already proven for the final Patra,
+room `0x52`) instead of reinventing combat (commit `4cb50f4a`). Two
+full power-on `--through level9-credits` runs then died byte-identically
+at frame 332954 in room `0x61`, stuck push-looping at `(32,93)` with all
+8 eyes still alive — yet the `L9Room61EntryReal` pin kept succeeding in
+isolation. Root cause: that pin was captured 60 "stable" frames after the
+room loaded, but the real hop handoff runs the new hop's `policy()` on
+the *exact* frame the predecessor's `arrived()` check fires — before
+Patra has spawned (body frame 1, eyes +2f, the same race this doc already
+documents for room `0x52`'s `WAIT_PATRA` phase). Reading "no live
+eyes/body" on that literal first frame looked like an already-cleared
+room, so the controller jumped straight to the block push while Patra
+was fully alive. A corrected pin (`stable==1`, not 60) reproduced the
+exact live failure; fixed by requiring Patra observed at least once
+before trusting a cleared reading (commit `56912285`). Also added a
+90-frame no-progress stuck-escape (step toward room center) for genuine
+`0x61` geometry stalls (commit `0a8574f0`).
+
+With both fixes, power-on `--through level9-credits` now clears `0x61`
+correctly (full 8-eye kill, push, stairs, cellar `0x75`) and lands in the
+Silver Arrows room `0x10` for the first time ever — but `ADDR_ARROWS`
+stays `1` (wooden). `pin_l9_room10_entry.py` + `probe_l9_10_screenshot.py`
+(screenshot: `recordings/l9_room10_entry.png`) show `0x10` is the *same*
+checkered diagonal-wall diamond-grid pattern as room `0x51`'s statue
+diamond (`rr-yxy6`) — not a plain floor room. The Silver Arrows item is
+presumably at the grid's center, reachable only by threading the
+collision-free corridor, the same puzzle class `rr-yxy6` already solved
+once for `0x51`. **Not attempted this session** — this is new maze-thread
+work, not a bounded bug; stopped here per session scope. `room_item_id=3`
+at entry; live objects include a pushable block (`0x68`) at `(192,144)`
+and several Wizzrobe-type slots reading `hp=0` at the captured frame
+(likely the same spawn-timing artifact as above, not necessarily dead).
+
 ## Natural-spine seam (Wave A, implementation only)
 
 The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
