@@ -981,7 +981,7 @@ class Level9SpectacleRockBombController:
             ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_south_realign_y173")
             if ax_y is not None:
                 return ax_y
-            ax_x = self._axis(snap, axis="x", target=72, tolerance=4, reason="rock_south_to_left_stand_x72")
+            ax_x = self._axis(snap, axis="x", target=80, tolerance=4, reason="rock_south_to_left_stand_x80")
             if ax_x is not None:
                 return ax_x
             self._set_phase(SpectacleRockBombPhase.ROCK_FACE_UP, "rock_left_stand_reached")
@@ -1008,7 +1008,7 @@ class Level9SpectacleRockBombController:
         if self.phase is SpectacleRockBombPhase.ROCK_ENTER:
             if self.phase_frames > 500:
                 return self._fail("left_rock_mouth_did_not_enter")
-            ax_x = self._axis(snap, axis="x", target=72, tolerance=4, reason="left_rock_mouth_realign")
+            ax_x = self._axis(snap, axis="x", target=80, tolerance=4, reason="left_rock_mouth_realign")
             if ax_x is not None:
                 return ax_x
             return self._action(nes_action("UP"), "enter_left_spectacle_rock")
