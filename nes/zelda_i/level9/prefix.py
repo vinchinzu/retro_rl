@@ -862,6 +862,14 @@ class Level9Stairs05Controller(Level9StairsHopController):
     done_reason: str = "settled_cellar_0x70"
     origin: int = STAIRS_05_ORIGIN
     dest_hyp: int = STAIRS_05_DEST_HYP
+    # Power-on evidence (rr-sz8.6, 2026-09-06): a fixture/isolated re-drive from
+    # room entry clears in ~2000f, but the live blue/orange Wizzrobes (type
+    # 0x23/0x24) teleport unpredictably and a bad-RNG power-on run timed out at
+    # the base 4000f budget still mid-chase, well short of the push/stairs
+    # phase. Same class of issue as the L8 darknut rooms
+    # (see l8-fixture-vs-poweron-gaps memory) -- budget generously rather than
+    # re-tune the chase policy against one unlucky trial.
+    max_frames: int = 12_000
     _cleared: bool = False
     _pushed: bool = False
     _push_attempts: int = 0

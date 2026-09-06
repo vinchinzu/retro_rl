@@ -223,7 +223,13 @@ class NaturalSilverArrowsController(_NaturalEndingController):
 
     def __post_init__(self) -> None:
         if self.handoff.complete():
-            self.max_frames = 16000
+            # Fixture-live hops sum to ~6900f (rr-sz8.6 residual doc); 16000
+            # was a ~2x margin. Power-on evidence (2026-09-06) shows at least
+            # one hop (stairs_05, live Wizzrobe chase) needs its own budget
+            # bumped 4000->12000 for RNG-variance combat -- give the whole
+            # chapter matching headroom rather than let the outer cap fail
+            # first. See level9_stairs_05's own max_frames comment.
+            self.max_frames = 32000
         else:
             self.max_frames = 1
         if not self._hops:
