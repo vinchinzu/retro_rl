@@ -576,6 +576,12 @@ class Level9PostL8OverworldController(OverworldPathController):
     # single UP tap can dip back under almost any fixed threshold), so track
     # "cleared" once instead of re-testing y forever.
     _cleared_58_south_wall: bool = field(default=False, init=False, repr=False)
+    # 0x38's "realign to y=141" branch pressed DOWN whenever y<137, which
+    # actively undoes an UP press that already overshot north past the
+    # hazard band (observed reaching y~105 before being walked back to
+    # ~134) -- same "latch, don't re-test" fix as _cleared_58_south_wall.
+    _cleared_38_bridge: bool = field(default=False, init=False, repr=False)
+    _cleared_27_gap: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if not self.hops:
@@ -593,6 +599,8 @@ class Level9PostL8OverworldController(OverworldPathController):
         self.failed = False
         self.blocked_reason = ""
         self._cleared_58_south_wall = False
+        self._cleared_38_bridge = False
+        self._cleared_27_gap = False
 
     def _fail_now(self, reason: str) -> FrameAction:
         self.failed = True
@@ -700,22 +708,36 @@ class Level9PostL8OverworldController(OverworldPathController):
         if snap.screen == 0x38 and hop.target == 0x28:
             if abs(snap.link_x - 48) <= 4 and abs(snap.link_y - 133) <= 4:
                 return self._fail_now("known_blocked_0x38_x48_y133_replan")
-            if snap.link_y > 141:
-                return self._swing("UP", "38_bridge_y141")
-            if abs(snap.link_y - 141) > 4:
-                btn = "UP" if snap.link_y > 141 else "DOWN"
-                return self._swing(btn, "38_realign_y141")
-            if abs(snap.link_x - 120) > 4:
-                btn = "LEFT" if snap.link_x > 120 else "RIGHT"
-                return self._swing(btn, "38_align_x120")
+            if not self._cleared_38_bridge:
+                if abs(snap.link_x - 120) > 4:
+                    btn = "LEFT" if snap.link_x > 120 else "RIGHT"
+                    return self._swing(btn, "38_align_x120")
+                if snap.link_y > 141:
+                    return self._swing("UP", "38_bridge_y141")
+                # First time we read y<=141 (however far below -- a real UP
+                # press here routinely overshoots to ~105, not a clean stop
+                # at 141), latch and never look back. The old "realign to
+                # exactly 141" branch below this point re-pressed DOWN on
+                # every future frame with y<137, which actively walks Link
+                # back south and erases the progress it just made -- that
+                # was the real bug, not just a re-checked threshold (see
+                # rr-sz8.5 probe notes).
+                self._cleared_38_bridge = True
             return self._swing("UP", "38_north_0x28")
 
         if snap.screen == 0x27 and hop.target == 0x17:
-            if snap.link_y < 133:
-                return self._swing("DOWN", "27_drop_below_mountain")
-            if abs(snap.link_x - 144) > 4:
-                btn = "LEFT" if snap.link_x > 144 else "RIGHT"
-                return self._swing(btn, "27_central_mouth_x144")
+            # Same latch bug as 0x38 (see _cleared_38_bridge): the final
+            # "UP" commit below routinely overshoots y<133, and this
+            # DOWN-pressing check re-fires on every later frame with
+            # y<133, walking Link back and undoing the northward progress
+            # it just made. Latch once, never re-test.
+            if not self._cleared_27_gap:
+                if snap.link_y < 133:
+                    return self._swing("DOWN", "27_drop_below_mountain")
+                if abs(snap.link_x - 144) > 4:
+                    btn = "LEFT" if snap.link_x > 144 else "RIGHT"
+                    return self._swing(btn, "27_central_mouth_x144")
+                self._cleared_27_gap = True
             return self._swing("UP", "27_north_0x17")
 
         if snap.screen == 0x17 and hop.target == 0x07:
