@@ -461,17 +461,30 @@ def test_post_l8_overworld_screens_5a_59_58_navigation() -> None:
     assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=93)).action == nes_action("DOWN")
     assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=140)).action == nes_action("LEFT")
 
-    # Screen 0x59 -> 0x58
+    # Screen 0x59 -> 0x58: plain east-west pass-through at y=141, no
+    # vertical obstacle (rr-mzxn follow-on: the y<155 check that used to
+    # fire here was misattributed from the *next* hop and held DOWN
+    # forever against a real wall a few px south of the arrival edge,
+    # never crossing into 0x58 at all).
     ctl.hop_index = 5
     assert ctl.hops[ctl.hop_index].target == 0x58
-    assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=141)).action == nes_action("DOWN")
-    assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=155)).action == nes_action("LEFT")
+    assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=141)).action == nes_action("LEFT")
+    assert ctl.step(_snap(level=0, screen=0x59, link_x=155, link_y=141)).action == nes_action("LEFT")
 
-    # Screen 0x58 -> 0x48
+    # Screen 0x58 -> 0x48: the arrival band (y~141) has an obstacle
+    # blocking LEFT around x=155-224 (confirmed empirically) that isn't
+    # present a few px south (y>=149); descend once before the x-align.
     ctl.hop_index = 6
     assert ctl.hops[ctl.hop_index].target == 0x48
-    assert ctl.step(_snap(level=0, screen=0x58, link_x=240, link_y=141)).action == nes_action("LEFT")
-    assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=141)).action == nes_action("UP")
+    assert not ctl._cleared_58_south_wall
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=240, link_y=141)).action == nes_action("DOWN")
+    assert not ctl._cleared_58_south_wall
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=240, link_y=150)).action == nes_action("LEFT")
+    assert ctl._cleared_58_south_wall
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=150)).action == nes_action("UP")
+    # Once cleared, the wall check never re-arms even if y dips back under
+    # 149 from a single UP tap (the ping-pong this latch exists to avoid).
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=145)).action == nes_action("UP")
 
 
 def test_post_l8_overworld_controller_accepts_measured_handoff() -> None:
