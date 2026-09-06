@@ -22,6 +22,7 @@ from zelda_i.dungeon.hop_controller import (
 )
 from zelda_i.combat import should_swing_at
 from zelda_i.dungeon.ops import DOOR_TARGETS
+from zelda_i.level9.patra import patra_action
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 
@@ -993,9 +994,17 @@ class Level9Stairs61Controller(Level9StairsHopController):
     done_reason: str = "settled_cellar_0x75"
     origin: int = STAIRS_61_ORIGIN
     dest_hyp: int = STAIRS_61_DEST_HYP
+    # Power-on evidence (rr-sz8.6/.7, 2026-09-06): this "other Patra" room has
+    # block/wall geometry the final-Patra room (0x52) doesn't, so the proven
+    # south-stand-and-pulse policy lands hits much slower here (~1 eye per
+    # ~4000f against the real power-on pin L9Room61EntryReal, vs ~180f/eye in
+    # 0x52) -- budget generously (same lesson as stairs_05) rather than
+    # re-tune the policy for speed.
+    max_frames: int = 20_000
     _cleared: bool = False
     _pushed: bool = False
     _stage: int = 0
+    _patra_cooldown: int = 0
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1010,18 +1019,15 @@ class Level9Stairs61Controller(Level9StairsHopController):
                 self._cleared = True
                 self._stage = 1
             else:
-                targets = list(patra_eyes) if patra_eyes else [patra_body]
-                nearest = min(targets, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y))
-                dx, dy = nearest.x - snap.link_x, nearest.y - snap.link_y
-                dist = abs(dx) + abs(dy)
-                if dist <= 32:
-                    d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) > abs(dy) else ("DOWN" if dy > 0 else "UP")
-                    return FrameAction(
-                        nes_action(d, "A") if (self.frames - 1) % 4 == 0 else nes_action(d),
-                        "patra_slash",
-                    )
-                d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) >= abs(dy) else ("DOWN" if dy > 0 else "UP")
-                return FrameAction(nes_action(d), "hunt_patra")
+                # Same south-stand-and-pulse policy proven live for the final
+                # Patra (room 0x52, patra.py): distance-gated mash-A here
+                # landed 0 hits in 387f against the real power-on pin
+                # (L9Room61EntryReal) -- never checked the sword hitbox, same
+                # bug class fixed for stairs_05's Wizzrobes.
+                action, reason, self._patra_cooldown = patra_action(
+                    snap, cooldown=self._patra_cooldown,
+                )
+                return FrameAction(action, reason)
 
         if self._stage == 1:
             if snap.link_x <= 64:
