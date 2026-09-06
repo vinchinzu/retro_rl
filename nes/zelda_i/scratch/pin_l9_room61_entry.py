@@ -47,7 +47,16 @@ def main() -> int:
             saved["stable"] += 1
         else:
             saved["stable"] = 0
-        if saved["stable"] == 60:
+        # stable==1 (not 60): the chained hop controller hands off to the
+        # next hop's policy() on the exact snapshot where the predecessor's
+        # own arrived()/success check first sees mode==PLAY_MODE,
+        # screen==dest, not transitioning -- with no settle delay. A 60-frame
+        # wait here let Patra's orbiting eyes keep moving well past that
+        # point, producing a pin that diverged from the real hop-transition
+        # geometry (found via two live power-on runs both failing
+        # byte-identically at frame 332954 in this room, while this same
+        # over-settled pin kept succeeding in isolation).
+        if saved["stable"] == 1:
             print(f"f{frame}: settled level9 room 0x61 xy=({snap.link_x},{snap.link_y}) "
                   f"keys={snap.keys} bombs={snap.bombs}")
             save_state(env, GAME_DIR, GAME, STATE_NAME)

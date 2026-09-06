@@ -1009,6 +1009,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
     _stuck_frames: int = 0
     _stuck_escape_frames: int = 0
     _escape_dir: str = "UP"
+    _patra_seen: bool = False
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1019,7 +1020,22 @@ class Level9Stairs61Controller(Level9StairsHopController):
         if self._stage == 0:
             patra_eyes = [o for o in snap.objects if o.type_id == 0x25 and o.hp > 0]
             patra_body = next((o for o in snap.objects if o.type_id == 0x47 and o.hp > 0), None)
-            if not patra_eyes and patra_body is None:
+            if patra_eyes or patra_body is not None:
+                self._patra_seen = True
+            # Root cause (rr-sz8.6/.7, 2026-09-06): the real hop-transition
+            # snapshot lands on the exact frame the room loads, before Patra
+            # has spawned (body registers frame 1, eyes 2 frames later --
+            # same spawn race LEVEL9_ROUTE.md documents for room 0x52's
+            # WAIT_PATRA phase). Reading "no live eyes/body" on that very
+            # first frame falsely looked like an already-cleared room, so
+            # this jumped straight to the block push while Patra was still
+            # fully alive -- confirmed via a corrected power-on pin
+            # (L9Room61EntryReal, captured at the true hop-transition frame
+            # instead of 60 frames late) reproducing the exact live failure
+            # (stuck push-looping at (32,93) with all 8 eyes alive). Require
+            # having actually observed Patra at least once before trusting
+            # a "cleared" reading.
+            if self._patra_seen and not patra_eyes and patra_body is None:
                 self._cleared = True
                 self._stage = 1
             else:
