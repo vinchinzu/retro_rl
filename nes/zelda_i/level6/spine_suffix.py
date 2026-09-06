@@ -6,7 +6,6 @@ from zelda_i.level6.cellar08 import level6_cellar08_success, make_cellar08_contr
 from zelda_i.level6.door_hop import (
     EAST29_SPEC,
     EAST39_SPEC,
-    INLAND29_SPEC,
     NORTH2C_SPEC,
     SOUTH09_SPEC,
     SOUTH18_SPEC,
@@ -17,7 +16,6 @@ from zelda_i.level6.door_hop import (
     WEST2D_SPEC,
     door_hop_stages,
     door_hop_success,
-    inland29_success,
 )
 from zelda_i.level6.dungeon import (
     LEVEL6_MAP_BIT,
@@ -50,6 +48,7 @@ from zelda_i.level6.hops import (
     settle_fight,
     stairs_or_play,
 )
+from zelda_i.level6.inland29 import level6_inland29_success, make_inland29_controller
 from zelda_i.level6.north39 import make_north39_controller
 from zelda_i.level6.overworld import (
     LEVEL6_BLOCK_3A_ROOM,
@@ -304,7 +303,12 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             make_north39_controller,
             ok6(screen=LEVEL6_DARK_29_ROOM, **rod1f),
         ),
-        door_row("level6-inland29", INLAND29_SPEC, success=inland29_success),
+        one_hop(
+            "level6-inland29",
+            "level6_inland_0x29",
+            make_inland29_controller,
+            level6_inland29_success,
+        ),
         door_row("level6-west19", WEST19_SPEC),
         door_row("level6-south18", SOUTH18_SPEC),
     )

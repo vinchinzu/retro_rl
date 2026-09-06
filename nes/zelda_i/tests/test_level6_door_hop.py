@@ -9,7 +9,6 @@ from retro_harness.nes import nes_action
 from zelda_i.level6.door_hop import (
     DoorHopSpec,
     EAST39_SPEC,
-    INLAND29_SPEC,
     Level6DoorHopController,
     NORTH2C_SPEC,
     SOUTH18_SPEC,
@@ -18,7 +17,6 @@ from zelda_i.level6.door_hop import (
     WEST19_SPEC,
     WEST2D_SPEC,
     door_hop_success,
-    inland29_success,
 )
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
@@ -177,18 +175,3 @@ def test_east39_north_band_leftover_drops_to_waist_then_right() -> None:
     assert list(door.action) == list(nes_action("RIGHT"))
 
 
-def test_inland29_south_mouth_clips_left_up() -> None:
-    leftover = _snap(screen=INLAND29_SPEC.room, x=120, y=205)
-    first = Level6DoorHopController(INLAND29_SPEC).step(leftover)
-    assert first.reason == "inland_clip"
-    assert list(first.action) == list(nes_action("LEFT", "UP"))
-    assert list(first.action) != list(nes_action("UP"))
-    door = Level6DoorHopController(INLAND29_SPEC).step(
-        _snap(screen=INLAND29_SPEC.room, x=120, y=93)
-    )
-    assert list(door.action) == list(nes_action("UP"))
-    dest = _snap(screen=0x19, x=120, y=205)
-    assert inland29_success(dest)
-    assert not inland29_success(leftover)
-    back = _snap(screen=0x39, x=120, y=93)
-    assert not inland29_success(back)
