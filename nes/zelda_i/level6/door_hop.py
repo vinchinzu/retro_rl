@@ -48,7 +48,7 @@ _TAG = {"DOWN": "south", "RIGHT": "east", "LEFT": "west", "UP": "north"}
 __all__ = [
     "CLIP_Y", "DOOR_HOP_MAX_FRAMES", "EAST29_MAX_FRAMES", "EAST39_MAX_FRAMES",
     "EAST29_SPEC", "EAST39_SPEC", "EAST_DOOR_TOL", "EAST_DOOR_X", "EAST_DOOR_Y",
-    "EAST_SPAWN_XMAX", "INLAND29_SPEC", "NORTH2C_MAX_FRAMES", "NORTH2C_SPEC",
+    "EAST_SPAWN_XMAX", "NORTH2C_MAX_FRAMES", "NORTH2C_SPEC",
     "NORTH_DOOR_X", "NORTH_DOOR_Y", "NORTH_HALT_Y", "SOUTH09_MAX_FRAMES",
     "SOUTH09_SPEC",
     "SOUTH18_MAX_FRAMES", "SOUTH18_SPEC", "SOUTH19_MAX_FRAMES", "SOUTH19_SPEC",
@@ -58,7 +58,6 @@ __all__ = [
     "WEST19_MAX_FRAMES", "WEST19_SPEC", "WEST2D_MAX_FRAMES", "WEST2D_SPEC",
     "WEST_DOOR_X", "WEST_DOOR_Y", "WEST_SPAWN_XMIN", "DoorHopSpec",
     "Level6DoorHopController", "door_hop_stages", "door_hop_success",
-    "inland29_success",
 ]
 
 
@@ -203,25 +202,16 @@ NORTH2C_SPEC = DoorHopSpec(
     fail_backtrack=LEVEL6_GOHMA_WING_2D_ROOM, track_keys=True, fail_ow=True,
     key_from="2c",
 )
-# Second visit: south mouth (120,205) → north. LEFT+UP off y>141 (tile 244
-# at (120,157)). Dest is RAM; fail backtrack 0x39. Reclear-if-live gone.
-INLAND29_SPEC = DoorHopSpec(
-    "level6_inland_0x29", LEVEL6_DARK_29_ROOM, (NORTH_DOOR_X, NORTH_DOOR_Y),
-    "UP", "LEFT+UP clip off y>141, occupancy to (120,93); dest is RAM",
-    wait_modes=WAIT_SCROLL_B,
-    clip_y=CLIP_Y, clip_buttons=("LEFT", "UP"), clip_side="above",
-    clip_reason="inland_clip", fail_backtrack=LEVEL6_DARK_39_ROOM, fail_ow=True,
-)
-
-
-def inland29_success(snap: ZeldaSnapshot, **_: object) -> bool:
-    """Play-ready L6 room other than 0x29/0x39. Dest is RAM."""
-    return l6_play_dest_success(
-        snap,
-        not_room=LEVEL6_DARK_29_ROOM,
-        passage_ok=False,
-        forbid=(LEVEL6_DARK_39_ROOM,),
-    )
+# NOTE: room 0x29's south-mouth -> north-door hop is NOT expressed as a
+# generic DoorHopSpec (see rr-mzxn). The LEFT+UP clip needed to dodge the
+# tile-244 hazard at (120,157) drags Link toward the west wall (x=32),
+# outside this module's default OccupancyGrid xmin=40, stranding the BFS
+# walker with no legal neighbor cell out of the pocket -- byte-identical
+# power-on stall at (32,145), never reaching (120,93). It also needs a
+# live-enemy reclear pass and a door-band clip near the goal that this
+# generic spec has no hook for. See ``zelda_i.level6.inland29`` for the
+# dedicated controller (restored; a wide xmin=16 grid + reclear + door-band
+# clip + a 12000-frame budget instead of the shared 4000).
 
 
 def _walker(spec: DoorHopSpec) -> OccupancyWalker:
