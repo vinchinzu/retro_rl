@@ -29,6 +29,8 @@ from zelda_i.level9.dungeon import (
     ROOM_SILVER_ARROWS_HYP,
     TRIFORCE_NOT_FULL,
     UNMEASURED_POST_L8_HANDOFF,
+    MEASURED_POST_L8_HANDOFF,
+    MISSING_SPECTACLE_BOMB,
     level9_credits_stop,
     level9_entry_stop,
     level9_silver_arrows_stop,
@@ -47,12 +49,19 @@ from zelda_i.level9.natural_path import (
     NaturalGanonController,
     NaturalSelectSilverArrowsController,
     make_post_l8_overworld_controller,
+    make_spectacle_rock_bomb_controller,
 )
 from zelda_i.level9.overworld import (
     B_ITEM_BOMBS,
     LEVEL9_ROCK_HOPS,
+    POST_L8_TO_LEVEL9_HOPS,
+    POST_L8_TO_LEVEL9_SCREENS,
+    REVERSE_5C_MAZE_WAYPOINTS,
     FixtureEntryPhase,
     Level9FixtureEntryController,
+    Level9PostL8OverworldController,
+    Level9SpectacleRockBombController,
+    SpectacleRockBombPhase,
 )
 from zelda_i.level9.spine import L9_THROUGH
 from zelda_i.ram import (
@@ -371,3 +380,265 @@ def test_patra_census_objects_are_body_and_eight_eyes() -> None:
 
     assert level9_live_patra_stop(snap)
     assert not level9_live_patra_stop(_snap(screen=0x52, arrows=2, objects=(body,)))
+
+
+def test_post_l8_overworld_hops_sequence() -> None:
+    assert len(POST_L8_TO_LEVEL9_HOPS) == 14
+    assert len(POST_L8_TO_LEVEL9_SCREENS) == 15
+    assert POST_L8_TO_LEVEL9_SCREENS[0] == 0x6D
+    assert POST_L8_TO_LEVEL9_SCREENS[-1] == 0x05
+
+    expected_targets = [
+        (0x5D, "UP", 48, None),
+        (0x5C, "LEFT", None, 132),
+        (0x5B, "LEFT", None, 92),
+        (0x5A, "LEFT", None, 93),
+        (0x59, "LEFT", None, 140),
+        (0x58, "LEFT", None, 155),
+        (0x48, "UP", 112, None),
+        (0x38, "UP", 128, None),
+        (0x28, "UP", 120, None),
+        (0x27, "LEFT", None, 102),
+        (0x17, "UP", 144, None),
+        (0x07, "UP", 64, None),
+        (0x06, "LEFT", None, 141),
+        (0x05, "LEFT", None, 141),
+    ]
+    for hop, (target, direction, align_x, align_y) in zip(
+        POST_L8_TO_LEVEL9_HOPS, expected_targets
+    ):
+        assert hop.target == target
+        assert hop.direction == direction
+        if align_x is not None:
+            assert hop.align_x == align_x
+        if align_y is not None:
+            assert hop.align_y == align_y
+
+
+def test_post_l8_overworld_reverse_maze_navigation() -> None:
+    assert REVERSE_5C_MAZE_WAYPOINTS == ((192, 132), (192, 92), (16, 92))
+    ctl = Level9PostL8OverworldController(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+    ctl.hop_index = 2  # Hop 2 target is 0x5B, Link is on 0x5C
+    assert ctl.hops[ctl.hop_index].target == 0x5B
+
+    # Entering from 0x5D at (240, 133): moves LEFT
+    snap0 = _snap(level=0, screen=0x5C, link_x=240, link_y=133)
+    act0 = ctl.step(snap0)
+    assert act0.action == nes_action("LEFT")
+    assert act0.reason == "5c_reverse_maze_wp0"
+    assert ctl.reverse_maze_wp_index == 0
+
+    # Reached x <= 192 at y=132: advances to wp 1, moves UP
+    snap1 = _snap(level=0, screen=0x5C, link_x=192, link_y=132)
+    act1 = ctl.step(snap1)
+    assert act1.action == nes_action("UP")
+    assert act1.reason == "5c_reverse_maze_wp1"
+    assert ctl.reverse_maze_wp_index == 1
+
+    # Reached y <= 92 at x=192: advances to wp 2, moves LEFT
+    snap2 = _snap(level=0, screen=0x5C, link_x=192, link_y=92)
+    act2 = ctl.step(snap2)
+    assert act2.action == nes_action("LEFT")
+    assert act2.reason == "5c_reverse_maze_wp2"
+    assert ctl.reverse_maze_wp_index == 2
+
+    # Reached x <= 16: exits into 0x5B
+    snap3 = _snap(level=0, screen=0x5C, link_x=16, link_y=92)
+    act3 = ctl.step(snap3)
+    assert act3.action == nes_action("LEFT")
+    assert act3.reason == "5c_reverse_maze_exit"
+    assert ctl.reverse_maze_wp_index == 3
+
+
+def test_post_l8_overworld_screens_5a_59_58_navigation() -> None:
+    ctl = Level9PostL8OverworldController(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+
+    # Screen 0x5A -> 0x59
+    ctl.hop_index = 4
+    assert ctl.hops[ctl.hop_index].target == 0x59
+    assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=93)).action == nes_action("DOWN")
+    assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=140)).action == nes_action("LEFT")
+
+    # Screen 0x59 -> 0x58
+    ctl.hop_index = 5
+    assert ctl.hops[ctl.hop_index].target == 0x58
+    assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=141)).action == nes_action("DOWN")
+    assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=155)).action == nes_action("LEFT")
+
+    # Screen 0x58 -> 0x48
+    ctl.hop_index = 6
+    assert ctl.hops[ctl.hop_index].target == 0x48
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=240, link_y=141)).action == nes_action("LEFT")
+    assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=141)).action == nes_action("UP")
+
+
+def test_post_l8_overworld_controller_accepts_measured_handoff() -> None:
+    ctl = make_post_l8_overworld_controller(MEASURED_POST_L8_HANDOFF)
+    assert isinstance(ctl, Level9PostL8OverworldController)
+    assert ctl.max_frames == 12_000
+
+    snap = _snap(level=0, screen=0x6D, link_x=96, link_y=93, triforce=FULL_TRIFORCE, bombs=14)
+    act = ctl.step(snap)
+    assert not ctl.failed
+    assert act.action == nes_action("LEFT")
+    assert act.reason == "6d_walk_left_x48"
+
+    report = ctl.report()
+    assert report["route_eligible"] is False
+    assert report["evidence"] == "spine-green"
+    assert report["writes"] == 0
+    assert report["controller_memory_writes"] == 0
+
+
+def test_post_l8_overworld_controller_arrival_at_0x05() -> None:
+    ctl = make_post_l8_overworld_controller(MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+    ctl.hop_index = len(ctl.hops)
+
+    snap = _snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
+    act = ctl.step(snap)
+    assert ctl.success
+    assert act.reason == "done"
+    report = ctl.report()
+    assert report["success"] is True
+    assert report["route_eligible"] is True
+    assert report["writes"] == 0
+
+
+def test_spectacle_rock_bomb_controller_unmeasured_fails_closed() -> None:
+    ctl = make_spectacle_rock_bomb_controller()
+    assert ctl.max_frames == 1
+    snap = _snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
+    act = ctl.step(snap)
+    assert ctl.failed
+    assert act.reason == MISSING_SPECTACLE_BOMB
+    report = ctl.report()
+    assert report["failed"] is True
+    assert report["route_eligible"] is False
+    assert report["writes"] == 0
+
+    # TF mismatch fails on frame 1
+    ctl_tf = make_spectacle_rock_bomb_controller(MEASURED_POST_L8_HANDOFF)
+    act_tf = ctl_tf.step(_snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=0x7F, bombs=14))
+    assert ctl_tf.failed
+    assert act_tf.reason == TRIFORCE_NOT_FULL
+
+    # Bombs 0 fails on frame 1
+    ctl_bombs = make_spectacle_rock_bomb_controller(MEASURED_POST_L8_HANDOFF)
+    act_bombs = ctl_bombs.step(_snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=0))
+    assert ctl_bombs.failed
+    assert act_bombs.reason == BOMBS_NOT_NATURAL
+
+    # Screen mismatch fails on frame 1
+    ctl_screen = make_spectacle_rock_bomb_controller(MEASURED_POST_L8_HANDOFF)
+    act_screen = ctl_screen.step(_snap(level=0, screen=0x06, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=14))
+    assert ctl_screen.failed
+    assert act_screen.reason == "not_on_spectacle_rock_0x05"
+
+
+def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
+    ctl = make_spectacle_rock_bomb_controller(MEASURED_POST_L8_HANDOFF)
+    assert ctl.max_frames == 4000
+
+    # Step 1 at (240, 141): moves LEFT to x=216
+    snap0 = _snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
+    act0 = ctl.step(snap0)
+    assert act0.action == nes_action("LEFT")
+    assert act0.reason == "rock_col26_align_x"
+    assert ctl.phase is SpectacleRockBombPhase.ALIGN_216_X
+
+    # Reached x=216: moves UP to y=93
+    snap1 = _snap(level=0, screen=0x05, link_x=216, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
+    act1 = ctl.step(snap1)
+    assert act1.action == nes_action("UP")
+    assert act1.reason == "rock_climb_top_y93"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_TOP_Y
+
+    # Reached y=93 at x=216: moves LEFT to x=120
+    snap2 = _snap(level=0, screen=0x05, link_x=216, link_y=93, triforce=FULL_TRIFORCE, bombs=14)
+    act2 = ctl.step(snap2)
+    assert act2.action == nes_action("LEFT")
+    assert act2.reason == "rock_top_to_center_gap_x120"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_GAP_X
+
+    # Reached x=120 at y=93: moves DOWN to y=173
+    snap3 = _snap(level=0, screen=0x05, link_x=120, link_y=93, triforce=FULL_TRIFORCE, bombs=14)
+    act3 = ctl.step(snap3)
+    assert act3.action == nes_action("DOWN")
+    assert act3.reason == "rock_center_gap_to_south_y173"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_BOTTOM_Y
+
+    # Reached y=173 at x=120: moves LEFT to x=72
+    snap4 = _snap(level=0, screen=0x05, link_x=120, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
+    act4 = ctl.step(snap4)
+    assert act4.action == nes_action("LEFT")
+    assert act4.reason == "rock_south_to_left_stand_x72"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_LEFT_X
+
+    # Reached x=72 at y=173: faces UP
+    snap5 = _snap(level=0, screen=0x05, link_x=72, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
+    act5 = ctl.step(snap5)
+    assert act5.action == nes_action("UP")
+    assert act5.reason == "left_rock_face_up"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_FIRE
+
+    # Presses B to place bomb
+    act6 = ctl.step(snap5)
+    assert act6.action == nes_action("B")
+    assert act6.reason == "left_spectacle_rock_bomb"
+    assert ctl.b_presses == 1
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_BLAST_WAIT
+
+    # Blast wait: 180 frames idle while bomb explodes (bombs decrease to 13)
+    snap_exploded = _snap(level=0, screen=0x05, link_x=72, link_y=173, triforce=FULL_TRIFORCE, bombs=13)
+    for _ in range(179):
+        act_wait = ctl.step(snap_exploded)
+        assert act_wait.reason == "left_rock_blast_wait"
+    act_blast_end = ctl.step(snap_exploded)
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_ENTER
+    assert act_blast_end.action == nes_action("UP")
+    assert act_blast_end.reason == "enter_left_spectacle_rock"
+
+    # Transition into Level 9
+    snap_trans = _snap(level=9, screen=0x76, link_x=120, link_y=205, mode=6, bombs=13)
+    act_trans = ctl.step(snap_trans)
+    assert act_trans.reason in ("transition_wait", "dungeon_loader_wait")
+
+    # Dungeon settle in room 0x76: 24 frames
+    snap_l9 = _snap(level=9, screen=0x76, link_x=120, link_y=205, mode=PLAY_MODE, bombs=13)
+    for _ in range(23):
+        act_settle = ctl.step(snap_l9)
+        assert act_settle.reason == "dungeon_0x76_settle"
+    act_done = ctl.step(snap_l9)
+    assert act_done.reason == "done"
+    assert ctl.success is True
+
+    report = ctl.report()
+    assert report["success"] is True
+    assert report["route_eligible"] is True
+    assert report["writes"] == 0
+    assert report["bombs_before"] == 14
+    assert report["bombs_after"] == 13
+    assert report["b_presses"] == 1
+    assert report["controller_memory_writes"] == 0
+    assert report["progression_writes"] == 0
+    assert report["capacity_writes"] == 0
+
+
+def test_level9_entry_chapter_chaining() -> None:
+    stages = level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
+    assert len(stages) == 2
+    assert stages[0][0] == "level9_post_l8_overworld"
+    assert stages[1][0] == "level9_spectacle_rock_bomb"
+    assert stages[0][2] == 12_000
+    assert stages[1][2] == 4000
+
+    # Both controllers accept measured handoff and have route_eligible when complete
+    ow_ctl = stages[0][1]
+    bomb_ctl = stages[1][1]
+    assert isinstance(ow_ctl, Level9PostL8OverworldController)
+    assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
+
+

@@ -102,9 +102,10 @@ Cellar `0x75` west ladder → play `0x20` (Wizzrobes) **2/2** C75_1/C75_2 (412f 
 leftover `(96,157)` facing DOWN. Pin `Level9Interior20ReconFixture`.
 Play `0x20` perimeter walk + bomb north → `0x10` (Silver Arrows room) **2/2**
 BN20_1/BN20_2 (533f / 653f), leftover `(152,189)` facing UP. Pin
-`Level9Interior10SilverArrowsReconFixture`.
 All prefix hops are now 100% fixture-live (16/16 hops).
-Natural old-man factory stays fail-closed.
+Natural Silver Arrows prefix (`rr-sz8.6`, `route_eligible=false`): `NaturalSilverArrowsController`
+in `natural_path.py` sequences all 16 prefix hops (`0x76 → 0x66 → 0x65 → 0x55 → 0x60 → 0x14 → 0x15 → 0x16 → 0x06 → 0x05 → 0x70 → 0x63 → 0x62 → 0x61 → 0x75 → 0x20 → 0x10`)
+into `level9_silver_arrows_chapter(handoff=...)` with 0 memory writes, 0 capacity writes, 0 progression writes. Fails closed without TF 0xFF or complete predecessor handoff.
 
 Natural Patra Join (`rr-sz8.7`, `route_eligible=false`): play `0x10` Silver Arrows leftover `(152,189)`
 facing UP through `0x20` → cellar `0x75` → `0x61` → `0x51` (threaded statue diamond corridor)

@@ -27,11 +27,25 @@ from zelda_i.level9.dungeon import (
     MISSING_SPECTACLE_BOMB,
     MISSING_51_NORTH_WALK,
     PostLevel8Handoff,
+    ROOM_LEVEL9_ENTRY,
+    ROOM_OLD_MAN_TF,
     SILVER_ARROWS,
     TRIFORCE_NOT_FULL,
     UNMEASURED_POST_L8_HANDOFF,
     level9_credits_stop,
     level9_live_patra_stop,
+)
+from zelda_i.level9.overworld import (
+    Level9PostL8OverworldController,
+    Level9SpectacleRockBombController,
+)
+from zelda_i.level9.prefix import (
+    Level9North76Controller, make_bomb_north_20_controller, make_bomb_north_65_controller,
+    make_bomb_west_06_controller, make_cellar_60_controller, make_cellar_70_controller,
+    make_cellar_75_controller, make_east_14_controller, make_east_15_controller,
+    make_north_16_controller, make_north_76_controller, make_stairs_05_controller,
+    make_stairs_55_controller, make_stairs_61_controller, make_west_62_controller,
+    make_west_63_controller, make_west_66_controller,
 )
 from zelda_i.level9.ganon import (
     B_ITEM_ARROWS,
@@ -120,29 +134,20 @@ class NaturalRouteUnavailableController:
 
 def make_post_l8_overworld_controller(
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
-) -> NaturalRouteUnavailableController:
-    return NaturalRouteUnavailableController(
-        "level9_post_l8_overworld",
-        MISSING_POST_L8_LEFTOVER,
-        require_bombs=True,
-        handoff=handoff,
-    )
+) -> Level9PostL8OverworldController:
+    return Level9PostL8OverworldController(handoff=handoff)
 
 
-def make_spectacle_rock_bomb_controller() -> NaturalRouteUnavailableController:
-    return NaturalRouteUnavailableController(
-        "level9_spectacle_rock_bomb",
-        MISSING_SPECTACLE_BOMB,
-        require_bombs=True,
-    )
+def make_spectacle_rock_bomb_controller(
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+) -> Level9SpectacleRockBombController:
+    return Level9SpectacleRockBombController(handoff=handoff)
 
 
-def make_old_man_tf_gate_controller() -> NaturalRouteUnavailableController:
-    return NaturalRouteUnavailableController(
-        "level9_old_man_tf_gate",
-        MISSING_OLD_MAN_GATE,
-        require_bombs=True,
-    )
+def make_old_man_tf_gate_controller(
+    *, dest: int | None = ROOM_OLD_MAN_TF
+) -> Level9North76Controller:
+    return make_north_76_controller(dest=dest)
 
 
 def make_silver_arrows_unavailable_controller() -> NaturalRouteUnavailableController:
@@ -197,6 +202,103 @@ class _NaturalEndingController:
             "triforce_writes": 0,
             "selected_item_writes": 0,
         }
+
+
+@dataclass
+class NaturalSilverArrowsController(_NaturalEndingController):
+    """Sequential controller connecting 0x76 through all 16 prefix hops to Silver Arrows 0x10.
+
+    Traverses 16 natural hops without memory writes or state loads:
+    0x76 -> 0x66 -> 0x65 -> 0x55 -> cellar 0x60 -> 0x14 -> 0x15 -> 0x16 ->
+    0x06 -> 0x05 -> cellar 0x70 -> 0x63 -> 0x62 -> 0x61 -> cellar 0x75 ->
+    0x20 -> 0x10.
+    """
+
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF
+    max_frames: int = 1
+    hop_i: int = 0
+    start_checked: bool = False
+    blocked_reason: str = ""
+    _hops: tuple[Any, ...] = field(default_factory=tuple, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.handoff.complete():
+            self.max_frames = 16000
+        else:
+            self.max_frames = 1
+        if not self._hops:
+            self._hops = (
+                make_north_76_controller(), make_west_66_controller(),
+                make_bomb_north_65_controller(), make_stairs_55_controller(),
+                make_cellar_60_controller(), make_east_14_controller(),
+                make_east_15_controller(), make_north_16_controller(),
+                make_bomb_west_06_controller(), make_stairs_05_controller(),
+                make_cellar_70_controller(), make_west_63_controller(),
+                make_west_62_controller(), make_stairs_61_controller(),
+                make_cellar_75_controller(), make_bomb_north_20_controller(),
+            )
+
+    def _fail(self, reason: str) -> FrameAction:
+        self.blocked_reason = reason
+        return super()._fail(reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.success or self.failed:
+            return self._action(nes_idle_action(), "done")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if not self.start_checked:
+            self.start_checked = True
+            if snap.triforce != FULL_TRIFORCE:
+                return self._fail(TRIFORCE_NOT_FULL)
+            if not self.handoff.complete():
+                return self._fail(MISSING_SILVER_ARROW_ROOM)
+            if not (
+                snap.level == LEVEL9
+                and snap.screen == ROOM_LEVEL9_ENTRY
+                and snap.mode == PLAY_MODE
+            ):
+                return self._fail("natural_silver_arrows_predecessor_contract_miss")
+
+        while self.hop_i < len(self._hops) and self._hops[self.hop_i].success:
+            self.hop_i += 1
+
+        if self.hop_i >= len(self._hops):
+            self.success = True
+            return self._action(nes_idle_action(), "silver_arrows_arrived")
+
+        ctl = self._hops[self.hop_i]
+        act = ctl.step(snap)
+        if ctl.failed:
+            return self._fail(ctl.notes[-1] if ctl.notes else f"hop_{self.hop_i}_failed")
+        if ctl.success:
+            self.hop_i += 1
+            if self.hop_i >= len(self._hops):
+                self.success = True
+                return self._action(nes_idle_action(), "silver_arrows_arrived")
+        return self._action(act.action, f"prefix_hop_{self.hop_i}_{act.reason}")
+
+    def report(self) -> dict[str, object]:
+        rep = super().report()
+        rep.update({
+            "chapter": "level9_natural_silver_arrows",
+            "evidence": self.handoff.evidence,
+            "route_eligible": self.handoff.route_eligible and self.success,
+            "hop_i": self.hop_i,
+            "total_hops": len(self._hops),
+            "current_hop": getattr(self._hops[self.hop_i], "spec_id", f"hop_{self.hop_i}")
+            if self.hop_i < len(self._hops)
+            else "done",
+            "missing_evidence": self.blocked_reason or None,
+            "writes": 0,
+        })
+        return rep
+
+
+def make_natural_silver_arrows_controller(
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+) -> NaturalSilverArrowsController:
+    return NaturalSilverArrowsController(handoff=handoff)
 
 
 class PatraJoinPhase(Enum):
@@ -872,21 +974,15 @@ class NaturalCreditsController(_NaturalEndingController):
 
 
 __all__ = [
-    "NaturalCreditsController",
-    "NaturalEnterZeldaController",
-    "NaturalFinalPatraController",
-    "NaturalGanonController",
-    "NaturalPatraJoinController",
-    "NaturalPatraToGanonController",
-    "NaturalPowerTriforceController",
-    "NaturalRescueZeldaController",
-    "NaturalRouteUnavailableController",
-    "NaturalSelectSilverArrowsController",
-    "PatraJoinPhase",
-    "make_natural_patra_join_controller",
-    "make_old_man_tf_gate_controller",
-    "make_patra_join_unavailable_controller",
-    "make_post_l8_overworld_controller",
-    "make_silver_arrows_unavailable_controller",
-    "make_spectacle_rock_bomb_controller",
+    "Level9North76Controller", "Level9PostL8OverworldController",
+    "Level9SpectacleRockBombController", "NaturalCreditsController",
+    "NaturalEnterZeldaController", "NaturalFinalPatraController",
+    "NaturalGanonController", "NaturalPatraJoinController",
+    "NaturalPatraToGanonController", "NaturalPowerTriforceController",
+    "NaturalRescueZeldaController", "NaturalRouteUnavailableController",
+    "NaturalSelectSilverArrowsController", "NaturalSilverArrowsController",
+    "PatraJoinPhase", "make_natural_patra_join_controller",
+    "make_natural_silver_arrows_controller", "make_old_man_tf_gate_controller",
+    "make_patra_join_unavailable_controller", "make_post_l8_overworld_controller",
+    "make_silver_arrows_unavailable_controller", "make_spectacle_rock_bomb_controller",
 ]

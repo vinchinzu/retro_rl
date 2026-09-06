@@ -15,16 +15,16 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level9.ganon import (
-    ADDR_GANON_OBJ_PHASE_BASE,
-    GANON_BROWN_STATE,
-    OBJ_GANON,
-    ROOM_GANON,
-    credits_rolling,
-    final_ending_screen,
-)
 from zelda_i.dungeon.pause_select import PauseSelectController
-from zelda_i.overworld.graph import ScreenHop
+from zelda_i.level9.dungeon import (
+    BOMBS_NOT_NATURAL,
+    MISSING_SPECTACLE_BOMB,
+    PostLevel8Handoff,
+    TRIFORCE_NOT_FULL,
+    UNMEASURED_POST_L8_HANDOFF,
+)
+from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
+from zelda_i.overworld.path import OverworldPathController, PathNavPhase
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_MAGIC_KEY,
@@ -38,14 +38,9 @@ from zelda_i.ram import (
 
 from zelda_i.anchors import FULL_TRIFORCE, SCREEN_LEVEL9_ROCK_HYP
 
-SOURCE_HYPOTHESIS = True
-SCREEN_LEVEL9_POTION_NEAR_HYP = 0x04  # one left (source)
-LEVEL9 = 9
-ROOM_LEVEL9_ENTRY = 0x76
-B_ITEM_BOMBS = 1
-# Source / Data Crystal style values (confirm live).
-RING_RED_PLANNED = 2
-ARROWS_SILVER_PLANNED = 2
+SOURCE_HYPOTHESIS, SCREEN_LEVEL9_POTION_NEAR_HYP, LEVEL9 = True, 0x04, 9
+ROOM_LEVEL9_ENTRY, B_ITEM_BOMBS = 0x76, 1
+RING_RED_PLANNED, ARROWS_SILVER_PLANNED = 2, 2
 
 LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x78, "RIGHT"),
@@ -61,93 +56,61 @@ LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_LEVEL9_ROCK_HYP, "LEFT", align_y=141),
 )
 
+REVERSE_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = ((192, 132), (192, 92), (16, 92))
+
+# Reverse overworld connector from post-L8 leave (0x6D) to 0x58, joining LEVEL9_ROCK_HOPS
+POST_L8_TO_LEVEL9_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x5D, "UP", align_x=48),
+    ScreenHop(0x5C, "LEFT", align_y=132),
+    ScreenHop(0x5B, "LEFT", align_y=92),
+    ScreenHop(0x5A, "LEFT", align_y=93),
+    ScreenHop(0x59, "LEFT", align_y=140),
+    ScreenHop(0x58, "LEFT", align_y=155),
+    ScreenHop(0x48, "UP", align_x=112),
+    ScreenHop(0x38, "UP", align_x=128),
+    ScreenHop(0x28, "UP", align_x=120),
+    ScreenHop(0x27, "LEFT", align_y=102),
+    ScreenHop(0x17, "UP", align_x=144),
+    ScreenHop(0x07, "UP", align_x=64),
+    ScreenHop(0x06, "LEFT", align_y=141),
+    ScreenHop(SCREEN_LEVEL9_ROCK_HYP, "LEFT", align_y=141),
+)
+POST_L8_TO_LEVEL9_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    0x6D, POST_L8_TO_LEVEL9_HOPS
+)
+
 
 class FixtureEntryPhase(Enum):
     """Fixture-only phases for the disclosed 0x77 -> Level 9 entry trial."""
-
-    EAST_77 = auto()
-    NORTH_78 = auto()
-    NORTH_68 = auto()
-    ALIGN_58_Y = auto()
-    ALIGN_58_X = auto()
-    NORTH_58 = auto()
-    INLAND_48 = auto()
-    ALIGN_48_X = auto()
-    NORTH_48 = auto()
-    INLAND_38 = auto()
-    ALIGN_38_X = auto()
-    NORTH_38 = auto()
-    ALIGN_28_Y = auto()
-    WEST_28 = auto()
-    DROP_27 = auto()
-    ALIGN_27_X = auto()
-    NORTH_27 = auto()
-    CLIMB_17 = auto()
-    ALIGN_17_X = auto()
-    NORTH_17 = auto()
-    ALIGN_07_Y = auto()
-    WEST_07 = auto()
-    WEST_06 = auto()
-    ROCK_OBSERVE = auto()
-    PAUSE_OPEN = auto()
-    ROCK_TOP_Y = auto()
-    ROCK_GAP_X = auto()
-    ROCK_BOTTOM_Y = auto()
-    ROCK_LEFT_X = auto()
-    ROCK_FACE_UP = auto()
-    ROCK_FIRE = auto()
-    ROCK_BLAST_WAIT = auto()
-    ROCK_ENTER = auto()
-    DUNGEON_SETTLE = auto()
-    DONE = auto()
-    FAILED = auto()
+    EAST_77, NORTH_78, NORTH_68 = auto(), auto(), auto()
+    ALIGN_58_Y, ALIGN_58_X, NORTH_58 = auto(), auto(), auto()
+    INLAND_48, ALIGN_48_X, NORTH_48 = auto(), auto(), auto()
+    INLAND_38, ALIGN_38_X, NORTH_38 = auto(), auto(), auto()
+    ALIGN_28_Y, WEST_28, DROP_27 = auto(), auto(), auto()
+    ALIGN_27_X, NORTH_27, CLIMB_17 = auto(), auto(), auto()
+    ALIGN_17_X, NORTH_17, ALIGN_07_Y = auto(), auto(), auto()
+    WEST_07, WEST_06, ROCK_OBSERVE = auto(), auto(), auto()
+    PAUSE_OPEN, ROCK_TOP_Y, ROCK_GAP_X = auto(), auto(), auto()
+    ROCK_BOTTOM_Y, ROCK_LEFT_X, ROCK_FACE_UP = auto(), auto(), auto()
+    ROCK_FIRE, ROCK_BLAST_WAIT, ROCK_ENTER = auto(), auto(), auto()
+    DUNGEON_SETTLE, DONE, FAILED = auto(), auto(), auto()
 
 
-_MOVE_PHASES = frozenset(
-    {
-        FixtureEntryPhase.EAST_77,
-        FixtureEntryPhase.NORTH_78,
-        FixtureEntryPhase.NORTH_68,
-        FixtureEntryPhase.ALIGN_58_Y,
-        FixtureEntryPhase.ALIGN_58_X,
-        FixtureEntryPhase.NORTH_58,
-        FixtureEntryPhase.INLAND_48,
-        FixtureEntryPhase.ALIGN_48_X,
-        FixtureEntryPhase.NORTH_48,
-        FixtureEntryPhase.INLAND_38,
-        FixtureEntryPhase.ALIGN_38_X,
-        FixtureEntryPhase.NORTH_38,
-        FixtureEntryPhase.ALIGN_28_Y,
-        FixtureEntryPhase.WEST_28,
-        FixtureEntryPhase.DROP_27,
-        FixtureEntryPhase.ALIGN_27_X,
-        FixtureEntryPhase.NORTH_27,
-        FixtureEntryPhase.CLIMB_17,
-        FixtureEntryPhase.ALIGN_17_X,
-        FixtureEntryPhase.NORTH_17,
-        FixtureEntryPhase.ALIGN_07_Y,
-        FixtureEntryPhase.WEST_07,
-        FixtureEntryPhase.WEST_06,
-        FixtureEntryPhase.ROCK_TOP_Y,
-        FixtureEntryPhase.ROCK_GAP_X,
-        FixtureEntryPhase.ROCK_BOTTOM_Y,
-        FixtureEntryPhase.ROCK_LEFT_X,
-        FixtureEntryPhase.ROCK_ENTER,
-    }
-)
+_NON_MOVE = frozenset({
+    FixtureEntryPhase.ROCK_OBSERVE, FixtureEntryPhase.PAUSE_OPEN,
+    FixtureEntryPhase.ROCK_FACE_UP, FixtureEntryPhase.ROCK_FIRE,
+    FixtureEntryPhase.ROCK_BLAST_WAIT, FixtureEntryPhase.DUNGEON_SETTLE,
+    FixtureEntryPhase.DONE, FixtureEntryPhase.FAILED,
+})
+_MOVE_PHASES = frozenset(p for p in FixtureEntryPhase if p not in _NON_MOVE)
 
 _TRANSITION_HOLD = {
     FixtureEntryPhase.EAST_77: "RIGHT",
-    FixtureEntryPhase.NORTH_78: "UP",
-    FixtureEntryPhase.NORTH_68: "UP",
-    FixtureEntryPhase.NORTH_58: "UP",
-    FixtureEntryPhase.NORTH_48: "UP",
-    FixtureEntryPhase.NORTH_38: "UP",
-    FixtureEntryPhase.WEST_28: "LEFT",
-    FixtureEntryPhase.NORTH_27: "UP",
-    FixtureEntryPhase.NORTH_17: "UP",
-    FixtureEntryPhase.WEST_07: "LEFT",
-    FixtureEntryPhase.WEST_06: "LEFT",
+    FixtureEntryPhase.NORTH_78: "UP", FixtureEntryPhase.NORTH_68: "UP",
+    FixtureEntryPhase.NORTH_58: "UP", FixtureEntryPhase.NORTH_48: "UP",
+    FixtureEntryPhase.NORTH_38: "UP", FixtureEntryPhase.WEST_28: "LEFT",
+    FixtureEntryPhase.NORTH_27: "UP", FixtureEntryPhase.NORTH_17: "UP",
+    FixtureEntryPhase.WEST_07: "LEFT", FixtureEntryPhase.WEST_06: "LEFT",
     FixtureEntryPhase.ROCK_ENTER: "UP",
 }
 
@@ -589,6 +552,203 @@ class Level9FixtureEntryController:
         }
 
 
+@dataclass
+class Level9PostL8OverworldController(OverworldPathController):
+    """Walk from post-L8 leave (OW 0x6D) to Spectacle Rock (OW 0x05).
+
+    Refuses without full Triforce (0xFF), natural bombs (>0), and complete
+    measured post-L8 handoff. Never writes RAM.
+    """
+
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF
+    hops: tuple[ScreenHop, ...] = POST_L8_TO_LEVEL9_HOPS
+    max_frames: int = 12_000
+    reverse_maze_waypoints: tuple[tuple[int, int], ...] = REVERSE_5C_MAZE_WAYPOINTS
+    reverse_maze_wp_index: int = 0
+    _handoff_checked: bool = field(default=False, init=False, repr=False)
+    failed: bool = field(default=False, init=False, repr=False)
+    blocked_reason: str = field(default="", init=False, repr=False)
+    _env: Any = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if not self.hops:
+            self.hops = POST_L8_TO_LEVEL9_HOPS
+        if not self.handoff.complete():
+            self.max_frames = 1
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def reset(self) -> None:
+        super().reset()
+        self.reverse_maze_wp_index = 0
+        self._handoff_checked = False
+        self.failed = False
+        self.blocked_reason = ""
+
+    def _fail_now(self, reason: str) -> FrameAction:
+        self.failed = True
+        self.blocked_reason = reason
+        self._set_phase(PathNavPhase.FAILED, reason)
+        return FrameAction(nes_idle_action(), reason)
+
+    def _at_stop(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            self.hop_index >= len(self.hops)
+            and snap.level == 0
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.screen == SCREEN_LEVEL9_ROCK_HYP
+        )
+
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self._at_stop(snap):
+            return self._finish("level9_spectacle_rock_reached")
+        return self._fail_now("post_l8_path_exhausted_off_0x05")
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        if snap.screen == 0x6D and hop.target == 0x5D:
+            if abs(snap.link_x - 48) > 4:
+                btn = "LEFT" if snap.link_x > 48 else "RIGHT"
+                return self._swing(btn, "6d_walk_left_x48")
+            return self._swing("UP", "6d_north_0x5d")
+
+        if snap.screen == 0x5D and hop.target == 0x5C:
+            if abs(snap.link_y - 132) > 4:
+                btn = "UP" if snap.link_y > 132 else "DOWN"
+                return self._swing(btn, "5d_align_y132")
+            return self._swing("LEFT", "5d_west_0x5c")
+
+        if snap.screen == 0x5C and hop.target == 0x5B:
+            if self.reverse_maze_wp_index == 0:
+                if snap.link_x <= 192 and abs(snap.link_y - 132) <= 6:
+                    self.reverse_maze_wp_index = 1
+                else:
+                    return self._swing("LEFT", "5c_reverse_maze_wp0")
+            if self.reverse_maze_wp_index == 1:
+                if snap.link_y <= 92 and abs(snap.link_x - 192) <= 6:
+                    self.reverse_maze_wp_index = 2
+                else:
+                    if abs(snap.link_x - 192) > 2:
+                        btn = "RIGHT" if snap.link_x < 192 else "LEFT"
+                        return self._swing(btn, "5c_reverse_maze_align_x192")
+                    return self._swing("UP", "5c_reverse_maze_wp1")
+            if self.reverse_maze_wp_index == 2:
+                if snap.link_x <= 16:
+                    self.reverse_maze_wp_index = 3
+                else:
+                    if abs(snap.link_y - 92) > 2:
+                        btn = "DOWN" if snap.link_y < 92 else "UP"
+                        return self._swing(btn, "5c_reverse_maze_align_y92")
+                    return self._swing("LEFT", "5c_reverse_maze_wp2")
+            return self._swing("LEFT", "5c_reverse_maze_exit")
+
+        if snap.screen == 0x5B and hop.target == 0x5A:
+            if abs(snap.link_y - 93) > 4:
+                btn = "DOWN" if snap.link_y < 93 else "UP"
+                return self._swing(btn, "5b_highway_realign_y93")
+            return self._swing("LEFT", "5b_highway_left_0x5a")
+
+        if snap.screen == 0x5A and hop.target == 0x59:
+            if snap.link_y < 140:
+                return self._swing("DOWN", "5a_step_down_y140")
+            return self._swing("LEFT", "5a_walk_left_0x59")
+
+        if snap.screen == 0x59 and hop.target == 0x58:
+            if snap.link_y < 155:
+                return self._swing("DOWN", "59_step_down_y155")
+            return self._swing("LEFT", "59_walk_left_0x58")
+
+        if snap.screen == 0x58 and hop.target == 0x48:
+            if snap.link_x > 112 + 4:
+                return self._swing("LEFT", "58_walk_left_x112")
+            if snap.link_x < 112 - 4:
+                return self._swing("RIGHT", "58_realign_x112")
+            return self._swing("UP", "58_north_0x48")
+
+        if snap.screen == 0x48 and hop.target == 0x38:
+            if snap.link_y > 189:
+                return self._swing("UP", "48_inland")
+            if abs(snap.link_x - 128) > 4:
+                btn = "LEFT" if snap.link_x > 128 else "RIGHT"
+                return self._swing(btn, "48_align_x128")
+            return self._swing("UP", "48_north_0x38")
+
+        if snap.screen == 0x38 and hop.target == 0x28:
+            if abs(snap.link_x - 48) <= 4 and abs(snap.link_y - 133) <= 4:
+                return self._fail_now("known_blocked_0x38_x48_y133_replan")
+            if snap.link_y > 141:
+                return self._swing("UP", "38_bridge_y141")
+            if abs(snap.link_y - 141) > 4:
+                btn = "UP" if snap.link_y > 141 else "DOWN"
+                return self._swing(btn, "38_realign_y141")
+            if abs(snap.link_x - 120) > 4:
+                btn = "LEFT" if snap.link_x > 120 else "RIGHT"
+                return self._swing(btn, "38_align_x120")
+            return self._swing("UP", "38_north_0x28")
+
+        if snap.screen == 0x27 and hop.target == 0x17:
+            if snap.link_y < 133:
+                return self._swing("DOWN", "27_drop_below_mountain")
+            if abs(snap.link_x - 144) > 4:
+                btn = "LEFT" if snap.link_x > 144 else "RIGHT"
+                return self._swing(btn, "27_central_mouth_x144")
+            return self._swing("UP", "27_north_0x17")
+
+        if snap.screen == 0x17 and hop.target == 0x07:
+            if snap.link_y > 133:
+                return self._swing("UP", "17_climb_y133")
+            if abs(snap.link_x - 64) > 4:
+                btn = "LEFT" if snap.link_x > 64 else "RIGHT"
+                return self._swing(btn, "17_raft_x64")
+            return self._swing("UP", "17_raft_north_0x07")
+
+        if snap.screen == 0x07 and hop.target == 0x06:
+            if abs(snap.link_y - 141) > 4:
+                btn = "UP" if snap.link_y > 141 else "DOWN"
+                return self._swing(btn, "07_west_y141")
+            return self._swing("LEFT", "07_west_0x06")
+
+        if snap.screen == 0x06 and hop.target == SCREEN_LEVEL9_ROCK_HYP:
+            if abs(snap.link_y - 141) > 4:
+                btn = "UP" if snap.link_y > 141 else "DOWN"
+                return self._swing(btn, "06_realign_y141")
+            return self._swing("LEFT", "06_west_0x05")
+
+        return None
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed or self.phase is PathNavPhase.FAILED:
+            return FrameAction(nes_idle_action(), self.blocked_reason or "failed")
+        if not self._handoff_checked:
+            mismatch = self.handoff.mismatch(snap)
+            if mismatch is not None:
+                return self._fail_now(mismatch)
+            self._handoff_checked = True
+            self.notes.append("post_l8_handoff_accepted")
+        return super().step(snap)
+
+    def report(self) -> dict[str, Any]:
+        out = super().report()
+        out.update(
+            {
+                "chapter": "level9_post_l8_overworld",
+                "evidence": self.handoff.evidence,
+                "route_eligible": self.handoff.route_eligible and self.success,
+                "failed": self.failed or (self.phase is PathNavPhase.FAILED),
+                "reason": self.blocked_reason or (self.notes[-1] if self.notes else None),
+                "missing_evidence": self.blocked_reason or None,
+                "controller_memory_writes": 0, "progression_writes": 0,
+                "capacity_writes": 0, "inventory_writes": 0, "triforce_writes": 0,
+                "bomb_capacity_writes": 0, "room_writes": 0, "door_writes": 0,
+                "writes": 0,
+            }
+        )
+        return out
+
+
 def has_full_triforce(ram) -> bool:
     return read_u8(ram, ADDR_TRIFORCE) == FULL_TRIFORCE
 
@@ -597,108 +757,238 @@ def triforce_bits(ram) -> int:
     return int(read_u8(ram, ADDR_TRIFORCE))
 
 
-def has_red_ring(ram) -> bool:
-    return read_u8(ram, ADDR_RING) >= RING_RED_PLANNED
+class SpectacleRockBombPhase(Enum):
+    """Phases for bombing left Spectacle Rock and entering Level 9 room 0x76."""
+    ALIGN_216_X, PAUSE_OPEN, ROCK_TOP_Y = auto(), auto(), auto()
+    ROCK_GAP_X, ROCK_BOTTOM_Y, ROCK_LEFT_X = auto(), auto(), auto()
+    ROCK_FACE_UP, ROCK_FIRE, ROCK_BLAST_WAIT = auto(), auto(), auto()
+    ROCK_ENTER, DUNGEON_SETTLE, DONE, FAILED = auto(), auto(), auto(), auto()
 
 
-def has_silver_arrows(ram) -> bool:
-    return read_u8(ram, ADDR_ARROWS) >= ARROWS_SILVER_PLANNED
+@dataclass
+class Level9SpectacleRockBombController:
+    """Bomb the left Spectacle Rock on OW 0x05 and enter Level 9 room 0x76.
 
-
-def required_caps_for_entry() -> frozenset[str]:
-    """Full TF for Old Man; bombs for rock (source)."""
-    return frozenset({"full_triforce", "bombs"})
-
-
-def required_caps_for_ganon() -> frozenset[str]:
-    return frozenset({"full_triforce", "silver_arrows"})
-
-
-def missing_entry_caps(ram, *, rock_only: bool = False) -> list[str]:
-    """Caps missing for entry attempt.
-
-    ``rock_only``: map bomb-rock OW without requiring full TF.
+    Takes over on OW 0x05 at (240, 141) from Level9PostL8OverworldController.
+    Refuses without full Triforce (0xFF), natural bombs (>0), and complete
+    measured post-L8 handoff.
     """
-    missing: list[str] = []
-    if not rock_only and not has_full_triforce(ram):
-        missing.append("full_triforce")
-    # Bombs checked by caller snap.bombs if desired; not hard-fail here.
-    return missing
 
+    handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF
+    max_frames: int = 1
+    phase: SpectacleRockBombPhase = SpectacleRockBombPhase.ALIGN_216_X
+    frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    failed: bool = False
+    failure: str = ""
+    notes: list[str] = field(default_factory=list)
+    bombs_before: int | None = None
+    bombs_after: int | None = None
+    b_presses: int = 0
+    blast_wait_frames: int = 0
+    dungeon_settle_frames: int = 0
+    _handoff_checked: bool = False
+    _env: Any = field(default=None, repr=False)
+    _select: PauseSelectController = field(init=False, repr=False)
 
-def on_level9_rock_hyp(snap: ZeldaSnapshot) -> bool:
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_LEVEL9_ROCK_HYP
-    )
+    def __post_init__(self) -> None:
+        self._select = PauseSelectController(want=B_ITEM_BOMBS, name="bombs")
+        if not self.handoff.complete():
+            self.max_frames = 1
+        else:
+            self.max_frames = 4000
 
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+        self._select.bind_env(env)
 
-def level9_dungeon_play(snap: ZeldaSnapshot) -> bool:
-    return snap.level == LEVEL9 and snap.mode == PLAY_MODE
+    def _selected(self) -> int:
+        if self._env is not None:
+            return read_u8(self._env.get_ram(), ADDR_SELECTED_ITEM)
+        return int(self.handoff.selected_item or B_ITEM_BOMBS)
 
+    def _set_phase(self, phase: SpectacleRockBombPhase, note: str = "") -> None:
+        if phase is self.phase:
+            return
+        self.phase = phase
+        self.phase_frames = 0
+        if note:
+            self.notes.append(note)
 
-def level9_entry_stop(snap: ZeldaSnapshot) -> bool:
-    return level9_dungeon_play(snap) and snap.screen == ROOM_LEVEL9_ENTRY
+    def _action(self, action: list[int], reason: str) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        return FrameAction(action, reason)
 
+    def _fail(self, reason: str) -> FrameAction:
+        self.failed = True
+        self.failure = reason
+        self.phase = SpectacleRockBombPhase.FAILED
+        self.notes.append(reason)
+        return self._action(nes_idle_action(), reason)
 
-def level9_overworld_stop(snap: ZeldaSnapshot) -> bool:
-    return on_level9_rock_hyp(snap)
+    def _axis(
+        self,
+        snap: ZeldaSnapshot,
+        *,
+        axis: str,
+        target: int,
+        tolerance: int,
+        reason: str,
+    ) -> FrameAction | None:
+        value = getattr(snap, f"link_{axis}")
+        delta = target - value
+        if abs(delta) <= tolerance:
+            return None
+        btn = "RIGHT" if delta > 0 else "LEFT"
+        if axis == "y":
+            btn = "DOWN" if delta > 0 else "UP"
+        return self._action(nes_action(btn), reason)
 
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.failed or self.phase is SpectacleRockBombPhase.FAILED:
+            return FrameAction(nes_idle_action(), self.failure or "failed")
+        if self.success or self.phase is SpectacleRockBombPhase.DONE:
+            return FrameAction(nes_idle_action(), "done")
+        if self.frames >= self.max_frames:
+            return self._fail("spectacle_rock_bomb_timeout")
 
-def level9_ending_stop(snap: ZeldaSnapshot) -> bool:
-    """True once the update loop reaches rolling credits or its final page."""
-    return credits_rolling(snap) or final_ending_screen(snap)
+        if not self._handoff_checked:
+            self._handoff_checked = True
+            if snap.triforce != FULL_TRIFORCE:
+                return self._fail(TRIFORCE_NOT_FULL)
+            if snap.bombs < 1:
+                return self._fail(BOMBS_NOT_NATURAL)
+            if not self.handoff.complete():
+                return self._fail(MISSING_SPECTACLE_BOMB)
+            if snap.level != 0 or snap.screen != SCREEN_LEVEL9_ROCK_HYP:
+                return self._fail("not_on_spectacle_rock_0x05")
+            self.bombs_before = int(snap.bombs)
+            self.notes.append("spectacle_rock_handoff_accepted")
+            if self._selected() != B_ITEM_BOMBS:
+                self._set_phase(SpectacleRockBombPhase.PAUSE_OPEN, "pause_select_bombs")
 
+        if snap.mode == 17:
+            return self._fail("link_death")
 
-def level9_ganon_planning_notes() -> dict[str, Any]:
-    return {
-        "policy": "stun Ganon (sword) until brown, then Silver Arrow on B",
-        "silver_arrows_ram": hex(ADDR_ARROWS),
-        "silver_arrows_value_planned": ARROWS_SILVER_PLANNED,
-        "object_type_id": OBJ_GANON,
-        "brown_state_ram": hex(0x00AC),
-        "brown_state_initial": GANON_BROWN_STATE,
-        "dying_phase_base": hex(ADDR_GANON_OBJ_PHASE_BASE),
-        "live_verified": True,
-    }
+        if snap.level == LEVEL9:
+            if snap.mode == PLAY_MODE and not snap.transitioning:
+                if snap.screen != ROOM_LEVEL9_ENTRY:
+                    return self._fail(f"wrong_level9_entry_room_0x{snap.screen:02X}")
+                if self.phase is not SpectacleRockBombPhase.DUNGEON_SETTLE:
+                    self._set_phase(SpectacleRockBombPhase.DUNGEON_SETTLE, "settled_l9_0x76")
+                self.dungeon_settle_frames += 1
+                if self.dungeon_settle_frames >= 24:
+                    expected_bombs = int(self.bombs_before or 0) - 1
+                    if int(snap.bombs) != expected_bombs:
+                        return self._fail("bomb_delta_not_exactly_one")
+                    self.bombs_after = int(snap.bombs)
+                    self.success = True
+                    self._set_phase(SpectacleRockBombPhase.DONE, "natural_entry_0x76")
+                    return self._action(nes_idle_action(), "done")
+                return self._action(nes_idle_action(), "dungeon_0x76_settle")
+            return self._action(nes_idle_action(), "dungeon_loader_wait")
 
+        if snap.transitioning:
+            return self._action(nes_idle_action(), "transition_wait")
 
-def planning_report() -> dict[str, Any]:
-    return {
-        "level": LEVEL9,
-        "name": "Death Mountain",
-        "status": "backward_recon_live_natural_route_pending",
-        "source_hypothesis": SOURCE_HYPOTHESIS,
-        "required_entry_caps": sorted(required_caps_for_entry()),
-        "required_ganon_caps": sorted(required_caps_for_ganon()),
-        "full_triforce": FULL_TRIFORCE,
-        "ram": {
-            "triforce": hex(ADDR_TRIFORCE),
-            "ring": hex(ADDR_RING),
-            "arrows": hex(ADDR_ARROWS),
-        },
-        "screens_hypothesized": {
-            "bomb_rock": hex(SCREEN_LEVEL9_ROCK_HYP),
-            "potion_near": hex(SCREEN_LEVEL9_POTION_NEAR_HYP),
-        },
-        "rock_hops_from_start": [
-            {"target": hex(h.target), "dir": h.direction} for h in LEVEL9_ROCK_HOPS
-        ],
-        "ganon": level9_ganon_planning_notes(),
-        "ending_stop": "mode=0x13, updating!=0, submode=3 credits or 4 final",
-        "live": {
-            "rock_screen": SCREEN_LEVEL9_ROCK_HYP,
-            "entry_room": ROOM_LEVEL9_ENTRY,
-            "red_ring_room": None,
-            "silver_arrow_room": 0x10,
-            "silver_arrow_evidence": "hypothesis",
-            "ganon_room": ROOM_GANON,
-        },
-        "natural_entry": {
-            "post_l8_leftover": "unmeasured",
-            "start_based_rock_hops": "fixture-live; not the cumulative leave",
-            "route_eligible": False,
-        },
-        "docs": "nes/zelda_i/docs/LEVEL9_ROUTE.md",
-    }
+        if self.phase is SpectacleRockBombPhase.PAUSE_OPEN:
+            driven = self._select.drive(snap)
+            if self._select.failed:
+                return self._fail(self._select.fail_reason or "pause_select_failed")
+            if driven is not None:
+                return self._action(driven.action, driven.reason)
+            self._set_phase(SpectacleRockBombPhase.ALIGN_216_X, "bombs_selected")
+
+        if self.phase is SpectacleRockBombPhase.ALIGN_216_X:
+            ax = self._axis(snap, axis="x", target=216, tolerance=4, reason="rock_col26_align_x")
+            if ax is not None:
+                return ax
+            self._set_phase(SpectacleRockBombPhase.ROCK_TOP_Y, "rock_x216_reached")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_TOP_Y:
+            ax_x = self._axis(snap, axis="x", target=216, tolerance=4, reason="rock_col26_realign_x")
+            if ax_x is not None:
+                return ax_x
+            ax_y = self._axis(snap, axis="y", target=93, tolerance=4, reason="rock_climb_top_y93")
+            if ax_y is not None:
+                return ax_y
+            self._set_phase(SpectacleRockBombPhase.ROCK_GAP_X, "rock_top_y93_reached")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_GAP_X:
+            ax_y = self._axis(snap, axis="y", target=93, tolerance=4, reason="rock_top_realign_y93")
+            if ax_y is not None:
+                return ax_y
+            ax_x = self._axis(snap, axis="x", target=120, tolerance=4, reason="rock_top_to_center_gap_x120")
+            if ax_x is not None:
+                return ax_x
+            self._set_phase(SpectacleRockBombPhase.ROCK_BOTTOM_Y, "rock_center_gap_reached")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_BOTTOM_Y:
+            ax_x = self._axis(snap, axis="x", target=120, tolerance=4, reason="rock_gap_realign_x120")
+            if ax_x is not None:
+                return ax_x
+            ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_center_gap_to_south_y173")
+            if ax_y is not None:
+                return ax_y
+            self._set_phase(SpectacleRockBombPhase.ROCK_LEFT_X, "rock_south_reached")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_LEFT_X:
+            ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_south_realign_y173")
+            if ax_y is not None:
+                return ax_y
+            ax_x = self._axis(snap, axis="x", target=72, tolerance=4, reason="rock_south_to_left_stand_x72")
+            if ax_x is not None:
+                return ax_x
+            self._set_phase(SpectacleRockBombPhase.ROCK_FACE_UP, "rock_left_stand_reached")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_FACE_UP:
+            self._set_phase(SpectacleRockBombPhase.ROCK_FIRE, "left_rock_faced_up")
+            return self._action(nes_action("UP"), "left_rock_face_up")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_FIRE:
+            self.b_presses += 1
+            self._set_phase(SpectacleRockBombPhase.ROCK_BLAST_WAIT, "one_bomb_below_left_rock")
+            return self._action(nes_action("B"), "left_spectacle_rock_bomb")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_BLAST_WAIT:
+            self.blast_wait_frames += 1
+            if snap.bombs != self.bombs_before:
+                self.bombs_after = int(snap.bombs)
+            if self.blast_wait_frames < 180:
+                return self._action(nes_idle_action(), "left_rock_blast_wait")
+            if self.b_presses != 1 or self.bombs_after != int(self.bombs_before or 0) - 1:
+                return self._fail("bomb_was_not_consumed_exactly_once")
+            self._set_phase(SpectacleRockBombPhase.ROCK_ENTER, "left_rock_blast_complete")
+
+        if self.phase is SpectacleRockBombPhase.ROCK_ENTER:
+            if self.phase_frames > 500:
+                return self._fail("left_rock_mouth_did_not_enter")
+            ax_x = self._axis(snap, axis="x", target=72, tolerance=4, reason="left_rock_mouth_realign")
+            if ax_x is not None:
+                return ax_x
+            return self._action(nes_action("UP"), "enter_left_spectacle_rock")
+
+        return self._fail("unknown_spectacle_rock_bomb_phase")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "chapter": "level9_spectacle_rock_bomb",
+            "evidence": self.handoff.evidence,
+            "route_eligible": self.handoff.route_eligible and self.success,
+            "success": self.success,
+            "failed": self.failed,
+            "reason": self.failure or (self.notes[-1] if self.notes else None),
+            "missing_evidence": self.failure or None,
+            "frames": self.frames,
+            "phase": self.phase.name,
+            "bombs_before": self.bombs_before,
+            "bombs_after": self.bombs_after,
+            "b_presses": self.b_presses,
+            "controller_memory_writes": 0, "progression_writes": 0,
+            "capacity_writes": 0, "inventory_writes": 0, "position_writes": 0,
+            "selected_item_writes": 0, "triforce_writes": 0,
+            "bomb_capacity_writes": 0, "room_writes": 0, "door_writes": 0,
+            "writes": 0,
+        }
