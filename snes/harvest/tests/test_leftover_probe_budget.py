@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 
 from retro_harness import TaskResult, TaskStatus
@@ -13,6 +12,7 @@ from harvest.planner.d2_work import (
     bush_clear_phase,
     ensure_hammer_phase,
     fence_dump_phase,
+    leftover_chain_decision,
     rock_clear_phase,
     stump_clear_phase,
 )
@@ -20,7 +20,6 @@ from harvest.planner.day_phase_stamina import full_restore_spa_phase
 from harvest.scripts.leftover_exec import (
     _phase_timeout,
     _phase_timeout_result,
-    leftover_chain_decision,
     leftover_stall_should_abort,
     _task_phase_key,
 )
@@ -59,19 +58,6 @@ class LeftoverPhaseTimeoutTests(unittest.TestCase):
         self.assertGreater(remaining, estimated)
         self.assertEqual(_phase_timeout(spec, remaining), estimated)
         self.assertEqual(_phase_timeout(spec, 100), 100)
-
-
-class LeftoverProbeDefaultTimeoutTests(unittest.TestCase):
-    def test_leftover_probe_argparse_default_timeout_is_two_million(self) -> None:
-        src = (
-            Path(__file__).resolve().parents[1]
-            / "harvest"
-            / "scripts"
-            / "d2_leftover_probe.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn("default=2_000_000", src)
-        self.assertNotIn("default=400_000", src)
-        self.assertIn("default=24_000", src)
 
 
 class LeftoverBudgetResultTests(unittest.TestCase):

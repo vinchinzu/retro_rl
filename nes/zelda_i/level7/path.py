@@ -40,12 +40,14 @@ from zelda_i.dungeon.behaviors import (
     is_projectile,
     live_among,
 )
+from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
     dungeon_align_then_push,
 )
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level7.graph import (
     CANDLE_PUSH,
     DIGDOGGER_1,
@@ -84,6 +86,9 @@ EAST_BAND_Y = 109
 EAST_APPROACH_X = 204
 ENTRY_NORTH_MAX_FRAMES = 4000
 ROOM69_EAST_MAX_FRAMES = 6000
+# Kill-clear budget ahead of the west BOMB wall, plus the wall's own
+# BOMB_N_MAX_FRAMES (16000) once goriyas are cleared.
+ROOM69_WEST_BOMB_MAX_FRAMES = 22000
 # 0x6A KEESE dark room: west mouth spawn is (16,141). The y=141 centre band
 # is walled just past the door corridor (x=48, tile 0xB1), but the top of the
 # room is an open horizontal corridor — a blind y-scan crossed y=93 from x=40
@@ -345,16 +350,21 @@ def _projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     return tuple(obj for obj in _combatants(snap) if is_projectile(obj))
 
 
-def _leave_wall(snap: ZeldaSnapshot) -> FrameAction | None:
+def _leave_wall(
+    snap: ZeldaSnapshot,
+    *,
+    inland_x: tuple[int, int] = _INLAND_X,
+    inland_y: tuple[int, int] = _INLAND_Y,
+) -> FrameAction | None:
     """Step toward the playable interior. Do not chase the west wall."""
     x, y = int(snap.link_x), int(snap.link_y)
-    if x < _INLAND_X[0]:
+    if x < inland_x[0]:
         direction = "RIGHT"
-    elif x > _INLAND_X[1]:
+    elif x > inland_x[1]:
         direction = "LEFT"
-    elif y < _INLAND_Y[0]:
+    elif y < inland_y[0]:
         direction = "DOWN"
-    elif y > _INLAND_Y[1]:
+    elif y > inland_y[1]:
         direction = "UP"
     else:
         return None
@@ -373,7 +383,12 @@ def _east_push(snap: ZeldaSnapshot) -> FrameAction:
 
 
 def _goriya_fight(
-    snap: ZeldaSnapshot, target: ZeldaObject, *, frames: int
+    snap: ZeldaSnapshot,
+    target: ZeldaObject,
+    *,
+    frames: int,
+    inland_x: tuple[int, int] = _INLAND_X,
+    inland_y: tuple[int, int] = _INLAND_Y,
 ) -> FrameAction:
     hint = engagement_hint(
         EnemyKind.GORIYA, snap, target, projectiles=_projectiles(snap)
@@ -384,7 +399,7 @@ def _goriya_fight(
         if frames % _SWING_PERIOD < _SWING_HOLD:
             return FrameAction(nes_action(hint.face, "A"), "goriya_slash")
         return FrameAction(nes_action(hint.face), "goriya_face")
-    leave = _leave_wall(snap)
+    leave = _leave_wall(snap, inland_x=inland_x, inland_y=inland_y)
     if leave is not None:
         return leave
     if hint.retreat:
@@ -785,6 +800,167 @@ class Level7BombWall:
 L7_ROOM69_WEST_BOMB = Level7BombWall(
     room=ROOM_69, stand=(44, 141), face="LEFT", opens_to=0x68
 )
+# The 69_branch_v2/v3 fixture spawned Link near the stand already, so its
+# naive TO_STAND walk never had to cross the room. Live arrival is the south
+# mouth (120,205) (EntryNorthDoorController leftover); a naive goto from
+# there drags the dominant-axis walk straight into the centre-row diamond
+# blocks flanking x~96 at y~141 (same obstruction ``east_route_step`` routes
+# around via the y=109 band, mirrored here). Rise the open x=120 column to
+# the EAST_BAND_Y band, cross west on that open row, then drop the west
+# column to the stand.
+L7_ROOM69_WEST_APPROACH = (
+    (NORTH_DOOR_X, EAST_BAND_Y),
+    (L7_ROOM69_WEST_BOMB.stand[0], EAST_BAND_Y),
+)
+
+
+def _room69_west_bomb_wall() -> BombWallController:
+    return BombWallController(
+        wall=L7_ROOM69_WEST_BOMB,
+        level=LEVEL7,
+        select_item=B_SLOT_BOMBS,
+        approach_waypoints=L7_ROOM69_WEST_APPROACH,
+    )
+
+
+@dataclass(kw_only=True)
+class Room69WestBombController:
+    """0x69 south mouth: kill-clear live goriyas, then bomb the west wall.
+
+    Live census shows the five 0x69 goriyas HP=0 for their first few frames
+    (still materializing), then HP=80 and throwing boomerangs. A naive
+    approach-and-place reaches the stand fine but the goriyas interrupt the
+    bomb placement (``bomb_not_consumed``: Link is knocked off the B-press
+    before the blast). Clear them first with the same fight loop
+    ``Room69EastController`` uses.
+
+    ``bomb_not_consumed`` persisted even after the clear: the pause-close
+    animation is still visually on-screen 24 frames (``CLOSE_SETTLE_FRAMES``)
+    after the START press that closes it — the B-press-to-place lands while
+    the game is still fading back from the item-select overlay and is
+    dropped, and every WAIT-phase input after that lands on the same dead
+    overlay (Link's xy never moves during the whole WAIT window). Placing
+    ``PauseSelectController`` here, right after the clear and well before the
+    walk to the stand, gives that overlay hundreds of frames of approach/
+    ``TO_STAND``/``FACE`` walk to finish closing; by the time
+    ``BombWallController`` reaches its own ``SELECT`` phase, ``$0656`` already
+    reads bombs, so its internal pause-select short-circuits on the very
+    first frame (no second pause, no second close-animation race) straight
+    into ``PLACE``.
+    """
+
+    spec_id: str = "level7_room69_west_bomb"
+    max_frames: int = ROOM69_WEST_BOMB_MAX_FRAMES
+    frames: int = 0
+    saw_goriya: bool = False
+    preselect_done: bool = False
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    bomb: BombWallController = field(default_factory=_room69_west_bomb_wall)
+    _preselect: PauseSelectController | None = field(
+        default=None, init=False, repr=False
+    )
+    _env: Any = field(default=None, init=False, repr=False)
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    @property
+    def select_item(self) -> int | None:
+        return self.bomb.select_item
+
+    @property
+    def stand(self) -> tuple[int, int]:
+        return self.bomb.stand
+
+    @property
+    def face(self) -> str:
+        return self.bomb.face
+
+    @property
+    def from_room(self) -> int:
+        return self.bomb.from_room
+
+    @property
+    def to_room(self) -> int:
+        return self.bomb.to_room
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+        self.bomb.bind_env(env)
+
+    def _note(self, note: str) -> None:
+        if not self.notes or self.notes[-1] != note:
+            self.notes.append(note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.success or self.failed:
+            return FrameAction(nes_idle_action(), "done" if self.success else "failed")
+        if self.frames >= self.max_frames:
+            self.failed = True
+            self._note("timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+        if snap.level != LEVEL7:
+            return FrameAction(nes_idle_action(), "wait_level7")
+        if snap.transitioning:
+            return FrameAction(nes_idle_action(), "settle")
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
+        if snap.screen == ROOM_69:
+            live = live_goriyas(snap)
+            if live:
+                self.saw_goriya = True
+                target = nearest_enemy(snap.link_x, snap.link_y, live)
+                if target is None:
+                    return FrameAction(nes_idle_action(), "goriya_missing")
+                return _goriya_fight(snap, target, frames=self.frames)
+            if not self.saw_goriya:
+                return FrameAction(nes_idle_action(), "spawn_wait")
+            if "cleared" not in self.notes:
+                self._note("cleared")
+            if not self.preselect_done:
+                if self._preselect is None:
+                    self._preselect = PauseSelectController(
+                        want=B_SLOT_BOMBS, name="bombs"
+                    )
+                    self._preselect.bind_env(self._env)
+                driven = self._preselect.drive(snap)
+                for note in self._preselect.notes:
+                    if note not in self.notes:
+                        self.notes.append(note)
+                if self._preselect.failed:
+                    self.failed = True
+                    self._note(self._preselect.fail_reason or "preselect_failed")
+                    return FrameAction(nes_idle_action(), "preselect_failed")
+                if driven is not None:
+                    return driven
+                self.preselect_done = True
+                self._note("preselected_bombs")
+
+        action = self.bomb.step(snap)
+        for note in self.bomb.notes:
+            if note not in self.notes:
+                self.notes.append(note)
+        if self.bomb.phase is BombWallPhase.DONE:
+            self.success = True
+        elif self.bomb.phase is BombWallPhase.FAILED:
+            self.failed = True
+        return action
+
+    def report(self) -> dict[str, Any]:
+        rep = dict(self.bomb.report())
+        rep["success"] = self.success
+        rep["failed"] = self.failed
+        rep["frames"] = self.frames
+        rep["saw_goriya"] = self.saw_goriya
+        rep["spec_id"] = self.spec_id
+        rep["stage_id"] = self.spec_id
+        rep["notes"] = list(self.notes)
+        return rep
 
 
 def room_6b_north_step(
@@ -917,12 +1093,12 @@ L7_ROOM08_EAST_BOMB = Level7BombWall(
     room=ROOM_08, stand=(208, 141), face="RIGHT", opens_to=0x09
 )
 L7_ROOM08_EAST_APPROACH = ((200, 189), (200, 141), (208, 141))
-# 0x19 diamond floor east BOMB wall -> $EB=0x1A. South-around
-# (96,141)->(96,189)->(208,189)->(208,141) face RIGHT. 2/2 (19_be_v5/v6).
+# 0x19 north mouth (from 0x09) east BOMB wall -> $EB=0x1A. North-east around
+# (208,93) then down the east column to (208,141) face RIGHT.
 L7_ROOM19_EAST_BOMB = Level7BombWall(
     room=ROOM_19, stand=(208, 141), face="RIGHT", opens_to=0x1A
 )
-L7_ROOM19_EAST_APPROACH = ((96, 141), (96, 189), (208, 189), (208, 141))
+L7_ROOM19_EAST_APPROACH = ((208, 93), (208, 141))
 
 
 def east_of_room1a_ram_id() -> int | None:
@@ -1083,6 +1259,7 @@ __all__ = [
     "ROOM_6B_EAST_PLANE",
     "ROOM_6B_WEST_MOUTH",
     "SOUTH_MOUTH_Y",
+    "L7_ROOM69_WEST_APPROACH",
     "L7_ROOM69_WEST_BOMB",
     "L7_ROOM18_NORTH_BOMB",
     "L7_ROOM08_EAST_BOMB",
@@ -1098,6 +1275,7 @@ __all__ = [
     "Level7BombWall",
     "Level7PathController",
     "Room69EastController",
+    "Room69WestBombController",
     "Room6AEastController",
     "Room6BEastController",
     "Room6BNorthController",

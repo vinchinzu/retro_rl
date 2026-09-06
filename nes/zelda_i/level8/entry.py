@@ -13,8 +13,16 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_LEVEL8_BUSH
 from zelda_i.dungeon.pause_select import PauseSelectController
-from zelda_i.overworld.graph import ScreenHop
+from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
+from zelda_i.level8.overworld import (
+    L7_POND_TO_LEVEL8_BUSH_HOPS,
+    LEVEL8_5C_MAZE_WAYPOINTS,
+    pond_42_north_strip_action,
+    pond_reverse_to_l8_extra_hop_action,
+)
+from zelda_i.overworld.graph import ScreenHop, is_5c_maze_hop
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.stitch import OverworldHandoff
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOW,
@@ -114,6 +122,40 @@ class PostLevel7Handoff:
 UNMEASURED_POST_L7_HANDOFF = PostLevel7Handoff()
 
 
+def handoff_from_overworld(packet: OverworldHandoff) -> PostLevel7Handoff:
+    """Copy a shared leftover into the L8-shaped packet.
+
+    Incomplete packets stay unmeasured. Isolated factories still default to
+    ``UNMEASURED_POST_L7_HANDOFF``; the spine seam uses
+    ``MEASURED_POST_L7_HANDOFF``.
+    """
+    if not packet.complete():
+        return UNMEASURED_POST_L7_HANDOFF
+    return PostLevel7Handoff(
+        screen=packet.screen,
+        link_x=packet.link_x,
+        link_y=packet.link_y,
+        keys=packet.keys,
+        bombs=packet.bombs,
+        rupees=packet.rupees,
+        heart_containers=packet.heart_containers,
+        selected_item=packet.selected_item,
+        whistle=packet.whistle,
+        food=packet.food,
+        rod=packet.rod,
+        bow=packet.bow,
+        arrows=packet.arrows,
+        candle=CANDLE_RED if packet.candle is None else int(packet.candle),
+        xy_tolerance=packet.xy_tolerance,
+        evidence=packet.evidence,
+        verified=packet.verified,
+        route_eligible=packet.route_eligible,
+    )
+
+
+MEASURED_POST_L7_HANDOFF = handoff_from_overworld(MEASURED_POST_L7_EXIT)
+
+
 @dataclass(frozen=True)
 class BushBurnTarget:
     """Exact fire placement, promoted only after live RAM/visual evidence."""
@@ -141,6 +183,44 @@ class BushBurnTarget:
 # only runs once someone hands it a verified BushBurnTarget.
 UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 
+# Live walkable (assisted, no candle): left corridor x≈32–56 plus mid sand
+# y≈88–96 east to x≈144.  Only open exit without candle: UP @ x≈48 → 0x5D.
+WALKABLE_LEFT_X = (32, 56)
+WALKABLE_SAND_Y = (88, 96)
+WALKABLE_SAND_X_MAX = 144
+OPEN_EXIT_UP_X = 48
+
+# Every stand that opened the mode-16 mouth in the 5856-trial sweep
+# (logs/level8_bush_burn_sweep.json "near_misses"): one secret tile, several
+# approach angles (sweep opened mode 16; only (136,93) RIGHT was live-walked to 0x7E).
+# Facing == push on every one of them.
+MOUTH_STANDS = (
+    (120, 93, "RIGHT", "RIGHT"),
+    (128, 93, "RIGHT", "RIGHT"),
+    (136, 93, "RIGHT", "RIGHT"),
+    (160, 77, "DOWN", "DOWN"),
+    (184, 93, "LEFT", "LEFT"),
+    (192, 93, "LEFT", "LEFT"),
+    (200, 93, "LEFT", "LEFT"),
+)
+
+# Swept-verified default: the one stand the entrance fixture actually replayed
+# into live L8 play (Level8EntranceReconFixture.provenance.json, entry room
+# 0x7E at (120, 205)).
+VERIFIED_BUSH_X = 136
+VERIFIED_BUSH_Y = 93
+VERIFIED_FACING = "RIGHT"
+VERIFIED_PUSH = "RIGHT"
+VERIFIED_BUSH_AIM = (VERIFIED_BUSH_X, VERIFIED_BUSH_Y)
+
+# Refuted belief (rr-u9js): stand past the sampled east limit at (144, 93),
+# fire RIGHT, then push UP because "dungeon mouths are mode-16 UP".  The sweep
+# burned the candle at (144, 93) on all four facings and both pushes and never
+# saw a mouth; (144, 93) is not a mouth stand at all.
+REFUTED_BUSH_AIM = (144, 93)
+REFUTED_FACING = "RIGHT"
+REFUTED_PUSH = "UP"
+
 # Fixture-only live recon (rr-6o7.1): nes/zelda_i/scratch/level8_bush_burn_sweep.py
 # ran a 5856-trial live sweep from Level8BushWithCandleFixture (candle
 # owned+selected, triforce 0x7F, Link teleported to a documented-standable OW
@@ -162,12 +242,12 @@ UNVERIFIED_BUSH_BURN_TARGET = BushBurnTarget()
 # BurnLevel8BushController's ENTER phase now sends target.push_direction
 # (rr-i6hq). Evidence is fixture-live: verified=True (it reliably
 # reproduces), but route_eligible stays False since the real predecessor is
-# still the unmeasured PostLevel7Handoff, not a natural walk.
+# still the unmeasured 0x42→0x6D walk, not a natural post-L7 approach.
 LIVE_RECON_BUSH_BURN_TARGET = BushBurnTarget(
-    link_x=136,
-    link_y=93,
-    facing="RIGHT",
-    push_direction="RIGHT",
+    link_x=VERIFIED_BUSH_X,
+    link_y=VERIFIED_BUSH_Y,
+    facing=VERIFIED_FACING,
+    push_direction=VERIFIED_PUSH,
     tolerance=4,
     evidence="live_recon_fixture",
     verified=True,
@@ -190,8 +270,14 @@ class PostLevel7ToBushController(OverworldPathController):
     phase: ApproachPhase = ApproachPhase.HOP
     max_frames: int = APPROACH_MAX_FRAMES
     require_sword: bool = True
+    maze_waypoints: tuple[tuple[int, int], ...] = LEVEL8_5C_MAZE_WAYPOINTS
+    maze_hop_pred: Any = None
     _env: Any = field(default=None, init=False, repr=False)
     _handoff_checked: bool = field(default=False, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if self.maze_hop_pred is None:
+            self.maze_hop_pred = is_5c_maze_hop
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -218,9 +304,16 @@ class PostLevel7ToBushController(OverworldPathController):
         return self._fail_now("post_l7_path_exhausted_off_0x6d")
 
     def _extra_hop_action(
-        self, _snap: ZeldaSnapshot, _hop: ScreenHop
+        self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
-        # A new stuck position is evidence to inspect, not permission to jitter.
+        ring = pond_42_north_strip_action(snap, swing=self._swing)
+        if ring is not None:
+            return ring
+        extra = pond_reverse_to_l8_extra_hop_action(
+            snap, hop, swing=self._swing
+        )
+        if extra is not None:
+            return extra
         if self.stuck > self.stuck_threshold:
             return FrameAction(nes_idle_action(), "post_l7_path_stuck_wait")
         return None
@@ -420,13 +513,20 @@ class BurnLevel8BushController:
             return self._fail("link_death")
         if snap.triforce != POST_L7_TRIFORCE or candle != CANDLE_RED:
             return self._fail("level8_entry_inventory_changed")
-        if snap.level == LEVEL8 and snap.mode == PLAY_MODE:
+        if snap.level == LEVEL8:
             if not self.candle_use_observed:
                 return self._fail("level8_entered_without_observed_candle_use")
-            self.observed_entry_room = snap.screen
-            self.success = True
-            self._set_phase(BurnPhase.DONE, "level8_live_entry")
-            return FrameAction(nes_idle_action(), "done")
+            if snap.mode == PLAY_MODE:
+                self.observed_entry_room = snap.screen
+                self.success = True
+                self._set_phase(BurnPhase.DONE, "level8_live_entry")
+                return FrameAction(nes_idle_action(), "done")
+            # l8_entry_burn4: level=8 mode=2 (black load) still had $EB=0x6D.
+            # Wait for play. Do not trip left_bush_screen.
+            self._set_phase(BurnPhase.ENTER, "level8_transition")
+            return FrameAction(
+                nes_action(str(self.target.push_direction)), "enter_level8_settle"
+            )
         if self.burn_frames >= self.burn_budget:
             # Being controllable on 0x6D is approach evidence, never entry.
             return self._fail("burn_budget_exhausted_without_level8_entry")
@@ -453,17 +553,26 @@ class BurnLevel8BushController:
 
         tx = int(self.target.link_x)
         ty = int(self.target.link_y)
-        if abs(snap.link_x - tx) > self.target.tolerance:
-            return FrameAction(
-                nes_action("RIGHT" if snap.link_x < tx else "LEFT"),
-                "bush_burn_align_x",
-            )
-        if abs(snap.link_y - ty) > self.target.tolerance:
-            return FrameAction(
-                nes_action("DOWN" if snap.link_y < ty else "UP"),
-                "bush_burn_align_y",
-            )
-        self._set_phase(BurnPhase.FIRE)
+        fire_tol = 2
+        # Power-on leftover arrives 0x6D (48,61) from 0x5D south. RIGHT at
+        # y=61/86 is trees (l8_entry_burn / burn2). Reach the aim before
+        # east. Once FIRE, do not re-align: LEFT-correcting the RIGHT push
+        # walks off the mouth (l8_entry_burn3, (142,93), candle used, no
+        # mode 16).
+        if self.phase is not BurnPhase.FIRE:
+            if snap.link_y < ty - fire_tol:
+                return FrameAction(nes_action("DOWN"), "bush_burn_drop_to_channel")
+            if abs(snap.link_x - tx) > fire_tol:
+                return FrameAction(
+                    nes_action("RIGHT" if snap.link_x < tx else "LEFT"),
+                    "bush_burn_align_x",
+                )
+            if abs(snap.link_y - ty) > fire_tol:
+                return FrameAction(
+                    nes_action("DOWN" if snap.link_y < ty else "UP"),
+                    "bush_burn_align_y",
+                )
+            self._set_phase(BurnPhase.FIRE)
         cycle = self.phase_frames % 36
         if cycle < 4:
             return FrameAction(nes_action(str(self.target.facing)), "bush_face")
@@ -509,3 +618,201 @@ def make_burn_level8_bush_controller(
     *, target: BushBurnTarget = UNVERIFIED_BUSH_BURN_TARGET
 ) -> BurnLevel8BushController:
     return BurnLevel8BushController(target=target)
+
+
+class ReconBurnPhase(Enum):
+    AIM = auto()
+    FIRE = auto()
+    ENTER = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class IsolatedBushReconController:
+    """Fixture-live 0x6D burn trial. Budget exhaust on 0x6D is failure."""
+
+    link_x: int = VERIFIED_BUSH_X
+    link_y: int = VERIFIED_BUSH_Y
+    facing: str = VERIFIED_FACING
+    push_direction: str = VERIFIED_PUSH
+    tolerance: int = 4
+    max_frames: int = BURN_MAX_FRAMES
+    burn_budget: int = 800
+    phase: ReconBurnPhase = ReconBurnPhase.AIM
+    frames: int = 0
+    burn_frames: int = 0
+    phase_frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    candle_use_observed: bool = False
+    observed_entry_room: int | None = None
+    evidence: str = "fixture-live"
+    route_eligible: bool = False
+    _env: Any = field(default=None, init=False, repr=False)
+    _validated: bool = field(default=False, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def _set_phase(self, phase: ReconBurnPhase, note: str = "") -> None:
+        if phase is not self.phase:
+            self.phase = phase
+            self.phase_frames = 0
+            if note:
+                self.notes.append(note)
+
+    def _fail(self, reason: str) -> FrameAction:
+        self.failed = True
+        self._set_phase(ReconBurnPhase.FAILED, reason)
+        return FrameAction(nes_idle_action(), reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.phase_frames += 1
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed or self.frames >= self.max_frames:
+            return self._fail("level8_entry_timeout")
+        if self._env is None:
+            return self._fail("bush_recon_env_not_bound")
+        ram = self._env.get_ram()
+        candle = read_u8(ram, ADDR_CANDLE)
+        selected = read_u8(ram, ADDR_SELECTED_ITEM)
+        candle_used = read_u8(ram, ADDR_CANDLE_USED)
+        self.candle_use_observed = self.candle_use_observed or candle_used != 0
+
+        if not self._validated:
+            if (
+                snap.level != 0
+                or snap.mode != PLAY_MODE
+                or snap.screen != SCREEN_LEVEL8_BUSH
+            ):
+                return self._fail("bush_recon_not_on_0x6d")
+            if candle == 0:
+                return self._fail("bush_recon_candle_unowned")
+            if selected != B_ITEM_CANDLE:
+                return self._fail("bush_recon_candle_not_selected")
+            self._validated = True
+            self.notes.append("fixture_live_bush_recipe_accepted")
+            self.notes.append("refuted_aim_144_93_right_face_up_push")
+
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if snap.level == LEVEL8:
+            if not self.candle_use_observed:
+                return self._fail("level8_entered_without_observed_candle_use")
+            if snap.mode == PLAY_MODE:
+                self.observed_entry_room = snap.screen
+                self.success = True
+                self._set_phase(ReconBurnPhase.DONE, "level8_live_entry")
+                return FrameAction(nes_idle_action(), "done")
+            self._set_phase(ReconBurnPhase.ENTER, "level8_transition")
+            return FrameAction(nes_action(self.push_direction), "enter_level8_settle")
+        if self.burn_frames >= self.burn_budget:
+            return self._fail("burn_budget_exhausted_without_level8_entry")
+        self.burn_frames += 1
+
+        # rr-i6hq: UP after mode 16 does not complete the transition here.  The
+        # sweep opened the mouth at seven stands and recorded entry_room=null on
+        # every one; the entrance fixture only reached live L8 by continuing the
+        # push direction it fired with.
+        enter = nes_action(self.push_direction)
+        if snap.mode == 16:
+            if not self.candle_use_observed:
+                return self._fail("mouth_transition_without_candle_use")
+            self._set_phase(ReconBurnPhase.ENTER, "mouth_transition_observed")
+            return FrameAction(enter, "enter_level8")
+        if self.phase is ReconBurnPhase.ENTER and snap.transitioning:
+            return FrameAction(enter, "enter_level8_transition")
+        if snap.level != 0 or snap.mode != PLAY_MODE or snap.screen != SCREEN_LEVEL8_BUSH:
+            return self._fail("left_bush_screen_without_level8_entry")
+        if self.phase is ReconBurnPhase.ENTER:
+            return FrameAction(enter, "enter_level8")
+
+        if abs(snap.link_x - self.link_x) > self.tolerance:
+            return FrameAction(
+                nes_action("RIGHT" if snap.link_x < self.link_x else "LEFT"),
+                "bush_burn_align_x",
+            )
+        if abs(snap.link_y - self.link_y) > self.tolerance:
+            return FrameAction(
+                nes_action("DOWN" if snap.link_y < self.link_y else "UP"),
+                "bush_burn_align_y",
+            )
+        self._set_phase(ReconBurnPhase.FIRE)
+        cycle = self.phase_frames % 36
+        if cycle < 4:
+            return FrameAction(nes_action(self.facing), "bush_face")
+        if cycle < 12:
+            return FrameAction(nes_action("B"), "red_candle_fire")
+        return FrameAction(nes_action(self.push_direction), "push_revealed_mouth")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "burn": [self.burn_frames, self.burn_budget],
+            "aim": [self.link_x, self.link_y, self.facing, self.push_direction],
+            "refuted_aim": [*REFUTED_BUSH_AIM, REFUTED_FACING, REFUTED_PUSH],
+            "candle_use_observed": self.candle_use_observed,
+            "observed_entry_room": self.observed_entry_room,
+            "evidence": self.evidence,
+            "route_eligible": self.route_eligible,
+            "writes": 0,
+            "triforce": POST_L7_TRIFORCE,
+            "candle_red": CANDLE_RED,
+            "notes": list(self.notes),
+        }
+
+
+def make_isolated_bush_recon_controller() -> IsolatedBushReconController:
+    return IsolatedBushReconController()
+
+
+__all__ = [
+    "ADDR_CANDLE_USED",
+    "APPROACH_MAX_FRAMES",
+    "ApproachPhase",
+    "B_ITEM_CANDLE",
+    "BLUE_CANDLE_FALLBACK_ENABLED",
+    "BLUE_CANDLE_FALLBACK_ROUTE_ELIGIBLE",
+    "BURN_MAX_FRAMES",
+    "BurnLevel8BushController",
+    "BurnPhase",
+    "BushBurnTarget",
+    "CANDLE_RED",
+    "IsolatedBushReconController",
+    "LEVEL8",
+    "LIVE_RECON_BUSH_BURN_TARGET",
+    "MEASURED_POST_L7_HANDOFF",
+    "MOUTH_STANDS",
+    "OPEN_EXIT_UP_X",
+    "POST_L7_TRIFORCE",
+    "PostLevel7Handoff",
+    "PostLevel7ToBushController",
+    "REFUTED_BUSH_AIM",
+    "REFUTED_FACING",
+    "REFUTED_PUSH",
+    "ReconBurnPhase",
+    "SELECT_MAX_FRAMES",
+    "SelectRedCandleController",
+    "UNMEASURED_POST_L7_HANDOFF",
+    "UNVERIFIED_BUSH_BURN_TARGET",
+    "handoff_from_overworld",
+    "VERIFIED_BUSH_AIM",
+    "VERIFIED_BUSH_X",
+    "VERIFIED_BUSH_Y",
+    "VERIFIED_FACING",
+    "VERIFIED_PUSH",
+    "WALKABLE_LEFT_X",
+    "WALKABLE_SAND_X_MAX",
+    "WALKABLE_SAND_Y",
+    "make_burn_level8_bush_controller",
+    "make_isolated_bush_recon_controller",
+    "make_post_l7_to_bush_controller",
+    "make_select_red_candle_controller",
+]

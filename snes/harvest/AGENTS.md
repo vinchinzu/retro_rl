@@ -7,10 +7,9 @@ Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
 
 ## Immediate goal
 
-`rr-20w.2.3` D2 whole-farm clear (P0) + living residual
-[`docs/tasks/rr-20w.2.3-residual.md`](docs/tasks/rr-20w.2.3-residual.md).
-Water-refill `rr-3ae8` is also on the spine filter — claim **one**. Do not
-promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
+`rr-20w.2.3` Clean power-on D2 farm-clear is closed. Claim **one** of
+`rr-20w.2.4` (D2 nav replan on push/pixel-stuck) or water-refill `rr-3ae8`.
+Do not promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
 
 ## Commands
 
@@ -18,8 +17,8 @@ promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
 bd ready -l harvest -l spine
 
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on \
-  --stop-after-d2-shipping --save-end-state Y1_D2_PostShipper_WorkStart \
-  --out recordings/power_on_d2_spine_clear_final.json
+  --stop-after-d2-clear --save-end-state Y1_D2_PowerOn_FarmClear \
+  --out recordings/power_on_d2_farm_clear.json
 
 HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
   --state Y1_Inside_House --ship --out recordings/mountain_grape_ship.json

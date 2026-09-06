@@ -57,7 +57,10 @@ DARKNUT_KEY_ROOMS = frozenset(
 
 NORTH_DOOR = DOOR_TARGETS["UP"]  # (120, 93)
 BOMB_NORTH_STAND = (120, 105)
-BOMB_NORTH_APPROACH_3E: tuple[tuple[int, int], ...] = ((120, 109),)
+# A long shield-RNG clear can leave Link off-centre and south of the 0x3E
+# statue row (~y=141); a bare y-first (120,109) then rams a statue.  Rally
+# on the statue-free centre column first (south, then the north band).
+BOMB_NORTH_APPROACH_3E: tuple[tuple[int, int], ...] = ((120, 157), (120, 109))
 CENTER_KEY_STAND = (120, 141)
 # Peel off the 0x2E centre column (map 0x17). Door push is separate so an
 # overshoot north of y=93 is not walked back south.
@@ -101,8 +104,21 @@ class BombWall3ENorth:
     opens_to = ROOM_MAP_MANHANDLA
 
 
+# Blue-darknut (0x0C) rooms hold 5-6 HP128 bodies that turn to block frontal
+# sword hits, so the patrol clear is high-variance: fixture replays land
+# ~2000f but a bad shield-RNG power-on run needs far more.  Give the
+# multi-darknut rooms the budget the probe's `fight_clear` used; the
+# single-Manhandla rooms keep the tight cap.  (rr-6o7.2)
+_MANHANDLA_CLEAR_FRAMES = 5_000
+_DARKNUT_CLEAR_FRAMES = 16_000
+
+
 def _sword_clear_spec(
-    room: int, types: tuple[int, ...], spec_id: str
+    room: int,
+    types: tuple[int, ...],
+    spec_id: str,
+    *,
+    max_frames: int = _MANHANDLA_CLEAR_FRAMES,
 ) -> DungeonRoomSpec:
     """Local fight_clear engine row. Not registered; not on L8_THROUGH."""
     return DungeonRoomSpec(
@@ -123,7 +139,7 @@ def _sword_clear_spec(
             engage_attack_hold=3,
         ),
         reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
-        max_frames=5000,
+        max_frames=max_frames,
         level=LEVEL8,
     )
 
@@ -132,10 +148,16 @@ CLEAR_6E_SPEC = _sword_clear_spec(
     ROOM_MANHANDLA, (MANHANDLA_OBJECT_TYPE,), "l8_clear_0x6e_manhandla"
 )
 CLEAR_5E_SPEC = _sword_clear_spec(
-    ROOM_DARKNUT_KEY, (TYPE_0C,), "l8_clear_0x5e_0x0c"
+    ROOM_DARKNUT_KEY,
+    (TYPE_0C,),
+    "l8_clear_0x5e_0x0c",
+    max_frames=_DARKNUT_CLEAR_FRAMES,
 )
 CLEAR_3E_SPEC = _sword_clear_spec(
-    ROOM_BLUE_DARKNUTS, (TYPE_0C,), "l8_clear_0x3e_0x0c"
+    ROOM_BLUE_DARKNUTS,
+    (TYPE_0C,),
+    "l8_clear_0x3e_0x0c",
+    max_frames=_DARKNUT_CLEAR_FRAMES,
 )
 CLEAR_2E_SPEC = _sword_clear_spec(
     ROOM_MAP_MANHANDLA, (MANHANDLA_OBJECT_TYPE,), "l8_clear_0x2e_manhandla"
@@ -264,7 +286,10 @@ class _NorthColumnBase(HopController):
                 wall=wall,
                 level=LEVEL8,
                 approach_waypoints=approach,
-                max_frames=8000,
+                # 0x3E north wall: residual darknut/statue-projectile state
+                # after a long shield-RNG clear can stall the approach to the
+                # (120,105) stand well past the old 8k budget.
+                max_frames=16_000,
                 select_item=B_SLOT_BOMBS,
             )
             if self._env is not None:
@@ -303,7 +328,7 @@ class Level8NorthManhandlaController(_NorthColumnBase):
     """0x7E UP → clear 0x6E sword-only → bomb-N (120,105) → 0x5E."""
 
     spec_id: str = "level8_north_manhandla_bomb"
-    max_frames: int = 20_000
+    max_frames: int = 26_000
     done_reason: str = "arrived_0x5e"
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
@@ -340,7 +365,9 @@ class Level8DarknutKeyController(_NorthColumnBase):
     """
 
     spec_id: str = "level8_darknut_key_up"
-    max_frames: int = 30_000
+    # 0x5E + 0x3E can each need a full _DARKNUT_CLEAR_FRAMES shield-RNG fight,
+    # plus the 0x2E Manhandla and the inter-room walks.
+    max_frames: int = 55_000
     done_reason: str = "arrived_0x1e"
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:

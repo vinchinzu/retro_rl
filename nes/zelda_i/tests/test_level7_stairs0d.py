@@ -34,16 +34,14 @@ from zelda_i.level7.stairs0d import (
     tip_block,
 )
 from zelda_i.ram import (
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_OBJ_TYPE,
-    ADDR_SCREEN,
     PASSAGE_MODE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
 
 _BLOCK_SLOT = 11
 
@@ -56,12 +54,13 @@ def _ram(
     mode: int = PLAY_MODE,
     block: tuple[int, int] | None = TIP_BLOCK_XY,
 ) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = 7
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
+    ram = make_ram(
+        {"mode": PLAY_MODE, "level": 7, "screen": ROOM},
+        x=x,
+        y=y,
+        screen=screen,
+        mode=mode,
+    )
     if block is not None:
         ram[ADDR_OBJ_TYPE + _BLOCK_SLOT] = 0x68
         ram[ADDR_LINK_X + _BLOCK_SLOT] = block[0]

@@ -19,22 +19,29 @@ from zelda_i.level8.path import (
     make_gleeok_passage_controller,
 )
 from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     ADDR_ROOM_ITEM_ID,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": GLEEOK_ROOM,
+    "x": 120,
+    "y": 189,
+    "keys": 8,
+    "bombs": 5,
+    "magic_key": 1,
+    "triforce": 0x7F,
+    "health": 0x22,
+    "room_item": 0x1A,
+}
 
 UP = list(nes_action("UP"))
 IDLE = list(nes_idle_action())
@@ -42,19 +49,7 @@ LEFT_UP = list(nes_action("LEFT", "UP"))
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", GLEEOK_ROOM)
-    ram[ADDR_LINK_X] = fields.get("x", 120)
-    ram[ADDR_LINK_Y] = fields.get("y", 189)
-    ram[ADDR_KEYS] = fields.get("keys", 8)
-    ram[ADDR_BOMBS] = fields.get("bombs", 5)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_HEALTH] = fields.get("health", 0x22)
-    ram[ADDR_ROOM_ITEM_ID] = fields.get("room_item", 0x1A)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):

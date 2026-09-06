@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """D2 leftover smash from a live pin (not a plant tape).
 
-10 bushes (pick+toss) → dump fence posts in ponds → toss remaining stones
-in ponds → hammer remaining 2×2 boulders → axe remaining stumps.
-Smash types run as four farm chunks (nw/ne/sw/se) so a last-cell stall
-cannot eat the whole farm. Isolated leftover pin (rr-w14t / rr-20w.2.8).
+Thin adapter over ``D2FarmClearTactic``. Order lives in ``next_d2_spec``:
+weeds → fences → stones → hammer/rocks → axe/stumps, four farm chunks.
 Do not redo power-on here.
 
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\

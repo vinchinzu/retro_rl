@@ -60,6 +60,7 @@ from zelda_i.level5.spine import (
 from zelda_i.level6.spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level7.spine import L7_STOPS, L7_THROUGH, continue_level7_spine
 from zelda_i.level8.spine import L8_STOPS, L8_THROUGH, continue_level8_spine
+from zelda_i.level9.spine import L9_STOPS, L9_THROUGH, continue_level9_spine
 from zelda_i.menus import BOOT_FILE_SLOT, BOOT_QUEST
 from zelda_i.ram import (
     ADDR_CANDLE,
@@ -90,7 +91,7 @@ SPINE_THROUGH: tuple[str, ...] = (
     "level2-entry",
     "level2",
     "level3",
-) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH + L8_THROUGH
+) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH + L8_THROUGH + L9_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -276,6 +277,7 @@ class SpineRun:
                 **L6_STOPS,
                 **L7_STOPS,
                 **L8_STOPS,
+                **L9_STOPS,
             }.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
@@ -637,8 +639,8 @@ def run_survival_spine(
     )
     if not run.success or through in L7_THROUGH:
         return run
-    # Reachable, not green: with UNMEASURED_POST_L7_HANDOFF the entry chapter
-    # fails on ``post_l7_handoff_unmeasured`` (rr-8t4.3 owns the measurement).
+    # L8 continues from MEASURED_POST_L7_HANDOFF. Default hops walk the
+    # refilled-pond west ring then the reverse pond corridor to 0x6D.
     continue_level8_spine(
         env,
         run,
@@ -646,5 +648,18 @@ def run_survival_spine(
         run_stages=_run_stages,
         **hop_kw,
         **(level8_overrides or {}),
+    )
+    if not run.success or through in L8_THROUGH:
+        return run
+    # L9 continues from MEASURED_POST_L8_HANDOFF (OW 0x6D). Every natural L9
+    # chapter is still a fail-closed marker (Spectacle Rock walk, bomb entry,
+    # Old Man TF gate, interior on natural resources) -- reaching the seam is
+    # not greening it.
+    continue_level9_spine(
+        env,
+        run,
+        through=through,
+        run_stages=_run_stages,
+        **hop_kw,
     )
     return run

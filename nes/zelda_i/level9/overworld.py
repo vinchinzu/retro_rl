@@ -49,32 +49,14 @@ ARROWS_SILVER_PLANNED = 2
 
 LEVEL9_ROCK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x78, "RIGHT"),
-    # Fixture-live 2026-09-03: the unaligned north push stalls at
-    # 0x78 (16,109).  The north mouth is the established x=48 column.
-    ScreenHop(0x68, "UP", align_x=48),
-    # Fixture-live 2026-09-03 (rr-sz8.5): unaligned UP stalls; a
-    # column sweep from Level9OverworldReconFixture found the 0x68
-    # north mouth at x=48 (reproduced twice, independent runs).
+    ScreenHop(0x68, "UP", align_x=48),  # 0x78 unaligned north stalls (16,109)
     ScreenHop(0x58, "UP", align_x=48),
-    # Fixture-live 2026-09-03 (rr-sz8.5): 0x58 north mouth at x=112.
     ScreenHop(0x48, "UP", align_x=112),
-    # Fixture-live 2026-09-03 (rr-sz8.5): 0x48 north mouth at x=128.
     ScreenHop(0x38, "UP", align_x=128),
-    # v3 crossed the y=141 bridge but the west-edge x=48 north push halted at
-    # (48,133).  Offline screenshot geometry places the north mouth in the
-    # central sandy corridor; use x=120 for the next falsifiable trial.
-    ScreenHop(0x28, "UP", align_x=120),
-    # Fixture-live 2026-09-03 (rr-sz8.5): 0x28 west mouth at y=102.
+    ScreenHop(0x28, "UP", align_x=120),  # x=48 west-edge north is blocked
     ScreenHop(0x27, "LEFT", align_y=102),
-    # Fixture-live 2026-09-03 (rr-sz8.5): the apparent full-width wall was
-    # only the east mountain pocket.  Drop to y~=133, walk west to x~=144,
-    # then climb the central mouth.  The fixture controller below owns the
-    # required multi-axis waypoint; align_x documents the live mouth.
-    ScreenHop(0x17, "UP", align_x=144),
-    # Raft crossing: approach the north edge from x~=64.
+    ScreenHop(0x17, "UP", align_x=144),  # drop y~133, west to central mouth
     ScreenHop(0x07, "UP", align_x=64),
-    # Row-zero west corridor.  Re-align at y~=141 on both screens because
-    # overworld enemies can displace Link during the walk.
     ScreenHop(0x06, "LEFT", align_y=141),
     ScreenHop(SCREEN_LEVEL9_ROCK_HYP, "LEFT", align_y=141),
 )
@@ -108,10 +90,6 @@ class FixtureEntryPhase(Enum):
     WEST_06 = auto()
     ROCK_OBSERVE = auto()
     PAUSE_OPEN = auto()
-    PAUSE_OPEN_WAIT = auto()
-    PAUSE_SELECT = auto()
-    PAUSE_CURSOR_WAIT = auto()
-    PAUSE_CLOSE_WAIT = auto()
     ROCK_TOP_Y = auto()
     ROCK_GAP_X = auto()
     ROCK_BOTTOM_Y = auto()
@@ -389,13 +367,7 @@ class Level9FixtureEntryController:
             if self.rock_observe_frames < 30:
                 return FrameAction(nes_idle_action(), "spectacle_rock_screenshot_hold")
             self._set_phase(FixtureEntryPhase.PAUSE_OPEN, "rock_screenshot_observed")
-        if self.phase in (
-            FixtureEntryPhase.PAUSE_OPEN,
-            FixtureEntryPhase.PAUSE_OPEN_WAIT,
-            FixtureEntryPhase.PAUSE_SELECT,
-            FixtureEntryPhase.PAUSE_CURSOR_WAIT,
-            FixtureEntryPhase.PAUSE_CLOSE_WAIT,
-        ):
+        if self.phase is FixtureEntryPhase.PAUSE_OPEN:
             driven = self._select.drive(snap)
             for note in self._select.notes:
                 if note not in self.notes:
@@ -428,9 +400,7 @@ class Level9FixtureEntryController:
                 return action
             self._set_phase(FixtureEntryPhase.ALIGN_58_X)
         if self.phase is FixtureEntryPhase.ALIGN_58_X:
-            # The first full replay accepted x=106 under a loose tolerance and
-            # then halted against the bush at (104,149).  The live north mouth
-            # is the exact x~=112 lane; do not re-probe the blocked loose cell.
+            # x=106 under a loose tol halted at the (104,149) bush. Lane is 112.
             action = self._axis(snap, axis="x", target=112, tolerance=1, reason="screen58_bush_x112")
             if action is not None:
                 return action
@@ -449,9 +419,7 @@ class Level9FixtureEntryController:
         if self.phase is FixtureEntryPhase.NORTH_48:
             return self._move("UP", "screen48_north_0x38")
         if self.phase is FixtureEntryPhase.INLAND_38:
-            # v2 tried to align west at y=189, slid to (112,205), and halted
-            # against water.  The live screenshot shows the horizontal bridge
-            # at y~=141; climb to it before crossing west toward x=48.
+            # y=189 west-align slid into water at (112,205). Bridge is y~141.
             if snap.link_y > 141:
                 return self._move("UP", "screen38_bridge_y141")
             self._set_phase(FixtureEntryPhase.ALIGN_38_X)
@@ -619,6 +587,8 @@ class Level9FixtureEntryController:
             "room_writes": 0,
             "door_writes": 0,
         }
+
+
 def has_full_triforce(ram) -> bool:
     return read_u8(ram, ADDR_TRIFORCE) == FULL_TRIFORCE
 

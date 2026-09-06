@@ -3,6 +3,55 @@
 Did not STATUS-promote. Did not edit `STATUS.md`. Bead `rr-8t4.3` stays
 `in_progress`. Residual is this file. Did not `bd export` / push.
 
+## 2026-09-05 — 0x1A CANDLE_PUSH clear made deterministic (`level7_room1a_candle`)
+
+The Survival spine `--through level7` was timing out at
+`level7_room1a_candle` — `timeout_0x1a_112_109_mode=5_phase=hunt_c=0`.
+Root cause: room `0x1A` has a **sealed centre cross**. `dungeon.tilemap`
+pixel dump of `$6530`:
+
+```
+        96 112 128 144 160
+y112     .   .   #   .   .
+y128     .   #   .   #   .        (128,128) floor
+y144     #   .   S   .   #        (112,144)/(144,144) floor, (128,144) stairs
+y160     .   #   .   #   .        (128,160) floor
+y176     .   .   #   .   .
+```
+
+The cross cells `(128,128)/(112,144)/(128,144)S/(144,144)/(128,160)` connect
+to the rest of the room **only through the stair tile** (goriyas don't warp).
+Slots 4 & 5 spawn at `x=128` (`(128,125)` / `(128,157)`) and descend into the
+cross; once there they pace `y=141` `x∈[112,144]` forever and **cannot be
+meleed, bombed from any reachable stand, or hit by a sword beam** (wooden
+sword fires none under the health assist). `room_all_dead` never flips → the
+`0x68` never pushes → timeout. Verified with 8000-frame retreat probes and
+tile/bomb/perimeter-swing probes (all in `scratch/probe_l7_1a_*`).
+
+The proven recipe (`scratch/probe_l7_candle_push.py --push UP`, candle 0→2
+NATURAL, `deaths=0`, `*_writes=0`): **drift DOWN toward the SW corner while the
+six goriyas spawn, then fight aggressively (face nearest + swing on an
+`i%8<4` cadence, no hitbox gate, no projectile retreat)** — this kills slots
+4 & 5 before they descend. `Room1ACandleController` was doing the opposite:
+idle during spawn-wait, `_goriya_fight` (hitbox-gated, retreats from
+boomerangs), and a forced `_phase="hunt"` at frame 2800 whose naive waypoint
+walk wedged Link at `(112,109)` on the `(128,112)` block corner.
+
+Fix (`level7/cellar.py`, `route_eligible=false` unchanged):
+- spawn-wait now returns `DOWN` (reason unchanged: `spawn_wait`).
+- new `_aggressive_fight`: face nearest goriya, swing `frames%8<4`; goriyas
+  inside `_in_sealed_centre` are de-prioritised (chase only if nothing
+  reachable remains) so Link never wedges chasing an unkillable one.
+- `_hunt` terminal fight uses `_aggressive_fight`; each waypoint leg now
+  bails after ~50 stalled frames (`candle_hunt_skip`) instead of pressing a
+  direction into a block forever.
+- clear→hunt switch moved 2800 → `ROOM1A_CLEAR_FRAMES` (3200).
+
+Evidence: `probe_l7_1a_controller_trace` from `Level7Interior1AReconFixture`
+→ `success`, candle 2, 3058 frames, never left `phase=clear`.
+`probe_l7_red_candle_chain --food 1` from `OW_L7PondNatural` → all 14 stages
+pass, `level7_red_candle_pickup` 9970 → 2410 frames. 842/842 unit tests pass.
+
 ## 2026-09-04 — 0x0D walk-on **SOLVED**; the NO-GO below is OVERTURNED
 
 Everything in this file dated 2026-09-03 or earlier about `0x0D` being

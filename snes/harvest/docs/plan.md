@@ -4,7 +4,8 @@ Future work only. Proven facts live in [STATUS.md](STATUS.md).
 Structure / API direction: [PLANNING_STACK.md](PLANNING_STACK.md).
 Tracker: `bd ready -l harvest -l spine`. Session loop:
 `.grok/skills/harvest-session/` (one bead, one living residual, halt-3,
-no STATUS from a pin). Immediate session card: `rr-20w.2.3` D2 whole-farm clear.
+no STATUS from a pin). Immediate session card: `rr-20w.2.4` nav replan or
+`rr-3ae8` CROP_WATER refill. Claim one.
 
 **Doc consolidation (2026-08-18):** deleted `CODE_QUALITY_REVIEW.md`
 (review essay), `bot_architecture_plan.md` (layer ownership folded here
@@ -14,10 +15,8 @@ Ready work stays in beads — do not recreate a gate board.
 
 ## Working board
 
-1. **D2 farm clear (now):** every weed, stone, fence, large rock, and stump
-   gone; potatoes planted and watered; goods shipped before 17:00. The hour
-   stops at 18; continue until clear. No leftover quotas and no exception for
-   the 19 house-row posts.
+1. ~~D2 farm clear~~ — closed (`rr-20w.2.3`, Clean power-on
+   `recordings/power_on_d2_farm_clear.json`).
 2. First potato harvest from those plants; no Day09 fixture.
 3. Spring → Summer.
 4. Animals, bought live.
@@ -33,35 +32,11 @@ skills, not a frozen tape.
 
 ## Bottleneck
 
-`harvest.planner.d2_work` composes the D2 skills after the live grape and seed
-purchase. Crop targets are eight planted and watered tiles. Debris completion
-is exhaustive, ordered weeds → fences → stones → large rocks → stumps; numeric
-leftover quotas are not completion. The next rung proof is a natural power-on run,
-not `Y1_After_Buy_Potato` evidence. Farm→spa from `Y1_D2_Wood_Progress` is
-live-green; smash the remaining SE stumps from the spa-return pin.
-
-### D2 live blocker: SE stump 6-hit after spa
-
-Farm→spa from `Y1_D2_Wood_Progress` is closed. Do not fourth leftover
-`--section stumps` from that pin or a 400k `--section all`.
-
-- leftover_exec does not debris-stall during spa; `D2FarmClearTactic` skips
-  motion/goal watchdogs on spa children.
-- Live west-gate dump: `(0,24)=0xA1` is the gate wall (LEFT+B pins at x=22,
-  no map change); `(1,26)=0xA8` open face into `(0,26)=0xC0` trigger;
-  `(1,27)=0xFF`. House column x=8 is A0 y=24–25 then A8 y=26.
-- `_FARM_WEST_EXIT` is `(40,424)` `is_exit` left. Pinch `force_run` DOWN
-  the house column to `(136,424)`, then west on y=26. Not y=24 `(8,392)`
-  and not y=27 `(72,440)`.
-- `hot_spring_probe --no-drain --save-end-state Y1_D2_Wood_SpaReturn`
-  GREEN: 0x10 soak 4→100 in 3989f, returned to farm. Pin `(24,448)` tile
-  `(1,28)`, 18:12, stam 100, 5 SE stumps. Player tile is `0xFF`.
-- Leftover from that pin: red 1 idled on `stale_farm_map` (now
-  `yard_load_action` toward `(25,28)`). Red 2 reached stump `(34,42)`,
-  4 axe hits, then 24k debris stall. Do not third.
-
-Diagnose the 6-hit stall from `Y1_D2_Leftover_Checkpoint`. A successful
-SE chunk is still not a whole-farm or natural-entry D2 claim.
+Clean power-on D2 farm-clear is closed (`rr-20w.2.3`).
+`recordings/power_on_d2_farm_clear.json`, leave pin `Y1_D2_PowerOn_FarmClear`.
+Order lives in `next_d2_spec` (plot → plant 8 → water 8 → leftover smash).
+Next spine is `rr-20w.2.4` (shared travel walkability + replan on push) or
+`rr-3ae8` (CROP_WATER refill through late spring). Claim one.
 
 **Already closed (do not re-open as bottleneck):**
 
@@ -70,6 +45,7 @@ SE chunk is still not a whole-farm or natural-entry D2 claim.
 - Natural empty-can fill + thrash stabilizations — `rr-3q27` + kids
 - Power-on full D1→D2 shed on `house_size=0` — `rr-bhr`
 - Same-day D2 grape→shop→clear→hoe→plant — `rr-20w.1`
+- Clean power-on D2 farm-clear (debris 0, 8 wet potatoes, shipped_before_17) — `rr-20w.2.3`
 - Spring calendar shell D2→Summer (fixture, no income) — historical soak
 
 **Architecture tax on the tip path:** keep monofiles under ~1000 LOC (AGENTS).

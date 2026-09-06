@@ -163,6 +163,59 @@ def north_of_room58_ram_id() -> int | None:
     return LEVEL7_ROOM_BY_ID[BOMB_UPGRADE].ram_id
 
 
+@dataclass(kw_only=True)
+class _WestHop(HopController):
+    """Shared dest / arrive / report for L7 west hops. Not a new dispatcher."""
+
+    dest: int | None = None
+    origin: frozenset[int] = frozenset()
+    door: str = ""
+
+    @property
+    def stage_id(self) -> str:
+        return self.spec_id
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.level != LEVEL7
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen in self.origin
+        ):
+            return False
+        if self.dest is not None:
+            return snap.screen == self.dest
+        return True
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        extra = self._timeout_extra()
+        note = (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}"
+        )
+        return f"{note}_{extra}" if extra else note
+
+    def _timeout_extra(self) -> str:
+        return ""
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+            "stage_id": self.spec_id,
+            "dest_screen": self.dest,
+            "evidence": "fixture-live",
+            "route_eligible": False,
+            "door": self.door,
+        }
+
+
 def room_6c_east_step(
     snap: ZeldaSnapshot,
     *,
@@ -198,7 +251,7 @@ def room_6c_east_step(
 
 
 @dataclass(kw_only=True)
-class Room6CEastController(HopController):
+class Room6CEastController(_WestHop):
     """0x6C west mouth → east door to live dest 0x6D (STALFOS_KEY)."""
 
     spec_id: str = "level7_room6c_east"
@@ -206,34 +259,16 @@ class Room6CEastController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x6c"
     dest: int | None = field(default_factory=east_of_room6c_ram_id)
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_6C}
+    )
+    door: str = "RIGHT"
     _last_x: int | None = None
     _stuck: int = 0
     _bump: int = 0
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_6C}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}_stuck={self._stuck}"
-        )
+    def _timeout_extra(self) -> str:
+        return f"stuck={self._stuck}"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.screen == ROOM_6B:
@@ -258,20 +293,6 @@ class Room6CEastController(HopController):
                 return self.mark_fail("west_backtrack")
             return self.mark_fail(action.reason)
         return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "RIGHT",
-        }
 
 
 def room_68_north_step(
@@ -306,7 +327,7 @@ def room_68_north_step(
 
 
 @dataclass(kw_only=True)
-class Room68NorthController(HopController):
+class Room68NorthController(_WestHop):
     """0x68 KEESE_TRAPS → OPEN north door to live dest 0x58 (DODONGOS_UPGRADE).
 
     Recon-wired only.  Reached via the 0x69 west bomb wall.
@@ -317,31 +338,10 @@ class Room68NorthController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x68_north"
     dest: int | None = field(default_factory=north_of_room68_ram_id)
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}"
-        )
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
+    )
+    door: str = "UP"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "north68_scroll")
@@ -352,23 +352,9 @@ class Room68NorthController(HopController):
             return self.mark_fail(action.reason)
         return action
 
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "UP",
-        }
-
 
 @dataclass(kw_only=True)
-class Room58EastController(HopController):
+class Room58EastController(_WestHop):
     """0x58 (DODONGOS_UPGRADE) → OPEN east door to live dest 0x59.
 
     3x invulnerable 0x31 roamers are dodged (assist soaks chip damage).
@@ -381,32 +367,14 @@ class Room58EastController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x58"
     dest: int | None = field(default_factory=east_of_room58_ram_id)
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58}
+    )
+    door: str = "RIGHT"
     _phase: str = "climb"
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}_phase={self._phase}"
-        )
+    def _timeout_extra(self) -> str:
+        return f"phase={self._phase}"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("RIGHT"), "east58_scroll")
@@ -443,23 +411,9 @@ class Room58EastController(HopController):
             reason="east58",
         )
 
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "RIGHT",
-        }
-
 
 @dataclass(kw_only=True)
-class Room59UpController(HopController):
+class Room59UpController(_WestHop):
     """0x59 (GORIYA_COMPASS) west mouth: kill-clear the goriya 0x05/0x06,
     then the perimeter waypoint micro around the central mass to the UP door
     -> live dest 0x49 (GORIYA_BUBBLE).
@@ -475,33 +429,15 @@ class Room59UpController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x59_north"
     dest: int | None = field(default_factory=north_of_room59_ram_id)
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59}
+    )
+    door: str = "UP"
     saw_goriya: bool = False
     _phase: str = "clear"
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}_phase={self._phase}_saw={int(self.saw_goriya)}"
-        )
+    def _timeout_extra(self) -> str:
+        return f"phase={self._phase}_saw={int(self.saw_goriya)}"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "up59_scroll")
@@ -550,20 +486,6 @@ class Room59UpController(HopController):
             reason="up59",
         )
 
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "UP",
-        }
-
 
 def room_68_down_step(
     snap: ZeldaSnapshot,
@@ -600,7 +522,7 @@ def room_68_down_step(
 
 
 @dataclass(kw_only=True)
-class Room68DownController(HopController):
+class Room68DownController(_WestHop):
     """0x68 KEESE_TRAPS → OPEN south door to live dest 0x78 (ROPES_KEY).
 
     Recon-wired only.  0x78 is a dead-end (ropes 0x28 + floor key 0x19).
@@ -611,31 +533,10 @@ class Room68DownController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x68_south"
     dest: int | None = field(default_factory=south_of_room68_ram_id)
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}"
-        )
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
+    )
+    door: str = "DOWN"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("DOWN"), "south68_scroll")
@@ -645,20 +546,6 @@ class Room68DownController(HopController):
         if action.reason.startswith("unexpected_room"):
             return self.mark_fail(action.reason)
         return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "DOWN",
-        }
 
 
 def room_58_north_step(
@@ -696,7 +583,7 @@ def room_58_north_step(
 
 
 @dataclass(kw_only=True)
-class Room58NorthController(HopController):
+class Room58NorthController(_WestHop):
     """0x58 DODONGOS_UPGRADE → KEY north door to live dest 0x48.
 
     Recon-wired only.  0x48 is a dead-end old-man bomb-capacity room
@@ -708,31 +595,10 @@ class Room58NorthController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x58_north"
     dest: int | None = field(default_factory=north_of_room58_ram_id)
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}"
-        )
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58}
+    )
+    door: str = "UP"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "north58_scroll")
@@ -742,20 +608,6 @@ class Room58NorthController(HopController):
         if action.reason.startswith("unexpected_room"):
             return self.mark_fail(action.reason)
         return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "UP",
-        }
 
 
 def room_49_up_step(
@@ -842,7 +694,7 @@ def room_49_up_step(
 
 
 @dataclass(kw_only=True)
-class Room49UpController(HopController):
+class Room49UpController(_WestHop):
     """0x49 (GORIYA_BUBBLE) south mouth: kill-clear goriya 0x05, then UP
     across the water moat at x=120 (Stepladder) to live dest 0x39.
 
@@ -855,32 +707,14 @@ class Room49UpController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x49_north"
     dest: int | None = field(default_factory=north_of_room49_ram_id)
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59, ROOM_49}
+    )
+    door: str = "UP"
     saw_goriya: bool = False
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_69, ROOM_68, ROOM_58, ROOM_59, ROOM_49}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
-        )
+    def _timeout_extra(self) -> str:
+        return f"saw={int(self.saw_goriya)}"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "up49_scroll")
@@ -903,20 +737,6 @@ class Room49UpController(HopController):
                 return self.mark_fail("south_backtrack")
             return self.mark_fail(action.reason)
         return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "UP",
-        }
 
 
 ROOM_09 = 0x09
@@ -976,7 +796,7 @@ def room_09_down_step(
 
 
 @dataclass(kw_only=True)
-class Room09DownController(HopController):
+class Room09DownController(_WestHop):
     """0x09 (GORIYA_POST_RUPEE) west mouth: kill-clear, south shutter
     to live dest 0x19 (WEST_LOCK_SKIP).  2/2 (09_down_v2/v3).
     Recon-wired only.
@@ -987,32 +807,14 @@ class Room09DownController(HopController):
     require_level: int = LEVEL7
     done_reason: str = "left_0x09_south"
     dest: int | None = field(default_factory=south_of_room09_ram_id)
+    origin: frozenset[int] = frozenset(
+        {ENTRY_SCREEN, ROOM_18, ROOM_08, ROOM_09}
+    )
+    door: str = "DOWN"
     saw_goriya: bool = False
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if (
-            snap.level != LEVEL7
-            or snap.mode != PLAY_MODE
-            or snap.transitioning
-            or snap.screen in {ENTRY_SCREEN, ROOM_18, ROOM_08, ROOM_09}
-        ):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return True
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"arrived_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def timeout_note(self, snap: ZeldaSnapshot) -> str:
-        return (
-            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-            f"_mode={snap.mode}_saw={int(self.saw_goriya)}"
-        )
+    def _timeout_extra(self) -> str:
+        return f"saw={int(self.saw_goriya)}"
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("DOWN"), "down09_scroll")
@@ -1028,21 +830,6 @@ class Room09DownController(HopController):
                 return self.mark_fail("west_backtrack")
             return self.mark_fail(action.reason)
         return action
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "stage_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "door": "DOWN",
-        }
-
 
 
 __all__ = [

@@ -95,9 +95,10 @@ LEVEL8_BUSH_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_START, LEVEL8_BUSH_HOPS
 )
 
-# Fixture-live L7 exit-area -> L8 geometry lane (rr-6o7.4).  The true
-# post-L7 fanfare leave is still unmeasured; this table starts only from the
-# disclosed Level7Entrance / OW_L7Pond fixtures.  Reverse the already-live
+# Fixture-live L7 exit-area -> L8 geometry lane (rr-6o7.4). The Survival
+# leave is now measured (OW 0x42 (96,93)) but sits in the refilled-pond
+# north strip; this table still starts only from the disclosed
+# Level7Entrance / OW_L7Pond south-shore fixtures. Reverse the already-live
 # pond route to 0x58, then join the already-live L8 corridor at 0x59.
 L7_POND_TO_LEVEL8_BUSH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x52, "DOWN", align_x=112),
@@ -127,10 +128,18 @@ POND_65_GAP_X = 112  # 0x65 north gap to 0x55 / 0x55 south spit (fwd straight x~
 POND_55_EAST_Y = 133  # shared row: 0x55/0x56 cross at y~133
 POND_56_STEP_X = 218  # 0x56: step down from the y~133 row to y~157 at x~224
 # 2026-09-03 rr-6o7.4 first live miss: naturally exiting Level7Entrance
-# refills the pond and settles above it at (112,93).  Straight DOWN collides
-# with tile 0x8F; do not repeat that claim.  OW_L7Pond starts below the pool
-# and remains a distinct disclosed fixture start for the next sitting.
+# refills the pond and settles above it at (112,93). Straight DOWN collides
+# with tile 0x8F. Power-on leftover is the same north strip at (96,93).
+# OW_L7Pond starts below the pool and remains a distinct south-shore start.
 POND_42_REFILLED_DEAD_POSE = (112, 93)
+# Live 2026-09-05 (probe_42_push / probe_42_ring_down): leftover (96,93)
+# LEFT to x=24, DOWN the west sand to y=181, RIGHT to the x=112 south gap,
+# DOWN scrolls to 0x52 (112,61). East column also works; west is shorter.
+POND_42_WEST_COL_X = 24
+POND_42_SOUTH_SAND_Y = 181
+# 0x5B north-corridor climb. The 10..26 band UP'd at leftover (24,165)
+# into trees (l8_entry_west_ring timeout). Hold the live x=16 column.
+POND_5B_CLIMB_X = 16
 
 # Shared maze geometry with L2 door path (east @y≈88 → channel → east @y≈128).
 LEVEL8_5C_MAZE_WAYPOINTS: tuple[tuple[int, int], ...] = LEVEL2_5C_MAZE_WAYPOINTS
@@ -191,6 +200,108 @@ DEFAULT_BUSH_Y = 93
 # Back-compat names used by probe --path
 LEVEL8_BUSH_HOPS_VIA_6B_EAST = LEVEL8_BUSH_HOPS
 LEVEL8_BUSH_HOPS_VIA_58 = LEVEL8_BUSH_HOPS
+
+
+def pond_42_north_strip_action(snap: ZeldaSnapshot, *, swing) -> FrameAction | None:
+    """Walk the refilled-pond west ring from the north strip to the 0x52 gap.
+
+    Straight DOWN from y≈93 is water. LEFT along the north sand, DOWN the
+    west column, RIGHT on the south sand, then DOWN at x=112.
+    """
+    if snap.screen != SCREEN_LEVEL7_POND_HYP:
+        return None
+    x, y = int(snap.link_x), int(snap.link_y)
+    if y < POND_42_SOUTH_SAND_Y - 4:
+        if abs(x - POND_42_WEST_COL_X) > 5:
+            btn = "LEFT" if x > POND_42_WEST_COL_X else "RIGHT"
+            return swing(btn, "42n_west_ax")
+        return swing("DOWN", "42n_west_down")
+    if abs(x - POND_52_NORTH_GAP_X) > 5:
+        btn = "RIGHT" if x < POND_52_NORTH_GAP_X else "LEFT"
+        return swing(btn, "42n_gap_ax")
+    return swing("DOWN", "42n_gap_down")
+
+
+def pond_reverse_to_l8_extra_hop_action(
+    snap: ZeldaSnapshot, hop: ScreenHop, *, swing
+) -> FrameAction | None:
+    """Reverse pond corridor 0x42 south-shore / 0x52…0x5B. Not the north strip."""
+    scr = snap.screen
+    x, y = int(snap.link_x), int(snap.link_y)
+    if scr == SCREEN_LEVEL7_POND_HYP and hop.target == 0x52:
+        if y > 205 and abs(x - POND_52_NORTH_GAP_X) > 5:
+            btn = "LEFT" if x > POND_52_NORTH_GAP_X else "RIGHT"
+            return swing(btn, "42r_gap_ax")
+        return swing("DOWN", "42r_gap_down")
+    if scr == 0x52 and hop.target == 0x53:
+        if y < 82:
+            return swing("DOWN", "52r_off_top")
+        if y < 108 and x > POND_52_WEST_COL_X + 5:
+            return swing("LEFT", "52r_corridor_west")
+        if y < POND_52_BOTTOM_Y - 6:
+            if abs(x - POND_52_WEST_COL_X) > 5:
+                btn = "LEFT" if x > POND_52_WEST_COL_X else "RIGHT"
+                return swing(btn, "52r_col_ax")
+            return swing("DOWN", "52r_west_col_down")
+        return swing("RIGHT", "52r_bottom_east")
+    if scr == 0x53 and hop.target == 0x54:
+        if y > POND_53_EAST_Y + 6:
+            if x < POND_53_PILLAR_X:
+                return swing("RIGHT", "53r_bottom_east")
+            return swing("UP", "53r_pillar_up")
+        if y < POND_53_EAST_Y - 4:
+            return swing("DOWN", "53r_drop")
+        return swing("RIGHT", "53r_east_exit")
+    if scr == 0x54 and hop.target == 0x64:
+        if abs(x - POND_54_SOUTH_GAP_X) > 5:
+            btn = "LEFT" if x > POND_54_SOUTH_GAP_X else "RIGHT"
+            return swing(btn, "54r_south_ax")
+        return swing("DOWN", "54r_south_exit")
+    if scr == 0x64 and hop.target == 0x65:
+        if x < POND_54_SOUTH_GAP_X + 8 and y < POND_53_EAST_Y - 4:
+            return swing("DOWN", "64r_off_top")
+        if y > POND_53_EAST_Y + 4:
+            return swing("UP", "64r_band_ay")
+        if y < POND_53_EAST_Y - 4:
+            return swing("DOWN", "64r_band_ay")
+        return swing("RIGHT", "64r_east_cross")
+    if scr == 0x65 and hop.target == 0x55:
+        if x < POND_65_GAP_X - 5:
+            if abs(y - POND_53_EAST_Y) > 5:
+                btn = "UP" if y > POND_53_EAST_Y else "DOWN"
+                return swing(btn, "65r_ford_ay")
+            return swing("RIGHT", "65r_ford_east")
+        if x > POND_65_GAP_X + 5:
+            return swing("LEFT", "65r_gap_ax")
+        return swing("UP", "65r_north_exit")
+    if scr == 0x56 and hop.target == 0x57:
+        if x < POND_56_STEP_X:
+            if abs(y - POND_55_EAST_Y) > 5:
+                btn = "UP" if y > POND_55_EAST_Y else "DOWN"
+                return swing(btn, "56r_row_ay")
+            return swing("RIGHT", "56r_row_east")
+        if y < 154:
+            return swing("DOWN", "56r_step_down")
+        return swing("RIGHT", "56r_east_exit")
+    if scr == 0x55 and hop.target == 0x56:
+        if abs(x - POND_65_GAP_X) > 5 and y > POND_55_EAST_Y + 8:
+            btn = "RIGHT" if x < POND_65_GAP_X else "LEFT"
+            return swing(btn, "55r_spit_ax")
+        if y > POND_55_EAST_Y + 4:
+            return swing("UP", "55r_spit_up")
+        if y < POND_55_EAST_Y - 4:
+            return swing("DOWN", "55r_drop")
+        return swing("RIGHT", "55r_east_exit")
+    if scr == 0x5B and hop.target == 0x5C and hop.direction == "RIGHT":
+        if y > 90:
+            if abs(x - POND_5B_CLIMB_X) > 5:
+                btn = "RIGHT" if x < POND_5B_CLIMB_X else "LEFT"
+                return swing(btn, "5br_wall_ax")
+            return swing("UP", "5br_climb")
+        if y < 82:
+            return swing("DOWN", "5br_settle")
+        return swing("RIGHT", "5br_east_exit")
+    return None
 
 
 class Level8NavPhase(Enum):
@@ -608,8 +719,9 @@ class Level7PondToLevel8BushController(OverworldToLevel8Controller):
     """Fixture-only natural L7 entrance exit / pond -> L8 bush geometry.
 
     This is deliberately separate from ``PostLevel7ToBushController``: the
-    post-Triforce fanfare leave has not been measured.  Accepted starts are
-    only the disclosed L7 entry-room pin or its naturally reached pond screen.
+    Survival leave sits in the refilled-pond north strip, which this
+    controller fail-closes. Accepted starts are only the disclosed L7
+    entry-room pin or its naturally reached south-shore pond screen.
     The controller stops on settled overworld 0x6D and never burns the bush.
     """
 
@@ -644,112 +756,21 @@ class Level7PondToLevel8BushController(OverworldToLevel8Controller):
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
-        scr = snap.screen
-        x, y = int(snap.link_x), int(snap.link_y)
         # Natural Level7Entrance exit refills the pond and strands Link in the
-        # y~85-100 top strip of 0x42 (probe s42: nothing south of y~107 is
-        # reachable). Fail closed -- OW_L7Pond starts on the south shore
-        # (y~221) and never sees this.
+        # y~85-100 top strip of 0x42. Fail closed -- OW_L7Pond starts on the
+        # south shore (y~221) and never sees this. The Survival leftover uses
+        # pond_42_north_strip_action on PostLevel7ToBushController instead.
         if (
-            scr == SCREEN_LEVEL7_POND_HYP
+            snap.screen == SCREEN_LEVEL7_POND_HYP
             and hop.target == 0x52
-            and y < POND_42_REFILLED_DEAD_POSE[1] + 12
+            and int(snap.link_y) < POND_42_REFILLED_DEAD_POSE[1] + 12
         ):
             return self._fixture_fail("42_refilled_pond_straight_down_dead")
-        # 0x42 from OW_L7Pond: the 0x42<->0x52 boundary only opens at the
-        # x~112 gap; align along the south shore before pushing DOWN.
-        if scr == SCREEN_LEVEL7_POND_HYP and hop.target == 0x52:
-            if y > 205 and abs(x - POND_52_NORTH_GAP_X) > 5:
-                btn = "LEFT" if x > POND_52_NORTH_GAP_X else "RIGHT"
-                return self._swing(btn, "42r_gap_ax")
-            return self._swing("DOWN", "42r_gap_down")
-        # Reverse of the live-traced OverworldToLevel7PondController crossings
-        # (probe fwd65: exact per-screen point lists). Each screen: enter one
-        # edge, follow the reversed forward corridor, exit the opposite edge.
-        #
-        # 0x52 boulder field: (128,61) top -> DOWN to y~85 corridor -> LEFT to
-        # x~48 -> DOWN the west column -> y~189 bottom -> RIGHT to 0x53.
-        if scr == 0x52 and hop.target == 0x53:
-            if y < 82:
-                return self._swing("DOWN", "52r_off_top")
-            if y < 108 and x > POND_52_WEST_COL_X + 5:
-                return self._swing("LEFT", "52r_corridor_west")
-            if y < POND_52_BOTTOM_Y - 6:
-                if abs(x - POND_52_WEST_COL_X) > 5:
-                    btn = "LEFT" if x > POND_52_WEST_COL_X else "RIGHT"
-                    return self._swing(btn, "52r_col_ax")
-                return self._swing("DOWN", "52r_west_col_down")
-            return self._swing("RIGHT", "52r_bottom_east")
-        # 0x53: (0,189) west -> RIGHT to x~192 -> UP to y~141 -> RIGHT to 0x54.
-        if scr == 0x53 and hop.target == 0x54:
-            if y > POND_53_EAST_Y + 6:
-                if x < POND_53_PILLAR_X:
-                    return self._swing("RIGHT", "53r_bottom_east")
-                return self._swing("UP", "53r_pillar_up")
-            if y < POND_53_EAST_Y - 4:
-                return self._swing("DOWN", "53r_drop")
-            return self._swing("RIGHT", "53r_east_exit")
-        # 0x54: (0,141) west -> RIGHT to x~64 -> DOWN to 0x64.
-        if scr == 0x54 and hop.target == 0x64:
-            if abs(x - POND_54_SOUTH_GAP_X) > 5:
-                btn = "LEFT" if x > POND_54_SOUTH_GAP_X else "RIGHT"
-                return self._swing(btn, "54r_south_ax")
-            return self._swing("DOWN", "54r_south_exit")
-        # 0x64: (64,61) north -> DOWN the x~64 column to y~141 -> RIGHT to 0x65.
-        if scr == 0x64 and hop.target == 0x65:
-            if x < POND_54_SOUTH_GAP_X + 8 and y < POND_53_EAST_Y - 4:
-                return self._swing("DOWN", "64r_off_top")
-            if y > POND_53_EAST_Y + 4:
-                return self._swing("UP", "64r_band_ay")
-            if y < POND_53_EAST_Y - 4:
-                return self._swing("DOWN", "64r_band_ay")
-            return self._swing("RIGHT", "64r_east_cross")
-        # 0x65 river down the centre: (0,141) west -> RIGHT along the y~141 ford
-        # to x~112 -> UP to 0x55 (fwd 0x55->0x65 crossed straight down x~112).
-        if scr == 0x65 and hop.target == 0x55:
-            if x < POND_65_GAP_X - 5:
-                if abs(y - POND_53_EAST_Y) > 5:
-                    btn = "UP" if y > POND_53_EAST_Y else "DOWN"
-                    return self._swing(btn, "65r_ford_ay")
-                return self._swing("RIGHT", "65r_ford_east")
-            if x > POND_65_GAP_X + 5:
-                return self._swing("LEFT", "65r_gap_ax")
-            return self._swing("UP", "65r_north_exit")
-        # 0x56: (0,133) west -> RIGHT along the y~133 row to x~224 -> DOWN to
-        # y~157 -> RIGHT to 0x57 (fwd 0x57->0x56 entered east at y~157).
-        if scr == 0x56 and hop.target == 0x57:
-            if x < POND_56_STEP_X:
-                if abs(y - POND_55_EAST_Y) > 5:
-                    btn = "UP" if y > POND_55_EAST_Y else "DOWN"
-                    return self._swing(btn, "56r_row_ay")
-                return self._swing("RIGHT", "56r_row_east")
-            if y < 154:
-                return self._swing("DOWN", "56r_step_down")
-            return self._swing("RIGHT", "56r_east_exit")
-        # 0x55 lake screen: (112,221) south -> UP the x~112 sand spit to y~133
-        # -> RIGHT to 0x56 (fwd 0x56->0x55 entered east at y~133).
-        if scr == 0x55 and hop.target == 0x56:
-            if abs(x - POND_65_GAP_X) > 5 and y > POND_55_EAST_Y + 8:
-                btn = "RIGHT" if x < POND_65_GAP_X else "LEFT"
-                return self._swing(btn, "55r_spit_ax")
-            if y > POND_55_EAST_Y + 4:
-                return self._swing("UP", "55r_spit_up")
-            if y < POND_55_EAST_Y - 4:
-                return self._swing("DOWN", "55r_drop")
-            return self._swing("RIGHT", "55r_east_exit")
-        # 0x5B: the inherited "y>100 -> UP" corridor climb pins Link on the
-        # x=0 wall (a west-edge snag at y~100). Hold x~16 while climbing to
-        # the y~85 bush corridor, then east to 0x5C.
-        if scr == 0x5B and hop.target == 0x5C and hop.direction == "RIGHT":
-            if y > 90:
-                if x < 10:
-                    return self._swing("RIGHT", "5br_off_wall")
-                if x > 26:
-                    return self._swing("LEFT", "5br_wall_ax")
-                return self._swing("UP", "5br_climb")
-            if y < 82:
-                return self._swing("DOWN", "5br_settle")
-            return self._swing("RIGHT", "5br_east_exit")
+        extra = pond_reverse_to_l8_extra_hop_action(
+            snap, hop, swing=self._swing
+        )
+        if extra is not None:
+            return extra
         return super()._extra_hop_action(snap, hop)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -894,6 +915,11 @@ __all__ = [
     "L7_POND_TO_LEVEL8_BUSH_HOPS",
     "L7_POND_TO_LEVEL8_BUSH_SCREENS",
     "POND_42_REFILLED_DEAD_POSE",
+    "POND_42_SOUTH_SAND_Y",
+    "POND_42_WEST_COL_X",
+    "POND_5B_CLIMB_X",
+    "pond_42_north_strip_action",
+    "pond_reverse_to_l8_extra_hop_action",
     "CANDLE_SHOP_PRICE_SOURCE",
     "CANDLE_SHOP_PRICE",
     "SCREEN_CANDLE_SHOP",

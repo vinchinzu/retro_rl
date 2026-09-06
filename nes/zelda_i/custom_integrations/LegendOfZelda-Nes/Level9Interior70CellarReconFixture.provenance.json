@@ -1,0 +1,117 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-05T03:24:36.498860+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07",
+      "0x05 block-push stairs -> cellar 0x70"
+    ],
+    "phase": "level9_prefix_0x05_stairs_to_0x70",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x70",
+    "fixture_state": "Level9Interior70CellarReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "doors": 0,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 13,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "mode": 9,
+      "screen": "0x70",
+      "xy": [
+        192,
+        93
+      ]
+    },
+    "ok": true,
+    "source_state": "Level9Interior05StairsReconFixture",
+    "state": {
+      "bombs": 13,
+      "cur_opened_doors": 0,
+      "facing": 4,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 9,
+      "mode_name": "dungeon_underworld_passage",
+      "next_room": 5,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 32,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 2,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 96,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 3,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 144,
+          "y": 157
+        },
+        {
+          "hp": 0,
+          "slot": 4,
+          "state": 0,
+          "type_id": 27,
+          "type_name": "keese",
+          "x": 208,
+          "y": 157
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 112,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 0,
+      "rupees": 255,
+      "submode": 9,
+      "triforce": 255,
+      "x": 192,
+      "y": 93
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior05StairsReconFixture.state",
+  "source_state_sha256": "0f6f5ae6604e2c3a88722443ca65c57caa09111b439da8d3017963c4a3e35cf1",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior70CellarReconFixture.state",
+  "state_sha256": "a4c1053347dfc4f82de0259502f9d7f7c8e7864de967614c3b5ddb04de314123"
+}

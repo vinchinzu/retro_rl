@@ -35,6 +35,7 @@ from zelda_i.level9.dungeon import (
 )
 from zelda_i.level9.ganon import MODE_ENDING
 from zelda_i.level9.hops import (
+    Level9NaturalRouteSelection,
     SELECTED_NATURAL_ROUTE,
     l9_hops,
     level9_credits_chapter,
@@ -239,7 +240,6 @@ def test_prefix_hops_fail_closed_when_triforce_not_full() -> None:
     for chapter in (
         level9_entry_chapter(),
         level9_silver_arrows_chapter(),
-        level9_patra_chapter(),
     ):
         _name, controller, max_frames = chapter[0]
         assert max_frames == 1
@@ -250,6 +250,16 @@ def test_prefix_hops_fail_closed_when_triforce_not_full() -> None:
         assert report["inventory_writes"] == 0
         assert report["triforce_writes"] == 0
         assert report["route_eligible"] is False
+
+    # Live join controller also fails closed without full triforce
+    _name, join_ctl, max_frames = level9_patra_chapter()[0]
+    assert max_frames == 24000
+    join_ctl.step(snap)
+    assert join_ctl.failed
+    report = join_ctl.report()
+    assert report["inventory_writes"] == 0
+    assert report["triforce_writes"] == 0
+    assert report["route_eligible"] is False
 
 
 def test_entry_refuses_without_natural_bombs_and_does_not_write_capacity() -> None:
@@ -272,9 +282,10 @@ def test_silver_and_patra_missing_evidence_are_exact() -> None:
     _n, silver, _ = level9_silver_arrows_chapter()[0]
     silver.step(_snap())
     assert silver.blocked_reason == MISSING_SILVER_ARROW_ROOM
-    _n, join, _ = level9_patra_chapter()[0]
+    empty_route = Level9NaturalRouteSelection(suffix_join_room=None)
+    _n, join, _ = level9_patra_chapter(empty_route)[0]
     join.step(_snap())
-    assert join.blocked_reason == MISSING_51_NORTH_WALK
+    assert join.blocked_reason == "natural_suffix_join_not_selected"
 
 
 def test_credits_hop_does_not_write_inventory_or_load_fixture() -> None:
@@ -327,7 +338,7 @@ def test_0x51_to_0x41_required_because_selected_route_says_so() -> None:
         L9_ROOM_51, L9_ROOM_41, direction=DoorDir.UP
     )
     assert edge is not None
-    assert edge.verification == "planned"
+    assert edge.verification == "observed"
     assert "statue diamond" in edge.notes
 
 

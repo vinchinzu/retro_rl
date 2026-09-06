@@ -34,21 +34,21 @@ from zelda_i.level8.path import (
     south_1e_step,
     south_2e_step,
 )
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_COLLIDING_TILE,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 8,
+    "screen": SOUTH_ORIGIN,
+    "x": SOUTH_ORIGIN_POSE[0],
+    "y": SOUTH_ORIGIN_POSE[1],
+    "tile": 0,
+    "keys": 8,
+    "bombs": 6,
+    "magic_key": 1,
+    "triforce": 0x7F,
+}
 
 LEFT = list(nes_action("LEFT"))
 RIGHT = list(nes_action("RIGHT"))
@@ -58,18 +58,7 @@ IDLE = list(nes_idle_action())
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 8)
-    ram[ADDR_SCREEN] = fields.get("screen", SOUTH_ORIGIN)
-    ram[ADDR_LINK_X] = fields.get("x", SOUTH_ORIGIN_POSE[0])
-    ram[ADDR_LINK_Y] = fields.get("y", SOUTH_ORIGIN_POSE[1])
-    ram[ADDR_COLLIDING_TILE] = fields.get("tile", 0)
-    ram[ADDR_KEYS] = fields.get("keys", 8)
-    ram[ADDR_BOMBS] = fields.get("bombs", 6)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _step(ctl, ram: np.ndarray):
@@ -301,6 +290,7 @@ def test_2e_gleeok_and_magic_key_factories_stay_unverified() -> None:
     gleeok = make_gleeok_passage_controller()
     assert isinstance(gleeok, UnverifiedLevel8PathController)
     assert not isinstance(gleeok, Level8South2EController)
+    # rr-6o7.2: magic_key_stairs is now live (see test_level8_cellar).
     mk = make_magic_key_stairs_controller()
-    assert isinstance(mk, UnverifiedLevel8PathController)
+    assert not isinstance(mk, UnverifiedLevel8PathController)
     assert not isinstance(mk, Level8South2EController)

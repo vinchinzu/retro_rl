@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 from enum import StrEnum
-from typing import List, Optional, Sequence
+from typing import List, Sequence
 
 from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 
 from harvest.core.stamina import Stamina
+from harvest.core.task_progress import GOAL_STALL_FRAMES, MOTION_STALL_FRAMES
 from harvest.core.tile_catalog import LARGE_ROCK_DAMAGE_TILES, Tool
 from harvest.planner.d2_farm_chunks import (
     EXHAUSTIVE,
@@ -31,13 +32,7 @@ from harvest.planner.day_phase_catalog import (
 )
 from harvest.planner.day_phase_stamina import coerce_stamina, full_restore_spa_phase
 from harvest.maps.map_config import WEST_PLANT_POCKET_BOUNDS
-from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
-
-try:
-    from harvest.core.task_progress import GOAL_STALL_FRAMES, MOTION_STALL_FRAMES
-except ImportError:  # pragma: no cover
-    MOTION_STALL_FRAMES = 360
-    GOAL_STALL_FRAMES = 24_000
+from harvest.planner.day_phase_types import PhaseSpec
 
 
 # Crop establishment targets are separate from the evening debris quotas.
@@ -58,15 +53,19 @@ D2_LEFTOVER_PHASE_NAMES = (
     "ENSURE_AXE",
     "CLEAR_STUMPS",
 )
-
-_EMPTY_SKIP = {
-    "CLEAR_BUSHES": "weeds",
-    "CLEAR_FENCES": "fences",
-    "CLEAR_STONES": "stones",
-    "CLEAR_ROCKS": "large_rocks",
-    "CLEAR_STUMPS": "stumps",
+_QUEUED_LEFTOVER = frozenset(("D2_FARM_CLEAR",) + D2_LEFTOVER_PHASE_NAMES) - {
+    "HOT_SPRING_STAMINA"
 }
 _SPA_RETRY_PHASES = frozenset({"CLEAR_ROCKS", "CLEAR_STUMPS"})
+_SECTION_KEY = {
+    "bushes": "weeds",
+    "fences": "fences",
+    "stones": "stones",
+    "rocks": "large_rocks",
+    "stumps": "stumps",
+}
+
+
 class D2FarmOutcome(StrEnum):
     COMPLETE = "complete"
     WORK_REMAINING = "work_remaining"
@@ -369,12 +368,6 @@ def needs_spa_before_next_smash(
     return stam is not None and not stam.can_finish_multi_hit()
 
 
-def phase_already_clear(phase: str, counts) -> bool:
-    """True when this leftover smash section has nothing left on the pin."""
-    key = _EMPTY_SKIP.get(phase)
-    return key is not None and int(getattr(counts, key, 0)) <= 0
-
-
 def leftover_chain_decision(
     phase: str,
     status: TaskStatus | str | None,
@@ -548,10 +541,9 @@ def confirm_d2_complete(previous, current) -> bool:
     )
 
 
-def _live_chunks(smash: Sequence[str], counts: Sequence[int], skip=()) -> list[str]:
+def _live_chunks(smash: Sequence[str], counts: Sequence[int]) -> list[str]:
     mapping = dict(zip(FARM_CHUNK_ORDER, counts)) if counts else {}
-    skip_set = set(skip)
-    return [name for name in smash if mapping.get(name, 0) > 0 and name not in skip_set]
+    return [name for name in smash if mapping.get(name, 0) > 0]
 
 
 def _crop_next(last_phase: str) -> PhaseSpec:
@@ -587,7 +579,6 @@ def next_d2_spec(
     chunk: str | Sequence[str] = "all",
     last_phase: str = "",
     plot_attempted: bool = False,
-    skip_chunks: Sequence[str] = (),
 ) -> PhaseSpec | None:
     """Next mandatory D2 child spec, or None when ready to verify."""
     if status.outcome == D2FarmOutcome.TEMPORARILY_UNOBSERVABLE:
@@ -609,21 +600,21 @@ def next_d2_spec(
     if section in {"all", "fences"} and status.fences > 0:
         return fence_dump_phase()
     if section in {"all", "stones"}:
-        live = _live_chunks(smash, status.stones_by_chunk, skip_chunks)
+        live = _live_chunks(smash, status.stones_by_chunk)
         if live:
             return stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS[live[0]], chunk=live[0])
     if section in {"all", "rocks"}:
         spec = _smash_next(
-            status, _live_chunks(smash, status.rocks_by_chunk, skip_chunks),
-            last_phase, include_spa, "ENSURE_HAMMER", ensure_hammer_phase, "CLEAR_ROCKS",
+            status, _live_chunks(smash, status.rocks_by_chunk), last_phase,
+            include_spa, "ENSURE_HAMMER", ensure_hammer_phase, "CLEAR_ROCKS",
             rock_clear_phase,
         )
         if spec is not None:
             return spec
     if section in {"all", "stumps"}:
         return _smash_next(
-            status, _live_chunks(smash, status.stumps_by_chunk, skip_chunks),
-            last_phase, include_spa, "ENSURE_AXE", ensure_axe_phase, "CLEAR_STUMPS",
+            status, _live_chunks(smash, status.stumps_by_chunk), last_phase,
+            include_spa, "ENSURE_AXE", ensure_axe_phase, "CLEAR_STUMPS",
             stump_clear_phase,
         )
     return None
@@ -647,30 +638,13 @@ def d2_farm_clear_phase() -> PhaseSpec:
     )
 
 
-def d2_post_shop_work_phases(
-    *,
-    stamina: Stamina | int | None = None,
-    policy: Optional[DayPlannerPolicy] = None,
-    include_leftover: bool = True,
-) -> List[PhaseSpec]:
+def d2_post_shop_work_phases() -> List[PhaseSpec]:
     """One required D2_FARM_CLEAR Tactic after BUY_SEEDS."""
     return [d2_farm_clear_phase()]
 
 
 def leftover_already_queued(remaining: Sequence[str]) -> bool:
-    names = set(remaining)
-    return "D2_FARM_CLEAR" in names or any(
-        name in names for name in D2_LEFTOVER_PHASE_NAMES if name != "HOT_SPRING_STAMINA"
-    )
-
-
-_SECTION_KEY = {
-    "bushes": "weeds",
-    "fences": "fences",
-    "stones": "stones",
-    "rocks": "large_rocks",
-    "stumps": "stumps",
-}
+    return bool(set(remaining) & _QUEUED_LEFTOVER)
 
 
 def _section_done(status: D2FarmStatus, section: str, chunk: str) -> bool:
@@ -718,11 +692,13 @@ class D2FarmClearTactic:
     def __init__(
         self, *, section="all", chunk="all", include_spa=True, ctx=None, evidence=None
     ) -> None:
-        self.section, self.chunk, self.include_spa, self._ctx = section, chunk, include_spa, ctx
+        self.section = section
+        self.chunk = chunk
+        self.include_spa = include_spa
+        self._ctx = ctx
         self.journal: list[dict] = list(evidence or [])
         self.farm_status: D2FarmStatus | None = None
         self._prev = self._child = self._spec = self._retry = self._pending = None
-        self._skip: set[str] = set()
         self._fails: dict[tuple, int] = {}
         self._plot_attempted = False
         self._step = self._motion_at = self._goal_at = self._unobs = 0
@@ -740,7 +716,6 @@ class D2FarmClearTactic:
 
     def reset(self, world: WorldState) -> None:
         self._child = self._spec = self._retry = self._pending = self._prev = self.farm_status = None
-        self._skip.clear()
         self._fails.clear()
         self._plot_attempted = False
         self._step = self._unobs = 0
@@ -963,9 +938,9 @@ class D2FarmClearTactic:
             return self._idle("settle")
         pending, self._pending = self._pending, None
         spec = pending or next_d2_spec(
-            status, include_spa=self.include_spa, section=self.section, chunk=self.chunk,
-            last_phase=self._last_phase, plot_attempted=self._plot_attempted,
-            skip_chunks=tuple(self._skip),
+            status, include_spa=self.include_spa, section=self.section,
+            chunk=self.chunk, last_phase=self._last_phase,
+            plot_attempted=self._plot_attempted,
         )
         if spec is None:
             self._prev = status
@@ -1005,6 +980,6 @@ __all__ = [
     "d2_post_shop_work_phases", "ensure_axe_phase", "ensure_hammer_phase",
     "fence_dump_phase", "leftover_already_queued", "leftover_chain_decision",
     "needs_spa_before_next_smash", "next_d2_spec", "observe_d2_farm",
-    "phase_already_clear", "pocket_clear_phase", "pocket_water_phase",
-    "rock_clear_phase", "should_spa_retry", "stone_pond_phase", "stump_clear_phase",
+    "pocket_clear_phase", "pocket_water_phase", "rock_clear_phase",
+    "should_spa_retry", "stone_pond_phase", "stump_clear_phase",
 ]

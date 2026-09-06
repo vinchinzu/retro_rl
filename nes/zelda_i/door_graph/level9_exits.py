@@ -223,41 +223,60 @@ def _natural_exits() -> dict[int, tuple[RoomExit, ...]]:
         ),
         0x65: (
             _e(DoorDir.RIGHT, L9_OLD_MAN_TF, notes=hyp, verification="planned"),
-            _e(DoorDir.UP, 0x55, GateKind.BOMB, notes=f"{hyp}; bomb north to Lanmola", verification="planned"),
+            _e(
+                DoorDir.UP,
+                0x55,
+                GateKind.BOMB,
+                bomb_stand=(120, 93),
+                notes=f"{obs}; bomb north to Lanmola 0x55",
+                verification="observed",
+            ),
         ),
         0x55: (
             _e(DoorDir.DOWN, 0x65, notes=hyp, verification="planned"),
-            _e(DoorDir.UP, L9_CELLAR_60, notes=f"{hyp}; Lanmola block-stairs → cellar 0x60", verification="planned"),
+            _e(
+                DoorDir.UP,
+                L9_CELLAR_60,
+                notes=f"{obs}; Lanmola clear + block-stairs → cellar 0x60",
+                verification="observed",
+            ),
         ),
         L9_CELLAR_60: (
             _e(DoorDir.RIGHT, 0x55, notes=f"{hyp}; cellar right dest live", verification="observed"),
-            _e(DoorDir.LEFT, 0x14, notes=f"{hyp}; cellar left dest live", verification="observed"),
+            _e(DoorDir.LEFT, 0x14, notes=f"{obs}; cellar left ladder → play 0x14 LikeLikes (AttrsA)", verification="observed"),
         ),
         0x14: (
-            _e(DoorDir.RIGHT, 0x15, GateKind.KEY, notes=f"{hyp}; Magic Key assumed", verification="planned"),
+            _e(DoorDir.RIGHT, 0x15, GateKind.KEY, notes=f"{obs}; perimeter walk -> east key door to 0x15", verification="observed"),
         ),
         0x15: (
             _e(DoorDir.LEFT, 0x14, notes=hyp, verification="planned"),
-            _e(DoorDir.RIGHT, 0x16, notes=f"{hyp}; first Patra skippable", verification="planned"),
+            _e(DoorDir.RIGHT, 0x16, notes=f"{obs}; open floor -> east door to first Patra 0x16", verification="observed"),
         ),
         0x16: (
             _e(DoorDir.LEFT, 0x15, notes=hyp, verification="planned"),
-            _e(DoorDir.UP, 0x06, GateKind.KEY, notes=f"{hyp}; Old Man bomb-left hint", verification="planned"),
+            _e(DoorDir.UP, 0x06, GateKind.KEY, notes=f"{obs}; Patra skip -> north key door to 0x06", verification="observed"),
         ),
         0x06: (
             _e(DoorDir.DOWN, 0x16, notes=hyp, verification="planned"),
-            _e(DoorDir.LEFT, 0x05, GateKind.BOMB, notes=f"{hyp}; bomb west to stairs 0x05", verification="planned"),
+            _e(
+                DoorDir.LEFT,
+                0x05,
+                GateKind.BOMB,
+                bomb_stand=(48, 141),
+                notes=f"{obs}; bomb west to stairs 0x05",
+                verification="observed",
+            ),
         ),
         0x05: (
             _e(DoorDir.RIGHT, 0x06, notes=hyp, verification="planned"),
-            _e(DoorDir.UP, L9_CELLAR_70, notes=f"{hyp}; block-stairs → cellar 0x70", verification="planned"),
+            _e(DoorDir.UP, L9_CELLAR_70, notes=f"{obs}; block-stairs → cellar 0x70", verification="observed"),
         ),
         L9_CELLAR_70: (
             _e(DoorDir.RIGHT, 0x05, notes=f"{hyp}; cellar right dest live", verification="observed"),
-            _e(DoorDir.LEFT, 0x63, notes=f"{hyp}; cellar left dest live 5 Zols", verification="observed"),
+            _e(DoorDir.LEFT, 0x63, notes=f"{obs}; cellar left ladder → play 0x63 (5 Zols)", verification="observed"),
         ),
         0x63: (
-            _e(DoorDir.LEFT, L9_ROOM_62, GateKind.KEY, notes=f"{hyp}; west to 8-Keese corridor", verification="planned"),
+            _e(DoorDir.LEFT, L9_ROOM_62, GateKind.KEY, notes=f"{obs}; west key door -> 8 Keese corridor", verification="observed"),
         ),
         L9_ROOM_62: (
             _e(DoorDir.RIGHT, 0x63, GateKind.KEY, notes=f"{obs}; 8 Keese; E key", verification="observed"),
@@ -278,8 +297,8 @@ def _natural_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(
                 DoorDir.DOWN,
                 L9_CELLAR_75,
-                notes=f"{hyp}; Patra kill + left block-stairs (floor, not south door)",
-                verification="planned",
+                notes=f"{obs}; Patra kill + block-stairs -> cellar 0x75",
+                verification="observed",
             ),
             _e(
                 DoorDir.UP,
@@ -293,7 +312,7 @@ def _natural_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(DoorDir.LEFT, 0x20, notes=f"{obs}; cellar left dest", verification="observed"),
         ),
         0x20: (
-            _e(DoorDir.UP, L9_SILVER_ARROWS, GateKind.BOMB, notes=f"{hyp}; ROM N bomb to Silver Arrow room", verification="planned"),
+            _e(DoorDir.UP, L9_SILVER_ARROWS, GateKind.BOMB, notes=f"{obs}; ROM N bomb to Silver Arrow room 0x10", verification="observed", bomb_stand=(120, 93)),
             _e(DoorDir.DOWN, L9_CELLAR_75, notes=f"{hyp}; block-stairs return through cellar 0x75", verification="planned"),
         ),
         L9_SILVER_ARROWS: (
@@ -304,8 +323,8 @@ def _natural_exits() -> dict[int, tuple[RoomExit, ...]]:
             _e(
                 DoorDir.UP,
                 L9_ROOM_41,
-                notes=f"{hyp}; selected Magical Key join; dest walk NO (statue diamond)",
-                verification="planned",
+                notes=f"{obs}; statue diamond threaded -> uncleared 0x41",
+                verification="observed",
             ),
         ),
         L9_ROOM_41: (

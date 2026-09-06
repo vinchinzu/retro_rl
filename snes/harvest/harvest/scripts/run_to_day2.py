@@ -95,10 +95,11 @@ def _open_video(path: Path, first_frame, *, fps: int, scale: int) -> VideoRecord
         config=VideoCaptureConfig(
             fps=fps,
             scale=scale,
-            crf=18,
-            preset="medium",
+            crf=28,
+            preset="ultrafast",
             audio=False,
             footer=False,
+            layout="native",
         ),
     )
     recorder.write(rgb)

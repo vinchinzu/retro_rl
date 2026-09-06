@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
+from zelda_i.dungeon.pause_select import CLOSE_SETTLE_FRAMES
 from zelda_i.level7.pond import (
     BLOW_STAND,
     BLOW_PRESSES,
@@ -33,36 +34,30 @@ from zelda_i.ram import (
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SELECTED_ITEM,
     ADDR_WHISTLE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
 
 _POND_PIN = "OW_L7Pond"
+_POND_NATURAL_PIN = "OW_L7PondNatural"
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": POND_SCREEN,
+    "x": SOUTH_SHORE[0],
+    "y": SOUTH_SHORE[1],
+    "whistle": 1,
+    "selected": WHISTLE_B_SLOT,
+}
 
 
-def _ram(
-    *,
-    x: int = SOUTH_SHORE[0],
-    y: int = SOUTH_SHORE[1],
-    whistle: int = 1,
-    selected: int = WHISTLE_B_SLOT,
-    screen: int = POND_SCREEN,
-    mode: int = PLAY_MODE,
-    level: int = 0,
-) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_WHISTLE] = whistle
-    ram[ADDR_SELECTED_ITEM] = selected
-    return ram
+def _ram(**fields: int) -> np.ndarray:
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -97,8 +92,8 @@ def test_public_constants() -> None:
     assert DEST == 0x79
     assert DEST_XY == (120, 205)
     assert BLOW_STAND == (128, 189)
-    assert STAIRS_XY == (96, 132)
-    assert POND_STAIR_TILE == 114
+    assert STAIRS_XY == (96, 144)
+    assert POND_STAIR_TILE == 0x70
     assert SOUTH_SHORE == (128, 221)
     assert STAIR_CANDIDATES[0] == STAIRS_XY
 
@@ -155,7 +150,7 @@ def test_pause_select_cycles_right_then_closes() -> None:
     act = _step(ctl, ram)
     assert _buttons(act) == ["START"]
     assert act.reason == "pause_close"
-    for _ in range(23):
+    for _ in range(CLOSE_SETTLE_FRAMES - 1):
         _step(ctl, ram)
     act = _step(ctl, ram)
     assert ctl.phase is PondPhase.STAND_SETTLE
@@ -300,7 +295,7 @@ def test_first_stairs_cell_miss_seeks_probe_candidate() -> None:
     act = _step(ctl, ram)
     assert not ctl.failed
     assert ctl.stair_index == 1
-    assert STAIR_CANDIDATES[1] == (104, 128)
+    assert STAIR_CANDIDATES[1] == (104, 144)
     assert act.reason == "stairs_seek_x"
     assert _buttons(act) == ["RIGHT"]
 
@@ -318,7 +313,7 @@ def test_report_writes_zero_route_eligible_false() -> None:
     assert report["spec_id"] == "level7_pond_drain_entry"
     assert report["dest"] == "0x79"
     assert report["pond_screen"] == "0x42"
-    assert report["stairs_xy"] == [96, 132]
+    assert report["stairs_xy"] == [96, 144]
     assert report["blow_stand"] == [128, 189]
 
 
@@ -387,13 +382,68 @@ def test_live_ow_l7pond_fails_closed_without_whistle() -> None:
     assert ctl.report()["route_eligible"] is False
 
 
+def _pond_natural_pin_ready() -> bool:
+    from retro_harness.env import state_path
+    from zelda_i.paths import GAME, GAME_DIR, SHARED_ROM_ZIP
+
+    return SHARED_ROM_ZIP.is_file() and state_path(
+        GAME_DIR, GAME, _POND_NATURAL_PIN
+    ).is_file()
+
+
 @pytest.mark.rom
-@pytest.mark.skip(
-    reason=(
-        "no 0x42+whistle=1 pin exists; OW_L7Pond is whistle=0 "
-        "(PostSwordStart geometry) and ADDR_WHISTLE / ADDR_SELECTED_ITEM "
-        "pokes are forbidden. Live 2/2 drain success trial skipped."
-    )
+@pytest.mark.skipif(
+    not _pond_natural_pin_ready(),
+    reason="Zelda I ROM or OW_L7PondNatural pin missing",
 )
-def test_live_drain_2of2_from_whistle_on_pond_pin() -> None:
-    raise AssertionError("unreachable: no whistle-on-pond pin")
+def test_live_drain_2of2_from_naturally_arrived_pond_pin() -> None:
+    """OW_L7PondNatural: Recorder naturally owned, arrived on 0x42 with zero
+    pokes (scratch/pond/capture_pond_natural_pin.py). Drain must land byte-
+    identically in L7 play 0x79 twice in a row, writes=0 both trials.
+    """
+    from retro_harness.env import make_env, reset_obs
+    from retro_harness.nes import nes_idle_action
+    from retro_harness.segment_runner import configure_headless
+    from zelda_i.paths import GAME, GAME_DIR
+    from zelda_i.runner import make_assist
+
+    configure_headless()
+    leftovers: list[dict] = []
+    for trial in range(2):
+        assist = make_assist(True)
+        env = make_env(GAME, _POND_NATURAL_PIN, GAME_DIR, render_mode="rgb_array")
+        ctl = make_pond_drain_controller()
+        ctl.bind_env(env)
+        try:
+            reset_obs(env)
+            for _ in range(2):
+                env.step(nes_idle_action())
+            whistle0 = int(env.get_ram()[ADDR_WHISTLE])
+            assert whistle0 >= 1
+            f = 0
+            while f < ctl.max_frames + 10:
+                snap = read_snapshot(env.get_ram())
+                action = ctl.step(snap)
+                env.step(action.action)
+                if assist is not None:
+                    assist.apply_env(env, frame=f)
+                f += 1
+                if ctl.success or ctl.failed:
+                    break
+            end = read_snapshot(env.get_ram())
+            report = ctl.report()
+        finally:
+            env.close()
+        assert ctl.success, f"trial {trial} {ctl.report()}"
+        assert not ctl.failed
+        assert end.level == 7
+        assert end.mode == PLAY_MODE
+        assert not end.transitioning
+        assert int(end.screen) == DEST
+        assert (int(end.link_x), int(end.link_y)) == DEST_XY
+        assert report["route_eligible"] is False
+        assert report["writes"] == 0
+        assert assist.telemetry.progression_writes == 0
+        assert assist.telemetry.capacity_writes == 0
+        leftovers.append(report["leftover"])
+    assert leftovers[0] == leftovers[1], "trials must be byte-identical"

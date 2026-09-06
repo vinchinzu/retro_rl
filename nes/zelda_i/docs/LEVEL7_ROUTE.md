@@ -1,5 +1,11 @@
 # Level 7 — The Demon (route notes)
 
+**Status (2026-09-05):** Survival `--through level7` is **spine-green 2/2
+from power-on**. Leftover OW `0x42` `(96,93)` TF `0x7F`. Living residual
+is L8-A: [`tasks/rr-6o7.1-residual.md`](tasks/rr-6o7.1-residual.md).
+Sections below still describe the Phase 1 recon; they are not the live
+spine. Do not STATUS.
+
 **Status:** Phase 1 (2026-09-02). The **L6 leave is measured and verified**:
 `--through level6-exit` 2/2 → OW `0x22` `(112,125)` TF `0x3F`, keys 2 bombs 8
 rupees 42, `selected_item=2` (arrows), Whistle 1, Food 0, Candle 0, 8 HC full.
@@ -164,6 +170,51 @@ Fixture-live prefix (`l7_bait_25`, Survival, `route_eligible=false`):
 Armos tap (top-row middle on `0x34`), 60R Food, and pond `0x42` are not this
 sitting. Food stayed 0; rupees 80→81 on the walk. Zero deaths;
 `progression_writes=capacity_writes=0`.
+
+### Recorder warp — the escape from the post-L6 pocket (H1, 2026-09-05)
+
+The `0x22` post-L6 pocket has **no overland outlet** to the pond band: every
+edge of `0x22 / 0x32 / 0x33 / 0x23 / 0x24 / 0x25 / 0x14 / 0x13 / 0x12` was
+walked or `$6530` tile-mapped dead across three sittings (`0x12→0x02` and
+`0x32→0x31→0x41` included; `0x41→0x42` RIGHT is a full-height wall).
+
+The route out is the **Recorder itself**, owned since L5. Blowing it on a
+**non-entrance** overworld screen starts a whirlwind-carry cutscene (mode
+5→6→7→4→5, no player input) that drops Link on the door screen of a completed
+dungeon, cycling by facing. Live cycle facing DOWN from `0x24`:
+
+```text
+0x22 (L6) → 0x0B (L5) → 0x45 (L4) → 0x74 (L3) → 0x3C (L2)
+```
+
+**`0x45`, the L4 island door, is one screen NORTH of `0x55`** — already on the
+green `LEVEL7_POND_APPROACH_HOPS`. That is the join:
+
+```text
+0x22 ↓0x32 →0x33 ↑0x23 →0x24   (walk, POST_L6_TO_WARP_HOPS)
+0x24 blow ×8 facing DOWN → 0x45  (level7.warp.RecorderWarpController)
+0x45 ↓0x55 ↓0x65 ←0x64 ↑0x54 ←0x53 ←0x52 ↑0x42   (WARP_JOIN_TO_POND_HOPS)
+```
+
+- **Live 2/2 byte-identical**, post-L6 leave → pond `0x42` `(128,221)` mode 5
+  at frame **4913** both trials (`scratch/pond/probe_recorder_warp_full_route.py`,
+  tags `rw_full_route_t2` / `_t3`, `writes=0`). Warp determinism confirmed 3/3
+  (`rw_cycle_t1`/`t2` plus the earlier `rw_cycle_down2`): 8 blows to `0x45`,
+  11 to `0x74`, exactly 3 blows per dungeon-advance after the first. The
+  production controller is screen-checked rather than count-locked.
+- **`0x45→0x55` is `align_x=128`**, the raft-dock column the whirlwind happens
+  to drop Link on — the same hop `level5/overworld.py` already flies live.
+  Raft is legitimately owned (L3 item; the leave carries TF `0x3F`).
+- **Keep `align_x=128` through `0x55→0x65` too.** The stock hop's
+  `align_x=112` assumes the *east* `0x56→0x55` arrival band and drags Link
+  LEFT into the mid-screen house/tree mass (tile cols 14-17, rows 8-11);
+  that burned a full 30,000f budget at `(128,103)` in `rw_full_route_t1`.
+- **`0x74 → 0x64` UP is DEAD**: `0x74`'s entire north edge is mountain across
+  all 32 tile columns (`$6530` dump plus a live 10-column sweep, every
+  candidate stuck at `y=85`).
+
+No pokes: the Recorder blow is natural play, so this route is Clean-eligible
+geometry — unlike the recon `ADDR_WHISTLE` poke it replaces.
 
 ### Whistle pond (source)
 

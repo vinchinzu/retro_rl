@@ -197,3 +197,50 @@ def test_no_env_walks_without_writing() -> None:
     assert ctl.leftover["x"] == 112
     assert ctl.leftover["y"] == 160
     assert "rupees" in ctl.leftover
+
+
+def test_already_pushed_transitions_to_peel() -> None:
+    from retro_harness.nes import nes_action
+    from zelda_i.level6.stairs3a_warp import is_center_block_pushed
+
+    # Block already at NE stairs (208, 96)
+    pushed = _ram(level=6, screen=0x3A, x=107, y=141, keys=4)
+    _plant_block(pushed, 11, 208, 96)
+    snap = read_snapshot(pushed)
+    assert is_center_block_pushed(snap)
+
+    ctl = make_stairs_3a_warp_controller()
+    act = ctl.step(snap)
+    assert not ctl.failed
+    assert ctl.phase is Stairs3AWarpPhase.PEEL
+    assert act.reason == "peel_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_east_door_region_does_not_abort_peel() -> None:
+    from retro_harness.nes import nes_action
+
+    # Link at (200, 141) with block pushed: should peel south, not abort
+    ram = _ram(level=6, screen=0x3A, x=200, y=141, keys=4)
+    _plant_block(ram, 11, 208, 96)
+    ctl = make_stairs_3a_warp_controller()
+    act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert ctl.phase is Stairs3AWarpPhase.PEEL
+    assert act.reason == "peel_south"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_north_of_block_detours_to_south_stand() -> None:
+    from retro_harness.nes import nes_action
+
+    # Link at (124, 125) north of center block at (112, 144)
+    ram = _ram(level=6, screen=0x3A, x=124, y=125, keys=4)
+    _plant_block(ram, 11, 112, 144)
+    ctl = make_stairs_3a_warp_controller()
+    act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert ctl.phase is Stairs3AWarpPhase.PUSH
+    # First step moves right to clear block column
+    assert act.reason == "stand_path"
+    assert list(act.action) == list(nes_action("RIGHT"))

@@ -1,11 +1,16 @@
 """Ordered L8 Gleeok-suffix composition, inert until a natural predecessor.
 
-The seven fixture-live gates below (plus the mode-9 ``0x2F`` settle that sits
-between two of them) are each 2/2 in isolation from their own pin.  This module
-is the one place that records their *order* and their measured pin-to-pin
-contract, so that greening ``--through level8`` after rr-8t4.3 (L7 ``0x0D``
-walk-on) and rr-6o7.1 (post-L7 bush burn / L8 entry) land is a single explicit
-flip instead of a re-derivation.
+The fixture-live gates below (plus the mode-9 ``0x2F`` settle that sits between
+two of them) are each 2/2 in isolation from their own pin.  This module is the
+one place that records their *order* and their measured pin-to-pin contract, so
+that greening ``--through level8`` after rr-6o7.2 (Magical Key, power-on 2/2)
+lands is a single explicit flip instead of a re-derivation.
+
+The chain now begins at the Magical-Key return pose (play ``0x1F`` ``(96,157)``)
+and runs ``0x1F -> 0x1E -> 0x2E -> 0x3E -> 0x3F -> cellar 0x2F -> 0x4C ->
+0x3C`` (Gleeok + heart) ``-> 0x2C`` (shard).  The first three gates
+(``west_1f`` / ``south_1e`` / ``south_2e``) were the missing link between the
+old suffix table (which started at ``0x3E``) and the live magic-key endpoint.
 
 It is deliberately inert today:
 
@@ -40,10 +45,13 @@ from retro_harness.nes import nes_idle_action
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.level8.dungeon import (
     LEVEL8,
+    LEVEL8_INTERIOR_0X1E_WEST_RECON,
     LEVEL8_INTERIOR_0X2C_TF_RECON,
+    LEVEL8_INTERIOR_0X2E_SOUTH_RECON,
     LEVEL8_INTERIOR_0X2F_STAIRS_RECON,
     LEVEL8_INTERIOR_0X3C_KILL_RECON,
     LEVEL8_INTERIOR_0X3C_NORTH_RECON,
+    LEVEL8_INTERIOR_0X3E_SOUTH_RECON,
     LEVEL8_INTERIOR_0X3F_EAST_RECON,
     LEVEL8_INTERIOR_0X4C_WEST_RECON,
     Level8InteriorRoomRecon,
@@ -56,10 +64,16 @@ from zelda_i.level8.passage import (
     SPAWN_XY,
     make_passage_2f_controller,
 )
-from zelda_i.level8.path import make_east_3e_controller
+from zelda_i.level8.path import (
+    make_east_3e_controller,
+    make_south_1e_controller,
+    make_south_2e_controller,
+    make_west_1f_controller,
+)
 from zelda_i.level8.stairs import make_stairs_3f_controller
 from zelda_i.level8.triforce import (
     make_north_3c_controller,
+    make_ow_leave_controller,
     make_shard_2c_controller,
 )
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
@@ -68,20 +82,28 @@ __all__ = [
     "CELLAR_2F_SETTLE_FRAMES",
     "CELLAR_2F_SETTLE_MAX_FRAMES",
     "FIXTURE_LINEAGE_LEVEL8_SUFFIX",
+    "NATURAL_LINEAGE_LEVEL8_SUFFIX",
     "LEVEL8_SUFFIX_GATES",
     "SUFFIX_PREREQUISITE_BEADS",
     "Level8Cellar2FSettleController",
     "Level8SuffixGate",
     "Level8SuffixLineage",
+    "make_bomb_north_4c_controller",
     "make_cellar_2f_settle_controller",
+    "make_east_3e_controller",
+    "make_four_head_gleeok_controller",
+    "make_north_3c_controller",
+    "make_passage_2f_controller",
+    "make_shard_2c_controller",
+    "make_stairs_3f_controller",
     "suffix_blockers",
     "suffix_stages",
 ]
 
 Stage = tuple[str, object, int]
 
-# The suffix may only compose behind these; neither is closed.
-SUFFIX_PREREQUISITE_BEADS: tuple[str, ...] = ("rr-8t4.3", "rr-6o7.1")
+# The suffix may only compose behind L8-A; L7 leave is already measured.
+SUFFIX_PREREQUISITE_BEADS: tuple[str, ...] = ("rr-6o7.1",)
 
 # scratch/probe_l8_2f_settle.py S1/S2: the mode-9 room paints after a ~400f
 # no-input idle (the probe idled 600f) and Link settles on the east/source
@@ -108,9 +130,20 @@ class Level8SuffixLineage:
         return bool(self.route_eligible and self.natural_predecessor)
 
 
-# The only lineage the tree has: every suffix hop was measured from a pin, and
-# the frontier pin (Level8PostShardOWReconFixture) is fixture-lineage too.
+# Fixture lineage: every suffix hop was originally measured from its own pin.
 FIXTURE_LINEAGE_LEVEL8_SUFFIX = Level8SuffixLineage()
+
+# rr-6o7.3: the whole suffix is now spine-green from the power-on
+# Magical-Key frontier -- `scripts/level8_clear_lab.py` drove all 11 gates
+# 2/2 byte-identical from `Level8SuffixEntryLive` (a `--through
+# level8-magic-key` power-on pin), settling OW `0x6D` `(192,157)` TF `0xFF`.
+# The natural predecessor (`--through level8-magic-key`) is power-on 2/2, so
+# this lineage is composable.
+NATURAL_LINEAGE_LEVEL8_SUFFIX = Level8SuffixLineage(
+    evidence="spine_green_from_magic_key",
+    route_eligible=True,
+    natural_predecessor=True,
+)
 
 
 @dataclass(frozen=True)
@@ -240,6 +273,26 @@ def make_cellar_2f_settle_controller() -> Level8Cellar2FSettleController:
 # while keeping ``level8_four_head_gleeok`` exactly as the bead names it.
 LEVEL8_SUFFIX_GATES: tuple[Level8SuffixGate, ...] = (
     Level8SuffixGate(
+        "level8_return_passage_west_1f",
+        make_west_1f_controller,
+        LEVEL8_INTERIOR_0X1E_WEST_RECON,
+        "from the MK-return pose (96,157): cardinal LEFT past the 0x68, "
+        "y-align, LEFT push into the already-cleared 0x1E",
+    ),
+    Level8SuffixGate(
+        "level8_return_passage_south_1e",
+        make_south_1e_controller,
+        LEVEL8_INTERIOR_0X2E_SOUTH_RECON,
+        "x-align LEFT to 120, DOWN push; SE-corner occupancy BFS is banned",
+    ),
+    Level8SuffixGate(
+        "level8_return_passage_south_2e",
+        make_south_2e_controller,
+        LEVEL8_INTERIOR_0X3E_SOUTH_RECON,
+        "DOWN the aligned x=120 centre aisle between the y~141 statues; "
+        "picks up map 0x17 incidentally",
+    ),
+    Level8SuffixGate(
         "level8_return_passage_east_3e",
         make_east_3e_controller,
         LEVEL8_INTERIOR_0X3F_EAST_RECON,
@@ -286,6 +339,13 @@ LEVEL8_SUFFIX_GATES: tuple[Level8SuffixGate, ...] = (
         make_shard_2c_controller,
         LEVEL8_INTERIOR_0X2C_TF_RECON,
         "walk onto room_item 0x1B; TF 0x80 is a rising edge, not a pin state",
+    ),
+    Level8SuffixGate(
+        "level8_ow_leave_settle",
+        make_ow_leave_controller,
+        LEVEL8_INTERIOR_0X2C_TF_RECON,
+        "chapter epilogue: idle the shard fanfare to the settled OW 0x6D "
+        "(192,157) leave -- the level8_clear_stop / L9-predecessor pose",
     ),
 )
 

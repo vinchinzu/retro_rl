@@ -8,10 +8,11 @@ at ``x=16`` does not move, so the walk is south-around
 out (never walked, same shape as ``Level6ExitController``) and the game returns
 Link to the overworld by itself.
 
-The leave packet this measures is **not** the Survival one: on this lineage the
-pin starts at TF 0, so the leftover reads TF ``0x40`` on OW ``0x42``.
-``MEASURED_POST_L7_EXIT`` stays unfilled and ``verified`` stays False until the
-same walk runs on a real power-on lineage carrying TF ``0x3F``.
+This factory's leftover is **not** the Survival packet: the lineage pin
+starts at TF 0, so a fixture run reads TF ``0x40`` on OW ``0x42``.
+``MEASURED_POST_L7_EXIT`` is filled from power-on ``--through level7``
+2/2; ``report()["measured_post_l7_exit_verified"]`` stays False because
+this controller does not claim that leftover.
 
 Success is the **rising edge** of the L7 Triforce bit plus a settled overworld
 frame -- a level check alone would pass on any pin that already has the bit.

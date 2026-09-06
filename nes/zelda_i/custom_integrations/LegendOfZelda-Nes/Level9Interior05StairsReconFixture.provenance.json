@@ -1,0 +1,153 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-05T03:20:27.248863+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07",
+      "0x06 Old Man hint -> bomb west wall to 0x05 (stairs room)"
+    ],
+    "phase": "level9_prefix_0x06_west_to_0x05",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x05",
+    "fixture_state": "Level9Interior05StairsReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "doors": 1,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 13,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "mode": 5,
+      "screen": "0x05",
+      "xy": [
+        208,
+        173
+      ]
+    },
+    "ok": true,
+    "source_state": "Level9Interior06OldManReconFixture",
+    "state": {
+      "bombs": 13,
+      "cur_opened_doors": 1,
+      "facing": 2,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 5,
+      "objects": [
+        {
+          "hp": 160,
+          "slot": 1,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 107,
+          "y": 109
+        },
+        {
+          "hp": 160,
+          "slot": 2,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 107,
+          "y": 173
+        },
+        {
+          "hp": 64,
+          "slot": 3,
+          "state": 139,
+          "type_id": 36,
+          "type_name": "wizzrobe_orange",
+          "x": 208,
+          "y": 173
+        },
+        {
+          "hp": 160,
+          "slot": 4,
+          "state": 0,
+          "type_id": 35,
+          "type_name": "wizzrobe_blue_walkthrough_correlated",
+          "x": 139,
+          "y": 157
+        },
+        {
+          "hp": 64,
+          "slot": 5,
+          "state": 137,
+          "type_id": 36,
+          "type_name": "wizzrobe_orange",
+          "x": 208,
+          "y": 109
+        },
+        {
+          "hp": 128,
+          "slot": 9,
+          "state": 0,
+          "type_id": 0,
+          "type_name": "unknown_object_0x00",
+          "x": 208,
+          "y": 92
+        },
+        {
+          "hp": 96,
+          "slot": 10,
+          "state": 16,
+          "type_id": 88,
+          "type_name": "unknown_object_0x58",
+          "x": 132,
+          "y": 173
+        },
+        {
+          "hp": 176,
+          "slot": 11,
+          "state": 0,
+          "type_id": 104,
+          "type_name": "unknown_object_0x68",
+          "x": 96,
+          "y": 144
+        }
+      ],
+      "open_doorway_mask": 1,
+      "room": 5,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 5,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 208,
+      "y": 173
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior06OldManReconFixture.state",
+  "source_state_sha256": "3592bfe975237dd3e1740dd5fe51d137d174d8a88569d0935c8354656cbe1e8a",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior05StairsReconFixture.state",
+  "state_sha256": "0f6f5ae6604e2c3a88722443ca65c57caa09111b439da8d3017963c4a3e35cf1"
+}

@@ -311,10 +311,7 @@ class DayPlanTask(Task):
                 failure_policy=phase.failure_policy,
                 contract=phase.contract,
             )
-            for phase in d2_post_shop_work_phases(
-                stamina=probe.stamina(),
-                policy=self.policy,
-            )
+            for phase in d2_post_shop_work_phases()
         ]
         # Replace the leftover whole-farm CLEAR — pocket + quota smash is the path.
         tail = [

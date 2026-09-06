@@ -10,7 +10,6 @@ from retro_harness.headed import headed_emu_repeat
 
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.paths import GAME_DIR
-from harvest.planner.d2_work import leftover_chain_decision, phase_already_clear
 from harvest.tasks.farm_clear_quota import ClearQuota, DebrisCounts, count_debris
 from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result

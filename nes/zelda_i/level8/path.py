@@ -40,11 +40,16 @@ from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
-    ENTRY_TO_MAGIC_KEY_SPEC,
     MAGIC_KEY_TO_SHARD_SPEC,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ChapterSpec,
     Level8Topology,
+)
+from zelda_i.level8.magic_key import (
+    Level8BlueGohma1EController,
+    Level8MagicKeyStairsController,
+    make_blue_gohma_1e_controller,
+    make_magic_key_stairs_live_controller,
 )
 from zelda_i.level8.gleeok import (
     Level8FourHeadGleeokController,
@@ -632,16 +637,28 @@ def make_darknut_key_controller() -> Level8DarknutKeyController:
 
 def make_blue_gohma_controller(
     *, topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY
-) -> Level8BlueGohmaController:
-    return Level8BlueGohmaController(topology=topology)
+) -> Level8BlueGohma1EController:
+    """Live 0x1E arrow kill + RIGHT shutter to 0x1F (``level8.magic_key``).
+
+    ``topology`` is accepted for call-site compatibility and ignored: the
+    kill is gated on naturally owned bow + wooden arrows, not on a topology
+    flag.  Fails closed without them.
+    """
+    del topology
+    return make_blue_gohma_1e_controller()
 
 
-def make_magic_key_stairs_controller() -> UnverifiedLevel8PathController:
-    return unverified_path_controller(
-        "level8_magic_key_stairs",
-        "live Magical Key cellar and natural ADDR_MAGIC_KEY 0-to-1",
-        spec=ENTRY_TO_MAGIC_KEY_SPEC,
-    )
+def make_magic_key_stairs_controller() -> Level8MagicKeyStairsController:
+    """Live 0x1F clear -> 0x68 south slide -> centre stairs -> cellar 0x0F key
+    loop -> two-ladder return to play 0x1F carrying ``ADDR_MAGIC_KEY`` 0->1.
+
+    Promotes ``probe_l8_1f_magic_key`` (E2) + ``level8.cellar``.  Spine-green
+    from the power-on 0x1F frontier (``scripts/magic_key_lab.py``: clear ~2760f,
+    north-lane push slides the 0x68 to (96,160), cellar pickup + return in
+    ~1600f, MK 0->1 back at play 0x1F (96,157), 0 writes, 0 deaths).
+    ``route_eligible`` stays False (not a natural-entry promotion).  rr-6o7.2.
+    """
+    return make_magic_key_stairs_live_controller()
 
 
 def make_gleeok_passage_controller() -> UnverifiedLevel8PathController:
@@ -672,6 +689,7 @@ __all__ = [
     "Level8BlueGohmaController",
     "Level8DarknutKeyController",
     "Level8FourHeadGleeokController",
+    "Level8MagicKeyStairsController",
     "Level8NorthManhandlaController",
     "Level8East3EController",
     "Level8South1EController",

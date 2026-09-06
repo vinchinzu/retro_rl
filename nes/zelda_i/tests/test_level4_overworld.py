@@ -16,31 +16,23 @@ from zelda_i.level4.overworld import (
     level4_entry_stop,
 )
 from zelda_i.overworld.graph import neighbor_screens
-from zelda_i.ram import (
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_RAFT,
-    ADDR_SCREEN,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": LEVEL4_ISLAND_SCREEN,
+    "x": 128,
+    "y": 140,
+    "sword": 1,
+    "triforce": 0x07,
+    "raft": 1,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", LEVEL4_ISLAND_SCREEN)
-    ram[ADDR_LINK_X] = fields.get("x", 128)
-    ram[ADDR_LINK_Y] = fields.get("y", 140)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x07)
-    ram[ADDR_RAFT] = fields.get("raft", 1)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def test_post_l3_path_screens_chain() -> None:

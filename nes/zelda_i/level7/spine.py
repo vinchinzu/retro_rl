@@ -5,14 +5,10 @@ suffix is driven to ``level6-exit`` (the measured post-fanfare OW return, screen
 ``0x22`` ``(112,125)`` TF ``0x3F``) and L7 continues from there with
 ``MEASURED_POST_L6_EXIT`` (a shared ``OverworldHandoff``) as the handoff.
 
-``MEASURED_POST_L6_EXIT.verified`` is ``True`` since Phase 1.  The post-L6
-controller no longer walks the dead ``0x22 -> 0x25`` bait prefix (bead
-``rr-8t4.1``).  The Bait stage still runs the disclosed Survival
-``SurvivalBaitPurchaseController`` (one ``ADDR_FOOD`` write, see
-``docs/ASSIST_CONTRACT.md``); the natural 60R shop is ``rr-8t4.4``.
-``level7_pond_drain_entry`` is ``level7.pond`` (pause-select recorder).
-Survival still dies reaching pond ``0x42`` from the L6 leave.  Interior
-chapters follow the live room order but stay ``route_eligible=false``.
+``MEASURED_POST_L6_EXIT.verified`` is ``True`` since Phase 1. Survival
+``--through level7`` is spine-green from power-on (Recorder warp, disclosed
+Food poke; natural 60R shop is ``rr-8t4.4``). Interior chapter factories
+stay ``route_eligible=false``; the leave packet is filled from power-on.
 """
 
 from __future__ import annotations

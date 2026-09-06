@@ -1,11 +1,22 @@
 """Level 7 Demon pond: post-L6 walk, pause-select Recorder, drain into 0x79.
 
-Scratch probes live in ``scratch/pond/``. Drain recipe
-(``scratch/pond/probe_l7_pond_drain.py`` drain_v2, ``LEVEL7_ROUTE.md``):
+Scratch probes live in ``scratch/pond/``. Drain recipe, re-measured live from
+the naturally-arrived pin ``OW_L7PondNatural`` (``scratch/pond/
+capture_pond_natural_pin.py`` + ``scratch/pond/probe_dump_pond_drained.py``):
 OW ``$EB=0x42`` south shore ``(128,221)`` → stand ``(128,189)`` → 12×B + idle
-~240 for the song → stairs ``(96,132)`` tile 114 → L7 play ``0x79``
+~240 for the song → stairs ``(96,144)`` tile ``0x70`` → L7 play ``0x79``
 ``(120,205)``.  Requires already-owned Whistle (``ADDR_WHISTLE`` / ``$065C``
 >= 1).  Never poke whistle or ``$0656`` selected_item.
+
+The stair coordinates above replace an earlier ``(96,132)`` tile-114 guess
+from ``scratch/pond/probe_l7_pond_drain.py`` drain_v2 / ``LEVEL7_ROUTE.md``.
+That recon was measured from the ``OW_L7Pond`` pin with a **poked** Whistle
+and a different approach vector (``PostSwordStart`` geometry walk, not a
+natural post-warp arrival); its stair position never matched the drained
+``$6530`` tile map from a real arrival and the live drain always failed
+``stairs_not_found``. The re-measured cell (``$6530`` cols 12-13, rows
+10-11) is confirmed by walking onto it and observing mode 16 → L7 play
+``0x79`` ``(120,205)``.
 
 Pause-select B-slot 5 through ``dungeon.pause_select``. Snapshot has no
 ``selected_item``; read ``ADDR_SELECTED_ITEM`` after ``bind_env``.
@@ -31,12 +42,9 @@ from zelda_i.dungeon.pause_select import (
 from zelda_i.level7.overworld import (
     POST_L6_TO_POND_HOPS,
     at_l6_cave_mouth,
-    bait_24_east_action,
     bait_32_north_action,
-    make_pond_22_walker,
     make_pond_53_walker,
     on_level7_pond_hyp,
-    pond_22_to_21_action,
     pond_suffix_extra_hop_action,
 )
 from zelda_i.overworld.graph import ScreenHop
@@ -76,21 +84,18 @@ DEST = 0x79
 DEST_XY = (120, 205)
 SOUTH_SHORE = (128, 221)
 BLOW_STAND = (128, 189)
-STAIRS_XY = (96, 132)
-POND_STAIR_TILE = 114
+STAIRS_XY = (96, 144)
+POND_STAIR_TILE = 0x70
 WHISTLE_B_SLOT = B_SLOT_RECORDER
-# drain_v2 first cell is STAIRS_XY; remaining cells copy probe STAIR_CANDIDATES.
+# STAIRS_XY is the measured top-left corner of the drained 2x2 stair quad
+# ($6530 cols 12-13, rows 10-11); the remaining candidates are the other
+# three corners of that same quad, kept as fallback if the direct approach
+# ever lands a few px off (probe_dump_pond_drained.py, live 2/2).
 STAIR_CANDIDATES: tuple[tuple[int, int], ...] = (
     STAIRS_XY,
-    (104, 128),
-    (96, 128),
-    (112, 128),
-    (104, 136),
-    (96, 136),
-    (112, 136),
-    (104, 120),
-    (88, 128),
-    (120, 128),
+    (104, 144),
+    (96, 152),
+    (104, 152),
 )
 POND_MAX_FRAMES = 8000
 APPROACH_MAX_FRAMES = 40_000
@@ -376,13 +381,16 @@ class PostLevel6OverworldController(OverworldPathController):
 
     handoff: OverworldHandoff = UNMEASURED_HANDOFF
     hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS
+    # The spine now stops this stage on the warp launch screen 0x24 and hands
+    # off to level7.warp; the pond 0x42 default keeps the standalone recon
+    # walk (and its tests) unchanged.
+    dest_screen: int = POND_SCREEN
     phase: ApproachPhase = ApproachPhase.HOP
     max_frames: int = APPROACH_MAX_FRAMES
     require_sword: bool = True
     _env: Any = field(default=None, init=False, repr=False)
     _handoff_checked: bool = field(default=False, init=False, repr=False)
     _left_mouth: bool = field(default=False, init=False, repr=False)
-    _pond22_walk: Any = field(default=None, init=False, repr=False)
     _pond53_walk: Any = field(default=None, init=False, repr=False)
 
     @property
@@ -396,25 +404,29 @@ class PostLevel6OverworldController(OverworldPathController):
         self._set_phase(ApproachPhase.FAILED, reason)
         return FrameAction(nes_idle_action(), reason)
 
+    def _on_dest(self, snap: ZeldaSnapshot) -> bool:
+        if self.dest_screen == POND_SCREEN:
+            return on_level7_pond_hyp(snap)
+        return (
+            snap.level == 0
+            and snap.mode == PLAY_MODE
+            and int(snap.screen) == self.dest_screen
+        )
+
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
-        if on_level7_pond_hyp(snap):
-            return self._finish("post_l6_pond_0x42")
+        if self._on_dest(snap):
+            return self._finish(f"post_l6_dest_0x{self.dest_screen:02x}")
         return self._fail_now("post_l6_path_exhausted_unmeasured")
 
     def _on_hop_advanced(
         self, snap: ZeldaSnapshot, completed_hop: ScreenHop
     ) -> FrameAction:
         del completed_hop
-        if on_level7_pond_hyp(snap):
-            return self._finish("post_l6_pond_0x42")
+        if self._on_dest(snap):
+            return self._finish(f"post_l6_dest_0x{self.dest_screen:02x}")
         if self.hop_index >= len(self.hops):
             return self._after_hops(snap)
         return FrameAction(nes_idle_action(), "hop_advance")
-
-    def _pond22_walker(self):
-        if self._pond22_walk is None:
-            self._pond22_walk = make_pond_22_walker()
-        return self._pond22_walk
 
     def _pond53_walker(self):
         if self._pond53_walk is None:
@@ -424,17 +436,14 @@ class PostLevel6OverworldController(OverworldPathController):
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
-        if hop.target == 0x21 and snap.screen == SCREEN_LEVEL6_ENTRANCE:
-            act = pond_22_to_21_action(
-                snap, walker=self._pond22_walker(), swing=self._swing
-            )
-            if act is not None:
-                if act.reason == "22_no_path_stand":
-                    blocked = len(self._pond22_walker().grid.blocked)
-                    return self._fail_now(
-                        f"22_west_no_path_m{self._pond22_walker().misses}_b{blocked}"
-                    )
-                return act
+        # DELETED 2026-09-04: hop.target == 0x21 (pond_22_to_21_action) and
+        # hop.target == 0x25 (bait_24_east_action) special-cases. Neither
+        # target is in POST_L6_TO_POND_HOPS -- confirmed dead code (this hop
+        # table never produces those targets, so the branches never fired).
+        # pond_22_to_21_action / make_pond_22_walker stay as standalone,
+        # directly-tested recon functions in overworld.py (0x22 west edge
+        # is proven dead, docs/LEVEL7_ROUTE.md); bait_24_east_action stays
+        # live in OverworldToBaitShopController for POST_L6_TO_BAIT_HOPS.
         extra = pond_suffix_extra_hop_action(
             snap, hop, swing=self._swing, pond53_walker=self._pond53_walker()
         )
@@ -442,10 +451,6 @@ class PostLevel6OverworldController(OverworldPathController):
             return extra
         if hop.target == 0x33:
             act = bait_32_north_action(snap, swing=self._swing)
-            if act is not None:
-                return act
-        if hop.target == 0x25:
-            act = bait_24_east_action(snap, swing=self._swing)
             if act is not None:
                 return act
         if self.stuck > self.stuck_threshold:
@@ -489,6 +494,7 @@ class PostLevel6OverworldController(OverworldPathController):
             {
                 "evidence": self.handoff.evidence,
                 "route_eligible": self.handoff.route_eligible,
+                "dest_screen": f"0x{self.dest_screen:02X}",
                 "failed": self.failed,
                 "writes": 0,
             }
@@ -500,5 +506,8 @@ def make_post_l6_overworld_controller(
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
     hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
+    dest_screen: int = POND_SCREEN,
 ) -> PostLevel6OverworldController:
-    return PostLevel6OverworldController(handoff=handoff, hops=hops)
+    return PostLevel6OverworldController(
+        handoff=handoff, hops=hops, dest_screen=dest_screen
+    )

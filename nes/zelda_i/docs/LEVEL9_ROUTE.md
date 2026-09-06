@@ -6,6 +6,16 @@ unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
 The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.
 
+**2026-09-05 — the L8 predecessor is now measured.** `--through level8` is
+power-on spine-green 2/2 (`rr-6o7.3`); the shard fanfare settles Link on OW
+`0x6D` `(96,93)` mode 5, TF `0xFF`, MK 1, bombs 14, hc 10, B = bombs. That is
+`level9.dungeon.MEASURED_POST_L8_HANDOFF`. `continue_level9_spine` is wired
+into `spine/survival.py` carrying it, and `L9_THROUGH` is in `SPINE_THROUGH`,
+so `--through level9-entry` is reachable — but every natural L9 chapter is
+still a fail-closed `NaturalRouteUnavailableController`. First real build:
+`Level9PostL8OverworldController` for the `0x6D → 0x5D → … → 0x78 →
+LEVEL9_ROCK_HOPS → 0x05` walk (the `0x6D → 0x78` connector is unmapped).
+
 ## Natural-spine seam (Wave A, implementation only)
 
 The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
@@ -57,26 +67,77 @@ Fixture-live dest hops (`rr-sz8.6`, `route_eligible=false`): play `0x76`
 leftover `(120,205)` hold UP → `0x66` **2/2** P1/P2 251 controller frames;
 play `0x66` leftover `(120,205)` after west-shutter census (`doors=10`)
 hold LEFT → `0x65` **2/2** W1/W2 `(224,141)`. Pin
-`Level9Interior65WestReconFixture`. Natural old-man factory stays
-fail-closed. Do not batch the rest of the prefix.
+`Level9Interior65WestReconFixture`. Play `0x65` leftover `(224,141)`
+north-band approach `(208,141) -> (208,93) -> (120,93)` bomb-N → `0x55`
+Lanmola **2/2** BN1/BN2 424 controller frames / 484 total with census,
+leftover `(120,189)` facing UP, doors 4, 10× Lanmola `0x3A` HP32 + 1× `0x68`
+stairs trigger HP176 at `(96,144)`. Pin `Level9Interior55NorthReconFixture`.
+Play `0x55` leftover `(120,189)` dispatch 10× Lanmola `0x3A` (~404f), align
+x=96, push UP block `0x68` from `(96,144)` to `(96,128)`, walk vacated slot
+`(96,133)` to center stairs `(128,141)` to trigger mode 16 → cellar `0x60`
+**2/2** S1/S2 506 controller frames / 626 total with census, leftover
+`(192,93)` facing DOWN on right ladder, doors 0, 4× Keese `0x1B` HP 0. Pin
+`Level9Interior60CellarReconFixture`.
+Cellar `0x60` walk to west ladder → play `0x14` **2/2** C1/C2 (412f / 532f),
+leftover `(96,157)` facing DOWN. Pin `Level9Interior14LikeLikeReconFixture`.
+Play `0x14` east key door → `0x15` **2/2** E1/E2 (560f / 680f), leftover
+`(16,141)` facing RIGHT. Pin `Level9Interior15ReconFixture`.
+Play `0x15` east open door → `0x16` **2/2** E15_1/E15_2 (197f / 317f), leftover
+`(32,141)` facing RIGHT. Pin `Level9Interior16PatraReconFixture`.
+Play `0x16` skip Patra, north key door → `0x06` **2/2** N16_1/N16_2 (479f / 599f),
+leftover `(120,205)` facing UP. Pin `Level9Interior06OldManReconFixture`.
+Play `0x06` bomb west → `0x05` **2/2** BW06_1/BW06_2 (574f / 694f), leftover
+`(208,173)` facing LEFT. Pin `Level9Interior05StairsReconFixture`.
+Play `0x05` block push UP + stairs → cellar `0x70` **2/2** S05_1/S05_2 (482f / 602f),
+leftover `(192,93)` facing DOWN on right ladder. Pin `Level9Interior70CellarReconFixture`.
+Cellar `0x70` west ladder → play `0x63` **2/2** C70_1/C70_2 (412f / 532f),
+leftover `(160,157)` facing DOWN. Pin `Level9Interior63ZolsReconFixture`.
+Play `0x63` west key door → `0x62` (8 Keese) **2/2** W63_1/W63_2 (384f / 504f),
+leftover `(224,141)` facing LEFT. Pin `Level9Interior62KeeseReconFixture`.
+Play `0x62` west open door → `0x61` (other Patra) **2/2** W62_1/W62_2 (197f / 317f),
+leftover `(224,141)` facing LEFT. Pin `Level9Interior61PatraReconFixture`.
+Play `0x61` defeat Patra + push block + stairs → cellar `0x75` **2/2** S61_1/S61_2
+(748f / 868f), leftover `(192,93)` facing DOWN. Pin `Level9Interior75CellarReconFixture`.
+Cellar `0x75` west ladder → play `0x20` (Wizzrobes) **2/2** C75_1/C75_2 (412f / 532f),
+leftover `(96,157)` facing DOWN. Pin `Level9Interior20ReconFixture`.
+Play `0x20` perimeter walk + bomb north → `0x10` (Silver Arrows room) **2/2**
+BN20_1/BN20_2 (533f / 653f), leftover `(152,189)` facing UP. Pin
+`Level9Interior10SilverArrowsReconFixture`.
+All prefix hops are now 100% fixture-live (16/16 hops).
+Natural old-man factory stays fail-closed.
 
-The `level9-credits` chapter is callable only after the exact live-Patra
-endpoint: room `0x52`, body `0x47`, eight eyes `0x25`, north closed, TF
-`0xFF`, naturally owned Silver Arrows and Bow, and the Magical Sword used by
-the proven policy.  Its fresh controller stages adapt Patra, Ganon, Power
-Triforce, Zelda, and credits input policies.  They load no fixture and perform
-zero direct inventory, room, door, progression, or capacity writes.  Ganon fails
-closed unless arrows are selected.  The adapter performs that selection with a
-bounded normal pause-menu cursor loop; it never assigns `ADDR_SELECTED_ITEM`.
+Natural Patra Join (`rr-sz8.7`, `route_eligible=false`): play `0x10` Silver Arrows leftover `(152,189)`
+facing UP through `0x20` → cellar `0x75` → `0x61` → `0x51` (threaded statue diamond corridor)
+→ `0x41` (Like-Likes) → `0x31` (bomb west) → `0x30` (block push) → cellar `0x67` → `0x04`
+(Keese, y=93 clear aisle corridor) → `0x03` (Zols, block push) → cellar `0x77` → live Patra `0x52`
+(body `0x47` + 8 eyes `0x25`). Join runs in 21,156 frames (max 24,000) with 0 deaths, 0 loads,
+0 memory writes.
 
-This is structural evidence only.  It does not promote the ending suffix or
-make any `*ReconFixture` route-eligible. Stitch still needs L8 TF `0xFF` +
-Magic Key + a measured post-L8 OW leftover.
+The `level9-credits` chapter executes continuously from the exact live-Patra endpoint: room `0x52`,
+body `0x47`, eight eyes `0x25`, north closed, TF `0xFF`, naturally owned Silver Arrows and Bow,
+and the Magical Sword. Its fresh controller stages adapt Patra, Ganon, Power Triforce, Zelda, and
+credits input policies:
+- `level9_select_silver_arrows` (101f): pause-menu cursor navigation only; never assigns `ADDR_SELECTED_ITEM`.
+- `level9_final_patra` (1,252f): Patra defeat + north shutter opened.
+- `level9_enter_ganon` (301f): north into room 0x42.
+- `level9_ganon` (1,534f): 4 Magical Sword hits + Silver Arrow defeat ($0672 != 0).
+- `level9_power_triforce` (9f): Power Triforce collected.
+- `level9_enter_zelda` (190f): north into room 0x32.
+- `level9_rescue_zelda` (71f): fire strikes + center trigger rescue.
+- `level9_wait_credits` (1,496f): ending cutscene to credits rolling (mode 0x13, submode 3).
+Total end-to-end continuous execution: 26,109 frames (~7.25 minutes) with 0 deaths, 0 loads,
+0 memory writes.
+
+This is structural evidence only. It does not promote the ending suffix or make any `*ReconFixture`
+route-eligible. Stitch still needs L8 TF `0xFF` + Magic Key + a measured post-L8 OW leftover.
 
 **Beads:** `rr-sz8` (Level 9 epic), `rr-sz8.1` (pre-Ganon → credits),
 `rr-sz8.2` (live final Patra → credits), `rr-sz8.3` (room `0x62` disproved;
 play `0x03` stairs → cellar `0x77` → Patra **2/2**; `0x13` north wall, not a
-clean predecessor; play `0x04` bomb-west → `0x03` → Patra **2/2** recon; play `0x30` stairs → cellar `0x67` right → `0x04` → Patra **2/2** recon; play `0x31` bomb-west → `0x30` → Patra **1/1** recon; play `0x21` south shutter sealed after Patra; play `0x41` north → `0x31` dest **YES** → Patra **1/1** recon; play `0x40` key-north → `0x30` dest **YES**, stays dirty; play `0x51` identified as south pred of `0x41`, north dest walk **NO**).
+clean predecessor; play `0x04` bomb-west → `0x03` → Patra **2/2** recon; play `0x30` stairs → cellar `0x67` right → `0x04` → Patra **2/2** recon; play `0x31` bomb-west → `0x30` → Patra **1/1** recon; play `0x21` south shutter sealed after Patra; play `0x41` north → `0x31` dest **YES** → Patra **1/1** recon; play `0x40` key-north → `0x30` dest **YES**, stays dirty; play `0x51` identified as south pred of `0x41`, north dest walk **NO**),
+`rr-yxy6` (statue diamond corridor threaded in 0x51 -> uncleared 0x41),
+`rr-sz8.6` (16 prefix hops 0x76 to 0x10 Silver Arrows complete and 2/2 byte-identical),
+`rr-sz8.7` (natural Patra join 0x10 -> 0x52, Ganon, Zelda, credits in 26,109 continuous frames, 0 writes, 0 loads, 0 deaths).
 
 Planning sources:
 
@@ -751,6 +812,21 @@ Death Mountain end is Zelda/credits after Ganon.
 | State | When |
 |-------|------|
 | `Level9EntranceReconFixture` | live `level==9`, room `0x76`; composed full inventory |
+| `Level9Interior65WestReconFixture` | live `level==9`, room `0x65`; east mouth after 0x66 west hop |
+| `Level9Interior55NorthReconFixture` | live `level==9`, room `0x55`; south mouth after 0x65 bomb-north hop |
+| `Level9Interior60CellarReconFixture` | live `level==9`, cellar `0x60`; right ladder after 0x55 stairs hop |
+| `Level9Interior14LikeLikeReconFixture` | live `level==9`, room `0x14`; emerged from cellar 0x60 west ladder |
+| `Level9Interior15ReconFixture` | live `level==9`, room `0x15`; west mouth after 0x14 east key door |
+| `Level9Interior16PatraReconFixture` | live `level==9`, room `0x16`; west mouth after 0x15 east open door |
+| `Level9Interior06OldManReconFixture` | live `level==9`, room `0x06`; south mouth after 0x16 north key door |
+| `Level9Interior05StairsReconFixture` | live `level==9`, room `0x05`; east mouth after 0x06 bomb-west hop |
+| `Level9Interior70CellarReconFixture` | live `level==9`, cellar `0x70`; right ladder after 0x05 stairs hop |
+| `Level9Interior63ZolsReconFixture` | live `level==9`, room `0x63`; staircase emergence after cellar 0x70 |
+| `Level9Interior62KeeseReconFixture` | live `level==9`, room `0x62`; east mouth after 0x63 west key door |
+| `Level9Interior61PatraReconFixture` | live `level==9`, room `0x61`; east mouth after 0x62 west open door |
+| `Level9Interior75CellarReconFixture` | live `level==9`, cellar `0x75`; right ladder after 0x61 stairs hop |
+| `Level9Interior20ReconFixture` | live `level==9`, room `0x20`; staircase emergence after cellar 0x75 |
+| `Level9Interior10SilverArrowsReconFixture` | live `level==9`, room `0x10`; south mouth after 0x20 bomb-north hop |
 | `Level9Room03StairsReconFixture` | live Patra after play-0x03 stairs walk (fixture start) |
 | `Level9Room04BombWestReconFixture` | live Patra after 0x04 bomb-west → 0x03 stairs (fixture start) |
 | `Level9Room30StairsReconFixture` | live Patra after 0x30 stairs → cellar 0x67 right → 0x04 suffix (fixture start) |
@@ -796,8 +872,11 @@ Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
 
 ## Evidence boundary
 
-- Live: Spectacle Rock `0x05`; entrance `0x76`; fixture-live dest `0x76` UP
-  → `0x66` **2/2** and `0x66` LEFT → `0x65` **1/1** (`rr-sz8.6`); final Patra `0x52` body/eye
+- Live: Spectacle Rock `0x05`; entrance `0x76`; all 16 prefix fixture-live dest
+  hops from `0x76` through Silver Arrows `0x10` **2/2** (`rr-sz8.6`: `0x76→0x66`,
+  `0x66→0x65`, `0x65→0x55`, `0x55→0x60`, `0x60→0x14`, `0x14→0x15`, `0x15→0x16`,
+  `0x16→0x06`, `0x06→0x05`, `0x05→0x70`, `0x70→0x63`, `0x63→0x62`, `0x62→0x61`,
+  `0x61→0x75`, `0x75→0x20`, `0x20→0x10`); final Patra `0x52` body/eye
   types and HP; natural Patra clear + north-door bit; Ganon `0x42`; Zelda
   `0x32`; combat states; credits and final-screen stops.
 - Fixture-only in both tracks: full inventory and room-loader composition.
@@ -824,9 +903,10 @@ Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
   0x41 start is fixture-loaded (`route_eligible=false`).
   Play **0x51** is the identified south predecessor of 0x41 (ROM N
   open pairs 0x41 S shutter; 6× Like-Like; west shutter after
-  all_dead). Live north dest walk is **not** earned: statue diamond
-  blocks center (120,117) and thread columns 104/144. 0x51 start is
-  fixture-loaded (`route_eligible=false`).
+  all_dead). Live north dest walk is **earned** (`rr-yxy6`): statue diamond
+  threaded via waypoint corridor `(120,205) -> y<=189 -> x<=96 -> y<=141 -> x>=128 -> y<=93 -> x<=120 -> UP`.
+  Lands uncleared `0x41` (traps + Like-Likes, doors=4) with no door poke
+  (`recordings/l9_room51_dump.json`, 1303 total frames from 0x61).
   Play **0x40** key-north → play `0x30` is live (controller UP from
   south alcove; Magical Key; no 0x30 door poke). 0x40 start is
   fixture-loaded (`route_eligible=false`). Compose suffix through
@@ -836,7 +916,6 @@ Modules: `level9/overworld.py`, `level9/ganon.py`, `level9/patra.py`,
 - Disproved: play room `0x13` as a clean cardinal predecessor of `0x03`
   (ROM north wall / 0x03 south wall; controller UP sticks at y=93;
   0x03 loader door-staging is a fake scroll).
-- Dest-NO: play room `0x51` north walk into uncleared `0x41` (ROM +
-  visual north open; statue diamond blocks the live walk). 0x51 is
-  still the identified south predecessor.
+- Solved: play room `0x51` north walk into uncleared `0x41` (ROM +
+  visual north open; statue diamond threaded via waypoint navigation, dest YES).
 - TF bit map: shards 1–8 = bits `0x01`…`0x80`; full = `0xFF`.

@@ -15,17 +15,8 @@ from zelda_i.level7.hops import (
     make_room69_west_bomb_controller,
 )
 from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
-from zelda_i.ram import (
-    ADDR_BOMBS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 
 def _ram(
@@ -37,15 +28,15 @@ def _ram(
     bombs: int = 8,
     level: int = 7,
 ) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = PLAY_MODE
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = room
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_BOMBS] = bombs
-    ram[ADDR_SELECTED_ITEM] = selected
-    return ram
+    return make_ram(
+        {"mode": PLAY_MODE},
+        screen=room,
+        x=x,
+        y=y,
+        selected=selected,
+        bombs=bombs,
+        level=level,
+    )
 
 
 def _buttons(action) -> list[str]:
@@ -70,7 +61,13 @@ def _drive_until_place_or_start(ctl: BombWallController, ram: np.ndarray) -> lis
 
 
 def test_pond_leftover_slot_5_selects_bombs_before_place() -> None:
+    """``Room69WestBombController`` kill-clears goriyas before it ever reaches
+    the wrapped ``BombWallController``'s pause-select; ``saw_goriya=True``
+    (the same bypass ``Room69EastController`` tests use) skips straight to
+    that wall behaviour with a synthetic RAM that carries no live objects.
+    """
     ctl = make_room69_west_bomb_controller()
+    ctl.saw_goriya = True
     assert ctl.select_item == B_SLOT_BOMBS
     sx, sy = ctl.stand
     ram = _ram(room=ctl.from_room, x=sx, y=sy, selected=B_SLOT_RECORDER)

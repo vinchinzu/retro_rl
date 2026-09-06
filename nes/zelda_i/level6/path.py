@@ -201,25 +201,30 @@ class Level6North68Controller:
         # Do not re-probe boxed cells mid-peel. Do not retry x=120 UP.
         if (
             snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
-            and snap.link_x < HISTORICAL_AISLE_X
             and snap.link_y >= 141
         ):
-            self.peeled = True
-            self.walker.last_dir = None
-            if snap.link_x < NORTH_DOOR_X and snap.link_y < SOUTH_MOUTH_Y:
-                if self.frames <= 8 or self.frames % 60 == 0:
-                    self.notes.append(f"peel_south_{xy[0]}_{xy[1]}")
-                return self._emit(
-                    snap, FrameAction(nes_action("DOWN"), "peel_south_statue")
+            if snap.link_x < HISTORICAL_AISLE_X or snap.link_x > HISTORICAL_AISLE_X + 4:
+                self.peeled = True
+                self.walker.last_dir = None
+                if snap.link_x < NORTH_DOOR_X and snap.link_y < SOUTH_MOUTH_Y:
+                    if self.frames <= 8 or self.frames % 60 == 0:
+                        self.notes.append(f"peel_south_{xy[0]}_{xy[1]}")
+                    return self._emit(
+                        snap, FrameAction(nes_action("DOWN"), "peel_south_statue")
+                    )
+                btn = "RIGHT" if snap.link_x < HISTORICAL_AISLE_X else "LEFT"
+                reason = (
+                    "peel_to_aisle"
+                    if snap.link_x > HISTORICAL_AISLE_X
+                    else (
+                        "peel_east_aisle"
+                        if snap.link_x >= NORTH_DOOR_X
+                        else "peel_east_door"
+                    )
                 )
-            reason = (
-                "peel_east_aisle"
-                if snap.link_x >= NORTH_DOOR_X
-                else "peel_east_door"
-            )
-            if self.frames <= 8 or self.frames % 60 == 0:
-                self.notes.append(f"{reason}_{xy[0]}_{xy[1]}")
-            return self._emit(snap, FrameAction(nes_action("RIGHT"), reason))
+                if self.frames <= 8 or self.frames % 60 == 0:
+                    self.notes.append(f"{reason}_{xy[0]}_{xy[1]}")
+                return self._emit(snap, FrameAction(nes_action(btn), reason))
 
         if not self.use_occupancy:
             if self.clip_left_up and snap.link_y > CLIP_CLEAR_Y:

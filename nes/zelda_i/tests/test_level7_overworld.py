@@ -36,52 +36,33 @@ from zelda_i.level7.overworld import (
     pond_22_to_21_action,
 )
 from zelda_i.overworld.graph import neighbor_screens
-from zelda_i.ram import (
-    ADDR_ARROWS,
-    ADDR_BOMBS,
-    ADDR_BOW,
-    ADDR_CANDLE,
-    ADDR_FOOD,
-    ADDR_HEALTH,
-    ADDR_KEYS,
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_ROD,
-    ADDR_RUPEES,
-    ADDR_SCREEN,
-    ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
-    ADDR_WHISTLE,
-    PLAY_MODE,
-    read_snapshot,
-    read_u8,
-)
+from zelda_i.ram import ADDR_WHISTLE, PLAY_MODE, read_snapshot, read_u8
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": 0x53,
+    "x": 224,
+    "y": 173,
+    "sword": 1,
+    "whistle": 0,
+    "triforce": 0,
+    "keys": 0,
+    "bombs": 0,
+    "arrows": 0,
+    "health": 0x00,
+    "food": 0,
+    "rod": 0,
+    "bow": 0,
+    "candle": 0,
+    "rupees": 0,
+    "selected": 0,
+}
 
 
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x53)
-    ram[ADDR_LINK_X] = fields.get("x", 224)
-    ram[ADDR_LINK_Y] = fields.get("y", 173)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_WHISTLE] = fields.get("whistle", 0)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0)
-    ram[ADDR_KEYS] = fields.get("keys", 0)
-    ram[ADDR_BOMBS] = fields.get("bombs", 0)
-    ram[ADDR_ARROWS] = fields.get("arrows", 0)
-    ram[ADDR_HEALTH] = fields.get("health", 0x00)
-    ram[ADDR_FOOD] = fields.get("food", 0)
-    ram[ADDR_ROD] = fields.get("rod", 0)
-    ram[ADDR_BOW] = fields.get("bow", 0)
-    ram[ADDR_CANDLE] = fields.get("candle", 0)
-    ram[ADDR_RUPEES] = fields.get("rupees", 0)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", 0)
-    return ram
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -295,17 +276,41 @@ def test_post_l6_to_pond_hops_are_contiguous_neighbors() -> None:
         SCREEN_BRACELET_ARMOS,
         0x14,
         0x13,
+        0x12,
     )
     for a, b in zip(screens, screens[1:]):
         assert b in neighbor_screens(a).values(), f"{a:#x}->{b:#x}"
     assert POST_L6_TO_POND_HOPS[0].direction == "DOWN"
     assert POST_L6_TO_POND_HOPS[0].align_x == 112
-    assert POST_L6_TO_POND_HOPS[-1].target == 0x13
+    assert POST_L6_TO_POND_HOPS[-1].target == 0x12
     assert POST_L6_TO_POND_HOPS[-1].direction == "LEFT"
     assert POST_L6_TO_POND_HOPS[-1].y_band == (165, 189)
     assert 0x25 not in screens
     assert POST_L6_22_WEST_HOP.target == SCREEN_MAGICAL_SWORD_GRAVE
     assert POST_L6_22_WEST_HOP.direction == "LEFT"
+
+
+def _post_l6_left_hop(ram, *, target: int):
+    ctl = make_post_l6_overworld_controller(handoff=MEASURED_POST_L6_EXIT)
+    ctl.bind_env(_env(ram))
+    ctl._handoff_checked = True
+    ctl.hop_index = [h.target for h in POST_L6_TO_POND_HOPS].index(target)
+    return ctl.step(read_snapshot(ram))
+
+
+def test_post_l6_0x13_east_mouth_left_not_down() -> None:
+    """l7_p14w leftover (240,189): LEFT the south sand. Not DOWN the SE."""
+    ram = _ram(screen=0x13, x=240, y=189, sword=1, whistle=1)
+    act = _post_l6_left_hop(ram, target=0x12)
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert act.reason == "off_east"
+
+
+def test_post_l6_0x12_west_wall_is_not_a_hop_target() -> None:
+    """l7_p12w: 0x12 LEFT y=165-189 is west wall tile 218. Do not add 0x11."""
+    assert 0x11 not in POST_L6_TO_POND_SCREENS
+    assert POST_L6_TO_POND_HOPS[-1].target == 0x12
 
 
 def test_default_post_l6_controller_does_not_end_at_0x25() -> None:
@@ -326,6 +331,15 @@ def test_default_post_l6_controller_does_not_end_at_0x25() -> None:
 
 
 def test_post_l6_cave_mouth_reentry_still_refused() -> None:
+    """2026-09-04: ``hop.target == 0x21`` no longer gets the dedicated
+    ``pond_22_to_21_action`` mouth-leaving controller integration (that
+    branch was confirmed dead -- 0x21 is not in ``POST_L6_TO_POND_HOPS``
+    and was removed from ``_extra_hop_action``; the standalone function is
+    still directly tested in ``test_pond_22_cave_mouth_goes_down_not_up``).
+    The generic ``align_and_push`` engine still drives DOWN off the mouth
+    toward ``POST_L6_22_WEST_HOP``'s ``align_y``, and mouth-reentry refusal
+    is unrelated to which function produced the DOWN action.
+    """
     ram = _measured_leave_ram()
     ctl = make_post_l6_overworld_controller(
         handoff=MEASURED_POST_L6_EXIT, hops=(POST_L6_22_WEST_HOP,)
@@ -335,7 +349,6 @@ def test_post_l6_cave_mouth_reentry_still_refused() -> None:
     act = ctl.step(snap)
     assert not ctl.failed
     assert act.reason != "l6_cave_mouth"
-    assert act.reason == "22_leave_mouth"
     assert list(act.action) == list(nes_action("DOWN"))
     assert "post_l6_handoff_accepted" in ctl.notes
     ctl._left_mouth = True

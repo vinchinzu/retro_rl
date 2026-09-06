@@ -1,15 +1,12 @@
 """Level 7 chapter factories and Survival ``SpineHop`` rows.
 
-The public surface has three chapters.  Internal stage names provide precise
+The public surface has three chapters. Internal stage names provide precise
 handoffs without exposing room-level ``--through`` targets.
 
-``MEASURED_POST_L6_EXIT.verified`` is True and the Survival bait stage is
-green (disclosed Food poke; natural 60R shop is ``rr-8t4.4``).  Pond drain
-is ``level7.pond.Level7PondDrainController`` (pause-select recorder, no
-``$0656`` poke).  Survival ``--through level7-entry`` still dies on the
-post-L6 walk to pond ``0x42`` (bead ``rr-8t4.1``): the ``0x22→0x25`` spur
-is dead.  Do not wire the recon ``ADDR_WHISTLE`` poke.  Entry room ``0x79``
-is observed.
+``MEASURED_POST_L6_EXIT.verified`` is True. Survival ``--through level7``
+is spine-green from power-on (Recorder warp to pond ``0x42``, drain into
+entry ``0x79``, disclosed Food poke). Natural 60R bait shop is ``rr-8t4.4``.
+Do not wire the recon ``ADDR_WHISTLE`` poke.
 """
 
 from __future__ import annotations
@@ -33,7 +30,15 @@ from zelda_i.level7.entry import (
     make_survival_bait_purchase_controller,
 )
 from zelda_i.level7.hungry import make_level7_hungry_goriya_controller
-from zelda_i.level7.pond import POST_L6_TO_POND_HOPS, make_pond_drain_controller
+from zelda_i.level7.overworld import (
+    POST_L6_TO_WARP_HOPS,
+    WARP_ISLAND_SCREEN,
+    WARP_JOIN_TO_POND_HOPS,
+    WARP_LAUNCH_SCREEN,
+    OverworldToLevel7PondController,
+)
+from zelda_i.level7.pond import make_pond_drain_controller
+from zelda_i.level7.warp import make_recorder_warp_controller
 from zelda_i.dungeon.bomb_wall import BombWallController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level7.path import (
@@ -46,7 +51,6 @@ from zelda_i.level7.path import (
     L7_ROOM1A_EAST_BOMB,
     L7_ROOM0C_EAST_APPROACH,
     L7_ROOM0C_EAST_BOMB,
-    L7_ROOM69_WEST_BOMB,
     EntryNorthDoorController,
     Level7PathController,
     Room6AEastController,
@@ -67,6 +71,7 @@ from zelda_i.level7.path import (
     Room68DownController,
     Room68NorthController,
     Room69EastController,
+    Room69WestBombController,
 )
 from zelda_i.level7.pre_boss import make_room29_east_bomb_controller as make_room29_east_bomb_controller_impl
 from zelda_i.level7.shard import (
@@ -86,6 +91,9 @@ from zelda_i.ram import (
 from zelda_i.spine.hops import SpineHop
 
 Stage = tuple[str, Level7PathController, int]
+# rw_full_route_t2/t3: post-L6 → warp → pond 0x42 is 4913f end to end;
+# the join walk itself is well under 5k.  Budget matches the probe's cap.
+POND_APPROACH_MAX_FRAMES = 30_000
 ControllerFactory = Callable[[], Level7PathController]
 
 
@@ -198,15 +206,17 @@ def make_room38_up_controller() -> Level7PathController:
     return Room38UpController()
 
 
-def make_room69_west_bomb_controller() -> BombWallController:
-    """0x69 west BOMB wall → live 0x68 (source GORIYA_BOMB_HUB → KEESE_TRAPS).
+def make_room69_west_bomb_controller() -> Level7PathController:
+    """0x69 kill-clear goriyas -> west BOMB wall -> live 0x68 (KEESE_TRAPS).
 
-    The candle-path branch after the Stalfos-key dead-end.  Needs bombs +
-    bomb selected on B.  Recon-wired only (interior of 0x68 unobserved).
+    Live census: the five 0x69 goriyas read HP=0 for a few frames while they
+    materialize, then go live at HP=80 and throw boomerangs.  A naive
+    approach-and-place (no clear) reaches the stand fine but the goriyas
+    interrupt the bomb placement (``bomb_not_consumed``).  Clear them first,
+    then bomb via ``L7_ROOM69_WEST_APPROACH`` (mirrors ``east_route_step``'s
+    detour around the centre-row diamond blocks).
     """
-    return BombWallController(
-        wall=L7_ROOM69_WEST_BOMB, level=7, select_item=B_SLOT_BOMBS
-    )
+    return Room69WestBombController()
 
 
 def make_room18_north_bomb_controller() -> BombWallController:
@@ -374,12 +384,9 @@ def make_level7_shard_leave_controller() -> Level7PathController:
     fanfare idled (never walked), OW leftover ``0x42`` ``(96,93)`` mode 5,
     TF ``0x40``, HC 4, hearts full, ``position_writes=0``.
 
-    That leftover is **not** the Survival packet: the lineage pin starts at
-    TF 0, so the leave reads ``0x40`` and not ``0x7F``.
-    ``MEASURED_POST_L7_EXIT`` therefore stays unfilled with
-    ``verified=False``, ``LEVEL7_COMPLETE_STOP`` stays fail-closed, and L8
-    keeps ``PostLevel7Handoff.verified=False``. Fill them only from a real
-    power-on Survival run via ``overworld.stitch.handoff_from_ram``.
+    The fixture-lineage leftover is TF ``0x40`` (pin starts at TF 0) and is
+    **not** the Survival packet. ``MEASURED_POST_L7_EXIT`` is filled from
+    power-on ``--through level7`` 2/2, not from this factory.
     """
     return make_level7_shard_leave_controller_impl()
 
@@ -392,18 +399,32 @@ def _stage(name: str, factory: ControllerFactory) -> Stage:
 def level7_entry_chapter_stages(
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
-    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
+    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_WARP_HOPS,
+    warp_launch: int = WARP_LAUNCH_SCREEN,
+    warp_target: int = WARP_ISLAND_SCREEN,
+    join_hops: tuple[ScreenHop, ...] = WARP_JOIN_TO_POND_HOPS,
     bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
     survival: bool = False,
 ) -> tuple[Stage, ...]:
-    """Fresh post-L6 OW -> Bait -> Whistle pond -> observed L7 entry.
+    """Post-L6 OW -> Recorder warp -> pond approach -> Bait -> L7 entry.
 
-    ``survival=True`` swaps the fail-closed natural Bait buy for the disclosed
-    ``SurvivalBaitPurchaseController`` (one ``ADDR_FOOD`` write); Clean keeps the
-    natural buy.  Default overworld hops are ``POST_L6_TO_POND_HOPS`` (the
-    ``0x22→0x25`` bait prefix is a dead spur).
+    The post-L6 pocket is mountain-locked, so the walk stops on the warp
+    launch screen ``0x24`` and ``level7.warp.RecorderWarpController`` blows the
+    owned Recorder until the cycle lands on the L4 island door ``0x45``; the
+    join hops rejoin the already-green pond chain at ``0x55``
+    (``LEVEL7_ROUTE.md`` H1).  ``survival=True`` swaps the fail-closed natural
+    Bait buy for the disclosed ``SurvivalBaitPurchaseController`` (one
+    ``ADDR_FOOD`` write); Clean keeps the natural buy.
     """
-    post = make_post_l6_overworld_controller(handoff=handoff, hops=post_l6_hops)
+    post = make_post_l6_overworld_controller(
+        handoff=handoff, hops=post_l6_hops, dest_screen=warp_launch
+    )
+    warp = make_recorder_warp_controller(
+        target_screen=warp_target, launch_screen=warp_launch
+    )
+    approach = OverworldToLevel7PondController(
+        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES
+    )
     bait = (
         make_survival_bait_purchase_controller(plan=bait_plan)
         if survival
@@ -412,6 +433,8 @@ def level7_entry_chapter_stages(
     pond = make_pond_entry_controller()
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
+        ("level7_recorder_warp", warp, warp.max_frames),
+        ("level7_pond_approach", approach, approach.max_frames),
         ("level7_bait_purchase", bait, bait.max_frames),
         ("level7_pond_drain_entry", pond, pond.max_frames),
     )
@@ -421,8 +444,7 @@ def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
     """0x79 first door → west candle mainline → Hungry feed → MAP bombs → 0x4A.
 
     Tip-of-nose stairs is near-boss (complete chapter), not between Hungry
-    and Candle. Survival still dies walking post-L6 to pond ``0x42``.
-    Stages stay ``route_eligible=false``.
+    and Candle.
     """
     return (
         _stage("level7_entry_first_door", make_entry_first_door_controller),
@@ -445,10 +467,8 @@ def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
 def level7_complete_chapter_stages() -> tuple[Stage, ...]:
     """Candle return → Digdogger → 0x0D stairs → cellar → 0x2A heart → shard.
 
-    Survival ``--through level7`` still dies on the post-L6 walk to pond
-    ``0x42``. Interior stages are fixture-live (``route_eligible=false``).
-    ``MEASURED_POST_L7_EXIT`` stays unfilled (``verified=False``); do not
-    copy the TF-0 leftover.
+    Interior stage factories stay ``route_eligible=false``; the Survival
+    leave packet is filled separately from power-on.
     """
     return (
         _stage("level7_room4a_return", make_room4a_return_controller),
@@ -507,17 +527,15 @@ def l7_hops(
     env,
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
-    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_POND_HOPS,
+    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_WARP_HOPS,
     bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
     survival: bool = False,
 ) -> tuple[SpineHop, ...]:
     """Build fresh L7 chapter rows.  Defaults stay ``route_eligible=false``.
 
     ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
-    for the disclosed ``ADDR_FOOD`` fixture.  Pond drain is the pause-select
-    whistle controller; the post-L6 walk to ``0x42`` is still the Survival
-    fail (``rr-8t4.1``). Interior chapters follow the live room order with
-    ``route_eligible=false``. ``MEASURED_POST_L7_EXIT`` stays unfilled.
+    for the disclosed ``ADDR_FOOD`` fixture. Interior chapter factories stay
+    ``route_eligible=false``.
     """
 
     def _entry_stages() -> tuple[Stage, ...]:

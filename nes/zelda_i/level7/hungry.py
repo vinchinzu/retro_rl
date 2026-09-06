@@ -233,7 +233,11 @@ ROOM_38 = 0x38
 ROOM_38_EAST_POCKET_X = 208
 ROOM_38_NORTH_X = 120
 ROOM_38_TOP_BAND_Y = 93
-ROOM38_UP_MAX_FRAMES = 8000
+ROOM38_UP_MAX_FRAMES = 14000
+# Open vertical columns through the diamond block lattice (cols 32, 64, 96, 144, 176, 208)
+ROOM_38_OPEN_COLUMNS = (32, 64, 96, 144, 176, 208)
+# In 0x38, enemies wander the top open band at y=93; allow Link into y=93 to engage
+ROOM_38_INLAND_Y = (ROOM_38_TOP_BAND_Y, 173)
 
 
 def north_of_room38_ram_id() -> int | None:
@@ -251,7 +255,7 @@ def room_38_up_step(
     """One frame of 0x38 kill-clear → east-pocket rise → KEY north door.
 
     Interior ``y=149`` is a diamond wall (UP blocked at x=120/104/88/200).
-    Recollect the east mouth pocket ``x=208``, rise to ``y=93``, cross to
+    Recollect the nearest open column, rise to ``y=93``, cross to
     ``x=120``, push UP. The key consume is natural.
     """
     if snap.level != LEVEL7:
@@ -270,12 +274,21 @@ def room_38_up_step(
         target = nearest_enemy(snap.link_x, snap.link_y, live)
         if target is None:
             return FrameAction(nes_idle_action(), "goriya_missing")
-        return _goriya_fight(snap, target, frames=frames)
+        return _goriya_fight(
+            snap, target, frames=frames, inland_y=ROOM_38_INLAND_Y
+        )
     if not saw_goriya:
         return FrameAction(nes_idle_action(), "spawn_wait")
 
     x, y = int(snap.link_x), int(snap.link_y)
-    if y > ROOM_38_TOP_BAND_Y + 12 and x < ROOM_38_EAST_POCKET_X - NORTH_X_TOL:
+    nearest_col = min(ROOM_38_OPEN_COLUMNS, key=lambda c: abs(x - c))
+    if abs(x - nearest_col) <= NORTH_X_TOL:
+        if x != nearest_col and y > ROOM_38_TOP_BAND_Y + DOOR_Y_TOL:
+            btn = "LEFT" if x > nearest_col else "RIGHT"
+            return FrameAction(nes_action(btn), "up38_align_col")
+        if y > ROOM_38_TOP_BAND_Y + DOOR_Y_TOL:
+            return FrameAction(nes_action("UP"), "up38_rise")
+    elif y > ROOM_38_TOP_BAND_Y + 12 and x < ROOM_38_EAST_POCKET_X - NORTH_X_TOL:
         return FrameAction(nes_action("RIGHT"), "up38_pocket")
     if y > ROOM_38_TOP_BAND_Y + DOOR_Y_TOL:
         return FrameAction(nes_action("UP"), "up38_rise")

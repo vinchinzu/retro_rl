@@ -45,18 +45,22 @@ from zelda_i.level8.dungeon import (
     level8_magic_key_ledger,
     level8_magic_key_stop,
 )
+from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
 from zelda_i.level8.entry import (
     ADDR_CANDLE_USED,
     B_ITEM_CANDLE,
     CANDLE_RED,
+    MEASURED_POST_L7_HANDOFF,
     UNMEASURED_POST_L7_HANDOFF,
     UNVERIFIED_BUSH_BURN_TARGET,
     BushBurnTarget,
     PostLevel7Handoff,
+    handoff_from_overworld,
     make_burn_level8_bush_controller,
     make_post_l7_to_bush_controller,
     make_select_red_candle_controller,
 )
+from zelda_i.overworld.stitch import UNMEASURED_HANDOFF
 from zelda_i.level8.hops import l8_hops
 from zelda_i.level8.path import (
     make_blue_gohma_controller,
@@ -65,23 +69,15 @@ from zelda_i.level8.path import (
 from zelda_i.level8.spine import L8_STOPS, L8_THROUGH, continue_level8_spine
 from zelda_i.ram import (
     ADDR_ARROWS,
-    ADDR_BOMBS,
     ADDR_BOW,
-    ADDR_CANDLE,
-    ADDR_HEALTH,
-    ADDR_KEYS,
     ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MAGIC_KEY,
     ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SELECTED_ITEM,
-    ADDR_SWORD,
-    ADDR_TRIFORCE,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
 
 _LEVEL8_DIR = Path(__file__).resolve().parents[1] / "level8"
 _WRITE_MODULES = (
@@ -95,24 +91,29 @@ _WRITE_MODULES = (
 )
 
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 0,
+    "screen": 0x6D,
+    "x": 48,
+    "y": 93,
+    "triforce": 0x7F,
+    "sword": 1,
+    "health": 0xBB,
+    "keys": 4,
+    "bombs": 8,
+    "candle": CANDLE_RED,
+    "selected": B_ITEM_CANDLE,
+    "bow": 1,
+    "arrows": 1,
+    "magic_key": 0,
+}
+
+
 def _ram(**fields: int) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = fields.get("mode", PLAY_MODE)
-    ram[ADDR_LEVEL] = fields.get("level", 0)
-    ram[ADDR_SCREEN] = fields.get("screen", 0x6D)
-    ram[ADDR_LINK_X] = fields.get("x", 48)
-    ram[ADDR_LINK_Y] = fields.get("y", 93)
-    ram[ADDR_TRIFORCE] = fields.get("triforce", 0x7F)
-    ram[ADDR_SWORD] = fields.get("sword", 1)
-    ram[ADDR_HEALTH] = fields.get("health", 0xBB)
-    ram[ADDR_KEYS] = fields.get("keys", 4)
-    ram[ADDR_BOMBS] = fields.get("bombs", 8)
-    ram[ADDR_CANDLE] = fields.get("candle", CANDLE_RED)
-    ram[ADDR_SELECTED_ITEM] = fields.get("selected", B_ITEM_CANDLE)
-    ram[ADDR_CANDLE_USED] = fields.get("candle_used", 0)
-    ram[ADDR_BOW] = fields.get("bow", 1)
-    ram[ADDR_ARROWS] = fields.get("arrows", 1)
-    ram[ADDR_MAGIC_KEY] = fields.get("magic_key", 0)
+    candle_used = fields.pop("candle_used", 0)
+    ram = make_ram(_DEFAULTS, **fields)
+    ram[ADDR_CANDLE_USED] = candle_used
     return ram
 
 
@@ -158,6 +159,53 @@ def test_continue_level8_spine_rejects_unknown_through() -> None:
         assert "level8-book" in str(exc)
     else:
         raise AssertionError("unknown through must raise")
+
+
+def test_measured_l7_handoff_copies_power_on_leave() -> None:
+    assert MEASURED_POST_L7_HANDOFF.complete()
+    assert MEASURED_POST_L7_HANDOFF.verified is True
+    assert MEASURED_POST_L7_HANDOFF.route_eligible is True
+    assert MEASURED_POST_L7_HANDOFF.screen == 0x42
+    assert MEASURED_POST_L7_HANDOFF.link_x == 96
+    assert MEASURED_POST_L7_HANDOFF.link_y == 93
+    assert MEASURED_POST_L7_HANDOFF.bombs == 1
+    assert MEASURED_POST_L7_HANDOFF.rupees == 66
+    assert MEASURED_POST_L7_HANDOFF.heart_containers == 9
+    assert MEASURED_POST_L7_HANDOFF.selected_item == 1
+    assert MEASURED_POST_L7_HANDOFF.arrows == 1
+    assert MEASURED_POST_L7_HANDOFF.candle == CANDLE_RED
+    copied = handoff_from_overworld(MEASURED_POST_L7_EXIT)
+    assert copied == MEASURED_POST_L7_HANDOFF
+    assert handoff_from_overworld(UNMEASURED_HANDOFF) is UNMEASURED_POST_L7_HANDOFF
+
+
+def test_isolated_factory_empty_hops_fail_closed() -> None:
+    ram = _ram(
+        level=0,
+        screen=0x42,
+        x=96,
+        y=93,
+        triforce=0x7F,
+        health=0x88,
+        keys=1,
+        bombs=1,
+        rupees=66,
+        selected=1,
+        whistle=1,
+        food=0,
+        rod=1,
+        bow=1,
+        arrows=1,
+        candle=CANDLE_RED,
+        sword=1,
+    )
+    ctl = make_post_l7_to_bush_controller(handoff=MEASURED_POST_L7_HANDOFF)
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.hops == ()
+    assert ctl.phase.name == "FAILED"
+    assert "post_l7_path_unmeasured" in ctl.notes
+    assert list(act.action) == list(nes_idle_action())
 
 
 def test_incomplete_handoff_refuses_to_move() -> None:
@@ -276,6 +324,28 @@ def _drive_to_mouth(ctl: Any, ram: np.ndarray) -> Any:
     return ctl.step(read_snapshot(ram))
 
 
+def test_burn_drops_to_sand_channel_before_east() -> None:
+    for y in (61, 86):
+        ram = _ram(x=48, y=y, candle=2, selected=4)
+        ctl = make_burn_level8_bush_controller(target=_verified_target())
+        ctl.bind_env(_env(ram))
+        act = ctl.step(read_snapshot(ram))
+        assert not ctl.failed
+        assert act.reason == "bush_burn_drop_to_channel"
+        assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_burn_does_not_fire_until_within_two_px() -> None:
+    ram = _ram(x=132, y=93, candle=2, selected=4)
+    ctl = make_burn_level8_bush_controller(target=_verified_target())
+    ctl.bind_env(_env(ram))
+    act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert ctl.phase.name == "AIM"
+    assert act.reason == "bush_burn_align_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+
 def test_right_push_target_drives_the_mouth_into_level8() -> None:
     # rr-i6hq: mode 16 must be answered with the recorded push_direction. The
     # sweep saw entry_room=null on all seven mouth stands (UP never completes);
@@ -299,6 +369,24 @@ def test_right_push_target_drives_the_mouth_into_level8() -> None:
     assert not ctl.failed
     assert ctl.observed_entry_room == 0x7E
     assert ctl.report()["route_eligible"] is False
+
+
+def test_burn_waits_through_level8_mode2_load() -> None:
+    ram = _ram(x=VERIFIED_BUSH_X, y=VERIFIED_BUSH_Y, candle=2, selected=4)
+    ctl = make_burn_level8_bush_controller(target=_verified_target())
+    _drive_to_mouth(ctl, ram)
+    ram[ADDR_CANDLE_USED] = 1
+    ram[ADDR_LEVEL] = 8
+    ram[ADDR_MODE] = 2
+    act = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert not ctl.success
+    assert act.reason == "enter_level8_settle"
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_SCREEN] = 0x7E
+    ctl.step(read_snapshot(ram))
+    assert ctl.success
+    assert ctl.observed_entry_room == 0x7E
 
 
 def test_isolated_recon_right_push_drives_the_mouth_into_level8() -> None:
@@ -508,18 +596,26 @@ def test_magic_key_ledger_records_key_and_bomb_counts() -> None:
 
 
 def test_blue_gohma_factory_requires_natural_bow_and_does_not_poke() -> None:
-    ram = _ram(level=8, bow=0, arrows=0)
+    # In 0x1E without a naturally owned bow + wooden arrows the kill fails
+    # closed and never pokes an arrow or L6's one-time grant.
+    ram = _ram(level=8, screen=0x1E, x=120, y=205, bow=0, arrows=0)
     ctl = make_blue_gohma_controller()
     act = ctl.step(read_snapshot(ram))
-    assert ctl.failed
-    assert not ctl.success
-    assert ctl.poked_arrows is False
-    assert ctl.l6_room_check is False
+    assert ctl.failed and not ctl.success
     assert ctl.writes == 0
+    assert ctl.report()["poked_arrows"] is False
     assert int(ram[ADDR_ARROWS]) == 0
     assert int(ram[ADDR_BOW]) == 0
     assert "l8_gohma_requires_natural_bow_arrows" in ctl.notes
     assert list(act.action) == list(nes_idle_action())
+
+
+def test_blue_gohma_factory_fails_closed_outside_0x1e() -> None:
+    ram = _ram(level=8, screen=0x6D, bow=1, arrows=1)
+    ctl = make_blue_gohma_controller()
+    ctl.step(read_snapshot(ram))
+    assert ctl.failed and not ctl.success
+    assert any("unexpected_room" in n for n in ctl.notes)
 
 
 def test_four_head_gleeok_factory_does_not_assume_0x45() -> None:

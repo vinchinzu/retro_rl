@@ -9,10 +9,13 @@ doors, rooms, progression, or capacity.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
+from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
     BOMBS_NOT_NATURAL,
     FULL_TRIFORCE,
@@ -42,9 +45,27 @@ from zelda_i.level9.ganon import (
     in_ganon_fight,
     in_zelda_room,
 )
-from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
-from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.path import final_patra_to_ganon_step
+from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
+from zelda_i.level9.room51 import room51_to_41_step
+from zelda_i.level9.stairs import (
+    BOMB_WALL_04_WEST,
+    BOMB_WALL_31_WEST,
+    CELLAR_MODE,
+    ROOM03,
+    ROOM04,
+    ROOM30,
+    ROOM31,
+    ROOM41,
+    ROOM51,
+    ROOM61,
+    chase_sword_step,
+    live_combat_objects,
+    pushable_block,
+    room03_stairs_step,
+    room30_stairs_step,
+    stair_transition_modes,
+)
 from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
 
 
@@ -173,8 +194,409 @@ class _NaturalEndingController:
             "progression_writes": 0,
             "capacity_writes": 0,
             "inventory_writes": 0,
+            "triforce_writes": 0,
             "selected_item_writes": 0,
         }
+
+
+class PatraJoinPhase(Enum):
+    SOUTH_10 = auto()
+    CLEAR_20 = auto()
+    NAV_BLOCK_20 = auto()
+    PUSH_BLOCK_20 = auto()
+    STAIRS_20 = auto()
+    CELLAR_75 = auto()
+    NAV_61 = auto()
+    NAV_51 = auto()
+    CLEAR_41 = auto()
+    NORTH_41 = auto()
+    CLEAR_31 = auto()
+    NAV_BOMB_31 = auto()
+    BOMB_31 = auto()
+    CLEAR_30 = auto()
+    STAIRS_30 = auto()
+    CELLAR_67 = auto()
+    CLEAR_04 = auto()
+    NAV_BOMB_04 = auto()
+    BOMB_04 = auto()
+    CLEAR_03 = auto()
+    STAIRS_03 = auto()
+    CELLAR_77 = auto()
+    WAIT_PATRA = auto()
+    ARRIVED = auto()
+    FAILED = auto()
+
+
+NAV_BLOCK_20_WPS = ((176, 93), (176, 189), (96, 189), (96, 157))
+NAV_61_WPS = ((48, 157), (48, 93), (120, 93), (120, 77))
+NAV_BOMB_31_WPS = ((120, 189), (48, 189), (48, 141))
+
+
+def cellar_west_to_east_step(snap: ZeldaSnapshot) -> FrameAction:
+    x, y = int(snap.link_x), int(snap.link_y)
+    if snap.mode != 9 or snap.transitioning:
+        return FrameAction(nes_action("UP"), "cellar_exit_scroll")
+    if y < 189 and x <= 64:
+        return FrameAction(nes_action("DOWN"), "cellar_west_drop")
+    if x < 192:
+        return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
+    return FrameAction(nes_action("UP"), "cellar_east_climb")
+
+
+def cellar_east_to_west_step(snap: ZeldaSnapshot) -> FrameAction:
+    x, y = int(snap.link_x), int(snap.link_y)
+    if snap.mode != 9 or snap.transitioning:
+        return FrameAction(nes_action("UP"), "cellar_exit_scroll")
+    if y < 189 and x >= 176:
+        return FrameAction(nes_action("DOWN"), "cellar_east_drop")
+    if x > 48:
+        return FrameAction(nes_action("LEFT"), "cellar_floor_west")
+    return FrameAction(nes_action("UP"), "cellar_west_climb")
+
+
+@dataclass
+class NaturalPatraJoinController(_NaturalEndingController):
+    """One-frame sequential controller connecting Silver Arrows 0x10 to live Patra 0x52.
+
+    Traverses 10 natural hops without memory writes or state loads:
+    0x10 -> 0x20 -> cellar 0x75 -> 0x61 -> 0x51 -> 0x41 -> 0x31 -> 0x30 ->
+    cellar 0x67 -> 0x04 -> 0x03 -> cellar 0x77 -> live Patra 0x52.
+    """
+
+    max_frames: int = 24000
+    phase: PatraJoinPhase = PatraJoinPhase.SOUTH_10
+    phase_frames: int = 0
+    cooldown: int = 0
+    wp_i: int = 0
+    start_checked: bool = False
+    _bomb_31: BombWallController = field(init=False, repr=False)
+    _bomb_04: BombWallController = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._bomb_31 = BombWallController(
+            wall=BOMB_WALL_31_WEST,
+            level=LEVEL9,
+            approach_tol=4,
+            stand_tol=4,
+            face_frames=4,
+            step_back=6,
+            wait_blast=100,
+            wait_hold_face=False,
+            require_bomb_consumed=True,
+            max_frames=4000,
+        )
+        self._bomb_04 = BombWallController(
+            wall=BOMB_WALL_04_WEST,
+            level=LEVEL9,
+            approach_tol=4,
+            stand_tol=4,
+            face_frames=4,
+            step_back=6,
+            wait_blast=100,
+            wait_hold_face=False,
+            require_bomb_consumed=True,
+            max_frames=4000,
+        )
+
+    def _set_phase(self, phase: PatraJoinPhase) -> None:
+        self.phase = phase
+        self.phase_frames = 0
+        self.wp_i = 0
+
+    def _action(self, action: list[int], reason: str) -> FrameAction:
+        self.phase_frames += 1
+        return super()._action(action, reason)
+
+    def _fail(self, reason: str) -> FrameAction:
+        self.phase = PatraJoinPhase.FAILED
+        return super()._fail(reason)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.success or self.failed:
+            return self._action(nes_idle_action(), "done")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if not self.start_checked:
+            self.start_checked = True
+            if not (
+                snap.level == LEVEL9
+                and snap.screen in (0x10, 0x20)
+                and snap.mode == PLAY_MODE
+                and snap.triforce == FULL_TRIFORCE
+                and snap.bombs >= 1
+            ):
+                return self._fail("natural_patra_join_predecessor_contract_miss")
+
+        # 1. SOUTH_10
+        if self.phase == PatraJoinPhase.SOUTH_10:
+            if snap.screen == 0x20 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_20)
+            elif snap.screen == 0x10:
+                if abs(snap.link_x - 120) > 2:
+                    d = "LEFT" if snap.link_x > 120 else "RIGHT"
+                    return self._action(nes_action(d), "south_10_align_x")
+                return self._action(nes_action("DOWN"), "south_10_push_down")
+            else:
+                return self._action(nes_action("DOWN"), "south_10_scroll")
+
+        # 2. CLEAR_20
+        if self.phase == PatraJoinPhase.CLEAR_20:
+            combat = live_combat_objects(snap)
+            if len(combat) == 0 or self.phase_frames >= 2500:
+                self._set_phase(PatraJoinPhase.NAV_BLOCK_20)
+            else:
+                act, self.cooldown = chase_sword_step(snap, self.cooldown)
+                return self._action(act.action, "clear_20_combat")
+
+        # 3. NAV_BLOCK_20
+        if self.phase == PatraJoinPhase.NAV_BLOCK_20:
+            if self.wp_i >= len(NAV_BLOCK_20_WPS):
+                self._set_phase(PatraJoinPhase.PUSH_BLOCK_20)
+            else:
+                tx, ty = NAV_BLOCK_20_WPS[self.wp_i]
+                dx, dy = tx - snap.link_x, ty - snap.link_y
+                if abs(dx) <= 2 and abs(dy) <= 2:
+                    self.wp_i += 1
+                    if self.wp_i >= len(NAV_BLOCK_20_WPS):
+                        self._set_phase(PatraJoinPhase.PUSH_BLOCK_20)
+                        return self._action(nes_action("UP"), "nav_block_20_arrived")
+                    tx, ty = NAV_BLOCK_20_WPS[self.wp_i]
+                    dx, dy = tx - snap.link_x, ty - snap.link_y
+                d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) > 2 else ("DOWN" if dy > 0 else "UP")
+                return self._action(nes_action(d), f"nav_block_20_wp{self.wp_i}")
+
+        # 4. PUSH_BLOCK_20
+        if self.phase == PatraJoinPhase.PUSH_BLOCK_20:
+            block = pushable_block(snap)
+            if self.phase_frames >= 50 or (block is not None and block.y <= 130):
+                self._set_phase(PatraJoinPhase.STAIRS_20)
+                return self._action(nes_idle_action(), "push_block_20_done")
+            return self._action(nes_action("UP"), "push_block_20")
+
+        # 5. STAIRS_20
+        if self.phase == PatraJoinPhase.STAIRS_20:
+            if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
+                self._set_phase(PatraJoinPhase.CELLAR_75)
+                return self._action(nes_idle_action(), "stairs_20_transition")
+            dx, dy = 128 - snap.link_x, 141 - snap.link_y
+            if abs(dx) > 1:
+                d = "RIGHT" if dx > 0 else "LEFT"
+            elif abs(dy) > 1:
+                d = "DOWN" if dy > 0 else "UP"
+            else:
+                d = "DOWN"
+            return self._action(nes_action(d), "stairs_20_step")
+
+        # 6. CELLAR_75
+        if self.phase == PatraJoinPhase.CELLAR_75:
+            if snap.screen == ROOM61 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.NAV_61)
+                return self._action(nes_idle_action(), "cellar_75_arrived_61")
+            act = cellar_west_to_east_step(snap)
+            return self._action(act.action, act.reason)
+
+        # 7. NAV_61
+        if self.phase == PatraJoinPhase.NAV_61:
+            if snap.screen == ROOM51 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.NAV_51)
+                return self._action(nes_idle_action(), "nav_61_arrived_51")
+            if snap.transitioning or snap.mode != PLAY_MODE:
+                return self._action(nes_action("UP"), "nav_61_scroll")
+            if self.wp_i < len(NAV_61_WPS):
+                tx, ty = NAV_61_WPS[self.wp_i]
+                dx, dy = tx - snap.link_x, ty - snap.link_y
+                if abs(dx) <= 2 and abs(dy) <= 2:
+                    self.wp_i += 1
+                if self.wp_i < len(NAV_61_WPS):
+                    tx, ty = NAV_61_WPS[self.wp_i]
+                    dx, dy = tx - snap.link_x, ty - snap.link_y
+                    d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) > 2 else ("DOWN" if dy > 0 else "UP")
+                    return self._action(nes_action(d), f"nav_61_wp{self.wp_i}")
+            return self._action(nes_action("UP"), "nav_61_push_up")
+
+        # 8. NAV_51
+        if self.phase == PatraJoinPhase.NAV_51:
+            if snap.screen == ROOM41 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_41)
+                return self._action(nes_idle_action(), "nav_51_arrived_41")
+            act = room51_to_41_step(snap, self.phase_frames)
+            return self._action(act.action, act.reason)
+
+        # 9. CLEAR_41
+        if self.phase == PatraJoinPhase.CLEAR_41:
+            combat = live_combat_objects(snap)
+            if len(combat) == 0 or self.phase_frames >= 1800:
+                self._set_phase(PatraJoinPhase.NORTH_41)
+                return self._action(nes_idle_action(), "clear_41_done")
+            act, self.cooldown = chase_sword_step(snap, self.cooldown)
+            return self._action(act.action, "clear_41_combat")
+
+        # 10. NORTH_41
+        if self.phase == PatraJoinPhase.NORTH_41:
+            if snap.screen == ROOM31 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_31)
+                return self._action(nes_idle_action(), "north_41_arrived_31")
+            if snap.transitioning or snap.mode != PLAY_MODE:
+                return self._action(nes_action("UP"), "north_41_scroll")
+            if abs(snap.link_x - 120) > 2:
+                d = "RIGHT" if snap.link_x < 120 else "LEFT"
+                return self._action(nes_action(d), "north_41_align_x")
+            return self._action(nes_action("UP"), "north_41_push_up")
+
+        # 11. CLEAR_31
+        if self.phase == PatraJoinPhase.CLEAR_31:
+            combat = live_combat_objects(snap)
+            if len(combat) == 0 or self.phase_frames >= 2000:
+                self._set_phase(PatraJoinPhase.NAV_BOMB_31)
+                return self._action(nes_idle_action(), "clear_31_done")
+            act, self.cooldown = chase_sword_step(snap, self.cooldown)
+            return self._action(act.action, "clear_31_combat")
+
+        # 12. NAV_BOMB_31
+        if self.phase == PatraJoinPhase.NAV_BOMB_31:
+            if self.wp_i >= len(NAV_BOMB_31_WPS):
+                self._set_phase(PatraJoinPhase.BOMB_31)
+                return self._action(nes_idle_action(), "nav_bomb_31_stand")
+            tx, ty = NAV_BOMB_31_WPS[self.wp_i]
+            dx, dy = tx - snap.link_x, ty - snap.link_y
+            if abs(dx) <= 2 and abs(dy) <= 2:
+                self.wp_i += 1
+                if self.wp_i >= len(NAV_BOMB_31_WPS):
+                    self._set_phase(PatraJoinPhase.BOMB_31)
+                    return self._action(nes_idle_action(), "nav_bomb_31_stand")
+                tx, ty = NAV_BOMB_31_WPS[self.wp_i]
+                dx, dy = tx - snap.link_x, ty - snap.link_y
+            d = ("DOWN" if dy > 0 else "UP") if abs(dy) > 2 else ("RIGHT" if dx > 0 else "LEFT")
+            return self._action(nes_action(d), f"nav_bomb_31_wp{self.wp_i}")
+
+        # 13. BOMB_31
+        if self.phase == PatraJoinPhase.BOMB_31:
+            if snap.screen == ROOM30 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_30)
+                return self._action(nes_idle_action(), "bomb_31_arrived_30")
+            if snap.transitioning or snap.mode != PLAY_MODE:
+                return self._action(nes_action("LEFT"), "bomb_31_scroll")
+            act = self._bomb_31.step(snap)
+            if self._bomb_31.success or self._bomb_31.phase in (BombWallPhase.DONE, BombWallPhase.PUSH):
+                return self._action(nes_action("LEFT"), "bomb_31_push_left")
+            return self._action(act.action, act.reason)
+
+        # 14. CLEAR_30
+        if self.phase == PatraJoinPhase.CLEAR_30:
+            combat = live_combat_objects(snap)
+            if len(combat) == 0 or self.phase_frames >= 2000:
+                self._set_phase(PatraJoinPhase.STAIRS_30)
+                return self._action(nes_idle_action(), "clear_30_done")
+            act, self.cooldown = chase_sword_step(snap, self.cooldown)
+            return self._action(act.action, "clear_30_combat")
+
+        # 15. STAIRS_30
+        if self.phase == PatraJoinPhase.STAIRS_30:
+            if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
+                self._set_phase(PatraJoinPhase.CELLAR_67)
+                return self._action(nes_idle_action(), "stairs_30_transition")
+            act = room30_stairs_step(snap)
+            return self._action(act.action, act.reason)
+
+        # 16. CELLAR_67
+        if self.phase == PatraJoinPhase.CELLAR_67:
+            if snap.screen == ROOM04 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_04)
+                return self._action(nes_idle_action(), "cellar_67_arrived_04")
+            act = cellar_west_to_east_step(snap)
+            return self._action(act.action, act.reason)
+
+        # 17. CLEAR_04
+        if self.phase == PatraJoinPhase.CLEAR_04:
+            combat = live_combat_objects(snap)
+            if len(combat) == 0 or self.phase_frames >= 1200:
+                self._set_phase(PatraJoinPhase.NAV_BOMB_04)
+                return self._action(nes_idle_action(), "clear_04_done")
+            act, self.cooldown = chase_sword_step(snap, self.cooldown)
+            return self._action(act.action, "clear_04_combat")
+
+        # 18. NAV_BOMB_04
+        if self.phase == PatraJoinPhase.NAV_BOMB_04:
+            x, y = snap.link_x, snap.link_y
+            if y > 95 and x > 52:
+                return self._action(nes_action("UP"), "nav_bomb_04_to_north_aisle")
+            if x > 48:
+                return self._action(nes_action("LEFT"), "nav_bomb_04_west_aisle")
+            if y < 141:
+                return self._action(nes_action("DOWN"), "nav_bomb_04_south_to_stand")
+            self._set_phase(PatraJoinPhase.BOMB_04)
+            return self._action(nes_idle_action(), "nav_bomb_04_stand")
+
+        # 19. BOMB_04
+        if self.phase == PatraJoinPhase.BOMB_04:
+            if snap.screen == ROOM03 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.CLEAR_03)
+                return self._action(nes_idle_action(), "bomb_04_arrived_03")
+            if snap.transitioning or snap.mode != PLAY_MODE:
+                return self._action(nes_action("LEFT"), "bomb_04_scroll")
+            act = self._bomb_04.step(snap)
+            if self._bomb_04.success or self._bomb_04.phase in (BombWallPhase.DONE, BombWallPhase.PUSH):
+                return self._action(nes_action("LEFT"), "bomb_04_push_left")
+            return self._action(act.action, act.reason)
+
+        # 20. CLEAR_03
+        if self.phase == PatraJoinPhase.CLEAR_03:
+            combat = tuple(o for o in live_combat_objects(snap) if o.type_id != 0x2B)
+            if len(combat) == 0:
+                self._set_phase(PatraJoinPhase.STAIRS_03)
+                return self._action(nes_idle_action(), "clear_03_done")
+            act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x13, 0x14, 0x17))
+            return self._action(act.action, "clear_03_combat")
+
+        # 21. STAIRS_03
+        if self.phase == PatraJoinPhase.STAIRS_03:
+            if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
+                self._set_phase(PatraJoinPhase.CELLAR_77)
+                return self._action(nes_idle_action(), "stairs_03_transition")
+            likes = tuple(obj for obj in live_combat_objects(snap) if obj.type_id == 0x17)
+            grabbed = any(
+                abs(int(obj.x) - snap.link_x) <= 8 and abs(int(obj.y) - snap.link_y) <= 8
+                for obj in likes
+            )
+            if grabbed:
+                act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x17,))
+                return self._action(act.action, "room03_fight_like_like")
+            act = room03_stairs_step(snap)
+            return self._action(act.action, act.reason)
+
+        # 22. CELLAR_77
+        if self.phase == PatraJoinPhase.CELLAR_77:
+            if snap.screen == 0x52 and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(PatraJoinPhase.WAIT_PATRA)
+                return self._action(nes_idle_action(), "cellar_77_arrived_patra")
+            act = cellar_east_to_west_step(snap)
+            return self._action(act.action, act.reason)
+
+        # 23. WAIT_PATRA
+        if self.phase == PatraJoinPhase.WAIT_PATRA:
+            if level9_live_patra_stop(snap):
+                self._set_phase(PatraJoinPhase.ARRIVED)
+                self.success = True
+                return self._action(nes_idle_action(), "live_patra_contract_met")
+            if self.phase_frames >= 120:
+                return self._fail("live_patra_contract_miss")
+            return self._action(nes_idle_action(), "wait_patra_eyes_spawn")
+
+        # 24. ARRIVED
+        if self.phase == PatraJoinPhase.ARRIVED:
+            self.success = True
+            return self._action(nes_idle_action(), "done")
+
+        return self._fail(f"unknown_phase_{self.phase}")
+
+    def report(self) -> dict[str, object]:
+        rep = super().report()
+        rep["phase"] = self.phase.name
+        return rep
+
+
+def make_natural_patra_join_controller() -> NaturalPatraJoinController:
+    return NaturalPatraJoinController()
 
 
 @dataclass
@@ -454,11 +876,14 @@ __all__ = [
     "NaturalEnterZeldaController",
     "NaturalFinalPatraController",
     "NaturalGanonController",
+    "NaturalPatraJoinController",
     "NaturalPatraToGanonController",
     "NaturalPowerTriforceController",
     "NaturalRescueZeldaController",
     "NaturalRouteUnavailableController",
     "NaturalSelectSilverArrowsController",
+    "PatraJoinPhase",
+    "make_natural_patra_join_controller",
     "make_old_man_tf_gate_controller",
     "make_patra_join_unavailable_controller",
     "make_post_l8_overworld_controller",

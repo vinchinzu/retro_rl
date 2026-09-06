@@ -1,0 +1,187 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-05T03:16:22.220769+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "bead": "rr-sz8.6",
+    "fixture_only": true,
+    "fixture_writes": [],
+    "natural_entry": false,
+    "notes": [
+      "ZD \u00a710.2 cut leftover, dest $EB live, not 10.3, not Red Ring 0x07",
+      "0x16 Patra skip -> north key door to 0x06 (Old Man bomb-left hint)"
+    ],
+    "phase": "level9_prefix_0x16_north_to_0x06",
+    "route_eligible": false,
+    "track": "recon_fixture"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "dest_eb": "0x06",
+    "fixture_state": "Level9Interior06OldManReconFixture",
+    "fixture_writes": [],
+    "leftover": {
+      "arrows": 2,
+      "bombs": 14,
+      "bow": 1,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 255,
+      "inventory": {
+        "arrows": 2,
+        "bombs": 14,
+        "bow": 1,
+        "compass": 0,
+        "health": 255,
+        "heart_containers": 16,
+        "keys": 9,
+        "magic_key": 1,
+        "map": 0,
+        "ring": 2,
+        "rupees": 255,
+        "selected_item": 1,
+        "sword": 3,
+        "triforce": 255
+      },
+      "keys": 9,
+      "level": 9,
+      "live_objects": [
+        {
+          "hp": 240,
+          "slot": 2,
+          "type": 64,
+          "type_hex": "0x40",
+          "type_name": "bubble",
+          "xy": [
+            72,
+            128
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "type": 64,
+          "type_hex": "0x40",
+          "type_name": "bubble",
+          "xy": [
+            168,
+            128
+          ]
+        }
+      ],
+      "map": 0,
+      "mode": 5,
+      "next_screen_hex": "0x06",
+      "open_doorway_mask": 4,
+      "rod": 1,
+      "room": 6,
+      "room_item_hex": "0x03",
+      "rupees": 255,
+      "screen": 6,
+      "screen_hex": "0x06",
+      "tile": 0,
+      "transitioning": false,
+      "triforce": 255,
+      "typed_objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "type": 77,
+          "type_hex": "0x4D",
+          "type_name": "old_man_or_npc",
+          "xy": [
+            120,
+            128
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "type": 64,
+          "type_hex": "0x40",
+          "type_name": "bubble",
+          "xy": [
+            72,
+            128
+          ]
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "type": 64,
+          "type_hex": "0x40",
+          "type_name": "bubble",
+          "xy": [
+            168,
+            128
+          ]
+        }
+      ],
+      "x": 120,
+      "xy": [
+        120,
+        205
+      ],
+      "y": 205
+    },
+    "ok": true,
+    "source_state": "Level9Interior16PatraReconFixture",
+    "state": {
+      "bombs": 14,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 255,
+      "is_updating_mode": 1,
+      "keys": 9,
+      "level": 9,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 6,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 1,
+          "type_id": 77,
+          "type_name": "old_man_or_npc",
+          "x": 120,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 72,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 168,
+          "y": 128
+        }
+      ],
+      "open_doorway_mask": 4,
+      "room": 6,
+      "room_all_dead": 0,
+      "room_item_id": 3,
+      "room_item_name": "no_inventory_reward_observed",
+      "room_obj_count": 1,
+      "rupees": 255,
+      "submode": 0,
+      "triforce": 255,
+      "x": 120,
+      "y": 205
+    }
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior16PatraReconFixture.state",
+  "source_state_sha256": "0a9ecef8ebb1972e169c119f9f86a7b295c1b8bcd49c840a384b476035544891",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/Level9Interior06OldManReconFixture.state",
+  "state_sha256": "3592bfe975237dd3e1740dd5fe51d137d174d8a88569d0935c8354656cbe1e8a"
+}

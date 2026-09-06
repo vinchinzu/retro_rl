@@ -1,7 +1,15 @@
-"""Public fail-closed Level 9 Survival-spine seam."""
+"""Public Level 9 Survival-spine seam.
+
+The L8 leave is measured (rr-6o7.3: ``--through level8`` power-on green), so
+``continue_level9_spine`` carries ``MEASURED_POST_L8_HANDOFF`` -- but every
+natural L9 chapter is still a fail-closed marker (the OW walk to Spectacle
+Rock, the bomb entry, the Old Man TF gate, the interior on natural resources).
+Reaching the seam is not greening it.
+"""
 
 from __future__ import annotations
 
+from zelda_i.level9.dungeon import MEASURED_POST_L8_HANDOFF, PostLevel8Handoff
 from zelda_i.level9.hops import l9_hops
 from zelda_i.spine.hops import attach_hops
 
@@ -29,12 +37,13 @@ def continue_level9_spine(
     room_timer=None,
     assist=None,
     on_frame=None,
+    handoff: PostLevel8Handoff = MEASURED_POST_L8_HANDOFF,
 ) -> None:
     """Attach L9 after L8; unresolved natural chapters fail on their first frame."""
     attach_hops(
         env,
         run,
-        l9_hops(env),
+        l9_hops(env, handoff=handoff),
         through=through,
         run_stages=run_stages,
         room_timer=room_timer,

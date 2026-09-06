@@ -9,6 +9,7 @@ Type 0x35 stays live. Predecessor keys=4 until the pickup. Ignore 0x2b/0x68.
 from __future__ import annotations
 
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -114,6 +115,7 @@ def make_bomb_11_north_controller() -> BombWallController:
     return BombWallController(
         wall=BombWall11North(),
         level=LEVEL4,
+        select_item=B_SLOT_BOMBS,
         stand_tol=2,
         face_frames=6,
         step_back=0,

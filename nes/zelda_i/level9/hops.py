@@ -35,10 +35,12 @@ from zelda_i.level9.natural_path import (
     NaturalEnterZeldaController,
     NaturalFinalPatraController,
     NaturalGanonController,
+    NaturalPatraJoinController,
     NaturalPatraToGanonController,
     NaturalPowerTriforceController,
     NaturalRescueZeldaController,
     NaturalSelectSilverArrowsController,
+    make_natural_patra_join_controller,
     make_old_man_tf_gate_controller,
     make_patra_join_unavailable_controller,
     make_post_l8_overworld_controller,
@@ -112,14 +114,11 @@ def level9_silver_arrows_chapter(
 def level9_patra_chapter(
     route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
 ) -> tuple[tuple[str, Any, int], ...]:
-    controller = make_patra_join_unavailable_controller()
     if route.suffix_join_room is None:
+        controller = make_patra_join_unavailable_controller()
         controller.reason = "natural_suffix_join_not_selected"
-    elif route.requires_51_to_41:
-        controller.reason = MISSING_51_NORTH_WALK
-    else:
-        controller.reason = "natural_join_controller_not_implemented"
-    return (_stage("level9_natural_patra_join", controller),)
+        return (_stage("level9_natural_patra_join", controller),)
+    return (_stage("level9_natural_patra_join", make_natural_patra_join_controller()),)
 
 
 def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:

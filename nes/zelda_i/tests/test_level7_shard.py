@@ -3,13 +3,12 @@
 Live evidence (rr-8t4.3, 2026-09-04): `20260904_W3`-`W6`, 943 controller
 frames each, shard taken south-around the diamond floor, OW leftover `0x42`
 `(96,93)` mode 5 TF `0x40`, `position_writes=0`. That TF is `0x40` and not
-`0x7F` because the lineage pin starts at TF 0, so `MEASURED_POST_L7_EXIT`
-stays unfilled and `verified` stays False.
+`0x7F` because the lineage pin starts at TF 0. The Survival packet is
+filled from power-on; this factory still reports
+`measured_post_l7_exit_verified=False`.
 """
 
 from __future__ import annotations
-
-import numpy as np
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from zelda_i.anchors import TF_BIT_L7
@@ -22,16 +21,15 @@ from zelda_i.level7.shard import (
     ShardLeavePhase,
 )
 from zelda_i.level7.stairs import AQUAMENTUS_ROM, TRIFORCE_ROM
-from zelda_i.ram import (
-    ADDR_LEVEL,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
-    ADDR_MODE,
-    ADDR_SCREEN,
-    ADDR_TRIFORCE,
-    PLAY_MODE,
-    read_snapshot,
-)
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
+
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 7,
+    "screen": AQUAMENTUS_ROM,
+    "triforce": 0x00,
+}
 
 
 def _snap(
@@ -43,14 +41,17 @@ def _snap(
     level: int = 7,
     triforce: int = 0x00,
 ):
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_TRIFORCE] = triforce
-    return read_snapshot(ram)
+    return read_snapshot(
+        make_ram(
+            _DEFAULTS,
+            x=x,
+            y=y,
+            screen=screen,
+            mode=mode,
+            level=level,
+            triforce=triforce,
+        )
+    )
 
 
 def _buttons(action) -> list[str]:

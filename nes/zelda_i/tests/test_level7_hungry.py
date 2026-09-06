@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
+from zelda_i.dungeon.pause_select import CLOSE_SETTLE_FRAMES
 from zelda_i.level7.hungry import (
     DEST,
     DOOR_X,
@@ -27,35 +28,28 @@ from zelda_i.ram import (
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
-    ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SELECTED_ITEM,
     PLAY_MODE,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
 
 _FIXTURE = "Level7Interior28ReconFixture"
 
+_DEFAULTS = {
+    "mode": PLAY_MODE,
+    "level": 7,
+    "screen": ROOM,
+    "x": 120,
+    "y": 205,
+    "food": 1,
+    "selected": FOOD_B_SLOT,
+}
 
-def _ram(
-    *,
-    x: int = 120,
-    y: int = 205,
-    food: int = 1,
-    selected: int = FOOD_B_SLOT,
-    screen: int = ROOM,
-    mode: int = PLAY_MODE,
-    level: int = 7,
-) -> np.ndarray:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = mode
-    ram[ADDR_LEVEL] = level
-    ram[ADDR_SCREEN] = screen
-    ram[ADDR_LINK_X] = x
-    ram[ADDR_LINK_Y] = y
-    ram[ADDR_FOOD] = food
-    ram[ADDR_SELECTED_ITEM] = selected
-    return ram
+
+def _ram(**fields: int) -> np.ndarray:
+    return make_ram(_DEFAULTS, **fields)
 
 
 def _env(ram: np.ndarray) -> SimpleNamespace:
@@ -133,7 +127,7 @@ def test_pause_select_cycles_right_then_closes() -> None:
     act = _step(ctl, ram)
     assert _buttons(act) == ["START"]
     assert act.reason == "pause_close"
-    for _ in range(23):
+    for _ in range(CLOSE_SETTLE_FRAMES - 1):
         _step(ctl, ram)
     act = _step(ctl, ram)
     assert ctl.phase is HungryPhase.APPROACH

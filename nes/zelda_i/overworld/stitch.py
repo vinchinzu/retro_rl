@@ -146,10 +146,15 @@ class OverworldHandoff:
             return "handoff_triforce_mismatch"
         if not snap.health_is_full or snap.heart_containers != self.heart_containers:
             return "handoff_health_mismatch"
-        checks = (
+        consumables = (
             ("keys", snap.keys, self.keys),
             ("bombs", snap.bombs, self.bombs),
             ("rupees", snap.rupees, self.rupees),
+        )
+        for label, actual, expected in consumables:
+            if int(actual) < int(expected):
+                return f"handoff_{label}_mismatch"
+        checks = (
             ("selected_item", read_u8(ram, ADDR_SELECTED_ITEM), self.selected_item),
             ("whistle", read_u8(ram, ADDR_WHISTLE), self.whistle),
             ("food", read_u8(ram, ADDR_FOOD), self.food),
