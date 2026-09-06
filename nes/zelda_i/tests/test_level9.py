@@ -189,7 +189,7 @@ def test_fixture_left_rock_prediction_is_top_gap_then_one_bomb() -> None:
     assert left.step(_snap(level=0, screen=0x05, link_x=120, link_y=173)).action == nes_action("LEFT")
 
     fire = _fixture_controller(FixtureEntryPhase.ROCK_FACE_UP, selected=B_ITEM_BOMBS)
-    stand = _snap(level=0, screen=0x05, link_x=72, link_y=173, bombs=16)
+    stand = _snap(level=0, screen=0x05, link_x=80, link_y=173, bombs=16)
     assert fire.step(stand).action == nes_action("UP")
     assert fire.step(stand).action == nes_action("B")
     assert fire.b_presses == 1
@@ -626,15 +626,15 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
     assert act3.reason == "rock_center_gap_to_south_y173"
     assert ctl.phase is SpectacleRockBombPhase.ROCK_BOTTOM_Y
 
-    # Reached y=173 at x=120: moves LEFT to x=72
+    # Reached y=173 at x=120: moves LEFT to x=80
     snap4 = _snap(level=0, screen=0x05, link_x=120, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
     act4 = ctl.step(snap4)
     assert act4.action == nes_action("LEFT")
-    assert act4.reason == "rock_south_to_left_stand_x72"
+    assert act4.reason == "rock_south_to_left_stand_x80"
     assert ctl.phase is SpectacleRockBombPhase.ROCK_LEFT_X
 
-    # Reached x=72 at y=173: faces UP
-    snap5 = _snap(level=0, screen=0x05, link_x=72, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
+    # Reached x=80 at y=173: faces UP
+    snap5 = _snap(level=0, screen=0x05, link_x=80, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
     act5 = ctl.step(snap5)
     assert act5.action == nes_action("UP")
     assert act5.reason == "left_rock_face_up"
@@ -648,7 +648,7 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
     assert ctl.phase is SpectacleRockBombPhase.ROCK_BLAST_WAIT
 
     # Blast wait: 180 frames idle while bomb explodes (bombs decrease to 13)
-    snap_exploded = _snap(level=0, screen=0x05, link_x=72, link_y=173, triforce=FULL_TRIFORCE, bombs=13)
+    snap_exploded = _snap(level=0, screen=0x05, link_x=80, link_y=173, triforce=FULL_TRIFORCE, bombs=13)
     for _ in range(179):
         act_wait = ctl.step(snap_exploded)
         assert act_wait.reason == "left_rock_blast_wait"
