@@ -154,19 +154,115 @@ before trusting a cleared reading (commit `56912285`). Also added a
 `0x61` geometry stalls (commit `0a8574f0`).
 
 With both fixes, power-on `--through level9-credits` now clears `0x61`
-correctly (full 8-eye kill, push, stairs, cellar `0x75`) and lands in the
-Silver Arrows room `0x10` for the first time ever — but `ADDR_ARROWS`
-stays `1` (wooden). `pin_l9_room10_entry.py` + `probe_l9_10_screenshot.py`
-(screenshot: `recordings/l9_room10_entry.png`) show `0x10` is the *same*
-checkered diagonal-wall diamond-grid pattern as room `0x51`'s statue
-diamond (`rr-yxy6`) — not a plain floor room. The Silver Arrows item is
-presumably at the grid's center, reachable only by threading the
-collision-free corridor, the same puzzle class `rr-yxy6` already solved
-once for `0x51`. **Not attempted this session** — this is new maze-thread
-work, not a bounded bug; stopped here per session scope. `room_item_id=3`
-at entry; live objects include a pushable block (`0x68`) at `(192,144)`
-and several Wizzrobe-type slots reading `hp=0` at the captured frame
-(likely the same spawn-timing artifact as above, not necessarily dead).
+correctly (full 8-eye kill, push, stairs, cellar `0x75`) and lands in
+room `0x10`.
+
+### Room `0x10` holds no item — the Silver Arrows are in cellar `0x4F`
+
+**SOLVED 2026-09-06.** Two earlier sittings assumed the Silver Arrows were
+a floor item at the centre of `0x10`'s statue grid and burned themselves on
+maze-threading it. There is no floor item in `0x10` at all. ROM decode
+(`scratch/dump_l9_rom_rooms.py`, self-validating against 41 in-repo live
+anchors) plus live probing agree:
+
+| Fact | Source |
+|---|---|
+| `0x10` item byte = `0x03` (none) | ROM table4 `& 0x1F`; live `room_item_id` on every entry |
+| `0x10` secret = `5` `block_reveals_stairs` | ROM table5 `& 7`; same gating as the proven `0x05` / `0x30` push-stairs hops |
+| L9's cellar array is **8** entries `60 70 72 75 67 77 00 4F` | level info block PRG `0x19C10`; truncating it at 6 is what hid the arrows |
+| cellar `0x4F` item byte = `0x09` **Silver Arrow** | ROM table4; the only `0x09` in either quest-1 block |
+| cellar `0x4F` both stair mouths → `0x10` | ROM table0/table1 (for a cellar row these are destinations, not door bitfields) |
+
+Quest-1 underworld room attrs live at PRG `0x18700` (L1–6) and `0x18A00`
+(L7–9), 6 × 128 bytes: `item = t4 & 0x1F`, `secret = t5 & 7`,
+`N = t0>>5 & 7`, `S = t0>>2 & 7`, `W = t1>>5 & 7`, `E = t1>>2 & 7`. The
+same decode independently reproduces every dungeon's signature cellar item
+(L1 Bow `0x7F`, L4 Ladder `0x60`, L5 Recorder `0x04`, L6 Rod `0x75`, L7 Red
+Candle `0x4A`, L8 Magic Key `0x0F` + Book `0x6F`, L9 Red Ring `0x00`).
+
+So `0x10` was always the right destination and the wrong entity. The 17th
+prefix hop now: clear the 5 Wizzrobes (3 × `0x2B` are invulnerable traps and
+never clear — gate on `room_all_dead`, not a visible count), push the `0x68`
+at `(192,144)` **east** from `(176,141)`, which exposes a staircase at cell
+`(208,96)`; reach it via the west lane `x=32` → north band `y=93` → east;
+in cellar `0x4F` drop to the floor `y=189`, climb the `x=176` shaft into the
+upper chamber, walk `LEFT` to the arrow at `(128,141)`; reverse out through
+the west exit shaft `x=48`, landing back in `0x10`.
+
+Live from the `L9Room10EntryReal` pin: success in 6,659 controller frames,
+`ADDR_ARROWS` 1 → 2, settled `0x10` `(96,157)`, 0 memory writes. Live from
+power-on: `level9_natural_silver_arrows` **passes** in 24,759 frames.
+
+Two traps this room set, both worth remembering:
+
+- The `0x68` is a genuine push block. An earlier blind 120-frame hold
+  concluded it "wanders on its own"; it does not — with zero input for 240
+  frames it does not move at all. That test simply never got Link to a push
+  face, because the room was still full of live Wizzrobes shoving him.
+- In cellar `0x4F` the exit shaft and the item chamber are **both** above
+  the floor corridor, so height alone cannot tell them apart. Splitting on
+  height first parks Link at the top of the exit shaft holding `RIGHT` into
+  a wall forever. Split on `x` first.
+
+### Patra join: three fixes, and the sword gap it exposed
+
+**2026-09-07 (rr-sz8.7).** With the arrows collected, `--through
+level9-credits` failed at `level9_natural_patra_join`, timing out at its
+full 24,000 frames without leaving room `0x10`. Iterated from a real
+power-on pin (`scratch/pin_l9_post_arrows.py` → `L9PostArrowsReal`, room
+`0x10` `(96,157)`, arrows 2, TF `0xff`) so each attempt costs ~25s instead
+of a ~6 minute run. Three distinct bugs, all live-confirmed:
+
+1. **`SOUTH_10` pressed into the statue band.** The phase aligned `x` to the
+   mouth column 120 and held `DOWN`. That only ever worked from the `0x10`
+   *entry* leftover, where Link already stands in the doorway at
+   `(120,189)`. Coming back out of cellar `0x4F` he lands at `(96,157)`,
+   one band above — and `0x10`'s statue band at y~176 blocks every column
+   except the west lane `x=32`, so `DOWN` moved him zero pixels for 24,000
+   frames. Fixed by routing through the same west lane the prefix hop
+   already proves; the routing is now one shared `prefix.room10_lane_step`
+   instead of two copies.
+2. **`CLEAR_20` chased a Wizzrobe back through the bomb hole.** `0x20`'s
+   north wall is the hole this join just came through, so
+   `chase_sword_step` could follow an enemy up into `0x10` with a `0x20`
+   phase still latched, making every `0x20` waypoint meaningless. Added a
+   re-entry guard that re-derives the phase from the room Link is *in*, a
+   no-fight band along `0x20`'s north edge, and a skip-the-fight fallback
+   after two bounces.
+3. **`CLEAR_03` burned 10,529 of the 24,000-frame budget.** Two causes.
+   Its exit gate counted live non-`0x2B` objects, but room `0x03`'s block is
+   **clear-gated**: with any enemy alive, standing south of the `0x68` and
+   holding `UP` for 240 frames moves it *zero* pixels; once `room_all_dead`
+   the same 240 frames slide it `144 → 128`. (Capping the phase instead just
+   stranded `STAIRS_03` pressing an immovable block forever — verified from
+   `L9Stairs03StallReal`.) Gate on `room_all_dead`, as room `0x10`'s
+   Wizzrobes already do. Second, the naive chase walks only along the
+   dominant axis, so a wall between Link and a wandering flyer pinned him at
+   `(144,165)` for 7,000 frames chasing one `0x13` that the same policy
+   kills in ~1,100 frames from an unblocked start; reusing the `stairs_61`
+   90-frame no-progress escape cut the phase to 6,060 frames.
+
+Live from the `L9PostArrowsReal` pin, the join now walks all ten hops —
+`0x10 → 0x20 → 75 → 0x61 → 0x51 → 0x41 → 0x31 → 0x30 → 67 → 0x04 → 0x03 →
+77 → 0x52` — and reaches the Patra room in **19,401 frames** (~4,600 of
+margin), against 24,000 spent going nowhere before.
+
+**Remaining blocker — the sword.** At `0x52` every `level9_live_patra_stop`
+term is met except one:
+
+| term | live value |
+|---|---|
+| `sword >= MAGICAL_SWORD (3)` | **`1` (wooden)** ← only miss |
+| `triforce == 0xff`, `bow`, `arrows == 2`, `screen == 0x52` | met |
+| `final_patra_live`, 8 × `0x25` eyes, north door shut | met (eyes spawn by +40f) |
+
+The eye spawn is *not* a race — `WAIT_PATRA`'s 120-frame window is ample.
+The natural power-on run simply never acquires a sword upgrade: it reaches
+Patra with the wooden sword and **10** heart containers. The Magical Sword
+needs 12 containers, so it is out of reach without two more; the White Sword
+needs 5 and is not. Next step is a White Sword hop (`0x0A` via Lost Hills;
+planning legs already exist in `route/item_gate_routes.py` at verification
+`assisted`) plus relaxing the contract to `>= WHITE_SWORD`.
 
 ## Natural-spine seam (Wave A, implementation only)
 
