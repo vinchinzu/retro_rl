@@ -17,7 +17,7 @@ from zelda_i.level9.natural_path import make_natural_patra_join_controller
 from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.ram import read_snapshot
 
-STATE_NAME = "L9PostArrowsReal"
+STATE_NAME = "L9PostArrowsWhiteSwordReal"
 MAX_FRAMES = 30000
 
 
