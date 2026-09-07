@@ -364,6 +364,11 @@ class VideoTap:
             self._last_room = room
         self.frame += 1
 
+    def _detach(self) -> None:
+        if self._env is not None and self._orig_step is not None:
+            self._env.step = self._orig_step
+            self._orig_step = None
+
     def close(self) -> dict[str, Any]:
         info: dict[str, Any] = {
             "path": None,
@@ -379,10 +384,15 @@ class VideoTap:
             info["encoded_frames"] = encoded
             info["gameplay_frames"] = max(0, encoded - self.intro_written)
             self.writer = None
-        if self._env is not None and self._orig_step is not None:
-            self._env.step = self._orig_step
-            self._orig_step = None
+        self._detach()
         return info
+
+    def abort(self) -> None:
+        """Drop a failed capture without publishing the MP4."""
+        if self.writer is not None:
+            self.writer.abort()
+            self.writer = None
+        self._detach()
 
 
 __all__ = [
