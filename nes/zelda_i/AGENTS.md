@@ -14,18 +14,14 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 
 ## Immediate goal
 
-**L8 is fully spine-green from power-on** (2026-09-05): `--through level8`
-1/1, `set_state=0`, settled OW `0x6D` `(96,93)` TF `0xFF` MK 1 hc 10, deaths
-0. `rr-6o7.2` (Magical Key) and `rr-6o7.3` (Gleeok suffix → OW leave) both
-met acceptance — planner may STATUS/close. Residuals:
-[`rr-6o7.2`](docs/tasks/rr-6o7.2-residual.md) /
-[`rr-6o7.3`](docs/tasks/rr-6o7.3-residual.md).
+**Survival power-on → credits is green** (2026-09-07): `--through
+level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
+Not Clean STATUS. M5 Clean is still L1 only.
 
-Next frontier: **L9 natural entry + interior** (`rr-sz8` epic). The L9 seam
-is wired (`continue_level9_spine`, `MEASURED_POST_L8_HANDOFF`) but every
-natural chapter is fail-closed — see `rr-6o7.3-residual.md` "Frontier".
-Start with the `0x6D → Spectacle Rock 0x05` overworld walk. Do not STATUS.
-Food poke stays Survival (`rr-8t4.4`).
+Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
+Food poke (`rr-8t4.4` / `rr-8t4.5`), wooden-arrow poke (`rr-wabn`), bomb/key
+counts (`rr-doua`). Magical Sword is optional (`rr-sz8.8`; leftover was 10
+HC). Clean continuous is `rr-npv` after those writes are gone.
 
 ## Commands
 
