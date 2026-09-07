@@ -935,6 +935,11 @@ class Level9Stairs05Controller(Level9StairsHopController):
     _stuck_frames: int = 0
     _stuck_escape_frames: int = 0
     _escape_dir: str = "LEFT"
+    _recenter_frames: int = 0
+    _recenter_stuck_y: int = -1
+    _recenter_stuck_frames: int = 0
+    _recenter_escape_frames: int = 0
+    _recenter_escape_dir: str = "LEFT"
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1058,9 +1063,37 @@ class Level9Stairs05Controller(Level9StairsHopController):
         if block is not None and block.y > STAIRS_05_PUSH_BLOCK_Y:
             self._pushed = False
             if not self._recentered_push_y:
-                if snap.link_y < 165:
+                # Getting south of the block is a bare DOWN hold, which has no
+                # way out of a wall: from (144,125) it burned 10,597 frames and
+                # timed the chapter out (live power-on, rr-sz8.7). Escape
+                # sideways on no progress, and give up on the recenter
+                # entirely rather than spend the whole budget on it -- the push
+                # legs below re-derive from position every frame.
+                self._recenter_frames += 1
+                if snap.link_y >= 165 or self._recenter_frames > 1200:
+                    self._recentered_push_y = True
+                else:
+                    y = int(snap.link_y)
+                    if y == self._recenter_stuck_y:
+                        self._recenter_stuck_frames += 1
+                    else:
+                        self._recenter_stuck_y = y
+                        self._recenter_stuck_frames = 0
+                    if self._recenter_escape_frames > 0:
+                        self._recenter_escape_frames -= 1
+                        return FrameAction(
+                            nes_action(self._recenter_escape_dir), "recenter_y_escape"
+                        )
+                    if self._recenter_stuck_frames > 60:
+                        self._recenter_stuck_frames = 0
+                        self._recenter_escape_frames = 24
+                        self._recenter_escape_dir = (
+                            "LEFT" if snap.link_x > STAIRS_05_PUSH_X else "RIGHT"
+                        )
+                        return FrameAction(
+                            nes_action(self._recenter_escape_dir), "recenter_y_escape"
+                        )
                     return FrameAction(nes_action("DOWN"), "recenter_y")
-                self._recentered_push_y = True
             if abs(snap.link_x - STAIRS_05_PUSH_X) > 4:
                 d = "LEFT" if snap.link_x > STAIRS_05_PUSH_X else "RIGHT"
                 return FrameAction(nes_action(d), "align_push_x")

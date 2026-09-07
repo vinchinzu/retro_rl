@@ -329,6 +329,51 @@ ends on `0x05`) and `level9_spectacle_rock_bomb`, and refuses up front below
 5 heart containers — the Old Man gates on **containers**, which
 `UnlimitedHealthAssist` never raises.
 
+### Power-on `--through level9-credits` passes
+
+**2026-09-07.** `ok=True`, end frame 354,346, 0 deaths, 0 memory writes of
+any kind. Zelda I completed from power-on on the natural route.
+
+| stage | frames | budget |
+|---|---|---|
+| `level9_post_l8_overworld` | 4,184 | 12,000 |
+| `level9_white_sword` | 5,287 | 20,000 |
+| `level9_spectacle_rock_bomb` | 709 | 4,000 |
+| `level9_natural_silver_arrows` | 20,059 | 44,000 |
+| `level9_natural_patra_join` | 17,933 | 24,000 |
+| `level9_final_patra` | 2,189 | 6,000 |
+| `level9_ganon` | 4,200 | 7,000 |
+| `level9_wait_credits` | 1,492 | 12,000 |
+
+Both boss budgets keep good headroom on the White Sword, confirming the
+`WHITE_SWORD` relaxation costs frames rather than outcomes.
+
+Getting there took six more fixes, and **every one of them was the same
+bug**: a policy that drives one axis (or holds one button) with no way out
+when that direction is blocked. Worth stating as a rule for this codebase —
+*any* unconditional directional hold needs either a progress check or a cap:
+
+| where | symptom | fix |
+|---|---|---|
+| `east_14` waypoints | Like Like bump left Link off the `y=93` lane; LEFT into stone at `(176,101)` for 3,373f | no-progress escape on the other axis |
+| `stairs_05` entry | `bomb_west_06` now lands Link *in* the east hole at `(208,141)` with Wizzrobes camped in that wall → chased back out, `unexpected_play_0x06` | step off the door row first; never fight the east wall on it |
+| `stairs_05` `recenter_y` | bare DOWN hold from `(144,125)`, 10,597f | sideways escape, plus give up after 1,200f |
+| join waypoints | `NAV_BLOCK_20` spent 22,623f of 24,000 on waypoint 0 | shared `_wp_step` escape |
+| `CLEAR_20` | false clear — Wizzrobes read hp 0 mid-teleport, so `NAV_BLOCK_20` then ran with the room still live | gate on `room_all_dead` |
+| `BOMB_04` | sub-controller failed and returned its idle `"failed"` action forever — 13,197f doing nothing | recover (re-align to the door row, push) then fail loudly |
+
+Two of these are worth generalising beyond their site:
+
+- **A failed sub-controller must not be handed straight back.** A
+  `BombWallController` in `FAILED` returns `idle "failed"` every frame; a
+  parent that forwards it stalls silently until its own cap. Check the
+  child's terminal state, recover if you can, and surface its note if you
+  cannot.
+- **A no-progress escape must be keyed on progress, not stillness.** The
+  first cut of `_wp_step` tested "position unchanged", which never fired:
+  the surviving Wizzrobes kept nudging Link a pixel at a time while he was
+  wedged. Track the best distance to the target instead.
+
 ## Natural-spine seam (Wave A, implementation only)
 
 The new natural-route seam lives in `level9/{dungeon,natural_path,hops,spine}.py`
