@@ -43,7 +43,8 @@ from zelda_i.level9.prefix import (
     Level9North76Controller, make_bomb_north_20_controller, make_bomb_north_65_controller,
     make_bomb_west_06_controller, make_cellar_60_controller, make_cellar_70_controller,
     make_cellar_75_controller, make_east_14_controller, make_east_15_controller,
-    make_north_16_controller, make_north_76_controller, make_stairs_05_controller,
+    make_north_16_controller, make_north_76_controller, make_room10_silver_arrows_controller,
+    make_stairs_05_controller,
     make_stairs_55_controller, make_stairs_61_controller, make_west_62_controller,
     make_west_63_controller, make_west_66_controller,
 )
@@ -206,12 +207,14 @@ class _NaturalEndingController:
 
 @dataclass
 class NaturalSilverArrowsController(_NaturalEndingController):
-    """Sequential controller connecting 0x76 through all 16 prefix hops to Silver Arrows 0x10.
+    """Sequential controller connecting 0x76 through all 17 prefix hops to Silver Arrows 0x10.
 
-    Traverses 16 natural hops without memory writes or state loads:
+    Traverses 17 natural hops without memory writes or state loads:
     0x76 -> 0x66 -> 0x65 -> 0x55 -> cellar 0x60 -> 0x14 -> 0x15 -> 0x16 ->
     0x06 -> 0x05 -> cellar 0x70 -> 0x63 -> 0x62 -> 0x61 -> cellar 0x75 ->
-    0x20 -> 0x10.
+    0x20 -> 0x10, then the in-room 0x10 statue-band thread onto the Silver
+    Arrows item itself (rr-sz8.6, 2026-09-06: room 0x10 is not a dest hop
+    stop, the arrows were never actually collected until this 17th hop).
     """
 
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF
@@ -228,8 +231,11 @@ class NaturalSilverArrowsController(_NaturalEndingController):
             # one hop (stairs_05, live Wizzrobe chase) needs its own budget
             # bumped 4000->12000 for RNG-variance combat -- give the whole
             # chapter matching headroom rather than let the outer cap fail
-            # first. See level9_stairs_05's own max_frames comment.
-            self.max_frames = 32000
+            # first. See level9_stairs_05's own max_frames comment. The new
+            # 17th hop (room10_silver_arrows) shares that same live-Wizzrobe
+            # combat profile and its own 12000f budget -- bump the chapter
+            # total accordingly.
+            self.max_frames = 44000
         else:
             self.max_frames = 1
         if not self._hops:
@@ -242,6 +248,7 @@ class NaturalSilverArrowsController(_NaturalEndingController):
                 make_cellar_70_controller(), make_west_63_controller(),
                 make_west_62_controller(), make_stairs_61_controller(),
                 make_cellar_75_controller(), make_bomb_north_20_controller(),
+                make_room10_silver_arrows_controller(),
             )
 
     def _fail(self, reason: str) -> FrameAction:
