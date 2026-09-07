@@ -786,6 +786,31 @@ def test_bomb_west_06_factory_report() -> None:
     assert report["stand"] == [48, 141]
 
 
+def test_stairs_05_steps_off_the_bombed_door_row_first() -> None:
+    """bomb_west_06 lands Link at (208,141), inside the hole it just blew.
+
+    Two Wizzrobes camp in the east wall on that row, so they are the nearest
+    target and engaging from there chases Link back out into 0x06. The hop
+    must drop off the row before doing anything else.
+    """
+    ctl = make_stairs_05_controller()
+    ram = _ram(screen=STAIRS_05_ORIGIN, x=208, y=141)
+    ram[0x034F + 11] = 0x68
+    ram[0x0485 + 11] = 176
+    ram[0x0070 + 11] = 96
+    ram[0x0084 + 11] = 144
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) == DOWN
+    assert act.reason == "leave_east_doorway"
+
+    # Off the row, normal behaviour resumes.
+    ram[0x0084] = 173
+    act2 = _step(ctl, ram)
+    assert not ctl.failed
+    assert act2.reason == "align_push_x"
+
+
 def test_stairs_05_push_and_dest() -> None:
     ctl = make_stairs_05_controller()
     # Leftover in 0x05 at (208, 173) with block unpushed (slot 11 at (96, 144))

@@ -30,6 +30,13 @@ ROOM_KEESE_CORRIDOR = 0x62
 ROOM_RED_RING_HYP = 0x07
 SILVER_ARROWS = 2
 MAGICAL_SWORD = 3
+# The natural route's sword ceiling. The Magical Sword needs 12 heart
+# containers and the power-on run reaches Level 9 with 10, so it is out of
+# reach; the White Sword needs 5 and is taken on the way in (overworld/
+# white_sword.py, live 2026-09-07). Ending stops therefore require
+# WHITE_SWORD, not MAGICAL_SWORD -- the boss policies are hitbox-driven and
+# swing until the boss dies, so a weaker sword costs frames, not outcomes.
+WHITE_SWORD = 2
 
 # Magical Key minimum (Red Ring excluded). Cellars 0x60/0x70/0x75/0x67/0x77.
 L9_SELECTED_PREFIX_ROOMS: tuple[int, ...] = (
@@ -175,7 +182,7 @@ def level9_live_patra_stop(snap: ZeldaSnapshot) -> bool:
         and snap.bow > 0
         and snap.arrows == SILVER_ARROWS
         and snap.screen == ROOM_FINAL_PATRA
-        and snap.sword >= MAGICAL_SWORD
+        and snap.sword >= WHITE_SWORD
         and final_patra_live(snap)
         and len(patra_eyes(snap)) == PATRA_EYE_COUNT
         and not (snap.cur_opened_doors & NORTH_DOOR)
@@ -238,6 +245,7 @@ __all__ = [
     "L9_SILVER_ARROWS_ENDPOINT",
     "LEVEL9",
     "MAGICAL_SWORD",
+    "WHITE_SWORD",
     "MISSING_51_NORTH_WALK",
     "MISSING_OLD_MAN_GATE",
     "MISSING_POST_L8_LEFTOVER",

@@ -68,11 +68,27 @@ SCREEN_CANDLE_SHOP_MOUNTAIN = 0x0C  # col 12, row 0
 # Primary early candle target for L8 prep (near-start is cheaper path).
 SCREEN_CANDLE_SHOP = SCREEN_CANDLE_SHOP_NEAR
 
-# White sword: GameFAQs K-1 / ZD Gathering 1.3 → **0x0A** (source cave).
-# Live region stop: L5 mouth **0x0B** after Lost Hills (OW west off 0x0B is
-# sealed — LEFT/UP enter L5). Cave tile residual rr-38p.
-SCREEN_WHITE_SWORD_CAVE = 0x0A  # source/planned cave screen
-SCREEN_WHITE_SWORD_REGION = 0x0B  # live assisted settle (L5 mouth)
+# White sword: GameFAQs K-1 / ZD Gathering 1.3 → **0x0A**. The screen was
+# right; the approach here was wrong.
+#
+# LIVE 2026-09-07 (rr-sz8.7): 0x0A is reached from row 0 on the *Level 9*
+# approach, not from this module's Lost Hills path:
+#
+#   0x05 →E→ 0x06 →E→ 0x07 →S(x=64)→ 0x17 →E→ 0x18 →E→ 0x19 →E→ 0x1A
+#   0x1A →N from (208,157)→ 0x0A          (one opening; not a maze count)
+#
+# Falsified live, both bands-exhaustive: OW west off **0x0B is sealed** (its
+# north half is mountain and the walkable block has no west transition), and
+# **Lost Hills 0x1B wraps to itself** in all four directions, so it yields no
+# edges at all. 0x09 (west of 0x0A) is a sealed pocket — no east, no south.
+# ROM corroborates the screen: 0x0A carries a unique overworld cave id (18),
+# between the wooden sword cave 0x77 (16) and the Magical Sword grave 0x21
+# (19) — see scratch/dump_ow_rom_screens.py.
+#
+# The walking route + cave pickup now live in overworld/white_sword.py
+# (WhiteSwordDetourController, live 5,287 frames, ADDR_SWORD 1 → 2).
+SCREEN_WHITE_SWORD_CAVE = 0x0A  # live 2026-09-07 via 0x1A north at x=208
+SCREEN_WHITE_SWORD_REGION = 0x0B  # live assisted settle (L5 mouth); dead end west
 WHITE_SWORD_MIN_CONTAINERS = 5
 SWORD_WHITE = 2
 
@@ -141,7 +157,9 @@ WHITE_SWORD_HOPS: tuple[ScreenHop, ...] = WHITE_SWORD_PREFIX_HOPS + (
 WHITE_SWORD_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_START, WHITE_SWORD_HOPS
 )
-WHITE_SWORD_VERIFICATION: Verification = "assisted"  # region 0x0B live ig9
+WHITE_SWORD_VERIFICATION: Verification = "assisted"  # region 0x0B live ig9;
+# the cave itself is "observed" via overworld/white_sword.py, by a different
+# approach than WHITE_SWORD_HOPS walks -- these hops stop at the dead end.
 WHITE_SWORD_LOST_HILLS_UPS = 4
 SCREEN_LOST_HILLS = 0x1B
 SCREEN_LEVEL5_DOOR = SCREEN_WHITE_SWORD_REGION

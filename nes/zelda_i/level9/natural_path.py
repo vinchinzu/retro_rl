@@ -20,7 +20,7 @@ from zelda_i.level9.dungeon import (
     BOMBS_NOT_NATURAL,
     FULL_TRIFORCE,
     LEVEL9,
-    MAGICAL_SWORD,
+    WHITE_SWORD,
     MISSING_OLD_MAN_GATE,
     MISSING_POST_L8_LEFTOVER,
     MISSING_SILVER_ARROW_ROOM,
@@ -941,7 +941,7 @@ class NaturalGanonController(_NaturalEndingController):
             if not (
                 in_ganon_fight(snap)
                 and snap.triforce == FULL_TRIFORCE
-                and snap.sword >= MAGICAL_SWORD
+                and snap.sword >= WHITE_SWORD
                 and snap.bow > 0
                 and snap.arrows == SILVER_ARROWS
                 and selected == B_ITEM_ARROWS
