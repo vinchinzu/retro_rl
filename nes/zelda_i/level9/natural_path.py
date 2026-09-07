@@ -66,6 +66,7 @@ from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
 from zelda_i.level9.room51 import room51_to_41_step
 from zelda_i.level9.stairs import (
     BOMB_WALL_04_WEST,
+    BOMB_WEST_STAND,
     BOMB_WALL_31_WEST,
     CELLAR_MODE,
     ROOM03,
@@ -355,6 +356,17 @@ _ROOM_20_PHASES = (
 )
 _ROOM_20_NORTH_Y = 101
 _MAX_10_REENTRIES = 2
+# Same story one bomb-hole later: BOMB_31 blows 0x31's west wall and Link
+# enters 0x30 from the east, so CLEAR_30's chase can shove him back into 0x31
+# with a 0x30 phase latched -- and STAIRS_30 then idles on `left_source_0x31`
+# forever (live power-on, rr-sz8.7, 30,000 frames parked at (208,93)).
+_ROOM_30_PHASES = (
+    PatraJoinPhase.CLEAR_30,
+    PatraJoinPhase.STAIRS_30,
+)
+_ROOM_30_EAST_X = 200
+_MAX_31_REENTRIES = 2
+_BOMB_RECOVER_FRAMES = 1200
 NAV_61_WPS = ((48, 157), (48, 93), (120, 93), (120, 77))
 NAV_BOMB_31_WPS = ((120, 189), (48, 189), (48, 141))
 
@@ -394,11 +406,18 @@ class NaturalPatraJoinController(_NaturalEndingController):
     phase: PatraJoinPhase = PatraJoinPhase.SOUTH_10
     phase_frames: int = 0
     reentries_10: int = 0
+    reentries_31: int = 0
+    bomb_31_recover: int = 0
+    bomb_04_recover: int = 0
     cooldown: int = 0
     stuck_xy: tuple[int, int] | None = None
     stuck_frames: int = 0
     escape_frames: int = 0
     escape_dir: str = "UP"
+    wp_stuck_frames: int = 0
+    wp_escape_frames: int = 0
+    wp_best_dist: int = -1
+    wp_escape_flip: bool = False
     wp_i: int = 0
     start_checked: bool = False
     _bomb_31: BombWallController = field(init=False, repr=False)
@@ -434,6 +453,50 @@ class NaturalPatraJoinController(_NaturalEndingController):
         self.phase = phase
         self.phase_frames = 0
         self.wp_i = 0
+        self.wp_stuck_frames = 0
+        self.wp_escape_frames = 0
+        self.wp_best_dist = -1
+
+    def _wp_step(self, snap: ZeldaSnapshot, dx: int, dy: int, *, x_first: bool) -> str:
+        """Direction toward a waypoint, with a no-*progress* escape.
+
+        Every waypoint walk in this join drives one axis at a time, which has
+        no way out of a wall: whichever axis it prefers, a wall on that side
+        leaves Link pressing into stone (NAV_BLOCK_20 burned 22,623 of the
+        24,000-frame budget on waypoint 0, live power-on, rr-sz8.7).
+
+        The escape is keyed on distance to the waypoint, not on Link holding
+        still. CLEAR_20 bails at its own cap with Wizzrobes still alive, so
+        they keep knocking Link a pixel here and there -- a "position
+        unchanged" test never fires while he is wedged but jittering, which is
+        exactly the failing case. Track the best distance instead, and when it
+        stops improving, drive the other axis for a moment. Alternate the
+        escape direction so a pocket that opens the other way is also tried.
+        """
+        prefer_x = abs(dx) > 2 if x_first else abs(dy) <= 2
+        along_x = "RIGHT" if dx > 0 else "LEFT"
+        along_y = "DOWN" if dy > 0 else "UP"
+        primary = along_x if prefer_x else along_y
+        other = along_y if prefer_x else along_x
+        if self.wp_escape_frames > 0:
+            self.wp_escape_frames -= 1
+            if self.wp_escape_flip:
+                return {"UP": "DOWN", "DOWN": "UP",
+                        "LEFT": "RIGHT", "RIGHT": "LEFT"}[other]
+            return other
+        dist = abs(dx) + abs(dy)
+        if self.wp_best_dist < 0 or dist < self.wp_best_dist:
+            self.wp_best_dist = dist
+            self.wp_stuck_frames = 0
+        else:
+            self.wp_stuck_frames += 1
+        if self.wp_stuck_frames > 120:
+            self.wp_stuck_frames = 0
+            self.wp_best_dist = dist
+            self.wp_escape_frames = 24
+            self.wp_escape_flip = not self.wp_escape_flip
+            return other
+        return primary
 
     def _action(self, action: list[int], reason: str) -> FrameAction:
         self.phase_frames += 1
@@ -475,6 +538,19 @@ class NaturalPatraJoinController(_NaturalEndingController):
             self.reentries_10 += 1
             self._set_phase(PatraJoinPhase.SOUTH_10)
 
+        if (
+            snap.screen == ROOM31
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and self.phase in _ROOM_30_PHASES
+        ):
+            self.reentries_31 += 1
+            self._set_phase(
+                PatraJoinPhase.NAV_BOMB_31
+                if self.reentries_31 <= _MAX_31_REENTRIES
+                else PatraJoinPhase.BOMB_31
+            )
+
         # 1. SOUTH_10
         if self.phase == PatraJoinPhase.SOUTH_10:
             if snap.screen == 0x20 and snap.mode == PLAY_MODE and not snap.transitioning:
@@ -507,7 +583,14 @@ class NaturalPatraJoinController(_NaturalEndingController):
         # 2. CLEAR_20
         if self.phase == PatraJoinPhase.CLEAR_20:
             combat = live_combat_objects(snap)
-            if len(combat) == 0 or self.phase_frames >= 2500:
+            # Gate on room_all_dead, not a visible count: Wizzrobes read hp 0
+            # while dematerialized, so a teleport gap looks like a clear. In a
+            # live power-on run this phase "finished" after ~1,000 frames with
+            # the room still populated, and NAV_BLOCK_20 then spent the whole
+            # remaining budget being shoved off waypoint 0 (rr-sz8.7). Same
+            # lesson as room 0x10's Wizzrobes and stairs_61's spawn race; the
+            # 2500-frame cap still bounds rooms whose 0x2B traps never clear.
+            if snap.room_all_dead or self.phase_frames >= 2500:
                 self._set_phase(PatraJoinPhase.NAV_BLOCK_20)
             elif snap.link_y <= _ROOM_20_NORTH_Y:
                 # Never fight in the north band: that is where the bomb hole
@@ -526,12 +609,13 @@ class NaturalPatraJoinController(_NaturalEndingController):
                 dx, dy = tx - snap.link_x, ty - snap.link_y
                 if abs(dx) <= 2 and abs(dy) <= 2:
                     self.wp_i += 1
+                    self.wp_best_dist = -1
                     if self.wp_i >= len(NAV_BLOCK_20_WPS):
                         self._set_phase(PatraJoinPhase.PUSH_BLOCK_20)
                         return self._action(nes_action("UP"), "nav_block_20_arrived")
                     tx, ty = NAV_BLOCK_20_WPS[self.wp_i]
                     dx, dy = tx - snap.link_x, ty - snap.link_y
-                d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) > 2 else ("DOWN" if dy > 0 else "UP")
+                d = self._wp_step(snap, dx, dy, x_first=True)
                 return self._action(nes_action(d), f"nav_block_20_wp{self.wp_i}")
 
         # 4. PUSH_BLOCK_20
@@ -576,10 +660,11 @@ class NaturalPatraJoinController(_NaturalEndingController):
                 dx, dy = tx - snap.link_x, ty - snap.link_y
                 if abs(dx) <= 2 and abs(dy) <= 2:
                     self.wp_i += 1
+                    self.wp_best_dist = -1
                 if self.wp_i < len(NAV_61_WPS):
                     tx, ty = NAV_61_WPS[self.wp_i]
                     dx, dy = tx - snap.link_x, ty - snap.link_y
-                    d = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) > 2 else ("DOWN" if dy > 0 else "UP")
+                    d = self._wp_step(snap, dx, dy, x_first=True)
                     return self._action(nes_action(d), f"nav_61_wp{self.wp_i}")
             return self._action(nes_action("UP"), "nav_61_push_up")
 
@@ -630,12 +715,13 @@ class NaturalPatraJoinController(_NaturalEndingController):
             dx, dy = tx - snap.link_x, ty - snap.link_y
             if abs(dx) <= 2 and abs(dy) <= 2:
                 self.wp_i += 1
+                self.wp_best_dist = -1
                 if self.wp_i >= len(NAV_BOMB_31_WPS):
                     self._set_phase(PatraJoinPhase.BOMB_31)
                     return self._action(nes_idle_action(), "nav_bomb_31_stand")
                 tx, ty = NAV_BOMB_31_WPS[self.wp_i]
                 dx, dy = tx - snap.link_x, ty - snap.link_y
-            d = ("DOWN" if dy > 0 else "UP") if abs(dy) > 2 else ("RIGHT" if dx > 0 else "LEFT")
+            d = self._wp_step(snap, dx, dy, x_first=False)
             return self._action(nes_action(d), f"nav_bomb_31_wp{self.wp_i}")
 
         # 13. BOMB_31
@@ -648,14 +734,40 @@ class NaturalPatraJoinController(_NaturalEndingController):
             act = self._bomb_31.step(snap)
             if self._bomb_31.success or self._bomb_31.phase in (BombWallPhase.DONE, BombWallPhase.PUSH):
                 return self._action(nes_action("LEFT"), "bomb_31_push_left")
+            if self._bomb_31.phase is BombWallPhase.FAILED:
+                # A failed BombWallController keeps returning an idle "failed"
+                # action forever, and this phase used to hand that straight
+                # back -- 13,197 frames of the join's 24,000 budget spent doing
+                # nothing (live power-on, rr-sz8.7). Most of the time the wall
+                # is already open and only the sub-controller's own clock ran
+                # out, so push west for a bounded stretch, then fail loudly
+                # with its reason rather than stall.
+                if self.bomb_31_recover < _BOMB_RECOVER_FRAMES:
+                    self.bomb_31_recover += 1
+                    # `push_timeout` means the wall is open but Link is not on
+                    # its row -- an enemy nudged him off the y=141 door line,
+                    # so holding LEFT just presses stone. Re-align before
+                    # pushing rather than repeating the failed push.
+                    if abs(snap.link_y - BOMB_WEST_STAND[1]) > 3:
+                        d = "UP" if snap.link_y > BOMB_WEST_STAND[1] else "DOWN"
+                        return self._action(nes_action(d), "bomb_31_recover_align")
+                    return self._action(nes_action("LEFT"), "bomb_31_recover_left")
+                return self._fail(
+                    self._bomb_31.notes[-1] if self._bomb_31.notes
+                    else "bomb_31_failed"
+                )
             return self._action(act.action, act.reason)
 
         # 14. CLEAR_30
         if self.phase == PatraJoinPhase.CLEAR_30:
             combat = live_combat_objects(snap)
-            if len(combat) == 0 or self.phase_frames >= 2000:
+            if snap.room_all_dead or self.phase_frames >= 2000:
                 self._set_phase(PatraJoinPhase.STAIRS_30)
                 return self._action(nes_idle_action(), "clear_30_done")
+            if snap.link_x >= _ROOM_30_EAST_X:
+                # Never fight in the east band: that is the bombed hole back
+                # into 0x31 (same guard as CLEAR_20's north band).
+                return self._action(nes_action("LEFT"), "clear_30_leave_east_band")
             act, self.cooldown = chase_sword_step(snap, self.cooldown)
             return self._action(act.action, "clear_30_combat")
 
@@ -678,7 +790,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
         # 17. CLEAR_04
         if self.phase == PatraJoinPhase.CLEAR_04:
             combat = live_combat_objects(snap)
-            if len(combat) == 0 or self.phase_frames >= 1200:
+            if snap.room_all_dead or self.phase_frames >= 1200:
                 self._set_phase(PatraJoinPhase.NAV_BOMB_04)
                 return self._action(nes_idle_action(), "clear_04_done")
             act, self.cooldown = chase_sword_step(snap, self.cooldown)
@@ -706,6 +818,28 @@ class NaturalPatraJoinController(_NaturalEndingController):
             act = self._bomb_04.step(snap)
             if self._bomb_04.success or self._bomb_04.phase in (BombWallPhase.DONE, BombWallPhase.PUSH):
                 return self._action(nes_action("LEFT"), "bomb_04_push_left")
+            if self._bomb_04.phase is BombWallPhase.FAILED:
+                # A failed BombWallController keeps returning an idle "failed"
+                # action forever, and this phase used to hand that straight
+                # back -- 13,197 frames of the join's 24,000 budget spent doing
+                # nothing (live power-on, rr-sz8.7). Most of the time the wall
+                # is already open and only the sub-controller's own clock ran
+                # out, so push west for a bounded stretch, then fail loudly
+                # with its reason rather than stall.
+                if self.bomb_04_recover < _BOMB_RECOVER_FRAMES:
+                    self.bomb_04_recover += 1
+                    # `push_timeout` means the wall is open but Link is not on
+                    # its row -- an enemy nudged him off the y=141 door line,
+                    # so holding LEFT just presses stone. Re-align before
+                    # pushing rather than repeating the failed push.
+                    if abs(snap.link_y - BOMB_WEST_STAND[1]) > 3:
+                        d = "UP" if snap.link_y > BOMB_WEST_STAND[1] else "DOWN"
+                        return self._action(nes_action(d), "bomb_04_recover_align")
+                    return self._action(nes_action("LEFT"), "bomb_04_recover_left")
+                return self._fail(
+                    self._bomb_04.notes[-1] if self._bomb_04.notes
+                    else "bomb_04_failed"
+                )
             return self._action(act.action, act.reason)
 
         # 20. CLEAR_03
