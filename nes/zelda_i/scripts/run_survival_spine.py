@@ -52,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             intro_frames=intro,
         )
         assist = UnlimitedHealthAssist(enabled=True)
+        payload: dict | None = None
         try:
             obs, _ = reset_obs(env)
             env = AuditedEnv(
@@ -77,10 +78,23 @@ def main(argv: list[str] | None = None) -> int:
                 "final": spine_final_fields(snap, final_ram),
                 "screenshot": str(screenshot),
                 "assist": assist.report(),
-                "video": tap.close(),
             }
         finally:
+            try:
+                video_info = tap.close()
+            except Exception:
+                tap.abort()
+                video_info = {
+                    "path": None,
+                    "encoded_frames": 0,
+                    "intro_frames": tap.intro_written,
+                    "gameplay_frames": tap.frame,
+                    "transitions": list(tap.transitions),
+                }
             env.close()
+        if payload is None:
+            raise RuntimeError("survival spine trial ended before a report")
+        payload["video"] = video_info
         if args.through == "level5" and payload.get("ok"):
             validate_l5_endpoint(payload)
         write_json_report(RECORDINGS_DIR / f"{tag}.json", payload)

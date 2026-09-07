@@ -254,6 +254,20 @@ def test_survival_spine_cli_wraps_audited_env() -> None:
     assert "AuditedEnv" in src
     assert "apply_state_audit" in src
     assert "zelda_i.survival_spine" in src
+    assert "tap.close()" in src
+    assert "tap.abort()" in src
+
+
+def test_video_tap_close_and_abort_without_writer() -> None:
+    from zelda_i.runner import VideoTap
+
+    tap = VideoTap(None, None, tag="t")
+    info = tap.close()
+    assert info["path"] is None
+    assert info["encoded_frames"] == 0
+    tap.abort()
+    again = tap.close()
+    assert again["path"] is None
 
 
 def test_level7_seam_is_wired_into_the_spine() -> None:
