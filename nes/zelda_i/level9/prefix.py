@@ -1015,7 +1015,25 @@ CELLAR_4F_SHAFT_X = 176
 CELLAR_4F_CHAMBER_Y = 141
 CELLAR_4F_ITEM_X = 128
 CELLAR_4F_EXIT_X = 48
+ROOM_10_SOUTH_Y = 189  # the row the 0x20 bomb-hole doorway sits on
+ROOM_10_MOUTH_X = 120  # doorway column back down into 0x20
 _R10_TOL = 3
+
+
+def room10_lane_step(link_x: int, link_y: int, row_y: int) -> str | None:
+    """Direction to reach room 0x10's band row ``row_y``, or None once on it.
+
+    The statue bands at y~112 and y~176 block every column except the west
+    lane x=32, so all vertical travel in this room is routed through it. The
+    lane check is gated on "still need vertical travel": testing x against the
+    lane unconditionally would fight the horizontal leg that follows and
+    ping-pong forever.
+    """
+    if abs(link_y - row_y) <= _R10_TOL:
+        return None
+    if abs(link_x - ROOM_10_WEST_X) > _R10_TOL:
+        return "LEFT" if link_x > ROOM_10_WEST_X else "RIGHT"
+    return "UP" if link_y > row_y else "DOWN"
 
 
 @dataclass(kw_only=True)
@@ -1137,19 +1155,12 @@ class Level9Room10SilverArrowsController(HopController):
     def _route_to_row(
         self, snap: ZeldaSnapshot, row_y: int, reason: str
     ) -> FrameAction | None:
-        """Cross the statue bands via the west lane. None once y is on ``row_y``.
-
-        The lane check is gated on "still need vertical travel": testing x
-        against the lane unconditionally would fight the horizontal leg that
-        follows and ping-pong forever.
-        """
-        if abs(snap.link_y - row_y) <= _R10_TOL:
+        """Cross the statue bands via the west lane. None once y is on ``row_y``."""
+        d = room10_lane_step(int(snap.link_x), int(snap.link_y), row_y)
+        if d is None:
             return None
-        if abs(snap.link_x - ROOM_10_WEST_X) > _R10_TOL:
-            d = "LEFT" if snap.link_x > ROOM_10_WEST_X else "RIGHT"
-            return FrameAction(nes_action(d), f"{reason}_west_lane")
-        d = "UP" if snap.link_y > row_y else "DOWN"
-        return FrameAction(nes_action(d), f"{reason}_lane_travel")
+        leg = "west_lane" if abs(snap.link_x - ROOM_10_WEST_X) > _R10_TOL else "lane_travel"
+        return FrameAction(nes_action(d), f"{reason}_{leg}")
 
     # -- cellar 0x4F -------------------------------------------------------
     def _cellar_policy(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -1382,6 +1393,7 @@ __all__ = [
     "Level9North76Controller", "Level9PrefixHopController", "Level9Room10SilverArrowsController",
     "Level9Stairs05Controller", "Level9Stairs55Controller", "Level9Stairs61Controller",
     "Level9West62Controller", "Level9West63Controller", "Level9West66Controller",
+    "ROOM_10_MOUTH_X", "ROOM_10_SOUTH_Y",
     "cellar_60_step", "east_15_step", "is_east_neighbor", "is_north_neighbor", "is_west_neighbor",
     "make_bomb_north_20_controller", "make_bomb_north_65_controller", "make_bomb_west_06_controller",
     "make_cellar_60_controller", "make_cellar_70_controller", "make_cellar_75_controller",
@@ -1389,6 +1401,7 @@ __all__ = [
     "make_north_76_controller", "make_room10_silver_arrows_controller",
     "make_stairs_05_controller", "make_stairs_55_controller",
     "make_stairs_61_controller", "make_west_62_controller", "make_west_63_controller",
-    "make_west_66_controller", "north_16_step", "north_76_step", "west_66_step",
+    "make_west_66_controller", "north_16_step", "north_76_step", "room10_lane_step",
+    "west_66_step",
 ]
 
