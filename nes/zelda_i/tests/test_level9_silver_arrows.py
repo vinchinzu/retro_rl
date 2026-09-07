@@ -78,17 +78,17 @@ def test_natural_silver_arrows_controller_init():
     assert isinstance(unmeasured, NaturalSilverArrowsController)
     assert unmeasured.max_frames == 1
     assert unmeasured.hop_i == 0
-    assert len(unmeasured._hops) == 16
+    assert len(unmeasured._hops) == 17
     assert not unmeasured.success
     assert not unmeasured.failed
 
     measured = make_natural_silver_arrows_controller(handoff=MEASURED_POST_L8_HANDOFF)
-    assert measured.max_frames == 32000
+    assert measured.max_frames == 44000
     assert measured.hop_i == 0
-    assert len(measured._hops) == 16
+    assert len(measured._hops) == 17
     report = measured.report()
     assert report["chapter"] == "level9_natural_silver_arrows"
-    assert report["total_hops"] == 16
+    assert report["total_hops"] == 17
     assert report["current_hop"] == "level9_north_76"
     assert report["writes"] == 0
     assert report["controller_memory_writes"] == 0
@@ -194,7 +194,7 @@ def test_silver_arrows_chapter_wiring():
     name, ctrl, max_f = stages[0]
     assert name == "level9_natural_silver_arrows"
     assert isinstance(ctrl, NaturalSilverArrowsController)
-    assert max_f == 32000
+    assert max_f == 44000
 
     # With unmeasured handoff
     unmeasured_stages = level9_silver_arrows_chapter(handoff=UNMEASURED_POST_L8_HANDOFF)

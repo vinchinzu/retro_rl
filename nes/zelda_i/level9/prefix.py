@@ -23,7 +23,7 @@ from zelda_i.dungeon.hop_controller import (
 from zelda_i.combat import should_swing_at
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level9.patra import patra_action
-from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP
+from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP, SILVER_ARROWS
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 
 NORTH_DOOR = DOOR_TARGETS["UP"]  # (120, 93)
@@ -986,6 +986,229 @@ class Level9Stairs05Controller(Level9StairsHopController):
 def make_stairs_05_controller(*, dest: int | None = None) -> Level9Stairs05Controller:
     return Level9Stairs05Controller(dest=dest)
 
+ROOM_10_ORIGIN = 0x10
+# Room 0x10 holds no floor item at all: its ROM room-attribute item byte reads
+# 0x03 (none) and the live `room_item_id` agrees on every entry. What it does
+# hold is secret code 5, `block_reveals_stairs` -- the same gating the proven
+# 0x05 / 0x30 push-stairs hops use. Pushing the 0x68 block east exposes a
+# staircase in the room's north-east cell, and that staircase drops into
+# Level 9 cellar 0x4F, whose ROM item byte is 0x09 = Silver Arrow and whose
+# two stair mouths both read back to 0x10. Verified live from the
+# L9Room10EntryReal pin (rr-sz8.6, 2026-09-06): clear -> push -> stairs ->
+# cellar pickup -> return lands `arrows == 2` back in 0x10 in ~5200 frames.
+ROOM_10_CELLAR = 0x4F
+ROOM_10_BLOCK_TYPE = 0x68
+# Statue bands at y~112 and y~176 block every column except the west lane
+# x=32, so vertical travel is routed through it; the north band row y=93 and
+# the middle band rows y=125-165 are open the full width.
+ROOM_10_WEST_X = 32
+ROOM_10_NORTH_Y = 93
+ROOM_10_MID_Y = 141
+ROOM_10_STAIR_X = 208  # revealed stair cell (208, 96)
+ROOM_10_PUSH_STAND = (176, 141)  # west of the block, on its row
+ROOM_10_PUSHED_X = 200  # block x once shoved clear of (192, 144)
+# Cellar 0x4F: stairs spit Link at the west shaft, the floor corridor runs at
+# y=189, a second shaft at x=176 climbs into the upper chamber, and the
+# Silver Arrow sprite sits at (128, 141) inside it.
+CELLAR_4F_FLOOR_Y = 189
+CELLAR_4F_SHAFT_X = 176
+CELLAR_4F_CHAMBER_Y = 141
+CELLAR_4F_ITEM_X = 128
+CELLAR_4F_EXIT_X = 48
+_R10_TOL = 3
+
+
+@dataclass(kw_only=True)
+class Level9Room10SilverArrowsController(HopController):
+    """0x10 leftover -> clear Wizzrobes -> push the 0x68 east -> revealed
+    stairs -> cellar 0x4F Silver Arrows -> back up into 0x10.
+
+    ``arrived`` is the inventory rising edge back in 0x10, not a dest hop:
+    both of cellar 0x4F's mouths return here, so the join that follows still
+    starts from a 0x10 leftover.
+    """
+
+    spec_id: str = "level9_room10_silver_arrows"
+    done_reason: str = "silver_arrows_collected"
+    max_frames: int = 16_000
+    require_level: int = LEVEL9
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    _wizz_prev_count: int = -1
+    _wizz_last_progress_frame: int = 0
+    _wizz_backstep_frames: int = 0
+    _pushed: bool = False
+    _on_floor: bool = False
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.screen == ROOM_10_ORIGIN
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+            and snap.arrows >= SILVER_ARROWS
+        )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen == ROOM_10_CELLAR or snap.mode == PASSAGE_MODE:
+            return self._cellar_policy(snap)
+        if snap.screen != ROOM_10_ORIGIN:
+            return FrameAction(nes_idle_action(), f"unexpected_screen_0x{snap.screen:02x}")
+        return self._room_policy(snap)
+
+    # -- room 0x10 ---------------------------------------------------------
+    def _room_policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        block = next(
+            (o for o in snap.objects if o.type_id == ROOM_10_BLOCK_TYPE), None
+        )
+        if block is not None and block.x >= ROOM_10_PUSHED_X:
+            self._pushed = True
+        if not self._pushed:
+            if not snap.room_all_dead:
+                return self._wizzrobe_combat(snap)
+            return self._push_block(snap)
+        return self._walk_to_stairs(snap)
+
+    def _wizzrobe_combat(self, snap: ZeldaSnapshot) -> FrameAction:
+        live_wizz = [o for o in snap.objects if o.type_id in (0x23, 0x24) and o.hp > 0]
+        # should_swing_at-gated combat, ported verbatim from the proven
+        # stairs_05 fix (rr-sz8.6, 2026-09-06): blind mash-A landed zero kills
+        # there; check the hitbox before swinging. Wizzrobes read hp 0 while
+        # dematerialized, so the phase is gated on snap.room_all_dead rather
+        # than a single frame's visible count -- a teleport gap must not be
+        # misread as a clear (same class as stairs_61's spawn-race fix).
+        if not live_wizz:
+            return FrameAction(nes_idle_action(), "wait_wizzrobe_reappear")
+        n_live = len(live_wizz)
+        if self._wizz_prev_count < 0:
+            self._wizz_prev_count = n_live
+            self._wizz_last_progress_frame = self.frames
+        elif n_live < self._wizz_prev_count:
+            self._wizz_prev_count = n_live
+            self._wizz_last_progress_frame = self.frames
+            self._wizz_backstep_frames = 0
+
+        nearest = min(
+            live_wizz, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y)
+        )
+        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+        stuck_close = dist < 16 and (self.frames - self._wizz_last_progress_frame) > 100
+        if stuck_close or self._wizz_backstep_frames > 0:
+            if self._wizz_backstep_frames <= 0:
+                self._wizz_backstep_frames = 24
+            self._wizz_backstep_frames -= 1
+            if self._wizz_backstep_frames == 0:
+                self._wizz_last_progress_frame = self.frames
+            dx = nearest.x - snap.link_x
+            dy = nearest.y - snap.link_y
+            if abs(dx) >= abs(dy):
+                d = "LEFT" if dx >= 0 else "RIGHT"
+            else:
+                d = "UP" if dy >= 0 else "DOWN"
+            return FrameAction(nes_action(d), "wizzrobe_backstep")
+
+        dx = nearest.x - snap.link_x
+        dy = nearest.y - snap.link_y
+        if abs(dx) > abs(dy):
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        if should_swing_at(snap.link_x, snap.link_y, direction, live_wizz):
+            return FrameAction(nes_action(direction, "A"), "wizzrobe_engage_slash")
+        return FrameAction(nes_action(direction), "wizzrobe_engage")
+
+    def _push_block(self, snap: ZeldaSnapshot) -> FrameAction:
+        stand_x, stand_y = ROOM_10_PUSH_STAND
+        blocked = self._route_to_row(snap, stand_y, "room10_push")
+        if blocked is not None:
+            return blocked
+        if abs(snap.link_x - stand_x) > _R10_TOL:
+            d = "LEFT" if snap.link_x > stand_x else "RIGHT"
+            return FrameAction(nes_action(d), "room10_push_align_x")
+        return FrameAction(nes_action("RIGHT"), "room10_push_block_east")
+
+    def _walk_to_stairs(self, snap: ZeldaSnapshot) -> FrameAction:
+        blocked = self._route_to_row(snap, ROOM_10_NORTH_Y, "room10_stairs")
+        if blocked is not None:
+            return blocked
+        if abs(snap.link_x - ROOM_10_STAIR_X) > _R10_TOL:
+            d = "LEFT" if snap.link_x > ROOM_10_STAIR_X else "RIGHT"
+            return FrameAction(nes_action(d), "room10_stairs_east")
+        return FrameAction(nes_idle_action(), "room10_stand_on_stairs")
+
+    def _route_to_row(
+        self, snap: ZeldaSnapshot, row_y: int, reason: str
+    ) -> FrameAction | None:
+        """Cross the statue bands via the west lane. None once y is on ``row_y``.
+
+        The lane check is gated on "still need vertical travel": testing x
+        against the lane unconditionally would fight the horizontal leg that
+        follows and ping-pong forever.
+        """
+        if abs(snap.link_y - row_y) <= _R10_TOL:
+            return None
+        if abs(snap.link_x - ROOM_10_WEST_X) > _R10_TOL:
+            d = "LEFT" if snap.link_x > ROOM_10_WEST_X else "RIGHT"
+            return FrameAction(nes_action(d), f"{reason}_west_lane")
+        d = "UP" if snap.link_y > row_y else "DOWN"
+        return FrameAction(nes_action(d), f"{reason}_lane_travel")
+
+    # -- cellar 0x4F -------------------------------------------------------
+    def _cellar_policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Drop to the floor corridor, climb the x=176 shaft into the chamber,
+        take the arrows, then reverse out through the west exit shaft.
+
+        Every leg re-derives itself from the live position instead of latching
+        a phase: the cellar Keese knock Link sideways, and a latched leg that
+        holds one cardinal into a wall stalls forever (observed at (208,141)).
+        The one thing position alone cannot tell us is whether Link has been
+        down to the corridor yet -- the chamber and the entry shaft are both
+        above it -- so that single fact is latched.
+        """
+        x, y = int(snap.link_x), int(snap.link_y)
+
+        if snap.arrows >= SILVER_ARROWS:
+            # The west exit column and the chamber are both above the floor
+            # corridor, so height alone cannot tell them apart -- split on x
+            # first, or standing at the top of the exit shaft reads as "still
+            # in the chamber" and holds RIGHT into the wall forever.
+            if x <= CELLAR_4F_EXIT_X + _R10_TOL:
+                return FrameAction(nes_action("UP"), "cellar4f_climb_out")
+            if y < CELLAR_4F_FLOOR_Y - _R10_TOL:
+                if abs(x - CELLAR_4F_SHAFT_X) > _R10_TOL:
+                    d = "RIGHT" if x < CELLAR_4F_SHAFT_X else "LEFT"
+                    return FrameAction(nes_action(d), "cellar4f_back_shaft")
+                return FrameAction(nes_action("DOWN"), "cellar4f_back_drop")
+            return FrameAction(nes_action("LEFT"), "cellar4f_to_exit")
+
+        if not self._on_floor:
+            if y < CELLAR_4F_FLOOR_Y - _R10_TOL:
+                return FrameAction(nes_action("DOWN"), "cellar4f_drop")
+            self._on_floor = True
+        if y > CELLAR_4F_CHAMBER_Y + _R10_TOL:
+            if abs(x - CELLAR_4F_SHAFT_X) > _R10_TOL:
+                if y < CELLAR_4F_FLOOR_Y - _R10_TOL:
+                    return FrameAction(nes_action("DOWN"), "cellar4f_regain_floor")
+                d = "RIGHT" if x < CELLAR_4F_SHAFT_X else "LEFT"
+                return FrameAction(nes_action(d), "cellar4f_to_shaft")
+            return FrameAction(nes_action("UP"), "cellar4f_climb")
+        if x > CELLAR_4F_ITEM_X + _R10_TOL:
+            return FrameAction(nes_action("LEFT"), "cellar4f_to_item")
+        if x < CELLAR_4F_ITEM_X - _R10_TOL:
+            return FrameAction(nes_action("RIGHT"), "cellar4f_to_item")
+        return FrameAction(nes_idle_action(), "cellar4f_wait_item")
+
+    def report(self) -> dict[str, Any]:
+        rep = super().report()
+        rep.update({
+            "cellar": ROOM_10_CELLAR,
+            "pushed": self._pushed,
+            "on_cellar_floor": self._on_floor,
+        })
+        return rep
+
+
+def make_room10_silver_arrows_controller() -> Level9Room10SilverArrowsController:
+    return Level9Room10SilverArrowsController()
+
 @dataclass(kw_only=True)
 class Level9Stairs61Controller(Level9StairsHopController):
     """0x61 leftover -> clear Patra -> push block (96, 144) UP -> stairs (128, 141) -> cellar 0x75."""
@@ -1147,20 +1370,24 @@ __all__ = [
     "STAIRS_61_DEST_HYP", "STAIRS_61_DEST_POSE", "STAIRS_61_ORIGIN",
     "STAIRS_61_PUSH_BLOCK_Y", "STAIRS_61_PUSH_X", "STAIRS_61_STAIR_X",
     "STAIRS_61_STAIR_Y", "STAIRS_61_START_POSE",
+    "CELLAR_4F_EXIT_X", "CELLAR_4F_FLOOR_Y", "CELLAR_4F_ITEM_X",
+    "CELLAR_4F_SHAFT_X", "ROOM_10_CELLAR", "ROOM_10_ORIGIN",
+    "ROOM_10_PUSH_STAND", "ROOM_10_STAIR_X", "ROOM_10_WEST_X",
     "WEST_62_DEST_HYP", "WEST_62_DEST_POSE", "WEST_62_ORIGIN", "WEST_62_START_POSE",
     "WEST_63_DEST_HYP", "WEST_63_DEST_POSE", "WEST_63_ORIGIN", "WEST_63_START_POSE",
     "WEST_DEST_HYP", "WEST_DEST_POSE", "WEST_DOOR", "WEST_ORIGIN",
     "Level9BombNorth20Controller", "Level9BombNorth65Controller", "Level9BombWest06Controller",
     "Level9Cellar60Controller", "Level9Cellar70Controller", "Level9Cellar75Controller",
     "Level9East14Controller", "Level9East15Controller", "Level9North16Controller",
-    "Level9North76Controller", "Level9PrefixHopController",
+    "Level9North76Controller", "Level9PrefixHopController", "Level9Room10SilverArrowsController",
     "Level9Stairs05Controller", "Level9Stairs55Controller", "Level9Stairs61Controller",
     "Level9West62Controller", "Level9West63Controller", "Level9West66Controller",
     "cellar_60_step", "east_15_step", "is_east_neighbor", "is_north_neighbor", "is_west_neighbor",
     "make_bomb_north_20_controller", "make_bomb_north_65_controller", "make_bomb_west_06_controller",
     "make_cellar_60_controller", "make_cellar_70_controller", "make_cellar_75_controller",
     "make_east_14_controller", "make_east_15_controller", "make_north_16_controller",
-    "make_north_76_controller", "make_stairs_05_controller", "make_stairs_55_controller",
+    "make_north_76_controller", "make_room10_silver_arrows_controller",
+    "make_stairs_05_controller", "make_stairs_55_controller",
     "make_stairs_61_controller", "make_west_62_controller", "make_west_63_controller",
     "make_west_66_controller", "north_16_step", "north_76_step", "west_66_step",
 ]
