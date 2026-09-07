@@ -260,9 +260,74 @@ The eye spawn is *not* a race — `WAIT_PATRA`'s 120-frame window is ample.
 The natural power-on run simply never acquires a sword upgrade: it reaches
 Patra with the wooden sword and **10** heart containers. The Magical Sword
 needs 12 containers, so it is out of reach without two more; the White Sword
-needs 5 and is not. Next step is a White Sword hop (`0x0A` via Lost Hills;
-planning legs already exist in `route/item_gate_routes.py` at verification
-`assisted`) plus relaxing the contract to `>= WHITE_SWORD`.
+needs 5 and is not.
+
+### The White Sword detour — cave `0x0A`, reached from row 0
+
+**SOLVED 2026-09-07.** `overworld/white_sword.py` now takes the White Sword
+on the way into Level 9, and the ending contracts ask for `WHITE_SWORD` (2)
+instead of `MAGICAL_SWORD` (3). The boss policies are hitbox-driven — they
+swing until the boss dies — so the weaker sword costs frames, not outcomes.
+
+`route/item_gate_hops.py` had the *screen* right and the *approach* wrong,
+and its approach is what had kept the cave unvisited. Both of its candidate
+routes are now falsified live, band-exhaustively:
+
+| candidate | result |
+|---|---|
+| west off the L5 door `0x0B` | **sealed** — its north half is mountain, and the walkable block has no west transition at any band |
+| Lost Hills `0x1B` | **wraps to itself** in all four directions, so a BFS from it sees no edges at all |
+| `0x09` (west neighbour of `0x0A`) | a sealed pocket — no east exit, no south exit |
+
+The way in is row 0, which the Level 9 approach already walks:
+
+```text
+0x05 →E y=141→ 0x06 →E y=141→ 0x07 →S x=64→ 0x17
+     →E y=141→ 0x18 →E y=141→ 0x19 →E y=141→ 0x1A
+     →N from (208,157)→ 0x0A
+```
+
+`0x1A` sits beside the Lost Hills, but its north is plain geometry, not a
+maze count: **x=208 is the only column that crosses**, and it always does.
+An earlier probe "got through on the 8th UP" only because Link had wandered
+onto that column. (`0x1A` also has a second cave mouth at x=96.)
+
+Inside `0x0A` a lake fills the middle: the only north-south lane is the
+`x=208` sand corridor, and the cave mouth is far west on the top band
+(`y≈85`, `x≈34`). The cave puts Link back out at the top-**left**, so the
+return has to re-cross the top band eastward before descending — heading
+straight DOWN walks into the lake's west shore and stalls at `(32,189)`.
+The pedestal is at `x=120`; walking UP there takes `ADDR_SWORD` 1 → 2.
+
+ROM corroborates the screen independently
+(`scratch/dump_ow_rom_screens.py`, self-validated by reproducing all six
+live dungeon-entrance anchors): `0x0A` carries a **unique** overworld cave
+id 18, sitting between the wooden sword cave `0x77` (id 16) and the Magical
+Sword grave `0x21` (id 19, an `anchors.py` anchor). Overworld cave ids live
+at PRG `0x18480` as `(byte >> 2) & 0x3F`; the same decode groups both known
+bomb shops (`0x4A`, `0x6F`) under one id and both known candle shops
+(`0x5E`, `0x66`) under another.
+
+Two traps worth keeping:
+
+- **Don't tile-dump the overworld.** `dump_room_tiles` reads
+  `colliding_tile`, a dungeon-only field, so on an overworld screen it
+  returns a uniform value for every cell — `0x0A` dumped as one solid block
+  of `0x24`. Screenshots and real movement are the tools here.
+- **Don't re-check a travel alignment during the move it enables.** `y=157`
+  on `0x1A` is the lane that carries Link *east* to the opening, not where
+  the climb starts. Re-deriving it every frame made the align and the climb
+  fight each other and Link oscillated at `(208,150..155)` for 20,000
+  frames. Latch once the column is reached, then only hold UP. (Same class
+  as the `0x58` note in `level9/overworld.py`.)
+
+Live from the real power-on pin `OW_05_Row0Real`:
+`WhiteSwordDetourController` runs `0x05` → cave → `0x05` in **5,287
+frames**, `ADDR_SWORD` 1 → 2, TF still `0xff`, 0 memory writes. It is staged
+in `level9_entry_chapter` between `level9_post_l8_overworld` (which already
+ends on `0x05`) and `level9_spectacle_rock_bomb`, and refuses up front below
+5 heart containers — the Old Man gates on **containers**, which
+`UnlimitedHealthAssist` never raises.
 
 ## Natural-spine seam (Wave A, implementation only)
 

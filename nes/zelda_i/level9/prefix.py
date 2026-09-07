@@ -143,6 +143,19 @@ STAIRS_05_PUSH_X = 96
 STAIRS_05_PUSH_BLOCK_Y = 128
 STAIRS_05_STAIR_X = 208
 STAIRS_05_STAIR_Y = 96
+# Room 0x05's east wall is the hole bomb_west_06 just blew to get in, so a
+# chase that follows a Wizzrobe east walks straight back out into 0x06 and
+# the hop fails `unexpected_play_0x06` (live power-on, rr-sz8.7). Keep combat
+# west of this line; the stairs at x=208 are only walked to after the clear.
+STAIRS_05_COMBAT_EAST_LIMIT = 200
+# bomb_west_06 drops Link at (208,141) -- standing *in* the hole -- and two
+# Wizzrobes camp inside the east wall at x=224, so they are always the nearest
+# target and the chase drags him straight back out. Retreat west of this line
+# once, before engaging at all.
+STAIRS_05_DOOR_ROW_Y = 141
+STAIRS_05_DOOR_ROW_TOL = 16
+STAIRS_05_OFF_ROW_Y = 173   # the pose the proven clear was tuned from
+STAIRS_05_CENTER = (120, 173)
 WEST_63_ORIGIN = 0x63
 WEST_63_DEST_HYP = 0x62
 WEST_63_START_POSE = (160, 157)
@@ -728,6 +741,9 @@ class Level9East14Controller(Level9PrefixHopController):
     dest_hyp: int = EAST_14_DEST_HYP
     door_dir: str = "RIGHT"
     _wp_index: int = 0
+    _stuck_xy: tuple[int, int] | None = None
+    _stuck_frames: int = 0
+    _cross_axis_frames: int = 0
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -752,7 +768,38 @@ class Level9East14Controller(Level9PrefixHopController):
             dy = ty - snap.link_y
             if abs(dx) <= _DOOR_TOL and abs(dy) <= _DOOR_TOL:
                 self._wp_index += 1
+                self._stuck_xy = None
+                self._stuck_frames = 0
+                self._cross_axis_frames = 0
                 return FrameAction(nes_idle_action(), f"reach_wp_{self._wp_index}")
+
+            # The walk is x-first, which has no way out of a wall. A Like Like
+            # bump that leaves Link a few pixels off the y=93 lane puts him
+            # LEFT into stone with dx still large, and he held it for 3,373
+            # frames at (176,101) until the chapter timed out (live power-on,
+            # rr-sz8.7). On a no-progress stall, work the *other* axis toward
+            # the same waypoint for a moment, then resume.
+            xy = (int(snap.link_x), int(snap.link_y))
+            if xy == self._stuck_xy:
+                self._stuck_frames += 1
+            else:
+                self._stuck_xy = xy
+                self._stuck_frames = 0
+            if self._cross_axis_frames > 0:
+                self._cross_axis_frames -= 1
+                if abs(dy) > 2:
+                    btn = "DOWN" if dy > 0 else "UP"
+                elif abs(dx) > 2:
+                    btn = "RIGHT" if dx > 0 else "LEFT"
+                else:
+                    btn = "RIGHT"
+                return FrameAction(nes_action(btn), f"walk_wp_{self._wp_index}_unstick")
+            if self._stuck_frames > 60:
+                self._stuck_frames = 0
+                self._cross_axis_frames = 24
+                btn = ("DOWN" if dy > 0 else "UP") if abs(dy) > 2 else (
+                    "RIGHT" if dx > 0 else "LEFT")
+                return FrameAction(nes_action(btn), f"walk_wp_{self._wp_index}_unstick")
 
             if abs(dx) > 2:
                 btn = "RIGHT" if dx > 0 else "LEFT"
@@ -883,12 +930,29 @@ class Level9Stairs05Controller(Level9StairsHopController):
     _wizz_last_progress_frame: int = 0
     _wizz_backstep_frames: int = 0
     _recentered_push_y: bool = False
+    _cleared_east_band: bool = False
+    _stuck_xy: tuple[int, int] | None = None
+    _stuck_frames: int = 0
+    _stuck_escape_frames: int = 0
+    _escape_dir: str = "LEFT"
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.screen != self.origin:
             return FrameAction(nes_idle_action(), f"unexpected_screen_0x{snap.screen:02x}")
+
+        # Step off the door row before anything else, and latch it.
+        # bomb_west_06 now drops Link at (208,141), standing *in* the hole it
+        # blew, with two Wizzrobes camped inside the east wall at (224,141) --
+        # always the nearest target, so engaging from there chases him
+        # straight back out and the hop fails `unexpected_play_0x06`. Dropping
+        # to y=173 restores the pose the proven 5-Wizzrobe clear was measured
+        # from (STAIRS_05_START_POSE) without changing the fight itself.
+        if not self._cleared_east_band:
+            if abs(snap.link_y - STAIRS_05_DOOR_ROW_Y) < STAIRS_05_DOOR_ROW_TOL:
+                return FrameAction(nes_action("DOWN"), "leave_east_doorway")
+            self._cleared_east_band = True
 
         block = next(
             (o for o in snap.objects if o.type_id == 0x68 or o.slot == 11),
@@ -911,7 +975,8 @@ class Level9Stairs05Controller(Level9StairsHopController):
             )
 
         # Full-clear before touching the block: nothing left to knock Link
-        # off the push stand-off once this branch is done.
+        # off the push stand-off once this branch is done -- but bounded, see
+        # STAIRS_05_COMBAT_MAX.
         if live_wizz:
             n_live = len(live_wizz)
             if self._wizz_prev_count < 0:
@@ -944,12 +1009,48 @@ class Level9Stairs05Controller(Level9StairsHopController):
                     d = "UP" if dy >= 0 else "DOWN"
                 return FrameAction(nes_action(d), "wizzrobe_backstep")
 
+            on_door_row = abs(snap.link_y - STAIRS_05_DOOR_ROW_Y) <= 12
+            if snap.link_x >= STAIRS_05_COMBAT_EAST_LIMIT and on_door_row:
+                # Never fight the east wall *on the door row*: that is the
+                # bombed hole back into 0x06, and the hop fails the moment Link
+                # crosses it. Off the row, the east side is fair game.
+                return FrameAction(nes_action("DOWN"), "wizzrobe_leave_east_band")
+
+            # No-progress escape, same shape as stairs_61/CLEAR_03: the chase
+            # walks one axis at a time, so the pushable block or a wall between
+            # Link and his target pins him in place.
+            xy = (int(snap.link_x), int(snap.link_y))
+            if xy == self._stuck_xy:
+                self._stuck_frames += 1
+            else:
+                self._stuck_xy = xy
+                self._stuck_frames = 0
+            if self._stuck_escape_frames > 0:
+                self._stuck_escape_frames -= 1
+                return FrameAction(nes_action(self._escape_dir), "wizzrobe_stuck_escape")
+            if self._stuck_frames > 90:
+                cx, cy = STAIRS_05_CENTER
+                ddx, ddy = cx - snap.link_x, cy - snap.link_y
+                if abs(ddx) >= abs(ddy):
+                    self._escape_dir = "RIGHT" if ddx > 0 else "LEFT"
+                else:
+                    self._escape_dir = "DOWN" if ddy > 0 else "UP"
+                self._stuck_escape_frames = 20
+                self._stuck_frames = 0
+                return FrameAction(nes_action(self._escape_dir), "wizzrobe_stuck_escape")
+
             dx = nearest.x - snap.link_x
             dy = nearest.y - snap.link_y
             if abs(dx) > abs(dy):
                 direction = "RIGHT" if dx > 0 else "LEFT"
             else:
                 direction = "DOWN" if dy > 0 else "UP"
+            if (
+                direction == "RIGHT"
+                and on_door_row
+                and snap.link_x >= STAIRS_05_COMBAT_EAST_LIMIT - 8
+            ):
+                direction = "DOWN"
             if should_swing_at(snap.link_x, snap.link_y, direction, live_wizz):
                 return FrameAction(nes_action(direction, "A"), "wizzrobe_engage_slash")
             return FrameAction(nes_action(direction), "wizzrobe_engage")

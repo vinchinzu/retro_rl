@@ -30,6 +30,7 @@ from zelda_i.level9.dungeon import (
     level9_live_patra_stop,
     level9_silver_arrows_stop,
 )
+from zelda_i.overworld.white_sword import make_white_sword_detour_controller
 from zelda_i.level9.natural_path import (
     NaturalCreditsController,
     NaturalEnterZeldaController,
@@ -93,10 +94,17 @@ def level9_entry_chapter(
     *,
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Post-L8 OW → Spectacle Rock bomb → enter L9 room 0x76."""
+    """Post-L8 OW → White Sword detour → Spectacle Rock bomb → L9 room 0x76.
+
+    The detour slots in here because the post-L8 overworld leg already ends on
+    0x05, the screen it departs from and returns to, and because Level 9's
+    ending contracts need a sword upgrade Link does not otherwise have: the
+    power-on run arrives with the wooden sword and 10 heart containers.
+    """
     del route
     return (
         _stage("level9_post_l8_overworld", make_post_l8_overworld_controller(handoff)),
+        _stage("level9_white_sword", make_white_sword_detour_controller()),
         _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller(handoff)),
     )
 
