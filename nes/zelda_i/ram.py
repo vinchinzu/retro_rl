@@ -132,6 +132,7 @@ class ZeldaSnapshot:
     arrows: int = 0  # ADDR_ARROWS; wooden=1 silver=2
     candle: int = 0  # ADDR_CANDLE; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
+    magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
 
     @property
     def overworld(self) -> bool:
@@ -241,6 +242,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         magical_boomerang=read_u8(ram, ADDR_MAGIC_BOOMERANG),
         submode=read_u8(ram, ADDR_SUBMODE),
         is_updating_mode=read_u8(ram, ADDR_IS_UPDATING_MODE),
+        magic_shield=read_u8(ram, ADDR_MAGIC_SHIELD),
         raft=read_u8(ram, ADDR_RAFT),
         ladder=read_u8(ram, ADDR_LADDER),
         rod=read_u8(ram, ADDR_ROD),

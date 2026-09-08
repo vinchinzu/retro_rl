@@ -353,7 +353,7 @@ branch is death (`overworld/path.py:401-402`).
       approach-only.
 - [x] **4.4** **Dodge projectiles.** `overworld/common.py` now calls
       `projectile_threats` through `overworld_projectiles` +
-      `dodge_projectile`, sidestepping perpendicular to travel before the
+      `answer_projectile`, sidestepping perpendicular to travel before the
       terminal walk in `walk_or_swing` (so every `_swing` / `align_and_push`
       call site inherits it). Shots carry `hp=0`, so
       `overworld_threat_objects` could never see them — they need their own
@@ -370,10 +370,13 @@ branch is death (`overworld/path.py:401-402`).
       L6) and Magical Boomerang (owned from L2, stuns nearly every OW enemy)
       are never selected outside dungeons. All machinery exists
       (`dungeon/pause_select.py`, `level9/hops.py:149`).
-- [ ] **4.8** **Shield awareness.** `ADDR_MAGIC_SHIELD` (`ram.py:65`) is read
-      nowhere. The small shield blocks only while Link faces the shot and is
-      *not* swinging — but `swing_action` (`common.py:33-44`) pulses A on a
-      fixed period regardless, cancelling blocks.
+- [x] **4.8** **Shield awareness.** `magic_shield` is on `ZeldaSnapshot` now,
+      and `behaviors.shield_blocks` splits the shots the small shield eats
+      (rock / Moblin arrow / Lynel sword shot) from the ones needing the
+      Magical Shield (fireball, Manhandla residual); a Goriya boomerang is
+      blockable by neither. `answer_projectile` (folded together with 4.4)
+      keeps walking a blockable lane with the A pulse suppressed — walking
+      *is* facing — and only sidesteps what the shield cannot eat.
 - [x] **4.9** **Low-heart behavior.** `OverworldPathController._farm_action`
       diverts into `HeartFarmController` on the current screen when
       `filled_hearts < farm_below_hearts`, then hands the hop back

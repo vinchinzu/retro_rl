@@ -27,6 +27,7 @@ from zelda_i.dungeon.behaviors import (
     is_projectile,
     kind_for_type,
     projectile_threats,
+    shield_blocks,
 )
 from zelda_i.dungeon.hop_controller import dungeon_align_then_push as dungeon_align_then_push
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
@@ -106,23 +107,29 @@ def overworld_projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     )
 
 
-def dodge_projectile(
+def answer_projectile(
     link_x: int,
     link_y: int,
     direction: str,
     projectiles: tuple[ZeldaObject, ...],
     reason: str,
+    *,
+    magic_shield: bool = False,
 ) -> FrameAction | None:
-    """Sidestep out of an incoming shot's lane, or None when the lane is clear.
+    """Shield or sidestep an inbound shot; None when the lane is clear.
 
-    The sword does not destroy Octorok rocks or Moblin arrows and the small
-    shield only blocks while not swinging, so the one free answer is to leave
-    the band. Perpendicular to travel keeps hop progress on the other axis.
+    Walking ``direction`` means Link faces the band, and the shield blocks
+    while facing and not attacking — so a blockable shot costs nothing but
+    the A press (``swing_action`` pulses it on a fixed period and would
+    cancel the block). Anything the shield cannot eat has to leave the lane;
+    perpendicular keeps hop progress on the other axis.
     """
     hits = projectile_threats(link_x, link_y, projectiles, direction=direction)
     if not hits:
         return None
     nearest = min(hits, key=lambda o: manhattan(link_x, link_y, o.x, o.y))
+    if all(shield_blocks(obj, magic_shield=magic_shield) for obj in hits):
+        return FrameAction(nes_action(direction), f"{reason}_shield")
     if direction in ("LEFT", "RIGHT"):
         step = "UP" if int(nearest.y) - int(link_y) > 0 else "DOWN"
         if step == "UP" and link_y <= EDGE_NORTH_Y + 8:
@@ -211,12 +218,18 @@ def walk_or_swing(
                 phase_frames, face, reason, period=period, hold=hold
             )
         return FrameAction(nes_action(face), reason)
-    # Nothing to hit: leave the shot lane rather than walk into it.
-    dodge = dodge_projectile(
-        lx, ly, direction, overworld_projectiles(snap), reason
+    # Nothing to hit: block what the shield eats, sidestep the rest. Never
+    # walk the lane pressing A — that cancels the block for free damage.
+    answer = answer_projectile(
+        lx,
+        ly,
+        direction,
+        overworld_projectiles(snap),
+        reason,
+        magic_shield=bool(snap.magic_shield),
     )
-    if dodge is not None:
-        return dodge
+    if answer is not None:
+        return answer
     return FrameAction(nes_action(direction), reason)
 
 
