@@ -184,6 +184,16 @@ BOW_PICKUP_LEAVE = LeaveSpec(
     hearts_lo_eq_hi=False,
 )
 
+# Planned leftover: power-on --through level7-bait-shop, Food still 0.
+# Arrival is the south mouth of 0x34 (0x44 ↑). Tighten xy from the first PNG.
+BAIT_SHOP_LEAVE = LeaveSpec(
+    hop="level7-bait-shop",
+    room=0x34,
+    x=(100, 164),
+    y=(180, 221),
+    triforce_bits=0x3F,
+)
+
 # stairs3a-warp dest: mode 9 cellar 0x08 (208,93). Walk-on stairs BLOCKED.
 # Spec documents dest; leftover documents where we actually stopped.
 STAIRS3A_DEST = LeaveSpec(

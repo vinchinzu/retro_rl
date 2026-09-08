@@ -1,12 +1,13 @@
 """Level 7 chapter factories and Survival ``SpineHop`` rows.
 
-The public surface has three chapters. Internal stage names provide precise
-handoffs without exposing room-level ``--through`` targets.
+The public surface has three chapters plus dedicated ``level7-bait-shop``.
+Internal stage names provide precise handoffs without exposing room-level
+``--through`` targets.
 
 ``MEASURED_POST_L6_EXIT.verified`` is True. Survival ``--through level7``
 is spine-green from power-on (Recorder warp to pond ``0x42``, drain into
-entry ``0x79``, disclosed Food poke). Natural 60R bait shop is ``rr-8t4.4``.
-Do not wire the recon ``ADDR_WHISTLE`` poke.
+entry ``0x79``, disclosed Food poke). Natural 60R bait shop is ``rr-8t4.4``
+(``--through level7-bait-shop``). Do not wire the recon ``ADDR_WHISTLE`` poke.
 """
 
 from __future__ import annotations
@@ -34,8 +35,10 @@ from zelda_i.level7.overworld import (
     POST_L6_TO_WARP_HOPS,
     WARP_ISLAND_SCREEN,
     WARP_JOIN_TO_POND_HOPS,
+    WARP_JOIN_TO_SHOP_HOPS,
     WARP_LAUNCH_SCREEN,
     OverworldToLevel7PondController,
+    on_level7_bait_shop_hyp,
 )
 from zelda_i.level7.pond import make_pond_drain_controller
 from zelda_i.level7.warp import make_recorder_warp_controller
@@ -440,6 +443,35 @@ def level7_entry_chapter_stages(
     )
 
 
+def level7_bait_shop_chapter_stages(
+    *,
+    handoff: OverworldHandoff = UNMEASURED_HANDOFF,
+    post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_WARP_HOPS,
+    warp_launch: int = WARP_LAUNCH_SCREEN,
+    warp_target: int = WARP_ISLAND_SCREEN,
+    join_hops: tuple[ScreenHop, ...] = WARP_JOIN_TO_SHOP_HOPS,
+) -> tuple[Stage, ...]:
+    """Post-L6 OW -> Recorder warp -> peel at 0x54 north to shop 0x34.
+
+    Dedicated ``--through level7-bait-shop`` (rr-8t4.4). No Food write.
+    Default ``level7-entry`` still pokes Food until this leftover greens.
+    """
+    post = make_post_l6_overworld_controller(
+        handoff=handoff, hops=post_l6_hops, dest_screen=warp_launch
+    )
+    warp = make_recorder_warp_controller(
+        target_screen=warp_target, launch_screen=warp_launch
+    )
+    shop = OverworldToLevel7PondController(
+        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES
+    )
+    return (
+        ("level7_post_l6_overworld", post, post.max_frames),
+        ("level7_recorder_warp", warp, warp.max_frames),
+        ("level7_shop_approach", shop, shop.max_frames),
+    )
+
+
 def level7_red_candle_chapter_stages() -> tuple[Stage, ...]:
     """0x79 first door → west candle mainline → Hungry feed → MAP bombs → 0x4A.
 
@@ -483,6 +515,14 @@ def level7_complete_chapter_stages() -> tuple[Stage, ...]:
         _stage("level7_aquamentus_heart", make_aquamentus_heart_controller),
         _stage("level7_shard_and_settled_leave", make_level7_shard_leave_controller),
     )
+
+
+def _bait_shop_success(env):
+    def success(snap: ZeldaSnapshot, **_) -> bool:
+        ram = env.get_ram()
+        return on_level7_bait_shop_hyp(snap) and int(read_u8(ram, ADDR_FOOD)) == 0
+
+    return success
 
 
 def _entry_success(env):
@@ -538,6 +578,11 @@ def l7_hops(
     ``route_eligible=false``.
     """
 
+    def _shop_stages() -> tuple[Stage, ...]:
+        return level7_bait_shop_chapter_stages(
+            handoff=handoff, post_l6_hops=post_l6_hops
+        )
+
     def _entry_stages() -> tuple[Stage, ...]:
         return level7_entry_chapter_stages(
             handoff=handoff,
@@ -548,6 +593,13 @@ def l7_hops(
 
     incoming = read_snapshot(env.get_ram())
     return (
+        SpineHop(
+            "level7-bait-shop",
+            "level7_bait_shop",
+            _shop_stages,
+            _bait_shop_success(env),
+            dedicated=True,
+        ),
         SpineHop(
             "level7-entry",
             "level7_entry",
@@ -571,6 +623,7 @@ def l7_hops(
 
 __all__ = [
     "l7_hops",
+    "level7_bait_shop_chapter_stages",
     "level7_complete_chapter_stages",
     "level7_entry_chapter_stages",
     "level7_red_candle_chapter_stages",

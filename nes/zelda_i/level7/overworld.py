@@ -236,6 +236,19 @@ WARP_JOIN_TO_POND_HOPS: tuple[ScreenHop, ...] = (
 WARP_JOIN_TO_POND_SCREENS: tuple[int, ...] = path_screens_from_hops(
     WARP_ISLAND_SCREEN, WARP_JOIN_TO_POND_HOPS
 )
+# rr-8t4.4: peel the live warp-join at 0x54 and walk north to the Armos
+# bait shop. Shop 0x34 is entered from the south. Gaps from OVERWORLD_DOORS
+# recon (single-run, not 2/2): 0x54→0x44 x≈116, 0x44→0x34 x≈132.
+SHOP_54_NORTH_X = 116
+SHOP_44_NORTH_X = 132
+SHOP_NORTH_X_TOL = 6
+WARP_JOIN_TO_SHOP_HOPS: tuple[ScreenHop, ...] = WARP_JOIN_TO_POND_HOPS[:4] + (
+    ScreenHop(0x44, "UP", align_x=SHOP_54_NORTH_X),
+    ScreenHop(SCREEN_LEVEL7_BAIT_SHOP_HYP, "UP", align_x=SHOP_44_NORTH_X),
+)
+WARP_JOIN_TO_SHOP_SCREENS: tuple[int, ...] = path_screens_from_hops(
+    WARP_ISLAND_SCREEN, WARP_JOIN_TO_SHOP_HOPS
+)
 
 # 0x53 east-edge vertical travel is the v9 miss.  Leave the east column
 # (x>192) before descending to the hypothesized west gap, then LEFT to 0x52.
@@ -252,7 +265,7 @@ def pond_suffix_extra_hop_action(
     swing,
     pond53_walker: OccupancyWalker,
 ) -> FrameAction | None:
-    """Live 0x64 / 0x53 / 0x52 micros. Call only when those hops are in the table."""
+    """Live 0x64 / 0x53 / 0x52 / shop-north micros. Only fires for hops in the table."""
     # 0x65→0x64 arrives on the east ledge at ~(232,109).  UP is blocked
     # there: descend to the open middle band, cross to the north gap and
     # climb.  probe_64_north_to_54: x≈60 is a clean open column to 0x54;
@@ -281,6 +294,16 @@ def pond_suffix_extra_hop_action(
         if snap.link_x < POND_52_GAP_X - 4:
             return swing("RIGHT", "52_traverse_midband")
         return swing("UP", "52_gap_up")
+    if hop.target == 0x44 and snap.screen == 0x54:
+        if abs(snap.link_x - SHOP_54_NORTH_X) > SHOP_NORTH_X_TOL:
+            btn = "LEFT" if snap.link_x > SHOP_54_NORTH_X else "RIGHT"
+            return swing(btn, "54_shop_ax")
+        return swing("UP", "54_shop_north")
+    if hop.target == SCREEN_LEVEL7_BAIT_SHOP_HYP and snap.screen == 0x44:
+        if abs(snap.link_x - SHOP_44_NORTH_X) > SHOP_NORTH_X_TOL:
+            btn = "LEFT" if snap.link_x > SHOP_44_NORTH_X else "RIGHT"
+            return swing(btn, "44_shop_ax")
+        return swing("UP", "44_shop_north")
     return None
 
 
