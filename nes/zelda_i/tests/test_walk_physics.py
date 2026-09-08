@@ -84,3 +84,31 @@ def test_walker_stands_when_no_path() -> None:
     walker.observe(start)
     assert walker.next_dir(start) is None
     assert walker.last_dir is None
+
+
+def test_walker_forgets_inferred_blocks_before_standing() -> None:
+    """A walker fenced in by slide-inferred blocks replans, it does not stand."""
+    from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+
+    grid = OccupancyGrid(xmin=0, xmax=10, ymin=0, ymax=10)
+    walker = OccupancyWalker(grid=grid)
+    # Fence (5,5) in with cells a failed prediction inferred, not spec walls.
+    for direction in ("RIGHT", "LEFT", "DOWN", "UP"):
+        grid.mark_blocked_ahead(5, 5, direction)
+    step = walker.next_dir((5, 5), (9, 5))
+    assert step is not None
+    assert walker.forgets == 1
+    assert not grid.blocked
+
+
+def test_spec_blocks_are_never_forgotten() -> None:
+    """Forgetting is not hunting: measured geometry still stands the walker."""
+    from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+
+    grid = OccupancyGrid(xmin=0, xmax=10, ymin=0, ymax=10)
+    for cell in ((6, 5), (4, 5), (5, 6), (5, 4)):
+        grid.blocked.add(cell)
+    walker = OccupancyWalker(grid=grid)
+    assert walker.next_dir((5, 5), (9, 5)) is None
+    assert walker.forgets == 0
+    assert len(grid.blocked) == 4
