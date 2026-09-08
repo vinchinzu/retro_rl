@@ -28,7 +28,8 @@ bug (`rr-mzxn`).** A genuine `--through level9-credits` power-on attempt had
 never reached past L6 before: `survival.py`'s L6/L7/L8 dispatch only remapped
 `through` for the *immediate* next level, so an L9 target either stranded
 Link inside the L6 dungeon or hit a predecessor's own `raise ValueError`
-guard. Fixed (one `_through_for_predecessor` helper, all three call sites) —
+guard. Fixed (one remap helper, all three call sites; now the `handoff`
+column of the `SPINE_LEVELS` row table, `SpineLevel.target`) —
 see `rr-mzxn`. That also fixed a real L6 bug the fixture-only path never
 exercised: `INLAND29_SPEC`'s generic occupancy grid was too narrow for its
 own LEFT+UP clip, stranding the BFS walker at the west wall; restored the
