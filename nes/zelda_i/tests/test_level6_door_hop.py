@@ -6,18 +6,23 @@ import numpy as np
 import pytest
 
 from retro_harness.nes import nes_action
-from zelda_i.level6.door_hop import (
+from zelda_i.dungeon.door_hop import (
+    DoorHopController,
     DoorHopSpec,
+    door_hop_success,
+)
+from zelda_i.level6.door_hop import (
     EAST39_SPEC,
-    Level6DoorHopController,
+    L6_DOOR_HOPS,
     NORTH2C_SPEC,
     SOUTH18_SPEC,
     SOUTH1D_SPEC,
     SOUTH29_SPEC,
     WEST19_SPEC,
     WEST2D_SPEC,
-    door_hop_success,
 )
+from zelda_i.level6.occupancy import l6_play_dest_success, record_l6_walk
+from zelda_i.level6.overworld import LEVEL6
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
 
@@ -82,10 +87,10 @@ def test_door_hop_wrong_neighbor_fails(spec: DoorHopSpec) -> None:
 
 def test_south1d_leftover_not_up_then_down_at_goal() -> None:
     leftover = _snap(screen=SOUTH1D_SPEC.room, x=96, y=157)
-    first = Level6DoorHopController(SOUTH1D_SPEC).step(leftover)
+    first = DoorHopController(SOUTH1D_SPEC).step(leftover)
     assert list(first.action) != list(nes_action("UP"))
     gx, gy = SOUTH1D_SPEC.goal
-    hold = Level6DoorHopController(SOUTH1D_SPEC).step(
+    hold = DoorHopController(SOUTH1D_SPEC).step(
         _snap(screen=SOUTH1D_SPEC.room, x=gx, y=gy)
     )
     assert (gx, gy) == (120, 189)
@@ -95,19 +100,19 @@ def test_south1d_leftover_not_up_then_down_at_goal() -> None:
 def test_west2d_align_y_then_left() -> None:
     """North leftover holds DOWN; waist LEFT; SW pocket (32,189) holds UP."""
     leftover = _snap(screen=WEST2D_SPEC.room, x=120, y=77)
-    first = Level6DoorHopController(WEST2D_SPEC).step(leftover)
+    first = DoorHopController(WEST2D_SPEC).step(leftover)
     assert list(first.action) == list(nes_action("DOWN"))
     assert list(first.action) != list(nes_action("LEFT"))
-    west = Level6DoorHopController(WEST2D_SPEC).step(
+    west = DoorHopController(WEST2D_SPEC).step(
         _snap(screen=WEST2D_SPEC.room, x=120, y=141)
     )
     assert list(west.action) == list(nes_action("LEFT"))
-    door = Level6DoorHopController(WEST2D_SPEC).step(
+    door = DoorHopController(WEST2D_SPEC).step(
         _snap(screen=WEST2D_SPEC.room, x=32, y=141)
     )
     assert list(door.action) == list(nes_action("LEFT"))
     # Occupancy boxed here on the power-on tape; cardinal UP re-acquires y=141.
-    pocket = Level6DoorHopController(WEST2D_SPEC).step(
+    pocket = DoorHopController(WEST2D_SPEC).step(
         _snap(screen=WEST2D_SPEC.room, x=32, y=189)
     )
     assert list(pocket.action) == list(nes_action("UP"))
@@ -118,19 +123,19 @@ def test_west2d_align_y_then_left() -> None:
 def test_north2c_align_x_then_up() -> None:
     """East leftover holds LEFT; column UP; waist leftover (71,141) holds RIGHT."""
     leftover = _snap(screen=NORTH2C_SPEC.room, x=224, y=141)
-    first = Level6DoorHopController(NORTH2C_SPEC).step(leftover)
+    first = DoorHopController(NORTH2C_SPEC).step(leftover)
     assert list(first.action) == list(nes_action("LEFT"))
     assert list(first.action) != list(nes_action("UP"))
-    column = Level6DoorHopController(NORTH2C_SPEC).step(
+    column = DoorHopController(NORTH2C_SPEC).step(
         _snap(screen=NORTH2C_SPEC.room, x=120, y=141)
     )
     assert list(column.action) == list(nes_action("UP"))
-    door = Level6DoorHopController(NORTH2C_SPEC).step(
+    door = DoorHopController(NORTH2C_SPEC).step(
         _snap(screen=NORTH2C_SPEC.room, x=120, y=93)
     )
     assert list(door.action) == list(nes_action("UP"))
     # Occupancy south_open_halt boxed here on the power-on tape.
-    shuffled = Level6DoorHopController(NORTH2C_SPEC).step(
+    shuffled = DoorHopController(NORTH2C_SPEC).step(
         _snap(screen=NORTH2C_SPEC.room, x=71, y=141)
     )
     assert list(shuffled.action) == list(nes_action("RIGHT"))
@@ -141,15 +146,15 @@ def test_north2c_align_x_then_up() -> None:
 def test_south29_live_leftover_goes_down() -> None:
     """Waist leftover (120,141) occupancies DOWN. Not RIGHT+DOWN clip."""
     leftover = _snap(screen=SOUTH29_SPEC.room, x=120, y=141)
-    first = Level6DoorHopController(SOUTH29_SPEC).step(leftover)
+    first = DoorHopController(SOUTH29_SPEC).step(leftover)
     assert list(first.action) == list(nes_action("DOWN"))
     assert list(first.action) != list(nes_action("RIGHT", "DOWN"))
     assert SOUTH29_SPEC.clip_buttons is None
-    door = Level6DoorHopController(SOUTH29_SPEC).step(
+    door = DoorHopController(SOUTH29_SPEC).step(
         _snap(screen=SOUTH29_SPEC.room, x=120, y=189)
     )
     assert list(door.action) == list(nes_action("DOWN"))
-    trap = Level6DoorHopController(SOUTH29_SPEC).step(
+    trap = DoorHopController(SOUTH29_SPEC).step(
         _snap(screen=SOUTH29_SPEC.room, x=63, y=133)
     )
     assert list(trap.action) != list(nes_action("UP"))
@@ -161,17 +166,45 @@ def test_east39_north_band_leftover_drops_to_waist_then_right() -> None:
     """Power-on leftover (95,109) holds DOWN to y=141, not RIGHT into the wall."""
     assert EAST39_SPEC.clip_buttons == ("DOWN",)
     leftover = _snap(screen=EAST39_SPEC.room, x=95, y=109)
-    first = Level6DoorHopController(EAST39_SPEC).step(leftover)
+    first = DoorHopController(EAST39_SPEC).step(leftover)
     assert list(first.action) == list(nes_action("DOWN"))
     assert list(first.action) != list(nes_action("RIGHT"))
     # Once on the waist the cardinal hold carries RIGHT toward the door.
-    waist = Level6DoorHopController(EAST39_SPEC).step(
+    waist = DoorHopController(EAST39_SPEC).step(
         _snap(screen=EAST39_SPEC.room, x=120, y=141)
     )
     assert list(waist.action) == list(nes_action("RIGHT"))
-    door = Level6DoorHopController(EAST39_SPEC).step(
+    door = DoorHopController(EAST39_SPEC).step(
         _snap(screen=EAST39_SPEC.room, x=208, y=141)
     )
     assert list(door.action) == list(nes_action("RIGHT"))
 
 
+@pytest.mark.parametrize("spec", L6_DOOR_HOPS, ids=_ids)
+def test_every_row_binds_the_l6_occupancy_engine(spec: DoorHopSpec) -> None:
+    """The engine is shared; each L6 row injects L6's level and predicates.
+
+    Losing an injection would silently grade a hop against the generic
+    play-dest rule (no rod / TF 0x1F check) and stop failing on an OW leave.
+    """
+    assert spec.level == LEVEL6
+    assert spec.success_fn is l6_play_dest_success
+    assert spec.record_fn is record_l6_walk
+    # Shared band defaults still match the measured L6 door geometry.
+    assert (spec.south_band_y, spec.north_band_y) == (181, 109)
+
+
+def test_row_table_is_the_ten_generic_hops() -> None:
+    """0x29 north stays out of the table (see the module NOTE / rr-mzxn)."""
+    assert [s.spec_id for s in L6_DOOR_HOPS] == [
+        "level6_south_0x09",
+        "level6_south_0x19",
+        "level6_south_0x29",
+        "level6_east_0x29",
+        "level6_east_0x39",
+        "level6_west_0x19",
+        "level6_south_0x18",
+        "level6_south_0x1d",
+        "level6_west_0x2d",
+        "level6_north_0x2c",
+    ]

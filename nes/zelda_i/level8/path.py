@@ -34,12 +34,13 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
 from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
+    LEVEL8,
     MAGIC_KEY_TO_SHARD_SPEC,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ChapterSpec,
@@ -61,7 +62,7 @@ from zelda_i.level8.north_column import (
     make_darknut_key_controller as _make_darknut_key_controller,
     make_north_manhandla_controller as _make_north_manhandla_controller,
 )
-from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ZeldaSnapshot
 
 WEST_DOOR = DOOR_TARGETS["LEFT"]  # (32, 141)
 WEST_ORIGIN = 0x1F
@@ -158,101 +159,87 @@ def east_3e_step(snap: ZeldaSnapshot) -> FrameAction:
     return FrameAction(nes_action("RIGHT"), "east_push")
 
 
-def _west_leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
-    return {
-        "x": int(snap.link_x),
-        "y": int(snap.link_y),
-        "mode": int(snap.mode),
-        "screen": int(snap.screen),
-        "tile": int(snap.colliding_tile),
-        "keys": int(snap.keys),
-        "bombs": int(snap.bombs),
-        "magic_key": int(getattr(snap, "magic_key", 0)),
-        "triforce": int(snap.triforce),
-    }
+_L8_GATE_FAILS = (
+    HopFail((CELLAR_ROOM,), "cellar_0x{screen:02x}", on_passage=True),
+    HopFail((GLEEOK_HYP,), "gleeok_0x3c"),
+)
+
+
+def _gate(
+    spec_id: str,
+    origin: int,
+    door: str,
+    tag: str,
+    step,
+    done_reason: str,
+    *,
+    max_frames: int,
+) -> RoomHopSpec:
+    """One L8 interior gate row. ``door`` doubles as the scroll/settle hold."""
+    return RoomHopSpec(
+        spec_id=spec_id,
+        origin=origin,
+        door=door,
+        done_reason=done_reason,
+        step=step,
+        level=LEVEL8,
+        max_frames=max_frames,
+        sample_period=_SAMPLE_PERIOD,
+        fails=_L8_GATE_FAILS,
+        scroll_button=door,
+        scroll_reason=f"{tag}_scroll",
+        settle_button=door,
+        settle_reason=f"{tag}_settle",
+    )
+
+
+WEST_1F_GATE = _gate(
+    "level8_west_1f", WEST_ORIGIN, "LEFT", "west", west_1f_step,
+    "left_0x1f_west", max_frames=_WEST_MAX_FRAMES,
+)
+SOUTH_1E_GATE = _gate(
+    "level8_south_1e", SOUTH_ORIGIN, "DOWN", "south", south_1e_step,
+    "left_0x1e_south", max_frames=_SOUTH_MAX_FRAMES,
+)
+SOUTH_2E_GATE = _gate(
+    "level8_south_2e", SOUTH_2E_ORIGIN, "DOWN", "south", south_2e_step,
+    "left_0x2e_south", max_frames=_SOUTH_MAX_FRAMES,
+)
+EAST_3E_GATE = _gate(
+    "level8_east_3e", EAST_3E_ORIGIN, "RIGHT", "east", east_3e_step,
+    "left_0x3e_east", max_frames=_EAST_MAX_FRAMES,
+)
+LEVEL8_PATH_GATES: tuple[RoomHopSpec, ...] = (
+    WEST_1F_GATE, SOUTH_1E_GATE, SOUTH_2E_GATE, EAST_3E_GATE,
+)
 
 
 @dataclass(kw_only=True)
-class Level8West1FController(HopController):
+class Level8West1FController(RoomHopController):
     """0x1F leftover → west door LEFT. Dest is RAM; fail 0x0F / 0x3C."""
 
-    spec_id: str = "level8_west_1f"
-    max_frames: int = _WEST_MAX_FRAMES
-    require_level: int = 8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x1f_west"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
+    spec: RoomHopSpec = WEST_1F_GATE
 
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
 
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.mode != PLAY_MODE or snap.transitioning:
-            return False
-        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return snap.screen != WEST_ORIGIN
+@dataclass(kw_only=True)
+class Level8South1EController(RoomHopController):
+    """0x1E leftover → south door DOWN. Dest is RAM; fail 0x0F / 0x3C."""
 
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+    spec: RoomHopSpec = SOUTH_1E_GATE
 
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_action("LEFT"), "west_scroll")
 
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _west_leftover(snap)
-        return action
+@dataclass(kw_only=True)
+class Level8South2EController(RoomHopController):
+    """0x2E leftover → south door DOWN. Dest is RAM; fail 0x0F / 0x3C."""
 
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if snap.screen == GLEEOK_HYP:
-            return self.mark_fail("gleeok_0x3c")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != WEST_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
-        return None
+    spec: RoomHopSpec = SOUTH_2E_GATE
 
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != WEST_ORIGIN:
-            return FrameAction(nes_action("LEFT"), "west_settle")
-        return west_1f_step(snap)
 
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "LEFT",
-            "leftover": dict(self.leftover),
-        }
+@dataclass(kw_only=True)
+class Level8East3EController(RoomHopController):
+    """0x3E leftover → east door RIGHT. Dest is RAM; fail 0x0F / 0x3C."""
+
+    spec: RoomHopSpec = EAST_3E_GATE
 
 
 def make_west_1f_controller(
@@ -261,176 +248,10 @@ def make_west_1f_controller(
     return Level8West1FController(dest=dest)
 
 
-@dataclass(kw_only=True)
-class Level8South1EController(HopController):
-    """0x1E leftover → south door DOWN. Dest is RAM; fail 0x0F / 0x3C."""
-
-    spec_id: str = "level8_south_1e"
-    max_frames: int = _SOUTH_MAX_FRAMES
-    require_level: int = 8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x1e_south"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.mode != PLAY_MODE or snap.transitioning:
-            return False
-        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return snap.screen != SOUTH_ORIGIN
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_action("DOWN"), "south_scroll")
-
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _west_leftover(snap)
-        return action
-
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if snap.screen == GLEEOK_HYP:
-            return self.mark_fail("gleeok_0x3c")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != SOUTH_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
-        return None
-
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != SOUTH_ORIGIN:
-            return FrameAction(nes_action("DOWN"), "south_settle")
-        return south_1e_step(snap)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "DOWN",
-            "leftover": dict(self.leftover),
-        }
-
-
 def make_south_1e_controller(
     *, dest: int | None = SOUTH_DEST
 ) -> Level8South1EController:
     return Level8South1EController(dest=dest)
-
-
-@dataclass(kw_only=True)
-class Level8South2EController(HopController):
-    """0x2E leftover → south door DOWN. Dest is RAM; fail 0x0F / 0x3C."""
-
-    spec_id: str = "level8_south_2e"
-    max_frames: int = _SOUTH_MAX_FRAMES
-    require_level: int = 8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x2e_south"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.mode != PLAY_MODE or snap.transitioning:
-            return False
-        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return snap.screen != SOUTH_2E_ORIGIN
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_action("DOWN"), "south_scroll")
-
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _west_leftover(snap)
-        return action
-
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if snap.screen == GLEEOK_HYP:
-            return self.mark_fail("gleeok_0x3c")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != SOUTH_2E_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
-        return None
-
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != SOUTH_2E_ORIGIN:
-            return FrameAction(nes_action("DOWN"), "south_settle")
-        return south_2e_step(snap)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "DOWN",
-            "leftover": dict(self.leftover),
-        }
 
 
 def make_south_2e_controller(
@@ -439,93 +260,11 @@ def make_south_2e_controller(
     return Level8South2EController(dest=dest)
 
 
-@dataclass(kw_only=True)
-class Level8East3EController(HopController):
-    """0x3E leftover → east door RIGHT. Dest is RAM; fail 0x0F / 0x3C."""
-
-    spec_id: str = "level8_east_3e"
-    max_frames: int = _EAST_MAX_FRAMES
-    require_level: int = 8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x3e_east"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.mode != PLAY_MODE or snap.transitioning:
-            return False
-        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return snap.screen != EAST_3E_ORIGIN
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_action("RIGHT"), "east_scroll")
-
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _west_leftover(snap)
-        return action
-
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.mode == PASSAGE_MODE or snap.screen == CELLAR_ROOM:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if snap.screen == GLEEOK_HYP:
-            return self.mark_fail("gleeok_0x3c")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != EAST_3E_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
-        return None
-
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != EAST_3E_ORIGIN:
-            return FrameAction(nes_action("RIGHT"), "east_settle")
-        return east_3e_step(snap)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "RIGHT",
-            "leftover": dict(self.leftover),
-        }
-
-
 def make_east_3e_controller(
     *, dest: int | None = EAST_3E_DEST
 ) -> Level8East3EController:
     return Level8East3EController(dest=dest)
+
 
 
 # L6 red Gohma is 0x33; L8 source is blue 0x34.  Red is accepted only as a
@@ -695,6 +434,7 @@ __all__ = [
     "Level8South1EController",
     "Level8South2EController",
     "Level8West1FController",
+    "LEVEL8_PATH_GATES",
     "UnverifiedLevel8PathController",
     "WEST_DOOR",
     "STAIRS_WEST_X",

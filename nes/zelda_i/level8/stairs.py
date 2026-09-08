@@ -7,17 +7,17 @@ banned. CheckWarp is exact: stand on tiles 0x70-0x73 and idle.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
 from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.path import EAST_3E_DEST, EAST_3E_DEST_POSE, GLEEOK_HYP
-from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ZeldaSnapshot
 
 __all__ = [
+    "STAIRS_3F_GATE",
     "STAIRS_3F_DEST",
     "STAIRS_3F_DEST_HYP",
     "STAIRS_3F_DEST_MODE",
@@ -63,108 +63,37 @@ def stairs_3f_step(snap: ZeldaSnapshot) -> FrameAction:
     return FrameAction(nes_idle_action(), "stairs_exact")
 
 
-def _leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
-    return {
-        "x": int(snap.link_x),
-        "y": int(snap.link_y),
-        "mode": int(snap.mode),
-        "screen": int(snap.screen),
-        "tile": int(snap.colliding_tile),
-        "keys": int(snap.keys),
-        "bombs": int(snap.bombs),
-        "magic_key": int(getattr(snap, "magic_key", 0)),
-        "triforce": int(snap.triforce),
-    }
+STAIRS_3F_GATE = RoomHopSpec(
+    spec_id="level8_stairs_3f",
+    origin=STAIRS_3F_ORIGIN,
+    door="STAIRS",
+    done_reason="left_0x3f_stairs",
+    step=stairs_3f_step,
+    level=LEVEL8,
+    max_frames=_MAX_FRAMES,
+    sample_period=_SAMPLE_PERIOD,
+    fails=(
+        HopFail((GLEEOK_HYP,), "gleeok_0x3c"),
+        HopFail((CELLAR_ROOM,), "cellar_0x{screen:02x}"),
+    ),
+    # The walk-on lands in mode-9; a passage arrival counts, and the mode is
+    # part of the arrival note.
+    require_play_arrival=False,
+    passage_arrival=True,
+    arrive_note="m{mode}_0x{screen:02x}_{x}_{y}",
+    unexpected_note="unexpected_0x{screen:02x}",
+    unexpected_play_only=False,
+    scroll_reason="stairs_scroll",
+    settle_reason="dest_settle",
+    passage_hold_reason="cellar_hold",
+)
 
 
 @dataclass(kw_only=True)
-class Level8Stairs3FController(HopController):
+class Level8Stairs3FController(RoomHopController):
     """0x3F leftover → east stairs walk-on. Dest is RAM; fail 0x0F / 0x3C."""
 
-    spec_id: str = "level8_stairs_3f"
-    max_frames: int = _MAX_FRAMES
-    require_level: int = LEVEL8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x3f_stairs"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.transitioning:
-            return False
-        if snap.screen in (CELLAR_ROOM, GLEEOK_HYP):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        if snap.mode == PLAY_MODE and snap.screen == STAIRS_3F_ORIGIN:
-            return False
-        if snap.mode == PASSAGE_MODE:
-            return True
-        if snap.mode == PLAY_MODE and snap.screen != STAIRS_3F_ORIGIN:
-            return True
-        return False
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"m{snap.mode}_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_idle_action(), "stairs_scroll")
-
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _leftover(snap)
-        return action
-
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.screen == GLEEOK_HYP:
-            return self.mark_fail("gleeok_0x3c")
-        if snap.screen == CELLAR_ROOM:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if (
-            not snap.transitioning
-            and snap.screen != STAIRS_3F_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_0x{snap.screen:02x}")
-        return None
-
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode == PASSAGE_MODE:
-            return FrameAction(nes_idle_action(), "cellar_hold")
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != STAIRS_3F_ORIGIN:
-            return FrameAction(nes_idle_action(), "dest_settle")
-        return stairs_3f_step(snap)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "STAIRS",
-            "leftover": dict(self.leftover),
-        }
+    spec: RoomHopSpec = STAIRS_3F_GATE
 
 
 def make_stairs_3f_controller(

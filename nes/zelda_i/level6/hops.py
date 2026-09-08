@@ -8,7 +8,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import TF_BIT_L5
 from zelda_i.dungeon.gleeok import gleeok_heads_live
-from zelda_i.level6.door_hop import DoorHopSpec, door_hop_stages, door_hop_success
+from zelda_i.dungeon.door_hop import DoorHopSpec, door_hop_stages, door_hop_success
 from zelda_i.level6.dungeon import (
     LEVEL6_COMPASS_BIT,
     ROOM_28_SPEC,

@@ -9,7 +9,8 @@ from zelda_i.route.treasures import (
     TREASURES,
     treasure,
 )
-from zelda_i.level6.door_hop import NORTH2C_SPEC, door_hop_success
+from zelda_i.dungeon.door_hop import door_hop_success
+from zelda_i.level6.door_hop import NORTH2C_SPEC
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOW,
