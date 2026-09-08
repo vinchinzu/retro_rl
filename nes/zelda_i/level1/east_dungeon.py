@@ -132,13 +132,23 @@ ROOM_45_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
-# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (x=160 east-column hunt).
-# Off-wall fight avoids the grab-to-entrance. Continuous combat ends in the
-# y=149–157 band; south of that at x=80/120/160 is solid, so collect first
-# walks the free east column at x=208 (same column the entry route uses).
+# Survival overlay only. Clean M5 keeps ROOM_45_SPEC (x=160 east-column hunt
+# and the north-band entry from 0x43). After Room44SurvivalController the
+# leftover is the east column; the north-band first hop LEFT from (192, 149)
+# walks into the east statues (exp5: 9000f timeout, combat_frames=0).
+# South aisle y=165 is the same peel the 0x44 fight already uses.
 ROOM_45_SURVIVAL_SPEC = replace(
     ROOM_45_SPEC,
     spec_id="level1_room45_survival",
+    entry=DoorRoute(
+        "RIGHT",
+        (
+            (192, 165),
+            (192, 141),
+            (208, 141),
+        ),
+        y_first=True,
+    ),
     combat=replace(
         ROOM_45_SPEC.combat,
         engage_distance=56,

@@ -20,7 +20,11 @@ from zelda_i.level1.dungeon import (
     ROOM_54_SPEC,
     ROOM_72_SPEC,
 )
-from zelda_i.level1.east_dungeon import ROOM_44_SPEC, ROOM_44_SURVIVAL_SPEC
+from zelda_i.level1.east_dungeon import (
+    ROOM_44_SPEC,
+    ROOM_44_SURVIVAL_SPEC,
+    ROOM_45_SURVIVAL_SPEC,
+)
 from zelda_i.level1.path import level1_room_72_key_success
 from zelda_i.ram import (
     ADDR_HEALTH,
@@ -491,3 +495,14 @@ def test_room44_spec_uses_three_row_occupancy() -> None:
         ROOM_44_SURVIVAL_SPEC.combat.occupancy_bounds
         == ROOM_44_SPEC.combat.occupancy_bounds
     )
+
+
+def test_survival_room45_enters_east_door_from_clear44_leftover() -> None:
+    """exp5 leftover (192, 149): north-band hop LEFT into the east statues."""
+    assert ROOM_45_SURVIVAL_SPEC.entry.waypoints[0] == (192, 165)
+    assert ROOM_45_SURVIVAL_SPEC.entry.y_first is True
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    action = controller.step(read_snapshot(_room_ram(room=0x44, x=192, y=149)))
+    assert action.reason == "entry_route"
+    assert np.array_equal(action.action, nes_action("DOWN"))
+    assert not np.array_equal(action.action, nes_action("LEFT"))
