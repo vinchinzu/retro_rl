@@ -25,6 +25,7 @@ from typing import Any, Callable
 from retro_harness.input_script import FrameAction
 from zelda_i.overworld.cave_shop import CaveShopBuyController, CaveShopBuyPhase
 from zelda_i.overworld.graph import LEVEL2_PATH_HOPS, ScreenHop
+from zelda_i.overworld.locations import farm_at
 from zelda_i.overworld.rupee_farm import RupeeFarmController
 from zelda_i.ram import ADDR_ARROWS, ZeldaSnapshot
 
@@ -49,8 +50,15 @@ ARROW_BUY_Y = 165
 ARROW_SHOP_HOPS: tuple[ScreenHop, ...] = LEVEL2_PATH_HOPS
 ARROW_SHOP_MAX_FRAMES = 50000
 # 0x4A<->0x49 restock: leave west to force overworld respawns, come back east.
-ARROW_SHOP_RESTOCK_SCREEN = 0x49
-ARROW_SHOP_RESTOCK_DIRECTION = "LEFT"
+_ARROW_FARM = farm_at(ARROW_SHOP_SCREEN)
+if (
+    _ARROW_FARM is None
+    or _ARROW_FARM.restock_neighbor is None
+    or not _ARROW_FARM.restock_direction
+):
+    raise RuntimeError("0x4A farm catalog is missing a restock pair")
+ARROW_SHOP_RESTOCK_SCREEN = int(_ARROW_FARM.restock_neighbor)
+ARROW_SHOP_RESTOCK_DIRECTION = str(_ARROW_FARM.restock_direction)
 FARM_MAX_FRAMES = 36000
 SWORD_SWING_PERIOD = 8
 SWORD_SWING_HOLD = 3

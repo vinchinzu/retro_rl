@@ -251,6 +251,18 @@ def test_spine_run_measured_zero_set_state_is_not_a_load() -> None:
     assert report["ok"] is True
 
 
+def test_run_survival_spine_allows_assist_none() -> None:
+    """``--no-infinite-life`` passes assist=None; heart refill simply skips."""
+    from zelda_i.spine.survival import run_survival_spine
+
+    try:
+        run_survival_spine(None, None, assist=None, through="level1")
+    except ValueError as exc:
+        raise AssertionError(f"assist=None must be legal, got {exc}") from exc
+    except Exception:
+        pass
+
+
 def test_survival_spine_cli_wraps_audited_env() -> None:
     import inspect
 
@@ -262,6 +274,8 @@ def test_survival_spine_cli_wraps_audited_env() -> None:
     assert "zelda_i.survival_spine" in src
     assert "tap.close()" in src
     assert "tap.abort()" in src
+    assert "BooleanOptionalAction" in src
+    assert "infinite_life" in src
 
 
 def test_video_tap_close_and_abort_without_writer() -> None:

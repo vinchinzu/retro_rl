@@ -9,6 +9,9 @@ ADDR_IS_UPDATING_MODE=0x0011  # 0=mode initialization, nonzero=update loop
 ADDR_MODE           = 0x0012  # 5=play, 6/7=scroll, 11=cave play, 16=cave enter
 ADDR_SUBMODE        = 0x0013  # mode-local phase (see Level 9 ending note)
 ADDR_DIALOG_TIMER   = 0x0029  # dialog countdown
+ADDR_HELP_DROP_COUNT= 0x0050  # 10 kills → forced 5-rupee (or bomb)
+ADDR_HELP_DROP_VALUE= 0x0051  # nonzero → that force is a bomb
+ADDR_WORLD_KILL_COUNT=0x0627  # 16 kills → forced fairy; all three clear on hit
 ADDR_LINK_X         = 0x0070  # 0..240 screen X
 ADDR_LINK_Y         = 0x0084  # ~61..221 screen Y
 ADDR_LINK_FACING    = 0x0098  # $08 N, $04 S, $01 E, $02 W
@@ -39,7 +42,15 @@ ADDR_BOOMERANG      = 0x0674  # wooden; 0=false, 1=true
 ADDR_MAGIC_BOOMERANG= 0x0675  # magical; overrides wooden when set
 ADDR_MAGIC_SHIELD   = 0x0676
 ADDR_MAX_BOMBS      = 0x067C
+ADDR_RUPEES_TO_ADD  = 0x067D  # pending credit; HUD counts up
+ADDR_RUPEES_TO_SUB  = 0x067E
+ADDR_WORLD_FLAGS    = 0x067F  # 128 bytes, index = OW screen / dungeon room
+                              # bit $10 = secret found / UW item taken
+                              # bit $20 = visited; $C0 = kill count
 ```
+
+Overworld cave dests and first-quest location overlay:
+`zelda_i.overworld.locations` (ROM `$18480` AttrsB `>> 2`, `$18680` Q1-ignore).
 
 Survival assist (opt-in only): `zelda_i.assist.UnlimitedHealthAssist` writes
 `health` via `data.set_value`; see `docs/ASSIST_CONTRACT.md`.

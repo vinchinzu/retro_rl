@@ -109,19 +109,13 @@ def test_level8_through_targets_are_wired_spine_stops() -> None:
 
 
 def test_through_level8_entry_is_not_an_unknown_spine_stop() -> None:
-    """The seam is reachable: the stop check passes, the assist check bites."""
-    try:
-        run_survival_spine(None, None, assist=None, through="level8-entry")
-    except ValueError as exc:
-        assert "unknown spine stop" not in str(exc)
-        assert "UnlimitedHealthAssist" in str(exc)
-    else:
-        raise AssertionError("missing assist must raise")
-
+    """The seam is reachable: the stop check passes; assist=None is allowed."""
+    assert "level8-entry" in SPINE_THROUGH
     try:
         run_survival_spine(None, None, assist=None, through="level8-book")
     except ValueError as exc:
         assert "unknown spine stop" in str(exc)
+        assert "UnlimitedHealthAssist" not in str(exc)
     else:
         raise AssertionError("a genuinely unknown stop must raise")
 

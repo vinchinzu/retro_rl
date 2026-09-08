@@ -132,6 +132,8 @@ class CaveShopBuyController(OverworldPathController):
             self.door_x = self.cave_x
         if self.door_screen is None:
             self.door_screen = self.shop_screen
+        if self.need_rupees <= 0 and self.price > 0:
+            self.need_rupees = int(self.price)
 
     def reset(self) -> None:
         super().reset()

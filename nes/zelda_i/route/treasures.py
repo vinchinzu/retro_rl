@@ -245,7 +245,11 @@ TREASURES: tuple[DungeonTreasure, ...] = (
 
 @dataclass(frozen=True)
 class OwGate:
-    """Overworld buy that a later dungeon gate still needs. Not a dungeon drop."""
+    """Overworld buy that a later dungeon gate still needs. Not a dungeon drop.
+
+    Every first-quest OW cave/secret (rando locations) lives in
+    ``zelda_i.overworld.locations``.
+    """
 
     name: str
     cost_rupees: int

@@ -31,6 +31,7 @@ from zelda_i.overworld.nav import (
 )
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import parse_game_state, read_snapshot
+from zelda_i.runner import make_assist
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
 from zelda_i.overworld.sword_cave import SwordCaveController, sword_segment_success
 
@@ -40,12 +41,14 @@ def run_once(
     require_dungeon: bool = True,
     max_frames: int = SEGMENT_MAX_FRAMES,
     tag: str = "to_level1",
+    infinite_life: bool = False,
 ) -> dict:
     configure_headless()
     start_state = "NONE" if natural_entry else "Level1"
     env = make_env(GAME, start_state, GAME_DIR, render_mode="rgb_array")
     sword = SwordCaveController()
     nav = OverworldToLevel1Controller(require_dungeon=require_dungeon)
+    assist = make_assist(infinite_life)
     try:
         obs, _ = reset_obs(env)
         boot_frames = 0
@@ -67,6 +70,8 @@ def run_once(
 
         for _ in range(SWORD_MAX):
             obs, *_ = env.step(sword.step(read_snapshot(env.get_ram())).action)
+            if assist is not None:
+                assist.apply_env(env, frame=sword.frames)
             if sword.success or sword.phase.name == "FAILED":
                 break
 
@@ -99,6 +104,8 @@ def run_once(
         # Nav EAST_77 aligns y≈140 from cave exit (~64,77); no fixed DOWN hold.
         for _ in range(max_frames):
             obs, *_ = env.step(nav.step(read_snapshot(env.get_ram())).action)
+            if assist is not None:
+                assist.apply_env(env, frame=sword.frames + nav.frames)
             if nav.success or nav.phase.name == "FAILED":
                 break
 
@@ -125,6 +132,9 @@ def run_once(
                 "sword": snap.sword,
                 "x": snap.link_x,
                 "y": snap.link_y,
+                "rupees": snap.rupees,
+                "health": snap.health,
+                "filled_hearts": snap.filled_hearts,
                 "overworld": snap.overworld,
                 "game_mode": state.mode.name,
             },
@@ -148,6 +158,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--max-frames", type=int, default=SEGMENT_MAX_FRAMES)
+    parser.add_argument(
+        "--infinite-life",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Survival health refill (default off). Combat practice without assist.",
+    )
     args = parser.parse_args(argv)
 
     require_dungeon = not args.screen_only
@@ -159,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             require_dungeon=require_dungeon,
             max_frames=args.max_frames,
             tag=tag,
+            infinite_life=args.infinite_life,
         )
         reports.append(rep)
         fin = rep["final"]
@@ -166,6 +183,7 @@ def main(argv: list[str] | None = None) -> int:
             f"trial={i} ok={rep['ok']} stage={rep.get('stage')} "
             f"sword_frames={rep['sword']['frames']} nav_frames={rep['nav']['frames']} "
             f"screen={fin['screen']:02X} level={fin['level']} "
+            f"rupees={fin.get('rupees')} hearts={fin.get('filled_hearts')} "
             f"phase={rep['nav']['phase']}"
         )
 
