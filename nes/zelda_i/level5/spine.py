@@ -6,33 +6,34 @@ cellar leftover is 0x04 mode 9 (135,141).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 
-from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.anchors import LEVEL5_ENTRY_ROOM, LEVEL5_TF_ROOM, TF_BIT_L4, TF_BIT_L5
 from zelda_i.route.chain import ControllerStageResult
 from zelda_i.level5.dungeon import (
     ROOM_66_SPEC,
     ROOM_77_SPEC,
+    ROOM_L5_BLUE_64,
     ROOM_L5_GIBDO_66,
+    ROOM_L5_PASSAGE_06,
     ROOM_L5_POLS_77,
+    ROOM_L5_WHISTLE_05,
+    ROOM_L5_WHISTLE_ITEM,
     make_pols_voice_controller,
 )
 from zelda_i.level5.path import (
+    make_east_key_nav_controller,
+    make_return_66_controller,
+)
+from zelda_i.level5.whistle_path import (
     BLUE_DARKNUT_TYPE,
-    ROOM_L5_BLUE_64,
-    ROOM_L5_PASSAGE_06,
-    ROOM_L5_WHISTLE_05,
-    ROOM_L5_WHISTLE_ITEM,
     bomb_west_from_65,
     bomb_west_from_66,
     cellar_other_mouth,
     fight_blue_darknuts,
     hunt_whistle,
     key_west_to,
-    level5_east_key_step,
-    make_return_66_controller,
     push_block_stairs,
     take_center_stairs_64,
     take_whistle_04,
@@ -44,14 +45,13 @@ from zelda_i.level5.overworld import (
     PostL4TriforceSettleController,
     make_post_l4_level5_controller,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import ZeldaSnapshot, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
 __all__ = [
     "L5_STOPS",
     "L5_THROUGH",
     "ROOM_66_SPINE_SPEC",
-    "Level5EastKeyNavController",
     "attach_level5_tf_suffix",
     "attach_level5_whistle_suffix",
     "continue_level5_spine",
@@ -115,65 +115,8 @@ def level5_clear66_success(snap: ZeldaSnapshot, **_) -> bool:
     )
 
 
-@dataclass
-class Level5EastKeyNavController:
-    """Walk cleared 0x66 → 0x76 east key door → 0x77. No combat. No pokes."""
-
-    max_frames: int = 8000
-    settle_frames: int = 40
-    frames: int = 0
-    settle_left: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    last_room: int = -1
-
-    def report(self) -> dict:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": "level5_east_key_nav_0x77",
-        }
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-        if snap.screen != self.last_room:
-            self.notes.append(
-                f"room_0x{snap.screen:02x}_f{self.frames}_xy={snap.link_x},{snap.link_y}_k={snap.keys}"
-            )
-            self.last_room = snap.screen
-        if (
-            snap.level == LEVEL5_LEVEL_ID
-            and snap.screen == ROOM_L5_POLS_77
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-        ):
-            if self.settle_left <= 0 and "settling_77" not in self.notes:
-                self.settle_left = self.settle_frames
-                self.notes.append("settling_77")
-            if self.settle_left > 0:
-                self.settle_left -= 1
-                if self.settle_left > 0:
-                    return FrameAction(nes_idle_action(), "settle_77")
-            self.success = True
-            self.notes.append("arrived_77")
-            return FrameAction(nes_idle_action(), "arrived_77")
-        return level5_east_key_step(snap)
-
-
 def _east77_stages():
-    nav = Level5EastKeyNavController()
+    nav = make_east_key_nav_controller()
     fight = make_pols_voice_controller()
     return (
         ("level5_east_key_0x77", nav, nav.max_frames),

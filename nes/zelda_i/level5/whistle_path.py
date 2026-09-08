@@ -3,13 +3,13 @@
 Bomb-west 0x65→0x64 center stairs → cellar 0x07 other mouth →
 0x06 key-west → 0x05 clear+block stairs → 0x04 Recorder → left mouth back to 0x05.
 
-Room specs and stop predicates remain in ``level5_dungeon``.
-Import from ``zelda_i.level5.path`` (public facade).
+Bomb walls are ``BombWallSpec`` rows over one ``bomb_wall`` engine.
+Room specs and stop predicates remain in ``level5.dungeon``.
 """
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from retro_harness.nes import nes_action, nes_idle_action
 
@@ -23,7 +23,18 @@ from zelda_i.dungeon.engine import (
 from zelda_i.dungeon.ids import DARKNUT_OBJECT_TYPE
 from zelda_i.dungeon.pause_select import PauseSelectController, PauseSelectPhase
 from zelda_i.level3.dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
-from zelda_i.level5.dungeon import LEVEL_5, ROOM_L5_GIBDO_66, ROOM_L5_WEST_65
+from zelda_i.level5.dungeon import (
+    BOMB_EAST_STAND,
+    BOMB_WEST_66_STAND,
+    LEVEL_5,
+    ROOM_L5_BLUE_64,
+    ROOM_L5_CELLAR_07,
+    ROOM_L5_GIBDO_66,
+    ROOM_L5_PASSAGE_06,
+    ROOM_L5_WEST_65,
+    ROOM_L5_WHISTLE_05,
+    ROOM_L5_WHISTLE_ITEM,
+)
 from zelda_i.level5.path import _step, walk_axis
 from zelda_i.level9.stairs import BLOCK_STAIRS_X, BLOCK_STAIRS_Y, PUSHABLE_BLOCK
 from zelda_i.ram import ADDR_SELECTED_ITEM, ADDR_WHISTLE, PLAY_MODE, read_snapshot, read_u8
@@ -35,56 +46,28 @@ def _ops():
     import zelda_i.dungeon.ops as ops
     return ops
 
-ROOM_L5_BLUE_64 = 0x64
-ROOM_L5_CELLAR_07 = 0x07
-ROOM_L5_PASSAGE_06 = 0x06
-ROOM_L5_WHISTLE_05 = 0x05
-ROOM_L5_WHISTLE_ITEM = 0x04
 BLUE_DARKNUT_TYPE = 0x0C
-BOMB_WEST_STAND = (40, 141)
-# Cleared 0x66 west is a ROM bomb wall → 0x65. River locks x-move at y=141;
-# south-band y=189 then the west column reaches the bricks.
-BOMB_WEST_66_STAND = (32, 141)
-# Live bomb-east 0x65 → 0x66 (diamond y=109 then east; stand at east wall).
-BOMB_EAST_STAND = (224, 141)
 CENTER_STAIRS = (120, 141)
 CELLAR_MODES = (9, 10, 11, 16)
 # 0x06 diamond: 0x68 rests (96,144). Push UP → (96,128). Stairs stand (96,133).
 # Center 0x70–0x73 tiles are decorative and do not warp. South key is 0x16, not return.
 ROOM_06_BLOCK_X = 96
-ROOM_06_BLOCK_REST_Y = 144
-ROOM_06_BLOCK_PUSHED_Y = 128
-ROOM_06_STAIRS_X = 96
-ROOM_06_STAIRS_Y = 133
 
 
 def _cellar_walk_axis(env, assist, total: list[int], axis: str, target: int, max_f: int = 700) -> bool:
     """Axis walk that survives recorder fanfare and aborts on a real 0x04 leave."""
-    last = None
-    stall = 0
-    for _ in range(max_f):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen != ROOM_L5_WHISTLE_ITEM:
-            return True
-        if axis == "x":
-            if abs(snap.link_x - target) <= 1:
-                return True
-            action = nes_action("RIGHT" if snap.link_x < target else "LEFT")
-        else:
-            if abs(snap.link_y - target) <= 1:
-                return True
-            action = nes_action("DOWN" if snap.link_y < target else "UP")
-        _step(env, assist, total, action)
-        snap2 = _rs(env.get_ram())
-        pos = (snap2.link_x, snap2.link_y)
-        if pos == last:
-            stall += 1
-            if stall >= 160:
-                return False
-        else:
-            stall = 0
-        last = pos
-    return False
+    return walk_axis(
+        env,
+        assist,
+        total,
+        axis,
+        target,
+        max_f=max_f,
+        stall_limit=160,
+        done=lambda snap: (
+            snap.mode == PLAY_MODE and snap.screen != ROOM_L5_WHISTLE_ITEM
+        ),
+    )
 
 
 def select_b_item_menu(env, assist, total: list[int], want: int) -> dict:
@@ -128,66 +111,128 @@ def select_b_item_menu(env, assist, total: list[int], want: int) -> dict:
     }
 
 
-def bomb_west_from_66(env, assist, total: list[int]) -> dict:
-    """Bomb the west wall of cleared 0x66. One bomb. Dest must become 0x65.
+def _in_cellar(snap) -> bool:
+    return snap.mode in CELLAR_MODES
 
-    Horizontal river at y≈141 locks sideways input on the Stepladder. Leave
-    the south mouth, hold the south band y=189 to the west column, then rise
-    to the bomb bricks. North-band y=109 is the fallback if the south pinch
-    stalls. Select bombs from the pause menu — no RAM poke.
-    """
-    snap = _rs(env.get_ram())
-    start = {"xy": [snap.link_x, snap.link_y], "room": snap.screen, "mode": snap.mode}
-    if snap.link_y > 185:
-        walk_axis(env, assist, total, "y", 189, max_f=200)
-    paths = (
+
+@dataclass(frozen=True)
+class BombWallSpec:
+    """One L5 bomb wall: how to reach the bricks, which way to face, dest."""
+
+    name: str
+    stand: tuple[int, int]
+    face: str
+    away: str
+    dest_room: int
+    # Fixed approach: (axis, target, max_f) walked in order.
+    approach: tuple[tuple[str, int, int], ...] = ()
+    # Candidate approaches probed against ``stand`` (used where the room
+    # geometry can pinch); ``source_room`` aborts probing once Link left.
+    probe_paths: tuple[tuple[tuple[str, int], ...], ...] = ()
+    probe_max_f: int = 400
+    probe_tol: int = 8
+    source_room: int | None = None
+    # Leave the south mouth before the south band (cleared 0x66 river).
+    leave_south_mouth: bool = False
+
+
+BOMB_WEST_66 = BombWallSpec(
+    name="bomb_west_from_66",
+    stand=BOMB_WEST_66_STAND,
+    face="LEFT",
+    away="RIGHT",
+    dest_room=ROOM_L5_WEST_65,
+    probe_paths=(
         (("y", 189), ("x", 32), ("y", 141)),
         (("y", 109), ("x", 32), ("y", 141)),
         (("x", 56), ("y", 109), ("x", 32), ("y", 141)),
-    )
+    ),
+    source_room=ROOM_L5_GIBDO_66,
+    leave_south_mouth=True,
+)
+
+BOMB_WEST_65 = BombWallSpec(
+    name="bomb_west_from_65",
+    stand=(32, 141),
+    face="LEFT",
+    away="RIGHT",
+    dest_room=ROOM_L5_BLUE_64,
+    approach=(("y", 109, 400), ("x", 32, 400), ("y", 141, 400), ("x", 32, 200)),
+)
+
+BOMB_EAST_65 = BombWallSpec(
+    name="bomb_east_from_65",
+    stand=BOMB_EAST_STAND,
+    face="RIGHT",
+    away="LEFT",
+    dest_room=ROOM_L5_GIBDO_66,
+    approach=(
+        ("y", 109, 400),
+        ("x", 208, 500),
+        ("y", BOMB_EAST_STAND[1], 400),
+        ("x", BOMB_EAST_STAND[0], 200),
+    ),
+)
+
+
+def bomb_wall(env, assist, total: list[int], spec: BombWallSpec) -> dict:
+    """Walk to one ``BombWallSpec`` stand, drop one bomb, hold through the hole.
+
+    Bombs come from the pause menu — no RAM poke. The dest room must change;
+    the mode-gated hold at the end carries Link through the scroll.
+    """
+    snap = _rs(env.get_ram())
+    start = {"xy": [snap.link_x, snap.link_y], "room": snap.screen, "mode": snap.mode}
     used = None
-    for name, steps in enumerate(paths):
+    if spec.leave_south_mouth and snap.link_y > 185:
+        walk_axis(env, assist, total, "y", 189, max_f=200)
+    for axis, tgt, max_f in spec.approach:
+        walk_axis(env, assist, total, axis, tgt, max_f=max_f)
+    for name, steps in enumerate(spec.probe_paths):
         snap = _rs(env.get_ram())
-        if snap.screen == ROOM_L5_WEST_65 and snap.mode == PLAY_MODE:
-            used = f"already_65_{name}"
+        if snap.screen == spec.dest_room and snap.mode == PLAY_MODE:
+            used = f"already_{spec.dest_room:02x}_{name}"
             break
-        if snap.screen != ROOM_L5_GIBDO_66:
+        if spec.source_room is not None and snap.screen != spec.source_room:
             break
         for axis, tgt in steps:
-            walk_axis(env, assist, total, axis, tgt, max_f=400)
+            walk_axis(env, assist, total, axis, tgt, max_f=spec.probe_max_f)
         snap = _rs(env.get_ram())
-        if abs(snap.link_x - BOMB_WEST_66_STAND[0]) <= 8 and abs(snap.link_y - BOMB_WEST_66_STAND[1]) <= 8:
+        if (
+            abs(snap.link_x - spec.stand[0]) <= spec.probe_tol
+            and abs(snap.link_y - spec.stand[1]) <= spec.probe_tol
+        ):
             used = f"path_{name}"
             break
-    _ops().goto(env, assist, total, BOMB_WEST_66_STAND[0], BOMB_WEST_66_STAND[1], tol=3, max_f=300)
+    _ops().goto(env, assist, total, spec.stand[0], spec.stand[1], tol=3, max_f=300)
     for _ in range(8):
-        _step(env, assist, total, nes_action("LEFT"))
+        _step(env, assist, total, nes_action(spec.face))
     _ops().idle(env, assist, total, 8)
     menu = select_b_item_menu(env, assist, total, 1)
     snap = _rs(env.get_ram())
     bombs0 = int(snap.bombs)
-    _step(env, assist, total, nes_action("LEFT", "B"))
+    _step(env, assist, total, nes_action(spec.face, "B"))
     for _ in range(16):
-        _step(env, assist, total, nes_action("RIGHT"))
+        _step(env, assist, total, nes_action(spec.away))
     _ops().idle(env, assist, total, 100)
     for _ in range(360):
         snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_WEST_65:
+        if snap.mode == PLAY_MODE and snap.screen == spec.dest_room:
             break
-        _step(env, assist, total, nes_action("LEFT"))
+        _step(env, assist, total, nes_action(spec.face))
     _ops().idle(env, assist, total, 24)
     for _ in range(240):
         snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_WEST_65:
+        if snap.mode == PLAY_MODE and snap.screen == spec.dest_room:
             break
         if snap.mode in (6, 7, 4, 16):
-            _step(env, assist, total, nes_action("LEFT"))
+            _step(env, assist, total, nes_action(spec.face))
         else:
             _step(env, assist, total, nes_idle_action())
     _ops().idle(env, assist, total, 16)
     snap = _rs(env.get_ram())
     return {
-        "path": "bomb_west_from_66",
+        "path": spec.name,
         "via": used,
         "start": start,
         "menu": menu,
@@ -199,69 +244,30 @@ def bomb_west_from_66(env, assist, total: list[int]) -> dict:
         "mode": snap.mode,
         "success": (
             snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_WEST_65
+            and snap.screen == spec.dest_room
             and snap.mode == PLAY_MODE
         ),
     }
+
+
+def bomb_west_from_66(env, assist, total: list[int]) -> dict:
+    """Bomb the west wall of cleared 0x66. One bomb. Dest must become 0x65.
+
+    Horizontal river at y≈141 locks sideways input on the Stepladder. Leave
+    the south mouth, hold the south band y=189 to the west column, then rise
+    to the bomb bricks. North-band y=109 is the fallback if the south pinch
+    stalls.
+    """
+    return bomb_wall(env, assist, total, BOMB_WEST_66)
 
 
 def bomb_west_from_65(env, assist, total: list[int]) -> dict:
     """Bomb the west wall of cleared 0x65. One bomb. Dest must become 0x64.
 
-    Live 0x65 has a center diamond: y=109 then x=32 then y=141, not y=141 first.
-    Hold LEFT through the west scroll even while SCREEN still reads 0x65.
+    Live 0x65 has a center diamond: y=109 then x=32 then y=141, not y=141
+    first. Hold LEFT through the west scroll even while SCREEN still reads 0x65.
     """
-    walk_axis(env, assist, total, "y", 109, max_f=400)
-    walk_axis(env, assist, total, "x", 32, max_f=400)
-    walk_axis(env, assist, total, "y", 141, max_f=400)
-    walk_axis(env, assist, total, "x", 32, max_f=200)
-    _ops().goto(env, assist, total, 32, 141, tol=3, max_f=300)
-    for _ in range(8):
-        _step(env, assist, total, nes_action("LEFT"))
-    _ops().idle(env, assist, total, 8)
-    menu = select_b_item_menu(env, assist, total, 1)
-    snap = _rs(env.get_ram())
-    bombs0 = int(snap.bombs)
-    room0 = int(snap.screen)
-    _step(env, assist, total, nes_action("LEFT", "B"))
-    for _ in range(16):
-        _step(env, assist, total, nes_action("RIGHT"))
-    _ops().idle(env, assist, total, 100)
-    for _ in range(360):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_BLUE_64:
-            break
-        _step(env, assist, total, nes_action("LEFT"))
-    _ops().idle(env, assist, total, 24)
-    for _ in range(240):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_BLUE_64:
-            break
-        if snap.mode in (6, 7, 4, 16):
-            _step(env, assist, total, nes_action("LEFT"))
-        else:
-            _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 16)
-    snap = _rs(env.get_ram())
-    return {
-        "path": "bomb_west_from_65",
-        "menu": menu,
-        "bombs_in": bombs0,
-        "bombs_out": int(snap.bombs),
-        "bombs_spent": bombs0 - int(snap.bombs),
-        "dest": snap.screen,
-        "xy": [snap.link_x, snap.link_y],
-        "mode": snap.mode,
-        "success": (
-            snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_BLUE_64
-            and snap.mode == PLAY_MODE
-        ),
-    }
-
-
-def _in_cellar(snap) -> bool:
-    return snap.mode in CELLAR_MODES
+    return bomb_wall(env, assist, total, BOMB_WEST_65)
 
 
 def bomb_east_from_65(env, assist, total: list[int]) -> dict:
@@ -270,49 +276,7 @@ def bomb_east_from_65(env, assist, total: list[int]) -> dict:
     North shutter is one-way (0x55 S=open / 0x65 N=shutter). Diamond: y=109
     then east, not y=141 first.
     """
-    walk_axis(env, assist, total, "y", 109, max_f=400)
-    walk_axis(env, assist, total, "x", 208, max_f=500)
-    walk_axis(env, assist, total, "y", BOMB_EAST_STAND[1], max_f=400)
-    walk_axis(env, assist, total, "x", BOMB_EAST_STAND[0], max_f=200)
-    _ops().goto(env, assist, total, *BOMB_EAST_STAND, tol=3, max_f=300)
-    for _ in range(8):
-        _step(env, assist, total, nes_action("RIGHT"))
-    _ops().idle(env, assist, total, 8)
-    menu = select_b_item_menu(env, assist, total, 1)
-    snap = _rs(env.get_ram())
-    bombs0 = int(snap.bombs)
-    room0 = int(snap.screen)
-    _step(env, assist, total, nes_action("RIGHT", "B"))
-    for _ in range(16):
-        _step(env, assist, total, nes_action("LEFT"))
-    _ops().idle(env, assist, total, 100)
-    for _ in range(360):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_GIBDO_66:
-            break
-        _step(env, assist, total, nes_action("RIGHT"))
-    _ops().idle(env, assist, total, 24)
-    for _ in range(240):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_GIBDO_66:
-            break
-        if snap.mode in (6, 7, 4, 16):
-            _step(env, assist, total, nes_action("RIGHT"))
-        else:
-            _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 16)
-    snap = _rs(env.get_ram())
-    return {
-        "path": "bomb_east_from_65",
-        "menu": menu,
-        "bombs_in": bombs0,
-        "bombs_out": int(snap.bombs),
-        "bombs_spent": bombs0 - int(snap.bombs),
-        "dest": snap.screen,
-        "xy": [snap.link_x, snap.link_y],
-        "mode": snap.mode,
-        "success": snap.level == LEVEL_5 and snap.screen == ROOM_L5_GIBDO_66 and snap.mode == PLAY_MODE,
-    }
+    return bomb_wall(env, assist, total, BOMB_EAST_65)
 
 
 def take_center_stairs_64(env, assist, total: list[int]) -> dict:
@@ -685,7 +649,6 @@ def hunt_whistle(env, assist, total: list[int]) -> dict:
 WHISTLE_04_LADDER_X = 176
 WHISTLE_04_PIT_Y = 189
 WHISTLE_04_MOUTH_X = 48
-WHISTLE_04_MOUTH_Y = 65
 
 
 def exit_whistle_04(env, assist, total: list[int]) -> dict:
@@ -802,8 +765,3 @@ def exit_whistle_04(env, assist, total: list[int]) -> dict:
         "left_cellar": left_ok(snap),
         "thawed": thawed,
     }
-
-
-
-leave_whistle_cellar = exit_whistle_04
-walk_out_of_04 = exit_whistle_04

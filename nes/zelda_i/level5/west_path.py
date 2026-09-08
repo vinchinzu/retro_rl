@@ -1,190 +1,33 @@
 """Level 5 west-door hops: 0x27 → 0x26 → 0x25 → 0x24.
 
-Room specs and stop predicates remain in ``level5_dungeon``.
-Import from ``zelda_i.level5.path`` (public facade).
+One env-stepping engine over ``WestLeaveSpec`` rows: walk a candidate axis
+path, align on the west door, push through it. Room specs and stop
+predicates remain in ``level5.dungeon``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.level5.dungeon import (
     LEVEL_5,
-    ROOM_L5_NORTH_27,
     ROOM_L5_WEST_24,
     ROOM_L5_WEST_25,
     ROOM_L5_WEST_26,
 )
-from zelda_i.level5.path import EAST_DOOR_CHANNEL_Y, EAST_DOOR_WALL_X, walk_axis
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.level5.path import walk_axis
+from zelda_i.ram import PLAY_MODE, read_snapshot as _rs
 
-SOUTH_PINCH_Y = 189
+# West door mouth. y=189 is the south band that clears the x=160 pinch;
+# y=109 the north band; y=141 the door channel itself.
 WEST_DOOR_X = 32
+WEST_DOOR_Y = 141
 
-
-def level5_west26_from_27_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Deterministic 0x27 west key door: off ladder, south y=189, west mouth.
-
-    Start is often the 0x27 ladder (120,141). RIGHT from there stalls.
-    Leave south first, then east wall if free, then y=189 past the x=160
-    pinch, then west door at y=141.
-    """
-    if snap.level != LEVEL_5:
-        return FrameAction(nes_idle_action(), "west26_wait_level5")
-    if snap.screen == ROOM_L5_WEST_26 and snap.mode == PLAY_MODE:
-        return FrameAction(nes_idle_action(), "west26_arrived")
-    if snap.screen != ROOM_L5_NORTH_27:
-        return FrameAction(
-            nes_idle_action(), f"west26_unexpected_room_0x{snap.screen:02x}"
-        )
-    if snap.transitioning or snap.mode != PLAY_MODE:
-        return FrameAction(nes_action("LEFT"), "west26_west_scroll")
-
-    on_ladder_col = abs(snap.link_x - 120) <= 10
-    # Off the mid ladder before any east/west at y=141.
-    if on_ladder_col and snap.link_y < SOUTH_PINCH_Y - 3:
-        return FrameAction(nes_action("DOWN"), "west26_off_ladder")
-    # South band first (probe continues here even if east wall stalls).
-    if snap.link_y < SOUTH_PINCH_Y - 3:
-        return FrameAction(nes_action("DOWN"), "west26_south_band")
-    # Optional east wall once already south — skip if already west of pinch.
-    if snap.link_x < 160 and snap.link_x < EAST_DOOR_WALL_X - 2 and snap.link_y >= SOUTH_PINCH_Y - 6:
-        # Already on south band; go west, do not climb back to east wall.
-        pass
-    elif snap.link_x >= 160 and snap.link_x < EAST_DOOR_WALL_X - 2 and snap.link_y < 170:
-        return FrameAction(nes_action("RIGHT"), "west26_east_wall")
-    if snap.link_x > WEST_DOOR_X + 4:
-        if abs(snap.link_y - SOUTH_PINCH_Y) > 4 and snap.link_x > 48:
-            direction = "DOWN" if snap.link_y < SOUTH_PINCH_Y else "UP"
-            return FrameAction(nes_action(direction), "west26_hold_south_y")
-        return FrameAction(nes_action("LEFT"), "west26_south_west")
-    # West column: UP from y≈185 at x=32 is blocked. Step to x≈48, rise, then door.
-    if snap.link_y > EAST_DOOR_CHANNEL_Y + 6:
-        if snap.link_x < 46:
-            return FrameAction(nes_action("RIGHT"), "west26_clear_sw_block")
-        return FrameAction(nes_action("UP"), "west26_rise_to_door")
-    if abs(snap.link_y - EAST_DOOR_CHANNEL_Y) > 3:
-        direction = "DOWN" if snap.link_y < EAST_DOOR_CHANNEL_Y else "UP"
-        return FrameAction(nes_action(direction), "west26_align_door_y")
-    if snap.link_x > WEST_DOOR_X + 1:
-        return FrameAction(nes_action("LEFT"), "west26_to_mouth")
-    return FrameAction(nes_action("LEFT"), "west26_unlock_26")
-
-
-@dataclass
-class Level5West26From27Controller:
-    """Walk 0x27 → west key door → 0x26. No combat. No pokes."""
-
-    max_frames: int = 4000
-    settle_frames: int = 30
-    frames: int = 0
-    settle_left: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    last_room: int = -1
-
-    def report(self) -> dict:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": "level5_west26_from_cleared27",
-        }
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-        if snap.screen != self.last_room:
-            self.notes.append(
-                f"room_0x{snap.screen:02x}_f{self.frames}_xy={snap.link_x},{snap.link_y}_k={snap.keys}"
-            )
-            self.last_room = snap.screen
-        if (
-            snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_WEST_26
-            and snap.mode == PLAY_MODE
-        ):
-            if self.settle_left <= 0 and "settling_26" not in self.notes:
-                self.settle_left = self.settle_frames
-                self.notes.append("settling_26")
-            if self.settle_left > 0:
-                self.settle_left -= 1
-                if self.settle_left > 0:
-                    return FrameAction(nes_idle_action(), "settle_26")
-            self.success = True
-            self.notes.append("arrived_26")
-            return FrameAction(nes_idle_action(), "arrived_26")
-        return level5_west26_from_27_step(snap)
-
-
-
-
-def walk_west_from_27(env, assist, total: list[int]) -> dict:
-    """Proven 0x27 leave: east wall, south y=189, west key door → 0x26."""
-    from zelda_i.ram import read_snapshot as _rs
-
-    snap = _rs(env.get_ram())
-    keys0 = int(snap.keys)
-    log = [{"step": "start", "xy": [snap.link_x, snap.link_y]}]
-    for axis, tgt in (("x", 208), ("y", 189), ("x", 32), ("y", 141), ("x", 32)):
-        ok = walk_axis(env, assist, total, axis, tgt, max_f=500)
-        snap = _rs(env.get_ram())
-        log.append({"step": f"{axis}:{tgt}", "ok": ok, "xy": [snap.link_x, snap.link_y], "room": snap.screen})
-    # Align and push through the key door.
-    for _ in range(24):
-        snap = _rs(env.get_ram())
-        if abs(snap.link_x - 32) <= 2 and abs(snap.link_y - 141) <= 2:
-            break
-        if abs(snap.link_y - 141) > 2:
-            env.step(nes_action("DOWN" if snap.link_y < 141 else "UP"))
-        else:
-            env.step(nes_action("LEFT" if snap.link_x > 32 else "RIGHT"))
-        total[0] += 1
-        if assist is not None:
-            assist.apply_env(env, frame=total[0])
-    room0 = _rs(env.get_ram()).screen
-    for _ in range(220):
-        snap = _rs(env.get_ram())
-        if snap.screen != room0:
-            break
-        env.step(nes_action("LEFT"))
-        total[0] += 1
-        if assist is not None:
-            assist.apply_env(env, frame=total[0])
-    for _ in range(36):
-        env.step(nes_idle_action())
-        total[0] += 1
-        if assist is not None:
-            assist.apply_env(env, frame=total[0])
-    snap = _rs(env.get_ram())
-    return {
-        "path": "east_wall_south189_west_door",
-        "log": log,
-        "keys_in": keys0,
-        "keys_out": int(snap.keys),
-        "key_spent": int(snap.keys) < keys0,
-        "dest": snap.screen,
-        "xy": [snap.link_x, snap.link_y],
-        "success": snap.level == LEVEL_5 and snap.screen == ROOM_L5_WEST_26 and snap.mode == PLAY_MODE,
-    }
-
-
-def make_west26_from_27_controller() -> Level5West26From27Controller:
-    return Level5West26From27Controller()
-
+WEST27_TO_26_PATHS = (
+    ("east_wall_south189_west_door", (("x", 208), ("y", 189), ("x", 32), ("y", 141), ("x", 32))),
+)
 
 WEST26_TO_25_PATHS = (
     ("y141_west", (("y", 141), ("x", 32))),
@@ -202,9 +45,47 @@ WEST25_TO_24_PATHS = (
 )
 
 
-def _align_door(env, assist, total: list[int], tx: int, ty: int = 141, frames: int = 24) -> list[int]:
-    from zelda_i.ram import read_snapshot as _rs
+@dataclass(frozen=True)
+class WestLeaveSpec:
+    """One 0x2N west leave: candidate paths, door align, push budget."""
 
+    dest_room: int
+    paths: tuple[tuple[str, tuple[tuple[str, int], ...]], ...]
+    push_frames: int
+    # None = single proven path, take it without probing the door stand.
+    probe_tol: tuple[int, int] | None = None
+    # Frames for the second door align before the push (None = skip it).
+    align_frames: int | None = None
+    fallback_path: str = "y141_west"
+    extra: tuple[tuple[str, object], ...] = ()
+
+
+WEST_27_TO_26 = WestLeaveSpec(
+    dest_room=ROOM_L5_WEST_26,
+    paths=WEST27_TO_26_PATHS,
+    push_frames=220,
+    fallback_path="east_wall_south189_west_door",
+)
+
+WEST_26_TO_25 = WestLeaveSpec(
+    dest_room=ROOM_L5_WEST_25,
+    paths=WEST26_TO_25_PATHS,
+    push_frames=220,
+    probe_tol=(6, 4),
+    align_frames=32,
+)
+
+WEST_25_TO_24 = WestLeaveSpec(
+    dest_room=ROOM_L5_WEST_24,
+    paths=WEST25_TO_24_PATHS,
+    push_frames=240,
+    probe_tol=(8, 8),
+    align_frames=28,
+    extra=(("fought_digdogger", False),),
+)
+
+
+def _align_door(env, assist, total: list[int], tx: int, ty: int = 141, frames: int = 24) -> list[int]:
     for _ in range(frames):
         snap = _rs(env.get_ram())
         if abs(snap.link_x - tx) <= 2 and abs(snap.link_y - ty) <= 2:
@@ -221,8 +102,6 @@ def _align_door(env, assist, total: list[int], tx: int, ty: int = 141, frames: i
 
 
 def _push_left(env, assist, total: list[int], frames: int = 220) -> None:
-    from zelda_i.ram import read_snapshot as _rs
-
     room0 = _rs(env.get_ram()).screen
     for _ in range(frames):
         snap = _rs(env.get_ram())
@@ -242,16 +121,13 @@ def _idle(env, assist, total: list[int], frames: int = 36) -> None:
             assist.apply_env(env, frame=total[0])
 
 
-def walk_west_from_26(env, assist, total: list[int]) -> dict:
-    """Proven 0x26 leave: y=141 then west open door → 0x25. Moat/C-block fallbacks."""
-    from zelda_i.ram import read_snapshot as _rs
-
+def walk_west(env, assist, total: list[int], spec: WestLeaveSpec) -> dict:
+    """Walk one ``WestLeaveSpec`` west through its door. No combat, no pokes."""
     snap = _rs(env.get_ram())
     keys0 = int(snap.keys)
-    room0 = snap.screen
     log = [{"step": "start", "xy": [snap.link_x, snap.link_y], "room": snap.screen}]
     used = None
-    for name, steps in WEST26_TO_25_PATHS:
+    for name, steps in spec.paths:
         for axis, tgt in steps:
             ok = walk_axis(env, assist, total, axis, tgt, max_f=500)
             snap = _rs(env.get_ram())
@@ -263,17 +139,22 @@ def walk_west_from_26(env, assist, total: list[int]) -> dict:
                     "room": snap.screen,
                 }
             )
-        _align_door(env, assist, total, 32, 141)
-        snap = _rs(env.get_ram())
-        if abs(snap.link_x - 32) <= 6 and abs(snap.link_y - 141) <= 4:
+        _align_door(env, assist, total, WEST_DOOR_X, WEST_DOOR_Y)
+        if spec.probe_tol is None:
             used = name
             break
-    _align_door(env, assist, total, 32, 141, frames=32)
-    _push_left(env, assist, total, frames=220)
+        snap = _rs(env.get_ram())
+        tol_x, tol_y = spec.probe_tol
+        if abs(snap.link_x - WEST_DOOR_X) <= tol_x and abs(snap.link_y - WEST_DOOR_Y) <= tol_y:
+            used = name
+            break
+    if spec.align_frames is not None:
+        _align_door(env, assist, total, WEST_DOOR_X, WEST_DOOR_Y, frames=spec.align_frames)
+    _push_left(env, assist, total, frames=spec.push_frames)
     _idle(env, assist, total, 36)
     snap = _rs(env.get_ram())
     return {
-        "path": used or "y141_west",
+        "path": used or spec.fallback_path,
         "log": log,
         "keys_in": keys0,
         "keys_out": int(snap.keys),
@@ -281,58 +162,42 @@ def walk_west_from_26(env, assist, total: list[int]) -> dict:
         "dest": snap.screen,
         "xy": [snap.link_x, snap.link_y],
         "mode": snap.mode,
+        **dict(spec.extra),
         "success": (
             snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_WEST_25
+            and snap.screen == spec.dest_room
             and snap.mode == PLAY_MODE
         ),
     }
+
+
+def walk_west_from_27(env, assist, total: list[int]) -> dict:
+    """Proven 0x27 leave: east wall, south y=189, west key door → 0x26."""
+    return walk_west(env, assist, total, WEST_27_TO_26)
+
+
+def walk_west_from_26(env, assist, total: list[int]) -> dict:
+    """Proven 0x26 leave: y=141 then west open door → 0x25. Moat/C-block fallbacks."""
+    return walk_west(env, assist, total, WEST_26_TO_25)
 
 
 def walk_west_from_25(env, assist, total: list[int]) -> dict:
     """Proven 0x25 leave: y=141 then west key door → 0x24. Door only; no Digdogger."""
-    from zelda_i.ram import read_snapshot as _rs
+    return walk_west(env, assist, total, WEST_25_TO_24)
 
-    snap = _rs(env.get_ram())
-    keys0 = int(snap.keys)
-    room0 = snap.screen
-    log = [{"step": "start", "xy": [snap.link_x, snap.link_y], "room": snap.screen}]
-    used = None
-    for name, steps in WEST25_TO_24_PATHS:
-        for axis, tgt in steps:
-            ok = walk_axis(env, assist, total, axis, tgt, max_f=500)
-            snap = _rs(env.get_ram())
-            log.append(
-                {
-                    "step": f"{name}:{axis}:{tgt}",
-                    "ok": ok,
-                    "xy": [snap.link_x, snap.link_y],
-                    "room": snap.screen,
-                }
-            )
-        _align_door(env, assist, total, 32, 141)
-        snap = _rs(env.get_ram())
-        if abs(snap.link_x - 32) <= 8 and abs(snap.link_y - 141) <= 8:
-            used = name
-            break
-    _align_door(env, assist, total, 32, 141, frames=28)
-    _push_left(env, assist, total, frames=240)
-    _idle(env, assist, total, 36)
-    snap = _rs(env.get_ram())
-    return {
-        "path": used or "y141_west",
-        "log": log,
-        "keys_in": keys0,
-        "keys_out": int(snap.keys),
-        "key_spent": int(snap.keys) < keys0,
-        "dest": snap.screen,
-        "xy": [snap.link_x, snap.link_y],
-        "mode": snap.mode,
-        "fought_digdogger": False,
-        "success": (
-            snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_WEST_24
-            and snap.mode == PLAY_MODE
-        ),
-    }
 
+__all__ = [
+    "WEST25_TO_24_PATHS",
+    "WEST26_TO_25_PATHS",
+    "WEST27_TO_26_PATHS",
+    "WEST_25_TO_24",
+    "WEST_26_TO_25",
+    "WEST_27_TO_26",
+    "WEST_DOOR_X",
+    "WEST_DOOR_Y",
+    "WestLeaveSpec",
+    "walk_west",
+    "walk_west_from_25",
+    "walk_west_from_26",
+    "walk_west_from_27",
+]

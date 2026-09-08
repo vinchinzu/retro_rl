@@ -113,6 +113,24 @@ ROOM_L5_WEST_26 = 0x26
 ROOM_L5_WEST_25 = 0x25
 # West of cleared 0x25 (live from Level5Cleared25: west key). Digdogger 0x38 — door only.
 ROOM_L5_WEST_24 = 0x24
+# East Zols on the TF approach; do NOT clear them — the secret foes_item
+# drops statue 0x5f at (128,128) and seals the north channel at y≈125.
+ROOM_L5_EAST_ZOLS = 0x57
+# North of 0x57 (ROM N=open).
+ROOM_L5_NORTH_GIBDOS = 0x47
+
+# --- Whistle / cellar leg (0x65 west bomb → 0x64 stairs → 0x07 → 0x06/0x05/0x04) ---
+ROOM_L5_BLUE_64 = 0x64
+ROOM_L5_CELLAR_07 = 0x07
+ROOM_L5_PASSAGE_06 = 0x06
+ROOM_L5_WHISTLE_05 = 0x05
+ROOM_L5_WHISTLE_ITEM = 0x04
+BOMB_WEST_STAND = (40, 141)
+# Cleared 0x66 west is a ROM bomb wall → 0x65. River locks x-move at y=141;
+# south-band y=189 then the west column reaches the bricks.
+BOMB_WEST_66_STAND = (32, 141)
+# Live bomb-east 0x65 → 0x66 (diamond y=109 then east; stand at east wall).
+BOMB_EAST_STAND = (224, 141)
 
 # Type 0x30 — Gibdo-correlated (HP=112 at spawn; TYPE_AND_HP liveness).
 GIBDO_OBJECT_TYPE = _ids.GIBDO_OBJECT_TYPE

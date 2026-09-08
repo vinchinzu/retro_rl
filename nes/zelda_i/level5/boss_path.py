@@ -28,33 +28,39 @@ from zelda_i.dungeon.engine import (
 )
 from zelda_i.dungeon.ops import exit_door, idle, push_dir
 from zelda_i.level3.dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
+from zelda_i.level5.cellar_path import (
+    cellar_to_64,
+    take_block_stairs_06,
+    walk_east_from_05,
+    walk_east_from_64,
+)
 from zelda_i.level5.dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
     ROOM_65_SPEC,
     ROOM_66_SPEC,
-    ZOL_OBJECT_TYPE,
-)
-from zelda_i.level5.path import (
-    CELLAR_MODES,
     ROOM_L5_BLUE_64,
     ROOM_L5_CELLAR_07,
     ROOM_L5_PASSAGE_06,
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
+    ZOL_OBJECT_TYPE,
+)
+from zelda_i.level5.path import (
     _step,
-    bomb_east_from_65,
-    cellar_to_64,
-    exit_whistle_04,
     level5_room66_west_aisle_north_step,
-    select_b_item_menu,
-    take_block_stairs_06,
     walk_axis,
-    walk_east_from_05,
-    walk_east_from_64,
+)
+from zelda_i.level5.west_path import (
     walk_west_from_25,
     walk_west_from_26,
     walk_west_from_27,
+)
+from zelda_i.level5.whistle_path import (
+    CELLAR_MODES,
+    bomb_east_from_65,
+    exit_whistle_04,
+    select_b_item_menu,
 )
 from zelda_i.ram import (
     ADDR_HEALTH,
