@@ -11,9 +11,19 @@ from typing import Callable
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.combat import overworld_threat_objects, should_swing_at
+from zelda_i.combat import (
+    CONTACT_CHEBYSHEV,
+    CONTACT_MANHATTAN,
+    chebyshev,
+    in_sword_hitbox,
+    manhattan,
+    nearest_enemy,
+    overworld_threat_objects,
+    should_swing_at,
+)
+from zelda_i.dungeon.behaviors import engagement_hint, face_toward, kind_for_type
 from zelda_i.dungeon.hop_controller import dungeon_align_then_push as dungeon_align_then_push
-from zelda_i.ram import ZeldaSnapshot
+from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 12
 DEFAULT_SWING_FRAMES = 3
@@ -44,6 +54,39 @@ def swing_action(
     return FrameAction(nes_action(direction), reason)
 
 
+def _in_contact(link_x: int, link_y: int, obj: ZeldaObject) -> bool:
+    return (
+        chebyshev(link_x, link_y, obj.x, obj.y) <= CONTACT_CHEBYSHEV
+        or manhattan(link_x, link_y, obj.x, obj.y) <= CONTACT_MANHATTAN
+    )
+
+
+def _any_in_hitbox(
+    link_x: int, link_y: int, direction: str, threats: tuple[ZeldaObject, ...]
+) -> bool:
+    return any(
+        in_sword_hitbox(link_x, link_y, direction, obj.x, obj.y) for obj in threats
+    )
+
+
+def _off_axis_face(
+    link_x: int, link_y: int, threats: tuple[ZeldaObject, ...]
+) -> str | None:
+    """Face a contact-range threat. Do not abandon a hop for a far side hitbox."""
+    best: ZeldaObject | None = None
+    best_d = 10**9
+    for obj in threats:
+        if not _in_contact(link_x, link_y, obj):
+            continue
+        d = manhattan(link_x, link_y, obj.x, obj.y)
+        if d < best_d:
+            best_d = d
+            best = obj
+    if best is None:
+        return None
+    return face_toward(link_x, link_y, best.x, best.y)
+
+
 def walk_or_swing(
     phase_frames: int,
     direction: str,
@@ -59,16 +102,44 @@ def walk_or_swing(
     When ``snap is None`` or ``always_swing``, keep the old periodic swing
     (tests / stuck recovery). Otherwise slash only for hitbox or contact-range
     threats — not merely because any enemy exists on screen.
+
+    Contact-range off-axis threats turn Link toward them this frame so a hop
+    does not walk through a body. Far side hitboxes do not steal the travel
+    direction (that stalled sword-cave on the first ROM eval).
     """
     if snap is None or always_swing:
         return swing_action(
             phase_frames, direction, reason, period=period, hold=hold
         )
     threats = overworld_threat_objects(snap)
-    if should_swing_at(snap.link_x, snap.link_y, direction, threats):
+    lx, ly = snap.link_x, snap.link_y
+    nearest = nearest_enemy(lx, ly, threats)
+    hint = (
+        engagement_hint(kind_for_type(nearest.type_id), snap, nearest)
+        if nearest is not None
+        else None
+    )
+
+    # Travel-direction hitbox is never vetoed by the nearest-enemy hint
+    # (that hint's swing flag is for its own face).
+    if _any_in_hitbox(lx, ly, direction, threats) and should_swing_at(
+        lx, ly, direction, threats
+    ):
         return swing_action(
             phase_frames, direction, reason, period=period, hold=hold
         )
+
+    face = None
+    if hint is not None and nearest is not None and _in_contact(lx, ly, nearest):
+        face = hint.face
+    if face is None:
+        face = _off_axis_face(lx, ly, threats)
+    if face is not None:
+        if should_swing_at(lx, ly, face, threats):
+            return swing_action(
+                phase_frames, face, reason, period=period, hold=hold
+            )
+        return FrameAction(nes_action(face), reason)
     return FrameAction(nes_action(direction), reason)
 
 

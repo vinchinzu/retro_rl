@@ -40,9 +40,9 @@ Before any deletion or refactor.
 - [x] **0.1** Freeze the baseline. Copy `recordings/level9_credits.json` to
       `recordings/BASELINE_20260907.json` and reference it here. It is the
       only full green tape; every later run diffs against it.
-- [ ] **0.2** Add `scripts/compare_run.py` — reads two spine reports, prints a
-      per-stage frame delta table plus success/failure diff. One file, no new
-      dispatcher. This is what makes Phases 2–3 verifiable instead of hopeful.
+- [x] **0.2** `nes/zelda_i/scripts/compare_run.py` reads two spine JSON reports
+      and prints end_frame delta (B-A), ok/failed_stage, a per-stage
+      frames/success table aligned by name, and only-in-A/B stages.
 - [x] **0.3** Note the tripwires so no phase trips them blind:
       `tests/test_hygiene_architecture.py:242 test_root_is_thin` asserts exact
       set equality against `_ALLOWED_ROOT_PY` (`:29`); `test_no_leftover_flat_modules`
@@ -265,15 +265,14 @@ Ordered by effort/risk ratio, easiest proof first.
 
 Ordered by frames saved. Combined realistic target **70,000–95,000 f (20–26 min)**.
 
-- [ ] **3.1** **Make combat aggressive** — the single biggest win, **35,000–50,000 f**.
-      `dungeon/engine.py:83 engage_distance=48`: outside 48 px Link does not
-      close, he patrols and waits for enemies to wander to him
-      (`dungeon/engine.py:600-606`). And `dungeon/engine.py:436-437` hard-codes
-      `direction = "UP"` when Link is already within `tolerance` of a
-      single-vertex patrol point — so he **mashes UP into the north wall**
-      (same dead branch at `:529`). Fix: close on the nearest live enemy; kill
-      the UP fallback. Evidence: `level5_clear_0x77` = 7,253 f of which 7,122
-      are combat; `level7_room0d_clear` 13,875; `level6_clear_0x19` 7,593.
+- [x] **3.1** **Kill the UP mash.** `_patrol` at a vertex idles instead of
+      walking into the north wall. Open-floor `engage_distance` still gates
+      chase vs patrol. Occupancy mazes follow a BFS path from any distance;
+      no-path + far patrols (do not greedy through water). No-path + inside
+      the room cap still closes — occupancy may have miss-blocked the
+      enemy pixel. Parked Wallmasters are not chase targets. Open-floor Gels
+      (0x42/0x43) raise the room cap to 160. Unconditional greedy chase is
+      not this sitting.
 - [ ] **3.2** **Overworld align shuffle** — **9,000–13,000 f**.
       `overworld/common.py:151-220 align_and_push` re-aligns x, then y, then
       pushes after *every* scroll. `enter_level3` = 10,112 f for 17 hops =
@@ -314,9 +313,8 @@ Ordered by frames saved. Combined realistic target **70,000–95,000 f (20–26 
       where the viewer watches the same corridors two and three times.
       Worst: `level8_post_l7_to_bush` 6,080, `level9_post_l8_overworld` 4,184,
       `level7_room4a_return` 2,524, `level7_recorder_warp` 1,899.
-      `exit42` (`level1/finish.py:126-153`) walks into the old-man hint room,
-      idles 180 blind frames, and walks straight back out — the bot never reads
-      the hint. The archetypal "walk in, stand, walk out" shot.
+      L1 `exit42` no longer walks the old-man hint (skipped 2026-09-08).
+      Remaining backtracks are L7–L9.
 - [ ] **3.8** **Never stand still forever.** `overworld/common.py:131-149
       unstick_wiggle` does 16 frames of wiggle then `nes_idle_action()`
       *indefinitely* (`:146`, `reset_after` deliberately ignored), triggered at
@@ -339,22 +337,20 @@ something is in the sword box **along the travel direction**, else walk. No
 retreat, no dodge, no reposition, no health check, no B-item. The only failure
 branch is death (`overworld/path.py:401-402`).
 
-- [ ] **4.1** **Wire in `dungeon/behaviors.py`** — 454 LOC of finished work
-      imported by **tests only**. `kind_for_type`, `engagement_hint`,
-      `KIND_POLICY`, `blocked_by_projectile`, `sword_legal` are called by no
-      controller, dungeon or overworld. `combat.py:125,138-142` **already
-      accepts and honors a `hint=`**. This is the cheapest upgrade on the list.
-- [ ] **4.2** **Catalog the overworld enemies.** `dungeon/ids.py:7-45` has 35
-      object ids — *all dungeon*. Zero of Octorok, Leever, Tektite, Peahat,
-      Zora, Moblin, Lynel, Ghini, Armos or the rock projectile are present. The
-      only trace anywhere is a *comment* at `level8/overworld.py:181` ("screens
-      0x59–0x5E host Octoroks (type 0x03)"), never made a constant. Add the ids
-      plus Armos-awake-vs-statue and Peahat's invulnerable-while-flying rule.
-- [ ] **4.3** **Face and kill off-axis threats.** `overworld/common.py:68` only
-      ever passes the hop travel direction, so an Octorok behind Link, a Leever
-      surfacing beside him, or a Tektite hopping in cross-axis is never hit and
-      never faced. Note `combat.THREAT_RADIUS` (`combat.py:16`) exists and is
-      **unused** — `combat.py:137` literally does `del threat_radius`.
+- [x] **4.1** **Wire in `dungeon/behaviors.py`.** `walk_or_swing` builds
+      `engagement_hint` for the nearest threat and uses `hint.face` when that
+      facing has a hitbox/contact. Dungeon engine still does not import hints
+      (cycle: behaviors → engine `AliveRule`).
+- [x] **4.2** **Catalog the overworld enemies.** Jump table
+      (`aldonunez/zelda1-disassembly` `UpdateObject_JumpTable`): Lynel 0x01/02,
+      Moblin 0x03/04, Octorok 0x07–0x0A, Tektite 0x0D/0E, Leever 0x0F/10,
+      Zora 0x11, Peahat 0x1A, Armos 0x1E, Ghini 0x21/22, rock 0x53. The
+      `level8/overworld.py` "Octoroks (type 0x03)" comment is Blue Moblin.
+      Peahat flying / Armos statue: notes only (RAM not on `ZeldaObject`).
+- [x] **4.3** **Face contact-range off-axis threats.** `walk_or_swing` turns
+      only when a body is in the contact guard (else hops never left spawn).
+      Far side hitboxes keep the travel direction. `THREAT_RADIUS` remains
+      approach-only.
 - [ ] **4.4** **Dodge projectiles.** `dungeon/behaviors.py:308-365`
       (`projectile_threats` / `blocked_by_projectile`) implements exactly the
       band test needed and is never called. Insert a sidestep before the
@@ -364,11 +360,9 @@ branch is death (`overworld/path.py:401-402`).
       play (`overworld/path.py:74-76`). `track_stuck` (`common.py:75-93`) only
       counts zero-movement frames, so a knockback loop — hit, shoved back, walk
       forward, hit again — reads as *progress* and never trips the unstick.
-- [ ] **4.6** **Clean the threat set.** `combat.py:165-174
-      overworld_threat_objects` filters only on bounds and `type_id not in
-      (0,0xFF)` — no `hp <= 0`, no rupee-drop `0x60` (which
-      `overworld/rupee_farm.py:52` already knows). The ≤12 px contact guard
-      (`combat.py:158-161`) then makes Link swing at pickups and corpses.
+- [x] **4.6** **Clean the threat set.** `overworld_threat_objects` drops
+      type 0x60 rupee drops and `hp<=0`. Contact guard no longer slashes
+      pickups/corpses.
 - [ ] **4.7** **Use B-items on the overworld.** Bow, Magical Rod (owned from
       L6) and Magical Boomerang (owned from L2, stuns nearly every OW enemy)
       are never selected outside dungeons. All machinery exists
@@ -380,9 +374,8 @@ branch is death (`overworld/path.py:401-402`).
 - [ ] **4.9** **Low-heart behavior.** `overworld/heart_farm.py` exists and is
       wired into exactly one call site (`level2/clean_door.py:117`). Every other
       OW leg runs to death or timeout. Hook it at `overworld/path.py:398-405`.
-      Also make the farm controllers stop slashing on a blind cadence
-      (`heart_farm.py:181`, `rupee_farm.py:283` call `swing_action`, not the
-      hitbox-gated `walk_or_swing`).
+      Farm chase now uses `walk_or_swing` (hitbox-gated). Heart-farm hook at
+      `overworld/path.py` is still open.
 
 ---
 
@@ -444,9 +437,10 @@ Strip order is dependency-driven, cheapest first:
 
 - [ ] **6.1** Dead pokes — `poke_link_position`, `poke_candle_for_recon`. Zero
       call sites. *(Already covered in 1.5.)*
-- [ ] **6.2** **L1 key top-up** (1 write). Smallest natural replacement on the
-      list: one extra key at L1 `0x72`, already identified in-comment at
-      `spine/survival.py:110-111`. Independent of everything else.
+- [ ] **6.2** **L1 key top-up** (1 write). `ROOM_72_SPEC` + west-door hops exist.
+      Splice onto the default tape red: `to_entrance` from the clear53 leftover
+      died in 0x63 (diamond). Poke at `backtrack44` stays. Independent of
+      everything else.
 - [ ] **6.3** **Rupee farm** — do this *before* its consumers; it is the shared
       unlock. `overworld/rupee_farm.py:73 RupeeFarmController` is finished,
       write-free, fail-closed, and wired nowhere on the spine. It is the sole

@@ -4,6 +4,9 @@ Natural entry begins inside the tree transition produced by
 ``OverworldToLevel1Controller``. Controllers settle in entrance room 0x73,
 take the open east door to room 0x74 for the first key, unlock north into
 room 0x63, clear its three Stalfos, then clear room 0x53 and collect its key.
+
+Survival also walks 0x73 west into 0x72 (3 Keese + floor key) before
+``backtrack44`` so the bow KEY-LEFT spend has a natural spare.
 """
 
 from __future__ import annotations
@@ -17,10 +20,12 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
+from zelda_i.dungeon.hop_controller import HopController
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 LEVEL_1 = 1
 ROOM_ENTRANCE = 0x73
+ROOM_WEST_KEY = 0x72
 ROOM_FIRST_KEY = 0x74
 ROOM_NORTH_STALFOS = 0x63
 ROOM_NORTH_OF_63 = 0x53
@@ -39,6 +44,14 @@ CLEAR_ENGAGE_DIST = 48
 CLEAR_SETTLE_ALL_DEAD = 20
 ROOM_53_KEY_X = 128
 ROOM_53_KEY_Y = 109
+WEST_DOOR_MAX_FRAMES = 1200
+WEST_RETURN_MAX_FRAMES = 1200
+TO_ENTRANCE_MAX_FRAMES = 4000
+RESUME_53_MAX_FRAMES = 4000
+WEST_DOOR_APPROACH_Y = 149
+WEST_DOOR_WALL_X = 48
+WEST_DOOR_Y = 141
+EAST_DOOR_WALL_X = 208
 
 # The statues block a direct center-to-east line. Approach below them, then
 # rise into the east doorway.
@@ -88,6 +101,57 @@ def return_west_waypoints(x: int, y: int) -> tuple[tuple[int, int], ...]:
     if y <= _RETURN_WEST_NORTH_Y:
         return ((x, 101), *_RETURN_WEST_FROM_NORTH)
     return _RETURN_WEST_WAYPOINTS
+
+
+def west_door_step(snap: ZeldaSnapshot) -> FrameAction:
+    """One frame of 0x73 → 0x72 west-door policy (south mouth or north leftover)."""
+    if snap.level != LEVEL_1:
+        return FrameAction(nes_idle_action(), "wait_level1")
+    if snap.transitioning:
+        return FrameAction(nes_action("LEFT"), "west_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if snap.screen == ROOM_WEST_KEY:
+        return FrameAction(nes_idle_action(), "west_arrived")
+    if snap.screen != ROOM_ENTRANCE:
+        return FrameAction(
+            nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
+        )
+    if snap.link_y > 165:
+        return FrameAction(nes_action("UP"), "west_leave_mouth")
+    if snap.link_y < WEST_DOOR_APPROACH_Y - 3:
+        return FrameAction(nes_action("DOWN"), "west_leave_north")
+    if snap.link_x > WEST_DOOR_WALL_X:
+        if abs(snap.link_y - WEST_DOOR_APPROACH_Y) > 3:
+            direction = "UP" if snap.link_y > WEST_DOOR_APPROACH_Y else "DOWN"
+            return FrameAction(nes_action(direction), "west_align_y")
+        return FrameAction(nes_action("LEFT"), "west_approach")
+    if abs(snap.link_y - WEST_DOOR_Y) > 3:
+        direction = "UP" if snap.link_y > WEST_DOOR_Y else "DOWN"
+        return FrameAction(nes_action(direction), "west_door_align_y")
+    return FrameAction(nes_action("LEFT"), "west_push")
+
+
+def east_door_step(snap: ZeldaSnapshot) -> FrameAction:
+    """One frame of 0x72 → 0x73 return (east door at y≈141)."""
+    if snap.level != LEVEL_1:
+        return FrameAction(nes_idle_action(), "wait_level1")
+    if snap.transitioning:
+        return FrameAction(nes_action("RIGHT"), "east_scroll")
+    if snap.mode != PLAY_MODE:
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+    if snap.screen == ROOM_ENTRANCE:
+        return FrameAction(nes_idle_action(), "east_arrived")
+    if snap.screen != ROOM_WEST_KEY:
+        return FrameAction(
+            nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
+        )
+    if abs(snap.link_y - WEST_DOOR_Y) > 3:
+        direction = "UP" if snap.link_y > WEST_DOOR_Y else "DOWN"
+        return FrameAction(nes_action(direction), "east_align_y")
+    if snap.link_x < EAST_DOOR_WALL_X:
+        return FrameAction(nes_action("RIGHT"), "east_approach")
+    return FrameAction(nes_action("RIGHT"), "east_push")
 
 _ENTRY_NORTH_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (208, 141),
@@ -533,4 +597,254 @@ def level1_north_room_success(ram: np.ndarray) -> bool:
         and snap.screen == ROOM_NORTH_STALFOS
         and snap.mode == PLAY_MODE
         and len(live_stalfos) >= 3
+    )
+
+
+def level1_room_72_key_success(
+    ram: np.ndarray, *, keys_before: int = 0
+) -> bool:
+    """Stop: play 0x72, no live Keese, keys increased (floor key collected)."""
+    from zelda_i.dungeon.engine import inventory_reward_success
+    from zelda_i.level1.dungeon import ROOM_72_SPEC
+
+    return inventory_reward_success(
+        ram, ROOM_72_SPEC, min_value=int(keys_before) + 1
+    )
+
+
+# 0x63 diamonds: skirt the west column (same side Clear53 uses going north).
+_SOUTH_53: tuple[tuple[int, int], ...] = ((120, 181), (120, 189))
+_SOUTH_63: tuple[tuple[int, int], ...] = (
+    (64, 101),
+    (64, 181),
+    (120, 181),
+    (120, 189),
+)
+_NORTH_73: tuple[tuple[int, int], ...] = (
+    (48, 149),
+    (120, 149),
+    (120, 93),
+)
+_NORTH_63: tuple[tuple[int, int], ...] = (
+    (64, 181),
+    (64, 101),
+    (120, 101),
+    (120, 93),
+)
+
+
+def _follow_points(
+    snap: ZeldaSnapshot,
+    waypoints: tuple[tuple[int, int], ...],
+    index: int,
+    reason: str,
+) -> tuple[FrameAction, int]:
+    """X-first cardinal walk. Returns (action, next_index)."""
+    if index >= len(waypoints):
+        return FrameAction(nes_idle_action(), f"{reason}_done"), index
+    tx, ty = waypoints[index]
+    dx = tx - snap.link_x
+    dy = ty - snap.link_y
+    if abs(dx) <= 2 and abs(dy) <= 2:
+        index += 1
+        if index >= len(waypoints):
+            return FrameAction(nes_idle_action(), f"{reason}_done"), index
+        return FrameAction(nes_idle_action(), f"{reason}_idle"), index
+    if abs(dx) > 2:
+        direction = "RIGHT" if dx > 0 else "LEFT"
+    else:
+        direction = "DOWN" if dy > 0 else "UP"
+    return FrameAction(nes_action(direction), reason), index
+
+
+@dataclass
+class Level1WestDoorController(HopController):
+    """Route 0x73 leftover → play 0x72. No combat."""
+
+    max_frames: int = WEST_DOOR_MAX_FRAMES
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "west_arrived"
+    require_level: int = LEVEL_1
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL_1
+            and snap.screen == ROOM_WEST_KEY
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "entered_0x72"
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return west_door_step(snap)
+
+
+@dataclass
+class Level1WestKeyReturnController(HopController):
+    """Route 0x72 leftover → play 0x73 after the floor key."""
+
+    max_frames: int = WEST_RETURN_MAX_FRAMES
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "east_arrived"
+    require_level: int = LEVEL_1
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL_1
+            and snap.screen == ROOM_ENTRANCE
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "returned_0x73"
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return east_door_step(snap)
+
+
+@dataclass
+class Level1ToEntranceController(HopController):
+    """0x53 leftover → 0x63 south → play 0x73. Instant if already in 0x73."""
+
+    max_frames: int = TO_ENTRANCE_MAX_FRAMES
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "at_entrance"
+    require_level: int = LEVEL_1
+    waypoint_index: int = 0
+    last_room: int | None = None
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL_1
+            and snap.screen == ROOM_ENTRANCE
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "back_at_0x73"
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        return FrameAction(nes_action("DOWN"), "south_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.last_room != snap.screen:
+            self.last_room = snap.screen
+            self.waypoint_index = 0
+        if snap.screen == ROOM_KEY_STALFOS:
+            if snap.link_y > 165:
+                return FrameAction(nes_action("DOWN"), "south53_push")
+            action, self.waypoint_index = _follow_points(
+                snap, _SOUTH_53, self.waypoint_index, "south53"
+            )
+            if action.reason == "south53_done":
+                return FrameAction(nes_action("DOWN"), "south53_push")
+            return action
+        if snap.screen == ROOM_NORTH_STALFOS:
+            if snap.link_y > 165:
+                return FrameAction(nes_action("DOWN"), "south63_push")
+            action, self.waypoint_index = _follow_points(
+                snap, _SOUTH_63, self.waypoint_index, "south63"
+            )
+            if action.reason == "south63_done":
+                return FrameAction(nes_action("DOWN"), "south63_push")
+            return action
+        return FrameAction(
+            nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
+        )
+
+
+@dataclass
+class Level1Resume53Controller(HopController):
+    """0x73 leftover → unlocked north → play 0x53. Instant if already there."""
+
+    max_frames: int = RESUME_53_MAX_FRAMES
+    wait_modes: tuple[int, ...] = ()
+    done_reason: str = "resumed_53"
+    require_level: int = LEVEL_1
+    waypoint_index: int = 0
+    last_room: int | None = None
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL_1
+            and snap.screen == ROOM_KEY_STALFOS
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        del snap
+        return "back_at_0x53"
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        return FrameAction(nes_action("UP"), "north_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.last_room != snap.screen:
+            self.last_room = snap.screen
+            self.waypoint_index = 0
+        if snap.screen == ROOM_ENTRANCE:
+            action, self.waypoint_index = _follow_points(
+                snap, _NORTH_73, self.waypoint_index, "north73"
+            )
+            if action.reason == "north73_done":
+                return FrameAction(nes_action("UP"), "north73_push")
+            return action
+        if snap.screen == ROOM_NORTH_STALFOS:
+            if snap.link_y > 165:
+                return FrameAction(nes_action("UP"), "north63_leave_mouth")
+            action, self.waypoint_index = _follow_points(
+                snap, _NORTH_63, self.waypoint_index, "north63"
+            )
+            if action.reason == "north63_done":
+                return FrameAction(nes_action("UP"), "north63_push")
+            return action
+        return FrameAction(
+            nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
+        )
+
+
+def level1_west_key_stages():
+    """0x73 leftover → 0x72 floor key → 0x73. No 0x53 walk-back."""
+    from zelda_i.dungeon.engine import GenericDungeonRoomController
+    from zelda_i.level1.dungeon import ROOM_72_SPEC
+
+    return (
+        ("enter72", Level1WestDoorController(), WEST_DOOR_MAX_FRAMES),
+        (
+            "clear72_key",
+            GenericDungeonRoomController(ROOM_72_SPEC),
+            ROOM_72_SPEC.max_frames,
+        ),
+        ("return73", Level1WestKeyReturnController(), WEST_RETURN_MAX_FRAMES),
+    )
+
+
+def level1_survival_west_key_stages():
+    """After clear53 leftover: walk 0x73, collect 0x72, resume 0x53. Survival."""
+    return (
+        ("to_entrance", Level1ToEntranceController(), TO_ENTRANCE_MAX_FRAMES),
+        *level1_west_key_stages(),
+        ("resume53", Level1Resume53Controller(), RESUME_53_MAX_FRAMES),
     )

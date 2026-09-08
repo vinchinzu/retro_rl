@@ -18,6 +18,8 @@ from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
 from zelda_i.dungeon import ids as _ids
+from zelda_i.dungeon.behaviors import fight_target
+from zelda_i.dungeon.ids import AliveRule
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
@@ -37,13 +39,6 @@ KEESE_OBJECT_TYPE = _ids.KEESE_OBJECT_TYPE
 MOLDORM_OBJECT_TYPE = _ids.MOLDORM_OBJECT_TYPE
 ROPE_OBJECT_TYPE = _ids.ROPE_OBJECT_TYPE
 WALLMASTER_OBJECT_TYPE = _ids.WALLMASTER_OBJECT_TYPE
-
-
-class AliveRule(str, Enum):
-    """How an object type represents a living enemy."""
-
-    TYPE = "type"
-    TYPE_AND_HP = "hp"
 
 
 class RewardKind(str, Enum):
@@ -90,6 +85,10 @@ class CombatTuning:
     tolerance: int = 6
     contact_backstep: int = 0  # manhattan peel before swing (rr-gjey)
     avoid_walls: bool = False  # inland first; Wallmasters grab door tiles
+    # Playable box for ``avoid_walls`` as (x_lo, x_hi, y_lo, y_hi). Rooms
+    # with a live south U-turn (L1 0x23) widen it; the default is the
+    # common inland box.
+    avoid_wall_bounds: tuple[int, int, int, int] = (56, 200, 109, 173)
     inland_dash: int = 0  # forced entry-dir steps after room is playable
     split_y: int | None = None  # same-side patrol vertices (0x23 water)
     occupancy_patrol: bool = False  # 1px predict; miss → block + BFS
@@ -427,15 +426,25 @@ class GenericDungeonRoomController:
                     return FrameAction(nes_action(direction), "combat_patrol")
                 self.patrol_index = (self.patrol_index + 1) % n
                 tx, ty = tuning.patrol[self.patrol_index]
-            self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), "combat_wait")
+            # Pocket: occupancy miss-blocked every corridor. Greedy toward
+            # the maze loop instead of standing (live 0x23 (99,157) 2 Goriyas).
+            dx = tx - snap.link_x
+            dy = ty - snap.link_y
+            if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
+                direction = "RIGHT" if dx > 0 else "LEFT"
+            elif abs(dy) > tuning.tolerance:
+                direction = "DOWN" if dy > 0 else "UP"
+            else:
+                self.walker.last_dir = None
+                return FrameAction(nes_idle_action(), "combat_wait")
+            self.walker.last_dir = direction
+            return FrameAction(nes_action(direction), "combat_patrol")
         if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
             direction = "RIGHT" if dx > 0 else "LEFT"
         elif abs(dy) > tuning.tolerance:
             direction = "DOWN" if dy > 0 else "UP"
         else:
-            direction = "UP"
-        # Walk only: continuous A on patrol looked spasmodic and wasted frames.
+            return FrameAction(nes_idle_action(), "combat_wait")
         return FrameAction(nes_action(direction), "combat_patrol")
 
     def _wall_step(self, x: int, y: int, direction: str) -> tuple[int, int]:
@@ -448,8 +457,7 @@ class GenericDungeonRoomController:
         return x, y + 1
 
     def _on_avoid_wall(self, x: int, y: int) -> bool:
-        lo_x, hi_x = _AVOID_WALL_X
-        lo_y, hi_y = _AVOID_WALL_Y
+        lo_x, hi_x, lo_y, hi_y = self.spec.combat.avoid_wall_bounds
         return x < lo_x or x > hi_x or y < lo_y or y > hi_y
 
     def _occupancy_dir(
@@ -514,18 +522,19 @@ class GenericDungeonRoomController:
             return None
         x, y = int(snap.link_x), int(snap.link_y)
         tuning = self.spec.combat
-        if x < _AVOID_WALL_X[0]:
+        lo_x, hi_x, lo_y, hi_y = tuning.avoid_wall_bounds
+        if x < lo_x:
             # Tunnel x<24 only accepts RIGHT. At the mouth (x≈32) the
             # door row y≈141 blocks eastbound movement — step off it first.
             if x >= 24 and 133 <= y <= 149:
                 direction = "DOWN"
             else:
                 direction = "RIGHT"
-        elif x > _AVOID_WALL_X[1]:
+        elif x > hi_x:
             direction = "LEFT"
-        elif y < _AVOID_WALL_Y[0]:
+        elif y < lo_y:
             direction = "DOWN"
-        elif y > _AVOID_WALL_Y[1]:
+        elif y > hi_y:
             direction = "UP"
         else:
             return None
@@ -550,8 +559,6 @@ class GenericDungeonRoomController:
         if self.combat_frames == 1:
             self._snap_patrol_nearest(snap)
         if not occupancy and self._stuck_frames >= 24:
-            # Blocked mid-fight: hop from the nearest vertex, not a stale
-            # index that greedy-walks through water (0x23 north pocket).
             n = len(self.spec.combat.patrol)
             self._snap_patrol_nearest(snap)
             self.patrol_index = (self.patrol_index + 1) % n
@@ -569,12 +576,11 @@ class GenericDungeonRoomController:
                 period=self.spec.combat.engage_attack_period,
                 hold=self.spec.combat.engage_attack_hold,
             )
-        nearest = min(
-            live,
-            key=lambda obj: abs(obj.x - snap.link_x)
-            + abs(obj.y - snap.link_y),
-        )
-        distance = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+        target = fight_target(snap.link_x, snap.link_y, live)
+        if target is None:
+            # Parked Wallmasters (and other illegal slots) stay in ``live``.
+            return self._patrol(snap)
+        distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
         back = self.spec.combat.contact_backstep
         # Intermittent backstep (2/6 frames) so we still land sword hits
         # while peeling contact damage (rr-gjey). Always-backstep starves kill.
@@ -583,8 +589,8 @@ class GenericDungeonRoomController:
             and distance < back
             and (self.combat_frames % 6) < 2
         ):
-            dx = nearest.x - snap.link_x
-            dy = nearest.y - snap.link_y
+            dx = target.x - snap.link_x
+            dy = target.y - snap.link_y
             if abs(dx) >= abs(dy):
                 away = "LEFT" if dx > 0 else "RIGHT"
             else:
@@ -595,14 +601,16 @@ class GenericDungeonRoomController:
         if occupancy:
             xy = (int(snap.link_x), int(snap.link_y))
             self.walker.observe(xy)
-            direction = self._occupancy_dir(xy, (nearest.x, nearest.y))
+            direction = self._occupancy_dir(xy, (target.x, target.y))
             if direction is None and distance >= self.spec.combat.engage_distance:
                 return self._patrol(snap)
             if distance < self.spec.combat.engage_distance:
-                return self._engage(snap, nearest, direction=direction)
+                return self._engage(snap, target, direction=direction)
+            # Far but path exists: walk the maze. Do not _engage — avoid_walls
+            # would freeze inland instead of following the corridor.
             return FrameAction(nes_action(direction), "combat_patrol")
         if distance < self.spec.combat.engage_distance:
-            return self._engage(snap, nearest)
+            return self._engage(snap, target)
         return self._patrol(snap)
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:

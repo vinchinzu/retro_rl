@@ -30,7 +30,8 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.overworld.common import swing_action
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.overworld.common import walk_or_swing
 from zelda_i.ram import ZeldaSnapshot
 
 __all__ = [
@@ -49,7 +50,7 @@ __all__ = [
 ]
 
 DEATH_MODE = 17
-RUPEE_DROP_TYPE_ID = 0x60
+RUPEE_DROP_TYPE_ID = RUPEE_DROP_OBJECT_TYPE
 DEFAULT_FARM_MAX_FRAMES = 36000
 DEFAULT_EMPTY_WAIT_FRAMES = 90
 DEFAULT_SWING_PERIOD = 8
@@ -205,33 +206,19 @@ class RupeeFarmController:
         direction = self._return_direction_from(snap.screen)
         if direction is None:
             return self._fail(snap, f"farm_return_unreachable_{snap.screen:02x}")
-        return swing_action(
-            self.frames,
-            direction,
-            "farm_return",
-            period=self.swing_period,
-            hold=self.swing_hold,
-        )
+        return FrameAction(nes_action(direction), "farm_return")
 
     def _farm_step(self, snap: ZeldaSnapshot) -> FrameAction:
         # Overworld enemies do not respawn while we stay put; toggle out to
         # restock_neighbor_screen and back to force fresh spawns.
         if snap.screen == self.restock_neighbor_screen:
             direction = _OPPOSITE[self.restock_direction]
-            return swing_action(
-                self.frames,
-                direction,
-                "farm_respawn",
-                period=self.swing_period,
-                hold=self.swing_hold,
-            )
+            return FrameAction(nes_action(direction), "farm_respawn")
         if snap.screen != self.farm_screen:
             return self._fail(snap, f"farm_left_{snap.screen:02x}")
 
         if snap.link_y < self.farm_y_lo:
-            return swing_action(
-                self.frames, "DOWN", "farm_south", period=self.swing_period, hold=self.swing_hold
-            )
+            return FrameAction(nes_action("DOWN"), "farm_south")
 
         drops = [
             obj for obj in snap.objects if obj.slot >= 1 and obj.type_id == RUPEE_DROP_TYPE_ID
@@ -249,21 +236,9 @@ class RupeeFarmController:
             self.empty_frames += 1
             if self.empty_frames < self.empty_wait_frames:
                 direction = "RIGHT" if snap.link_x < 160 else "LEFT"
-                return swing_action(
-                    self.frames,
-                    direction,
-                    "farm_wait",
-                    period=self.swing_period,
-                    hold=self.swing_hold,
-                )
+                return FrameAction(nes_action(direction), "farm_wait")
             self.empty_frames = 0
-            return swing_action(
-                self.frames,
-                self.restock_direction,
-                "farm_leave",
-                period=self.swing_period,
-                hold=self.swing_hold,
-            )
+            return FrameAction(nes_action(self.restock_direction), "farm_leave")
         self.empty_frames = 0
         nearest = min(
             prey,
@@ -280,8 +255,14 @@ class RupeeFarmController:
         if direction == "UP" and snap.link_y < self.farm_y_lo + 16:
             direction = "DOWN"
         reason = "farm_rupee" if drops else "farm_chase"
-        return swing_action(
-            self.frames, direction, reason, period=self.swing_period, hold=self.swing_hold
+        # Drops are not threats; walk_or_swing will not pulse A at empty air.
+        return walk_or_swing(
+            self.frames,
+            direction,
+            reason,
+            snap,
+            period=self.swing_period,
+            hold=self.swing_hold,
         )
 
     # ------------------------------------------------------------------ #

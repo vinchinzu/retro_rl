@@ -55,10 +55,15 @@ def test_spine_final_fields_records_rupees() -> None:
 def test_level1_arrows_is_dedicated_not_on_default_tf() -> None:
     from zelda_i.level1.arrow_shop import level1_arrows_stages
     from zelda_i.level1.bow_pickup import level1_survival_tf_stages
+    from zelda_i.level1.finish import level1_triforce_stages
 
     assert "level1-arrows" in SPINE_THROUGH
     tf_names = [name for name, _, _ in level1_survival_tf_stages()]
     assert "level1_arrows" not in tf_names
+    clean_names = [
+        name for name, _, _ in level1_triforce_stages(natural_entry=True)
+    ]
+    assert "clear72_key" not in clean_names
     arrow_names = [name for name, _, _ in level1_arrows_stages()]
     assert "level1_bow_pickup" in arrow_names
     assert "backtrack44" in arrow_names
@@ -73,6 +78,7 @@ def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
 
     names = [name for name, _, _ in level1_survival_tf_stages()]
     assert names.index("level1_bow_rejoin") < names.index("backtrack44")
+    assert "clear72_key" not in names  # 0x63 skirt red; poke stays
     assert "backtrack44" in SPINE_L1_KEY_RETOPUP
 
 

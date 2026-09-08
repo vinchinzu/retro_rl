@@ -12,7 +12,8 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
-from zelda_i.overworld.common import swing_action, track_stuck, unstick_wiggle, wake_or_wait_mode
+from zelda_i.combat import overworld_threat_objects
+from zelda_i.overworld.common import track_stuck, unstick_wiggle, wake_or_wait_mode, walk_or_swing
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # Default patrol on 0x4A — mid horizontal corridor (y≈140) is open; south
@@ -154,14 +155,7 @@ class HeartFarmController:
             return action
 
         # Chase nearest live enemy on this screen (overworld slots 1+).
-        enemies = [
-            o
-            for o in snap.objects
-            if o.slot >= 1
-            and o.type_id not in (0, 0xFF)
-            and 40 < o.y < 220
-            and 8 < o.x < 248
-        ]
+        enemies = list(overworld_threat_objects(snap))
         if enemies:
             nearest = min(
                 enemies,
@@ -178,19 +172,21 @@ class HeartFarmController:
                 d = "DOWN" if dy > 0 else "UP"
             else:
                 d = "RIGHT" if dx >= 0 else "LEFT"
-            return swing_action(
+            return walk_or_swing(
                 self.frames,
                 d,
                 "farm_chase",
+                snap,
                 period=FARM_SWING_PERIOD,
                 hold=FARM_SWING_HOLD,
             )
 
         if not self.waypoints:
-            return swing_action(
+            return walk_or_swing(
                 self.frames,
                 "RIGHT",
                 "farm_patrol",
+                snap,
                 period=FARM_SWING_PERIOD,
                 hold=FARM_SWING_HOLD,
             )
@@ -201,15 +197,16 @@ class HeartFarmController:
             self.stuck = 0
             tx, ty = self.waypoints[self.waypoint_index % len(self.waypoints)]
 
-        # Prefer horizontal then vertical; keep swinging.
+        # Prefer horizontal then vertical; slash only on hitbox/contact.
         if abs(snap.link_x - tx) > WAYPOINT_TOL:
             d = "RIGHT" if snap.link_x < tx else "LEFT"
         else:
             d = "DOWN" if snap.link_y < ty else "UP"
-        return swing_action(
+        return walk_or_swing(
             self.frames,
             d,
             "farm",
+            snap,
             period=FARM_SWING_PERIOD,
             hold=FARM_SWING_HOLD,
         )

@@ -2,20 +2,47 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from zelda_i import ram
 
+
+class AliveRule(str, Enum):
+    """How an object type represents a living enemy."""
+
+    TYPE = "type"
+    TYPE_AND_HP = "hp"
+
 OBJECT_NAMES: dict[int, str] = {
+    0x01: "lynel_blue",  # aldonunez UpdateObject_JumpTable
+    0x02: "lynel",
+    0x03: "moblin_blue",  # not Octorok; level8/overworld.py comment is spawn-id mixup
+    0x04: "moblin",
     0x05: "goriya_blue_or_residual",  # L2 boom room 0x4f
     0x06: "goriya",
+    0x07: "octorok",  # red slow; screens 0x59–0x5E
+    0x08: "octorok_fast",
+    0x09: "octorok_blue",
+    0x0A: "octorok_blue_fast",
     0x0B: "darknut",  # L3 0x5b/0x59/0x69 live
+    0x0D: "tektite_blue",
+    0x0E: "tektite",
+    0x0F: "leever_blue",
+    0x10: "leever",
+    0x11: "zora",
     0x12: "vire",  # L4 0x61/0x50 live (rr-5lu); HP64; sword splits → 0x1c
     0x13: "zol",
     0x14: "gel_or_zol_split_residual",  # L3 0x4b after wooden-sword hits
     0x15: "gel",
     0x16: "pols_voice",
     0x17: "like_like",  # L4 0x32 live (rr-resv); avoid contact (shield loss)
+    0x1A: "peahat",
     0x1B: "keese",
     0x1C: "vire_split_keese",  # L4 Vire split residual (live rr-5lu; not 0x1b)
+    0x1E: "armos",  # awake object; statue is tile $66/$67
+    0x20: "boulder",  # falling mountain rock (same updater as Tektite)
+    0x21: "ghini",
+    0x22: "ghini_flying",
     0x23: "wizzrobe_blue_walkthrough_correlated",
     0x24: "wizzrobe_orange",
     0x25: "patra_eye",  # L9 final Patra 0x52 live (rr-sz8.2)
@@ -38,25 +65,48 @@ OBJECT_NAMES: dict[int, str] = {
     0x49: "blade_trap",  # L4 room 0x02 live rr-rvae
     0x4D: "old_man_or_npc",
     0x4e: "trap_or_fire_residual",
-    0x55: "fireball_or_statue_projectile",  # L2 0x4f statues
+    0x53: "rock_projectile",  # Octorok spit (UpdateOctorock TryShooting)
+    0x55: "fireball_or_statue_projectile",  # L2 0x4f statues; Zora spit
     0x56: "manhandla_projectile_residual",  # L3 Manhandla + L4 Gleeok fireball
+    0x57: "lynel_sword_shot",
+    0x5B: "moblin_arrow",
     0x5C: "boomerang_projectile",  # L1 0x44 Goriya throw (lab); not type 0x06
     0x60: "green_rupee_drop",
 }
 
 
 # Canonical object type IDs (prefer these over redefining in dungeon_ops / level modules).
+# Overworld types: aldonunez/zelda1-disassembly UpdateObject_JumpTable (matches
+# dungeon IDs already here). level8/overworld.py "Octoroks (type 0x03)" is Blue Moblin.
+LYNEL_BLUE_OBJECT_TYPE = 0x01
+LYNEL_OBJECT_TYPE = 0x02
+MOBLIN_BLUE_OBJECT_TYPE = 0x03
+MOBLIN_OBJECT_TYPE = 0x04
 GORIYA_BLUE_OBJECT_TYPE = 0x05
 GORIYA_OBJECT_TYPE = 0x06
+OCTOROK_OBJECT_TYPE = 0x07  # red slow; 0x08 fast, 0x09 blue, 0x0A blue fast
+OCTOROK_FAST_OBJECT_TYPE = 0x08
+OCTOROK_BLUE_OBJECT_TYPE = 0x09
+OCTOROK_BLUE_FAST_OBJECT_TYPE = 0x0A
 DARKNUT_OBJECT_TYPE = 0x0B
+TEKTITE_BLUE_OBJECT_TYPE = 0x0D
+TEKTITE_OBJECT_TYPE = 0x0E
+LEEVER_BLUE_OBJECT_TYPE = 0x0F
+LEEVER_OBJECT_TYPE = 0x10
+ZORA_OBJECT_TYPE = 0x11
 VIRE_OBJECT_TYPE = 0x12  # L4 live rr-5lu
 ZOL_OBJECT_TYPE = 0x13
 GEL_SPLIT_OBJECT_TYPE = 0x14  # wooden-sword Zol split residual
 GEL_OBJECT_TYPE = 0x15
 POLS_VOICE_OBJECT_TYPE = 0x16  # L5 0x77/0x25/0x27 live
 LIKE_LIKE_OBJECT_TYPE = 0x17  # L4 0x32 live (rr-resv); avoid contact
+PEAHAT_OBJECT_TYPE = 0x1A
 KEESE_OBJECT_TYPE = 0x1B
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # L4 Vire → red Keese-like split
+ARMOS_OBJECT_TYPE = 0x1E  # awake; statue is tile $66/$67 not an object slot
+BOULDER_OBJECT_TYPE = 0x20  # falling mountain rock
+GHINI_OBJECT_TYPE = 0x21
+GHINI_FLYING_OBJECT_TYPE = 0x22
 WIZZROBE_BLUE_OBJECT_TYPE = 0x23  # walkthrough-correlated; L6 0x38
 WIZZROBE_ORANGE_OBJECT_TYPE = 0x24
 PATRA_EYE_OBJECT_TYPE = 0x25
@@ -77,9 +127,13 @@ GLEEOK_3HEAD_OBJECT_TYPE = 0x44  # L6 0x18 live settle census
 GLEEOK_HEAD_OBJECT_TYPE = 0x46  # L4 0x13 detached head (rr-rvae dual)
 PATRA_OBJECT_TYPE = 0x47  # L9 room 0x52 final Patra
 BLADE_TRAP_OBJECT_TYPE = 0x49  # L4 0x02 live rr-rvae
+ROCK_PROJECTILE_TYPE = 0x53  # Octorok spit
 FIREBALL_OBJECT_TYPE = 0x55
 MANHANDLA_PROJECTILE_TYPE = 0x56  # also Gleeok fireball residual
+LYNEL_SWORD_SHOT_TYPE = 0x57
+MOBLIN_ARROW_OBJECT_TYPE = 0x5B
 GORIYA_BOOMERANG_OBJECT_TYPE = 0x5C  # L1 0x44 lab traces; HP 0/144; not 0x06
+RUPEE_DROP_OBJECT_TYPE = 0x60
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",

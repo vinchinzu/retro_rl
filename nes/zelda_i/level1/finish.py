@@ -14,7 +14,6 @@ from zelda_i.dungeon.engine import AQUAMENTUS_OBJECT_TYPE
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, ZeldaObject
 
 ROOM_GEL_SWITCH = 0x42
-ROOM_OLD_MAN = 0x41
 ROOM_MAP = 0x43
 ROOM_KEY_GORIYA = 0x23
 ROOM_KEY_STALFOS_MAZE = 0x33
@@ -30,17 +29,13 @@ LEVEL1_TRIFORCE_BIT = 0x01
 FIREBALL_OBJECT_TYPE = 0x55
 
 _ROOM_42_EAST_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    (32, 181),
-    (208, 181),
+    (208, 149),
     (208, 141),
 )
 
 
 class Room42ExitPhase(Enum):
     PUSH_BLOCK = auto()
-    ENTER_HINT = auto()
-    WAIT_HINT = auto()
-    RETURN_FROM_HINT = auto()
     ROUTE_EAST = auto()
     ENTER_MAP = auto()
     DONE = auto()
@@ -49,7 +44,7 @@ class Room42ExitPhase(Enum):
 
 @dataclass
 class Level1Room42ExitController:
-    """Push the Gel-room block, visit the hint room, and enter map room 0x43."""
+    """Push the Gel-room block and enter map room 0x43. Skip the old-man hint."""
 
     phase: Room42ExitPhase = Room42ExitPhase.PUSH_BLOCK
     frames: int = 0
@@ -108,7 +103,7 @@ class Level1Room42ExitController:
             if snap.mode != PLAY_MODE:
                 return FrameAction(nes_idle_action(), "settle_room42")
             if snap.cur_opened_doors & ROOM_42_LEFT_DOOR_BIT:
-                self._set_phase(Room42ExitPhase.ENTER_HINT, "center_block_pushed")
+                self._set_phase(Room42ExitPhase.ROUTE_EAST, "center_block_pushed")
             else:
                 if abs(snap.link_y - 149) > 2:
                     direction = "DOWN" if snap.link_y < 149 else "UP"
@@ -123,34 +118,6 @@ class Level1Room42ExitController:
                         "align_switch_block_x",
                     )
                 return FrameAction(nes_action("UP"), "push_center_block")
-
-        if self.phase is Room42ExitPhase.ENTER_HINT:
-            if snap.screen == ROOM_OLD_MAN and snap.mode == PLAY_MODE:
-                self._set_phase(Room42ExitPhase.WAIT_HINT, "hint_room_entered")
-                return FrameAction(nes_idle_action(), "settle_hint")
-            if snap.transitioning:
-                return FrameAction(nes_action("LEFT"), "hint_room_scroll")
-            if snap.mode != PLAY_MODE:
-                return FrameAction(nes_idle_action(), "wait_hint_door")
-            if snap.link_y < 139:
-                return FrameAction(nes_action("DOWN"), "align_hint_door")
-            if snap.link_y > 143:
-                return FrameAction(nes_action("UP"), "align_hint_door")
-            return FrameAction(nes_action("LEFT"), "enter_hint_room")
-
-        if self.phase is Room42ExitPhase.WAIT_HINT:
-            if self.phase_frames < 180:
-                return FrameAction(nes_idle_action(), "wait_hint_dialog")
-            self._set_phase(
-                Room42ExitPhase.RETURN_FROM_HINT,
-                "hint_dialog_settled",
-            )
-
-        if self.phase is Room42ExitPhase.RETURN_FROM_HINT:
-            if snap.screen == ROOM_GEL_SWITCH and snap.mode == PLAY_MODE:
-                self._set_phase(Room42ExitPhase.ROUTE_EAST, "returned_room42")
-            else:
-                return FrameAction(nes_action("RIGHT"), "return_from_hint")
 
         if self.phase is Room42ExitPhase.ROUTE_EAST:
             if snap.transitioning:
@@ -720,14 +687,16 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ROOM_42_SPEC,
         ROOM_43_SPEC,
         ROOM_44_SPEC,
+        ROOM_44_SURVIVAL_SPEC,
         ROOM_45_SPEC,
         ROOM_45_SURVIVAL_SPEC,
         ROOM_52_SPEC,
+        Room44SurvivalController,
     )
 
     room33 = ROOM_33_SPEC
     room23 = ROOM_23_SPEC
-    room44 = ROOM_44_SPEC
+    room44 = ROOM_44_SURVIVAL_SPEC if survival else ROOM_44_SPEC
     room45 = ROOM_45_SURVIVAL_SPEC if survival else ROOM_45_SPEC
     boss_entry_delay = 109
     if not natural_entry:
@@ -739,10 +708,6 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
             room23,
             combat=replace(room23.combat, engage_distance=64, attack_phase=0),
         )
-        room44 = replace(
-            room44,
-            combat=replace(room44.combat, engage_distance=80, attack_phase=6),
-        )
         room45 = replace(room45, combat=replace(room45.combat, attack_phase=2))
         boss_entry_delay = 0
     return (
@@ -753,7 +718,7 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ("clear33_key", GenericDungeonRoomController(room33), room33.max_frames),
         ("clear23_key", GenericDungeonRoomController(room23), room23.max_frames),
         ("backtrack44", Level1BacktrackTo44Controller(), BACKTRACK_TO_44_MAX_FRAMES),
-        ("clear44", GenericDungeonRoomController(room44), room44.max_frames),
+        ("clear44", Room44SurvivalController(room44), room44.max_frames),
         ("clear45_key", GenericDungeonRoomController(room45), room45.max_frames),
         (
             "aquamentus_heart",

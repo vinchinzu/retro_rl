@@ -113,21 +113,15 @@ def level1_bow_pickup_stages():
 
 
 def level1_survival_tf_stages():
-    """Survival L1 TF with the bow detour after clear23_key. Not Clean M5."""
-    from zelda_i.level1.east_dungeon import (
-        ROOM_44_SURVIVAL_SPEC,
-        Room44SurvivalController,
-    )
+    """Survival L1 TF with the bow detour after clear23_key. Not Clean M5.
 
+    0x72 west-key stages exist on ``level1_survival_west_key_stages`` but are
+    not spliced here: ``to_entrance`` from the clear53 leftover red in 0x63
+    (diamond skirt). Keep the poke at backtrack44 until that hop is green.
+    """
     stages: list[Any] = []
     for item in level1_triforce_stages(natural_entry=True, survival=True):
-        if item[0] == "clear44":
-            spec = ROOM_44_SURVIVAL_SPEC
-            stages.append(
-                (item[0], Room44SurvivalController(spec), spec.max_frames)
-            )
-        else:
-            stages.append(item)
+        stages.append(item)
         if item[0] == "clear23_key":
             stages.extend(level1_bow_detour_stages())
     return tuple(stages)
