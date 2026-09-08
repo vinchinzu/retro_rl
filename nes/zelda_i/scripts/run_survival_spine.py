@@ -4,8 +4,9 @@
     uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
-unless ``--no-video``. Does not overwrite Clean M5. No ``--from-state``.
-Stop at first failed stage.
+unless ``--no-video``. Heart assist is on by default; ``--no-infinite-life``
+turns it off for combat practice. Does not overwrite Clean M5.
+No ``--from-state``. Stop at first failed stage.
 """
 
 from __future__ import annotations
@@ -32,6 +33,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--through", choices=SPINE_THROUGH, default="level1")
     parser.add_argument("--tag", default="survival_spine")
     parser.add_argument("--trials", type=int, default=1)
+    parser.add_argument(
+        "--infinite-life",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Survival health refill (default on). "
+            "--no-infinite-life turns assist off for combat practice."
+        ),
+    )
     add_video_args(parser, default_on=True)
     args = parser.parse_args(argv)
 
@@ -51,7 +61,9 @@ def main(argv: list[str] | None = None) -> int:
             intro_summary="Survival continuous spine, first quest, first file",
             intro_frames=intro,
         )
-        assist = UnlimitedHealthAssist(enabled=True)
+        assist = (
+            UnlimitedHealthAssist(enabled=True) if args.infinite_life else None
+        )
         payload: dict | None = None
         try:
             obs, _ = reset_obs(env)
@@ -77,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
                 "trial": trial,
                 "final": spine_final_fields(snap, final_ram),
                 "screenshot": str(screenshot),
-                "assist": assist.report(),
+                "assist": None if assist is None else assist.report(),
             }
         finally:
             try:

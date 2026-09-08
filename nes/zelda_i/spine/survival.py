@@ -660,8 +660,6 @@ def run_survival_spine(
     """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
-    if assist is None:
-        raise ValueError("Survival spine requires UnlimitedHealthAssist")
 
     prefix = run_natural_to_milestone(
         env,

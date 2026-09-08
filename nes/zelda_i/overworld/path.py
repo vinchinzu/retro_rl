@@ -13,7 +13,13 @@ from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import manhattan
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.common import (
+    EDGE_EAST_X,
+    EDGE_NORTH_Y,
+    EDGE_SOUTH_Y,
+    EDGE_WEST_X,
     align_and_push,
     on_arrival_edge,
     recover_off_edge,
@@ -34,12 +40,16 @@ from zelda_i.overworld.graph import (
     ScreenHop,
     is_5c_maze_hop,
 )
+from zelda_i.overworld.locations import farm_at, restock_for, worth_rupee_farm
+from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
 DEFAULT_STUCK_THRESHOLD = 50
 DEFAULT_MAX_FRAMES = 30000
+DEFAULT_SCOOP_RADIUS = 48
+_OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 
 
 class PathNavPhase(Enum):
@@ -100,15 +110,23 @@ class OverworldPathController:
     require_dungeon: bool = False
     require_entrance_screen: bool = False
 
-    # Low-heart recovery (Phase 4.9). ``farm_below_hearts=0`` keeps the old
-    # run-to-death behaviour, and with the health assist on ``filled_hearts``
-    # never drops, so the hook is inert until the assist comes off.
-    farm_below_hearts: int = 0
+    # Low-heart recovery (Phase 4.9). Default 3 farms when assist is off;
+    # Survival health assist keeps ``filled_hearts`` full so the hook stays
+    # inert. ``farm_below_hearts=0`` restores the old run-to-death hop.
+    farm_below_hearts: int = 3
     farm_min_filled: int = 3
     farm_max_frames: int = 3600
     max_farm_attempts: int = 2
     farm_attempts: int = 0
     _farm: HeartFarmController | None = field(default=None, repr=False)
+
+    # Walk onto nearby type-0x60 drops while short of a later shop price.
+    # 0 keeps the old hop (ignore drops). Shops set this to ``price``.
+    need_rupees: int = 0
+    scoop_radius: int = DEFAULT_SCOOP_RADIUS
+    # In-route kill+restock so we arrive at the shop closer to ``need_rupees``.
+    rupee_farm_attempts: int = 0
+    _rupee_farm: RupeeFarmController | None = field(default=None, repr=False)
 
     # Default hop-complete stop extras
     require_sword: bool = False
@@ -172,6 +190,8 @@ class OverworldPathController:
         self.hits_taken = 0
         self.farm_attempts = 0
         self._farm = None
+        self.rupee_farm_attempts = 0
+        self._rupee_farm = None
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -197,6 +217,8 @@ class OverworldPathController:
             "stuck": self.stuck,
             "hits_taken": self.hits_taken,
             "farm_attempts": self.farm_attempts,
+            "rupee_farm_attempts": self.rupee_farm_attempts,
+            "need_rupees": self.need_rupees,
         }
         if self.maze_waypoints:
             out["maze_wp_index"] = self.maze_wp_index
@@ -377,11 +399,12 @@ class OverworldPathController:
 
         Fail-soft on both sides: the farm gives up on its own timeout or when
         Link leaves the screen, and ``max_farm_attempts`` stops a farm/starve
-        loop from replacing the hop entirely.
+        loop from replacing the hop entirely. Keep control through restock
+        phases (anything other than DONE/FAILED), not only ``FARM``.
         """
         if self._farm is not None:
             action = self._farm.step(snap)
-            if self._farm.phase is HeartFarmPhase.FARM:
+            if self._farm.phase not in (HeartFarmPhase.DONE, HeartFarmPhase.FAILED):
                 return action
             note = "farm_ok" if self._farm.success else "farm_gave_up"
             self.notes.append(f"{note}_{snap.filled_hearts}")
@@ -393,17 +416,133 @@ class OverworldPathController:
             or snap.level != 0
             or snap.filled_hearts >= self.farm_below_hearts
             or self.farm_attempts >= self.max_farm_attempts
+            or farm_at(int(snap.screen)) is None
         ):
             return None
         self.farm_attempts += 1
-        self._farm = HeartFarmController(
-            min_filled=self.farm_min_filled,
-            max_frames=self.farm_max_frames,
-            farm_screen=int(snap.screen),
-            waypoints=BAND_SWEEP_WAYPOINTS,
-        )
+        kwargs: dict[str, Any] = {
+            "min_filled": self.farm_min_filled,
+            "max_frames": self.farm_max_frames,
+            "farm_screen": int(snap.screen),
+            "waypoints": BAND_SWEEP_WAYPOINTS,
+        }
+        restock = self._restock_for(snap)
+        if restock is not None:
+            kwargs["restock_neighbor_screen"] = restock[0]
+            kwargs["restock_direction"] = restock[1]
+        self._farm = HeartFarmController(**kwargs)
         self.notes.append(f"farm_start_{snap.screen:02x}_{snap.filled_hearts}")
         return self._farm.step(snap)
+
+    def _worth(self, screen: int) -> Any:
+        """Catalog rupee-farm spot, skipping lynel/peahat/zora."""
+        return worth_rupee_farm(int(screen))
+
+    def _restock_for(self, snap: ZeldaSnapshot) -> tuple[int, str] | None:
+        """Catalog restock, else current hop target/direction (leave toward hop)."""
+        pair = restock_for(int(snap.screen))
+        if pair is not None:
+            return pair
+        if self.hop_index < len(self.hops):
+            hop = self.hops[self.hop_index]
+            return (int(hop.target), hop.direction)
+        return None
+
+    def _rupee_farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Kill+restock on a farmable screen while short of ``need_rupees``.
+
+        Fail-soft: a farm timeout or left-screen hands the hop back. Does not
+        run after hops complete (door hunt / shop farm-after-hops owns that).
+        """
+        if self._rupee_farm is not None:
+            action = self._rupee_farm.step(snap)
+            phase = self._rupee_farm.phase
+            if phase in (RupeeFarmPhase.FARM, RupeeFarmPhase.RETURN):
+                return action
+            if phase is RupeeFarmPhase.DONE:
+                note = f"rupee_farm_ok_{snap.rupees}"
+            else:
+                note = "rupee_farm_gave_up"
+            self.notes.append(note)
+            self._rupee_farm = None
+            self.stuck = 0
+            return FrameAction(nes_idle_action(), note)
+        if (
+            self.need_rupees <= 0
+            or snap.rupees >= self.need_rupees
+            or snap.level != 0
+            or snap.mode not in (PLAY_MODE, 8)
+            or self.hop_index >= len(self.hops)
+            or self.rupee_farm_attempts >= self.max_farm_attempts
+            or self._worth(int(snap.screen)) is None
+        ):
+            return None
+        hop = self.hops[self.hop_index]
+        if self._in_maze_phase(snap, hop):
+            return None
+        restock = self._restock_for(snap)
+        if restock is None or restock[1] not in _OPPOSITE:
+            return None
+        neighbor, direction = restock
+        self.rupee_farm_attempts += 1
+        self._rupee_farm = RupeeFarmController(
+            target_rupees=self.need_rupees,
+            farm_screen=int(snap.screen),
+            restock_neighbor_screen=int(neighbor),
+            restock_direction=direction,
+            leftover_screen=int(snap.screen),
+            max_frames=self.farm_max_frames,
+        )
+        self.notes.append(f"rupee_farm_start_{snap.screen:02x}")
+        return self._rupee_farm.step(snap)
+
+    def _rupee_scoop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
+        """Walk onto a nearby rupee drop when ``snap.rupees < need_rupees``.
+
+        Stays on the current screen and refuses a drop that sits on the
+        hop's opposite edge (would scroll away). Does not swing — pickup
+        is contact. ``need_rupees=0`` (default) never diverts.
+        """
+        if self.need_rupees <= 0 or snap.rupees >= self.need_rupees:
+            return None
+        if snap.mode != PLAY_MODE or snap.level != 0:
+            return None
+        drops = [
+            obj
+            for obj in snap.objects
+            if obj.slot >= 1
+            and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
+            and 40 < obj.y < 220
+            and 8 < obj.x < 248
+        ]
+        if not drops:
+            return None
+        nearest = min(
+            drops,
+            key=lambda obj: manhattan(snap.link_x, snap.link_y, obj.x, obj.y),
+        )
+        dist = manhattan(snap.link_x, snap.link_y, nearest.x, nearest.y)
+        if dist > self.scoop_radius:
+            return None
+        if hop.direction == "RIGHT" and nearest.x < EDGE_WEST_X + 16:
+            return None
+        if hop.direction == "LEFT" and nearest.x > EDGE_EAST_X - 16:
+            return None
+        if hop.direction == "DOWN" and nearest.y < EDGE_NORTH_Y + 16:
+            return None
+        if hop.direction == "UP" and nearest.y > EDGE_SOUTH_Y - 16:
+            return None
+        if dist <= 4:
+            return FrameAction(nes_idle_action(), "scoop_rupee")
+        dx = nearest.x - snap.link_x
+        dy = nearest.y - snap.link_y
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        elif abs(dy) > 2:
+            direction = "DOWN" if dy > 0 else "UP"
+        else:
+            return FrameAction(nes_idle_action(), "scoop_rupee")
+        return FrameAction(nes_action(direction), "scoop_rupee")
 
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
@@ -425,6 +564,10 @@ class OverworldPathController:
         edge = recover_off_edge(snap, hop.direction, swing=self._swing)
         if edge is not None:
             return edge
+
+        scoop = self._rupee_scoop(snap, hop)
+        if scoop is not None:
+            return scoop
 
         return align_and_push(
             snap,
@@ -473,15 +616,21 @@ class OverworldPathController:
         if early is not None:
             return early
 
-        if snap.transitioning:
+        # Active farms own their own scroll/mode handling (restock leave/return).
+        farm_busy = self._farm is not None or self._rupee_farm is not None
+        if snap.transitioning and not farm_busy:
             return self._handle_transition(snap)
 
-        if snap.mode not in self.allowed_modes:
+        if snap.mode not in self.allowed_modes and not farm_busy:
             return wake_or_wait_mode(self.phase_frames, snap.mode)
 
         farm = self._farm_action(snap)
         if farm is not None:
             return farm
+
+        rupee = self._rupee_farm_action(snap)
+        if rupee is not None:
+            return rupee
 
         if self.hop_index >= len(self.hops):
             return self._after_hops(snap)
@@ -494,6 +643,7 @@ __all__ = [
     "DEFAULT_SWING_HOLD",
     "DEFAULT_STUCK_THRESHOLD",
     "DEFAULT_MAX_FRAMES",
+    "DEFAULT_SCOOP_RADIUS",
     "PathNavPhase",
     "OverworldPathController",
     "is_5c_maze_hop",

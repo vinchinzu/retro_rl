@@ -349,6 +349,7 @@ class OverworldToCandleShopController(OverworldPathController):
     buy_y: int = CANDLE_BUY_Y
     buy_frames: int = 0
     buy_budget: int = 900
+    need_rupees: int = CANDLE_SHOP_PRICE
     # Stairs / dialog settle at cave bottom before lateral move.
     cave_dialog_idle: int = 120
     # Runner sets each frame from ``ADDR_CANDLE`` (snapshot omits candle).

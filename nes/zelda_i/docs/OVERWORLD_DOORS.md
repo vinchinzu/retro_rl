@@ -71,7 +71,7 @@ are later OW shortcuts. **Do not grant.**
 | Capability | Screen (hex) | Evidence | Requires | Notes / RAM |
 |------------|--------------|----------|----------|-------------|
 | Wooden sword cave | `0x77` | **verified** | none | start screen NW cave; `ADDR_SWORD` → 1 |
-| White sword cave | TBD live | source (Gathering 1.3) | 5 heart containers | plateau N of start; `ADDR_SWORD` → 2 |
+| White sword cave | **`0x0A`** | **verified** live detour from L9 approach | 5 heart containers | plateau; `ADDR_SWORD` → 2 |
 | Magical sword grave | `0x21` | source path via bracelet Armos — **TBD live** | 12 hearts; push 3rd-from-left middle gravestone | graveyard; `ADDR_SWORD` → 3 |
 | Power Bracelet Armos | `0x24` | source (10 Armos, top-right) — **TBD live** | none | `ADDR_BRACELET` `0x0665`; unlocks boulder warps |
 | Blue candle shop(s) | **`0x5E`** O-6 cave (`CandleShop5E`) | **verified** assisted OW path `CANDLE_SHOP_HOPS` + cave UP@x112; natural 60R farm+buy residual | rupees **60** | `ADDR_CANDLE` `0x065B`; buy touch≈(152,149); L8 bush residual |
@@ -138,7 +138,9 @@ Refresh this file when sibling probes land live door screens
 
 ## Item-gate hops (`rr-iri`)
 
-See `route/item_gate_hops.py` / `scripts/probe_item_gate_hops.py` for candle 0x66 / bomb 0x4A / white-sword region hops (assisted).
+Full first-quest OW cave/secret catalog (ROM AttrsB dests, open method, vanilla
+fill, rando `locations_from_rom`) and enemy-drop farms (`farm_at`,
+`five_rupee_farms`, live 0x4A↔0x49 tektite restock): `zelda_i.overworld.locations`.
 
 ---
 

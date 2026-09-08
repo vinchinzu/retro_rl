@@ -40,6 +40,12 @@ def test_arrows_success_is_inventory_only() -> None:
     assert not level1_arrows_success(ow)
 
 
+def test_arrow_shop_scoops_drops_on_the_walk() -> None:
+    ctl = make_arrow_shop_controller()
+    assert ctl.need_rupees == ARROW_SHOP_PRICE
+    assert ctl.price == ARROW_SHOP_PRICE
+
+
 def test_buy_climbs_then_right_at_y165_not_bomb_row() -> None:
     ctl = make_arrow_shop_controller()
     ctl.phase = ArrowShopNavPhase.BUY

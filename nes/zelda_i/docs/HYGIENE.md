@@ -25,6 +25,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | L5 dest spine | `level5/spine.py` | `--through level5` TF `0x10` in room `0x14` |
 | Eligibility | `route/eligible.py`, `route/natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |
 | Dungeon treasures | `route/treasures.py` | First-quest wiki items vs default-spine collection |
+| OW locations | `overworld/locations.py` | First-quest cave dests, open method, rando ROM decode, enemy-drop farms (`farm_at`, `worth_rupee_farm`, restock pairs) |
 | Combat helpers | `combat.py` + `dungeon/behaviors.py` + `dungeon/gleeok.py` | Hitbox swing gate, reusable enemy policies, shared Gleeok sensors (L4+L6) |
 | Continuous spine | `spine/survival.py` + `spine.hops.attach_hops` + `level*/spine.py` hop tables | One env, power-on, stop at first fail. New dest hops are `SpineHop` rows, not `*_stages`/`*_success` pairs. |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |

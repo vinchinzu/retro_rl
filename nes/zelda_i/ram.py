@@ -17,6 +17,10 @@ ADDR_IS_UPDATING_MODE = 0x0011  # 0=mode init, nonzero=ordinary update loop
 ADDR_MODE = 0x0012  # 5=play, 6/7=scroll, 9=passage, 11=cave, 16=cave enter
 ADDR_SUBMODE = 0x0013  # mode-local phase; ending uses 3=credits, 4=final screen
 ADDR_DIALOG_TIMER = 0x0029
+# Forced drops (redcandle / aldonunez). Cleared when Link takes a hit.
+ADDR_HELP_DROP_COUNT = 0x0050  # 10 kills → forced 5-rupee (or bomb if VALUE set)
+ADDR_HELP_DROP_VALUE = 0x0051  # nonzero → the 10-kill force is a bomb
+ADDR_WORLD_KILL_COUNT = 0x0627  # 16 kills → forced fairy
 ADDR_LINK_X = 0x0070
 ADDR_LINK_Y = 0x0084
 ADDR_LINK_FACING = 0x0098  # $08 N, $04 S, $01 E, $02 W
@@ -64,6 +68,15 @@ ADDR_BOOMERANG = 0x0674  # wooden; 0=false, 1=true
 ADDR_MAGIC_BOOMERANG = 0x0675  # magical full-screen; 0=false, 1=true
 ADDR_MAGIC_SHIELD = 0x0676
 ADDR_MAX_BOMBS = 0x067C
+# aldonunez WorldFlags: 128-byte array indexed by overworld screen / dungeon
+# room. Save-file copy lives in battery RAM ($6092+). One bit per OW screen
+# records whether that screen's secret is found (ZeldaHacks).
+ADDR_WORLD_FLAGS = 0x067F
+ADDR_RUPEES_TO_ADD = 0x067D  # pending credit; HUD counts up toward $066D
+ADDR_RUPEES_TO_SUBTRACT = 0x067E
+WORLD_FLAG_ITEM = 0x10  # UW item taken; OW secret revealed
+WORLD_FLAG_VISITED = 0x20
+WORLD_FLAG_KILLS = 0xC0  # 0/1/2+ kills packed in the high bits
 
 # Overworld start + first milestones
 SCREEN_START = 0x77
@@ -274,6 +287,16 @@ def is_sword_obtained(ram) -> bool:
 def is_on_start_overworld(ram) -> bool:
     snap = read_snapshot(ram)
     return snap.overworld and snap.screen == SCREEN_START
+
+
+def world_flag(ram: np.ndarray, screen: int) -> int:
+    """``WorldFlags[screen]`` at ``$067F+screen``. Screen 0x00..0x7F."""
+    return read_u8(ram, ADDR_WORLD_FLAGS + (int(screen) & 0x7F))
+
+
+def ow_secret_taken(ram: np.ndarray, screen: int) -> bool:
+    """True when this overworld screen's secret/item bit (``$10``) is set."""
+    return bool(world_flag(ram, screen) & WORLD_FLAG_ITEM)
 
 
 def capabilities_from_ram(ram) -> frozenset[str]:

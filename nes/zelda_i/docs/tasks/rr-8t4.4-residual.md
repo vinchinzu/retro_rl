@@ -2,7 +2,23 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
-## This sitting
+## This sitting (2026-09-08) — OW farm fold, bead `rr-wabn`
+
+Folded `zelda_i.overworld.locations` enemy-drop farms into hop policy so
+shops can kill+restock instead of poking rupees. Assist hearts off for
+L1 overworld combat practice. Do not close `rr-wabn` (arrow splice onto
+the default spine is still open). L2 `0x4C` leftover below is unchanged.
+
+No-assist `run_to_level1.py --natural-entry --screen-only` **1/1**: OW
+`0x37` `(240,141)` mode 5, sword 1, rupees 0, hearts 2/3 (`0x22`),
+nav 1431f, `farm_attempts=0`. Chasing octoroks on 0x78 at
+`farm_below_hearts=3` died; L1 farms only below 2 hearts. Path hops
+still default `farm_below_hearts=3` (inert with Survival assist).
+
+`--through level1-arrows` still the dedicated 80R buy. Spine default
+assist stays on; `--no-infinite-life` is legal.
+
+## Prior sitting
 
 Dedicated `--through level7-bait-shop` is wired: Recorder warp join peels
 north at `0x54` → `0x44` → shop `0x34`. No `ADDR_FOOD` write on that hop.

@@ -19,12 +19,25 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
+from zelda_i.combat import manhattan
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.common import (
+    EDGE_EAST_X,
+    EDGE_NORTH_Y,
+    EDGE_SOUTH_Y,
+    EDGE_WEST_X,
     track_stuck,
     wake_or_wait_mode,
     walk_or_swing,
 )
+from zelda_i.overworld.heart_farm import (
+    BAND_SWEEP_WAYPOINTS,
+    HeartFarmController,
+    HeartFarmPhase,
+)
+from zelda_i.overworld.locations import farm_at, restock_for
 from zelda_i.ram import (
+    PLAY_MODE,
     SCREEN_LEVEL1_ENTRANCE,
     SCREEN_START,
     ZeldaSnapshot,
@@ -38,9 +51,11 @@ BUSH_NORTH_X = 112  # north lane on 0x58 through bush grid
 LEVEL1_DOOR_X = 112  # probe: enter while walking UP through x=112, y≈125–133
 LEVEL1_DOOR_Y = 140  # approach from open sand south of the tree mouth
 SEGMENT_MAX_FRAMES = 12000
-SWORD_SWING_PERIOD = 14
+SWORD_SWING_PERIOD = 8
 SWORD_SWING_FRAMES = 3
 STUCK_THRESHOLD = 45
+DEATH_MODE = 17
+SCOOP_RADIUS = 48
 
 
 class NavPhase(Enum):
@@ -76,6 +91,18 @@ _SCROLL_HOLD: dict[NavPhase, str] = {
     NavPhase.WEST_38: "LEFT",
     NavPhase.ENTER_DOOR: "UP",
 }
+# Heart-farm restock along the route (leave toward the next hop, come back).
+# Catalog previous-screen pairs (0x78 LEFT to 0x77) fight the northbound walk.
+_ROUTE_RESTOCK: dict[NavPhase, tuple[int, str]] = {
+    NavPhase.NORTH_78: (0x68, "UP"),
+    NavPhase.NORTH_68: (0x58, "UP"),
+    NavPhase.ALIGN_58: (0x48, "UP"),
+    NavPhase.NORTH_58: (0x48, "UP"),
+    NavPhase.CENTER_48: (0x38, "UP"),
+    NavPhase.NORTH_48: (0x38, "UP"),
+    NavPhase.CENTER_38: (0x37, "LEFT"),
+    NavPhase.WEST_38: (0x37, "LEFT"),
+}
 
 
 @dataclass
@@ -94,6 +121,18 @@ class OverworldToLevel1Controller:
     success: bool = False
     require_dungeon: bool = True
     """If True, success requires level==1; else arriving on screen 0x37 is enough."""
+    # 0 = no shop restock. Opportunistic type-0x60 pickup still runs on 0x78.
+    need_rupees: int = 0
+    scoop_radius: int = SCOOP_RADIUS
+    # Farm only when down to 0–1 heart. Diverting at 2/3 on 0x78 chased
+    # octoroks west and died; walking through at 2 hearts with period-8
+    # swings reached 0x37 (no-assist 2026-09-08).
+    farm_below_hearts: int = 2
+    farm_min_filled: int = 3
+    farm_max_frames: int = 3600
+    max_farm_attempts: int = 2
+    farm_attempts: int = 0
+    _farm: HeartFarmController | None = field(default=None, repr=False)
 
     def reset(self) -> None:
         self.phase = NavPhase.EAST_77
@@ -104,6 +143,8 @@ class OverworldToLevel1Controller:
         self.last_y = -1
         self.last_screen = -1
         self.waypoint_index = 0
+        self.farm_attempts = 0
+        self._farm = None
         self.notes.clear()
         self.success = False
 
@@ -211,6 +252,93 @@ class OverworldToLevel1Controller:
             btn = "LEFT" if dx > 0 else "RIGHT"
         return self._swing(btn, reason)
 
+    def _rupee_scoop(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Walk onto a nearby type-0x60 rupee drop without a farm loop.
+
+        ``need_rupees>0`` scoops while short. Default 0 only scoops on 0x78
+        (easy octorok farm after the sword) so other screens stay a hop.
+        Stays on-screen; refuses a drop on the travel direction's opposite
+        edge. Pickup is contact — no swing.
+        """
+        short = self.need_rupees > 0 and snap.rupees < self.need_rupees
+        opportunistic = self.need_rupees <= 0 and snap.screen == 0x78
+        if not short and not opportunistic:
+            return None
+        if snap.mode != PLAY_MODE or snap.level != 0:
+            return None
+        drops = [
+            obj
+            for obj in snap.objects
+            if obj.slot >= 1
+            and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
+            and 40 < obj.y < 220
+            and 8 < obj.x < 248
+        ]
+        if not drops:
+            return None
+        nearest = min(
+            drops,
+            key=lambda obj: manhattan(snap.link_x, snap.link_y, obj.x, obj.y),
+        )
+        dist = manhattan(snap.link_x, snap.link_y, nearest.x, nearest.y)
+        if dist > self.scoop_radius:
+            return None
+        travel = _SCROLL_HOLD.get(self.phase)
+        if travel == "RIGHT" and nearest.x < EDGE_WEST_X + 16:
+            return None
+        if travel == "LEFT" and nearest.x > EDGE_EAST_X - 16:
+            return None
+        if travel == "DOWN" and nearest.y < EDGE_NORTH_Y + 16:
+            return None
+        if travel == "UP" and nearest.y > EDGE_SOUTH_Y - 16:
+            return None
+        if dist <= 4:
+            return FrameAction(nes_idle_action(), "scoop_rupee")
+        dx = nearest.x - snap.link_x
+        dy = nearest.y - snap.link_y
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        elif abs(dy) > 2:
+            direction = "DOWN" if dy > 0 else "UP"
+        else:
+            return FrameAction(nes_idle_action(), "scoop_rupee")
+        return FrameAction(nes_action(direction), "scoop_rupee")
+
+    def _farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Divert into a heart farm while low, then hand the hop back."""
+        if self._farm is not None:
+            action = self._farm.step(snap)
+            if self._farm.phase not in (HeartFarmPhase.DONE, HeartFarmPhase.FAILED):
+                return action
+            note = "farm_ok" if self._farm.success else "farm_gave_up"
+            self.notes.append(f"{note}_{snap.filled_hearts}")
+            self._farm = None
+            self.stuck = 0
+            return FrameAction(nes_idle_action(), note)
+        if (
+            self.farm_below_hearts <= 0
+            or snap.level != 0
+            or snap.filled_hearts >= self.farm_below_hearts
+            or self.farm_attempts >= self.max_farm_attempts
+            or self.phase in (NavPhase.DONE, NavPhase.FAILED, NavPhase.ENTER_DOOR)
+            or farm_at(int(snap.screen)) is None
+        ):
+            return None
+        self.farm_attempts += 1
+        kwargs: dict[str, Any] = {
+            "min_filled": self.farm_min_filled,
+            "max_frames": self.farm_max_frames,
+            "farm_screen": int(snap.screen),
+            "waypoints": BAND_SWEEP_WAYPOINTS,
+        }
+        pair = _ROUTE_RESTOCK.get(self.phase) or restock_for(int(snap.screen))
+        if pair is not None:
+            kwargs["restock_neighbor_screen"] = pair[0]
+            kwargs["restock_direction"] = pair[1]
+        self._farm = HeartFarmController(**kwargs)
+        self.notes.append(f"farm_start_{snap.screen:02x}_{snap.filled_hearts}")
+        return self._farm.step(snap)
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self._nav_snap = snap
         self.frames += 1
@@ -227,6 +355,10 @@ class OverworldToLevel1Controller:
             self._set_phase(NavPhase.FAILED, "timeout")
             return FrameAction(nes_idle_action(), "timeout")
 
+        if snap.mode == DEATH_MODE:
+            self._set_phase(NavPhase.FAILED, "link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+
         if snap.level == 1:
             self.success = True
             self._set_phase(NavPhase.DONE, "in_level1")
@@ -242,17 +374,28 @@ class OverworldToLevel1Controller:
             self._set_phase(NavPhase.DONE, "on_level1_screen")
             return FrameAction(nes_idle_action(), "done")
 
-        if snap.transitioning:
+        farm_busy = self._farm is not None
+        if snap.transitioning and not farm_busy:
             hold = _SCROLL_HOLD.get(self.phase)
             if hold:
                 return FrameAction(nes_action(hold), "scroll_hold")
             return FrameAction(nes_idle_action(), "scroll_idle")
 
         # Mode 8 = brief hit freeze; keep holding travel dir. Other modes wait.
-        if snap.mode not in (5, 8, 11) and not snap.transitioning:
+        if snap.mode not in (5, 8, 11) and not snap.transitioning and not farm_busy:
             return wake_or_wait_mode(self.phase_frames, snap.mode)
 
-        self._advance_phase_for_screen(snap)
+        if not farm_busy:
+            self._advance_phase_for_screen(snap)
+
+        farm = self._farm_action(snap)
+        if farm is not None:
+            return farm
+
+        if snap.mode == PLAY_MODE and snap.level == 0:
+            scoop = self._rupee_scoop(snap)
+            if scoop is not None:
+                return scoop
 
         if self.phase is NavPhase.EAST_77:
             return self._align_and_push(
@@ -364,6 +507,8 @@ class OverworldToLevel1Controller:
             "frames": self.frames,
             "notes": list(self.notes),
             "stuck": self.stuck,
+            "farm_attempts": self.farm_attempts,
+            "need_rupees": self.need_rupees,
         }
 
 

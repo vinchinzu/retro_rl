@@ -502,6 +502,7 @@ class OverworldToBaitShopController(OverworldPathController):
     hops: tuple[ScreenHop, ...] = POST_L6_TO_BAIT_HOPS
     require_sword: bool = True
     max_frames: int = BAIT_APPROACH_MAX_FRAMES
+    need_rupees: int = 60
     evidence: str = "hypothesis"
     route_eligible: bool = False
 

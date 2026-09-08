@@ -28,7 +28,7 @@ def _ram(**fields: int) -> np.ndarray:
     ram[ADDR_SCREEN] = fields.get("screen", SCREEN_START)
     ram[ADDR_LINK_X] = fields.get("x", 120)
     ram[ADDR_LINK_Y] = fields.get("y", 141)
-    ram[ADDR_HEALTH] = fields.get("health", 0x22)
+    ram[ADDR_HEALTH] = fields.get("health", 0x33)
     ram[ADDR_SWORD] = fields.get("sword", 1)
     return ram
 
