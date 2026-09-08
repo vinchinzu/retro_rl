@@ -14,11 +14,13 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_SOUTH_DARKNUTS,
     ROOM_L3_WEST_DARKNUTS,
     ROOM_L3_WEST_KEY,
-    Level3NorthChainController,
-    Level3RaftPathController,
-    Level3WestDoorController,
     level3_manhandla_live,
 )
+from zelda_i.level3.path import (
+    Level3NorthChainController,
+    Level3WestDoorController,
+)
+from zelda_i.level3.raft_path import Level3RaftPathController
 from zelda_i.ram import (
     ADDR_KEYS,
     ADDR_LEVEL,

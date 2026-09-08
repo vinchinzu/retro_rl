@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 
+from zelda_i.level1.clear import (
+    Level1Clear53Controller,
+    Level1Clear53Phase,
+    Level1Clear63Controller,
+    Level1Clear63Phase,
+)
 from zelda_i.level1.path import (
     FIRST_KEY_ITEM_ID,
     ROOM_ENTRANCE,
@@ -9,10 +15,6 @@ from zelda_i.level1.path import (
     ROOM_KEY_STALFOS,
     ROOM_NORTH_STALFOS,
     STALFOS_OBJECT_TYPE,
-    Level1Clear63Controller,
-    Level1Clear63Phase,
-    Level1Clear53Controller,
-    Level1Clear53Phase,
     Level1FirstKeyController,
     Level1KeyPhase,
     Level1UnlockNorthController,

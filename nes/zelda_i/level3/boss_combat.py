@@ -30,11 +30,10 @@ from zelda_i.dungeon.ops import (
     push_dir,
     room_fields,
 )
+from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
 from zelda_i.level3.dungeon import (
     KEESE_OBJECT_TYPE,
-    LEVEL3_TRIFORCE_BIT,
     MANHANDLA_OBJECT_TYPE,
-    PASSAGE_EXIT_WAYPOINTS,
     ROOM_L3_BOSS,
     ROOM_L3_BOSS_PREP,
     ROOM_L3_RAFT_PASSAGE,
@@ -42,6 +41,7 @@ from zelda_i.level3.dungeon import (
     ZOL_OBJECT_TYPE,
     level3_manhandla_live,
 )
+from zelda_i.level3.geometry import PASSAGE_EXIT_WAYPOINTS
 from zelda_i.level3.overworld import LEVEL3
 from zelda_i.paths import RECORDINGS_DIR
 from zelda_i.ram import (

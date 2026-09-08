@@ -534,26 +534,3 @@ def level1_north_room_success(ram: np.ndarray) -> bool:
         and snap.mode == PLAY_MODE
         and len(live_stalfos) >= 3
     )
-
-
-_CLEAR_EXPORTS = frozenset({
-    "Level1Clear53Controller",
-    "Level1Clear53Phase",
-    "Level1Clear63Controller",
-    "Level1Clear63Phase",
-    "level1_room_53_cleared",
-    "level1_room_63_cleared",
-})
-
-
-def __getattr__(name: str):
-    """Re-export 0x63/0x53 clear hops from ``level1.clear``."""
-    if name in _CLEAR_EXPORTS:
-        from zelda_i.level1 import clear as _clear
-
-        return getattr(_clear, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | _CLEAR_EXPORTS)

@@ -1,7 +1,6 @@
 """Level 1 north Stalfos rooms 0x63 / 0x53 (clear hops).
 
-Entrance first-key / unlock-north stay in ``level1.path``. Historical
-names are re-exported from that module for composer strings.
+Entrance first-key / unlock-north stay in ``level1.path``.
 """
 
 from __future__ import annotations

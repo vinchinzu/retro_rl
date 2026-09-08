@@ -1,9 +1,8 @@
 """Level 3 multi-room path controllers (door micros, west key, north chain).
 
-Room specs and stop predicates remain in ``level3_dungeon``. Raft path lives in
-``level3_raft_path`` (import there, or via ``level3_dungeon`` shim).
-``Level3NorthChainController`` is defined in ``level3_clear5b`` and re-exported
-here.
+Room specs and stop predicates remain in ``level3.dungeon``. Raft path lives in
+``level3.raft_path``. ``Level3NorthChainController`` is defined in
+``level3.clear5b`` and re-exported here.
 """
 
 from __future__ import annotations
@@ -47,8 +46,6 @@ WEST_ENTER_MAX_FRAMES = 1200
 NORTH_ENTER_MAX_FRAMES = 1500
 NORTH_EXIT_6B_MAX_FRAMES = 6000
 
-# Re-export geometry for callers that imported door bands from this module.
-# Re-export for boss path / scripts that imported ROOM_L3_ENTRY from here.
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM
 
 def west_door_step(snap: ZeldaSnapshot) -> FrameAction:

@@ -177,9 +177,10 @@ Ordered by effort/risk ratio, easiest proof first.
       Deltas are `require_screen`, the TF bit, and a `raft` item predicate.
       Historical no-arg names (`PostL4TriforceSettleController`, …) are bound
       subclasses. **Done 2026-09-07.**
-- [ ] **2.2** Delete the self-labelled shims: `level1/path.py:539-558`
-      `_CLEAR_EXPORTS` `__getattr__`, `level3/path.py:5` + `level3/dungeon.py:493`
-      re-exports (~280 LOC).
+- [x] **2.2** Delete the self-labelled shims: `level1/path.py` `_CLEAR_EXPORTS`
+      `__getattr__`, `level3/dungeon.py` path/raft/geometry `__getattr__`.
+      Callers import `level1.clear`, `level3.path` / `raft_path` / `geometry`,
+      and `anchors.TF_BIT_L3`. **Done 2026-09-07.**
 - [ ] **2.3** Promote `DoorHopSpec` → `dungeon/door_hop.py`; convert the ~33
       one-room modules to rows (**~7,500 LOC**). Row conversion preserves the
       hard-won geometry verbatim — it is mechanical, not a rewrite. Level order
