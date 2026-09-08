@@ -840,34 +840,6 @@ def candle_selected(ram) -> bool:
     return read_u8(ram, ADDR_SELECTED_ITEM) == B_ITEM_CANDLE
 
 
-def poke_candle_for_recon(env, *, candle: int = CANDLE_BLUE, selected: int = B_ITEM_CANDLE) -> list[str]:
-    """RECON-ONLY inventory poke: set candle + B-cursor.
-
-    Not allowed under ``docs/ASSIST_CONTRACT.md`` for Clean or published
-    assisted STATUS. Use for geometry/entrance probes when natural shop buy
-    is still residual (rr-ccx). Records notes for the run report.
-    """
-    notes: list[str] = []
-    data = env.unwrapped.data
-    for name, addr, val in (
-        ("candle", ADDR_CANDLE, int(candle) & 0xFF),
-        ("selected_item", ADDR_SELECTED_ITEM, int(selected) & 0xFF),
-        ("candle_used", ADDR_CANDLE_USED, 0),
-    ):
-        try:
-            data.set_variable(name, {"address": addr, "type": "|u1"})
-            data.set_value(name, val)
-            notes.append(f"{name}={val}")
-        except Exception as exc:  # noqa: BLE001 — recon best-effort
-            try:
-                data.memory.assign(addr, "|u1", val)
-                notes.append(f"{name}_assign={val}")
-            except Exception as exc2:  # noqa: BLE001
-                notes.append(f"{name}_fail={exc!r}/{exc2!r}")
-    notes.append("RECON_POKE_NOT_CLEAN")
-    return notes
-
-
 def level8_bush_screen_reached(ram, *, screen: int | None = None) -> bool:
     snap = read_snapshot(ram)
     target = screen if screen is not None else SCREEN_LEVEL8_BUSH
@@ -951,7 +923,6 @@ __all__ = [
     "CandleShopNavPhase",
     "has_candle",
     "candle_selected",
-    "poke_candle_for_recon",
     "level8_bush_screen_reached",
     "level8_entered",
     "candle_shop_screen_reached",

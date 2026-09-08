@@ -130,7 +130,8 @@ when Link exits at `x>=0x80`. The corrected controller keeps this same
 authorized target, crosses the tunnel floor to the right ladder at `x=192`,
 and reached play `0x1D` 1/1. No second position target or write was added.
 
-The implementation was `zelda_i.assist.poke_link_position`. `rr-17co`
+The implementation was `zelda_i.assist.poke_link_position`, **deleted
+2026-09-07** (zero call sites since the natural walk-on landed). `rr-17co`
 walked onto tile `0x71` at `(208,93)` via the south-band east column
 (`l6_stairs3a_southband` 1/1, hop 290f) with no retry of occupancy at y=149
 (ne71 v1–v3), and both the warp and cellar08 reported `position_writes=0`.

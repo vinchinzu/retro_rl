@@ -5,9 +5,11 @@ exit, bomb stand, patrol clear). Prefer ``DoorDir`` bits from
 ``zelda_i.door_graph`` over redefining door masks.
 
 ``poke_bombs`` / ``poke_keys`` / ``poke_wooden_arrows`` are Survival
-inventory writes (owned counts / Gohma arrows). ``poke_link_position``
-is the L6 0x3A stairs exception. Document every call. Never write
-undiscovered items or ``max_bombs``. Not Clean.
+inventory writes (owned counts / Gohma arrows). Document every call. Never
+write undiscovered items or ``max_bombs``. Not Clean.
+
+The L6 0x3A ``poke_link_position`` exception was retired 2026-09-03 (the
+natural south-band walk-on superseded it) and removed 2026-09-07.
 """
 
 from __future__ import annotations
@@ -332,60 +334,6 @@ def poke_rupees(env: Any, n: int = 60) -> str:
         return f"rupees={n}"
     except Exception as exc:
         return f"poke_fail={exc!r}"
-
-
-def poke_link_position(
-    env: Any,
-    x: int,
-    y: int,
-    *,
-    room: int,
-    from_xy: tuple[int, int],
-) -> dict[str, Any]:
-    """Write only ``ADDR_LINK_X`` / ``ADDR_LINK_Y``. Not Clean.
-
-    Operator exception for the L6 0x3A stairs (see ``docs/ASSIST_CONTRACT.md``).
-    The pair counts as one position write. Do not write room, door,
-    inventory, Triforce, capacity, facing, mode, or load state.
-    """
-    notes: list[str] = []
-    nx = mem_write(env, ADDR_LINK_X, int(x))
-    ny = mem_write(env, ADDR_LINK_Y, int(y))
-    notes.append(nx)
-    if ny != nx:
-        notes.append(ny)
-    assigned = int(nx.startswith("memory.")) + int(ny.startswith("memory."))
-    writes: list[dict[str, Any]] = [
-        {
-            "field": "link_x",
-            "address": ADDR_LINK_X,
-            "from": int(from_xy[0]),
-            "to": int(x),
-        },
-        {
-            "field": "link_y",
-            "address": ADDR_LINK_Y,
-            "from": int(from_xy[1]),
-            "to": int(y),
-        },
-    ]
-    return {
-        "writes": writes,
-        "notes": notes,
-        "room": int(room),
-        "room_hex": f"0x{int(room):02x}",
-        "xy": [int(x), int(y)],
-        "from_xy": [int(from_xy[0]), int(from_xy[1])],
-        "position_writes": 1 if assigned == 2 else 0,
-        "addresses": [ADDR_LINK_X, ADDR_LINK_Y],
-        "progression_writes": 0,
-        "capacity_writes": 0,
-        "door_writes": 0,
-        "inventory_writes": 0,
-        "triforce_writes": 0,
-        "state_load": False,
-        "mid_run_state_load": False,
-    }
 
 
 def poke_food(
@@ -872,7 +820,7 @@ __all__ = [
     "OWNED_INVENTORY_FIELDS", "PUSH_FRAMES", "SETTLE_FRAMES", "WOODEN_ARROWS",
     "apply_owned_inventory", "bomb_stand", "ensure_bomb", "exit_door",
     "fight_clear", "goto", "idle", "live_killables", "mem_write", "objs",
-    "poke_bombs", "poke_food", "poke_keys", "poke_link_position", "poke_rupees",
+    "poke_bombs", "poke_food", "poke_keys", "poke_rupees",
     "poke_wooden_arrows",
     "push_dir", "room_fields",
 ]

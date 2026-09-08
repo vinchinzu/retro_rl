@@ -139,3 +139,74 @@ Refresh this file when sibling probes land live door screens
 ## Item-gate hops (`rr-iri`)
 
 See `route/item_gate_hops.py` / `scripts/probe_item_gate_hops.py` for candle 0x66 / bomb 0x4A / white-sword region hops (assisted).
+
+---
+
+## Dungeon leave → mouth stitch (merged from `docs/tasks/ow-handoff.md`, 2026-09-07)
+
+Packet: `zelda_i.overworld.stitch.OverworldHandoff`. Defaults `verified=False`,
+`route_eligible=False`; `complete()` is false until `verified=True` **and**
+every measured inventory field is filled.
+
+The full power-on → credits tape (`recordings/BASELINE_20260907.json`) is green,
+so every leave below is now walked live; the L7/L8 rows that the original
+handoff marked UNMEASURED are superseded by that tape.
+
+| From | Leave pose | To mouth |
+|------|-----------|----------|
+| L1 | `0x37` ~(112,125) mode 5, TF `0x01` | L2 `0x3C` |
+| L2 | `0x3C` ~(112,125) mode 5, TF `0x03` | L3 `0x74` |
+| L3 | `0x74` ~(128,125) mode 5, TF `0x07`, raft=1 | L4 `0x45` via dock `0x55` |
+| L4 | `0x45` island, settle 284 f, TF `0x0F` | L5 `0x0B` |
+| L5 | `0x0B`, settle 510 f, TF `0x1F`, Whistle earned | L6 `0x22` |
+| L6 | `0x22` `(112,125)` mode 5, TF `0x3F`, keys 2 bombs 8 rupees 42 Rod 1 Bow 1 arrows 1, 8 HC | L7 pond `0x42`; bait shop `0x34` |
+| L7 | TF `0x7F`, Candle 2, Whistle retained | L8 bush `0x6D` from `0x5D` south x≈48 |
+| L8 | TF `0xFF`, Magic Key, bombs | L9 Spectacle Rock `0x05`, bomb the left rock |
+
+Cumulative TF after clear: L1 `0x01` … L6 `0x3F` … L7 `0x7F` … L8 `0xFF`.
+The L9 Old Man wants `0xFF`. `(112,125)` is the dungeon mouth tile — a fanfare
+return lands Link **on** it, so re-entry guards need a `_left_mouth` latch.
+
+### Open: bait-shop approach (`rr-8t4.4` / `rr-8t4.5`)
+
+The live approach attempted was through **`0x53` (224,173)**, LEFT-inland
+before DOWN — recorded as a **live fail**. The post-L6 pocket
+(`0x22/0x32/0x33/0x23/0x24/0x25`) has no southward outlet to the row-4/5 band
+holding pond `0x42` and shop `0x34`; those are reached walking north out of the
+western forest band from *start*. This is the blocker for the natural 60R Bait
+buy that Phase 6.5 needs.
+
+### Later overworld shortcuts — needed, **do not grant**
+
+| Capability | Screen | Requires | Status |
+|------------|--------|----------|--------|
+| White Sword cave | `0x0A` (reached from row 0 via `0x1A` north at x=208) | 5 heart containers | **live** — on the L9 entry chapter |
+| Magical Sword grave | `0x21` | 12 HC; push the 3rd-from-left middle gravestone | source only; `0x21` currently unreachable (`level7/overworld.py:91-95`) |
+| Bracelet Armos | `0x24` | none; top-right of 10 | source only — **but the spine already walks `0x24`** (Phase 5.2) |
+
+### Bait shop `0x34` — measured geometry (recon, single-run)
+
+From the L7-A reference recon, preserved at tag **`recon/rr-8t4.5-bait-shop`**
+(commit `bd9ac79f`; its four probe CLIs were not merged into the cleaned tree —
+`git show` the tag to re-read them). Single-run, **not 2/2** — re-verify before
+routing.
+
+- **`0x34` is the Armos bait shop**: a 3×2 statue grid. The special
+  (staircase) Armos is the **LEFT column**, ~`(64,118)` in link coords →
+  **mode 16 at `(64,125)`**.
+- **Shop cave interior**: Link spawns ~`(112,213)`; merchant type **`0x7a`** at
+  `(120,128)`; two type-`0x40` pedestals at x=**72** and x=**168**, y=128.
+  Message "BOY, THIS IS REALLY EXPENSIVE!"; dialog settles by frame ~4.
+- **Stock**: Key 80 (left), Blue Ring 250 (mid), **Bait 60 (right, x≈168)**.
+- A **pre-L6** walkable leg exists: PostSwordStart → western forest band →
+  `0x54` → `0x44` → `0x34`, reusing the `OverworldToLevel7Pond` hops to `0x54`
+  then a manual north push (`0x54`→`0x44` gap at x≈116, `0x44`→`0x34` gap at
+  x≈132). **This is not what `rr-8t4.4` asks for** — that bead wants the
+  *post-L6* route from `MEASURED_POST_L6_EXIT`, out of the `0x22` mountain
+  pocket.
+- **Not done**: the buy touch was never confirmed (food 0→1, −60R).
+
+This is the geometry `NaturalBaitPurchaseController` (`level7/entry.py:107`)
+needs to stop failing closed — it wants `shop_geometry_verified=True` plus
+`shop_cave_xy` on `BaitPurchasePlan`. See Phase 6.5 in
+[CLEANUP_PLAN.md](CLEANUP_PLAN.md).

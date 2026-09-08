@@ -10,18 +10,6 @@ from typing import Any
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
-from zelda_i.level8.bush import (
-    MOUTH_STANDS,
-    REFUTED_BUSH_AIM,
-    REFUTED_PUSH,
-    VERIFIED_BUSH_AIM,
-    VERIFIED_BUSH_X,
-    VERIFIED_BUSH_Y,
-    VERIFIED_FACING,
-    VERIFIED_PUSH,
-    IsolatedBushReconController,
-    make_isolated_bush_recon_controller,
-)
 from zelda_i.level8.dungeon import (
     GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     GLEEOK_ROUTE,
@@ -48,6 +36,16 @@ from zelda_i.level8.dungeon import (
 from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
 from zelda_i.level8.entry import (
     ADDR_CANDLE_USED,
+    MOUTH_STANDS,
+    REFUTED_BUSH_AIM,
+    REFUTED_PUSH,
+    VERIFIED_BUSH_AIM,
+    VERIFIED_BUSH_X,
+    VERIFIED_BUSH_Y,
+    VERIFIED_FACING,
+    VERIFIED_PUSH,
+    IsolatedBushReconController,
+    make_isolated_bush_recon_controller,
     B_ITEM_CANDLE,
     CANDLE_RED,
     MEASURED_POST_L7_HANDOFF,
@@ -81,7 +79,6 @@ from zelda_i.tests.ram_helpers import make_ram
 
 _LEVEL8_DIR = Path(__file__).resolve().parents[1] / "level8"
 _WRITE_MODULES = (
-    "bush.py",
     "dungeon.py",
     "entry.py",
     "hops.py",
