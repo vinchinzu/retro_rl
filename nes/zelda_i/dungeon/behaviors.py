@@ -81,6 +81,11 @@ PROJECTILE_TYPES = frozenset(
     }
 )
 
+_SMALL_SHIELD_BLOCKS = frozenset(
+    {ROCK_PROJECTILE_TYPE, MOBLIN_ARROW_TYPE, LYNEL_SWORD_SHOT_TYPE}
+)
+_MAGIC_SHIELD_BLOCKS = frozenset({FIREBALL_TYPE, MANHANDLA_PROJECTILE_TYPE})
+
 DIGDOGGER_POLICY = (
     "Whistle shrinks type 0x38 (HP 240) to 0x18 (HP 128); sword only after shrink."
 )
@@ -405,6 +410,19 @@ def is_projectile(obj: ZeldaObject) -> bool:
     return (int(obj.type_id) & 0xFF) in PROJECTILE_TYPES
 
 
+def shield_blocks(obj: ZeldaObject, *, magic_shield: bool = False) -> bool:
+    """True if Link's shield stops ``obj`` while he faces it and does not swing.
+
+    The small shield eats rocks, arrows and Lynel sword shots; fireballs
+    (and Manhandla/Gleeok residuals) need the Magical Shield. A Goriya
+    boomerang is not blockable at all — it stuns.
+    """
+    type_id = int(obj.type_id) & 0xFF
+    if type_id in _SMALL_SHIELD_BLOCKS:
+        return True
+    return magic_shield and type_id in _MAGIC_SHIELD_BLOCKS
+
+
 def needs_whistle(obj: ZeldaObject) -> bool:
     """Digdogger large form: recorder first; sword is not legal yet."""
     return (int(obj.type_id) & 0xFF) == DIGDOGGER_TYPE
@@ -579,6 +597,7 @@ __all__ = [
     "GIBDO_TYPE",
     "WALLMASTER_TYPE",
     "FIREBALL_TYPE",
+    "shield_blocks",
     "MANHANDLA_PROJECTILE_TYPE",
     "GORIYA_BOOMERANG_TYPE",
     "ROCK_PROJECTILE_TYPE",

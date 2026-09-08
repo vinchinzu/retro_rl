@@ -5,6 +5,7 @@ import numpy as np
 from zelda_i.combat import in_sword_hitbox, overworld_threat_objects, should_swing_at
 from zelda_i.overworld.common import (
     KNOCKBACK_STUCK_PENALTY,
+    answer_projectile,
     overworld_projectiles,
     swing_action,
     track_knockback,
@@ -12,8 +13,10 @@ from zelda_i.overworld.common import (
 )
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from retro_harness.nes import nes_action
+from zelda_i.dungeon.behaviors import FIREBALL_TYPE
 from zelda_i.ram import (
     ADDR_HEALTH,
+    ADDR_MAGIC_SHIELD,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
@@ -124,9 +127,18 @@ def test_walk_or_swing_does_not_slash_far_behind_enemy() -> None:
     assert act.action == swing_action(3, "RIGHT", "walk", period=10, hold=3).action
 
 
-def _shot_snap(*, x: int, y: int, ox: int, oy: int, type_id: int = 0x53):
+def _shot_snap(
+    *,
+    x: int,
+    y: int,
+    ox: int,
+    oy: int,
+    type_id: int = 0x53,
+    magic_shield: int = 0,
+):
     """Link plus one projectile slot (Octorok rock by default, hp stays 0)."""
     ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MAGIC_SHIELD] = magic_shield
     ram[ADDR_MODE] = PLAY_MODE
     ram[ADDR_SCREEN] = 0x37
     ram[ADDR_LINK_X] = x
@@ -144,28 +156,39 @@ def test_overworld_projectiles_survive_the_hp_filter() -> None:
     assert len(overworld_projectiles(snap)) == 1
 
 
-def test_walk_or_swing_dodges_a_shot_in_the_travel_lane() -> None:
-    """Rock 24px east on Link's row: step off the lane, do not walk in."""
+def test_walk_or_swing_shields_a_blockable_shot_without_pressing_a() -> None:
+    """Octorok rock on Link's row: keep walking into it, but drop the A pulse."""
     snap = _shot_snap(x=120, y=140, ox=144, oy=140)
     act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
-    assert act.reason == "hop0_dodge"
-    assert list(act.action) in (
-        list(nes_action("UP")),
-        list(nes_action("DOWN")),
-    )
+    assert act.reason == "hop0_shield"
+    assert list(act.action) == list(nes_action("RIGHT"))
 
 
-def test_dodge_moves_away_from_the_shot_row() -> None:
-    snap = _shot_snap(x=120, y=140, ox=144, oy=148)
+def test_walk_or_swing_dodges_a_fireball_without_the_magic_shield() -> None:
+    """Fireball 0x1e is not blockable bare: leave the lane."""
+    snap = _shot_snap(x=120, y=140, ox=144, oy=148, type_id=FIREBALL_TYPE)
     act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
+    assert act.reason == "hop0_dodge"
     assert list(act.action) == list(nes_action("UP"))
+
+
+def test_magic_shield_blocks_the_fireball_instead() -> None:
+    snap = _shot_snap(
+        x=120, y=140, ox=144, oy=148, type_id=FIREBALL_TYPE, magic_shield=1
+    )
+    act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
+    assert act.reason == "hop0_shield"
 
 
 def test_dodge_flips_side_at_the_screen_edge() -> None:
     """Shot below would send Link north, but y=66 is the north wall."""
-    snap = _shot_snap(x=120, y=66, ox=144, oy=74)
+    snap = _shot_snap(x=120, y=66, ox=144, oy=74, type_id=FIREBALL_TYPE)
     act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
     assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_answer_projectile_is_none_for_an_empty_lane() -> None:
+    assert answer_projectile(120, 140, "RIGHT", (), "hop0") is None
 
 
 def test_shot_outside_the_travel_lane_does_not_dodge() -> None:
