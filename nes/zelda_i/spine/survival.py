@@ -49,7 +49,7 @@ from zelda_i.level2.tf_spine import (
 from zelda_i.level3.spine import l3_hops
 from zelda_i.level3.bomb_budget import L3_BOMB_WALL_SPEND
 from zelda_i.level3.boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
-from zelda_i.level3.dungeon import LEVEL3_TRIFORCE_BIT
+from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
 from zelda_i.level4.spine import L4_STOPS, continue_level4_spine
 from zelda_i.level5.spine import (
     L5_STOPS,

@@ -6,15 +6,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from zelda_i.level1.clear import Level1Clear53Controller, Level1Clear63Controller
 from zelda_i.level1.path import (
     CLEAR_53_MAX_FRAMES,
     CLEAR_63_MAX_FRAMES,
     SEGMENT_MAX_FRAMES as FIRST_KEY_MAX_FRAMES,
-)
-from zelda_i.level1.path import (
     UNLOCK_NORTH_MAX_FRAMES,
-    Level1Clear53Controller,
-    Level1Clear63Controller,
     Level1FirstKeyController,
     Level1UnlockNorthController,
 )

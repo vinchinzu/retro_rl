@@ -261,7 +261,7 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 
 #### West key (0x7c → 0x7b)
 
-- Module: `zelda_i.level3.dungeon` (`ROOM_7B_SPEC`, `Level3WestKeyController`)
+- Module: `zelda_i.level3.dungeon` (`ROOM_7B_SPEC`); path `Level3WestKeyController`
 - Isolated segment CLI pruned. Spine dest 0x5b (includes west key):
   `uv run python nes/zelda_i/scripts/run_survival_spine.py --through l3-dest-6b --no-video --trials 1`
 - Stop: `level3_room_7b_key_success` (keys≥1, no live Zols, room 0x7b)

@@ -53,8 +53,7 @@ from zelda_i.level3.geometry import (
 from zelda_i.level3.overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
-# Door-band geometry above is used in DoorRoutes. Other public geometry and
-# path timing re-exports are lazy (see __getattr__).
+# Door-band geometry above is used in DoorRoutes.
 
 # --- Live L3 room / enemy anchors (isolated pure 2026-08-06 + past-5b 08-07) ---
 ROOM_L3_ENTRY = SCREEN_LEVEL3_ENTRY_ROOM  # 0x7C
@@ -428,7 +427,7 @@ def level3_manhandla_live(snap: ZeldaSnapshot) -> list:
     ]
 
 
-# Register room specs (path controllers in level3_path / level3_raft_path).
+# Register room specs (path controllers in level3.path / level3.raft_path).
 for _spec in (
     ROOM_7B_SPEC,
     ROOM_6B_SPEC,
@@ -439,78 +438,3 @@ for _spec in (
     ROOM_69_SPEC,
 ):
     register_room_spec(_spec)
-
-
-# Path controllers + timing knobs (canonical: level3_path / level3_raft_path).
-_PATH_EXPORTS = frozenset({
-    "west_door_step",
-    "north_door_7b_step",
-    "Level3WestDoorController",
-    "Level3NorthDoor7bController",
-    "Level3NorthExit6bController",
-    "Level3WestKeyController",
-    "Level3NorthChainController",
-    "WEST_ENTER_MAX_FRAMES",
-    "NORTH_ENTER_MAX_FRAMES",
-    "NORTH_EXIT_6B_MAX_FRAMES",
-})
-
-_RAFT_EXPORTS = frozenset({
-    "Level3RaftPathController",
-    "raft_passage_step",
-    "RAFT_PATH_PHASES",
-    "KEY_DOOR_PUSH_FRAMES",
-    "SPAWN_SETTLE_FRAMES",
-    "LEFT_5B_MAX_FRAMES",
-    "KEY_5A_MAX_FRAMES",
-    "CLEAR_59_MAX_FRAMES",
-    "DOWN_69_MAX_FRAMES",
-    "CLEAR_69_MAX_FRAMES",
-    "STAIRS_69_MAX_FRAMES",
-    "PASSAGE_RAFT_MAX_FRAMES",
-    "RAFT_PATH_MAX_FRAMES",
-})
-
-# Geometry / anchors not used in room tables (compat for older imports).
-_GEOMETRY_EXPORTS = frozenset({
-    "BOMB_STAND_59_RIGHT",
-    "BOMB_STAND_5B_RIGHT",
-    "DOOR_5C_RIGHT_Y",
-    "KEY_DOOR_Y_TOL",
-    "NORTH_DOOR_X_TOL",
-    "PASSAGE_EXIT_WAYPOINTS",
-    "RAFT_CHANNEL_X",
-    "RAFT_CHANNEL_X_TOL",
-    "RAFT_PASSAGE_MODE",
-    "RAFT_PICKUP_X",
-    "RAFT_PICKUP_Y",
-    "RAFT_SOUTH_Y",
-    "RAFT_SOUTH_Y_TOL",
-    "WEST_WALL_5B_X",
-})
-
-
-def __getattr__(name: str):
-    if name == "LEVEL3_TRIFORCE_BIT":
-        from zelda_i.anchors import TF_BIT_L3
-        return TF_BIT_L3
-    if name in _RAFT_EXPORTS:
-        from zelda_i.level3 import raft_path as _raft
-        return getattr(_raft, name)
-    if name in _PATH_EXPORTS:
-        from zelda_i.level3 import path as _paths
-        return getattr(_paths, name)
-    if name in _GEOMETRY_EXPORTS:
-        from zelda_i.level3 import geometry as _geo
-        return getattr(_geo, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-def __dir__():
-    return sorted(
-        set(globals())
-        | set(_PATH_EXPORTS)
-        | set(_RAFT_EXPORTS)
-        | set(_GEOMETRY_EXPORTS)
-        | {"LEVEL3_TRIFORCE_BIT"}
-    )

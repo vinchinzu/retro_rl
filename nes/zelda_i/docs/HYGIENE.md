@@ -66,7 +66,6 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 
 - Bomb walls: prefer `make_bomb_north_controller()` etc. from `level2.bomb_path`
   (or `level2.dungeon` shim). Class-named aliases still resolve to the same factories.
-- Raft: prefer `from zelda_i.level3.raft_path import Level3RaftPathController`.
-  One shim: `level3.dungeon` (`__getattr__`). **Not** re-exported from `level3.path`.
+- Raft: import `Level3RaftPathController` from `level3.raft_path`.
 - Inventory poke (`ADDR_SELECTED_ITEM` / `B_ITEM_BOMB`) lives in `dungeon.ops`, not
   `dungeon.bomb_wall`. `$0656` is **1=bombs, 2=arrows, 4=candle** — never `bombs=2`.

@@ -47,15 +47,11 @@ from zelda_i.level3.boss_combat import (
     exit_raft_passage,
     prep_5d_still_killable,
 )
+from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
 from zelda_i.level3.dungeon import (
-    BOMB_STAND_59_RIGHT,
-    BOMB_STAND_5B_RIGHT,
     DARKNUT_OBJECT_TYPE,
-    DOOR_5C_RIGHT_Y,
     INVULN_MOVER_0X2B,
-    LEVEL3_TRIFORCE_BIT,
     MANHANDLA_OBJECT_TYPE,
-    PASSAGE_EXIT_WAYPOINTS,
     ROOM_L3_BOSS,
     ROOM_L3_BOSS_PREP,
     ROOM_L3_BOMB_SHORTCUT,
@@ -64,6 +60,12 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_SOUTH_DARKNUTS,
     ROOM_L3_WEST_DARKNUTS,
     level3_manhandla_live,
+)
+from zelda_i.level3.geometry import (
+    BOMB_STAND_59_RIGHT,
+    BOMB_STAND_5B_RIGHT,
+    DOOR_5C_RIGHT_Y,
+    PASSAGE_EXIT_WAYPOINTS,
 )
 from zelda_i.level3.overworld import LEVEL3
 from zelda_i.paths import RECORDINGS_DIR
