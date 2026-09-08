@@ -79,7 +79,7 @@ def test_success_and_backtrack_predicate() -> None:
 def test_grid_xmin_wide_enough_for_the_clip_drift() -> None:
     """Regression guard for rr-mzxn.
 
-    The generic ``door_hop.Level6DoorHopController`` used the module
+    The generic ``dungeon.door_hop.DoorHopController`` used the module
     default ``OccupancyGrid`` (xmin=40): from the real south-mouth entry
     (120,205), holding LEFT+UP until y clears the clip threshold drifts
     Link to the west wall (x=32) *before* y clears -- byte-identical

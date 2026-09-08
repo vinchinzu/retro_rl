@@ -133,17 +133,18 @@ def test_l6_exit_112_125_is_cave_mouth_not_leave() -> None:
 
 def test_l6_south29_63_133_up_and_left_up_are_tile_244() -> None:
     """Reds 1–2: UP slides 63→64; LEFT+UP walks 63→56; y stays 133 tile 244."""
-    from zelda_i.level6.door_hop import SOUTH29_SPEC, Level6DoorHopController
+    from zelda_i.dungeon.door_hop import DoorHopController
+    from zelda_i.level6.door_hop import SOUTH29_SPEC
     from zelda_i.ram import ADDR_LEVEL
 
     ram = _ram(screen=0x29, x=63, y=133, sword=1)
     ram[ADDR_LEVEL] = 6
-    act = Level6DoorHopController(SOUTH29_SPEC).step(read_snapshot(ram))
+    act = DoorHopController(SOUTH29_SPEC).step(read_snapshot(ram))
     assert list(act.action) != list(nes_action("UP"))
     assert list(act.action) != list(nes_action("LEFT", "UP"))
     live = _ram(screen=0x29, x=120, y=189, sword=1)
     live[ADDR_LEVEL] = 6
-    live_act = Level6DoorHopController(SOUTH29_SPEC).step(read_snapshot(live))
+    live_act = DoorHopController(SOUTH29_SPEC).step(read_snapshot(live))
     assert list(live_act.action) == list(nes_action("DOWN"))
     assert list(live_act.action) != list(nes_action("UP"))
     assert list(live_act.action) != list(nes_action("LEFT", "UP"))

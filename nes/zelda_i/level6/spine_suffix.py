@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zelda_i.level6.cellar08 import level6_cellar08_success, make_cellar08_controller
+from zelda_i.dungeon.door_hop import door_hop_stages, door_hop_success
 from zelda_i.level6.door_hop import (
     EAST29_SPEC,
     EAST39_SPEC,
@@ -14,8 +15,6 @@ from zelda_i.level6.door_hop import (
     SOUTH29_SPEC,
     WEST19_SPEC,
     WEST2D_SPEC,
-    door_hop_stages,
-    door_hop_success,
 )
 from zelda_i.level6.dungeon import (
     LEVEL6_MAP_BIT,

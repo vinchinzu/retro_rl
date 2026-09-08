@@ -39,7 +39,8 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
 )
-from zelda_i.level6.door_hop import NORTH2C_SPEC, SOUTH1D_SPEC, WEST2D_SPEC, door_hop_stages
+from zelda_i.dungeon.door_hop import door_hop_stages
+from zelda_i.level6.door_hop import NORTH2C_SPEC, SOUTH1D_SPEC, WEST2D_SPEC
 from zelda_i.level6.occupancy import record_l6_walk
 from zelda_i.level6.overworld import LEVEL6, LEVEL6_GOHMA_ROOM
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot

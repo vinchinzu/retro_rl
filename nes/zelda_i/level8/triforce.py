@@ -15,12 +15,14 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import TF_BIT_L8
+from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ops import DOOR_TARGETS
-from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 __all__ = [
     "FANFARE_MODE",
+    "NORTH_3C_GATE",
     "NORTH_3C_DEST",
     "NORTH_3C_DEST_POSE",
     "NORTH_3C_MAX_FRAMES",
@@ -111,90 +113,37 @@ def _leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
     }
 
 
+NORTH_3C_GATE = RoomHopSpec(
+    spec_id="level8_north_3c",
+    origin=NORTH_3C_ORIGIN,
+    door="UP",
+    done_reason="left_0x3c_north",
+    step=north_3c_step,
+    level=8,
+    max_frames=NORTH_3C_MAX_FRAMES,
+    sample_period=_SAMPLE_PERIOD,
+    leftover_fn=_leftover,
+    fails=(
+        HopFail(CELLAR_FAIL, "cellar_0x{screen:02x}", on_passage=True),
+        HopFail((SOUTH_FAIL,), "south_0x4c"),
+    ),
+    scroll_button="UP",
+    scroll_reason="north_scroll",
+    settle_button="UP",
+    settle_reason="north_settle",
+    report_extra=(
+        ("tf_room_hyp", TF_ROOM_HYP),
+        ("assumed_0x2c", False),
+        ("policy", RAM_CLAIM),
+    ),
+)
+
+
 @dataclass(kw_only=True)
-class Level8North3CController(HopController):
+class Level8North3CController(RoomHopController):
     """0x3C leftover → north shutter UP. Dest is RAM; fail 0x4C / cellar."""
 
-    spec_id: str = "level8_north_3c"
-    max_frames: int = NORTH_3C_MAX_FRAMES
-    require_level: int = 8
-    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    done_reason: str = "left_0x3c_north"
-    dest: int | None = None
-    route_eligible: bool = False
-    leftover: dict[str, Any] = field(default_factory=dict)
-    writes: int = 0
-
-    @property
-    def stage_id(self) -> str:
-        return self.spec_id
-
-    def arrived(self, snap: ZeldaSnapshot) -> bool:
-        if snap.mode != PLAY_MODE or snap.transitioning:
-            return False
-        if snap.screen in (SOUTH_FAIL, *CELLAR_FAIL):
-            return False
-        if self.dest is not None:
-            return snap.screen == self.dest
-        return snap.screen != NORTH_3C_ORIGIN
-
-    def on_arrive(self, snap: ZeldaSnapshot) -> str:
-        return f"play_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
-
-    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
-        del snap
-        return FrameAction(nes_action("UP"), "north_scroll")
-
-    def emit(
-        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
-    ) -> FrameAction:
-        if force or not self.leftover or self.frames % _SAMPLE_PERIOD == 0:
-            self.leftover = _leftover(snap)
-        return action
-
-    def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        blocked = HopController.guard(self, snap)
-        if blocked is not None:
-            return blocked
-        if snap.mode == PASSAGE_MODE or snap.screen in CELLAR_FAIL:
-            return self.mark_fail(f"cellar_0x{snap.screen:02x}")
-        if snap.screen == SOUTH_FAIL:
-            return self.mark_fail("south_0x4c")
-        if (
-            snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen != NORTH_3C_ORIGIN
-            and self.dest is not None
-            and snap.screen != self.dest
-        ):
-            return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
-        return None
-
-    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if snap.screen != NORTH_3C_ORIGIN:
-            return FrameAction(nes_action("UP"), "north_settle")
-        return north_3c_step(snap)
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": self.spec_id,
-            "dest_screen": self.dest,
-            "evidence": "fixture-live",
-            "route_eligible": False,
-            "natural_entry": False,
-            "writes": int(self.writes),
-            "door": "UP",
-            "tf_room_hyp": TF_ROOM_HYP,
-            "assumed_0x2c": False,
-            "policy": RAM_CLAIM,
-            "leftover": dict(self.leftover),
-        }
+    spec: RoomHopSpec = NORTH_3C_GATE
 
 
 def make_north_3c_controller(
