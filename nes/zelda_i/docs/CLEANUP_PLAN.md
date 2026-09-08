@@ -351,15 +351,18 @@ branch is death (`overworld/path.py:401-402`).
       only when a body is in the contact guard (else hops never left spawn).
       Far side hitboxes keep the travel direction. `THREAT_RADIUS` remains
       approach-only.
-- [ ] **4.4** **Dodge projectiles.** `dungeon/behaviors.py:308-365`
-      (`projectile_threats` / `blocked_by_projectile`) implements exactly the
-      band test needed and is never called. Insert a sidestep before the
-      terminal `_swing` at `overworld/common.py:197,223` and in
-      `overworld/path.py:349-380`.
-- [ ] **4.5** **Detect knockback.** Mode 8 (hurt-freeze) is treated as normal
-      play (`overworld/path.py:74-76`). `track_stuck` (`common.py:75-93`) only
-      counts zero-movement frames, so a knockback loop — hit, shoved back, walk
-      forward, hit again — reads as *progress* and never trips the unstick.
+- [x] **4.4** **Dodge projectiles.** `overworld/common.py` now calls
+      `projectile_threats` through `overworld_projectiles` +
+      `dodge_projectile`, sidestepping perpendicular to travel before the
+      terminal walk in `walk_or_swing` (so every `_swing` / `align_and_push`
+      call site inherits it). Shots carry `hp=0`, so
+      `overworld_threat_objects` could never see them — they need their own
+      collector. The sidestep flips side at a screen edge.
+- [x] **4.5** **Detect knockback.** `common.py track_knockback` charges the
+      stuck counter `KNOCKBACK_STUCK_PENALTY=20` per health-byte drop, so three
+      hits inside one hop reach the 50-frame unstick bar that zero-movement
+      tracking never saw. `OverworldPathController` counts `hits_taken` (reset
+      on hop advance, reported for diagnostics).
 - [x] **4.6** **Clean the threat set.** `overworld_threat_objects` drops
       type 0x60 rupee drops and `hp<=0`. Contact guard no longer slashes
       pickups/corpses.

@@ -21,13 +21,23 @@ from zelda_i.combat import (
     overworld_threat_objects,
     should_swing_at,
 )
-from zelda_i.dungeon.behaviors import engagement_hint, face_toward, kind_for_type
+from zelda_i.dungeon.behaviors import (
+    engagement_hint,
+    face_toward,
+    is_projectile,
+    kind_for_type,
+    projectile_threats,
+)
 from zelda_i.dungeon.hop_controller import dungeon_align_then_push as dungeon_align_then_push
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 12
 DEFAULT_SWING_FRAMES = 3
 DEFAULT_STUCK_THRESHOLD = 50
+# Mode 8 is the hurt-freeze. A knockback loop moves Link, so ``track_stuck``
+# reads it as progress; charge the stuck counter per hit instead.
+HURT_MODE = 8
+KNOCKBACK_STUCK_PENALTY = 20
 
 # Screen-edge thresholds (overworld playfield)
 EDGE_SOUTH_Y = 212
@@ -87,6 +97,67 @@ def _off_axis_face(
     return face_toward(link_x, link_y, best.x, best.y)
 
 
+def overworld_projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    """Live shots on screen. ``overworld_threat_objects`` drops these (hp=0)."""
+    return tuple(
+        obj
+        for obj in snap.objects
+        if obj.slot >= 1 and obj.type_id not in (0, 0xFF) and is_projectile(obj)
+    )
+
+
+def dodge_projectile(
+    link_x: int,
+    link_y: int,
+    direction: str,
+    projectiles: tuple[ZeldaObject, ...],
+    reason: str,
+) -> FrameAction | None:
+    """Sidestep out of an incoming shot's lane, or None when the lane is clear.
+
+    The sword does not destroy Octorok rocks or Moblin arrows and the small
+    shield only blocks while not swinging, so the one free answer is to leave
+    the band. Perpendicular to travel keeps hop progress on the other axis.
+    """
+    hits = projectile_threats(link_x, link_y, projectiles, direction=direction)
+    if not hits:
+        return None
+    nearest = min(hits, key=lambda o: manhattan(link_x, link_y, o.x, o.y))
+    if direction in ("LEFT", "RIGHT"):
+        step = "UP" if int(nearest.y) - int(link_y) > 0 else "DOWN"
+        if step == "UP" and link_y <= EDGE_NORTH_Y + 8:
+            step = "DOWN"
+        elif step == "DOWN" and link_y >= EDGE_SOUTH_Y - 8:
+            step = "UP"
+    else:
+        step = "LEFT" if int(nearest.x) - int(link_x) > 0 else "RIGHT"
+        if step == "LEFT" and link_x <= EDGE_WEST_X + 8:
+            step = "RIGHT"
+        elif step == "RIGHT" and link_x >= EDGE_EAST_X - 8:
+            step = "LEFT"
+    return FrameAction(nes_action(step), f"{reason}_dodge")
+
+
+def track_knockback(
+    snap: ZeldaSnapshot,
+    *,
+    last_health: int,
+    hits: int,
+    stuck: int,
+    penalty: int = KNOCKBACK_STUCK_PENALTY,
+) -> tuple[int, int, int]:
+    """Return updated (hits, last_health, stuck) after charging a fresh hit.
+
+    Health is the raw byte (hearts high nibble, partial low), so any decrease
+    is damage. Each hit charges ``stuck`` so a hit/shove/walk-back loop
+    reaches the unstick ladder instead of reading as progress forever.
+    """
+    health = int(snap.health)
+    if last_health >= 0 and health < last_health:
+        return hits + 1, health, stuck + penalty
+    return hits, health, stuck
+
+
 def walk_or_swing(
     phase_frames: int,
     direction: str,
@@ -140,6 +211,12 @@ def walk_or_swing(
                 phase_frames, face, reason, period=period, hold=hold
             )
         return FrameAction(nes_action(face), reason)
+    # Nothing to hit: leave the shot lane rather than walk into it.
+    dodge = dodge_projectile(
+        lx, ly, direction, overworld_projectiles(snap), reason
+    )
+    if dodge is not None:
+        return dodge
     return FrameAction(nes_action(direction), reason)
 
 
