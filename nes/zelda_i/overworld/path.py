@@ -17,6 +17,7 @@ from zelda_i.overworld.common import (
     align_and_push,
     on_arrival_edge,
     recover_off_edge,
+    track_knockback,
     track_stuck,
     unstick_wiggle,
     wake_or_wait_mode,
@@ -64,6 +65,9 @@ class OverworldPathController:
     last_x: int = -1
     last_y: int = -1
     last_screen: int = -1
+    # Knockback: mode 8 keeps Link moving, so hits are counted, not frames.
+    last_health: int = -1
+    hits_taken: int = 0
     success: bool = False
     notes: list[str] = field(default_factory=list)
 
@@ -149,6 +153,8 @@ class OverworldPathController:
         self.last_x = -1
         self.last_y = -1
         self.last_screen = -1
+        self.last_health = -1
+        self.hits_taken = 0
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -172,6 +178,7 @@ class OverworldPathController:
             "hop": hop,
             "notes": list(self.notes),
             "stuck": self.stuck,
+            "hits_taken": self.hits_taken,
         }
         if self.maze_waypoints:
             out["maze_wp_index"] = self.maze_wp_index
@@ -299,6 +306,7 @@ class OverworldPathController:
             self.notes.append("maze_complete")
         self.hop_index += 1
         self.stuck = 0
+        self.hits_taken = 0
         self.phase_frames = 0
         self.maze_wp_index = 0
         return self._on_hop_advanced(snap, hop)
@@ -392,6 +400,12 @@ class OverworldPathController:
             last_x=self.last_x,
             last_y=self.last_y,
             last_screen=self.last_screen,
+            stuck=self.stuck,
+        )
+        self.hits_taken, self.last_health, self.stuck = track_knockback(
+            snap,
+            last_health=self.last_health,
+            hits=self.hits_taken,
             stuck=self.stuck,
         )
 
