@@ -181,8 +181,19 @@ Ordered by effort/risk ratio, easiest proof first.
       `__getattr__`, `level3/dungeon.py` path/raft/geometry `__getattr__`.
       Callers import `level1.clear`, `level3.path` / `raft_path` / `geometry`,
       and `anchors.TF_BIT_L3`. **Done 2026-09-07.**
-- [ ] **2.3** Promote `DoorHopSpec` → `dungeon/door_hop.py`; convert the ~33
-      one-room modules to rows (**~7,500 LOC**). Row conversion preserves the
+- [~] **2.3** Promote `DoorHopSpec` → `dungeon/door_hop.py`; convert the ~33
+      one-room modules to rows (**~7,500 LOC**). **Engine promoted and L8 done
+      2026-09-08** — `dungeon/door_hop.py` holds `DoorHopSpec`/`DoorHopController`
+      (L6-isms injected: `level`, `success_fn`, `record_fn`, band ys) plus
+      `RoomHopSpec`/`RoomHopController` for the one-frame cardinal step-hop
+      family. `level6/door_hop.py` 509 → 175; L8 `path` 741 → 481, `stairs`
+      173 → 102, `triforce` 387 → 336, `cellar` 168 → 127, `passage` 200 → 139.
+      Proven by a differential harness against the pre-change modules over
+      ~40k synthetic frames per controller (actions, reasons, notes, reports):
+      0 mismatches. **Left as novel:** `gleeok_entry.py` (drives a
+      `BombWallController` sub-machine), `north_column.py` (multi-room),
+      `triforce.py`'s two latch controllers, the fail-closed stubs.
+      **Remaining: L7, L4, L6, L9, L1–L3 — all now pure subtraction.** Row conversion preserves the
       hard-won geometry verbatim — it is mechanical, not a rewrite. Level order
       by safety:
       1. **L8** — `path.py:175/264/353/436` are **85–89% line-identical**;
@@ -203,17 +214,27 @@ Ordered by effort/risk ratio, easiest proof first.
          :709,:722` are 9–15 LOC each). Keep the novel stairs/east/arrows kernels.
       6. **L1/L2/L3/L5** — `bow.py`, `bow_rejoin.py`, `bow_pickup.py` (use the
          existing `dungeon/hop_controller.py:66 CellarCross`), `clear.py`,
-         `enter_1e.py`, `clear5b.py`, `west_path.py`, `tf_path.py`.
+         `enter_1e.py`, `clear5b.py`, `west_path.py` (`tf_path.py` deleted in 2.4).
       **Keep as novel:** `level6/stairs3a_warp.py`, `level6/stairs09.py`,
       `level7/hungry.py`, `level7/pond.py`, `level7/warp.py`,
       `level7/digdogger.py` (whistle-shrink), `level1/bow_cellar.py` push seq,
       `level5/cellar_path.py` block-stairs.
       **Trap:** `level4/gleeok13.py` is *not* a Gleeok fight — it is the
       0x12→0x13 entry hop. Do not merge by filename.
-- [ ] **2.4** Fold the `level5/path.py` facade. `_LAZY_EXPORTS:383-451` forwards
-      **70 names** across 5 siblings through `__getattr__:455` — 3,044 LOC
-      presenting as one module. The textbook CODING_STANDARDS § Size violation.
-      **~1,400 LOC.**
+- [x] **2.4** Fold the `level5/path.py` facade. **DONE 2026-09-08** — the six
+      facade modules 3,044 → 2,319 LOC (−725); −765 counting `level5/spine.py`,
+      `level5/dungeon.py` and `door_graph/level5_exits.py`.
+      `_LAZY_EXPORTS` / `__getattr__` gone; callers import the owning module. Three clone families became rows:
+      `Level5NavSpec` (0x66 return / 0x77 east key), `WestLeaveSpec`
+      (0x27/0x26/0x25 west leaves), `BombWallSpec` (bomb west-66 / west-65 /
+      east-65). One `walk_axis(stall_limit=, done=)` replaced the three
+      copy-pasted axis walkers. Deleted facade-only dead code: `tf_path.py`
+      (whole file), the 0x27/0x56 nav controller clones, `should_force_keys_zero`,
+      `walk_east_from_65`, `cellar_07_to_64`, `take_center_stairs_06`, the two
+      `exit_whistle_04` aliases. Shared L5 room ids + bomb stands moved to
+      `level5/dungeon.py`, which also breaks the latent
+      `whistle_path → level3.dungeon → door_graph → level5_exits → whistle_path`
+      import cycle.
 - [ ] **2.5** Migrate the **53 hand-rolled phase machines** (38 files) onto
       `dungeon/hop_controller.py:86 HopController`. Two generations of the same
       skeleton coexist; the migration stopped at the L1–L5 boundary. **~2,000 LOC.**
@@ -228,7 +249,22 @@ Ordered by effort/risk ratio, easiest proof first.
       `level7/aquamentus.py:1-3`, which reuses `level1.finish` and adds 137 LOC.
       **~1,800 LOC out, but HIGH risk** — fights are timing-fragile, ROM eval
       per boss. Do this last.
-- [ ] **2.7** One `SPINE_LEVELS` row table. `spine/survival.py:463` is an
+- [x] **2.7** One `SPINE_LEVELS` row table. **Done 2026-09-08:** nine
+      `SpineLevel` rows and one loop; `_through_for_predecessor` is now
+      `SpineLevel.target()` driven by the `handoff` column and applied
+      uniformly (it used to fire only for L6/L7/L8). `SPINE_THROUGH` and
+      `SPINE_STOPS` derive from the rows. L1/L2/L3 became rows with zero
+      level-module edits. Gate: the 93-id through catalog and each resolved
+      stop name are byte-identical before/after and now pinned by a test.
+      **`route/chain.py` is kept** — the second dispatcher 2.7 named was
+      `route/composer.py`, deleted in 1.5; what remains is the Composer's
+      engine layer (`run_controller_stage`, `ControllerStageResult`,
+      `boot_to_ready`, `run_natural_to_milestone`) with 11 live importers
+      including the protected A/B loop. Its `run_natural_to_milestone` +
+      `_MILESTONE_ORDER` 5-entry ladder is a real residual: fold into L1
+      `SpineHop` rows when L1 is touched, and send the rest to
+      `retro_harness.spine` with 2.9.
+      *(original audit)* `spine/survival.py:463` is an
       imperative ladder: L1/L2 inline, then seven near-identical
       `continue_levelN_spine(...)` calls at `:620,631,643,655,667,681`.
       `_through_for_predecessor:441` exists only to paper over per-level

@@ -1,7 +1,9 @@
 """Link walk model + occupancy BFS (no emulator).
 
 Cardinal 1px/frame. Cells default passable; OccupancyWalker grades a predicted
-step and blocks the cell ahead on a stuck miss, then replans. No path → stand.
+step and blocks the cell ahead on a stuck miss, then replans. No path with
+inferred blocks → forget those and replan once; spec-declared blocks stay and
+a genuinely walled goal still stands.
 Door clips (LEFT+UP residual) are not modeled here — those stay in ``level*_path``.
 """
 
@@ -45,6 +47,10 @@ class OccupancyGrid:
     """In-room passability. Unknown cells are free until a miss blocks them."""
 
     blocked: set[tuple[int, int]] = field(default_factory=set)
+    # Cells blocked by a failed prediction rather than by the room spec.
+    # Spec blocks are measured geometry and are never forgotten; these are
+    # inferences from one 1px miss and can be wrong (a wall hug, a slide).
+    inferred: set[tuple[int, int]] = field(default_factory=set)
     xmin: int = DEFAULT_BOUNDS[0]
     xmax: int = DEFAULT_BOUNDS[1]
     ymin: int = DEFAULT_BOUNDS[2]
@@ -60,6 +66,7 @@ class OccupancyGrid:
         """Record the cell the last predicted step failed to enter."""
         cell = predicted_xy(x, y, direction)
         self.blocked.add(cell)
+        self.inferred.add(cell)
         return cell
 
     def shortest_path(
@@ -131,7 +138,7 @@ def follow_path(
 
 @dataclass
 class OccupancyWalker:
-    """Predict → grade → replan. No path → stand (no hunt).
+    """Predict → grade → replan; forget the inferred blocks before standing.
 
     Grades the same ``move DX,DY`` grammar as ``zelda_i.walk.predict.walk_claim``
     via ``retro_harness.predict.grade_claims``.
@@ -142,6 +149,7 @@ class OccupancyWalker:
     last_xy: tuple[int, int] | None = None
     last_dir: str | None = None
     misses: int = 0
+    forgets: int = 0
     goal: tuple[int, int] | None = None
 
     def observe(self, xy: tuple[int, int]) -> None:
@@ -177,6 +185,19 @@ class OccupancyWalker:
             self.path = self.grid.shortest_path(xy, dest)
         direction = follow_path(self.path, xy)
         if direction is None:
+            self.path = self.grid.shortest_path(xy, dest)
+            direction = follow_path(self.path, xy)
+        if direction is None and self.grid.inferred:
+            # Inferred blocks come from one failed 1px prediction, not ground
+            # truth — a wall hug or a slide fences off a free cell. A walker
+            # that has fenced itself in forgets them and replans; standing
+            # there is how enter_6f_key burned its whole 4,000f budget in
+            # "band_wait". A real wall is re-blocked by the next observe(),
+            # so this self-corrects instead of looping. Spec-declared blocks
+            # (measured geometry) are kept.
+            self.grid.blocked -= self.grid.inferred
+            self.grid.inferred.clear()
+            self.forgets += 1
             self.path = self.grid.shortest_path(xy, dest)
             direction = follow_path(self.path, xy)
         self.last_dir = direction
