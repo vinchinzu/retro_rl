@@ -31,6 +31,13 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.overworld.common import align_and_push, unstick_wiggle
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.settle import (
+    POST_L4_SETTLE,
+    POST_L4_SETTLE_MAX_FRAMES,
+    PostL4SettlePhase,
+    PostL4TriforceSettleController,
+    settle_ready,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 # --- Geometry (live recon 2026-08-06); screens from anchors ---
@@ -39,7 +46,6 @@ from zelda_i.anchors import (
     SCREEN_LEVEL4_ENTRANCE,
     SCREEN_LEVEL5_DOOR,
     SCREEN_LOST_HILLS,
-    TF_BIT_L4 as LEVEL4_TRIFORCE_BIT,
     TF_BIT_L5 as LEVEL5_TRIFORCE_BIT,
 )
 
@@ -75,7 +81,6 @@ POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
 )
 
 SEGMENT_MAX_FRAMES = 30000
-POST_L4_SETTLE_MAX_FRAMES = 2500
 POST_L4_PATH_MAX_FRAMES = 40000
 SCREEN_POST_L4_RETURN = SCREEN_LEVEL4_ENTRANCE
 LOST_HILLS_MAX_FRAMES = 12000
@@ -97,79 +102,9 @@ class Level5NavPhase(Enum):
     FAILED = auto()
 
 
-class PostL4SettlePhase(Enum):
-    WAIT = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class PostL4TriforceSettleController:
-    """Idle through L4 triforce fanfare until OW island 0x45 play.
-
-    Start: leftover L4 TF room 0x03 mode 18. Do not reload a checkpoint
-    mid-fanfare (same class as L1/L2/L3 TF settle).
-    """
-
-    phase: PostL4SettlePhase = PostL4SettlePhase.WAIT
-    frames: int = 0
-    phase_frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-    max_frames: int = POST_L4_SETTLE_MAX_FRAMES
-    require_screen: int = SCREEN_POST_L4_RETURN
-
-    def reset(self) -> None:
-        self.phase = PostL4SettlePhase.WAIT
-        self.frames = 0
-        self.phase_frames = 0
-        self.success = False
-        self.notes.clear()
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        if self.frames > self.max_frames:
-            self.phase = PostL4SettlePhase.FAILED
-            self.notes.append("settle_timeout")
-            return FrameAction(nes_idle_action(), "settle_timeout")
-
-        if (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and snap.screen == self.require_screen
-            and bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
-            and snap.raft > 0
-            and not snap.transitioning
-        ):
-            self.success = True
-            if self.phase is not PostL4SettlePhase.DONE:
-                self.phase = PostL4SettlePhase.DONE
-                self.notes.append("post_l4_ow_ready")
-            return FrameAction(nes_idle_action(), "settle_done")
-
-        return FrameAction(nes_idle_action(), "settle_wait")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "require_screen": f"0x{self.require_screen:02x}",
-        }
-
-
 def post_l4_overworld_ready(snap: ZeldaSnapshot) -> bool:
     """OW play on Snake island 0x45 with L4 triforce bit and raft."""
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_POST_L4_RETURN
-        and bool(snap.triforce & LEVEL4_TRIFORCE_BIT)
-        and snap.raft > 0
-        and not snap.transitioning
-    )
+    return settle_ready(POST_L4_SETTLE, snap)
 
 
 @dataclass
