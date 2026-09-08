@@ -19,14 +19,10 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |
 | Room geometry | `dungeon/tilemap.py` | Read-only cart-WRAM `$6530` room tile map (floor / block / stairs / door cells). Measure rooms with this, not with direction-sensitive `$049E` `colliding_tile` sweeps. Never writes. |
 | Walk physics | `walk/physics.py`, `walk/predict.py` | OccupancyWalker grades `move`; miss → block that cell → replan; no path → stand |
-| L6 dest helpers | `level6.occupancy` | leftover / dest success / occupancy halt (L6-prefixed dest). Halt-on-miss is the east3a diagnostic, not the OccupancyWalker default. Distinct from `level4.occupancy` (seeds). |
+| L6 dest helpers | `level6.occupancy` | leftover / dest success / occupancy halt (L6-prefixed dest). Halt-on-miss came from the (deleted) east3a diagnostic, not the OccupancyWalker default. Distinct from `level4.occupancy` (seeds). |
 | L3 dest spine | `level3/spine.py` | `--through level3` dest 0x5b (west key closed) |
 | L5 dest spine | `level5/spine.py` | `--through level5` TF `0x10` in room `0x14` |
-| Route catalog | `route/catalog.py` (L1–L2), `route/catalog_later.py` + `route/legs_later.py` (L3–L5 + L9 fixture) | NamedRoute / RouteLeg; L6–L8 stay stubs |
-| Composer | `route/composer.py` | Bind existing controllers to leg ids; no path geometry |
 | Eligibility | `route/eligible.py`, `route/natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |
-| Resource cost | `route/health_cost.py`, `route/heatmap.py` | Hop heart costs + Survival heatmap ranker |
-| Item gates | `route/item_gate_hops.py`, `route/item_gate_routes.py` | Candle / white sword / bomb shop NamedRoutes |
 | Dungeon treasures | `route/treasures.py` | First-quest wiki items vs default-spine collection |
 | Combat helpers | `combat.py` + `dungeon/behaviors.py` + `dungeon/gleeok.py` | Hitbox swing gate, reusable enemy policies, shared Gleeok sensors (L4+L6) |
 | Continuous spine | `spine/survival.py` + `spine.hops.attach_hops` + `level*/spine.py` hop tables | One env, power-on, stop at first fail. New dest hops are `SpineHop` rows, not `*_stages`/`*_success` pairs. |

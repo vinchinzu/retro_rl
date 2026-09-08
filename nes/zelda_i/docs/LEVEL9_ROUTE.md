@@ -1,5 +1,12 @@
 # Level 9 — Death Mountain (route notes)
 
+> **Probe names below are historical provenance labels, not paths.** The
+> one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
+> beads closed; the measurements they produced live on in the constants and
+> route tables this document describes. Git history is the restore path.
+
+
+
 **Status:** backward endgame recon is live; the natural Level 9 route is still
 unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
 `0x76`, the final Patra room is `0x52`, Ganon is `0x42`, and Zelda is `0x32`.
@@ -162,7 +169,7 @@ room `0x10`.
 **SOLVED 2026-09-06.** Two earlier sittings assumed the Silver Arrows were
 a floor item at the centre of `0x10`'s statue grid and burned themselves on
 maze-threading it. There is no floor item in `0x10` at all. ROM decode
-(`scratch/dump_l9_rom_rooms.py`, self-validating against 41 in-repo live
+(`dump_l9_rom_rooms`, self-validating against 41 in-repo live
 anchors) plus live probing agree:
 
 | Fact | Source |
@@ -209,7 +216,7 @@ Two traps this room set, both worth remembering:
 **2026-09-07 (rr-sz8.7).** With the arrows collected, `--through
 level9-credits` failed at `level9_natural_patra_join`, timing out at its
 full 24,000 frames without leaving room `0x10`. Iterated from a real
-power-on pin (`scratch/pin_l9_post_arrows.py` → `L9PostArrowsReal`, room
+power-on pin (`pin_l9_post_arrows` → `L9PostArrowsReal`, room
 `0x10` `(96,157)`, arrows 2, TF `0xff`) so each attempt costs ~25s instead
 of a ~6 minute run. Three distinct bugs, all live-confirmed:
 
@@ -300,7 +307,7 @@ straight DOWN walks into the lake's west shore and stalls at `(32,189)`.
 The pedestal is at `x=120`; walking UP there takes `ADDR_SWORD` 1 → 2.
 
 ROM corroborates the screen independently
-(`scratch/dump_ow_rom_screens.py`, self-validated by reproducing all six
+(`dump_ow_rom_screens`, self-validated by reproducing all six
 live dungeon-entrance anchors): `0x0A` carries a **unique** overworld cave
 id 18, sitting between the wooden sword cave `0x77` (id 16) and the Magical
 Sword grave `0x21` (id 19, an `anchors.py` anchor). Overworld cave ids live
@@ -1218,7 +1225,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
 # Isolated segment CLI pruned. Durable: `run_survival_spine.py --no-video`.
 
 # Fixture-live 0x76 north dest hop (rr-sz8.6). Glance leftover first.
-QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/probe_l9_76_north.py \
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/`probe_l9_76_north` \
     --from-state Level9EntranceReconFixture --tag 20260904_P1 \
     --infinite-life --no-video
 ```

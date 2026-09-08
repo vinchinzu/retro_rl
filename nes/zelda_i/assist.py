@@ -9,7 +9,6 @@ Damage is observed and aggregated so Clean combat harden can target hot
 rooms later — do not prioritize sword polish over route completion.
 
 Inventory pokes live in ``dungeon_ops``. This module re-exports
-``poke_link_position`` (L6 0x3A stairs: Link x/y only) and
 ``poke_wooden_arrows`` (L6 Gohma: ``ADDR_ARROWS=1`` + B=2) so existing
 imports keep working. Do not write ``ADDR_BOW``; bow must already be earned.
 """
@@ -20,7 +19,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
-from zelda_i.dungeon.ops import poke_food, poke_link_position, poke_wooden_arrows
+from zelda_i.dungeon.ops import poke_food, poke_wooden_arrows
 from zelda_i.ram import (
     PLAY_MODE,
     ZeldaSnapshot,
@@ -277,7 +276,6 @@ __all__ = [
     "assist_phase_name",
     "location_key",
     "poke_food",
-    "poke_link_position",
     "poke_wooden_arrows",
     "write_health_u8",
 ]

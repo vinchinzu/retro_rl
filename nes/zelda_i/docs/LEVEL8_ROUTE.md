@@ -1,5 +1,12 @@
 # Level 8 — The Lion (route notes)
 
+> **Probe names below are historical provenance labels, not paths.** The
+> one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
+> beads closed; the measurements they produced live on in the constants and
+> route tables this document describes. Git history is the restore path.
+
+
+
 Status: **SPINE-GREEN FROM POWER-ON (2026-09-05).** `--through level8` 1/1,
 `set_state=0`, first quest: entry (`rr-6o7.1`), Magical Key (`rr-6o7.2`,
 power-on 2/2) and the four-head Gleeok suffix (`rr-6o7.3`) all pass.  Link
@@ -617,20 +624,20 @@ start.
 | `level8/path.py` | Fixture-live 0x1F west, 0x1E/0x2E south, 0x3E east doors; four-head wraps `level8.gleeok`; Gleeok-passage still fail-closed |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |
 | `level8/spine.py` | `L8_THROUGH`, `L8_STOPS`, `continue_level8_spine`, opt-in `LIVE_RECON_L8_OVERRIDES` |
-| `scratch/level8_bush_burn_sweep.py` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
-| `scratch/capture_level8_entrance_fixture.py` | Reproduces the `(136,93)` RIGHT/RIGHT burn into live `0x7E` |
-| `scratch/probe_l8_5e_north.py` / `probe_l8_4e_north.py` | The `0x7E→0x4E` and `0x4E→0x3E` fixture replays |
-| `scratch/probe_l8_1f_magic_key.py` | The `0x1F` stairs → Magical Key cellar `0x0F` fixture replay |
-| `scratch/probe_l8_0f_cellar_return.py` | Two-ladder return `0x0F` → play `0x1F` |
-| `scratch/probe_l8_1f_west.py` | Play `0x1F` west door → cleared `0x1E` |
-| `scratch/probe_l8_3e_east.py` | Play `0x3E` east shutter → cleared `0x3F` |
-| `scratch/probe_l8_3f_stairs.py` | Play `0x3F` stairs walk-on → cellar `0x2F` |
-| `scratch/probe_l8_2f_settle.py` | Idle-settle unloaded mode-9 `0x2F` (~400f) |
-| `scratch/probe_l8_2f_cross.py` | Settled `0x2F` east-ladder cross → play `0x4C` |
-| `scratch/probe_l8_4c_north.py` | Play `0x4C` bomb-N → Gleeok `0x3C` (census pin) |
-| `scratch/probe_l8_3c_gleeok.py` | Play `0x3C` south-stand `0x45` kill + heart `(32,192)` |
-| `scratch/probe_l8_3c_north.py` | Play `0x3C` north shutter → TF `0x2C` + shard → OW `0x6D` |
-| `scratch/probe_l7_exit_to_l8_bush.py` | L7-pond → `0x6D` geometry lane |
+| `level8_bush_burn_sweep` | Producer of `logs/level8_bush_burn_sweep.json` (5856 trials) |
+| `capture_level8_entrance_fixture` | Reproduces the `(136,93)` RIGHT/RIGHT burn into live `0x7E` |
+| `probe_l8_5e_north` / `probe_l8_4e_north.py` | The `0x7E→0x4E` and `0x4E→0x3E` fixture replays |
+| `probe_l8_1f_magic_key` | The `0x1F` stairs → Magical Key cellar `0x0F` fixture replay |
+| `probe_l8_0f_cellar_return` | Two-ladder return `0x0F` → play `0x1F` |
+| `probe_l8_1f_west` | Play `0x1F` west door → cleared `0x1E` |
+| `probe_l8_3e_east` | Play `0x3E` east shutter → cleared `0x3F` |
+| `probe_l8_3f_stairs` | Play `0x3F` stairs walk-on → cellar `0x2F` |
+| `probe_l8_2f_settle` | Idle-settle unloaded mode-9 `0x2F` (~400f) |
+| `probe_l8_2f_cross` | Settled `0x2F` east-ladder cross → play `0x4C` |
+| `probe_l8_4c_north` | Play `0x4C` bomb-N → Gleeok `0x3C` (census pin) |
+| `probe_l8_3c_gleeok` | Play `0x3C` south-stand `0x45` kill + heart `(32,192)` |
+| `probe_l8_3c_north` | Play `0x3C` north shutter → TF `0x2C` + shard → OW `0x6D` |
+| `probe_l7_exit_to_l8_bush` | L7-pond → `0x6D` geometry lane |
 | Isolated `probe_level8_entry.py` | pruned; Composer `scripts/run_survival_spine.py` |
 | `docs/LEVEL8_ROUTE.md` | This file |
 
@@ -698,3 +705,46 @@ Fixture-live evidence added 2026-09-03/04 (all `route_eligible=false`):
 4. Keep the 60R Blue Candle farm/shop as fallback-only, outside `L8_THROUGH`.
 5. Do not promote Clean and do not touch `STATUS.md`; all L8 fixture evidence
    remains `natural_entry=false` / `route_eligible=false`.
+
+---
+
+## Gleeok family model (merged from `docs/tasks/rr-5eb2-gleeok-model.md`, 2026-09-07)
+
+Live-measured, not walkthrough. This is the source table for the Phase 2.6
+`BossSpec` consolidation in [CLEANUP_PLAN.md](CLEANUP_PLAN.md) — the three
+Gleeok fights differ only in these fields.
+
+| Field | L4 (2-head) | L6 (3-head) | L8 (4-head) |
+|-------|-------------|-------------|-------------|
+| Body object type | `0x43` | `0x44` | **`0x45`** (live RAM, not a ROM guess) |
+| Room | `0x13` | `0x18` | `0x3C` |
+| Start HP | ≈160 | — | **160** |
+| Body pose | x≈124, y≈111 | `(124, 111)` | `(124, 111)` |
+| Stand target | `(body.x, body.y + 22)` | same | same |
+| Measured fight | ~3,649 f assisted | 2,848 f to body-gone | 5,124 controller f, body-gone f5029 |
+| `MAX_FRAMES` | 20,000 | 20,000 | 20,000 |
+| Reward | HC `0x1A` mid-room | — | HC in treasure slot 19 at `(32, 192)`, hc 3→4 |
+| Post-kill leftover | — | — | `(32, 181)`, doors 12 (UP+DOWN) |
+
+**Shared across all three** (already in `dungeon/gleeok.py`):
+- Detached head type `0x46`; fireball residual `0x56`.
+- South-stand policy: face **UP + A**; fireball dodge at manhattan **≤14**
+  horizontal. Body type is dungeon-specific; `0x46` / `0x56` are shared.
+- Dead when the **body type is absent** — heads and fireballs may linger.
+- **Do not chase `0x46` while the body type remains** (L4 `rr-vdnc`).
+- Bombs do **not** damage Gleeok.
+- Four-head is attrition, not new geometry: more attached heads → more `0x56`
+  attempts → more `0x46` kites after detaches.
+
+`dungeon/ids.py` carries `GLEEOK_OBJECT_TYPE=0x43`,
+`GLEEOK_3HEAD_OBJECT_TYPE=0x44`, `GLEEOK_HEAD_OBJECT_TYPE=0x46` — and **no
+4-head constant**; L8 defines `GLEEOK_FOUR_HEAD_OBJECT_TYPE = 0x45` locally.
+Fold that into `ids.py` during Phase 2.6.
+
+**Sword damage:** `SwordDamagePoints-1[Items]` with `Items=3` (Magical Sword)
+= `0x40` (64) per connected slash, sword state fully extended (`0x02`) —
+9 hits vs 28 with the wooden sword. Relevant to Phase 5.5 (Magical Sword,
+12 HC) and to any Clean-pass fight budget.
+
+**Also live-measured here:** L8 Gohma is type **`0x33` HP 96** in `0x1E`
+(the walkthrough's `0x34` is wrong).

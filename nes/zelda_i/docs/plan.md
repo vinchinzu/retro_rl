@@ -1189,4 +1189,5 @@ closed).
 
 ### Item gates (`rr-iri`)
 - ### ZOW — early item gates (rr-iri pathing; rr-38p residual)
-- Planned hop tables in `route/item_gate_hops.py` (geometry only, assisted OK).
+- Planned hop tables lived in `route/item_gate_hops.py` (deleted 2026-09-07,
+  unreferenced). Re-derive from `docs/OVERWORLD_DOORS.md` when Phase 5 needs them.

@@ -26,7 +26,6 @@ from zelda_i.level6.dungeon import (
     ROOM_3A_SPEC,
     clear29_handoff_ok,
 )
-from zelda_i.level6.east3a import level6_east3a_success, make_east3a_controller
 from zelda_i.level6.exit75 import make_exit75_controller
 from zelda_i.level6.finish import (
     level6_exit_success,
@@ -288,13 +287,6 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             "level6_exit_ow",
             _exit_stages,
             level6_exit_success,
-            dedicated=True,
-        ),
-        one_hop(
-            "level6-east3a",
-            "level6_east_0x3a",
-            make_east3a_controller,
-            level6_east3a_success,
             dedicated=True,
         ),
         one_hop(

@@ -1,5 +1,12 @@
 # Level 7 — The Demon (route notes)
 
+> **Probe names below are historical provenance labels, not paths.** The
+> one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
+> beads closed; the measurements they produced live on in the constants and
+> route tables this document describes. Git history is the restore path.
+
+
+
 **Status (2026-09-05):** Survival `--through level7` is **spine-green 2/2
 from power-on**. Leftover OW `0x42` `(96,93)` TF `0x7F`. Living residual
 is L8-A: [`tasks/rr-6o7.1-residual.md`](tasks/rr-6o7.1-residual.md).
@@ -30,7 +37,7 @@ The **Demon pond `0x42` overworld screen is reached 2/2** (geometry-only)
 by `OverworldToLevel7PondController` from `PostSwordStart`. A **recon
 `ADDR_WHISTLE` poke** on that leftover drains the pond and enters L7:
 play **`0x79` `(120,205)`** south mouth (`Level7Entrance` pin,
-`scratch/pond/probe_l7_pond_drain.py` drain_v2, 825f from `OW_L7Pond`). Stairs
+`pond/probe_l7_pond_drain` drain_v2, 825f from `OW_L7Pond`). Stairs
 trigger at pond `(96,132)` tile 114. **Not natural-entry** — TF=0, Food=0,
 Whistle poked. The bait shop `0x34` and all rooms past entry stay
 hypothesis. Spine chapters stay fail-closed (`route_eligible=false`).
@@ -93,8 +100,8 @@ Screens `0x33` / `0x23` / `0x24` / `0x25` are a mountain-bounded desert pocket:
 every south edge tested is solid mountain and there is **no walkable
 `{0x24,0x33} → row-4` transition**. The shop `0x34` is only reachable from the
 south (`0x44 ↑ 0x34`). Concretely established this sitting
-(`scratch/sweep_25_armos.py`, `scratch/probe_24_to_shop.py`,
-`scratch/probe_33_south_to_shop.py`, `--from-state Level6ExitOverworld`):
+(`sweep_25_armos`, `probe_24_to_shop`,
+`probe_33_south_to_shop`, `--from-state Level6ExitOverworld`):
 
 - `0x25` south edge = solid mountain (x=128 walled). Its **only** non-backtrack
   exit is a *hidden* north passage at **x≈208 → `0x15`** (mountain path, wrong
@@ -106,7 +113,7 @@ south (`0x44 ↑ 0x34`). Concretely established this sitting
 - `0x33` south edge = solid mountain at x∈{120,160,208}; `0x33→0x34` RIGHT
   still walled. The `0x33` Armos block y=141 horizontal travel — detour above
   or below the statue rows.
-- **`0x32` has no south exit either** (`scratch/pond/probe_32_pond_to_shop.py`):
+- **`0x32` has no south exit either** (`pond/probe_32_pond_to_shop`):
   its south edge is solid mountain at x∈{56,80,96,192}; its only exits are
   NORTH (x≈120 → `0x22`, back to L6) and EAST (y≈141 → `0x33`, the fixture
   link). So the entire `0x22 / 0x32 / 0x33 / 0x23 / 0x24 / 0x25` region is a
@@ -197,7 +204,7 @@ green `LEVEL7_POND_APPROACH_HOPS`. That is the join:
 ```
 
 - **Live 2/2 byte-identical**, post-L6 leave → pond `0x42` `(128,221)` mode 5
-  at frame **4913** both trials (`scratch/pond/probe_recorder_warp_full_route.py`,
+  at frame **4913** both trials (`pond/probe_recorder_warp_full_route`,
   tags `rw_full_route_t2` / `_t3`, `writes=0`). Warp determinism confirmed 3/3
   (`rw_cycle_t1`/`t2` plus the earlier `rw_cycle_down2`): 8 blows to `0x45`,
   11 to `0x74`, exactly 3 blows per dungeon-advance after the first. The
@@ -240,7 +247,7 @@ Live geometry (Survival, `PostSwordStart`):
 
 - `0x65→0x64` arrives on the east ledge around `(232,109)`; DOWN to the open
   band, LEFT to the north gap at **`x≈60`** (`BAIT_64_GAP_X`;
-  `scratch/probe_64_north_to_54.py` — `x≤40` stalls at `y≈93`), then UP to
+  `probe_64_north_to_54` — `x≤40` stalls at `y≈93`), then UP to
   `0x54`. *(This was the long-standing `rr-dnp` v10 wall.)*
 - `0x54→0x53` is LEFT around `y≈141`.
 - **0x53→0x52 (solved):** LEFT inland from the east edge (`x>192`) before
@@ -250,7 +257,7 @@ Live geometry (Survival, `PostSwordStart`):
   column `x≈48` from the bottom corridor to the mid-band `y≈120`, traverse
   RIGHT to `x≈132`, then UP funnels Link through the wall gap (`~x128`) into
   the `x≈112` north gap to `0x42` (`POND_52_*`;
-  `scratch/probe_52_wall.py` — the gap is not at `x=112`).
+  `probe_52_wall` — the gap is not at `x=112`).
 
 Evidence: `recordings/l7_pond_from_start_l7_pond_v7.json` / `_v8.json` (2/2)
 and `l7_pond_v7_final.png` (the drained-pending Demon pond, blue water, Link
@@ -360,7 +367,7 @@ DOWN, never UP. On `--through level7-entry` the prefix greens through
 closed at `level7_pond_drain_entry`. `POST_L6_TO_BAIT_HOPS` (`0x22→0x25`)
 is a dead spur kept for bait-micro tests. The `0x77`-start pond walk and
 the ungated `OverworldToBaitShopController` stay recon-only. Pond probes:
-`scratch/pond/`.
+`pond/`.
 
 `level7/spine.py` exposes only the three plan-level targets:
 
@@ -420,7 +427,7 @@ is no loose bit-only or unknown-room dungeon predicate in `overworld.py`.
 
 | State | When |
 |-------|------|
-| `Level6ExitOverworld` | Save-state name still used by `scratch/run_bait_from_l6_exit.py` recon. The old `(120,221)` / 80R poke loadout and `HYPOTHESIZED_POST_L6_EXIT` packet were **deleted** — superseded by the measured `--through level6-exit` return `0x22` `(112,125)` (`MEASURED_POST_L6_EXIT`, an `OverworldHandoff`). |
+| `Level6ExitOverworld` | Save-state name still used by `run_bait_from_l6_exit` recon. The old `(120,221)` / 80R poke loadout and `HYPOTHESIZED_POST_L6_EXIT` packet were **deleted** — superseded by the measured `--through level6-exit` return `0x22` `(112,125)` (`MEASURED_POST_L6_EXIT`, an `OverworldHandoff`). |
 | `OW_L7Pond` | **live** pond `0x42` `(128,221)` from PostSwordStart; whistle=0 |
 | `OW_L7BaitShop` | Armos shop screen |
 | `Level7Entrance` | **live recon pin** `level==7` play `0x79` `(120,205)`; whistle poked |
@@ -472,7 +479,7 @@ required to drain the pond. To make `level7-entry` green from here: live-recon
   clear + OPEN east doorway, leftover play `0x6A` `(16,141)` west mouth,
   3,809f, `deaths=0`, `progression_writes=capacity_writes=0`, byte-identical
   on both trials (`recordings/l7_room69_east_room69_east_v5.json` / `_v6.json`,
-  `scratch/probe_l7_room69_east.py`). `route_eligible=false`.
+  `probe_l7_room69_east`). `route_eligible=false`.
 - **Fixture-live:** start-based `0x53→0x52` inland-left micro,
   `recordings/l7_dnp_pond_53.json` leftover play `0x52` `(112,181)`.
 - **Fixture-live:** post-L6 bait prefix `0x22→0x32→0x33→0x23→0x24→0x25`,
@@ -481,8 +488,8 @@ required to drain the pond. To make `level7-entry` green from here: live-recon
 - **Recon (2026-09-02, dead-pocket):** `0x33`/`0x23`/`0x24`/`0x25` have no
   south exit; `0x25` only hidden exit is north x≈208→`0x15`. Bait shop `0x34`
   (E4) is entered from the south (`0x44 ↑ 0x34`). Scripts:
-  `scratch/sweep_25_armos.py`, `scratch/probe_24_to_shop.py`,
-  `scratch/probe_33_south_to_shop.py`. Screens
+  `sweep_25_armos`, `probe_24_to_shop`,
+  `probe_33_south_to_shop`. Screens
   `recordings/l7_25enter2_*`, `l7_24probe_*`, `l7_33s_*`.
 - Prior 0x53 miss: `recordings/l7_dnp_pond_assisted_v9.json` `(224,173)`
   `hop10_ay`.
@@ -501,7 +508,7 @@ fanfare → OW **`0x42` `(96,93)` TF `0x40`** on this TF-0 recon pin.
 `MEASURED_POST_L7_EXIT.verified` stays False (not Survival `0x7F`).
 `NOSE_CELLAR.ram_id` stays None. 0x0D walk-on still open. Spine factories
 stay fail-closed. Policy: `level7/cellar.py`. Probe:
-`scratch/probe_l7_7b_cellar_cross.py`. Residual:
+`probe_l7_7b_cellar_cross`. Residual:
 `docs/tasks/rr-n91a-residual.md`.
 
 ### 2026-09-04 sitting — 0x0D walk-on south-of-gap / south-strip MISS
@@ -511,7 +518,7 @@ position pokes. DOWN from the pin pins **`(64,157)` tile 178** (SW diamond):
 y=161-164 south-of-gap band never entered; y=189 (L9 room30 south-strip)
 unreachable (ROM 0x0D south is WALL). No UP-push, no dest fixture, no
 spine flip. `NOSE_CELLAR.ram_id` stays None. Probe flags:
-`scratch/probe_l7_room0d_squeeze.py --south-of-gap` / `--south-strip`.
+``probe_l7_room0d_squeeze` --south-of-gap` / `--south-strip`.
 PNGs: `recordings/l7_0d_walkon_20260904_start.png`,
 `recordings/20260904_sog_sog_after_down.png`.
 
