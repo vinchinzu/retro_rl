@@ -81,17 +81,10 @@ BOOT_POLICY = {
     "file_menu_select": False,
 }
 
+# L4's own catalog is keyed by stop, not ordered by route; the Triforce stop
+# is the last hop, not the first. ``SPINE_THROUGH`` is assembled from the
+# ``SPINE_LEVELS`` rows at the bottom of this module.
 _L4_THROUGH = tuple(k for k in L4_STOPS if k != "level4") + ("level4",)
-SPINE_THROUGH: tuple[str, ...] = (
-    "level1",
-    "level1-bow",
-    "level1-bow-cellar",
-    "level1-bow-pickup",
-    "level1-arrows",
-    "level2-entry",
-    "level2",
-    "level3",
-) + _L4_THROUGH + L5_THROUGH + L6_THROUGH + L7_THROUGH + L8_THROUGH + L9_THROUGH
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
 # (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
@@ -141,6 +134,22 @@ _BOW_HOPS = (
         dedicated=True,
     ),
 )
+
+
+# L1-L3 have no ``levelN/spine.py`` catalog of their own; their stop names
+# live here beside the rows that run them. Route order == insertion order.
+_L1_BOW_THROUGH: tuple[str, ...] = tuple(hop.through for hop in _BOW_HOPS)
+_L1_STOPS: dict[str, str] = {"level1": "level1_triforce"} | {
+    hop.through: hop.stop for hop in _BOW_HOPS
+}
+_L2_STOPS: dict[str, str] = {
+    "level2-entry": "level2_entry",
+    "level2": "level2_triforce_0x02",
+}
+_L3_STOPS: dict[str, str] = {"level3": "level3_triforce_0x04"}
+_L1_THROUGH: tuple[str, ...] = tuple(_L1_STOPS)
+_L2_THROUGH: tuple[str, ...] = tuple(_L2_STOPS)
+_L3_THROUGH: tuple[str, ...] = tuple(_L3_STOPS)
 
 
 def level2_entry_stages():
@@ -263,22 +272,7 @@ class SpineRun:
                 (self.inventory_assist or {}).get("poke_bombs") or False
             ),
             "poke_keys": (self.inventory_assist or {}).get("poke_keys") or False,
-            "stop": {
-                "level1": "level1_triforce",
-                "level1-bow": "level1_bow_0x22",
-                "level1-bow-cellar": "level1_bow_cellar",
-                "level1-bow-pickup": "level1_bow_pickup",
-                "level1-arrows": "level1_arrows",
-                "level2-entry": "level2_entry",
-                "level2": "level2_triforce_0x02",
-                "level3": "level3_triforce_0x04",
-                **L4_STOPS,
-                **L5_STOPS,
-                **L6_STOPS,
-                **L7_STOPS,
-                **L8_STOPS,
-                **L9_STOPS,
-            }.get(self.through),
+            "stop": SPINE_STOPS.get(self.through),
             "stages": [stage.report() for stage in self.stages],
         }
 
@@ -438,26 +432,213 @@ def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
     return ok
 
 
-def _through_for_predecessor(
-    through: str, own_through: tuple[str, ...], own_last_stop: str
-) -> str:
-    """Remap ``through`` for a predecessor level's ``continue_*_spine`` call.
+def _continue_level1_spine(
+    env,
+    run,
+    *,
+    through: str,
+    run_stages,
+    room_timer=None,
+    assist=None,
+    on_frame=None,
+) -> None:
+    """L1: the dedicated Bow/arrow side-quests, else the natural Triforce run."""
+    hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
+    if through in _L1_BOW_THROUGH:
+        if through == "level1-arrows":
+            hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
+        attach_hops(
+            env, run, _BOW_HOPS, through=through, run_stages=run_stages, **hop_kw
+        )
+        return
+    if not run_stages(
+        env,
+        run,
+        level1_survival_tf_stages(),
+        key_retopup=SPINE_L1_KEY_RETOPUP,
+        **hop_kw,
+    ):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
+    if not run.success:
+        run.failed_stage = "triforce_bit"
 
-    Each ``continue_level{N}_spine`` only knows its own ``L{N}_THROUGH``
-    targets; a downstream target (anything past level N) must be remapped
-    to level N's own final stop, or the predecessor either raises (L7, L8:
-    ``if through not in L{N}_THROUGH: raise``) or -- worse -- silently runs
-    every one of its own hops to completion, including any completionist
-    tail past its real handoff point (L6: passing an unrecognized
-    downstream ``through`` straight through made ``attach_hops`` run L6's
-    entire row list, including the east3a/north39/inland29/west19/south18
-    tail *after* the real OW handoff, stranding Link inside the L6 dungeon
-    instead of on the overworld -- rr-mzxn).
 
-    A target already in ``own_through`` (an actual level-N target) passes
-    through unchanged so level N's own attach_hops loop still stops there.
+def _continue_level2_spine(
+    env,
+    run,
+    *,
+    through: str,
+    run_stages,
+    room_timer=None,
+    assist=None,
+    on_frame=None,
+) -> None:
+    """L2: settle the L1 fanfare, walk the Moon door, boomerang, Triforce 0x02."""
+    hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
+    if not run_stages(env, run, level2_entry_stages(), **hop_kw):
+        return
+
+    snap = read_snapshot(env.get_ram())
+    if not (
+        snap.level == 2
+        and snap.mode == PLAY_MODE
+        and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
+    ):
+        run.success = False
+        run.failed_stage = "level2_entry"
+        return
+
+    run.l2_entry = spine_final_fields(snap)
+    if through == "level2-entry":
+        return
+    run.bombs = spine_bomb_report(snap.bombs, through="tf")
+    # Survival shortcut until a farm pass: power-on L2 entry is bombs=0.
+    # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
+    topup_owned_inventory(env, run)
+
+    if not run_stages(
+        env,
+        run,
+        level2_to_boom_stages(),
+        retopup=SPINE_BOMB_RETOPUP,
+        update_bombs=True,
+        **hop_kw,
+    ):
+        return
+
+    snap = read_snapshot(env.get_ram())
+    if not level2_boom_success(snap):
+        run.success = False
+        run.failed_stage = "magic_boomerang"
+        _record_bombs_out(env, run)
+        return
+
+    if not run_stages(
+        env,
+        run,
+        level2_tf_stages(),
+        retopup=SPINE_BOMB_RETOPUP,
+        update_bombs=True,
+        **hop_kw,
+    ):
+        return
+
+    snap = read_snapshot(env.get_ram())
+    run.success = level2_through_success(snap)
+    if not run.success:
+        run.failed_stage = "triforce_bit_02"
+    _record_bombs_out(env, run)
+
+
+def _continue_level3_spine(
+    env,
+    run,
+    *,
+    through: str,
+    run_stages,
+    room_timer=None,
+    assist=None,
+    on_frame=None,
+) -> None:
+    """L3: hop rows to the raft passage, then Raft -> Manhandla -> Triforce."""
+
+    def _set_l3_entry(env, run, snap):
+        if run.success:
+            run.l3_entry = spine_final_fields(snap)
+
+    attach_hops(
+        env,
+        run,
+        l3_hops(after_entry=_set_l3_entry),
+        through=through,
+        run_stages=run_stages,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    )
+    if not run.success:
+        return
+
+    # Temporary Survival shortcut until rr-doua supplies the natural farm.
+    # The live 0x5c Darknut clear can consume the carried eight bombs.
+    topup_owned_bombs(env, run)
+    if not _run_level3_boss_suffix(env, run, assist=assist):
+        return
+    snap = read_snapshot(env.get_ram())
+    run.success = bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
+    if not run.success:
+        run.failed_stage = "level3_triforce_0x04"
+
+
+@dataclass(frozen=True)
+class SpineLevel:
+    """One level of the Survival spine. The Composer dispatches these rows.
+
+    ``through`` is the level's own ordered stop ids, ``stops`` their reported
+    stage names, ``run`` the ``continue_*_spine`` that attaches the level's
+    hops onto a live ``SpineRun``, and ``handoff`` the id a downstream target
+    collapses to. ``extra`` and ``overrides_kw`` carry the only two per-level
+    call shapes left: L4 wants the Survival top-up/report helpers, L8 takes the
+    opt-in recon packet forwarded from ``run_survival_spine``.
     """
-    return through if through in own_through else own_last_stop
+
+    level: int
+    through: tuple[str, ...]
+    stops: dict[str, str]
+    run: Any
+    handoff: str
+    extra: dict[str, Any] = field(default_factory=dict)
+    overrides_kw: str | None = None
+
+    def target(self, through: str) -> str:
+        """Remap a downstream target onto this level's handoff stop.
+
+        Each ``continue_level{N}_spine`` only knows its own stop ids; a target
+        past level N must become level N's handoff, or the level either raises
+        (L7, L8: ``if through not in L{N}_THROUGH: raise``) or -- worse --
+        silently runs every one of its own rows, including a completionist tail
+        past the real handoff (L6: an unrecognized downstream ``through`` made
+        ``attach_hops`` run the east3a/north39/inland29/west19/south18 tail
+        *after* the measured OW return, stranding Link inside the dungeon
+        instead of on the overworld -- rr-mzxn). A target that is one of this
+        level's own ids passes through unchanged so the level's ``attach_hops``
+        loop still stops there.
+        """
+        return through if through in self.through else self.handoff
+
+
+_L4_EXTRA = {"topup_bombs": topup_owned_bombs, "spine_fields": spine_final_fields}
+
+# The one dispatch table: level, own stop ids, stop names, continue-fn, handoff.
+# A new level, stop or handoff is a row here; nothing in ``run_survival_spine``
+# below knows a level number. L6's handoff is the measured post-fanfare OW
+# return, NOT ``level6`` -- L7 continues from screen 0x22 and the L6
+# completionist tail would strand Link inside the dungeon (rr-mzxn). L8
+# continues from MEASURED_POST_L7_HANDOFF, L9 from MEASURED_POST_L8_HANDOFF
+# (OW 0x6D); every natural L9 chapter is still a fail-closed marker.
+SPINE_LEVELS: tuple[SpineLevel, ...] = (
+    SpineLevel(1, _L1_THROUGH, _L1_STOPS, _continue_level1_spine, "level1"),
+    SpineLevel(2, _L2_THROUGH, _L2_STOPS, _continue_level2_spine, "level2"),
+    SpineLevel(3, _L3_THROUGH, _L3_STOPS, _continue_level3_spine, "level3"),
+    SpineLevel(4, _L4_THROUGH, L4_STOPS, continue_level4_spine, "level4", _L4_EXTRA),
+    SpineLevel(5, L5_THROUGH, L5_STOPS, continue_level5_spine, "level5"),
+    SpineLevel(6, L6_THROUGH, L6_STOPS, continue_level6_spine, "level6-exit"),
+    SpineLevel(7, L7_THROUGH, L7_STOPS, continue_level7_spine, "level7"),
+    SpineLevel(
+        8, L8_THROUGH, L8_STOPS, continue_level8_spine, "level8",
+        overrides_kw="level8_overrides",
+    ),
+    SpineLevel(9, L9_THROUGH, L9_STOPS, continue_level9_spine, L9_THROUGH[-1]),
+)
+
+SPINE_THROUGH: tuple[str, ...] = tuple(
+    stop for row in SPINE_LEVELS for stop in row.through
+)
+SPINE_STOPS: dict[str, str] = {
+    stop: name for row in SPINE_LEVELS for stop, name in row.stops.items()
+}
 
 
 def run_survival_spine(
@@ -503,186 +684,19 @@ def run_survival_spine(
         return run
 
     hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
-    if through in (
-        "level1-bow",
-        "level1-bow-cellar",
-        "level1-bow-pickup",
-        "level1-arrows",
-    ):
-        if through == "level1-arrows":
-            hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
-        attach_hops(env, run, _BOW_HOPS, through=through, run_stages=_run_stages, **hop_kw)
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level1_survival_tf_stages(),
-        key_retopup=SPINE_L1_KEY_RETOPUP,
-        **hop_kw,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
-    if not run.success:
-        run.failed_stage = "triforce_bit"
-        return run
-    if through == "level1":
-        return run
-
-    if not _run_stages(env, run, level2_entry_stages(), **hop_kw):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    if not (
-        snap.level == 2
-        and snap.mode == PLAY_MODE
-        and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
-    ):
-        run.success = False
-        run.failed_stage = "level2_entry"
-        return run
-
-    run.l2_entry = spine_final_fields(snap)
-    if through == "level2-entry":
-        return run
-    run.bombs = spine_bomb_report(snap.bombs, through="tf")
-    # Survival shortcut until a farm pass: power-on L2 entry is bombs=0.
-    # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
-    topup_owned_inventory(env, run)
-
-    if not _run_stages(
-        env,
-        run,
-        level2_to_boom_stages(),
-        retopup=SPINE_BOMB_RETOPUP,
-        update_bombs=True,
-        **hop_kw,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    if not level2_boom_success(snap):
-        run.success = False
-        run.failed_stage = "magic_boomerang"
-        _record_bombs_out(env, run)
-        return run
-
-    if not _run_stages(
-        env,
-        run,
-        level2_tf_stages(),
-        retopup=SPINE_BOMB_RETOPUP,
-        update_bombs=True,
-        **hop_kw,
-    ):
-        return run
-
-    snap = read_snapshot(env.get_ram())
-    run.success = level2_through_success(snap)
-    if not run.success:
-        run.failed_stage = "triforce_bit_02"
-        _record_bombs_out(env, run)
-        return run
-    _record_bombs_out(env, run)
-    if through == "level2":
-        return run
-
-    def _set_l3_entry(env, run, snap):
-        if run.success:
-            run.l3_entry = spine_final_fields(snap)
-
-    attach_hops(
-        env,
-        run,
-        l3_hops(after_entry=_set_l3_entry),
-        through=through,
-        run_stages=_run_stages,
-        **hop_kw,
-    )
-    if not run.success:
-        return run
-
-    # Temporary Survival shortcut until rr-doua supplies the natural farm.
-    # The live 0x5c Darknut clear can consume the carried eight bombs.
-    topup_owned_bombs(env, run)
-    if not _run_level3_boss_suffix(env, run, assist=assist):
-        return run
-    snap = read_snapshot(env.get_ram())
-    run.success = bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
-    if not run.success:
-        run.failed_stage = "level3_triforce_0x04"
-        return run
-    if through == "level3":
-        return run
-
-    continue_level4_spine(
-        env,
-        run,
-        through=through,
-        run_stages=_run_stages,
-        topup_bombs=topup_owned_bombs,
-        spine_fields=spine_final_fields,
-        **hop_kw,
-    )
-    if not run.success or through in L4_STOPS:
-        return run
-    continue_level5_spine(
-        env,
-        run,
-        through=through,
-        run_stages=_run_stages,
-        **hop_kw,
-    )
-    if not run.success or through in L5_THROUGH:
-        return run
-    # For any target past L6 (L7, L8, or L9), drive the L6 suffix only to the
-    # measured post-fanfare OW return (``level6-exit``); L7 then continues
-    # from screen 0x22. See ``_through_for_predecessor`` (rr-mzxn).
-    continue_level6_spine(
-        env,
-        run,
-        through=_through_for_predecessor(through, L6_THROUGH, "level6-exit"),
-        run_stages=_run_stages,
-        **hop_kw,
-    )
-    if not run.success or through in L6_THROUGH:
-        return run
-    # For any target past L7 (L8 or L9), drive the L7 suffix to its own last
-    # stop (``level7``); L8 then continues from the post-L7 overworld with
-    # the handoff packet. See ``_through_for_predecessor`` (rr-mzxn).
-    continue_level7_spine(
-        env,
-        run,
-        through=_through_for_predecessor(through, L7_THROUGH, "level7"),
-        run_stages=_run_stages,
-        **hop_kw,
-    )
-    if not run.success or through in L7_THROUGH:
-        return run
-    # L8 continues from MEASURED_POST_L7_HANDOFF. Default hops walk the
-    # refilled-pond west ring then the reverse pond corridor to 0x6D.
-    # See ``_through_for_predecessor`` (rr-mzxn).
-    continue_level8_spine(
-        env,
-        run,
-        through=_through_for_predecessor(through, L8_THROUGH, "level8"),
-        run_stages=_run_stages,
-        **hop_kw,
-        **(level8_overrides or {}),
-    )
-    if not run.success or through in L8_THROUGH:
-        return run
-    # L9 continues from MEASURED_POST_L8_HANDOFF (OW 0x6D). Every natural L9
-    # chapter is still a fail-closed marker (Spectacle Rock walk, bomb entry,
-    # Old Man TF gate, interior on natural resources) -- reaching the seam is
-    # not greening it.
-    continue_level9_spine(
-        env,
-        run,
-        through=through,
-        run_stages=_run_stages,
-        **hop_kw,
-    )
+    runtime = {"level8_overrides": level8_overrides or {}}
+    for row in SPINE_LEVELS:
+        extra = dict(row.extra)
+        if row.overrides_kw is not None:
+            extra.update(runtime.get(row.overrides_kw) or {})
+        row.run(
+            env,
+            run,
+            through=row.target(through),
+            run_stages=_run_stages,
+            **hop_kw,
+            **extra,
+        )
+        if not run.success or through in row.through:
+            return run
     return run

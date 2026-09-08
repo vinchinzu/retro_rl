@@ -277,53 +277,66 @@ def test_video_tap_close_and_abort_without_writer() -> None:
 
 
 def test_level7_seam_is_wired_into_the_spine() -> None:
-    import inspect
-
-    from zelda_i.level7.spine import L7_THROUGH
-    from zelda_i.spine import survival
+    from zelda_i.level7.spine import L7_THROUGH, continue_level7_spine
+    from zelda_i.spine.survival import SPINE_LEVELS
 
     for target in L7_THROUGH:
         assert target in SPINE_THROUGH
         run = SpineRun(through=target, success=True, boot_frames=1)
         assert run.report()["stop"] is not None
-    src = inspect.getsource(survival.run_survival_spine)
-    assert "continue_level7_spine" in src
+    (row,) = [row for row in SPINE_LEVELS if row.level == 7]
+    assert row.run is continue_level7_spine
+    assert row.through == L7_THROUGH
 
 
-def test_through_for_predecessor_remaps_every_downstream_target() -> None:
-    """rr-mzxn regression guard.
+def test_spine_level_target_remaps_every_downstream_target() -> None:
+    """rr-mzxn regression guard, now on ``SpineLevel.target``.
 
-    Every L7/L8/L9 target must remap to the predecessor's own final stop
-    when driving an earlier level's ``continue_*_spine`` -- not just the
-    immediate next level. Missing L9 in the L6/L7 remap left Link stranded
-    inside the L6 dungeon (L6) or raised ``ValueError`` (L7, whose own
-    ``continue_level7_spine`` rejects any ``through`` outside L7_THROUGH).
+    Every target past level N must remap to row N's own handoff when driving
+    that row -- not just the immediate next level. Missing L9 in the L6/L7
+    remap left Link stranded inside the L6 dungeon (L6) or raised
+    ``ValueError`` (L7, whose ``continue_level7_spine`` rejects any ``through``
+    outside L7_THROUGH). A row's own ids must pass through unchanged so its
+    ``attach_hops`` loop still stops there.
     """
-    from zelda_i.level6.spine import L6_THROUGH
-    from zelda_i.level7.spine import L7_THROUGH
-    from zelda_i.level8.spine import L8_THROUGH
-    from zelda_i.level9.spine import L9_THROUGH
-    from zelda_i.spine.survival import _through_for_predecessor
+    from zelda_i.spine.survival import SPINE_LEVELS
 
-    downstream_of_l6 = L7_THROUGH + L8_THROUGH + L9_THROUGH
-    for target in downstream_of_l6:
-        assert (
-            _through_for_predecessor(target, L6_THROUGH, "level6-exit")
-            == "level6-exit"
-        )
-    for target in L6_THROUGH:
-        assert _through_for_predecessor(target, L6_THROUGH, "level6-exit") == target
+    rows = {row.level: row for row in SPINE_LEVELS}
+    assert rows[6].handoff == "level6-exit"
+    assert rows[7].handoff == "level7"
+    assert rows[8].handoff == "level8"
 
-    downstream_of_l7 = L8_THROUGH + L9_THROUGH
-    for target in downstream_of_l7:
-        assert _through_for_predecessor(target, L7_THROUGH, "level7") == "level7"
-    for target in L7_THROUGH:
-        assert _through_for_predecessor(target, L7_THROUGH, "level7") == target
+    for index, row in enumerate(SPINE_LEVELS):
+        downstream = [
+            target
+            for later in SPINE_LEVELS[index + 1 :]
+            for target in later.through
+        ]
+        for target in downstream:
+            assert row.target(target) == row.handoff
+        for target in row.through:
+            assert row.target(target) == target
+        assert row.handoff in row.through
 
-    for target in L9_THROUGH:
-        assert _through_for_predecessor(target, L8_THROUGH, "level8") == "level8"
-    for target in L8_THROUGH:
-        assert _through_for_predecessor(target, L8_THROUGH, "level8") == target
+
+def test_spine_levels_cover_the_through_catalog_exactly() -> None:
+    """One row table owns every ``--through`` id; no id is orphaned or dupe."""
+    from zelda_i.spine.survival import SPINE_LEVELS, SPINE_STOPS
+
+    assert tuple(t for row in SPINE_LEVELS for t in row.through) == SPINE_THROUGH
+    assert len(SPINE_THROUGH) == len(set(SPINE_THROUGH))
+    assert [row.level for row in SPINE_LEVELS] == list(range(1, 10))
+    for row in SPINE_LEVELS:
+        assert set(row.stops) == set(row.through), row.level
+        assert callable(row.run)
+    assert set(SPINE_STOPS) == set(SPINE_THROUGH)
+    for target in SPINE_THROUGH:
+        assert SpineRun(through=target, success=True, boot_frames=1).report()["stop"]
+
+
+def test_spine_through_catalog_is_pinned() -> None:
+    """Full ``--through`` list. A row edit that drops a stop fails here."""
+    assert SPINE_THROUGH == PINNED_SPINE_THROUGH
 
 
 def test_spine_run_measured_set_state_fails_the_run() -> None:
@@ -334,3 +347,102 @@ def test_spine_run_measured_set_state_fails_the_run() -> None:
     assert report["mid_run_state_load"] is True
     assert report["ok"] is False
     assert report["failed_stage"] == "mid_run_state_load"
+
+
+# The full ``--through`` catalog, pinned. Regenerate only alongside a
+# deliberate route change: SPINE_LEVELS is the source, this is the guard.
+PINNED_SPINE_THROUGH: tuple[str, ...] = (
+    "level1",
+    "level1-bow",
+    "level1-bow-cellar",
+    "level1-bow-pickup",
+    "level1-arrows",
+    "level2-entry",
+    "level2",
+    "level3",
+    "level4-entry",
+    "level4-key",
+    "level4-clear50",
+    "level4-room40-key",
+    "level4-room30",
+    "level4-room31",
+    "level4-clear31",
+    "level4-room32",
+    "level4-clear32",
+    "level4-stepladder",
+    "level4-exit60",
+    "level4-west31",
+    "level4-keyup20",
+    "level4-room21",
+    "level4-map",
+    "level4-bomb11",
+    "level4-key01",
+    "level4-clear12",
+    "level4-gleeok13",
+    "level4",
+    "level5-entry",
+    "level5-clear66",
+    "level5-east77",
+    "level5-whistle",
+    "level5-exit04",
+    "level5",
+    "level6-entry",
+    "level6-east-key",
+    "level6-west",
+    "level6-compass",
+    "level6-clear68",
+    "level6-keese",
+    "level6-clear58",
+    "level6-room48",
+    "level6-room38",
+    "level6-clear38",
+    "level6-room28",
+    "level6-clear28",
+    "level6-room18",
+    "level6-settle18",
+    "level6-gleeok18",
+    "level6-postgleeok18",
+    "level6-stairs18",
+    "level6-room19",
+    "level6-clear19",
+    "level6-map19",
+    "level6-room09",
+    "level6-clear09",
+    "level6-stairs09",
+    "level6-rod",
+    "level6-exit75",
+    "level6-south09",
+    "level6-south19",
+    "level6-clear29",
+    "level6-east29",
+    "level6-south29",
+    "level6-settle39",
+    "level6-clear39",
+    "level6-east39",
+    "level6-settle3a",
+    "level6-clear3a",
+    "level6-stairs3a-warp",
+    "level6-cellar08",
+    "level6-south1d",
+    "level6-west2d",
+    "level6-north2c",
+    "level6-gohma",
+    "level6-heart",
+    "level6-north0c",
+    "level6",
+    "level6-exit",
+    "level6-north39",
+    "level6-inland29",
+    "level6-west19",
+    "level6-south18",
+    "level7-entry",
+    "level7-red-candle",
+    "level7",
+    "level8-entry",
+    "level8-magic-key",
+    "level8",
+    "level9-entry",
+    "level9-silver-arrows",
+    "level9-patra",
+    "level9-credits",
+)
