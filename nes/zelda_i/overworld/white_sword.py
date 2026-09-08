@@ -58,7 +58,10 @@ TOP_BAND_REACHED_Y = 87
 CAVE_MOUTH_X = 34
 CORRIDOR_BOTTOM_Y = 213
 CAVE_ITEM_X = 120
-DIALOG_FRAMES = 300
+# The Old Man's text freezes input, so pressing early is a no-op, not a
+# risk. ``overworld/sword_cave.py`` measured 35 f as enough to let the
+# cave settle; 300 was a blind hold that cost ~265 f of dead air.
+DIALOG_FRAMES = 35
 TOL = 2
 
 # (direction, cross-axis target, screen expected on arrival)
