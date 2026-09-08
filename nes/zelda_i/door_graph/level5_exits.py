@@ -10,25 +10,24 @@ from zelda_i.door_graph.core import (
     clone_graph,
 )
 from zelda_i.level5.dungeon import (
+    BOMB_EAST_STAND,
+    BOMB_WEST_STAND,
+    ROOM_L5_BLUE_64,
+    ROOM_L5_CELLAR_07,
     ROOM_L5_EAST_67,
+    ROOM_L5_EAST_ZOLS,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
     ROOM_L5_NORTH_27,
     ROOM_L5_NORTH_55,
     ROOM_L5_NORTH_56,
+    ROOM_L5_NORTH_GIBDOS,
+    ROOM_L5_PASSAGE_06,
     ROOM_L5_POLS_77,
     ROOM_L5_WEST_24,
     ROOM_L5_WEST_25,
     ROOM_L5_WEST_26,
     ROOM_L5_WEST_65,
-)
-from zelda_i.level5.tf_path import ROOM_L5_EAST_ZOLS, ROOM_L5_NORTH_GIBDOS
-from zelda_i.level5.whistle_path import (
-    BOMB_EAST_STAND,
-    BOMB_WEST_STAND,
-    ROOM_L5_BLUE_64,
-    ROOM_L5_CELLAR_07,
-    ROOM_L5_PASSAGE_06,
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
 )

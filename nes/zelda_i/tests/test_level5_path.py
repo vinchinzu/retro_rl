@@ -13,6 +13,7 @@ from zelda_i.level5.path import (
     level5_east_key_step,
     level5_room66_west_aisle_north_step,
     level5_west65_step,
+    make_return_66_controller,
 )
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
@@ -104,11 +105,87 @@ def test_west65_uses_statue_bypass_on_76() -> None:
     assert north.reason == "west65_enter_66"
 
 
-def test_take_center_stairs_06_is_center_tile_not_spawn() -> None:
-    from zelda_i.level5.path import take_center_stairs_06, cellar_to_64
-    assert "120,141" in (take_center_stairs_06.__doc__ or "")
-    assert "return take_block_stairs_06" not in (take_center_stairs_06.__doc__ or "")
+def test_block_stairs_06_warp_is_walked_not_spawn_tile() -> None:
+    """0x06 warps from the walked (128,141) tile, not the (96,133) spawn."""
+    from zelda_i.level5.cellar_path import cellar_to_64, take_block_stairs_06
+
+    doc = take_block_stairs_06.__doc__ or ""
+    assert "96,133" in doc
+    assert "do not warp" in doc.lower()
     assert "189" in (cellar_to_64.__doc__ or "") or "pit" in (cellar_to_64.__doc__ or "").lower()
+
+
+def test_nav_rows_keep_settle_and_frame_budgets() -> None:
+    """0x66 return / 0x77 east key are rows of one settle-on-arrival nav."""
+    from zelda_i.level5.path import (
+        EAST_KEY_77_NAV,
+        RETURN_66_NAV,
+        level5_east_key_step,
+        level5_return_66_step,
+    )
+
+    assert (RETURN_66_NAV.max_frames, RETURN_66_NAV.settle_frames) == (8000, 30)
+    assert RETURN_66_NAV.step is level5_return_66_step
+    assert RETURN_66_NAV.spec_id == "level5_return66_from_east_key"
+    assert (EAST_KEY_77_NAV.max_frames, EAST_KEY_77_NAV.settle_frames) == (8000, 40)
+    assert EAST_KEY_77_NAV.step is level5_east_key_step
+    assert EAST_KEY_77_NAV.spec_id == "level5_east_key_nav_0x77"
+
+
+def test_return_66_controller_settles_then_stops() -> None:
+    from zelda_i.level5.path import RETURN_66_NAV, make_return_66_controller
+
+    ctl = make_return_66_controller()
+    snap = read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=141))
+    for _ in range(RETURN_66_NAV.settle_frames - 1):
+        assert ctl.step(snap).reason == "settle_66"
+        assert not ctl.success
+    assert ctl.step(snap).reason == "arrived_66"
+    assert ctl.success
+    assert ctl.report()["spec_id"] == "level5_return66_from_east_key"
+
+
+def test_return_66_controller_waits_in_the_south_mouth() -> None:
+    """y>185 is the 0x66 south mouth; the hop is not done until Link is in."""
+    ctl = make_return_66_controller()
+    mouth = ctl.step(read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=205)))
+    assert mouth.reason == "return66_leave_south"
+    assert not ctl.success
+
+
+def test_west_leave_rows_keep_probe_tolerances_and_push_budgets() -> None:
+    from zelda_i.level5.west_path import WEST_25_TO_24, WEST_26_TO_25, WEST_27_TO_26
+
+    assert WEST_27_TO_26.probe_tol is None
+    assert WEST_27_TO_26.align_frames is None
+    assert WEST_27_TO_26.push_frames == 220
+    assert WEST_27_TO_26.paths[0][1] == (
+        ("x", 208), ("y", 189), ("x", 32), ("y", 141), ("x", 32),
+    )
+    assert (WEST_26_TO_25.probe_tol, WEST_26_TO_25.align_frames) == ((6, 4), 32)
+    assert WEST_26_TO_25.push_frames == 220
+    assert (WEST_25_TO_24.probe_tol, WEST_25_TO_24.align_frames) == ((8, 8), 28)
+    assert WEST_25_TO_24.push_frames == 240
+    assert dict(WEST_25_TO_24.extra) == {"fought_digdogger": False}
+
+
+def test_bomb_wall_rows_keep_stands_and_approaches() -> None:
+    from zelda_i.level5.whistle_path import BOMB_EAST_65, BOMB_WEST_65, BOMB_WEST_66
+
+    assert (BOMB_WEST_66.stand, BOMB_WEST_66.face) == ((32, 141), "LEFT")
+    assert BOMB_WEST_66.dest_room == 0x65
+    assert BOMB_WEST_66.leave_south_mouth
+    assert BOMB_WEST_66.probe_paths[0] == (("y", 189), ("x", 32), ("y", 141))
+    assert len(BOMB_WEST_66.probe_paths) == 3
+    assert (BOMB_WEST_65.stand, BOMB_WEST_65.dest_room) == ((32, 141), 0x64)
+    assert BOMB_WEST_65.approach == (
+        ("y", 109, 400), ("x", 32, 400), ("y", 141, 400), ("x", 32, 200),
+    )
+    assert (BOMB_EAST_65.stand, BOMB_EAST_65.face) == ((224, 141), "RIGHT")
+    assert BOMB_EAST_65.dest_room == 0x66
+    assert BOMB_EAST_65.approach == (
+        ("y", 109, 400), ("x", 208, 500), ("y", 141, 400), ("x", 224, 200),
+    )
 
 
 def test_whistle_tf_stand_geometry() -> None:

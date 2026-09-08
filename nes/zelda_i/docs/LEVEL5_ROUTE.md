@@ -189,9 +189,11 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py \
 - `recordings/l5_e2w_t2.json` / `l5_e2w_t2_final.png` — EastKey → Recorder 0x04
 - `recordings/l5_entrance.png`, `l5_0b_door.png`, `l5_1b_free.png`, `l5_room_66.png`,
   `l5_room67.png`, `l5_room_77.png`, `l5_east_key.png`
-- Modules: `level5/overworld.py`, `level5/dungeon.py`, `level5/path.py`
-  (facade; `level5.west_path`, `level5.whistle_path`, `level5.cellar_path`,
-  `level5.tf_path`, `level5.boss_path`). Durable runner:
+- Modules: `level5/overworld.py`, `level5/dungeon.py` (room ids + specs),
+  `level5/path.py` (0x76/0x77 policy steps, `Level5NavSpec` rows, `walk_axis`),
+  `level5.west_path` (`WestLeaveSpec` rows), `level5.whistle_path`
+  (`BombWallSpec` rows), `level5.cellar_path`, `level5.boss_path`. Import from
+  the owning module — there is no facade. Durable runner:
   `scripts/run_survival_spine.py` (`--through level5-entry` /
   `level5-clear66` / `level5-east77` / `level5-whistle` / `level5-exit04` /
   `level5`). Isolated L5 segment CLIs pruned.

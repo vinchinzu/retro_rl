@@ -1,19 +1,21 @@
-"""Level 5 multi-room path policy (public facade).
+"""Level 5 multi-room path policy.
 
 East key: 0x66 → 0x76 east key door → 0x77.
 Post-east-key: 0x77 → 0x76 → 0x66 free UP → 0x56.
-West hops live in ``level5_west_path`` (0x27 → 0x26 → 0x25 → 0x24).
-Whistle inbound lives in ``level5_whistle_path``; cellar/east return in
-``level5_cellar_path``; Digdogger/TF north hop in ``level5_tf_path``.
+West hops live in ``level5.west_path`` (0x27 → 0x26 → 0x25 → 0x24).
+Whistle inbound lives in ``level5.whistle_path``; cellar/east return in
+``level5.cellar_path``.
 
-Callers should keep importing from this module.
+Room specs and stop predicates remain in ``level5.dungeon``.
 
-Room specs and stop predicates remain in ``level5_dungeon``.
+``walk_axis`` / ``_step`` are the shared env-stepping glue for every L5
+library hop; ``Level5NavSpec`` rows are the shared settle-on-arrival nav
+controller (0x66 return, 0x77 east key).
 """
 
 from __future__ import annotations
 
-import importlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from retro_harness.input_script import FrameAction
@@ -26,28 +28,12 @@ from zelda_i.level5.dungeon import (
     ROOM_L5_NORTH_56,
     ROOM_L5_POLS_77,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 EAST_DOOR_APPROACH_Y = 157
 EAST_DOOR_CHANNEL_Y = 141
 # Live statue blocks UP at x=200 (stuck 200,149). Start y-slide at wall x≈208.
 EAST_DOOR_WALL_X = 208
-
-_ISOLATED_ROOM_77 = "L5_Room_77"
-
-
-def should_force_keys_zero(
-    start_state: str,
-    *,
-    keep_keys: bool = False,
-    force_keys_zero: bool = False,
-) -> bool:
-    """True only for isolated ``L5_Room_77`` combat, unless explicitly overridden."""
-    if keep_keys:
-        return False
-    if force_keys_zero:
-        return True
-    return start_state == _ISOLATED_ROOM_77
 
 
 def level5_east_key_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -192,73 +178,6 @@ def level5_west65_step(snap: ZeldaSnapshot) -> FrameAction:
     )
 
 
-@dataclass
-class Level5West65Controller:
-    """Walk 0x77→0x76→0x66 free UP→0x56; stop on arrival.
-
-    No combat. Success = room-ready 0x56. Does not poke keys or doors.
-    """
-
-    max_frames: int = 8000
-    settle_frames: int = 45
-    frames: int = 0
-    settle_left: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    last_room: int = -1
-
-    def report(self) -> dict:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": "level5_north56_from_east_key",
-        }
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-
-        if snap.screen != self.last_room:
-            self.notes.append(
-                f"room_0x{snap.screen:02x}_f{self.frames}_xy={snap.link_x},{snap.link_y}_k={snap.keys}"
-            )
-            self.last_room = snap.screen
-
-        if (
-            snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_NORTH_56
-            and snap.mode == PLAY_MODE
-        ):
-            if self.settle_left <= 0 and "settling_56" not in self.notes:
-                self.settle_left = self.settle_frames
-                self.notes.append("settling_56")
-            if self.settle_left > 0:
-                self.settle_left -= 1
-                if self.settle_left > 0:
-                    return FrameAction(nes_idle_action(), "settle_56")
-            self.success = True
-            self.notes.append("arrived_56")
-            return FrameAction(nes_idle_action(), "arrived_56")
-
-        return level5_west65_step(snap)
-
-
-def make_west65_controller() -> Level5West65Controller:
-    return Level5West65Controller()
-
-
 def level5_return_66_step(snap: ZeldaSnapshot) -> FrameAction:
     """Deterministic 0x77→0x76→0x66 return. Stop in cleared 0x66.
 
@@ -278,12 +197,38 @@ def level5_return_66_step(snap: ZeldaSnapshot) -> FrameAction:
     return level5_west65_step(snap)
 
 
-@dataclass
-class Level5Return66Controller:
-    """Walk 0x77→0x76→0x66; stop room-ready on 0x66. No combat. No pokes."""
+@dataclass(frozen=True)
+class Level5NavSpec:
+    """One settle-on-arrival L5 walk: policy step, destination, budgets."""
 
-    max_frames: int = 8000
-    settle_frames: int = 30
+    spec_id: str
+    dest_room: int
+    step: Callable[[ZeldaSnapshot], FrameAction]
+    max_frames: int
+    settle_frames: int
+    arrived_extra: Callable[[ZeldaSnapshot], bool] | None = None
+
+    @property
+    def tag(self) -> str:
+        return f"{self.dest_room:02x}"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.level == LEVEL_5
+            and snap.screen == self.dest_room
+            and snap.mode == PLAY_MODE
+            and (self.arrived_extra is None or self.arrived_extra(snap))
+        )
+
+
+@dataclass
+class Level5NavController:
+    """Walk one ``Level5NavSpec`` to its room; settle, then stop.
+
+    No combat. Does not poke keys or doors.
+    """
+
+    spec: Level5NavSpec
     frames: int = 0
     settle_left: int = 0
     success: bool = False
@@ -291,20 +236,25 @@ class Level5Return66Controller:
     notes: list[str] = field(default_factory=list)
     last_room: int = -1
 
+    @property
+    def max_frames(self) -> int:
+        return self.spec.max_frames
+
     def report(self) -> dict:
         return {
             "success": self.success,
             "failed": self.failed,
             "frames": self.frames,
             "notes": list(self.notes),
-            "spec_id": "level5_return66_from_east_key",
+            "spec_id": self.spec.spec_id,
         }
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        spec = self.spec
         self.frames += 1
         if self.success:
             return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
+        if self.failed or self.frames >= spec.max_frames:
             self.failed = True
             return FrameAction(nes_idle_action(), "timeout")
         if snap.mode == 17:
@@ -313,40 +263,74 @@ class Level5Return66Controller:
             return FrameAction(nes_idle_action(), "link_death")
         if snap.screen != self.last_room:
             self.notes.append(
-                f"room_0x{snap.screen:02x}_f{self.frames}_xy={snap.link_x},{snap.link_y}_k={snap.keys}"
+                f"room_0x{snap.screen:02x}_f{self.frames}"
+                f"_xy={snap.link_x},{snap.link_y}_k={snap.keys}"
             )
             self.last_room = snap.screen
-        if (
-            snap.level == LEVEL_5
-            and snap.screen == ROOM_L5_GIBDO_66
-            and snap.mode == PLAY_MODE
-            and snap.link_y <= 185
-        ):
-            if self.settle_left <= 0 and "settling_66" not in self.notes:
-                self.settle_left = self.settle_frames
-                self.notes.append("settling_66")
+        if spec.arrived(snap):
+            if self.settle_left <= 0 and f"settling_{spec.tag}" not in self.notes:
+                self.settle_left = spec.settle_frames
+                self.notes.append(f"settling_{spec.tag}")
             if self.settle_left > 0:
                 self.settle_left -= 1
                 if self.settle_left > 0:
-                    return FrameAction(nes_idle_action(), "settle_66")
+                    return FrameAction(nes_idle_action(), f"settle_{spec.tag}")
             self.success = True
-            self.notes.append("arrived_66")
-            return FrameAction(nes_idle_action(), "arrived_66")
-        return level5_return_66_step(snap)
+            self.notes.append(f"arrived_{spec.tag}")
+            return FrameAction(nes_idle_action(), f"arrived_{spec.tag}")
+        return spec.step(snap)
 
 
-def make_return_66_controller() -> Level5Return66Controller:
-    return Level5Return66Controller()
+RETURN_66_NAV = Level5NavSpec(
+    spec_id="level5_return66_from_east_key",
+    dest_room=ROOM_L5_GIBDO_66,
+    step=level5_return_66_step,
+    max_frames=8000,
+    settle_frames=30,
+    arrived_extra=lambda snap: snap.link_y <= 185,
+)
+
+EAST_KEY_77_NAV = Level5NavSpec(
+    spec_id="level5_east_key_nav_0x77",
+    dest_room=ROOM_L5_POLS_77,
+    step=level5_east_key_step,
+    max_frames=8000,
+    settle_frames=40,
+    arrived_extra=lambda snap: not snap.transitioning,
+)
 
 
+def make_return_66_controller() -> Level5NavController:
+    return Level5NavController(RETURN_66_NAV)
 
-def walk_axis(env, assist, total: list[int], axis: str, target: int, max_f: int = 500) -> bool:
-    """Step one axis toward target. Used by the 0x27 west-key leave."""
+
+def make_east_key_nav_controller() -> Level5NavController:
+    return Level5NavController(EAST_KEY_77_NAV)
+
+
+def walk_axis(
+    env,
+    assist,
+    total: list[int],
+    axis: str,
+    target: int,
+    max_f: int = 500,
+    *,
+    stall_limit: int = 40,
+    done: Callable[[ZeldaSnapshot], bool] | None = None,
+) -> bool:
+    """Step one axis toward ``target``; True on arrival (or ``done``).
+
+    ``done`` short-circuits when the room already changed (cellar walks);
+    ``stall_limit`` is how many frames of a frozen (x, y) end the walk —
+    40 for play rooms, higher where fanfare or a mode-9 cellar freezes Link.
+    """
     last = None
     stall = 0
-    read_snapshot = __import__("zelda_i.ram", fromlist=["read_snapshot"]).read_snapshot
     for _ in range(max_f):
         snap = read_snapshot(env.get_ram())
+        if done is not None and done(snap):
+            return True
         if axis == "x":
             if abs(snap.link_x - target) <= 1:
                 return True
@@ -355,21 +339,17 @@ def walk_axis(env, assist, total: list[int], axis: str, target: int, max_f: int 
             if abs(snap.link_y - target) <= 1:
                 return True
             action = nes_action("DOWN" if snap.link_y < target else "UP")
-        env.step(action)
-        total[0] += 1
-        if assist is not None:
-            assist.apply_env(env, frame=total[0])
+        _step(env, assist, total, action)
         snap2 = read_snapshot(env.get_ram())
         pos = (snap2.link_x, snap2.link_y)
         if pos == last:
             stall += 1
-            if stall >= 40:
+            if stall >= stall_limit:
                 return False
         else:
             stall = 0
         last = pos
     return False
-
 
 
 def _step(env, assist, total: list[int], action) -> None:
@@ -379,170 +359,23 @@ def _step(env, assist, total: list[int], action) -> None:
         assist.apply_env(env, frame=total[0])
 
 
-
-_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    # west
-    "SOUTH_PINCH_Y": ("zelda_i.level5.west_path", "SOUTH_PINCH_Y"),
-    "WEST_DOOR_X": ("zelda_i.level5.west_path", "WEST_DOOR_X"),
-    "BOMB_WEST_66_STAND": ("zelda_i.level5.whistle_path", "BOMB_WEST_66_STAND"),
-    "bomb_west_from_66": ("zelda_i.level5.whistle_path", "bomb_west_from_66"),
-    "Level5West26From27Controller": ("zelda_i.level5.west_path", "Level5West26From27Controller"),
-    "level5_west26_from_27_step": ("zelda_i.level5.west_path", "level5_west26_from_27_step"),
-    "make_west26_from_27_controller": ("zelda_i.level5.west_path", "make_west26_from_27_controller"),
-    "walk_west_from_27": ("zelda_i.level5.west_path", "walk_west_from_27"),
-    "walk_west_from_26": ("zelda_i.level5.west_path", "walk_west_from_26"),
-    "walk_west_from_25": ("zelda_i.level5.west_path", "walk_west_from_25"),
-    "WEST26_TO_25_PATHS": ("zelda_i.level5.west_path", "WEST26_TO_25_PATHS"),
-    "WEST25_TO_24_PATHS": ("zelda_i.level5.west_path", "WEST25_TO_24_PATHS"),
-    # whistle inbound
-    "ROOM_L5_BLUE_64": ("zelda_i.level5.whistle_path", "ROOM_L5_BLUE_64"),
-    "ROOM_L5_CELLAR_07": ("zelda_i.level5.whistle_path", "ROOM_L5_CELLAR_07"),
-    "ROOM_L5_PASSAGE_06": ("zelda_i.level5.whistle_path", "ROOM_L5_PASSAGE_06"),
-    "ROOM_L5_WHISTLE_05": ("zelda_i.level5.whistle_path", "ROOM_L5_WHISTLE_05"),
-    "ROOM_L5_WHISTLE_ITEM": ("zelda_i.level5.whistle_path", "ROOM_L5_WHISTLE_ITEM"),
-    "BLUE_DARKNUT_TYPE": ("zelda_i.level5.whistle_path", "BLUE_DARKNUT_TYPE"),
-    "BOMB_WEST_STAND": ("zelda_i.level5.whistle_path", "BOMB_WEST_STAND"),
-    "BOMB_EAST_STAND": ("zelda_i.level5.whistle_path", "BOMB_EAST_STAND"),
-    "CENTER_STAIRS": ("zelda_i.level5.whistle_path", "CENTER_STAIRS"),
-    "CELLAR_MODES": ("zelda_i.level5.whistle_path", "CELLAR_MODES"),
-    "L5_CELLAR_FLOOR_Y": ("zelda_i.level5.whistle_path", "L5_CELLAR_FLOOR_Y"),
-    "L5_CELLAR_LEFT_X": ("zelda_i.level5.whistle_path", "L5_CELLAR_LEFT_X"),
-    "L5_CELLAR_RIGHT_X": ("zelda_i.level5.whistle_path", "L5_CELLAR_RIGHT_X"),
-    "ROOM_06_BLOCK_X": ("zelda_i.level5.whistle_path", "ROOM_06_BLOCK_X"),
-    "ROOM_06_BLOCK_REST_Y": ("zelda_i.level5.whistle_path", "ROOM_06_BLOCK_REST_Y"),
-    "ROOM_06_BLOCK_PUSHED_Y": ("zelda_i.level5.whistle_path", "ROOM_06_BLOCK_PUSHED_Y"),
-    "ROOM_06_STAIRS_X": ("zelda_i.level5.whistle_path", "ROOM_06_STAIRS_X"),
-    "ROOM_06_STAIRS_Y": ("zelda_i.level5.whistle_path", "ROOM_06_STAIRS_Y"),
-    "WHISTLE_04_LADDER_X": ("zelda_i.level5.whistle_path", "WHISTLE_04_LADDER_X"),
-    "WHISTLE_04_PIT_Y": ("zelda_i.level5.whistle_path", "WHISTLE_04_PIT_Y"),
-    "WHISTLE_04_MOUTH_X": ("zelda_i.level5.whistle_path", "WHISTLE_04_MOUTH_X"),
-    "WHISTLE_04_MOUTH_Y": ("zelda_i.level5.whistle_path", "WHISTLE_04_MOUTH_Y"),
-    "select_b_item_menu": ("zelda_i.level5.whistle_path", "select_b_item_menu"),
-    "bomb_west_from_65": ("zelda_i.level5.whistle_path", "bomb_west_from_65"),
-    "bomb_east_from_65": ("zelda_i.level5.whistle_path", "bomb_east_from_65"),
-    "take_center_stairs_64": ("zelda_i.level5.whistle_path", "take_center_stairs_64"),
-    "cellar_other_mouth": ("zelda_i.level5.whistle_path", "cellar_other_mouth"),
-    "key_west_to": ("zelda_i.level5.whistle_path", "key_west_to"),
-    "fight_blue_darknuts": ("zelda_i.level5.whistle_path", "fight_blue_darknuts"),
-    "push_block_stairs": ("zelda_i.level5.whistle_path", "push_block_stairs"),
-    "hunt_whistle": ("zelda_i.level5.whistle_path", "hunt_whistle"),
-    "take_whistle_04": ("zelda_i.level5.whistle_path", "take_whistle_04"),
-    "exit_whistle_04": ("zelda_i.level5.whistle_path", "exit_whistle_04"),
-    "leave_whistle_cellar": ("zelda_i.level5.whistle_path", "leave_whistle_cellar"),
-    "walk_out_of_04": ("zelda_i.level5.whistle_path", "walk_out_of_04"),
-    # cellar / east return
-    "_raw_axis": ("zelda_i.level5.cellar_path", "_raw_axis"),
-    "take_center_stairs_06": ("zelda_i.level5.cellar_path", "take_center_stairs_06"),
-    "cellar_to_64": ("zelda_i.level5.cellar_path", "cellar_to_64"),
-    "walk_east_from_05": ("zelda_i.level5.cellar_path", "walk_east_from_05"),
-    "take_block_stairs_06": ("zelda_i.level5.cellar_path", "take_block_stairs_06"),
-    "cellar_07_to_64": ("zelda_i.level5.cellar_path", "cellar_07_to_64"),
-    "walk_east_from_64": ("zelda_i.level5.cellar_path", "walk_east_from_64"),
-    "EAST65_TO_66_PATHS": ("zelda_i.level5.cellar_path", "EAST65_TO_66_PATHS"),
-    "walk_east_from_65": ("zelda_i.level5.cellar_path", "walk_east_from_65"),
-    # TF / Digdogger north
-    "ROOM_L5_EAST_ZOLS": ("zelda_i.level5.tf_path", "ROOM_L5_EAST_ZOLS"),
-    "ROOM_L5_NORTH_GIBDOS": ("zelda_i.level5.tf_path", "ROOM_L5_NORTH_GIBDOS"),
-    "STATUE_5F_TYPE": ("zelda_i.level5.tf_path", "STATUE_5F_TYPE"),
-    "STATUE_5F_X": ("zelda_i.level5.tf_path", "STATUE_5F_X"),
-    "STATUE_5F_Y": ("zelda_i.level5.tf_path", "STATUE_5F_Y"),
-    "DIAMOND_NORTH_Y": ("zelda_i.level5.tf_path", "DIAMOND_NORTH_Y"),
-    "NORTH_DOOR_Y": ("zelda_i.level5.tf_path", "NORTH_DOOR_Y"),
-    "walk_north_from_57": ("zelda_i.level5.tf_path", "walk_north_from_57"),
-}
-
-
-def __getattr__(name: str):
-    spec = _LAZY_EXPORTS.get(name)
-    if spec is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    mod_name, attr = spec
-    value = getattr(importlib.import_module(mod_name), attr)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(_LAZY_EXPORTS))
-
-
 __all__ = [
     "EAST_DOOR_APPROACH_Y",
     "EAST_DOOR_CHANNEL_Y",
     "EAST_DOOR_WALL_X",
+    "EAST_KEY_77_NAV",
+    "Level5NavController",
+    "Level5NavSpec",
     "NORTH_DOOR_X",
-    "SOUTH_PINCH_Y",
-    "WEST_DOOR_X",
+    "RETURN_66_NAV",
+    "ROOM66_NORTH_BANK_Y",
+    "ROOM66_WEST_AISLE_X",
     "WEST_LEAVE_EAST_X",
-    "Level5Return66Controller",
-    "Level5West26From27Controller",
-    "Level5West65Controller",
     "level5_east_key_step",
     "level5_return_66_step",
-    "level5_west26_from_27_step",
+    "level5_room66_west_aisle_north_step",
     "level5_west65_step",
+    "make_east_key_nav_controller",
     "make_return_66_controller",
-    "make_west26_from_27_controller",
-    "walk_west_from_27",
-    "walk_west_from_26",
-    "walk_west_from_25",
     "walk_axis",
-    "WEST26_TO_25_PATHS",
-    "WEST25_TO_24_PATHS",
-    "make_west65_controller",
-    "should_force_keys_zero",
-    "ROOM_L5_BLUE_64",
-    "ROOM_L5_CELLAR_07",
-    "ROOM_L5_PASSAGE_06",
-    "ROOM_L5_WHISTLE_05",
-    "ROOM_L5_WHISTLE_ITEM",
-    "BLUE_DARKNUT_TYPE",
-    "BOMB_WEST_STAND",
-    "BOMB_EAST_STAND",
-    "CENTER_STAIRS",
-    "CELLAR_MODES",
-    "BOMB_WEST_66_STAND",
-    "bomb_west_from_65",
-    "bomb_west_from_66",
-    "bomb_east_from_65",
-    "take_center_stairs_64",
-    "cellar_other_mouth",
-    "key_west_to",
-    "fight_blue_darknuts",
-    "push_block_stairs",
-    "hunt_whistle",
-    "take_whistle_04",
-    "select_b_item_menu",
-    "exit_whistle_04",
-    "leave_whistle_cellar",
-    "walk_out_of_04",
-    "take_center_stairs_06",
-    "_raw_axis",
-    "cellar_to_64",
-    "walk_east_from_05",
-    "walk_east_from_64",
-    "walk_north_from_57",
-    "ROOM_L5_EAST_ZOLS",
-    "ROOM_L5_NORTH_GIBDOS",
-    "STATUE_5F_TYPE",
-    "STATUE_5F_X",
-    "STATUE_5F_Y",
-    "DIAMOND_NORTH_Y",
-    "NORTH_DOOR_Y",
-    "walk_east_from_65",
-    "EAST65_TO_66_PATHS",
-    "take_block_stairs_06",
-    "cellar_07_to_64",
-    "WHISTLE_04_LADDER_X",
-    "WHISTLE_04_PIT_Y",
-    "WHISTLE_04_MOUTH_X",
-    "WHISTLE_04_MOUTH_Y",
-    "ROOM_06_BLOCK_X",
-    "ROOM_06_BLOCK_REST_Y",
-    "ROOM_06_BLOCK_PUSHED_Y",
-    "ROOM_06_STAIRS_X",
-    "ROOM_06_STAIRS_Y",
-    "L5_CELLAR_FLOOR_Y",
-    "L5_CELLAR_LEFT_X",
-    "L5_CELLAR_RIGHT_X",
 ]
