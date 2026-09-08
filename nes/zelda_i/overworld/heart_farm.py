@@ -30,6 +30,18 @@ DEFAULT_4A_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (40, 125),
 )
 
+# Screen-agnostic sweep for the low-heart hook: the open mid band plus one
+# north lane. Any overworld screen the spine walks has a live y≈141 corridor
+# (that is how the hop crossed it), so this patrols where enemies already are.
+BAND_SWEEP_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (64, 141),
+    (120, 141),
+    (176, 141),
+    (176, 109),
+    (120, 109),
+    (64, 109),
+)
+
 DEFAULT_MAX_FRAMES = 3600
 DEFAULT_STUCK_THRESHOLD = 40
 FARM_SWING_PERIOD = 8

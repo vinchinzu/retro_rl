@@ -374,11 +374,14 @@ branch is death (`overworld/path.py:401-402`).
       nowhere. The small shield blocks only while Link faces the shot and is
       *not* swinging — but `swing_action` (`common.py:33-44`) pulses A on a
       fixed period regardless, cancelling blocks.
-- [ ] **4.9** **Low-heart behavior.** `overworld/heart_farm.py` exists and is
-      wired into exactly one call site (`level2/clean_door.py:117`). Every other
-      OW leg runs to death or timeout. Hook it at `overworld/path.py:398-405`.
-      Farm chase now uses `walk_or_swing` (hitbox-gated). Heart-farm hook at
-      `overworld/path.py` is still open.
+- [x] **4.9** **Low-heart behavior.** `OverworldPathController._farm_action`
+      diverts into `HeartFarmController` on the current screen when
+      `filled_hearts < farm_below_hearts`, then hands the hop back
+      (`BAND_SWEEP_WAYPOINTS` is the screen-agnostic patrol; every spine screen
+      has the y≈141 corridor the hop crossed). Fail-soft both ways:
+      the farm quits on its own timeout or on leaving the screen, and
+      `max_farm_attempts` stops a farm/starve loop. `farm_below_hearts`
+      defaults to 0, so the hook is inert until the health assist comes off.
 
 ---
 
