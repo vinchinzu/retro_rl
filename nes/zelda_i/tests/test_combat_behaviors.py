@@ -4,28 +4,43 @@ from __future__ import annotations
 
 from zelda_i.combat import FACING_SOUTH, SWORD_REACH
 from zelda_i.dungeon.behaviors import (
+    ARMOS_TYPE,
     DIGDOGGER_POLICY,
     DIGDOGGER_SHRUNK_TYPE,
     DIGDOGGER_TYPE,
     FIREBALL_TYPE,
+    GEL_TYPE,
     GIBDO_TYPE,
+    GHINI_TYPE,
     GORIYA_BOOMERANG_TYPE,
     GORIYA_TYPE,
     KEESE_TYPE,
+    LEEVER_TYPE,
+    LYNEL_TYPE,
+    MOBLIN_BLUE_TYPE,
+    MOBLIN_TYPE,
+    OCTOROK_BLUE_TYPE,
+    OCTOROK_TYPE,
+    PEAHAT_TYPE,
     POLS_VOICE_TYPE,
+    ROCK_PROJECTILE_TYPE,
     ROPE_TYPE,
     STALFOS_TYPE,
+    TEKTITE_TYPE,
     VIRE_SPLIT_KEESE_TYPE,
     WALLMASTER_TYPE,
+    ZORA_TYPE,
     EnemyKind,
     blocked_by_projectile,
     default_alive_rule,
     engagement_hint,
+    fight_target,
     is_off_wall,
     is_shrunk,
     kind_for_type,
     live_among,
     liveness,
+    may_close,
     needs_whistle,
     policy_for,
     projectile_threats,
@@ -59,6 +74,7 @@ def _obj(
 def test_kind_for_type_catalog() -> None:
     assert kind_for_type(STALFOS_TYPE) is EnemyKind.STALFOS
     assert kind_for_type(KEESE_TYPE) is EnemyKind.KEESE
+    assert kind_for_type(GEL_TYPE) is EnemyKind.GEL
     assert kind_for_type(VIRE_SPLIT_KEESE_TYPE) is EnemyKind.KEESE
     assert kind_for_type(ROPE_TYPE) is EnemyKind.ROPE
     assert kind_for_type(GORIYA_TYPE) is EnemyKind.GORIYA
@@ -69,7 +85,28 @@ def test_kind_for_type_catalog() -> None:
     assert kind_for_type(DIGDOGGER_SHRUNK_TYPE) is EnemyKind.DIGDOGGER
     assert kind_for_type(FIREBALL_TYPE) is EnemyKind.PROJECTILE
     assert kind_for_type(GORIYA_BOOMERANG_TYPE) is EnemyKind.PROJECTILE
+    assert kind_for_type(OCTOROK_TYPE) is EnemyKind.OCTOROK
+    assert kind_for_type(OCTOROK_BLUE_TYPE) is EnemyKind.OCTOROK
+    assert kind_for_type(MOBLIN_BLUE_TYPE) is EnemyKind.MOBLIN
+    assert kind_for_type(MOBLIN_TYPE) is EnemyKind.MOBLIN
+    assert kind_for_type(LYNEL_TYPE) is EnemyKind.LYNEL
+    assert kind_for_type(TEKTITE_TYPE) is EnemyKind.TEKTITE
+    assert kind_for_type(LEEVER_TYPE) is EnemyKind.LEEVER
+    assert kind_for_type(PEAHAT_TYPE) is EnemyKind.PEAHAT
+    assert kind_for_type(ZORA_TYPE) is EnemyKind.ZORA
+    assert kind_for_type(GHINI_TYPE) is EnemyKind.GHINI
+    assert kind_for_type(ARMOS_TYPE) is EnemyKind.ARMOS
+    assert kind_for_type(ROCK_PROJECTILE_TYPE) is EnemyKind.PROJECTILE
     assert kind_for_type(0x00) is EnemyKind.UNKNOWN
+    # Peahat flying / Armos statue: no ZeldaObject field for the rule.
+    peahat = _obj(1, type_id=PEAHAT_TYPE, hp=0x20)
+    armos = _obj(1, type_id=ARMOS_TYPE, hp=0x20)
+    rock = _obj(1, type_id=ROCK_PROJECTILE_TYPE, hp=0)
+    assert sword_legal(EnemyKind.PEAHAT, peahat)
+    assert sword_legal(EnemyKind.ARMOS, armos)
+    assert not sword_legal(EnemyKind.PROJECTILE, rock)
+    assert "444" in policy_for(EnemyKind.PEAHAT).notes
+    assert "66" in policy_for(EnemyKind.ARMOS).notes
 
 
 def test_keese_type_liveness_even_when_hp_is_zero() -> None:
@@ -217,3 +254,36 @@ def test_pols_and_gibdo_preferred_distance() -> None:
     assert policy_for(EnemyKind.GIBDO).preferred_distance == 56
     assert default_alive_rule(POLS_VOICE_TYPE) is AliveRule.TYPE_AND_HP
     assert default_alive_rule(GIBDO_TYPE) is AliveRule.TYPE_AND_HP
+
+
+def test_gel_is_slow_melee() -> None:
+    assert policy_for(EnemyKind.GEL).preferred_distance == 40
+    assert default_alive_rule(GEL_TYPE) is AliveRule.TYPE
+
+
+def test_fight_target_skips_parked_wallmaster() -> None:
+    parked = _obj(1, type_id=WALLMASTER_TYPE, x=0, y=141, hp=0x20)
+    inland = _obj(2, type_id=WALLMASTER_TYPE, x=80, y=141, hp=0x20)
+    assert fight_target(120, 141, (parked, inland)) is inland
+    assert fight_target(120, 141, (parked,)) is None
+
+
+def test_may_close_respects_occupancy_path_and_room_cap() -> None:
+    assert may_close(
+        distance=20, engage_distance=48, occupancy=False, occupancy_dir=None
+    )
+    assert not may_close(
+        distance=80, engage_distance=48, occupancy=False, occupancy_dir=None
+    )
+    assert may_close(
+        distance=20, engage_distance=48, occupancy=True, occupancy_dir=None
+    )
+    assert not may_close(
+        distance=80, engage_distance=48, occupancy=True, occupancy_dir=None
+    )
+    assert may_close(
+        distance=20, engage_distance=48, occupancy=True, occupancy_dir="RIGHT"
+    )
+    assert may_close(
+        distance=80, engage_distance=48, occupancy=True, occupancy_dir="RIGHT"
+    )

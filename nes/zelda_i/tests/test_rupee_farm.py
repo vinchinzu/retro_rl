@@ -222,3 +222,20 @@ def test_left_farm_screen_unexpectedly_fails_closed() -> None:
 def test_leftover_screen_defaults_to_farm_screen() -> None:
     farm = _farm()
     assert farm.leftover_screen == FARM_SCREEN
+
+
+def test_chase_nearby_prey_slashes_only_on_hitbox_not_blind_cadence() -> None:
+    farm = _farm()
+    nearby = ZeldaObject(slot=1, type_id=0x07, x=135, y=149, facing=0, hp=1, state=0)
+    snap = _snap(link_x=120, link_y=149, rupees=0, objects=(nearby,))
+    act = farm.step(snap)
+    assert "farm_chase" in act.reason
+    assert act.reason == "farm_chase_slash"
+    assert list(act.action) == list(nes_action("RIGHT", "A"))
+
+    farm.reset()
+    far = ZeldaObject(slot=1, type_id=0x07, x=200, y=149, facing=0, hp=1, state=0)
+    snap = _snap(link_x=120, link_y=149, rupees=0, objects=(far,))
+    act = farm.step(snap)
+    assert act.reason == "farm_chase"
+    assert list(act.action) == list(nes_action("RIGHT"))

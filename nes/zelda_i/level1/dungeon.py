@@ -28,8 +28,10 @@ from zelda_i.level1.east_dungeon import (
 )
 from zelda_i.level1.path import (
     LEVEL_1,
+    ROOM_ENTRANCE,
     ROOM_KEY_STALFOS,
     ROOM_NORTH_STALFOS,
+    ROOM_WEST_KEY,
     STALFOS_OBJECT_TYPE,
 )
 
@@ -56,6 +58,9 @@ _KEESE_54_PATROL: tuple[tuple[int, int], ...] = (
     (96, 181),
     (96, 141),
 )
+
+# Q1 west-of-entrance key: 3 Keese, floor key after clear (Zelda Dungeon / IGN).
+_KEESE_72_PATROL: tuple[tuple[int, int], ...] = _KEESE_54_PATROL
 
 _KEESE_52_PATROL: tuple[tuple[int, int], ...] = (
     (96, 101),
@@ -84,6 +89,42 @@ _ROOM_43_PATROL: tuple[tuple[int, int], ...] = (
     (144, 173),
     (96, 173),
     (48, 173),
+)
+
+ROOM_72_SPEC = DungeonRoomSpec(
+    spec_id="level1_room72",
+    source_room=ROOM_ENTRANCE,
+    room_id=ROOM_WEST_KEY,
+    entry=DoorRoute(
+        "LEFT",
+        ((120, 149), (48, 149), (48, 141)),
+    ),
+    enemy_types=(KEESE_OBJECT_TYPE,),
+    expected_enemy_count=3,
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(
+        patrol=_KEESE_72_PATROL,
+        engage_distance=48,
+        patrol_attack_period=10,
+        patrol_attack_hold=3,
+    ),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(128, 141),
+        waypoints=(
+            (128, 141),
+            (96, 141),
+            (160, 141),
+            (128, 109),
+            (128, 173),
+        ),
+    ),
+    room_item_id=0x19,
+    exit_routes=(
+        DoorRoute("RIGHT", ((128, 141), (208, 141))),
+    ),
+    level=LEVEL_1,
 )
 
 ROOM_53_SPEC = DungeonRoomSpec(
@@ -180,7 +221,9 @@ ROOM_42_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE,
     combat=CombatTuning(
         patrol=_ROOM_42_PATROL,
-        engage_distance=48,
+        # Open floor: Gels are slow. 48px chase waited on the patrol loop
+        # (Survival 1770 combat f). 160 covers the interior from center.
+        engage_distance=160,
         patrol_attack_period=10,
         patrol_attack_hold=3,
     ),
@@ -202,7 +245,8 @@ ROOM_43_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE,
     combat=CombatTuning(
         patrol=_ROOM_43_PATROL,
-        engage_distance=56,
+        # Same open-floor Gel chase as 0x42. 56px left Clean 2323f of variance.
+        engage_distance=160,
         patrol_attack_period=10,
         patrol_attack_hold=3,
     ),
@@ -277,8 +321,11 @@ ROOM_23_SPEC = DungeonRoomSpec(
         patrol=_ROOM_23_MAZE,
         engage_distance=24,
         attack_phase=2,
-        # South door y=181 pins Link; leave_wall UP when y>173.
+        # Live: leave_wall UP at y>173 pinned Link in the south door
+        # (787 occupancy misses, 0 kills). The U-turn band to y=189 is
+        # playable here, so only the door row itself is off-limits.
         avoid_walls=True,
+        avoid_wall_bounds=(56, 200, 109, 189),
         split_y=141,
         occupancy_patrol=True,
     ),
@@ -341,6 +388,7 @@ for _spec in (
     ROOM_52_SPEC,
     ROOM_53_SPEC,
     ROOM_54_SPEC,
+    ROOM_72_SPEC,
 ):
     register_room_spec(_spec)
 
@@ -357,5 +405,6 @@ __all__ = [
     "ROOM_52_SPEC",
     "ROOM_53_SPEC",
     "ROOM_54_SPEC",
+    "ROOM_72_SPEC",
     "Room44SurvivalController",
 ]

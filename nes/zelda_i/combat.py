@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 # Conservative NES wooden-sword reach (engine ~16–24 px).
@@ -163,12 +164,19 @@ def should_swing_at(
 
 
 def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
-    """Live-looking OW objects (enemies/projectiles in playfield bounds)."""
+    """Live OW combatants: typed, in-bounds, hp>0, not rupee drops.
+
+    OW octoroks use HP; corpses (hp<=0) and type 0x60 drops are not threats.
+    Type-only liveness (Keese) is a dungeon rule — kept local to avoid a
+    combat→behaviors import cycle.
+    """
     return tuple(
         obj
         for obj in snap.objects
         if obj.slot >= 1
         and obj.type_id not in (0, 0xFF)
+        and int(obj.type_id) != RUPEE_DROP_OBJECT_TYPE
+        and int(obj.hp) > 0
         and 40 < obj.y < 220
         and 8 < obj.x < 248
     )

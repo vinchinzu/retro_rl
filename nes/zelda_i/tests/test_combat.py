@@ -164,3 +164,11 @@ def test_overworld_threat_objects_filters_slots_and_bounds() -> None:
     snap = _snap(objects=(good, slot0, empty, oob_y, oob_x))
     threats = overworld_threat_objects(snap)
     assert threats == (good,)
+
+
+def test_overworld_threat_objects_drops_rupee_and_hp_zero() -> None:
+    live = _obj(1, type_id=0x07, x=100, y=100, hp=0x20)
+    dead = _obj(2, type_id=0x07, x=110, y=100, hp=0)
+    drop = _obj(3, type_id=0x60, x=120, y=100, hp=1)
+    snap = _snap(objects=(live, dead, drop))
+    assert overworld_threat_objects(snap) == (live,)

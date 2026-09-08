@@ -24,17 +24,21 @@ from zelda_i.dungeon.engine import (
 from zelda_i.level1.path import LEVEL_1
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
-# Open floor at door height. Live timeout sat at (87, 101) on the north
-# statue band: patrol included (80, 93) and engage=64 never reached the
-# Goriyas. Stay on y=141 (west door → east door). Occupancy chase blocks
-# statue cells on a miss and BFS-replans; no path falls back to this line.
+# 3-row loop. y=141-only left two Goriyas (Clean 4692f). Occupancy chase
+# from the west mouth boxes statues; Room44SurvivalController peels east
+# first. Bounds ymin=109 exclude the north door y=93.
 _ROOM_44_PATROL: tuple[tuple[int, int], ...] = (
-    (48, 141),
-    (80, 141),
-    (120, 141),
-    (160, 141),
+    (48, 117),
+    (120, 117),
+    (192, 117),
     (192, 141),
+    (120, 141),
+    (48, 141),
+    (48, 165),
+    (120, 165),
+    (192, 165),
 )
+_ROOM_44_BOUNDS: tuple[int, int, int, int] = (16, 216, 109, 189)
 
 # Stay inland. Dormant Wallmasters at x=0 still grab on the west door
 # (x=32) after TYPE_AND_HP treats them as dead.
@@ -60,46 +64,24 @@ ROOM_44_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
         patrol=_ROOM_44_PATROL,
-        engage_distance=64,
+        engage_distance=80,
         patrol_attack_period=8,
         patrol_attack_hold=4,
         attack_phase=7,
         occupancy_patrol=True,
+        occupancy_bounds=_ROOM_44_BOUNDS,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x1D,
     level=LEVEL_1,
 )
 
-# Survival bow-splice: occupancy boxed at (40,93) (v3). y=141-only left
-# two Goriyas (v4 leftover (73,133)). 3-row loop left two (v5 (56,141)).
-# last_live=2 is two type-0x06 HP>0; thrown boomerang is 0x5C slot 11.
-# Occupancy chase on the open floor; xmin=16 so west leftovers are not
-# boxed at default xmin=40. ymin=109 excludes the north door y=93.
-# Not Clean.
-_ROOM_44_SURVIVAL_PATROL: tuple[tuple[int, int], ...] = (
-    (48, 117),
-    (120, 117),
-    (192, 117),
-    (192, 141),
-    (120, 141),
-    (48, 141),
-    (48, 165),
-    (120, 165),
-    (192, 165),
-)
-_ROOM_44_SURVIVAL_BOUNDS: tuple[int, int, int, int] = (16, 216, 109, 189)
+# Same geometry as ROOM_44_SPEC. attack_phase=6 is the measured Survival swing.
+# West-mouth peel lives on Room44SurvivalController (not a health concession).
 ROOM_44_SURVIVAL_SPEC = replace(
     ROOM_44_SPEC,
     spec_id="level1_room44_survival",
-    combat=replace(
-        ROOM_44_SPEC.combat,
-        patrol=_ROOM_44_SURVIVAL_PATROL,
-        engage_distance=80,
-        attack_phase=6,
-        occupancy_patrol=True,
-        occupancy_bounds=_ROOM_44_SURVIVAL_BOUNDS,
-    ),
+    combat=replace(ROOM_44_SPEC.combat, attack_phase=6),
 )
 
 ROOM_45_SPEC = DungeonRoomSpec(
@@ -185,7 +167,7 @@ class Room44SurvivalController(GenericDungeonRoomController):
     West mouth cannot stand at x=32. Tunnel x<24 is RIGHT (v9 DOWN sat
     in the door). y=141 RIGHT hits the east statues (v11). Occupancy
     from x=80 boxed at (80,157) (v13). Forced y=165 to x=192, then UP
-    if the remaining Goriya is north. Not Clean.
+    if the remaining Goriya is north. Geometry, not a health concession.
     """
 
     _WEST_MOUTH_X = 48

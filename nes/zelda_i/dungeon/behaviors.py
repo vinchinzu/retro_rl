@@ -13,12 +13,13 @@ from typing import Iterable
 
 from zelda_i.dungeon import ids as _ids
 from zelda_i.combat import should_swing_at
-from zelda_i.dungeon.engine import AliveRule
+from zelda_i.dungeon.ids import AliveRule
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 # IDs already catalogued in dungeon_ids.
 KEESE_TYPE = _ids.KEESE_OBJECT_TYPE
 VIRE_SPLIT_KEESE_TYPE = _ids.VIRE_SPLIT_KEESE_TYPE
+GEL_TYPE = _ids.GEL_OBJECT_TYPE
 ROPE_TYPE = _ids.ROPE_OBJECT_TYPE
 GORIYA_TYPE = _ids.GORIYA_OBJECT_TYPE
 GORIYA_BLUE_TYPE = _ids.GORIYA_BLUE_OBJECT_TYPE
@@ -28,6 +29,26 @@ WALLMASTER_TYPE = _ids.WALLMASTER_OBJECT_TYPE
 FIREBALL_TYPE = _ids.FIREBALL_OBJECT_TYPE
 MANHANDLA_PROJECTILE_TYPE = _ids.MANHANDLA_PROJECTILE_TYPE
 GORIYA_BOOMERANG_TYPE = _ids.GORIYA_BOOMERANG_OBJECT_TYPE
+ROCK_PROJECTILE_TYPE = _ids.ROCK_PROJECTILE_TYPE
+LYNEL_SWORD_SHOT_TYPE = _ids.LYNEL_SWORD_SHOT_TYPE
+MOBLIN_ARROW_TYPE = _ids.MOBLIN_ARROW_OBJECT_TYPE
+OCTOROK_TYPE = _ids.OCTOROK_OBJECT_TYPE
+OCTOROK_FAST_TYPE = _ids.OCTOROK_FAST_OBJECT_TYPE
+OCTOROK_BLUE_TYPE = _ids.OCTOROK_BLUE_OBJECT_TYPE
+OCTOROK_BLUE_FAST_TYPE = _ids.OCTOROK_BLUE_FAST_OBJECT_TYPE
+MOBLIN_TYPE = _ids.MOBLIN_OBJECT_TYPE
+MOBLIN_BLUE_TYPE = _ids.MOBLIN_BLUE_OBJECT_TYPE
+LYNEL_TYPE = _ids.LYNEL_OBJECT_TYPE
+LYNEL_BLUE_TYPE = _ids.LYNEL_BLUE_OBJECT_TYPE
+TEKTITE_TYPE = _ids.TEKTITE_OBJECT_TYPE
+TEKTITE_BLUE_TYPE = _ids.TEKTITE_BLUE_OBJECT_TYPE
+LEEVER_TYPE = _ids.LEEVER_OBJECT_TYPE
+LEEVER_BLUE_TYPE = _ids.LEEVER_BLUE_OBJECT_TYPE
+ZORA_TYPE = _ids.ZORA_OBJECT_TYPE
+PEAHAT_TYPE = _ids.PEAHAT_OBJECT_TYPE
+ARMOS_TYPE = _ids.ARMOS_OBJECT_TYPE
+GHINI_TYPE = _ids.GHINI_OBJECT_TYPE
+GHINI_FLYING_TYPE = _ids.GHINI_FLYING_OBJECT_TYPE
 
 # Live-probe IDs not yet exported from dungeon_ids (L1 Stalfos; L5 Digdogger).
 STALFOS_TYPE = 0x2A
@@ -50,7 +71,14 @@ WALLMASTER_Y_HI = 208
 ROPE_AXIS_BAND = 12
 
 PROJECTILE_TYPES = frozenset(
-    {FIREBALL_TYPE, MANHANDLA_PROJECTILE_TYPE, GORIYA_BOOMERANG_TYPE}
+    {
+        FIREBALL_TYPE,
+        MANHANDLA_PROJECTILE_TYPE,
+        GORIYA_BOOMERANG_TYPE,
+        ROCK_PROJECTILE_TYPE,
+        LYNEL_SWORD_SHOT_TYPE,
+        MOBLIN_ARROW_TYPE,
+    }
 )
 
 DIGDOGGER_POLICY = (
@@ -61,12 +89,22 @@ DIGDOGGER_POLICY = (
 class EnemyKind(Enum):
     STALFOS = "stalfos"
     KEESE = "keese"
+    GEL = "gel"
     ROPE = "rope"
     GORIYA = "goriya"
     POLS_VOICE = "pols_voice"
     GIBDO = "gibdo"
     WALLMASTER = "wallmaster"
     DIGDOGGER = "digdogger"
+    OCTOROK = "octorok"
+    MOBLIN = "moblin"
+    LYNEL = "lynel"
+    TEKTITE = "tektite"
+    LEEVER = "leever"
+    PEAHAT = "peahat"
+    ZORA = "zora"
+    GHINI = "ghini"
+    ARMOS = "armos"
     PROJECTILE = "projectile"
     UNKNOWN = "unknown"
 
@@ -104,6 +142,11 @@ KIND_POLICY: dict[EnemyKind, KindPolicy] = {
         type_only=True,
         notes="HP stays 0 while alive; never use TYPE_AND_HP alone.",
     ),
+    EnemyKind.GEL: KindPolicy(
+        preferred_distance=40,
+        alive_rule=AliveRule.TYPE,
+        notes="Slow blob. Open-floor rooms raise engage_distance; do not chase flyers the same way.",
+    ),
     EnemyKind.ROPE: KindPolicy(
         preferred_distance=64,
         alive_rule=AliveRule.TYPE_AND_HP,
@@ -138,6 +181,62 @@ KIND_POLICY: dict[EnemyKind, KindPolicy] = {
         projectile_aware=True,
         notes=DIGDOGGER_POLICY,
     ),
+    EnemyKind.OCTOROK: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        projectile_aware=True,
+        notes="OW melee; rocks are type 0x53. HP>0 while alive.",
+    ),
+    EnemyKind.MOBLIN: KindPolicy(
+        preferred_distance=56,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        projectile_aware=True,
+        notes="Spear throw 0x5B; same chase-and-slash as Goriya.",
+    ),
+    EnemyKind.LYNEL: KindPolicy(
+        preferred_distance=72,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        projectile_aware=True,
+        notes="Sword beam 0x57; keep mid-range (Death Mountain).",
+    ),
+    EnemyKind.TEKTITE: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        notes="Hopping melee; hitbox still gates the swing.",
+    ),
+    EnemyKind.LEEVER: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        notes="Burrow/surface melee; HP>0 while alive.",
+    ),
+    EnemyKind.PEAHAT: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        notes=(
+            "Invulnerable while flying: CheckMonsterCollisions only when "
+            "Flyer_ObjFlyingState $444==5 (landed). ZeldaObject.state is "
+            "ObjState $00AC, not flying state — cannot gate sword_legal."
+        ),
+    ),
+    EnemyKind.ZORA: KindPolicy(
+        preferred_distance=64,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        projectile_aware=True,
+        notes="Water spit is fireball 0x55; HP>0 while surfaced.",
+    ),
+    EnemyKind.GHINI: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        notes="Graveyard melee; 0x22 flying variant same HP rule.",
+    ),
+    EnemyKind.ARMOS: KindPolicy(
+        preferred_distance=48,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        notes=(
+            "Type 0x1E is awake. Statue form is tile $66/$67, not an "
+            "object slot — no RAM type/hp for dormant statues."
+        ),
+    ),
     EnemyKind.PROJECTILE: KindPolicy(
         preferred_distance=40,
         alive_rule=AliveRule.TYPE,
@@ -155,6 +254,7 @@ _TYPE_TO_KIND: dict[int, EnemyKind] = {
     STALFOS_TYPE: EnemyKind.STALFOS,
     KEESE_TYPE: EnemyKind.KEESE,
     VIRE_SPLIT_KEESE_TYPE: EnemyKind.KEESE,
+    GEL_TYPE: EnemyKind.GEL,
     ROPE_TYPE: EnemyKind.ROPE,
     GORIYA_TYPE: EnemyKind.GORIYA,
     GORIYA_BLUE_TYPE: EnemyKind.GORIYA,
@@ -163,9 +263,29 @@ _TYPE_TO_KIND: dict[int, EnemyKind] = {
     WALLMASTER_TYPE: EnemyKind.WALLMASTER,
     DIGDOGGER_TYPE: EnemyKind.DIGDOGGER,
     DIGDOGGER_SHRUNK_TYPE: EnemyKind.DIGDOGGER,
+    OCTOROK_TYPE: EnemyKind.OCTOROK,
+    OCTOROK_FAST_TYPE: EnemyKind.OCTOROK,
+    OCTOROK_BLUE_TYPE: EnemyKind.OCTOROK,
+    OCTOROK_BLUE_FAST_TYPE: EnemyKind.OCTOROK,
+    MOBLIN_TYPE: EnemyKind.MOBLIN,
+    MOBLIN_BLUE_TYPE: EnemyKind.MOBLIN,
+    LYNEL_TYPE: EnemyKind.LYNEL,
+    LYNEL_BLUE_TYPE: EnemyKind.LYNEL,
+    TEKTITE_TYPE: EnemyKind.TEKTITE,
+    TEKTITE_BLUE_TYPE: EnemyKind.TEKTITE,
+    LEEVER_TYPE: EnemyKind.LEEVER,
+    LEEVER_BLUE_TYPE: EnemyKind.LEEVER,
+    ZORA_TYPE: EnemyKind.ZORA,
+    PEAHAT_TYPE: EnemyKind.PEAHAT,
+    ARMOS_TYPE: EnemyKind.ARMOS,
+    GHINI_TYPE: EnemyKind.GHINI,
+    GHINI_FLYING_TYPE: EnemyKind.GHINI,
     FIREBALL_TYPE: EnemyKind.PROJECTILE,
     MANHANDLA_PROJECTILE_TYPE: EnemyKind.PROJECTILE,
     GORIYA_BOOMERANG_TYPE: EnemyKind.PROJECTILE,
+    ROCK_PROJECTILE_TYPE: EnemyKind.PROJECTILE,
+    LYNEL_SWORD_SHOT_TYPE: EnemyKind.PROJECTILE,
+    MOBLIN_ARROW_TYPE: EnemyKind.PROJECTILE,
 }
 
 
@@ -413,6 +533,42 @@ def engagement_hint(
     )
 
 
+def fight_target(
+    link_x: int,
+    link_y: int,
+    live: Iterable[ZeldaObject],
+) -> ZeldaObject | None:
+    """Nearest sword-legal combatant. Parked Wallmasters are not targets."""
+    legal = tuple(obj for obj in live if sword_legal(obj.type_id, obj))
+    if not legal:
+        return None
+    return min(
+        legal,
+        key=lambda obj: abs(int(obj.x) - int(link_x))
+        + abs(int(obj.y) - int(link_y)),
+    )
+
+
+def may_close(
+    *,
+    distance: int,
+    engage_distance: int,
+    occupancy: bool,
+    occupancy_dir: str | None,
+) -> bool:
+    """Leave patrol to close on a target.
+
+    Open floor: ``engage_distance`` is the chase cap (Gel rooms raise it).
+    Occupancy maze: follow a BFS path from any distance. No path + far
+    stays on patrol waypoints (do not greedy through water). No path +
+    inside the room cap still closes — occupancy may have miss-blocked
+    the enemy's own pixel.
+    """
+    if occupancy and occupancy_dir is not None:
+        return True
+    return int(distance) < int(engage_distance)
+
+
 __all__ = [
     "KEESE_TYPE",
     "VIRE_SPLIT_KEESE_TYPE",
@@ -425,7 +581,28 @@ __all__ = [
     "FIREBALL_TYPE",
     "MANHANDLA_PROJECTILE_TYPE",
     "GORIYA_BOOMERANG_TYPE",
+    "ROCK_PROJECTILE_TYPE",
+    "LYNEL_SWORD_SHOT_TYPE",
+    "MOBLIN_ARROW_TYPE",
+    "OCTOROK_TYPE",
+    "OCTOROK_FAST_TYPE",
+    "OCTOROK_BLUE_TYPE",
+    "OCTOROK_BLUE_FAST_TYPE",
+    "MOBLIN_TYPE",
+    "MOBLIN_BLUE_TYPE",
+    "LYNEL_TYPE",
+    "LYNEL_BLUE_TYPE",
+    "TEKTITE_TYPE",
+    "TEKTITE_BLUE_TYPE",
+    "LEEVER_TYPE",
+    "LEEVER_BLUE_TYPE",
+    "ZORA_TYPE",
+    "PEAHAT_TYPE",
+    "ARMOS_TYPE",
+    "GHINI_TYPE",
+    "GHINI_FLYING_TYPE",
     "STALFOS_TYPE",
+    "GEL_TYPE",
     "DIGDOGGER_TYPE",
     "DIGDOGGER_SHRUNK_TYPE",
     "PROJECTILE_TYPES",
@@ -451,4 +628,6 @@ __all__ = [
     "projectile_threats",
     "blocked_by_projectile",
     "engagement_hint",
+    "fight_target",
+    "may_close",
 ]
