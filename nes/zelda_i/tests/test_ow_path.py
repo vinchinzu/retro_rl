@@ -90,3 +90,52 @@ def test_default_stop_after_hops() -> None:
     assert ctrl.success
     assert act.reason == "done"
     assert ctrl.phase is PathNavPhase.DONE
+
+
+def test_low_heart_hook_is_inert_by_default() -> None:
+    """farm_below_hearts=0 (and a live health assist) never diverts a hop."""
+    from zelda_i.ram import read_snapshot
+
+    ctrl = OverworldPathController(hops=(ScreenHop(0x78, "RIGHT", align_y=140),))
+    act = ctrl.step(read_snapshot(_ram(screen=0x77, x=100, y=140, health=0x30)))
+    assert ctrl.farm_attempts == 0
+    assert not act.reason.startswith("farm")
+
+
+def test_low_hearts_divert_into_the_farm_then_hand_back() -> None:
+    from zelda_i.ram import read_snapshot
+
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
+        farm_below_hearts=3,
+        farm_min_filled=3,
+    )
+    # 0x30: three containers, zero whole hearts.
+    ctrl.step(read_snapshot(_ram(screen=0x77, x=100, y=140, health=0x30)))
+    assert ctrl.farm_attempts == 1
+    assert any(note.startswith("farm_start_77") for note in ctrl.notes)
+
+    # Hearts recovered: the farm reports done and the hop resumes.
+    act = ctrl.step(read_snapshot(_ram(screen=0x77, x=100, y=140, health=0x33)))
+    assert act.reason == "farm_ok"
+    assert ctrl._farm is None
+    act = ctrl.step(read_snapshot(_ram(screen=0x77, x=100, y=140, health=0x33)))
+    assert not act.reason.startswith("farm")
+
+
+def test_farm_attempts_are_capped() -> None:
+    """A starving farm must not replace the hop forever."""
+    from zelda_i.ram import read_snapshot
+
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
+        farm_below_hearts=3,
+        max_farm_attempts=1,
+    )
+    ctrl.step(read_snapshot(_ram(screen=0x77, x=100, y=140, health=0x30)))
+    # Leaving the screen soft-fails the farm.
+    act = ctrl.step(read_snapshot(_ram(screen=0x78, x=100, y=140, health=0x30)))
+    assert act.reason == "farm_gave_up"
+    act = ctrl.step(read_snapshot(_ram(screen=0x78, x=100, y=140, health=0x30)))
+    assert ctrl.farm_attempts == 1
+    assert not act.reason.startswith("farm")

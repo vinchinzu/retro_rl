@@ -23,6 +23,11 @@ from zelda_i.overworld.common import (
     wake_or_wait_mode,
     walk_or_swing,
 )
+from zelda_i.overworld.heart_farm import (
+    BAND_SWEEP_WAYPOINTS,
+    HeartFarmController,
+    HeartFarmPhase,
+)
 from zelda_i.overworld.graph import (
     MAZE_WAYPOINT_TOL,
     SCREEN_5C_MAZE,
@@ -95,6 +100,16 @@ class OverworldPathController:
     require_dungeon: bool = False
     require_entrance_screen: bool = False
 
+    # Low-heart recovery (Phase 4.9). ``farm_below_hearts=0`` keeps the old
+    # run-to-death behaviour, and with the health assist on ``filled_hearts``
+    # never drops, so the hook is inert until the assist comes off.
+    farm_below_hearts: int = 0
+    farm_min_filled: int = 3
+    farm_max_frames: int = 3600
+    max_farm_attempts: int = 2
+    farm_attempts: int = 0
+    _farm: HeartFarmController | None = field(default=None, repr=False)
+
     # Default hop-complete stop extras
     require_sword: bool = False
     require_triforce_bit: int | None = None
@@ -155,6 +170,8 @@ class OverworldPathController:
         self.last_screen = -1
         self.last_health = -1
         self.hits_taken = 0
+        self.farm_attempts = 0
+        self._farm = None
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -179,6 +196,7 @@ class OverworldPathController:
             "notes": list(self.notes),
             "stuck": self.stuck,
             "hits_taken": self.hits_taken,
+            "farm_attempts": self.farm_attempts,
         }
         if self.maze_waypoints:
             out["maze_wp_index"] = self.maze_wp_index
@@ -354,6 +372,39 @@ class OverworldPathController:
             direction = "RIGHT"
         return self._swing(direction, f"maze_wp{self.maze_wp_index}")
 
+    def _farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Divert into a heart farm while low, then hand the hop back.
+
+        Fail-soft on both sides: the farm gives up on its own timeout or when
+        Link leaves the screen, and ``max_farm_attempts`` stops a farm/starve
+        loop from replacing the hop entirely.
+        """
+        if self._farm is not None:
+            action = self._farm.step(snap)
+            if self._farm.phase is HeartFarmPhase.FARM:
+                return action
+            note = "farm_ok" if self._farm.success else "farm_gave_up"
+            self.notes.append(f"{note}_{snap.filled_hearts}")
+            self._farm = None
+            self.stuck = 0
+            return FrameAction(nes_idle_action(), note)
+        if (
+            self.farm_below_hearts <= 0
+            or snap.level != 0
+            or snap.filled_hearts >= self.farm_below_hearts
+            or self.farm_attempts >= self.max_farm_attempts
+        ):
+            return None
+        self.farm_attempts += 1
+        self._farm = HeartFarmController(
+            min_filled=self.farm_min_filled,
+            max_frames=self.farm_max_frames,
+            farm_screen=int(snap.screen),
+            waypoints=BAND_SWEEP_WAYPOINTS,
+        )
+        self.notes.append(f"farm_start_{snap.screen:02x}_{snap.filled_hearts}")
+        return self._farm.step(snap)
+
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
         advanced = self._advance_hop(snap, hop)
@@ -427,6 +478,10 @@ class OverworldPathController:
 
         if snap.mode not in self.allowed_modes:
             return wake_or_wait_mode(self.phase_frames, snap.mode)
+
+        farm = self._farm_action(snap)
+        if farm is not None:
+            return farm
 
         if self.hop_index >= len(self.hops):
             return self._after_hops(snap)
