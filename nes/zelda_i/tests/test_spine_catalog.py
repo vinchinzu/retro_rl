@@ -11,6 +11,7 @@ from zelda_i.level7.spine import L7_STOPS, L7_THROUGH
 from zelda_i.level8.spine import L8_STOPS, L8_THROUGH
 from zelda_i.level9.spine import L9_STOPS, L9_THROUGH
 from zelda_i.screen_glance import (
+    BAIT_SHOP_LEAVE,
     BOW22_LEAVE,
     BOW_CELLAR_LEAVE,
     BOW_PICKUP_LEAVE,
@@ -40,6 +41,7 @@ LEAVE_SPECS = (
     BOW_CELLAR_LEAVE,
     BOW_PICKUP_LEAVE,
     STAIRS3A_DEST,
+    BAIT_SHOP_LEAVE,
 )
 
 

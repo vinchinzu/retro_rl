@@ -20,6 +20,7 @@ from zelda_i.level7.entry import (
 )
 from zelda_i.level7.hops import (
     l7_hops,
+    level7_bait_shop_chapter_stages,
     level7_complete_chapter_stages,
     level7_entry_chapter_stages,
     level7_red_candle_chapter_stages,
@@ -376,7 +377,9 @@ def test_natural_bait_stays_fail_closed_and_survival_is_opt_in() -> None:
 
 def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
     ram = _ram()
-    stages = l7_hops(_env(ram), survival=True)[0].stages()
+    hops = l7_hops(_env(ram), survival=True)
+    entry = next(h for h in hops if h.through == "level7-entry")
+    stages = entry.stages()
     names = [n for n, _c, _f in stages]
     assert names == [
         "level7_post_l6_overworld",
@@ -643,15 +646,32 @@ def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
             assert getattr(h, name) is not None
 
 
+def test_bait_shop_chapter_has_no_food_poke() -> None:
+    stages = level7_bait_shop_chapter_stages()
+    names = [n for n, _c, _f in stages]
+    assert names == [
+        "level7_post_l6_overworld",
+        "level7_recorder_warp",
+        "level7_shop_approach",
+    ]
+    assert all(
+        not isinstance(ctl, SurvivalBaitPurchaseController) for _n, ctl, _f in stages
+    )
+    shop = stages[2][1]
+    assert shop.hops[-1].target == BAIT_SHOP_SCREEN_HYP
+
+
 def test_l7_hops_use_fail_closed_entry_chapter() -> None:
     ram = _ram()
     hops = l7_hops(_env(ram))
     assert tuple(h.through for h in hops) == (
+        "level7-bait-shop",
         "level7-entry",
         "level7-red-candle",
         "level7",
     )
-    stages_fn = hops[0].stages
+    assert hops[0].dedicated and hops[0].through == "level7-bait-shop"
+    stages_fn = hops[1].stages
     assert callable(stages_fn)
     stages = stages_fn()
     assert [name for name, _c, _n in stages] == [

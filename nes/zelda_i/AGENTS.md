@@ -19,9 +19,10 @@ level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
-Food poke (`rr-8t4.4` / `rr-8t4.5`), wooden-arrow poke (`rr-wabn`), bomb/key
-counts (`rr-doua`). Magical Sword is optional (`rr-sz8.8`; leftover was 10
-HC). Clean continuous is `rr-npv` after those writes are gone.
+Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)
+(Food poke; shop hop wired, power-on blocked by `rr-ps7.3` L2 `0x4C`).
+Also open: `rr-wabn`, `rr-doua`, `rr-sz8.8` (optional; leftover was 10 HC).
+Clean continuous is `rr-npv` after those writes are gone. Do not add pokes.
 
 ## Commands
 
@@ -43,6 +44,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow --n
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-cellar --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-pickup --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2-entry --no-video --trials 1
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7-bait-shop --no-video --trials 1
 
 # Clean M5 (do not overwrite)
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2

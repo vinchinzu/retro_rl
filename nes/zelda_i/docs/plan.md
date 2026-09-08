@@ -9,9 +9,11 @@ route graph.
 Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 Survival power-on → credits is green (`--through level9-credits`, 2026-09-07).
-Not Clean STATUS. Living residual: **Food poke** (`rr-8t4.4` natural L6→bait
-shop). Also open: `rr-wabn` (arrow shop), `rr-doua` (bomb/key counts),
-`rr-sz8.8` (optional Magical Sword). Clean continuous is `rr-npv`.
+Not Clean STATUS. Living residual: **Food poke**
+([`tasks/rr-8t4.4-residual.md`](tasks/rr-8t4.4-residual.md); dedicated
+`--through level7-bait-shop`). Also open: `rr-wabn` (arrow shop), `rr-doua`
+(bomb/key counts), `rr-sz8.8` (optional Magical Sword). Clean continuous is
+`rr-npv`.
 
 ## Historical — reactive Gohma kill (`rr-tne2`, closed) (2026-09-02)
 

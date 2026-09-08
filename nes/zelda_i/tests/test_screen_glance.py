@@ -10,6 +10,7 @@ import pytest
 from zelda_i.route.chain import ControllerStageResult
 from zelda_i.ram import CAVE_MODE, PLAY_MODE
 from zelda_i.screen_glance import (
+    BAIT_SHOP_LEAVE,
     BOW22_LEAVE,
     BOW_CELLAR_LEAVE,
     BOW_PICKUP_LEAVE,
@@ -36,6 +37,7 @@ _LEAVE_SPECS = (
     CLEAR_3A, CELLAR08_LEAVE, SOUTH1D_LEAVE, WEST2D_LEAVE, NORTH2C_LEAVE,
     GOHMA_LEAVE, HEART_LEAVE, NORTH0C_LEAVE, LEVEL6_LEAVE,
     BOW22_LEAVE, BOW_CELLAR_LEAVE, BOW_PICKUP_LEAVE, STAIRS3A_DEST,
+    BAIT_SHOP_LEAVE,
 )
 
 

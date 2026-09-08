@@ -7,8 +7,9 @@ suffix is driven to ``level6-exit`` (the measured post-fanfare OW return, screen
 
 ``MEASURED_POST_L6_EXIT.verified`` is ``True`` since Phase 1. Survival
 ``--through level7`` is spine-green from power-on (Recorder warp, disclosed
-Food poke; natural 60R shop is ``rr-8t4.4``). Interior chapter factories
-stay ``route_eligible=false``; the leave packet is filled from power-on.
+Food poke). Natural shop walk is dedicated ``--through level7-bait-shop``
+(``rr-8t4.4``). Interior chapter factories stay ``route_eligible=false``;
+the leave packet is filled from power-on.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from zelda_i.level7.hops import l7_hops
 from zelda_i.spine.hops import attach_hops
 
 L7_THROUGH: tuple[str, ...] = (
+    "level7-bait-shop",
     "level7-entry",
     "level7-red-candle",
     "level7",
@@ -27,6 +29,7 @@ L7_THROUGH: tuple[str, ...] = (
 # natural overworld rupee farm is a separate bead.
 SPINE_L7_RUPEE_RETOPUP: frozenset[str] = frozenset({"level7_bait_purchase"})
 L7_STOPS: dict[str, str] = {
+    "level7-bait-shop": "level7_bait_shop",
     "level7-entry": "level7_entry",
     "level7-red-candle": "level7_red_candle",
     "level7": "level7_complete",

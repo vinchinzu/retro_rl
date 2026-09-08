@@ -11,6 +11,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import (
     SCREEN_BRACELET_ARMOS,
     SCREEN_LEVEL6_ENTRANCE,
+    SCREEN_LEVEL7_BAIT_SHOP_HYP,
     SCREEN_LEVEL7_POND_HYP,
     SCREEN_MAGICAL_SWORD_GRAVE,
 )
@@ -28,6 +29,11 @@ from zelda_i.level7.overworld import (
     POST_L6_TO_BAIT_SCREENS,
     POST_L6_TO_POND_HOPS,
     POST_L6_TO_POND_SCREENS,
+    SHOP_44_NORTH_X,
+    SHOP_54_NORTH_X,
+    WARP_JOIN_TO_POND_HOPS,
+    WARP_JOIN_TO_SHOP_HOPS,
+    WARP_JOIN_TO_SHOP_SCREENS,
     OverworldToBaitShopController,
     OverworldToLevel7PondController,
     at_l6_cave_mouth,
@@ -388,3 +394,47 @@ def test_after_hops_succeeds_on_pond_0x42() -> None:
     act2 = ctl2._after_hops(inland)
     assert ctl2.failed
     assert act2.reason == "post_l6_path_exhausted_unmeasured"
+
+
+def test_shop_join_peels_north_at_0x54_not_west_to_pond() -> None:
+    """rr-8t4.4: warp-join through 0x54, then UP to 0x44/0x34. Not LEFT to 0x53."""
+    assert WARP_JOIN_TO_SHOP_HOPS[:4] == WARP_JOIN_TO_POND_HOPS[:4]
+    assert WARP_JOIN_TO_SHOP_SCREENS == (0x45, 0x55, 0x65, 0x64, 0x54, 0x44, 0x34)
+    assert WARP_JOIN_TO_SHOP_HOPS[-1].target == SCREEN_LEVEL7_BAIT_SHOP_HYP
+    assert 0x53 not in WARP_JOIN_TO_SHOP_SCREENS
+    assert 0x42 not in WARP_JOIN_TO_SHOP_SCREENS
+    for a, b in zip(WARP_JOIN_TO_SHOP_SCREENS, WARP_JOIN_TO_SHOP_SCREENS[1:]):
+        assert b in neighbor_screens(a).values(), f"{a:#x}->{b:#x}"
+    assert WARP_JOIN_TO_SHOP_HOPS[-2].align_x == SHOP_54_NORTH_X
+    assert WARP_JOIN_TO_SHOP_HOPS[-1].align_x == SHOP_44_NORTH_X
+
+
+def test_shop_54_south_aligns_x116_not_left_to_pond() -> None:
+    """0x54 leftover from 0x64 UP is x≈60 south. Shop gap is x≈116; pond is LEFT."""
+    ctl = OverworldToLevel7PondController(hops=WARP_JOIN_TO_SHOP_HOPS)
+    hop = ctl.hops[4]
+    assert hop.target == 0x44
+    snap = read_snapshot(_ram(screen=0x54, x=60, y=205, sword=1))
+    act = ctl._extra_hop_action(snap, hop)
+    assert act is not None
+    assert "54_shop_ax" in act.reason
+    assert "LEFT" not in act.reason
+    aligned = read_snapshot(_ram(screen=0x54, x=SHOP_54_NORTH_X, y=205, sword=1))
+    up = ctl._extra_hop_action(aligned, hop)
+    assert up is not None
+    assert "54_shop_north" in up.reason
+    assert "LEFT" not in up.reason
+
+
+def test_shop_44_south_aligns_x132_then_up() -> None:
+    ctl = OverworldToLevel7PondController(hops=WARP_JOIN_TO_SHOP_HOPS)
+    hop = ctl.hops[5]
+    assert hop.target == SCREEN_LEVEL7_BAIT_SHOP_HYP
+    snap = read_snapshot(_ram(screen=0x44, x=SHOP_54_NORTH_X, y=205, sword=1))
+    act = ctl._extra_hop_action(snap, hop)
+    assert act is not None
+    assert "44_shop_ax" in act.reason
+    aligned = read_snapshot(_ram(screen=0x44, x=SHOP_44_NORTH_X, y=205, sword=1))
+    up = ctl._extra_hop_action(aligned, hop)
+    assert up is not None
+    assert "44_shop_north" in up.reason

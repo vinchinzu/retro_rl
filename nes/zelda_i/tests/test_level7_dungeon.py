@@ -79,8 +79,13 @@ def _ram(**fields: int) -> np.ndarray:
     return make_ram(_DEFAULTS, **fields)
 
 
-def test_public_through_targets_are_exactly_three_chapters() -> None:
-    assert L7_THROUGH == ("level7-entry", "level7-red-candle", "level7")
+def test_public_through_targets_are_three_chapters_plus_shop() -> None:
+    assert L7_THROUGH == (
+        "level7-bait-shop",
+        "level7-entry",
+        "level7-red-candle",
+        "level7",
+    )
     assert set(L7_STOPS) == set(L7_THROUGH)
 
 

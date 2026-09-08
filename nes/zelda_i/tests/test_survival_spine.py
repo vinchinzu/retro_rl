@@ -435,6 +435,7 @@ PINNED_SPINE_THROUGH: tuple[str, ...] = (
     "level6-inland29",
     "level6-west19",
     "level6-south18",
+    "level7-bait-shop",
     "level7-entry",
     "level7-red-candle",
     "level7",
