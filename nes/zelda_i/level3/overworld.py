@@ -45,6 +45,12 @@ from zelda_i.overworld.graph import (
     path_screens_from_hops,
 )
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.settle import (
+    POST_L2_SETTLE,
+    POST_L2_SETTLE_MAX_FRAMES,
+    PostL2TriforceSettleController,
+    settle_ready,
+)
 from zelda_i.ram import PLAY_MODE, SCREEN_START, ZeldaSnapshot, read_snapshot
 
 # --- Live anchors (assisted recon 2026-08-06); screens from anchors ---
@@ -60,7 +66,6 @@ LEVEL3_DOOR_APPROACH_Y = 140
 LEVEL3 = 3
 # Post-L2 return (Moon mouth); TF bits after L1+L2 shards.
 SCREEN_POST_L2_RETURN = 0x3C
-POST_L2_SETTLE_MAX_FRAMES = 2500
 POST_L2_PATH_MAX_FRAMES = 45000
 
 SEGMENT_MAX_FRAMES = 35000
@@ -194,65 +199,6 @@ class Level3NavPhase(Enum):
     DOOR = auto()
     DONE = auto()
     FAILED = auto()
-
-
-class PostL2SettlePhase(Enum):
-    WAIT = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class PostL2TriforceSettleController:
-    """Idle through L2 mode-18 fanfare until overworld play on 0x3C.
-
-    Live: ~800 idle frames after TF collect → mode 5 OW **0x3C** ~(112, 125)
-    with triforce & 0x02 (and usually & 0x01 from L1). Prefer live settle or
-    ``Level2ExitOverworld``; mid-fanfare ``Level2Complete`` reload can stick.
-    """
-
-    phase: PostL2SettlePhase = PostL2SettlePhase.WAIT
-    frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-    max_frames: int = POST_L2_SETTLE_MAX_FRAMES
-    require_screen: int = SCREEN_POST_L2_RETURN
-
-    def reset(self) -> None:
-        self.phase = PostL2SettlePhase.WAIT
-        self.frames = 0
-        self.success = False
-        self.notes.clear()
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.frames >= self.max_frames:
-            self.phase = PostL2SettlePhase.FAILED
-            self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and snap.screen == self.require_screen
-            and (snap.triforce & LEVEL2_TRIFORCE_BIT)
-        ):
-            self.success = True
-            if self.phase is not PostL2SettlePhase.DONE:
-                self.phase = PostL2SettlePhase.DONE
-                self.notes.append("overworld_after_l2_triforce")
-            return FrameAction(nes_idle_action(), "done")
-
-        return FrameAction(nes_idle_action(), f"settle_mode_{snap.mode}")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "require_screen": f"0x{self.require_screen:02x}",
-        }
 
 
 @dataclass
@@ -599,10 +545,4 @@ def level3_entrance_success(ram: np.ndarray) -> bool:
 
 def post_l2_overworld_ready(ram: np.ndarray) -> bool:
     """OW play on Moon return screen with L2 triforce bit."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_POST_L2_RETURN
-        and bool(snap.triforce & LEVEL2_TRIFORCE_BIT)
-    )
+    return settle_ready(POST_L2_SETTLE, read_snapshot(ram))

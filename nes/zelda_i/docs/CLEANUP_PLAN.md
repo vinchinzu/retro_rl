@@ -172,13 +172,11 @@ door hops through one controller. Phase 2 is "promote that, everywhere".
 
 Ordered by effort/risk ratio, easiest proof first.
 
-- [ ] **2.1** *(the proof)* One `TriforceSettleSpec` row table replacing five
-      verbatim clone controllers — `level2/overworld.py:130`,
-      `level3/overworld.py:206`, `level4/overworld.py:213`,
-      `level5/overworld.py:107`, `level6/overworld.py:198`. Identical bodies;
-      deltas are `require_screen`, the TF bit, and a `raft` predicate.
-      `spine/hops.py:35 play_ready` already expresses the predicate half.
-      **~230 LOC, low risk.** Do this first — it validates the pattern.
+- [x] **2.1** *(the proof)* One `TriforceSettleSpec` row table replacing five
+      verbatim clone controllers — `overworld/settle.py` (`TRIFORCE_SETTLES`).
+      Deltas are `require_screen`, the TF bit, and a `raft` item predicate.
+      Historical no-arg names (`PostL4TriforceSettleController`, …) are bound
+      subclasses. **Done 2026-09-07.**
 - [ ] **2.2** Delete the self-labelled shims: `level1/path.py:539-558`
       `_CLEAR_EXPORTS` `__getattr__`, `level3/path.py:5` + `level3/dungeon.py:493`
       re-exports (~280 LOC).

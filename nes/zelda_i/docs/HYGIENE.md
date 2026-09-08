@@ -8,6 +8,7 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 |-------|-----------|------|
 | Anchors | `anchors.py` | Door screens, entry rooms, TF bits (L3–L9) |
 | OW path engine | `overworld/path.py` | Hop/maze/door frame policy |
+| OW TF settle | `overworld/settle.py` | `TriforceSettleSpec` rows + one idle controller (L1–L5) |
 | OW geometry | `level*/overworld.py` | Hop tables + thin controller subclasses |
 | Room combat | `dungeon/engine.py` + `level*/dungeon.py` | `DungeonRoomSpec` tables only |
 | L6 wizzrobe combat | `level6.wizzrobe` | 0x7a/0x78 backstep; re-exported from `level6.dungeon` |

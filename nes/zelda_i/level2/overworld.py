@@ -41,6 +41,12 @@ from zelda_i.overworld.graph import (
     is_5c_maze_hop,
 )
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.settle import (
+    POST_L1_SETTLE,
+    SETTLE_MAX_FRAMES,
+    PostTriforceSettleController,
+    settle_ready,
+)
 from zelda_i.ram import (
     PLAY_MODE,
     SCREEN_LEVEL1_ENTRANCE,
@@ -55,7 +61,6 @@ SCREEN_LEVEL2 = SCREEN_LEVEL2_ENTRANCE
 LEVEL2_ENTRY_ROOM = SCREEN_LEVEL2_ENTRY_ROOM  # 0x7d after mode-16→5 settle
 LEVEL2_DOOR_X = 112  # Moon overworld door UP lane on 0x3C
 LEVEL1_TRIFORCE_BIT = 0x01
-SETTLE_MAX_FRAMES = 1500
 SEGMENT_MAX_FRAMES = 25000
 SWORD_SWING_PERIOD = 10
 SWORD_SWING_FRAMES = 3
@@ -118,63 +123,6 @@ def level2_door_hops_from(screen: int) -> tuple[ScreenHop, ...]:
     if screen == 0x37:
         return LEVEL2_DOOR_HOPS
     return LEVEL2_DOOR_HOPS
-
-
-class SettlePhase(Enum):
-    WAIT_FANFARE = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class PostTriforceSettleController:
-    """Idle through mode-18 Triforce fanfare until overworld play on 0x37.
-
-    Live probe: ~535 frames of mode 18, then modes 2→3→4 and playable overworld
-    around frame 704 at screen 0x37 ~(112, 125) with triforce & 0x01.
-    Reloading a mid-fanfare save (Level1Complete) can freeze mode 18; prefer a
-    live settle after collection or the Level1ExitOverworld checkpoint.
-    """
-
-    phase: SettlePhase = SettlePhase.WAIT_FANFARE
-    frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-
-    def reset(self) -> None:
-        self.phase = SettlePhase.WAIT_FANFARE
-        self.frames = 0
-        self.success = False
-        self.notes.clear()
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.frames >= SETTLE_MAX_FRAMES:
-            self.phase = SettlePhase.FAILED
-            self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-
-        if (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and snap.screen == SCREEN_LEVEL1_ENTRANCE
-            and (snap.triforce & LEVEL1_TRIFORCE_BIT)
-        ):
-            self.success = True
-            if self.phase is not SettlePhase.DONE:
-                self.phase = SettlePhase.DONE
-                self.notes.append("overworld_after_triforce")
-            return FrameAction(nes_idle_action(), "done")
-
-        return FrameAction(nes_idle_action(), f"settle_mode_{snap.mode}")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-        }
 
 
 class Level2NavPhase(Enum):
@@ -336,10 +284,4 @@ def level2_entrance_success(ram: np.ndarray) -> bool:
 
 
 def post_triforce_overworld_ready(ram: np.ndarray) -> bool:
-    snap = read_snapshot(ram)
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_LEVEL1_ENTRANCE
-        and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
-    )
+    return settle_ready(POST_L1_SETTLE, read_snapshot(ram))

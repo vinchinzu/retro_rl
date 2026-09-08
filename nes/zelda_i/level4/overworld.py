@@ -25,6 +25,10 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.settle import (
+    POST_L3_SETTLE_MAX_FRAMES,
+    PostL3TriforceSettleController,
+)
 from zelda_i.ram import (
     ADDR_LADDER,
     ADDR_RAFT,
@@ -52,7 +56,6 @@ LEVEL4_ISLAND_SCREEN = SCREEN_LEVEL4_ENTRANCE  # 0x45 live
 
 # Post-L3 return (Manji mouth); TF bits after L1+L2+L3 shards.
 SCREEN_POST_L3_RETURN = 0x74
-POST_L3_SETTLE_MAX_FRAMES = 2500
 POST_L3_PATH_MAX_FRAMES = 40000
 SEGMENT_MAX_FRAMES = 40000
 SWORD_SWING_PERIOD = 10
@@ -201,67 +204,6 @@ class Level4NavPhase(Enum):
     DOOR = auto()
     DONE = auto()
     FAILED = auto()
-
-
-class PostL3SettlePhase(Enum):
-    WAIT = auto()
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class PostL3TriforceSettleController:
-    """Idle through L3 triforce fanfare until OW 0x74 play with raft.
-
-    Start: ``Level3Complete`` (mode 18, room 0x3d, raft=1, tf&0x04).
-    """
-
-    phase: PostL3SettlePhase = PostL3SettlePhase.WAIT
-    frames: int = 0
-    phase_frames: int = 0
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-    max_frames: int = POST_L3_SETTLE_MAX_FRAMES
-    require_screen: int = SCREEN_POST_L3_RETURN
-
-    def reset(self) -> None:
-        self.phase = PostL3SettlePhase.WAIT
-        self.frames = 0
-        self.phase_frames = 0
-        self.success = False
-        self.notes.clear()
-
-    def step(self, snap: ZeldaSnapshot, *, has_raft_flag: bool = True) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        if self.frames > self.max_frames:
-            self.phase = PostL3SettlePhase.FAILED
-            self.notes.append("settle_timeout")
-            return FrameAction(nes_idle_action(), "settle_timeout")
-
-        if (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and snap.screen == self.require_screen
-            and bool(snap.triforce & LEVEL3_TRIFORCE_BIT)
-            and has_raft_flag
-        ):
-            self.success = True
-            if self.phase is not PostL3SettlePhase.DONE:
-                self.phase = PostL3SettlePhase.DONE
-                self.notes.append("post_l3_ow_ready")
-            return FrameAction(nes_idle_action(), "settle_done")
-
-        return FrameAction(nes_idle_action(), "settle_wait")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "require_screen": f"0x{self.require_screen:02x}",
-        }
 
 
 @dataclass
