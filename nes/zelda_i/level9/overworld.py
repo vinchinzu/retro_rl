@@ -89,7 +89,7 @@ class FixtureEntryPhase(Enum):
     ALIGN_28_Y, WEST_28, DROP_27 = auto(), auto(), auto()
     ALIGN_27_X, NORTH_27, CLIMB_17 = auto(), auto(), auto()
     ALIGN_17_X, NORTH_17, ALIGN_07_Y = auto(), auto(), auto()
-    WEST_07, WEST_06, ROCK_OBSERVE = auto(), auto(), auto()
+    WEST_07, WEST_06 = auto(), auto()
     PAUSE_OPEN, ROCK_TOP_Y, ROCK_GAP_X = auto(), auto(), auto()
     ROCK_BOTTOM_Y, ROCK_LEFT_X, ROCK_FACE_UP = auto(), auto(), auto()
     ROCK_FIRE, ROCK_BLAST_WAIT, ROCK_ENTER = auto(), auto(), auto()
@@ -97,7 +97,7 @@ class FixtureEntryPhase(Enum):
 
 
 _NON_MOVE = frozenset({
-    FixtureEntryPhase.ROCK_OBSERVE, FixtureEntryPhase.PAUSE_OPEN,
+    FixtureEntryPhase.PAUSE_OPEN,
     FixtureEntryPhase.ROCK_FACE_UP, FixtureEntryPhase.ROCK_FIRE,
     FixtureEntryPhase.ROCK_BLAST_WAIT, FixtureEntryPhase.DUNGEON_SETTLE,
     FixtureEntryPhase.DONE, FixtureEntryPhase.FAILED,
@@ -140,7 +140,6 @@ class Level9FixtureEntryController:
     bombs_before: int | None = None
     bombs_after: int | None = None
     b_presses: int = 0
-    rock_observe_frames: int = 0
     blast_wait_frames: int = 0
     dungeon_settle_frames: int = 0
     blocked_cell: dict[str, int | str] | None = None
@@ -251,7 +250,7 @@ class Level9FixtureEntryController:
             FixtureEntryPhase.NORTH_27: (0x17, FixtureEntryPhase.CLIMB_17, "settled_0x17"),
             FixtureEntryPhase.NORTH_17: (0x07, FixtureEntryPhase.ALIGN_07_Y, "settled_0x07"),
             FixtureEntryPhase.WEST_07: (0x06, FixtureEntryPhase.WEST_06, "settled_0x06"),
-            FixtureEntryPhase.WEST_06: (0x05, FixtureEntryPhase.ROCK_OBSERVE, "settled_0x05"),
+            FixtureEntryPhase.WEST_06: (0x05, FixtureEntryPhase.PAUSE_OPEN, "settled_0x05"),
         }
         row = expected.get(self.phase)
         if row is None or int(snap.screen) != row[0]:
@@ -325,11 +324,6 @@ class Level9FixtureEntryController:
         # Pause selection deliberately reads the game's cursor result; it
         # never assigns ADDR_SELECTED_ITEM. RIGHT only counts when $0656
         # actually changes (shared PauseSelectController).
-        if self.phase is FixtureEntryPhase.ROCK_OBSERVE:
-            self.rock_observe_frames += 1
-            if self.rock_observe_frames < 30:
-                return FrameAction(nes_idle_action(), "spectacle_rock_screenshot_hold")
-            self._set_phase(FixtureEntryPhase.PAUSE_OPEN, "rock_screenshot_observed")
         if self.phase is FixtureEntryPhase.PAUSE_OPEN:
             driven = self._select.drive(snap)
             for note in self._select.notes:
