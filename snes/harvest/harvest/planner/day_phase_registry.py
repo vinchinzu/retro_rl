@@ -316,6 +316,7 @@ def _build_mountain_berry(
             pick_timeout=spec.params.get("pick_timeout", 12_000),
             nav_timeout=spec.params.get("nav_timeout", 12_000),
             pick_attempts=spec.params.get("pick_attempts", 3),
+            target_count=spec.params.get("count", 1),
         )
     return MountainBerryTask(
         name=f"mountain_berry_{spec.phase.lower()}",

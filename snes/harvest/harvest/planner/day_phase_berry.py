@@ -70,16 +70,20 @@ def ship_berry_phases(*, count: int = 2, open_fence: bool = True) -> list[PhaseS
     return phases
 
 
-# Spring D2 house → path fork → first mountain grape/berry. Reactive, not tape.
+# Spring house → path fork → mountain grape/berry. Reactive, not tape.
+# ``count`` grapes shipped per run: the daily spring forage target is 2, but
+# the second pickup is best-effort — a failed second nav/forage still leaves
+# the run SUCCESS as long as one grape reached the bin (rr-20w.3).
 MOUNTAIN_BERRY_PHASE = PhaseSpec(
     "MOUNTAIN_BERRY",
     "mountain_berry",
     {
-        "timeout": 20000,
+        "timeout": 30000,
         "nav_timeout": 12000,
         "approach_only": False,
         "pick_attempts": 3,
         "ship": True,
+        "count": 2,
     },
     failure_policy="optional",
     required_maps=(0x15, 0x00, 0x0C, 0x10),
@@ -167,7 +171,10 @@ def _berry_run_phases(
                 failure_policy="optional",
             )
         )
-        if season == 0 and day == 2:
+        if season == 0:
+            # Spring: the mountain grape is the only working forage route.
+            # The farm-bush SHIP_BERRY loop is sealed by the debris field
+            # north of the bush (rr-w14t) — do not schedule it.
             phases.append(MOUNTAIN_BERRY_PHASE)
         else:
             phases.extend(ship_berry_phases(count=2))

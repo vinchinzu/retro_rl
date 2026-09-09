@@ -116,13 +116,41 @@ from harvest.planner.day_phase_catalog import (
 )
 
 
+def _uses_d2_exhaustive_clear(season: int | None, day: int | None) -> bool:
+    """S0D2 folds grape/shop/clear/plant/water into one reactive tactic."""
+    return int(season or 0) == 0 and int(day or 0) == 2
+
+
 def _daytime_clear_phase(season: int | None, day: int | None) -> PhaseSpec:
     """D2 uses the exhaustive tactic; other days keep quota CLEAR_FIELD."""
-    if int(season or 0) == 0 and int(day or 0) == 2:
+    if _uses_d2_exhaustive_clear(season, day):
         from harvest.planner.d2_work import d2_farm_clear_phase
 
         return d2_farm_clear_phase()
     return CLEAR_FIELD_PHASE
+
+
+def _planting_today(
+    *,
+    has_seeds: bool,
+    buying_seeds: bool,
+    season: int | None,
+    day: int | None,
+    late_day: bool,
+    policy: DayPlannerPolicy,
+) -> bool:
+    """True when today's plan should hoe + establish a plot.
+
+    A same-day seed purchase counts as plant intent: the bag lands on the
+    shed shelf, ``ENSURE_CROP_SEEDS`` picks it up, then ``CROP_ESTABLISH``
+    tills and sows it (a fresh plot beside any existing rows). D2's own
+    reactive tactic already plants, so it is excluded here.
+    """
+    if late_day or not policy.include_planting:
+        return False
+    if has_seeds:
+        return True
+    return buying_seeds and not _uses_d2_exhaustive_clear(season, day)
 
 
 def build_day_phases(
@@ -249,6 +277,14 @@ def build_day_phases(
     other_berry_phases = [
         phase for phase in berry_phases if phase not in seed_buy_phases
     ]
+    plant_intent = _planting_today(
+        has_seeds=has_seeds,
+        buying_seeds=bool(seed_buy_phases),
+        season=season,
+        day=day,
+        late_day=late_day,
+        policy=policy,
+    )
 
     # Field wipe is valuable, but day CLEAR thrash starves berry ship on empty
     # Spring mornings. Bushes/weeds only clear in the evening after shipping.
@@ -270,6 +306,15 @@ def build_day_phases(
         and not has_chickens
         and not has_cows
     )
+    # Restock day (D3+): grapes ship before the shop hop even with keep-alive
+    # crops — both are morning deadlines and grape income precedes the spend.
+    restock_berries_first = bool(
+        not berry_before_clear
+        and not late_day
+        and seed_buy_phases
+        and other_berry_phases
+    )
+    early_berries = berry_before_clear or restock_berries_first
     if berry_before_clear:
         # Berries ship first, then potato seeds only if wallet can pay.
         phases.extend(other_berry_phases)
@@ -280,6 +325,8 @@ def build_day_phases(
             phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
         # Keep-alive farm: still buy seeds early so plant/water is not starved.
+        if restock_berries_first:
+            phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
 
     # Daytime clear only when crops need pathing and we are not on the empty
@@ -328,7 +375,7 @@ def build_day_phases(
         _crop_work_phases(
             has_harvest=has_harvest,
             has_waterable=has_waterable,
-            has_seeds=has_seeds,
+            has_seeds=plant_intent,
             is_rainy=is_rainy,
             late_day=late_day,
             policy=policy,
@@ -341,7 +388,7 @@ def build_day_phases(
         phases.append(_daytime_clear_phase(season, day))
 
     # 4. Early money route after animals/crops (or skipped if already first).
-    if not late_day and not berry_before_clear:
+    if not late_day and not early_berries:
         phases.extend(other_berry_phases)
         # Seeds already placed early on keep-alive path when applicable.
 
@@ -400,6 +447,14 @@ def build_outdoor_day_phases(
     other_berry_phases = [
         phase for phase in berry_phases if phase not in seed_buy_phases
     ]
+    plant_intent = _planting_today(
+        has_seeds=has_seeds,
+        buying_seeds=bool(seed_buy_phases),
+        season=season,
+        day=day,
+        late_day=late_day,
+        policy=policy,
+    )
 
     # Early money (berries) before optional field wipe when nothing needs
     # keep-alive water. Full day clear burns the shipping window on bush thrash.
@@ -417,12 +472,24 @@ def build_outdoor_day_phases(
         and not has_waterable
         and not has_harvest
     )
+    # Restock day (D3+): ship the grapes before the shop hop even when
+    # keep-alive crops still need water — grape < 5pm and shop < noon are
+    # both morning deadlines, and the grape wallet credit precedes the spend.
+    restock_berries_first = bool(
+        not berry_before_clear
+        and not late_day
+        and seed_buy_phases
+        and other_berry_phases
+    )
+    early_berries = berry_before_clear or restock_berries_first
     if berry_before_clear:
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
         if seed_buy_phases and has_debris and policy.include_field_clear:
             phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
+        if restock_berries_first:
+            phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
 
     day_clear = bool(
@@ -443,7 +510,7 @@ def build_outdoor_day_phases(
         _crop_work_phases(
             has_harvest=has_harvest,
             has_waterable=has_waterable,
-            has_seeds=has_seeds,
+            has_seeds=plant_intent,
             is_rainy=is_rainy,
             late_day=late_day,
             policy=policy,
@@ -453,8 +520,9 @@ def build_outdoor_day_phases(
     if defer_field_clear and not berry_before_clear:
         phases.append(_daytime_clear_phase(season, day))
 
-    # Berries after crop work when keep-alive / harvest claimed the morning.
-    if not late_day and not berry_before_clear:
+    # Berries after crop work when keep-alive / harvest claimed the morning
+    # (skip when a restock day already ran them first).
+    if not late_day and not early_berries:
         phases.extend(other_berry_phases)
 
     if late_day:

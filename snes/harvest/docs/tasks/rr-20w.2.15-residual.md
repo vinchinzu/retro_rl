@@ -3,6 +3,14 @@
 **Status:** planner GREEN, live NW bushes RED (boxed stone). Do not STATUS.
 No `--video`. No full-day soak.
 
+> **2026-09-09:** the section-first lift landed (commit 3160ba6f). The
+> `map_routes` / `multi_nav` `force_run` + `pose_is_leaked` nav bundle that
+> rode along was **backed out** (next commit) — it only worked from
+> `Y1_Inside_House` and broke `MOUNTAIN_BERRY` / `NAV_CROP` /
+> `CROP_ESTABLISH` / `return_home` from the D3 and power-on poses (nav
+> walked onto `0x10`). The leaked-west-edge path pose it targeted is
+> rr-20w.2.4 / rr-20w.2.5 work.
+
 ### Verified this session
 
 - `next_d2_spec` is section-first for hands work: weeds → fences → stones

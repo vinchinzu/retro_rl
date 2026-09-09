@@ -188,10 +188,11 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         phases = build_day_phases(None, weekday=0, hour=8, has_seeds=True)
         names = self._phase_names(phases)
         self.assertIn("BERRY_RUN_WINDOW", names)
-        self.assertIn("OPEN_FENCE_GAP", names)
-        self.assertIn("SHIP_BERRY_1", names)
-        self.assertIn("SHIP_BERRY_2", names)
-        self.assertLess(names.index("OPEN_FENCE_GAP"), names.index("SHIP_BERRY_1"))
+        # Spring forage is the mountain grape, not the sealed farm bush.
+        self.assertIn("MOUNTAIN_BERRY", names)
+        self.assertNotIn("SHIP_BERRY_1", names)
+        self.assertNotIn("OPEN_FENCE_GAP", names)
+        self.assertLess(names.index("BERRY_RUN_WINDOW"), names.index("MOUNTAIN_BERRY"))
         self.assertNotIn("EXIT_FARM_WEST", names)
         self.assertNotIn("BUY_SEEDS", names)
 
@@ -217,17 +218,13 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         )
         names = self._phase_names(phases)
         self.assertIn("BERRY_RUN_WINDOW", names)
-        self.assertIn("OPEN_FENCE_GAP", names)
-        self.assertIn("SHIP_BERRY_1", names)
-        self.assertIn("SHIP_BERRY_2", names)
-        ship = phases[names.index("SHIP_BERRY_1")]
-        self.assertEqual(ship.kind, "berry_ship")
-        self.assertEqual(ship.params["route"], "berry_ship")
-        ship2 = phases[names.index("SHIP_BERRY_2")]
-        self.assertEqual(ship2.params["route"], "berry_ship_repeat")
-        fence = phases[names.index("OPEN_FENCE_GAP")]
-        self.assertEqual(fence.kind, "fence_clear")
-        self.assertTrue(fence.params.get("corridor_only"))
+        self.assertIn("MOUNTAIN_BERRY", names)
+        self.assertNotIn("SHIP_BERRY_1", names)
+        self.assertNotIn("OPEN_FENCE_GAP", names)
+        berry = phases[names.index("MOUNTAIN_BERRY")]
+        self.assertEqual(berry.kind, "mountain_berry")
+        self.assertTrue(berry.params["ship"])
+        self.assertEqual(berry.params["count"], 2)
         self.assertNotIn("BUY_SEEDS", names)
         self.assertEqual(phases[names.index("BERRY_RUN_WINDOW")].params["latest_hour"], 14)
 
@@ -246,7 +243,7 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             money=0,
         )
         names = self._phase_names(phases)
-        self.assertIn("SHIP_BERRY_1", names)
+        self.assertIn("MOUNTAIN_BERRY", names)
         # Bushes only at night — empty D2 must not thrash CLEAR all day.
         self.assertNotIn("CLEAR_FIELD", names)
 
@@ -389,9 +386,9 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
             money=300,
         )
         names = [phase.phase for phase in phases]
-        self.assertIn("SHIP_BERRY_1", names)
+        self.assertIn("MOUNTAIN_BERRY", names)
         self.assertIn("BUY_SEEDS", names)
-        self.assertLess(names.index("SHIP_BERRY_1"), names.index("BUY_SEEDS"))
+        self.assertLess(names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"))
         # After shop we are back on the farm — morning CLEAR is allowed.
         self.assertIn("CLEAR_FIELD", names)
         self.assertLess(names.index("BUY_SEEDS"), names.index("CLEAR_FIELD"))
@@ -436,9 +433,9 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         names = self._phase_names(phases)
 
         self.assertIn("HARVEST_ROUTE", names)
-        self.assertIn("SHIP_BERRY_1", names)
+        self.assertIn("MOUNTAIN_BERRY", names)
         self.assertIn("CROP_WATER", names)
-        self.assertLess(names.index("CROP_WATER"), names.index("SHIP_BERRY_1"))
+        self.assertLess(names.index("CROP_WATER"), names.index("MOUNTAIN_BERRY"))
 
     def test_auto_day_phases_uses_ram_priority_instead_of_resume_water_shortcut(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=6)
@@ -548,6 +545,77 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertIn("HARVEST_ROUTE", names)
         self.assertIn("CROP_WATER", names)
         self.assertLess(names.index("HARVEST_ROUTE"), names.index("CROP_WATER"))
+
+
+class Day3SecondPlotTests(DayPlanPhaseHelpers):
+    """Spring D3+: ship 2 grapes, buy a bag before the shop shuts, then hoe a
+    fresh plot beside the D2 rows and water everything (rr-20w.3)."""
+
+    def _d3_outdoor(self, *, hour=6, money=250, has_waterable=True, has_seeds=False):
+        return build_outdoor_day_phases(
+            weekday=3,
+            hour=hour,
+            has_harvest=False,
+            has_waterable=has_waterable,
+            has_seeds=has_seeds,
+            has_debris=True,
+            season=0,
+            day=3,
+            money=money,
+        )
+
+    def test_d3_ships_two_mountain_grapes(self) -> None:
+        names = self._phase_names(self._d3_outdoor())
+        self.assertIn("MOUNTAIN_BERRY", names)
+        self.assertNotIn("SHIP_BERRY_1", names)
+        berry = self._d3_outdoor()[names.index("MOUNTAIN_BERRY")]
+        self.assertEqual(berry.params["count"], 2)
+
+    def test_d3_buys_then_establishes_a_second_plot_and_waters_all(self) -> None:
+        names = self._phase_names(self._d3_outdoor())
+        for phase in ("MOUNTAIN_BERRY", "BUY_SEEDS", "ENSURE_CROP_SEEDS",
+                      "CROP_ESTABLISH", "CROP_WATER"):
+            self.assertIn(phase, names)
+        # berries -> shop -> pick the bag up -> hoe/sow -> water
+        self.assertLess(names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"))
+        self.assertLess(names.index("BUY_SEEDS"), names.index("ENSURE_CROP_SEEDS"))
+        self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CROP_ESTABLISH"))
+        self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
+
+    def test_d3_no_plot_when_shop_already_shut(self) -> None:
+        # buy_seed_hour is 12; a 13:00 plan cannot restock, so no fresh plot —
+        # but the existing rows are still watered.
+        names = self._phase_names(self._d3_outdoor(hour=13))
+        self.assertNotIn("BUY_SEEDS", names)
+        self.assertNotIn("CROP_ESTABLISH", names)
+        self.assertIn("CROP_WATER", names)
+
+    def test_d3_no_plot_when_bag_unaffordable(self) -> None:
+        names = self._phase_names(self._d3_outdoor(money=150))
+        self.assertNotIn("BUY_SEEDS", names)
+        self.assertNotIn("CROP_ESTABLISH", names)
+        self.assertIn("CROP_WATER", names)
+
+    def test_d2_reactive_tactic_not_duplicated_by_plant_intent(self) -> None:
+        # S0D2 folds planting into D2_FARM_CLEAR; the generic establish chain
+        # must not also be scheduled off a same-day seed buy.
+        phases = build_day_phases(
+            None,
+            weekday=2,
+            hour=6,
+            season=0,
+            day=2,
+            has_seeds=False,
+            has_waterable=False,
+            has_debris=True,
+            has_chickens=False,
+            has_cows=False,
+            has_harvest=False,
+            money=300,
+        )
+        names = self._phase_names(phases)
+        self.assertIn("D2_FARM_CLEAR", names)
+        self.assertNotIn("CROP_ESTABLISH", names)
 
 
 if __name__ == "__main__":
