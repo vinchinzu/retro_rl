@@ -67,7 +67,7 @@ def farm_to_west_gate_waypoints(
         )
     if px < NORTH_WEST_MAX_X_PX and py < NORTH_WEST_MAX_Y_PX:
         return routes.densify_waypoints(
-            _north_west_to_gate_row(px, py) + list(routes._FARM_TO_PATH[-2:])
+            _north_west_to_gate_row(px, py) + [routes._PATH_PLAZA_FROM_FARM]
         )
     if _on_ditch_north_lip(px, py):
         return routes.densify_waypoints(
@@ -79,7 +79,7 @@ def farm_to_west_gate_waypoints(
         return routes.densify_waypoints(
             _house_south_to_pinch(px, py)
             + list(routes._FARM_GATE_PINCH_TO_EXIT[1:])
-            + list(routes._FARM_TO_PATH[-2:])
+            + [routes._PATH_PLAZA_FROM_FARM]
         )
     return list(routes._FARM_TO_PATH)
 

@@ -21,7 +21,6 @@ class PhaseKind(StrEnum):
     SHOP_BUY = "shop_buy"
     DIRECTIONAL_TRANSITION = "directional_transition"
     MULTI_NAV = "multi_nav"
-    BERRY_SHIP = "berry_ship"
     MOUNTAIN_BERRY = "mountain_berry"
     ENSURE_TOOL = "ensure_tool"
     ENSURE_ANIMAL_TOOLS = "ensure_animal_tools"
@@ -56,7 +55,6 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.CROSS_MAP,
         PhaseKind.SHOP_BUY,
         PhaseKind.MULTI_NAV,
-        PhaseKind.BERRY_SHIP,
         PhaseKind.MOUNTAIN_BERRY,
         PhaseKind.ENSURE_TOOL,
         PhaseKind.ENSURE_ANIMAL_TOOLS,

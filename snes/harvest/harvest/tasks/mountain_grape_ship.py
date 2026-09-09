@@ -11,6 +11,7 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.animal_status import read_held_item
+from harvest.core.game_clock import clock_from_ram
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.maps.map_config import ROUTES, slice_route_from_position
@@ -43,6 +44,9 @@ class MountainGrapeShipTask(Task):
     # grape has reached the bin the run reports SUCCESS even if a later
     # pick/return fails (rr-20w.3 daily spring forage).
     target_count: int = 1
+    # Do not start another mountain loop at/after this hour. A loop is ~4h
+    # and the seed shop still has to happen the same morning.
+    shop_bail_hour: int = 10
 
     _step_count: int = field(default=0, init=False)
     _phase: str = field(default="pick", init=False)
@@ -141,6 +145,8 @@ class MountainGrapeShipTask(Task):
         if self._shipped >= self.target_count:
             self._phase = "done"
             return TaskResult(status=TaskStatus.SUCCESS, reason=shipped_reason)
+        if int(clock_from_ram(world.ram).hour) >= int(self.shop_bail_hour):
+            return self._best_effort_success("shop window")
         # More grapes wanted: rebase the shipping baseline and forage again.
         self._shipping_before = self._shipping_after
         self._verify_frames = 0
@@ -210,6 +216,8 @@ class MountainGrapeShipTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        if self._shipped >= 1 and int(clock_from_ram(world.ram).hour) >= 12:
+            return self._best_effort_success("shop window")
         if self._step_count > self.timeout:
             if self._shipped >= 1:
                 return self._best_effort_success("timeout")

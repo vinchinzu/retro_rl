@@ -250,12 +250,12 @@ def test_pathfinder_walkable_injection() -> TestResult:
 
 
 def test_berry_route_waypoints() -> TestResult:
-    """Verify berry_ship route is well-formed."""
+    """Verify the canonical mountain-grape ship route is well-formed."""
     from harvest.maps.map_config import ROUTES, MAP_REGISTRY
 
-    route = ROUTES.get("berry_ship")
+    route = ROUTES.get("first_mountain_berry_to_shipping_bin")
     if not route:
-        return TestResult("L10 berry route waypoints", "FAIL", "berry_ship route not found")
+        return TestResult("L10 berry route waypoints", "FAIL", "mountain grape ship route not found")
 
     if len(route) < 2:
         return TestResult("L10 berry route waypoints", "FAIL",

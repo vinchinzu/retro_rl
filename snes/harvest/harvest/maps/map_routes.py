@@ -53,9 +53,15 @@ def slice_route_from_position(
     if not waypoints:
         return []
     if tilemap == PATH_TILEMAP_ID and path_coords_leaked(px, py):
+        # Farm-gate (232,128) is on-map but east toward the farm. A leaked
+        # west-edge landing (10,422) cannot BFS there; start at plaza.
         for i, wp in enumerate(waypoints):
-            if wp.tilemap == PATH_TILEMAP_ID:
-                return list(waypoints[i:])
+            if wp.tilemap != PATH_TILEMAP_ID:
+                continue
+            tx, ty = wp.target_px
+            if path_coords_leaked(tx, ty) or farm_coords_look_like_path(tx, ty):
+                continue
+            return list(waypoints[i:])
         return list(waypoints)
     if tilemap in FARM_TILEMAP_IDS and farm_coords_look_like_path(px, py):
         for i, wp in enumerate(waypoints):
@@ -233,12 +239,20 @@ _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
 
 # L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first onto
 # A0 above the pond, then the house-column pinch down to y=26.
+# Exit then plaza. PATH_FARM_GATE (232,128) pins leaked (10,422) landings.
+# force_run left: BFS from the east landing walks back onto the farm.
+_PATH_PLAZA_FROM_FARM = Waypoint(
+    tilemap=0x0C,
+    target_px=(132, 128),
+    radius=16,
+    run_direction="left",
+    force_run=True,
+)
 _FARM_TO_PATH: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
     Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0
     *_FARM_GATE_PINCH_TO_EXIT,
-    _PATH_FARM_GATE,
-    _PATH_CROSSROADS,
+    _PATH_PLAZA_FROM_FARM,
 ]
 
 # Sunday south crop ~(78,598). Viewport BFS to (136,424) cuts 0x5E beds and
@@ -268,14 +282,15 @@ _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
     *_FARM_GATE_PINCH_TO_EXIT,
     # Crossroads next — not PATH_FARM_GATE (232,128), which is east
     # toward the farm and pins leaked (10,422) landings.
-    _PATH_CROSSROADS,
+    _PATH_PLAZA_FROM_FARM,
 ]
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
 # Already on 0x0C: plaza center first, then the north exit. Do not
 # BFS-diagonal from the east landing / leaked farm y toward (132,30).
-_PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_CROSSROADS, _PATH_MOUNTAIN_EXIT]
+_PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_PLAZA_FROM_FARM, _PATH_MOUNTAIN_EXIT]
 # Seed-shop town gate: stand on the open face, not (0,8)/(1,8) doorframe hugs.
 _PATH_TO_TOWN_SHOP: List[Waypoint] = [
+    _PATH_PLAZA_FROM_FARM,
     Waypoint(tilemap=0x0C, target_px=(40, 128), radius=8, is_exit=True, exit_direction="left"),
 ]
 # shop_door landmark tile (37,13). buy_potato_seeds_d2: east road sealed
@@ -436,33 +451,6 @@ _SPA_TO_FARM: List[Waypoint] = (
     + list(_PATH_TO_FARM)
     + [Waypoint(tilemap=0x00, target_px=(40, 424), radius=24)]
 )
-
-# Bush pick (37,57) face left; bin (62,60) stand one tile west face right.
-_BERRY_PICK = Waypoint(
-    tilemap=0x00,
-    target_px=(37 * 16 + 8, 57 * 16 + 8),
-    radius=8,
-    action_on_arrive="press_a",
-    action_face="left",
-    action_frames=28,
-    action_cooldown=36,
-)
-_BERRY_BUSH_TO_BIN: List[Waypoint] = [
-    Waypoint(tilemap=0x00, target_px=(36 * 16 + 8, 54 * 16 + 8), radius=10),
-    Waypoint(tilemap=0x00, target_px=(40 * 16 + 8, 54 * 16 + 8), radius=12),
-    Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 58 * 16 + 8), radius=14),
-    Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=14),
-    Waypoint(
-        tilemap=0x00,
-        target_px=(61 * 16 + 8, 60 * 16 + 8),
-        radius=10,
-        action_on_arrive="press_a",
-        action_face="right",
-        action_frames=28,
-        action_cooldown=36,
-    ),
-]
-
 
 def compose_routes(*parts: Sequence[Waypoint]) -> List[Waypoint]:
     """Concatenate named hops. Callers own the live MultNav, not a tape."""
@@ -635,34 +623,7 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x04, target_px=(700, 400), radius=12),
         Waypoint(tilemap=0x04, target_px=(715, 421), radius=10),
     ],
-    # OPEN_FENCE_GAP can finish on the soft-collision gap tile. BerryShipTask
-    # first takes the verified east-past-wall/south charge. Escape commonly
-    # lands ~(28,32), west of the pond — step down-left around live weeds at
-    # (28,33)/(29,32), not east into pond. Live D2 has a 2x2 rock at
-    # ~(27–28,45–46). North-of-bush approach: pocket (36–37,56–57) is sealed
-    # south by weeds, west by stones, east by rock. Enter via (36,54)→(36,56).
-    "berry_ship": [
-        Waypoint(tilemap=0x00, target_px=(27 * 16 + 8, 35 * 16 + 8), radius=16),
-        Waypoint(tilemap=0x00, target_px=(28 * 16 + 8, 39 * 16 + 8), radius=14),
-        Waypoint(tilemap=0x00, target_px=(25 * 16 + 8, 44 * 16 + 8), radius=14),
-        Waypoint(tilemap=0x00, target_px=(25 * 16 + 8, 50 * 16 + 8), radius=14),
-        Waypoint(tilemap=0x00, target_px=(32 * 16 + 8, 51 * 16 + 8), radius=12),
-        Waypoint(tilemap=0x00, target_px=(33 * 16 + 8, 53 * 16 + 8), radius=10),
-        Waypoint(tilemap=0x00, target_px=(36 * 16 + 8, 54 * 16 + 8), radius=10),
-        Waypoint(tilemap=0x00, target_px=(36 * 16 + 8, 56 * 16 + 8), radius=8),
-        _BERRY_PICK,
-        *_BERRY_BUSH_TO_BIN,
-    ],
-    "berry_ship_repeat": [
-        Waypoint(tilemap=0x00, target_px=(55 * 16 + 8, 60 * 16 + 8), radius=14),
-        Waypoint(tilemap=0x00, target_px=(48 * 16 + 8, 58 * 16 + 8), radius=14),
-        Waypoint(tilemap=0x00, target_px=(40 * 16 + 8, 54 * 16 + 8), radius=12),
-        Waypoint(tilemap=0x00, target_px=(36 * 16 + 8, 54 * 16 + 8), radius=10),
-        Waypoint(tilemap=0x00, target_px=(36 * 16 + 8, 56 * 16 + 8), radius=8),
-        _BERRY_PICK,
-        *_BERRY_BUSH_TO_BIN,
-    ],
-    # Shipping-bin / berry-field return. Prefer y=60 path west, stay south
+    # Shipping-bin / south-field return. Prefer y=60 path west, stay south
     # of the long y=31 fence until x<=8, then (6,33)→(4,30) so MultNav never
     # seals against house/cliff tiles at (6,32).
     "farm_south_to_west_gate": [

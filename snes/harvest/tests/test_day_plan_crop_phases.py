@@ -224,7 +224,7 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         berry = phases[names.index("MOUNTAIN_BERRY")]
         self.assertEqual(berry.kind, "mountain_berry")
         self.assertTrue(berry.params["ship"])
-        self.assertEqual(berry.params["count"], 2)
+        self.assertEqual(berry.params["count"], 1)
         self.assertNotIn("BUY_SEEDS", names)
         self.assertEqual(phases[names.index("BERRY_RUN_WINDOW")].params["latest_hour"], 14)
 
@@ -265,6 +265,8 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         )
         rich_names = self._phase_names(rich)
         self.assertIn("MOUNTAIN_BERRY", rich_names)
+        berry = rich[rich_names.index("MOUNTAIN_BERRY")]
+        self.assertEqual(berry.params["count"], 1)
         self.assertNotIn("OPEN_FENCE_GAP", rich_names)
         self.assertNotIn("SHIP_BERRY_1", rich_names)
         self.assertIn("BUY_SEEDS", rich_names)
@@ -570,6 +572,8 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         self.assertNotIn("SHIP_BERRY_1", names)
         berry = self._d3_outdoor()[names.index("MOUNTAIN_BERRY")]
         self.assertEqual(berry.params["count"], 2)
+        shop = self._d3_outdoor()[names.index("BUY_SEEDS_WINDOW")]
+        self.assertEqual(shop.params["latest_hour"], 16)
 
     def test_d3_buys_then_establishes_a_second_plot_and_waters_all(self) -> None:
         names = self._phase_names(self._d3_outdoor())

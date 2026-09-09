@@ -1,4 +1,4 @@
-"""Berry forage / ship phase specs and builders."""
+"""Canonical mountain-grape forage / ship phase specs."""
 
 from __future__ import annotations
 
@@ -6,90 +6,41 @@ from typing import List, Optional
 
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
-GET_BERRIES_AND_SHIP_PHASE = PhaseSpec(
-    "GET_BERRIES_AND_SHIP",
-    "recorded",
-    # Legacy blind recording — prefer SHIP_BERRY_* multi_nav on the farm.
-    # Kept for named sequences / tests that still reference the phase name.
-    {"task_name": "get_two_berries_and_ship_after_farm_exit"},
-    failure_policy="optional",
-)
-
-# y=31 fence (x≈11–29) seals house north-pocket from south berry bush.
-# Corridor-only lift opens ≥1 gap so berry_ship BFS can go south (not thrash
-# into the wall at ~(336,486)).
-OPEN_FENCE_GAP_PHASE = PhaseSpec(
-    "OPEN_FENCE_GAP",
-    "fence_clear",
-    {
-        # Berry route only needs the carry-south crossing; it never returns
-        # through the gap. One wall post avoids a second north-side re-entry.
-        "max_fences": 1,
-        "corridor_only": True,
-        "timeout": 8000,
-    },
-    failure_policy="optional",
-    required_maps=(0x00,),
-    estimated_frames=4000,
-    failure_modes=("no_fence", "lift_fail", "timeout"),
-)
-
-# Farm forage bush ~(585,920) → shipping bin ~(1001,969). Wild berries are ON
-# the farm south of the fence (not mountain / not west exit).
-SHIP_BERRY_PHASE = PhaseSpec(
-    "SHIP_BERRY",
-    "berry_ship",
-    {"route": "berry_ship", "timeout": 18000, "initial_settle_frames": 20},
-    failure_policy="optional",
-    required_maps=(0x00,),
-    estimated_frames=10000,
-    failure_modes=("bush_unreachable", "bin_path_fail", "fence_sealed", "no_berry_tile"),
-)
+# House/farm/path → first mountain grape → bin. ``count`` is clipped at
+# runtime from the live pose. D2 ships one (bench ~10:10 then shop); D3+
+# tries two. A failed second pick still ends SUCCESS once one grape shipped.
+_MOUNTAIN_BERRY_PARAMS = {
+    "timeout": 20_000,
+    "nav_timeout": 12_000,
+    "approach_only": False,
+    "pick_attempts": 3,
+    "ship": True,
+    "count": 1,
+}
 
 
-def ship_berry_phases(*, count: int = 2, open_fence: bool = True) -> list[PhaseSpec]:
-    """Fence-gap (if needed) then multi_nav berry_ship loops to the bin."""
+def mountain_berry_count_for_day(day: int) -> int:
+    """D2 keeps the one-grape shop window. D3+ asks for two."""
+    return 2 if int(day) >= 3 else 1
+
+
+def mountain_berry_phase(*, count: int = 1) -> PhaseSpec:
     n = max(1, int(count))
-    contract = SHIP_BERRY_PHASE.contract
-    phases: list[PhaseSpec] = []
-    if open_fence:
-        phases.append(OPEN_FENCE_GAP_PHASE)
-    for i in range(1, n + 1):
-        params = dict(SHIP_BERRY_PHASE.params)
-        if i > 1:
-            params["route"] = "berry_ship_repeat"
-        phases.append(
-            PhaseSpec(
-                f"SHIP_BERRY_{i}" if n > 1 else "SHIP_BERRY",
-                SHIP_BERRY_PHASE.kind,
-                params,
-                failure_policy=SHIP_BERRY_PHASE.failure_policy,
-                contract=contract,
-            )
-        )
-    return phases
+    params = dict(_MOUNTAIN_BERRY_PARAMS)
+    params["count"] = n
+    params["timeout"] = 20_000 if n == 1 else 40_000
+    return PhaseSpec(
+        "MOUNTAIN_BERRY",
+        "mountain_berry",
+        params,
+        failure_policy="optional",
+        required_maps=(0x15, 0x00, 0x0C, 0x10),
+        estimated_frames=3300 if n == 1 else 6200,
+        failure_modes=("nav_fail", "no_forage", "hands_full", "ship_unverified"),
+    )
 
 
-# Spring house → path fork → mountain grape/berry. Reactive, not tape.
-# ``count`` grapes shipped per run: the daily spring forage target is 2, but
-# the second pickup is best-effort — a failed second nav/forage still leaves
-# the run SUCCESS as long as one grape reached the bin (rr-20w.3).
-MOUNTAIN_BERRY_PHASE = PhaseSpec(
-    "MOUNTAIN_BERRY",
-    "mountain_berry",
-    {
-        "timeout": 30000,
-        "nav_timeout": 12000,
-        "approach_only": False,
-        "pick_attempts": 3,
-        "ship": True,
-        "count": 2,
-    },
-    failure_policy="optional",
-    required_maps=(0x15, 0x00, 0x0C, 0x10),
-    estimated_frames=3300,
-    failure_modes=("nav_fail", "no_forage", "hands_full", "ship_unverified"),
-)
+MOUNTAIN_BERRY_PHASE = mountain_berry_phase(count=1)
 
 MOUNTAIN_BERRY_PHASES: list[PhaseSpec] = [
     PhaseSpec("EXIT_TO_FARM", "farm_building_exit"),
@@ -97,10 +48,13 @@ MOUNTAIN_BERRY_PHASES: list[PhaseSpec] = [
 ]
 
 BERRY_CUTOFF_HOUR = 15  # latest hour to start a berry run
-# Berry forage is independent of seed-shop; a failed bush run must not
+# Berry forage is independent of seed-shop; a failed grape run must not
 # cascade-skip NAV_FARM_EXIT / BUY_SEEDS (wallet still funds potato).
 OPTIONAL_BERRY_PHASES = frozenset({
     "BERRY_RUN_WINDOW",
+    "MOUNTAIN_BERRY",
+    # Stale names stay in the skip group so a failed berry window cannot
+    # cascade into shop/water when an old sequence still lists them.
     "LEAVE_FARM_WEST",
     "EXIT_FARM_WEST",
     "BERRY_RECORDING_WINDOW",
@@ -109,7 +63,6 @@ OPTIONAL_BERRY_PHASES = frozenset({
     "SHIP_BERRY",
     "SHIP_BERRY_1",
     "SHIP_BERRY_2",
-    "MOUNTAIN_BERRY",
 })
 
 
@@ -144,11 +97,10 @@ def _berry_run_phases(
     day: int = 1,
     money: Optional[int] = None,
 ) -> List[PhaseSpec]:
-    """Build early money / seed-shop phases when the hour window allows.
+    """Mountain grape then seed shop when the hour window allows.
 
-    Priority within this list (Spring D2 empty-farm path):
-    1. Mountain berry pick + ship (must hit bin before the 5pm window)
-    2. Seed shop only when the wallet covers the bag (potato $200)
+    D2: one grape (lands ~10:10) then shop. D3+: two grapes; shop window
+    stays open until 16:00 so a slower second loop can still buy.
     """
     from harvest.core.game_clock import ClockTime
     from harvest.planner.crop_planner import (
@@ -162,6 +114,7 @@ def _berry_run_phases(
         return []
 
     phases: List[PhaseSpec] = []
+    berry_count = mountain_berry_count_for_day(day)
     if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
         phases.append(
             PhaseSpec(
@@ -171,13 +124,7 @@ def _berry_run_phases(
                 failure_policy="optional",
             )
         )
-        if season == 0:
-            # Spring: the mountain grape is the only working forage route.
-            # The farm-bush SHIP_BERRY loop is sealed by the debris field
-            # north of the bush (rr-w14t) — do not schedule it.
-            phases.append(MOUNTAIN_BERRY_PHASE)
-        else:
-            phases.extend(ship_berry_phases(count=2))
+        phases.append(mountain_berry_phase(count=berry_count))
 
     can_buy = (
         policy.include_shop_run
@@ -194,12 +141,15 @@ def _berry_run_phases(
             or seed_purchase_recording_for_season(season)
             or "buy_potato_seeds"
         )
+        shop_latest = policy.buy_seed_hour + 1
+        if berry_count >= 2 and policy.include_berry_run:
+            shop_latest = max(shop_latest, 16)
         phases.extend(
             [
                 PhaseSpec(
                     "BUY_SEEDS_WINDOW",
                     "deadline",
-                    {"latest_hour": policy.buy_seed_hour + 1, "latest_minute": 0},
+                    {"latest_hour": shop_latest, "latest_minute": 0},
                     failure_policy="optional",
                 ),
                 NAV_FARM_EXIT_PHASE,
@@ -210,12 +160,10 @@ def _berry_run_phases(
 
 
 __all__ = [
-    "GET_BERRIES_AND_SHIP_PHASE",
-    "OPEN_FENCE_GAP_PHASE",
-    "SHIP_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASES",
-    "ship_berry_phases",
+    "mountain_berry_count_for_day",
+    "mountain_berry_phase",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_BERRY_PHASES",
     "_berry_run_phases",

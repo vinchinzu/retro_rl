@@ -82,6 +82,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--task", default="get_berry", help="Recording name for --mode replay")
     p.add_argument("--timeout", type=int, default=12_000)
     p.add_argument(
+        "--count",
+        type=int,
+        default=1,
+        help="Grapes to ship with --ship. D3 uses 2. Default 1.",
+    )
+    p.add_argument(
         "--pick",
         action="store_true",
         help="A-pick the ground grape and keep it (Don't eat). Default is stand only.",
@@ -109,6 +115,7 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="After the route, idle until 12:00 HaveLunch and mark that stand.",
     )
+    p.add_argument("--save-end-state", default=None, help="Save emulator pin after a successful ship.")
     return p.parse_args()
 
 
@@ -188,16 +195,18 @@ def _save_png(obs, path: Path) -> None:
 
 def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) -> dict:
     ram = env.get_ram()
+    timeout = int(args.timeout)
     if args.ship:
         task = MountainGrapeShipTask(
-            timeout=args.timeout,
-            pick_timeout=min(args.timeout, 12_000),
-            nav_timeout=min(args.timeout, 12_000),
+            timeout=timeout,
+            pick_timeout=min(timeout, 12_000),
+            nav_timeout=min(timeout, 12_000),
             pick_attempts=3,
+            target_count=max(1, int(args.count)),
         )
     else:
         task = MountainBerryTask(
-            timeout=args.timeout,
+            timeout=timeout,
             approach_only=not args.pick,
             pick_attempts=3 if args.pick else 0,
         )
@@ -502,6 +511,8 @@ def _run_replay(env, args: argparse.Namespace, video: VideoRecorder | None) -> d
 
 def main() -> int:
     args = _parse_args()
+    if args.ship and int(args.count) >= 2:
+        args.timeout = max(int(args.timeout), 40_000)
     _configure_headless()
     wall0 = time.time()
     env = make_harvest_env(args.state)
@@ -529,6 +540,12 @@ def main() -> int:
     report["timeout"] = args.timeout
     report["wall_seconds"] = round(time.time() - wall0, 1)
     report["video"] = video_result
+    if args.save_end_state and report.get("success"):
+        from harvest.scripts.leftover_exec import save_emulator_state
+
+        saved = save_emulator_state(env, args.save_end_state)
+        report["end_state"] = str(saved)
+        print(f"[BERRY] saved {saved}")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"[BERRY] wrote {args.out}")

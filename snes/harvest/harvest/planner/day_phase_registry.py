@@ -48,7 +48,6 @@ from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.tasks.nav import Point
 from harvest.core.tile_catalog import Tool
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
-from harvest.tasks.berry_ship import BerryShipTask
 from harvest.tasks.buy_seeds import BuySeedsTask
 from harvest.tasks.mountain_berry import MountainBerryTask
 from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
@@ -327,22 +326,6 @@ def _build_mountain_berry(
     )
 
 
-def _build_berry_ship(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Optional[Task]:
-    route_name = spec.params.get("route", "")
-    waypoints = ROUTES.get(route_name, [])
-    if not waypoints:
-        print(f"[DAY_PLAN] Unknown berry route: {route_name}")
-        return None
-    return BerryShipTask(
-        name=f"berry_ship_{spec.phase.lower()}",
-        waypoints=list(waypoints),
-        timeout=spec.params.get("timeout", 18000),
-        initial_settle_frames=spec.params.get("initial_settle_frames", 20),
-    )
-
-
 def _build_ensure_tool(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -577,7 +560,6 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.SHOP_BUY: _build_shop_buy,
     PhaseKind.DIRECTIONAL_TRANSITION: _build_directional_transition,
     PhaseKind.MULTI_NAV: _build_multi_nav,
-    PhaseKind.BERRY_SHIP: _build_berry_ship,
     PhaseKind.MOUNTAIN_BERRY: _build_mountain_berry,
     PhaseKind.ENSURE_TOOL: _build_ensure_tool,
     PhaseKind.ENSURE_ANIMAL_TOOLS: _build_ensure_animal_tools,
