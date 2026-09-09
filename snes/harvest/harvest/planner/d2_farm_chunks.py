@@ -1,9 +1,9 @@
 """D2 leftover smash as four farm quadrants.
 
-Whole-farm stones / rocks / stumps stall on a last distant cell (south-stream
-stone at (12,55), SE boulder at (60,51), FA-east hug). Each chunk is a
-bounded scan; the four chain to an empty farm. Inclusive tile bounds on the
-64×64 metatile grid.
+Lift (weeds, fences, stones) finishes one quadrant before the next so the
+farmer does not walk the whole farm for bushes first. Rocks / stumps still
+chain by chunk after the tool fetch. Inclusive tile bounds on the 64×64
+metatile grid.
 """
 
 from __future__ import annotations

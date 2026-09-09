@@ -15,9 +15,11 @@ from harvest.core.tile_catalog import (
     ADDR_TOOL,
     ADDR_X,
     ADDR_Y,
+    FENCE,
     MAP_WIDTH,
     STONE,
     TILE_SIZE,
+    WEED,
     DebrisType,
     Tool,
 )
@@ -188,6 +190,63 @@ class ChunkedPhaseChainTests(unittest.TestCase):
                 last_phase="ENSURE_HAMMER",
             )
         )
+
+
+def _leftover(ram, **kwargs):
+    return next_d2_spec(observe_d2_farm(ram), plot_attempted=True, **kwargs)
+
+
+class SectionFirstLiftTests(unittest.TestCase):
+    def test_local_stones_beat_distant_bushes(self) -> None:
+        ram = _make_farm_ram()
+        _set_tile(ram, 11, 10, STONE)
+        _set_tile(ram, 40, 40, WEED)
+        spec = _leftover(ram)
+        self.assertEqual(spec.phase, "CLEAR_STONES")
+        self.assertEqual(spec.params["chunk"], "nw")
+        self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS["nw"])
+
+    def test_same_chunk_weeds_before_stones_and_fences(self) -> None:
+        ram = _make_farm_ram()
+        _set_tile(ram, 10, 8, WEED)
+        _set_tile(ram, 11, 10, STONE)
+        _set_tile(ram, 8, 6, FENCE)
+        spec = _leftover(ram)
+        self.assertEqual(spec.phase, "CLEAR_BUSHES")
+        self.assertEqual(spec.params["chunk"], "nw")
+        _set_tile(ram, 10, 8, 0xA1)
+        spec = _leftover(ram)
+        self.assertEqual(spec.phase, "CLEAR_FENCES")
+        self.assertEqual(spec.params["chunk"], "nw")
+        _set_tile(ram, 8, 6, 0xA1)
+        spec = _leftover(ram)
+        self.assertEqual(spec.phase, "CLEAR_STONES")
+        self.assertEqual(spec.params["chunk"], "nw")
+
+    def test_bushes_walk_live_chunks_in_order(self) -> None:
+        ram = _make_farm_ram()
+        bushes = {"nw": (10, 8), "ne": (40, 16), "sw": (12, 40), "se": (40, 40)}
+        for tile in bushes.values():
+            _set_tile(ram, *tile, WEED)
+        seen = []
+        for _ in FARM_CHUNK_ORDER:
+            spec = _leftover(ram, section="bushes")
+            self.assertEqual(spec.phase, "CLEAR_BUSHES")
+            name = spec.params["chunk"]
+            seen.append(name)
+            self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS[name])
+            _set_tile(ram, *bushes[name], 0xA1)
+        self.assertEqual(seen, list(FARM_CHUNK_ORDER))
+        self.assertIsNone(_leftover(ram, section="bushes"))
+
+    def test_section_bushes_one_chunk_ignores_other_quadrants(self) -> None:
+        ram = _make_farm_ram()
+        _set_tile(ram, 10, 8, WEED)
+        _set_tile(ram, 40, 40, WEED)
+        spec = _leftover(ram, section="bushes", chunk="se")
+        self.assertEqual(spec.phase, "CLEAR_BUSHES")
+        self.assertEqual(spec.params["chunk"], "se")
+        self.assertIsNone(_leftover(ram, section="bushes", chunk="ne"))
 
 
 class FullChainEmptyTests(unittest.TestCase):
@@ -398,6 +457,7 @@ class LeftoverChainReadinessTests(unittest.TestCase):
         _set_tile(ram, 40, 40, 0x03)
         spec = next_d2_spec(observe_d2_farm(ram))
         self.assertEqual(spec.phase, "CLEAR_BUSHES")
+        self.assertEqual(spec.params["chunk"], "se")
         self.assertEqual(spec.failure_policy, "required")
         self.assertEqual(bush_clear_phase().failure_policy, "required")
         self.assertEqual(rock_clear_phase().failure_policy, "required")

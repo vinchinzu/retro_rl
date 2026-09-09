@@ -24,7 +24,7 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_TILEMAP, LIFTABLE_TILES
 from harvest.tasks.farm_ops import TileScanner
 
-from harvest.maps.map_config import Waypoint, get_walkable_tiles
+from harvest.maps.map_config import Waypoint, get_walkable_tiles, pose_is_leaked
 from harvest.tasks.primitives import (
     drain_action_queue,
     press_button_sequence,
@@ -52,6 +52,9 @@ from harvest.planner.tasks.navigation import (
 )
 
 # ── MultiMapNavTask ───────────────────────────────────────────────
+
+POSE_WAIT_MAX = 90
+
 
 @dataclass
 class MultiMapNavTask(Task):
@@ -94,6 +97,11 @@ class MultiMapNavTask(Task):
     _entity_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _lift_throw_attempts: int = field(default=0, init=False)
     _soft_solid_pin_frames: int = field(default=0, init=False)
+    # After a map flip, RAM can still hold the previous map's pixel.
+    # BFS on those coords walks the real player into a wall or back
+    # through the exit. Wait until the pose belongs, or 90f, whichever first.
+    _awaiting_pose: bool = field(default=False, init=False)
+    _awaiting_pose_frames: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -118,6 +126,8 @@ class MultiMapNavTask(Task):
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._awaiting_pose = False
+        self._awaiting_pose_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -125,6 +135,9 @@ class MultiMapNavTask(Task):
         # Set initial walkable tiles based on current tilemap
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         self._rebuild_pathfinder(tilemap)
+        pos = self._navigator.current_pos
+        if pose_is_leaked(pos.x, pos.y, tilemap):
+            self._begin_pose_wait()
         if self.waypoints:
             print(f"[MULTI_NAV] Start: {len(self.waypoints)} waypoints, tilemap=0x{tilemap:02X}")
 
@@ -147,6 +160,8 @@ class MultiMapNavTask(Task):
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._awaiting_pose = False
+        self._awaiting_pose_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -258,6 +273,43 @@ class MultiMapNavTask(Task):
         return (abs(pos.x - wp.target_px[0]) <= wp.radius and
                 abs(pos.y - wp.target_px[1]) <= wp.radius)
 
+    def _begin_pose_wait(self) -> None:
+        self._awaiting_pose = True
+        self._awaiting_pose_frames = 0
+
+    def _leaked_pose_action(
+        self, world: WorldState, wp: Optional[Waypoint]
+    ) -> Optional[TaskResult]:
+        """Hold still (or the hop's force_run) until RAM pose matches the map.
+
+        Leaked farm/path/mountain pixels make BFS walk the real player into a
+        wall or back through the exit. force_run during the wait uses the
+        authored on-map axis, not the leaked overshoot check.
+        """
+        if not self._awaiting_pose:
+            return None
+        pos = self._navigator.current_pos
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        leaked = pose_is_leaked(
+            pos.x, pos.y, tilemap, include_farm_path_gate=True
+        )
+        self._awaiting_pose_frames += 1
+        if not leaked or self._awaiting_pose_frames >= POSE_WAIT_MAX:
+            self._awaiting_pose = False
+            return None
+        if wp is not None and wp.force_run and wp.run_direction:
+            d = wp.run_direction
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(**{d: True, "b": True})),
+                reason=f"leaked pose force_run {d}",
+            )
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason="leaked pose wait",
+        )
+
     def _tile_blocks_charge(self, ram: np.ndarray, tx: int, ty: int) -> bool:
         return tile_blocks_charge(self._pathfinder, ram, tx, ty)
 
@@ -364,16 +416,22 @@ class MultiMapNavTask(Task):
             # dirs_toward(0,0) is LEFT — do not charge a wall when already in
             # radius (leftover spa pin sat on the hop-0 stand facing a rock).
             wp = self._current_wp()
+            leaked = self._leaked_pose_action(world, wp)
+            if leaked is not None:
+                return leaked
             if wp and not self._at_wp_target(wp):
-                cur = self._navigator.current_pos
-                primary, secondary = dirs_toward(
-                    wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
-                )
-                action = self._safe_walk_action(
-                    world.ram, primary, secondary=secondary
-                )
-                if action is None:
-                    action = make_action()
+                if wp.force_run and wp.run_direction:
+                    action = make_action(**{wp.run_direction: True, "b": True})
+                else:
+                    cur = self._navigator.current_pos
+                    primary, secondary = dirs_toward(
+                        wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
+                    )
+                    action = self._safe_walk_action(
+                        world.ram, primary, secondary=secondary
+                    )
+                    if action is None:
+                        action = make_action()
             else:
                 action = make_action()
             if self._initial_settle == SETTLE_FRAMES:
@@ -410,6 +468,7 @@ class MultiMapNavTask(Task):
                     # straight back through the transition.
                     self._rebuild_pathfinder(tilemap)
                     self._initial_settle = 0
+                    self._begin_pose_wait()
                     wp = self._current_wp()
                     return TaskResult(
                         status=TaskStatus.RUNNING,
@@ -442,7 +501,18 @@ class MultiMapNavTask(Task):
                     action=ActionResult(make_action(**{direction: True})),
                     reason=f"push into destination {direction}",
                 )
-            if self._settle_frames >= 30:
+            # Next hop on the destination map. Do not reuse the exit
+            # waypoint's run_direction (path mountain exit is UP; that
+            # charges the south cliff from the land tile).
+            nxt = (
+                self.waypoints[self._wp_index + 1]
+                if self._wp_index + 1 < len(self.waypoints)
+                else None
+            )
+            leaked = self._leaked_pose_action(world, nxt)
+            if leaked is not None:
+                return leaked
+            if self._settle_frames >= 8:
                 # Rebuild pathfinder for new map
                 self._rebuild_pathfinder(tilemap)
                 self._navigator.update(world.ram)
@@ -461,6 +531,7 @@ class MultiMapNavTask(Task):
                       f" after {self._exit_walk_frames} frames")
                 self._phase = "exit_settle"
                 self._settle_frames = 0
+                self._begin_pose_wait()
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             # Timeout: give up after 500 frames of walking toward exit
             if self._exit_walk_frames > 500:
@@ -553,6 +624,10 @@ class MultiMapNavTask(Task):
             # Just a nav waypoint, advance
             self._advance_waypoint()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+        leaked = self._leaked_pose_action(world, wp)
+        if leaked is not None:
+            return leaked
 
         # Direct run: if waypoint specifies run_direction, just hold that
         # direction + B. Much faster than BFS for known clear paths.

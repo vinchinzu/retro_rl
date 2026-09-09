@@ -2,7 +2,7 @@
 """D2 leftover smash from a live pin (not a plant tape).
 
 Thin adapter over ``D2FarmClearTactic``. Order lives in ``next_d2_spec``:
-weeds → fences → stones → hammer/rocks → axe/stumps, four farm chunks.
+per quadrant weeds → fences → stones, then hammer/rocks → axe/stumps.
 Do not redo power-on here.
 
     HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \\
@@ -125,7 +125,7 @@ def _parse_args() -> argparse.Namespace:
         "--chunk",
         choices=("all",) + FARM_CHUNK_ORDER,
         default="all",
-        help="Farm quadrant for stones/rocks/stumps (default: chain all four).",
+        help="Farm quadrant for leftover (default: chain all four).",
     )
     p.add_argument(
         "--dump",
@@ -185,6 +185,7 @@ def _snapshot(ram) -> dict:
     stam = Stamina.from_ram(ram)
     clock = clock_from_ram(ram)
     counts = count_debris(ram)
+    farm = observe_d2_farm(ram)
     samples = {key: [] for key in counts.as_dict()}
     scan_types = set(CLEARABLE_DEBRIS_TYPES) | {DebrisType.FENCE}
     for target in TileScanner().scan(ram, types=scan_types):
@@ -199,15 +200,20 @@ def _snapshot(ram) -> dict:
         "stamina": stam.to_dict(),
         "carry": _carry(ram),
         "debris": counts.as_dict(),
+        "by_chunk": {
+            "weeds": list(farm.weeds_by_chunk),
+            "fences": list(farm.fences_by_chunk),
+            "stones": list(farm.stones_by_chunk),
+            "rocks": list(farm.rocks_by_chunk),
+            "stumps": list(farm.stumps_by_chunk),
+        },
         "samples": samples,
     }
 
 
-def _scan_bounds(section: str, chunk: str):
+def _scan_bounds(_section: str, chunk: str):
     """Clip completion counts to one quadrant; None is the whole farm."""
     if chunk == "all":
-        return None
-    if section not in {"stones", "rocks", "stumps", "all"}:
         return None
     names = resolve_chunks(chunk)
     if len(names) != 1:
