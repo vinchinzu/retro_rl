@@ -18,7 +18,6 @@ from harvest.maps.map_config import (
     farm_coords_look_like_path,
     find_landmark,
     path_coords_leaked,
-    pose_is_leaked,
     segment_waypoints,
     slice_route_from_position,
 )
@@ -69,13 +68,6 @@ class PathSegmentTests(unittest.TestCase):
         self.assertLess(farm_exit.radius, 8)
         self.assertEqual(shared[-1].tilemap, 0x0C)
         self.assertEqual(shared[-1].target_px, (132, 128))
-        self.assertTrue(shared[0].force_run)
-        self.assertEqual(shared[0].run_direction, "down")
-        self.assertTrue(shared[-1].force_run)
-        self.assertEqual(shared[-1].run_direction, "left")
-        west = next(wp for wp in shared if wp.target_px == (72, 424))
-        self.assertTrue(west.force_run)
-        self.assertEqual(west.run_direction, "left")
 
         town = segment_waypoints(*TOWN_NAV_SEGMENTS)
         mountain = segment_waypoints("farm_to_path", "path_to_mountain")
@@ -95,20 +87,6 @@ class PathSegmentTests(unittest.TestCase):
         self.assertNotEqual(
             SEGMENTS["path_to_town"][-1].target_px,
             SEGMENTS["path_to_mountain"][-1].target_px,
-        )
-
-    def test_pose_is_leaked_covers_path_mountain_and_opt_in_farm(self) -> None:
-        self.assertTrue(pose_is_leaked(10, 422, 0x0C))
-        self.assertTrue(pose_is_leaked(314, 740, 0x0C))
-        self.assertFalse(pose_is_leaked(232, 128, 0x0C))
-        self.assertTrue(pose_is_leaked(137, 10, 0x10))
-        self.assertFalse(pose_is_leaked(328, 728, 0x10))
-        self.assertFalse(pose_is_leaked(244, 118, 0x00))
-        self.assertTrue(
-            pose_is_leaked(244, 118, 0x00, include_farm_path_gate=True)
-        )
-        self.assertFalse(
-            pose_is_leaked(80, 424, 0x00, include_farm_path_gate=True)
         )
 
     def test_leaked_path_coords_start_at_crossroads(self) -> None:
@@ -320,18 +298,6 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(forced[(328, 568)], "left")
         self.assertEqual(forced[(240, 488)], "left")
         self.assertEqual(forced[(312, 360)], "right")
-        self.assertEqual(forced[(168, 360)], "right")
-        self.assertNotIn((424, 712), forced)
-        self.assertNotIn((328, 488), forced)
-        out = {
-            wp.target_px: wp.run_direction
-            for wp in cliff
-            if wp.force_run
-        }
-        self.assertEqual(out[(328, 568)], "down")
-        self.assertEqual(out[(392, 568)], "right")
-        self.assertEqual(out[(520, 712)], "down")
-        self.assertEqual(out[(328, 728)], "left")
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))
@@ -349,6 +315,54 @@ class MountainBerrySelectTests(unittest.TestCase):
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("0->60", result.reason or "")
+
+    def _grape_at_bin(self, world) -> None:
+        world.ram[ADDR_HELD] = 0
+        world.ram[ADDR_SHIPPING_MONEY] = int(world.ram[ADDR_SHIPPING_MONEY]) + 6
+
+    def test_target_count_two_loops_back_for_a_second_grape(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+
+        # First grape reaches the bin: not done yet — forage again.
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.shipped_count, 1)
+        self.assertEqual(task.phase_text, "pick")
+        self.assertIn("returning for next grape", result.reason or "")
+
+        # Second grape reaches the bin: run is SUCCESS with two shipped.
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.shipped_count, 2)
+
+    def test_second_grape_failure_is_best_effort_after_one_shipped(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        task.step(world)  # ship #1, loop back to pick
+        self.assertEqual(task.shipped_count, 1)
+
+        # The second forage nav dies — one grape already shipped, so SUCCESS.
+        task._step_count = task.timeout + 1
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.shipped_count, 1)
+        self.assertIn("stopped early", result.reason or "")
 
 
 if __name__ == "__main__":

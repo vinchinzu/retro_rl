@@ -39,10 +39,15 @@ class MountainGrapeShipTask(Task):
     pick_timeout: int = 12_000
     nav_timeout: int = 12_000
     pick_attempts: int = 3
+    # Grapes to ship per run. The second+ pickup is best-effort: once one
+    # grape has reached the bin the run reports SUCCESS even if a later
+    # pick/return fails (rr-20w.3 daily spring forage).
+    target_count: int = 1
 
     _step_count: int = field(default=0, init=False)
     _phase: str = field(default="pick", init=False)
     _child: Optional[Task] = field(default=None, init=False, repr=False)
+    _shipped: int = field(default=0, init=False)
     _shipping_before: int = field(default=0, init=False)
     _shipping_after: int = field(default=0, init=False)
     _verify_frames: int = field(default=0, init=False)
@@ -55,7 +60,7 @@ class MountainGrapeShipTask(Task):
 
     @property
     def shipped_count(self) -> int:
-        return int(self._phase == "done" and self._shipping_after > self._shipping_before)
+        return self._shipped
 
     def progress_snapshot(self) -> ProgressSnapshot:
         child = task_progress_snapshot(self._child) if self._child is not None else None
@@ -77,6 +82,7 @@ class MountainGrapeShipTask(Task):
         self._shipping_after = self._shipping_before
         self._verify_frames = 0
         self._drop_attempts = 0
+        self._shipped = 0
         self._drop_queue.clear()
         if is_mountain_forage(int(read_held_item(world.ram))):
             self._start_return(world)
@@ -122,15 +128,40 @@ class MountainGrapeShipTask(Task):
         held = int(read_held_item(world.ram))
         self._shipping_after = int(read_shipping_money(world.ram))
         if held == 0 and self._shipping_after > self._shipping_before:
-            self._phase = "done"
-            return TaskResult(
-                status=TaskStatus.SUCCESS,
-                reason=(
-                    "mountain grape shipped: "
-                    f"shipping_money={self._shipping_before}->{self._shipping_after}"
-                ),
-            )
+            return self._grape_shipped(world)
         return None
+
+    def _grape_shipped(self, world: WorldState) -> TaskResult:
+        """Count one shipped grape; loop back for the next or finish."""
+        self._shipped += 1
+        shipped_reason = (
+            f"mountain grape {self._shipped}/{self.target_count} shipped: "
+            f"shipping_money={self._shipping_before}->{self._shipping_after}"
+        )
+        if self._shipped >= self.target_count:
+            self._phase = "done"
+            return TaskResult(status=TaskStatus.SUCCESS, reason=shipped_reason)
+        # More grapes wanted: rebase the shipping baseline and forage again.
+        self._shipping_before = self._shipping_after
+        self._verify_frames = 0
+        self._drop_attempts = 0
+        self._drop_queue.clear()
+        self._start_pick(world)
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"{shipped_reason}; returning for next grape",
+        )
+
+    def _best_effort_success(self, why: str) -> TaskResult:
+        self._phase = "done"
+        return TaskResult(
+            status=TaskStatus.SUCCESS,
+            reason=(
+                f"mountain grape {self._shipped}/{self.target_count} shipped; "
+                f"stopped early ({why})"
+            ),
+        )
 
     def _step_verify(self, world: WorldState) -> TaskResult:
         success = self._success_or_verify(world)
@@ -180,11 +211,15 @@ class MountainGrapeShipTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         if self._step_count > self.timeout:
+            if self._shipped >= 1:
+                return self._best_effort_success("timeout")
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"{self.name} timeout phase={self.phase_text}",
             )
         if self._phase == "missing_forage":
+            if self._shipped >= 1:
+                return self._best_effort_success("return armed without held forage")
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason="mountain return armed without held forage",
@@ -204,6 +239,12 @@ class MountainGrapeShipTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
         if result.status in {TaskStatus.FAILURE, TaskStatus.BLOCKED}:
+            # Best-effort second+ grape: one already reached the bin, so a
+            # later forage/return failure still ends the run SUCCESS.
+            if self._shipped >= 1:
+                return self._best_effort_success(
+                    f"{self.phase_text}: {result.reason or result.status.value}"
+                )
             return TaskResult(
                 status=result.status,
                 action=result.action,

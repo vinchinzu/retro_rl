@@ -74,12 +74,19 @@ class KeepAliveClearOrderTests(unittest.TestCase):
             is_rainy=False,
         )
         names = [p.phase for p in phases]
-        self.assertIn("SHIP_BERRY_1", names)
-        # Shop (when affordable) then morning CLEAR. No crop water on empty dirt.
+        self.assertIn("MOUNTAIN_BERRY", names)
+        # Shop (when affordable) then morning CLEAR, then establish + water the
+        # bag we just bought (fresh plot beside any existing rows).
         if "BUY_SEEDS" in names:
             self.assertIn("CLEAR_FIELD", names)
             self.assertLess(names.index("BUY_SEEDS"), names.index("CLEAR_FIELD"))
-        self.assertNotIn("CROP_WATER", names)
+            self.assertIn("CROP_ESTABLISH", names)
+            self.assertLess(names.index("BUY_SEEDS"), names.index("CROP_ESTABLISH"))
+            self.assertLess(
+                names.index("CROP_ESTABLISH"), names.index("CROP_WATER")
+            )
+        else:
+            self.assertNotIn("CROP_WATER", names)
 
     def test_full_day_water_before_clear_when_dry_crops(self) -> None:
         from harvest.planner.day_plan_phases import build_day_phases
