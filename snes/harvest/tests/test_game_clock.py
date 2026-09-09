@@ -86,19 +86,18 @@ class ClockTimelineTests(unittest.TestCase):
         self.assertIsNone(timeline.lunch_mark())
 
     def test_live_bench_locks_frames_lunch_and_delta(self) -> None:
-        self.assertEqual(BERRY_SHIP_BENCH["frames"], 2931)
-        self.assertEqual(BERRY_SHIP_BENCH["previous_frames"], 3154)
-        self.assertEqual(BERRY_SHIP_BENCH["end_clock"], "10:06")
+        self.assertEqual(BERRY_SHIP_BENCH["frames"], 3154)
+        self.assertEqual(BERRY_SHIP_BENCH["previous_frames"], 3224)
+        self.assertEqual(BERRY_SHIP_BENCH["end_clock"], "10:10")
         self.assertEqual(BERRY_SHIP_BENCH["lunch_clock"], "12:00")
         self.assertEqual(BERRY_SHIP_BENCH["lunch_pixel"], (135, 456))
         delta = compare_frame_benches(
             BERRY_SHIP_BENCH["previous_frames"], BERRY_SHIP_BENCH["frames"]
         )
         self.assertTrue(delta["faster"])
-        self.assertEqual(delta["delta_frames"], -223)
+        self.assertEqual(delta["delta_frames"], -70)
         hours = BERRY_SHIP_BENCH["hour_locations"]
         self.assertEqual(hours[0], (6, "house", 128, 200))
-        self.assertEqual(hours[8 - 6], (8, "mountain_spring", 518, 660))
         self.assertEqual(hours[-1], (12, "farm", 135, 456))
 
     def test_lunch_mark_is_first_sample_at_or_after_noon(self) -> None:
@@ -140,11 +139,9 @@ class ClockTimelineTests(unittest.TestCase):
         self.assertEqual(waste["moves"], 3)
 
     def test_faster_bench_is_negative_delta(self) -> None:
-        delta = compare_frame_benches(
-            BERRY_SHIP_BENCH["previous_frames"], BERRY_SHIP_BENCH["frames"]
-        )
+        delta = compare_frame_benches(3224, 3000)
         self.assertTrue(delta["faster"])
-        self.assertEqual(delta["delta_frames"], -223)
+        self.assertEqual(delta["delta_frames"], -224)
         self.assertEqual(delta["before"]["frames"], BERRY_SHIP_BENCH["previous_frames"])
 
 

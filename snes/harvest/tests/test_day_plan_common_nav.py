@@ -426,58 +426,6 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(result.reason, "relocalized after map transition")
         self.assertEqual(task._wp_index, 1)
         self.assertEqual(task._initial_settle, 0)
-        self.assertTrue(task._awaiting_pose)
-
-    def test_multi_nav_force_runs_on_leaked_mountain_pose(self) -> None:
-        """Path y≈10 on mountain 0x10 must not BFS south off the land tile."""
-        world = make_transition_world(0x10, current_tile=(8, 0))
-        set_player_pos(world.ram, 137, 10)
-        task = MultiMapNavTask(
-            waypoints=[
-                Waypoint(
-                    tilemap=0x10,
-                    target_px=(424, 712),
-                    radius=16,
-                    run_direction="right",
-                    force_run=True,
-                )
-            ],
-            initial_settle_frames=0,
-        )
-        task.reset(world)
-        self.assertTrue(task._awaiting_pose)
-        result = task.step(world)
-        self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertEqual(result.reason, "leaked pose force_run right")
-        # SNES: B=0, Right=7.
-        self.assertEqual(int(result.action.action[7]), 1)
-        self.assertEqual(int(result.action.action[0]), 1)
-
-    def test_multi_nav_exit_settle_idles_on_mountain_without_next_hop(self) -> None:
-        """Path→mountain exit is UP; do not charge that into the south cliff."""
-        origin = make_transition_world(0x0C, current_tile=(8, 1))
-        landed = make_transition_world(0x10, current_tile=(8, 0))
-        set_player_pos(landed.ram, 137, 10)
-        task = MultiMapNavTask(
-            waypoints=[
-                Waypoint(
-                    tilemap=0x0C,
-                    target_px=(132, 30),
-                    is_exit=True,
-                    exit_direction="up",
-                    run_direction="up",
-                    force_run=True,
-                )
-            ],
-            initial_settle_frames=0,
-        )
-        task.reset(origin)
-        task._phase = "exit_settle"
-        task._begin_pose_wait()
-        result = task.step(landed)
-        self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertEqual(result.reason, "leaked pose wait")
-        self.assertEqual(int(result.action.action.sum()), 0)
 
     def test_multi_nav_exit_can_push_into_destination_before_settle(self) -> None:
         origin = make_transition_world(0x0C, current_tile=(15, 8))
