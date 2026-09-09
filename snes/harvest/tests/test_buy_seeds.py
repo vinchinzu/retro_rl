@@ -84,6 +84,8 @@ class ShopRouteTests(unittest.TestCase):
             + list(SEGMENTS["town_to_shop_door"])
         )
         self.assertEqual(composed, ROUTES["farm_to_shop_door"])
+        self.assertEqual(SEGMENTS["path_to_town_shop"][0].target_px, (132, 128))
+        self.assertTrue(SEGMENTS["path_to_town_shop"][0].force_run)
 
     def test_path_leak_town_pixels_are_not_settled(self) -> None:
         world = make_transition_world(0x04, current_tile=(0, 8))
@@ -94,6 +96,9 @@ class ShopRouteTests(unittest.TestCase):
 
     def test_segment_choice_follows_live_tilemap(self) -> None:
         self.assertEqual(first_shop_nav_segment(0x00), "farm_to_path")
+        self.assertIsNone(
+            first_shop_nav_segment(0x00, ("path_to_town_shop", "town_to_shop_door"))
+        )
         self.assertEqual(first_shop_nav_segment(0x0C), "path_to_town_shop")
         self.assertEqual(first_shop_nav_segment(0x04), "town_to_shop_door")
         self.assertIsNone(first_shop_nav_segment(0x1C))

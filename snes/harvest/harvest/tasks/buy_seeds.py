@@ -18,7 +18,14 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
-from harvest.maps.map_config import SEGMENTS, find_landmark, segment_waypoints, slice_route_from_position
+from harvest.maps.map_config import (
+    SEGMENTS,
+    farm_to_west_gate_waypoints,
+    find_landmark,
+    path_coords_leaked,
+    segment_waypoints,
+    slice_route_from_position,
+)
 from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask
@@ -112,7 +119,7 @@ def first_shop_nav_segment(
     if _needs_building_exit(tilemap):
         return None
     if is_farm_tilemap(tilemap):
-        return segments[0] if segments else None
+        return "farm_to_path" if "farm_to_path" in segments else None
     if tilemap == PATH_TILEMAP:
         for name in segments:
             hops = SEGMENTS.get(name, [])
@@ -169,6 +176,7 @@ class BuySeedsTask(Task):
     _town_wait: int = field(default=0, init=False)
     _buy_queue: deque = field(default_factory=deque, init=False, repr=False)
     _last_reason: str = field(default="start", init=False)
+    _path_settle: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
@@ -186,6 +194,7 @@ class BuySeedsTask(Task):
         self._town_wait = 0
         self._buy_queue.clear()
         self._last_reason = "start"
+        self._path_settle = 0
         self._arm_nav(world)
 
     def can_start(self, world: WorldState) -> bool:
@@ -236,11 +245,14 @@ class BuySeedsTask(Task):
         )
 
     def _nav_for(self, name: str, world: WorldState) -> MultiMapNavTask:
-        hops = list(SEGMENTS.get(name, []))
-        if not hops:
-            hops = segment_waypoints(name)
         pos = get_pos_from_ram(world.ram)
         tilemap = _tilemap(world)
+        if name == "farm_to_path":
+            hops = farm_to_west_gate_waypoints(int(pos.x), int(pos.y), tilemap=tilemap)
+        else:
+            hops = list(SEGMENTS.get(name, []))
+            if not hops:
+                hops = segment_waypoints(name)
         # Path-leak town pixels would slice to the shop door and walk off
         # the east gate. Keep the full east-to-door list until coords settle.
         if name in {"town_to_shop_door", "town_shop_to_path"} and not town_coords_settled(world.ram):
@@ -319,6 +331,11 @@ class BuySeedsTask(Task):
         remaining = [name for name in SHOP_NAV_SEGMENTS if name not in self._done_nav]
         nxt = first_shop_nav_segment(tilemap, remaining)
         if nxt is None:
+            if is_farm_tilemap(tilemap):
+                self._child = None
+                self._child_name = "farm_exit_walk"
+                self._last_reason = "farm exit walk"
+                return
             self._child = None
             self._child_name = "enter"
             self._phase = "enter"
@@ -409,6 +426,19 @@ class BuySeedsTask(Task):
         ):
             return self._success(world.ram)
 
+        if self._child_name == "farm_exit_walk":
+            pos = get_pos_from_ram(world.ram)
+            if tilemap == PATH_TILEMAP and not path_coords_leaked(pos.x, pos.y):
+                self._done_nav.add("farm_to_path")
+                self._arm_nav(world)
+            else:
+                self._last_reason = "farm exit walk"
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(left=True, b=True)),
+                    reason=self._last_reason,
+                )
+
         if self._child_name == "leave_door":
             pos = get_pos_from_ram(world.ram)
             if int(pos.y) >= 268 or _tilemap(world) != TOWN_TILEMAP:
@@ -485,6 +515,52 @@ class BuySeedsTask(Task):
                 return self._queue_buy(world, lock=lock)
             self._phase = "nav"
             self._arm_nav(world)
+
+        pos = get_pos_from_ram(world.ram)
+        if (
+            not self._bought
+            and tilemap == PATH_TILEMAP
+            and path_coords_leaked(pos.x, pos.y)
+            and self._path_settle <= 180
+        ):
+            self._path_settle += 1
+            self._child = None
+            self._child_name = "path_settle"
+            run = self._path_settle > 24
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(left=True, b=run)),
+                reason="path coords settle",
+            )
+        if self._path_settle and not (
+            tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y)
+        ):
+            self._path_settle = 0
+            self._done_nav.add("farm_to_path")
+            self._child = None
+            self._arm_nav(world)
+
+        if (
+            self._child is not None
+            and not self._bought
+            and self._child_name in SHOP_NAV_SEGMENTS
+        ):
+            remaining = [name for name in SHOP_NAV_SEGMENTS if name not in self._done_nav]
+            live = first_shop_nav_segment(tilemap, remaining)
+            if (
+                live is not None
+                and live != self._child_name
+                and self._child_name != "farm_to_path"
+            ):
+                finished = self._child_name
+                self._done_nav.add(finished)
+                self._child = None
+                self._arm_nav(world)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=f"{finished} clipped",
+                )
 
         if self._child is not None:
             result = self._child.step(world)

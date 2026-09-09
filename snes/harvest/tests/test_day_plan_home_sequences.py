@@ -73,9 +73,7 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
                 super().__init__(
                     phase_sequence=[
                         PhaseSpec("BERRY_RUN_WINDOW", "deadline"),
-                        PhaseSpec("EXIT_FARM_WEST", "directional_transition"),
-                        PhaseSpec("BERRY_RECORDING_WINDOW", "deadline"),
-                        PhaseSpec("GET_BERRIES_AND_SHIP", "recorded"),
+                        PhaseSpec("MOUNTAIN_BERRY", "mountain_berry"),
                     ]
                 )
                 self._tasks = [FailTask(), ActionTask()]
@@ -93,7 +91,7 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(plan.phase_text, "RETURN_HOME")
         self.assertEqual(
             [phase.phase for phase in plan.phases],
-            ["BERRY_RUN_WINDOW", "EXIT_FARM_WEST", "BERRY_RECORDING_WINDOW", "GET_BERRIES_AND_SHIP"],
+            ["BERRY_RUN_WINDOW", "MOUNTAIN_BERRY"],
         )
         self.assertEqual([phase.phase for phase in plan.runtime_phases[-2:]], ["RETURN_HOME", "GO_TO_SLEEP"])
 

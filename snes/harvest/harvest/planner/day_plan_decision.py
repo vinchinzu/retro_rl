@@ -15,7 +15,7 @@ from harvest.planner.day_plan_phases import (
     CROP_WATER_PHASE,
     DayPlannerPolicy,
     ENSURE_CROP_SEEDS_PHASE,
-    GET_BERRIES_AND_SHIP_PHASE,
+    MOUNTAIN_BERRY_PHASE,
     HARVEST_ROUTE_PHASE,
     OPTIONAL_MONEY_PHASES,
     PhaseSpec,
@@ -248,9 +248,9 @@ def collect_deferred_plans(
     if (
         policy.include_berry_run
         and facts.hour >= policy.berry_cutoff_hour
-        and GET_BERRIES_AND_SHIP_PHASE.phase not in planned
+        and MOUNTAIN_BERRY_PHASE.phase not in planned
     ):
-        deferred.append(DeferredPlan.from_phase(GET_BERRIES_AND_SHIP_PHASE, "berry_cutoff"))
+        deferred.append(DeferredPlan.from_phase(MOUNTAIN_BERRY_PHASE, "berry_cutoff"))
     if (
         policy.include_shop_run
         and policy.include_planting
@@ -415,7 +415,7 @@ _PHASE_BY_NAME = {
         COW_CHORES_PHASE,
         CROP_WATER_PHASE,
         ENSURE_CROP_SEEDS_PHASE,
-        GET_BERRIES_AND_SHIP_PHASE,
+        MOUNTAIN_BERRY_PHASE,
         HARVEST_ROUTE_PHASE,
     )
 }

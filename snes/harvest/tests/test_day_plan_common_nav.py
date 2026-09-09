@@ -41,7 +41,6 @@ from harvest.tasks.nav import (
     Point,
 )
 from harvest.tasks.farm_clearer import TileScanner
-from harvest.tasks.harvest_task import ADDR_SHIPPING_MONEY
 from harvest.maps.map_config import ROUTES, Waypoint
 from harvest.core.ram_catalog import field_spec
 
@@ -651,30 +650,6 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertIn("have lunch", result.reason or "")
 
-    def test_berry_ship_fails_closed_without_shipping_money_delta(self) -> None:
-        from harvest.tasks.berry_ship import BerryShipTask
-
-        class DoneNav:
-            _wp_index = 1
-            _action_queue = []
-
-            def step(self, world):
-                return TaskResult(status=TaskStatus.SUCCESS, reason="route done")
-
-        world = make_transition_world(0x00, current_tile=(62, 60))
-        task = BerryShipTask(waypoints=[Waypoint(0x00, (1001, 969))])
-        task._shipping_before = 0
-        task._nav = DoneNav()
-
-        result = task.step(world)
-
-        self.assertEqual(result.status, TaskStatus.FAILURE)
-        self.assertIn("unverified", result.reason or "")
-
-        world.ram[ADDR_SHIPPING_MONEY] = 15
-        result = task.step(world)
-        self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertIn("0->150", result.reason or "")
 
 
 

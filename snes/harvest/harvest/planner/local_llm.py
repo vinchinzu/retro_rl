@@ -34,7 +34,7 @@ OPTIONAL_PHASE_NAMES = frozenset(
         "CROP_WATER",
         "CLEAR_FIELD",
         "TOWN_EXPLORE",
-        "GET_BERRIES_AND_SHIP",
+        "MOUNTAIN_BERRY",
         "HOT_SPRING_STAMINA",
         "EVE_TALK_LOOP",
         "BUY_SEEDS",

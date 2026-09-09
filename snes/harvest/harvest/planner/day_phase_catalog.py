@@ -19,13 +19,11 @@ from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 # Domain modules (re-exported below; no cycle — they only import PhaseSpec).
 from harvest.planner.day_phase_berry import (  # noqa: F401
     BERRY_CUTOFF_HOUR,
-    GET_BERRIES_AND_SHIP_PHASE,
     MOUNTAIN_BERRY_PHASE,
     MOUNTAIN_BERRY_PHASES,
-    OPEN_FENCE_GAP_PHASE,
     OPTIONAL_BERRY_PHASES,
-    SHIP_BERRY_PHASE,
-    ship_berry_phases,
+    mountain_berry_count_for_day,
+    mountain_berry_phase,
 )
 from harvest.planner.day_phase_chicken import (  # noqa: F401
     CHICKEN_AFTER_BARN_PHASES,
@@ -453,35 +451,12 @@ CLEAR_PHASES: List[PhaseSpec] = [
     CLEAR_FIELD_PHASE,
 ]
 
-# Spring Day 4: buy seeds, ship 2 berries, plant + water
+# Spring Day 4 named sequence: mountain grape then plant + water.
 SPRING4_PHASES: List[PhaseSpec] = [
     EXIT_TO_FARM_PHASE,
+    mountain_berry_phase(count=2),
     NAV_FARM_EXIT_PHASE,
-    PhaseSpec(
-        "BUY_SEEDS",
-        "cross_map",
-        {
-            "exit_direction": "left",
-            "recording_name": "buy_potato_seeds",
-            "recording_start": 483,
-            "origin_tilemap": 0x00,
-            "timeout": 5000,
-            "continue_after_return": 200,
-        },
-        failure_policy="optional",
-    ),
-    PhaseSpec(
-        "SHIP_BERRY_1",
-        "multi_nav",
-        {"route": "berry_ship", "timeout": 8000},
-        failure_policy="optional",
-    ),
-    PhaseSpec(
-        "SHIP_BERRY_2",
-        "multi_nav",
-        {"route": "berry_ship", "timeout": 8000},
-        failure_policy="optional",
-    ),
+    buy_seeds_phase(),
     ENSURE_CROP_SEEDS_PHASE,
     NAV_CROP_PHASE,
     CROP_ESTABLISH_PHASE,
@@ -665,12 +640,10 @@ __all__ = [
     "EXIT_FARM_WEST_PHASE",
     "BUY_SEEDS_PHASE",
     "buy_seeds_phase",
-    "GET_BERRIES_AND_SHIP_PHASE",
-    "OPEN_FENCE_GAP_PHASE",
-    "SHIP_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASES",
-    "ship_berry_phases",
+    "mountain_berry_count_for_day",
+    "mountain_berry_phase",
     "NAV_CROP_PHASE",
     "HARVEST_ROUTE_PHASE",
     "DYNAMIC_OUTDOOR_PLAN_PHASE",

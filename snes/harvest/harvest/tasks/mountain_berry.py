@@ -28,6 +28,7 @@ from harvest.core.scene import SceneMode, classify_scene_from_ram
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, MOUNTAIN_WALKABLE, tile_label
 from harvest.maps.map_config import (
     SEGMENTS,
+    farm_to_west_gate_waypoints,
     path_coords_leaked,
     segment_waypoints,
     slice_route_from_position,
@@ -100,7 +101,11 @@ def first_remaining_segment(
     if _needs_building_exit(tilemap):
         return None
     if is_farm_tilemap(tilemap):
-        return segments[0] if segments else None
+        for name in segments:
+            hops = SEGMENTS.get(name, [])
+            if name == "farm_to_path" or (hops and hops[0].tilemap not in (PATH_TILEMAP, MOUNTAIN_TILEMAP)):
+                return name
+        return None
     if tilemap == PATH_TILEMAP:
         for name in segments:
             hops = SEGMENTS.get(name, [])
@@ -267,6 +272,7 @@ class MountainBerryTask(Task):
     _eat_phase: str = field(default="idle", init=False)
     _eat_wait: int = field(default=0, init=False)
     _post_pick_wait: int = field(default=0, init=False)
+    _path_settle: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
@@ -280,6 +286,7 @@ class MountainBerryTask(Task):
         self._eat_phase = "idle"
         self._eat_wait = 0
         self._post_pick_wait = 0
+        self._path_settle = 0
         self._arm_next(world)
 
     def can_start(self, world: WorldState) -> bool:
@@ -312,17 +319,17 @@ class MountainBerryTask(Task):
         )
 
     def _nav_for(self, name: str, world: WorldState) -> MultiMapNavTask:
-        hops = list(SEGMENTS.get(name, []))
-        if not hops:
-            hops = segment_waypoints(name)
         pos = get_pos_from_ram(world.ram)
         tilemap = _tilemap(world)
+        if name == "farm_to_path":
+            hops = farm_to_west_gate_waypoints(int(pos.x), int(pos.y), tilemap=tilemap)
+        else:
+            hops = list(SEGMENTS.get(name, []))
+            if not hops:
+                hops = segment_waypoints(name)
         # North-edge spawn (y≈10) is still the map transition. Manhattan
         # would skip the south-land hops and send us through Gotz.
         if name == "mountain_entry_to_first_berry" and int(pos.y) < 80:
-            sliced = hops
-        elif tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
-            # Farm/mountain pixels linger on 0x0C. Do not skip the plaza.
             sliced = hops
         else:
             sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
@@ -372,6 +379,28 @@ class MountainBerryTask(Task):
         self._child = self._nav_for(nxt, world)
         self._child_name = nxt
         self._last_reason = f"nav {nxt}"
+
+    def _clip_finished_segment(self, world: WorldState) -> bool:
+        """Drop a nav child the live tilemap has already finished.
+
+        farm_to_path still running after the 0x0C flip would BFS from a
+        leaked west-edge pose toward the farm-gate hop.
+        """
+        if self._child is None or self._child_name not in self.segments:
+            return False
+        pos = get_pos_from_ram(world.ram)
+        if _tilemap(world) == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+            return False
+        remaining = [name for name in self.segments if name not in self._done_segments]
+        live = first_remaining_segment(_tilemap(world), remaining)
+        if live is None or live == self._child_name:
+            return False
+        finished = self._child_name
+        self._done_segments.add(finished)
+        self._child = None
+        self._arm_next(world)
+        self._last_reason = f"{finished} clipped"
+        return True
 
     def _queue_stand_nudge(self, ram) -> None:
         pos = get_pos_from_ram(ram)
@@ -541,6 +570,53 @@ class MountainBerryTask(Task):
         if queued is not None:
             return queued
 
+        if self._child_name == "farm_exit_walk":
+            pos = get_pos_from_ram(world.ram)
+            if _tilemap(world) == PATH_TILEMAP and not path_coords_leaked(pos.x, pos.y):
+                self._done_segments.add("farm_to_path")
+                self._arm_next(world)
+            else:
+                self._last_reason = "farm exit walk"
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(left=True, b=True)),
+                    reason=self._last_reason,
+                )
+
+        pos = get_pos_from_ram(world.ram)
+        if _tilemap(world) == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+            self._path_settle += 1
+            if self._path_settle > 180:
+                self._path_settle = 0
+                self._done_segments.add("farm_to_path")
+                self._child = None
+                self._arm_next(world)
+            else:
+                if self._child is not None:
+                    self._child = None
+                self._child_name = "path_settle"
+                self._last_reason = "path coords settle"
+                # Real body is the east farm-gate. Left walks onto the plaza
+                # while leaked farm y is still in RAM.
+                run = self._path_settle > 24
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(left=True, b=run)),
+                    reason=self._last_reason,
+                )
+        elif self._path_settle:
+            self._path_settle = 0
+            self._done_segments.add("farm_to_path")
+            self._child = None
+            self._arm_next(world)
+
+        if self._clip_finished_segment(world):
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(np.zeros(12, dtype=np.int32)),
+                reason=self._last_reason,
+            )
+
         if self._child is not None:
             result = self._child.step(world)
             if result.status == TaskStatus.RUNNING:
@@ -566,6 +642,19 @@ class MountainBerryTask(Task):
                     action=result.action,
                     reason=f"{self._child_name}: {result.reason or result.status.value}",
                 )
+            if self._child_name == "farm_to_path":
+                exit_pos = get_pos_from_ram(world.ram)
+                if _tilemap(world) != PATH_TILEMAP or path_coords_leaked(
+                    exit_pos.x, exit_pos.y
+                ):
+                    self._child = None
+                    self._child_name = "farm_exit_walk"
+                    self._last_reason = "farm exit walk"
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(left=True, b=True)),
+                        reason=self._last_reason,
+                    )
             if self._child_name in self.segments:
                 self._done_segments.add(self._child_name)
             self._child = None

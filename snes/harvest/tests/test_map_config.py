@@ -79,29 +79,6 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertEqual(route[-1].tilemap, 0x0C)
         self.assertTrue(route[-1].is_exit)
 
-    def test_berry_routes_start_south_and_repeat_from_bin(self) -> None:
-        first = ROUTES["berry_ship"]
-        repeat = ROUTES["berry_ship_repeat"]
-
-        self.assertGreaterEqual(first[0].target_px[1] // 16, 35)
-        self.assertEqual(first[0].target_px[0] // 16, 27)
-        self.assertEqual(repeat[0].target_px, (55 * 16 + 8, 60 * 16 + 8))
-        self.assertEqual(first[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
-        self.assertEqual(repeat[-1].target_px, (61 * 16 + 8, 60 * 16 + 8))
-        # North-of-bush approach — no south weed lift_throw thrash.
-        self.assertFalse(any(wp.action_on_arrive == "lift_throw" for wp in first))
-        self.assertFalse(any(wp.action_on_arrive == "lift_throw" for wp in repeat))
-        stand_tiles = {(wp.target_px[0] // 16, wp.target_px[1] // 16) for wp in first}
-        self.assertNotIn((37, 58), stand_tiles)
-        self.assertNotIn((37, 59), stand_tiles)
-        self.assertNotIn((36, 58), stand_tiles)
-        # Pocket entry visits (36,54)/(36,56) then pick at (37,57).
-        self.assertIn((36, 54), stand_tiles)
-        self.assertIn((36, 56), stand_tiles)
-        pick = next(wp for wp in first if wp.action_on_arrive == "press_a" and wp.action_face == "left")
-        self.assertEqual(pick.target_px[0] // 16, 37)
-        self.assertEqual(pick.target_px[1] // 16, 57)
-
     def test_south_farm_return_crosses_fence_at_west_end(self) -> None:
         route = ROUTES["farm_south_to_west_gate"]
         first_north = next(wp for wp in route if wp.target_px[1] < 31 * 16)

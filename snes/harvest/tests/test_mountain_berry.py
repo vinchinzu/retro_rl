@@ -24,7 +24,7 @@ from harvest.maps.map_config import (
 from harvest.core.game_clock import ClockTimeline, compare_frame_benches
 from harvest.planner.day_phase_catalog import MOUNTAIN_BERRY_PHASE, PHASE_SEQUENCES
 from harvest.planner.day_phase_types import PhaseKind
-from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
 from harvest.tasks.mountain_berry import (
     BERRY_NAV_SEGMENTS,
     TOWN_NAV_SEGMENTS,
@@ -68,6 +68,8 @@ class PathSegmentTests(unittest.TestCase):
         self.assertLess(farm_exit.radius, 8)
         self.assertEqual(shared[-1].tilemap, 0x0C)
         self.assertEqual(shared[-1].target_px, (132, 128))
+        self.assertEqual(shared[-1].run_direction, "left")
+        self.assertTrue(shared[-1].force_run)
 
         town = segment_waypoints(*TOWN_NAV_SEGMENTS)
         mountain = segment_waypoints("farm_to_path", "path_to_mountain")
@@ -88,6 +90,11 @@ class PathSegmentTests(unittest.TestCase):
             SEGMENTS["path_to_town"][-1].target_px,
             SEGMENTS["path_to_mountain"][-1].target_px,
         )
+
+    def test_farm_to_path_skips_farm_gate(self) -> None:
+        hops = [wp.target_px for wp in SEGMENTS["farm_to_path"]]
+        self.assertNotIn((232, 128), hops)
+        self.assertEqual(hops[-1], (132, 128))
 
     def test_leaked_path_coords_start_at_crossroads(self) -> None:
         self.assertTrue(path_coords_leaked(10, 422))
@@ -199,6 +206,11 @@ class PathSegmentTests(unittest.TestCase):
 class MountainBerrySelectTests(unittest.TestCase):
     def test_segment_choice_follows_live_tilemap(self) -> None:
         self.assertEqual(first_remaining_segment(0x00), "farm_to_path")
+        self.assertIsNone(
+            first_remaining_segment(
+                0x00, ("path_to_mountain", "mountain_entry_to_first_berry")
+            )
+        )
         self.assertEqual(first_remaining_segment(0x0C), "path_to_mountain")
         self.assertEqual(first_remaining_segment(0x10), "mountain_entry_to_first_berry")
         self.assertIsNone(first_remaining_segment(0x15))
@@ -211,6 +223,49 @@ class MountainBerrySelectTests(unittest.TestCase):
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("grapes", result.reason or "")
+
+    def test_bin_start_clips_farm_to_path_off_house_north(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 136, 456)
+        task = MountainBerryTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "farm_to_path")
+        hops = [wp.target_px for wp in task._child.waypoints]
+        self.assertNotEqual(hops[0], (137, 375))
+        self.assertNotIn((232, 128), hops)
+
+    def test_leaked_path_pose_settles_before_crossroads_nav(self) -> None:
+        world = make_transition_world(0x0C, current_tile=(0, 26))
+        set_player_pos(world.ram, 10, 422)
+        task = MountainBerryTask()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "path_settle")
+        self.assertIn("settle", result.reason or "")
+        set_player_pos(world.ram, 232, 128)
+        result = task.step(world)
+        self.assertEqual(task.phase_text, "path_to_mountain")
+        hops = [wp.target_px for wp in task._child.waypoints]
+        self.assertEqual(hops[0], (132, 128))
+        self.assertNotIn((232, 128), hops)
+
+    def test_farm_to_path_clips_once_path_coords_settle(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 24))
+        set_player_pos(world.ram, 136, 392)
+        task = MountainBerryTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "farm_to_path")
+        world.ram[ADDR_TILEMAP] = 0x0C
+        set_player_pos(world.ram, 10, 422)
+        result = task.step(world)
+        self.assertEqual(task.phase_text, "path_settle")
+        set_player_pos(world.ram, 232, 128)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "path_to_mountain")
+        hops = [wp.target_px for wp in task._child.waypoints]
+        self.assertEqual(hops[0], (132, 128))
 
     def test_house_start_arms_exit_to_farm(self) -> None:
         world = make_transition_world(0x15, current_tile=(8, 12))
@@ -363,6 +418,21 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(task.shipped_count, 1)
         self.assertIn("stopped early", result.reason or "")
+
+    def test_second_grape_bails_when_shop_hour_hits(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 12
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.shipped_count, 1)
+        self.assertIn("shop window", result.reason or "")
 
 
 if __name__ == "__main__":

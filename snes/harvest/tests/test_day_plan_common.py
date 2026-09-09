@@ -415,8 +415,7 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
                 super().__init__(
                     phase_sequence=[
                         PhaseSpec("BERRY_RUN_WINDOW", "deadline"),
-                        PhaseSpec("EXIT_FARM_WEST", "directional_transition"),
-                        PhaseSpec("GET_BERRIES_AND_SHIP", "recorded"),
+                        PhaseSpec("MOUNTAIN_BERRY", "mountain_berry"),
                         PhaseSpec("ENSURE_WATERING_CAN", "ensure_tool"),
                     ]
                 )
@@ -436,7 +435,7 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertEqual(plan.phase_text, "ENSURE_WATERING_CAN")
         self.assertEqual(
             [item.phase for item in plan.deferred_plans],
-            ["BERRY_RUN_WINDOW", "EXIT_FARM_WEST", "GET_BERRIES_AND_SHIP"],
+            ["BERRY_RUN_WINDOW", "MOUNTAIN_BERRY"],
         )
         self.assertTrue(all(item.reason == "missed cutoff" for item in plan.deferred_plans))
 
