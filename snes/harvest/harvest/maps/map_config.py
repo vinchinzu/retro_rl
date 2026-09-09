@@ -83,9 +83,11 @@ from harvest.maps.map_routes import (
     farm_to_spa_waypoints,
     path_coords_leaked,
     farm_coords_look_like_path,
+    pose_is_leaked,
     segment_waypoints,
     slice_route_from_position,
     SOUTH_FIELD_MIN_Y_PX,
+    MOUNTAIN_LEAKED_MAX_Y,
 )
 
 # ── Map Registry ──
@@ -551,6 +553,8 @@ __all__ = [
     "slice_route_from_position",
     "path_coords_leaked",
     "farm_coords_look_like_path",
+    "pose_is_leaked",
+    "MOUNTAIN_LEAKED_MAX_Y",
     "densify_waypoints",
     "farm_to_spa_waypoints",
     "farm_to_west_gate_waypoints",

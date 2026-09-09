@@ -16,6 +16,10 @@ from harvest.maps.map_types import Waypoint
 PATH_TILEMAP_ID = 0x0C
 PATH_ONMAP_MAX_X = 280
 PATH_ONMAP_MAX_Y = 200
+MOUNTAIN_TILEMAP_ID = 0x10
+# Path north-edge pixels (y≈10) linger after path→mountain. Real mountain
+# stands start at the south land (~y=728) and never go above the spa (~y=201).
+MOUNTAIN_LEAKED_MAX_Y = 80
 
 
 def path_coords_leaked(px: int, py: int) -> bool:
@@ -35,6 +39,27 @@ def farm_coords_look_like_path(px: int, py: int) -> bool:
     return _PATH_FARM_GATE_X[0] <= px <= _PATH_FARM_GATE_X[1] and (
         _PATH_FARM_GATE_Y[0] <= py <= _PATH_FARM_GATE_Y[1]
     )
+
+
+def pose_is_leaked(
+    px: int,
+    py: int,
+    tilemap: int,
+    *,
+    include_farm_path_gate: bool = False,
+) -> bool:
+    """True when RAM still holds the previous map's pixel after a tilemap flip.
+
+    Farm path-gate pixels are a real shed-row stand too, so that check is
+    opt-in for the post-transition window only.
+    """
+    if tilemap == PATH_TILEMAP_ID:
+        return path_coords_leaked(px, py)
+    if tilemap == MOUNTAIN_TILEMAP_ID:
+        return py < MOUNTAIN_LEAKED_MAX_Y
+    if include_farm_path_gate and tilemap in FARM_TILEMAP_IDS:
+        return farm_coords_look_like_path(px, py)
+    return False
 
 
 def slice_route_from_position(
@@ -227,18 +252,49 @@ _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
         run_direction="down",
         force_run=True,
     ),
-    Waypoint(tilemap=0x00, target_px=(72, 424), radius=8, run_direction="left"),
+    Waypoint(
+        tilemap=0x00,
+        target_px=(72, 424),
+        radius=8,
+        run_direction="left",
+        force_run=True,
+    ),
     _FARM_WEST_EXIT,
 ]
 
 # L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first onto
 # A0 above the pond, then the house-column pinch down to y=26.
+# force_run down: the doorstep reads solid to BFS but DOWN+B clears it.
 _FARM_TO_PATH: List[Waypoint] = [
-    Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
-    Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0
+    Waypoint(
+        tilemap=0x00,
+        target_px=(137, 375),
+        radius=12,
+        run_direction="down",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x00,
+        target_px=(136, 392),
+        radius=8,
+        run_direction="down",
+        force_run=True,
+    ),  # (8,24) A0
     *_FARM_GATE_PINCH_TO_EXIT,
-    _PATH_FARM_GATE,
-    _PATH_CROSSROADS,
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(232, 128),
+        radius=16,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(132, 128),
+        radius=16,
+        run_direction="left",
+        force_run=True,
+    ),
 ]
 
 # Sunday south crop ~(78,598). Viewport BFS to (136,424) cuts 0x5E beds and
@@ -273,7 +329,26 @@ _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
 # Already on 0x0C: plaza center first, then the north exit. Do not
 # BFS-diagonal from the east landing / leaked farm y toward (132,30).
-_PATH_TO_MOUNTAIN: List[Waypoint] = [_PATH_CROSSROADS, _PATH_MOUNTAIN_EXIT]
+# force_run on the open axis once coords belong to the path (leaked
+# farm/mountain pixels idle in MultiNav until they snap).
+_PATH_TO_MOUNTAIN: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(132, 128),
+        radius=16,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(132, 30),
+        radius=10,
+        is_exit=True,
+        exit_direction="up",
+        run_direction="up",
+        force_run=True,
+    ),
+]
 # Seed-shop town gate: stand on the open face, not (0,8)/(1,8) doorframe hugs.
 _PATH_TO_TOWN_SHOP: List[Waypoint] = [
     Waypoint(tilemap=0x0C, target_px=(40, 128), radius=8, is_exit=True, exit_direction="left"),
@@ -341,7 +416,13 @@ _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(144, 448), radius=10),
     Waypoint(tilemap=0x10, target_px=(80, 432), radius=10),
     Waypoint(tilemap=0x10, target_px=(72, 368), radius=10),
-    Waypoint(tilemap=0x10, target_px=(168, 360), radius=12),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(168, 360),
+        radius=12,
+        run_direction="right",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(312, 360), radius=12, run_direction="right", force_run=True),
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
 ]
@@ -353,13 +434,45 @@ _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
 _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
     Waypoint(tilemap=0x10, target_px=(328, 568), radius=24, run_direction="down", force_run=True),
-    Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(392, 568),
+        radius=16,
+        run_direction="right",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
     Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
-    Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(520, 712),
+        radius=16,
+        run_direction="down",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(424, 712),
+        radius=16,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(328, 728),
+        radius=20,
+        run_direction="left",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(312, 744),
+        radius=16,
+        is_exit=True,
+        exit_direction="down",
+        run_direction="down",
+        force_run=True,
+    ),
 ]
 
 # Farm/path land → carpenter-gap dirt → west climb → east mid → lip.
@@ -430,7 +543,25 @@ _ANIMAL_SHOP_STAGING = Waypoint(
 )
 _HOUSE_L1: List[Waypoint] = [Waypoint(tilemap=0x00, target_px=(136, 344), radius=12)]
 _FARM_TO_TOWN: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_TOWN)
-_PATH_TO_FARM: List[Waypoint] = [_PATH_CROSSROADS, _PATH_FARM_EXIT]
+_PATH_TO_FARM: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(132, 128),
+        radius=16,
+        run_direction="down",
+        force_run=True,
+    ),
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(244, 128),
+        radius=32,
+        is_exit=True,
+        exit_direction="right",
+        run_direction="right",
+        force_run=True,
+        exit_push_frames=18,
+    ),
+]
 _SPA_TO_FARM: List[Waypoint] = (
     list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
     + list(_PATH_TO_FARM)

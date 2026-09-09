@@ -362,16 +362,16 @@ class ClockTimeline:
         }
 
 
-# Live Y1_Inside_House → grape ship + 12:00 lunch
-# (snes/harvest/recordings/mountain_segments_clock.json). previous_frames is
-# the prior ship bench so Δ stays first-class.
+# Live Y1_Inside_House → grape ship. previous_frames is the prior ship
+# bench so Δ stays first-class. Lunch stand is the bin if we idle after.
+# Evidence: recordings/mountain_segments_after.json
 BERRY_SHIP_BENCH = {
-    "frames": 3154,
-    "previous_frames": 3224,
+    "frames": 2931,
+    "previous_frames": 3154,
     "start_clock": "06:08",
-    "end_clock": "10:10",
-    "mountain_entry_to_grape": 966,
-    "grape_to_mountain_exit": 410,
+    "end_clock": "10:06",
+    "mountain_entry_to_grape": 935,
+    "grape_to_mountain_exit": 400,
     "pick_keep": 293,
     "lunch_clock": "12:00",
     "lunch_map": "farm",
@@ -379,9 +379,9 @@ BERRY_SHIP_BENCH = {
     "hour_locations": (
         (6, "house", 128, 200),
         (7, "path", 137, 10),
-        (8, "mountain_spring", 505, 694),
-        (9, "mountain_spring", 457, 584),
-        (10, "path", 244, 118),
+        (8, "mountain_spring", 518, 660),
+        (9, "mountain_spring", 518, 654),
+        (10, "path", 244, 112),
         (11, "farm", 135, 456),
         (12, "farm", 135, 456),
     ),

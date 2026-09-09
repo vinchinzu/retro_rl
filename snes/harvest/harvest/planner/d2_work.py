@@ -1,9 +1,9 @@
 """Spring D2 work — one D2_FARM_CLEAR Tactic after BUY_SEEDS.
 
-Grape → shop → CLEAR_PLOT → plant 8 → water 8 → leftover smash
-(bushes → fences → stones → hammer/rocks → axe/stumps, spa on 2×2
-stamina). ``next_d2_spec`` is the live order; do not keep a parallel
-static leftover list. Quota handoff, not pocket ``plot_ring``.
+Grape → shop → CLEAR_PLOT → plant 8 → water 8 → leftover smash.
+Lift is section-first: weeds then fences then stones in one quadrant
+before walking to the next. Hammer/rocks then axe/stumps still chain
+by chunk after hands work. ``next_d2_spec`` is the live order.
 """
 
 from __future__ import annotations
@@ -100,6 +100,8 @@ class D2FarmStatus:
     reason: str = ""
     pocket_needs_clear: bool = False
     potato_seeds: int = 0
+    weeds_by_chunk: tuple[int, ...] = ()
+    fences_by_chunk: tuple[int, ...] = ()
     stones_by_chunk: tuple[int, ...] = ()
     rocks_by_chunk: tuple[int, ...] = ()
     stumps_by_chunk: tuple[int, ...] = ()
@@ -219,37 +221,45 @@ def ensure_axe_phase() -> PhaseSpec:
     )
 
 
-def bush_clear_phase() -> PhaseSpec:
-    """Lift every remaining weed before tool-driven debris."""
+def bush_clear_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
+    """Lift remaining weeds in bounds (or the whole farm)."""
     return _required_clear(
         "CLEAR_BUSHES",
-        {
-            "timeout": 0,
-            "fetch_tools": False,
-            "prefer_lift_for_weeds": True,
-            "prefer_lift_for_stones": True,
-            "priority": ["weed"],
-            "quota": {"weeds": EXHAUSTIVE},
-            "handoff": "quota",
-        },
+        _with_chunk(
+            {
+                "timeout": 0,
+                "fetch_tools": False,
+                "prefer_lift_for_weeds": True,
+                "prefer_lift_for_stones": True,
+                "priority": ["weed"],
+                "quota": {"weeds": EXHAUSTIVE},
+                "handoff": "quota",
+            },
+            farm_bounds=farm_bounds,
+            chunk=chunk,
+        ),
         estimated_frames=100000,
     )
 
 
-def fence_dump_phase() -> PhaseSpec:
-    """Lift every fence post and dump it in a pond. Not corridor-only."""
+def fence_dump_phase(*, farm_bounds=None, chunk: str | None = None) -> PhaseSpec:
+    """Lift remaining fence posts in bounds and dump them in a pond."""
     return PhaseSpec(
         "CLEAR_FENCES",
         "fence_clear",
-        {
-            "timeout": 0,
-            "max_fences": None,
-            "corridor_only": False,
-            "pond_dump": True,
-            "max_steps_per_fence": 2800,
-            "max_failures": 20,
-            "debris_types": ["fence"],
-        },
+        _with_chunk(
+            {
+                "timeout": 0,
+                "max_fences": None,
+                "corridor_only": False,
+                "pond_dump": True,
+                "max_steps_per_fence": 2800,
+                "max_failures": 20,
+                "debris_types": ["fence"],
+            },
+            farm_bounds=farm_bounds,
+            chunk=chunk,
+        ),
         failure_policy="required",
         required_maps=(0x00,),
         estimated_frames=200000,
@@ -445,6 +455,8 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
     weeds = fences = stones = small_rocks = large_rocks = stumps = 0
     pocket = False
     damaged = False
+    by_w = [0, 0, 0, 0]
+    by_f = [0, 0, 0, 0]
     by_s = [0, 0, 0, 0]
     by_r = [0, 0, 0, 0]
     by_u = [0, 0, 0, 0]
@@ -456,10 +468,12 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
             tx, ty = target.tile
             if key == "weeds":
                 weeds += 1
+                by_w[idx[chunk_of_tile(tx, ty)]] += 1
                 if x0 <= tx <= x1 and y0 <= ty <= y1:
                     pocket = True
             elif key == "fences":
                 fences += 1
+                by_f[idx[chunk_of_tile(tx, ty)]] += 1
             elif key == "stones":
                 stones += 1
                 by_s[idx[chunk_of_tile(tx, ty)]] += 1
@@ -524,6 +538,8 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
         reason=why,
         pocket_needs_clear=pocket,
         potato_seeds=potato_seeds,
+        weeds_by_chunk=tuple(by_w),
+        fences_by_chunk=tuple(by_f),
         stones_by_chunk=tuple(by_s),
         rocks_by_chunk=tuple(by_r),
         stumps_by_chunk=tuple(by_u),
@@ -544,6 +560,28 @@ def confirm_d2_complete(previous, current) -> bool:
 def _live_chunks(smash: Sequence[str], counts: Sequence[int]) -> list[str]:
     mapping = dict(zip(FARM_CHUNK_ORDER, counts)) if counts else {}
     return [name for name in smash if mapping.get(name, 0) > 0]
+
+
+def _count_in(counts: Sequence[int], name: str) -> int:
+    mapping = dict(zip(FARM_CHUNK_ORDER, counts)) if counts else {}
+    return int(mapping.get(name, 0))
+
+
+def _lift_next(status: D2FarmStatus, smash: Sequence[str], section: str):
+    """Hands work stays in one quadrant: weeds, then fences, then stones."""
+    want_w = section in {"all", "bushes"}
+    want_f = section in {"all", "fences"}
+    want_s = section in {"all", "stones"}
+    if not (want_w or want_f or want_s):
+        return None
+    for name in smash:
+        if want_w and _count_in(status.weeds_by_chunk, name) > 0:
+            return bush_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
+        if want_f and _count_in(status.fences_by_chunk, name) > 0:
+            return fence_dump_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
+        if want_s and _count_in(status.stones_by_chunk, name) > 0:
+            return stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
+    return None
 
 
 def _crop_next(last_phase: str) -> PhaseSpec:
@@ -595,14 +633,9 @@ def next_d2_spec(
             return _crop_next(last_phase)
         if status.planted >= D2_TARGETS["plant"] and status.wet < D2_TARGETS["water"]:
             return _water_next(last_phase)
-    if section in {"all", "bushes"} and status.weeds > 0:
-        return bush_clear_phase()
-    if section in {"all", "fences"} and status.fences > 0:
-        return fence_dump_phase()
-    if section in {"all", "stones"}:
-        live = _live_chunks(smash, status.stones_by_chunk)
-        if live:
-            return stone_pond_phase(farm_bounds=FARM_CHUNK_BOUNDS[live[0]], chunk=live[0])
+    lift = _lift_next(status, smash, section)
+    if lift is not None:
+        return lift
     if section in {"all", "rocks"}:
         spec = _smash_next(
             status, _live_chunks(smash, status.rocks_by_chunk), last_phase,
@@ -658,6 +691,8 @@ def _section_done(status: D2FarmStatus, section: str, chunk: str) -> bool:
     if key is None:
         return status.is_complete
     by = {
+        "bushes": status.weeds_by_chunk,
+        "fences": status.fences_by_chunk,
         "stones": status.stones_by_chunk,
         "rocks": status.rocks_by_chunk,
         "stumps": status.stumps_by_chunk,
