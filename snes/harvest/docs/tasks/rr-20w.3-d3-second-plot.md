@@ -79,6 +79,38 @@ Full crop/day-plan suite: **549 tests OK**.
 - Second-ring tiles are ROM-tuned once from `Y1_D3_PostShop`; re-validate
   if the D3 lineage is re-minted.
 
+### Spring campaign D3→D30 progress (2026-09-09, `Y1_D3_Morning --end-of-spring`)
+
+Best natural-play spring economy to date. NOT power-on, no STATUS.
+
+- **run6** (commit 3641e440~): Spring **D3→D15, money $1790**, Clean
+  (`initial_state_loads=1`, mid_run=0, ram_writes=0). 2+ potato harvest
+  cycles (14 shipped), daily grape income D5–D14, crops watered every day.
+  Terminal: D15 grape run stranded the farmer on the mountain; ExitToFarm
+  (building-exit only) timed out. Log `logs/spring_d3_30/run6.log`.
+- **run7** (commit 3641e440): D3→**D19, money $1540**, no mountain trip
+  (grape gate live). Money flat from D15 — the pocket-ring `CROP_ESTABLISH`
+  nav-times-out (`nav_hoe_ring_0_down`) after the ring is harvested, so no
+  replants. Earlier-planted crops still watered + harvested.
+
+Fixes landed this pass (all with `--end-of-spring`):
+- `farm_pond.pocket_plant_target` + `_ImmediateSuccessTask` — establish /
+  BUY_SEEDS no-op when no pocket ring has bare capacity (was aborting the
+  day *before* watering, killing the crop). `world_probe.pocket_has_plant_capacity`.
+- `_build_task` end_of_spring → `include_field_clear=False` (daily weed
+  pickup stranded the farmer in the south field); `MultiDayPlannerTask`
+  retries a stranded `return_home` 3× before failing.
+- `_berry_run_phases` stops the grape run once wallet ≥ `BERRY_STOP_WALLET_G`
+  (700g); `ReturnHomeTask` walks `mountain_to_farm` when stranded at 0x10/0x0C.
+- `SwapCarrySlotsTask` tap-budgeted X pulse + 210f (was slipping the replant
+  a day on shed entry).
+- `MultiDayPlannerTask` keeps its configured `seed_type` while still
+  plantable (ram resolution drifted to turnip after a few ships).
+
+**Next blocker:** `CROP_ESTABLISH` → `nav_hoe_ring_*` timeout reaching the
+pocket-ring hoe stand after a harvest. This is now the cap on multi-cycle
+potato revenue; the rest of the daily loop is stable.
+
 ### Non-claims
 
 - No STATUS. Did not start from `Y1_D2_Morning_After_D1`.
