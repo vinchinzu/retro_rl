@@ -33,6 +33,7 @@ from harvest.planner.day_task_factory import DayTaskFactory
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_MAP,
+    ADDR_TILEMAP,
     WEED,
 )
 from harvest.tasks.nav import (
@@ -483,6 +484,23 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("expected tilemap 0x00", result.reason or "")
+
+    def test_multi_nav_settles_unregistered_tilemap_instead_of_failing(self) -> None:
+        task = MultiMapNavTask(
+            waypoints=[Waypoint(tilemap=0x0C, target_px=(132, 128))],
+            initial_settle_frames=0,
+        )
+        world = make_transition_world(0x57, current_tile=(0, 26))
+        set_player_pos(world.ram, 10, 422)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("tilemap settle", result.reason or "")
+        world.ram[ADDR_TILEMAP] = 0x0C
+        set_player_pos(world.ram, 232, 128)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertNotIn("expected tilemap", result.reason or "")
 
     def test_multi_nav_run_direction_corrects_off_lane_before_running(self) -> None:
         task = MultiMapNavTask(

@@ -17,7 +17,12 @@ from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     ADDR_INPUT_LOCK,
 )
-from harvest.maps.map_config import ROUTES, Waypoint, farm_exit_waypoints
+from harvest.maps.map_config import (
+    ROUTES,
+    Waypoint,
+    farm_exit_waypoints,
+    mountain_downhill_escape,
+)
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.planner.day_plan_status import (
@@ -332,7 +337,15 @@ class ExitToFarmTask(Task):
                 0x05: "event_town_to_farm",
                 0x10: "mountain_to_farm",
             }[tilemap]
-            waypoints = ROUTES.get(route_name, [])
+            waypoints = list(ROUTES.get(route_name, []))
+            if tilemap == 0x10:
+                pos = get_pos_from_ram(world.ram)
+                if int(pos.y) >= 380:
+                    mountain = mountain_downhill_escape(
+                        int(pos.x), int(pos.y), tilemap=tilemap
+                    )
+                    waypoints = list(mountain) + list(ROUTES.get("path_to_farm") or [])
+                    route_name = "grape_downhill"
             self._task = MultiMapNavTask(
                 name=f"return_{route_name}",
                 waypoints=list(waypoints),

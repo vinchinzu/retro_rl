@@ -60,6 +60,19 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
 
         self.assertEqual([phase.phase for phase in phases], ["GO_TO_SLEEP"])
 
+    def test_return_home_carpenter_pose_walks_downhill_not_spa(self) -> None:
+        world = make_date_world(0x10, season=0, day=15, hour=12)
+        set_player_pos(world.ram, 474, 630)
+        task = ReturnHomeTask()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsInstance(task._task, MultiMapNavTask)
+        hops = [wp.target_px for wp in task._task.waypoints]
+        self.assertEqual(hops[0], (520, 712))
+        self.assertNotIn((569, 201), hops)
+        self.assertIn((312, 744), hops)
+
     def test_return_home_enters_when_already_at_house_front(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)
         set_player_pos(world.ram, 136, 424)

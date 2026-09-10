@@ -14,7 +14,11 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.game_clock import clock_from_ram
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-from harvest.maps.map_config import ROUTES, slice_route_from_position
+from harvest.maps.map_config import (
+    ROUTES,
+    mountain_downhill_escape,
+    slice_route_from_position,
+)
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.mountain_berry import MountainBerryTask, is_mountain_forage
@@ -47,6 +51,9 @@ class MountainGrapeShipTask(Task):
     # Do not start another mountain loop at/after this hour. A loop is ~4h
     # and the seed shop still has to happen the same morning.
     shop_bail_hour: int = 10
+    # Carpenter-corridor pins (run6 D15) retry a downhill suffix instead of
+    # failing while still on mountain 0x10.
+    max_return_retries: int = 3
 
     _step_count: int = field(default=0, init=False)
     _phase: str = field(default="pick", init=False)
@@ -57,6 +64,7 @@ class MountainGrapeShipTask(Task):
     _verify_frames: int = field(default=0, init=False)
     _drop_attempts: int = field(default=0, init=False)
     _drop_queue: deque[np.ndarray] = field(default_factory=deque, init=False, repr=False)
+    _return_retries: int = field(default=0, init=False)
 
     @property
     def phase_text(self) -> str:
@@ -87,6 +95,7 @@ class MountainGrapeShipTask(Task):
         self._verify_frames = 0
         self._drop_attempts = 0
         self._shipped = 0
+        self._return_retries = 0
         self._drop_queue.clear()
         if is_mountain_forage(int(read_held_item(world.ram))):
             self._start_return(world)
@@ -107,7 +116,7 @@ class MountainGrapeShipTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return bool(ROUTES.get(ROUTE_NAME))
 
-    def _start_return(self, world: WorldState) -> None:
+    def _start_return(self, world: WorldState, *, downhill: bool = False) -> None:
         held = int(read_held_item(world.ram))
         if not is_mountain_forage(held):
             self._child = None
@@ -116,7 +125,12 @@ class MountainGrapeShipTask(Task):
         route = list(ROUTES.get(ROUTE_NAME, []))
         pos = get_pos_from_ram(world.ram)
         tilemap = int(read_ram_value(world.ram, "tilemap"))
-        sliced = slice_route_from_position(route, pos.x, pos.y, tilemap=tilemap)
+        if downhill and tilemap == 0x10:
+            mountain = mountain_downhill_escape(int(pos.x), int(pos.y), tilemap=tilemap)
+            rest = [wp for wp in route if wp.tilemap != 0x10]
+            sliced = list(mountain) + rest
+        else:
+            sliced = slice_route_from_position(route, pos.x, pos.y, tilemap=tilemap)
         self._child = MultiMapNavTask(
             name=f"{self.name}_return_to_bin",
             waypoints=sliced or route,
@@ -247,6 +261,23 @@ class MountainGrapeShipTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
         if result.status in {TaskStatus.FAILURE, TaskStatus.BLOCKED}:
+            tilemap = int(read_ram_value(world.ram, "tilemap"))
+            if (
+                self._phase == "return_to_bin"
+                and tilemap == 0x10
+                and self._return_retries < self.max_return_retries
+            ):
+                self._return_retries += 1
+                self._start_return(world, downhill=True)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason=(
+                        f"return downhill retry {self._return_retries}/"
+                        f"{self.max_return_retries} "
+                        f"({result.reason or result.status.value})"
+                    ),
+                )
             # Best-effort second+ grape: one already reached the bin, so a
             # later forage/return failure still ends the run SUCCESS.
             if self._shipped >= 1:
