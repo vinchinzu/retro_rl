@@ -636,6 +636,48 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         hoe_targets = {t.target_tile for t in second.tasks if t.name == "hoe_until_tilled"}
         self.assertFalse(hoe_targets & {(13, 28)})
 
+    def test_no_shop_or_plot_when_pocket_rings_have_no_capacity(self) -> None:
+        # Both pocket rings full / boxed in: buying a bag is pure waste, and
+        # CROP_ESTABLISH has nothing to do. Existing rows are still watered.
+        names = self._phase_names(
+            build_outdoor_day_phases(
+                weekday=3,
+                hour=6,
+                has_harvest=False,
+                has_waterable=True,
+                has_seeds=False,
+                has_debris=True,
+                season=0,
+                day=3,
+                money=250,
+                has_plant_capacity=False,
+            )
+        )
+        self.assertNotIn("BUY_SEEDS", names)
+        self.assertNotIn("ENSURE_CROP_SEEDS", names)
+        self.assertNotIn("CROP_ESTABLISH", names)
+        self.assertIn("CROP_WATER", names)
+
+    def test_crop_establish_noops_when_no_pocket_ring_needs_planting(self) -> None:
+        from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE
+        from harvest.planner.day_phase_registry import TaskBuildContext, _build_crop
+
+        world = make_date_world(0x00, season=0, day=3)
+        ctx = TaskBuildContext(seed_type="potato")
+        # Fill both pocket rings with grown crops -> nothing to establish.
+        for cx, cy in ((13, 28), (19, 28)):
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if (dx, dy) == (0, 0):
+                        continue
+                    world.ram[ADDR_MAP + (cy + dy) * 64 + (cx + dx)] = 0x56
+
+        task = _build_crop(ctx, CROP_ESTABLISH_PHASE, world)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("no pocket ring", result.reason or "")
+
     def test_d2_reactive_tactic_not_duplicated_by_plant_intent(self) -> None:
         # S0D2 folds planting into D2_FARM_CLEAR; the generic establish chain
         # must not also be scheduled off a same-day seed buy.

@@ -136,6 +136,7 @@ def _planting_today(
     day: int | None,
     late_day: bool,
     policy: DayPlannerPolicy,
+    has_plant_capacity: bool = True,
 ) -> bool:
     """True when today's plan should hoe + establish a plot.
 
@@ -143,8 +144,11 @@ def _planting_today(
     shed shelf, ``ENSURE_CROP_SEEDS`` picks it up, then ``CROP_ESTABLISH``
     tills and sows it (a fresh plot beside any existing rows). D2's own
     reactive tactic already plants, so it is excluded here.
+
+    ``has_plant_capacity`` is False when no pocket ring can still receive a
+    full bag (both rings full / boxed in) — planting is pointless then.
     """
-    if late_day or not policy.include_planting:
+    if late_day or not policy.include_planting or not has_plant_capacity:
         return False
     if has_seeds:
         return True
@@ -169,6 +173,7 @@ def build_day_phases(
     is_rainy: Optional[bool] = None,
     money: Optional[int] = None,
     stamina: Optional[Stamina | int] = None,
+    has_plant_capacity: Optional[bool] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble a day's phase list dynamically from state inspection.
@@ -211,8 +216,12 @@ def build_day_phases(
             money = probe.money()
         if stamina is None:
             stamina = probe.stamina()
+        if has_plant_capacity is None and probe.source_ram is not None:
+            has_plant_capacity = probe.pocket_has_plant_capacity()
 
     # Fill remaining defaults
+    if has_plant_capacity is None:
+        has_plant_capacity = True
     if weekday is None:
         weekday = 1
     if hour is None:
@@ -253,6 +262,7 @@ def build_day_phases(
         season=season,
         day=day,
         money=money,
+        has_plant_capacity=has_plant_capacity,
     )
 
     buy_cow_first = (
@@ -282,6 +292,7 @@ def build_day_phases(
         day=day,
         late_day=late_day,
         policy=policy,
+        has_plant_capacity=has_plant_capacity,
     )
 
     # Field wipe is valuable, but day CLEAR thrash starves berry ship on empty
@@ -420,6 +431,7 @@ def build_outdoor_day_phases(
     day: int = 1,
     money: Optional[int] = None,
     stamina: Optional[Stamina | int] = None,
+    has_plant_capacity: bool = True,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble the outdoor portion of the day's work from current farm state."""
@@ -434,6 +446,7 @@ def build_outdoor_day_phases(
         season=season,
         day=day,
         money=money,
+        has_plant_capacity=has_plant_capacity,
     )
     phases: List[PhaseSpec] = []
 
@@ -452,6 +465,7 @@ def build_outdoor_day_phases(
         day=day,
         late_day=late_day,
         policy=policy,
+        has_plant_capacity=has_plant_capacity,
     )
 
     # Early money (berries) before optional field wipe when nothing needs
@@ -561,6 +575,7 @@ def build_outdoor_day_phases_from_ram(
         day=day,
         money=probe.money(),
         stamina=probe.stamina(),
+        has_plant_capacity=probe.pocket_has_plant_capacity(),
         policy=policy,
     )
 
