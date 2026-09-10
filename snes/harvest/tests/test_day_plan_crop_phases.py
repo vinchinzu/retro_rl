@@ -586,10 +586,21 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CROP_ESTABLISH"))
         self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
 
-    def test_d3_no_plot_when_shop_already_shut(self) -> None:
-        # buy_seed_hour is 12; a 13:00 plan cannot restock, so no fresh plot —
-        # but the existing rows are still watered.
+    def test_d3_shop_still_planned_after_two_grape_clock(self) -> None:
+        # Two grapes land ~13:12. D3 shop_latest is 16:00, so potato still
+        # schedules (and the second plot still follows).
         names = self._phase_names(self._d3_outdoor(hour=13))
+        self.assertIn("BUY_SEEDS", names)
+        self.assertIn("CROP_ESTABLISH", names)
+        shop = self._d3_outdoor(hour=13)[
+            names.index("BUY_SEEDS_WINDOW")
+        ]
+        self.assertEqual(shop.params["latest_hour"], 16)
+
+    def test_d3_no_plot_when_shop_already_shut(self) -> None:
+        # Window is 16:00 on a two-grape day. 16:00 is too late to restock —
+        # existing rows are still watered.
+        names = self._phase_names(self._d3_outdoor(hour=16))
         self.assertNotIn("BUY_SEEDS", names)
         self.assertNotIn("CROP_ESTABLISH", names)
         self.assertIn("CROP_WATER", names)
@@ -599,6 +610,31 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         self.assertNotIn("BUY_SEEDS", names)
         self.assertNotIn("CROP_ESTABLISH", names)
         self.assertIn("CROP_WATER", names)
+
+    def test_crop_establish_targets_second_ring_once_west_pocket_is_planted(self) -> None:
+        from harvest.core.tile_catalog import ADDR_MAP
+        from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE
+        from harvest.planner.day_phase_registry import TaskBuildContext, _build_crop
+
+        world = make_date_world(0x00, season=0, day=3)
+        ctx = TaskBuildContext(seed_type="potato")
+
+        # West pocket empty -> establish aims at (13,28).
+        first = _build_crop(ctx, CROP_ESTABLISH_PHASE, world)
+        plant_first = next(t for t in first.tasks if t.name == "plant_until_plot")
+        self.assertEqual(plant_first.center, (13, 28))
+
+        # Plant the west ring; establish now aims at the D3 second ring (19,28).
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if (dx, dy) == (0, 0):
+                    continue
+                world.ram[ADDR_MAP + (28 + dy) * 64 + (13 + dx)] = 0x54
+        second = _build_crop(ctx, CROP_ESTABLISH_PHASE, world)
+        plant_second = next(t for t in second.tasks if t.name == "plant_until_plot")
+        self.assertEqual(plant_second.center, (19, 28))
+        hoe_targets = {t.target_tile for t in second.tasks if t.name == "hoe_until_tilled"}
+        self.assertFalse(hoe_targets & {(13, 28)})
 
     def test_d2_reactive_tactic_not_duplicated_by_plant_intent(self) -> None:
         # S0D2 folds planting into D2_FARM_CLEAR; the generic establish chain

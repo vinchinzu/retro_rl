@@ -235,5 +235,56 @@ class CropPlannerTests(unittest.TestCase):
         self.assertGreaterEqual(len(template.hoe_action_tiles), 20)
 
 
+class SecondPlotPlacementTests(unittest.TestCase):
+    """rr-20w.3 D3: score a second potato ring with the D2 ring protected."""
+
+    def _d2_ring(self):
+        return tuple(
+            (13 + dx, 28 + dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+        )
+
+    def test_protected_d2_ring_is_never_reused(self) -> None:
+        ram = _blank_ram()
+        protected = self._d2_ring()
+        config = CropPlanningConfig(
+            seed_type="potato",
+            day=3,
+            max_seed_bags=1,
+            bounds=(10, 24, 24, 30),
+            protected_tiles=protected,
+        )
+
+        plan = plan_crop_field(ram, config)
+
+        self.assertEqual(plan.seed_bags_needed, 1)
+        chosen = plan.plots[0]
+        self.assertFalse(set(chosen.crop_tiles) & set(protected))
+        self.assertNotIn((13, 28), chosen.crop_tiles)
+        # Still beside the D2 rows, not a distant east/south island.
+        self.assertLessEqual(abs(chosen.center[0] - 13), 8)
+        self.assertLessEqual(abs(chosen.center[1] - 28), 4)
+
+    def test_candidate_overlapping_the_d2_ring_is_rejected(self) -> None:
+        ram = _blank_ram()
+        eight = CROP_LAYOUTS["eight_tile_ring"]
+        config = CropPlanningConfig(
+            seed_type="potato", day=3, protected_tiles=self._d2_ring()
+        )
+        from harvest.planner.crop_planner import evaluate_plot_candidate
+
+        # (14,28) ring overlaps the protected D2 tiles → rejected.
+        self.assertIsNone(
+            evaluate_plot_candidate(
+                ram, (14, 28), CROP_SPECS["potato"], eight, config
+            )
+        )
+        # A clear neighbour to the east still scores.
+        self.assertIsNotNone(
+            evaluate_plot_candidate(
+                ram, (19, 28), CROP_SPECS["potato"], eight, config
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

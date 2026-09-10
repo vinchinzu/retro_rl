@@ -401,12 +401,12 @@ def farm_select_carry_skill(tool_id: int, *, timeout: int = 90):
     )
 
 
-def farm_nav_pocket_plant_skill(*, timeout: int = 4000) -> NavSkill:
-    """Stand on the tape plant notch (13, 28)."""
+def farm_nav_pocket_plant_skill(*, center=None, timeout: int = 4000) -> NavSkill:
+    """Stand on the pocket plant notch (default west pocket (13, 28))."""
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.nav import TILE_SIZE
 
-    tx, ty = WEST_POCKET_PLANT_CENTER
+    tx, ty = center or WEST_POCKET_PLANT_CENTER
     return NavSkill(
         name="nav_pocket_plant",
         target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
@@ -418,8 +418,8 @@ def farm_nav_pocket_plant_skill(*, timeout: int = 4000) -> NavSkill:
     )
 
 
-def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 9000) -> NavSkill:
-    """Stand west of (13,29) (fence-lip (13,30) is not a hoe stand).
+def farm_nav_pocket_hoe_stand_skill(*, center=None, timeout: int = 9000) -> NavSkill:
+    """Stand west of the ring's bottom-left (fence-lip cy+2 is not a stand).
 
     Same timeout/radius class as NAV_CROP: this hop often starts at the shed
     outdoor door after ENSURE_CROP_SEEDS. Tight radius + short timeout walked
@@ -429,9 +429,8 @@ def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 9000) -> NavSkill:
     from harvest.tasks.crop_skills import hoe_stand_px
 
     # Approach from the west so the last walk is RIGHT and RAM facing is
-    # already 2 when the first hoe (13,29) starts. Fence-lip (13,30) is not
-    # a stand.
-    cx, cy = WEST_POCKET_PLANT_CENTER
+    # already 2 when the first hoe starts. Fence-lip (cx, cy+2) is not a stand.
+    cx, cy = center or WEST_POCKET_PLANT_CENTER
     stand = (cx - 2, cy + 1)
     px, py = hoe_stand_px(stand, "right")
     return NavSkill(
@@ -444,24 +443,24 @@ def farm_nav_pocket_hoe_stand_skill(*, timeout: int = 9000) -> NavSkill:
     )
 
 
-def farm_hoe_tile_skill(*, timeout: int = 240):
+def farm_hoe_tile_skill(*, center=None, timeout: int = 240):
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_skills import hoe_until_tilled_skill
 
     return hoe_until_tilled_skill(
-        target_tile=WEST_POCKET_PLANT_CENTER,
+        target_tile=center or WEST_POCKET_PLANT_CENTER,
         face="up",
         timeout=timeout,
     )
 
 
-def farm_plant_tile_skill(*, seed_type: str = "potato", timeout: int = 240):
+def farm_plant_tile_skill(*, seed_type: str = "potato", center=None, timeout: int = 240):
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_skills import plant_until_crop_skill
 
     return plant_until_crop_skill(
         seed_type=seed_type,
-        target_tile=WEST_POCKET_PLANT_CENTER,
+        target_tile=center or WEST_POCKET_PLANT_CENTER,
         timeout=timeout,
     )
 
@@ -475,6 +474,8 @@ def farm_water_one_skill(*, timeout: int = 240):
 def farm_pocket_plant_skill(
     *,
     seed_type: str = "potato",
+    center=None,
+    ram=None,
     include_water: bool = False,
     include_plant: bool = True,
     timeout: int = 4000,
@@ -484,6 +485,9 @@ def farm_pocket_plant_skill(
     Carry must already hold hoe+seeds (establish pass). Water is a later
     can-pass unless ``include_water`` and the can is in the pair.
     ``include_plant=False`` is the hoe-until-5pm tune: till the ring only.
+    ``center`` picks the ring (default west pocket (13,28)); ``ram`` lets the
+    hoe-stand remap skip stands that are walls in the live map (second ring
+    is boxed east by the x21 bank).
     """
     from harvest.core.carry import seed_item_id
     from harvest.core.tile_catalog import Tool
@@ -493,45 +497,47 @@ def farm_pocket_plant_skill(
         pocket_hoe_ring_skills,
     )
 
+    center = center or WEST_POCKET_PLANT_CENTER
     skills: list = [
         farm_fence_jump_toss_skill(),
         # Walk into the pocket before X-swap. Doing the swap at the shed
         # door (post-ENSURE) times out while input_lock is still settling.
         # NavTask leaves (26,30) south then west — do not hoe the notch.
-        farm_nav_pocket_hoe_stand_skill(),
+        farm_nav_pocket_hoe_stand_skill(center=center),
         farm_select_carry_skill(int(Tool.HOE)),
-        *pocket_hoe_ring_skills(WEST_POCKET_PLANT_CENTER),
+        *pocket_hoe_ring_skills(center, ram=ram),
     ]
     if include_plant:
         skills.extend(
             [
-                farm_nav_pocket_plant_skill(),
+                farm_nav_pocket_plant_skill(center=center),
                 farm_select_carry_skill(seed_item_id(seed_type)),
-                plant_until_plot_skill(seed_type=seed_type),
+                plant_until_plot_skill(seed_type=seed_type, center=center),
             ]
         )
     if include_water:
-        skills.append(farm_pocket_water_skill())
+        skills.append(farm_pocket_water_skill(center=center))
     return sequence_skills("pocket_plant_plot", *skills, idle_between=True)
 
 
-def farm_pocket_water_skill(*, timeout: int = 4000):
+def farm_pocket_water_skill(*, center=None, timeout: int = 4000):
     """Reactive 8-ring water from the untilled notch. No tape replay.
 
     Can pass: select the watering can, fill if empty (y=31 corridor + F0),
-    stand on (13,28) for the cardinals, corners from right-middle /
-    left-middle. Does not water the notch.
+    stand on the ring centre for the cardinals, corners from right-middle /
+    left-middle. Does not water the notch. ``center`` picks the ring.
     """
     from harvest.core.tile_catalog import Tool
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_skills import EnsureCanFilledTask, pocket_water_ring_skills
 
+    center = center or WEST_POCKET_PLANT_CENTER
     skills: list = [
         farm_fence_jump_toss_skill(),
         farm_select_carry_skill(int(Tool.WATERING_CAN)),
         EnsureCanFilledTask(),
-        farm_nav_pocket_plant_skill(),
-        *pocket_water_ring_skills(WEST_POCKET_PLANT_CENTER),
+        farm_nav_pocket_plant_skill(center=center),
+        *pocket_water_ring_skills(center),
     ]
     return sequence_skills("pocket_water_ring", *skills, idle_between=True)
 

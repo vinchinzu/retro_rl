@@ -404,34 +404,37 @@ class CropEstablishMixin:
         ram: np.ndarray,
         start: Tuple[int, int],
     ) -> Optional[Tuple[int, int]]:
-        """Tape center (13,28) when the player is in the west plant pocket."""
+        """First unplanted pocket ring (west (13,28), then second (19,28)).
+
+        The player only needs to be in the west plant pocket band; the D3
+        second ring sits just east of the well and shares that band.
+        """
         try:
             from harvest.maps.farm_pond import (
-                WEST_POCKET_PLANT_CENTER,
+                POCKET_PLANT_CENTERS,
                 player_in_west_plant_pocket,
             )
+            from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
         except Exception:
             return None
         if not player_in_west_plant_pocket(start):
             return None
-        center = WEST_POCKET_PLANT_CENTER
-        if center in self._rejected_plan_centers:
-            return None
-        tillable = 0
-        for dy in range(-1, 2):
-            for dx in range(-1, 2):
-                tid = get_tile_at(ram, center[0] + dx, center[1] + dy)
-                if tid in TILLABLE_TILES or tid in {
-                    0x00,
-                    0x01,
-                    0x02,
-                    FRESH_TILLED,
-                    WATERED_TILLED,
-                }:
-                    tillable += 1
-        if tillable < 6:
-            return None
-        return center
+        soil_ids = {0x00, 0x01, 0x02, FRESH_TILLED, WATERED_TILLED}
+        for center in POCKET_PLANT_CENTERS:
+            if center in self._rejected_plan_centers:
+                continue
+            if count_ring_planted(ram, center) >= PLOT_RING_SIZE:
+                continue
+            tillable = sum(
+                1
+                for dy in range(-1, 2)
+                for dx in range(-1, 2)
+                if get_tile_at(ram, center[0] + dx, center[1] + dy) in TILLABLE_TILES
+                or get_tile_at(ram, center[0] + dx, center[1] + dy) in soil_ids
+            )
+            if tillable >= 6:
+                return center
+        return None
 
     def _fallback_local_till_center(
         self,

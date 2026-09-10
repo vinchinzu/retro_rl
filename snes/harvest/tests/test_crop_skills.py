@@ -452,5 +452,88 @@ class PlantPlotSkillTests(unittest.TestCase):
         self.assertIn("bag spent planted=1", done.reason or "")
 
 
+class SecondPocketPlotTests(unittest.TestCase):
+    """rr-20w.3 D3: the second potato ring beside the D2 rows (19,28)."""
+
+    def _field_ram(self, *, west_planted=False) -> np.ndarray:
+        from harvest.tasks.crop_geometry import UNTILLED
+
+        ram = np.zeros(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
+        # West field tillable; the x21 column is a 0xA8 bank wall.
+        for y in range(20, 32):
+            for x in range(9, 22):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = UNTILLED
+        for y in range(20, 32):
+            ram[ADDR_MAP + y * MAP_WIDTH + 21] = 0xA8
+        for y in (26, 27):
+            for x in (15, 16, 17):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = 0xA1  # well body
+        if west_planted:
+            for x, y in plot_tiles((13, 28), include_center=False):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = PLANTED_DRY
+        ram[ADDR_INPUT_LOCK] = 1
+        return ram
+
+    def test_second_center_is_registered(self) -> None:
+        from harvest.maps.farm_pond import (
+            POCKET_PLANT_CENTERS,
+            SECOND_POCKET_PLANT_CENTER,
+        )
+
+        self.assertEqual(SECOND_POCKET_PLANT_CENTER, (19, 28))
+        self.assertEqual(POCKET_PLANT_CENTERS, ((13, 28), (19, 28)))
+
+    def test_next_center_and_water_center_follow_planted_rings(self) -> None:
+        from harvest.maps.farm_pond import (
+            next_unplanted_pocket_center,
+            pocket_water_center,
+        )
+
+        empty = self._field_ram()
+        self.assertEqual(next_unplanted_pocket_center(empty), (13, 28))
+        self.assertEqual(pocket_water_center(empty), (13, 28))
+
+        west = self._field_ram(west_planted=True)
+        self.assertEqual(next_unplanted_pocket_center(west), (19, 28))
+        self.assertEqual(pocket_water_center(west), (13, 28))
+
+    def test_establish_sequence_targets_the_second_ring(self) -> None:
+        seq = farm_pocket_plant_skill(center=(19, 28))
+        hoe_steps = [t for t in seq.tasks if t.name == "hoe_until_tilled"]
+        self.assertEqual(
+            {t.target_tile for t in hoe_steps},
+            {target for target, _s, _f in hoe_plan((19, 28))},
+        )
+        plant = next(t for t in seq.tasks if t.name == "plant_until_plot")
+        self.assertEqual(plant.center, (19, 28))
+        nav_stand = next(t for t in seq.tasks if t.name == "nav_pocket_hoe_stand")
+        self.assertEqual(
+            (nav_stand.target_px[0] // TILE_SIZE, nav_stand.target_px[1] // TILE_SIZE),
+            (17, 29),
+        )
+
+    def test_ram_remap_skips_the_x21_bank_wall(self) -> None:
+        ram = self._field_ram()
+        # Without ram the east-column stand stays on the 0xA8 bank column.
+        legacy, _ = remap_pocket_hoe_stand((19, 28), (20, 27), (21, 27), "left")
+        self.assertEqual(legacy, (21, 27))
+        # With ram the stand moves off x21 onto a real tillable tile, north face.
+        stand, face = remap_pocket_hoe_stand(
+            (19, 28), (20, 27), (21, 27), "left", ram
+        )
+        self.assertNotEqual(stand[0], 21)
+        self.assertEqual(abs(stand[0] - 20) + abs(stand[1] - 27), 1)
+
+    def test_hoe_ring_navs_land_on_walkable_tiles(self) -> None:
+        ram = self._field_ram()
+        skills = pocket_hoe_ring_skills((19, 28), ram=ram)
+        navs = skills[0::2]
+        for nav in navs:
+            sx = nav.target_px[0] // TILE_SIZE
+            sy = nav.target_px[1] // TILE_SIZE
+            self.assertNotEqual(sx, 21, f"stand {sx,sy} on the x21 bank")
+            self.assertLess(sy, 30, f"stand {sx,sy} on the fence lip")
+
+
 if __name__ == "__main__":
     unittest.main()

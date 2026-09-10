@@ -21,6 +21,7 @@ ensure_monorepo_on_path()
 
 from retro_harness import TaskStatus, WorldState
 
+from harvest.core.game_clock import clock_from_ram
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.runtime.retro_setup import make_harvest_env
@@ -43,6 +44,11 @@ def _parse_args() -> argparse.Namespace:
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "buy_seeds_d2_probe.json",
+    )
+    p.add_argument(
+        "--save-end-state",
+        default=None,
+        help="Save emulator pin after a SUCCESS buy (farm tilemap, stock up).",
     )
     return p.parse_args()
 
@@ -77,6 +83,7 @@ def main() -> int:
             obs, _reward, _term, _trunc, _info = env.step(action)
         ram = env.get_ram()
         pos = get_pos_from_ram(ram)
+        end_clock = clock_from_ram(ram)
         payload = {
             "status": last_status.value if hasattr(last_status, "value") else str(last_status),
             "reason": reason,
@@ -87,8 +94,31 @@ def main() -> int:
             "potato_seeds": [start_stock, int(read_ram_value(ram, "potato_seeds") or 0)],
             "end_tilemap": f"0x{int(ram[ADDR_TILEMAP]):02X}",
             "end_pos": [int(pos.x), int(pos.y)],
+            "end_clock": str(end_clock),
+            "hour": int(end_clock.hour),
+            "minute": int(end_clock.minute),
             "phase": task.phase_text,
         }
+        if args.save_end_state and last_status == TaskStatus.SUCCESS:
+            from harvest.scripts.leftover_exec import save_emulator_state
+
+            # SUCCESS fires the instant the farmer steps back onto the farm
+            # tilemap — still mid walk-in with input locked and the crop
+            # overlay not yet repopulated. Settle so the saved pin is a clean
+            # free-move stand.
+            for _ in range(240):
+                obs, _r, _t, _tr, _i = env.step(make_action())
+            ram = env.get_ram()
+            pos = get_pos_from_ram(ram)
+            end_clock = clock_from_ram(ram)
+            payload["frames"] = frame + 240
+            payload["end_pos"] = [int(pos.x), int(pos.y)]
+            payload["end_clock"] = str(end_clock)
+            payload["hour"] = int(end_clock.hour)
+            payload["minute"] = int(end_clock.minute)
+            saved = save_emulator_state(env, args.save_end_state)
+            payload["end_state"] = str(saved)
+            print(f"[BUY] saved {saved}")
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2) + "\n")
         print(json.dumps(payload, indent=2))
