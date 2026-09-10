@@ -47,10 +47,23 @@ CROPS: Dict[str, Crop] = {c.name: c for c in (POTATO, TURNIP)}
 
 @dataclass(frozen=True)
 class CostModel:
-    """Per-action frame costs. Defaults from ``docs/SPRING_ECONOMY.md`` §4."""
+    """Per-action frame costs. Defaults from ``docs/SPRING_ECONOMY.md`` §4.
 
-    daily_budget_f: int = 10_400          # 06:00->18:00 usable, pre walk-home
+    There is **no forced bedtime** — the evening never ends, the can refills
+    at F0 and stamina refills at the hot spring, so a wake→sleep cycle can do
+    an arbitrary amount of work. ``evening_frames`` is only a *practical*
+    ceiling (how long a real run's day should take); raise it freely. A crop
+    still advances exactly one stage per sleep regardless of how much you do.
+    The real cap on ring count is: rings established late enough that they
+    cannot mature before the D30 summer wipe, seed-capital timing, and — at
+    very high counts — mature rings piling up faster than one evening clears
+    them (`can't harvest all in one day`).
+    """
+
+    evening_frames: int = 60_000          # practical wake->sleep work ceiling
     home_sleep_f: int = 1_000
+    spa_refill_f: int = 2_400             # farm -> hot spring -> farm (stamina)
+    tool_uses_per_spa: int = 40           # hoe/water swings before a spa top-up
 
     # 2-grape run measured at 6194 f (06:00->13:12); a 3rd grape pushes past
     # 15:00 and risks the 17:00 farm ShippingScene, so the run is capped at 2.
@@ -231,7 +244,8 @@ def _water_plan(
     watered: List[int] = []
     frames = 0
     refills = 0
-    tiles = 0
+    tiles = 0             # tiles since last can refill
+    swings = 0            # tool uses since last spa top-up
     for n, i in enumerate(candidates):
         tiles_here = crops[rings[i].crop].tiles_per_bag
         add_frames = cost.water_ring_f if not watered else cost.water_ring_marginal_f
@@ -240,11 +254,15 @@ def _water_plan(
             add_frames += cost.refill_f
             add_refills = 1
             tiles = 0
+        if swings + tiles_here > cost.tool_uses_per_spa:
+            add_frames += cost.spa_refill_f
+            swings = 0
         if frames + add_frames > budget_left:
             break
         frames += add_frames
         refills += add_refills
         tiles += tiles_here
+        swings += tiles_here
         watered.append(i)
     return watered, frames, refills
 
@@ -266,7 +284,7 @@ def _resolve_day(
     """
     day = state.day
     crop = crops[crop_name]
-    budget = cost.daily_budget_f - cost.home_sleep_f
+    budget = cost.evening_frames - cost.home_sleep_f
     frames = 0
     wallet = state.wallet
     bags = state.bags
@@ -371,7 +389,7 @@ def optimize_spring(
     start_wallet: int = 250,
     start_bags: int = 0,
     beam_width: int = 200,
-    allow_grapes_through_day: int = 8,
+    allow_grapes_through_day: int = 6,
 ) -> SpringPlan:
     cal = calendar or Calendar()
     cost = cost or CostModel()
@@ -390,7 +408,7 @@ def optimize_spring(
             grape_opts = (0, 1, 2) if st.day <= allow_grapes_through_day else (0,)
             # buy up to (empty rings + 1); capped by search breadth
             empty = sum(1 for r in st.rings if not r.planted)
-            buy_opts = tuple(range(0, min(empty, 3) + 1))
+            buy_opts = tuple(range(0, min(empty, 6) + 1))
             for g in grape_opts:
                 for b in buy_opts:
                     child = _resolve_day(st, cal, crops, cost, crop, g, b, ring_names)

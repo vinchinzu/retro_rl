@@ -30,7 +30,7 @@ def main() -> None:
     p.add_argument("--start-bags", type=int, default=0)
     p.add_argument("--rain-days", type=int, nargs="*", default=[])
     p.add_argument("--blocked-days", type=int, nargs="*", default=[])
-    p.add_argument("--grapes-through", type=int, default=8)
+    p.add_argument("--grapes-through", type=int, default=6)
     p.add_argument("--beam", type=int, default=200)
     p.add_argument("--sweep", action="store_true", help="compare 1..6 rings, both crops")
     p.add_argument("--out", type=Path)
@@ -45,7 +45,7 @@ def main() -> None:
     if args.sweep:
         print(f"{'rings':>5} {'crop':>7} {'final G':>9} {'shipped G':>10}")
         for crop in ("potato", "turnip"):
-            for n in range(1, 7):
+            for n in range(2, 15, 2):
                 plan = optimize_spring(
                     rings=_rings(n), crop=crop, calendar=cal, cost=cost,
                     start_wallet=args.start_wallet, start_bags=args.start_bags,

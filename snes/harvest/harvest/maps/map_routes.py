@@ -394,13 +394,11 @@ _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
     Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
     Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
-    Waypoint(
-        tilemap=0x10,
-        target_px=(520, 712),
-        radius=16,
-        run_direction="down",
-        force_run=True,
-    ),
+    # NOTE: 960585b3 briefly forced run_direction="down"/force_run here; the
+    # grape *return* slices this same list and the force-run pinned it at
+    # ~(505,633) into the carpenter terrace wall (run10). Plain waypoint;
+    # MultiMapNavTask's run_direction stall guard covers a genuine pin.
+    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
     Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
     Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
     Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),
