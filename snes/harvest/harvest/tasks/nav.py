@@ -415,8 +415,7 @@ class Navigator:
             return None
 
         action = np.zeros(12, dtype=np.int32)
-        # We don't hold B (run) for micro-centering to avoid overshooting
-        # Move along the dominant axis only to avoid diagonal drift.
+        # Last-few-px walk: 2px/f run overshoots CENTER_TOL and L/R-flips.
         if abs(dx) >= abs(dy) and abs(dx) >= tolerance:
             direction = "right" if dx > 0 else "left"
             action[7] = 1 if dx > 0 else 0  # Right
