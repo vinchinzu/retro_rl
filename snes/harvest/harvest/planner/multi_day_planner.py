@@ -65,6 +65,10 @@ class MultiDayPlannerTask(Task):
     _last_day_deferred: list[dict[str, object]] = field(default_factory=list, init=False)
     _day_failures: list[dict[str, object]] = field(default_factory=list, init=False)
     _day_journal: list[dict[str, object]] = field(default_factory=list, init=False)
+    _return_home_retries: int = field(default=0, init=False)
+    # A stranded return_home is the dominant terminal killer of long runs. Give
+    # it a few fresh attempts (nav state is rebuilt each time) before failing.
+    max_return_home_retries: int = 3
 
     def reset(self, world: WorldState) -> None:
         self._phase = "plan_day"
@@ -418,6 +422,7 @@ class MultiDayPlannerTask(Task):
                     )
                 self._phase = "plan_day"
                 self._current_task = None
+                self._return_home_retries = 0
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             return TaskResult(
                 status=TaskStatus.RUNNING,
@@ -545,6 +550,18 @@ class MultiDayPlannerTask(Task):
                     )
                     self._phase = "sleep"
                     self._current_task = None
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action()),
+                    )
+                if self._return_home_retries < self.max_return_home_retries:
+                    self._return_home_retries += 1
+                    self._current_task = None
+                    print(
+                        f"[MULTI_DAY] return_home outdoor failure "
+                        f"({self._return_home_retries}/{self.max_return_home_retries}); "
+                        f"rebuilding: {reason}"
+                    )
                     return TaskResult(
                         status=TaskStatus.RUNNING,
                         action=ActionResult(make_action()),
