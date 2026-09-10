@@ -356,6 +356,13 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
     # harvest_bot --end-of-spring uses until_season=0 until_day=30 so success
     # when date > Spring 30 (i.e. Summer 1 morning).
     if args.end_of_spring:
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+
+        # Spring campaign to Summer is a potato-economy loop. Daily CLEAR_FIELD
+        # re-picks regrown weeds that never touch the north planting pocket, and
+        # it routinely strands the farmer deep in the south field where
+        # return_home cannot path (terminal). D2 farm clear is its own path.
+        extra.setdefault("policy", DayPlannerPolicy(include_field_clear=False))
         return MultiDayPlannerTask(
             until_season=0,
             until_day=30,
