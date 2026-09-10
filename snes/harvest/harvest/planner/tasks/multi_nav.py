@@ -24,12 +24,7 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_TILEMAP, LIFTABLE_TILES
 from harvest.tasks.farm_ops import TileScanner
 
-from harvest.maps.farm_pond import FARM_TILEMAP_IDS
-from harvest.maps.map_config import (
-    Waypoint,
-    farm_coords_look_like_path,
-    get_walkable_tiles,
-)
+from harvest.maps.map_config import Waypoint, get_walkable_tiles
 from harvest.tasks.primitives import (
     drain_action_queue,
     press_button_sequence,
@@ -39,7 +34,6 @@ from harvest.planner.tasks.nav_corridor import (
     dirs_toward,
     entity_blocks,
     farm_soft_blocks,
-    force_run_hits_entity,
     hop_target,
     liftable_gate_toward,
     micro_center_action,
@@ -186,20 +180,6 @@ class MultiMapNavTask(Task):
     def _sync_travel_blocks(self, ram: np.ndarray, tilemap: int) -> None:
         self._sync_farm_soft_blocks(ram, tilemap)
         self._sync_entity_blocks(ram)
-
-    def _farm_path_gate_leak_action(self, ram: np.ndarray) -> Optional[np.ndarray]:
-        """Path→farm RAM still holds the east-gate pixel; real body is west gate.
-
-        dirs_toward (80,424) from (244,118) is down+left and walks the real
-        farmer into the west-fence pocket. Right is toward the bin row.
-        """
-        tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-        if tilemap not in FARM_TILEMAP_IDS:
-            return None
-        cur = self._navigator.current_pos
-        if not farm_coords_look_like_path(cur.x, cur.y):
-            return None
-        return make_action(right=True, b=True)
 
     # Back-compat for unit tests that assert weed no-go membership.
     @property
@@ -384,10 +364,7 @@ class MultiMapNavTask(Task):
             # dirs_toward(0,0) is LEFT — do not charge a wall when already in
             # radius (leftover spa pin sat on the hop-0 stand facing a rock).
             wp = self._current_wp()
-            leak = self._farm_path_gate_leak_action(world.ram)
-            if leak is not None:
-                action = leak
-            elif wp and not self._at_wp_target(wp):
+            if wp and not self._at_wp_target(wp):
                 cur = self._navigator.current_pos
                 primary, secondary = dirs_toward(
                     wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
@@ -462,7 +439,7 @@ class MultiMapNavTask(Task):
                 direction = wp.exit_direction or "left"
                 return TaskResult(
                     status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(**{direction: True, "b": True})),
+                    action=ActionResult(make_action(**{direction: True})),
                     reason=f"push into destination {direction}",
                 )
             if self._settle_frames >= 30:
@@ -577,14 +554,6 @@ class MultiMapNavTask(Task):
             self._advance_waypoint()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
-        leak = self._farm_path_gate_leak_action(world.ram)
-        if leak is not None:
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(leak),
-                reason="farm path-gate leak",
-            )
-
         # Direct run: if waypoint specifies run_direction, just hold that
         # direction + B. Much faster than BFS for known clear paths.
         # Check the axis of travel to detect overshoot.
@@ -618,41 +587,15 @@ class MultiMapNavTask(Task):
                 self._advance_waypoint()
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             if wp.force_run:
-                # Mountain NPCs are sprites, not solids — charging past
-                # them is the grape corridor. Only yield after a real pin.
-                if self._pixel_stuck >= 24:
-                    self._sync_entity_blocks(world.ram)
-                    npc_pin = force_run_hits_entity(
-                        self._navigator.current_tile,
-                        d,
-                        self._entity_blocks,
-                        ahead=2,
-                    )
-                    if npc_pin and self._pixel_stuck < 48:
-                        return TaskResult(
-                            status=TaskStatus.RUNNING,
-                            action=ActionResult(make_action()),
-                            reason="wait npc",
-                        )
-                    if npc_pin or self._pixel_stuck >= 48:
-                        # Fall through to BFS. Do not hug until 17:00.
-                        pass
-                    else:
-                        return TaskResult(
-                            status=TaskStatus.RUNNING,
-                            action=ActionResult(make_action(**{d: True, "b": True})),
-                        )
-                else:
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action(**{d: True, "b": True})),
-                    )
-            else:
-                safe = self._safe_walk_action(world.ram, d)
                 return TaskResult(
                     status=TaskStatus.RUNNING,
-                    action=ActionResult(safe if safe is not None else make_action()),
+                    action=ActionResult(make_action(**{d: True, "b": True})),
                 )
+            safe = self._safe_walk_action(world.ram, d)
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(safe if safe is not None else make_action()),
+            )
 
         # Close-range direct walk: when within ~5 tiles, walk directly toward
         # the target without BFS — but NEVER into fence/weed/solid tiles.

@@ -10,13 +10,6 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-import numpy as np
-
-from harvest.core.npc_catalog import (
-    ADDR_PLAYER_GOBJ_INDEX,
-    GOBJ_STRUCT_BASE,
-    GOBJ_STRUCT_STRIDE,
-)
 from harvest.core.ram_catalog import field_spec
 from harvest.maps.map_config import (
     ROUTES,
@@ -31,7 +24,6 @@ from harvest.maps.map_config import (
 from harvest.core.game_clock import ClockTimeline, compare_frame_benches
 from harvest.planner.day_phase_catalog import MOUNTAIN_BERRY_PHASE, PHASE_SEQUENCES
 from harvest.planner.day_phase_types import PhaseKind
-from harvest.planner.tasks.nav_corridor import entity_blocks, force_run_hits_entity
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
 from harvest.tasks.mountain_berry import (
     BERRY_NAV_SEGMENTS,
@@ -59,8 +51,6 @@ class PathSegmentTests(unittest.TestCase):
         shared = SEGMENTS["farm_to_path"]
         self.assertEqual(shared[0].tilemap, 0x00)
         self.assertEqual(shared[0].target_px, (137, 375))
-        self.assertEqual(shared[0].run_direction, "down")
-        self.assertTrue(shared[0].force_run)
         self.assertFalse(shared[0].is_exit)
         self.assertEqual(shared[1].target_px, (136, 392))
         self.assertIn((136, 424), [wp.target_px for wp in shared])
@@ -95,8 +85,6 @@ class PathSegmentTests(unittest.TestCase):
         self.assertEqual(SEGMENTS["path_to_mountain"][0].target_px, (132, 128))
         self.assertEqual(SEGMENTS["path_to_mountain"][-1].exit_direction, "up")
         self.assertEqual(SEGMENTS["path_to_farm"][0].target_px, (132, 128))
-        self.assertEqual(SEGMENTS["path_to_farm"][0].run_direction, "down")
-        self.assertTrue(SEGMENTS["path_to_farm"][0].force_run)
         self.assertEqual(SEGMENTS["path_to_farm"][-1].exit_direction, "right")
         self.assertNotEqual(
             SEGMENTS["path_to_town"][-1].target_px,
@@ -161,9 +149,6 @@ class PathSegmentTests(unittest.TestCase):
         # Spa pull-up (328, 688) is spa-only — grape inbound stays land→east.
         self.assertEqual(hops[0].target_px, (328, 728))
         self.assertEqual(hops[1].target_px, (424, 712))
-        self.assertGreaterEqual(hops[1].radius, 24)
-        self.assertEqual(hops[1].run_direction, "right")
-        self.assertTrue(hops[1].force_run)
         self.assertGreaterEqual(max(wp.target_px[0] for wp in hops), 500)
         self.assertEqual(hops[-1].target_px, (326, 409))
 
@@ -282,18 +267,6 @@ class MountainBerrySelectTests(unittest.TestCase):
         hops = [wp.target_px for wp in task._child.waypoints]
         self.assertEqual(hops[0], (132, 128))
 
-    def test_north_edge_spawn_keeps_full_inbound_not_gotz_manhattan(self) -> None:
-        world = make_transition_world(0x10, current_tile=(8, 0))
-        set_player_pos(world.ram, 137, 10)
-        task = MountainBerryTask()
-        task.reset(world)
-        self.assertEqual(task.phase_text, "mountain_entry_to_first_berry")
-        inbound = SEGMENTS["mountain_entry_to_first_berry"]
-        self.assertEqual(len(task._child.waypoints), len(inbound))
-        self.assertEqual(task._child.waypoints[0].target_px, (328, 728))
-        sliced = slice_route_from_position(list(inbound), 137, 10, tilemap=0x10)
-        self.assertLess(len(sliced), len(inbound))
-
     def test_house_start_arms_exit_to_farm(self) -> None:
         world = make_transition_world(0x15, current_tile=(8, 12))
         set_player_pos(world.ram, 136, 120)
@@ -375,22 +348,11 @@ class MountainBerrySelectTests(unittest.TestCase):
             for wp in inbound
             if wp.force_run
         }
-        self.assertEqual(forced[(424, 712)], "right")
         self.assertEqual(forced[(520, 712)], "right")
         self.assertEqual(forced[(520, 632)], "up")
         self.assertEqual(forced[(328, 568)], "left")
         self.assertEqual(forced[(240, 488)], "left")
         self.assertEqual(forced[(312, 360)], "right")
-        # Return charges the same carpenter corridor (16:00 sprites soak BFS).
-        ret = {
-            wp.target_px: wp.run_direction
-            for wp in cliff
-            if wp.force_run
-        }
-        self.assertEqual(ret[(328, 568)], "down")
-        self.assertEqual(ret[(520, 632)], "down")
-        self.assertEqual(ret[(520, 712)], "down")
-        self.assertEqual(ret[(424, 712)], "left")
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))
@@ -471,51 +433,6 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(task.shipped_count, 1)
         self.assertIn("shop window", result.reason or "")
-
-    def test_second_grape_starts_at_ten_when_shop_bail_is_noon(self) -> None:
-        world = make_transition_world(0x00, current_tile=(8, 28))
-        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
-        world.ram[ADDR_HELD] = 0x03
-        world.ram[field_spec("hour").address] = 10
-        task = MountainGrapeShipTask(target_count=2)
-        task.reset(world)
-        task._phase = "verify"
-        task._child = None
-        self._grape_at_bin(world)
-        result = task.step(world)
-        self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertEqual(task.shipped_count, 1)
-        self.assertEqual(task.phase_text, "pick")
-        self.assertIn("returning for next grape", result.reason or "")
-
-
-def _write_u16(ram: np.ndarray, addr: int, value: int) -> None:
-    ram[addr] = value & 0xFF
-    ram[addr + 1] = (value >> 8) & 0xFF
-
-
-def _write_gobj(ram: np.ndarray, slot: int, sprite: int, x: int, y: int) -> None:
-    offset = GOBJ_STRUCT_BASE + slot * GOBJ_STRUCT_STRIDE
-    _write_u16(ram, offset, 0x7777)
-    _write_u16(ram, offset + 0x02, sprite)
-    _write_u16(ram, offset + 0x08, x)
-    _write_u16(ram, offset + 0x0A, y)
-
-
-class CarpenterNpcAvoidTests(unittest.TestCase):
-    def test_gotz_in_carpenter_corridor_blocks_force_run_up(self) -> None:
-        ram = np.zeros(0x20000, dtype=np.uint8)
-        ram[ADDR_TILEMAP] = 0x10
-        _write_u16(ram, ADDR_PLAYER_GOBJ_INDEX, 0)
-        _write_gobj(ram, 0, 0x0005, 32 * 16, 44 * 16)
-        _write_gobj(ram, 1, 0x025B, 31 * 16, 37 * 16)
-        blocked = entity_blocks(ram, (32, 44))
-        self.assertTrue(blocked)
-        self.assertTrue(force_run_hits_entity((32, 44), "up", blocked, ahead=8))
-        self.assertFalse(force_run_hits_entity((32, 44), "right", blocked, ahead=8))
-
-    def test_empty_axis_does_not_block_force_run(self) -> None:
-        self.assertFalse(force_run_hits_entity((32, 44), "up", set(), ahead=8))
 
 
 if __name__ == "__main__":

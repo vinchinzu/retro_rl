@@ -121,28 +121,6 @@ def farm_soft_blocks(
     }
 
 
-def force_run_hits_entity(
-    player_tile: Tile,
-    direction: str,
-    blocked: Set[Tile],
-    *,
-    ahead: int = 8,
-) -> bool:
-    """True when a force_run charge would hit a live NPC/animal tile.
-
-    Carpenter-corridor Gotz sits a few tiles up the force_run axis; adjacent
-    only is not enough. ``ahead`` is tiles, not pixels.
-    """
-    if not blocked or direction not in _DIR_DELTA:
-        return False
-    dx, dy = _DIR_DELTA[direction]
-    px, py = int(player_tile[0]), int(player_tile[1])
-    for i in range(1, max(1, int(ahead)) + 1):
-        if (px + dx * i, py + dy * i) in blocked:
-            return True
-    return False
-
-
 def entity_blocks(ram: np.ndarray, player_tile: Tile) -> Set[Tile]:
     """Reroute around live dog / NPC / animal sprites (not the player)."""
     blocked: Set[Tile] = set()
@@ -324,7 +302,6 @@ __all__ = [
     "dirs_toward",
     "entity_blocks",
     "farm_soft_blocks",
-    "force_run_hits_entity",
     "hop_target",
     "liftable_gate_toward",
     "micro_center_action",
