@@ -144,7 +144,24 @@ class MultiDayPlannerTask(Task):
             season,
             replace(self.policy, include_end_day=False),
         )
+        # The campaign's configured crop wins while it is still plantable this
+        # date — ram resolution otherwise drifts to turnip after a few potato
+        # ships (its ranch-master "remaining" ranks higher), diluting the
+        # potato-max goal and thrashing the pocket rings between crops.
         resolved_seed = resolve_seed_type_from_ram(world.ram) or self.seed_type
+        if self.seed_type and resolved_seed != self.seed_type:
+            try:
+                from harvest.planner.crop_planner import resolve_seed_type_for_date
+
+                if (
+                    resolve_seed_type_for_date(
+                        season, day, inventory={self.seed_type: 1}
+                    )
+                    == self.seed_type
+                ):
+                    resolved_seed = self.seed_type
+            except Exception:
+                pass
         decision = auto_day_plan_decision(
             ram=world.ram,
             policy=day_policy,
