@@ -13,6 +13,24 @@ unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
 The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.
 
+**2026-09-10 — Clean dodge (`rr-npv.5`, fixture-live).** Ganon/Patra no longer
+`idle(n)` through attack cooldown: dodge the nearest fireball/eye (manhattan
+≤14, horizontal, flip at x=56/200), face, then fire. Brown Ganon commits to
+the silver-arrow axis (do not dodge off the column). Door holds in
+`natural_path` / `path.py` bind the column from leftover+hold_dir
+(`door_band_goal`), not a frozen spawn x. Dest is RAM.
+
+Fixture-live, no assist, no pokes, deaths 0, `route_eligible=false`:
+
+| lab | pin | dest RAM | frames |
+|-----|-----|----------|--------|
+| Patra north | `Level9FinalPatraReconFixture` | doors bit 0x08, body gone | 3716 |
+| Ganon silver-arrow | `Level9BeforeGanonReconFixture` | `$0672 != 0` | 1136 |
+| credits | same, through wait_credits | mode 0x13 | 3167 e2e |
+
+`Level9EntranceReconFixture` leftover: play `0x76` `(120,205)` TF `0xFF`.
+Entry→Patra from that pin is a later hop (prefix + join). Not spine-green.
+
 **2026-09-05 — the L8 predecessor is now measured.** `--through level8` is
 power-on spine-green 2/2 (`rr-6o7.3`); the shard fanfare settles Link on OW
 `0x6D` `(96,93)` mode 5, TF `0xFF`, MK 1, bombs 14, hc 10, B = bombs. That is

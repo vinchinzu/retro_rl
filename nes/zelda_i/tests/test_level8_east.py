@@ -70,6 +70,16 @@ def _step(ctl, ram: np.ndarray):
     return act
 
 
+def test_knockback_y_aligns_to_leftover_door_band_not_south() -> None:
+    """Past statue-clear x, leftover y=157 y-aligns UP to the door row, never DOWN."""
+    ctl = make_east_3e_controller(dest=None)
+    act = _step(ctl, _ram(x=208, y=157, doors=DOORS_RIGHT_OPEN))
+    assert not ctl.failed
+    assert list(act.action) == UP
+    assert list(act.action) != DOWN
+    assert act.reason == "east_align"
+
+
 def test_leftover_emits_right_not_down_or_up() -> None:
     """(120,93) with RIGHT bit goes RIGHT. Not DOWN south or UP north."""
     snap = read_snapshot(_ram(x=120, y=93, doors=DOORS_RIGHT_OPEN))

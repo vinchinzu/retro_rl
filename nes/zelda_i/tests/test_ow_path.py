@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
-from zelda_i.overworld.graph import LEVEL2_5C_MAZE_WAYPOINTS, ScreenHop, is_5c_maze_hop
+from zelda_i.overworld.graph import (
+    LEVEL2_5C_MAZE_WAYPOINTS,
+    LEVEL2_DOOR_HOPS,
+    ScreenHop,
+    is_5c_maze_hop,
+)
 from zelda_i.overworld.path import OverworldPathController, PathNavPhase
 from zelda_i.ram import (
     ADDR_HEALTH,
@@ -346,3 +351,52 @@ def test_worth_skips_lynel_and_does_not_farm() -> None:
     assert ctrl.rupee_farm_attempts == 0
     assert "farm_chase" not in act.reason
     assert not any("rupee_farm" in note for note in ctrl.notes)
+
+
+def _cardinal(act) -> str:
+    if act.action == nes_idle_action():
+        return "IDLE"
+    for name in ("LEFT", "RIGHT", "UP", "DOWN"):
+        if act.action == nes_action(name) or act.action == nes_action(name, "A"):
+            return name
+    return "OTHER"
+
+
+def test_east_mouth_4c_never_pushes_up_off_column() -> None:
+    """Leftover (240,157) on 0x4C: LEFT or y-peel, never hop UP at x≥232."""
+    from zelda_i.ram import read_snapshot
+
+    hop = LEVEL2_DOOR_HOPS[10]
+    assert hop.target == 0x3C and hop.direction == "UP" and hop.align_x == 112
+    ctrl = OverworldPathController(hops=LEVEL2_DOOR_HOPS, farm_below_hearts=0)
+    ctrl.hop_index = 10
+    snap = read_snapshot(_ram(screen=0x4C, x=240, y=157, sword=1))
+
+    first = ctrl.step(snap)
+    assert _cardinal(first) == "LEFT"
+    assert _cardinal(first) != "UP"
+    assert not str(first.reason).endswith("_wait")
+
+    # Frozen leftover: occupancy miss → block → y-peel. Never RIGHT (would
+    # scroll to 0x4D). Never unstick_wait. First action is not hop UP.
+    peels = []
+    for _ in range(16):
+        act = ctrl.step(snap)
+        direction = _cardinal(act)
+        peels.append(direction)
+        assert direction != "RIGHT"
+        assert not str(act.reason).endswith("_wait")
+        assert direction in {"LEFT", "DOWN", "UP", "IDLE"}
+    assert any(d in {"LEFT", "DOWN", "UP"} for d in peels)
+
+
+def test_align_x_column_still_pushes_up() -> None:
+    """On the door column, occupancy hands back to align-and-push UP."""
+    from zelda_i.ram import read_snapshot
+
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x3C, "UP", align_x=112),),
+        farm_below_hearts=0,
+    )
+    act = ctrl.step(read_snapshot(_ram(screen=0x4C, x=112, y=157, sword=1)))
+    assert _cardinal(act) == "UP"

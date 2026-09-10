@@ -338,21 +338,25 @@ MOUTH_STITCHES: tuple[MouthStitch, ...] = (
     MouthStitch(
         4,
         5,
-        _pose(screen=0x45, tf=0x0F, evidence="live"),
+        _pose(screen=0x45, x=128, y=125, tf=0x0F, evidence="live"),
         SCREEN_LEVEL5_ENTRANCE,
         (),
         "live",
-        "L4 fanfare settles onto island 0x45 (284f). Exact leave x/y not packed.",
+        "L4 fanfare leave OW 0x45 ~(128,125) ±4 mode 5; xy from "
+        "Level4Complete settle 633f (pin TF 0x0C). Fixture-live, "
+        "route_eligible=false.",
     ),
     MouthStitch(
         5,
         6,
-        _pose(screen=0x0B, tf=0x1F, evidence="live", whistle=1),
+        _pose(screen=0x0B, x=112, y=125, tf=0x1F, evidence="live", whistle=1),
         SCREEN_LEVEL6_ENTRANCE,
         (),
-        "verified",
-        "L5 fanfare settles onto 0x0B (510f). L6 mouth 0x22 verified live. "
-        "Leave x/y not packed. Do not grant Whistle.",
+        "live",
+        "L5 fanfare leave OW 0x0B ~(112,125) ±4 mode 5, Whistle earned. "
+        "xy from Level5Complete settle 1116f (pin TF 0x1C, whistle=1 on pin, "
+        "not granted). L6 mouth 0x22 verified live. Do not grant Whistle. "
+        "Fixture-live, route_eligible=false.",
     ),
     MouthStitch(
         6,

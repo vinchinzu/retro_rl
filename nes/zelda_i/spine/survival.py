@@ -220,6 +220,7 @@ class SpineRun:
     inventory_assist: dict[str, Any] | None = None
     position_assist: dict[str, Any] | None = None
     set_state_count: int | None = None
+    allow_pokes: bool = True
 
     def apply_state_audit(self, count: int) -> None:
         """Record measured post-reset ``env.em.set_state`` calls. Fail if any."""
@@ -277,6 +278,11 @@ class SpineRun:
         }
 
 
+def _pokes_allowed(run: SpineRun) -> bool:
+    """Survival inventory pokes stay on unless ``SpineRun.allow_pokes`` is off."""
+    return bool(getattr(run, "allow_pokes", True))
+
+
 def merge_inventory_assist(
     prev: dict[str, Any] | None, extra: dict[str, Any]
 ) -> dict[str, Any]:
@@ -297,6 +303,8 @@ def merge_inventory_assist(
 
 def topup_owned_inventory(env, run: SpineRun) -> None:
     """Documented Survival bomb/key count top-up + B-slot bombs. Not Clean."""
+    if not _pokes_allowed(run):
+        return
     extra = apply_owned_inventory(
         env,
         bombs=SPINE_TF_BOMB_POKE,
@@ -308,6 +316,8 @@ def topup_owned_inventory(env, run: SpineRun) -> None:
 
 def topup_owned_bombs(env, run: SpineRun) -> None:
     """Documented Survival count refill at the L3 boss suffix; preserves keys."""
+    if not _pokes_allowed(run):
+        return
     extra = apply_owned_inventory(
         env, bombs=SPINE_TF_BOMB_POKE, select_bomb=True
     )
@@ -316,6 +326,8 @@ def topup_owned_bombs(env, run: SpineRun) -> None:
 
 def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> None:
     """Restore the key spent on 0x23 W. Survival only. No bomb write."""
+    if not _pokes_allowed(run):
+        return
     extra = apply_owned_inventory(env, keys=keys, select_bomb=False)
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
@@ -330,6 +342,8 @@ def topup_owned_rupees(
     env, run: SpineRun, *, rupees: int = SPINE_L7_BAIT_RUPEES
 ) -> None:
     """Documented Survival rupee count top-up for the L7 Bait buy. Not Clean."""
+    if not _pokes_allowed(run):
+        return
     extra = apply_owned_inventory(env, rupees=rupees, select_bomb=False)
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
@@ -357,13 +371,17 @@ def _run_stages(
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
+    pokes = bool(getattr(run, "allow_pokes", True))
     for name, controller, max_frames in stages:
-        if name in retopup:
-            topup_owned_inventory(env, run)
-        if name in key_retopup:
-            topup_owned_keys(env, run)
-        if name in rupee_retopup:
-            topup_owned_rupees(env, run)
+        if pokes:
+            if name in retopup:
+                topup_owned_inventory(env, run)
+            if name in key_retopup:
+                topup_owned_keys(env, run)
+            if name in rupee_retopup:
+                topup_owned_rupees(env, run)
+        elif getattr(controller, "poke_arrows", None) is True:
+            controller.poke_arrows = False
         obs, stage = run_controller_stage(
             env,
             run.obs,
@@ -650,6 +668,7 @@ def run_survival_spine(
     room_timer=None,
     through: str = "level1",
     level8_overrides: dict[str, Any] | None = None,
+    allow_pokes: bool = True,
 ) -> SpineRun:
     """Power-on → requested dungeon stop. One env. No state reload.
 
@@ -657,6 +676,9 @@ def run_survival_spine(
     packets (``zelda_i.level8.spine.LIVE_RECON_L8_OVERRIDES``); it is forwarded
     verbatim to ``continue_level8_spine``. The default run supplies none of it,
     so L8 keeps the unmeasured handoff and the unobserved topology.
+
+    ``allow_pokes`` is the Survival inventory shortcut (default on). ``False``
+    skips owned-count top-ups, the L7 Food fixture, and Gohma wooden arrows.
     """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
@@ -677,6 +699,7 @@ def run_survival_spine(
         end_frame=prefix.end_frame,
         obs=prefix.obs,
         failed_stage=None if prefix.success else "prefix_clear53",
+        allow_pokes=allow_pokes,
     )
     if not run.success:
         return run

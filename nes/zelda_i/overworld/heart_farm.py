@@ -6,17 +6,20 @@ leaves; a restock neighbor (kwargs or ``farm_at``) scrolls out and back.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
+from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import overworld_threat_objects
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
-from zelda_i.overworld.common import track_stuck, unstick_wiggle, wake_or_wait_mode, walk_or_swing
+from zelda_i.overworld.common import track_stuck, wake_or_wait_mode, walk_or_swing
 from zelda_i.overworld.locations import farm_at
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 # Default patrol on 0x4A — mid horizontal corridor (y≈140) is open; south
 # wall blocks y≳160 and north pockets need the channel at x≈16–64.
@@ -45,13 +48,33 @@ BAND_SWEEP_WAYPOINTS: tuple[tuple[int, int], ...] = (
 )
 
 DEFAULT_MAX_FRAMES = 3600
-DEFAULT_STUCK_THRESHOLD = 40
 DEFAULT_EMPTY_WAIT_FRAMES = 90
 FARM_SWING_PERIOD = 8
 FARM_SWING_HOLD = 3
 WAYPOINT_TOL = 6
 
 _OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
+_CARDINALS = frozenset(_OPPOSITE)
+# Dungeon OccupancyGrid xmax=216 traps OW x≈240. True no-move is a miss;
+# 1px OccupancyWalker.observe would block a 2px OW slide.
+_OW_OCC_BOUNDS = (0, 255, 0, 239)
+
+
+def _ow_farm_grid() -> OccupancyGrid:
+    xmin, xmax, ymin, ymax = _OW_OCC_BOUNDS
+    return OccupancyGrid(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+
+def _cardinal_from_action(action: Sequence[int]) -> str | None:
+    """Return the single cardinal direction pressed in ``action``, or None."""
+    pressed = [
+        c
+        for c in ("UP", "DOWN", "LEFT", "RIGHT")
+        if NES_BUTTON_NAME_TO_INDEX.get(c) is not None
+        and NES_BUTTON_NAME_TO_INDEX[c] < len(action)
+        and action[NES_BUTTON_NAME_TO_INDEX[c]]
+    ]
+    return pressed[0] if len(pressed) == 1 else None
 
 
 class HeartFarmPhase(Enum):
@@ -73,7 +96,12 @@ def _rupee_drops(snap: ZeldaSnapshot) -> tuple:
 
 @dataclass
 class HeartFarmController:
-    """Patrol a screen until ``filled_hearts >= min_filled`` (Clean combat only)."""
+    """Patrol a screen until ``filled_hearts >= min_filled`` (Clean combat only).
+
+    Occupancy miss (true no-move) → block that cell → replan; no path →
+    stand. ``min_filled<=0`` is inert (the path-layer ``farm_below_hearts=0``
+    analog). Never writes health.
+    """
 
     min_filled: int = 3
     max_frames: int = DEFAULT_MAX_FRAMES
@@ -94,6 +122,9 @@ class HeartFarmController:
     notes: list[str] = field(default_factory=list)
     start_filled: int = -1
     peak_filled: int = 0
+    _walker: OccupancyWalker | None = field(default=None, repr=False)
+    _walker_screen: int = -1
+    _walk_frame: int = field(default=-1, repr=False)
 
     def __post_init__(self) -> None:
         if self.restock_neighbor_screen is not None and self.restock_direction is not None:
@@ -119,6 +150,9 @@ class HeartFarmController:
         self.notes.clear()
         self.start_filled = -1
         self.peak_filled = 0
+        self._walker = None
+        self._walker_screen = -1
+        self._walk_frame = -1
 
     def _has_restock(self) -> bool:
         return self.restock_neighbor_screen is not None and self.restock_direction is not None
@@ -152,25 +186,58 @@ class HeartFarmController:
     def _hearts_met(self, snap: ZeldaSnapshot) -> bool:
         return snap.filled_hearts >= self.min_filled
 
-    def _chase(self, snap: ZeldaSnapshot, target: Any, reason: str) -> FrameAction:
-        dx = target.x - snap.link_x
-        dy = target.y - snap.link_y
-        if reason == "farm_chase" and snap.screen == self.farm_screen and snap.link_y < 120 and abs(dy) > 8:
-            d = "DOWN"
-        elif abs(dx) >= abs(dy) and abs(dx) > 4:
-            d = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 4:
-            d = "DOWN" if dy > 0 else "UP"
-        else:
-            d = "RIGHT" if dx >= 0 else "LEFT"
-        return walk_or_swing(
+    def _grade_occupancy(self, snap: ZeldaSnapshot) -> OccupancyWalker:
+        if self._walker is None or self._walker_screen != int(snap.screen):
+            self._walker = OccupancyWalker(grid=_ow_farm_grid())
+            self._walker_screen = int(snap.screen)
+            self._walk_frame = -1
+        walker = self._walker
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self._walk_frame != self.frames - 1:
+            walker.last_dir = None
+            walker.last_xy = None
+        if walker.last_dir in _CARDINALS and walker.last_xy is not None:
+            if xy == walker.last_xy:
+                walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
+                walker.path = None
+                walker.misses += 1
+        walker.last_xy = xy
+        return walker
+
+    def _walk_to(
+        self, snap: ZeldaSnapshot, goal: tuple[int, int], reason: str
+    ) -> FrameAction:
+        """Occupancy to ``goal``. Miss → block → replan; no path → stand."""
+        walker = self._grade_occupancy(snap)
+        xy = (int(snap.link_x), int(snap.link_y))
+        dest = (int(goal[0]), int(goal[1]))
+        if walker.goal != dest:
+            walker.path = None
+            walker.goal = dest
+        path = walker.grid.shortest_path(xy, dest)
+        if path is None or xy == dest:
+            walker.path = None
+            walker.last_dir = None
+            self._walk_frame = self.frames
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+        walker.path = path
+        direction = walker.next_dir(xy, dest)
+        if direction is None:
+            walker.path = None
+            walker.last_dir = None
+            self._walk_frame = self.frames
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+        act = walk_or_swing(
             self.frames,
-            d,
+            direction,
             reason,
             snap,
             period=FARM_SWING_PERIOD,
             hold=FARM_SWING_HOLD,
         )
+        walker.last_dir = _cardinal_from_action(act.action)
+        self._walk_frame = self.frames
+        return act
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -244,10 +311,6 @@ class HeartFarmController:
                 f"farm_ok_{self.start_filled}_to_{snap.filled_hearts}"
             )
 
-        if self.stuck > DEFAULT_STUCK_THRESHOLD:
-            action, self.stuck = unstick_wiggle(self.stuck, reason="farm_unstick")
-            return action
-
         enemies = list(overworld_threat_objects(snap))
         if enemies:
             self.empty_frames = 0
@@ -255,7 +318,7 @@ class HeartFarmController:
                 enemies,
                 key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
             )
-            return self._chase(snap, nearest, "farm_chase")
+            return self._walk_to(snap, (int(nearest.x), int(nearest.y)), "farm_chase")
 
         drops = _rupee_drops(snap)
         if drops:
@@ -264,7 +327,7 @@ class HeartFarmController:
                 drops,
                 key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
             )
-            return self._chase(snap, nearest, "farm_rupee")
+            return self._walk_to(snap, (int(nearest.x), int(nearest.y)), "farm_rupee")
 
         if restock:
             self.empty_frames += 1
@@ -275,13 +338,8 @@ class HeartFarmController:
             return FrameAction(nes_action(self.restock_direction or "LEFT"), "farm_leave")
 
         if not self.waypoints:
-            return walk_or_swing(
-                self.frames,
-                "RIGHT",
-                "farm_patrol",
-                snap,
-                period=FARM_SWING_PERIOD,
-                hold=FARM_SWING_HOLD,
+            return self._walk_to(
+                snap, (min(240, int(snap.link_x) + 48), int(snap.link_y)), "farm_patrol"
             )
 
         tx, ty = self.waypoints[self.waypoint_index % len(self.waypoints)]
@@ -289,19 +347,7 @@ class HeartFarmController:
             self.waypoint_index = (self.waypoint_index + 1) % len(self.waypoints)
             self.stuck = 0
             tx, ty = self.waypoints[self.waypoint_index % len(self.waypoints)]
-
-        if abs(snap.link_x - tx) > WAYPOINT_TOL:
-            d = "RIGHT" if snap.link_x < tx else "LEFT"
-        else:
-            d = "DOWN" if snap.link_y < ty else "UP"
-        return walk_or_swing(
-            self.frames,
-            d,
-            "farm",
-            snap,
-            period=FARM_SWING_PERIOD,
-            hold=FARM_SWING_HOLD,
-        )
+        return self._walk_to(snap, (tx, ty), "farm")
 
     def report(self) -> dict[str, Any]:
         return {
@@ -315,5 +361,6 @@ class HeartFarmController:
             "start_filled": self.start_filled,
             "peak_filled": self.peak_filled,
             "waypoint_index": self.waypoint_index,
+            "occupancy_misses": 0 if self._walker is None else self._walker.misses,
             "notes": list(self.notes),
         }

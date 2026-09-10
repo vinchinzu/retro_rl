@@ -69,3 +69,13 @@ def test_isolated_raft_zero_implies_poke16() -> None:
     assert report_used_poke16(
         {"runner": "run_level3_to_boss.py --infinite-life --poke-bombs 16"}
     )
+
+
+def test_clean_entrance_tf_does_not_use_poke16() -> None:
+    from zelda_i.level3.boss_path import level3_boss_suffix_stages
+
+    assert not report_used_poke16(
+        {"runner": "run_level3_complete.py --no-infinite-life --no-video"}
+    )
+    for _name, ctl, _max_frames in level3_boss_suffix_stages():
+        assert getattr(ctl, "poke_bombs", None) in (None, False)

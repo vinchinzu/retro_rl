@@ -27,7 +27,7 @@ _DEFAULTS = {
     "x": 112,
     "y": 141,
     "sword": 1,
-    "health": 0x22,
+    "health": 0x77,
 }
 
 

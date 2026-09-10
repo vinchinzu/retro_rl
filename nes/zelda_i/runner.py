@@ -76,14 +76,20 @@ def open_env(
     headless: bool = True,
 ):
     """Create fceumm env for LegendOfZelda-Nes; optionally load a save state."""
-    from retro_harness.env import load_state, make_env
+    from retro_harness.env import make_env, resync_custom_state
     from retro_harness.segment_runner import configure_headless
 
     if headless:
         configure_headless()
-    env = make_env(GAME, seed=seed)
+    env = make_env(GAME, from_state, GAME_DIR)
+    if seed and hasattr(env, "seed"):
+        try:
+            env.seed(seed)
+        except Exception:
+            pass
+    env.reset()
     if from_state:
-        load_state(env, GAME_DIR, GAME, from_state)
+        resync_custom_state(env, GAME_DIR, GAME, from_state)
     return env
 
 

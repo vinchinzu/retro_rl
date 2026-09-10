@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_action
 
 from zelda_i.dungeon.engine import (
     DoorRoute,
@@ -21,6 +21,7 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.ids import DARKNUT_OBJECT_TYPE
+from zelda_i.dungeon.ops import goto
 from zelda_i.dungeon.pause_select import PauseSelectController, PauseSelectPhase
 from zelda_i.level3.dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
 from zelda_i.level5.dungeon import (
@@ -35,16 +36,12 @@ from zelda_i.level5.dungeon import (
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
 )
-from zelda_i.level5.path import _step, walk_axis
+from zelda_i.dungeon.door_hop import door_band_goal
+from zelda_i.level5.path import _step, wait_ram, walk_axis
 from zelda_i.level9.stairs import BLOCK_STAIRS_X, BLOCK_STAIRS_Y, PUSHABLE_BLOCK
 from zelda_i.ram import ADDR_SELECTED_ITEM, ADDR_WHISTLE, PLAY_MODE, read_snapshot, read_u8
 
 _rs = read_snapshot
-
-
-def _ops():
-    import zelda_i.dungeon.ops as ops
-    return ops
 
 BLUE_DARKNUT_TYPE = 0x0C
 CENTER_STAIRS = (120, 141)
@@ -52,6 +49,15 @@ CELLAR_MODES = (9, 10, 11, 16)
 # 0x06 diamond: 0x68 rests (96,144). Push UP → (96,128). Stairs stand (96,133).
 # Center 0x70–0x73 tiles are decorative and do not warp. South key is 0x16, not return.
 ROOM_06_BLOCK_X = 96
+_FACE = {"UP": 0x08, "DOWN": 0x04, "RIGHT": 0x01, "LEFT": 0x02}
+
+
+def _play_room(screen: int):
+    return lambda snap: snap.mode == PLAY_MODE and snap.screen == screen and not snap.transitioning
+
+
+def _whistle_bit(env) -> int:
+    return int(read_u8(env.get_ram(), ADDR_WHISTLE))
 
 
 def _cellar_walk_axis(env, assist, total: list[int], axis: str, target: int, max_f: int = 700) -> bool:
@@ -99,7 +105,14 @@ def select_b_item_menu(env, assist, total: list[int], want: int) -> dict:
         # Safety net: the shared controller fails closed, but callers here
         # rely on the pause menu always being closed on return.
         _step(env, assist, total, nes_action("START"))
-        _ops().idle(env, assist, total, 24)
+        wait_ram(
+            env,
+            assist,
+            total,
+            lambda snap: snap.mode == PLAY_MODE and not snap.transitioning,
+            max_frames=64,
+            spec_id="close_pause",
+        )
     return {
         "used": True,
         "selected_before": selected0,
@@ -204,32 +217,62 @@ def bomb_wall(env, assist, total: list[int], spec: BombWallSpec) -> dict:
         ):
             used = f"path_{name}"
             break
-    _ops().goto(env, assist, total, spec.stand[0], spec.stand[1], tol=3, max_f=300)
-    for _ in range(8):
-        _step(env, assist, total, nes_action(spec.face))
-    _ops().idle(env, assist, total, 8)
+    goto(env, assist, total, spec.stand[0], spec.stand[1], tol=3, max_f=300)
+    want_face = _FACE[spec.face]
+    wait_ram(
+        env,
+        assist,
+        total,
+        lambda snap: snap.facing == want_face or snap.screen == spec.dest_room,
+        hold=spec.face,
+        max_frames=16,
+        spec_id=f"face_{spec.name}",
+    )
     menu = select_b_item_menu(env, assist, total, 1)
     snap = _rs(env.get_ram())
     bombs0 = int(snap.bombs)
+    sx, sy = spec.stand
     _step(env, assist, total, nes_action(spec.face, "B"))
-    for _ in range(16):
-        _step(env, assist, total, nes_action(spec.away))
-    _ops().idle(env, assist, total, 100)
-    for _ in range(360):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == spec.dest_room:
-            break
-        _step(env, assist, total, nes_action(spec.face))
-    _ops().idle(env, assist, total, 24)
-    for _ in range(240):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen == spec.dest_room:
-            break
-        if snap.mode in (6, 7, 4, 16):
-            _step(env, assist, total, nes_action(spec.face))
-        else:
-            _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 16)
+
+    def _away(snap) -> bool:
+        if snap.screen == spec.dest_room:
+            return True
+        if spec.face == "LEFT":
+            return snap.link_x >= sx + 12
+        if spec.face == "RIGHT":
+            return snap.link_x <= sx - 12
+        return abs(snap.link_x - sx) + abs(snap.link_y - sy) >= 12
+
+    wait_ram(
+        env, assist, total, _away, hold=spec.away, max_frames=40, spec_id=f"away_{spec.name}",
+    )
+    door_bit = {"RIGHT": 0x01, "LEFT": 0x02, "DOWN": 0x04, "UP": 0x08}[spec.face]
+
+    def _hole_open(snap) -> bool:
+        return (
+            snap.screen == spec.dest_room
+            or bool(snap.cur_opened_doors & door_bit)
+        )
+
+    # Stand still during fuse blast (do not walk into the live bomb)
+    wait_ram(
+        env,
+        assist,
+        total,
+        _hole_open,
+        hold=None,
+        max_frames=140,
+        spec_id=f"blast_{spec.name}",
+    )
+    wait_ram(
+        env,
+        assist,
+        total,
+        _play_room(spec.dest_room),
+        hold=spec.face,
+        max_frames=600,
+        spec_id=f"hole_{spec.name}",
+    )
     snap = _rs(env.get_ram())
     return {
         "path": spec.name,
@@ -320,29 +363,31 @@ def take_center_stairs_64(env, assist, total: list[int]) -> dict:
             )
             if done(snap):
                 break
-        _ops().idle(env, assist, total, 20)
-        snap = _rs(env.get_ram())
-        if done(snap):
+        if wait_ram(env, assist, total, done, max_frames=24, spec_id="stairs64_warp"):
             break
         # Nudge onto the tile; never hold LEFT (east bomb hole → 0x65).
         for direction in ("UP", "DOWN", "RIGHT"):
-            for _ in range(16):
-                snap = _rs(env.get_ram())
-                if done(snap) or snap.screen != ROOM_L5_BLUE_64:
-                    break
-                _step(env, assist, total, nes_action(direction))
-            _ops().idle(env, assist, total, 8)
-            if done(_rs(env.get_ram())):
+            if wait_ram(
+                env,
+                assist,
+                total,
+                lambda snap: done(snap) or snap.screen != ROOM_L5_BLUE_64,
+                hold=direction,
+                max_frames=16,
+                spec_id=f"stairs64_{direction.lower()}",
+            ):
                 break
         if done(_rs(env.get_ram())):
             break
 
-    for _ in range(200):
-        snap = _rs(env.get_ram())
-        if done(snap) or (snap.mode == PLAY_MODE and snap.screen != ROOM_L5_BLUE_64):
-            break
-        _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 16)
+    wait_ram(
+        env,
+        assist,
+        total,
+        lambda snap: done(snap) or (snap.mode == PLAY_MODE and snap.screen != ROOM_L5_BLUE_64),
+        max_frames=200,
+        spec_id="stairs64_settle",
+    )
     snap = _rs(env.get_ram())
     return {
         "path": "south_gap_center_stairs",
@@ -364,13 +409,15 @@ L5_CELLAR_RIGHT_X = 192
 
 def cellar_other_mouth(env, assist, total: list[int]) -> dict:
     """From L5 cellar 0x07, take the opposite mouth to room 0x06. No pokes."""
-    # Stair-enter sits at (128,141) ~90f, then remaps to a ladder (48,93) or (192,93).
-    for _ in range(180):
-        snap = _rs(env.get_ram())
-        if snap.mode in CELLAR_MODES and (snap.link_x <= 64 or snap.link_x >= 176):
-            break
-        _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 12)
+    # Stair-enter sits at (128,141), then remaps to a ladder (48,93) or (192,93).
+    wait_ram(
+        env,
+        assist,
+        total,
+        lambda snap: snap.mode in CELLAR_MODES and (snap.link_x <= 64 or snap.link_x >= 176),
+        max_frames=180,
+        spec_id="cellar07_spawn",
+    )
     snap = _rs(env.get_ram())
     start = {"xy": [snap.link_x, snap.link_y], "room": snap.screen, "mode": snap.mode}
     # Left column is the 0x64 return. Floor-cross to x=192 then UP → 0x06.
@@ -380,19 +427,19 @@ def cellar_other_mouth(env, assist, total: list[int]) -> dict:
     else:
         side = "left"
         tx = L5_CELLAR_LEFT_X
+    leftover = (snap.link_x, snap.link_y)
+    gx, _gy = door_band_goal("UP", leftover, (tx, 93))
     walk_axis(env, assist, total, "y", L5_CELLAR_FLOOR_Y, max_f=400)
-    walk_axis(env, assist, total, "x", tx, max_f=500)
-    room0 = _rs(env.get_ram()).screen
-    _ops().push_dir(env, assist, total, "UP", frames=200)
-    _ops().idle(env, assist, total, 20)
-    for _ in range(240):
-        snap = _rs(env.get_ram())
-        if snap.mode == PLAY_MODE and snap.screen != room0:
-            break
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L5_PASSAGE_06:
-            break
-        _step(env, assist, total, nes_idle_action())
-    _ops().idle(env, assist, total, 16)
+    walk_axis(env, assist, total, "x", gx, max_f=500)
+    wait_ram(
+        env,
+        assist,
+        total,
+        _play_room(ROOM_L5_PASSAGE_06),
+        hold="UP",
+        max_frames=400,
+        spec_id="cellar07_up",
+    )
     snap = _rs(env.get_ram())
     return {
         "path": "cellar_other_mouth",
@@ -410,20 +457,20 @@ def key_west_to(env, assist, total: list[int], expect: int) -> dict:
     """Spend a key at the west door. No door/key poke."""
     snap = _rs(env.get_ram())
     keys0 = int(snap.keys)
-    room0 = int(snap.screen)
-    walk_axis(env, assist, total, "y", 141, max_f=400)
-    walk_axis(env, assist, total, "x", 32, max_f=500)
-    _ops().goto(env, assist, total, 32, 141, tol=3, max_f=300)
-    _ops().push_dir(env, assist, total, "LEFT", frames=240)
-    _ops().idle(env, assist, total, 16)
-    snap = _rs(env.get_ram())
-    if snap.screen != room0:
-        for _ in range(240):
-            snap = _rs(env.get_ram())
-            if snap.mode == PLAY_MODE:
-                break
-            _step(env, assist, total, nes_idle_action())
-        _ops().idle(env, assist, total, 16)
+    leftover = (snap.link_x, snap.link_y)
+    gx, gy = door_band_goal("LEFT", leftover, (32, 141))
+    walk_axis(env, assist, total, "y", gy, max_f=400)
+    walk_axis(env, assist, total, "x", gx, max_f=500)
+    goto(env, assist, total, gx, gy, tol=3, max_f=300)
+    wait_ram(
+        env,
+        assist,
+        total,
+        _play_room(expect),
+        hold="LEFT",
+        max_frames=400,
+        spec_id="key_west",
+    )
     snap = _rs(env.get_ram())
     return {
         "path": "key_west",
@@ -525,9 +572,28 @@ def push_block_stairs(env, assist, total: list[int], room: int) -> dict:
         walk_axis(env, assist, total, "y", ty, max_f=280)
         walk_axis(env, assist, total, "x", tx + 16, max_f=280)
         rec = {"stand": [tx, ty], "dirs": []}
+        blocks0 = [(b.x, b.y) for b in blocks]
+
+        def _moved(snap) -> bool:
+            if left_ok(snap):
+                return True
+            now = [
+                (o.x, o.y)
+                for o in snap.objects
+                if 1 <= o.slot <= 12 and o.type_id == PUSHABLE_BLOCK
+            ]
+            return bool(now) and now != blocks0
+
         for direction in ("LEFT", "UP", "DOWN", "RIGHT"):
-            _ops().push_dir(env, assist, total, direction, frames=90)
-            _ops().idle(env, assist, total, 8)
+            wait_ram(
+                env,
+                assist,
+                total,
+                _moved,
+                hold=direction,
+                max_frames=90,
+                spec_id=f"push68_{direction.lower()}",
+            )
             snap = _rs(env.get_ram())
             rec["dirs"].append(
                 {
@@ -546,7 +612,7 @@ def push_block_stairs(env, assist, total: list[int], room: int) -> dict:
         for sx, sy in ((tx, ty), (BLOCK_STAIRS_X, BLOCK_STAIRS_Y), CENTER_STAIRS, (120, 125)):
             walk_axis(env, assist, total, "y", sy, max_f=200)
             walk_axis(env, assist, total, "x", sx, max_f=200)
-            _ops().idle(env, assist, total, 10)
+            wait_ram(env, assist, total, left_ok, max_frames=16, spec_id="stairs_stand")
             snap = _rs(env.get_ram())
             if left_ok(snap):
                 dest = {"room": snap.screen, "mode": snap.mode, "xy": [snap.link_x, snap.link_y]}
@@ -566,26 +632,34 @@ def push_block_stairs(env, assist, total: list[int], room: int) -> dict:
 
 def take_whistle_04(env, assist, total: list[int]) -> dict:
     """Cellar 0x04: floor y=189, short ladder x=176, left on y=141 to the Recorder."""
-    w0 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+    w0 = _whistle_bit(env)
+
+    def got(_snap=None) -> bool:
+        return _whistle_bit(env) > w0
+
     walk_axis(env, assist, total, "y", 189, max_f=400)
     walk_axis(env, assist, total, "x", 176, max_f=400)
-    for _ in range(80):
-        snap = _rs(env.get_ram())
-        if int(read_u8(env.get_ram(), ADDR_WHISTLE)) > w0:
-            break
-        if snap.link_y <= 141 and abs(snap.link_x - 176) <= 4:
-            break
-        _step(env, assist, total, nes_action("UP"))
-    _ops().idle(env, assist, total, 8)
+    wait_ram(
+        env,
+        assist,
+        total,
+        lambda snap: got() or (snap.link_y <= 141 and abs(snap.link_x - 176) <= 4),
+        hold="UP",
+        max_frames=80,
+        spec_id="whistle04_climb",
+    )
     walk_axis(env, assist, total, "y", 141, max_f=200)
-    walk_axis(env, assist, total, "x", 128, max_f=300)
-    _ops().idle(env, assist, total, 12)
-    w1 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
-    if w1 <= w0:
+    _s = _rs(env.get_ram())
+    leftover = (_s.link_x, _s.link_y)
+    gx, gy = door_band_goal("LEFT", leftover, (128, 141))
+    walk_axis(env, assist, total, "y", gy, max_f=200)
+    walk_axis(env, assist, total, "x", gx, max_f=300)
+    wait_ram(env, assist, total, got, max_frames=24, spec_id="whistle04_item")
+    if not got():
         walk_axis(env, assist, total, "x", 144, max_f=200)
         walk_axis(env, assist, total, "x", 120, max_f=200)
-        _ops().idle(env, assist, total, 10)
-        w1 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+        wait_ram(env, assist, total, got, max_frames=20, spec_id="whistle04_hunt")
+    w1 = _whistle_bit(env)
     snap = _rs(env.get_ram())
     return {
         "in": w0,
@@ -603,7 +677,7 @@ def hunt_whistle(env, assist, total: list[int]) -> dict:
     Room 0x04 is a side-scroll item cellar: top-down stands stay on the
     floor (y=189). Use take_whistle_04 (right short ladder -> y=141).
     """
-    w0 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+    w0 = _whistle_bit(env)
     snap0 = _rs(env.get_ram())
     room0 = snap0.screen
     hits = []
@@ -626,19 +700,23 @@ def hunt_whistle(env, assist, total: list[int]) -> dict:
         (96, 165),
         (144, 165),
     )
+
+    def got(_snap=None) -> bool:
+        return _whistle_bit(env) > w0
+
     for tx, ty in stands:
         snap = _rs(env.get_ram())
         if snap.screen != room0 and snap.mode == PLAY_MODE:
             break
         walk_axis(env, assist, total, "y", ty, max_f=220)
         walk_axis(env, assist, total, "x", tx, max_f=220)
-        _ops().idle(env, assist, total, 10)
-        w1 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+        wait_ram(env, assist, total, got, max_frames=16, spec_id="hunt_whistle")
+        w1 = _whistle_bit(env)
         snap = _rs(env.get_ram())
         hits.append({"stand": [tx, ty], "xy": [snap.link_x, snap.link_y], "value": w1})
         if w1 > w0:
             break
-    w1 = int(read_u8(env.get_ram(), ADDR_WHISTLE))
+    w1 = _whistle_bit(env)
     return {"in": w0, "out": w1, "got": w1 > w0, "hits": hits}
 
 
@@ -662,9 +740,10 @@ def exit_whistle_04(env, assist, total: list[int]) -> dict:
         "xy": [snap.link_x, snap.link_y],
         "mode": snap.mode,
         "room": snap.screen,
-        "whistle": int(read_u8(env.get_ram(), ADDR_WHISTLE)),
+        "whistle": _whistle_bit(env),
     }
     log = [dict(start, tag="start")]
+    x0, y0 = snap.link_x, snap.link_y
 
     def left_ok(s) -> bool:
         return s.mode == PLAY_MODE and s.screen != ROOM_L5_WHISTLE_ITEM
@@ -681,44 +760,32 @@ def exit_whistle_04(env, assist, total: list[int]) -> dict:
             }
         )
 
-    # Recorder item-get holds Link overhead. Tap RIGHT (toward the ladder)
-    # until RAM x/y changes — idle-only is not enough; walk_axis aborts at 40.
-    _ops().idle(env, assist, total, 40)
-    thawed = False
-    for n in range(10):
-        x0 = _rs(env.get_ram()).link_x
-        y0 = _rs(env.get_ram()).link_y
-        for i in range(24):
-            _step(env, assist, total, nes_action("RIGHT"))
-            snap = _rs(env.get_ram())
-            if snap.link_x != x0 or snap.link_y != y0:
-                thawed = True
-                log.append({"tag": "thawed", "burst": n, "f": i, "xy": [snap.link_x, snap.link_y]})
-                break
-        if thawed:
-            break
-        _ops().idle(env, assist, total, 32)
+    # Recorder item-get holds Link overhead. Dest is RAM xy change, not idle(n).
+    thawed = wait_ram(
+        env,
+        assist,
+        total,
+        lambda s: s.link_x != x0 or s.link_y != y0 or left_ok(s),
+        hold="RIGHT",
+        max_frames=280,
+        spec_id="thaw_04",
+    )
     rec("unstick")
 
-    def drop_ladder() -> None:
-        _cellar_walk_axis(env, assist, total, "y", 141, max_f=240)
-        _cellar_walk_axis(env, assist, total, "x", WHISTLE_04_LADDER_X, max_f=700)
-        rec("ladder")
-        for _ in range(280):
-            snap = _rs(env.get_ram())
-            if left_ok(snap) or snap.link_y >= WHISTLE_04_PIT_Y - 2:
-                break
-            _step(env, assist, total, nes_action("DOWN"))
-        _ops().idle(env, assist, total, 8)
-        _cellar_walk_axis(env, assist, total, "y", WHISTLE_04_PIT_Y, max_f=400)
-        rec("pit")
+    def drop_ok(s) -> bool:
+        return left_ok(s) or s.link_y >= WHISTLE_04_PIT_Y - 2
 
     # Alcove (y≈141) only drops at the short ladder x=176.
     for attempt in range(3):
         snap = _rs(env.get_ram())
         if left_ok(snap) or snap.link_y >= 170:
             break
-        drop_ladder()
+        _cellar_walk_axis(env, assist, total, "y", 141, max_f=240)
+        _cellar_walk_axis(env, assist, total, "x", WHISTLE_04_LADDER_X, max_f=700)
+        rec("ladder")
+        wait_ram(env, assist, total, drop_ok, hold="DOWN", max_frames=280, spec_id="drop_04")
+        _cellar_walk_axis(env, assist, total, "y", WHISTLE_04_PIT_Y, max_f=400)
+        rec("pit")
         snap = _rs(env.get_ram())
         if snap.link_y < 170 and abs(snap.link_x - WHISTLE_04_LADDER_X) > 4:
             log.append({"tag": f"retry_ladder_{attempt}", "xy": [snap.link_x, snap.link_y]})
@@ -727,26 +794,19 @@ def exit_whistle_04(env, assist, total: list[int]) -> dict:
     # Live RAM: only the pit (y>=170) connects to the left mouth. Do not
     # walk LEFT on the alcove — that stalls at x≈112, y=141.
     if not left_ok(snap) and snap.link_y >= 170:
-        _cellar_walk_axis(env, assist, total, "x", WHISTLE_04_MOUTH_X, max_f=700)
+        leftover = (snap.link_x, snap.link_y)
+        gx, _gy = door_band_goal("UP", leftover, (WHISTLE_04_MOUTH_X, 93))
+        _cellar_walk_axis(env, assist, total, "x", gx, max_f=700)
         rec("left_col")
-        # Hold UP from the pit. Do not walk_axis to y=65 — that overshoots
-        # into 0x05's north door after the mouth fires.
-        _ops().push_dir(env, assist, total, "UP", frames=280)
-        _ops().idle(env, assist, total, 12)
-        for _ in range(280):
-            snap = _rs(env.get_ram())
-            if left_ok(snap):
-                break
-            if abs(snap.link_x - WHISTLE_04_MOUTH_X) > 4:
-                _step(
-                    env,
-                    assist,
-                    total,
-                    nes_action("LEFT" if snap.link_x > WHISTLE_04_MOUTH_X else "RIGHT"),
-                )
-            else:
-                _step(env, assist, total, nes_action("UP"))
-        _ops().idle(env, assist, total, 20)
+        wait_ram(
+            env,
+            assist,
+            total,
+            left_ok,
+            hold="UP",
+            max_frames=400,
+            spec_id="mouth_04",
+        )
     rec("after_up")
     snap = _rs(env.get_ram())
     return {
@@ -756,7 +816,7 @@ def exit_whistle_04(env, assist, total: list[int]) -> dict:
         "dest": snap.screen,
         "mode": snap.mode,
         "xy": [snap.link_x, snap.link_y],
-        "whistle": int(read_u8(env.get_ram(), ADDR_WHISTLE)),
+        "whistle": _whistle_bit(env),
         "success": (
             snap.level == LEVEL_5
             and snap.mode == PLAY_MODE

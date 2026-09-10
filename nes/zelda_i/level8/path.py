@@ -34,7 +34,12 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
+from zelda_i.dungeon.door_hop import (
+    HopFail,
+    RoomHopController,
+    RoomHopSpec,
+    door_band_goal,
+)
 from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level8.cellar import CELLAR_ROOM
@@ -101,9 +106,9 @@ _EAST_MAX_FRAMES = 4000
 
 
 def west_1f_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Cardinal LEFT past 0x68, y-align, LEFT push. No occupancy grade."""
+    """Leftover-relative LEFT. Off-band y uses the door row, not leftover y."""
     x, y = int(snap.link_x), int(snap.link_y)
-    gx, gy = WEST_DOOR
+    gx, gy = door_band_goal("LEFT", (x, y), WEST_DOOR)
     if x > STAIRS_WEST_X:
         return FrameAction(nes_action("LEFT"), "west_clear_stairs")
     if abs(y - gy) > _DOOR_TOL:
@@ -114,37 +119,35 @@ def west_1f_step(snap: ZeldaSnapshot) -> FrameAction:
     return FrameAction(nes_action("LEFT"), "west_push")
 
 
-def south_1e_step(snap: ZeldaSnapshot) -> FrameAction:
-    """x-align to 120, then DOWN push. No occupancy, no sword, no UP."""
+def _south_door_step(snap: ZeldaSnapshot) -> FrameAction:
+    """Leftover-relative DOWN. Off-column leftover uses door x, not leftover x."""
     x, y = int(snap.link_x), int(snap.link_y)
-    gx, gy = SOUTH_DOOR
+    gx, gy = door_band_goal("DOWN", (x, y), SOUTH_DOOR)
     if abs(x - gx) > _DOOR_TOL:
         btn = "LEFT" if x > gx else "RIGHT"
         return FrameAction(nes_action(btn), "south_align")
     if y < gy - _DOOR_TOL:
         return FrameAction(nes_action("DOWN"), "south_approach")
     return FrameAction(nes_action("DOWN"), "south_push")
+
+
+def south_1e_step(snap: ZeldaSnapshot) -> FrameAction:
+    """0x1E leftover → south door. Knockback at x=208 must LEFT, not DOWN."""
+    return _south_door_step(snap)
 
 
 def south_2e_step(snap: ZeldaSnapshot) -> FrameAction:
-    """x-align to 120, then DOWN push. Origin is already on x=120."""
-    x, y = int(snap.link_x), int(snap.link_y)
-    gx, gy = SOUTH_DOOR
-    if abs(x - gx) > _DOOR_TOL:
-        btn = "LEFT" if x > gx else "RIGHT"
-        return FrameAction(nes_action(btn), "south_align")
-    if y < gy - _DOOR_TOL:
-        return FrameAction(nes_action("DOWN"), "south_approach")
-    return FrameAction(nes_action("DOWN"), "south_push")
+    """0x2E leftover → south door. On-column leftover keeps leftover x."""
+    return _south_door_step(snap)
 
 
 def east_3e_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Idle until RIGHT bit, north-band RIGHT past statues, y-align, push.
+    """Idle until RIGHT bit, north-band RIGHT past statues, leftover y-align.
 
     Do not walk the statue row at y=141 RIGHT into x=144. Occupancy banned.
     """
     x, y = int(snap.link_x), int(snap.link_y)
-    gx, gy = EAST_DOOR
+    gx, gy = door_band_goal("RIGHT", (x, y), EAST_DOOR)
     if not (int(snap.cur_opened_doors) & EAST_RIGHT_BIT):
         return FrameAction(nes_idle_action(), "east_wait_right_bit")
     if x < EAST_STATUE_CLEAR_X:

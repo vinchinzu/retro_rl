@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from retro_harness.nes import nes_action
 
+from zelda_i.dungeon.behaviors import GORIYA_BOOMERANG_TYPE
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.heart_farm import HeartFarmController, HeartFarmPhase
 from zelda_i.overworld.locations import farm_at
@@ -178,3 +179,103 @@ def test_leaving_overworld_fails() -> None:
     act = farm.step(_snap(level=1, health=0x22))
     assert farm.phase is HeartFarmPhase.FAILED
     assert act.reason == "left_overworld"
+
+
+def test_min_filled_zero_is_inert_farm_below_hearts_analog() -> None:
+    """path.py farm_below_hearts=0 analog: min_filled<=0 skips the farm."""
+    farm = HeartFarmController(min_filled=0, farm_screen=NO_RESTOCK_SCREEN)
+    snap = _snap(screen=NO_RESTOCK_SCREEN, health=0x00)
+    assert farm.already_satisfied(snap) is False
+    act = farm.step(snap)
+    assert farm.success
+    assert farm.phase is HeartFarmPhase.DONE
+    assert act.reason == "farm_done"
+    assert farm.notes[-1] == "farm_skipped"
+
+
+def test_already_satisfied_when_filled_meets_min() -> None:
+    farm = _farm(min_filled=3)
+    assert farm.already_satisfied(_snap(health=0x33))
+    assert not farm.already_satisfied(_snap(health=0x22))
+
+
+def test_occupancy_miss_blocks_cell_and_replans() -> None:
+    prey = ZeldaObject(slot=3, type_id=0x11, x=180, y=149, facing=0, hp=1, state=0)
+    farm = _farm()
+    snap = _snap(link_x=120, link_y=149, objects=(prey,))
+    act = farm.step(snap)
+    assert "farm_chase" in act.reason
+    assert farm._walker is not None
+    assert farm._walker.last_dir == "RIGHT"
+    act = farm.step(snap)
+    assert farm._walker.misses >= 1
+    assert (121, 149) in farm._walker.grid.blocked
+    assert farm.phase is HeartFarmPhase.FARM
+    assert act.reason != "farm_unstick"
+
+
+def test_occupancy_no_path_stands() -> None:
+    prey = ZeldaObject(slot=3, type_id=0x11, x=120, y=110, facing=0, hp=1, state=0)
+    farm = _farm()
+    snap = _snap(link_x=120, link_y=130, objects=(prey,))
+    farm.step(snap)
+    walker = farm._walker
+    assert walker is not None
+    grid = walker.grid
+    grid.xmin, grid.xmax, grid.ymin, grid.ymax = 100, 140, 100, 140
+    for x in range(100, 141):
+        grid.blocked.add((x, 120))
+        grid.inferred.add((x, 120))
+    walker.path = None
+    act = farm.step(snap)
+    assert act.reason == "occupancy_stand"
+    assert farm.phase is HeartFarmPhase.FARM
+    assert not farm.success
+    # Inferred blocks are preserved without clearing
+    assert (120, 120) in walker.grid.inferred
+    assert walker.forgets == 0
+
+
+def test_occupancy_frozen_chase_stands_without_clearing_inferred() -> None:
+    """Issue 2: repeated misses box Link in; controller stands without forgetting."""
+    prey = ZeldaObject(slot=3, type_id=0x11, x=120, y=110, facing=0, hp=1, state=0)
+    farm = _farm()
+    snap = _snap(link_x=120, link_y=130, objects=(prey,))
+    # Step repeatedly with Link frozen at (120, 130).
+    # Each miss blocks an adjacent cell into inferred.
+    # Once all 4 neighbors are blocked, shortest_path is None and Link stands.
+    reasons = []
+    for _ in range(10):
+        act = farm.step(snap)
+        reasons.append(act.reason)
+    walker = farm._walker
+    assert walker is not None
+    assert "occupancy_stand" in reasons
+    assert reasons[-1] == "occupancy_stand"
+    assert walker.forgets == 0
+    # Inferred blocks remain intact
+    assert (120, 129) in walker.grid.inferred
+    assert (119, 130) in walker.grid.inferred
+    assert (121, 130) in walker.grid.inferred
+    assert (120, 131) in walker.grid.inferred
+
+
+def test_occupancy_dodge_does_not_fence_cardinal() -> None:
+    """Issue 3: projectile dodge overrides cardinal; last_dir reflects dodge."""
+    farm = _farm()
+    prey = ZeldaObject(slot=3, type_id=0x11, x=180, y=149, facing=0, hp=1, state=0)
+    # Goriya boomerang at (140, 149) moving toward Link triggers dodge
+    shot = ZeldaObject(
+        slot=4, type_id=GORIYA_BOOMERANG_TYPE, x=140, y=149, facing=0, hp=0, state=0
+    )
+    snap = _snap(link_x=120, link_y=149, objects=(prey, shot))
+    act = farm.step(snap)
+    assert "_dodge" in act.reason
+    walker = farm._walker
+    assert walker is not None
+    assert walker.last_dir in ("UP", "DOWN")
+    assert walker.last_dir != "RIGHT"
+    # On the next frame, if Link is still at (120, 149), the blocked cell is in
+    # the dodge direction, not the overridden cardinal (RIGHT / (121, 149)).
+    farm.step(snap)
+    assert (121, 149) not in walker.grid.blocked

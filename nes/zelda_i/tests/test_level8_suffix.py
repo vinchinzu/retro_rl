@@ -11,6 +11,7 @@ chain.
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 from retro_harness.nes import nes_idle_action
@@ -25,7 +26,7 @@ from zelda_i.level8.dungeon import (
 from zelda_i.level8.hops import _clear_stages, l8_hops
 from zelda_i.level8.passage import CELLAR_ROOM, SOURCE_ROOM, SPAWN_XY
 from zelda_i.level8.path import UnverifiedLevel8PathController
-from zelda_i.level8.spine import continue_level8_spine
+from zelda_i.level8.spine import SPINE_L8_RETOPUP, continue_level8_spine
 from zelda_i.level8.suffix import (
     CELLAR_2F_SETTLE_FRAMES,
     FIXTURE_LINEAGE_LEVEL8_SUFFIX,
@@ -257,3 +258,29 @@ def test_hop_rows_default_split_bare_fixture_spine_natural() -> None:
         signature(continue_level8_spine).parameters["suffix"].default
         is NATURAL_LINEAGE_LEVEL8_SUFFIX
     )
+
+
+def test_clean_clears_l8_bomb_key_retopup(monkeypatch) -> None:
+    """``allow_pokes=False`` (``--clean``) must not top up bombs/keys."""
+    captured: dict[str, Any] = {}
+
+    def fake_attach(_env, _run, _hops, **kw) -> None:
+        captured.update(kw)
+
+    monkeypatch.setattr("zelda_i.level8.spine.attach_hops", fake_attach)
+    continue_level8_spine(
+        _env(_ram()),
+        SimpleNamespace(allow_pokes=False, success=True),
+        through="level8-entry",
+        run_stages=lambda *_a, **_k: True,
+    )
+    assert captured["retopup"] == frozenset()
+    continue_level8_spine(
+        _env(_ram()),
+        SimpleNamespace(allow_pokes=True, success=True),
+        through="level8-entry",
+        run_stages=lambda *_a, **_k: True,
+    )
+    assert captured["retopup"] == SPINE_L8_RETOPUP
+    assert "level8_north_manhandla_bomb" in SPINE_L8_RETOPUP
+    assert "level8_darknut_key_up" in SPINE_L8_RETOPUP

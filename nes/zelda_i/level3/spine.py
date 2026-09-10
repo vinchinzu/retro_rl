@@ -28,6 +28,7 @@ from zelda_i.level3.overworld import (
     OverworldPostL2ToLevel3Controller,
     PostL2TriforceSettleController,
 )
+from zelda_i.level3.boss_path import level3_boss_suffix_stages
 from zelda_i.level3.path import Level3NorthChainController, Level3WestKeyController
 from zelda_i.level3.raft_path import (
     CLEAR_59_MAX_FRAMES,
@@ -62,7 +63,9 @@ __all__ = [
     "dest_6b_room_plan",
     "level3_dest_6b_stages",
     "level3_dest_6b_success",
+    "level3_entrance_tf_stages",
     "l3_hops",
+    "run_level3_entrance_tf",
 ]
 
 
@@ -103,6 +106,63 @@ def level3_dest_6b_stages():
     this wrapper is the stable public entry point used by tooling and tests.
     """
     return _dest_6b_stages()
+
+
+def level3_entrance_tf_stages():
+    """Clean fixture-live: Level3Entrance 0x7c → dest 0x5b → bomb shortcut → TF.
+
+    ``route_eligible=False``. No bomb/key poke. Integrator promotes.
+    """
+    dest_6b_room_plan()
+    return (*_dest_6b_stages(), *level3_boss_suffix_stages())
+
+
+def run_level3_entrance_tf(env, *, assist=None, on_frame=None, frame_base: int = 0):
+    """Drive dest-hop stages on an open env. Leave is snapshot leftover."""
+    from zelda_i.ram import read_snapshot
+    from zelda_i.route.chain import run_controller_stage
+    from zelda_i.screen_glance import leftover_from_snapshot
+
+    reports = []
+    obs = getattr(env, "last_observation", None)
+    frame = frame_base
+    failed = None
+    for name, controller, max_frames in level3_entrance_tf_stages():
+        obs, stage = run_controller_stage(
+            env,
+            obs,
+            name=name,
+            controller=controller,
+            max_frames=max_frames,
+            assist=assist,
+            on_frame=on_frame,
+            frame_base=frame,
+        )
+        reports.append(stage.report())
+        frame = stage.end_frame
+        if not stage.success:
+            failed = name
+            break
+    snap = read_snapshot(env.get_ram())
+    leftover = leftover_from_snapshot(snap)
+    tf04 = bool(int(snap.triforce) & 0x04)
+    deaths = 1 if int(snap.mode) == 17 else 0
+    hearts0 = int(snap.filled_hearts) == 0
+    return {
+        "ok": bool(tf04 and failed is None and deaths == 0 and not hearts0),
+        "tf04": tf04,
+        "failed_stage": failed,
+        "stages": reports,
+        "leftover": leftover,
+        "deaths": deaths,
+        "hearts_lo": int(snap.filled_hearts),
+        "hearts_hi": int(snap.heart_containers) - 1,
+        "frames": frame,
+        "route_eligible": False,
+        "natural_entry": False,
+        "intervention_class": "clean",
+        "obs": obs,
+    }
 
 
 # L3 dest-0x5b spine stop: play mode in a cleared 0x5b Darknuts room. The

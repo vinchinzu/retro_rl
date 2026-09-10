@@ -68,6 +68,27 @@ def _step(ctl, ram: np.ndarray):
     return act
 
 
+def test_off_column_knockback_aligns_left_not_down_or_up() -> None:
+    """x=208 leftover must LEFT onto the aisle, never DOWN/UP into a statue."""
+    ctl = make_south_1e_controller()
+    act = _step(ctl, _ram(x=208, y=157))
+    assert not ctl.failed
+    assert list(act.action) == LEFT
+    assert list(act.action) != DOWN
+    assert list(act.action) != UP
+    assert act.reason == "south_align"
+
+
+def test_on_column_leftover_keeps_leftover_x() -> None:
+    """x=118 is on the door column: DOWN, not RIGHT 2px onto a frozen 120."""
+    ctl = make_south_1e_controller()
+    act = _step(ctl, _ram(x=118, y=141))
+    assert not ctl.failed
+    assert list(act.action) == DOWN
+    assert list(act.action) != RIGHT
+    assert act.reason == "south_approach"
+
+
 def test_leftover_emits_left_align_not_up_or_west_push() -> None:
     """(208,141) x-aligns LEFT toward 120. Not UP into the north door."""
     snap = read_snapshot(_ram(x=208, y=141))

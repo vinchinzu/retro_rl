@@ -57,7 +57,7 @@ _DEFAULTS = {
     "keys": 0,
     "bombs": 0,
     "arrows": 0,
-    "health": 0x00,
+    "health": 0x77,
     "food": 0,
     "rod": 0,
     "bow": 0,

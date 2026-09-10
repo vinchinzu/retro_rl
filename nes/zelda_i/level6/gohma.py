@@ -120,6 +120,7 @@ class Level6GohmaController(HopController):
     cooldown: int = 0
     saw_gohma: bool = False
     poked: bool = False
+    poke_arrows: bool = True
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
     inventory_assist: dict[str, Any] | None = None
@@ -220,6 +221,12 @@ class Level6GohmaController(HopController):
             return None
         if int(snap.bow) < 1:
             return self.mark_fail("unarmed_no_bow")
+        if not self.poke_arrows:
+            self.poked = True
+            if int(snap.arrows) < 1:
+                return self.mark_fail("unarmed_no_arrows")
+            self.notes.append("arrows_already_set")
+            return None
         if self.env is None:
             if int(snap.arrows) >= 1:
                 self.poked = True
@@ -335,9 +342,9 @@ class Level6GohmaController(HopController):
         }
 
 
-def make_gohma_controller() -> Level6GohmaController:
+def make_gohma_controller(*, poke_arrows: bool = True) -> Level6GohmaController:
     """Kill Gohma 0x1C with poked wooden arrows. Bow already earned."""
-    return Level6GohmaController()
+    return Level6GohmaController(poke_arrows=poke_arrows)
 
 
 def level6_gohma_stages():

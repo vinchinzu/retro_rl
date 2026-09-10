@@ -16,6 +16,7 @@ from zelda_i.level3.spine import (
     dest_6b_room_plan,
     level3_dest_6b_stages,
     level3_dest_6b_success,
+    level3_entrance_tf_stages,
 )
 from zelda_i.ram import (
     ADDR_KEYS,
@@ -102,6 +103,23 @@ def test_north_exit_miss_sidesteps_and_still_paths() -> None:
     path = ctrl.grid.shortest_path((96, 141), (120, 109))
     assert path is not None
     assert blocked_ahead not in path
+
+
+def test_entrance_tf_stages_are_dest_hops_without_poke() -> None:
+    names = [name for name, _ctl, max_frames in level3_entrance_tf_stages()]
+    assert names[:2] == ["west_key", "north_chain"]
+    assert names[2:] == [
+        "bomb_5b",
+        "clear_5c",
+        "right_5d",
+        "clear_5d",
+        "up_4d",
+        "manhandla_tf",
+    ]
+    for _name, ctl, max_frames in level3_entrance_tf_stages():
+        assert max_frames > 0
+        assert getattr(ctl, "poke_bombs", None) in (None, False)
+        assert getattr(ctl, "route_eligible", False) is False
 
 
 def test_north_chain_live_5b_does_not_succeed() -> None:

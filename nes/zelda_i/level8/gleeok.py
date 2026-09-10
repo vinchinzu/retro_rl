@@ -23,24 +23,27 @@ from zelda_i.dungeon.gleeok import (
 )
 from zelda_i.dungeon.ids import GLEEOK_HEAD_OBJECT_TYPE
 from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE, LEVEL8
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y, PLAY_MODE, ZeldaSnapshot
 
 __all__ = [
     "GLEEOK_4HEAD_MAX_FRAMES",
     "GLEEOK_ROOM",
     "HEART_REACH",
+    "HEART_SLOT",
     "HEART_XY",
     "RAM_CLAIM",
     "Level8FourHeadGleeokController",
     "gleeok_4head_live",
+    "heart_xy",
     "make_four_head_gleeok_controller",
 ]
 
 GLEEOK_ROOM = 0x3C
 GLEEOK_4HEAD_MAX_FRAMES = 20000
 HEART_ITEM = 0x1A
-# Room treasure slot 19 ($83/$97) live F5dump: (32,192) after body-gone
-# (state 0). F4 stand (32,180) was 12px north of the item (no pickup).
+# Room treasure slot 19 ($83/$97). Measured leftover after body-gone is
+# (32,192); dest is live RAM x/y + heart-container bit, idle if missing.
+HEART_SLOT = 19
 HEART_XY = (32, 192)
 HEART_REACH = 1
 CLIP_Y = 173
@@ -52,6 +55,16 @@ RAM_CLAIM = (
     "MK/TF unchanged except the natural heart-container +1 when 0x1A is "
     "collected. Deaths 0. progression_writes=0 capacity_writes=0. No HP poke."
 )
+
+
+def heart_xy(ram: Any | None) -> tuple[int, int] | None:
+    """Live treasure slot 19 coordinate from RAM, or None if unbound/empty."""
+    if ram is not None:
+        x = int(ram[ADDR_LINK_X + HEART_SLOT])
+        y = int(ram[ADDR_LINK_Y + HEART_SLOT])
+        if x or y:
+            return (x, y)
+    return None
 
 
 def gleeok_4head_live(snap: ZeldaSnapshot) -> list:
@@ -89,10 +102,18 @@ class Level8FourHeadGleeokController:
     hc_out: int | None = None
     _armed: bool = False
     route_eligible: bool = False
+    _env: Any = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
 
     @property
     def observed_body_type(self) -> int | None:
         return GLEEOK_FOUR_HEAD_OBJECT_TYPE
+
+    def _heart_dest(self) -> tuple[int, int] | None:
+        ram = None if self._env is None else self._env.get_ram()
+        return heart_xy(ram)
 
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
@@ -177,7 +198,10 @@ class Level8FourHeadGleeokController:
                 return self._emit(
                     snap, FrameAction(nes_idle_action(), "body_gone_heart"), force=True
                 )
-            tx, ty = HEART_XY
+            hdest = self._heart_dest()
+            if hdest is None:
+                return self._emit(snap, FrameAction(nes_idle_action(), "heart_wait"))
+            tx, ty = hdest
             if abs(int(snap.link_x) - tx) > HEART_REACH:
                 btn = "RIGHT" if snap.link_x < tx else "LEFT"
                 return self._emit(snap, FrameAction(nes_action(btn), "heart_x"))

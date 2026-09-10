@@ -44,6 +44,7 @@ from zelda_i.dungeon.engine import (
 from zelda_i.dungeon import ids as _ids
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.level3.geometry import (
+    DOOR_5C_RIGHT_Y,
     KEY_DOOR_Y,
     NORTH_DOOR_X,
     STAIRS_69_RIGHT_Y,
@@ -69,12 +70,15 @@ ROOM_L3_MAP_4C = 0x4C  # east of 0x4b via key; map room item 0x17
 ROOM_L3_BOMB_SHORTCUT = 0x5C  # bomb-RIGHT of 0x5b (boss shortcut residual)
 ROOM_L3_BOSS_PREP = 0x5D  # east of 0x5c after clear; RIGHT@y≈141 (LIVE residual)
 ROOM_L3_BOSS = 0x4D  # Manhandla candidate north of 0x5d (assisted glimpse; not pure)
+ROOM_L3_TF = 0x3D  # north of Manhandla; TF bit 0x04
 # Enemy types: dungeon_ids (HYGIENE rule 5). Re-exported for L3 consumers.
 ZOL_OBJECT_TYPE = _ids.ZOL_OBJECT_TYPE
 DARKNUT_OBJECT_TYPE = _ids.DARKNUT_OBJECT_TYPE
 KEESE_OBJECT_TYPE = _ids.KEESE_OBJECT_TYPE
 MANHANDLA_OBJECT_TYPE = _ids.MANHANDLA_OBJECT_TYPE
 INVULN_MOVER_0X2B = _ids.INVULN_MOVER_OBJECT_TYPE
+GEL_SPLIT_OBJECT_TYPE = _ids.GEL_SPLIT_OBJECT_TYPE
+GEL_OBJECT_TYPE = _ids.GEL_OBJECT_TYPE
 ROOM_ITEM_SMALL_KEY = 0x19
 ROOM_ITEM_COMPASS = 0x16
 ROOM_ITEM_MAP = 0x17
@@ -369,6 +373,84 @@ ROOM_69_SPEC = DungeonRoomSpec(
     level=LEVEL3,
 )
 
+# 0x5c bomb-RIGHT of Darknuts: 3× Darknut; kill opens R|L → 0x5d @ y≈141.
+ROOM_5C_SPEC = DungeonRoomSpec(
+    spec_id="level3_room5c_shortcut",
+    source_room=ROOM_L3_DARKNUTS,
+    room_id=ROOM_L3_BOMB_SHORTCUT,
+    entry=DoorRoute("RIGHT", ((120, 141), (208, 141))),
+    enemy_types=(DARKNUT_OBJECT_TYPE,),
+    expected_enemy_count=3,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        # Waist/south patrol; occupancy bounds ymin=109 clips dest so Link does
+        # not chase north onto diamond blocks (rr-npv.1).
+        patrol=(
+            (64, 141),
+            (120, 141),
+            (176, 141),
+            (176, 173),
+            (120, 173),
+            (64, 173),
+        ),
+        engage_distance=40,
+        attack_phase=2,
+        patrol_attack_period=6,
+        patrol_attack_hold=3,
+        engage_attack_period=5,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=_ROOM_5B_OCCUPANCY_BOUNDS,
+        contact_backstep=8,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    required_open_doors=DoorDir.RIGHT | DoorDir.LEFT,
+    exit_routes=(
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("RIGHT", ((120, DOOR_5C_RIGHT_Y), (208, DOOR_5C_RIGHT_Y))),
+        DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),
+    ),
+    max_frames=16000,
+    level=LEVEL3,
+)
+
+# 0x5d east of 0x5c: Zol/Gel/Keese only (ignore invuln 0x2b). Kill opens UP.
+_PREP_CLEAR_TYPES: tuple[int, ...] = (
+    ZOL_OBJECT_TYPE,
+    GEL_SPLIT_OBJECT_TYPE,
+    GEL_OBJECT_TYPE,
+    KEESE_OBJECT_TYPE,
+)
+ROOM_5D_SPEC = DungeonRoomSpec(
+    spec_id="level3_room5d_prep",
+    source_room=ROOM_L3_BOMB_SHORTCUT,
+    room_id=ROOM_L3_BOSS_PREP,
+    entry=DoorRoute("LEFT", ((32, 141),)),
+    enemy_types=_PREP_CLEAR_TYPES,
+    expected_enemy_count=1,
+    alive_rule=AliveRule.TYPE,
+    combat=CombatTuning(
+        patrol=_DARKNUT_PATROL,
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=5,
+        patrol_attack_hold=3,
+        engage_attack_period=4,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_bounds=_ROOM_5B_OCCUPANCY_BOUNDS,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    required_open_doors=DoorDir.UP,
+    exit_routes=(
+        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("UP", ((NORTH_DOOR_X, 141), (NORTH_DOOR_X, 93))),
+    ),
+    max_frames=14000,
+    level=LEVEL3,
+    object_slot_max=12,
+)
+
 
 def level3_room_7b_key_success(ram: np.ndarray) -> bool:
     """Isolated pure: 0x7b with keys≥1 and no live Zols.
@@ -436,5 +518,7 @@ for _spec in (
     ROOM_5A_SPEC,
     ROOM_59_SPEC,
     ROOM_69_SPEC,
+    ROOM_5C_SPEC,
+    ROOM_5D_SPEC,
 ):
     register_room_spec(_spec)

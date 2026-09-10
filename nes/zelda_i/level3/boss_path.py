@@ -1,21 +1,15 @@
-"""Assisted Survival library: Level3Raft → Manhandla 0x4d → TF bit 0x04.
+"""L3 dest hops: Raft reverse (Survival) and Entrance→TF Clean suffix.
 
-Directed LIVE path (2026-08-07)::
+Directed dest (RAM)::
 
-    0x0f mode9 reverse channel + NW stairs UP → 0x69
-    UP → 0x59
-    BOMB_RIGHT@(192,141) → 0x5a   *** walk-RIGHT sealed post-Raft ***
-    RIGHT → 0x5b
-    BOMB_RIGHT@(192,141) → 0x5c (3× Darknut)
-    full clear (doors raw=3) → RIGHT @ y≈141 → 0x5d
-    clear Zol+Keese only (ignore invuln 0x2b) → UP → 0x4d Manhandla 0x3c
-    bombs → HC → TF room (bit 0x04)
+    0x5b BOMB_RIGHT@(192,141) → 0x5c
+    clear Darknuts (doors R|L) → RIGHT y≈141 → 0x5d
+    clear Zol/Gel/Keese (ignore 0x2b) → UP → 0x4d Manhandla 0x3c
+    bombs → HC → UP 0x3d → TF bit 0x04
 
-Intervention: Survival. Not Clean STATUS.
-
-Hybrid controller: high-level phase methods driven by a thin runner, using
-``zelda_i.dungeon.ops`` for bomb/door/clear primitives (FrameAction alone is
-awkward for bomb-stand + save/restore recon).
+Survival still enters from Level3Raft via exit_passage + 0x69 UP + bomb-R 0x59.
+Clean Entrance→TF skips Raft and uses ``level3_entrance_tf_stages``.
+No ``idle(n)`` as a hop; door dest is leftover-relative ``door_band_goal``.
 """
 
 from __future__ import annotations
@@ -23,22 +17,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import save_rgb_png
-from zelda_i.door_graph.core import DoorDir
+from zelda_i.dungeon.bomb_wall import BombWallController
+from zelda_i.dungeon.door_hop import DoorHopController, DoorHopSpec
+from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
+from zelda_i.dungeon.hop_controller import (
+    HopController,
+    WAIT_SCROLL_B,
+    dungeon_align_then_push,
+)
 from zelda_i.dungeon.ops import (
-    PUSH_FRAMES,
-    bomb_stand,
-    ensure_bomb,
-    exit_door,
     fight_clear,
-    goto,
-    idle,
     live_killables,
     poke_bombs,
-    push_dir,
     room_fields,
 )
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level3.boss_combat import (
     BOMB_NORTH_STANDS,
     Level3BossCombatMixin,
@@ -52,12 +48,15 @@ from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
     INVULN_MOVER_0X2B,
     MANHANDLA_OBJECT_TYPE,
+    ROOM_5C_SPEC,
+    ROOM_5D_SPEC,
     ROOM_L3_BOSS,
     ROOM_L3_BOSS_PREP,
     ROOM_L3_BOMB_SHORTCUT,
     ROOM_L3_COMPASS,
     ROOM_L3_DARKNUTS,
     ROOM_L3_SOUTH_DARKNUTS,
+    ROOM_L3_TF,
     ROOM_L3_WEST_DARKNUTS,
     level3_manhandla_live,
 )
@@ -65,14 +64,21 @@ from zelda_i.level3.geometry import (
     BOMB_STAND_59_RIGHT,
     BOMB_STAND_5B_RIGHT,
     DOOR_5C_RIGHT_Y,
+    NORTH_DOOR_X,
+    NORTH_DOOR_X_TOL,
     PASSAGE_EXIT_WAYPOINTS,
 )
 from zelda_i.level3.overworld import LEVEL3
+from zelda_i.level3.raft_path import SPAWN_SETTLE_FRAMES
 from zelda_i.paths import RECORDINGS_DIR
 from zelda_i.ram import (
+    ADDR_SELECTED_ITEM,
     PLAY_MODE,
+    ZeldaSnapshot,
     read_snapshot,
+    read_u8,
 )
+from zelda_i.screen_glance import leftover_from_snapshot
 
 BOSS_PATH_PHASES: tuple[str, ...] = (
     "exit_passage",
@@ -91,6 +97,400 @@ BOSS_PATH_PHASES: tuple[str, ...] = (
 )
 
 BOSS_PATH_MAX_FRAMES = 120_000
+BOMB_5B_MAX_FRAMES = 8000
+MANHANDLA_MAX_FRAMES = 16000
+EAST_DOOR = (208, 141)
+NORTH_DOOR = (NORTH_DOOR_X, 93)
+
+
+def _l3_door(
+    spec_id: str,
+    room: int,
+    goal: tuple[int, int],
+    hold_dir: str,
+    policy: str,
+    dest_room: int,
+    **kw: Any,
+) -> DoorHopSpec:
+    kw.setdefault("level", LEVEL3)
+    kw.setdefault("fail_ow", True)
+    kw.setdefault("wait_modes", WAIT_SCROLL_B)
+    return DoorHopSpec(spec_id, room, goal, hold_dir, policy, dest_room=dest_room, **kw)
+
+
+UP_69_SPEC = _l3_door(
+    "level3_up_0x69",
+    ROOM_L3_SOUTH_DARKNUTS,
+    NORTH_DOOR,
+    "UP",
+    "occupancy x=120 UP; dest 0x59",
+    ROOM_L3_WEST_DARKNUTS,
+)
+RIGHT_5A_SPEC = _l3_door(
+    "level3_right_0x5a",
+    ROOM_L3_COMPASS,
+    EAST_DOOR,
+    "RIGHT",
+    "occupancy y=141 RIGHT; dest 0x5b",
+    ROOM_L3_DARKNUTS,
+    push_at_goal=True,
+    align="y",
+    cardinal_hold=True,
+)
+RIGHT_5C_SPEC = _l3_door(
+    "level3_right_0x5c",
+    ROOM_L3_BOMB_SHORTCUT,
+    EAST_DOOR,
+    "RIGHT",
+    "occupancy y=141 RIGHT; dest 0x5d",
+    ROOM_L3_BOSS_PREP,
+    push_at_goal=True,
+    align="y",
+    cardinal_hold=True,
+)
+UP_5D_SPEC = _l3_door(
+    "level3_up_0x5d",
+    ROOM_L3_BOSS_PREP,
+    NORTH_DOOR,
+    "UP",
+    "occupancy x=120 UP; dest 0x4d",
+    ROOM_L3_BOSS,
+    south_band=True,
+)
+UP_4D_SPEC = _l3_door(
+    "level3_up_0x4d",
+    ROOM_L3_BOSS,
+    NORTH_DOOR,
+    "UP",
+    "occupancy x=120 UP; dest 0x3d",
+    ROOM_L3_TF,
+    south_band=True,
+)
+
+
+@dataclass
+class L3DoorHopController(DoorHopController):
+    """Occupancy dest hop. Shared engine; L3 has no rod so skip the L6 gate."""
+
+    def _dest(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        spec = self.spec
+        if snap.screen == spec.room:
+            return None
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            return None
+        xy = f"{snap.link_x}_{snap.link_y}"
+        if spec.dest_room is not None and snap.screen != spec.dest_room:
+            return self._fail(snap, f"wrong_room_{snap.screen:02x}_{xy}")
+        if spec.success_fn(
+            snap, not_room=spec.room, dest_room=spec.dest_room, passage_ok=False
+        ):
+            return self._mark_success(snap)
+        return None
+
+
+@dataclass(frozen=True)
+class _L3BombWall:
+    room: int
+    stand: tuple[int, int]
+    face: str
+    opens_to: int
+
+
+L3_WALL_5B = _L3BombWall(
+    ROOM_L3_DARKNUTS, BOMB_STAND_5B_RIGHT, "RIGHT", ROOM_L3_BOMB_SHORTCUT
+)
+L3_WALL_59 = _L3BombWall(
+    ROOM_L3_WEST_DARKNUTS, BOMB_STAND_59_RIGHT, "RIGHT", ROOM_L3_COMPASS
+)
+
+
+def make_l3_bomb_5b() -> BombWallController:
+    """0x5b bomb-RIGHT → 0x5c. Pause-select bombs; never poke count.
+
+    Leftover after dest_6b clear is inland (live (176,125) stand_timeout).
+    y-first to the waist then RIGHT to (192,141).
+    """
+    return BombWallController(
+        wall=L3_WALL_5B,
+        level=LEVEL3,
+        select_item=B_SLOT_BOMBS,
+        wait_hold_face=True,
+        require_bomb_consumed=False,
+        max_frames=BOMB_5B_MAX_FRAMES,
+        approach_waypoints=(BOMB_STAND_5B_RIGHT,),
+    )
+
+
+def make_l3_bomb_59() -> BombWallController:
+    """Post-Raft 0x59 bomb-RIGHT → 0x5a (walk sealed)."""
+    return BombWallController(
+        wall=L3_WALL_59,
+        level=LEVEL3,
+        select_item=B_SLOT_BOMBS,
+        wait_hold_face=True,
+        require_bomb_consumed=False,
+        max_frames=BOMB_5B_MAX_FRAMES,
+    )
+
+
+@dataclass
+class Level3SpawnClearController:
+    """Wait for spawn (RAM live or settle window), then dest-clear + doors."""
+
+    spec: Any
+    spawn_max: int = SPAWN_SETTLE_FRAMES
+    frames: int = 0
+    spawn_frames: int = 0
+    saw_live: bool = False
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    leftover: dict[str, Any] = field(default_factory=dict)
+    combat: GenericDungeonRoomController = field(init=False)
+    max_frames: int = field(init=False)
+    route_eligible: bool = False
+
+    def __post_init__(self) -> None:
+        self.combat = GenericDungeonRoomController(self.spec)
+        self.max_frames = int(self.spec.max_frames) + int(self.spawn_max)
+
+    def _doors_ok(self, snap: ZeldaSnapshot) -> bool:
+        need = int(self.spec.required_open_doors or 0)
+        if not need:
+            return True
+        return (int(snap.cur_opened_doors) & need) == need
+
+    def _cleared(self, snap: ZeldaSnapshot) -> bool:
+        if (
+            snap.screen != self.spec.room_id
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+        ):
+            return False
+        if self.spec.live_enemies(snap):
+            return False
+        if not self.saw_live and self.spawn_frames < self.spawn_max:
+            return False
+        return self._doors_ok(snap)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.leftover = leftover_from_snapshot(snap)
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if self.failed:
+            return FrameAction(nes_idle_action(), "failed")
+        if snap.mode == 17:
+            self.failed = True
+            self.notes.append("link_death")
+            return FrameAction(nes_idle_action(), "link_death")
+        if self.frames >= self.max_frames:
+            self.failed = True
+            self.notes.append("timeout")
+            return FrameAction(nes_idle_action(), "timeout")
+        live = self.spec.live_enemies(snap)
+        if live:
+            self.saw_live = True
+            action = self.combat.step(snap)
+            if self.combat.phase is DungeonPhase.FAILED:
+                self.failed = True
+                self.notes.append("clear_failed")
+            return action
+        if not self.saw_live and self.spawn_frames < self.spawn_max:
+            self.spawn_frames += 1
+            return FrameAction(nes_idle_action(), "spawn_wait")
+        if self._cleared(snap):
+            self.success = True
+            self.notes.append(f"cleared_0x{self.spec.room_id:02x}")
+            return FrameAction(nes_idle_action(), "done")
+        if self.combat.success or self.combat.phase is DungeonPhase.DONE:
+            return FrameAction(nes_idle_action(), "wait_doors")
+        return self.combat.step(snap)
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "leftover": dict(self.leftover),
+            "saw_live": self.saw_live,
+            "spec_id": self.spec.spec_id,
+            "route_eligible": False,
+        }
+
+
+@dataclass
+class Level3ManhandlaController(HopController):
+    """0x4d leftover: bomb heads, HC, UP 0x3d. Dest is TF bit 0x04."""
+
+    spec_id: str = "level3_manhandla_tf"
+    room: int = ROOM_L3_BOSS
+    max_frames: int = MANHANDLA_MAX_FRAMES
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "tf04"
+    leftover: dict[str, Any] = field(default_factory=dict)
+    samples: list[dict[str, Any]] = field(default_factory=list)
+    bomb_cd: int = 0
+    hc0: int | None = None
+    env: Any | None = None
+    _select: PauseSelectController | None = field(default=None, repr=False)
+    route_eligible: bool = False
+    writes: int = 0
+
+    def bind_env(self, env: Any) -> None:
+        self.env = env
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return bool(int(snap.triforce) & LEVEL3_TRIFORCE_BIT)
+
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        return f"tf04_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+
+    def emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        if force or self.frames <= 2 or self.frames % 16 == 0:
+            self.leftover = leftover_from_snapshot(snap)
+            self.samples.append(
+                {
+                    "frame": self.frames,
+                    "x": int(snap.link_x),
+                    "y": int(snap.link_y),
+                    "screen": int(snap.screen),
+                    "reason": action.reason,
+                    "bombs": int(snap.bombs),
+                    "triforce": int(snap.triforce),
+                    "health": int(snap.health),
+                }
+            )
+        return action
+
+    def _selected(self) -> int | None:
+        if self.env is None:
+            return B_SLOT_BOMBS
+        return int(read_u8(self.env.get_ram(), ADDR_SELECTED_ITEM))
+
+    def _select_bombs(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.env is None:
+            return FrameAction(nes_action("B"), "place_bomb")
+        if self._select is None:
+            self._select = PauseSelectController(want=B_SLOT_BOMBS, name="bombs")
+            self._select.bind_env(self.env)
+        driven = self._select.drive(snap)
+        if self._select.failed:
+            return self.mark_fail(self._select.fail_reason or "bombs_not_selected")
+        if driven is not None:
+            return driven
+        return FrameAction(nes_idle_action(), "bombs_selected")
+
+    def _fight(self, snap: ZeldaSnapshot, heads: list) -> FrameAction:
+        nearest = min(
+            heads, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y)
+        )
+        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+        dx = nearest.x - snap.link_x
+        dy = nearest.y - snap.link_y
+        if self.bomb_cd > 0:
+            self.bomb_cd -= 1
+        if abs(dx) >= abs(dy):
+            face = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            face = "DOWN" if dy > 0 else "UP"
+        if dist < 42 and self.bomb_cd <= 0 and snap.bombs > 0:
+            if self._selected() != B_SLOT_BOMBS:
+                return self._select_bombs(snap)
+            if dist > 16:
+                return FrameAction(nes_action(face), "approach")
+            self.bomb_cd = 65
+            return FrameAction(nes_action(face, "B"), "place_bomb")
+        if snap.link_y > 165:
+            return FrameAction(nes_action("UP"), "climb")
+        if dist > 48:
+            return FrameAction(nes_action(face), "approach")
+        circle = "DOWN" if (self.frames // 30) % 2 == 0 else "UP"
+        if face in ("UP", "DOWN"):
+            circle = "RIGHT" if (self.frames // 30) % 2 == 0 else "LEFT"
+        return FrameAction(nes_action(circle), "circle")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.level != LEVEL3:
+            return self.mark_fail(f"left_level_{snap.level}")
+        if snap.screen == ROOM_L3_TF:
+            return dungeon_align_then_push(
+                snap, push_dir="UP", target_x=NORTH_DOOR_X, target_y=141, reason="tf"
+            )
+        if snap.screen != ROOM_L3_BOSS:
+            return self.mark_fail(f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
+        heads = level3_manhandla_live(snap)
+        if heads:
+            return self._fight(snap, heads)
+        if self.hc0 is None:
+            self.hc0 = int(snap.heart_containers)
+        if int(snap.heart_containers) <= self.hc0:
+            return dungeon_align_then_push(
+                snap,
+                push_dir="UP",
+                target_x=NORTH_DOOR_X,
+                target_y=141,
+                reason="hc",
+            )
+        if abs(snap.link_x - NORTH_DOOR_X) > NORTH_DOOR_X_TOL:
+            btn = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
+            return FrameAction(nes_action(btn), "north_align")
+        return FrameAction(nes_action("UP"), "north_push")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "samples": list(self.samples),
+            "leftover": dict(self.leftover),
+            "spec_id": self.spec_id,
+            "route_eligible": False,
+            "writes": int(self.writes),
+            "policy": "bomb heads; HC; UP 0x3d; dest TF 0x04",
+        }
+
+
+def level3_boss_suffix_stages():
+    """Cleared 0x5b leftover → bomb-R 0x5c → 0x5d → Manhandla → TF 0x04."""
+    return (
+        ("bomb_5b", make_l3_bomb_5b(), BOMB_5B_MAX_FRAMES),
+        (
+            "clear_5c",
+            Level3SpawnClearController(ROOM_5C_SPEC),
+            ROOM_5C_SPEC.max_frames + SPAWN_SETTLE_FRAMES,
+        ),
+        ("right_5d", L3DoorHopController(RIGHT_5C_SPEC), RIGHT_5C_SPEC.max_frames),
+        (
+            "clear_5d",
+            Level3SpawnClearController(ROOM_5D_SPEC),
+            ROOM_5D_SPEC.max_frames + SPAWN_SETTLE_FRAMES,
+        ),
+        ("up_4d", L3DoorHopController(UP_5D_SPEC), UP_5D_SPEC.max_frames),
+        ("manhandla_tf", Level3ManhandlaController(), MANHANDLA_MAX_FRAMES),
+    )
+
+
+@dataclass
+class _PlayWait(HopController):
+    room: int = 0
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "play_ready"
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            snap.screen == self.room
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        return FrameAction(nes_idle_action(), "wait_play")
 
 
 @dataclass
@@ -148,7 +548,6 @@ class Level3BossPathController(Level3BossCombatMixin):
         msg = poke_bombs(env, self.poke_bombs)
         if note:
             self.notes.append(f"RECON poke {msg}")
-        ensure_bomb(env)
 
     def _restore_state(self, env: Any, state: Any) -> None:
         """Recon retry primitive; forbidden by construction on the spine."""
@@ -157,19 +556,73 @@ class Level3BossPathController(Level3BossCombatMixin):
         env.em.set_state(state)
         self.state_restores += 1
 
+    def _drive_hop(
+        self,
+        env: Any,
+        assist: Any | None,
+        total: list[int],
+        controller: Any,
+        *,
+        max_frames: int | None = None,
+    ) -> Any:
+        bind = getattr(controller, "bind_env", None)
+        if callable(bind):
+            bind(env)
+        limit = int(max_frames or getattr(controller, "max_frames", 4000) or 4000)
+        for _ in range(limit):
+            snap = read_snapshot(env.get_ram())
+            action = controller.step(snap)
+            env.step(action.action)
+            total[0] += 1
+            if assist is not None:
+                assist.apply_env(env, frame=total[0])
+            if getattr(controller, "success", False) or getattr(
+                controller, "failed", False
+            ):
+                break
+            phase = getattr(controller, "phase", None)
+            pname = getattr(phase, "name", phase)
+            if isinstance(pname, str) and pname.upper() in {"FAILED", "DONE"}:
+                break
+            if snap.mode == 17:
+                break
+        return controller
+
+    def _hop_fail(
+        self,
+        error: str,
+        path_log: list[dict],
+        traps: list[str],
+        notes: list[str],
+        env: Any,
+        hop: Any | None = None,
+    ) -> dict[str, Any]:
+        snap = read_snapshot(env.get_ram())
+        out = self._fail(error)
+        out.update(
+            {
+                "path_log": path_log,
+                "final": room_fields(snap, env.get_ram()),
+                "traps": traps,
+                "notes": notes,
+                "hop": hop.report() if hop is not None and hasattr(hop, "report") else None,
+            }
+        )
+        self.path_log.extend(path_log)
+        return out
+
     def path_to_5d(
         self,
         env: Any,
         assist: Any | None,
         total: list[int],
     ) -> dict[str, Any]:
-        """Directed: Level3Raft / 0x0f → 0x5d boss prep."""
+        """Directed dest hops: Level3Raft / 0x0f → play 0x5d."""
         path_log: list[dict] = []
         traps: list[str] = []
         notes: list[str] = []
         self._set_phase("exit_passage")
 
-        # --- passage exit ---
         ex = exit_raft_passage(env, assist, total)
         path_log.append(
             {
@@ -187,409 +640,107 @@ class Level3BossPathController(Level3BossCombatMixin):
         obs, *_ = env.step(nes_idle_action())
         save_rgb_png(obs, RECORDINGS_DIR / f"{self.tag}_exit_0x69.png")
         total[0] += 1
+        self._maybe_poke(env)
 
-        if self.poke_bombs is not None:
-            notes.append(f"RECON poke {poke_bombs(env, self.poke_bombs)}")
-            ensure_bomb(env)
-
-        # --- 0x69 UP → 0x59 ---
-        self._set_phase("up_69", "entered_0x69")
-        idle(env, assist, total, 60)
         snap = read_snapshot(env.get_ram())
-        pr: dict[str, Any] = {}
         if snap.screen == ROOM_L3_SOUTH_DARKNUTS:
+            self._set_phase("up_69", "entered_0x69")
             live_dn = live_killables(snap, (DARKNUT_OBJECT_TYPE,))
             if live_dn:
-                if self.continuous_mode:
-                    clr = fight_clear(
-                        env,
-                        assist,
-                        total,
-                        enemy_types=(DARKNUT_OBJECT_TYPE,),
-                        max_frames=6000,
-                    )
-                    path_log.append(
-                        {
-                            "step": "clear_69",
-                            "ok": clr.get("ok"),
-                            "frames": clr.get("frames"),
-                        }
-                    )
-                    pr = exit_door(env, assist, total, "UP")
-                else:
-                    st = env.em.get_state()
-                    pr = exit_door(env, assist, total, "UP")
-                    if not (
-                        pr["changed_room"]
-                        and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS
-                    ):
-                        self._restore_state(env, st)
-                        idle(env, assist, total, 2)
-                        clr = fight_clear(
-                            env, assist, total,
-                            enemy_types=(DARKNUT_OBJECT_TYPE,), max_frames=6000,
-                        )
-                        path_log.append({"step": "clear_69", "ok": clr.get("ok"), "frames": clr.get("frames")})
-                        pr = exit_door(env, assist, total, "UP")
-            else:
-                pr = exit_door(env, assist, total, "UP")
-            path_log.append(
-                {
-                    "step": "69_up",
-                    "ok": pr["changed_room"]
-                    and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS,
-                    "to": pr["after"]["sc"] if pr["changed_room"] else None,
-                }
-            )
-            if not (
-                pr["changed_room"]
-                and pr["after"]["screen"] == ROOM_L3_WEST_DARKNUTS
-            ):
-                out = self._fail("failed_69_up")
-                out.update(
-                    {
-                        "path_log": path_log,
-                        "final": pr["after"],
-                        "traps": traps,
-                        "notes": notes,
-                    }
-                )
-                return out
-
-        # --- 0x59 BOMB_RIGHT → 0x5a (walk sealed) ---
-        self._set_phase("bomb_59")
-        idle(env, assist, total, 40)
-        if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
-            poke_bombs(env, self.poke_bombs)
-        bx, by = BOMB_STAND_59_RIGHT
-        walk = ({"changed_room": False} if self.continuous_mode else
-                exit_door(env, assist, total, "RIGHT", y_force=141))
-        if walk["changed_room"] and walk["after"]["screen"] == ROOM_L3_COMPASS:
-            path_log.append({"step": "59_right_walk", "ok": True, "to": "0x5a"})
-        else:
-            if not self.continuous_mode:
-                self._restore_state(env, st)
-                idle(env, assist, total, 2)
-            if not walk["changed_room"]:
-                traps.append("0x59 walk-RIGHT sealed post-Raft (expected)")
-            br = bomb_stand(env, assist, total, "RIGHT", bx, by)
-            path_log.append(
-                {
-                    "step": "59_bomb_right",
-                    "ok": br["changed_room"]
-                    and br["after"]["screen"] == ROOM_L3_COMPASS,
-                    "to": br["after"]["sc"] if br["changed_room"] else None,
-                    "stand": [bx, by],
-                }
-            )
-            if not (
-                br["changed_room"] and br["after"]["screen"] == ROOM_L3_COMPASS
-            ):
-                out = self._fail("failed_59_bomb_right")
-                out.update(
-                    {
-                        "path_log": path_log,
-                        "final": br["after"],
-                        "traps": traps,
-                        "notes": notes,
-                    }
-                )
-                return out
-
-        # --- 0x5a RIGHT → 0x5b ---
-        self._set_phase("right_5a")
-        idle(env, assist, total, 20)
-        pr = exit_door(env, assist, total, "RIGHT", y_force=141)
-        path_log.append(
-            {
-                "step": "5a_right",
-                "ok": pr["changed_room"]
-                and pr["after"]["screen"] == ROOM_L3_DARKNUTS,
-                "to": pr["after"]["sc"] if pr["changed_room"] else None,
-            }
-        )
-        if not (
-            pr["changed_room"] and pr["after"]["screen"] == ROOM_L3_DARKNUTS
-        ):
-            out = self._fail("failed_5a_right")
-            out.update(
-                {
-                    "path_log": path_log,
-                    "final": pr["after"],
-                    "traps": traps,
-                    "notes": notes,
-                }
-            )
-            return out
-
-        # --- 0x5b BOMB_RIGHT → 0x5c ---
-        self._set_phase("bomb_5b")
-        idle(env, assist, total, 30)
-        if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
-            poke_bombs(env, self.poke_bombs)
-        bx, by = BOMB_STAND_5B_RIGHT
-        walk = ({"changed_room": False} if self.continuous_mode else
-                exit_door(env, assist, total, "RIGHT", y_force=141))
-        if (
-            walk["changed_room"]
-            and walk["after"]["screen"] == ROOM_L3_BOMB_SHORTCUT
-        ):
-            path_log.append({"step": "5b_right_walk", "ok": True, "to": "0x5c"})
-        else:
-            if not self.continuous_mode:
-                self._restore_state(env, st)
-                idle(env, assist, total, 2)
-            br = bomb_stand(env, assist, total, "RIGHT", bx, by)
-            path_log.append(
-                {
-                    "step": "5b_bomb_right",
-                    "ok": br["changed_room"]
-                    and br["after"]["screen"] == ROOM_L3_BOMB_SHORTCUT,
-                    "to": br["after"]["sc"] if br["changed_room"] else None,
-                }
-            )
-            if not (
-                br["changed_room"]
-                and br["after"]["screen"] == ROOM_L3_BOMB_SHORTCUT
-            ):
-                out = self._fail("failed_5b_bomb_right")
-                out.update(
-                    {
-                        "path_log": path_log,
-                        "final": br["after"],
-                        "traps": traps,
-                        "notes": notes,
-                    }
-                )
-                self.path_log.extend(path_log)
-                return out
-
-        # --- 0x5c clear Darknuts → RIGHT @ y≈141 → 0x5d ---
-        self._set_phase("clear_5c")
-        idle(env, assist, total, 110)
-        snap = read_snapshot(env.get_ram())
-        if snap.screen == ROOM_L3_BOMB_SHORTCUT:
-            for _ in range(6):
-                live = live_killables(
-                    read_snapshot(env.get_ram()), (DARKNUT_OBJECT_TYPE,)
-                )
-                if live:
-                    break
-                idle(env, assist, total, 25)
-            live = live_killables(
-                read_snapshot(env.get_ram()), (DARKNUT_OBJECT_TYPE,)
-            )
-            if live:
-                if self.poke_bombs is not None:
-                    poke_bombs(env, self.poke_bombs)
-                    ensure_bomb(env)
                 clr = fight_clear(
                     env,
                     assist,
                     total,
                     enemy_types=(DARKNUT_OBJECT_TYPE,),
-                    max_frames=16000,
-                    use_bombs=True,
-                    require_door_pair=True,
+                    max_frames=6000,
                 )
                 path_log.append(
                     {
-                        "step": "clear_5c",
+                        "step": "clear_69",
                         "ok": clr.get("ok"),
                         "frames": clr.get("frames"),
-                        "doors": (clr.get("final") or {}).get("doors"),
-                        "live_after": len(
-                            live_killables(
-                                read_snapshot(env.get_ram()),
-                                (DARKNUT_OBJECT_TYPE,),
-                            )
-                        ),
                     }
                 )
-                still = live_killables(
-                    read_snapshot(env.get_ram()), (DARKNUT_OBJECT_TYPE,)
-                )
-                if still:
-                    traps.append(
-                        f"0x5c clear residual: {len(still)} darknuts still live"
-                    )
-                    out = self._fail("failed_5c_clear")
-                    out.update(
-                        {
-                            "path_log": path_log,
-                            "final": room_fields(
-                                read_snapshot(env.get_ram()), env.get_ram()
-                            ),
-                            "traps": traps,
-                            "notes": notes,
-                        }
-                    )
-                    return out
-            else:
-                path_log.append({"step": "clear_5c", "ok": True, "skipped": True})
-
-            doors_ok = False
-            for wait_i in range(40):
-                s = read_snapshot(env.get_ram())
-                live_n = len(live_killables(s, (DARKNUT_OBJECT_TYPE,)))
-                raw = s.cur_opened_doors
-                pair = (raw & (DoorDir.RIGHT | DoorDir.LEFT)) == (
-                    DoorDir.RIGHT | DoorDir.LEFT
-                )
-                if live_n == 0 and pair and s.room_all_dead >= 10:
-                    doors_ok = True
-                    path_log.append(
-                        {
-                            "step": "5c_doors_ready",
-                            "wait_i": wait_i,
-                            "doors": {
-                                "R": bool(raw & DoorDir.RIGHT),
-                                "L": bool(raw & DoorDir.LEFT),
-                                "raw": raw,
-                            },
-                            "all_dead": s.room_all_dead,
-                        }
-                    )
-                    break
-                if live_n > 0:
-                    if self.poke_bombs is not None:
-                        poke_bombs(env, self.poke_bombs)
-                        ensure_bomb(env)
-                    fight_clear(
-                        env,
-                        assist,
-                        total,
-                        enemy_types=(DARKNUT_OBJECT_TYPE,),
-                        max_frames=5000,
-                        use_bombs=True,
-                        require_door_pair=True,
-                    )
-                else:
-                    idle(env, assist, total, 30)
-
-            if not doors_ok:
-                f = room_fields(read_snapshot(env.get_ram()), env.get_ram())
-                traps.append(
-                    f"0x5c doors not raw=3 after clear (got raw={f['doors']['raw']} "
-                    f"all_dead={f['room_all_dead']})"
+            hop = L3DoorHopController(UP_69_SPEC)
+            self._drive_hop(env, assist, total, hop)
+            path_log.append(
+                {
+                    "step": "69_up",
+                    "ok": hop.success,
+                    "to": hop.leftover.get("screen") if hop.leftover else None,
+                }
+            )
+            if not hop.success:
+                return self._hop_fail(
+                    "failed_69_up", path_log, traps, notes, env, hop
                 )
 
+        self._set_phase("bomb_59")
+        if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
+            poke_bombs(env, self.poke_bombs)
+        hop = make_l3_bomb_59()
+        self._drive_hop(env, assist, total, hop)
+        path_log.append({"step": "59_bomb_right", "ok": hop.success})
+        if not hop.success:
+            traps.append("0x59 walk-RIGHT sealed post-Raft (expected)")
+            return self._hop_fail(
+                "failed_59_bomb_right", path_log, traps, notes, env, hop
+            )
+
+        self._set_phase("right_5a")
+        hop = L3DoorHopController(RIGHT_5A_SPEC)
+        self._drive_hop(env, assist, total, hop)
+        path_log.append({"step": "5a_right", "ok": hop.success})
+        if not hop.success:
+            return self._hop_fail(
+                "failed_5a_right", path_log, traps, notes, env, hop
+            )
+
+        self._set_phase("bomb_5b")
+        if self.poke_bombs is not None and read_snapshot(env.get_ram()).bombs < 2:
+            poke_bombs(env, self.poke_bombs)
+        hop = make_l3_bomb_5b()
+        self._drive_hop(env, assist, total, hop)
+        path_log.append({"step": "5b_bomb_right", "ok": hop.success})
+        if not hop.success:
+            return self._hop_fail(
+                "failed_5b_bomb_right", path_log, traps, notes, env, hop
+            )
+
+        self._set_phase("clear_5c")
+        snap = read_snapshot(env.get_ram())
+        if snap.screen == ROOM_L3_BOMB_SHORTCUT:
+            if self.poke_bombs is not None:
+                poke_bombs(env, self.poke_bombs)
+            clr = Level3SpawnClearController(ROOM_5C_SPEC)
+            self._drive_hop(env, assist, total, clr)
+            path_log.append(
+                {
+                    "step": "clear_5c",
+                    "ok": clr.success,
+                    "frames": clr.frames,
+                    "saw_live": clr.saw_live,
+                }
+            )
+            if not clr.success:
+                return self._hop_fail(
+                    "failed_5c_clear", path_log, traps, notes, env, clr
+                )
             self._set_phase("right_5d")
-            pr = None
-            if self.continuous_mode:
-                waypoint_ok = goto(
-                    env, assist, total, 208, 181, tol=3, max_f=700
-                )
-                for _ in range(40):
-                    s = read_snapshot(env.get_ram())
-                    if s.link_y <= 141:
-                        break
-                    env.step(nes_action("UP"))
-                    total[0] += 1
-                    if assist is not None:
-                        assist.apply_env(env, frame=total[0])
-                push_dir(env, assist, total, "RIGHT", frames=PUSH_FRAMES + 100)
-                after = room_fields(read_snapshot(env.get_ram()), env.get_ram())
-                path_log.append({
-                    "step": "5c_edge_thread_right_continuous",
-                    "waypoint_ok": waypoint_ok,
-                    "ok": after["screen"] == ROOM_L3_BOSS_PREP,
-                    "to": after["sc"] if after["screen"] == ROOM_L3_BOSS_PREP else None,
-                    "after": after,
-                })
-                if after["screen"] == ROOM_L3_BOSS_PREP:
-                    pr = {"changed_room": True, "after": after}
-                ytries = ()
-            else:
-                ytries = (DOOR_5C_RIGHT_Y, 141)
-                st_5c = env.em.get_state()
-            for ytry in ytries:
-                if not self.continuous_mode:
-                    self._restore_state(env, st_5c)
-                    idle(env, assist, total, 2)
-                pr = exit_door(
-                    env,
-                    assist,
-                    total,
-                    "RIGHT",
-                    y_force=ytry,
-                    push=PUSH_FRAMES + 100,
-                )
-                path_log.append(
-                    {
-                        "step": "5c_right",
-                        "y": ytry,
-                        "ok": pr["changed_room"]
-                        and pr["after"]["screen"] == ROOM_L3_BOSS_PREP,
-                        "to": pr["after"]["sc"] if pr["changed_room"] else None,
-                        "at_xy": [pr["at_door"]["x"], pr["at_door"]["y"]],
-                        "doors": pr["at_door"]["doors"],
-                        "mask": pr["at_door"]["open_doorway_mask"],
-                        "all_dead": pr["at_door"]["room_all_dead"],
-                    }
-                )
-                if pr["changed_room"] and pr["after"]["screen"] == ROOM_L3_BOSS_PREP:
-                    break
-            if not self.continuous_mode and not (
-                pr
-                and pr["changed_room"]
-                and pr["after"]["screen"] == ROOM_L3_BOSS_PREP
-            ):
-                self._restore_state(env, st_5c)
-                idle(env, assist, total, 2)
-                if self.poke_bombs is not None:
-                    poke_bombs(env, self.poke_bombs)
-                    ensure_bomb(env)
-                br = bomb_stand(env, assist, total, "RIGHT", 192, 141)
-                path_log.append(
-                    {
-                        "step": "5c_bomb_right",
-                        "ok": br["changed_room"]
-                        and br["after"]["screen"] == ROOM_L3_BOSS_PREP,
-                        "to": br["after"]["sc"] if br["changed_room"] else None,
-                    }
-                )
-                if br["changed_room"] and br["after"]["screen"] == ROOM_L3_BOSS_PREP:
-                    pr = {"changed_room": True, "after": br["after"]}
-            if not (
-                pr
-                and pr["changed_room"]
-                and pr["after"]["screen"] == ROOM_L3_BOSS_PREP
-            ):
+            hop = L3DoorHopController(RIGHT_5C_SPEC)
+            self._drive_hop(env, assist, total, hop)
+            path_log.append({"step": "5c_right", "ok": hop.success})
+            if not hop.success:
                 obs, *_ = env.step(nes_idle_action())
                 total[0] += 1
                 save_rgb_png(obs, RECORDINGS_DIR / f"{self.tag}_failed_0x5c.png")
-                traps.append(
-                    "0x5c walk-RIGHT y≈141 failed after raw=3 clear "
-                    "(bomb-RIGHT fallback also failed)"
+                traps.append("0x5c RIGHT dest hop missed 0x5d")
+                return self._hop_fail(
+                    "failed_5c_right", path_log, traps, notes, env, hop
                 )
-                out = self._fail("failed_5c_right")
-                out.update(
-                    {
-                        "path_log": path_log,
-                        "final": (pr or {}).get("after")
-                        or room_fields(
-                            read_snapshot(env.get_ram()), env.get_ram()
-                        ),
-                        "traps": traps,
-                        "notes": notes,
-                    }
-                )
-                return out
 
-        # Settle scroll → play in 0x5d
-        for _ in range(90):
-            snap = read_snapshot(env.get_ram())
-            if (
-                snap.screen == ROOM_L3_BOSS_PREP
-                and snap.mode == PLAY_MODE
-                and not snap.transitioning
-            ):
-                break
-            env.step(nes_idle_action())
-            total[0] += 1
-            if assist is not None:
-                assist.apply_env(env, frame=total[0])
+        wait = _PlayWait(room=ROOM_L3_BOSS_PREP, max_frames=120)
+        self._drive_hop(env, assist, total, wait)
         snap = read_snapshot(env.get_ram())
         ok = snap.screen == ROOM_L3_BOSS_PREP and snap.level == LEVEL3
         obs, *_ = env.step(nes_idle_action())
@@ -648,8 +799,8 @@ class Level3BossPathController(Level3BossCombatMixin):
             "continuous_mode": self.continuous_mode,
             "state_restores": self.state_restores,
             "path": (
-                "0x0f exit→0x69 UP→0x59 BOMB_R→0x5a R→0x5b BOMB_R→0x5c "
-                "clear R@y141→0x5d clear→UP→0x4d bombs→TF 0x04"
+                "0x0f exit→0x69 UP dest→0x59 BOMB_R dest→0x5a R dest→0x5b "
+                "BOMB_R dest→0x5c clear R dest→0x5d"
             ),
             "intervention_class": "survival",
             "track": "assisted",
@@ -669,9 +820,20 @@ __all__ = [
     "BOMB_NORTH_STANDS",
     "BOSS_PATH_MAX_FRAMES",
     "BOSS_PATH_PHASES",
+    "L3DoorHopController",
     "Level3BossPathController",
+    "Level3ManhandlaController",
+    "Level3SpawnClearController",
     "PREP_CLEAR_TYPES",
+    "RIGHT_5A_SPEC",
+    "RIGHT_5C_SPEC",
+    "UP_4D_SPEC",
+    "UP_5D_SPEC",
+    "UP_69_SPEC",
     "UP_APPROACHES",
     "exit_raft_passage",
+    "level3_boss_suffix_stages",
+    "make_l3_bomb_59",
+    "make_l3_bomb_5b",
     "prep_5d_still_killable",
 ]

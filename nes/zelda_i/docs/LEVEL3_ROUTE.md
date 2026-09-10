@@ -1,6 +1,8 @@
 # Level 3 — Manji (route notes)
 
-Status: **assisted-entry** (not Clean STATUS)
+Status: **assisted-entry** (not Clean STATUS). Clean fixture-live dest hops
+from `Level3Entrance` are `route_eligible=false` (`rr-npv.1`); integrator
+promotes. Do not claim M5/L1+ from this file.
 
 Assist track only for overworld entry (`UnlimitedHealthAssist` /
 `--infinite-life`). Interior pure segments below are **Clean isolated** where
@@ -256,6 +258,20 @@ with diamond thread on no-path, then UP @ x≈120 on the north band. Residual:
 - Staircase → Keese path → **Raft**
 - Backtrack toward boss: Bubbles, Keese, Zols → UP **Manhandla** (bombs best)
 - Heart Container → Triforce shard 3
+
+### Clean fixture-live Entrance→TF (`rr-npv.1`, dest hops)
+
+Isolated pin `Level3Entrance` → dest hops (west key, north chain, bomb-R 0x5b,
+clear 0x5c, RIGHT 0x5d, clear 0x5d, UP 0x4d, Manhandla TF 0x04). No bomb/key
+poke. Occupancy miss → block cell → replan; no path → stand. Leave is glance
+bands. Runner:
+
+```
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_level3_complete.py \
+  --from-state Level3Entrance --no-infinite-life --no-video --trials 1
+```
+
+Not spine-green. Not Clean STATUS. Fixture-live is blocked at `clear_5c` Darknut clear (see `docs/tasks/rr-npv.1-residual.md`).
 
 ### Live pure segments (Clean isolated)
 

@@ -9,7 +9,7 @@
 
 **Status (2026-09-05):** Survival `--through level7` is **spine-green 2/2
 from power-on**. Leftover OW `0x42` `(96,93)` TF `0x7F`. Living residual
-is L8-A: [`tasks/rr-6o7.1-residual.md`](tasks/rr-6o7.1-residual.md).
+is L8-A: [`tasks/rr-npv.3-residual.md`](tasks/rr-npv.3-residual.md).
 Sections below still describe the Phase 1 recon; they are not the live
 spine. Do not STATUS.
 
@@ -45,6 +45,19 @@ hypothesis. Spine chapters stay fail-closed (`route_eligible=false`).
 **Beads:** `rr-7vc` (closed planning), `rr-dnp` (live pond approach),
 `rr-8t4.1` (Wave A + Food fixture), `rr-8t4.2` (L7-B; entry pin captured),
 `rr-8t4.4` (natural L6→shop OW route). Do not STATUS-promote.
+
+**Clean fixture-live (`rr-npv.3`):** `survival=False` / `allow_pokes=False`
+never writes `ADDR_FOOD`. Hungry Goriya fail-closes with leftover
+`hungry_goriya_requires_food` when Food is 0. Forced Digdogger is a
+leftover-relative `HopController`: dest is RAM (type `0x38` gone / shrunk
+dead / play `0x0C`), not 12×B or `STAND_SETTLE` idle. `route_eligible`
+stays false.
+
+ONE ROM trial from `Level7Entrance` (Food 0 / bombs 0 / TF 0, whistle-poke
+recon): first door 0x79→0x69 251f green; **first red**
+`level7_room69_west_bomb` timeout 22000f leftover play `0x69` `(34,165)`
+mode 8 health `0x20` Food 0 bombs 0 TF `0x00`. Hungry unreached. See
+[`tasks/rr-npv.3-residual.md`](tasks/rr-npv.3-residual.md). Do not STATUS.
 
 Planning sources:
 

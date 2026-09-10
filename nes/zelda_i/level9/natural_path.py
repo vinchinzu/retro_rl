@@ -61,7 +61,11 @@ from zelda_i.level9.ganon import (
     in_ganon_fight,
     in_zelda_room,
 )
-from zelda_i.level9.path import final_patra_to_ganon_step
+from zelda_i.level9.path import (
+    ZELDA_DOOR_GOAL,
+    final_patra_to_ganon_step,
+    leftover_door_step,
+)
 from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
 from zelda_i.level9.room51 import room51_to_41_step
 from zelda_i.level9.stairs import (
@@ -420,6 +424,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
     wp_escape_flip: bool = False
     wp_i: int = 0
     start_checked: bool = False
+    phase_leftover: tuple[int, int] | None = None
     _bomb_31: BombWallController = field(init=False, repr=False)
     _bomb_04: BombWallController = field(init=False, repr=False)
 
@@ -456,6 +461,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
         self.wp_stuck_frames = 0
         self.wp_escape_frames = 0
         self.wp_best_dist = -1
+        self.phase_leftover = None
 
     def _wp_step(self, snap: ZeldaSnapshot, dx: int, dy: int, *, x_first: bool) -> str:
         """Direction toward a waypoint, with a no-*progress* escape.
@@ -573,10 +579,16 @@ class NaturalPatraJoinController(_NaturalEndingController):
                 d = room10_lane_step(int(snap.link_x), int(snap.link_y), ROOM_10_SOUTH_Y)
                 if d is not None:
                     return self._action(nes_action(d), "south_10_lane")
-                if abs(snap.link_x - ROOM_10_MOUTH_X) > 2:
-                    d = "LEFT" if snap.link_x > ROOM_10_MOUTH_X else "RIGHT"
-                    return self._action(nes_action(d), "south_10_align_x")
-                return self._action(nes_action("DOWN"), "south_10_push_down")
+                if self.phase_leftover is None:
+                    self.phase_leftover = (int(snap.link_x), int(snap.link_y))
+                frame = leftover_door_step(
+                    snap,
+                    self.phase_leftover,
+                    "DOWN",
+                    (ROOM_10_MOUTH_X, ROOM_10_SOUTH_Y),
+                    reason="south_10",
+                )
+                return self._action(frame.action, frame.reason)
             else:
                 return self._action(nes_action("DOWN"), "south_10_scroll")
 
@@ -692,10 +704,12 @@ class NaturalPatraJoinController(_NaturalEndingController):
                 return self._action(nes_idle_action(), "north_41_arrived_31")
             if snap.transitioning or snap.mode != PLAY_MODE:
                 return self._action(nes_action("UP"), "north_41_scroll")
-            if abs(snap.link_x - 120) > 2:
-                d = "RIGHT" if snap.link_x < 120 else "LEFT"
-                return self._action(nes_action(d), "north_41_align_x")
-            return self._action(nes_action("UP"), "north_41_push_up")
+            if self.phase_leftover is None:
+                self.phase_leftover = (int(snap.link_x), int(snap.link_y))
+            frame = leftover_door_step(
+                snap, self.phase_leftover, "UP", (120, 77), reason="north_41"
+            )
+            return self._action(frame.action, frame.reason)
 
         # 11. CLEAR_31
         if self.phase == PatraJoinPhase.CLEAR_31:
@@ -1031,6 +1045,7 @@ class NaturalSelectSilverArrowsController(_NaturalEndingController):
 class NaturalPatraToGanonController(_NaturalEndingController):
     max_frames: int = 900
     start_checked: bool = False
+    leftover: tuple[int, int] | None = None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -1041,10 +1056,12 @@ class NaturalPatraToGanonController(_NaturalEndingController):
             self.start_checked = True
             if not final_patra_north_door_earned(snap):
                 return self._fail("patra_north_door_not_earned")
+        if self.leftover is None:
+            self.leftover = (int(snap.link_x), int(snap.link_y))
         if in_ganon_fight(snap):
             self.success = True
             return self._action(nes_idle_action(), "ganon_arrived")
-        frame = final_patra_to_ganon_step(snap)
+        frame = final_patra_to_ganon_step(snap, leftover=self.leftover)
         if frame.reason.startswith("unexpected_room"):
             return self._fail(frame.reason)
         return self._action(frame.action, frame.reason)
@@ -1129,6 +1146,7 @@ class NaturalPowerTriforceController(_NaturalEndingController):
 class NaturalEnterZeldaController(_NaturalEndingController):
     max_frames: int = 1200
     start_checked: bool = False
+    leftover: tuple[int, int] | None = None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -1145,14 +1163,18 @@ class NaturalEnterZeldaController(_NaturalEndingController):
                 and (snap.cur_opened_doors & NORTH_DOOR)
             ):
                 return self._fail("ganon_north_door_not_earned")
+        if self.leftover is None:
+            self.leftover = (int(snap.link_x), int(snap.link_y))
         if in_zelda_room(snap):
             self.success = True
             return self._action(nes_idle_action(), "zelda_room_arrived")
         if snap.screen not in (ROOM_GANON, ROOM_ZELDA):
             return self._fail(f"unexpected_room_0x{snap.screen:02x}")
-        if snap.screen == ROOM_GANON and abs(snap.link_x - 0x78) > 4:
-            direction = "RIGHT" if snap.link_x < 0x78 else "LEFT"
-            return self._action(nes_action(direction), "zelda_align_x")
+        if snap.screen == ROOM_GANON:
+            frame = leftover_door_step(
+                snap, self.leftover, "UP", ZELDA_DOOR_GOAL, reason="zelda"
+            )
+            return self._action(frame.action, frame.reason)
         return self._action(nes_action("UP"), "zelda_push_north")
 
 

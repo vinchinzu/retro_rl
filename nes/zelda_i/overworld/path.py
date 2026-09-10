@@ -23,6 +23,7 @@ from zelda_i.overworld.common import (
     align_and_push,
     on_arrival_edge,
     recover_off_edge,
+    swing_action,
     track_knockback,
     track_stuck,
     unstick_wiggle,
@@ -43,6 +44,7 @@ from zelda_i.overworld.graph import (
 from zelda_i.overworld.locations import farm_at, restock_for, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
@@ -50,6 +52,14 @@ DEFAULT_STUCK_THRESHOLD = 50
 DEFAULT_MAX_FRAMES = 30000
 DEFAULT_SCOOP_RADIUS = 48
 _OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
+# Dungeon OccupancyGrid xmax=216 traps OW east-mouth leftover x≈240.
+_OW_OCC_BOUNDS = (0, 255, 0, 239)
+_ALIGN_X_TOL = 5
+
+
+def _ow_hop_grid() -> OccupancyGrid:
+    xmin, xmax, ymin, ymax = _OW_OCC_BOUNDS
+    return OccupancyGrid(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
 
 
 class PathNavPhase(Enum):
@@ -127,6 +137,9 @@ class OverworldPathController:
     # In-route kill+restock so we arrive at the shop closer to ``need_rupees``.
     rupee_farm_attempts: int = 0
     _rupee_farm: RupeeFarmController | None = field(default=None, repr=False)
+    # Leftover-relative column walk for UP/DOWN hops with align_x.
+    _hop_walker: OccupancyWalker | None = field(default=None, repr=False)
+    _hop_walker_key: tuple[int, int] | None = field(default=None, repr=False)
 
     # Default hop-complete stop extras
     require_sword: bool = False
@@ -192,6 +205,8 @@ class OverworldPathController:
         self._farm = None
         self.rupee_farm_attempts = 0
         self._rupee_farm = None
+        self._hop_walker = None
+        self._hop_walker_key = None
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -544,6 +559,72 @@ class OverworldPathController:
             return FrameAction(nes_idle_action(), "scoop_rupee")
         return FrameAction(nes_action(direction), "scoop_rupee")
 
+    def _occupancy_align_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        """Walk to ``align_x`` on a walkable y; peel on miss. None on-column.
+
+        East-mouth leftover (x≈240): LEFT toward the door column; occupancy
+        miss → block cell → y-peel; no path → stand. Do not RIGHT-scroll.
+        """
+        if (
+            hop.direction not in ("UP", "DOWN")
+            or hop.align_x is None
+            or hop.y_band is not None
+        ):
+            return None
+        ax = int(hop.align_x)
+        x, y = int(snap.link_x), int(snap.link_y)
+        if abs(x - ax) <= _ALIGN_X_TOL:
+            self._hop_walker = None
+            self._hop_walker_key = None
+            return None
+        # Inland off-column stays on align_and_push (credits-tape hops).
+        if x < EDGE_EAST_X and x > EDGE_WEST_X:
+            return None
+        if self.stuck > self.stuck_threshold:
+            return FrameAction(nes_idle_action(), f"hop{self.hop_index}_stand")
+
+        key = (self.hop_index, int(snap.screen))
+        if self._hop_walker is None or self._hop_walker_key != key:
+            self._hop_walker = OccupancyWalker(grid=_ow_hop_grid())
+            self._hop_walker_key = key
+        walker = self._hop_walker
+        xy = (x, y)
+        walker.goal = (ax, y)
+        # OW can slide 2px; OccupancyWalker 1px-grade would block a real UP
+        # and oscillate 157↔155. Only a true no-move is a miss.
+        if walker.last_dir in ("UP", "DOWN", "LEFT", "RIGHT") and walker.last_xy is not None:
+            if xy == walker.last_xy:
+                walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
+                walker.path = None
+                walker.misses += 1
+        walker.last_xy = xy
+        direction = walker.next_dir(xy)
+        # RIGHT at x≥232 scrolls to 0x4D; LEFT at west edge leaves the screen.
+        # Hop UP/DOWN stays a legal y-peel after a LEFT miss (0x4C corridor).
+        forbidden: set[str] = set()
+        if x >= EDGE_EAST_X:
+            forbidden.add("RIGHT")
+        if x <= EDGE_WEST_X:
+            forbidden.add("LEFT")
+        for _ in range(4):
+            if direction is None or direction not in forbidden:
+                break
+            walker.grid.mark_blocked_ahead(*xy, direction)
+            walker.path = None
+            direction = walker.next_dir(xy)
+        if direction is None or direction in forbidden:
+            return FrameAction(nes_idle_action(), f"hop{self.hop_index}_stand")
+        # Keep the occupancy lane; off-axis face would RIGHT-scroll the mouth.
+        return swing_action(
+            self.phase_frames,
+            direction,
+            f"hop{self.hop_index}_occ",
+            period=self.swing_period,
+            hold=self.swing_hold,
+        )
+
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
         advanced = self._advance_hop(snap, hop)
@@ -556,6 +637,10 @@ class OverworldPathController:
 
         if self._in_maze_phase(snap, hop):
             return self._follow_maze(snap)
+
+        occ = self._occupancy_align_action(snap, hop)
+        if occ is not None:
+            return occ
 
         if self.stuck > self.stuck_threshold:
             action, self.stuck = unstick_wiggle(self.stuck)

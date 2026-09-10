@@ -203,3 +203,92 @@ def test_whistle_tf_stand_geometry() -> None:
     assert "0x38" in (fight_digdogger.__doc__ or "")
     assert "128,141" in (take_stairs_06.__doc__ or "")
     assert "120,141" in (take_stairs_06.__doc__ or "")
+
+
+def test_whistle_path_has_no_idle_n_on_clean_path() -> None:
+    """Clean L5 whistle hops wait on RAM; idle(n)/push_dir(frames=N) are gone."""
+    import inspect
+
+    from zelda_i.level5 import whistle_path
+
+    src = inspect.getsource(whistle_path)
+    assert "idle(env" not in src
+    assert "push_dir(" not in src
+    assert "wait_ram" in src
+    assert "door_band_goal" in src
+
+
+def test_ram_wait_hop_arrives_on_dest_room_not_frame_count() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level5.path import RamWaitHop
+
+    hop = RamWaitHop(
+        pred=lambda snap: snap.screen == 0x65 and snap.mode == PLAY_MODE,
+        hold="LEFT",
+        max_frames=20,
+        spec_id="l5_west_65",
+    )
+    origin = read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=141))
+    act = hop.step(origin)
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert hop.success is False
+    dest = read_snapshot(_ram(room=0x65, x=224, y=141))
+    done = hop.step(dest)
+    assert hop.success
+    assert list(done.action) == list(nes_idle_action())
+    assert done.reason == "done"
+
+
+def test_l5_west_door_band_is_leftover_relative() -> None:
+    from zelda_i.dungeon.door_hop import door_band_goal
+
+    assert door_band_goal("LEFT", (48, 141), (32, 141)) == (32, 141)
+    assert door_band_goal("LEFT", (120, 189), (32, 141)) == (32, 141)
+    assert door_band_goal("UP", (48, 189), (48, 93))[0] == 48
+    assert door_band_goal("UP", (208, 189), (48, 93))[0] == 48
+
+
+def test_whistle_04_exit_geometry() -> None:
+    from zelda_i.level5.whistle_path import (
+        L5_CELLAR_FLOOR_Y,
+        L5_CELLAR_LEFT_X,
+        L5_CELLAR_RIGHT_X,
+        WHISTLE_04_LADDER_X,
+        WHISTLE_04_MOUTH_X,
+        WHISTLE_04_PIT_Y,
+    )
+
+    assert (WHISTLE_04_LADDER_X, WHISTLE_04_PIT_Y, WHISTLE_04_MOUTH_X) == (176, 189, 48)
+    assert (L5_CELLAR_FLOOR_Y, L5_CELLAR_LEFT_X, L5_CELLAR_RIGHT_X) == (189, 48, 192)
+
+
+def test_bomb_wall_blast_stand_waits_for_hole_open() -> None:
+    """Fuse wait must stand (hold=None / idle) until door opens or room changes."""
+    from retro_harness.nes import nes_idle_action
+    from zelda_i.level5.path import RamWaitHop
+    from zelda_i.ram import ADDR_CUR_OPENED_DOORS
+
+    # West door bit is 0x02
+    door_bit = 0x02
+    hop = RamWaitHop(
+        pred=lambda snap: snap.screen == 0x65 or bool(snap.cur_opened_doors & door_bit),
+        hold=None,
+        max_frames=140,
+        spec_id="blast_test",
+    )
+    # Origin room 0x66, door closed -> must stand (idle), not push into bomb
+    closed_ram = _ram(room=ROOM_L5_GIBDO_66, x=32, y=141)
+    closed_ram[ADDR_CUR_OPENED_DOORS] = 0
+    snap_closed = read_snapshot(closed_ram)
+    act = hop.step(snap_closed)
+    assert list(act.action) == list(nes_idle_action())
+    assert hop.success is False
+
+    # Blast finishes -> door bit 0x02 opens
+    open_ram = _ram(room=ROOM_L5_GIBDO_66, x=32, y=141)
+    open_ram[ADDR_CUR_OPENED_DOORS] = door_bit
+    snap_open = read_snapshot(open_ram)
+    act2 = hop.step(snap_open)
+    assert hop.success is True
+    assert list(act2.action) == list(nes_idle_action())
+

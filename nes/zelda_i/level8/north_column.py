@@ -25,6 +25,7 @@ from zelda_i.dungeon.engine import (
     RewardKind,
     RewardSpec,
 )
+from zelda_i.dungeon.door_hop import door_band_goal
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ids import MANHANDLA_OBJECT_TYPE
 from zelda_i.dungeon.ops import DOOR_TARGETS
@@ -187,12 +188,14 @@ def _goto(
 
 
 def _north_door(snap: ZeldaSnapshot, *, reason: str = "north_door") -> FrameAction:
-    """Align x to the UP door, walk north to the plane, then hold UP.
+    """Leftover-relative UP. Off-column leftover uses door x, not leftover x.
 
-    Never walk south after overshooting y=93 — that oscillates on the door
-    tile (live 0x7E y=87/89). Matches exit_door UP geometry.
+    Never walk south after overshooting the north band — that oscillates on
+    the door tile (live 0x7E y=87/89). Knockback at x=208 must LEFT, not UP.
     """
-    tx, ty = NORTH_DOOR
+    tx, ty = door_band_goal(
+        "UP", (int(snap.link_x), int(snap.link_y)), NORTH_DOOR
+    )
     if abs(snap.link_x - tx) > 4:
         btn = "RIGHT" if snap.link_x < tx else "LEFT"
         return FrameAction(nes_action(btn), f"{reason}_x")

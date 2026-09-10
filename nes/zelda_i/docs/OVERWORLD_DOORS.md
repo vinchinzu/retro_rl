@@ -45,9 +45,10 @@ Same hop arithmetic reproduces verified L1 (`…→0x37`) and L2 walkthrough pat
 ### Leave → next-mouth stitch
 
 Shared leftover packet: `zelda_i.overworld.stitch.OverworldHandoff` (L8
-`PostLevel7Handoff` shape). Full table, dead beliefs, and owner fill-in:
-[tasks/ow-handoff.md](tasks/ow-handoff.md). `verified=False` /
-`route_eligible=False` until the dungeon owner measures the leave. Do not
+`PostLevel7Handoff` shape). Full table, dead beliefs,
+L1–L8 handoff stitches: see
+[Dungeon leave → mouth stitch](#dungeon-leave--mouth-stitch). `verified=False` /
+`evidence="hypothesis"` until the predecessor dungeon naturally clears. Do not
 treat this as spine-green.
 
 | From | Leave (screen, x/y, mode, TF, items) | To mouth | Enter items | Status |
@@ -55,8 +56,8 @@ treat this as spine-green.
 | L1 | **`0x37`** ~(112,125) mode 5, TF `0x01` | L2 **`0x3C`** | wooden sword; TF1 | **verified** leave + mouth |
 | L2 | **`0x3C`** ~(112,125) mode 5, TF `0x03` | L3 **`0x74`** | wooden sword | **verified** leave + mouth |
 | L3 | **`0x74`** ~(128,125) mode 5, TF `0x07`, raft=1 | L4 **`0x45`** via dock `0x55` | **Raft** | **verified** leave + mouth |
-| L4 | **`0x45`** island settle (284f); x/y **not packed**, TF `0x0F` | L5 **`0x0B`** | none | **live** leave; mouth verified |
-| L5 | **`0x0B`** settle (510f); x/y **not packed**, TF `0x1F`, Whistle earned | L6 **`0x22`** | none | **live** leave; mouth **verified** |
+| L4 | **`0x45`** ~(128,125) ±4 mode 5, TF `0x0F` | L5 **`0x0B`** | none | **live** leave; mouth verified |
+| L5 | **`0x0B`** ~(112,125) ±4 mode 5, TF `0x1F`, Whistle earned | L6 **`0x22`** | none | **live** leave; mouth **verified** |
 | L6 | **UNMEASURED** — do **not** assume `0x22`. Spine tip is play `0x09` (56,109) TF `0x1F` (not a leave) | L7 pond **`0x42`** (source); live approach `0x53` (224,173) LEFT-inland-before-DOWN; bait shop `0x34` source | **Whistle**; Bait inside | leave **UNMEASURED**; mouth hypothesis |
 | L7 | **UNMEASURED** (expect TF `0x7F`, Candle 2) | L8 bush **`0x6D`** from `0x5D` south x≈48 | **Candle 2** | leave **UNMEASURED**; bush live; burn unsolved |
 | L8 | **UNMEASURED** (expect TF `0xFF`, Magic Key, bombs) | L9 Spectacle Rock **`0x05`** bomb | bombs; TF `0xFF`; Magic Key | leave **UNMEASURED**; mouth source/fixture-live |
@@ -159,8 +160,8 @@ handoff marked UNMEASURED are superseded by that tape.
 | L1 | `0x37` ~(112,125) mode 5, TF `0x01` | L2 `0x3C` |
 | L2 | `0x3C` ~(112,125) mode 5, TF `0x03` | L3 `0x74` |
 | L3 | `0x74` ~(128,125) mode 5, TF `0x07`, raft=1 | L4 `0x45` via dock `0x55` |
-| L4 | `0x45` island, settle 284 f, TF `0x0F` | L5 `0x0B` |
-| L5 | `0x0B`, settle 510 f, TF `0x1F`, Whistle earned | L6 `0x22` |
+| L4 | `0x45` ~(128,125) ±4 mode 5, TF `0x0F` | L5 `0x0B` |
+| L5 | `0x0B` ~(112,125) ±4 mode 5, TF `0x1F`, Whistle earned | L6 `0x22` |
 | L6 | `0x22` `(112,125)` mode 5, TF `0x3F`, keys 2 bombs 8 rupees 42 Rod 1 Bow 1 arrows 1, 8 HC | L7 pond `0x42`; bait shop `0x34` |
 | L7 | TF `0x7F`, Candle 2, Whistle retained | L8 bush `0x6D` from `0x5D` south x≈48 |
 | L8 | TF `0xFF`, Magic Key, bombs | L9 Spectacle Rock `0x05`, bomb the left rock |

@@ -20,9 +20,10 @@ Not Clean STATUS. M5 Clean is still L1 only.
 
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
 Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)
-(Food poke; shop hop wired, power-on blocked by `rr-ps7.3` L2 `0x4C`).
-Also open: `rr-wabn`, `rr-doua`, `rr-sz8.8` (optional; leftover was 10 HC).
-Clean continuous is `rr-npv` after those writes are gone. Do not add pokes.
+(Food poke; shop hop wired, power-on blocked by claimed `rr-ps7.3` L2 `0x4C`).
+Clean lanes: [`docs/tasks/rr-npv-clean-parallel.md`](docs/tasks/rr-npv-clean-parallel.md)
+(`rr-npv.1`–`.7` fixture-live; not spine). Also open: `rr-wabn`, `rr-doua`,
+`rr-sz8.8` (optional; leftover was 10 HC). Do not add pokes.
 
 ## Commands
 

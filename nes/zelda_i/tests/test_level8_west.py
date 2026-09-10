@@ -58,6 +58,16 @@ def _step(ctl, ram: np.ndarray):
     return act
 
 
+def test_off_column_knockback_emits_left_not_up() -> None:
+    """East-wall leftover (208,157) still LEFTs; never UP into a wall."""
+    ctl = make_west_1f_controller()
+    act = _step(ctl, _ram(x=208, y=157))
+    assert not ctl.failed
+    assert list(act.action) == LEFT
+    assert list(act.action) != UP
+    assert act.reason == "west_clear_stairs"
+
+
 def test_leftover_emits_left_not_up_into_stairs() -> None:
     snap = read_snapshot(_ram(x=96, y=157))
     act = west_1f_step(snap)

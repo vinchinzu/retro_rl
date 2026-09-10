@@ -6,8 +6,10 @@ Internal stage names provide precise handoffs without exposing room-level
 
 ``MEASURED_POST_L6_EXIT.verified`` is True. Survival ``--through level7``
 is spine-green from power-on (Recorder warp to pond ``0x42``, drain into
-entry ``0x79``, disclosed Food poke). Natural 60R bait shop is ``rr-8t4.4``
-(``--through level7-bait-shop``). Do not wire the recon ``ADDR_WHISTLE`` poke.
+entry ``0x79``, disclosed Food poke). Clean ``survival=False`` /
+``allow_pokes=False`` never writes ``ADDR_FOOD``. Natural 60R bait shop is
+``rr-8t4.4`` (``--through level7-bait-shop``). Do not wire the recon
+``ADDR_WHISTLE`` poke.
 """
 
 from __future__ import annotations
@@ -351,10 +353,10 @@ def make_red_candle_controller() -> Level7PathController:
 
 
 def make_forced_digdogger_controller() -> Level7PathController:
-    """Live 0x1C whistle-shrink 0x38→0x18, sword, KILL-CLEAR north 0x0C (2/2).
+    """Live 0x1C leftover-relative whistle-shrink; dest is RAM 0x0C (2/2).
 
     Pause-select recorder B-slot 5 (cycle past Red Candle=4). No
-    ``ADDR_SELECTED_ITEM`` poke. Stand ``(120,141)``.
+    ``ADDR_SELECTED_ITEM`` poke. Blow until type ``0x38``→``0x18``.
     """
     return make_level7_forced_digdogger_controller()
 
@@ -454,7 +456,8 @@ def level7_bait_shop_chapter_stages(
     """Post-L6 OW -> Recorder warp -> peel at 0x54 north to shop 0x34.
 
     Dedicated ``--through level7-bait-shop`` (rr-8t4.4). No Food write.
-    Default ``level7-entry`` still pokes Food until this leftover greens.
+    Clean ``survival=False`` keeps ``NaturalBaitPurchaseController``. Survival
+    ``level7-entry`` still uses the disclosed Food fixture until ``rr-8t4.4``.
     """
     post = make_post_l6_overworld_controller(
         handoff=handoff, hops=post_l6_hops, dest_screen=warp_launch
@@ -574,7 +577,8 @@ def l7_hops(
     """Build fresh L7 chapter rows.  Defaults stay ``route_eligible=false``.
 
     ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
-    for the disclosed ``ADDR_FOOD`` fixture. Interior chapter factories stay
+    for the disclosed ``ADDR_FOOD`` fixture. ``survival=False`` keeps the
+    natural buy and writes no Food. Interior chapter factories stay
     ``route_eligible=false``.
     """
 

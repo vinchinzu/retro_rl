@@ -217,7 +217,7 @@ def test_mouth_table_l1_leave_through_l9_enter() -> None:
     assert all(row.leave.route_eligible is False for row in MOUTH_STITCHES)
     by_to = {row.to_level: row for row in MOUTH_STITCHES}
     assert by_to[6].mouth_screen == 0x22
-    assert by_to[6].status == "verified"
+    assert by_to[6].status == "live"
     assert by_to[7].mouth_screen == 0x42
     # L6->L7 leave is measured + verified (Phase 1); mouth/pond still hypothesis.
     assert by_to[7].status == "measured leave / mouth+pond hypothesis"
@@ -243,6 +243,24 @@ def test_inland_then_descend_left_before_down() -> None:
     hop = y_band_travel_hop(0x52, "LEFT", spec)
     assert hop.align_y is None
     assert hop.y_band == (spec.y_lo, spec.y_hi)
+
+
+def test_l4_and_l5_leave_xy_packed_ineligible() -> None:
+    """Fixture-live L4/L5 leftover xy from Level4Complete / Level5Complete."""
+    by_from = {row.from_level: row for row in MOUTH_STITCHES}
+    l4 = by_from[4].leave
+    assert (l4.screen, l4.link_x, l4.link_y) == (0x45, 128, 125)
+    assert l4.triforce == 0x0F
+    assert l4.xy_tolerance == 4
+    assert l4.verified is False
+    assert l4.route_eligible is False
+    l5 = by_from[5].leave
+    assert (l5.screen, l5.link_x, l5.link_y) == (0x0B, 112, 125)
+    assert l5.triforce == 0x1F
+    assert l5.whistle == 1
+    assert l5.xy_tolerance == 4
+    assert l5.verified is False
+    assert l5.route_eligible is False
 
 
 def test_handoff_from_ram_copies_leave_and_stays_ineligible() -> None:

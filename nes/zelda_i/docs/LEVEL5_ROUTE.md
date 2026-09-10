@@ -213,6 +213,19 @@ north shutter sealed so bomb-east `0x66`, skip-fight to Digdogger,
 whistle shrink `0x38→0x18`. Library: `level5.boss_path.run_level5_tf_suffix`.
 `validate_l5_endpoint` passes. Still `route_eligible=false` (Survival).
 
+## Clean fixture-live (rr-npv.2)
+
+Whistle-path hops wait on RAM (room / mode / x-y band / object census /
+whistle bit) via `level5.path.RamWaitHop`; leftover-relative door bands
+use Wave 0 `door_band_goal`. No `idle(n)` / `push_dir(frames=N)` on the
+Clean whistle path. Pin is **`Level5EntranceFromL4`**. Stop at
+fixture-live (`route_eligible=false`). Not a Clean STATUS claim.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_level5_whistle_tf.py \
+  --clean --no-video --trials 1
+```
+
 ## Next
 
 - L5 fanfare settle → L6 entry (do not grant Whistle)

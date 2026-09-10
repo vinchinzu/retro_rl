@@ -18,7 +18,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level9.ganon import LEVEL9, ROOM_BEFORE_GANON
+from zelda_i.combat import FACING_NORTH
+from zelda_i.level9.ganon import LEVEL9, ROOM_BEFORE_GANON, hazard_dodge_dir
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 OBJ_PATRA = 0x47
@@ -79,15 +80,16 @@ def patra_action(
     cooldown: int,
     stand_dy: int = PATRA_STAND_DY,
 ) -> tuple[list[int], str, int]:
-    """Choose one frame: follow the body, stand south, and pulse UP+A.
+    """Choose one frame: follow the body, stand south, face UP, then pulse A.
 
     The orbiting eyes repeatedly cross this sword line.  Staying relative to
-    the body avoids chasing individual eyes through room geometry and keeps the
-    same policy valid once the vulnerable body is exposed.
+    the body avoids chasing individual eyes through room geometry. Cooldown
+    dodges nearby hazards or stands idle to keep facing; face-then-fire when ready.
     """
     body = patra_body(snap)
+    next_cd = max(0, cooldown - 1)
     if body is None:
-        return nes_idle_action(), "wait_north_door", max(0, cooldown - 1)
+        return nes_idle_action(), "wait_north_door", next_cd
 
     target_x = max(48, min(208, int(body.x)))
     target_y = max(93, min(173, int(body.y) + int(stand_dy)))
@@ -96,12 +98,18 @@ def patra_action(
 
     if abs(dx) > 4 and abs(dx) >= abs(dy):
         direction = "RIGHT" if dx > 0 else "LEFT"
-        return nes_action(direction), "align_south_x", cooldown
+        return nes_action(direction), "align_south_x", next_cd if cooldown else 0
     if abs(dy) > 4:
         direction = "DOWN" if dy > 0 else "UP"
-        return nes_action(direction), "align_south_y", cooldown
+        return nes_action(direction), "align_south_y", next_cd if cooldown else 0
+
+    dodge = hazard_dodge_dir(snap, patra_eyes(snap))
     if cooldown > 0:
-        return nes_idle_action(), "attack_cooldown", cooldown - 1
+        if dodge is not None:
+            return nes_action(dodge), "attack_dodge", next_cd
+        return nes_idle_action(), "cooldown_stand", next_cd
+    if int(snap.facing) != FACING_NORTH:
+        return nes_action("UP"), "face_up", 0
     return nes_action("UP", "A"), "sword_pulse_up", PATRA_ATTACK_COOLDOWN
 
 
@@ -183,7 +191,7 @@ class FinalPatraFightController:
         result: dict[str, Any] = {
             "ok": ok,
             "frames": self.frames,
-            "policy": "south_stand",
+            "policy": "south_stand_dodge",
             "stand_dy": self.stand_dy,
             "sword_pulses": self.sword_pulses,
             "max_eyes_seen": self.max_eyes_seen,

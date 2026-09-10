@@ -79,11 +79,24 @@ def test_factory_fixture_live_not_passage() -> None:
 
 
 def test_leftover_walks_up_inland_not_down() -> None:
+    """SW leftover (32,181) walks UP inland, never DOWN into open 0x4C bomb hole."""
     ctl = make_north_3c_controller()
     act = _step(ctl, _ram())
     assert not ctl.failed and not ctl.success
     assert list(act.action) == UP
+    assert list(act.action) != DOWN
+    assert list(act.action) != RIGHT
     assert act.reason == "north_inland"
+
+
+def test_off_column_knockback_inland_does_not_up_into_wall() -> None:
+    """x=208 leftover at inland y=133 must LEFT onto door column, never UP into wall."""
+    ctl = make_north_3c_controller()
+    act = _step(ctl, _ram(x=208, y=133))
+    assert not ctl.failed and not ctl.success
+    assert list(act.action) == LEFT
+    assert list(act.action) != UP
+    assert act.reason == "north_align"
 
 
 def test_north_band_aligns_x_to_door() -> None:

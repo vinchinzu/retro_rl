@@ -67,3 +67,12 @@ def test_timeout_fails_closed() -> None:
     assert hop.failed is True
     assert hop.success is False
     assert list(timed.action) == list(nes_idle_action())
+
+
+def test_wait_not_play_idles_until_play() -> None:
+    hop = _DestHop(max_frames=20)
+    waited = hop.wait_not_play(_snap(mode=11))
+    assert waited is not None
+    assert list(waited.action) == list(nes_idle_action())
+    assert waited.reason == "wait_mode_11"
+    assert hop.wait_not_play(_snap()) is None

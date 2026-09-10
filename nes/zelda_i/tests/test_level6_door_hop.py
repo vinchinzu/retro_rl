@@ -5,10 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.door_hop import (
     DoorHopController,
     DoorHopSpec,
+    door_band_goal,
     door_hop_success,
 )
 from zelda_i.level6.door_hop import (
@@ -192,6 +193,31 @@ def test_every_row_binds_the_l6_occupancy_engine(spec: DoorHopSpec) -> None:
     assert spec.record_fn is record_l6_walk
     # Shared band defaults still match the measured L6 door geometry.
     assert (spec.south_band_y, spec.north_band_y) == (181, 109)
+
+
+def test_up_hop_off_column_leftover_binds_door_column() -> None:
+    """Off-column leftover uses the door column, not leftover x (UP into a wall at x=208)."""
+    assert door_band_goal("UP", (208, 157), (120, 109)) == (120, 109)
+    assert door_band_goal("UP", (118, 157), (120, 109)) == (118, 109)
+    assert door_band_goal("DOWN", (96, 157), (120, 189)) == (120, 181)
+    assert door_band_goal("RIGHT", (120, 143), (208, 141)) == (208, 143)
+    assert door_band_goal("LEFT", (120, 77), (32, 141)) == (32, 141)
+    spec = DoorHopSpec(
+        spec_id="up_leftover_door_column",
+        room=0x2C,
+        goal=(120, 109),
+        hold_dir="UP",
+        policy="leftover-relative north mouth",
+    )
+    leftover = _snap(screen=spec.room, x=208, y=157)
+    ctl = DoorHopController(spec)
+    first = ctl.step(leftover)
+    assert ctl.goal == (120, 109)
+    dest = ctl._path_dest((208, 157))
+    assert dest[0] == 120
+    assert dest != (208, 157)
+    assert list(first.action) != list(nes_idle_action())
+    assert list(first.action) == list(nes_action("LEFT"))
 
 
 def test_row_table_is_the_ten_generic_hops() -> None:
