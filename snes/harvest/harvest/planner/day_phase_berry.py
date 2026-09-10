@@ -24,6 +24,19 @@ def mountain_berry_count_for_day(day: int) -> int:
     return 2 if int(day) >= 3 else 1
 
 
+# Once the wallet clears this, the daily mountain grape run's ~150g is not
+# worth its terminal risk (the return leg strands the farmer on the mountain
+# and return_home cannot path back). The potato cycle self-funds seed bags.
+BERRY_STOP_WALLET_G = 700
+
+
+def _berry_run_worthwhile(money: Optional[int], has_harvest: bool) -> bool:
+    """False once the potato economy can self-fund (skip the grape strand risk)."""
+    if money is None:
+        return True
+    return int(money) < BERRY_STOP_WALLET_G
+
+
 def shop_latest_hour_for_day(day: int, policy: DayPlannerPolicy) -> int:
     """Latest hour the seed shop may still start.
 
@@ -129,7 +142,12 @@ def _berry_run_phases(
         return []
 
     phases: List[PhaseSpec] = []
-    if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
+    berry_worthwhile = _berry_run_worthwhile(money, has_seeds)
+    if (
+        policy.include_berry_run
+        and berry_worthwhile
+        and now.hour < policy.berry_cutoff_hour
+    ):
         phases.append(
             PhaseSpec(
                 "BERRY_RUN_WINDOW",
@@ -176,6 +194,8 @@ __all__ = [
     "MOUNTAIN_BERRY_PHASES",
     "mountain_berry_count_for_day",
     "shop_latest_hour_for_day",
+    "BERRY_STOP_WALLET_G",
+    "_berry_run_worthwhile",
     "mountain_berry_phase",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_BERRY_PHASES",
