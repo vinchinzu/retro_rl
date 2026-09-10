@@ -485,13 +485,21 @@ def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Ta
     work_mode = spec.params.get("work_mode", "full")
     # First plant: reactive 8-ring hoe+plant. D2 water is work_mode=pocket.
     if spec.phase == "CROP_ESTABLISH" or str(work_mode) == "establish":
+        from harvest.maps.farm_pond import next_unplanted_pocket_center
         from harvest.tasks.skills import farm_pocket_plant_skill
 
-        return farm_pocket_plant_skill(seed_type=ctx.seed_type, include_water=False)
+        center = next_unplanted_pocket_center(world.ram)
+        return farm_pocket_plant_skill(
+            seed_type=ctx.seed_type,
+            center=center,
+            ram=world.ram,
+            include_water=False,
+        )
     if str(work_mode) == "pocket":
+        from harvest.maps.farm_pond import pocket_water_center
         from harvest.tasks.skills import farm_pocket_water_skill
 
-        return farm_pocket_water_skill()
+        return farm_pocket_water_skill(center=pocket_water_center(world.ram))
     skip_water_tiles = set(live_harvestable_crop_tiles(world.ram, ctx.state_name))
     return CropWaterTask(
         seed_type=ctx.seed_type,

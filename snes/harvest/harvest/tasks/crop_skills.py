@@ -24,7 +24,12 @@ from harvest.core.tile_catalog import (
     Tool,
     WEED,
 )
-from harvest.tasks.crop_geometry import FRESH_TILLED
+from harvest.tasks.crop_geometry import (
+    DRIED_TILLED,
+    FRESH_TILLED,
+    UNTILLED,
+    WATERED_TILLED,
+)
 from harvest.tasks.nav import TILE_SIZE, get_pos_from_ram, get_tile_at, make_action
 
 _SEED_IDS = frozenset(SEED_ITEM.values())
@@ -344,10 +349,34 @@ _HOE_ALT_STANDS: Tuple[Tuple[Tuple[int, int], str], ...] = (
     ((1, 0), "left"),
     ((0, -1), "down"),
 )
+# Live-map remap (``ram`` given): the face-up (south) stand nudges +5px toward
+# the tile boundary and nav can settle one row south (second-ring (20,27) hoe
+# stand landing on (20,29)). Prefer the north stand, face down.
+_HOE_ALT_STANDS_RAM: Tuple[Tuple[Tuple[int, int], str], ...] = (
+    ((0, -1), "down"),
+    ((-1, 0), "right"),
+    ((1, 0), "left"),
+    ((0, 1), "up"),
+)
 # y=31 is the solid 0x05 wall; y=30 is the lip that never settles a face-up.
 _FENCE_LIP_Y = 30
 # Tight: radius 6 accepted (11,29) as the (12,29) hoe stand (live miss).
 _RING_NAV_RADIUS = 3
+
+
+# Tile IDs a hoe stand can actually settle on. Excludes structure/bank IDs
+# (0xA1 well, 0xA5, 0xA6 pond border, 0xA8 bank, 0xD6/0xD8 decor) that read
+# "walkable" in FARM_WALKABLE but box a ring in — the second pocket is walled
+# on the east by the x21 0xA8 bank.
+_HOE_STAND_TILE_IDS: FrozenSet[int] = frozenset(
+    {0x00, UNTILLED, DRIED_TILLED, FRESH_TILLED, WATERED_TILLED, WEED, 0xA0, 0xA2}
+)
+
+
+def _hoe_stand_tile_ok(ram, stand: Tuple[int, int]) -> bool:
+    if ram is None:
+        return True
+    return int(get_tile_at(ram, stand[0], stand[1])) in _HOE_STAND_TILE_IDS
 
 
 def _pocket_hoe_stand_blocked(
@@ -355,11 +384,14 @@ def _pocket_hoe_stand_blocked(
     target: Tuple[int, int],
     stand: Tuple[int, int],
     face: str,
+    ram=None,
 ) -> bool:
     """True when a pocket hoe stand cannot settle (no-go / fence / leftover stone)."""
     from harvest.maps.farm_pond import FARM_NO_GO_TILES
 
     if stand == target or stand in FARM_NO_GO_TILES:
+        return True
+    if not _hoe_stand_tile_ok(ram, stand):
         return True
     if stand[1] >= _FENCE_LIP_Y:
         return True
@@ -379,21 +411,23 @@ def remap_pocket_hoe_stand(
     target: Tuple[int, int],
     stand: Tuple[int, int],
     face: str,
+    ram=None,
 ) -> Tuple[Tuple[int, int], str]:
     """Pocket-only hoe stand remaps. Does not rewrite HOE_PLAN.
 
     Fence-lip (cx, cy+2) face-up becomes west of the bottom ring, face-right.
-    Well-body / fence-lip / leftover-stone stands pick an adjacent-to-target
-    alternate (prefer south, face up; skip y>=30).
+    Well-body / fence-lip / leftover-stone / live-wall stands pick an
+    adjacent-to-target alternate (prefer south, face up; skip y>=30).
     """
     if target == (center[0], center[1] + 1) and face == "up":
         stand = (center[0] - 1, center[1] + 1)
         face = "right"
-    if not _pocket_hoe_stand_blocked(center, target, stand, face):
+    if not _pocket_hoe_stand_blocked(center, target, stand, face, ram):
         return stand, face
-    for (dx, dy), alt_face in _HOE_ALT_STANDS:
+    alts = _HOE_ALT_STANDS_RAM if ram is not None else _HOE_ALT_STANDS
+    for (dx, dy), alt_face in alts:
         alt = (target[0] + dx, target[1] + dy)
-        if _pocket_hoe_stand_blocked(center, target, alt, alt_face):
+        if _pocket_hoe_stand_blocked(center, target, alt, alt_face, ram):
             continue
         return alt, alt_face
     return stand, face
@@ -429,21 +463,22 @@ def _ring_nav_tool_skills(
 def pocket_hoe_ring_skills(
     center: Tuple[int, int],
     *,
+    ram=None,
     timeout: int = 240,
     nav_timeout: int = 4500,
 ):
     """Nav to each HOE_PLAN stand and till the faced ring tile.
 
-    Does not hoe the notch. Starts west of (13,29) so the first swing is
-    already facing right. Shed-door leave is owned by
-    ``farm_nav_pocket_hoe_stand_skill``. Well-body, fence-lip, and the
-    leftover-stone east stand (15,29) are remapped.
+    Does not hoe the notch. Starts west of the bottom-left so the first swing
+    is already facing right. Shed-door leave is owned by
+    ``farm_nav_pocket_hoe_stand_skill``. Well-body, fence-lip, leftover-stone
+    and (with ``ram``) live-wall stands are remapped.
     """
     from harvest.tasks.crop_geometry import hoe_plan
 
     plan = []
     for target, stand, face in hoe_plan(center):
-        stand, face = remap_pocket_hoe_stand(center, target, stand, face)
+        stand, face = remap_pocket_hoe_stand(center, target, stand, face, ram)
         plan.append((target, stand, face))
     # Start with that bottom-center cell — nav_pocket_hoe_stand lands there.
     ordered = plan[-1:] + plan[:-1]

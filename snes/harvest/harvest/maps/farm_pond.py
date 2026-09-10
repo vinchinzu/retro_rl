@@ -174,6 +174,55 @@ WEST_PLANT_POCKET_BOUNDS: Tuple[int, int, int, int] = (3, 14, 28, 30)
 # at that notch (0x07→0x54). Prefer this over DEFAULT_START_TILE (15,29).
 WEST_POCKET_PLANT_CENTER: Tuple[int, int] = (13, 28)
 
+# Second potato ring (rr-20w.3, D3). Beside the D2 rows, east of the well
+# body (x15-17 y26-27). All 8 crop tiles land on solid soil y27-29 — off the
+# y30 fence lip and off the well — with watering stands leaning toward the
+# pond gap, never the shipping alcove or the D2 crops. This is the winner of
+# ``crop_planner.plan_crop_field`` on live ``Y1_D3_PostShop`` RAM once
+# fence-lip (y30) rings are excluded (score 170, route_cost 45, profit 440).
+SECOND_POCKET_PLANT_CENTER: Tuple[int, int] = (19, 28)
+
+# Ordered establish targets: fill the west pocket first, then the second ring.
+POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
+    WEST_POCKET_PLANT_CENTER,
+    SECOND_POCKET_PLANT_CENTER,
+)
+
+
+def next_unplanted_pocket_center(ram) -> Tuple[int, int]:
+    """First pocket center whose 8-ring is not yet fully planted (establish).
+
+    Falls back to the last center when every ring is planted, so callers
+    always get a valid target.
+    """
+    from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
+
+    for center in POCKET_PLANT_CENTERS:
+        if count_ring_planted(ram, center) < PLOT_RING_SIZE:
+            return center
+    return POCKET_PLANT_CENTERS[-1]
+
+
+def planted_pocket_centers(ram) -> Tuple[Tuple[int, int], ...]:
+    """Every pocket center whose 8-ring is planted (water targets, in order)."""
+    from harvest.tasks.crop_skills import count_ring_planted
+
+    return tuple(
+        center
+        for center in POCKET_PLANT_CENTERS
+        if count_ring_planted(ram, center) > 0
+    )
+
+
+def pocket_water_center(ram) -> Tuple[int, int]:
+    """The pocket ring a single CROP_WATER pocket pass should water.
+
+    The most-recently established planted ring; the west pocket when nothing
+    is planted yet.
+    """
+    planted = planted_pocket_centers(ram)
+    return planted[-1] if planted else WEST_POCKET_PLANT_CENTER
+
 
 # Named water pockets: (name, water_tile_id, fills_can, sample_cells)
 FARM_WATER_POCKETS: Tuple[Tuple[str, int, bool, Tuple[Tuple[int, int], ...]], ...] = (
