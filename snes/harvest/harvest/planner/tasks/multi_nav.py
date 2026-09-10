@@ -24,7 +24,12 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_TILEMAP, LIFTABLE_TILES
 from harvest.tasks.farm_ops import TileScanner
 
-from harvest.maps.map_config import Waypoint, get_walkable_tiles
+from harvest.maps.map_config import (
+    FARM_TILEMAP_IDS,
+    MAP_REGISTRY,
+    Waypoint,
+    get_walkable_tiles,
+)
 from harvest.tasks.primitives import (
     drain_action_queue,
     press_button_sequence,
@@ -94,6 +99,9 @@ class MultiMapNavTask(Task):
     _entity_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _lift_throw_attempts: int = field(default=0, init=False)
     _soft_solid_pin_frames: int = field(default=0, init=False)
+    # Unregistered tilemaps (rain/fade 0x57 on farm→path) settle before
+    # a hard expected-tilemap fail. Known-map mismatches still fail closed.
+    _tilemap_mismatch_frames: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -118,6 +126,7 @@ class MultiMapNavTask(Task):
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._tilemap_mismatch_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -147,6 +156,7 @@ class MultiMapNavTask(Task):
         self._entity_blocks.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._tilemap_mismatch_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -335,6 +345,7 @@ class MultiMapNavTask(Task):
         self._pathfinder.temp_blocked.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
+        self._tilemap_mismatch_frames = 0
         self._pixel_anchor = None
         self._pixel_stuck = 0
         self._pixel_replans = 0
@@ -410,6 +421,7 @@ class MultiMapNavTask(Task):
                     # straight back through the transition.
                     self._rebuild_pathfinder(tilemap)
                     self._initial_settle = 0
+                    self._tilemap_mismatch_frames = 0
                     wp = self._current_wp()
                     return TaskResult(
                         status=TaskStatus.RUNNING,
@@ -417,10 +429,24 @@ class MultiMapNavTask(Task):
                         reason="relocalized after map transition",
                     )
             if wp is not None and not self._waypoint_tilemap_matches(tilemap, wp):
+                known = tilemap in MAP_REGISTRY or tilemap in FARM_TILEMAP_IDS
+                if not known:
+                    self._tilemap_mismatch_frames += 1
+                    if self._tilemap_mismatch_frames <= 90:
+                        return TaskResult(
+                            status=TaskStatus.RUNNING,
+                            action=ActionResult(make_action()),
+                            reason=(
+                                f"tilemap settle expected 0x{wp.tilemap:02X} "
+                                f"got 0x{tilemap:02X}"
+                            ),
+                        )
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=f"expected tilemap 0x{wp.tilemap:02X}, got 0x{tilemap:02X}",
                 )
+        else:
+            self._tilemap_mismatch_frames = 0
 
         # Dialog / menu dismissal
         dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)

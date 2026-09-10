@@ -161,6 +161,33 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(plan.phase_text, "ENSURE_WATERING_CAN")
         self.assertEqual(plan.exit_attempts, 1)
 
+    def test_day_plan_skips_farm_nav_when_stranded_on_mountain(self) -> None:
+        from harvest.planner.day_phase_catalog import NAV_CROP_PHASE
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+
+        plan = DayPlanTask(
+            phase_sequence=[NAV_CROP_PHASE],
+            policy=DayPlannerPolicy(include_end_day=False),
+        )
+        world = make_world(0x10)
+        set_player_pos(world.ram, 474, 630)
+        plan.reset(world)
+        result = plan.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("NAV_CROP", [d.phase for d in plan._deferred_plans])
+
+    def test_exit_to_farm_carpenter_pose_walks_downhill_not_spa(self) -> None:
+        task = ExitToFarmTask()
+        world = make_world(0x10)
+        set_player_pos(world.ram, 474, 630)
+        task.reset(world)
+        self.assertIsInstance(task._task, MultiMapNavTask)
+        self.assertEqual(task._task.name, "return_grape_downhill")
+        hops = [wp.target_px for wp in task._task.waypoints]
+        self.assertEqual(hops[0], (520, 712))
+        self.assertNotIn((569, 201), hops)
+        self.assertIn((312, 744), hops)
+
     def test_exit_to_farm_uses_return_route_from_path(self) -> None:
         task = ExitToFarmTask()
         world = make_world(0x0C)

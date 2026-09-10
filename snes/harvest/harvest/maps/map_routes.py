@@ -14,6 +14,7 @@ from harvest.maps.map_types import Waypoint
 # pixels leak across the transition; Manhattan then prefers a later
 # exit over the plaza center.
 PATH_TILEMAP_ID = 0x0C
+MOUNTAIN_TILEMAP_ID = 0x10
 PATH_ONMAP_MAX_X = 280
 PATH_ONMAP_MAX_Y = 200
 
@@ -90,6 +91,28 @@ def slice_route_from_position(
             return list(waypoints[i:])
     start = max(0, best_i - 1)
     return list(waypoints[start:])
+
+
+def mountain_downhill_escape(
+    px: int,
+    py: int,
+    *,
+    tilemap: Optional[int] = None,
+) -> List[Waypoint]:
+    """Mountain hops strictly south of the live pose, toward the south exit.
+
+    The grape return reverses through the carpenter terrace at (520, 632).
+    A pin at ~(474, 630) (run6 D15, 10 entities) cannot BFS that hop.
+    South means higher y: skip the terrace and drop to (520, 712).
+    From the grape stand (y=409) this still includes the x=20 cliff drop.
+    """
+    hops = list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
+    south = [wp for wp in hops if wp.target_px[1] > py + 16]
+    if south:
+        return list(south)
+    return slice_route_from_position(
+        hops, px, py, tilemap=MOUNTAIN_TILEMAP_ID if tilemap is None else tilemap
+    )
 
 
 def farm_to_spa_waypoints(
@@ -371,7 +394,13 @@ _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
     Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
     Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
+    Waypoint(
+        tilemap=0x10,
+        target_px=(520, 712),
+        radius=16,
+        run_direction="down",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
     Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
     Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),

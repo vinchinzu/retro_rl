@@ -27,6 +27,8 @@ from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.scene import SceneMode, classify_scene_from_ram
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, MOUNTAIN_WALKABLE, tile_label
 from harvest.maps.map_config import (
+    FARM_TILEMAP_IDS,
+    MAP_REGISTRY,
     SEGMENTS,
     farm_to_west_gate_waypoints,
     path_coords_leaked,
@@ -91,6 +93,15 @@ def _tilemap(world: WorldState) -> int:
 
 def _needs_building_exit(tilemap: int) -> bool:
     return is_house_tilemap(tilemap) or tilemap in (SHED_TILEMAP, BARN_TILEMAP, COOP_TILEMAP)
+
+
+def _unknown_travel_tilemap(tilemap: int) -> bool:
+    """Rain/fade overlays (0x57) are not path 0x0C yet. Do not arm the next hop."""
+    if tilemap in MAP_REGISTRY or tilemap in FARM_TILEMAP_IDS:
+        return False
+    if is_farm_tilemap(tilemap) or _needs_building_exit(tilemap):
+        return False
+    return True
 
 
 def first_remaining_segment(
@@ -389,10 +400,13 @@ class MountainBerryTask(Task):
         if self._child is None or self._child_name not in self.segments:
             return False
         pos = get_pos_from_ram(world.ram)
-        if _tilemap(world) == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+        tilemap = _tilemap(world)
+        if tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+            return False
+        if _unknown_travel_tilemap(tilemap):
             return False
         remaining = [name for name in self.segments if name not in self._done_segments]
-        live = first_remaining_segment(_tilemap(world), remaining)
+        live = first_remaining_segment(tilemap, remaining)
         if live is None or live == self._child_name:
             return False
         finished = self._child_name
@@ -584,9 +598,12 @@ class MountainBerryTask(Task):
                 )
 
         pos = get_pos_from_ram(world.ram)
-        if _tilemap(world) == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y):
+        tilemap = _tilemap(world)
+        leaked_path = tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y)
+        unknown_travel = _unknown_travel_tilemap(tilemap)
+        if leaked_path or unknown_travel:
             self._path_settle += 1
-            if self._path_settle > 180:
+            if leaked_path and self._path_settle > 180:
                 self._path_settle = 0
                 self._done_segments.add("farm_to_path")
                 self._child = None
@@ -595,7 +612,11 @@ class MountainBerryTask(Task):
                 if self._child is not None:
                     self._child = None
                 self._child_name = "path_settle"
-                self._last_reason = "path coords settle"
+                self._last_reason = (
+                    "path tilemap settle"
+                    if unknown_travel
+                    else "path coords settle"
+                )
                 # Real body is the east farm-gate. Left walks onto the plaza
                 # while leaked farm y is still in RAM.
                 run = self._path_settle > 24

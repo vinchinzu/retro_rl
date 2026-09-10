@@ -17,6 +17,7 @@ from harvest.maps.map_config import (
     compose_routes,
     farm_coords_look_like_path,
     find_landmark,
+    mountain_downhill_escape,
     path_coords_leaked,
     segment_waypoints,
     slice_route_from_position,
@@ -39,7 +40,7 @@ from harvest.tasks.mountain_berry import (
 )
 from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask, ROUTE_NAME
 from harvest.tasks.harvest_task import ADDR_SHIPPING_MONEY
-from retro_harness import TaskStatus
+from retro_harness import TaskResult, TaskStatus
 
 from day_plan_test_helpers import make_transition_world, set_player_pos
 
@@ -353,6 +354,22 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(forced[(328, 568)], "left")
         self.assertEqual(forced[(240, 488)], "left")
         self.assertEqual(forced[(312, 360)], "right")
+        land = next(wp for wp in cliff if wp.target_px == (520, 712))
+        self.assertEqual(land.run_direction, "down")
+        self.assertTrue(land.force_run)
+
+    def test_downhill_escape_from_carpenter_skips_terrace(self) -> None:
+        hops = mountain_downhill_escape(474, 630, tilemap=0x10)
+        self.assertEqual(hops[0].target_px, (520, 712))
+        self.assertTrue(hops[0].force_run)
+        self.assertEqual(hops[0].run_direction, "down")
+        self.assertNotIn((520, 632), [wp.target_px for wp in hops])
+        self.assertEqual(hops[-1].target_px, (312, 744))
+
+    def test_downhill_escape_from_grape_stand_keeps_cliff_drop(self) -> None:
+        hops = mountain_downhill_escape(326, 409, tilemap=0x10)
+        self.assertEqual(hops[0].target_px, (328, 568))
+        self.assertTrue(hops[0].force_run)
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))
@@ -418,6 +435,47 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(task.shipped_count, 1)
         self.assertIn("stopped early", result.reason or "")
+
+    def test_unknown_tilemap_settles_instead_of_path_to_mountain(self) -> None:
+        world = make_transition_world(0x0C, current_tile=(0, 26))
+        set_player_pos(world.ram, 10, 422)
+        task = MountainBerryTask()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(task.phase_text, "path_settle")
+        world.ram[ADDR_TILEMAP] = 0x57
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "path_settle")
+        self.assertIn("tilemap settle", result.reason or "")
+        world.ram[ADDR_TILEMAP] = 0x0C
+        set_player_pos(world.ram, 232, 128)
+        result = task.step(world)
+        self.assertEqual(task.phase_text, "path_to_mountain")
+
+    def test_return_pin_retries_downhill_escape(self) -> None:
+        world = make_transition_world(0x10, current_tile=(29, 39))
+        set_player_pos(world.ram, 474, 630)
+        world.ram[ADDR_HELD] = 0x03
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "return_to_bin")
+
+        class FailNav:
+            def step(self, _world):
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason="soft_solid pin held=0x03 pos=(474,630) stasis=23",
+                )
+
+        task._child = FailNav()
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "return_to_bin")
+        self.assertIn("downhill retry", result.reason or "")
+        hops = [wp.target_px for wp in task._child.waypoints]
+        self.assertEqual(hops[0], (520, 712))
+        self.assertNotIn((520, 632), hops[:3])
 
     def test_second_grape_bails_when_shop_hour_hits(self) -> None:
         world = make_transition_world(0x00, current_tile=(8, 28))

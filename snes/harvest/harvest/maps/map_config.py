@@ -90,6 +90,7 @@ from harvest.maps.map_routes import (
     farm_coords_look_like_path,
     segment_waypoints,
     slice_route_from_position,
+    mountain_downhill_escape,
     SOUTH_FIELD_MIN_Y_PX,
 )
 
@@ -559,6 +560,7 @@ __all__ = [
     "compose_routes",
     "segment_waypoints",
     "slice_route_from_position",
+    "mountain_downhill_escape",
     "path_coords_leaked",
     "farm_coords_look_like_path",
     "densify_waypoints",

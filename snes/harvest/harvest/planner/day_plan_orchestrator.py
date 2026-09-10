@@ -441,6 +441,21 @@ class DayPlanTask(Task):
             return "optional"
         return getattr(spec, "failure_policy", "required") or "required"
 
+    def _phase_map_mismatch(self, spec: PhaseSpec, world: WorldState) -> Optional[str]:
+        """Fail-fast farm-only phases when the grape run left us on 0x10/0x0C."""
+        contract = getattr(spec, "contract", None)
+        required = tuple(getattr(contract, "required_maps", ()) or ())
+        if not required:
+            return None
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        allowed = {int(m) for m in required}
+        if 0x00 in allowed and is_farm_tilemap(tilemap):
+            return None
+        if tilemap in allowed:
+            return None
+        need = ",".join(f"0x{m:02X}" for m in required)
+        return f"map_mismatch:have=0x{tilemap:02X}:need={need}"
+
     def _recovery_phase_key(self, spec: PhaseSpec) -> tuple[int, str]:
         return self._phase_index, spec.phase
 
@@ -614,6 +629,12 @@ class DayPlanTask(Task):
 
         # Create sub-task if needed
         if self._current_task is None:
+            map_reason = self._phase_map_mismatch(spec, world)
+            if map_reason is not None:
+                print(f"[DAY_PLAN] Phase {spec.phase} map lock: {map_reason}")
+                return self._handle_failed_phase(
+                    spec, TaskStatus.FAILURE, map_reason, world
+                )
             task = self._make_task(spec, world)
             if task is None:
                 reason = "no task"
