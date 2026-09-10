@@ -48,6 +48,7 @@ __all__ = [
     "HopFail",
     "RoomHopController",
     "RoomHopSpec",
+    "door_band_goal",
     "door_hop_stages",
     "door_hop_success",
     "hop_leftover",
@@ -59,6 +60,31 @@ __all__ = [
 # --------------------------------------------------------------------------
 # Occupancy dest hop (L6's ten rows)
 # --------------------------------------------------------------------------
+
+
+def door_band_goal(
+    hold_dir: str,
+    leftover: tuple[int, int],
+    default_goal: tuple[int, int],
+    *,
+    tol: int = DOOR_TOL,
+    north_band_y: int = NORTH_HALT_Y,
+    south_band_y: int = SOUTH_BAND_Y,
+) -> tuple[int, int]:
+    """Occupancy dest from leftover + hold_dir; ``default_goal`` is the door mouth.
+
+    Off-column leftover uses the door column, not leftover x (UP into a wall at x=208).
+    """
+    gx, gy = default_goal
+    x, y = leftover
+    if hold_dir == "UP":
+        dest_x = x if abs(x - gx) <= tol else gx
+        return (dest_x, north_band_y)
+    if hold_dir == "DOWN":
+        dest_x = x if abs(x - gx) <= tol else gx
+        return (dest_x, south_band_y)
+    dest_y = y if abs(y - gy) <= tol else gy
+    return (gx, dest_y)
 
 
 def hop_leftover(snap: ZeldaSnapshot) -> dict[str, Any]:
@@ -207,6 +233,7 @@ class DoorHopController(HopController):
     room: int = field(init=False)
     dest: int | None = field(init=False)
     goal: tuple[int, int] = field(init=False)
+    _goal_bound: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         spec = self.spec
@@ -296,15 +323,34 @@ class DoorHopController(HopController):
             return self._mark_success(snap)
         return None
 
+    def _bind_goal(self, xy: tuple[int, int]) -> None:
+        if self._goal_bound:
+            return
+        spec = self.spec
+        self.goal = door_band_goal(
+            spec.hold_dir,
+            xy,
+            spec.goal,
+            tol=spec.door_tol,
+            north_band_y=spec.north_band_y,
+            south_band_y=spec.south_band_y,
+        )
+        self._goal_bound = True
+
     def _path_dest(self, xy: tuple[int, int]) -> tuple[int, int]:
         spec = self.spec
-        gx, gy = spec.goal
+        gx, gy = self.goal
         x, y = xy
-        if spec.align == "x" and abs(x - gx) > spec.door_tol:
+        align = spec.align
+        if align is None and spec.hold_dir in ("UP", "DOWN"):
+            align = "x"
+        if align is None and spec.hold_dir in ("LEFT", "RIGHT"):
+            align = "y"
+        if align == "x" and abs(x - gx) > spec.door_tol:
             return (gx, spec.align_at if spec.align_at is not None else y)
-        if spec.align == "y" and abs(y - gy) > spec.door_tol:
+        if align == "y" and abs(y - gy) > spec.door_tol:
             return (x, gy)
-        return spec.goal
+        return self.goal
 
     def _idle(self, reason: str) -> FrameAction:
         self.walker.last_dir = None
@@ -403,6 +449,7 @@ class DoorHopController(HopController):
 
     def _walk(self, snap: ZeldaSnapshot) -> FrameAction:
         xy = (int(snap.link_x), int(snap.link_y))
+        self._bind_goal(xy)
         prev_dir = self.walker.last_dir
         misses_before = self.walker.misses
         self.walker.observe(xy)
@@ -436,9 +483,10 @@ class DoorHopController(HopController):
         arrived = self._dest(snap)
         if arrived is not None:
             return arrived
-        if snap.mode != PLAY_MODE:
+        waited = self.wait_not_play(snap)
+        if waited is not None:
             self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+            return waited
         if not spec.fail_ow and spec.level is not None and snap.level != spec.level:
             return self._fail(snap, f"left_level_{snap.level}", "left_level")
         if snap.screen != spec.room:
@@ -615,8 +663,9 @@ class RoomHopController(HopController):
             return spec.policy_fn(self, snap)
         if spec.passage_hold_reason and snap.mode == PASSAGE_MODE:
             return FrameAction(nes_idle_action(), spec.passage_hold_reason)
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        waited = self.wait_not_play(snap)
+        if waited is not None:
+            return waited
         if snap.screen != spec.origin:
             if spec.settle_button is None:
                 return FrameAction(nes_idle_action(), spec.settle_reason)

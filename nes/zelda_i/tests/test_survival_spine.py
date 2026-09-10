@@ -24,6 +24,8 @@ from zelda_i.spine.survival import (
     spine_final_fields,
     topup_owned_bombs,
     topup_owned_inventory,
+    topup_owned_keys,
+    topup_owned_rupees,
     validate_l5_endpoint,
 )
 
@@ -263,6 +265,79 @@ def test_run_survival_spine_allows_assist_none() -> None:
         pass
 
 
+def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
+    """``--no-pokes`` / ``--clean`` skip every owned-inventory write."""
+    import inspect
+
+    from zelda_i.level7.spine import continue_level7_spine
+    from zelda_i.level8.spine import continue_level8_spine
+    from zelda_i.spine.survival import _run_stages
+
+    src = inspect.getsource(_run_stages)
+    assert "allow_pokes" in src
+    assert "allow_pokes" in inspect.getsource(continue_level7_spine)
+    assert "allow_pokes" in inspect.getsource(continue_level8_spine)
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_BOMBS] = 0
+    ram[ADDR_KEYS] = 1
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    run = SpineRun(through="level2", success=True, boot_frames=1, allow_pokes=False)
+
+    class _Ctl:
+        poke_arrows = True
+
+    import zelda_i.spine.survival as surv
+
+    orig = surv.run_controller_stage
+
+    def fake_stage(env, obs, **kw):
+        del env, obs
+        return None, SimpleNamespace(
+            success=True, end_frame=1, name=kw["name"], report=lambda: {}
+        )
+
+    try:
+        surv.run_controller_stage = fake_stage
+        ctl = _Ctl()
+        assert _run_stages(
+            env,
+            run,
+            (("gohma", ctl, 10),),
+            assist=None,
+            retopup=frozenset({"gohma"}),
+            key_retopup=frozenset({"gohma"}),
+            rupee_retopup=frozenset({"gohma"}),
+        )
+    finally:
+        surv.run_controller_stage = orig
+    assert ctl.poke_arrows is False
+
+    topup_owned_inventory(env, run)
+    topup_owned_bombs(env, run)
+    topup_owned_keys(env, run)
+    topup_owned_rupees(env, run)
+    assert values == {}
+    assert run.inventory_assist is None
+
+    run_on = SpineRun(through="level2", success=True, boot_frames=1)
+    assert run_on.allow_pokes is True
+    topup_owned_inventory(env, run_on)
+    assert values["bombs"] == 16
+    assert run_on.inventory_assist is not None
+
+
 def test_survival_spine_cli_wraps_audited_env() -> None:
     import inspect
 
@@ -276,6 +351,8 @@ def test_survival_spine_cli_wraps_audited_env() -> None:
     assert "tap.abort()" in src
     assert "BooleanOptionalAction" in src
     assert "infinite_life" in src
+    assert "--no-pokes" in src
+    assert "--clean" in src
 
 
 def test_video_tap_close_and_abort_without_writer() -> None:

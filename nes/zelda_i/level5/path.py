@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 
+from zelda_i.dungeon.hop_controller import HopController
 from zelda_i.level5.dungeon import (
     LEVEL_5,
     ROOM_L5_ENTRY,
@@ -359,6 +360,57 @@ def _step(env, assist, total: list[int], action) -> None:
         assist.apply_env(env, frame=total[0])
 
 
+@dataclass(kw_only=True)
+class RamWaitHop(HopController):
+    """Idle or hold until a RAM predicate. Dest is RAM; max_frames is the budget."""
+
+    pred: Callable[[ZeldaSnapshot], bool] = field(repr=False)
+    hold: str | None = None
+    require_level: int | None = LEVEL_5
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return self.pred(snap)
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        if self.hold:
+            return FrameAction(nes_action(self.hold), f"{self.hold.lower()}_scroll")
+        return FrameAction(nes_idle_action(), "wait_scroll")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        if self.hold:
+            return FrameAction(nes_action(self.hold), f"hold_{self.hold.lower()}")
+        return FrameAction(nes_idle_action(), "wait_ram")
+
+
+def drive_hop(env, assist, total: list[int], ctl: HopController) -> bool:
+    """Step a dest-hop until success/fail. Dest is RAM; no idle(n)."""
+    while not ctl.success and not ctl.failed:
+        action = ctl.step(read_snapshot(env.get_ram()))
+        _step(env, assist, total, action.action)
+    return bool(ctl.success)
+
+
+def wait_ram(
+    env,
+    assist,
+    total: list[int],
+    pred: Callable[[ZeldaSnapshot], bool],
+    *,
+    hold: str | None = None,
+    max_frames: int = 240,
+    spec_id: str = "wait_ram",
+) -> bool:
+    """Hold or idle until ``pred`` (room/mode/band/census). Budget, not a hop."""
+    return drive_hop(
+        env,
+        assist,
+        total,
+        RamWaitHop(pred=pred, hold=hold, max_frames=max_frames, spec_id=spec_id),
+    )
+
+
 __all__ = [
     "EAST_DOOR_APPROACH_Y",
     "EAST_DOOR_CHANNEL_Y",
@@ -375,7 +427,10 @@ __all__ = [
     "level5_return_66_step",
     "level5_room66_west_aisle_north_step",
     "level5_west65_step",
+    "drive_hop",
     "make_east_key_nav_controller",
     "make_return_66_controller",
+    "RamWaitHop",
+    "wait_ram",
     "walk_axis",
 ]

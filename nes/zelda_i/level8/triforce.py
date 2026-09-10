@@ -15,7 +15,12 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import TF_BIT_L8
-from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
+from zelda_i.dungeon.door_hop import (
+    HopFail,
+    RoomHopController,
+    RoomHopSpec,
+    door_band_goal,
+)
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -84,11 +89,11 @@ RAM_CLAIM = (
 
 
 def north_3c_step(snap: ZeldaSnapshot) -> FrameAction:
-    """UP inland, x-align 120, UP push. Never DOWN."""
+    """UP inland first, x-align 120 on the north band, UP push. Never DOWN / 0x4C."""
     x, y = int(snap.link_x), int(snap.link_y)
-    gx, gy = NORTH_DOOR
     if y > NORTH_BAND_Y:
         return FrameAction(nes_action("UP"), "north_inland")
+    gx, gy = door_band_goal("UP", (x, y), NORTH_DOOR)
     if abs(x - gx) > _DOOR_TOL:
         btn = "RIGHT" if x < gx else "LEFT"
         return FrameAction(nes_action(btn), "north_align")

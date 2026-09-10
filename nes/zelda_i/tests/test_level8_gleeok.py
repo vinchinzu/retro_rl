@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
@@ -9,8 +11,10 @@ from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE
 from zelda_i.level8.gleeok import (
     GLEEOK_ROOM,
     HEART_REACH,
+    HEART_SLOT,
     HEART_XY,
     Level8FourHeadGleeokController,
+    heart_xy,
     make_four_head_gleeok_controller,
 )
 from zelda_i.level8.path import (
@@ -102,11 +106,14 @@ def test_path_factory_is_fight_not_unverified() -> None:
 def test_body_gone_walks_sw_heart_not_stand() -> None:
     """F2 leftover (48,153) must LEFT toward (32,192), not heart_stand."""
     ram = _ram(x=48, y=153)
+    ram[ADDR_LINK_X + HEART_SLOT] = 32
+    ram[ADDR_LINK_Y + HEART_SLOT] = 192
     ram[ADDR_OBJ_TYPE + 1] = 0x45
     ram[ADDR_LINK_X + 1] = 124
     ram[ADDR_LINK_Y + 1] = 111
     ram[ADDR_OBJ_HP + 1] = 160
     ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
     _step(ctl, ram)
     ram[ADDR_OBJ_TYPE + 1] = 0
     act = _step(ctl, ram)
@@ -118,11 +125,14 @@ def test_body_gone_walks_sw_heart_not_stand() -> None:
 def test_f3_stand_walks_south_onto_heart() -> None:
     """F3 (32,164) must DOWN toward (32,192), not heart_stand."""
     ram = _ram(x=32, y=164)
+    ram[ADDR_LINK_X + HEART_SLOT] = 32
+    ram[ADDR_LINK_Y + HEART_SLOT] = 192
     ram[ADDR_OBJ_TYPE + 1] = 0x45
     ram[ADDR_LINK_X + 1] = 124
     ram[ADDR_LINK_Y + 1] = 111
     ram[ADDR_OBJ_HP + 1] = 160
     ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
     _step(ctl, ram)
     ram[ADDR_OBJ_TYPE + 1] = 0
     act = _step(ctl, ram)
@@ -134,11 +144,14 @@ def test_f3_stand_walks_south_onto_heart() -> None:
 def test_body_gone_without_a_watched_heart_item_does_not_green() -> None:
     """``room_item_id != 0x1A`` alone is not heart-container evidence."""
     ram = _ram(x=48, y=153, room_item=0x00)
+    ram[ADDR_LINK_X + HEART_SLOT] = 32
+    ram[ADDR_LINK_Y + HEART_SLOT] = 192
     ram[ADDR_OBJ_TYPE + 1] = 0x45
     ram[ADDR_LINK_X + 1] = 124
     ram[ADDR_LINK_Y + 1] = 111
     ram[ADDR_OBJ_HP + 1] = 160
     ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
     _step(ctl, ram)
     assert ctl.saw_heart_item is False
     ram[ADDR_OBJ_TYPE + 1] = 0
@@ -146,6 +159,71 @@ def test_body_gone_without_a_watched_heart_item_does_not_green() -> None:
     assert ctl.body_gone and not ctl.success and not ctl.failed
     assert act.reason == "heart_x"
     assert ctl.report()["saw_heart_item"] is False
+
+
+def test_unbound_env_waits_for_heart_not_walks_frozen() -> None:
+    """Unbound env has no RAM access: must heart_wait/idle, not walk to (32, 192)."""
+    ram = _ram(x=48, y=153)
+    ctl = make_four_head_gleeok_controller()
+    act = _body_then_gone(ctl, ram)
+    assert ctl.body_gone and not ctl.success and not ctl.failed
+    assert act.reason == "heart_wait"
+    assert list(act.action) == IDLE
+    assert heart_xy(None) is None
+
+
+def test_empty_slot19_waits_for_heart_not_walks_frozen() -> None:
+    """Slot 19 reading (0, 0) must heart_wait/idle, not walk to (32, 192)."""
+    ram = _ram(x=48, y=153)
+    assert ram[ADDR_LINK_X + HEART_SLOT] == 0
+    assert ram[ADDR_LINK_Y + HEART_SLOT] == 0
+    ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _body_then_gone(ctl, ram)
+    assert ctl.body_gone and not ctl.success and not ctl.failed
+    assert act.reason == "heart_wait"
+    assert list(act.action) == IDLE
+    assert heart_xy(ram) is None
+
+
+def _body_then_gone(ctl, ram: np.ndarray):
+    ram[ADDR_OBJ_TYPE + 1] = 0x45
+    ram[ADDR_LINK_X + 1] = 124
+    ram[ADDR_LINK_Y + 1] = 111
+    ram[ADDR_OBJ_HP + 1] = 160
+    _step(ctl, ram)
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    return _step(ctl, ram)
+
+
+def test_heart_dest_is_ram_xy_not_frozen_spawn() -> None:
+    """Walk toward slot-19 RAM, not the frozen (32,192) leftover."""
+    ram = _ram(x=48, y=153)
+    ram[ADDR_LINK_X + HEART_SLOT] = 160
+    ram[ADDR_LINK_Y + HEART_SLOT] = 141
+    ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _body_then_gone(ctl, ram)
+    assert ctl.body_gone and not ctl.success and not ctl.failed
+    assert act.reason == "heart_x"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert heart_xy(ram) == (160, 141)
+    assert heart_xy(ram) != HEART_XY
+
+
+def test_heart_off_column_leftover_does_not_up_into_wall() -> None:
+    """x=208 leftover walks LEFT toward RAM heart x, never UP into a wall."""
+    ram = _ram(x=208, y=157)
+    ram[ADDR_LINK_X + HEART_SLOT] = 120
+    ram[ADDR_LINK_Y + HEART_SLOT] = 141
+    ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _body_then_gone(ctl, ram)
+    assert ctl.body_gone and not ctl.success
+    assert act.reason == "heart_x"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
 
 
 def test_watched_heart_item_falling_edge_still_greens() -> None:

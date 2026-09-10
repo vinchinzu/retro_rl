@@ -111,6 +111,9 @@ def continue_level8_spine(
     """
     if through not in L8_THROUGH:
         raise ValueError(f"unknown Level 8 through target: {through!r}")
+    retopup = (
+        SPINE_L8_RETOPUP if getattr(run, "allow_pokes", True) else frozenset()
+    )
     attach_hops(
         env,
         run,
@@ -128,5 +131,5 @@ def continue_level8_spine(
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
-        retopup=SPINE_L8_RETOPUP,
+        retopup=retopup,
     )

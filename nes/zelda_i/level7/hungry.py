@@ -90,6 +90,7 @@ class Level7HungryGoriyaController:
     initial_food: int | None = None
     last_food: int | None = None
     food_consumed: bool = False
+    leftover: dict[str, Any] | None = None
     notes: list[str] = field(default_factory=list)
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController = field(init=False, repr=False)
@@ -116,9 +117,21 @@ class Level7HungryGoriyaController:
             if note:
                 self._note(note)
 
-    def _fail(self, reason: str) -> FrameAction:
+    def _fail(
+        self, reason: str, snap: ZeldaSnapshot | None = None
+    ) -> FrameAction:
         self.failed = True
         self._set_phase(HungryPhase.FAILED, reason)
+        if snap is not None:
+            self.leftover = {
+                "level": int(snap.level),
+                "screen": int(snap.screen),
+                "mode": int(snap.mode),
+                "x": int(snap.link_x),
+                "y": int(snap.link_y),
+                "food": self.last_food if self.last_food is not None else 0,
+                "reason": reason,
+            }
         return FrameAction(nes_idle_action(), reason)
 
     def _approach(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -157,22 +170,23 @@ class Level7HungryGoriyaController:
         if self.success or self.failed:
             return FrameAction(nes_idle_action(), "done")
         if self._env is None:
-            return self._fail("hungry_goriya_env_not_bound")
+            return self._fail("hungry_goriya_env_not_bound", snap)
         ram = self._env.get_ram()
         food = int(read_u8(ram, ADDR_FOOD))
         if self.initial_food is None:
             self.initial_food = food
+            self.last_food = food
             self._note(f"food_in_{food}")
             if food < 1:
-                return self._fail("hungry_goriya_requires_food")
+                return self._fail("hungry_goriya_requires_food", snap)
         if self.last_food is not None and self.last_food >= 1 and food == 0:
             self.food_consumed = True
             self._note("food_consumed_naturally")
         self.last_food = food
         if snap.mode == DEATH_MODE:
-            return self._fail("death")
+            return self._fail("death", snap)
         if self.frames > self.max_frames:
-            return self._fail("budget_exhausted")
+            return self._fail("budget_exhausted", snap)
         dest_settled = (
             snap.level == LEVEL7
             and snap.mode == PLAY_MODE
@@ -189,12 +203,12 @@ class Level7HungryGoriyaController:
             return FrameAction(nes_idle_action(), "wait_scroll")
         if snap.mode == PLAY_MODE and not snap.transitioning:
             if snap.level != LEVEL7:
-                return self._fail(f"left_level_{snap.level}")
+                return self._fail(f"left_level_{snap.level}", snap)
             if int(snap.screen) != ROOM:
                 if int(snap.screen) == DEST:
-                    return self._fail("dest_without_food_consume")
+                    return self._fail("dest_without_food_consume", snap)
                 return self._fail(
-                    f"left_room_L{snap.level}_0x{snap.screen:02x}"
+                    f"left_room_L{snap.level}_0x{snap.screen:02x}", snap
                 )
         if self.phase is HungryPhase.SELECT:
             return self._run_select(snap)
@@ -210,6 +224,7 @@ class Level7HungryGoriyaController:
             "dest": f"0x{DEST:02X}",
             "food_consumed": self.food_consumed,
             "initial_food": self.initial_food,
+            "leftover": dict(self.leftover) if self.leftover else None,
             "phase": self.phase.name,
             "cursor_moves": self.cursor_moves,
             "normal_pause_input": True,

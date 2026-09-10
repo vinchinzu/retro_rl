@@ -563,12 +563,18 @@ def test_hungry_goriya_requires_food() -> None:
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed
     assert act.reason == "hungry_goriya_requires_food"
+    leftover = ctl.report()["leftover"]
+    assert leftover is not None
+    assert leftover["reason"] == "hungry_goriya_requires_food"
+    assert leftover["food"] == 0
+    assert leftover["screen"] == 0x28
     ram[ADDR_FOOD] = 1
     ctl = make_entry_to_goriya_controller()
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert not ctl.failed
     assert ctl.report()["route_eligible"] is False
+    assert ctl.report()["writes"] == 0
 
 
 def test_red_candle_factory_is_the_live_1a_push() -> None:

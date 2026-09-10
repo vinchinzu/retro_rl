@@ -11,7 +11,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import in_sword_hitbox
+from zelda_i.combat import (
+    CONTACT_CHEBYSHEV,
+    CONTACT_MANHATTAN,
+    direction_to_facing,
+    in_sword_hitbox,
+)
+from zelda_i.dungeon.ids import FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE
 from zelda_i.ram import (
     ADDR_SELECTED_ITEM,
     PLAY_MODE,
@@ -47,6 +53,11 @@ GANON_DEFEATED_PHASE = 0xFF
 MODE_ENDING = 0x13
 ENDING_SUBMODE_CREDITS = 3
 ENDING_SUBMODE_FINAL_SCREEN = 4
+
+GANON_FIREBALL_TYPES = frozenset({FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE})
+DODGE_DIST = CONTACT_MANHATTAN
+DODGE_X_LO = 56
+DODGE_X_HI = 200
 
 
 def ganon_object(snap: ZeldaSnapshot) -> ZeldaObject | None:
@@ -120,6 +131,52 @@ def _toward(link_x: int, link_y: int, target_x: int, target_y: int) -> str:
     return "DOWN" if dy > 0 else "UP"
 
 
+def hazard_dodge_dir(
+    snap: ZeldaSnapshot,
+    hazards: tuple[ZeldaObject, ...],
+    *,
+    thr: int = DODGE_DIST,
+    x_lo: int = DODGE_X_LO,
+    x_hi: int = DODGE_X_HI,
+) -> str | None:
+    """Step away from the nearest hazard (manhattan). Horizontal; flip at edges."""
+    if not hazards:
+        return None
+    nearest = min(
+        hazards,
+        key=lambda o: abs(int(o.x) - int(snap.link_x))
+        + abs(int(o.y) - int(snap.link_y)),
+    )
+    dist = abs(int(nearest.x) - int(snap.link_x)) + abs(
+        int(nearest.y) - int(snap.link_y)
+    )
+    if dist > thr:
+        return None
+    if int(nearest.x) >= int(snap.link_x):
+        return "LEFT" if int(snap.link_x) > x_lo else "RIGHT"
+    return "RIGHT" if int(snap.link_x) < x_hi else "LEFT"
+
+
+def ganon_fireballs(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    return tuple(
+        obj
+        for obj in snap.objects
+        if 1 <= obj.slot <= 12 and int(obj.type_id) in GANON_FIREBALL_TYPES
+    )
+
+
+def ganon_dodge_hazards(
+    snap: ZeldaSnapshot, boss: ZeldaObject | None
+) -> tuple[ZeldaObject, ...]:
+    shots = ganon_fireballs(snap)
+    if boss is None:
+        return shots
+    contact = max(abs(int(boss.x) - int(snap.link_x)), abs(int(boss.y) - int(snap.link_y)))
+    if contact <= CONTACT_CHEBYSHEV:
+        return shots + (boss,)
+    return shots
+
+
 def _sword_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
     for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
         if in_sword_hitbox(
@@ -138,11 +195,25 @@ def _sword_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
 def _arrow_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
     dx = int(boss.x) - int(snap.link_x)
     dy = int(boss.y) - int(snap.link_y)
-    if abs(dx) <= 8 and dy:
+    if abs(dx) <= 4 and dy:
         return "DOWN" if dy > 0 else "UP"
-    if abs(dy) <= 8 and dx:
+    if abs(dy) <= 4 and dx:
         return "RIGHT" if dx > 0 else "LEFT"
     return None
+
+
+def _face_or_fire(
+    snap: ZeldaSnapshot,
+    direction: str,
+    button: str,
+    *,
+    face_reason: str,
+    fire_reason: str,
+    cooldown: int,
+) -> tuple[list[int], str, int]:
+    if int(snap.facing) != direction_to_facing(direction):
+        return nes_action(direction), face_reason, 0
+    return nes_action(direction, button), fire_reason, cooldown
 
 
 def ganon_action(
@@ -152,33 +223,59 @@ def ganon_action(
 ) -> tuple[list[int], str, int]:
     """Choose one Ganon combat frame from live boss coordinates.
 
-    A is pulsed because holding it does not start a second sword swing.  Once
-    state ``0xFF`` exposes brown Ganon, B fires only on an aligned axis.
+    Face, then fire (Gohma). Cooldown dodges fireballs/contact or stands;
+    dest is RAM (brown / silver-arrow kill).
     """
     boss = ganon_object(snap)
+    next_cd = max(0, cooldown - 1)
     if boss is None:
-        return nes_idle_action(), "wait_ganon", max(0, cooldown - 1)
-    if cooldown > 0:
-        return nes_idle_action(), "attack_cooldown", cooldown - 1
+        return nes_idle_action(), "wait_ganon", next_cd
+
+    dodge = hazard_dodge_dir(snap, ganon_dodge_hazards(snap, boss))
 
     if boss.state != 0:
         arrow_dir = _arrow_direction(snap, boss)
         if arrow_dir is not None:
-            return nes_action(arrow_dir, "B"), "silver_arrow", 16
-        # Align on the nearer axis before firing across the other one.
+            # Commit to the firing axis (Gohma FIRE_TOL). Dodging here
+            # walks off the column and the silver arrow misses.
+            if cooldown > 0:
+                return nes_action(arrow_dir), "face_arrow", next_cd
+            return _face_or_fire(
+                snap,
+                arrow_dir,
+                "B",
+                face_reason="face_arrow",
+                fire_reason="silver_arrow",
+                cooldown=16,
+            )
+        if cooldown > 0 and dodge is not None:
+            return nes_action(dodge), "attack_dodge", next_cd
         if abs(int(boss.x) - int(snap.link_x)) <= abs(
             int(boss.y) - int(snap.link_y)
         ):
             direction = "RIGHT" if snap.link_x < boss.x else "LEFT"
         else:
             direction = "DOWN" if snap.link_y < boss.y else "UP"
-        return nes_action(direction), "align_arrow", 0
+        return nes_action(direction), "align_arrow", next_cd if cooldown else 0
 
     sword_dir = _sword_direction(snap, boss)
     if sword_dir is not None:
-        return nes_action(sword_dir, "A"), "sword_pulse", 12
+        if cooldown > 0:
+            if dodge is not None:
+                return nes_action(dodge), "attack_dodge", next_cd
+            return nes_idle_action(), "cooldown_stand", next_cd
+        return _face_or_fire(
+            snap,
+            sword_dir,
+            "A",
+            face_reason="face_sword",
+            fire_reason="sword_pulse",
+            cooldown=12,
+        )
+    if dodge is not None:
+        return nes_action(dodge), "attack_dodge", next_cd
     direction = _toward(snap.link_x, snap.link_y, boss.x, boss.y)
-    return nes_action(direction), "chase_ganon", 0
+    return nes_action(direction), "chase_ganon", next_cd if cooldown else 0
 
 
 @dataclass
@@ -287,15 +384,18 @@ def _enter_ganon(env: Any, *, assist: Any, total: list[int]):
     from zelda_i.level9.path import final_patra_to_ganon_step
 
     obs = None
+    leftover: tuple[int, int] | None = None
     for _ in range(900):
         snap = read_snapshot(env.get_ram())
         ram = env.get_ram()
+        if leftover is None:
+            leftover = (int(snap.link_x), int(snap.link_y))
         if (
             in_ganon_fight(snap)
             and int(ram[ADDR_GANON_SCENE_PHASE]) == GANON_SCENE_FIGHT
         ):
             return obs, True
-        frame_action = final_patra_to_ganon_step(snap)
+        frame_action = final_patra_to_ganon_step(snap, leftover=leftover)
         obs = _env_step(env, frame_action.action, assist=assist, total=total)
     return obs, False
 
@@ -320,13 +420,20 @@ def _collect_power_triforce(env: Any, *, assist: Any, total: list[int]):
 
 
 def _enter_zelda(env: Any, *, assist: Any, total: list[int]):
+    from zelda_i.level9.path import ZELDA_DOOR_GOAL, leftover_door_step
+
     obs = None
+    leftover: tuple[int, int] | None = None
     for _ in range(1200):
         snap = read_snapshot(env.get_ram())
+        if leftover is None:
+            leftover = (int(snap.link_x), int(snap.link_y))
         if in_zelda_room(snap):
             return obs, True
-        if snap.screen == ROOM_GANON and abs(snap.link_x - 0x78) > 4:
-            action = nes_action("RIGHT" if snap.link_x < 0x78 else "LEFT")
+        if snap.screen == ROOM_GANON:
+            action = leftover_door_step(
+                snap, leftover, "UP", ZELDA_DOOR_GOAL, reason="zelda"
+            ).action
         else:
             action = nes_action("UP")
         obs = _env_step(env, action, assist=assist, total=total)
@@ -362,10 +469,16 @@ __all__ = [
     "ADDR_LAST_BOSS_DEFEATED",
     "B_ITEM_ARROWS",
     "B_ITEM_BOMBS",
+    "CONTACT_CHEBYSHEV",
+    "CONTACT_MANHATTAN",
+    "DODGE_DIST",
+    "DODGE_X_HI",
+    "DODGE_X_LO",
     "ENDING_SUBMODE_CREDITS",
     "ENDING_SUBMODE_FINAL_SCREEN",
     "GANON_BROWN_STATE",
     "GANON_DEFEATED_PHASE",
+    "GANON_FIREBALL_TYPES",
     "GANON_HP_START",
     "GANON_SCENE_FIGHT",
     "GanonFightController",
@@ -381,8 +494,11 @@ __all__ = [
     "final_ending_screen",
     "ganon_action",
     "ganon_defeated",
+    "ganon_dodge_hazards",
+    "ganon_fireballs",
     "ganon_is_brown",
     "ganon_object",
+    "hazard_dodge_dir",
     "in_ganon_fight",
     "in_room_before_ganon",
     "in_zelda_room",

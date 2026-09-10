@@ -12,8 +12,11 @@ Status: **SPINE-GREEN FROM POWER-ON (2026-09-05).** `--through level8` 1/1,
 power-on 2/2) and the four-head Gleeok suffix (`rr-6o7.3`) all pass.  Link
 settles OW `0x6D` `(96,93)` mode 5, TF `0xFF`, Magical Key 1, heart
 containers 10, deaths 0, progression/capacity writes 0.  Inventory assist is
-`SPINE_L8_RETOPUP` (bomb/key count top-up, ASSIST_CONTRACT) only.  See
-[`docs/tasks/rr-6o7.3-residual.md`](tasks/rr-6o7.3-residual.md).  The measured
+`SPINE_L8_RETOPUP` (bomb/key count top-up, ASSIST_CONTRACT) only; `--clean`
+/`allow_pokes=False` passes an empty retopup set (rr-npv.4). Interior
+`RoomHopSpec` cardinals and the 0x3C heart walk are leftover-relative
+(`door_band_goal`; heart dest is RAM slot 19 + hc bit).  See
+[`docs/tasks/rr-npv.4-residual.md`](tasks/rr-npv.4-residual.md).  The measured
 leave is `level9.dungeon.MEASURED_POST_L8_HANDOFF`.
 
 The sections below are the recon history that got here; most predate the
@@ -619,7 +622,7 @@ start.
 | `level8/entry.py` | Canonical measured post-L7 approach, natural pause selection, fail-closed Red Candle burn; holds `LIVE_RECON_BUSH_BURN_TARGET` |
 | `level8/bush.py` | Isolated 0x6D fixture-live burn recon; `route_eligible=false` |
 | `level8/dungeon.py` | Hypothesis door graph + exact stop predicates; `LIVE_RECON_LEVEL8_TOPOLOGY` (entry `0x7E`) and `LEVEL8_INTERIOR_0X3E_RECON`; `LEVEL8_ROOM_SPECS` still empty |
-| `level8/gleeok.py` | Four-head south-stand fight in `0x3C` (live type `0x45`); heart `(32,192)` |
+| `level8/gleeok.py` | Four-head south-stand fight in `0x3C` (live type `0x45`); heart slot 19 (idle if missing) |
 | `level8/triforce.py` | `0x3C` north shutter dest hop (live `0x2C`) + shard walk-on |
 | `level8/path.py` | Fixture-live 0x1F west, 0x1E/0x2E south, 0x3E east doors; four-head wraps `level8.gleeok`; Gleeok-passage still fail-closed |
 | `level8/hops.py` | Fresh chapter/controller factories and three `SpineHop` rows |

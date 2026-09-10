@@ -1,9 +1,9 @@
 """Level 7 room 0x1C: whistle-shrink FORCED_DIGDOGGER, sword, north 0x0C.
 
-Live recipe (probe ``scratch/probe_l7_forced_digdogger.py``, tags
-``1c_wh_v3``/``v4``): west mouth ``(16,141)``, stand ``(120,141)``, pause-select
-recorder B-slot 5 (cycle past Red Candle=4; no ``$0656`` poke), 12×B until
-type ``0x38`` → ``0x18``, sword the shrunk bodies, UP to play ``0x0C``.
+Leftover-relative HopController: door-row leftover binds the whistle stand;
+dest is RAM (type ``0x38`` gone / shrunk ``0x18`` dead / play ``0x0C``).
+Pause-select recorder B-slot 5 (cycle past Red Candle=4; no ``$0656`` poke).
+Blow B until RAM shrinks, sword the bodies, UP. No ``idle(n)`` settle hop.
 
 Do not call ``level5.boss_path.fight_digdogger`` (it mutates env). OccupancyWalker
 is banned. No RAM writes. ``route_eligible`` stays False.
@@ -24,6 +24,7 @@ from zelda_i.dungeon.behaviors import (
     EnemyKind,
     engagement_hint,
 )
+from zelda_i.dungeon.door_hop import hop_leftover
 from zelda_i.dungeon.hop_controller import (
     WAIT_SCROLL_B,
     HopController,
@@ -72,27 +73,22 @@ __all__ = [
 LEVEL7 = 7
 ROOM = 0x1C
 DEST = 0x0C
-DEATH_MODE = 17
 WHISTLE_B_SLOT = B_SLOT_RECORDER
 WHISTLE_STAND = (120, 141)
 NORTH_DOOR = (120, 93)
 ARRIVE_TOL = 3
-STAND_SETTLE_FRAMES = 8
-BLOW_PRESSES = 12
+BLOW_PULSE_FRAMES = 1
 BLOW_WAIT_FRAMES = 240
 BLOW_ATTEMPTS = 4
 EMPTY_SWORD_FRAMES = 30
 DIGDOGGER_MAX_FRAMES = 16000
 _OPPOSITE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
-_SCROLL_MODES = (2, 3, 4, 6, 7, 10, 16)
 
 
 class DigdoggerPhase(Enum):
     WALK = auto()
-    STAND_SETTLE = auto()
     SELECT = auto()
     BLOW = auto()
-    BLOW_WAIT = auto()
     SWORD = auto()
     EXIT = auto()
     DONE = auto()
@@ -130,16 +126,24 @@ def _live_digdogger(snap: ZeldaSnapshot) -> bool:
     return bool(_large(snap) or _shrunk_live(snap))
 
 
-@dataclass
-class Level7ForcedDigdoggerController:
-    """Kill live ``$EB=0x1C`` Digdogger and leave north into play ``0x0C``."""
+@dataclass(kw_only=True)
+class Level7ForcedDigdoggerController(HopController):
+    """Kill live ``$EB=0x1C`` Digdogger. Dest is RAM (dead + play ``0x0C``).
 
+    Leftover pose binds the whistle stand on the door row; dest is shrink /
+    body-gone / room change, not a scripted 12×B or ``idle(n)`` settle.
+    """
+
+    spec_id: str = "level7_forced_digdogger"
     max_frames: int = DIGDOGGER_MAX_FRAMES
-    frames: int = 0
-    phase_frames: int = 0
+    require_level: int = LEVEL7
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    done_reason: str = "dest_0x0c"
+    dest: int = DEST
+    room: int = ROOM
+    stand: tuple[int, int] = WHISTLE_STAND
     phase: DigdoggerPhase = DigdoggerPhase.WALK
-    success: bool = False
-    failed: bool = False
+    phase_frames: int = 0
     saw_boss: bool = False
     saw_large: bool = False
     shrunk: bool = False
@@ -149,10 +153,10 @@ class Level7ForcedDigdoggerController:
     sword_frames: int = 0
     empty_sword_frames: int = 0
     selected_before: int | None = None
-    leftover: dict[str, Any] | None = None
-    notes: list[str] = field(default_factory=list)
+    leftover: dict[str, Any] = field(default_factory=dict)
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController = field(init=False, repr=False)
+    _stand_bound: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._select = PauseSelectController(
@@ -167,37 +171,12 @@ class Level7ForcedDigdoggerController:
     def cursor_moves(self) -> int:
         return self._select.cursor_moves
 
-    def _note(self, note: str) -> None:
-        if note not in self.notes:
-            self.notes.append(note)
-
     def _set_phase(self, phase: DigdoggerPhase, note: str = "") -> None:
         if phase is not self.phase:
             self.phase = phase
             self.phase_frames = 0
             if note:
                 self._note(note)
-
-    def _fail(self, reason: str) -> FrameAction:
-        self.failed = True
-        self._set_phase(DigdoggerPhase.FAILED, reason)
-        return FrameAction(nes_idle_action(), reason)
-
-    def _finish(self, snap: ZeldaSnapshot, reason: str = "dest_0x0c") -> FrameAction:
-        self.success = True
-        self.killed = True
-        self.leftover = {
-            "level": int(snap.level),
-            "screen": int(snap.screen),
-            "mode": int(snap.mode),
-            "x": int(snap.link_x),
-            "y": int(snap.link_y),
-            "keys": int(snap.keys),
-            "bombs": int(snap.bombs),
-            "triforce": int(snap.triforce),
-        }
-        self._set_phase(DigdoggerPhase.DONE, reason)
-        return FrameAction(nes_idle_action(), reason)
 
     def _observe(self, snap: ZeldaSnapshot) -> None:
         types = _boss_types(snap)
@@ -207,6 +186,20 @@ class Level7ForcedDigdoggerController:
         if DIGDOGGER_SHRUNK_TYPE in types:
             self.saw_boss = True
             self.shrunk = True
+
+    def _bind_stand(self, snap: ZeldaSnapshot) -> None:
+        if self._stand_bound:
+            return
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            return
+        if int(snap.screen) != self.room:
+            return
+        y = int(snap.link_y)
+        stand_y = (
+            y if abs(y - WHISTLE_STAND[1]) <= ARRIVE_TOL else WHISTLE_STAND[1]
+        )
+        self.stand = (WHISTLE_STAND[0], stand_y)
+        self._stand_bound = True
 
     def _walk_to(
         self, snap: ZeldaSnapshot, dest: tuple[int, int], reason: str
@@ -222,7 +215,10 @@ class Level7ForcedDigdoggerController:
     def _begin_blow(self, note: str) -> FrameAction:
         self.blow_attempts += 1
         self.blow_presses = 1
-        self._set_phase(DigdoggerPhase.BLOW, note)
+        self.phase = DigdoggerPhase.BLOW
+        self.phase_frames = 0
+        if note:
+            self._note(note)
         return FrameAction(nes_action("B"), "whistle_blow")
 
     def _run_select(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -230,20 +226,16 @@ class Level7ForcedDigdoggerController:
         for note in self._select.notes:
             self._note(note)
         if self._select.failed:
-            return self._fail(self._select.fail_reason)
+            return self.mark_fail(self._select.fail_reason)
         if action is None:
             if (
                 snap.level != LEVEL7
                 or snap.mode != PLAY_MODE
-                or int(snap.screen) != ROOM
+                or int(snap.screen) != self.room
             ):
-                return self._fail("pause_close_contract_mismatch")
+                return self.mark_fail("pause_close_contract_mismatch")
             return self._begin_blow("recorder_ready")
         return action
-
-    def _after_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        self._set_phase(DigdoggerPhase.SELECT, "select_recorder")
-        return self._run_select(snap)
 
     def _sword(self, snap: ZeldaSnapshot) -> FrameAction:
         self.sword_frames += 1
@@ -272,8 +264,6 @@ class Level7ForcedDigdoggerController:
         return FrameAction(nes_action(hint.face), "sword_chase")
 
     def _exit_north(self, snap: ZeldaSnapshot) -> FrameAction:
-        # Hold UP on/above the door plane. Walking DOWN to y=93 oscillates
-        # in the mouth (live leftover sat at (120,89) for the full budget).
         return dungeon_align_then_push(
             snap,
             push_dir="UP",
@@ -282,71 +272,82 @@ class Level7ForcedDigdoggerController:
             reason="north",
         )
 
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed:
-            return FrameAction(nes_idle_action(), "failed")
-        if snap.mode == DEATH_MODE:
-            return self._fail("death")
-        self._observe(snap)
+    def _kill_edge(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            self.saw_boss
+            and self.shrunk
+            and not _live_digdogger(snap)
+        )
 
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
         dest_play = (
             int(snap.level) == LEVEL7
-            and int(snap.screen) == DEST
+            and int(snap.screen) == self.dest
             and snap.mode == PLAY_MODE
             and not snap.transitioning
         )
-        if dest_play:
-            if self.saw_boss and self.shrunk and not _live_digdogger(snap):
-                return self._finish(snap)
-            return self._fail("dest_without_kill_edge")
-        if self.frames >= self.max_frames:
-            return self._fail("budget_exhausted")
+        return dest_play and self._kill_edge(snap)
 
-        if snap.transitioning or snap.mode in _SCROLL_MODES:
-            if self.phase is DigdoggerPhase.EXIT or self.killed:
-                return FrameAction(nes_action("UP"), "north_scroll")
-            return FrameAction(nes_idle_action(), "wait_scroll")
-        if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
-        if int(snap.level) != LEVEL7:
-            return self._fail(f"left_level_{snap.level}")
-        if int(snap.screen) != ROOM:
-            return self._fail(f"left_room_L{snap.level}_0x{snap.screen:02x}")
+    def on_arrive(self, snap: ZeldaSnapshot) -> str:
+        self.killed = True
+        self._set_phase(DigdoggerPhase.DONE, "dest_0x0c")
+        return (
+            f"dest_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_tf={snap.triforce:02x}"
+        )
+
+    def timeout_note(self, snap: ZeldaSnapshot) -> str:
+        return (
+            f"timeout_0x{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
+            f"_mode={snap.mode}_phase={self.phase.name}"
+            f"_shrunk={int(self.shrunk)}_killed={int(self.killed)}"
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        del snap
+        if self.phase is DigdoggerPhase.EXIT or self.killed:
+            return FrameAction(nes_action("UP"), "north_scroll")
+        return FrameAction(nes_idle_action(), "wait_scroll")
+
+    def emit(
+        self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
+    ) -> FrameAction:
+        del force
+        self.leftover = {
+            **hop_leftover(snap),
+            "level": int(snap.level),
+        }
+        return action
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.phase_frames += 1
+        waited = self.wait_not_play(snap)
+        if waited is not None:
+            return waited
+        if int(snap.screen) != self.room:
+            if int(snap.screen) == self.dest:
+                return self.mark_fail("dest_without_kill_edge")
+            return self.mark_fail(
+                f"left_room_L{snap.level}_0x{snap.screen:02x}"
+            )
 
         if self.phase is DigdoggerPhase.WALK:
-            walked = self._walk_to(snap, WHISTLE_STAND, "stand")
+            walked = self._walk_to(snap, self.stand, "stand")
             if walked is not None:
                 return walked
-            self._set_phase(DigdoggerPhase.STAND_SETTLE, "at_stand")
-            return FrameAction(nes_idle_action(), "stand_arrive")
-        if self.phase is DigdoggerPhase.STAND_SETTLE:
-            if self.phase_frames >= STAND_SETTLE_FRAMES:
-                return self._after_stand(snap)
-            return FrameAction(nes_idle_action(), "stand_settle")
+            self._set_phase(DigdoggerPhase.SELECT, "at_stand")
+            return self._run_select(snap)
         if self.phase is DigdoggerPhase.SELECT:
             return self._run_select(snap)
         if self.phase is DigdoggerPhase.BLOW:
-            if _shrunk_live(snap):
-                self._set_phase(DigdoggerPhase.SWORD, "shrunk_during_blow")
-                return self._sword(snap)
-            if self.blow_presses >= BLOW_PRESSES:
-                self._set_phase(DigdoggerPhase.BLOW_WAIT, "whistle_wait")
-                return FrameAction(nes_idle_action(), "whistle_wait")
-            self.blow_presses += 1
-            return FrameAction(nes_action("B"), "whistle_blow")
-        if self.phase is DigdoggerPhase.BLOW_WAIT:
             if _shrunk_live(snap):
                 self._set_phase(DigdoggerPhase.SWORD, "shrunk")
                 return self._sword(snap)
             if self.phase_frames >= BLOW_WAIT_FRAMES:
                 if _large(snap):
                     if self.blow_attempts >= BLOW_ATTEMPTS:
-                        return self._fail("whistle_did_not_shrink")
-                    walked = self._walk_to(snap, WHISTLE_STAND, "restand")
+                        return self.mark_fail("whistle_did_not_shrink")
+                    walked = self._walk_to(snap, self.stand, "restand")
                     if walked is not None:
                         return walked
                     return self._begin_blow("whistle_retry")
@@ -354,6 +355,9 @@ class Level7ForcedDigdoggerController:
                 self.killed = True
                 self._set_phase(DigdoggerPhase.EXIT, "large_gone_after_blow")
                 return self._exit_north(snap)
+            if self.blow_presses < BLOW_PULSE_FRAMES:
+                self.blow_presses += 1
+                return FrameAction(nes_action("B"), "whistle_blow")
             return FrameAction(nes_idle_action(), "whistle_wait")
         if self.phase is DigdoggerPhase.SWORD:
             return self._sword(snap)
@@ -361,18 +365,24 @@ class Level7ForcedDigdoggerController:
             return self._exit_north(snap)
         return FrameAction(nes_idle_action(), "done")
 
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self._observe(snap)
+        self._bind_stand(snap)
+        return super().step(snap)
+
     def report(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "failed": self.failed,
             "frames": self.frames,
-            "spec_id": "level7_forced_digdogger",
-            "live_room": f"0x{ROOM:02X}",
-            "dest": f"0x{DEST:02X}",
+            "spec_id": self.spec_id,
+            "live_room": f"0x{self.room:02X}",
+            "dest": f"0x{self.dest:02X}",
             "phase": self.phase.name,
             "saw_boss": self.saw_boss,
             "shrunk": self.shrunk,
             "killed": self.killed,
+            "stand": list(self.stand),
             "cursor_moves": self.cursor_moves,
             "blow_attempts": self.blow_attempts,
             "selected_before": self.selected_before,

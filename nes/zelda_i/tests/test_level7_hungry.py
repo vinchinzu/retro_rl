@@ -94,6 +94,50 @@ def test_food_less_than_one_fails_immediately() -> None:
     assert not ctl.food_consumed
     assert act.reason == "hungry_goriya_requires_food"
     assert _buttons(act) == []
+    leftover = ctl.report()["leftover"]
+    assert leftover is not None
+    assert leftover["reason"] == "hungry_goriya_requires_food"
+    assert leftover["food"] == 0
+    assert leftover["screen"] == ROOM
+    assert int(ram[ADDR_FOOD]) == 0
+
+
+def test_clean_survival_false_never_writes_addr_food() -> None:
+    """allow_pokes=False / survival=False must not poke ADDR_FOOD."""
+    import inspect
+    from types import SimpleNamespace
+
+    from zelda_i.level7.entry import NaturalBaitPurchaseController
+    from zelda_i.level7.hops import level7_entry_chapter_stages
+    from zelda_i.level7.spine import continue_level7_spine
+    from zelda_i.ram import ADDR_FOOD as FOOD_ADDR
+
+    ram = _ram(food=0)
+    ram[FOOD_ADDR] = 0
+    calls: list[tuple[int, int]] = []
+
+    class _Mem:
+        def assign(self, addr: int, _fmt: str, val: int) -> None:
+            calls.append((int(addr), int(val)))
+            ram[int(addr)] = int(val) & 0xFF
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=SimpleNamespace(memory=_Mem())),
+    )
+    stages = level7_entry_chapter_stages(survival=False)
+    bait = stages[3][1]
+    assert isinstance(bait, NaturalBaitPurchaseController)
+    bait.bind_env(env)
+    bait.step(read_snapshot(ram))
+    assert calls == []
+    assert ram[FOOD_ADDR] == 0
+    assert bait.report()["writes"] == 0
+    src = inspect.getsource(NaturalBaitPurchaseController.step)
+    assert "poke_food" not in src
+    src_spine = inspect.getsource(continue_level7_spine)
+    assert "allow_pokes" in src_spine
+    assert "survival = False" in src_spine
 
 
 def test_pause_select_presses_start_and_does_not_poke() -> None:

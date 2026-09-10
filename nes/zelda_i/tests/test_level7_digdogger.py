@@ -8,6 +8,7 @@ import numpy as np
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from zelda_i.dungeon.behaviors import DIGDOGGER_SHRUNK_TYPE, DIGDOGGER_TYPE
+from zelda_i.dungeon.hop_controller import HopController
 from zelda_i.level7.digdogger import (
     DEST,
     ROOM,
@@ -81,6 +82,8 @@ def test_public_constants() -> None:
     assert DEST == 0x0C
     assert WHISTLE_B_SLOT == 5
     assert WHISTLE_STAND == (120, 141)
+    assert issubclass(Level7ForcedDigdoggerController, HopController)
+    assert not hasattr(DigdoggerPhase, "STAND_SETTLE")
 
 
 def test_walks_toward_stand() -> None:
@@ -94,39 +97,64 @@ def test_walks_toward_stand() -> None:
     assert _buttons(action) == ["DOWN"]
 
 
-def test_pause_select_emits_start_not_a_poke() -> None:
+def test_boundary_coords_bind_leftover_relative_stand() -> None:
+    """West / east / off-row leftovers walk to the door-row stand; dest is RAM."""
+    west = _ram(x=16, y=141, selected=5)
+    _plant(west, 1, DIGDOGGER_TYPE)
+    ctl = _bound(west)
+    assert _buttons(ctl.step(read_snapshot(west))) == ["RIGHT"]
+    assert ctl.stand == (120, 141)
+    assert ctl.phase is DigdoggerPhase.WALK
+
+    east = _ram(x=200, y=141, selected=5)
+    _plant(east, 1, DIGDOGGER_TYPE)
+    ctl = _bound(east)
+    assert _buttons(ctl.step(read_snapshot(east))) == ["LEFT"]
+    assert ctl.stand == (120, 141)
+
+    off = _ram(x=120, y=125, selected=5)
+    _plant(off, 1, DIGDOGGER_TYPE)
+    ctl = _bound(off)
+    assert _buttons(ctl.step(read_snapshot(off))) == ["DOWN"]
+    assert ctl.stand == (120, 141)
+    assert "stand_settle" not in ctl.notes
+
+
+def test_at_stand_skips_idle_settle_and_opens_pause() -> None:
     ram = _ram(x=120, y=141, selected=4)
     _plant(ram, 1, DIGDOGGER_TYPE)
     before = int(ram[ADDR_SELECTED_ITEM])
     controller = _bound(ram)
-    action = None
-    for _ in range(40):
-        action = controller.step(read_snapshot(ram))
-        if _buttons(action) == ["START"]:
-            break
-        assert int(ram[ADDR_SELECTED_ITEM]) == before
-    assert action is not None
+    action = controller.step(read_snapshot(ram))
     assert _buttons(action) == ["START"]
     assert action.reason == "pause_open"
+    assert controller.phase is DigdoggerPhase.SELECT
+    assert "stand_settle" not in {action.reason, *controller.notes}
     assert int(ram[ADDR_SELECTED_ITEM]) == before
     assert controller.report()["writes"] == 0
     assert controller.report()["normal_pause_input"] is True
 
 
-def test_twelve_b_after_selected_equals_5() -> None:
+def test_blows_until_ram_shrinks_not_twelve_b() -> None:
     ram = _ram(x=120, y=141, selected=5)
     _plant(ram, 1, DIGDOGGER_TYPE)
     controller = _bound(ram)
     seen_b = 0
-    for _ in range(40):
+    for _ in range(20):
         before = ram.copy()
         action = controller.step(read_snapshot(ram))
         assert np.array_equal(ram, before)
         if _buttons(action) == ["B"]:
             seen_b += 1
-        elif seen_b:
+        else:
             break
-    assert seen_b == 12
+    assert seen_b >= 1
+    assert controller.phase is DigdoggerPhase.BLOW
+    _plant(ram, 1, DIGDOGGER_SHRUNK_TYPE, hp=128, x=132, y=141)
+    action = controller.step(read_snapshot(ram))
+    assert controller.shrunk
+    assert controller.phase is DigdoggerPhase.SWORD
+    assert "B" not in _buttons(action)
     assert int(ram[ADDR_SELECTED_ITEM]) == 5
 
 
@@ -179,7 +207,7 @@ def test_fail_on_death() -> None:
     controller.step(read_snapshot(ram))
     assert controller.failed
     assert not controller.success
-    assert "death" in controller.notes
+    assert "link_death" in controller.notes
 
 
 def test_north_exit_holds_up_past_the_door_plane() -> None:
@@ -221,3 +249,81 @@ def test_report_route_eligible_is_false() -> None:
     assert report["spec_id"] == "level7_forced_digdogger"
     assert report["live_room"] == "0x1C"
     assert report["dest"] == "0x0C"
+
+
+def test_empty_slot_frame_does_not_exit_before_shrunk_minis() -> None:
+    """Whistle despawns 0x38 before 0x18 spawns: stay in BLOW, transition to SWORD on 0x18."""
+    ram = _ram(x=120, y=141, selected=5)
+    _plant(ram, 1, DIGDOGGER_TYPE, hp=240, x=132, y=141)
+    controller = _bound(ram)
+
+    # Start BLOW (B button pulsed on rising edge)
+    action = controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.BLOW
+    assert _buttons(action) == ["B"]
+
+    # Clear slot for one frame: large 0x38 despawned, shrunk 0x18 not yet spawned
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+    action = controller.step(read_snapshot(ram))
+    assert controller.phase is not DigdoggerPhase.EXIT
+    assert controller.phase is DigdoggerPhase.BLOW
+    assert not controller.killed
+    assert not controller.shrunk
+    assert action.reason == "whistle_wait"
+
+    # Mini Digdogger spawns (0x18, hp > 0): controller transitions to SWORD
+    _plant(ram, 1, DIGDOGGER_SHRUNK_TYPE, hp=128, x=132, y=141)
+    action = controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.SWORD
+    assert controller.shrunk
+    assert not controller.killed
+
+
+def test_blow_wait_frames_timeout_exits_if_large_gone() -> None:
+    """If large Digdogger is gone and no minis spawn for BLOW_WAIT_FRAMES, exit north."""
+    ram = _ram(x=120, y=141, selected=5)
+    _plant(ram, 1, DIGDOGGER_TYPE, hp=240, x=132, y=141)
+    controller = _bound(ram)
+    controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.BLOW
+
+    # Clear slot
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+
+    # Advance until just before BLOW_WAIT_FRAMES
+    for _ in range(239):
+        controller.step(read_snapshot(ram))
+        assert controller.phase is DigdoggerPhase.BLOW
+        assert not controller.killed
+
+    # At BLOW_WAIT_FRAMES, large_gone_after_blow triggers EXIT
+    action = controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.EXIT
+    assert controller.killed
+    assert controller.shrunk
+
+
+def test_blow_wait_frames_timeout_retries_if_large_still_present() -> None:
+    """If large Digdogger remains present after BLOW_WAIT_FRAMES, retry whistle."""
+    ram = _ram(x=120, y=141, selected=5)
+    _plant(ram, 1, DIGDOGGER_TYPE, hp=240, x=132, y=141)
+    controller = _bound(ram)
+    controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.BLOW
+    assert controller.blow_attempts == 1
+
+    # Large 0x38 remains present throughout BLOW_WAIT_FRAMES
+    for _ in range(239):
+        action = controller.step(read_snapshot(ram))
+        assert controller.phase is DigdoggerPhase.BLOW
+        assert not controller.killed
+        assert action.reason == "whistle_wait"
+
+    # At BLOW_WAIT_FRAMES with large still present, retry blow
+    action = controller.step(read_snapshot(ram))
+    assert controller.phase is DigdoggerPhase.BLOW
+    assert controller.blow_attempts == 2
+    assert _buttons(action) == ["B"]
+    assert "whistle_retry" in controller.notes

@@ -2,46 +2,41 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
-## This sitting (2026-09-08) — OW farm fold, bead `rr-wabn`
+## This sitting (2026-09-10) — bead `rr-ps7.3`
 
-Folded `zelda_i.overworld.locations` enemy-drop farms into hop policy so
-shops can kill+restock instead of poking rupees. Assist hearts off for
-L1 overworld combat practice. Do not close `rr-wabn` (arrow splice onto
-the default spine is still open). L2 `0x4C` leftover below is unchanged.
+Claimed `rr-ps7.3`. Leftover-relative L2 OW walk on `0x4C` east mouth.
 
-No-assist `run_to_level1.py --natural-entry --screen-only` **1/1**: OW
-`0x37` `(240,141)` mode 5, sword 1, rupees 0, hearts 2/3 (`0x22`),
-nav 1431f, `farm_attempts=0`. Chasing octoroks on 0x78 at
-`farm_below_hearts=3` died; L1 farms only below 2 hearts. Path hops
-still default `farm_below_hearts=3` (inert with Survival assist).
+Policy (`overworld/path.py`): UP/DOWN hop with `align_x`, leftover on the
+east/west edge: walk toward `align_x` on a walkable y. Occupancy miss
+(true no-move, not a 2px slide) → block cell → y-peel; no path → stand.
+Never RIGHT at `x≥232` (scrolls to `0x4D`). Inland hops stay
+`align_and_push`.
 
-`--through level1-arrows` still the dedicated 80R buy. Spine default
-assist stays on; `--no-infinite-life` is legal.
+### Power-on `--through level2-entry` (3/3 this sitting)
 
-## Prior sitting
+Stop at first red: `clear23_key` L1 play `0x23` `(144,149)` mode 5 TF `0x00`
+keys 0 bombs 0 rupees 10 health `0x22` lo==hi, `occupancy_patrol` 4627
+misses / 6000f. Not the `0x4C` hop. `set_state=0`. Tag `l2_entry_rrps73`.
 
-Dedicated `--through level7-bait-shop` is wired: Recorder warp join peels
-north at `0x54` → `0x44` → shop `0x34`. No `ADDR_FOOD` write on that hop.
-Default `level7-entry` still uses `SurvivalBaitPurchaseController`.
+### Isolated ROM (Level1ExitOverworld, `door_path=True`)
 
-Power-on never reached the shop. `enter_level2` is red **3/3**
-(byte-identical, seed 0):
+- Natural door hops: L2 play `0x7d` `(120,205)` mode 5 TF `0x01` keys 0
+  bombs 0 health `0x33` lo==hi, deaths 0, `food_writes=0` / progression
+  writes 0, hop_10_3c then `level2_path_stop`.
+- East-mouth knock `y=157` at `(240,133)` arrival: first action LEFT, then
+  UP peel, enter L2 `0x7d` `(120,205)` same glance. ~700f after knock.
 
-| `--through` | leftover | hop |
-|-------------|----------|-----|
-| `level7-bait-shop` t1 | OW `0x4C` `(240,157)` mode 5 TF `0x01` bombs 0 keys 0 rupees 12 | index 10 `0x3C` UP, timeout 25000f, end 48820 |
-| `level7-bait-shop` t2 | same | same |
-| `level2-entry` control | same | same |
+Unit: leftover `(240,157)` hop UP `align_x=112` first action LEFT, never
+RIGHT, never `unstick_wait`. On-column still pushes UP.
 
-PNG: `recordings/l7_bait_shop_rr8t4_final.png`. East mouth of `0x4C` after
-`0x4D` LEFT; UP at x=240 is trees. Next hop wants `align_x=112`.
-Bead **`rr-ps7.3`**. No inventory poke.
+Clean campaign: `docs/tasks/rr-npv-clean-parallel.md`. Do not STATUS.
 
-Poke-pin `Level6ExitOverworld` is not leave proof: warp from `0x24` landed
-on L6 door `0x22` and stuck (entrance suppresses Recorder). Do not iterate
-the shop walk from that fixture.
+## Shop hop (wired, untested live)
 
-## Hypothesis (shop, untested live)
+Dedicated `--through level7-bait-shop`: Recorder warp join peels north at
+`0x54` → `0x44` → shop `0x34`. No `ADDR_FOOD` write on that hop.
+
+Hypothesis (untested):
 
 ```text
 0x22 ↓0x32 →0x33 ↑0x23 →0x24
@@ -49,16 +44,20 @@ the shop walk from that fixture.
 0x45 ↓0x55 ↓0x65 ←0x64 ↑0x54 ↑0x44 ↑0x34
 ```
 
-Gaps (OVERWORLD_DOORS recon): `0x54→0x44` x≈116, `0x44→0x34` x≈132.
+Gaps (OVERWORLD_DOORS): `0x54→0x44` x≈116, `0x44→0x34` x≈132.
 
 ## Dead
 
 - `0x22/0x32/0x33/0x23/0x24/0x25` south to row-4
 - `0x33` RIGHT at y=141 into `0x34`
 - New Food/bomb/key writes to skip `0x4C`
+- Poke-pin `Level6ExitOverworld` as leave proof
+- Hold UP at `0x4C` east mouth `x≥232` (trees)
+- Occupancy 1px-grade on OW 2px UP slide (oscillated 157↔155)
 
 ## Leftover
 
-OW play `0x4C` `(240,157)` mode 5, TF `0x01`, Food 0, bombs 0, keys 0,
-rupees 12, `food_writes=0`, `set_state=0`. Glance: east mouth, not shop
-`0x34`. Next: `rr-ps7.3` (L2 walk), then recompose `--through level7-bait-shop`.
+Power-on: L1 play `0x23` `(144,149)` mode 5, TF `0x00`, Food 0, bombs 0,
+keys 0, rupees 10, `food_writes=0`, `set_state=0`. Glance: water-maze
+Goriya room, not L2 door. Next: L1 `clear23_key` (other lane) then
+recompose `--through level2-entry` / `--through level7-bait-shop`.

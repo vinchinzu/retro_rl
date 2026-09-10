@@ -143,6 +143,12 @@ class HopController:
         self._note(note or self.on_arrive(snap))
         return FrameAction(nes_idle_action(), self.done_reason)
 
+    def wait_not_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Idle while not play. Scroll/death/timeout stay in ``guard``."""
+        if snap.mode == PLAY_MODE:
+            return None
+        return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+
     def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if self.success:
             return FrameAction(nes_idle_action(), "done")

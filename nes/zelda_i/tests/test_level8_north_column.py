@@ -154,6 +154,16 @@ def test_0x7e_emits_north_door_action() -> None:
     assert "free_north_0x7e" in act.reason
 
 
+def test_0x7e_off_column_leftover_does_not_up_into_wall() -> None:
+    """Knockback at (208,157) must LEFT to the door column, never UP."""
+    ctl = make_north_manhandla_controller()
+    act = _step(ctl, _ram(screen=ROOM_ENTRY, x=208, y=157))
+    assert not ctl.failed
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert act.reason == "free_north_0x7e_x"
+
+
 def test_0x7e_door_overshoot_keeps_pushing_north() -> None:
     """Past the door plane (y=87) must hold UP, not walk back to y=93."""
     ctl = make_north_manhandla_controller()

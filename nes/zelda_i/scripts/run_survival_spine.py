@@ -5,7 +5,8 @@
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
 unless ``--no-video``. Heart assist is on by default; ``--no-infinite-life``
-turns it off for combat practice. Does not overwrite Clean M5.
+turns it off for combat practice. Inventory pokes stay on unless
+``--no-pokes``; ``--clean`` is both off. Does not overwrite Clean M5.
 No ``--from-state``. Stop at first failed stage.
 """
 
@@ -42,6 +43,22 @@ def main(argv: list[str] | None = None) -> int:
             "--no-infinite-life turns assist off for combat practice."
         ),
     )
+    parser.add_argument(
+        "--no-pokes",
+        action="store_true",
+        help=(
+            "Skip Survival inventory pokes (bomb/key/rupee top-ups, Food, "
+            "wooden arrows). Heart assist stays on unless --no-infinite-life."
+        ),
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help=(
+            "Alias: --no-infinite-life and --no-pokes. "
+            "Does not change Survival defaults when omitted."
+        ),
+    )
     add_video_args(parser, default_on=True)
     args = parser.parse_args(argv)
 
@@ -61,8 +78,10 @@ def main(argv: list[str] | None = None) -> int:
             intro_summary="Survival continuous spine, first quest, first file",
             intro_frames=intro,
         )
+        allow_pokes = not args.no_pokes and not args.clean
+        infinite_life = bool(args.infinite_life) and not args.clean
         assist = (
-            UnlimitedHealthAssist(enabled=True) if args.infinite_life else None
+            UnlimitedHealthAssist(enabled=True) if infinite_life else None
         )
         payload: dict | None = None
         try:
@@ -78,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
                 obs,
                 assist=assist,
                 through=args.through,
+                allow_pokes=allow_pokes,
             )
             run.apply_state_audit(int(env.audit().mid_run_loads or 0))
             final_ram = env.get_ram()

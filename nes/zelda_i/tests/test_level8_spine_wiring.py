@@ -31,6 +31,7 @@ from zelda_i.level8.spine import (
     L8_STOPS,
     L8_THROUGH,
     LIVE_RECON_L8_OVERRIDES,
+    SPINE_L8_RETOPUP,
     continue_level8_spine,
 )
 from zelda_i.ram import ADDR_MAGIC_KEY, PLAY_MODE, read_snapshot
@@ -297,3 +298,29 @@ def test_magic_key_stop_needs_a_0_to_1_rise_not_an_owned_key() -> None:
 def test_magic_key_hop_captures_the_key_before_its_stages() -> None:
     hop = [h for h in l8_hops(_env(_ram())) if h.through == "level8-magic-key"][0]
     assert hop.before is not None
+
+
+def test_clean_clears_l8_bomb_key_retopup(monkeypatch) -> None:
+    """``allow_pokes=False`` (``--clean``) must not top up bombs/keys."""
+    captured: dict[str, Any] = {}
+
+    def fake_attach(_env, _run, _hops, **kw) -> None:
+        captured.update(kw)
+
+    monkeypatch.setattr("zelda_i.level8.spine.attach_hops", fake_attach)
+    continue_level8_spine(
+        _env(_ram()),
+        SimpleNamespace(allow_pokes=False, success=True),
+        through="level8-entry",
+        run_stages=lambda *_a, **_k: True,
+    )
+    assert captured["retopup"] == frozenset()
+    continue_level8_spine(
+        _env(_ram()),
+        SimpleNamespace(allow_pokes=True, success=True),
+        through="level8-entry",
+        run_stages=lambda *_a, **_k: True,
+    )
+    assert captured["retopup"] == SPINE_L8_RETOPUP
+    assert "level8_north_manhandla_bomb" in SPINE_L8_RETOPUP
+    assert "level8_darknut_key_up" in SPINE_L8_RETOPUP

@@ -11,6 +11,10 @@ rr-6o7.3 iteration harness: the whole suffix is
     uv run python nes/zelda_i/scripts/level8_clear_lab.py --tag l8clr_try
     uv run python nes/zelda_i/scripts/level8_clear_lab.py --tag l8clr_try --start 3
 
+``--from-enter`` loads ``Level8InteriorReconFixture`` (play 0x7E) and runs
+the magic-key chapter plus the suffix with no heart assist and no retopup
+(rr-npv.4 fixture-live Clean glance). ``--from-state NAME`` overrides the pin.
+
 ``--start N`` skips the first N suffix gates (resume after a partial success);
 combine with a hand-saved pin if you want to iterate one gate in isolation.
 """
@@ -28,14 +32,20 @@ from retro_harness.segment_runner import (
     write_json_report,
 )
 from zelda_i.assist import UnlimitedHealthAssist
+from zelda_i.level8.path import (
+    make_blue_gohma_controller,
+    make_darknut_key_controller,
+    make_magic_key_stairs_controller,
+    make_north_manhandla_controller,
+)
 from zelda_i.level8.suffix import LEVEL8_SUFFIX_GATES
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_MAGIC_KEY, read_snapshot, read_u8
 from zelda_i.route.chain import run_controller_stage
-from zelda_i.spine.survival import run_survival_spine
 
 PIN_STATE = "Level8SuffixEntryLive"
 PIN_THROUGH = "level8-magic-key"
+ENTER_PIN = "Level8InteriorReconFixture"
 
 
 def _glance(snap, ram=None) -> dict:
@@ -57,6 +67,8 @@ def _glance(snap, ram=None) -> dict:
 
 
 def build_pin() -> int:
+    from zelda_i.spine.survival import run_survival_spine
+
     configure_headless()
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     assist = UnlimitedHealthAssist(enabled=True)
@@ -85,28 +97,49 @@ def build_pin() -> int:
     return 0
 
 
-def run_suffix(tag: str, start: int) -> int:
+def _magic_key_rows() -> list:
+    return [
+        ("level8_north_manhandla_bomb", make_north_manhandla_controller()),
+        ("level8_darknut_key_up", make_darknut_key_controller()),
+        ("level8_blue_gohma", make_blue_gohma_controller()),
+        ("level8_magic_key_stairs", make_magic_key_stairs_controller()),
+    ]
+
+
+def run_suffix(
+    tag: str,
+    start: int,
+    *,
+    from_state: str = PIN_STATE,
+    from_enter: bool = False,
+    infinite_life: bool = True,
+) -> int:
     configure_headless()
-    env = make_env(GAME, PIN_STATE, GAME_DIR, render_mode="rgb_array")
-    assist = UnlimitedHealthAssist(enabled=True)
+    pin = ENTER_PIN if from_enter else from_state
+    env = make_env(GAME, pin, GAME_DIR, render_mode="rgb_array")
+    assist = UnlimitedHealthAssist(enabled=True) if infinite_life else None
     obs, _ = reset_obs(env)
-    resync_custom_state(env, GAME_DIR, GAME, PIN_STATE)
+    resync_custom_state(env, GAME_DIR, GAME, pin)
     obs, *_ = env.step(nes_idle_action())
     audited = AuditedEnv(
         env, capabilities=AuditCapabilities.all("zelda_i.level8_clear_lab")
     )
     entry = _glance(read_snapshot(audited.get_ram()), audited.get_ram())
 
+    rows: list[tuple[str, object]] = []
+    if from_enter:
+        rows.extend(_magic_key_rows())
+    rows.extend((gate.stage, gate.factory()) for gate in LEVEL8_SUFFIX_GATES)
+
     stages: list[dict] = []
     failed_at = None
-    for i, gate in enumerate(LEVEL8_SUFFIX_GATES):
+    for i, (name, ctl) in enumerate(rows):
         if i < start:
             continue
-        ctl = gate.factory()
         obs, stage = run_controller_stage(
             audited,
             obs,
-            name=gate.stage,
+            name=name,
             controller=ctl,
             max_frames=int(getattr(ctl, "max_frames", 4000)),
             assist=assist,
@@ -115,25 +148,31 @@ def run_suffix(tag: str, start: int) -> int:
             ctl.report() if hasattr(ctl, "report") else {}
         )
         s = read_snapshot(audited.get_ram())
+        dest = None
+        if i >= (len(_magic_key_rows()) if from_enter else 0):
+            gi = i - (len(_magic_key_rows()) if from_enter else 0)
+            if 0 <= gi < len(LEVEL8_SUFFIX_GATES):
+                dest = f"0x{LEVEL8_SUFFIX_GATES[gi].dest_room:02x}"
         row = {
             "i": i,
-            "stage": gate.stage,
-            "dest_room": f"0x{gate.dest_room:02x}",
+            "stage": name,
+            "dest_room": dest,
             "success": bool(crep.get("success")),
             "failed": bool(crep.get("failed")),
             "frames": crep.get("frames"),
             "glance": _glance(s, audited.get_ram()),
             "notes": crep.get("notes"),
+            "writes": crep.get("writes"),
         }
         stages.append(row)
         print(
-            f"[{i}] {gate.stage}: succ={row['success']} failed={row['failed']} "
+            f"[{i}] {name}: succ={row['success']} failed={row['failed']} "
             f"f={row['frames']} -> {row['glance']['screen']} "
             f"{row['glance']['xy']} m{row['glance']['mode']} "
             f"hc={row['glance']['hearts']} notes={row['notes']}"
         )
         if not crep.get("success"):
-            failed_at = gate.stage
+            failed_at = name
             break
 
     # The final gate (level8_ow_leave_settle) already idles the fanfare to the
@@ -142,21 +181,35 @@ def run_suffix(tag: str, start: int) -> int:
     if failed_at is None:
         for f in range(1, 301):
             obs, *_ = env.step(nes_idle_action())
-            assist.apply_env(audited, frame=f)
+            if assist is not None:
+                assist.apply_env(audited, frame=f)
         ow_settle = _glance(read_snapshot(audited.get_ram()), audited.get_ram())
         print(f"OW settle (+300f hold): {ow_settle}")
 
     s = read_snapshot(audited.get_ram())
     png = RECORDINGS_DIR / f"{tag}_final.png"
     save_rgb_png(obs, png)
+    deaths = 0 if assist is None else int(getattr(assist.telemetry, "deaths", 0) or 0)
+    if int(s.mode) == 17:
+        deaths = max(deaths, 1)
+    audit = audited.audit()
     write_json_report(
         RECORDINGS_DIR / f"{tag}.json",
         {
             "ok": failed_at is None,
             "failed_at": failed_at,
+            "from_enter": from_enter,
+            "infinite_life": infinite_life,
+            "retopup": False,
             "entry_glance": entry,
             "final_glance": _glance(s, audited.get_ram()),
             "ow_settle": ow_settle,
+            "deaths": deaths,
+            "audit": {
+                "progression_writes": getattr(audit, "progression_writes", None),
+                "capacity_writes": getattr(audit, "capacity_writes", None),
+                "direct_ram_writes": getattr(audit, "direct_ram_writes", None),
+            },
             "stages": stages,
             "screenshot": str(png),
         },
@@ -172,8 +225,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pin", action="store_true")
     parser.add_argument("--tag", default="l8clr_lab")
     parser.add_argument("--start", type=int, default=0)
+    parser.add_argument("--from-state", default=PIN_STATE)
+    parser.add_argument(
+        "--from-enter",
+        action="store_true",
+        help="Load Level8InteriorReconFixture and run MK + suffix (no retopup).",
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="No infinite life, no inventory pokes. Fixture-live Clean glance.",
+    )
     args = parser.parse_args(argv)
-    return build_pin() if args.pin else run_suffix(args.tag, args.start)
+    if args.pin:
+        return build_pin()
+    return run_suffix(
+        args.tag,
+        args.start,
+        from_state=args.from_state,
+        from_enter=args.from_enter,
+        infinite_life=not args.clean,
+    )
 
 
 if __name__ == "__main__":

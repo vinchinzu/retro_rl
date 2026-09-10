@@ -45,20 +45,23 @@ def continue_level7_spine(
     room_timer=None,
     assist=None,
     on_frame=None,
+    survival=True,
 ) -> None:
     """Attach L7 after the measured L6 fanfare exit; hypotheses fail closed."""
     if through not in L7_THROUGH:
         raise ValueError(f"unknown Level 7 through target: {through!r}")
+    if getattr(run, "allow_pokes", True) is False:
+        survival = False
     attach_hops(
         env,
         run,
-        l7_hops(env, handoff=MEASURED_POST_L6_EXIT, survival=True),
+        l7_hops(env, handoff=MEASURED_POST_L6_EXIT, survival=survival),
         through=through,
         run_stages=run_stages,
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
-        rupee_retopup=SPINE_L7_RUPEE_RETOPUP,
+        rupee_retopup=SPINE_L7_RUPEE_RETOPUP if survival else frozenset(),
     )
 
 
