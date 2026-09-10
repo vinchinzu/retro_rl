@@ -81,6 +81,7 @@ class ReturnHomeTask(Task):
     _drop_deep_relocated: bool = field(default=False, init=False)
     _enter_retries: int = field(default=0, init=False)
     _exit_to_farm_retries: int = field(default=0, init=False)
+    _mountain_return_attempts: int = field(default=0, init=False)
     _total_steps: int = field(default=0, init=False)
     # Soft-success off-stand re-navs can thrash forever without terminal
     # status if the door stand soft-radius keeps "succeeding" a few tiles
@@ -135,6 +136,7 @@ class ReturnHomeTask(Task):
         self._drop_deep_relocated = False
         self._enter_retries = 0
         self._exit_to_farm_retries = 0
+        self._mountain_return_attempts = 0
         self._total_steps = 0
         self._offstand_corrections = 0
         self._best_door_dist = 99999
@@ -370,6 +372,33 @@ class ReturnHomeTask(Task):
         if arrived is not None:
             return arrived
         if not is_farm_tilemap(tilemap):
+            # Stranded outdoors on the mountain/path (a failed grape run leaves
+            # the farmer at 0x10). ExitToFarmTask only exits *buildings*; it
+            # times out here. Walk the mountain_to_farm route back first.
+            if tilemap in (0x10, 0x0C) and self._mountain_return_attempts < 2:
+                route = list(
+                    ROUTES.get("mountain_to_farm")
+                    or ROUTES.get("outdoor_spa_to_farm")
+                    or []
+                )
+                if route:
+                    self._mountain_return_attempts += 1
+                    print(
+                        f"[RETURN_HOME] Stranded on tilemap=0x{tilemap:02X}; "
+                        f"mountain_to_farm route "
+                        f"({self._mountain_return_attempts}/2)"
+                    )
+                    self._activate(
+                        "exit_to_farm",
+                        MultiMapNavTask(
+                            name="mountain_return",
+                            waypoints=route,
+                            timeout=9000,
+                            initial_settle_frames=0,
+                        ),
+                        world,
+                    )
+                    return self._task.step(world)
             self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
             return self._task.step(world)
 
