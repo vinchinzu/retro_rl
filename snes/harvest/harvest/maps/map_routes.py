@@ -204,7 +204,13 @@ _FARM_WEST_EXIT = Waypoint(
     tilemap=0x00, target_px=(40, 424), radius=6, is_exit=True, exit_direction="left"
 )
 _PATH_FARM_GATE = Waypoint(tilemap=0x0C, target_px=(232, 128), radius=16)
-_PATH_CROSSROADS = Waypoint(tilemap=0x0C, target_px=(132, 128), radius=16)
+_PATH_CROSSROADS = Waypoint(
+    tilemap=0x0C,
+    target_px=(132, 128),
+    radius=16,
+    run_direction="down",
+    force_run=True,
+)
 _PATH_TOWN_EXIT = Waypoint(
     tilemap=0x0C, target_px=(10, 128), radius=8, is_exit=True, exit_direction="left"
 )
@@ -249,7 +255,13 @@ _PATH_PLAZA_FROM_FARM = Waypoint(
     force_run=True,
 )
 _FARM_TO_PATH: List[Waypoint] = [
-    Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
+    Waypoint(
+        tilemap=0x00,
+        target_px=(137, 375),
+        radius=12,
+        run_direction="down",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0
     *_FARM_GATE_PINCH_TO_EXIT,
     _PATH_PLAZA_FROM_FARM,
@@ -344,7 +356,15 @@ _FARM_TO_MOUNTAIN_GATE: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_MOU
 # Short x=19 wrap is NPC-blocked; tape uses the long west loop.
 _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
-    Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
+    # Radius 24: land y=728 is within band so we do not up-align into the
+    # south-exit cliff (abs(728-712)=16 used to idle 100f+).
+    Waypoint(
+        tilemap=0x10,
+        target_px=(424, 712),
+        radius=24,
+        run_direction="right",
+        force_run=True,
+    ),
     Waypoint(tilemap=0x10, target_px=(520, 712), radius=16, run_direction="right", force_run=True),
     Waypoint(tilemap=0x10, target_px=(520, 632), radius=16, run_direction="up", force_run=True),
     Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
@@ -368,12 +388,13 @@ _MOUNTAIN_ENTRY_TO_FIRST_BERRY: List[Waypoint] = [
 _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(326, 409), radius=10),
     Waypoint(tilemap=0x10, target_px=(328, 568), radius=24, run_direction="down", force_run=True),
-    Waypoint(tilemap=0x10, target_px=(392, 568), radius=16),
-    Waypoint(tilemap=0x10, target_px=(472, 600), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 632), radius=16),
-    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(424, 712), radius=16),
-    Waypoint(tilemap=0x10, target_px=(328, 728), radius=20),
+    Waypoint(tilemap=0x10, target_px=(392, 568), radius=16, run_direction="right", force_run=True),
+    Waypoint(tilemap=0x10, target_px=(472, 600), radius=16, run_direction="right", force_run=True),
+    # 16:00 carpenter sprites sit on (32, 37–39). BFS soaks; charge past.
+    Waypoint(tilemap=0x10, target_px=(520, 632), radius=16, run_direction="down", force_run=True),
+    Waypoint(tilemap=0x10, target_px=(520, 712), radius=16, run_direction="down", force_run=True),
+    Waypoint(tilemap=0x10, target_px=(424, 712), radius=16, run_direction="left", force_run=True),
+    Waypoint(tilemap=0x10, target_px=(328, 728), radius=20, run_direction="left", force_run=True),
     Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),
 ]
 
@@ -446,6 +467,18 @@ _ANIMAL_SHOP_STAGING = Waypoint(
 _HOUSE_L1: List[Waypoint] = [Waypoint(tilemap=0x00, target_px=(136, 344), radius=12)]
 _FARM_TO_TOWN: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_TOWN)
 _PATH_TO_FARM: List[Waypoint] = [_PATH_CROSSROADS, _PATH_FARM_EXIT]
+# Town-west landing ~(10–40, 128). path_to_farm force_run down charges the
+# south wall; shop return runs east along the plaza to the farm gate.
+_PATH_FROM_TOWN_TO_FARM: List[Waypoint] = [
+    Waypoint(
+        tilemap=0x0C,
+        target_px=(132, 128),
+        radius=16,
+        run_direction="right",
+        force_run=True,
+    ),
+    _PATH_FARM_EXIT,
+]
 _SPA_TO_FARM: List[Waypoint] = (
     list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
     + list(_PATH_TO_FARM)
@@ -474,6 +507,7 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "path_to_town_shop": list(_PATH_TO_TOWN_SHOP),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
     "path_to_farm": list(_PATH_TO_FARM),
+    "path_from_town_to_farm": list(_PATH_FROM_TOWN_TO_FARM),
     "town_to_shop_door": list(_TOWN_TO_SHOP_DOOR),
     "shop_to_counter": list(_SHOP_TO_COUNTER),
     "shop_to_town": list(_SHOP_TO_TOWN),
@@ -503,7 +537,15 @@ ROUTES: Dict[str, List[Waypoint]] = {
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
     + list(_PATH_TO_FARM)
-    + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
+    + [
+        Waypoint(
+            tilemap=0x00,
+            target_px=(80, 424),
+            radius=32,
+            run_direction="right",
+            force_run=True,
+        )
+    ]
     + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
     # Early-game town loop: shop + church fronts, then leave. Completing
     # this route is the planner's "ready to go home" signal on day 1.

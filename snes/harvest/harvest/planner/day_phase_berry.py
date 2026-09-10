@@ -24,6 +24,18 @@ def mountain_berry_count_for_day(day: int) -> int:
     return 2 if int(day) >= 3 else 1
 
 
+def shop_latest_hour_for_day(day: int, policy: DayPlannerPolicy) -> int:
+    """Latest hour the seed shop may still start.
+
+    D2 uses buy_seed_hour+1 (13). D3+ two-grape days keep 16:00 so a 13:12
+    bin toss can still buy potato before the 17:00 shipper.
+    """
+    latest = int(policy.buy_seed_hour) + 1
+    if mountain_berry_count_for_day(day) >= 2 and policy.include_berry_run:
+        return max(latest, 16)
+    return latest
+
+
 def mountain_berry_phase(*, count: int = 1) -> PhaseSpec:
     n = max(1, int(count))
     params = dict(_MOUNTAIN_BERRY_PARAMS)
@@ -110,11 +122,12 @@ def _berry_run_phases(
     from harvest.planner.day_phase_catalog import NAV_FARM_EXIT_PHASE, buy_seeds_phase
 
     now = ClockTime(hour, 0)
-    if now.hour >= policy.berry_cutoff_hour and now.hour > policy.buy_seed_hour:
+    berry_count = mountain_berry_count_for_day(day)
+    shop_latest = shop_latest_hour_for_day(day, policy)
+    if now.hour >= policy.berry_cutoff_hour and now.hour >= shop_latest:
         return []
 
     phases: List[PhaseSpec] = []
-    berry_count = mountain_berry_count_for_day(day)
     if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
         phases.append(
             PhaseSpec(
@@ -131,7 +144,7 @@ def _berry_run_phases(
         and policy.include_planting
         and not is_sunday
         and not has_seeds
-        and hour <= policy.buy_seed_hour
+        and hour < shop_latest
         and should_buy_seeds_for_date(season, day)
         and _can_afford_seed_purchase(money, season, day)
     )
@@ -141,9 +154,6 @@ def _berry_run_phases(
             or seed_purchase_recording_for_season(season)
             or "buy_potato_seeds"
         )
-        shop_latest = policy.buy_seed_hour + 1
-        if berry_count >= 2 and policy.include_berry_run:
-            shop_latest = max(shop_latest, 16)
         phases.extend(
             [
                 PhaseSpec(
@@ -163,6 +173,7 @@ __all__ = [
     "MOUNTAIN_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASES",
     "mountain_berry_count_for_day",
+    "shop_latest_hour_for_day",
     "mountain_berry_phase",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_BERRY_PHASES",

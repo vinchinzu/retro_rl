@@ -61,6 +61,55 @@ from harvest.tasks.mountain_grape_ship import MountainGrapeShipTask
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.recorded_task import RecordedTask
+from retro_harness.controls import SNES_B, SNES_DOWN, SNES_LEFT, SNES_RIGHT, SNES_UP
+
+_DPAD_IDX = (SNES_UP, SNES_DOWN, SNES_LEFT, SNES_RIGHT)
+
+
+class _SpeedMeter:
+    """Per-frame walk vs run: B held + Manhattan px. HM SNES run is ~2px/f."""
+
+    def __init__(self) -> None:
+        self.run_dist = 0
+        self.run_frames = 0
+        self.walk_dist = 0
+        self.walk_frames = 0
+        self.b_frames = 0
+        self.dpad_frames = 0
+        self._last: tuple[int, int] | None = None
+
+    def observe(self, action, x: int, y: int) -> None:
+        arr = np.asarray(action).reshape(-1)
+        b = bool(int(arr[SNES_B])) if arr.size > SNES_B else False
+        dpad = any(int(arr[i]) for i in _DPAD_IDX if i < arr.size)
+        if dpad:
+            self.dpad_frames += 1
+            if b:
+                self.b_frames += 1
+        if self._last is not None:
+            dist = abs(int(x) - self._last[0]) + abs(int(y) - self._last[1])
+            if dpad and b:
+                self.run_dist += dist
+                self.run_frames += 1
+            elif dpad:
+                self.walk_dist += dist
+                self.walk_frames += 1
+        self._last = (int(x), int(y))
+
+    def report(self) -> dict:
+        run_px = round(self.run_dist / self.run_frames, 3) if self.run_frames else 0.0
+        walk_px = round(self.walk_dist / self.walk_frames, 3) if self.walk_frames else 0.0
+        sprint_pct = (
+            round(100.0 * self.b_frames / self.dpad_frames, 1) if self.dpad_frames else 0.0
+        )
+        return {
+            "run_px_per_frame": run_px,
+            "walk_px_per_frame": walk_px,
+            "run_frames": self.run_frames,
+            "walk_frames": self.walk_frames,
+            "sprint_pct": sprint_pct,
+            "dpad_frames": self.dpad_frames,
+        }
 
 
 def _configure_headless() -> None:
@@ -225,6 +274,7 @@ def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) ->
     picked_seen = is_mountain_forage(int(read_held_item(ram)))
     kept_seen = picked_seen and int(read_ram_value(ram, "input_lock")) == 1
     shipping_peak = int(read_shipping_money(ram))
+    speed = _SpeedMeter()
 
     print(f"[BERRY] start map={start['map']} pos=({start['x']},{start['y']}) phase={last_phase}")
     while frame < args.timeout and status == TaskStatus.RUNNING:
@@ -242,6 +292,8 @@ def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) ->
             video.write(_rgb_frame(obs))
         frame += 1
         ram = env.get_ram()
+        pos_now = get_pos_from_ram(ram)
+        speed.observe(action, int(pos_now.x), int(pos_now.y))
         held_now = int(read_held_item(ram))
         shipping_peak = max(shipping_peak, int(read_shipping_money(ram)))
         if is_mountain_forage(held_now):
@@ -279,9 +331,15 @@ def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) ->
         if frame % 400 == 0:
             snap = _snap(ram, frame, phase=phase)
             prog = task_progress_snapshot(task)
+            npcs = [
+                f"{obj.label}@{obj.tile}"
+                for obj in game_objects(ram)
+                if obj.is_npc_candidate
+            ]
+            npc_note = f" npcs={npcs[:6]}" if npcs else ""
             print(
                 f"[BERRY] f={frame} phase={phase} map={snap['map']} "
-                f"pos=({snap['x']},{snap['y']}) {reason}"
+                f"pos=({snap['x']},{snap['y']}) {reason}{npc_note}"
             )
             log.append({"event": "tick", **snap, "progress": asdict(prog) if prog else None})
 
@@ -413,9 +471,15 @@ def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) ->
             f"pos=({lunch.x},{lunch.y}) stam={lunch.stamina}"
         )
     waste = timeline.waste()
+    speed_row = speed.report()
     print(
         f"[BERRY] waste stasis={waste['stasis_frames']}f "
         f"windows={len(waste['stasis_windows'])} turns={waste['turns']}"
+    )
+    print(
+        f"[BERRY] speed run={speed_row['run_px_per_frame']}px/f "
+        f"({speed_row['run_frames']}f) walk={speed_row['walk_px_per_frame']}px/f "
+        f"({speed_row['walk_frames']}f) sprint={speed_row['sprint_pct']}% of dpad"
     )
     print(
         f"[BERRY] bench {bench['before']['frames']}f → {bench['after']['frames']}f "
@@ -442,6 +506,7 @@ def _run_reactive(env, args: argparse.Namespace, video: VideoRecorder | None) ->
         "splits": splits,
         "segments": segments,
         "clock_timeline": timeline.to_dict(),
+        "speed": speed_row,
         "lunch": lunch.to_dict() if lunch is not None else None,
         "nearby_objects": nearby[:12],
         "nearby_tiles": tiles,

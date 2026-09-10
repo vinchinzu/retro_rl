@@ -44,9 +44,9 @@ class MountainGrapeShipTask(Task):
     # grape has reached the bin the run reports SUCCESS even if a later
     # pick/return fails (rr-20w.3 daily spring forage).
     target_count: int = 1
-    # Do not start another mountain loop at/after this hour. A loop is ~4h
-    # and the seed shop still has to happen the same morning.
-    shop_bail_hour: int = 10
+    # Do not *start* another mountain loop at/after this hour. D3 shop
+    # latest is 16:00; a ~3h loop still leaves a buy window.
+    shop_bail_hour: int = 12
 
     _step_count: int = field(default=0, init=False)
     _phase: str = field(default="pick", init=False)
@@ -216,8 +216,6 @@ class MountainGrapeShipTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
-        if self._shipped >= 1 and int(clock_from_ram(world.ram).hour) >= 12:
-            return self._best_effort_success("shop window")
         if self._step_count > self.timeout:
             if self._shipped >= 1:
                 return self._best_effort_success("timeout")
