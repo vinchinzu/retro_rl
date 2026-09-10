@@ -48,7 +48,7 @@ SHOP_BUY_SEGMENTS: Tuple[str, ...] = ("shop_to_counter",)
 SHOP_RETURN_SEGMENTS: Tuple[str, ...] = (
     "shop_to_town",
     "town_shop_to_path",
-    "path_from_town_to_farm",
+    "path_to_farm",
 )
 
 # buy_potato_seeds_d2: first A is at (182,342) tile (11,21) face up.
@@ -143,7 +143,7 @@ def first_shop_return_segment(tilemap: int) -> Optional[str]:
     if tilemap == TOWN_TILEMAP:
         return "town_shop_to_path"
     if tilemap == PATH_TILEMAP:
-        return "path_from_town_to_farm"
+        return "path_to_farm"
     return None
 
 
