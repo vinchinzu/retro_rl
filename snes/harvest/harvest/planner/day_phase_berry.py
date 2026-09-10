@@ -108,6 +108,7 @@ def _berry_run_phases(
     season: int = 0,
     day: int = 1,
     money: Optional[int] = None,
+    has_plant_capacity: bool = True,
 ) -> List[PhaseSpec]:
     """Mountain grape then seed shop when the hour window allows.
 
@@ -142,6 +143,7 @@ def _berry_run_phases(
     can_buy = (
         policy.include_shop_run
         and policy.include_planting
+        and has_plant_capacity
         and not is_sunday
         and not has_seeds
         and hour < shop_latest

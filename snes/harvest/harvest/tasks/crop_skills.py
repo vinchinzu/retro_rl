@@ -29,6 +29,7 @@ from harvest.tasks.crop_geometry import (
     FRESH_TILLED,
     UNTILLED,
     WATERED_TILLED,
+    is_crop_tile,
 )
 from harvest.tasks.nav import TILE_SIZE, get_pos_from_ram, get_tile_at, make_action
 
@@ -167,6 +168,13 @@ class UseToolUntilTileSkill(Task):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=f"{self.name} tile=0x{tid:02X} at {tile}",
+            )
+        # Safety net: a growing crop must never be hoed. If the watched tile
+        # has already sprouted a crop, the hoe has nothing to do here.
+        if wanted == int(Tool.HOE) and is_crop_tile(tid):
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"{self.name} already crop tid=0x{tid:02X} at {tile}",
             )
         # Seed bags leave the carry pair when spent, often a few frames before
         # the metatile updates. Treat that as planted — do not fail-closed

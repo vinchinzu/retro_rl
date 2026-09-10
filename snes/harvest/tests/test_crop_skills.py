@@ -497,6 +497,44 @@ class SecondPocketPlotTests(unittest.TestCase):
         self.assertEqual(next_unplanted_pocket_center(west), (19, 28))
         self.assertEqual(pocket_water_center(west), (13, 28))
 
+    def test_pocket_plant_target_is_west_center_when_rings_are_bare(self) -> None:
+        from harvest.maps.farm_pond import (
+            next_unplanted_pocket_center,
+            pocket_plant_target,
+        )
+
+        self.assertEqual(pocket_plant_target(self._field_ram()), (13, 28))
+        self.assertEqual(
+            next_unplanted_pocket_center(self._field_ram()), (13, 28)
+        )
+        # No RAM -> no capacity fact -> None (callers default the flag True).
+        self.assertIsNone(pocket_plant_target(None))
+        self.assertIsNone(next_unplanted_pocket_center(None))
+
+    def test_pocket_plant_target_is_none_when_every_ring_is_full(self) -> None:
+        from harvest.maps.farm_pond import (
+            next_unplanted_pocket_center,
+            pocket_plant_target,
+        )
+
+        ram = self._field_ram(west_planted=True)
+        for x, y in plot_tiles((19, 28), include_center=False):
+            ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56  # grown potato
+        self.assertIsNone(pocket_plant_target(ram))
+        self.assertIsNone(next_unplanted_pocket_center(ram))
+
+    def test_pocket_plant_target_is_none_when_ring_has_no_bare_capacity(self) -> None:
+        from harvest.maps.farm_pond import pocket_plant_target
+
+        ram = self._field_ram(west_planted=True)
+        ring = plot_tiles((19, 28), include_center=False)
+        for x, y in ring[:6]:
+            ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56  # 6/8 grown crops
+        for x, y in ring[6:]:
+            ram[ADDR_MAP + y * MAP_WIDTH + x] = 0xA1  # boxed-in structure tiles
+        # 6/8 planted but 0 sowable tiles left -> cannot receive the rest.
+        self.assertIsNone(pocket_plant_target(ram))
+
     def test_establish_sequence_targets_the_second_ring(self) -> None:
         seq = farm_pocket_plant_skill(center=(19, 28))
         hoe_steps = [t for t in seq.tasks if t.name == "hoe_until_tilled"]
@@ -533,6 +571,20 @@ class SecondPocketPlotTests(unittest.TestCase):
             sy = nav.target_px[1] // TILE_SIZE
             self.assertNotEqual(sx, 21, f"stand {sx,sy} on the x21 bank")
             self.assertLess(sy, 30, f"stand {sx,sy} on the fence lip")
+
+
+class HoeUntilTilledCropGuardTests(unittest.TestCase):
+    """A growing crop must never be hoed (rr-20w.3 safety net)."""
+
+    def test_hoe_until_tilled_succeeds_immediately_on_a_grown_crop(self) -> None:
+        ram = _ram(tile=(13, 28), tid=0x01, selected=int(Tool.HOE))
+        ram[ADDR_MAP + 27 * MAP_WIDTH + 13] = 0x56  # target has sprouted a crop
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = hoe_until_tilled_skill(target_tile=(13, 27), face="up")
+        skill.reset(world)
+        result = skill.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("already crop", result.reason or "")
 
 
 if __name__ == "__main__":

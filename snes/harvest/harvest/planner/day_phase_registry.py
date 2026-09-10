@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Optional
 
-from retro_harness import Task, WorldState
+from retro_harness import Task, TaskResult, TaskStatus, WorldState
 
 from harvest.maps.map_config import ROUTES
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind, PhaseSpec
@@ -70,6 +70,23 @@ class TaskBuildContext:
     state_name: Optional[str] = None
     policy: Optional[DayPlannerPolicy] = None
     world_context: Optional["WorldContext"] = None
+
+
+@dataclass
+class _ImmediateSuccessTask(Task):
+    """Trivial task that reports SUCCESS on the first step (nothing to do)."""
+
+    name: str = "noop_success"
+    reason: str = "nothing to do"
+
+    def reset(self, world: WorldState) -> None:
+        return None
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        return TaskResult(status=TaskStatus.SUCCESS, reason=self.reason)
 
 
 def _build_exit(
@@ -489,6 +506,11 @@ def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Ta
         from harvest.tasks.skills import farm_pocket_plant_skill
 
         center = next_unplanted_pocket_center(world.ram)
+        if center is None:
+            return _ImmediateSuccessTask(
+                name=f"crop_{spec.phase.lower()}_noop",
+                reason="no pocket ring needs planting",
+            )
         return farm_pocket_plant_skill(
             seed_type=ctx.seed_type,
             center=center,

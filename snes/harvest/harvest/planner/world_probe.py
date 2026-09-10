@@ -142,6 +142,19 @@ class WorldProbe:
             return None
         return resolve_seed_type_from_ram(ram)
 
+    def pocket_has_plant_capacity(self) -> bool:
+        """True when a pocket ring can still receive a full seed bag.
+
+        RAM-only: ``False`` when no RAM is available (callers default the
+        planning flag to ``True`` in that case).
+        """
+        from harvest.maps.farm_pond import pocket_plant_target
+
+        ram = self._require_ram()
+        if ram is None:
+            return False
+        return pocket_plant_target(ram) is not None
+
     def has_waterable_crops(self) -> bool:
         ram = self._require_ram()
         return False if ram is None else ram_has_waterable_crops(

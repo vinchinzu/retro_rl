@@ -3,7 +3,7 @@
 ROM-mapped spring-farm facts for can refill, fence access, and no-go tiles.
 """
 
-from typing import Dict, FrozenSet, Tuple
+from typing import Dict, FrozenSet, Optional, Tuple
 
 # Farm coordinates whose visual/collision behavior is not represented by the
 # metatile alone.  Several well-body tiles render as 0xA1, which is walkable in
@@ -189,18 +189,59 @@ POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
 )
 
 
-def next_unplanted_pocket_center(ram) -> Tuple[int, int]:
-    """First pocket center whose 8-ring is not yet fully planted (establish).
+# Tile IDs a fresh potato seed can still be sown onto: bare farm dirt plus
+# freshly / recently tilled soil. A ring that is 7/8 crops + 1 unreachable
+# structure tile has 0 of these left -> no real capacity.
+_POCKET_BARE_TILE_IDS: FrozenSet[int] = frozenset({0x00, 0x01, 0x02})
 
-    Falls back to the last center when every ring is planted, so callers
-    always get a valid target.
+
+def _ring_bare_capacity(ram, center: Tuple[int, int]) -> int:
+    """Count 8-ring tiles a seed bag could still be sown onto."""
+    from harvest.tasks.crop_geometry import (
+        FRESH_TILLED,
+        WATERED_TILLED,
+        plot_tiles,
+    )
+    from harvest.tasks.nav import get_tile_at
+
+    sowable = _POCKET_BARE_TILE_IDS | {FRESH_TILLED, WATERED_TILLED}
+    return sum(
+        1
+        for tx, ty in plot_tiles(center, include_center=False)
+        if int(get_tile_at(ram, tx, ty)) in sowable
+    )
+
+
+def pocket_plant_target(ram) -> Optional[Tuple[int, int]]:
+    """First pocket center that still needs *and can receive* a full bag.
+
+    A center qualifies only when its 8-ring is (a) not already fully planted
+    and (b) still has at least ``PLOT_RING_SIZE - count_ring_planted`` bare /
+    tilled tiles a seed can land on. A ring boxed in by structure tiles it
+    can never till has zero real capacity and is skipped (treated as done).
+    Returns ``None`` when no center qualifies.
     """
+    if ram is None:
+        return None
     from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
 
     for center in POCKET_PLANT_CENTERS:
-        if count_ring_planted(ram, center) < PLOT_RING_SIZE:
+        planted = count_ring_planted(ram, center)
+        if planted >= PLOT_RING_SIZE:
+            continue
+        if _ring_bare_capacity(ram, center) >= PLOT_RING_SIZE - planted:
             return center
-    return POCKET_PLANT_CENTERS[-1]
+    return None
+
+
+def next_unplanted_pocket_center(ram) -> Optional[Tuple[int, int]]:
+    """First pocket center that needs planting and can receive it, else ``None``.
+
+    Delegates to :func:`pocket_plant_target`. There is deliberately no
+    "fall back to the last center" behaviour: a ring with no bare capacity
+    must be accepted as done rather than retried forever.
+    """
+    return pocket_plant_target(ram)
 
 
 def planted_pocket_centers(ram) -> Tuple[Tuple[int, int], ...]:
