@@ -170,9 +170,11 @@ class SwapCarrySlotsTask(Task):
 
     name: str = "swap_carry_slots"
     # 90f (~15 X taps) timed out on shed entry when input_lock stayed set for
-    # the first ~1s; the replant then slipped a day (run6 D10). 210f absorbs
-    # that settle and still fails fast on a genuinely un-swappable pair.
-    timeout: int = 210
+    # the first ~1s; the replant then slipped a day (run6 D10). 210f absorbed
+    # that but still timed out on the farm after BUY_SEEDS (run8/run10/run11
+    # D3) — the farmer is mid walk-settle and X is eaten. Gate on
+    # player_action==0 and widen; count only real tap frames.
+    timeout: int = 480
 
     _step_count: int = field(default=0, init=False)
     _start_selected: int = field(default=0, init=False)
@@ -197,12 +199,13 @@ class SwapCarrySlotsTask(Task):
         if self._step_count > self.timeout:
             return TaskResult(status=TaskStatus.FAILURE, reason="carry slot swap timeout")
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
+        action = read_ram_u8(world.ram, 0x00D4)  # player_action: 0 == idle
+        if input_lock != 1 or action != 0:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-        # Pulse X (one frame down, five up) — a held X does not re-trigger the
-        # swap. Count actual actionable frames so an input-lock stall at the
-        # start does not eat the tap budget.
-        tap = self._taps % 6 == 0
+        # Pulse X (two frames down, six up) — a held X does not re-trigger the
+        # swap, and a 1-frame tap gets eaten across emulator frame boundaries.
+        # Count actual actionable frames so an early stall does not eat budget.
+        tap = self._taps % 8 in (0, 1)
         self._taps += 1
         return TaskResult(
             status=TaskStatus.RUNNING,
