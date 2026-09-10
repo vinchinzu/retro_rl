@@ -169,14 +169,19 @@ class SwapCarrySlotsTask(Task):
     """Tap X until the selected tool and backpack tool swap places."""
 
     name: str = "swap_carry_slots"
-    timeout: int = 90
+    # 90f (~15 X taps) timed out on shed entry when input_lock stayed set for
+    # the first ~1s; the replant then slipped a day (run6 D10). 210f absorbs
+    # that settle and still fails fast on a genuinely un-swappable pair.
+    timeout: int = 210
 
     _step_count: int = field(default=0, init=False)
     _start_selected: int = field(default=0, init=False)
     _start_backpack: int = field(default=0, init=False)
+    _taps: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
+        self._taps = 0
         self._start_selected = read_ram_u8(world.ram, ADDR_TOOL_SELECTED)
         self._start_backpack = read_ram_u8(world.ram, ADDR_TOOL_BACKPACK)
 
@@ -194,9 +199,14 @@ class SwapCarrySlotsTask(Task):
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if input_lock != 1:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        # Pulse X (one frame down, five up) — a held X does not re-trigger the
+        # swap. Count actual actionable frames so an input-lock stall at the
+        # start does not eat the tap budget.
+        tap = self._taps % 6 == 0
+        self._taps += 1
         return TaskResult(
             status=TaskStatus.RUNNING,
-            action=ActionResult(make_action(x=True) if self._step_count % 6 == 1 else make_action()),
+            action=ActionResult(make_action(x=True) if tap else make_action()),
         )
 
 
