@@ -102,6 +102,12 @@ class MultiMapNavTask(Task):
     # Unregistered tilemaps (rain/fade 0x57 on farm→path) settle before
     # a hard expected-tilemap fail. Known-map mismatches still fail closed.
     _tilemap_mismatch_frames: int = field(default=0, init=False)
+    # A ``run_direction`` / ``force_run`` waypoint that stops making progress
+    # (grape return pins at ~(505,633) on the mountain-exit force-run) drops
+    # to BFS for that waypoint instead of holding the direction into a wall.
+    _run_dir_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _run_dir_stall: int = field(default=0, init=False)
+    _run_dir_bail_wp: int = field(default=-1, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -127,6 +133,9 @@ class MultiMapNavTask(Task):
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
         self._tilemap_mismatch_frames = 0
+        self._run_dir_anchor = None
+        self._run_dir_stall = 0
+        self._run_dir_bail_wp = -1
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -157,6 +166,9 @@ class MultiMapNavTask(Task):
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
         self._tilemap_mismatch_frames = 0
+        self._run_dir_anchor = None
+        self._run_dir_stall = 0
+        self._run_dir_bail_wp = -1
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -346,6 +358,8 @@ class MultiMapNavTask(Task):
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
         self._tilemap_mismatch_frames = 0
+        self._run_dir_anchor = None
+        self._run_dir_stall = 0
         self._pixel_anchor = None
         self._pixel_stuck = 0
         self._pixel_replans = 0
@@ -583,9 +597,31 @@ class MultiMapNavTask(Task):
         # Direct run: if waypoint specifies run_direction, just hold that
         # direction + B. Much faster than BFS for known clear paths.
         # Check the axis of travel to detect overshoot.
-        if wp.run_direction:
+        if wp.run_direction and self._wp_index != self._run_dir_bail_wp:
             cur = self._navigator.current_pos
             d = wp.run_direction
+            # Progress guard: a force-run / run_direction hop that stops
+            # moving (grape return pins ~(505,633) on the mountain-exit
+            # force-run) drops to BFS for this waypoint rather than holding
+            # the direction into a wall forever.
+            anchor = self._run_dir_anchor
+            if anchor is None or abs(cur.x - anchor[0]) + abs(cur.y - anchor[1]) > 6:
+                self._run_dir_anchor = (cur.x, cur.y)
+                self._run_dir_stall = 0
+            else:
+                self._run_dir_stall += 1
+            if self._run_dir_stall >= 90:
+                self._run_dir_bail_wp = self._wp_index
+                self._run_dir_anchor = None
+                self._run_dir_stall = 0
+                self._navigator.path = []
+                self._navigator.stasis = 0
+                safe = self._safe_walk_action(world.ram, d)
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(safe if safe is not None else make_action()),
+                    reason=f"run_direction {d} pinned; BFS for wp {self._wp_index}",
+                )
             if d in {"left", "right"} and abs(cur.y - wp.target_px[1]) >= wp.radius:
                 align = "down" if wp.target_px[1] > cur.y else "up"
                 safe = self._safe_walk_action(world.ram, align)

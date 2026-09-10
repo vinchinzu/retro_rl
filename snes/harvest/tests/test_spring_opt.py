@@ -61,9 +61,12 @@ def test_grape_runs_are_bootstrap_only_not_every_day():
 
 
 def test_rain_day_advances_all_planted_rings_for_free():
-    dry = optimize_spring(rings=_rings(3), crop="potato", beam_width=120)
+    # Rain only helps once watering is budget-constrained: many rings, tight
+    # evening. With a huge evening every ring is watered every day anyway.
+    tight = CostModel(evening_frames=14_000)
+    dry = optimize_spring(rings=_rings(10), crop="potato", cost=tight, beam_width=120)
     wet = optimize_spring(
-        rings=_rings(3), crop="potato", beam_width=120,
+        rings=_rings(10), crop="potato", cost=tight, beam_width=120,
         calendar=Calendar(rain_days=tuple(range(8, 28))),
     )
     assert wet.final_wallet > dry.final_wallet

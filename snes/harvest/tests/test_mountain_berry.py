@@ -354,22 +354,26 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(forced[(328, 568)], "left")
         self.assertEqual(forced[(240, 488)], "left")
         self.assertEqual(forced[(312, 360)], "right")
+        # The outbound cliff's (520,712) is a plain waypoint: forcing it down
+        # pinned the grape *return* (which slices this same list) at ~(505,633)
+        # into the carpenter terrace wall (run10). The x=20 drop above stays forced.
         land = next(wp for wp in cliff if wp.target_px == (520, 712))
-        self.assertEqual(land.run_direction, "down")
-        self.assertTrue(land.force_run)
+        self.assertIsNone(land.run_direction)
+        self.assertFalse(land.force_run)
 
     def test_downhill_escape_from_carpenter_skips_terrace(self) -> None:
         hops = mountain_downhill_escape(474, 630, tilemap=0x10)
         self.assertEqual(hops[0].target_px, (520, 712))
-        self.assertTrue(hops[0].force_run)
-        self.assertEqual(hops[0].run_direction, "down")
+        # 960585b3's force-run on this shared outbound waypoint pinned the
+        # grape return at ~(505,633); it is a plain waypoint now.
+        self.assertFalse(hops[0].force_run)
         self.assertNotIn((520, 632), [wp.target_px for wp in hops])
         self.assertEqual(hops[-1].target_px, (312, 744))
 
     def test_downhill_escape_from_grape_stand_keeps_cliff_drop(self) -> None:
         hops = mountain_downhill_escape(326, 409, tilemap=0x10)
         self.assertEqual(hops[0].target_px, (328, 568))
-        self.assertTrue(hops[0].force_run)
+        self.assertTrue(hops[0].force_run)  # x=20 grape cliff drop stays forced
 
     def test_grape_ship_postcondition_requires_empty_hands_and_shipping_delta(self) -> None:
         world = make_transition_world(0x00, current_tile=(61, 60))
