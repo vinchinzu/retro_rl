@@ -7,11 +7,13 @@ Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
 
 ## Immediate goal
 
-Full-spring `Y1_D3_Morning --end-of-spring`. Fix pass + baseline:
+Full spring from the `Y1_D3_Morning` pin **reaches Summer D1** ($250 →
+$5160, 28 days, no phase failures) — `run20`, evidence and defect log in
 [docs/tasks/rr-20w-run16-defects.md](docs/tasks/rr-20w-run16-defects.md).
-Open after that: run13 §3 phase-ordering starvation, a third ring site,
-`rr-20w.2.4` (D2 nav replan) or water-refill `rr-3ae8`.
-Do not promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
+Next: `rr-w7t9` (the one remaining day-level loss), `rr-4zvl` (animal-shop
+nav), a third ring site, then power-on.
+Do not promote [STATUS.md](docs/STATUS.md) from a fixture or pin — the above
+starts from a pin, so it is **not** a STATUS result.
 
 ## Commands
 
