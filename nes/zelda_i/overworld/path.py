@@ -587,20 +587,11 @@ class OverworldPathController:
 
         key = (self.hop_index, int(snap.screen))
         if self._hop_walker is None or self._hop_walker_key != key:
-            self._hop_walker = OccupancyWalker(grid=_ow_hop_grid())
+            self._hop_walker = OccupancyWalker(grid=_ow_hop_grid(), slide=True)
             self._hop_walker_key = key
         walker = self._hop_walker
         xy = (x, y)
-        walker.goal = (ax, y)
-        # OW can slide 2px; OccupancyWalker 1px-grade would block a real UP
-        # and oscillate 157↔155. Only a true no-move is a miss.
-        if walker.last_dir in ("UP", "DOWN", "LEFT", "RIGHT") and walker.last_xy is not None:
-            if xy == walker.last_xy:
-                walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
-                walker.path = None
-                walker.misses += 1
-        walker.last_xy = xy
-        direction = walker.next_dir(xy)
+        direction = walker.next_dir(xy, (ax, y))
         # RIGHT at x≥232 scrolls to 0x4D; LEFT at west edge leaves the screen.
         # Hop UP/DOWN stays a legal y-peel after a LEFT miss (0x4C corridor).
         forbidden: set[str] = set()

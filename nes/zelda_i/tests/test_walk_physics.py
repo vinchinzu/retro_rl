@@ -128,3 +128,72 @@ def test_miss_on_spec_cell_does_not_make_it_inferred() -> None:
     assert (6, 5) in grid.blocked
     assert walker.forgets == 1
     assert step is not None
+
+
+def test_walker_sticky_does_not_forget_inferred_blocks() -> None:
+    """Sticky walker never drops inferred blocks: stands instead of yo-yoing."""
+    grid = OccupancyGrid(xmin=0, xmax=10, ymin=0, ymax=10)
+    walker = OccupancyWalker(grid=grid, sticky=True)
+    for direction in ("RIGHT", "LEFT", "DOWN", "UP"):
+        grid.mark_blocked_ahead(5, 5, direction)
+    step = walker.next_dir((5, 5), (9, 5))
+    assert step is None
+    assert walker.forgets == 0
+    assert len(grid.blocked) == 4
+
+
+def test_walker_slide_allows_overworld_2px_step() -> None:
+    """Slide walker accepts 2px step as valid progress; only true no-move misses."""
+    grid = OccupancyGrid(xmin=0, xmax=255, ymin=0, ymax=255)
+    walker = OccupancyWalker(grid=grid, slide=True, goal=(100, 50))
+    # Frame 1: start
+    dir1 = walker.next_dir((100, 100))
+    assert dir1 == "UP"
+    # Frame 2: 2px step in overworld (100, 98)
+    dir2 = walker.next_dir((100, 98))
+    assert dir2 == "UP"
+    assert walker.misses == 0
+    # Frame 3: no move (blocked by obstacle)
+    dir3 = walker.next_dir((100, 98))
+    assert walker.misses == 1
+    assert (100, 97) in walker.grid.blocked
+
+
+def test_walker_extra_blocked_routes_around_live_bodies() -> None:
+    """extra_blocked avoids dynamic bodies without modifying persistent grid.blocked."""
+    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20)
+    walker = OccupancyWalker(grid=grid, goal=(10, 5))
+    # Direct path north from (10, 10) would step UP to (10, 9)
+    extra = {(10, 9), (10, 8)}
+    step = walker.next_dir((10, 10), extra_blocked=extra)
+    assert step in {"LEFT", "RIGHT"}
+    # grid.blocked must remain clean
+    assert not grid.blocked
+
+
+def test_walker_goal_clamping_and_replan_on_change() -> None:
+    """Out-of-bounds goal is clamped; changing goal invalidates stale path."""
+    grid = OccupancyGrid(xmin=40, xmax=200, ymin=70, ymax=190)
+    walker = OccupancyWalker(grid=grid)
+    step = walker.next_dir((100, 100), goal=(300, 100))
+    assert walker.goal == (200, 100)
+    assert step == "RIGHT"
+
+    # Change goal to the left
+    step2 = walker.next_dir((100, 100), goal=(50, 100))
+    assert walker.goal == (50, 100)
+    assert step2 == "LEFT"
+
+
+def test_walker_auto_observes_on_next_dir() -> None:
+    """next_dir automatically observes prior step without explicit observe() call."""
+    walker = OccupancyWalker(goal=(120, 93))
+    start = (120, 141)
+    step1 = walker.next_dir(start)
+    assert step1 == "UP"
+    # No movement
+    step2 = walker.next_dir(start)
+    assert walker.misses == 1
+    assert (120, 140) in walker.grid.blocked
+    assert step2 in {"LEFT", "RIGHT"}
+

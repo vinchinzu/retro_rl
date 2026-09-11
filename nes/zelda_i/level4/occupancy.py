@@ -478,8 +478,6 @@ def occupancy_dir(
     ``sticky`` keeps live misses as spec-declared so OccupancyWalker cannot
     forget them and yo-yo (0x31 water pocket).
     """
-    walker.observe(xy)
-    if sticky:
-        walker.grid.inferred.clear()
-    return walker.next_dir(xy, goal)
+    return walker.next_dir(xy, goal, sticky=sticky)
+
 

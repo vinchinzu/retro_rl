@@ -421,7 +421,7 @@ class GenericDungeonRoomController:
             xy = (int(snap.link_x), int(snap.link_y))
             n = len(tuning.patrol)
             for _ in range(n):
-                direction = self._occupancy_dir(xy, (tx, ty))
+                direction = self.walker.next_dir(xy, (tx, ty))
                 if direction is not None:
                     return FrameAction(nes_action(direction), "combat_patrol")
                 self.patrol_index = (self.patrol_index + 1) % n
@@ -459,20 +459,6 @@ class GenericDungeonRoomController:
     def _on_avoid_wall(self, x: int, y: int) -> bool:
         lo_x, hi_x, lo_y, hi_y = self.spec.combat.avoid_wall_bounds
         return x < lo_x or x > hi_x or y < lo_y or y > hi_y
-
-    def _occupancy_dir(
-        self, xy: tuple[int, int], dest: tuple[int, int]
-    ) -> str | None:
-        dest_i = (int(dest[0]), int(dest[1]))
-        grid = self.walker.grid
-        dest_i = (
-            min(max(dest_i[0], grid.xmin), grid.xmax),
-            min(max(dest_i[1], grid.ymin), grid.ymax),
-        )
-        if self.walker.goal != dest_i:
-            self.walker.goal = dest_i
-            self.walker.path = None
-        return self.walker.next_dir(xy, dest_i)
 
     def _engage(
         self,
@@ -600,8 +586,7 @@ class GenericDungeonRoomController:
             return FrameAction(nes_action(away), "combat_backstep")
         if occupancy:
             xy = (int(snap.link_x), int(snap.link_y))
-            self.walker.observe(xy)
-            direction = self._occupancy_dir(xy, (target.x, target.y))
+            direction = self.walker.next_dir(xy, (target.x, target.y))
             if direction is None and distance >= self.spec.combat.engage_distance:
                 return self._patrol(snap)
             if distance < self.spec.combat.engage_distance:
@@ -643,8 +628,7 @@ class GenericDungeonRoomController:
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
             if self.spec.combat.occupancy_patrol:
-                self.walker.observe(xy)
-                direction = self._occupancy_dir(xy, (tx, ty))
+                direction = self.walker.next_dir(xy, (tx, ty))
                 if direction is not None:
                     return FrameAction(nes_action(direction), "collect_reward")
                 self.waypoint_index = (self.waypoint_index + 1) % n

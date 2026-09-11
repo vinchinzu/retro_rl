@@ -51,7 +51,7 @@ from zelda_i.level4.dungeon import (
     LEVEL4,
     ROOM_L4_GLEEOK_13,
 )
-from zelda_i.level4.occupancy import occupancy_dir, room_13_grid
+from zelda_i.level4.occupancy import room_13_grid
 from zelda_i.walk.physics import OccupancyWalker
 from zelda_i.ram import (
     ADDR_TRIFORCE,
@@ -398,8 +398,7 @@ class Level4GleeokFightController:
                             f"misses={self.walker.misses}"
                         )
                         continue
-                    direction = occupancy_dir(
-                        self.walker,
+                    direction = self.walker.next_dir(
                         (snap.link_x, snap.link_y),
                         goal,
                     )
@@ -517,8 +516,7 @@ class Level4GleeokFightController:
                     continue
                 tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
                 if abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
-                    direction = occupancy_dir(
-                        self.walker,
+                    direction = self.walker.next_dir(
                         (snap.link_x, snap.link_y),
                         (tx, ty),
                     )
