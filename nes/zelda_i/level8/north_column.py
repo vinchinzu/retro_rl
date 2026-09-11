@@ -322,7 +322,7 @@ class _NorthColumnBase(HopController):
     _traveled: bool = field(default=False, init=False)
     _clear: GenericDungeonRoomController | None = field(default=None, init=False, repr=False)
     _wall: BombWallController | None = field(default=None, init=False, repr=False)
-    _walker: OccupancyWalker = field(default_factory=OccupancyWalker, init=False, repr=False)
+    _walker: OccupancyWalker = field(default_factory=lambda: OccupancyWalker(sticky=True), init=False, repr=False)
     _map_wp: int = field(default=0, init=False)
     _key_wait: int = field(default=0, init=False)
     _keys_in: int | None = field(default=None, init=False)
@@ -346,7 +346,7 @@ class _NorthColumnBase(HopController):
             self._traveled = True
             self._clear = None
             self._wall = None
-            self._walker = OccupancyWalker()
+            self._walker = OccupancyWalker(sticky=True)
             self._map_wp = 0
             self._key_wait = 0
             self._keys_in = None
@@ -423,25 +423,12 @@ class _NorthColumnBase(HopController):
         dest: tuple[int, int],
         bodies: tuple,
     ) -> str | None:
-        """BFS with live bodies as occupancy. No path → None (caller stands).
-
-        Does not call OccupancyWalker.next_dir: that forgets inferred misses.
-        """
+        """BFS with live bodies as occupancy. No path → None (caller stands)."""
         extra: set[tuple[int, int]] = set()
         for obj in bodies:
             extra |= _enemy_disk(obj, xy, dest)
             extra |= _shield_axis(xy, obj)
-        extra.discard(dest)
-        grid = self._walker.grid
-        added = extra - grid.blocked
-        grid.blocked.update(added)
-        try:
-            path = grid.shortest_path(xy, dest)
-            if path is None:
-                return None
-            return follow_path(path, xy)
-        finally:
-            grid.blocked -= added
+        return self._walker.next_dir(xy, dest, extra_blocked=extra, sticky=True)
 
     def _flank_dest(
         self, xy: tuple[int, int], target, bodies: tuple
@@ -541,11 +528,6 @@ class _NorthColumnBase(HopController):
         if not live:
             self._walker.last_dir = None
             return FrameAction(nes_idle_action(), "occupancy_stand")
-
-        if self._walker.grid.inferred:
-            self._walker.grid.blocked -= self._walker.grid.inferred
-            self._walker.grid.inferred.clear()
-            self._walker.forgets += 1
 
         target = min(live, key=lambda o: manhattan(xy[0], xy[1], o.x, o.y))
         dist = manhattan(xy[0], xy[1], target.x, target.y)

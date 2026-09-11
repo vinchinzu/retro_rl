@@ -35,7 +35,6 @@ from zelda_i.level4.dungeon import (
 from zelda_i.level4.occupancy import (
     ROOM_31_EAST_XY,
     ROOM_31_SPAWN_XY,
-    occupancy_dir,
     room_31_grid,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -753,8 +752,8 @@ class Level4Maze31EastController(MazeHop):
                 self._sample(snap, "north_strip")
                 self._set_phase(Maze31EastPhase.CLIP, "north_strip")
             else:
-                direction = occupancy_dir(
-                    self.walker, xy, ROOM_31_EAST_XY, sticky=True
+                direction = self.walker.next_dir(
+                    xy, ROOM_31_EAST_XY, sticky=True
                 )
                 if direction is None:
                     return _idle("maze31_east_stand")

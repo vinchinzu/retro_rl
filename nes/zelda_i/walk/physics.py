@@ -12,6 +12,8 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 
+from typing import Iterable
+
 from retro_harness.predict import grade_claims
 
 __all__ = [
@@ -62,14 +64,17 @@ class OccupancyGrid:
     def passable(self, x: int, y: int) -> bool:
         return self.in_bounds(x, y) and (x, y) not in self.blocked
 
-    def mark_blocked_ahead(self, x: int, y: int, direction: str) -> tuple[int, int]:
+    def mark_blocked_ahead(
+        self, x: int, y: int, direction: str, *, inferred: bool = True
+    ) -> tuple[int, int]:
         """Record the cell the last predicted step failed to enter.
 
         Spec-declared cells already in ``blocked`` stay spec: a later miss
         must not tag them inferred, or forget drops measured geometry.
+        ``inferred=False`` marks the cell permanent (sticky).
         """
         cell = predicted_xy(x, y, direction)
-        if cell not in self.blocked:
+        if inferred and cell not in self.blocked:
             self.inferred.add(cell)
         self.blocked.add(cell)
         return cell
@@ -78,16 +83,29 @@ class OccupancyGrid:
         self,
         start: tuple[int, int],
         goal: tuple[int, int],
+        *,
+        extra_blocked: Iterable[tuple[int, int]] | None = None,
     ) -> list[tuple[int, int]] | None:
-        """4-connected BFS. ``start`` is always allowed so a pocket can escape."""
+        """4-connected BFS. ``start`` is always allowed so a pocket can escape.
+
+        ``extra_blocked`` specifies temporary obstacles (e.g. live enemy disks)
+        for this search without mutating ``blocked``.
+        """
         sx, sy = int(start[0]), int(start[1])
         gx, gy = int(goal[0]), int(goal[1])
         if (sx, sy) == (gx, gy):
             return [(sx, sy)]
 
+        extra = set(extra_blocked) if extra_blocked else None
+        if extra:
+            extra.discard((sx, sy))
+            extra.discard((gx, gy))
+
         def ok(x: int, y: int) -> bool:
             if (x, y) == (sx, sy):
                 return True
+            if extra and (x, y) in extra:
+                return False
             return self.passable(x, y)
 
         if not ok(gx, gy) and not self.in_bounds(gx, gy):
@@ -147,30 +165,65 @@ class OccupancyWalker:
 
     Grades the same ``move DX,DY`` grammar as ``zelda_i.walk.predict.walk_claim``
     via ``retro_harness.predict.grade_claims``.
+
+    ``sticky=True`` treats misses as spec-declared so ``next_dir`` will not
+    forget them and yo-yo (0x31 water pocket / 0x5E Darknut flank).
+    ``slide=True`` permits overworld 2px steps; only true no-move is a miss.
     """
 
     grid: OccupancyGrid = field(default_factory=OccupancyGrid)
     path: list[tuple[int, int]] | None = None
     last_xy: tuple[int, int] | None = None
-    last_dir: str | None = None
     misses: int = 0
     forgets: int = 0
     goal: tuple[int, int] | None = None
+    sticky: bool = False
+    slide: bool = False
+    _last_dir: str | None = field(default=None, repr=False)
+    _graded: bool = field(default=False, repr=False)
 
-    def observe(self, xy: tuple[int, int]) -> None:
+    @property
+    def last_dir(self) -> str | None:
+        return self._last_dir
+
+    @last_dir.setter
+    def last_dir(self, value: str | None) -> None:
+        self._last_dir = value
+        self._graded = False
+
+    def observe(
+        self,
+        xy: tuple[int, int],
+        *,
+        sticky: bool | None = None,
+        slide: bool | None = None,
+    ) -> None:
         xy = (int(xy[0]), int(xy[1]))
-        if self.last_dir in WALK_DELTA and self.last_xy is not None:
-            dx, dy = WALK_DELTA[self.last_dir]
-            grade = grade_claims(
-                f"move {dx},{dy}",
-                {"x": self.last_xy[0], "y": self.last_xy[1]},
-                {"x": xy[0], "y": xy[1]},
-            )
-            if not grade.ok:
+        is_sticky = self.sticky if sticky is None else sticky
+        is_slide = self.slide if slide is None else slide
+
+        if self._last_dir in WALK_DELTA and self.last_xy is not None and not self._graded:
+            self._graded = True
+            miss = False
+            if is_slide:
+                # Overworld slide: Link may step 2px or slide.
+                # Only a true no-move is an obstacle miss.
+                miss = (xy == self.last_xy)
+            else:
+                dx, dy = WALK_DELTA[self._last_dir]
+                grade = grade_claims(
+                    f"move {dx},{dy}",
+                    {"x": self.last_xy[0], "y": self.last_xy[1]},
+                    {"x": xy[0], "y": xy[1]},
+                )
+                miss = not grade.ok
+            if miss:
                 # Block the predicted cell even on a 1px slide (live 0x6e
                 # south pocket: UP along diamonds oscillated 72↔73 and never
                 # counted as stuck-in-place).
-                self.grid.mark_blocked_ahead(*self.last_xy, self.last_dir)
+                self.grid.mark_blocked_ahead(
+                    *self.last_xy, self._last_dir, inferred=not is_sticky
+                )
                 self.misses += 1
                 self.path = None
         self.last_xy = xy
@@ -179,20 +232,35 @@ class OccupancyWalker:
         self,
         xy: tuple[int, int],
         goal: tuple[int, int] | None = None,
+        *,
+        extra_blocked: Iterable[tuple[int, int]] | None = None,
+        sticky: bool | None = None,
+        slide: bool | None = None,
     ) -> str | None:
+        self.observe(xy, sticky=sticky, slide=slide)
+        is_sticky = self.sticky if sticky is None else sticky
         dest = self.goal if goal is None else goal
         xy = (int(xy[0]), int(xy[1]))
         if dest is None:
             self.last_dir = None
             return None
-        dest = (int(dest[0]), int(dest[1]))
+        dest = (
+            min(max(int(dest[0]), self.grid.xmin), self.grid.xmax),
+            min(max(int(dest[1]), self.grid.ymin), self.grid.ymax),
+        )
+        if self.goal != dest:
+            self.goal = dest
+            self.path = None
+        if extra_blocked is not None:
+            self.path = None
+
         if self.path is None:
-            self.path = self.grid.shortest_path(xy, dest)
+            self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
         direction = follow_path(self.path, xy)
         if direction is None:
-            self.path = self.grid.shortest_path(xy, dest)
+            self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
             direction = follow_path(self.path, xy)
-        if direction is None and self.grid.inferred:
+        if direction is None and not is_sticky and self.grid.inferred:
             # Inferred blocks come from one failed 1px prediction, not ground
             # truth — a wall hug or a slide fences off a free cell. A walker
             # that has fenced itself in forgets them and replans; standing
@@ -203,7 +271,7 @@ class OccupancyWalker:
             self.grid.blocked -= self.grid.inferred
             self.grid.inferred.clear()
             self.forgets += 1
-            self.path = self.grid.shortest_path(xy, dest)
+            self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
             direction = follow_path(self.path, xy)
         self.last_dir = direction
         return direction
