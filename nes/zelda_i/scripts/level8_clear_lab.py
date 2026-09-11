@@ -236,9 +236,34 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="No infinite life, no inventory pokes. Fixture-live Clean glance.",
     )
+    parser.add_argument(
+        "--no-video",
+        action="store_true",
+        help="Headless (already the default). Sitting convention.",
+    )
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=1,
+        help="Number of trials to run.",
+    )
     args = parser.parse_args(argv)
+    del args.no_video
     if args.pin:
         return build_pin()
+    if args.trials > 1:
+        rc = 0
+        for t in range(args.trials):
+            code = run_suffix(
+                f"{args.tag}_{t}",
+                args.start,
+                from_state=args.from_state,
+                from_enter=args.from_enter,
+                infinite_life=not args.clean,
+            )
+            if code != 0:
+                rc = code
+        return rc
     return run_suffix(
         args.tag,
         args.start,

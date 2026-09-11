@@ -14,6 +14,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import in_sword_hitbox, manhattan
 from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -32,11 +33,29 @@ from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level8.dungeon import LEVEL8
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk.physics import OccupancyWalker, follow_path, predicted_xy
 
 # Live recon rooms.  0x0C is unregistered in dungeon.ids (0x0B is "darknut");
 # colour is a walkthrough correlation, not an observation.
 TYPE_0C = 0x0C
+STATUE_FIREBALL = 0x55
 SMALL_KEY_ITEM = 0x19
+# Heart-safe 0x5E (hc=3, no refill): occupancy around bodies, rear/flank sword.
+CONTACT_MAN = 14
+SWORD_MAN = 20
+FLANK_STANDOFF = 16
+ENEMY_BLOCK_R = 10
+# Live leftover after the 0x6E bomb hole is (120, 189). DOWN from there
+# scrolls back into 0x6E (ROM l8_npv4_5e, 232f). Occupancy ymax holds that
+# plane; SOUTH_HOLD_Y refuses DOWN on the south band.
+ROOM_5E_OCC_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 189)
+SOUTH_HOLD_Y = 181
+ENTRY_COLUMN_X = 120
+# ROM l8_npv4_5e_inland died at x=116 (4px off). Peel past the shield column
+# before inland UP. 16px matches FLANK_STANDOFF.
+COLUMN_PEEL = 16
+# Statue-row waist. ROM l8_npv4_5e_west died (104,117) hunting north of this.
+WAIST_Y = 141
 ROOM_ENTRY = 0x7E
 ROOM_MANHANDLA = 0x6E
 ROOM_DARKNUT_KEY = 0x5E
@@ -148,12 +167,6 @@ def _sword_clear_spec(
 CLEAR_6E_SPEC = _sword_clear_spec(
     ROOM_MANHANDLA, (MANHANDLA_OBJECT_TYPE,), "l8_clear_0x6e_manhandla"
 )
-CLEAR_5E_SPEC = _sword_clear_spec(
-    ROOM_DARKNUT_KEY,
-    (TYPE_0C,),
-    "l8_clear_0x5e_0x0c",
-    max_frames=_DARKNUT_CLEAR_FRAMES,
-)
 CLEAR_3E_SPEC = _sword_clear_spec(
     ROOM_BLUE_DARKNUTS,
     (TYPE_0C,),
@@ -172,6 +185,96 @@ def _live_of(snap: ZeldaSnapshot, types: tuple[int, ...]) -> tuple:
         for obj in snap.objects
         if 1 <= obj.slot <= 12 and obj.type_id in want and obj.hp > 0
     )
+
+
+def _in_front_of_shield(lx: int, ly: int, obj) -> bool:
+    """True when Link is in the Darknut's facing cone (frontal shield)."""
+    dx = lx - int(obj.x)
+    dy = ly - int(obj.y)
+    facing = int(obj.facing)
+    if facing == 0x01:
+        return dx > 0 and abs(dx) >= abs(dy)
+    if facing == 0x02:
+        return dx < 0 and abs(dx) >= abs(dy)
+    if facing == 0x04:
+        return dy > 0 and abs(dy) >= abs(dx)
+    if facing == 0x08:
+        return dy < 0 and abs(dy) >= abs(dx)
+    return False
+
+
+def _away_dir(lx: int, ly: int, obj) -> str:
+    dx = int(obj.x) - lx
+    dy = int(obj.y) - ly
+    if abs(dx) >= abs(dy):
+        return "LEFT" if dx > 0 else "RIGHT"
+    return "UP" if dy > 0 else "DOWN"
+
+
+def _toward_dir(lx: int, ly: int, obj) -> str:
+    dx = int(obj.x) - lx
+    dy = int(obj.y) - ly
+    if abs(dx) >= abs(dy) and dx != 0:
+        return "RIGHT" if dx > 0 else "LEFT"
+    if dy != 0:
+        return "DOWN" if dy > 0 else "UP"
+    return "UP"
+
+
+def _flank_candidates(obj) -> tuple[tuple[int, int], ...]:
+    s = FLANK_STANDOFF
+    ox, oy = int(obj.x), int(obj.y)
+    facing = int(obj.facing)
+    if facing == 0x08:
+        rear, a, b = (ox, oy + s), (ox - s, oy), (ox + s, oy)
+    elif facing == 0x04:
+        rear, a, b = (ox, oy - s), (ox - s, oy), (ox + s, oy)
+    elif facing == 0x01:
+        rear, a, b = (ox - s, oy), (ox, oy - s), (ox, oy + s)
+    elif facing == 0x02:
+        rear, a, b = (ox + s, oy), (ox, oy - s), (ox, oy + s)
+    else:
+        rear, a, b = (ox, oy + s), (ox - s, oy), (ox + s, oy)
+    return (rear, a, b)
+
+
+def _enemy_disk(
+    obj, xy: tuple[int, int], dest: tuple[int, int] | None
+) -> set[tuple[int, int]]:
+    cells: set[tuple[int, int]] = set()
+    ox, oy = int(obj.x), int(obj.y)
+    r = ENEMY_BLOCK_R
+    for dx in range(-r, r + 1):
+        for dy in range(-r, r + 1):
+            if abs(dx) + abs(dy) > r:
+                continue
+            cell = (ox + dx, oy + dy)
+            if cell == xy or cell == dest:
+                continue
+            cells.add(cell)
+    return cells
+
+
+def _shield_axis(xy: tuple[int, int], obj) -> set[tuple[int, int]]:
+    """Block the facing-axis corridor so BFS cannot walk into the shield."""
+    if int(getattr(obj, "type_id", TYPE_0C)) != TYPE_0C:
+        return set()
+    if not _in_front_of_shield(xy[0], xy[1], obj):
+        return set()
+    ox, oy = int(obj.x), int(obj.y)
+    lx, ly = xy
+    cells: set[tuple[int, int]] = set()
+    facing = int(obj.facing)
+    if facing in (0x04, 0x08):
+        y0, y1 = (ly, oy) if ly < oy else (oy, ly)
+        for y in range(y0, y1 + 1):
+            cells.add((ox, y))
+    else:
+        x0, x1 = (lx, ox) if lx < ox else (ox, lx)
+        for x in range(x0, x1 + 1):
+            cells.add((x, oy))
+    cells.discard(xy)
+    return cells
 
 
 def _goto(
@@ -219,6 +322,7 @@ class _NorthColumnBase(HopController):
     _traveled: bool = field(default=False, init=False)
     _clear: GenericDungeonRoomController | None = field(default=None, init=False, repr=False)
     _wall: BombWallController | None = field(default=None, init=False, repr=False)
+    _walker: OccupancyWalker = field(default_factory=OccupancyWalker, init=False, repr=False)
     _map_wp: int = field(default=0, init=False)
     _key_wait: int = field(default=0, init=False)
     _keys_in: int | None = field(default=None, init=False)
@@ -242,6 +346,7 @@ class _NorthColumnBase(HopController):
             self._traveled = True
             self._clear = None
             self._wall = None
+            self._walker = OccupancyWalker()
             self._map_wp = 0
             self._key_wait = 0
             self._keys_in = None
@@ -311,6 +416,241 @@ class _NorthColumnBase(HopController):
         if snap.keys <= 0:
             return self.mark_fail(f"no_keys_0x{snap.screen:02x}")
         return _north_door(snap, reason=reason)
+
+    def _path_around(
+        self,
+        xy: tuple[int, int],
+        dest: tuple[int, int],
+        bodies: tuple,
+    ) -> str | None:
+        """BFS with live bodies as occupancy. No path → None (caller stands).
+
+        Does not call OccupancyWalker.next_dir: that forgets inferred misses.
+        """
+        extra: set[tuple[int, int]] = set()
+        for obj in bodies:
+            extra |= _enemy_disk(obj, xy, dest)
+            extra |= _shield_axis(xy, obj)
+        extra.discard(dest)
+        grid = self._walker.grid
+        added = extra - grid.blocked
+        grid.blocked.update(added)
+        try:
+            path = grid.shortest_path(xy, dest)
+            if path is None:
+                return None
+            return follow_path(path, xy)
+        finally:
+            grid.blocked -= added
+
+    def _flank_dest(
+        self, xy: tuple[int, int], target, bodies: tuple
+    ) -> tuple[int, int] | None:
+        grid = self._walker.grid
+        for cand in _flank_candidates(target):
+            dest = (
+                min(max(int(cand[0]), grid.xmin), grid.xmax),
+                min(max(int(cand[1]), WAIST_Y), grid.ymax),
+            )
+            if dest == xy or self._path_around(xy, dest, bodies) is not None:
+                return dest
+        return None
+
+    def _bind_5e_grid(self) -> None:
+        g = self._walker.grid
+        xmin, xmax, ymin, ymax = ROOM_5E_OCC_BOUNDS
+        if (g.xmin, g.xmax, g.ymin, g.ymax) != (xmin, xmax, ymin, ymax):
+            g.xmin, g.xmax, g.ymin, g.ymax = xmin, xmax, ymin, ymax
+
+    def _south_hold(self, xy: tuple[int, int], direction: str) -> str | None:
+        """No DOWN off the 0x5E south bomb hole. Peel or stand."""
+        if direction != "DOWN" or xy[1] < SOUTH_HOLD_Y:
+            return direction
+        peel = "LEFT" if xy[0] >= 120 else "RIGHT"
+        nxt = predicted_xy(xy[0], xy[1], peel)
+        if not self._walker.grid.passable(*nxt):
+            return None
+        return peel
+
+    def _up_axis_free(self, xy: tuple[int, int], bodies: tuple) -> bool:
+        """UP off the south band is legal: not a shield column, not contact."""
+        nxt = predicted_xy(xy[0], xy[1], "UP")
+        if not self._walker.grid.passable(*nxt):
+            return False
+        # Still on x=120±15 with a south-facing 0x0C on the entry column:
+        # 4px LEFT (ROM death x=116) is not off-axis. Peel first.
+        if abs(xy[0] - ENTRY_COLUMN_X) < COLUMN_PEEL:
+            for obj in bodies:
+                if int(getattr(obj, "type_id", TYPE_0C)) != TYPE_0C:
+                    continue
+                if int(obj.facing) == 0x04 and abs(int(obj.x) - ENTRY_COLUMN_X) <= 8:
+                    return False
+        for obj in bodies:
+            if manhattan(nxt[0], nxt[1], obj.x, obj.y) < CONTACT_MAN:
+                return False
+            if nxt in _shield_axis(xy, obj):
+                return False
+        return True
+
+    def _column_peel_dir(self, xy: tuple[int, int], bodies: tuple) -> str | None:
+        """LEFT (else RIGHT) off x=120 until |x-120|>=COLUMN_PEEL. None if boxed.
+
+        Holds through contact: a 1px backstep was the 459f (116,189) death.
+        """
+        del bodies
+        if abs(xy[0] - ENTRY_COLUMN_X) >= COLUMN_PEEL:
+            return None
+        for peel in ("LEFT", "RIGHT"):
+            nxt = predicted_xy(xy[0], xy[1], peel)
+            if self._walker.grid.passable(*nxt):
+                return peel
+        return None
+
+    def _slash(self, btn: str) -> FrameAction:
+        self._walker.last_dir = None
+        if self._room_frames % 6 < 4:
+            return FrameAction(nes_action(btn, "A"), "combat_slash")
+        return FrameAction(nes_action(btn), "combat_slash")
+
+    def _heart_safe_darknut(self, snap: ZeldaSnapshot) -> FrameAction:
+        """0x5E type 0x0C: side-stepping, lure south, rear/flank attacks + occupancy stand."""
+        self._bind_5e_grid()
+        live = _live_of(snap, (TYPE_0C,))
+        xy = (int(snap.link_x), int(snap.link_y))
+        self._walker.observe(xy)
+
+        # Stand if boxed by obstacles
+        if all(
+            not self._walker.grid.passable(*predicted_xy(xy[0], xy[1], d))
+            for d in ("UP", "DOWN", "LEFT", "RIGHT")
+        ):
+            self._walker.last_dir = None
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+
+        bodies = live + _live_of(snap, (STATUE_FIREBALL,))
+
+        # Column peel before contact: hold LEFT until off entry column, then inland UP
+        if xy[1] >= SOUTH_HOLD_Y:
+            peel = self._column_peel_dir(xy, bodies)
+            if peel is not None:
+                self._walker.last_dir = peel
+                return FrameAction(nes_action(peel), "column_peel")
+            self._walker.last_dir = "UP"
+            return FrameAction(nes_action("UP"), "inland_leave")
+
+        if not live:
+            self._walker.last_dir = None
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+
+        if self._walker.grid.inferred:
+            self._walker.grid.blocked -= self._walker.grid.inferred
+            self._walker.grid.inferred.clear()
+            self._walker.forgets += 1
+
+        target = min(live, key=lambda o: manhattan(xy[0], xy[1], o.x, o.y))
+        dist = manhattan(xy[0], xy[1], target.x, target.y)
+
+        # Flank / rear attack opportunities on ANY live Darknut
+        for d in live:
+            ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
+            if ofc in (0x04, 0x08):
+                if abs(oy - xy[1]) <= 8 and 10 <= abs(ox - xy[0]) <= 22:
+                    btn = "RIGHT" if xy[0] < ox else "LEFT"
+                    return self._slash(btn)
+            if ofc in (0x01, 0x02):
+                if abs(ox - xy[0]) <= 8 and 10 <= abs(oy - xy[1]) <= 22:
+                    btn = "DOWN" if xy[1] < oy else "UP"
+                    return self._slash(btn)
+            if ofc == 0x04 and abs(ox - xy[0]) <= 6 and 10 <= (oy - xy[1]) <= 22:
+                return self._slash("DOWN")
+            if ofc == 0x08 and abs(ox - xy[0]) <= 6 and 10 <= (xy[1] - oy) <= 22:
+                return self._slash("UP")
+            if ofc == 0x01 and abs(oy - xy[1]) <= 6 and 10 <= (ox - xy[0]) <= 22:
+                return self._slash("RIGHT")
+            if ofc == 0x02 and abs(oy - xy[1]) <= 6 and 10 <= (xy[0] - ox) <= 22:
+                return self._slash("LEFT")
+
+        # Immediate threat: side-step perpendicular to incoming Darknut
+        for d in live:
+            ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
+            d_dist = abs(xy[0] - ox) + abs(xy[1] - oy)
+            if d_dist <= 28:
+                if ofc == 0x04 and xy[1] >= oy and abs(xy[0] - ox) <= 12:
+                    btn = "LEFT" if (xy[0] <= ox and xy[0] > 48) or xy[0] >= 200 else "RIGHT"
+                    nxt = predicted_xy(xy[0], xy[1], btn)
+                    if not self._walker.grid.passable(*nxt):
+                        btn = "RIGHT" if btn == "LEFT" else "LEFT"
+                        nxt = predicted_xy(xy[0], xy[1], btn)
+                    if self._walker.grid.passable(*nxt):
+                        self._walker.last_dir = None
+                        return FrameAction(nes_action(btn), "combat_flank")
+                if ofc == 0x08 and xy[1] <= oy and abs(xy[0] - ox) <= 12:
+                    btn = "LEFT" if (xy[0] <= ox and xy[0] > 48) or xy[0] >= 200 else "RIGHT"
+                    nxt = predicted_xy(xy[0], xy[1], btn)
+                    if not self._walker.grid.passable(*nxt):
+                        btn = "RIGHT" if btn == "LEFT" else "LEFT"
+                        nxt = predicted_xy(xy[0], xy[1], btn)
+                    if self._walker.grid.passable(*nxt):
+                        self._walker.last_dir = None
+                        return FrameAction(nes_action(btn), "combat_flank")
+                if ofc == 0x02 and xy[0] <= ox and abs(xy[1] - oy) <= 12:
+                    btn = "UP" if (xy[1] <= oy and xy[1] > 96) or xy[1] >= 173 else "DOWN"
+                    nxt = predicted_xy(xy[0], xy[1], btn)
+                    if not self._walker.grid.passable(*nxt):
+                        btn = "DOWN" if btn == "UP" else "UP"
+                        nxt = predicted_xy(xy[0], xy[1], btn)
+                    if self._walker.grid.passable(*nxt):
+                        self._walker.last_dir = None
+                        return FrameAction(nes_action(btn), "combat_flank")
+                if ofc == 0x01 and xy[0] >= ox and abs(xy[1] - oy) <= 12:
+                    btn = "UP" if (xy[1] <= oy and xy[1] > 96) or xy[1] >= 173 else "DOWN"
+                    nxt = predicted_xy(xy[0], xy[1], btn)
+                    if not self._walker.grid.passable(*nxt):
+                        btn = "DOWN" if btn == "UP" else "UP"
+                        nxt = predicted_xy(xy[0], xy[1], btn)
+                    if self._walker.grid.passable(*nxt):
+                        self._walker.last_dir = None
+                        return FrameAction(nes_action(btn), "combat_flank")
+
+        # Tactical approach: offset onto the parallel flank lane
+        tfc = int(target.facing)
+        tx, ty = int(target.x), int(target.y)
+        if tfc in (0x04, 0x08):
+            cand_x = tx - 16 if tx >= 120 else tx + 16
+            cand_x = min(max(cand_x, 48), 200)
+            if abs(xy[0] - cand_x) > 4:
+                btn = "RIGHT" if xy[0] < cand_x else "LEFT"
+                nxt = predicted_xy(xy[0], xy[1], btn)
+                if self._walker.grid.passable(*nxt):
+                    self._walker.last_dir = None
+                    return FrameAction(nes_action(btn), "combat_approach")
+            if abs(xy[1] - ty) > 6:
+                btn = "DOWN" if xy[1] < ty else "UP"
+                nxt = predicted_xy(xy[0], xy[1], btn)
+                if self._walker.grid.passable(*nxt):
+                    self._walker.last_dir = None
+                    return FrameAction(nes_action(btn), "combat_approach")
+            face = "RIGHT" if xy[0] < tx else "LEFT"
+            self._walker.last_dir = None
+            return FrameAction(nes_action(face), "combat_approach")
+        else:
+            cand_y = ty - 16 if ty >= 150 else ty + 16
+            cand_y = min(max(cand_y, 96), 173)
+            if abs(xy[1] - cand_y) > 4:
+                btn = "DOWN" if xy[1] < cand_y else "UP"
+                nxt = predicted_xy(xy[0], xy[1], btn)
+                if self._walker.grid.passable(*nxt):
+                    self._walker.last_dir = None
+                    return FrameAction(nes_action(btn), "combat_approach")
+            if abs(xy[0] - tx) > 6:
+                btn = "RIGHT" if xy[0] < tx else "LEFT"
+                nxt = predicted_xy(xy[0], xy[1], btn)
+                if self._walker.grid.passable(*nxt):
+                    self._walker.last_dir = None
+                    return FrameAction(nes_action(btn), "combat_approach")
+            face = "DOWN" if xy[1] < ty else "UP"
+            self._walker.last_dir = None
+            return FrameAction(nes_action(face), "combat_approach")
 
     def report(self) -> dict[str, Any]:
         out = super().report()
@@ -396,11 +736,16 @@ class Level8DarknutKeyController(_NorthColumnBase):
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         self._track_room(snap)
         room = int(snap.screen)
+        if room == ROOM_MANHANDLA:
+            # Open 0x6E bomb hole: knockback/DOWN leftover must re-enter 0x5E.
+            return _north_door(snap, reason="reenter_north_0x6e")
         if room == ROOM_DARKNUT_KEY:
             if self._keys_in is None:
                 self._keys_in = int(snap.keys)
-            if _live_of(snap, (TYPE_0C,)):
-                return self._fight(snap, CLEAR_5E_SPEC)
+            live = _live_of(snap, (TYPE_0C,))
+            any_0c = any(obj.type_id == TYPE_0C for obj in snap.objects if 1 <= obj.slot <= 12)
+            if live or (any_0c and self._room_frames < 40 and snap.keys <= self._keys_in):
+                return self._heart_safe_darknut(snap)
             wait = self._spawn_wait(snap, DARKNUT_SETTLE_FRAMES)
             if wait is not None:
                 return wait

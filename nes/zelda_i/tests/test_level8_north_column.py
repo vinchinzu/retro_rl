@@ -39,8 +39,13 @@ from zelda_i.level8.path import (
     make_north_manhandla_controller as path_make_manhandla,
 )
 from zelda_i.ram import (
+    ADDR_BOMBS,
+    ADDR_HEALTH,
+    ADDR_KEYS,
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
+    ADDR_MAGIC_KEY,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
     PLAY_MODE,
@@ -68,11 +73,20 @@ def _ram(**fields: int) -> np.ndarray:
     return make_ram(_DEFAULTS, **fields)
 
 
-def _put_obj(ram: np.ndarray, slot: int, type_id: int, hp: int, x: int, y: int) -> None:
+def _put_obj(
+    ram: np.ndarray,
+    slot: int,
+    type_id: int,
+    hp: int,
+    x: int,
+    y: int,
+    facing: int = 0,
+) -> None:
     ram[ADDR_OBJ_TYPE + slot] = type_id
     ram[ADDR_OBJ_HP + slot] = hp
     ram[ADDR_LINK_X + slot] = x
     ram[ADDR_LINK_Y + slot] = y
+    ram[ADDR_LINK_FACING + slot] = facing
 
 
 def _step(ctl, ram: np.ndarray):
@@ -202,13 +216,322 @@ def test_manhandla_arriving_0x5e_succeeds() -> None:
 
 
 def test_0x5e_with_0x0c_emits_combat() -> None:
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189)
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
     _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
     ctl = make_darknut_key_controller()
     act = _step(ctl, ram)
     assert not ctl.failed
     _busy(act)
-    assert "combat" in act.reason or "leave_wall" in act.reason
+    assert act.reason in {
+        "combat_approach",
+        "combat_flank",
+        "combat_slash",
+        "combat_backstep",
+        "inland_leave",
+        "column_peel",
+    } or act.reason.startswith("combat_")
+
+
+def test_0x5e_shield_front_flanks_not_slash() -> None:
+    """South leftover into a south-facing 0x0C: circle, never UP into the shield."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason != "combat_slash"
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("UP", "A"))
+    assert act.reason in {
+        "column_peel",
+        "combat_flank",
+        "combat_approach",
+        "combat_backstep",
+    }
+
+
+def test_0x5e_rear_in_reach_slashes() -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=157, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 141, facing=0x08)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_slash"
+    assert "A" in str(act.action) or list(act.action) == list(nes_action("UP", "A"))
+
+
+def test_0x5e_contact_backsteps() -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=149, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 141, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason in {"combat_backstep", "combat_flank"}
+    if act.reason == "combat_backstep":
+        assert list(act.action) == list(nes_action("DOWN"))
+    else:
+        assert list(act.action) in (list(nes_action("LEFT")), list(nes_action("RIGHT")))
+
+
+def test_0x5e_contact_up_does_not_cross_waist() -> None:
+    """Link (104,150) vs 0x0C (104,160): backstep UP would hunt to (104,117). Slash rear or stand."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=150, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 104, 160, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("UP", "A"))
+    assert act.reason in {"occupancy_stand", "combat_slash"}
+    if act.reason == "occupancy_stand":
+        assert list(act.action) == list(nes_idle_action())
+    else:
+        assert list(act.action) == list(nes_action("DOWN", "A"))
+
+
+def test_0x5e_occupancy_miss_blocks_and_replans() -> None:
+    """Same leftover pose twice: first dir misses, that cell is blocked, next dir differs."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+    ctl = make_darknut_key_controller()
+    first = _step(ctl, ram)
+    _busy(first)
+    second = _step(ctl, ram)
+    assert not ctl.failed
+    assert ctl._walker.misses >= 1
+    if second.reason == "occupancy_stand":
+        assert list(second.action) == list(nes_idle_action())
+    else:
+        assert list(second.action) != list(first.action)
+
+
+def test_0x5e_occupancy_nopath_stands() -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+    ctl = make_darknut_key_controller()
+    _step(ctl, ram)
+    xy = (120, 189)
+    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
+        ctl._walker.grid.mark_blocked_ahead(*xy, direction)
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "occupancy_stand"
+    assert list(act.action) == list(nes_idle_action())
+
+
+def test_0x5e_south_mouth_does_not_exit_to_0x6e() -> None:
+    """Leftover (120,189): contact north of Link must not DOWN through the bomb hole."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 177, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("DOWN", "A"))
+    assert act.reason in {
+        "column_peel",
+        "combat_backstep",
+        "combat_flank",
+        "occupancy_stand",
+    }
+
+
+def test_0x5e_south_band_contact_holds_column_peel() -> None:
+    """Contact on y=189 must not 1px-backstep; hold LEFT until |x-120|>=16."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 177, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason != "combat_backstep"
+    ram2 = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
+    _put_obj(ram2, 1, TYPE_0C, 128, 120, 177, facing=0x04)
+    act2 = _step(ctl, ram2)
+    assert act2.reason == "column_peel"
+    assert list(act2.action) == list(nes_action("LEFT"))
+
+
+def test_0x5e_rom_death_pose_stays_on_south_band() -> None:
+    """ROM l8_npv4_5e_hold leftover (116,189) mode-17: still no DOWN."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 177, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action("DOWN", "A"))
+
+
+def test_0x5e_south_band_peels_column_before_inland() -> None:
+    """Leftover (120,189) peels off x=120 first even if the facing axis is free."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x5e_death_pose_holds_peel_on_column() -> None:
+    """ROM death (116,189) still |x-120|<16: hold LEFT, not inland UP."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x5e_on_column_peels_then_inland() -> None:
+    """Entry column + south-facing 0x0C: LEFT off x=120, never UP into the shield."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x5e_peeled_column_then_inland_up() -> None:
+    """After peel to x=104, south-facing 0x0C still on x=120: axis free, UP inland."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "inland_leave"
+    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x5e_off_column_south_band_inland_not_west() -> None:
+    """ROM death leftover (80,181): off-column, UP inland, never more LEFT."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=80, y=181, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "inland_leave"
+    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x5e_off_column_contact_stands_not_west() -> None:
+    """(80,181) contact with 0x0C on the UP cell: stand, not LEFT into the west wall."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=80, y=181, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 170, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("DOWN"))
+    if act.reason == "occupancy_stand":
+        assert list(act.action) == list(nes_idle_action())
+    else:
+        assert act.reason == "inland_leave"
+        assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x5e_inland_north_of_waist_does_not_hunt_up() -> None:
+    """ROM death leftover (104,117): DOWN to waist or stand, never UP into the pack."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=117, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 141, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("UP", "A"))
+    assert act.reason in {"waist_return", "occupancy_stand", "combat_slash", "combat_approach"}
+    if act.reason == "waist_return":
+        assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_0x5e_inland_occupancy_nopath_stands() -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=117, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    _step(ctl, ram)
+    xy = (104, 117)
+    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
+        ctl._walker.grid.mark_blocked_ahead(*xy, direction)
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "occupancy_stand"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("UP"))
+
+
+def test_0x5e_off_column_occupancy_nopath_stands() -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=80, y=181, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
+    ctl = make_darknut_key_controller()
+    _step(ctl, ram)
+    xy = (80, 181)
+    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
+        ctl._walker.grid.mark_blocked_ahead(*xy, direction)
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "occupancy_stand"
+    assert list(act.action) == list(nes_idle_action())
+    assert list(act.action) != list(nes_action("LEFT"))
+
+
+def test_0x5e_death_pose_on_column_keeps_peeling() -> None:
+    """ROM death (116,189) still inside the entry column: peel LEFT, not UP into shield."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 120, 177, facing=0x04)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
+def test_0x6e_spill_reenters_north_not_fail_closed() -> None:
+    """ROM l8_npv4_5e leftover 0x6E (120,93): UP the open hole, do not fail."""
+    ram = _ram(screen=ROOM_MANHANDLA, x=120, y=93, health=0x26, bombs=7)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason.startswith("reenter_north_0x6e")
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x5e_hc3_does_not_write_health_keys_bombs_mk() -> None:
+    ram = _ram(
+        screen=ROOM_DARKNUT_KEY,
+        x=120,
+        y=189,
+        health=0x22,
+        keys=9,
+        bombs=7,
+        magic_key=0,
+    )
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+    ctl = make_darknut_key_controller()
+    _step(ctl, ram)
+    snap = read_snapshot(ram)
+    assert snap.heart_containers == 3
+    assert snap.health_is_full
+    assert ram[ADDR_HEALTH] == 0x22
+    assert ram[ADDR_KEYS] == 9
+    assert ram[ADDR_BOMBS] == 7
+    assert ram[ADDR_MAGIC_KEY] == 0
 
 
 def test_0x5e_center_key_walks_to_stand() -> None:
@@ -335,7 +658,12 @@ def test_unit_walk_records_semantic_reasons() -> None:
         "face_"
     )
     assert by_room["0x5e_arrive"] == "arrived_0x5e"
-    assert "combat" in by_room["0x5e_live"] or "leave_wall" in by_room["0x5e_live"]
+    assert by_room["0x5e_live"] in {
+        "column_peel",
+        "inland_leave",
+        "combat_approach",
+        "combat_flank",
+    } or ("combat" in by_room["0x5e_live"] or "leave_wall" in by_room["0x5e_live"])
     assert "key_north_0x4e" in by_room["0x4e"]
     assert "combat" in by_room["0x3e_live"] or "leave_wall" in by_room["0x3e_live"]
     assert "combat" in by_room["0x2e_live"] or "leave_wall" in by_room["0x2e_live"]

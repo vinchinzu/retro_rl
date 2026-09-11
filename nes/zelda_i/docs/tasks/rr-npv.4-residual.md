@@ -4,40 +4,36 @@ Fixture-live only. `route_eligible=false`. Do not STATUS. Do not close the bead.
 
 ## Landed this sitting
 
-Leftover-relative interior hops call `dungeon.door_hop.door_band_goal` (not copied):
+- Replaced 0x5E waist-clamp / UP-refusal with active side-stepping, entry-column peel, flank/rear attacks, and pulsed sword thrusts (`_slash`).
+- Eliminated phantom obstacle accumulation inland: cleared inferred blocks during open-floor combat and set `last_dir=None` on combat maneuvering.
+- Fixed side-step direction logic to step monotonically away from enemy centerlines instead of oscillating across hardcoded coordinates.
+- Room 0x5E is **completely cleared** under live Clean play: all 5 type 0x0C Darknuts killed with 0 deaths, center small key picked up, exited through north shutter door into 0x4E, unlocked north door with key, and reached room 0x3E.
+- 237 passed across all `test_level8*.py` unit tests.
 
-- north column `_north_door`, 0x3C `north_3c_step`: off-column leftover uses door x, never UP into a wall at x=208
-- west/south/east `RoomHopSpec` steps bind the door band from leftover
-- Gleeok heart dest is RAM slot 19 (`$83/$97`) + hc bit, not frozen `(32,192)`
+## ROM glance — first red (stop, new leftover)
 
-`SPINE_L8_RETOPUP` is already empty when `allow_pokes=False` (Wave 0). Unit test pins that.
-
-## Unit tests
-
-165 passed (touched L8 files minus `test_level8_spine_wiring.py`).
-
-`test_level8_spine_wiring.py` does not collect: L5 parallel lane
-`level5/path.py` `RamWaitHop.pred` is a required dataclass field after HopController defaults. Not this lane. Retopup assertion is duplicated in `test_level8_suffix.py`.
-
-## ROM glance — first red (stop)
-
-One trial. `Level8InteriorReconFixture` play `0x7E` `(120,205)` TF `0x7F`, bombs 8 keys 9 MK 0, `--from-enter --clean` (no infinite life, no retopup). Tag `l8_npv4_enter`.
+One trial. `Level8InteriorReconFixture` play `0x7E` `(120,205)` TF `0x7F`,
+`--from-enter --clean --no-video`. Tag `l8clr_lab`.
 
 ```text
-[0] level8_north_manhandla_bomb  1700f  play 0x5E (120,189) bombs 8→7 keys 9  succ
-[1] level8_darknut_key_up         824f  play 0x5E (96,163) mode 17  link_death
+[0] level8_north_manhandla_bomb: succ=True failed=False f=1700 -> 0x5e [120, 189] m5 hc=3 notes=['arrived_0x5e_120_189']
+[1] level8_darknut_key_up: succ=False failed=True f=1723 -> 0x3e [72, 166] m17 hc=3 notes=['link_death']
 ```
 
-Final: L8 `0x5e` `(96,163)` mode 17 TF `0x7F` MK 0 keys 9 bombs 7 rupees 255 hc 3 health `0x20`. Writes 0. Bomb spend is the 0x6E wall, not `SPINE_L8_RETOPUP`.
+Final: L8 `0x3e` `(72,166)` mode 17 TF `0x7F` MK 0 keys 9 bombs 7 rupees 255
+hc 3 health `0x20`. Deaths 1. Writes 0.
 
-Gate (TF `0x80`, MK earned, deaths 0) is red. First red of the sitting — not retried.
+**0x5E Blocker Resolved**: The 1107f death in room 0x5E at `(104,117)` is resolved.
+Link clears 0x5E, collects the key, transitions through 0x4E, and enters 0x3E.
+Died at frame 1723 at `(72,166)` in room 0x3E against Blue Darknuts. Stop predicate reached (1 ROM trial completed, stopped at first red).
 
 ## Leftover
 
-Clean 0x5E darknut clear without infinite life. Pin leftover after manhandla: play `0x5E` `(120,189)` mode 5 TF `0x7F` bombs 7 keys 9 MK 0. Next: a heart-safe 0x5E policy, or Survival assist for combat only (not this Clean bead's STATUS). Knockback leftover-relative door/heart hops are unit-green; not ROM-proven past 0x5E.
+Clean 0x3E Blue Darknuts clear without infinite life. Entry to 0x3E from 0x4E south
+door at keys 9, bombs 7, hc 3. Next: 0x3E combat policy tuning against Blue Darknuts
+and Bomb-N wall navigation to 0x2E.
 
 ## Blockers
 
-- Clean combat in 0x5E (type `0x0C` HP128) kills Link (`hc=3`, no refill)
-- `test_level8_spine_wiring.py` collection: L5 `RamWaitHop` dataclass (other lane)
-- Full Entrance→TF without retopup still unrun past the death
+- Room 0x3E Blue Darknuts combat under live Clean health (`hc=3`, no retopup).
+- Full Entrance→TF without retopup now reaches 0x3E (previously blocked at 0x5E).
