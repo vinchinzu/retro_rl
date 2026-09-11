@@ -76,6 +76,7 @@ from zelda_i.level3.overworld import LEVEL3
 from zelda_i.level3.raft_path import SPAWN_SETTLE_FRAMES
 from zelda_i.paths import RECORDINGS_DIR
 from zelda_i.ram import (
+    ADDR_LINK_FACING,
     ADDR_SELECTED_ITEM,
     PLAY_MODE,
     ZeldaSnapshot,
@@ -461,76 +462,90 @@ class Level3ManhandlaController(HopController):
             return driven
         return FrameAction(nes_idle_action(), "bombs_selected")
 
-    def _face(self, dx: int, dy: int) -> str:
-        if abs(dx) >= abs(dy):
-            return "RIGHT" if dx > 0 else "LEFT"
-        return "DOWN" if dy > 0 else "UP"
-
     def _fight(self, snap: ZeldaSnapshot, heads: list) -> FrameAction:
-        cx = sum(int(h.x) for h in heads) // len(heads)
-        cy = sum(int(h.y) for h in heads) // len(heads)
-        nearest = min(
-            heads, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y)
-        )
-        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        c_dist = abs(cx - snap.link_x) + abs(cy - snap.link_y)
-        dx, dy = cx - snap.link_x, cy - snap.link_y
-        face = self._face(dx, dy)
+        ram = self.env.get_ram() if self.env else None
+
         if self.bomb_cd > 0:
             self.bomb_cd -= 1
         if self.retreat_frames > 0:
             self.retreat_frames -= 1
-            # y=MAX away-RIGHT was east-wall death (184,173); DOWN past MAX is south door.
+
+        # Determine Center and Velocity
+        slot5 = next((o for o in heads if o.slot == 5), None)
+        if slot5:
+            cx, cy = int(slot5.x), int(slot5.y)
+            facing = slot5.facing if ram is None else read_u8(ram, ADDR_LINK_FACING + 5)
+        else:
+            cx = sum(int(h.x) for h in heads) // len(heads)
+            cy = sum(int(h.y) for h in heads) // len(heads)
+            facing = heads[0].facing if ram is None else read_u8(ram, ADDR_LINK_FACING + heads[0].slot)
+
+        dx = (1 if facing & 0x01 else 0) - (1 if facing & 0x02 else 0)
+        dy = (1 if facing & 0x04 else 0) - (1 if facing & 0x08 else 0)
+        speed = 0.5 if len(heads) >= 4 else 1.5
+        pred_cx = max(MANHANDLA_FIGHT_X_MIN + 8, min(MANHANDLA_FIGHT_X_MAX - 8, cx + int(round(48 * speed * dx))))
+
+        # North-of-waist guard: never chase north into the waist
+        if snap.link_y < MANHANDLA_FIGHT_Y_MIN:
+            return FrameAction(nes_action("DOWN"), "stay_south")
+
+        # 1. Fireball avoidance (Highest priority!)
+        dangerous_fb = [
+            p for p in snap.objects
+            if p.type_id == 0x56 and abs(p.x - snap.link_x) <= 16 and -8 <= (snap.link_y - p.y) <= 36
+        ]
+        if dangerous_fb:
+            nfb = min(dangerous_fb, key=lambda p: abs(p.x - snap.link_x) + abs(p.y - snap.link_y))
+            dodge = ("RIGHT" if snap.link_x <= MANHANDLA_FIGHT_X_MAX - 16 else "LEFT") if nfb.x <= snap.link_x else ("LEFT" if snap.link_x >= MANHANDLA_FIGHT_X_MIN + 16 else "RIGHT")
+            return FrameAction(nes_action(dodge), "dodge_fireball")
+
+        # 2. Post-bomb retreat handling: while a bomb is ticking, retreat away from centroid
+        if self.retreat_frames > 0:
             if snap.link_y >= MANHANDLA_FIGHT_Y_MAX:
                 toward = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
                 return FrameAction(nes_action(toward), "retreat_bomb")
             return FrameAction(nes_action("DOWN"), "retreat_bomb")
-        if snap.link_y < MANHANDLA_FIGHT_Y_MIN:
-            return FrameAction(nes_action("DOWN"), "stay_south")
+
+        # 3. Initial climb from south door
         if snap.link_y > MANHANDLA_FIGHT_Y_MAX:
             return FrameAction(nes_action("UP"), "climb")
-        if snap.link_x < MANHANDLA_FIGHT_X_MIN:
-            return FrameAction(nes_action("RIGHT"), "arena")
-        if snap.link_x > MANHANDLA_FIGHT_X_MAX:
-            return FrameAction(nes_action("LEFT"), "arena")
-        if dist < MANHANDLA_CONTACT:
-            if nearest.y <= snap.link_y and snap.link_y < MANHANDLA_FIGHT_Y_MAX:
+
+        # 4. Immediate Head Contact Avoidance
+        nearest_head = min(heads, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y))
+        dist_nearest = abs(nearest_head.x - snap.link_x) + abs(nearest_head.y - snap.link_y)
+        dhx, dhy = nearest_head.x - snap.link_x, nearest_head.y - snap.link_y
+        face_head = "UP" if dhy < -4 else ("DOWN" if dhy > 4 else ("RIGHT" if dhx > 0 else "LEFT"))
+
+        if dist_nearest < MANHANDLA_CONTACT:
+            if nearest_head.y <= snap.link_y and snap.link_y < MANHANDLA_FIGHT_Y_MAX:
                 return FrameAction(nes_action("DOWN"), "combat_backstep")
-            side = "LEFT" if nearest.x >= snap.link_x else "RIGHT"
-            return FrameAction(nes_action(side), "combat_backstep")
-        if (
-            snap.bombs > 0
-            and self.bomb_cd <= 0
-            and MANHANDLA_BOMB_MIN <= c_dist <= MANHANDLA_BOMB_MAX
-        ):
+            dodge = ("LEFT" if snap.link_x >= MANHANDLA_FIGHT_X_MIN + 16 else "RIGHT") if nearest_head.x >= snap.link_x else ("RIGHT" if snap.link_x <= MANHANDLA_FIGHT_X_MAX - 16 else "LEFT")
+            return FrameAction(nes_action(dodge), "combat_backstep")
+
+        # 5. Centroid Interception / Bomb Placement
+        if snap.bombs > 0 and self.bomb_cd <= 0:
             if self._selected() != B_SLOT_BOMBS:
                 return self._select_bombs(snap)
-            self.bomb_cd = MANHANDLA_BOMB_CD
-            self.retreat_frames = MANHANDLA_RETREAT
-            self.retreat_dir = "DOWN"
-            return FrameAction(nes_action(face, "B"), "place_bomb")
-        if snap.bombs <= 0 and dist <= MANHANDLA_SWORD:
-            nface = self._face(nearest.x - snap.link_x, nearest.y - snap.link_y)
-            return FrameAction(nes_action(nface, "A"), "sword_slash")
-        # South bomb-range stand. Dest y=waist walked (104,163)→(104,142) death.
-        stand_y = min(
-            MANHANDLA_FIGHT_Y_MAX,
-            max(MANHANDLA_FIGHT_Y_MIN, cy + MANHANDLA_BOMB_MAX),
-        )
-        dest = (cx, stand_y)
-        step = axis_dir(
-            (snap.link_x, snap.link_y), dest, y_first=False, tol=4
-        )
-        if step == "UP" and self.bomb_cd > 0:
-            step = None
-        if step and c_dist > MANHANDLA_BOMB_MAX:
-            return FrameAction(nes_action(step), "approach")
-        strafe = "LEFT" if (self.frames // 20) % 2 == 0 else "RIGHT"
-        if snap.link_x <= MANHANDLA_FIGHT_X_MIN + 8:
-            strafe = "RIGHT"
-        elif snap.link_x >= MANHANDLA_FIGHT_X_MAX - 8:
-            strafe = "LEFT"
-        return FrameAction(nes_action(strafe), "strafe")
+            can_bomb = (dy > 0 and 124 <= cy <= 136 and abs(snap.link_x - pred_cx) <= 8 and snap.link_y >= 165) or \
+                       (dy == 0 and 140 <= cy <= 160 and abs(snap.link_x - pred_cx) <= 12 and snap.link_y >= cy + 12) or \
+                       (len(heads) <= 2 and 24 <= dist_nearest <= MANHANDLA_BOMB_MAX)
+            if can_bomb:
+                self.bomb_cd, self.retreat_frames = 75, 55
+                b_dir = "UP" if len(heads) > 2 else face_head
+                return FrameAction(nes_action(b_dir, "B"), "place_bomb")
+
+        # 6. Sword fallback when out of bombs
+        if snap.bombs <= 0 and dist_nearest <= 28:
+            return FrameAction(nes_action(face_head, "A"), "sword_slash")
+
+        # 7. Intercept Positioning (Position Link at pred_cx in south band y=168..173)
+        target_x = pred_cx
+        target_y = min(MANHANDLA_FIGHT_Y_MAX, max(165, cy + 32))
+        if abs(snap.link_x - target_x) > 6:
+            return FrameAction(nes_action("RIGHT" if snap.link_x < target_x else "LEFT"), "approach")
+        if abs(snap.link_y - target_y) > 4:
+            return FrameAction(nes_action("DOWN" if snap.link_y < target_y else "UP"), "approach")
+        return FrameAction(nes_action("UP"), "approach")
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.level != LEVEL3:

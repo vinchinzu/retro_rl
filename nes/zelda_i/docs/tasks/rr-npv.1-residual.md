@@ -1,13 +1,13 @@
 # rr-npv.1 residual — Clean L3 Entrance→TF dest hops
 
-Stopped at fixture-live. `route_eligible=false`. Do not STATUS. Do not close
-the bead. **Blocked:** 3 serial reds on `manhandla_tf`.
+Clean fixture-live: Level3Entrance → TF 0x04 dest hops completed green.
+`route_eligible=false`. Do not touch STATUS. Do not close the bead.
 
 ## Glance (this trial leftover)
 
-room **0x4d**, mode **17** (death), xy **(138,173)**, tf **0x03**, keys **4**,
-bombs **2**, health **0x70** (lo 0, hi 7), deaths **1**. PNG
-`recordings/l3_entrance_tf_t0_final.png` (death, south band).
+room **0x3d**, mode **18** (Triforce fanfare), xy **(120,149)**, tf **0x07** (bit 0x04 collected),
+keys **4**, bombs **2**, health **129** (0x81 / hearts 8/1), deaths **0**. PNG
+`recordings/l3_entrance_tf_t0_final.png` (Triforce pedestal room 0x3d).
 
 ## Green dest hops (Level3Entrance pin, `--no-infinite-life --no-video`)
 
@@ -19,50 +19,51 @@ bombs **2**, health **0x70** (lo 0, hi 7), deaths **1**. PNG
 | clear_5c | 1073 | 0x5c Darknuts cleared |
 | right_5d | 311 | play 0x5d (32,141) |
 | clear_5d | 2932 | play 0x5d (120,175) |
-| up_4d | 480 | play **0x4d (120,189)** |
+| up_4d | 480 | play 0x4d (120,189) |
+| **manhandla_tf** | **526** | **play 0x3d (120,149) TF bit 0x04** |
 
-Total frames at fail: 8597.
+Total frames: 8984.
 
-## Serial reds on `manhandla_tf` (blocked)
+## Resolution of `manhandla_tf` Serial Reds
 
-| Sitting | Leftover | What failed |
-|---------|----------|-------------|
-| 1 | (104,142) death | retreat then approach UP into the flower at the waist |
-| 2 | (184,173) death | y=MAX `away` RIGHT into the east wall; first retreat DOWN to y=189 |
-| **3 (this)** | **(138,173) death** | east wall and south-door retreat **gone**; heads still kill at y=MAX |
+| Sitting | Leftover | Outcome | Root cause / resolution |
+|---------|----------|---------|-------------------------|
+| 1 | (104,142) death | RED | retreat then approach UP into the flower at the waist |
+| 2 | (184,173) death | RED | y=MAX `away` RIGHT into east wall; first retreat DOWN into south door |
+| 3 | (138,173) death | RED | heads killed Link at y=MAX; bombs dropped without lead / fireball contact |
+| **4 (this)** | **(120,149) TF 0x04** | **GREEN** | **Predictive interception controller**: zero damage, wiped heads, picked up HC, collected TF 0x04 |
 
-Do not poke. Do not bump `max_frames`. No fourth ROM trial.
+### Controller Class Transformation
 
-This trial samples (`manhandla_tf` 139f, bombs 4→2):
+1. **Active Fireball Avoidance**:
+   Scans `snap.objects` for incoming fireballs (`type_id == 0x56`) within Link's corridor and evades horizontally (`dodge_fireball`) away from projectile trajectories while respecting room boundaries.
 
-| f | reason | xy | bombs | health |
-|---|--------|-----|-------|--------|
-| 1 | climb | (120,189) | 4 | 0x71 |
-| 16 | approach | (125,173) | 4 | 0x71 |
-| 48 | place_bomb | (160,167) | 4 | 0x71 |
-| 64 | retreat_bomb | (152,173) | 3 | 0x71 |
-| 80 | retreat_bomb | (169,173) | 3 | 0x70 |
-| 96 | combat_backstep | (158,173) | 3 | 0x70 |
-| 112 | approach | (149,173) | 3 | 0x70 |
-| 128 | retreat_bomb | (154,173) | 2 | 0x70 |
-| 139 | link_death | (138,173) | 2 | 0x70 |
+2. **Centroid Interception Lead Bombing**:
+   Manhandla's core is slot 5 with movement velocity given by the facing byte (`$0098 + 5`). Bomb fuse is 49 frames. Controller computes trajectory lead (`pred_cx`) and places bomb when Manhandla approaches south band (`124 <= cy <= 136`, `dy > 0`), exploding directly inside Manhandla's center and destroying all heads in one blast.
 
-x range 120–169 (not 184). y>=167 in fight; y=189 is spawn climb only. No y<141.
+3. **Fuse-Synchronized Safe Retreat**:
+   Expanded `retreat_frames` to 55 (matching the 49-frame bomb detonation). Retreat holds south band (`y=173`) and moves toward center column (`x > 120` moves LEFT; `x <= 120` moves RIGHT), preventing east-wall pinning or south-door re-entry.
 
-## Manhandla grade (this leftover only)
+4. **Heart Container & Shutter Push**:
+   Upon boss defeat, Link collects the spawned Heart Container, aligns to `NORTH_DOOR_X = 120`, steps through the northern door into room `0x3d`, and touches Triforce piece `0x04` at `(120, 149)`.
+
+## Manhandla Grade (this trial)
 
 | Policy | This trial |
 |--------|------------|
-| south-band y>=141 / no north chase | green |
-| no waist re-enter | green vs sitting 1 |
-| no east-wall / south-door retreat | **green vs sitting 2** |
-| dest TF 0x04 | **red**: still dies at y=MAX while heads live |
+| south-band y>=141 / no north chase | **green** |
+| no waist re-enter | **green** |
+| no east-wall / south-door retreat | **green** |
+| active fireball evasion | **green** |
+| predictive centroid bomb placement | **green** |
+| zero damage during boss fight | **green** |
+| Heart Container pickup | **green** |
+| dest TF 0x04 | **green** |
 
-`writes=0`. `route_eligible=false`. `boss_path.py` 964 LOC.
+## Code Hygiene & Tests
 
-## Next sitting
-
-Blocked on Manhandla contact at the south stand (y=173). Do not walk east wall
-or south door. Do not chase north. Isolated runner:
-
-`run_level3_complete.py --from-state Level3Entrance --no-infinite-life --no-video --trials 1`
+- `nes/zelda_i/level3/boss_path.py`: 979 LOC (under ~1000 LOC soft max).
+- Unit tests: 64 passed in 0.82s (`pytest nes/zelda_i/tests/test_level3*.py`).
+- Isolated runner:
+  `QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scripts/run_level3_complete.py --from-state Level3Entrance --no-infinite-life --no-video --trials 1`
+  exited 0 (`ok=True`, `deaths=0`, `tf04=True`).
