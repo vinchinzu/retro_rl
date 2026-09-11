@@ -418,7 +418,7 @@ def room_40_grid() -> OccupancyGrid:
 # (OccupancyWalker). Do not screenshot-tile a 16px grid. Dest cells stay
 # open: south approach band, HC mid, north door to TF 0x03.
 ROOM_13_SPAWN_XY = (32, 141)
-ROOM_13_SOUTH_Y = 165
+ROOM_13_SOUTH_Y = 189
 ROOM_13_SOUTH_XY = (120, ROOM_13_SOUTH_Y)
 ROOM_13_HC_XY = (120, 125)
 ROOM_13_NORTH_DOOR_XY = (120, 93)

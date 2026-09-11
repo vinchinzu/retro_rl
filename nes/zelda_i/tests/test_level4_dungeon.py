@@ -310,6 +310,56 @@ def test_level4_gleeok13_attaches_after_clear12() -> None:
     assert not level4_gleeok13_success(read_snapshot(ram))
 
 
+def test_level4_gleeok13_west_of_block_routes_around() -> None:
+    """West-of-block leftover (72, 150) routes UP to y<=117, RIGHT to 112, DOWN to 144."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level4.dungeon import PUSH_12_STAND
+    from zelda_i.level4.gleeok13 import make_gleeok13_controller
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        PLAY_MODE,
+        read_snapshot,
+    )
+    import numpy as np
+
+    ctl = make_gleeok13_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_LEVEL] = 4
+    ram[ADDR_SCREEN] = 0x12
+
+    # Leftover west of block at (72, 150): routes UP
+    ram[ADDR_LINK_X] = 72
+    ram[ADDR_LINK_Y] = 150
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "stand_avoid_block_up"
+    assert list(act.action) == list(nes_action("UP"))
+
+    # At y=117: routes RIGHT toward x=112
+    ram[ADDR_LINK_Y] = 117
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "stand_avoid_block_right"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+    # At x=112, y=117: routes DOWN toward y=144
+    ram[ADDR_LINK_X] = 112
+    ram[ADDR_LINK_Y] = 117
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "stand_y"
+    assert list(act.action) == list(nes_action("DOWN"))
+
+    # At PUSH_12_STAND (112, 144): pushes LEFT
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = PUSH_12_STAND
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "push_block"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+
+
 def test_l4_bomb_walls_pause_select_leftover_slot() -> None:
     """L3 leftover is poke-assisted bombs; composition still pause-selects."""
     from types import SimpleNamespace

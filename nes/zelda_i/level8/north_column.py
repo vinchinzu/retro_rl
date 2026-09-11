@@ -333,6 +333,11 @@ class _NorthColumnBase(HopController):
     _map_wp: int = field(default=0, init=False)
     _key_wait: int = field(default=0, init=False)
     _keys_in: int | None = field(default=None, init=False)
+    _bomb_cd: int = field(default=0, init=False)
+    _3e_peeled: bool = field(default=False, init=False)
+    _3e_wall_bombed: bool = field(default=False, init=False)
+    _bomb_retreat: int = field(default=0, init=False)
+    _retreat_dir: str = field(default="DOWN", init=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -357,6 +362,11 @@ class _NorthColumnBase(HopController):
             self._map_wp = 0
             self._key_wait = 0
             self._keys_in = None
+            self._bomb_cd = 0
+            self._3e_peeled = False
+            self._3e_wall_bombed = False
+            self._bomb_retreat = 0
+            self._retreat_dir = "DOWN"
             return
         self._room_frames += 1
 
@@ -515,20 +525,32 @@ class _NorthColumnBase(HopController):
             return FrameAction(nes_action(btn, "A"), "combat_slash")
         return FrameAction(nes_action(btn), "combat_slash")
 
+    def _flank_rear_slash(self, xy: tuple[int, int], live: tuple) -> FrameAction | None:
+        """Flank or rear attack opportunities on any live Darknut."""
+        for d in live:
+            ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
+            if ofc in (0x04, 0x08) and abs(oy - xy[1]) <= 8 and 10 <= abs(ox - xy[0]) <= 22:
+                return self._slash("RIGHT" if xy[0] < ox else "LEFT")
+            if ofc in (0x01, 0x02) and abs(ox - xy[0]) <= 8 and 10 <= abs(oy - xy[1]) <= 22:
+                return self._slash("DOWN" if xy[1] < oy else "UP")
+            if ofc == 0x04 and abs(ox - xy[0]) <= 6 and 10 <= (oy - xy[1]) <= 22:
+                return self._slash("DOWN")
+            if ofc == 0x08 and abs(ox - xy[0]) <= 6 and 10 <= (xy[1] - oy) <= 22:
+                return self._slash("UP")
+            if ofc == 0x01 and abs(oy - xy[1]) <= 6 and 10 <= (ox - xy[0]) <= 22:
+                return self._slash("RIGHT")
+            if ofc == 0x02 and abs(oy - xy[1]) <= 6 and 10 <= (xy[0] - ox) <= 22:
+                return self._slash("LEFT")
+        return None
+
     def _heart_safe_darknut(self, snap: ZeldaSnapshot) -> FrameAction:
-        """0x5E / 0x3E type 0x0C: side-stepping, south entry peel, rear/flank attacks."""
+        """0x5E type 0x0C: side-stepping, south entry peel, rear/flank attacks."""
         room = int(snap.screen)
-        xy = (int(snap.link_x), int(snap.link_y))
-
-        # South doorway entry in 0x3E: Link spawns at y=205, step UP into room
-        if room == ROOM_BLUE_DARKNUTS and xy[1] > 189:
-            self._walker.last_dir = "UP"
-            return FrameAction(nes_action("UP"), "combat_door_enter")
-
         if room == ROOM_BLUE_DARKNUTS:
-            self._bind_3e_grid()
-        else:
-            self._bind_5e_grid()
+            return self._combat_3e(snap)
+
+        xy = (int(snap.link_x), int(snap.link_y))
+        self._bind_5e_grid()
 
         live = _live_of(snap, (TYPE_0C,))
         self._walker.observe(xy)
@@ -544,9 +566,8 @@ class _NorthColumnBase(HopController):
         bodies = live + _live_of(snap, (STATUE_FIREBALL,))
 
         # Column peel before contact: hold LEFT until off entry column, then inland UP
-        peel_dist = COLUMN_PEEL_3E if room == ROOM_BLUE_DARKNUTS else COLUMN_PEEL
         if xy[1] >= SOUTH_HOLD_Y:
-            peel = self._column_peel_dir(xy, bodies, peel_dist=peel_dist)
+            peel = self._column_peel_dir(xy, bodies, peel_dist=COLUMN_PEEL)
             if peel is not None:
                 self._walker.last_dir = peel
                 return FrameAction(nes_action(peel), "column_peel")
@@ -560,53 +581,17 @@ class _NorthColumnBase(HopController):
         target = min(live, key=lambda o: manhattan(xy[0], xy[1], o.x, o.y))
         dist = manhattan(xy[0], xy[1], target.x, target.y)
 
-        # Flank / rear attack opportunities on ANY live Darknut
-        min_reach = 4 if room == ROOM_BLUE_DARKNUTS else 10
-        rear_span = 8 if room == ROOM_BLUE_DARKNUTS else 6
-        for d in live:
-            ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
-            if ofc in (0x04, 0x08):
-                if abs(oy - xy[1]) <= 8 and min_reach <= abs(ox - xy[0]) <= 22:
-                    btn = "RIGHT" if xy[0] < ox else "LEFT"
-                    return self._slash(btn)
-            if ofc in (0x01, 0x02):
-                if abs(ox - xy[0]) <= 8 and min_reach <= abs(oy - xy[1]) <= 22:
-                    btn = "DOWN" if xy[1] < oy else "UP"
-                    return self._slash(btn)
-            if ofc == 0x04 and abs(ox - xy[0]) <= rear_span and min_reach <= (oy - xy[1]) <= 22:
-                return self._slash("DOWN")
-            if ofc == 0x08 and abs(ox - xy[0]) <= rear_span and min_reach <= (xy[1] - oy) <= 22:
-                return self._slash("UP")
-            if ofc == 0x01 and abs(oy - xy[1]) <= rear_span and min_reach <= (ox - xy[0]) <= 22:
-                return self._slash("RIGHT")
-            if ofc == 0x02 and abs(oy - xy[1]) <= rear_span and min_reach <= (xy[0] - ox) <= 22:
-                return self._slash("LEFT")
+        slash = self._flank_rear_slash(xy, live)
+        if slash is not None:
+            return slash
 
-        if room == ROOM_BLUE_DARKNUTS:
-            # Statue fireball avoidance in 0x3E
-            for fb in _live_of(snap, (STATUE_FIREBALL,)):
-                fx, fy = int(fb.x), int(fb.y)
-                if manhattan(xy[0], xy[1], fx, fy) <= 24:
-                    dy = xy[1] - fy
-                    dx = xy[0] - fx
-                    btn = "DOWN" if dy >= 0 and xy[1] < 173 else "UP"
-                    nxt = predicted_xy(xy[0], xy[1], btn)
-                    if self._walker.grid.passable(*nxt):
-                        self._walker.last_dir = None
-                        return FrameAction(nes_action(btn), "combat_flank")
-                    btn = "LEFT" if dx <= 0 else "RIGHT"
-                    nxt = predicted_xy(xy[0], xy[1], btn)
-                    if self._walker.grid.passable(*nxt):
-                        self._walker.last_dir = None
-                        return FrameAction(nes_action(btn), "combat_flank")
 
         # Immediate threat: side-step perpendicular to incoming Darknut
-        side_tol = 14 if room == ROOM_BLUE_DARKNUTS else 12
         for d in live:
             ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
             d_dist = abs(xy[0] - ox) + abs(xy[1] - oy)
             if d_dist <= 28:
-                if ofc == 0x04 and xy[1] >= oy and abs(xy[0] - ox) <= side_tol:
+                if ofc == 0x04 and xy[1] >= oy and abs(xy[0] - ox) <= 12:
                     btn = "LEFT" if (xy[0] <= ox and xy[0] > 48) or xy[0] >= 200 else "RIGHT"
                     nxt = predicted_xy(xy[0], xy[1], btn)
                     if not self._walker.grid.passable(*nxt):
@@ -615,7 +600,7 @@ class _NorthColumnBase(HopController):
                     if self._walker.grid.passable(*nxt):
                         self._walker.last_dir = None
                         return FrameAction(nes_action(btn), "combat_flank")
-                if ofc == 0x08 and xy[1] <= oy and abs(xy[0] - ox) <= side_tol:
+                if ofc == 0x08 and xy[1] <= oy and abs(xy[0] - ox) <= 12:
                     btn = "LEFT" if (xy[0] <= ox and xy[0] > 48) or xy[0] >= 200 else "RIGHT"
                     nxt = predicted_xy(xy[0], xy[1], btn)
                     if not self._walker.grid.passable(*nxt):
@@ -624,7 +609,7 @@ class _NorthColumnBase(HopController):
                     if self._walker.grid.passable(*nxt):
                         self._walker.last_dir = None
                         return FrameAction(nes_action(btn), "combat_flank")
-                if ofc == 0x02 and xy[0] <= ox and abs(xy[1] - oy) <= side_tol:
+                if ofc == 0x02 and xy[0] <= ox and abs(xy[1] - oy) <= 12:
                     btn = "UP" if (xy[1] <= oy and xy[1] > 96) or xy[1] >= 173 else "DOWN"
                     nxt = predicted_xy(xy[0], xy[1], btn)
                     if not self._walker.grid.passable(*nxt):
@@ -633,7 +618,7 @@ class _NorthColumnBase(HopController):
                     if self._walker.grid.passable(*nxt):
                         self._walker.last_dir = None
                         return FrameAction(nes_action(btn), "combat_flank")
-                if ofc == 0x01 and xy[0] >= ox and abs(xy[1] - oy) <= side_tol:
+                if ofc == 0x01 and xy[0] >= ox and abs(xy[1] - oy) <= 12:
                     btn = "UP" if (xy[1] <= oy and xy[1] > 96) or xy[1] >= 173 else "DOWN"
                     nxt = predicted_xy(xy[0], xy[1], btn)
                     if not self._walker.grid.passable(*nxt):
@@ -647,13 +632,7 @@ class _NorthColumnBase(HopController):
         tfc = int(target.facing)
         tx, ty = int(target.x), int(target.y)
         if tfc in (0x04, 0x08):
-            cand_x = tx - 16 if tx >= 120 else tx + 16
-            if room == ROOM_BLUE_DARKNUTS:
-                if 84 <= cand_x <= 110:
-                    cand_x = 76 if tx < 96 else 116
-                elif 132 <= cand_x <= 158:
-                    cand_x = 124 if tx < 144 else 168
-            cand_x = min(max(cand_x, 48), 200)
+            cand_x = min(max(tx - 16 if tx >= 120 else tx + 16, 48), 200)
             if abs(xy[0] - cand_x) > 4:
                 btn = "RIGHT" if xy[0] < cand_x else "LEFT"
                 nxt = predicted_xy(xy[0], xy[1], btn)
@@ -670,10 +649,7 @@ class _NorthColumnBase(HopController):
             self._walker.last_dir = None
             return FrameAction(nes_action(face), "combat_approach")
         else:
-            cand_y = ty - 16 if ty >= 150 else ty + 16
-            if room == ROOM_BLUE_DARKNUTS and 126 <= cand_y <= 150:
-                cand_y = 120 if ty <= 138 else 156
-            cand_y = min(max(cand_y, 96), 173)
+            cand_y = min(max(ty - 16 if ty >= 150 else ty + 16, 96), 173)
             if abs(xy[1] - cand_y) > 4:
                 btn = "DOWN" if xy[1] < cand_y else "UP"
                 nxt = predicted_xy(xy[0], xy[1], btn)
@@ -689,6 +665,157 @@ class _NorthColumnBase(HopController):
             face = "DOWN" if xy[1] < ty else "UP"
             self._walker.last_dir = None
             return FrameAction(nes_action(face), "combat_approach")
+
+    def _combat_3e(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Room 0x3E Blue Darknuts: west corridor kiting, tactical bombs, and north wall clear."""
+        if self._bomb_cd > 0:
+            self._bomb_cd -= 1
+
+        xy = (int(snap.link_x), int(snap.link_y))
+        live = _live_of(snap, (TYPE_0C,))
+        fireballs = _live_of(snap, (STATUE_FIREBALL,))
+        self._bind_3e_grid()
+
+        # 1. South doorway entry
+        if xy[1] > 189:
+            self._walker.last_dir = "UP"
+            return FrameAction(nes_action("UP"), "combat_door_enter")
+
+        # 2. Initial peel to x=64, y=165 for corridor tactical placement
+        if not self._3e_peeled:
+            if xy[0] > 64 and xy[1] >= SOUTH_HOLD_Y:
+                self._walker.last_dir = "LEFT"
+                return FrameAction(nes_action("LEFT"), "column_peel")
+            if xy[1] > 165:
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "peel_north")
+            self._3e_peeled = True
+
+        # 3. Post-bomb retreat to safety
+        if self._bomb_retreat > 0:
+            self._bomb_retreat -= 1
+            if self._retreat_dir == "DOWN":
+                btn = "DOWN" if xy[1] < 181 else None
+            else:
+                btn = "UP" if xy[1] > 93 else None
+            if btn is not None:
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), f"bomb_retreat_{btn.lower()}")
+
+        # 4. At north bomb stand (120, <=105): place bomb facing UP and push through
+        if abs(xy[0] - 120) <= 6 and xy[1] <= 105:
+            if snap.bombs > 0 and not self._3e_wall_bombed:
+                self._3e_wall_bombed = True
+                self._bomb_cd = 75
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP", "B"), "bomb_north_wall")
+            self._walker.last_dir = "UP"
+            return FrameAction(nes_action("UP"), "push_north_hole")
+
+        # 5. Fireball avoidance
+        for fb in fireballs:
+            fx, fy = int(fb.x), int(fb.y)
+            if manhattan(xy[0], xy[1], fx, fy) <= 20:
+                if abs(fy - xy[1]) <= 8:
+                    btn = "DOWN" if xy[1] >= fy and xy[1] < 181 else "UP"
+                    self._walker.last_dir = btn
+                    return FrameAction(nes_action(btn), f"dodge_fb_{btn.lower()}")
+                if abs(fx - xy[0]) <= 8:
+                    if xy[1] <= 100 and xy[0] >= 96:
+                        btn = "RIGHT"
+                    else:
+                        btn = "LEFT" if xy[0] <= fx and xy[0] > 48 else "RIGHT"
+                    self._walker.last_dir = btn
+                    return FrameAction(nes_action(btn), f"dodge_fb_{btn.lower()}")
+
+        # 6. Immediate incoming threats (enemies heading toward Link)
+        for d in live:
+            ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
+            if ofc == 0x04 and oy < xy[1] and abs(ox - xy[0]) <= 12 and (xy[1] - oy) <= 36:
+                if 16 <= (xy[1] - oy) <= 40 and snap.bombs >= 2 and self._bomb_cd <= 0:
+                    self._bomb_cd = 75
+                    self._bomb_retreat = 45
+                    self._retreat_dir = "DOWN"
+                    self._walker.last_dir = "UP"
+                    return FrameAction(nes_action("UP", "B"), "threat_bomb_up")
+                if abs(ox - xy[0]) <= 6:
+                    btn = "RIGHT" if (xy[0] <= 64 and xy[0] < 72) else "LEFT"
+                    self._walker.last_dir = btn
+                    return FrameAction(nes_action(btn), "threat_sidestep_x")
+                btn = "DOWN" if xy[1] < 181 else "UP"
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), "threat_retreat_down")
+
+            if ofc == 0x08 and oy > xy[1] and abs(ox - xy[0]) <= 12 and (oy - xy[1]) <= 36:
+                if 16 <= (oy - xy[1]) <= 40 and snap.bombs >= 2 and self._bomb_cd <= 0:
+                    self._bomb_cd = 75
+                    self._bomb_retreat = 45
+                    self._retreat_dir = "UP"
+                    self._walker.last_dir = "DOWN"
+                    return FrameAction(nes_action("DOWN", "B"), "threat_bomb_down")
+                if abs(ox - xy[0]) <= 6:
+                    btn = "RIGHT" if (xy[0] <= 64 and xy[0] < 72) else "LEFT"
+                    self._walker.last_dir = btn
+                    return FrameAction(nes_action(btn), "threat_sidestep_x")
+                btn = "UP" if xy[1] > 93 else "DOWN"
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), "threat_retreat_up")
+
+            if ofc == 0x02 and ox > xy[0] and abs(oy - xy[1]) <= 14 and (ox - xy[0]) <= 40:
+                btn = "UP" if xy[1] > 125 else "DOWN"
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), "threat_sidestep_y")
+
+            if ofc == 0x01 and ox < xy[0] and abs(oy - xy[1]) <= 12 and (xy[0] - ox) <= 36:
+                btn = "DOWN" if xy[1] < 181 else "UP"
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), "threat_sidestep_y")
+
+        # 7. Flank / rear attacks on ANY Darknut
+        slash = self._flank_rear_slash(xy, live)
+        if slash is not None:
+            return slash
+
+
+        # 8. Advance north towards BOMB_NORTH_STAND if corridor & north passage are clear
+        corridor_clear = not any(d.x <= 76 and d.y >= 93 for d in live)
+        north_clear = not any(93 <= d.y <= 116 and d.x <= 130 for d in live)
+
+        if corridor_clear and north_clear:
+            if xy[1] > 109 and xy[0] <= 72:
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "advance_north")
+            if xy[0] < 120 and xy[1] <= 112:
+                self._walker.last_dir = "RIGHT"
+                return FrameAction(nes_action("RIGHT"), "advance_east")
+            if xy[1] > 105 and abs(xy[0] - 120) <= 4:
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "advance_stand")
+            if abs(xy[0] - 120) <= 4 and xy[1] <= 105:
+                if snap.bombs > 0 and not self._3e_wall_bombed:
+                    self._3e_wall_bombed = True
+                    self._bomb_cd = 75
+                    self._walker.last_dir = "UP"
+                    return FrameAction(nes_action("UP", "B"), "bomb_north_wall")
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "push_north_hole")
+
+        # 9. Kite in west corridor
+        if xy[0] <= 72:
+            if xy[1] < 133:
+                self._walker.last_dir = "DOWN"
+                return FrameAction(nes_action("DOWN"), "kite_down")
+            if xy[1] > 165:
+                self._walker.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "kite_up")
+            if live:
+                target = min(live, key=lambda o: manhattan(xy[0], xy[1], o.x, o.y))
+                btn = "UP" if target.y < xy[1] else "DOWN"
+                self._walker.last_dir = btn
+                return FrameAction(nes_action(btn), f"face_target_{btn.lower()}")
+
+        self._walker.last_dir = None
+        return FrameAction(nes_idle_action(), "combat_stand")
 
     def report(self) -> dict[str, Any]:
         out = super().report()

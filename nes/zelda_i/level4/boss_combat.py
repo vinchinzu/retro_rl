@@ -71,7 +71,7 @@ FIREBALL_DODGE_DIST_LOW_HP = 22
 # dodges residual fireballs (rr-gjey).
 LOW_HP_THRESHOLD = 107
 FIGHT_MAX_FRAMES = 20000
-APPROACH_SOUTH_Y = 165
+APPROACH_SOUTH_Y = 189
 # Post-boss HC hunt waypoints (mid + north band; residual fireball danger).
 HC_STANDS: tuple[tuple[int, int], ...] = (
     (120, 125),
@@ -384,31 +384,30 @@ class Level4GleeokFightController:
                             if assist is not None:
                                 assist.apply_env(env, frame=total[0])
                             continue
-                    bx = bodies[0].x if bodies else None
-                    goal = approach_goal(snap.link_x, snap.link_y, bx)
-                    at_south = snap.link_y >= APPROACH_SOUTH_Y
-                    aligned = bx is None or abs(snap.link_x - int(bx)) <= 8
-                    if at_south and aligned:
-                        self._approached = True
-                        self.walker.last_dir = None
-                        self.notes.append(
-                            f"approach_south f={frame} "
-                            f"xy=({snap.link_x},{snap.link_y}) "
-                            f"hp={snap.health} dodge_thr={dodge_thr} "
-                            f"misses={self.walker.misses}"
-                        )
+                    if snap.link_y < APPROACH_SOUTH_Y:
+                        env.step(nes_action("DOWN"))
+                        total[0] += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=total[0])
                         continue
-                    direction = self.walker.next_dir(
-                        (snap.link_x, snap.link_y),
-                        goal,
+                    bx = bodies[0].x if bodies else 124
+                    if abs(snap.link_x - bx) > 8:
+                        env.step(
+                            nes_action(
+                                "RIGHT" if snap.link_x < bx else "LEFT"
+                            )
+                        )
+                        total[0] += 1
+                        if assist is not None:
+                            assist.apply_env(env, frame=total[0])
+                        continue
+                    self._approached = True
+                    self.walker.last_dir = None
+                    self.notes.append(
+                        f"approach_south f={frame} "
+                        f"xy=({snap.link_x},{snap.link_y}) "
+                        f"hp={snap.health} dodge_thr={dodge_thr}"
                     )
-                    if direction is None:
-                        env.step(nes_idle_action())
-                    else:
-                        env.step(nes_action(direction))
-                    total[0] += 1
-                    if assist is not None:
-                        assist.apply_env(env, frame=total[0])
                     continue
 
                 # Tight fireball dodge (horizontal) when not invulnerable.
@@ -516,14 +515,11 @@ class Level4GleeokFightController:
                     continue
                 tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
                 if abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
-                    direction = self.walker.next_dir(
-                        (snap.link_x, snap.link_y),
-                        (tx, ty),
-                    )
-                    if direction is None:
-                        env.step(nes_idle_action())
+                    if abs(snap.link_y - ty) >= abs(snap.link_x - tx):
+                        d = "DOWN" if snap.link_y < ty else "UP"
                     else:
-                        env.step(nes_action(direction))
+                        d = "RIGHT" if snap.link_x < tx else "LEFT"
+                    env.step(nes_action(d))
                 else:
                     self.walker.last_dir = None
                     env.step(nes_idle_action())
