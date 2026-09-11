@@ -27,6 +27,10 @@ from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 from harvest.tasks.recorded_task import RecordedTask
 from harvest.planner.day_plan_status import TASKS_DIR, tilemaps_match
 
+# Frames a NavTask waits before re-searching once both find_path and
+# find_frontier_path have come back empty. See _repath_cooldown.
+NAV_REPATH_COOLDOWN_FRAMES = 12
+
 _OPPOSITE_FACE = {
     "up": "down",
     "down": "up",
@@ -169,6 +173,13 @@ class NavTask(Task):
     _step_count: int = field(default=0, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
     _door_leave_steps: int = field(default=0, init=False)
+    # Frames to wait before re-searching after both searches came back empty.
+    # A sealed goal costs a full failed find_path *plus* a find_frontier_path
+    # every single frame otherwise, and the path stays empty, so the next
+    # frame pays it again -- up to the 9000f phase timeout. run19 D6 crawled
+    # to ~66 f/s (vs ~344 f/s normal) on exactly this once the crop pocket
+    # filled in. Retrying 12f apart costs 0.2s of game time and ~1/12 the CPU.
+    _repath_cooldown: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -177,6 +188,7 @@ class NavTask(Task):
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
         self._door_leave_steps = 0
+        self._repath_cooldown = 0
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -324,6 +336,13 @@ class NavTask(Task):
             self._navigator.stasis = 0
 
         # Path if needed (use hop target within viewport range)
+        if not self._navigator.path and self._repath_cooldown > 0:
+            self._repath_cooldown -= 1
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(self._fallback_action(world.ram)),
+                reason="repath cooldown",
+            )
         if not self._navigator.path:
             hop = self._hop_target()
             goal = self._pathfinder.find_nearest_walkable(world.ram, hop, max_radius=4)
@@ -336,7 +355,9 @@ class NavTask(Task):
             if path:
                 self._navigator.path = path
                 self._navigator.stasis = 0
+                self._repath_cooldown = 0
             else:
+                self._repath_cooldown = NAV_REPATH_COOLDOWN_FRAMES
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._fallback_action(world.ram)))
 
         action = self._navigator.follow_path(world.ram)
