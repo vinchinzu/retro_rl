@@ -280,24 +280,71 @@ ROOM_33_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
-# Water-maze walkable loop. `_STALFOS_PATROL` at y=149 x-first walks into
-# water; engage=96 from (128,149) UP-chases the north Goriya and stalls
-# (live Survival, 2 Goriyas left, 6000f).
-# Adjacent-ish cycle: north of the mid water (y≲133) must go around
-# east/west, never DOWN x=128 into the (136,125) pocket.
+# Water-maze walkable loop. The mid-row y=129..151 is blocked by water
+# between cols 65 and 175; safe cross-passages are col 64 and col 176.
 _ROOM_23_MAZE: tuple[tuple[int, int], ...] = (
     (120, 93),
-    (112, 93),
-    (112, 133),
-    (128, 133),
-    (114, 117),
-    (80, 93),
-    (64, 117),
-    (64, 149),
-    (96, 149),
-    (128, 173),
-    (176, 149),
-    (176, 117),
+    (120, 125),
+    (64, 125),
+    (64, 157),
+    (120, 157),
+    (176, 157),
+    (176, 125),
+    (120, 125),
+)
+
+_ROOM_23_BLOCKED: tuple[tuple[int, int], ...] = (
+    # Top wall
+    *(
+        (x, y)
+        for x in range(32, 224)
+        for y in range(80, 88)
+    ),
+    # East wall
+    *(
+        (x, y)
+        for x in range(209, 224)
+        for y in range(88, 193)
+    ),
+    # West block
+    *(
+        (x, y)
+        for x in range(33, 96)
+        for y in (*range(97, 120), *range(161, 184))
+    ),
+    *(
+        (x, y)
+        for x in range(33, 64)
+        for y in range(120, 161)
+    ),
+    # Center water bar
+    *(
+        (x, y)
+        for x in range(65, 176)
+        for y in range(129, 152)
+    ),
+    # East block
+    *(
+        (x, y)
+        for x in range(145, 208)
+        for y in (*range(97, 120), *range(161, 184))
+    ),
+    *(
+        (x, y)
+        for x in range(177, 208)
+        for y in range(120, 161)
+    ),
+    # South wall & exterior
+    *(
+        (x, y)
+        for x in (*range(32, 120), *range(121, 224))
+        for y in range(193, 201)
+    ),
+    *(
+        (x, y)
+        for x in range(32, 224)
+        for y in range(201, 208)
+    ),
 )
 
 ROOM_23_SPEC = DungeonRoomSpec(
@@ -321,30 +368,26 @@ ROOM_23_SPEC = DungeonRoomSpec(
         patrol=_ROOM_23_MAZE,
         engage_distance=24,
         attack_phase=2,
-        # Live: leave_wall UP at y>173 pinned Link in the south door
-        # (787 occupancy misses, 0 kills). The U-turn band to y=189 is
-        # playable here, so only the door row itself is off-limits.
         avoid_walls=True,
-        avoid_wall_bounds=(56, 200, 109, 189),
+        avoid_wall_bounds=(56, 200, 88, 192),
         split_y=141,
         occupancy_patrol=True,
+        occupancy_blocked=_ROOM_23_BLOCKED,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        # Live key stand is (114, 117) on the east-to-west upper channel.
-        # y=149 is the only greedy join from the west pocket; north combat
-        # cannot X-first to (176, 149), so the list continues through the
-        # south U-turn (128,181)→(96,181)→(96,149) after a stuck skip.
+        # Key drops at (128, 117) on the north channel. Loop routes through
+        # the east and west channels avoiding center water.
         waypoints=(
-            (176, 149),
-            (176, 117),
-            (114, 117),
-            (128, 133),
-            (128, 173),
-            (128, 181),
-            (96, 181),
-            (96, 149),
+            (128, 117),
+            (120, 125),
+            (64, 125),
+            (64, 157),
+            (120, 157),
+            (176, 157),
+            (176, 125),
+            (120, 125),
         ),
     ),
     room_item_id=0x19,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import List, Optional
 
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
@@ -19,41 +20,60 @@ _MOUNTAIN_BERRY_PARAMS = {
 }
 
 
-def mountain_berry_count_for_day(day: int) -> int:
-    """D2 keeps the one-grape shop window. D3+ asks for two."""
-    return 2 if int(day) >= 3 else 1
+# A further mountain loop costs ~4 in-game hours, so it may only *start*
+# this early; after that it cannot land back at the bin before the 17:00
+# ShippingScene. Applies to the second+ loop only — the first one is gated
+# by ``policy.berry_cutoff_hour``. 12 is a start-time gate, not an abort.
+GRAPE_BAIL_HOUR_NO_SHOP = 12
+GRAPE_BAIL_HOUR_SHOP_DAY = 9
 
 
-# Once the wallet clears this, the daily mountain grape run's ~150g is not
-# worth its terminal risk (the return leg strands the farmer on the mountain
-# and return_home cannot path back). The potato cycle self-funds seed bags.
-BERRY_STOP_WALLET_G = 700
+@dataclass(frozen=True)
+class GrapeDaySpec:
+    count: int
+    bail_hour: int
 
 
-def _berry_run_worthwhile(money: Optional[int], has_harvest: bool) -> bool:
-    """False once the potato economy can self-fund (skip the grape strand risk)."""
-    if money is None:
-        return True
-    return int(money) < BERRY_STOP_WALLET_G
+def grape_day_spec(day: int, *, has_harvest: bool = False) -> GrapeDaySpec:
+    if int(day) < 3:
+        return GrapeDaySpec(1, 10)
+    if has_harvest:
+        return GrapeDaySpec(1, GRAPE_BAIL_HOUR_SHOP_DAY)  # 9
+    return GrapeDaySpec(2, GRAPE_BAIL_HOUR_NO_SHOP)  # 12
 
 
-def shop_latest_hour_for_day(day: int, policy: DayPlannerPolicy) -> int:
+def mountain_berry_count_for_day(day: int, *, has_harvest: bool = False) -> int:
+    return grape_day_spec(day, has_harvest=has_harvest).count
+
+
+def grape_bail_hour_for_day(day: int, *, has_harvest: bool = False) -> int:
+    return grape_day_spec(day, has_harvest=has_harvest).bail_hour
+
+
+def shop_latest_hour_for_day(
+    day: int, policy: DayPlannerPolicy, *, has_harvest: bool = False
+) -> int:
     """Latest hour the seed shop may still start.
 
     D2 uses buy_seed_hour+1 (13). D3+ two-grape days keep 16:00 so a 13:12
     bin toss can still buy potato before the 17:00 shipper.
     """
     latest = int(policy.buy_seed_hour) + 1
-    if mountain_berry_count_for_day(day) >= 2 and policy.include_berry_run:
+    if (
+        grape_day_spec(day, has_harvest=has_harvest).count >= 2
+        and policy.include_berry_run
+    ):
         return max(latest, 16)
     return latest
 
 
-def mountain_berry_phase(*, count: int = 1) -> PhaseSpec:
+def mountain_berry_phase(*, count: int = 1, shop_bail_hour: Optional[int] = None) -> PhaseSpec:
     n = max(1, int(count))
     params = dict(_MOUNTAIN_BERRY_PARAMS)
     params["count"] = n
     params["timeout"] = 20_000 if n == 1 else 40_000
+    if shop_bail_hour is not None:
+        params["shop_bail_hour"] = int(shop_bail_hour)
     return PhaseSpec(
         "MOUNTAIN_BERRY",
         "mountain_berry",
@@ -122,11 +142,13 @@ def _berry_run_phases(
     day: int = 1,
     money: Optional[int] = None,
     has_plant_capacity: bool = True,
+    has_harvest: bool = False,
 ) -> List[PhaseSpec]:
     """Mountain grape then seed shop when the hour window allows.
 
-    D2: one grape (lands ~10:10) then shop. D3+: two grapes; shop window
-    stays open until 16:00 so a slower second loop can still buy.
+    D2: one grape (lands ~10:10) then shop. D3+ restock: two grapes then
+    shop (ROM 13:12 / 16:08). Harvest mornings ask for one grape as an
+    option after crop work, not a forced second loop.
     """
     from harvest.core.game_clock import ClockTime
     from harvest.planner.crop_planner import (
@@ -136,27 +158,10 @@ def _berry_run_phases(
     from harvest.planner.day_phase_catalog import NAV_FARM_EXIT_PHASE, buy_seeds_phase
 
     now = ClockTime(hour, 0)
-    berry_count = mountain_berry_count_for_day(day)
-    shop_latest = shop_latest_hour_for_day(day, policy)
+    spec = grape_day_spec(day, has_harvest=has_harvest)
+    shop_latest = shop_latest_hour_for_day(day, policy, has_harvest=has_harvest)
     if now.hour >= policy.berry_cutoff_hour and now.hour >= shop_latest:
         return []
-
-    phases: List[PhaseSpec] = []
-    berry_worthwhile = _berry_run_worthwhile(money, has_seeds)
-    if (
-        policy.include_berry_run
-        and berry_worthwhile
-        and now.hour < policy.berry_cutoff_hour
-    ):
-        phases.append(
-            PhaseSpec(
-                "BERRY_RUN_WINDOW",
-                "deadline",
-                {"latest_hour": policy.berry_exit_cutoff_hour, "latest_minute": 0},
-                failure_policy="optional",
-            )
-        )
-        phases.append(mountain_berry_phase(count=berry_count))
 
     can_buy = (
         policy.include_shop_run
@@ -168,6 +173,24 @@ def _berry_run_phases(
         and should_buy_seeds_for_date(season, day)
         and _can_afford_seed_purchase(money, season, day)
     )
+
+    phases: List[PhaseSpec] = []
+    if policy.include_berry_run and now.hour < policy.berry_cutoff_hour:
+        phases.append(
+            PhaseSpec(
+                "BERRY_RUN_WINDOW",
+                "deadline",
+                {"latest_hour": policy.berry_exit_cutoff_hour, "latest_minute": 0},
+                failure_policy="optional",
+            )
+        )
+        phases.append(
+            mountain_berry_phase(
+                count=spec.count,
+                shop_bail_hour=spec.bail_hour,
+            )
+        )
+
     if can_buy:
         recording = (
             policy.seed_purchase_recording
@@ -192,10 +215,13 @@ def _berry_run_phases(
 __all__ = [
     "MOUNTAIN_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASES",
+    "GrapeDaySpec",
+    "grape_day_spec",
     "mountain_berry_count_for_day",
     "shop_latest_hour_for_day",
-    "BERRY_STOP_WALLET_G",
-    "_berry_run_worthwhile",
+    "grape_bail_hour_for_day",
+    "GRAPE_BAIL_HOUR_NO_SHOP",
+    "GRAPE_BAIL_HOUR_SHOP_DAY",
     "mountain_berry_phase",
     "BERRY_CUTOFF_HOUR",
     "OPTIONAL_BERRY_PHASES",

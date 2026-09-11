@@ -28,6 +28,8 @@ from harvest.tasks.crop_skills import (
     EnsureCanFilledTask,
     PlantPlotSkill,
     SelectCarrySkill,
+    _RING_NAV_RADIUS,
+    _RING_NAV_SOFT_RADIUS,
     count_ring_planted,
     count_ring_wet,
     hoe_stand_px,
@@ -109,6 +111,18 @@ class UseToolUntilTileTests(unittest.TestCase):
         skill.reset(world)
         self.assertEqual(skill.step(world).status, TaskStatus.SUCCESS)
 
+    def test_hoe_watered_tilled_is_already_done(self) -> None:
+        # D14: hoe_until_tilled timeout tid=0x08 at (12,28) after harvest.
+        world = WorldState(
+            frame=0,
+            ram=_ram(tid=0x08, selected=int(Tool.HOE)),
+            info={},
+            obs=None,
+        )
+        skill = hoe_until_tilled_skill()
+        skill.reset(world)
+        self.assertEqual(skill.step(world).status, TaskStatus.SUCCESS)
+
     def test_hoe_on_weed_fails_fast(self) -> None:
         world = WorldState(
             frame=0,
@@ -151,6 +165,30 @@ class UseToolUntilTileTests(unittest.TestCase):
         y_press = skill.step(world)
         self.assertIn("Y", set(action_names(y_press.action.action)))
         self.assertNotIn("UP", set(action_names(y_press.action.action)))
+
+    def test_hoe_face_is_a_tap_not_a_hold(self) -> None:
+        ram = _ram(tile=(13, 29), tid=0x01, selected=int(Tool.HOE))
+        ram[ADDR_MAP + 28 * MAP_WIDTH + 13] = 0x01
+        ram[ADDR_DIR] = 0
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = hoe_until_tilled_skill(target_tile=(13, 28), face="up")
+        skill.reset(world)
+        first = skill.step(world)
+        self.assertIn("UP", set(action_names(first.action.action)))
+        second = skill.step(world)
+        self.assertNotIn("UP", set(action_names(second.action.action)))
+        self.assertNotIn("Y", set(action_names(second.action.action)))
+
+    def test_hoe_steps_off_the_target_tile(self) -> None:
+        ram = _ram(tile=(13, 28), tid=0x01, selected=int(Tool.HOE))
+        ram[ADDR_DIR] = 1
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = hoe_until_tilled_skill(target_tile=(13, 28), face="up")
+        skill.reset(world)
+        result = skill.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("DOWN", set(action_names(result.action.action)))
+        self.assertIn("step off target", result.reason or "")
 
     def test_hoe_waits_when_input_locked(self) -> None:
         ram = _ram(tile=(13, 29), tid=0x01, selected=int(Tool.HOE))
@@ -251,8 +289,40 @@ class PocketPlantComposeTests(unittest.TestCase):
         self.assertEqual(len(skills), PLOT_RING_SIZE * 2)
         self.assertTrue(all(s.name.startswith("nav_hoe_ring_") for s in skills[0::2]))
         self.assertEqual(skills[0].name, "nav_hoe_ring_0_right")
-        self.assertEqual(skills[0].radius, 3)
+        self.assertEqual(skills[0].radius, _RING_NAV_RADIUS)
+        self.assertEqual(skills[0].soft_radius, _RING_NAV_SOFT_RADIUS)
         self.assertEqual([s.name for s in skills[1::2]], ["hoe_until_tilled"] * PLOT_RING_SIZE)
+
+    def test_face_down_stand_radius_covers_south_approach(self) -> None:
+        # Run7 D15: farmer on the notch (209,457) vs stand center (216,456).
+        # Chebyshev 7 missed radius 3 around the 5px-north nudge. Center ±7
+        # arrives on-tile and rejects the south neighbor (the hoe target).
+        stand = (13, 28)
+        skills = pocket_hoe_ring_skills(WEST_POCKET_PLANT_CENTER)
+        down = next(s for s in skills[0::2] if s.name.endswith("_down"))
+        # A face-down stand is north of its target; pick any ring nav and
+        # check the geometry against the live D15 pose + tile math.
+        center = (stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8)
+        south_edge = (center[0], stand[1] * TILE_SIZE + 15)
+        post_harvest = (209, 457)
+        cheb = lambda a, b: max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+        self.assertEqual(down.radius, _RING_NAV_RADIUS)
+        self.assertEqual(down.soft_radius, _RING_NAV_SOFT_RADIUS)
+        self.assertLessEqual(cheb(post_harvest, center), _RING_NAV_RADIUS)
+        self.assertLessEqual(cheb(south_edge, center), _RING_NAV_SOFT_RADIUS)
+        target_near = (center[0], (stand[1] + 1) * TILE_SIZE)
+        self.assertGreater(cheb(target_near, center), _RING_NAV_SOFT_RADIUS)
+        # Away-neighbor (west of a face-right stand) must also stay out —
+        # radius 10 around hoe_stand_px landed on (17,29) for target (19,29).
+        right_stand = (18, 29)
+        right_center = (
+            right_stand[0] * TILE_SIZE + 8,
+            right_stand[1] * TILE_SIZE + 8,
+        )
+        west_neighbor = (282, 474)  # live miss pos, tile (17, 29)
+        self.assertGreater(
+            cheb(west_neighbor, right_center), _RING_NAV_RADIUS
+        )
 
     def test_hoe_stand_nav_leaves_shed_door_south_then_west(self) -> None:
         ram = _ram(tile=(26, 30), tid=0x01)
@@ -571,6 +641,20 @@ class SecondPocketPlotTests(unittest.TestCase):
             sy = nav.target_px[1] // TILE_SIZE
             self.assertNotEqual(sx, 21, f"stand {sx,sy} on the x21 bank")
             self.assertLess(sy, 30, f"stand {sx,sy} on the fence lip")
+
+    def test_ram_skips_already_tilled_or_crop_ring_tiles(self) -> None:
+        from harvest.tasks.crop_geometry import WATERED_TILLED
+
+        ram = self._field_ram()
+        ring = plot_tiles((13, 28), include_center=False)
+        for x, y in ring[:3]:
+            ram[ADDR_MAP + y * MAP_WIDTH + x] = WATERED_TILLED
+        ram[ADDR_MAP + ring[3][1] * MAP_WIDTH + ring[3][0]] = 0x56
+        skills = pocket_hoe_ring_skills((13, 28), ram=ram)
+        hoes = skills[1::2]
+        self.assertEqual(len(hoes), 4)
+        skipped = set(ring[:4])
+        self.assertTrue(all(h.target_tile not in skipped for h in hoes))
 
 
 class HoeUntilTilledCropGuardTests(unittest.TestCase):

@@ -120,7 +120,7 @@ class RewardSpec:
     reward_while_live: bool = False
 
     def __post_init__(self) -> None:
-        if self.kind is RewardKind.FIXED_INVENTORY:
+        if self.kind == RewardKind.FIXED_INVENTORY:
             if not self.inventory_field or (
                 self.target is None and not self.waypoints
             ):
@@ -158,7 +158,7 @@ class DungeonRoomSpec:
             for obj in snap.objects
             if 1 <= obj.slot <= slot_max and obj.type_id in self.enemy_types
         )
-        if self.alive_rule is AliveRule.TYPE_AND_HP:
+        if self.alive_rule == AliveRule.TYPE_AND_HP:
             type_only = frozenset(self.type_only_enemy_types)
             return tuple(
                 obj
@@ -635,16 +635,21 @@ class GenericDungeonRoomController:
                     self._collect_skips += 1
                 self.waypoint_index = (self.waypoint_index + 1) % n
                 self._stuck_frames = 0
+                if self.spec.combat.occupancy_patrol:
+                    self.walker.path = None
                 if self._collect_skips >= n:
                     return FrameAction(nes_idle_action(), "collect_wait")
                 tx, ty = self.spec.reward.waypoints[self.waypoint_index]
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
-            if abs(dx) > 2:
-                direction = "RIGHT" if dx > 0 else "LEFT"
-            else:
-                direction = "DOWN" if dy > 0 else "UP"
-            return FrameAction(nes_action(direction), "collect_reward")
+            if self.spec.combat.occupancy_patrol:
+                self.walker.observe(xy)
+                direction = self._occupancy_dir(xy, (tx, ty))
+                if direction is not None:
+                    return FrameAction(nes_action(direction), "collect_reward")
+                self.waypoint_index = (self.waypoint_index + 1) % n
+                self.walker.path = None
+                return FrameAction(nes_idle_action(), "collect_skip_unreachable")
 
         target = self.spec.reward.target
         if target is None:
@@ -694,7 +699,7 @@ class GenericDungeonRoomController:
         self.frames += 1
         self.phase_frames += 1
         if self.initial_inventory is None and (
-            self.spec.reward.kind is not RewardKind.FIXED_INVENTORY
+            self.spec.reward.kind != RewardKind.FIXED_INVENTORY
             or (
                 snap.screen == self.spec.room_id
                 and snap.mode == PLAY_MODE
@@ -711,7 +716,7 @@ class GenericDungeonRoomController:
             return FrameAction(nes_idle_action(), "link_death")
 
         if (
-            self.spec.reward.kind is RewardKind.FIXED_INVENTORY
+            self.spec.reward.kind == RewardKind.FIXED_INVENTORY
             and snap.screen == self.spec.room_id
             and (not live or self.spec.reward.reward_while_live)
             and self.initial_inventory is not None
@@ -791,7 +796,7 @@ class GenericDungeonRoomController:
                 )
             ):
                 self.clear_signal_seen = True
-                if self.spec.reward.kind is RewardKind.CLEAR_ONLY:
+                if self.spec.reward.kind == RewardKind.CLEAR_ONLY:
                     if self.spec.reward.target is not None:
                         self._set_phase(DungeonPhase.COLLECT_REWARD, "room_cleared")
                         self._relax_leftover_bounds()
@@ -804,7 +809,7 @@ class GenericDungeonRoomController:
             return self._combat(snap, live)
 
         if self.phase is DungeonPhase.COLLECT_REWARD:
-            if self.spec.reward.kind is RewardKind.CLEAR_ONLY:
+            if self.spec.reward.kind == RewardKind.CLEAR_ONLY:
                 return self._finish_clear_leftover(snap)
             return self._collect_reward(snap)
 

@@ -18,6 +18,8 @@ from harvest.tasks.harvest_task import (
     ACTION_CARRYING_BIT,
     ADDR_PLAYER_STATE,
     ADDR_SHIPPING_MONEY,
+    TARGET_NAV_STALL_LIMIT,
+    TARGET_NAV_TOTAL_LIMIT,
     HarvestStep,
     HarvestTask,
     build_harvest_steps,
@@ -210,6 +212,59 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertEqual(by_target[(11, 35)].stand, (11, 36))
         self.assertNotEqual(by_target[(11, 35)].stand, (12, 35))
 
+    def test_build_harvest_steps_collects_alt_stands_for_fallback(self) -> None:
+        """rr-20w.3.2: a target with several walkable neighbors keeps the
+        rest ranked as alt_stands so a pose-fragile primary can be retried
+        from a different angle instead of stalling the whole route."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xFF)
+        target = (18, 27)
+        _set_tile(ram, 17, 27, 0x01)  # right face stand (west of target)
+        _set_tile(ram, 18, 26, 0x01)  # down face stand (north of target)
+        _set_tile(ram, 19, 27, 0x01)  # left face stand (east of target)
+        # South neighbor stays 0xFF (not walkable) — only 3 candidates exist.
+
+        steps = build_harvest_steps(ram, [target])
+
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertEqual(step.stand, (17, 27))
+        self.assertEqual(step.face, "right")
+        self.assertEqual(len(step.alt_stands), 2)
+        all_stands = {step.stand} | {stand for stand, _face in step.alt_stands}
+        self.assertEqual(all_stands, {(17, 27), (18, 26), (19, 27)})
+
+    def test_build_harvest_steps_no_alt_stands_when_only_one_neighbor(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xFF)
+        _set_tile(ram, 8, 33, 0x01)
+
+        steps = build_harvest_steps(ram, [(8, 34)])
+
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0].alt_stands, ())
+
+    def test_reset_records_unreachable_targets_by_id(self) -> None:
+        """A target with no walkable neighbor at all is reported by tile id,
+        not just as a bare count (rr-20w residual: accounting must add up)."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xFF)
+        _set_tile(ram, 5, 34, 0x60)  # ripe, but boxed in on every side
+
+        task = HarvestTask(state_name=None)
+        task.reset(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(task._initial_target_count, 1)
+        self.assertEqual(task._unreachable_count, 1)
+        self.assertEqual(task._unreachable_targets, [(5, 34)])
+        self.assertEqual(task._steps, [])
+
     def test_ship_options_prefer_right_side_bin_stand(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)
         _set_tile(ram, 11, 30, 0x01)
@@ -339,6 +394,137 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task.shipped_count, 1)  # max(1, 80//80)
         self.assertEqual(task._phase, "select")
+
+    def test_target_nav_retries_alt_stand_after_stall_budget(self) -> None:
+        """rr-20w.3.2 D11 stall: (17,28) was a genuinely walkable tile that
+        still snagged navigation on approach to the next target's stand, and
+        the raw bump fallback then repeated forever. Once the stall budget
+        clears, the route must try the next candidate stand instead of
+        bumping into the same wall."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        task = HarvestTask()
+        task._phase = "target_nav"
+        task._current = HarvestStep(
+            target=(18, 27),
+            stand=(17, 27),
+            face="right",
+            alt_stands=(((18, 26), "down"),),
+        )
+        task._stand_choices = [((17, 27), "right"), ((18, 26), "down")]
+        task._stand_choice_index = 0
+        task._current_stand = (17, 27)
+        task._current_face = "right"
+        task._target_nav_steps = 1
+        task._nav_stall_steps = TARGET_NAV_STALL_LIMIT + 1
+
+        with patch.object(
+            HarvestTask, "_navigate_to_tile", return_value=(np.zeros(12, dtype=np.int32), True)
+        ):
+            result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "target_nav")
+        self.assertEqual(task._current_stand, (18, 26))
+        self.assertEqual(task._current_face, "down")
+        self.assertEqual(task._stand_choice_index, 1)
+        self.assertEqual(task._target_nav_steps, 0)
+        self.assertEqual(task.skipped_count, 0)
+
+    def test_target_nav_skips_target_once_every_stand_is_exhausted(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        task = HarvestTask()
+        task._phase = "target_nav"
+        task._current = HarvestStep(target=(18, 27), stand=(17, 27), face="right")
+        task._steps = []
+        task._initial_target_count = 1
+        task._stand_choices = [((17, 27), "right")]
+        task._stand_choice_index = 0
+        task._current_stand = (17, 27)
+        task._current_face = "right"
+        task._target_nav_steps = 1
+        task._nav_stall_steps = TARGET_NAV_STALL_LIMIT + 1
+
+        with patch.object(
+            HarvestTask, "_navigate_to_tile", return_value=(np.zeros(12, dtype=np.int32), True)
+        ):
+            result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.skipped_count, 1)
+        self.assertIsNone(task._current)
+        self.assertEqual(task._phase, "select")
+
+    def test_target_nav_hits_hard_total_budget_even_without_stall(self) -> None:
+        """A stand that keeps reporting BFS progress but never actually
+        arrives must still be bounded, not just the stall counter."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        task = HarvestTask()
+        task._phase = "target_nav"
+        task._current = HarvestStep(target=(18, 27), stand=(17, 27), face="right")
+        task._steps = []
+        task._initial_target_count = 1
+        task._stand_choices = [((17, 27), "right")]
+        task._stand_choice_index = 0
+        task._current_stand = (17, 27)
+        task._current_face = "right"
+        task._nav_stall_steps = 0
+        task._target_nav_steps = TARGET_NAV_TOTAL_LIMIT
+
+        with patch.object(
+            HarvestTask, "_navigate_to_tile", return_value=(np.zeros(12, dtype=np.int32), False)
+        ):
+            result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.skipped_count, 1)
+        self.assertEqual(task._phase, "select")
+
+    def test_target_nav_does_not_skip_before_budget_is_exhausted(self) -> None:
+        """A slow-but-progressing nav (no stall, under the total cap) must
+        not be treated as stuck."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        task = HarvestTask()
+        task._phase = "target_nav"
+        task._current = HarvestStep(target=(18, 27), stand=(17, 27), face="right")
+        task._stand_choices = [((17, 27), "right")]
+        task._stand_choice_index = 0
+        task._current_stand = (17, 27)
+        task._current_face = "right"
+        task._nav_stall_steps = TARGET_NAV_STALL_LIMIT + 1
+        task._target_nav_steps = 5
+
+        with patch.object(
+            HarvestTask, "_navigate_to_tile", return_value=(np.zeros(12, dtype=np.int32), False)
+        ):
+            result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.skipped_count, 0)
+        self.assertEqual(task._phase, "target_nav")
+        self.assertEqual(task._current_stand, (17, 27))
+        self.assertEqual(task._nav_stall_steps, 0)
+
+    def test_select_populates_stand_choices_from_alt_stands(self) -> None:
+        task = HarvestTask()
+        task._steps = [
+            HarvestStep(
+                target=(18, 27),
+                stand=(17, 27),
+                face="right",
+                alt_stands=(((18, 26), "down"), ((19, 27), "left")),
+            )
+        ]
+
+        result = task.step(SimpleNamespace(ram=np.zeros(0x20000, dtype=np.uint8), info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "target_nav")
+        self.assertEqual(
+            task._stand_choices,
+            [((17, 27), "right"), ((18, 26), "down"), ((19, 27), "left")],
+        )
+        self.assertEqual(task._current_stand, (17, 27))
+        self.assertEqual(task._current_face, "right")
 
     def test_harvest_completion_fails_when_any_target_skipped(self) -> None:
         task = HarvestTask()

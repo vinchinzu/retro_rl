@@ -586,6 +586,56 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CROP_ESTABLISH"))
         self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
 
+    def test_spring_weekday_restock_always_two_grapes_then_shop(self) -> None:
+        """Robustness: D3-D30 shop-open mornings with no harvest keep 2 grapes
+        then potato, with a bail hour that still starts loop 2 after 10:00."""
+        for day in range(3, 31):
+            weekday = (1 + day - 1) % 7
+            if weekday == 0:
+                continue
+            phases = build_outdoor_day_phases(
+                weekday=weekday,
+                hour=6,
+                has_harvest=False,
+                has_waterable=True,
+                has_seeds=False,
+                has_debris=False,
+                season=0,
+                day=day,
+                money=250,
+            )
+            names = self._phase_names(phases)
+            self.assertIn("MOUNTAIN_BERRY", names, f"D{day}")
+            berry = phases[names.index("MOUNTAIN_BERRY")]
+            self.assertEqual(berry.params["count"], 2, f"D{day}")
+            self.assertGreater(
+                berry.params.get("shop_bail_hour", 10), 10, f"D{day}"
+            )
+            self.assertIn("BUY_SEEDS", names, f"D{day}")
+            self.assertLess(
+                names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), f"D{day}"
+            )
+
+    def test_harvest_morning_does_not_force_two_grapes_ahead_of_ripe_tiles(self) -> None:
+        phases = build_outdoor_day_phases(
+            weekday=3,
+            hour=6,
+            has_harvest=True,
+            has_waterable=True,
+            has_seeds=False,
+            has_debris=False,
+            season=0,
+            day=9,
+            money=250,
+        )
+        names = self._phase_names(phases)
+        self.assertIn("HARVEST_ROUTE", names)
+        self.assertIn("MOUNTAIN_BERRY", names)
+        self.assertLess(names.index("HARVEST_ROUTE"), names.index("MOUNTAIN_BERRY"))
+        berry = phases[names.index("MOUNTAIN_BERRY")]
+        self.assertEqual(berry.params["count"], 1)
+        self.assertIn("BUY_SEEDS", names)
+
     def test_d3_shop_still_planned_after_two_grape_clock(self) -> None:
         # Two grapes land ~13:12. D3 shop_latest is 16:00, so potato still
         # schedules (and the second plot still follows).

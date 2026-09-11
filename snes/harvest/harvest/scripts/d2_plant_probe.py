@@ -13,6 +13,8 @@ Hoe the 8-tile ring around (13,28), then plant from the untilled notch.
       --state Y1_After_Buy_Potato --hoe-only --out recordings/d2_hoe_ring.json
     HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \\
       --state Y1_After_Buy_Potato --water --out recordings/d2_plant_water.json
+    HEADLESS=1 uv run python -m harvest.scripts.d2_plant_probe \\
+      --center 13,28 --water --out recordings/d2_plant_center.json
     uv run python -m harvest.scripts.d2_plant_probe --watch
 """
 
@@ -61,6 +63,11 @@ from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_action
 
 
+def _parse_center(raw: str) -> tuple[int, int]:
+    x_str, y_str = raw.split(",")
+    return int(x_str), int(y_str)
+
+
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", default="Y1_After_Buy_Potato")
@@ -78,6 +85,12 @@ def _parse_args() -> argparse.Namespace:
             "Establish the D3 second potato ring at SECOND_POCKET_PLANT_CENTER "
             "(19,28) beside the D2 rows. Implies --skip-clear (open soil)."
         ),
+    )
+    p.add_argument(
+        "--center",
+        type=_parse_center,
+        default=None,
+        help="Override pocket center as X,Y (implies --skip-clear).",
     )
     p.add_argument(
         "--save-end-state",
@@ -205,9 +218,11 @@ def _write_payload(path: Path, payload: dict) -> None:
 
 def main() -> int:
     args = _parse_args()
-    center = SECOND_POCKET_PLANT_CENTER if args.second_plot else WEST_POCKET_PLANT_CENTER
-    skill_center = SECOND_POCKET_PLANT_CENTER if args.second_plot else None
-    if args.second_plot:
+    center = args.center or (
+        SECOND_POCKET_PLANT_CENTER if args.second_plot else WEST_POCKET_PLANT_CENTER
+    )
+    skill_center = args.center or (SECOND_POCKET_PLANT_CENTER if args.second_plot else None)
+    if args.center is not None or args.second_plot:
         args.skip_clear = True
     if args.watch:
         configure_headed()

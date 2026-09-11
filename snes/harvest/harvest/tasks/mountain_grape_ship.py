@@ -15,6 +15,7 @@ from harvest.core.game_clock import clock_from_ram
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.maps.map_config import (
+    FARM_TILEMAP_IDS,
     ROUTES,
     mountain_downhill_escape,
     slice_route_from_position,
@@ -49,8 +50,19 @@ class MountainGrapeShipTask(Task):
     # pick/return fails (rr-20w.3 daily spring forage).
     target_count: int = 1
     # Do not start another mountain loop at/after this hour. A loop is ~4h
-    # and the seed shop still has to happen the same morning.
+    # (measured run11: 3000 f from house to bin). D3+ restock days pass 12
+    # so a ~10:00 first grape still starts loop 2 (2 grapes + shop is
+    # ROM-proven 13:12 / 16:08). Harvest mornings pass 9. The 10 here is
+    # only the conservative D2 default.
     shop_bail_hour: int = 10
+    # One house->grape->bin loop, in in-game hours. Measured run11: ~3000 f
+    # at ~15 f/in-game-minute, and grape 1 lands 10:00-12:00 from a 06:00
+    # start. Used to refuse a loop that cannot get back before
+    # ``hard_return_hour``.
+    loop_hours: int = 4
+    # The farmer must be on the farm for the 17:00 ShippingScene, and a grape
+    # only counts once it is in the bin. Leave an hour of slack.
+    hard_return_hour: int = 16
     # Carpenter-corridor pins (run6 D15) retry a downhill suffix instead of
     # failing while still on mountain 0x10.
     max_return_retries: int = 3
@@ -65,6 +77,8 @@ class MountainGrapeShipTask(Task):
     _drop_attempts: int = field(default=0, init=False)
     _drop_queue: deque[np.ndarray] = field(default_factory=deque, init=False, repr=False)
     _return_retries: int = field(default=0, init=False)
+    _walk_back_retries: int = field(default=0, init=False)
+    _bail_reason: str = field(default="", init=False)
 
     @property
     def phase_text(self) -> str:
@@ -96,6 +110,8 @@ class MountainGrapeShipTask(Task):
         self._drop_attempts = 0
         self._shipped = 0
         self._return_retries = 0
+        self._walk_back_retries = 0
+        self._bail_reason = ""
         self._drop_queue.clear()
         if is_mountain_forage(int(read_held_item(world.ram))):
             self._start_return(world)
@@ -116,9 +132,10 @@ class MountainGrapeShipTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return bool(ROUTES.get(ROUTE_NAME))
 
-    def _start_return(self, world: WorldState, *, downhill: bool = False) -> None:
-        held = int(read_held_item(world.ram))
-        if not is_mountain_forage(held):
+    def _start_nav_home(
+        self, world: WorldState, *, downhill: bool, phase: str, require_forage: bool
+    ) -> None:
+        if require_forage and not is_mountain_forage(int(read_held_item(world.ram))):
             self._child = None
             self._phase = "missing_forage"
             return
@@ -132,7 +149,7 @@ class MountainGrapeShipTask(Task):
         else:
             sliced = slice_route_from_position(route, pos.x, pos.y, tilemap=tilemap)
         self._child = MultiMapNavTask(
-            name=f"{self.name}_return_to_bin",
+            name=f"{self.name}_{phase}",
             waypoints=sliced or route,
             timeout=self.nav_timeout,
             initial_settle_frames=12,
@@ -140,7 +157,12 @@ class MountainGrapeShipTask(Task):
             allow_opportunistic_clear=False,
         )
         self._child.reset(world)
-        self._phase = "return_to_bin"
+        self._phase = phase
+
+    def _start_return(self, world: WorldState, *, downhill: bool = False) -> None:
+        self._start_nav_home(
+            world, downhill=downhill, phase="return_to_bin", require_forage=True
+        )
 
     def _success_or_verify(self, world: WorldState) -> Optional[TaskResult]:
         held = int(read_held_item(world.ram))
@@ -159,8 +181,18 @@ class MountainGrapeShipTask(Task):
         if self._shipped >= self.target_count:
             self._phase = "done"
             return TaskResult(status=TaskStatus.SUCCESS, reason=shipped_reason)
-        if int(clock_from_ram(world.ram).hour) >= int(self.shop_bail_hour):
+        # Pre-flight only. The farmer is standing at the bin right now, so
+        # this is the one safe moment to decide; aborting later leaves them
+        # stranded on mountain 0x10 and the rest of the day's phases all fail
+        # their map lock (measured: grapefix_d3_d9 D3, seed buy + establish
+        # both lost that way).
+        hour = int(clock_from_ram(world.ram).hour)
+        if hour >= int(self.shop_bail_hour):
             return self._best_effort_success("shop window")
+        if hour + int(self.loop_hours) > int(self.hard_return_hour):
+            return self._best_effort_success(
+                f"next loop would land after {self.hard_return_hour}:00"
+            )
         # More grapes wanted: rebase the shipping baseline and forage again.
         self._shipping_before = self._shipping_after
         self._verify_frames = 0
@@ -173,6 +205,11 @@ class MountainGrapeShipTask(Task):
             reason=f"{shipped_reason}; returning for next grape",
         )
 
+    def _start_walk_back(self, world: WorldState, *, downhill: bool = False) -> None:
+        self._start_nav_home(
+            world, downhill=downhill, phase="walk_back", require_forage=False
+        )
+
     def _best_effort_success(self, why: str) -> TaskResult:
         self._phase = "done"
         return TaskResult(
@@ -181,6 +218,35 @@ class MountainGrapeShipTask(Task):
                 f"mountain grape {self._shipped}/{self.target_count} shipped; "
                 f"stopped early ({why})"
             ),
+        )
+
+    def _on_farm(self, world: WorldState) -> bool:
+        return int(read_ram_value(world.ram, "tilemap")) in FARM_TILEMAP_IDS
+
+    def _finish_or_walk_home(self, world: WorldState, why: str) -> TaskResult:
+        """SUCCESS only on the farm. Off-farm, walk back; never strand later phases.
+
+        grapefix_d3_d9 D3 reported SUCCESS from mountain 0x10, so NAV_FARM_EXIT
+        failed its map lock and the day lost the seed buy and CROP_ESTABLISH.
+        """
+        if self._on_farm(world):
+            return self._best_effort_success(why)
+        tilemap = int(read_ram_value(world.ram, "tilemap"))
+        if self._walk_back_retries >= self.max_return_retries:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"stranded off-farm on tilemap 0x{tilemap:02X} after "
+                    f"{self._shipped} grape(s): {why}"
+                ),
+            )
+        self._walk_back_retries += 1
+        self._bail_reason = why
+        self._start_walk_back(world, downhill=tilemap == 0x10)
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"walking back to the farm after {why}",
         )
 
     def _step_verify(self, world: WorldState) -> TaskResult:
@@ -230,18 +296,33 @@ class MountainGrapeShipTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
-        if self._shipped >= 1 and int(clock_from_ram(world.ram).hour) >= 12:
-            return self._best_effort_success("shop window")
+        # Was a hard-coded ``hour >= 12`` with no map test, which both
+        # shadowed shop_bail_hour (making the field dead) and could fire
+        # mid-loop on mountain 0x10 — reporting SUCCESS while leaving the
+        # farmer off-farm, so every later phase failed its map lock and the
+        # day lost its seed buy and establish (grapefix_d3_d9 D3).
+        #
+        # Only give up between loops, standing on the farm. A loop already in
+        # flight is bounded by ``timeout`` and by the return-leg retries, both
+        # of which end with the farmer walked home.
+        if (
+            self._shipped >= 1
+            and int(clock_from_ram(world.ram).hour) >= int(self.hard_return_hour)
+            and self._on_farm(world)
+        ):
+            return self._best_effort_success("past return deadline")
         if self._step_count > self.timeout:
             if self._shipped >= 1:
-                return self._best_effort_success("timeout")
+                return self._finish_or_walk_home(world, "timeout")
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"{self.name} timeout phase={self.phase_text}",
             )
         if self._phase == "missing_forage":
             if self._shipped >= 1:
-                return self._best_effort_success("return armed without held forage")
+                return self._finish_or_walk_home(
+                    world, "return armed without held forage"
+                )
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason="mountain return armed without held forage",
@@ -279,10 +360,12 @@ class MountainGrapeShipTask(Task):
                     ),
                 )
             # Best-effort second+ grape: one already reached the bin, so a
-            # later forage/return failure still ends the run SUCCESS.
+            # later forage/return failure still ends SUCCESS — but only once
+            # the farmer is back on the farm.
             if self._shipped >= 1:
-                return self._best_effort_success(
-                    f"{self.phase_text}: {result.reason or result.status.value}"
+                return self._finish_or_walk_home(
+                    world,
+                    f"{self.phase_text}: {result.reason or result.status.value}",
                 )
             return TaskResult(
                 status=result.status,
@@ -291,6 +374,10 @@ class MountainGrapeShipTask(Task):
             )
         if self._phase == "pick":
             if not is_mountain_forage(int(read_held_item(world.ram))):
+                if self._shipped >= 1:
+                    return self._finish_or_walk_home(
+                        world, "pickup reported success without held forage"
+                    )
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason="mountain pickup reported success without held forage",
@@ -300,6 +387,11 @@ class MountainGrapeShipTask(Task):
                 status=TaskStatus.RUNNING,
                 action=ActionResult(make_action()),
                 reason="mountain grape kept; return to farm bin",
+            )
+        if self._phase == "walk_back":
+            self._child = None
+            return self._finish_or_walk_home(
+                world, self._bail_reason or "walked back"
             )
         if self._phase == "return_to_bin":
             self._child = None

@@ -439,6 +439,8 @@ ROOM_5D_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         occupancy_patrol=True,
         occupancy_bounds=_ROOM_5B_OCCUPANCY_BOUNDS,
+        contact_backstep=8,
+        avoid_walls=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     required_open_doors=DoorDir.UP,

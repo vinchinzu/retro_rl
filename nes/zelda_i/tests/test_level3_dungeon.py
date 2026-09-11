@@ -150,6 +150,9 @@ def test_5c_and_5d_specs_are_dest_rooms() -> None:
     assert ROOM_5D_SPEC.room_id == ROOM_L3_BOSS_PREP == 0x5D
     assert ROOM_L3_TF == 0x3D
     assert 0x2B not in ROOM_5D_SPEC.enemy_types
+    assert ROOM_5D_SPEC.combat.avoid_walls is True
+    assert ROOM_5D_SPEC.combat.contact_backstep >= 8
+    assert ROOM_5D_SPEC.combat.occupancy_bounds[2] >= 109
 
 
 def test_manhandla_live_heads() -> None:

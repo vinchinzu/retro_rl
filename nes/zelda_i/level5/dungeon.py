@@ -75,7 +75,8 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -581,15 +582,37 @@ def level5_in_room_24(ram: np.ndarray) -> bool:
 
 @dataclass
 class Level5PolsVoiceController(GenericDungeonRoomController):
-    """Pols Voice clear + backstep when stuck overlapping without kills.
+    """Pols Voice clear + tactical spacing/backstep and focus-fire.
 
-    Live: HP=160 multi-hit; overlapping without damage stalls the generic
-    engage loop. Retreat then re-engage (same pattern as L6 wizzrobes).
+    Pols Voice: HP=160 (10 wooden sword hits), hops in arcs, no knockback.
+    Link maintains 14-22 px spacing, avoids block clusters, focus-fires
+    wounded enemies, and backsteps on close approach to avoid contact damage.
     """
 
     last_progress_frame: int = 0
     prev_live_count: int = -1
     backstep_frames: int = 0
+    backstep_dir: str = "LEFT"
+
+    def _is_solid(self, x: int, y: int) -> bool:
+        if x < 44 or x > 204 or y < 93 or y > 185:
+            return True
+        if 56 <= x <= 88 and 116 <= y <= 164:
+            return True
+        if 152 <= x <= 184 and 116 <= y <= 164:
+            return True
+        return False
+
+    def _can_move(self, x: int, y: int, direction: str, step: int = 4) -> bool:
+        if direction == "LEFT":
+            return not self._is_solid(x - step, y)
+        if direction == "RIGHT":
+            return not self._is_solid(x + step, y)
+        if direction == "UP":
+            return not self._is_solid(x, y - step)
+        if direction == "DOWN":
+            return not self._is_solid(x, y + step)
+        return False
 
     def _combat(
         self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
@@ -602,44 +625,120 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         elif n_live < self.prev_live_count:
             self.prev_live_count = n_live
             self.last_progress_frame = self.frames
-            self.backstep_frames = 0
             self.notes.append(f"kill_to_{n_live}_f{self.frames}")
 
         if not live:
-            return self._patrol(snap)
+            return FrameAction(nes_idle_action(), "combat_all_dead")
 
-        nearest = min(
-            live,
-            key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
-        )
-        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        stuck_close = dist < 18 and (self.frames - self.last_progress_frame) > 80
-        if stuck_close or self.backstep_frames > 0:
-            if self.backstep_frames <= 0:
-                self.backstep_frames = 28
-                self.notes.append(f"backstep_f{self.frames}_d{dist}")
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if lx < 44:
+            return FrameAction(nes_action("RIGHT"), "enter_room")
+
+        def _cheb(x1: int, y1: int, x2: int, y2: int) -> int:
+            return max(abs(x1 - x2), abs(y1 - y2))
+
+        def _manh(x1: int, y1: int, x2: int, y2: int) -> int:
+            return abs(x1 - x2) + abs(y1 - y2)
+
+        closest_enemy = min(live, key=lambda o: _cheb(lx, ly, o.x, o.y))
+        min_cheb = _cheb(lx, ly, closest_enemy.x, closest_enemy.y)
+
+        if self.backstep_frames > 0:
             self.backstep_frames -= 1
-            if self.backstep_frames == 0:
-                self.last_progress_frame = self.frames
-            dx = nearest.x - snap.link_x
-            dy = nearest.y - snap.link_y
-            if abs(dx) >= abs(dy):
-                direction = "LEFT" if dx >= 0 else "RIGHT"
-            else:
-                direction = "UP" if dy >= 0 else "DOWN"
-            if snap.link_x < 48:
-                direction = "RIGHT"
-            elif snap.link_x > 200:
-                direction = "LEFT"
-            if snap.link_y < 100:
-                direction = "DOWN"
-            elif snap.link_y > 190:
-                direction = "UP"
-            return FrameAction(nes_action(direction), "pols_backstep")
+            if self._can_move(lx, ly, self.backstep_dir):
+                return FrameAction(
+                    nes_action(self.backstep_dir),
+                    f"backstep_{self.backstep_dir}",
+                )
+            for alt in ("UP", "DOWN", "LEFT", "RIGHT"):
+                if self._can_move(lx, ly, alt):
+                    self.backstep_dir = alt
+                    return FrameAction(
+                        nes_action(alt),
+                        f"backstep_alt_{alt}",
+                    )
 
-        if dist < self.spec.combat.engage_distance:
-            return self._engage(snap, nearest)
-        return self._patrol(snap)
+        if min_cheb <= 19:
+            dx = closest_enemy.x - lx
+            dy = closest_enemy.y - ly
+            candidates = []
+            if abs(dx) >= abs(dy):
+                candidates.append("LEFT" if dx > 0 else "RIGHT")
+                candidates.append("UP" if dy > 0 else "DOWN")
+                candidates.append("DOWN" if dy > 0 else "UP")
+                candidates.append("RIGHT" if dx > 0 else "LEFT")
+            else:
+                candidates.append("UP" if dy > 0 else "DOWN")
+                candidates.append("LEFT" if dx > 0 else "RIGHT")
+                candidates.append("RIGHT" if dx > 0 else "LEFT")
+                candidates.append("DOWN" if dy > 0 else "UP")
+            for c in candidates:
+                if self._can_move(lx, ly, c, step=6):
+                    self.backstep_dir = c
+                    self.backstep_frames = 5
+                    return FrameAction(nes_action(c), f"start_backstep_{c}")
+
+        # Target selection: prioritize wounded enemies to eliminate threats fast
+        def score(o: ZeldaObject) -> int:
+            d = _manh(lx, ly, o.x, o.y)
+            hp_cost = (o.hp // 16) * 15
+            return d + hp_cost
+
+        tgt = min(live, key=score)
+        dx = tgt.x - lx
+        dy = tgt.y - ly
+
+        if abs(dx) >= abs(dy):
+            dir_to = "RIGHT" if dx > 0 else "LEFT"
+            aligned = abs(dy) <= 8
+            in_reach = 14 <= abs(dx) <= 22
+            if aligned and in_reach:
+                if snap.facing != direction_to_facing(dir_to):
+                    return FrameAction(
+                        nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
+                    )
+                return FrameAction(
+                    nes_action("A")
+                    if self.combat_frames % 4 < 3
+                    else nes_idle_action(),
+                    "swing_in_place",
+                )
+        else:
+            dir_to = "DOWN" if dy > 0 else "UP"
+            aligned = abs(dx) <= 8
+            in_reach = 14 <= abs(dy) <= 22
+            if aligned and in_reach:
+                if snap.facing != direction_to_facing(dir_to):
+                    return FrameAction(
+                        nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
+                    )
+                return FrameAction(
+                    nes_action("A")
+                    if self.combat_frames % 4 < 3
+                    else nes_idle_action(),
+                    "swing_in_place",
+                )
+
+        steps = []
+        if abs(dx) >= abs(dy):
+            if abs(dy) > 4:
+                steps.append("DOWN" if dy > 0 else "UP")
+            steps.append("RIGHT" if dx > 0 else "LEFT")
+            steps.append("DOWN" if dy > 0 else "UP")
+        else:
+            if abs(dx) > 4:
+                steps.append("RIGHT" if dx > 0 else "LEFT")
+            steps.append("DOWN" if dy > 0 else "UP")
+            steps.append("RIGHT" if dx > 0 else "LEFT")
+
+        for step_d in steps:
+            if self._can_move(lx, ly, step_d):
+                return FrameAction(nes_action(step_d), f"move_{step_d}")
+
+        for any_d in ("UP", "DOWN", "LEFT", "RIGHT"):
+            if self._can_move(lx, ly, any_d):
+                return FrameAction(nes_action(any_d), f"fallback_{any_d}")
+        return FrameAction(nes_idle_action(), "wait_open")
 
 
 def make_pols_voice_controller() -> Level5PolsVoiceController:

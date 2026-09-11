@@ -112,3 +112,19 @@ def test_spec_blocks_are_never_forgotten() -> None:
     assert walker.next_dir((5, 5), (9, 5)) is None
     assert walker.forgets == 0
     assert len(grid.blocked) == 4
+
+
+def test_miss_on_spec_cell_does_not_make_it_inferred() -> None:
+    """A miss into measured geometry must not let forget drop the spec cell."""
+    grid = OccupancyGrid(xmin=0, xmax=10, ymin=0, ymax=10)
+    grid.blocked.add((6, 5))
+    grid.mark_blocked_ahead(5, 5, "RIGHT")
+    assert (6, 5) in grid.blocked
+    assert (6, 5) not in grid.inferred
+    walker = OccupancyWalker(grid=grid)
+    for direction in ("LEFT", "DOWN", "UP"):
+        grid.mark_blocked_ahead(5, 5, direction)
+    step = walker.next_dir((5, 5), (9, 5))
+    assert (6, 5) in grid.blocked
+    assert walker.forgets == 1
+    assert step is not None
