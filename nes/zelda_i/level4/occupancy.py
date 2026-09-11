@@ -25,10 +25,24 @@ from zelda_i.level4.dungeon import (
     LADDER_60_PICKUP_XY,
     MAP_21_PICKUP_XY,
     RIGHT_20_STAND,
+    ROOM_31_WATER_X0,
+    ROOM_31_WATER_X1,
+    ROOM_31_WATER_Y0,
+    ROOM_31_WATER_Y1,
 )
-from zelda_i.walk.physics import OccupancyGrid
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 __all__ = [
+    "ROOM_13_BOUNDS",
+    "ROOM_31_BOUNDS",
+    "ROOM_31_CLEAR_XY",
+    "ROOM_31_EAST_XY",
+    "ROOM_31_SPAWN_XY",
+    "ROOM_13_HC_XY",
+    "ROOM_13_NORTH_DOOR_XY",
+    "ROOM_13_SOUTH_XY",
+    "ROOM_13_SOUTH_Y",
+    "ROOM_13_SPAWN_XY",
     "ROOM_20_BOUNDS",
     "ROOM_20_CLIP_BUDGET",
     "ROOM_20_DOOR_Y_MAX",
@@ -77,7 +91,10 @@ __all__ = [
     "ROOM_60_SPAWN_XY",
     "ROOM_60_WAYPOINTS",
     "ROOM_60_WEST_AISLE_X",
+    "occupancy_dir",
+    "room_13_grid",
     "room_20_grid",
+    "room_31_grid",
     "room_21_grid",
     "room_40_grid",
     "room_60_grid",
@@ -395,4 +412,74 @@ def room_40_grid() -> OccupancyGrid:
     return OccupancyGrid(
         blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
     )
+
+
+# 0x13 Gleeok. West leftover (32,141). Unknown=free until a live miss
+# (OccupancyWalker). Do not screenshot-tile a 16px grid. Dest cells stay
+# open: south approach band, HC mid, north door to TF 0x03.
+ROOM_13_SPAWN_XY = (32, 141)
+ROOM_13_SOUTH_Y = 165
+ROOM_13_SOUTH_XY = (120, ROOM_13_SOUTH_Y)
+ROOM_13_HC_XY = (120, 125)
+ROOM_13_NORTH_DOOR_XY = (120, 93)
+# xmin=32 includes the west-door leftover (default dungeon xmin=40).
+ROOM_13_BOUNDS: tuple[int, int, int, int] = (32, 216, 77, 205)
+
+
+def room_13_grid() -> OccupancyGrid:
+    """Fresh 0x13 seed. Unknown free; dest cells stay open."""
+    xmin, xmax, ymin, ymax = ROOM_13_BOUNDS
+    return OccupancyGrid(
+        blocked=set(), xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+    )
+
+
+# 0x31 maze. Documented leftover (112,141); Clean clear leftover (120,133)
+# is a water pocket (v1 join_stuck). Unknown=free until a live miss.
+# Dest: east door band. Do not screenshot-tile.
+ROOM_31_SPAWN_XY = (112, 141)
+ROOM_31_CLEAR_XY = (120, 133)
+ROOM_31_EAST_XY = (200, 141)
+ROOM_31_BOUNDS: tuple[int, int, int, int] = (32, 216, 77, 205)
+
+
+def room_31_grid() -> OccupancyGrid:
+    """Fresh 0x31 seed. Unknown free; dest cells stay open.
+
+    v1 JOIN UP at (120,133) is water. v2 occupancy yo-yo leftover (128,142)
+    is the same pocket. Seed that leftover water; east door and floor dests
+    stay open. Do not screenshot-tile the maze.
+    """
+    xmin, xmax, ymin, ymax = ROOM_31_BOUNDS
+    blocked: set[tuple[int, int]] = set()
+    _block_rect(
+        blocked,
+        ROOM_31_WATER_X0,
+        ROOM_31_WATER_X1,
+        ROOM_31_WATER_Y0,
+        ROOM_31_WATER_Y1,
+    )
+    for dest in (ROOM_31_SPAWN_XY, ROOM_31_EAST_XY):
+        blocked.discard(dest)
+    return OccupancyGrid(
+        blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+    )
+
+
+def occupancy_dir(
+    walker: OccupancyWalker,
+    xy: tuple[int, int],
+    goal: tuple[int, int],
+    *,
+    sticky: bool = False,
+) -> str | None:
+    """Grade last step then BFS. Miss blocks the cell ahead; no path stands.
+
+    ``sticky`` keeps live misses as spec-declared so OccupancyWalker cannot
+    forget them and yo-yo (0x31 water pocket).
+    """
+    walker.observe(xy)
+    if sticky:
+        walker.grid.inferred.clear()
+    return walker.next_dir(xy, goal)
 

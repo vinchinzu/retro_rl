@@ -32,8 +32,19 @@ from zelda_i.level4.dungeon import (
     ROOM_L4_VIRES_61,
     ROOM_L4_ZOLS_40,
 )
+from zelda_i.level4.occupancy import (
+    ROOM_31_EAST_XY,
+    ROOM_31_SPAWN_XY,
+    occupancy_dir,
+    room_31_grid,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.dungeon.token_path import HoldTokenPath
+from zelda_i.walk.physics import OccupancyWalker
+
+
+def _room31_walker() -> OccupancyWalker:
+    return OccupancyWalker(grid=room_31_grid())
 
 # 0x12 → Gleeok: hold4 PATH_12_TO_GLEEOK (rr-rvae dual).
 PUSH_12_HOLD = 70  # frames holding LEFT at stand
@@ -494,14 +505,15 @@ def make_room_40_key_controller() -> Level4Key40Controller:
 
 
 # 0x31 west-door leftover. Cardinals stick at ~(32,141); RIGHT+UP clips
-# into ~(48,133), then waypoints to mid-maze ~(128,133).
+# into ~(48,133), then waypoints to south-gold floor. Mid ~(128,133) is a
+# water island (no ladder yet); Clean leftover parked there (rr-bxzj).
 MAZE_31_INLAND_X = 48
 MAZE_31_ALCOVE_Y = 141
 MAZE_31_ALCOVE_Y_TOL = 8
-MAZE_31_MID = (128, 133)
+MAZE_31_MID = (80, 173)
 MAZE_31_MID_TOL = 8
 MAZE_31_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    (48, 109), (80, 109), (80, 173), MAZE_31_MID,
+    (48, 109), (80, 109), MAZE_31_MID,
 )
 
 
@@ -573,6 +585,106 @@ def make_maze_31_inland_controller() -> Level4Maze31InlandController:
     return Level4Maze31InlandController()
 
 
+# Post-clear leave: documented east leftover (112,141) on floor, not the
+# water island (120,133). West aisle and north gold (80,109) navigate DOWN
+# to south aisle (80,173), RIGHT along south corridor to (128,173), UP to
+# island (128,133), LEFT to (112,133), DOWN to (112,141).
+# Do not RIGHT from (80,109) (wall lip; not 4-connected).
+LEAVE_31_TOL = 2
+LEAVE_31_MAX_FRAMES = 4000
+LEAVE_31_SOUTH_AISLE_XY = (80, 173)
+LEAVE_31_SOUTH_EAST_XY = (128, 173)
+LEAVE_31_ISLAND_XY = (128, 133)
+LEAVE_31_JOIN_NORTH_XY = (112, 133)
+LEAVE_31_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    LEAVE_31_SOUTH_AISLE_XY,
+    LEAVE_31_SOUTH_EAST_XY,
+    LEAVE_31_ISLAND_XY,
+    LEAVE_31_JOIN_NORTH_XY,
+    ROOM_31_SPAWN_XY,
+)
+
+
+class Maze31LeavePhase(Enum):
+    PATH = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+@dataclass
+class Level4Maze31LeaveController(MazeHop):
+    """Cleared 0x31 → waypoints via south corridor to floor (112,141)."""
+
+    max_frames: int = LEAVE_31_MAX_FRAMES
+    phase: Maze31LeavePhase = Maze31LeavePhase.PATH
+    play_room: int | None = ROOM_L4_EAST_31
+    arrive_note: str = "floor_112_141"
+    _initialized: bool = False
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            abs(int(snap.link_x) - ROOM_31_SPAWN_XY[0]) <= LEAVE_31_TOL
+            and abs(int(snap.link_y) - ROOM_31_SPAWN_XY[1]) <= LEAVE_31_TOL
+        )
+
+    def _init_path_index(self, xy: tuple[int, int]) -> None:
+        x, y = xy
+        if (
+            abs(x - ROOM_31_SPAWN_XY[0]) <= LEAVE_31_TOL
+            and abs(y - ROOM_31_SPAWN_XY[1]) <= LEAVE_31_TOL
+        ):
+            self.path_index = len(LEAVE_31_WAYPOINTS)
+        elif x >= 120 and y <= 136:
+            self.path_index = 3  # water island -> head to (112, 133)
+        elif x > 84 and y >= 160:
+            self.path_index = 1  # south corridor -> head to (128, 173)
+        else:
+            self.path_index = 0  # west aisle/north gold -> head to (80, 173)
+        self._initialized = True
+
+    def policy(self, snap: ZeldaSnapshot, xy: tuple[int, int]) -> FrameAction:
+        if not self._initialized:
+            self._init_path_index(xy)
+
+        if self.arrived(snap):
+            return self._mark_done(self.arrive_note)
+
+        while self.path_index < len(LEAVE_31_WAYPOINTS):
+            gx, gy = LEAVE_31_WAYPOINTS[self.path_index]
+            tol = LEAVE_31_TOL if self.path_index == len(LEAVE_31_WAYPOINTS) - 1 else 4
+            if abs(xy[0] - gx) <= tol and abs(xy[1] - gy) <= tol:
+                self._sample(snap, f"waypoint_{self.path_index}")
+                self.path_index += 1
+                self._stall = 0
+                continue
+            if self.path_index == 0 and xy[0] > 84:
+                self.path_index = 1
+                continue
+            break
+
+        if self.path_index >= len(LEAVE_31_WAYPOINTS):
+            return self._mark_done(self.arrive_note)
+
+        if self._stall >= STALL_LIMIT:
+            return self._stall_fail(snap, "leave_stuck", xy)
+
+        gx, gy = LEAVE_31_WAYPOINTS[self.path_index]
+        direction = axis_dir(xy, (gx, gy), y_first=True, tol=2) or "DOWN"
+        return _act(direction, f"maze31_leave_{direction}")
+
+    def report(self) -> dict[str, Any]:
+        return self.report_base(
+            "level4_leave_0x31",
+            dest=list(ROOM_31_SPAWN_XY),
+            waypoints=[list(w) for w in LEAVE_31_WAYPOINTS],
+            samples=list(self.samples),
+        )
+
+
+def make_maze_31_leave_controller() -> Level4Maze31LeaveController:
+    return Level4Maze31LeaveController()
+
+
 # 0x31 leftover (112,141): UP off water, SE clip, south U, then RIGHT → 0x32.
 MAZE_31_NORTH_STRIP_Y = 113
 MAZE_31_SE_X = 132
@@ -585,6 +697,7 @@ MAZE_31_EAST_PUSH = 280
 
 class Maze31EastPhase(Enum):
     JOIN = auto()
+    OCC = auto()
     CLIP = auto()
     THREAD = auto()
     PUSH = auto()
@@ -601,6 +714,7 @@ class Level4Maze31EastController(MazeHop):
     dest_screen: int | None = ROOM_L4_EAST_32
     play_room: int | None = ROOM_L4_EAST_31
     arrive_note: str = "entered_0x32"
+    walker: OccupancyWalker = field(default_factory=_room31_walker)
 
     def _at_east_band(self, snap: ZeldaSnapshot) -> bool:
         return (
@@ -624,15 +738,30 @@ class Level4Maze31EastController(MazeHop):
             return self._push_east(xy, snap, "east_band")
 
         if self.phase is Maze31EastPhase.JOIN:
-            if xy[1] <= MAZE_31_NORTH_STRIP_Y:
+            if xy[0] >= 108 and xy[1] <= MAZE_31_NORTH_STRIP_Y:
                 self._sample(snap, "north_strip")
                 self._set_phase(Maze31EastPhase.CLIP, "north_strip")
             elif self._stall >= STALL_LIMIT:
-                return self._stall_fail(snap, "join_stuck", xy)
+                self._sample(snap, "join_occ")
+                self._set_phase(Maze31EastPhase.OCC, "join_occ")
             else:
                 return _act("UP", "maze31_east_join_UP")
 
+        if self.phase is Maze31EastPhase.OCC:
+            if xy[1] <= MAZE_31_NORTH_STRIP_Y:
+                self.walker.last_dir = None
+                self._sample(snap, "north_strip")
+                self._set_phase(Maze31EastPhase.CLIP, "north_strip")
+            else:
+                direction = occupancy_dir(
+                    self.walker, xy, ROOM_31_EAST_XY, sticky=True
+                )
+                if direction is None:
+                    return _idle("maze31_east_stand")
+                return _act(direction, f"maze31_east_occ_{direction}")
+
         if self.phase is Maze31EastPhase.CLIP:
+            self.walker.last_dir = None
             if xy[0] >= MAZE_31_SE_X and xy[1] >= MAZE_31_SE_Y:
                 self._sample(snap, "se_corridor")
                 self._set_phase(Maze31EastPhase.THREAD, "se_corridor")
@@ -652,6 +781,7 @@ class Level4Maze31EastController(MazeHop):
             "level4_east_0x32",
             waypoints=[list(w) for w in MAZE_31_EAST_WAYPOINTS],
             samples=list(self.samples),
+            occupancy_misses=self.walker.misses,
         )
 
 

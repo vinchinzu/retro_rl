@@ -438,6 +438,26 @@ ROOM_30_SPEC = DungeonRoomSpec(
 # 0x31: 5× Vire maze (rr-resv). Enter west ~(16,141). Clear opens RIGHT door
 # (cur_opened_doors 2→3). Free N/W sealed from interior; free RIGHT → 0x32.
 # Maze walkable is non-rectangular (BFS ~79 cells); use hold6 path to east band.
+# Center x=120 column is water; Clean inland leftover parked on it (rr-bxzj).
+# Leftover-measured pocket (v1 (120,133), v2 (128,142)). Dest floor (112,141)
+# is west of x=116. Do not screenshot-tile the maze.
+ROOM_31_WATER_X0, ROOM_31_WATER_X1 = 116, 136
+ROOM_31_WATER_Y0, ROOM_31_WATER_Y1 = 125, 148
+_ROOM_31_WATER_BLOCKED: tuple[tuple[int, int], ...] = tuple(
+    (x, y)
+    for y in range(ROOM_31_WATER_Y0, ROOM_31_WATER_Y1 + 1)
+    for x in range(ROOM_31_WATER_X0, ROOM_31_WATER_X1 + 1)
+)
+_PATROL_31: tuple[tuple[int, int], ...] = (
+    (64, 109),
+    (80, 109),
+    (176, 109),
+    (176, 141),
+    (176, 173),
+    (80, 173),
+    (64, 173),
+    (64, 141),
+)
 ROOM_31_SPEC = DungeonRoomSpec(
     spec_id="level4_room31_vires",
     source_room=ROOM_L4_NORTH_30,
@@ -449,8 +469,8 @@ ROOM_31_SPEC = DungeonRoomSpec(
     type_only_enemy_types=(VIRE_SPLIT_KEESE_TYPE,),
     object_slot_max=12,
     combat=CombatTuning(
-        patrol=_PATROL_MID,
-        engage_distance=72,
+        patrol=_PATROL_31,
+        engage_distance=24,
         attack_phase=0,
         engage_attack_period=6,
         engage_attack_hold=3,
@@ -458,6 +478,7 @@ ROOM_31_SPEC = DungeonRoomSpec(
         occupancy_patrol=True,
         # West-door leftover ~(16,141) sits outside default xmin=40.
         occupancy_bounds=(16, 216, 77, 205),
+        occupancy_blocked=_ROOM_31_WATER_BLOCKED,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=ROOM_ITEM_NONE,
