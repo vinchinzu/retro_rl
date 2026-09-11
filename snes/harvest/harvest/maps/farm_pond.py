@@ -92,13 +92,15 @@ FARM_POND_ACCESS_FENCE_X_RANGE: Tuple[int, int] = (11, 29)
 # Staging stands just north of that wall. West plant-pocket stands (e.g.
 # (13,27) after potato plant) soft-block pure-south movement even when live
 # tile IDs look walkable — stage west/left before FenceClearLoopTask.
-# (11,28) used to be listed here while also sitting in FARM_NO_GO_TILES
-# (shipping-bin ditch). find_path never returned it, so it was dead weight that
-# read like a usable stand; test_farm_pond keeps the two sets disjoint.
+# (11,28) is also in FARM_NO_GO_TILES (shipping-bin ditch), which reads like a
+# contradiction worth cleaning up — but POND_CORRIDOR_TILES in crop_planner is
+# built from this tuple, so removing it is NOT the no-op it looks like. Left
+# in deliberately; see docs/tasks/rr-20w-run16-defects.md.
 FARM_POND_ACCESS_STAGING_TILES: Tuple[Tuple[int, int], ...] = (
     (11, 29),
     (12, 29),
     (10, 28),
+    (11, 28),
     (15, 29),
     (18, 30),
     (20, 30),
