@@ -54,7 +54,11 @@ PLANTED_DRY = 0x54
 PLANTED_WET = 0x55
 # 3x3 around (13,28): 8 tilled ring tiles, untilled notch for the plant stand.
 PLOT_RING_SIZE = 8
-HOED_OR_PLANTED: FrozenSet[int] = frozenset({FRESH_TILLED, PLANTED_DRY, PLANTED_WET})
+# 0x08 is already plantable (D14 hoe_until_tilled timeout on watered soil
+# after a pocket harvest). 0x02 dried tilled still needs a re-hoe.
+HOED_OR_PLANTED: FrozenSet[int] = frozenset(
+    {FRESH_TILLED, WATERED_TILLED, PLANTED_DRY, PLANTED_WET}
+)
 PLANTED_OR_WET: FrozenSet[int] = frozenset({PLANTED_DRY, PLANTED_WET}) | frozenset(
     range(0x1E, 0x70)
 )
@@ -218,6 +222,15 @@ class UseToolUntilTileSkill(Task):
             )
         if self.target_tile is not None:
             dist = abs(player_tile[0] - tile[0]) + abs(player_tile[1] - tile[1])
+            if dist == 0 and self.face:
+                away = {"up": "down", "down": "up", "left": "right", "right": "left"}
+                step_dir = away.get(self.face)
+                if step_dir:
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(**{step_dir: True})),
+                        reason=f"step off target {tile}",
+                    )
             if dist != 1:
                 return TaskResult(
                     status=TaskStatus.RUNNING,
@@ -242,10 +255,17 @@ class UseToolUntilTileSkill(Task):
             and facing != wanted_face
             and self._steps <= 24
         ):
+            # 1f tap every 8f — holding the face walks onto the hoe target.
+            if self._steps % 8 == 1:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**{self.face: True})),
+                    reason=f"tap face {self.face} (ram={facing})",
+                )
             return TaskResult(
                 status=TaskStatus.RUNNING,
-                action=ActionResult(make_action(**{self.face: True})),
-                reason=f"face {self.face} (ram={facing})",
+                action=ActionResult(make_action()),
+                reason=f"wait face {self.face} (ram={facing})",
             )
         if self._face_ok_step == 0:
             self._face_ok_step = self._steps
@@ -368,8 +388,13 @@ _HOE_ALT_STANDS_RAM: Tuple[Tuple[Tuple[int, int], str], ...] = (
 )
 # y=31 is the solid 0x05 wall; y=30 is the lip that never settles a face-up.
 _FENCE_LIP_Y = 30
-# Tight: radius 6 accepted (11,29) as the (12,29) hoe stand (live miss).
-_RING_NAV_RADIUS = 3
+# Ring nav aims at the stand *tile center*, not hoe_stand_px's 5px away-nudge.
+# Radius 3 around that nudge missed the south-edge post-harvest pose (run7 D15
+# (209,457) vs (216,451) chebyshev 7). Radius 10 around the nudge accepted the
+# *away* neighbor, so hoe saw dist=2 (live second-plot (17,29) vs target
+# (19,29)). Center ±7 stays on the 16px tile (south edge = 7; neighbor = 8).
+_RING_NAV_RADIUS = 7
+_RING_NAV_SOFT_RADIUS = 7
 
 
 # Tile IDs a hoe stand can actually settle on. Excludes structure/bank IDs
@@ -453,13 +478,14 @@ def _ring_nav_tool_skills(
 
     skills: list = []
     for index, (target, stand, face) in enumerate(plan):
-        px, py = hoe_stand_px(stand, face)
+        px = stand[0] * TILE_SIZE + 8
+        py = stand[1] * TILE_SIZE + 8
         skills.append(
             NavSkill(
                 name=f"{nav_prefix}_{index}_{face}",
                 target_px=(px, py),
                 radius=_RING_NAV_RADIUS,
-                soft_radius=_RING_NAV_RADIUS,
+                soft_radius=_RING_NAV_SOFT_RADIUS,
                 timeout=nav_timeout,
                 require_tilemap=0x00,
             )
@@ -486,8 +512,14 @@ def pocket_hoe_ring_skills(
 
     plan = []
     for target, stand, face in hoe_plan(center):
+        if ram is not None:
+            tid = int(get_tile_at(ram, target[0], target[1]))
+            if tid in HOED_OR_PLANTED or is_crop_tile(tid):
+                continue
         stand, face = remap_pocket_hoe_stand(center, target, stand, face, ram)
         plan.append((target, stand, face))
+    if not plan:
+        return []
     # Start with that bottom-center cell — nav_pocket_hoe_stand lands there.
     ordered = plan[-1:] + plan[:-1]
     return _ring_nav_tool_skills(

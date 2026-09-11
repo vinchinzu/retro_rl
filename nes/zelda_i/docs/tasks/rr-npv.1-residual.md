@@ -1,35 +1,68 @@
 # rr-npv.1 residual — Clean L3 Entrance→TF dest hops
 
-Stopped at fixture-live. `route_eligible=false`. Three serial ROM reds.
-Do not STATUS. Do not close the bead.
+Stopped at fixture-live. `route_eligible=false`. Do not STATUS. Do not close
+the bead. **Blocked:** 3 serial reds on `manhandla_tf`.
+
+## Glance (this trial leftover)
+
+room **0x4d**, mode **17** (death), xy **(138,173)**, tf **0x03**, keys **4**,
+bombs **2**, health **0x70** (lo 0, hi 7), deaths **1**. PNG
+`recordings/l3_entrance_tf_t0_final.png` (death, south band).
 
 ## Green dest hops (Level3Entrance pin, `--no-infinite-life --no-video`)
 
 | Stage | Frames | Leftover |
 |-------|--------|----------|
 | west_key | 507 | 0x7b key dest |
-| north_chain | 2791 | 0x5b Darknuts cleared (natural bombs) |
-| bomb_5b | 364 | play 0x5c; bombs 8→7; pause-select, no poke |
+| north_chain | 2791 | 0x5b Darknuts cleared |
+| bomb_5b | 364 | play 0x5c; bombs 8→7 |
+| clear_5c | 1073 | 0x5c Darknuts cleared |
+| right_5d | 311 | play 0x5d (32,141) |
+| clear_5d | 2932 | play 0x5d (120,175) |
+| up_4d | 480 | play **0x4d (120,189)** |
 
-Glance at bomb_5b leave (trial 2/3): room 0x5c, mode 5, bombs 7, keys 4, tf 0x03.
+Total frames at fail: 8597.
 
-## Serial reds (one change each, then stop)
+## Serial reds on `manhandla_tf` (blocked)
 
-1. `bomb_5b` stand_timeout at **(176,125)** tile 117, bombs=10. Naive `_goto_stand` RIGHT into a block. Fix: y-first `approach_waypoints=((192,141),)`.
-2. `clear_5c` death at **(120,125)** after occupancy_patrol boxed in 0x5c diamonds (GAME OVER, 2 Darknuts live). Fix: waist/south patrol, `occupancy_patrol=False`, `contact_backstep=8`.
-3. `clear_5c` death again at **(153,101)** 2787f. Engage still chased north of the waist onto diamonds. hearts lo=0, mode 17, bombs 7 unused in the fight.
+| Sitting | Leftover | What failed |
+|---------|----------|-------------|
+| 1 | (104,142) death | retreat then approach UP into the flower at the waist |
+| 2 | (184,173) death | y=MAX `away` RIGHT into the east wall; first retreat DOWN to y=189 |
+| **3 (this)** | **(138,173) death** | east wall and south-door retreat **gone**; heads still kill at y=MAX |
 
-## Blocked
+Do not poke. Do not bump `max_frames`. No fourth ROM trial.
 
-Wooden-sword 0x5c Darknut clear on diamond floor with 4 hearts, Clean, no poke, no infinite life. Dest hop entered 0x5c; combat is not dest-safe.
+This trial samples (`manhandla_tf` 139f, bombs 4→2):
 
-Do not poke bombs/keys/doors. Do not extend hop timeouts without a new miss. Next sitting: occupancy-seed 0x5c diamond cells (miss → block → replan; no path → stand) or a bomb-from-waist dest policy that does not chase y≤109.
+| f | reason | xy | bombs | health |
+|---|--------|-----|-------|--------|
+| 1 | climb | (120,189) | 4 | 0x71 |
+| 16 | approach | (125,173) | 4 | 0x71 |
+| 48 | place_bomb | (160,167) | 4 | 0x71 |
+| 64 | retreat_bomb | (152,173) | 3 | 0x71 |
+| 80 | retreat_bomb | (169,173) | 3 | 0x70 |
+| 96 | combat_backstep | (158,173) | 3 | 0x70 |
+| 112 | approach | (149,173) | 3 | 0x70 |
+| 128 | retreat_bomb | (154,173) | 2 | 0x70 |
+| 139 | link_death | (138,173) | 2 | 0x70 |
 
-## Glance (trial 3 leftover)
+x range 120–169 (not 184). y>=167 in fight; y=189 is spawn climb only. No y<141.
 
-room **0x5c**, mode **17**, xy **(153,101)**, tf **0x03**, keys **4**, bombs **7**, health **0x70** (lo 0 ≠ hi 7). PNG `recordings/l3_entrance_tf_t0_final.png`.
+## Manhandla grade (this leftover only)
 
-## Notes
+| Policy | This trial |
+|--------|------------|
+| south-band y>=141 / no north chase | green |
+| no waist re-enter | green vs sitting 1 |
+| no east-wall / south-door retreat | **green vs sitting 2** |
+| dest TF 0x04 | **red**: still dies at y=MAX while heads live |
 
-- `zelda_i.runner.open_env` imports missing `load_state`; isolated runner uses `make_env(GAME, Level3Entrance, GAME_DIR)`.
-- Survival Raft→TF still uses `Level3BossPathController.path_to_5d` dest-hop drive (no `idle(n)` / `push_dir` holds). Integrator owns spine.
+`writes=0`. `route_eligible=false`. `boss_path.py` 964 LOC.
+
+## Next sitting
+
+Blocked on Manhandla contact at the south stand (y=173). Do not walk east wall
+or south door. Do not chase north. Isolated runner:
+
+`run_level3_complete.py --from-state Level3Entrance --no-infinite-life --no-video --trials 1`

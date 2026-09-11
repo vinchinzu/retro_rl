@@ -10,6 +10,11 @@ from typing import Iterable, Literal, Optional
 import numpy as np
 
 from harvest.maps.map_config import FARM_NO_GO_TILES, FARM_TILEMAP_IDS
+from harvest.maps.farm_pond import (
+    FARM_POND_ACCESS_STAGING_TILES,
+    FARM_POND_MULTIHOP_WAYPOINTS,
+    FARM_POND_POST_GAP_CORRIDOR,
+)
 from harvest.core.tile_catalog import (
     ADDR_MAP,
     FARM_WALKABLE,
@@ -44,6 +49,18 @@ DEFAULT_START_TILE: Tile = (15, 29)
 DEFAULT_SHIPPING_TILE: Tile = (11, 30)
 DEFAULT_WATER_SOURCE_TILE: Tile = (9, 28)
 
+# Empty-can refill corridor. A ring here seals the watering-can route once
+# crops grow past 0x54/0x55.
+POND_CORRIDOR_TILES: frozenset[Tile] = (
+    frozenset(FARM_POND_POST_GAP_CORRIDOR)
+    | frozenset(FARM_POND_MULTIHOP_WAYPOINTS)
+    | frozenset(FARM_POND_ACCESS_STAGING_TILES)
+)
+OPEN_FIELD_IDS = frozenset({0x00, 0x01, 0x02, FRESH_TILLED, WATERED_TILLED})
+_MOORE_OFFSETS: tuple[Tile, ...] = tuple(
+    (dx, dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dx, dy) != (0, 0)
+)
+
 
 @dataclass(frozen=True)
 class CropSpec:
@@ -60,20 +77,33 @@ class CropSpec:
     def is_regrowable(self) -> bool:
         return self.regrow_days is not None
 
-    def harvests_from_planting_day(self, day: int, season_length: int = SEASON_LENGTH) -> int:
+    def harvest_horizon_days(self) -> int:
+        """Days from this crop's season D1 until a planting can still mature.
+
+        Spring crops INC through Summer (`NightlyFarmTilesCheck`); Fall D1
+        starts DEC of immature watered tiles. A Spring D28 potato therefore
+        still harvests (Summer D4). Summer corn/tomato must mature before
+        Fall, so their horizon is one season.
+        """
+        if SEASON_SPRING in self.seasons and SEASON_SUMMER not in self.seasons:
+            return 2 * SEASON_LENGTH
+        return SEASON_LENGTH
+
+    def harvests_from_planting_day(self, day: int, season_length: int | None = None) -> int:
+        horizon = self.harvest_horizon_days() if season_length is None else season_length
         first_harvest_day = day + self.days_to_first_harvest
-        if first_harvest_day > season_length:
+        if first_harvest_day > horizon:
             return 0
         if self.regrow_days is None:
             return 1
-        return 1 + (season_length - first_harvest_day) // self.regrow_days
+        return 1 + (horizon - first_harvest_day) // self.regrow_days
 
     def expected_profit_g(
         self,
         planted_tiles: int,
         *,
         day: int,
-        season_length: int = SEASON_LENGTH,
+        season_length: int | None = None,
     ) -> int:
         harvests = self.harvests_from_planting_day(day, season_length)
         if harvests <= 0:
@@ -490,6 +520,16 @@ def _layout_names_for_config(config: CropPlanningConfig) -> tuple[str, ...]:
     return ("eight_tile_ring",)
 
 
+def _plot_clutter(ram: np.ndarray, crop_tiles: tuple[Tile, ...], footprint: set[Tile]) -> int:
+    clutter = 0
+    for tx, ty in crop_tiles:
+        for dx, dy in _MOORE_OFFSETS:
+            neighbor = (tx + dx, ty + dy)
+            if neighbor not in footprint and read_tile(ram, neighbor) not in OPEN_FIELD_IDS:
+                clutter += 1
+    return clutter
+
+
 def evaluate_plot_candidate(
     ram: np.ndarray,
     center: Tile,
@@ -511,6 +551,8 @@ def evaluate_plot_candidate(
     all_needed = set(crop_tiles) | set(access_tiles)
     if not all(_in_bounds(tile, config.bounds) for tile in all_needed):
         return None
+    if (all_needed | {center}) & POND_CORRIDOR_TILES:
+        return None
     if any(_blocked_for_crop(ram, tile, no_go) for tile in crop_tiles):
         return None
     if any(_blocked_for_access(ram, tile, no_go) for tile in access_tiles):
@@ -525,12 +567,20 @@ def evaluate_plot_candidate(
         return None
 
     water_stands = tuple(sorted({item.stand_tiles[0] for item in access}))
-    route_cost = (
-        tile_dist(config.start_tile, center)
-        + tile_dist(center, config.shipping_tile) * config.shipping_weight
-        + tile_dist(center, config.water_source_tile)
+    ship_dist = tile_dist(center, config.shipping_tile)
+    walk = tile_dist(config.start_tile, center) + tile_dist(center, config.water_source_tile)
+    # 3-day corn/tomato: many bin trips, stay close. Potato/turnip: one
+    # harvest per cycle, plant farther so the close rings stay free for
+    # summer regrow. Walk to water/start is still a cost either way.
+    ship_pref = -ship_dist if crop.is_regrowable else ship_dist
+    route_cost = walk - ship_pref * config.shipping_weight
+    clutter = _plot_clutter(ram, crop_tiles, all_needed | {center})
+    score = (
+        expected_profit
+        - walk * config.route_weight
+        + ship_pref * config.shipping_weight * config.route_weight
+        - clutter * 25
     )
-    score = expected_profit - route_cost * config.route_weight
     return PlotCandidate(
         center=center,
         layout=layout,
@@ -747,6 +797,8 @@ __all__ = [
     "DEFAULT_SHIPPING_TILE",
     "DEFAULT_START_TILE",
     "DEFAULT_WATER_SOURCE_TILE",
+    "OPEN_FIELD_IDS",
+    "POND_CORRIDOR_TILES",
     "PlannedPlot",
     "PlantingRecordingTemplate",
     "PlantingStep",

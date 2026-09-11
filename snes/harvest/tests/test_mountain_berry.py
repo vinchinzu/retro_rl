@@ -23,6 +23,14 @@ from harvest.maps.map_config import (
     slice_route_from_position,
 )
 from harvest.core.game_clock import ClockTimeline, compare_frame_benches
+from harvest.planner.day_phase_berry import (
+    GRAPE_BAIL_HOUR_NO_SHOP,
+    GRAPE_BAIL_HOUR_SHOP_DAY,
+    grape_bail_hour_for_day,
+    grape_day_spec,
+    mountain_berry_count_for_day,
+    mountain_berry_phase,
+)
 from harvest.planner.day_phase_catalog import MOUNTAIN_BERRY_PHASE, PHASE_SEQUENCES
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
@@ -495,6 +503,195 @@ class MountainBerrySelectTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(task.shipped_count, 1)
         self.assertIn("shop window", result.reason or "")
+
+    def test_second_grape_continues_when_bail_hour_is_raised(self) -> None:
+        """A raised shop_bail_hour must actually reach the post-ship check.
+
+        The step() guard used to be a hard-coded ``hour >= 12`` that shadowed
+        ``shop_bail_hour``, so the field was dead and the second grape was
+        abandoned as soon as the first landed (run11 D3-D7).
+        """
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 11
+        task = MountainGrapeShipTask(target_count=2, shop_bail_hour=12)
+        task.reset(world)
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.shipped_count, 1)
+        self.assertIn("returning for next grape", result.reason or "")
+
+    def test_second_loop_refused_when_it_cannot_land_before_the_deadline(self) -> None:
+        """Pre-flight gate: never start a loop that ends past hard_return_hour."""
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 13
+        task = MountainGrapeShipTask(
+            target_count=2, shop_bail_hour=15, loop_hours=4, hard_return_hour=16
+        )
+        task.reset(world)
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.shipped_count, 1)
+        self.assertIn("would land after", result.reason or "")
+
+    def test_late_hour_does_not_abandon_a_loop_in_flight_off_farm(self) -> None:
+        """The mid-flight guard must not strand the farmer on mountain 0x10.
+
+        grapefix_d3_d9 D3: the run reported SUCCESS from mountain 0x10, so
+        NAV_FARM_EXIT then failed its map lock and the day lost both the seed
+        purchase and CROP_ESTABLISH.
+        """
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 17
+        task = MountainGrapeShipTask(target_count=2, hard_return_hour=16)
+        task.reset(world)
+        task._shipped = 1
+        result = task.step(world)
+        self.assertNotEqual(
+            result.status,
+            TaskStatus.SUCCESS,
+            "must not report success while still on the mountain",
+        )
+
+    def test_late_hour_stops_between_loops_when_back_on_the_farm(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[field_spec("hour").address] = 17
+        task = MountainGrapeShipTask(target_count=2, hard_return_hour=16)
+        task.reset(world)
+        task._shipped = 1
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("past return deadline", result.reason or "")
+
+    def test_failed_second_pick_walks_home_before_reporting_success(self) -> None:
+        """No grape at the stand on loop 2 must not end the run on 0x10.
+
+        This is the common case, not the rare one: the second loop revisits
+        the same ``first_berry`` landmark, which has no same-day respawn.
+        """
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._shipped = 1
+        task._phase = "pick"
+
+        class _FailingPick:
+            def reset(self, _world) -> None:
+                pass
+
+            def step(self, _world) -> TaskResult:
+                return TaskResult(status=TaskStatus.FAILURE, reason="no forage")
+
+        task._child = _FailingPick()
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "walk_back")
+        self.assertIn("walking back", result.reason or "")
+
+    def test_timeout_off_farm_walks_home_instead_of_succeeding(self) -> None:
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._shipped = 1
+        task._step_count = task.timeout
+        result = task.step(world)
+        self.assertNotEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.phase_text, "walk_back")
+
+    def test_walk_back_arrival_off_farm_does_not_report_success(self) -> None:
+        """MultiMapNav can report arrived while still on 0x10; do not trust it."""
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._shipped = 1
+        task._phase = "walk_back"
+        task._bail_reason = "pick: no forage"
+
+        class _FakeArrived:
+            def step(self, _world) -> TaskResult:
+                return TaskResult(status=TaskStatus.SUCCESS, reason="arrived")
+
+        task._child = _FakeArrived()
+        result = task.step(world)
+        self.assertNotEqual(
+            result.status,
+            TaskStatus.SUCCESS,
+            "must not report success while still on the mountain",
+        )
+
+    def test_default_bail_hour_still_stops_the_second_grape_at_ten(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 10
+        task = MountainGrapeShipTask(target_count=2)
+        task.reset(world)
+        task._phase = "verify"
+        task._child = None
+        self._grape_at_bin(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertEqual(task.shipped_count, 1)
+
+
+class GrapeBailHourPolicyTests(unittest.TestCase):
+    def test_d2_keeps_the_conservative_ten(self) -> None:
+        spec = grape_day_spec(2)
+        self.assertEqual(spec.count, 1)
+        self.assertEqual(spec.bail_hour, 10)
+        self.assertEqual(grape_bail_hour_for_day(2), 10)
+
+    def test_no_shop_day_allows_a_later_second_loop(self) -> None:
+        spec = grape_day_spec(7)
+        self.assertEqual(spec.count, 2)
+        self.assertEqual(spec.bail_hour, GRAPE_BAIL_HOUR_NO_SHOP)
+
+    def test_restock_day_still_allows_the_second_grape(self) -> None:
+        """2 grapes then shop is ROM-proven (13:12 / 16:08). Bail must be
+        after the ~10:00 first-grape landing so loop 2 actually starts.
+        grapefix_d3_d9 used bail 9 on restock days and never started it.
+        """
+        spec = grape_day_spec(3)
+        earliest_landing = 10
+        self.assertEqual(spec.count, 2)
+        self.assertEqual(spec.bail_hour, GRAPE_BAIL_HOUR_NO_SHOP)
+        self.assertGreater(spec.bail_hour, earliest_landing)
+        self.assertLessEqual(spec.bail_hour + 4, 16)
+
+    def test_harvest_day_does_not_force_a_second_loop(self) -> None:
+        spec = grape_day_spec(9, has_harvest=True)
+        self.assertEqual(spec.count, 1)
+        self.assertEqual(spec.bail_hour, GRAPE_BAIL_HOUR_SHOP_DAY)
+        self.assertEqual(
+            grape_bail_hour_for_day(9, has_harvest=True),
+            GRAPE_BAIL_HOUR_SHOP_DAY,
+        )
+        self.assertEqual(mountain_berry_count_for_day(9, has_harvest=True), 1)
+        self.assertEqual(mountain_berry_count_for_day(9, has_harvest=False), 2)
+
+    def test_phase_spec_carries_the_bail_hour_to_the_task(self) -> None:
+        spec = mountain_berry_phase(count=2, shop_bail_hour=13)
+        self.assertEqual(spec.params["shop_bail_hour"], 13)
+        self.assertEqual(spec.params["count"], 2)
+
+    def test_phase_spec_omits_the_bail_hour_when_unset(self) -> None:
+        spec = mountain_berry_phase(count=1)
+        self.assertNotIn("shop_bail_hour", spec.params)
 
 
 if __name__ == "__main__":

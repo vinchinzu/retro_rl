@@ -333,6 +333,7 @@ def _build_mountain_berry(
             nav_timeout=spec.params.get("nav_timeout", 12_000),
             pick_attempts=spec.params.get("pick_attempts", 3),
             target_count=spec.params.get("count", 1),
+            shop_bail_hour=spec.params.get("shop_bail_hour", 10),
         )
     return MountainBerryTask(
         name=f"mountain_berry_{spec.phase.lower()}",

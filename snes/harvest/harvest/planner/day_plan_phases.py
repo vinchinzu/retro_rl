@@ -263,6 +263,7 @@ def build_day_phases(
         day=day,
         money=money,
         has_plant_capacity=has_plant_capacity,
+        has_harvest=bool(has_harvest),
     )
 
     buy_cow_first = (
@@ -317,11 +318,14 @@ def build_day_phases(
     )
     # Restock day (D3+): grapes ship before the shop hop even with keep-alive
     # crops — both are morning deadlines and grape income precedes the spend.
+    # Harvest mornings are the exception: do not force a 2-grape run in front
+    # of ripe tiles (2 grapes stay an option after crop work).
     restock_berries_first = bool(
         not berry_before_clear
         and not late_day
         and seed_buy_phases
         and other_berry_phases
+        and not has_harvest
     )
     early_berries = berry_before_clear or restock_berries_first
     if berry_before_clear:
@@ -447,6 +451,7 @@ def build_outdoor_day_phases(
         day=day,
         money=money,
         has_plant_capacity=has_plant_capacity,
+        has_harvest=has_harvest,
     )
     phases: List[PhaseSpec] = []
 
@@ -487,11 +492,13 @@ def build_outdoor_day_phases(
     # Restock day (D3+): ship the grapes before the shop hop even when
     # keep-alive crops still need water — grape < 5pm and shop < noon are
     # both morning deadlines, and the grape wallet credit precedes the spend.
+    # Harvest mornings do not force a 2-grape run ahead of ripe tiles.
     restock_berries_first = bool(
         not berry_before_clear
         and not late_day
         and seed_buy_phases
         and other_berry_phases
+        and not has_harvest
     )
     early_berries = berry_before_clear or restock_berries_first
     if berry_before_clear:

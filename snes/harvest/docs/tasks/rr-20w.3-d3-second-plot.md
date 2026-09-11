@@ -72,6 +72,24 @@ planted), `Y1_D3_PostSecondPlot` (establish only), `Y1_D3_PostSecondPlotWatered`
 `test_day_plan_crop_phases.Day3SecondPlotTests.test_crop_establish_targets_second_ring_once_west_pocket_is_planted`.
 Full crop/day-plan suite: **549 tests OK**.
 
+### 2026-09-10 — 2 grapes + shop is an option, not a harvest-day force
+
+Bug: `GRAPE_BAIL_HOUR_SHOP_DAY = 9` plus `hour >= bail` after grape 1
+lands ~10:00 never started loop 2 on restock days (grapefix_d3_d9). The
+"2 grapes + shop does not fit" leftover was wrong: ROM
+`d3_mountain_grape_two.json` ships 0→300 at 13:12, shop 13:12→16:08.
+
+Fix: D3+ restock mornings pass bail 12 (same as no-shop). Harvest
+mornings do not put the 2-grape run in front of ripe tiles — count=1
+after crop work, bail 9. Grapes stay an option, never a harvest-day
+requirement.
+
+Potato harvests in summer (`NightlyFarmTilesCheck` INC in season 1).
+`harvests_from_planting_day` for spring crops uses a 60-day horizon, so
+a D28 planting is valued (Summer D4). New potato rings prefer
+**farther from the bin** so summer 3-day corn/tomato can occupy the
+close sites. D2/D3 pocket centers stay as wired.
+
 ### Still open
 
 - "Water all 16" — re-water the D2 ring the same evening / D4 (needs a
@@ -100,8 +118,8 @@ Fixes landed this pass (all with `--end-of-spring`):
 - `_build_task` end_of_spring → `include_field_clear=False` (daily weed
   pickup stranded the farmer in the south field); `MultiDayPlannerTask`
   retries a stranded `return_home` 3× before failing.
-- `_berry_run_phases` stops the grape run once wallet ≥ `BERRY_STOP_WALLET_G`
-  (700g); `ReturnHomeTask` walks `mountain_to_farm` when stranded at 0x10/0x0C.
+- Grape count/bail is `GrapeDaySpec` (no wallet cutoff);
+  `ReturnHomeTask` walks `mountain_to_farm` when stranded at 0x10/0x0C.
 - `SwapCarrySlotsTask` tap-budgeted X pulse + 210f (was slipping the replant
   a day on shed entry).
 - `MultiDayPlannerTask` keeps its configured `seed_type` while still

@@ -26,6 +26,7 @@ from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
+    axis_dir,
     dungeon_align_then_push,
 )
 from zelda_i.dungeon.ops import (
@@ -35,6 +36,7 @@ from zelda_i.dungeon.ops import (
     room_fields,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.dungeon.tilemap import has_room_tile_map
 from zelda_i.level3.boss_combat import (
     BOMB_NORTH_STANDS,
     Level3BossCombatMixin,
@@ -44,6 +46,8 @@ from zelda_i.level3.boss_combat import (
     prep_5d_still_killable,
 )
 from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
+from zelda_i.level3.clear5c import Level3Clear5cController
+from zelda_i.level3.occupancy import seed_block_cells
 from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
     INVULN_MOVER_0X2B,
@@ -99,8 +103,22 @@ BOSS_PATH_PHASES: tuple[str, ...] = (
 BOSS_PATH_MAX_FRAMES = 120_000
 BOMB_5B_MAX_FRAMES = 8000
 MANHANDLA_MAX_FRAMES = 16000
+# Clean 0x4d: stay south of the waist, bomb the flower centroid, retreat.
+# Serial red 4 chased north to (82,101) after two bombs (accelerated heads).
+MANHANDLA_FIGHT_Y_MIN = 141
+MANHANDLA_FIGHT_Y_MAX = 173
+MANHANDLA_FIGHT_X_MIN = 56
+MANHANDLA_FIGHT_X_MAX = 184
+MANHANDLA_CONTACT = 32
+MANHANDLA_BOMB_MIN = 24
+MANHANDLA_BOMB_MAX = 52
+MANHANDLA_BOMB_CD = 72
+MANHANDLA_RETREAT = 36
+MANHANDLA_SWORD = 22
 EAST_DOOR = (208, 141)
 NORTH_DOOR = (NORTH_DOOR_X, 93)
+# 0x5c diamond waist (96,141) pockets occupancy. Spec-declare $6530
+# BLOCK_TILES on the dest hop so inferred misses are not forgotten.
 
 
 def _l3_door(
@@ -142,20 +160,19 @@ RIGHT_5C_SPEC = _l3_door(
     ROOM_L3_BOMB_SHORTCUT,
     EAST_DOOR,
     "RIGHT",
-    "occupancy y=141 RIGHT; dest 0x5d",
+    "occupancy dest 0x5d; $6530 BLOCK_TILES seed (no cardinal_hold, no y-align)",
     ROOM_L3_BOSS_PREP,
     push_at_goal=True,
-    align="y",
-    cardinal_hold=True,
+    align="dest",
 )
 UP_5D_SPEC = _l3_door(
     "level3_up_0x5d",
     ROOM_L3_BOSS_PREP,
     NORTH_DOOR,
     "UP",
-    "occupancy x=120 UP; dest 0x4d",
+    "occupancy dest 0x4d; $6530 BLOCK_TILES seed (no south_band)",
     ROOM_L3_BOSS,
-    south_band=True,
+    align="dest",
 )
 UP_4D_SPEC = _l3_door(
     "level3_up_0x4d",
@@ -170,7 +187,52 @@ UP_4D_SPEC = _l3_door(
 
 @dataclass
 class L3DoorHopController(DoorHopController):
-    """Occupancy dest hop. Shared engine; L3 has no rod so skip the L6 gate."""
+    """Occupancy dest hop. Shared engine; L3 has no rod so skip the L6 gate.
+
+    Dest hops seed spec-declared BLOCK_TILES from cart-WRAM ``$6530`` on
+    bind_env / first play so 0x5c diamonds and the 0x5d center plus survive
+    occupancy forget. North-door dest (120,93) and band y=109 stay open.
+    """
+
+    env: Any = field(default=None, repr=False)
+    _blocks_seeded: bool = field(default=False, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self.env = env
+        ram = env.get_ram()
+        snap = read_snapshot(ram)
+        if (
+            snap.screen == self.spec.room
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            self._seed_blocks(ram)
+
+    def _seed_blocks(self, ram: Any) -> None:
+        if self._blocks_seeded:
+            return
+        if not has_room_tile_map(ram):
+            return
+        n = seed_block_cells(self.walker.grid, ram)
+        gx, gy = self.spec.goal
+        for y in range(gy - 8, gy + 9):
+            self.walker.grid.blocked.discard((gx, y))
+        self.walker.grid.blocked.discard(self.goal)
+        self.walker.grid.blocked.discard((gx, int(self.spec.north_band_y)))
+        self.walker.path = None
+        self._blocks_seeded = True
+        if n:
+            self.notes.append(f"seed_blocks_{n}")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if (
+            not self._blocks_seeded
+            and self.env is not None
+            and snap.screen == self.spec.room
+            and snap.mode == PLAY_MODE
+        ):
+            self._seed_blocks(self.env.get_ram())
+        return super().policy(snap)
 
     def _dest(self, snap: ZeldaSnapshot) -> FrameAction | None:
         spec = self.spec
@@ -246,13 +308,24 @@ class Level3SpawnClearController:
     failed: bool = False
     notes: list[str] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
-    combat: GenericDungeonRoomController = field(init=False)
+    combat: Any = field(init=False)
     max_frames: int = field(init=False)
     route_eligible: bool = False
 
     def __post_init__(self) -> None:
-        self.combat = GenericDungeonRoomController(self.spec)
+        if getattr(self.spec, "room_id", None) == ROOM_L3_BOMB_SHORTCUT:
+            self.combat = Level3Clear5cController(self.spec)
+        else:
+            self.combat = GenericDungeonRoomController(self.spec)
         self.max_frames = int(self.spec.max_frames) + int(self.spawn_max)
+
+    def bind_env(self, env: Any) -> None:
+        ram = env.get_ram()
+        walker = getattr(self.combat, "walker", None)
+        if walker is not None and has_room_tile_map(ram):
+            n = seed_block_cells(walker.grid, ram)
+            if n:
+                self.notes.append(f"seed_blocks_{n}")
 
     def _doors_ok(self, snap: ZeldaSnapshot) -> bool:
         need = int(self.spec.required_open_doors or 0)
@@ -322,7 +395,7 @@ class Level3SpawnClearController:
 
 @dataclass
 class Level3ManhandlaController(HopController):
-    """0x4d leftover: bomb heads, HC, UP 0x3d. Dest is TF bit 0x04."""
+    """0x4d leftover: south-band bomb centroid, HC, UP 0x3d. Dest TF 0x04."""
 
     spec_id: str = "level3_manhandla_tf"
     room: int = ROOM_L3_BOSS
@@ -332,6 +405,9 @@ class Level3ManhandlaController(HopController):
     leftover: dict[str, Any] = field(default_factory=dict)
     samples: list[dict[str, Any]] = field(default_factory=list)
     bomb_cd: int = 0
+    retreat_frames: int = 0
+    retreat_dir: str = "DOWN"
+    saw_heads: bool = False
     hc0: int | None = None
     env: Any | None = None
     _select: PauseSelectController | None = field(default=None, repr=False)
@@ -362,6 +438,7 @@ class Level3ManhandlaController(HopController):
                     "bombs": int(snap.bombs),
                     "triforce": int(snap.triforce),
                     "health": int(snap.health),
+                    "heads": int(self.saw_heads),
                 }
             )
         return action
@@ -384,34 +461,76 @@ class Level3ManhandlaController(HopController):
             return driven
         return FrameAction(nes_idle_action(), "bombs_selected")
 
+    def _face(self, dx: int, dy: int) -> str:
+        if abs(dx) >= abs(dy):
+            return "RIGHT" if dx > 0 else "LEFT"
+        return "DOWN" if dy > 0 else "UP"
+
     def _fight(self, snap: ZeldaSnapshot, heads: list) -> FrameAction:
+        cx = sum(int(h.x) for h in heads) // len(heads)
+        cy = sum(int(h.y) for h in heads) // len(heads)
         nearest = min(
             heads, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y)
         )
         dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        dx = nearest.x - snap.link_x
-        dy = nearest.y - snap.link_y
+        c_dist = abs(cx - snap.link_x) + abs(cy - snap.link_y)
+        dx, dy = cx - snap.link_x, cy - snap.link_y
+        face = self._face(dx, dy)
         if self.bomb_cd > 0:
             self.bomb_cd -= 1
-        if abs(dx) >= abs(dy):
-            face = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            face = "DOWN" if dy > 0 else "UP"
-        if dist < 42 and self.bomb_cd <= 0 and snap.bombs > 0:
+        if self.retreat_frames > 0:
+            self.retreat_frames -= 1
+            # y=MAX away-RIGHT was east-wall death (184,173); DOWN past MAX is south door.
+            if snap.link_y >= MANHANDLA_FIGHT_Y_MAX:
+                toward = "LEFT" if snap.link_x > NORTH_DOOR_X else "RIGHT"
+                return FrameAction(nes_action(toward), "retreat_bomb")
+            return FrameAction(nes_action("DOWN"), "retreat_bomb")
+        if snap.link_y < MANHANDLA_FIGHT_Y_MIN:
+            return FrameAction(nes_action("DOWN"), "stay_south")
+        if snap.link_y > MANHANDLA_FIGHT_Y_MAX:
+            return FrameAction(nes_action("UP"), "climb")
+        if snap.link_x < MANHANDLA_FIGHT_X_MIN:
+            return FrameAction(nes_action("RIGHT"), "arena")
+        if snap.link_x > MANHANDLA_FIGHT_X_MAX:
+            return FrameAction(nes_action("LEFT"), "arena")
+        if dist < MANHANDLA_CONTACT:
+            if nearest.y <= snap.link_y and snap.link_y < MANHANDLA_FIGHT_Y_MAX:
+                return FrameAction(nes_action("DOWN"), "combat_backstep")
+            side = "LEFT" if nearest.x >= snap.link_x else "RIGHT"
+            return FrameAction(nes_action(side), "combat_backstep")
+        if (
+            snap.bombs > 0
+            and self.bomb_cd <= 0
+            and MANHANDLA_BOMB_MIN <= c_dist <= MANHANDLA_BOMB_MAX
+        ):
             if self._selected() != B_SLOT_BOMBS:
                 return self._select_bombs(snap)
-            if dist > 16:
-                return FrameAction(nes_action(face), "approach")
-            self.bomb_cd = 65
+            self.bomb_cd = MANHANDLA_BOMB_CD
+            self.retreat_frames = MANHANDLA_RETREAT
+            self.retreat_dir = "DOWN"
             return FrameAction(nes_action(face, "B"), "place_bomb")
-        if snap.link_y > 165:
-            return FrameAction(nes_action("UP"), "climb")
-        if dist > 48:
-            return FrameAction(nes_action(face), "approach")
-        circle = "DOWN" if (self.frames // 30) % 2 == 0 else "UP"
-        if face in ("UP", "DOWN"):
-            circle = "RIGHT" if (self.frames // 30) % 2 == 0 else "LEFT"
-        return FrameAction(nes_action(circle), "circle")
+        if snap.bombs <= 0 and dist <= MANHANDLA_SWORD:
+            nface = self._face(nearest.x - snap.link_x, nearest.y - snap.link_y)
+            return FrameAction(nes_action(nface, "A"), "sword_slash")
+        # South bomb-range stand. Dest y=waist walked (104,163)→(104,142) death.
+        stand_y = min(
+            MANHANDLA_FIGHT_Y_MAX,
+            max(MANHANDLA_FIGHT_Y_MIN, cy + MANHANDLA_BOMB_MAX),
+        )
+        dest = (cx, stand_y)
+        step = axis_dir(
+            (snap.link_x, snap.link_y), dest, y_first=False, tol=4
+        )
+        if step == "UP" and self.bomb_cd > 0:
+            step = None
+        if step and c_dist > MANHANDLA_BOMB_MAX:
+            return FrameAction(nes_action(step), "approach")
+        strafe = "LEFT" if (self.frames // 20) % 2 == 0 else "RIGHT"
+        if snap.link_x <= MANHANDLA_FIGHT_X_MIN + 8:
+            strafe = "RIGHT"
+        elif snap.link_x >= MANHANDLA_FIGHT_X_MAX - 8:
+            strafe = "LEFT"
+        return FrameAction(nes_action(strafe), "strafe")
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.level != LEVEL3:
@@ -422,11 +541,16 @@ class Level3ManhandlaController(HopController):
             )
         if snap.screen != ROOM_L3_BOSS:
             return self.mark_fail(f"left_0x{self.room:02x}_to_0x{snap.screen:02x}")
-        heads = level3_manhandla_live(snap)
-        if heads:
-            return self._fight(snap, heads)
         if self.hc0 is None:
             self.hc0 = int(snap.heart_containers)
+        heads = level3_manhandla_live(snap)
+        if heads:
+            self.saw_heads = True
+            return self._fight(snap, heads)
+        if not self.saw_heads:
+            if snap.link_y > MANHANDLA_FIGHT_Y_MAX:
+                return FrameAction(nes_action("UP"), "climb")
+            return FrameAction(nes_idle_action(), "spawn_wait")
         if int(snap.heart_containers) <= self.hc0:
             return dungeon_align_then_push(
                 snap,
@@ -451,7 +575,7 @@ class Level3ManhandlaController(HopController):
             "spec_id": self.spec_id,
             "route_eligible": False,
             "writes": int(self.writes),
-            "policy": "bomb heads; HC; UP 0x3d; dest TF 0x04",
+            "policy": "south-band centroid bomb; retreat; HC; UP 0x3d; dest TF 0x04",
         }
 
 
@@ -822,6 +946,7 @@ __all__ = [
     "BOSS_PATH_PHASES",
     "L3DoorHopController",
     "Level3BossPathController",
+    "Level3Clear5cController",
     "Level3ManhandlaController",
     "Level3SpawnClearController",
     "PREP_CLEAR_TYPES",

@@ -61,6 +61,12 @@ DEBRIS_HELD_ITEMS = frozenset(
     }
 )
 CLEAR_HANDS_ATTEMPT_LIMIT = 4
+# Consecutive BFS-less/blocked frames before the next stand (rr-20w.3.2).
+# Budgets are generous: landing the crop beats a fast skip.
+TARGET_NAV_STALL_LIMIT = 600
+# Hard per-target ceiling when BFS "progress" never actually arrives.
+TARGET_NAV_TOTAL_LIMIT = 6000
+SHIP_NAV_STALL_LIMIT = 600
 
 
 def is_carrying(ram: np.ndarray) -> bool:
@@ -203,6 +209,12 @@ class HarvestStep:
     stand: Tuple[int, int]
     face: str
     group: int = 0
+    # Other walkable (stand, face) pairs adjacent to ``target``, ranked after
+    # the primary. A pose-fragile approach to the primary stand (rr-20w.3.2:
+    # a genuinely walkable tile that still snags on a corner/fence collision
+    # from one direction) gets a second try from a different angle instead of
+    # stalling the whole harvest route on one target.
+    alt_stands: Tuple[Tuple[Tuple[int, int], str], ...] = ()
 
 
 def _target_groups(target_tiles: List[Tuple[int, int]]) -> dict[Tuple[int, int], int]:
@@ -246,7 +258,7 @@ def build_harvest_steps(
     steps: List[HarvestStep] = []
 
     for target in target_tiles:
-        choices: List[Tuple[Tuple[int, int, int, int], HarvestStep]] = []
+        choices: List[Tuple[Tuple[int, int, int, int], Tuple[int, int], str]] = []
         for face, (dx, dy) in face_to_delta.items():
             stand = (target[0] + dx, target[1] + dy)
             sx, sy = stand
@@ -261,11 +273,21 @@ def build_harvest_steps(
                 abs(target[1] - ship_stand[1]),
                 abs(target[0] - ship_stand[0]),
             )
-            choices.append((score, HarvestStep(target=target, stand=stand, face=face, group=groups.get(target, 0))))
+            choices.append((score, stand, face))
 
         if choices:
             choices.sort(key=lambda item: item[0])
-            steps.append(choices[0][1])
+            _best_score, best_stand, best_face = choices[0]
+            alt_stands = tuple((stand, face) for _score, stand, face in choices[1:])
+            steps.append(
+                HarvestStep(
+                    target=target,
+                    stand=best_stand,
+                    face=best_face,
+                    group=groups.get(target, 0),
+                    alt_stands=alt_stands,
+                )
+            )
 
     steps.sort(
         key=lambda step: (
@@ -346,7 +368,11 @@ class HarvestTask(Task):
     ship_stand: Tuple[int, int] = SHIP_STAND_TILE
     ship_face: str = SHIP_FACE
     ship_fallbacks: Tuple[Tuple[Tuple[int, int], str], ...] = SHIP_FALLBACKS
-    timeout: int = 20000
+    # Frames are not the scarce resource for this bot (a day burns a flat
+    # ~12-20k frames regardless of work done, then idles) — completeness
+    # beats speed. 60000 gives every target room to exhaust its full stand
+    # list (see TARGET_NAV_TOTAL_LIMIT) without the whole route dying first.
+    timeout: int = 60000
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -363,8 +389,17 @@ class HarvestTask(Task):
     _target_live_before: int = field(default=-1, init=False)
     _initial_target_count: int = field(default=0, init=False)
     _unreachable_count: int = field(default=0, init=False)
+    _unreachable_targets: List[Tuple[int, int]] = field(default_factory=list, init=False)
     _active_group: Optional[int] = field(default=None, init=False)
     _clear_hands_attempts: int = field(default=0, init=False)
+    # Per-target stand fallback (rr-20w.3.2): the candidate (stand, face)
+    # pairs left to try for ``_current``, and how far into them we are.
+    _stand_choices: List[Tuple[Tuple[int, int], str]] = field(default_factory=list, init=False)
+    _stand_choice_index: int = field(default=0, init=False)
+    _current_stand: Tuple[int, int] = field(default=(0, 0), init=False)
+    _current_face: str = field(default="down", init=False)
+    _nav_stall_steps: int = field(default=0, init=False)
+    _target_nav_steps: int = field(default=0, init=False)
     harvested_count: int = field(default=0, init=False)
     shipped_count: int = field(default=0, init=False)
     skipped_count: int = field(default=0, init=False)
@@ -384,8 +419,15 @@ class HarvestTask(Task):
         self._ship_option_index = 0
         self._initial_target_count = 0
         self._unreachable_count = 0
+        self._unreachable_targets = []
         self._active_group = None
         self._clear_hands_attempts = 0
+        self._stand_choices = []
+        self._stand_choice_index = 0
+        self._current_stand = (0, 0)
+        self._current_face = "down"
+        self._nav_stall_steps = 0
+        self._target_nav_steps = 0
         self.harvested_count = 0
         self.shipped_count = 0
         self.skipped_count = 0
@@ -395,11 +437,25 @@ class HarvestTask(Task):
 
         target_tiles = live_harvestable_crop_tiles(world.ram, self.state_name, bounds=self.bounds)
         self._steps = build_harvest_steps(world.ram, target_tiles, ship_stand=self.ship_stand)
+        reachable_targets = {step.target for step in self._steps}
+        self._unreachable_targets = [t for t in target_tiles if t not in reachable_targets]
         self._initial_target_count = len(target_tiles)
-        self._unreachable_count = max(0, len(target_tiles) - len(self._steps))
+        self._unreachable_count = len(self._unreachable_targets)
 
-        self._pathfinder.extra_walkable = {step.stand for step in self._steps}
-        print(f"[HARVEST] Detected {len(self._steps)} ripe crop targets from live map")
+        extra_walkable = set()
+        for step in self._steps:
+            extra_walkable.add(step.stand)
+            extra_walkable.update(stand for stand, _face in step.alt_stands)
+        self._pathfinder.extra_walkable = extra_walkable
+        # rr-20w.3.2: report the raw detected count against the reachable
+        # count so a target dropped for "no valid adjacent stand" is visible
+        # immediately instead of surfacing as a silent day-end shortfall.
+        print(
+            f"[HARVEST] Detected {len(target_tiles)} ripe crop targets from live map "
+            f"({len(self._steps)} reachable"
+            + (f", unreachable={self._unreachable_targets}" if self._unreachable_targets else "")
+            + ")"
+        )
 
     def _crop_ship_pending(self) -> bool:
         """True after a successful pick that still needs a bin drop."""
@@ -493,6 +549,7 @@ class HarvestTask(Task):
         self._navigator.path = []
         self._navigator.stasis = 0
         self._pathfinder.temp_blocked.clear()
+        self._nav_stall_steps = 0
 
     def _choose_next_step(self) -> Optional[HarvestStep]:
         if not self._steps:
@@ -581,9 +638,16 @@ class HarvestTask(Task):
             direction = opposites[secondary]
         return make_action(**{direction: True, "b": True})
 
-    def _navigate_to_tile(self, ram: np.ndarray, goal: Tuple[int, int]) -> Optional[np.ndarray]:
+    def _navigate_to_tile(
+        self, ram: np.ndarray, goal: Tuple[int, int]
+    ) -> Tuple[Optional[np.ndarray], bool]:
+        """(action, used_fallback). action is None when already on/centered on the tile.
+
+        used_fallback is True when this frame had no BFS path or follow_path
+        blocked and we returned _fallback_action. Do not mutate _nav_stall_steps.
+        """
         if self._navigator.current_tile == goal or self._navigator.at_tile(goal):
-            return self._navigator.center_on_tile(goal, tolerance=1)
+            return self._navigator.center_on_tile(goal, tolerance=1), False
 
         if self._navigator.stasis > 120 and self._navigator.path:
             self._pathfinder.temp_blocked.add(self._navigator.path[0])
@@ -597,19 +661,72 @@ class HarvestTask(Task):
                 max_steps=7,
             )
             if path is None:
-                return self._fallback_action(goal)
+                return self._fallback_action(goal), True
             self._navigator.path = path
 
         action = self._navigator.follow_path(ram)
         if action is None:
-            return self._fallback_action(goal)
-        return action
+            return self._fallback_action(goal), True
+        return action, False
+
+    def _step_target_nav(self, world: WorldState) -> TaskResult:
+        self._target_nav_steps += 1
+        action, blocked = self._navigate_to_tile(world.ram, self._current_stand)
+        self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
+        if action is not None and (
+            self._nav_stall_steps > TARGET_NAV_STALL_LIMIT
+            or self._target_nav_steps > TARGET_NAV_TOTAL_LIMIT
+        ):
+            if self._advance_stand_choice():
+                return TaskResult(status=TaskStatus.RUNNING)
+            self.skipped_count += 1
+            print(
+                f"[HARVEST] SKIP target={self._current.target} "
+                f"(every stand unreachable: {self._stand_choices})"
+            )
+            self._current = None
+            self._clear_navigation_state()
+            self._phase = "select"
+            return TaskResult(status=TaskStatus.RUNNING)
+        if action is not None:
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+        self._target_live_before = get_tile_at(world.ram, *self._current.target)
+        self._queue_press_a(self._current_face)
+        self._verify_count = 0
+        self._phase = "target_verify"
+        return TaskResult(status=TaskStatus.RUNNING)
+
+    def _advance_stand_choice(self) -> bool:
+        """Switch ``_current`` to its next candidate (stand, face).
+
+        Returns False once every candidate has been tried, so the caller can
+        skip the target instead of bumping into the same wall forever.
+        """
+        if self._stand_choice_index + 1 >= len(self._stand_choices):
+            return False
+        self._stand_choice_index += 1
+        self._current_stand, self._current_face = self._stand_choices[self._stand_choice_index]
+        self._clear_navigation_state()
+        self._target_nav_steps = 0
+        print(
+            f"[HARVEST] Target {self._current.target} stand unreachable, "
+            f"retry stand={self._current_stand} face={self._current_face} "
+            f"({self._stand_choice_index + 1}/{len(self._stand_choices)})"
+        )
+        return True
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         self._navigator.update(world.ram)
         if self._step_count > self.timeout:
-            return TaskResult(status=TaskStatus.FAILURE, reason="harvest timeout")
+            remaining = [step.target for step in self._steps]
+            reason = (
+                f"harvest timeout harvested={self.harvested_count} "
+                f"shipped={self.shipped_count} skipped={self.skipped_count} "
+                f"unreachable={self._unreachable_targets} remaining={remaining}"
+            )
+            print(f"[HARVEST] {reason}")
+            return TaskResult(status=TaskStatus.FAILURE, reason=reason)
 
         carrying = is_carrying(world.ram)
 
@@ -659,17 +776,20 @@ class HarvestTask(Task):
                 self._phase = "target_nav"
                 self._ship_options = []
                 self._ship_option_index = 0
-                print(f"[HARVEST] Target {self._current.target} stand={self._current.stand} face={self._current.face}")
+                self._stand_choices = [
+                    (self._current.stand, self._current.face),
+                    *self._current.alt_stands,
+                ]
+                self._stand_choice_index = 0
+                self._current_stand, self._current_face = self._stand_choices[0]
+                self._target_nav_steps = 0
+                print(
+                    f"[HARVEST] Target {self._current.target} "
+                    f"stand={self._current_stand} face={self._current_face}"
+                )
 
         if self._phase == "target_nav":
-            action = self._navigate_to_tile(world.ram, self._current.stand)
-            if action is not None:
-                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-            self._target_live_before = get_tile_at(world.ram, *self._current.target)
-            self._queue_press_a(self._current.face)
-            self._verify_count = 0
-            self._phase = "target_verify"
-            return TaskResult(status=TaskStatus.RUNNING)
+            return self._step_target_nav(world)
 
         if self._phase == "target_verify":
             if carrying:
@@ -708,8 +828,11 @@ class HarvestTask(Task):
                 self._phase = "select"
                 return TaskResult(status=TaskStatus.RUNNING)
             ship_stand, ship_face = self._current_ship_option(world.ram)
-            action = self._navigate_to_tile(world.ram, ship_stand)
+            action, blocked = self._navigate_to_tile(world.ram, ship_stand)
+            self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
             if action is not None:
+                if self._nav_stall_steps > SHIP_NAV_STALL_LIMIT and self._try_next_ship_option(world.ram):
+                    return TaskResult(status=TaskStatus.RUNNING)
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
             self._ship_money_before = read_shipping_money(world.ram)
             self._queue_press_a(ship_face, hold_frames=14, settle_frames=12)
@@ -760,6 +883,12 @@ class HarvestTask(Task):
                     if action is not None:
                         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
                     return TaskResult(status=TaskStatus.RUNNING)
+                print(
+                    f"[HARVEST] ship verify timeout target="
+                    f"{self._current.target if self._current else None} "
+                    f"harvested={self.harvested_count} shipped={self.shipped_count} "
+                    f"skipped={self.skipped_count} remaining={[s.target for s in self._steps]}"
+                )
                 return TaskResult(status=TaskStatus.FAILURE, reason="ship verify timeout")
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 

@@ -8,9 +8,11 @@ from harvest.planner.crop_planner import (
     CROP_LAYOUTS,
     CROP_SPECS,
     DEFAULT_SHIPPING_TILE,
+    POND_CORRIDOR_TILES,
     CropPlanningConfig,
     build_planting_steps,
     choose_crop_for_date,
+    evaluate_plot_candidate,
     extract_planting_template_from_recording,
     plan_crop_field,
     watering_access_for_layout,
@@ -67,7 +69,7 @@ class CropPlannerTests(unittest.TestCase):
         self.assertEqual(len(access), 7)
         self.assertEqual({item.stand_tiles[0] for item in access}, {center})
 
-    def test_planner_avoids_shipping_stand_and_prefers_nearby_plots(self) -> None:
+    def test_planner_avoids_shipping_stand_and_plants_potato_away_from_bin(self) -> None:
         ram = _blank_ram()
         config = CropPlanningConfig(
             seed_type="potato",
@@ -82,10 +84,47 @@ class CropPlannerTests(unittest.TestCase):
         self.assertEqual(plan.seed_bags_needed, 3)
         self.assertEqual(plan.crop_name, "potato")
         self.assertEqual(plan.layout_name, "eight_tile_ring")
-        self.assertEqual(plan.plots[0].center, (13, 29))
+        near_bin = (13, 29)
+        potato_dist = abs(plan.plots[0].center[0] - DEFAULT_SHIPPING_TILE[0]) + abs(
+            plan.plots[0].center[1] - DEFAULT_SHIPPING_TILE[1]
+        )
+        near_dist = abs(near_bin[0] - DEFAULT_SHIPPING_TILE[0]) + abs(
+            near_bin[1] - DEFAULT_SHIPPING_TILE[1]
+        )
+        self.assertGreater(potato_dist, near_dist)
         for plot in plan.plots:
             self.assertNotIn(DEFAULT_SHIPPING_TILE, plot.crop_tiles)
             self.assertNotIn(DEFAULT_SHIPPING_TILE, plot.water_stands)
+
+    def test_corn_prefers_plots_closer_to_the_bin_than_potato(self) -> None:
+        ram = _blank_ram()
+        bounds = (10, 28, 25, 40)
+        potato = plan_crop_field(
+            ram,
+            CropPlanningConfig(
+                seed_type="potato",
+                day=1,
+                max_seed_bags=1,
+                bounds=bounds,
+                shipping_tile=DEFAULT_SHIPPING_TILE,
+            ),
+        )
+        corn = plan_crop_field(
+            ram,
+            CropPlanningConfig(
+                seed_type="corn",
+                season="summer",
+                day=1,
+                max_seed_bags=1,
+                bounds=bounds,
+                shipping_tile=DEFAULT_SHIPPING_TILE,
+            ),
+        )
+        def _dist(plan):
+            c = plan.plots[0].center
+            return abs(c[0] - DEFAULT_SHIPPING_TILE[0]) + abs(c[1] - DEFAULT_SHIPPING_TILE[1])
+
+        self.assertGreater(_dist(potato), _dist(corn))
 
     def test_summer_sprinkler_plan_uses_seven_tile_regrow_layout(self) -> None:
         ram = _blank_ram()
@@ -120,7 +159,7 @@ class CropPlannerTests(unittest.TestCase):
 
         self.assertEqual(plan.seed_bags_needed, 0)
 
-    def test_late_spring_refuses_crop_that_cannot_harvest_before_summer(self) -> None:
+    def test_late_spring_potato_still_plants_because_it_harvests_in_summer(self) -> None:
         ram = _blank_ram()
         config = CropPlanningConfig(
             seed_type="potato",
@@ -132,7 +171,8 @@ class CropPlannerTests(unittest.TestCase):
 
         plan = plan_crop_field(ram, config)
 
-        self.assertEqual(plan.seed_bags_needed, 0)
+        self.assertEqual(plan.seed_bags_needed, 1)
+        self.assertEqual(CROP_SPECS["potato"].harvests_from_planting_day(28), 1)
 
     def test_choose_crop_for_date_accounts_for_summer_regrow(self) -> None:
         crop = choose_crop_for_date("summer", 12, layout_tiles=7)
@@ -260,9 +300,16 @@ class SecondPlotPlacementTests(unittest.TestCase):
         chosen = plan.plots[0]
         self.assertFalse(set(chosen.crop_tiles) & set(protected))
         self.assertNotIn((13, 28), chosen.crop_tiles)
-        # Still beside the D2 rows, not a distant east/south island.
-        self.assertLessEqual(abs(chosen.center[0] - 13), 8)
-        self.assertLessEqual(abs(chosen.center[1] - 28), 4)
+        # Potato goes farther from the bin than the D2 ring so summer 3-day
+        # corn/tomato can occupy the close remainder.
+        d2 = (13, 28)
+        chosen_dist = abs(chosen.center[0] - DEFAULT_SHIPPING_TILE[0]) + abs(
+            chosen.center[1] - DEFAULT_SHIPPING_TILE[1]
+        )
+        d2_dist = abs(d2[0] - DEFAULT_SHIPPING_TILE[0]) + abs(
+            d2[1] - DEFAULT_SHIPPING_TILE[1]
+        )
+        self.assertGreater(chosen_dist, d2_dist)
 
     def test_candidate_overlapping_the_d2_ring_is_rejected(self) -> None:
         ram = _blank_ram()
@@ -270,8 +317,6 @@ class SecondPlotPlacementTests(unittest.TestCase):
         config = CropPlanningConfig(
             seed_type="potato", day=3, protected_tiles=self._d2_ring()
         )
-        from harvest.planner.crop_planner import evaluate_plot_candidate
-
         # (14,28) ring overlaps the protected D2 tiles → rejected.
         self.assertIsNone(
             evaluate_plot_candidate(
@@ -284,6 +329,101 @@ class SecondPlotPlacementTests(unittest.TestCase):
                 ram, (19, 28), CROP_SPECS["potato"], eight, config
             )
         )
+
+
+class PlotSitingPolicyTests(unittest.TestCase):
+    """Corridor reject, one-shot vs regrow distance, clutter penalty."""
+
+    def test_ring_on_pond_corridor_is_not_a_candidate(self) -> None:
+        ram = _blank_ram()
+        eight = CROP_LAYOUTS["eight_tile_ring"]
+        config = CropPlanningConfig(seed_type="potato", day=1)
+        corridor_center = (13, 33)
+        self.assertTrue(
+            (set(eight.crop_tiles(corridor_center)) | {corridor_center})
+            & POND_CORRIDOR_TILES
+        )
+        self.assertIsNone(
+            evaluate_plot_candidate(
+                ram, corridor_center, CROP_SPECS["potato"], eight, config
+            )
+        )
+        plan = plan_crop_field(
+            ram,
+            CropPlanningConfig(
+                seed_type="potato",
+                day=1,
+                max_seed_bags=3,
+                bounds=(10, 30, 20, 36),
+            ),
+        )
+        for plot in plan.plots:
+            footprint = set(plot.crop_tiles) | {plot.center} | set(plot.access_tiles)
+            self.assertFalse(footprint & POND_CORRIDOR_TILES)
+
+    def test_one_shot_crops_prefer_far_regrow_prefer_close(self) -> None:
+        ram = _blank_ram()
+        eight = CROP_LAYOUTS["eight_tile_ring"]
+        near = (40, 20)
+        far = (50, 45)
+        potato_cfg = CropPlanningConfig(seed_type="potato", day=1)
+        corn_cfg = CropPlanningConfig(seed_type="corn", season="summer", day=1)
+        potato_near = evaluate_plot_candidate(
+            ram, near, CROP_SPECS["potato"], eight, potato_cfg
+        )
+        potato_far = evaluate_plot_candidate(
+            ram, far, CROP_SPECS["potato"], eight, potato_cfg
+        )
+        corn_near = evaluate_plot_candidate(
+            ram, near, CROP_SPECS["corn"], eight, corn_cfg
+        )
+        corn_far = evaluate_plot_candidate(
+            ram, far, CROP_SPECS["corn"], eight, corn_cfg
+        )
+        self.assertIsNotNone(potato_near)
+        self.assertIsNotNone(potato_far)
+        self.assertIsNotNone(corn_near)
+        self.assertIsNotNone(corn_far)
+        assert potato_near is not None and potato_far is not None
+        assert corn_near is not None and corn_far is not None
+        self.assertGreater(potato_far.score, potato_near.score)
+        self.assertLess(potato_far.route_cost, potato_near.route_cost)
+        self.assertGreater(corn_near.score, corn_far.score)
+        self.assertLess(corn_near.route_cost, corn_far.route_cost)
+
+        tomato_cfg = CropPlanningConfig(seed_type="tomato", season="summer", day=1)
+        tomato_near = evaluate_plot_candidate(
+            ram, near, CROP_SPECS["tomato"], eight, tomato_cfg
+        )
+        tomato_far = evaluate_plot_candidate(
+            ram, far, CROP_SPECS["tomato"], eight, tomato_cfg
+        )
+        assert tomato_near is not None and tomato_far is not None
+        self.assertGreater(tomato_near.score, tomato_far.score)
+
+    def test_high_clutter_ring_scores_worse_than_open_field(self) -> None:
+        ram_open = _blank_ram()
+        ram_boxed = _blank_ram()
+        center = (40, 20)
+        # Corners of the 5x5 frame: Moore-adjacent to crop tiles, not cardinal
+        # watering stands, so the ring stays legal.
+        for tx, ty in ((38, 18), (42, 18), (38, 22), (42, 22)):
+            _set_tile(ram_boxed, tx, ty, 0xA1)
+        eight = CROP_LAYOUTS["eight_tile_ring"]
+        config = CropPlanningConfig(seed_type="potato", day=1)
+        open_c = evaluate_plot_candidate(
+            ram_open, center, CROP_SPECS["potato"], eight, config
+        )
+        boxed_c = evaluate_plot_candidate(
+            ram_boxed, center, CROP_SPECS["potato"], eight, config
+        )
+        self.assertIsNotNone(open_c)
+        self.assertIsNotNone(boxed_c)
+        assert open_c is not None and boxed_c is not None
+        self.assertGreater(open_c.score, boxed_c.score)
+        self.assertEqual(open_c.expected_profit_g, boxed_c.expected_profit_g)
+        self.assertEqual(open_c.route_cost, boxed_c.route_cost)
+        self.assertGreaterEqual(open_c.score - boxed_c.score, 25)
 
 
 if __name__ == "__main__":

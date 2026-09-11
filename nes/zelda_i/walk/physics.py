@@ -63,10 +63,15 @@ class OccupancyGrid:
         return self.in_bounds(x, y) and (x, y) not in self.blocked
 
     def mark_blocked_ahead(self, x: int, y: int, direction: str) -> tuple[int, int]:
-        """Record the cell the last predicted step failed to enter."""
+        """Record the cell the last predicted step failed to enter.
+
+        Spec-declared cells already in ``blocked`` stay spec: a later miss
+        must not tag them inferred, or forget drops measured geometry.
+        """
         cell = predicted_xy(x, y, direction)
+        if cell not in self.blocked:
+            self.inferred.add(cell)
         self.blocked.add(cell)
-        self.inferred.add(cell)
         return cell
 
     def shortest_path(

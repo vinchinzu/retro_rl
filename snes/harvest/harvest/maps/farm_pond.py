@@ -183,6 +183,8 @@ WEST_POCKET_PLANT_CENTER: Tuple[int, int] = (13, 28)
 SECOND_POCKET_PLANT_CENTER: Tuple[int, int] = (19, 28)
 
 # Ordered establish targets: fill the west pocket first, then the second ring.
+# Further potato rings should come from crop_planner.plan_crop_field
+# (one-shot crops already score farther-from-bin).
 POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
     WEST_POCKET_PLANT_CENTER,
     SECOND_POCKET_PLANT_CENTER,
