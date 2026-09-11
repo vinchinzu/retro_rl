@@ -3,69 +3,10 @@
 Isolated pure for early L5 rooms. Imports combat infrastructure from
 ``dungeon`` only — do not edit ``dungeon.py`` from L5 agents.
 
-Live recon (updated 2026-08-14)::
-
-    Entry **0x76** (south mouth). North open → **0x66**.
-    Room **0x66** has 3× Gibdo and supplies the first key. Return south to
-    **0x76**, then spend that key at the east door to **0x77** (5× Pols Voice
-    type ``0x16`` + replacement key ``0x19``). Direct east from a zero-key
-    entrance is correctly blocked. Combat pure from ``L5_Room_77`` is 2/2;
-    composed east-door navigation remains the active route boundary.
-
-    Cleared **0x66** east → **0x67**: 2× Bubble ``0x40`` (hp240, sword-immune)
-    + 1× type ``0x4e`` (hp0). doors=0x02 (LEFT only) → dead-end residual.
-
-    West of 0x66 (door poke): **0x65** 5× Gibdo ``0x30``; north **0x55**
-    5× Zol ``0x13`` + item 0x19. Natural west/north from 0x66 still blocked
-    with doors=0x08 (dark-room graph PARTIAL).
-
-    Natural 0x55 DOWN (Level5Cleared55): **0x65** 5× Gibdo ``0x30`` HP=112,
-    doors=0x00, no item. Same GenericDungeonRoomController / ROOM_66 combat
-    (AliveRule.TYPE_AND_HP). Gibdos are tanky — allow ~28000 frames.
-
-    Natural 0x47 UP (Level5Cleared47, x=120 door; C-block pinch at x=128):
-    **0x37** 3× Darknut ``0x0b`` HP=64 + compass ``0x16`` (ROM N/S=open E/W=wall,
-    secret=foes_item). Pit/ladder room — x=56 column is pinched; cross at
-    y≈109 then x=120. Reuse GenericDungeonRoomController + ROOM_5B_SPEC
-    (3× Darknut) + ROOM_59_SPEC.combat (side/back). Compass at (120,157);
-    ADDR_COMPASS bit 0x10. North **0x27** mixed 2× Pols Voice ``0x16`` +
-    2× Gibdo ``0x30`` + 2× Keese ``0x1b`` + key ``0x19`` (ROM W=key).
-    Checkpoint **Level5Cleared37**. Whistle still 0.
-
-    Natural 0x37 UP (Level5Cleared37, ladder (120,141); avoid x=56 pit,
-    cross at y≈109): **0x27** 2× Pols Voice ``0x16`` HP=160 + 2× Gibdo
-    ``0x30`` HP=112 + 2× Keese ``0x1b`` + floor key ``0x19`` (ROM W=key
-    N/E=wall S=open). Reuse Level5PolsVoiceController / ROOM_77 combat +
-    ROOM_66 Gibdo + Keese TYPE_AND_HP (type_only 0x1b). Post-clear doors
-    raw=0. West key spend (south band y≈189 around x=160 pinch) → **0x26**
-    5× Gibdo ``0x30`` HP=112 + item ``0x19`` (ROM E=key W=open N/S=wall,
-    secret=foes_item). Checkpoint **Level5Cleared27**. Whistle still 0.
-
-    Natural 0x27 WEST (Level5Cleared27, leave x=160 ladder via east wall
-    then south y≈189): **0x26** 5× Gibdo ``0x30`` HP=112 + key ``0x19``
-    @(224,141), doors live 0x01 east / mask 0x03 E+W. Same
-    GenericDungeonRoomController + ROOM_66_SPEC combat as 0x47/0x65
-    (0x47=1719f, 0x65=1402f). Moat/C-block room — align door y=141.
-    Checkpoint **Level5Cleared26** only if 5/5 dead. Whistle still 0.
-
-    Natural 0x26 WEST (Level5Cleared26, y=141): **0x25** 5× Pols Voice
-    ``0x16`` HP=160 + item ``0x03`` (none). ROM N=bomb S=wall W=key E=open
-    secret=none. Reuse Level5PolsVoiceController / ROOM_77 combat.
-    Arrival @(224,141) mode 5, doors live 0x00 mask 0x00. After 5/5:
-    no stairs / no 0x68 / whistle 0x065C still 0. N sealed (bomb) S sealed
-    (wall) E→**0x26** (open) W key→**0x24** 1× type ``0x38`` HP=240 +
-    fireballs ``0x55`` + heart container ``0x1A`` @(224,141). Checkpoint
-    **Level5Cleared25** only if 5/5 dead.
-
-    Natural 0x25 WEST then 0x24 SOUTH (Level5Cleared25; do **not** fight
-    Digdogger type ``0x38``): **0x34** 6× Gibdo ``0x30`` HP=112 + item
-    ``0x03``. ROM N=shutter S/W/E=wall secret=all_dead. Same
-    GenericDungeonRoomController + ROOM_66_SPEC combat (10117f, 6/6).
-    After all-dead: doors live 0x08 north shutter open, mask 0x00. No
-    0x68 / no 0x70–0x73 / no cellar. Re-scan of cleared 0x37/0x27/0x26
-    also no block/stairs. Whistle 0x065C still 0. Checkpoint
-    **Level5Cleared34** only if 6/6 dead. Blue candle residual: rupees
-    27 < 60 and no ready OW path from L5 0x0B to shop 0x5E.
+Live recon:
+    Entry 0x76 -> 0x66 (Gibdos/key) -> 0x77 (Pols Voice/key).
+    West transit routes north then east to central aisle (x=96..144).
+    See LEVEL5_ROUTE.md and tasks/rr-npv.2-residual.md for details.
 """
 
 from __future__ import annotations
@@ -583,11 +524,10 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
     """Pols Voice clear + tactical spacing/backstep and focus-fire.
 
     Pols Voice: HP=160 (10 wooden sword hits), hops in arcs, no knockback.
-    Link maintains 14-22 px spacing, avoids block clusters, focus-fires
-    wounded enemies, and backsteps on close approach (<= 14 px) to avoid
-    contact damage. Intercepts jumping enemies on column/row or approach
-    (<= 24 px). Occupancy miss blocks the cell ahead and replans; stands
-    if no path is available.
+    Link transits from west door north then east into central aisle (x=96..144).
+    Tactical evasion side-steps leaping Pols Voices perpendicularly and backsteps
+    from grounded threats. Strikes only grounded enemies and retreats to maintain
+    safe distance. Avoids false occupancy miss walling and outer block clusters.
     """
 
     last_progress_frame: int = 0
@@ -599,6 +539,9 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
     stuck_frames: int = 0
     last_pos: tuple[int, int] | None = None
     last_dir: str | None = None
+    attack_cooldown_frames: int = 0
+    entered_central: bool = False
+    enemy_prev_pos: dict[int, tuple[int, int]] = field(default_factory=dict)
 
     def _ahead_pos(
         self, x: int, y: int, direction: str, step: int = 4
@@ -618,9 +561,9 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             return True
         if y > 185 and x < 185:
             return True
-        if 56 <= x <= 88 and 109 < y <= 164:
+        if 56 <= x <= 97 and 109 < y <= 164:
             return True
-        if 152 <= x <= 184 and y >= 109:
+        if 145 <= x <= 184 and y >= 109:
             return True
         if x < 88 and y > 145:
             return True
@@ -641,6 +584,9 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
     ) -> FrameAction:
         self.combat_frames += 1
+        if self.attack_cooldown_frames > 0:
+            self.attack_cooldown_frames -= 1
+
         n_live = len(live)
         if self.prev_live_count < 0:
             self.prev_live_count = n_live
@@ -655,20 +601,46 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             return FrameAction(nes_idle_action(), "combat_all_dead")
 
         lx, ly = int(snap.link_x), int(snap.link_y)
+        if 96 <= lx <= 144 and 112 <= ly <= 168:
+            self.entered_central = True
 
-        # Occupancy miss tracking: if we were attempting to move in last_dir
-        # but stayed at the same (x, y) for >= 4 frames, block cell ahead and replan.
+        def _cheb(x1: int, y1: int, x2: int, y2: int) -> int:
+            return max(abs(x1 - x2), abs(y1 - y2))
+
+        def _manh(x1: int, y1: int, x2: int, y2: int) -> int:
+            return abs(x1 - x2) + abs(y1 - y2)
+
+        # Track enemy velocities and projected positions
+        projected = []
+        for e in live:
+            old_x, old_y = self.enemy_prev_pos.get(e.slot, (e.x, e.y))
+            vx = e.x - old_x
+            vy = e.y - old_y
+            self.enemy_prev_pos[e.slot] = (e.x, e.y)
+            proj_x = e.x + (vx * 4 if e.state == 1 else 0)
+            proj_y = e.y + (vy * 4 if e.state == 1 else 0)
+            projected.append((e, proj_x, proj_y))
+
+        # Occupancy miss tracking: only when NOT in attack cooldown and NOT backstepping
         if self.last_pos == (lx, ly):
-            if self.last_dir is not None:
+            if (
+                self.last_dir is not None
+                and self.attack_cooldown_frames == 0
+                and self.backstep_frames == 0
+            ):
                 self.stuck_frames += 1
                 if self.stuck_frames >= 4:
                     cell_ahead = self._ahead_pos(lx, ly, self.last_dir)
-                    self.blocked_cells.add(cell_ahead)
-                    self.misses += 1
+                    if not any(
+                        _cheb(cell_ahead[0], cell_ahead[1], e.x, e.y) <= 20
+                        for e in live
+                    ):
+                        self.blocked_cells.add(cell_ahead)
+                        self.misses += 1
+                        self.notes.append(
+                            f"occupancy_miss_{self.last_dir}_{cell_ahead}"
+                        )
                     self.stuck_frames = 0
-                    self.notes.append(
-                        f"occupancy_miss_{self.last_dir}_{cell_ahead}"
-                    )
         else:
             self.stuck_frames = 0
             self.last_pos = (lx, ly)
@@ -677,15 +649,10 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             self.last_dir = "RIGHT"
             return FrameAction(nes_action("RIGHT"), "enter_room")
 
-        def _cheb(x1: int, y1: int, x2: int, y2: int) -> int:
-            return max(abs(x1 - x2), abs(y1 - y2))
-
-        def _manh(x1: int, y1: int, x2: int, y2: int) -> int:
-            return abs(x1 - x2) + abs(y1 - y2)
-
         closest_enemy = min(live, key=lambda o: _cheb(lx, ly, o.x, o.y))
         min_cheb = _cheb(lx, ly, closest_enemy.x, closest_enemy.y)
 
+        # Uninterruptible backstep / evasion continuation
         if self.backstep_frames > 0:
             self.backstep_frames -= 1
             if self._can_move(lx, ly, self.backstep_dir):
@@ -704,102 +671,138 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                     )
             self.backstep_frames = 0
 
-        # Close contact threat: backstep away when min_cheb <= 14
+        # Helper: find safest move away from all enemies and walls
+        def safest_move(dirs: tuple[str, ...]) -> str | None:
+            valid = [d for d in dirs if self._can_move(lx, ly, d)]
+            if not valid:
+                return None
+
+            def safety_score(d: str) -> float:
+                nx, ny = self._ahead_pos(lx, ly, d, step=6)
+                min_cheb_d = min(
+                    min(_cheb(nx, ny, e.x, e.y), _cheb(nx, ny, px, py))
+                    for e, px, py in projected
+                )
+                min_eucl_sq = min(
+                    min(
+                        (nx - e.x) ** 2 + (ny - e.y) ** 2,
+                        (nx - px) ** 2 + (ny - py) ** 2,
+                    )
+                    for e, px, py in projected
+                )
+                center_dist = abs(nx - 120) + abs(ny - 141)
+                center_bonus = max(0, 40 - center_dist)
+                aisle_bonus = 20 if (96 <= nx <= 144 and 115 <= ny <= 165) else 0
+                wall_penalty = -30 if (ny <= 97 or ny >= 181 or nx <= 48 or nx >= 200) else 0
+                danger_penalty = -100 if min_cheb_d <= 14 else 0
+                arena_penalty = -50 if (self.entered_central and (nx < 96 or nx > 144 or ny < 112 or ny > 165)) else 0
+                return (
+                    min_cheb_d * 20 + (min_eucl_sq ** 0.5) + center_bonus
+                    + aisle_bonus + wall_penalty + danger_penalty + arena_penalty
+                )
+
+            return max(valid, key=safety_score)
+
+        # Emergency contact evasion: Pols Voice within 14 px
         if min_cheb <= 14:
+            c = safest_move(("LEFT", "RIGHT", "UP", "DOWN"))
+            if c:
+                self.backstep_dir = c
+                self.backstep_frames = 6
+                self.last_dir = c
+                return FrameAction(nes_action(c), f"evade_contact_{c}")
             dx = closest_enemy.x - lx
             dy = closest_enemy.y - ly
-            candidates = []
-            if abs(dx) >= abs(dy):
-                candidates.append("LEFT" if dx > 0 else "RIGHT")
-                candidates.append("UP" if dy > 0 else "DOWN")
-                candidates.append("DOWN" if dy > 0 else "UP")
-                candidates.append("RIGHT" if dx > 0 else "LEFT")
-            else:
-                candidates.append("UP" if dy > 0 else "DOWN")
-                candidates.append("LEFT" if dx > 0 else "RIGHT")
-                candidates.append("RIGHT" if dx > 0 else "LEFT")
-                candidates.append("DOWN" if dy > 0 else "UP")
-            for c in candidates:
-                if self._can_move(lx, ly, c, step=6):
-                    self.backstep_dir = c
-                    self.backstep_frames = 5
-                    self.last_dir = c
-                    return FrameAction(nes_action(c), f"start_backstep_{c}")
-            c_dir = (
-                ("RIGHT" if dx > 0 else "LEFT")
-                if abs(dx) >= abs(dy)
-                else ("DOWN" if dy > 0 else "UP")
-            )
+            c_dir = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) >= abs(dy) else ("DOWN" if dy > 0 else "UP")
             self.last_dir = None
+            self.attack_cooldown_frames = 12
             if snap.facing != direction_to_facing(c_dir):
-                return FrameAction(
-                    nes_action(c_dir, "A"), f"corner_strike_{c_dir}"
-                )
+                return FrameAction(nes_action(c_dir, "A"), f"corner_strike_{c_dir}")
             return FrameAction(
-                nes_action("A")
-                if self.combat_frames % 4 < 3
-                else nes_idle_action(),
-                "corner_swing_in_place",
+                nes_action("A") if self.combat_frames % 4 < 3 else nes_idle_action(),
+                "corner_swing",
             )
 
-        # Spacing / swing-on-approach: Pols Voice jumping into Link's column/row
-        # requires swinging in the facing direction as soon as min_cheb <= 24 or
-        # when aligned (abs(axis) <= 24).
+        # West door exit transit: route north then east into central aisle
+        if lx < 88:
+            if ly > 109 and self._can_move(lx, ly, "UP"):
+                self.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "route_north_from_west_door")
+            elif self._can_move(lx, ly, "RIGHT"):
+                self.last_dir = "RIGHT"
+                return FrameAction(nes_action("RIGHT"), "traverse_east_to_aisle")
+
+        if lx < 112 and ly <= 109 and self._can_move(lx, ly, "RIGHT"):
+            self.last_dir = "RIGHT"
+            return FrameAction(nes_action("RIGHT"), "reach_central_aisle")
+
+        # Arena re-entry if knocked out of central arena
+        if self.entered_central:
+            for chk, d in ((ly > 165, "UP"), (ly < 112, "DOWN"), (lx < 96, "RIGHT"), (lx > 144, "LEFT")):
+                if chk and self._can_move(lx, ly, d):
+                    self.last_dir = d
+                    return FrameAction(nes_action(d), f"arena_return_{d}")
+
+        # Strike Timing against Grounded Enemy
         c_dx = closest_enemy.x - lx
         c_dy = closest_enemy.y - ly
+        col_aligned = abs(c_dx) <= 12 and 12 <= abs(c_dy) <= 24
+        row_aligned = abs(c_dy) <= 12 and 12 <= abs(c_dx) <= 24
 
-        col_aligned = abs(c_dx) <= 12 and abs(c_dy) <= 24
-        row_aligned = abs(c_dy) <= 12 and abs(c_dx) <= 24
-
-        if min_cheb <= 24 or col_aligned or row_aligned:
-            self.last_dir = None
+        if (col_aligned or row_aligned) and closest_enemy.state == 0:
             if col_aligned:
                 dir_to = "DOWN" if c_dy > 0 else "UP"
-            elif row_aligned:
-                dir_to = "RIGHT" if c_dx > 0 else "LEFT"
-            elif abs(c_dx) >= abs(c_dy):
-                dir_to = "RIGHT" if c_dx > 0 else "LEFT"
             else:
-                dir_to = "DOWN" if c_dy > 0 else "UP"
-
+                dir_to = "RIGHT" if c_dx > 0 else "LEFT"
+            self.last_dir = None
+            best_retreat = safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
+            if best_retreat:
+                self.backstep_dir = best_retreat
+                self.backstep_frames = 6
+            self.attack_cooldown_frames = 12
             if snap.facing != direction_to_facing(dir_to):
                 return FrameAction(
                     nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
                 )
-            return FrameAction(
-                nes_action("A")
-                if self.combat_frames % 4 < 3
-                else nes_idle_action(),
-                "swing_in_place",
-            )
+            return FrameAction(nes_action("A"), "strike_grounded_retreat")
 
-        # Target selection: prioritize wounded enemies to eliminate threats fast
+        # Leaping Threat Evasion: Pols Voice leaping towards Link (state == 1, dist <= 36)
+        leaping_threats = [
+            e for e in live if e.state == 1 and _cheb(lx, ly, e.x, e.y) <= 36
+        ]
+        if leaping_threats:
+            threat = min(leaping_threats, key=lambda o: _cheb(lx, ly, o.x, o.y))
+            tdx = threat.x - lx
+            tdy = threat.y - ly
+            if abs(tdx) >= abs(tdy):
+                p_dirs = ("DOWN", "UP") if ly < 141 else ("UP", "DOWN")
+            else:
+                p_dirs = ("RIGHT", "LEFT") if lx < 120 else ("LEFT", "RIGHT")
+            c = safest_move(p_dirs)
+            if not c:
+                c = safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
+            if c:
+                self.backstep_dir = c
+                self.backstep_frames = 5
+                self.last_dir = c
+                return FrameAction(nes_action(c), f"evade_leap_{c}")
+
+        if 96 <= lx <= 144 and ly < 125:
+            if self._can_move(lx, ly, "DOWN"):
+                self.last_dir = "DOWN"
+                return FrameAction(nes_action("DOWN"), "center_down")
+
+        # Target selection: prioritize grounded and wounded enemies near central aisle
         def score(o: ZeldaObject) -> int:
             d = _manh(lx, ly, o.x, o.y)
             hp_cost = (o.hp // 16) * 15
-            return d + hp_cost
+            state_cost = 30 if o.state == 1 else 0
+            pocket_cost = 40 if (o.x < 88 and o.y > 109) else 0
+            return d + hp_cost + state_cost + pocket_cost
 
         tgt = min(live, key=score)
         dx = tgt.x - lx
         dy = tgt.y - ly
-
-        # West door exit routing north then east into central aisle:
-        if lx < 88:
-            if ly > 109:
-                if self._can_move(lx, ly, "UP"):
-                    self.last_dir = "UP"
-                    return FrameAction(nes_action("UP"), "route_north_from_west_door")
-            elif tgt.x >= 88 and self._can_move(lx, ly, "RIGHT"):
-                self.last_dir = "RIGHT"
-                return FrameAction(nes_action("RIGHT"), "traverse_east_to_aisle")
-
-        # North-routing around cluster:
-        cross_east = (lx < 185 and tgt.x >= 185)
-        cross_west = (lx >= 185 and tgt.x < 152)
-        if (cross_east or cross_west) and ly > 109:
-            if self._can_move(lx, ly, "UP"):
-                self.last_dir = "UP"
-                return FrameAction(nes_action("UP"), "route_north_around_cluster")
 
         steps = []
         if abs(dx) >= abs(dy):
@@ -816,19 +819,24 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             steps.append("UP" if dy > 0 else "DOWN")
 
         for step_d in steps:
-            if self._can_move(lx, ly, step_d):
+            nx, ny = self._ahead_pos(lx, ly, step_d)
+            if (
+                min(_cheb(nx, ny, e.x, e.y) for e in live) >= 14
+                and self._can_move(lx, ly, step_d)
+            ):
                 self.last_dir = step_d
                 return FrameAction(nes_action(step_d), f"move_{step_d}")
 
-        for any_d in ("UP", "DOWN", "LEFT", "RIGHT"):
-            if self._can_move(lx, ly, any_d):
-                self.last_dir = any_d
-                return FrameAction(nes_action(any_d), f"fallback_{any_d}")
+        c = safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
+        if c:
+            self.last_dir = c
+            return FrameAction(nes_action(c), f"safe_step_{c}")
 
         self.last_dir = None
         return FrameAction(nes_idle_action(), "stand_no_path")
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.entered_central = False
         lx, ly = int(snap.link_x), int(snap.link_y)
         if (lx >= 185 or lx < 88) and ly > 109:
             if self._can_move(lx, ly, "UP"):

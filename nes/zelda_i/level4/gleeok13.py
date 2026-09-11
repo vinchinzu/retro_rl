@@ -106,6 +106,11 @@ class Level4Gleeok13Controller:
             if abs(dx) <= 2 and abs(dy) <= 2:
                 self._set_phase(Gleeok13Phase.PUSH, "at_push_stand")
                 return FrameAction(nes_action(PUSH_12_DIR), "push_block")
+            # When west of the block (96, 144), route around it to the north (y <= 117).
+            if snap.link_x < tx:
+                if snap.link_y > 117:
+                    return FrameAction(nes_action("UP"), "stand_avoid_block_up")
+                return FrameAction(nes_action("RIGHT"), "stand_avoid_block_right")
             # v1 leftover (128,141): y-first DOWN on the door row is solid.
             if abs(dx) > 2:
                 return FrameAction(

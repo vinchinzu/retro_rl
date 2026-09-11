@@ -721,3 +721,53 @@ def test_0x3e_statues_are_blocked_in_grid() -> None:
     assert not ctl._walker.grid.passable(144, 141)
     assert ctl._walker.grid.passable(120, 141)  # center aisle is passable
     assert ctl._walker.grid.passable(64, 141)   # west aisle is passable
+
+
+def test_0x3e_tactical_bomb_against_approaching_darknut() -> None:
+    """Link drops a bomb facing UP when a Darknut approaches south down the west aisle."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=7)
+    _put_obj(ram, 1, TYPE_0C, 128, 64, 135, facing=0x04)
+    ctl = make_darknut_key_controller()
+    ctl._3e_peeled = True
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "threat_bomb_up"
+    assert list(act.action) == list(nes_action("UP", "B"))
+
+
+def test_0x3e_flank_slash() -> None:
+    """Link slashes into the flank of a south-facing Darknut."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=50, y=140, health=0x22, bombs=7)
+    _put_obj(ram, 1, TYPE_0C, 128, 64, 140, facing=0x04)
+    ctl = make_darknut_key_controller()
+    ctl._3e_peeled = True
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_slash"
+    assert list(act.action) == list(nes_action("RIGHT", "A"))
+
+
+def test_0x3e_advance_north_when_clear() -> None:
+    """Link advances UP the west corridor toward the north wall when corridor is clear."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=7)
+    # Darknut is far off on the east side
+    _put_obj(ram, 1, TYPE_0C, 128, 180, 140, facing=0x01)
+    ctl = make_darknut_key_controller()
+    ctl._3e_peeled = True
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "advance_north"
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x3e_bomb_north_wall_at_stand() -> None:
+    """Link places a bomb facing UP when at the north bomb stand (120, 105)."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=105, health=0x22, bombs=7)
+    _put_obj(ram, 1, TYPE_0C, 128, 180, 140, facing=0x01)
+    ctl = make_darknut_key_controller()
+    ctl._3e_peeled = True
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "bomb_north_wall"
+    assert list(act.action) == list(nes_action("UP", "B"))
+

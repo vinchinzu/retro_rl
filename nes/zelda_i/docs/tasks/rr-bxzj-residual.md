@@ -35,23 +35,35 @@ Isolated runner: `run_level4_entrance_tf.py --from-state Level4Entrance
   - `Room12ViresController` overrides `_off_wall_step` to step east cleanly from
     west bomb hole onto open floor, and slashes in `_engage` when any live enemy
     is in blade reach.
+- `level4_gleeok_enter_0x13` blocker **resolved**: 456f (end_frame 38956, phase `DONE`).
+  - West-of-block leftover `(72, 150)` routes around block `(96, 144)` via north
+    (`y <= 117`), steps east to `x = 112`, then south to `PUSH_12_STAND (112, 144)`.
+  - Pushes block LEFT 70f (`PUSH_12_HOLD`) to open east door (doors 2→3).
+  - Executes token path through door into room 0x13 cleanly at `(32, 141)`.
+- Room 0x13 Gleeok approach geometry fixed:
+  - Set `APPROACH_SOUTH_Y = 189` in `boss_combat.py` and `ROOM_13_SOUTH_Y = 189` in
+    `occupancy.py`. Link drops south at `x=32` to `y=189` and walks east along the open
+    corridor to `x=116` in 101f without hitting the interior wall at `(48, 165)`
+    (`approach_south f=101 xy=(116,189) hp=96 dodge_thr=22`).
 
 ## Failed stage this sitting (1 trial)
 
-`level4_gleeok_enter_0x13` failed in 8000f (end_frame 46500, `timeout_208_149`).
-Link reached east door at `(208, 149)` in play mode 5, but the door remained shut
-(cur_opened_doors=2). Stand path approach to `PUSH_12_STAND (112, 144)` from clear
-leftover `(72, 150)` collided with the block at `(96, 144)` before pushing.
+`level4_gleeok_tf` failed in 206f (end_frame 39162, `death` at xy `(126, 133)`).
+Link executed south approach to `(116, 189)` cleanly, then advanced to south stand
+`(126, 133)` under Gleeok (`(124, 111) + STAND_DY=22`). At `health=96`
+(`hearts_hi=6, hearts_lo=0`), Link has zero whole hearts; contact with Gleeok's
+body hitbox or fireballs causes instant death without invulnerability flashing.
 
 ## Glance (trial 0 leftover)
 
-room **0x12**, mode **5**, xy **(208, 149)**, tf **0x04**, keys **1**, bombs
-**5**, health **96**, deaths **0**. PNG `recordings/l4_entrance_tf_t0_final.png`.
+room **0x13**, mode **17**, xy **(126, 133)**, tf **0x04**, keys **1**, bombs
+**5**, health **96**, deaths **1**. PNG `recordings/l4_entrance_tf_t0_final.png`.
 
 ## Next sitting
 
-- `level4_gleeok_enter_0x13`: Approach to `PUSH_12_STAND (112, 144)` needs to route
-  around block `(96, 144)` (north via y=117 or south via y=173) when Link finishes
-  combat west of the block, then push block LEFT 70f to open east door (doors 2→3).
-- Gleeok south-stand + low-HP approach dodge into Triforce 0x08.
+- `level4_gleeok_tf`: Tune low-HP Gleeok engagement when Link enters with `health <= 96`.
+  Evaluate increasing south-stand offset (`STAND_DY >= 26`) or evasive sword spacing so
+  Link does not overlap the body hitbox, or refine earlier dungeon combat (rooms 0x50,
+  0x32, 0x20, 0x12) to preserve `>= 106` health (the lab poke continuous floor).
+- Complete Triforce `0x08` collection in room `0x03` on Clean.
 
