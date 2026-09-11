@@ -6,6 +6,7 @@ from zelda_i.dungeon.engine import DungeonPhase
 from zelda_i.level4.dungeon import (
     LEVEL4,
     LEVEL4_MAP_BIT,
+    LEVEL4_TRIFORCE_BIT,
     ROOM_12_SPEC,
     ROOM_31_SPEC,
     ROOM_32_SPEC,
@@ -37,6 +38,7 @@ from zelda_i.level4.mappick import level4_mappick_stages
 from zelda_i.level4.maze_path import (
     make_maze_31_east_controller,
     make_maze_31_inland_controller,
+    make_maze_31_leave_controller,
     make_north_40_controller,
     make_room_40_key_controller,
 )
@@ -93,6 +95,7 @@ __all__ = [
     "L4_STOPS",
     "attach_level4_tf_suffix",
     "continue_level4_spine",
+    "run_level4_entrance_tf",
 ]
 
 
@@ -151,6 +154,7 @@ def _clear_31_stages():
             _as_fight(make_room_31_clear_controller),
             ROOM_31_SPEC.max_frames,
         ),
+        ("level4_leave_0x31", make_maze_31_leave_controller(), 4000),
     )
 
 
@@ -349,3 +353,104 @@ def continue_level4_spine(
     if not run.success or (through in L4_STOPS and through != "level4"):
         return
     attach_level4_tf_suffix(env, run, assist=assist)
+
+
+def run_level4_entrance_tf(
+    env,
+    *,
+    assist=None,
+    through: str = "level4",
+    on_frame=None,
+    room_timer=None,
+):
+    """Fixture-live L4 from play 0x71. Skip OW entry. No pokes.
+
+    ``route_eligible=false``. Integrator promotes. Spine CLI has no
+    ``--from-state``.
+    """
+    from zelda_i.ram import read_snapshot
+    from zelda_i.route.chain import run_controller_stage
+    from zelda_i.screen_glance import leftover_from_snapshot
+    from zelda_i.spine.hops import attach_hops
+
+    class _Run:
+        def __init__(self) -> None:
+            self.through = through
+            self.success = True
+            self.stages: list = []
+            self.end_frame = 0
+            self.failed_stage = None
+            self.obs = getattr(env, "last_observation", None)
+            self.allow_pokes = False
+            self.l4_entry = None
+
+    def run_stages(env, run, stages, **kw):
+        del kw
+        for name, controller, max_frames in stages:
+            next_obs, stage = run_controller_stage(
+                env,
+                run.obs,
+                name=name,
+                controller=controller,
+                max_frames=max_frames,
+                assist=assist,
+                on_frame=on_frame,
+                room_timer=room_timer,
+                frame_base=run.end_frame,
+            )
+            run.obs = next_obs
+            run.stages.append(stage)
+            run.end_frame = stage.end_frame
+            if not stage.success:
+                run.success = False
+                run.failed_stage = name
+                return False
+        return True
+
+    def _noop(*_a, **_k):
+        return None
+
+    run = _Run()
+    interior = tuple(
+        hop
+        for hop in l4_hops(topup_bombs=_noop, spine_fields=lambda snap: {})
+        if hop.through != "level4-entry"
+    )
+    attach_hops(
+        env,
+        run,
+        interior,
+        through=through,
+        run_stages=run_stages,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    )
+    if run.success and through == "level4":
+        attach_level4_tf_suffix(env, run, assist=assist)
+    snap = read_snapshot(env.get_ram())
+    leftover = leftover_from_snapshot(snap)
+    leftover["health"] = int(snap.health)
+    leftover["deaths"] = 1 if int(snap.mode) == 17 else 0
+    leftover["hearts_lo"] = int(snap.filled_hearts)
+    leftover["hearts_hi"] = int(snap.heart_containers) - 1
+    tf08 = bool(int(snap.triforce) & LEVEL4_TRIFORCE_BIT)
+    reports = []
+    for stage in run.stages:
+        report = stage.report() if callable(getattr(stage, "report", None)) else {}
+        reports.append(report)
+    return {
+        "ok": bool(run.success and tf08 and leftover["deaths"] == 0),
+        "tf08": tf08,
+        "failed_stage": run.failed_stage,
+        "stages": reports,
+        "leftover": leftover,
+        "deaths": leftover["deaths"],
+        "hearts_lo": leftover["hearts_lo"],
+        "hearts_hi": leftover["hearts_hi"],
+        "frames": run.end_frame,
+        "route_eligible": False,
+        "natural_entry": False,
+        "intervention_class": "clean",
+        "obs": run.obs,
+    }

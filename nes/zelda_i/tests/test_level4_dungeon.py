@@ -98,10 +98,72 @@ def test_room_31_west_alcove_clip_is_right_up() -> None:
     assert drop.step(snap(80, 141)).reason == "maze31_thread_DOWN"
 
     inland = make_maze_31_inland_controller()
-    done = inland.step(snap(128, 133))
+    done = inland.step(snap(80, 173))
     assert done.reason == "done"
     assert inland.success
     assert list(done.action) == list(nes_idle_action())
+
+
+def test_room_31_combat_does_not_chase_x120_water() -> None:
+    from zelda_i.level4.dungeon import ROOM_31_SPEC
+    from zelda_i.level4.occupancy import ROOM_31_CLEAR_XY, ROOM_31_SPAWN_XY
+
+    blocked = set(ROOM_31_SPEC.combat.occupancy_blocked)
+    assert ROOM_31_CLEAR_XY in blocked
+    assert ROOM_31_SPAWN_XY not in blocked
+    assert (200, 141) not in blocked
+    assert ROOM_31_SPEC.combat.engage_distance <= 24
+    assert (120, 141) not in ROOM_31_SPEC.combat.patrol
+
+
+def test_room_31_leave_reshapes_to_floor() -> None:
+    from retro_harness.nes import nes_action, nes_idle_action
+    from zelda_i.level4.maze_path import (
+        Maze31LeavePhase,
+        STALL_LIMIT,
+        make_maze_31_leave_controller,
+    )
+
+    def snap(x: int, y: int):
+        return SimpleNamespace(
+            mode=5, level=4, screen=ROOM_L4_EAST_31, transitioning=False,
+            link_x=x, link_y=y, objects=(),
+        )
+
+    floor = make_maze_31_leave_controller()
+    done = floor.step(snap(112, 141))
+    assert floor.success
+    assert done.reason == "done"
+    assert list(done.action) == list(nes_idle_action())
+
+    north_end = make_maze_31_leave_controller()
+    act = north_end.step(snap(80, 109))
+    assert not north_end.success
+    assert north_end.phase is Maze31LeavePhase.PATH
+    assert act.reason == "maze31_leave_DOWN"
+
+    wall_pocket = make_maze_31_leave_controller()
+    assert wall_pocket.step(snap(80, 101)).reason == "maze31_leave_DOWN"
+
+    aisle = make_maze_31_leave_controller()
+    assert aisle.step(snap(80, 141)).reason == "maze31_leave_DOWN"
+
+    south_aisle = make_maze_31_leave_controller()
+    assert south_aisle.step(snap(80, 173)).reason == "maze31_leave_RIGHT"
+
+    lip = make_maze_31_leave_controller()
+    assert lip.step(snap(103, 165)).reason == "maze31_leave_DOWN"
+
+    corner = make_maze_31_leave_controller()
+    assert corner.step(snap(128, 173)).reason == "maze31_leave_UP"
+
+    island = make_maze_31_leave_controller()
+    assert island.step(snap(128, 133)).reason == "maze31_leave_LEFT"
+
+    join = make_maze_31_leave_controller()
+    join.path_index = 4
+    join._initialized = True
+    assert join.step(snap(112, 133)).reason == "maze31_leave_DOWN"
 
 
 def test_room_31_east_leftover_goes_up_not_through_water() -> None:
@@ -118,6 +180,18 @@ def test_room_31_east_leftover_goes_up_not_through_water() -> None:
     action = leftover.step(snap(112, 141))
     assert action.reason == "maze31_east_join_UP"
     assert list(action.action) == list(nes_action("UP"))
+
+    from zelda_i.level4.maze_path import STALL_LIMIT, Maze31EastPhase
+
+    water = make_maze_31_east_controller()
+    for _ in range(STALL_LIMIT + 2):
+        act = water.step(snap(120, 133))
+        if act.reason != "maze31_east_join_UP":
+            break
+    assert water.phase is Maze31EastPhase.OCC
+    assert not water.success
+    assert water.phase is not Maze31EastPhase.FAILED
+    assert act.reason.startswith("maze31_east_occ_") or act.reason == "maze31_east_stand"
 
     clip = make_maze_31_east_controller()
     clipped = clip.step(snap(112, 113))

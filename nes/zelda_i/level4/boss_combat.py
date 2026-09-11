@@ -51,6 +51,8 @@ from zelda_i.level4.dungeon import (
     LEVEL4,
     ROOM_L4_GLEEOK_13,
 )
+from zelda_i.level4.occupancy import occupancy_dir, room_13_grid
+from zelda_i.walk.physics import OccupancyWalker
 from zelda_i.ram import (
     ADDR_TRIFORCE,
     PLAY_MODE,
@@ -117,6 +119,27 @@ UP_APPROACHES: tuple[tuple[int, int], ...] = (
 )
 
 
+def _room13_walker() -> OccupancyWalker:
+    return OccupancyWalker(grid=room_13_grid())
+
+
+def approach_dodge_thr(*, start_health: int, approached: bool) -> int:
+    """Wider approach dodge only. Mid-fight stays stock (walks into body)."""
+    if not approached and start_health < LOW_HP_THRESHOLD:
+        return FIREBALL_DODGE_DIST_LOW_HP
+    return FIREBALL_DODGE_DIST
+
+
+def approach_goal(
+    link_x: int, link_y: int, body_x: int | None
+) -> tuple[int, int]:
+    """South first at current x, then under body. Dest cells stay open."""
+    bx = 124 if body_x is None else int(body_x)
+    if int(link_y) < APPROACH_SOUTH_Y:
+        return (int(link_x), APPROACH_SOUTH_Y)
+    return (bx, APPROACH_SOUTH_Y)
+
+
 def _nearest_fireball_dist(snap: ZeldaSnapshot) -> int | None:
     balls = gleeok_fireballs(snap)
     if not balls:
@@ -169,6 +192,7 @@ class Level4GleeokFightController:
     continuous_mode: bool = False
     state_restores: int = 0
     _approached: bool = field(default=False, repr=False)
+    walker: OccupancyWalker = field(default_factory=_room13_walker)
 
     def _restore_state(self, env: Any, state: Any) -> None:
         """Lab retry primitive; forbidden by construction on the spine."""
@@ -196,6 +220,7 @@ class Level4GleeokFightController:
             "target_room": f"0x{ROOM_L4_GLEEOK_13:02x}",
             "tf_room": f"0x{ROOM_L4_TRIFORCE:02x}",
             "tf_bit": f"0x{TF_BIT_L4:02x}",
+            "occupancy_misses": self.walker.misses,
         }
 
     def run(
@@ -228,13 +253,19 @@ class Level4GleeokFightController:
         invuln = 0
         phase = "fight"
         self._approached = False
+        self.walker = _room13_walker()
         hc_hunt_i = 0
+        approach_thr = approach_dodge_thr(
+            start_health=start_health, approached=False
+        )
         # Stock approach+mid-fight (rr-vdnc). Continuous path needs enter
-        # health ≥~108 (approach costs more than GleeokEnter lab). Post-boss
-        # residual fireball care is the rr-gjey harden (see phase hc/tf_exit).
+        # health ≥~108 (approach costs more than GleeokEnter lab). Low-HP
+        # approach dodge is wider; mid-fight stays stock. Occupancy miss →
+        # block cell → replan; no path → stand.
         self.notes.append(
             f"policy=south_stand dy={self.stand_dy} "
-            f"fb_dodge<={self.fireball_dodge_dist} start_hp={start_health}"
+            f"fb_dodge<={self.fireball_dodge_dist} "
+            f"approach_dodge<={approach_thr} start_hp={start_health}"
         )
 
         for frame in range(self.max_frames):
@@ -336,7 +367,9 @@ class Level4GleeokFightController:
                     hc_hunt_i = 0
                     continue
 
-                dodge_thr = self.fireball_dodge_dist
+                dodge_thr = approach_dodge_thr(
+                    start_health=start_health, approached=self._approached
+                )
 
                 # Entry: drop south first (avoid left-band body contact), then
                 # align under body x before engaging stand. Dodge fireballs
@@ -345,33 +378,39 @@ class Level4GleeokFightController:
                     if invuln <= 0:
                         dodge_a = _fireball_dodge_dir(snap, thr=dodge_thr)
                         if dodge_a is not None:
+                            self.walker.last_dir = None
                             env.step(nes_action(dodge_a))
                             total[0] += 1
                             if assist is not None:
                                 assist.apply_env(env, frame=total[0])
                             continue
-                    if snap.link_y < APPROACH_SOUTH_Y:
-                        env.step(nes_action("DOWN"))
-                        total[0] += 1
-                        if assist is not None:
-                            assist.apply_env(env, frame=total[0])
-                        continue
-                    bx = bodies[0].x if bodies else 124
-                    if abs(snap.link_x - bx) > 8:
-                        env.step(
-                            nes_action(
-                                "RIGHT" if snap.link_x < bx else "LEFT"
-                            )
+                    bx = bodies[0].x if bodies else None
+                    goal = approach_goal(snap.link_x, snap.link_y, bx)
+                    at_south = snap.link_y >= APPROACH_SOUTH_Y
+                    aligned = bx is None or abs(snap.link_x - int(bx)) <= 8
+                    if at_south and aligned:
+                        self._approached = True
+                        self.walker.last_dir = None
+                        self.notes.append(
+                            f"approach_south f={frame} "
+                            f"xy=({snap.link_x},{snap.link_y}) "
+                            f"hp={snap.health} dodge_thr={dodge_thr} "
+                            f"misses={self.walker.misses}"
                         )
-                        total[0] += 1
-                        if assist is not None:
-                            assist.apply_env(env, frame=total[0])
                         continue
-                    self._approached = True
-                    self.notes.append(
-                        f"approach_south f={frame} xy=({snap.link_x},{snap.link_y}) "
-                        f"hp={snap.health} dodge_thr={dodge_thr}"
+                    direction = occupancy_dir(
+                        self.walker,
+                        (snap.link_x, snap.link_y),
+                        goal,
                     )
+                    if direction is None:
+                        env.step(nes_idle_action())
+                    else:
+                        env.step(nes_action(direction))
+                    total[0] += 1
+                    if assist is not None:
+                        assist.apply_env(env, frame=total[0])
+                    continue
 
                 # Tight fireball dodge (horizontal) when not invulnerable.
                 dodge = (
@@ -449,6 +488,7 @@ class Level4GleeokFightController:
                 # While ANY residual fireball exists, only lateral flee / hold —
                 # do not walk north into its path (rr-gjey).
                 if fb_dist is not None and invuln <= 0:
+                    self.walker.last_dir = None
                     dodge0 = _fireball_dodge_dir(
                         snap, thr=200, allow_vertical=True
                     )
@@ -477,12 +517,17 @@ class Level4GleeokFightController:
                     continue
                 tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
                 if abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
-                    if abs(snap.link_y - ty) >= abs(snap.link_x - tx):
-                        d = "DOWN" if snap.link_y < ty else "UP"
+                    direction = occupancy_dir(
+                        self.walker,
+                        (snap.link_x, snap.link_y),
+                        (tx, ty),
+                    )
+                    if direction is None:
+                        env.step(nes_idle_action())
                     else:
-                        d = "RIGHT" if snap.link_x < tx else "LEFT"
-                    env.step(nes_action(d))
+                        env.step(nes_action(direction))
                 else:
+                    self.walker.last_dir = None
                     env.step(nes_idle_action())
                 total[0] += 1
                 if assist is not None:
@@ -501,6 +546,7 @@ class Level4GleeokFightController:
                     snap, thr=48, allow_vertical=True
                 )
                 if dodge_e is not None and invuln <= 0:
+                    self.walker.last_dir = None
                     env.step(nes_action(dodge_e))
                     total[0] += 1
                     if assist is not None:
@@ -642,15 +688,20 @@ def make_gleeok_fight_controller(
 
 
 __all__ = [
+    "APPROACH_SOUTH_Y",
     "FIGHT_MAX_FRAMES",
     "FIREBALL_DODGE_DIST",
+    "FIREBALL_DODGE_DIST_LOW_HP",
     "GLEEOK_FIREBALL_TYPE",
     "GLEEOK_HEAD_OBJECT_TYPE",
     "HC_STANDS",
+    "LOW_HP_THRESHOLD",
     "Level4GleeokFightController",
     "ROOM_L4_TRIFORCE",
     "STAND_DY",
     "TF_STANDS",
+    "approach_dodge_thr",
+    "approach_goal",
     "gleeok_fireballs",
     "gleeok_heads_live",
     "gleeok_live",
