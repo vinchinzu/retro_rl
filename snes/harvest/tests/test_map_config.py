@@ -205,6 +205,12 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertEqual(ROUTES["path_to_mountain"][-1].exit_direction, "up")
         self.assertEqual(ROUTES["path_to_farm"][0].target_px, (132, 128))
         self.assertEqual(ROUTES["path_to_farm"][-1].exit_direction, "right")
+        self.assertEqual(ROUTES["path_mountain_gate_to_farm"][0].target_px, (137, 40))
+        self.assertEqual(ROUTES["path_mountain_gate_to_farm"][-1].exit_direction, "right")
+        self.assertNotEqual(
+            ROUTES["path_mountain_gate_to_farm"][0].target_px,
+            (132, 128),
+        )
         self.assertEqual(
             ROUTES["farm_to_town"],
             list(ROUTES["farm_to_path"]) + list(ROUTES["path_to_town"]),
@@ -214,6 +220,26 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertEqual(ROUTES["mountain_entry_to_outdoor_spa"][-1].target_px, (619, 201))
         # Return path is reverse corridor + exit, not a single south hop.
         self.assertGreaterEqual(len(ROUTES["mountain_to_farm"]), 10)
+
+    def test_no_named_route_descends_the_mountain_gate_via_the_plaza(self) -> None:
+        """(7,7)/(8,7) are 0xFF. A 0x10 south exit must not then aim at (132,128)."""
+        plaza = (132, 128)
+        for name, hops in ROUTES.items():
+            maps = [wp.tilemap for wp in hops]
+            if 0x10 not in maps or 0x0C not in maps:
+                continue
+            after_mountain = False
+            for wp in hops:
+                if wp.tilemap == 0x10:
+                    after_mountain = True
+                    continue
+                if after_mountain and wp.tilemap == 0x0C:
+                    self.assertNotEqual(
+                        wp.target_px,
+                        plaza,
+                        f"{name} descends the mountain gate via the plaza",
+                    )
+                    break
 
     def test_church_routes_are_chunked(self) -> None:
         self.assertIn("farm_to_church", ROUTES)

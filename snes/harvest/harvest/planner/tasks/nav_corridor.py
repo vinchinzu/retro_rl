@@ -6,6 +6,7 @@ and lift-throw sequences. The waypoint FSM stays on MultiMapNavTask.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Deque, List, Optional, Set, Tuple
 
 import numpy as np
@@ -106,6 +107,87 @@ def safe_walk_action(
     return None
 
 
+@dataclass
+class CloseRangeLatch:
+    """Distance watchdog for the close-range walk.
+
+    A sideways bounce crosses a tile boundary every few frames, which resets
+    ``Navigator.stasis`` — so the pin is invisible to every other guard and
+    only distance-to-target tells the truth (run13 path 0x0C (8,6), 6x
+    byte-identical). Frozen-in-place is *not* a bounce: that is the
+    post-transition tile-load wait, owned by the pixel-stuck guard.
+    """
+
+    stall_frames: int = 30
+    best: Optional[int] = None
+    stall: int = 0
+
+    def reset(self) -> None:
+        self.best = None
+        self.stall = 0
+
+    def stalled(self, dist: int, *, moving: bool) -> bool:
+        """True once the walk has stopped closing and BFS should take over."""
+        if self.best is None or dist < self.best:
+            self.best = dist
+            self.stall = 0
+        elif moving:
+            self.stall += 1
+        return self.stall >= self.stall_frames
+
+
+def close_range_action(
+    pathfinder: Pathfinder,
+    navigator: Navigator,
+    ram: np.ndarray,
+    wp: Waypoint,
+    *,
+    stasis: int,
+) -> Optional[np.ndarray]:
+    """Walk straight at a waypoint from within ~5 tiles, or None for BFS.
+
+    The secondary cardinal is offered only while its axis still has real
+    error. A secondary that is already inside the arrival radius buys
+    nothing and costs a step back, which is what turns a blocked primary
+    into a left/right bounce against a concave cell.
+    """
+    cur = navigator.current_pos
+    dx = wp.target_px[0] - cur.x
+    dy = wp.target_px[1] - cur.y
+    primary, secondary = dirs_toward(dx, dy)
+    secondary_error = abs(dy) if secondary in ("up", "down") else abs(dx)
+    if secondary_error <= max(wp.radius, 8):
+        secondary = None
+    preferred = primary if stasis < 20 else (secondary or primary)
+    return safe_walk_action(
+        pathfinder, navigator, ram, preferred, secondary=secondary
+    )
+
+
+def sprite_ahead(
+    navigator: Navigator,
+    wp: Waypoint,
+    sprites: Set[Tile],
+    *,
+    run_direction: Optional[str] = None,
+) -> Optional[Tile]:
+    """The live sprite tile the farmer is about to walk into, if any."""
+    if not sprites:
+        return None
+    if navigator.path:
+        nxt = navigator.path[0]
+    else:
+        cur = navigator.current_pos
+        tile = navigator.current_tile
+        direction = run_direction or dirs_toward(
+            wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
+        )[0]
+        nxt = _neighbor_tile(tile[0], tile[1], direction)
+        if nxt == tile:
+            return None
+    return nxt if nxt in sprites else None
+
+
 def farm_soft_blocks(
     scanner: TileScanner, ram: np.ndarray, tilemap: int
 ) -> Set[Tile]:
@@ -121,42 +203,65 @@ def farm_soft_blocks(
     }
 
 
-def entity_blocks(ram: np.ndarray, player_tile: Tile) -> Set[Tile]:
-    """Reroute around live dog / NPC / animal sprites (not the player)."""
-    blocked: Set[Tile] = set()
+def _blocking_entity(obj) -> bool:
+    """Live sprites the farmer physically collides with."""
+    if getattr(obj, "is_player", False):
+        return False
+    kind = str(getattr(obj, "kind", "") or "")
+    label = str(getattr(obj, "label", "") or "")
+    if kind in {"animal", "npc_candidate"} or label in {"dog", "chicken", "cow"}:
+        return True
+    return bool(getattr(obj, "is_npc_candidate", False))
+
+
+def entity_tiles(ram: np.ndarray, player_tile: Tile, *, radius: int = 10) -> Set[Tile]:
+    """Tiles a live non-player sprite currently stands on (no padding)."""
+    tiles: Set[Tile] = set()
     try:
         objects = game_objects(ram)
     except Exception:
-        objects = []
+        return tiles
     for obj in objects:
-        if getattr(obj, "is_player", False):
-            continue
         tile = getattr(obj, "tile", None)
-        if not tile:
+        if not tile or not _blocking_entity(obj):
             continue
         tx, ty = int(tile[0]), int(tile[1])
         if (tx, ty) == player_tile:
             continue
-        if abs(tx - player_tile[0]) > 10 or abs(ty - player_tile[1]) > 10:
+        if abs(tx - player_tile[0]) > radius or abs(ty - player_tile[1]) > radius:
             continue
-        kind = str(getattr(obj, "kind", "") or "")
-        label = str(getattr(obj, "label", "") or "")
-        if kind in {"animal", "npc_candidate"} or label in {"dog", "chicken", "cow"}:
-            blocked.add((tx, ty))
-        elif getattr(obj, "is_npc_candidate", False):
-            blocked.add((tx, ty))
+        tiles.add((tx, ty))
+    return tiles
+
+
+def pad_entity_blocks(
+    ram: np.ndarray, tiles: Set[Tile], player_tile: Tile
+) -> Set[Tile]:
+    """Ring-pad mountain sprites so BFS does not thread a wandering NPC.
+
+    Mountain 0x10 only: an NPC BFS'd tight against is re-collided with on
+    its next step. Padding that would seal every exit from the farmer's own
+    tile is dropped — a boxed-in corridor stalls worse than one bumped NPC.
+    """
     tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-    if tilemap == 0x10 and blocked:
-        padded = set(blocked)
-        for bx, by in blocked:
-            if bx < 28:
-                continue
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    padded.add((bx + dx, by + dy))
-        padded.discard(player_tile)
-        blocked = padded
-    return blocked
+    if tilemap != 0x10 or not tiles:
+        return set(tiles)
+    padded = set(tiles)
+    for bx, by in tiles:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                padded.add((bx + dx, by + dy))
+    padded.discard(player_tile)
+    neighbors = {
+        _neighbor_tile(player_tile[0], player_tile[1], direction)
+        for direction in ("up", "down", "left", "right")
+    }
+    return set(tiles) if neighbors.issubset(padded) else padded
+
+
+def entity_blocks(ram: np.ndarray, player_tile: Tile) -> Set[Tile]:
+    """Reroute around live dog / NPC / animal sprites (not the player)."""
+    return pad_entity_blocks(ram, entity_tiles(ram, player_tile), player_tile)
 
 
 def replace_no_go(
@@ -299,15 +404,20 @@ def micro_center_action(cur_x: int, cur_y: int, target_px: Tuple[int, int]) -> n
 
 
 __all__ = [
+    "CloseRangeLatch",
+    "close_range_action",
     "dirs_toward",
     "entity_blocks",
+    "entity_tiles",
     "farm_soft_blocks",
     "hop_target",
     "liftable_gate_toward",
     "micro_center_action",
     "opportunistic_clear_waypoint",
+    "pad_entity_blocks",
     "queue_lift_throw",
     "replace_no_go",
     "safe_walk_action",
+    "sprite_ahead",
     "tile_blocks_charge",
 ]

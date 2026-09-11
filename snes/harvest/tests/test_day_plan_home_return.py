@@ -72,6 +72,9 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertEqual(hops[0], (520, 712))
         self.assertNotIn((569, 201), hops)
         self.assertIn((312, 744), hops)
+        self.assertNotIn((132, 128), hops)
+        exit_i = hops.index((312, 744))
+        self.assertEqual(hops[exit_i + 1], (137, 40))
 
     def test_return_home_enters_when_already_at_house_front(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)

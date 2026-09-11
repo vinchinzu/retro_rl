@@ -36,16 +36,21 @@ from harvest.tasks.primitives import (
 )
 from harvest.planner.day_plan_status import tilemaps_match
 from harvest.planner.tasks.nav_corridor import (
+    CloseRangeLatch,
+    close_range_action,
     dirs_toward,
     entity_blocks,
+    entity_tiles,
     farm_soft_blocks,
     hop_target,
     liftable_gate_toward,
     micro_center_action,
     opportunistic_clear_waypoint,
+    pad_entity_blocks,
     queue_lift_throw,
     replace_no_go,
     safe_walk_action,
+    sprite_ahead,
     tile_blocks_charge,
 )
 from harvest.planner.tasks.navigation import (
@@ -55,6 +60,23 @@ from harvest.planner.tasks.navigation import (
     _neighbor_tile,
     _nav_needs_menu_dismiss,
 )
+
+# A wandering NPC/animal clears one tile in well under a second. Waiting is
+# both faster and safer than re-routing a proven corridor around it.
+ENTITY_YIELD_FRAMES = 90
+# Frames the close-range walk may run without closing on the waypoint before
+# it hands the waypoint to BFS. A left/right bounce across a tile boundary
+# resets ``Navigator.stasis`` every crossing, so no existing guard sees it.
+CLOSE_RANGE_STALL_FRAMES = 30
+# Frames a run_direction/force_run hop may make no progress before dropping
+# to BFS. At run speed anything over ~0.5 s of this is a wall, not traffic.
+RUN_DIR_STALL_FRAMES = 45
+# Soft-solid pin recoveries per nav task before failing the leg.
+PIN_RECOVERY_LIMIT = 4
+# Live entity blocks are re-read on this cadence during nav (not only on a
+# BFS replan, which never happens while the close-range walk is driving).
+ENTITY_SYNC_PERIOD = 4
+
 
 # ── MultiMapNavTask ───────────────────────────────────────────────
 
@@ -97,6 +119,8 @@ class MultiMapNavTask(Task):
     _pixel_replans: int = field(default=0, init=False)
     _farm_soft_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _entity_blocks: Set[Tuple[int, int]] = field(default_factory=set, init=False)
+    # Unpadded sprite tiles from the same read — the walk yields on these.
+    _entity_tiles: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _lift_throw_attempts: int = field(default=0, init=False)
     _soft_solid_pin_frames: int = field(default=0, init=False)
     # Unregistered tilemaps (rain/fade 0x57 on farm→path) settle before
@@ -108,6 +132,14 @@ class MultiMapNavTask(Task):
     _run_dir_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
     _run_dir_stall: int = field(default=0, init=False)
     _run_dir_bail_wp: int = field(default=-1, init=False)
+    _close_latch: CloseRangeLatch = field(
+        default_factory=lambda: CloseRangeLatch(stall_frames=CLOSE_RANGE_STALL_FRAMES),
+        init=False,
+    )
+    _close_bail_wp: int = field(default=-1, init=False)
+    # Frames spent waiting for a live sprite to vacate the next tile.
+    _yield_frames: int = field(default=0, init=False)
+    _pin_recoveries: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
@@ -130,12 +162,17 @@ class MultiMapNavTask(Task):
         self._pixel_replans = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
+        self._entity_tiles.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
         self._tilemap_mismatch_frames = 0
         self._run_dir_anchor = None
         self._run_dir_stall = 0
         self._run_dir_bail_wp = -1
+        self._close_latch.reset()
+        self._close_bail_wp = -1
+        self._yield_frames = 0
+        self._pin_recoveries = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -163,12 +200,16 @@ class MultiMapNavTask(Task):
         self._pixel_replans = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
+        self._entity_tiles.clear()
         self._lift_throw_attempts = 0
         self._soft_solid_pin_frames = 0
         self._tilemap_mismatch_frames = 0
         self._run_dir_anchor = None
         self._run_dir_stall = 0
         self._run_dir_bail_wp = -1
+        self._close_latch.reset()
+        self._close_bail_wp = -1
+        self._yield_frames = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -182,6 +223,7 @@ class MultiMapNavTask(Task):
         self._navigator.stasis = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
+        self._entity_tiles.clear()
 
     def _clear_dynamic_blocks(self) -> None:
         self._pathfinder.no_go_tiles.difference_update(self._farm_soft_blocks)
@@ -195,13 +237,89 @@ class MultiMapNavTask(Task):
         self._farm_soft_blocks = nxt
 
     def _sync_entity_blocks(self, ram: np.ndarray) -> None:
-        nxt = entity_blocks(ram, self._navigator.current_tile)
+        tile = self._navigator.current_tile
+        self._entity_tiles = entity_tiles(ram, tile)
+        nxt = pad_entity_blocks(ram, self._entity_tiles, tile)
         replace_no_go(self._pathfinder, self._entity_blocks, nxt)
         self._entity_blocks = nxt
 
     def _sync_travel_blocks(self, ram: np.ndarray, tilemap: int) -> None:
         self._sync_farm_soft_blocks(ram, tilemap)
         self._sync_entity_blocks(ram)
+
+    def _entity_yield_result(self, wp: Waypoint) -> Optional[TaskResult]:
+        """Hold still while a live sprite stands in the next tile.
+
+        The mountain/path NPCs and the farm dog walk across proven corridors.
+        Charging one burns the stasis budget and fails the leg; rerouting
+        around it leaves the corridor. Both are worse than waiting a beat.
+        """
+        run_dir = (
+            wp.run_direction if self._wp_index != self._run_dir_bail_wp else None
+        )
+        nxt = sprite_ahead(
+            self._navigator, wp, self._entity_tiles, run_direction=run_dir
+        )
+        if nxt is None:
+            self._yield_frames = 0
+            return None
+        self._yield_frames += 1
+        if self._yield_frames > ENTITY_YIELD_FRAMES:
+            # Parked, not passing. Let BFS route around the no-go it sits on.
+            return None
+        # A yield is not a pin: keep the stall guards off the wait.
+        self._soft_solid_pin_frames = 0
+        self._navigator.stasis = 0
+        self._pixel_stuck = 0
+        if self._yield_frames == 1:
+            print(f"[MULTI_NAV] Yield to sprite at {nxt} (wp {self._wp_index + 1})")
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"yield to sprite at {nxt}",
+        )
+
+    def _recover_from_pin(self, world: WorldState, tilemap: int) -> TaskResult:
+        """Break a soft-solid pin instead of failing the whole leg.
+
+        Every pin seen in run13 was a concave cell the walk kept re-entering,
+        not an impassable route: blocking the cell and replanning clears it.
+        Waypoints are guides, so a second pin on the same one skips it —
+        except on mountain 0x10, where skipping a corridor hop is how the
+        farmer ends up in Gotz's dialogue.
+        """
+        self._pin_recoveries += 1
+        cur = self._navigator.current_tile
+        head = self._navigator.path[0] if self._navigator.path else None
+        if head is not None and head != cur:
+            self._pathfinder.temp_blocked.add(head)
+        self._close_bail_wp = self._wp_index
+        self._navigator.path = []
+        self._navigator.stasis = 0
+        self._soft_solid_pin_frames = 0
+        self._close_latch.reset()
+        self._sync_travel_blocks(world.ram, tilemap)
+        skipped = False
+        after = self._wp_index + 1
+        nxt = self.waypoints[after] if after < len(self.waypoints) else None
+        if (
+            self._pin_recoveries >= 2
+            and tilemap != 0x10
+            and nxt is not None
+            and self._waypoint_tilemap_matches(tilemap, nxt)
+        ):
+            self._advance_waypoint()
+            skipped = True
+        print(
+            f"[MULTI_NAV] Pin recovery {self._pin_recoveries}/{PIN_RECOVERY_LIMIT} "
+            f"at {cur} block={head} "
+            f"{'skip to wp ' + str(self._wp_index + 1) if skipped else 'replan'}"
+        )
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"pin recovery {self._pin_recoveries} at {cur}",
+        )
 
     # Back-compat for unit tests that assert weed no-go membership.
     @property
@@ -363,6 +481,8 @@ class MultiMapNavTask(Task):
         self._pixel_anchor = None
         self._pixel_stuck = 0
         self._pixel_replans = 0
+        self._close_latch.reset()
+        self._yield_frames = 0
         wp = self._current_wp()
         if wp:
             print(f"[MULTI_NAV] Waypoint {self._wp_index + 1}/{len(self.waypoints)}"
@@ -594,6 +714,16 @@ class MultiMapNavTask(Task):
             self._advance_waypoint()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
+        # Live sprites move between BFS replans, and the close-range walk
+        # never replans at all — re-read them on their own cadence so both
+        # the no-go set and the yield test below see the current frame.
+        if self._phase == "nav":
+            if self._step_count % ENTITY_SYNC_PERIOD == 0:
+                self._sync_entity_blocks(world.ram)
+            yielded = self._entity_yield_result(wp)
+            if yielded is not None:
+                return yielded
+
         # Direct run: if waypoint specifies run_direction, just hold that
         # direction + B. Much faster than BFS for known clear paths.
         # Check the axis of travel to detect overshoot.
@@ -610,7 +740,7 @@ class MultiMapNavTask(Task):
                 self._run_dir_stall = 0
             else:
                 self._run_dir_stall += 1
-            if self._run_dir_stall >= 90:
+            if self._run_dir_stall >= RUN_DIR_STALL_FRAMES:
                 self._run_dir_bail_wp = self._wp_index
                 self._run_dir_anchor = None
                 self._run_dir_stall = 0
@@ -661,7 +791,7 @@ class MultiMapNavTask(Task):
 
         # Close-range direct walk: when within ~5 tiles, walk directly toward
         # the target without BFS — but NEVER into fence/weed/solid tiles.
-        if not wp.is_exit:
+        if not wp.is_exit and self._wp_index != self._close_bail_wp:
             cur = self._navigator.current_pos
             dx_close = abs(wp.target_px[0] - cur.x)
             dy_close = abs(wp.target_px[1] - cur.y)
@@ -672,12 +802,26 @@ class MultiMapNavTask(Task):
                 and stasis < 40
                 and self._pixel_stuck < 20
             ):  # ~5 tiles; bail if L/R pin
-                primary, secondary = dirs_toward(
-                    wp.target_px[0] - cur.x, wp.target_px[1] - cur.y
-                )
-                preferred = primary if stasis < 20 else secondary
-                safe = self._safe_walk_action(
-                    world.ram, preferred, secondary=secondary
+                dist = max(dx_close, dy_close)
+                if self._close_latch.stalled(dist, moving=self._pixel_stuck == 0):
+                    self._close_bail_wp = self._wp_index
+                    self._navigator.path = []
+                    print(
+                        f"[MULTI_NAV] Close-range stalled at ({cur.x},{cur.y}) "
+                        f"dist={dist} — BFS for wp {self._wp_index + 1}"
+                    )
+                    self._close_latch.reset()
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action()),
+                        reason=f"close-range stalled at wp {self._wp_index + 1}",
+                    )
+                safe = close_range_action(
+                    self._pathfinder,
+                    self._navigator,
+                    world.ram,
+                    wp,
+                    stasis=stasis,
                 )
                 if safe is not None:
                     return TaskResult(
@@ -714,12 +858,15 @@ class MultiMapNavTask(Task):
                 else 240
             )
             if self._soft_solid_pin_frames >= pin_limit:
+                if self._pin_recoveries < PIN_RECOVERY_LIMIT:
+                    return self._recover_from_pin(world, tilemap)
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=(
                         f"soft_solid pin held=0x{held_now:02X} "
                         f"pos=({self._navigator.current_pos.x},{self._navigator.current_pos.y}) "
-                        f"stasis={self._navigator.stasis}"
+                        f"stasis={self._navigator.stasis} "
+                        f"recoveries={self._pin_recoveries}"
                     ),
                 )
         else:

@@ -280,9 +280,12 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertTrue(farm_mtn[1].force_run)
         self.assertGreaterEqual(len(ret), 10)
         self.assertTrue(ret[-1].tilemap in (0x00, 0x0C) or ret[-2].is_exit)
-        # Return walks path plaza then farm gate, not a single mountain-south hop.
+        # Return walks the mountain-gate descent then farm gate, not the
+        # plaza (132,128) that seals at (8,7).
         path_hops = [wp for wp in ret if wp.tilemap == 0x0C]
         self.assertGreaterEqual(len(path_hops), 2)
+        self.assertEqual(path_hops[0].target_px, (137, 40))
+        self.assertNotIn((132, 128), [wp.target_px for wp in path_hops])
 
     def test_south_field_farm_to_spa_uses_dirt_row_not_house(self) -> None:
         """Sunday pin ~(78,598) must not first-hop house (137,375) through crops."""

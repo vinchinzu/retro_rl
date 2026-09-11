@@ -187,6 +187,9 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(hops[0], (520, 712))
         self.assertNotIn((569, 201), hops)
         self.assertIn((312, 744), hops)
+        self.assertNotIn((132, 128), hops)
+        exit_i = hops.index((312, 744))
+        self.assertEqual(hops[exit_i + 1], (137, 40))
 
     def test_exit_to_farm_uses_return_route_from_path(self) -> None:
         task = ExitToFarmTask()
@@ -197,6 +200,16 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertIsInstance(task._task, MultiMapNavTask)
         self.assertEqual(task._task.name, "return_path_to_farm")
         self.assertEqual(task._task.waypoints[-1].target_px, (244, 128))
+
+    def test_exit_to_farm_from_mountain_gate_does_not_aim_at_the_plaza(self) -> None:
+        task = ExitToFarmTask()
+        world = make_world(0x0C)
+        set_player_pos(world.ram, 137, 40)
+        task.reset(world)
+        hops = [wp.target_px for wp in task._task.waypoints]
+        self.assertEqual(hops[0], (137, 40))
+        self.assertNotIn((132, 128), hops)
+        self.assertEqual(hops[-1], (244, 128))
 
     def test_exit_to_farm_uses_event_town_return_route(self) -> None:
         task = ExitToFarmTask()
