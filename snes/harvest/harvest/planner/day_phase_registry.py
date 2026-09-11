@@ -271,14 +271,37 @@ def _build_cross_map(
     )
 
 
+def _shop_bag_count(spec: PhaseSpec, world: WorldState, stock_field: str) -> int:
+    """Bags to buy this trip: one per ring still waiting on seed, less stock.
+
+    The shop round trip is ~2480 f whether it carries one bag or two, so a
+    harvest day that empties both rings should not pay for it twice. Capped
+    by ``max_bags`` and by the task's own wallet clamp.
+    """
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.maps.farm_pond import pocket_plant_targets
+
+    cap = int(spec.params.get("max_bags", 2))
+    if cap <= 1:
+        return 1
+    try:
+        wanted = len(pocket_plant_targets(world.ram))
+        in_stock = int(read_ram_value(world.ram, stock_field) or 0)
+    except Exception:
+        return 1
+    return max(1, min(cap, wanted - in_stock))
+
+
 def _build_shop_buy(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    stock_field = spec.params.get("stock_field", "potato_seeds")
     return BuySeedsTask(
         name=f"shop_buy_{spec.phase.lower()}",
         timeout=spec.params.get("timeout", 14_000),
         nav_timeout=spec.params.get("nav_timeout", 6_000),
-        stock_field=spec.params.get("stock_field", "potato_seeds"),
+        stock_field=stock_field,
+        bags=_shop_bag_count(spec, _world, stock_field),
     )
 
 
@@ -510,7 +533,7 @@ def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Ta
         if center is None:
             return _ImmediateSuccessTask(
                 name=f"crop_{spec.phase.lower()}_noop",
-                reason="no pocket ring needs planting",
+                reason="no_work:no pocket ring needs planting",
             )
         return farm_pocket_plant_skill(
             seed_type=ctx.seed_type,

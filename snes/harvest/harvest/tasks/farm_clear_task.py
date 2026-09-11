@@ -639,6 +639,25 @@ class FarmClearTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        # Whole-farm clear has no off-farm recovery (the pocket approach does).
+        # run12 D8/D9: the clearer walked in through the farmhouse door chasing
+        # a (4,14) weed, the SNES clock froze indoors at 06:00, and it scanned
+        # targets=0 for its whole 3500f budget — then every later farm phase
+        # map-locked on 0x15. Two near-zero-productivity days. Bail on frame 1.
+        if (
+            self.farm_bounds is None
+            and getattr(self._clearer, "startup_done", True)
+            and not self._on_farm(world)
+        ):
+            ram = world.ram
+            tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"off_farm tilemap=0x{tilemap:02X} "
+                    f"cleared={self._clearer.cleared_count}"
+                ),
+            )
         if self._toss_skill is not None:
             result = self._toss_skill.step(world)
             if result.status == TaskStatus.RUNNING:

@@ -92,11 +92,13 @@ FARM_POND_ACCESS_FENCE_X_RANGE: Tuple[int, int] = (11, 29)
 # Staging stands just north of that wall. West plant-pocket stands (e.g.
 # (13,27) after potato plant) soft-block pure-south movement even when live
 # tile IDs look walkable — stage west/left before FenceClearLoopTask.
+# (11,28) used to be listed here while also sitting in FARM_NO_GO_TILES
+# (shipping-bin ditch). find_path never returned it, so it was dead weight that
+# read like a usable stand; test_farm_pond keeps the two sets disjoint.
 FARM_POND_ACCESS_STAGING_TILES: Tuple[Tuple[int, int], ...] = (
     (11, 29),
     (12, 29),
     (10, 28),
-    (11, 28),
     (15, 29),
     (18, 30),
     (20, 30),
@@ -223,17 +225,30 @@ def pocket_plant_target(ram) -> Optional[Tuple[int, int]]:
     can never till has zero real capacity and is skipped (treated as done).
     Returns ``None`` when no center qualifies.
     """
+    targets = pocket_plant_targets(ram)
+    return targets[0] if targets else None
+
+
+def pocket_plant_targets(ram) -> Tuple[Tuple[int, int], ...]:
+    """Every pocket center that still needs *and can receive* a full bag.
+
+    ``pocket_plant_target`` answers "which ring next"; this answers "how many
+    bags does the farm want today". On a harvest day both rings come back
+    empty at once, so a one-bag shop trip replants one of them and the other
+    idles until tomorrow's trip.
+    """
     if ram is None:
-        return None
+        return ()
     from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
 
+    targets = []
     for center in POCKET_PLANT_CENTERS:
         planted = count_ring_planted(ram, center)
         if planted >= PLOT_RING_SIZE:
             continue
         if _ring_bare_capacity(ram, center) >= PLOT_RING_SIZE - planted:
-            return center
-    return None
+            targets.append(center)
+    return tuple(targets)
 
 
 def next_unplanted_pocket_center(ram) -> Optional[Tuple[int, int]]:

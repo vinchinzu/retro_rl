@@ -7,8 +7,10 @@ Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
 
 ## Immediate goal
 
-`rr-20w.2.3` Clean power-on D2 farm-clear is closed. Claim **one** of
-`rr-20w.2.4` (D2 nav replan on push/pixel-stuck) or water-refill `rr-3ae8`.
+Full-spring `Y1_D3_Morning --end-of-spring`. Fix pass + baseline:
+[docs/tasks/rr-20w-run16-defects.md](docs/tasks/rr-20w-run16-defects.md).
+Open after that: run13 §3 phase-ordering starvation, a third ring site,
+`rr-20w.2.4` (D2 nav replan) or water-refill `rr-3ae8`.
 Do not promote [STATUS.md](docs/STATUS.md) from a fixture or pin.
 
 ## Commands
@@ -66,6 +68,10 @@ in plan.md.
 - 5pm farm ShippingScene: pulse A (press/release). Do not hold A.
 - Do not start D2 from `Y1_D2_Morning_After_D1` — grape return-to-bin seals
   at the house fence (rr-oqri).
+- **The clock does not advance indoors.** A log whose `[RUN]` lines repeat one
+  time for thousands of frames is the farmer standing inside a building, not a
+  hang and not a stale read. Check `tilemap` (0x15 house / 0x26 shed) before
+  debugging the task that looks stuck.
 
 ## Pointers
 

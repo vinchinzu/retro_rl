@@ -160,6 +160,11 @@ class BuySeedsTask(Task):
     nav_timeout: int = 6_000
     stock_field: str = "potato_seeds"
     bag_price: int = POTATO_BAG_PRICE
+    # Bags to buy in one trip. The clerk A-pulse loop is already a "keep
+    # pressing until bought" loop, so N bags is the same loop with a later
+    # stop condition — one 2480f round trip instead of N. Capped by the
+    # wallet read at reset(), so it can never overspend.
+    bags: int = 1
 
     _step_count: int = field(default=0, init=False)
     _child: Optional[Task] = field(default=None, init=False)
@@ -171,6 +176,8 @@ class BuySeedsTask(Task):
     _seen_shop: bool = field(default=False, init=False)
     _bought: bool = field(default=False, init=False)
     _buy_attempts: int = field(default=0, init=False)
+    _bags_seen: int = field(default=0, init=False)
+    _attempts_at_last_bag: int = field(default=0, init=False)
     _enter_pulses: int = field(default=0, init=False)
     _interior_wait: int = field(default=0, init=False)
     _town_wait: int = field(default=0, init=False)
@@ -189,6 +196,8 @@ class BuySeedsTask(Task):
         self._seen_shop = _tilemap(world) == SHOP_TILEMAP
         self._bought = False
         self._buy_attempts = 0
+        self._bags_seen = 0
+        self._attempts_at_last_bag = 0
         self._enter_pulses = 0
         self._interior_wait = 0
         self._town_wait = 0
@@ -233,6 +242,19 @@ class BuySeedsTask(Task):
         # bag-price debit as the buy so we can leave and re-read stock.
         return money <= self._money_before - max(1, int(self.bag_price))
 
+    def _bags_target(self) -> int:
+        """Bags this trip wants, clamped to what the wallet held at reset."""
+        affordable = self._money_before // max(1, int(self.bag_price))
+        return max(1, min(int(self.bags), int(affordable)))
+
+    def _bags_done(self, ram) -> int:
+        """Purchases closed so far. Stock and wallet disagree mid-dialogue."""
+        by_stock = _stock(ram, self.stock_field) - self._stock_before
+        by_money = max(0, self._money_before - _money(ram)) // max(
+            1, int(self.bag_price)
+        )
+        return max(0, int(by_stock), int(by_money))
+
     def _success(self, ram) -> TaskResult:
         stock = _stock(ram, self.stock_field)
         money = _money(ram)
@@ -240,7 +262,8 @@ class BuySeedsTask(Task):
             status=TaskStatus.SUCCESS,
             reason=(
                 f"bought {self.stock_field} {self._stock_before}->{stock} "
-                f"money {self._money_before}->{money}"
+                f"money {self._money_before}->{money} "
+                f"bags={self._bags_done(ram)}/{self._bags_target()}"
             ),
         )
 
@@ -346,7 +369,7 @@ class BuySeedsTask(Task):
         self._last_reason = f"nav {nxt}"
 
     def _queue_buy(self, world: WorldState, *, lock: int) -> TaskResult:
-        if self._buy_attempts >= BUY_ATTEMPT_LIMIT:
+        if self._buy_attempts >= BUY_ATTEMPT_LIMIT * self._bags_target():
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=(
@@ -403,7 +426,24 @@ class BuySeedsTask(Task):
         elif self._bought and tilemap == TOWN_TILEMAP and self._child_name == "shop_to_town":
             # Fresh settle after the shop→town flip (inbound wait already spent).
             self._town_wait = 0
-        if self._purchase_ok(world.ram):
+        done = self._bags_done(world.ram)
+        if done > self._bags_seen:
+            self._bags_seen = done
+            self._attempts_at_last_bag = self._buy_attempts
+        if done >= self._bags_target() or (
+            self._bags_target() <= 1 and self._purchase_ok(world.ram)
+        ):
+            self._bought = True
+        elif (
+            done >= 1
+            and self._buy_attempts - self._attempts_at_last_bag >= BUY_ATTEMPT_LIMIT
+        ):
+            # A second bag that will not close must not cost us the first one.
+            # Bank what the wallet already paid for and walk home.
+            print(
+                f"[BUY] extra bag did not close after {BUY_ATTEMPT_LIMIT} A "
+                f"presses; leaving with {done}/{self._bags_target()}"
+            )
             self._bought = True
         lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         if self._bought and tilemap == SHOP_TILEMAP and lock in {0, 2, 4}:

@@ -173,17 +173,30 @@ class CropWaterOpsMixin:
         current_tile = self._navigator.current_tile
         prefix = self._water_steps[:self._water_index]
         remaining_scored = []
-        for offset, (target, _stand, _face) in enumerate(self._water_steps[self._water_index:]):
-            best = self._best_water_variant(ram, target, current_tile)
+        deferred = []
+        for offset, step in enumerate(self._water_steps[self._water_index:]):
+            best = self._best_water_variant(ram, step[0], current_tile)
             if best is None:
+                # No stand is reachable *from this pose*. Keep the step with its
+                # original stand/face at the tail instead of dropping it: run13
+                # lost (12,28) here for the whole day, silently, and the plot
+                # still reported "7/7 watered" because the list had shrunk.
+                deferred.append(step)
                 continue
             stand, face, score = best
-            remaining_scored.append(((score, offset), (target, stand, face)))
+            remaining_scored.append(((score, offset), (step[0], stand, face)))
 
         if not remaining_scored:
             return False
 
         reordered = [step for _score, step in sorted(remaining_scored, key=lambda item: item[0])]
+        if deferred:
+            self._water_steps_deferred += len(deferred)
+            print(
+                f"[CROP] WATER defer {len(deferred)} tile(s) unreachable from "
+                f"{current_tile} to the tail: {[s[0] for s in deferred]}"
+            )
+        reordered = reordered + deferred
         changed = reordered != self._water_steps[self._water_index:]
         self._water_steps = prefix + reordered
         self._target_tile, self._approach_tile, self._face_direction = self._water_steps[self._water_index]
@@ -230,6 +243,7 @@ class CropWaterOpsMixin:
         self._water_verify_retries = 0
         self._last_water_level_before = -1
         self._last_water_tile_before = -1
+        self._water_steps_deferred = 0
         # Build concrete per-tile watering steps. Resume states keep stands on
         # the notch/perimeter when possible, but allow inside-plot recovery.
         self._water_steps = build_water_steps(
@@ -292,8 +306,10 @@ class CropWaterOpsMixin:
                     tid = get_tile_at(ram, cx + dx, cy + dy)
                     row.append(f"0x{tid:02X}")
                 tile_ids.append(" ".join(row))
+            deferred = getattr(self, "_water_steps_deferred", 0)
             print(f"[CROP] Plot {self._plot_index + 1}/{len(self._plots)} WATER DONE: "
-                  f"{actual_watered}/{len(self._water_steps)} watered (used {water_used} water, can={lvl})")
+                  f"{actual_watered}/{len(self._water_steps)} watered (used {water_used} water, can={lvl})"
+                  + (f" deferrals={deferred}" if deferred else ""))
             print(f"[CROP]   3x3 tiles: [{tile_ids[0]}] [{tile_ids[1]}] [{tile_ids[2]}]")
             if actual_skipped > 0:
                 print(f"[CROP] WARNING: Plot {self._plot_index + 1} incomplete ({actual_skipped} skipped)")
