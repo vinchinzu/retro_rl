@@ -186,6 +186,30 @@ Note this also changed what `test_day_plan_aborts_required_missing_task`
 demonstrates — it used `ENTER_BARN` as its example of a required phase. It
 now uses `CROP_WATER`, so the assertion is unchanged and still meaningful.
 
+### 7. A failed BFS was re-run every frame (found by fixing #1)
+
+The watering fix exposed this. Fully watering both rings leaves more crop
+tiles; crop tiles are not travel-walkable; so `NAV_CROP`'s `(15,29)` goal goes
+from awkward to sealed. `NavTask.step` re-searched from scratch on any frame
+where the navigator's path was empty — a full failed `find_path` **plus** a
+`find_frontier_path`, after which the path is still empty, so the next frame
+pays for both again, up to the 9 000 f phase timeout.
+
+Measured: run19 D6 ran at **~66 f/s** against run16's ~344 f/s average.
+
+A failed search now arms a 12-frame cooldown (`NAV_REPATH_COOLDOWN_FRAMES`)
+during which the task emits its fallback action without re-searching. That is
+0.2 s of game time per retry for ~1/12 the CPU, with no behaviour change
+beyond cost. It is aimed squarely at the tail the calibration table above
+identifies (median 154 f, max 6 611 f).
+
+**Method note, worth more than the fix:** at 66 f/s a 2 000-frame progress
+interval takes 30 s+, so the log looks frozen. An earlier run was killed on
+that misreading before the frame rate was actually measured — `utime` was
+advancing the whole time. Measure `f=` against wall-clock before concluding a
+run is stuck; a frozen *game clock* means indoors (see Traps), a frozen
+*frame counter* means measure the rate first.
+
 ## Still open
 
 ### NAV_CROP is now the top money leak (was run13 §3's "CROP_WATER variance")
