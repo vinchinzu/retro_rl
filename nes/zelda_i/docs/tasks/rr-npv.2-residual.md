@@ -15,9 +15,9 @@ Stopped at fixture-live. Not a STATUS claim. `route_eligible=false`.
 ## Unit
 
 `QT_QPA_PLATFORM=offscreen uv run pytest nes/zelda_i/tests/test_level5*.py -q`
-→ 25 passed.
+→ 26 passed.
 
-## First red (one ROM trial, stopped)
+## Second red (one ROM trial, stopped)
 
 `Level5EntranceFromL4` start: play 0x76 `(120,205)` mode 5, raft=1 ladder=1
 bombs=7 keys=0 TF=`0x0c` whistle=0.
@@ -26,22 +26,24 @@ bombs=7 keys=0 TF=`0x0c` whistle=0.
 |-------|--------|----|
 | `level5_clear_0x66` | 1265 | yes |
 | `level5_east_key_0x77` | 761 | yes |
-| `level5_clear_0x77` | 325 | **no** |
+| `level5_clear_0x77` | 855 | **no** |
 
-Leftover: **room 0x77 mode 17 (death) `(48,182)`**, deaths=1, TF bit 0x10
+Leftover: **room 0x77 mode 17 (death) `(80,105)`**, deaths=1, TF bit 0x10
 missing (`TF=0x0c`), keys=1, bombs=7, health=112 (`0x70`), whistle=0.
-Clean Pols Voice (`Level5PolsVoiceController`) without infinite-life.
+Clean Pols Voice (`Level5PolsVoiceController`) without infinite-life. Total frames: 2881.
 
 Changes landed in this sitting:
-- `_is_solid`: Strictly blocked right 2×3 cluster and underneath (`152 <= x <= 184 and y >= 109`), hold `x >= 185` only on `y > 185`. Completely eliminated the previous serial red trap at `(153, 189)`.
-- North routing around cluster: Link paths `UP` to `y <= 109` to cross east/west.
-- Occupancy tracking: Records cell ahead on >= 4 stuck frames into `blocked_cells`, increments `misses`, and replans; emits `stand_no_path` when blocked.
-- Spacing & intercept: Intercept swings on column/row alignment (`<= 24 px`) or proximity (`<= 24 px`), backstep restricted to contact threat (`<= 14 px`).
-- Unit tests: Added `test_pols_voice_controller_is_solid` and `test_pols_voice_controller_occupancy_miss_and_stand` (25 passed).
+- `_is_solid`: Marked southwest dead-end pocket (`x < 88 and y > 145`) as solid so Link never retreats or paths south of the west doorway. Corrected left cluster bounds to `56 <= x <= 88 and 109 < y <= 164` to open the north aisle at `y=109`.
+- Northward routing from west door: when `lx < 88 and ly > 109`, routes `UP` to `y <= 109` (`route_north_from_west_door`), completely eliminating the retreat into the SW pocket `(48, 182)`.
+- North aisle traverse: when `lx < 88 and ly <= 109` and target is east, traverses `RIGHT` (`traverse_east_to_aisle`) across the open north aisle into the central aisle (`x=96..144`).
+- Reward collection: added north/east routing in `_collect_reward` for `lx < 88`.
+- Unit tests: updated `test_pols_voice_controller_is_solid` to verify SW dead-end pocket solidity and open north aisle; added `test_pols_voice_controller_west_door_routes_north` (26 passed).
 
-New failure analysis:
-Link entered from west door `(32, 141)` into west pocket `(48, 141)`. Pols Voice in central aisle caused Link to route south into SW pocket `(48, 182)` where he was cornered against the south/west walls.
+Trial analysis:
+- SW pocket `(48, 182)` retreat was completely eliminated.
+- Link exited west door `(48, 141)` northward to `(48, 109)` and advanced east along the north cross-aisle to `(80, 105)`.
+- Link survived 855 frames (vs 325 previously) and dealt heavy damage to multiple Pols Voices (one down to 64 HP, one to 96 HP, two to 144 HP) before dying to contact damage in the cross-aisle at `(80, 105)`.
 
 ## Next
 
-Survive 0x77 Pols Voice Clean: avoid southwest pocket `(48, 182)` routing, exit west doorway north to `y <= 109` across top aisle or into central aisle `x=96..144`. Then continue polled whistle path to TF 0x10.
+Survive 0x77 Pols Voice Clean: refine spacing/evasion against multiple jumping Pols Voices in the north cross-aisle and central aisle `x=96..144`. Once 0x77 is cleared and key collected, continue polled whistle path to TF 0x10.

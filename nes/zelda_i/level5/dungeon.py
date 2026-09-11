@@ -618,9 +618,11 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             return True
         if y > 185 and x < 185:
             return True
-        if 56 <= x <= 88 and 109 <= y <= 164:
+        if 56 <= x <= 88 and 109 < y <= 164:
             return True
         if 152 <= x <= 184 and y >= 109:
+            return True
+        if x < 88 and y > 145:
             return True
         return False
 
@@ -781,6 +783,16 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         dx = tgt.x - lx
         dy = tgt.y - ly
 
+        # West door exit routing north then east into central aisle:
+        if lx < 88:
+            if ly > 109:
+                if self._can_move(lx, ly, "UP"):
+                    self.last_dir = "UP"
+                    return FrameAction(nes_action("UP"), "route_north_from_west_door")
+            elif tgt.x >= 88 and self._can_move(lx, ly, "RIGHT"):
+                self.last_dir = "RIGHT"
+                return FrameAction(nes_action("RIGHT"), "traverse_east_to_aisle")
+
         # North-routing around cluster:
         cross_east = (lx < 185 and tgt.x >= 185)
         cross_west = (lx >= 185 and tgt.x < 152)
@@ -818,9 +830,11 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
         lx, ly = int(snap.link_x), int(snap.link_y)
-        if lx >= 185 and ly > 109:
+        if (lx >= 185 or lx < 88) and ly > 109:
             if self._can_move(lx, ly, "UP"):
                 return FrameAction(nes_action("UP"), "collect_route_north")
+        if lx < 88 and self._can_move(lx, ly, "RIGHT"):
+            return FrameAction(nes_action("RIGHT"), "collect_route_east")
         return super()._collect_reward(snap)
 
 

@@ -42,7 +42,8 @@ from zelda_i.level4.dungeon import (
     VIRE_OBJECT_TYPE,
     VIRE_SPLIT_KEESE_TYPE,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.combat import should_swing_at
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
 
 class BombWall61North:
@@ -102,9 +103,86 @@ def make_room_32_clear_controller() -> GenericDungeonRoomController:
     return GenericDungeonRoomController(ROOM_32_SPEC)
 
 
-def make_room_12_clear_controller() -> GenericDungeonRoomController:
+@dataclass
+class Room12ViresController(GenericDungeonRoomController):
+    """Clear 5× Vire + split Keese in room 0x12 safely (rr-bxzj).
+
+    - West entrance from (16, 141): steps RIGHT cleanly onto open floor.
+    - avoid_walls keeps Link inland [56, 200] x [109, 173] so he is not trapped.
+    - Slashes when ANY live enemy is in sword reach or contact range.
+    """
+
+    def _off_wall_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Step toward the playable interior when avoid_walls is set."""
+        if not self.spec.combat.avoid_walls:
+            return None
+        x, y = int(snap.link_x), int(snap.link_y)
+        lo_x, hi_x, lo_y, hi_y = self.spec.combat.avoid_wall_bounds
+        if x < lo_x:
+            # 0x12 west entrance: floor is open, step east cleanly into room.
+            direction = "RIGHT"
+        elif x > hi_x:
+            direction = "LEFT"
+        elif y < lo_y:
+            direction = "DOWN"
+        elif y > hi_y:
+            direction = "UP"
+        else:
+            return None
+        return self._swing(
+            direction,
+            "leave_wall",
+            period=self.spec.combat.engage_attack_period,
+            hold=self.spec.combat.engage_attack_hold,
+        )
+
+    def _engage(
+        self,
+        snap: ZeldaSnapshot,
+        target: ZeldaObject,
+        direction: str | None = None,
+    ) -> FrameAction:
+        """Chase target; slash when blade can hit any live enemy or contact-close."""
+        if direction is None:
+            dx = target.x - snap.link_x
+            dy = target.y - snap.link_y
+            if (
+                self.spec.combat.engage_dominant_axis
+                and abs(dy) > 10
+                and abs(dy) > abs(dx)
+            ):
+                direction = "DOWN" if dy > 0 else "UP"
+            elif abs(dx) > 10:
+                direction = "RIGHT" if dx > 0 else "LEFT"
+            elif abs(dy) > 10:
+                direction = "DOWN" if dy > 0 else "UP"
+            elif abs(dx) >= abs(dy):
+                direction = "RIGHT" if dx >= 0 else "LEFT"
+            else:
+                direction = "DOWN" if dy >= 0 else "UP"
+        tuning = self.spec.combat
+        nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
+        hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
+        live = self.spec.live_enemies(snap)
+        if hold_inland or should_swing_at(
+            snap.link_x,
+            snap.link_y,
+            direction,
+            live if live else (target,),
+        ):
+            return self._swing(
+                direction,
+                "combat_engage",
+                period=tuning.engage_attack_period,
+                hold=tuning.engage_attack_hold,
+            )
+        # Approach without slashing until in blade range.
+        return FrameAction(nes_action(direction), "combat_engage")
+
+
+def make_room_12_clear_controller() -> Room12ViresController:
     """Clear 0x12 Vires (settle_all_dead=0; ignore block 0x68; rr-rvae)."""
-    return GenericDungeonRoomController(ROOM_12_SPEC)
+    return Room12ViresController(ROOM_12_SPEC)
 
 
 # --- 0x51 free LEFT → 0x50 (rr-2ysf pocket) ---

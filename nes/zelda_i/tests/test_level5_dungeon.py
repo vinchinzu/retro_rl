@@ -110,6 +110,45 @@ def test_pols_voice_controller_is_solid() -> None:
     for x in (152, 160, 176, 184):
         for y in (109, 141, 165, 189):
             assert ctrl._is_solid(x, y) is True
+    # Southwest dead-end pocket (x < 88 and y > 145) is solid
+    for x in (44, 48, 64, 84):
+        for y in (146, 160, 173, 182, 189):
+            assert ctrl._is_solid(x, y) is True
+    # West door entrance and north aisle are open
+    assert ctrl._is_solid(48, 141) is False
+    assert ctrl._is_solid(48, 109) is False
+    assert ctrl._is_solid(56, 109) is False
+    # Left cluster (56..88, 109 < y <= 164) is solid
+    assert ctrl._is_solid(56, 141) is True
+    assert ctrl._is_solid(88, 141) is True
+
+
+def test_pols_voice_controller_west_door_routes_north() -> None:
+    ctrl = Level5PolsVoiceController(spec=ROOM_77_SPEC)
+    ram = _ram(
+        room=ROOM_L5_POLS_77,
+        x=48,
+        y=141,
+        enemies=1,
+        enemy_type=POLS_VOICE_OBJECT_TYPE,
+        hp=160,
+    )
+    ram[ADDR_LINK_X + 1] = 120
+    ram[ADDR_LINK_Y + 1] = 141
+    snap = read_snapshot(ram)
+
+    # At (48, 141) with enemy in central aisle, Link routes UP towards y <= 109
+    act = ctrl.step(snap)
+    assert act.action == nes_action("UP")
+    assert act.reason == "route_north_from_west_door"
+    assert ctrl.last_dir == "UP"
+
+    # Once at y <= 109 (e.g. 48, 109), Link can move RIGHT into central aisle
+    ram[ADDR_LINK_Y] = 109
+    snap_109 = read_snapshot(ram)
+    act_109 = ctrl.step(snap_109)
+    assert act_109.action == nes_action("RIGHT")
+    assert ctrl.last_dir == "RIGHT"
 
 
 def test_pols_voice_controller_occupancy_miss_and_stand() -> None:

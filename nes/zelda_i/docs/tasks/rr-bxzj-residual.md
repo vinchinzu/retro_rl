@@ -28,23 +28,30 @@ Isolated runner: `run_level4_entrance_tf.py --from-state Level4Entrance
   - `level4_key_0x01` (954f, keys 0→1)
   - `level4_south_0x11` (251f)
   - `level4_bomb_east_0x12` (390f, bomb hole to 0x12)
+- `level4_clear_0x12` blocker **resolved**: 5× Vire + split Keese combat clears
+  cleanly in 714f (end_frame 38500) with **0 deaths** and **health=96** preserved.
+  - `ROOM_12_SPEC.combat` tuned with `avoid_walls=True`, `contact_backstep=20`,
+    `engage_dominant_axis=True`, `attack_phase=2`, and `DoorRoute("RIGHT", ...)`.
+  - `Room12ViresController` overrides `_off_wall_step` to step east cleanly from
+    west bomb hole onto open floor, and slashes in `_engage` when any live enemy
+    is in blade reach.
 
 ## Failed stage this sitting (1 trial)
 
-`level4_clear_0x12` failed in 268f (end_frame 38054).
-Link died in room 0x12 (`link_death`, mode 17) during 5× Vire combat.
-Room 0x12 is the final room before Gleeok 0x13.
+`level4_gleeok_enter_0x13` failed in 8000f (end_frame 46500, `timeout_208_149`).
+Link reached east door at `(208, 149)` in play mode 5, but the door remained shut
+(cur_opened_doors=2). Stand path approach to `PUSH_12_STAND (112, 144)` from clear
+leftover `(72, 150)` collided with the block at `(96, 144)` before pushing.
 
 ## Glance (trial 0 leftover)
 
-room **0x12**, mode **17**, xy **(156, 165)**, tf **0x04**, keys **1**, bombs
-**5**, health **96**, deaths **1**. PNG `recordings/l4_entrance_tf_t0_final.png`.
+room **0x12**, mode **5**, xy **(208, 149)**, tf **0x04**, keys **1**, bombs
+**5**, health **96**, deaths **0**. PNG `recordings/l4_entrance_tf_t0_final.png`.
 
 ## Next sitting
 
-- Room 0x12 Vire combat: Link enters with health ~96 from long continuous
-  run; needs tighter combat tuning or dodge handling to avoid early death
-  before pushing block 0x68 into Gleeok 0x13.
-- Gleeok south-stand + low-HP approach dodge is unit-hardened but unproven
-  on Clean continuous tape.
+- `level4_gleeok_enter_0x13`: Approach to `PUSH_12_STAND (112, 144)` needs to route
+  around block `(96, 144)` (north via y=117 or south via y=173) when Link finishes
+  combat west of the block, then push block LEFT 70f to open east door (doors 2→3).
+- Gleeok south-stand + low-HP approach dodge into Triforce 0x08.
 
