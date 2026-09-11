@@ -608,15 +608,39 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertEqual(plan.phase_text, "EXIT_TO_FARM")
 
     def test_day_plan_aborts_required_missing_task(self) -> None:
-        plan = DayPlanTask(phase_sequence=[PhaseSpec("ENTER_BARN", "unknown_kind")])
+        # CROP_WATER, not ENTER_BARN: the animal block is an optional money
+        # route now, so it no longer demonstrates required-phase abort.
+        plan = DayPlanTask(phase_sequence=[PhaseSpec("CROP_WATER", "unknown_kind")])
         world = make_world(0x00)
         plan.reset(world)
 
         result = plan.step(world)
 
         self.assertEqual(result.status, TaskStatus.FAILURE)
-        self.assertIn("required phase ENTER_BARN failed: no task", result.reason)
-        self.assertEqual(plan.phase_text, "ENTER_BARN")
+        self.assertIn("required phase CROP_WATER failed: no task", result.reason)
+        self.assertEqual(plan.phase_text, "CROP_WATER")
+
+    def test_day_plan_defers_the_animal_block_instead_of_losing_the_day(self) -> None:
+        """run16 D26/D27: the cow-purchase day replaced the income plan with
+        required phases, NAV_TO_ANIMAL_SHOP failed, and both days earned
+        nothing. Buying a cow is discretionary; the farm work behind it is not."""
+        plan = DayPlanTask(
+            phase_sequence=[
+                PhaseSpec("NAV_TO_ANIMAL_SHOP", "unknown_kind"),
+                PhaseSpec("BUY_COW_VENDOR", "unknown_kind"),
+                PhaseSpec("COW_CHORES", "unknown_kind"),
+            ]
+        )
+        world = make_world(0x00)
+        plan.reset(world)
+
+        result = plan.step(world)
+
+        self.assertNotEqual(result.status, TaskStatus.FAILURE)
+        self.assertEqual(
+            [d.phase for d in plan.deferred_plans],
+            ["NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR", "COW_CHORES"],
+        )
 
     def test_day_plan_resume_after_hotswap_clears_active_task_state(self) -> None:
         plan = DayPlanTask(phase_sequence=[PhaseSpec("NAV_TO_COOP", "multi_nav", {"route": "farm_to_coop"})])

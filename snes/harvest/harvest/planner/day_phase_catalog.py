@@ -542,8 +542,31 @@ OPTIONAL_SHOP_PHASES = frozenset({
     "GET_SICKLE",
     "LEAVE_HOUSE_MACRO",
 })
+# Buying a cow is discretionary; farming is not. run16 reached the cow
+# threshold on D26 for the first time (~$5000) and the 12-phase purchase day
+# replaced the whole income plan with *required* phases — NAV_TO_ANIMAL_SHOP
+# failed, so D26 and D27 both earned nothing and D28 died in return_home.
+# Failing this route must defer it and fall through to the farm work.
+OPTIONAL_COW_PURCHASE_PHASES = frozenset({
+    "NAV_TO_ANIMAL_SHOP",
+    "BUY_COW_VENDOR",
+    "EXIT_ANIMAL_SHOP",
+    "RETURN_FARM_AFTER_COW_PURCHASE",
+    "NAME_COW",
+    # The barn tail belongs to the same group: skipping only the purchase
+    # would leave these as required phases for a cow that was never bought,
+    # and the day would die one phase later instead.
+    "ENSURE_ANIMAL_TOOLS",
+    "NAV_TO_BARN",
+    "ENTER_BARN",
+    "COW_CHORES",
+    "EXIT_BARN",
+})
 OPTIONAL_MONEY_PHASES = (
-    OPTIONAL_BERRY_PHASES | OPTIONAL_SHOP_PHASES | OPTIONAL_CHICKEN_SALE_PHASES
+    OPTIONAL_BERRY_PHASES
+    | OPTIONAL_SHOP_PHASES
+    | OPTIONAL_CHICKEN_SALE_PHASES
+    | OPTIONAL_COW_PURCHASE_PHASES
 )
 
 # Phases whose success marks the day ready for return-home/sleep.
@@ -713,6 +736,7 @@ __all__ = [
     "OPTIONAL_BERRY_PHASES",
     "OPTIONAL_SHOP_PHASES",
     "OPTIONAL_CHICKEN_SALE_PHASES",
+    "OPTIONAL_COW_PURCHASE_PHASES",
     "OPTIONAL_MONEY_PHASES",
     "GO_HOME_TRIGGER_PHASES",
     "crop_establish_phases",

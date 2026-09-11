@@ -439,6 +439,7 @@ class DayPlanTask(Task):
         from harvest.planner.day_phase_catalog import (
             OPTIONAL_BERRY_PHASES,
             OPTIONAL_CHICKEN_SALE_PHASES,
+            OPTIONAL_COW_PURCHASE_PHASES,
             OPTIONAL_SHOP_PHASES,
         )
 
@@ -448,6 +449,8 @@ class DayPlanTask(Task):
             return OPTIONAL_SHOP_PHASES
         if phase_name in OPTIONAL_CHICKEN_SALE_PHASES:
             return OPTIONAL_CHICKEN_SALE_PHASES
+        if phase_name in OPTIONAL_COW_PURCHASE_PHASES:
+            return OPTIONAL_COW_PURCHASE_PHASES
         return OPTIONAL_MONEY_PHASES
 
     def _skip_optional_money_route(self, reason: str, *, group: frozenset[str] | None = None) -> None:

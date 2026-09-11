@@ -152,6 +152,40 @@ Tests: `tests/test_two_bag_replant.py` (12).
 **ROM status: the 2-bag purchase is NOT yet ROM-proven** — see Non-claims.
 `buy_seeds_probe --bags N` exists to prove it.
 
+### 6. Success triggered the cow-purchase day, and it killed the run
+
+**run16 is the first run ever to get rich enough to hit this.** At D26, with
+~$5 000 in the wallet, the planner replaced the whole income plan with a
+12-phase cow day:
+
+```
+[MULTI_DAY] Plan 0:26 phases=EXIT_TO_FARM, NAV_TO_ANIMAL_SHOP, BUY_COW_VENDOR,
+  EXIT_ANIMAL_SHOP, RETURN_FARM_AFTER_COW_PURCHASE, NAME_COW,
+  ENSURE_ANIMAL_TOOLS, NAV_TO_BARN, ENTER_BARN, COW_CHORES, EXIT_BARN,
+  DYNAMIC_OUTDOOR_PLAN
+[DAY_PLAN] Phase NAV_TO_ANIMAL_SHOP FAILURE: expected tilemap 0x0C, got 0x00
+```
+
+None of those phases declared a `failure_policy`, so every one of them was
+**required** — a failure aborts the day before `DYNAMIC_OUTDOOR_PLAN` is ever
+reached. D26 and D27 both earned nothing, and D28 died in `return_home`
+(`exit_to_farm ... pixel_stuck pos=(598,248)`). The run ended two days short
+of Summer with the crop engine still working perfectly.
+
+This is a "success is punished" bug: the better the economy gets, the sooner
+it fires. `livestock_econ.py` is an explicit stub whose inputs are
+deliberately `None`, so this path was never meant to be load-bearing.
+
+Fix: `OPTIONAL_COW_PURCHASE_PHASES` — the purchase leg **and** the barn tail
+(skipping only the purchase would leave required chores for a cow that was
+never bought, and the day would die one phase later instead). Buying a cow is
+discretionary; the farm work behind it is not. A failure now defers the whole
+route and falls through to the day's actual income work.
+
+Note this also changed what `test_day_plan_aborts_required_missing_task`
+demonstrates — it used `ENTER_BARN` as its example of a required phase. It
+now uses `CROP_WATER`, so the assertion is unchanged and still meaningful.
+
 ## Still open
 
 ### NAV_CROP is now the top money leak (was run13 §3's "CROP_WATER variance")
@@ -178,6 +212,20 @@ Watering then started at 17:12 and `BERRY_RUN_WINDOW` failed its cutoff at
 18:04. Money is flat at $4350 across D20-D22 for this reason, not because the
 crop cycle stopped.
 
+Calibrating the cost model against run16 + run13
+(`spring_plan --calibrate`) shows the shape is **bimodal, not a general
+slowdown** — which changes what the fix should be:
+
+| phase | n | min | median | max |
+|-------|---|-----|--------|-----|
+| NAV_CROP | 47 | 43 | **154** | **6611** |
+| CROP_WATER | 30 | 364 | 2194 | 13625 |
+
+A typical NAV_CROP costs 154 f. Its worst case costs 6 611 f — about half a
+day, against a measured day of 12 814 f (n=37). So the target is the tail
+(replan / timeout / route selection on the bad draw), not nav speed in
+general. Same shape for CROP_WATER.
+
 Two details worth keeping:
 
 - The push-block path is **not** itself a loop: `note_push_facing` →
@@ -188,6 +236,33 @@ Two details worth keeping:
   (the farmhouse-door neighbours run13 §4b already flagged) and `(28,26-28)`.
   A nav aimed at the west pocket `(13,28)` has no business at `x=28`, so the
   suspicion is route selection, not local walk policy. Unverified.
+
+**Push-block hotspots are stable across runs.** Counting
+`Push-facing block tile=` over three independent D3→D30 logs gives the same
+ranked list, which makes these cheap to fix *and* cheap to regression-test —
+the property run13 §1 valued in the grape pins:
+
+| tile | run16 | run17 | run13 | rough area |
+|------|-------|-------|-------|------------|
+| (21,45) | 52 | 11 | 47 | south of the y=31 fence row |
+| (20,44) | 42 | 8 | 34 | south of the y=31 fence row |
+| (9,0)   | 40 | 8 | 32 | far north edge |
+| (14,7)  | 37 | 6 | 21 | far north |
+| (8,22)  | 31 | 6 | 30 | farmhouse-door band |
+| (1,29)  | 23 | 5 | 21 | west edge |
+| (5,23)  | 22 | 5 | 19 | west of the house |
+
+(run17 counts are lower only because it was still mid-run when this was
+taken; the *ranking* is what matches.)
+
+A second cluster — `(27,26) (28,26) (28,27) (28,28) (28,29) (27,29)` — recurs
+verbatim in both run16 D22 and run17 D6, east of the well body that
+`FARM_NO_GO_TILES` already covers at x=15-17.
+
+Whether any of these *cause* the NAV_CROP tail is **unverified** — they are
+co-located in the logs, nothing more. Do not add them to `FARM_NO_GO_TILES`
+on that basis alone: the house-door band in particular is on the route home,
+and sealing it would trade one failure for a worse one.
 
 Next step is the method already proven on this lane: dump the live tile grid
 at the stall and replay `find_path` offline, which separates bad tiles from a
@@ -210,6 +285,21 @@ order.
   hoe/water/harvest stands — still the next money lever after this.
 - Second-grape pick miss at `GRAPE_STAND_PX`.
 - Why the clearer routes through the farmhouse door (§4 above).
+
+## run16 baseline result (HEAD, no fixes from this session)
+
+| | run13 (prev best) | run16 |
+|---|---|---|
+| reached | D22 | **D28** |
+| money | $3 990 | **$5 420** |
+| days completed | 19 | 25 |
+| terminal | `return_home timeout ... phase=exit_to_farm` | `exit_to_farm ... pixel_stuck pos=(598,248)` |
+| journal phase failures | several | **none** (all absorbed as deferrals) |
+
+349 405 frames / 1 014 s wall. The D22→D28 and +36 % money improvement is the
+*previous* session's nav-route work paying off, measured here for the first
+time — none of this session's fixes are in run16. The three deterministic
+`soft_solid pin` failures run13 §1 catalogued do not occur at all.
 
 ## Non-claims
 
