@@ -18,6 +18,7 @@ from harvest.maps.map_config import (
     FARM_TILEMAP_IDS,
     ROUTES,
     mountain_downhill_escape,
+    mountain_exit_then_farm,
     slice_route_from_position,
 )
 from harvest.planner.tasks.navigation import MultiMapNavTask
@@ -66,6 +67,11 @@ class MountainGrapeShipTask(Task):
     # Carpenter-corridor pins (run6 D15) retry a downhill suffix instead of
     # failing while still on mountain 0x10.
     max_return_retries: int = 3
+    # Any leg (outbound pick or return) may be re-planned from the live pose
+    # after a nav failure. run13 lost 7 of 15 berry phases to single nav pins
+    # that a fresh route slice walks straight past; each retry costs a few
+    # hundred frames against a ~300 G day.
+    max_leg_retries: int = 3
 
     _step_count: int = field(default=0, init=False)
     _phase: str = field(default="pick", init=False)
@@ -77,6 +83,7 @@ class MountainGrapeShipTask(Task):
     _drop_attempts: int = field(default=0, init=False)
     _drop_queue: deque[np.ndarray] = field(default_factory=deque, init=False, repr=False)
     _return_retries: int = field(default=0, init=False)
+    _leg_retries: int = field(default=0, init=False)
     _walk_back_retries: int = field(default=0, init=False)
     _bail_reason: str = field(default="", init=False)
 
@@ -98,6 +105,7 @@ class MountainGrapeShipTask(Task):
                 ("shipping_before", self._shipping_before),
                 ("shipping_after", self._shipping_after),
                 ("drop_attempts", self._drop_attempts),
+                ("leg_retries", self._leg_retries),
             ),
             child=child,
         )
@@ -110,6 +118,7 @@ class MountainGrapeShipTask(Task):
         self._drop_attempts = 0
         self._shipped = 0
         self._return_retries = 0
+        self._leg_retries = 0
         self._walk_back_retries = 0
         self._bail_reason = ""
         self._drop_queue.clear()
@@ -144,8 +153,8 @@ class MountainGrapeShipTask(Task):
         tilemap = int(read_ram_value(world.ram, "tilemap"))
         if downhill and tilemap == 0x10:
             mountain = mountain_downhill_escape(int(pos.x), int(pos.y), tilemap=tilemap)
-            rest = [wp for wp in route if wp.tilemap != 0x10]
-            sliced = list(mountain) + rest
+            farm = [wp for wp in route if wp.tilemap not in (0x10, 0x0C)]
+            sliced = mountain_exit_then_farm(mountain) + farm
         else:
             sliced = slice_route_from_position(route, pos.x, pos.y, tilemap=tilemap)
         self._child = MultiMapNavTask(
@@ -210,6 +219,51 @@ class MountainGrapeShipTask(Task):
             world, downhill=downhill, phase="walk_back", require_forage=False
         )
 
+    def _retry_leg(self, world: WorldState, result: TaskResult) -> Optional[TaskResult]:
+        """Re-plan a failed leg from the live pose before losing the day.
+
+        A nav failure is nearly always one pinned cell, not an unreachable
+        bin: run13's six identical ``return_to_bin`` pins and three identical
+        ``farm_to_path`` pins each ended a whole berry phase. Re-arming picks
+        a fresh route slice from wherever the farmer actually stands, so the
+        retry is a different path, not the same one replayed. Bounded by
+        ``max_leg_retries`` and, above it, by the task timeout and
+        ``hard_return_hour``.
+        """
+        if self._phase not in {"pick", "return_to_bin"}:
+            return None
+        if self._leg_retries >= int(self.max_leg_retries):
+            return None
+        self._leg_retries += 1
+        why = result.reason or result.status.value
+        phase = self._phase
+        if phase == "pick":
+            self._start_pick(world)
+        else:
+            tilemap = int(read_ram_value(world.ram, "tilemap"))
+            self._start_return(world, downhill=tilemap == 0x10)
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=(
+                f"{phase} retry {self._leg_retries}/{self.max_leg_retries} "
+                f"after {why}"
+            ),
+        )
+
+    def _abort_empty(self, world: WorldState, why: str) -> TaskResult:
+        """Give up the loop with nothing in hand, but end up on the farm."""
+        if self._on_farm(world):
+            return TaskResult(status=TaskStatus.FAILURE, reason=why)
+        self._bail_reason = why
+        tilemap = int(read_ram_value(world.ram, "tilemap"))
+        self._start_walk_back(world, downhill=tilemap == 0x10)
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"walking back to the farm: {why}",
+        )
+
     def _best_effort_success(self, why: str) -> TaskResult:
         self._phase = "done"
         return TaskResult(
@@ -230,6 +284,10 @@ class MountainGrapeShipTask(Task):
         failed its map lock and the day lost the seed buy and CROP_ESTABLISH.
         """
         if self._on_farm(world):
+            if self._shipped < 1:
+                return TaskResult(
+                    status=TaskStatus.FAILURE, reason=f"no grape shipped: {why}"
+                )
             return self._best_effort_success(why)
         tilemap = int(read_ram_value(world.ram, "tilemap"))
         if self._walk_back_retries >= self.max_return_retries:
@@ -305,12 +363,29 @@ class MountainGrapeShipTask(Task):
         # Only give up between loops, standing on the farm. A loop already in
         # flight is bounded by ``timeout`` and by the return-leg retries, both
         # of which end with the farmer walked home.
+        hour = int(clock_from_ram(world.ram).hour)
         if (
             self._shipped >= 1
-            and int(clock_from_ram(world.ram).hour) >= int(self.hard_return_hour)
+            and hour >= int(self.hard_return_hour)
             and self._on_farm(world)
         ):
             return self._best_effort_success("past return deadline")
+        # The bin stops crediting around the 17:00 ShippingScene: a grape
+        # dropped after it leaves the farmer's hands without raising
+        # ``shipping_money`` and lands on the ground, unrecoverable (run13 and
+        # run14, three occurrences, every one of them at 16:00-17:01). A loop
+        # is ~4 h, so an outbound leg still walking at ``hard_return_hour`` can
+        # only produce that — abandon it and walk home instead of spending
+        # another 3 000 frames on a grape that cannot be banked.
+        if (
+            self._shipped < 1
+            and self._phase == "pick"
+            and hour >= int(self.hard_return_hour)
+            and not is_mountain_forage(int(read_held_item(world.ram)))
+        ):
+            return self._abort_empty(
+                world, f"no loop can bank a grape past {self.hard_return_hour}:00"
+            )
         if self._step_count > self.timeout:
             if self._shipped >= 1:
                 return self._finish_or_walk_home(world, "timeout")
@@ -367,6 +442,9 @@ class MountainGrapeShipTask(Task):
                     world,
                     f"{self.phase_text}: {result.reason or result.status.value}",
                 )
+            retry = self._retry_leg(world, result)
+            if retry is not None:
+                return retry
             return TaskResult(
                 status=result.status,
                 action=result.action,

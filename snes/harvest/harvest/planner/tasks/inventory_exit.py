@@ -22,6 +22,8 @@ from harvest.maps.map_config import (
     Waypoint,
     farm_exit_waypoints,
     mountain_downhill_escape,
+    mountain_exit_then_farm,
+    path_return_to_farm,
 )
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
@@ -338,14 +340,20 @@ class ExitToFarmTask(Task):
                 0x10: "mountain_to_farm",
             }[tilemap]
             waypoints = list(ROUTES.get(route_name, []))
+            pos = get_pos_from_ram(world.ram)
             if tilemap == 0x10:
-                pos = get_pos_from_ram(world.ram)
                 if int(pos.y) >= 380:
-                    mountain = mountain_downhill_escape(
-                        int(pos.x), int(pos.y), tilemap=tilemap
+                    # Gate descent, not plaza path_to_farm: (8,7) is 0xFF.
+                    waypoints = mountain_exit_then_farm(
+                        mountain_downhill_escape(
+                            int(pos.x), int(pos.y), tilemap=tilemap
+                        )
                     )
-                    waypoints = list(mountain) + list(ROUTES.get("path_to_farm") or [])
                     route_name = "grape_downhill"
+            elif tilemap == 0x0C:
+                waypoints = path_return_to_farm(
+                    int(pos.x), int(pos.y), tilemap=tilemap
+                )
             self._task = MultiMapNavTask(
                 name=f"return_{route_name}",
                 waypoints=list(waypoints),

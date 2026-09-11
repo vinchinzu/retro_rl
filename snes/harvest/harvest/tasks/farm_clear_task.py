@@ -346,7 +346,14 @@ class FarmClearTask(Task):
         return Point((cx - 1) * TILE_SIZE + 8, cy * TILE_SIZE + 8)
 
     def _make_pocket_approach(self, world: WorldState) -> Task:
-        from harvest.maps.map_config import SEGMENTS, slice_route_from_position
+        from harvest.maps.map_config import (
+            ROUTES,
+            SEGMENTS,
+            mountain_downhill_escape,
+            mountain_exit_then_farm,
+            path_return_to_farm,
+            slice_route_from_position,
+        )
         from harvest.planner.tasks.inventory_exit import ExitToFarmTask
         from harvest.planner.tasks.multi_nav import MultiMapNavTask
         from harvest.planner.tasks.navigation import NavTask
@@ -366,16 +373,26 @@ class FarmClearTask(Task):
             )
         if is_house_tilemap(tilemap):
             return ExitToFarmTask(tasks_dir=self.tasks_dir)
-        hops = list(SEGMENTS.get("path_to_farm", []))
-        if tilemap == 0x04:
-            hops = list(SEGMENTS.get("town_shop_to_path", [])) + hops
-        elif tilemap == 0x1C:
-            hops = (
-                list(SEGMENTS.get("shop_to_town", []))
-                + list(SEGMENTS.get("town_shop_to_path", []))
-                + hops
-            )
         pos = get_pos_from_ram(ram)
+        if tilemap == 0x10:
+            if int(pos.y) >= 380:
+                hops = mountain_exit_then_farm(
+                    mountain_downhill_escape(int(pos.x), int(pos.y), tilemap=tilemap)
+                )
+            else:
+                hops = list(ROUTES.get("mountain_to_farm", []))
+        elif tilemap == 0x0C:
+            hops = path_return_to_farm(int(pos.x), int(pos.y), tilemap=tilemap)
+        else:
+            hops = list(SEGMENTS.get("path_to_farm", []))
+            if tilemap == 0x04:
+                hops = list(SEGMENTS.get("town_shop_to_path", [])) + hops
+            elif tilemap == 0x1C:
+                hops = (
+                    list(SEGMENTS.get("shop_to_town", []))
+                    + list(SEGMENTS.get("town_shop_to_path", []))
+                    + hops
+                )
         sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
         return MultiMapNavTask(
             name="nav_clear_plot_farm",

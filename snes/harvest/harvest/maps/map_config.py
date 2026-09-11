@@ -91,6 +91,9 @@ from harvest.maps.map_routes import (
     segment_waypoints,
     slice_route_from_position,
     mountain_downhill_escape,
+    mountain_exit_then_farm,
+    path_return_to_farm,
+    path_stand_is_mountain_gate,
     SOUTH_FIELD_MIN_Y_PX,
 )
 
@@ -561,6 +564,9 @@ __all__ = [
     "segment_waypoints",
     "slice_route_from_position",
     "mountain_downhill_escape",
+    "mountain_exit_then_farm",
+    "path_return_to_farm",
+    "path_stand_is_mountain_gate",
     "path_coords_leaked",
     "farm_coords_look_like_path",
     "densify_waypoints",

@@ -115,6 +115,58 @@ def mountain_downhill_escape(
     )
 
 
+# Row 7 on path 0x0C. (7,7) and (8,7) are 0xFF; a descent aimed at the
+# plaza (132, 128) walks into them (run13 return_to_bin pin, 6x).
+_PATH_SEAL_Y_PX = 7 * TILE_SIZE
+
+
+def path_stand_is_mountain_gate(
+    px: int,
+    py: int,
+    tilemap: Optional[int] = None,
+) -> bool:
+    """True when a path stand is north of the row-7 seal (or a mountain leak).
+
+    Farm-west leak ~(10, 422) stays on the plaza road. Mountain pixels leak
+    past PATH_ONMAP_MAX_* and must not start at the plaza.
+    """
+    if tilemap not in (None, PATH_TILEMAP_ID, MOUNTAIN_TILEMAP_ID):
+        return False
+    if path_coords_leaked(px, py):
+        return px > PATH_ONMAP_MAX_X or px > 80
+    return py < _PATH_SEAL_Y_PX
+
+
+def path_return_to_farm(
+    px: int,
+    py: int,
+    *,
+    tilemap: Optional[int] = None,
+) -> List[Waypoint]:
+    """0x0C hops to the farm gate from the live stand.
+
+    Mountain-gate stands use the inbound climb lane. Plaza/town stands stay
+    on the east road. Callers must not concatenate ``path_to_farm`` after a
+    mountain 0x10 exit — that list aims at the sealed column.
+    """
+    hops = (
+        _PATH_MOUNTAIN_GATE_TO_FARM
+        if path_stand_is_mountain_gate(px, py, tilemap)
+        else _PATH_PLAZA_TO_FARM
+    )
+    return slice_route_from_position(
+        list(hops),
+        px,
+        py,
+        tilemap=PATH_TILEMAP_ID if tilemap is None else tilemap,
+    )
+
+
+def mountain_exit_then_farm(mountain_hops: Sequence[Waypoint]) -> List[Waypoint]:
+    """Append the mountain-gate descent, never the plaza path."""
+    return list(mountain_hops) + list(_PATH_MOUNTAIN_GATE_TO_FARM)
+
+
 def farm_to_spa_waypoints(
     px: int,
     py: int,
@@ -472,10 +524,27 @@ _ANIMAL_SHOP_STAGING = Waypoint(
 )
 _HOUSE_L1: List[Waypoint] = [Waypoint(tilemap=0x00, target_px=(136, 344), radius=12)]
 _FARM_TO_TOWN: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_TOWN)
-_PATH_TO_FARM: List[Waypoint] = [_PATH_CROSSROADS, _PATH_FARM_EXIT]
+# Plaza → farm gate. Town/shop return and leaked farm-west ~(10, 422).
+# NEVER concatenate this after a mountain 0x10 exit: (7,7)/(8,7) are
+# 0xFF, and a descent aimed at (132,128) is the run13 pin. Mountain
+# gate → farm is `_PATH_MOUNTAIN_GATE_TO_FARM` / `path_return_to_farm`.
+_PATH_PLAZA_TO_FARM: List[Waypoint] = [_PATH_CROSSROADS, _PATH_FARM_EXIT]
+# Mountain gate → farm, the reverse of the proven climb (measured live:
+# (137,19)→(137,52)→(137,92)→(150,110)→(148,128)). Column 8 carries rows
+# 1–5, then the lane must step east to column 9: (7,7) and (8,7) are 0xFF,
+# so aiming a descent straight at the crossroads (132,128) walks into a
+# sealed cell — the run13 `return_to_bin` pin at (133,101), 6x identical,
+# and ~200 frames of BFS flail on the days it did escape.
+_PATH_MOUNTAIN_GATE_TO_FARM: List[Waypoint] = [
+    Waypoint(tilemap=0x0C, target_px=(137, 40), radius=10),
+    Waypoint(tilemap=0x0C, target_px=(137, 88), radius=10),
+    Waypoint(tilemap=0x0C, target_px=(152, 108), radius=8),
+    Waypoint(tilemap=0x0C, target_px=(152, 128), radius=10),
+    _PATH_FARM_EXIT,
+]
 _SPA_TO_FARM: List[Waypoint] = (
     list(_OUTDOOR_SPA_TO_MOUNTAIN_EXIT)
-    + list(_PATH_TO_FARM)
+    + list(_PATH_MOUNTAIN_GATE_TO_FARM)
     + [Waypoint(tilemap=0x00, target_px=(40, 424), radius=24)]
 )
 
@@ -500,7 +569,8 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "path_to_town": list(_PATH_TO_TOWN),
     "path_to_town_shop": list(_PATH_TO_TOWN_SHOP),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
-    "path_to_farm": list(_PATH_TO_FARM),
+    "path_to_farm": list(_PATH_PLAZA_TO_FARM),
+    "path_mountain_gate_to_farm": list(_PATH_MOUNTAIN_GATE_TO_FARM),
     "town_to_shop_door": list(_TOWN_TO_SHOP_DOOR),
     "shop_to_counter": list(_SHOP_TO_COUNTER),
     "shop_to_town": list(_SHOP_TO_TOWN),
@@ -529,7 +599,7 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
-    + list(_PATH_TO_FARM)
+    + list(_PATH_MOUNTAIN_GATE_TO_FARM)
     + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
     + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
     # Early-game town loop: shop + church fronts, then leave. Completing
@@ -716,7 +786,8 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x00, target_px=(244, 375), radius=16),
         Waypoint(tilemap=0x00, target_px=(329, 360), radius=18),
     ],
-    "path_to_farm": list(_PATH_TO_FARM),
+    "path_to_farm": list(_PATH_PLAZA_TO_FARM),
+    "path_mountain_gate_to_farm": list(_PATH_MOUNTAIN_GATE_TO_FARM),
     "farm_to_mountain": list(_FARM_TO_MOUNTAIN_GATE),
     "mountain_entry_to_outdoor_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),
     "mountain_entry_to_spa": list(_MOUNTAIN_ENTRY_TO_OUTDOOR_SPA),

@@ -18,7 +18,9 @@ from harvest.maps.map_config import (
     farm_coords_look_like_path,
     find_landmark,
     mountain_downhill_escape,
+    mountain_exit_then_farm,
     path_coords_leaked,
+    path_return_to_farm,
     segment_waypoints,
     slice_route_from_position,
 )
@@ -105,24 +107,51 @@ class PathSegmentTests(unittest.TestCase):
         self.assertNotIn((232, 128), hops)
         self.assertEqual(hops[-1], (132, 128))
 
-    def test_leaked_path_coords_start_at_crossroads(self) -> None:
+    def test_leaked_path_coords_start_at_the_map_head_not_the_east_gate(self) -> None:
         self.assertTrue(path_coords_leaked(10, 422))
         self.assertTrue(path_coords_leaked(314, 740))
         self.assertFalse(path_coords_leaked(232, 128))
         self.assertFalse(path_coords_leaked(132, 30))
-        for name, leaked in (
-            ("path_to_mountain", (10, 422)),
-            ("path_to_farm", (314, 740)),
-        ):
-            sliced = slice_route_from_position(
-                list(SEGMENTS[name]), leaked[0], leaked[1], tilemap=0x0C
-            )
-            self.assertEqual(sliced[0].target_px, (132, 128), name)
+        # Plaza/town path: leaked farm-west starts at the plaza, not the
+        # east gate. Leaked mountain coords must not use this list.
+        sliced = slice_route_from_position(
+            list(SEGMENTS["path_to_mountain"]), 10, 422, tilemap=0x0C
+        )
+        self.assertEqual(sliced[0].target_px, (132, 128))
+        plaza = slice_route_from_position(
+            list(SEGMENTS["path_to_farm"]), 10, 422, tilemap=0x0C
+        )
+        self.assertEqual(plaza[0].target_px, (132, 128))
+        # The ship route slices to the head of the mountain-gate descent
+        # lane, not the crossroads: the farmer whose coords leaked is
+        # standing at the gate, and column 8 is sealed at row 7.
         ship = slice_route_from_position(
             list(ROUTES[ROUTE_NAME]), 314, 740, tilemap=0x0C
         )
-        self.assertEqual(ship[0].target_px, (132, 128))
+        self.assertEqual(ship[0].target_px, (137, 40))
         self.assertEqual(ship[-1].target_px, (136, 456))
+
+    def test_path_return_to_farm_uses_the_gate_lane_north_of_the_seal(self) -> None:
+        """Plaza path_to_farm from the mountain gate is the run13 pin."""
+        gate = path_return_to_farm(137, 40, tilemap=0x0C)
+        self.assertEqual(gate[0].target_px, (137, 40))
+        self.assertNotEqual(gate[0].target_px, (132, 128))
+        leaked = path_return_to_farm(314, 740, tilemap=0x0C)
+        self.assertEqual(leaked[0].target_px, (137, 40))
+        pin = path_return_to_farm(133, 101, tilemap=0x0C)
+        self.assertNotEqual(pin[0].target_px, (132, 128))
+        plaza = path_return_to_farm(132, 128, tilemap=0x0C)
+        self.assertEqual(plaza[0].target_px, (132, 128))
+        west = path_return_to_farm(10, 422, tilemap=0x0C)
+        self.assertEqual(west[0].target_px, (132, 128))
+
+    def test_mountain_exit_then_farm_never_appends_the_plaza(self) -> None:
+        hops = mountain_exit_then_farm(mountain_downhill_escape(474, 630, tilemap=0x10))
+        self.assertEqual(hops[0].target_px, (520, 712))
+        self.assertIn((312, 744), [wp.target_px for wp in hops])
+        path = [wp.target_px for wp in hops if wp.tilemap == 0x0C]
+        self.assertEqual(path[0], (137, 40))
+        self.assertNotIn((132, 128), path)
 
     def test_farm_path_gate_pixels_start_at_west_gate_not_north_shed(self) -> None:
         self.assertTrue(farm_coords_look_like_path(244, 118))
@@ -647,6 +676,137 @@ class MountainBerrySelectTests(unittest.TestCase):
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertEqual(task.shipped_count, 1)
+
+
+class GrapeLegRetryTests(unittest.TestCase):
+    """A single nav pin must cost a re-plan, not the day's berry phase.
+
+    run13 lost 7 of 15 berry phases outright to two byte-identical nav pins
+    (``return_to_bin`` path 0x0C (133,101) x6, ``pick: farm_to_path`` farm
+    (312,377) x3) while zero grapes were in hand — the one state with no
+    retry path at all.
+    """
+
+    class _FailNav:
+        def __init__(self, reason: str = "soft_solid pin held=0x00 pos=(312,377) stasis=41"):
+            self.reason = reason
+            self.steps = 0
+
+        def step(self, _world):
+            self.steps += 1
+            return TaskResult(status=TaskStatus.FAILURE, reason=self.reason)
+
+    def _farm_world(self):
+        world = make_transition_world(0x00, current_tile=(19, 30))
+        set_player_pos(world.ram, 312, 486)
+        return world
+
+    def test_outbound_pin_replans_instead_of_losing_the_phase(self) -> None:
+        world = self._farm_world()
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "pick")
+
+        task._child = self._FailNav()
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "pick")
+        self.assertIn("pick retry 1/3", result.reason or "")
+        self.assertNotIsInstance(task._child, self._FailNav)
+
+    def test_return_pin_off_mountain_replans_instead_of_losing_the_grape(self) -> None:
+        world = make_transition_world(0x0C, current_tile=(8, 6))
+        set_player_pos(world.ram, 133, 101)
+        world.ram[ADDR_HELD] = 0x03
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "return_to_bin")
+
+        task._child = self._FailNav("soft_solid pin held=0x03 pos=(133,101) stasis=40")
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "return_to_bin")
+        self.assertIn("return_to_bin retry 1/3", result.reason or "")
+
+    def test_leg_retries_are_bounded_and_then_fail_closed(self) -> None:
+        world = self._farm_world()
+        task = MountainGrapeShipTask(max_leg_retries=2)
+        task.reset(world)
+
+        for expected in (1, 2):
+            task._child = self._FailNav()
+            result = task.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertIn(f"pick retry {expected}/2", result.reason or "")
+
+        task._child = self._FailNav()
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("soft_solid pin", result.reason or "")
+
+
+class GrapeLateLoopTests(unittest.TestCase):
+    """A grape that cannot reach the bin before it closes is worse than none.
+
+    run13 and run14 each ended a berry phase with
+    ``ship unverified: held=0x00 shipping_money=N->N`` — the grape left the
+    farmer's hands and never credited. Every occurrence was 16:00-17:01,
+    around the 17:00 ShippingScene; the grape is then on the ground and no
+    drop retry can reach it.
+    """
+
+    def test_outbound_leg_past_the_deadline_aborts_on_the_farm(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        world.ram[field_spec("hour").address] = 16
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "pick")
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("no loop can bank a grape past 16:00", result.reason or "")
+
+    def test_outbound_leg_past_the_deadline_walks_home_from_the_mountain(self) -> None:
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        world.ram[field_spec("hour").address] = 17
+        task = MountainGrapeShipTask()
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "walk_back")
+        self.assertIn("walking back to the farm", result.reason or "")
+
+    def test_a_held_grape_still_goes_home_rather_than_being_abandoned(self) -> None:
+        world = make_transition_world(0x10, current_tile=(20, 25))
+        set_player_pos(world.ram, 326, 409)
+        world.ram[ADDR_HELD] = 0x03
+        world.ram[field_spec("hour").address] = 17
+        task = MountainGrapeShipTask()
+        task.reset(world)
+        self.assertEqual(task.phase_text, "return_to_bin")
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task.phase_text, "return_to_bin")
+
+    def test_an_empty_walk_back_reports_failure_not_success(self) -> None:
+        world = make_transition_world(0x00, current_tile=(8, 28))
+        set_player_pos(world.ram, 8 * 16 + 8, 28 * 16 + 8)
+        task = MountainGrapeShipTask()
+        task.reset(world)
+
+        result = task._finish_or_walk_home(world, "walked back")
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("no grape shipped", result.reason or "")
 
 
 class GrapeBailHourPolicyTests(unittest.TestCase):

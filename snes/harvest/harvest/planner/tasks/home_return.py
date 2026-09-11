@@ -23,6 +23,8 @@ from harvest.maps.map_config import (
     ROUTES,
     Waypoint,
     mountain_downhill_escape,
+    mountain_exit_then_farm,
+    path_return_to_farm,
 )
 from harvest.core.ram_catalog import field_spec, read_ram_u16
 from harvest.planner.day_plan_status import (
@@ -381,12 +383,16 @@ class ReturnHomeTask(Task):
                 if tilemap == 0x10 and int(pos.y) >= 380:
                     # Grape/carpenter band. Spa reverse rewinds to the ridge
                     # and still threads the carpenter terrace that pinned D15.
-                    mountain = mountain_downhill_escape(
+                    # Gate descent, not plaza path_to_farm: (8,7) is 0xFF.
+                    route = mountain_exit_then_farm(
+                        mountain_downhill_escape(
+                            int(pos.x), int(pos.y), tilemap=tilemap
+                        )
+                    )
+                elif tilemap == 0x0C:
+                    route = path_return_to_farm(
                         int(pos.x), int(pos.y), tilemap=tilemap
                     )
-                    route = list(mountain) + list(ROUTES.get("path_to_farm") or [])
-                elif tilemap == 0x0C:
-                    route = list(ROUTES.get("path_to_farm") or [])
                 else:
                     route = list(
                         ROUTES.get("mountain_to_farm")

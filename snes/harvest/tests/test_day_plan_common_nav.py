@@ -116,6 +116,107 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("pixel_stuck", result.reason or "")
 
+    def _path_map_ram(self):
+        """Path 0x0C at the mountain-gate descent: 0xFF seals (7,7)/(8,7)."""
+        ram = make_navigation_ram(current_tile=(8, 6), blocked_tile=(63, 63))
+        ram[ADDR_TILEMAP] = 0x0C
+        for ty in range(64):
+            for tx in range(64):
+                ram[ADDR_MAP + ty * 64 + tx] = 0xA0
+        ram[ADDR_MAP + 7 * 64 + 7] = 0xFF
+        ram[ADDR_MAP + 7 * 64 + 8] = 0xFF
+        ram[ADDR_INPUT_LOCK] = 1
+        set_player_pos(ram, 133, 101)
+        return ram
+
+    def _crossroads_nav(self, ram):
+        world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
+        task = MultiMapNavTask(
+            waypoints=[Waypoint(tilemap=0x0C, target_px=(132, 128), radius=10)],
+            timeout=800,
+            initial_settle_frames=0,
+        )
+        task.reset(world)
+        return task, world
+
+    def _pinned_nav(self, **state):
+        """Localize first: reset leaves the navigator at (0,0), so the first
+        step always reads as tile movement and zeroes stasis."""
+        task, world = self._crossroads_nav(self._path_map_ram())
+        task.step(world)
+        task._navigator.path = [(8, 7)]
+        task._navigator.stasis = 45  # past the close-range cutoff, as at the pin
+        task._soft_solid_pin_frames = 10_000
+        for key, value in state.items():
+            setattr(task, key, value)
+        return task, world
+
+    def test_close_range_walk_routes_around_a_concave_seal(self) -> None:
+        """The run13 path pin: (8,7) sealed, target two tiles straight down.
+
+        The close-range walk used to answer a blocked primary with a
+        sideways secondary that was already on target — stepping off and
+        back across a tile boundary, which resets ``Navigator.stasis`` and
+        so hides the pin from every stall guard until the leg fails
+        (``soft_solid pin held=0x03 pos=(133,101) stasis=40``, 6x).
+        """
+        task, world = self._crossroads_nav(self._path_map_ram())
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertTrue(task._navigator.path, "expected a BFS detour, not a bounce")
+        self.assertNotIn((8, 7), task._navigator.path)
+        self.assertIn(task._navigator.path[0], {(7, 6), (9, 6)})
+
+    def test_close_range_walk_hands_a_stalled_waypoint_to_bfs(self) -> None:
+        task, world = self._crossroads_nav(self._path_map_ram())
+        task._close_latch.best = 0
+        task._close_latch.stall = 29
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._close_bail_wp, 0)
+        self.assertIn("close-range stalled", result.reason or "")
+
+    def test_soft_solid_pin_recovers_before_failing_the_leg(self) -> None:
+        task, world = self._pinned_nav()
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("pin recovery 1", result.reason or "")
+        self.assertIn((8, 7), task._pathfinder.temp_blocked)
+        self.assertEqual(task._soft_solid_pin_frames, 0)
+
+    def test_soft_solid_pin_still_fails_closed_after_the_recovery_budget(self) -> None:
+        task, world = self._pinned_nav(_pin_recoveries=4)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("soft_solid pin", result.reason or "")
+        self.assertIn("recoveries=4", result.reason or "")
+
+    def test_nav_yields_to_a_sprite_standing_in_the_next_tile(self) -> None:
+        """Mountain/path NPCs wander into proven corridors; wait, don't shove."""
+        task, world = self._pinned_nav(_entity_tiles={(8, 7)})
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("yield to sprite", result.reason or "")
+        self.assertEqual(int(result.action.action.sum()), 0)
+        self.assertEqual(task._soft_solid_pin_frames, 0)
+
+    def test_nav_stops_yielding_to_a_parked_sprite(self) -> None:
+        task, world = self._pinned_nav(_entity_tiles={(8, 7)}, _yield_frames=90)
+
+        result = task.step(world)
+
+        self.assertNotIn("yield to sprite", result.reason or "")
+
     def test_navigator_clears_path_for_known_nonwalkable_tile(self) -> None:
         ram = make_navigation_ram(blocked_tile=(14, 8), blocked_id=0xA6)
         navigator = Navigator(Pathfinder(TileScanner()))
