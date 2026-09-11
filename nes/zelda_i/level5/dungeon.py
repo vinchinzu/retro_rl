@@ -173,17 +173,15 @@ _ROOM_66_PATROL: tuple[tuple[int, int], ...] = (
 )
 
 _ROOM_77_PATROL: tuple[tuple[int, int], ...] = (
-    (64, 109),
+    (48, 109),
     (120, 109),
-    (176, 109),
-    (176, 141),
-    (176, 173),
+    (200, 109),
+    (200, 141),
+    (200, 173),
     (120, 173),
-    (64, 173),
-    (64, 141),
+    (48, 173),
+    (48, 141),
     (120, 141),
-    (160, 125),
-    (96, 157),
 )
 
 _ROOM_67_PATROL: tuple[tuple[int, int], ...] = (
@@ -289,8 +287,8 @@ ROOM_77_SPEC = DungeonRoomSpec(
             (120, 141),
             (96, 117),
             (144, 165),
-            (80, 141),
-            (160, 141),
+            (96, 141),
+            (144, 141),
             (120, 157),
             (120, 125),
         ),
@@ -586,20 +584,43 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
 
     Pols Voice: HP=160 (10 wooden sword hits), hops in arcs, no knockback.
     Link maintains 14-22 px spacing, avoids block clusters, focus-fires
-    wounded enemies, and backsteps on close approach to avoid contact damage.
+    wounded enemies, and backsteps on close approach (<= 14 px) to avoid
+    contact damage. Intercepts jumping enemies on column/row or approach
+    (<= 24 px). Occupancy miss blocks the cell ahead and replans; stands
+    if no path is available.
     """
 
     last_progress_frame: int = 0
     prev_live_count: int = -1
     backstep_frames: int = 0
     backstep_dir: str = "LEFT"
+    blocked_cells: set[tuple[int, int]] = field(default_factory=set)
+    misses: int = 0
+    stuck_frames: int = 0
+    last_pos: tuple[int, int] | None = None
+    last_dir: str | None = None
+
+    def _ahead_pos(
+        self, x: int, y: int, direction: str, step: int = 4
+    ) -> tuple[int, int]:
+        if direction == "LEFT":
+            return x - step, y
+        if direction == "RIGHT":
+            return x + step, y
+        if direction == "UP":
+            return x, y - step
+        return x, y + step
 
     def _is_solid(self, x: int, y: int) -> bool:
-        if x < 44 or x > 204 or y < 93 or y > 185:
+        if (x, y) in self.blocked_cells:
             return True
-        if 56 <= x <= 88 and 116 <= y <= 164:
+        if x < 44 or x > 204 or y < 93 or y > 189:
             return True
-        if 152 <= x <= 184 and 116 <= y <= 164:
+        if y > 185 and x < 185:
+            return True
+        if 56 <= x <= 88 and 109 <= y <= 164:
+            return True
+        if 152 <= x <= 184 and y >= 109:
             return True
         return False
 
@@ -628,10 +649,30 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             self.notes.append(f"kill_to_{n_live}_f{self.frames}")
 
         if not live:
+            self.last_dir = None
             return FrameAction(nes_idle_action(), "combat_all_dead")
 
         lx, ly = int(snap.link_x), int(snap.link_y)
+
+        # Occupancy miss tracking: if we were attempting to move in last_dir
+        # but stayed at the same (x, y) for >= 4 frames, block cell ahead and replan.
+        if self.last_pos == (lx, ly):
+            if self.last_dir is not None:
+                self.stuck_frames += 1
+                if self.stuck_frames >= 4:
+                    cell_ahead = self._ahead_pos(lx, ly, self.last_dir)
+                    self.blocked_cells.add(cell_ahead)
+                    self.misses += 1
+                    self.stuck_frames = 0
+                    self.notes.append(
+                        f"occupancy_miss_{self.last_dir}_{cell_ahead}"
+                    )
+        else:
+            self.stuck_frames = 0
+            self.last_pos = (lx, ly)
+
         if lx < 44:
+            self.last_dir = "RIGHT"
             return FrameAction(nes_action("RIGHT"), "enter_room")
 
         def _cheb(x1: int, y1: int, x2: int, y2: int) -> int:
@@ -646,6 +687,7 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         if self.backstep_frames > 0:
             self.backstep_frames -= 1
             if self._can_move(lx, ly, self.backstep_dir):
+                self.last_dir = self.backstep_dir
                 return FrameAction(
                     nes_action(self.backstep_dir),
                     f"backstep_{self.backstep_dir}",
@@ -653,12 +695,15 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             for alt in ("UP", "DOWN", "LEFT", "RIGHT"):
                 if self._can_move(lx, ly, alt):
                     self.backstep_dir = alt
+                    self.last_dir = alt
                     return FrameAction(
                         nes_action(alt),
                         f"backstep_alt_{alt}",
                     )
+            self.backstep_frames = 0
 
-        if min_cheb <= 19:
+        # Close contact threat: backstep away when min_cheb <= 14
+        if min_cheb <= 14:
             dx = closest_enemy.x - lx
             dy = closest_enemy.y - ly
             candidates = []
@@ -676,7 +721,55 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                 if self._can_move(lx, ly, c, step=6):
                     self.backstep_dir = c
                     self.backstep_frames = 5
+                    self.last_dir = c
                     return FrameAction(nes_action(c), f"start_backstep_{c}")
+            c_dir = (
+                ("RIGHT" if dx > 0 else "LEFT")
+                if abs(dx) >= abs(dy)
+                else ("DOWN" if dy > 0 else "UP")
+            )
+            self.last_dir = None
+            if snap.facing != direction_to_facing(c_dir):
+                return FrameAction(
+                    nes_action(c_dir, "A"), f"corner_strike_{c_dir}"
+                )
+            return FrameAction(
+                nes_action("A")
+                if self.combat_frames % 4 < 3
+                else nes_idle_action(),
+                "corner_swing_in_place",
+            )
+
+        # Spacing / swing-on-approach: Pols Voice jumping into Link's column/row
+        # requires swinging in the facing direction as soon as min_cheb <= 24 or
+        # when aligned (abs(axis) <= 24).
+        c_dx = closest_enemy.x - lx
+        c_dy = closest_enemy.y - ly
+
+        col_aligned = abs(c_dx) <= 12 and abs(c_dy) <= 24
+        row_aligned = abs(c_dy) <= 12 and abs(c_dx) <= 24
+
+        if min_cheb <= 24 or col_aligned or row_aligned:
+            self.last_dir = None
+            if col_aligned:
+                dir_to = "DOWN" if c_dy > 0 else "UP"
+            elif row_aligned:
+                dir_to = "RIGHT" if c_dx > 0 else "LEFT"
+            elif abs(c_dx) >= abs(c_dy):
+                dir_to = "RIGHT" if c_dx > 0 else "LEFT"
+            else:
+                dir_to = "DOWN" if c_dy > 0 else "UP"
+
+            if snap.facing != direction_to_facing(dir_to):
+                return FrameAction(
+                    nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
+                )
+            return FrameAction(
+                nes_action("A")
+                if self.combat_frames % 4 < 3
+                else nes_idle_action(),
+                "swing_in_place",
+            )
 
         # Target selection: prioritize wounded enemies to eliminate threats fast
         def score(o: ZeldaObject) -> int:
@@ -688,36 +781,13 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         dx = tgt.x - lx
         dy = tgt.y - ly
 
-        if abs(dx) >= abs(dy):
-            dir_to = "RIGHT" if dx > 0 else "LEFT"
-            aligned = abs(dy) <= 8
-            in_reach = 14 <= abs(dx) <= 22
-            if aligned and in_reach:
-                if snap.facing != direction_to_facing(dir_to):
-                    return FrameAction(
-                        nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
-                    )
-                return FrameAction(
-                    nes_action("A")
-                    if self.combat_frames % 4 < 3
-                    else nes_idle_action(),
-                    "swing_in_place",
-                )
-        else:
-            dir_to = "DOWN" if dy > 0 else "UP"
-            aligned = abs(dx) <= 8
-            in_reach = 14 <= abs(dy) <= 22
-            if aligned and in_reach:
-                if snap.facing != direction_to_facing(dir_to):
-                    return FrameAction(
-                        nes_action(dir_to, "A"), f"turn_strike_{dir_to}"
-                    )
-                return FrameAction(
-                    nes_action("A")
-                    if self.combat_frames % 4 < 3
-                    else nes_idle_action(),
-                    "swing_in_place",
-                )
+        # North-routing around cluster:
+        cross_east = (lx < 185 and tgt.x >= 185)
+        cross_west = (lx >= 185 and tgt.x < 152)
+        if (cross_east or cross_west) and ly > 109:
+            if self._can_move(lx, ly, "UP"):
+                self.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "route_north_around_cluster")
 
         steps = []
         if abs(dx) >= abs(dy):
@@ -725,20 +795,33 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                 steps.append("DOWN" if dy > 0 else "UP")
             steps.append("RIGHT" if dx > 0 else "LEFT")
             steps.append("DOWN" if dy > 0 else "UP")
+            steps.append("LEFT" if dx > 0 else "RIGHT")
         else:
             if abs(dx) > 4:
                 steps.append("RIGHT" if dx > 0 else "LEFT")
             steps.append("DOWN" if dy > 0 else "UP")
             steps.append("RIGHT" if dx > 0 else "LEFT")
+            steps.append("UP" if dy > 0 else "DOWN")
 
         for step_d in steps:
             if self._can_move(lx, ly, step_d):
+                self.last_dir = step_d
                 return FrameAction(nes_action(step_d), f"move_{step_d}")
 
         for any_d in ("UP", "DOWN", "LEFT", "RIGHT"):
             if self._can_move(lx, ly, any_d):
+                self.last_dir = any_d
                 return FrameAction(nes_action(any_d), f"fallback_{any_d}")
-        return FrameAction(nes_idle_action(), "wait_open")
+
+        self.last_dir = None
+        return FrameAction(nes_idle_action(), "stand_no_path")
+
+    def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if lx >= 185 and ly > 109:
+            if self._can_move(lx, ly, "UP"):
+                return FrameAction(nes_action("UP"), "collect_route_north")
+        return super()._collect_reward(snap)
 
 
 def make_pols_voice_controller() -> Level5PolsVoiceController:
