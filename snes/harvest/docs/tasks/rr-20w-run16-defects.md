@@ -310,6 +310,58 @@ order.
 - Second-grape pick miss at `GRAPE_STAND_PX`.
 - Why the clearer routes through the farmhouse door (§4 above).
 
+## run20 — Spring FINISHED
+
+```bash
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_D3_Morning --end-of-spring \
+  --out recordings/spring_d3_30/run20_full_spring.json
+```
+
+**Spring D3 06:00 $250 → Summer D1 06:00 $5 160.** `goal_reached=true`,
+`success=true`, `days_completed=28`, **zero journal phase failures**,
+412 010 frames / 939 s.
+
+`clean_run`: `initial_state_loads=1` (the `Y1_D3_Morning` pin),
+`mid_run_state_loads=0`, `ram_writes=0`, `assists={}`,
+`infinite_stamina=false`.
+
+| | run13 | run16 (HEAD) | run20 (fixed) |
+|---|---|---|---|
+| reached | D22 | D28 | **Summer D1** |
+| money | $3 990 | $5 420 | $5 160 |
+| days completed | 19 | 25 | **28** |
+| outcome | terminal failure | terminal failure | **goal reached** |
+
+Phase successes: `EXIT_TO_FARM` 29, `NAV_CROP` 31, `CROP_WATER` 20,
+`CROP_ESTABLISH` 8, `HARVEST_ROUTE` 7, `MOUNTAIN_BERRY` 15, `BUY_SEEDS` 5.
+
+**On the money number:** run20 ends $260 *below* run16's terminal wallet,
+which is not a regression — run16 never reached Summer, and the comparison
+is "finished the season" against "died on D28". run20 also spends more: five
+`BUY_SEEDS` trips, three of them 2 bags (`0->2`, at D10, D17 and D25), so
+$600 of the difference is seed stock converted into rings that were still
+maturing at the horizon. `CROP_ESTABLISH` ran **8** times against run16's 7
+on three fewer shop trips, which is the second-ring splice doing its job.
+
+One day was lost: **D19**, `CROP_WATER ... watering can not in carry pair`
+with the `EnsureCarryToolTask` recovery then failing
+`route failed: no_path sealed pos=(216,456)`. That is the same sealed-route
+class as §7 and is the best-evidenced remaining target.
+
+The two new money levers are both ROM-proven in this run:
+
+```
+[DAY_PLAN] BUY_SEEDS -> bought potato_seeds 0->2 money 2350->1950 bags=2/2
+[DAY_PLAN] Spliced another CROP_ESTABLISH: 1 ring(s) still want seed, 1 bag(s) in the pocket
+```
+
+The multi-bag clerk dialogue does repeat, so `max_bags=2` is no longer an
+assumption. The `--bags` probe was never needed.
+
+**Still not a STATUS promotion**: this starts from the `Y1_D3_Morning` pin,
+and AGENTS.md requires power-on for that.
+
 ## run16 baseline result (HEAD, no fixes from this session)
 
 | | run13 (prev best) | run16 |
