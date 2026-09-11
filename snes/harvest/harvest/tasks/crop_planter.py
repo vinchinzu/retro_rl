@@ -326,6 +326,7 @@ class CropWaterTask(
         self._plot_phase = PlotPhase.PLANT
         self._water_steps = []
         self._water_index = 0
+        self._water_steps_deferred = 0
         self._target_tile = None
         self._approach_tile = None
         self._face_direction = None
@@ -391,6 +392,7 @@ class CropWaterTask(
         self._plot_phase = PlotPhase.PLANT
         self._water_steps = []
         self._water_index = 0
+        self._water_steps_deferred = 0
         self._target_tile = None
         self._approach_tile = None
         self._face_direction = None

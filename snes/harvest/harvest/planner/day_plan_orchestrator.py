@@ -17,7 +17,13 @@ from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     Tool,
 )
-from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS
+from harvest.planner.day_phase_types import (
+    ACQUIRE_TOOL_KINDS,
+    PhaseKind,
+    PhaseSpec,
+    SKIP_MAP_LOCK_KINDS,
+    tool_tags_from_ram,
+)
 from harvest.planner.day_plan_phases import (
     DayPlannerPolicy,
     DAY1_PHASES,
@@ -41,6 +47,11 @@ from harvest.planner.day_plan_tasks import (
 from harvest.planner.day_task_factory import DayTaskFactory
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
+
+
+# Carry tags a mid-day phase cannot go and get for itself. Tools come off a
+# shed shelf via EnsureCarryToolTask; a seed bag needs the shop.
+_UNFETCHABLE_TOOL_TAGS = frozenset({"seed"})
 
 
 @dataclass
@@ -100,6 +111,8 @@ class DayPlanTask(Task):
     _current_task: Optional[Task] = field(default=None, init=False)
     _step_count: int = field(default=0, init=False)
     _skip_map_lock: bool = field(default=False, init=False)
+    _map_lock_exits: set = field(default_factory=set, init=False)
+    _extra_establishes: int = field(default=0, init=False)
     _end_day_appended: bool = field(default=False, init=False)
     _ready_to_go_home: bool = field(default=False, init=False)
     _recovery_task: Optional[Task] = field(default=None, init=False)
@@ -127,6 +140,8 @@ class DayPlanTask(Task):
         self._recovering_spec = None
         self._recovery_original_reason = ""
         self._recovery_attempted_phases.clear()
+        self._map_lock_exits.clear()
+        self._extra_establishes = 0
         self._deferred_plans.clear()
         self._phase_results.clear()
 
@@ -325,6 +340,46 @@ class DayPlanTask(Task):
         names = ", ".join(phase.phase for phase in planted)
         print(f"[DAY_PLAN] Spliced post-shop D2 work: {names}")
 
+    def _splice_second_establish(self, world: WorldState) -> None:
+        """Replant the other pocket ring the same day when a bag is left.
+
+        A harvest day empties both rings at once, but the establish pipeline
+        resolves exactly one ring target, so the second one idled until the
+        next shop trip. With BUY_SEEDS now carrying a bag per waiting ring,
+        the limit should be seed in the pocket, not the phase table.
+        """
+        from harvest.core.ram_catalog import read_ram_value
+        from harvest.maps.farm_pond import (
+            POCKET_PLANT_CENTERS,
+            pocket_plant_targets,
+        )
+        from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE
+
+        if self._extra_establishes >= len(POCKET_PLANT_CENTERS) - 1:
+            return
+        if not self.policy.include_planting:
+            return
+        remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
+        if "CROP_ESTABLISH" in remaining:
+            return
+        try:
+            wanted = len(pocket_plant_targets(world.ram))
+            bags = int(read_ram_value(world.ram, "potato_seeds") or 0)
+        except Exception:
+            return
+        if wanted <= 0 or bags <= 0:
+            return
+        self._extra_establishes += 1
+        self._schedule.active = (
+            self._schedule.active[: self._phase_index + 1]
+            + [CROP_ESTABLISH_PHASE]
+            + self._schedule.active[self._phase_index + 1 :]
+        )
+        print(
+            f"[DAY_PLAN] Spliced another CROP_ESTABLISH: "
+            f"{wanted} ring(s) still want seed, {bags} bag(s) in the pocket"
+        )
+
     def _advance(self, world: WorldState, reason: str) -> None:
         """Move to next phase after real work success."""
         current = self._schedule.current_at(self._phase_index)
@@ -333,6 +388,8 @@ class DayPlanTask(Task):
         self._record_phase_result(current, "success", reason, world)
         if current is not None and current.phase == "BUY_SEEDS":
             self._splice_plant_after_shop(world)
+        if current is not None and current.phase == "CROP_ESTABLISH":
+            self._splice_second_establish(world)
         if current is not None and current.phase in GO_HOME_TRIGGER_PHASES:
             self._mark_ready_to_go_home(current.phase)
             self._ensure_end_day_phases()
@@ -455,6 +512,67 @@ class DayPlanTask(Task):
             return None
         need = ",".join(f"0x{m:02X}" for m in required)
         return f"map_mismatch:have=0x{tilemap:02X}:need={need}"
+
+    def _try_map_lock_exit(self, spec: PhaseSpec, world: WorldState, reason: str) -> bool:
+        """Walk back out to the farm instead of map-locking the rest of the day.
+
+        run12 D8/D9: CLEAR_FIELD wandered indoors mid-phase, so NAV_CROP,
+        HARVEST_ROUTE and both berry phases all map-locked on 0x15 and the day
+        earned nothing. The farmhouse is one EXIT_TO_FARM away; spend that
+        rather than forfeit every farm phase behind it. Once per phase per day.
+        """
+        from harvest.planner.day_plan import is_house_tilemap
+
+        contract = getattr(spec, "contract", None)
+        required = {int(m) for m in (getattr(contract, "required_maps", ()) or ())}
+        if 0x00 not in required:
+            return False
+        if spec.phase in self._map_lock_exits:
+            return False
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if not is_house_tilemap(tilemap):
+            return False
+        self._map_lock_exits.add(spec.phase)
+        print(
+            f"[DAY_PLAN] Phase {spec.phase} map lock ({reason}); "
+            f"exiting to farm and retrying once"
+        )
+        self._schedule.splice_at(self._phase_index, [EXIT_TO_FARM_PHASE, spec])
+        self._current_task = None
+        return True
+
+    def _phase_tool_lock(self, spec: PhaseSpec, world: WorldState) -> Optional[str]:
+        """No-work a phase whose required carry items are simply not held.
+
+        CROP_ESTABLISH hoes the whole ring before ``select_carry_0x07`` finds
+        the seed bag was never bought (run13 D10: BUY_SEEDS blew its cutoff,
+        then establish burned the afternoon and failed anyway).
+
+        Only the seed bag is gated. Tools are recoverable in place — a missing
+        watering can already routes to ``EnsureCarryToolTask`` via
+        ``_make_recovery_task``, and skipping instead of fetching would be
+        strictly worse. A bag is not: it needs a shop trip, which is its own
+        phase behind its own window, so a missing one at this point is a
+        settled fact for the day rather than a transient.
+        """
+        # ENSURE_* phases declare the tool they go and fetch, so for them a
+        # missing tag is the reason to run, not a reason to skip.
+        if isinstance(spec.kind, PhaseKind) and spec.kind in ACQUIRE_TOOL_KINDS:
+            return None
+        contract = getattr(spec, "contract", None)
+        required = tuple(getattr(contract, "required_tools", ()) or ())
+        if not required:
+            return None
+        have = set(tool_tags_from_ram(world.ram))
+        missing = [
+            t
+            for t in required
+            if str(t).lower() in _UNFETCHABLE_TOOL_TAGS
+            and str(t).lower() not in have
+        ]
+        if not missing:
+            return None
+        return "no_work:missing_tool:" + ",".join(str(t) for t in missing)
 
     def _recovery_phase_key(self, spec: PhaseSpec) -> tuple[int, str]:
         return self._phase_index, spec.phase
@@ -631,10 +749,17 @@ class DayPlanTask(Task):
         if self._current_task is None:
             map_reason = self._phase_map_mismatch(spec, world)
             if map_reason is not None:
+                if self._try_map_lock_exit(spec, world, map_reason):
+                    return self.step(world)
                 print(f"[DAY_PLAN] Phase {spec.phase} map lock: {map_reason}")
                 return self._handle_failed_phase(
                     spec, TaskStatus.FAILURE, map_reason, world
                 )
+            tool_reason = self._phase_tool_lock(spec, world)
+            if tool_reason is not None:
+                print(f"[DAY_PLAN] Phase {spec.phase} tool lock: {tool_reason}")
+                self._advance_no_work(world, tool_reason)
+                return self.step(world)
             task = self._make_task(spec, world)
             if task is None:
                 reason = "no task"

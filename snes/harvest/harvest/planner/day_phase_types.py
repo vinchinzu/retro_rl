@@ -47,6 +47,16 @@ class PhaseKind(StrEnum):
     DYNAMIC_OUTDOOR_PLAN = "dynamic_outdoor_plan"
 
 
+# Phases whose job is to go and fetch the tool they declare. Their
+# ``required_tools`` is a postcondition, so a missing tag must not skip them.
+ACQUIRE_TOOL_KINDS = frozenset(
+    {
+        PhaseKind.ENSURE_TOOL,
+        PhaseKind.ENSURE_ANIMAL_TOOLS,
+        PhaseKind.ENSURE_SEED,
+    }
+)
+
 SKIP_MAP_LOCK_KINDS = frozenset(
     {
         PhaseKind.RECORDED,
@@ -395,6 +405,7 @@ __all__ = [
     "DayPlannerPolicy",
     "PhaseKind",
     "PhaseSpec",
+    "ACQUIRE_TOOL_KINDS",
     "SKIP_MAP_LOCK_KINDS",
     "TaskContract",
     "coerce_phase_kind",

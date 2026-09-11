@@ -41,6 +41,12 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--state", default="Y1_Inside_House")
     p.add_argument("--timeout", type=int, default=18_000)
     p.add_argument(
+        "--bags",
+        type=int,
+        default=1,
+        help="Bags to buy in the one trip (wallet-capped inside the task)",
+    )
+    p.add_argument(
         "--out",
         type=Path,
         default=PROJECT_DIR / "recordings" / "buy_seeds_d2_probe.json",
@@ -61,7 +67,7 @@ def main() -> int:
         obs, _info = env.reset()
         ram = env.get_ram()
         world = WorldState(frame=0, ram=ram, info={}, obs=obs)
-        task = BuySeedsTask(timeout=args.timeout)
+        task = BuySeedsTask(timeout=args.timeout, bags=args.bags)
         task.reset(world)
         start_money = int(read_ram_value(ram, "money") or 0)
         start_stock = int(read_ram_value(ram, "potato_seeds") or 0)
@@ -98,6 +104,7 @@ def main() -> int:
             "hour": int(end_clock.hour),
             "minute": int(end_clock.minute),
             "phase": task.phase_text,
+            "bags_requested": int(args.bags),
         }
         if args.save_end_state and last_status == TaskStatus.SUCCESS:
             from harvest.scripts.leftover_exec import save_emulator_state
