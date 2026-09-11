@@ -28,6 +28,20 @@ prints `deferrals=N` so a shrunken plan can never again read as complete.
 Test: `tests/test_crop_water_reorder.py` (5) — including that a deferred
 target is retried once it becomes reachable.
 
+**ROM A/B, same `Y1_D3_Morning` pin, D3 second plot:**
+
+| run | code | plot 2 | day total |
+|-----|------|--------|-----------|
+| run16 | baseline | `WATER DONE: 7/7 watered` | `watered=15` |
+| run17 | fixed | `WATER DONE: 8/8 watered deferrals=6` | `watered=16` |
+
+run17 logs `WATER defer 1 tile(s) ... [(12, 28)]` six times, from six
+different poses — the exact tile run13 §4 named — and waters it on the
+seventh. Under the baseline that same tile is gone from the plan after the
+first reorder, which is why run16's own harvest reads
+`harvested=7 ... harvested=1` (the west ring short one cell, picked alone
+later) while its second ring reads `harvested=8`.
+
 ### 2. `(11,28)` was both no-go and a staging stand (run13 §4, secondary)
 
 It sat in `FARM_NO_GO_TILES` (shipping-bin ditch) *and*
@@ -140,10 +154,57 @@ Tests: `tests/test_two_bag_replant.py` (12).
 
 ## Still open
 
-- **Phase-ordering starvation (run13 §3).** Unchanged: a fixed-order phase
-  list with no time-budget arbitration, so whatever runs slow consumes the
-  budget of everything after it. §3's own analysis stands; nothing here
-  addresses it, and which phase gets starved will keep moving.
+### NAV_CROP is now the top money leak (was run13 §3's "CROP_WATER variance")
+
+run13 §3 correctly identified the *mechanism* — a fixed-order phase list with
+no time-budget arbitration, so whatever runs slow eats everything behind it —
+but attributed the slowness to CROP_WATER. With the grape and watering
+defects closed, run16 isolates the actual consumer: **NAV_CROP**.
+
+run16 D22, frames 264000-274000, is the clean reproduction:
+
+```
+[RUN] f=264000 date=S0D22 07:00 $4350 ... EXIT_TO_FARM -> tilemap=0x00
+[DAY_PLAN] Starting phase 3/6: NAV_CROP (nav)
+[NAVIGATOR] Push-facing block tile=(8, 25) / (7, 26)        <- house-door band
+...
+[NAVIGATOR] Push-facing block tile=(28, 28) / (28, 27) / (28, 26)  <- far east
+[RUN] f=274000 date=S0D22 17:12 $4350 ...
+[DAY_PLAN] Phase NAV_CROP FAILURE: nav timeout
+```
+
+**Eight in-game hours (09:03 → 17:12) in one NAV_CROP, ending in a timeout.**
+Watering then started at 17:12 and `BERRY_RUN_WINDOW` failed its cutoff at
+18:04. Money is flat at $4350 across D20-D22 for this reason, not because the
+crop cycle stopped.
+
+Two details worth keeping:
+
+- The push-block path is **not** itself a loop: `note_push_facing` →
+  `block_push_facing` adds the tile to `temp_blocked` and clears `self.path`,
+  so each block does force a replan. The cost is elsewhere — long stretches
+  with no `[NAVIGATOR]` output at all between the two block clusters.
+- The two clusters are on **opposite sides of the farm**: `(8,25)/(7,26)`
+  (the farmhouse-door neighbours run13 §4b already flagged) and `(28,26-28)`.
+  A nav aimed at the west pocket `(13,28)` has no business at `x=28`, so the
+  suspicion is route selection, not local walk policy. Unverified.
+
+Next step is the method already proven on this lane: dump the live tile grid
+at the stall and replay `find_path` offline, which separates bad tiles from a
+stuck walk policy. That needs a pin at the stall — note that minting one by
+running the campaign to a mid-spring day is itself unreliable right now
+(a `--until-day 8` mint wedged in NAV_CROP on D6 this session, same class).
+Related bead: `rr-20w.2.4`.
+
+### Phase-ordering starvation (run13 §3)
+
+The arbitration gap itself is unchanged and deliberately not patched here.
+Reordering was considered and rejected: berries are ~300 G/day of same-day
+cash, while a skipped watering day stalls growth on every tile and compounds,
+so the two are close enough in value that reordering on a guess is not
+obviously positive. §3's own warning applies — which phase gets starved keeps
+moving as other bugs are fixed, so the fix is arbitration, not a new fixed
+order.
 - **Only two ring sites exist** (`POCKET_PLANT_CENTERS` = (13,28), (19,28)),
   so bag count saturates at 2. A third nav-executable ring needs proven
   hoe/water/harvest stands — still the next money lever after this.
