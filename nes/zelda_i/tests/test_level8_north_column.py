@@ -17,6 +17,7 @@ from zelda_i.level8.hops import l8_hops
 from zelda_i.level8.north_column import (
     DARKNUT_KEY_ROOMS,
     NORTH_MANHANDLA_ROOMS,
+    ROOM_3E_STATUE_BLOCKS,
     ROOM_BLUE_DARKNUTS,
     ROOM_DARKNUT_KEY,
     ROOM_ENTRY,
@@ -686,3 +687,37 @@ def test_candle_leftover_pause_selects_bombs_before_place() -> None:
     assert "place_bomb" not in reasons
     assert ctl._wall is not None
     assert ctl._wall.select_item == 1
+
+
+def test_0x3e_door_entry_steps_up() -> None:
+    """Link at south door (120, 205) steps UP into room 0x3E."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=205, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_door_enter"
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x3e_south_band_peels_west() -> None:
+    """On south band (120, 189), Link peels LEFT off center column toward west aisle."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "column_peel"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+
+def test_0x3e_statues_are_blocked_in_grid() -> None:
+    """0x3E statue locations (96, 141) and (144, 141) are marked impassable."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=189, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
+    ctl = make_darknut_key_controller()
+    _step(ctl, ram)
+    assert not ctl._walker.grid.passable(96, 141)
+    assert not ctl._walker.grid.passable(144, 141)
+    assert ctl._walker.grid.passable(120, 141)  # center aisle is passable
+    assert ctl._walker.grid.passable(64, 141)   # west aisle is passable

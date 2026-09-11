@@ -355,3 +355,48 @@ def test_l4_bomb_walls_pause_select_leftover_slot() -> None:
                 break
         assert "pause_open" in reasons, (factory.__name__, reasons[-8:])
         assert "place_bomb" not in reasons, factory.__name__
+
+
+def test_room_12_vires_combat_policy() -> None:
+    """Room 0x12 Vires policy: avoid_walls, contact_backstep, west off-wall RIGHT."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level4.dungeon import ROOM_12_SPEC
+    from zelda_i.level4.path import (
+        Room12ViresController,
+        make_room_12_clear_controller,
+    )
+
+    ctl = make_room_12_clear_controller()
+    assert isinstance(ctl, Room12ViresController)
+    assert ROOM_12_SPEC.combat.avoid_walls is True
+    assert ROOM_12_SPEC.combat.contact_backstep >= 16
+    assert ROOM_12_SPEC.combat.engage_dominant_axis is True
+    assert ROOM_12_SPEC.entry.direction == "RIGHT"
+
+    # West door mouth (x < 56, y=141): Link steps RIGHT into open floor, not DOWN into wall.
+    snap = SimpleNamespace(
+        link_x=16,
+        link_y=141,
+        objects=(),
+        mode=5,
+        level=4,
+        screen=0x12,
+        transitioning=False,
+    )
+    off_wall = ctl._off_wall_step(snap)
+    assert off_wall is not None
+    assert off_wall.reason == "leave_wall_slash"
+    assert list(off_wall.action) == list(nes_action("RIGHT", "A"))
+
+    snap_32 = SimpleNamespace(
+        link_x=32,
+        link_y=141,
+        objects=(),
+        mode=5,
+        level=4,
+        screen=0x12,
+        transitioning=False,
+    )
+    off_wall_32 = ctl._off_wall_step(snap_32)
+    assert off_wall_32 is not None
+    assert list(off_wall_32.action) == list(nes_action("RIGHT", "A"))
