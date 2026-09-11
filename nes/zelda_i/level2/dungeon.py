@@ -369,12 +369,14 @@ ROOM_4F_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
         patrol=_OPEN_FLOOR,
-        engage_distance=80,
+        engage_distance=56,
         attack_phase=2,
         patrol_attack_period=8,
         patrol_attack_hold=3,
         engage_attack_period=6,
         engage_attack_hold=3,
+        occupancy_patrol=True,
+        contact_backstep=16,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,

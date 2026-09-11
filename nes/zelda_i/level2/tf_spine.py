@@ -31,6 +31,8 @@ from zelda_i.level2.boss_combat import (
     DODONGO_FIGHT_MAX_FRAMES,
     DODONGO_TYPE,
     goto_action,
+    in_front_of_mouth,
+    mouth_path_clear,
     mouth_target,
 )
 from zelda_i.level2.boss_tf import (
@@ -326,7 +328,7 @@ class DodongoPhase(Enum):
 
 @dataclass
 class Level2DodongoController:
-    """Bomb-in-mouth Dodongo. No inventory poke — spine tops up first."""
+    """Bomb-in-mouth Dodongo. Do not occupancy-grade the moving boss."""
 
     max_frames: int = DODONGO_FIGHT_MAX_FRAMES
     settle_frames: int = 90
@@ -334,7 +336,9 @@ class Level2DodongoController:
     clamp_x: tuple[int, int] = (48, 192)
     clamp_y: tuple[int, int] = (105, 185)
     mouth_tol: int = 12
-    mouth_offset: int = 12
+    mouth_offset: int = 16
+    contact: int = 14
+    stable_face_frames: int = 8
     phase: DodongoPhase = DodongoPhase.SETTLE
     frames: int = 0
     success: bool = False
@@ -345,11 +349,16 @@ class Level2DodongoController:
     last_hp: int | None = None
     last_slot: int | None = None
     hits_est: int = 0
+    face_hist: dict[int, int] = field(default_factory=dict)
+    stable_n: dict[int, int] = field(default_factory=dict)
 
     def _fail(self, note: str) -> FrameAction:
         self.phase = DodongoPhase.FAILED
         self.notes.append(note)
         return FrameAction(nes_idle_action(), note)
+
+    def _stand(self, reason: str) -> FrameAction:
+        return FrameAction(nes_idle_action(), reason)
 
     def _living(self, snap: ZeldaSnapshot) -> list[Any]:
         return [
@@ -357,6 +366,14 @@ class Level2DodongoController:
             for o in snap.objects
             if o.type_id == self.dodongo_type and 1 <= o.slot <= 10 and o.hp > 0
         ]
+
+    def _track_face(self, living: list[Any]) -> None:
+        for o in living:
+            if self.face_hist.get(o.slot) == o.facing:
+                self.stable_n[o.slot] = self.stable_n.get(o.slot, 0) + 1
+            else:
+                self.stable_n[o.slot] = 0
+            self.face_hist[o.slot] = o.facing
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -367,12 +384,12 @@ class Level2DodongoController:
         if (int(snap.triforce) & LEVEL2_TRIFORCE_BIT) != 0:
             self.success = True
             self.phase = DodongoPhase.DONE
-            return FrameAction(nes_idle_action(), "done")
+            return self._stand("done")
         if snap.mode != PLAY_MODE:
-            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+            return self._stand(f"wait_mode_{snap.mode}")
         if self.phase is DodongoPhase.SETTLE:
             if self.frames < self.settle_frames:
-                return FrameAction(nes_idle_action(), "settle_0e")
+                return self._stand("settle_0e")
             self.phase = DodongoPhase.FIGHT
 
         living = self._living(snap)
@@ -385,16 +402,17 @@ class Level2DodongoController:
             self.success = True
             self.phase = DodongoPhase.DONE
             self.notes.append("dodongo_dead")
-            return FrameAction(nes_idle_action(), "done")
+            return self._stand("done")
         if not living:
             if self.frames > 200 and snap.room_all_dead >= 20 and not dodos:
                 self.success = True
                 self.phase = DodongoPhase.DONE
                 self.notes.append("dodongo_dead_settle")
-                return FrameAction(nes_idle_action(), "done")
+                return self._stand("done")
             wander = ("UP", "RIGHT", "DOWN", "LEFT")[self.frames // 20 % 4]
             return FrameAction(nes_action(wander, "A"), "dodo_search")
 
+        self._track_face(living)
         if self.place_cd > 0:
             self.place_cd -= 1
             if self.place_cd > 50:
@@ -407,7 +425,7 @@ class Level2DodongoController:
                 return FrameAction(nes_action(retreat), "dodo_retreat")
             if self.place_cd > 20:
                 return FrameAction(nes_action(self.place_face, "A"), "dodo_cover")
-            return FrameAction(nes_idle_action(), "dodo_wait_blast")
+            return self._stand("dodo_wait_blast")
 
         d = min(living, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y))
         if self.last_slot != d.slot:
@@ -429,17 +447,29 @@ class Level2DodongoController:
             abs(snap.link_x - tx) <= self.mouth_tol
             and abs(snap.link_y - ty) <= self.mouth_tol
         )
+        front = in_front_of_mouth(snap.link_x, snap.link_y, d)
+        path_ok = mouth_path_clear(d)
+        stable = self.stable_n.get(d.slot, 0) >= self.stable_face_frames
         if snap.bombs <= 0:
             return self._fail("out_of_bombs")
-        if at_mouth or dist <= 24:
-            if dist > 14:
-                act, _ = goto_action(snap, d.x, d.y, tol=8)
-                return FrameAction(act, "dodo_close")
+        if dist < self.contact and not (at_mouth and front):
+            dx, dy = d.x - snap.link_x, d.y - snap.link_y
+            if abs(dx) >= abs(dy):
+                dest = (snap.link_x - 24 if dx > 0 else snap.link_x + 24, snap.link_y)
+            else:
+                dest = (snap.link_x, snap.link_y - 24 if dy > 0 else snap.link_y + 24)
+            act, _ = goto_action(snap, dest[0], dest[1], tol=4)
+            return FrameAction(act, "dodo_standoff")
+        if at_mouth and front and path_ok and stable:
             self.place_face = face
             self.place_cd = 95
             self.bombs_used += 1
             return FrameAction(nes_action(face, "B"), "dodo_place")
-        act, _ = goto_action(snap, tx, ty, tol=6)
+        if at_mouth and front:
+            return self._stand("dodo_wait_mouth")
+        if not path_ok:
+            return self._stand("dodo_wait_mouth")
+        act, _ = goto_action(snap, tx, ty, tol=4)
         return FrameAction(act, "dodo_approach")
 
     def report(self) -> dict[str, Any]:
@@ -449,7 +479,10 @@ class Level2DodongoController:
             "frames": self.frames,
             "bombs_used_est": self.bombs_used,
             "hits_est": self.hits_est,
+            "occupancy_misses": 0,
+            "occupancy_blocked": 0,
             "poke": False,
+            "route_eligible": False,
             "notes": list(self.notes),
         }
 

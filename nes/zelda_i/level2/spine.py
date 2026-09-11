@@ -15,7 +15,9 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import (
+    BLUE_GORIYA_OBJECT_TYPE,
     DungeonPhase,
+    FIREBALL_OBJECT_TYPE,
     GenericDungeonRoomController,
     RewardKind,
     RewardSpec,
@@ -31,6 +33,7 @@ from zelda_i.level2.dungeon import (
     ROOM_6E_SPEC,
     ROOM_6F_SPEC,
     ROOM_7E_SPEC,
+    ROOM_L2_BOOM_CANDIDATE,
     ROOM_L2_COMPASS,
     ROOM_L2_EAST_KEY,
     ROOM_L2_EAST_OF_ROPES,
@@ -482,6 +485,156 @@ class Level2Enter6fKeyController(L2NavBase):
         return out
 
 
+class Clear4fPhase(Enum):
+    FIGHT = auto()
+    COLLECT = auto()
+    DONE = auto()
+    FAILED = auto()
+
+
+CONTACT_4F = 20
+SWORD_4F = 32
+FIREBALL_4F = 16
+STANDOFF_4F = 24
+BOOM_PICKUP = (136, 135)
+
+
+def _away_dest(x: int, y: int, ox: int, oy: int, dist: int = 24) -> tuple[int, int]:
+    dx, dy = ox - x, oy - y
+    if abs(dx) >= abs(dy):
+        return (x - dist if dx > 0 else x + dist, y)
+    return (x, y - dist if dy > 0 else y + dist)
+
+
+def _standoff_dest(
+    x: int, y: int, ox: int, oy: int, hold: int = STANDOFF_4F
+) -> tuple[int, int]:
+    dx, dy = ox - x, oy - y
+    if abs(dx) >= abs(dy):
+        return (ox - hold if dx > 0 else ox + hold, oy)
+    return (ox, oy - hold if dy > 0 else oy + hold)
+
+
+@dataclass
+class Level2Clear4fController:
+    """Clean 0x4f blue Goriya: occupancy + fireball peel. No poke."""
+
+    max_frames: int = ROOM_4F_SPEC.max_frames
+    phase: Clear4fPhase = Clear4fPhase.FIGHT
+    frames: int = 0
+    combat_frames: int = 0
+    success: bool = False
+    notes: list[str] = field(default_factory=list)
+    walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+
+    def _fail(self, note: str) -> FrameAction:
+        self.phase = Clear4fPhase.FAILED
+        self.notes.append(note)
+        self.walker.last_dir = None
+        return FrameAction(nes_idle_action(), note)
+
+    def _stand(self, reason: str) -> FrameAction:
+        self.walker.last_dir = None
+        return FrameAction(nes_idle_action(), reason)
+
+    def _occ(self, xy: tuple[int, int], dest: tuple[int, int]) -> str | None:
+        dest_i = (int(dest[0]), int(dest[1]))
+        if self.walker.goal != dest_i:
+            self.walker.goal = dest_i
+            self.walker.path = None
+        return self.walker.next_dir(xy, dest_i)
+
+    def _goriya(self, snap: ZeldaSnapshot) -> list:
+        return [
+            o
+            for o in snap.objects
+            if 1 <= o.slot <= 10
+            and o.type_id == BLUE_GORIYA_OBJECT_TYPE
+            and o.hp > 0
+        ]
+
+    def _balls(self, snap: ZeldaSnapshot) -> list:
+        return [
+            o
+            for o in snap.objects
+            if 1 <= o.slot <= 12 and o.type_id == FIREBALL_OBJECT_TYPE
+        ]
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        xy = (int(snap.link_x), int(snap.link_y))
+        self.walker.observe(xy)
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames >= self.max_frames:
+            return self._fail("timeout")
+        if int(snap.magical_boomerang) != 0:
+            self.success = True
+            self.phase = Clear4fPhase.DONE
+            return self._stand("done")
+        if snap.mode == 8:
+            return self._stand("hurt_freeze")
+        if snap.mode != PLAY_MODE:
+            return self._stand(f"wait_mode_{snap.mode}")
+        if snap.screen != ROOM_L2_BOOM_CANDIDATE:
+            return self._stand(f"wait_room_0x{snap.screen:02x}")
+
+        balls = self._balls(snap)
+        if balls:
+            nearest_ball = min(
+                balls, key=lambda o: abs(o.x - xy[0]) + abs(o.y - xy[1])
+            )
+            if abs(nearest_ball.x - xy[0]) + abs(nearest_ball.y - xy[1]) <= FIREBALL_4F:
+                dest = _away_dest(xy[0], xy[1], nearest_ball.x, nearest_ball.y)
+                direction = self._occ(xy, dest)
+                if direction is None:
+                    return self._stand("ball_wait")
+                return FrameAction(nes_action(direction), "ball_peel")
+
+        live = self._goriya(snap)
+        if not live:
+            self.phase = Clear4fPhase.COLLECT
+            dest = BOOM_PICKUP
+            if abs(xy[0] - dest[0]) <= 2 and abs(xy[1] - dest[1]) <= 2:
+                return self._stand("collect_wait")
+            direction = self._occ(xy, dest)
+            if direction is None:
+                return self._stand("collect_wait")
+            return FrameAction(nes_action(direction), "collect_boom")
+
+        self.combat_frames += 1
+        self.phase = Clear4fPhase.FIGHT
+        target = min(live, key=lambda o: abs(o.x - xy[0]) + abs(o.y - xy[1]))
+        dist = abs(target.x - xy[0]) + abs(target.y - xy[1])
+        if dist < CONTACT_4F:
+            dest = _away_dest(xy[0], xy[1], target.x, target.y)
+            direction = self._occ(xy, dest)
+            if direction is None:
+                return self._stand("combat_wait")
+            return FrameAction(nes_action(direction), "combat_backstep")
+        slash = dist <= SWORD_4F
+        dest = _standoff_dest(xy[0], xy[1], target.x, target.y)
+        direction = self._occ(xy, dest)
+        if direction is None:
+            return self._stand("combat_wait")
+        if slash:
+            return FrameAction(nes_action(direction, "A"), "combat_slash")
+        return FrameAction(nes_action(direction), "combat_approach")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "phase": self.phase.name,
+            "frames": self.frames,
+            "combat_frames": self.combat_frames,
+            "notes": list(self.notes),
+            "occupancy_misses": self.walker.misses,
+            "occupancy_blocked": len(self.walker.grid.blocked),
+            "poke": False,
+            "route_eligible": False,
+        }
+
+
 def level2_to_boom_stages():
     """Controller table: live 0x7d through Magical Boomerang 0x4f.
 
@@ -530,7 +683,7 @@ def level2_to_boom_stages():
         ("bomb_north_5f", bomb_5f, bomb_5f.max_frames),
         (
             "clear4f_boom",
-            GenericDungeonRoomController(ROOM_4F_SPEC),
+            Level2Clear4fController(),
             ROOM_4F_SPEC.max_frames,
         ),
     )
@@ -541,7 +694,9 @@ __all__ = [
     "ENTER_6E_WEST_MAX_FRAMES",
     "ENTER_6F_KEY_MAX_FRAMES",
     "L2NavBase",
+    "Clear4fPhase",
     "Level2BacktrackTo7dController",
+    "Level2Clear4fController",
     "Level2Clear6eController",
     "Level2Enter6fKeyController",
     "Level2NavPhase",

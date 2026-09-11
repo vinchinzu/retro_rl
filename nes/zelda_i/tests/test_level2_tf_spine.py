@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from retro_harness.controls import pressed_nes_buttons
 from retro_harness.nes import nes_action
 from zelda_i.dungeon.bomb_wall import BombWallPhase
 from zelda_i.level2.bomb_path import Level2BombNorth1eSpineController
@@ -17,6 +18,7 @@ from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_KEYS,
     ADDR_LEVEL,
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MAGIC_BOOMERANG,
@@ -41,6 +43,8 @@ def _snap(
     triforce: int = 0x01,
     mode: int = PLAY_MODE,
     dodo_hp: int | None = None,
+    dodo_xy: tuple[int, int] = (140, 141),
+    dodo_face: int = 0x02,
 ):
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = mode
@@ -55,8 +59,9 @@ def _snap(
     ram[ADDR_HEALTH] = 0x2F
     if dodo_hp is not None:
         ram[ADDR_OBJ_TYPE + 1] = 0x32
-        ram[ADDR_LINK_X + 1] = 140
-        ram[ADDR_LINK_Y + 1] = 141
+        ram[ADDR_LINK_X + 1] = dodo_xy[0]
+        ram[ADDR_LINK_Y + 1] = dodo_xy[1]
+        ram[ADDR_LINK_FACING + 1] = dodo_face
         ram[ADDR_OBJ_HP + 1] = dodo_hp
     return read_snapshot(ram)
 
@@ -99,3 +104,73 @@ def test_dodongo_fails_without_bombs() -> None:
 def test_dodongo_controller_does_not_poke() -> None:
     ctl = Level2DodongoController()
     assert ctl.report()["poke"] is False
+    assert ctl.report()["route_eligible"] is False
+
+
+def test_dodongo_approach_does_not_grade_moving_boss() -> None:
+    """Stuck pose toward a moving mouth is not a wall. Do not occupancy-grade."""
+    ctl = Level2DodongoController(settle_frames=0)
+    snap = _snap(room=0x0E, x=80, y=141, dodo_hp=0x20, dodo_face=0x02)
+    first = ctl.step(snap)
+    assert first.reason == "dodo_approach"
+    assert "RIGHT" in pressed_nes_buttons(list(first.action))
+    second = ctl.step(snap)
+    assert ctl.report()["occupancy_misses"] == 0
+    assert second.reason == "dodo_approach"
+    assert "RIGHT" in pressed_nes_buttons(list(second.action))
+
+
+def test_dodongo_places_only_on_stable_clear_mouth() -> None:
+    ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
+    snap = _snap(
+        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141), dodo_face=0x02
+    )
+    assert ctl.step(snap).reason == "dodo_wait_mouth"
+    assert ctl.bombs_used == 0
+    assert ctl.step(snap).reason == "dodo_wait_mouth"
+    act = ctl.step(snap)
+    assert act.reason == "dodo_place"
+    assert ctl.bombs_used == 1
+
+
+def test_dodongo_waits_unstable_face() -> None:
+    ctl = Level2DodongoController(settle_frames=0, stable_face_frames=3)
+    west = _snap(
+        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141), dodo_face=0x02
+    )
+    south = _snap(
+        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141), dodo_face=0x04
+    )
+    for _ in range(6):
+        ctl.step(west)
+        ctl.step(south)
+    assert ctl.bombs_used == 0
+
+
+def test_dodongo_waits_when_mouth_path_blocked() -> None:
+    ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
+    snap = _snap(
+        room=0x0E, x=32, y=141, dodo_hp=0x20, dodo_xy=(48, 141), dodo_face=0x02
+    )
+    act = None
+    for _ in range(6):
+        act = ctl.step(snap)
+    assert ctl.bombs_used == 0
+    assert act is not None
+    assert act.reason == "dodo_wait_mouth"
+
+
+def test_dodongo_standoff_does_not_walk_onto_body() -> None:
+    ctl = Level2DodongoController(settle_frames=0)
+    # East-facing Dodongo; Link is behind/on the west hip, not the mouth.
+    snap = _snap(
+        room=0x0E,
+        x=138,
+        y=141,
+        dodo_hp=0x20,
+        dodo_xy=(140, 141),
+        dodo_face=0x01,
+    )
+    act = ctl.step(snap)
+    assert act.reason == "dodo_standoff"
+    assert "RIGHT" not in pressed_nes_buttons(list(act.action))
