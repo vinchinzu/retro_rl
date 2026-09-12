@@ -47,18 +47,26 @@ def test_blocked_rows_are_never_spine_green() -> None:
         assert not step.proven
 
 
-def test_tip_is_the_last_contiguous_green() -> None:
-    """M5 Clean is L1 only; nothing behind it may claim spine-green."""
-    assert tip().id == "l1_tf"
-    assert CLEAN_LADDER[0].rung is Rung.SPINE_GREEN
-    assert all(step.rung < Rung.SPINE_GREEN for step in CLEAN_LADDER[1:])
+def test_tip_is_none_while_the_power_on_run_is_red() -> None:
+    """M5 measured red 2026-09-11 (2/2) at clear33_key.
+
+    A tip is a ROM claim. While the first row is red there is no tip, and
+    `tip()` must say so rather than naming a row the ROM does not support.
+    """
+    assert tip() is None
+    assert all(step.rung < Rung.SPINE_GREEN for step in CLEAN_LADDER)
 
 
 def test_next_open_is_the_first_unproven_row() -> None:
     nxt = next_open()
     assert nxt is not None
-    assert nxt.id == "l1_exit_ow_l2"
+    assert nxt.id == "l1_tf"
     assert nxt.open
+    assert nxt.room == "L1 0x33"
+
+
+def test_render_handles_a_missing_tip() -> None:
+    assert "clean tip: NONE" in render()
 
 
 def test_shared_blocker_classes_are_visible() -> None:
@@ -70,8 +78,7 @@ def test_shared_blocker_classes_are_visible() -> None:
     assert "in_firing_line" in tool_for(Blocker.FIRING_LINE)
 
 
-def test_render_mentions_the_tip_and_next_hop() -> None:
+def test_render_mentions_the_next_hop_and_blockers() -> None:
     text = render()
-    assert "clean tip: l1_tf" in text
-    assert "next open: l1_exit_ow_l2" in text
+    assert "next open: l1_tf" in text
     assert "blockers by class:" in text
