@@ -16,7 +16,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import GenericDungeonRoomController
-from zelda_i.dungeon.threat import off_line_step
+from zelda_i.dungeon.threat import assess, dodgeable, in_firing_line
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 __all__ = (
@@ -163,15 +163,54 @@ def _object_rows(snap: ZeldaSnapshot) -> list[dict[str, int]]:
 
 @dataclass
 class Level6EastKeyController(GenericDungeonRoomController):
-    """Generic room clear + wizzrobe backstep when overlapping without kills.
+    """0x7a clear + backstep. ``0x24_E`` at (88,133) is undodgeable.
 
-    Live: sword swings at distance 0 on the west door miss forever; retreat
-    when stuck too close, then re-engage from a short offset.
+    Census: parked ``0x24@(96,125)``, ``d=8``, ``ttc=0``, ``dodgeable=False``,
+    ``in_firing_line``. In-place A, y=173 stand, and always-slash engage
+    each died in-room to ``0x59`` on that axis; do not peel (0 frames of
+    warning vs MIN_DODGE_BODY=16).
     """
 
     last_progress_frame: int = 0
     prev_live_count: int = -1
     backstep_frames: int = 0
+    _ttc_ring: list[str] = field(default_factory=list)
+    _hit_diag: list[str] = field(default_factory=list)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Record ttc/dodgeable around each hit so 0x24_E contacts are measured."""
+        n_hits = len(self.damage.hits)
+        tracked = self.tracker.observe(snap)
+        link = (int(snap.link_x), int(snap.link_y))
+        impact = assess(link, tracked)
+        src = impact.source
+        on_line = bool(src is not None and in_firing_line(link, src))
+        src_s = (
+            "none"
+            if src is None
+            else (
+                f"0x{src.type_id:02x}@({src.x},{src.y})"
+                f"v=({src.vx:+.1f},{src.vy:+.1f})"
+            )
+        )
+        self._ttc_ring.append(
+            f"f{self.frames} ({link[0]},{link[1]}) ttc={impact.frames} "
+            f"dodgeable={dodgeable(impact)} line={int(on_line)} src={src_s}"
+        )
+        del self._ttc_ring[:-20]
+        action = super().step(snap)
+        if len(self.damage.hits) > n_hits:
+            hit = self.damage.hits[-1]
+            tid = 0 if hit.type_id is None else int(hit.type_id)
+            diag = (
+                f"hit_f{hit.frame}_0x{tid:02x}_{hit.bearing}"
+                f"_d{hit.distance}_ttc{impact.frames}"
+                f"_dodgeable={dodgeable(impact)}_line={int(on_line)}"
+                f"_xy=({link[0]},{link[1]})_act={hit.action}"
+            )
+            self._hit_diag.append(diag)
+            self.notes.append(diag)
+        return action
 
     def _go_key(self, snap: ZeldaSnapshot, *, reason: str) -> FrameAction:
         """Walk onto (120,141) then wiggle. Standing 2px off does not collect."""
@@ -262,6 +301,11 @@ class Level6EastKeyController(GenericDungeonRoomController):
         base = super().report()
         base["last_progress_frame"] = self.last_progress_frame
         base["prev_live_count"] = self.prev_live_count
+        damage = dict(base.get("damage") or {})
+        if self._hit_diag:
+            damage["hit_diagnosis"] = list(self._hit_diag)
+            damage["ttc_ring"] = list(self._ttc_ring)
+            base["damage"] = damage
         return base
 
 
