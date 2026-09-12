@@ -9,6 +9,7 @@ from zelda_i.dungeon.engine import (
     AliveRule,
     DungeonPhase,
     GenericDungeonRoomController,
+    GORIYA_OBJECT_TYPE,
     RewardKind,
 )
 
@@ -44,6 +45,7 @@ from zelda_i.ram import (
     ADDR_ROOM_ALL_DEAD,
     ADDR_SCREEN,
     PLAY_MODE,
+    ZeldaSnapshot,
     read_snapshot,
 )
 
@@ -614,6 +616,134 @@ def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
         "combat_engage_slash",
         "combat_backstep",
     )
+
+
+def test_combat_target_contact_miss_is_not_blocked() -> None:
+    """rr-8t4.4 general fix #1: a miss on the fight target's own cell.
+
+    ``_occupancy_bodies`` carves the target's cell out of the BFS planning
+    set (it is the goal), which used to mean a physical-collision miss
+    there read as ground truth and permanently walled real floor next to
+    wherever the live target stood. ``transient_occupants`` (now built from
+    every live body, target included) exempts it.
+    """
+    # A tiny engage_distance keeps this in the occupancy/BFS branch even at
+    # short range, isolating the mechanism under test: whether a body within
+    # collision range of the *predicted* cell scars the grid on a miss.
+    tuning = replace(
+        ROOM_54_SPEC.combat,
+        occupancy_patrol=True,
+        occupancy_blocked=(),
+        occupancy_bounds=None,
+        patrol=((120, 93),),
+        engage_distance=2,
+        contact_backstep=0,
+    )
+    spec = replace(
+        ROOM_54_SPEC,
+        enemy_types=(GORIYA_OBJECT_TYPE,),
+        alive_rule=AliveRule.TYPE,
+        combat=tuning,
+    )
+    controller = GenericDungeonRoomController(spec)
+    controller.phase = DungeonPhase.FIGHT
+
+    def snap_at(link_xy: tuple[int, int], target_xy: tuple[int, int]) -> ZeldaSnapshot:
+        ram = _room_ram(
+            room=0x54,
+            x=link_xy[0],
+            y=link_xy[1],
+            enemy_type=int(GORIYA_OBJECT_TYPE),
+            enemies=1,
+            hp=0x40,
+            enemy_x=target_xy[0],
+            enemy_y=target_xy[1],
+        )
+        return read_snapshot(ram)
+
+    # Target 9px above Link (still >= engage_distance): the predicted UP
+    # step (120,140) sits inside the target's own occupancy halo.
+    snap1 = snap_at((120, 141), (120, 132))
+    live = spec.live_enemies(snap1)
+    controller._combat(snap1, live)
+    assert controller.walker.last_dir == "UP"
+    # No movement: Link's hitbox blocked the step -- the target is close
+    # enough (8px) to physically contest the cell BFS was told is free.
+    action2 = controller._combat(snap1, spec.live_enemies(snap1))
+    assert controller.walker.misses >= 1
+    assert (120, 140) not in controller.walker.grid.blocked
+    assert action2.reason in ("combat_patrol", "combat_engage", "combat_engage_slash")
+
+
+def test_combat_backstep_gap_does_not_stale_grade_the_walker() -> None:
+    """rr-8t4.4 general fix #2: grading must not span a multi-frame gap.
+
+    ``contact_backstep`` (and dash / off-wall) used to return early without
+    ever calling ``observe``/``next_dir``, so ``last_xy`` went stale for
+    however many frames they ran. The next real occupancy-branch call then
+    graded a multi-frame real displacement as a single missed 1px step and
+    blacklisted a cell with no relation to any wall or body -- this dwarfed
+    the target-cell miss count in the ROM (rr-8t4.4 0x23, 4627/6000).
+    Grading now happens every combat frame regardless of which branch acts,
+    so a real, successful backstep-then-resume sequence never misses.
+    """
+    tuning = replace(
+        ROOM_54_SPEC.combat,
+        occupancy_patrol=True,
+        occupancy_blocked=(),
+        occupancy_bounds=None,
+        patrol=((120, 93),),
+        engage_distance=4,
+        contact_backstep=16,
+    )
+    spec = replace(
+        ROOM_54_SPEC,
+        enemy_types=(GORIYA_OBJECT_TYPE,),
+        alive_rule=AliveRule.TYPE,
+        combat=tuning,
+    )
+    controller = GenericDungeonRoomController(spec)
+    controller.phase = DungeonPhase.FIGHT
+    controller.combat_frames = 4  # next call -> 5 (5 % 6 == 5, not backstep)
+
+    def snap_with(link_xy: tuple[int, int], target_xy: tuple[int, int]) -> ZeldaSnapshot:
+        ram = _room_ram(
+            room=0x54,
+            x=link_xy[0],
+            y=link_xy[1],
+            enemy_type=int(GORIYA_OBJECT_TYPE),
+            enemies=1,
+            hp=0x40,
+            enemy_x=target_xy[0],
+            enemy_y=target_xy[1],
+        )
+        return read_snapshot(ram)
+
+    # Frame 1 (combat_frames=5): target far, straight open chase UP.
+    snap = snap_with((120, 161), (120, 93))
+    controller._combat(snap, spec.live_enemies(snap))
+    assert controller.walker.last_dir == "UP"
+
+    # Frame 2 (combat_frames=6, backstep-eligible): Link's real UP step
+    # landed; the target darts close (distance 10 < contact_backstep 16).
+    snap = snap_with((120, 160), (120, 150))
+    action = controller._combat(snap, spec.live_enemies(snap))
+    assert action.reason == "combat_backstep"
+    assert controller.walker.misses == 0
+
+    # Frame 3 (combat_frames=7, still backstep-eligible): Link's real DOWN
+    # backstep landed; target holds close.
+    snap = snap_with((120, 161), (120, 150))
+    action = controller._combat(snap, spec.live_enemies(snap))
+    assert action.reason == "combat_backstep"
+    assert controller.walker.misses == 0
+
+    # Frame 4 (combat_frames=8, backstep window closed): Link's real DOWN
+    # backstep landed again; target retreats, occupancy branch resumes.
+    snap = snap_with((120, 162), (120, 93))
+    controller._combat(snap, spec.live_enemies(snap))
+    assert controller.walker.misses == 0
+    assert not controller.walker.grid.blocked
 
 
 def test_prefix_specs_contact_backstep_keeps_hearts() -> None:

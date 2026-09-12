@@ -263,6 +263,32 @@ def nearest_heart_or_fairy(snap: ZeldaSnapshot) -> ZeldaObject | None:
     return nearest_floor_drop(snap, states=HEART_OR_FAIRY_STATES)
 
 
+DOOR_EDGE = 16
+
+
+def scoop_exits_room(
+    link_x: int,
+    link_y: int,
+    drop: ZeldaObject,
+    *,
+    bounds: tuple[int, int, int, int],
+    edge: int = DOOR_EDGE,
+) -> bool:
+    """True when walking to ``drop`` heads into a door-mouth wall edge.
+
+    ``bounds`` is ``(xmin, xmax, ymin, ymax)``; the caller owns the room box.
+    """
+    xmin, xmax, ymin, ymax = bounds
+    dx = int(drop.x) - int(link_x)
+    dy = int(drop.y) - int(link_y)
+    return (
+        (int(drop.x) <= xmin + edge and dx < 0)
+        or (int(drop.x) >= xmax - edge and dx > 0)
+        or (int(drop.y) <= ymin + edge and dy < 0)
+        or (int(drop.y) >= ymax - edge and dy > 0)
+    )
+
+
 def wants_heart_pickup(snap: ZeldaSnapshot) -> bool:
     """True when a container is empty (2/3 yes, 3/3 no). min_filled is the caller."""
     return not snap.health_is_full
@@ -315,5 +341,7 @@ __all__ = [
     "heart_or_fairy_drops",
     "nearest_floor_drop",
     "nearest_heart_or_fairy",
+    "scoop_exits_room",
+    "DOOR_EDGE",
     "wants_heart_pickup",
 ]

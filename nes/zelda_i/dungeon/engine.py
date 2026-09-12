@@ -38,7 +38,6 @@ _AVOID_WALL_X = (56, 200)
 _AVOID_WALL_Y = (109, 173)
 _SCOOP_RADIUS = 48
 _SCOOP_REACH = 4
-_DOOR_EDGE = 16
 _OCC_BODY_R = 8
 
 # Enemy type IDs come from dungeon.ids; names below are the engine re-exports.
@@ -289,27 +288,6 @@ def inventory_reward_success(
     if min_value is not None:
         return value >= min_value
     return value > 0
-
-
-def _nearby_heart_drop(snap: ZeldaSnapshot) -> ZeldaObject | None:
-    """Nearest in-bounds heart/fairy floor drop. Item identity is ObjState."""
-    return _combat.nearest_heart_or_fairy(snap)
-
-
-def _scoop_exits_room(snap: ZeldaSnapshot, drop: ZeldaObject) -> bool:
-    """True when walking to ``drop`` heads into a door-mouth wall edge."""
-    xmin, xmax, ymin, ymax = DEFAULT_BOUNDS
-    dx = int(drop.x) - int(snap.link_x)
-    dy = int(drop.y) - int(snap.link_y)
-    if int(drop.x) <= xmin + _DOOR_EDGE and dx < 0:
-        return True
-    if int(drop.x) >= xmax - _DOOR_EDGE and dx > 0:
-        return True
-    if int(drop.y) <= ymin + _DOOR_EDGE and dy < 0:
-        return True
-    if int(drop.y) >= ymax - _DOOR_EDGE and dy > 0:
-        return True
-    return False
 
 
 def _live_in_contact(
@@ -639,6 +617,20 @@ class GenericDungeonRoomController:
             self._snap_patrol_nearest(snap)
             self.patrol_index = (self.patrol_index + 1) % n
             self._stuck_frames = 0
+        xy = (int(snap.link_x), int(snap.link_y))
+        bodies: set[tuple[int, int]] = set()
+        if occupancy:
+            # Grade last frame's predicted step now, before off-wall/dash/
+            # backstep below can claim this frame and skip the walker —
+            # those branches still walk Link, so without this ``last_xy``
+            # goes stale and the next real ``next_dir`` call grades a
+            # multi-frame gap as one missed 1px step (rr-8t4.4 0x23: this
+            # dwarfed the target-cell miss count). Idempotent: an internal
+            # ``next_dir`` re-grade below is a no-op unless ``last_dir`` was
+            # reset since.
+            bodies = _occupancy_bodies(snap, None)
+            bodies.discard(xy)
+            self.walker.observe(xy, transient_occupants=bodies)
         off_wall = self._off_wall_step(snap)
         if off_wall is not None:
             return off_wall
@@ -675,12 +667,18 @@ class GenericDungeonRoomController:
                 self.walker.last_dir = away
             return FrameAction(nes_action(away), "combat_backstep")
         if occupancy:
-            xy = (int(snap.link_x), int(snap.link_y))
+            # Planning set excludes only the target (it is the BFS goal).
+            # ``bodies`` (above) keeps it in for miss-grading: Link's hitbox
+            # can't overlap a live enemy's, so a contact miss there must not
+            # read as wall geometry either.
             extra = _occupancy_bodies(snap, target)
             extra.discard(xy)
             extra.discard((int(target.x), int(target.y)))
             direction = self.walker.next_dir(
-                xy, (target.x, target.y), extra_blocked=extra
+                xy,
+                (target.x, target.y),
+                extra_blocked=extra,
+                transient_occupants=bodies,
             )
             blocked = direction is not None and blocked_by_projectile(
                 snap.link_x, snap.link_y, direction, snap.objects
@@ -787,7 +785,7 @@ class GenericDungeonRoomController:
     def _scoop_heart(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.health_is_full or snap.filled_hearts >= snap.heart_containers:
             return None
-        drop = _nearby_heart_drop(snap)
+        drop = _combat.nearest_heart_or_fairy(snap)
         if drop is None:
             return None
         dist = manhattan(snap.link_x, snap.link_y, drop.x, drop.y)
@@ -799,7 +797,9 @@ class GenericDungeonRoomController:
             if occupancy:
                 self.walker.last_dir = None
             return FrameAction(nes_idle_action(), "scoop_heart")
-        if _scoop_exits_room(snap, drop):
+        if _combat.scoop_exits_room(
+            snap.link_x, snap.link_y, drop, bounds=DEFAULT_BOUNDS
+        ):
             return None
         if occupancy:
             direction = self.walker.next_dir(
