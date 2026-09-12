@@ -27,6 +27,14 @@ Glance 0x33 leave: play `0x33` `(103,173)` mode 5 TF `0x00` keys 1
 health `0x22` lo==hi deaths 0. Next leftover is 0x23. `route_eligible=false`.
 Do not STATUS.
 
+0x23 dump (lo>=2, after 0x33 0-hit): death `(64,157)` m17. Hit 402
+`combat_engage` Goriya cheb 6 on the corridor; then `combat_wait` with
+Goriya at `(64,149)` cheb 8 (water north). Boomerang `0x5c` present.
+Hold-slash at `(120,157)` was 0-hit until it walked the south door
+(timeout 6000f live 3/3) or, with UP-from-mouth, died to `0x5c` at
+2.4 px/f (`dodgeable` False). Reverted. Do not retry corridor hold-slash
+against Goriya boomerangs. 1-heart 0x23 path untouched.
+
 ## This sitting (2026-09-12) — bead `rr-npv.8` Clean 0x33 peel leftover
 
 Claimed `rr-npv.8` (already in_progress). Clean power-on
