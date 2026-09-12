@@ -3,7 +3,9 @@
 Cardinal 1px/frame. Cells default passable; OccupancyWalker grades a predicted
 step and blocks the cell ahead on a stuck miss, then replans. No path with
 inferred blocks → forget those and replan once; spec-declared blocks stay and
-a genuinely walled goal still stands.
+a genuinely walled goal still stands. A miss on a cell flagged
+``transient_occupants`` is not wall geometry — a live body moves on next
+frame, so the grid never learns it (rr-8t4.4 0x23).
 Door clips (LEFT+UP residual) are not modeled here — those stay in ``level*_path``.
 """
 
@@ -197,6 +199,7 @@ class OccupancyWalker:
         *,
         sticky: bool | None = None,
         slide: bool | None = None,
+        transient_occupants: Iterable[tuple[int, int]] | None = None,
     ) -> None:
         xy = (int(xy[0]), int(xy[1]))
         is_sticky = self.sticky if sticky is None else sticky
@@ -218,12 +221,23 @@ class OccupancyWalker:
                 )
                 miss = not grade.ok
             if miss:
-                # Block the predicted cell even on a 1px slide (live 0x6e
-                # south pocket: UP along diamonds oscillated 72↔73 and never
-                # counted as stuck-in-place).
-                self.grid.mark_blocked_ahead(
-                    *self.last_xy, self._last_dir, inferred=not is_sticky
+                cell = predicted_xy(*self.last_xy, self._last_dir)
+                # A live body on the predicted cell explains the miss without
+                # it being wall geometry — the body moves on, so a permanent
+                # block here would scar real floor for good (rr-8t4.4 0x23).
+                # Still count the miss; let next_dir's own extra_blocked
+                # route around the body instead of the grid remembering it.
+                transient = (
+                    transient_occupants is not None
+                    and cell in transient_occupants
                 )
+                if not transient:
+                    # Block the predicted cell even on a 1px slide (live 0x6e
+                    # south pocket: UP along diamonds oscillated 72↔73 and
+                    # never counted as stuck-in-place).
+                    self.grid.mark_blocked_ahead(
+                        *self.last_xy, self._last_dir, inferred=not is_sticky
+                    )
                 self.misses += 1
                 self.path = None
         self.last_xy = xy
@@ -234,10 +248,25 @@ class OccupancyWalker:
         goal: tuple[int, int] | None = None,
         *,
         extra_blocked: Iterable[tuple[int, int]] | None = None,
+        transient_occupants: Iterable[tuple[int, int]] | None = None,
         sticky: bool | None = None,
         slide: bool | None = None,
     ) -> str | None:
-        self.observe(xy, sticky=sticky, slide=slide)
+        """``transient_occupants`` is independent of ``extra_blocked``.
+
+        ``extra_blocked`` steers *this frame's* BFS around live bodies and
+        commonly carves out the fight target's own cell (it is the goal,
+        not an obstacle). ``transient_occupants`` answers a different
+        question — "was a live body physically here" — for miss-grading
+        only, so pass the full body set (target included). Callers that
+        omit it get today's behavior: a miss always blocks, per ``sticky``.
+        """
+        self.observe(
+            xy,
+            sticky=sticky,
+            slide=slide,
+            transient_occupants=transient_occupants,
+        )
         is_sticky = self.sticky if sticky is None else sticky
         dest = self.goal if goal is None else goal
         xy = (int(xy[0]), int(xy[1]))

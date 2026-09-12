@@ -185,6 +185,62 @@ def test_walker_goal_clamping_and_replan_on_change() -> None:
     assert step2 == "LEFT"
 
 
+def test_transient_occupants_miss_is_not_blocked() -> None:
+    """A miss on a cell a live body currently occupies must not scar the grid.
+
+    rr-8t4.4 0x23: the fight target's own cell is carved out of
+    ``extra_blocked`` so BFS can aim at it, which means the walker treats it
+    as ground truth and every failed final-approach step (Link's hitbox
+    cannot overlap a living enemy's) permanently blacklisted real floor next
+    to wherever the target stood. ``transient_occupants`` is the general fix:
+    any live body, target included, is exempt from ever becoming a wall.
+    """
+    walker = OccupancyWalker(goal=(120, 93))
+    start = (120, 141)
+    body = {(120, 140)}
+    walker.observe(start)
+    assert walker.next_dir(start, transient_occupants=body) == "UP"
+    walker.observe(start, transient_occupants=body)
+    assert walker.misses == 1
+    assert (120, 140) not in walker.grid.blocked
+    assert (120, 140) not in walker.grid.inferred
+    # The walker keeps trying the same real path once the body moves off —
+    # nothing was learned that needs forgetting.
+    assert walker.next_dir(start, transient_occupants=set()) == "UP"
+
+
+def test_transient_occupants_does_not_suppress_unrelated_wall_miss() -> None:
+    """Only the flagged cells are exempt; a miss elsewhere still blocks."""
+    walker = OccupancyWalker(goal=(120, 93))
+    start = (120, 141)
+    body = {(200, 200)}  # nowhere near the predicted cell
+    walker.observe(start)
+    assert walker.next_dir(start, transient_occupants=body) == "UP"
+    walker.observe(start, transient_occupants=body)
+    assert walker.misses == 1
+    assert (120, 140) in walker.grid.blocked
+
+
+def test_extra_blocked_alone_still_blocks_on_miss() -> None:
+    """Backward compat: callers passing only extra_blocked keep old behavior.
+
+    ``transient_occupants`` is independent of ``extra_blocked`` on purpose —
+    level8 north_column's sticky flank walker and level1 room52's static
+    diamond both rely on an extra_blocked miss becoming a permanent (or
+    sticky) block; only a caller that explicitly opts in gets the new
+    transient behavior.
+    """
+    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20)
+    walker = OccupancyWalker(grid=grid, goal=(10, 5))
+    start = (10, 10)
+    walker.observe(start)
+    assert walker.next_dir(start) == "UP"
+    # No movement, and extra_blocked is passed but transient_occupants is not.
+    walker.next_dir(start, extra_blocked={(10, 9)})
+    assert walker.misses == 1
+    assert (10, 9) in walker.grid.blocked
+
+
 def test_walker_auto_observes_on_next_dir() -> None:
     """next_dir automatically observes prior step without explicit observe() call."""
     walker = OccupancyWalker(goal=(120, 93))
