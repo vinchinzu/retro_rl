@@ -19,13 +19,12 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.combat import manhattan
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.common import (
-    EDGE_EAST_X,
-    EDGE_NORTH_Y,
-    EDGE_SOUTH_Y,
-    EDGE_WEST_X,
+    HEART_FAIRY_DROP_STATES,
+    HEART_FAIRY_DROP_TYPES,
+    RUPEE_DROP_STATES,
+    scoop_floor_drop,
     track_stuck,
     wake_or_wait_mode,
     walk_or_swing,
@@ -253,56 +252,39 @@ class OverworldToLevel1Controller:
         return self._swing(btn, reason)
 
     def _rupee_scoop(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        """Walk onto a nearby type-0x60 rupee drop without a farm loop.
+        """Walk onto a nearby floor drop without a farm loop.
 
-        ``need_rupees>0`` scoops while short. Default 0 only scoops on 0x78
-        (easy octorok farm after the sword) so other screens stay a hop.
-        Stays on-screen; refuses a drop on the travel direction's opposite
-        edge. Pickup is contact — no swing.
+        Hearts/fairies scoop when not full. ``need_rupees>0`` scoops rupees
+        while short. Default 0 only scoops rupees on 0x78 (easy octorok
+        farm after the sword) so other screens stay a hop. Stays on-screen;
+        refuses a drop on the travel direction's opposite edge. Pickup is
+        contact — no swing. Does not start a heart farm.
         """
-        short = self.need_rupees > 0 and snap.rupees < self.need_rupees
-        opportunistic = self.need_rupees <= 0 and snap.screen == 0x78
-        if not short and not opportunistic:
-            return None
         if snap.mode != PLAY_MODE or snap.level != 0:
             return None
-        drops = [
-            obj
-            for obj in snap.objects
-            if obj.slot >= 1
-            and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
-            and 40 < obj.y < 220
-            and 8 < obj.x < 248
-        ]
-        if not drops:
-            return None
-        nearest = min(
-            drops,
-            key=lambda obj: manhattan(snap.link_x, snap.link_y, obj.x, obj.y),
-        )
-        dist = manhattan(snap.link_x, snap.link_y, nearest.x, nearest.y)
-        if dist > self.scoop_radius:
-            return None
         travel = _SCROLL_HOLD.get(self.phase)
-        if travel == "RIGHT" and nearest.x < EDGE_WEST_X + 16:
-            return None
-        if travel == "LEFT" and nearest.x > EDGE_EAST_X - 16:
-            return None
-        if travel == "DOWN" and nearest.y < EDGE_NORTH_Y + 16:
-            return None
-        if travel == "UP" and nearest.y > EDGE_SOUTH_Y - 16:
-            return None
-        if dist <= 4:
-            return FrameAction(nes_idle_action(), "scoop_rupee")
-        dx = nearest.x - snap.link_x
-        dy = nearest.y - snap.link_y
-        if abs(dx) >= abs(dy) and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 2:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            return FrameAction(nes_idle_action(), "scoop_rupee")
-        return FrameAction(nes_action(direction), "scoop_rupee")
+        heart = scoop_floor_drop(
+            snap,
+            types=HEART_FAIRY_DROP_TYPES,
+            states=HEART_FAIRY_DROP_STATES,
+            travel_dir=travel,
+            radius=self.scoop_radius,
+            reason="scoop_heart",
+            want=snap.filled_hearts < snap.heart_containers,
+        )
+        if heart is not None:
+            return heart
+        short = self.need_rupees > 0 and snap.rupees < self.need_rupees
+        opportunistic = self.need_rupees <= 0 and snap.screen == 0x78
+        return scoop_floor_drop(
+            snap,
+            types=(RUPEE_DROP_OBJECT_TYPE,),
+            states=RUPEE_DROP_STATES,
+            travel_dir=travel,
+            radius=self.scoop_radius,
+            reason="scoop_rupee",
+            want=short or opportunistic,
+        )
 
     def _farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
         """Divert into a heart farm while low, then hand the hop back."""

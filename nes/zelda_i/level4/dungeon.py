@@ -474,6 +474,8 @@ ROOM_31_SPEC = DungeonRoomSpec(
         attack_phase=0,
         engage_attack_period=6,
         engage_attack_hold=3,
+        patrol_attack_period=4,
+        patrol_attack_hold=2,
         # No contact_backstep: 0x31 maze starves kills (rr-gjey tried).
         occupancy_patrol=True,
         # West-door leftover ~(16,141) sits outside default xmin=40.
@@ -524,11 +526,12 @@ ROOM_32_SPEC = DungeonRoomSpec(
     combat=CombatTuning(
         patrol=_PATROL_32,
         engage_distance=56,
+        engage_dominant_axis=True,
         attack_phase=4,
         engage_attack_period=6,
         engage_attack_hold=3,
-        patrol_attack_period=10,
-        patrol_attack_hold=3,
+        patrol_attack_period=4,
+        patrol_attack_hold=2,
     ),
     # Invuln 0x2b + block 0x68 keep RoomAllDead noisy — clear = no live Zol/gel/LL.
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),

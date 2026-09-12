@@ -3,7 +3,8 @@ from __future__ import annotations
 import numpy as np
 
 from retro_harness.nes import nes_action
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon import ids as dungeon_ids
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE, RUPEE_DROP_STATE
 from zelda_i.overworld.nav import (
     NavPhase,
     OverworldToLevel1Controller,
@@ -15,6 +16,7 @@ from zelda_i.ram import (
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
+    ADDR_OBJ_STATE,
     ADDR_OBJ_TYPE,
     ADDR_SCREEN,
     ADDR_SWORD,
@@ -66,6 +68,7 @@ def _ram_drop(
 ) -> np.ndarray:
     ram = _ram(screen=screen, x=x, y=y, **fields)
     ram[ADDR_OBJ_TYPE + 1] = RUPEE_DROP_OBJECT_TYPE
+    ram[ADDR_OBJ_STATE + 1] = RUPEE_DROP_STATE
     ram[ADDR_LINK_X + 1] = drop_x
     ram[ADDR_LINK_Y + 1] = drop_y
     return ram
@@ -123,3 +126,23 @@ def test_start_screen_does_not_farm_without_prey() -> None:
     ctrl.step(read_snapshot(_ram(screen=SCREEN_START, x=120, y=140, health=0x30)))
     assert ctrl.farm_attempts == 0
     assert ctrl._farm is None
+
+
+def test_screen_78_scoops_a_heart_twenty_px_ahead(monkeypatch) -> None:
+    from zelda_i.overworld import nav as nav_mod
+    from zelda_i.ram import read_snapshot
+
+    heart_type = int(getattr(dungeon_ids, "HEART_DROP_OBJECT_TYPE", 0xFE))
+    heart_state = int(getattr(dungeon_ids, "HEART_DROP_STATE", 0x22))
+    monkeypatch.setattr(nav_mod, "HEART_FAIRY_DROP_TYPES", frozenset({heart_type}))
+    ram = _ram(screen=0x78, x=48, y=140, health=0x32)
+    ram[ADDR_OBJ_TYPE + 1] = heart_type
+    ram[ADDR_OBJ_STATE + 1] = heart_state
+    ram[ADDR_LINK_X + 1] = 48
+    ram[ADDR_LINK_Y + 1] = 120
+    ctrl = OverworldToLevel1Controller(farm_below_hearts=0)
+    act = ctrl.step(read_snapshot(ram))
+    assert ctrl.farm_attempts == 0
+    assert act.reason == "scoop_heart"
+    assert list(act.action) == list(nes_action("UP"))
+    assert ctrl.phase is NavPhase.NORTH_78

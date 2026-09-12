@@ -30,7 +30,11 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon.ids import (
+    FIVE_RUPEE_DROP_STATE,
+    RUPEE_DROP_OBJECT_TYPE,
+    RUPEE_DROP_STATE,
+)
 from zelda_i.overworld.common import walk_or_swing
 from zelda_i.ram import ZeldaSnapshot
 
@@ -51,6 +55,7 @@ __all__ = [
 
 DEATH_MODE = 17
 RUPEE_DROP_TYPE_ID = RUPEE_DROP_OBJECT_TYPE
+_RUPEE_STATES = frozenset({RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE})
 DEFAULT_FARM_MAX_FRAMES = 36000
 DEFAULT_EMPTY_WAIT_FRAMES = 90
 DEFAULT_SWING_PERIOD = 8
@@ -221,7 +226,11 @@ class RupeeFarmController:
             return FrameAction(nes_action("DOWN"), "farm_south")
 
         drops = [
-            obj for obj in snap.objects if obj.slot >= 1 and obj.type_id == RUPEE_DROP_TYPE_ID
+            obj
+            for obj in snap.objects
+            if obj.slot >= 1
+            and obj.type_id == RUPEE_DROP_TYPE_ID
+            and int(obj.state) in _RUPEE_STATES
         ]
         prey = drops or [
             obj

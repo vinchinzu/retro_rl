@@ -179,7 +179,8 @@ class Level4GleeokFightController:
     tag: str = "l4_gleeok"
     max_frames: int = FIGHT_MAX_FRAMES
     stand_dy: int = STAND_DY
-    fireball_dodge_dist: int = FIREBALL_DODGE_DIST
+    stand_dx: int = 0
+    fireball_dodge_dist: int = 10
     success: bool = False
     boss_beaten: bool = False
     hc_collected: bool = False
@@ -215,6 +216,7 @@ class Level4GleeokFightController:
             "segment": "level4_gleeok_fight_tf",
             "policy": "south_stand",
             "stand_dy": self.stand_dy,
+            "stand_dx": self.stand_dx,
             "continuous_mode": self.continuous_mode,
             "state_restores": self.state_restores,
             "target_room": f"0x{ROOM_L4_GLEEOK_13:02x}",
@@ -263,7 +265,7 @@ class Level4GleeokFightController:
         # approach dodge is wider; mid-fight stays stock. Occupancy miss →
         # block cell → replan; no path → stand.
         self.notes.append(
-            f"policy=south_stand dy={self.stand_dy} "
+            f"policy=south_stand dy={self.stand_dy} dx={self.stand_dx} "
             f"fb_dodge<={self.fireball_dodge_dist} "
             f"approach_dodge<={approach_thr} start_hp={start_health}"
         )
@@ -303,6 +305,7 @@ class Level4GleeokFightController:
                     "final": final,
                     "policy": "south_stand",
                     "stand_dy": self.stand_dy,
+                    "stand_dx": self.stand_dx,
                 }
                 if final.get("heart_containers", 0) > hc0:
                     self.hc_collected = True
@@ -319,6 +322,8 @@ class Level4GleeokFightController:
                     "notes": list(self.notes),
                     "log": self.log[-20:],
                     "policy": "south_stand",
+                    "stand_dy": self.stand_dy,
+                    "stand_dx": self.stand_dx,
                 }
                 self.fight_report = result
                 return result
@@ -390,7 +395,7 @@ class Level4GleeokFightController:
                         if assist is not None:
                             assist.apply_env(env, frame=total[0])
                         continue
-                    bx = bodies[0].x if bodies else 124
+                    bx = (bodies[0].x if bodies else 124) + self.stand_dx
                     if abs(snap.link_x - bx) > 8:
                         env.step(
                             nes_action(
@@ -414,7 +419,9 @@ class Level4GleeokFightController:
                 dodge = (
                     None
                     if invuln > 0
-                    else _fireball_dodge_dir(snap, thr=dodge_thr)
+                    else _fireball_dodge_dir(
+                        snap, thr=self.fireball_dodge_dist
+                    )
                 )
                 if dodge is not None:
                     env.step(nes_action(dodge))
@@ -427,7 +434,10 @@ class Level4GleeokFightController:
                     # South stand on body for full fight — do not chase heads
                     # while residual body remains (rr-vdnc Clean).
                     act = _south_stand_action(
-                        snap, bodies[0], stand_dy=self.stand_dy
+                        snap,
+                        bodies[0],
+                        stand_dy=self.stand_dy,
+                        stand_dx=self.stand_dx,
                     )
                     env.step(act)
                 elif heads:
@@ -676,9 +686,20 @@ class Level4GleeokFightController:
 
 
 def make_gleeok_fight_controller(
-    *, tag: str = "l4_gleeok", continuous_mode: bool = False
+    *,
+    tag: str = "l4_gleeok",
+    continuous_mode: bool = False,
+    stand_dx: int = 0,
+    stand_dy: int = STAND_DY,
+    fireball_dodge_dist: int = 10,
 ) -> Level4GleeokFightController:
-    return Level4GleeokFightController(tag=tag, continuous_mode=continuous_mode)
+    return Level4GleeokFightController(
+        tag=tag,
+        continuous_mode=continuous_mode,
+        stand_dx=stand_dx,
+        stand_dy=stand_dy,
+        fireball_dodge_dist=fireball_dodge_dist,
+    )
 
 
 __all__ = [

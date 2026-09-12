@@ -164,11 +164,15 @@ class Room12ViresController(GenericDungeonRoomController):
         nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
         hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
         live = self.spec.live_enemies(snap)
-        if hold_inland or should_swing_at(
-            snap.link_x,
-            snap.link_y,
-            direction,
-            live if live else (target,),
+        if (
+            hold_inland
+            or should_swing_at(
+                snap.link_x,
+                snap.link_y,
+                direction,
+                live if live else (target,),
+            )
+            or abs(target.x - snap.link_x) + abs(target.y - snap.link_y) <= 40
         ):
             return self._swing(
                 direction,

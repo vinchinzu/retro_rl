@@ -51,9 +51,7 @@ ENEMY_BLOCK_R = 10
 ROOM_5E_OCC_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 189)
 ROOM_3E_OCC_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 189)
 ROOM_3E_STATUE_BLOCKS: frozenset[tuple[int, int]] = frozenset(
-    (x, y) for x in range(84, 111) for y in range(126, 151)
-) | frozenset(
-    (x, y) for x in range(132, 159) for y in range(126, 151)
+    (x, y) for xr in (range(84, 111), range(132, 159)) for x in xr for y in range(126, 151)
 )
 SOUTH_HOLD_Y = 181
 ENTRY_COLUMN_X = 120
@@ -97,19 +95,8 @@ DARKNUT_SETTLE_FRAMES = 8
 KEY_FREEZE_FRAMES = 40
 
 _SWORD_PATROL: tuple[tuple[int, int], ...] = (
-    (64, 109),
-    (120, 109),
-    (176, 109),
-    (176, 141),
-    (176, 173),
-    (120, 173),
-    (64, 173),
-    (64, 141),
-    (120, 141),
-    (100, 125),
-    (140, 157),
-    (80, 157),
-    (160, 125),
+    (64, 109), (120, 109), (176, 109), (176, 141), (176, 173), (120, 173),
+    (64, 173), (64, 141), (120, 141), (100, 125), (140, 157), (80, 157), (160, 125),
 )
 
 
@@ -131,13 +118,7 @@ class BombWall3ENorth:
     opens_to = ROOM_MAP_MANHANDLA
 
 
-# Blue-darknut (0x0C) rooms hold 5-6 HP128 bodies that turn to block frontal
-# sword hits, so the patrol clear is high-variance: fixture replays land
-# ~2000f but a bad shield-RNG power-on run needs far more.  Give the
-# multi-darknut rooms the budget the probe's `fight_clear` used; the
-# single-Manhandla rooms keep the tight cap.  (rr-6o7.2)
 _MANHANDLA_CLEAR_FRAMES = 5_000
-_DARKNUT_CLEAR_FRAMES = 16_000
 
 
 def _sword_clear_spec(
@@ -173,15 +154,6 @@ def _sword_clear_spec(
 
 CLEAR_6E_SPEC = _sword_clear_spec(
     ROOM_MANHANDLA, (MANHANDLA_OBJECT_TYPE,), "l8_clear_0x6e_manhandla"
-)
-CLEAR_3E_SPEC = _sword_clear_spec(
-    ROOM_BLUE_DARKNUTS,
-    (TYPE_0C,),
-    "l8_clear_0x3e_0x0c",
-    max_frames=_DARKNUT_CLEAR_FRAMES,
-)
-CLEAR_2E_SPEC = _sword_clear_spec(
-    ROOM_MAP_MANHANDLA, (MANHANDLA_OBJECT_TYPE,), "l8_clear_0x2e_manhandla"
 )
 
 
@@ -338,6 +310,7 @@ class _NorthColumnBase(HopController):
     _3e_wall_bombed: bool = field(default=False, init=False)
     _bomb_retreat: int = field(default=0, init=False)
     _retreat_dir: str = field(default="DOWN", init=False)
+    _live_seen: bool = field(default=False, init=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -367,11 +340,12 @@ class _NorthColumnBase(HopController):
             self._3e_wall_bombed = False
             self._bomb_retreat = 0
             self._retreat_dir = "DOWN"
+            self._live_seen = False
             return
         self._room_frames += 1
 
     def _spawn_wait(self, snap: ZeldaSnapshot, frames: int) -> FrameAction | None:
-        if self._clear is not None and self._clear.max_live_enemies > 0:
+        if (self._clear is not None and self._clear.max_live_enemies > 0) or self._live_seen:
             return None
         if self._traveled and self._room_frames < frames:
             return FrameAction(
@@ -521,9 +495,8 @@ class _NorthColumnBase(HopController):
 
     def _slash(self, btn: str) -> FrameAction:
         self._walker.last_dir = None
-        if self._room_frames % 6 < 4:
-            return FrameAction(nes_action(btn, "A"), "combat_slash")
-        return FrameAction(nes_action(btn), "combat_slash")
+        act = nes_action(btn, "A") if self._room_frames % 6 < 4 else nes_action(btn)
+        return FrameAction(act, "combat_slash")
 
     def _flank_rear_slash(self, xy: tuple[int, int], live: tuple) -> FrameAction | None:
         """Flank or rear attack opportunities on any live Darknut."""
@@ -817,6 +790,44 @@ class _NorthColumnBase(HopController):
         self._walker.last_dir = None
         return FrameAction(nes_idle_action(), "combat_stand")
 
+    def _combat_2e(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Room 0x2E: Manhandla evasion, fireball dodging, and north key door progression."""
+        self._live_seen = True
+        xy = (int(snap.link_x), int(snap.link_y))
+        live = _live_of(snap, (MANHANDLA_OBJECT_TYPE,))
+        fireballs = _live_of(snap, (STATUE_FIREBALL, 0x56))
+
+        if xy[1] > 189:
+            return FrameAction(nes_action("UP"), "combat_door_enter")
+
+        if abs(xy[0] - 120) <= 6 and xy[1] <= 93:
+            return FrameAction(nes_action("UP"), "combat_north_door")
+
+        for fb in fireballs:
+            fx, fy = int(fb.x), int(fb.y)
+            if abs(fx - xy[0]) <= 8 and abs(fy - xy[1]) <= 24:
+                if xy[1] >= 165 or xy[1] <= 110:
+                    btn = "LEFT" if (xy[0] >= 120 and xy[0] > 96) else "RIGHT"
+                    return FrameAction(nes_action(btn), f"combat_dodge_fb_{btn.lower()}")
+
+        for m in live:
+            mx, my = int(m.x), int(m.y)
+            if abs(my - xy[1]) <= 8 and 10 <= abs(mx - xy[0]) <= 22:
+                return self._slash("RIGHT" if xy[0] < mx else "LEFT")
+            if abs(mx - xy[0]) <= 8 and 10 <= abs(my - xy[1]) <= 22:
+                return self._slash("DOWN" if xy[1] < my else "UP")
+            if abs(mx - 120) <= 16 and 16 <= (xy[1] - my) <= 36:
+                if snap.bombs >= 2:
+                    return FrameAction(nes_action("UP", "B"), "combat_bomb_up")
+                if xy[1] >= 165:
+                    btn = "LEFT" if xy[0] >= 120 else "RIGHT"
+                    return FrameAction(nes_action(btn), "combat_evade_manhandla")
+
+        if abs(xy[0] - 120) > 4:
+            btn = "RIGHT" if xy[0] < 120 else "LEFT"
+            return FrameAction(nes_action(btn), "combat_align_x")
+        return FrameAction(nes_action("UP"), "combat_north_advance")
+
     def report(self) -> dict[str, Any]:
         out = super().report()
         out.update(
@@ -943,7 +954,7 @@ class Level8DarknutKeyController(_NorthColumnBase):
             )
         if room == ROOM_MAP_MANHANDLA:
             if _live_of(snap, (MANHANDLA_OBJECT_TYPE,)):
-                return self._fight(snap, CLEAR_2E_SPEC)
+                return self._combat_2e(snap)
             wait = self._spawn_wait(snap, MANHANDLA_SETTLE_FRAMES)
             if wait is not None:
                 return wait

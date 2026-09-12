@@ -11,14 +11,19 @@ from zelda_i.dungeon.engine import (
     GenericDungeonRoomController,
     RewardKind,
 )
+
+from zelda_i.dungeon.ids import HEART_DROP_OBJECT_TYPE, HEART_DROP_STATE
 from zelda_i.level1.dungeon import (
     ROOM_23_SPEC,
+    ROOM_33_SPEC,
     ROOM_42_SPEC,
     ROOM_43_SPEC,
     ROOM_45_SPEC,
     ROOM_53_SPEC,
     ROOM_54_SPEC,
     ROOM_72_SPEC,
+    Room23HeartSafeController,
+    Room33ScoopController,
 )
 from zelda_i.level1.east_dungeon import (
     ROOM_44_SPEC,
@@ -34,6 +39,7 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_OBJ_HP,
+    ADDR_OBJ_STATE,
     ADDR_OBJ_TYPE,
     ADDR_ROOM_ALL_DEAD,
     ADDR_SCREEN,
@@ -482,6 +488,265 @@ def test_occupancy_room_does_not_leave_wall_in_south_pocket() -> None:
     assert action.reason in ("combat_patrol", "combat_engage", "combat_engage_slash")
 
 
+def test_room23_water_bar_leaves_west_passage_and_south_floor() -> None:
+    """West 16px column and south corridor are floor; mid cell row is water."""
+    blocked = set(ROOM_23_SPEC.combat.occupancy_blocked)
+    assert (78, 157) not in blocked
+    assert (144, 149) not in blocked
+    assert (64, 141) not in blocked
+    assert (120, 136) in blocked
+    walker = GenericDungeonRoomController(ROOM_23_SPEC).walker
+    step = walker.next_dir((78, 157), (120, 125))
+    assert step == "UP"
+
+
+def test_room23_stands_when_boomerang_blocks_the_step() -> None:
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=78,
+        y=157,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=64,
+        enemy_y=125,
+    )
+    ram[ADDR_OBJ_TYPE + 2] = 0x5C
+    ram[ADDR_LINK_X + 2] = 78
+    ram[ADDR_LINK_Y + 2] = 149
+    action = controller.step(read_snapshot(ram))
+    assert action.reason != "leave_wall"
+    assert not np.array_equal(action.action, nes_action("UP"))
+
+
+def test_room23_heart_safe_holds_south_on_one_heart() -> None:
+    """Leftover (128,149) health 0x20: peel DOWN, do not chase (128,117)."""
+    controller = Room23HeartSafeController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=128,
+        y=149,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=128,
+        enemy_y=117,
+    )
+    action = controller.step(read_snapshot(ram))
+    assert np.array_equal(action.action, nes_action("DOWN"))
+    assert action.reason == "heart_safe_peel_south"
+    assert not np.array_equal(action.action, nes_action("UP"))
+    assert not np.array_equal(action.action, nes_idle_action())
+
+
+def test_room23_heart_safe_peels_down_off_plus_stem() -> None:
+    """Leftover (135,149) health 0x20 + boomerang north: DOWN, never idle/UP."""
+    controller = Room23HeartSafeController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=135,
+        y=149,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=128,
+        enemy_y=117,
+    )
+    ram[ADDR_OBJ_TYPE + 2] = 0x5C
+    ram[ADDR_LINK_X + 2] = 128
+    ram[ADDR_LINK_Y + 2] = 141
+    action = controller.step(read_snapshot(ram))
+    assert np.array_equal(action.action, nes_action("DOWN"))
+    assert action.reason == "heart_safe_peel_south"
+    assert not np.array_equal(action.action, nes_idle_action())
+    assert not np.array_equal(action.action, nes_action("UP"))
+
+
+def test_room23_heart_safe_clamps_corridor_and_returns_from_door() -> None:
+    """1-heart: DOWN off plus-stem, UP from south mouth, no DOWN at y=157."""
+
+    def _act(x: int, y: int):
+        controller = Room23HeartSafeController(ROOM_23_SPEC)
+        controller.phase = DungeonPhase.FIGHT
+        ram = _room_ram(
+            room=0x23,
+            x=x,
+            y=y,
+            enemy_type=0x06,
+            enemies=1,
+            hp=0x20,
+            enemy_x=128,
+            enemy_y=117,
+        )
+        return controller.step(read_snapshot(ram))
+
+    peel = _act(135, 149)
+    assert np.array_equal(peel.action, nes_action("DOWN"))
+    door = _act(120, 205)
+    assert np.array_equal(door.action, nes_action("UP"))
+    mid = _act(120, 189)
+    assert np.array_equal(mid.action, nes_action("UP"))
+    hold = _act(120, 157)
+    assert not np.array_equal(hold.action, nes_action("DOWN"))
+
+
+def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
+    """No occupancy path (already on target): stand/slash, do not chase."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=128,
+        y=117,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=128,
+        enemy_y=117,
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason in (
+        "combat_wait",
+        "combat_engage_slash",
+        "combat_backstep",
+    )
+
+
+def test_prefix_specs_contact_backstep_keeps_hearts() -> None:
+    """0x53 / 0x33 peel contact so 0x23 is entered with lo>=2."""
+    assert ROOM_53_SPEC.combat.contact_backstep >= 24
+    assert ROOM_33_SPEC.combat.contact_backstep >= 24
+    assert ROOM_42_SPEC.combat.contact_backstep >= 16
+    assert ROOM_43_SPEC.combat.contact_backstep >= 16
+
+
+def test_room33_scoops_heart_when_filled_hearts_one_not_fight() -> None:
+    """0x33 leftover (96,173) health 0x21 + heart drop: scoop, not FIGHT."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x33,
+        x=96,
+        y=173,
+        enemy_type=0x2A,
+        enemies=1,
+        hp=0x20,
+        enemy_x=104,
+        enemy_y=173,
+    )
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_OBJ_TYPE + 2] = 0x60
+    ram[ADDR_OBJ_STATE + 2] = 0x22
+    ram[ADDR_LINK_X + 2] = 128
+    ram[ADDR_LINK_Y + 2] = 173
+    snap = read_snapshot(ram)
+    assert snap.filled_hearts == 1
+    action = controller.step(snap)
+    assert action.reason == "scoop_heart"
+    assert not action.reason.startswith("combat_")
+    assert not np.array_equal(action.action, nes_idle_action())
+    assert np.array_equal(action.action, nes_action("RIGHT"))
+    assert controller.report()["last_health"] == 0x21
+    assert ROOM_33_SPEC.combat.contact_backstep >= 24
+
+
+def test_room33_live_stalfos_fights_not_heart_wait() -> None:
+    """Live Stalfos + lo=1 + key: fight/backstep, do not start heart-wait."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    ram = _room_ram(
+        room=0x33,
+        x=96,
+        y=173,
+        enemy_type=0x2A,
+        enemies=1,
+        hp=0x20,
+        enemy_x=104,
+        enemy_y=173,
+        keys=1,
+    )
+    ram[ADDR_HEALTH] = 0x21
+    action = controller.step(read_snapshot(ram))
+    assert controller.heart_wait == 0
+    assert controller.success is False
+    assert action.reason != "0x33_needs_heart"
+    assert action.reason != "scoop_heart"
+    assert action.reason.startswith("combat_")
+    assert ROOM_33_SPEC.combat.contact_backstep >= 24
+
+
+def test_room33_cleared_low_scoops_heart_not_done() -> None:
+    """Cleared 0x33, lo=1, key in inventory, nearby heart: scoop, not DONE."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    ram = _room_ram(room=0x33, x=96, y=173, keys=1)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    ram[ADDR_OBJ_TYPE + 1] = 0x60
+    ram[ADDR_OBJ_STATE + 1] = 0x22
+    ram[ADDR_LINK_X + 1] = 128
+    ram[ADDR_LINK_Y + 1] = 173
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "scoop_heart"
+    assert controller.success is False
+    assert controller.phase is not DungeonPhase.DONE
+    assert np.array_equal(action.action, nes_action("RIGHT"))
+
+
+def test_room33_cleared_low_no_drop_holds_then_needs_heart() -> None:
+    """Cleared 0x33, lo=1, no drop: not DONE; short wait then 0x33_needs_heart."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    controller.heart_wait_limit = 2
+    ram = _room_ram(room=0x33, x=96, y=173, keys=1)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    snap = read_snapshot(ram)
+    action = controller.step(snap)
+    assert controller.success is False
+    assert action.reason != "done"
+    assert controller.phase is not DungeonPhase.DONE
+    action = controller.step(snap)
+    assert action.reason == "0x33_needs_heart"
+    assert controller.phase is DungeonPhase.FAILED
+    assert controller.success is False
+    assert "0x33_needs_heart" in controller.notes
+
+
+def test_room33_cleared_low_walks_key_tile_from_leftover() -> None:
+    """Wave-12 leftover (80,165) live==0 lo=1: walk to (96,173), not idle/DONE."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    ram = _room_ram(room=0x33, x=80, y=165, keys=1)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    ram[ADDR_OBJ_TYPE + 1] = 0x60
+    ram[ADDR_OBJ_STATE + 1] = 0x19
+    ram[ADDR_LINK_X + 1] = 96
+    ram[ADDR_LINK_Y + 1] = 173
+    action = controller.step(read_snapshot(ram))
+    assert controller.success is False
+    assert controller.phase is not DungeonPhase.DONE
+    assert action.reason != "done"
+    assert action.reason != "0x33_needs_heart"
+    assert controller.heart_wait == 0
+    assert not np.array_equal(action.action, nes_idle_action())
+    assert np.array_equal(action.action, nes_action("RIGHT"))
+    assert action.reason == "scoop_key_tile"
+
+
 def test_gel_rooms_chase_across_open_floor() -> None:
     assert ROOM_42_SPEC.combat.engage_distance == 160
     assert ROOM_43_SPEC.combat.engage_distance == 160
@@ -506,3 +771,94 @@ def test_survival_room45_enters_east_door_from_clear44_leftover() -> None:
     assert action.reason == "entry_route"
     assert np.array_equal(action.action, nes_action("DOWN"))
     assert not np.array_equal(action.action, nes_action("LEFT"))
+
+
+def test_scoop_heart_skips_rupee_state_on_shared_type() -> None:
+    """Floor drops share ObjType 0x60; rupee ObjState is not a heart."""
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    ram = _room_ram(room=0x54, x=120, y=141)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_OBJ_TYPE + 1] = 0x60
+    ram[ADDR_OBJ_STATE + 1] = 0x18
+    ram[ADDR_LINK_X + 1] = 136
+    ram[ADDR_LINK_Y + 1] = 141
+    assert controller._scoop_heart(read_snapshot(ram)) is None
+
+
+def _heart_drop_ram(
+    *,
+    room: int,
+    x: int = 120,
+    y: int = 141,
+    health: int = 0x21,
+    drop_x: int = 136,
+    drop_y: int = 141,
+    all_dead: int = 20,
+) -> np.ndarray:
+    ram = _room_ram(room=room, x=x, y=y)
+    ram[ADDR_HEALTH] = health
+    ram[ADDR_ROOM_ALL_DEAD] = all_dead
+    ram[ADDR_OBJ_TYPE + 1] = int(HEART_DROP_OBJECT_TYPE)
+    ram[ADDR_OBJ_STATE + 1] = int(HEART_DROP_STATE)
+    ram[ADDR_LINK_X + 1] = drop_x
+    ram[ADDR_LINK_Y + 1] = drop_y
+    return ram
+
+
+def test_cleared_room_scoops_nearby_heart_not_done() -> None:
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.max_live_enemies = ROOM_54_SPEC.expected_enemy_count
+    ram = _heart_drop_ram(room=0x54)
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "scoop_heart"
+    assert np.array_equal(action.action, nes_action("RIGHT"))
+    assert controller.success is False
+    assert controller.phase is DungeonPhase.FIGHT
+
+
+def test_full_health_skips_heart_scoop() -> None:
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.max_live_enemies = ROOM_54_SPEC.expected_enemy_count
+    ram = _heart_drop_ram(room=0x54, health=0x22)
+    snap = read_snapshot(ram)
+    assert snap.health_is_full
+    assert controller._scoop_heart(snap) is None
+    action = controller.step(snap)
+    assert action.reason == "done"
+    assert controller.success is True
+
+
+def test_contact_enemy_fights_instead_of_scoop() -> None:
+    controller = GenericDungeonRoomController(ROOM_54_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x54,
+        x=120,
+        y=141,
+        enemy_type=0x1B,
+        enemies=1,
+        hp=0,
+        enemy_x=120 + 8,
+        enemy_y=141,
+    )
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_OBJ_TYPE + 2] = int(HEART_DROP_OBJECT_TYPE)
+    ram[ADDR_OBJ_STATE + 2] = int(HEART_DROP_STATE)
+    ram[ADDR_LINK_X + 2] = 136
+    ram[ADDR_LINK_Y + 2] = 141
+    action = controller.step(read_snapshot(ram))
+    assert action.reason.startswith("combat_")
+    assert action.reason != "scoop_heart"
+
+
+def test_collect_reward_scoops_heart_before_key() -> None:
+    controller = GenericDungeonRoomController(ROOM_72_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    ram = _heart_drop_ram(room=0x72)
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "scoop_heart"
+    assert "collect" not in action.reason
+    assert controller.success is False

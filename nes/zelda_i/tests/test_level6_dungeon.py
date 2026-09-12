@@ -42,6 +42,7 @@ from zelda_i.level6.overworld import (
     WIZZROBE_ORANGE_TYPE,
 )
 from zelda_i.ram import (
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_OBJ_HP,
@@ -87,6 +88,153 @@ def _ram(
         ram[ADDR_OBJ_TYPE + slot] = WIZZROBE_ORANGE_TYPE
         ram[ADDR_OBJ_HP + slot] = hp
     return ram
+
+
+def test_east_key_hunts_center_key_when_cleared() -> None:
+    """Clean leftover (118,141): key on the floor, 2px west of pickup."""
+    from zelda_i.level6.wizzrobe import make_east_key_controller
+
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=118, y=141, wizzrobes=0)
+    ctl = make_east_key_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_key"
+    assert list(action.action) == list(nes_action("RIGHT"))
+
+
+def test_east_key_leaves_west_block_pocket() -> None:
+    """Clean leftover (64,117): RIGHT off the (64,112) block, not UP/DOWN."""
+    from zelda_i.level6.wizzrobe import make_east_key_controller
+
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=64, y=117, wizzrobes=1)
+    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_TYPE
+    ram[ADDR_OBJ_HP + 1] = 64
+    ram[ADDR_LINK_X + 1] = 160
+    ram[ADDR_LINK_Y + 1] = 141
+    ctl = make_east_key_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_leave_block"
+    assert list(action.action) == list(nes_action("RIGHT"))
+    assert (64, 109) not in ROOM_7A_SPEC.combat.patrol
+    assert (80, 109) in ROOM_7A_SPEC.combat.patrol
+
+
+@pytest.mark.parametrize("x,y", [(189, 141), (192, 140)])
+def test_west_east_mouth_inland_dash_left(x: int, y: int) -> None:
+    """v4/v5 leftover: live 0x24 on the east lip → LEFT inland, not engage."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    assert ROOM_78_SPEC.combat.inland_dash > 0
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=x, y=y, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 80
+    ram[ADDR_LINK_Y + 1] = 141
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_inland_dash"
+    assert list(action.action) == list(nes_action("LEFT"))
+    assert "engage" not in action.reason
+    objs = ctl.report()["objects"]
+    assert any(int(o["type"]) == WIZZROBE_ORANGE_TYPE for o in objs)
+
+
+def test_west_south_commit_sidestep_not_up() -> None:
+    """v8 leftover (160,149): 0x24 same x + 0x59 y=141 → LEFT/RIGHT, not UP."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=160, y=149, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 160
+    ram[ADDR_LINK_Y + 1] = 141
+    ram[ADDR_OBJ_TYPE + 2] = 0x59
+    ram[ADDR_LINK_X + 2] = 165
+    ram[ADDR_LINK_Y + 2] = 141
+    ram[ADDR_OBJ_HP + 2] = 128
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_sidestep"
+    assert list(action.action) in (
+        list(nes_action("LEFT")),
+        list(nes_action("RIGHT")),
+    )
+    assert list(action.action) != list(nes_action("UP"))
+
+
+def test_west_beam_59_keeps_leaving_y125() -> None:
+    """v7 leftover (120,125) + 0x59@(133,125) → DOWN off that band, not engage."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=120, y=125, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 160
+    ram[ADDR_LINK_Y + 1] = 125
+    ram[ADDR_OBJ_TYPE + 2] = 0x59
+    ram[ADDR_LINK_X + 2] = 133
+    ram[ADDR_LINK_Y + 2] = 125
+    ram[ADDR_OBJ_HP + 2] = 128
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_beam_peel"
+    assert list(action.action) == list(nes_action("DOWN"))
+    assert "engage" not in action.reason
+    assert list(action.action) != list(nes_action("LEFT"))
+
+
+def test_west_beam_59_peel_off_waist_not_left() -> None:
+    """v6 leftover (176,141) + 0x59@(187,141) → UP/DOWN, never LEFT."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=176, y=141, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 208
+    ram[ADDR_LINK_Y + 1] = 141
+    ram[ADDR_OBJ_TYPE + 2] = 0x59
+    ram[ADDR_LINK_X + 2] = 187
+    ram[ADDR_LINK_Y + 2] = 141
+    ram[ADDR_OBJ_HP + 2] = 128
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_beam_peel"
+    assert list(action.action) in (
+        list(nes_action("UP")),
+        list(nes_action("DOWN")),
+    )
+    assert list(action.action) != list(nes_action("LEFT"))
+    assert list(action.action) != list(nes_action("RIGHT"))
+
+
+def test_west_waist_dodge_off_axis_not_left() -> None:
+    """Inland of the east lip: inbound y-band shot → UP/DOWN, not LEFT."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=160, y=141, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 80
+    ram[ADDR_LINK_Y + 1] = 141
+    ram[ADDR_OBJ_TYPE + 2] = 0x55
+    ram[ADDR_LINK_X + 2] = 120
+    ram[ADDR_LINK_Y + 2] = 141
+    ram[ADDR_LINK_FACING + 2] = 0x01
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_waist_dodge"
+    assert list(action.action) in (
+        list(nes_action("UP")),
+        list(nes_action("DOWN")),
+    )
+    assert list(action.action) != list(nes_action("LEFT"))
+    assert list(action.action) != list(nes_action("RIGHT"))
+
+
+def test_west_block_pocket_still_right_with_waist_shot() -> None:
+    """West block pocket: RIGHT even with an inbound y-band projectile."""
+    from zelda_i.level6.wizzrobe import make_west_wizzrobe_controller
+
+    ram = _ram(room=ROOM_L6_WEST_WIZZROBE, x=64, y=117, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 160
+    ram[ADDR_LINK_Y + 1] = 141
+    ram[ADDR_OBJ_TYPE + 2] = 0x55
+    ram[ADDR_LINK_X + 2] = 80
+    ram[ADDR_LINK_Y + 2] = 117
+    ram[ADDR_LINK_FACING + 2] = 0x02
+    ctl = make_west_wizzrobe_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason == "wizzrobe_leave_block"
+    assert list(action.action) == list(nes_action("RIGHT"))
 
 
 def test_room_7a_reward_waypoints_recover_from_blocked_leftover() -> None:

@@ -35,7 +35,7 @@ from zelda_i.level1.path import (
     return_west_waypoints,
     west_door_step,
 )
-from retro_harness.nes import nes_action
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.ram import (
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -127,8 +127,11 @@ def test_clear63_controller_engages_nearby_stalfos() -> None:
     ram[ADDR_LINK_Y + 1] = 165
     action = controller.step(read_snapshot(ram))
     assert controller.phase is Level1Clear63Phase.FIGHT
-    assert action.reason.startswith("clear_engage")
+    assert action.reason == "clear_backstep"
     assert controller.last_live_stalfos == 3
+    controller.frames = 2
+    action = controller.step(read_snapshot(ram))
+    assert action.reason.startswith("clear_engage")
 
 
 def test_clear53_controller_routes_around_room63_blocks() -> None:
@@ -147,6 +150,7 @@ def test_clear53_controller_fights_then_targets_fixed_key() -> None:
     )
     live_ram = _ram(room=ROOM_KEY_STALFOS, x=120, y=205, stalfos=5)
     action = controller.step(read_snapshot(live_ram))
+    assert controller.combat.contact_backstep >= 24
     assert action.reason.startswith("room53_clear_")
     assert controller.max_live_stalfos == 5
 
@@ -236,6 +240,29 @@ def test_west_key_stages_clear_then_return() -> None:
     assert survival.index("clear72_key") < survival.index("return73")
 
 
+def test_room42_entry_peels_off_52_diamond() -> None:
+    """Leftover (112,165) on the 0x52 diamond: LEFT/RIGHT, never UP into it."""
+    from zelda_i.dungeon.engine import DungeonPhase
+    from zelda_i.level1.dungeon import ROOM_42_SPEC, Room42EntryController
+
+    ctl = Room42EntryController(ROOM_42_SPEC)
+    ram = make_ram(_DEFAULTS, screen=0x52, x=112, y=165, health=0x22)
+    action = ctl.step(read_snapshot(ram))
+    assert ctl.phase is DungeonPhase.ROUTE_ENTRY
+    assert list(action.action) in (
+        list(nes_action("LEFT")),
+        list(nes_action("RIGHT")),
+    )
+    assert list(action.action) != list(nes_action("UP"))
+
+    lip = Room42EntryController(ROOM_42_SPEC)
+    ram = make_ram(_DEFAULTS, screen=0x52, x=103, y=165, health=0x22)
+    action = lip.step(read_snapshot(ram))
+    assert list(action.action) == list(nes_action("LEFT"))
+    assert list(action.action) != list(nes_action("UP"))
+    assert list(action.action) != list(nes_idle_action())
+
+
 def test_exit42_skips_old_man_hint() -> None:
     assert not hasattr(Room42ExitPhase, "ENTER_HINT")
     ctl = Level1Room42ExitController()
@@ -259,3 +286,29 @@ def test_clean_clear44_uses_west_mouth_controller() -> None:
         name: ctl for name, ctl, _ in level1_triforce_stages(natural_entry=True)
     }
     assert isinstance(clean["clear44"], Room44SurvivalController)
+    from zelda_i.level1.dungeon import Room42EntryController
+
+    assert isinstance(clean["clear42"], Room42EntryController)
+
+
+def test_natural_room23_keeps_maze_engage_distance() -> None:
+    """Isolated 0x23 chase (64) is not the natural maze walk (24)."""
+    from zelda_i.level1.finish import level1_triforce_stages
+
+    natural = {
+        name: ctl for name, ctl, _ in level1_triforce_stages(natural_entry=True)
+    }
+    isolated = {
+        name: ctl for name, ctl, _ in level1_triforce_stages(natural_entry=False)
+    }
+    from zelda_i.level1.dungeon import Room23HeartSafeController
+
+    assert natural["clear23_key"].spec.combat.engage_distance == 24
+    assert isolated["clear23_key"].spec.combat.engage_distance == 64
+    assert isinstance(natural["clear23_key"], Room23HeartSafeController)
+    assert isinstance(isolated["clear23_key"], Room23HeartSafeController)
+    from zelda_i.level1.dungeon import Room33ScoopController
+
+    assert isinstance(natural["clear33_key"], Room33ScoopController)
+    assert isinstance(isolated["clear33_key"], Room33ScoopController)
+    assert natural["clear33_key"].spec.combat.contact_backstep >= 24

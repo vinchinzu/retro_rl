@@ -102,41 +102,44 @@ def _north2c_stages():
     return (*_west2d_stages(), *door_hop_stages(NORTH2C_SPEC))
 
 
-def _gohma_stages():
-    ctl = make_gohma_controller()
+def _gohma_stages(*, poke_arrows: bool = True):
+    ctl = make_gohma_controller(poke_arrows=poke_arrows)
     return (
         *_north2c_stages(),
         ("level6_gohma_0x1c", ctl, ctl.max_frames),
     )
 
 
-def _heart_stages():
+def _heart_stages(*, poke_arrows: bool = True):
     ctl = make_heart_controller()
-    return (*_gohma_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+    return (*_gohma_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _north0c_stages():
+def _north0c_stages(*, poke_arrows: bool = True):
     ctl = make_north0c_controller()
-    return (*_heart_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+    return (*_heart_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _level6_stages():
+def _level6_stages(*, poke_arrows: bool = True):
     ctl = make_shard_controller()
-    return (*_north0c_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+    return (*_north0c_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _exit_stages():
+def _exit_stages(*, poke_arrows: bool = True):
     ctl = make_exit_controller()
-    return (*_level6_stages(), (ctl.spec_id, ctl, ctl.max_frames))
+    return (*_level6_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
 def _door_success(spec):
     return lambda snap, s=spec, **_: door_hop_success(s, snap)
 
 
-def l6_suffix_hops() -> tuple[SpineHop, ...]:
-    tf1f = dict(tf_eq=0x1F)
-    rod1f = dict(tf_eq=0x1F, rod=True)
+def l6_suffix_hops(
+    *, poke_arrows: bool = True, require_prior_tf: bool = True
+) -> tuple[SpineHop, ...]:
+    tf1f = dict(tf_eq=0x1F) if require_prior_tf else {}
+    rod1f = dict(rod=True, **(dict(tf_eq=0x1F) if require_prior_tf else {}))
+    gohma = dict(poke_arrows=poke_arrows)
     return (
         one_hop(
             "level6-room19",
@@ -177,13 +180,17 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
             "level6-stairs09",
             "level6_stairs_0x09",
             make_stairs_09_controller,
-            lambda snap, **_: stairs_or_play(snap, not_screen=ROOM_09_SPEC.room_id),
+            lambda snap, r=require_prior_tf, **_: stairs_or_play(
+                snap, not_screen=ROOM_09_SPEC.room_id, require_prior_tf=r
+            ),
         ),
         one_hop(
             "level6-rod",
             "level6_rod_0x75",
             make_rod_75_controller,
-            rod_cellar_ok,
+            lambda snap, r=require_prior_tf, **_: rod_cellar_ok(
+                snap, require_prior_tf=r
+            ),
         ),
         one_hop(
             "level6-exit75",
@@ -256,35 +263,35 @@ def l6_suffix_hops() -> tuple[SpineHop, ...]:
         SpineHop(
             "level6-gohma",
             "level6_gohma_0x1c",
-            _gohma_stages,
+            lambda: _gohma_stages(**gohma),
             level6_gohma_success,
             dedicated=True,
         ),
         SpineHop(
             "level6-heart",
             "level6_heart_0x1c",
-            _heart_stages,
+            lambda: _heart_stages(**gohma),
             level6_heart_success,
             dedicated=True,
         ),
         SpineHop(
             "level6-north0c",
             "level6_north_0x0c",
-            _north0c_stages,
+            lambda: _north0c_stages(**gohma),
             level6_north0c_success,
             dedicated=True,
         ),
         SpineHop(
             "level6",
             "level6_triforce_0x20",
-            _level6_stages,
+            lambda: _level6_stages(**gohma),
             level6_success,
             dedicated=True,
         ),
         SpineHop(
             "level6-exit",
             "level6_exit_ow",
-            _exit_stages,
+            lambda: _exit_stages(**gohma),
             level6_exit_success,
             dedicated=True,
         ),

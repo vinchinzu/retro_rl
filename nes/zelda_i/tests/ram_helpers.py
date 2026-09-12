@@ -19,6 +19,8 @@ from zelda_i.ram import (
     ADDR_CUR_OPENED_DOORS,
     ADDR_FOOD,
     ADDR_HEALTH,
+    ADDR_HELP_DROP_COUNT,
+    ADDR_HELP_DROP_VALUE,
     ADDR_IS_UPDATING_MODE,
     ADDR_KEYS,
     ADDR_LADDER,
@@ -41,6 +43,7 @@ from zelda_i.ram import (
     ADDR_SWORD,
     ADDR_TRIFORCE,
     ADDR_WHISTLE,
+    ADDR_WORLD_KILL_COUNT,
 )
 
 FIELD_ADDR: dict[str, int] = {
@@ -75,6 +78,9 @@ FIELD_ADDR: dict[str, int] = {
     "map": ADDR_MAP,
     "magic_key": ADDR_MAGIC_KEY,
     "room_item": ADDR_ROOM_ITEM_ID,
+    "world_kill": ADDR_WORLD_KILL_COUNT,
+    "help_count": ADDR_HELP_DROP_COUNT,
+    "help_value": ADDR_HELP_DROP_VALUE,
 }
 
 

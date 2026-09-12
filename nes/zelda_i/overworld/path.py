@@ -13,16 +13,17 @@ from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import manhattan
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.common import (
     EDGE_EAST_X,
-    EDGE_NORTH_Y,
-    EDGE_SOUTH_Y,
     EDGE_WEST_X,
+    HEART_FAIRY_DROP_STATES,
+    HEART_FAIRY_DROP_TYPES,
+    RUPEE_DROP_STATES,
     align_and_push,
     on_arrival_edge,
     recover_off_edge,
+    scoop_floor_drop,
     swing_action,
     track_knockback,
     track_stuck,
@@ -512,52 +513,35 @@ class OverworldPathController:
         return self._rupee_farm.step(snap)
 
     def _rupee_scoop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        """Walk onto a nearby rupee drop when ``snap.rupees < need_rupees``.
+        """Walk onto a nearby drop. Hearts when not full; rupees when short.
 
         Stays on the current screen and refuses a drop that sits on the
         hop's opposite edge (would scroll away). Does not swing — pickup
-        is contact. ``need_rupees=0`` (default) never diverts.
+        is contact. ``need_rupees=0`` (default) never diverts for rupees.
+        Does not start a heart farm.
         """
-        if self.need_rupees <= 0 or snap.rupees >= self.need_rupees:
-            return None
         if snap.mode != PLAY_MODE or snap.level != 0:
             return None
-        drops = [
-            obj
-            for obj in snap.objects
-            if obj.slot >= 1
-            and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
-            and 40 < obj.y < 220
-            and 8 < obj.x < 248
-        ]
-        if not drops:
-            return None
-        nearest = min(
-            drops,
-            key=lambda obj: manhattan(snap.link_x, snap.link_y, obj.x, obj.y),
+        heart = scoop_floor_drop(
+            snap,
+            types=HEART_FAIRY_DROP_TYPES,
+            states=HEART_FAIRY_DROP_STATES,
+            travel_dir=hop.direction,
+            radius=self.scoop_radius,
+            reason="scoop_heart",
+            want=snap.filled_hearts < snap.heart_containers,
         )
-        dist = manhattan(snap.link_x, snap.link_y, nearest.x, nearest.y)
-        if dist > self.scoop_radius:
-            return None
-        if hop.direction == "RIGHT" and nearest.x < EDGE_WEST_X + 16:
-            return None
-        if hop.direction == "LEFT" and nearest.x > EDGE_EAST_X - 16:
-            return None
-        if hop.direction == "DOWN" and nearest.y < EDGE_NORTH_Y + 16:
-            return None
-        if hop.direction == "UP" and nearest.y > EDGE_SOUTH_Y - 16:
-            return None
-        if dist <= 4:
-            return FrameAction(nes_idle_action(), "scoop_rupee")
-        dx = nearest.x - snap.link_x
-        dy = nearest.y - snap.link_y
-        if abs(dx) >= abs(dy) and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 2:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            return FrameAction(nes_idle_action(), "scoop_rupee")
-        return FrameAction(nes_action(direction), "scoop_rupee")
+        if heart is not None:
+            return heart
+        return scoop_floor_drop(
+            snap,
+            types=(RUPEE_DROP_OBJECT_TYPE,),
+            states=RUPEE_DROP_STATES,
+            travel_dir=hop.direction,
+            radius=self.scoop_radius,
+            reason="scoop_rupee",
+            want=self.need_rupees > 0 and snap.rupees < self.need_rupees,
+        )
 
     def _occupancy_align_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop

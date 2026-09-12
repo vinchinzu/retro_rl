@@ -35,6 +35,7 @@ ADDR_OPEN_DOORWAY_MASK = 0x033F
 ADDR_ROOM_ALL_DEAD = 0x034D
 ADDR_ROOM_OBJ_COUNT = 0x034E
 ADDR_OBJ_TYPE = 0x034F  # 16 slots
+ADDR_OBJ_STATE = 0x00AC  # 13 slots; floor-drop item code lives here
 ADDR_OBJ_HP = 0x0485  # 13 gameplay slots used by the engine
 
 # --- Inventory / progress (file slot mirrored in WRAM) ---
@@ -146,6 +147,11 @@ class ZeldaSnapshot:
     candle: int = 0  # ADDR_CANDLE; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
+    # Forced-drop kill counters. A hit clears all three (ram_map). Defaults
+    # keep older ZeldaSnapshot(...) test constructors working.
+    world_kill_count: int = 0  # ADDR_WORLD_KILL_COUNT; 16 → fairy
+    help_drop_count: int = 0  # ADDR_HELP_DROP_COUNT; 10 → 5-rupee (or bomb)
+    help_drop_value: int = 0  # ADDR_HELP_DROP_VALUE; nonzero → bomb at 10
 
     @property
     def overworld(self) -> bool:
@@ -222,7 +228,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
             y=read_u8(ram, ADDR_LINK_Y + slot),
             facing=read_u8(ram, ADDR_LINK_FACING + slot),
             hp=read_u8(ram, ADDR_OBJ_HP + slot),
-            state=read_u8(ram, 0x00AC + slot),
+            state=read_u8(ram, ADDR_OBJ_STATE + slot),
         )
         for slot in range(13)
     )
@@ -263,6 +269,9 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         arrows=read_u8(ram, ADDR_ARROWS),
         candle=read_u8(ram, ADDR_CANDLE),
         food=read_u8(ram, ADDR_FOOD),
+        world_kill_count=read_u8(ram, ADDR_WORLD_KILL_COUNT),
+        help_drop_count=read_u8(ram, ADDR_HELP_DROP_COUNT),
+        help_drop_value=read_u8(ram, ADDR_HELP_DROP_VALUE),
     )
 
 

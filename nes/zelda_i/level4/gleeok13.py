@@ -103,7 +103,7 @@ class Level4Gleeok13Controller:
         if self.phase is Gleeok13Phase.STAND:
             tx, ty = PUSH_12_STAND
             dx, dy = tx - snap.link_x, ty - snap.link_y
-            if abs(dx) <= 2 and abs(dy) <= 2:
+            if abs(dx) <= 2 and abs(dy) <= 1:
                 self._set_phase(Gleeok13Phase.PUSH, "at_push_stand")
                 return FrameAction(nes_action(PUSH_12_DIR), "push_block")
             # When west of the block (96, 144), route around it to the north (y <= 117).
@@ -121,6 +121,10 @@ class Level4Gleeok13Controller:
             )
 
         if self.phase is Gleeok13Phase.PUSH:
+            if not (snap.cur_opened_doors & 0x01):
+                if self.phase_frames < 100:
+                    return FrameAction(nes_action(PUSH_12_DIR), "push_block")
+                return self._fail("push_failed_door_shut")
             if self.phase_frames < PUSH_12_HOLD:
                 return FrameAction(nes_action(PUSH_12_DIR), "push_block")
             self.token_index = 0

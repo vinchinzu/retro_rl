@@ -18,6 +18,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.behaviors import projectile_threats
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -28,11 +29,14 @@ from zelda_i.dungeon.engine import (
     RewardKind,
     RewardSpec,
 )
+from zelda_i.dungeon.gleeok import FIREBALL_DODGE_DIST, _fireball_dodge_dir
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ids import (
     DARKNUT_OBJECT_TYPE,
+    FIREBALL_OBJECT_TYPE,
     GOHMA_BLUE_OBJECT_TYPE,
     GOHMA_OBJECT_TYPE,
+    MANHANDLA_PROJECTILE_TYPE,
     POLS_VOICE_OBJECT_TYPE,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
@@ -48,15 +52,13 @@ from zelda_i.level6.gohma import (
     FACE_NORTH,
     FIRE_TOL,
     LEAD_CLAMP,
-    LINK_X_MAX,
-    LINK_X_MIN,
     SHOT_COOLDOWN,
-    STAND_Y,
     STAND_Y_TOL,
     STUCK_FRAMES,
 )
 from zelda_i.ram import (
     ADDR_MAGIC_KEY,
+    ADDR_SELECTED_ITEM,
     PASSAGE_MODE,
     PLAY_MODE,
     ZeldaSnapshot,
@@ -80,6 +82,22 @@ EAST_DOOR = DOOR_TARGETS["RIGHT"]  # (208, 141)
 _DOOR_TOL = 4
 EAST_WAIT_FRAMES = 150  # idle budget for the doors byte to rise after the kill
 GOHMA_1E_MAX_FRAMES = 12_000
+# South door lip: LEFT/RIGHT are no-ops. Inland, dodge type-0x56 and Gohma
+# contact — Clean 1–2 hearts cannot tank the L6 stand-line fire stream.
+GOHMA_DOOR_LIP_Y = 189
+GOHMA_BODY_CONTACT = 20
+# L6 STAND_Y=162 is the 0x1E death band (leftover y=163/165). Stand south,
+# still inland of the door lip so strafe/dodge work (TOL=8 → climb while y>189).
+STAND_Y = 181
+# Inland of both statue columns. Leftover (50,149) was LEFT into the west 0x55.
+INLAND_X_MIN = 88
+INLAND_X_MAX = 168
+# Once B=arrows, hold the entry column. LEFT of 112 is the west 0x55 stream
+# (h8 leftover (88,181), shots 0, B=arrows).
+COLUMN_X_MIN = 112
+COLUMN_X_MAX = 128
+# Statue 0x55 and Gohma/Manhandla 0x56 both stream this room (rr-npv.4).
+_SHOT_TYPES = frozenset({FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE})
 
 
 @dataclass(kw_only=True)
@@ -176,6 +194,186 @@ class Level8BlueGohma1EController(HopController):
             if 1 <= obj.slot <= 12 and int(obj.type_id) in GOHMA_BODY_TYPES_1E
         ]
 
+    def _shots(self, snap: ZeldaSnapshot) -> list:
+        return [
+            obj
+            for obj in snap.objects
+            if 1 <= obj.slot <= 12 and int(obj.type_id) in _SHOT_TYPES
+        ]
+
+    def _se_shot(self, snap: ZeldaSnapshot) -> bool:
+        """True if a 0x55/0x56 sits east of Link on or south of the stand line."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        south = min(ly, STAND_Y)
+        return any(int(obj.x) > lx and int(obj.y) >= south for obj in self._shots(snap))
+
+    def _inland(self, snap: ZeldaSnapshot) -> bool:
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        return ly <= STAND_Y and INLAND_X_MIN <= lx <= INLAND_X_MAX
+
+    def _arrows_on_b(self) -> bool:
+        if self._select is not None and self._select.success:
+            return True
+        if self._env is None:
+            return False
+        try:
+            return int(read_u8(self._env.get_ram(), ADDR_SELECTED_ITEM)) == B_SLOT_ARROWS
+        except Exception:  # pragma: no cover - defensive
+            return False
+
+    def _hold_column(self, snap: ZeldaSnapshot) -> bool:
+        return int(snap.link_y) <= STAND_Y and self._arrows_on_b()
+
+    def _column_shot(self, snap: ZeldaSnapshot) -> bool:
+        """0x55/0x56 on the entry column, y approaching STAND_Y (h10 idle)."""
+        lx = int(snap.link_x)
+        return any(
+            abs(int(o.x) - lx) <= 16 and int(o.y) >= STAND_Y - 24
+            for o in self._shots(snap)
+        )
+
+    def _column_btn(self, snap: ZeldaSnapshot, btn: str) -> str | None:
+        """Keep x in [112, 128]. Cooldown LEFT toward 112; else RIGHT off fire."""
+        if btn not in ("LEFT", "RIGHT"):
+            return btn
+        lx = int(snap.link_x)
+        if lx < COLUMN_X_MIN:
+            return "RIGHT"
+        if lx > COLUMN_X_MAX:
+            return "LEFT"
+        if lx < COLUMN_X_MAX and self._column_shot(snap):
+            return "LEFT" if self.cooldown > 0 and lx > COLUMN_X_MIN else "RIGHT"
+        return None
+
+    def _inland_escape(self, snap: ZeldaSnapshot, reason: str) -> FrameAction:
+        """Off a statue column: return to STAND_Y, else step toward [88, 168]."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if ly < STAND_Y - STAND_Y_TOL:
+            return FrameAction(nes_action("DOWN"), "settle")
+        if ly > STAND_Y + STAND_Y_TOL:
+            return FrameAction(nes_action("UP"), "climb")
+        if lx <= INLAND_X_MIN:
+            return FrameAction(nes_action("RIGHT"), reason)
+        if lx >= INLAND_X_MAX:
+            return FrameAction(nes_action("LEFT"), reason)
+        return FrameAction(nes_idle_action(), "eye_wait")
+
+    def _arrow_fire(self, snap: ZeldaSnapshot) -> FrameAction:
+        """One-frame UP+B. Cooldown + inbound 0x55 peels in-band, never idle."""
+        ly = int(snap.link_y)
+        if ly < STAND_Y - STAND_Y_TOL:
+            return FrameAction(nes_action("DOWN"), "settle")
+        if self.cooldown <= 0:
+            if int(snap.facing) != FACE_NORTH:
+                return FrameAction(nes_action("UP"), "face_up")
+            self.cooldown = SHOT_COOLDOWN
+            self.last_fire = self.frames
+            self.shots += 1
+            return FrameAction(nes_action("UP", "B"), "arrow_shot")
+        if ly < STAND_Y:
+            return FrameAction(nes_action("DOWN"), "settle")
+        if self._column_shot(snap):
+            lx = int(snap.link_x)
+            btn = "RIGHT" if lx <= COLUMN_X_MIN else "LEFT"
+            return FrameAction(nes_action(btn), "column_peel")
+        return FrameAction(nes_idle_action(), "eye_wait")
+
+    def _clamp_hmove(
+        self, snap: ZeldaSnapshot, btn: str, reason: str
+    ) -> FrameAction:
+        lx = int(snap.link_x)
+        if self._hold_column(snap):
+            if btn == "LEFT" and lx <= COLUMN_X_MAX:
+                if lx < COLUMN_X_MIN:
+                    return FrameAction(nes_action("RIGHT"), "column_recover")
+                if lx >= COLUMN_X_MAX:
+                    return self._arrow_fire(snap)
+                if self.cooldown > 0 and self._column_shot(snap):
+                    return FrameAction(nes_action("LEFT"), "column_peel")
+                return FrameAction(nes_idle_action(), "column_hold")
+            if btn == "RIGHT" and lx >= COLUMN_X_MAX:
+                return self._arrow_fire(snap)
+        if btn == "LEFT" and lx <= INLAND_X_MIN:
+            return self._inland_escape(snap, reason)
+        if btn == "RIGHT" and lx >= INLAND_X_MAX:
+            return self._inland_escape(snap, reason)
+        return FrameAction(nes_action(btn), reason)
+
+    def _sidestep(
+        self, snap: ZeldaSnapshot, hazard_x: int, reason: str
+    ) -> FrameAction:
+        lx = int(snap.link_x)
+        if int(hazard_x) >= lx:
+            btn = "LEFT"
+        else:
+            btn = "RIGHT"
+        return self._clamp_hmove(snap, btn, reason)
+
+    def _maybe_hmove(
+        self, snap: ZeldaSnapshot, btn: str, reason: str
+    ) -> FrameAction | None:
+        """Column-hold: never LEFT of 112; cooldown LEFT, else RIGHT off fire."""
+        if self._hold_column(snap):
+            mapped = self._column_btn(snap, btn)
+            if mapped is None:
+                return None
+            if mapped != btn:
+                lx = int(snap.link_x)
+                reason = (
+                    "column_peel"
+                    if mapped == "RIGHT" and lx >= COLUMN_X_MIN
+                    else "column_recover"
+                )
+            btn = mapped
+        return self._clamp_hmove(snap, btn, reason)
+
+    def _hazard_dodge(self, snap: ZeldaSnapshot, body) -> FrameAction | None:
+        """Sidestep 0x55/0x56 / Gohma contact once off the south door lip."""
+        ly = int(snap.link_y)
+        lx = int(snap.link_x)
+        if ly > STAND_Y:
+            return None
+        if self._hold_column(snap) and self._column_shot(snap):
+            if COLUMN_X_MIN <= lx < COLUMN_X_MAX:
+                btn = "LEFT" if self.cooldown > 0 and lx > COLUMN_X_MIN else "RIGHT"
+                return FrameAction(nes_action(btn), "column_peel")
+            if lx >= COLUMN_X_MAX:
+                return self._arrow_fire(snap)
+        dodge = _fireball_dodge_dir(snap, thr=FIREBALL_DODGE_DIST)
+        if dodge is not None:
+            return self._maybe_hmove(snap, dodge, "climb_dodge_fb")
+        shots = self._shots(snap)
+        if shots:
+            fb = min(
+                shots, key=lambda o: abs(int(o.x) - lx) + abs(int(o.y) - ly)
+            )
+            dist = abs(int(fb.x) - lx) + abs(int(fb.y) - ly)
+            if dist <= FIREBALL_DODGE_DIST:
+                btn = "LEFT" if int(fb.x) >= lx else "RIGHT"
+                return self._maybe_hmove(snap, btn, "climb_dodge_fb")
+        hits = projectile_threats(
+            lx,
+            ly,
+            shots,
+            direction="UP",
+            ahead=FIREBALL_DODGE_DIST,
+            behind=4,
+            half_width=8,
+        )
+        if hits:
+            fb = min(
+                hits, key=lambda o: abs(int(o.x) - lx) + abs(int(o.y) - ly)
+            )
+            btn = "LEFT" if int(fb.x) >= lx else "RIGHT"
+            return self._maybe_hmove(snap, btn, "climb_dodge_fb")
+        if body is None:
+            return None
+        bx, by = int(body.x), int(body.y)
+        if max(abs(bx - lx), abs(by - ly)) <= GOHMA_BODY_CONTACT:
+            btn = "LEFT" if bx >= lx else "RIGHT"
+            return self._maybe_hmove(snap, btn, "climb_dodge_body")
+        return None
+
     def _emit_leftover(self, snap: ZeldaSnapshot) -> None:
         if not self.leftover or self.frames % 12 == 0:
             self.leftover = {
@@ -232,8 +430,25 @@ class Level8BlueGohma1EController(HopController):
                     )
             return self._east_push(snap)
 
-        # still fighting: cycle B to arrows (pause menu, no RAM write)
-        if self._select is not None:
+        # Lip (y>STAND_Y): only UP. LEFT dodge at y=189 walked to (88,181)
+        # before pause-select (l8clr_lab_h4). Climb at entry x, then select.
+        body = bodies[0] if bodies else None
+        lx = int(snap.link_x)
+        ly = int(snap.link_y)
+        if ly > STAND_Y:
+            return FrameAction(nes_action("UP"), "climb")
+        if self._hold_column(snap) and ly < STAND_Y - STAND_Y_TOL:
+            return FrameAction(nes_action("DOWN"), "settle")
+
+        inland = self._inland(snap)
+        if not inland:
+            dodge = self._hazard_dodge(snap, body)
+            if dodge is not None:
+                return dodge
+            if lx < INLAND_X_MIN or lx > INLAND_X_MAX:
+                return self._inland_escape(snap, "climb_dodge_fb")
+
+        if self._select is not None and inland:
             driven = self._select.drive(snap)
             if self._select.failed:
                 return self.mark_fail(
@@ -241,6 +456,10 @@ class Level8BlueGohma1EController(HopController):
                 )
             if driven is not None:
                 return driven
+
+        dodge = self._hazard_dodge(snap, body)
+        if dodge is not None:
+            return dodge
 
         if not bodies:
             return FrameAction(nes_idle_action(), "wait_body")
@@ -255,15 +474,16 @@ class Level8BlueGohma1EController(HopController):
             if len(self.gx_hist) >= 4
             else 0.0
         )
-        ly = int(snap.link_y)
-
-        if ly > STAND_Y + STAND_Y_TOL:
-            return FrameAction(nes_action("UP"), "climb")
 
         flight = max(1.0, (ly - int(body.y)) / ARROW_SPEED)
         lead = int(round(gvx * flight))
         lead = max(-LEAD_CLAMP, min(LEAD_CLAMP, lead))
-        target_x = max(LINK_X_MIN, min(LINK_X_MAX, gx + lead))
+        lo, hi = (
+            (COLUMN_X_MIN, COLUMN_X_MAX)
+            if self._hold_column(snap)
+            else (INLAND_X_MIN, INLAND_X_MAX)
+        )
+        target_x = max(lo, min(hi, gx + lead))
         dx = target_x - int(snap.link_x)
 
         if int(snap.rupees) <= 0:
@@ -271,15 +491,17 @@ class Level8BlueGohma1EController(HopController):
         forced = self.frames - self.last_fire >= STUCK_FRAMES
         fresh = 0 <= self.eye_open_since <= EYE_EDGE_WINDOW
         if self.cooldown <= 0 and (fresh or forced) and abs(dx) <= FIRE_TOL:
-            if int(snap.facing) != FACE_NORTH:
-                return FrameAction(nes_action("UP"), "face_up")
-            self.cooldown = SHOT_COOLDOWN
-            self.last_fire = self.frames
-            self.shots += 1
-            return FrameAction(nes_action("UP", "B"), "arrow_shot")
+            return self._arrow_fire(snap)
 
         if abs(dx) > ALIGN_TOL:
-            return FrameAction(nes_action("RIGHT" if dx > 0 else "LEFT"), "strafe")
+            go_right = dx > 0
+            # y=189 RIGHT-strafe walked into the SE statue stream (140,189).
+            if go_right and (ly >= GOHMA_DOOR_LIP_Y or self._se_shot(snap)):
+                if ly > STAND_Y:
+                    return FrameAction(nes_action("UP"), "climb")
+                return self._sidestep(snap, int(snap.link_x) + 16, "climb_dodge_fb")
+            btn = "RIGHT" if go_right else "LEFT"
+            return self._clamp_hmove(snap, btn, "strafe")
         if ly < STAND_Y - STAND_Y_TOL:
             return FrameAction(nes_action("DOWN"), "settle")
         return FrameAction(nes_idle_action(), "eye_wait")
@@ -703,9 +925,16 @@ def make_magic_key_stairs_live_controller() -> Level8MagicKeyStairsController:
 __all__ = [
     "BLUE_GOHMA_ARROWS_REQUIRED",
     "CELLAR_ROOM_0F",
+    "GOHMA_BODY_CONTACT",
     "GOHMA_BODY_TYPES_1E",
     "GOHMA_DEST_1F",
+    "GOHMA_DOOR_LIP_Y",
     "GOHMA_ROOM_1E",
+    "COLUMN_X_MAX",
+    "COLUMN_X_MIN",
+    "INLAND_X_MAX",
+    "INLAND_X_MIN",
+    "STAND_Y",
     "STAIRS_ROOM_1F",
     "Level8BlueGohma1EController",
     "Level8MagicKeyStairsController",

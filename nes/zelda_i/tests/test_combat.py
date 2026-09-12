@@ -7,13 +7,27 @@ from zelda_i.combat import (
     FACING_EAST,
     FACING_NORTH,
     FACING_SOUTH,
+    FLOOR_DROP_TYPES,
+    HEART_OR_FAIRY_TYPES,
     SWORD_HALF_WIDTH,
     SWORD_REACH,
     THREAT_RADIUS,
+    floor_drops,
     in_sword_hitbox,
+    is_floor_drop,
+    is_heart_or_fairy_drop,
     nearest_enemy,
+    nearest_floor_drop,
     overworld_threat_objects,
     should_swing_at,
+    wants_heart_pickup,
+)
+from zelda_i.dungeon.ids import (
+    GHINI_FLYING_OBJECT_TYPE,
+    HEART_DROP_OBJECT_TYPE,
+    HEART_DROP_STATE,
+    RUPEE_DROP_OBJECT_TYPE,
+    RUPEE_DROP_STATE,
 )
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
@@ -25,6 +39,7 @@ def _obj(
     x: int = 100,
     y: int = 100,
     hp: int = 0x20,
+    state: int = 0,
 ) -> ZeldaObject:
     return ZeldaObject(
         slot=slot,
@@ -33,7 +48,7 @@ def _obj(
         y=y,
         facing=FACING_SOUTH,
         hp=hp,
-        state=0,
+        state=state,
     )
 
 
@@ -41,7 +56,11 @@ def _snap(
     *,
     link_x: int = 120,
     link_y: int = 141,
+    health: int = 0x2F,
     objects: tuple[ZeldaObject, ...] = (),
+    world_kill_count: int = 0,
+    help_drop_count: int = 0,
+    help_drop_value: int = 0,
 ) -> ZeldaSnapshot:
     return ZeldaSnapshot(
         mode=5,
@@ -55,7 +74,7 @@ def _snap(
         bombs=0,
         rupees=0,
         keys=0,
-        health=0x2F,
+        health=health,
         triforce=0,
         compass=0,
         dialog_timer=0,
@@ -66,6 +85,9 @@ def _snap(
         cur_opened_doors=0,
         open_doorway_mask=0,
         objects=objects,
+        world_kill_count=world_kill_count,
+        help_drop_count=help_drop_count,
+        help_drop_value=help_drop_value,
     )
 
 
@@ -172,3 +194,89 @@ def test_overworld_threat_objects_drops_rupee_and_hp_zero() -> None:
     drop = _obj(3, type_id=0x60, x=120, y=100, hp=1)
     snap = _snap(objects=(live, dead, drop))
     assert overworld_threat_objects(snap) == (live,)
+
+
+def test_overworld_threat_objects_skips_heart_drop_even_with_hp() -> None:
+    live = _obj(1, type_id=0x07, x=100, y=100, hp=0x20)
+    heart = _obj(
+        2,
+        type_id=HEART_DROP_OBJECT_TYPE,
+        x=120,
+        y=100,
+        hp=1,
+        state=HEART_DROP_STATE,
+    )
+    snap = _snap(objects=(live, heart))
+    assert overworld_threat_objects(snap) == (live,)
+    assert heart.type_id in FLOOR_DROP_TYPES
+
+
+def test_floor_drops_finds_heart_ignores_living_ghini() -> None:
+    """Heart is ObjType 0x60 + state 0x22; 0x22 as type is ghini_flying."""
+    heart = _obj(
+        1,
+        type_id=HEART_DROP_OBJECT_TYPE,
+        x=140,
+        y=141,
+        hp=0,
+        state=HEART_DROP_STATE,
+    )
+    ghini = _obj(2, type_id=GHINI_FLYING_OBJECT_TYPE, x=160, y=141, hp=0x20)
+    octorok = _obj(3, type_id=0x07, x=80, y=141, hp=0x10)
+    snap = _snap(objects=(heart, ghini, octorok))
+    assert is_floor_drop(heart)
+    assert not is_floor_drop(ghini)
+    assert not is_floor_drop(octorok)
+    assert floor_drops(snap) == (heart,)
+    assert ghini not in floor_drops(snap)
+    assert is_heart_or_fairy_drop(heart)
+    assert heart.type_id in HEART_OR_FAIRY_TYPES
+
+
+def test_floor_drops_rupee_is_drop_not_heart() -> None:
+    rupee = _obj(
+        1,
+        type_id=RUPEE_DROP_OBJECT_TYPE,
+        x=140,
+        y=141,
+        hp=0,
+        state=RUPEE_DROP_STATE,
+    )
+    snap = _snap(objects=(rupee,))
+    assert is_floor_drop(rupee)
+    assert not is_heart_or_fairy_drop(rupee)
+    assert floor_drops(snap) == (rupee,)
+
+
+def test_nearest_floor_drop() -> None:
+    far = _obj(
+        1,
+        type_id=HEART_DROP_OBJECT_TYPE,
+        x=200,
+        y=141,
+        hp=0,
+        state=HEART_DROP_STATE,
+    )
+    near = _obj(
+        2,
+        type_id=RUPEE_DROP_OBJECT_TYPE,
+        x=130,
+        y=141,
+        hp=0,
+        state=RUPEE_DROP_STATE,
+    )
+    ghini = _obj(3, type_id=GHINI_FLYING_OBJECT_TYPE, x=125, y=141, hp=0x20)
+    snap = _snap(link_x=120, link_y=141, objects=(far, near, ghini))
+    assert nearest_floor_drop(snap) is near
+    assert nearest_floor_drop(snap, types=FLOOR_DROP_TYPES) is near
+    assert nearest_floor_drop(_snap(objects=())) is None
+
+
+def test_wants_heart_pickup_two_of_three_vs_full() -> None:
+    """2/3 (0x21) wants a heart; 3/3 (0x22, lo==hi) does not."""
+    assert wants_heart_pickup(_snap(health=0x21)) is True
+    assert wants_heart_pickup(_snap(health=0x22)) is False
+    two_of_four = _snap(health=0x31)
+    assert two_of_four.filled_hearts == 1
+    assert two_of_four.heart_containers == 4
+    assert wants_heart_pickup(two_of_four) is True

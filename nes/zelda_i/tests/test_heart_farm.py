@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from retro_harness.nes import nes_action
 
+from zelda_i import combat as _combat
+from zelda_i.dungeon import ids as _ids
 from zelda_i.dungeon.behaviors import GORIYA_BOOMERANG_TYPE
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon.ids import HEART_DROP_STATE, RUPEE_DROP_OBJECT_TYPE, RUPEE_DROP_STATE
 from zelda_i.overworld.heart_farm import HeartFarmController, HeartFarmPhase
 from zelda_i.overworld.locations import farm_at
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
@@ -42,6 +44,19 @@ def _snap(**kwargs) -> ZeldaSnapshot:
     )
     fields.update(kwargs)
     return ZeldaSnapshot(**fields)
+
+
+def _heart_drop_type() -> int:
+    """Prefer collector/id constants; else a non-rupee hp==0 dummy the fallback accepts."""
+    typed = getattr(_ids, "HEART_DROP_OBJECT_TYPE", None)
+    if typed is None:
+        typed = getattr(_combat, "HEART_DROP_OBJECT_TYPE", None)
+    if typed is not None:
+        return int(typed)
+    types = getattr(_combat, "HEART_OR_FAIRY_TYPES", None)
+    if types:
+        return int(next(iter(types)))
+    return 0x61
 
 
 def _farm(**overrides) -> HeartFarmController:
@@ -158,12 +173,47 @@ def test_chases_live_prey_on_farm_screen() -> None:
 
 def test_walks_onto_rupee_drop_when_no_prey() -> None:
     drop = ZeldaObject(
-        slot=2, type_id=RUPEE_DROP_OBJECT_TYPE, x=180, y=149, facing=0, hp=0, state=0
+        slot=2, type_id=RUPEE_DROP_OBJECT_TYPE, x=180, y=149, facing=0, hp=0, state=RUPEE_DROP_STATE
     )
     farm = _farm()
     act = farm.step(_snap(link_x=120, link_y=149, objects=(drop,)))
     assert "farm_rupee" in act.reason
     assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_walks_onto_heart_drop_when_no_enemies() -> None:
+    heart = ZeldaObject(
+        slot=2, type_id=_heart_drop_type(), x=180, y=149, facing=0, hp=0, state=HEART_DROP_STATE
+    )
+    farm = _farm()
+    act = farm.step(_snap(link_x=120, link_y=149, objects=(heart,)))
+    assert "farm_heart" in act.reason
+    assert "farm_wait" not in act.reason
+    assert act.reason != "farm"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert farm.phase is HeartFarmPhase.FARM
+
+
+def test_prefers_heart_drop_over_rupee() -> None:
+    heart = ZeldaObject(
+        slot=2, type_id=_heart_drop_type(), x=180, y=149, facing=0, hp=0, state=HEART_DROP_STATE
+    )
+    rupee = ZeldaObject(
+        slot=3, type_id=RUPEE_DROP_OBJECT_TYPE, x=80, y=149, facing=0, hp=0, state=RUPEE_DROP_STATE
+    )
+    farm = _farm()
+    act = farm.step(_snap(link_x=120, link_y=149, objects=(rupee, heart)))
+    assert "farm_heart" in act.reason
+    assert "farm_rupee" not in act.reason
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_chases_enemies_when_no_heart_or_fairy_drops() -> None:
+    prey = ZeldaObject(slot=3, type_id=0x11, x=180, y=149, facing=0, hp=1, state=0)
+    farm = _farm()
+    act = farm.step(_snap(link_x=120, link_y=149, objects=(prey,)))
+    assert "farm_chase" in act.reason
+    assert farm.phase is HeartFarmPhase.FARM
 
 
 def test_link_death_fails() -> None:

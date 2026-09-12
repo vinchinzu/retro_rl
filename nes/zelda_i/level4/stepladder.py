@@ -251,6 +251,10 @@ class Level4Clear30Controller:
                         "center_x_south",
                     )
                 if snap.link_y > _NORTH_BAND_Y:
+                    if (self.frames % 6) < 3:
+                        return FrameAction(
+                            nes_action("UP", "A"), "walk_north_band_slash"
+                        )
                     return FrameAction(nes_action("UP"), "walk_north_band")
                 self._set_phase(Clear30Phase.FIGHT, "on_north_band")
 
@@ -668,17 +672,20 @@ class Level4StepladderController:
             # Geom from (176,151) y-first to island y=141 then LEFT (not LEFT at 151).
             # v28-v31 LEFT at y=149..157 is water / y-yo-yo; dock continues north.
             if i >= 2 and xy[0] >= 160 and abs(xy[1] - 141) > 2:
-                return FrameAction(
-                    nes_action("UP" if xy[1] > 141 else "DOWN"), "join_dock_y"
-                )
+                direction = "UP" if xy[1] > 141 else "DOWN"
+                if (self.frames % 6) < 3:
+                    return FrameAction(nes_action(direction, "A"), "join_dock_y")
+                return FrameAction(nes_action(direction), "join_dock_y")
             if abs(dy) > 1 and (abs(dx) <= 8 or abs(dy) >= abs(dx)):
-                return FrameAction(
-                    nes_action("DOWN" if dy > 0 else "UP"), "join_dock_y"
-                )
+                direction = "DOWN" if dy > 0 else "UP"
+                if (self.frames % 6) < 3:
+                    return FrameAction(nes_action(direction, "A"), "join_dock_y")
+                return FrameAction(nes_action(direction), "join_dock_y")
             if dx != 0:
-                return FrameAction(
-                    nes_action("RIGHT" if dx > 0 else "LEFT"), "join_dock_x"
-                )
+                direction = "RIGHT" if dx > 0 else "LEFT"
+                if (self.frames % 6) < 3:
+                    return FrameAction(nes_action(direction, "A"), "join_dock_x")
+                return FrameAction(nes_action(direction), "join_dock_x")
             return FrameAction(nes_idle_action(), "dock_idle")
 
         if self.phase is StepladderPhase.HUNT:
@@ -696,7 +703,8 @@ class Level4StepladderController:
                     self.success = True
                     self._set_phase(StepladderPhase.DONE, "ladder_pedestal")
                     return FrameAction(nes_idle_action(), "done")
-                return FrameAction(nes_idle_action(), "hunt_idle")
+                spin_dir = ("UP", "RIGHT", "DOWN", "LEFT")[self.frames // 6 % 4]
+                return FrameAction(nes_action(spin_dir, "A"), "hunt_idle")
             if self._stall >= ROOM_60_CLIP_BUDGET:
                 self._sample(snap, "hunt_solid")
                 return self._fail(f"hunt_solid_{xy[0]}_{xy[1]}")

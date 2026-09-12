@@ -158,6 +158,8 @@ ROOM_66_SPEC = DungeonRoomSpec(
         # north of the water; same occupancy as ROOM_66_SPINE_SPEC.
         occupancy_patrol=True,
         occupancy_bounds=(16, 216, 77, 205),
+        # Clean leftover (128,133) walked into 3× Gibdo. Intermittent peel.
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     required_open_doors=ROOM_66_EAST_DOOR_BIT,
@@ -521,13 +523,11 @@ def level5_in_room_24(ram: np.ndarray) -> bool:
 
 @dataclass
 class Level5PolsVoiceController(GenericDungeonRoomController):
-    """Pols Voice clear + tactical spacing/backstep and focus-fire.
+    """Pols Voice: 10 wooden-sword hits, hop arcs, no knockback.
 
-    Pols Voice: HP=160 (10 wooden sword hits), hops in arcs, no knockback.
-    Link transits from west door north then east into central aisle (x=96..144).
-    Tactical evasion side-steps leaping Pols Voices perpendicularly and backsteps
-    from grounded threats. Strikes only grounded enemies and retreats to maintain
-    safe distance. Avoids false occupancy miss walling and outer block clusters.
+    West door transits north then east into the aisle (x=96..144). Moving
+    bodies are airborne — strike only when still, never chase a hop.
+    Occupancy miss → block that cell → replan; no path → stand.
     """
 
     last_progress_frame: int = 0
@@ -610,18 +610,21 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         def _manh(x1: int, y1: int, x2: int, y2: int) -> int:
             return abs(x1 - x2) + abs(y1 - y2)
 
-        # Track enemy velocities and projected positions
+        # Displacement is the hop signal (ObjState is not flyer-state).
         projected = []
+        airborne: set[int] = set()
         for e in live:
             old_x, old_y = self.enemy_prev_pos.get(e.slot, (e.x, e.y))
             vx = e.x - old_x
             vy = e.y - old_y
             self.enemy_prev_pos[e.slot] = (e.x, e.y)
-            proj_x = e.x + (vx * 4 if e.state == 1 else 0)
-            proj_y = e.y + (vy * 4 if e.state == 1 else 0)
+            in_air = e.state == 1 or vx != 0 or vy != 0
+            if in_air:
+                airborne.add(e.slot)
+            proj_x = e.x + (vx * 4 if in_air else 0)
+            proj_y = e.y + (vy * 4 if in_air else 0)
             projected.append((e, proj_x, proj_y))
 
-        # Occupancy miss tracking: only when NOT in attack cooldown and NOT backstepping
         if self.last_pos == (lx, ly):
             if (
                 self.last_dir is not None
@@ -652,8 +655,12 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
         closest_enemy = min(live, key=lambda o: _cheb(lx, ly, o.x, o.y))
         min_cheb = _cheb(lx, ly, closest_enemy.x, closest_enemy.y)
 
-        # Uninterruptible backstep / evasion continuation
-        if self.backstep_frames > 0:
+        hop_close = any(
+            e.slot in airborne
+            and min(_cheb(lx, ly, e.x, e.y), _cheb(lx, ly, px, py)) <= 20
+            for e, px, py in projected
+        )
+        if self.backstep_frames > 0 and not hop_close:
             self.backstep_frames -= 1
             if self._can_move(lx, ly, self.backstep_dir):
                 self.last_dir = self.backstep_dir
@@ -670,8 +677,9 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                         f"backstep_alt_{alt}",
                     )
             self.backstep_frames = 0
+        elif hop_close:
+            self.backstep_frames = 0
 
-        # Helper: find safest move away from all enemies and walls
         def safest_move(dirs: tuple[str, ...]) -> str | None:
             valid = [d for d in dirs if self._can_move(lx, ly, d)]
             if not valid:
@@ -703,7 +711,6 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
 
             return max(valid, key=safety_score)
 
-        # Emergency contact evasion: Pols Voice within 14 px
         if min_cheb <= 14:
             c = safest_move(("LEFT", "RIGHT", "UP", "DOWN"))
             if c:
@@ -723,7 +730,6 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                 "corner_swing",
             )
 
-        # West door exit transit: route north then east into central aisle
         if lx < 88:
             if ly > 109 and self._can_move(lx, ly, "UP"):
                 self.last_dir = "UP"
@@ -736,20 +742,22 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
             self.last_dir = "RIGHT"
             return FrameAction(nes_action("RIGHT"), "reach_central_aisle")
 
-        # Arena re-entry if knocked out of central arena
         if self.entered_central:
             for chk, d in ((ly > 165, "UP"), (ly < 112, "DOWN"), (lx < 96, "RIGHT"), (lx > 144, "LEFT")):
                 if chk and self._can_move(lx, ly, d):
                     self.last_dir = d
                     return FrameAction(nes_action(d), f"arena_return_{d}")
 
-        # Strike Timing against Grounded Enemy
         c_dx = closest_enemy.x - lx
         c_dy = closest_enemy.y - ly
         col_aligned = abs(c_dx) <= 12 and 12 <= abs(c_dy) <= 24
         row_aligned = abs(c_dy) <= 12 and 12 <= abs(c_dx) <= 24
 
-        if (col_aligned or row_aligned) and closest_enemy.state == 0:
+        if (
+            (col_aligned or row_aligned)
+            and closest_enemy.state == 0
+            and closest_enemy.slot not in airborne
+        ):
             if col_aligned:
                 dir_to = "DOWN" if c_dy > 0 else "UP"
             else:
@@ -766,21 +774,23 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                 )
             return FrameAction(nes_action("A"), "strike_grounded_retreat")
 
-        # Leaping Threat Evasion: Pols Voice leaping towards Link (state == 1, dist <= 36)
         leaping_threats = [
-            e for e in live if e.state == 1 and _cheb(lx, ly, e.x, e.y) <= 36
+            (e, px, py)
+            for e, px, py in projected
+            if e.slot in airborne
+            and min(_cheb(lx, ly, e.x, e.y), _cheb(lx, ly, px, py)) <= 40
         ]
         if leaping_threats:
-            threat = min(leaping_threats, key=lambda o: _cheb(lx, ly, o.x, o.y))
+            threat, _, _ = min(
+                leaping_threats, key=lambda t: _cheb(lx, ly, t[0].x, t[0].y)
+            )
             tdx = threat.x - lx
             tdy = threat.y - ly
             if abs(tdx) >= abs(tdy):
                 p_dirs = ("DOWN", "UP") if ly < 141 else ("UP", "DOWN")
             else:
                 p_dirs = ("RIGHT", "LEFT") if lx < 120 else ("LEFT", "RIGHT")
-            c = safest_move(p_dirs)
-            if not c:
-                c = safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
+            c = safest_move(p_dirs) or safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
             if c:
                 self.backstep_dir = c
                 self.backstep_frames = 5
@@ -792,15 +802,21 @@ class Level5PolsVoiceController(GenericDungeonRoomController):
                 self.last_dir = "DOWN"
                 return FrameAction(nes_action("DOWN"), "center_down")
 
-        # Target selection: prioritize grounded and wounded enemies near central aisle
         def score(o: ZeldaObject) -> int:
             d = _manh(lx, ly, o.x, o.y)
             hp_cost = (o.hp // 16) * 15
-            state_cost = 30 if o.state == 1 else 0
+            state_cost = 30 if o.slot in airborne else 0
             pocket_cost = 40 if (o.x < 88 and o.y > 109) else 0
             return d + hp_cost + state_cost + pocket_cost
 
         tgt = min(live, key=score)
+        if tgt.slot in airborne:
+            c = safest_move(("UP", "DOWN", "LEFT", "RIGHT"))
+            if c:
+                self.last_dir = c
+                return FrameAction(nes_action(c), f"hold_air_{c}")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
         dx = tgt.x - lx
         dy = tgt.y - ly
 

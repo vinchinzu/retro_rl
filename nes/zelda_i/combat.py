@@ -8,7 +8,18 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon.ids import (
+    CLOCK_DROP_OBJECT_TYPE,
+    FAIRY_DROP_OBJECT_TYPE,
+    FAIRY_DROP_STATE,
+    FIVE_RUPEE_DROP_OBJECT_TYPE,
+    FIVE_RUPEE_DROP_STATE,
+    GHINI_FLYING_OBJECT_TYPE,
+    HEART_DROP_OBJECT_TYPE,
+    HEART_DROP_STATE,
+    RUPEE_DROP_OBJECT_TYPE,
+    RUPEE_DROP_STATE,
+)
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 # Conservative NES wooden-sword reach (engine ~16–24 px).
@@ -163,19 +174,113 @@ def should_swing_at(
     return False
 
 
-def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
-    """Live OW combatants: typed, in-bounds, hp>0, not rupee drops.
+# Live At4A: every floor drop is ObjType 0x60. Item code is ObjState
+# (0x22 heart, 0x23 fairy, 0x18 rupee, 0x0F 5-rupee, 0x21 clock).
+# Type 0x22 is ghini_flying, never a heart.
+FLOOR_DROP_TYPES = frozenset(
+    {
+        RUPEE_DROP_OBJECT_TYPE,
+        HEART_DROP_OBJECT_TYPE,
+        FAIRY_DROP_OBJECT_TYPE,
+        FIVE_RUPEE_DROP_OBJECT_TYPE,
+        CLOCK_DROP_OBJECT_TYPE,
+    }
+)
+HEART_OR_FAIRY_TYPES = frozenset({HEART_DROP_OBJECT_TYPE, FAIRY_DROP_OBJECT_TYPE})
+HEART_OR_FAIRY_STATES = frozenset({HEART_DROP_STATE, FAIRY_DROP_STATE})
+RUPEE_DROP_STATES = frozenset({RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE})
 
-    OW octoroks use HP; corpses (hp<=0) and type 0x60 drops are not threats.
-    Type-only liveness (Keese) is a dungeon rule — kept local to avoid a
-    combat→behaviors import cycle.
+
+def _in_drop_bounds(obj: ZeldaObject) -> bool:
+    return obj.slot >= 1 and 8 < obj.x < 248 and 40 < obj.y < 220
+
+
+def is_floor_drop(obj: ZeldaObject) -> bool:
+    """True for an in-bounds floor drop sprite (never a living ghini).
+
+    Live type_id is 0x60 (hp 0, flash 0x80). Heart vs rupee is ObjState
+    (0x22 vs 0x18), not ObjType — 0x22 as type is ``ghini_flying``.
+    """
+    if not _in_drop_bounds(obj):
+        return False
+    if int(obj.type_id) == GHINI_FLYING_OBJECT_TYPE:
+        return False
+    return int(obj.type_id) in FLOOR_DROP_TYPES
+
+
+def is_heart_or_fairy_drop(obj: ZeldaObject) -> bool:
+    """Heart/fairy among 0x60 drops: ObjState item code 0x22 / 0x23."""
+    return is_floor_drop(obj) and int(obj.state) in HEART_OR_FAIRY_STATES
+
+
+def floor_drops(
+    snap: ZeldaSnapshot,
+    types: Iterable[int] | None = None,
+    states: Iterable[int] | None = None,
+) -> tuple[ZeldaObject, ...]:
+    """In-bounds 0x60 floor drops, optionally filtered by ObjType and ObjState.
+
+    Live item identity is ObjState (heart 0x22, fairy 0x23, rupee 0x18).
+    Filtering by type alone returns every drop.
+    """
+    wanted_types = (
+        FLOOR_DROP_TYPES if types is None else frozenset(int(t) for t in types)
+    )
+    wanted_states = (
+        None if states is None else frozenset(int(s) for s in states)
+    )
+    return tuple(
+        obj
+        for obj in snap.objects
+        if is_floor_drop(obj)
+        and int(obj.type_id) in wanted_types
+        and (wanted_states is None or int(obj.state) in wanted_states)
+    )
+
+
+def heart_or_fairy_drops(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    return floor_drops(snap, states=HEART_OR_FAIRY_STATES)
+
+
+def nearest_floor_drop(
+    snap: ZeldaSnapshot | int,
+    types: Iterable[int] | None = None,
+    drops: Iterable[ZeldaObject] | None = None,
+    *,
+    states: Iterable[int] | None = None,
+) -> ZeldaObject | None:
+    """Nearest floor drop to Link. Also accepts ``(link_x, link_y, drops)``."""
+    if drops is not None:
+        return nearest_enemy(int(snap), int(types or 0), drops)
+    if not isinstance(snap, ZeldaSnapshot):
+        return None
+    return nearest_enemy(
+        snap.link_x, snap.link_y, floor_drops(snap, types, states=states)
+    )
+
+
+def nearest_heart_or_fairy(snap: ZeldaSnapshot) -> ZeldaObject | None:
+    return nearest_floor_drop(snap, states=HEART_OR_FAIRY_STATES)
+
+
+def wants_heart_pickup(snap: ZeldaSnapshot) -> bool:
+    """True when a container is empty (2/3 yes, 3/3 no). min_filled is the caller."""
+    return not snap.health_is_full
+
+
+def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    """Live OW combatants: typed, in-bounds, hp>0, not floor drops.
+
+    OW octoroks use HP; corpses (hp<=0) and type 0x60 drops (heart/rupee/fairy
+    even with hp>0) are not threats. Type-only liveness (Keese) is a dungeon
+    rule — kept local to avoid a combat→behaviors import cycle.
     """
     return tuple(
         obj
         for obj in snap.objects
         if obj.slot >= 1
         and obj.type_id not in (0, 0xFF)
-        and int(obj.type_id) != RUPEE_DROP_OBJECT_TYPE
+        and int(obj.type_id) not in FLOOR_DROP_TYPES
         and int(obj.hp) > 0
         and 40 < obj.y < 220
         and 8 < obj.x < 248
@@ -192,6 +297,10 @@ __all__ = [
     "FACING_SOUTH",
     "FACING_EAST",
     "FACING_WEST",
+    "FLOOR_DROP_TYPES",
+    "HEART_OR_FAIRY_TYPES",
+    "HEART_OR_FAIRY_STATES",
+    "RUPEE_DROP_STATES",
     "direction_to_facing",
     "facing_to_direction",
     "manhattan",
@@ -200,4 +309,11 @@ __all__ = [
     "nearest_enemy",
     "should_swing_at",
     "overworld_threat_objects",
+    "is_floor_drop",
+    "is_heart_or_fairy_drop",
+    "floor_drops",
+    "heart_or_fairy_drops",
+    "nearest_floor_drop",
+    "nearest_heart_or_fairy",
+    "wants_heart_pickup",
 ]

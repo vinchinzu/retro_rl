@@ -108,15 +108,17 @@ def _occ(
 
 
 # Open-floor patrol; wizzrobes teleport — cover mid lanes.
+# West column is x=80, not x=64: cart-WRAM block (64,112)-(64,128) traps
+# patrol-nearest (64,109) from leftover (64,117) (Clean east-key timeout).
 _ROOM_7A_PATROL: tuple[tuple[int, int], ...] = (
-    (64, 109),
+    (80, 109),
     (120, 109),
     (176, 109),
     (176, 141),
     (176, 173),
     (120, 173),
-    (64, 173),
-    (64, 141),
+    (80, 173),
+    (80, 141),
     (120, 141),
 )
 
@@ -210,6 +212,7 @@ ROOM_78_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         engage_attack_period=6,
         engage_attack_hold=3,
+        inland_dash=24,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x03,

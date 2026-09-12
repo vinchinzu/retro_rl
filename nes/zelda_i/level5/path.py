@@ -21,15 +21,20 @@ from dataclasses import dataclass, field
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 
+from zelda_i.dungeon.behaviors import fight_target
+from zelda_i.dungeon.engine import GenericDungeonRoomController
 from zelda_i.dungeon.hop_controller import HopController
 from zelda_i.level5.dungeon import (
     LEVEL_5,
+    ROOM_66_SPEC,
+    ROOM_77_SPEC,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
     ROOM_L5_NORTH_56,
     ROOM_L5_POLS_77,
+    Level5PolsVoiceController,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 EAST_DOOR_APPROACH_Y = 157
 EAST_DOOR_CHANNEL_Y = 141
@@ -309,6 +314,202 @@ def make_east_key_nav_controller() -> Level5NavController:
     return Level5NavController(EAST_KEY_77_NAV)
 
 
+# Clean leftover (64,120): occupancy no-path stood 20000f. NW pocket peels
+# DOWN to the y=149 patrol row, then RIGHT; contact_backstep stays 16.
+_ROOM66_POCKET_X = 80
+_ROOM66_POCKET_Y = 133
+_ROOM66_SOUTH_ROW_Y = 149
+
+
+@dataclass
+class Level5Room66Controller(GenericDungeonRoomController):
+    """0x66 Gibdos: leave the NW occupancy pocket south instead of standing."""
+
+    _pocket_peel: bool = False
+
+    def _combat(
+        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+    ) -> FrameAction:
+        x, y = int(snap.link_x), int(snap.link_y)
+        target = fight_target(x, y, live) if live else None
+        dist = (
+            abs(int(target.x) - x) + abs(int(target.y) - y)
+            if target is not None
+            else 10**9
+        )
+        close = (
+            target is not None
+            and self.spec.combat.contact_backstep > 0
+            and dist < self.spec.combat.contact_backstep
+        )
+        if target is not None and not close and x <= _ROOM66_POCKET_X:
+            outside = (
+                int(target.x) > _ROOM66_POCKET_X or int(target.y) > _ROOM66_POCKET_Y
+            )
+            still_north = y <= _ROOM66_POCKET_Y or (
+                self._pocket_peel and y < _ROOM66_SOUTH_ROW_Y
+            )
+            if outside and still_north:
+                self._pocket_peel = True
+                self.combat_frames += 1
+                self.walker.last_dir = "DOWN"
+                return FrameAction(nes_action("DOWN"), "66_pocket_south")
+            if y >= _ROOM66_SOUTH_ROW_Y:
+                self._pocket_peel = False
+        act = super()._combat(snap, live)
+        if (
+            target is not None
+            and not close
+            and act.reason == "combat_wait"
+            and x <= _ROOM66_POCKET_X
+            and y >= _ROOM66_SOUTH_ROW_Y
+        ):
+            self.walker.last_dir = "RIGHT"
+            return FrameAction(nes_action("RIGHT"), "66_pocket_east")
+        return act
+
+
+def make_room66_controller(spec=None) -> Level5Room66Controller:
+    return Level5Room66Controller(spec=spec if spec is not None else ROOM_66_SPEC)
+
+
+# 0x77 leftover (101,141): waist between the two 2x3 islands. Islands are
+# already _is_solid; do not stand/chase y=141. Hold box x=96..132, y=165..177
+# (aisle). y>=177 peels off the south lip. x>=132 never RIGHT — leftover
+# (139,173) walked into the east 2x3 (island occupancy at x=145).
+_ROOM77_WAIST_X = (96, 144)
+_ROOM77_WAIST_Y = (133, 149)
+_ROOM77_SOUTH_Y = 173
+_ROOM77_LIP_Y = 177
+_ROOM77_ISLAND_X = 140
+_ROOM77_HOLD_MAX_X = 132
+_ROOM77_HOLD_X = 120
+_ROOM77_HOLD_SLASH_CHEB = 24
+_ROOM77_HOLD_LEAP_CHEB = 40
+
+
+@dataclass
+class Level5PolsSouthController(Level5PolsVoiceController):
+    """Pols: leave the y=141 waist south; slash only on the y>=173 row."""
+
+    def _hold_threats(
+        self, lx: int, ly: int, live: tuple[ZeldaObject, ...]
+    ) -> tuple[ZeldaObject | None, ZeldaObject | None]:
+        """Landed = still in cheb<=24. Hopper = state!=0 or vx/vy, cheb<=40."""
+        landed: ZeldaObject | None = None
+        hopper: ZeldaObject | None = None
+        land_d = _ROOM77_HOLD_SLASH_CHEB + 1
+        hop_d = _ROOM77_HOLD_LEAP_CHEB + 1
+        for e in live:
+            old_x, old_y = self.enemy_prev_pos.get(e.slot, (e.x, e.y))
+            vx, vy = int(e.x) - old_x, int(e.y) - old_y
+            hopping = e.state != 0 or vx != 0 or vy != 0
+            d = max(abs(int(e.x) - lx), abs(int(e.y) - ly))
+            if hopping:
+                if d <= _ROOM77_HOLD_LEAP_CHEB and d < hop_d:
+                    hopper, hop_d = e, d
+            elif d <= _ROOM77_HOLD_SLASH_CHEB and d < land_d:
+                landed, land_d = e, d
+        return landed, hopper
+
+    def _combat(
+        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+    ) -> FrameAction:
+        # Parent overwrites enemy_prev_pos; snapshot landed/hopper first.
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        landed, hopper = (
+            self._hold_threats(lx, ly, live) if live else (None, None)
+        )
+        act = super()._combat(snap, live)
+        if not live:
+            return act
+        # SW pocket leftover (61,173): already inside _is_solid. Do not wait
+        # on _can_move — walk east into the south aisle before slash/DOWN.
+        if lx < _ROOM77_WAIST_X[0] and ly >= _ROOM77_SOUTH_Y:
+            self.last_dir = "RIGHT"
+            return FrameAction(nes_action("RIGHT"), "77_aisle_east")
+        # Leftovers (142,181) / (136,179): south lip. Peel UP/LEFT, not A/DOWN.
+        if ly >= _ROOM77_LIP_Y:
+            if self._can_move(lx, ly, "UP"):
+                self.last_dir = "UP"
+                return FrameAction(nes_action("UP"), "77_lip_north")
+            self.last_dir = "LEFT"
+            return FrameAction(nes_action("LEFT"), "77_aisle_west")
+        if lx >= _ROOM77_ISLAND_X and ly >= 165:
+            self.last_dir = "LEFT"
+            return FrameAction(nes_action("LEFT"), "77_aisle_west")
+        in_aisle = _ROOM77_WAIST_X[0] <= lx <= _ROOM77_WAIST_X[1]
+        waist = in_aisle and _ROOM77_WAIST_Y[0] <= ly <= _ROOM77_WAIST_Y[1]
+        if waist and self._can_move(lx, ly, "DOWN"):
+            self.last_dir = "DOWN"
+            return FrameAction(nes_action("DOWN"), "77_waist_south")
+        # Hold y=173. Hopper peels L/R even at x==120 — do not center-seek
+        # back under the landing. Slash only landed. x in [96,132], no y>=177.
+        on_hold = in_aisle and _ROOM77_SOUTH_Y <= ly < _ROOM77_LIP_Y
+        if on_hold and hopper is not None:
+            prefer = "LEFT" if int(hopper.x) >= lx else "RIGHT"
+            other = "RIGHT" if prefer == "LEFT" else "LEFT"
+            for d in (prefer, other):
+                nx = lx - 4 if d == "LEFT" else lx + 4
+                if nx < _ROOM77_WAIST_X[0] or nx > _ROOM77_HOLD_MAX_X:
+                    continue
+                if d == "RIGHT" and lx >= _ROOM77_HOLD_MAX_X:
+                    continue
+                if self._can_move(lx, ly, d):
+                    self.last_dir = d
+                    return FrameAction(nes_action(d), f"77_hold_peel_{d}")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
+        if on_hold and lx > _ROOM77_HOLD_X:
+            if self._can_move(lx, ly, "LEFT"):
+                self.last_dir = "LEFT"
+                return FrameAction(nes_action("LEFT"), "77_hold_peel_LEFT")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
+        if on_hold and lx < _ROOM77_HOLD_X and lx < _ROOM77_HOLD_MAX_X:
+            if self._can_move(lx, ly, "RIGHT"):
+                self.last_dir = "RIGHT"
+                return FrameAction(nes_action("RIGHT"), "77_hold_peel_RIGHT")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
+        if on_hold:
+            if landed is not None:
+                self.last_dir = None
+                return FrameAction(nes_action("A"), "77_hold_slash")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
+        if act.reason.startswith("evade_leap_"):
+            return act
+        slashing = "A" in act.reason or act.reason.startswith(
+            ("strike", "turn_strike", "corner")
+        )
+        if (
+            in_aisle
+            and ly < _ROOM77_SOUTH_Y
+            and slashing
+            and self._can_move(lx, ly, "DOWN")
+        ):
+            self.last_dir = "DOWN"
+            return FrameAction(nes_action("DOWN"), "77_hold_south")
+        west_exit = self.last_dir == "LEFT" and lx <= _ROOM77_WAIST_X[0]
+        if ly >= _ROOM77_SOUTH_Y and (self.last_dir == "UP" or west_exit):
+            for d in ("RIGHT", "LEFT"):
+                if d == "LEFT" and lx <= _ROOM77_WAIST_X[0]:
+                    continue
+                if d == "RIGHT" and lx >= _ROOM77_HOLD_MAX_X:
+                    continue
+                if self._can_move(lx, ly, d):
+                    self.last_dir = d
+                    return FrameAction(nes_action(d), f"hold_south_{d}")
+            self.last_dir = None
+            return FrameAction(nes_idle_action(), "stand_no_path")
+        return act
+
+
+def make_pols_south_controller() -> Level5PolsSouthController:
+    return Level5PolsSouthController(spec=ROOM_77_SPEC)
+
+
 def walk_axis(
     env,
     assist,
@@ -428,8 +629,12 @@ __all__ = [
     "level5_room66_west_aisle_north_step",
     "level5_west65_step",
     "drive_hop",
+    "Level5Room66Controller",
+    "Level5PolsSouthController",
     "make_east_key_nav_controller",
     "make_return_66_controller",
+    "make_room66_controller",
+    "make_pols_south_controller",
     "RamWaitHop",
     "wait_ram",
     "walk_axis",

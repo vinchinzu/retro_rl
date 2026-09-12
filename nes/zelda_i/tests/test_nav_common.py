@@ -4,9 +4,12 @@ import numpy as np
 
 from zelda_i.combat import in_sword_hitbox, overworld_threat_objects, should_swing_at
 from zelda_i.overworld.common import (
+    EDGE_WEST_X,
     KNOCKBACK_STUCK_PENALTY,
     answer_projectile,
     overworld_projectiles,
+    scoop_floor_drop,
+    scoop_toward_drop,
     swing_action,
     track_knockback,
     walk_or_swing,
@@ -24,6 +27,7 @@ from zelda_i.ram import (
     ADDR_OBJ_TYPE,
     ADDR_SCREEN,
     PLAY_MODE,
+    ZeldaObject,
     read_snapshot,
 )
 
@@ -244,3 +248,91 @@ def test_knockback_loop_reaches_the_unstick_ladder() -> None:
             read_snapshot(ram), last_health=0x35, hits=0, stuck=stuck
         )
     assert stuck > 50
+
+
+_HEART_TYPE = 0xFE
+
+
+def _heart(*, x: int, y: int, slot: int = 1) -> ZeldaObject:
+    return ZeldaObject(
+        slot=slot, type_id=_HEART_TYPE, x=x, y=y, facing=0, hp=0, state=0
+    )
+
+
+def test_scoop_toward_drop_walks_cardinal_to_a_nearby_heart() -> None:
+    snap = _snap(x=100, y=140)
+    act = scoop_toward_drop(
+        snap,
+        _heart(x=120, y=140),
+        reason="scoop_heart",
+        travel_dir="RIGHT",
+        radius=48,
+    )
+    assert act is not None
+    assert act.reason == "scoop_heart"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_scoop_toward_drop_refuses_opposite_edge() -> None:
+    snap = _snap(x=40, y=140)
+    act = scoop_toward_drop(
+        snap,
+        _heart(x=EDGE_WEST_X, y=140),
+        reason="scoop_heart",
+        travel_dir="RIGHT",
+        radius=48,
+    )
+    assert act is None
+
+
+def test_scoop_toward_drop_noops_when_obj_is_none_or_far() -> None:
+    snap = _snap(x=100, y=140)
+    assert (
+        scoop_toward_drop(
+            snap, None, reason="scoop_heart", travel_dir="RIGHT", radius=48
+        )
+        is None
+    )
+    assert (
+        scoop_toward_drop(
+            snap,
+            _heart(x=220, y=200),
+            reason="scoop_heart",
+            travel_dir="RIGHT",
+            radius=48,
+        )
+        is None
+    )
+
+
+def test_scoop_floor_drop_noops_when_want_is_false() -> None:
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE] = PLAY_MODE
+    ram[ADDR_SCREEN] = 0x37
+    ram[ADDR_LINK_X] = 100
+    ram[ADDR_LINK_Y] = 140
+    ram[ADDR_OBJ_TYPE + 1] = _HEART_TYPE
+    ram[ADDR_LINK_X + 1] = 120
+    ram[ADDR_LINK_Y + 1] = 140
+    snap = read_snapshot(ram)
+    nearby = scoop_floor_drop(
+        snap,
+        types={_HEART_TYPE},
+        travel_dir="RIGHT",
+        radius=48,
+        reason="scoop_heart",
+        want=True,
+    )
+    assert nearby is not None
+    assert nearby.reason == "scoop_heart"
+    assert (
+        scoop_floor_drop(
+            snap,
+            types={_HEART_TYPE},
+            travel_dir="RIGHT",
+            radius=48,
+            reason="scoop_heart",
+            want=False,
+        )
+        is None
+    )

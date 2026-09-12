@@ -13,7 +13,7 @@ import numpy as np
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import should_swing_at
+from zelda_i.combat import nearest_heart_or_fairy, should_swing_at
 from zelda_i.level1.path import (
     CLEAR_53_MAX_FRAMES,
     CLEAR_63_MAX_FRAMES,
@@ -87,6 +87,7 @@ class Level1Clear63Controller:
     last_live_stalfos: int = 0
     max_live_stalfos: int = 0
     clear_settle_frames: int = 0
+    contact_backstep: int = 16
 
     def reset(self) -> None:
         self.phase = Level1Clear63Phase.FIGHT
@@ -205,6 +206,14 @@ class Level1Clear63Controller:
                     key=lambda obj: abs(obj.x - snap.link_x) + abs(obj.y - snap.link_y),
                 )
                 dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
+                if dist < self.contact_backstep and (self.frames % 6) < 2:
+                    dx = nearest.x - snap.link_x
+                    dy = nearest.y - snap.link_y
+                    if abs(dx) >= abs(dy):
+                        away = "LEFT" if dx > 0 else "RIGHT"
+                    else:
+                        away = "UP" if dy > 0 else "DOWN"
+                    return FrameAction(nes_action(away), "clear_backstep")
                 if dist < CLEAR_ENGAGE_DIST:
                     return self._engage(snap, nearest)
             return self._patrol(snap)
@@ -260,7 +269,7 @@ class Level1Clear53Controller:
     max_live_stalfos: int = 0
     clear_signal_seen: bool = False
     combat: Level1Clear63Controller = field(
-        default_factory=Level1Clear63Controller,
+        default_factory=lambda: Level1Clear63Controller(contact_backstep=24),
         repr=False,
     )
 
@@ -302,7 +311,27 @@ class Level1Clear53Controller:
         return FrameAction(nes_action(direction), "route_room53")
 
     @staticmethod
+    def _scoop_if_low(snap: ZeldaSnapshot) -> FrameAction | None:
+        if int(snap.filled_hearts) >= 2:
+            return None
+        drop = nearest_heart_or_fairy(snap)
+        if drop is None:
+            return None
+        dx = int(drop.x) - int(snap.link_x)
+        dy = int(drop.y) - int(snap.link_y)
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            return FrameAction(nes_idle_action(), "scoop_heart")
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), "scoop_heart")
+
+    @staticmethod
     def _collect_key(snap: ZeldaSnapshot) -> FrameAction:
+        scooped = Level1Clear53Controller._scoop_if_low(snap)
+        if scooped is not None:
+            return scooped
         dx = ROOM_53_KEY_X - snap.link_x
         dy = ROOM_53_KEY_Y - snap.link_y
         if abs(dy) > 5:

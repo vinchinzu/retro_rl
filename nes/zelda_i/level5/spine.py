@@ -20,11 +20,12 @@ from zelda_i.level5.dungeon import (
     ROOM_L5_POLS_77,
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
-    make_pols_voice_controller,
 )
 from zelda_i.level5.path import (
     make_east_key_nav_controller,
+    make_pols_south_controller,
     make_return_66_controller,
+    make_room66_controller,
 )
 from zelda_i.level5.whistle_path import (
     BLUE_DARKNUT_TYPE,
@@ -118,7 +119,7 @@ def level5_clear66_success(snap: ZeldaSnapshot, **_) -> bool:
 
 def _east77_stages():
     nav = make_east_key_nav_controller()
-    fight = make_pols_voice_controller()
+    fight = make_pols_south_controller()
     return (
         ("level5_east_key_0x77", nav, nav.max_frames),
         ("level5_clear_0x77", fight, ROOM_77_SPEC.max_frames),
@@ -189,7 +190,13 @@ def l5_hops() -> tuple[SpineHop, ...]:
         SpineHop(
             "level5-clear66",
             "level5_clear_0x66",
-            (fight_stage("level5_clear_0x66", ROOM_66_SPINE_SPEC),),
+            (
+                fight_stage(
+                    "level5_clear_0x66",
+                    ROOM_66_SPINE_SPEC,
+                    factory=lambda: make_room66_controller(spec=ROOM_66_SPINE_SPEC),
+                ),
+            ),
             level5_clear66_success,
         ),
         SpineHop(
