@@ -83,6 +83,32 @@ def test_post_l5_path_is_contiguous_and_skips_lost_hills_south() -> None:
         assert after in neighbor_screens(before).values(), f"{before:02x}->{after:02x}"
 
 
+def test_clean_entrance_east_key_success_skips_prior_tf() -> None:
+    from zelda_i.level6.hops import l6_prefix
+    from zelda_i.ram import read_snapshot
+    from zelda_i.tests.ram_helpers import make_ram
+
+    ram = make_ram(
+        {},
+        mode=PLAY_MODE,
+        level=6,
+        screen=0x7A,
+        x=120,
+        y=137,
+        keys=1,
+        triforce=0,
+    )
+    snap = read_snapshot(ram)
+    survival = next(h for h in l6_prefix(None) if h.through == "level6-east-key")
+    clean = next(
+        h
+        for h in l6_prefix(None, require_prior_tf=False)
+        if h.through == "level6-east-key"
+    )
+    assert not survival.success(snap, keys_before=0)
+    assert clean.success(snap, keys_before=0)
+
+
 def test_level6_entry_stop_requires_l5_inventory() -> None:
     ram = _ram(level=6, screen=0x79, x=120, y=205)
     snap = read_snapshot(ram)

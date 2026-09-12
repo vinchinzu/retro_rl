@@ -7,6 +7,7 @@ primitives. Keep route-specific geometry in the owning module.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Callable
 
 from retro_harness.nes import nes_action, nes_idle_action
@@ -14,13 +15,17 @@ from retro_harness.input_script import FrameAction
 from zelda_i.combat import (
     CONTACT_CHEBYSHEV,
     CONTACT_MANHATTAN,
+    HEART_OR_FAIRY_STATES,
+    RUPEE_DROP_STATES,
     chebyshev,
     in_sword_hitbox,
     manhattan,
     nearest_enemy,
+    nearest_heart_or_fairy,
     overworld_threat_objects,
     should_swing_at,
 )
+from zelda_i.dungeon import ids as _dungeon_ids
 from zelda_i.dungeon.behaviors import (
     engagement_hint,
     face_toward,
@@ -49,6 +54,14 @@ ARRIVAL_EAST_X = 220
 ARRIVAL_WEST_X = 30
 ARRIVAL_NORTH_Y = 70
 ARRIVAL_SOUTH_Y = 200
+
+# Floor drops share ObjType 0x60; item identity is ObjState (live At4A).
+HEART_FAIRY_DROP_TYPES: frozenset[int] = frozenset(
+    int(v)
+    for name in ("HEART_DROP_OBJECT_TYPE", "FAIRY_DROP_OBJECT_TYPE")
+    if (v := getattr(_dungeon_ids, name, None)) is not None
+)
+HEART_FAIRY_DROP_STATES: frozenset[int] = frozenset(HEART_OR_FAIRY_STATES)
 
 
 def swing_action(
@@ -283,6 +296,102 @@ def recover_off_edge(
     if snap.link_x <= EDGE_WEST_X and travel_direction != "LEFT":
         return swing("RIGHT", "off_west")
     return None
+
+
+def _nearest_typed_drop(
+    snap: ZeldaSnapshot,
+    types: Iterable[int],
+    states: Iterable[int] | None = None,
+) -> ZeldaObject | None:
+    type_set = frozenset(int(t) for t in types)
+    if not type_set:
+        return None
+    state_set = None if states is None else frozenset(int(s) for s in states)
+    if state_set == HEART_OR_FAIRY_STATES:
+        hit = nearest_heart_or_fairy(snap)
+        if hit is not None:
+            return hit
+    candidates = [
+        obj
+        for obj in snap.objects
+        if obj.slot >= 1
+        and int(obj.type_id) in type_set
+        and (state_set is None or int(obj.state) in state_set)
+        and 40 < obj.y < 220
+        and 8 < obj.x < 248
+    ]
+    if not candidates:
+        return None
+    return min(
+        candidates,
+        key=lambda obj: manhattan(snap.link_x, snap.link_y, obj.x, obj.y),
+    )
+
+
+def scoop_toward_drop(
+    snap: ZeldaSnapshot,
+    obj: ZeldaObject | None,
+    *,
+    reason: str,
+    travel_dir: str | None,
+    radius: int,
+) -> FrameAction | None:
+    """Walk onto a nearby floor drop. Contact pickup; no A.
+
+    None if ``obj`` is missing, farther than ``radius``, or sitting on the
+    opposite scroll edge from ``travel_dir`` (RIGHT refuses a west-edge
+    drop, and so on).
+    """
+    if obj is None:
+        return None
+    dist = manhattan(snap.link_x, snap.link_y, obj.x, obj.y)
+    if dist > radius:
+        return None
+    if travel_dir == "RIGHT" and obj.x < EDGE_WEST_X + 16:
+        return None
+    if travel_dir == "LEFT" and obj.x > EDGE_EAST_X - 16:
+        return None
+    if travel_dir == "DOWN" and obj.y < EDGE_NORTH_Y + 16:
+        return None
+    if travel_dir == "UP" and obj.y > EDGE_SOUTH_Y - 16:
+        return None
+    if dist <= 4:
+        return FrameAction(nes_idle_action(), reason)
+    dx = obj.x - snap.link_x
+    dy = obj.y - snap.link_y
+    if abs(dx) >= abs(dy) and abs(dx) > 2:
+        direction = "RIGHT" if dx > 0 else "LEFT"
+    elif abs(dy) > 2:
+        direction = "DOWN" if dy > 0 else "UP"
+    else:
+        return FrameAction(nes_idle_action(), reason)
+    return FrameAction(nes_action(direction), reason)
+
+
+def scoop_floor_drop(
+    snap: ZeldaSnapshot,
+    *,
+    types: Iterable[int],
+    travel_dir: str | None,
+    radius: int,
+    reason: str,
+    want: bool,
+    states: Iterable[int] | None = None,
+) -> FrameAction | None:
+    """Nearest in-bounds drop of ``types``/``states``, else None.
+
+    Floor drops share ObjType 0x60; pass ``states`` for heart vs rupee.
+    No-op when ``want`` is False.
+    """
+    if not want:
+        return None
+    return scoop_toward_drop(
+        snap,
+        _nearest_typed_drop(snap, types, states=states),
+        reason=reason,
+        travel_dir=travel_dir,
+        radius=radius,
+    )
 
 
 # One 4-direction cycle, then stand. Never reset stuck (that restarts the spam).

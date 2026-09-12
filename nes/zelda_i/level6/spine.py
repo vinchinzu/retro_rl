@@ -20,6 +20,7 @@ __all__ = [
     "continue_level6_spine",
     "level6_east_key_success",
     "level6_entry_success",
+    "run_level6_from_entrance",
 ]
 
 
@@ -89,3 +90,73 @@ def continue_level6_spine(
         assist=assist,
         on_frame=on_frame,
     )
+
+
+def run_level6_from_entrance(
+    env,
+    obs,
+    *,
+    assist=None,
+    through: str = "level6",
+    on_frame=None,
+    room_timer=None,
+    poke_arrows: bool = False,
+):
+    """Fixture-live L6 from play 0x79. Skip the OW entry hop. No pokes.
+
+    ``poke_arrows`` defaults False (Clean fail-closed). Survival spine still
+    calls ``l6_suffix_hops()`` with the wooden-arrow poke.
+    """
+    from zelda_i.route.chain import run_controller_stage
+
+    class _Run:
+        def __init__(self):
+            self.through = through
+            self.success = True
+            self.stages = []
+            self.end_frame = 0
+            self.failed_stage = None
+            self.obs = obs
+            self.allow_pokes = False
+
+    def run_stages(env, run, stages, **kw):
+        del kw
+        for name, controller, max_frames in stages:
+            next_obs, stage = run_controller_stage(
+                env,
+                run.obs,
+                name=name,
+                controller=controller,
+                max_frames=max_frames,
+                assist=assist,
+                on_frame=on_frame,
+                room_timer=room_timer,
+                frame_base=run.end_frame,
+            )
+            run.obs = next_obs
+            run.stages.append(stage)
+            run.end_frame = stage.end_frame
+            if not stage.success:
+                run.success = False
+                run.failed_stage = name
+                return False
+        return True
+
+    run = _Run()
+    interior = tuple(
+        hop
+        for hop in l6_prefix(env, require_prior_tf=False)
+        + l6_suffix_hops(poke_arrows=poke_arrows, require_prior_tf=False)
+        if hop.through != "level6-entry"
+    )
+    attach_hops(
+        env,
+        run,
+        interior,
+        through=through,
+        run_stages=run_stages,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+    )
+    return run

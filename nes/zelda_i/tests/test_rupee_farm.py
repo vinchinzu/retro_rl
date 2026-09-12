@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from retro_harness.nes import nes_action
 
+from zelda_i.dungeon.ids import RUPEE_DROP_STATE
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
@@ -95,7 +96,9 @@ def test_ignores_dead_and_sentinel_and_out_of_bounds_slots() -> None:
 def test_prefers_rupee_drop_over_live_prey() -> None:
     farm = _farm(swing_period=0)
     prey = ZeldaObject(slot=1, type_id=0x11, x=60, y=149, facing=0, hp=1, state=0)
-    drop = ZeldaObject(slot=2, type_id=0x60, x=180, y=149, facing=0, hp=1, state=0)
+    drop = ZeldaObject(
+        slot=2, type_id=0x60, x=180, y=149, facing=0, hp=1, state=RUPEE_DROP_STATE
+    )
     snap = _snap(link_x=120, link_y=149, rupees=0, objects=(prey, drop))
     act = farm.step(snap)
     assert "farm_rupee" in act.reason

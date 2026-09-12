@@ -771,3 +771,71 @@ def test_0x3e_bomb_north_wall_at_stand() -> None:
     assert act.reason == "bomb_north_wall"
     assert list(act.action) == list(nes_action("UP", "B"))
 
+
+def test_0x2e_advance_north_when_manhandla_off_corridor() -> None:
+    """Link advances UP the center aisle (x=120) toward north door when Manhandla is away."""
+    ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=140, health=0x21, keys=9, bombs=2)
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 180, 120)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_north_advance"
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x2e_north_door_push() -> None:
+    """Hold 0x2E north door until arrows are on B (Manhandla may be off-corridor)."""
+    ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=93, health=0x21, keys=9, bombs=2)
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 180, 120)
+    ctl = path_make_darknut()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "pause_open"
+    assert list(act.action) == list(nes_action("START"))
+    assert act.reason != "combat_north_door"
+
+
+def test_0x2e_north_door_push_skips_select_when_arrows_on_b() -> None:
+    """B=arrows at (120, 93): skip-select and push the north key door."""
+    ram = _ram(
+        screen=ROOM_MAP_MANHANDLA,
+        x=120,
+        y=93,
+        health=0x21,
+        keys=9,
+        bombs=2,
+        selected=2,
+    )
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 180, 120)
+    ctl = path_make_darknut()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason != "pause_open"
+    assert act.reason == "combat_north_door"
+    assert list(act.action) == list(nes_action("UP"))
+
+
+def test_0x2e_manhandla_slash_in_range() -> None:
+    """Link slashes Manhandla limb when within sword range."""
+    ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=140, health=0x21, keys=9, bombs=2)
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 135, 140)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_slash"
+    assert list(act.action) == list(nes_action("RIGHT", "A"))
+
+
+def test_0x2e_manhandla_corridor_bomb() -> None:
+    """Link drops tactical bomb when Manhandla blocks the corridor ahead and bombs >= 2."""
+    ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=140, health=0x21, keys=9, bombs=2)
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 120, 115)
+    ctl = make_darknut_key_controller()
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason == "combat_bomb_up"
+    assert list(act.action) == list(nes_action("UP", "B"))
+
+

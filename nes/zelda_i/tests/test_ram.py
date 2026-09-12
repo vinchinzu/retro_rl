@@ -7,22 +7,27 @@ from zelda_i.ram import (
     ADDR_BOOMERANG,
     ADDR_BOW,
     ADDR_HEALTH,
+    ADDR_HELP_DROP_COUNT,
+    ADDR_HELP_DROP_VALUE,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MAGIC_BOOMERANG,
     ADDR_MODE,
     ADDR_SCREEN,
     ADDR_SWORD,
+    ADDR_WORLD_KILL_COUNT,
     CAVE_MODE,
     PASSAGE_MODE,
     PLAY_MODE,
     SCREEN_START,
+    ZeldaSnapshot,
     capabilities_from_ram,
     full_health_byte,
     is_level1_ready,
     parse_game_state,
     read_snapshot,
 )
+from zelda_i.tests.ram_helpers import make_ram
 
 
 def test_mode_constants() -> None:
@@ -107,3 +112,57 @@ def test_snapshot_and_capabilities() -> None:
     assert read_snapshot(ram).magical_boomerang == 1
     # Magical supersedes wooden in the capability set.
     assert "boomerang" not in caps_magic
+    assert snap.world_kill_count == 0
+    assert snap.help_drop_count == 0
+    assert snap.help_drop_value == 0
+
+
+def test_snapshot_kill_counters_default_and_from_ram() -> None:
+    """New fields default to 0; read_snapshot pulls $0627 / $50 / $51."""
+    snap = ZeldaSnapshot(
+        mode=PLAY_MODE,
+        level=0,
+        screen=SCREEN_START,
+        next_screen=SCREEN_START,
+        link_x=120,
+        link_y=141,
+        facing=0,
+        sword=1,
+        bombs=0,
+        rupees=0,
+        keys=0,
+        health=0x22,
+        triforce=0,
+        compass=0,
+        dialog_timer=0,
+        colliding_tile=0,
+        room_item_id=0,
+        room_all_dead=0,
+        room_obj_count=0,
+        cur_opened_doors=0,
+        open_doorway_mask=0,
+        objects=(),
+    )
+    assert snap.world_kill_count == 0
+    assert snap.help_drop_count == 0
+    assert snap.help_drop_value == 0
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_WORLD_KILL_COUNT] = 16
+    ram[ADDR_HELP_DROP_COUNT] = 10
+    ram[ADDR_HELP_DROP_VALUE] = 1
+    snap = read_snapshot(ram)
+    assert snap.world_kill_count == 16
+    assert snap.help_drop_count == 10
+    assert snap.help_drop_value == 1
+
+    ram_h = make_ram(
+        {"mode": PLAY_MODE, "health": 0x22},
+        world_kill=14,
+        help_count=9,
+        help_value=0,
+    )
+    snap_h = read_snapshot(ram_h)
+    assert snap_h.world_kill_count == 14
+    assert snap_h.help_drop_count == 9
+    assert snap_h.help_drop_value == 0

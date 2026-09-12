@@ -10,6 +10,8 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.postmortem import DamageLog
+from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WAIT_SCROLL = (2, 3, 4, 6, 7)
@@ -95,6 +97,13 @@ class HopController:
     spec_id: str = ""
     require_level: int | None = None
     done_reason: str = "done"
+    # Motion + damage attribution for every dest hop. ``tracked`` is this
+    # frame's velocity view; ``damage`` names what took each heart, so a red
+    # hop reports a cause instead of only a death tile.
+    tracker: ObjectTracker = field(default_factory=ObjectTracker)
+    damage: DamageLog = field(default_factory=DamageLog)
+    tracked: tuple[TrackedObject, ...] = ()
+    last_reason: str = ""
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
         return False
@@ -127,6 +136,7 @@ class HopController:
             "frames": self.frames,
             "notes": list(self.notes),
             "spec_id": self.spec_id,
+            "damage": self.damage.report(),
         }
 
     def _note(self, note: str) -> None:
@@ -165,11 +175,25 @@ class HopController:
                 return self.mark_fail(f"left_level_{snap.level}")
         return None
 
+    def observe(self, snap: ZeldaSnapshot) -> tuple[TrackedObject, ...]:
+        """Sample velocity and attribute damage. Idempotent per snapshot."""
+        self.tracked = self.tracker.observe(snap)
+        self.damage.observe(
+            snap, self.tracked, action=self.last_reason, phase=self.spec_id
+        )
+        return self.tracked
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.observe(snap)
         self.frames += 1
         blocked = self.guard(snap)
         if blocked is not None:
-            return self.emit(snap, blocked, force=self.success or self.failed)
-        if self.arrived(snap):
-            return self.emit(snap, self.mark_done(snap), force=True)
-        return self.emit(snap, self.policy(snap))
+            action = self.emit(
+                snap, blocked, force=self.success or self.failed
+            )
+        elif self.arrived(snap):
+            action = self.emit(snap, self.mark_done(snap), force=True)
+        else:
+            action = self.emit(snap, self.policy(snap))
+        self.last_reason = action.reason
+        return action

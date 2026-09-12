@@ -196,6 +196,10 @@ class Level4Maze31WestController:
         if direction is None:
             self.path_index += 1
             return FrameAction(nes_idle_action(), "wp_idle")
+        if (self.frames % 6) < 3:
+            return FrameAction(
+                nes_action(direction, "A"), "join_maze_west"
+            )
         return FrameAction(nes_action(direction), "join_maze_west")
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -354,6 +358,8 @@ class Level4KeyUp20Controller:
                 "align_x",
             )
         self._set_phase(KeyUp20Phase.PUSH, "push_key_up")
+        if (self.frames % 6) < 3:
+            return FrameAction(nes_action("UP", "A"), "push_key_up")
         return FrameAction(nes_action("UP"), "push_key_up")
 
     def report(self) -> dict[str, Any]:

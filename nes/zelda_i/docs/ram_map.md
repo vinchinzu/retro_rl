@@ -12,6 +12,7 @@ ADDR_DIALOG_TIMER   = 0x0029  # dialog countdown
 ADDR_HELP_DROP_COUNT= 0x0050  # 10 kills → forced 5-rupee (or bomb)
 ADDR_HELP_DROP_VALUE= 0x0051  # nonzero → that force is a bomb
 ADDR_WORLD_KILL_COUNT=0x0627  # 16 kills → forced fairy; all three clear on hit
+                              # ZeldaSnapshot: world_kill_count / help_drop_*
 ADDR_LINK_X         = 0x0070  # 0..240 screen X
 ADDR_LINK_Y         = 0x0084  # ~61..221 screen Y
 ADDR_LINK_FACING    = 0x0098  # $08 N, $04 S, $01 E, $02 W
@@ -25,6 +26,8 @@ ADDR_OPEN_DOORWAY_MASK  = 0x033F
 ADDR_ROOM_ALL_DEAD      = 0x034D  # engine room-clear counter / flag
 ADDR_ROOM_OBJ_COUNT     = 0x034E
 ADDR_OBJ_TYPE           = 0x034F  # 16 object slots
+ADDR_OBJ_STATE          = 0x00AC  # item code on floor drops (heart 0x22,
+                                  # fairy 0x23, rupee 0x18); type is 0x60
 ADDR_OBJ_HP             = 0x0485  # gameplay object HP slots
 
 ADDR_SELECTED_ITEM  = 0x0656  # B slot: 1=bombs, 2=arrows, 4=candle

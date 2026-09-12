@@ -91,9 +91,15 @@ def _fireball_dodge_dir(
 fireball_dodge_dir = _fireball_dodge_dir
 
 
-def _south_stand_action(snap: ZeldaSnapshot, body, *, stand_dy: int = STAND_DY):
-    """Walk to (body.x, body.y+stand_dy) then face UP + A."""
-    sx = int(body.x)
+def _south_stand_action(
+    snap: ZeldaSnapshot,
+    body,
+    *,
+    stand_dy: int = STAND_DY,
+    stand_dx: int = 0,
+):
+    """Walk to (body.x + stand_dx, body.y+stand_dy) then face UP + A."""
+    sx = int(body.x) + stand_dx
     sy = min(173, int(body.y) + stand_dy)
     if abs(snap.link_x - sx) > 3 or abs(snap.link_y - sy) > 3:
         if abs(snap.link_y - sy) >= abs(snap.link_x - sx):

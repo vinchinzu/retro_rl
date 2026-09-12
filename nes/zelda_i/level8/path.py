@@ -40,8 +40,13 @@ from zelda_i.dungeon.door_hop import (
     RoomHopSpec,
     door_band_goal,
 )
-from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
+from zelda_i.dungeon.ids import (
+    GOHMA_BLUE_OBJECT_TYPE,
+    GOHMA_OBJECT_TYPE,
+    MANHANDLA_OBJECT_TYPE,
+)
 from zelda_i.dungeon.ops import DOOR_TARGETS
+from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
 from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.dungeon import (
     BLUE_GOHMA_ARROWS_REQUIRED,
@@ -54,6 +59,7 @@ from zelda_i.level8.dungeon import (
 from zelda_i.level8.magic_key import (
     Level8BlueGohma1EController,
     Level8MagicKeyStairsController,
+    STAND_Y,
     make_blue_gohma_1e_controller,
     make_magic_key_stairs_live_controller,
 )
@@ -64,7 +70,7 @@ from zelda_i.level8.gleeok import (
 from zelda_i.level8.north_column import (
     Level8DarknutKeyController,
     Level8NorthManhandlaController,
-    make_darknut_key_controller as _make_darknut_key_controller,
+    ROOM_MAP_MANHANDLA,
     make_north_manhandla_controller as _make_north_manhandla_controller,
 )
 from zelda_i.ram import ZeldaSnapshot
@@ -373,8 +379,65 @@ def make_north_manhandla_controller() -> Level8NorthManhandlaController:
     return _make_north_manhandla_controller()
 
 
+@dataclass(kw_only=True)
+class Level8DarknutKeyArrowsController(Level8DarknutKeyController):
+    """Select arrows in 0x2E before the north-door leave, inland of the lip.
+
+    Hold ``combat_north_door`` / map-skip until B=arrows even if Manhandla is
+    live off-corridor. Fight south (bombs stay on B). Do not START on
+    y>STAND_Y (h6 leftover (106,189)). 0x3E still needs B=bombs.
+    """
+
+    _select: PauseSelectController | None = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        super().bind_env(env)
+        if self._select is None:
+            self._select = PauseSelectController(want=B_SLOT_ARROWS, name="arrows")
+        self._select.bind_env(env)
+
+    def _manhandla_live(self, snap: ZeldaSnapshot) -> bool:
+        return any(
+            1 <= obj.slot <= 12
+            and int(obj.type_id) == MANHANDLA_OBJECT_TYPE
+            and obj.hp > 0
+            for obj in snap.objects
+        )
+
+    def _north_door_leave(self, act: FrameAction) -> bool:
+        r = act.reason
+        return (
+            r == "combat_north_door"
+            or r.startswith("map_skip")
+            or r.startswith("north_key_0x2e")
+        )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if int(snap.screen) != ROOM_MAP_MANHANDLA or self._select is None:
+            return super().policy(snap)
+        if self._select.success:
+            return super().policy(snap)
+        if int(snap.link_y) > STAND_Y:
+            if self._manhandla_live(snap):
+                return super().policy(snap)
+            return FrameAction(nes_action("UP"), "climb")
+        leave = None
+        if self._manhandla_live(snap):
+            leave = super().policy(snap)
+            if not self._north_door_leave(leave):
+                return leave
+        driven = self._select.drive(snap)
+        if self._select.failed:
+            return self.mark_fail(
+                self._select.fail_reason or "l8_darknut_arrow_select_failed"
+            )
+        if driven is not None:
+            return driven
+        return leave if leave is not None else super().policy(snap)
+
+
 def make_darknut_key_controller() -> Level8DarknutKeyController:
-    return _make_darknut_key_controller()
+    return Level8DarknutKeyArrowsController()
 
 
 def make_blue_gohma_controller(

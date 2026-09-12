@@ -71,7 +71,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x57: "lynel_sword_shot",
     0x5B: "moblin_arrow",
     0x5C: "boomerang_projectile",  # L1 0x44 Goriya throw (lab); not type 0x06
-    0x60: "green_rupee_drop",
+    0x60: "floor_drop",  # live At4A: rupee/heart/5-rupee/clock; item in ObjState
 }
 
 
@@ -133,7 +133,19 @@ MANHANDLA_PROJECTILE_TYPE = 0x56  # also Gleeok fireball residual
 LYNEL_SWORD_SHOT_TYPE = 0x57
 MOBLIN_ARROW_OBJECT_TYPE = 0x5B
 GORIYA_BOOMERANG_OBJECT_TYPE = 0x5C  # L1 0x44 lab traces; HP 0/144; not 0x06
+# Floor drops share ObjType 0x60 (live At4A 2026-09-11: tektite 0x0D → 0x60).
+# Item code is ObjState, not ObjType. Data Crystal 0x22/0x23/0x18 are item IDs;
+# 0x22 as ObjType is ghini_flying. Drops: hp 0 (flash 0x80), slot 1–10.
 RUPEE_DROP_OBJECT_TYPE = 0x60
+RUPEE_DROP_STATE = 0x18  # live +1 rupee / rupees_to_add
+HEART_DROP_OBJECT_TYPE = 0x60  # live pickup +1 HeartValues; state 0x22; not ghini
+HEART_DROP_STATE = 0x22
+FAIRY_DROP_OBJECT_TYPE = 0x60  # item code 0x23; $0627==16 force (not live-picked)
+FAIRY_DROP_STATE = 0x23
+FIVE_RUPEE_DROP_OBJECT_TYPE = 0x60  # live +5 rupees_to_add
+FIVE_RUPEE_DROP_STATE = 0x0F
+CLOCK_DROP_OBJECT_TYPE = 0x60  # live no inventory delta
+CLOCK_DROP_STATE = 0x21
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",
@@ -195,6 +207,9 @@ RAM_SYMBOLS: dict[int, str] = {
     ram.ADDR_MAP: "map",
     ram.ADDR_RUPEES: "rupees",
     ram.ADDR_KEYS: "keys",
+    ram.ADDR_HELP_DROP_COUNT: "help_drop_count",
+    ram.ADDR_HELP_DROP_VALUE: "help_drop_value",
+    ram.ADDR_WORLD_KILL_COUNT: "world_kill_count",
     ram.ADDR_HEALTH: "health",
     ram.ADDR_HEART_PARTIAL: "heart_partial",
     ram.ADDR_TRIFORCE: "triforce",

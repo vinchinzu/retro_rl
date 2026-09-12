@@ -126,31 +126,46 @@ def ok6(**kw):
     return ready(level=LEVEL6, **kw)
 
 
-def stairs_or_play(snap: ZeldaSnapshot, *, not_screen: int, **_) -> bool:
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
+def stairs_or_play(
+    snap: ZeldaSnapshot, *, not_screen: int, require_prior_tf: bool = True, **_
+) -> bool:
+    if snap.level != LEVEL6:
+        return False
+    if require_prior_tf and snap.triforce != 0x1F:
         return False
     if snap.mode == PASSAGE_MODE:
         return True
-    return play_ready(snap, level=LEVEL6, not_screen=not_screen, tf_eq=0x1F)
+    kw = dict(level=LEVEL6, not_screen=not_screen)
+    if require_prior_tf:
+        kw["tf_eq"] = 0x1F
+    return play_ready(snap, **kw)
 
 
-def rod_cellar_ok(snap: ZeldaSnapshot, **_) -> bool:
+def rod_cellar_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) -> bool:
     """Rod pickup leftover is cellar mode 9 room 0x75, not play mode 5."""
-    if snap.level != LEVEL6 or snap.triforce != 0x1F or not snap.rod:
+    if snap.level != LEVEL6 or not snap.rod:
+        return False
+    if require_prior_tf and snap.triforce != 0x1F:
         return False
     if snap.mode == PASSAGE_MODE:
         return True
-    return play_ready(snap, level=LEVEL6, rod=True, tf_eq=0x1F)
+    kw = dict(level=LEVEL6, rod=True)
+    if require_prior_tf:
+        kw["tf_eq"] = 0x1F
+    return play_ready(snap, **kw)
 
 
-def _gleeok18_ok(snap: ZeldaSnapshot, **_) -> bool:
-    return play_ready(
-        snap, level=LEVEL6, screen=LEVEL6_GLEEOK_ROOM, tf_eq=0x1F
-    ) and not gleeok_3head_live(snap)
+def _gleeok18_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) -> bool:
+    kw = dict(level=LEVEL6, screen=LEVEL6_GLEEOK_ROOM)
+    if require_prior_tf:
+        kw["tf_eq"] = 0x1F
+    return play_ready(snap, **kw) and not gleeok_3head_live(snap)
 
 
-def _postgleeok18_ok(snap: ZeldaSnapshot, **_) -> bool:
-    if snap.level != LEVEL6 or snap.triforce != 0x1F:
+def _postgleeok18_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) -> bool:
+    if snap.level != LEVEL6:
+        return False
+    if require_prior_tf and snap.triforce != 0x1F:
         return False
     if gleeok_3head_live(snap):
         return False
@@ -273,9 +288,9 @@ def _west_stages():
     )
 
 
-def l6_prefix(env) -> tuple[SpineHop, ...]:
-    tf5 = dict(tf_bit=TF_BIT_L5)
-    tf1f = dict(tf_eq=0x1F)
+def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
+    tf5 = dict(tf_bit=TF_BIT_L5) if require_prior_tf else {}
+    tf1f = dict(tf_eq=0x1F) if require_prior_tf else {}
     return (
         SpineHop(
             "level6-entry", "level6_entry_0x79", _entry_stages, _entry_ok(env)
@@ -361,19 +376,25 @@ def l6_prefix(env) -> tuple[SpineHop, ...]:
             "level6-gleeok18",
             "level6_gleeok_0x18",
             make_gleeok_18_controller,
-            _gleeok18_ok,
+            lambda snap, r=require_prior_tf, **_: _gleeok18_ok(
+                snap, require_prior_tf=r
+            ),
         ),
         one_hop(
             "level6-postgleeok18",
             "level6_postgleeok_0x18",
             make_postgleeok_18_controller,
-            _postgleeok18_ok,
+            lambda snap, r=require_prior_tf, **_: _postgleeok18_ok(
+                snap, require_prior_tf=r
+            ),
         ),
         one_hop(
             "level6-stairs18",
             "level6_stairs_0x18",
             make_stairs_18_controller,
-            lambda snap, **_: stairs_or_play(snap, not_screen=LEVEL6_GLEEOK_ROOM),
+            lambda snap, r=require_prior_tf, **_: stairs_or_play(
+                snap, not_screen=LEVEL6_GLEEOK_ROOM, require_prior_tf=r
+            ),
             dedicated=True,
         ),
     )

@@ -14,6 +14,7 @@ from zelda_i.level6.gohma import (
     FACE_NORTH,
     STAND_Y,
     level6_gohma_success,
+    make_clean_gohma_controller,
     make_gohma_controller,
 )
 from zelda_i.ram import (
@@ -99,6 +100,41 @@ def test_unarmed_no_bow_fails() -> None:
     ctl = _bound(ram)
     ctl.step(read_snapshot(ram))
     assert ctl.failed
+
+
+def test_clean_no_poke_fails_closed_without_natural_arrows() -> None:
+    ram = _ram(bow=1, arrows=0)
+    _plant_gohma(ram)
+    mem = _AssignMem()
+    ctl = make_clean_gohma_controller()
+    ctl.bind_env(_env(ram, mem))
+    ctl.step(read_snapshot(ram))
+    assert ctl.failed
+    assert ctl.poke_arrows is False
+    assert ADDR_ARROWS not in [addr for addr, _fmt, _val in mem.calls]
+    assert ADDR_SELECTED_ITEM not in [addr for addr, _fmt, _val in mem.calls]
+    assert ctl.inventory_assist is None
+
+
+def test_clean_suffix_gohma_does_not_poke_survival_suffix_does() -> None:
+    from zelda_i.level6.spine_suffix import l6_suffix_hops
+
+    clean = next(h for h in l6_suffix_hops(poke_arrows=False) if h.through == "level6-gohma")
+    survival = next(h for h in l6_suffix_hops() if h.through == "level6-gohma")
+    assert clean.stages()[-1][1].poke_arrows is False
+    assert survival.stages()[-1][1].poke_arrows is True
+
+
+def test_entrance_tf_skips_ow_and_forbids_pokes() -> None:
+    import inspect
+
+    from zelda_i.level6.spine import run_level6_from_entrance
+
+    src = inspect.getsource(run_level6_from_entrance)
+    assert "level6-entry" in src
+    assert "allow_pokes = False" in src
+    assert "poke_arrows=poke_arrows" in src
+    assert "poke_arrows: bool = False" in src
 
 
 def test_poke_writes_arrows_and_b_not_bow() -> None:

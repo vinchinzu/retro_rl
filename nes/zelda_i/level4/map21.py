@@ -120,10 +120,17 @@ class Level4Clear20Controller:
         dy = nearest.y - snap.link_y
         above = nearest.y < ROOM_20_SOUTH_XY[1]
         if above and abs(dx) <= 28:
-            return self._swing("UP", "slash_up_flyer")
-        if abs(dx) > 8:
+            if (self.combat_frames % 4) < 2:
+                return FrameAction(nes_action("UP", "A"), "slash_up_flyer")
             return FrameAction(
-                nes_action("RIGHT" if dx > 0 else "LEFT"), "align_x_vire"
+                nes_action("DOWN" if y < 196 else "UP"), "hold_south_band"
+            )
+        direction = "RIGHT" if dx > 0 else "LEFT"
+        if abs(dx) > 8:
+            if should_swing_at(snap.link_x, snap.link_y, direction, live) or abs(dx) <= 24:
+                return self._swing(direction, "align_x_vire")
+            return FrameAction(
+                nes_action(direction), "align_x_vire"
             )
         direction = "UP" if above or dy <= 0 else "DOWN"
         if should_swing_at(

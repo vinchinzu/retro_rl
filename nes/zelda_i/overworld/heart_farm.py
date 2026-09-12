@@ -14,9 +14,20 @@ from typing import Any
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i import combat as _combat
 from zelda_i.combat import overworld_threat_objects
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
-from zelda_i.overworld.common import track_stuck, wake_or_wait_mode, walk_or_swing
+from zelda_i.dungeon.ids import (
+    CLOCK_DROP_STATE,
+    FAIRY_DROP_STATE,
+    FIVE_RUPEE_DROP_STATE,
+    RUPEE_DROP_OBJECT_TYPE,
+    RUPEE_DROP_STATE,
+)
+from zelda_i.overworld.common import (
+    track_stuck,
+    wake_or_wait_mode,
+    walk_or_swing,
+)
 from zelda_i.overworld.locations import farm_at
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
@@ -83,21 +94,78 @@ class HeartFarmPhase(Enum):
     FAILED = auto()
 
 
+def _in_drop_bounds(obj) -> bool:
+    return obj.slot >= 1 and 40 < obj.y < 220 and 8 < obj.x < 248
+
+
+_RUPEE_STATES = frozenset(
+    {RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE, CLOCK_DROP_STATE}
+)
+
+
+def _advanced(last_xy: tuple[int, int], xy: tuple[int, int], last_dir: str) -> bool:
+    """True if Link made forward progress along the requested axis."""
+    if last_dir == "RIGHT":
+        return xy[0] > last_xy[0]
+    if last_dir == "LEFT":
+        return xy[0] < last_xy[0]
+    if last_dir == "DOWN":
+        return xy[1] > last_xy[1]
+    if last_dir == "UP":
+        return xy[1] < last_xy[1]
+    return False
+
+
 def _rupee_drops(snap: ZeldaSnapshot) -> tuple:
+    """1-rupee / 5-rupee floor drops. Type 0x60 is shared with hearts."""
     return tuple(
         obj
         for obj in snap.objects
-        if obj.slot >= 1
+        if _in_drop_bounds(obj)
         and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
-        and 40 < obj.y < 220
-        and 8 < obj.x < 248
+        and int(obj.state) in _RUPEE_STATES
     )
+
+
+def _heart_drops(snap: ZeldaSnapshot) -> tuple:
+    """Heart/fairy floor drops. Item identity is ObjState, not ObjType."""
+    heart_fn = getattr(_combat, "heart_or_fairy_drops", None)
+    if callable(heart_fn):
+        return tuple(heart_fn(snap))
+    pred = getattr(_combat, "is_heart_or_fairy_drop", None)
+    if callable(pred):
+        return tuple(obj for obj in snap.objects if pred(obj))
+    states = getattr(_combat, "HEART_OR_FAIRY_STATES", None)
+    if states:
+        return tuple(
+            obj
+            for obj in snap.objects
+            if _in_drop_bounds(obj)
+            and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
+            and int(obj.state) in states
+        )
+    return ()
+
+
+def _pickup_reason(obj) -> str:
+    if int(obj.state) == FAIRY_DROP_STATE:
+        return "farm_fairy"
+    return "farm_heart"
+
+
+def _hold_for_forced_fairy(snap: ZeldaSnapshot) -> bool:
+    """Stay for the $0627 16-kill fairy when the counter is 14..15."""
+    count = getattr(snap, "world_kill_count", None)
+    if count is None:
+        return False
+    return 14 <= int(count) <= 15
 
 
 @dataclass
 class HeartFarmController:
     """Patrol a screen until ``filled_hearts >= min_filled`` (Clean combat only).
 
+    Heart/fairy contact scoops before chase, then rupees, then restock/patrol.
     Occupancy miss (true no-move) → block that cell → replan; no path →
     stand. ``min_filled<=0`` is inert (the path-layer ``farm_below_hearts=0``
     analog). Never writes health.
@@ -186,6 +254,21 @@ class HeartFarmController:
     def _hearts_met(self, snap: ZeldaSnapshot) -> bool:
         return snap.filled_hearts >= self.min_filled
 
+    def _is_entering_screen(self, snap: ZeldaSnapshot) -> str | None:
+        """If Link is still on the transition edge boundary, return inward cardinal."""
+        if snap.screen != self.farm_screen:
+            return None
+        direction = self.restock_direction or ("LEFT" if self.farm_screen == 0x4A else None)
+        if direction == "LEFT" and snap.link_x < 36:
+            return "RIGHT"
+        if direction == "RIGHT" and snap.link_x > 220:
+            return "LEFT"
+        if direction == "UP" and snap.link_y < 70:
+            return "DOWN"
+        if direction == "DOWN" and snap.link_y > 200:
+            return "UP"
+        return None
+
     def _grade_occupancy(self, snap: ZeldaSnapshot) -> OccupancyWalker:
         if self._walker is None or self._walker_screen != int(snap.screen):
             self._walker = OccupancyWalker(grid=_ow_farm_grid())
@@ -196,16 +279,31 @@ class HeartFarmController:
         if self._walk_frame != self.frames - 1:
             walker.last_dir = None
             walker.last_xy = None
-        if walker.last_dir in _CARDINALS and walker.last_xy is not None:
-            if xy == walker.last_xy:
+        link_state = (
+            snap.objects[0].state
+            if snap.objects and snap.objects[0].slot == 0
+            else 0
+        )
+        is_swinging = link_state != 0 or snap.mode != PLAY_MODE
+        if is_swinging:
+            walker.last_dir = None
+            walker.last_xy = None
+        elif walker.last_dir in _CARDINALS and walker.last_xy is not None:
+            if not _advanced(walker.last_xy, xy, walker.last_dir):
                 walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
                 walker.path = None
                 walker.misses += 1
         walker.last_xy = xy
+        walker._graded = True
         return walker
 
     def _walk_to(
-        self, snap: ZeldaSnapshot, goal: tuple[int, int], reason: str
+        self,
+        snap: ZeldaSnapshot,
+        goal: tuple[int, int],
+        reason: str,
+        *,
+        slash: bool = True,
     ) -> FrameAction:
         """Occupancy to ``goal``. Miss → block → replan; no path → stand."""
         walker = self._grade_occupancy(snap)
@@ -227,15 +325,19 @@ class HeartFarmController:
             walker.last_dir = None
             self._walk_frame = self.frames
             return FrameAction(nes_idle_action(), "occupancy_stand")
-        act = walk_or_swing(
-            self.frames,
-            direction,
-            reason,
-            snap,
-            period=FARM_SWING_PERIOD,
-            hold=FARM_SWING_HOLD,
-        )
-        walker.last_dir = _cardinal_from_action(act.action)
+        if slash:
+            act = walk_or_swing(
+                self.frames,
+                direction,
+                reason,
+                snap,
+                period=FARM_SWING_PERIOD,
+                hold=FARM_SWING_HOLD,
+            )
+            walker.last_dir = _cardinal_from_action(act.action)
+        else:
+            act = FrameAction(nes_action(direction), reason)
+            walker.last_dir = direction
         self._walk_frame = self.frames
         return act
 
@@ -311,6 +413,24 @@ class HeartFarmController:
                 f"farm_ok_{self.start_filled}_to_{snap.filled_hearts}"
             )
 
+        hearts = _heart_drops(snap)
+        if hearts:
+            self.empty_frames = 0
+            nearest = min(
+                hearts,
+                key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
+            )
+            return self._walk_to(
+                snap,
+                (int(nearest.x), int(nearest.y)),
+                _pickup_reason(nearest),
+                slash=False,
+            )
+
+        enter_dir = self._is_entering_screen(snap)
+        if enter_dir is not None:
+            return FrameAction(nes_action(enter_dir), "farm_enter")
+
         enemies = list(overworld_threat_objects(snap))
         if enemies:
             self.empty_frames = 0
@@ -331,7 +451,7 @@ class HeartFarmController:
 
         if restock:
             self.empty_frames += 1
-            if self.empty_frames < self.empty_wait_frames:
+            if self.empty_frames < self.empty_wait_frames or _hold_for_forced_fairy(snap):
                 direction = "RIGHT" if snap.link_x < 160 else "LEFT"
                 return FrameAction(nes_action(direction), "farm_wait")
             self.empty_frames = 0

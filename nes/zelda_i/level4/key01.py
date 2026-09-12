@@ -44,8 +44,8 @@ __all__ = [
 
 BOMB_11_NORTH_STAND = (120, 105)
 BOMB_11_NORTH_FACE = "UP"
-# v2 leftover (96,135): key is east of Link, not at (96,125). Center column.
-KEY_01_PICKUP_XY = (120, 141)
+# Center column floor key at y=128-130. Link picks it up directly upon arrival.
+KEY_01_PICKUP_XY = (120, 128)
 _PATROL_01: tuple[tuple[int, int], ...] = (
     (64, 109),
     (120, 109),
@@ -135,7 +135,7 @@ def level4_key01_stages():
     """0x11 leftover → bomb-UP 0x01 → natural key (keys 4→5)."""
     bomb = make_bomb_11_north_controller()
     key = make_room_01_key_controller()
-    key.phase = DungeonPhase.FIGHT
+    key.phase = DungeonPhase.COLLECT_REWARD
     return (
         ("level4_bomb_north_0x11", bomb, bomb.max_frames),
         ("level4_key_0x01", key, ROOM_01_SPEC.max_frames),

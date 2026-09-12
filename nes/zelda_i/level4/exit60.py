@@ -184,7 +184,8 @@ class Level4Exit60Controller:
 
         if self.phase is Exit60Phase.SETTLE:
             if self.phase_frames <= POST_LADDER_ITEM_SETTLE:
-                return FrameAction(nes_idle_action(), "item_freeze")
+                spin_dir = ("UP", "RIGHT", "DOWN", "LEFT")[self.frames // 6 % 4]
+                return FrameAction(nes_action(spin_dir, "A"), "item_freeze")
             self._set_phase(Exit60Phase.PATH, "item_thaw")
             self.path_index = 0
 

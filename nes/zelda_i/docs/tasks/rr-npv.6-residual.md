@@ -3,7 +3,58 @@
 Fixture-live only. Do not STATUS. Do not close the bead. `route_eligible`
 stays false.
 
-## This sitting (2026-09-10)
+## This sitting (2026-09-11) — heart economy
+
+Clean tip is still L1→L2 door-path death on `0x5C`. Recovery was a farm
+divert that chased enemies then scooped **rupees** (`0x60`). Floor hearts
+and the 16-kill fairy (`$0627`) were unused. `path.py` occupancy / 0x4C
+peel stays `rr-ps7.3`.
+
+Work this sitting (parallel, no STATUS):
+
+Live At4A probe: **every floor drop is ObjType `0x60`**. Item identity is
+**ObjState**: heart `0x22`, fairy `0x23`, rupee `0x18`, 5-rupee `0x0F`,
+clock `0x21`. Type `0x22` stays `ghini_flying`. `hp` 0 (flash `0x80`).
+
+Landed:
+- `combat.floor_drops` / `is_heart_or_fairy_drop` / `nearest_heart_or_fairy`
+  plus `world_kill_count` / `help_drop_*` on the snapshot.
+- Heart farm scoops heart/fairy (by state) before chase, then rupees.
+  14–15 kill streak holds restock for the `$0627` fairy.
+- Hop/nav `_rupee_scoop` scoops hearts when not full. `path.py`
+  `_occupancy_align_action` / 0x4C peel untouched.
+- Dungeon engine scoops a nearby heart in FIGHT (if no contact enemy)
+  and COLLECT_REWARD (before the spec key).
+
+Unit: `uv run pytest nes/zelda_i/tests -q` 1209 passed.
+
+### Live Clean farm on At4A (no pokes, no assists)
+
+- Pin: `At4A` (`custom_integrations/LegendOfZelda-Nes/At4A.state`), screen `0x4A`,
+  mode 5, initial pos `(0, 149)`, initial health `0x32` (2 filled / 4 containers),
+  kill count 1.
+- Controller fixes in `heart_farm.py` (486 LOC):
+  - Screen entry: `_is_entering_screen` pushes East (`x < 36` on `0x4A`) onto corridor
+    before chasing off-axis threats into walls or edge-snapping.
+  - Wall slide: `_advanced(last_xy, xy, last_dir)` detects actual axis progression
+    rather than strict xy equality, preventing perpendicular slide false misses.
+  - Occupancy double-grading: set `walker._graded = True` in `_grade_occupancy` so
+    `walker.next_dir()` does not invoke `observe()` with stale claims.
+  - Action lock immunity: Link swinging sword (`objects[0].state != 0`) or in hit stun
+    (`mode != PLAY_MODE`) clears `last_dir`/`last_xy` to avoid fencing valid cells.
+  - Drop states: added clock (`0x21`) to `_RUPEE_STATES`.
+- Result (`nes/zelda_i/scripts/probe_at4a_farm.py`):
+  - Link walks onto 0x4A corridor, engages red octorok (`0x0D`), kills at f=112.
+  - Floor drop: Obj 5, type `0x60`, state `0x22` (heart) at `(64, 156)`.
+  - Link prioritizes drop scoop over chase, collects heart at f=145.
+  - Health: `0x32` (2/4) → `0x33` (3/4 filled hearts). Phase: `DONE` (`farm_ok_2_to_3`).
+  - Duration: 145 frames (~2.4s). Occupancy misses: 22. Kills: 1.
+  - Screenshot: `recordings/at4a_clean_farm.png`.
+
+Leftover: L2 door path `0x5C` still `rr-ps7.3`. Fairy drop was not
+live-picked (only 1 kill needed for 3 hearts; `$0627` at 2). Do not close.
+
+## Previous sitting (2026-09-10)
 
 Packed L4/L5 leave xy from pin settle + `screen_glance`. Hardened
 `HeartFarmController` occupancy (miss → block cell → replan; no path →
@@ -51,5 +102,5 @@ used.
 ## Leftover
 
 Promote L4/L5 packets after a natural-segment leave (real predecessor TF
-bits, full health, `verified=True`). Live Clean farm on an OW screen with
-`filled_hearts < 3` once a pin exists. L2 `0x5C` stays `rr-ps7.3`.
+bits, full health, `verified=True`). Live Clean farm verified on At4A
+(2→3 hearts in 145f). L2 `0x5C` stays `rr-ps7.3`.

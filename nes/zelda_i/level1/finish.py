@@ -686,11 +686,14 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ROOM_33_SPEC,
         ROOM_42_SPEC,
         ROOM_43_SPEC,
+        Room42EntryController,
         ROOM_44_SPEC,
         ROOM_44_SURVIVAL_SPEC,
         ROOM_45_SPEC,
         ROOM_45_SURVIVAL_SPEC,
         ROOM_52_SPEC,
+        Room23HeartSafeController,
+        Room33ScoopController,
         Room44SurvivalController,
     )
 
@@ -712,11 +715,11 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         boss_entry_delay = 0
     return (
         ("clear52", GenericDungeonRoomController(ROOM_52_SPEC), ROOM_52_SPEC.max_frames),
-        ("clear42", GenericDungeonRoomController(ROOM_42_SPEC), ROOM_42_SPEC.max_frames),
+        ("clear42", Room42EntryController(ROOM_42_SPEC), ROOM_42_SPEC.max_frames),
         ("exit42", Level1Room42ExitController(), ROOM_42_EXIT_MAX_FRAMES),
         ("clear43", GenericDungeonRoomController(ROOM_43_SPEC), ROOM_43_SPEC.max_frames),
-        ("clear33_key", GenericDungeonRoomController(room33), room33.max_frames),
-        ("clear23_key", GenericDungeonRoomController(room23), room23.max_frames),
+        ("clear33_key", Room33ScoopController(room33), room33.max_frames),
+        ("clear23_key", Room23HeartSafeController(room23), room23.max_frames),
         ("backtrack44", Level1BacktrackTo44Controller(), BACKTRACK_TO_44_MAX_FRAMES),
         ("clear44", Room44SurvivalController(room44), room44.max_frames),
         ("clear45_key", GenericDungeonRoomController(room45), room45.max_frames),

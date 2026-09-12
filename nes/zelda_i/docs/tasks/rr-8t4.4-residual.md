@@ -54,10 +54,53 @@ Gaps (OVERWORLD_DOORS): `0x54→0x44` x≈116, `0x44→0x34` x≈132.
 - Poke-pin `Level6ExitOverworld` as leave proof
 - Hold UP at `0x4C` east mouth `x≥232` (trees)
 - Occupancy 1px-grade on OW 2px UP slide (oscillated 157↔155)
+- Isolated `engage_distance=64` on natural L1 0x23
+- 1-heart 0x23 chase/contact/maze patrol (blocked class)
+- 0x33 `contact_backstep` 16→24 alone (still entered 0x23 at lo=1)
+- 0x33 scoop-if-low without holding key-DONE (leave `0x21`, 0x23 death)
+- 0x33 heart-wait on `key_got` while Stalfos live (hit to `0x20`)
+- 0x33 180f `_patrol` from `(80,165)` (never sat on the drop)
+
+## This sitting (2026-09-11) — walk key-tile `(96,173)` after live==0
+
+Chase/contact on lo≤1 stays **blocked**. Do not retune 0x23 combat.
+Hypothesis: after `live==0`, walk to reward tile `(96,173)` and linger
+(key + any 0x60 heart/fairy); `heart_wait` only once on-tile; fail-closed
+`0x33_needs_heart` if lo<hi. Units: 56 passed. One ROM `--natural-entry
+--trials 1`. `--no-video`. Do not poke.
+
+| try | leftover | live | frames |
+|-----|----------|------|--------|
+| aisle x<=96 | timeout `0x23` `(108,157)` m5 hp `0x21` | 3 | 6000 |
+| 0x33 backstep 24 | death `0x23` `(138,157)` m17 hp `0x20` | 3 | 441 |
+| 0x33 scoop-if-low | death `0x23` `(138,157)` m17 hp `0x20` | 3 | 441 |
+| hold-DONE on key_got | fail `0x33` `(88,165)` m5 hp `0x20` | 1 | 2295 |
+| wait only live==0 | fail `0x33` `(80,165)` m5 hp `0x21` | 0 | 2420 |
+| walk key-tile x-first (this) | timeout `0x33` `(88,165)` m5 hp `0x21` | 0 | 6000 |
+
+clear53 last_health **`0x22`**. clear33 last_health **`0x21`**,
+`heart_wait=0`, `last_live_enemies=0`, phase FIGHT, notes
+`at_entry_door`/`target_room_playable` (never `0x33_needs_heart`).
+**0x23 not entered.** Walked RIGHT from `(80,165)` toward `(96,173)`;
+stuck at `(88,165)` (key under Link). dx==dy so x-first mashed RIGHT
+into the east block; never on-tile so wait never armed. PNG
+`recordings/level1_complete_t0_natural.png` (2/3 hearts, standing on
+key). JSON end_frame 16648 `failed=clear33_key`. 0x52 diamond **green**.
+`route_eligible=false`.
+
+New miss class **1/3** (not blocked): greedy x-first to `(96,173)`
+walled at y=165 x=88. Occupancy: miss → block cell → replan; no path →
+stand.
+
+Pin glance (this ROM): play `0x33` `(88,165)` mode 5 TF `0x00` keys 1
+bombs 0 health `0x21` lo!=hi deaths 0. 1-heart 0x23 chase still
+**blocked**.
 
 ## Leftover
 
-Power-on: L1 play `0x23` `(144,149)` mode 5, TF `0x00`, Food 0, bombs 0,
-keys 0, rupees 10, `food_writes=0`, `set_state=0`. Glance: water-maze
-Goriya room, not L2 door. Next: L1 `clear23_key` (other lane) then
-recompose `--through level2-entry` / `--through level7-bait-shop`.
+Clean power-on: L1 `0x33` `(88,165)` mode 5, TF `0x00`, keys 1, bombs 0,
+health `0x21`, deaths 0, `last_live_enemies=0`. 0x23 **not entered**.
+clear53 health **`0x22`**. clear33 last_health **`0x21`**. Next hop:
+y-first DOWN off y=165 to 173 then RIGHT to `(96,173)`, or linger/scoop
+at leftover xy (key is here); do not mash RIGHT at y=165; do not resume
+lo≤1 chase/contact. `route_eligible=false`. Do not STATUS.

@@ -16,10 +16,18 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
-from zelda_i.combat import should_swing_at
+from zelda_i import combat as _combat
+from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
-from zelda_i.dungeon.behaviors import fight_target
+from zelda_i.dungeon.behaviors import (
+    blocked_by_projectile,
+    fight_target,
+    is_projectile,
+)
 from zelda_i.dungeon.ids import AliveRule
+from zelda_i.dungeon.postmortem import DamageLog
+from zelda_i.dungeon.threat import ReactiveEvader
+from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
@@ -28,6 +36,10 @@ CLEAR_SETTLE_ALL_DEAD = 20
 # Inland box for CombatTuning.avoid_walls (door/wall tiles grab).
 _AVOID_WALL_X = (56, 200)
 _AVOID_WALL_Y = (109, 173)
+_SCOOP_RADIUS = 48
+_SCOOP_REACH = 4
+_DOOR_EDGE = 16
+_OCC_BODY_R = 8
 
 # Enemy type IDs come from dungeon.ids; names below are the engine re-exports.
 AQUAMENTUS_OBJECT_TYPE = _ids.AQUAMENTUS_OBJECT_TYPE
@@ -60,7 +72,7 @@ class DungeonPhase(Enum):
 @dataclass(frozen=True)
 class DoorRoute:
     direction: str
-    waypoints: tuple[tuple[int, int], ...]
+    waypoints: tuple[tuple[int, int], ...] | Any
     # LEFT/RIGHT doors sit at y≈141. x-first along y=109 walks the north
     # statue band (live 0x6c entry sat at 0x6d (48, 109) for 8000f).
     y_first: bool = False
@@ -279,6 +291,62 @@ def inventory_reward_success(
     return value > 0
 
 
+def _nearby_heart_drop(snap: ZeldaSnapshot) -> ZeldaObject | None:
+    """Nearest in-bounds heart/fairy floor drop. Item identity is ObjState."""
+    return _combat.nearest_heart_or_fairy(snap)
+
+
+def _scoop_exits_room(snap: ZeldaSnapshot, drop: ZeldaObject) -> bool:
+    """True when walking to ``drop`` heads into a door-mouth wall edge."""
+    xmin, xmax, ymin, ymax = DEFAULT_BOUNDS
+    dx = int(drop.x) - int(snap.link_x)
+    dy = int(drop.y) - int(snap.link_y)
+    if int(drop.x) <= xmin + _DOOR_EDGE and dx < 0:
+        return True
+    if int(drop.x) >= xmax - _DOOR_EDGE and dx > 0:
+        return True
+    if int(drop.y) <= ymin + _DOOR_EDGE and dy < 0:
+        return True
+    if int(drop.y) >= ymax - _DOOR_EDGE and dy > 0:
+        return True
+    return False
+
+
+def _live_in_contact(
+    snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+) -> bool:
+    return any(
+        chebyshev(snap.link_x, snap.link_y, obj.x, obj.y) <= CONTACT_CHEBYSHEV
+        or manhattan(snap.link_x, snap.link_y, obj.x, obj.y) <= CONTACT_CHEBYSHEV
+        for obj in live
+    )
+
+
+def _occupancy_bodies(
+    snap: ZeldaSnapshot, target: ZeldaObject | None
+) -> set[tuple[int, int]]:
+    """Temp blocks: other live bodies + projectiles. Target cell stays open."""
+    skip = None if target is None else int(target.slot)
+    cells: set[tuple[int, int]] = set()
+    for obj in snap.objects:
+        if obj.slot < 1 or (skip is not None and int(obj.slot) == skip):
+            continue
+        proj = is_projectile(obj)
+        if not proj and (int(obj.hp) <= 0 or int(obj.type_id) in (0, 0xFF)):
+            continue
+        if not proj and int(obj.type_id) in getattr(
+            _combat, "FLOOR_DROP_TYPES", ()
+        ):
+            continue
+        ox, oy = int(obj.x), int(obj.y)
+        radius = 6 if proj else _OCC_BODY_R
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                if abs(dx) + abs(dy) <= radius:
+                    cells.add((ox + dx, oy + dy))
+    return cells
+
+
 @dataclass
 class GenericDungeonRoomController:
     """Route into and clear one room described by ``DungeonRoomSpec``."""
@@ -297,9 +365,16 @@ class GenericDungeonRoomController:
     success: bool = False
     notes: list[str] = field(default_factory=list)
     walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+    tracker: ObjectTracker = field(default_factory=ObjectTracker)
+    damage: DamageLog = field(default_factory=DamageLog)
+    evader: ReactiveEvader = field(default_factory=ReactiveEvader)
+    tracked: tuple[TrackedObject, ...] = ()
+    last_reason: str = ""
     _stuck_frames: int = 0
     _stuck_xy: tuple[int, int] | None = None
     _collect_skips: int = 0
+    _resolved_route: DoorRoute | None = None
+    _resolved_waypoints: tuple[tuple[int, int], ...] | None = None
 
     def _set_phase(self, phase: DungeonPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -309,6 +384,8 @@ class GenericDungeonRoomController:
             self._stuck_frames = 0
             self._stuck_xy = None
             self._collect_skips = 0
+            self._resolved_route = None
+            self._resolved_waypoints = None
             if phase is DungeonPhase.FIGHT:
                 self.walker = self._make_walker()
             if note:
@@ -345,6 +422,10 @@ class GenericDungeonRoomController:
 
     def __post_init__(self) -> None:
         self.walker = self._make_walker()
+        bounds = self.spec.combat.occupancy_bounds
+        if bounds is None and self.spec.combat.avoid_walls:
+            bounds = self.spec.combat.avoid_wall_bounds
+        self.evader.bounds = bounds
 
     def _snap_patrol_nearest(self, snap: ZeldaSnapshot) -> None:
         patrol = self.spec.combat.patrol
@@ -376,12 +457,21 @@ class GenericDungeonRoomController:
         return int(getattr(snap, field_name)) if field_name else 0
 
     def _follow_route(self, snap: ZeldaSnapshot, route: DoorRoute) -> FrameAction:
-        tx, ty = route.waypoints[self.waypoint_index]
+        if self._resolved_route is not route or self._resolved_waypoints is None:
+            self._resolved_route = route
+            self._resolved_waypoints = (
+                route.waypoints(snap) if callable(route.waypoints) else route.waypoints
+            )
+            self.waypoint_index = 0
+        waypoints = self._resolved_waypoints
+        if self.waypoint_index >= len(waypoints):
+            return FrameAction(nes_idle_action(), "entry_route_done")
+        tx, ty = waypoints[self.waypoint_index]
         dx = tx - snap.link_x
         dy = ty - snap.link_y
         if abs(dx) <= 2 and abs(dy) <= 2:
             self.waypoint_index += 1
-            if self.waypoint_index >= len(route.waypoints):
+            if self.waypoint_index >= len(waypoints):
                 return FrameAction(nes_idle_action(), "entry_route_done")
             return FrameAction(nes_idle_action(), "entry_waypoint_idle")
         y_first = route.y_first and abs(dy) > 2
@@ -586,13 +676,22 @@ class GenericDungeonRoomController:
             return FrameAction(nes_action(away), "combat_backstep")
         if occupancy:
             xy = (int(snap.link_x), int(snap.link_y))
-            direction = self.walker.next_dir(xy, (target.x, target.y))
+            extra = _occupancy_bodies(snap, target)
+            extra.discard(xy)
+            extra.discard((int(target.x), int(target.y)))
+            direction = self.walker.next_dir(
+                xy, (target.x, target.y), extra_blocked=extra
+            )
+            blocked = direction is not None and blocked_by_projectile(
+                snap.link_x, snap.link_y, direction, snap.objects
+            )
+            if blocked:
+                self.walker.last_dir = None
+                return FrameAction(nes_idle_action(), "combat_wait")
             if direction is None and distance >= self.spec.combat.engage_distance:
                 return self._patrol(snap)
             if distance < self.spec.combat.engage_distance:
                 return self._engage(snap, target, direction=direction)
-            # Far but path exists: walk the maze. Do not _engage — avoid_walls
-            # would freeze inland instead of following the corridor.
             return FrameAction(nes_action(direction), "combat_patrol")
         if distance < self.spec.combat.engage_distance:
             return self._engage(snap, target)
@@ -646,8 +745,14 @@ class GenericDungeonRoomController:
         for delta, positive, negative in axes:
             # 5px idled forever 5px off the 0x33 key (live 101,173 vs 96,173).
             if abs(delta) > 2:
+                direction = positive if delta > 0 else negative
+                if self.spec.reward.reward_while_live and (self.frames % 6) < 3:
+                    return FrameAction(
+                        nes_action(direction, "A"),
+                        "collect_reward_slash",
+                    )
                 return FrameAction(
-                    nes_action(positive if delta > 0 else negative),
+                    nes_action(direction),
                     "collect_reward",
                 )
         return FrameAction(nes_idle_action(), "reward_wait")
@@ -679,7 +784,60 @@ class GenericDungeonRoomController:
             return FrameAction(nes_action("DOWN"), "leftover_inland")
         return self._collect_reward(snap)
 
+    def _scoop_heart(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if snap.health_is_full or snap.filled_hearts >= snap.heart_containers:
+            return None
+        drop = _nearby_heart_drop(snap)
+        if drop is None:
+            return None
+        dist = manhattan(snap.link_x, snap.link_y, drop.x, drop.y)
+        max_dist = _SCOOP_RADIUS if self.spec.live_enemies(snap) else 120
+        if dist > max_dist:
+            return None
+        occupancy = self.spec.combat.occupancy_patrol
+        if dist <= _SCOOP_REACH:
+            if occupancy:
+                self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "scoop_heart")
+        if _scoop_exits_room(snap, drop):
+            return None
+        if occupancy:
+            direction = self.walker.next_dir(
+                (int(snap.link_x), int(snap.link_y)),
+                (int(drop.x), int(drop.y)),
+            )
+            if direction is None:
+                self.walker.last_dir = None
+                return FrameAction(nes_idle_action(), "scoop_heart")
+            return FrameAction(nes_action(direction), "scoop_heart")
+        dx = int(drop.x) - int(snap.link_x)
+        dy = int(drop.y) - int(snap.link_y)
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        elif abs(dy) > 2:
+            direction = "DOWN" if dy > 0 else "UP"
+        else:
+            return FrameAction(nes_idle_action(), "scoop_heart")
+        return FrameAction(nes_action(direction), "scoop_heart")
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Observe, decide, and record what the frame was doing.
+
+        The observation is idempotent per snapshot object, so a subclass that
+        overrides ``step`` and calls ``super().step`` does not sample velocity
+        twice. ``last_reason`` is what the damage log blames a hit on."""
+        self.tracked = self.tracker.observe(snap)
+        self.damage.observe(
+            snap,
+            self.tracked,
+            action=self.last_reason,
+            phase=self.phase.name,
+        )
+        action = self._step_policy(snap)
+        self.last_reason = action.reason
+        return action
+
+    def _step_policy(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
         if self.initial_inventory is None and (
@@ -768,6 +926,10 @@ class GenericDungeonRoomController:
             return FrameAction(nes_idle_action(), "left_target_room")
 
         if self.phase is DungeonPhase.FIGHT:
+            if not _live_in_contact(snap, live):
+                scooped = self._scoop_heart(snap)
+                if scooped is not None:
+                    return scooped
             if (
                 snap.screen == self.spec.room_id
                 and not live
@@ -793,6 +955,9 @@ class GenericDungeonRoomController:
             return self._combat(snap, live)
 
         if self.phase is DungeonPhase.COLLECT_REWARD:
+            scooped = self._scoop_heart(snap)
+            if scooped is not None:
+                return scooped
             if self.spec.reward.kind == RewardKind.CLEAR_ONLY:
                 return self._finish_clear_leftover(snap)
             return self._collect_reward(snap)
@@ -826,5 +991,8 @@ class GenericDungeonRoomController:
                 "occupancy_patrol": self.spec.combat.occupancy_patrol,
                 "occupancy_misses": self.walker.misses,
                 "occupancy_blocked": len(self.walker.grid.blocked),
+                "evades": self.evader.evades,
+                "off_line_steps": self.evader.off_line_steps,
             },
+            "damage": self.damage.report(),
         }

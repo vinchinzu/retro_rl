@@ -55,6 +55,7 @@ __all__ = [
     "gohma_live",
     "level6_gohma_stages",
     "level6_gohma_success",
+    "make_clean_gohma_controller",
     "make_gohma_controller",
 ]
 
@@ -345,6 +346,11 @@ class Level6GohmaController(HopController):
 def make_gohma_controller(*, poke_arrows: bool = True) -> Level6GohmaController:
     """Kill Gohma 0x1C with poked wooden arrows. Bow already earned."""
     return Level6GohmaController(poke_arrows=poke_arrows)
+
+
+def make_clean_gohma_controller() -> Level6GohmaController:
+    """Kill Gohma 0x1C without poking ADDR_ARROWS. Fail closed if unarmed."""
+    return Level6GohmaController(poke_arrows=False)
 
 
 def level6_gohma_stages():

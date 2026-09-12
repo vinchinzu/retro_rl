@@ -6,7 +6,8 @@ import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
 
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon import ids as dungeon_ids
+from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE, RUPEE_DROP_STATE
 from zelda_i.overworld.graph import (
     LEVEL2_5C_MAZE_WAYPOINTS,
     LEVEL2_DOOR_HOPS,
@@ -174,7 +175,7 @@ def _snap_drop(*, rupees: int, drop_x: int, drop_y: int, x: int = 100, y: int = 
         y=drop_y,
         facing=0,
         hp=0,
-        state=0,
+        state=RUPEE_DROP_STATE,
     )
     return ZeldaSnapshot(
         mode=PLAY_MODE,
@@ -400,3 +401,34 @@ def test_align_x_column_still_pushes_up() -> None:
     )
     act = ctrl.step(read_snapshot(_ram(screen=0x4C, x=112, y=157, sword=1)))
     assert _cardinal(act) == "UP"
+
+
+def test_farm_below_hearts_zero_still_never_farms_but_scoops_a_heart(
+    monkeypatch,
+) -> None:
+    """farm_below_hearts=0 never farms; a heart 20px ahead is scoop_heart."""
+    from zelda_i.overworld import path as path_mod
+
+    heart_type = int(getattr(dungeon_ids, "HEART_DROP_OBJECT_TYPE", 0xFE))
+    monkeypatch.setattr(path_mod, "HEART_FAIRY_DROP_TYPES", frozenset({heart_type}))
+    drop = ZeldaObject(
+        slot=1,
+        type_id=heart_type,
+        x=120,
+        y=140,
+        facing=0,
+        hp=0,
+        state=int(getattr(dungeon_ids, "HEART_DROP_STATE", 0x22)),
+    )
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
+        farm_below_hearts=0,
+    )
+    act = ctrl.step(
+        _snap(screen=0x77, x=100, y=140, health=0x30, objects=(drop,))
+    )
+    assert ctrl.farm_attempts == 0
+    assert ctrl._farm is None
+    assert act.reason == "scoop_heart"
+    assert act.action == nes_action("RIGHT")
+    assert "hop0" not in act.reason

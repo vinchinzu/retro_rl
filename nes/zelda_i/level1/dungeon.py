@@ -6,14 +6,21 @@ themselves on import so ``dungeon.spec_for_room`` can find them.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import nearest_heart_or_fairy
 from zelda_i.dungeon.engine import (
     AQUAMENTUS_OBJECT_TYPE,
     AliveRule,
     CombatTuning,
     DoorRoute,
+    DungeonPhase,
     DungeonRoomSpec,
     GEL_OBJECT_TYPE,
     GORIYA_OBJECT_TYPE,
+    GenericDungeonRoomController,
     KEESE_OBJECT_TYPE,
     RewardKind,
     RewardSpec,
@@ -34,6 +41,7 @@ from zelda_i.level1.path import (
     ROOM_WEST_KEY,
     STALFOS_OBJECT_TYPE,
 )
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 _STALFOS_PATROL: tuple[tuple[int, int], ...] = (
     (64, 117),
@@ -138,7 +146,7 @@ ROOM_53_SPEC = DungeonRoomSpec(
     enemy_types=(STALFOS_OBJECT_TYPE,),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=CombatTuning(patrol=_STALFOS_PATROL),
+    combat=CombatTuning(patrol=_STALFOS_PATROL, contact_backstep=24),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
@@ -179,6 +187,14 @@ ROOM_54_SPEC = DungeonRoomSpec(
     level=LEVEL_1,
 )
 
+def _room_42_entry_waypoints(snap: ZeldaSnapshot) -> tuple[tuple[int, int], ...]:
+    if snap.link_y <= 101:
+        return ((120, 101), (120, 93))
+    if snap.link_x <= 120:
+        return ((96, 101), (120, 101), (120, 93))
+    return ((176, 101), (120, 101), (120, 93))
+
+
 ROOM_52_SPEC = DungeonRoomSpec(
     spec_id="level1_room52",
     source_room=ROOM_KEY_STALFOS,
@@ -195,6 +211,7 @@ ROOM_52_SPEC = DungeonRoomSpec(
         engage_distance=48,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x03,
@@ -202,7 +219,8 @@ ROOM_52_SPEC = DungeonRoomSpec(
         DoorRoute("RIGHT", ((128, 93), (208, 93), (208, 141))),
         DoorRoute(
             "UP",
-            ((176, 149), (176, 101), (120, 101), (120, 93)),
+            _room_42_entry_waypoints,
+            y_first=True,
         ),
     ),
     level=LEVEL_1,
@@ -214,7 +232,8 @@ ROOM_42_SPEC = DungeonRoomSpec(
     room_id=0x42,
     entry=DoorRoute(
         "UP",
-        ((176, 149), (176, 101), (120, 101), (120, 93)),
+        _room_42_entry_waypoints,
+        y_first=True,
     ),
     enemy_types=(GEL_OBJECT_TYPE,),
     expected_enemy_count=3,
@@ -226,11 +245,47 @@ ROOM_42_SPEC = DungeonRoomSpec(
         engage_distance=160,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x03,
     level=LEVEL_1,
 )
+
+# 0x52 center 2x2 diamond. West lip leftover (103,165) was 1px outside
+# x=104..135; peel until aisle x<=96 then occupancy north.
+_ROOM_52_AISLE_X = 96
+_ROOM_52_DIAMOND: frozenset[tuple[int, int]] = frozenset(
+    (x, y) for x in range(97, 136) for y in range(149, 181)
+)
+
+
+class Room42EntryController(GenericDungeonRoomController):
+    """0x52 diamond: peel to an aisle, occupancy around, then north door."""
+
+    def _follow_route(self, snap: ZeldaSnapshot, route: DoorRoute) -> FrameAction:
+        if int(snap.screen) != 0x52:
+            return super()._follow_route(snap, route)
+        x, y = int(snap.link_x), int(snap.link_y)
+        dest = (120, 93)
+        if abs(x - dest[0]) <= 2 and abs(y - dest[1]) <= 2:
+            return FrameAction(nes_idle_action(), "entry_route_done")
+        xy = (x, y)
+        on_diamond = (
+            149 <= y <= 180 and _ROOM_52_AISLE_X < x < 144
+        )
+        if on_diamond:
+            direction = "LEFT" if x <= 120 else "RIGHT"
+            self.walker.last_dir = direction
+            return FrameAction(nes_action(direction), "entry_route")
+        extra = set(_ROOM_52_DIAMOND)
+        direction = self.walker.next_dir(xy, dest, extra_blocked=extra)
+        if direction is None:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "combat_wait")
+        self.walker.last_dir = direction
+        return FrameAction(nes_action(direction), "entry_route")
+
 
 ROOM_43_SPEC = DungeonRoomSpec(
     spec_id="level1_room43",
@@ -249,6 +304,7 @@ ROOM_43_SPEC = DungeonRoomSpec(
         engage_distance=160,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x17,
@@ -270,6 +326,7 @@ ROOM_33_SPEC = DungeonRoomSpec(
         patrol=_STALFOS_PATROL,
         engage_distance=24,
         attack_phase=4,
+        contact_backstep=24,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
@@ -279,6 +336,102 @@ ROOM_33_SPEC = DungeonRoomSpec(
     room_item_id=0x19,
     level=LEVEL_1,
 )
+
+
+class Room33ScoopController(GenericDungeonRoomController):
+    """0x33: do not key-DONE while lo < hi. Walk key-tile after clear; else fail-closed."""
+
+    last_health: int = 0
+    heart_wait: int = 0
+    heart_wait_limit: int = 180
+
+    @staticmethod
+    def _scoop_if_low(snap: ZeldaSnapshot) -> FrameAction | None:
+        if snap.health_is_full:
+            return None
+        drop = nearest_heart_or_fairy(snap)
+        if drop is None:
+            return None
+        dx = int(drop.x) - int(snap.link_x)
+        dy = int(drop.y) - int(snap.link_y)
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            return FrameAction(nes_idle_action(), "scoop_heart")
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), "scoop_heart")
+
+    def _tick_low(self, snap: ZeldaSnapshot) -> None:
+        self.frames += 1
+        self.phase_frames += 1
+        live = self.spec.live_enemies(snap)
+        self.last_live_enemies = len(live)
+        self.max_live_enemies = max(self.max_live_enemies, len(live))
+        if self.initial_inventory is None and snap.screen == self.spec.room_id:
+            self.initial_inventory = self._inventory_value(snap)
+
+    def _cleared_low(self, snap: ZeldaSnapshot) -> bool:
+        """Heart-wait only after the room is empty. Live Stalfos keep fighting."""
+        if snap.health_is_full or snap.screen != self.spec.room_id:
+            return False
+        live = self.spec.live_enemies(snap)
+        if live:
+            return False
+        key_got = (
+            self.initial_inventory is not None
+            and self._inventory_value(snap) > self.initial_inventory
+        )
+        cleared = self.max_live_enemies >= self.spec.expected_enemy_count
+        return bool(key_got or cleared)
+
+    def _on_key_tile(self, snap: ZeldaSnapshot) -> bool:
+        target = self.spec.reward.target or (96, 173)
+        return (
+            abs(int(snap.link_x) - int(target[0])) <= 2
+            and abs(int(snap.link_y) - int(target[1])) <= 2
+        )
+
+    def _walk_key_tile(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Sit on the key/item tile so a 0x60 heart/fairy can be scooped."""
+        target = self.spec.reward.target or (96, 173)
+        dx = int(target[0]) - int(snap.link_x)
+        dy = int(target[1]) - int(snap.link_y)
+        if abs(dx) <= 2 and abs(dy) <= 2:
+            return FrameAction(nes_idle_action(), "scoop_key_tile")
+        if abs(dx) >= abs(dy) and abs(dx) > 2:
+            direction = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            direction = "DOWN" if dy > 0 else "UP"
+        return FrameAction(nes_action(direction), "scoop_key_tile")
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.last_health = int(snap.health)
+        if snap.mode == 17 or snap.transitioning or snap.mode != PLAY_MODE:
+            return super().step(snap)
+        if snap.level != self.spec.level:
+            return super().step(snap)
+        scooped = self._scoop_if_low(snap)
+        if scooped is not None:
+            self._tick_low(snap)
+            return scooped
+        if self._cleared_low(snap):
+            self._tick_low(snap)
+            if self._on_key_tile(snap):
+                self.heart_wait += 1
+                if self.heart_wait >= self.heart_wait_limit:
+                    self._set_phase(DungeonPhase.FAILED, "0x33_needs_heart")
+                    return FrameAction(nes_idle_action(), "0x33_needs_heart")
+            return self._walk_key_tile(snap)
+        self.heart_wait = 0
+        return super().step(snap)
+
+    def report(self) -> dict:
+        out = super().report()
+        out["last_health"] = self.last_health
+        out["heart_wait"] = self.heart_wait
+        return out
+
 
 # Water-maze walkable loop. The mid-row y=129..151 is blocked by water
 # between cols 65 and 175; safe cross-passages are col 64 and col 176.
@@ -317,11 +470,13 @@ _ROOM_23_BLOCKED: tuple[tuple[int, int], ...] = (
         for x in range(33, 64)
         for y in range(120, 161)
     ),
-    # Center water bar
+    # Center water: 16px cell row at y=128, inset from west/east passages.
+    # x=65..175 / y=129..151 boxed the west 16px column (x=64..79) and the
+    # south corridor — live leftover (144,149) and death (78,157) were floor.
     *(
         (x, y)
-        for x in range(65, 176)
-        for y in range(129, 152)
+        for x in range(80, 160)
+        for y in range(128, 144)
     ),
     # East block
     *(
@@ -346,6 +501,87 @@ _ROOM_23_BLOCKED: tuple[tuple[int, int], ...] = (
         for y in range(201, 208)
     ),
 )
+
+# South U-turn only. 1-heart hold must not cycle the maze into (128, 117).
+_ROOM_23_SOUTH: tuple[tuple[int, int], ...] = tuple(
+    xy for xy in _ROOM_23_MAZE if xy[1] >= 149
+)
+_ROOM_23_HOLD_Y = 149
+_ROOM_23_CORRIDOR_Y = 157
+
+
+class Room23HeartSafeController(GenericDungeonRoomController):
+    """1-heart 0x23: hold y=157; do not chase the north plus-stem.
+
+    Peel DOWN off y=149; UP from the south mouth back to the corridor.
+    Mask UP on 141<y<=157 (boomerang plus-stem). Never DOWN at y>=157.
+    Occupancy miss → block → replan; no path → stand on the corridor.
+    lo>=2 restores the full maze.
+    """
+
+    def _combat(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
+        if not live or int(snap.filled_hearts) > 1:
+            return super()._combat(snap, live)
+        y = int(snap.link_y)
+        south = tuple(obj for obj in live if int(obj.y) >= _ROOM_23_CORRIDOR_Y)
+        old = self.spec
+        self.spec = replace(
+            old, combat=replace(old.combat, patrol=_ROOM_23_SOUTH)
+        )
+        try:
+            if self.patrol_index >= len(_ROOM_23_SOUTH):
+                self._snap_patrol_nearest(snap)
+            if y > _ROOM_23_CORRIDOR_Y:
+                self.combat_frames += 1
+                action = self._return_corridor()
+            elif y < _ROOM_23_CORRIDOR_Y:
+                self.combat_frames += 1
+                if y >= _ROOM_23_HOLD_Y:
+                    action = self._peel_south()
+                else:
+                    action = self._retreat_south(snap)
+            elif south:
+                action = super()._combat(snap, south)
+            else:
+                self.combat_frames += 1
+                action = self._patrol(snap)
+        finally:
+            self.spec = old
+        if _action_is(action, "UP") and y <= _ROOM_23_CORRIDOR_Y:
+            if y < _ROOM_23_CORRIDOR_Y:
+                return self._peel_south()
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "combat_wait")
+        if _action_is(action, "DOWN") and y >= _ROOM_23_CORRIDOR_Y:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), "combat_wait")
+        return action
+
+    def _peel_south(self) -> FrameAction:
+        self.walker.last_dir = "DOWN"
+        return FrameAction(nes_action("DOWN"), "heart_safe_peel_south")
+
+    def _return_corridor(self) -> FrameAction:
+        self.walker.last_dir = "UP"
+        return FrameAction(nes_action("UP"), "heart_safe_return_corridor")
+
+    def _retreat_south(self, snap: ZeldaSnapshot) -> FrameAction:
+        x, y = int(snap.link_x), int(snap.link_y)
+        direction = self.walker.next_dir((x, y), (120, 157))
+        if direction is None or direction == "UP":
+            if y >= _ROOM_23_HOLD_Y:
+                return self._peel_south()
+            direction = "LEFT" if x >= 120 else "RIGHT"
+        self.walker.last_dir = direction
+        return FrameAction(nes_action(direction), "combat_patrol")
+
+
+def _action_is(action: FrameAction, direction: str) -> bool:
+    a = list(action.action)
+    return a == list(nes_action(direction)) or a == list(
+        nes_action(direction, "A")
+    )
+
 
 ROOM_23_SPEC = DungeonRoomSpec(
     spec_id="level1_room23",
@@ -373,6 +609,7 @@ ROOM_23_SPEC = DungeonRoomSpec(
         split_y=141,
         occupancy_patrol=True,
         occupancy_blocked=_ROOM_23_BLOCKED,
+        contact_backstep=16,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
@@ -436,9 +673,12 @@ for _spec in (
     register_room_spec(_spec)
 
 __all__ = [
+    "Room23HeartSafeController",
     "ROOM_23_SPEC",
+    "Room33ScoopController",
     "ROOM_33_SPEC",
     "ROOM_35_SPEC",
+    "Room42EntryController",
     "ROOM_42_SPEC",
     "ROOM_43_SPEC",
     "ROOM_44_SPEC",
