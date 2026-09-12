@@ -118,6 +118,36 @@ def test_east_key_leaves_west_block_pocket() -> None:
     assert (80, 109) in ROOM_7A_SPEC.combat.patrol
 
 
+def test_east_key_0x24_e_contact_pose_is_not_dodgeable() -> None:
+    """Census f460: Link (88,133) vs parked 0x24 (96,125), d=8, ttc=0."""
+    from zelda_i.dungeon.threat import MIN_DODGE_BODY, assess, dodgeable
+    from zelda_i.dungeon.tracking import ObjectTracker
+
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=88, y=133, wizzrobes=1)
+    ram[ADDR_LINK_X + 1] = 96
+    ram[ADDR_LINK_Y + 1] = 125
+    ram[ADDR_LINK_FACING + 1] = 0x02
+    snap = read_snapshot(ram)
+    tracked = ObjectTracker().observe(snap)
+    impact = assess((88, 133), tracked)
+    assert impact.frames == 0
+    assert dodgeable(impact) is False
+    assert impact.frames < MIN_DODGE_BODY
+
+
+def test_east_key_engages_undodgeable_0x24_pose() -> None:
+    """Measured pose: still engage. In-place slash / south-stand died in 0x7a."""
+    from zelda_i.level6.wizzrobe import make_east_key_controller
+
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=88, y=133, wizzrobes=1, facing=0x01)
+    ram[ADDR_LINK_X + 1] = 96
+    ram[ADDR_LINK_Y + 1] = 125
+    ram[ADDR_LINK_FACING + 1] = 0x02
+    ctl = make_east_key_controller()
+    action = ctl.step(read_snapshot(ram))
+    assert "engage" in action.reason
+
+
 @pytest.mark.parametrize("x,y", [(189, 141), (192, 140)])
 def test_west_east_mouth_inland_dash_left(x: int, y: int) -> None:
     """v4/v5 leftover: live 0x24 on the east lip → LEFT inland, not engage."""
