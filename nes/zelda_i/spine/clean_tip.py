@@ -118,17 +118,17 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         bead="M5",
         segment="power-on → L1 Triforce",
         rung=Rung.NATURAL,
-        blocker=Blocker.PICKUP_MISS,
+        blocker=Blocker.BODY_UNDODGEABLE,
         room="L1 0x33",
-        pose="(94,173) health 0x21 keys 1 deaths 0, 0x33_needs_heart at 2443f / end 13091",
+        pose="(98,173) health 0x21 keys 1 deaths 0, 0x33_needs_heart at 5198f / end 15846",
         residual="docs/tasks/rr-npv-reactive-combat.md",
         note=(
-            "MEASURED RED 2026-09-11: occupancy stall at (88,165) closed "
-            "(Room33ScoopController now BFS-walks the key tile; $6530 dump "
-            "is tile 244 at (96,160), floor along y=176). New leftover: "
-            "key collected, lo=1, no heart drop, fail-closed 0x33_needs_heart "
-            "on the key tile. clear52→clear42→exit42→clear43 still pass. "
-            "tip() stays None while the power-on run is red."
+            "MEASURED RED 2026-09-12: occupancy stall closed. 0x33 now "
+            "honors threat.decide (CombatTuning.evade, no slash-walk). "
+            "Still two Stalfos body hits at d=8/5 during combat_evade_peel "
+            "(0x2a_E then 0x2a_W, dodgeable False), lo=1, no 0x60 drop, "
+            "fail-closed 0x33_needs_heart. Global evade broke exit42; "
+            "keep evade opt-in. tip() stays None while power-on is red."
         ),
     ),
     CleanStep(

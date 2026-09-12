@@ -2,6 +2,35 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
+## This sitting (2026-09-12) — bead `rr-npv.8` Clean 0x33
+
+Claimed `rr-npv.8` (already in_progress). Clean power-on
+`run_level1_complete --natural-entry --trials 1`, no assist.
+
+Repro (baseline, occupancy tree): `failed=clear33_key` room 0x33
+`(94,173)` mode 5 TF `0x00` keys 1 health `0x21` deaths 0,
+`0x33_needs_heart` heart_wait=180, stage 2443f / end 13091.
+Hits: `0x2a_N` combat_backstep d=8, `0x2a_E` combat_engage d=8.
+`tuning.evades=0`. Prefix last_health `0x22`.
+
+Root cause: `GenericDungeonRoomController._combat` never called
+`evader.decide`. Tracker/DamageLog were report-only. Link walked into
+the 16px BODY pad. After live==0 the seed has no `0x60`/`0x22` heart.
+
+Fix that landed: `CombatTuning.evade` (default False). ROOM_33 on.
+`_combat` honors `threat.decide` and will not chase inside
+`MIN_DODGE_BODY`. Peel does not slash-walk. Global evade (every room)
+timed out `exit42`; do not turn it on repo-wide.
+
+Remeasure: still `clear33_key` red, leftover `(98,173)` mode 5 keys 1
+health `0x21`, `0x33_needs_heart` 5198f / end 15846, evades=407, live
+0/3. Hits: `0x2a_E` then `0x2a_W` during `combat_evade_peel` at d=8/5
+(`dodgeable` False). Same leftover class. Kite/always-away starved the
+kill and died (5 hits, live 3/3). 1-heart 0x23 stays blocked.
+
+Glance: play `0x33` `(98,173)` mode 5 TF `0x00` keys 1 bombs 0 health
+`0x21` lo!=hi deaths 0. `route_eligible=false`. Do not STATUS.
+
 ## This sitting (2026-09-10) — bead `rr-ps7.3`
 
 Claimed `rr-ps7.3`. Leftover-relative L2 OW walk on `0x4C` east mouth.

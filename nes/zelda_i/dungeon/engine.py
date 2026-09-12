@@ -26,7 +26,7 @@ from zelda_i.dungeon.behaviors import (
 )
 from zelda_i.dungeon.ids import AliveRule
 from zelda_i.dungeon.postmortem import DamageLog
-from zelda_i.dungeon.threat import ReactiveEvader
+from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
@@ -105,6 +105,9 @@ class CombatTuning:
     occupancy_patrol: bool = False  # 1px predict; miss → block + BFS
     occupancy_bounds: tuple[int, int, int, int] | None = None
     occupancy_blocked: tuple[tuple[int, int], ...] = ()
+    # Closing BODY/shot: honor threat.decide before chase. Off by default;
+    # 0x42's block-push leftover moved when every room peeled.
+    evade: bool = False
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -603,6 +606,22 @@ class GenericDungeonRoomController:
             hold=tuning.engage_attack_hold,
         )
 
+    def _evade_step(
+        self,
+        snap: ZeldaSnapshot,
+        decision: EvadeDecision,
+    ) -> FrameAction:
+        """Walk the threat button. Do not slash-walk: that re-enters the pad."""
+        reason = f"combat_{decision.reason}"
+        direction = decision.direction
+        if direction is None:
+            if self.spec.combat.occupancy_patrol:
+                self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), reason)
+        if self.spec.combat.occupancy_patrol:
+            self.walker.last_dir = direction
+        return FrameAction(nes_action(direction), reason)
+
     def _combat(self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]) -> FrameAction:
         self.combat_frames += 1
         occupancy = self.spec.combat.occupancy_patrol
@@ -639,11 +658,25 @@ class GenericDungeonRoomController:
                 period=self.spec.combat.engage_attack_period,
                 hold=self.spec.combat.engage_attack_hold,
             )
+        if self.spec.combat.evade:
+            decision = self.evader.decide(snap, self.tracked)
+            if decision is not None:
+                return self._evade_step(snap, decision)
         target = fight_target(snap.link_x, snap.link_y, live)
         if target is None:
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
             return self._patrol(snap)
         distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
+        if self.spec.combat.evade and distance < MIN_DODGE_BODY:
+            dx = target.x - snap.link_x
+            dy = target.y - snap.link_y
+            if abs(dx) >= abs(dy):
+                away = "LEFT" if dx > 0 else "RIGHT"
+            else:
+                away = "UP" if dy > 0 else "DOWN"
+            if occupancy:
+                self.walker.last_dir = away
+            return FrameAction(nes_action(away), "combat_evade_body")
         back = self.spec.combat.contact_backstep
         # 2/6 peel so we still slash; always-backstep starves kill (rr-gjey).
         if back > 0 and distance < back and (self.combat_frames % 6) < 2:
