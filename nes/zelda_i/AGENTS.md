@@ -18,14 +18,15 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
-**M5 Clean is RED as of 2026-09-11** — measured, not inherited.
-`run_level1_complete --natural-entry --trials 1` on the occupancy-walk
-tree stops at `clear33_key`, L1 `0x33` `(94,173)` mode 5 TF `0x00` keys 1
-health `0x21`, `0x33_needs_heart` at 2443f / end 13091. Occupancy stall
-at `(88,165)` is closed (`$6530` tile 244 at `(96,160)`). New leftover:
-key collected, lo=1, no heart drop. `clear52 → clear42 → exit42 →
-clear43` pass. Do not repeat "M5 Clean is green" without a fresh run.
-Ladder of record: `uv run python nes/zelda_i/scripts/clean_tip.py`.
+**M5 Clean is RED as of 2026-09-12** — measured, not inherited.
+`run_level1_complete --natural-entry --trials 1` stops at `clear33_key`,
+L1 `0x33` `(98,173)` mode 5 TF `0x00` keys 1 health `0x21`,
+`0x33_needs_heart` at 5198f / end 15846. Occupancy stall closed.
+`CombatTuning.evade` is on for 0x33 (`threat.decide`, no slash-walk,
+evades=407). Hits: Stalfos `0x2a` E then W at d=8/5 during
+`combat_evade_peel`, dodgeable False, not fatal. No 0x60 drop.
+`clear52 → clear42 → exit42 → clear43` pass (global evade broke
+`exit42`; stay opt-in). Ladder: `uv run python nes/zelda_i/scripts/clean_tip.py`.
 
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
 Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)

@@ -73,9 +73,11 @@ def test_shared_blocker_classes_are_visible() -> None:
     groups = by_blocker()
     assert Blocker.SHOT_UNDODGEABLE in groups
     assert Blocker.FIRING_LINE in groups
+    assert Blocker.BODY_UNDODGEABLE in groups
     # The two stand-line lanes are answered by the same threat tool.
     assert "off_line_step" in tool_for(Blocker.SHOT_UNDODGEABLE)
     assert "in_firing_line" in tool_for(Blocker.FIRING_LINE)
+    assert "MIN_DODGE_BODY" in tool_for(Blocker.BODY_UNDODGEABLE)
 
 
 def test_render_mentions_the_next_hop_and_blockers() -> None:

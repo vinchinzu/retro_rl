@@ -327,6 +327,7 @@ ROOM_33_SPEC = DungeonRoomSpec(
         engage_distance=24,
         attack_phase=4,
         contact_backstep=24,
+        evade=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,

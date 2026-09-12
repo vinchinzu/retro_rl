@@ -521,3 +521,58 @@ def test_a_known_enemy_stays_a_body_however_fast() -> None:
     ]
     keese = _drive(tracker, frames)[0]
     assert keese.hazard is HazardClass.BODY
+
+
+# --- controller regression: L1 0x33 Stalfos body at d=8 ----------------
+
+STALFOS_TYPE = 0x2A
+
+
+def test_l1_0x33_does_not_walk_into_a_closing_stalfos_body() -> None:
+    """Natural-entry leftover: 0x2a_N then 0x2a_E at d=8, evades=0, lo=1.
+
+    Hits landed during combat_backstep / combat_engage. Tracker saw the
+    body; _combat never asked threat.decide, so Link walked into pad=16.
+    """
+    from retro_harness.nes import nes_action
+    from zelda_i.dungeon.engine import GenericDungeonRoomController
+    from zelda_i.level1.dungeon import ROOM_33_SPEC
+
+    ctl = GenericDungeonRoomController(ROOM_33_SPEC)
+    last = None
+    toward = (nes_action("UP"), nes_action("UP", "A"))
+    walked_in = 0
+    for i in range(20):
+        snap = _snap(
+            (120, 172),
+            ((1, STALFOS_TYPE, 128, 148 + i, 32, 0, FACE_SOUTH),),
+            health=0x22,
+            screen=0x33,
+            level=1,
+        )
+        last = ctl.step(snap)
+        # Velocity needs TRACK_HISTORY samples before decide can peel.
+        if i >= 8 and any(np.array_equal(last.action, a) for a in toward):
+            walked_in += 1
+    assert last is not None
+    assert last.reason.startswith("combat_evade")
+    assert "engage" not in last.reason
+    assert walked_in == 0
+
+
+def test_l1_0x33_still_chases_a_stalfos_that_is_not_inbound() -> None:
+    """Evade is silent when standing is already safe; chase still kills."""
+    from zelda_i.dungeon.engine import GenericDungeonRoomController
+    from zelda_i.level1.dungeon import ROOM_33_SPEC
+
+    ctl = GenericDungeonRoomController(ROOM_33_SPEC)
+    snap = _snap(
+        (120, 172),
+        ((1, STALFOS_TYPE, 48, 93, 32, 0, FACE_SOUTH),),
+        health=0x22,
+        screen=0x33,
+        level=1,
+    )
+    action = ctl.step(snap)
+    assert action.reason.startswith("combat_")
+    assert ctl.report()["tuning"]["evades"] == 0

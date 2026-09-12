@@ -854,6 +854,8 @@ def test_prefix_specs_contact_backstep_keeps_hearts() -> None:
     """0x53 / 0x33 peel contact so 0x23 is entered with lo>=2."""
     assert ROOM_53_SPEC.combat.contact_backstep >= 24
     assert ROOM_33_SPEC.combat.contact_backstep >= 24
+    assert ROOM_33_SPEC.combat.evade is True
+    assert ROOM_53_SPEC.combat.evade is False
     assert ROOM_42_SPEC.combat.contact_backstep >= 16
     assert ROOM_43_SPEC.combat.contact_backstep >= 16
 
