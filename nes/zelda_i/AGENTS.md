@@ -18,6 +18,16 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
+**M5 Clean is RED as of 2026-09-11** — measured, 2/2 deterministic, not
+inherited from a document. `run_level1_complete --natural-entry --trials 2`
+stops at stage `clear33_key`, L1 `0x33` `(88,165)` mode 5 TF `0x00` keys 1
+health `0x21` deaths 0, 6000f cap at frame 16648. `clear52 → clear42 →
+exit42 → clear43` pass. The parent commit `9004b668` is red *earlier*
+(`clear42` / `0x52`), so this is a pre-existing break, not a regression.
+Do not repeat "M5 Clean is green" without a fresh run behind it — that
+claim propagated for at least one sitting on the strength of this file.
+Ladder of record: `uv run python nes/zelda_i/scripts/clean_tip.py`.
+
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
 Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)
 (Food poke; shop hop wired, power-on blocked by claimed `rr-ps7.3` L2 `0x4C`).
@@ -47,8 +57,11 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level1-bow-pic
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2-entry --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7-bait-shop --no-video --trials 1
 
-# Clean M5 (do not overwrite)
+# Clean M5 (do not overwrite) — RED at clear33_key, see Immediate goal
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
+
+# Clean ladder: tip, next open hop, blockers grouped by root cause
+uv run python nes/zelda_i/scripts/clean_tip.py
 
 uv run pytest zelda_i/tests -q
 ```
