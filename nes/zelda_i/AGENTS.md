@@ -19,14 +19,13 @@ level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
 **M5 Clean is RED as of 2026-09-12** — measured, not inherited.
-`run_level1_complete --natural-entry --trials 1` stops at `clear33_key`,
-L1 `0x33` `(98,173)` mode 5 TF `0x00` keys 1 health `0x21`,
-`0x33_needs_heart` at 5198f / end 15846. Occupancy stall closed.
-`CombatTuning.evade` is on for 0x33 (`threat.decide`, no slash-walk,
-evades=407). Hits: Stalfos `0x2a` E then W at d=8/5 during
-`combat_evade_peel`, dodgeable False, not fatal. No 0x60 drop.
-`clear52 → clear42 → exit42 → clear43` pass (global evade broke
-`exit42`; stay opt-in). Ladder: `uv run python nes/zelda_i/scripts/clean_tip.py`.
+`run_level1_complete --natural-entry --trials 1` now greens
+`clear33_key` 2128f hp `0x22` keys 1 hits 0 (hold-north slash in
+place). Stops at `clear23_key`, L1 `0x23` `(64,157)` mode 17 health
+`0x20`, Goriya `0x06` N+W, `combat_wait`, end 15463, deaths 1.
+Entered 0x23 at lo>=2. Do not retune the 1-heart hold. Do not
+repeat "M5 Clean is green" without a fresh TF run.
+Ladder: `uv run python nes/zelda_i/scripts/clean_tip.py`.
 
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
 Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)

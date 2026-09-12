@@ -118,17 +118,16 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         bead="M5",
         segment="power-on → L1 Triforce",
         rung=Rung.NATURAL,
-        blocker=Blocker.BODY_UNDODGEABLE,
-        room="L1 0x33",
-        pose="(98,173) health 0x21 keys 1 deaths 0, 0x33_needs_heart at 5198f / end 15846",
+        blocker=Blocker.OCCUPANCY_STALL,
+        room="L1 0x23",
+        pose="(64,157) mode 17 health 0x20, Goriya 0x06 N/W, combat_wait, end 15463",
         residual="docs/tasks/rr-npv-reactive-combat.md",
         note=(
-            "MEASURED RED 2026-09-12: occupancy stall closed. 0x33 now "
-            "honors threat.decide (CombatTuning.evade, no slash-walk). "
-            "Still two Stalfos body hits at d=8/5 during combat_evade_peel "
-            "(0x2a_E then 0x2a_W, dodgeable False), lo=1, no 0x60 drop, "
-            "fail-closed 0x33_needs_heart. Global evade broke exit42; "
-            "keep evade opt-in. tip() stays None while power-on is red."
+            "0x33 hold-north 0-hit GREEN 2026-09-12: clear33_key 2128f "
+            "hp 0x22 keys 1 hits 0 live 0/3 (103,173). Dump: a Stalfos at "
+            "cheb 18 was in the sword box while peel ate the pad at y=173. "
+            "Power-on now dies in 0x23 at lo>=2 (filled=2), not 1-heart. "
+            "Do not retune the 1-heart hold. tip() stays None until TF."
         ),
     ),
     CleanStep(

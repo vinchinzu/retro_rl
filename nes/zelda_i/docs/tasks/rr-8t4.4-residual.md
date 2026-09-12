@@ -2,7 +2,32 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
-## This sitting (2026-09-12) — bead `rr-npv.8` Clean 0x33
+## This sitting (2026-09-12) — bead `rr-npv.8` Clean 0x33 0-hit
+
+Claimed `rr-npv.8`. Tight dump: natural prefix hp `0x22` through
+clear43, then 0x33.
+
+Dump before (peel): 2 hits at (80,173) `combat_evade_peel`, drops 0.
+Hit 1962: slot 1 at (80,155) cheb 18 **in UP hitbox**, slot 3 at
+(88,173) cheb 8 in pad. Sandwich on the key row.
+
+One change: `Room33ScoopController._combat` holds (120,117), A in
+place when the sword box is true and cheb >= 16, away inside the pad,
+no south chase.
+
+Dump after: `ok=True` 2128f glance `0x33 (103,173)` hp `0x22` keys 1
+full, hits 0, drops 0.
+
+Natural-entry: `clear33_key` green 2128f hp 34=`0x22` hits {} live 0/3.
+Then `clear23_key` red: death `0x23 (64,157)` m17 hp `0x20`, Goriya
+`0x06` N+W, `combat_wait`, end 15463. Entered 0x23 at lo>=2. Do not
+retune 1-heart 0x23.
+
+Glance 0x33 leave: play `0x33` `(103,173)` mode 5 TF `0x00` keys 1
+health `0x22` lo==hi deaths 0. Next leftover is 0x23. `route_eligible=false`.
+Do not STATUS.
+
+## This sitting (2026-09-12) — bead `rr-npv.8` Clean 0x33 peel leftover
 
 Claimed `rr-npv.8` (already in_progress). Clean power-on
 `run_level1_complete --natural-entry --trials 1`, no assist.

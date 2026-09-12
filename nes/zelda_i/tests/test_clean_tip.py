@@ -62,7 +62,7 @@ def test_next_open_is_the_first_unproven_row() -> None:
     assert nxt is not None
     assert nxt.id == "l1_tf"
     assert nxt.open
-    assert nxt.room == "L1 0x33"
+    assert nxt.room == "L1 0x23"
 
 
 def test_render_handles_a_missing_tip() -> None:
