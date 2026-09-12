@@ -10,7 +10,14 @@ from dataclasses import replace
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import nearest_heart_or_fairy
+from zelda_i.combat import (
+    chebyshev,
+    direction_to_facing,
+    in_sword_hitbox,
+    nearest_heart_or_fairy,
+)
+from zelda_i.dungeon.behaviors import fight_target
+from zelda_i.dungeon.threat import MIN_DODGE_BODY
 from zelda_i.dungeon.engine import (
     AQUAMENTUS_OBJECT_TYPE,
     AliveRule,
@@ -345,6 +352,9 @@ class Room33ScoopController(GenericDungeonRoomController):
     last_health: int = 0
     heart_wait: int = 0
     heart_wait_limit: int = 180
+    # North patrol row. Dump 1962f sandwiched at (80,173) while a Stalfos
+    # sat at cheb 18 in the UP box. Do not chase onto the key row.
+    _hold: tuple[int, int] = (120, 117)
 
     def _occupancy_walk(
         self, snap: ZeldaSnapshot, dest: tuple[int, int], reason: str
@@ -403,6 +413,40 @@ class Room33ScoopController(GenericDungeonRoomController):
         """Sit on the key/item tile so a 0x60 heart/fairy can be scooped."""
         target = self.spec.reward.target or (96, 173)
         return self._occupancy_walk(snap, target, "scoop_key_tile")
+
+    def _combat(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
+        """Slash in place at sword reach. Never walk into the 16px pad."""
+        self.combat_frames += 1
+        if not live:
+            return FrameAction(nes_idle_action(), "combat_wait")
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        hold = self._hold
+        target = fight_target(lx, ly, live)
+        if target is None:
+            return self._occupancy_walk(snap, hold, "combat_hold")
+        cheb = chebyshev(lx, ly, target.x, target.y)
+        dx = int(target.x) - lx
+        dy = int(target.y) - ly
+        if abs(dx) >= abs(dy):
+            face = "RIGHT" if dx > 0 else "LEFT"
+            away = "LEFT" if dx > 0 else "RIGHT"
+        else:
+            face = "DOWN" if dy > 0 else "UP"
+            away = "UP" if dy > 0 else "DOWN"
+        if cheb < MIN_DODGE_BODY:
+            return FrameAction(nes_action(away), "combat_evade_body")
+        if in_sword_hitbox(lx, ly, face, target.x, target.y):
+            if int(snap.facing) == direction_to_facing(face):
+                self.swings += 1
+                self.swings_authorized += 1
+                return FrameAction(nes_action("A"), "combat_hold_slash")
+            return FrameAction(nes_action(face), "combat_hold_face")
+        if abs(lx - hold[0]) > 2 or abs(ly - hold[1]) > 2:
+            return self._occupancy_walk(snap, hold, "combat_hold")
+        if abs(dx) > 12:
+            step = "RIGHT" if dx > 0 else "LEFT"
+            return FrameAction(nes_action(step), "combat_hold_align")
+        return FrameAction(nes_action(face), "combat_hold_close")
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.last_health = int(snap.health)

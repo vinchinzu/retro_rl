@@ -32,10 +32,12 @@ from zelda_i.level1.east_dungeon import (
     ROOM_45_SURVIVAL_SPEC,
 )
 from zelda_i.level1.path import level1_room_72_key_success
+from zelda_i.combat import FACING_SOUTH
 from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_KEYS,
     ADDR_LEVEL,
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MODE,
@@ -858,6 +860,51 @@ def test_prefix_specs_contact_backstep_keeps_hearts() -> None:
     assert ROOM_53_SPEC.combat.evade is False
     assert ROOM_42_SPEC.combat.contact_backstep >= 16
     assert ROOM_43_SPEC.combat.contact_backstep >= 16
+
+
+def test_room33_hold_slashes_in_place_outside_the_pad() -> None:
+    """Dump 1962f: Stalfos at cheb 18 was in the UP box while we peeled into pad.
+
+    Hold-north: already facing, A in place, do not walk into MIN_DODGE_BODY.
+    """
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x33,
+        x=120,
+        y=117,
+        enemy_type=0x2A,
+        enemies=1,
+        hp=0x20,
+        enemy_x=120,
+        enemy_y=117 + 18,
+    )
+    ram[ADDR_HEALTH] = 0x22
+    ram[ADDR_LINK_FACING] = FACING_SOUTH
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_hold_slash"
+    assert np.array_equal(action.action, nes_action("A"))
+    assert not np.array_equal(action.action, nes_action("DOWN"))
+    assert not np.array_equal(action.action, nes_action("DOWN", "A"))
+
+
+def test_room33_hold_steps_away_inside_the_pad() -> None:
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x33,
+        x=120,
+        y=117,
+        enemy_type=0x2A,
+        enemies=1,
+        hp=0x20,
+        enemy_x=120,
+        enemy_y=117 + 8,
+    )
+    ram[ADDR_HEALTH] = 0x22
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_evade_body"
+    assert np.array_equal(action.action, nes_action("UP"))
 
 
 def test_room33_scoops_heart_when_filled_hearts_one_not_fight() -> None:
