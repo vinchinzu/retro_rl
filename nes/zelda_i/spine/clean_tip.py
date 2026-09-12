@@ -120,15 +120,15 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         rung=Rung.NATURAL,
         blocker=Blocker.PICKUP_MISS,
         room="L1 0x33",
-        pose="(88,165) health 0x21 keys 1 deaths 0, 6000f cap at 16648",
+        pose="(94,173) health 0x21 keys 1 deaths 0, 0x33_needs_heart at 2443f / end 13091",
         residual="docs/tasks/rr-npv-reactive-combat.md",
         note=(
-            "MEASURED RED 2026-09-11, 2/2 deterministic: clear52→clear42→"
-            "exit42→clear43 pass, clear33_key times out. Link stands on the "
-            "0x33 key tile row and mashes RIGHT into the east block instead "
-            "of dropping south. Room33ScoopController._scoop_if_low walks a "
-            "4-way delta toward the heart drop with no occupancy awareness, "
-            "so it can walk into a wall forever and never re-check clear."
+            "MEASURED RED 2026-09-11: occupancy stall at (88,165) closed "
+            "(Room33ScoopController now BFS-walks the key tile; $6530 dump "
+            "is tile 244 at (96,160), floor along y=176). New leftover: "
+            "key collected, lo=1, no heart drop, fail-closed 0x33_needs_heart "
+            "on the key tile. clear52→clear42→exit42→clear43 still pass. "
+            "tip() stays None while the power-on run is red."
         ),
     ),
     CleanStep(

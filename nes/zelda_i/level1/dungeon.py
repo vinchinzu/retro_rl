@@ -345,22 +345,28 @@ class Room33ScoopController(GenericDungeonRoomController):
     heart_wait: int = 0
     heart_wait_limit: int = 180
 
-    @staticmethod
-    def _scoop_if_low(snap: ZeldaSnapshot) -> FrameAction | None:
+    def _occupancy_walk(
+        self, snap: ZeldaSnapshot, dest: tuple[int, int], reason: str
+    ) -> FrameAction:
+        """BFS to dest; miss → block + replan. No path → stand, do not wiggle."""
+        xy = (int(snap.link_x), int(snap.link_y))
+        tx, ty = int(dest[0]), int(dest[1])
+        if abs(xy[0] - tx) <= 2 and abs(xy[1] - ty) <= 2:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), reason)
+        direction = self.walker.next_dir(xy, (tx, ty))
+        if direction is None:
+            self.walker.last_dir = None
+            return FrameAction(nes_idle_action(), reason)
+        return FrameAction(nes_action(direction), reason)
+
+    def _scoop_if_low(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.health_is_full:
             return None
         drop = nearest_heart_or_fairy(snap)
         if drop is None:
             return None
-        dx = int(drop.x) - int(snap.link_x)
-        dy = int(drop.y) - int(snap.link_y)
-        if abs(dx) <= 2 and abs(dy) <= 2:
-            return FrameAction(nes_idle_action(), "scoop_heart")
-        if abs(dx) >= abs(dy) and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy > 0 else "UP"
-        return FrameAction(nes_action(direction), "scoop_heart")
+        return self._occupancy_walk(snap, (int(drop.x), int(drop.y)), "scoop_heart")
 
     def _tick_low(self, snap: ZeldaSnapshot) -> None:
         self.frames += 1
@@ -395,15 +401,7 @@ class Room33ScoopController(GenericDungeonRoomController):
     def _walk_key_tile(self, snap: ZeldaSnapshot) -> FrameAction:
         """Sit on the key/item tile so a 0x60 heart/fairy can be scooped."""
         target = self.spec.reward.target or (96, 173)
-        dx = int(target[0]) - int(snap.link_x)
-        dy = int(target[1]) - int(snap.link_y)
-        if abs(dx) <= 2 and abs(dy) <= 2:
-            return FrameAction(nes_idle_action(), "scoop_key_tile")
-        if abs(dx) >= abs(dy) and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy > 0 else "UP"
-        return FrameAction(nes_action(direction), "scoop_key_tile")
+        return self._occupancy_walk(snap, target, "scoop_key_tile")
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.last_health = int(snap.health)

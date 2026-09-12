@@ -854,7 +854,10 @@ def test_room33_cleared_low_no_drop_holds_then_needs_heart() -> None:
 
 
 def test_room33_cleared_low_walks_key_tile_from_leftover() -> None:
-    """Wave-12 leftover (80,165) live==0 lo=1: walk to (96,173), not idle/DONE."""
+    """Wave-12 leftover (80,165) live==0 lo=1: walk to (96,173), not idle/DONE.
+
+    Occupancy BFS is south-then-east (DOWN first). Naive 4-way would RIGHT.
+    """
     controller = Room33ScoopController(ROOM_33_SPEC)
     controller.phase = DungeonPhase.COLLECT_REWARD
     controller.initial_inventory = 0
@@ -873,8 +876,50 @@ def test_room33_cleared_low_walks_key_tile_from_leftover() -> None:
     assert action.reason != "0x33_needs_heart"
     assert controller.heart_wait == 0
     assert not np.array_equal(action.action, nes_idle_action())
-    assert np.array_equal(action.action, nes_action("RIGHT"))
+    assert np.array_equal(action.action, nes_action("DOWN"))
     assert action.reason == "scoop_key_tile"
+
+
+def test_room33_key_tile_walk_does_not_mash_right_into_east_244() -> None:
+    """Live leftover (88,165)→(96,173): 4-way tie is RIGHT into $6530 0xF4.
+
+    Dump of L1 0x33: cell (96,160) is tile 244; y=176 row at x=80..128 is
+    floor. Naive abs(dx)>=abs(dy) mashes RIGHT and oscillates 88↔89.
+    Occupancy BFS drops south along x=88, then east at y=173.
+    """
+    dx, dy = 96 - 88, 173 - 165
+    assert abs(dx) >= abs(dy) and abs(dx) > 2
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    ram = _room_ram(room=0x33, x=88, y=165, keys=1)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "scoop_key_tile"
+    assert np.array_equal(action.action, nes_action("DOWN"))
+    assert not np.array_equal(action.action, nes_action("RIGHT"))
+
+
+def test_room33_key_tile_walk_replans_around_blocked_cell() -> None:
+    """Naive 4-way RIGHT into a blocked cell; occupancy BFS goes around."""
+    controller = Room33ScoopController(ROOM_33_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    controller.max_live_enemies = 3
+    # Same row as the key tile: naive cardinal is RIGHT onto (89,173).
+    controller.walker.grid.blocked.add((89, 173))
+    ram = _room_ram(room=0x33, x=88, y=173, keys=1)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "scoop_key_tile"
+    assert not np.array_equal(action.action, nes_action("RIGHT"))
+    assert not np.array_equal(action.action, nes_idle_action())
+    assert np.array_equal(action.action, nes_action("DOWN")) or np.array_equal(
+        action.action, nes_action("UP")
+    )
 
 
 def test_gel_rooms_chase_across_open_floor() -> None:
