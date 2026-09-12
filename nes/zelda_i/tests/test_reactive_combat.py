@@ -131,15 +131,39 @@ def test_same_snapshot_is_observed_once() -> None:
 
 
 def test_untyped_fast_slot_is_a_projectile() -> None:
-    """L6 0x59 is in no ids table; 3 px/frame with HP 0 is still a shot."""
+    """L6 0x59 is in no ids table; 3 px/frame with hp=128 is still a shot."""
     tracker = ObjectTracker()
     frames = [
-        _snap((144, 141), ((1, WIZZ_BEAM_TYPE, 200 - 3 * i, 141, 0, 0, FACE_WEST),))
+        _snap((144, 141), ((1, WIZZ_BEAM_TYPE, 200 - 3 * i, 141, 128, 0, FACE_WEST),))
         for i in range(4)
     ]
     beam = _drive(tracker, frames)[0]
+    assert beam.hp == 128
     assert beam.hazard is HazardClass.PROJECTILE
     assert beam.is_hazard
+
+
+def test_age1_unknown_hp128_is_not_a_body() -> None:
+    """Point-blank 0x59 spawn: age-1, hp=128, vx=0 must not classify BODY.
+
+    DamageLog ranks the previous frame, so an age-1 body is how a spawn
+    on top of Link still reports ``body 0x59`` after the hp=128 fix.
+    Motion is not in yet; the unknown slot is a shot until the next frame
+    confirms speed.
+    """
+    tracker = ObjectTracker()
+    snap = _snap(
+        (144, 141),
+        ((1, WIZZ_BEAM_TYPE, 144, 141, 128, 0, FACE_WEST),),
+        screen=0x78,
+        level=6,
+    )
+    beam = tracker.observe(snap)[0]
+    assert beam.age == 1
+    assert beam.vx == 0.0
+    assert beam.hp == 128
+    assert beam.hazard is HazardClass.PROJECTILE
+    assert beam.hazard is not HazardClass.BODY
 
 
 def test_floor_drop_and_keese_classes() -> None:

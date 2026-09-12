@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from zelda_i.dungeon.behaviors import KEESE_TYPE
 from zelda_i.dungeon.postmortem import DamageLog
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker
 from zelda_i.ram import (
@@ -125,6 +126,40 @@ def test_room_transition_resets_even_when_level_is_unchanged() -> None:
     assert tracked[0].age == 1
 
 
+def test_first_frame_hit_in_new_room_is_not_attributed_to_old_slot() -> None:
+    """A heart drop on the first playable frame of 0x79 must not blame
+    the previous room's 0x78 slot.
+
+    ObjectTracker already resets slot history on ``(level, screen)``
+    change; DamageLog still attributed from ``_prev`` (the old room's
+    tracks, advanced 1f) until the same room key drops that snapshot.
+    Two rooms reuse slot numbers and share waist rows.
+    """
+    tracker = ObjectTracker()
+    log = DamageLog()
+    for _ in range(3):
+        snap = _snap(
+            (120, 141),
+            ((1, KEESE_TYPE, 124, 141, 0, 0, 0),),
+            screen=0x78,
+            level=6,
+        )
+        log.observe(snap, tracker.observe(snap))
+
+    hurt = _snap(
+        (60, 90),
+        (),
+        screen=0x79,
+        level=6,
+        health=0x21,
+    )
+    event = log.observe(hurt, tracker.observe(hurt))
+    assert event is not None
+    assert event.slot is None
+    assert event.type_id is None
+    assert event.hazard == HazardClass.NONE.value
+
+
 def test_same_room_identity_is_unaffected_by_the_room_guard() -> None:
     """Sanity: the room guard must not disturb ordinary same-room tracking."""
     tracker = ObjectTracker()
@@ -196,6 +231,50 @@ def test_attributed_distance_is_not_the_projectile_tiebreak_fudge() -> None:
     assert event.hazard == HazardClass.PROJECTILE.value
     # True (projected) gap from the previous frame, not (true - 4).
     assert event.distance == 8
+
+
+def test_receding_projectile_does_not_outrank_a_closer_body() -> None:
+    """The -4 ranking nudge is for a shot that reached Link, not one
+    flying away. A receding 0x59 at Chebyshev 8 must not beat a body
+    overlapping at 6.
+    """
+    tracker = ObjectTracker()
+    log = DamageLog()
+    # Body at true (projected) d=6; receding shot at true d=8. Nudging
+    # the receding shot would rank it as 4 and steal the body. Warm the
+    # 0x59 so DamageLog's previous frame already has vx=+4 (east, away).
+    warmup = _snap(
+        (120, 141),
+        (
+            (1, KEESE_TYPE, 126, 141, 0, 0, 0),
+            (2, 0x59, 120, 141, 0, 0, FACE_WEST),
+        ),
+        screen=0x78,
+        level=6,
+    )
+    alive = _snap(
+        (120, 141),
+        (
+            (1, KEESE_TYPE, 126, 141, 0, 0, 0),
+            (2, 0x59, 124, 141, 0, 0, FACE_WEST),  # vx=+4.0; +1f -> |dx|=8
+        ),
+        screen=0x78,
+        level=6,
+    )
+    hurt = _snap(
+        (120, 141),
+        ((1, KEESE_TYPE, 126, 141, 0, 0, 0),),
+        screen=0x78,
+        level=6,
+        health=0x21,
+    )
+    log.observe(warmup, tracker.observe(warmup))
+    log.observe(alive, tracker.observe(alive))
+    event = log.observe(hurt, tracker.observe(hurt))
+    assert event is not None
+    assert event.type_id == KEESE_TYPE
+    assert event.hazard == HazardClass.BODY.value
+    assert event.distance == 6
 
 
 # --- postmortem: death with no captured hit ------------------------------
