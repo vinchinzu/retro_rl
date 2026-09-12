@@ -138,9 +138,14 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         rung=Rung.NATURAL,
         blocker=Blocker.OCCUPANCY_STALL,
         room="L1 0x23 / OW 0x4C",
-        pose="0x23 (144,149) 4627 occupancy misses / 6000f",
+        pose="0x23 (88,149) isolated 1-heart; 1/3 Goriyas, hits 0",
         residual="docs/tasks/rr-8t4.4-residual.md",
-        note="door hops green in isolation; power-on red before the hop",
+        note=(
+            "Water bar on $6530 is y=144-159 x=80-175 (stored y=133-148). "
+            "Old seed y=128-143 was the north channel; leftover mashed UP. "
+            "Census: 14 swings / 30 authorized / 5353 patrol at engage=24. "
+            "No lo>=2 natural 0x23 until 0x33 drops a heart."
+        ),
     ),
     CleanStep(
         id="l2_tf",

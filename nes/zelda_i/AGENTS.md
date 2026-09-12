@@ -18,14 +18,13 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
-**M5 Clean is RED as of 2026-09-11** — measured, 2/2 deterministic, not
-inherited from a document. `run_level1_complete --natural-entry --trials 2`
-stops at stage `clear33_key`, L1 `0x33` `(88,165)` mode 5 TF `0x00` keys 1
-health `0x21` deaths 0, 6000f cap at frame 16648. `clear52 → clear42 →
-exit42 → clear43` pass. The parent commit `9004b668` is red *earlier*
-(`clear42` / `0x52`), so this is a pre-existing break, not a regression.
-Do not repeat "M5 Clean is green" without a fresh run behind it — that
-claim propagated for at least one sitting on the strength of this file.
+**M5 Clean is RED as of 2026-09-11** — measured, not inherited.
+`run_level1_complete --natural-entry --trials 1` on the occupancy-walk
+tree stops at `clear33_key`, L1 `0x33` `(94,173)` mode 5 TF `0x00` keys 1
+health `0x21`, `0x33_needs_heart` at 2443f / end 13091. Occupancy stall
+at `(88,165)` is closed (`$6530` tile 244 at `(96,160)`). New leftover:
+key collected, lo=1, no heart drop. `clear52 → clear42 → exit42 →
+clear43` pass. Do not repeat "M5 Clean is green" without a fresh run.
 Ladder of record: `uv run python nes/zelda_i/scripts/clean_tip.py`.
 
 Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
@@ -109,3 +108,4 @@ scratch — not an AGENTS novel.
 [docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
 [docs/ASSIST_CONTRACT.md](docs/ASSIST_CONTRACT.md) ·
 [docs/HYGIENE.md](docs/HYGIENE.md) · session skill `zelda-session`.
+Clean leftover: [docs/tasks/HANDOFF-2026-09-11-orchestrator.md](docs/tasks/HANDOFF-2026-09-11-orchestrator.md).
