@@ -132,6 +132,48 @@ Consequences now encoded in the evader:
 **Next lever for `rr-d6v` is `level6_east_key_0x7a`, not `0x78`.** Do not
 re-run the v4–v9 east-waist chase; that class stays blocked.
 
+## M5 Clean is red — measured, not inherited
+
+`run_level1_complete.py --natural-entry --trials 2`, no pokes, no
+`--infinite-life`, `start_state=NONE`, `assist: null`. Both trials
+identical (deterministic):
+
+```text
+ok=False  prefix_ok=True  failed stage: clear33_key (L1 0x33)
+final: room 0x33 (88,165) mode 5 TF 0x00 keys 1 health 0x21 deaths 0
+end_frame 16648; clear33_key hit its 6000f cap
+clear52 → clear42 → exit42 → clear43 all pass
+```
+
+**The instrumentation did not cause this.** The parent commit `9004b668`,
+run in an isolated `git worktree`, is red *earlier* — `clear42` / `0x52`
+diamond-tile timeout. The working-tree state committed in `9ea8c84f`
+(which carried prior sessions' `Room42EntryController` and
+`Room33ScoopController`) moves the frontier two rooms forward and then
+stalls on new ground.
+
+So `AGENTS.md`'s "M5 Clean is green" is stale, and the first version of
+`spine/clean_tip.py` inherited that claim instead of measuring it. The
+ladder now carries `l1_tf` at `natural` with blocker `pickup_miss`, and
+`tip()` returns `None` while the power-on run is red — a tip is a ROM
+claim, not a document.
+
+Damage census for the run (3 hits, none fatal, `death_cause: null` — the
+run stalls, it never dies):
+
+| stage | room | enemy | type | from | action at hit |
+|-------|------|-------|------|------|---------------|
+| `clear52` | `0x52` | Keese | `0x1b` | E | `combat_backstep` |
+| `clear33_key` | `0x33` | Stalfos | `0x2a` | N | `combat_backstep` |
+| `clear33_key` | `0x33` | Stalfos | `0x2a` | E | `combat_engage` |
+
+Only 1940 of the stage's 6000 frames were `combat_frames`; the rest is the
+stall. Lead: `Room33ScoopController._scoop_if_low` (`level1/dungeon.py`)
+walks a naive 4-way delta toward the heart drop with no occupancy
+awareness — unlike `engine._scoop_heart` — so a drop behind an obstacle
+walks into a wall indefinitely and the clear condition is never re-checked.
+Hypothesis from frame data; not yet confirmed against a tile dump.
+
 ## Clean tip, as a table
 
 `spine/clean_tip.py` + `scripts/clean_tip.py` replace the hand-carried

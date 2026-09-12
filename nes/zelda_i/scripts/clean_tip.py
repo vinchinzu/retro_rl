@@ -34,7 +34,7 @@ def main() -> int:
     print(
         json.dumps(
             {
-                "tip": tip().id,
+                "tip": None if tip() is None else tip().id,
                 "next_open": None if nxt is None else nxt.id,
                 "ladder": [
                     {

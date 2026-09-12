@@ -117,8 +117,19 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l1_tf",
         bead="M5",
         segment="power-on → L1 Triforce",
-        rung=Rung.SPINE_GREEN,
-        note="run_level1_complete --natural-entry, no --infinite-life",
+        rung=Rung.NATURAL,
+        blocker=Blocker.PICKUP_MISS,
+        room="L1 0x33",
+        pose="(88,165) health 0x21 keys 1 deaths 0, 6000f cap at 16648",
+        residual="docs/tasks/rr-npv-reactive-combat.md",
+        note=(
+            "MEASURED RED 2026-09-11, 2/2 deterministic: clear52→clear42→"
+            "exit42→clear43 pass, clear33_key times out. Link stands on the "
+            "0x33 key tile row and mashes RIGHT into the east block instead "
+            "of dropping south. Room33ScoopController._scoop_if_low walks a "
+            "4-way delta toward the heart drop with no occupancy awareness, "
+            "so it can walk into a wall forever and never re-check clear."
+        ),
     ),
     CleanStep(
         id="l1_exit_ow_l2",
@@ -130,17 +141,6 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         pose="0x23 (144,149) 4627 occupancy misses / 6000f",
         residual="docs/tasks/rr-8t4.4-residual.md",
         note="door hops green in isolation; power-on red before the hop",
-    ),
-    CleanStep(
-        id="l1_0x33_key",
-        bead="rr-npv.6",
-        segment="L1 0x33 key / heart scoop on the way out",
-        rung=Rung.HYPOTHESIS,
-        blocker=Blocker.PICKUP_MISS,
-        room="L1 0x33",
-        pose="(88,165) mashing RIGHT into the east block",
-        residual="docs/tasks/rr-npv.6-residual.md",
-        note="drop south to y=173 first, then RIGHT onto the key tile",
     ),
     CleanStep(
         id="l2_tf",
@@ -226,9 +226,14 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
 )
 
 
-def tip() -> CleanStep:
-    """Deepest row still contiguous with power-on proof."""
-    last = CLEAN_LADDER[0]
+def tip() -> CleanStep | None:
+    """Deepest row still contiguous with power-on proof.
+
+    ``None`` when the very first row is not green — the honest answer when
+    the power-on run itself is red. Do not report a tip the ROM does not
+    support.
+    """
+    last: CleanStep | None = None
     for step in CLEAN_LADDER:
         if step.rung < Rung.SPINE_GREEN:
             return last
@@ -259,8 +264,14 @@ def tool_for(blocker: Blocker) -> str:
 
 def render() -> str:
     """Plain-text ladder for a CLI or a residual paste."""
+    top = tip()
+    head = (
+        f"clean tip: {top.id} ({top.segment})"
+        if top is not None
+        else "clean tip: NONE — the power-on run is red at the first row"
+    )
     lines = [
-        f"clean tip: {tip().id} ({tip().segment})",
+        head,
         "",
         f"{'id':<16} {'rung':<13} {'blocker':<18} room / pose",
     ]
