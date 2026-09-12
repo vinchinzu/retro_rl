@@ -127,13 +127,16 @@ def _hazard_class(
     kind: EnemyKind,
     *,
     alive_hp: bool,
+    age: int,
 ) -> HazardClass:
     """Classify a slot by type table first, then by motion.
 
     Motion is the fallback because shot types are discovered per lane and
     never make it into a shared table in time. The live L6 census had
     ``0x59`` beams carrying ``hp=128``, so HP cannot be the test — an
-    unrecognised type travelling at shot speed is a shot.
+    unrecognised type travelling at shot speed is a shot. Age-1 unknown
+    slots have speed 0; calling them bodies is how a point-blank 0x59
+    spawn still reports ``body 0x59``. Motion confirms next frame.
     """
     type_id = int(obj.type_id) & 0xFF
     if _is_empty(type_id):
@@ -143,7 +146,12 @@ def _hazard_class(
     if is_projectile(obj):
         return HazardClass.PROJECTILE
     dead = int(obj.hp) <= 0 and not alive_hp
-    if speed >= PROJECTILE_SPEED and (dead or kind is EnemyKind.UNKNOWN):
+    untyped = kind is EnemyKind.UNKNOWN
+    # No samples yet: do not default an unknown slot to BODY. Next frame
+    # the speed either confirms a shot or reclassifies a walker.
+    if untyped and (speed >= PROJECTILE_SPEED or age <= 1):
+        return HazardClass.PROJECTILE
+    if speed >= PROJECTILE_SPEED and dead:
         return HazardClass.PROJECTILE
     if dead:
         return HazardClass.NONE  # corpse
@@ -232,7 +240,11 @@ class ObjectTracker:
         speed = max(abs(vx), abs(vy))
         kind = kind_for_type(type_id)
         hazard = _hazard_class(
-            obj, speed, kind, alive_hp=uses_type_only_liveness(obj)
+            obj,
+            speed,
+            kind,
+            alive_hp=uses_type_only_liveness(obj),
+            age=self._ages[slot],
         )
         return TrackedObject(
             slot=slot,

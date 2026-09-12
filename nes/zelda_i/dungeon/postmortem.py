@@ -111,6 +111,9 @@ class DamageLog:
     _last_snap: ZeldaSnapshot | None = field(
         default=None, init=False, repr=False
     )
+    _room: tuple[int, int] | None = field(
+        default=None, init=False, repr=False
+    )
 
     def observe(
         self,
@@ -124,6 +127,15 @@ class DamageLog:
             return None
         self._last_snap = snap
         self.frames += 1
+        room = (int(snap.level), int(snap.screen))
+        if self._room is not None and room != self._room:
+            # Same slot numbers, different objects. ObjectTracker already
+            # drops history here; keeping `_prev` would blame the old room's
+            # nearest hazard (advanced 1f) for a first-frame hit in the new
+            # one — a heart drop in 0x79 reading as the 0x78 keese.
+            self._prev = ()
+            self._prev_xy = None
+        self._room = room
         value = heart_value(snap)
         event: HitEvent | None = None
         if (
@@ -166,9 +178,15 @@ class DamageLog:
             hx, hy = track.at(1.0)
             d = int(max(abs(hx - link[0]), abs(hy - link[1])))
             # A shot that reached Link outranks a body idling at equal range.
-            # This is a ranking nudge only — the reported distance below must
-            # stay the true gap, not the tie-broken one.
-            rank = d - 4 if track.hazard is HazardClass.PROJECTILE else d
+            # Receding shots do not get the nudge: flying away at d=8 would
+            # otherwise rank as 4 and beat a body overlapping at 6. Ranking
+            # only — the reported distance below stays the true gap.
+            rank = (
+                d - 4
+                if track.hazard is HazardClass.PROJECTILE
+                and track.closing_on(*link)
+                else d
+            )
             if rank < best_rank:
                 best_rank, best_d, best = rank, d, track
         common = {
