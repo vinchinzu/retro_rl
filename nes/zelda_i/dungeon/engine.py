@@ -266,13 +266,7 @@ def inventory_reward_success(
     *,
     min_value: int | None = None,
 ) -> bool:
-    """Stop predicate for FIXED_INVENTORY rooms.
-
-    Requires level + room_id + PLAY_MODE + no live enemies + inventory field
-    meets target. If ``min_value`` is set: field >= min_value. Else: field > 0
-    (keys-style). Compass-style bitfields should use a thin wrapper with a
-    bit-mask check instead of ``min_value``.
-    """
+    """FIXED_INVENTORY stop: level+room+PLAY_MODE, no live, field >0 or >=min."""
     snap = read_snapshot(ram)
     if (
         snap.level != spec.level
@@ -334,6 +328,11 @@ class GenericDungeonRoomController:
     frames: int = 0
     phase_frames: int = 0
     combat_frames: int = 0
+    swings: int = 0
+    swings_authorized: int = 0
+    engage_frames: int = 0
+    patrol_frames: int = 0
+    backstep_frames: int = 0
     waypoint_index: int = 0
     patrol_index: int = 0
     initial_inventory: int | None = None
@@ -471,11 +470,13 @@ class GenericDungeonRoomController:
             self.combat_frames + self.spec.combat.attack_phase
         ) % period < hold
         if active:
+            self.swings += 1
             return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
         return FrameAction(nes_action(direction), reason)
 
     def _patrol(self, snap: ZeldaSnapshot) -> FrameAction:
         """Walk patrol waypoints without pulsing A (sword only on engage hit)."""
+        self.patrol_frames += 1
         tuning = self.spec.combat
         tx, ty = tuning.patrol[self.patrol_index]
         dx = tx - snap.link_x
@@ -535,6 +536,7 @@ class GenericDungeonRoomController:
         direction: str | None = None,
     ) -> FrameAction:
         """Chase target; slash only when sword hitbox can hit or contact-close."""
+        self.engage_frames += 1
         if direction is None:
             dx = target.x - snap.link_x
             dy = target.y - snap.link_y
@@ -555,12 +557,12 @@ class GenericDungeonRoomController:
         tuning = self.spec.combat
         nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
         hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
-        if hold_inland or should_swing_at(
-            snap.link_x,
-            snap.link_y,
-            direction,
-            (target,),
-        ):
+        authorized = should_swing_at(
+            snap.link_x, snap.link_y, direction, (target,)
+        )
+        if authorized:
+            self.swings_authorized += 1
+        if hold_inland or authorized:
             return self._swing(
                 direction,
                 "combat_engage",
@@ -620,14 +622,7 @@ class GenericDungeonRoomController:
         xy = (int(snap.link_x), int(snap.link_y))
         bodies: set[tuple[int, int]] = set()
         if occupancy:
-            # Grade last frame's predicted step now, before off-wall/dash/
-            # backstep below can claim this frame and skip the walker —
-            # those branches still walk Link, so without this ``last_xy``
-            # goes stale and the next real ``next_dir`` call grades a
-            # multi-frame gap as one missed 1px step (rr-8t4.4 0x23: this
-            # dwarfed the target-cell miss count). Idempotent: an internal
-            # ``next_dir`` re-grade below is a no-op unless ``last_dir`` was
-            # reset since.
+            # Grade now: backstep/dash/off-wall skip next_dir (rr-8t4.4).
             bodies = _occupancy_bodies(snap, None)
             bodies.discard(xy)
             self.walker.observe(xy, transient_occupants=bodies)
@@ -650,27 +645,25 @@ class GenericDungeonRoomController:
             return self._patrol(snap)
         distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
         back = self.spec.combat.contact_backstep
-        # Intermittent backstep (2/6 frames) so we still land sword hits
-        # while peeling contact damage (rr-gjey). Always-backstep starves kill.
-        if (
-            back > 0
-            and distance < back
-            and (self.combat_frames % 6) < 2
-        ):
+        # 2/6 peel so we still slash; always-backstep starves kill (rr-gjey).
+        if back > 0 and distance < back and (self.combat_frames % 6) < 2:
             dx = target.x - snap.link_x
             dy = target.y - snap.link_y
             if abs(dx) >= abs(dy):
                 away = "LEFT" if dx > 0 else "RIGHT"
             else:
                 away = "UP" if dy > 0 else "DOWN"
+            chase = "RIGHT" if dx >= 0 else "LEFT"
+            if abs(dy) > abs(dx):
+                chase = "DOWN" if dy >= 0 else "UP"
+            if should_swing_at(snap.link_x, snap.link_y, chase, (target,)):
+                self.swings_authorized += 1
             if occupancy:
                 self.walker.last_dir = away
+            self.backstep_frames += 1
             return FrameAction(nes_action(away), "combat_backstep")
         if occupancy:
-            # Planning set excludes only the target (it is the BFS goal).
-            # ``bodies`` (above) keeps it in for miss-grading: Link's hitbox
-            # can't overlap a live enemy's, so a contact miss there must not
-            # read as wall geometry either.
+            # extra_blocked skips target cell; bodies still grade it.
             extra = _occupancy_bodies(snap, target)
             extra.discard(xy)
             extra.discard((int(target.x), int(target.y)))
@@ -690,6 +683,9 @@ class GenericDungeonRoomController:
                 return self._patrol(snap)
             if distance < self.spec.combat.engage_distance:
                 return self._engage(snap, target, direction=direction)
+            if should_swing_at(snap.link_x, snap.link_y, direction, (target,)):
+                self.swings_authorized += 1
+            self.patrol_frames += 1
             return FrameAction(nes_action(direction), "combat_patrol")
         if distance < self.spec.combat.engage_distance:
             return self._engage(snap, target)
@@ -767,8 +763,7 @@ class GenericDungeonRoomController:
             return FrameAction(nes_idle_action(), "done")
         waypoints = self.spec.reward.waypoints
         if waypoints:
-            # First waypoint is the waist elbow. Cardinals cannot round the
-            # plus from the north (live RIGHT @ y=109 boxed at x=96).
+            # Waist elbow first; cardinals cannot round the plus from the north.
             _elbow_x, waist_y = waypoints[0]
             if y < waist_y - 2:
                 return FrameAction(nes_action("RIGHT", "DOWN"), "leftover_clip")
@@ -821,11 +816,7 @@ class GenericDungeonRoomController:
         return FrameAction(nes_action(direction), "scoop_heart")
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Observe, decide, and record what the frame was doing.
-
-        The observation is idempotent per snapshot object, so a subclass that
-        overrides ``step`` and calls ``super().step`` does not sample velocity
-        twice. ``last_reason`` is what the damage log blames a hit on."""
+        """Observe (idempotent per snap), decide; last_reason is hit blame."""
         self.tracked = self.tracker.observe(snap)
         self.damage.observe(
             snap,
@@ -980,9 +971,7 @@ class GenericDungeonRoomController:
             "notes": list(self.notes),
             "tuning": {
                 "engage_distance": self.spec.combat.engage_distance,
-                "engage_dominant_axis": (
-                    self.spec.combat.engage_dominant_axis
-                ),
+                "engage_dominant_axis": self.spec.combat.engage_dominant_axis,
                 "attack_phase": self.spec.combat.attack_phase,
                 "engage_attack_period": self.spec.combat.engage_attack_period,
                 "engage_attack_hold": self.spec.combat.engage_attack_hold,
@@ -994,5 +983,12 @@ class GenericDungeonRoomController:
                 "evades": self.evader.evades,
                 "off_line_steps": self.evader.off_line_steps,
             },
-            "damage": self.damage.report(),
+            "damage": dict(
+                self.damage.report(),
+                swings=self.swings,
+                swings_authorized=self.swings_authorized,
+                engage_frames=self.engage_frames,
+                patrol_frames=self.patrol_frames,
+                backstep_frames=self.backstep_frames,
+            ),
         }

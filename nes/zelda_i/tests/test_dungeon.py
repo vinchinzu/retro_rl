@@ -254,6 +254,10 @@ def test_engage_enemy_in_sword_hitbox_slashes() -> None:
     snap = read_snapshot(ram)
     action = controller.step(snap)
     assert action.reason == "combat_engage_slash"
+    assert controller.swings == 1
+    assert controller.swings_authorized == 1
+    assert controller.engage_frames == 1
+    assert controller.report()["damage"]["swings"] == 1
 
 
 def test_patrol_does_not_slash() -> None:
@@ -491,15 +495,19 @@ def test_occupancy_room_does_not_leave_wall_in_south_pocket() -> None:
 
 
 def test_room23_water_bar_leaves_west_passage_and_south_floor() -> None:
-    """West 16px column and south corridor are floor; mid cell row is water."""
+    """West 16px column and south corridor are floor; $6530 water bar is blocked."""
     blocked = set(ROOM_23_SPEC.combat.occupancy_blocked)
     assert (78, 157) not in blocked
     assert (144, 149) not in blocked
     assert (64, 141) not in blocked
+    assert (88, 149) not in blocked
     assert (120, 136) in blocked
+    assert (88, 148) in blocked
     walker = GenericDungeonRoomController(ROOM_23_SPEC).walker
     step = walker.next_dir((78, 157), (120, 125))
     assert step == "UP"
+    # Live leftover (88,149): around west, never UP into the bar.
+    assert walker.next_dir((88, 149), (148, 125)) == "LEFT"
 
 
 def test_room23_stands_when_boomerang_blocks_the_step() -> None:
@@ -616,6 +624,102 @@ def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
         "combat_engage_slash",
         "combat_backstep",
     )
+
+
+def test_room23_far_corridor_chase_is_patrol_not_slash() -> None:
+    """engage_distance=24: 56px south-corridor Goriya is occupancy walk, no A."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=64,
+        y=157,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=120,
+        enemy_y=157,
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_patrol"
+    assert "_slash" not in action.reason
+    assert controller.patrol_frames >= 1
+    assert controller.engage_frames == 0
+    assert controller.swings == 0
+    assert controller.report()["damage"]["swings"] == 0
+
+
+def test_room23_hitbox_close_backsteps_before_slash() -> None:
+    """contact_backstep=16 covers the sword box: first close frames peel, no A."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=120,
+        y=157,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=132,
+        enemy_y=157,
+    )
+    snap = read_snapshot(ram)
+    action = controller.step(snap)
+    assert abs(132 - 120) + abs(157 - 157) < ROOM_23_SPEC.combat.contact_backstep
+    # combat_frames % 6 < 2: frame 1 peels; frame 2 (% 6 == 2) already engages.
+    assert action.reason == "combat_backstep"
+    assert controller.backstep_frames == 1
+    assert controller.swings == 0
+    assert controller.swings_authorized == 1
+    action = controller.step(snap)
+    assert action.reason.startswith("combat_engage")
+    assert controller.engage_frames == 1
+    assert controller.backstep_frames == 1
+
+
+def test_room23_across_water_is_patrol_until_engage_cap() -> None:
+    """32px north across the water bar: occupancy walk, no A (manhattan >= 24)."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=120,
+        y=157,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=120,
+        enemy_y=125,
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_patrol"
+    assert "_slash" not in action.reason
+    assert controller.engage_frames == 0
+    assert controller.swings == 0
+    assert controller.swings_authorized == 0
+
+
+def test_room23_leftover_chase_goes_west_not_up_into_water() -> None:
+    """(88,149) leftover: occupancy LEFT around the $6530 bar, never UP."""
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x23,
+        x=88,
+        y=149,
+        enemy_type=0x06,
+        enemies=1,
+        hp=0x20,
+        enemy_x=148,
+        enemy_y=125,
+    )
+    action = controller.step(read_snapshot(ram))
+    assert action.reason == "combat_patrol"
+    assert np.array_equal(action.action, nes_action("LEFT"))
+    assert not np.array_equal(action.action, nes_action("UP"))
+    assert not np.array_equal(action.action, nes_action("UP", "A"))
+    assert controller.swings == 0
+    assert controller.engage_frames == 0
 
 
 def test_combat_target_contact_miss_is_not_blocked() -> None:

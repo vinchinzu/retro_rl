@@ -468,13 +468,14 @@ _ROOM_23_BLOCKED: tuple[tuple[int, int], ...] = (
         for x in range(33, 64)
         for y in range(120, 161)
     ),
-    # Center water: 16px cell row at y=128, inset from west/east passages.
-    # x=65..175 / y=129..151 boxed the west 16px column (x=64..79) and the
-    # south corridor — live leftover (144,149) and death (78,157) were floor.
+    # Center water from $6530: 16px cell origin y=144 (tiles y=144-159,
+    # x=80-175). Occupancy is stored Link (feet - 11), so block y=133-148.
+    # The old y=128-143 box was the north channel (floor) and left the bar
+    # open — leftover (88,149) then BFS'd UP into water for 2662f.
     *(
         (x, y)
-        for x in range(80, 160)
-        for y in range(128, 144)
+        for x in range(80, 176)
+        for y in range(133, 149)
     ),
     # East block
     *(
