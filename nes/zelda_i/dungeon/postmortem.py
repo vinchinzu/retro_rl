@@ -135,7 +135,7 @@ class DamageLog:
             self.hits.append(event)
             self._last_hit = self.frames
         if int(snap.mode) == DEATH_MODE and self.death is None:
-            self.death = self._fatal(event)
+            self.death = self._fatal(snap, value, event, action=action, phase=phase)
         self._value = value
         self._prev = tracked
         self._prev_xy = (int(snap.link_x), int(snap.link_y))
@@ -158,17 +158,19 @@ class DamageLog:
         """
         link = (int(snap.link_x), int(snap.link_y))
         best: TrackedObject | None = None
-        best_d = 10**9
+        best_rank = 10**9
+        best_d = 0
         for track in self._prev:
             if not track.is_hazard:
                 continue
             hx, hy = track.at(1.0)
             d = int(max(abs(hx - link[0]), abs(hy - link[1])))
             # A shot that reached Link outranks a body idling at equal range.
-            if track.hazard is HazardClass.PROJECTILE:
-                d -= 4
-            if d < best_d:
-                best_d, best = d, track
+            # This is a ranking nudge only — the reported distance below must
+            # stay the true gap, not the tie-broken one.
+            rank = d - 4 if track.hazard is HazardClass.PROJECTILE else d
+            if rank < best_rank:
+                best_rank, best_d, best = rank, d, track
         common = {
             "frame": self.frames,
             "link_xy": link,
@@ -192,10 +194,34 @@ class DamageLog:
             closing=best.closing_on(*link),
         )
 
-    def _fatal(self, event: HitEvent | None) -> HitEvent | None:
+    def _fatal(
+        self,
+        snap: ZeldaSnapshot,
+        value: int,
+        event: HitEvent | None,
+        *,
+        action: str,
+        phase: str,
+    ) -> HitEvent:
+        """Mark the killing hit fatal, or record an honest unattributed one.
+
+        Death always has *a* frame, even when no tracked hazard ever moved
+        the heart value (health was already at the floor, or the game's own
+        instant-kill path never showed up as a decrement). Silently leaving
+        ``death`` as ``None`` here would hide a real death from ``report()``;
+        ``_attribute`` already returns an unattributed ``HitEvent`` in the
+        equivalent no-source case, so mirror that instead of a bare ``None``.
+        """
         last = event or (self.hits[-1] if self.hits else None)
         if last is None:
-            return None
+            last = HitEvent(
+                frame=self.frames,
+                link_xy=(int(snap.link_x), int(snap.link_y)),
+                value_before=self._value if self._value is not None else value,
+                value_after=value,
+                phase=phase,
+                action=action,
+            )
         fatal = replace(last, fatal=True)
         if self.hits and self.hits[-1] is last:
             self.hits[-1] = fatal
