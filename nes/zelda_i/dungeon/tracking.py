@@ -155,7 +155,11 @@ class ObjectTracker:
 
     Identity is ``(slot, type_id)``. A type change or a teleport bigger than
     ``RESPAWN_JUMP`` restarts the track so a respawn never reads as a
-    200 px/frame missile.
+    200 px/frame missile. A ``(level, screen)`` change also restarts every
+    track: two different rooms reuse the same slot numbers for unrelated
+    objects, and a same-type object landing within ``RESPAWN_JUMP`` of the
+    previous room's last position would otherwise read as continuous motion
+    across the door.
     """
 
     def __init__(self, history: int = TRACK_HISTORY) -> None:
@@ -167,6 +171,7 @@ class ObjectTracker:
         self._link: list[tuple[int, int]] = []
         self._last_snap: ZeldaSnapshot | None = None
         self._last: tuple[TrackedObject, ...] = ()
+        self._room: tuple[int, int] | None = None
 
     # --- observation ---------------------------------------------------
 
@@ -181,6 +186,16 @@ class ObjectTracker:
             return self._last
         self._last_snap = snap
         self.frames += 1
+        room = (int(snap.level), int(snap.screen))
+        if self._room is not None and room != self._room:
+            # A new room reuses slot numbers for unrelated objects. Without
+            # this, a same-type object that happens to land within
+            # RESPAWN_JUMP of the previous room's last position in the same
+            # slot reads as one continuous track across the door.
+            self._xs.clear()
+            self._types.clear()
+            self._ages.clear()
+        self._room = room
         self._push(self._link, (int(snap.link_x), int(snap.link_y)))
 
         seen: set[int] = set()
