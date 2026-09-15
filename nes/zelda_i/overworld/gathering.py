@@ -87,6 +87,38 @@ PRE_L1_BOMB_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x4A, "RIGHT", align_y=141),
 )
 
+# **The lap is the rupee supply, and it has to be a lap.** One pass of this
+# corridor pays ~12R of random drops against a 20R pack, so the money has to
+# come from a second wave. ``overworld.respawn`` has the ROM rule: a screen's
+# kill flags are cleared — the wave comes back whole — only when the screen is
+# absent from the six-entry ``RoomHistory``, and a room is appended to that
+# history **only when it is not already in it**. An out-and-back therefore
+# evicts nothing (every screen on the way back is already in the history),
+# which is why the ``0x4A <-> 0x49`` restock in ``rupee_farm`` never was a
+# farm. Eviction needs new rooms, and this corridor has exactly seven distinct
+# screens against six slots: walking back onto 0x77 evicts 0x78, and from
+# there each screen Link enters evicts the next one in front of him.
+#
+# Each row mirrors the ``PRE_L1_BOMB_HOPS`` row that made the crossing
+# eastward, on the same alignment — the corridor is one lane wide and the hop
+# engine aligns before it pushes. Live to 0x59 (2026-09-15 ``lap1``); the lap
+# itself is gated on health, not on the hops (see ``docs/PRE_L1.md``).
+PRE_L1_LAP_WEST_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x49, "LEFT", align_y=141),
+    ScreenHop(0x59, "DOWN", align_x=112),
+    ScreenHop(0x58, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x68, "DOWN", align_x=48),
+    ScreenHop(0x78, "DOWN", align_x=48),
+    ScreenHop(0x77, "LEFT", align_y=140),
+)
+PRE_L1_LAP_HOPS: tuple[ScreenHop, ...] = PRE_L1_LAP_WEST_HOPS + PRE_L1_BOMB_HOPS
+
+
+def pre_l1_walk_hops(laps: int = 0) -> tuple[ScreenHop, ...]:
+    """The walk to 0x4A, plus ``laps`` full laps of the corridor behind it."""
+    return PRE_L1_BOMB_HOPS + PRE_L1_LAP_HOPS * max(int(laps), 0)
+
+
 BOMB_SHOP_HOPS: tuple[ScreenHop, ...] = PRE_L1_BOMB_HOPS
 SHOP_P7_HOPS: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS
 SHOP_P7_HOPS_LIVE_PREFIX: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS[:5]
@@ -167,9 +199,21 @@ class ShopP7WalkController(OverworldPathController):
     # fight the wooden sword can win faster — it is one with nothing in it.
     # The hop still crosses the screen and the blade still answers contact.
     hunt_transit_screens: frozenset[int] = frozenset({0x59})
+    # Laps of the corridor to walk before the shop. 0 is one pass, which is
+    # all the drop tables can pay for; see ``PRE_L1_LAP_HOPS`` for why a lap
+    # and not an out-and-back. Build the table with ``pre_l1_walk_hops``.
+    laps: int = 0
     max_frames: int = BOMB_SHOP_WALK_MAX_FRAMES
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
+        if bomb_shop_arrived(snap) and int(snap.rupees) >= BOMB_SHOP_PRICE:
+            # The errand is funded. Another lap is only more chances to be hit.
+            return True
+        if self.laps and self.hop_index < len(self.hops):
+            # 0x4A is the end of *every* lap, not only the last one, so a
+            # lapped table cannot stop on arrival. Gated on ``laps`` so the
+            # one-pass walk keeps the stop it greened on.
+            return False
         return bomb_shop_arrived(snap) and self.destination_hunted(snap)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -236,9 +280,16 @@ class ShopP7WalkController(OverworldPathController):
         )
 
 
-def make_shop_p7_walk_controller() -> OverworldPathController:
-    """0x77 leftover -> 0x4A play leftover, 0x4A hunted. No door_x / cave enter."""
-    return ShopP7WalkController()
+def make_shop_p7_walk_controller(*, laps: int = 0) -> OverworldPathController:
+    """0x77 leftover -> 0x4A play leftover, 0x4A hunted. No door_x / cave enter.
+
+    ``laps`` walks the corridor again behind the first pass. A re-entered
+    screen is a fresh fight, so the hunt has to forget it cleared one
+    (``hunt_reopen``) or the lap is a walk with no wave in it.
+    """
+    return ShopP7WalkController(
+        hops=pre_l1_walk_hops(laps), laps=int(laps), hunt_reopen=bool(laps)
+    )
 
 
 def make_pre_l1_bomb_buy_controller() -> CaveShopBuyController:
@@ -271,6 +322,8 @@ __all__ = [
     "DEAD_6C_EAST_BUSH",
     "DEAD_ROW6_EAST_TO_6F",
     "PRE_L1_BOMB_HOPS",
+    "PRE_L1_LAP_HOPS",
+    "PRE_L1_LAP_WEST_HOPS",
     "SHOP_P7_HOPS",
     "SHOP_P7_HOPS_LIVE_PREFIX",
     "SHOP_P7_PRICE",
@@ -285,6 +338,7 @@ __all__ = [
     "make_pre_l1_bomb_buy_controller",
     "make_shop_p7_walk_controller",
     "pre_l1_bomb_shop_success",
+    "pre_l1_walk_hops",
     "pre_l1_stages",
     "shop_p7_arrived",
     "shop_p7_screens",

@@ -15,11 +15,13 @@ from collections import deque
 from pathlib import Path
 
 from retro_harness.audit import AuditCapabilities, AuditedEnv
+from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.env import make_env, reset_obs
 from retro_harness.segment_runner import configure_headless, write_json_report
 from zelda_i.combat import chebyshev
 from zelda_i.dungeon.ids import OBJECT_NAMES
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
+from zelda_i.overworld.path import OverworldPathController
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.spine.survival import run_survival_spine, spine_final_fields
 
@@ -82,6 +84,31 @@ def main(argv: list[str] | None = None) -> int:
         setattr(hunt_mod.ScreenHunter, name, value)
     print("overrides:", {k: v for k, v in overrides.items() if v is not None})
 
+    # Which rule owned the frame. ``_do_hop`` runs four position rules
+    # ahead of ``_hunt_action`` (occupancy align, stall escape, unstick
+    # wiggle, recover_off_edge), and a contact window that cannot name the
+    # driver cannot tell "the hunt swung and missed" from "the hunt never
+    # got the frame".
+    driver = {"reason": None, "btn": "-"}
+    _orig_step = OverworldPathController.step
+
+    def _step(self, snap):  # type: ignore[no-untyped-def]
+        act = _orig_step(self, snap)
+        driver["reason"] = getattr(act, "reason", None)
+        raw = list(getattr(act, "action", ()) or ())
+        # The NES action is 9 wide with an unused hole at index 1, so
+        # ``enumerate(NES_BUTTON_NAMES)`` is off by one from index 2 up and
+        # drops A (index 8) entirely — which is the one button that matters
+        # here. Decode through the name->index map.
+        driver["btn"] = "+".join(
+            name
+            for name, i in NES_BUTTON_NAME_TO_INDEX.items()
+            if i is not None and i < len(raw) and raw[i]
+        ) or "-"
+        return act
+
+    OverworldPathController.step = _step  # type: ignore[assignment]
+
     ring: deque[dict] = deque(maxlen=WINDOW)
     contacts: list[dict] = []
     prev = {"iframes": -1, "world": -1}
@@ -100,6 +127,17 @@ def main(argv: list[str] | None = None) -> int:
             "hp": int(snap.health),
             "part": int(snap.heart_partial),
             "R": int(snap.rupees),
+            "why": driver["reason"],
+            "btn": driver["btn"],
+            # Link's own ``$00AC`` (``link_busy``) plus every live slot with
+            # its state, because the thing that stops a second swing may be
+            # the sword object, not Link.
+            "st": int(snap.objects[0].state) if snap.objects else -1,
+            "slots": [
+                [int(o.slot), int(o.type_id), int(o.state), int(o.hp)]
+                for o in snap.objects
+                if int(o.slot) >= 1 and int(o.type_id) not in (0, 0xFF)
+            ],
             "objs": _live(snap),
         }
         iframes = int(snap.link_iframes)

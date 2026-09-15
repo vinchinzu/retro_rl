@@ -691,3 +691,169 @@ max (was 1064). `overworld/prey.py` took the value model out; `ShotPolicy` is
 the next seam if it grows again, and `dungeon/threat.py` already owns the
 shot-timing vocabulary it would land in.
 
+
+## This sitting (2026-09-15e) — the sword was never swinging, and the farm is a lap
+
+Two ROM facts, one per open row. The first is why the corridor cost two hearts
+and three streak resets; the second is why one pass was never going to fund the
+pack whatever the fighting looked like.
+
+### `ButtonsPressed` is an edge, so a held A swings once and never again
+
+`Link_HandleInput` (`Z_05.asm`) wields the sword on
+
+```
+LDA ObjState / BNE @CheckMovement      ; only while Link is idle
+LDA ButtonsPressed / AND #$80 / JSR WieldSword
+```
+
+and `ButtonsPressed` is **not** "A is down". `Z_07.asm` builds it every poll as
+`new EOR ButtonsDown AND new` — "down now instead of before". `ScreenHunter.
+_strike` returned `nes_action(face, "A")` on every frame it owned, so after the
+first press A stayed down, no further swing started, and `$00AC` never went
+non-zero — which is the byte `link_busy` watches to decide when to release. The
+loop is closed: **A held starts no swing, a swing that never starts never sets
+the state, and the state is the only thing that released A.**
+
+What that looks like live is not a missed swing, it is a walk. The four
+contacts of `base_head` are one window each, all the same
+(`scratch/probe_contact.py`, now logging the driving rule and the buttons):
+
+| f | screen | window |
+|---|---|---|
+| 3197 | `0x49` | 12 frames of `hunt_49_slash`, state 0, Link walking y157 -> y148 into `octorok_fast` #2 |
+| 3532 | `0x49` | **24 consecutive `hunt_49_slash` frames of UP+A, state 0 throughout**, Link walking 1.4 px/f from y=138 to y=103 while slot 4 holds 8 px off his shoulder |
+| 4946 | `0x4a` | `hunt_4a_recover` x4 while `tektite_blue` #3 closes 15 -> 7 |
+| 5167 | `0x4a` | 20 frames of `hunt_4a_slash` oscillating y117<->119, tektite #2 closing |
+
+The fix is one frame: after a press that did not take, idle. The release frame
+is an **idle**, not the direction — a held direction is what closes the last
+8 px. (Two traps paid for on the way: the probe's first button decoder used
+`enumerate(NES_BUTTON_NAMES)`, which is off by one past index 1 and drops A at
+index 8 entirely, so the trace read `DOWN` for UP and never showed the A that
+was the whole story. And `_approach` is the *second* producer of a `_slash`
+frame; it held A the same way and now goes through `_strike`.)
+
+### Measured: `base_head` -> `rel1`, and the first forced drop this walk has earned
+
+Same spine, same trajectory, `assist=None`, `set_state=0`.
+
+| screen | `base_head` (head) | `rel1` (release edge) |
+|---|---|---|
+| `0x77` `0x78` `0x68` `0x58` `0x59` | 183 / 114 / 566 / 646 / 203 f | **byte-identical**, same kills, same streak |
+| `0x49` | 843f, 4 of 6, **2 hits / 1.00 heart**, 1R, streak 5->2 (2 resets) | 907f, **6 of 6**, 0 hits, **2R**, streak **5->11** |
+| `0x4a` | 2554f, 2 of 6, **2 hits / 1.00 heart**, 0R, streak 2->0 | **2190f**, **6 of 6**, 0 hits, **6R**, streak **11->17** |
+| run | 11 kills, 2 drops, **1R**, 4 hits, 2.01 hearts, best 5, 3 resets | **17 kills, 8 drops, 8R, 0 hits, 0.00 hearts, best 17, 0 resets** |
+| hearts at the shop | `0x20` (1 of 3) | **`0x22` (3 of 3)** |
+| stop | `shop_need_20_have_1` | `shop_need_20_have_8` |
+
+The five screens the fix could not touch came back byte-identical, which is the
+control: nothing on them was ever a contact. The two that were are unambiguous
+— both cleared, both hitless, and `0x4a` **faster** (2190f against 2554f) while
+killing three times as many bodies, because a swing that lands ends the chase.
+
+**The streak crossed 10 and 16 for the first time.** `0x49` banked the forced
+5-rupee at kill ten and `0x4a` the forced fairy at sixteen; the run ends on a
+live 17-streak with every heart. Six of the eight drops are on the two fixed
+screens.
+
+**And the drop-rate blocker was the same bug.** 8 floor drops on 17 kills is
+**47% against 42% billed** — the 13-19% of the last three sittings was a census
+of a walk whose kills were all on row 0 and whose row-1 wave it never fought.
+There is nothing wrong with `DropItemRates`.
+
+### One pass still cannot pay, and the ROM says exactly what can
+
+8R against 20R. The supply has to be a second wave, and
+[`overworld/respawn.py`](../overworld/respawn.py) is the rule, from the
+disassembly rather than from folklore:
+
+* `ModifyObjCountByHistoryOW` (`Z_05.asm`) runs inside `CreateRoomObjects` on
+  every room load. It **clears** a screen's kill-count flags — the full
+  respawn — only when the screen is absent from the six-entry `RoomHistory`
+  (`$621`) **and** those flags already read the max, 7. A screen that *is* in
+  the history has its kill count subtracted from the spawn count instead.
+* `SaveKillCountOW` writes 7 exactly when `RoomKillCount >= RoomObjCount` (the
+  screen was cleared of whatever it spawned) and otherwise adds the partial
+  count in, capped at 7 — so partial clears converge on 7 over visits.
+* `RunCrossRoomTasksAndBeginUpdateMode` (`Z_07.asm`) appends the room to the
+  history **only if it is not already in it**, and leaves
+  `CurRoomHistoryIndex` alone when it is.
+
+That last rule is the one that decides route shape, and it is why
+`rupee_farm`'s `0x4A <-> 0x49` restock was never a rupee supply: **every screen
+on the way back is already in the history, so an out-and-back evicts nothing,
+at any depth.** Eviction needs *new* rooms. This corridor has **seven** distinct
+screens against six slots, so the smallest thing that works is a full lap back
+to `0x77`: walking onto `0x77` evicts `0x78`, and from there each screen Link
+enters evicts the next one in front of him, so the whole eastbound leg comes
+back whole — and every lap after it does the same.
+`gathering.PRE_L1_LAP_HOPS` is that table (`laps=N` on
+`make_shop_p7_walk_controller`); `respawn.respawn_visits` is the arithmetic and
+`tests/test_respawn.py` asserts it.
+
+Measured live (`scratch/probe_respawn_lap.py`, `lap1`): the history filled
+`0x77 0x78 0x68 0x58 0x59 0x49` in order and `0x4A` overwrote `0x77` at the
+wrap, exactly as `RoomHistory` models it; re-entering `0x49` four kills later
+read flags **4** and spawned **6 - 4 = 2** bodies. That run also proved the
+westbound hops as far as `0x59` — and then **died in mode 17 on it**, because
+it was lapping on the one heart the old sword left. The lap was never blocked
+on the hops. It was blocked on the sword.
+
+### The lap runs, the waves come back, and it still banks 8R
+
+`scratch/probe_respawn_lap.py --laps 1` (`lap2`), same release-edge tree,
+`assist=None`. The westbound hops all held this time and the respawn happened
+exactly where `respawn.respawn_visits` says, screen by screen:
+
+| visit | f | screen | wave | flags in | what the ROM did |
+|---|---|---|---|---|---|
+| 7 | 4240 | `0x49` | empty | **7** | in history -> suppressed |
+| 9 | 5103 | `0x58` | `octorok_fast` x1 | 3 | in history -> 4 - 3 = 1 |
+| 10 | 5531 | `0x68` | octorok x2 | 2 | in history -> 4 - 2 = 2 |
+| 12 | 6339 | `0x77` | - | 0 | **not in history** -> appended at idx1, evicting `0x78` |
+| 13 | 6445 | `0x78` | octorok x2 | 0 | fresh; evicts `0x68` |
+| 14 | 6644 | `0x68` | **octorok x4** | **0** | flags hit 7 on visit 10, so this entry **cleared them**: full wave |
+| 15 | 8125 | `0x58` | **octorok x2 + `octorok_fast` x2** | 0 | full wave |
+| 17 | 9035 | `0x49` | **6 bodies** | 0 | full wave, **+6 rupees** |
+| 18 | 9670 | `0x4a` | **`tektite_blue` x6** | 0 | full wave |
+
+That is the ROM's two halves in one run: a screen *in* the history has its kill
+count subtracted (visits 7, 9, 10), and a screen out of it with flags at 7 has
+them cleared (visits 14-18). `0x68` shows the whole cycle — 2 of 4 on the first
+pass, the other 2 on visit 10 (which is what writes 7), and all 4 back on
+visit 14.
+
+**And the money did not move.** 33 kills against `rel1`'s 17, for the same
+8 rupees. Three named reasons, in size order:
+
+1. **7R was left on the floor.** The drops happened: `0x0f` x2 and `0x18` x5 is
+   **15R of rupees on the ground** against 8 banked. (`rel1` leaks the same
+   way: 14R down, 8 banked.) The scoop, not the drop table, is now the biggest
+   single line on this errand.
+2. **Five streak resets, best 11.** The costly one is the westbound `0x59`
+   (visit 8, streak **11 -> 0**): eastbound the hop crosses it along y≈155,
+   but coming back from `0x49` Link enters at the top on x=112 and has to walk
+   the length of the peahat-and-Zora screen to reach the west exit. Damage
+   2.508 hearts over 5 hits — `fireball_or_statue_projectile_S`,
+   `rock_projectile_S`, `octorok_fast_E`, `tektite_blue_N` x2.
+3. **The lap skips the first `0x4a` wave.** With `laps=1` the first arrival is
+   a mid-table hop, not the destination, so Link turns round after 106 frames
+   and the six row-1 tektites — the richest wave on the corridor — go
+   unfought until the very last visit.
+
+So `laps` stays **0** by default. The lap is wired, ROM-derived, unit-tested
+and now measured working as a *respawn mechanism*; it is not yet a better
+rupee-per-frame deal than one clean pass, and a route change that cannot be
+measured better does not land.
+
+### Next
+
+1. **The scoop.** 15R fell and 8R was banked. Everything else on this list is
+   smaller than that.
+2. Westbound `0x59`. Eastbound it is 203 frames and free; westbound it cost an
+   11-streak and a heart. Either enter it lower or route the lap around it.
+3. `laps=1` should hunt `0x4a` on the first arrival too (or put the lap
+   *before* the destination hunt rather than after it).
+4. `hunt.py` is 1377 LOC against the ~1000 soft max. `ShotPolicy` is still the
+   seam.

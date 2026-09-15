@@ -342,19 +342,24 @@ def test_the_nearest_body_is_answered_not_the_held_target() -> None:
     assert hunter.targets.slot == 1
 
 
-def test_the_swing_waits_on_links_own_animation_not_a_cadence() -> None:
-    """``$00AC`` slot 0 is non-zero for the whole wooden swing.
+def test_every_swing_gets_its_own_release_edge() -> None:
+    """A held A starts no second swing, and a held direction walks into the body.
 
-    The blind ``frames % 8 < 3`` cadence left up to five idle frames per swing
-    with a body closing ~1px a frame (0x49 f=3653: ten frames standing while
-    slot 4 walked 16 -> 9). Idling only while the animation runs is also what
-    releases A, which the ROM needs before the next swing can start.
+    ``link_busy`` was the only thing inserting a release, which is circular:
+    A held across frames starts no swing, a swing that never starts never
+    sets ``$00AC``, so ``link_busy`` stays False and the rule holds the
+    direction down forever. Measured on 0x49 (``scratch/c_btn.json``
+    f3509-f3532): 24 consecutive ``hunt_49_slash`` frames of UP+A with Link's
+    state 0 throughout, walking 1.4 px a frame into an ``octorok_fast`` that
+    held 8 px off his shoulder. The release frame is an *idle*, because the
+    held direction is what closes the last 8 px.
     """
     foe = _foe(x=160, y=141)
     link_idle = ZeldaObject(slot=0, type_id=0, x=0, y=0, facing=0, hp=0, state=0)
     link_swinging = ZeldaObject(slot=0, type_id=0, x=0, y=0, facing=0, hp=0, state=1)
     hunter = ScreenHunter()
 
+    seen = []
     for frame in (1, 2, 3, 4, 5, 6, 7, 8):
         act = hunter.step(
             _snap(
@@ -364,8 +369,18 @@ def test_the_swing_waits_on_links_own_animation_not_a_cadence() -> None:
             ),
             frame,
         )
-        assert act is not None and act.reason == "hunt_78_slash", frame
-        assert "A" in pressed_nes_buttons(list(act.action))
+        assert act is not None
+        seen.append((act.reason, pressed_nes_buttons(list(act.action))))
+
+    reasons = [r for r, _ in seen]
+    assert reasons == ["hunt_78_slash", "hunt_78_release"] * 4, reasons
+    for (reason, buttons) in seen:
+        if reason.endswith("_slash"):
+            assert "A" in buttons and "RIGHT" in buttons
+        else:
+            # No A to re-trigger on, and no direction to close the gap with.
+            assert buttons == [] or buttons == ()
+    assert hunter.release_frames == 4
 
     act = hunter.step(
         _snap(
@@ -377,6 +392,33 @@ def test_the_swing_waits_on_links_own_animation_not_a_cadence() -> None:
     )
     assert act is not None and act.reason == "hunt_78_recover"
     assert "A" not in pressed_nes_buttons(list(act.action))
+
+
+def test_the_swing_waits_on_links_own_animation_not_a_cadence() -> None:
+    """``$00AC`` slot 0 is non-zero for the whole wooden swing.
+
+    The blind ``frames % 8 < 3`` cadence left up to five idle frames per swing
+    with a body closing ~1px a frame (0x49 f=3653: ten frames standing while
+    slot 4 walked 16 -> 9). While the animation runs the hunt recovers rather
+    than pressing, and it never spends a *release* frame there — the
+    animation already holds A down.
+    """
+    foe = _foe(x=160, y=141)
+    link_swinging = ZeldaObject(slot=0, type_id=0, x=0, y=0, facing=0, hp=0, state=1)
+    hunter = ScreenHunter()
+
+    for frame in (1, 2, 3, 4):
+        act = hunter.step(
+            _snap(
+                link_x=160 - SWORD_REACH,
+                facing=FACING_EAST,
+                objects=(link_swinging, foe),
+            ),
+            frame,
+        )
+        assert act is not None and act.reason == "hunt_78_recover", frame
+        assert "A" not in pressed_nes_buttons(list(act.action))
+    assert hunter.release_frames == 0
 
 
 def test_off_axis_in_reach_strafes_instead_of_closing() -> None:
