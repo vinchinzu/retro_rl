@@ -35,9 +35,19 @@ the last stage says why. Live 2026-09-15 `prel1_land` 1/1, `assist=None`,
 `set_state=0`: **16/15 kills**, `streak_best` **7**, 3 resets, **2 rupees**,
 `damage_taken` 4, 2 of 3 hearts at the shop, `failed=bomb_buy`
 `shop_need_20_have_2`. Was 10/9 kills, peak 3, 1 rupee at `8c7162cc`.
-The corridor's measured drop rate is ~13% (53 kills / 7 drops), not the 31%
+The corridor's measured drop rate is ~13-19%, not the 31%
 `scratch/bomb_budget.py` bills it at, so **one pass cannot fund 20R** —
 details and the five fixed root causes in [`docs/PRE_L1.md`](docs/PRE_L1.md).
+
+**The per-screen bill is the tool for this leg** (`combat.ScreenTally` /
+`ScreenHunter.screen_table`, rendered by `scratch/probe_screen_tables.py`).
+Read it before tuning the walk. It says the fighting is not the problem:
+**nine red-octorok kills cost 0.00 hearts**, and all four hits plus all three
+streak resets came from a zora, a peahat, a blue octorok and a blue tektite.
+`0x59` alone spends a whole heart, 739 frames and the 5-kill streak for one
+kill and no rupees — and its wave is **peahat x4 plus a zora**, not the four
+peahats the ROM spawn table bills. Damage is measured in 1/256 of a heart;
+a whole-heart census reads this corridor's chips as zero.
 Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.

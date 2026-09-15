@@ -23,6 +23,7 @@ from zelda_i.dungeon.ids import (
     GHINI_FLYING_OBJECT_TYPE,
     HEART_DROP_OBJECT_TYPE,
     HEART_DROP_STATE,
+    OBJECT_NAMES,
     PROJECTILE_TYPES,
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
@@ -422,84 +423,235 @@ def floor_pickups(
     )
 
 
+def heart_value(snap: ZeldaSnapshot) -> int:
+    """Health as one comparable number, in 1/256 of a heart.
+
+    ``$066F``'s low nibble only moves on a *whole* heart; a wooden chip is
+    ``$0670 -= 0x80`` and never touches it, so any census that counts whole
+    hearts reads half the corridor's damage as zero. 3/3 is ``0x22``/``0xFF``
+    = 767; a half-heart hit lands at 639.
+    """
+    return ((int(snap.health) & 0x0F) << 8) + (int(snap.heart_partial) & 0xFF)
+
+
+def _bump(counter: dict[int, int], key: int, n: int = 1) -> None:
+    counter[key] = counter.get(key, 0) + n
+
+
+@dataclass
+class ScreenTally:
+    """One overworld screen's bill: what it cost, what it paid, in what time.
+
+    Flat run totals cannot answer the pre-L1 question. "16 kills, 4 hits, 2
+    rupees" reads the same whether the damage was one screen or five, and
+    whether the money came from the row-0 octoroks or the single row-1
+    tektite wave that is worth more than all of them. Every field here is per
+    screen and additive across revisits, so a second lap shows up as
+    ``visits``, not as a number that silently doubled.
+    """
+
+    screen: int
+    order: int = 0
+    visits: int = 0
+    frames: int = 0
+    containers: int = 0
+    kills: int = 0
+    kills_by_type: dict[int, int] = field(default_factory=dict)
+    # Slot -> the type it was first seen as. Distinct slot-lifetimes, which is
+    # what "the wave was four red octoroks" means; a peak-live count cannot
+    # say whether the fifth body was a fifth octorok or the first one again.
+    first_type_by_slot: dict[int, int] = field(default_factory=dict)
+    peak_live: int = 0
+    rupees: int = 0
+    drops_by_state: dict[int, int] = field(default_factory=dict)
+    # 1/256 of a heart, so a half-heart chip is 128 and is visible.
+    damage_units: int = 0
+    heal_units: int = 0
+    damage_taken: int = 0
+    hurt_events: int = 0
+    hearts_in: int = -1
+    hearts_out: int = -1
+    streak_in: int = 0
+    streak_out: int = 0
+    streak_resets: int = 0
+
+    @property
+    def spawned_by_type(self) -> dict[int, int]:
+        out: dict[int, int] = {}
+        for type_id in self.first_type_by_slot.values():
+            _bump(out, type_id)
+        return out
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "screen": f"{self.screen:#04x}",
+            "order": self.order,
+            "visits": self.visits,
+            "frames": self.frames,
+            "kills": self.kills,
+            "spawned": sum(self.spawned_by_type.values()),
+            "peak_live": self.peak_live,
+            "rupees": self.rupees,
+            "damage_units": self.damage_units,
+            "damage_hearts": round(self.damage_units / 256.0, 3),
+            "heal_hearts": round(self.heal_units / 256.0, 3),
+            "hits": self.damage_taken,
+            "hurt_events": self.hurt_events,
+            "hearts_in": round(max(self.hearts_in, 0) / 256.0, 3),
+            "hearts_out": round(max(self.hearts_out, 0) / 256.0, 3),
+            "containers": self.containers,
+            "streak_in": self.streak_in,
+            "streak_out": self.streak_out,
+            "streak_resets": self.streak_resets,
+            "kills_by_type": {
+                _prey_name(t): n for t, n in sorted(self.kills_by_type.items())
+            },
+            "spawned_by_type": {
+                _prey_name(t): n for t, n in sorted(self.spawned_by_type.items())
+            },
+            "drops_by_state": {
+                f"{k:#04x}": v for k, v in sorted(self.drops_by_state.items())
+            },
+        }
+
+
+def _prey_name(type_id: int) -> str:
+    return OBJECT_NAMES.get(int(type_id), f"unk_{int(type_id):#04x}")
+
+
 @dataclass
 class CombatLedger:
     """Every number the hunt is judged on. Observe once per frame.
 
     Kept apart from the policy because it runs on frames the policy does not
-    own: kills land during evades, farms, hop swings and cave dialogs.
+    own: kills land during evades, farms, hop swings and cave dialogs. The
+    run totals are sums of :class:`ScreenTally`, never a parallel count.
     """
 
     kills: int = 0
     kills_counter: int = 0
     rupees_banked: int = 0
     damage_taken: int = 0
+    # 1/256 of a heart. ``damage_taken`` counts *events*; two chips and two
+    # whole hearts are both "4" there and 256 vs 1024 here.
+    damage_units: int = 0
     hurt_events: int = 0
     streak: int = 0
     streak_best: int = 0
     streak_resets: int = 0
-    by_screen: dict[int, int] = field(default_factory=dict)
-    seen_by_screen: dict[int, int] = field(default_factory=dict)
-    # What the wave put on the floor, by ObjState item code. ``rupees_banked``
-    # alone cannot tell "row 0 rolled no rupee" from "the rupee was there and
-    # the hunt walked past it", and those want opposite fixes.
-    drops_by_state: dict[int, int] = field(default_factory=dict)
+    screens: dict[int, ScreenTally] = field(default_factory=dict)
     _drops: dict[int, int] = field(default_factory=dict, repr=False)
     _census: dict[int, int] = field(default_factory=dict, repr=False)
     _census_screen: int = field(default=-1, repr=False)
+    _screen: int = field(default=-1, repr=False)
     _world: int = field(default=-1, repr=False)
     _help: int = field(default=-1, repr=False)
     _rupees: int = field(default=-1, repr=False)
     _hp: int = field(default=-1, repr=False)
     _iframes: int = field(default=-1, repr=False)
 
+    # Derived views kept for callers that only want the run total.
+    @property
+    def by_screen(self) -> dict[int, int]:
+        return {s: t.kills for s, t in self.screens.items() if t.kills}
+
+    @property
+    def seen_by_screen(self) -> dict[int, int]:
+        return {s: t.peak_live for s, t in self.screens.items()}
+
+    @property
+    def drops_by_state(self) -> dict[int, int]:
+        out: dict[int, int] = {}
+        for tally in self.screens.values():
+            for state, n in tally.drops_by_state.items():
+                _bump(out, state, n)
+        return out
+
     def observe(self, snap: ZeldaSnapshot) -> None:
-        self._observe_counters(snap)
-        census = {int(o.slot): int(o.type_id) for o in live_enemies(snap)}
         screen = int(snap.screen)
-        same_screen = (
-            screen == self._census_screen
-            and int(snap.level) == 0
+        live = (
+            int(snap.level) == 0
             and int(snap.mode) == PLAY_MODE
             and not snap.transitioning
         )
-        if same_screen:
-            drops = {
-                int(o.slot): int(o.state)
-                for o in snap.objects
-                if int(o.slot) >= 1 and int(o.type_id) == RUPEE_DROP_OBJECT_TYPE
-            }
-            for slot, state in drops.items():
-                if self._drops.get(slot) != state:
-                    self.drops_by_state[state] = self.drops_by_state.get(state, 0) + 1
-            self._drops = drops
+        tally = self._tally(snap, screen, live)
+        self._observe_counters(snap, tally)
+        census = {int(o.slot): int(o.type_id) for o in live_enemies(snap)}
+        if live and screen == self._census_screen:
+            self._observe_drops(snap, tally)
             for slot, type_id in self._census.items():
                 if census.get(slot) != type_id:
                     self.kills += 1
-                    self.by_screen[screen] = self.by_screen.get(screen, 0) + 1
-            self.seen_by_screen[screen] = max(
-                self.seen_by_screen.get(screen, 0), len(census)
-            )
+                    tally.kills += 1
+                    _bump(tally.kills_by_type, type_id)
+            tally.peak_live = max(tally.peak_live, len(census))
         else:
             self._drops = {}
+        if live:
+            for slot, type_id in census.items():
+                tally.first_type_by_slot.setdefault(slot, type_id)
         self._census = census
         self._census_screen = screen if int(snap.level) == 0 else -1
 
-    def _observe_counters(self, snap: ZeldaSnapshot) -> None:
+    def _tally(self, snap: ZeldaSnapshot, screen: int, live: bool) -> ScreenTally:
+        """The row this frame is billed to, opened on first arrival.
+
+        Non-play frames (scroll, cave dialog) bill the screen byte they read,
+        so the 20 rupees a shop swallows land on the shop's own row.
+        """
+        tally = self.screens.get(screen)
+        if tally is None:
+            tally = ScreenTally(screen=screen, order=len(self.screens))
+            self.screens[screen] = tally
+        if not live:
+            return tally
+        if screen != self._screen:
+            self._screen = screen
+            tally.visits += 1
+            if tally.hearts_in < 0:
+                tally.hearts_in = heart_value(snap)
+                tally.streak_in = int(snap.world_kill_count)
+        tally.frames += 1
+        tally.containers = int(snap.heart_containers)
+        tally.hearts_out = heart_value(snap)
+        tally.streak_out = int(snap.world_kill_count)
+        return tally
+
+    def _observe_drops(self, snap: ZeldaSnapshot, tally: ScreenTally) -> None:
+        drops = {
+            int(o.slot): int(o.state)
+            for o in snap.objects
+            if int(o.slot) >= 1 and int(o.type_id) == RUPEE_DROP_OBJECT_TYPE
+        }
+        for slot, state in drops.items():
+            if self._drops.get(slot) != state:
+                _bump(tally.drops_by_state, state)
+        self._drops = drops
+
+    def _observe_counters(self, snap: ZeldaSnapshot, tally: ScreenTally) -> None:
         rupees = int(snap.rupees)
         if self._rupees >= 0:
             # Positive deltas only: a purchase is not a negative kill.
-            self.rupees_banked += max(rupees - self._rupees, 0)
+            gained = max(rupees - self._rupees, 0)
+            self.rupees_banked += gained
+            tally.rupees += gained
         self._rupees = rupees
         # Chip damage ``hits_taken`` cannot see: a half-heart lands in
         # ``$0670``, never in the whole-hearts byte the hop controller watches.
-        hp = int(snap.filled_hearts) * 256 + int(snap.heart_partial)
-        if self._hp >= 0 and hp < self._hp:
-            self.damage_taken += 1
+        hp = heart_value(snap)
+        if self._hp >= 0 and hp != self._hp:
+            if hp < self._hp:
+                self.damage_taken += 1
+                self.damage_units += self._hp - hp
+                tally.damage_taken += 1
+                tally.damage_units += self._hp - hp
+            else:
+                tally.heal_units += hp - self._hp
         self._hp = hp
         iframes = int(getattr(snap, "link_iframes", 0))
         if self._iframes >= 0 and iframes > 0 and self._iframes == 0:
             self.hurt_events += 1
+            tally.hurt_events += 1
         self._iframes = iframes
         world, help_ = int(snap.world_kill_count), int(snap.help_drop_count)
         if self._world >= 0:
@@ -510,21 +662,27 @@ class CombatLedger:
             # thresholds is money not paid.
             if world == 0 and self._world > 0:
                 self.streak_resets += 1
+                tally.streak_resets += 1
         self.streak = world
         self.streak_best = max(self.streak_best, world)
         self._world, self._help = world, help_
 
     def reset(self) -> None:
         self.kills = self.kills_counter = self.rupees_banked = 0
-        self.damage_taken = self.hurt_events = 0
+        self.damage_taken = self.damage_units = self.hurt_events = 0
         self.streak = self.streak_best = self.streak_resets = 0
-        self.by_screen.clear()
-        self.seen_by_screen.clear()
-        self.drops_by_state.clear()
+        self.screens.clear()
         self._drops.clear()
         self._census.clear()
-        self._census_screen = -1
+        self._census_screen = self._screen = -1
         self._world = self._help = self._rupees = self._hp = self._iframes = -1
+
+    def screen_rows(self) -> list[dict[str, Any]]:
+        """Per-screen rows in the order the walk first reached them."""
+        return [
+            tally.report()
+            for tally in sorted(self.screens.values(), key=lambda t: t.order)
+        ]
 
     def report(self) -> dict[str, Any]:
         return {
@@ -532,16 +690,21 @@ class CombatLedger:
             "kills_counter": self.kills_counter,
             "rupees_banked": self.rupees_banked,
             "damage_taken": self.damage_taken,
+            "damage_units": self.damage_units,
+            "damage_hearts": round(self.damage_units / 256.0, 3),
             "hurt_events": self.hurt_events,
             "streak_best": self.streak_best,
             "streak_resets": self.streak_resets,
-            "kills_by_screen": {f"{k:#04x}": v for k, v in sorted(self.by_screen.items())},
+            "kills_by_screen": {
+                f"{k:#04x}": v for k, v in sorted(self.by_screen.items())
+            },
             "peak_live_by_screen": {
                 f"{k:#04x}": v for k, v in sorted(self.seen_by_screen.items()) if v
             },
             "drops_by_state": {
                 f"{k:#04x}": v for k, v in sorted(self.drops_by_state.items())
             },
+            "screens": self.screen_rows(),
         }
 
 
@@ -587,5 +750,7 @@ __all__ = [
     "closest_body",
     "nearest_to",
     "floor_pickups",
+    "heart_value",
+    "ScreenTally",
     "CombatLedger",
 ]

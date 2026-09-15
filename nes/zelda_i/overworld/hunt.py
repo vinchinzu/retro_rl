@@ -45,6 +45,8 @@ from zelda_i.combat import (
     nearest_to,
 )
 from zelda_i.dungeon.behaviors import EnemyKind, face_toward, kind_for_type
+from zelda_i.dungeon.ids import OBJECT_NAMES
+from zelda_i.dungeon.postmortem import DamageLog, HitEvent
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, assess, off_line_step
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
 from zelda_i.overworld.graph import ScreenHop
@@ -69,6 +71,7 @@ __all__ = [
     "ShieldPolicy",
     "TargetBook",
     "attackable",
+    "hit_cause",
     "hop_exit_goal",
     "hop_lane",
     "sword_stand",
@@ -181,6 +184,20 @@ def link_busy(snap: ZeldaSnapshot) -> bool:
     if first is None or int(first.slot) != LINK_SLOT:
         return False
     return int(first.state) != 0
+
+
+def hit_cause(event: HitEvent) -> str:
+    """Name the thing that took the health: ``octorok_fast_E``, ``rock_E``.
+
+    ``postmortem`` keys causes by raw ObjType, which reads the same for a
+    body and the rock it spat. On this corridor half the streak resets are
+    shots (2026-09-15 ``contact1``/``contact7``), so the census that decides
+    whether to fix the chase or the dodge has to spell the difference out.
+    """
+    if event.type_id is None:
+        return "unattributed"
+    name = OBJECT_NAMES.get(int(event.type_id), f"unk_{int(event.type_id):#04x}")
+    return f"{name}_{event.bearing}"
 
 
 def _side_cells(obj: ZeldaObject) -> dict[str, tuple[int, int]]:
@@ -499,6 +516,11 @@ class ScreenHunter:
     box: tuple[int, int, int, int] = HUNT_BOX
 
     ledger: CombatLedger = field(default_factory=CombatLedger)
+    # Magnitude and *cause* per screen. The ledger watches the health
+    # bytes; only the tracker knows which body or shot was there a frame
+    # before the knockback moved Link away from it.
+    damage: DamageLog = field(default_factory=DamageLog, repr=False)
+    hits_by_screen: dict[int, dict[str, int]] = field(default_factory=dict)
     shield_policy: ShieldPolicy = field(default_factory=ShieldPolicy)
     targets: TargetBook = field(default_factory=TargetBook)
 
@@ -546,6 +568,13 @@ class ScreenHunter:
         # ``ObjectTracker.observe`` is idempotent per snapshot, so a nested
         # controller re-observing the frame is free.
         self._tracked = self._tracker.observe(snap)
+        event = self.damage.observe(
+            snap, self._tracked, phase=f"{int(snap.screen):#04x}"
+        )
+        if event is not None:
+            causes = self.hits_by_screen.setdefault(int(snap.screen), {})
+            key = hit_cause(event)
+            causes[key] = causes.get(key, 0) + 1
 
     def _track(self, obj: ZeldaObject | None) -> TrackedObject | None:
         if obj is None:
@@ -958,6 +987,8 @@ class ScreenHunter:
 
     def reset(self) -> None:
         self.ledger.reset()
+        self.damage = DamageLog()
+        self.hits_by_screen.clear()
         self.shield_policy.reset()
         self.targets.clear()
         self.targets.skips = 0
@@ -982,10 +1013,38 @@ class ScreenHunter:
         self._tracker = ObjectTracker()
         self._occ.reset()
 
+    def screen_table(self) -> list[dict[str, Any]]:
+        """The per-screen bill: one row per screen, in walk order.
+
+        The ledger owns what the health and rupee bytes did; the hunt owns
+        what it spent getting there and who landed the hit. A flat total
+        cannot say which screen the damage or the money came from, and on
+        this corridor those are not the same screens.
+        """
+        rows = []
+        for row in self.ledger.screen_rows():
+            screen = int(row["screen"], 16)
+            rows.append(
+                {
+                    **row,
+                    "hunt_frames": self.frames_by_screen.get(screen, 0),
+                    "peak_prey": self.prey_by_screen.get(screen, 0),
+                    "cleared": screen in self.done,
+                    "hits_by_cause": dict(self.hits_by_screen.get(screen, {})),
+                }
+            )
+        return rows
+
     def report(self) -> dict[str, Any]:
+        causes: dict[str, int] = {}
+        for per_screen in self.hits_by_screen.values():
+            for key, n in per_screen.items():
+                causes[key] = causes.get(key, 0) + n
         return {
             **self.ledger.report(),
             **self.shield_policy.report(),
+            "hits_by_cause": causes,
+            "screens": self.screen_table(),
             "hunt_frames": self.hunt_frames,
             "guard_frames": self.guard_frames,
             "peel_frames": self.peel_frames,

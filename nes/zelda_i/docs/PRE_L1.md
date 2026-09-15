@@ -427,3 +427,95 @@ three different gatings, so the gating was never what bound). It defaults to
 4. Measure a ≥6-screen respawn loop against the 6-room history.
 
 Do not STATUS. Do not overwrite M5 18909f.
+
+## This sitting (2026-09-15c) — the bill, screen by screen
+
+The run totals were hiding the answer. "16 kills, 4 hits, 2 rupees" reads the
+same whether the damage was one screen or five, and whether the money came
+from the row-0 octoroks or the one row-1 wave that is worth more than all of
+them. Everything is now billed per screen, and damage is in **1/256 of a
+heart** — a wooden chip is `$0670 -= 0x80` and never moves `$066F`, so a
+whole-heart census reads the corridor's damage as almost zero.
+
+New: `combat.ScreenTally` / `CombatLedger.screens` (frames, kills by ObjType,
+distinct slot-lifetimes by ObjType, damage and heal units, rupees, hearts
+in/out, streak in/out, drops), and `ScreenHunter.damage` — the dungeon's
+`postmortem.DamageLog`, wired to the overworld tracker, so each hit is
+attributed to the body or shot that was there a frame before the knockback.
+`ScreenHunter.screen_table()` merges the two. Renderer and run:
+`scratch/probe_screen_tables.py` (`tables1.json` / `tables1.md`).
+
+Live `tables1`, `--through pre-l1`, `assist=None`, `set_state=0`. Same
+trajectory as `prel1_land` — 16/15 kills, best 7, 3 resets, 2R, 4 hits — so
+this is that run, instrumented, not a new one.
+
+| screen | frames | hunt f | hearts in -> out | damage | hits | cause | R | kills | spawned | streak | cleared |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `0x77` | 183 | 0 | 3.00/3 -> 3.00/3 | 0.00 | 0 | - | 0 | 0 | 0 | 0->0 | yes |
+| `0x78` | 114 | 0 | 3.00/3 -> 3.00/3 | 0.00 | 0 | - | 0 | 0 | 3 | 0->0 | no |
+| `0x68` | 566 | 322 | 3.00/3 -> 3.00/3 | 0.00 | 0 | - | 0 | 2 | 4 | 0->2 | yes |
+| `0x58` | 646 | 397 | 3.00/3 -> 3.00/3 | 0.00 | 0 | - | 0 | 3 | 4 | 2->5 | no |
+| `0x59` | 739 | 533 | 3.00/3 -> 1.99/3 | **1.00** | 2 | `fireball_or_statue_projectile_E` `peahat_S` | 0 | 1 | 5 | **5->0 (reset)** | no |
+| `0x49` | 684 | 434 | 1.99/3 -> 1.49/3 | 0.50 | 1 | `octorok_blue_W` | 1 | 6 | 6 | 0->4 (reset) | yes |
+| `0x4a` | 2618 | 2401 | 1.49/3 -> 1.99/3 | 0.50 | 1 | `tektite_blue_E` | 1 | 4 | 6 | 4->1 (reset) | yes |
+
+| screen | spawned red | spawned blue | other | killed red | killed blue | killed other | ROM row | drops | R |
+|---|---|---|---|---|---|---|---|---|---|
+| `0x78` | 3 | 0 | - | 0 | 0 | 0 | 0 | - | 0 |
+| `0x68` | 4 | 0 | - | 2 | 0 | 0 | 0 | - | 0 |
+| `0x58` | 4 | 0 | - | 3 | 0 | 0 | 0 | - | 0 |
+| `0x59` | 0 | 0 | **peahat x4 zora x1** | 0 | 0 | 1 | 3 | - | 0 |
+| `0x49` | 5 | 1 | - | 5 | 1 | 0 | 0,2 | 1R x1 | 1 |
+| `0x4a` | 0 | 0 | tektite_blue x6 | 0 | 0 | 4 | 1 | 1R x1 heart x1 | 1 |
+
+Red is `octorok`/`octorok_fast` (`Types0`, 31%); blue is `octorok_blue`/
+`octorok_blue_fast` (`Types2`, 41%, the bomb table). Drop rate this run:
+**3 floor drops on 16 kills, 19%** against 39% billed across the rows
+actually killed (10 row-0, 4 row-1, 1 row-2, 1 row-3). E[R] 5.33, banked 2.
+
+### Not one red octorok landed a hit
+
+Nine red-octorok kills across `0x68`, `0x58` and `0x49` for **0.00 hearts**.
+All four hits — and all three streak resets — came from the four things that
+are not a red octorok: a zora's spit, a peahat, a blue octorok, a blue
+tektite. The chase, the sword cadence and the evade are solved *for the enemy
+the corridor is mostly made of*. Tuning them further buys nothing.
+
+### `0x59` is the whole loss, and its wave is not what the spawn table says
+
+The ROM spawn table bills `0x59` as four peahats. Live it is **peahat x4 plus
+a zora**, and the zora is what costs the heart: `fireball_or_statue_projectile`
+from the east is its spit. The screen takes **739 frames and a full heart**,
+which is the only whole heart the walk loses, and pays **0 rupees for 1 kill**
+— row 3, 0.081 R/kill, the cheapest bodies on the corridor. Both hits come
+from the two things a wooden sword cannot answer: a peahat is invulnerable in
+flight and a zora submerges.
+
+**And it kills the money.** Link enters `0x59` on a 5-kill streak and leaves
+on 0. `0x49`'s six kills then run 0->4 instead of 5->11, so the forced 5-rupee
+at ten kills never fires. The 2026-09-15 skip-`0x59` experiment was reverted
+because one trajectory came back worse on every axis; that measurement had no
+way to see that the screen it skipped was the one spending the streak. This
+is the row to re-open, and now there is a number to judge it by.
+
+### `0x4a` is 43% of the walk for 1 rupee
+
+2618 of the walk's 6117 frames, the full `HUNT_DESTINATION_FRAMES` 2400
+budget (`hunt_budget_4a`), for 4 of 6 tektites. 808 of those are `guard`
+frames — Link arrives at 1.49 hearts, under `min_hearts`, so he stops chasing
+and only answers what closes. The tektite wave is the richest on the corridor
+and the walk reaches it with the least health to spend on it.
+
+`0x78` is still three red octoroks that never enter `HUNT_BOX` (peak live 3,
+peak prey 0, 0 hunt frames). Unchanged, and still correct.
+
+### Next
+
+1. `0x59`: skip it, or answer the zora and the flying peahats. It is one
+   heart, 739 frames, a 5-kill streak and zero rupees.
+2. Hearts before `0x4a`. The richest wave is fought on the least health.
+3. The drop rate is still short (19% here, ~13% cumulative) of the ROM rows.
+
+One caveat: `hunt.py` is 1064 LOC, over the ~1000 soft max, from the damage
+log wiring and `screen_table`. `ShieldPolicy`/`TargetBook` are the seam if it
+grows again.
