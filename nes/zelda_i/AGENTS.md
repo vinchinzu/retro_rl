@@ -31,13 +31,40 @@ hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
 `--through pre-l1` forces assist off and hunts at wooden-sword reach. It is
 now **sword -> hunting walk -> buy**, and the stop is the 4-pack
 (`ADDR_BOMBS >= 1`), not arrival on `0x4A` — so it is **red on purpose** and
-the last stage says why. Live 2026-09-15 `prel1_land` 1/1, `assist=None`,
-`set_state=0`: **16/15 kills**, `streak_best` **7**, 3 resets, **2 rupees**,
-`damage_taken` 4, 2 of 3 hearts at the shop, `failed=bomb_buy`
-`shop_need_20_have_2`. Was 10/9 kills, peak 3, 1 rupee at `8c7162cc`.
-The corridor's measured drop rate is ~13-19%, not the 31%
-`scratch/bomb_budget.py` bills it at, so **one pass cannot fund 20R** —
-details and the five fixed root causes in [`docs/PRE_L1.md`](docs/PRE_L1.md).
+the last stage says why. Live 2026-09-15 `rel1` 1/1, `assist=None`,
+`set_state=0`: **17/17 kills**, `streak_best` **17**, **0 resets**, **8
+rupees**, `damage_taken` **0**, **3 of 3 hearts** at the shop,
+`failed=bomb_buy` `shop_need_20_have_8`. Was 11 kills / best 5 / 3 resets /
+1 rupee / 2.01 hearts at `2906a12f`.
+
+**The sword was not swinging.** `Link_HandleInput` (`Z_05.asm`) wields on
+`ButtonsPressed AND #$80`, and `ButtonsPressed` is the *edge* (`Z_07.asm`:
+`new EOR ButtonsDown AND new`), so a **held** A swings once and never again.
+`ScreenHunter._strike` held `nes_action(face, "A")` every frame it owned:
+A down starts no swing, a swing that never starts never sets `$00AC`, and
+`$00AC` is the only thing `link_busy` released A on. All four contacts of the
+old walk are that loop — `0x49` f3509-f3532 is **24 straight `hunt_49_slash`
+frames of UP+A with Link's state 0**, walking 1.4 px/f into an
+`octorok_fast` 8 px off his shoulder. One idle frame after each press fixes
+it; the release frame is an idle, never the direction. The measured drop rate
+came back with it: **47% on 17 kills against 42% billed**, so there was never
+anything wrong with `DropItemRates`.
+
+One pass still pays only 8R of 20R. The supply is a second wave, and
+[`overworld/respawn.py`](overworld/respawn.py) is the ROM rule:
+`ModifyObjCountByHistoryOW` clears a screen's kill flags only when it is
+**absent from the six-entry `RoomHistory` ($621)** and those flags read 7
+(cleared), and `RunCrossRoomTasksAndBeginUpdateMode` appends a room **only if
+it is not already in the history**. So an out-and-back evicts nothing at any
+depth — that is why `rupee_farm`'s `0x4A<->0x49` restock never was a farm.
+The corridor has **seven** distinct screens against six slots, so the lap
+(`gathering.PRE_L1_LAP_HOPS`, `laps=N`) respawns the whole eastbound leg —
+measured live (`lap2`, 2026-09-15): `0x68` came back 2 of 4, then 4 of 4 once
+its flags hit 7. **`laps` stays 0 by default**: one lap is 33 kills against a
+clean pass's 17 and banks the *same* 8R, because 15R of drops hit the floor
+and only 8 were scooped, and the westbound `0x59` costs an 11-streak. **The
+scoop is now the biggest line on this errand.** Details in
+[`docs/PRE_L1.md`](docs/PRE_L1.md).
 
 **The per-screen bill is the tool for this leg** (`combat.ScreenTally` /
 `ScreenHunter.screen_table`, rendered by `scratch/probe_screen_tables.py`).

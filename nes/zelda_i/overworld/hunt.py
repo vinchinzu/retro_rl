@@ -725,6 +725,14 @@ class ScreenHunter:
     # walk 533 hunt frames, its only whole heart and the 5-kill streak for
     # one kill and no rupees (``docs/PRE_L1.md``, ``tables1``).
     transit_screens: frozenset[int] = frozenset()
+    # Forget that a screen was cleared when Link walks back onto it. A lapped
+    # route (``gathering.PRE_L1_LAP_HOPS``) re-enters every screen it fought,
+    # and the ROM gives each one its wave back
+    # (``overworld.respawn``) — but ``done`` is what makes the hunt skip a
+    # screen, so without this the second lap crosses six live waves. Off by
+    # default: on a one-pass route a re-entry is a chase that scrolled Link
+    # back, and re-opening there hands a retired screen another full budget.
+    reopen_on_enter: bool = False
     # Pre-emptive: leave a shooter's axis on the way in, and attack from a
     # side it is not facing. ``sword_stand`` puts Link on the muzzle axis by
     # construction, which is what 0x58 f=2056 and f=2069 both measured.
@@ -754,6 +762,11 @@ class ScreenHunter:
     transit_frames: int = 0
     collect_frames: int = 0
     off_line_frames: int = 0
+    # Frames spent releasing A so the next press is an edge. A swing that
+    # never starts is invisible to ``link_busy``; this counter is how the
+    # census sees the cadence at all.
+    release_frames: int = 0
+    _pressed: bool = field(default=False, repr=False)
     screens_cleared: int = 0
     screens_retired: int = 0
     frames_by_screen: dict[int, int] = field(default_factory=dict)
@@ -930,7 +943,7 @@ class ScreenHunter:
     def _strike(
         self, snap: ZeldaSnapshot, frames: int, body: ZeldaObject, reason: str
     ) -> FrameAction:
-        """Swing, in the direction of the body, on the cadence.
+        """Swing, in the direction of the body, one press at a time.
 
         No peel inside the pad: a sidestep must walk the whole pad before it
         clears the hitbox while the body closes ~1 px a frame, so one started
@@ -938,6 +951,23 @@ class ScreenHunter:
         frames while slot 4 closed 16 -> 8). A red octorok is one wooden hit.
         Direction + A on one frame: the facing byte is read before the sword,
         so the blade lands in ``face`` and the attack state pins Link.
+
+        **Every press needs its own release.** ``Link_HandleInput``
+        (``Z_05.asm``) wields the sword on ``ButtonsPressed AND #$80``, and
+        ``ButtonsPressed`` is the *edge* — ``Z_07.asm`` builds it as
+        ``new EOR ButtonsDown AND new``, "down now instead of before" — so a
+        held A swings once and never again. ``link_busy`` was the only thing
+        inserting a release, which is circular: A held across frames starts no
+        swing, a swing that never starts never sets ``$00AC``, and
+        ``link_busy`` stays False — so the rule holds ``face`` down forever
+        and the "swing" is a walk into the body. Measured on 0x49
+        (``scratch/c_btn.json`` f3509-f3532): **24 consecutive
+        ``hunt_49_slash`` frames of UP+A with Link's state 0 the whole time**,
+        walking 1.4 px a frame from y=138 to y=103 while an ``octorok_fast``
+        held 8 px off his shoulder, ending in the contact that cost the
+        5-kill streak. Both 0x49 contacts and both 0x4A contacts are that
+        window. The release frame is an idle, not the direction: a held
+        direction is what closes the last 8 px.
         """
         lx, ly = int(snap.link_x), int(snap.link_y)
         face = face_toward(lx, ly, int(body.x), int(body.y))
@@ -945,13 +975,20 @@ class ScreenHunter:
         if link_busy(snap):
             # The animation owns the frame, and the idle is also the release
             # edge the ROM needs before the next swing can start.
+            self._pressed = False
             return FrameAction(nes_idle_action(), f"{reason}_recover")
+        if self._pressed:
+            self._pressed = False
+            self.release_frames += 1
+            return FrameAction(nes_idle_action(), f"{reason}_release")
         track = self._track(body)
         closing = track.closing_on(lx, ly) if track is not None else True
         if self.shield_policy.hold_swing(snap, self._tracked, closing):
             # Facing the shot already: the A press is the only thing that
             # would drop the shield (0x58 f=2056).
+            self._pressed = False
             return FrameAction(nes_idle_action(), f"{reason}_block")
+        self._pressed = True
         return FrameAction(nes_action(face, "A"), f"{reason}_slash")
 
     def _peel(
@@ -1036,8 +1073,11 @@ class ScreenHunter:
             else:
                 align = face_toward(lx, ly, cx, cy)
             if _box_step(lx, ly, align, self.box) is not None:
+                self._pressed = False
                 return FrameAction(nes_action(align), f"{reason}_align")
-            return FrameAction(nes_action(face_toward(lx, ly, cx, cy), "A"), f"{reason}_slash")
+            # Same release edge as :meth:`_strike`; this is the other
+            # producer of a ``_slash`` frame and it held A the same way.
+            return self._strike(snap, frames, close, reason)
         off = self._off_line(lx, ly, pad)
         if off is not None:
             return FrameAction(nes_action(off), f"{reason}_offline")
@@ -1226,6 +1266,8 @@ class ScreenHunter:
             self.notes.append(note)
 
     def _enter(self, screen: int) -> None:
+        if self.reopen_on_enter:
+            self.done.discard(screen)
         self.screen = screen
         self.screen_frames = 0
         self.since_enter = 0
@@ -1233,6 +1275,7 @@ class ScreenHunter:
         self.lane_frames = 0
         self.collect_frames = 0
         self.off_line_frames = 0
+        self._pressed = False
         self.targets.clear()
         self._stand_side = None
         self._occ.reset()
@@ -1261,6 +1304,8 @@ class ScreenHunter:
         self.transit_frames = 0
         self.collect_frames = 0
         self.off_line_frames = 0
+        self.release_frames = 0
+        self._pressed = False
         self.screens_cleared = 0
         self.screens_retired = 0
         self.frames_by_screen.clear()
@@ -1315,6 +1360,7 @@ class ScreenHunter:
             "peel_frames": self.peel_frames,
             "transit_frames": self.transit_frames,
             "off_line_frames": self.off_line_frames,
+            "release_frames": self.release_frames,
             "target_skips": self.targets.skips,
             # Bodies declined on drop row, by type. Read this beside
             # ``kills_by_type``: fewer kills is the *intent* when the ones

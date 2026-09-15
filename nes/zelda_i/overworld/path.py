@@ -266,6 +266,9 @@ class OverworldPathController:
     # duck; never a chase and never the screen budget. See
     # ``hunt.ScreenHunter.transit_screens`` for what makes a screen one.
     hunt_transit_screens: frozenset[int] = frozenset()
+    # A screen re-entered is a fresh fight. Only a lapped route wants this;
+    # see ``hunt.ScreenHunter.reopen_on_enter``.
+    hunt_reopen: bool = False
     _hunter: ScreenHunter | None = field(default=None, repr=False)
     escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
     stall_escapes: int = 0
@@ -1121,7 +1124,8 @@ class OverworldPathController:
         if self.hunt:
             if self._hunter is None:
                 self._hunter = ScreenHunter(
-                    transit_screens=frozenset(self.hunt_transit_screens)
+                    transit_screens=frozenset(self.hunt_transit_screens),
+                    reopen_on_enter=bool(self.hunt_reopen),
                 )
             # Census first, and on every frame: kills land during evades,
             # farms and plain hop swings, not only while the hunt drives.
