@@ -28,6 +28,11 @@ the `shortest_path` goal guard on unit tests alone and took M5 red (death in
 oracle after *any* change under the walker, never the suite alone. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
 ([`docs/PRE_L1.md`](docs/PRE_L1.md)): bombs at 0x6F (bypass 0x79), two bomb
 hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
+`--through pre-l1` now clears every screen on the way (`overworld/hunt.py`),
+1/1 green: 14 kills, 0 damage, walk 4010f — and **0 rupees**. The corridor
+does not fund the 20R bombs; the forced 5-rupee at 10 kills never fires
+(`streak_best` 4, `streak_resets` 6 on a zero-damage walk). Kills are in the
+runner line and in `hunt.report()`.
 Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.

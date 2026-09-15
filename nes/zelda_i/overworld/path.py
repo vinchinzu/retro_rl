@@ -52,6 +52,7 @@ from zelda_i.overworld.graph import (
     ScreenHop,
     is_5c_maze_hop,
 )
+from zelda_i.overworld.hunt import ScreenHunter, hop_lane
 from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -95,6 +96,12 @@ _OCCUPIED_LANE_STAND_CAP = 8  # then yield the hop; a long stand timed out 0x48
 # (travel on Link's own row if it is clear, then stand, then yield the hop) so
 # a body camping the hop lane cannot hold the hop forever.
 _OCCUPIED_LANE_STEER_CAP = 48
+# A stall escape is committed, not consulted. ``stuck`` resets the instant the
+# escape moves Link one pixel, which hands the frame straight back to the hop
+# rule that wedged him — measured as 27,809 ``band_down`` frames against 531
+# ``hop3_escape`` frames at 0x58 (56,125), Link never leaving the pocket. Once
+# an escape starts it owns the screen until the hop scrolls or this runs out.
+_STALL_ESCAPE_COMMIT_FRAMES = 600
 
 
 def _ow_hop_grid() -> OccupancyGrid:
@@ -246,6 +253,18 @@ class OverworldPathController:
     _lane_stand: int = 0
     _lane_steer: int = 0
 
+    # Clear each screen on the way instead of crossing it (``overworld.hunt``).
+    # Off by default: it trades frames for drops, which only a shopping leg
+    # wants. The hunt runs *after* the evader and after the edge recovery, so
+    # it never answers a frame the reactive layer wanted and never chases Link
+    # back onto an arrival edge.
+    hunt: bool = False
+    _hunter: ScreenHunter | None = field(default=None, repr=False)
+    escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
+    stall_escapes: int = 0
+    _escape_frames: int = field(default=0, repr=False)
+    _escape_screen: int = field(default=-1, repr=False)
+
     # Default hop-complete stop extras
     require_sword: bool = False
     require_triforce_bit: int | None = None
@@ -321,6 +340,10 @@ class OverworldPathController:
         self._evade_room = None
         self._lane_stand = 0
         self._lane_steer = 0
+        self._hunter = None
+        self.stall_escapes = 0
+        self._escape_frames = 0
+        self._escape_screen = -1
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -349,6 +372,11 @@ class OverworldPathController:
             "rupee_farm_attempts": self.rupee_farm_attempts,
             "need_rupees": self.need_rupees,
         }
+        if self.hunt:
+            hunter = self._hunter
+            out["hunt"] = hunter.report() if hunter is not None else {}
+            out["kills"] = hunter.kills if hunter is not None else 0
+            out["stall_escapes"] = self.stall_escapes
         if self.evade:
             out["evades"] = self.evades
             out["parries"] = self.parries
@@ -475,6 +503,7 @@ class OverworldPathController:
             return None
 
         self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
+        self._escape_frames = 0
         if self._is_maze_hop(hop):
             self.notes.append("maze_complete")
         self.hop_index += 1
@@ -936,6 +965,53 @@ class OverworldPathController:
             return None
         return FrameAction(nes_idle_action(), f"{reason}_stand")
 
+    def _stall_escape(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
+        """Route out of a pocket toward this hop's exit, on a learned grid.
+
+        Started by the stall, not by a condition a green run meets: ``stuck``
+        has to be past ``stuck_threshold``, which means every hop rule has
+        failed to move Link for 50 frames and the next step is
+        ``unstick_wiggle``'s permanent wait. Only wired where the hunt is on —
+        the hunt is what walks Link off the lane, and it is the thing holding
+        the grid that learned this screen's walls.
+
+        Once started it keeps the frame until the screen scrolls (the hop got
+        what it wanted), the grid runs out of route, or the commit expires.
+        """
+        if not self.hunt or self._hunter is None:
+            return None
+        screen = int(snap.screen)
+        if self._escape_frames <= 0:
+            if self.stuck <= self.stuck_threshold:
+                return None
+            self._escape_frames = self.escape_commit_frames
+            self._escape_screen = screen
+            self.stall_escapes += 1
+            self.notes.append(f"stall_escape_{screen:02x}_{snap.link_x}_{snap.link_y}")
+        elif screen != self._escape_screen:
+            self._escape_frames = 0
+            return None
+        self._escape_frames -= 1
+        act = self._hunter.escape_for(
+            snap, self.frames, hop, f"hop{self.hop_index}_escape"
+        )
+        if act is None:
+            self._escape_frames = 0
+        return act
+
+    def _hunt_action(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
+        """Clear this screen before crossing it. ``None`` hands the hop back.
+
+        Ordered after ``recover_off_edge`` on purpose: a chase that starts
+        while Link is still standing on the arrival edge walks him back
+        through it, and ``_advance_hop`` then reads the wrong screen.
+        """
+        if not self.hunt or self._hunter is None:
+            return None
+        if on_arrival_edge(hop.direction, snap):
+            return None
+        return self._hunter.step(snap, self.frames, lane=hop_lane(hop))
+
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
         advanced = self._advance_hop(snap, hop)
@@ -953,6 +1029,10 @@ class OverworldPathController:
         if occ is not None:
             return occ
 
+        escape = self._stall_escape(snap, hop)
+        if escape is not None:
+            return escape
+
         if self.stuck > self.stuck_threshold:
             action, self.stuck = unstick_wiggle(self.stuck)
             return action
@@ -960,6 +1040,10 @@ class OverworldPathController:
         edge = recover_off_edge(snap, hop.direction, swing=self._swing)
         if edge is not None:
             return edge
+
+        hunted = self._hunt_action(snap, hop)
+        if hunted is not None:
+            return hunted
 
         scoop = self._rupee_scoop(snap, hop)
         if scoop is not None:
@@ -988,6 +1072,12 @@ class OverworldPathController:
         self._nav_snap = snap
         if self.evade or self.occupied_lane:
             self._observe_threats(snap)
+        if self.hunt:
+            if self._hunter is None:
+                self._hunter = ScreenHunter()
+            # Census first, and on every frame: kills land during evades,
+            # farms and plain hop swings, not only while the hunt drives.
+            self._hunter.observe(snap)
         self.frames += 1
         self.phase_frames += 1
         self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
