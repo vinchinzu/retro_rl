@@ -262,6 +262,10 @@ class OverworldPathController:
     # Also hunt the screen the hop table ends on: the table finishes the frame
     # Link scrolls onto it, so its wave is the one a hunting walk never sees.
     hunt_destination: bool = False
+    # Screens the hunt crosses instead of clearing. Still blade, shield and
+    # duck; never a chase and never the screen budget. See
+    # ``hunt.ScreenHunter.transit_screens`` for what makes a screen one.
+    hunt_transit_screens: frozenset[int] = frozenset()
     _hunter: ScreenHunter | None = field(default=None, repr=False)
     escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
     stall_escapes: int = 0
@@ -1116,7 +1120,9 @@ class OverworldPathController:
             self._observe_threats(snap)
         if self.hunt:
             if self._hunter is None:
-                self._hunter = ScreenHunter()
+                self._hunter = ScreenHunter(
+                    transit_screens=frozenset(self.hunt_transit_screens)
+                )
             # Census first, and on every frame: kills land during evades,
             # farms and plain hop swings, not only while the hunt drives.
             self._hunter.observe(snap)

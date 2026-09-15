@@ -41,13 +41,34 @@ details and the five fixed root causes in [`docs/PRE_L1.md`](docs/PRE_L1.md).
 
 **The per-screen bill is the tool for this leg** (`combat.ScreenTally` /
 `ScreenHunter.screen_table`, rendered by `scratch/probe_screen_tables.py`).
-Read it before tuning the walk. It says the fighting is not the problem:
-**nine red-octorok kills cost 0.00 hearts**, and all four hits plus all three
-streak resets came from a zora, a peahat, a blue octorok and a blue tektite.
-`0x59` alone spends a whole heart, 739 frames and the 5-kill streak for one
-kill and no rupees — and its wave is **peahat x4 plus a zora**, not the four
-peahats the ROM spawn table bills. Damage is measured in 1/256 of a heart;
-a whole-heart census reads this corridor's chips as zero.
+Read it before tuning the walk, and **grade a policy change per screen, not
+on the run total**: the corridor is chaotic with respect to entry timing, so
+one deterministic trajectory moves everywhere downstream of the first change.
+Damage is measured in 1/256 of a heart; a whole-heart census reads this
+corridor's chips as zero.
+
+`0x59` was the walk's largest single loss (739f, a whole heart, the 5-kill
+streak, for one kill) and is now **transit, not cleared** — 203f, 0 hits,
+streak kept (`tables3`). Its wave is peahat x4 **plus a zora**, which the ROM
+spawn table does not list. The zora's spit is the hole that cost the heart:
+`scratch/probe_zora.py` measured a deterministic 195-frame surfacing cycle on
+`$00AC` and — the actual bug — **the shot sits motionless on the muzzle for
+17 frames**, so `ObjectTracker` reads zero velocity and `threat.assess` calls
+it safe for the whole dodge window. `0x55` is not small-shield blockable, so
+every shield rule correctly passed and nothing replaced them;
+`hunt.ShotPolicy.duck` is the replacement. A zora's facing byte reads `0x03`,
+which is in no `threat._FACING_AXIS` entry, so `in_firing_line` has never
+returned True for one.
+
+**Value, not body count.** `overworld/prey.py` owns the ROM drop rows
+(`Z_04.asm Types0..3`) and prices a kill as its table *plus* ~0.385R of
+streak progress — more than row 0's whole drop, which is why "skip the red
+octoroks" cannot mean "walk past them": at full health a red pays back a
+227 px chase and `HUNT_BOX` is 182 px wide. The drop row buys the *order*
+(blue tektite over red octorok at equal range) and a short-health cap
+(`thrifty_below_hearts`, not yet fired live). Bodies that are not kills at
+all — zora, armos, boulder — are never targets. `scratch/bomb_budget.py`
+imports these tables; do not keep a second copy.
 Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.

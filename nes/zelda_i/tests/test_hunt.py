@@ -16,19 +16,26 @@ from zelda_i.combat import (
     SWORD_REACH,
     bodies_in_box,
 )
+from zelda_i.dungeon.behaviors import FIREBALL_TYPE as FIREBALL_OBJECT_TYPE
 from zelda_i.dungeon.behaviors import ROCK_PROJECTILE_TYPE
 from zelda_i.dungeon.ids import (
     BOMB_DROP_STATE,
     FIVE_RUPEE_DROP_STATE,
     HEART_DROP_STATE,
+    OCTOROK_OBJECT_TYPE,
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
+    TEKTITE_BLUE_OBJECT_TYPE,
+    ZORA_OBJECT_TYPE,
 )
 from zelda_i.dungeon.threat import MIN_DODGE_BODY
 from zelda_i.overworld.hunt import HUNT_BOX, ScreenHunter, sword_stand
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
-OCTOROK = 0x38
+# A real red octorok. The fixture used to be 0x38, which is the Digdogger id:
+# harmless while the hunt only measured distance, wrong the moment prey
+# selection reads the ROM drop row off the type byte.
+OCTOROK = OCTOROK_OBJECT_TYPE
 
 
 def _snap(**kwargs) -> ZeldaSnapshot:
@@ -654,3 +661,189 @@ def test_the_hunt_yields_while_link_is_still_on_the_arrival_edge() -> None:
     ctl = _walker(hunt=True)
     hop = ctl.hops[-1]  # RIGHT: the arrival edge is the east one
     assert ctl._hunt_action(_snap(screen=0x49, link_x=248), hop) is None
+
+
+# -------------------------------------------------------- prey / value ---
+# The corridor's money is a drop row and a streak, not a body count
+# (``overworld.prey``). These pin the three things that changes: what is
+# never a target, which of two bodies is held, and when a cheap chase stops
+# being worth the health it risks.
+
+
+def _fireball(x: int, y: int = 157, slot: int = 10):
+    """A Zora's spit. ``behaviors.shield_blocks`` needs the Magical Shield for
+    one, so no shield rule in the hunt has anything to say about it."""
+    return ZeldaObject(
+        slot=slot, type_id=FIREBALL_OBJECT_TYPE, x=x, y=y, facing=0x0A, hp=192, state=0x10
+    )
+
+
+def test_a_zora_is_never_a_target() -> None:
+    """``UpdateZora`` submerges it with ``DestroyMonster`` — no
+    ``HandleMonsterDied``, so the slot vanishing is not even a streak tick."""
+    hunter = ScreenHunter()
+    snap = _snap(objects=(_foe(slot=1, x=200, y=141, type_id=ZORA_OBJECT_TYPE),))
+    hunter.observe(snap)
+    assert hunter.step(snap, 1) is None
+    assert hunter.targets.passed.get("zora") == 1
+
+
+def test_the_richer_drop_row_is_held_over_the_nearer_body() -> None:
+    """A blue tektite is row 1 (0.891 R/kill, two 5-rupees); a red octorok is
+    row 0 (0.156). Nearest-first read them as the same body."""
+    hunter = ScreenHunter()
+    tektite = _foe(slot=2, x=190, y=141, type_id=TEKTITE_BLUE_OBJECT_TYPE)
+    snap = _snap(link_x=120, objects=(_foe(slot=1, x=170, y=141), tektite))
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    assert hunter.targets.slot == 2
+
+
+def test_a_cheap_body_is_still_chased_at_full_health() -> None:
+    """Nine red octoroks cost 0.00 hearts live; refusing them on value alone
+    would be tuning against the arithmetic (``prey.THRIFTY_CHASE_RADIUS``)."""
+    hunter = ScreenHunter()
+    snap = _snap(health=0x22, link_x=40, objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_")
+    assert hunter.targets.slot == 1
+
+
+def test_a_cheap_body_across_the_box_is_declined_on_short_health() -> None:
+    """0x21 is two whole hearts. A contact there costs the streak *and* the
+    hearts 0x4A's six tektites need, which halves every break-even."""
+    hunter = ScreenHunter()
+    snap = _snap(health=0x21, link_x=40, objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    assert hunter.step(snap, 1) is None
+    assert hunter.targets.passed.get("octorok") == 1
+
+
+def test_a_rich_body_is_still_chased_on_short_health() -> None:
+    hunter = ScreenHunter()
+    snap = _snap(
+        health=0x21,
+        link_x=40,
+        objects=(_foe(slot=1, x=200, y=141, type_id=TEKTITE_BLUE_OBJECT_TYPE),),
+    )
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and hunter.targets.slot == 1
+
+
+def test_a_chase_longer_than_the_screen_budget_never_starts() -> None:
+    hunter = ScreenHunter(screen_max_frames=60)
+    snap = _snap(link_x=40, objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    assert hunter.step(snap, 1) is None
+
+
+# ------------------------------------------------------------- fireball ---
+
+
+def test_a_dwelling_fireball_is_stepped_away_from() -> None:
+    """The measured hole. A Zora's shot holds ``ZORA_MUZZLE_DWELL`` (17)
+    frames on the muzzle, so the tracker reads zero velocity and
+    ``threat.assess`` calls it safe for the entire dodge window — which is how
+    0x59 f=2888 fired 165 px down Link's own row while he walked east into it
+    (``scratch/zora1.json``)."""
+    hunter = ScreenHunter()
+    act = None
+    for frame in range(1, 5):
+        snap = _snap(link_x=60, link_y=157, objects=(_fireball(x=196, y=157),))
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+    assert act is not None and act.reason == "hunt_duck"
+    # Perpendicular to the muzzle bearing, never along it.
+    assert pressed_nes_buttons(list(act.action))[0] in ("UP", "DOWN")
+    assert hunter.shield_policy.ducks > 0
+
+
+def test_the_duck_can_be_switched_off_without_the_shield() -> None:
+    hunter = ScreenHunter(duck=False)
+    for frame in range(1, 5):
+        snap = _snap(link_x=60, link_y=157, objects=(_fireball(x=196, y=157),))
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+    assert act is None or act.reason != "hunt_duck"
+
+
+def test_a_fireball_across_the_map_is_left_to_the_evader() -> None:
+    """Past ``HUNT_MUZZLE_ALARM`` the shot arrives with more warning than the
+    dwell was worth, and the caller's evader can see it once it moves."""
+    hunter = ScreenHunter()
+    for frame in range(1, 5):
+        snap = _snap(link_x=40, link_y=90, objects=(_fireball(x=230, y=200),))
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+    assert act is None or act.reason != "hunt_duck"
+
+
+# ------------------------------------------------------------- transit ---
+
+
+def test_a_transit_screen_is_crossed_not_cleared() -> None:
+    """0x59 is peahat x4 plus a Zora — ROM drop row 3 — and one live pass cost
+    a whole heart, 533 frames and a 5-kill streak for one kill."""
+    hunter = ScreenHunter(transit_screens=frozenset({0x59}))
+    snap = _snap(screen=0x59, link_x=40, objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    assert hunter.step(snap, 1) is None
+    assert hunter.transit_frames == 1
+    assert hunter.frames_by_screen.get(0x59, 0) == 0
+
+
+def test_a_transit_screen_still_answers_a_body_at_contact() -> None:
+    """Declining the wave is not the same as standing in it."""
+    hunter = ScreenHunter(transit_screens=frozenset({0x59}))
+    snap = _snap(screen=0x59, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and "A" in pressed_nes_buttons(list(act.action))
+
+
+def test_a_transit_screen_still_banks_a_drop_it_walks_past() -> None:
+    hunter = ScreenHunter(transit_screens=frozenset({0x59}))
+    snap = _snap(screen=0x59, link_x=120, link_y=141, objects=(_drop(x=140, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_scoop")
+
+
+def test_a_duck_never_steps_into_a_body() -> None:
+    """A shot is not a reason to walk into an octorok. ``ShotPolicy.face``
+    has kept this rule for the shield since 0x49 killed three shield walks;
+    the dodge shipped without it and the first live run died on 0x49 with
+    five octorok_fast contacts."""
+    hunter = ScreenHunter()
+    act = None
+    for frame in range(1, 5):
+        snap = _snap(
+            link_x=60,
+            link_y=157,
+            objects=(
+                _fireball(x=196, y=157),
+                # Both perpendicular steps are covered by a body.
+                _foe(slot=1, x=60, y=141),
+                _foe(slot=2, x=60, y=173),
+            ),
+        )
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+    assert act is None or act.reason != "hunt_duck"
+
+
+def test_the_target_order_is_a_walk_cost_not_a_contact_pad() -> None:
+    """``combat.nearest_to`` — what the value order replaced — measured
+    manhattan. Ranking on chebyshev re-picks a different octorok on every
+    off-axis wave, which reshuffles a frame-perfect corridor for nothing."""
+    hunter = ScreenHunter()
+    # Equal value (both row 0). Off-axis body is nearer by chebyshev (60) and
+    # further by manhattan (120) than the on-axis one (80 either way).
+    on_axis = _foe(slot=1, x=200, y=141)
+    off_axis = _foe(slot=2, x=180, y=81)
+    snap = _snap(link_x=120, link_y=141, objects=(on_axis, off_axis))
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    assert hunter.targets.slot == 1

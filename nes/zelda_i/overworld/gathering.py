@@ -156,6 +156,17 @@ class ShopP7WalkController(OverworldPathController):
     # the frame Link scrolls onto them. Without this the walk's best screen is
     # the one screen it never fights.
     hunt_destination: bool = True
+    # 0x59 is crossed, not cleared. Its wave is four peahats and a Zora —
+    # ROM drop row 3, 0.081 R/kill, the cheapest table in the game — and the
+    # ROM spawn table does not even list the Zora, so nothing knew it was
+    # there. One measured pass (2026-09-15 ``tables1``) spent 533 hunt
+    # frames, the walk's only whole heart and a 5-kill streak on it for one
+    # kill and no rupees; the streak Link carried in was worth more than
+    # every body on the screen. A peahat cannot be hit while it flies and a
+    # Zora is not a kill at all (``prey.SKIP_TYPES``), so this is not a
+    # fight the wooden sword can win faster — it is one with nothing in it.
+    # The hop still crosses the screen and the blade still answers contact.
+    hunt_transit_screens: frozenset[int] = frozenset({0x59})
     max_frames: int = BOMB_SHOP_WALK_MAX_FRAMES
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:

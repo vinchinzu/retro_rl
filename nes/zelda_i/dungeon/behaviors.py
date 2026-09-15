@@ -81,6 +81,75 @@ DIGDOGGER_POLICY = (
     "Whistle shrinks type 0x38 (HP 240) to 0x18 (HP 128); sword only after shrink."
 )
 
+# --- Zora surfacing cycle (measured) ---------------------------------------
+# ``scratch/probe_zora.py`` on the live pre-L1 walk, OW ``0x59``, four
+# surfacings in ``scratch/zora1.json`` -- identical to the frame every time.
+# ``ObjState`` (``$00AC``) counts the cycle; the Zora never moves inside one,
+# and it picks a new tile for the next.
+#
+#   state  frames  what it is
+#   0x00       2   surfacing begins
+#   0x01      32   rising
+#   0x02      15   surfaced, mouth open -- the tell
+#   0x03      34   firing; the 0x55 slot appears 2f in and then *holds still*
+#   0x04      16   submerging
+#   0x05      96   submerged (nothing on screen to hit or dodge)
+#
+# Two numbers matter to a 1 px/frame walker. The shot is born 2 frames into
+# ``0x03``, and it then sits on the Zora's mouth for ``ZORA_MUZZLE_DWELL``
+# frames before it moves at all -- so ``ObjectTracker`` measures it at zero
+# velocity and ``threat.assess`` calls it safe for the entire window in which
+# it could still be walked away from. Counting from the ``0x01 -> 0x02`` edge
+# there are 34 frames before anything travels, which is nearly three times
+# ``threat.MIN_DODGE_SHOT``.
+ZORA_CYCLE: dict[int, int] = {0x00: 2, 0x01: 32, 0x02: 15, 0x03: 34, 0x04: 16, 0x05: 96}
+ZORA_STATE_SURFACING = 0x01
+ZORA_STATE_AIMING = 0x02  # mouth open; the shot is 17 frames out
+ZORA_STATE_FIRING = 0x03
+ZORA_STATE_SUBMERGING = 0x04
+ZORA_STATE_SUBMERGED = 0x05
+# Frames into ``0x03`` before the ``0x55`` slot exists.
+ZORA_SHOT_DELAY = 2
+# Frames the shot holds at the muzzle before its first pixel of travel. This
+# is the whole dodge window, and it is invisible to a velocity tracker.
+ZORA_MUZZLE_DWELL = 17
+# px/frame along the major axis once it launches (measured 1.65-1.76), against
+# Link's 1.0. Aim is quantized at launch, not a clean bearing to Link: the
+# four measured shots left at 180.0, 180.0, -171.1 and -124.2 degrees against
+# bearings of 180.0, -172.7, -162.9 and -119.3. Close the angle, do not try to
+# solve the line.
+ZORA_SHOT_SPEED = 1.75
+# A Zora is not a kill. ``UpdateZora`` submerges it with ``DestroyMonster``
+# (no ``HandleMonsterDied``), so the slot vanishing banks no streak tick --
+# see ``overworld.prey.SKIP_TYPES`` and ``scratch/drop_mechanics_rom.md``.
+ZORA_POLICY = (
+    "Surfaces on a 195f cycle; fires 2f into ObjState 0x03 and the shot holds "
+    "17f at the muzzle. Never a sword target: it submerges on its own clock."
+)
+
+
+def zora_shot_eta(obj: ZeldaObject) -> int | None:
+    """Frames until this Zora's shot starts travelling, or ``None``.
+
+    ``None`` for anything that is not a surfaced Zora, and for one already
+    submerging: there is nothing left to walk away from. The count is
+    deliberately conservative inside a state -- it assumes the Zora just
+    entered it -- because the phase offset is not in RAM and over-estimating
+    the warning is the failure that gets Link shot.
+    """
+    if (int(obj.type_id) & 0xFF) != ZORA_TYPE:
+        return None
+    state = int(obj.state)
+    if state >= ZORA_STATE_SUBMERGING:
+        return None
+    launch = ZORA_SHOT_DELAY + ZORA_MUZZLE_DWELL
+    if state == ZORA_STATE_FIRING:
+        return launch
+    eta = launch
+    for phase in range(state, ZORA_STATE_FIRING):
+        eta += ZORA_CYCLE[phase]
+    return eta
+
 
 class EnemyKind(Enum):
     STALFOS = "stalfos"
@@ -617,6 +686,17 @@ __all__ = [
     "DIGDOGGER_SHRUNK_TYPE",
     "PROJECTILE_TYPES",
     "DIGDOGGER_POLICY",
+    "ZORA_CYCLE",
+    "ZORA_MUZZLE_DWELL",
+    "ZORA_POLICY",
+    "ZORA_SHOT_DELAY",
+    "ZORA_SHOT_SPEED",
+    "ZORA_STATE_AIMING",
+    "ZORA_STATE_FIRING",
+    "ZORA_STATE_SUBMERGED",
+    "ZORA_STATE_SUBMERGING",
+    "ZORA_STATE_SURFACING",
+    "zora_shot_eta",
     "EnemyKind",
     "EngagementHint",
     "KindPolicy",
