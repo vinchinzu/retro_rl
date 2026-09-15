@@ -752,11 +752,16 @@ def run_survival_spine(
 
     ``allow_pokes`` is the Survival inventory shortcut (default on). ``False``
     skips owned-count top-ups, the L7 Food fixture, and Gohma wooden arrows.
+
+    ``through="pre-l1"`` strips ``assist`` even if the caller passed one.
+    Survival refill hides the ``$0670`` chip that zeros ``$50``/``$627``, so
+    the bomb walk is a Clean farm.
     """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
 
     if through == "pre-l1":
+        assist = None
         prefix = _boot_only_prefix(
             env,
             room_timer=room_timer,

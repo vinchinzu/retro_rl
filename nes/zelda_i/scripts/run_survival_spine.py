@@ -6,8 +6,10 @@
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
 unless ``--no-video``. Heart assist is on by default; ``--no-infinite-life``
-turns it off for combat practice. Inventory pokes stay on unless
-``--no-pokes``; ``--clean`` is both off. Does not overwrite Clean M5.
+turns it off for combat practice. ``--through pre-l1`` forces it off: the
+refill hides the ``$0670`` chip that zeros the 10-kill 5-rupee. Inventory
+pokes stay on unless ``--no-pokes``; ``--clean`` is both off. Does not
+overwrite Clean M5.
 No ``--from-state``. Stop at first failed stage.
 """
 
@@ -94,6 +96,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         allow_pokes = not args.no_pokes and not args.clean
         infinite_life = bool(args.infinite_life) and not args.clean
+        if args.through == "pre-l1":
+            # Survival refill writes $0670 back to $FF the same frame
+            # Link_BeHarmed zeros $50/$627. The bomb walk is a Clean farm.
+            infinite_life = False
         assist = (
             UnlimitedHealthAssist(enabled=True) if infinite_life else None
         )
