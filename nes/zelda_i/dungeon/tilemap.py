@@ -26,14 +26,20 @@ import numpy as np
 __all__ = [
     "ADDR_ROOM_TILE_MAP",
     "BLOCK_TILES",
+    "BOMB_HOLE_TILES",
     "CELL_PX",
-    "DOOR_TILES",
+    "DOORWAY_VOID_TILE",
+    "DOORWAY_ART_TILES",
+    "DOOR_LEAF_TILES",
     "FLOOR_TILES",
     "INTERIOR_X",
     "INTERIOR_Y",
     "LINK_FOOT_OFFSET",
     "LINK_WALKABLE_TILES",
+    "LOCKED_DOOR_TILES",
     "PLAYFIELD_TOP_Y",
+    "RING_CELLS",
+    "SHUTTER_TILES",
     "STAIR_TILES",
     "TILE_COLS",
     "TILE_PX",
@@ -72,17 +78,52 @@ INTERIOR_Y = tuple(range(96, 193, CELL_PX))
 # at x=16 / x=224 and y=80 / y=208.
 PLAYFIELD_X = tuple(range(16, 225, CELL_PX))
 PLAYFIELD_Y = tuple(range(80, 209, CELL_PX))
+# The one-cell wall ring around the interior. Every doorway of every kind is
+# on it, and nothing else is: the sweep found doorway art at eight ring
+# positions and zero interior ones.
+RING_CELLS = tuple(
+    (x, y)
+    for y in PLAYFIELD_Y
+    for x in PLAYFIELD_X
+    if x not in INTERIOR_X or y not in INTERIOR_Y
+)
 
 FLOOR_TILES = frozenset({0x74, 0x75, 0x76, 0x77})
 BLOCK_TILES = frozenset({0xB0, 0xB1, 0xB2, 0xB3})
 STAIR_TILES = frozenset({0x70, 0x71, 0x72, 0x73})
-DOOR_TILES = frozenset({0x90, 0x91})
-# What Link may stand on. Stairs and door mouths are floor he walks over,
-# not geometry: a CheckWarp staircase is the *destination* of a route, and
-# the four door cells at x=16/224 and y=80/208 are the only way in or out
-# of a room. Grading them SOLID walls off exactly the cells ROUTE_BOUNDS
+# Doorway art, measured off all 259 dungeon fixtures in
+# ``custom_integrations`` (2026-09-14 sweep). There is no "door tile" for an
+# *open* doorway: its mouth is plain ``FLOOR_TILES`` set into the wall ring,
+# so it is already walkable under ``FLOOR_TILES`` alone.
+#
+# A bombed-open wall is different art: one tile pair sitting in the wall ring
+# itself, with ``DOORWAY_VOID_TILE`` beyond it. One pair per direction, and
+# they appear at exactly eight fixed ring positions across the whole sweep --
+# never inside a room -- so grading them walkable cannot open an interior
+# cell. ``DOOR_TILES`` used to hold the west pair alone under a name that
+# claimed to cover all four, which graded every north, south and east bombed
+# passage SOLID (29 of the 259 rooms have one; L4 ``0x10``, L5 ``0x07``,
+# L9 ``0x03``/``0x05`` are east, L8 ``0x3e`` is north).
+BOMB_HOLE_TILES = frozenset({0x8C, 0x8D, 0x8E, 0x8F, 0x90, 0x91, 0x92, 0x93})
+# A *closed* door leaf. Locked doors are direction-specific art in map order
+# N/S/W/E; shutters have one vertical pair and one horizontal pair. Both are
+# solid while shut and become an open mouth (floor) when they open, so
+# neither belongs in LINK_WALKABLE_TILES -- they are listed to name what the
+# walker is refusing, not to change it.
+LOCKED_DOOR_TILES = frozenset(range(0x98, 0xA8))
+SHUTTER_TILES = frozenset(range(0xA8, 0xB0))
+DOOR_LEAF_TILES = LOCKED_DOOR_TILES | SHUTTER_TILES
+# Every tile that is doorway art rather than floor or wall.
+DOORWAY_ART_TILES = DOOR_LEAF_TILES | BOMB_HOLE_TILES
+# The black void past a doorway mouth. Never walkable: the scroll is a held
+# direction at the mouth, not a BFS goal one cell further out.
+DOORWAY_VOID_TILE = 0x24
+# What Link may stand on. Stairs and bombed passages are floor he walks over,
+# not geometry: a CheckWarp staircase is the *destination* of a route, and a
+# bomb hole at x=16/232 or y=80/216 is the only way out of the rooms that
+# have one. Grading them SOLID walls off exactly the cells ROUTE_BOUNDS
 # exists to include, and every stair a room is routed to.
-LINK_WALKABLE_TILES = FLOOR_TILES | STAIR_TILES | DOOR_TILES
+LINK_WALKABLE_TILES = FLOOR_TILES | STAIR_TILES | BOMB_HOLE_TILES
 
 _MAP_LEN = TILE_COLS * TILE_ROWS
 _MIN_RAM = WRAM_RAM_OFFSET + ADDR_ROOM_TILE_MAP - WRAM_BASE + _MAP_LEN
@@ -152,16 +193,28 @@ def stair_cells(ram: np.ndarray) -> tuple[tuple[int, int], ...]:
 
 
 def door_cells(ram: np.ndarray) -> tuple[tuple[int, int], ...]:
-    """Playfield cell origins holding a doorway; these sit outside the interior.
+    """Ring cell origins Link can walk *out* through.
 
     Walking into one leaves the room, so path legs that hug the west or east
-    wall must avoid the door row (L7 `0x0D`: west door at `(16, 144)`).
+    wall must avoid the door row (L7 `0x0D`: west bomb hole at `(16, 144)`).
+
+    Two kinds qualify, and they are the two kinds the walker can stand on:
+    an open doorway, whose mouth is floor set into the wall ring, and a
+    bombed-open wall (`BOMB_HOLE_TILES`). A *closed* leaf is not a door cell
+    -- it is solid, the walker already refuses it, and walking into it does
+    not leave the room. A north or south doorway spans two ring cells, so it
+    reports both.
+
+    Only the ring is searched. The interior is floor by definition, so
+    scanning the whole playfield -- which is what this did while its tile set
+    was the west bomb hole alone and so never matched inside -- would report
+    every open cell in the room.
     """
+    walk_out = FLOOR_TILES | BOMB_HOLE_TILES
     return tuple(
         (x, y)
-        for y in PLAYFIELD_Y
-        for x in PLAYFIELD_X
-        if any(t in DOOR_TILES for t in cell_tiles(ram, x, y))
+        for (x, y) in RING_CELLS
+        if any(t in walk_out for t in cell_tiles(ram, x, y))
     )
 
 
@@ -184,7 +237,7 @@ def ascii_room(ram: np.ndarray) -> str:
                 marks.append("  #")
             elif all(t in STAIR_TILES for t in quad):
                 marks.append("  S")
-            elif any(t in DOOR_TILES for t in quad):
+            elif any(t in DOORWAY_ART_TILES for t in quad):
                 marks.append("  D")
             else:
                 marks.append("  ?")

@@ -6,9 +6,9 @@ Primary walkthrough: [Zelda Dungeon — The Gathering](https://www.zeldadungeon.
 `0x77` = H8.
 
 M5 Clean is still power-on → L1 Triforce on 3 containers and the wooden sword
-(19416f, TF `0x01`). This prefix is the combat-budget answer: gather **before**
+(18909f, TF `0x01`). This prefix is the combat-budget answer: gather **before**
 the 0x37 mouth, then re-enter L1 with 6 containers and the White Sword. Do
-not overwrite the 19416f claim.
+not overwrite the 18909f claim.
 
 No pokes. Do not STATUS from a pin.
 
@@ -69,7 +69,7 @@ White Sword) is one trip and skips `0x66`.
 ## Wiring
 
 Dedicated `--through pre-l1`. Not spliced onto `level1_survival_tf_stages`.
-M5 19416f stays the wooden 3HC oracle. Re-measure L1 after this prefix greens.
+M5 18909f stays the wooden 3HC oracle. Re-measure L1 after this prefix greens.
 
 The 3HC L2 door suffix still dies on 0x4C even with evade-on (`rr-8t4.4-residual`
 2026-09-14 census): last playable `(121,133)` hp `0x30` 0/4. Two whole hearts

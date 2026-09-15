@@ -61,17 +61,20 @@ _SCOOP_RADIUS = 48
 _SCOOP_REACH = 4
 _OCC_BODY_R = 8
 # What Link may stand on *inside* a room he is clearing. Deliberately narrower
-# than ``tilemap.LINK_WALKABLE_TILES``, which also grades the four door mouths
-# walkable: that set is right for ``ROUTE_BOUNDS`` and the entry route, whose
-# whole job is to walk in through a door, and wrong here. Walking into a door
-# cell leaves the room (``tilemap.door_cells``), and the in-fight box reaches
-# several of them — ``DEFAULT_BOUNDS`` covers the north door row (y=77..84,
-# feet in tile row 3) and the south door row (y=197..205), and the L4/L5/L6
-# ``(16, 216, ...)`` boxes also cover the west door column at x=16..23. With
-# doors walkable a measured fight grid offers 272 door cells under
-# ``DEFAULT_BOUNDS`` alone and the chase BFS finds paths onto every one, so a
-# body parked near a doorway scrolls Link out mid-clear. Stairs stay walkable:
-# they are route destinations the specs aim at, not an accidental exit.
+# than ``tilemap.LINK_WALKABLE_TILES``: that set also grades a bombed-open
+# wall walkable, which is right for ``ROUTE_BOUNDS`` and the entry route,
+# whose whole job is to walk out through one, and wrong here — a body parked
+# by the hole would let the chase BFS path Link into it and scroll him out
+# mid-clear. The L4/L5/L6 ``(16, 216, ...)`` boxes reach the west hole column
+# at x=16..23 directly.
+#
+# It does *not* wall off an open doorway, and never did. An open mouth is
+# plain ``FLOOR_TILES`` set into the wall ring (measured over 259 dungeon
+# fixtures), so it is walkable under any set that contains floor. What bounds
+# it is the fight box: ``DEFAULT_BOUNDS`` stops at y=205, one tile row into
+# the south mouth and short of the void past it, so the BFS has nowhere
+# further out to aim. Stairs stay walkable: they are route destinations the
+# specs aim at, not an accidental exit.
 _FIGHT_WALKABLE_TILES = FLOOR_TILES | STAIR_TILES
 # Frames to hold a proven-unreachable scoop verdict before re-running the
 # BFS. A live body (a slow Wallmaster) can clear the path within seconds;
@@ -850,7 +853,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
             extra.discard((int(target.x), int(target.y)))
             direction = self.walker.next_dir(
                 xy,
-                (target.x, target.y),
+                self._chase_goal(target),
                 extra_blocked=extra,
                 transient_occupants=bodies,
             )
@@ -871,6 +874,29 @@ class GenericDungeonRoomController(EntryRouteWalker):
         if distance < self.spec.combat.engage_distance:
             return self._engage(snap, target)
         return self._patrol(snap)
+
+    def _chase_goal(self, target) -> tuple[int, int]:
+        """The enemy's cell, or the nearest open cell to it.
+
+        An enemy standing on geometry is normal -- a goriya walks the block
+        rows of L1 ``0x23`` constantly -- and its cell is then not passable,
+        so the chase BFS correctly reports *no path* to it. Handing that
+        ``None`` on to ``_engage`` is what killed Clean M5: at
+        ``distance < engage_distance`` Link parried in place while the body
+        closed, and took all three hits standing (``f1453 body 0x06 (goriya)
+        from N ... action=combat_parry``). Chasing the nearest cell that
+        exists reaches sword range instead.
+
+        Deliberately local to the chase. ``OccupancyWalker`` has the same
+        rule behind ``retarget_blocked_goal``, and it stays off here: turning
+        it on for the *walker* also retargets route and collect waypoints,
+        which shifts arrival frames, and the L1 chain is frame-perfect.
+        """
+        goal = (int(target.x), int(target.y))
+        if self.walker.grid.passable(*goal):
+            return goal
+        open_goal = self.walker.grid.nearest_open(*goal)
+        return goal if open_goal is None else open_goal
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
         """Collect policy, plus an escape from standing next to the pickup.
@@ -956,13 +982,33 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
             if self.spec.combat.occupancy_patrol:
-                direction = self.walker.next_dir(xy, (tx, ty))
+                # A drop can land on geometry, and a waypoint can be written
+                # onto it. The BFS then correctly reports no path; walking to
+                # the nearest cell that exists is what picks the drop up, and
+                # is local to collect for the same reason ``_chase_goal`` is.
+                goal = (int(tx), int(ty))
+                if not self.walker.grid.passable(*goal):
+                    open_goal = self.walker.grid.nearest_open(*goal)
+                    if open_goal is not None:
+                        goal = open_goal
+                direction = self.walker.next_dir(xy, goal)
                 if direction is not None:
                     return FrameAction(nes_action(direction), "collect_reward")
+                # Still nothing: skip, and *count* it. Advancing the index
+                # without counting is why this loop had no end -- 0x45 sat at
+                # (40,157) alternating `collect_skip_2` and `collect_skip_3`
+                # for the whole 9000-frame budget while ``_collect_skips``
+                # stayed under one lap.
+                self.notes.append(
+                    f"collect_skip_{self.waypoint_index}_{xy[0]}_{xy[1]}"
+                )
+                self._collect_skips += 1
                 self.waypoint_index = (self.waypoint_index + 1) % n
                 self.walker.path = None
                 self._collect_best_dist = None
                 self._collect_no_progress = 0
+                if self._collect_skips >= n:
+                    return FrameAction(nes_idle_action(), "collect_wait")
                 return FrameAction(nes_idle_action(), "collect_skip_unreachable")
 
         target = self.spec.reward.target

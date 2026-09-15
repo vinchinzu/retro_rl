@@ -95,10 +95,31 @@ def make_ram(defaults: dict[str, int], **fields: int) -> np.ndarray:
     return ram
 
 
-__all__ = ["FIELD_ADDR", "make_ram", "room_tile_env", "tile_map_env"]
+__all__ = [
+    "FIELD_ADDR",
+    "make_ram",
+    "room_tile_env",
+    "room_tile_ram",
+    "tile_map_env",
+]
 
 
-def room_tile_env(room: str):
+def room_tile_ram(room: str, level: int = 1) -> np.ndarray:
+    """A RAM window carrying the captured ``$6530`` map for one room."""
+    import json
+    from pathlib import Path
+
+    from zelda_i.dungeon import tilemap as tm
+
+    path = Path(__file__).parent / "fixtures" / f"room_tiles_l{level}_{room}.json"
+    tiles = json.loads(path.read_text())["tiles"]
+    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
+    start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
+    ram[start : start + len(tiles)] = np.asarray(tiles, dtype=np.uint8)
+    return ram
+
+
+def room_tile_env(room: str, level: int = 1):
     """A stub env whose ``get_ram()`` carries a captured ``$6530`` tile map.
 
     Controllers with ``occupancy_from_tilemap`` measure their walls from the
@@ -107,16 +128,7 @@ def room_tile_env(room: str):
     a walk straight up into the water bar. Bind this instead so the room under
     test has exactly the walls the ROM has.
     """
-    import json
-    from pathlib import Path
-
-    from zelda_i.dungeon import tilemap as tm
-
-    path = Path(__file__).parent / "fixtures" / f"room_tiles_l1_{room}.json"
-    tiles = json.loads(path.read_text())["tiles"]
-    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
-    start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
-    ram[start : start + len(tiles)] = np.asarray(tiles, dtype=np.uint8)
+    ram = room_tile_ram(room, level)
 
     class _Env:
         def get_ram(self):

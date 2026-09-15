@@ -52,7 +52,7 @@ def test_blocked_rows_are_never_spine_green() -> None:
 
 
 def test_tip_is_l1_tf_after_natural_entry_triforce() -> None:
-    """M5 measured 2/2 2026-09-12, triforce=0x01, end 19416."""
+    """M5 measured 2/2 2026-09-14, triforce=0x01, end 18909."""
     top = tip()
     assert top is not None
     assert top.id == "l1_tf"

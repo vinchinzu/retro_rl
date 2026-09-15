@@ -1590,11 +1590,13 @@ def test_shield_hold_still_consumes_the_frame() -> None:
 
 
 def _door_room_ram():
-    """A synthetic ``$6530`` map: floor interior, plus real door mouths.
+    """A synthetic ``$6530`` map: floor interior, walled ring, bombed holes.
 
-    Door quads go at the north (``112, 80``), south (``112, 208``) and west
-    (``16, 144``) cells, which is where the ROM puts them. Everything outside
-    the interior is solid so the only holes in the wall are the doors.
+    Hole pairs go at the north (``112, 80``), south (``112, 208``) and west
+    (``16, 144``) ring cells with the ids the ROM uses there, measured over
+    259 dungeon fixtures: north ``0x8C``/``0x8D``, south ``0x8E``/``0x8F``,
+    west ``0x90``/``0x91``. Everything else outside the interior is solid, so
+    the only holes in the wall are the three passages.
     """
     from zelda_i.dungeon import tilemap as tm
 
@@ -1605,10 +1607,14 @@ def _door_room_ram():
         for x in tm.INTERIOR_X:
             col, row = x // tm.TILE_PX, (y - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
             tiles[row : row + 2, col : col + 2] = floor
-    for x, y in ((112, 80), (112, 208), (16, 144)):
+    for (x, y), pair in (
+        ((112, 80), (0x8C, 0x8D)),
+        ((112, 208), (0x8E, 0x8F)),
+        ((16, 144), (0x90, 0x91)),
+    ):
         col, row = x // tm.TILE_PX, (y - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
         tiles[row : row + 2, col : col + 2] = np.array(
-            [[0x90, 0x90], [0x91, 0x91]], dtype=np.uint8
+            [[pair[0], pair[0]], [pair[1], pair[1]]], dtype=np.uint8
         )
     start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
     ram[start : start + tm.TILE_COLS * tm.TILE_ROWS] = tiles.T.reshape(-1)
@@ -1621,17 +1627,21 @@ def _door_room_ram():
 
 
 def test_fight_grid_never_paths_link_onto_a_door_cell() -> None:
-    """Doors are walkable to the entry route and solid to the fight.
+    """A bombed passage is walkable to the entry route and solid to the fight.
 
-    ``tilemap.LINK_WALKABLE_TILES`` grades ``DOOR_TILES`` walkable, which is
-    right for ``ROUTE_BOUNDS`` — the entry route's whole job is to walk in
-    through a door. Inside the room it is not: walking into a door cell
-    leaves the room (``tilemap.door_cells``), and the fight box reaches
-    several of them. ``DEFAULT_BOUNDS`` ``(40, 216, 77, 205)`` covers the
-    north door row (``y=77..84``, feet in tile row 3) and the south door row
+    ``tilemap.LINK_WALKABLE_TILES`` grades ``BOMB_HOLE_TILES`` walkable,
+    which is right for ``ROUTE_BOUNDS`` — in the rooms that have one, the
+    hole is the way out. Inside the room it is not: walking into it leaves
+    the room (``tilemap.door_cells``), and the fight box reaches all three.
+    ``DEFAULT_BOUNDS`` ``(40, 216, 77, 205)`` covers the north hole row
+    (``y=77..84``, feet in tile row 3) and the south hole row
     (``y=197..205``); the L4/L5/L6 ``(16, 216, ...)`` boxes also cover the
-    west door column. Chasing a body parked near a doorway would then scroll
-    Link out of the room mid-clear.
+    west hole column. Chasing a body parked near one would then scroll Link
+    out of the room mid-clear.
+
+    An *open* doorway is not this case and never was: its mouth is plain
+    floor, so the fight grid can stand on it too, and what stops the BFS
+    walking out is the box bound, not the tile set.
     """
     from zelda_i.dungeon.route_entry import ROUTE_BOUNDS
     from zelda_i.walk.physics import measured_walker
@@ -1660,3 +1670,90 @@ def test_fight_grid_never_paths_link_onto_a_door_cell() -> None:
     assert north_mouth not in route.grid.blocked
     assert (16, 141) not in route.grid.blocked
     assert route.grid.shortest_path((120, 141), north_mouth) is not None
+
+
+def _walled_enemy_spec(enemy_xy: tuple[int, int]):
+    """``ROOM_54_SPEC`` with the enemy's own cell, and its ring, walled off."""
+    ex, ey = enemy_xy
+    walls = tuple(
+        (ex + dx, ey + dy)
+        for dx in range(-1, 2)
+        for dy in range(-1, 2)
+    )
+    tuning = replace(
+        ROOM_54_SPEC.combat,
+        occupancy_patrol=True,
+        occupancy_blocked=walls,
+        engage_distance=8,
+    )
+    return replace(ROOM_54_SPEC, combat=tuning)
+
+
+def test_chase_goal_retargets_an_enemy_standing_on_geometry() -> None:
+    """An enemy on a blocked cell must not freeze the chase.
+
+    This is what the ``shortest_path`` goal guard exposed. The guard is
+    right -- a goal inside geometry has no path -- but the chase handed the
+    resulting ``None`` to ``_engage``, which parried in place. Clean M5 died
+    in L1 ``0x23`` on ``f1453 body 0x06 (goriya) from N ... phase=FIGHT``
+    with three hits taken standing still.
+    """
+    from types import SimpleNamespace
+
+    ex, ey = 160, 141
+    spec = _walled_enemy_spec((ex, ey))
+    controller = GenericDungeonRoomController(spec)
+    controller.phase = DungeonPhase.FIGHT
+    ram = _room_ram(
+        room=0x54, x=120, y=141, enemy_type=0x1B, enemies=1, hp=0,
+        enemy_x=ex, enemy_y=ey,
+    )
+    controller.step(read_snapshot(ram))
+
+    assert not controller.walker.grid.passable(ex, ey)
+    goal = controller._chase_goal(SimpleNamespace(x=ex, y=ey))
+    assert goal != (ex, ey)
+    assert controller.walker.grid.passable(*goal)
+    # And the BFS that stood still now has somewhere to go.
+    assert controller.walker.grid.shortest_path((120, 141), (ex, ey)) is None
+    assert controller.walker.grid.shortest_path((120, 141), goal) is not None
+
+
+def test_collect_unreachable_skip_counts_toward_the_lap_guard() -> None:
+    """Skipping an unreachable waypoint must end the lap, not restart it.
+
+    ``collect_skip_unreachable`` advanced ``waypoint_index`` without touching
+    ``_collect_skips``, so the one-lap guard never tripped: L1 ``0x45`` sat at
+    ``(40,157)`` alternating ``collect_skip_2`` and ``collect_skip_3`` for its
+    whole 9000-frame budget with the room already cleared and zero hits.
+    """
+    # Each waypoint sits in a sealed one-cell pocket: the cell itself is
+    # passable, so ``nearest_open`` hands it straight back, and there is
+    # still no path to it. That is the case the skip exists for.
+    waypoints = ((160, 141), (160, 157))
+    walls = tuple(
+        (wx + dx, wy + dy)
+        for wx, wy in waypoints
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1))
+    )
+    tuning = replace(
+        ROOM_54_SPEC.combat, occupancy_patrol=True, occupancy_blocked=walls
+    )
+    spec = replace(
+        ROOM_54_SPEC,
+        combat=tuning,
+        reward=replace(ROOM_54_SPEC.reward, waypoints=waypoints),
+    )
+    controller = GenericDungeonRoomController(spec)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    ram = _room_ram(room=0x54, x=120, y=141)
+
+    reasons = [controller.step(read_snapshot(ram)).reason for _ in range(400)]
+    assert "collect_skip_unreachable" in reasons
+    assert "collect_wait" in reasons
+    # Once the lap is spent it stays spent. What follows is the ordinary
+    # no-waypoint reward policy; what must never follow is a second lap.
+    tail = reasons[reasons.index("collect_wait") + 1:]
+    assert "collect_skip_unreachable" not in tail
+    assert set(tail) <= {"collect_wait", "reward_nudge", "reward_nudge_wiggle"}
+    assert controller._collect_skips >= len(waypoints)
