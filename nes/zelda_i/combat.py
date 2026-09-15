@@ -1,12 +1,16 @@
-"""Sword hitbox / threat helpers for Zelda I combat policies.
+"""Sword hitbox / threat helpers and the wave census for Zelda I policies.
 
-Pure functions over Link + enemy positions. Used by the generic dungeon
-controller so swings only fire when the blade can actually hit.
+Pure functions over Link + enemy positions, plus :class:`CombatLedger`, the
+per-frame census every controller is judged on. Used by the generic dungeon
+controller so swings only fire when the blade can actually hit, and by
+``overworld.hunt`` / the two farms, which each used to re-derive "what is
+alive, what did it drop, and what did that cost".
 """
 
 from __future__ import annotations
 
-from typing import Iterable
+from dataclasses import dataclass, field
+from typing import Any, Iterable
 
 from zelda_i.dungeon.ids import (
     BOMB_DROP_OBJECT_TYPE,
@@ -19,10 +23,11 @@ from zelda_i.dungeon.ids import (
     GHINI_FLYING_OBJECT_TYPE,
     HEART_DROP_OBJECT_TYPE,
     HEART_DROP_STATE,
+    PROJECTILE_TYPES,
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
 )
-from zelda_i.ram import ZeldaObject, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
 # Conservative NES wooden-sword reach (engine ~16–24 px).
 SWORD_REACH = 20
@@ -317,6 +322,229 @@ def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     )
 
 
+# --- Overworld wave census -------------------------------------------- #
+# ``overworld_threat_objects`` answers "is something dangerous on screen";
+# these answer "what is worth killing, and what did it drop" for
+# ``overworld.hunt`` and the two farms, which each used to re-derive it.
+
+# Slot 11 on a shop screen: type 0x64, hp 240, no sprite. It is the cave /
+# NPC trigger, not prey — chasing it is how the rupee farm used to stall.
+CAVE_TRIGGER_TYPE = 0x64
+# Live overworld foes are single-digit HP. A 200+ reading is a trigger or a
+# boss-shaped slot, neither of which the wooden sword resolves.
+MAX_PREY_HP = 200
+PICKUP_STATES = RUPEE_DROP_STATES | HEART_OR_FAIRY_STATES
+
+
+def live_enemies(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
+    """Typed, killable, non-drop, non-projectile slots. No position filter.
+
+    Deliberately looser than :func:`overworld_threat_objects`, whose
+    ``40 < y < 220`` bound reads a body that wandered low as a corpse and
+    banks a kill that never happened. Projectiles are out as a *census*
+    correction: an octorok rock occupies a slot with hp and then vanishes
+    against a wall, which a slot census would read as a death (measured
+    2026-09-14: 10 census kills against 6 on the ROM counters, four rocks).
+    """
+    return tuple(
+        obj
+        for obj in snap.objects
+        if obj.slot >= 1
+        and int(obj.type_id) not in (0, 0xFF, CAVE_TRIGGER_TYPE)
+        and int(obj.type_id) not in FLOOR_DROP_TYPES
+        and 0 < int(obj.hp) < MAX_PREY_HP
+        and (int(obj.type_id) & 0xFF) not in PROJECTILE_TYPES
+    )
+
+
+def bodies_in_box(
+    snap: ZeldaSnapshot, box: tuple[int, int, int, int]
+) -> tuple[ZeldaObject, ...]:
+    """:func:`live_enemies` inside ``(xlo, xhi, ylo, yhi)``."""
+    xlo, xhi, ylo, yhi = box
+    return tuple(
+        obj
+        for obj in live_enemies(snap)
+        if xlo <= int(obj.x) <= xhi and ylo <= int(obj.y) <= yhi
+    )
+
+
+def closest_body(snap: ZeldaSnapshot, lx: int, ly: int) -> ZeldaObject | None:
+    """The live body nearest to *touching* Link, box or no box.
+
+    Chebyshev, not manhattan: contact is a square pad. A body outside a
+    caller's chase box, or one its per-target budget skipped, hits just as
+    hard as the one it picked.
+    """
+    bodies = live_enemies(snap)
+    if not bodies:
+        return None
+    return min(bodies, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
+
+
+def nearest_to(
+    x: int, y: int, objs: tuple[ZeldaObject, ...]
+) -> ZeldaObject | None:
+    """Manhattan-nearest of ``objs`` — walking distance, not contact."""
+    if not objs:
+        return None
+    return min(objs, key=lambda o: manhattan(x, y, int(o.x), int(o.y)))
+
+
+def floor_pickups(
+    snap: ZeldaSnapshot,
+    box: tuple[int, int, int, int],
+    *,
+    heal_only: bool = False,
+) -> tuple[ZeldaObject, ...]:
+    """Drops worth walking to. Bombs and clocks are not in this set.
+
+    Bomb is ROM item code ``0x00`` — the same ObjState a cleared slot reads as
+    — so a bomb chase would outrank every real rupee on the one leg where Link
+    owns no bombs. Hearts and fairies only count while Link is damaged, and
+    that test is ``health_is_full`` plus the partial byte, never
+    ``filled_hearts < heart_containers``: ``filled_hearts`` is the raw
+    ``$066F`` nibble (whole hearts minus one), so that comparison is true at
+    full health on every container count.
+    """
+    xlo, xhi, ylo, yhi = box
+    heal_wanted = not snap.health_is_full or int(snap.heart_partial) != 0xFF
+    return tuple(
+        obj
+        for obj in snap.objects
+        if obj.slot >= 1
+        and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
+        and int(obj.state) in PICKUP_STATES
+        and (heal_wanted or int(obj.state) not in HEART_OR_FAIRY_STATES)
+        and (not heal_only or int(obj.state) in HEART_OR_FAIRY_STATES)
+        and xlo <= int(obj.x) <= xhi
+        and ylo <= int(obj.y) <= yhi
+    )
+
+
+@dataclass
+class CombatLedger:
+    """Every number the hunt is judged on. Observe once per frame.
+
+    Kept apart from the policy because it runs on frames the policy does not
+    own: kills land during evades, farms, hop swings and cave dialogs.
+    """
+
+    kills: int = 0
+    kills_counter: int = 0
+    rupees_banked: int = 0
+    damage_taken: int = 0
+    hurt_events: int = 0
+    streak: int = 0
+    streak_best: int = 0
+    streak_resets: int = 0
+    by_screen: dict[int, int] = field(default_factory=dict)
+    seen_by_screen: dict[int, int] = field(default_factory=dict)
+    # What the wave put on the floor, by ObjState item code. ``rupees_banked``
+    # alone cannot tell "row 0 rolled no rupee" from "the rupee was there and
+    # the hunt walked past it", and those want opposite fixes.
+    drops_by_state: dict[int, int] = field(default_factory=dict)
+    _drops: dict[int, int] = field(default_factory=dict, repr=False)
+    _census: dict[int, int] = field(default_factory=dict, repr=False)
+    _census_screen: int = field(default=-1, repr=False)
+    _world: int = field(default=-1, repr=False)
+    _help: int = field(default=-1, repr=False)
+    _rupees: int = field(default=-1, repr=False)
+    _hp: int = field(default=-1, repr=False)
+    _iframes: int = field(default=-1, repr=False)
+
+    def observe(self, snap: ZeldaSnapshot) -> None:
+        self._observe_counters(snap)
+        census = {int(o.slot): int(o.type_id) for o in live_enemies(snap)}
+        screen = int(snap.screen)
+        same_screen = (
+            screen == self._census_screen
+            and int(snap.level) == 0
+            and int(snap.mode) == PLAY_MODE
+            and not snap.transitioning
+        )
+        if same_screen:
+            drops = {
+                int(o.slot): int(o.state)
+                for o in snap.objects
+                if int(o.slot) >= 1 and int(o.type_id) == RUPEE_DROP_OBJECT_TYPE
+            }
+            for slot, state in drops.items():
+                if self._drops.get(slot) != state:
+                    self.drops_by_state[state] = self.drops_by_state.get(state, 0) + 1
+            self._drops = drops
+            for slot, type_id in self._census.items():
+                if census.get(slot) != type_id:
+                    self.kills += 1
+                    self.by_screen[screen] = self.by_screen.get(screen, 0) + 1
+            self.seen_by_screen[screen] = max(
+                self.seen_by_screen.get(screen, 0), len(census)
+            )
+        else:
+            self._drops = {}
+        self._census = census
+        self._census_screen = screen if int(snap.level) == 0 else -1
+
+    def _observe_counters(self, snap: ZeldaSnapshot) -> None:
+        rupees = int(snap.rupees)
+        if self._rupees >= 0:
+            # Positive deltas only: a purchase is not a negative kill.
+            self.rupees_banked += max(rupees - self._rupees, 0)
+        self._rupees = rupees
+        # Chip damage ``hits_taken`` cannot see: a half-heart lands in
+        # ``$0670``, never in the whole-hearts byte the hop controller watches.
+        hp = int(snap.filled_hearts) * 256 + int(snap.heart_partial)
+        if self._hp >= 0 and hp < self._hp:
+            self.damage_taken += 1
+        self._hp = hp
+        iframes = int(getattr(snap, "link_iframes", 0))
+        if self._iframes >= 0 and iframes > 0 and self._iframes == 0:
+            self.hurt_events += 1
+        self._iframes = iframes
+        world, help_ = int(snap.world_kill_count), int(snap.help_drop_count)
+        if self._world >= 0:
+            # A negative delta is a reset, never a kill.
+            self.kills_counter += max(world - self._world, help_ - self._help, 0)
+            # The streak is the only forced rupee on this corridor: ten kills
+            # force a 5-rupee, sixteen a fairy. Every reset below those
+            # thresholds is money not paid.
+            if world == 0 and self._world > 0:
+                self.streak_resets += 1
+        self.streak = world
+        self.streak_best = max(self.streak_best, world)
+        self._world, self._help = world, help_
+
+    def reset(self) -> None:
+        self.kills = self.kills_counter = self.rupees_banked = 0
+        self.damage_taken = self.hurt_events = 0
+        self.streak = self.streak_best = self.streak_resets = 0
+        self.by_screen.clear()
+        self.seen_by_screen.clear()
+        self.drops_by_state.clear()
+        self._drops.clear()
+        self._census.clear()
+        self._census_screen = -1
+        self._world = self._help = self._rupees = self._hp = self._iframes = -1
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "kills": self.kills,
+            "kills_counter": self.kills_counter,
+            "rupees_banked": self.rupees_banked,
+            "damage_taken": self.damage_taken,
+            "hurt_events": self.hurt_events,
+            "streak_best": self.streak_best,
+            "streak_resets": self.streak_resets,
+            "kills_by_screen": {f"{k:#04x}": v for k, v in sorted(self.by_screen.items())},
+            "peak_live_by_screen": {
+                f"{k:#04x}": v for k, v in sorted(self.seen_by_screen.items()) if v
+            },
+            "drops_by_state": {
+                f"{k:#04x}": v for k, v in sorted(self.drops_by_state.items())
+            },
+        }
+
+
 __all__ = [
     "SWORD_REACH",
     "SWORD_HALF_WIDTH",
@@ -351,4 +579,13 @@ __all__ = [
     "scoop_exits_room",
     "DOOR_EDGE",
     "wants_heart_pickup",
+    "CAVE_TRIGGER_TYPE",
+    "MAX_PREY_HP",
+    "PICKUP_STATES",
+    "live_enemies",
+    "bodies_in_box",
+    "closest_body",
+    "nearest_to",
+    "floor_pickups",
+    "CombatLedger",
 ]

@@ -28,13 +28,17 @@ the `shortest_path` goal guard on unit tests alone and took M5 red (death in
 oracle after *any* change under the walker, never the suite alone. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
 ([`docs/PRE_L1.md`](docs/PRE_L1.md)): bombs at 0x6F (bypass 0x79), two bomb
 hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
-`--through pre-l1` forces assist off and hunts at wooden-sword reach.
-Live 2026-09-15 `prel1_reach` 1/1 green, `assist=None`: 11/9 kills, walk
-3978f, leftover `0x4A (0,141)` hp `0x20` 0/3, **3 rupees**, `streak_best`
-7, `streak_resets` 2 (was 6 / peak 4 with assist on). `damage_taken` 5
-is now visible. Forced 5-rupee still needs 10 without the two remaining
-contacts. Random table is still Baxter A. Do not overwrite the 18909f
-claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
+`--through pre-l1` forces assist off and hunts at wooden-sword reach. It is
+now **sword -> hunting walk -> buy**, and the stop is the 4-pack
+(`ADDR_BOMBS >= 1`), not arrival on `0x4A` — so it is **red on purpose** and
+the last stage says why. Live 2026-09-15 `prel1_land` 1/1, `assist=None`,
+`set_state=0`: **16/15 kills**, `streak_best` **7**, 3 resets, **2 rupees**,
+`damage_taken` 4, 2 of 3 hearts at the shop, `failed=bomb_buy`
+`shop_need_20_have_2`. Was 10/9 kills, peak 3, 1 rupee at `8c7162cc`.
+The corridor's measured drop rate is ~13% (53 kills / 7 drops), not the 31%
+`scratch/bomb_budget.py` bills it at, so **one pass cannot fund 20R** —
+details and the five fixed root causes in [`docs/PRE_L1.md`](docs/PRE_L1.md).
+Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.
 
@@ -199,6 +203,37 @@ scratch — not an AGENTS novel.
 - **A grouped spawn byte is a group index, not an ObjType.** `0x49` reads
   `group_28`, and `0x28` is also Rope (row 1); taking it as a type credits the
   screen 5.3R it does not have. Use the live census for `grouped` screens.
+- **`snap.filled_hearts` is whole hearts MINUS ONE.** It is the raw `$066F`
+  low nibble, and `0x22` is 3/3 — the live pre-L1 walk ended *alive* on
+  `0x20`, which is one heart. Use `ram.whole_hearts` (`lo + 1`) for anything
+  that reasons about how much life is left; `filled_hearts` keeps the raw
+  nibble because the L1 chain is frame-perfect against it. `HUNT_MIN_HEARTS`
+  read it literally and retired `0x58`/`0x59`/`0x49` after one chip hit,
+  while Link still held two of three hearts.
+- **The overworld walk has two reactive layers and the evader wins by
+  default.** `OverworldPathController` runs `ReactiveEvader` ahead of every
+  hop rule, the hunt included. A red octorok is one wooden hit, so a step away
+  from a body already in the blade box trades a kill for a frame it gives
+  straight back. `_threat_action` yields on `evade_yield_to_sword` when
+  `ScreenHunter.striking`; do not re-order the hunt above the aligner instead.
+- **A hop table ends the frame Link scrolls onto its last screen**, so that
+  screen's wave is the one a hunting walk never fights. `hunt_destination` +
+  `ScreenHunter.take_destination` cover it. Without it `_on_hop_advanced`
+  calls `_finish` on that same frame, so `_after_hops` never runs.
+- **The hunt swings off `$00AC` slot 0 (Link's own animation), not a
+  cadence.** `frames % 8 < 3` idled up to five frames per swing with a body
+  closing ~1px a frame. The idle is also the release edge the ROM needs.
+- **`0x48` is not reachable on three containers.** Its four leevers are
+  drop-table row 1 and worth more than the whole octorok corridor, and the
+  there-and-back off `0x58` uses only proven hops — it still killed the run
+  twice (mode 17). Link lands at y≈205, *below* `HUNT_BOX`, and arrives with
+  one heart. Hearts before that detour.
+- **Measured pre-L1 drop rate is ~13%, not 31%.** 53 kills, 7 floor drops
+  across the 2026-09-15 runs, against `scratch/bomb_budget.py`'s
+  `DropItemRates` rows. One pass pays ~2R against the 20R pack, and a perfect
+  26-kill streak would still only reach ~13.5R. `CombatLedger.drops_by_state`
+  separates "rolled nothing" from "walked past it" — read it before adding
+  screens.
 - **20R is 36 unbroken kills.** `$0627 == 16` is tested before `$0050 >= 10`,
   so a clean streak pays at kills 10, 26, 36, 46 — the fairy spends six kills
   of 5-rupee progress. Without a streak, row-0 octoroks are 128 kills for 20R.
