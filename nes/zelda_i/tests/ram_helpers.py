@@ -43,6 +43,7 @@ from zelda_i.ram import (
     ADDR_SWORD,
     ADDR_TRIFORCE,
     ADDR_WHISTLE,
+    ADDR_LINK_IFRAMES,
     ADDR_WORLD_KILL_COUNT,
 )
 
@@ -81,6 +82,7 @@ FIELD_ADDR: dict[str, int] = {
     "world_kill": ADDR_WORLD_KILL_COUNT,
     "help_count": ADDR_HELP_DROP_COUNT,
     "help_value": ADDR_HELP_DROP_VALUE,
+    "link_iframes": ADDR_LINK_IFRAMES,
 }
 
 

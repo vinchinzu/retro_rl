@@ -9,6 +9,7 @@ from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_HELP_DROP_COUNT,
     ADDR_HELP_DROP_VALUE,
+    ADDR_LINK_IFRAMES,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_MAGIC_BOOMERANG,
@@ -118,7 +119,7 @@ def test_snapshot_and_capabilities() -> None:
 
 
 def test_snapshot_kill_counters_default_and_from_ram() -> None:
-    """New fields default to 0; read_snapshot pulls $0627 / $50 / $51."""
+    """New fields default to 0; read_snapshot pulls $0627 / $50 / $51 / $04F0."""
     snap = ZeldaSnapshot(
         mode=PLAY_MODE,
         level=0,
@@ -146,15 +147,18 @@ def test_snapshot_kill_counters_default_and_from_ram() -> None:
     assert snap.world_kill_count == 0
     assert snap.help_drop_count == 0
     assert snap.help_drop_value == 0
+    assert snap.link_iframes == 0
 
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_WORLD_KILL_COUNT] = 16
     ram[ADDR_HELP_DROP_COUNT] = 10
     ram[ADDR_HELP_DROP_VALUE] = 1
+    ram[ADDR_LINK_IFRAMES] = 24
     snap = read_snapshot(ram)
     assert snap.world_kill_count == 16
     assert snap.help_drop_count == 10
     assert snap.help_drop_value == 1
+    assert snap.link_iframes == 24
 
     ram_h = make_ram(
         {"mode": PLAY_MODE, "health": 0x22},

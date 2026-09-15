@@ -17,10 +17,17 @@ ADDR_IS_UPDATING_MODE = 0x0011  # 0=mode init, nonzero=ordinary update loop
 ADDR_MODE = 0x0012  # 5=play, 6/7=scroll, 9=passage, 11=cave, 16=cave enter
 ADDR_SUBMODE = 0x0013  # mode-local phase; ending uses 3=credits, 4=final screen
 ADDR_DIALOG_TIMER = 0x0029
-# Forced drops (redcandle / aldonunez). Cleared when Link takes a hit.
+# Forced drops (aldonunez Link_BeHarmed / redcandle). Zeroed on Link-enemy
+# *collision* — bubbles and the recorder whirlwind included — not on a
+# $066F change. A wooden-sword octorok chip is $0670 only ($80 of partial);
+# Survival assist writes $0670 back to $FF the same frame, so a post-assist
+# snapshot can read full health with $50/$627 already 0. $04F0 (Link's
+# ObjInvincibilityTimer) is the collision that survives the refill.
 ADDR_HELP_DROP_COUNT = 0x0050  # 10 kills → forced 5-rupee (or bomb if VALUE set)
 ADDR_HELP_DROP_VALUE = 0x0051  # nonzero → the 10-kill force is a bomb
 ADDR_WORLD_KILL_COUNT = 0x0627  # 16 kills → forced fairy
+ADDR_LINK_IFRAMES = 0x04F0  # ObjInvincibilityTimer[0]; 24 on Link_BeHarmed
+ADDR_WORLD_KILL_CYCLE = 0x052A  # 0-9 random-drop table column; not a streak
 ADDR_LINK_X = 0x0070
 ADDR_LINK_Y = 0x0084
 ADDR_LINK_FACING = 0x0098  # $08 N, $04 S, $01 E, $02 W
@@ -147,11 +154,12 @@ class ZeldaSnapshot:
     candle: int = 0  # ADDR_CANDLE; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
-    # Forced-drop kill counters. A hit clears all three (ram_map). Defaults
-    # keep older ZeldaSnapshot(...) test constructors working.
+    # Forced-drop kill counters. Link_BeHarmed (collision) zeros all three.
+    # Defaults keep older ZeldaSnapshot(...) test constructors working.
     world_kill_count: int = 0  # ADDR_WORLD_KILL_COUNT; 16 → fairy
     help_drop_count: int = 0  # ADDR_HELP_DROP_COUNT; 10 → 5-rupee (or bomb)
     help_drop_value: int = 0  # ADDR_HELP_DROP_VALUE; nonzero → bomb at 10
+    link_iframes: int = 0  # ADDR_LINK_IFRAMES; 0→24 is the collision that zeros them
 
     @property
     def overworld(self) -> bool:
@@ -288,6 +296,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         world_kill_count=read_u8(ram, ADDR_WORLD_KILL_COUNT),
         help_drop_count=read_u8(ram, ADDR_HELP_DROP_COUNT),
         help_drop_value=read_u8(ram, ADDR_HELP_DROP_VALUE),
+        link_iframes=read_u8(ram, ADDR_LINK_IFRAMES),
     )
 
 
