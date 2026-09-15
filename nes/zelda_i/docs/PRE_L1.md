@@ -179,6 +179,109 @@ fire. Next: kill those two resets (0x49 `hunt_hurt` is one). Do not STATUS.
   hearts) and a chip hit lands in `$0670`. `hunt.report()["damage_taken"]`
   watches both. Do not read `hits_taken=0` as "took no damage".
 
+## This sitting (2026-09-15b) — the errand is wired end to end, and it is short
+
+`--through pre-l1` is now **sword → hunting walk → buy**, and the stop is the
+4-pack (`ADDR_BOMBS >= 1`), not arrival on `0x4A`. Arrival cannot tell a walk
+that banked 20R from one that banked one rupee. The run is therefore **red**,
+and the last stage says exactly why: `shop_need_20_have_2`.
+
+Live `prel1_land`, `--no-video --trials 1`, `assist=None`, `set_state=0`:
+
+| | 8c7162cc | now |
+|---|---|---|
+| kills (census / ROM counters) | 10 / 9 | **16 / 15** |
+| `streak_best` | 3 | **7** |
+| `streak_resets` | 2 | 3 |
+| rupees | 1 | **2** |
+| screens fought | `0x68` `0x58` `0x49` | + `0x59`, + **`0x4A` (4 of 6 tektites)** |
+| hearts at the shop | `0x20` (1 of 3) | `0x21` (2 of 3) |
+| `damage_taken` / `hurt_events` | 4 / 4 | 4 / 4 |
+| stop | arrival on `0x4A` (green) | bombs (red, `shop_need_20_have_2`) |
+
+### Five root causes, all measured off `scratch/probe_contact.py`
+
+- **The heart gate was reading one heart low.** `$066F`'s low nibble is whole
+  hearts *minus one* — `0x22` is 3/3 and the walk ended alive on `0x20`, which
+  is one heart, not zero — so `snap.filled_hearts` is `hearts - 1`.
+  `HUNT_MIN_HEARTS = 1` against it retired `0x58`, `0x59` **and** `0x49` after
+  a single chip hit, while Link still held two of three hearts, and then the
+  hop — which has no combat at all — walked him into two octoroks at 9px. New
+  `ram.whole_hearts` is the honest read; `filled_hearts` keeps the raw nibble
+  because the L1 chain is frame-perfect against it.
+- **Giving up is not a policy.** Below `min_hearts` the hunt now *guards*: it
+  still answers a body in the pad with the blade, still banks a heart off the
+  floor, and still spends the screen budget — it only stops chasing.
+- **The swing was on a blind cadence.** `frames % 8 < 3` idled up to five
+  frames per swing while a body closed ~1px a frame (`0x49` f=3653: ten frames
+  standing while slot 4 walked 16 → 9). Link's own object state (`$00AC`
+  slot 0) is non-zero for the whole animation, so the hunt now presses A the
+  frame the blade box fills and idles only while the swing runs — which is
+  also the release edge the ROM needs before the next swing.
+- **Two reactive layers, and the wrong one won.** `OverworldPathController`
+  runs its `ReactiveEvader` ahead of every hop rule, the hunt included. A red
+  octorok is one wooden hit, so stepping away from a body already inside the
+  blade box trades a kill for a frame of separation it gives straight back.
+  The evader now yields on `evade_yield_to_sword` (306 frames live) when
+  `ScreenHunter.striking` says the blade reaches.
+- **The hop table ends on the frame Link scrolls onto the destination**, so
+  `0x4A`'s six blue tektites — drop-table row 1, the richest bodies on the
+  corridor — were the one wave a hunting walk never saw.
+  `hunt_destination` + `ScreenHunter.take_destination` fight it on a budget of
+  its own (2400f / 420f per target, because tektites hop). 1 kill → 4.
+
+The shield is on and instrumented (`shield_frames` 46 = 41 holds + 5 turns).
+It is a *modifier* now, never a mode: it can hold a swing Link was going to
+make while already facing a shot, or spend a frame the hunt was going to idle,
+and it is silenced by a body that is **closing**, not by a flat pad. The flat
+36px pad is why three gatings were byte-identical last sitting — on this
+corridor something is always inside 36px, so the shield never got a frame.
+
+### `0x48` is not worth taking on three containers
+
+Four leevers at drop-table row 1 are 3.6R, more than the whole five-screen
+octorok corridor, and a there-and-back detour off `0x58` uses only hops
+`LEVEL2_PATH_HOPS` already proves. It **killed the run twice** (`fixG`,
+`fixH`, both mode 17): Link scrolls onto `0x48` at y≈205, *below* `HUNT_BOX`,
+so the hunt cannot fight there at all, and he arrives with one heart because
+`0x58` comes first. Reverted. Revisit after the `0x7B` / `0x2C` containers.
+
+Also reverted: skipping the `0x59` peahat wave. The arithmetic is sound
+(row 3, 0.081 R/kill, invulnerable in flight, and two of one run's four
+contacts) but the one live measurement came back worse on every axis
+(13 kills / best 5 / 5 resets / 0R). One deterministic trajectory cannot
+settle it, and a change that cannot be measured does not land.
+
+### The drop table is the real blocker, not the fighting
+
+`drops_by_state` (new, on `combat.CombatLedger`) separates "row 0 rolled no
+rupee" from "the rupee was there and the hunt walked past it". Live: **16
+kills produced three floor drops** — two 1-rupees and one heart, no 5-rupee.
+
+Across this sitting's runs that is **53 kills for 7 drops, ~13%**, against the
+31% / 59% `DropItemRates` rows `scratch/bomb_budget.py` bills the corridor at.
+At the measured rate one pass pays ~2R, and a *perfect* 26-kill streak on 28
+bodies would add 10R forced against ~3.5R random — **13.5R, not the 22R the
+budget table predicts.** One pass cannot buy the 4-pack. Chase the 13% before
+chasing more screens: either the table is being read wrong (class per enemy,
+`$052A` cycle) or something is eating drops before the census sees them.
+
+`0x78` is the one screen with a wave and no fight, and that is **correct, not
+a gap**. New `peak_prey_by_screen` (prey *inside* `HUNT_BOX`) against the
+ledger's `peak_live_by_screen` (live bodies anywhere) reads `live 0x78: 3`,
+**no `0x78` prey entry at all**: its three octoroks never enter the box. They
+sit on the west scroll column Link arrives through, and a chase there scrolls
+him back onto `0x77` under the hop table. The 0.62R stays on the floor.
+
+### Next
+
+1. The 13% drop rate against the ROM's 31%/59% tables. This is the errand.
+2. The ≥6-screen respawn loop is still untested, and is still the only way
+   past one pass — but on three containers a second lap is a death, not a
+   farm (see `0x48`). Hearts first.
+3. `shield_swings_held` is 0 live: the swing-hold half of the shield has
+   never fired. Either the corridor has no frame for it or the gate is wrong.
+
 ## This sitting (2026-09-15) — what 20R actually costs, and the rocks
 
 `scratch/bomb_budget.py` is the arithmetic (ROM rows + the live spawn table);

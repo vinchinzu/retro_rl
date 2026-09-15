@@ -191,7 +191,24 @@ class ZeldaSnapshot:
 
     @property
     def filled_hearts(self) -> int:
+        """``$066F`` low nibble. This is **whole hearts minus one**.
+
+        Kept as the raw nibble because the L1 chain is frame-perfect against
+        it. Use :attr:`whole_hearts` for anything that reasons about how much
+        life is left — ``filled_hearts <= 1`` reads "one heart" and means two.
+        """
         return int(self.health) & 0x0F
+
+    @property
+    def whole_hearts(self) -> int:
+        """Whole hearts Link is actually holding (``$066F`` low nibble + 1).
+
+        Symmetric with :attr:`heart_containers` (high nibble + 1): a full
+        3-container Link is ``0x22`` — three containers and three hearts — and
+        the live pre-L1 walk ended alive on ``0x20``, which is one heart, not
+        zero. ``health_is_full`` is ``lo == hi`` for the same reason.
+        """
+        return (int(self.health) & 0x0F) + 1
 
     @property
     def health_is_full(self) -> bool:

@@ -259,6 +259,9 @@ class OverworldPathController:
     # it never answers a frame the reactive layer wanted and never chases Link
     # back onto an arrival edge.
     hunt: bool = False
+    # Also hunt the screen the hop table ends on: the table finishes the frame
+    # Link scrolls onto it, so its wave is the one a hunting walk never sees.
+    hunt_destination: bool = False
     _hunter: ScreenHunter | None = field(default=None, repr=False)
     escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
     stall_escapes: int = 0
@@ -393,8 +396,17 @@ class OverworldPathController:
     # ------------------------------------------------------------------ #
 
     def _wants_post_hop(self) -> bool:
-        """True when hops complete should continue (door hunt / dungeon enter)."""
-        return self.require_dungeon or self.require_entrance_screen
+        """True when hops complete should continue (door hunt / dungeon enter).
+
+        ``hunt_destination`` counts: without it ``_on_hop_advanced`` finishes
+        the controller on the frame the table empties — the frame Link scrolls
+        onto the destination, so its wave is never fought.
+        """
+        return (
+            self.require_dungeon
+            or self.require_entrance_screen
+            or (self.hunt and self.hunt_destination)
+        )
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if self.require_dungeon and self.entry_level is not None:
@@ -447,7 +459,24 @@ class OverworldPathController:
             return self._swing(btn, "door_ax")
         return self._swing(self.door_dir, "door_hunt")
 
+    def destination_hunted(self, snap: ZeldaSnapshot) -> bool:
+        """True when the hunt has finished (or never wanted) this screen."""
+        if not self.hunt or not self.hunt_destination or self._hunter is None:
+            return True
+        return int(snap.screen) in self._hunter.done
+
+    def _final_hunt(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Clear the destination screen before the post-hop policy drives."""
+        if not self.hunt or not self.hunt_destination or self._hunter is None:
+            return None
+        if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
+            return None
+        return self._hunter.take_destination(snap, self.frames)
+
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        final = self._final_hunt(snap)
+        if final is not None:
+            return final
         if self._wants_post_hop():
             if "DOOR" in type(self.phase).__members__:
                 if self.phase.name == "HOP":
@@ -815,6 +844,19 @@ class OverworldPathController:
         if not self.evade or self._evader is None:
             return None
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
+            return None
+        if (
+            self.hunt
+            and self._hunter is not None
+            and self._hunter.striking(snap)
+        ):
+            # The blade already reaches: a step away trades a one-hit kill
+            # for a frame of separation, and the hunt's own ladder is
+            # answering this frame. Two reactive layers is one too many.
+            self.evade_reasons["evade_yield_to_sword"] = (
+                self.evade_reasons.get("evade_yield_to_sword", 0) + 1
+            )
+            self._evader.reset()
             return None
         hazards = tuple(t for t in self._tracked if t.is_hazard)
         stand = assess(

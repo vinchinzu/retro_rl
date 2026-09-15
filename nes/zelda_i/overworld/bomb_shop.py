@@ -83,10 +83,32 @@ def bomb_shop_restock() -> tuple[int, str]:
 
 
 def make_bomb_shop_controller(
-    *, hops: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS
+    *,
+    hops: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS,
+    restock_farm: bool = True,
 ) -> CaveShopBuyController:
-    """0x37 (or leftover) -> 0x4A cave -> bombs mid pedestal (20R). No poke."""
-    restock_screen, restock_direction = bomb_shop_restock()
+    """0x37 (or leftover) -> 0x4A cave -> bombs mid pedestal (20R). No poke.
+
+    ``restock_farm=False`` drops the 0x4A<->0x49 ``RupeeFarmController``, so a
+    shortfall fails closed with ``shop_need_20_have_N`` on the spot instead of
+    spending ``FARM_MAX_FRAMES`` in it. Overworld waves are one-shot at depth
+    1-2 (AGENTS.md), so that loop is a give-up detector, not a rupee supply —
+    on a leg where the walk is the farm, a stalled restock only hides how
+    short the walk came.
+    """
+    farm: RupeeFarmController | None = None
+    if restock_farm:
+        restock_screen, restock_direction = bomb_shop_restock()
+        farm = RupeeFarmController(
+            target_rupees=BOMB_SHOP_PRICE,
+            farm_screen=BOMB_SHOP_SCREEN,
+            restock_neighbor_screen=restock_screen,
+            restock_direction=restock_direction,
+            leftover_screen=BOMB_SHOP_SCREEN,
+            max_frames=FARM_MAX_FRAMES,
+            swing_period=SWORD_SWING_PERIOD,
+            swing_hold=SWORD_SWING_HOLD,
+        )
     return CaveShopBuyController(
         hops=hops,
         enter_cave=True,
@@ -111,14 +133,5 @@ def make_bomb_shop_controller(
         success_note="bombs_bought",
         north_gap_x=BOMB_SHOP_CAVE_X,
         north_gap_y_hi=BOMB_SHOP_NORTH_GAP_Y_HI,
-        farm=RupeeFarmController(
-            target_rupees=BOMB_SHOP_PRICE,
-            farm_screen=BOMB_SHOP_SCREEN,
-            restock_neighbor_screen=restock_screen,
-            restock_direction=restock_direction,
-            leftover_screen=BOMB_SHOP_SCREEN,
-            max_frames=FARM_MAX_FRAMES,
-            swing_period=SWORD_SWING_PERIOD,
-            swing_hold=SWORD_SWING_HOLD,
-        ),
+        farm=farm,
     )

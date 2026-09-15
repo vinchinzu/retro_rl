@@ -133,6 +133,20 @@ MANHANDLA_PROJECTILE_TYPE = 0x56  # also Gleeok fireball residual
 LYNEL_SWORD_SHOT_TYPE = 0x57
 MOBLIN_ARROW_OBJECT_TYPE = 0x5B
 GORIYA_BOOMERANG_OBJECT_TYPE = 0x5C  # L1 0x44 lab traces; HP 0/144; not 0x06
+# Every ObjType that travels in a line and cannot be killed. Lives here with
+# the type constants rather than in ``dungeon.behaviors`` so ``combat`` can
+# filter a wave census without importing the behaviour tables (which import
+# ``combat``). ``behaviors.PROJECTILE_TYPES`` re-exports it.
+PROJECTILE_TYPES = frozenset(
+    {
+        FIREBALL_OBJECT_TYPE,
+        MANHANDLA_PROJECTILE_TYPE,
+        GORIYA_BOOMERANG_OBJECT_TYPE,
+        ROCK_PROJECTILE_TYPE,
+        LYNEL_SWORD_SHOT_TYPE,
+        MOBLIN_ARROW_OBJECT_TYPE,
+    }
+)
 # Floor drops share ObjType 0x60 (live At4A 2026-09-11: tektite 0x0D → 0x60).
 # Item code is ObjState, not ObjType. Data Crystal 0x22/0x23/0x18 are item IDs;
 # 0x22 as ObjType is ghini_flying. Drops: hp 0 (flash 0x80), slot 1–10.

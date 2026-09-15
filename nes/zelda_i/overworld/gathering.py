@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_idle_action
 from zelda_i.combat import (
     BOMB_DROP_OBJECT_TYPE,
     BOMB_DROP_STATES,
@@ -37,6 +38,11 @@ from zelda_i.combat import (
     RUPEE_DROP_STATES,
 )
 from zelda_i.dungeon.ids import HEART_DROP_OBJECT_TYPE, RUPEE_DROP_OBJECT_TYPE
+from zelda_i.overworld.bomb_shop import (
+    BOMB_SHOP_MAX_FRAMES as BOMB_BUY_MAX_FRAMES,
+    make_bomb_shop_controller,
+)
+from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.common import scoop_floor_drop
 from zelda_i.overworld.heart_farm import owns_bombs
 from zelda_i.overworld.graph import SCREEN_START, ScreenHop, path_screens_from_hops
@@ -62,6 +68,16 @@ SHOP_P7_PRICE = BOMB_SHOP_PRICE
 SHOP_P7_WALK_MAX_FRAMES = BOMB_SHOP_WALK_MAX_FRAMES
 
 # Proven live route to 0x4A: 0x77 -> 0x78 -> 0x68 -> 0x58 -> 0x59 -> 0x49 -> 0x4A
+#
+# **0x48 is not on it, and its four leevers are not worth taking.** On paper
+# they are the second-richest screen in reach — drop-table row 1, 3.6R against
+# the whole five-screen octorok corridor's 2.9R — and a there-and-back detour
+# off 0x58 uses only hops ``LEVEL2_PATH_HOPS`` already proves. Live it killed
+# the run twice (2026-09-15 ``fixG``/``fixH``, both mode 17 with three
+# containers): Link scrolls onto 0x48 at y≈205, *below* ``HUNT_BOX``, so the
+# hunt cannot fight there at all, and he arrives with one heart left because
+# 0x58 comes first. Three containers is not enough health to buy a fifth
+# screen. Revisit it after the 0x7B / 0x2C heart containers, not before.
 PRE_L1_BOMB_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x78, "RIGHT", align_y=140),
     ScreenHop(0x68, "UP", align_x=48),
@@ -93,7 +109,7 @@ assert 0x6C not in _BOMB_SHOP_SCREENS
 
 
 def bomb_shop_arrived(snap: ZeldaSnapshot) -> bool:
-    """Play leftover on 0x4A with the sword."""
+    """Play leftover on 0x4A with the sword. Arrival, not the errand."""
     return (
         snap.level == 0
         and snap.mode == PLAY_MODE
@@ -106,15 +122,13 @@ shop_p7_arrived = bomb_shop_arrived
 
 
 def pre_l1_bomb_shop_success(snap: ZeldaSnapshot) -> bool:
-    """4.5.1: arrival on 0x4A bomb shop screen with sword (or bombs acquired)."""
-    return (
-        snap.level == 0
-        and snap.has_sword
-        and (
-            (snap.screen == BOMB_SHOP_SCREEN and snap.mode in (PLAY_MODE, 11))
-            or int(snap.bombs) >= 1
-        )
-    )
+    """Bombs in inventory, read from ``ADDR_BOMBS``. Never a poke.
+
+    Arrival on 0x4A used to be the stop. It is not the errand: the errand is
+    the 4-pack, and a stop that greens on arrival cannot tell a walk that
+    banked 20R from one that banked one rupee.
+    """
+    return snap.level == 0 and snap.has_sword and int(snap.bombs) >= 1
 
 
 @dataclass
@@ -137,12 +151,25 @@ class ShopP7WalkController(OverworldPathController):
     # this leg is what the wave drops: crossing 0x78/0x68/0x58/0x59/0x49 on one
     # lane arrived at the shop with 0-1 rupees against a 20R price.
     hunt: bool = True
+    # 0x4A's own six blue tektites are drop-table row 1 (0.891 R/kill): 5.3R
+    # of the corridor's 8.4R from 6 of its 28 bodies, and the hop table ends
+    # the frame Link scrolls onto them. Without this the walk's best screen is
+    # the one screen it never fights.
+    hunt_destination: bool = True
     max_frames: int = BOMB_SHOP_WALK_MAX_FRAMES
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
-        return bomb_shop_arrived(snap)
+        return bomb_shop_arrived(snap) and self.destination_hunted(snap)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        final = self._final_hunt(snap)
+        if final is not None:
+            return final
+        if not self.destination_hunted(snap):
+            # The hunt is between bodies (settle / spawn wait). Idling here is
+            # cheap and bounded: it clears on ``HUNT_SETTLE_FRAMES`` or retires
+            # on the screen budget, and there is no next hop to drive anyway.
+            return FrameAction(nes_idle_action(), "bomb_shop_hunt_settle")
         if bomb_shop_arrived(snap):
             return self._finish("shop_p7_arrived")
         return self._fail("hops_complete_not_bomb_shop")
@@ -199,15 +226,28 @@ class ShopP7WalkController(OverworldPathController):
 
 
 def make_shop_p7_walk_controller() -> OverworldPathController:
-    """0x77 leftover -> 0x4A play leftover. No door_x / cave enter."""
+    """0x77 leftover -> 0x4A play leftover, 0x4A hunted. No door_x / cave enter."""
     return ShopP7WalkController()
 
 
+def make_pre_l1_bomb_buy_controller() -> CaveShopBuyController:
+    """0x4A play leftover -> cave mouth (176,77) -> mid pedestal, bombs 20R.
+
+    No hops: the walk stage already stands on 0x4A, so the buy engine starts
+    in ``_after_hops``. No restock farm either — overworld waves are one-shot
+    at depth 1-2, so the 0x4A<->0x49 loop is a give-up detector rather than a
+    rupee supply, and 36,000 frames of it would only hide how short the walk
+    came. Short of 20R this fails closed with ``shop_need_20_have_N``.
+    """
+    return make_bomb_shop_controller(hops=(), restock_farm=False)
+
+
 def pre_l1_stages() -> tuple[tuple[str, object, int], ...]:
-    """Dedicated spine hop: wooden sword, then the 0x6F walk."""
+    """Dedicated spine hop: wooden sword, the hunting walk, then the 4-pack."""
     return (
         ("sword_cave", SwordCaveController(), SWORD_MAX),
-        ("shop_p7_walk", make_shop_p7_walk_controller(), SHOP_P7_WALK_MAX_FRAMES),
+        ("bomb_walk", make_shop_p7_walk_controller(), BOMB_SHOP_WALK_MAX_FRAMES),
+        ("bomb_buy", make_pre_l1_bomb_buy_controller(), BOMB_BUY_MAX_FRAMES),
     )
 
 
@@ -226,10 +266,12 @@ __all__ = [
     "SHOP_P7_SCREEN",
     "SHOP_P7_WALK_MAX_FRAMES",
     "SOURCE_HYPOTHESIS",
+    "BOMB_BUY_MAX_FRAMES",
     "SWORD_MAX",
     "ShopP7WalkController",
     "bomb_shop_arrived",
     "bomb_shop_screens",
+    "make_pre_l1_bomb_buy_controller",
     "make_shop_p7_walk_controller",
     "pre_l1_bomb_shop_success",
     "pre_l1_stages",

@@ -19,6 +19,7 @@ from zelda_i.overworld.gathering import (
     shop_p7_screens,
 )
 from zelda_i.overworld.graph import (
+    LEVEL2_PATH_HOPS,
     SCREEN_LABELS,
     SCREEN_START,
     ScreenHop,
@@ -33,6 +34,7 @@ from zelda_i.overworld.locations import (
     OPEN_OPEN,
     location,
 )
+from zelda_i.overworld.hunt import ScreenHunter
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES, SwordCaveController
 from zelda_i.ram import CAVE_MODE, PLAY_MODE, read_snapshot
@@ -139,6 +141,9 @@ def test_shop_bomb_path_screens_start_77_end_4a() -> None:
     assert screens[0] == SCREEN_START == 0x77
     assert screens[-1] == SHOP_P7_SCREEN == 0x4A
     assert screens == (0x77, 0x78, 0x68, 0x58, 0x59, 0x49, 0x4A)
+    # 0x48's leevers are richer than anything on this list and still off
+    # it: the live detour died twice on three containers (gathering.py).
+    assert 0x48 not in screens
 
 
 def test_shop_bomb_path_bypasses_traps_and_dead_corridors() -> None:
@@ -160,6 +165,8 @@ def test_shop_bomb_hops_match_level2_prefix() -> None:
         ScreenHop(0x49, "UP", align_x=112),
         ScreenHop(0x4A, "RIGHT", align_y=141),
     )
+    # The tail is the L2 prefix read forwards from 0x58.
+    assert SHOP_P7_HOPS[3:] == LEVEL2_PATH_HOPS[3:]
     assert SOURCE_HYPOTHESIS is True
     assert DEAD_68_EAST_Y141 is True  # 0x68 east is dead
     assert DEAD_6C_EAST_BUSH is True  # 0x6C east is dead
@@ -168,7 +175,10 @@ def test_shop_bomb_hops_match_level2_prefix() -> None:
 def test_shop_p7_arrived_only_on_play_4a_with_sword() -> None:
     play = read_snapshot(_shop_p7_ram())
     assert shop_p7_arrived(play)
-    assert pre_l1_bomb_shop_success(play)
+    # Arrival is not the errand: the spine stop is the 4-pack, so a walk that
+    # reached 0x4A with one rupee is red, not green.
+    assert not pre_l1_bomb_shop_success(play)
+    assert pre_l1_bomb_shop_success(read_snapshot(_shop_p7_ram(bombs=4)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(mode=CAVE_MODE)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(screen=0x68)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(sword=0)))
@@ -189,7 +199,7 @@ def test_shop_p7_walk_controller_is_walk_only_with_scoop_knobs() -> None:
     assert ctl.door_screen is None
     assert not ctl.require_dungeon
     play = read_snapshot(_shop_p7_ram())
-    assert ctl._at_stop(play)
+    assert ctl._at_stop(play)  # no hunter yet: nothing to wait for
     cave = read_snapshot(_shop_p7_ram(mode=CAVE_MODE))
     assert not ctl._at_stop(cave)
     hop4 = SHOP_P7_HOPS[4]
@@ -202,18 +212,38 @@ def test_shop_p7_walk_controller_is_walk_only_with_scoop_knobs() -> None:
     assert hop5.align_y == 141
 
 
-def test_pre_l1_stages_are_sword_then_walk() -> None:
+def test_pre_l1_stages_are_sword_then_walk_then_buy() -> None:
     stages = pre_l1_stages()
-    assert len(stages) == 2
+    assert len(stages) == 3
     sword_name, sword_ctl, sword_max = stages[0]
     walk_name, walk_ctl, walk_max = stages[1]
+    buy_name, buy_ctl, _ = stages[2]
     assert "sword" in sword_name
-    assert "shop" in walk_name or "walk" in walk_name
+    assert "walk" in walk_name
     assert isinstance(sword_ctl, SwordCaveController)
     assert isinstance(walk_ctl, OverworldPathController)
     assert sword_max == SWORD_MAX == SEGMENT_MAX_FRAMES
     assert walk_ctl.hops == SHOP_P7_HOPS
     assert walk_max >= 30000
+    # The buy starts from the walk's own leftover on 0x4A, so it has no hops
+    # of its own, and no restock farm to hide a shortfall in.
+    assert buy_name == "bomb_buy"
+    assert buy_ctl.hops == ()
+    assert buy_ctl.shop_screen == 0x4A
+    assert buy_ctl.price == 20
+    assert buy_ctl.farm is None
+
+
+def test_the_walk_does_not_stop_until_the_destination_wave_is_fought() -> None:
+    """0x4A's six blue tektites are row 1: 5.3R of the corridor's 8.4R."""
+    ctl = make_shop_p7_walk_controller()
+    assert ctl.hunt is True and ctl.hunt_destination is True
+    arrived = read_snapshot(_shop_p7_ram())
+    assert shop_p7_arrived(arrived)
+    ctl._hunter = ScreenHunter()
+    assert not ctl._at_stop(arrived)
+    ctl._hunter.done.add(0x4A)
+    assert ctl._at_stop(arrived)
 
 
 def test_shop_p7_catalog_row_is_open_arrows_family() -> None:

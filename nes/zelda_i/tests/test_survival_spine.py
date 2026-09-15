@@ -100,7 +100,7 @@ def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
     gather_names = [name for name, _, _ in pre_l1_stages()]
     tf_names = [name for name, _, _ in level1_survival_tf_stages()]
     assert gather_names[0] == "sword_cave"
-    assert gather_names[-1] == "shop_p7_walk"
+    assert gather_names[1:] == ["bomb_walk", "bomb_buy"]
     assert not set(gather_names) & set(tf_names)
     continue_src = inspect.getsource(_continue_level1_spine)
     assert "_L1_DEDICATED_HOPS" in continue_src
