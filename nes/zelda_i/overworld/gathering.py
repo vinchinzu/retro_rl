@@ -119,7 +119,12 @@ def pre_l1_bomb_shop_success(snap: ZeldaSnapshot) -> bool:
 
 @dataclass
 class ShopP7WalkController(OverworldPathController):
-    """0x77 leftover -> 0x4A play leftover. Walk only; cave mouth is (176,77)."""
+    """0x77 leftover -> 0x4A play leftover. Walk only; cave mouth is (176,77).
+
+    Hunts every screen on the way (``overworld.hunt.ScreenHunter``): the walk
+    is the rupee farm. ``need_rupees=0`` keeps the old restock-farm loops off —
+    overworld waves are one-shot, so a restock stall was never a rupee supply.
+    """
 
     hops: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS
     require_sword: bool = True
@@ -128,6 +133,10 @@ class ShopP7WalkController(OverworldPathController):
     max_farm_attempts: int = 0  # transit farming only; no restock stalls
     evade: bool = True
     occupied_lane: bool = True  # LEFT/RIGHT peel; path.py does not peel UP/DOWN
+    # Clear each screen on the way. The errand is money and the only money on
+    # this leg is what the wave drops: crossing 0x78/0x68/0x58/0x59/0x49 on one
+    # lane arrived at the shop with 0-1 rupees against a 20R price.
+    hunt: bool = True
     max_frames: int = BOMB_SHOP_WALK_MAX_FRAMES
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
@@ -170,7 +179,10 @@ class ShopP7WalkController(OverworldPathController):
             travel_dir=hop.direction,
             radius=self.scoop_radius,
             reason="scoop_rupee",
-            want=snap.rupees < BOMB_SHOP_PRICE,
+            # Not ``< BOMB_SHOP_PRICE``: the bombs are the first purchase on a
+            # list of fourteen, and a rupee left on the floor at 20 is one the
+            # candle at 0x0C still needs.
+            want=True,
         )
         if rupee is not None:
             return rupee

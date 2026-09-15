@@ -103,10 +103,14 @@ def test_bomb_scoop_returns_once_link_owns_bombs() -> None:
     assert list(act.action) == list(nes_action("RIGHT"))
 
 
-def test_rupee_scoop_stops_at_the_shop_price() -> None:
+def test_rupee_scoop_does_not_stop_at_the_shop_price() -> None:
+    """Bombs are purchase 1 of 14. A rupee left on the floor at 20 is one the
+    candle at 0x0C still needs, so the scoop is no longer price-gated."""
     ctl = ShopP7WalkController()
     snap = _snap(rupees=BOMB_SHOP_PRICE, bombs=0, objects=(_rupee(),))
-    assert ctl._rupee_scoop(snap, HOP) is None
+    act = ctl._rupee_scoop(snap, HOP)
+    assert act is not None
+    assert act.reason == "scoop_rupee"
 
 
 def test_heart_still_outranks_every_other_drop_when_hurt() -> None:

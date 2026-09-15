@@ -106,3 +106,59 @@ boots power-on, clears sword cave on `0x77`, then walks to bomb shop on `0x4A`.
      causing `farm_wait` oscillation without screen scroll.
 - Cave entry on `0x4A` (`(176,77)`) is verified and reached in 3031 frames total from power-on.
   Next action: bank 20R on the walk / via unsticking rupee farm, then buy bombs in cave.
+
+## This sitting (2026-09-14) — the walk is the farm (kills are a metric)
+
+`--through pre-l1` still ends on `0x4A`, but it now clears every screen on the
+way instead of crossing it. New module `overworld/hunt.py` (`ScreenHunter`),
+wired by `OverworldPathController.hunt` (off by default, on for
+`ShopP7WalkController`). The rupee scoop is no longer gated at `BOMB_SHOP_PRICE`
+— bombs are purchase 1 of 14.
+
+### Measured, 1/1 green (`prel1_hunt7`)
+
+| | |
+|---|---|
+| result | `ok=True room=0x4a`, walk stage 4010f (was **1924f** unhunted), end 4958f |
+| kills | **14** slot census / **13** ROM counters |
+| per screen | `0x68` 3, `0x58` 4, `0x59` 1, `0x49` 6 |
+| peak live per screen | `0x78` 3, `0x68` 4, `0x58` 4, `0x59` 5, `0x49` 6 |
+| damage | `hits_taken` 0 **and** `damage_taken` 0 (the partial-heart census) |
+| rupees | **0** |
+| screens | 4 cleared, `0x59` retired on its budget (2 slots skipped) |
+
+M5 Clean re-measured after the change: `--natural-entry --trials 2` 2/2,
+TF `0x01`, **18909f** both trials. Unchanged.
+
+### The corridor does not pay
+
+Fourteen kills produced **two** floor drops in the whole walk — a fairy on
+`0x58`, a heart on `0x49` — and **no rupee**. Killing everything between
+`0x77` and `0x4A` does not fund the 20R bombs. It is not a pickup bug: every
+`0x60` slot that appeared was logged and those two are all there were.
+
+The forced drop is the other rupee on this corridor (`$0050` forces a 5-rupee
+at 10 kills, `$0627` a fairy at 16) and it never fires: **streak_best 4,
+streak_resets 6**. `ram.py` says a hit clears the counters, but this walk took
+**zero** damage by both censuses and still reset six times, so something else
+clears them. The two counters also move in lockstep, so they are one number.
+That is the next measurement, and `hunt.report()` now carries it.
+
+### Two traps this sitting paid for
+
+- **A hop cannot leave a pocket.** `align_and_push` holds one direction and
+  `unstick_wiggle` waits forever once its wiggle is spent. Hunting walks Link
+  off the lane, and two runs ended wedged at `(56,125)` — one on `0x49`, one on
+  `0x58` — burning 27,809 and ~28,000 frames on `unstick_wait` / `band_down`.
+  Fixed with `_stall_escape`: an occupancy walk toward the hop's exit on the
+  grid the chase just learned. It is **started by the stall** (`stuck >
+  stuck_threshold`) and only where `hunt` is on.
+- **A stall escape must be committed.** Consulting it per frame is useless:
+  `stuck` resets the instant it moves Link a pixel, which hands the frame back
+  to the rule that wedged him. Measured 27,809 `band_down` against 531
+  `hop3_escape`, Link never leaving the pocket. It now owns the screen until
+  the hop scrolls or 600 frames pass.
+
+- `hits_taken` is blind to half-heart damage: it watches `$066F` (whole
+  hearts) and a chip hit lands in `$0670`. `hunt.report()["damage_taken"]`
+  watches both. Do not read `hits_taken=0` as "took no damage".

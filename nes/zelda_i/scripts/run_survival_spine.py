@@ -30,6 +30,19 @@ from zelda_i.spine.survival import (
 )
 
 
+def _spine_kills(payload: dict) -> int:
+    """Kills banked across every hunting stage of this trial.
+
+    The census lives on the stage controller (``overworld.hunt.ScreenHunter``),
+    so a stage that does not hunt contributes nothing rather than a zero that
+    reads like a measurement.
+    """
+    return sum(
+        int((stage.get("controller") or {}).get("kills", 0))
+        for stage in payload.get("stages", [])
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--through", choices=SPINE_THROUGH, default="level1")
@@ -133,11 +146,12 @@ def main(argv: list[str] | None = None) -> int:
         write_json_report(RECORDINGS_DIR / f"{tag}.json", payload)
         results.append(payload)
         video = payload.get("video") or {}
+        kills = _spine_kills(payload)
         print(
             f"trial{trial}: ok={payload['ok']} failed={payload.get('failed_stage')} "
             f"tf={payload['final']['triforce']} room=0x{payload['final']['room']:02x} "
             f"keys={payload['final']['keys']} bombs={payload['final']['bombs']} "
-            f"rupees={payload['final']['rupees']} "
+            f"rupees={payload['final']['rupees']} kills={kills} "
             f"set_state={payload.get('set_state_count')} "
             f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
