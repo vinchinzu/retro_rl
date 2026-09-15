@@ -19,13 +19,16 @@ are not Clean STATUS. Planner owns STATUS. Clean M5 =
 level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
 Not Clean STATUS. M5 Clean is still L1 only.
 
-**M5 Clean is GREEN as of 2026-09-12** — measured, not inherited.
+**M5 Clean is GREEN as of 2026-09-14 at 18909f** — measured, not inherited.
 `run_level1_complete --natural-entry --trials 2` both `ok=True`,
-`triforce=0x01`, end 19416, ~27s. That run is 3 containers and the wooden
-sword. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
+`triforce=0x01`, end 18909, ~26s. That run is 3 containers and the wooden
+sword. **19416f is dead**: it was the pre-`6ca2a9a0` tree. `6ca2a9a0` landed
+the `shortest_path` goal guard on unit tests alone and took M5 red (death in
+0x23 at f1453, then a 9000f collect stall in 0x45) — re-measure the live
+oracle after *any* change under the walker, never the suite alone. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
 ([`docs/PRE_L1.md`](docs/PRE_L1.md)): bombs at 0x6F (bypass 0x79), two bomb
 hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
-Do not overwrite the 19416f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
+Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.
 
@@ -87,7 +90,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-vi
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2-entry --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7-bait-shop --no-video --trials 1
 
-# Clean M5 (do not overwrite) — 2/2 TF 0x01 @ 19416f, see Immediate goal
+# Clean M5 (do not overwrite) — 2/2 TF 0x01 @ 18909f, see Immediate goal
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 
 # Clean ladder: tip, next open hop, blockers grouped by root cause
@@ -153,7 +156,7 @@ scratch — not an AGENTS novel.
   to `grid.nearest_open` and counts it (`retargets`); `measured_walker`
   defaults it on. **Off by default, and keep it that way for anything L1
   touches** — retargeting shifts arrival frames and the L1 chain is
-  frame-perfect: turning it on globally took Clean M5 from 19416f/TF `0x01`
+  frame-perfect: turning it on globally took Clean M5 from a green TF `0x01`
   to a red `aquamentus_heart` at 18830f. L2 `0x6e` aimed its key-door band
   walk at `(120,113)`, which is inside a diamond: 3999 of 4000 frames in
   `band_wait` without moving a pixel. Check a hand-written waypoint against

@@ -141,10 +141,21 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         rung=Rung.SPINE_GREEN,
         blocker=Blocker.NONE,
         room="L1 0x36",
-        pose="triforce=0x01 end 19416",
+        pose="triforce=0x01 end 18909",
         pin="power-on (no pin)",
         residual="docs/tasks/rr-npv-reactive-combat.md",
         note=(
+            "2026-09-14 (later): 2/2 natural-entry, triforce=0x01, "
+            "18909f. 6ca2a9a0 landed the shortest_path goal guard "
+            "(`and` -> `or`) on unit tests alone and took M5 red: Link "
+            "died in 0x23 at f1453 to a goriya body while parrying in "
+            "place, because a blocked chase goal now correctly returns "
+            "no path and _engage stood on the None. Fixed by retargeting "
+            "the chase goal and the collect waypoint to grid.nearest_open "
+            "locally (not the walker-wide retarget_blocked_goal), and by "
+            "counting collect_skip_unreachable toward the one-lap guard "
+            "(0x45 burned its whole 9000f budget alternating two skips). "
+            "18909f is the new oracle; 19416f was the pre-6ca2a9a0 tree. "
             "2026-09-14: re-verified 2/2 natural-entry, triforce=0x01, "
             "19416f — the same frame count as 2026-09-12, with the "
             "entry-route stall guard, reward nudge and engine reason "

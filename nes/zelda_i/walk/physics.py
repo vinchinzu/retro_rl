@@ -373,10 +373,13 @@ class OccupancyWalker:
             return direction
 
         # A goal inside geometry has no path by definition, and standing is
-        # the one answer that is never useful — but retargeting shifts the
+        # the one answer that is never useful — but retargeting *here*
+        # retargets route, collect and chase goals alike, which shifts the
         # frame at which a walk arrives, and the L1 chain is frame-perfect
-        # (turning this on globally moved Clean M5 from 19416f/TF 0x01 to a
-        # red aquamentus_heart at 18830f). Opt in per walker.
+        # (turning this on globally took Clean M5 to a red aquamentus_heart
+        # at 18830f). Opt in per walker. The two goals that genuinely need it
+        # retarget themselves, at the call site: ``engine._chase_goal`` and
+        # the collect-waypoint branch of ``engine._collect_policy``.
         if self.retarget_blocked_goal and not self.grid.passable(*dest):
             open_dest = self.grid.nearest_open(*dest)
             if open_dest is not None and open_dest != dest:

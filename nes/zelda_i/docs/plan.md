@@ -12,7 +12,7 @@ arrives at 0x45 on half a heart. Before the next L1 re-measure, run
 (path-checked in [`PRE_L1.md`](PRE_L1.md)): bombs `0x6F` without walking
 `0x79`, hearts `0x7B`+`0x2C`, candle `0x0C`, White Sword around Lost Hills,
 burn heart `0x47`, 90R shield, Blue Ring, *then* the 0x37 mouth. Do not
-overwrite the 19416f M5 claim.
+overwrite the 18909f M5 claim.
 
 Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
