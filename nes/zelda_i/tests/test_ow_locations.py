@@ -22,6 +22,11 @@ from zelda_i.overworld.locations import (
     CAVE_SHOP_SPECIAL,
     CAVE_WHITE_SWORD,
     CAVE_WOOD_SWORD,
+    HEART_H5_NEAREST_SPINE_HOP_DIR,
+    HEART_H5_NEAREST_SPINE_SCREEN,
+    HEART_H5_POCKET_X,
+    HEART_H5_POCKET_Y,
+    HEART_H5_SCREEN,
     Q1_VANILLA,
     bomb_farms,
     decode_ow_attrs,
@@ -38,6 +43,7 @@ from zelda_i.overworld.locations import (
     restock_for,
     rupee_farms,
     spawns_from_rom,
+    worth_heart_farm,
     worth_rupee_farm,
 )
 from zelda_i.ram import (
@@ -176,6 +182,32 @@ def test_worth_rupee_farm_route_screens() -> None:
     assert k5 is not None
     assert k5.prey == "tektite_blue"
     assert k5.drop_group == "C"
+
+
+def test_heart_h5_pocket_is_west_of_l2_prefix() -> None:
+    """0x47 burn heart: pocket measured, burn unverified, candle not on spine."""
+    loc = location("heart_h5")
+    assert loc is not None
+    assert loc.screen == HEART_H5_SCREEN == 0x47
+    assert loc.open == "burn"
+    assert HEART_H5_NEAREST_SPINE_SCREEN == 0x48
+    assert HEART_H5_NEAREST_SPINE_HOP_DIR == "LEFT"
+    assert HEART_H5_POCKET_X == (149, 184)
+    assert HEART_H5_POCKET_Y == (133, 157)
+
+
+def test_worth_heart_farm_skips_leevers_keeps_4a() -> None:
+    """Heart-farm hook must not chase 0x48 leevers; 0x4A tektites stay legal."""
+    assert farm_at(0x48) is not None and farm_at(0x48).prey == "leever"
+    assert worth_heart_farm(0x48) is None
+    assert worth_rupee_farm(0x48) is not None
+    k5 = worth_heart_farm(0x4A)
+    assert k5 is not None
+    assert k5.prey == "tektite_blue"
+    assert worth_heart_farm(0x78) is not None
+    assert worth_heart_farm(0x59) is None  # peahat on the L2 door path
+    assert farm_at(0x58) is not None and farm_at(0x58).prey.startswith("group_")
+    assert worth_heart_farm(0x58) is None
 
 
 def test_lynel_screens_are_not_worth_rupee_farm() -> None:

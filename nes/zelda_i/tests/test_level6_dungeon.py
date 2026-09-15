@@ -101,6 +101,24 @@ def test_east_key_hunts_center_key_when_cleared() -> None:
     assert list(action.action) == list(nes_action("RIGHT"))
 
 
+def test_east_key_reason_histogram_records_without_steering() -> None:
+    """The trace must be records-only: same action, plus a reason count.
+
+    rr-d6v lost a trial to a 12000-frame stage whose only leftover was a
+    tile. The histogram names the rule that held the frames.
+    """
+    from zelda_i.level6.wizzrobe import make_east_key_controller
+
+    ram = _ram(room=ROOM_L6_EAST_KEY, x=118, y=141, wizzrobes=0)
+    plain = make_east_key_controller()
+    traced = make_east_key_controller()
+    snap = read_snapshot(ram)
+    assert list(traced.step(snap).action) == list(plain.step(snap).action)
+    report = traced.report()
+    assert report["reason_counts"] == {"wizzrobe_key": 1}
+    assert report["tail"] and "(118,141)" in report["tail"][0]
+
+
 def test_east_key_leaves_west_block_pocket() -> None:
     """Clean leftover (64,117): RIGHT off the (64,112) block, not UP/DOWN."""
     from zelda_i.level6.wizzrobe import make_east_key_controller

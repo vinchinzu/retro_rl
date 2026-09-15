@@ -13,9 +13,19 @@ from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import (
+    direction_to_facing,
+    in_sword_hitbox,
+    overworld_threat_objects,
+)
+from zelda_i.dungeon.behaviors import is_projectile
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
+from zelda_i.dungeon.threat import MIN_DODGE_BODY, ReactiveEvader, assess, dodgeable
+from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.overworld.common import (
     EDGE_EAST_X,
+    EDGE_NORTH_Y,
+    EDGE_SOUTH_Y,
     EDGE_WEST_X,
     HEART_FAIRY_DROP_STATES,
     HEART_FAIRY_DROP_TYPES,
@@ -42,10 +52,10 @@ from zelda_i.overworld.graph import (
     ScreenHop,
     is_5c_maze_hop,
 )
-from zelda_i.overworld.locations import farm_at, restock_for, worth_rupee_farm
+from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker, WALK_DELTA
 
 DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
@@ -56,11 +66,90 @@ _OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 # Dungeon OccupancyGrid xmax=216 traps OW east-mouth leftover x≈240.
 _OW_OCC_BOUNDS = (0, 255, 0, 239)
 _ALIGN_X_TOL = 5
+# Evade box. NOT ``_OW_OCC_BOUNDS``: the walkable band is the playfield
+# inside the four scroll lines (the HUD owns y<62), and a step past one of
+# them does not bump a wall — it changes screen under the hop table. One
+# pixel inside each EDGE_* keeps every candidate step on this screen.
+_EVADE_BOUNDS = (
+    EDGE_WEST_X + 1,
+    EDGE_EAST_X - 1,
+    EDGE_NORTH_Y + 1,
+    EDGE_SOUTH_Y - 1,
+)
+# ``_can_move`` only looks one pixel ahead, but a committed escape runs for
+# ``commit_frames`` at ~1 px/frame. Ban a direction this far from its scroll
+# line so a 10-frame commit cannot walk the screen out from under the hop.
+_EVADE_EDGE_MARGIN = 12
+# A body inside the contact pad is normally the sword's problem, not the
+# evader's: an unconditional in-pad peel turned an open screen into a 1 px
+# shuffle beside a body that kept chasing (measured 4 hits, 2x the frames,
+# and a death two screens off-route). The one case that is the evader's is
+# a dead stand — ``stuck`` identical for this long means no hop rule is
+# moving Link off whatever he is standing on.
+_WEDGE_STUCK_FRAMES = 24
+_OCCUPIED_LANE_STAND_CAP = 8  # then yield the hop; a long stand timed out 0x48
+# Frames of perpendicular walk allowed before the parallel lane is written off.
+# A lane sits ~``MIN_DODGE_BODY`` px off the blocked one and Link walks ~1
+# px/frame, so a peel that pays off lands inside ~16 frames; 3x that is slack
+# for knockback and a body that drifts. Past it, fall back to the old ladder
+# (travel on Link's own row if it is clear, then stand, then yield the hop) so
+# a body camping the hop lane cannot hold the hop forever.
+_OCCUPIED_LANE_STEER_CAP = 48
 
 
 def _ow_hop_grid() -> OccupancyGrid:
     xmin, xmax, ymin, ymax = _OW_OCC_BOUNDS
     return OccupancyGrid(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+
+def _pad_hits(x: int, y: int, hazards: tuple[TrackedObject, ...]) -> bool:
+    pad = MIN_DODGE_BODY
+    return any(abs(int(h.x) - x) < pad and abs(int(h.y) - y) < pad for h in hazards)
+
+
+def _lane_blocked(x: int, y: int, direction: str, hazards: tuple[TrackedObject, ...]) -> bool:
+    dx, dy = WALK_DELTA.get(direction, (0, 0))
+    return any(_pad_hits(x + dx * t, y + dy * t, hazards) for t in range(1, MIN_DODGE_BODY + 1))
+
+
+def _parallel_lane(
+    x: int,
+    y: int,
+    direction: str,
+    hazards: tuple[TrackedObject, ...],
+    banned: set[str],
+    *,
+    toward: tuple[int, int] | None = None,
+) -> tuple[int, int] | None:
+    """Nearest cell on a lane parallel to ``direction`` whose travel is clear.
+
+    ``(x, y)`` is the lane the hop *wants* (``align_x`` / ``align_y`` when the
+    hop names one), not necessarily where Link stands: the answer is then a
+    measured offset from the hop lane instead of whatever row Link drifted
+    onto. ``toward`` is Link's own pose and only breaks the side tie, so a
+    peel prefers the side he is already on; every candidate is still rejected
+    when it sits in a body pad or its travel cells do.
+    """
+    xmin, xmax, ymin, ymax = _EVADE_BOUNDS
+    near = min(hazards, key=lambda h: abs(int(h.x) - x) + abs(int(h.y) - y))
+    if direction in ("LEFT", "RIGHT"):
+        perp = ("DOWN", "UP") if y > int(near.y) else ("UP", "DOWN")
+        if toward is not None and int(toward[1]) != y:
+            perp = ("DOWN", "UP") if int(toward[1]) > y else ("UP", "DOWN")
+    else:
+        perp = ("RIGHT", "LEFT") if x > int(near.x) else ("LEFT", "RIGHT")
+        if toward is not None and int(toward[0]) != x:
+            perp = ("RIGHT", "LEFT") if int(toward[0]) > x else ("LEFT", "RIGHT")
+    for dist in range(1, MIN_DODGE_BODY * 2 + 1):
+        for name in perp:
+            if name in banned:
+                continue
+            px, py = WALK_DELTA[name]
+            nx, ny = x + px * dist, y + py * dist
+            if xmin <= nx <= xmax and ymin <= ny <= ymax:
+                if not _pad_hits(nx, ny, hazards) and not _lane_blocked(nx, ny, direction, hazards):
+                    return (nx, ny)
+    return None
 
 
 class PathNavPhase(Enum):
@@ -142,6 +231,21 @@ class OverworldPathController:
     _hop_walker: OccupancyWalker | None = field(default=None, repr=False)
     _hop_walker_key: tuple[int, int] | None = field(default=None, repr=False)
 
+    # Reactive threat step (``CombatTuning.evade`` shape). Off by default: a
+    # repo-wide overworld evade timed out ``exit42``, and every hop table but
+    # Level 2's is measured without one. On, it runs *ahead* of the hop rules.
+    evade: bool = False
+    evades: int = 0
+    parries: int = 0
+    evade_reasons: dict[str, int] = field(default_factory=dict)
+    _tracker: ObjectTracker | None = field(default=None, repr=False)
+    _evader: ReactiveEvader | None = field(default=None, repr=False)
+    _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
+    _evade_room: tuple[int, int] | None = field(default=None, repr=False)
+    occupied_lane: bool = False  # L2 on; travel cell in a body pad → parallel lane
+    _lane_stand: int = 0
+    _lane_steer: int = 0
+
     # Default hop-complete stop extras
     require_sword: bool = False
     require_triforce_bit: int | None = None
@@ -208,6 +312,15 @@ class OverworldPathController:
         self._rupee_farm = None
         self._hop_walker = None
         self._hop_walker_key = None
+        self.evades = 0
+        self.parries = 0
+        self.evade_reasons = {}
+        self._tracker = None
+        self._evader = None
+        self._tracked = ()
+        self._evade_room = None
+        self._lane_stand = 0
+        self._lane_steer = 0
         self.success = False
         self.notes.clear()
         self.maze_wp_index = 0
@@ -236,6 +349,10 @@ class OverworldPathController:
             "rupee_farm_attempts": self.rupee_farm_attempts,
             "need_rupees": self.need_rupees,
         }
+        if self.evade:
+            out["evades"] = self.evades
+            out["parries"] = self.parries
+            out["evade_reasons"] = dict(self.evade_reasons)
         if self.maze_waypoints:
             out["maze_wp_index"] = self.maze_wp_index
         if self.require_dungeon or self.require_entrance_screen:
@@ -432,7 +549,7 @@ class OverworldPathController:
             or snap.level != 0
             or snap.filled_hearts >= self.farm_below_hearts
             or self.farm_attempts >= self.max_farm_attempts
-            or farm_at(int(snap.screen)) is None
+            or worth_heart_farm(int(snap.screen)) is None
         ):
             return None
         self.farm_attempts += 1
@@ -600,6 +717,225 @@ class OverworldPathController:
             hold=self.swing_hold,
         )
 
+    # ------------------------------------------------------------------ #
+    # Reactive threat step (opt-in)
+    # ------------------------------------------------------------------ #
+
+    def _observe_threats(self, snap: ZeldaSnapshot) -> None:
+        """Feed the tracker every frame.
+
+        Velocity is a mean over a history window, so a tracker that is only
+        observed on the frames we intend to evade reads every body as still.
+        """
+        if self._tracker is None:
+            self._tracker = ObjectTracker()
+            self._evader = ReactiveEvader(bounds=_EVADE_BOUNDS)
+        self._tracked = self._tracker.observe(snap)
+        room = (int(snap.level), int(snap.screen))
+        if room != self._evade_room:
+            self._evade_room = room
+            if self._evader is not None:
+                # A new screen reuses the slots for unrelated objects; a
+                # commit carried across the scroll is aimed at nothing.
+                self._evader.reset()
+
+    def _evade_blocked_dirs(self, snap: ZeldaSnapshot) -> set[str]:
+        """Directions that would scroll Link off this screen.
+
+        A wrong step in a dungeon bumps a wall; here it changes screen, and
+        the hop table then advances against the wrong arrival edge. Bans are
+        margin-wide because an escape is committed for several frames.
+        """
+        blocked: set[str] = set()
+        if snap.link_y >= EDGE_SOUTH_Y - _EVADE_EDGE_MARGIN:
+            blocked.add("DOWN")
+        if snap.link_y <= EDGE_NORTH_Y + _EVADE_EDGE_MARGIN:
+            blocked.add("UP")
+        if snap.link_x >= EDGE_EAST_X - _EVADE_EDGE_MARGIN:
+            blocked.add("RIGHT")
+        if snap.link_x <= EDGE_WEST_X + _EVADE_EDGE_MARGIN:
+            blocked.add("LEFT")
+        return blocked
+
+    def _evade_goal(
+        self, snap: ZeldaSnapshot, hop: ScreenHop | None
+    ) -> tuple[int, int] | None:
+        """Tie-break escapes toward the hop's lane, not away from it."""
+        if hop is None:
+            return None
+        if hop.align_x is not None:
+            return (int(hop.align_x), int(snap.link_y))
+        if hop.align_y is not None:
+            return (int(snap.link_x), int(hop.align_y))
+        if hop.y_band is not None:
+            lo, hi = hop.y_band
+            return (int(snap.link_x), (int(lo) + int(hi)) // 2)
+        return None
+
+    def _threat_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop | None
+    ) -> FrameAction | None:
+        """Reactive first, before any hop rule answers this frame.
+
+        Every rule below this one — align, band, occupancy peel, push — is
+        blind to what is inbound, so running one ahead of the evader silences
+        it for that frame. That is the shape of all three fixed L1 dungeon
+        rooms. The evader yields (``None``) whenever standing is safe, so the
+        hop keeps driving on every quiet frame.
+        """
+        if not self.evade or self._evader is None:
+            return None
+        if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
+            return None
+        hazards = tuple(t for t in self._tracked if t.is_hazard)
+        stand = assess(
+            (int(snap.link_x), int(snap.link_y)), hazards, bounds=_EVADE_BOUNDS
+        )
+        if not dodgeable(stand) and self.stuck < _WEDGE_STUCK_FRAMES:
+            # Inside the pad already, and the hop is still moving: no
+            # sidestep clears this, so yield — ``walk_or_swing`` still faces
+            # and slashes contact-range bodies. ``stuck`` is deliberately the
+            # strict counter here. The 0x48 leever wedge (159 frames at
+            # (112,205), Link flipping 112<->113 against the wall) does *not*
+            # trip it, and a tolerant "no net progress" wedge detector that
+            # did peel him off cost a hit further down the column: 3 hits
+            # and 1/4 hearts, against 2 and 3/4 without it.
+            self.evade_reasons["evade_in_pad"] = (
+                self.evade_reasons.get("evade_in_pad", 0) + 1
+            )
+            self._evader.reset()
+            return None
+        blocked = self._evade_blocked_dirs(snap)
+        decision = self._evader.decide(
+            snap,
+            self._tracked,
+            goal=self._evade_goal(snap, hop),
+            blocked_dirs=blocked,
+        )
+        if decision is not None:
+            reason = decision.reason
+            self.evade_reasons[reason] = self.evade_reasons.get(reason, 0) + 1
+            if decision.direction is not None:
+                parry = self._parry(snap, decision.source_slot)
+                if parry is not None:
+                    return parry
+                self.evades += 1
+                # Do not slash-walk the escape: the A frames stop Link inside
+                # the pad he is leaving.
+                return FrameAction(nes_action(decision.direction), f"evade_{reason}")
+            if decision.shield:
+                return FrameAction(nes_idle_action(), f"evade_{reason}")
+            # ``evade_no_gain`` / ``evade_boxed_in``: no step buys a frame.
+            # Hand the frame back to the hop rules (they still slash and still
+            # make progress) instead of idling in the pad.
+        return None
+
+    def _parry(self, snap: ZeldaSnapshot, slot: int | None) -> FrameAction | None:
+        """Answer the inbound body with the sword when the blade already reaches it.
+
+        The evader reasons about feet only, and no frame it owns presses A.
+        On an open overworld screen that is worse than it sounds: a 0x38
+        octorok matched Link's peel for 45 frames at 1 px/frame, stayed inside
+        the pad the whole time, and hit him anyway. Inside blade range the
+        cheapest dodge is the kill. ``slot`` keeps the sword on *the* inbound
+        threat instead of turning Link into some other body.
+        """
+        if slot is None:
+            return None
+        target = next(
+            (
+                obj
+                for obj in overworld_threat_objects(snap)
+                if int(obj.slot) == int(slot)
+            ),
+            None,
+        )
+        if target is None or is_projectile(target):
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        dx, dy = int(target.x) - lx, int(target.y) - ly
+        if abs(dx) >= abs(dy):
+            face = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            face = "DOWN" if dy > 0 else "UP"
+        if not in_sword_hitbox(lx, ly, face, target.x, target.y):
+            return None
+        self.parries += 1
+        if int(snap.facing) != direction_to_facing(face):
+            # Link has no turn in place; the pixel that buys the facing is
+            # worth it, because the swing that follows removes the threat.
+            return FrameAction(nes_action(face), "evade_parry_face")
+        if self.phase_frames % self.swing_period < self.swing_hold:
+            return FrameAction(nes_action("A"), "evade_parry")
+        return FrameAction(nes_idle_action(), "evade_parry_recover")
+
+    def _occupied_lane_action(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
+        play = snap.level == 0 and snap.mode == PLAY_MODE and not snap.transitioning
+        if not self.occupied_lane or not play:
+            return None
+        hazards = tuple(t for t in self._tracked if t.is_hazard)
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if not hazards or not dodgeable(assess((lx, ly), hazards, bounds=_EVADE_BOUNDS)):
+            self._lane_stand = 0
+            self._lane_steer = 0
+            return None
+        travel = hop.direction
+        # RIGHT/LEFT only. A DOWN peel left the 0x38/0x48 columns and added
+        # hits; the 0x49 case is the y=141 RIGHT hop. Parallel-x for DOWN
+        # hops stays off until a sitting owns that column.
+        if travel not in ("LEFT", "RIGHT"):
+            self._lane_stand = 0
+            self._lane_steer = 0
+            return None
+        iy = int(hop.align_y) if hop.align_y is not None else ly
+        blocked = _lane_blocked(lx, iy, travel, hazards)
+        if not blocked:
+            self._lane_stand = 0
+            self._lane_steer = 0
+            return None
+        reason = f"hop{self.hop_index}_lane"
+        # Walk a lane *parallel to the hop lane*, not Link's accidental row.
+        # Dropping ``align_y`` here (the old "own row is clear, just travel"
+        # shortcut) crossed the screen edge on an unmeasured pose, and the
+        # arrival check then advanced the hop from it. The anchor is the hop
+        # lane; ``toward`` only picks which side of it to use.
+        goal = _parallel_lane(
+            lx,
+            iy,
+            travel,
+            hazards,
+            self._evade_blocked_dirs(snap),
+            toward=(lx, ly),
+        )
+        step = None
+        if goal is not None:
+            gx, gy = goal
+            if gy != ly:
+                step = "DOWN" if gy > ly else "UP"
+            elif gx != lx:
+                step = "RIGHT" if gx > lx else "LEFT"
+            else:
+                step = travel
+            dx, dy = WALK_DELTA[step]
+            if step != travel and _pad_hits(lx + dx, ly + dy, hazards):
+                step = None  # the peel itself would walk into a body
+        if step is not None:
+            self._lane_stand = 0
+            self._lane_steer = 0 if step == travel else self._lane_steer + 1
+            if self._lane_steer <= _OCCUPIED_LANE_STEER_CAP:
+                return FrameAction(nes_action(step), reason)
+        # Last resort ladder (unchanged): Link's own row if its travel is
+        # clear, then a short stand, then yield the hop.
+        if not _lane_blocked(lx, ly, travel, hazards):
+            self._lane_stand = 0
+            return FrameAction(nes_action(travel), f"{reason}_row")
+        self._lane_stand += 1
+        if self._lane_stand > _OCCUPIED_LANE_STAND_CAP:
+            self._lane_stand = 0
+            self._lane_steer = 0
+            return None
+        return FrameAction(nes_idle_action(), f"{reason}_stand")
+
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
         advanced = self._advance_hop(snap, hop)
@@ -628,7 +964,9 @@ class OverworldPathController:
         scoop = self._rupee_scoop(snap, hop)
         if scoop is not None:
             return scoop
-
+        lane = self._occupied_lane_action(snap, hop)
+        if lane is not None:
+            return lane
         return align_and_push(
             snap,
             direction=hop.direction,
@@ -639,6 +977,7 @@ class OverworldPathController:
             stuck=0,
             stuck_threshold=self.stuck_threshold,
             swing=self._swing,
+            align_x_at_wall=hop.align_x_at_wall,
         )
 
     # ------------------------------------------------------------------ #
@@ -647,6 +986,8 @@ class OverworldPathController:
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self._nav_snap = snap
+        if self.evade or self.occupied_lane:
+            self._observe_threats(snap)
         self.frames += 1
         self.phase_frames += 1
         self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
@@ -692,7 +1033,12 @@ class OverworldPathController:
         if rupee is not None:
             return rupee
 
-        if self.hop_index >= len(self.hops):
+        hop = self.hops[self.hop_index] if self.hop_index < len(self.hops) else None
+        threat = self._threat_action(snap, hop)
+        if threat is not None:
+            return threat
+
+        if hop is None:
             return self._after_hops(snap)
 
         return self._do_hop(snap)

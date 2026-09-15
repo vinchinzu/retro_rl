@@ -75,6 +75,8 @@ SCREEN_CANDLE_SHOP = 0x5E  # Blue Candle O-6 — live assisted
 SCREEN_BRACELET_ARMOS = 0x24
 SCREEN_MAGICAL_SWORD_GRAVE = 0x21
 SCREEN_RAFT_HEART_DOCK = 0x3F
+# Island north of the dock. Source grid only; rr-ps7.4.1 did not live-reach it.
+SCREEN_RAFT_HEART_ISLAND = 0x2F
 SCREEN_LADDER_HEART = 0x5F
 
 # Canonical entrance table
@@ -165,6 +167,7 @@ LATER_SCREEN_LABELS: dict[int, str] = {
     SCREEN_BRACELET_ARMOS: "bracelet_armos_source",
     SCREEN_MAGICAL_SWORD_GRAVE: "magical_sword_grave_source",
     SCREEN_RAFT_HEART_DOCK: "raft_heart_dock_source",
+    SCREEN_RAFT_HEART_ISLAND: "raft_heart_island_source",
     SCREEN_LADDER_HEART: "ladder_heart_coast_source",
 }
 
@@ -223,6 +226,7 @@ __all__ = [
     "SCREEN_MAGICAL_SWORD_GRAVE",
     "SCREEN_RAFT_HEART_DOCK",
     "SCREEN_RAFT_HEART_DOCK_HYP",
+    "SCREEN_RAFT_HEART_ISLAND",
     "TF_BITS_ALL",
     "TF_BIT_L1",
     "TF_BIT_L2",

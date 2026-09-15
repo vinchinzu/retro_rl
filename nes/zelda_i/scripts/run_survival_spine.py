@@ -2,6 +2,7 @@
 
     uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
 unless ``--no-video``. Heart assist is on by default; ``--no-infinite-life``

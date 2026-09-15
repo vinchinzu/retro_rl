@@ -6,6 +6,14 @@ Advance from M5 (Clean power-on → Level 1 Triforce shard 1) toward a verified
 continuous clear of The Legend of Zelda using the shared `retro_harness.adventure`
 route graph.
 
+**Pre-L1 loadout (new).** M5 is 3 containers and a wooden sword; L1 still
+arrives at 0x45 on half a heart. Before the next L1 re-measure, run
+[The Gathering](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/the-gathering/)
+(path-checked in [`PRE_L1.md`](PRE_L1.md)): bombs `0x6F` without walking
+`0x79`, hearts `0x7B`+`0x2C`, candle `0x0C`, White Sword around Lost Hills,
+burn heart `0x47`, 90R shield, Blue Ring, *then* the 0x37 mouth. Do not
+overwrite the 19416f M5 claim.
+
 Tracker: **`bd ready -l zelda_i -l spine`**. Session:
 `.grok/skills/zelda-session/SKILL.md` (not QUEUE.md, not PROCESS.md).
 Survival power-on → credits is green (`--through level9-credits`, 2026-09-07).
@@ -13,7 +21,7 @@ Not Clean STATUS. Living residual: **Food poke**
 ([`tasks/rr-8t4.4-residual.md`](tasks/rr-8t4.4-residual.md); dedicated
 `--through level7-bait-shop`). Also open: `rr-wabn` (arrow shop), `rr-doua`
 (bomb/key counts), `rr-sz8.8` (optional Magical Sword). Clean continuous is
-`rr-npv`.
+`rr-npv`. Pre-L1 is `docs/PRE_L1.md` (ladder row `pre_l1`).
 
 ## Historical — reactive Gohma kill (`rr-tne2`, closed) (2026-09-02)
 

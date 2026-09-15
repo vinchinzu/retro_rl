@@ -21,11 +21,14 @@ __all__ = (
     "Blocker",
     "CleanStep",
     "CLEAN_LADDER",
+    "SHARED_MECHANISMS",
     "TOOL_FOR_BLOCKER",
+    "adoption",
     "tip",
     "next_open",
     "blocked",
     "by_blocker",
+    "render_adoption",
     "tool_for",
     "render",
 )
@@ -55,6 +58,12 @@ class Blocker(str, Enum):
     OCCUPANCY_STALL = "occupancy_stall"
     INVENTORY_GAP = "inventory_gap"
     PICKUP_MISS = "pickup_miss"
+    # The lane is not blocked by the ROM; it is blocked by what it measures
+    # against. Distinct from INVENTORY_GAP (a pin that is merely poorer than a
+    # real arrival): here the pin holds a state normal play cannot reach, so
+    # every number taken from it — hearts above all — is against a fake
+    # denominator and no amount of room tuning can be trusted.
+    INVALID_PIN = "invalid_pin"
 
 
 TOOL_FOR_BLOCKER: dict[Blocker, str] = {
@@ -79,6 +88,13 @@ TOOL_FOR_BLOCKER: dict[Blocker, str] = {
         "The pin cannot hold the item. Needs a natural-segment entry, not a "
         "poke."
     ),
+    Blocker.INVALID_PIN: (
+        "Check the pin before the room. $066F is hi=containers-1, lo=whole "
+        "hearts, so a coherent byte always has lo <= hi (ram.full_health_byte). "
+        "Rebuild from a measured arrival — scripts/fixtures/"
+        "capture_level6_entrance_fixture.py is the pattern — then re-measure; "
+        "do not tune a room against the old numbers."
+    ),
     Blocker.PICKUP_MISS: (
         "Dest is RAM: walk the pickup tile axis-first, then confirm the "
         "inventory delta before leaving."
@@ -100,6 +116,11 @@ class CleanStep:
     pose: str = ""
     residual: str = ""
     note: str = ""
+    # The fixture this row's evidence was measured from. Named because an
+    # invalid one is invisible otherwise: rr-d6v spent four sittings tuning
+    # L6 rooms against a pin holding 15 hearts in 3 containers, and the pin
+    # was nowhere in this table.
+    pin: str = ""
 
     @property
     def open(self) -> bool:
@@ -117,17 +138,45 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l1_tf",
         bead="M5",
         segment="power-on → L1 Triforce",
-        rung=Rung.NATURAL,
-        blocker=Blocker.OCCUPANCY_STALL,
-        room="L1 0x23",
-        pose="(64,157) mode 17 health 0x20, Goriya 0x06 N/W, combat_wait, end 15463",
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
+        room="L1 0x36",
+        pose="triforce=0x01 end 19416",
+        pin="power-on (no pin)",
         residual="docs/tasks/rr-npv-reactive-combat.md",
         note=(
-            "0x33 hold-north 0-hit GREEN 2026-09-12: clear33_key 2128f "
-            "hp 0x22 keys 1 hits 0 live 0/3 (103,173). Dump: a Stalfos at "
-            "cheb 18 was in the sword box while peel ate the pad at y=173. "
-            "Power-on now dies in 0x23 at lo>=2 (filled=2), not 1-heart. "
-            "Do not retune the 1-heart hold. tip() stays None until TF."
+            "2026-09-14: re-verified 2/2 natural-entry, triforce=0x01, "
+            "19416f — the same frame count as 2026-09-12, with the "
+            "entry-route stall guard, reward nudge and engine reason "
+            "histogram in the tree. "
+            "2026-09-12: 2/2 natural-entry, triforce=0x01, 19416f. "
+            "clear45_key 1568f 0 hits after scoop yield + collect "
+            "stale-skip. Upstream still 4 hits (0x52 1, 0x23 1, 0x44 2); "
+            "Link arrives 0x45 on half a heart and lives. Hearts on the "
+            "0x23/0x44 floor are still unbanked. Do not grid-wire the "
+            "evader: that capped 0x23 at 6000f. "
+            "2026-09-14: pre-L1 is Zelda Dungeon The Gathering "
+            "(docs/PRE_L1.md, row pre_l1) so the next L1 measure is 6 HC "
+            "+ White Sword, not another 3HC wooden sit."
+        ),
+    ),
+    CleanStep(
+        id="pre_l1",
+        bead="rr-ps7.4",
+        segment="power-on → sword → bombs → 3 OW hearts → White Sword → L1 mouth",
+        rung=Rung.HYPOTHESIS,
+        blocker=Blocker.INVENTORY_GAP,
+        room="OW 0x77 → 0x6F / 0x7B / 0x2C / 0x0C / 0x0A / 0x47",
+        pose="stop on 0x37 with 6 HC, bombs, candle, White Sword",
+        residual="docs/PRE_L1.md",
+        note=(
+            "Zelda Dungeon The Gathering, path-checked against the Q1 "
+            "catalog. Do not right-8 from start (0x79 pocket) and do not "
+            "left-2 from candle 0x0C (Lost Hills 0x1B). Bombs 0x6F via "
+            "0x78→0x68, hearts 0x7B then 0x2C, candle 0x0C (open), White "
+            "Sword 0x0A around 0x1B, burn heart 0x47, 90R shield 0x46, "
+            "optional arrows 0x4A, Blue Ring 0x34. Dedicated --through "
+            "pre-l1. Do not poke bombs/rupees/candle/$066F."
         ),
     ),
     CleanStep(
@@ -136,14 +185,41 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         segment="L1 leave → OW walk → L2 east mouth 0x4C",
         rung=Rung.NATURAL,
         blocker=Blocker.OCCUPANCY_STALL,
-        room="L1 0x23 / OW 0x4C",
-        pose="0x23 (88,149) isolated 1-heart; 1/3 Goriyas, hits 0",
+        room="OW 0x48 / 0x49 hop lanes",
+        pose="dies 0x4C (120,133) mode 17 hearts 0/4, door_death, 5 live octoroks",
         residual="docs/tasks/rr-8t4.4-residual.md",
         note=(
-            "Water bar on $6530 is y=144-159 x=80-175 (stored y=133-148). "
-            "Old seed y=128-143 was the north channel; leftover mashed UP. "
-            "Census: 14 swings / 30 authorized / 5353 patrol at engage=24. "
-            "No lo>=2 natural 0x23 until 0x33 drops a heart."
+            "2026-09-12 (b): opt-in threat.decide is now wired into "
+            "OverworldPathController (default off; on for the L2 controller "
+            "only). It bought a heart and half the frames — prefix to 0x4A "
+            "went 5010f hp 0x32 2/4 -> 2907f hp 0x33 3/4, 5/5 identical, and "
+            "with evade=False the engine reproduces the old baseline "
+            "frame-for-frame. farm_short is gone (farm_h3). The leg now runs "
+            "four screens further and dies on 0x4C. "
+            "RE-CLASSED body_undodgeable -> occupancy_stall: both surviving "
+            "hits are lane problems, not dodge problems. The 0x48 leever sits "
+            "at (112,205) with vx=vy=0 and surfaces UNDER Link (TTC 0, never "
+            "dodgeable) — the real cause is a wedge, since align_and_push "
+            "drops align_x below y=205 (80 < link_y < 205), so Link hammers "
+            "DOWN into the wall 8px west of the x=120 gap for 159 frames "
+            "while track_stuck never arms (he flips 112<->113 every frame). "
+            "The 0x49 octorok is already inside the 16px pad the first frame "
+            "it registers. 2026-09-14: 0x48 DOWN hop now strafes onto "
+            "align_x=120 at y>=205 (live prefix 2072f, 0x48 hit gone). "
+            "Occupied-lane on LEFT/RIGHT hops (L2 only) removed the 0x49 "
+            "hit on a separate trial; DOWN occupied-lane added 0x38 hits "
+            "and was reverted. Do NOT re-try an in-pad peel or an idle "
+            "lane wait. Combined prefix not re-run this sitting. "
+            "2026-09-14 0x4C census (one Clean trial, --farm-hearts 0): "
+            "door_death 0x4C (120,133) mode 17 hp 0x30 0/4. Last playable "
+            "(121,133) facing W, hop 5 UP align_x=112, stuck=0, 30× hop5_ax "
+            "walking 160→121 at y=133. Killer slot 1 octorok_fast 0x08 at "
+            "(112,124) vx=0 vy=+0.8 cheb 9 in pad, TTC 0 dodgeable False, "
+            "body; four more octoroks live, no rocks. Not occupancy stall, "
+            "not a y-band miss, not the east-mouth timeout. Class "
+            "body_undodgeable — occupied door column, same 0x49 shape. "
+            "Arrive 0x4C already 0/4; the body spent the partial. Pre-L1 "
+            "6 HC is the budget; occupied-lane on hop 5 is the lane."
         ),
     ),
     CleanStep(
@@ -151,50 +227,85 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         bead="rr-4oz",
         segment="L2 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
+        blocker=Blocker.INVALID_PIN,
         room="L2 0x0e / 0x4f",
+        pin="Level2Entrance $066F=0x3f (15 hearts in 4 containers)",
         residual="docs/tasks/rr-4oz-residual.md",
-        note="Dodongo bomb placement on stable mouth only",
+        note=(
+            "Dodongo bomb placement on stable mouth only. 2026-09-14: "
+            "scripts/audit_pins.py finds the pin incoherent, so the green "
+            "was run on ~4x a real budget and the room findings are not "
+            "yet a Clean measurement."
+        ),
     ),
     CleanStep(
         id="l3_tf",
         bead="rr-npv.1",
         segment="L3 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
+        blocker=Blocker.INVALID_PIN,
+        pin="Level3Entrance $066F=0x7f (15 hearts in 8 containers)",
         residual="docs/tasks/rr-npv.1-residual.md",
-        note="all dest hops green, TF 0x04, deaths 0",
+        note=(
+            "all dest hops green, TF 0x04, deaths 0 — but measured from an "
+            "incoherent pin (2026-09-14 audit), so the deaths-0 claim is "
+            "against ~2x a real budget."
+        ),
     ),
     CleanStep(
         id="l4_tf",
         bead="rr-bxzj",
         segment="L4 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
+        blocker=Blocker.INVALID_PIN,
+        pin="Level4Entrance $066F=0x6f (15 hearts in 7 containers)",
         residual="docs/tasks/rr-bxzj-residual.md",
-        note="31 contiguous stages, deaths 0, heart-safe Gleeok",
+        note=(
+            "31 contiguous stages, deaths 0, heart-safe Gleeok — measured "
+            "from an incoherent pin (2026-09-14 audit). 'heart-safe' is the "
+            "claim most exposed to the fake denominator."
+        ),
     ),
     CleanStep(
         id="l5_tf",
         bead="rr-npv.2",
         segment="L5 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.BODY_UNDODGEABLE,
+        blocker=Blocker.INVALID_PIN,
         room="L5 0x77",
         pose="(120,173) mode 17, third time on the hold line",
+        pin="Level5Entrance $066F=0x3f (15 hearts in 4 containers), TF 0x00",
         residual="docs/tasks/rr-npv.2-residual.md",
-        note="Pols Voice lands on the stand cell; peel starts too late",
+        note=(
+            "Room class is body_undodgeable: Pols Voice lands on the stand "
+            "cell and the peel starts too late. But the pin is incoherent "
+            "AND holds TF 0x00, which no L5 arrival can (L1-L4 is 0x0F), so "
+            "fix the pin before trusting the death. Do not tune the peel "
+            "against this budget."
+        ),
     ),
     CleanStep(
         id="l6_tf",
         bead="rr-d6v",
         segment="L6 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.FIRING_LINE,
+        blocker=Blocker.INVALID_PIN,
         room="L6 0x78",
         pose="(144,141) mode 17, 3/3 on the east waist",
+        pin="Level6Entrance $066F=0x2f (15 hearts in 3 containers), TF 0x00",
         residual="docs/tasks/rr-d6v-residual.md",
         note=(
-            "0x78 is a 5-wizzrobe crossfire, but the health is spent "
-            "upstream: postmortem counts 6 hits in the *green* "
-            "level6_east_key_0x7a stage (4x 0x24 from the east)"
+            "Room class is firing_line: 0x78 is a 5-wizzrobe crossfire, and "
+            "the health is spent upstream (6 hits in the *green* "
+            "level6_east_key_0x7a stage, 4x 0x24 from the east). All of it "
+            "was measured against a pin holding 15 hearts in 3 containers. "
+            "2026-09-14: scripts/run_level6_entrance_tf.py now refuses this "
+            "pin. The measured replacement is "
+            "scripts/fixtures/capture_level6_entrance_fixture.py (power-on "
+            "spine, no state load); it is not captured yet — the spine now "
+            "clears 23 stages and stops at L2 0x6e enter_6f_key, which is a "
+            "route question, not another stall. Do not re-tune an L6 room "
+            "until the pin exists."
         ),
     ),
     CleanStep(
@@ -213,11 +324,18 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         bead="rr-npv.4",
         segment="L8 Entrance → Triforce",
         rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.SHOT_UNDODGEABLE,
+        blocker=Blocker.INVALID_PIN,
         room="L8 0x1E",
         pose="(128,181) mode 17, 3/3 oscillating 128↔112",
+        pin="Level8EntranceReconFixture $066F=0x2f (15 hearts in 3 containers)",
         residual="docs/tasks/rr-npv.4-residual.md",
-        note="Blue Gohma fires down the arrow-alignment column",
+        note=(
+            "Room class is shot_undodgeable: Blue Gohma fires down the "
+            "arrow-alignment column. The recon pin is incoherent as well "
+            "(2026-09-14 audit) and holds 3 containers where a real L8 "
+            "arrival holds far more, so the 3/3 death is not yet evidence "
+            "about the column."
+        ),
     ),
     CleanStep(
         id="l9_credits",
@@ -299,4 +417,68 @@ def render() -> str:
             ids = ", ".join(step.id for step in steps)
             lines.append(f"  {blocker.value}: {ids}")
             lines.append(f"    {tool_for(blocker)}")
+    return "\n".join(lines)
+
+
+# Engine mechanisms that replaced a hand-written per-room rule. A level that
+# has not adopted one is not "differently tuned" — it is running the version
+# the mechanism was written to fix, and its lane will re-derive the same
+# finding. Keyed by the ``CombatTuning`` field so this cannot drift from the
+# spec table: the report is measured off the live specs, not written here.
+SHARED_MECHANISMS: dict[str, str] = {
+    "occupancy_patrol": (
+        "walk.physics: predict 1px, grade, block the missed cell, replan. "
+        "The alternative is a patrol that walks a wall until stuck-escape "
+        "guesses."
+    ),
+    "occupancy_from_tilemap": (
+        "Seed those walls from the live $6530 map (dungeon.tilemap) instead "
+        "of a hand-written occupancy_blocked box. The L1 0x23 box walled 84 "
+        "cells of real floor; the walker burned 2438 frames on it."
+    ),
+    "evade": (
+        "Run threat.decide before the position rules in _combat. A pose rule "
+        "that returns first silences the reactive layer for that frame — the "
+        "dominant damage bug in this tree."
+    ),
+}
+
+
+def adoption() -> dict[int, dict[str, tuple[int, int]]]:
+    """Per level: ``{mechanism: (rooms_with, rooms_total)}`` off the live specs."""
+    from zelda_i.dungeon.engine import _ROOM_SPECS_BY_LEVEL, ensure_default_specs
+
+    ensure_default_specs()
+    rows: dict[int, dict[str, tuple[int, int]]] = {}
+    for (level, _room), spec in sorted(_ROOM_SPECS_BY_LEVEL.items()):
+        counts = rows.setdefault(
+            int(level), {name: (0, 0) for name in SHARED_MECHANISMS}
+        )
+        for name in SHARED_MECHANISMS:
+            have, total = counts[name]
+            counts[name] = (
+                have + bool(getattr(spec.combat, name, False)),
+                total + 1,
+            )
+    return rows
+
+
+def render_adoption() -> str:
+    """Which levels run the shared mechanisms and which still do not."""
+    rows = adoption()
+    names = list(SHARED_MECHANISMS)
+    lines = [
+        "shared mechanisms by level (rooms adopted / rooms with a spec):",
+        "",
+        "level  " + "  ".join(f"{name:<22}" for name in names),
+    ]
+    for level, counts in sorted(rows.items()):
+        cells = []
+        for name in names:
+            have, total = counts[name]
+            cells.append(f"{f'{have}/{total}':<22}")
+        lines.append(f"L{level:<5}  " + "  ".join(cells))
+    lines.append("")
+    for name, why in SHARED_MECHANISMS.items():
+        lines.append(f"  {name}: {why}")
     return "\n".join(lines)

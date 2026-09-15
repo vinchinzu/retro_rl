@@ -171,6 +171,20 @@ def test_walker_extra_blocked_routes_around_live_bodies() -> None:
     assert not grid.blocked
 
 
+def test_walker_out_of_bounds_walks_toward_the_box() -> None:
+    """Start west of xmin has no in-bounds neighbor, so BFS cannot escape.
+
+    L1 0x45 door column is x=32 vs DEFAULT_BOUNDS xmin=40. Collect then
+    idled collect_skip_unreachable from (32, 166) for thousands of frames.
+    """
+    grid = OccupancyGrid(xmin=40, xmax=200, ymin=70, ymax=190)
+    walker = OccupancyWalker(grid=grid)
+    assert walker.next_dir((32, 166), goal=(160, 141)) == "RIGHT"
+    assert walker.next_dir((216, 141), goal=(120, 141)) == "LEFT"
+    assert walker.next_dir((120, 60), goal=(120, 141)) == "DOWN"
+    assert walker.next_dir((120, 200), goal=(120, 141)) == "UP"
+
+
 def test_walker_goal_clamping_and_replan_on_change() -> None:
     """Out-of-bounds goal is clamped; changing goal invalidates stale path."""
     grid = OccupancyGrid(xmin=40, xmax=200, ymin=70, ymax=190)
@@ -253,3 +267,206 @@ def test_walker_auto_observes_on_next_dir() -> None:
     assert (120, 140) in walker.grid.blocked
     assert step2 in {"LEFT", "RIGHT"}
 
+
+
+def test_nearest_open_returns_the_goal_when_it_is_already_walkable() -> None:
+    from zelda_i.walk.physics import OccupancyGrid
+
+    grid = OccupancyGrid(blocked=set(), xmin=0, xmax=100, ymin=0, ymax=100)
+    assert grid.nearest_open(50, 50) == (50, 50)
+
+
+def test_nearest_open_steps_off_a_blocked_goal() -> None:
+    from zelda_i.walk.physics import OccupancyGrid
+
+    blocked = {(x, y) for x in range(48, 60) for y in range(48, 60)}
+    grid = OccupancyGrid(blocked=blocked, xmin=0, xmax=100, ymin=0, ymax=100)
+    found = grid.nearest_open(50, 50)
+    assert found is not None
+    assert found not in blocked
+    assert abs(found[0] - 50) + abs(found[1] - 50) <= 12
+
+
+def test_nearest_open_gives_up_outside_its_radius() -> None:
+    from zelda_i.walk.physics import OccupancyGrid
+
+    blocked = {(x, y) for x in range(0, 101) for y in range(0, 101)}
+    grid = OccupancyGrid(blocked=blocked, xmin=0, xmax=100, ymin=0, ymax=100)
+    assert grid.nearest_open(50, 50, radius=4) is None
+
+
+def test_walker_retargets_a_goal_that_sits_inside_geometry() -> None:
+    """L2 0x6e aimed its band walk at (120,113), which is in a diamond.
+
+    ``shortest_path`` answered ``None`` and the walk stood in ``band_wait``
+    for 3999 of 4000 frames without moving a pixel.
+    """
+    from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+
+    blocked = {(x, y) for x in range(112, 128) for y in range(108, 124)}
+    grid = OccupancyGrid(blocked=blocked, xmin=0, xmax=200, ymin=0, ymax=200)
+    walker = OccupancyWalker(grid=grid, retarget_blocked_goal=True)
+    direction = walker.next_dir((41, 189), (120, 113))
+    assert direction is not None
+    assert walker.retargets == 1
+    assert walker.goal not in blocked
+
+
+def test_walker_stands_on_a_walled_goal_when_retarget_is_off() -> None:
+    """Default off: retargeting moves arrival frames, and the L1 chain is
+    frame-perfect — turning it on globally broke Clean M5's Aquamentus."""
+    from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+
+    blocked = {(x, y) for x in range(112, 128) for y in range(108, 124)}
+    grid = OccupancyGrid(blocked=blocked, xmin=0, xmax=200, ymin=0, ymax=200)
+    walker = OccupancyWalker(grid=grid)
+    assert walker.retarget_blocked_goal is False
+    assert walker.next_dir((41, 189), (120, 113)) is None
+    assert walker.retargets == 0
+
+
+def test_walker_leaves_a_walkable_goal_alone() -> None:
+    from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+
+    walker = OccupancyWalker(
+        grid=OccupancyGrid(blocked=set(), xmin=0, xmax=200, ymin=0, ymax=200),
+        retarget_blocked_goal=True,
+    )
+    walker.next_dir((41, 189), (120, 113))
+    assert walker.retargets == 0
+    assert walker.goal == (120, 113)
+
+
+def _turns(path: list[tuple[int, int]]) -> int:
+    """Heading changes along a BFS path (Link snaps off-axis on every one)."""
+    headings = [
+        (b[0] - a[0], b[1] - a[1]) for a, b in zip(path, path[1:])
+    ]
+    return sum(1 for a, b in zip(headings, headings[1:]) if a != b)
+
+
+def test_no_path_to_a_blocked_goal_that_still_touches_open_floor() -> None:
+    """A goal *inside* geometry is unreachable even when floor abuts it.
+
+    The guard used to read ``not ok(goal) and not in_bounds(goal)``, so an
+    in-bounds but solid goal sailed through, ``dist`` was seeded at 0 inside
+    the wall and the descent handed back a path whose last step walks into
+    it. Callers then pressed that button until their budget ran out:
+    ``dungeon/engine.py::_collect_policy``'s ``collect_skip_unreachable`` was
+    dead code for a walled waypoint, and ``dungeon/route_entry.py``'s
+    ``entry_route_skip`` / ``entry_route_walled`` were unreachable because
+    ``_route_replanning`` latched on a direction that never moved Link.
+    """
+    grid = OccupancyGrid(xmin=100, xmax=140, ymin=100, ymax=140)
+    # One solid cell with open floor on all four sides: the statue face the
+    # old guard walked into.
+    grid.blocked.add((120, 120))
+    assert grid.shortest_path((110, 120), (120, 120)) is None
+    # And the whole face of a wider wall, approached head on.
+    for y in range(110, 131):
+        grid.blocked.add((124, y))
+    assert grid.shortest_path((110, 120), (124, 120)) is None
+
+
+def test_no_path_to_a_goal_outside_the_bounds_box() -> None:
+    grid = OccupancyGrid(xmin=100, xmax=140, ymin=100, ymax=140)
+    assert grid.shortest_path((120, 120), (99, 120)) is None
+    assert grid.shortest_path((120, 120), (141, 120)) is None
+    assert grid.shortest_path((120, 120), (120, 99)) is None
+    assert grid.shortest_path((120, 120), (120, 141)) is None
+
+
+def test_reachable_goal_keeps_its_minimum_turn_path() -> None:
+    """The guard flip must not touch a goal that has a path.
+
+    Turn count is the load-bearing property: a same-length path with extra
+    turns is not walkable, because Link snaps his off-axis position on every
+    direction change (L1 ``0x23``: 285 misses, 49 forgets, zero progress).
+    """
+    grid = OccupancyGrid(xmin=100, xmax=140, ymin=100, ymax=140)
+    open_path = grid.shortest_path((110, 130), (130, 110))
+    assert open_path is not None
+    assert open_path[0] == (110, 130)
+    assert open_path[-1] == (130, 110)
+    assert len(open_path) == 41  # manhattan 40 + the start cell
+    assert _turns(open_path) == 1
+
+    # Around a wall the goal sits behind: still shortest, still minimum-turn.
+    for y in range(100, 136):
+        grid.blocked.add((120, y))
+    walled = grid.shortest_path((110, 130), (130, 110))
+    assert walled is not None
+    assert walled[-1] == (130, 110)
+    assert (120, 130) not in walled
+    # South to y=136 (6), east past the wall (20), north to y=110 (26).
+    assert len(walled) == 1 + (6 + 20 + 26)
+    assert _turns(walled) == 2
+
+
+def _tilemap_ram(cells: "dict[tuple[int, int], tuple[int, int, int, int]]"):
+    """Synthetic ``$6530`` map: every named 16x16 cell origin gets a quad."""
+    import numpy as np
+
+    from zelda_i.dungeon import tilemap as tm
+
+    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
+    base = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
+    for (x, y), quad in cells.items():
+        col, row = x // tm.TILE_PX, (y - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
+        for dc, dr, value in (
+            (0, 0, quad[0]), (1, 0, quad[1]), (0, 1, quad[2]), (1, 1, quad[3])
+        ):
+            ram[base + (col + dc) * tm.TILE_ROWS + (row + dr)] = value
+    return ram
+
+
+def _walkable_room_ram():
+    """Floor interior, one block, the west door mouth, and a staircase."""
+    from zelda_i.dungeon import tilemap as tm
+
+    floor = (0x74, 0x76, 0x75, 0x77)
+    cells = {
+        (x, y): floor for y in tm.INTERIOR_Y for x in tm.INTERIOR_X
+    }
+    cells[(96, 144)] = (0xB0, 0xB2, 0xB1, 0xB3)  # a real wall
+    cells[(208, 96)] = (0x70, 0x72, 0x71, 0x73)  # CheckWarp staircase
+    cells[(16, 144)] = (0x90, 0x90, 0x91, 0x91)  # west door mouth
+    return _tilemap_ram(cells)
+
+
+def test_link_occupancy_walks_stairs_and_door_mouths() -> None:
+    """Stairs and doors are floor Link stands on, not geometry.
+
+    ``blocked_link_cells`` used to default to bare ``FLOOR_TILES``, which
+    graded every staircase and every door mouth SOLID — on exactly the rooms
+    that switched to ``occupancy_from_tilemap`` and on ``ROUTE_BOUNDS``,
+    whose whole reason to be one ring wider than the fight box is to include
+    the door mouths at x=16/224 and y=80/208.
+    """
+    from zelda_i.dungeon.route_entry import ROUTE_BOUNDS
+    from zelda_i.dungeon.tilemap import FLOOR_TILES, blocked_link_cells
+
+    ram = _walkable_room_ram()
+    blocked = blocked_link_cells(ram, ROUTE_BOUNDS)
+    # Link's stored y collides LINK_FOOT_OFFSET px lower: y=141 is the
+    # y=144 cell row, y=93 is the y=96 row.
+    door_mouth = (16, 141)
+    stair = (208, 93)
+    assert door_mouth not in blocked
+    assert stair not in blocked
+    # Measured geometry is untouched.
+    assert (96, 141) in blocked
+
+    # The old walkable set is what walled them off.
+    floor_only = blocked_link_cells(ram, ROUTE_BOUNDS, walkable=FLOOR_TILES)
+    assert door_mouth in floor_only
+    assert stair in floor_only
+
+
+def test_measured_walker_can_reach_a_staircase() -> None:
+    """The stair is a route destination; a solid stair has no path to it."""
+    from zelda_i.walk.physics import measured_walker
+
+    walker = measured_walker(_walkable_room_ram(), (16, 224, 80, 208))
+    assert walker is not None
+    assert walker.grid.shortest_path((120, 141), (208, 93)) is not None

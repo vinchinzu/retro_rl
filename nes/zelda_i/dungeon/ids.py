@@ -146,6 +146,8 @@ FIVE_RUPEE_DROP_OBJECT_TYPE = 0x60  # live +5 rupees_to_add
 FIVE_RUPEE_DROP_STATE = 0x0F
 CLOCK_DROP_OBJECT_TYPE = 0x60  # live no inventory delta
 CLOCK_DROP_STATE = 0x21
+BOMB_DROP_OBJECT_TYPE = 0x60  # live +4 bombs on pickup
+BOMB_DROP_STATE = 0x00
 
 ROOM_ITEM_NAMES: dict[int, str] = {
     0x03: "no_inventory_reward_observed",

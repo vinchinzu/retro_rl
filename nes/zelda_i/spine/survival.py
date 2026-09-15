@@ -13,6 +13,7 @@ from typing import Any
 
 from zelda_i.route.chain import (
     ControllerStageResult,
+    boot_to_ready,
     run_controller_stage,
     run_natural_to_milestone,
 )
@@ -25,10 +26,18 @@ from zelda_i.level1.arrow_shop import (
     level1_arrows_stages,
     level1_arrows_success,
 )
+from zelda_i.level1.bomb_shop_stage import (
+    level1_bombs_stages,
+    level1_bombs_success,
+)
 from zelda_i.level1.bow_pickup import (
     level1_bow_pickup_stages,
     level1_bow_pickup_success,
     level1_survival_tf_stages,
+)
+from zelda_i.overworld.gathering import (
+    pre_l1_bomb_shop_success,
+    pre_l1_stages,
 )
 from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT
 from zelda_i.level2.overworld import (
@@ -69,6 +78,7 @@ from zelda_i.ram import (
     ADDR_WHISTLE,
     PLAY_MODE,
     ZeldaSnapshot,
+    is_level1_ready,
     read_snapshot,
     read_u8,
 )
@@ -133,14 +143,35 @@ _BOW_HOPS = (
         level1_arrows_success,
         dedicated=True,
     ),
+    SpineHop(
+        "level1-bombs",
+        "level1_bombs",
+        level1_bombs_stages,
+        level1_bombs_success,
+        dedicated=True,
+    ),
+)
+
+# Gathering is before L1, not after. Dedicated like bow/arrows/bombs.
+_L1_DEDICATED_HOPS = (
+    SpineHop(
+        "pre-l1",
+        "pre_l1_shop_p7",
+        pre_l1_stages,
+        pre_l1_bomb_shop_success,
+        dedicated=True,
+    ),
+    *_BOW_HOPS,
 )
 
 
 # L1-L3 have no ``levelN/spine.py`` catalog of their own; their stop names
 # live here beside the rows that run them. Route order == insertion order.
-_L1_BOW_THROUGH: tuple[str, ...] = tuple(hop.through for hop in _BOW_HOPS)
+_L1_DEDICATED_THROUGH: tuple[str, ...] = tuple(
+    hop.through for hop in _L1_DEDICATED_HOPS
+)
 _L1_STOPS: dict[str, str] = {"level1": "level1_triforce"} | {
-    hop.through: hop.stop for hop in _BOW_HOPS
+    hop.through: hop.stop for hop in _L1_DEDICATED_HOPS
 }
 _L2_STOPS: dict[str, str] = {
     "level2-entry": "level2_entry",
@@ -460,13 +491,18 @@ def _continue_level1_spine(
     assist=None,
     on_frame=None,
 ) -> None:
-    """L1: the dedicated Bow/arrow side-quests, else the natural Triforce run."""
+    """L1: dedicated gathering / Bow hops, else the natural Triforce run."""
     hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
-    if through in _L1_BOW_THROUGH:
-        if through == "level1-arrows":
+    if through in _L1_DEDICATED_THROUGH:
+        if through in ("level1-arrows", "level1-bombs"):
             hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
         attach_hops(
-            env, run, _BOW_HOPS, through=through, run_stages=run_stages, **hop_kw
+            env,
+            run,
+            _L1_DEDICATED_HOPS,
+            through=through,
+            run_stages=run_stages,
+            **hop_kw,
         )
         return
     if not run_stages(
@@ -659,6 +695,43 @@ SPINE_STOPS: dict[str, str] = {
 }
 
 
+@dataclass
+class _BootPrefix:
+    """Menu boot only. Gathering owns sword; not the L1 clear53 prefix."""
+
+    obs: Any
+    boot_frames: int
+    success: bool
+    end_frame: int = 0
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "milestone": "boot",
+            "success": self.success,
+            "boot_frames": self.boot_frames,
+            "end_frame": self.end_frame,
+        }
+
+
+def _boot_only_prefix(env, *, room_timer=None, assist=None, on_frame=None):
+    """Power-on to the first playable overworld frame. No sword, no L1."""
+    obs, boot_frames = boot_to_ready(
+        env,
+        room_timer=room_timer,
+        assist=assist,
+        on_frame=on_frame,
+        first_playthrough=True,
+    )
+    mean = None if obs is None else float(obs.mean())
+    ready = obs is not None and is_level1_ready(env.get_ram(), obs_mean=mean)
+    return _BootPrefix(
+        obs=obs,
+        boot_frames=boot_frames,
+        success=bool(ready),
+        end_frame=boot_frames,
+    )
+
+
 def run_survival_spine(
     env,
     obs: Any,
@@ -683,14 +756,24 @@ def run_survival_spine(
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
 
-    prefix = run_natural_to_milestone(
-        env,
-        milestone="clear53",
-        room_timer=room_timer,
-        assist=assist,
-        on_frame=on_frame,
-        first_playthrough=True,
-    )
+    if through == "pre-l1":
+        prefix = _boot_only_prefix(
+            env,
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+        )
+        fail_name = "prefix_boot"
+    else:
+        prefix = run_natural_to_milestone(
+            env,
+            milestone="clear53",
+            room_timer=room_timer,
+            assist=assist,
+            on_frame=on_frame,
+            first_playthrough=True,
+        )
+        fail_name = "prefix_clear53"
     run = SpineRun(
         through=through,
         success=bool(prefix.success),
@@ -698,7 +781,7 @@ def run_survival_spine(
         prefix=prefix,
         end_frame=prefix.end_frame,
         obs=prefix.obs,
-        failed_stage=None if prefix.success else "prefix_clear53",
+        failed_stage=None if prefix.success else fail_name,
         allow_pokes=allow_pokes,
     )
     if not run.success:

@@ -26,6 +26,19 @@ from zelda_i.dungeon.behaviors import (
 )
 from zelda_i.dungeon.ids import AliveRule
 from zelda_i.dungeon.postmortem import DamageLog
+# Re-exported so ``dungeon.engine`` stays the one import for a room lane.
+from zelda_i.dungeon.route_entry import (  # noqa: F401
+    ENTER_STALL_FRAMES,
+    EntryRouteWalker,
+    ROUTE_BOUNDS,
+    ROUTE_STALL_FRAMES,
+)
+from zelda_i.dungeon.tilemap import (
+    FLOOR_TILES,
+    STAIR_TILES,
+    blocked_link_cells,
+    has_room_tile_map,
+)
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
@@ -33,12 +46,44 @@ from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
+# Collect-phase idle reasons, and how long one may hold before the reward
+# nudge closes the last pixels. See ``_collect_reward``.
+_REWARD_IDLE_REASONS = frozenset(
+    {"reward_wait", "collect_wait", "collect_skip_unreachable"}
+)
+REWARD_NUDGE_FRAMES = 24
+# Frames of action tail kept on every controller for the failure report.
+REASON_TAIL_FRAMES = 30
 # Inland box for CombatTuning.avoid_walls (door/wall tiles grab).
 _AVOID_WALL_X = (56, 200)
 _AVOID_WALL_Y = (109, 173)
 _SCOOP_RADIUS = 48
 _SCOOP_REACH = 4
 _OCC_BODY_R = 8
+# What Link may stand on *inside* a room he is clearing. Deliberately narrower
+# than ``tilemap.LINK_WALKABLE_TILES``, which also grades the four door mouths
+# walkable: that set is right for ``ROUTE_BOUNDS`` and the entry route, whose
+# whole job is to walk in through a door, and wrong here. Walking into a door
+# cell leaves the room (``tilemap.door_cells``), and the in-fight box reaches
+# several of them — ``DEFAULT_BOUNDS`` covers the north door row (y=77..84,
+# feet in tile row 3) and the south door row (y=197..205), and the L4/L5/L6
+# ``(16, 216, ...)`` boxes also cover the west door column at x=16..23. With
+# doors walkable a measured fight grid offers 272 door cells under
+# ``DEFAULT_BOUNDS`` alone and the chase BFS finds paths onto every one, so a
+# body parked near a doorway scrolls Link out mid-clear. Stairs stay walkable:
+# they are route destinations the specs aim at, not an accidental exit.
+_FIGHT_WALKABLE_TILES = FLOOR_TILES | STAIR_TILES
+# Frames to hold a proven-unreachable scoop verdict before re-running the
+# BFS. A live body (a slow Wallmaster) can clear the path within seconds;
+# the tilemap itself never changes mid-room. Re-running the reverse-flood
+# BFS every single frame while stuck is what turned a 27s ledger run into
+# 2m48s (rr coordinator trace, L1 0x45) -- this bounds that cost without
+# abandoning a goal that becomes reachable again.
+_SCOOP_REPLAN_HOLD = 20
+# Collect occupancy can walk a 3px y-loop around a statue and never
+# trip the in-place stuck detector (L1 0x45 sat at (144,141) for 7666f).
+# Skip the waypoint if manhattan to it has not dropped in this many frames.
+_COLLECT_STALE = 48
 
 # Enemy type IDs come from dungeon.ids; names below are the engine re-exports.
 AQUAMENTUS_OBJECT_TYPE = _ids.AQUAMENTUS_OBJECT_TYPE
@@ -105,6 +150,9 @@ class CombatTuning:
     occupancy_patrol: bool = False  # 1px predict; miss → block + BFS
     occupancy_bounds: tuple[int, int, int, int] | None = None
     occupancy_blocked: tuple[tuple[int, int], ...] = ()
+    # Seed the walker from the live ``$6530`` tile map instead of (or as well
+    # as) ``occupancy_blocked``. Measured geometry; hand-written boxes drift.
+    occupancy_from_tilemap: bool = False
     # Closing BODY/shot: honor threat.decide before chase. Off by default;
     # 0x42's block-push leftover moved when every room peeled.
     evade: bool = False
@@ -323,7 +371,7 @@ def _occupancy_bodies(
 
 
 @dataclass
-class GenericDungeonRoomController:
+class GenericDungeonRoomController(EntryRouteWalker):
     """Route into and clear one room described by ``DungeonRoomSpec``."""
 
     spec: DungeonRoomSpec
@@ -353,8 +401,48 @@ class GenericDungeonRoomController:
     _stuck_frames: int = 0
     _stuck_xy: tuple[int, int] | None = None
     _collect_skips: int = 0
-    _resolved_route: DoorRoute | None = None
-    _resolved_waypoints: tuple[tuple[int, int], ...] | None = None
+    _collect_best_dist: int | None = None
+    _collect_no_progress: int = 0
+    _env: Any = field(default=None, init=False, repr=False)
+    # Cached scoop-heart unreachable verdict (goal cell -> hold-until frame).
+    # See ``_scoop_heart_occupancy``.
+    _scoop_unreachable_goal: tuple[int, int] | None = field(
+        default=None, init=False, repr=False
+    )
+    _scoop_unreachable_until: int = field(default=0, init=False, repr=False)
+    # Records-only action histogram + tail; see ``_record_reason``.
+    _reason_counts: dict[str, int] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _reason_tail: list[str] = field(default_factory=list, init=False, repr=False)
+    _reward_idle_frames: int = field(default=0, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        """Keep the env so the walker can be seeded from the live tile map.
+
+        Re-seeds immediately when the fight is already running, so binding is
+        order-independent. Without that, a caller that entered FIGHT before
+        binding silently gets a walker with no geometry at all — strictly
+        worse than the hand-written blocks this replaced, and silent.
+        """
+        self._env = env
+        if self.phase is DungeonPhase.FIGHT:
+            self.walker = self._make_walker()
+
+    def _measured_blocks(
+        self, bounds: tuple[int, int, int, int]
+    ) -> frozenset[tuple[int, int]]:
+        """Live ``$6530`` geometry for ``bounds``; empty when unavailable.
+
+        Graded against ``_FIGHT_WALKABLE_TILES``, not the module default:
+        door mouths are solid to a room the controller is still clearing.
+        """
+        if not self.spec.combat.occupancy_from_tilemap or self._env is None:
+            return frozenset()
+        ram = self._env.get_ram()
+        if not has_room_tile_map(ram):
+            return frozenset()
+        return blocked_link_cells(ram, bounds, walkable=_FIGHT_WALKABLE_TILES)
 
     def _set_phase(self, phase: DungeonPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -364,8 +452,12 @@ class GenericDungeonRoomController:
             self._stuck_frames = 0
             self._stuck_xy = None
             self._collect_skips = 0
-            self._resolved_route = None
-            self._resolved_waypoints = None
+            self._collect_best_dist = None
+            self._collect_no_progress = 0
+            self._reset_entry_route()
+            self._scoop_unreachable_goal = None
+            self._scoop_unreachable_until = 0
+            self._reward_idle_frames = 0
             if phase is DungeonPhase.FIGHT:
                 self.walker = self._make_walker()
             if note:
@@ -373,12 +465,10 @@ class GenericDungeonRoomController:
 
     def _make_walker(self) -> OccupancyWalker:
         tuning = self.spec.combat
-        blocked = set(tuning.occupancy_blocked)
-        bounds = tuning.occupancy_bounds
-        if bounds is None:
-            if not blocked:
-                return OccupancyWalker()
-            return OccupancyWalker(grid=OccupancyGrid(blocked=blocked))
+        bounds = tuning.occupancy_bounds or DEFAULT_BOUNDS
+        blocked = set(tuning.occupancy_blocked) | self._measured_blocks(bounds)
+        if tuning.occupancy_bounds is None and not blocked:
+            return OccupancyWalker()
         xmin, xmax, ymin, ymax = bounds
         return OccupancyWalker(
             grid=OccupancyGrid(
@@ -389,11 +479,13 @@ class GenericDungeonRoomController:
     def _relax_leftover_bounds(self) -> None:
         """Fresh leftover grid: spec seed only. Combat misses boxed the north door."""
         tuning = self.spec.combat
-        blocked = set(tuning.occupancy_blocked)
         xmin, xmax, ymin, ymax = DEFAULT_BOUNDS
         if tuning.occupancy_bounds is not None:
             xmin, xmax, ymin, _fight_ymax = tuning.occupancy_bounds
             ymax = DEFAULT_BOUNDS[3]
+        blocked = set(tuning.occupancy_blocked) | self._measured_blocks(
+            (xmin, xmax, ymin, ymax)
+        )
         self.walker = OccupancyWalker(
             grid=OccupancyGrid(
                 blocked=blocked, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
@@ -436,30 +528,6 @@ class GenericDungeonRoomController:
         field_name = self.spec.reward.inventory_field
         return int(getattr(snap, field_name)) if field_name else 0
 
-    def _follow_route(self, snap: ZeldaSnapshot, route: DoorRoute) -> FrameAction:
-        if self._resolved_route is not route or self._resolved_waypoints is None:
-            self._resolved_route = route
-            self._resolved_waypoints = (
-                route.waypoints(snap) if callable(route.waypoints) else route.waypoints
-            )
-            self.waypoint_index = 0
-        waypoints = self._resolved_waypoints
-        if self.waypoint_index >= len(waypoints):
-            return FrameAction(nes_idle_action(), "entry_route_done")
-        tx, ty = waypoints[self.waypoint_index]
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(dx) <= 2 and abs(dy) <= 2:
-            self.waypoint_index += 1
-            if self.waypoint_index >= len(waypoints):
-                return FrameAction(nes_idle_action(), "entry_route_done")
-            return FrameAction(nes_idle_action(), "entry_waypoint_idle")
-        y_first = route.y_first and abs(dy) > 2
-        if not y_first and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy > 0 else "UP"
-        return FrameAction(nes_action(direction), "entry_route")
 
     def _swing(
         self,
@@ -606,6 +674,57 @@ class GenericDungeonRoomController:
             hold=tuning.engage_attack_hold,
         )
 
+    def _parry(
+        self,
+        snap: ZeldaSnapshot,
+        live: tuple[ZeldaObject, ...],
+        *,
+        only_slot: int | None = None,
+    ) -> FrameAction | None:
+        """Answer a closing body with the sword when the blade already reaches it.
+
+        ``ReactiveEvader`` only reasons about feet: it buys frames by stepping.
+        The sword outranges a body's contact pad, so inside blade range the
+        cheapest dodge is the kill — stepping away there concedes the hit
+        *and* lengthens the fight. Measured on L1 ``0x23``: evade-first spent
+        2005 frames patrolling and landed four swings.
+
+        ``only_slot`` keeps this honest when it pre-empts the evader: the
+        sword may answer *the* inbound threat, never a different body while a
+        boomerang is already in the air. Without it Link turned into a Goriya
+        and took a shot from behind (L1 ``0x44``, dead in 243 frames).
+
+        Never presses a direction while swinging; walking into the pad is the
+        contact the evader was called to avoid.
+        """
+        target = fight_target(snap.link_x, snap.link_y, live)
+        if target is None or is_projectile(target):
+            return None
+        if only_slot is not None and int(target.slot) != int(only_slot):
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        dx, dy = int(target.x) - lx, int(target.y) - ly
+        if abs(dx) >= abs(dy):
+            face = "RIGHT" if dx > 0 else "LEFT"
+        else:
+            face = "DOWN" if dy > 0 else "UP"
+        if not _combat.in_sword_hitbox(lx, ly, face, target.x, target.y):
+            return None
+        if self.spec.combat.occupancy_patrol:
+            self.walker.last_dir = None
+        if int(snap.facing) != _combat.direction_to_facing(face):
+            # Link has no turn-in-place, so acquiring the facing also walks a
+            # pixel that way. That pixel is worth it: the swing that follows
+            # removes the threat, where a step only postpones it. Measured on
+            # the Clean L1 run — 0x23 went 3 hits to 1 and 0x33 stayed at 0.
+            return FrameAction(nes_action(face), "combat_parry_face")
+        tuning = self.spec.combat
+        if self.combat_frames % tuning.engage_attack_period < tuning.engage_attack_hold:
+            self.swings += 1
+            self.swings_authorized += 1
+            return FrameAction(nes_action("A"), "combat_parry")
+        return FrameAction(nes_idle_action(), "combat_parry_recover")
+
     def _evade_step(
         self,
         snap: ZeldaSnapshot,
@@ -645,9 +764,36 @@ class GenericDungeonRoomController:
             bodies = _occupancy_bodies(snap, None)
             bodies.discard(xy)
             self.walker.observe(xy, transient_occupants=bodies)
-        off_wall = self._off_wall_step(snap)
-        if off_wall is not None:
-            return off_wall
+        # Reactive first. Every position rule below — the off-wall step, the
+        # entry dash, the patrol — is blind to what is inbound, so running one
+        # ahead of the evader silences it for that frame. That is how L1 0x23
+        # idled at (64,157) while a Goriya walked down the column, and how
+        # 0x45 walked `leave_wall` into a Wallmaster. The evader still yields
+        # (returns None) whenever standing is safe, so the rules keep driving.
+        if self.spec.combat.evade:
+            decision = self.evader.decide(snap, self.tracked)
+            if decision is not None:
+                if decision.direction is not None:
+                    parry = self._parry(snap, live, only_slot=decision.source_slot)
+                    return parry or self._evade_step(snap, decision)
+                if decision.shield:
+                    # ``shield_hold`` is a real answer: Link is already facing
+                    # a blockable shot, so the idle frame *is* the block.
+                    return self._evade_step(snap, decision)
+                # ``evade_no_gain`` / ``evade_boxed_in``: the evader has no
+                # step that buys a frame. Hand the frame back to the
+                # positional rules (they still dash, slash and make progress)
+                # instead of idling — same contract as
+                # ``overworld.path._threat_action``. Consuming the frame here
+                # is what stops ROOM_45_SPEC's ``inland_dash`` from ever
+                # firing: entry lands Link at x=16 inside the west door
+                # mouth, where a Wallmaster is always inside ``trigger_ttc``
+                # and no sidestep clears the tunnel, so the grab lands.
+                pass
+        # The entry dash *is* an off-wall move, and a stronger one: it knows
+        # which way the room was entered. Running the generic off-wall rule
+        # first would consume every frame of it (0x45 enters at x=16, which
+        # the off-wall rule owns, so the dash never fired).
         dash = self.spec.combat.inland_dash
         if dash > 0 and self.combat_frames <= dash:
             if occupancy:
@@ -658,16 +804,18 @@ class GenericDungeonRoomController:
                 period=self.spec.combat.engage_attack_period,
                 hold=self.spec.combat.engage_attack_hold,
             )
-        if self.spec.combat.evade:
-            decision = self.evader.decide(snap, self.tracked)
-            if decision is not None:
-                return self._evade_step(snap, decision)
+        off_wall = self._off_wall_step(snap)
+        if off_wall is not None:
+            return off_wall
         target = fight_target(snap.link_x, snap.link_y, live)
         if target is None:
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
             return self._patrol(snap)
         distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
         if self.spec.combat.evade and distance < MIN_DODGE_BODY:
+            parry = self._parry(snap, live)
+            if parry is not None:
+                return parry
             dx = target.x - snap.link_x
             dy = target.y - snap.link_y
             if abs(dx) >= abs(dy):
@@ -725,6 +873,51 @@ class GenericDungeonRoomController:
         return self._patrol(snap)
 
     def _collect_reward(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Collect policy, plus an escape from standing next to the pickup.
+
+        ``_collect_policy`` stops walking once Link is within the 2px
+        waypoint tolerance of the reward target, and then idles waiting for
+        the inventory to change. On the tile that is right; 2px off it is a
+        stall with no way out — L2 ``0x7e`` spent 6752 of its 8000 frames on
+        ``reward_wait`` at ``(138,141)`` with the key at ``(136,141)``, which
+        is what ``Level6EastKeyController._go_key`` already wiggles for
+        locally. Close the last pixels instead of idling.
+        """
+        action = self._collect_policy(snap)
+        if action.reason not in _REWARD_IDLE_REASONS:
+            self._reward_idle_frames = 0
+            return action
+        self._reward_idle_frames += 1
+        if self._reward_idle_frames < REWARD_NUDGE_FRAMES:
+            return action
+        return self._reward_nudge(snap, action)
+
+    def _reward_nudge(
+        self, snap: ZeldaSnapshot, idle: FrameAction
+    ) -> FrameAction:
+        """Walk the last 1-2px onto the reward tile, tolerance ignored."""
+        target = self.spec.reward.target
+        if target is None:
+            waypoints = self.spec.reward.waypoints
+            if not waypoints:
+                return idle
+            target = waypoints[self.waypoint_index % len(waypoints)]
+        dx = int(target[0]) - int(snap.link_x)
+        dy = int(target[1]) - int(snap.link_y)
+        if dx:
+            return FrameAction(
+                nes_action("RIGHT" if dx > 0 else "LEFT"), "reward_nudge"
+            )
+        if dy:
+            return FrameAction(
+                nes_action("DOWN" if dy > 0 else "UP"), "reward_nudge"
+            )
+        # Exactly on the tile and still nothing: rock one pixel so the
+        # pickup check runs again on a fresh position.
+        direction = "RIGHT" if (self.frames % 8) < 4 else "LEFT"
+        return FrameAction(nes_action(direction), "reward_nudge_wiggle")
+
+    def _collect_policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.spec.reward.waypoints:
             n = len(self.spec.reward.waypoints)
             # One hunt lap, then stand. Looping the grid was thousands of
@@ -738,14 +931,23 @@ class GenericDungeonRoomController:
             dy = ty - snap.link_y
             reached = abs(dx) <= 2 and abs(dy) <= 2
             stuck = self._stuck_frames >= 24 and not reached
-            if reached or stuck:
-                if stuck:
+            dist = abs(int(dx)) + abs(int(dy))
+            if self._collect_best_dist is None or dist < self._collect_best_dist:
+                self._collect_best_dist = dist
+                self._collect_no_progress = 0
+            else:
+                self._collect_no_progress += 1
+            stale = self._collect_no_progress >= _COLLECT_STALE
+            if reached or stuck or stale:
+                if stuck or stale:
                     self.notes.append(
                         f"collect_skip_{self.waypoint_index}_{xy[0]}_{xy[1]}"
                     )
                     self._collect_skips += 1
                 self.waypoint_index = (self.waypoint_index + 1) % n
                 self._stuck_frames = 0
+                self._collect_best_dist = None
+                self._collect_no_progress = 0
                 if self.spec.combat.occupancy_patrol:
                     self.walker.path = None
                 if self._collect_skips >= n:
@@ -759,6 +961,8 @@ class GenericDungeonRoomController:
                     return FrameAction(nes_action(direction), "collect_reward")
                 self.waypoint_index = (self.waypoint_index + 1) % n
                 self.walker.path = None
+                self._collect_best_dist = None
+                self._collect_no_progress = 0
                 return FrameAction(nes_idle_action(), "collect_skip_unreachable")
 
         target = self.spec.reward.target
@@ -810,15 +1014,86 @@ class GenericDungeonRoomController:
             return FrameAction(nes_action("DOWN"), "leftover_inland")
         return self._collect_reward(snap)
 
+    def _scoop_standable_goal(
+        self, drop: ZeldaObject
+    ) -> tuple[int, int] | None:
+        """Nearest cell within scoop reach the occupancy grid calls passable.
+
+        ``drop.(x, y)`` is where the item is DRAWN; Link's feet collide
+        ``LINK_FOOT_OFFSET`` px lower (tilemap.py), so the drop's own pixel
+        is frequently "solid" in the measured grid even though the drop
+        plainly rests on real floor — the grid is answering "can Link stand
+        with his stored (x, y) here", not "is this pixel floor". Search the
+        small diamond ``_SCOOP_REACH`` already accepts as close-enough,
+        nearest first: any hit is inside pickup range, so aiming the BFS at
+        it is exactly as good as the exact pixel once Link is standing there.
+        """
+        grid = self.walker.grid
+        ox, oy = int(drop.x), int(drop.y)
+        if grid.passable(ox, oy):
+            return (ox, oy)
+        candidates: list[tuple[int, int, int]] = []
+        for dx in range(-_SCOOP_REACH, _SCOOP_REACH + 1):
+            for dy in range(-_SCOOP_REACH, _SCOOP_REACH + 1):
+                r = abs(dx) + abs(dy)
+                if 0 < r <= _SCOOP_REACH and grid.passable(ox + dx, oy + dy):
+                    candidates.append((r, ox + dx, oy + dy))
+        if not candidates:
+            return None
+        candidates.sort()
+        _, cx, cy = candidates[0]
+        return (cx, cy)
+
+    def _scoop_heart_occupancy(
+        self, snap: ZeldaSnapshot, drop: ZeldaObject
+    ) -> FrameAction | None:
+        """Occupancy-walk toward ``drop``; never idle on an unreachable one.
+
+        Idling and re-planning every frame are the two measured failure
+        modes here (rr coordinator trace, L1 0x45): idling pinned Link while
+        a slow Wallmaster walked into him, and re-running the reverse-flood
+        BFS every frame turned a 27s ledger run into 2m48s. Returning None
+        lets the room policy (off-wall, evade, combat) drive instead, and
+        the cached verdict below bounds the BFS cost while still adapting
+        once a blocking body moves on.
+        """
+        xy = (int(snap.link_x), int(snap.link_y))
+        goal = self._scoop_standable_goal(drop)
+        if goal is None:
+            # No cell within reach is even nominally passable -- do not
+            # spend a BFS proving what the grid already answered.
+            self.walker.last_dir = None
+            return None
+        if (
+            self._scoop_unreachable_goal == goal
+            and self.frames < self._scoop_unreachable_until
+        ):
+            return None
+        bodies = _occupancy_bodies(snap, None)
+        bodies.discard(xy)
+        bodies.discard(goal)
+        direction = self.walker.next_dir(
+            xy, goal, extra_blocked=bodies, transient_occupants=bodies
+        )
+        if direction is None:
+            self.walker.last_dir = None
+            self._scoop_unreachable_goal = goal
+            self._scoop_unreachable_until = self.frames + _SCOOP_REPLAN_HOLD
+            return None
+        self._scoop_unreachable_goal = None
+        return FrameAction(nes_action(direction), "scoop_heart")
+
     def _scoop_heart(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.health_is_full or snap.filled_hearts >= snap.heart_containers:
             return None
         drop = _combat.nearest_heart_or_fairy(snap)
         if drop is None:
+            self._scoop_unreachable_goal = None
             return None
         dist = manhattan(snap.link_x, snap.link_y, drop.x, drop.y)
         max_dist = _SCOOP_RADIUS if self.spec.live_enemies(snap) else 120
         if dist > max_dist:
+            self._scoop_unreachable_goal = None
             return None
         occupancy = self.spec.combat.occupancy_patrol
         if dist <= _SCOOP_REACH:
@@ -828,16 +1103,10 @@ class GenericDungeonRoomController:
         if _combat.scoop_exits_room(
             snap.link_x, snap.link_y, drop, bounds=DEFAULT_BOUNDS
         ):
+            self._scoop_unreachable_goal = None
             return None
         if occupancy:
-            direction = self.walker.next_dir(
-                (int(snap.link_x), int(snap.link_y)),
-                (int(drop.x), int(drop.y)),
-            )
-            if direction is None:
-                self.walker.last_dir = None
-                return FrameAction(nes_idle_action(), "scoop_heart")
-            return FrameAction(nes_action(direction), "scoop_heart")
+            return self._scoop_heart_occupancy(snap, drop)
         dx = int(drop.x) - int(snap.link_x)
         dy = int(drop.y) - int(snap.link_y)
         if abs(dx) >= abs(dy) and abs(dx) > 2:
@@ -859,7 +1128,32 @@ class GenericDungeonRoomController:
         )
         action = self._step_policy(snap)
         self.last_reason = action.reason
+        self._record_reason(snap, action)
         return action
+
+    def _record_reason(self, snap: ZeldaSnapshot, action: FrameAction) -> None:
+        """Records only. No action is ever chosen from these.
+
+        A timed-out stage that reports one tile costs the next sitting a whole
+        trial working out what held the frames. ``rr-d6v`` spent one finding
+        that 11443 of 12000 frames were ``combat_patrol`` in a 1px loop; the
+        Survival ``clear45_key`` timeout was 8999 frames of ``entry_route``.
+        The histogram names the rule, the tail shows the pose it held.
+        This was ``Level6EastKeyController``'s local trace; every room has the
+        same failure mode, so it belongs on the engine.
+        """
+        self._reason_counts[action.reason] = (
+            self._reason_counts.get(action.reason, 0) + 1
+        )
+        patrol = self.spec.combat.patrol
+        vertex = patrol[self.patrol_index % len(patrol)] if patrol else None
+        self._reason_tail.append(
+            f"f{self.frames} {self.phase.name} "
+            f"({int(snap.link_x)},{int(snap.link_y)}) "
+            f"room=0x{int(snap.screen):02x} {action.reason} "
+            f"p{self.patrol_index}{vertex}"
+        )
+        del self._reason_tail[:-REASON_TAIL_FRAMES]
 
     def _step_policy(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -937,6 +1231,11 @@ class GenericDungeonRoomController:
             return action
 
         if self.phase is DungeonPhase.ENTER:
+            # The door push is a held button with no escape by design (a key
+            # door eats frames while it opens). Do not steer it — but do
+            # leave the pose behind, so a stage that dies here reports where
+            # rather than only "timeout".
+            self._note_enter_stall(snap, self.spec.entry.direction)
             return FrameAction(
                 nes_action(self.spec.entry.direction),
                 "enter_target_room",
@@ -975,6 +1274,11 @@ class GenericDungeonRoomController:
                     self._set_phase(DungeonPhase.DONE, "room_cleared")
                     return FrameAction(nes_idle_action(), "done")
                 self._set_phase(DungeonPhase.COLLECT_REWARD, "room_cleared")
+                # Combat observe() scars inferred cells that boxed the
+                # leftover (L1 0x45 sat at (144,141) for 7666 collect
+                # frames after Wallmasters died). CLEAR_ONLY already
+                # rebuilds; key hunt uses the same walker.
+                self._relax_leftover_bounds()
                 return self._collect_reward(snap)
             return self._combat(snap, live)
 
@@ -1002,6 +1306,10 @@ class GenericDungeonRoomController:
             "clear_signal_seen": self.clear_signal_seen,
             "initial_inventory": self.initial_inventory,
             "notes": list(self.notes),
+            "reason_counts": dict(
+                sorted(self._reason_counts.items(), key=lambda kv: -kv[1])
+            ),
+            "tail": list(self._reason_tail),
             "tuning": {
                 "engage_distance": self.spec.combat.engage_distance,
                 "engage_dominant_axis": self.spec.combat.engage_dominant_axis,

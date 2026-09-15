@@ -533,6 +533,12 @@ def test_l1_0x33_does_not_walk_into_a_closing_stalfos_body() -> None:
 
     Hits landed during combat_backstep / combat_engage. Tracker saw the
     body; _combat never asked threat.decide, so Link walked into pad=16.
+
+    The ban is on *chasing* into the pad. A step toward the body is allowed
+    only on a frame where the sword already reaches it — acquiring the facing
+    costs a pixel because Link has no turn-in-place, and the swing that
+    follows removes the threat rather than postponing it. On the live Clean
+    run that distinction is worth 0 hits in 0x33 and 3-to-1 in 0x23.
     """
     from retro_harness.nes import nes_action
     from zelda_i.dungeon.engine import GenericDungeonRoomController
@@ -552,10 +558,14 @@ def test_l1_0x33_does_not_walk_into_a_closing_stalfos_body() -> None:
         )
         last = ctl.step(snap)
         # Velocity needs TRACK_HISTORY samples before decide can peel.
-        if i >= 8 and any(np.array_equal(last.action, a) for a in toward):
+        stepped_toward = any(np.array_equal(last.action, a) for a in toward)
+        at_blade_range = last.reason.startswith("combat_parry")
+        if i >= 8 and stepped_toward and not at_blade_range:
             walked_in += 1
     assert last is not None
-    assert last.reason.startswith("combat_evade")
+    # Either answer is correct: step off the line, or meet it with the sword
+    # at blade range. What must never happen is *chasing* into the 16px pad.
+    assert last.reason.startswith(("combat_evade", "combat_parry"))
     assert "engage" not in last.reason
     assert walked_in == 0
 

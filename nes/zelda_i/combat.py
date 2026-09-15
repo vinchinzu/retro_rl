@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import Iterable
 
 from zelda_i.dungeon.ids import (
+    BOMB_DROP_OBJECT_TYPE,
+    BOMB_DROP_STATE,
     CLOCK_DROP_OBJECT_TYPE,
     FAIRY_DROP_OBJECT_TYPE,
     FAIRY_DROP_STATE,
@@ -184,11 +186,13 @@ FLOOR_DROP_TYPES = frozenset(
         FAIRY_DROP_OBJECT_TYPE,
         FIVE_RUPEE_DROP_OBJECT_TYPE,
         CLOCK_DROP_OBJECT_TYPE,
+        BOMB_DROP_OBJECT_TYPE,
     }
 )
 HEART_OR_FAIRY_TYPES = frozenset({HEART_DROP_OBJECT_TYPE, FAIRY_DROP_OBJECT_TYPE})
 HEART_OR_FAIRY_STATES = frozenset({HEART_DROP_STATE, FAIRY_DROP_STATE})
 RUPEE_DROP_STATES = frozenset({RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE})
+BOMB_DROP_STATES = frozenset({BOMB_DROP_STATE})
 
 
 def _in_drop_bounds(obj: ZeldaObject) -> bool:
@@ -327,6 +331,9 @@ __all__ = [
     "HEART_OR_FAIRY_TYPES",
     "HEART_OR_FAIRY_STATES",
     "RUPEE_DROP_STATES",
+    "BOMB_DROP_OBJECT_TYPE",
+    "BOMB_DROP_STATE",
+    "BOMB_DROP_STATES",
     "direction_to_facing",
     "facing_to_direction",
     "manhattan",

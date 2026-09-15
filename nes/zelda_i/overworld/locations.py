@@ -264,6 +264,15 @@ _Q1_EXTRAS: tuple[OwLocation, ...] = (
     OwLocation("fairy_d5", 0x43, CAVE_NONE, "fairy", "fairy", OPEN_OPEN, EVIDENCE_SOURCE),
 )
 
+# heart_h5 (0x47) pocket, live-measured 2026-09-14 (rr-ps7.4.3). Burn is
+# unverified: no spine hop owns candle yet. 0x48 LEFT at y=141 is open.
+HEART_H5_SCREEN = 0x47
+HEART_H5_NEAREST_SPINE_SCREEN = 0x48
+HEART_H5_NEAREST_SPINE_HOP_DIR = "LEFT"
+HEART_H5_POCKET_X = (149, 184)
+HEART_H5_POCKET_Y = (133, 157)
+HEART_H5_BURN_HYPOTHESIS_XY = (152, 157)
+
 
 def _from_row(row: tuple[int, int, str, str, str, str, int]) -> OwLocation:
     screen, cave_id, name, vanilla, open_how, evidence, slots = row
@@ -537,6 +546,20 @@ def farm_at(screen: int) -> FarmSpot | None:
 
 
 _SKIP_PREY = frozenset({"lynel", "lynel_blue", "peahat", "zora"})
+# Heart-farm chase is walker prey only. 0x48 leevers killed natural L2 at
+# (186,93); 0x58 mixed group burned both farm attempts then 0x5C maze death.
+_HEART_PREY = frozenset(
+    {
+        "octorok",
+        "octorok_fast",
+        "octorok_blue",
+        "octorok_blue_fast",
+        "moblin",
+        "moblin_blue",
+        "tektite",
+        "tektite_blue",
+    }
+)
 
 
 def restock_for(screen: int) -> tuple[int, str] | None:
@@ -558,6 +581,23 @@ def worth_rupee_farm(screen: int) -> FarmSpot | None:
     if spot.prey in _SKIP_PREY:
         return None
     if "rupee" not in spot.drops and "rupee_5" not in spot.drops:
+        return None
+    return spot
+
+
+def worth_heart_farm(screen: int) -> FarmSpot | None:
+    """Heart-farm divert: octorok / moblin / tektite only.
+
+    Skip leevers (0x48 chase walked into the north trees) and mixed groups
+    (0x58 burned both attempts). 0x4A tektites stay legal. Rupee farms may
+    still use leevers.
+    """
+    spot = farm_at(screen)
+    if spot is None:
+        return None
+    if spot.prey not in _HEART_PREY:
+        return None
+    if "heart" not in spot.drops and "fairy" not in spot.drops:
         return None
     return spot
 
@@ -643,6 +683,12 @@ __all__ = [
     "easy_farms",
     "farm_at",
     "five_rupee_farms",
+    "HEART_H5_BURN_HYPOTHESIS_XY",
+    "HEART_H5_NEAREST_SPINE_HOP_DIR",
+    "HEART_H5_NEAREST_SPINE_SCREEN",
+    "HEART_H5_POCKET_X",
+    "HEART_H5_POCKET_Y",
+    "HEART_H5_SCREEN",
     "grid_name",
     "location",
     "location_at",
@@ -654,5 +700,6 @@ __all__ = [
     "restock_for",
     "rupee_farms",
     "spawns_from_rom",
+    "worth_heart_farm",
     "worth_rupee_farm",
 ]
