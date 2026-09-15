@@ -2,6 +2,24 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
+## This sitting (2026-09-15) — assist off + sword-reach hunt
+
+`rr-doua.1` still in_progress (20R bombs). `--through pre-l1` now strips
+assist even if the caller passed one (CLI too). Live 1/1 green, tag
+`prel1_reach`, `assist=None`, `set_state=0`, end 4926f.
+
+Walk 3978f leftover play **`0x4A` `(0,141)`** mode 5 TF `0x00` keys 0
+bombs 0 rupees **3** health **`0x20` 0/3** lo!=hi, `hits_taken=2`. Hunt:
+11/9 kills, `streak_best` **7** (was 4), `streak_resets` **2** (was 6),
+`hurt_events` 4, `damage_taken` 5 (visible now that the refill is gone),
+`rupees_banked` 3. Screens: clear 0x77/0x58, skip peahats on 0x68/0x59,
+`hunt_hurt_49`. Forced 5-rupee still did not fire (peak 7 < 10).
+
+Sword-reach stand + A pulse is in `overworld/hunt.py` (`sword_stand`,
+peel inside `MIN_DODGE_BODY`, slash in-place, no occupancy walk onto the
+sprite). Remaining contact is the two resets and the 0x49 hurt-retire.
+Do not STATUS. Do not overwrite M5 18909f.
+
 ## This sitting (2026-09-15) — pre-L1 rupee streak is contact, not "no drops"
 
 `rr-doua.1` still in_progress (20R bombs). Hunt walk 1/1 green, 14 kills, 0

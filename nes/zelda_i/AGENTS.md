@@ -28,15 +28,13 @@ the `shortest_path` goal guard on unit tests alone and took M5 red (death in
 oracle after *any* change under the walker, never the suite alone. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
 ([`docs/PRE_L1.md`](docs/PRE_L1.md)): bombs at 0x6F (bypass 0x79), two bomb
 hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
-`--through pre-l1` now clears every screen on the way (`overworld/hunt.py`),
-1/1 green: 14 kills, walk 4010f — and **0 rupees**. Random table on this
-corridor is Baxter A (31%, hearts/1R), not group B. The forced 5-rupee at
-10 kills never fires because the hunt walks onto the body:
-`Link_BeHarmed` zeros `$50`/`$627` on collision (iframes `$04F0=24`); a
-chip is `$0670` only and Survival assist heals it before `observe`, so
-`damage_taken` stays 0. Live 2026-09-15: 6 resets, 6 iframe arms, peak 4.
-`hunt.report()["hurt_events"]` is the census. Next: sword-reach hunt.
-Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
+`--through pre-l1` forces assist off and hunts at wooden-sword reach.
+Live 2026-09-15 `prel1_reach` 1/1 green, `assist=None`: 11/9 kills, walk
+3978f, leftover `0x4A (0,141)` hp `0x20` 0/3, **3 rupees**, `streak_best`
+7, `streak_resets` 2 (was 6 / peak 4 with assist on). `damage_taken` 5
+is now visible. Forced 5-rupee still needs 10 without the two remaining
+contacts. Random table is still Baxter A. Do not overwrite the 18909f
+claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
 death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
 STATUS; this is the ROM claim, not a STATUS rewrite.
 
@@ -147,6 +145,9 @@ scratch — not an AGENTS novel.
   change. A wooden octorok chip is `$0670` `$80`; Survival assist heals
   it the same frame. `$04F0` (Link iframes, 24) is the collision that
   survives. `hunt.hurt_events` watches that; `damage_taken` does not.
+  `--through pre-l1` forces assist off so that refill cannot hide the
+  chip. Hunt stands at wooden-sword reach; occupancy-walking onto the
+  sprite is the reset.
 - L2 prefix: `37→38→48→58→59→49→4A`; never 0x79.
 - Stuck nav: stand still (`*_wait`). Do not loop LEFT/RIGHT/DOWN wiggle.
 - `$0656` B-item: **1=bombs, 2=arrows, 4=candle**.

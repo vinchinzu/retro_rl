@@ -3,8 +3,10 @@
 The pre-L1 errand is money. ``OverworldPathController`` crosses a screen on
 one lane and only scoops a drop that happens to land beside it, so the wave
 standing two lanes north is never fought and never pays. This module is the
-opposite policy: while a hop crosses a screen, walk to every live body in the
-interior box, kill it, and walk onto whatever it leaves behind.
+opposite policy: while a hop crosses a screen, close to wooden-sword reach of
+every live body in the interior box, kill it, and walk onto whatever it
+leaves behind. Occupancy-walking onto the sprite is ``Link_BeHarmed`` and
+zeros the 10-kill 5-rupee.
 
 Three guards keep that from eating the route:
 
@@ -45,9 +47,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_idle_action
-from zelda_i.combat import FLOOR_DROP_TYPES
-from zelda_i.dungeon.behaviors import is_projectile
+from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import (
+    FLOOR_DROP_TYPES,
+    SWORD_REACH,
+    chebyshev,
+    direction_to_facing,
+    in_sword_hitbox,
+)
+from zelda_i.dungeon.behaviors import face_toward, is_projectile
+from zelda_i.dungeon.threat import MIN_DODGE_BODY
 from zelda_i.dungeon.ids import (
     FAIRY_DROP_STATE,
     FIVE_RUPEE_DROP_STATE,
@@ -74,6 +83,7 @@ __all__ = [
     "hop_exit_goal",
     "hop_lane",
     "hunt_prey",
+    "sword_stand",
 ]
 
 # One screen's worth of fighting. The 0x77 -> 0x4A walk crosses seven screens
@@ -112,11 +122,66 @@ CAVE_TRIGGER_TYPE = 0x64
 # Live overworld foes are single-digit HP. A 200+ reading is a trigger or a
 # boss-shaped slot, neither of which the wooden sword resolves.
 MAX_PREY_HP = 200
+# Pulse A; holding it never starts the next swing. Same cadence as the farm.
+HUNT_SWING_PERIOD = 8
+HUNT_SWING_HOLD = 3
+_AWAY = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 
 _PICKUP_STATES = frozenset(
     {RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE, HEART_DROP_STATE, FAIRY_DROP_STATE}
 )
 _HEAL_STATES = frozenset({HEART_DROP_STATE, FAIRY_DROP_STATE})
+
+
+def _box_step(
+    x: int, y: int, direction: str, box: tuple[int, int, int, int]
+) -> str | None:
+    """``direction`` if one step stays in the hunt box, else None.
+
+    A peel that walks a scroll line changes screen under the hop table.
+    """
+    nx, ny = x, y
+    if direction == "LEFT":
+        nx = x - 2
+    elif direction == "RIGHT":
+        nx = x + 2
+    elif direction == "UP":
+        ny = y - 2
+    elif direction == "DOWN":
+        ny = y + 2
+    else:
+        return None
+    xlo, xhi, ylo, yhi = box
+    if xlo <= nx <= xhi and ylo <= ny <= yhi:
+        return direction
+    return None
+
+
+def sword_stand(
+    link_x: int,
+    link_y: int,
+    obj: ZeldaObject,
+    box: tuple[int, int, int, int] = HUNT_BOX,
+) -> tuple[int, int]:
+    """Cell on Link's side of ``obj`` from which the wooden sword reaches.
+
+    Occupancy-walking onto the sprite is ``Link_BeHarmed``: the 2026-09-15
+    walk reset the 10-kill streak six times, each with iframes 24, while
+    ``damage_taken`` stayed 0. This is ``SWORD_REACH`` (20) off the body,
+    outside ``MIN_DODGE_BODY`` (16).
+    """
+    face = face_toward(int(link_x), int(link_y), int(obj.x), int(obj.y))
+    ox, oy = int(obj.x), int(obj.y)
+    if face == "RIGHT":
+        gx, gy = ox - SWORD_REACH, oy
+    elif face == "LEFT":
+        gx, gy = ox + SWORD_REACH, oy
+    elif face == "DOWN":
+        gx, gy = ox, oy - SWORD_REACH
+    else:
+        gx, gy = ox, oy + SWORD_REACH
+    xlo, xhi, ylo, yhi = box
+    return (max(xlo, min(xhi, gx)), max(ylo, min(yhi, gy)))
 
 
 def hop_lane(hop: ScreenHop) -> tuple[str, int] | None:
@@ -356,8 +421,27 @@ class ScreenHunter:
             self._retire(screen, "hurt")
             return self._lane_return(snap, frames, lane)
 
+        prey = tuple(
+            o for o in hunt_prey(snap, self.box) if int(o.slot) not in self.skipped
+        )
+        if prey:
+            self.settle = 0
+            self.screen_frames += 1
+            self.hunt_frames += 1
+            if self.screen_frames > self.screen_max_frames:
+                self._retire(screen, "budget")
+                return self._lane_return(snap, frames, lane)
+            target = self._pick(snap, prey)
+            if target is None:
+                self._retire(screen, "stubborn")
+                return self._lane_return(snap, frames, lane)
+            return self._engage(snap, frames, target, f"hunt_{screen:02x}")
+
         pickup = _nearest(snap, _pickups(snap, self.box))
         if pickup is not None:
+            # After the wave. Scooping mid-fight walked Link onto a drop
+            # sitting in an octorok's pad (live 2026-09-15, 0x68 (179,125)
+            # next to a body at 187).
             self.screen_frames += 1
             self.settle = 0
             self.target_slot = None
@@ -370,38 +454,72 @@ class ScreenHunter:
                 snap, frames, (int(pickup.x), int(pickup.y)), "hunt_drop", slash=False
             )
 
-        prey = tuple(
-            o for o in hunt_prey(snap, self.box) if int(o.slot) not in self.skipped
-        )
-        if not prey:
-            # The drop lands a frame or two after the body. Hand these frames
-            # to the hop rather than idling: the pickup branch above reclaims
-            # a late drop, and the hop has only moved a pixel or two.
-            self.settle += 1
+        # The drop lands a frame or two after the body. Hand these frames
+        # to the hop rather than idling: the pickup branch above reclaims
+        # a late drop, and the hop has only moved a pixel or two.
+        self.settle += 1
+        if (
+            self.settle >= self.settle_frames
+            and self.since_enter >= self.spawn_wait_frames
+        ):
+            self._clear(screen)
+        return self._lane_return(snap, frames, lane)
+
+    def _freeze_occ(self) -> None:
+        """Stand/peel/slash do not grade as a missed occupancy step."""
+        walker = self._occ.walker
+        if walker is not None:
+            walker.last_dir = None
+            walker.last_xy = None
+
+    def _engage(
+        self,
+        snap: ZeldaSnapshot,
+        frames: int,
+        target: ZeldaObject,
+        reason: str,
+    ) -> FrameAction:
+        """Close to sword reach, then pulse A in place. Never walk onto the sprite."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        tx, ty = int(target.x), int(target.y)
+        face = face_toward(lx, ly, tx, ty)
+        pad = chebyshev(lx, ly, tx, ty)
+        if pad <= MIN_DODGE_BODY:
+            self._freeze_occ()
+            step = _box_step(lx, ly, _AWAY[face], self.box) or _box_step(
+                lx, ly, face, self.box
+            )
+            if step is not None:
+                return FrameAction(nes_action(step), f"{reason}_peel")
+            return FrameAction(nes_action("A"), f"{reason}_slash")
+        if in_sword_hitbox(lx, ly, face, tx, ty):
+            self._freeze_occ()
             if (
-                self.settle >= self.settle_frames
-                and self.since_enter >= self.spawn_wait_frames
+                int(snap.facing) != direction_to_facing(face)
+                and pad > MIN_DODGE_BODY + 2
+                and _box_step(lx, ly, face, self.box) is not None
             ):
-                self._clear(screen)
-            return self._lane_return(snap, frames, lane)
-
-        self.settle = 0
-        self.screen_frames += 1
-        self.hunt_frames += 1
-        if self.screen_frames > self.screen_max_frames:
-            self._retire(screen, "budget")
-            return self._lane_return(snap, frames, lane)
-
-        target = self._pick(snap, prey)
-        if target is None:
-            self._retire(screen, "stubborn")
-            return self._lane_return(snap, frames, lane)
+                return FrameAction(nes_action(face), f"{reason}_face")
+            if frames % HUNT_SWING_PERIOD < HUNT_SWING_HOLD:
+                return FrameAction(nes_action("A"), f"{reason}_slash")
+            return FrameAction(nes_idle_action(), f"{reason}_recover")
+        if pad <= SWORD_REACH:
+            # In reach but off-axis: strafe to the blade box. Walking the
+            # toward-axis here is how a 20px stand-off became an 8px collision
+            # when the octorok walked in.
+            self._freeze_occ()
+            dx, dy = tx - lx, ty - ly
+            if abs(dx) >= abs(dy) and dy != 0:
+                align = "DOWN" if dy > 0 else "UP"
+            elif abs(dy) > abs(dx) and dx != 0:
+                align = "RIGHT" if dx > 0 else "LEFT"
+            else:
+                align = face
+            if _box_step(lx, ly, align, self.box) is not None:
+                return FrameAction(nes_action(align), f"{reason}_align")
+            return FrameAction(nes_action("A"), f"{reason}_slash")
         return self._occ.walk(
-            snap,
-            frames,
-            (int(target.x), int(target.y)),
-            f"hunt_{screen:02x}",
-            slash=True,
+            snap, frames, sword_stand(lx, ly, target, self.box), reason, slash=False
         )
 
     def _pick(

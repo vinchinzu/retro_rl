@@ -8,6 +8,8 @@ and both are asserted here.
 
 from __future__ import annotations
 
+from retro_harness.controls import pressed_nes_buttons
+from zelda_i.combat import FACING_EAST, SWORD_REACH
 from zelda_i.dungeon.behaviors import ROCK_PROJECTILE_TYPE
 from zelda_i.dungeon.ids import (
     BOMB_DROP_STATE,
@@ -16,11 +18,13 @@ from zelda_i.dungeon.ids import (
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
 )
+from zelda_i.dungeon.threat import MIN_DODGE_BODY
 from zelda_i.overworld.hunt import (
     CAVE_TRIGGER_TYPE,
     HUNT_BOX,
     ScreenHunter,
     hunt_prey,
+    sword_stand,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
@@ -160,9 +164,17 @@ def test_the_larger_counter_delta_is_the_one_banked() -> None:
 # ---------------------------------------------------------------- step ---
 
 
-def test_a_drop_outranks_a_body() -> None:
+def test_a_body_outranks_a_drop() -> None:
+    """Scooping mid-fight walked onto a heart sitting in an octorok pad."""
     hunter = ScreenHunter()
     snap = _snap(objects=(_foe(slot=1, x=160), _drop(slot=2, x=80)))
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason == "hunt_78"
+
+
+def test_a_drop_is_taken_once_the_wave_is_dead() -> None:
+    hunter = ScreenHunter()
+    snap = _snap(objects=(_drop(slot=2, x=80),))
     act = hunter.step(snap, 1)
     assert act is not None and act.reason == "hunt_drop"
 
@@ -251,6 +263,69 @@ def test_a_body_that_will_not_die_is_skipped_not_chased_to_the_budget() -> None:
         hunter.step(snap, frame)
     assert 2 in hunter.skipped
     assert hunter.target_slot == 1
+
+
+def test_sword_stand_is_reach_off_the_body_on_link_s_side() -> None:
+    foe = _foe(x=160, y=141)
+    assert sword_stand(100, 141, foe) == (160 - SWORD_REACH, 141)
+    assert sword_stand(200, 141, foe) == (160 + SWORD_REACH, 141)
+
+
+def test_a_far_body_is_approached_to_sword_stand_not_onto_the_sprite() -> None:
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141)
+    act = hunter.step(_snap(link_x=100, objects=(foe,)), 1)
+    assert act is not None and act.reason == "hunt_78"
+    assert "RIGHT" in pressed_nes_buttons(list(act.action))
+    assert "A" not in pressed_nes_buttons(list(act.action))
+
+
+def test_in_hitbox_slashes_in_place() -> None:
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141)
+    act = hunter.step(
+        _snap(link_x=160 - SWORD_REACH, facing=FACING_EAST, objects=(foe,)), 1
+    )
+    assert act is not None and act.reason == "hunt_78_slash"
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "A" in buttons
+    assert "RIGHT" not in buttons
+
+
+def test_in_hitbox_releases_a_so_the_next_swing_can_start() -> None:
+    """Holding A never starts the next wooden swing."""
+    from zelda_i.overworld.hunt import HUNT_SWING_HOLD
+
+    hunter = ScreenHunter()
+    snap = _snap(
+        link_x=160 - SWORD_REACH, facing=FACING_EAST, objects=(_foe(x=160, y=141),)
+    )
+    act = hunter.step(snap, HUNT_SWING_HOLD)
+    assert act is not None and act.reason == "hunt_78_recover"
+    assert "A" not in pressed_nes_buttons(list(act.action))
+
+
+def test_off_axis_in_reach_strafes_instead_of_closing() -> None:
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=157)
+    act = hunter.step(
+        _snap(link_x=160 - SWORD_REACH, link_y=141, facing=FACING_EAST, objects=(foe,)),
+        1,
+    )
+    assert act is not None and act.reason == "hunt_78_align"
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "DOWN" in buttons
+    assert "RIGHT" not in buttons
+
+
+def test_inside_the_body_pad_peels_away() -> None:
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141)
+    act = hunter.step(_snap(link_x=160 - (MIN_DODGE_BODY - 2), objects=(foe,)), 1)
+    assert act is not None and act.reason == "hunt_78_peel"
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "LEFT" in buttons
+    assert "A" not in buttons
 
 
 def test_the_last_heart_is_not_traded_for_a_rupee() -> None:

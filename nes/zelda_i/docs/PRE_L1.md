@@ -153,8 +153,12 @@ plus the first 0x58 kill, then contact. Two more iframe arms on 0x59 peahats
 after the streak was already 0. `hunt.report()["hurt_events"]` watches
 `$04F0`; that is the census that agrees with the resets.
 
-Next: stop the hunt at sword reach instead of occupancy-walking onto the
-sprite, then the 10-streak can survive. Do not STATUS.
+2026-09-15 sword-reach + assist off (`prel1_reach`, 1/1 green, walk 3978f):
+**3 rupees**, 11/9 kills, peak 7, 2 resets, `hurt_events` 4, `damage_taken`
+5, leftover `0x4A (0,141)` hp `0x20` 0/3. The refill is gone (`assist=None`)
+and the hunt no longer occupancy-walks onto the sprite (peel / in-place A /
+`sword_stand`). Two contacts remain, so the forced 5-rupee still does not
+fire. Next: kill those two resets (0x49 `hunt_hurt` is one). Do not STATUS.
 
 ### Two traps this sitting paid for
 

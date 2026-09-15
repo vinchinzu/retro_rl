@@ -121,6 +121,21 @@ def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
     assert run.report()["stop"] == "pre_l1_shop_p7"
 
 
+def test_pre_l1_forces_assist_off() -> None:
+    """Survival refill hides the $0670 chip that zeros the 10-kill 5-rupee."""
+    import inspect
+
+    from zelda_i.scripts import run_survival_spine as cli
+    from zelda_i.spine.survival import run_survival_spine
+
+    lib = inspect.getsource(run_survival_spine)
+    pre_l1 = lib.split('if through == "pre-l1":', 1)[1].split("else:", 1)[0]
+    assert "assist = None" in pre_l1
+    cli_src = inspect.getsource(cli.main)
+    assert 'args.through == "pre-l1"' in cli_src
+    assert "infinite_life = False" in cli_src
+
+
 def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
     from zelda_i.level1.bow_pickup import level1_survival_tf_stages
 
