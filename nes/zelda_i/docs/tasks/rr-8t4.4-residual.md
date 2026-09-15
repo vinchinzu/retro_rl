@@ -2,6 +2,37 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
+## This sitting (2026-09-15) — the 20R budget, and rocks are half the resets
+
+`rr-doua.1` still in_progress. Two new scratch tools: `bomb_budget.py` (the
+arithmetic) and `probe_contact.py` (a 48-frame ring buffer dumped on every
+`$04F0` arm, so a collider is named rather than guessed).
+
+**20R costs 36 unbroken kills** in expectation, 46 with no luck, 128 with no
+streak at all on row-0 octoroks. `$0627 == 16` is tested before
+`$0050 >= 10`, so a clean streak pays at 10, 26, 36, 46 — the fairy spends
+six kills of 5-rupee progress. One pass of the walk plus `0x48` is 32 bodies
+worth 12.0R random; it only clears 20R with a 26-kill streak. **`0x4A`'s six
+tektites are row 1 (0.891 R/kill) — 5.3R of the corridor's 8.4R** — and the
+route note said to skip them.
+
+**Two of the four contacts are `rock_projectile` (slot 11, hp 0).** The old
+probe filtered `0 < hp < 200` and could not see them. "The hunt walks onto
+the bodies" was half the story.
+
+`_engage` now reacts to `_closest_body` (not the held target), swings with
+its direction (`nes_action(face, "A")`) so there is no 17-18px dead band, and
+never peels inside `MIN_DODGE_BODY`. Live `contact7` `ok=True` room `0x4a`,
+1R, 10/9 kills, best 3, 2 resets — both named defects gone from the contact
+list, but the **headline is down** vs `contact1` (3R, best 7) and a 1-vs-1
+rupee count on a deterministic spine is not a controlled comparison.
+
+`ScreenHunter.shield` (tracker + `threat.assess` + face the `approach_side`)
+is wired and tested but **defaults off**: every live walk with it on ran Link
+out of hearts on `0x49` (`contact4`..`contact6`, mode 17, byte-identical
+under three gatings). Suite 1518 passed. Do not STATUS. Do not overwrite M5
+18909f.
+
 ## This sitting (2026-09-15) — assist off + sword-reach hunt
 
 `rr-doua.1` still in_progress (20R bombs). `--through pre-l1` now strips

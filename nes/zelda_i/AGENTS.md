@@ -185,6 +185,23 @@ scratch — not an AGENTS novel.
   `$6530` map (sticky walker) or drops the leg. Below the threshold the axis
   walk is unchanged, so green chains are frame-identical. Every controller
   also keeps a records-only `reason_counts` + 30-frame `tail` in `report()`.
+- **Half the pre-L1 streak resets are shots, not bodies.** `Link_BeHarmed`
+  zeroes `$0050`/`$0627` on any collision, and on the `0x77`→`0x4A` walk two
+  of four contacts are `rock_projectile` (slot 11, **hp 0**). A census that
+  filters `hp > 0` cannot see them — `probe_kill_streak.py` could not, and
+  "the hunt walks onto the bodies" was half the story. `scratch/probe_contact.py`
+  ring-buffers 48 frames and dumps them on the `$04F0` arm; use it before
+  attributing a reset.
+- **Drop-group letters collide in this repo.** `scratch/drop_mechanics_rom.md`
+  follows Baxter (row 1 = B, the two-5-rupee 59% table); `overworld/locations.py`
+  calls that table `DROP_C` and the bomb table `DROP_B`. Contents and rates
+  agree. Key on the ROM row (`scratch/bomb_budget.py`), never the letter.
+- **A grouped spawn byte is a group index, not an ObjType.** `0x49` reads
+  `group_28`, and `0x28` is also Rope (row 1); taking it as a type credits the
+  screen 5.3R it does not have. Use the live census for `grouped` screens.
+- **20R is 36 unbroken kills.** `$0627 == 16` is tested before `$0050 >= 10`,
+  so a clean streak pays at kills 10, 26, 36, 46 — the fairy spends six kills
+  of 5-rupee progress. Without a streak, row-0 octoroks are 128 kills for 20R.
 - **Overworld waves are one-shot.** `0x4A` is empty after its tektites die
   and stays empty through depth-1 (`0x49`) *and* depth-2
   (`0x49`→`0x59`→`0x49`) round trips. `HeartFarmController` restock is a
