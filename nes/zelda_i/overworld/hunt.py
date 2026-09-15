@@ -56,7 +56,8 @@ from zelda_i.combat import (
     in_sword_hitbox,
 )
 from zelda_i.dungeon.behaviors import face_toward, is_projectile
-from zelda_i.dungeon.threat import MIN_DODGE_BODY
+from zelda_i.dungeon.threat import MIN_DODGE_BODY, assess
+from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.dungeon.ids import (
     FAIRY_DROP_STATE,
     FIVE_RUPEE_DROP_STATE,
@@ -76,6 +77,8 @@ __all__ = [
     "HUNT_MIN_HEARTS",
     "HUNT_SCREEN_MAX_FRAMES",
     "HUNT_SETTLE_FRAMES",
+    "HUNT_SHIELD_WINDOW",
+    "SHIELD_CLEAR",
     "HUNT_SPAWN_WAIT_FRAMES",
     "HUNT_TARGET_MAX_FRAMES",
     "MAX_PREY_HP",
@@ -125,7 +128,19 @@ MAX_PREY_HP = 200
 # Pulse A; holding it never starts the next swing. Same cadence as the farm.
 HUNT_SWING_PERIOD = 8
 HUNT_SWING_HOLD = 3
-_AWAY = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
+# A wooden swing pins Link for about a dozen frames with the shield down, so
+# a shot that lands inside that window must not be answered with A. Two of
+# the four contacts on the 2026-09-15 bomb walk were octorok rocks (slot 11,
+# ``rock_projectile``) and neither was a body the hunt could have dodged:
+# f=2056 hit Link mid-swing standing at reach, f=2275 hit him walking to a
+# drop with no body inside 70px. The small shield eats a rock for free.
+HUNT_SHIELD_WINDOW = 16
+# The shield is for the walk between fights, never inside one: a body this
+# close is answered with the sword. Sword reach plus one body pad.
+SHIELD_CLEAR = SWORD_REACH + MIN_DODGE_BODY
+# ``TrackedObject.approach_side`` names the side a shot was fired from; Link
+# blocks by facing it.
+_SIDE_FACE = {"N": "UP", "S": "DOWN", "E": "RIGHT", "W": "LEFT"}
 
 _PICKUP_STATES = frozenset(
     {RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE, HEART_DROP_STATE, FAIRY_DROP_STATE}
@@ -276,6 +291,20 @@ def _pickups(
     )
 
 
+def _closest_body(snap: ZeldaSnapshot, lx: int, ly: int) -> ZeldaObject | None:
+    """The live body nearest to touching Link, box or no box.
+
+    Chebyshev, not manhattan: contact is a square pad, and a body 16px away
+    on one axis is touching while one 16px away on both is not. Not limited
+    to :func:`hunt_prey` — a body that wandered out of the box, or one the
+    per-target budget skipped, hits just as hard as the target does.
+    """
+    bodies = _live_enemies(snap)
+    if not bodies:
+        return None
+    return min(bodies, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
+
+
 def _nearest(snap: ZeldaSnapshot, objs: tuple[ZeldaObject, ...]) -> ZeldaObject | None:
     if not objs:
         return None
@@ -302,6 +331,14 @@ class ScreenHunter:
     min_hearts: int = HUNT_MIN_HEARTS
     lane_tol: int = HUNT_LANE_TOL
     lane_max_frames: int = HUNT_LANE_MAX_FRAMES
+    # Off by default. The policy is right on paper -- two of the four
+    # contacts on the 2026-09-15 bomb walk were blockable rocks -- but every
+    # live walk with it on ran Link out of hearts on 0x49 (``contact4``..
+    # ``contact6``, mode 17, identical trajectories under three different
+    # gatings). It stays wired and tested until a sitting can measure which
+    # frames it is stealing.
+    shield: bool = False
+    shield_window: int = HUNT_SHIELD_WINDOW
     box: tuple[int, int, int, int] = HUNT_BOX
 
     kills: int = 0
@@ -312,6 +349,7 @@ class ScreenHunter:
     streak_best: int = 0
     streak_resets: int = 0
     hunt_frames: int = 0
+    shield_frames: int = 0
     screens_cleared: int = 0
     screens_retired: int = 0
     by_screen: dict[int, int] = field(default_factory=dict)
@@ -335,6 +373,8 @@ class ScreenHunter:
     _rupees: int = field(default=-1, repr=False)
     _help: int = field(default=-1, repr=False)
     _occ: FarmOccupancy = field(default_factory=FarmOccupancy, repr=False)
+    _tracker: ObjectTracker = field(default_factory=ObjectTracker, repr=False)
+    _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
 
     # ------------------------------------------------------------------ #
     # Kill census (runs every frame, hunting or not)
@@ -343,6 +383,9 @@ class ScreenHunter:
     def observe(self, snap: ZeldaSnapshot) -> None:
         """Bank kills. Call once per frame, before ``step``."""
         self._observe_counters(snap)
+        # Velocity for the shield. ``ObjectTracker.observe`` is idempotent per
+        # snapshot, so a nested controller re-observing the frame is free.
+        self._tracked = self._tracker.observe(snap)
         census = {int(o.slot): int(o.type_id) for o in _live_enemies(snap)}
         screen = int(snap.screen)
         same_screen = (
@@ -415,6 +458,9 @@ class ScreenHunter:
         if screen != self.screen:
             self._enter(screen)
         self.since_enter += 1
+        block = self._shield(snap)
+        if block is not None:
+            return block
         if screen in self.done:
             return self._lane_return(snap, frames, lane)
         if int(snap.filled_hearts) <= self.min_hearts:
@@ -465,8 +511,56 @@ class ScreenHunter:
             self._clear(screen)
         return self._lane_return(snap, frames, lane)
 
+    def _shield(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Face a blockable shot instead of swinging at it. ``None`` if none.
+
+        Two of the four contacts on the 2026-09-15 bomb walk were octorok
+        rocks (``rock_projectile``, slot 11), not bodies — the first contact
+        probe filtered hp-0 slots and could not see them. Neither was
+        dodgeable by the hunt: ``f=2056`` landed on Link standing at sword
+        reach mid-swing, ``f=2275`` on Link walking to a drop with no body
+        inside 70px. The small shield eats a rock for nothing while Link
+        faces it and is not attacking, so a shot arriving inside a swing
+        outranks the sword and outranks the walk.
+
+        It does *not* outrank a body. ``assess`` picks the soonest hazard
+        across bodies and shots, and a body source hands the frame straight
+        back to the sword: a first cut that shielded whenever a rock was
+        within the window stood Link still while octoroks walked into him at
+        9px three times and killed him on 0x49 (``contact4``, mode 17).
+
+        Runs before the retire gates on purpose: a screen the hunt has given
+        up is still a screen the hop walks Link across, and ``hunt_hurt`` is
+        exactly when the remaining hearts matter most.
+        """
+        if not self.shield:
+            return None
+        link = (int(snap.link_x), int(snap.link_y))
+        body = _closest_body(snap, *link)
+        if body is not None and chebyshev(*link, int(body.x), int(body.y)) <= SHIELD_CLEAR:
+            # Standing to block inside a fight is how ``contact4`` died: the
+            # rock was still the soonest hazard while an octorok crossed the
+            # last pixels, and the 5 idle frames of the swing cadence were
+            # enough for it. The shield is for the walk between fights.
+            return None
+        impact = assess(link, self._tracked, horizon=self.shield_window)
+        shot = impact.source
+        if shot is None or not shot.blockable:
+            return None
+        face = _SIDE_FACE.get(shot.approach_side(*link))
+        if face is None:
+            return None
+        self.shield_frames += 1
+        self._freeze_occ()
+        if int(snap.facing) != direction_to_facing(face):
+            # One frame to bring the shield round. It also walks Link 1px
+            # into the shot, which is the cheap half of the trade.
+            return FrameAction(nes_action(face), "hunt_shield_turn")
+        # Already facing it: stand. Pressing A here is how f=2056 happened.
+        return FrameAction(nes_idle_action(), "hunt_shield")
+
     def _freeze_occ(self) -> None:
-        """Stand/peel/slash do not grade as a missed occupancy step."""
+        """Stand/strafe/slash do not grade as a missed occupancy step."""
         walker = self._occ.walker
         if walker is not None:
             walker.last_dir = None
@@ -479,36 +573,48 @@ class ScreenHunter:
         target: ZeldaObject,
         reason: str,
     ) -> FrameAction:
-        """Close to sword reach, then pulse A in place. Never walk onto the sprite."""
+        """React to the nearest body, walk toward the chosen ``target``.
+
+        The body about to touch Link is not always the one the hunt picked.
+        Live 2026-09-15 on ``0x49``: a 7-kill streak died to slot 4 closing
+        9px on Link's lane while the walk was aimed at a stand 30px north of
+        slot 1, and the frame after that one Link was oscillating on a wall
+        with slot 6 parked at 15px. Both were invisible to a ``target``-only
+        pad.
+        """
         lx, ly = int(snap.link_x), int(snap.link_y)
-        tx, ty = int(target.x), int(target.y)
-        face = face_toward(lx, ly, tx, ty)
-        pad = chebyshev(lx, ly, tx, ty)
-        if pad <= MIN_DODGE_BODY:
+        close = _closest_body(snap, lx, ly) or target
+        cx, cy = int(close.x), int(close.y)
+        face = face_toward(lx, ly, cx, cy)
+        pad = chebyshev(lx, ly, cx, cy)
+        if pad <= MIN_DODGE_BODY or in_sword_hitbox(lx, ly, face, cx, cy):
+            # Direction + A on one frame: the facing byte is read before the
+            # sword, so the blade lands in ``face`` and the attack state pins
+            # Link for the animation rather than walking him in.
+            #
+            # No peel inside the pad. ``MIN_DODGE_BODY`` is the distance a
+            # sidestep has to walk before it clears the hitbox and the body
+            # closes ~1px/frame, so a peel started inside it cannot finish:
+            # the measured one pressed LEFT into a bush for eight frames
+            # (f=4500, x pinned at 137) while slot 4 closed 16 -> 8, and it
+            # turned the swing around to face the wall. A red octorok is
+            # hp 16 and dies to one wooden hit, so the sword is the answer.
+            #
+            # No separate turn frame either. The old ladder could only turn
+            # at ``pad > MIN_DODGE_BODY + 2``, which left a dead band at
+            # 17-18px where Link was in range, facing the wrong way, and
+            # pulsing A at nothing — measured on 0x68 (f=1763, ten frames
+            # facing WEST with the octorok 17px EAST).
             self._freeze_occ()
-            step = _box_step(lx, ly, _AWAY[face], self.box) or _box_step(
-                lx, ly, face, self.box
-            )
-            if step is not None:
-                return FrameAction(nes_action(step), f"{reason}_peel")
-            return FrameAction(nes_action("A"), f"{reason}_slash")
-        if in_sword_hitbox(lx, ly, face, tx, ty):
-            self._freeze_occ()
-            if (
-                int(snap.facing) != direction_to_facing(face)
-                and pad > MIN_DODGE_BODY + 2
-                and _box_step(lx, ly, face, self.box) is not None
-            ):
-                return FrameAction(nes_action(face), f"{reason}_face")
             if frames % HUNT_SWING_PERIOD < HUNT_SWING_HOLD:
-                return FrameAction(nes_action("A"), f"{reason}_slash")
+                return FrameAction(nes_action(face, "A"), f"{reason}_slash")
             return FrameAction(nes_idle_action(), f"{reason}_recover")
         if pad <= SWORD_REACH:
             # In reach but off-axis: strafe to the blade box. Walking the
             # toward-axis here is how a 20px stand-off became an 8px collision
             # when the octorok walked in.
             self._freeze_occ()
-            dx, dy = tx - lx, ty - ly
+            dx, dy = cx - lx, cy - ly
             if abs(dx) >= abs(dy) and dy != 0:
                 align = "DOWN" if dy > 0 else "UP"
             elif abs(dy) > abs(dx) and dx != 0:
@@ -517,7 +623,7 @@ class ScreenHunter:
                 align = face
             if _box_step(lx, ly, align, self.box) is not None:
                 return FrameAction(nes_action(align), f"{reason}_align")
-            return FrameAction(nes_action("A"), f"{reason}_slash")
+            return FrameAction(nes_action(face, "A"), f"{reason}_slash")
         return self._occ.walk(
             snap, frames, sword_stand(lx, ly, target, self.box), reason, slash=False
         )
@@ -627,6 +733,7 @@ class ScreenHunter:
         self.streak_best = 0
         self.streak_resets = 0
         self.hunt_frames = 0
+        self.shield_frames = 0
         self.screens_cleared = 0
         self.screens_retired = 0
         self.by_screen.clear()
@@ -648,6 +755,8 @@ class ScreenHunter:
         self._rupees = -1
         self._hp = -1
         self._iframes = -1
+        self._tracked = ()
+        self._tracker = ObjectTracker()
         self._occ.reset()
 
     def report(self) -> dict[str, Any]:
@@ -660,6 +769,7 @@ class ScreenHunter:
             "streak_best": self.streak_best,
             "streak_resets": self.streak_resets,
             "hunt_frames": self.hunt_frames,
+            "shield_frames": self.shield_frames,
             "screens_cleared": self.screens_cleared,
             "screens_retired": self.screens_retired,
             "screens_done": sorted(self.done),

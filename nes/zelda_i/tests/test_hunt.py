@@ -9,7 +9,7 @@ and both are asserted here.
 from __future__ import annotations
 
 from retro_harness.controls import pressed_nes_buttons
-from zelda_i.combat import FACING_EAST, SWORD_REACH
+from zelda_i.combat import FACING_EAST, FACING_WEST, SWORD_REACH
 from zelda_i.dungeon.behaviors import ROCK_PROJECTILE_TYPE
 from zelda_i.dungeon.ids import (
     BOMB_DROP_STATE,
@@ -289,7 +289,47 @@ def test_in_hitbox_slashes_in_place() -> None:
     assert act is not None and act.reason == "hunt_78_slash"
     buttons = pressed_nes_buttons(list(act.action))
     assert "A" in buttons
-    assert "RIGHT" not in buttons
+    # The direction rides along so the blade lands where the body is; the
+    # attack state pins Link, so it is not a step onto the sprite.
+    assert "RIGHT" in buttons
+
+
+def test_the_swing_faces_the_body_at_every_pad_in_reach() -> None:
+    """No dead band. Live 0x68 f=1763: ten frames facing WEST, foe 17px EAST.
+
+    The old ladder could only turn at ``pad > MIN_DODGE_BODY + 2``, so at
+    17-18px Link pulsed A at the wall behind him until the octorok walked in.
+    """
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141)
+    for pad in range(MIN_DODGE_BODY - 6, SWORD_REACH + 1):
+        hunter.reset()
+        act = hunter.step(
+            _snap(link_x=160 - pad, facing=FACING_WEST, objects=(foe,)), 1
+        )
+        assert act is not None, pad
+        assert act.reason == "hunt_78_slash", (pad, act.reason)
+        buttons = pressed_nes_buttons(list(act.action))
+        assert "A" in buttons and "RIGHT" in buttons, (pad, buttons)
+
+
+def test_the_nearest_body_is_answered_not_the_held_target() -> None:
+    """Live 0x49 f=4500: a 7-kill streak died to slot 4 at 9px on Link's lane
+    while the walk was aimed at slot 1 thirty pixels north."""
+    hunter = ScreenHunter()
+    far = _foe(slot=1, x=120, y=141 - 30)
+    near = _foe(slot=4, x=120 + 9, y=141)
+    # Slot 1 is the held target: it was the only body when the screen opened.
+    hunter.step(_snap(link_x=120, link_y=141, objects=(far,)), 1)
+    assert hunter.target_slot == 1
+    act = hunter.step(
+        _snap(link_x=120, link_y=141, facing=FACING_EAST, objects=(far, near)), 2
+    )
+    assert act is not None and act.reason.endswith("_slash")
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "A" in buttons and "RIGHT" in buttons
+    # The hunt answers slot 4 without dropping the target it walked out for.
+    assert hunter.target_slot == 1
 
 
 def test_in_hitbox_releases_a_so_the_next_swing_can_start() -> None:
@@ -318,14 +358,96 @@ def test_off_axis_in_reach_strafes_instead_of_closing() -> None:
     assert "RIGHT" not in buttons
 
 
-def test_inside_the_body_pad_peels_away() -> None:
+def test_inside_the_body_pad_swings_instead_of_peeling() -> None:
+    """A peel started inside ``MIN_DODGE_BODY`` cannot finish.
+
+    The sidestep has to walk the whole pad before it clears the hitbox and
+    the body closes ~1px/frame. The measured one (0x49 f=4500) pressed LEFT
+    into a bush for eight frames while slot 4 closed 16 -> 8, and it turned
+    the swing around to face the wall.
+    """
     hunter = ScreenHunter()
     foe = _foe(x=160, y=141)
     act = hunter.step(_snap(link_x=160 - (MIN_DODGE_BODY - 2), objects=(foe,)), 1)
-    assert act is not None and act.reason == "hunt_78_peel"
+    assert act is not None and act.reason == "hunt_78_slash"
     buttons = pressed_nes_buttons(list(act.action))
-    assert "LEFT" in buttons
-    assert "A" not in buttons
+    assert "A" in buttons and "RIGHT" in buttons
+    assert "LEFT" not in buttons
+
+
+def _rock(x: int, y: int = 141, slot: int = 11):
+    return ZeldaObject(
+        slot=slot, type_id=ROCK_PROJECTILE_TYPE, x=x, y=y, facing=0, hp=0, state=0
+    )
+
+
+def test_the_shield_is_off_until_a_sitting_can_measure_it() -> None:
+    """Every live walk with it on died on 0x49 (contact4..contact6)."""
+    hunter = ScreenHunter()
+    act = _drive(hunter, (160, 156, 152, 148), link_x=120, facing=FACING_EAST)
+    assert act is not None and not act.reason.startswith("hunt_shield")
+    assert hunter.shield_frames == 0
+
+
+def _drive(hunter: ScreenHunter, xs, **snap_kwargs):
+    """Feed consecutive frames so the tracker has a velocity to read."""
+    act = None
+    for frame, x in enumerate(xs, start=1):
+        snap = _snap(objects=(_foe(x=200, y=141), _rock(x)), **snap_kwargs)
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+    return act
+
+
+def test_an_inbound_rock_is_blocked_not_swung_at() -> None:
+    """Live 0x58 f=2056: a rock hit Link mid-swing while he stood at reach.
+
+    The small shield eats a rock for free while Link faces it and is not
+    attacking, and a wooden swing pins him with the shield down for longer
+    than the rock takes to arrive.
+    """
+    hunter = ScreenHunter(shield=True)
+    act = _drive(hunter, (160, 156, 152, 148), link_x=120, facing=FACING_EAST)
+    assert act is not None and act.reason == "hunt_shield"
+    assert pressed_nes_buttons(list(act.action)) == []
+    assert hunter.shield_frames > 0
+
+
+def test_a_rock_from_behind_turns_the_shield_round() -> None:
+    hunter = ScreenHunter(shield=True)
+    act = _drive(hunter, (160, 156, 152, 148), link_x=120, facing=FACING_WEST)
+    assert act is not None and act.reason == "hunt_shield_turn"
+    assert "RIGHT" in pressed_nes_buttons(list(act.action))
+
+
+def test_a_body_at_contact_outranks_a_blockable_rock() -> None:
+    """Live ``contact4``: shielding a rock while octoroks closed to 9px three
+    times ran Link out of hearts on 0x49 (mode 17). ``assess`` picks the
+    soonest hazard, and a body hands the frame back to the sword."""
+    hunter = ScreenHunter(shield=True)
+    reasons, swings = [], 0
+    for frame, rx in enumerate((160, 156, 152, 148, 144, 140, 136, 132), start=1):
+        snap = _snap(
+            link_x=120,
+            link_y=141,
+            facing=FACING_EAST,
+            objects=(_foe(slot=1, x=111, y=141), _rock(rx)),
+        )
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+        assert act is not None
+        reasons.append(act.reason)
+        swings += "A" in pressed_nes_buttons(list(act.action))
+    assert not any(r.startswith("hunt_shield") for r in reasons), reasons
+    assert swings > 0, reasons
+    assert hunter.shield_frames == 0
+
+
+def test_a_rock_that_is_not_arriving_does_not_stop_the_hunt() -> None:
+    """Travelling away: no shot to block, so the sword keeps its frames."""
+    hunter = ScreenHunter(shield=True)
+    act = _drive(hunter, (160, 164, 168, 172), link_x=120, facing=FACING_EAST)
+    assert act is not None and not act.reason.startswith("hunt_shield")
 
 
 def test_the_last_heart_is_not_traded_for_a_rupee() -> None:
