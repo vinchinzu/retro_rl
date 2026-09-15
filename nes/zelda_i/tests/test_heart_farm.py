@@ -106,8 +106,82 @@ def test_empty_farm_screen_eventually_leaves_toward_neighbor() -> None:
         assert act.reason == "farm_wait"
         assert farm.phase is HeartFarmPhase.FARM
     act = farm.step(snap)
-    assert act.reason == "farm_leave"
-    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason.startswith("farm_leave")
+    assert farm.leaving
+    assert farm.phase is HeartFarmPhase.FARM
+
+
+def test_leave_is_latched_and_reaches_the_west_edge() -> None:
+    """One-frame farm_leave never scrolled: the wait oscillation undid it."""
+    farm = _farm()
+    for _ in range(5):
+        farm.step(_snap(screen=FARM_SCREEN, health=0x22))
+    assert farm.leaving
+    reasons = []
+    for x in range(120, 0, -4):  # walk Link west the way the emulator would
+        act = farm.step(_snap(screen=FARM_SCREEN, health=0x22, link_x=x, link_y=141))
+        reasons.append(act.reason)
+    # Never hands back to the wait oscillation, and never bounces off the
+    # x<36 enter guard, which is exactly where the scroll has to happen.
+    assert "farm_wait" not in reasons
+    assert "farm_enter" not in reasons
+    assert "farm_leave_push" in reasons
+    assert farm.leaving
+
+
+def _run_one_empty_restock(farm: HeartFarmController, health: int):
+    """Wait -> leave -> neighbor -> back on an empty screen -> next wait."""
+    for _ in range(5):
+        farm.step(_snap(screen=FARM_SCREEN, health=health))
+    assert farm.leaving
+    act = farm.step(_snap(screen=NEIGHBOR_SCREEN, health=health))
+    assert act.reason == "farm_respawn"
+    assert farm.restocks == 1
+    assert not farm.leaving
+    for _ in range(farm.empty_wait_frames - 1):
+        act = farm.step(_snap(screen=FARM_SCREEN, health=health))
+        assert act.reason == "farm_wait"
+    return farm.step(_snap(screen=FARM_SCREEN, health=health))
+
+
+def test_restock_that_returns_an_empty_screen_is_dead() -> None:
+    """0x4A does not repopulate: depth-1 and depth-2 round trips both empty."""
+    farm = _farm()
+    act = _run_one_empty_restock(farm, 0x21)  # 1 filled: below the soft floor
+    assert act.reason == "farm_screen_dead"
+    assert farm.phase is HeartFarmPhase.FAILED
+    assert not farm.success
+    assert any(n.startswith("farm_screen_dead") for n in farm.notes)
+
+
+def test_dead_screen_keeps_the_timeout_soft_ok_policy() -> None:
+    farm = _farm()
+    act = _run_one_empty_restock(farm, 0x22)  # 2 filled, not the 3 asked for
+    assert act.reason == "farm_done"
+    assert farm.phase is HeartFarmPhase.DONE
+    assert farm.success
+    assert any(n.startswith("farm_screen_dead") for n in farm.notes)
+    assert "farm_soft_ok" in farm.notes
+
+
+def test_prey_after_a_restock_keeps_farming() -> None:
+    """A screen that does repopulate must not be called dead."""
+    farm = _farm()
+    for _ in range(5):
+        farm.step(_snap(screen=FARM_SCREEN, health=0x22))
+    farm.step(_snap(screen=NEIGHBOR_SCREEN, health=0x22))
+    assert farm.restocks == 1
+    live = _snap(
+        screen=FARM_SCREEN,
+        health=0x22,
+        objects=(ZeldaObject(slot=3, type_id=0x11, x=180, y=141, facing=0, hp=1, state=0),),
+    )
+    act = farm.step(live)
+    assert act.reason.startswith("farm_chase")
+    assert farm.saw_prey
+    for _ in range(farm.empty_wait_frames + 2):
+        act = farm.step(_snap(screen=FARM_SCREEN, health=0x22))
+    assert act.reason != "farm_screen_dead"
     assert farm.phase is HeartFarmPhase.FARM
 
 
@@ -329,3 +403,107 @@ def test_occupancy_dodge_does_not_fence_cardinal() -> None:
     # the dodge direction, not the overridden cardinal (RIGHT / (121, 149)).
     farm.step(snap)
     assert (121, 149) not in walker.grid.blocked
+
+
+# --- phantom bomb slots (ObjState 0x00 == a cleared object slot) ----------
+
+
+def _phantom_slot(x: int = 144, y: int = 149) -> ZeldaObject:
+    """An emptied drop slot: ObjType still 0x60, ObjState cleared to 0x00.
+
+    Bomb is ROM item code 0x00, so this is byte-for-byte what a live bomb drop
+    looks like. Only "can Link bank a bomb at all" separates them.
+    """
+    return ZeldaObject(
+        slot=3,
+        type_id=_ids.BOMB_DROP_OBJECT_TYPE,
+        x=x,
+        y=y,
+        facing=0,
+        hp=0,
+        state=_ids.BOMB_DROP_STATE,
+    )
+
+
+def test_phantom_empty_slot_is_not_a_bomb_drop_pre_l1() -> None:
+    """bombs=0 means no bomb item: a 0x60/state-0x00 slot is an empty slot."""
+    farm = _farm(empty_wait_frames=5)
+    snap = _snap(bombs=0, objects=(_phantom_slot(),))
+    reasons = [farm.step(snap).reason for _ in range(5)]
+    assert "farm_bomb" not in reasons
+    # The empty ladder keeps its schedule: 4 waits, then the restock leave.
+    assert reasons[:4] == ["farm_wait"] * 4
+    assert reasons[4] == "farm_leave"
+    assert farm.leaving
+
+
+def test_phantom_slot_cannot_reset_empty_frames() -> None:
+    """The pin that burned the whole budget: empty_frames must still climb."""
+    farm = _farm(empty_wait_frames=90)
+    snap = _snap(bombs=0, objects=(_phantom_slot(),))
+    for _ in range(10):
+        farm.step(snap)
+    assert farm.empty_frames == 10
+
+
+def test_bomb_drop_is_scooped_once_link_owns_bombs() -> None:
+    """The feature survives the gate: with bombs banked, a bomb drop scoops."""
+    farm = _farm()
+    snap = _snap(bombs=1, objects=(_phantom_slot(x=144),))
+    act = farm.step(snap)
+    assert act.reason == "farm_bomb"
+    assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_bomb_chase_gives_the_empty_ladder_back_after_its_budget() -> None:
+    """An unresolving bomb slot yields; it does not hold the farm open."""
+    budget = 12
+    farm = _farm(empty_wait_frames=5, bomb_chase_max_frames=budget)
+    snap = _snap(bombs=1, objects=(_phantom_slot(),))
+    reasons = [farm.step(snap).reason for _ in range(budget + 10)]
+    assert reasons[0] == "farm_bomb"
+    assert farm.bomb_chase > budget
+    assert "farm_wait" in reasons[budget:]
+    # The restock ladder owns the farm again (a frozen Link boxes his own
+    # walker in, so the leave walk itself may be standing).
+    assert farm.leaving
+
+
+# --- blocked goal: a bumped drop cell is walked to, not stood on ----------
+
+
+def test_bump_blocked_drop_cell_is_retargeted_not_stood_on() -> None:
+    """shortest_path refuses an in-bounds blocked goal; standing is not the answer.
+
+    The farm grid has no measured walls, so any block on it is one inferred
+    bump. If that bump lands on the drop's own cell, the pre-fix walk stood in
+    ``occupancy_stand`` until ``farm_screen_dead`` — on a drop Link could have
+    walked right up to (pickup is contact, not pixel-exact).
+    """
+    drop = ZeldaObject(
+        slot=3,
+        type_id=_heart_drop_type(),
+        x=144,
+        y=149,
+        facing=0,
+        hp=0,
+        state=HEART_DROP_STATE,
+    )
+    farm = _farm()
+    snap = _snap(link_x=120, link_y=149, objects=(drop,))
+    act = farm.step(snap)
+    assert act.reason in ("farm_heart", "farm_fairy")
+    walker = farm._walker
+    assert walker is not None
+    walker.grid.blocked.add((144, 149))
+    walker.grid.inferred.add((144, 149))
+    walker.path = None
+    act = farm.step(_snap(link_x=121, link_y=149, objects=(drop,)))
+    assert act.reason != "occupancy_stand"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    assert walker.retargets >= 1
+    # The forget path is NOT taken: an empty overworld grid just re-learns the
+    # same wall (measured_walker docstring), so inferred blocks stay put.
+    assert walker.forgets == 0
+    assert (144, 149) in walker.grid.inferred
+    assert farm.report()["occupancy_retargets"] >= 1

@@ -70,6 +70,8 @@ ROOM_44_SPEC = DungeonRoomSpec(
         attack_phase=7,
         occupancy_patrol=True,
         occupancy_bounds=_ROOM_44_BOUNDS,
+        occupancy_from_tilemap=True,
+        evade=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x1D,
@@ -112,6 +114,17 @@ ROOM_45_SPEC = DungeonRoomSpec(
         attack_phase=0,
         patrol_attack_period=8,
         patrol_attack_hold=4,
+        # Entry from 0x44 lands Link in the west door tunnel (16, 141),
+        # where the patrol's first vertex is UP into solid wall and the
+        # stuck-escape re-snaps onto the same pair. _off_wall_step owns
+        # the tunnel rule (x < 24 accepts only RIGHT).
+        avoid_walls=True,
+        # Entry lands Link at x=16 in the west door mouth, the one place a
+        # Wallmaster grab drags him out of the room. Walk inland first.
+        inland_dash=56,
+        occupancy_patrol=True,
+        occupancy_from_tilemap=True,
+        evade=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,

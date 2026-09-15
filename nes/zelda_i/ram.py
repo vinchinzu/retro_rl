@@ -207,6 +207,22 @@ def full_health_byte(health: int) -> int:
     return (n << 4) | n
 
 
+def health_byte_is_coherent(health: int) -> bool:
+    """True when ``$066F`` is a byte normal play can hold.
+
+    ``hi = containers - 1`` and ``lo = whole hearts``, so ``lo <= hi`` always:
+    Link cannot hold more filled hearts than he has containers. The ROM does
+    not clamp a byte that breaks this — it just decrements the low nibble
+    happily — so an incoherent pin silently hands a lane several times the
+    damage budget a real Link has, and every heart number measured from it is
+    against a fake denominator (``Level6Entrance`` held ``0x2F``: 15 hearts in
+    3 containers, and four sittings of L6 room tuning were graded against it).
+    Check this on any pin before quoting hearts from it.
+    """
+    hv = int(health) & 0xFF
+    return (hv & 0x0F) <= ((hv >> 4) & 0x0F)
+
+
 def health_byte_for_containers(containers: int, *, filled: int | None = None) -> int:
     """Encode ``HeartValues`` from a known container count (never from a glitch)."""
     n = (max(1, int(containers)) - 1) & 0x0F

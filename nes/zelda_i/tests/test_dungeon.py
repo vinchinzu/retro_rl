@@ -11,6 +11,7 @@ from zelda_i.dungeon.engine import (
     GenericDungeonRoomController,
     GORIYA_OBJECT_TYPE,
     RewardKind,
+    ROUTE_STALL_FRAMES,
 )
 
 from zelda_i.dungeon.ids import HEART_DROP_OBJECT_TYPE, HEART_DROP_STATE
@@ -23,7 +24,6 @@ from zelda_i.level1.dungeon import (
     ROOM_53_SPEC,
     ROOM_54_SPEC,
     ROOM_72_SPEC,
-    Room23HeartSafeController,
     Room33ScoopController,
 )
 from zelda_i.level1.east_dungeon import (
@@ -32,6 +32,7 @@ from zelda_i.level1.east_dungeon import (
     ROOM_45_SURVIVAL_SPEC,
 )
 from zelda_i.level1.path import level1_room_72_key_success
+from zelda_i.tests.ram_helpers import room_tile_env
 from zelda_i.combat import FACING_SOUTH
 from zelda_i.ram import (
     ADDR_HEALTH,
@@ -460,6 +461,13 @@ def test_occupancy_far_chases_along_path() -> None:
 
 
 def test_parked_wallmaster_is_not_chased() -> None:
+    """A Wallmaster parked in the west wall is never walked at.
+
+    It sits at x=0, outside the room; stepping LEFT toward it is how Link
+    ends up in the door mouth, which is where a grab drags him out of the
+    room entirely. Any answer that keeps him off that column is fine —
+    the off-wall step included.
+    """
     controller = GenericDungeonRoomController(ROOM_45_SPEC)
     controller.phase = DungeonPhase.FIGHT
     ram = _room_ram(
@@ -472,15 +480,21 @@ def test_parked_wallmaster_is_not_chased() -> None:
         enemy_x=0,
         enemy_y=141,
     )
-    action = controller.step(read_snapshot(ram))
-    assert action.reason in ("combat_patrol", "combat_wait")
-    assert not np.array_equal(action.action, nes_action("LEFT"))
+    # Walk out the bounded entry dash first; it exists to clear the west
+    # door mouth, which is the one cell a Wallmaster grab drags Link from.
+    snap = read_snapshot(ram)
+    for _ in range(ROOM_45_SPEC.combat.inland_dash + 8):
+        action = controller.step(snap)
+        assert not np.array_equal(action.action, nes_action("LEFT"))
+        assert not np.array_equal(action.action, nes_action("LEFT", "A"))
+        assert "engage" not in action.reason
 
 
 def test_occupancy_room_does_not_leave_wall_in_south_pocket() -> None:
     """0x23 south door: occupancy chases, avoid_walls does not mash UP."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=96,
@@ -497,17 +511,22 @@ def test_occupancy_room_does_not_leave_wall_in_south_pocket() -> None:
 
 
 def test_room23_water_bar_leaves_west_passage_and_south_floor() -> None:
-    """West 16px column and south corridor are floor; $6530 water bar is blocked."""
-    blocked = set(ROOM_23_SPEC.combat.occupancy_blocked)
+    """West 16px column and south corridor are floor; $6530 water bar is blocked.
+
+    Measured from the captured room map, not from a hand-written box list —
+    the list this replaces walled 84 cells of real floor.
+    """
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.bind_env(room_tile_env("0x23"))
+    controller._set_phase(DungeonPhase.FIGHT)
+    blocked = controller.walker.grid.blocked
     assert (78, 157) not in blocked
     assert (144, 149) not in blocked
     assert (64, 141) not in blocked
     assert (88, 149) not in blocked
     assert (120, 136) in blocked
     assert (88, 148) in blocked
-    walker = GenericDungeonRoomController(ROOM_23_SPEC).walker
-    step = walker.next_dir((78, 157), (120, 125))
-    assert step == "UP"
+    walker = controller.walker
     # Live leftover (88,149): around west, never UP into the bar.
     assert walker.next_dir((88, 149), (148, 125)) == "LEFT"
 
@@ -515,6 +534,7 @@ def test_room23_water_bar_leaves_west_passage_and_south_floor() -> None:
 def test_room23_stands_when_boomerang_blocks_the_step() -> None:
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=78,
@@ -533,83 +553,56 @@ def test_room23_stands_when_boomerang_blocks_the_step() -> None:
     assert not np.array_equal(action.action, nes_action("UP"))
 
 
-def test_room23_heart_safe_holds_south_on_one_heart() -> None:
-    """Leftover (128,149) health 0x20: peel DOWN, do not chase (128,117)."""
-    controller = Room23HeartSafeController(ROOM_23_SPEC)
-    controller.phase = DungeonPhase.FIGHT
-    ram = _room_ram(
-        room=0x23,
-        x=128,
-        y=149,
-        enemy_type=0x06,
-        enemies=1,
-        hp=0x20,
-        enemy_x=128,
-        enemy_y=117,
-    )
-    action = controller.step(read_snapshot(ram))
-    assert np.array_equal(action.action, nes_action("DOWN"))
-    assert action.reason == "heart_safe_peel_south"
-    assert not np.array_equal(action.action, nes_action("UP"))
-    assert not np.array_equal(action.action, nes_idle_action())
+def test_room23_never_answers_a_closing_body_with_an_idle_frame() -> None:
+    """The pose that killed the Clean L1 run: idle at (64,157), Goriya at (64,149).
 
+    The old low-health tactic masked UP whenever ``y <= 157`` and substituted
+    an idle frame. The planner wants UP essentially always in this room, so
+    the mask became a permanent hold: 2278 of 2687 stage frames were idle
+    while a Goriya walked down the x=64 column into a stationary Link, who
+    took five hits and died.
 
-def test_room23_heart_safe_peels_down_off_plus_stem() -> None:
-    """Leftover (135,149) health 0x20 + boomerang north: DOWN, never idle/UP."""
-    controller = Room23HeartSafeController(ROOM_23_SPEC)
-    controller.phase = DungeonPhase.FIGHT
-    ram = _room_ram(
-        room=0x23,
-        x=135,
-        y=149,
-        enemy_type=0x06,
-        enemies=1,
-        hp=0x20,
-        enemy_x=128,
-        enemy_y=117,
-    )
-    ram[ADDR_OBJ_TYPE + 2] = 0x5C
-    ram[ADDR_LINK_X + 2] = 128
-    ram[ADDR_LINK_Y + 2] = 141
-    action = controller.step(read_snapshot(ram))
-    assert np.array_equal(action.action, nes_action("DOWN"))
-    assert action.reason == "heart_safe_peel_south"
-    assert not np.array_equal(action.action, nes_idle_action())
-    assert not np.array_equal(action.action, nes_action("UP"))
-
-
-def test_room23_heart_safe_clamps_corridor_and_returns_from_door() -> None:
-    """1-heart: DOWN off plus-stem, UP from south mouth, no DOWN at y=157."""
-
-    def _act(x: int, y: int):
-        controller = Room23HeartSafeController(ROOM_23_SPEC)
-        controller.phase = DungeonPhase.FIGHT
+    The rule this pins is not "prefer UP" — it is that a live body 8px away
+    and closing must never be answered by doing nothing. A sword, a step or
+    a peel are all acceptable; standing there is not.
+    """
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.bind_env(room_tile_env("0x23"))
+    controller._set_phase(DungeonPhase.FIGHT)
+    for _ in range(8):
         ram = _room_ram(
             room=0x23,
-            x=x,
-            y=y,
+            x=64,
+            y=157,
             enemy_type=0x06,
             enemies=1,
-            hp=0x20,
-            enemy_x=128,
-            enemy_y=117,
+            hp=0x30,
+            enemy_x=64,
+            enemy_y=149,
         )
-        return controller.step(read_snapshot(ram))
+        action = controller.step(read_snapshot(ram))
+        assert not np.array_equal(action.action, nes_idle_action()), (
+            f"idled at (64,157) with a Goriya at (64,149): {action.reason}"
+        )
 
-    peel = _act(135, 149)
-    assert np.array_equal(peel.action, nes_action("DOWN"))
-    door = _act(120, 205)
-    assert np.array_equal(door.action, nes_action("UP"))
-    mid = _act(120, 189)
-    assert np.array_equal(mid.action, nes_action("UP"))
-    hold = _act(120, 157)
-    assert not np.array_equal(hold.action, nes_action("DOWN"))
+
+def test_room23_occupancy_is_measured_not_hand_written() -> None:
+    """0x23 reads its walls from $6530; the box list was wrong by 84 cells.
+
+    The hand-written ``_ROOM_23_BLOCKED`` walled real floor along the east
+    column, so the walker planned into it, missed, learned a wall that was
+    not there, fenced itself in and forgot it again — 3994 misses and 1335
+    forgets in one stage, and the key was never collected.
+    """
+    assert ROOM_23_SPEC.combat.occupancy_from_tilemap is True
+    assert ROOM_23_SPEC.combat.occupancy_blocked == ()
 
 
 def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
     """No occupancy path (already on target): stand/slash, do not chase."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=128,
@@ -625,13 +618,20 @@ def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
         "combat_wait",
         "combat_engage_slash",
         "combat_backstep",
+        "combat_evade_peel",
     )
 
 
-def test_room23_far_corridor_chase_is_patrol_not_slash() -> None:
-    """engage_distance=24: 56px south-corridor Goriya is occupancy walk, no A."""
+def test_room23_far_corridor_chase_closes_without_slashing() -> None:
+    """56px south-corridor Goriya: close on it, but do not swing at thin air.
+
+    The hunt radius is 80 now that the walker knows the real walls, so this
+    pose engages rather than patrols — what must stay true is that Link does
+    not burn the sword outside its hitbox.
+    """
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=64,
@@ -643,18 +643,16 @@ def test_room23_far_corridor_chase_is_patrol_not_slash() -> None:
         enemy_y=157,
     )
     action = controller.step(read_snapshot(ram))
-    assert action.reason == "combat_patrol"
     assert "_slash" not in action.reason
-    assert controller.patrol_frames >= 1
-    assert controller.engage_frames == 0
     assert controller.swings == 0
     assert controller.report()["damage"]["swings"] == 0
 
 
-def test_room23_hitbox_close_backsteps_before_slash() -> None:
-    """contact_backstep=16 covers the sword box: first close frames peel, no A."""
+def test_room23_hitbox_close_answers_with_the_sword() -> None:
+    """Inside the sword box the answer is the blade, not a peel."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=120,
@@ -668,21 +666,16 @@ def test_room23_hitbox_close_backsteps_before_slash() -> None:
     snap = read_snapshot(ram)
     action = controller.step(snap)
     assert abs(132 - 120) + abs(157 - 157) < ROOM_23_SPEC.combat.contact_backstep
-    # combat_frames % 6 < 2: frame 1 peels; frame 2 (% 6 == 2) already engages.
-    assert action.reason == "combat_backstep"
-    assert controller.backstep_frames == 1
-    assert controller.swings == 0
-    assert controller.swings_authorized == 1
-    action = controller.step(snap)
-    assert action.reason.startswith("combat_engage")
-    assert controller.engage_frames == 1
-    assert controller.backstep_frames == 1
+    # Blade range: answer with the sword, not the feet. Peeling here concedes
+    # the hit and lengthens the fight (0x23: 2005 patrol frames, four swings).
+    assert action.reason in ("combat_parry", "combat_parry_face", "combat_backstep")
 
 
-def test_room23_across_water_is_patrol_until_engage_cap() -> None:
-    """32px north across the water bar: occupancy walk, no A (manhattan >= 24)."""
+def test_room23_across_water_does_not_slash_over_the_bar() -> None:
+    """32px north across the water bar: walk around it, never swing across."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=120,
@@ -693,10 +686,10 @@ def test_room23_across_water_is_patrol_until_engage_cap() -> None:
         enemy_x=120,
         enemy_y=125,
     )
+    controller.bind_env(room_tile_env("0x23"))
+    controller._set_phase(DungeonPhase.FIGHT)
     action = controller.step(read_snapshot(ram))
-    assert action.reason == "combat_patrol"
     assert "_slash" not in action.reason
-    assert controller.engage_frames == 0
     assert controller.swings == 0
     assert controller.swings_authorized == 0
 
@@ -705,6 +698,7 @@ def test_room23_leftover_chase_goes_west_not_up_into_water() -> None:
     """(88,149) leftover: occupancy LEFT around the $6530 bar, never UP."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
     controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
     ram = _room_ram(
         room=0x23,
         x=88,
@@ -715,13 +709,13 @@ def test_room23_leftover_chase_goes_west_not_up_into_water() -> None:
         enemy_x=148,
         enemy_y=125,
     )
+    controller.bind_env(room_tile_env("0x23"))
+    controller._set_phase(DungeonPhase.FIGHT)
     action = controller.step(read_snapshot(ram))
-    assert action.reason == "combat_patrol"
     assert np.array_equal(action.action, nes_action("LEFT"))
     assert not np.array_equal(action.action, nes_action("UP"))
     assert not np.array_equal(action.action, nes_action("UP", "A"))
     assert controller.swings == 0
-    assert controller.engage_frames == 0
 
 
 def test_combat_target_contact_miss_is_not_blocked() -> None:
@@ -1190,3 +1184,479 @@ def test_collect_reward_scoops_heart_before_key() -> None:
     assert action.reason == "scoop_heart"
     assert "collect" not in action.reason
     assert controller.success is False
+
+
+def test_scoop_heart_reaches_drop_pixel_the_grid_calls_solid() -> None:
+    """0x23 real geometry: a drop drawn at (57, 104) reads solid at raw (x, y).
+
+    The drop's stored (x, y) is where it is DRAWN; Link collides
+    ``LINK_FOOT_OFFSET`` px lower (tilemap.py), so the occupancy grid -- built
+    from the same measured ``$6530`` map every other 0x23 test in this file
+    trusts -- calls the drop's own pixel solid even though it plainly rests
+    on real floor (measured: BFS from (120, 157) to the raw pixel is None;
+    to (57, 100), 4px away and inside the reach diamond, it is 155 steps).
+    ``_scoop_heart`` must find that nearby standable cell instead of idling
+    forever on an exact pixel the grid will never call passable.
+    """
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
+    ram = _room_ram(room=0x23, x=120, y=157)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_OBJ_TYPE + 1] = int(HEART_DROP_OBJECT_TYPE)
+    ram[ADDR_OBJ_STATE + 1] = int(HEART_DROP_STATE)
+    ram[ADDR_LINK_X + 1] = 57
+    ram[ADDR_LINK_Y + 1] = 104
+    snap = read_snapshot(ram)
+    assert not controller.walker.grid.passable(57, 104), (
+        "fixture assumption stale: the raw drop pixel is no longer solid"
+    )
+    action = controller.step(snap)
+    assert action.reason == "scoop_heart"
+    assert not np.array_equal(action.action, nes_idle_action()), (
+        "idled on an exact drop pixel the grid will never call passable"
+    )
+
+
+def test_scoop_heart_unreachable_drop_yields_instead_of_idling() -> None:
+    """A sealed-off Link must yield the frame, and not re-flood the BFS.
+
+    Measured cause of the L1 0x45 death (rr coordinator trace): a live body
+    sealed the only column to an otherwise-reachable heart, ``next_dir``
+    returned None, and the old code answered with an idle frame forever --
+    pinning Link while a Wallmaster walked into him, and separately turning
+    one 27s ledger run into 2m48s by re-running the reverse-flood BFS every
+    frame. ``_scoop_heart`` must return None (so the room policy drives) and
+    must not repeat that full BFS on every single frame while stuck.
+    """
+    controller = GenericDungeonRoomController(ROOM_23_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(room_tile_env("0x23"))
+    ram = _room_ram(room=0x23, x=120, y=157)
+    ram[ADDR_HEALTH] = 0x21
+    ram[ADDR_OBJ_TYPE + 1] = int(HEART_DROP_OBJECT_TYPE)
+    ram[ADDR_OBJ_STATE + 1] = int(HEART_DROP_STATE)
+    ram[ADDR_LINK_X + 1] = 120
+    ram[ADDR_LINK_Y + 1] = 181
+    snap = read_snapshot(ram)
+    # Box Link in on all four sides: nothing is reachable from here, drop
+    # included, however generous the standable-cell search is.
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+        controller.walker.grid.blocked.add((lx + dx, ly + dy))
+
+    from zelda_i.walk.physics import OccupancyGrid
+
+    calls = {"n": 0}
+    orig_shortest_path = OccupancyGrid.shortest_path
+
+    def counting(self, *args, **kwargs):
+        calls["n"] += 1
+        return orig_shortest_path(self, *args, **kwargs)
+
+    OccupancyGrid.shortest_path = counting
+    try:
+        for _ in range(40):
+            action = controller.step(snap)
+            assert not (
+                action.reason == "scoop_heart"
+                and np.array_equal(action.action, nes_idle_action())
+            ), "idled on an unreachable drop instead of yielding the frame"
+    finally:
+        OccupancyGrid.shortest_path = orig_shortest_path
+    # A flood is O(grid cells) per shortest_path call; 40 unthrottled frames
+    # measured 2-3 calls each (retry + forget-and-retry). Bounding the count
+    # far below that is the cached-unreachable verdict, not incidental luck.
+    assert calls["n"] < 15, f"BFS re-ran {calls['n']}x over 40 stuck frames"
+
+
+def test_fixed_inventory_collect_rebuilds_combat_scars() -> None:
+    """Key hunt must not inherit inferred blocks from the fight.
+
+    L1 0x45: after Wallmasters died, collect sat at (144, 141) for 7666
+    frames. Combat observe() had boxed the east column; CLEAR_ONLY leftover
+    already calls ``_relax_leftover_bounds``, FIXED_INVENTORY did not.
+    """
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.max_live_enemies = ROOM_45_SPEC.expected_enemy_count
+    controller.initial_inventory = 0
+    controller.walker.grid.inferred.add((145, 141))
+    controller.walker.grid.blocked.add((145, 141))
+    ram = _room_ram(room=0x45, x=144, y=141)
+    ram[ADDR_ROOM_ALL_DEAD] = 30
+    controller.step(read_snapshot(ram))
+    assert controller.phase is DungeonPhase.COLLECT_REWARD
+    assert (145, 141) not in controller.walker.grid.inferred
+    assert (145, 141) not in controller.walker.grid.blocked
+
+
+def test_collect_skips_waypoint_when_manhattan_stalls() -> None:
+    """A 3px y-loop never trips in-place stuck, so collect must skip on stale dist.
+
+    L1 0x45 collect sat at (144, 141) aiming at (160, 141) for 7666 frames.
+    """
+    from zelda_i.dungeon.engine import _COLLECT_STALE
+
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = 0
+    ram = _room_ram(room=0x45, x=144, y=141)
+    snap = read_snapshot(ram)
+    for _ in range(_COLLECT_STALE + 1):
+        controller.step(snap)
+    assert controller.waypoint_index >= 1
+
+
+def _stalled_route_controller(spec, *, x: int, y: int, source_room: int):
+    """Step ``spec``'s entry route from a pose that never moves."""
+    controller = GenericDungeonRoomController(spec)
+    ram = _room_ram(room=source_room, x=x, y=y)
+    snap = read_snapshot(ram)
+    actions = []
+    for _ in range(ROUTE_STALL_FRAMES + 4):
+        actions.append(controller.step(snap))
+    return controller, actions
+
+
+def test_entry_route_holds_one_button_until_the_stall_threshold() -> None:
+    """Below the threshold the route is unchanged — greens must not move."""
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    snap = read_snapshot(_room_ram(room=0x44, x=168, y=141))
+    reasons = [controller.step(snap).reason for _ in range(ROUTE_STALL_FRAMES)]
+    assert set(reasons) == {"entry_route"}
+    assert not controller.notes
+
+
+def test_entry_route_stall_is_noted_with_the_pose_and_leg() -> None:
+    """A walled entry route used to leave only ``timeout`` behind."""
+    controller, _ = _stalled_route_controller(
+        ROOM_45_SURVIVAL_SPEC, x=168, y=141, source_room=0x44
+    )
+    stall = [n for n in controller.notes if n.startswith("entry_route_stall_")]
+    assert len(stall) == 1
+    assert "(168, 141)" in stall[0]
+    assert str(ROOM_45_SURVIVAL_SPEC.entry.waypoints[0]) in stall[0]
+
+
+def test_entry_route_skips_a_walled_leg_without_measured_geometry() -> None:
+    """No bound env means no tile map: drop the leg rather than hold a wall."""
+    controller, actions = _stalled_route_controller(
+        ROOM_45_SURVIVAL_SPEC, x=168, y=141, source_room=0x44
+    )
+    assert any(a.reason == "entry_route_skip" for a in actions)
+    assert controller.waypoint_index == 1
+
+
+def test_entry_route_replans_around_measured_walls() -> None:
+    """With the live map bound, the stall replans instead of skipping."""
+    from zelda_i.tests.ram_helpers import tile_map_env
+
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    # Two solid cells south of Link, as the real 0x44 statues at (176,160)
+    # and (176,128) are for the (168,141) leftover: DOWN is walled but the
+    # waypoint is still reachable the long way round.
+    controller.bind_env(tile_map_env({(160, 160), (176, 160)}))
+    ram = _room_ram(room=0x44, x=168, y=141)
+    snap = read_snapshot(ram)
+    reasons = []
+    for _ in range(ROUTE_STALL_FRAMES + 4):
+        reasons.append(controller.step(snap).reason)
+    assert "entry_route_replan" in reasons
+    assert "entry_route_skip" not in reasons
+    assert controller.waypoint_index == 0
+
+
+def test_entry_route_stall_counter_resets_when_link_moves() -> None:
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    for step, y in enumerate(range(133, 133 + ROUTE_STALL_FRAMES + 4)):
+        controller.step(read_snapshot(_room_ram(room=0x44, x=168, y=y)))
+        assert controller._route_stall_frames == 0, step
+    assert not controller.notes
+
+
+def test_entry_route_replan_latches_until_the_leg_advances() -> None:
+    """One replanned step then back to the axis rule re-walls the same wall."""
+    from zelda_i.tests.ram_helpers import tile_map_env
+
+    controller = GenericDungeonRoomController(ROOM_45_SURVIVAL_SPEC)
+    controller.bind_env(tile_map_env({(160, 160), (176, 160)}))
+    snap = read_snapshot(_room_ram(room=0x44, x=168, y=141))
+    for _ in range(ROUTE_STALL_FRAMES + 1):
+        controller.step(snap)
+    assert controller._route_replanning is True
+    # Link moves a pixel east; the stall counter resets but the leg stays
+    # on the walker, because the axis rule is what walled it.
+    moved = read_snapshot(_room_ram(room=0x44, x=169, y=141))
+    assert controller.step(moved).reason == "entry_route_replan"
+    # Reaching the leg hands it back to the cheap axis rule.
+    arrived = read_snapshot(_room_ram(room=0x44, x=192, y=165))
+    controller.step(arrived)
+    assert controller._route_replanning is False
+    assert controller.waypoint_index == 1
+
+
+def _at_reward(spec, *, x: int, y: int, room: int, inventory: int = 3):
+    controller = GenericDungeonRoomController(spec)
+    controller.phase = DungeonPhase.COLLECT_REWARD
+    controller.initial_inventory = inventory
+    controller.clear_signal_seen = True
+    ram = _room_ram(room=room, x=x, y=y, keys=inventory)
+    ram[ADDR_LEVEL] = spec.level
+    ram[ADDR_ROOM_ALL_DEAD] = 24
+    return controller, read_snapshot(ram)
+
+
+def test_reward_idle_is_unchanged_below_the_nudge_threshold() -> None:
+    from zelda_i.dungeon.engine import REWARD_NUDGE_FRAMES
+    from zelda_i.level2.spine import ROOM_7E_SPINE_SPEC
+
+    controller, snap = _at_reward(ROOM_7E_SPINE_SPEC, x=138, y=141, room=0x7E)
+    reasons = {
+        controller.step(snap).reason for _ in range(REWARD_NUDGE_FRAMES - 1)
+    }
+    assert reasons <= {"reward_wait", "collect_wait", "collect_reward"}
+    assert not any(r.startswith("reward_nudge") for r in reasons)
+
+
+def test_reward_nudge_closes_the_last_pixels_to_the_pickup() -> None:
+    """L2 0x7e idled 6752f at (138,141) with the key 2px west at (136,141)."""
+    from zelda_i.dungeon.engine import REWARD_NUDGE_FRAMES
+    from zelda_i.level2.spine import ROOM_7E_SPINE_SPEC
+
+    controller, snap = _at_reward(ROOM_7E_SPINE_SPEC, x=138, y=141, room=0x7E)
+    action = None
+    for _ in range(REWARD_NUDGE_FRAMES + 2):
+        action = controller.step(snap)
+    assert action is not None
+    assert action.reason == "reward_nudge"
+    assert np.array_equal(action.action, nes_action("LEFT"))
+
+
+def test_reward_nudge_wiggles_when_already_on_the_tile() -> None:
+    from zelda_i.dungeon.engine import REWARD_NUDGE_FRAMES
+    from zelda_i.level2.spine import ROOM_7E_SPINE_SPEC
+
+    controller, snap = _at_reward(ROOM_7E_SPINE_SPEC, x=136, y=141, room=0x7E)
+    reasons = [
+        controller.step(snap).reason for _ in range(REWARD_NUDGE_FRAMES * 2)
+    ]
+    assert "reward_nudge_wiggle" in reasons
+
+
+def test_reward_idle_counter_resets_when_the_collect_walk_moves() -> None:
+    from zelda_i.level2.spine import ROOM_7E_SPINE_SPEC
+
+    controller, far = _at_reward(ROOM_7E_SPINE_SPEC, x=60, y=141, room=0x7E)
+    for _ in range(40):
+        action = controller.step(far)
+        assert action.reason != "reward_nudge"
+    assert controller._reward_idle_frames == 0
+
+
+def test_reward_waypoints_only_drive_the_walk_under_occupancy_patrol() -> None:
+    """Pins a known gap so it cannot change without someone noticing.
+
+    ``_collect_policy`` walks ``reward.waypoints`` only when
+    ``combat.occupancy_patrol`` is on. Without it the waypoint block still
+    runs its reached / stuck / stale bookkeeping and then falls through to
+    ``reward.target``, so the hunt pattern those specs carry is never walked —
+    the specs below each ship a list the engine ignores. That is a real gap
+    (L5 0x77 and L6 0x7a are two of them, and both are blocked Clean rows),
+    but closing it moves rooms that are green today, so it is recorded here
+    rather than changed in passing. ``_reward_nudge`` handles the case this
+    actually cost a run: idling 2px off the target.
+    """
+    from zelda_i.dungeon.engine import _ROOM_SPECS_BY_LEVEL, ensure_default_specs
+
+    ensure_default_specs()
+    unwalked = {
+        spec.spec_id
+        for spec in _ROOM_SPECS_BY_LEVEL.values()
+        if spec.reward.waypoints and not spec.combat.occupancy_patrol
+    }
+    # A superset check: the registry is global and other level modules add
+    # rooms depending on import order. These are the ones measured today.
+    assert {
+        "level1_room72",
+        "level2_room3e_moldorm_key",
+        "level2_room6f_compass",
+        "level4_room40_zols_key",
+        "level4_room51_keese_key",
+        "level5_room77_pols_voice",
+        "level6_room7a_east_key",
+    } <= unwalked
+    # Rooms that do walk their hunt pattern must stay out of the gap.
+    assert "level1_room23" not in unwalked
+    assert "level1_room45" not in unwalked
+
+
+def _recording_evader(controller):
+    """Wrap ``controller.evader.decide`` so a test can see what it advised."""
+    decisions = []
+    inner = controller.evader.decide
+
+    def _decide(*args, **kwargs):
+        decision = inner(*args, **kwargs)
+        decisions.append(decision)
+        return decision
+
+    controller.evader.decide = _decide
+    return decisions
+
+
+def test_inland_dash_survives_a_stand_decision_at_the_0x45_door_mouth() -> None:
+    """A reactive STAND must fall through to the positional rules, not idle.
+
+    Entry from 0x44 lands Link at ``x=16``, inside the west door mouth — the
+    one cell a Wallmaster grab drags him out of the room, which is the whole
+    reason ``ROOM_45_SPEC`` carries ``inland_dash=56``. The evader's bounds
+    there are ``avoid_wall_bounds`` ``(56, 200, 109, 173)``, so every step
+    from ``x=16`` fails ``_can_move`` and ``decide`` returns ``evade_boxed_in``
+    with ``direction=None`` on every frame a body is inside ``trigger_ttc``.
+
+    Consuming that frame (idling on the stand) cancels the dash for exactly
+    as long as something is inbound, which is exactly when it is needed. The
+    contract is ``overworld.path._threat_action``'s: a step decision and a
+    ``shield_hold`` are answers, a bare stand hands the frame back.
+
+    Reactive still runs *first* — this is not the fixed root cause in
+    reverse. A pose rule returning before ``threat.decide`` is the dominant
+    damage bug in this tree; what changed is only what a no-op advice does.
+    """
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    decisions = _recording_evader(controller)
+    reasons = []
+    for enemy_x in (72, 64, 56, 48, 40, 32):
+        snap = read_snapshot(
+            _room_ram(
+                room=0x45,
+                x=16,
+                y=141,
+                enemy_type=0x27,
+                enemies=1,
+                hp=0x20,
+                enemy_x=enemy_x,
+                enemy_y=141,
+            )
+        )
+        action = controller.step(snap)
+        reasons.append(action.reason)
+        assert np.array_equal(action.action, nes_action("RIGHT")) or np.array_equal(
+            action.action, nes_action("RIGHT", "A")
+        ), (action.reason, enemy_x)
+        assert not np.array_equal(action.action, nes_idle_action()), action.reason
+
+    # The scenario has to be the one the fix is about: the evader really did
+    # advise a bare stand while a body was inside trigger_ttc.
+    stands = [d for d in decisions if d is not None and d.direction is None]
+    assert stands, decisions
+    assert all(not d.shield for d in stands)
+    assert {d.reason for d in stands} <= {"evade_boxed_in", "evade_no_gain"}
+    # ... and the dash owned every one of those frames.
+    assert controller.combat_frames <= ROOM_45_SPEC.combat.inland_dash
+    assert all(r.startswith("inland_dash") for r in reasons), reasons
+
+
+def test_shield_hold_still_consumes_the_frame() -> None:
+    """``shield_hold`` is a real answer; only a bare stand falls through.
+
+    Link is already facing a blockable shot, so the idle frame *is* the
+    block. Letting the dash steal it would walk him off the shield.
+    """
+    from zelda_i.dungeon.threat import EvadeDecision
+
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.evader.decide = lambda *a, **k: EvadeDecision(
+        direction=None, reason="shield_hold", ttc=4, stand_ttc=4, shield=True
+    )
+    snap = read_snapshot(
+        _room_ram(
+            room=0x45,
+            x=16,
+            y=141,
+            enemy_type=0x27,
+            enemies=1,
+            hp=0x20,
+            enemy_x=72,
+            enemy_y=141,
+        )
+    )
+    action = controller.step(snap)
+    assert action.reason == "combat_shield_hold"
+    assert np.array_equal(action.action, nes_idle_action())
+
+
+def _door_room_ram():
+    """A synthetic ``$6530`` map: floor interior, plus real door mouths.
+
+    Door quads go at the north (``112, 80``), south (``112, 208``) and west
+    (``16, 144``) cells, which is where the ROM puts them. Everything outside
+    the interior is solid so the only holes in the wall are the doors.
+    """
+    from zelda_i.dungeon import tilemap as tm
+
+    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
+    tiles = np.zeros((tm.TILE_ROWS, tm.TILE_COLS), dtype=np.uint8)
+    floor = np.array([[0x74, 0x76], [0x75, 0x77]], dtype=np.uint8)
+    for y in tm.INTERIOR_Y:
+        for x in tm.INTERIOR_X:
+            col, row = x // tm.TILE_PX, (y - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
+            tiles[row : row + 2, col : col + 2] = floor
+    for x, y in ((112, 80), (112, 208), (16, 144)):
+        col, row = x // tm.TILE_PX, (y - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
+        tiles[row : row + 2, col : col + 2] = np.array(
+            [[0x90, 0x90], [0x91, 0x91]], dtype=np.uint8
+        )
+    start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
+    ram[start : start + tm.TILE_COLS * tm.TILE_ROWS] = tiles.T.reshape(-1)
+
+    class _Env:
+        def get_ram(self):
+            return ram
+
+    return ram, _Env()
+
+
+def test_fight_grid_never_paths_link_onto_a_door_cell() -> None:
+    """Doors are walkable to the entry route and solid to the fight.
+
+    ``tilemap.LINK_WALKABLE_TILES`` grades ``DOOR_TILES`` walkable, which is
+    right for ``ROUTE_BOUNDS`` — the entry route's whole job is to walk in
+    through a door. Inside the room it is not: walking into a door cell
+    leaves the room (``tilemap.door_cells``), and the fight box reaches
+    several of them. ``DEFAULT_BOUNDS`` ``(40, 216, 77, 205)`` covers the
+    north door row (``y=77..84``, feet in tile row 3) and the south door row
+    (``y=197..205``); the L4/L5/L6 ``(16, 216, ...)`` boxes also cover the
+    west door column. Chasing a body parked near a doorway would then scroll
+    Link out of the room mid-clear.
+    """
+    from zelda_i.dungeon.route_entry import ROUTE_BOUNDS
+    from zelda_i.walk.physics import measured_walker
+
+    ram, env = _door_room_ram()
+    controller = GenericDungeonRoomController(ROOM_45_SPEC)
+    controller.phase = DungeonPhase.FIGHT
+    controller.bind_env(env)
+    grid = controller.walker.grid
+
+    # Feet collide LINK_FOOT_OFFSET px lower: y=84 -> tile row 3, the lower
+    # half of the y=80 north door cell; y=205 -> row 18, the south door.
+    north_mouth = (112, 84)
+    south_mouth = (112, 205)
+    assert north_mouth in grid.blocked
+    assert south_mouth in grid.blocked
+    assert grid.shortest_path((120, 141), north_mouth) is None
+    assert grid.shortest_path((120, 141), south_mouth) is None
+    # Real floor is untouched: this is a door rule, not a wall.
+    assert (120, 141) not in grid.blocked
+    assert grid.shortest_path((120, 141), (176, 109)) is not None
+
+    # The entry route still walks straight in through the same door mouths.
+    route = measured_walker(ram, ROUTE_BOUNDS)
+    assert route is not None
+    assert north_mouth not in route.grid.blocked
+    assert (16, 141) not in route.grid.blocked
+    assert route.grid.shortest_path((120, 141), north_mouth) is not None

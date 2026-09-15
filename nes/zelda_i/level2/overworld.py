@@ -159,6 +159,13 @@ class OverworldToLevel2Controller(OverworldPathController):
     stuck_threshold: int = STUCK_THRESHOLD
     require_sword: bool = True
     require_triforce_bit: int | None = LEVEL1_TRIFORCE_BIT
+    # The only path controller with the reactive step on. Measured: the
+    # 0x37→0x4A prefix spent two hearts on body contact (a leever surfacing
+    # under the 0x48 DOWN column, an octorok crossing the 0x49 y=141 lane)
+    # that no hop rule can see. Keep it off everywhere else — a repo-wide
+    # overworld evade timed out ``exit42``.
+    evade: bool = True
+    occupied_lane: bool = True  # 0x49 hop walks into a pad TTC never sees
 
     def __post_init__(self) -> None:
         if self.door_path:
@@ -258,6 +265,9 @@ class OverworldToLevel2Controller(OverworldPathController):
             "stuck": self.stuck,
             "require_level2_screen": self.require_level2_screen,
             "require_dungeon": self.require_dungeon,
+            "evades": self.evades,
+            "parries": self.parries,
+            "evade_reasons": dict(self.evade_reasons),
         }
 
 

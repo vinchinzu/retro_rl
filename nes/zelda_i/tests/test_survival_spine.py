@@ -75,6 +75,52 @@ def test_level1_arrows_is_dedicated_not_on_default_tf() -> None:
     assert run.report()["stop"] == "level1_arrows"
 
 
+def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
+    """Gathering is before L1. Dedicated hop; not spliced onto TF stages."""
+    import inspect
+
+    from zelda_i.level1.bow_pickup import level1_survival_tf_stages
+    from zelda_i.overworld.gathering import (
+        pre_l1_bomb_shop_success,
+        pre_l1_stages,
+    )
+    from zelda_i.spine.survival import (
+        _L1_DEDICATED_HOPS,
+        _boot_only_prefix,
+        _continue_level1_spine,
+        run_survival_spine,
+    )
+
+    assert "pre-l1" in SPINE_THROUGH
+    hop = next(h for h in _L1_DEDICATED_HOPS if h.through == "pre-l1")
+    assert hop.dedicated is True
+    assert hop.stages is pre_l1_stages
+    assert hop.success is pre_l1_bomb_shop_success
+    assert hop.stop == "pre_l1_shop_p7"
+    gather_names = [name for name, _, _ in pre_l1_stages()]
+    tf_names = [name for name, _, _ in level1_survival_tf_stages()]
+    assert gather_names[0] == "sword_cave"
+    assert gather_names[-1] == "shop_p7_walk"
+    assert not set(gather_names) & set(tf_names)
+    continue_src = inspect.getsource(_continue_level1_spine)
+    assert "_L1_DEDICATED_HOPS" in continue_src
+    assert continue_src.index("attach_hops") < continue_src.index(
+        "level1_survival_tf_stages"
+    )
+    prefix_src = inspect.getsource(run_survival_spine)
+    assert 'through == "pre-l1"' in prefix_src
+    assert "_boot_only_prefix" in prefix_src
+    assert prefix_src.index('through == "pre-l1"') < prefix_src.index(
+        'milestone="clear53"'
+    )
+    boot_src = inspect.getsource(_boot_only_prefix)
+    assert "boot_to_ready" in boot_src
+    assert "first_playthrough=True" in boot_src
+    assert "clear53" not in boot_src
+    run = SpineRun(through="pre-l1", success=True, boot_frames=1)
+    assert run.report()["stop"] == "pre_l1_shop_p7"
+
+
 def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
     from zelda_i.level1.bow_pickup import level1_survival_tf_stages
 
@@ -444,10 +490,12 @@ def test_spine_run_measured_set_state_fails_the_run() -> None:
 # deliberate route change: SPINE_LEVELS is the source, this is the guard.
 PINNED_SPINE_THROUGH: tuple[str, ...] = (
     "level1",
+    "pre-l1",
     "level1-bow",
     "level1-bow-cellar",
     "level1-bow-pickup",
     "level1-arrows",
+    "level1-bombs",
     "level2-entry",
     "level2",
     "level3",

@@ -18,8 +18,9 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | L3 raft | `level3.raft_path` (canonical) | Raft passage controller; **not** `level3.path` |
 | L3 geometry | `level3.geometry` | Door bands, bomb stands, raft channel ints |
 | Door planner | `door_graph/` (L2–L5 + L9 fixture) | Offline BFS; stands must match `BombWall` |
+| Entry route | `dungeon/route_entry.py` | ROUTE_ENTRY waypoint walk + the stall escape (`EntryRouteWalker`, mixed into `GenericDungeonRoomController`). A hand-written `DoorRoute` leg that walls now notes the pose and replans off `$6530`; it does not hold one button into the stage budget. |
 | Room geometry | `dungeon/tilemap.py` | Read-only cart-WRAM `$6530` room tile map (floor / block / stairs / door cells). Measure rooms with this, not with direction-sensitive `$049E` `colliding_tile` sweeps. Never writes. |
-| Walk physics | `walk/physics.py`, `walk/predict.py` | OccupancyWalker grades `move`; miss → block that cell → replan; no path → stand |
+| Walk physics | `walk/physics.py`, `walk/predict.py` | OccupancyWalker grades `move`; miss → block that cell → replan; no path → stand. **Build one with `measured_walker(env.get_ram())`** — a bare `OccupancyWalker()` knows no walls, learns each one by bumping it, and (non-sticky) forgets it again; that loop spent `enter_6f_key`'s whole 4,000f budget in `band_wait`. |
 | L6 dest helpers | `level6.occupancy` | leftover / dest success / occupancy halt (L6-prefixed dest). Halt-on-miss came from the (deleted) east3a diagnostic, not the OccupancyWalker default. Distinct from `level4.occupancy` (seeds). |
 | L3 dest spine | `level3/spine.py` | `--through level3` dest 0x5b (west key closed) |
 | L5 dest spine | `level5/spine.py` | `--through level5` TF `0x10` in room `0x14` |

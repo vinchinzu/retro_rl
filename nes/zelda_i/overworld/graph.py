@@ -26,6 +26,12 @@ class ScreenHop:
     align_y: int | None = None
     y_band_lo: int | None = None
     y_band_hi: int | None = None
+    # Opt-in: keep x-aligning against the far wall (y>=205 DOWN / y<=80 UP).
+    # Off by default. ``align_and_push`` drops ``align_x`` outside
+    # ``80 < y < 205`` because a strafe at a wall walks past the mouth of a
+    # horizontal hop -- and, on 0x22 DOWN, straight onto the L6 cave column.
+    # Set it only on a hop whose wall stall was measured (0x48 south gap).
+    align_x_at_wall: bool = False
 
     @property
     def y_band(self) -> tuple[int, int] | None:
@@ -86,7 +92,10 @@ LEVEL1_PATH_SCREENS: tuple[int, ...] = (
 LEVEL2_PATH_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x38, "RIGHT", align_y=140),
     ScreenHop(0x48, "DOWN", align_x=120),
-    ScreenHop(0x58, "DOWN", align_x=112),
+    # 0x48 south gap is x=120; 112 is the rock 8px west (leever stall). The
+    # stall is *at* the wall (measured 159f at (112,205)), so this hop is the
+    # one that opts into wall-column alignment.
+    ScreenHop(0x58, "DOWN", align_x=120, align_x_at_wall=True),
     ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
     ScreenHop(0x49, "UP", align_x=112),
     ScreenHop(0x4A, "RIGHT", align_y=141),
@@ -102,7 +111,7 @@ LEVEL2_PATH_SCREENS: tuple[int, ...] = path_screens_from_hops(
 LEVEL2_DOOR_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x38, "RIGHT", align_y=140),
     ScreenHop(0x48, "DOWN", align_x=120),
-    ScreenHop(0x58, "DOWN", align_x=112),
+    ScreenHop(0x58, "DOWN", align_x=120, align_x_at_wall=True),
     ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
     ScreenHop(0x5A, "RIGHT", y_band_lo=120, y_band_hi=145),
     ScreenHop(0x5B, "RIGHT", y_band_lo=130, y_band_hi=150),

@@ -434,12 +434,18 @@ def align_and_push(
     swing_period: int = DEFAULT_SWING_PERIOD,
     swing_hold: int = DEFAULT_SWING_FRAMES,
     phase_frames: int = 0,
+    align_x_at_wall: bool = False,
 ) -> FrameAction:
     """Align to optional x/y or y-band, then push in ``direction``.
 
     Default movement uses :func:`walk_or_swing` (threat-gated). Callers that
     pass ``swing=`` own the slash policy (controllers usually close over snap).
     Stuck recovery tries one short :func:`unstick_wiggle` cycle, then idles.
+
+    ``align_x_at_wall`` is opt-in per hop: it keeps ``align_x`` live past the
+    ``80 < y < 205`` interior band for the hop's own direction. Leave it off
+    unless that hop's wall stall was measured -- a blanket wall strafe walked
+    the post-L6 0x22 DOWN leftover (120,221) left onto ``L6_CAVE_MOUTH_X``.
     """
 
     def _swing(dir_: str, why: str) -> FrameAction:
@@ -466,10 +472,20 @@ def align_and_push(
             return _swing("UP", "band_up")
         return _swing(direction, reason)
 
+    # Interior: skip x-align at the north/south walls (a strafe there walks
+    # past the mouth). An opted-in vertical hop keeps the gap column at its
+    # own far wall — y=205 is rock, not EDGE_SOUTH_Y=212.
+    y = snap.link_y
+    can_align_x = 80 < y < 205
+    if align_x_at_wall:
+        if direction == "DOWN" and y >= 205:
+            can_align_x = True
+        elif direction == "UP" and y <= 80:
+            can_align_x = True
     if (
         align_x is not None
         and abs(snap.link_x - align_x) > x_tol
-        and 80 < snap.link_y < 205
+        and can_align_x
     ):
         btn = "LEFT" if snap.link_x > align_x else "RIGHT"
         return _swing(btn, f"{reason}_ax")

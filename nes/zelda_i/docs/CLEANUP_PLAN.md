@@ -424,6 +424,39 @@ branch is death (`overworld/path.py:401-402`).
 
 ---
 
+# Phase 4.5 — Pre-L1 loadout (Zelda Dungeon The Gathering)
+
+M5 Clean enters L1 on 3 containers and the wooden sword. The cheaper combat
+budget is [The Gathering](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/the-gathering/)
+(IGN Preparation is the coarser secondary). Mapped and path-checked against
+the Q1 catalog in [`docs/PRE_L1.md`](PRE_L1.md). Do not overwrite the 19416f
+M5 claim; re-measure L1 after the prefix greens.
+
+ZD screen-counts that are **not** corridors: `0x79` (rocky pocket, no east
+exit — do not "right 8 from start"), Lost Hills `0x1B` (do not "left two"
+from the candle shop to the White Sword), `0x5C` maze (needs waypoints).
+
+- [ ] **4.5.1** **Bombs at `0x6F` `shop_p7`.** Grid is R8 U1 from start;
+      walk is `0x77`→E `0x78`→N `0x68` then east on row 6 (bypass 0x79).
+      Farm drop-group B on the way. 20R. Not the 0x4A tektite wave.
+- [ ] **4.5.2** **Bomb hearts** `heart_l8` `0x7B` (from `0x6F` D1 L4, bomb
+      N wall) then `heart_m3` `0x2C` (lower-right of the center rock). 5 HC.
+- [ ] **4.5.3** **NE cluster:** 100R `0x0F` (N-wall clip on `0x1F`), Letter
+      `0x0E`, candle `0x0C` `shop_m1` (open cave, 60R — not IGN's bomb-open
+      `0x66`, not the long `0x5E` corridor). Then White Sword `0x0A` at 5 HC
+      **around** Lost Hills, not through it. Blue Lynel on the 0x1A climb.
+- [ ] **4.5.4** **Burn heart + 90R shield.** `0x48` LEFT to `heart_h5`
+      `0x47` (5th bush from the right; pocket measured), then `0x46`
+      `shop_g5` Magical Shield 90R (bait is on the same counter, buy later).
+- [ ] **4.5.5** **Arrows 80R** at `0x4A` if the farm can pay it. Same cave
+      as bombs, south pedestal. Optional on the first pass.
+- [ ] **4.5.6** **Potion `0x64`** (show Letter) then **Blue Ring 250R** at
+      `0x34` (top-middle Armos). Pin slot order. Do not poke `ADDR_FOOD`.
+- [ ] **4.5.7** Dedicated `--through pre-l1`. Not spliced into
+      `level1_survival_tf_stages`. Then re-run Clean L1 on that leftover.
+
+---
+
 # Phase 5 — 100% items
 
 The run currently reaches the endgame with **10 of 16 heart containers**
@@ -449,11 +482,32 @@ spliced into L9 entry and why the Magical Sword (12 HC) has never been attempted
       (`level8/overworld.py:188`) and `B_ITEM_CANDLE = 0x04` (`:189`); only the
       target table is missing.
 - [ ] **5.4** **Heart containers.** No general HC pickup step exists — only L2
-      has an explicit one (`level2/boss_tf.py:221-231`). Add the raft heart
-      (`0x3F` → island `0x2F`) and the ladder heart (coast `0x5F`) — the
-      Stepladder is owned from L4 and has **never been used on the overworld**.
-      Then the bomb/burn secret-cave HCs, which are entirely absent from the
-      codebase (no screen ids, no notes).
+      has an explicit one (`level2/boss_tf.py:221-231`). All **5** first-quest
+      overworld HCs are already catalogued in `overworld/locations.py`
+      (`EVIDENCE_SOURCE`, none live-verified, no pickup controller consumes
+      them): `raft_heart` `0x2F` (dock `0x3F`, raft), `ladder_heart` `0x5F`
+      (coast, stepladder — owned from L4, **never used on the overworld**),
+      `heart_m3` `0x2C` (bomb), `heart_h5` `0x47` (burn), `heart_l8` `0x7B`
+      (bomb). Build one general HC-pickup step (`goto` + touch, same shape as
+      `level2/boss_tf.py`'s `L2_BOSS_HC_STAND` pattern) driven off that table.
+      2026-09-14 recon (not live-closed): `heart_h5` pocket is measured
+      (`locations.HEART_H5_*`) one hop west of 0x48, but the 0x5E candle buy
+      is fixture-tested only and not on any spine hop table. `raft_heart`
+      live-walked post-L3 `0x74`→`0x66` (`overworld/raft_heart.py`) and
+      blocked at 0x66. `ladder_heart`: Stepladder is owned post-L4; the
+      production `OverworldPathController` loops/times out on `0x45`→`0x55`
+      (island leave) that a hand-rolled walker cleared — same occupancy_stall
+      class as the Clean 0x48 lane, fix the controller once. Then verify each
+      pickup live.
+      **Policy: divert for a HC as soon as its tool is owned, even off the
+      critical dungeon-mouth path.** Bombs gate `heart_m3`/`heart_l8` (2 of
+      5) — as soon as `rr-doua` lands natural bomb counts, splice a detour to
+      grab both before continuing to the next mouth; do not wait for the
+      Phase 5 sweep to get to them. Candle gates `heart_h5`; raft gates
+      `raft_heart`; the Stepladder (owned end of L4) gates `ladder_heart`.
+      This is what buys the slack Phase 6.7 needs — Clean has to survive
+      1,117 damage units across 85 rooms on 10 containers today; each early
+      HC raises that budget before the rooms that spend it.
 - [ ] **5.5** Long tail, mostly needing rupees and the Phase 6 farm: Letter →
       Potion, Blue Ring (250R), Magical Shield, both bomb upgrades (L5/L7 old
       men, 100R each), Magical Sword (grave `0x21`, needs 12 HC and a
@@ -491,6 +545,9 @@ Strip order is dependency-driven, cheapest first:
       write-free, fail-closed, and wired nowhere on the spine. It is the sole
       prerequisite for both the 80R arrow buy and the 60R Bait. Wiring costs one
       `before=` hook per shop stage. Then delete `SPINE_L7_RUPEE_RETOPUP`.
+      2026-09-14: 0x4A live farm crawled 7R→10R in 36k frames (rr-doua.1 bomb
+      buy, 20R price). Same gap as arrows (9→10). Do not spend a Clean sitting
+      retuning this screen; 0x4A is one-shot after the tektite wave.
 - [ ] **6.4** **Wooden arrows** (`rr-wabn`). Depends on 6.3. The buy controller
       already works (`level1/arrow_shop.py`); the only red leg on `--through
       level1-arrows` is the farm (`docs/plan.md:250`, rupees 9→10), so 6.3

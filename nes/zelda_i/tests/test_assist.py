@@ -13,6 +13,7 @@ from zelda_i.ram import (
     PLAY_MODE,
     ZeldaSnapshot,
     full_health_byte,
+    health_byte_is_coherent,
 )
 
 
@@ -64,6 +65,22 @@ def test_full_health_byte_preserves_containers() -> None:
     assert full_health_byte(0x20) == 0x22
     assert full_health_byte(0x31) == 0x33
     assert full_health_byte(0x2F) == 0x22
+
+
+def test_health_byte_coherence_rejects_more_hearts_than_containers() -> None:
+    """The shape ``Level6Entrance`` broke: lo=15 whole hearts in hi=3 slots."""
+    assert health_byte_is_coherent(0x22) is True
+    assert health_byte_is_coherent(0x66) is True
+    assert health_byte_is_coherent(0x32) is True
+    assert health_byte_is_coherent(0x20) is True
+    assert health_byte_is_coherent(0x2F) is False
+    assert health_byte_is_coherent(0x23) is False
+
+
+def test_full_health_byte_output_is_always_coherent() -> None:
+    for hi in range(16):
+        for lo in range(16):
+            assert health_byte_is_coherent(full_health_byte(hi << 4 | lo))
 
 
 def test_assist_refills_on_ordinary_play() -> None:

@@ -119,11 +119,16 @@ def run_clean_door_from_env(
         max_frames=farm_max_frames,
         farm_screen=0x4A,
     )
+    # The farm restocks by scrolling 0x4A -> 0x49 and back; breaking on
+    # "not 0x4A" used to end the farm on the first respawn scroll.
+    farm_screens = {0x4A}
+    if farm.restock_neighbor_screen is not None:
+        farm_screens.add(int(farm.restock_neighbor_screen))
     for _ in range(farm_max_frames):
         snap = read_snapshot(env.get_ram())
         if snap.mode == 17:
             return obs, _fail_report(trail, notes, farm, "farm_death", env=env)
-        if snap.screen != 0x4A:
+        if snap.screen not in farm_screens:
             break
         if snap.filled_hearts >= farm_hearts_min:
             # Mark farm done so report peak/success stay honest.
@@ -136,9 +141,15 @@ def run_clean_door_from_env(
     snap = read_snapshot(env.get_ram())
     notes.append(f"farm_h{snap.filled_hearts}")
     _log("post_farm")
+    # Fail closed. The suffix is a heart budget, not a nav problem: walking it
+    # short just converts a named leftover into a death two screens later.
+    if snap.filled_hearts < farm_hearts_min:
+        return obs, _fail_report(trail, notes, farm, "farm_short", env=env)
 
     # --- Rejoin to 0x59 (early stop on play y<200) ---
-    nav = OverworldToLevel2Controller(hops=REJOIN_HOPS)
+    # farm_below_hearts=0: a 1-heart leftover on 0x4A used to farm instead of
+    # LEFT, then the east loop RIGHT-scrolled into 0x4B (natural L2 death).
+    nav = OverworldToLevel2Controller(hops=REJOIN_HOPS, farm_below_hearts=0)
     for _ in range(4000):
         snap = read_snapshot(env.get_ram())
         if snap.mode == 17:
@@ -153,6 +164,11 @@ def run_clean_door_from_env(
         obs, *_ = env.step(act.action)
         if nav.phase.name == "FAILED":
             return obs, _fail_report(trail, notes, farm, "rejoin_failed", env=env)
+    snap = read_snapshot(env.get_ram())
+    if not (
+        snap.screen == 0x59 and snap.mode == PLAY_MODE and snap.link_y < 200
+    ):
+        return obs, _fail_report(trail, notes, farm, "rejoin_miss_59", env=env)
     notes.append("rejoin_59")
     _log("at_59")
 
@@ -164,6 +180,8 @@ def run_clean_door_from_env(
         if snap.screen == 0x5A:
             notes.append(f"east_5a_h{snap.filled_hearts}")
             break
+        if snap.screen in (0x4A, 0x4B):
+            return obs, _fail_report(trail, notes, farm, "east_on_4b", env=env)
         if abs(snap.link_y - EAST_Y) > 5 and snap.link_x < 200:
             d = "DOWN" if snap.link_y < EAST_Y else "UP"
             obs, *_ = env.step(
@@ -187,9 +205,12 @@ def run_clean_door_from_env(
         _log("post_clear")
 
     # --- Door path with maze ---
+    # 0x4A already farmed. A 0x5A octorok divert after corridor clear
+    # chased At4A into door_death. Walk the suffix.
     door = OverworldToLevel2Controller(
         hops=LEVEL2_CLEAN_FROM_5A_TO_3C,
         require_level2_screen=True,
+        farm_below_hearts=0,
     )
     for _ in range(max_door_frames):
         snap = read_snapshot(env.get_ram())

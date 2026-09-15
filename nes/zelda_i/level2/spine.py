@@ -52,7 +52,7 @@ from zelda_i.overworld.common import (
     unstick_wiggle,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyWalker
+from zelda_i.walk.physics import OccupancyWalker, measured_walker
 
 DOOR_X = 120
 DOOR_Y = 141
@@ -426,6 +426,32 @@ class Level2Enter6fKeyController(L2NavBase):
     door_phase: str = "band"
     _last_dir: str = "RIGHT"
     walker: OccupancyWalker = field(default_factory=OccupancyWalker)
+    _env: Any = field(default=None, init=False, repr=False)
+    _walker_room: int | None = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        """Let the band walk measure the diamonds instead of bumping them."""
+        self._env = env
+
+    def _band_walker(self, snap: ZeldaSnapshot) -> OccupancyWalker:
+        """Live ``$6530`` walker for 0x6e; the bare default knows no walls.
+
+        Without geometry this walk learns each diamond by walking into it and
+        then, being non-sticky, forgets it again — the loop that spent the
+        whole 4,000f budget in ``band_wait`` (see ``walk.physics``). Rebuilt
+        per room so a mid-walk scroll does not reuse the old room's map.
+        """
+        room = int(snap.screen)
+        if self._walker_room == room:
+            return self.walker
+        measured = measured_walker(
+            self._env.get_ram() if self._env is not None else None
+        )
+        if measured is None:
+            return self.walker
+        self.walker = measured
+        self._walker_room = room
+        return self.walker
 
     def on_arrive(self, snap: ZeldaSnapshot) -> str:
         del snap
@@ -459,13 +485,14 @@ class Level2Enter6fKeyController(L2NavBase):
         ):
             xy = (int(x), int(y))
             dest = (120, self.band_y)
-            self.walker.observe(xy)
-            if self.walker.goal != dest:
-                self.walker.goal = dest
-                self.walker.path = None
-            direction = self.walker.next_dir(xy, dest)
+            walker = self._band_walker(snap)
+            walker.observe(xy)
+            if walker.goal != dest:
+                walker.goal = dest
+                walker.path = None
+            direction = walker.next_dir(xy, dest)
             if direction is None:
-                self.walker.last_dir = None
+                walker.last_dir = None
                 return FrameAction(nes_idle_action(), "band_wait")
             return FrameAction(nes_action(direction), "band_occ")
         action, next_phase = diamond_east_phase(

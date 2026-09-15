@@ -95,4 +95,59 @@ def make_ram(defaults: dict[str, int], **fields: int) -> np.ndarray:
     return ram
 
 
-__all__ = ["FIELD_ADDR", "make_ram"]
+__all__ = ["FIELD_ADDR", "make_ram", "room_tile_env", "tile_map_env"]
+
+
+def room_tile_env(room: str):
+    """A stub env whose ``get_ram()`` carries a captured ``$6530`` tile map.
+
+    Controllers with ``occupancy_from_tilemap`` measure their walls from the
+    live map via ``bind_env``. A unit test that skips the bind gives them an
+    empty grid — no geometry at all — which is how a 0x23 test came to expect
+    a walk straight up into the water bar. Bind this instead so the room under
+    test has exactly the walls the ROM has.
+    """
+    import json
+    from pathlib import Path
+
+    from zelda_i.dungeon import tilemap as tm
+
+    path = Path(__file__).parent / "fixtures" / f"room_tiles_l1_{room}.json"
+    tiles = json.loads(path.read_text())["tiles"]
+    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
+    start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
+    ram[start : start + len(tiles)] = np.asarray(tiles, dtype=np.uint8)
+
+    class _Env:
+        def get_ram(self):
+            return ram
+
+    return _Env()
+
+
+def tile_map_env(solid: "set[tuple[int, int]]" = frozenset()):
+    """A stub env carrying a *synthetic* ``$6530`` map: floor plus ``solid``.
+
+    ``solid`` is a set of 16x16 cell origins in screen coords, each filled
+    with a block tile. Use this only for rules that are about the *shape* of
+    an obstacle (does the walker route around a wall at all); a rule about a
+    specific room's walls belongs on ``room_tile_env`` with a captured map,
+    because a hand-built map is exactly the drift ``blocked_link_cells``
+    exists to remove.
+    """
+    from zelda_i.dungeon import tilemap as tm
+
+    ram = np.zeros(tm.WRAM_RAM_OFFSET + 0x2000, dtype=np.uint8)
+    start = tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE
+    tiles = np.full((tm.TILE_ROWS, tm.TILE_COLS), 0x74, dtype=np.uint8)
+    for cx, cy in solid:
+        col = int(cx) // tm.TILE_PX
+        row = (int(cy) - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
+        tiles[row : row + 2, col : col + 2] = 0xB0
+    ram[start : start + tm.TILE_COLS * tm.TILE_ROWS] = tiles.T.reshape(-1)
+
+    class _Env:
+        def get_ram(self):
+            return ram
+
+    return _Env()

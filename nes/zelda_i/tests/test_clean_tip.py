@@ -34,11 +34,15 @@ def test_every_cited_residual_exists() -> None:
     assert not missing, missing
 
 
-def test_blocked_rows_name_a_tool() -> None:
-    """The point of a blocker class is that it says what to reach for."""
+def test_blocked_rows_name_a_tool_and_a_place_to_look() -> None:
+    """The point of a blocker class is that it says what to reach for.
+
+    An ``invalid_pin`` row's locus is the fixture, not a room, so either
+    field satisfies it — but a row that names neither is unactionable.
+    """
     for step in blocked():
         assert tool_for(step.blocker), step.id
-        assert step.room, step.id
+        assert step.room or step.pin, step.id
 
 
 def test_blocked_rows_are_never_spine_green() -> None:
@@ -47,40 +51,57 @@ def test_blocked_rows_are_never_spine_green() -> None:
         assert not step.proven
 
 
-def test_tip_is_none_while_the_power_on_run_is_red() -> None:
-    """M5 measured red 2026-09-11 (2/2) at clear33_key.
-
-    A tip is a ROM claim. While the first row is red there is no tip, and
-    `tip()` must say so rather than naming a row the ROM does not support.
-    """
-    assert tip() is None
-    assert all(step.rung < Rung.SPINE_GREEN for step in CLEAN_LADDER)
+def test_tip_is_l1_tf_after_natural_entry_triforce() -> None:
+    """M5 measured 2/2 2026-09-12, triforce=0x01, end 19416."""
+    top = tip()
+    assert top is not None
+    assert top.id == "l1_tf"
+    assert top.rung is Rung.SPINE_GREEN
+    assert top.blocker is Blocker.NONE
 
 
 def test_next_open_is_the_first_unproven_row() -> None:
     nxt = next_open()
     assert nxt is not None
-    assert nxt.id == "l1_tf"
+    assert nxt.id == "pre_l1"
     assert nxt.open
-    assert nxt.room == "L1 0x23"
+    assert nxt.blocker is Blocker.INVENTORY_GAP
 
 
-def test_render_handles_a_missing_tip() -> None:
-    assert "clean tip: NONE" in render()
+def test_render_names_the_l1_tip() -> None:
+    assert "clean tip: l1_tf" in render()
 
 
 def test_shared_blocker_classes_are_visible() -> None:
+    """Rows move between classes; the class -> tool mapping is the contract."""
     groups = by_blocker()
-    assert Blocker.SHOT_UNDODGEABLE in groups
-    assert Blocker.FIRING_LINE in groups
-    assert Blocker.BODY_UNDODGEABLE in groups
+    assert groups, "a ladder with no blocked row has nothing to dispatch"
     # The two stand-line lanes are answered by the same threat tool.
     assert "off_line_step" in tool_for(Blocker.SHOT_UNDODGEABLE)
     assert "in_firing_line" in tool_for(Blocker.FIRING_LINE)
     assert "MIN_DODGE_BODY" in tool_for(Blocker.BODY_UNDODGEABLE)
+    assert all(tool_for(blocker) for blocker in groups)
+
+
+def test_invalid_pin_rows_quote_the_byte() -> None:
+    """A row that blames its fixture must say which byte is wrong."""
+    for step in blocked():
+        if step.blocker is Blocker.INVALID_PIN:
+            assert "$066F" in step.pin, step.id
 
 
 def test_render_mentions_the_next_hop_and_blockers() -> None:
     text = render()
-    assert "next open: l1_tf" in text
+    assert "next open: pre_l1" in text
     assert "blockers by class:" in text
+
+
+def test_invalid_pin_is_its_own_blocker_class() -> None:
+    """Not INVENTORY_GAP: that pin is poorer than a real arrival, this one
+    holds a state the ROM cannot produce."""
+    from zelda_i.spine.clean_tip import Blocker, tool_for
+
+    assert Blocker.INVALID_PIN.value == "invalid_pin"
+    tool = tool_for(Blocker.INVALID_PIN)
+    assert "lo <= hi" in tool
+    assert "capture_level6_entrance_fixture" in tool

@@ -210,6 +210,10 @@ class Level6EastKeyController(GenericDungeonRoomController):
             )
             self._hit_diag.append(diag)
             self.notes.append(diag)
+        # The reason histogram and action tail this room used to keep locally
+        # are on the engine now (``_record_reason``): every room times out the
+        # same way, so every room reports it. What stays here is the part that
+        # is actually 0x7a's — ttc/dodgeable around each contact.
         return action
 
     def _go_key(self, snap: ZeldaSnapshot, *, reason: str) -> FrameAction:

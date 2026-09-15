@@ -15,7 +15,11 @@ from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i import combat as _combat
-from zelda_i.combat import overworld_threat_objects
+from zelda_i.combat import (
+    BOMB_DROP_OBJECT_TYPE,
+    BOMB_DROP_STATES,
+    overworld_threat_objects,
+)
 from zelda_i.dungeon.ids import (
     CLOCK_DROP_STATE,
     FAIRY_DROP_STATE,
@@ -60,7 +64,27 @@ BAND_SWEEP_WAYPOINTS: tuple[tuple[int, int], ...] = (
 
 DEFAULT_MAX_FRAMES = 3600
 DEFAULT_EMPTY_WAIT_FRAMES = 90
+# Restock scroll-out budget. Mid-screen to an edge is ~110f at 2px/f;
+# 300 leaves room for one occupancy replan around a tree pocket.
+LEAVE_MAX_FRAMES = 300
+# Lane the leave walks to before it pushes the edge. Every overworld screen
+# the spine crosses has a live y=141 corridor (that is how the hop crossed
+# it), so this is an open cell to aim at, not a guess about 0x4A.
+RESTOCK_LANE_Y = 141
+RESTOCK_LANE_X = 120
+# Edge cell per restock direction, on that lane.
+LEAVE_GOALS: dict[str, tuple[int, int]] = {
+    "LEFT": (8, RESTOCK_LANE_Y),
+    "RIGHT": (248, RESTOCK_LANE_Y),
+    "UP": (RESTOCK_LANE_X, 64),
+    "DOWN": (RESTOCK_LANE_X, 216),
+}
 FARM_SWING_PERIOD = 8
+# Bomb top-up bar, and the budget one bomb slot may hold the farm for. A
+# reachable contact drop is banked in well under a second; a slot still
+# sitting there after this is the phantom, not a bomb.
+BOMB_TOPUP_BELOW = 8
+BOMB_CHASE_MAX_FRAMES = 120
 FARM_SWING_HOLD = 3
 WAYPOINT_TOL = 6
 
@@ -127,6 +151,47 @@ def _rupee_drops(snap: ZeldaSnapshot) -> tuple:
     )
 
 
+def owns_bombs(snap: ZeldaSnapshot) -> bool:
+    """True when Link owns bombs at all — the gate on any bomb-drop branch.
+
+    ``ZeldaSnapshot`` has no ``max_bombs`` field: ``ADDR_MAX_BOMBS`` (``$067C``)
+    is defined in ``ram.py`` but never read into the snapshot, so ownership is
+    proxied by a live count — and picked up from the real capacity the moment
+    ram.py exposes it. Pre-L1 Link owns no bombs, which is exactly the leg
+    (0x77 -> 0x4A) where every ``0x60``/state-``0x00`` slot is a phantom.
+    """
+    cap = getattr(snap, "max_bombs", None)
+    if cap is not None:
+        return int(cap) > 0
+    return int(snap.bombs) > 0
+
+
+def _can_take_bombs(snap: ZeldaSnapshot) -> bool:
+    """Link owns bombs and is under the farm's top-up bar."""
+    return owns_bombs(snap) and int(snap.bombs) < BOMB_TOPUP_BELOW
+
+
+def _bomb_drops(snap: ZeldaSnapshot) -> tuple:
+    """Bomb floor drops, or ``()`` when Link cannot bank one.
+
+    Bomb is ROM item code ``0x00`` (``ids.BOMB_DROP_STATE``), so a bomb drop is
+    the one drop whose ObjState is *identical* to a cleared object slot — every
+    other drop helper in this package filters on a non-zero state for that
+    reason. There is no second witness in the snapshot (type is ``0x60`` for
+    every drop, hp is 0 for every drop, x/y go stale on pickup), so the
+    ownership gate is what separates a real bomb from a phantom slot.
+    """
+    if not _can_take_bombs(snap):
+        return ()
+    return tuple(
+        obj
+        for obj in snap.objects
+        if _in_drop_bounds(obj)
+        and int(obj.type_id) == BOMB_DROP_OBJECT_TYPE
+        and int(obj.state) in BOMB_DROP_STATES
+    )
+
+
 def _heart_drops(snap: ZeldaSnapshot) -> tuple:
     """Heart/fairy floor drops. Item identity is ObjState, not ObjType."""
     heart_fn = getattr(_combat, "heart_or_fairy_drops", None)
@@ -162,6 +227,141 @@ def _hold_for_forced_fairy(snap: ZeldaSnapshot) -> bool:
 
 
 @dataclass
+class FarmOccupancy:
+    """Bump-learning occupancy walk for one overworld screen.
+
+    The overworld has no ``$6530`` tile map to measure walls from, so the grid
+    starts empty and learns a bush or a rock by failing to advance into it
+    (:func:`_advanced`): block that cell, drop the path, replan. No path at all
+    means stand — a farm never wiggles.
+
+    Held by both farms: the heart farm's patrol / chase / pickup walks, and the
+    restock leave in either farm (a bare directional hold has no answer to a
+    bush between Link and the screen edge).
+    """
+
+    walker: OccupancyWalker | None = None
+    screen: int = -1
+    frame: int = -1
+
+    @property
+    def misses(self) -> int:
+        return 0 if self.walker is None else self.walker.misses
+
+    @property
+    def retargets(self) -> int:
+        return 0 if self.walker is None else self.walker.retargets
+
+    def reset(self) -> None:
+        self.walker = None
+        self.screen = -1
+        self.frame = -1
+
+    def grade(self, snap: ZeldaSnapshot, frames: int) -> OccupancyWalker:
+        """Grade last frame's held button, then hand back the walker."""
+        if self.walker is None or self.screen != int(snap.screen):
+            self.walker = OccupancyWalker(grid=_ow_farm_grid())
+            self.screen = int(snap.screen)
+            self.frame = -1
+        walker = self.walker
+        xy = (int(snap.link_x), int(snap.link_y))
+        if self.frame != frames - 1:
+            walker.last_dir = None
+            walker.last_xy = None
+        link_state = (
+            snap.objects[0].state
+            if snap.objects and snap.objects[0].slot == 0
+            else 0
+        )
+        is_swinging = link_state != 0 or snap.mode != PLAY_MODE
+        if is_swinging:
+            walker.last_dir = None
+            walker.last_xy = None
+        elif walker.last_dir in _CARDINALS and walker.last_xy is not None:
+            if not _advanced(walker.last_xy, xy, walker.last_dir):
+                walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
+                walker.path = None
+                walker.misses += 1
+        walker.last_xy = xy
+        walker._graded = True
+        return walker
+
+    def walk(
+        self,
+        snap: ZeldaSnapshot,
+        frames: int,
+        goal: tuple[int, int],
+        reason: str,
+        *,
+        slash: bool = True,
+        period: int = FARM_SWING_PERIOD,
+        hold: int = FARM_SWING_HOLD,
+    ) -> FrameAction:
+        """Occupancy to ``goal``. Miss -> block -> replan; no path -> stand."""
+        walker = self.grade(snap, frames)
+        xy = (int(snap.link_x), int(snap.link_y))
+        dest = (int(goal[0]), int(goal[1]))
+        if walker.goal != dest:
+            walker.path = None
+            walker.goal = dest
+        path = walker.grid.shortest_path(xy, dest)
+        if path is None and not walker.grid.passable(*dest):
+            # The goal cell itself is blocked, so ``shortest_path`` refuses it
+            # (an in-bounds blocked goal returns None — it no longer hands back
+            # a bogus path that walks into the wall). On this grid a block is
+            # always *inferred*: one bump on the drop's own cell would strand
+            # the farm on ``occupancy_stand`` until ``farm_screen_dead``, on a
+            # drop Link could have walked up to. Aim at the nearest open cell —
+            # contact pickup does not need the exact pixel.
+            #
+            # Not the ``next_dir`` forget path: that clears every inferred
+            # block, and a walker on an empty overworld grid just re-learns the
+            # same wall (``measured_walker``'s docstring; ``enter_6f_key``
+            # burned 4,000f that way). A start that is fenced in — ``path is
+            # None`` with a passable goal — still stands, which is what the
+            # frozen-chase tests pin.
+            open_dest = walker.grid.nearest_open(*dest)
+            if open_dest is not None and open_dest != dest:
+                walker.retargets += 1
+                dest = open_dest
+                walker.goal = dest
+                walker.path = None
+                path = walker.grid.shortest_path(xy, dest)
+        if path is None or xy == dest:
+            walker.path = None
+            walker.last_dir = None
+            self.frame = frames
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+        walker.path = path
+        direction = walker.next_dir(xy, dest)
+        if direction is None:
+            walker.path = None
+            walker.last_dir = None
+            self.frame = frames
+            return FrameAction(nes_idle_action(), "occupancy_stand")
+        if slash:
+            act = walk_or_swing(
+                frames,
+                direction,
+                reason,
+                snap,
+                period=period,
+                hold=hold,
+            )
+            walker.last_dir = _cardinal_from_action(act.action)
+        else:
+            act = FrameAction(nes_action(direction), reason)
+            walker.last_dir = direction
+        self.frame = frames
+        return act
+
+
+def leave_goal(direction: str) -> tuple[int, int] | None:
+    """Edge cell on the open lane for a restock leave in ``direction``."""
+    return LEAVE_GOALS.get(direction)
+
+
+@dataclass
 class HeartFarmController:
     """Patrol a screen until ``filled_hearts >= min_filled`` (Clean combat only).
 
@@ -178,11 +378,16 @@ class HeartFarmController:
     restock_neighbor_screen: int | None = None
     restock_direction: str | None = None  # from farm_screen toward neighbor
     empty_wait_frames: int = DEFAULT_EMPTY_WAIT_FRAMES
+    bomb_chase_max_frames: int = BOMB_CHASE_MAX_FRAMES
     phase: HeartFarmPhase = HeartFarmPhase.FARM
     frames: int = 0
     waypoint_index: int = 0
     stuck: int = 0
     empty_frames: int = 0
+    leaving: bool = False
+    saw_prey: bool = False
+    leave_frames: int = 0
+    restocks: int = 0
     last_x: int = -1
     last_y: int = -1
     last_screen: int = -1
@@ -190,9 +395,13 @@ class HeartFarmController:
     notes: list[str] = field(default_factory=list)
     start_filled: int = -1
     peak_filled: int = 0
-    _walker: OccupancyWalker | None = field(default=None, repr=False)
-    _walker_screen: int = -1
-    _walk_frame: int = field(default=-1, repr=False)
+    bomb_chase: int = 0
+    bomb_chase_bombs: int = -1
+    _occ: FarmOccupancy = field(default_factory=FarmOccupancy, repr=False)
+
+    @property
+    def _walker(self) -> OccupancyWalker | None:
+        return self._occ.walker
 
     def __post_init__(self) -> None:
         if self.restock_neighbor_screen is not None and self.restock_direction is not None:
@@ -211,6 +420,10 @@ class HeartFarmController:
         self.waypoint_index = 0
         self.stuck = 0
         self.empty_frames = 0
+        self.leaving = False
+        self.saw_prey = False
+        self.leave_frames = 0
+        self.restocks = 0
         self.last_x = -1
         self.last_y = -1
         self.last_screen = -1
@@ -218,9 +431,9 @@ class HeartFarmController:
         self.notes.clear()
         self.start_filled = -1
         self.peak_filled = 0
-        self._walker = None
-        self._walker_screen = -1
-        self._walk_frame = -1
+        self.bomb_chase = 0
+        self.bomb_chase_bombs = -1
+        self._occ.reset()
 
     def _has_restock(self) -> bool:
         return self.restock_neighbor_screen is not None and self.restock_direction is not None
@@ -269,34 +482,6 @@ class HeartFarmController:
             return "UP"
         return None
 
-    def _grade_occupancy(self, snap: ZeldaSnapshot) -> OccupancyWalker:
-        if self._walker is None or self._walker_screen != int(snap.screen):
-            self._walker = OccupancyWalker(grid=_ow_farm_grid())
-            self._walker_screen = int(snap.screen)
-            self._walk_frame = -1
-        walker = self._walker
-        xy = (int(snap.link_x), int(snap.link_y))
-        if self._walk_frame != self.frames - 1:
-            walker.last_dir = None
-            walker.last_xy = None
-        link_state = (
-            snap.objects[0].state
-            if snap.objects and snap.objects[0].slot == 0
-            else 0
-        )
-        is_swinging = link_state != 0 or snap.mode != PLAY_MODE
-        if is_swinging:
-            walker.last_dir = None
-            walker.last_xy = None
-        elif walker.last_dir in _CARDINALS and walker.last_xy is not None:
-            if not _advanced(walker.last_xy, xy, walker.last_dir):
-                walker.grid.mark_blocked_ahead(*walker.last_xy, walker.last_dir)
-                walker.path = None
-                walker.misses += 1
-        walker.last_xy = xy
-        walker._graded = True
-        return walker
-
     def _walk_to(
         self,
         snap: ZeldaSnapshot,
@@ -305,41 +490,87 @@ class HeartFarmController:
         *,
         slash: bool = True,
     ) -> FrameAction:
-        """Occupancy to ``goal``. Miss → block → replan; no path → stand."""
-        walker = self._grade_occupancy(snap)
-        xy = (int(snap.link_x), int(snap.link_y))
-        dest = (int(goal[0]), int(goal[1]))
-        if walker.goal != dest:
-            walker.path = None
-            walker.goal = dest
-        path = walker.grid.shortest_path(xy, dest)
-        if path is None or xy == dest:
-            walker.path = None
-            walker.last_dir = None
-            self._walk_frame = self.frames
-            return FrameAction(nes_idle_action(), "occupancy_stand")
-        walker.path = path
-        direction = walker.next_dir(xy, dest)
-        if direction is None:
-            walker.path = None
-            walker.last_dir = None
-            self._walk_frame = self.frames
-            return FrameAction(nes_idle_action(), "occupancy_stand")
-        if slash:
-            act = walk_or_swing(
-                self.frames,
-                direction,
-                reason,
-                snap,
-                period=FARM_SWING_PERIOD,
-                hold=FARM_SWING_HOLD,
-            )
-            walker.last_dir = _cardinal_from_action(act.action)
-        else:
-            act = FrameAction(nes_action(direction), reason)
-            walker.last_dir = direction
-        self._walk_frame = self.frames
-        return act
+        """Occupancy to ``goal``. Miss -> block -> replan; no path -> stand."""
+        return self._occ.walk(snap, self.frames, goal, reason, slash=slash)
+
+    def _screen_dead(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Give up: a restock returned an empty screen.
+
+        Measured on 0x4A (2026-09-12): once the opening wave is killed the
+        screen stays empty through a depth-1 (0x49) *and* a depth-2
+        (0x49-0x59-0x49) round trip. Looping the restock only burns the
+        budget, so end on the same policy as the timeout.
+        """
+        self.notes.append(
+            f"farm_screen_dead hearts={snap.filled_hearts}/{self.min_filled}"
+        )
+        if snap.filled_hearts >= self.min_filled:
+            return self._set_done("farm_ok_dead")
+        if snap.filled_hearts >= 2 and snap.filled_hearts >= self.start_filled:
+            return self._set_done("farm_soft_ok")
+        self.phase = HeartFarmPhase.FAILED
+        self.success = False
+        return FrameAction(nes_idle_action(), "farm_screen_dead")
+
+    def _bomb_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Scoop a bomb drop — but never let one hold the farm open.
+
+        Bomb is ROM item code ``0x00``, indistinguishable from a cleared object
+        slot (see :func:`_bomb_drops`), and this branch used to run *ahead* of
+        the rupee scoop and reset ``empty_frames`` on every match: one phantom
+        slot pinned the farm for the whole ``max_frames``. Three guards now:
+        the branch is last, it never touches ``empty_frames`` (so the
+        wait / leave / restock / give-up ladder keeps its schedule), and the
+        chase is dropped once it stops resolving — a reachable contact drop is
+        banked in a handful of frames, a phantom never is.
+        """
+        bombs = _bomb_drops(snap)
+        if not bombs:
+            self.bomb_chase = 0
+            self.bomb_chase_bombs = -1
+            return None
+        if int(snap.bombs) != self.bomb_chase_bombs:
+            self.bomb_chase = 0
+            self.bomb_chase_bombs = int(snap.bombs)
+        self.bomb_chase += 1
+        if self.bomb_chase > self.bomb_chase_max_frames:
+            return None
+        nearest = min(
+            bombs,
+            key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
+        )
+        return self._walk_to(
+            snap, (int(nearest.x), int(nearest.y)), "farm_bomb", slash=False
+        )
+
+    def _leave_step(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Hold the restock walk until the screen actually flips.
+
+        One-frame ``farm_leave`` never scrolled: ``empty_frames`` reset the
+        moment it fired, so the wait oscillation undid the single step and the
+        screen never restocked (At4A min_filled=4: 1348 farm_wait / 15
+        farm_leave, peak 3, zero respawns).
+        """
+        direction = self.restock_direction or "LEFT"
+        self.leave_frames += 1
+        if self.leave_frames > LEAVE_MAX_FRAMES:
+            self.leaving = False
+            self.leave_frames = 0
+            self.notes.append(f"farm_leave_stalled_{snap.link_x}_{snap.link_y}")
+            return FrameAction(nes_idle_action(), "farm_leave_stalled")
+        goal = LEAVE_GOALS.get(direction)
+        if goal is None:
+            return FrameAction(nes_action(direction), "farm_leave")
+        gx, gy = goal
+        at_edge = (
+            (direction == "LEFT" and snap.link_x <= gx)
+            or (direction == "RIGHT" and snap.link_x >= gx)
+            or (direction == "UP" and snap.link_y <= gy)
+            or (direction == "DOWN" and snap.link_y >= gy)
+        )
+        if at_edge:
+            return FrameAction(nes_action(direction), "farm_leave_push")
+        return self._walk_to(snap, goal, "farm_leave", slash=False)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
@@ -398,6 +629,11 @@ class HeartFarmController:
         # Restock: stay FARM on the neighbor and walk back. Any other screen
         # still soft-fails. Do not invent a neighbor when the pair is missing.
         if restock and snap.screen == self.restock_neighbor_screen:
+            if self.leaving:
+                self.leaving = False
+                self.leave_frames = 0
+                self.restocks += 1
+                self.notes.append(f"farm_restock_{self.restocks}")
             return FrameAction(
                 nes_action(_OPPOSITE[self.restock_direction or "LEFT"]),
                 "farm_respawn",
@@ -427,13 +663,16 @@ class HeartFarmController:
                 slash=False,
             )
 
-        enter_dir = self._is_entering_screen(snap)
+        # Not while leaving: the enter guard pushes inward at x<36, which is
+        # exactly where the restock walk has to finish.
+        enter_dir = None if self.leaving else self._is_entering_screen(snap)
         if enter_dir is not None:
             return FrameAction(nes_action(enter_dir), "farm_enter")
 
         enemies = list(overworld_threat_objects(snap))
         if enemies:
             self.empty_frames = 0
+            self.saw_prey = True
             nearest = min(
                 enemies,
                 key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
@@ -449,13 +688,25 @@ class HeartFarmController:
             )
             return self._walk_to(snap, (int(nearest.x), int(nearest.y)), "farm_rupee")
 
+        # Last, and never resetting ``empty_frames``: see ``_bomb_step``.
+        bomb = self._bomb_step(snap)
+        if bomb is not None:
+            return bomb
+
         if restock:
+            if self.leaving:
+                return self._leave_step(snap)
             self.empty_frames += 1
             if self.empty_frames < self.empty_wait_frames or _hold_for_forced_fairy(snap):
                 direction = "RIGHT" if snap.link_x < 160 else "LEFT"
                 return FrameAction(nes_action(direction), "farm_wait")
             self.empty_frames = 0
-            return FrameAction(nes_action(self.restock_direction or "LEFT"), "farm_leave")
+            if self.restocks >= 1 and not self.saw_prey:
+                return self._screen_dead(snap)
+            self.saw_prey = False
+            self.leaving = True
+            self.leave_frames = 0
+            return self._leave_step(snap)
 
         if not self.waypoints:
             return self._walk_to(
@@ -481,6 +732,10 @@ class HeartFarmController:
             "start_filled": self.start_filled,
             "peak_filled": self.peak_filled,
             "waypoint_index": self.waypoint_index,
-            "occupancy_misses": 0 if self._walker is None else self._walker.misses,
+            "restocks": self.restocks,
+            "saw_prey": self.saw_prey,
+            "leaving": self.leaving,
+            "occupancy_misses": self._occ.misses,
+            "occupancy_retargets": self._occ.retargets,
             "notes": list(self.notes),
         }

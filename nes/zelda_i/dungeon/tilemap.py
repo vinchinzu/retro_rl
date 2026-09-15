@@ -32,6 +32,7 @@ __all__ = [
     "INTERIOR_X",
     "INTERIOR_Y",
     "LINK_FOOT_OFFSET",
+    "LINK_WALKABLE_TILES",
     "PLAYFIELD_TOP_Y",
     "STAIR_TILES",
     "TILE_COLS",
@@ -40,6 +41,7 @@ __all__ = [
     "WRAM_BASE",
     "WRAM_RAM_OFFSET",
     "ascii_room",
+    "blocked_link_cells",
     "PLAYFIELD_X",
     "PLAYFIELD_Y",
     "cell_tiles",
@@ -75,6 +77,12 @@ FLOOR_TILES = frozenset({0x74, 0x75, 0x76, 0x77})
 BLOCK_TILES = frozenset({0xB0, 0xB1, 0xB2, 0xB3})
 STAIR_TILES = frozenset({0x70, 0x71, 0x72, 0x73})
 DOOR_TILES = frozenset({0x90, 0x91})
+# What Link may stand on. Stairs and door mouths are floor he walks over,
+# not geometry: a CheckWarp staircase is the *destination* of a route, and
+# the four door cells at x=16/224 and y=80/208 are the only way in or out
+# of a room. Grading them SOLID walls off exactly the cells ROUTE_BOUNDS
+# exists to include, and every stair a room is routed to.
+LINK_WALKABLE_TILES = FLOOR_TILES | STAIR_TILES | DOOR_TILES
 
 _MAP_LEN = TILE_COLS * TILE_ROWS
 _MIN_RAM = WRAM_RAM_OFFSET + ADDR_ROOM_TILE_MAP - WRAM_BASE + _MAP_LEN
@@ -182,3 +190,41 @@ def ascii_room(ram: np.ndarray) -> str:
                 marks.append("  ?")
         lines.append(f"y{y:03d} " + " ".join(marks))
     return "\n".join(lines)
+
+
+def blocked_link_cells(
+    ram: np.ndarray,
+    bounds: tuple[int, int, int, int],
+    *,
+    walkable: frozenset[int] = LINK_WALKABLE_TILES,
+) -> frozenset[tuple[int, int]]:
+    """Occupancy blocks for ``bounds``, measured from the live tile map.
+
+    Occupancy is keyed on Link's stored ``(x, y)`` while his feet collide
+    ``LINK_FOOT_OFFSET`` px lower, so cell ``(x, y)`` is solid exactly when
+    the tile under ``(x, y + LINK_FOOT_OFFSET)`` is not walkable.
+
+    ``walkable`` defaults to ``LINK_WALKABLE_TILES`` — floor plus stairs plus
+    door mouths — not bare ``FLOOR_TILES``. Grading a staircase or a door as
+    solid walls off the cells a route is aimed *at*.
+
+    This replaces hand-written ``occupancy_blocked`` range boxes, which are
+    written from a screenshot and drift: the L1 ``0x23`` list walled 84 cells
+    of real floor, and the walker burned 2438 frames learning and forgetting
+    them (3994 misses, 1335 forgets) instead of reaching the key.
+    """
+    _require(ram)
+    xmin, xmax, ymin, ymax = (int(v) for v in bounds)
+    if xmin > xmax or ymin > ymax:
+        return frozenset()
+    tiles = read_room_tiles(ram)
+    solid = ~np.isin(tiles, np.fromiter(walkable, dtype=np.uint8))
+    xs = np.arange(xmin, xmax + 1)
+    ys = np.arange(ymin, ymax + 1)
+    cols = np.clip(xs // TILE_PX, 0, TILE_COLS - 1)
+    rows = np.clip(
+        (ys + LINK_FOOT_OFFSET - PLAYFIELD_TOP_Y) // TILE_PX, 0, TILE_ROWS - 1
+    )
+    hits = solid[np.ix_(rows, cols)]
+    yy, xx = np.nonzero(hits)
+    return frozenset(zip(xs[xx].tolist(), ys[yy].tolist()))

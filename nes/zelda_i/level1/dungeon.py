@@ -6,8 +6,6 @@ themselves on import so ``dungeon.spec_for_room`` can find them.
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import (
@@ -489,144 +487,6 @@ _ROOM_23_MAZE: tuple[tuple[int, int], ...] = (
     (120, 125),
 )
 
-_ROOM_23_BLOCKED: tuple[tuple[int, int], ...] = (
-    # Top wall
-    *(
-        (x, y)
-        for x in range(32, 224)
-        for y in range(80, 88)
-    ),
-    # East wall
-    *(
-        (x, y)
-        for x in range(209, 224)
-        for y in range(88, 193)
-    ),
-    # West block
-    *(
-        (x, y)
-        for x in range(33, 96)
-        for y in (*range(97, 120), *range(161, 184))
-    ),
-    *(
-        (x, y)
-        for x in range(33, 64)
-        for y in range(120, 161)
-    ),
-    # Center water from $6530: 16px cell origin y=144 (tiles y=144-159,
-    # x=80-175). Occupancy is stored Link (feet - 11), so block y=133-148.
-    # The old y=128-143 box was the north channel (floor) and left the bar
-    # open — leftover (88,149) then BFS'd UP into water for 2662f.
-    *(
-        (x, y)
-        for x in range(80, 176)
-        for y in range(133, 149)
-    ),
-    # East block
-    *(
-        (x, y)
-        for x in range(145, 208)
-        for y in (*range(97, 120), *range(161, 184))
-    ),
-    *(
-        (x, y)
-        for x in range(177, 208)
-        for y in range(120, 161)
-    ),
-    # South wall & exterior
-    *(
-        (x, y)
-        for x in (*range(32, 120), *range(121, 224))
-        for y in range(193, 201)
-    ),
-    *(
-        (x, y)
-        for x in range(32, 224)
-        for y in range(201, 208)
-    ),
-)
-
-# South U-turn only. 1-heart hold must not cycle the maze into (128, 117).
-_ROOM_23_SOUTH: tuple[tuple[int, int], ...] = tuple(
-    xy for xy in _ROOM_23_MAZE if xy[1] >= 149
-)
-_ROOM_23_HOLD_Y = 149
-_ROOM_23_CORRIDOR_Y = 157
-
-
-class Room23HeartSafeController(GenericDungeonRoomController):
-    """1-heart 0x23: hold y=157; do not chase the north plus-stem.
-
-    Peel DOWN off y=149; UP from the south mouth back to the corridor.
-    Mask UP on 141<y<=157 (boomerang plus-stem). Never DOWN at y>=157.
-    Occupancy miss → block → replan; no path → stand on the corridor.
-    lo>=2 restores the full maze.
-    """
-
-    def _combat(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
-        if not live or int(snap.filled_hearts) > 1:
-            return super()._combat(snap, live)
-        y = int(snap.link_y)
-        south = tuple(obj for obj in live if int(obj.y) >= _ROOM_23_CORRIDOR_Y)
-        old = self.spec
-        self.spec = replace(
-            old, combat=replace(old.combat, patrol=_ROOM_23_SOUTH)
-        )
-        try:
-            if self.patrol_index >= len(_ROOM_23_SOUTH):
-                self._snap_patrol_nearest(snap)
-            if y > _ROOM_23_CORRIDOR_Y:
-                self.combat_frames += 1
-                action = self._return_corridor()
-            elif y < _ROOM_23_CORRIDOR_Y:
-                self.combat_frames += 1
-                if y >= _ROOM_23_HOLD_Y:
-                    action = self._peel_south()
-                else:
-                    action = self._retreat_south(snap)
-            elif south:
-                action = super()._combat(snap, south)
-            else:
-                self.combat_frames += 1
-                action = self._patrol(snap)
-        finally:
-            self.spec = old
-        if _action_is(action, "UP") and y <= _ROOM_23_CORRIDOR_Y:
-            if y < _ROOM_23_CORRIDOR_Y:
-                return self._peel_south()
-            self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), "combat_wait")
-        if _action_is(action, "DOWN") and y >= _ROOM_23_CORRIDOR_Y:
-            self.walker.last_dir = None
-            return FrameAction(nes_idle_action(), "combat_wait")
-        return action
-
-    def _peel_south(self) -> FrameAction:
-        self.walker.last_dir = "DOWN"
-        return FrameAction(nes_action("DOWN"), "heart_safe_peel_south")
-
-    def _return_corridor(self) -> FrameAction:
-        self.walker.last_dir = "UP"
-        return FrameAction(nes_action("UP"), "heart_safe_return_corridor")
-
-    def _retreat_south(self, snap: ZeldaSnapshot) -> FrameAction:
-        x, y = int(snap.link_x), int(snap.link_y)
-        direction = self.walker.next_dir((x, y), (120, 157))
-        if direction is None or direction == "UP":
-            if y >= _ROOM_23_HOLD_Y:
-                return self._peel_south()
-            direction = "LEFT" if x >= 120 else "RIGHT"
-        self.walker.last_dir = direction
-        return FrameAction(nes_action(direction), "combat_patrol")
-
-
-def _action_is(action: FrameAction, direction: str) -> bool:
-    a = list(action.action)
-    return a == list(nes_action(direction)) or a == list(
-        nes_action(direction, "A")
-    )
-
-
 ROOM_23_SPEC = DungeonRoomSpec(
     spec_id="level1_room23",
     source_room=0x33,
@@ -646,14 +506,15 @@ ROOM_23_SPEC = DungeonRoomSpec(
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
         patrol=_ROOM_23_MAZE,
-        engage_distance=24,
+        engage_distance=80,
         attack_phase=2,
         avoid_walls=True,
         avoid_wall_bounds=(56, 200, 88, 192),
         split_y=141,
         occupancy_patrol=True,
-        occupancy_blocked=_ROOM_23_BLOCKED,
+        occupancy_from_tilemap=True,
         contact_backstep=16,
+        evade=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
@@ -717,7 +578,6 @@ for _spec in (
     register_room_spec(_spec)
 
 __all__ = [
-    "Room23HeartSafeController",
     "ROOM_23_SPEC",
     "Room33ScoopController",
     "ROOM_33_SPEC",
